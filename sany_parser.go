@@ -413,7 +413,7 @@ func (p *SanyParser) ProofCommandItem(command *SanyToken, terminal bool) *SanySy
 	if p.startsProofStepAt(0) {
 		return NewSanyTokenNode(p.advance())
 	}
-	if _, ok := GetSanyOperator(p.peek().Image); ok {
+	if p.startsBareProofCommandOperatorReference(command, terminal) {
 		return p.OperatorReference()
 	}
 	return p.ExpressionUntilProofCommandItemBoundary(command, terminal)
@@ -444,10 +444,30 @@ func (p *SanyParser) UseOrHideItem() *SanySyntaxNode {
 		module := NewSanyTokenNode(p.previous())
 		return NewSanyNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], module, p.Identifier())
 	}
-	if _, ok := GetSanyOperator(p.peek().Image); ok {
+	if p.startsBareProofCommandOperatorReference(nil, false) {
 		return p.OperatorReference()
 	}
 	return p.ExpressionUntilUseOrHideItemBoundary()
+}
+
+func (p *SanyParser) startsBareProofCommandOperatorReference(command *SanyToken, terminal bool) bool {
+	if _, ok := GetSanyOperator(p.peek().Image); !ok {
+		return false
+	}
+	next := p.tokenAt(1)
+	switch next.Kind {
+	case SanyTokenComma, SanyTokenDF, SanyTokenEOF, SanyTokenEndModule:
+		return true
+	case SanyTokenQed:
+		return terminal && command != nil && next.Begin.Column <= command.Begin.Column
+	}
+	if p.startsBodyItemAt(1) {
+		return true
+	}
+	if terminal {
+		return p.startsProofStepAt(1) && command != nil && next.Begin.Column <= command.Begin.Column
+	}
+	return beginsExplicitSanyProof(next) || p.startsProofStepAt(1)
 }
 
 func (p *SanyParser) ExpressionUntilUseOrHideItemBoundary() *SanySyntaxNode {

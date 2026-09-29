@@ -275,6 +275,24 @@ THEOREM TRUE
 		}
 	})
 
+	t.Run("terminal BY parses prefix operator expression facts", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TerminalByPrefixFactXML.tla", `---- MODULE TerminalByPrefixFactXML ----
+THEOREM TRUE
+  BY DOMAIN <<1>> = 1..1
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		for _, want := range []string{
+			`<by>`,
+			`<facts>`,
+			`<uniquename>DOMAIN</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("terminal BY prefix expression fact missing %q\n%s", want, got)
+			}
+		}
+	})
+
 	t.Run("explicit PROOF steps location starts at PROOF token", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExplicitProofStepsLocationXML.tla", `---- MODULE ExplicitProofStepsLocationXML ----
 THEOREM TRUE
