@@ -1609,6 +1609,35 @@ Use == LET Inst == INSTANCE Helper IN Inst!Op
 		}
 	})
 
+	t.Run("LET INSTANCE clones are originally defined in the LET owner module", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "LetInstanceOriginXML.tla")
+		writeFile(t, rootPath, `---- MODULE LetInstanceOriginXML ----
+Use == LET Inst == INSTANCE Helper IN Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if op == nil {
+			t.Fatalf("LET INSTANCE clone missing\n%s", xmlText)
+		}
+		if got := xmlOriginalModuleName(root, op); got != "LetInstanceOriginXML" {
+			t.Fatalf("LET INSTANCE clone origin = %q, want LetInstanceOriginXML\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("LET INSTANCE substitutions can target inherited declarations", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
@@ -3145,6 +3174,29 @@ func xmlEntryPayloadByKindAndName(root *canonicalXMLNode, kind, name string) *ca
 		return payload
 	}
 	return nil
+}
+
+func xmlOriginalModuleName(root *canonicalXMLNode, payload *canonicalXMLNode) string {
+	if root == nil || payload == nil {
+		return ""
+	}
+	payloadsByUID := map[string]*canonicalXMLNode{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		uid := firstChildText(entry, "UID")
+		entryPayload := canonicalSanyXMLEntryPayload(entry)
+		if uid != "" && entryPayload != nil {
+			payloadsByUID[uid] = entryPayload
+		}
+	}
+	for _, origin := range directChildren(payload, "originallyDefinedInModule") {
+		for _, ref := range directChildren(origin, "ModuleNodeRef") {
+			modulePayload := payloadsByUID[firstChildText(ref, "UID")]
+			if modulePayload != nil {
+				return firstChildText(modulePayload, "uniquename")
+			}
+		}
+	}
+	return ""
 }
 
 func xmlPayloadCountByKindNameFile(root *canonicalXMLNode, kind, name, filename string) int {

@@ -737,7 +737,7 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 			}
 			sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)]
 			original := x.defs[x.defKey(source.module.Name, source.def.Name)]
-			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, mod, inst, source.module, targetMod, source.def, sourceCtx, source.wrappers)...)
+			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, mod, inst, source.module, targetMod, source.def, sourceCtx, source.wrappers, false)...)
 		}
 	}
 	for i := range mod.Definitions {
@@ -1545,7 +1545,7 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	return diags
 }
 
-func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, owner *Module, inst Instance, sourceMod *Module, targetMod *Module, def *Definition, ctx sanyXMLExprContext, wrappers []sanyXMLInstanceWrapper) Diagnostics {
+func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, owner *Module, inst Instance, sourceMod *Module, targetMod *Module, def *Definition, ctx sanyXMLExprContext, wrappers []sanyXMLInstanceWrapper, originOwner bool) Diagnostics {
 	if sym == nil || original == nil || def == nil || x.emitted[sym.Key] {
 		return nil
 	}
@@ -1627,7 +1627,7 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	xmlInt(&b, sym.Arity)
 	b.WriteString("</arity>")
 	originModule := sourceMod
-	if hasSubsts {
+	if hasSubsts || originOwner {
 		originModule = owner
 	}
 	x.writeDefinitionOriginFor(&b, original, originModule)
@@ -3375,7 +3375,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 			}
 			targetMod := x.spec.Modules[item.inst.Module]
 			original := x.defs[x.defKey(item.source.module.Name, item.source.def.Name)]
-			diags = append(diags, x.emitInstanceDefinitionEntry(item.sym, original, ctx.module, item.inst, item.source.module, targetMod, item.source.def, sourceCtx, item.source.wrappers)...)
+			diags = append(diags, x.emitInstanceDefinitionEntry(item.sym, original, ctx.module, item.inst, item.source.module, targetMod, item.source.def, sourceCtx, item.source.wrappers, true)...)
 		}
 	}
 	body, bodyDiags := x.exprXML(e.Body, letCtx)
