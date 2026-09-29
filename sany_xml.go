@@ -1611,7 +1611,8 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	if hasSubsts {
 		body = x.substInXMLWithTag(substTag, inst.SourcePosition(), level, substs, body, owner, targetMod)
 	}
-	instanceParamCount := len(x.instanceParamSymbols(owner, inst))
+	instanceParams := x.instanceParamSymbols(owner, inst)
+	instanceParamCount := len(instanceParams)
 	x.setInstanceOperatorLevelData(sym, def, levelData, instanceParamCount)
 	for _, param := range sym.Params {
 		x.emitFormalEntry(param)
@@ -1645,6 +1646,11 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	b.WriteString(body)
 	b.WriteString("</body>")
 	sym.Leibniz = x.definitionLeibnizArgsWithOffset(sym, def, defCtx, instanceParamCount)
+	for i, leibniz := range x.instanceParamLeibnizArgs(inst, instanceParams, def, defCtx) {
+		if i < len(sym.Leibniz) {
+			sym.Leibniz[i] = leibniz
+		}
+	}
 	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
 	x.writePreComments(&b, inst.PreComments)
 	if inst.Local {
@@ -1670,6 +1676,30 @@ func (x *sanyXMLExporter) writeLeibnizParams(b *bytes.Buffer, params []*sanyXMLS
 
 func (x *sanyXMLExporter) definitionLeibnizArgs(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext) []bool {
 	return x.definitionLeibnizArgsWithOffset(sym, def, ctx, 0)
+}
+
+func (x *sanyXMLExporter) instanceParamLeibnizArgs(inst Instance, params []*sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext) []bool {
+	leibniz := make([]bool, len(inst.Params))
+	for i := range leibniz {
+		leibniz[i] = true
+	}
+	if def == nil || def.Expr == nil || len(params) == 0 {
+		return leibniz
+	}
+	paramCtx := ctx
+	paramCtx.formals = copySanyXMLSymbolMap(ctx.formals)
+	for i, param := range inst.Params {
+		if i < len(params) {
+			paramCtx.formals[param] = params[i]
+		}
+	}
+	use := x.exprParamUseWithDefinitionRefs(def.Expr, paramCtx, nil, map[*Definition]bool{})
+	for i, param := range inst.Params {
+		if use.nonLeibniz[param] {
+			leibniz[i] = false
+		}
+	}
+	return leibniz
 }
 
 func (x *sanyXMLExporter) definitionLeibnizArgsWithOffset(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext, paramOffset int) []bool {
@@ -4077,6 +4107,198 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 		return use
 	}
 	return sanyXMLParamUse{}
+}
+
+func (x *sanyXMLExporter) exprParamUseWithDefinitionRefs(expr Expr, ctx sanyXMLExprContext, shadowed map[string]bool, visiting map[*Definition]bool) sanyXMLParamUse {
+	if expr == nil {
+		return sanyXMLParamUse{}
+	}
+	switch e := expr.(type) {
+	case *IdentExpr:
+		use := x.identParamUse(e.Name, ctx, shadowed)
+		use.merge(x.definitionReferenceParamUse(e.Name, ctx, shadowed, visiting))
+		return use
+	case *LiteralExpr:
+		return sanyXMLParamUse{}
+	case *UnaryExpr:
+		use := x.exprParamUseWithDefinitionRefs(e.Expr, ctx, shadowed, visiting)
+		if !x.operatorLeibnizArg(e.Op, 0, ctx) {
+			use.addNonLeibniz(use.all)
+		}
+		return use
+	case *BinaryExpr:
+		left := x.exprParamUseWithDefinitionRefs(e.Left, ctx, shadowed, visiting)
+		right := x.exprParamUseWithDefinitionRefs(e.Right, ctx, shadowed, visiting)
+		use := mergeSanyXMLParamUse(left, right, x.identParamUse(e.Op, ctx, shadowed))
+		use.merge(x.definitionReferenceParamUse(e.Op, ctx, shadowed, visiting))
+		if !x.operatorLeibnizArg(e.Op, 0, ctx) {
+			use.addNonLeibniz(left.all)
+		}
+		if !x.operatorLeibnizArg(e.Op, 1, ctx) {
+			use.addNonLeibniz(right.all)
+		}
+		return use
+	case *CallExpr:
+		use := x.exprParamUseWithDefinitionRefs(e.Callee, ctx, shadowed, visiting)
+		operatorName := ""
+		if ident, ok := e.Callee.(*IdentExpr); ok {
+			operatorName = ident.Name
+		}
+		for i, arg := range e.Args {
+			argUse := x.exprParamUseWithDefinitionRefs(arg, ctx, shadowed, visiting)
+			use.merge(argUse)
+			if operatorName != "" && !x.operatorLeibnizArg(operatorName, i, ctx) {
+				use.addNonLeibniz(argUse.all)
+			}
+		}
+		return use
+	case *IfExpr:
+		return mergeSanyXMLParamUse(
+			x.exprParamUseWithDefinitionRefs(e.Cond, ctx, shadowed, visiting),
+			x.exprParamUseWithDefinitionRefs(e.Then, ctx, shadowed, visiting),
+			x.exprParamUseWithDefinitionRefs(e.Else, ctx, shadowed, visiting),
+		)
+	case *LetExpr:
+		use := sanyXMLParamUse{}
+		for _, def := range e.Definitions {
+			defShadowed := copyBoolMap(shadowed)
+			for _, param := range def.Params {
+				defShadowed[param] = true
+			}
+			use.merge(x.exprParamUseWithDefinitionRefs(def.Expr, ctx, defShadowed, visiting))
+		}
+		for _, inst := range e.Instances {
+			for _, expr := range inst.Substitutions {
+				use.merge(x.exprParamUseWithDefinitionRefs(expr, ctx, shadowed, visiting))
+			}
+		}
+		bodyShadowed := copyBoolMap(shadowed)
+		for _, def := range e.Definitions {
+			bodyShadowed[def.Name] = true
+		}
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Body, ctx, bodyShadowed, visiting))
+		use.nonLeibniz = nil
+		return use
+	case *QuantifierExpr:
+		use := x.exprParamUseWithDefinitionRefs(e.Set, ctx, shadowed, visiting)
+		bodyShadowed := copyBoolMap(shadowed)
+		bodyShadowed[e.Var] = true
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Body, ctx, bodyShadowed, visiting))
+		return use
+	case *CaseExpr:
+		use := sanyXMLParamUse{}
+		for _, arm := range e.Arms {
+			use.merge(x.exprParamUseWithDefinitionRefs(arm.Test, ctx, shadowed, visiting))
+			use.merge(x.exprParamUseWithDefinitionRefs(arm.Value, ctx, shadowed, visiting))
+		}
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Other, ctx, shadowed, visiting))
+		return use
+	case *ChooseExpr:
+		use := x.exprParamUseWithDefinitionRefs(e.Set, ctx, shadowed, visiting)
+		bodyShadowed := copyBoolMap(shadowed)
+		bodyShadowed[e.Var] = true
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Body, ctx, bodyShadowed, visiting))
+		return use
+	case *TupleExpr:
+		return x.exprListParamUseWithDefinitionRefs(e.Elems, ctx, shadowed, visiting)
+	case *SetExpr:
+		return x.exprListParamUseWithDefinitionRefs(e.Elems, ctx, shadowed, visiting)
+	case *RecordExpr:
+		use := sanyXMLParamUse{}
+		for _, field := range e.Fields {
+			use.merge(x.exprParamUseWithDefinitionRefs(field.Value, ctx, shadowed, visiting))
+		}
+		return use
+	case *RecordComponentExpr:
+		return x.exprParamUseWithDefinitionRefs(e.Record, ctx, shadowed, visiting)
+	case *RecordSetExpr:
+		use := sanyXMLParamUse{}
+		for _, field := range e.Fields {
+			use.merge(x.exprParamUseWithDefinitionRefs(field.Set, ctx, shadowed, visiting))
+		}
+		return use
+	case *FunctionExpr:
+		use := sanyXMLParamUse{}
+		bodyShadowed := copyBoolMap(shadowed)
+		for _, bound := range e.Bounds {
+			use.merge(x.exprParamUseWithDefinitionRefs(bound.Set, ctx, shadowed, visiting))
+			bodyShadowed[bound.Name] = true
+		}
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Body, ctx, bodyShadowed, visiting))
+		return use
+	case *FunctionAppExpr:
+		use := x.exprParamUseWithDefinitionRefs(e.Function, ctx, shadowed, visiting)
+		use.merge(x.exprListParamUseWithDefinitionRefs(e.Args, ctx, shadowed, visiting))
+		return use
+	case *ExceptExpr:
+		use := x.exprParamUseWithDefinitionRefs(e.Base, ctx, shadowed, visiting)
+		for _, spec := range e.Specs {
+			for _, component := range spec.Components {
+				use.merge(x.exprListParamUseWithDefinitionRefs(component.Indices, ctx, shadowed, visiting))
+			}
+			use.merge(x.exprParamUseWithDefinitionRefs(spec.Value, ctx, shadowed, visiting))
+		}
+		return use
+	case *LabelExpr:
+		return x.exprParamUseWithDefinitionRefs(e.Body, ctx, shadowed, visiting)
+	case *ActionExpr:
+		actionUse := x.exprParamUseWithDefinitionRefs(e.Action, ctx, shadowed, visiting)
+		subscriptUse := x.exprParamUseWithDefinitionRefs(e.Subscript, ctx, shadowed, visiting)
+		use := mergeSanyXMLParamUse(actionUse, subscriptUse)
+		use.addNonLeibniz(actionUse.all)
+		use.addNonLeibniz(subscriptUse.all)
+		return use
+	case *FairnessExpr:
+		subscriptUse := x.exprParamUseWithDefinitionRefs(e.Subscript, ctx, shadowed, visiting)
+		actionUse := x.exprParamUseWithDefinitionRefs(e.Action, ctx, shadowed, visiting)
+		use := mergeSanyXMLParamUse(subscriptUse, actionUse)
+		use.addNonLeibniz(subscriptUse.all)
+		use.addNonLeibniz(actionUse.all)
+		return use
+	case *FunctionSetExpr:
+		return mergeSanyXMLParamUse(
+			x.exprParamUseWithDefinitionRefs(e.Domain, ctx, shadowed, visiting),
+			x.exprParamUseWithDefinitionRefs(e.Range, ctx, shadowed, visiting),
+		)
+	case *SetComprehensionExpr:
+		use := sanyXMLParamUse{}
+		bodyShadowed := copyBoolMap(shadowed)
+		for _, bound := range e.Bounds {
+			use.merge(x.exprParamUseWithDefinitionRefs(bound.Set, ctx, shadowed, visiting))
+			bodyShadowed[bound.Name] = true
+		}
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Element, ctx, bodyShadowed, visiting))
+		use.merge(x.exprParamUseWithDefinitionRefs(e.Predicate, ctx, bodyShadowed, visiting))
+		return use
+	}
+	return sanyXMLParamUse{}
+}
+
+func (x *sanyXMLExporter) definitionReferenceParamUse(name string, ctx sanyXMLExprContext, shadowed map[string]bool, visiting map[*Definition]bool) sanyXMLParamUse {
+	if name == "" || shadowed[name] {
+		return sanyXMLParamUse{}
+	}
+	def := x.definitionForSymbol(x.definitionSymbol(name, ctx))
+	if def == nil || def.Expr == nil || visiting[def] {
+		return sanyXMLParamUse{}
+	}
+	visiting[def] = true
+	defer func() {
+		visiting[def] = false
+	}()
+	defShadowed := copyBoolMap(shadowed)
+	for _, param := range def.Params {
+		defShadowed[param] = true
+	}
+	return x.exprParamUseWithDefinitionRefs(def.Expr, ctx, defShadowed, visiting)
+}
+
+func (x *sanyXMLExporter) exprListParamUseWithDefinitionRefs(exprs []Expr, ctx sanyXMLExprContext, shadowed map[string]bool, visiting map[*Definition]bool) sanyXMLParamUse {
+	use := sanyXMLParamUse{}
+	for _, expr := range exprs {
+		use.merge(x.exprParamUseWithDefinitionRefs(expr, ctx, shadowed, visiting))
+	}
+	return use
 }
 
 func (x *sanyXMLExporter) identParamUse(name string, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLParamUse {

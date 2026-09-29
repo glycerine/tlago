@@ -1601,6 +1601,49 @@ RootInit == Inst!Init
 		}
 	})
 
+	t.Run("named INSTANCE clone params inherit variable non-Leibniz flags", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANT C
+VARIABLE v, w
+Touch == UNCHANGED <<v, w>>
+Op == Touch
+====`)
+		rootPath := filepath.Join(dir, "InstanceParamLeibnizXML.tla")
+		writeFile(t, rootPath, `---- MODULE InstanceParamLeibnizXML ----
+Inner(C, v, w) == INSTANCE Helper
+Use == Inner(1, TRUE, TRUE)!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		clone := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inner!Op")
+		if clone == nil {
+			t.Fatalf("Inner!Op clone missing\n%s", xmlText)
+		}
+		params := directChildren(clone, "params")
+		if len(params) != 1 {
+			t.Fatalf("Inner!Op params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 3 {
+			t.Fatalf("Inner!Op leibniz param count = %d, want 3\n%s", len(leibnizParams), xmlText)
+		}
+		for i, want := range []bool{true, false, false} {
+			got := len(directChildren(leibnizParams[i], "leibniz")) != 0
+			if got != want {
+				t.Fatalf("Inner!Op param %d Leibniz = %v, want %v\n%s", i, got, want, xmlText)
+			}
+		}
+	})
+
 	t.Run("anonymous INSTANCE does not reclone inherited owner definitions", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
