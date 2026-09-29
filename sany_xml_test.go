@@ -58,6 +58,28 @@ Init == x = 0
 		}
 	})
 
+	t.Run("resolves LOCAL INSTANCE symbols while exporting the module body", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Zero == 0
+====`)
+		root := filepath.Join(dir, "LocalInstanceXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceXML ----
+LOCAL INSTANCE Helper
+Use == Zero
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if !strings.Contains(string(xmlText), `<uniquename>Zero</uniquename>`) {
+			t.Fatalf("SANY XML did not resolve LOCAL INSTANCE symbol Zero\n%s", xmlText)
+		}
+	})
+
 	t.Run("serializes proof steps as theorem XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofXML.tla", `---- MODULE ProofXML ----
 THEOREM T == TRUE

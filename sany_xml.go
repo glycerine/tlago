@@ -2577,6 +2577,14 @@ func (x *sanyXMLExporter) operatorLevel(name string, ctx sanyXMLExprContext) tla
 }
 
 func (x *sanyXMLExporter) scopeForModule(mod *Module, visiting map[string]bool) sanyXMLScope {
+	return x.scopeForModuleMode(mod, visiting, true)
+}
+
+func (x *sanyXMLExporter) exportedScopeForModule(mod *Module, visiting map[string]bool) sanyXMLScope {
+	return x.scopeForModuleMode(mod, visiting, false)
+}
+
+func (x *sanyXMLExporter) scopeForModuleMode(mod *Module, visiting map[string]bool, includeLocal bool) sanyXMLScope {
 	scope := sanyXMLScope{
 		decls:     map[string]*sanyXMLSymbol{},
 		defs:      map[string]*sanyXMLSymbol{},
@@ -2585,24 +2593,62 @@ func (x *sanyXMLExporter) scopeForModule(mod *Module, visiting map[string]bool) 
 	if mod == nil {
 		return scope
 	}
-	if visiting[mod.Name] {
+	visitKey := fmt.Sprintf("%s:%t", mod.Name, includeLocal)
+	if visiting[visitKey] {
 		return scope
 	}
-	visiting[mod.Name] = true
+	visiting[visitKey] = true
 	for _, ext := range mod.Extends {
 		dep := x.spec.Modules[ext]
-		depScope := x.scopeForModule(dep, visiting)
+		depScope := x.exportedScopeForModule(dep, visiting)
 		mergeSanyXMLScope(scope, depScope)
 		if dep != nil {
-			x.addModuleLocalScope(scope, dep, true)
+			x.addModuleLocalScope(scope, dep, true, false)
 		}
 	}
-	x.addModuleLocalScope(scope, mod, false)
-	visiting[mod.Name] = false
+	for _, inst := range mod.Instances {
+		x.addInstanceScope(scope, inst, includeLocal, visiting)
+	}
+	x.addModuleLocalScope(scope, mod, false, includeLocal)
+	visiting[visitKey] = false
 	return scope
 }
 
-func (x *sanyXMLExporter) addModuleLocalScope(scope sanyXMLScope, mod *Module, qualifiedOnly bool) {
+func (x *sanyXMLExporter) addInstanceScope(scope sanyXMLScope, inst Instance, includeLocal bool, visiting map[string]bool) {
+	if inst.Local && !includeLocal {
+		return
+	}
+	instMod := x.spec.Modules[inst.Module]
+	if instMod == nil {
+		return
+	}
+	instScope := x.exportedScopeForModule(instMod, visiting)
+	if inst.exportsUnqualified() {
+		mergeSanyXMLScope(scope, instScope)
+	}
+	qualifier := inst.qualifier()
+	if qualifier == "" {
+		return
+	}
+	for name, sym := range instScope.decls {
+		if strings.Contains(name, "!") {
+			continue
+		}
+		scope.decls[qualifier+"!"+name] = sym
+		if kind, ok := instScope.declKinds[name]; ok {
+			scope.declKinds[qualifier+"!"+name] = kind
+		}
+	}
+	for name, sym := range instScope.defs {
+		if strings.Contains(name, "!") {
+			continue
+		}
+		scope.defs[qualifier+"!"+name] = sym
+		scope.declKinds[qualifier+"!"+name] = OperatorDecl
+	}
+}
+
+func (x *sanyXMLExporter) addModuleLocalScope(scope sanyXMLScope, mod *Module, qualifiedOnly bool, includeLocal bool) {
 	if mod == nil {
 		return
 	}
@@ -2619,7 +2665,7 @@ func (x *sanyXMLExporter) addModuleLocalScope(scope sanyXMLScope, mod *Module, q
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local && qualifiedOnly {
+		if def.Local && (qualifiedOnly || !includeLocal) {
 			continue
 		}
 		sym := x.defs[x.defKey(mod.Name, def.Name)]
