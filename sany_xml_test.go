@@ -1644,6 +1644,54 @@ Use == Inner(1, TRUE, TRUE)!Op
 		}
 	})
 
+	t.Run("named INSTANCE clones preserve nested instance parameters", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE a, b, c
+Do(p) == UNCHANGED <<a, b, c>>
+====`)
+		writeFile(t, filepath.Join(dir, "Memory.tla"), `---- MODULE Memory ----
+Inner(a, b, c) == INSTANCE Helper
+Spec == \EE a, b, c : Inner(a, b, c)!Do(TRUE)
+====`)
+		rootPath := filepath.Join(dir, "NestedInstanceParamsXML.tla")
+		writeFile(t, rootPath, `---- MODULE NestedInstanceParamsXML ----
+LM == INSTANCE Memory
+Use == LM!Spec
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		clone := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "LM!Inner!Do")
+		if clone == nil {
+			t.Fatalf("LM!Inner!Do clone missing\n%s", xmlText)
+		}
+		if got := firstChildText(clone, "arity"); got != "4" {
+			t.Fatalf("LM!Inner!Do arity = %s, want 4\n%s", got, xmlText)
+		}
+		params := directChildren(clone, "params")
+		if len(params) != 1 {
+			t.Fatalf("LM!Inner!Do params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 4 {
+			t.Fatalf("LM!Inner!Do leibniz param count = %d, want 4\n%s", len(leibnizParams), xmlText)
+		}
+		for i, want := range []bool{false, false, false, true} {
+			got := len(directChildren(leibnizParams[i], "leibniz")) != 0
+			if got != want {
+				t.Fatalf("LM!Inner!Do param %d Leibniz = %v, want %v\n%s", i, got, want, xmlText)
+			}
+		}
+	})
+
 	t.Run("anonymous INSTANCE does not reclone inherited owner definitions", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----

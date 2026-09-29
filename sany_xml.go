@@ -469,7 +469,7 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 			if x.instDefs[key] != nil {
 				continue
 			}
-			sym := x.newInstanceDefinitionSymbol(key, source, inst.SourcePosition(), x.instanceParamSymbols(mod, inst))
+			sym := x.newInstanceDefinitionSymbol(key, source, inst.SourcePosition(), x.instanceParamSymbolsWithWrappers(mod, inst, source.wrappers))
 			x.instDefs[key] = sym
 		}
 	}
@@ -500,7 +500,6 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 func (x *sanyXMLExporter) rebindInstanceDefinitionParams() {
 	for _, mod := range x.semanticModules() {
 		for instIndex, inst := range mod.Instances {
-			instanceParams := x.instanceParamSymbols(mod, inst)
 			for _, source := range x.instanceDefinitionSources(inst) {
 				sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)]
 				if sym == nil || source.module == nil || source.def == nil {
@@ -510,6 +509,7 @@ func (x *sanyXMLExporter) rebindInstanceDefinitionParams() {
 				if original == nil {
 					continue
 				}
+				instanceParams := x.instanceParamSymbolsWithWrappers(mod, inst, source.wrappers)
 				sym.Params = append(append([]*sanyXMLSymbol(nil), instanceParams...), original.Params...)
 				sym.Arity = len(sym.Params)
 			}
@@ -542,6 +542,15 @@ func (x *sanyXMLExporter) instanceParamSymbols(owner *Module, inst Instance) []*
 		return nil
 	}
 	return x.instParams[x.instanceParamKey(owner, inst)]
+}
+
+func (x *sanyXMLExporter) instanceParamSymbolsWithWrappers(owner *Module, inst Instance, wrappers []sanyXMLInstanceWrapper) []*sanyXMLSymbol {
+	var out []*sanyXMLSymbol
+	out = append(out, x.instanceParamSymbols(owner, inst)...)
+	for _, wrapper := range wrappers {
+		out = append(out, x.instanceParamSymbols(wrapper.owner, wrapper.inst)...)
+	}
+	return out
 }
 
 func (x *sanyXMLExporter) instanceParamKey(owner *Module, inst Instance) string {
@@ -1611,7 +1620,7 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	if hasSubsts {
 		body = x.substInXMLWithTag(substTag, inst.SourcePosition(), level, substs, body, owner, targetMod)
 	}
-	instanceParams := x.instanceParamSymbols(owner, inst)
+	instanceParams := x.instanceParamSymbolsWithWrappers(owner, inst, wrappers)
 	instanceParamCount := len(instanceParams)
 	x.setInstanceOperatorLevelData(sym, def, levelData, instanceParamCount)
 	for _, param := range sym.Params {
@@ -1646,7 +1655,7 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	b.WriteString(body)
 	b.WriteString("</body>")
 	sym.Leibniz = x.definitionLeibnizArgsWithOffset(sym, def, defCtx, instanceParamCount)
-	for i, leibniz := range x.instanceParamLeibnizArgs(inst, instanceParams, def, defCtx) {
+	for i, leibniz := range x.instanceParamLeibnizArgs(owner, inst, wrappers, def, defCtx) {
 		if i < len(sym.Leibniz) {
 			sym.Leibniz[i] = leibniz
 		}
@@ -1678,8 +1687,9 @@ func (x *sanyXMLExporter) definitionLeibnizArgs(sym *sanyXMLSymbol, def *Definit
 	return x.definitionLeibnizArgsWithOffset(sym, def, ctx, 0)
 }
 
-func (x *sanyXMLExporter) instanceParamLeibnizArgs(inst Instance, params []*sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext) []bool {
-	leibniz := make([]bool, len(inst.Params))
+func (x *sanyXMLExporter) instanceParamLeibnizArgs(owner *Module, inst Instance, wrappers []sanyXMLInstanceWrapper, def *Definition, ctx sanyXMLExprContext) []bool {
+	params := x.instanceParamSymbolsWithWrappers(owner, inst, wrappers)
+	leibniz := make([]bool, len(params))
 	for i := range leibniz {
 		leibniz[i] = true
 	}
@@ -1688,18 +1698,28 @@ func (x *sanyXMLExporter) instanceParamLeibnizArgs(inst Instance, params []*sany
 	}
 	paramCtx := ctx
 	paramCtx.formals = copySanyXMLSymbolMap(ctx.formals)
-	for i, param := range inst.Params {
-		if i < len(params) {
-			paramCtx.formals[param] = params[i]
+	names := x.instanceParamNamesWithWrappers(inst, wrappers)
+	for i, param := range params {
+		if i < len(names) {
+			paramCtx.formals[names[i]] = param
 		}
 	}
 	use := x.exprParamUseWithDefinitionRefs(def.Expr, paramCtx, nil, map[*Definition]bool{})
-	for i, param := range inst.Params {
-		if use.nonLeibniz[param] {
+	for i, name := range names {
+		if use.nonLeibniz[name] {
 			leibniz[i] = false
 		}
 	}
 	return leibniz
+}
+
+func (x *sanyXMLExporter) instanceParamNamesWithWrappers(inst Instance, wrappers []sanyXMLInstanceWrapper) []string {
+	var names []string
+	names = append(names, inst.Params...)
+	for _, wrapper := range wrappers {
+		names = append(names, wrapper.inst.Params...)
+	}
+	return names
 }
 
 func (x *sanyXMLExporter) definitionLeibnizArgsWithOffset(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext, paramOffset int) []bool {
