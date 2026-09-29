@@ -1534,6 +1534,37 @@ EXTENDS Mid, Base
 		}
 	})
 
+	t.Run("implicit INSTANCE substitutions prefer owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+Use == C
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+C == TRUE
+INSTANCE Base
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		targetUID := xmlEntryUIDByKindAndName(root, "OpDeclNode", "C")
+		replacementUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "C")
+		if targetUID == "" || replacementUID == "" {
+			t.Fatalf("missing target or replacement symbol for implicit INSTANCE substitution\n%s", xmlText)
+		}
+		if !substUsesReplacementRef(root, targetUID, "UserDefinedOpKindRef", replacementUID) {
+			t.Fatalf("implicit INSTANCE substitution did not use owner definition C\n%s", xmlText)
+		}
+	})
+
 	t.Run("serializes proof DEFINE and PICK steps", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofDefinePickXML.tla", `---- MODULE ProofDefinePickXML ----
 THEOREM T == TRUE
@@ -2191,6 +2222,40 @@ func xmlEntryPayloadByKindAndName(root *canonicalXMLNode, kind, name string) *ca
 		return payload
 	}
 	return nil
+}
+
+func substUsesReplacementRef(root *canonicalXMLNode, targetUID, refKind, replacementUID string) bool {
+	for _, subst := range xmlNodesByName(root, "Subst") {
+		if len(subst.Children) < 2 || firstChildText(subst.Children[0], "UID") != targetUID {
+			continue
+		}
+		for _, operator := range directChildren(subst.Children[1], "operator") {
+			for _, ref := range directChildren(operator, refKind) {
+				if firstChildText(ref, "UID") == replacementUID {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func xmlNodesByName(root *canonicalXMLNode, name string) []*canonicalXMLNode {
+	var out []*canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil {
+			return
+		}
+		if node.Name == name {
+			out = append(out, node)
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return out
 }
 
 func firstOpApplNodeForOperatorUID(root *canonicalXMLNode, refKind, uid string) *canonicalXMLNode {

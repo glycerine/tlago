@@ -803,7 +803,10 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 				continue
 			}
 			target := x.decls[x.declKey(instMod.Name, name)]
-			replacement := ownerScope.decls[name]
+			replacement := ownerScope.defs[name]
+			if replacement == nil {
+				replacement = ownerScope.decls[name]
+			}
 			if target == nil || replacement == nil {
 				continue
 			}
