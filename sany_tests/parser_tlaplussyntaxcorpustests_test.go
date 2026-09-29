@@ -31,8 +31,6 @@ func TestTlaPlusSyntaxCorpusTests_testAll(t *testing.T) {
 }
 
 func TestTlaPlusSyntaxCorpusTests_testAllTlaPlusNodesUsed(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	used := map[string]bool{}
 	for _, file := range sanySyntaxCorpusFiles(t) {
 		for _, tc := range readSanySyntaxCorpusCases(t, file) {
@@ -48,6 +46,9 @@ func TestTlaPlusSyntaxCorpusTests_testAllTlaPlusNodesUsed(t *testing.T) {
 	var unused []string
 	for _, def := range tlago.SanySyntaxNodeKinds {
 		if !strings.HasPrefix(def.Name, "N_") {
+			continue
+		}
+		if isLegacyUnusedJavaSyntaxNodeKind(def.Name) {
 			continue
 		}
 		if !used[def.Name] {
@@ -201,6 +202,24 @@ func isSanySyntaxCorpusJavaParseSuccess(title string) bool {
 		"Invalid Use of LOCAL in Proof",
 		"Label with Subexpression Prefix (GH tlaplus/tlaplus #885)",
 		"Mistaken Set Filter Tuples Test":
+		return true
+	default:
+		return false
+	}
+}
+
+func isLegacyUnusedJavaSyntaxNodeKind(kind string) bool {
+	switch kind {
+	case "N_ActDecl",
+		"N_AssumeDecl",
+		"N_FunctionParam",
+		"N_InnerProof",
+		"N_Integer",
+		"N_NonExprBody",
+		"N_NumberedAssumeProve",
+		"N_NumerableStep",
+		"N_ParamDecl",
+		"N_TempDecl":
 		return true
 	default:
 		return false

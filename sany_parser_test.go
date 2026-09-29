@@ -1046,8 +1046,8 @@ CallRef == \o(1, 2)
 		if refs.Kind.JavaName() != "N_OpApplication" {
 			t.Fatalf("Refs expression = %s, want N_OpApplication", refs.Kind.JavaName())
 		}
-		if countSanyDescendants(refs, "N_GenInfixOp") < 3 || countSanyDescendants(refs, "N_GenPrefixOp") < 3 || countSanyDescendants(refs, "N_GenPostfixOp") < 1 {
-			t.Fatalf("Refs operator nodes = %v, want infix, prefix, and postfix operator references", sanyNodeKindNames(refs.GetHeirs()))
+		if countSanyDescendants(refs, "N_GenInfixOp") < 3 || countSanyDescendants(refs, "N_GenNonExpPrefixOp") < 3 || countSanyDescendants(refs, "N_GenPostfixOp") < 1 {
+			t.Fatalf("Refs operator nodes = %v, want infix, non-expression prefix, and postfix operator references", sanyNodeKindNames(refs.GetHeirs()))
 		}
 		callRef := defs[2].GetHeirs()[2]
 		if callRef.Kind.JavaName() != "N_GenInfixOp" || countSanyChildren(callRef, "N_OpArgs") != 1 {

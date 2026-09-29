@@ -1516,7 +1516,7 @@ func (p *SanyParser) OperatorReference() *SanySyntaxNode {
 	if tok.Image == "\\X" || tok.Image == "\\times" {
 		p.add(tok.Begin, "E1300", tok.Image+" may not be used as an infix operator")
 	}
-	node := p.genericOperatorNode(tok, op)
+	node := p.genericOperatorReferenceNode(tok, op)
 	if (op.IsInfix() || op.IsPostfix()) && p.check(SanyTokenLbr) {
 		node.AddHeir(p.OpArgs())
 	}
@@ -2482,15 +2482,29 @@ func reduceTLAString(image string) string {
 
 func (p *SanyParser) genericOperatorNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
 	kindName := "N_GenInfixOp"
+	leafKindName := "N_InfixOp"
 	if op.IsPrefix() {
 		kindName = "N_GenPrefixOp"
+		leafKindName = "N_PrefixOp"
 	} else if op.IsPostfix() {
 		kindName = "N_GenPostfixOp"
+		leafKindName = "N_PostfixOp"
 	}
 	return NewSanyNode(
 		SanySyntaxNodeKindByName[kindName],
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
-		NewSanyTokenNode(tok),
+		NewSanyNode(SanySyntaxNodeKindByName[leafKindName], NewSanyTokenNode(tok)),
+	)
+}
+
+func (p *SanyParser) genericOperatorReferenceNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
+	if !op.IsPrefix() {
+		return p.genericOperatorNode(tok, op)
+	}
+	return NewSanyNode(
+		SanySyntaxNodeKindByName["N_GenNonExpPrefixOp"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
+		NewSanyNode(SanySyntaxNodeKindByName["N_NonExpPrefixOp"], NewSanyTokenNode(tok)),
 	)
 }
 

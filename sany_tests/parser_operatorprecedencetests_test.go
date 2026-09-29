@@ -141,12 +141,27 @@ func sanyOperatorImage(op *tlago.SanySyntaxNode) string {
 	heirs := op.GetHeirs()
 	switch op.Kind.JavaName() {
 	case "N_PrefixExpr":
-		return heirs[0].GetHeirs()[1].Image
+		return sanyOperatorTokenImage(heirs[0])
 	case "N_InfixExpr":
-		return heirs[1].GetHeirs()[1].Image
+		return sanyOperatorTokenImage(heirs[1])
 	case "N_PostfixExpr":
-		return heirs[1].GetHeirs()[1].Image
+		return sanyOperatorTokenImage(heirs[1])
 	default:
 		return ""
 	}
+}
+
+func sanyOperatorTokenImage(node *tlago.SanySyntaxNode) string {
+	if node == nil {
+		return ""
+	}
+	if node.Token != nil {
+		return node.Image
+	}
+	for _, child := range node.GetHeirs() {
+		if image := sanyOperatorTokenImage(child); image != "" {
+			return image
+		}
+	}
+	return ""
 }
