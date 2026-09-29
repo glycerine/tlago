@@ -910,6 +910,33 @@ MiddleArgs == M!F(1)!G
 		}
 	})
 
+	t.Run("parses parameterized module refs in bounded quantifier bodies", func(t *testing.T) {
+		root, diags := ParseSanySyntax("Exprs.tla", `---- MODULE Exprs ----
+CONSTANT SuccSet
+P(Succ) == INSTANCE Proofs
+Test == <<\A Succ \in SuccSet : P(Succ)!Reachable0>>
+====`)
+		requireNoErrors(t, diags)
+		body := root.GetHeirs()[2]
+		requireSanyNodeKinds(t, body.GetHeirs(), "N_ParamDeclaration", "N_ModuleDefinition", "N_OperatorDefinition")
+		moduleDef := body.GetHeirs()[1]
+		lhs := moduleDef.GetHeirs()[0]
+		if lhs.Kind.JavaName() != "N_IdentLHS" || countSanyChildren(lhs, "N_IdentDecl") != 1 {
+			t.Fatalf("module definition lhs = %s heirs %v, want parameterized N_IdentLHS", lhs.Kind.JavaName(), sanyNodeKindNames(lhs.GetHeirs()))
+		}
+		tuple := body.GetHeirs()[2].GetHeirs()[2]
+		genIDs := collectSanyDescendantsByKind(tuple, "N_GeneralId")
+		var found bool
+		for _, genID := range genIDs {
+			if sanyGeneralIDName(genID) == "P!Reachable0" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("Test expression did not contain P(Succ)!Reachable0 general id; descendants=%v", sanyNodeKindNames(genIDs))
+		}
+	})
+
 	t.Run("parses bang argument-only selectors", func(t *testing.T) {
 		root, diags := ParseSanySyntax("Exprs.tla", `---- MODULE Exprs ----
 ArgsOnly == M!(1, 2)
@@ -1091,6 +1118,24 @@ func collectSanyChildrenByKind(node *SanySyntaxNode, kind string) []*SanySyntaxN
 			found = append(found, child)
 		}
 	}
+	return found
+}
+
+func collectSanyDescendantsByKind(node *SanySyntaxNode, kind string) []*SanySyntaxNode {
+	var found []*SanySyntaxNode
+	var visit func(*SanySyntaxNode)
+	visit = func(cur *SanySyntaxNode) {
+		if cur == nil {
+			return
+		}
+		if cur.Kind.JavaName() == kind {
+			found = append(found, cur)
+		}
+		for _, child := range cur.GetHeirs() {
+			visit(child)
+		}
+	}
+	visit(node)
 	return found
 }
 

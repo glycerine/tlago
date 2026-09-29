@@ -899,6 +899,43 @@ Use == TargetOp /\ LibOp
 		}
 	})
 
+	t.Run("LOCAL INSTANCE omits recursive inherited originals from module refs", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Grand.tla"), `---- MODULE Grand ----
+GrandOp == TRUE
+====`)
+		writeFile(t, filepath.Join(libDir, "Mid.tla"), `---- MODULE Mid ----
+EXTENDS Grand
+MidOp == GrandOp
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Mid
+TargetOp == MidOp
+====`)
+		rootPath := filepath.Join(dir, "LocalInstanceRecursiveLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE LocalInstanceRecursiveLibraryExtendsXML ----
+LOCAL INSTANCE Target
+Use == TargetOp /\ MidOp /\ GrandOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "LocalInstanceRecursiveLibraryExtendsXML", "UserDefinedOpKind", "Grand", 2); got != 0 {
+			t.Fatalf("root module has %d refs to recursive inherited GrandOp, want 0\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("does not unqualified-clone recursive EXTENDS definitions through INSTANCE", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
@@ -1459,6 +1496,53 @@ RootUse == Use
 		}
 	})
 
+	t.Run("parameterized INSTANCE prepends parameters to clones and preserves theorem facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+Op(x) == C = x
+THEOREM Lemma == C = C
+====`)
+		root := filepath.Join(dir, "ParamInstanceXML.tla")
+		writeFile(t, root, `---- MODULE ParamInstanceXML ----
+CONSTANT CSet
+P(C) == INSTANCE Base
+UseOp == \A c \in CSet : P(c)!Op(c)
+UseLemma == \A c \in CSet : P(c)!Lemma
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "P!Op")
+		if op == nil {
+			t.Fatalf("parameterized instance clone P!Op missing\n%s", xmlText)
+		}
+		if got := firstChildText(op, "arity"); got != "2" {
+			t.Fatalf("P!Op arity = %s, want 2\n%s", got, xmlText)
+		}
+		params := directChildren(op, "params")
+		if len(params) != 1 || len(directChildren(params[0], "leibnizparam")) != 2 {
+			t.Fatalf("P!Op params do not include instance param plus original param\n%s", xmlText)
+		}
+		theorem := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "P!Lemma")
+		if theorem == nil {
+			t.Fatalf("parameterized instance theorem clone P!Lemma missing\n%s", xmlText)
+		}
+		if len(xmlNodesByName(theorem, "APSubstInNode")) != 1 {
+			t.Fatalf("P!Lemma clone missing APSubstInNode\n%s", xmlText)
+		}
+		if refs := moduleRefCountByPayloadName(rootXML, "ParamInstanceXML", "TheoremDefNode", "P!Lemma"); refs != 0 {
+			t.Fatalf("ParamInstanceXML module refs to P!Lemma theorem clone = %d, want 0\n%s", refs, xmlText)
+		}
+	})
+
 	t.Run("levels explicit INSTANCE substitution replacements", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
@@ -2001,6 +2085,34 @@ THEOREM T == TRUE
 		got := string(xmlText)
 		if !strings.Contains(got, `<uniquename>$Suffices</uniquename>`) {
 			t.Fatalf("ordinary SUFFICES XML missing $Suffices builtin\n%s", got)
+		}
+	})
+
+	t.Run("serializes WITNESS proof steps as witness builtin applications", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofWitnessXML.tla", `---- MODULE ProofWitnessXML ----
+CONSTANT x, y
+THEOREM T == TRUE
+PROOF
+<1>1. WITNESS x, y
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		witnessUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Witness")
+		if witnessUID == "" {
+			t.Fatalf("SANY XML missing $Witness builtin\n%s", xmlText)
+		}
+		node := firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", witnessUID)
+		if node == nil {
+			t.Fatalf("proof step body missing $Witness application\n%s", xmlText)
+		}
+		operands := directChildren(node, "operands")
+		if len(operands) != 1 || len(operands[0].Children) != 2 {
+			t.Fatalf("$Witness operand count = %d containers/%d operands, want 1/2\n%s", len(operands), len(operands[0].Children), xmlText)
 		}
 	})
 
@@ -2641,6 +2753,34 @@ func moduleRefCountByPayloadLocation(root *canonicalXMLNode, moduleName, payload
 			}
 			payload := uidPayloads[firstChildText(child, "UID")]
 			if payload != nil && payload.Name == payloadKind && xmlNodeFilename(payload) == filename && xmlNodeBeginLine(payload) == strconv.Itoa(line) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func moduleRefCountByPayloadName(root *canonicalXMLNode, moduleName, payloadKind, payloadName string) int {
+	uidPayloads := map[string]*canonicalXMLNode{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		uid := firstChildText(entry, "UID")
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if uid != "" && payload != nil {
+			uidPayloads[uid] = payload
+		}
+	}
+	var count int
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		mod := canonicalSanyXMLEntryPayload(entry)
+		if mod == nil || mod.Name != "ModuleNode" || firstChildText(mod, "uniquename") != moduleName {
+			continue
+		}
+		for _, child := range mod.Children {
+			if !strings.HasSuffix(child.Name, "Ref") {
+				continue
+			}
+			payload := uidPayloads[firstChildText(child, "UID")]
+			if payload != nil && payload.Name == payloadKind && firstChildText(payload, "uniquename") == payloadName {
 				count++
 			}
 		}

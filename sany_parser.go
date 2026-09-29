@@ -1011,13 +1011,28 @@ func (p *SanyParser) OperatorOrFunctionDefinition() *SanySyntaxNode {
 		return p.OperatorDefinition(p.PostfixLHS())
 	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
 		return p.OperatorDefinition(p.InfixLHS())
-	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenDef && p.tokenAt(2).Kind == SanyTokenInstance:
+	case p.startsModuleDefinitionHeadAt(0):
 		return p.ModuleDefinition()
 	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
 		return p.OperatorDefinition(p.IdentLHS())
 	default:
 		return p.OperatorDefinition(p.PrefixLHS())
 	}
+}
+
+func (p *SanyParser) startsModuleDefinitionHeadAt(offset int) bool {
+	if p.tokenAt(offset).Kind != SanyTokenIdentifier {
+		return false
+	}
+	next := p.tokenAt(offset + 1)
+	if next.Kind == SanyTokenDef {
+		return p.tokenAt(offset+2).Kind == SanyTokenInstance
+	}
+	if next.Kind != SanyTokenLbr {
+		return false
+	}
+	end := p.findMatchingBracketOffset(offset + 1)
+	return end >= 0 && p.tokenAt(end+1).Kind == SanyTokenDef && p.tokenAt(end+2).Kind == SanyTokenInstance
 }
 
 func (p *SanyParser) ModuleDefinition() *SanySyntaxNode {

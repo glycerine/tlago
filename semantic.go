@@ -1187,6 +1187,7 @@ func semanticInstanceSymbolsWithVisiting(inst Instance, spec *Spec, visiting map
 	for _, symbol := range exports {
 		if exportUnqualified {
 			unqualified := symbol
+			applyInstanceParamArity(&unqualified, inst)
 			unqualified.unqualified = true
 			out = append(out, unqualified)
 		}
@@ -1195,10 +1196,19 @@ func semanticInstanceSymbolsWithVisiting(inst Instance, spec *Spec, visiting map
 		}
 		qualified := symbol
 		qualified.name = qualifier + "!" + symbol.name
+		applyInstanceParamArity(&qualified, inst)
 		qualified.unqualified = false
 		out = append(out, qualified)
 	}
 	return out
+}
+
+func applyInstanceParamArity(symbol *semanticExportedSymbol, inst Instance) {
+	if symbol == nil || len(inst.Params) == 0 {
+		return
+	}
+	symbol.arity += len(inst.Params)
+	symbol.hasArity = true
 }
 
 func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []semanticExportedSymbol {
@@ -1625,6 +1635,20 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		diags = append(diags, checkExpr(expr, defined, nil)...)
 		diags = append(diags, checkCallArity(expr, arities, operatorParams, nil)...)
 		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
+	}
+	for _, param := range inst.Params {
+		if param == "" {
+			continue
+		}
+		if _, ok := targets[param]; !ok {
+			diags = append(diags, errorAt(inst.ParamPositions[param], "E1305", "INSTANCE parameter %s is not a CONSTANT or VARIABLE of module %s", param, inst.Module))
+			continue
+		}
+		if prev, ok := seen[param]; ok {
+			diags = append(diags, errorAt(inst.ParamPositions[param], "E1312", "duplicate INSTANCE substitution for %s; first substitution at %s", param, prev))
+			continue
+		}
+		seen[param] = inst.ParamPositions[param]
 	}
 	for name, target := range targets {
 		if _, ok := seen[name]; ok {

@@ -516,6 +516,18 @@ func sanyModuleDefinition(node *SanySyntaxNode) (Instance, Diagnostics) {
 		if id := firstSanyIdentifier(child); id != nil {
 			inst.Name = id.Image
 		}
+		for _, lhsChild := range child.GetHeirs() {
+			if lhsChild.Kind.JavaName() != "N_IdentDecl" {
+				continue
+			}
+			if id := firstSanyIdentifier(lhsChild); id != nil {
+				inst.Params = append(inst.Params, id.Image)
+				if inst.ParamPositions == nil {
+					inst.ParamPositions = map[string]Position{}
+				}
+				inst.ParamPositions[id.Image] = sanyNodePosition(id)
+			}
+		}
 		break
 	}
 	return inst, diags
@@ -1136,7 +1148,12 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 			return unsupportedSanyExpr(node)
 		}
 		callee, calleeDiags := sanyExpr(heirs[0])
-		call := &CallExpr{Callee: callee, Pos: sanyNodePosition(node)}
+		call, flatten := callee.(*CallExpr)
+		if flatten {
+			call.Pos = sanyNodePosition(node)
+		} else {
+			call = &CallExpr{Callee: callee, Pos: sanyNodePosition(node)}
+		}
 		diags := calleeDiags
 		for _, argNode := range expressionChildren(heirs[1]) {
 			arg, argDiags := sanyExpr(argNode)
@@ -2073,10 +2090,12 @@ func sanyGeneralIDName(node *SanySyntaxNode) string {
 
 func sanyGeneralIDCall(node *SanySyntaxNode) (Expr, bool, Diagnostics) {
 	heirs := node.GetHeirs()
-	if len(heirs) < 2 || heirs[1].Kind.JavaName() != "N_OpArgs" {
+	if len(heirs) < 2 {
 		return nil, false, nil
 	}
 	var parts []string
+	var args []Expr
+	var diags Diagnostics
 	for _, elem := range heirs[0].GetHeirs() {
 		elemHeirs := elem.GetHeirs()
 		if len(elemHeirs) == 0 {
@@ -2085,17 +2104,27 @@ func sanyGeneralIDCall(node *SanySyntaxNode) (Expr, bool, Diagnostics) {
 		if name := sanySelectorName(elemHeirs[0]); name != "" {
 			parts = append(parts, name)
 		}
+		if len(elemHeirs) > 1 && elemHeirs[1].Kind.JavaName() == "N_OpArgs" {
+			for _, argNode := range expressionChildren(elemHeirs[1]) {
+				arg, argDiags := sanyExpr(argNode)
+				diags = append(diags, argDiags...)
+				args = append(args, arg)
+			}
+		}
 	}
-	if len(parts) == 0 {
+	if heirs[1].Kind.JavaName() == "N_OpArgs" {
+		for _, argNode := range expressionChildren(heirs[1]) {
+			arg, argDiags := sanyExpr(argNode)
+			diags = append(diags, argDiags...)
+			args = append(args, arg)
+		}
+	} else if name := sanySelectorName(heirs[1]); name != "" {
+		parts = append(parts, name)
+	}
+	if len(parts) == 0 || len(args) == 0 {
 		return nil, false, nil
 	}
-	call := &CallExpr{Callee: &IdentExpr{Name: strings.Join(parts, "!"), Pos: sanyNodePosition(heirs[0])}, Pos: sanyNodePosition(node)}
-	var diags Diagnostics
-	for _, argNode := range expressionChildren(heirs[1]) {
-		arg, argDiags := sanyExpr(argNode)
-		diags = append(diags, argDiags...)
-		call.Args = append(call.Args, arg)
-	}
+	call := &CallExpr{Callee: &IdentExpr{Name: strings.Join(parts, "!"), Pos: sanyNodePosition(heirs[0])}, Args: args, Pos: sanyNodePosition(node)}
 	return call, true, diags
 }
 

@@ -27,6 +27,8 @@ type Module struct {
 
 type Instance struct {
 	Name             string
+	Params           []string
+	ParamPositions   map[string]Position
 	Module           string
 	Substitutions    map[string]Expr
 	SubstitutionList []Substitution

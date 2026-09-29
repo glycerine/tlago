@@ -38,6 +38,7 @@ type sanyXMLExporter struct {
 	decls       map[string]*sanyXMLSymbol
 	defs        map[string]*sanyXMLSymbol
 	instDefs    map[string]*sanyXMLSymbol
+	instParams  map[string][]*sanyXMLSymbol
 	letDefs     map[*LetExpr][]*sanyXMLSymbol
 	letInsts    map[string]*sanyXMLSymbol
 	letInstDefs map[string]*sanyXMLSymbol
@@ -164,6 +165,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		decls:          map[string]*sanyXMLSymbol{},
 		defs:           map[string]*sanyXMLSymbol{},
 		instDefs:       map[string]*sanyXMLSymbol{},
+		instParams:     map[string][]*sanyXMLSymbol{},
 		letDefs:        map[*LetExpr][]*sanyXMLSymbol{},
 		letInsts:       map[string]*sanyXMLSymbol{},
 		letInstDefs:    map[string]*sanyXMLSymbol{},
@@ -453,6 +455,7 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 		}
 	}
 	for instIndex, inst := range mod.Instances {
+		x.allocateInstanceParams(mod, inst)
 		for _, source := range x.instanceDefinitionSources(inst) {
 			if x.skipInstanceDefinitionClone(mod, inst, source) {
 				continue
@@ -464,9 +467,7 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 			if x.instDefs[key] != nil {
 				continue
 			}
-			sym := x.newDefinitionSymbol(key, source.def)
-			sym.Name = source.cloneName
-			sym.Pos = inst.SourcePosition()
+			sym := x.newInstanceDefinitionSymbol(key, source, inst.SourcePosition(), x.instanceParamSymbols(mod, inst))
 			x.instDefs[key] = sym
 		}
 	}
@@ -492,6 +493,41 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 		}
 		x.allocateProofSteps(mod, theorem.Syntax)
 	}
+}
+
+func (x *sanyXMLExporter) allocateInstanceParams(owner *Module, inst Instance) {
+	if len(inst.Params) == 0 {
+		return
+	}
+	key := x.instanceParamKey(owner, inst)
+	if x.instParams[key] != nil {
+		return
+	}
+	for _, name := range inst.Params {
+		pos := inst.SourcePosition()
+		if inst.ParamPositions != nil {
+			if paramPos := inst.ParamPositions[name]; paramPos.Line > 0 || paramPos.Column > 0 || paramPos.File != "" {
+				pos = paramPos
+			}
+		}
+		paramKey := fmt.Sprintf("%s:param:%d:%s", key, len(x.instParams[key]), name)
+		x.instParams[key] = append(x.instParams[key], x.newSymbol("FormalParamNode", paramKey, name, 0, constantLevel, pos))
+	}
+}
+
+func (x *sanyXMLExporter) instanceParamSymbols(owner *Module, inst Instance) []*sanyXMLSymbol {
+	if len(inst.Params) == 0 {
+		return nil
+	}
+	return x.instParams[x.instanceParamKey(owner, inst)]
+}
+
+func (x *sanyXMLExporter) instanceParamKey(owner *Module, inst Instance) string {
+	ownerName := ""
+	if owner != nil {
+		ownerName = owner.Name
+	}
+	return "instparams:" + ownerName + ":" + x.instanceNodeKey(inst)
 }
 
 func (x *sanyXMLExporter) allocateProofSteps(mod *Module, theoremSyntax *SanySyntaxNode) {
@@ -555,6 +591,41 @@ func (x *sanyXMLExporter) newDefinitionSymbol(key string, def *Definition) *sany
 		paramSym := x.newSymbol("FormalParamNode", paramKey, param, arity, level, pos)
 		sym.Params = append(sym.Params, paramSym)
 	}
+	return sym
+}
+
+func (x *sanyXMLExporter) newInstanceDefinitionSymbol(key string, source sanyXMLInstanceDefinitionSource, pos Position, instanceParams []*sanyXMLSymbol) *sanyXMLSymbol {
+	def := source.def
+	kind := "UserDefinedOpKind"
+	if def != nil && def.FactKind == "theorem" {
+		kind = "TheoremDefNode"
+	}
+	sym := x.newSymbol(kind, key, source.cloneName, 0, constantLevel, pos)
+	sym.Def = def
+	sym.Params = append(sym.Params, instanceParams...)
+	if source.module != nil && def != nil {
+		original := x.defs[x.defKey(source.module.Name, def.Name)]
+		if original != nil {
+			sym.Params = append(append([]*sanyXMLSymbol(nil), instanceParams...), original.Params...)
+		}
+	}
+	if len(sym.Params) == len(instanceParams) && def != nil {
+		for _, param := range def.Params {
+			pos := def.SourcePosition()
+			if def.ParamPositions != nil {
+				if paramPos := def.ParamPositions[param]; paramPos.Line > 0 || paramPos.Column > 0 || paramPos.File != "" {
+					pos = paramPos
+				}
+			}
+			arity := 0
+			if def.ParamArities != nil {
+				arity = def.ParamArities[param]
+			}
+			paramKey := fmt.Sprintf("%s:param:%d:%s", key, len(sym.Params), param)
+			sym.Params = append(sym.Params, x.newSymbol("FormalParamNode", paramKey, param, arity, constantLevel, pos))
+		}
+	}
+	sym.Arity = len(sym.Params)
 	return sym
 }
 
@@ -749,7 +820,17 @@ func (x *sanyXMLExporter) writeInstanceNode(b *bytes.Buffer, owner *Module, inst
 	xmlText(b, inst.Module)
 	b.WriteString("</module>")
 	diags := x.writeInstanceSubstitutions(b, owner, inst)
-	b.WriteString("<params/>")
+	params := x.instanceParamSymbols(owner, inst)
+	if len(params) == 0 {
+		b.WriteString("<params/>")
+	} else {
+		b.WriteString("<params>")
+		for _, param := range params {
+			x.emitFormalEntry(param)
+			x.writeRef(b, param)
+		}
+		b.WriteString("</params>")
+	}
 	if inst.Local {
 		b.WriteString("<local/>")
 	}
@@ -798,12 +879,19 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 		return b.String(), hasSubsts, diags
 	}
 	ownerScope := x.scopeForModule(owner, map[string]bool{})
+	instanceParams := map[string]*sanyXMLSymbol{}
+	for _, sym := range x.instanceParamSymbols(owner, inst) {
+		instanceParams[sym.Name] = sym
+	}
 	for _, target := range x.substitutionTargetSymbols(instMod, map[string]bool{}) {
 		name := target.Name
 		if explicit[name] {
 			continue
 		}
-		replacement := ownerScope.defs[name]
+		replacement := instanceParams[name]
+		if replacement == nil {
+			replacement = ownerScope.defs[name]
+		}
 		if replacement == nil {
 			replacement = ownerScope.decls[name]
 		}
@@ -821,8 +909,14 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 }
 
 func (x *sanyXMLExporter) substInXML(pos Position, level tlaLevel, substs, body string, from *Module, to *Module) string {
+	return x.substInXMLWithTag("SubstInNode", pos, level, substs, body, from, to)
+}
+
+func (x *sanyXMLExporter) substInXMLWithTag(tag string, pos Position, level tlaLevel, substs, body string, from *Module, to *Module) string {
 	var b bytes.Buffer
-	b.WriteString("<SubstInNode>")
+	b.WriteByte('<')
+	b.WriteString(tag)
+	b.WriteByte('>')
 	x.writeNode(&b, pos, level)
 	b.WriteString(substs)
 	b.WriteString("<body>")
@@ -838,7 +932,9 @@ func (x *sanyXMLExporter) substInXML(pos Position, level tlaLevel, substs, body 
 		x.writeRef(&b, x.modules[to.Name])
 		b.WriteString("</instTo>")
 	}
-	b.WriteString("</SubstInNode>")
+	b.WriteString("</")
+	b.WriteString(tag)
+	b.WriteByte('>')
 	return b.String()
 }
 
@@ -952,7 +1048,14 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 			if x.duplicateInstanceDefinitionClone(mod, instIndex, inst, source) {
 				continue
 			}
-			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
+			sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)]
+			if sym != nil && sym.Kind == "TheoremDefNode" {
+				continue
+			}
+			add(sym)
+		}
+		if inst.Local {
+			continue
 		}
 		for _, source := range x.exportedDefinitionSources(x.spec.Modules[inst.Module], map[string]bool{}) {
 			if !source.fromExtends || clonedOrSkippedSources[source.name] {
@@ -1053,6 +1156,8 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 	sources := x.exportedDefinitionSources(instMod, map[string]bool{})
 	if inst.exportsUnqualified() {
 		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, inst.Local)
+	} else {
+		sources = append(sources, x.directTheoremDefinitionSources(instMod)...)
 	}
 	out := make([]sanyXMLInstanceDefinitionSource, 0, len(sources))
 	for _, source := range sources {
@@ -1074,6 +1179,21 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 			wrappers:    append([]sanyXMLInstanceWrapper(nil), source.wrappers...),
 			fromExtends: source.fromExtends,
 		})
+	}
+	return out
+}
+
+func (x *sanyXMLExporter) directTheoremDefinitionSources(mod *Module) []sanyXMLDefinitionSource {
+	if mod == nil {
+		return nil
+	}
+	var out []sanyXMLDefinitionSource
+	for i := range mod.Definitions {
+		def := &mod.Definitions[i]
+		if def.Local || !def.TheoremLike {
+			continue
+		}
+		out = append(out, sanyXMLDefinitionSource{name: def.Name, module: mod, def: def})
 	}
 	return out
 }
@@ -1136,7 +1256,7 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local || def.TheoremLike {
+		if def.Local {
 			continue
 		}
 		byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: mod, def: def}
@@ -1248,7 +1368,11 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 			if x.duplicateInstanceDefinitionClone(mod, instIndex, inst, source) {
 				continue
 			}
-			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
+			sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)]
+			if sym != nil && sym.Kind == "TheoremDefNode" {
+				continue
+			}
+			add(sym)
 		}
 	}
 	for i, assume := range mod.Assumptions {
@@ -1404,7 +1528,11 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	level := levelData.level
 	var body string
 	var diags Diagnostics
-	if fcn, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+	if def.AssumeProveBody != nil {
+		body, diags = x.assumeProveXML(def.AssumeProveBody, defCtx)
+		level = x.assumeProveLevel(def.AssumeProveBody, defCtx)
+		levelData.level = level
+	} else if fcn, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
 		if x.isRecursiveFunctionDefinition(def) {
 			body, diags = x.recursiveFunctionSpecXML(def, fcn, defCtx, level)
 		} else {
@@ -1416,6 +1544,10 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	if diags.HasErrors() {
 		return diags
 	}
+	substTag := "SubstInNode"
+	if sym.Kind == "TheoremDefNode" {
+		substTag = "APSubstInNode"
+	}
 	for _, wrapper := range wrappers {
 		substs, hasSubsts, substDiags := x.instanceSubstitutionsXML(wrapper.owner, wrapper.inst)
 		diags = append(diags, substDiags...)
@@ -1423,7 +1555,7 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 			return diags
 		}
 		if hasSubsts {
-			body = x.substInXML(wrapper.inst.SourcePosition(), level, substs, body, wrapper.owner, wrapper.target)
+			body = x.substInXMLWithTag(substTag, wrapper.inst.SourcePosition(), level, substs, body, wrapper.owner, wrapper.target)
 			sourceMod = wrapper.owner
 		}
 	}
@@ -1433,9 +1565,22 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 		return diags
 	}
 	if hasSubsts {
-		body = x.substInXML(inst.SourcePosition(), level, substs, body, owner, targetMod)
+		body = x.substInXMLWithTag(substTag, inst.SourcePosition(), level, substs, body, owner, targetMod)
 	}
-	x.setOperatorLevelData(sym, def, levelData)
+	instanceParamCount := len(x.instanceParamSymbols(owner, inst))
+	x.setInstanceOperatorLevelData(sym, def, levelData, instanceParamCount)
+	if sym.Kind == "TheoremDefNode" {
+		var b bytes.Buffer
+		b.WriteString("<TheoremDefNode>")
+		x.writeNode(&b, sym.Pos, level)
+		b.WriteString("<uniquename>")
+		xmlText(&b, sym.Name)
+		b.WriteString("</uniquename>")
+		b.WriteString(body)
+		b.WriteString("</TheoremDefNode>")
+		x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
+		return diags
+	}
 	var b bytes.Buffer
 	b.WriteString("<UserDefinedOpKind>")
 	x.writeNode(&b, sym.Pos, level)
@@ -1452,8 +1597,8 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	b.WriteString("<body>")
 	b.WriteString(body)
 	b.WriteString("</body>")
-	original.Leibniz = x.definitionLeibnizArgs(original, def, defCtx)
-	x.writeLeibnizParams(&b, original.Params, original.Leibniz)
+	sym.Leibniz = x.definitionLeibnizArgsWithOffset(sym, def, defCtx, instanceParamCount)
+	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
 	x.writePreComments(&b, inst.PreComments)
 	if inst.Local {
 		b.WriteString("<local/>")
@@ -1477,6 +1622,10 @@ func (x *sanyXMLExporter) writeLeibnizParams(b *bytes.Buffer, params []*sanyXMLS
 }
 
 func (x *sanyXMLExporter) definitionLeibnizArgs(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext) []bool {
+	return x.definitionLeibnizArgsWithOffset(sym, def, ctx, 0)
+}
+
+func (x *sanyXMLExporter) definitionLeibnizArgsWithOffset(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext, paramOffset int) []bool {
 	count := len(sym.Params)
 	leibniz := make([]bool, count)
 	for i := range leibniz {
@@ -1487,11 +1636,12 @@ func (x *sanyXMLExporter) definitionLeibnizArgs(sym *sanyXMLSymbol, def *Definit
 	}
 	use := x.exprParamUse(def.Expr, ctx, nil)
 	for i, param := range def.Params {
-		if i >= count {
+		idx := paramOffset + i
+		if idx >= count {
 			break
 		}
 		if use.nonLeibniz[param] {
-			leibniz[i] = false
+			leibniz[idx] = false
 		}
 	}
 	return leibniz
@@ -1959,6 +2109,23 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 			return "", constantLevel, xmlDiags
 		}
 		return xml, x.boundOpLevel(bounds, expr, ctx), nil
+	case "N_WitnessStep":
+		exprNodes := expressionChildren(bodyNode)
+		operands := make([]string, 0, len(exprNodes))
+		level := constantLevel
+		for _, exprNode := range exprNodes {
+			expr, exprDiags := sanyExpr(exprNode)
+			if exprDiags.HasErrors() {
+				return "", constantLevel, exprDiags
+			}
+			operand, xmlDiags := x.exprXML(expr, ctx)
+			if xmlDiags.HasErrors() {
+				return "", constantLevel, xmlDiags
+			}
+			operands = append(operands, operand)
+			level = maxTlaLevel(level, x.exprLevel(expr, ctx))
+		}
+		return x.opApplXML(sanyNodePosition(bodyNode), level, x.builtin("$Witness"), operands, ""), level, nil
 	default:
 		return "", constantLevel, Diagnostics{errorAt(sanyNodePosition(bodyNode), "E7010", "unsupported proof step XML body %s", bodyNode.Kind.JavaName())}
 	}
@@ -4418,6 +4585,38 @@ func (x *sanyXMLExporter) setOperatorLevelData(sym *sanyXMLSymbol, def *Definiti
 			}
 			if data.params[paramName] {
 				sym.ArgWeights[i] = 1
+			}
+		}
+	}
+	sym.leveled = true
+}
+
+func (x *sanyXMLExporter) setInstanceOperatorLevelData(sym *sanyXMLSymbol, def *Definition, data sanyXMLLevelData, paramOffset int) {
+	if sym == nil {
+		return
+	}
+	sym.Level = data.level
+	sym.LevelParams = copyBoolMap(data.params)
+	for i, param := range sym.Params {
+		delete(sym.LevelParams, param.Name)
+		if i < paramOffset && sym.ArgWeights == nil {
+			sym.ArgWeights = make([]int, len(sym.Params))
+		}
+	}
+	if def != nil {
+		if sym.ArgWeights == nil {
+			sym.ArgWeights = make([]int, len(sym.Params))
+		}
+		for i := 0; i < paramOffset && i < len(sym.ArgWeights); i++ {
+			sym.ArgWeights[i] = 1
+		}
+		for i, paramName := range def.Params {
+			idx := paramOffset + i
+			if idx >= len(sym.ArgWeights) {
+				break
+			}
+			if data.params[paramName] {
+				sym.ArgWeights[idx] = 1
 			}
 		}
 	}
