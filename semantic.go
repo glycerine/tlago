@@ -460,7 +460,9 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 		if !defExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
-		diags = append(diags, checkExpr(expr, defined, nil)...)
+		if !assumeProveExprPositions[positionKey(expr.Position())] {
+			diags = append(diags, checkExpr(expr, defined, nil)...)
+		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
 		diags = append(diags, checkFunctionArity(expr, functionArities, nil)...)
@@ -478,7 +480,9 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 		if !defExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
-		diags = append(diags, checkExpr(expr, defined, nil)...)
+		if !assumeProveExprPositions[positionKey(expr.Position())] {
+			diags = append(diags, checkExpr(expr, defined, nil)...)
+		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
 		diags = append(diags, checkFunctionArity(expr, functionArities, nil)...)
@@ -493,7 +497,11 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			locals[param] = true
 		}
 		defArities := definitionBodyArities(arities, def)
-		diags = append(diags, checkExpr(def.Expr, defined, locals)...)
+		if def.AssumeProve && def.AssumeProveBody != nil {
+			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, defined, locals)...)
+		} else {
+			diags = append(diags, checkExpr(def.Expr, defined, locals)...)
+		}
 		diags = append(diags, checkCallArity(def.Expr, defArities, operatorParamSpecs, locals)...)
 		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, defArities, locals)...)
 		diags = append(diags, checkFunctionArity(def.Expr, functionArities, locals)...)
@@ -505,6 +513,33 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			diags = append(diags, checkLevelComposition(def.Expr, declKinds, locals)...)
 		}
 		diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
+	}
+	return diags
+}
+
+func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, locals map[string]bool) Diagnostics {
+	if body == nil {
+		return nil
+	}
+	var diags Diagnostics
+	apLocals := copyBoolMap(locals)
+	for _, item := range body.Assumptions {
+		switch {
+		case item.NewSymbol != nil:
+			sym := item.NewSymbol
+			diags = append(diags, checkBindingName("NEW symbol", sym.Name, sym.Pos, defined, apLocals)...)
+			if sym.Domain != nil {
+				diags = append(diags, checkExpr(sym.Domain, defined, apLocals)...)
+			}
+			apLocals[sym.Name] = true
+		case item.Nested != nil:
+			diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals)...)
+		case item.Expr != nil:
+			diags = append(diags, checkExpr(item.Expr, defined, apLocals)...)
+		}
+	}
+	if body.Prove != nil {
+		diags = append(diags, checkExpr(body.Prove, defined, apLocals)...)
 	}
 	return diags
 }

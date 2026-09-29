@@ -591,6 +591,18 @@ THEOREM Bad == ASSUME NEW y \in S PROVE Missing = y
 		}
 	})
 
+	t.Run("keeps ASSUME PROVE NEW symbols scoped after earlier assumptions", func(t *testing.T) {
+		_, diags := CheckSanySource("AssumeProveSequentialNew.tla", `---- MODULE AssumeProveSequentialNew ----
+CONSTANT S
+THEOREM Good ==
+  ASSUME \A s \in S : s = s,
+         NEW s \in S,
+         s = s
+  PROVE  s = s
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("model checks a finite counter through SANY syntax", func(t *testing.T) {
 		result, diags := ModelCheckSanySource("Counter.tla", counterSpec("x <= 3"), counterCfg(), ModelCheckOptions{})
 		requireNoErrors(t, diags)
