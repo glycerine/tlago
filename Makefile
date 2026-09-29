@@ -7,6 +7,8 @@ long:
 	# A pre-requisite: "cd test_vectors && make expected-xml" may be needed
 	# to have the Java SANY generate .xml.gold for comparison for each spec. These
 	# xml files are too big in total to commit to the repo (922 MB currently).
+	# Also java and the java-sany/tla2tools.jar will need to be available; see
+	# the https://github.com/tlaplus/tlaplus repo to obtain/build.
 	mkdir .codex-gotmp || true
 	GOCACHE=$(CURDIR)/.codex-gocache \
 	GOTMPDIR=$(CURDIR)/.codex-gotmp \
