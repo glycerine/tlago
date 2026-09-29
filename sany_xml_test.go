@@ -371,6 +371,35 @@ THEOREM TRUE
 		}
 	})
 
+	t.Run("numbered bang subexpression references emit SANY nop wrappers", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BangSubexpressionReferenceXML.tla", `---- MODULE BangSubexpressionReferenceXML ----
+VARIABLE x
+Inv == /\ x = x
+       /\ x' = x
+Use == Inv!2
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		nopUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Nop")
+		if nopUID == "" {
+			t.Fatalf("$Nop builtin entry missing\n%s", xmlText)
+		}
+		app := opApplAtLocation(root, 5, 8, 12)
+		if app == nil {
+			t.Fatalf("Inv!2 application node missing\n%s", xmlText)
+		}
+		if !opApplNodeUsesOperatorUID(app, "BuiltInKindRef", nopUID) {
+			t.Fatalf("Inv!2 application did not use $Nop\n%s", xmlText)
+		}
+		if strings.Contains(string(xmlText), `<uniquename>Inv!2</uniquename>`) {
+			t.Fatalf("numbered bang subexpression emitted fake operator name\n%s", xmlText)
+		}
+	})
+
 	t.Run("function application function operand carries function level", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("FunctionAppFunctionLevelXML.tla", `---- MODULE FunctionAppFunctionLevelXML ----
 CONSTANT S
@@ -858,6 +887,69 @@ Inst == INSTANCE OperatorTarget
 		}
 		if strings.Contains(got, "<Subst><OpDeclNodeRef") && !strings.Contains(got, "</OpArgNode></Subst>") {
 			t.Fatalf("operator constant substitution did not wrap replacement as OpArgNode\n%s", got)
+		}
+	})
+
+	t.Run("composes nested named instance clones and substitution levels", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+VARIABLE innerState
+Spec == innerState = innerState
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+VARIABLE midState
+innerState == midState
+C == INSTANCE Inner
+====`)
+		rootPath := filepath.Join(dir, "NestedInstanceRoot.tla")
+		writeFile(t, rootPath, `---- MODULE NestedInstanceRoot ----
+VARIABLE rootState
+midState == rootState
+V == INSTANCE Middle
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if uid := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "V!C!Spec"); uid == "" {
+			t.Fatalf("nested named INSTANCE clone V!C!Spec missing\n%s", xmlText)
+		}
+		innerStateUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "innerState")
+		if innerStateUID == "" {
+			t.Fatalf("Middle innerState definition missing\n%s", xmlText)
+		}
+		var found bool
+		for _, subst := range xmlNodesByName(root, "Subst") {
+			children := subst.Children
+			if len(children) < 2 || children[1].Name != "OpApplNode" {
+				continue
+			}
+			replacement := children[1]
+			locations := directChildren(replacement, "location")
+			if len(locations) != 1 {
+				continue
+			}
+			lines := directChildren(locations[0], "line")
+			if xmlNodeFilename(replacement) != "Middle" || len(lines) != 1 || firstChildText(lines[0], "begin") != "4" {
+				continue
+			}
+			if !opApplNodeUsesOperatorUID(replacement, "UserDefinedOpKindRef", innerStateUID) {
+				continue
+			}
+			found = true
+			if got := firstChildText(replacement, "level"); got != strconv.Itoa(int(variableLevel)) {
+				t.Fatalf("nested implicit substitution replacement level = %s, want 1\n%s", got, xmlText)
+			}
+		}
+		if !found {
+			t.Fatalf("nested implicit substitution for innerState missing\n%s", xmlText)
 		}
 	})
 

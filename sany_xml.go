@@ -919,13 +919,21 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 		if replacement == nil {
 			continue
 		}
+		x.ensureOperatorLevelData(replacement, sanyXMLExprContext{
+			module:    owner,
+			scope:     ownerScope,
+			formals:   instanceParams,
+			defs:      map[string]*sanyXMLSymbol{},
+			proofDefs: map[string]*sanyXMLSymbol{},
+		})
+		replacementLevel := replacement.Level
 		hasSubsts = true
 		b.WriteString("<Subst>")
 		x.writeRef(&b, target)
 		if target.Arity > 0 && replacement.Arity > 0 {
-			b.WriteString(x.opArgXML(inst.SourcePosition(), replacement.Level, replacement))
+			b.WriteString(x.opArgXML(inst.SourcePosition(), replacementLevel, replacement))
 		} else {
-			b.WriteString(x.opApplXML(inst.SourcePosition(), replacement.Level, replacement, nil, ""))
+			b.WriteString(x.opApplXML(inst.SourcePosition(), replacementLevel, replacement, nil, ""))
 		}
 		b.WriteString("</Subst>")
 	}
@@ -1200,9 +1208,6 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 		if source.def == nil || source.module == nil {
 			continue
 		}
-		if strings.Contains(source.name, "!") && !inst.exportsUnqualified() {
-			continue
-		}
 		cloneName := source.name
 		if !inst.exportsUnqualified() {
 			cloneName = inst.qualifier() + "!" + source.name
@@ -1276,9 +1281,6 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 				source.fromExtends = false
 				byName[source.name] = source
 			}
-			if strings.Contains(source.name, "!") {
-				continue
-			}
 			if qualifier := inst.qualifier(); qualifier != "" {
 				byName[qualifier+"!"+source.name] = sanyXMLDefinitionSource{
 					name:        qualifier + "!" + source.name,
@@ -1331,9 +1333,6 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 				source.wrappers = wrappers
 				source.fromExtends = false
 				byName[source.name] = source
-			}
-			if strings.Contains(source.name, "!") {
-				continue
 			}
 			if qualifier := inst.qualifier(); qualifier != "" {
 				byName[qualifier+"!"+source.name] = sanyXMLDefinitionSource{
@@ -2996,6 +2995,9 @@ func (x *sanyXMLExporter) identXML(e *IdentExpr, ctx sanyXMLExprContext) (string
 	if e.Name == "@" && ctx.exceptAtBase != "" && ctx.exceptAtComponents != "" {
 		return x.atXML(ctx.exceptAtPos, ctx.exceptAtLevel, ctx.exceptAtBase, ctx.exceptAtComponents), nil
 	}
+	if xmlText, ok, diags := x.subexpressionReferenceXML(e, ctx); ok {
+		return xmlText, diags
+	}
 	if sym := ctx.formals[e.Name]; sym != nil {
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), sym, nil, ""), nil
 	}
@@ -3012,6 +3014,38 @@ func (x *sanyXMLExporter) identXML(e *IdentExpr, ctx sanyXMLExprContext) (string
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), x.builtin(e.Name), nil, ""), nil
 	}
 	return "", Diagnostics{errorAt(e.Pos, "E7003", "cannot resolve %s for SANY XML export", e.Name)}
+}
+
+func (x *sanyXMLExporter) subexpressionReferenceXML(e *IdentExpr, ctx sanyXMLExprContext) (string, bool, Diagnostics) {
+	selected, ok, diags := x.subexpressionReferenceExpr(e.Name, e.Pos, ctx)
+	if !ok || diags.HasErrors() {
+		return "", ok, diags
+	}
+	operand, operandDiags := x.exprXML(selected, ctx)
+	if operandDiags.HasErrors() {
+		return "", true, operandDiags
+	}
+	return x.opApplXML(e.Pos, x.exprLevel(selected, ctx), x.builtin("$Nop"), []string{operand}, ""), true, nil
+}
+
+func (x *sanyXMLExporter) subexpressionReferenceExpr(name string, pos Position, ctx sanyXMLExprContext) (Expr, bool, Diagnostics) {
+	base, selectors, ok := sanySubexpressionPath(name)
+	if !ok {
+		return nil, false, nil
+	}
+	defSym := x.definitionSymbol(base, ctx)
+	if defSym == nil {
+		return nil, false, nil
+	}
+	def := x.definitionForSymbol(defSym)
+	if def == nil || def.Expr == nil {
+		return nil, true, Diagnostics{errorAt(pos, "E7003", "cannot resolve base definition %s for subexpression %s", base, name)}
+	}
+	selected := sanySelectSubexpression(def.Expr, selectors)
+	if selected == nil {
+		return nil, true, Diagnostics{errorAt(pos, "E7003", "cannot resolve subexpression %s", name)}
+	}
+	return selected, true, nil
 }
 
 func (x *sanyXMLExporter) literalXML(e *LiteralExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
@@ -3072,7 +3106,7 @@ func (x *sanyXMLExporter) junctionListXML(e *BinaryExpr, ctx sanyXMLExprContext)
 		if diags.HasErrors() {
 			return
 		}
-		if nested, ok := expr.(*BinaryExpr); ok && sanyXMLSameJunctionFrame(e, nested) {
+		if nested, ok := expr.(*BinaryExpr); ok && sanySameJunctionFrame(e, nested) {
 			collect(nested.Left)
 			collect(nested.Right)
 			return
@@ -3135,11 +3169,11 @@ func (x *sanyXMLExporter) lambdaForQuantifiedDefinitionCall(e *CallExpr, name st
 	body := Expr(nil)
 	lambdaKeyName := name
 	if defSym == nil && strings.Contains(name, "!") {
-		base, selectors, ok := sanyXMLSubexpressionPath(name)
+		base, selectors, ok := sanySubexpressionPath(name)
 		if ok {
 			defSym = x.definitionSymbol(base, ctx)
 			if def := x.definitionForSymbol(defSym); def != nil {
-				body = sanyXMLSelectSubexpression(def.Expr, selectors)
+				body = sanySelectSubexpression(def.Expr, selectors)
 				lambdaKeyName = name
 			}
 		}
@@ -3186,146 +3220,7 @@ func (x *sanyXMLExporter) lambdaForQuantifiedDefinitionCall(e *CallExpr, name st
 	return sym, nil
 }
 
-func sanyXMLSubexpressionPath(name string) (string, []int, bool) {
-	parts := strings.Split(name, "!")
-	if len(parts) < 2 || parts[0] == "" {
-		return "", nil, false
-	}
-	selectors := make([]int, 0, len(parts)-1)
-	for _, part := range parts[1:] {
-		if part == "" {
-			return "", nil, false
-		}
-		n, err := strconv.Atoi(part)
-		if err != nil || n <= 0 {
-			return "", nil, false
-		}
-		selectors = append(selectors, n)
-	}
-	return parts[0], selectors, true
-}
-
-func sanyXMLSelectSubexpression(expr Expr, selectors []int) Expr {
-	cur := expr
-	for _, selector := range selectors {
-		children := sanyXMLSubexpressionChildren(cur)
-		if selector <= 0 || selector > len(children) {
-			return nil
-		}
-		cur = children[selector-1]
-	}
-	return cur
-}
-
-func sanyXMLSubexpressionChildren(expr Expr) []Expr {
-	switch e := expr.(type) {
-	case *UnaryExpr:
-		return []Expr{e.Expr}
-	case *BinaryExpr:
-		if e.JunctionList {
-			var out []Expr
-			var collect func(Expr)
-			collect = func(item Expr) {
-				if nested, ok := item.(*BinaryExpr); ok && sanyXMLSameJunctionFrame(e, nested) {
-					collect(nested.Left)
-					collect(nested.Right)
-					return
-				}
-				out = append(out, item)
-			}
-			collect(e.Left)
-			collect(e.Right)
-			return out
-		}
-		return []Expr{e.Left, e.Right}
-	case *CallExpr:
-		children := make([]Expr, 0, 1+len(e.Args))
-		children = append(children, e.Callee)
-		children = append(children, e.Args...)
-		return children
-	case *IfExpr:
-		return []Expr{e.Cond, e.Then, e.Else}
-	case *LetExpr:
-		return []Expr{e.Body}
-	case *QuantifierExpr:
-		if e.Set != nil {
-			return []Expr{e.Set, e.Body}
-		}
-		return []Expr{e.Body}
-	case *CaseExpr:
-		children := make([]Expr, 0, len(e.Arms)*2+1)
-		for _, arm := range e.Arms {
-			children = append(children, arm.Test, arm.Value)
-		}
-		if e.Other != nil {
-			children = append(children, e.Other)
-		}
-		return children
-	case *ChooseExpr:
-		return []Expr{e.Set, e.Body}
-	case *TupleExpr:
-		return e.Elems
-	case *SetExpr:
-		return e.Elems
-	case *RecordExpr:
-		children := make([]Expr, 0, len(e.Fields))
-		for _, field := range e.Fields {
-			children = append(children, field.Value)
-		}
-		return children
-	case *RecordComponentExpr:
-		return []Expr{e.Record}
-	case *RecordSetExpr:
-		children := make([]Expr, 0, len(e.Fields))
-		for _, field := range e.Fields {
-			children = append(children, field.Set)
-		}
-		return children
-	case *FunctionExpr:
-		children := make([]Expr, 0, len(e.Bounds)+1)
-		for _, bound := range e.Bounds {
-			children = append(children, bound.Set)
-		}
-		children = append(children, e.Body)
-		return children
-	case *FunctionAppExpr:
-		children := make([]Expr, 0, 1+len(e.Args))
-		children = append(children, e.Function)
-		children = append(children, e.Args...)
-		return children
-	case *ExceptExpr:
-		children := []Expr{e.Base}
-		for _, spec := range e.Specs {
-			for _, component := range spec.Components {
-				children = append(children, component.Indices...)
-			}
-			children = append(children, spec.Value)
-		}
-		return children
-	case *LabelExpr:
-		return []Expr{e.Body}
-	case *ActionExpr:
-		return []Expr{e.Action, e.Subscript}
-	case *FairnessExpr:
-		return []Expr{e.Action, e.Subscript}
-	case *FunctionSetExpr:
-		return []Expr{e.Domain, e.Range}
-	case *SetComprehensionExpr:
-		children := make([]Expr, 0, len(e.Bounds)+2)
-		for _, bound := range e.Bounds {
-			children = append(children, bound.Set)
-		}
-		children = append(children, e.Element)
-		if e.Predicate != nil {
-			children = append(children, e.Predicate)
-		}
-		return children
-	default:
-		return nil
-	}
-}
-
-func sanyXMLSameJunctionFrame(parent, nested *BinaryExpr) bool {
+func sanySameJunctionFrame(parent, nested *BinaryExpr) bool {
 	return parent != nil &&
 		nested != nil &&
 		parent.JunctionList &&
@@ -3980,7 +3875,7 @@ func sanyXMLKnownBuiltin(name string) bool {
 	}
 	switch name {
 	case "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "\\lnot", "SUBSET", "UNION", "DOMAIN", "\\cdot", "~>", "-+->",
-		"$AngleAct", "$BoundedChoose", "$BoundedExists", "$BoundedForall", "$Case", "$ConjList", "$DisjList", "$Except", "$FcnApply", "$FcnConstructor", "$IfThenElse", "$NonRecursiveFcnSpec", "$Pair", "$Pfcase", "$Pick", "$Qed", "$RecursiveFcnSpec", "$RcdConstructor", "$RcdSelect", "$Seq", "$SetEnumerate", "$SetOfAll", "$SetOfFcns", "$SetOfRcds", "$SquareAct", "$SubsetOf", "$Suffices", "$TemporalExists", "$TemporalForall", "$Tuple", "$UnboundedChoose", "$UnboundedExists", "$UnboundedForall", "$WF", "$SF":
+		"$AngleAct", "$BoundedChoose", "$BoundedExists", "$BoundedForall", "$Case", "$ConjList", "$DisjList", "$Except", "$FcnApply", "$FcnConstructor", "$IfThenElse", "$NonRecursiveFcnSpec", "$Nop", "$Pair", "$Pfcase", "$Pick", "$Qed", "$RecursiveFcnSpec", "$RcdConstructor", "$RcdSelect", "$Seq", "$SetEnumerate", "$SetOfAll", "$SetOfFcns", "$SetOfRcds", "$SquareAct", "$SubsetOf", "$Suffices", "$TemporalExists", "$TemporalForall", "$Tuple", "$UnboundedChoose", "$UnboundedExists", "$UnboundedForall", "$WF", "$SF":
 		return true
 	default:
 		return false
@@ -4379,6 +4274,9 @@ func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shado
 		}
 		if shadowed[e.Name] {
 			return sanyXMLLevelData{level: constantLevel}
+		}
+		if selected, ok, diags := x.subexpressionReferenceExpr(e.Name, e.Pos, ctx); ok && !diags.HasErrors() {
+			return x.exprLevelData(selected, ctx, shadowed)
 		}
 		data := sanyXMLLevelData{level: x.operatorLevel(e.Name, ctx)}
 		if ctx.formals[e.Name] != nil {
@@ -4797,17 +4695,11 @@ func (x *sanyXMLExporter) addInstanceScope(scope sanyXMLScope, owner *Module, in
 		}
 	}
 	for name, sym := range instScope.defs {
-		if strings.Contains(name, "!") {
-			continue
-		}
 		scope.defs[qualifier+"!"+name] = x.instanceDefinitionScopeSymbol(owner, instIndex, inst, name, sym)
 		scope.declKinds[qualifier+"!"+name] = OperatorDecl
 	}
 	if inst.exportsUnqualified() {
 		for name, sym := range instScope.defs {
-			if strings.Contains(name, "!") {
-				continue
-			}
 			scope.defs[name] = x.instanceDefinitionScopeSymbol(owner, instIndex, inst, name, sym)
 			scope.declKinds[name] = OperatorDecl
 		}
@@ -5344,7 +5236,7 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 	case "$IfThenElse":
 		arity = 3
 		weights = []int{1, 1, 1}
-	case "\\lnot", "$Pfcase", "$Pick", "$Suffices", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec", "SUBSET", "UNION", "DOMAIN":
+	case "\\lnot", "$Nop", "$Pfcase", "$Pick", "$Suffices", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec", "SUBSET", "UNION", "DOMAIN":
 		unary(1)
 	case "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>":
 		unary(0)

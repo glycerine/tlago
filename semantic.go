@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -72,6 +73,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			if _, exists := arities[def.Name]; !exists {
 				arities[def.Name] = len(def.Params)
 			}
+			addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 			if specs, ok := definitionOperatorParamSpecsForModule(depMod.Name, def); ok {
 				if _, exists := operatorParamSpecs[def.Name]; !exists {
 					operatorParamSpecs[def.Name] = specs
@@ -175,6 +177,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 				if _, exists := arities[def.Name]; !exists {
 					arities[def.Name] = len(def.Params)
 				}
+				addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 				if specs, ok := definitionOperatorParamSpecsForModule(depMod.Name, def); ok {
 					if _, exists := operatorParamSpecs[def.Name]; !exists {
 						operatorParamSpecs[def.Name] = specs
@@ -192,6 +195,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 					if _, exists := arities[qualified]; !exists {
 						arities[qualified] = len(def.Params)
 					}
+					addSubexpressionReferenceNames(defined, qualified, def.Expr)
 				}
 			}
 			for _, assumption := range depMod.Assumptions {
@@ -294,6 +298,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 						if _, exists := arities[def.Name]; !exists {
 							arities[def.Name] = len(def.Params)
 						}
+						addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 					}
 					qualified := qualifier + "!" + def.Name
 					if qualifier != "" {
@@ -303,6 +308,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 						if _, exists := arities[qualified]; !exists {
 							arities[qualified] = len(def.Params)
 						}
+						addSubexpressionReferenceNames(defined, qualified, def.Expr)
 						if specs, ok := definitionOperatorParamSpecsForModule(depMod.Name, def); ok {
 							if _, exists := operatorParamSpecs[qualified]; !exists {
 								operatorParamSpecs[qualified] = specs
@@ -397,6 +403,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			}
 		}
 		arities[def.Name] = len(def.Params)
+		addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 		if specs, ok := definitionOperatorParamSpecs(def); ok {
 			operatorParamSpecs[def.Name] = specs
 		}
@@ -407,6 +414,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			qualified := mod.Name + "!" + def.Name
 			defined[qualified] = def.Pos
 			arities[qualified] = len(def.Params)
+			addSubexpressionReferenceNames(defined, qualified, def.Expr)
 			if specs, ok := definitionOperatorParamSpecs(def); ok {
 				operatorParamSpecs[qualified] = specs
 			}
@@ -2032,6 +2040,26 @@ func localIdentifierInScope(locals map[string]bool, name string) bool {
 		}
 	}
 	return false
+}
+
+func addSubexpressionReferenceNames(defined map[string]Position, base string, expr Expr) {
+	if defined == nil || base == "" || expr == nil {
+		return
+	}
+	var walk func(string, Expr)
+	walk = func(prefix string, current Expr) {
+		for i, child := range sanySubexpressionChildren(current) {
+			if child == nil {
+				continue
+			}
+			name := prefix + "!" + strconv.Itoa(i+1)
+			if _, exists := defined[name]; !exists {
+				defined[name] = child.Position()
+			}
+			walk(name, child)
+		}
+	}
+	walk(base, expr)
 }
 
 func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string][]operatorParamSpec, locals map[string]bool) Diagnostics {
