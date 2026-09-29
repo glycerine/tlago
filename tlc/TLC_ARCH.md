@@ -72,14 +72,15 @@ The Go package can still preserve Java names in type and method names where
 useful during the mechanical port. After tests are green, cosmetic refactors can
 be considered separately.
 
-Prefer concrete structs over Go interfaces on the checker/tool side. Java uses
+Prefer concrete structs over Go interfaces throughout the port. Java uses
 interfaces such as `ITool`, `IStateFunctor`, `INextStateFunctor`, `IWorker`,
 `FPSet`, and `IStateQueue` heavily, but the Go port should introduce an
 interface only when there are already multiple meaningful implementations or
 when polymorphism is itself part of the runtime value model. For single
 implementations, use concrete structs such as `Tool`, `StateFunctor`,
-`NextStateFunctor`, `Worker`, `MemFPSet`, and `MemStateQueue`; this keeps stack
-traces and debugger inspection straightforward during the mechanical port.
+`NextStateFunctor`, `Worker`, `MemFPSet`, `MemStateQueue`, `ModelConfig`, and
+`ConfigConstant`; this keeps stack traces, debugger watches, and crash dumps
+straightforward during the mechanical port.
 
 Any Go map whose iteration can affect output, fingerprinting, exploration
 order, diagnostics, or tests must use `InsMap` from `insmap.go`. Built-in Go
@@ -223,8 +224,13 @@ module constants, operator overrides, and the deadlock setting.
 
 Port guidance:
 
-- Reuse the Go SANY lexer/parser if practical, but keep config grammar behavior
-  separate and compatible with Java.
+- Keep the Go representation explicit and concrete rather than reproducing
+  Java's heterogeneous `Hashtable`. Use `ConfigConstant`, `ConfigConstants`,
+  typed string slices, and `InsMap` for module-scoped or override tables.
+- Keep config grammar behavior separate and compatible with Java. The TLC
+  package should not import the root `tlago` parser package just to tokenize
+  config files, because the root package will later need to wire parsed specs
+  into TLC.
 - Preserve duplicate-key errors, missing identifier errors, and keyword
   pluralization behavior.
 - Preserve support for configs embedded in monolithic `.tla` files.
