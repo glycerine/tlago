@@ -381,6 +381,50 @@ THEOREM T == TRUE
 		}
 	})
 
+	t.Run("serializes proof DEFINE and PICK steps", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofDefinePickXML.tla", `---- MODULE ProofDefinePickXML ----
+THEOREM T == TRUE
+<1>. DEFINE Local == TRUE
+<1>1. Local
+  BY DEF Local
+<1>2. PICK x : x = x
+  OBVIOUS
+<1>3. x = x
+  BY <1>2
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<DefStepNode>`,
+			`<uniquename>Local</uniquename>`,
+			`<uniquename>$Pick</uniquename>`,
+			`<uniquename>x</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("proof DEFINE/PICK XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes ordinary SUFFICES proof steps", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofSufficesXML.tla", `---- MODULE ProofSufficesXML ----
+THEOREM T == TRUE
+<1>1. SUFFICES TRUE
+  OBVIOUS
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>$Suffices</uniquename>`) {
+			t.Fatalf("ordinary SUFFICES XML missing $Suffices builtin\n%s", got)
+		}
+	})
+
 	t.Run("serializes proof steps as theorem XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofXML.tla", `---- MODULE ProofXML ----
 THEOREM T == TRUE

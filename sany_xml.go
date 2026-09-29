@@ -43,12 +43,13 @@ type sanyXMLExporter struct {
 	bounds   map[string]*sanyXMLSymbol
 	lambdas  map[string]*sanyXMLSymbol
 
-	assumes       map[string]*sanyXMLSymbol
-	assumeDefs    map[string]*sanyXMLSymbol
-	theorems      map[string]*sanyXMLSymbol
-	proofTheorems map[*SanySyntaxNode]*sanyXMLSymbol
-	proofDefs     map[*SanySyntaxNode]*sanyXMLSymbol
-	emitted       map[string]bool
+	assumes        map[string]*sanyXMLSymbol
+	assumeDefs     map[string]*sanyXMLSymbol
+	theorems       map[string]*sanyXMLSymbol
+	proofTheorems  map[*SanySyntaxNode]*sanyXMLSymbol
+	proofDefs      map[*SanySyntaxNode]*sanyXMLSymbol
+	proofLocalDefs map[*SanySyntaxNode]*sanyXMLSymbol
+	emitted        map[string]bool
 
 	localCounter int
 }
@@ -113,23 +114,24 @@ type prettyXMLNode struct {
 
 func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 	x := &sanyXMLExporter{
-		spec:          spec,
-		nextUID:       154,
-		builtins:      map[string]*sanyXMLSymbol{},
-		modules:       map[string]*sanyXMLSymbol{},
-		decls:         map[string]*sanyXMLSymbol{},
-		defs:          map[string]*sanyXMLSymbol{},
-		instDefs:      map[string]*sanyXMLSymbol{},
-		letDefs:       map[*LetExpr][]*sanyXMLSymbol{},
-		newDecls:      map[string]*sanyXMLSymbol{},
-		bounds:        map[string]*sanyXMLSymbol{},
-		lambdas:       map[string]*sanyXMLSymbol{},
-		assumes:       map[string]*sanyXMLSymbol{},
-		assumeDefs:    map[string]*sanyXMLSymbol{},
-		theorems:      map[string]*sanyXMLSymbol{},
-		proofTheorems: map[*SanySyntaxNode]*sanyXMLSymbol{},
-		proofDefs:     map[*SanySyntaxNode]*sanyXMLSymbol{},
-		emitted:       map[string]bool{},
+		spec:           spec,
+		nextUID:        154,
+		builtins:       map[string]*sanyXMLSymbol{},
+		modules:        map[string]*sanyXMLSymbol{},
+		decls:          map[string]*sanyXMLSymbol{},
+		defs:           map[string]*sanyXMLSymbol{},
+		instDefs:       map[string]*sanyXMLSymbol{},
+		letDefs:        map[*LetExpr][]*sanyXMLSymbol{},
+		newDecls:       map[string]*sanyXMLSymbol{},
+		bounds:         map[string]*sanyXMLSymbol{},
+		lambdas:        map[string]*sanyXMLSymbol{},
+		assumes:        map[string]*sanyXMLSymbol{},
+		assumeDefs:     map[string]*sanyXMLSymbol{},
+		theorems:       map[string]*sanyXMLSymbol{},
+		proofTheorems:  map[*SanySyntaxNode]*sanyXMLSymbol{},
+		proofDefs:      map[*SanySyntaxNode]*sanyXMLSymbol{},
+		proofLocalDefs: map[*SanySyntaxNode]*sanyXMLSymbol{},
+		emitted:        map[string]bool{},
 	}
 	for _, mod := range x.sortedModules() {
 		x.allocateModule(mod)
@@ -467,6 +469,12 @@ func (x *sanyXMLExporter) allocateProofNodeSteps(mod *Module, proof *SanySyntaxN
 			}
 			if ap, ok := sanyXMLProofStepAssumeProveBody(body); ok {
 				x.allocateAssumeProveNewSymbols(ap)
+			}
+		}
+		if body != nil && body.Kind.JavaName() == "N_DefStep" {
+			if def, ok, _ := sanyXMLDefStepDefinition(body); ok && x.proofLocalDefs[step] == nil {
+				key := fmt.Sprintf("prooflocaldef:%s:%d:%d:%s", mod.Name, def.SourcePosition().Line, def.SourcePosition().Column, def.Name)
+				x.proofLocalDefs[step] = x.newDefinitionSymbol(key, &def)
 			}
 		}
 		x.allocateProofNodeSteps(mod, sanyXMLNestedProofNode(step))
@@ -1305,9 +1313,21 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 			diags = append(diags, itemDiags...)
 			level = maxTlaLevel(level, itemLevel)
 			stepXML = append(stepXML, item)
+		case body != nil && body.Kind.JavaName() == "N_DefStep":
+			item, itemLevel, itemDiags := x.defStepXML(step, body, stepCtx)
+			diags = append(diags, itemDiags...)
+			level = maxTlaLevel(level, itemLevel)
+			stepXML = append(stepXML, item)
+			if sym := x.proofLocalDefs[step]; sym != nil {
+				stepCtx.defs = copySanyXMLSymbolMap(stepCtx.defs)
+				stepCtx.defs[sym.Name] = sym
+			}
 		}
 		if ap, ok := sanyXMLProofStepSufficesAssumeProveBody(body); ok {
 			stepCtx = x.withAssumeProveNewSymbols(stepCtx, ap)
+		}
+		if body != nil && body.Kind.JavaName() == "N_PickStep" {
+			stepCtx = x.withProofStepBounds(stepCtx, sanyProofStepBounds(body))
 		}
 	}
 	if diags.HasErrors() {
@@ -1428,7 +1448,11 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 		if xmlDiags.HasErrors() {
 			return "", constantLevel, xmlDiags
 		}
-		return xml, x.exprLevel(expr, ctx), nil
+		level := x.exprLevel(expr, ctx)
+		if sanyXMLProofStepSuffices(bodyNode) {
+			xml = x.opApplXML(sanyNodePosition(bodyNode), level, x.builtin("$Suffices"), []string{xml}, "")
+		}
+		return xml, level, nil
 	case "N_CaseStep":
 		exprNode := lastSanyExpression(bodyNode)
 		expr, exprDiags := sanyExpr(exprNode)
@@ -1442,9 +1466,41 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 		x.builtin("$Pair")
 		level := x.exprLevel(expr, ctx)
 		return x.opApplXML(sanyNodePosition(bodyNode), level, x.builtin("$Pfcase"), []string{xml}, ""), level, nil
+	case "N_PickStep":
+		exprNode := lastSanyExpression(bodyNode)
+		expr, exprDiags := sanyExpr(exprNode)
+		if exprDiags.HasErrors() {
+			return "", constantLevel, exprDiags
+		}
+		xml, xmlDiags := x.boundOpXML("$Pick", sanyNodePosition(bodyNode), sanyProofStepBounds(bodyNode), expr, ctx)
+		if xmlDiags.HasErrors() {
+			return "", constantLevel, xmlDiags
+		}
+		return xml, x.exprLevel(expr, x.withProofStepBounds(ctx, sanyProofStepBounds(bodyNode))), nil
 	default:
 		return "", constantLevel, Diagnostics{errorAt(sanyNodePosition(bodyNode), "E7010", "unsupported proof step XML body %s", bodyNode.Kind.JavaName())}
 	}
+}
+
+func (x *sanyXMLExporter) defStepXML(step, bodyNode *SanySyntaxNode, ctx sanyXMLExprContext) (string, tlaLevel, Diagnostics) {
+	def, ok, diags := sanyXMLDefStepDefinition(bodyNode)
+	if !ok {
+		return "", constantLevel, diags
+	}
+	sym := x.proofLocalDefs[step]
+	if sym == nil {
+		return "", constantLevel, Diagnostics{errorAt(sanyNodePosition(bodyNode), "E7010", "proof DEFINE step has no allocated symbol")}
+	}
+	diags = append(diags, x.emitDefinitionEntry(sym, &def, ctx)...)
+	if diags.HasErrors() {
+		return "", constantLevel, diags
+	}
+	var b bytes.Buffer
+	b.WriteString("<DefStepNode>")
+	x.writeNode(&b, sanyNodePosition(bodyNode), sym.Level)
+	x.writeRef(&b, sym)
+	b.WriteString("</DefStepNode>")
+	return b.String(), sym.Level, nil
 }
 
 func (x *sanyXMLExporter) proofNodeLevel(proof *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
@@ -1913,6 +1969,18 @@ func (x *sanyXMLExporter) withAssumeProveNewSymbols(ctx sanyXMLExprContext, body
 	next.scope = copySanyXMLScope(ctx.scope)
 	for _, sym := range x.assumeProveNewSymbolMap(body) {
 		next.scope.decls[sym.Name] = sym
+	}
+	return next
+}
+
+func (x *sanyXMLExporter) withProofStepBounds(ctx sanyXMLExprContext, bounds []BoundVar) sanyXMLExprContext {
+	if len(bounds) == 0 {
+		return ctx
+	}
+	next := ctx
+	next.formals = copySanyXMLSymbolMap(ctx.formals)
+	for _, bound := range bounds {
+		next.formals[bound.Name] = x.newBoundFormal("expr", bound.Name, bound.Pos)
 	}
 	return next
 }
@@ -3438,6 +3506,26 @@ func sanyXMLProofStepSufficesAssumeProveBody(body *SanySyntaxNode) (*AssumeProve
 	return sanyXMLProofStepAssumeProveBody(body)
 }
 
+func sanyXMLDefStepDefinition(body *SanySyntaxNode) (Definition, bool, Diagnostics) {
+	if body == nil {
+		return Definition{}, false, nil
+	}
+	for _, child := range body.GetHeirs() {
+		if child == nil {
+			continue
+		}
+		switch child.Kind.JavaName() {
+		case "N_OperatorDefinition":
+			def, diags := sanyDefinition(child)
+			return def, true, diags
+		case "N_FunctionDefinition":
+			def, diags := sanyFunctionDefinition(child)
+			return def, true, diags
+		}
+	}
+	return Definition{}, false, Diagnostics{errorAt(sanyNodePosition(body), "E7010", "proof DEFINE step has no definition")}
+}
+
 func sanyXMLUseOrHideIsHide(node *SanySyntaxNode) bool {
 	for _, child := range node.GetHeirs() {
 		if child != nil && child.Token != nil && child.Token.Kind == SanyTokenHide {
@@ -3665,7 +3753,7 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 		level = temporalLevel
 	case "$IfThenElse":
 		arity = 3
-	case "\\lnot", "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "SUBSET", "UNION", "DOMAIN", "$Pfcase", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec":
+	case "\\lnot", "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "SUBSET", "UNION", "DOMAIN", "$Pfcase", "$Pick", "$Suffices", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec":
 		arity = 1
 		if name == "'" || name == "\\prime" || name == "UNCHANGED" {
 			level = actionLevel
@@ -3778,6 +3866,10 @@ func sanyXMLStableBuiltinUID(name string) int {
 		return 137
 	case "$Pfcase":
 		return 138
+	case "$Pick":
+		return 294
+	case "$Suffices":
+		return 297
 	case "$RcdSelect":
 		return 250
 	case "$NonRecursiveFcnSpec":

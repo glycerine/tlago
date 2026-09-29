@@ -609,11 +609,15 @@ func sanyProofStepName(image string) string {
 func sanyProofStepBounds(node *SanySyntaxNode) []BoundVar {
 	var bounds []BoundVar
 	for _, child := range node.GetHeirs() {
-		if child.Kind.JavaName() != "N_QuantBound" {
-			continue
+		switch child.Kind.JavaName() {
+		case "N_QuantBound":
+			bound, _ := sanyQuantBoundVars(child)
+			bounds = append(bounds, bound...)
+		case "N_IdentDecl":
+			if id := firstSanyIdentifier(child); id != nil {
+				bounds = append(bounds, BoundVar{Name: id.Image, Pos: sanyNodePosition(id)})
+			}
 		}
-		bound, _ := sanyQuantBoundVars(child)
-		bounds = append(bounds, bound...)
 	}
 	return bounds
 }
