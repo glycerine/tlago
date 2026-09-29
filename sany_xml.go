@@ -1052,7 +1052,7 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 	}
 	sources := x.exportedDefinitionSources(instMod, map[string]bool{})
 	if inst.exportsUnqualified() {
-		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{})
+		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, inst.Local)
 	}
 	out := make([]sanyXMLInstanceDefinitionSource, 0, len(sources))
 	for _, source := range sources {
@@ -1078,7 +1078,7 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 	return out
 }
 
-func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visiting map[string]bool) []sanyXMLDefinitionSource {
+func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visiting map[string]bool, includeLibraryExtends bool) []sanyXMLDefinitionSource {
 	if mod == nil || visiting[mod.Name] {
 		return nil
 	}
@@ -1091,6 +1091,9 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 	for _, ext := range mod.Extends {
 		dep := x.spec.Modules[ext]
 		if dep == nil {
+			continue
+		}
+		if dep.Library && !includeLibraryExtends {
 			continue
 		}
 		for i := range dep.Definitions {

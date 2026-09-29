@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -795,6 +796,106 @@ Use == TargetOp /\ BaseOp
 		}
 		if !rootRefs["UnqualifiedInstanceExtendsXML:BaseOp"] {
 			t.Fatalf("root module refs did not include cloned BaseOp\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("unqualified INSTANCE does not clone library EXTENDS definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Lib.tla"), `---- MODULE Lib ----
+LibOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Lib
+TargetOp == LibOp
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceLibraryExtendsXML ----
+INSTANCE Target
+Use == TargetOp /\ LibOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countUserDef := func(filename, name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == filename {
+					count++
+				}
+			}
+			return count
+		}
+		if got := countUserDef("UnqualifiedInstanceLibraryExtendsXML", "TargetOp"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countUserDef("UnqualifiedInstanceLibraryExtendsXML", "LibOp"); got != 0 {
+			t.Fatalf("root LibOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := countUserDef("Lib", "LibOp"); got != 1 {
+			t.Fatalf("original LibOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("LOCAL unqualified INSTANCE clones library EXTENDS definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Lib.tla"), `---- MODULE Lib ----
+LibOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Lib
+TargetOp == LibOp
+====`)
+		rootPath := filepath.Join(dir, "LocalInstanceLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE LocalInstanceLibraryExtendsXML ----
+LOCAL INSTANCE Target
+Use == TargetOp /\ LibOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		var targetClones, libClones int
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" || firstDescendantText(child, "filename") != "LocalInstanceLibraryExtendsXML" {
+				continue
+			}
+			switch firstChildText(child, "uniquename") {
+			case "TargetOp":
+				targetClones++
+			case "LibOp":
+				libClones++
+			}
+		}
+		if targetClones != 1 || libClones != 1 {
+			t.Fatalf("LOCAL INSTANCE clones TargetOp=%d LibOp=%d, want 1 each\n%s", targetClones, libClones, string(xmlText))
 		}
 	})
 

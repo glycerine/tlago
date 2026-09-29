@@ -11,6 +11,7 @@ type Module struct {
 	Name         string
 	SourcePath   string
 	Source       string
+	Library      bool
 	Pos          Position
 	Extends      []string
 	Instances    []Instance

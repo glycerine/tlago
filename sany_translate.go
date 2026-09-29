@@ -101,6 +101,7 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 		mod, diags := ParseSanyModuleSource(name+".tla", src)
 		l.diags = append(l.diags, diags...)
 		if mod.Name != "" {
+			setModuleLibraryRecursive(mod, true)
 			l.modules[mod.Name] = mod
 		}
 		return mod
@@ -119,10 +120,14 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 }
 
 func (l *sanyLoader) loadLibraryModule(name string) *Module {
-	for _, dir := range append([]string{l.rootDir}, l.opts.LibraryPaths...) {
+	for i, dir := range append([]string{l.rootDir}, l.opts.LibraryPaths...) {
 		path := filepath.Join(dir, name+".tla")
 		if _, err := os.Stat(path); err == nil {
-			return l.loadPath(path, false)
+			mod := l.loadPath(path, false)
+			if i > 0 {
+				setModuleLibraryRecursive(mod, true)
+			}
+			return mod
 		}
 	}
 	return nil
@@ -177,6 +182,16 @@ func setModuleSourceRecursive(mod *Module, source string) {
 	mod.Source = source
 	for _, nested := range mod.Nested {
 		setModuleSourceRecursive(nested, source)
+	}
+}
+
+func setModuleLibraryRecursive(mod *Module, library bool) {
+	if mod == nil {
+		return
+	}
+	mod.Library = library
+	for _, nested := range mod.Nested {
+		setModuleLibraryRecursive(nested, library)
 	}
 }
 
