@@ -478,11 +478,17 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 		if assume.Name != "" && x.assumeDefs[key] == nil {
 			x.assumeDefs[key] = x.newSymbol("AssumeDef", key+":def", assume.Name, 0, constantLevel, assume.SourcePosition())
 		}
+		if assume.AssumeProveBody != nil {
+			x.allocateAssumeProveNewSymbols(assume.AssumeProveBody)
+		}
 	}
 	for i, theorem := range mod.Theorems {
 		key := fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)
 		if x.theorems[key] == nil {
 			x.theorems[key] = x.newSymbol("TheoremNode", key, theorem.Name, 0, constantLevel, theorem.SourcePosition())
+		}
+		if theorem.AssumeProveBody != nil {
+			x.allocateAssumeProveNewSymbols(theorem.AssumeProveBody)
 		}
 		x.allocateProofSteps(mod, theorem.Syntax)
 	}
@@ -1328,7 +1334,9 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	if ownRecursiveSection > 0 {
 		defCtx.recursiveSection = ownRecursiveSection
 	}
-	level := x.exprLevel(def.Expr, defCtx)
+	levelData := x.exprLevelData(def.Expr, defCtx, nil)
+	level := levelData.level
+	x.setOperatorLevelData(sym, def, levelData)
 	var body string
 	var diags Diagnostics
 	if fcn, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
@@ -1343,7 +1351,6 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	if diags.HasErrors() {
 		return diags
 	}
-	sym.Level = level
 	var b bytes.Buffer
 	b.WriteString("<UserDefinedOpKind>")
 	x.writeNode(&b, sym.Pos, level)
@@ -1390,7 +1397,8 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 			defCtx.formals[param] = original.Params[i]
 		}
 	}
-	level := x.exprLevel(def.Expr, defCtx)
+	levelData := x.exprLevelData(def.Expr, defCtx, nil)
+	level := levelData.level
 	var body string
 	var diags Diagnostics
 	if fcn, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
@@ -1424,7 +1432,7 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	if hasSubsts {
 		body = x.substInXML(inst.SourcePosition(), level, substs, body, owner, targetMod)
 	}
-	sym.Level = level
+	x.setOperatorLevelData(sym, def, levelData)
 	var b bytes.Buffer
 	b.WriteString("<UserDefinedOpKind>")
 	x.writeNode(&b, sym.Pos, level)
@@ -1588,11 +1596,20 @@ func (x *sanyXMLExporter) emitAssumeEntry(sym *sanyXMLSymbol, defSym *sanyXMLSym
 	if sym == nil || x.emitted[sym.Key] {
 		return nil
 	}
-	body, diags := x.exprXML(assume.Expr, ctx)
+	var body string
+	var diags Diagnostics
+	if assume.AssumeProveBody != nil {
+		body, diags = x.assumeProveXML(assume.AssumeProveBody, ctx)
+	} else {
+		body, diags = x.exprXML(assume.Expr, ctx)
+	}
 	if diags.HasErrors() {
 		return diags
 	}
 	level := x.exprLevel(assume.Expr, ctx)
+	if assume.AssumeProveBody != nil {
+		level = x.assumeProveLevel(assume.AssumeProveBody, ctx)
+	}
 	if defSym != nil && !x.emitted[defSym.Key] {
 		x.emitted[defSym.Key] = true
 		defSym.Level = level
@@ -1635,10 +1652,14 @@ func (x *sanyXMLExporter) emitTheoremEntry(sym *sanyXMLSymbol, theorem NamedExpr
 	}
 	x.emitted[sym.Key] = true
 	defSym, def := x.theoremDefinition(ctx.module, theorem.Name)
+	assumeProveBody := theorem.AssumeProveBody
+	if def != nil && def.AssumeProveBody != nil {
+		assumeProveBody = def.AssumeProveBody
+	}
 	var body string
 	var diags Diagnostics
-	if def != nil && def.AssumeProveBody != nil {
-		body, diags = x.assumeProveXML(def.AssumeProveBody, ctx)
+	if assumeProveBody != nil {
+		body, diags = x.assumeProveXML(assumeProveBody, ctx)
 	} else {
 		body, diags = x.exprXML(theorem.Expr, ctx)
 	}
@@ -1646,12 +1667,12 @@ func (x *sanyXMLExporter) emitTheoremEntry(sym *sanyXMLSymbol, theorem NamedExpr
 		return diags
 	}
 	level := x.exprLevel(theorem.Expr, ctx)
-	if def != nil && def.AssumeProveBody != nil {
-		level = x.assumeProveLevel(def.AssumeProveBody, ctx)
+	if assumeProveBody != nil {
+		level = x.assumeProveLevel(assumeProveBody, ctx)
 	}
 	proofCtx := ctx
-	if def != nil && def.AssumeProveBody != nil {
-		proofCtx = x.withAssumeProveNewSymbols(proofCtx, def.AssumeProveBody)
+	if assumeProveBody != nil {
+		proofCtx = x.withAssumeProveNewSymbols(proofCtx, assumeProveBody)
 	}
 	proofCtx.proofDefs = x.proofDefinitionMap(theorem.Syntax)
 	proofNode := sanyXMLTheoremProofNode(theorem.Syntax)
@@ -4374,33 +4395,47 @@ func (x *sanyXMLExporter) ensureOperatorLevelData(sym *sanyXMLSymbol, ctx sanyXM
 		}
 	}
 	data := x.exprLevelData(def.Expr, defCtx, nil)
+	x.setOperatorLevelData(sym, def, data)
+}
+
+func (x *sanyXMLExporter) setOperatorLevelData(sym *sanyXMLSymbol, def *Definition, data sanyXMLLevelData) {
+	if sym == nil {
+		return
+	}
 	sym.Level = data.level
 	sym.LevelParams = copyBoolMap(data.params)
-	for _, paramName := range def.Params {
-		delete(sym.LevelParams, paramName)
-	}
-	sym.ArgWeights = make([]int, len(sym.Params))
-	for i, paramName := range def.Params {
-		if i >= len(sym.ArgWeights) {
-			break
+	if def != nil {
+		for _, paramName := range def.Params {
+			delete(sym.LevelParams, paramName)
 		}
-		if data.params[paramName] {
-			sym.ArgWeights[i] = 1
+		sym.ArgWeights = make([]int, len(sym.Params))
+		for i, paramName := range def.Params {
+			if i >= len(sym.ArgWeights) {
+				break
+			}
+			if data.params[paramName] {
+				sym.ArgWeights[i] = 1
+			}
 		}
 	}
+	sym.leveled = true
 }
 
 func (x *sanyXMLExporter) operatorLevel(name string, ctx sanyXMLExprContext) tlaLevel {
 	if sym := ctx.formals[name]; sym != nil {
+		x.ensureOperatorLevelData(sym, ctx)
 		return sym.Level
 	}
 	if sym := ctx.defs[name]; sym != nil {
+		x.ensureOperatorLevelData(sym, ctx)
 		return sym.Level
 	}
 	if sym := ctx.scope.decls[name]; sym != nil {
+		x.ensureOperatorLevelData(sym, ctx)
 		return sym.Level
 	}
 	if sym := ctx.scope.defs[name]; sym != nil {
+		x.ensureOperatorLevelData(sym, ctx)
 		return sym.Level
 	}
 	info := sanyXMLBuiltin(name)

@@ -250,12 +250,18 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			var named NamedExpr
 			if def, ok, defDiags := sanyAssumptionDefinition(item); ok {
 				diags = append(diags, defDiags...)
-				named = NamedExpr{Name: def.Name, Expr: def.Expr, Pos: sanyNodePosition(item), Source: sanyNodePosition(item), Syntax: item}
+				named = namedExprFromDefinition(def, item)
 			}
 			if named.Expr == nil {
-				expr, exprDiags := sanyExpr(lastSanyExpression(item))
+				var expr Expr
+				var exprDiags Diagnostics
+				expr, named.AssumeProveBody, exprDiags = sanyExprWithAssumeProveBody(lastSanyExpression(item))
 				diags = append(diags, exprDiags...)
-				named = NamedExpr{Expr: expr, Pos: sanyNodePosition(item), Source: sanyNodePosition(item), Syntax: item}
+				named.Expr = expr
+				named.AssumeProve = named.AssumeProveBody != nil
+				named.Pos = sanyNodePosition(item)
+				named.Source = sanyNodePosition(item)
+				named.Syntax = item
 			}
 			if named.Expr != nil {
 				mod.Assumptions = append(mod.Assumptions, named)
@@ -265,12 +271,18 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			if def, ok, defDiags := sanyTheoremDefinition(item); ok {
 				diags = append(diags, defDiags...)
 				mod.Definitions = append(mod.Definitions, def)
-				named = NamedExpr{Name: def.Name, Expr: def.Expr, Pos: sanyNodePosition(item), Source: sanyNodePosition(item), Syntax: item}
+				named = namedExprFromDefinition(def, item)
 			}
 			if named.Expr == nil {
-				expr, exprDiags := sanyExpr(lastSanyExpression(item))
+				var expr Expr
+				var exprDiags Diagnostics
+				expr, named.AssumeProveBody, exprDiags = sanyExprWithAssumeProveBody(lastSanyExpression(item))
 				diags = append(diags, exprDiags...)
-				named = NamedExpr{Expr: expr, Pos: sanyNodePosition(item), Source: sanyNodePosition(item), Syntax: item}
+				named.Expr = expr
+				named.AssumeProve = named.AssumeProveBody != nil
+				named.Pos = sanyNodePosition(item)
+				named.Source = sanyNodePosition(item)
+				named.Syntax = item
 			}
 			if named.Expr != nil {
 				mod.Theorems = append(mod.Theorems, named)
@@ -283,6 +295,33 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 		}
 	}
 	return mod, diags
+}
+
+func namedExprFromDefinition(def Definition, syntax *SanySyntaxNode) NamedExpr {
+	pos := sanyNodePosition(syntax)
+	return NamedExpr{
+		Name:            def.Name,
+		Expr:            def.Expr,
+		AssumeProve:     def.AssumeProve,
+		AssumeProveBody: def.AssumeProveBody,
+		Pos:             pos,
+		Source:          pos,
+		Syntax:          syntax,
+	}
+}
+
+func sanyExprWithAssumeProveBody(node *SanySyntaxNode) (Expr, *AssumeProve, Diagnostics) {
+	if node == nil || node.Kind.JavaName() != "N_AssumeProve" {
+		expr, diags := sanyExpr(node)
+		return expr, nil, diags
+	}
+	body, diags := sanyAssumeProveBody(node)
+	if body == nil || body.Prove == nil {
+		expr, exprDiags := unsupportedSanyExpr(node)
+		diags = append(diags, exprDiags...)
+		return expr, body, diags
+	}
+	return assumeProveExpr(body, sanyNodePosition(node)), body, diags
 }
 
 func moduleImports(mod *Module) []string {

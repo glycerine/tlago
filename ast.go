@@ -101,11 +101,13 @@ func (d Definition) SourcePosition() Position {
 }
 
 type NamedExpr struct {
-	Name   string
-	Expr   Expr
-	Pos    Position
-	Source Position
-	Syntax *SanySyntaxNode
+	Name            string
+	Expr            Expr
+	AssumeProve     bool
+	AssumeProveBody *AssumeProve
+	Pos             Position
+	Source          Position
+	Syntax          *SanySyntaxNode
 }
 
 func (e NamedExpr) Position() Position {

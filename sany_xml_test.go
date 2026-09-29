@@ -1358,6 +1358,49 @@ RootUse == Use
 		}
 	})
 
+	t.Run("levels explicit INSTANCE substitution replacements", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT P
+Use == P
+====`)
+		root := filepath.Join(dir, "ExplicitSubstLevelXML.tla")
+		writeFile(t, root, `---- MODULE ExplicitSubstLevelXML ----
+VARIABLE x
+Repl == x
+Inst == INSTANCE Base WITH P <- Repl
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		replUID := xmlEntryUIDByKindAndName(rootXML, "UserDefinedOpKind", "Repl")
+		if replUID == "" {
+			t.Fatalf("Repl definition missing\n%s", xmlText)
+		}
+		var replacements int
+		for _, subst := range xmlNodesByName(rootXML, "Subst") {
+			for _, replacement := range directChildren(subst, "OpApplNode") {
+				if !opApplNodeUsesOperatorUID(replacement, "UserDefinedOpKindRef", replUID) {
+					continue
+				}
+				replacements++
+				if got := firstChildText(replacement, "level"); got != strconv.Itoa(int(variableLevel)) {
+					t.Fatalf("Repl substitution level = %s, want 1\n%s", got, xmlText)
+				}
+			}
+		}
+		if replacements == 0 {
+			t.Fatalf("Repl substitution replacement missing\n%s", xmlText)
+		}
+	})
+
 	t.Run("serializes multi-index function application through a tuple operand", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("MultiIndexFunctionAppXML.tla", `---- MODULE MultiIndexFunctionAppXML ----
 VARIABLE f
@@ -1478,6 +1521,30 @@ ASSUME CAssumption == C = C
 			if !strings.Contains(got, want) {
 				t.Fatalf("named assumption XML missing %q\n%s", want, got)
 			}
+		}
+	})
+
+	t.Run("preserves unnamed theorem ASSUME PROVE bodies as AssumeProveNode", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnnamedAssumeProveTheoremXML.tla", `---- MODULE UnnamedAssumeProveTheoremXML ----
+THEOREM ASSUME TRUE
+        PROVE TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var found bool
+		for _, theorem := range xmlNodesByName(root, "TheoremNode") {
+			for _, body := range directChildren(theorem, "body") {
+				if len(directChildren(body, "AssumeProveNode")) == 1 {
+					found = true
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("unnamed theorem body was not exported as AssumeProveNode\n%s", xmlText)
 		}
 	})
 
