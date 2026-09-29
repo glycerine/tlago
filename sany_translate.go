@@ -90,7 +90,7 @@ func (l *sanyLoader) loadDependencies(mod *Module) {
 		return
 	}
 	if l.loading[mod.Name] {
-		l.diags = append(l.diags, errorAt(mod.Pos, "E1200", "circular module dependency involving %s", mod.Name))
+		l.diags = append(l.diags, errorAt(mod.Pos, "E4222", "circular module dependency involving %s", mod.Name))
 		return
 	}
 	if l.loaded[mod.Name] {
@@ -133,7 +133,7 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 	if importer != nil {
 		pos = importer.Pos
 	}
-	l.diags = append(l.diags, errorAt(pos, "E1201", "cannot find source file for module %s", name))
+	l.diags = append(l.diags, errorAt(pos, "E4220", "cannot find source file for module %s", name))
 	return nil
 }
 
@@ -169,7 +169,7 @@ func (l *sanyLoader) loadPath(path string, standard bool) *Module {
 	if !standard {
 		fileMod := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		if fileMod != mod.Name {
-			l.diags = append(l.diags, errorAt(mod.Pos, "E1203", "file name %q does not match module name %q", fileMod, mod.Name))
+			l.diags = append(l.diags, errorAt(mod.Pos, "E4221", "file name %q does not match module name %q", fileMod, mod.Name))
 		}
 	}
 	for _, loaded := range mods {
@@ -1181,7 +1181,7 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 			return call, diags
 		}
 		return &IdentExpr{Name: sanyGeneralIDName(node), Pos: sanyNodePosition(node)}, nil
-	case "N_GenInfixOp", "N_GenPrefixOp", "N_GenPostfixOp":
+	case "N_GenInfixOp", "N_GenPrefixOp", "N_GenPostfixOp", "N_GenNonExpPrefixOp":
 		return sanyOperatorReferenceExpr(node)
 	case "N_Number":
 		return &LiteralExpr{Kind: "number", Value: sanyFirstTokenImage(node), Pos: sanyNodePosition(node)}, nil
@@ -1397,6 +1397,10 @@ func sanyNaryOperator(node *SanySyntaxNode, fallback string) string {
 func sanyBinaryOperandChildren(node *SanySyntaxNode, op string) []*SanySyntaxNode {
 	var out []*SanySyntaxNode
 	for _, child := range node.GetHeirs() {
+		if child.Token != nil && isSanyProofStepStartKind(child.Token.Kind) {
+			out = append(out, child)
+			continue
+		}
 		if !isSanyExpressionNode(child) {
 			continue
 		}

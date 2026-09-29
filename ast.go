@@ -70,6 +70,7 @@ const (
 	VariableDecl  DeclarationKind = "VARIABLE"
 	RecursiveDecl DeclarationKind = "RECURSIVE"
 	OperatorDecl  DeclarationKind = "OPERATOR"
+	InstanceDecl  DeclarationKind = "INSTANCE"
 )
 
 type Declaration struct {

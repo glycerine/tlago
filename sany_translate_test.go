@@ -635,7 +635,7 @@ Outer ==
   IN 0
 ====`)
 		requireHasErrorContaining(t, diags, "recursive definition section")
-		requireHasErrorContaining(t, diags, "recursive declaration recDef has no definition")
+		requireHasErrorContaining(t, diags, "recursive declaration recDef is defined in the wrong LET/IN level")
 	})
 
 	t.Run("checks ASSUME PROVE theorem bodies through SANY syntax", func(t *testing.T) {

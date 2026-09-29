@@ -12,8 +12,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/SemanticErrorCorpusTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestSemanticErrorCorpusTests_test(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	corpusDir := sanyTestVectorPath("tla2sany", "semantic", "error_corpus")
 	files := sanyTLAFilesUnder(t, corpusDir, func(path string) bool {
 		return semanticErrorCorpusFilenameRE.MatchString(filepath.Base(path))
