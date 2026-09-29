@@ -1420,6 +1420,9 @@ func checkBindingName(kind, name string, pos Position, defined map[string]Positi
 		return Diagnostics{errorAt(pos, "E1301", "%s %s conflicts with an existing local symbol", kind, name)}
 	}
 	if prev, ok := defined[name]; ok {
+		if sameSourceFile(prev, pos) && positionBefore(pos, prev) {
+			return nil
+		}
 		return Diagnostics{errorAt(pos, "E1301", "%s %s conflicts with existing symbol declared at %s", kind, name, prev)}
 	}
 	return nil

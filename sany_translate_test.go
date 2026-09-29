@@ -153,6 +153,14 @@ t(self) == self
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("allows parameters before later top-level declarations", func(t *testing.T) {
+		_, diags := CheckSanySource("ParamBeforeLaterDecl.tla", `---- MODULE ParamBeforeLaterDecl ----
+Op(state) == state = state
+VARIABLE state
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("allows constant-level substitutions for variable instance parameters", func(t *testing.T) {
 		dir := t.TempDir()
 		helper := filepath.Join(dir, "Helper.tla")
