@@ -157,6 +157,61 @@ func (mc *ModelChecker) CheckAssumptions() int {
 	return mc.Tool.CheckAssumptions()
 }
 
+func (mc *ModelChecker) ModelCheck() (int, error) {
+	if mc.Tool == nil {
+		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
+	}
+	if result := mc.CheckAssumptions(); result != NoError {
+		return result, nil
+	}
+	result, err := mc.DoInit(false)
+	if err != nil || result != NoError {
+		return result, err
+	}
+	if len(mc.Tool.GetActions()) == 0 {
+		if !mc.StateQueue.IsEmpty() {
+			PrintError(ECTLCStatesAndNoNextAction)
+			return ECTLCStatesAndNoNextAction, nil
+		}
+		return mc.Tool.CheckPostCondition(), nil
+	}
+	result, err = mc.RunTLC(0)
+	if err != nil || result != NoError {
+		return result, err
+	}
+	return mc.Tool.CheckPostCondition(), nil
+}
+
+func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
+	if mc.Tool == nil {
+		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
+	}
+	worker := NewModelCheckingWorker(len(mc.Workers), mc, mc.Tool)
+	for {
+		if mc.Done {
+			return mc.ErrorCode, nil
+		}
+		curState := mc.StateQueue.Dequeue()
+		if curState == nil {
+			mc.SetDone()
+			return mc.ErrorCode, nil
+		}
+		if maxDepth > 0 && curState.Level() >= maxDepth {
+			continue
+		}
+		stop, err := worker.DoNext(curState)
+		if err != nil {
+			if mc.ErrorCode != NoError {
+				return mc.ErrorCode, err
+			}
+			return ECGeneral, err
+		}
+		if stop {
+			return mc.ErrorCode, nil
+		}
+	}
+}
+
 func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
