@@ -141,6 +141,104 @@ RootUse == Use
 		}
 	})
 
+	t.Run("sorts extended module names like Java SANY XML", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "A.tla"), `---- MODULE A ----
+A == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "B.tla"), `---- MODULE B ----
+B == TRUE
+====`)
+		root := filepath.Join(dir, "ExtendsOrderXML.tla")
+		writeFile(t, root, `---- MODULE ExtendsOrderXML ----
+EXTENDS B, A
+Root == A /\ B
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		moduleStart := strings.Index(got, `<uniquename>ExtendsOrderXML</uniquename>`)
+		if moduleStart < 0 {
+			t.Fatalf("SANY XML missing ExtendsOrderXML module\n%s", got)
+		}
+		aIndex := strings.Index(got[moduleStart:], `<uniquename>A</uniquename>`)
+		bIndex := strings.Index(got[moduleStart:], `<uniquename>B</uniquename>`)
+		if aIndex < 0 || bIndex < 0 || aIndex > bIndex {
+			t.Fatalf("extends names were not sorted as A then B\n%s", got[moduleStart:])
+		}
+	})
+
+	t.Run("serializes multi-index function application through a tuple operand", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("MultiIndexFunctionAppXML.tla", `---- MODULE MultiIndexFunctionAppXML ----
+VARIABLE f
+A(i, j) == f[i, j]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>A</uniquename>`) {
+			t.Fatalf("SANY XML missing A definition\n%s", got)
+		}
+		for _, want := range []string{
+			`<uniquename>$FcnApply</uniquename>`,
+			`<uniquename>$Tuple</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("multi-index function application XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes multi-index EXCEPT selectors through a tuple operand", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("MultiIndexExceptXML.tla", `---- MODULE MultiIndexExceptXML ----
+VARIABLE f
+A(i, j) == [f EXCEPT ![i, j] = 0]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$Except</uniquename>`,
+			`<uniquename>$Tuple</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("multi-index EXCEPT XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("bounded operators include bound set level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BoundedLevelXML.tla", `---- MODULE BoundedLevelXML ----
+VARIABLE S
+A == \A x \in S : TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		a := strings.Index(got, `<uniquename>A</uniquename>`)
+		if a < 0 {
+			t.Fatalf("SANY XML missing A definition\n%s", got)
+		}
+		body := strings.Index(got[a:], `<body>`)
+		if body < 0 {
+			t.Fatalf("SANY XML missing A body\n%s", got[a:])
+		}
+		levelStart := strings.Index(got[a+body:], `<level>`)
+		if levelStart < 0 {
+			t.Fatalf("SANY XML missing bounded quantifier level\n%s", got[a+body:])
+		}
+		levelEnd := strings.Index(got[a+body+levelStart:], `</level>`)
+		level := got[a+body+levelStart : a+body+levelStart+levelEnd+len(`</level>`)]
+		if level != `<level>1</level>` {
+			t.Fatalf("bounded quantifier level = %s, want <level>1</level>\n%s", level, got[a+body:])
+		}
+	})
+
 	t.Run("serializes proof steps as theorem XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofXML.tla", `---- MODULE ProofXML ----
 THEOREM T == TRUE

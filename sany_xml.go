@@ -600,7 +600,9 @@ func (x *sanyXMLExporter) emitModuleEntry(mod *Module) {
 	b.WriteString("<uniquename>")
 	xmlText(&b, mod.Name)
 	b.WriteString("</uniquename><extends>")
-	for _, ext := range mod.Extends {
+	extends := append([]string(nil), mod.Extends...)
+	sort.Strings(extends)
+	for _, ext := range extends {
 		b.WriteString("<uniquename>")
 		xmlText(&b, ext)
 		b.WriteString("</uniquename>")
@@ -1939,10 +1941,16 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 			return "", diags
 		}
 		args := []string{fn}
-		for _, arg := range e.Args {
-			argXML, argDiags := x.exprXML(arg, ctx)
-			diags = append(diags, argDiags...)
-			args = append(args, argXML)
+		if len(e.Args) > 1 {
+			tuple, tupleDiags := x.exprListOpXML("$Tuple", e.Args, e.Pos, ctx)
+			diags = append(diags, tupleDiags...)
+			args = append(args, tuple)
+		} else {
+			for _, arg := range e.Args {
+				argXML, argDiags := x.exprXML(arg, ctx)
+				diags = append(diags, argDiags...)
+				args = append(args, argXML)
+			}
 		}
 		if diags.HasErrors() {
 			return "", diags
@@ -2324,6 +2332,7 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 	var boundSymbols bytes.Buffer
 	boundSymbols.WriteString("<boundSymbols>")
 	var diags Diagnostics
+	level := constantLevel
 	for i := 0; i < len(bounds); {
 		set := bounds[i].Set
 		if set == nil {
@@ -2344,6 +2353,7 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 		var setDiags Diagnostics
 		setXML, setDiags = x.exprXML(set, ctx)
 		diags = append(diags, setDiags...)
+		level = maxTlaLevel(level, x.exprLevel(set, ctx))
 		var refs bytes.Buffer
 		j := i
 		for j < len(bounds) && bounds[j].Set == set {
@@ -2369,7 +2379,8 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 	if diags.HasErrors() {
 		return "", diags
 	}
-	return x.opApplXML(pos, x.exprLevel(body, boundCtx), x.builtin(oper), []string{bodyXML}, boundSymbols.String()), nil
+	level = maxTlaLevel(level, x.exprLevel(body, boundCtx))
+	return x.opApplXML(pos, level, x.builtin(oper), []string{bodyXML}, boundSymbols.String()), nil
 }
 
 func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *FunctionExpr, ctx sanyXMLExprContext, level tlaLevel) (string, Diagnostics) {
@@ -2574,11 +2585,18 @@ func (x *sanyXMLExporter) exceptXML(e *ExceptExpr, ctx sanyXMLExprContext) (stri
 		componentArgs := []string{}
 		componentLevel := constantLevel
 		for _, component := range spec.Components {
-			for _, index := range component.Indices {
-				indexXML, indexDiags := x.exprXML(index, ctx)
-				diags = append(diags, indexDiags...)
-				componentArgs = append(componentArgs, indexXML)
-				componentLevel = maxTlaLevel(componentLevel, x.exprLevel(index, ctx))
+			if len(component.Indices) > 1 {
+				tupleXML, tupleDiags := x.exprListOpXML("$Tuple", component.Indices, component.Pos, ctx)
+				diags = append(diags, tupleDiags...)
+				componentArgs = append(componentArgs, tupleXML)
+				componentLevel = maxTlaLevel(componentLevel, x.exprLevel(&TupleExpr{Elems: component.Indices, Pos: component.Pos}, ctx))
+			} else {
+				for _, index := range component.Indices {
+					indexXML, indexDiags := x.exprXML(index, ctx)
+					diags = append(diags, indexDiags...)
+					componentArgs = append(componentArgs, indexXML)
+					componentLevel = maxTlaLevel(componentLevel, x.exprLevel(index, ctx))
+				}
 			}
 			if component.Field != "" {
 				field := x.stringXML(component.Field, apalacheRecordFieldPosition(component.FieldPos, component.Pos))
