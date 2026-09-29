@@ -749,12 +749,13 @@ func apalacheSubstituteParamsAtSharedUseSource(expr Expr, replacements map[strin
 	case *QuantifierExpr:
 		quantReplacements := apalacheScopedSubstitutions(replacements, []string{e.Var})
 		return &QuantifierExpr{
-			Kind:   e.Kind,
-			Var:    e.Var,
-			VarPos: e.VarPos,
-			Set:    apalacheSubstituteParamsAtSharedUseSource(e.Set, replacements, finalPositions),
-			Body:   apalacheSubstituteParamsAtSharedUseSource(e.Body, quantReplacements, finalPositions),
-			Pos:    e.Pos,
+			Kind:       e.Kind,
+			Var:        e.Var,
+			VarPos:     e.VarPos,
+			Set:        apalacheSubstituteParamsAtSharedUseSource(e.Set, replacements, finalPositions),
+			Body:       apalacheSubstituteParamsAtSharedUseSource(e.Body, quantReplacements, finalPositions),
+			TupleBound: e.TupleBound,
+			Pos:        e.Pos,
 		}
 	case *CaseExpr:
 		caseExpr := &CaseExpr{Pos: e.Pos, OtherPos: e.OtherPos}
@@ -1017,7 +1018,7 @@ func apalacheExprAtPosition(expr Expr, pos Position) Expr {
 	case *LetExpr:
 		return &LetExpr{Recursives: append([]Declaration(nil), e.Recursives...), Definitions: append([]Definition(nil), e.Definitions...), Instances: append([]Instance(nil), e.Instances...), Body: e.Body, Pos: pos}
 	case *QuantifierExpr:
-		return &QuantifierExpr{Kind: e.Kind, Var: e.Var, VarPos: e.VarPos, Set: e.Set, Body: e.Body, Pos: pos}
+		return &QuantifierExpr{Kind: e.Kind, Var: e.Var, VarPos: e.VarPos, Set: e.Set, Body: e.Body, TupleBound: e.TupleBound, Pos: pos}
 	case *CaseExpr:
 		return &CaseExpr{Arms: append([]CaseArm(nil), e.Arms...), Other: e.Other, OtherPos: e.OtherPos, Pos: pos}
 	case *ChooseExpr:

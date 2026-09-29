@@ -256,6 +256,7 @@ type QuantifierExpr struct {
 	Body             Expr
 	OperatorArity    int
 	HasOperatorArity bool
+	TupleBound       bool
 	Pos              Position
 }
 

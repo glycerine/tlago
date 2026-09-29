@@ -1970,6 +1970,19 @@ A == { x : <<x, y>> \in Pairs }
 		}
 	})
 
+	t.Run("marks tuple destructuring quantifier bounds", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TupleQuantifierBoundXML.tla", `---- MODULE TupleQuantifierBoundXML ----
+Pairs == { <<1, 2>> }
+A == \A <<x, y>> \in Pairs : x = y
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<tuple/>`) {
+			t.Fatalf("tuple-quantifier-bound XML missing tuple marker\n%s", got)
+		}
+	})
+
 	t.Run("bounded operators include bound set level", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("BoundedLevelXML.tla", `---- MODULE BoundedLevelXML ----
 VARIABLE S

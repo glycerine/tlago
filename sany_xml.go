@@ -3422,13 +3422,13 @@ func (x *sanyXMLExporter) quantifierXML(e *QuantifierExpr, ctx sanyXMLExprContex
 	}
 
 	body := e.Body
-	bounds := []BoundVar{{Name: e.Var, Set: e.Set, Pos: quantifierVarPosition(e)}}
+	bounds := []BoundVar{{Name: e.Var, Set: e.Set, Pos: quantifierVarPosition(e), TupleBound: e.TupleBound}}
 	for {
 		next, ok := body.(*QuantifierExpr)
 		if !ok || next.Kind != e.Kind || !samePosition(next.Pos, e.Pos) {
 			break
 		}
-		bounds = append(bounds, BoundVar{Name: next.Var, Set: next.Set, Pos: quantifierVarPosition(next)})
+		bounds = append(bounds, BoundVar{Name: next.Var, Set: next.Set, Pos: quantifierVarPosition(next), TupleBound: next.TupleBound})
 		body = next.Body
 	}
 	return x.boundOpXML(oper, e.Pos, bounds, body, ctx, false)

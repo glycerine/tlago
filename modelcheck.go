@@ -623,12 +623,13 @@ func inlineDefinitionCalls(expr Expr, defs map[string]*Definition, seen map[stri
 		return let
 	case *QuantifierExpr:
 		return &QuantifierExpr{
-			Kind:   e.Kind,
-			Var:    e.Var,
-			VarPos: e.VarPos,
-			Set:    inlineDefinitionCalls(e.Set, defs, copySeen(seen)),
-			Body:   inlineDefinitionCalls(e.Body, defs, copySeen(seen)),
-			Pos:    e.Pos,
+			Kind:       e.Kind,
+			Var:        e.Var,
+			VarPos:     e.VarPos,
+			Set:        inlineDefinitionCalls(e.Set, defs, copySeen(seen)),
+			Body:       inlineDefinitionCalls(e.Body, defs, copySeen(seen)),
+			TupleBound: e.TupleBound,
+			Pos:        e.Pos,
 		}
 	case *CaseExpr:
 		caseExpr := &CaseExpr{Pos: e.Pos, OtherPos: e.OtherPos}
@@ -808,7 +809,7 @@ func substituteParams(expr Expr, replacements map[string]Expr) Expr {
 				quantReplacements[name] = replacement
 			}
 		}
-		return &QuantifierExpr{Kind: e.Kind, Var: e.Var, VarPos: e.VarPos, Set: substituteParams(e.Set, replacements), Body: substituteParams(e.Body, quantReplacements), Pos: e.Pos}
+		return &QuantifierExpr{Kind: e.Kind, Var: e.Var, VarPos: e.VarPos, Set: substituteParams(e.Set, replacements), Body: substituteParams(e.Body, quantReplacements), TupleBound: e.TupleBound, Pos: e.Pos}
 	case *CaseExpr:
 		caseExpr := &CaseExpr{Pos: e.Pos, OtherPos: e.OtherPos}
 		for _, arm := range e.Arms {
@@ -2805,12 +2806,13 @@ func substituteLets(expr Expr, bindings map[string]Expr, seen map[string]bool) E
 			}
 		}
 		return &QuantifierExpr{
-			Kind:   e.Kind,
-			Var:    e.Var,
-			VarPos: e.VarPos,
-			Set:    substituteLets(e.Set, bindings, copySeen(seen)),
-			Body:   substituteLets(e.Body, quantBindings, copySeen(seen)),
-			Pos:    e.Pos,
+			Kind:       e.Kind,
+			Var:        e.Var,
+			VarPos:     e.VarPos,
+			Set:        substituteLets(e.Set, bindings, copySeen(seen)),
+			Body:       substituteLets(e.Body, quantBindings, copySeen(seen)),
+			TupleBound: e.TupleBound,
+			Pos:        e.Pos,
 		}
 	case *CaseExpr:
 		caseExpr := &CaseExpr{Pos: e.Pos, OtherPos: e.OtherPos}

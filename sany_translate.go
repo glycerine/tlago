@@ -1694,6 +1694,7 @@ func wrapQuantifierExprs(kind string, vars []BoundVar, body Expr, pos Position) 
 			Body:             out,
 			OperatorArity:    vars[i].OperatorArity,
 			HasOperatorArity: vars[i].HasOperatorArity,
+			TupleBound:       vars[i].TupleBound,
 			Pos:              pos,
 		}
 	}
