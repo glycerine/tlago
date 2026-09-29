@@ -41,3 +41,30 @@ func TestTLCStateCopyPreservesLevelButNotWorkerOrUID(t *testing.T) {
 			deep.Level(), deep.WorkerID, deep.UID, state.Level(), state.WorkerID, state.UID)
 	}
 }
+
+func TestTLCStateAddToVecAddsShallowCopy(t *testing.T) {
+	UniqueStringInitialize()
+	SetStateVariables([]string{"x"})
+	state := checkerTestState(1)
+	state.WorkerID = 3
+	state.UID = 99
+	vec := NewStateVec(0)
+
+	result := state.AddToVec(vec)
+	if result != vec {
+		t.Fatalf("AddToVec returned %p, want vec %p", result, vec)
+	}
+	if vec.Size() != 1 {
+		t.Fatalf("vec size = %d, want 1", vec.Size())
+	}
+	added := vec.At(0)
+	if added == state {
+		t.Fatalf("AddToVec added original state, want shallow copy")
+	}
+	if !added.Equal(state) {
+		t.Fatalf("added state values differ from original")
+	}
+	if added.WorkerID != TLCStateInitWorkerID || added.UID != TLCStateInitUID {
+		t.Fatalf("added worker/uid = %d/%d, want default/%d", added.WorkerID, added.UID, TLCStateInitUID)
+	}
+}

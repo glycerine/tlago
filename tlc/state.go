@@ -117,6 +117,13 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 	}
 }
 
+func (s *TLCStateMut) AddToVec(states *StateVec) *StateVec {
+	if states == nil {
+		states = NewStateVec(1)
+	}
+	return states.Add(s.Copy())
+}
+
 func (s *TLCStateMut) DeepNormalize() {
 	for _, value := range s.values {
 		if value != nil {
