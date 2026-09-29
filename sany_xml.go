@@ -813,8 +813,12 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	level := x.exprLevel(def.Expr, defCtx)
 	var body string
 	var diags Diagnostics
-	if fcn, ok := def.Expr.(*FunctionExpr); ok && x.isRecursiveFunctionDefinition(def) {
-		body, diags = x.recursiveFunctionSpecXML(def, fcn, defCtx, level)
+	if fcn, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+		if x.isRecursiveFunctionDefinition(def) {
+			body, diags = x.recursiveFunctionSpecXML(def, fcn, defCtx, level)
+		} else {
+			body, diags = x.nonRecursiveFunctionSpecXML(def, fcn, defCtx, level)
+		}
 	} else {
 		body, diags = x.exprXML(def.Expr, defCtx)
 	}
@@ -875,8 +879,12 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	level := x.exprLevel(def.Expr, defCtx)
 	var body string
 	var diags Diagnostics
-	if fcn, ok := def.Expr.(*FunctionExpr); ok && x.isRecursiveFunctionDefinition(def) {
-		body, diags = x.recursiveFunctionSpecXML(def, fcn, defCtx, level)
+	if fcn, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+		if x.isRecursiveFunctionDefinition(def) {
+			body, diags = x.recursiveFunctionSpecXML(def, fcn, defCtx, level)
+		} else {
+			body, diags = x.nonRecursiveFunctionSpecXML(def, fcn, defCtx, level)
+		}
 	} else {
 		body, diags = x.exprXML(def.Expr, defCtx)
 	}
@@ -2425,6 +2433,61 @@ func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *Functio
 	return x.opApplXML(def.SourcePosition(), level, x.builtin("$RecursiveFcnSpec"), []string{bodyXML}, boundSymbols.String()), nil
 }
 
+func (x *sanyXMLExporter) nonRecursiveFunctionSpecXML(def *Definition, fcn *FunctionExpr, ctx sanyXMLExprContext, level tlaLevel) (string, Diagnostics) {
+	boundCtx := ctx
+	boundCtx.formals = copySanyXMLSymbolMap(ctx.formals)
+	var boundSymbols bytes.Buffer
+	boundSymbols.WriteString("<boundSymbols>")
+
+	var diags Diagnostics
+	for i := 0; i < len(fcn.Bounds); {
+		set := fcn.Bounds[i].Set
+		if set == nil {
+			bound := fcn.Bounds[i]
+			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
+			if !exprReferencesName(fcn.Body, bound.Name, nil) {
+				formal.Level = -1
+			}
+			x.emitFormalEntry(formal)
+			boundCtx.formals[bound.Name] = formal
+			boundSymbols.WriteString("<unbound>")
+			x.writeRef(&boundSymbols, formal)
+			boundSymbols.WriteString("</unbound>")
+			i++
+			continue
+		}
+
+		setXML, setDiags := x.exprXML(set, ctx)
+		diags = append(diags, setDiags...)
+		var refs bytes.Buffer
+		j := i
+		for j < len(fcn.Bounds) && fcn.Bounds[j].Set == set {
+			bound := fcn.Bounds[j]
+			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
+			if !exprReferencesName(fcn.Body, bound.Name, nil) {
+				formal.Level = -1
+			}
+			x.emitFormalEntry(formal)
+			boundCtx.formals[bound.Name] = formal
+			x.writeRef(&refs, formal)
+			j++
+		}
+		boundSymbols.WriteString("<bound>")
+		boundSymbols.WriteString(refs.String())
+		boundSymbols.WriteString(setXML)
+		boundSymbols.WriteString("</bound>")
+		i = j
+	}
+	boundSymbols.WriteString("</boundSymbols>")
+
+	bodyXML, bodyDiags := x.exprXML(fcn.Body, boundCtx)
+	diags = append(diags, bodyDiags...)
+	if diags.HasErrors() {
+		return "", diags
+	}
+	return x.opApplXML(def.SourcePosition(), level, x.builtin("$NonRecursiveFcnSpec"), []string{bodyXML}, boundSymbols.String()), nil
+}
+
 func (x *sanyXMLExporter) caseXML(e *CaseExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
 	var args []string
 	var diags Diagnostics
@@ -3359,7 +3422,7 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 		level = temporalLevel
 	case "$IfThenElse":
 		arity = 3
-	case "\\lnot", "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "SUBSET", "UNION", "DOMAIN", "$Pfcase", "$RecursiveFcnSpec":
+	case "\\lnot", "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "SUBSET", "UNION", "DOMAIN", "$Pfcase", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec":
 		arity = 1
 		if name == "'" || name == "\\prime" || name == "UNCHANGED" {
 			level = actionLevel
@@ -3474,6 +3537,8 @@ func sanyXMLStableBuiltinUID(name string) int {
 		return 138
 	case "$RcdSelect":
 		return 250
+	case "$NonRecursiveFcnSpec":
+		return 244
 	case "$RecursiveFcnSpec":
 		return 253
 	case "$CartesianProd":
@@ -3491,7 +3556,7 @@ func sanyXMLStableBuiltinUID(name string) int {
 
 func sanyXMLReservedBuiltinUID(uid int) bool {
 	switch uid {
-	case 1, 2, 4, 13, 15, 19, 22, 31, 40, 61, 63, 78, 79, 80, 82, 83, 84, 85, 89, 90, 96, 99, 105, 106, 107, 108, 113, 116, 125, 126, 137, 138, 231, 250, 253:
+	case 1, 2, 4, 13, 15, 19, 22, 31, 40, 61, 63, 78, 79, 80, 82, 83, 84, 85, 89, 90, 96, 99, 105, 106, 107, 108, 113, 116, 125, 126, 137, 138, 231, 244, 250, 253:
 		return true
 	default:
 		return false

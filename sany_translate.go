@@ -872,7 +872,7 @@ func firstSanyBodyExpressionAfter(heirs []*SanySyntaxNode, start int) *SanySynta
 }
 
 func sanyFunctionDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
-	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
+	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), FunctionDef: true, ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
 	if id := firstSanyIdentifier(node); id != nil {
 		def.Name = id.Image
 		def.Pos = sanyNodePosition(id)

@@ -434,6 +434,37 @@ Cardinality(S) ==
 		}
 	})
 
+	t.Run("distinguishes bounded function definitions from function expressions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NonRecursiveFunctionSpecXML.tla", `---- MODULE NonRecursiveFunctionSpecXML ----
+CONSTANT S
+F[x \in S] == x
+A == [x \in S |-> x]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$NonRecursiveFcnSpec</uniquename>`,
+			`<uniquename>$FcnConstructor</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("function XML missing %q\n%s", want, got)
+			}
+		}
+		f := strings.Index(got, `<uniquename>F</uniquename>`)
+		if f < 0 || !strings.Contains(got, `<uniquename>A</uniquename>`) {
+			t.Fatalf("function XML missing F or A\n%s", got)
+		}
+		fEnd := strings.Index(got[f:], `</UserDefinedOpKind>`)
+		if fEnd < 0 {
+			t.Fatalf("function XML missing end of F definition\n%s", got[f:])
+		}
+		fBody := got[f : f+fEnd]
+		if strings.Contains(fBody, `<uniquename>$FcnConstructor</uniquename>`) {
+			t.Fatalf("bounded function definition F should use $NonRecursiveFcnSpec, not $FcnConstructor\n%s", fBody)
+		}
+	})
+
 	t.Run("serializes recursive definitions with a SANY recursive section", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("RecursiveSectionXML.tla", `---- MODULE RecursiveSectionXML ----
 RECURSIVE F(_)

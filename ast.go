@@ -83,6 +83,7 @@ type Definition struct {
 	PreComments     []string
 	Expr            Expr
 	Local           bool
+	FunctionDef     bool
 	AssumeProve     bool
 	AssumeProveBody *AssumeProve
 	TheoremLike     bool
