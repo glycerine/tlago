@@ -764,6 +764,75 @@ Use == Zero
 		}
 	})
 
+	t.Run("LOCAL INSTANCE clones are originally defined in the owner module", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "LocalInstanceOriginXML.tla")
+		writeFile(t, rootPath, `---- MODULE LocalInstanceOriginXML ----
+LOCAL Inst == INSTANCE Helper
+Use == Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if op == nil {
+			t.Fatalf("LOCAL INSTANCE clone missing\n%s", xmlText)
+		}
+		if got := xmlOriginalModuleName(root, op); got != "LocalInstanceOriginXML" {
+			t.Fatalf("LOCAL INSTANCE clone origin = %q, want LocalInstanceOriginXML\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("unqualified LOCAL INSTANCE clones retain target module origin", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedLocalInstanceOriginXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedLocalInstanceOriginXML ----
+LOCAL INSTANCE Helper
+Use == Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var clone *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "UserDefinedOpKind" &&
+				firstChildText(payload, "uniquename") == "Op" &&
+				xmlNodeFilename(payload) == "UnqualifiedLocalInstanceOriginXML" {
+				clone = payload
+				break
+			}
+		}
+		if clone == nil {
+			t.Fatalf("unqualified LOCAL INSTANCE clone missing\n%s", xmlText)
+		}
+		if got := xmlOriginalModuleName(root, clone); got != "Helper" {
+			t.Fatalf("unqualified LOCAL INSTANCE clone origin = %q, want Helper\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("clones extended definitions through LOCAL INSTANCE", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "LocalBase.tla"), `---- MODULE LocalBase ----

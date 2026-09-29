@@ -371,6 +371,22 @@ Product == S \X T
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("checks bounded CHOOSE over compound function sets", func(t *testing.T) {
+		source := `---- MODULE ChooseFunctionSetBound ----
+CONSTANT S, T
+Use == CHOOSE f \in [(S \X T) \cup (T \X S) -> S] : f = f
+====`
+		_, diags := CheckSanySource("ChooseFunctionSetBound.tla", source)
+		requireNoErrors(t, diags)
+	})
+
+	t.Run("allows bounded CHOOSE variable to reuse enclosing definition name", func(t *testing.T) {
+		_, diags := CheckSanySource("ChooseSelfName.tla", `---- MODULE ChooseSelfName ----
+RM == CHOOSE RM : RM = RM
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("checks EXCEPT updates through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("Except.tla", `---- MODULE Except ----
 CONSTANT i, v, w

@@ -1388,6 +1388,9 @@ func (p *SanyParser) startsOperatorReference(stop func(*SanyToken) bool) bool {
 	if !ok {
 		return false
 	}
+	if op.Symbol == "[" {
+		return false
+	}
 	return stop(p.peekNext()) || ((op.IsInfix() || op.IsPostfix()) && p.peekNext().Kind == SanyTokenLbr)
 }
 

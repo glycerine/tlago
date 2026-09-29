@@ -1664,7 +1664,7 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	xmlInt(&b, sym.Arity)
 	b.WriteString("</arity>")
 	originModule := sourceMod
-	if hasSubsts || originOwner {
+	if hasSubsts || originOwner || (inst.Local && !inst.exportsUnqualified()) {
 		originModule = owner
 	}
 	x.writeDefinitionOriginFor(&b, original, originModule)

@@ -1433,6 +1433,9 @@ func checkBoundName(name string, pos Position, defined map[string]Position, loca
 		return Diagnostics{errorAt(pos, "E1301", "bound symbol %s conflicts with an existing local symbol", name)}
 	}
 	if prev, ok := defined[name]; ok {
+		if sameSourceFile(prev, pos) && prev.Line == pos.Line && positionBefore(prev, pos) {
+			return nil
+		}
 		if sameSourceFile(prev, pos) && positionBefore(pos, prev) {
 			return nil
 		}
