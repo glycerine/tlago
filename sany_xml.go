@@ -1631,7 +1631,10 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 	if diags.HasErrors() {
 		return "", diags
 	}
-	pos := sanyXMLSpanPosition(steps)
+	pos := sanyNodePosition(proof)
+	if pos.Line == 0 && pos.Column == 0 {
+		pos = sanyXMLSpanPosition(steps)
+	}
 	var b bytes.Buffer
 	b.WriteString("<steps>")
 	x.writeNode(&b, pos, level)

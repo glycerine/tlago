@@ -255,6 +255,48 @@ Use == LET r == x IN r
 		}
 	})
 
+	t.Run("terminal BY serializes expression facts", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TerminalByExpressionFactXML.tla", `---- MODULE TerminalByExpressionFactXML ----
+THEOREM TRUE
+  BY \A c \in {1} : c = c
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		for _, want := range []string{
+			`<by>`,
+			`<facts>`,
+			`<OpApplNode>`,
+			`<uniquename>$BoundedForall</uniquename>`,
+			`<uniquename>c</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("terminal BY expression fact missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("explicit PROOF steps location starts at PROOF token", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ExplicitProofStepsLocationXML.tla", `---- MODULE ExplicitProofStepsLocationXML ----
+THEOREM TRUE
+PROOF
+  <1>1. TRUE BY
+  <1> QED BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		steps := firstXMLDescendant(root, "steps")
+		if steps == nil {
+			t.Fatalf("steps node missing\n%s", xmlText)
+		}
+		if !xmlNodeLocationMatches(steps, 3, 1, 17) {
+			t.Fatalf("steps location = %s, want line 3 column 1 through line 5 column 17\n%s", firstChildText(steps, "location"), xmlText)
+		}
+	})
+
 	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("InfixFormalSpanXML.tla", `---- MODULE InfixFormalSpanXML ----
 Use(_\prec_, S) == TRUE
@@ -2004,6 +2046,39 @@ func userDefinedOpAtLocation(root *canonicalXMLNode, line, begin, end int) *cano
 	}
 	walk(root)
 	return found
+}
+
+func firstXMLDescendant(root *canonicalXMLNode, name string) *canonicalXMLNode {
+	if root == nil {
+		return nil
+	}
+	if root.Name == name {
+		return root
+	}
+	for _, child := range root.Children {
+		if found := firstXMLDescendant(child, name); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+func normalizeXMLForContains(text string) string {
+	replacer := strings.NewReplacer(
+		">\n", ">",
+		"\n<", "<",
+		">  <", "><",
+		">    <", "><",
+		">      <", "><",
+		">        <", "><",
+		">          <", "><",
+	)
+	prev := ""
+	for text != prev {
+		prev = text
+		text = replacer.Replace(text)
+	}
+	return text
 }
 
 func xmlNodeLocationMatches(node *canonicalXMLNode, line, begin, end int) bool {

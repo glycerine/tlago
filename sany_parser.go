@@ -280,9 +280,7 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 	if p.match(SanyTokenBy) {
 		by := p.previous()
 		heirs = append(heirs, NewSanyTokenNode(by))
-		for !p.check(SanyTokenEOF) && !p.check(SanyTokenEndModule) && !p.atTerminalProofBoundary(by.Begin.Column) {
-			heirs = append(heirs, NewSanyTokenNode(p.advance()))
-		}
+		p.proofCommandTail(&heirs, by, true)
 		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
 	}
 	if p.check(SanyTokenQed) || p.startsProofStepAt(0) {
@@ -376,6 +374,69 @@ func (p *SanyParser) UseOrHide() *SanySyntaxNode {
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_UseOrHide"], heirs...)
+}
+
+func (p *SanyParser) proofCommandTail(heirs *[]*SanySyntaxNode, command *SanyToken, terminal bool) {
+	if p.match(SanyTokenOnly) {
+		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
+	}
+	if !p.atProofCommandBoundary(command, terminal) && !p.check(SanyTokenDF) {
+		*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
+		for p.match(SanyTokenComma) {
+			*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
+			if p.atProofCommandBoundary(command, terminal) || p.check(SanyTokenDF) {
+				break
+			}
+			*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
+		}
+	}
+	if p.match(SanyTokenDF) {
+		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
+		if !p.atProofCommandBoundary(command, terminal) {
+			*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
+			for p.match(SanyTokenComma) {
+				*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
+				if p.atProofCommandBoundary(command, terminal) {
+					break
+				}
+				*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
+			}
+		}
+	}
+}
+
+func (p *SanyParser) ProofCommandItem(command *SanyToken, terminal bool) *SanySyntaxNode {
+	if p.match(SanyTokenModule) {
+		module := NewSanyTokenNode(p.previous())
+		return NewSanyNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], module, p.Identifier())
+	}
+	if p.startsProofStepAt(0) {
+		return NewSanyTokenNode(p.advance())
+	}
+	if _, ok := GetSanyOperator(p.peek().Image); ok {
+		return p.OperatorReference()
+	}
+	return p.ExpressionUntilProofCommandItemBoundary(command, terminal)
+}
+
+func (p *SanyParser) ExpressionUntilProofCommandItemBoundary(command *SanyToken, terminal bool) *SanySyntaxNode {
+	return p.ExpressionUntil(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma ||
+			tok.Kind == SanyTokenDF ||
+			tok.Kind == SanyTokenEOF ||
+			tok.Kind == SanyTokenEndModule ||
+			p.atProofCommandBoundary(command, terminal)
+	})
+}
+
+func (p *SanyParser) atProofCommandBoundary(command *SanyToken, terminal bool) bool {
+	if terminal {
+		if command == nil {
+			return p.check(SanyTokenEOF) || p.check(SanyTokenEndModule)
+		}
+		return p.atTerminalProofBoundary(command.Begin.Column)
+	}
+	return p.atUseOrHideBoundary(command)
 }
 
 func (p *SanyParser) UseOrHideItem() *SanySyntaxNode {
