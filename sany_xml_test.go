@@ -1507,6 +1507,33 @@ THEOREM T == TRUE
 		}
 	})
 
+	t.Run("module context preserves duplicate imported theorem refs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+THEOREM T == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Mid.tla"), `---- MODULE Mid ----
+EXTENDS Base
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+EXTENDS Mid, Base
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "Root", "TheoremNode", "Base", 2); got != 2 {
+			t.Fatalf("Root module has %d refs to Base theorem line 2, want 2\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("serializes proof DEFINE and PICK steps", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofDefinePickXML.tla", `---- MODULE ProofDefinePickXML ----
 THEOREM T == TRUE
@@ -2230,6 +2257,50 @@ func maxDirectOperandsForOperator(root *canonicalXMLNode, uid string) int {
 	}
 	walk(root)
 	return maxOperands
+}
+
+func moduleRefCountByPayloadLocation(root *canonicalXMLNode, moduleName, payloadKind, filename string, line int) int {
+	uidPayloads := map[string]*canonicalXMLNode{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		uid := firstChildText(entry, "UID")
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if uid != "" && payload != nil {
+			uidPayloads[uid] = payload
+		}
+	}
+	var count int
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		mod := canonicalSanyXMLEntryPayload(entry)
+		if mod == nil || mod.Name != "ModuleNode" || firstChildText(mod, "uniquename") != moduleName {
+			continue
+		}
+		for _, child := range mod.Children {
+			if !strings.HasSuffix(child.Name, "Ref") {
+				continue
+			}
+			payload := uidPayloads[firstChildText(child, "UID")]
+			if payload != nil && payload.Name == payloadKind && xmlNodeFilename(payload) == filename && xmlNodeBeginLine(payload) == strconv.Itoa(line) {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func xmlNodeFilename(node *canonicalXMLNode) string {
+	for _, location := range directChildren(node, "location") {
+		return firstChildText(location, "filename")
+	}
+	return ""
+}
+
+func xmlNodeBeginLine(node *canonicalXMLNode) string {
+	for _, location := range directChildren(node, "location") {
+		for _, line := range directChildren(location, "line") {
+			return firstChildText(line, "begin")
+		}
+	}
+	return ""
 }
 
 func opApplAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXMLNode {

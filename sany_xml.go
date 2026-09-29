@@ -854,7 +854,14 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 	var refs []*sanyXMLSymbol
 	seen := map[string]bool{}
 	add := func(sym *sanyXMLSymbol) {
-		if sym == nil || seen[sym.Key] {
+		if sym == nil {
+			return
+		}
+		if sym.Kind == "TheoremNode" {
+			refs = append(refs, sym)
+			return
+		}
+		if seen[sym.Key] {
 			return
 		}
 		seen[sym.Key] = true
