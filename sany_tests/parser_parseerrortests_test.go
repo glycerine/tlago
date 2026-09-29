@@ -12,8 +12,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/ParseErrorTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestParseErrorTests_testAll(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	dir := t.TempDir()
 	modulePath := filepath.Join(dir, "SanyTest.tla")
 	input := "---- MODULE SanyTest ----\nx = 0\n===="

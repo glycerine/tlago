@@ -159,7 +159,7 @@ func (p *SanyParser) BeginModule() *SanySyntaxNode {
 }
 
 func (p *SanyParser) EndModule() *SanySyntaxNode {
-	end := p.consume(SanyTokenEndModule, "expected ==== at end of module")
+	end := p.consume(SanyTokenEndModule, p.parseErrorMessage("==== or more Module body", p.peek()))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_EndModule"], end)
 }
 
@@ -201,7 +201,7 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 		case p.startsOperatorOrFunctionDefinition():
 			heirs = append(heirs, p.OperatorOrFunctionDefinition())
 		default:
-			heirs = append(heirs, NewSanyTokenNode(p.advance()))
+			return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
@@ -470,7 +470,7 @@ func (p *SanyParser) ProofCommandItem(command *SanyToken, terminal bool) *SanySy
 		module := NewSanyTokenNode(p.previous())
 		return NewSanyNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], module, p.Identifier())
 	}
-	if p.startsProofStepAt(0) {
+	if p.startsProofStepAt(0) && !p.startsNoOpExtension() {
 		return NewSanyTokenNode(p.advance())
 	}
 	if p.startsBareProofCommandOperatorReference(command, terminal) {
@@ -2068,11 +2068,11 @@ func (p *SanyParser) ReducedExpression() *SanySyntaxNode {
 }
 
 func (p *SanyParser) startsNoOpExtension() bool {
-	if !p.check(SanyTokenIdentifier) {
+	if !p.startsNoOpExtensionBaseAt(0) {
 		return false
 	}
 	offset := 1
-	if p.tokenAt(offset).Kind == SanyTokenLbr {
+	if p.check(SanyTokenIdentifier) && p.tokenAt(offset).Kind == SanyTokenLbr {
 		end := p.findMatchingBracketOffset(offset)
 		if end < 0 {
 			return false
@@ -2080,6 +2080,15 @@ func (p *SanyParser) startsNoOpExtension() bool {
 		offset = end + 1
 	}
 	return p.tokenAt(offset).Kind == SanyTokenBang
+}
+
+func (p *SanyParser) startsNoOpExtensionBaseAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *SanyParser) splitLeadingFairnessIdentifier() bool {
@@ -2198,7 +2207,7 @@ func (p *SanyParser) OpArgs() *SanySyntaxNode {
 
 func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 	var prefix []*SanySyntaxNode
-	selector := p.Identifier()
+	selector := p.NoOpExtensionBase()
 	args := p.OptionalSelectorOpArgs(selector)
 	for p.match(SanyTokenBang) {
 		bang := NewSanyTokenNode(p.previous())
@@ -2219,6 +2228,17 @@ func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 		return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, args)
 	}
 	return genID
+}
+
+func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
+	switch p.peek().Kind {
+	case SanyTokenIdentifier:
+		return p.Identifier()
+	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return NewSanyTokenNode(p.advance())
+	default:
+		return p.Identifier()
+	}
 }
 
 func (p *SanyParser) OptionalSelectorOpArgs(selector *SanySyntaxNode) *SanySyntaxNode {
@@ -2388,6 +2408,20 @@ func (p *SanyParser) consumeOperator(msg string) *SanySyntaxNode {
 	}
 	p.add(p.peek().Begin, "E1300", msg)
 	return nil
+}
+
+func (p *SanyParser) parseErrorMessage(expected string, tok *SanyToken) string {
+	image := "<EOF>"
+	pos := Position{}
+	if tok != nil {
+		pos = tok.Begin
+		if tok.Image != "" {
+			image = tok.Image
+		} else if javaImage := tok.Kind.JavaImage(); javaImage != "" {
+			image = strings.Trim(javaImage, "\"")
+		}
+	}
+	return "Was expecting \"" + expected + "\"\nEncountered \"" + image + "\" at line " + strconv.Itoa(pos.Line) + ", column " + strconv.Itoa(pos.Column) + "."
 }
 
 func (p *SanyParser) findMatchingBracketOffset(start int) int {
