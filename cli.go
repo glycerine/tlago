@@ -304,22 +304,10 @@ func normalizeDiagnosticCode(code string) string {
 }
 
 func (opts diagnosticCLIOptions) apply(diags Diagnostics) Diagnostics {
-	if len(diags) == 0 {
-		return diags
-	}
-	out := make(Diagnostics, 0, len(diags))
-	for _, diag := range diags {
-		code := strings.ToUpper(diag.Code)
-		if opts.suppressed[code] {
-			continue
-		}
-		if diag.Severity == SeverityWarning && opts.elevated[code] {
-			diag.Severity = SeverityError
-			diag.Message = "Warning treated as error: " + diag.Message
-		}
-		out = append(out, diag)
-	}
-	return out
+	return DiagnosticOptions{
+		SuppressedCodes: opts.suppressed,
+		ElevatedCodes:   opts.elevated,
+	}.Apply(diags)
 }
 
 func writeDiagnostics(w io.Writer, diags Diagnostics) {

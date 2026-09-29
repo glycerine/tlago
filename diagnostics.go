@@ -67,6 +67,44 @@ func (ds Diagnostics) HasErrors() bool {
 	return false
 }
 
+func (ds Diagnostics) IsSuccess() bool {
+	return !ds.HasErrors()
+}
+
+func (ds Diagnostics) Warnings() Diagnostics {
+	return ds.withSeverity(SeverityWarning)
+}
+
+func (ds Diagnostics) Errors() Diagnostics {
+	return ds.withSeverity(SeverityError)
+}
+
+func (ds Diagnostics) Deduplicated() Diagnostics {
+	if len(ds) == 0 {
+		return ds
+	}
+	seen := map[string]bool{}
+	out := make(Diagnostics, 0, len(ds))
+	for _, d := range ds {
+		key := fmt.Sprintf("%s\x00%s\x00%s\x00%s", d.Code, d.Severity, d.Pos.String(), d.Message)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, d)
+	}
+	return out
+}
+
+func (ds Diagnostics) ContainsMessage(text string) bool {
+	for _, d := range ds {
+		if strings.Contains(d.Message, text) || strings.Contains(d.String(), text) {
+			return true
+		}
+	}
+	return false
+}
+
 func (ds Diagnostics) Error() string {
 	if len(ds) == 0 {
 		return ""
@@ -79,6 +117,56 @@ func (ds Diagnostics) Error() string {
 		b.WriteString(d.String())
 	}
 	return b.String()
+}
+
+func (ds Diagnostics) withSeverity(severity Severity) Diagnostics {
+	out := make(Diagnostics, 0, len(ds))
+	for _, d := range ds {
+		if d.Severity == severity {
+			out = append(out, d)
+		}
+	}
+	return out
+}
+
+type DiagnosticOptions struct {
+	SuppressedCodes map[string]bool
+	ElevatedCodes   map[string]bool
+}
+
+func (opts DiagnosticOptions) Apply(diags Diagnostics) Diagnostics {
+	if len(diags) == 0 {
+		return diags
+	}
+	out := make(Diagnostics, 0, len(diags))
+	for _, diag := range diags {
+		code := normalizeDiagnosticCode(diag.Code)
+		if diagnosticCodeSetContains(opts.SuppressedCodes, code) {
+			continue
+		}
+		if diag.Severity == SeverityWarning && diagnosticCodeSetContains(opts.ElevatedCodes, code) {
+			diag.Severity = SeverityError
+			diag.Message = "Warning treated as error: " + diag.Message
+		}
+		out = append(out, diag)
+	}
+	return out
+}
+
+func diagnosticCodeSetContains(set map[string]bool, code string) bool {
+	if len(set) == 0 {
+		return false
+	}
+	normalized := normalizeDiagnosticCode(code)
+	if set[normalized] {
+		return true
+	}
+	for configured, enabled := range set {
+		if enabled && normalizeDiagnosticCode(configured) == normalized {
+			return true
+		}
+	}
+	return false
 }
 
 func errorAt(pos Position, code, format string, args ...any) Diagnostic {
