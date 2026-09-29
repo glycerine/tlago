@@ -600,6 +600,15 @@ func (v *IntervalValue) ToSetEnum() *SetEnumValue {
 	return NewSetEnumValue(values, true)
 }
 
+func (v *IntervalValue) AsValues() []Value {
+	sz, _ := v.Size()
+	values := make([]Value, sz)
+	for i := 0; i < sz; i++ {
+		values[i] = NewIntValue(v.Low + int32(i))
+	}
+	return values
+}
+
 func (v *IntervalValue) Elements() ValueEnumeration {
 	sz, _ := v.Size()
 	values := make([]Value, sz)

@@ -1,0 +1,1156 @@
+package tlc
+
+import (
+	"strings"
+	"sync"
+	"unicode"
+)
+
+const (
+	recordArrow                    = " |-> "
+	fcnRcdLinearSearchThreshold    = 32
+	typedModelValueSeparatorRune   = '_'
+	typedModelValueUntypedCodeUnit = rune(0)
+)
+
+type ModelValue struct {
+	BaseValue
+	Val   *UniqueString
+	Index int
+	Type  rune
+	Data  any
+}
+
+var modelValues = struct {
+	sync.Mutex
+	count int
+	table map[string]*ModelValue
+	mvs   []*ModelValue
+}{
+	table: make(map[string]*ModelValue),
+}
+
+func ModelValueInit() {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	modelValues.count = 0
+	modelValues.table = make(map[string]*ModelValue)
+	modelValues.mvs = nil
+}
+
+func MakeModelValue(name string) *ModelValue {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	if mv := modelValues.table[name]; mv != nil {
+		return mv
+	}
+	mv := newModelValueLocked(name)
+	modelValues.table[name] = mv
+	return mv
+}
+
+func AddModelValue(name string) *ModelValue {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	if mv := modelValues.table[name]; mv != nil {
+		return mv
+	}
+	mv := newModelValueLocked(name)
+	modelValues.table[name] = mv
+	setModelValuesLocked()
+	return mv
+}
+
+func SetModelValues() {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	setModelValuesLocked()
+}
+
+func ModelValues() []*ModelValue {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	out := make([]*ModelValue, len(modelValues.mvs))
+	copy(out, modelValues.mvs)
+	return out
+}
+
+func newModelValueLocked(name string) *ModelValue {
+	typ := typedModelValueUntypedCodeUnit
+	runes := []rune(name)
+	if len(runes) > 2 && runes[1] == typedModelValueSeparatorRune {
+		typ = runes[0]
+	}
+	mv := &ModelValue{
+		Val:   UniqueStringOf(name),
+		Index: modelValues.count,
+		Type:  typ,
+	}
+	modelValues.count++
+	return mv
+}
+
+func setModelValuesLocked() {
+	modelValues.mvs = make([]*ModelValue, len(modelValues.table))
+	for _, mv := range modelValues.table {
+		modelValues.mvs[mv.Index] = mv
+	}
+}
+
+func (v *ModelValue) Kind() ValueKind    { return ModelValueKind }
+func (v *ModelValue) KindString() string { return v.KindStringFor(v.Kind()) }
+
+func (v *ModelValue) Compare(other Value) (int, error) {
+	if v.Type == typedModelValueUntypedCodeUnit {
+		if o, ok := other.(*ModelValue); ok {
+			return v.Val.Compare(o.Val), nil
+		}
+		return -1, nil
+	}
+	if o, ok := other.(*ModelValue); ok {
+		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
+			return v.Val.Compare(o.Val), nil
+		}
+		return 0, v.unsupported("attempted to compare the differently-typed model values %s and %s", v, o)
+	}
+	return 0, v.unsupported("attempted to compare the typed model value %s and non-model value\n%s", v, other)
+}
+
+func (v *ModelValue) Equal(other Value) (bool, error) {
+	if v.Type == typedModelValueUntypedCodeUnit {
+		o, ok := other.(*ModelValue)
+		return ok && v.Val.Equal(o.Val), nil
+	}
+	if o, ok := other.(*ModelValue); ok {
+		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
+			return o.Val == v.Val || o.Val.Equal(v.Val), nil
+		}
+		return false, v.unsupported("attempted to check equality of the differently-typed model values %s and %s", v, o)
+	}
+	return false, v.unsupported("attempted to check equality of typed model value %s and non-model value\n%s", v, other)
+}
+
+func (v *ModelValue) modelValueCompareTo(other Value) (int, error) {
+	if v.Type != typedModelValueUntypedCodeUnit {
+		return 0, v.unsupported("attempted to compare the typed model value %s and the non-model value\n%s", v, other)
+	}
+	return 1, nil
+}
+
+func (v *ModelValue) modelValueEquals(other Value) (bool, error) {
+	if v.Type != typedModelValueUntypedCodeUnit {
+		return false, v.unsupported("attempted to check equality of the typed model value %s and the non-model value\n%s", v, other)
+	}
+	return false, nil
+}
+
+func (v *ModelValue) modelValueMember(other Value) (bool, error) {
+	if v.Type != typedModelValueUntypedCodeUnit {
+		return false, v.unsupported("attempted to check if the typed model value %s is an element of\n%s", v, other)
+	}
+	return false, nil
+}
+
+func (v *ModelValue) Member(elem Value) (bool, error) {
+	return false, v.unsupported("attempted to check if the value:\n%s\nis an element of the model value %s", elem, v)
+}
+
+func (v *ModelValue) IsFinite() (bool, error) {
+	return false, v.unsupported("attempted to check if the model value %s is a finite set", v)
+}
+
+func (v *ModelValue) Size() (int, error) {
+	return 0, v.unsupported("attempted to compute the number of elements in the model value %s", v)
+}
+
+func (v *ModelValue) Normalize() Value                    { return v }
+func (v *ModelValue) DeepNormalize()                      {}
+func (v *ModelValue) IsNormalized() bool                  { return true }
+func (v *ModelValue) IsDefined() bool                     { return true }
+func (v *ModelValue) DeepCopy() Value                     { return v }
+func (v *ModelValue) Permute(ModelValuePermutation) Value { return v }
+
+func (v *ModelValue) FingerPrint(fp uint64) uint64 {
+	return v.Val.FingerPrint(FP64ExtendInt(fp, int32(ModelValueKind)))
+}
+
+func (v *ModelValue) TakeExcept(ex ValueExcept) (Value, error) {
+	if ex.Index < len(ex.Path) {
+		return nil, v.unsupported("attempted to apply EXCEPT construct to the model value %s", v)
+	}
+	return ex.Value, nil
+}
+
+func (v *ModelValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+	if len(exs) != 0 {
+		return nil, v.unsupported("attempted to apply EXCEPT construct to the model value %s", v)
+	}
+	return v, nil
+}
+
+func (v *ModelValue) HasData() bool { return v.Data != nil }
+func (v *ModelValue) GetData() any  { return v.Data }
+
+func (v *ModelValue) SetData(obj any) any {
+	v.Data = obj
+	return obj
+}
+
+func (v *ModelValue) String() string { return v.Val.String() }
+
+type RecordValue struct {
+	BaseValue
+	Names  []*UniqueString
+	Values []Value
+	IsNorm bool
+}
+
+var EmptyRecord = &RecordValue{Names: []*UniqueString{}, Values: []Value{}, IsNorm: true}
+
+func NewRecordValue(names []*UniqueString, values []Value, isNorm bool) *RecordValue {
+	outNames := make([]*UniqueString, len(names))
+	outValues := make([]Value, len(values))
+	copy(outNames, names)
+	copy(outValues, values)
+	return &RecordValue{Names: outNames, Values: outValues, IsNorm: isNorm}
+}
+
+func NewRecordValueFromMap(values map[*UniqueString]Value) *RecordValue {
+	names := make([]*UniqueString, 0, len(values))
+	vals := make([]Value, 0, len(values))
+	for name, value := range values {
+		names = append(names, name)
+		vals = append(vals, value)
+	}
+	return &RecordValue{Names: names, Values: vals}
+}
+
+func (v *RecordValue) Kind() ValueKind    { return RecordValueKind }
+func (v *RecordValue) KindString() string { return v.KindStringFor(v.Kind()) }
+
+func (v *RecordValue) Compare(other Value) (int, error) {
+	rcd := asRecordValue(other)
+	if rcd == nil {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueCompareTo(v)
+		}
+		return 0, v.unsupported("attempted to compare record:\n%s\nwith non-record\n%s", v, other)
+	}
+	if err := v.normalizeRecord(); err != nil {
+		return 0, err
+	}
+	if err := rcd.normalizeRecord(); err != nil {
+		return 0, err
+	}
+	if len(v.Names) != len(rcd.Names) {
+		return len(v.Names) - len(rcd.Names), nil
+	}
+	for i := range v.Names {
+		if cmp := v.Names[i].Compare(rcd.Names[i]); cmp != 0 {
+			return cmp, nil
+		}
+	}
+	for i := range v.Values {
+		cmp, err := v.Values[i].Compare(rcd.Values[i])
+		if err != nil || cmp != 0 {
+			return cmp, err
+		}
+	}
+	return 0, nil
+}
+
+func (v *RecordValue) Equal(other Value) (bool, error) {
+	rcd := asRecordValue(other)
+	if rcd == nil {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueEquals(v)
+		}
+		return false, v.unsupported("attempted to check equality of record:\n%s\nwith non-record\n%s", v, other)
+	}
+	if err := v.normalizeRecord(); err != nil {
+		return false, err
+	}
+	if err := rcd.normalizeRecord(); err != nil {
+		return false, err
+	}
+	if len(v.Names) != len(rcd.Names) {
+		return false, nil
+	}
+	for i := range v.Names {
+		if !v.Names[i].Equal(rcd.Names[i]) {
+			return false, nil
+		}
+	}
+	for i := range v.Values {
+		eq, err := v.Values[i].Equal(rcd.Values[i])
+		if err != nil || !eq {
+			return eq, err
+		}
+	}
+	return true, nil
+}
+
+func (v *RecordValue) Member(elem Value) (bool, error) {
+	return false, v.unsupported("attempted to check if element:\n%s\nis in the record:\n%s", elem, v)
+}
+
+func (v *RecordValue) IsFinite() (bool, error) { return true, nil }
+
+func (v *RecordValue) TakeExcept(ex ValueExcept) (Value, error) {
+	if ex.Index < len(ex.Path) {
+		newValues := make([]Value, len(v.Values))
+		arcVal := ex.Path[ex.Index]
+		if arc, ok := arcVal.(*StringValue); ok {
+			for i := range v.Names {
+				if v.Names[i].Equal(arc.Val) {
+					next := ex
+					next.Index++
+					taken, err := v.Values[i].TakeExcept(next)
+					if err != nil {
+						return nil, err
+					}
+					newValues[i] = taken
+				} else {
+					newValues[i] = v.Values[i]
+				}
+			}
+			newNames := v.Names
+			if !v.IsNorm {
+				newNames = make([]*UniqueString, len(v.Names))
+				copy(newNames, v.Names)
+			}
+			return &RecordValue{Names: newNames, Values: newValues, IsNorm: v.IsNorm}, nil
+		}
+		PrintWarning(ECTLCWrongRecordFieldName, arcVal.String())
+	}
+	return ex.Value, nil
+}
+
+func (v *RecordValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+	var cur Value = v
+	for _, ex := range exs {
+		next, err := cur.TakeExcept(ex)
+		if err != nil {
+			return nil, err
+		}
+		cur = next
+	}
+	return cur, nil
+}
+
+func (v *RecordValue) ToFcnRcd() *FcnRcdValue {
+	_ = v.normalizeRecord()
+	domain := make([]Value, len(v.Names))
+	for i, name := range v.Names {
+		domain[i] = NewStringValueFromUnique(name)
+	}
+	return &FcnRcdValue{Domain: domain, Values: v.Values, IsNorm: v.IsNorm}
+}
+
+func (v *RecordValue) ToTuple() *TupleValue {
+	if len(v.Names) == 0 {
+		return EmptyTuple
+	}
+	return nil
+}
+
+func (v *RecordValue) Size() (int, error) { return len(v.Names), nil }
+
+func (v *RecordValue) Apply(arg Value) (Value, error) {
+	out := v.Select(arg)
+	if out == nil {
+		if sv, ok := arg.(*StringValue); ok {
+			return nil, v.unsupported("attempted to access nonexistent field '%s' of record\n%s", sv.Val, v)
+		}
+		return nil, v.unsupported("attempted to access record by a non-string argument: %s", arg)
+	}
+	return out, nil
+}
+
+func (v *RecordValue) Select(arg Value) Value {
+	sv, ok := arg.(*StringValue)
+	if !ok {
+		return nil
+	}
+	for i, name := range v.Names {
+		if sv.Val.Equal(name) {
+			return v.Values[i]
+		}
+	}
+	return nil
+}
+
+func (v *RecordValue) DomainValue() Value {
+	values := make([]Value, len(v.Names))
+	for i, name := range v.Names {
+		values[i] = NewStringValueFromUnique(name)
+	}
+	return NewSetEnumValue(values, v.IsNormalized())
+}
+
+func (v *RecordValue) Normalize() Value {
+	_ = v.normalizeRecord()
+	return v
+}
+
+func (v *RecordValue) normalizeRecord() error {
+	if v.IsNorm {
+		return nil
+	}
+	for i := 1; i < len(v.Names); i++ {
+		cmp := v.Names[0].Compare(v.Names[i])
+		if cmp == 0 {
+			return v.unsupported("field name %s occurs multiple times in record", v.Names[i])
+		}
+		if cmp > 0 {
+			v.Names[0], v.Names[i] = v.Names[i], v.Names[0]
+			v.Values[0], v.Values[i] = v.Values[i], v.Values[0]
+		}
+	}
+	for i := 2; i < len(v.Names); i++ {
+		j := i
+		st := v.Names[i]
+		val := v.Values[i]
+		cmp := -1
+		for j > 0 {
+			cmp = st.Compare(v.Names[j-1])
+			if cmp >= 0 {
+				break
+			}
+			v.Names[j] = v.Names[j-1]
+			v.Values[j] = v.Values[j-1]
+			j--
+		}
+		if cmp == 0 {
+			return v.unsupported("field name %s occurs multiple times in record", v.Names[i])
+		}
+		v.Names[j] = st
+		v.Values[j] = val
+	}
+	v.IsNorm = true
+	return nil
+}
+
+func (v *RecordValue) DeepNormalize() {
+	for _, value := range v.Values {
+		value.DeepNormalize()
+	}
+	_ = v.normalizeRecord()
+}
+
+func (v *RecordValue) IsDefined() bool {
+	for _, value := range v.Values {
+		if !value.IsDefined() {
+			return false
+		}
+	}
+	return true
+}
+
+func (v *RecordValue) IsNormalized() bool { return v.IsNorm }
+
+func (v *RecordValue) DeepCopy() Value {
+	values := make([]Value, len(v.Values))
+	for i, value := range v.Values {
+		values[i] = value.DeepCopy()
+	}
+	names := make([]*UniqueString, len(v.Names))
+	copy(names, v.Names)
+	return &RecordValue{Names: names, Values: values, IsNorm: v.IsNorm}
+}
+
+func (v *RecordValue) FingerPrint(fp uint64) uint64 {
+	_ = v.normalizeRecord()
+	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
+	fp = FP64ExtendInt(fp, int32(len(v.Names)))
+	for i, name := range v.Names {
+		fp = FP64ExtendInt(fp, int32(StringValueKind))
+		fp = FP64ExtendInt(fp, int32(name.Length()))
+		fp = FP64ExtendString(fp, name.String())
+		fp = v.Values[i].FingerPrint(fp)
+	}
+	return fp
+}
+
+func (v *RecordValue) Permute(perm ModelValuePermutation) Value {
+	_ = v.normalizeRecord()
+	values := make([]Value, len(v.Values))
+	changed := false
+	for i, value := range v.Values {
+		values[i] = value.Permute(perm)
+		changed = changed || values[i] != value
+	}
+	if changed {
+		return &RecordValue{Names: v.Names, Values: values, IsNorm: true}
+	}
+	return v
+}
+
+func (v *RecordValue) String() string {
+	var b strings.Builder
+	b.WriteString("[")
+	for i := range v.Names {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		b.WriteString(v.Names[i].String())
+		b.WriteString(recordArrow)
+		b.WriteString(v.Values[i].String())
+	}
+	b.WriteString("]")
+	return b.String()
+}
+
+type FcnRcdValue struct {
+	BaseValue
+	Domain []Value
+	Intv   *IntervalValue
+	Values []Value
+	IsNorm bool
+}
+
+var EmptyFcn = &FcnRcdValue{Domain: []Value{}, Values: []Value{}, IsNorm: true}
+
+func NewFcnRcdValue(domain []Value, values []Value, isNorm bool) *FcnRcdValue {
+	outDomain := make([]Value, len(domain))
+	outValues := make([]Value, len(values))
+	copy(outDomain, domain)
+	copy(outValues, values)
+	return &FcnRcdValue{Domain: outDomain, Values: outValues, IsNorm: isNorm}
+}
+
+func NewFcnRcdIntervalValue(intv *IntervalValue, values []Value) *FcnRcdValue {
+	outValues := make([]Value, len(values))
+	copy(outValues, values)
+	return &FcnRcdValue{Intv: intv, Values: outValues, IsNorm: true}
+}
+
+func (v *FcnRcdValue) Kind() ValueKind    { return FcnRcdValueKind }
+func (v *FcnRcdValue) KindString() string { return v.KindStringFor(v.Kind()) }
+
+func (v *FcnRcdValue) Compare(other Value) (int, error) {
+	fcn := asFcnRcdValue(other)
+	if fcn == nil {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueCompareTo(v)
+		}
+		return 0, v.unsupported("attempted to compare the function %s with the value:\n%s", v, other)
+	}
+	if err := v.normalizeFcn(); err != nil {
+		return 0, err
+	}
+	if err := fcn.normalizeFcn(); err != nil {
+		return 0, err
+	}
+	if len(v.Values) != len(fcn.Values) {
+		return len(v.Values) - len(fcn.Values), nil
+	}
+	if v.Intv != nil {
+		return v.compareToInterval(fcn)
+	}
+	return v.compareOtherInterval(fcn)
+}
+
+func (v *FcnRcdValue) compareOtherInterval(fcn *FcnRcdValue) (int, error) {
+	if fcn.Intv != nil {
+		for i, dElem := range v.Domain {
+			iv, ok := dElem.(*IntValue)
+			if !ok {
+				return 0, v.unsupported("attempted to compare integer with non-integer\n%s", dElem)
+			}
+			intervalElement := int64(fcn.Intv.Low) + int64(i)
+			domainElement := int64(iv.Val)
+			if domainElement < intervalElement {
+				return -1, nil
+			}
+			if domainElement > intervalElement {
+				return 1, nil
+			}
+		}
+		for i := range v.Domain {
+			cmp, err := v.Values[i].Compare(fcn.Values[i])
+			if err != nil || cmp != 0 {
+				return cmp, err
+			}
+		}
+		return 0, nil
+	}
+	for i := range v.Domain {
+		cmp, err := v.Domain[i].Compare(fcn.Domain[i])
+		if err != nil || cmp != 0 {
+			return cmp, err
+		}
+	}
+	for i := range v.Domain {
+		cmp, err := v.Values[i].Compare(fcn.Values[i])
+		if err != nil || cmp != 0 {
+			return cmp, err
+		}
+	}
+	return 0, nil
+}
+
+func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
+	if len(v.Values) == 0 {
+		return 0, nil
+	}
+	if fcn.Intv != nil {
+		if v.Intv.Low < fcn.Intv.Low {
+			return -1, nil
+		}
+		if v.Intv.Low > fcn.Intv.Low {
+			return 1, nil
+		}
+		for i := range v.Values {
+			cmp, err := v.Values[i].Compare(fcn.Values[i])
+			if err != nil || cmp != 0 {
+				return cmp, err
+			}
+		}
+		return 0, nil
+	}
+	for i, dElem := range fcn.Domain {
+		iv, ok := dElem.(*IntValue)
+		if !ok {
+			return 0, v.unsupported("attempted to compare integer with non-integer:\n%s", dElem)
+		}
+		intervalElement := int64(v.Intv.Low) + int64(i)
+		domainElement := int64(iv.Val)
+		if intervalElement < domainElement {
+			return -1, nil
+		}
+		if intervalElement > domainElement {
+			return 1, nil
+		}
+	}
+	for i := range fcn.Domain {
+		cmp, err := v.Values[i].Compare(fcn.Values[i])
+		if err != nil || cmp != 0 {
+			return cmp, err
+		}
+	}
+	return 0, nil
+}
+
+func (v *FcnRcdValue) Equal(other Value) (bool, error) {
+	fcn := asFcnRcdValue(other)
+	if fcn == nil {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueEquals(v)
+		}
+		return false, v.unsupported("attempted to check equality of the function %s with the value:\n%s", v, other)
+	}
+	if err := v.normalizeFcn(); err != nil {
+		return false, err
+	}
+	if err := fcn.normalizeFcn(); err != nil {
+		return false, err
+	}
+	if v.Intv != nil {
+		if fcn.Intv != nil {
+			eq, err := v.Intv.Equal(fcn.Intv)
+			if err != nil || !eq {
+				return eq, err
+			}
+			for i := range v.Values {
+				eq, err := v.Values[i].Equal(fcn.Values[i])
+				if err != nil || !eq {
+					return eq, err
+				}
+			}
+			return true, nil
+		}
+		if len(fcn.Domain) != mustIntervalSize(v.Intv) {
+			return false, nil
+		}
+		for i, dElem := range fcn.Domain {
+			iv, ok := dElem.(*IntValue)
+			if !ok {
+				return false, v.unsupported("attempted to compare an integer with non-integer:\n%s", dElem)
+			}
+			if int64(iv.Val) != int64(v.Intv.Low)+int64(i) {
+				return false, nil
+			}
+		}
+		for i := range fcn.Values {
+			eq, err := v.Values[i].Equal(fcn.Values[i])
+			if err != nil || !eq {
+				return eq, err
+			}
+		}
+		return true, nil
+	}
+	if len(v.Values) != len(fcn.Values) {
+		return false, nil
+	}
+	if fcn.Intv != nil {
+		for i, dElem := range v.Domain {
+			iv, ok := dElem.(*IntValue)
+			if !ok {
+				return false, v.unsupported("attempted to compare an integer with non-integer:\n%s", dElem)
+			}
+			if int64(iv.Val) != int64(fcn.Intv.Low)+int64(i) {
+				return false, nil
+			}
+		}
+		for i := range v.Values {
+			eq, err := v.Values[i].Equal(fcn.Values[i])
+			if err != nil || !eq {
+				return eq, err
+			}
+		}
+		return true, nil
+	}
+	for i := range v.Domain {
+		eq, err := v.Domain[i].Equal(fcn.Domain[i])
+		if err != nil || !eq {
+			return eq, err
+		}
+	}
+	for i := range v.Values {
+		eq, err := v.Values[i].Equal(fcn.Values[i])
+		if err != nil || !eq {
+			return eq, err
+		}
+	}
+	return true, nil
+}
+
+func (v *FcnRcdValue) Member(elem Value) (bool, error) {
+	return false, v.unsupported("attempted to check if the value:\n%s\nis an element of the function %s", elem, v)
+}
+
+func (v *FcnRcdValue) IsFinite() (bool, error) { return true, nil }
+
+func (v *FcnRcdValue) Apply(arg Value) (Value, error) {
+	result, err := v.Select(arg)
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, v.unsupported("attempted to apply function:\n%s\nto argument %s, which is not in the domain of the function", v, arg)
+	}
+	return result, nil
+}
+
+func (v *FcnRcdValue) Select(arg Value) (Value, error) {
+	if v.Intv != nil {
+		iv, ok := arg.(*IntValue)
+		if !ok {
+			return nil, v.unsupported("attempted to apply function with integer domain to the non-integer argument %s", arg)
+		}
+		if iv.Val >= v.Intv.Low && iv.Val <= v.Intv.High {
+			offset := int64(iv.Val) - int64(v.Intv.Low)
+			if offset < int64(len(v.Values)) {
+				return v.Values[int(offset)], nil
+			}
+		}
+		return nil, nil
+	}
+	if v.IsNorm && len(v.Domain) >= fcnRcdLinearSearchThreshold {
+		low, high := 0, len(v.Domain)
+		for low < high {
+			mid := (low + high) >> 1
+			cmp, err := v.Domain[mid].Compare(arg)
+			if err != nil {
+				return nil, err
+			}
+			if cmp < 0 {
+				low = mid + 1
+			} else {
+				high = mid
+			}
+		}
+		if low >= 0 && low < len(v.Domain) {
+			eq, err := v.Domain[low].Equal(arg)
+			if err != nil || !eq {
+				return nil, err
+			}
+			return v.Values[low], nil
+		}
+		return nil, nil
+	}
+	for i, value := range v.Domain {
+		eq, err := value.Equal(arg)
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			return v.Values[i], nil
+		}
+	}
+	return nil, nil
+}
+
+func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (Value, error) {
+	if ex.Index >= len(ex.Path) {
+		return ex.Value, nil
+	}
+	newValues := make([]Value, len(v.Values))
+	copy(newValues, v.Values)
+	arg := ex.Path[ex.Index]
+	if v.Intv != nil {
+		if iv, ok := arg.(*IntValue); ok {
+			if iv.Val >= v.Intv.Low && iv.Val <= v.Intv.High {
+				offset := int64(iv.Val) - int64(v.Intv.Low)
+				if offset >= int64(len(newValues)) {
+					return v, nil
+				}
+				vidx := int(offset)
+				next := ex
+				next.Index++
+				taken, err := v.Values[vidx].TakeExcept(next)
+				if err != nil {
+					return nil, err
+				}
+				newValues[vidx] = taken
+			}
+			return &FcnRcdValue{Intv: v.Intv, Values: newValues, IsNorm: true}, nil
+		}
+		return v, nil
+	}
+	for i := range v.Values {
+		eq, err := arg.Equal(v.Domain[i])
+		if err != nil {
+			return nil, err
+		}
+		if eq {
+			next := ex
+			next.Index++
+			taken, err := newValues[i].TakeExcept(next)
+			if err != nil {
+				return nil, err
+			}
+			newValues[i] = taken
+			newDomain := v.Domain
+			if !v.IsNorm {
+				newDomain = make([]Value, len(v.Domain))
+				copy(newDomain, v.Domain)
+			}
+			return &FcnRcdValue{Domain: newDomain, Values: newValues, IsNorm: v.IsNorm}, nil
+		}
+	}
+	return v, nil
+}
+
+func (v *FcnRcdValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+	var cur Value = v
+	for _, ex := range exs {
+		next, err := cur.TakeExcept(ex)
+		if err != nil {
+			return nil, err
+		}
+		cur = next
+	}
+	return cur, nil
+}
+
+func (v *FcnRcdValue) DomainValue() Value {
+	if v.Intv != nil {
+		return v.Intv
+	}
+	_ = v.normalizeFcn()
+	return NewSetEnumValue(v.Domain, true)
+}
+
+func (v *FcnRcdValue) DomainAsValues() []Value {
+	if v.Intv != nil {
+		return v.Intv.AsValues()
+	}
+	return v.Domain
+}
+
+func (v *FcnRcdValue) Size() (int, error) {
+	if err := v.normalizeFcn(); err != nil {
+		return 0, err
+	}
+	return len(v.Values), nil
+}
+
+func (v *FcnRcdValue) NonNormalizedSize() int { return len(v.Values) }
+
+func (v *FcnRcdValue) ToTuple() *TupleValue {
+	if v.Intv != nil {
+		if v.Intv.Low != 1 && mustIntervalSize(v.Intv) != 0 {
+			return nil
+		}
+		return NewTupleValue(v.Values)
+	}
+	elems := make([]Value, len(v.Values))
+	for i := range v.Values {
+		iv, ok := v.Domain[i].(*IntValue)
+		if !ok {
+			return nil
+		}
+		idx := int(iv.Val)
+		if idx <= 0 || idx > len(v.Values) || elems[idx-1] != nil {
+			return nil
+		}
+		elems[idx-1] = v.Values[i]
+	}
+	return NewTupleValue(elems)
+}
+
+func (v *FcnRcdValue) ToRecord() *RecordValue {
+	if v.Domain == nil {
+		return nil
+	}
+	_ = v.normalizeFcn()
+	names := make([]*UniqueString, len(v.Domain))
+	for i, d := range v.Domain {
+		s, ok := d.(*StringValue)
+		if !ok {
+			return nil
+		}
+		names[i] = s.Val
+	}
+	return &RecordValue{Names: names, Values: v.Values, IsNorm: v.IsNorm}
+}
+
+func (v *FcnRcdValue) Normalize() Value {
+	_ = v.normalizeFcn()
+	return v
+}
+
+func (v *FcnRcdValue) normalizeFcn() error {
+	if v.IsNorm {
+		return nil
+	}
+	for i := 1; i < len(v.Domain); i++ {
+		cmp, err := v.Domain[0].Compare(v.Domain[i])
+		if err != nil {
+			return err
+		}
+		if cmp == 0 {
+			return v.unsupported("the value\n%s\noccurs multiple times in the function domain", v.Domain[i])
+		}
+		if cmp > 0 {
+			v.Domain[0], v.Domain[i] = v.Domain[i], v.Domain[0]
+			v.Values[0], v.Values[i] = v.Values[i], v.Values[0]
+		}
+	}
+	for i := 2; i < len(v.Domain); i++ {
+		d := v.Domain[i]
+		val := v.Values[i]
+		j := i
+		cmp := -1
+		for j > 0 {
+			nextCmp, err := d.Compare(v.Domain[j-1])
+			if err != nil {
+				return err
+			}
+			cmp = nextCmp
+			if cmp >= 0 {
+				break
+			}
+			v.Domain[j] = v.Domain[j-1]
+			v.Values[j] = v.Values[j-1]
+			j--
+		}
+		if cmp == 0 {
+			return v.unsupported("the value\n%s\noccurs multiple times in the function domain", v.Domain[i])
+		}
+		v.Domain[j] = d
+		v.Values[j] = val
+	}
+	v.IsNorm = true
+	return nil
+}
+
+func (v *FcnRcdValue) DeepNormalize() {
+	for _, value := range v.Values {
+		value.DeepNormalize()
+	}
+	_ = v.normalizeFcn()
+}
+
+func (v *FcnRcdValue) IsDefined() bool {
+	if v.Intv == nil {
+		for _, value := range v.Domain {
+			if !value.IsDefined() {
+				return false
+			}
+		}
+	}
+	for _, value := range v.Values {
+		if !value.IsDefined() {
+			return false
+		}
+	}
+	return true
+}
+
+func (v *FcnRcdValue) IsNormalized() bool { return v.IsNorm }
+
+func (v *FcnRcdValue) DeepCopy() Value {
+	values := make([]Value, len(v.Values))
+	for i, value := range v.Values {
+		values[i] = value.DeepCopy()
+	}
+	if v.Intv == nil {
+		domain := make([]Value, len(v.Domain))
+		copy(domain, v.Domain)
+		return &FcnRcdValue{Domain: domain, Values: values}
+	}
+	return &FcnRcdValue{Intv: v.Intv, Values: values, IsNorm: v.IsNorm}
+}
+
+func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
+	_ = v.normalizeFcn()
+	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
+	fp = FP64ExtendInt(fp, int32(len(v.Values)))
+	if v.Intv == nil {
+		for i := range v.Values {
+			fp = v.Domain[i].FingerPrint(fp)
+			fp = v.Values[i].FingerPrint(fp)
+		}
+		return fp
+	}
+	for i := range v.Values {
+		fp = FP64ExtendInt(fp, int32(IntValueKind))
+		fp = FP64ExtendInt(fp, v.Intv.Low+int32(i))
+		fp = v.Values[i].FingerPrint(fp)
+	}
+	return fp
+}
+
+func (v *FcnRcdValue) Permute(perm ModelValuePermutation) Value {
+	_ = v.normalizeFcn()
+	values := make([]Value, len(v.Values))
+	vchanged := false
+	for i, value := range v.Values {
+		values[i] = value.Permute(perm)
+		vchanged = vchanged || values[i] != value
+	}
+	if v.Intv == nil {
+		domain := make([]Value, len(v.Domain))
+		dchanged := false
+		for i, value := range v.Domain {
+			domain[i] = value.Permute(perm)
+			dchanged = dchanged || domain[i] != value
+		}
+		if dchanged {
+			return &FcnRcdValue{Domain: domain, Values: values}
+		}
+		if vchanged {
+			return &FcnRcdValue{Domain: v.Domain, Values: values, IsNorm: true}
+		}
+		return v
+	}
+	if vchanged {
+		return &FcnRcdValue{Intv: v.Intv, Values: values, IsNorm: true}
+	}
+	return v
+}
+
+func (v *FcnRcdValue) String() string {
+	if len(v.Values) == 0 {
+		return "<<>>"
+	}
+	if v.isRecordLike() {
+		var b strings.Builder
+		b.WriteString("[")
+		for i := range v.Values {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(v.Domain[i].(*StringValue).Val.String())
+			b.WriteString(recordArrow)
+			b.WriteString(v.Values[i].String())
+		}
+		b.WriteString("]")
+		return b.String()
+	}
+	if v.isTupleLike() {
+		parts := make([]string, len(v.Values))
+		for i, value := range v.Values {
+			parts[i] = value.String()
+		}
+		return "<<" + strings.Join(parts, ", ") + ">>"
+	}
+	domain := v.DomainAsValues()
+	var b strings.Builder
+	b.WriteString("(")
+	for i := range v.Values {
+		if i > 0 {
+			b.WriteString(" @@ ")
+		}
+		b.WriteString(domain[i].String())
+		b.WriteString(" :> ")
+		b.WriteString(v.Values[i].String())
+	}
+	b.WriteString(")")
+	return b.String()
+}
+
+func (v *FcnRcdValue) isRecordLike() bool {
+	if v.Intv != nil {
+		return false
+	}
+	for _, dval := range v.Domain {
+		sv, ok := dval.(*StringValue)
+		if !ok || !isTLAName(sv.Val.String()) {
+			return false
+		}
+	}
+	return true
+}
+
+func (v *FcnRcdValue) isTupleLike() bool {
+	if v.Intv != nil {
+		return v.Intv.Low == 1 || mustIntervalSize(v.Intv) == 0
+	}
+	for _, dval := range v.Domain {
+		if _, ok := dval.(*IntValue); !ok {
+			return false
+		}
+	}
+	_ = v.normalizeFcn()
+	for i, dval := range v.Domain {
+		if dval.(*IntValue).Val != int32(i+1) {
+			return false
+		}
+	}
+	return true
+}
+
+func isTLAName(name string) bool {
+	hasLetter := false
+	for _, ch := range name {
+		if ch == '_' {
+			continue
+		}
+		if !unicode.IsLetter(ch) && !unicode.IsDigit(ch) {
+			return false
+		}
+		hasLetter = hasLetter || unicode.IsLetter(ch)
+	}
+	return hasLetter && (len(name) < 4 || (!strings.HasPrefix(name, "WF_") && !strings.HasPrefix(name, "SF_")))
+}
+
+func asRecordValue(value Value) *RecordValue {
+	switch v := value.(type) {
+	case *RecordValue:
+		return v
+	case *FcnRcdValue:
+		return v.ToRecord()
+	default:
+		return nil
+	}
+}
+
+func asFcnRcdValue(value Value) *FcnRcdValue {
+	switch v := value.(type) {
+	case *FcnRcdValue:
+		return v
+	case *RecordValue:
+		return v.ToFcnRcd()
+	default:
+		return nil
+	}
+}
+
+func mustIntervalSize(intv *IntervalValue) int {
+	size, _ := intv.Size()
+	return size
+}

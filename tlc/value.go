@@ -133,6 +133,9 @@ func (v *BoolValue) KindString() string { return v.KindStringFor(v.Kind()) }
 func (v *BoolValue) Compare(other Value) (int, error) {
 	o, ok := other.(*BoolValue)
 	if !ok {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueCompareTo(v)
+		}
 		return 0, v.unsupported("attempted to compare boolean %s with non-boolean %s", v, other)
 	}
 	x, y := 0, 0
@@ -148,6 +151,9 @@ func (v *BoolValue) Compare(other Value) (int, error) {
 func (v *BoolValue) Equal(other Value) (bool, error) {
 	o, ok := other.(*BoolValue)
 	if !ok {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueEquals(v)
+		}
 		return false, v.unsupported("attempted to compare equality of boolean %s with non-boolean %s", v, other)
 	}
 	return v.Val == o.Val, nil
@@ -247,6 +253,9 @@ func (v *IntValue) NBits() int         { return IntValueNBits(v.Val) }
 func (v *IntValue) Compare(other Value) (int, error) {
 	o, ok := other.(*IntValue)
 	if !ok {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueCompareTo(v)
+		}
 		return 0, v.unsupported("attempted to compare integer %s with non-integer %s", v, other)
 	}
 	if v.Val < o.Val {
@@ -261,6 +270,9 @@ func (v *IntValue) Compare(other Value) (int, error) {
 func (v *IntValue) Equal(other Value) (bool, error) {
 	o, ok := other.(*IntValue)
 	if !ok {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueEquals(v)
+		}
 		return false, v.unsupported("attempted to check equality of integer %s with non-integer %s", v, other)
 	}
 	return v.Val == o.Val, nil
@@ -334,6 +346,9 @@ func (v *StringValue) Length() int        { return v.Val.Length() }
 func (v *StringValue) Compare(other Value) (int, error) {
 	o, ok := other.(*StringValue)
 	if !ok {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueCompareTo(v)
+		}
 		return 0, v.unsupported("attempted to compare string %s with non-string %s", v, other)
 	}
 	return v.Val.Compare(o.Val), nil
@@ -342,6 +357,9 @@ func (v *StringValue) Compare(other Value) (int, error) {
 func (v *StringValue) Equal(other Value) (bool, error) {
 	o, ok := other.(*StringValue)
 	if !ok {
+		if mv, ok := other.(*ModelValue); ok {
+			return mv.modelValueEquals(v)
+		}
 		return false, v.unsupported("attempted to check equality of string %s with non-string %s", v, other)
 	}
 	return v.Val.Equal(o.Val), nil
