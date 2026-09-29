@@ -375,7 +375,7 @@ func canonicalSanyXMLUIDMap(root *canonicalXMLNode) map[string]string {
 		if uid == "" || out[uid] != "" {
 			continue
 		}
-		key := canonicalSanyXMLEntryKey(entry)
+		key := canonicalSanyXMLUIDKey(entry)
 		byKey[key] = append(byKey[key], uidEntry{uid: uid, key: key})
 	}
 	keys := make([]string, 0, len(byKey))
@@ -450,6 +450,30 @@ func canonicalSanyXMLEntryKey(entry *canonicalXMLNode) string {
 	return canonicalXMLSortKeyIgnoringUIDs(entry)
 }
 
+func canonicalSanyXMLUIDKey(entry *canonicalXMLNode) string {
+	child := canonicalSanyXMLEntryPayload(entry)
+	if child == nil {
+		return canonicalXMLSortKeyIgnoringUIDs(entry)
+	}
+	return strings.Join([]string{
+		child.Name,
+		firstChildText(child, "uniquename"),
+		firstDescendantText(child, "filename"),
+		firstChildText(child, "arity"),
+		firstChildText(child, "kind"),
+		canonicalSanyXMLLocationKey(child),
+	}, ":")
+}
+
+func canonicalSanyXMLLocationKey(node *canonicalXMLNode) string {
+	for _, child := range node.Children {
+		if child.Name == "location" {
+			return canonicalXMLSortKeyIgnoringUIDs(child)
+		}
+	}
+	return ""
+}
+
 func canonicalSanyXMLEntryPayload(entry *canonicalXMLNode) *canonicalXMLNode {
 	for _, child := range entry.Children {
 		if child.Name != "UID" {
@@ -494,6 +518,9 @@ func sortCanonicalSanyXML(node *canonicalXMLNode) {
 	if node.Name == "modules" {
 		sortModuleNodeRefs(node)
 	}
+	if node.Name == "ModuleNode" {
+		sortDirectRefChildren(node)
+	}
 }
 
 func sortModuleNodeRefs(node *canonicalXMLNode) {
@@ -506,6 +533,29 @@ func sortModuleNodeRefs(node *canonicalXMLNode) {
 		return canonicalXMLSortKey(refs[i]) < canonicalXMLSortKey(refs[j])
 	})
 	node.Children = append(prefix, refs...)
+}
+
+func sortDirectRefChildren(node *canonicalXMLNode) {
+	type refChild struct {
+		index int
+		node  *canonicalXMLNode
+	}
+	var refs []refChild
+	for i, child := range node.Children {
+		if strings.HasSuffix(child.Name, "Ref") {
+			refs = append(refs, refChild{index: i, node: child})
+		}
+	}
+	if len(refs) <= 1 {
+		return
+	}
+	sorted := append([]refChild(nil), refs...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return canonicalXMLSortKey(sorted[i].node) < canonicalXMLSortKey(sorted[j].node)
+	})
+	for i, ref := range refs {
+		node.Children[ref.index] = sorted[i].node
+	}
 }
 
 func writeCanonicalXMLNode(b *bytes.Buffer, node *canonicalXMLNode) {

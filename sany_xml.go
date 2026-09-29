@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"math/big"
 	"path/filepath"
 	"sort"
@@ -93,6 +94,13 @@ type sanyXMLBuiltinInfo struct {
 	leibniz []bool
 }
 
+type prettyXMLNode struct {
+	Name     string
+	Attrs    []xml.Attr
+	Text     string
+	Children []*prettyXMLNode
+}
+
 func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 	x := &sanyXMLExporter{
 		spec:          spec,
@@ -154,7 +162,11 @@ func (x *sanyXMLExporter) xml() ([]byte, Diagnostics) {
 		}
 	}
 	b.WriteString("</modules>")
-	return b.Bytes(), nil
+	pretty, err := prettySanyXML(b.Bytes())
+	if err != nil {
+		return nil, Diagnostics{errorAt(Position{}, "E7000", "cannot pretty-print SANY XML: %v", err)}
+	}
+	return pretty, nil
 }
 
 func (x *sanyXMLExporter) sortedModules() []*Module {
@@ -184,6 +196,160 @@ func (x *sanyXMLExporter) sortedModules() []*Module {
 		return mods[i].Name < mods[j].Name
 	})
 	return mods
+}
+
+func prettySanyXML(raw []byte) ([]byte, error) {
+	const cdataPrefix = "__TLAGO_CDATA_"
+	text := string(raw)
+	declaration := ""
+	if strings.HasPrefix(text, "<?xml ") {
+		end := strings.Index(text, "?>")
+		if end < 0 {
+			return nil, fmt.Errorf("unterminated XML declaration")
+		}
+		declaration = text[:end+2]
+		text = text[end+2:]
+	}
+	body, cdataSections := replaceCDATAWithPlaceholders(text, cdataPrefix)
+	root, err := parsePrettyXMLTree(body)
+	if err != nil {
+		return nil, err
+	}
+	var b bytes.Buffer
+	if declaration != "" {
+		b.WriteString(declaration)
+		b.WriteByte('\n')
+	}
+	writePrettyXMLNode(&b, root, 0, cdataSections)
+	return b.Bytes(), nil
+}
+
+func replaceCDATAWithPlaceholders(text, prefix string) (string, map[string]string) {
+	cdata := map[string]string{}
+	var b strings.Builder
+	for {
+		start := strings.Index(text, "<![CDATA[")
+		if start < 0 {
+			b.WriteString(text)
+			return b.String(), cdata
+		}
+		end := strings.Index(text[start:], "]]>")
+		if end < 0 {
+			b.WriteString(text)
+			return b.String(), cdata
+		}
+		end += start + len("]]>")
+		placeholder := fmt.Sprintf("%s%d__", prefix, len(cdata))
+		b.WriteString(text[:start])
+		b.WriteString(placeholder)
+		cdata[placeholder] = text[start:end]
+		text = text[end:]
+	}
+}
+
+func parsePrettyXMLTree(text string) (*prettyXMLNode, error) {
+	decoder := xml.NewDecoder(strings.NewReader(text))
+	var stack []*prettyXMLNode
+	var root *prettyXMLNode
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, err
+		}
+		switch tok := token.(type) {
+		case xml.StartElement:
+			node := &prettyXMLNode{Name: tok.Name.Local, Attrs: append([]xml.Attr(nil), tok.Attr...)}
+			if len(stack) == 0 {
+				if root != nil {
+					return nil, fmt.Errorf("multiple XML root elements")
+				}
+				root = node
+			} else {
+				parent := stack[len(stack)-1]
+				parent.Children = append(parent.Children, node)
+			}
+			stack = append(stack, node)
+		case xml.EndElement:
+			if len(stack) == 0 || stack[len(stack)-1].Name != tok.Name.Local {
+				return nil, fmt.Errorf("unexpected XML end element %s", tok.Name.Local)
+			}
+			stack = stack[:len(stack)-1]
+		case xml.CharData:
+			if len(stack) == 0 {
+				if strings.TrimSpace(string(tok)) != "" {
+					return nil, fmt.Errorf("text outside XML root")
+				}
+				continue
+			}
+			stack[len(stack)-1].Text += string(tok)
+		}
+	}
+	if len(stack) != 0 {
+		return nil, fmt.Errorf("unclosed XML element %s", stack[len(stack)-1].Name)
+	}
+	if root == nil {
+		return nil, fmt.Errorf("empty XML document")
+	}
+	return root, nil
+}
+
+func writePrettyXMLNode(b *bytes.Buffer, node *prettyXMLNode, depth int, cdata map[string]string) {
+	indent := strings.Repeat("  ", depth)
+	b.WriteString(indent)
+	writePrettyXMLStart(b, node, len(node.Children) == 0 && node.Text == "")
+	if len(node.Children) == 0 {
+		if node.Text != "" {
+			writePrettyXMLText(b, node.Text, cdata)
+			writePrettyXMLEnd(b, node)
+		}
+		b.WriteByte('\n')
+		return
+	}
+	b.WriteByte('\n')
+	for _, child := range node.Children {
+		writePrettyXMLNode(b, child, depth+1, cdata)
+	}
+	b.WriteString(indent)
+	writePrettyXMLEnd(b, node)
+	b.WriteByte('\n')
+}
+
+func writePrettyXMLStart(b *bytes.Buffer, node *prettyXMLNode, empty bool) {
+	b.WriteByte('<')
+	b.WriteString(node.Name)
+	for _, attr := range node.Attrs {
+		b.WriteByte(' ')
+		if attr.Name.Space != "" {
+			b.WriteString(attr.Name.Space)
+			b.WriteByte(':')
+		}
+		b.WriteString(attr.Name.Local)
+		b.WriteString(`="`)
+		xmlText(b, attr.Value)
+		b.WriteByte('"')
+	}
+	if empty {
+		b.WriteString("/>")
+		return
+	}
+	b.WriteByte('>')
+}
+
+func writePrettyXMLEnd(b *bytes.Buffer, node *prettyXMLNode) {
+	b.WriteString("</")
+	b.WriteString(node.Name)
+	b.WriteByte('>')
+}
+
+func writePrettyXMLText(b *bytes.Buffer, text string, cdata map[string]string) {
+	if raw, ok := cdata[text]; ok {
+		b.WriteString(raw)
+		return
+	}
+	xmlText(b, text)
 }
 
 func (x *sanyXMLExporter) allocateModule(mod *Module) {
@@ -451,6 +617,12 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 			continue
 		}
 		add(x.defs[x.defKey(mod.Name, def.Name)])
+	}
+	for i, assume := range mod.Assumptions {
+		add(x.assumes[fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assume.Name)])
+	}
+	for i, theorem := range mod.Theorems {
+		add(x.theorems[fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)])
 	}
 	visiting[mod.Name] = false
 }
@@ -984,16 +1156,18 @@ func (x *sanyXMLExporter) terminalProofLevel(proof *SanySyntaxNode, ctx sanyXMLE
 		case SanyTokenDF:
 			inDefs = true
 		case SanyTokenIdentifier:
+			if inDefs {
+				continue
+			}
 			if sym := x.proofReferenceSymbol(child.Image, ctx); sym != nil {
 				level = maxTlaLevel(level, sym.Level)
 			}
 		default:
-			if isSanyProofStepStartKind(child.Token.Kind) {
+			if !inDefs && isSanyProofStepStartKind(child.Token.Kind) {
 				if sym := ctx.proofDefs[sanyXMLProofStepNameImage(child.Image)]; sym != nil {
 					level = maxTlaLevel(level, sym.Level)
 				}
 			}
-			_ = inDefs
 		}
 	}
 	return level
@@ -1088,8 +1262,16 @@ func (x *sanyXMLExporter) useOrHideXML(node *SanySyntaxNode, ctx sanyXMLExprCont
 
 func (x *sanyXMLExporter) useOrHideLevel(node *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
 	level := constantLevel
+	inDefs := false
 	for _, child := range node.GetHeirs() {
 		if child == nil || child.Token == nil {
+			continue
+		}
+		if child.Token.Kind == SanyTokenDF {
+			inDefs = true
+			continue
+		}
+		if inDefs {
 			continue
 		}
 		if child.Token.Kind == SanyTokenIdentifier {
@@ -1122,7 +1304,11 @@ func (x *sanyXMLExporter) assumeProveXML(body *AssumeProve, ctx sanyXMLExprConte
 			sym := x.newDecls[x.newSymbolDeclKey(*item.NewSymbol)]
 			x.emitDeclEntry(sym)
 			b.WriteString("<NewSymbNode>")
-			x.writeNode(&b, item.NewSymbol.Source, item.NewSymbol.Level)
+			level := item.NewSymbol.Level
+			if item.NewSymbol.Domain != nil {
+				level = maxTlaLevel(level, x.exprLevel(item.NewSymbol.Domain, apCtx))
+			}
+			x.writeNode(&b, item.NewSymbol.Source, level)
 			x.writeRef(&b, sym)
 			if item.NewSymbol.Domain != nil {
 				domain, domainDiags := x.exprXML(item.NewSymbol.Domain, apCtx)
@@ -1257,7 +1443,7 @@ func (x *sanyXMLExporter) builtin(name string) *sanyXMLSymbol {
 	x.builtins[info.name] = sym
 	for i := 0; i < info.arity; i++ {
 		param := &sanyXMLSymbol{
-			UID:   uid*100 + i + 1,
+			UID:   1_000_000_000 + uid*100 + i + 1,
 			Key:   fmt.Sprintf("builtin:%s:param:%d", info.name, i),
 			Kind:  "FormalParamNode",
 			Name:  fmt.Sprintf("Formal_%d", i),
@@ -1693,12 +1879,33 @@ func (x *sanyXMLExporter) quantifierXML(e *QuantifierExpr, ctx sanyXMLExprContex
 	if e.Kind == "\\AA" || e.Kind == "TEMPORAL_FORALL" {
 		oper = "$TemporalForall"
 	}
-	pos := e.VarPos
-	if pos.Line == 0 && pos.Column == 0 && pos.File == "" {
-		pos = e.Pos
+
+	body := e.Body
+	bounds := []BoundVar{{Name: e.Var, Set: e.Set, Pos: quantifierVarPosition(e)}}
+	for {
+		next, ok := body.(*QuantifierExpr)
+		if !ok || next.Kind != e.Kind || !samePosition(next.Pos, e.Pos) {
+			break
+		}
+		bounds = append(bounds, BoundVar{Name: next.Var, Set: next.Set, Pos: quantifierVarPosition(next)})
+		body = next.Body
 	}
-	bounds := []BoundVar{{Name: e.Var, Set: e.Set, Pos: pos}}
-	return x.boundOpXML(oper, e.Pos, bounds, e.Body, ctx)
+	return x.boundOpXML(oper, e.Pos, bounds, body, ctx)
+}
+
+func quantifierVarPosition(e *QuantifierExpr) Position {
+	if e.VarPos.Line > 0 || e.VarPos.Column > 0 || e.VarPos.File != "" {
+		return e.VarPos
+	}
+	return e.Pos
+}
+
+func samePosition(left, right Position) bool {
+	return left.File == right.File &&
+		left.Line == right.Line &&
+		left.Column == right.Column &&
+		left.EndLine == right.EndLine &&
+		left.EndColumn == right.EndColumn
 }
 
 func (x *sanyXMLExporter) chooseXML(e *ChooseExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
@@ -1720,22 +1927,44 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 	var boundSymbols bytes.Buffer
 	boundSymbols.WriteString("<boundSymbols>")
 	var diags Diagnostics
-	for _, bound := range bounds {
-		formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-		x.emitFormalEntry(formal)
-		boundCtx.formals[bound.Name] = formal
-		if bound.Set == nil {
+	for i := 0; i < len(bounds); {
+		set := bounds[i].Set
+		if set == nil {
+			bound := bounds[i]
+			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
+			if !exprReferencesName(body, bound.Name, nil) {
+				formal.Level = -1
+			}
+			x.emitFormalEntry(formal)
+			boundCtx.formals[bound.Name] = formal
 			boundSymbols.WriteString("<unbound>")
 			x.writeRef(&boundSymbols, formal)
 			boundSymbols.WriteString("</unbound>")
+			i++
 			continue
 		}
-		setXML, setDiags := x.exprXML(bound.Set, ctx)
+		setXML := ""
+		var setDiags Diagnostics
+		setXML, setDiags = x.exprXML(set, ctx)
 		diags = append(diags, setDiags...)
+		var refs bytes.Buffer
+		j := i
+		for j < len(bounds) && bounds[j].Set == set {
+			bound := bounds[j]
+			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
+			if !exprReferencesName(body, bound.Name, nil) {
+				formal.Level = -1
+			}
+			x.emitFormalEntry(formal)
+			boundCtx.formals[bound.Name] = formal
+			x.writeRef(&refs, formal)
+			j++
+		}
 		boundSymbols.WriteString("<bound>")
-		x.writeRef(&boundSymbols, formal)
+		boundSymbols.WriteString(refs.String())
 		boundSymbols.WriteString(setXML)
 		boundSymbols.WriteString("</bound>")
+		i = j
 	}
 	boundSymbols.WriteString("</boundSymbols>")
 	bodyXML, bodyDiags := x.exprXML(body, boundCtx)
@@ -1835,28 +2064,24 @@ func (x *sanyXMLExporter) exceptXML(e *ExceptExpr, ctx sanyXMLExprContext) (stri
 			for _, index := range component.Indices {
 				indexXML, indexDiags := x.exprXML(index, ctx)
 				diags = append(diags, indexDiags...)
-				args = append(args, indexXML)
 				componentArgs = append(componentArgs, indexXML)
 				componentLevel = maxTlaLevel(componentLevel, x.exprLevel(index, ctx))
 			}
 			if component.Field != "" {
 				field := x.stringXML(component.Field, apalacheRecordFieldPosition(component.FieldPos, component.Pos))
-				args = append(args, field)
 				componentArgs = append(componentArgs, field)
 			}
 		}
-		valuePos := spec.Pos
-		if spec.Value != nil {
-			valuePos = spec.Value.Position()
-		}
+		components := x.opApplXML(spec.Pos, componentLevel, x.builtin("$Seq"), componentArgs, "")
 		valueCtx := ctx
 		valueCtx.exceptAtBase = base
-		valueCtx.exceptAtComponents = x.opApplXML(valuePos, componentLevel, x.builtin("$Seq"), componentArgs, "")
-		valueCtx.exceptAtPos = valuePos
+		valueCtx.exceptAtComponents = components
+		valueCtx.exceptAtPos = spec.Pos
 		valueCtx.exceptAtLevel = maxTlaLevel(baseLevel, componentLevel)
 		value, valueDiags := x.exprXML(spec.Value, valueCtx)
 		diags = append(diags, valueDiags...)
-		args = append(args, value)
+		valueLevel := x.exprLevel(spec.Value, valueCtx)
+		args = append(args, x.opApplXML(spec.Pos, maxTlaLevel(componentLevel, valueLevel), x.builtin("$Pair"), []string{components, value}, ""))
 	}
 	if diags.HasErrors() {
 		return "", diags

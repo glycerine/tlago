@@ -762,12 +762,14 @@ func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 			if child.Kind.JavaName() == "N_IdentDecl" {
 				if id := firstSanyIdentifier(child); id != nil {
 					def.Params = append(def.Params, id.Image)
-					def.ParamPositions[id.Image] = sanyNodePosition(id)
 					if arity := countDirectSanyChildren(child, "US"); arity > 0 {
 						if def.ParamArities == nil {
 							def.ParamArities = map[string]int{}
 						}
 						def.ParamArities[id.Image] = arity
+						def.ParamPositions[id.Image] = sanyNodePosition(child)
+					} else {
+						def.ParamPositions[id.Image] = sanyNodePosition(id)
 					}
 				}
 			}

@@ -68,7 +68,10 @@ func runSanyXML(files []string, stdout, stderr io.Writer) int {
 		if i > 0 {
 			fmt.Fprintln(stdout)
 		}
-		fmt.Fprintln(stdout, string(data))
+		_, _ = stdout.Write(data)
+		if len(data) == 0 || data[len(data)-1] != '\n' {
+			fmt.Fprintln(stdout)
+		}
 	}
 	return exit
 }

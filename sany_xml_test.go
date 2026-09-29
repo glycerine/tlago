@@ -19,14 +19,17 @@ A == TRUE
 		got := string(xmlText)
 		for _, want := range []string{
 			`<?xml version="1.0" encoding="UTF-8" standalone="no"?>`,
+			"\n<modules>\n  <RootModule>Simple</RootModule>\n  <context>\n    <entry>\n",
 			`<RootModule>Simple</RootModule>`,
 			`<BuiltInKind>`,
 			`<uniquename>TRUE</uniquename>`,
 			`<OpDeclNode>`,
-			`<uniquename>C</uniquename><arity>0</arity><kind>2</kind>`,
-			`<uniquename>x</uniquename><arity>0</arity><kind>3</kind>`,
+			`<uniquename>C</uniquename>`,
+			`<kind>2</kind>`,
+			`<uniquename>x</uniquename>`,
+			`<kind>3</kind>`,
 			`<UserDefinedOpKind>`,
-			`<uniquename>A</uniquename><arity>0</arity>`,
+			`<uniquename>A</uniquename>`,
 			`<ModuleNodeRef>`,
 		} {
 			if !strings.Contains(got, want) {
@@ -83,6 +86,41 @@ PROOF
 		}
 	})
 
+	t.Run("definition references do not raise proof command level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofDefLevelXML.tla", `---- MODULE ProofDefLevelXML ----
+VARIABLE x
+UsesVariable == x = x
+THEOREM T == TRUE
+PROOF
+<1>. TRUE
+  BY DEF UsesVariable
+<1>. QED
+  OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<by>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing BY proof\n%s", got)
+		}
+		end := strings.Index(got[start:], "</by>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated BY proof\n%s", got)
+		}
+		by := got[start : start+end]
+		for _, want := range []string{
+			`<level>0</level>`,
+			`<facts/>`,
+			`<defs>`,
+			`<UserDefinedOpKindRef>`,
+		} {
+			if !strings.Contains(by, want) {
+				t.Fatalf("BY proof XML missing %q\n%s", want, by)
+			}
+		}
+	})
+
 	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ----
 VARIABLE x
@@ -93,7 +131,7 @@ Next == x' = [x EXCEPT ![1] = @ + 1]
 		got := string(xmlText)
 		for _, want := range []string{
 			`<AtNode>`,
-			`<BuiltInKindRef><UID>105</UID></BuiltInKindRef>`,
+			`<UID>105</UID>`,
 			`<uniquename>$Seq</uniquename>`,
 			`<uniquename>$Except</uniquename>`,
 		} {
@@ -116,8 +154,8 @@ A == /\ TRUE
 		for _, want := range []string{
 			`<uniquename>$ConjList</uniquename>`,
 			`<uniquename>$DisjList</uniquename>`,
-			`<BuiltInKindRef><UID>83</UID></BuiltInKindRef>`,
-			`<BuiltInKindRef><UID>84</UID></BuiltInKindRef>`,
+			`<UID>83</UID>`,
+			`<UID>84</UID>`,
 		} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("junction SANY XML missing %q\n%s", want, got)
