@@ -205,47 +205,9 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 		deadLocked = deadLocked && size == 0
 		for i := 0; i < size; i++ {
 			succState = nextStates.At(i)
-			if !mc.Tool.IsGoodState(succState) {
-				return mc.doNextSetErr(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, actionName(action)), nil
-			}
-			succState.SetPredecessor(curState).SetAction(action)
-			inModel, err := mc.Tool.IsInModel(succState)
-			if err != nil {
-				mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
-				return true, err
-			}
-			if inModel {
-				inActions, err := mc.Tool.IsInActions(curState, succState)
-				if err != nil {
-					mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
-					return true, err
-				}
-				inModel = inActions
-			}
-			unseen := true
-			if inModel {
-				seen, err := mc.isSeenState(curState, succState, action)
-				if err != nil {
-					return true, err
-				}
-				unseen = !seen
-			} else if mc.AllStateWriter != nil && mc.AllStateWriter.IsConstrained() {
-				if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action); err != nil {
-					return true, err
-				}
-			}
-			if unseen {
-				stop, err := mc.doNextCheckInvariants(curState, succState)
-				if stop || err != nil {
-					return stop, err
-				}
-			}
-			stop, err := mc.doNextCheckImplied(curState, succState)
+			stop, _, err := mc.processSuccessor(curState, succState, action)
 			if stop || err != nil {
 				return stop, err
-			}
-			if inModel && unseen {
-				mc.StateQueue.SEnqueue(succState)
 			}
 		}
 		succState = nil
@@ -256,8 +218,61 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 	return false, nil
 }
 
+func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, bool, error) {
+	if !mc.Tool.IsGoodState(succState) {
+		return mc.doNextSetErr(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, actionName(action)), false, nil
+	}
+	succState.SetPredecessor(curState).SetAction(action)
+	inModel, err := mc.Tool.IsInModel(succState)
+	if err != nil {
+		mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
+		return true, false, err
+	}
+	if inModel {
+		inActions, err := mc.Tool.IsInActions(curState, succState)
+		if err != nil {
+			mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
+			return true, false, err
+		}
+		inModel = inActions
+	}
+	unseen := true
+	if inModel {
+		seen, err := mc.isSeenState(curState, succState, action)
+		if err != nil {
+			return true, false, err
+		}
+		unseen = !seen
+	} else if mc.AllStateWriter != nil && mc.AllStateWriter.IsConstrained() {
+		if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action); err != nil {
+			return true, false, err
+		}
+	}
+	if unseen {
+		stop, err := mc.doNextCheckInvariants(curState, succState)
+		if stop || err != nil {
+			return stop, false, err
+		}
+	}
+	stop, err := mc.doNextCheckImplied(curState, succState)
+	if stop || err != nil {
+		return stop, false, err
+	}
+	if inModel && unseen {
+		mc.StateQueue.SEnqueue(succState)
+		return false, true, nil
+	}
+	return false, false, nil
+}
+
 func (mc *ModelChecker) GetStatesGenerated() int64 {
-	return mc.NumberOfInitialStates + mc.NextStatesGenerated
+	total := mc.NumberOfInitialStates + mc.NextStatesGenerated
+	for _, worker := range mc.Workers {
+		if worker != nil {
+			total += worker.StatesGenerated
+		}
+	}
+	return total
 }
 
 func (mc *ModelChecker) GetInitialStatesGenerated() int64 {

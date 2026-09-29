@@ -1,10 +1,15 @@
 package tlc
 
 type Worker struct {
-	ID              int
-	LocalValues     []Value
-	NamedRegisters  *InsMap[*UniqueString, Value]
-	StatesGenerated int64
+	ID                    int
+	LocalValues           []Value
+	NamedRegisters        *InsMap[*UniqueString, Value]
+	StatesGenerated       int64
+	Checker               *ModelChecker
+	Tool                  *Tool
+	Halted                bool
+	MaxLevel              int
+	UnseenSuccessorStates int
 }
 
 func NewWorker(id int) *Worker {
@@ -12,6 +17,19 @@ func NewWorker(id int) *Worker {
 		ID:             id,
 		NamedRegisters: NewInsMap[*UniqueString, Value](),
 	}
+}
+
+func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
+	if tool == nil && checker != nil {
+		tool = checker.Tool
+	}
+	worker := NewWorker(id)
+	worker.Checker = checker
+	worker.Tool = tool
+	if checker != nil {
+		checker.Workers = append(checker.Workers, worker)
+	}
+	return worker
 }
 
 func (w *Worker) MyGetID() int {
@@ -25,6 +43,94 @@ func (w *Worker) Start() {}
 
 func (w *Worker) Join() error {
 	return nil
+}
+
+func (w *Worker) NextStateFunctor() *NextStateFunctor {
+	return &NextStateFunctor{
+		AddNextElementFunc:         w.AddNextElement,
+		IncrementStatesGeneratedFn: w.IncrementStatesGenerated,
+		HaltFunc:                   w.Halt,
+		AddUnsatisfiedNextStateFn:  w.AddUnsatisfiedNextState,
+	}
+}
+
+func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
+	if w == nil {
+		return true, newTLCError(ECGeneral, "worker is nil")
+	}
+	if w.Tool == nil {
+		return true, newTLCError(ECGeneral, "worker has no tool")
+	}
+	if w.Checker == nil {
+		return true, newTLCError(ECGeneral, "worker has no model checker")
+	}
+	preNext := w.StatesGenerated
+	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
+	if err != nil {
+		w.Checker.doNextFailed(curState, nil, err)
+		return true, err
+	}
+	if halt || w.Halted {
+		return true, nil
+	}
+	if w.Checker.CheckDeadlock && preNext == w.StatesGenerated {
+		return w.Checker.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, ""), nil
+	}
+	return false, nil
+}
+
+func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {
+	if w == nil {
+		return nil, newTLCError(ECGeneral, "worker is nil")
+	}
+	if w.Checker == nil {
+		return nil, newTLCError(ECGeneral, "worker has no model checker")
+	}
+	if w.Halted {
+		return w, nil
+	}
+	w.StatesGenerated++
+	stop, queued, err := w.Checker.processSuccessor(curState, succState, action)
+	if stop || err != nil {
+		w.Halted = true
+	}
+	if err != nil {
+		return nil, err
+	}
+	if stop {
+		return w, nil
+	}
+	if queued && succState != nil {
+		if succState.Level() > w.MaxLevel {
+			w.MaxLevel = succState.Level()
+		}
+		w.UnseenSuccessorStates++
+	}
+	return w, nil
+}
+
+func (w *Worker) AddUnsatisfiedNextState(curState *TLCStateMut, action *Action, succState *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
+	if w != nil && w.Checker != nil && w.Checker.AllStateWriter != nil && w.Checker.AllStateWriter.IsConstrained() {
+		_ = w.Checker.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, pred)
+	}
+	return succState
+}
+
+func (w *Worker) IncrementStatesGenerated(count int64) {
+	if w != nil {
+		w.StatesGenerated += count
+	}
+}
+
+func (w *Worker) Halt() bool {
+	return w != nil && w.Halted
+}
+
+func (w *Worker) GetStatesGenerated() int64 {
+	if w == nil {
+		return 0
+	}
+	return w.StatesGenerated
 }
 
 func (w *Worker) GetLocalValue(index int) Value {
