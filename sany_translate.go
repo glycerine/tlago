@@ -902,9 +902,10 @@ func sanyLeadingPreComments(node *SanySyntaxNode) []string {
 		return append([]string(nil), node.PreComments...)
 	}
 	for _, child := range node.GetHeirs() {
-		if comments := sanyLeadingPreComments(child); len(comments) > 0 {
-			return comments
+		if child == nil {
+			continue
 		}
+		return sanyLeadingPreComments(child)
 	}
 	return nil
 }

@@ -899,6 +899,14 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 	var stepXML []string
 	var diags Diagnostics
 	stepCtx := ctx
+	stepCtx.proofDefs = copySanyXMLSymbolMap(ctx.proofDefs)
+	for _, step := range steps {
+		if defSym := x.proofDefs[step]; defSym != nil {
+			if name := sanyXMLProofStepName(step); name != "" {
+				stepCtx.proofDefs[name] = defSym
+			}
+		}
+	}
 	for _, step := range steps {
 		body := sanyXMLProofStepBodyNode(step)
 		switch {
@@ -912,7 +920,7 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 			x.writeRef(&ref, sym)
 			stepXML = append(stepXML, ref.String())
 		case body != nil && body.Kind.JavaName() == "N_UseOrHide":
-			item, itemLevel, itemDiags := x.useOrHideXML(body, stepCtx)
+			item, itemLevel, itemDiags := x.useOrHideXML(body, stepCtx, sanyNodePosition(step))
 			diags = append(diags, itemDiags...)
 			level = maxTlaLevel(level, itemLevel)
 			stepXML = append(stepXML, item)
@@ -928,6 +936,11 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 	var b bytes.Buffer
 	b.WriteString("<steps>")
 	x.writeNode(&b, pos, level)
+	if proofLevel := sanyXMLProofLevel(proof); proofLevel > 0 {
+		b.WriteString("<proofLevel>")
+		xmlInt(&b, proofLevel)
+		b.WriteString("</proofLevel>")
+	}
 	for _, item := range stepXML {
 		b.WriteString(item)
 	}
@@ -954,6 +967,10 @@ func (x *sanyXMLExporter) emitProofStepTheoremEntry(sym *sanyXMLSymbol, step *Sa
 	proofCtx := ctx
 	if ap, ok := sanyXMLProofStepAssumeProveBody(bodyNode); ok {
 		proofCtx = x.withAssumeProveNewSymbols(proofCtx, ap)
+	}
+	if defSym := x.proofDefs[step]; defSym != nil {
+		proofCtx.proofDefs = copySanyXMLSymbolMap(proofCtx.proofDefs)
+		proofCtx.proofDefs[sanyXMLProofStepName(step)] = defSym
 	}
 	proofLevel := x.proofNodeLevel(proof, proofCtx)
 	level := maxTlaLevel(bodyLevel, proofLevel)
@@ -1018,7 +1035,7 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 		return xml, constantLevel, nil
 	case "N_AssertStep", "N_HaveStep":
 		if ap, ok := sanyXMLProofStepAssumeProveBody(bodyNode); ok {
-			xml, diags := x.assumeProveXML(ap, ctx)
+			xml, diags := x.assumeProveXMLWithSuffices(ap, ctx, sanyXMLProofStepSuffices(bodyNode))
 			return xml, x.assumeProveLevel(ap, ctx), diags
 		}
 		exprNode := lastSanyExpression(bodyNode)
@@ -1125,7 +1142,10 @@ func (x *sanyXMLExporter) terminalProofXML(proof *SanySyntaxNode, ctx sanyXMLExp
 
 func (x *sanyXMLExporter) byProofXML(proof *SanySyntaxNode, ctx sanyXMLExprContext) (string, Diagnostics) {
 	level := x.terminalProofLevel(proof, ctx)
-	facts, defs, only := x.proofCommandRefs(proof, ctx)
+	facts, defs, only, diags := x.proofCommandRefs(proof, ctx)
+	if diags.HasErrors() {
+		return "", diags
+	}
 	var b bytes.Buffer
 	b.WriteString("<by>")
 	x.writeNode(&b, sanyNodePosition(proof), level)
@@ -1146,17 +1166,42 @@ func (x *sanyXMLExporter) byProofXML(proof *SanySyntaxNode, ctx sanyXMLExprConte
 }
 
 func (x *sanyXMLExporter) terminalProofLevel(proof *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
+	return x.proofCommandLevel(proof, ctx)
+}
+
+func (x *sanyXMLExporter) proofCommandLevel(node *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
 	level := constantLevel
 	inDefs := false
-	for _, child := range proof.GetHeirs() {
-		if child == nil || child.Token == nil {
+	heirs := node.GetHeirs()
+	for i := 0; i < len(heirs); i++ {
+		child := heirs[i]
+		if child == nil {
+			continue
+		}
+		if child.Token == nil {
+			if inDefs {
+				continue
+			}
+			expr, diags := sanyExpr(child)
+			if !diags.HasErrors() {
+				level = maxTlaLevel(level, x.exprLevel(expr, ctx))
+			}
 			continue
 		}
 		switch child.Token.Kind {
 		case SanyTokenDF:
 			inDefs = true
+		case SanyTokenBy, SanyTokenUse, SanyTokenHide, SanyTokenComma, SanyTokenOnly:
+			continue
 		case SanyTokenIdentifier:
 			if inDefs {
+				continue
+			}
+			if call, next, ok, diags := sanyXMLProofCommandCallExpr(heirs, i); ok {
+				if !diags.HasErrors() {
+					level = maxTlaLevel(level, x.exprLevel(call, ctx))
+				}
+				i = next
 				continue
 			}
 			if sym := x.proofReferenceSymbol(child.Image, ctx); sym != nil {
@@ -1173,13 +1218,37 @@ func (x *sanyXMLExporter) terminalProofLevel(proof *SanySyntaxNode, ctx sanyXMLE
 	return level
 }
 
-func (x *sanyXMLExporter) proofCommandRefs(node *SanySyntaxNode, ctx sanyXMLExprContext) ([]string, []string, bool) {
+func (x *sanyXMLExporter) proofCommandRefs(node *SanySyntaxNode, ctx sanyXMLExprContext) ([]string, []string, bool, Diagnostics) {
 	var facts []string
 	var defs []string
 	inDefs := false
 	only := false
-	for _, child := range node.GetHeirs() {
-		if child == nil || child.Token == nil {
+	var diags Diagnostics
+	heirs := node.GetHeirs()
+	for i := 0; i < len(heirs); i++ {
+		child := heirs[i]
+		if child == nil {
+			continue
+		}
+		if child.Token == nil {
+			if inDefs {
+				if sym := x.proofDefinitionRefSymbol(child, ctx); sym != nil {
+					var b bytes.Buffer
+					x.writeRef(&b, sym)
+					defs = append(defs, b.String())
+				}
+				continue
+			}
+			expr, exprDiags := sanyExpr(child)
+			diags = append(diags, exprDiags...)
+			if exprDiags.HasErrors() {
+				continue
+			}
+			fact, factDiags := x.exprXML(expr, ctx)
+			diags = append(diags, factDiags...)
+			if !factDiags.HasErrors() {
+				facts = append(facts, fact)
+			}
 			continue
 		}
 		switch child.Token.Kind {
@@ -1191,28 +1260,42 @@ func (x *sanyXMLExporter) proofCommandRefs(node *SanySyntaxNode, ctx sanyXMLExpr
 			inDefs = true
 		default:
 			if isSanyProofStepStartKind(child.Token.Kind) {
-				if sym := ctx.proofDefs[sanyXMLProofStepNameImage(child.Image)]; sym != nil {
-					facts = append(facts, x.proofFactXML(sanyNodePosition(child), sym))
+				if !inDefs {
+					if sym := ctx.proofDefs[sanyXMLProofStepNameImage(child.Image)]; sym != nil {
+						facts = append(facts, x.proofFactXML(sanyNodePosition(child), sym))
+					}
 				}
 				continue
 			}
 			if child.Token.Kind != SanyTokenIdentifier {
 				continue
 			}
-			sym := x.proofReferenceSymbol(child.Image, ctx)
-			if sym == nil {
-				continue
-			}
 			if inDefs {
-				var b bytes.Buffer
-				x.writeRef(&b, sym)
-				defs = append(defs, b.String())
+				if sym := x.proofDefinitionSymbol(child.Image, ctx); sym != nil {
+					var b bytes.Buffer
+					x.writeRef(&b, sym)
+					defs = append(defs, b.String())
+				}
 			} else {
-				facts = append(facts, x.proofFactXML(sanyNodePosition(child), sym))
+				if call, next, ok, callDiags := sanyXMLProofCommandCallExpr(heirs, i); ok {
+					diags = append(diags, callDiags...)
+					if !callDiags.HasErrors() {
+						fact, factDiags := x.callXML(call, ctx)
+						diags = append(diags, factDiags...)
+						if !factDiags.HasErrors() {
+							facts = append(facts, fact)
+						}
+					}
+					i = next
+					continue
+				}
+				if sym := x.proofReferenceSymbol(child.Image, ctx); sym != nil {
+					facts = append(facts, x.proofFactXML(sanyNodePosition(child), sym))
+				}
 			}
 		}
 	}
-	return facts, defs, only
+	return facts, defs, only, diags
 }
 
 func (x *sanyXMLExporter) proofReferenceSymbol(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
@@ -1231,16 +1314,107 @@ func (x *sanyXMLExporter) proofReferenceSymbol(name string, ctx sanyXMLExprConte
 	return nil
 }
 
+func (x *sanyXMLExporter) proofDefinitionRefSymbol(node *SanySyntaxNode, ctx sanyXMLExprContext) *sanyXMLSymbol {
+	if expr, diags := sanyExpr(node); !diags.HasErrors() {
+		switch e := expr.(type) {
+		case *IdentExpr:
+			return x.proofDefinitionSymbol(e.Name, ctx)
+		case *CallExpr:
+			if ident, ok := e.Callee.(*IdentExpr); ok {
+				return x.proofDefinitionSymbol(ident.Name, ctx)
+			}
+		}
+	}
+	if id := firstSanyIdentifier(node); id != nil {
+		return x.proofDefinitionSymbol(id.Image, ctx)
+	}
+	return nil
+}
+
+func (x *sanyXMLExporter) proofDefinitionSymbol(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
+	if sym := ctx.proofDefs[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.defs[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.scope.defs[name]; sym != nil {
+		return sym
+	}
+	return nil
+}
+
+func sanyXMLProofCommandCallExpr(heirs []*SanySyntaxNode, start int) (*CallExpr, int, bool, Diagnostics) {
+	if start < 0 || start+1 >= len(heirs) {
+		return nil, start, false, nil
+	}
+	nameNode := heirs[start]
+	if nameNode == nil || nameNode.Token == nil || nameNode.Token.Kind != SanyTokenIdentifier {
+		return nil, start, false, nil
+	}
+	open := heirs[start+1]
+	if open == nil || open.Token == nil || open.Token.Kind != SanyTokenLbr {
+		return nil, start, false, nil
+	}
+	var args []Expr
+	var diags Diagnostics
+	end := start + 1
+	for i := start + 2; i < len(heirs); i++ {
+		child := heirs[i]
+		if child == nil {
+			continue
+		}
+		if child.Token != nil {
+			switch child.Token.Kind {
+			case SanyTokenRbr:
+				end = i
+				pos := sanyXMLSpanPosition(heirs[start : end+1])
+				return &CallExpr{
+					Callee: &IdentExpr{Name: nameNode.Image, Pos: sanyNodePosition(nameNode)},
+					Args:   args,
+					Pos:    pos,
+				}, end, true, diags
+			case SanyTokenComma:
+				continue
+			case SanyTokenNumberLiteral:
+				args = append(args, &LiteralExpr{Kind: "number", Value: child.Image, Pos: sanyNodePosition(child)})
+				continue
+			case SanyTokenStringLiteral:
+				args = append(args, &LiteralExpr{Kind: "string", Value: child.Image, Pos: sanyNodePosition(child)})
+				continue
+			case SanyTokenIdentifier:
+				args = append(args, &IdentExpr{Name: child.Image, Pos: sanyNodePosition(child)})
+				continue
+			default:
+				diags = append(diags, errorAt(sanyNodePosition(child), "E7011", "unsupported proof command call argument token %s", child.Token.Kind.JavaName()))
+				continue
+			}
+		}
+		expr, exprDiags := sanyExpr(child)
+		diags = append(diags, exprDiags...)
+		if !exprDiags.HasErrors() {
+			args = append(args, expr)
+		}
+	}
+	return nil, start, false, nil
+}
+
 func (x *sanyXMLExporter) proofFactXML(pos Position, sym *sanyXMLSymbol) string {
 	return x.opApplXML(pos, sym.Level, sym, nil, "")
 }
 
-func (x *sanyXMLExporter) useOrHideXML(node *SanySyntaxNode, ctx sanyXMLExprContext) (string, tlaLevel, Diagnostics) {
+func (x *sanyXMLExporter) useOrHideXML(node *SanySyntaxNode, ctx sanyXMLExprContext, pos Position) (string, tlaLevel, Diagnostics) {
 	level := x.useOrHideLevel(node, ctx)
-	facts, defs, only := x.proofCommandRefs(node, ctx)
+	facts, defs, only, diags := x.proofCommandRefs(node, ctx)
+	if diags.HasErrors() {
+		return "", constantLevel, diags
+	}
+	if pos.Line == 0 && pos.Column == 0 && pos.File == "" {
+		pos = sanyNodePosition(node)
+	}
 	var b bytes.Buffer
 	b.WriteString("<UseOrHideNode>")
-	x.writeNode(&b, sanyNodePosition(node), level)
+	x.writeNode(&b, pos, level)
 	b.WriteString("<facts>")
 	for _, fact := range facts {
 		b.WriteString(fact)
@@ -1261,29 +1435,14 @@ func (x *sanyXMLExporter) useOrHideXML(node *SanySyntaxNode, ctx sanyXMLExprCont
 }
 
 func (x *sanyXMLExporter) useOrHideLevel(node *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
-	level := constantLevel
-	inDefs := false
-	for _, child := range node.GetHeirs() {
-		if child == nil || child.Token == nil {
-			continue
-		}
-		if child.Token.Kind == SanyTokenDF {
-			inDefs = true
-			continue
-		}
-		if inDefs {
-			continue
-		}
-		if child.Token.Kind == SanyTokenIdentifier {
-			if sym := x.proofReferenceSymbol(child.Image, ctx); sym != nil {
-				level = maxTlaLevel(level, sym.Level)
-			}
-		}
-	}
-	return level
+	return x.proofCommandLevel(node, ctx)
 }
 
 func (x *sanyXMLExporter) assumeProveXML(body *AssumeProve, ctx sanyXMLExprContext) (string, Diagnostics) {
+	return x.assumeProveXMLWithSuffices(body, ctx, false)
+}
+
+func (x *sanyXMLExporter) assumeProveXMLWithSuffices(body *AssumeProve, ctx sanyXMLExprContext, suffices bool) (string, Diagnostics) {
 	if body == nil {
 		return "", Diagnostics{errorAt(Position{}, "E7003", "cannot export nil ASSUME/PROVE to SANY XML")}
 	}
@@ -1332,7 +1491,11 @@ func (x *sanyXMLExporter) assumeProveXML(body *AssumeProve, ctx sanyXMLExprConte
 		diags = append(diags, proveDiags...)
 		b.WriteString(prove)
 	}
-	b.WriteString("</prove></AssumeProveNode>")
+	b.WriteString("</prove>")
+	if suffices {
+		b.WriteString("<suffices></suffices>")
+	}
+	b.WriteString("</AssumeProveNode>")
 	if diags.HasErrors() {
 		return "", diags
 	}
@@ -1499,6 +1662,13 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 		operand, diags := x.exprXML(e.Expr, ctx)
 		if diags.HasErrors() {
 			return "", diags
+		}
+		if e.Op == "/\\" || e.Op == "\\/" {
+			oper := "$ConjList"
+			if e.Op == "\\/" {
+				oper = "$DisjList"
+			}
+			return x.opApplXML(e.Pos, x.exprLevel(e, ctx), x.builtin(oper), []string{operand}, ""), nil
 		}
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), x.operatorSymbol(e.Op, ctx), []string{operand}, ""), nil
 	case *BinaryExpr:
@@ -2502,6 +2672,20 @@ func sanyXMLDirectProofSteps(proof *SanySyntaxNode) []*SanySyntaxNode {
 		}
 	}
 	return out
+}
+
+func sanyXMLProofLevel(proof *SanySyntaxNode) int {
+	for _, step := range sanyXMLDirectProofSteps(proof) {
+		start := sanyXMLProofStepStartNode(step)
+		if start == nil || start.Token == nil {
+			continue
+		}
+		level, ok := sanyProofStepLevel(start.Token)
+		if ok && level > 0 {
+			return level
+		}
+	}
+	return 0
 }
 
 func sanyXMLNestedProofNode(step *SanySyntaxNode) *SanySyntaxNode {
