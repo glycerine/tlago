@@ -8,6 +8,11 @@ import (
 type ValueEnumeration interface {
 	Reset()
 	NextElement() Value
+	Err() error
+}
+
+type Enumerable interface {
+	Elements() ValueEnumeration
 }
 
 type ValueVec struct {
@@ -641,4 +646,8 @@ func (e *sliceValueEnumeration) NextElement() Value {
 	value := e.values[e.index]
 	e.index++
 	return value
+}
+
+func (e *sliceValueEnumeration) Err() error {
+	return nil
 }

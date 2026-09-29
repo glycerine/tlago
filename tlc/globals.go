@@ -16,6 +16,7 @@ var Globals = struct {
 	CoverageInterval           int
 	DFIDMax                    int
 	Continuation               bool
+	Expand                     bool
 	PrintDiffsOnly             bool
 	Warn                       bool
 	CheckpointDurationMillis   int64
@@ -29,6 +30,7 @@ var Globals = struct {
 	LNCheck:                    "default",
 	CoverageInterval:           -1,
 	DFIDMax:                    -1,
+	Expand:                     true,
 	Warn:                       true,
 	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
 }
