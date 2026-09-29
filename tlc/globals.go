@@ -1,0 +1,70 @@
+package tlc
+
+import "sync"
+
+const DefaultCheckpointDurationMillis = (30 * 60 * 1000) + 42
+
+var Globals = struct {
+	sync.Mutex
+	EnumBound                  int
+	SetBound                   int
+	NumWorkers                 int
+	LivenessThreshold          float64
+	LivenessGraphSizeThreshold float64
+	LivenessRatio              float64
+	LNCheck                    string
+	CoverageInterval           int
+	DFIDMax                    int
+	Continuation               bool
+	PrintDiffsOnly             bool
+	Warn                       bool
+	CheckpointDurationMillis   int64
+}{
+	EnumBound:                  2000,
+	SetBound:                   1000000,
+	NumWorkers:                 1,
+	LivenessThreshold:          0.1,
+	LivenessGraphSizeThreshold: 0.1,
+	LivenessRatio:              0.2,
+	LNCheck:                    "default",
+	CoverageInterval:           -1,
+	DFIDMax:                    -1,
+	Warn:                       true,
+	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
+}
+
+func SetNumWorkers(n int) {
+	Globals.Lock()
+	defer Globals.Unlock()
+	Globals.NumWorkers = n
+}
+
+func NumWorkers() int {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.NumWorkers
+}
+
+func IncNumWorkers(n int) {
+	Globals.Lock()
+	defer Globals.Unlock()
+	Globals.NumWorkers += n
+}
+
+func DoLiveness() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.LNCheck != "final" && Globals.LNCheck != "seqfinal" && Globals.LNCheck != "off"
+}
+
+func DoSequentialLiveness() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return len(Globals.LNCheck) >= 3 && Globals.LNCheck[:3] == "seq"
+}
+
+func CoverageEnabled() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.CoverageInterval >= 0
+}

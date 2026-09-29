@@ -199,6 +199,21 @@ func (s *TLCStateMut) CopyWith(prototype *TLCStateMut) *TLCStateMut {
 	return out
 }
 
+func (s *TLCStateMut) Equal(other *TLCStateMut) bool {
+	if s == nil || other == nil {
+		return s == other
+	}
+	if len(s.values) != len(other.values) {
+		return false
+	}
+	for i := range s.values {
+		if !stateValuesEqual(s.values[i], other.values[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *TLCStateMut) String() string {
 	return s.StringForVariables(nil)
 }
