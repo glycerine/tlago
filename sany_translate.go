@@ -421,6 +421,7 @@ func namedExprFromDefinition(def Definition, syntax *SanySyntaxNode) NamedExpr {
 		Expr:            def.Expr,
 		AssumeProve:     def.AssumeProve,
 		AssumeProveBody: def.AssumeProveBody,
+		PreComments:     append([]string(nil), def.PreComments...),
 		Pos:             pos,
 		Source:          pos,
 		Syntax:          syntax,
@@ -867,37 +868,37 @@ func sanyProofStepRefs(node *SanySyntaxNode) []string {
 }
 
 func sanyDeclaration(node *SanySyntaxNode, kind DeclarationKind) Declaration {
-	decl := Declaration{Kind: kind, Pos: sanyNodePosition(node), Arities: map[string]int{}, NamePositions: map[string]Position{}}
+	decl := Declaration{Kind: kind, Pos: sanyNodePosition(node), Arities: map[string]int{}, NamePositions: map[string]Position{}, NamePreComments: map[string][]string{}}
+	addName := func(name string, arity int, pos Position, comments []string) {
+		decl.Names = append(decl.Names, name)
+		decl.Arities[name] = arity
+		decl.NamePositions[name] = pos
+		if len(comments) > 0 {
+			decl.NamePreComments[name] = append([]string(nil), comments...)
+		}
+	}
 	for _, child := range node.GetHeirs() {
 		switch child.Kind.JavaName() {
 		case "IDENTIFIER":
-			decl.Names = append(decl.Names, child.Image)
-			decl.Arities[child.Image] = 0
-			decl.NamePositions[child.Image] = sanyNodePosition(child)
+			addName(child.Image, 0, sanyNodePosition(child), sanyLeadingPreComments(child))
 		case "N_IdentDecl":
 			if id := firstSanyIdentifier(child); id != nil {
-				decl.Names = append(decl.Names, id.Image)
 				arity := countDirectSanyChildren(child, "US")
-				decl.Arities[id.Image] = arity
+				pos := sanyNodePosition(id)
 				if arity > 0 {
-					decl.NamePositions[id.Image] = sanyNodePosition(child)
-				} else {
-					decl.NamePositions[id.Image] = sanyNodePosition(id)
+					pos = sanyNodePosition(child)
 				}
+				addName(id.Image, arity, pos, sanyLeadingPreComments(child))
 			}
 		case "N_PrefixDecl", "N_PostfixDecl":
 			name := sanyFixDeclOperatorName(child)
 			if name != "" {
-				decl.Names = append(decl.Names, name)
-				decl.Arities[name] = 1
-				decl.NamePositions[name] = sanyFixDeclOperatorPosition(child)
+				addName(name, 1, sanyFixDeclOperatorPosition(child), sanyLeadingPreComments(child))
 			}
 		case "N_InfixDecl":
 			name := sanyFixDeclOperatorName(child)
 			if name != "" {
-				decl.Names = append(decl.Names, name)
-				decl.Arities[name] = 2
-				decl.NamePositions[name] = sanyFixDeclOperatorPosition(child)
+				addName(name, 2, sanyFixDeclOperatorPosition(child), sanyLeadingPreComments(child))
 			}
 		}
 	}
@@ -1845,6 +1846,8 @@ func wrapQuantifierExprs(kind string, vars []BoundVar, body Expr, pos Position) 
 			OperatorArity:    vars[i].OperatorArity,
 			HasOperatorArity: vars[i].HasOperatorArity,
 			TupleBound:       vars[i].TupleBound,
+			LevelKnown:       vars[i].LevelKnown,
+			Level:            vars[i].Level,
 			Pos:              pos,
 		}
 	}
@@ -1968,7 +1971,7 @@ func assumeProveExpr(body *AssumeProve, pos Position) Expr {
 	var newBounds []BoundVar
 	for _, item := range body.Assumptions {
 		if item.NewSymbol != nil {
-			bound := BoundVar{Name: item.NewSymbol.Name, Set: item.NewSymbol.Domain, Pos: item.NewSymbol.Pos}
+			bound := BoundVar{Name: item.NewSymbol.Name, Set: item.NewSymbol.Domain, Pos: item.NewSymbol.Pos, LevelKnown: true, Level: int(item.NewSymbol.Level)}
 			if item.NewSymbol.Arity > 0 {
 				bound.OperatorArity = item.NewSymbol.Arity
 				bound.HasOperatorArity = true
@@ -2038,15 +2041,15 @@ func sanyAssumeProveBody(node *SanySyntaxNode) (*AssumeProve, Diagnostics) {
 
 func sanyNewSymbol(node *SanySyntaxNode) (NewSymbol, Diagnostics, bool) {
 	id := sanyNewSymbIdentifier(node)
-	if id == nil {
-		return NewSymbol{}, nil, false
-	}
 	sym := NewSymbol{
-		Name:   id.Image,
 		Kind:   24,
 		Level:  constantLevel,
-		Pos:    sanyNodePosition(id),
+		Pos:    sanyNodePosition(node),
 		Source: sanyNodePosition(node),
+	}
+	if id != nil {
+		sym.Name = id.Image
+		sym.Pos = sanyNodePosition(id)
 	}
 	for _, child := range node.GetHeirs() {
 		if child.Token == nil {
@@ -2095,6 +2098,9 @@ func sanyNewSymbol(node *SanySyntaxNode) (NewSymbol, Diagnostics, bool) {
 				sym.Arity = 2
 			}
 		}
+	}
+	if sym.Name == "" {
+		return NewSymbol{}, nil, false
 	}
 	var setNode *SanySyntaxNode
 	seenIn := false

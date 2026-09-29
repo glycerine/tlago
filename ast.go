@@ -73,11 +73,12 @@ const (
 )
 
 type Declaration struct {
-	Kind          DeclarationKind
-	Names         []string
-	Arities       map[string]int
-	NamePositions map[string]Position
-	Pos           Position
+	Kind            DeclarationKind
+	Names           []string
+	Arities         map[string]int
+	NamePositions   map[string]Position
+	NamePreComments map[string][]string
+	Pos             Position
 }
 
 type Definition struct {
@@ -110,6 +111,7 @@ type NamedExpr struct {
 	Expr            Expr
 	AssumeProve     bool
 	AssumeProveBody *AssumeProve
+	PreComments     []string
 	Pos             Position
 	Source          Position
 	Syntax          *SanySyntaxNode
@@ -261,6 +263,8 @@ type QuantifierExpr struct {
 	OperatorArity    int
 	HasOperatorArity bool
 	TupleBound       bool
+	LevelKnown       bool
+	Level            int
 	Pos              Position
 }
 
@@ -357,6 +361,8 @@ type BoundVar struct {
 	OperatorArity    int
 	HasOperatorArity bool
 	TupleBound       bool
+	LevelKnown       bool
+	Level            int
 }
 
 type FunctionExpr struct {
