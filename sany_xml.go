@@ -1176,8 +1176,8 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 	}
 	sources := x.exportedDefinitionSources(instMod, map[string]bool{})
 	if inst.exportsUnqualified() {
-		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, inst.Local)
-	} else {
+		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, inst.Local, len(inst.Params) > 0)
+	} else if len(inst.Params) > 0 {
 		sources = append(sources, x.directTheoremDefinitionSources(instMod)...)
 	}
 	out := make([]sanyXMLInstanceDefinitionSource, 0, len(sources))
@@ -1219,7 +1219,7 @@ func (x *sanyXMLExporter) directTheoremDefinitionSources(mod *Module) []sanyXMLD
 	return out
 }
 
-func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visiting map[string]bool, includeLibraryExtends bool) []sanyXMLDefinitionSource {
+func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visiting map[string]bool, includeLibraryExtends bool, includeTheoremDefs bool) []sanyXMLDefinitionSource {
 	if mod == nil || visiting[mod.Name] {
 		return nil
 	}
@@ -1277,7 +1277,7 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local {
+		if def.Local || (def.TheoremLike && !includeTheoremDefs) {
 			continue
 		}
 		byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: mod, def: def}

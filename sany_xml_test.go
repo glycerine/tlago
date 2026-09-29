@@ -1543,6 +1543,36 @@ UseLemma == \A c \in CSet : P(c)!Lemma
 		}
 	})
 
+	t.Run("plain unqualified INSTANCE does not clone theorem facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+THEOREM Lemma == C = C
+====`)
+		root := filepath.Join(dir, "PlainInstanceTheoremXML.tla")
+		writeFile(t, root, `---- MODULE PlainInstanceTheoremXML ----
+CONSTANT C
+INSTANCE Base
+Use == TRUE
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "TheoremDefNode", "Lemma", "PlainInstanceTheoremXML"); count != 0 {
+			t.Fatalf("plain INSTANCE cloned theorem facts into root module: %d\n%s", count, xmlText)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "TheoremDefNode", "Lemma", "Base"); count != 1 {
+			t.Fatalf("plain INSTANCE original theorem facts = %d, want 1\n%s", count, xmlText)
+		}
+	})
+
 	t.Run("INSTANCE clones reuse source formal params after late standard module allocation", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("StdInstanceFormalXML.tla", `---- MODULE StdInstanceFormalXML ----
 CC == INSTANCE Naturals
@@ -2639,6 +2669,20 @@ func xmlEntryPayloadByKindAndName(root *canonicalXMLNode, kind, name string) *ca
 		return payload
 	}
 	return nil
+}
+
+func xmlPayloadCountByKindNameFile(root *canonicalXMLNode, kind, name, filename string) int {
+	var count int
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if payload == nil || payload.Name != kind || firstChildText(payload, "uniquename") != name {
+			continue
+		}
+		if xmlNodeFilename(payload) == filename {
+			count++
+		}
+	}
+	return count
 }
 
 func substUsesReplacementRef(root *canonicalXMLNode, targetUID, refKind, replacementUID string) bool {
