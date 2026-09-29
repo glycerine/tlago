@@ -2,6 +2,8 @@ package tlc
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -194,6 +196,66 @@ func ParseModelConfigSource(file, source string) (*ModelConfig, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+func ModelConfigPath(configFile string) string {
+	if strings.HasSuffix(configFile, ".tla") || strings.HasSuffix(configFile, ".cfg") {
+		return configFile
+	}
+	return configFile + ".cfg"
+}
+
+func ParseModelConfigFile(configFile string) (*ModelConfig, error) {
+	path := ModelConfigPath(configFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, &ConfigFileError{Code: ECCFGErrorReadingFile, Params: []string{path, err.Error()}}
+	}
+	source := string(data)
+	if strings.HasSuffix(path, ".tla") {
+		name := strings.TrimSuffix(filepath.Base(path), ".tla")
+		source = ExtractMonolithConfigSource(source, name)
+	}
+	return ParseModelConfigSource(path, source)
+}
+
+func ExtractMonolithConfigSource(source string, configName string) string {
+	var out strings.Builder
+	active := false
+	for _, rawLine := range strings.Split(source, "\n") {
+		line := strings.TrimSuffix(rawLine, "\r")
+		if active && strings.HasPrefix(line, "====") {
+			break
+		}
+		if !active && isMonolithConfigStart(line, configName) {
+			active = true
+			continue
+		}
+		if active {
+			out.WriteString(line)
+			out.WriteByte('\n')
+		}
+	}
+	return strings.TrimSpace(out.String())
+}
+
+func isMonolithConfigStart(line string, configName string) bool {
+	text := strings.TrimSpace(line)
+	if !strings.HasPrefix(text, "----") {
+		return false
+	}
+	text = strings.TrimLeft(text, "-")
+	text = strings.TrimSpace(text)
+	fields := strings.Fields(text)
+	if len(fields) < 2 || fields[0] != "CONFIG" || fields[1] != configName {
+		return false
+	}
+	for _, field := range fields[2:] {
+		if strings.Trim(field, "-") != "" {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *ModelConfig) GetRawConstants() []string {

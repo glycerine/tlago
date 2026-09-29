@@ -1,6 +1,10 @@
 package tlc
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestModelConfigDefaultsAndOrderedSections(t *testing.T) {
 	ModelValueInit()
@@ -159,6 +163,88 @@ func TestModelConfigCheckDeadlockAndMalformedValues(t *testing.T) {
 	}
 	if cfgErr := err.(*ConfigFileError); cfgErr.Code != ECCFGExpectedSymbol {
 		t.Fatalf("error code = %d, want %d", cfgErr.Code, ECCFGExpectedSymbol)
+	}
+}
+
+func TestModelConfigPathMirrorsJavaMonolithConfigPath(t *testing.T) {
+	if got := ModelConfigPath("Scratch.tla"); got != "Scratch.tla" {
+		t.Fatalf("ModelConfigPath Scratch.tla = %q, want Scratch.tla", got)
+	}
+	if got := ModelConfigPath("Scratch"); got != "Scratch.cfg" {
+		t.Fatalf("ModelConfigPath Scratch = %q, want Scratch.cfg", got)
+	}
+	if got := ModelConfigPath("Scratch.cfg"); got != "Scratch.cfg" {
+		t.Fatalf("ModelConfigPath Scratch.cfg = %q, want Scratch.cfg", got)
+	}
+}
+
+func TestModelConfigFileParsingReadsCFG(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Spec.cfg")
+	if err := os.WriteFile(path, []byte("SPECIFICATION Spec\nCHECK_DEADLOCK FALSE\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	cfg, err := ParseModelConfigFile(path)
+	if err != nil {
+		t.Fatalf("ParseModelConfigFile returned error: %v", err)
+	}
+	if cfg.GetSpec() != "Spec" {
+		t.Fatalf("SPECIFICATION = %q, want Spec", cfg.GetSpec())
+	}
+	if cfg.GetCheckDeadlock() {
+		t.Fatalf("check deadlock = true, want false")
+	}
+}
+
+func TestModelConfigExtractsMonolithConfig(t *testing.T) {
+	source := "D:\\software\\TLA+\\Specs\\Scratch\\Scratch.tla\n\n\n" +
+		"---- MODULE Scratch ----\n" +
+		"EXTENDS TLC\n" +
+		"Spec == TRUE /\\ [][TRUE]_TRUE\n" +
+		"======\n\n" +
+		"---- CONFIG Scratch ----\n" +
+		"SPECIFICATION Spec\n" +
+		"=====\n"
+
+	config := ExtractMonolithConfigSource(source, "Scratch")
+	if config != "SPECIFICATION Spec" {
+		t.Fatalf("extracted config = %q, want SPECIFICATION Spec", config)
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "Scratch.tla")
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	cfg, err := ParseModelConfigFile(path)
+	if err != nil {
+		t.Fatalf("ParseModelConfigFile returned error: %v", err)
+	}
+	if cfg.GetSpec() != "Spec" {
+		t.Fatalf("full-path monolith config SPECIFICATION = %q, want Spec", cfg.GetSpec())
+	}
+	cfg, err = ParseModelConfigSource("Scratch.tla", ExtractMonolithConfigSource(source, "Scratch"))
+	if err != nil {
+		t.Fatalf("ParseModelConfigSource returned error: %v", err)
+	}
+	if cfg.GetSpec() != "Spec" {
+		t.Fatalf("extracted monolith SPECIFICATION = %q, want Spec", cfg.GetSpec())
+	}
+}
+
+func TestModelConfigMonolithWindowsPathNameDoesNotActLikeRegex(t *testing.T) {
+	source := "D:\\software\\TLA+\\Specs\\Scratch\\Scratch.tla\n\n\n" +
+		"---- MODULE Scratch ----\n" +
+		"EXTENDS TLC\n" +
+		"Spec == TRUE /\\ [][TRUE]_TRUE\n" +
+		"======\n\n" +
+		"---- CONFIG Scratch ----\n" +
+		"SPECIFICATION Spec\n" +
+		"=====\n"
+	windowsPath := "d:\\software\\TLA+\\Specs\\Scratch\\Scratch"
+	if got := ExtractMonolithConfigSource(source, windowsPath); got != "" {
+		t.Fatalf("extracted config for windows path = %q, want empty", got)
 	}
 }
 
