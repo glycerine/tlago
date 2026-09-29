@@ -1354,6 +1354,9 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 		if tok.Kind == kind && tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column == minColumn {
 			return true
 		}
+		if IsSanyJunctionBullet(tok.Kind) && tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column < minColumn {
+			return true
+		}
 		if stop(tok) {
 			return true
 		}

@@ -67,6 +67,26 @@ Pos == W + H
 		}
 	})
 
+	t.Run("outdented junction bullet ends nested quantified junction body", func(t *testing.T) {
+		root, diags := ParseSanySyntax("OutdentedQuantJunction.tla", `---- MODULE OutdentedQuantJunction ----
+VARIABLE x
+A(p) == /\ x = x
+   /\ \E req \in S :
+         /\ Send(p, req)
+         /\ x' = x
+   /\ UNCHANGED x
+====`)
+		requireNoErrors(t, diags)
+		def := onlySanyDefinition(t, root)
+		expr := def.GetHeirs()[2]
+		if expr.Kind.JavaName() != "N_InfixExpr" {
+			t.Fatalf("definition expression = %s, want N_InfixExpr", expr.Kind.JavaName())
+		}
+		if got := countSanyDescendants(expr, "N_BoundQuant"); got != 1 {
+			t.Fatalf("bound quantifier count = %d, want 1", got)
+		}
+	})
+
 	t.Run("reports SANY operator precedence conflicts inside definitions", func(t *testing.T) {
 		_, diags := ParseSanySyntax("Bad.tla", `---- MODULE Bad ----
 Bad == A = B = C
