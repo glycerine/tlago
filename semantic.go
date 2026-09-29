@@ -56,12 +56,16 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 	extendedSymbols := map[string]importedSymbol{}
 	diags = append(diags, checkPlusCalChecksumWarnings(mod)...)
 	diags = append(diags, checkNestedStandardModuleConflicts(mod)...)
-	addName := func(name string, pos Position) {
+	addName := func(name string, pos Position, kind DeclarationKind) {
 		if builtinIdentifiers[name] && !isEmbeddedStandardModule(mod) {
 			diags = append(diags, errorAt(pos, "E1301", "cannot redefine built-in symbol %s", name))
 			return
 		}
 		if prev, ok := defined[name]; ok {
+			if prevKind, ok := declKinds[name]; ok && prevKind != "" && kind != "" && prevKind != kind {
+				diags = append(diags, errorAt(pos, "E1301", "duplicate declaration or definition %s; existing symbol class %s conflicts with %s at %s", name, prevKind, kind, prev))
+				return
+			}
 			diags = append(diags, errorAt(pos, "E1301", "duplicate declaration or definition %s; first declared at %s", name, prev))
 			return
 		}
@@ -150,6 +154,9 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 	}
 	if enclosing != nil {
 		for _, symbol := range semanticModuleExports(enclosing, spec, map[string]bool{}) {
+			if positionInsideModule(symbol.pos, mod) {
+				continue
+			}
 			addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 		}
 	}
@@ -299,7 +306,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 				continue
 			}
 			seenInDecl[name] = true
-			addName(name, d.Pos)
+			addName(name, d.Pos, d.Kind)
 			declKinds[name] = d.Kind
 			if mod.Name != "" {
 				qualified := mod.Name + "!" + name
@@ -361,7 +368,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			}
 		} else {
 			if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
-				addName(def.Name, def.Pos)
+				addName(def.Name, def.Pos, OperatorDecl)
 			}
 		}
 		arities[def.Name] = len(def.Params)
@@ -390,7 +397,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			continue
 		}
 		pos := assumption.SourcePosition()
-		addName(assumption.Name, pos)
+		addName(assumption.Name, pos, OperatorDecl)
 		arities[assumption.Name] = 0
 		declKinds[assumption.Name] = OperatorDecl
 		if mod.Name != "" {
@@ -608,6 +615,25 @@ func firstDefinitionAfter(defs []Definition, name string, after Position) (Defin
 
 func positionBetween(pos, start, end Position) bool {
 	return positionBefore(start, pos) && positionBefore(pos, end)
+}
+
+func positionInsideModule(pos Position, mod *Module) bool {
+	if mod == nil || pos.Line == 0 || mod.Pos.Line == 0 || mod.Pos.EndLine == 0 {
+		return false
+	}
+	if pos.File != "" && mod.Pos.File != "" && pos.File != mod.Pos.File {
+		return false
+	}
+	if pos.Line < mod.Pos.Line || pos.Line > mod.Pos.EndLine {
+		return false
+	}
+	if pos.Line == mod.Pos.Line && mod.Pos.Column > 0 && pos.Column < mod.Pos.Column {
+		return false
+	}
+	if pos.Line == mod.Pos.EndLine && mod.Pos.EndColumn > 0 && pos.Column > mod.Pos.EndColumn {
+		return false
+	}
+	return true
 }
 
 func checkLetRecursiveSections(expr *LetExpr) Diagnostics {
@@ -1612,19 +1638,19 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		} else {
 			seen[name] = subst.Pos
 		}
-		target, ok := targets[name]
+		substTarget, ok := targets[name]
 		if !ok {
 			diags = append(diags, errorAt(subst.Pos, "E1305", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module))
 			continue
 		}
-		want := target.Arity
+		want := substTarget.Arity
 		got := substitutionExprArity(expr, arities)
 		if got != want {
 			diags = append(diags, errorAt(subst.Pos, "E1306", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want))
 		}
 		if matchLevels {
 			level := exprLevel(expr, declKinds, nil)
-			switch target.Kind {
+			switch substTarget.Kind {
 			case ConstantDecl:
 				if level != constantLevel {
 					diags = append(diags, errorAt(subst.Pos, "E1314", "INSTANCE substitution %s must be constant-level", name))
@@ -1635,6 +1661,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 				}
 			}
 		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, subst.Pos, declKinds)...)
 		diags = append(diags, checkExpr(expr, defined, nil)...)
 		if !substitutionExprIsOperatorArgument(expr, want, arities) {
 			diags = append(diags, checkCallArity(expr, arities, operatorParams, nil)...)
@@ -1670,6 +1697,305 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		}
 	}
 	return diags
+}
+
+func checkInstanceSubstitutionArgLevelConstraints(target *Module, spec *Spec, targetName string, subst Expr, substPos Position, declKinds map[string]DeclarationKind) Diagnostics {
+	if target == nil || targetName == "" || subst == nil {
+		return nil
+	}
+	ident, ok := subst.(*IdentExpr)
+	if !ok {
+		return nil
+	}
+	info, ok := sanyBuiltinOperatorInfo(ident.Name)
+	if !ok || len(info.argMaxLevels) == 0 {
+		return nil
+	}
+	levelKinds := moduleLevelDeclKinds(target, spec, declKinds)
+	var diags Diagnostics
+	visited := map[string]bool{}
+	var collect func(*Module)
+	collect = func(cur *Module) {
+		if cur == nil || visited[cur.Name] || isEmbeddedStandardModule(cur) {
+			return
+		}
+		visited[cur.Name] = true
+		for _, ext := range cur.Extends {
+			if spec != nil {
+				collect(spec.Modules[ext])
+			}
+		}
+		for _, def := range cur.Definitions {
+			locals := map[string]bool{}
+			for _, param := range def.Params {
+				locals[param] = true
+			}
+			if def.AssumeProve && def.AssumeProveBody != nil {
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(def.AssumeProveBody, targetName, info, substPos, levelKinds, locals)...)
+				continue
+			}
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(def.Expr, targetName, info, substPos, levelKinds, locals)...)
+		}
+		for _, assumption := range cur.Assumptions {
+			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(assumption.AssumeProveBody, targetName, info, substPos, levelKinds, nil)...)
+				continue
+			}
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(assumption.Expr, targetName, info, substPos, levelKinds, nil)...)
+		}
+		for _, theorem := range cur.Theorems {
+			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(theorem.AssumeProveBody, targetName, info, substPos, levelKinds, nil)...)
+				continue
+			}
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(theorem.Expr, targetName, info, substPos, levelKinds, nil)...)
+		}
+	}
+	collect(target)
+	return diags
+}
+
+func moduleLevelDeclKinds(mod *Module, spec *Spec, base map[string]DeclarationKind) map[string]DeclarationKind {
+	kinds := copyDeclKindMap(base)
+	visited := map[string]bool{}
+	var collect func(*Module)
+	collect = func(cur *Module) {
+		if cur == nil || visited[cur.Name] || isEmbeddedStandardModule(cur) {
+			return
+		}
+		visited[cur.Name] = true
+		for _, ext := range cur.Extends {
+			if spec != nil {
+				collect(spec.Modules[ext])
+			}
+		}
+		for _, decl := range cur.Declarations {
+			for _, name := range decl.Names {
+				kinds[name] = decl.Kind
+				if cur.Name != "" {
+					kinds[cur.Name+"!"+name] = decl.Kind
+				}
+			}
+		}
+		for _, decl := range cur.Recursives {
+			for _, name := range decl.Names {
+				kinds[name] = RecursiveDecl
+				if cur.Name != "" {
+					kinds[cur.Name+"!"+name] = RecursiveDecl
+				}
+			}
+		}
+		for _, def := range cur.Definitions {
+			kinds[def.Name] = OperatorDecl
+			if cur.Name != "" {
+				kinds[cur.Name+"!"+def.Name] = OperatorDecl
+			}
+		}
+		for _, assumption := range cur.Assumptions {
+			if assumption.Name == "" {
+				continue
+			}
+			kinds[assumption.Name] = OperatorDecl
+			if cur.Name != "" {
+				kinds[cur.Name+"!"+assumption.Name] = OperatorDecl
+			}
+		}
+	}
+	collect(mod)
+	return kinds
+}
+
+func checkInstanceSubstitutionArgLevelConstraintsAssumeProve(body *AssumeProve, targetName string, subst sanyBuiltinOperator, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+	if body == nil {
+		return nil
+	}
+	apLocals := copyBoolMap(locals)
+	var diags Diagnostics
+	for _, item := range body.Assumptions {
+		switch {
+		case item.NewSymbol != nil:
+			if item.NewSymbol.Domain != nil {
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(item.NewSymbol.Domain, targetName, subst, substPos, declKinds, apLocals)...)
+			}
+			apLocals[item.NewSymbol.Name] = true
+		case item.Nested != nil:
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(item.Nested, targetName, subst, substPos, declKinds, apLocals)...)
+		case item.Expr != nil:
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(item.Expr, targetName, subst, substPos, declKinds, apLocals)...)
+		}
+	}
+	diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(body.Prove, targetName, subst, substPos, declKinds, apLocals)...)
+	return diags
+}
+
+func checkInstanceSubstitutionArgLevelConstraintsExpr(expr Expr, targetName string, subst sanyBuiltinOperator, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+	if expr == nil {
+		return nil
+	}
+	var diags Diagnostics
+	switch e := expr.(type) {
+	case *IdentExpr, *LiteralExpr:
+		return nil
+	case *UnaryExpr:
+		if e.Op == targetName && !locals[targetName] {
+			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, subst, []Expr{e.Expr}, substPos, declKinds, locals)...)
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Expr, targetName, subst, substPos, declKinds, locals)...)
+	case *BinaryExpr:
+		if e.Op == targetName && !locals[targetName] {
+			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, subst, []Expr{e.Left, e.Right}, substPos, declKinds, locals)...)
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Left, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Right, targetName, subst, substPos, declKinds, locals)...)
+	case *CallExpr:
+		if ident, ok := e.Callee.(*IdentExpr); ok && ident.Name == targetName && !locals[targetName] {
+			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, subst, e.Args, substPos, declKinds, locals)...)
+		} else {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Callee, targetName, subst, substPos, declKinds, locals)...)
+		}
+		for _, arg := range e.Args {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arg, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *IfExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Cond, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Then, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Else, targetName, subst, substPos, declKinds, locals)...)
+	case *LetExpr:
+		letLocals := letScopeLocals(locals, e)
+		recursiveNames := letRecursiveNames(e)
+		for _, def := range e.Definitions {
+			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
+			if def.AssumeProve && def.AssumeProveBody != nil {
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(def.AssumeProveBody, targetName, subst, substPos, declKinds, defLocals)...)
+				continue
+			}
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(def.Expr, targetName, subst, substPos, declKinds, defLocals)...)
+		}
+		for _, inst := range e.Instances {
+			for _, substitution := range instanceSubstitutions(inst) {
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(substitution.Expr, targetName, subst, substPos, declKinds, letLocals)...)
+			}
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, letLocals)...)
+	case *QuantifierExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, withLocal(locals, e.Var))...)
+	case *CaseExpr:
+		for _, arm := range e.Arms {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arm.Test, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arm.Value, targetName, subst, substPos, declKinds, locals)...)
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Other, targetName, subst, substPos, declKinds, locals)...)
+	case *ChooseExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, withLocal(locals, e.Var))...)
+	case *TupleExpr:
+		for _, elem := range e.Elems {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *SetExpr:
+		for _, elem := range e.Elems {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *RecordExpr:
+		for _, field := range e.Fields {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(field.Value, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *RecordComponentExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Record, targetName, subst, substPos, declKinds, locals)...)
+	case *RecordSetExpr:
+		for _, field := range e.Fields {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(field.Set, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *FunctionExpr:
+		fnLocals := copyBoolMap(locals)
+		for _, bound := range e.Bounds {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(bound.Set, targetName, subst, substPos, declKinds, locals)...)
+			fnLocals[bound.Name] = true
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, fnLocals)...)
+	case *FunctionAppExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Function, targetName, subst, substPos, declKinds, locals)...)
+		for _, arg := range e.Args {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arg, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *ExceptExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Base, targetName, subst, substPos, declKinds, locals)...)
+		for _, spec := range e.Specs {
+			for _, component := range spec.Components {
+				for _, index := range component.Indices {
+					diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(index, targetName, subst, substPos, declKinds, locals)...)
+				}
+			}
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(spec.Value, targetName, subst, substPos, declKinds, locals)...)
+		}
+	case *LabelExpr:
+		labelLocals := copyBoolMap(locals)
+		for _, param := range e.Params {
+			labelLocals[param] = true
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, labelLocals)...)
+	case *ActionExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Action, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Subscript, targetName, subst, substPos, declKinds, locals)...)
+	case *FairnessExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Subscript, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Action, targetName, subst, substPos, declKinds, locals)...)
+	case *FunctionSetExpr:
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Domain, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Range, targetName, subst, substPos, declKinds, locals)...)
+	case *SetComprehensionExpr:
+		compLocals := copyBoolMap(locals)
+		for _, bound := range e.Bounds {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(bound.Set, targetName, subst, substPos, declKinds, locals)...)
+			compLocals[bound.Name] = true
+		}
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Element, targetName, subst, substPos, declKinds, compLocals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Predicate, targetName, subst, substPos, declKinds, compLocals)...)
+	}
+	return diags
+}
+
+func checkInstanceSubstitutionAppliedArgLevels(pos Position, targetName string, subst sanyBuiltinOperator, args []Expr, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+	var diags Diagnostics
+	for i, arg := range args {
+		if arg == nil {
+			continue
+		}
+		maxLevel, ok := builtinArgMaxLevel(subst, i)
+		if !ok {
+			continue
+		}
+		level := exprLevel(arg, declKinds, locals)
+		if level <= maxLevel {
+			continue
+		}
+		errPos := arg.Position()
+		if errPos.Line == 0 && errPos.Column == 0 && errPos.File == "" {
+			errPos = pos
+		}
+		if errPos.Line == 0 && errPos.Column == 0 && errPos.File == "" {
+			errPos = substPos
+		}
+		diags = append(diags, errorAt(errPos, "E1314", "INSTANCE substitution for %s violates operator %s level constraint: argument %d requires level %d but maximum level is %d", targetName, subst.name, i+1, level, maxLevel))
+	}
+	return diags
+}
+
+func builtinArgMaxLevel(info sanyBuiltinOperator, index int) (tlaLevel, bool) {
+	if index < 0 || len(info.argMaxLevels) == 0 {
+		return constantLevel, false
+	}
+	if info.arity == -1 {
+		if index < len(info.argMaxLevels) {
+			return info.argMaxLevels[index], true
+		}
+		return info.argMaxLevels[len(info.argMaxLevels)-1], true
+	}
+	if index >= len(info.argMaxLevels) {
+		return constantLevel, false
+	}
+	return info.argMaxLevels[index], true
 }
 
 func instanceSubstitutions(inst Instance) []Substitution {
@@ -1805,6 +2131,9 @@ func substitutionExprArity(expr Expr, arities map[string]int) int {
 		if arity, exists := arities[ident.Name]; exists {
 			return arity
 		}
+		if arity, exists := builtinOperatorArity(ident.Name); exists {
+			return arity
+		}
 	}
 	if lambda, ok := expr.(*FunctionExpr); ok && lambda.IsLambda {
 		return len(lambda.Bounds)
@@ -1821,6 +2150,9 @@ func substitutionExprIsOperatorArgument(expr Expr, targetArity int, arities map[
 		return false
 	}
 	arity, exists := arities[ident.Name]
+	if !exists {
+		arity, exists = builtinOperatorArity(ident.Name)
+	}
 	return exists && arity == targetArity
 }
 
@@ -2755,6 +3087,14 @@ func copyBoolMap(in map[string]bool) map[string]bool {
 
 func copyIntMap(in map[string]int) map[string]int {
 	out := map[string]int{}
+	for name, value := range in {
+		out[name] = value
+	}
+	return out
+}
+
+func copyDeclKindMap(in map[string]DeclarationKind) map[string]DeclarationKind {
+	out := map[string]DeclarationKind{}
 	for name, value := range in {
 		out[name] = value
 	}

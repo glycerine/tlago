@@ -12,8 +12,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/TestContext.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestContext_testDifferentSymbolClassesDiagnostic(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	dir := t.TempDir()
 	basePath := filepath.Join(dir, "Base.tla")
 	if err := os.WriteFile(basePath, []byte("---- MODULE Base ----\nCONSTANT symbol\n====\n"), 0o600); err != nil {
