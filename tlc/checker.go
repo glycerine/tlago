@@ -361,6 +361,9 @@ func (mc *ModelChecker) isSeenState(curState *TLCStateMut, succState *TLCStateMu
 		}
 	}
 	if !seen {
+		if mc.Tool != nil {
+			mc.Tool.RememberState(succState)
+		}
 		if err := mc.Trace.WriteNextState(curState, fp, succState, action); err != nil {
 			return seen, err
 		}
@@ -486,6 +489,9 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		fp := curState.FingerPrint()
 		seen = f.mc.FPSet.Put(fp)
 		if !seen {
+			if f.tool != nil {
+				f.tool.RememberState(curState)
+			}
 			if err := f.mc.AllStateWriter.WriteInitState(curState); err != nil {
 				f.errState = curState
 				f.err = err

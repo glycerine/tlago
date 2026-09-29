@@ -101,10 +101,11 @@ type Tool struct {
 	ImpliedActions   []*Action
 	ImpliedActNames  []string
 
-	RootName   string
-	RootFile   string
-	ConfigFile string
-	SpecDir    string
+	RootName    string
+	RootFile    string
+	ConfigFile  string
+	SpecDir     string
+	KnownStates *InsMap[uint64, *TLCStateMut]
 
 	GetInitStatesFunc               func(*Tool, *StateFunctor) error
 	GetNextStatesFunc               func(*Tool, *Action, *TLCStateMut) (*StateVec, error)
@@ -138,7 +139,7 @@ type Tool struct {
 }
 
 func NewTool() *Tool {
-	return &Tool{Mode: ModeMC, RootName: "Spec"}
+	return &Tool{Mode: ModeMC, RootName: "Spec", KnownStates: NewInsMap[uint64, *TLCStateMut]()}
 }
 
 func (t *Tool) GetMode() ToolMode {
@@ -311,7 +312,38 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 	if t != nil && t.GetStateFunc != nil {
 		return t.GetStateFunc(t, fp, prev...)
 	}
-	return nil, newTLCError(ECGeneral, "state reconstruction is not implemented")
+	if t == nil || t.KnownStates == nil {
+		return nil, newTLCError(ECTLCFailedToRecoverInit, "state fingerprint %d is not in the state registry", fp)
+	}
+	state, ok := t.KnownStates.Get2(fp)
+	if !ok || state == nil {
+		return nil, newTLCError(ECTLCFailedToRecoverInit, "state fingerprint %d is not in the state registry", fp)
+	}
+	info := NewTLCStateInfo(state)
+	info.FP = &fp
+	if len(prev) > 0 {
+		switch predecessor := prev[0].(type) {
+		case *TLCStateInfo:
+			if predecessor != nil {
+				state.SetPredecessor(predecessor.State)
+			}
+		case *TLCStateMut:
+			state.SetPredecessor(predecessor)
+		}
+	}
+	return info, nil
+}
+
+func (t *Tool) RememberState(state *TLCStateMut) uint64 {
+	if state == nil {
+		return 0
+	}
+	if t.KnownStates == nil {
+		t.KnownStates = NewInsMap[uint64, *TLCStateMut]()
+	}
+	fp := state.FingerPrint()
+	t.KnownStates.Set(fp, state)
+	return fp
 }
 
 func (t *Tool) HasSymmetry() bool {

@@ -82,6 +82,59 @@ func (t *MemoryTrace) Records() []TraceRecord {
 	return out
 }
 
+func (t *MemoryTrace) RecordFor(state *TLCStateMut) (TraceRecord, bool) {
+	if t == nil || state == nil || state.UID < 0 {
+		return TraceRecord{}, false
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if state.UID >= int64(len(t.records)) {
+		return TraceRecord{}, false
+	}
+	record := t.records[state.UID]
+	return record, record.State == state
+}
+
+func (t *MemoryTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
+	if state == nil {
+		return nil
+	}
+	var reversed []*TLCStateInfo
+	for cur := state; cur != nil; cur = cur.Predecessor() {
+		info := NewTLCStateInfo(cur)
+		fp := cur.FingerPrint()
+		info.FP = &fp
+		reversed = append(reversed, info)
+	}
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	return reversed
+}
+
+func (t *MemoryTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
+	if to == nil {
+		return nil
+	}
+	if from == nil || from.Equal(to) {
+		return t.GetTrace(to)
+	}
+	var reversed []*TLCStateInfo
+	for cur := to; cur != nil; cur = cur.Predecessor() {
+		info := NewTLCStateInfo(cur)
+		fp := cur.FingerPrint()
+		info.FP = &fp
+		reversed = append(reversed, info)
+		if cur.Equal(from) {
+			break
+		}
+	}
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	return reversed
+}
+
 func (t *MemoryTrace) GetLevelForReporting() int {
 	if t == nil {
 		return 0
