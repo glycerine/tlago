@@ -126,6 +126,22 @@ Helper == TRUE
 		requireNoErrors(t, CheckSpec(spec))
 	})
 
+	t.Run("ignores trailing non-module text after the root module", func(t *testing.T) {
+		dir := t.TempDir()
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, root, `---- MODULE Root ----
+Op == TRUE
+====
+$ echo run this with a shell; false || true
+`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		if spec.Root == nil || spec.Root.Name != "Root" {
+			t.Fatalf("root module = %#v, want Root", spec.Root)
+		}
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("records SANY semantic analysis order", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "ExtBase.tla"), `---- MODULE ExtBase ----

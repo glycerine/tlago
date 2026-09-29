@@ -40,9 +40,36 @@ func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics
 		}
 		modules = append(modules, parser.Module())
 	}
-	diags := append(Diagnostics{}, lexDiags...)
+	diags := filterSanyDiagnosticsToModuleSpans(lexDiags, modules)
 	diags = append(diags, parser.diags...)
 	return modules, diags
+}
+
+func filterSanyDiagnosticsToModuleSpans(diags Diagnostics, modules []*SanySyntaxNode) Diagnostics {
+	if len(diags) == 0 || len(modules) == 0 {
+		return diags
+	}
+	out := make(Diagnostics, 0, len(diags))
+	for _, diag := range diags {
+		if diag.Pos.Line == 0 {
+			out = append(out, diag)
+			continue
+		}
+		for _, mod := range modules {
+			if mod != nil && positionInSanyRange(diag.Pos, mod.Range) {
+				out = append(out, diag)
+				break
+			}
+		}
+	}
+	return out
+}
+
+func positionInSanyRange(pos Position, rng SanyRange) bool {
+	if rng.Begin.Line == 0 || rng.End.Line == 0 {
+		return false
+	}
+	return !positionBefore(pos, rng.Begin) && !positionBefore(rng.End, pos)
 }
 
 func filterSanyDiagnosticsThroughRootEnd(diags Diagnostics, root *SanySyntaxNode) Diagnostics {
