@@ -6,8 +6,9 @@ import (
 )
 
 const (
-	TLCStateInitUID   int64 = -1
-	TLCStateInitLevel int   = 1
+	TLCStateInitWorkerID int16 = int16(^uint16(0) >> 1)
+	TLCStateInitUID      int64 = -1
+	TLCStateInitLevel    int   = 1
 )
 
 type StateVariable struct {
@@ -47,7 +48,7 @@ type TLCStateMut struct {
 
 func NewEmptyState() *TLCStateMut {
 	return &TLCStateMut{
-		WorkerID: int16(^uint16(0) >> 1),
+		WorkerID: TLCStateInitWorkerID,
 		UID:      TLCStateInitUID,
 		level:    TLCStateInitLevel,
 		values:   make([]Value, len(stateVariables)),
@@ -90,8 +91,8 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 	values := make([]Value, len(s.values))
 	copy(values, s.values)
 	return &TLCStateMut{
-		WorkerID: s.WorkerID,
-		UID:      s.UID,
+		WorkerID: TLCStateInitWorkerID,
+		UID:      TLCStateInitUID,
 		level:    s.level,
 		values:   values,
 		pred:     s.pred,
