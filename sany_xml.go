@@ -1030,7 +1030,7 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 		if sym == nil {
 			return
 		}
-		if sym.Kind == "TheoremNode" {
+		if sym.Kind == "AssumeNode" || sym.Kind == "TheoremNode" {
 			refs = append(refs, sym)
 			return
 		}

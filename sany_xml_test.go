@@ -936,6 +936,39 @@ Use == TargetOp /\ MidOp /\ GrandOp
 		}
 	})
 
+	t.Run("diamond EXTENDS preserves duplicate inherited assumption refs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "A.tla"), `---- MODULE A ----
+ASSUME AAssump == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "B.tla"), `---- MODULE B ----
+EXTENDS A
+BOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "C.tla"), `---- MODULE C ----
+EXTENDS A
+COp == TRUE
+====`)
+		rootPath := filepath.Join(dir, "DiamondAssumeXML.tla")
+		writeFile(t, rootPath, `---- MODULE DiamondAssumeXML ----
+EXTENDS B, C
+Root == BOp /\ COp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "DiamondAssumeXML", "AssumeNode", "A", 2); got != 2 {
+			t.Fatalf("root module has %d refs to inherited AAssump, want 2\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("does not unqualified-clone recursive EXTENDS definitions through INSTANCE", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
