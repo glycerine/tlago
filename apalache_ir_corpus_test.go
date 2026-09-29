@@ -80,6 +80,33 @@ func TestApalacheIRCorpusCanonicalJSONBehaviors(t *testing.T) {
 			t.Fatalf("canonical JSON unexpectedly ignored expression argument order: %s", leftCanon)
 		}
 	})
+
+	t.Run("corpus canonicalization ignores Apalache output-file module names", func(t *testing.T) {
+		left := []byte(`{"name":"ApalacheIR","version":"1.0","modules":[{"kind":"TlaModule","name":"Bakery","declarations":[]}]}`)
+		right := []byte(`{"name":"ApalacheIR","version":"1.0","modules":[{"kind":"TlaModule","name":"out","declarations":[]}]}`)
+		plainLeft, err := canonicalApalacheIRJSON(left)
+		if err != nil {
+			t.Fatalf("canonicalize plain left: %v", err)
+		}
+		plainRight, err := canonicalApalacheIRJSON(right)
+		if err != nil {
+			t.Fatalf("canonicalize plain right: %v", err)
+		}
+		if bytes.Equal(plainLeft, plainRight) {
+			t.Fatalf("plain canonical JSON unexpectedly ignored module names: %s", plainLeft)
+		}
+		corpusLeft, err := canonicalApalacheIRCorpusJSON(left)
+		if err != nil {
+			t.Fatalf("canonicalize corpus left: %v", err)
+		}
+		corpusRight, err := canonicalApalacheIRCorpusJSON(right)
+		if err != nil {
+			t.Fatalf("canonicalize corpus right: %v", err)
+		}
+		if !bytes.Equal(corpusLeft, corpusRight) {
+			t.Fatalf("corpus canonical JSON differs\nleft:  %s\nright: %s", corpusLeft, corpusRight)
+		}
+	})
 }
 
 func apalacheCorpusTargets(t *testing.T) []string {
@@ -89,6 +116,11 @@ func apalacheCorpusTargets(t *testing.T) []string {
 		filepath.Join("test_vectors", "tla-plus-bench", "specs"),
 		filepath.Join("test_vectors", "Examples", "specifications"),
 	} {
+		if _, err := os.Stat(root); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			t.Fatalf("stat %s: %v", root, err)
+		}
 		err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 			if err != nil {
 				return err
@@ -144,11 +176,11 @@ func compareApalacheIRCorpusFile(t *testing.T, apalache, sourcePath string) stri
 	if irDiags.HasErrors() {
 		return "tlago ApalacheIR rejected staged spec:\n" + irDiags.Error()
 	}
-	gotCanon, err := canonicalApalacheIRJSON(got)
+	gotCanon, err := canonicalApalacheIRCorpusJSON(got)
 	if err != nil {
 		return fmt.Sprintf("canonicalize tlago JSON: %v", err)
 	}
-	wantCanon, err := canonicalApalacheIRJSON(want)
+	wantCanon, err := canonicalApalacheIRCorpusJSON(want)
 	if err != nil {
 		return fmt.Sprintf("canonicalize Apalache JSON: %v", err)
 	}
@@ -264,16 +296,54 @@ func apalacheIRCorpusJSON(spec *Spec) ([]byte, Diagnostics) {
 }
 
 func canonicalApalacheIRJSON(data []byte) ([]byte, error) {
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.UseNumber()
-	var value any
-	if err := decoder.Decode(&value); err != nil {
+	value, err := decodeApalacheIRJSON(data)
+	if err != nil {
 		return nil, err
 	}
 	canon := canonicalizeApalacheIRValue(value)
 	var out bytes.Buffer
 	writeCanonicalJSON(&out, canon)
 	return out.Bytes(), nil
+}
+
+func canonicalApalacheIRCorpusJSON(data []byte) ([]byte, error) {
+	value, err := decodeApalacheIRJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	normalizeApalacheCorpusModuleNames(value)
+	canon := canonicalizeApalacheIRValue(value)
+	var out bytes.Buffer
+	writeCanonicalJSON(&out, canon)
+	return out.Bytes(), nil
+}
+
+func decodeApalacheIRJSON(data []byte) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func normalizeApalacheCorpusModuleNames(value any) {
+	root, ok := value.(map[string]any)
+	if !ok {
+		return
+	}
+	modules, ok := root["modules"].([]any)
+	if !ok {
+		return
+	}
+	for _, item := range modules {
+		module, ok := item.(map[string]any)
+		if !ok || module["kind"] != "TlaModule" {
+			continue
+		}
+		module["name"] = "__apalache_corpus_module__"
+	}
 }
 
 func canonicalizeApalacheIRValue(value any) any {

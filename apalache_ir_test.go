@@ -125,6 +125,19 @@ Init == x = 0
 		}
 	})
 
+	t.Run("serializes SANY prefix minus as Apalache unary minus", func(t *testing.T) {
+		jsonText, diags := ApalacheIRJSONSource("UnaryMinus.tla", `---- MODULE UnaryMinus ----
+A == -1
+B == -(1 + 2)
+====`, ApalacheIROptions{})
+		requireNoErrors(t, diags)
+
+		got := string(jsonText)
+		if count := strings.Count(got, `"oper":"UNARY_MINUS"`); count != 2 {
+			t.Fatalf("UNARY_MINUS count = %d, want 2\n%s", count, got)
+		}
+	})
+
 	t.Run("serializes source ranges when requested", func(t *testing.T) {
 		jsonText, diags := ApalacheIRJSONSource("SourceLocal.tla", `---- MODULE SourceLocal ----
 EXTENDS Naturals

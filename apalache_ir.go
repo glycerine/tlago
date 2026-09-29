@@ -2080,7 +2080,7 @@ func apalacheUnaryOperator(op string) (string, bool) {
 	switch op {
 	case "~", "\\lnot", "\\neg", "¬":
 		return "NOT", true
-	case "-":
+	case "-", "-.":
 		return "UNARY_MINUS", true
 	case "SUBSET":
 		return "SET_POWERSET", true
