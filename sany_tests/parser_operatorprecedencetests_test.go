@@ -10,8 +10,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/OperatorPrecedenceTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestOperatorPrecedenceTests_testOperatorCombination(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	operators := sanyOperatorFixtures()
 	for _, op1 := range operators {
 		for _, op2 := range operators {
@@ -71,16 +69,25 @@ func checkSANYParsePrecedence(t *testing.T, root *tlago.SanySyntaxNode, op1 sany
 	lowerPrecOpSymbol := sanyOperatorImage(lowerPrecOp)
 	higherPrecOp := sanyHigherPrecOperator(lowerPrecOp)
 	higherPrecOpSymbol := sanyOperatorImage(higherPrecOp)
+	parsedOp1Symbol := sanyParsedOperatorSymbol(op1, op1Symbol)
+	parsedOp2Symbol := sanyParsedOperatorSymbol(op2, op2Symbol)
 	switch {
-	case op1.op.Symbol == op2.op.Symbol && op1.associative:
-		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, op2Symbol, higherPrecOpSymbol, op1Symbol)
-	case op1.op.Symbol == op2.op.Symbol:
-		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, op1Symbol, higherPrecOpSymbol, op2Symbol)
+	case sanySameOperatorFixture(op1, op2) && op1.associative:
+		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, parsedOp2Symbol, higherPrecOpSymbol, parsedOp1Symbol)
+	case sanySameOperatorFixture(op1, op2):
+		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, parsedOp1Symbol, higherPrecOpSymbol, parsedOp2Symbol)
 	case sanyOperatorLowerPrecThan(op1, op2) || op2.op.IsPrefix():
-		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, op1Symbol, higherPrecOpSymbol, op2Symbol)
+		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, parsedOp1Symbol, higherPrecOpSymbol, parsedOp2Symbol)
 	default:
-		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, op2Symbol, higherPrecOpSymbol, op1Symbol)
+		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, parsedOp2Symbol, higherPrecOpSymbol, parsedOp1Symbol)
 	}
+}
+
+func sanyParsedOperatorSymbol(op sanyOperatorFixture, symbol string) string {
+	if op.op.IsPrefix() && symbol == "-" {
+		return "-."
+	}
+	return symbol
 }
 
 func requireSANYOperatorSymbols(t *testing.T, gotLower, wantLower, gotHigher, wantHigher string) {
@@ -104,14 +111,26 @@ func sanyHigherPrecOperator(lowerPrecOp *tlago.SanySyntaxNode) *tlago.SanySyntax
 	case "N_PrefixExpr":
 		return heirs[1]
 	case "N_InfixExpr":
-		if heirs[0].Kind.JavaName() == "N_GeneralId" {
-			return heirs[2]
+		if sanyIsOperatorExpression(heirs[0]) {
+			return heirs[0]
 		}
-		return heirs[0]
+		return heirs[2]
 	case "N_PostfixExpr":
 		return heirs[0]
 	default:
 		return nil
+	}
+}
+
+func sanyIsOperatorExpression(node *tlago.SanySyntaxNode) bool {
+	if node == nil {
+		return false
+	}
+	switch node.Kind.JavaName() {
+	case "N_PrefixExpr", "N_InfixExpr", "N_PostfixExpr":
+		return true
+	default:
+		return false
 	}
 }
 
