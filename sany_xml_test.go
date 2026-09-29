@@ -214,6 +214,47 @@ Use == x \prec x
 		}
 	})
 
+	t.Run("operator formal calls lift higher-order actual arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("HigherOrderFormalLevelXML.tla", `---- MODULE HigherOrderFormalLevelXML ----
+VARIABLE x
+Choose(S, P(_)) == CHOOSE y \in S : P(y)
+Use == Choose({1}, LAMBDA y : x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 32)
+		if call == nil {
+			t.Fatalf("Choose call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Choose call level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("LET local definitions keep their own expression levels", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetLocalDefinitionLevelXML.tla", `---- MODULE LetLocalDefinitionLevelXML ----
+VARIABLE x
+Use == LET r == x IN r
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := userDefinedOpAtLocation(root, 3, 12, 17)
+		if def == nil {
+			t.Fatalf("LET local definition r missing\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("LET local r level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("InfixFormalSpanXML.tla", `---- MODULE InfixFormalSpanXML ----
 Use(_\prec_, S) == TRUE
@@ -1935,6 +1976,25 @@ func opApplAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXM
 			return
 		}
 		if node.Name == "OpApplNode" && xmlNodeLocationMatches(node, line, begin, end) {
+			found = node
+			return
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func userDefinedOpAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXMLNode {
+	var found *canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Name == "UserDefinedOpKind" && xmlNodeLocationMatches(node, line, begin, end) {
 			found = node
 			return
 		}

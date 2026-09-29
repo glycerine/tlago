@@ -3390,7 +3390,8 @@ func sanyXMLKnownBuiltin(name string) bool {
 		return true
 	}
 	switch name {
-	case "$AngleAct", "$BoundedChoose", "$BoundedExists", "$BoundedForall", "$Case", "$ConjList", "$DisjList", "$Except", "$FcnApply", "$FcnConstructor", "$IfThenElse", "$NonRecursiveFcnSpec", "$Pair", "$Pfcase", "$Pick", "$Qed", "$RecursiveFcnSpec", "$RcdConstructor", "$RcdSelect", "$Seq", "$SetEnumerate", "$SetOfAll", "$SetOfFcns", "$SetOfRcds", "$SquareAct", "$SubsetOf", "$Suffices", "$TemporalExists", "$TemporalForall", "$Tuple", "$UnboundedChoose", "$UnboundedExists", "$UnboundedForall", "$WF", "$SF":
+	case "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "\\lnot", "SUBSET", "UNION", "DOMAIN", "\\cdot", "~>", "-+->",
+		"$AngleAct", "$BoundedChoose", "$BoundedExists", "$BoundedForall", "$Case", "$ConjList", "$DisjList", "$Except", "$FcnApply", "$FcnConstructor", "$IfThenElse", "$NonRecursiveFcnSpec", "$Pair", "$Pfcase", "$Pick", "$Qed", "$RecursiveFcnSpec", "$RcdConstructor", "$RcdSelect", "$Seq", "$SetEnumerate", "$SetOfAll", "$SetOfFcns", "$SetOfRcds", "$SquareAct", "$SubsetOf", "$Suffices", "$TemporalExists", "$TemporalForall", "$Tuple", "$UnboundedChoose", "$UnboundedExists", "$UnboundedForall", "$WF", "$SF":
 		return true
 	default:
 		return false
@@ -3959,10 +3960,15 @@ func (x *sanyXMLExporter) resolvedOperatorSymbol(name string, ctx sanyXMLExprCon
 
 func (x *sanyXMLExporter) operatorApplicationLevelData(name string, operator *sanyXMLSymbol, args []Expr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLLevelData {
 	data := x.operatorBaseLevelData(name, operator, ctx)
+	if operator != nil && operator.Kind == "FormalParamNode" && !shadowed[operator.Name] {
+		data.addParam(operator.Name)
+	}
 	for i, arg := range args {
 		argData := x.exprLevelData(arg, ctx, shadowed)
-		if operator == nil && !sanyXMLKnownBuiltin(name) {
-			data.merge(argData)
+		if operator == nil {
+			if !sanyXMLKnownBuiltin(name) || sanyXMLBuiltinArgWeight(sanyXMLBuiltin(name), i) > 0 {
+				data.merge(argData)
+			}
 			continue
 		}
 		if x.operatorArgWeight(operator, i, ctx) > 0 {
