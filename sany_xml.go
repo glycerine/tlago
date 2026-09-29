@@ -50,7 +50,7 @@ type sanyXMLExporter struct {
 	theorems       map[string]*sanyXMLSymbol
 	proofTheorems  map[*SanySyntaxNode]*sanyXMLSymbol
 	proofDefs      map[*SanySyntaxNode]*sanyXMLSymbol
-	proofLocalDefs map[*SanySyntaxNode]*sanyXMLSymbol
+	proofLocalDefs map[*SanySyntaxNode][]*sanyXMLSymbol
 	emitted        map[string]bool
 
 	localCounter int
@@ -99,6 +99,8 @@ type sanyXMLSymbol struct {
 	DeclKind    DeclarationKind
 	XMLDeclKind int
 	Params      []*sanyXMLSymbol
+	Def         *Definition
+	Leibniz     []bool
 }
 
 type sanyXMLExprContext struct {
@@ -128,6 +130,11 @@ type sanyXMLBuiltinInfo struct {
 	leibniz []bool
 }
 
+type sanyXMLParamUse struct {
+	all        map[string]bool
+	nonLeibniz map[string]bool
+}
+
 type prettyXMLNode struct {
 	Name     string
 	Attrs    []xml.Attr
@@ -155,7 +162,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		theorems:       map[string]*sanyXMLSymbol{},
 		proofTheorems:  map[*SanySyntaxNode]*sanyXMLSymbol{},
 		proofDefs:      map[*SanySyntaxNode]*sanyXMLSymbol{},
-		proofLocalDefs: map[*SanySyntaxNode]*sanyXMLSymbol{},
+		proofLocalDefs: map[*SanySyntaxNode][]*sanyXMLSymbol{},
 		emitted:        map[string]bool{},
 	}
 	for _, mod := range x.sortedModules() {
@@ -490,9 +497,12 @@ func (x *sanyXMLExporter) allocateProofNodeSteps(mod *Module, proof *SanySyntaxN
 			}
 		}
 		if body != nil && body.Kind.JavaName() == "N_DefStep" {
-			if def, ok, _ := sanyXMLDefStepDefinition(body); ok && x.proofLocalDefs[step] == nil {
-				key := fmt.Sprintf("prooflocaldef:%s:%d:%d:%s", mod.Name, def.SourcePosition().Line, def.SourcePosition().Column, def.Name)
-				x.proofLocalDefs[step] = x.newDefinitionSymbol(key, &def)
+			if defs, diags := sanyXMLDefStepDefinitions(body); !diags.HasErrors() && len(defs) > 0 && x.proofLocalDefs[step] == nil {
+				for i := range defs {
+					def := &defs[i]
+					key := fmt.Sprintf("prooflocaldef:%s:%d:%d:%d:%s", mod.Name, def.SourcePosition().Line, def.SourcePosition().Column, i, def.Name)
+					x.proofLocalDefs[step] = append(x.proofLocalDefs[step], x.newDefinitionSymbol(key, def))
+				}
 			}
 		}
 		x.allocateProofNodeSteps(mod, sanyXMLNestedProofNode(step))
@@ -505,6 +515,7 @@ func (x *sanyXMLExporter) newDefinitionSymbol(key string, def *Definition) *sany
 		kind = "TheoremDefNode"
 	}
 	sym := x.newSymbol(kind, key, def.Name, len(def.Params), constantLevel, def.SourcePosition())
+	sym.Def = def
 	for _, param := range def.Params {
 		arity := 0
 		if def.ParamArities != nil {
@@ -1134,13 +1145,9 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	x.writeDefinitionOrigin(&b, sym, ctx.module)
 	b.WriteString("<body>")
 	b.WriteString(body)
-	b.WriteString("</body><params>")
-	for _, param := range sym.Params {
-		b.WriteString("<leibnizparam>")
-		x.writeRef(&b, param)
-		b.WriteString("<leibniz/></leibnizparam>")
-	}
-	b.WriteString("</params>")
+	b.WriteString("</body>")
+	sym.Leibniz = x.definitionLeibnizArgs(sym, def, defCtx)
+	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
 	x.writePreComments(&b, def.PreComments)
 	if def.Local {
 		b.WriteString("<local/>")
@@ -1223,13 +1230,9 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	x.writeDefinitionOriginFor(&b, original, originModule)
 	b.WriteString("<body>")
 	b.WriteString(body)
-	b.WriteString("</body><params>")
-	for _, param := range original.Params {
-		b.WriteString("<leibnizparam>")
-		x.writeRef(&b, param)
-		b.WriteString("<leibniz/></leibnizparam>")
-	}
-	b.WriteString("</params>")
+	b.WriteString("</body>")
+	original.Leibniz = x.definitionLeibnizArgs(original, def, defCtx)
+	x.writeLeibnizParams(&b, original.Params, original.Leibniz)
 	x.writePreComments(&b, inst.PreComments)
 	if inst.Local {
 		b.WriteString("<local/>")
@@ -1237,6 +1240,54 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	b.WriteString("</UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
 	return diags
+}
+
+func (x *sanyXMLExporter) writeLeibnizParams(b *bytes.Buffer, params []*sanyXMLSymbol, leibniz []bool) {
+	b.WriteString("<params>")
+	for i, param := range params {
+		b.WriteString("<leibnizparam>")
+		x.writeRef(b, param)
+		if i >= len(leibniz) || leibniz[i] {
+			b.WriteString("<leibniz/>")
+		}
+		b.WriteString("</leibnizparam>")
+	}
+	b.WriteString("</params>")
+}
+
+func (x *sanyXMLExporter) definitionLeibnizArgs(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext) []bool {
+	count := len(sym.Params)
+	leibniz := make([]bool, count)
+	for i := range leibniz {
+		leibniz[i] = true
+	}
+	if def == nil || def.Expr == nil {
+		return leibniz
+	}
+	use := x.exprParamUse(def.Expr, ctx, nil)
+	for i, param := range def.Params {
+		if i >= count {
+			break
+		}
+		if use.nonLeibniz[param] {
+			leibniz[i] = false
+		}
+	}
+	return leibniz
+}
+
+func (x *sanyXMLExporter) lambdaLeibnizArgs(sym *sanyXMLSymbol, body Expr, ctx sanyXMLExprContext) []bool {
+	leibniz := make([]bool, len(sym.Params))
+	for i := range leibniz {
+		leibniz[i] = true
+	}
+	use := x.exprParamUse(body, ctx, nil)
+	for i, param := range sym.Params {
+		if use.nonLeibniz[param.Name] {
+			leibniz[i] = false
+		}
+	}
+	return leibniz
 }
 
 func (x *sanyXMLExporter) emitTheoremDefEntry(sym *sanyXMLSymbol, def *Definition, ctx sanyXMLExprContext) Diagnostics {
@@ -1378,11 +1429,14 @@ func (x *sanyXMLExporter) emitTheoremEntry(sym *sanyXMLSymbol, theorem NamedExpr
 		proofCtx = x.withAssumeProveNewSymbols(proofCtx, def.AssumeProveBody)
 	}
 	proofCtx.proofDefs = x.proofDefinitionMap(theorem.Syntax)
-	proof, proofDiags := x.proofXML(sanyXMLTheoremProofNode(theorem.Syntax), proofCtx)
+	proofNode := sanyXMLTheoremProofNode(theorem.Syntax)
+	proof, proofDiags := x.proofXML(proofNode, proofCtx)
 	diags = append(diags, proofDiags...)
 	if diags.HasErrors() {
 		return diags
 	}
+	level = maxTlaLevel(level, x.proofNodeLevel(proofNode, proofCtx))
+	sym.Level = level
 	var b bytes.Buffer
 	b.WriteString("<TheoremNode>")
 	x.writeNode(&b, theorem.SourcePosition(), level)
@@ -1489,9 +1543,11 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 			diags = append(diags, itemDiags...)
 			level = maxTlaLevel(level, itemLevel)
 			stepXML = append(stepXML, item)
-			if sym := x.proofLocalDefs[step]; sym != nil {
+			if syms := x.proofLocalDefs[step]; len(syms) > 0 {
 				stepCtx.defs = copySanyXMLSymbolMap(stepCtx.defs)
-				stepCtx.defs[sym.Name] = sym
+				for _, sym := range syms {
+					stepCtx.defs[sym.Name] = sym
+				}
 			}
 		}
 		if ap, ok := sanyXMLProofStepSufficesAssumeProveBody(body); ok {
@@ -1552,6 +1608,9 @@ func (x *sanyXMLExporter) emitProofStepTheoremEntry(sym *sanyXMLSymbol, step *Sa
 	if diags.HasErrors() {
 		return diags
 	}
+	proofLevel = maxTlaLevel(proofLevel, x.proofNodeLevel(proof, proofCtx))
+	level = maxTlaLevel(bodyLevel, proofLevel)
+	sym.Level = level
 
 	x.emitted[sym.Key] = true
 	var b bytes.Buffer
@@ -1653,24 +1712,34 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 }
 
 func (x *sanyXMLExporter) defStepXML(step, bodyNode *SanySyntaxNode, ctx sanyXMLExprContext) (string, tlaLevel, Diagnostics) {
-	def, ok, diags := sanyXMLDefStepDefinition(bodyNode)
-	if !ok {
+	defs, diags := sanyXMLDefStepDefinitions(bodyNode)
+	if len(defs) == 0 {
 		return "", constantLevel, diags
 	}
-	sym := x.proofLocalDefs[step]
-	if sym == nil {
+	syms := x.proofLocalDefs[step]
+	if len(syms) != len(defs) {
 		return "", constantLevel, Diagnostics{errorAt(sanyNodePosition(bodyNode), "E7010", "proof DEFINE step has no allocated symbol")}
 	}
-	diags = append(diags, x.emitDefinitionEntry(sym, &def, ctx)...)
-	if diags.HasErrors() {
-		return "", constantLevel, diags
+	defCtx := ctx
+	defCtx.defs = copySanyXMLSymbolMap(ctx.defs)
+	level := constantLevel
+	for i := range defs {
+		sym := syms[i]
+		diags = append(diags, x.emitDefinitionEntry(sym, &defs[i], defCtx)...)
+		if diags.HasErrors() {
+			return "", constantLevel, diags
+		}
+		level = maxTlaLevel(level, sym.Level)
+		defCtx.defs[sym.Name] = sym
 	}
 	var b bytes.Buffer
 	b.WriteString("<DefStepNode>")
-	x.writeNode(&b, sanyNodePosition(bodyNode), sym.Level)
-	x.writeRef(&b, sym)
+	x.writeNode(&b, sanyNodePosition(bodyNode), level)
+	for _, sym := range syms {
+		x.writeRef(&b, sym)
+	}
 	b.WriteString("</DefStepNode>")
-	return b.String(), sym.Level, nil
+	return b.String(), level, nil
 }
 
 func (x *sanyXMLExporter) proofNodeLevel(proof *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
@@ -1685,7 +1754,13 @@ func (x *sanyXMLExporter) proofNodeLevel(proof *SanySyntaxNode, ctx sanyXMLExprC
 		stepCtx := ctx
 		for _, step := range sanyXMLDirectProofSteps(proof) {
 			body := sanyXMLProofStepBodyNode(step)
-			level = maxTlaLevel(level, x.proofStepLevel(step, stepCtx))
+			if body != nil && body.Kind.JavaName() == "N_DefStep" {
+				var defLevel tlaLevel
+				defLevel, stepCtx = x.proofDefStepLevelAndContext(step, body, stepCtx)
+				level = maxTlaLevel(level, defLevel)
+			} else {
+				level = maxTlaLevel(level, x.proofStepLevel(step, stepCtx))
+			}
 			if ap, ok := sanyXMLProofStepSufficesAssumeProveBody(body); ok {
 				stepCtx = x.withAssumeProveNewSymbols(stepCtx, ap)
 			}
@@ -1694,6 +1769,25 @@ func (x *sanyXMLExporter) proofNodeLevel(proof *SanySyntaxNode, ctx sanyXMLExprC
 	default:
 		return constantLevel
 	}
+}
+
+func (x *sanyXMLExporter) proofDefStepLevelAndContext(step, bodyNode *SanySyntaxNode, ctx sanyXMLExprContext) (tlaLevel, sanyXMLExprContext) {
+	defs, diags := sanyXMLDefStepDefinitions(bodyNode)
+	syms := x.proofLocalDefs[step]
+	if diags.HasErrors() || len(defs) == 0 || len(syms) != len(defs) {
+		return constantLevel, ctx
+	}
+	defCtx := ctx
+	defCtx.defs = copySanyXMLSymbolMap(ctx.defs)
+	level := constantLevel
+	for i := range defs {
+		sym := syms[i]
+		defLevel := x.exprLevel(defs[i].Expr, defCtx)
+		sym.Level = defLevel
+		level = maxTlaLevel(level, defLevel)
+		defCtx.defs[sym.Name] = sym
+	}
+	return level, defCtx
 }
 
 func (x *sanyXMLExporter) proofStepLevel(step *SanySyntaxNode, ctx sanyXMLExprContext) tlaLevel {
@@ -2628,13 +2722,10 @@ func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx san
 	x.writeDefinitionOrigin(&b, sym, ctx.module)
 	b.WriteString("<body>")
 	b.WriteString(bodyXML)
-	b.WriteString("</body><params>")
-	for _, param := range sym.Params {
-		b.WriteString("<leibnizparam>")
-		x.writeRef(&b, param)
-		b.WriteString("<leibniz/></leibnizparam>")
-	}
-	b.WriteString("</params></UserDefinedOpKind>")
+	b.WriteString("</body>")
+	sym.Leibniz = x.lambdaLeibnizArgs(sym, body, ctx)
+	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
+	b.WriteString("</UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
 	return nil
 }
@@ -3189,6 +3280,49 @@ func (x *sanyXMLExporter) operatorSymbol(name string, ctx sanyXMLExprContext) *s
 	return x.builtin(sanyXMLBuiltinName(name))
 }
 
+func (x *sanyXMLExporter) operatorSymbolForLeibniz(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
+	if sym := ctx.formals[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.defs[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.scope.decls[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.scope.defs[name]; sym != nil {
+		return sym
+	}
+	return nil
+}
+
+func (x *sanyXMLExporter) operatorLeibnizArg(name string, index int, ctx sanyXMLExprContext) bool {
+	if sym := x.operatorSymbolForLeibniz(name, ctx); sym != nil {
+		return x.symbolLeibnizArg(sym, index, ctx)
+	}
+	name = sanyXMLBuiltinName(name)
+	if !sanyXMLKnownBuiltin(name) {
+		return true
+	}
+	info := sanyXMLBuiltin(name)
+	return index >= len(info.leibniz) || info.leibniz[index]
+}
+
+func sanyXMLKnownBuiltin(name string) bool {
+	if builtinIdentifiers[name] {
+		return true
+	}
+	if _, ok := GetSanyOperator(name); ok {
+		return true
+	}
+	switch name {
+	case "$AngleAct", "$BoundedChoose", "$BoundedExists", "$BoundedForall", "$Case", "$ConjList", "$DisjList", "$Except", "$FcnApply", "$FcnConstructor", "$IfThenElse", "$NonRecursiveFcnSpec", "$Pair", "$Pfcase", "$Pick", "$Qed", "$RecursiveFcnSpec", "$RcdConstructor", "$RcdSelect", "$Seq", "$SetEnumerate", "$SetOfAll", "$SetOfFcns", "$SetOfRcds", "$SquareAct", "$SubsetOf", "$Suffices", "$TemporalExists", "$TemporalForall", "$Tuple", "$UnboundedChoose", "$UnboundedExists", "$UnboundedForall", "$WF", "$SF":
+		return true
+	default:
+		return false
+	}
+}
+
 func (x *sanyXMLExporter) definitionSymbol(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
 	if sym := ctx.defs[name]; sym != nil {
 		return sym
@@ -3203,6 +3337,9 @@ func (x *sanyXMLExporter) definitionForSymbol(sym *sanyXMLSymbol) *Definition {
 	if sym == nil {
 		return nil
 	}
+	if sym.Def != nil {
+		return sym.Def
+	}
 	for _, mod := range x.spec.Modules {
 		for i := range mod.Definitions {
 			def := &mod.Definitions[i]
@@ -3212,6 +3349,239 @@ func (x *sanyXMLExporter) definitionForSymbol(sym *sanyXMLSymbol) *Definition {
 		}
 	}
 	return nil
+}
+
+func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLParamUse {
+	if expr == nil {
+		return sanyXMLParamUse{}
+	}
+	switch e := expr.(type) {
+	case *IdentExpr:
+		return x.identParamUse(e.Name, ctx, shadowed)
+	case *LiteralExpr:
+		return sanyXMLParamUse{}
+	case *UnaryExpr:
+		use := x.exprParamUse(e.Expr, ctx, shadowed)
+		if !x.operatorLeibnizArg(e.Op, 0, ctx) {
+			use.addNonLeibniz(use.all)
+		}
+		return use
+	case *BinaryExpr:
+		left := x.exprParamUse(e.Left, ctx, shadowed)
+		right := x.exprParamUse(e.Right, ctx, shadowed)
+		use := mergeSanyXMLParamUse(left, right, x.identParamUse(e.Op, ctx, shadowed))
+		if !x.operatorLeibnizArg(e.Op, 0, ctx) {
+			use.addNonLeibniz(left.all)
+		}
+		if !x.operatorLeibnizArg(e.Op, 1, ctx) {
+			use.addNonLeibniz(right.all)
+		}
+		return use
+	case *CallExpr:
+		use := x.exprParamUse(e.Callee, ctx, shadowed)
+		operatorName := ""
+		if ident, ok := e.Callee.(*IdentExpr); ok {
+			operatorName = ident.Name
+		}
+		for i, arg := range e.Args {
+			argUse := x.exprParamUse(arg, ctx, shadowed)
+			use.merge(argUse)
+			if operatorName != "" && !x.operatorLeibnizArg(operatorName, i, ctx) {
+				use.addNonLeibniz(argUse.all)
+			}
+		}
+		return use
+	case *IfExpr:
+		return mergeSanyXMLParamUse(
+			x.exprParamUse(e.Cond, ctx, shadowed),
+			x.exprParamUse(e.Then, ctx, shadowed),
+			x.exprParamUse(e.Else, ctx, shadowed),
+		)
+	case *LetExpr:
+		use := sanyXMLParamUse{}
+		for _, def := range e.Definitions {
+			defShadowed := copyBoolMap(shadowed)
+			for _, param := range def.Params {
+				defShadowed[param] = true
+			}
+			use.merge(x.exprParamUse(def.Expr, ctx, defShadowed))
+		}
+		for _, inst := range e.Instances {
+			for _, expr := range inst.Substitutions {
+				use.merge(x.exprParamUse(expr, ctx, shadowed))
+			}
+		}
+		bodyShadowed := copyBoolMap(shadowed)
+		for _, def := range e.Definitions {
+			bodyShadowed[def.Name] = true
+		}
+		use.merge(x.exprParamUse(e.Body, ctx, bodyShadowed))
+		return use
+	case *QuantifierExpr:
+		use := x.exprParamUse(e.Set, ctx, shadowed)
+		bodyShadowed := copyBoolMap(shadowed)
+		bodyShadowed[e.Var] = true
+		use.merge(x.exprParamUse(e.Body, ctx, bodyShadowed))
+		return use
+	case *CaseExpr:
+		use := sanyXMLParamUse{}
+		for _, arm := range e.Arms {
+			use.merge(x.exprParamUse(arm.Test, ctx, shadowed))
+			use.merge(x.exprParamUse(arm.Value, ctx, shadowed))
+		}
+		use.merge(x.exprParamUse(e.Other, ctx, shadowed))
+		return use
+	case *ChooseExpr:
+		use := x.exprParamUse(e.Set, ctx, shadowed)
+		bodyShadowed := copyBoolMap(shadowed)
+		bodyShadowed[e.Var] = true
+		use.merge(x.exprParamUse(e.Body, ctx, bodyShadowed))
+		return use
+	case *TupleExpr:
+		return x.exprListParamUse(e.Elems, ctx, shadowed)
+	case *SetExpr:
+		return x.exprListParamUse(e.Elems, ctx, shadowed)
+	case *RecordExpr:
+		use := sanyXMLParamUse{}
+		for _, field := range e.Fields {
+			use.merge(x.exprParamUse(field.Value, ctx, shadowed))
+		}
+		return use
+	case *RecordComponentExpr:
+		return x.exprParamUse(e.Record, ctx, shadowed)
+	case *RecordSetExpr:
+		use := sanyXMLParamUse{}
+		for _, field := range e.Fields {
+			use.merge(x.exprParamUse(field.Set, ctx, shadowed))
+		}
+		return use
+	case *FunctionExpr:
+		use := sanyXMLParamUse{}
+		bodyShadowed := copyBoolMap(shadowed)
+		for _, bound := range e.Bounds {
+			use.merge(x.exprParamUse(bound.Set, ctx, shadowed))
+			bodyShadowed[bound.Name] = true
+		}
+		use.merge(x.exprParamUse(e.Body, ctx, bodyShadowed))
+		return use
+	case *FunctionAppExpr:
+		use := x.exprParamUse(e.Function, ctx, shadowed)
+		use.merge(x.exprListParamUse(e.Args, ctx, shadowed))
+		return use
+	case *ExceptExpr:
+		use := x.exprParamUse(e.Base, ctx, shadowed)
+		for _, spec := range e.Specs {
+			for _, component := range spec.Components {
+				use.merge(x.exprListParamUse(component.Indices, ctx, shadowed))
+			}
+			use.merge(x.exprParamUse(spec.Value, ctx, shadowed))
+		}
+		return use
+	case *LabelExpr:
+		return x.exprParamUse(e.Body, ctx, shadowed)
+	case *ActionExpr:
+		actionUse := x.exprParamUse(e.Action, ctx, shadowed)
+		subscriptUse := x.exprParamUse(e.Subscript, ctx, shadowed)
+		use := mergeSanyXMLParamUse(actionUse, subscriptUse)
+		use.addNonLeibniz(actionUse.all)
+		use.addNonLeibniz(subscriptUse.all)
+		return use
+	case *FairnessExpr:
+		subscriptUse := x.exprParamUse(e.Subscript, ctx, shadowed)
+		actionUse := x.exprParamUse(e.Action, ctx, shadowed)
+		use := mergeSanyXMLParamUse(subscriptUse, actionUse)
+		use.addNonLeibniz(subscriptUse.all)
+		use.addNonLeibniz(actionUse.all)
+		return use
+	case *FunctionSetExpr:
+		return mergeSanyXMLParamUse(x.exprParamUse(e.Domain, ctx, shadowed), x.exprParamUse(e.Range, ctx, shadowed))
+	case *SetComprehensionExpr:
+		use := sanyXMLParamUse{}
+		bodyShadowed := copyBoolMap(shadowed)
+		for _, bound := range e.Bounds {
+			use.merge(x.exprParamUse(bound.Set, ctx, shadowed))
+			bodyShadowed[bound.Name] = true
+		}
+		use.merge(x.exprParamUse(e.Element, ctx, bodyShadowed))
+		use.merge(x.exprParamUse(e.Predicate, ctx, bodyShadowed))
+		return use
+	}
+	return sanyXMLParamUse{}
+}
+
+func (x *sanyXMLExporter) identParamUse(name string, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLParamUse {
+	if name == "" || shadowed[name] || ctx.formals[name] == nil {
+		return sanyXMLParamUse{}
+	}
+	use := sanyXMLParamUse{}
+	use.addAll(name)
+	return use
+}
+
+func (x *sanyXMLExporter) exprListParamUse(exprs []Expr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLParamUse {
+	use := sanyXMLParamUse{}
+	for _, expr := range exprs {
+		use.merge(x.exprParamUse(expr, ctx, shadowed))
+	}
+	return use
+}
+
+func (x *sanyXMLExporter) symbolLeibnizArg(sym *sanyXMLSymbol, index int, ctx sanyXMLExprContext) bool {
+	if sym == nil || index < 0 {
+		return true
+	}
+	if sym.Kind == "BuiltInKind" {
+		info := sanyXMLBuiltin(sym.Name)
+		return index >= len(info.leibniz) || info.leibniz[index]
+	}
+	if index < len(sym.Leibniz) {
+		return sym.Leibniz[index]
+	}
+	if def := x.definitionForSymbol(sym); def != nil && def != sym.Def {
+		sym.Leibniz = x.definitionLeibnizArgs(sym, def, ctx)
+		if index < len(sym.Leibniz) {
+			return sym.Leibniz[index]
+		}
+	}
+	return true
+}
+
+func mergeSanyXMLParamUse(uses ...sanyXMLParamUse) sanyXMLParamUse {
+	var out sanyXMLParamUse
+	for _, use := range uses {
+		out.merge(use)
+	}
+	return out
+}
+
+func (u *sanyXMLParamUse) merge(other sanyXMLParamUse) {
+	for name := range other.all {
+		u.addAll(name)
+	}
+	u.addNonLeibniz(other.nonLeibniz)
+}
+
+func (u *sanyXMLParamUse) addAll(name string) {
+	if name == "" {
+		return
+	}
+	if u.all == nil {
+		u.all = map[string]bool{}
+	}
+	u.all[name] = true
+}
+
+func (u *sanyXMLParamUse) addNonLeibniz(names map[string]bool) {
+	for name := range names {
+		if name == "" {
+			continue
+		}
+		u.addAll(name)
+		if u.nonLeibniz == nil {
+			u.nonLeibniz = map[string]bool{}
+		}
+		u.nonLeibniz[name] = true
+	}
 }
 
 func (x *sanyXMLExporter) writeRef(b *bytes.Buffer, sym *sanyXMLSymbol) {
@@ -3763,24 +4133,35 @@ func sanyXMLProofStepSufficesAssumeProveBody(body *SanySyntaxNode) (*AssumeProve
 	return sanyXMLProofStepAssumeProveBody(body)
 }
 
-func sanyXMLDefStepDefinition(body *SanySyntaxNode) (Definition, bool, Diagnostics) {
+func sanyXMLDefStepDefinitions(body *SanySyntaxNode) ([]Definition, Diagnostics) {
 	if body == nil {
-		return Definition{}, false, nil
+		return nil, nil
 	}
+	var defs []Definition
+	var diags Diagnostics
 	for _, child := range body.GetHeirs() {
 		if child == nil {
 			continue
 		}
 		switch child.Kind.JavaName() {
 		case "N_OperatorDefinition":
-			def, diags := sanyDefinition(child)
-			return def, true, diags
+			def, defDiags := sanyDefinition(child)
+			diags = append(diags, defDiags...)
+			if !defDiags.HasErrors() {
+				defs = append(defs, def)
+			}
 		case "N_FunctionDefinition":
-			def, diags := sanyFunctionDefinition(child)
-			return def, true, diags
+			def, defDiags := sanyFunctionDefinition(child)
+			diags = append(diags, defDiags...)
+			if !defDiags.HasErrors() {
+				defs = append(defs, def)
+			}
 		}
 	}
-	return Definition{}, false, Diagnostics{errorAt(sanyNodePosition(body), "E7010", "proof DEFINE step has no definition")}
+	if len(defs) == 0 && !diags.HasErrors() {
+		diags = append(diags, errorAt(sanyNodePosition(body), "E7010", "proof DEFINE step has no definition"))
+	}
+	return defs, diags
 }
 
 func sanyXMLUseOrHideIsHide(node *SanySyntaxNode) bool {

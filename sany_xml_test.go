@@ -867,6 +867,82 @@ THEOREM T == TRUE
 		}
 	})
 
+	t.Run("serializes multiple proof DEFINE definitions in one step", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofMultiDefineXML.tla", `---- MODULE ProofMultiDefineXML ----
+THEOREM T == TRUE
+<1>. DEFINE First == TRUE
+            Second == First
+<1>1. Second
+  BY DEF Second, First
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		start := strings.Index(got, "<DefStepNode>")
+		if start < 0 {
+			t.Fatalf("SANY XML missing DefStepNode\n%s", got)
+		}
+		end := strings.Index(got[start:], "</DefStepNode>")
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated DefStepNode\n%s", got)
+		}
+		defStep := got[start : start+end]
+		if count := strings.Count(defStep, "<UserDefinedOpKindRef>"); count != 2 {
+			t.Fatalf("DefStepNode refs = %d, want 2\n%s", count, defStep)
+		}
+		for _, want := range []string{
+			`<uniquename>First</uniquename>`,
+			`<uniquename>Second</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("proof DEFINE XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("omits Leibniz marker for proof DEFINE params under temporal operators", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofTemporalLeibnizXML.tla", `---- MODULE ProofTemporalLeibnizXML ----
+VARIABLE v
+THEOREM T == TRUE
+<1>. DEFINE P(m) == v = m
+            L(m) == [](P(m) => <>TRUE)
+<1>1. TRUE
+  OBVIOUS
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var def *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "UserDefinedOpKind" && firstChildText(payload, "uniquename") == "L" {
+				def = payload
+				break
+			}
+		}
+		if def == nil {
+			t.Fatalf("proof DEFINE L missing\n%s", xmlText)
+		}
+		params := directChildren(def, "params")
+		if len(params) != 1 {
+			t.Fatalf("L params elements = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 {
+			t.Fatalf("L leibnizparam elements = %d, want 1\n%s", len(leibnizParams), xmlText)
+		}
+		if got := directChildren(leibnizParams[0], "leibniz"); len(got) != 0 {
+			t.Fatalf("L param has leibniz marker, want non-Leibniz\n%s", xmlText)
+		}
+	})
+
 	t.Run("serializes ordinary SUFFICES proof steps", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofSufficesXML.tla", `---- MODULE ProofSufficesXML ----
 THEOREM T == TRUE
