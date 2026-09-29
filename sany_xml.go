@@ -4417,6 +4417,9 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 		if name == "$SquareAct" || name == "$AngleAct" {
 			level = actionLevel
 		}
+	case "\\cdot":
+		arity = 2
+		level = actionLevel
 	case "$SubsetOf":
 		arity = 1
 	case "$Case", "$ConjList", "$DisjList", "$Tuple", "$Seq", "$SetEnumerate", "$RcdConstructor", "$SetOfAll", "$SetOfFcns", "$FcnConstructor", "$BoundedForall", "$BoundedExists", "$BoundedChoose", "$SetOfRcds", "$Except", "$CartesianProd":
@@ -4440,7 +4443,7 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 	for i := range leibniz {
 		leibniz[i] = true
 	}
-	if name == "'" || name == "\\prime" || name == "ENABLED" || name == "UNCHANGED" || name == "[]" || name == "<>" || name == "$SquareAct" || name == "$AngleAct" || name == "$WF" || name == "$SF" || name == "~>" || name == "-+->" {
+	if name == "'" || name == "\\prime" || name == "ENABLED" || name == "UNCHANGED" || name == "[]" || name == "<>" || name == "\\cdot" || name == "$SquareAct" || name == "$AngleAct" || name == "$WF" || name == "$SF" || name == "~>" || name == "-+->" {
 		for i := range leibniz {
 			leibniz[i] = false
 		}

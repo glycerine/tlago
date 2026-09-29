@@ -816,6 +816,42 @@ Live == <>(ENABLED Done)
 		}
 	})
 
+	t.Run("serializes action composition as non-Leibniz action builtin", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ActionCompositionXML.tla", `---- MODULE ActionCompositionXML ----
+VARIABLE x
+A == (x' = x) \cdot (x' = x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var cdot *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "BuiltInKind" && firstChildText(payload, "uniquename") == `\cdot` {
+				cdot = payload
+				break
+			}
+		}
+		if cdot == nil {
+			t.Fatalf(`\cdot builtin missing`+"\n%s", xmlText)
+		}
+		if got := firstChildText(cdot, "level"); got != strconv.Itoa(int(actionLevel)) {
+			t.Fatalf(`\cdot level = %s, want %d`+"\n%s", got, actionLevel, xmlText)
+		}
+		params := directChildren(cdot, "params")
+		if len(params) != 1 {
+			t.Fatalf(`\cdot params elements = %d, want 1`+"\n%s", len(params), xmlText)
+		}
+		for _, param := range directChildren(params[0], "leibnizparam") {
+			if got := directChildren(param, "leibniz"); len(got) != 0 {
+				t.Fatalf(`\cdot param has leibniz marker, want non-Leibniz`+"\n%s", xmlText)
+			}
+		}
+	})
+
 	t.Run("serializes inherited named assumptions as proof facts", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "BaseAssume.tla"), `---- MODULE BaseAssume ----
