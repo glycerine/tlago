@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"sort"
 	"strings"
 )
 
@@ -158,6 +159,9 @@ func (s *TLCStateMut) Unassigned() []StateVariable {
 			out = append(out, stateVariables[i])
 		}
 	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Name.String() < out[j].Name.String()
+	})
 	return out
 }
 
