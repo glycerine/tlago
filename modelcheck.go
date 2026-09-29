@@ -584,6 +584,7 @@ func inlineDefinitionCalls(expr Expr, defs map[string]*Definition, seen map[stri
 			Right:        right,
 			Pos:          e.Pos,
 			JunctionList: e.JunctionList,
+			SanyNary:     e.SanyNary,
 		}
 	case *CallExpr:
 		call := &CallExpr{Callee: inlineDefinitionCalls(e.Callee, defs, copySeen(seen)), Pos: e.Pos}
@@ -770,7 +771,7 @@ func substituteParams(expr Expr, replacements map[string]Expr) Expr {
 	case *UnaryExpr:
 		return &UnaryExpr{Op: e.Op, Expr: substituteParams(e.Expr, replacements), Pos: e.Pos}
 	case *BinaryExpr:
-		return &BinaryExpr{Op: e.Op, Left: substituteParams(e.Left, replacements), Right: substituteParams(e.Right, replacements), Pos: e.Pos, JunctionList: e.JunctionList}
+		return &BinaryExpr{Op: e.Op, Left: substituteParams(e.Left, replacements), Right: substituteParams(e.Right, replacements), Pos: e.Pos, JunctionList: e.JunctionList, SanyNary: e.SanyNary}
 	case *CallExpr:
 		call := &CallExpr{Callee: substituteParams(e.Callee, replacements), Pos: e.Pos}
 		for _, arg := range e.Args {
@@ -2773,6 +2774,7 @@ func substituteLets(expr Expr, bindings map[string]Expr, seen map[string]bool) E
 			Right:        substituteLets(e.Right, bindings, copySeen(seen)),
 			Pos:          e.Pos,
 			JunctionList: e.JunctionList,
+			SanyNary:     e.SanyNary,
 		}
 	case *CallExpr:
 		call := &CallExpr{Callee: substituteLets(e.Callee, bindings, copySeen(seen)), Pos: e.Pos}

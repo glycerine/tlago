@@ -4326,6 +4326,7 @@ A == -1
 		xmlText, diags := SanyXMLSource("CartesianProductXML.tla", `---- MODULE CartesianProductXML ----
 A == {1} \X {2}
 B == {1} \times {2}
+C == {1} \X {2} \X {3}
 ====`)
 		requireNoErrors(t, diags)
 
@@ -4335,6 +4336,42 @@ B == {1} \times {2}
 		}
 		if strings.Contains(got, `<uniquename>\times</uniquename>`) {
 			t.Fatalf("Cartesian product XML kept non-SANY \\times builtin\n%s", got)
+		}
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, got)
+		}
+		cartesianUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$CartesianProd")
+		if cartesianUID == "" {
+			t.Fatalf("Cartesian product builtin missing\n%s", got)
+		}
+		if max := maxDirectOperandsForOperator(root, cartesianUID); max != 3 {
+			t.Fatalf("max Cartesian product operands = %d, want 3\n%s", max, got)
+		}
+		if opApplContainsDirectOperandWithOperator(root, cartesianUID, cartesianUID) {
+			t.Fatalf("Cartesian product XML kept nested Cartesian product operands\n%s", got)
+		}
+	})
+
+	t.Run("preserves parenthesized Cartesian product grouping", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("GroupedCartesianProductXML.tla", `---- MODULE GroupedCartesianProductXML ----
+A == ({1} \X {2}) \X ({3} \X {4})
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		cartesianUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$CartesianProd")
+		if cartesianUID == "" {
+			t.Fatalf("Cartesian product builtin missing\n%s", xmlText)
+		}
+		if max := maxDirectOperandsForOperator(root, cartesianUID); max != 2 {
+			t.Fatalf("max grouped Cartesian product operands = %d, want 2\n%s", max, xmlText)
+		}
+		if !opApplContainsDirectOperandWithOperator(root, cartesianUID, cartesianUID) {
+			t.Fatalf("grouped Cartesian product XML did not preserve nested Cartesian product operands\n%s", xmlText)
 		}
 	})
 

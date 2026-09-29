@@ -716,7 +716,7 @@ func apalacheSubstituteParamsAtSharedUseSource(expr Expr, replacements map[strin
 	case *UnaryExpr:
 		return &UnaryExpr{Op: e.Op, Expr: apalacheSubstituteParamsAtSharedUseSource(e.Expr, replacements, finalPositions), Pos: e.Pos}
 	case *BinaryExpr:
-		return &BinaryExpr{Op: e.Op, Left: apalacheSubstituteParamsAtSharedUseSource(e.Left, replacements, finalPositions), Right: apalacheSubstituteParamsAtSharedUseSource(e.Right, replacements, finalPositions), Pos: e.Pos, JunctionList: e.JunctionList}
+		return &BinaryExpr{Op: e.Op, Left: apalacheSubstituteParamsAtSharedUseSource(e.Left, replacements, finalPositions), Right: apalacheSubstituteParamsAtSharedUseSource(e.Right, replacements, finalPositions), Pos: e.Pos, JunctionList: e.JunctionList, SanyNary: e.SanyNary}
 	case *CallExpr:
 		call := &CallExpr{Callee: apalacheSubstituteParamsAtSharedUseSource(e.Callee, replacements, finalPositions), Pos: e.Pos}
 		for _, arg := range e.Args {
@@ -1010,7 +1010,7 @@ func apalacheExprAtPosition(expr Expr, pos Position) Expr {
 	case *UnaryExpr:
 		return &UnaryExpr{Op: e.Op, Expr: e.Expr, Pos: pos}
 	case *BinaryExpr:
-		return &BinaryExpr{Op: e.Op, Left: e.Left, Right: e.Right, Pos: pos, JunctionList: e.JunctionList}
+		return &BinaryExpr{Op: e.Op, Left: e.Left, Right: e.Right, Pos: pos, JunctionList: e.JunctionList, SanyNary: e.SanyNary}
 	case *CallExpr:
 		return &CallExpr{Callee: e.Callee, Args: append([]Expr(nil), e.Args...), Pos: pos}
 	case *IfExpr:

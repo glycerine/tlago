@@ -215,6 +215,7 @@ type BinaryExpr struct {
 	Right        Expr
 	Pos          Position
 	JunctionList bool
+	SanyNary     bool
 }
 
 func (e *BinaryExpr) Position() Position { return e.Pos }

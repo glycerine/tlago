@@ -42,6 +42,7 @@ type sanyXMLExporter struct {
 	instDefs        map[string]*sanyXMLSymbol
 	instParams      map[string][]*sanyXMLSymbol
 	letDefs         map[*LetExpr][]*sanyXMLSymbol
+	localDefs       map[string]*sanyXMLSymbol
 	letInsts        map[string]*sanyXMLSymbol
 	letInstDefs     map[string]*sanyXMLSymbol
 	newDecls        map[string]*sanyXMLSymbol
@@ -218,6 +219,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		instDefs:        map[string]*sanyXMLSymbol{},
 		instParams:      map[string][]*sanyXMLSymbol{},
 		letDefs:         map[*LetExpr][]*sanyXMLSymbol{},
+		localDefs:       map[string]*sanyXMLSymbol{},
 		letInsts:        map[string]*sanyXMLSymbol{},
 		letInstDefs:     map[string]*sanyXMLSymbol{},
 		newDecls:        map[string]*sanyXMLSymbol{},
@@ -768,9 +770,22 @@ func (x *sanyXMLExporter) nextGeneratedUID() int {
 }
 
 func (x *sanyXMLExporter) newLocalDefinitionSymbol(prefix string, def *Definition) *sanyXMLSymbol {
-	x.localCounter++
-	key := fmt.Sprintf("%s:localdef:%d:%s", prefix, x.localCounter, def.Name)
-	return x.newDefinitionSymbol(key, def)
+	key := x.localDefinitionKey(prefix, def)
+	if sym := x.localDefs[key]; sym != nil {
+		return sym
+	}
+	sym := x.newDefinitionSymbol(key, def)
+	x.localDefs[key] = sym
+	return sym
+}
+
+func (x *sanyXMLExporter) localDefinitionKey(prefix string, def *Definition) string {
+	pos := def.SourcePosition()
+	if pos.File == "" && pos.Line == 0 && pos.Column == 0 && pos.EndLine == 0 && pos.EndColumn == 0 {
+		x.localCounter++
+		return fmt.Sprintf("%s:localdef:%d:%s", prefix, x.localCounter, def.Name)
+	}
+	return fmt.Sprintf("%s:localdef:%s:%d:%d:%d:%d:%s:%d", prefix, pos.File, pos.Line, pos.Column, pos.EndLine, pos.EndColumn, def.Name, len(def.Params))
 }
 
 func (x *sanyXMLExporter) newBoundFormal(prefix, name string, pos Position) *sanyXMLSymbol {
@@ -3685,6 +3700,9 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 		if e.JunctionList {
 			return x.junctionListXML(e, ctx)
 		}
+		if e.SanyNary && sanyXMLIsCartesianProductOp(e.Op) {
+			return x.cartesianProductXML(e, ctx)
+		}
 		left, leftDiags := x.exprXML(e.Left, ctx)
 		right, rightDiags := x.exprXML(e.Right, ctx)
 		diags := append(leftDiags, rightDiags...)
@@ -3815,6 +3833,34 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 	default:
 		return "", Diagnostics{errorAt(expr.Position(), "E7002", "unsupported SANY XML expression %T", expr)}
 	}
+}
+
+func (x *sanyXMLExporter) cartesianProductXML(expr *BinaryExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
+	operandExprs := sanyXMLFlattenCartesianProduct(expr)
+	operands := make([]string, 0, len(operandExprs))
+	var diags Diagnostics
+	for _, operandExpr := range operandExprs {
+		operand, operandDiags := x.exprXML(operandExpr, ctx)
+		diags = append(diags, operandDiags...)
+		operands = append(operands, operand)
+	}
+	if diags.HasErrors() {
+		return "", diags
+	}
+	return x.opApplXML(expr.Pos, x.exprLevel(expr, ctx), x.builtin("$CartesianProd"), operands, ""), nil
+}
+
+func sanyXMLFlattenCartesianProduct(expr Expr) []Expr {
+	if binary, ok := expr.(*BinaryExpr); ok && binary.SanyNary && !binary.JunctionList && sanyXMLIsCartesianProductOp(binary.Op) {
+		left := sanyXMLFlattenCartesianProduct(binary.Left)
+		right := sanyXMLFlattenCartesianProduct(binary.Right)
+		return append(left, right...)
+	}
+	return []Expr{expr}
+}
+
+func sanyXMLIsCartesianProductOp(op string) bool {
+	return op == "\\X" || op == "\\times"
 }
 
 func (x *sanyXMLExporter) identXML(e *IdentExpr, ctx sanyXMLExprContext) (string, Diagnostics) {

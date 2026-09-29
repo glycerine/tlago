@@ -1318,7 +1318,7 @@ func sanyBinaryExpression(node *SanySyntaxNode, op string) (Expr, Diagnostics) {
 	for _, exprNode := range exprs[1:] {
 		right, rightDiags := sanyExpr(exprNode)
 		diags = append(diags, rightDiags...)
-		left = &BinaryExpr{Op: op, Left: left, Right: right, Pos: sanyNodePosition(node)}
+		left = &BinaryExpr{Op: op, Left: left, Right: right, Pos: sanyNodePosition(node), SanyNary: true}
 	}
 	return left, diags
 }
