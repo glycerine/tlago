@@ -192,6 +192,33 @@ RootInit == Inst!Init
 		}
 	})
 
+	t.Run("anonymous INSTANCE does not reclone inherited owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+EXTENDS Base
+HelperOp == BaseOp
+====`)
+		rootPath := filepath.Join(dir, "AnonymousInstanceInheritedXML.tla")
+		writeFile(t, rootPath, `---- MODULE AnonymousInstanceInheritedXML ----
+EXTENDS Base
+INSTANCE Helper
+Use == HelperOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if count := strings.Count(string(xmlText), `<uniquename>BaseOp</uniquename>`); count != 1 {
+			t.Fatalf("BaseOp entries = %d, want only the inherited definition\n%s", count, string(xmlText))
+		}
+	})
+
 	t.Run("instance-cloned definitions reuse original LET-local operators", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----

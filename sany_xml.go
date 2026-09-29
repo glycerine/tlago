@@ -863,7 +863,29 @@ func (x *sanyXMLExporter) moduleHasDefinition(mod *Module, name string) bool {
 }
 
 func (x *sanyXMLExporter) skipInstanceDefinitionClone(owner *Module, inst Instance, name string) bool {
-	return inst.exportsUnqualified() && x.moduleHasDefinition(owner, name)
+	return inst.exportsUnqualified() && (x.moduleHasDefinition(owner, name) || x.moduleExtendsDefinition(owner, name, map[string]bool{}))
+}
+
+func (x *sanyXMLExporter) moduleExtendsDefinition(mod *Module, name string, visiting map[string]bool) bool {
+	if mod == nil || visiting[mod.Name] {
+		return false
+	}
+	visiting[mod.Name] = true
+	defer func() {
+		visiting[mod.Name] = false
+	}()
+	for _, ext := range mod.Extends {
+		dep := x.spec.Modules[ext]
+		for _, source := range x.exportedDefinitionSources(dep, map[string]bool{}) {
+			if source.name == name {
+				return true
+			}
+		}
+		if x.moduleExtendsDefinition(dep, name, visiting) {
+			return true
+		}
+	}
+	return false
 }
 
 func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInstanceDefinitionSource {
