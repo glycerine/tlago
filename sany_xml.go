@@ -1336,7 +1336,7 @@ func (x *sanyXMLExporter) instanceDefinitionSources(owner *Module, inst Instance
 	}
 	sources := x.exportedDefinitionSources(instMod, map[string]bool{})
 	if inst.exportsUnqualified() {
-		includeExtends := !x.instanceHasSubstitutions(owner, inst)
+		includeExtends := !x.instanceHasSubstitutions(owner, inst) || x.instanceSubstitutesInheritedTargets(owner, inst)
 		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, includeExtends, inst.Local, len(inst.Params) > 0)
 	} else {
 		sources = append(sources, x.directTheoremDefinitionSources(instMod, len(inst.Params) > 0)...)
@@ -1385,6 +1385,52 @@ func (x *sanyXMLExporter) instanceHasSubstitutions(owner *Module, inst Instance)
 		}
 	}
 	return false
+}
+
+func (x *sanyXMLExporter) instanceSubstitutesInheritedTargets(owner *Module, inst Instance) bool {
+	instMod := x.spec.Modules[inst.Module]
+	if instMod == nil {
+		return false
+	}
+	names := map[string]bool{}
+	for _, subst := range instanceSubstitutions(inst) {
+		if subst.Name != "" {
+			names[subst.Name] = true
+		}
+	}
+	for _, sym := range x.instanceParamSymbols(owner, inst) {
+		if sym != nil && sym.Name != "" {
+			names[sym.Name] = true
+		}
+	}
+	if owner != nil {
+		implicit := moduleImplicitSubstitutions(owner, x.spec)
+		for _, target := range x.substitutionTargetSymbols(instMod, map[string]bool{}) {
+			if target == nil {
+				continue
+			}
+			if _, ok := implicit[target.Name]; ok {
+				names[target.Name] = true
+			}
+		}
+	}
+	for name := range names {
+		if x.substitutionTargetIsInherited(instMod, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (x *sanyXMLExporter) substitutionTargetIsInherited(instMod *Module, name string) bool {
+	if instMod == nil || name == "" {
+		return false
+	}
+	target := x.substitutionTargetSymbol(instMod.Name, name)
+	if target == nil {
+		return false
+	}
+	return x.decls[x.declKey(instMod.Name, name)] != target
 }
 
 func (x *sanyXMLExporter) instanceAssumptionSources(inst Instance) []sanyXMLAssumptionSource {

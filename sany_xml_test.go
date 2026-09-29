@@ -1681,6 +1681,41 @@ Use == TargetOp /\ BaseOp
 		}
 	})
 
+	t.Run("explicit inherited substitutions clone extended definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "InheritedSubstBase.tla"), `---- MODULE InheritedSubstBase ----
+CONSTANT X
+BaseOp == X
+====`)
+		writeFile(t, filepath.Join(dir, "InheritedSubstTarget.tla"), `---- MODULE InheritedSubstTarget ----
+EXTENDS InheritedSubstBase
+CONSTANT C
+TargetOp == C
+====`)
+		rootPath := filepath.Join(dir, "InheritedSubstRoot.tla")
+		writeFile(t, rootPath, `---- MODULE InheritedSubstRoot ----
+CONSTANT X, C
+INSTANCE InheritedSubstTarget WITH X <- X, C <- C
+Use == BaseOp /\ TargetOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "InheritedSubstRoot"); got != 1 {
+			t.Fatalf("root BaseOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "TargetOp", "InheritedSubstRoot"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
 	t.Run("implicit unqualified INSTANCE keeps extended definitions original", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
