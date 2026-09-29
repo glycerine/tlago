@@ -1,0 +1,73 @@
+package tlc
+
+type SemanticNode any
+
+type CostModel struct{}
+
+func (CostModel) Get(SemanticNode) CostModel {
+	return CostModel{}
+}
+
+type Action struct {
+	Pred SemanticNode
+	Con  *Context
+	CM   CostModel
+	Name string
+}
+
+type ActionItemList struct {
+	Pred SemanticNode
+	Con  *Context
+	Kind int
+	Next *ActionItemList
+	CM   CostModel
+	act  *Action
+}
+
+var EmptyActionItemList = &ActionItemList{}
+
+func NewActionItemList(pred SemanticNode, con *Context, kind int, next *ActionItemList, cm CostModel) *ActionItemList {
+	if next == nil {
+		next = EmptyActionItemList
+	}
+	return &ActionItemList{Pred: pred, Con: con, Kind: kind, Next: next, CM: cm}
+}
+
+func (l *ActionItemList) CarPred() SemanticNode {
+	return l.Pred
+}
+
+func (l *ActionItemList) CarContext() *Context {
+	return l.Con
+}
+
+func (l *ActionItemList) CarKind() int {
+	return l.Kind
+}
+
+func (l *ActionItemList) Cdr() *ActionItemList {
+	return l.Next
+}
+
+func (l *ActionItemList) Cons(pred SemanticNode, con *Context, cm CostModel, kind int) *ActionItemList {
+	return NewActionItemList(pred, con, kind, l, cm.Get(pred))
+}
+
+func (l *ActionItemList) ConsAction(act *Action, kind int) *ActionItemList {
+	if act == nil {
+		return NewActionItemList(nil, nil, kind, l, CostModel{})
+	}
+	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: act.CM.Get(act.Pred), act: act}
+}
+
+func (l *ActionItemList) IsEmpty() bool {
+	return l == nil || l == EmptyActionItemList
+}
+
+func (l *ActionItemList) SetAction(action *Action) {
+	l.act = action
+}
+
+func (l *ActionItemList) GetAction() *Action {
+	return l.act
+}
