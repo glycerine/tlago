@@ -45,6 +45,10 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 }
 
 func runSanyXML(args []string, stdout, stderr io.Writer) int {
+	if cliArgsContainHelp(args) {
+		printSanyXMLUsage(stdout)
+		return ExitOK
+	}
 	opts, err := parseCommonCLIOptions(args, false)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -83,6 +87,22 @@ func runSanyXML(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return exit
+}
+
+func cliArgsContainHelp(args []string) bool {
+	for _, arg := range args {
+		switch arg {
+		case "-help", "--help", "-h":
+			return true
+		}
+	}
+	return false
+}
+
+func printSanyXMLUsage(w io.Writer) {
+	fmt.Fprintln(w, "usage: tlago sany-xml [-I DIR] FILE...")
+	fmt.Fprintln(w)
+	fmt.Fprintln(w, "Parse, check, and export TLA+ modules as SANY XML.")
 }
 
 func runApalacheJSON(args []string, stdout, stderr io.Writer) int {

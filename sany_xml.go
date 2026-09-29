@@ -1976,7 +1976,9 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	b.WriteString("</body>")
 	sym.Leibniz = x.definitionLeibnizArgs(sym, def, defCtx)
 	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
-	x.writePreComments(&b, def.PreComments)
+	if preCommentDiags := x.writePreComments(&b, def.PreComments); preCommentDiags.HasErrors() {
+		return preCommentDiags
+	}
 	if x.moduleDefinitionIsLocal(ctx.module, def) {
 		b.WriteString("<local/>")
 	}
@@ -2092,7 +2094,10 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 		}
 	}
 	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
-	x.writePreComments(&b, inst.PreComments)
+	diags = append(diags, x.writePreComments(&b, inst.PreComments)...)
+	if diags.HasErrors() {
+		return diags
+	}
 	if inst.Local {
 		b.WriteString("<local/>")
 	}
@@ -4728,7 +4733,9 @@ func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx san
 	b.WriteString("</body>")
 	sym.Leibniz = x.lambdaLeibnizArgs(sym, body, ctx)
 	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
-	x.writePreComments(&b, preComments)
+	if preCommentDiags := x.writePreComments(&b, preComments); preCommentDiags.HasErrors() {
+		return preCommentDiags
+	}
 	b.WriteString("</UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
 	x.emitted[sym.Key] = true
@@ -5975,14 +5982,18 @@ func (x *sanyXMLExporter) writeDefinitionOriginFor(b *bytes.Buffer, sym *sanyXML
 	b.WriteString("</originallyDefinedInModule>")
 }
 
-func (x *sanyXMLExporter) writePreComments(b *bytes.Buffer, comments []string) {
+func (x *sanyXMLExporter) writePreComments(b *bytes.Buffer, comments []string) Diagnostics {
 	normalized := normalizedSanyPreComments(comments)
 	if normalized == "" {
-		return
+		return nil
+	}
+	if invalid, ok := firstInvalidXMLChar(normalized); ok {
+		return Diagnostics{errorAt(Position{}, "E7007", "pre-comment contains XML 1.0 character U+%04X", invalid)}
 	}
 	b.WriteString("<pre-comments><![CDATA[")
 	b.WriteString(strings.ReplaceAll(normalized, "]]>", "]]]]><![CDATA[>"))
 	b.WriteString("]]></pre-comments>")
+	return nil
 }
 
 func normalizedSanyPreComments(comments []string) string {

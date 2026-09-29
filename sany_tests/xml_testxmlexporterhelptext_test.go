@@ -11,8 +11,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterHelpText.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestXMLExporterHelpText_testPrintHelpText(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stdout, stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"sany-xml", "-help"}, &stdout, &stderr)
 	if code != tlago.ExitOK {
@@ -27,8 +25,6 @@ func TestTestXMLExporterHelpText_testPrintHelpText(t *testing.T) {
 }
 
 func TestTestXMLExporterHelpText_testPrintHelpTextOnNoArgs(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stdout, stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"sany-xml"}, &stdout, &stderr)
 	if code != tlago.ExitToolFailure {

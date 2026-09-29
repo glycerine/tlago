@@ -13,8 +13,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterErrors.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestXMLExporterErrors_testHelpReturnsOk(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stdout, stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"sany-xml", "-help"}, &stdout, &stderr)
 	if code != tlago.ExitOK {
@@ -23,8 +21,6 @@ func TestTestXMLExporterErrors_testHelpReturnsOk(t *testing.T) {
 }
 
 func TestTestXMLExporterErrors_testNoArgs(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"sany-xml"}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -33,8 +29,6 @@ func TestTestXMLExporterErrors_testNoArgs(t *testing.T) {
 }
 
 func TestTestXMLExporterErrors_testIncludeDirWithoutSpec(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"sany-xml", "-I", "SomeDir"}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -43,8 +37,6 @@ func TestTestXMLExporterErrors_testIncludeDirWithoutSpec(t *testing.T) {
 }
 
 func TestTestXMLExporterErrors_testCannotFindSpec(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"sany-xml", "ThisModuleDoesNotExist.tla"}, nil, &stderr)
 	if code != tlago.ExitSyntaxFailure {
@@ -53,8 +45,6 @@ func TestTestXMLExporterErrors_testCannotFindSpec(t *testing.T) {
 }
 
 func TestTestXMLExporterErrors_testSpecParseFailure(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	path := sanyTestVectorPath("tla2sany", "semantic", "error_corpus", "E4200_Test.tla")
 	code := tlago.RunCLI([]string{"sany-xml", path}, nil, &stderr)
@@ -64,14 +54,10 @@ func TestTestXMLExporterErrors_testSpecParseFailure(t *testing.T) {
 }
 
 func TestTestXMLExporterErrors_testNullCharacterInStringLiteral(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	assertXMLUnrepresentableCharacter(t, `op == "a`+"\u0000"+`b"`)
 }
 
 func TestTestXMLExporterErrors_testNullCharacterInComment(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	assertXMLUnrepresentableCharacter(t, "\\* comment a\u0000b\nop == 1")
 }
 
