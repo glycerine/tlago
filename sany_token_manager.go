@@ -469,6 +469,8 @@ func (tm *SanyTokenManager) advance() rune {
 	if r == '\n' || r == '\r' {
 		tm.line++
 		tm.column = 1
+	} else if r == '\t' {
+		tm.column = nextSanyTabColumn(tm.column)
 	} else {
 		tm.column++
 	}
@@ -477,6 +479,13 @@ func (tm *SanyTokenManager) advance() rune {
 
 func (tm *SanyTokenManager) pos() Position {
 	return Position{File: tm.file, Line: tm.line, Column: tm.column}
+}
+
+func nextSanyTabColumn(column int) int {
+	if column <= 0 {
+		return 1
+	}
+	return column + (8 - ((column - 1) % 8))
 }
 
 func (tm *SanyTokenManager) eof() bool {

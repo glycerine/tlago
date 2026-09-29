@@ -103,6 +103,10 @@ type sanyXMLSymbol struct {
 	Params      []*sanyXMLSymbol
 	Def         *Definition
 	Leibniz     []bool
+	ArgWeights  []int
+	LevelParams map[string]bool
+	leveling    bool
+	leveled     bool
 }
 
 type sanyXMLExprContext struct {
@@ -129,7 +133,13 @@ type sanyXMLBuiltinInfo struct {
 	name    string
 	arity   int
 	level   tlaLevel
+	weights []int
 	leibniz []bool
+}
+
+type sanyXMLLevelData struct {
+	level  tlaLevel
+	params map[string]bool
 }
 
 type sanyXMLParamUse struct {
@@ -2369,13 +2379,15 @@ func (x *sanyXMLExporter) builtin(name string) *sanyXMLSymbol {
 	}
 	uid := sanyXMLStableBuiltinUID(info.name)
 	sym := &sanyXMLSymbol{
-		UID:   uid,
-		Key:   "builtin:" + info.name,
-		Kind:  "BuiltInKind",
-		Name:  info.name,
-		Arity: info.arity,
-		Level: info.level,
-		Pos:   Position{File: "--TLA+ BUILTINS--", Line: 0, Column: 0, EndLine: 0, EndColumn: 0},
+		UID:        uid,
+		Key:        "builtin:" + info.name,
+		Kind:       "BuiltInKind",
+		Name:       info.name,
+		Arity:      info.arity,
+		Level:      info.level,
+		ArgWeights: append([]int(nil), info.weights...),
+		leveled:    true,
+		Pos:        Position{File: "--TLA+ BUILTINS--", Line: 0, Column: 0, EndLine: 0, EndColumn: 0},
 	}
 	x.builtins[info.name] = sym
 	for i := 0; i < info.arity; i++ {
@@ -3765,124 +3777,268 @@ func (x *sanyXMLExporter) writeLocation(b *bytes.Buffer, pos Position) {
 }
 
 func (x *sanyXMLExporter) exprLevel(expr Expr, ctx sanyXMLExprContext) tlaLevel {
+	return x.exprLevelData(expr, ctx, nil).level
+}
+
+func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLLevelData {
 	switch e := expr.(type) {
 	case *IdentExpr:
 		if e.Name == "@" && ctx.exceptAtBase != "" && ctx.exceptAtComponents != "" {
-			return ctx.exceptAtLevel
+			return sanyXMLLevelData{level: ctx.exceptAtLevel}
 		}
-		return x.operatorLevel(e.Name, ctx)
+		data := sanyXMLLevelData{level: x.operatorLevel(e.Name, ctx)}
+		if !shadowed[e.Name] && ctx.formals[e.Name] != nil {
+			data.addParam(e.Name)
+		}
+		return data
 	case *LiteralExpr:
-		return constantLevel
+		return sanyXMLLevelData{level: constantLevel}
 	case *UnaryExpr:
-		if e.Op == "'" || e.Op == "UNCHANGED" {
-			return maxTlaLevel(actionLevel, x.exprLevel(e.Expr, ctx))
-		}
-		if e.Op == "ENABLED" {
-			return variableLevel
-		}
-		if e.Op == "[]" || e.Op == "<>" {
-			return temporalLevel
-		}
-		return x.exprLevel(e.Expr, ctx)
+		return x.operatorApplicationLevelData(e.Op, x.resolvedOperatorSymbol(e.Op, ctx), []Expr{e.Expr}, ctx, shadowed)
 	case *BinaryExpr:
-		level := maxTlaLevel(x.exprLevel(e.Left, ctx), x.exprLevel(e.Right, ctx))
-		if e.Op == "~>" || e.Op == "-+->" {
-			return maxTlaLevel(temporalLevel, level)
-		}
-		return level
+		return x.binaryExprLevelData(e, ctx, shadowed)
 	case *CallExpr:
-		level := x.exprLevel(e.Callee, ctx)
-		for _, arg := range e.Args {
-			level = maxTlaLevel(level, x.exprLevel(arg, ctx))
-		}
-		return level
+		return x.callExprLevelData(e, ctx, shadowed)
 	case *IfExpr:
-		return maxTlaLevel(x.exprLevel(e.Cond, ctx), maxTlaLevel(x.exprLevel(e.Then, ctx), x.exprLevel(e.Else, ctx)))
+		return x.operatorApplicationLevelData("$IfThenElse", nil, []Expr{e.Cond, e.Then, e.Else}, ctx, shadowed)
 	case *LetExpr:
-		return x.exprLevel(e.Body, ctx)
+		return x.exprLevelData(e.Body, ctx, shadowed)
 	case *QuantifierExpr:
-		return maxTlaLevel(x.exprLevel(e.Set, ctx), x.exprLevel(e.Body, ctx))
+		bodyShadowed := copyBoolMap(shadowed)
+		bodyShadowed[e.Var] = true
+		return mergeSanyXMLLevelData(x.exprLevelData(e.Set, ctx, shadowed), x.exprLevelData(e.Body, ctx, bodyShadowed))
 	case *CaseExpr:
-		level := constantLevel
+		data := sanyXMLLevelData{level: constantLevel}
 		for _, arm := range e.Arms {
-			level = maxTlaLevel(level, x.exprLevel(arm.Test, ctx))
-			level = maxTlaLevel(level, x.exprLevel(arm.Value, ctx))
+			data.merge(x.exprLevelData(arm.Test, ctx, shadowed))
+			data.merge(x.exprLevelData(arm.Value, ctx, shadowed))
 		}
 		if e.Other != nil {
-			level = maxTlaLevel(level, x.exprLevel(e.Other, ctx))
+			data.merge(x.exprLevelData(e.Other, ctx, shadowed))
 		}
-		return level
+		return data
 	case *ChooseExpr:
-		return maxTlaLevel(x.exprLevel(e.Set, ctx), x.exprLevel(e.Body, ctx))
+		bodyShadowed := copyBoolMap(shadowed)
+		bodyShadowed[e.Var] = true
+		return mergeSanyXMLLevelData(x.exprLevelData(e.Set, ctx, shadowed), x.exprLevelData(e.Body, ctx, bodyShadowed))
 	case *TupleExpr:
-		level := constantLevel
-		for _, elem := range e.Elems {
-			level = maxTlaLevel(level, x.exprLevel(elem, ctx))
-		}
-		return level
+		return x.operatorApplicationLevelData("$Tuple", nil, e.Elems, ctx, shadowed)
 	case *SetExpr:
-		level := constantLevel
-		for _, elem := range e.Elems {
-			level = maxTlaLevel(level, x.exprLevel(elem, ctx))
-		}
-		return level
+		return x.operatorApplicationLevelData("$SetEnumerate", nil, e.Elems, ctx, shadowed)
 	case *RecordExpr:
-		level := constantLevel
+		data := sanyXMLLevelData{level: constantLevel}
 		for _, field := range e.Fields {
-			level = maxTlaLevel(level, x.exprLevel(field.Value, ctx))
+			data.merge(x.exprLevelData(field.Value, ctx, shadowed))
 		}
-		return level
+		return data
 	case *RecordComponentExpr:
-		return x.exprLevel(e.Record, ctx)
+		return x.exprLevelData(e.Record, ctx, shadowed)
 	case *RecordSetExpr:
-		level := constantLevel
+		data := sanyXMLLevelData{level: constantLevel}
 		for _, field := range e.Fields {
-			level = maxTlaLevel(level, x.exprLevel(field.Set, ctx))
+			data.merge(x.exprLevelData(field.Set, ctx, shadowed))
 		}
-		return level
+		return data
 	case *FunctionExpr:
-		level := constantLevel
+		data := sanyXMLLevelData{level: constantLevel}
+		bodyShadowed := copyBoolMap(shadowed)
 		for _, bound := range e.Bounds {
-			level = maxTlaLevel(level, x.exprLevel(bound.Set, ctx))
+			data.merge(x.exprLevelData(bound.Set, ctx, shadowed))
+			bodyShadowed[bound.Name] = true
 		}
-		return maxTlaLevel(level, x.exprLevel(e.Body, ctx))
+		data.merge(x.exprLevelData(e.Body, ctx, bodyShadowed))
+		return data
 	case *FunctionAppExpr:
-		level := x.exprLevel(e.Function, ctx)
+		data := x.exprLevelData(e.Function, ctx, shadowed)
 		for _, arg := range e.Args {
-			level = maxTlaLevel(level, x.exprLevel(arg, ctx))
+			data.merge(x.exprLevelData(arg, ctx, shadowed))
 		}
-		return level
+		return data
 	case *ExceptExpr:
-		level := x.exprLevel(e.Base, ctx)
+		data := x.exprLevelData(e.Base, ctx, shadowed)
 		for _, spec := range e.Specs {
 			for _, component := range spec.Components {
 				for _, index := range component.Indices {
-					level = maxTlaLevel(level, x.exprLevel(index, ctx))
+					data.merge(x.exprLevelData(index, ctx, shadowed))
 				}
 			}
-			level = maxTlaLevel(level, x.exprLevel(spec.Value, ctx))
+			data.merge(x.exprLevelData(spec.Value, ctx, shadowed))
 		}
-		return level
+		return data
 	case *LabelExpr:
-		return x.exprLevel(e.Body, ctx)
+		return x.exprLevelData(e.Body, ctx, shadowed)
 	case *ActionExpr:
-		return maxTlaLevel(actionLevel, maxTlaLevel(x.exprLevel(e.Action, ctx), x.exprLevel(e.Subscript, ctx)))
+		return sanyXMLLevelData{level: maxTlaLevel(actionLevel, maxTlaLevel(x.exprLevelData(e.Action, ctx, shadowed).level, x.exprLevelData(e.Subscript, ctx, shadowed).level))}
 	case *FairnessExpr:
-		return temporalLevel
+		return sanyXMLLevelData{level: temporalLevel}
 	case *FunctionSetExpr:
-		return maxTlaLevel(x.exprLevel(e.Domain, ctx), x.exprLevel(e.Range, ctx))
+		return mergeSanyXMLLevelData(x.exprLevelData(e.Domain, ctx, shadowed), x.exprLevelData(e.Range, ctx, shadowed))
 	case *SetComprehensionExpr:
-		level := constantLevel
+		data := sanyXMLLevelData{level: constantLevel}
+		bodyShadowed := copyBoolMap(shadowed)
 		for _, bound := range e.Bounds {
-			level = maxTlaLevel(level, x.exprLevel(bound.Set, ctx))
+			data.merge(x.exprLevelData(bound.Set, ctx, shadowed))
+			bodyShadowed[bound.Name] = true
 		}
-		level = maxTlaLevel(level, x.exprLevel(e.Element, ctx))
+		data.merge(x.exprLevelData(e.Element, ctx, bodyShadowed))
 		if e.Predicate != nil {
-			level = maxTlaLevel(level, x.exprLevel(e.Predicate, ctx))
+			data.merge(x.exprLevelData(e.Predicate, ctx, bodyShadowed))
 		}
-		return level
+		return data
 	default:
-		return constantLevel
+		return sanyXMLLevelData{level: constantLevel}
+	}
+}
+
+func (x *sanyXMLExporter) binaryExprLevel(e *BinaryExpr, ctx sanyXMLExprContext) tlaLevel {
+	return x.binaryExprLevelData(e, ctx, nil).level
+}
+
+func (x *sanyXMLExporter) callExprLevel(e *CallExpr, ctx sanyXMLExprContext) tlaLevel {
+	return x.callExprLevelData(e, ctx, nil).level
+}
+
+func (x *sanyXMLExporter) binaryExprLevelData(e *BinaryExpr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLLevelData {
+	if e == nil {
+		return sanyXMLLevelData{level: constantLevel}
+	}
+	return x.operatorApplicationLevelData(e.Op, x.resolvedOperatorSymbol(e.Op, ctx), []Expr{e.Left, e.Right}, ctx, shadowed)
+}
+
+func (x *sanyXMLExporter) callExprLevelData(e *CallExpr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLLevelData {
+	if e == nil {
+		return sanyXMLLevelData{level: constantLevel}
+	}
+	operator := x.callExprOperator(e, ctx)
+	name := ""
+	if ident, ok := e.Callee.(*IdentExpr); ok {
+		name = ident.Name
+	}
+	if operator != nil {
+		name = operator.Name
+	}
+	if name == "" {
+		data := x.exprLevelData(e.Callee, ctx, shadowed)
+		for _, arg := range e.Args {
+			data.merge(x.exprLevelData(arg, ctx, shadowed))
+		}
+		return data
+	}
+	return x.operatorApplicationLevelData(name, operator, e.Args, ctx, shadowed)
+}
+
+func (x *sanyXMLExporter) callExprOperator(e *CallExpr, ctx sanyXMLExprContext) *sanyXMLSymbol {
+	if e == nil {
+		return nil
+	}
+	ident, ok := e.Callee.(*IdentExpr)
+	if !ok {
+		return nil
+	}
+	if lambda, diags := x.lambdaForQuantifiedDefinitionCall(e, ident.Name, ctx); lambda != nil && !diags.HasErrors() {
+		return lambda
+	}
+	return x.resolvedOperatorSymbol(ident.Name, ctx)
+}
+
+func (x *sanyXMLExporter) resolvedOperatorSymbol(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
+	if sym := ctx.formals[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.defs[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.scope.decls[name]; sym != nil {
+		return sym
+	}
+	if sym := ctx.scope.defs[name]; sym != nil {
+		return sym
+	}
+	return nil
+}
+
+func (x *sanyXMLExporter) operatorApplicationLevelData(name string, operator *sanyXMLSymbol, args []Expr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLLevelData {
+	data := x.operatorBaseLevelData(name, operator, ctx)
+	for i, arg := range args {
+		argData := x.exprLevelData(arg, ctx, shadowed)
+		if operator == nil && !sanyXMLKnownBuiltin(name) {
+			data.merge(argData)
+			continue
+		}
+		if x.operatorArgWeight(operator, i, ctx) > 0 {
+			data.merge(argData)
+		}
+	}
+	return data
+}
+
+func (x *sanyXMLExporter) operatorBaseLevelData(name string, operator *sanyXMLSymbol, ctx sanyXMLExprContext) sanyXMLLevelData {
+	if operator == nil || operator.Kind == "BuiltInKind" {
+		info := sanyXMLBuiltin(name)
+		return sanyXMLLevelData{level: info.level}
+	}
+	x.ensureOperatorLevelData(operator, ctx)
+	data := sanyXMLLevelData{level: operator.Level}
+	for param := range operator.LevelParams {
+		data.addParam(param)
+	}
+	return data
+}
+
+func (x *sanyXMLExporter) operatorArgWeight(operator *sanyXMLSymbol, index int, ctx sanyXMLExprContext) int {
+	if index < 0 {
+		return 1
+	}
+	if operator == nil {
+		return 1
+	}
+	if operator.Kind == "BuiltInKind" {
+		return sanyXMLBuiltinArgWeight(sanyXMLBuiltin(operator.Name), index)
+	}
+	if operator.Kind == "OpDeclNode" || operator.Kind == "FormalParamNode" {
+		return 1
+	}
+	x.ensureOperatorLevelData(operator, ctx)
+	if index < len(operator.ArgWeights) {
+		return operator.ArgWeights[index]
+	}
+	return 1
+}
+
+func (x *sanyXMLExporter) ensureOperatorLevelData(sym *sanyXMLSymbol, ctx sanyXMLExprContext) {
+	if sym == nil || sym.leveled || sym.leveling {
+		return
+	}
+	sym.leveling = true
+	defer func() {
+		sym.leveling = false
+		sym.leveled = true
+	}()
+	def := x.definitionForSymbol(sym)
+	if def == nil || def.Expr == nil {
+		return
+	}
+	defCtx := ctx
+	defCtx.formals = copySanyXMLSymbolMap(ctx.formals)
+	for i, paramName := range def.Params {
+		if i < len(sym.Params) {
+			defCtx.formals[paramName] = sym.Params[i]
+		}
+	}
+	data := x.exprLevelData(def.Expr, defCtx, nil)
+	sym.Level = data.level
+	sym.LevelParams = copyBoolMap(data.params)
+	for _, paramName := range def.Params {
+		delete(sym.LevelParams, paramName)
+	}
+	sym.ArgWeights = make([]int, len(sym.Params))
+	for i, paramName := range def.Params {
+		if i >= len(sym.ArgWeights) {
+			break
+		}
+		if data.params[paramName] {
+			sym.ArgWeights[i] = 1
+		}
 	}
 }
 
@@ -3901,6 +4057,31 @@ func (x *sanyXMLExporter) operatorLevel(name string, ctx sanyXMLExprContext) tla
 	}
 	info := sanyXMLBuiltin(name)
 	return info.level
+}
+
+func mergeSanyXMLLevelData(items ...sanyXMLLevelData) sanyXMLLevelData {
+	out := sanyXMLLevelData{level: constantLevel}
+	for _, item := range items {
+		out.merge(item)
+	}
+	return out
+}
+
+func (d *sanyXMLLevelData) merge(other sanyXMLLevelData) {
+	d.level = maxTlaLevel(d.level, other.level)
+	for param := range other.params {
+		d.addParam(param)
+	}
+}
+
+func (d *sanyXMLLevelData) addParam(param string) {
+	if param == "" {
+		return
+	}
+	if d.params == nil {
+		d.params = map[string]bool{}
+	}
+	d.params[param] = true
 }
 
 func (x *sanyXMLExporter) scopeForModule(mod *Module, visiting map[string]bool) sanyXMLScope {
@@ -4482,16 +4663,33 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 	name = sanyXMLBuiltinName(name)
 	level := constantLevel
 	arity := 0
+	weights := []int{}
+	unary := func(weight int) {
+		arity = 1
+		weights = []int{weight}
+	}
+	binary := func(left, right int) {
+		arity = 2
+		weights = []int{left, right}
+	}
+	variadic := func(weight int) {
+		arity = -1
+		weights = []int{weight}
+	}
 	switch name {
 	case "TRUE", "FALSE", "BOOLEAN", "STRING", "$Qed":
 		arity = 0
+		weights = nil
 	case "~>", "-+->":
-		arity = 2
+		binary(0, 0)
 		level = temporalLevel
 	case "$IfThenElse":
 		arity = 3
-	case "\\lnot", "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>", "SUBSET", "UNION", "DOMAIN", "$Pfcase", "$Pick", "$Suffices", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec":
-		arity = 1
+		weights = []int{1, 1, 1}
+	case "\\lnot", "$Pfcase", "$Pick", "$Suffices", "$NonRecursiveFcnSpec", "$RecursiveFcnSpec", "SUBSET", "UNION", "DOMAIN":
+		unary(1)
+	case "'", "\\prime", "ENABLED", "UNCHANGED", "[]", "<>":
+		unary(0)
 		if name == "'" || name == "\\prime" || name == "UNCHANGED" {
 			level = actionLevel
 		}
@@ -4501,28 +4699,31 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 		if name == "[]" || name == "<>" {
 			level = temporalLevel
 		}
-	case "$Pair", "$SquareAct", "$AngleAct", "$RcdSelect", "$FcnApply":
-		arity = 2
+	case "$Pair", "$RcdSelect", "$FcnApply":
+		binary(1, 1)
+	case "$SquareAct", "$AngleAct":
+		binary(0, 0)
 		if name == "$SquareAct" || name == "$AngleAct" {
 			level = actionLevel
 		}
 	case "\\cdot":
-		arity = 2
+		binary(0, 0)
 		level = actionLevel
 	case "$SubsetOf":
-		arity = 1
+		unary(1)
 	case "$Case", "$ConjList", "$DisjList", "$Tuple", "$Seq", "$SetEnumerate", "$RcdConstructor", "$SetOfAll", "$SetOfFcns", "$FcnConstructor", "$BoundedForall", "$BoundedExists", "$BoundedChoose", "$SetOfRcds", "$Except", "$CartesianProd":
-		arity = -1
+		variadic(1)
 	case "$UnboundedForall", "$UnboundedExists", "$UnboundedChoose", "$TemporalExists", "$TemporalForall":
-		arity = 1
+		unary(1)
 		if name == "$TemporalExists" || name == "$TemporalForall" {
 			level = temporalLevel
+			weights[0] = 0
 		}
 	case "$WF", "$SF":
-		arity = 2
+		binary(0, 0)
 		level = temporalLevel
 	default:
-		arity = 2
+		binary(1, 1)
 	}
 	paramCount := arity
 	if paramCount < 0 {
@@ -4530,14 +4731,29 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 	}
 	leibniz := make([]bool, paramCount)
 	for i := range leibniz {
-		leibniz[i] = true
-	}
-	if name == "'" || name == "\\prime" || name == "ENABLED" || name == "UNCHANGED" || name == "[]" || name == "<>" || name == "\\cdot" || name == "$SquareAct" || name == "$AngleAct" || name == "$WF" || name == "$SF" || name == "~>" || name == "-+->" {
-		for i := range leibniz {
-			leibniz[i] = false
+		weight := 1
+		if i < len(weights) {
+			weight = weights[i]
 		}
+		leibniz[i] = weight > 0
 	}
-	return sanyXMLBuiltinInfo{name: name, arity: arity, level: level, leibniz: leibniz}
+	return sanyXMLBuiltinInfo{name: name, arity: arity, level: level, weights: weights, leibniz: leibniz}
+}
+
+func sanyXMLBuiltinArgWeight(info sanyXMLBuiltinInfo, index int) int {
+	if index < 0 {
+		return 1
+	}
+	if len(info.weights) == 0 {
+		return 0
+	}
+	if info.arity == -1 {
+		return info.weights[0]
+	}
+	if index < len(info.weights) {
+		return info.weights[index]
+	}
+	return 1
 }
 
 func sanyXMLStableBuiltinUID(name string) int {

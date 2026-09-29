@@ -58,6 +58,162 @@ Init == x = 0
 		}
 	})
 
+	t.Run("uses operator level for user-defined call nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UserCallLevelXML.tla", `---- MODULE UserCallLevelXML ----
+VARIABLE x
+Id(a) == a
+Use == Id(x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 12)
+		if call == nil {
+			t.Fatalf("Id(x) call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Id(x) call level = %s, want 1\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 11, 11)
+		if operand == nil {
+			t.Fatalf("Id(x) operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Id(x) operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("does not lift calls through unused formal parameters", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnusedFormalCallLevelXML.tla", `---- MODULE UnusedFormalCallLevelXML ----
+VARIABLE x
+Ignore(a) == TRUE
+Use == Ignore(x)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 16)
+		if call == nil {
+			t.Fatalf("Ignore(x) call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("Ignore(x) call level = %s, want 0\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 15, 15)
+		if operand == nil {
+			t.Fatalf("Ignore(x) operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Ignore(x) operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("used formals lift current-module symbolic infix call nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SymbolicInfixCallLevelXML.tla", `---- MODULE SymbolicInfixCallLevelXML ----
+VARIABLE x
+a \odot b == a
+Use == x \odot x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\odot x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\odot x call level = %s, want 1\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 8, 8)
+		if operand == nil {
+			t.Fatalf("x \\odot x operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\odot x operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("unused formals do not lift current-module symbolic infix call nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnusedSymbolicInfixCallLevelXML.tla", `---- MODULE UnusedSymbolicInfixCallLevelXML ----
+VARIABLE x
+a \odot b == TRUE
+Use == x \odot x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 4, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\odot x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("x \\odot x call level = %s, want 0\n%s", got, xmlText)
+		}
+		operand := opApplAtLocation(root, 4, 8, 8)
+		if operand == nil {
+			t.Fatalf("x \\odot x operand node missing\n%s", xmlText)
+		}
+		if got := firstChildText(operand, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\odot x operand level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("zero-weight helper definitions do not lift caller arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ZeroWeightHelperLevelXML.tla", `---- MODULE ZeroWeightHelperLevelXML ----
+VARIABLE x
+Times(a, b) == TRUE
+a \odot b == Times(a, b)
+Use == x \odot x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 5, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\odot x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("x \\odot x call level = %s, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("transitive helper weights lift caller arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TransitiveHelperLevelXML.tla", `---- MODULE TransitiveHelperLevelXML ----
+VARIABLE x
+Same(a, b) == a = b
+a \prec b == Same(a, b)
+Use == x \prec x
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		call := opApplAtLocation(root, 5, 8, 16)
+		if call == nil {
+			t.Fatalf("x \\prec x call node missing\n%s", xmlText)
+		}
+		if got := firstChildText(call, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("x \\prec x call level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("InfixFormalSpanXML.tla", `---- MODULE InfixFormalSpanXML ----
 Use(_\prec_, S) == TRUE
@@ -1769,6 +1925,38 @@ func firstOpApplNodeForOperatorUID(root *canonicalXMLNode, refKind, uid string) 
 	}
 	walk(root)
 	return found
+}
+
+func opApplAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXMLNode {
+	var found *canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Name == "OpApplNode" && xmlNodeLocationMatches(node, line, begin, end) {
+			found = node
+			return
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func xmlNodeLocationMatches(node *canonicalXMLNode, line, begin, end int) bool {
+	locations := directChildren(node, "location")
+	if len(locations) == 0 {
+		return false
+	}
+	columns := directChildren(locations[0], "column")
+	lines := directChildren(locations[0], "line")
+	return len(columns) > 0 && len(lines) > 0 &&
+		firstChildText(lines[0], "begin") == strconv.Itoa(line) &&
+		firstChildText(columns[0], "begin") == strconv.Itoa(begin) &&
+		firstChildText(columns[0], "end") == strconv.Itoa(end)
 }
 
 func opApplNodeUsesOperatorUID(node *canonicalXMLNode, refKind, uid string) bool {

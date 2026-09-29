@@ -68,6 +68,20 @@ CONSTANTS WF_x WF_ Enabled ENABLED ∧ ⇒ \in ℕ
 			"END_MODULE", "EOF",
 		)
 	})
+
+	t.Run("expands tabs to Java SANY source columns", func(t *testing.T) {
+		source := "---- MODULE M ----\nA ==\n\tTRUE\n        \tFALSE\n===="
+		tokens, diags := SanyTokenize("M.tla", source)
+		requireNoErrors(t, diags)
+		truth := findSanyTokenImage(t, tokens, "TRUE")
+		if truth.Begin.Column != 9 || truth.End.Column != 12 {
+			t.Fatalf("TRUE columns = %d..%d, want 9..12", truth.Begin.Column, truth.End.Column)
+		}
+		falsity := findSanyTokenImage(t, tokens, "FALSE")
+		if falsity.Begin.Column != 17 || falsity.End.Column != 21 {
+			t.Fatalf("FALSE columns = %d..%d, want 17..21", falsity.Begin.Column, falsity.End.Column)
+		}
+	})
 }
 
 func requireSanyTokenNames(t *testing.T, tokens []*SanyToken, want ...string) {
@@ -97,10 +111,29 @@ func findSanyToken(t *testing.T, tokens []*SanyToken, name string) *SanyToken {
 	return nil
 }
 
+func findSanyTokenImage(t *testing.T, tokens []*SanyToken, image string) *SanyToken {
+	t.Helper()
+	for _, tok := range tokens {
+		if tok.Image == image {
+			return tok
+		}
+	}
+	t.Fatalf("token image %q not found in %v", image, sanyTokenImages(tokens))
+	return nil
+}
+
 func sanyTokenNames(tokens []*SanyToken) []string {
 	names := make([]string, 0, len(tokens))
 	for _, tok := range tokens {
 		names = append(names, tok.Kind.JavaName())
 	}
 	return names
+}
+
+func sanyTokenImages(tokens []*SanyToken) []string {
+	images := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		images = append(images, tok.Image)
+	}
+	return images
 }
