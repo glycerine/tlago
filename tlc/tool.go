@@ -92,14 +92,20 @@ func (f *NextStateFunctor) AddUnsatisfiedNextState(curState *TLCStateMut, action
 type Tool struct {
 	Mode ToolMode
 
-	Actions          []*Action
-	InitStates       []*TLCStateMut
-	Invariants       []*Action
-	InvariantNames   []string
-	ImpliedInits     []*Action
-	ImpliedInitNames []string
-	ImpliedActions   []*Action
-	ImpliedActNames  []string
+	Actions            []*Action
+	InitStateSpec      []*Action
+	NextStateSpec      *Action
+	InitStates         []*TLCStateMut
+	Invariants         []*Action
+	InvariantNames     []string
+	ImpliedInits       []*Action
+	ImpliedInitNames   []string
+	ImpliedActions     []*Action
+	ImpliedActNames    []string
+	ViewSpec           SemanticNode
+	PostConditionSpecs []*Action
+	ModelConstraints   []SemanticNode
+	ActionConstraints  []SemanticNode
 
 	RootName    string
 	RootFile    string
@@ -176,7 +182,32 @@ func (t *Tool) GetActions() []*Action {
 	if t == nil {
 		return nil
 	}
-	return t.Actions
+	return append([]*Action(nil), t.Actions...)
+}
+
+func (t *Tool) SetActions(actions []*Action) {
+	if t != nil {
+		t.Actions = append([]*Action(nil), actions...)
+	}
+}
+
+func (t *Tool) AssignActionIDs() {
+	if t == nil {
+		return
+	}
+	id := 0
+	for _, action := range t.InitStateSpec {
+		if action != nil {
+			action.SetID(id)
+		}
+		id++
+	}
+	for _, action := range t.Actions {
+		if action != nil {
+			action.SetID(id)
+		}
+		id++
+	}
 }
 
 func (t *Tool) GetInitStates(functor *StateFunctor) error {
@@ -293,7 +324,13 @@ func (t *Tool) EvalReward(s1 *TLCStateMut, s2 *TLCStateMut, fallback float64) (f
 }
 
 func (t *Tool) HasStateOrActionConstraints() bool {
-	return t != nil && t.HasStateOrActionConstraintsFunc != nil && t.HasStateOrActionConstraintsFunc(t)
+	if t == nil {
+		return false
+	}
+	if t.HasStateOrActionConstraintsFunc != nil {
+		return t.HasStateOrActionConstraintsFunc(t)
+	}
+	return len(t.ModelConstraints) > 0 || len(t.ActionConstraints) > 0
 }
 
 func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLCStateMut) *TLCStateMut {
@@ -374,7 +411,20 @@ func (t *Tool) HasSymmetry() bool {
 }
 
 func (t *Tool) GetInitStateSpec() []*Action {
-	return nil
+	if t == nil {
+		return nil
+	}
+	return append([]*Action(nil), t.InitStateSpec...)
+}
+
+func (t *Tool) GetSpecActions() []*Action {
+	if t == nil {
+		return nil
+	}
+	out := make([]*Action, 0, len(t.InitStateSpec)+len(t.Actions))
+	out = append(out, t.InitStateSpec...)
+	out = append(out, t.Actions...)
+	return out
 }
 
 func (t *Tool) GetInvariants() []*Action {
@@ -476,6 +526,41 @@ func (t *Tool) GetImpliedActions() []*Action {
 		return nil
 	}
 	return t.ImpliedActions
+}
+
+func (t *Tool) GetNextStateSpec() *Action {
+	if t == nil {
+		return nil
+	}
+	return t.NextStateSpec
+}
+
+func (t *Tool) GetViewSpec() SemanticNode {
+	if t == nil {
+		return nil
+	}
+	return t.ViewSpec
+}
+
+func (t *Tool) GetPostConditionSpecs() []*Action {
+	if t == nil {
+		return nil
+	}
+	return append([]*Action(nil), t.PostConditionSpecs...)
+}
+
+func (t *Tool) GetModelConstraints() []SemanticNode {
+	if t == nil {
+		return nil
+	}
+	return append([]SemanticNode(nil), t.ModelConstraints...)
+}
+
+func (t *Tool) GetActionConstraints() []SemanticNode {
+	if t == nil {
+		return nil
+	}
+	return append([]SemanticNode(nil), t.ActionConstraints...)
 }
 
 func (t *Tool) LivenessIsTrue() bool {

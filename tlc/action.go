@@ -9,10 +9,13 @@ func (CostModel) Get(SemanticNode) CostModel {
 }
 
 type Action struct {
-	Pred SemanticNode
-	Con  *Context
-	CM   CostModel
-	Name string
+	Pred       SemanticNode
+	Con        *Context
+	CM         CostModel
+	Name       string
+	ID         int
+	IsInitPred bool
+	Internal   bool
 }
 
 var UnknownAction = &Action{Name: "Unknown"}
@@ -26,6 +29,27 @@ func (a *Action) GetName() string {
 		return "Unknown"
 	}
 	return a.Name
+}
+
+func (a *Action) SetID(id int) {
+	if a != nil {
+		a.ID = id
+	}
+}
+
+func (a *Action) GetID() int {
+	if a == nil {
+		return 0
+	}
+	return a.ID
+}
+
+func (a *Action) IsInitPredicate() bool {
+	return a != nil && a.IsInitPred
+}
+
+func (a *Action) IsInternal() bool {
+	return a != nil && a.Internal
 }
 
 type ActionItemList struct {
