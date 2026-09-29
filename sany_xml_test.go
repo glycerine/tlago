@@ -161,6 +161,44 @@ Use == Zero
 		}
 	})
 
+	t.Run("emits implicit substitutions alongside explicit WITH substitutions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANTS A, B
+VARIABLE x
+====`)
+		root := filepath.Join(dir, "ExplicitImplicitInstanceXML.tla")
+		writeFile(t, root, `---- MODULE ExplicitImplicitInstanceXML ----
+EXTENDS Naturals
+CONSTANT A
+VARIABLE x
+Inst == INSTANCE Helper WITH B <- Nat
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		got := string(xmlText)
+		if count := strings.Count(got, "<Subst>"); count != 3 {
+			t.Fatalf("INSTANCE substitutions = %d, want explicit B plus implicit A and x\n%s", count, got)
+		}
+		for _, want := range []string{
+			`<uniquename>Inst</uniquename>`,
+			`<module>Helper</module>`,
+			`<uniquename>A</uniquename>`,
+			`<uniquename>B</uniquename>`,
+			`<uniquename>x</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("SANY XML did not include substitution detail %q\n%s", want, got)
+			}
+		}
+	})
+
 	t.Run("serializes named INSTANCE nodes with their uniquename", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----

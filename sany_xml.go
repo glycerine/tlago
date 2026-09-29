@@ -68,9 +68,10 @@ type sanyXMLInstanceNode struct {
 }
 
 type sanyXMLDefinitionSource struct {
-	name   string
-	module *Module
-	def    *Definition
+	name     string
+	module   *Module
+	def      *Definition
+	wrappers []sanyXMLInstanceWrapper
 }
 
 type sanyXMLInstanceDefinitionSource struct {
@@ -78,6 +79,13 @@ type sanyXMLInstanceDefinitionSource struct {
 	cloneName string
 	module    *Module
 	def       *Definition
+	wrappers  []sanyXMLInstanceWrapper
+}
+
+type sanyXMLInstanceWrapper struct {
+	owner  *Module
+	inst   Instance
+	target *Module
 }
 
 type sanyXMLSymbol struct {
@@ -604,7 +612,7 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 			}
 			sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)]
 			original := x.defs[x.defKey(source.module.Name, source.def.Name)]
-			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, mod, inst, source.module, targetMod, source.def, sourceCtx)...)
+			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, mod, inst, source.module, targetMod, source.def, sourceCtx, source.wrappers)...)
 		}
 	}
 	for i := range mod.Definitions {
@@ -726,9 +734,13 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 	b.WriteString("<substs>")
 	var diags Diagnostics
 	hasSubsts := false
+	explicit := map[string]bool{}
 	if len(inst.SubstitutionList) > 0 || len(inst.Substitutions) > 0 {
 		ctx := sanyXMLExprContext{module: owner, scope: x.scopeForModule(owner, map[string]bool{}), formals: map[string]*sanyXMLSymbol{}, defs: map[string]*sanyXMLSymbol{}, proofDefs: map[string]*sanyXMLSymbol{}}
 		for _, subst := range instanceSubstitutions(inst) {
+			if subst.Name != "" {
+				explicit[subst.Name] = true
+			}
 			target := x.substitutionTargetSymbol(inst.Module, subst.Name)
 			if target == nil || subst.Expr == nil {
 				continue
@@ -744,14 +756,12 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 			b.WriteString(exprXML)
 			b.WriteString("</Subst>")
 		}
-		b.WriteString("</substs>")
-		return b.String(), hasSubsts, diags
 	}
 
 	instMod := x.spec.Modules[inst.Module]
 	if owner == nil || instMod == nil {
 		b.WriteString("</substs>")
-		return b.String(), false, nil
+		return b.String(), hasSubsts, diags
 	}
 	ownerScope := x.scopeForModule(owner, map[string]bool{})
 	for _, decl := range instMod.Declarations {
@@ -759,6 +769,9 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 			continue
 		}
 		for _, name := range decl.Names {
+			if explicit[name] {
+				continue
+			}
 			target := x.decls[x.declKey(instMod.Name, name)]
 			replacement := ownerScope.decls[name]
 			if target == nil || replacement == nil {
@@ -772,7 +785,7 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 		}
 	}
 	b.WriteString("</substs>")
-	return b.String(), hasSubsts, nil
+	return b.String(), hasSubsts, diags
 }
 
 func (x *sanyXMLExporter) substInXML(pos Position, level tlaLevel, substs, body string, from *Module, to *Module) string {
@@ -911,6 +924,7 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 			cloneName: cloneName,
 			module:    source.module,
 			def:       source.def,
+			wrappers:  append([]sanyXMLInstanceWrapper(nil), source.wrappers...),
 		})
 	}
 	return out
@@ -935,11 +949,15 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 		if inst.Local {
 			continue
 		}
-		for _, source := range x.exportedDefinitionSources(x.spec.Modules[inst.Module], visiting) {
+		target := x.spec.Modules[inst.Module]
+		for _, source := range x.exportedDefinitionSources(target, visiting) {
 			if source.def == nil || source.module == nil {
 				continue
 			}
+			wrappers := append([]sanyXMLInstanceWrapper(nil), source.wrappers...)
+			wrappers = append(wrappers, sanyXMLInstanceWrapper{owner: mod, inst: inst, target: target})
 			if inst.exportsUnqualified() {
+				source.wrappers = wrappers
 				byName[source.name] = source
 			}
 			if strings.Contains(source.name, "!") {
@@ -947,9 +965,10 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 			}
 			if qualifier := inst.qualifier(); qualifier != "" {
 				byName[qualifier+"!"+source.name] = sanyXMLDefinitionSource{
-					name:   qualifier + "!" + source.name,
-					module: source.module,
-					def:    source.def,
+					name:     qualifier + "!" + source.name,
+					module:   source.module,
+					def:      source.def,
+					wrappers: wrappers,
 				}
 			}
 		}
@@ -1130,7 +1149,7 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	return diags
 }
 
-func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, owner *Module, inst Instance, sourceMod *Module, targetMod *Module, def *Definition, ctx sanyXMLExprContext) Diagnostics {
+func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, owner *Module, inst Instance, sourceMod *Module, targetMod *Module, def *Definition, ctx sanyXMLExprContext, wrappers []sanyXMLInstanceWrapper) Diagnostics {
 	if sym == nil || original == nil || def == nil || x.emitted[sym.Key] {
 		return nil
 	}
@@ -1157,6 +1176,17 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	}
 	if diags.HasErrors() {
 		return diags
+	}
+	for _, wrapper := range wrappers {
+		substs, hasSubsts, substDiags := x.instanceSubstitutionsXML(wrapper.owner, wrapper.inst)
+		diags = append(diags, substDiags...)
+		if diags.HasErrors() {
+			return diags
+		}
+		if hasSubsts {
+			body = x.substInXML(wrapper.inst.SourcePosition(), level, substs, body, wrapper.owner, wrapper.target)
+			sourceMod = wrapper.owner
+		}
 	}
 	substs, hasSubsts, substDiags := x.instanceSubstitutionsXML(owner, inst)
 	diags = append(diags, substDiags...)
@@ -2697,7 +2727,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 			}
 			targetMod := x.spec.Modules[item.inst.Module]
 			original := x.defs[x.defKey(item.source.module.Name, item.source.def.Name)]
-			diags = append(diags, x.emitInstanceDefinitionEntry(item.sym, original, ctx.module, item.inst, item.source.module, targetMod, item.source.def, sourceCtx)...)
+			diags = append(diags, x.emitInstanceDefinitionEntry(item.sym, original, ctx.module, item.inst, item.source.module, targetMod, item.source.def, sourceCtx, item.source.wrappers)...)
 		}
 	}
 	body, bodyDiags := x.exprXML(e.Body, letCtx)
