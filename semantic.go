@@ -1498,21 +1498,9 @@ func checkHideRef(ref ProofRef, theoremLikeDefs, proofStepNames map[string]bool)
 func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind) Diagnostics {
 	var diags Diagnostics
 	goalLevel := exprLevel(proof.Goal, declKinds, nil)
-	nonExpressionSteps := map[string]ProofStep{}
-	for _, step := range proof.Steps {
-		if step.Name == "" || step.Kind == "ASSERT" {
-			continue
-		}
-		nonExpressionSteps[step.Name] = step
-	}
 	for _, step := range proof.Steps {
 		if step.Implicit && step.Name != "" {
 			diags = append(diags, errorAt(step.Pos, "E4350", "implicit proof step cannot have name %s", step.Name))
-		}
-		for _, ref := range step.Refs {
-			if bad, ok := nonExpressionSteps[ref]; ok {
-				diags = append(diags, errorAt(step.Pos, "E4351", "proof step %s of kind %s cannot be used as an expression", ref, bad.Kind))
-			}
 		}
 		if goalLevel == temporalLevel && step.Depth == 0 {
 			switch step.Kind {
@@ -1958,6 +1946,11 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		if _, ok := builtinOperatorArity(e.Name); ok {
 			return nil
 		}
+		if base, ok := theoremStatementReferenceBase(e.Name); ok {
+			if _, ok := defined[base]; ok {
+				return nil
+			}
+		}
 		if _, ok := defined[e.Name]; !ok {
 			diags = append(diags, errorAt(e.Pos, "E1302", "undefined identifier %s", e.Name))
 		}
@@ -2097,6 +2090,14 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		}
 	}
 	return diags
+}
+
+func theoremStatementReferenceBase(name string) (string, bool) {
+	base, ok := strings.CutSuffix(name, "!:")
+	if !ok || base == "" {
+		return "", false
+	}
+	return base, true
 }
 
 func localIdentifierInScope(locals map[string]bool, name string) bool {

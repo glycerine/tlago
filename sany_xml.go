@@ -3176,6 +3176,14 @@ func (x *sanyXMLExporter) identXML(e *IdentExpr, ctx sanyXMLExprContext) (string
 	if sym := ctx.formals[e.Name]; sym != nil {
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), sym, nil, ""), nil
 	}
+	if sym := ctx.proofDefs[e.Name]; sym != nil {
+		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), sym, nil, ""), nil
+	}
+	if base, ok := theoremStatementReferenceBase(e.Name); ok {
+		if sym := x.proofReferenceSymbol(base, ctx); sym != nil {
+			return x.opApplXML(e.Pos, x.exprLevel(e, ctx), sym, nil, ""), nil
+		}
+	}
 	if sym := ctx.defs[e.Name]; sym != nil {
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), sym, nil, ""), nil
 	}
@@ -3994,6 +4002,14 @@ func (x *sanyXMLExporter) opArgXML(pos Position, level tlaLevel, argument *sanyX
 func (x *sanyXMLExporter) operatorSymbol(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
 	if sym := ctx.formals[name]; sym != nil {
 		return sym
+	}
+	if sym := ctx.proofDefs[name]; sym != nil {
+		return sym
+	}
+	if base, ok := theoremStatementReferenceBase(name); ok {
+		if sym := x.proofReferenceSymbol(base, ctx); sym != nil {
+			return sym
+		}
 	}
 	if sym := ctx.defs[name]; sym != nil {
 		return sym
@@ -4950,6 +4966,16 @@ func (x *sanyXMLExporter) operatorLevel(name string, ctx sanyXMLExprContext) tla
 	if sym := ctx.formals[name]; sym != nil {
 		x.ensureOperatorLevelData(sym, ctx)
 		return sym.Level
+	}
+	if sym := ctx.proofDefs[name]; sym != nil {
+		x.ensureOperatorLevelData(sym, ctx)
+		return sym.Level
+	}
+	if base, ok := theoremStatementReferenceBase(name); ok {
+		if sym := x.proofReferenceSymbol(base, ctx); sym != nil {
+			x.ensureOperatorLevelData(sym, ctx)
+			return sym.Level
+		}
 	}
 	if sym := ctx.defs[name]; sym != nil {
 		x.ensureOperatorLevelData(sym, ctx)

@@ -653,6 +653,21 @@ PROOF BY Good
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("allows instantiated theorem statement references", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+THEOREM NextDef == TRUE
+====`)
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, root, `---- MODULE Root ----
+P == INSTANCE Base
+LEMMA PNextDef == P!NextDef!:
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("rejects invalid proof semantics through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("ProofErrors.tla", `---- MODULE ProofErrors ----
 VARIABLE v

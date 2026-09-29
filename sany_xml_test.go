@@ -3008,6 +3008,31 @@ PROOF
 		}
 	})
 
+	t.Run("proof step references can be assertion expression operands", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofStepOperandXML.tla", `---- MODULE ProofStepOperandXML ----
+VARIABLE x
+THEOREM T == TRUE
+PROOF
+<1>1. x = x
+<1>2. (x = x) <=> <1>1
+  BY <1>1
+<1>. QED
+  BY <1>2
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "<1>2")
+		if def == nil {
+			t.Fatalf("proof step <1>2 definition missing\n%s", xmlText)
+		}
+		if refs := xmlNodesByName(def, "TheoremDefRef"); len(refs) == 0 {
+			t.Fatalf("proof step operand did not reference <1>1 theorem definition\n%s", xmlText)
+		}
+	})
+
 	t.Run("BY proof commands preserve call-style facts", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofCallFactXML.tla", `---- MODULE ProofCallFactXML ----
 P(n) == TRUE

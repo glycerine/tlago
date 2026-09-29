@@ -799,24 +799,34 @@ func (p *SanyParser) StepStartToken() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ExpressionUntilProofBoundary() *SanySyntaxNode {
+	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		return p.isProofBoundary(tok)
+		return p.isProofBoundaryAfterExpressionStart(tok, startLine)
 	})
 }
 
 func (p *SanyParser) ExpressionUntilCommaOrProofBoundary() *SanySyntaxNode {
+	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		return tok.Kind == SanyTokenComma || p.isProofBoundary(tok)
+		return tok.Kind == SanyTokenComma || p.isProofBoundaryAfterExpressionStart(tok, startLine)
 	})
 }
 
 func (p *SanyParser) ExpressionUntilAssumeProveBoundary() *SanySyntaxNode {
+	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenComma ||
 			tok.Kind == SanyTokenProve ||
 			tok.Kind == SanyTokenBoxprove ||
-			p.isProofBoundary(tok)
+			p.isProofBoundaryAfterExpressionStart(tok, startLine)
 	})
+}
+
+func (p *SanyParser) isProofBoundaryAfterExpressionStart(tok *SanyToken, startLine int) bool {
+	if tok != nil && tok.Begin.Line == startLine && isSanyProofStepStartKind(tok.Kind) {
+		return false
+	}
+	return p.isProofBoundary(tok)
 }
 
 func (p *SanyParser) atProofBoundary() bool {

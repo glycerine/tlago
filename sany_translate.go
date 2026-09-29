@@ -1128,6 +1128,9 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 	if node == nil {
 		return nil, nil
 	}
+	if node.Token != nil && isSanyProofStepStartKind(node.Token.Kind) {
+		return &IdentExpr{Name: sanyXMLProofStepNameImage(node.Image), Pos: sanyNodePosition(node)}, nil
+	}
 	switch node.Kind.JavaName() {
 	case "IDENTIFIER":
 		if node.Image == "TRUE" || node.Image == "FALSE" {
