@@ -5,6 +5,11 @@ import (
 	"strings"
 )
 
+func sanyBodySelectorBase(name string) (string, bool) {
+	base, ok := strings.CutSuffix(name, "!:")
+	return base, ok && base != ""
+}
+
 func sanySubexpressionPath(name string) (string, []int, bool) {
 	parts := strings.Split(name, "!")
 	if len(parts) < 2 || parts[0] == "" {

@@ -2046,6 +2046,10 @@ func addSubexpressionReferenceNames(defined map[string]Position, base string, ex
 	if defined == nil || base == "" || expr == nil {
 		return
 	}
+	colonName := base + "!:"
+	if _, exists := defined[colonName]; !exists {
+		defined[colonName] = expr.Position()
+	}
 	var walk func(string, Expr)
 	walk = func(prefix string, current Expr) {
 		for i, child := range sanySubexpressionChildren(current) {

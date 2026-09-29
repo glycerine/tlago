@@ -400,6 +400,38 @@ Use == Inv!2
 		}
 	})
 
+	t.Run("bang colon references emit SANY nop wrappers around definition bodies", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BangColonReferenceXML.tla", `---- MODULE BangColonReferenceXML ----
+VARIABLE x
+THEOREM T == x = x
+ASSUME T!:
+Use == T!:
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		nopUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Nop")
+		if nopUID == "" {
+			t.Fatalf("$Nop builtin entry missing\n%s", xmlText)
+		}
+		app := opApplAtLocation(root, 5, 8, 10)
+		if app == nil {
+			t.Fatalf("T!: application node missing\n%s", xmlText)
+		}
+		if !opApplNodeUsesOperatorUID(app, "BuiltInKindRef", nopUID) {
+			t.Fatalf("T!: application did not use $Nop\n%s", xmlText)
+		}
+		if got := firstChildText(app, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("T!: application level = %s, want 1\n%s", got, xmlText)
+		}
+		if strings.Contains(string(xmlText), `<uniquename>T!:</uniquename>`) {
+			t.Fatalf("bang-colon reference emitted fake operator name\n%s", xmlText)
+		}
+	})
+
 	t.Run("function application function operand carries function level", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("FunctionAppFunctionLevelXML.tla", `---- MODULE FunctionAppFunctionLevelXML ----
 CONSTANT S

@@ -3029,6 +3029,17 @@ func (x *sanyXMLExporter) subexpressionReferenceXML(e *IdentExpr, ctx sanyXMLExp
 }
 
 func (x *sanyXMLExporter) subexpressionReferenceExpr(name string, pos Position, ctx sanyXMLExprContext) (Expr, bool, Diagnostics) {
+	if base, ok := sanyBodySelectorBase(name); ok {
+		defSym := x.definitionSymbol(base, ctx)
+		if defSym == nil {
+			return nil, false, nil
+		}
+		def := x.definitionForSymbol(defSym)
+		if def == nil || def.Expr == nil {
+			return nil, true, Diagnostics{errorAt(pos, "E7003", "cannot resolve base definition %s for subexpression %s", base, name)}
+		}
+		return def.Expr, true, nil
+	}
 	base, selectors, ok := sanySubexpressionPath(name)
 	if !ok {
 		return nil, false, nil
