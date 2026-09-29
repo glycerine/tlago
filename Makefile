@@ -7,4 +7,4 @@ long:
 	GOCACHE=$(CURDIR)/.codex-gocache \
 	GOTMPDIR=$(CURDIR)/.codex-gotmp \
 	TLAGO_SANY_XML_CORPUS_ARTIFACT_DIR=.codex-sany-artifacts \
-	TLAGO_SANY_XML_CORPUS=1 go test -run TestSanyXMLTargetCorpusAgainstJavaSANY ./
+	TLAGO_SANY_XML_CORPUS=1 go test -v -run TestSanyXMLTargetCorpusAgainstJavaSANY -timeout=0 -count=1 ./

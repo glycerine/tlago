@@ -48,6 +48,8 @@ func TestSanyXMLConformanceAgainstJavaSANY(t *testing.T) {
 	}
 }
 
+const verbose = true
+
 func TestSanyXMLTargetCorpusAgainstJavaSANY(t *testing.T) {
 	if os.Getenv("TLAGO_SANY_XML_CORPUS") == "" {
 		t.Skip("set TLAGO_SANY_XML_CORPUS=1 to compare the target fixture trees against Java SANY XML")
@@ -70,9 +72,16 @@ func TestSanyXMLTargetCorpusAgainstJavaSANY(t *testing.T) {
 	for i, path := range targets {
 		result := compareSanyXMLCorpusFile(t, path)
 		if result != "" {
+			if verbose {
+				fmt.Printf("%v of %v: red on '%v'\n", i, len(targets), path)
+			}
 			failures = append(failures, fmt.Sprintf("%d/%d %s: %s", i+1, len(targets), path, result))
 			if len(failures) >= maxFailures {
 				break
+			}
+		} else {
+			if verbose {
+				fmt.Printf("%v of %v: green '%v'\n", i, len(targets), path)
 			}
 		}
 	}
