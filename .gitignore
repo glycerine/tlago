@@ -3,6 +3,7 @@
 .codex-gocache/
 .codex-gotmp/
 .codex-m2/
+.codex-sany-artifacts/
 _apalache-out/
 *.xml.gold
 *.xml.red
