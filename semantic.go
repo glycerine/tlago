@@ -1671,16 +1671,13 @@ func checkHideRef(ref ProofRef, theoremLikeDefs, proofStepNames map[string]bool)
 func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind) Diagnostics {
 	var diags Diagnostics
 	goalLevel := exprLevel(proof.Goal, declKinds, nil)
-	nonExprSteps := map[string]bool{}
+	var nonExprScopes []proofNameScope
+	var boundScopes []proofNameScope
 	for _, step := range proof.Steps {
-		if step.Name == "" {
-			continue
-		}
-		if step.Kind != "ASSERT" {
-			nonExprSteps[step.Name] = true
-		}
-	}
-	for _, step := range proof.Steps {
+		nonExprScopes = pruneProofNameScopes(nonExprScopes, step.Depth)
+		boundScopes = pruneProofNameScopes(boundScopes, step.Depth)
+		nonExprSteps := activeProofNames(nonExprScopes)
+		boundNames := activeProofNames(boundScopes)
 		if step.Implicit && step.Name != "" {
 			diags = append(diags, errorAt(step.Pos, "E4350", "implicit proof step cannot have name %s", step.Name))
 		}
@@ -1722,25 +1719,123 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind)
 				}
 			}
 		}
-		diags = append(diags, checkProofStepExpressionRefs(step.Expr, nonExprSteps, declKinds)...)
+		exprBoundNames := boundNames
+		if step.Kind == "PICK" {
+			exprBoundNames = proofNamesWithBounds(exprBoundNames, step.Bounds)
+		}
+		diags = append(diags, checkProofStepExpressionRefs(step.Expr, nonExprSteps, declKinds, exprBoundNames)...)
 		for _, expr := range step.Exprs {
-			diags = append(diags, checkProofStepExpressionRefs(expr, nonExprSteps, declKinds)...)
+			diags = append(diags, checkProofStepExpressionRefs(expr, nonExprSteps, declKinds, boundNames)...)
+		}
+		if step.Name != "" && step.Kind != "ASSERT" {
+			nonExprScopes = append(nonExprScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true}})
+		}
+		if len(step.Bounds) > 0 && (step.Kind == "PICK" || step.Kind == "TAKE") {
+			boundScopes = append(boundScopes, proofNameScope{Depth: step.Depth, Names: proofBoundNames(step.Bounds)})
 		}
 	}
 	return diags
 }
 
-func checkProofStepExpressionRefs(expr Expr, nonExprSteps map[string]bool, declKinds map[string]DeclarationKind) Diagnostics {
+type proofNameScope struct {
+	Depth int
+	Names map[string]bool
+}
+
+func pruneProofNameScopes(scopes []proofNameScope, depth int) []proofNameScope {
+	out := scopes[:0]
+	for _, scope := range scopes {
+		if scope.Depth <= depth {
+			out = append(out, scope)
+		}
+	}
+	return out
+}
+
+func activeProofNames(scopes []proofNameScope) map[string]bool {
+	names := map[string]bool{}
+	for _, scope := range scopes {
+		for name := range scope.Names {
+			names[name] = true
+		}
+	}
+	return names
+}
+
+func proofBoundNames(bounds []BoundVar) map[string]bool {
+	names := map[string]bool{}
+	for _, bound := range bounds {
+		if bound.Name != "" {
+			names[bound.Name] = true
+		}
+	}
+	return names
+}
+
+func proofNamesWithBounds(names map[string]bool, bounds []BoundVar) map[string]bool {
+	if len(bounds) == 0 {
+		return names
+	}
+	out := make(map[string]bool, len(names)+len(bounds))
+	for name := range names {
+		out[name] = true
+	}
+	for _, bound := range bounds {
+		if bound.Name != "" {
+			out[bound.Name] = true
+		}
+	}
+	return out
+}
+
+func proofNamesWithName(names map[string]bool, name string) map[string]bool {
+	if name == "" {
+		return names
+	}
+	out := make(map[string]bool, len(names)+1)
+	for existing := range names {
+		out[existing] = true
+	}
+	out[name] = true
+	return out
+}
+
+func checkProofStepExpressionRefs(expr Expr, nonExprSteps map[string]bool, declKinds map[string]DeclarationKind, boundNames map[string]bool) Diagnostics {
 	if expr == nil || len(nonExprSteps) == 0 {
 		return nil
 	}
 	var diags Diagnostics
-	if ident, ok := expr.(*IdentExpr); ok && nonExprSteps[ident.Name] && declKinds[ident.Name] == "" {
-		diags = append(diags, errorAt(ident.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", ident.Name))
+	switch e := expr.(type) {
+	case *IdentExpr:
+		if !boundNames[e.Name] && nonExprSteps[e.Name] && declKinds[e.Name] == "" {
+			diags = append(diags, errorAt(e.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", e.Name))
+		}
+		return diags
+	case *QuantifierExpr:
+		diags = append(diags, checkProofStepExpressionRefs(e.Set, nonExprSteps, declKinds, boundNames)...)
+		diags = append(diags, checkProofStepExpressionRefs(e.Body, nonExprSteps, declKinds, proofNamesWithName(boundNames, e.Var))...)
+		return diags
+	case *ChooseExpr:
+		diags = append(diags, checkProofStepExpressionRefs(e.Set, nonExprSteps, declKinds, boundNames)...)
+		diags = append(diags, checkProofStepExpressionRefs(e.Body, nonExprSteps, declKinds, proofNamesWithName(boundNames, e.Var))...)
+		return diags
+	case *FunctionExpr:
+		for _, bound := range e.Bounds {
+			diags = append(diags, checkProofStepExpressionRefs(bound.Set, nonExprSteps, declKinds, boundNames)...)
+		}
+		diags = append(diags, checkProofStepExpressionRefs(e.Body, nonExprSteps, declKinds, proofNamesWithBounds(boundNames, e.Bounds))...)
+		return diags
+	case *SetComprehensionExpr:
+		for _, bound := range e.Bounds {
+			diags = append(diags, checkProofStepExpressionRefs(bound.Set, nonExprSteps, declKinds, boundNames)...)
+		}
+		bodyNames := proofNamesWithBounds(boundNames, e.Bounds)
+		diags = append(diags, checkProofStepExpressionRefs(e.Element, nonExprSteps, declKinds, bodyNames)...)
+		diags = append(diags, checkProofStepExpressionRefs(e.Predicate, nonExprSteps, declKinds, bodyNames)...)
 		return diags
 	}
 	for _, child := range sanySubexpressionChildren(expr) {
-		diags = append(diags, checkProofStepExpressionRefs(child, nonExprSteps, declKinds)...)
+		diags = append(diags, checkProofStepExpressionRefs(child, nonExprSteps, declKinds, boundNames)...)
 	}
 	return diags
 }

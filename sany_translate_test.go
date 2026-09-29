@@ -712,6 +712,24 @@ THEOREM []v
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("allows proof step names to collide with scoped bound identifiers", func(t *testing.T) {
+		_, diags := CheckSanySource("ProofStepBoundIdentifierCollision.tla", `---- MODULE ProofStepBoundIdentifierCollision ----
+EXTENDS Naturals
+U == {1}
+THEOREM TRUE
+PROOF
+<1>1. TRUE
+<1>2. PICK I \in U : I \in U
+<1>3. CASE I \in U
+  BY <1>2
+<1>I. PICK j : j = j
+<1>4. CASE \A I \in U : I = I
+  BY <1>2
+<1>. QED
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("checks higher-order operator references through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("OperatorRefs.tla", `---- MODULE OperatorRefs ----
 EXTENDS Naturals
