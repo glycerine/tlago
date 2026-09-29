@@ -328,13 +328,25 @@ func (tm *SanyTokenManager) stringCandidate() sanyLexCandidate {
 			if i >= len(rest) {
 				return sanyLexCandidate{kind: SanyTokenStringLiteral, n: len(rest), priority: 30, diagCode: "E1202", diagMsg: "unterminated string literal"}
 			}
-			_, escSize := utf8.DecodeRuneInString(rest[i:])
+			esc, escSize := utf8.DecodeRuneInString(rest[i:])
+			if !isSanyStringEscape(esc) {
+				return sanyLexCandidate{kind: SanyTokenStringLiteral, n: i + escSize, priority: 30, diagCode: "E1203", diagMsg: "invalid string escape"}
+			}
 			i += escSize
 			continue
 		}
 		i += size
 	}
 	return sanyLexCandidate{kind: SanyTokenStringLiteral, n: len(rest), priority: 30, diagCode: "E1202", diagMsg: "unterminated string literal"}
+}
+
+func isSanyStringEscape(r rune) bool {
+	switch r {
+	case 'n', 't', 'r', 'f', '\\', '"':
+		return true
+	default:
+		return false
+	}
 }
 
 func (tm *SanyTokenManager) identifierCandidate() sanyLexCandidate {

@@ -140,6 +140,14 @@ func (s *SanyOperatorStack) TopNode() *SanySyntaxNode {
 	return top[len(top)-1].Node
 }
 
+func (s *SanyOperatorStack) TopOperator() *SanyOperatorInfo {
+	if s.CurrentSize() == 0 {
+		return nil
+	}
+	top := s.stackOfStacks[len(s.stackOfStacks)-1]
+	return top[len(top)-1].Operator
+}
+
 func (s *SanyOperatorStack) FinalReduce() (*SanySyntaxNode, error) {
 	s.Push(nil, &SanyVoidOperator)
 	if err := s.ReduceStack(); err != nil {

@@ -11,6 +11,7 @@ type SanyParser struct {
 	diags           Diagnostics
 	moduleName      string
 	proofLevelStack []int
+	junctionColumns []int
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
@@ -1318,7 +1319,7 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 			continue
 		}
 		if p.startsLabelAt(0) {
-			stack.Push(p.LabelExpression(stop), nil)
+			stack.Push(p.LabelExpression(stop, stack.TopOperator()), nil)
 			sawExpressionToken = true
 			continue
 		}
@@ -1354,6 +1355,12 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 		}
 		if p.startsPrefixJunctionOperand() {
 			stack.Push(p.PrefixJunctionExpression(stop), nil)
+			sawExpressionToken = true
+			continue
+		}
+		if p.check(SanyTokenCasesep) && sawExpressionToken && !stack.PreInEmptyTop() {
+			p.add(p.peek().Begin, "E1300", "CASE separator outside CASE expression")
+			stack.Push(NewSanyTokenNode(p.advance()), nil)
 			sawExpressionToken = true
 			continue
 		}
@@ -1415,6 +1422,8 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	kind := p.peek().Kind
 	firstBullet := p.advance()
 	minColumn := firstBullet.Begin.Column
+	p.pushJunctionColumn(minColumn)
+	defer p.popJunctionColumn()
 	itemStop := func(tok *SanyToken) bool {
 		if tok.Kind == kind && tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column == minColumn {
 			return true
@@ -1430,6 +1439,7 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	left := p.ExpressionUntil(func(tok *SanyToken) bool {
 		return itemStop(tok)
 	})
+	p.checkJunctionItemIndent(left, firstBullet)
 	listKind := "N_ConjList"
 	itemKind := "N_ConjItem"
 	if kind == SanyTokenOR {
@@ -1444,6 +1454,7 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 		right := p.ExpressionUntil(func(tok *SanyToken) bool {
 			return itemStop(tok)
 		})
+		p.checkJunctionItemIndent(right, firstBullet)
 		items = append(items, NewSanyNode(SanySyntaxNodeKindByName[itemKind], p.junctionOperatorNode(bullet), right))
 	}
 	if !sawMore {
@@ -1453,6 +1464,33 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	list.JunctionList = true
 	list.Range.Begin = firstBullet.Begin
 	return list
+}
+
+func (p *SanyParser) pushJunctionColumn(column int) {
+	p.junctionColumns = append(p.junctionColumns, column)
+}
+
+func (p *SanyParser) popJunctionColumn() {
+	if len(p.junctionColumns) == 0 {
+		return
+	}
+	p.junctionColumns = p.junctionColumns[:len(p.junctionColumns)-1]
+}
+
+func (p *SanyParser) currentJunctionColumn() (int, bool) {
+	if len(p.junctionColumns) == 0 {
+		return 0, false
+	}
+	return p.junctionColumns[len(p.junctionColumns)-1], true
+}
+
+func (p *SanyParser) checkJunctionItemIndent(node *SanySyntaxNode, bullet *SanyToken) {
+	if node == nil || bullet == nil {
+		return
+	}
+	if node.Range.End.Line > bullet.Begin.Line && node.Range.End.Column <= bullet.Begin.Column {
+		p.add(node.Range.End, "E1300", "item is not properly indented inside conjunction or disjunction list item")
+	}
 }
 
 func (p *SanyParser) startsOperatorReference(stop func(*SanyToken) bool) bool {
@@ -1475,6 +1513,9 @@ func (p *SanyParser) OperatorReference() *SanySyntaxNode {
 	if !ok {
 		return NewSanyTokenNode(tok)
 	}
+	if tok.Image == "\\X" || tok.Image == "\\times" {
+		p.add(tok.Begin, "E1300", tok.Image+" may not be used as an infix operator")
+	}
 	node := p.genericOperatorNode(tok, op)
 	if (op.IsInfix() || op.IsPostfix()) && p.check(SanyTokenLbr) {
 		node.AddHeir(p.OpArgs())
@@ -1482,14 +1523,20 @@ func (p *SanyParser) OperatorReference() *SanySyntaxNode {
 	return node
 }
 
-func (p *SanyParser) LabelExpression(stop func(*SanyToken) bool) *SanySyntaxNode {
+func (p *SanyParser) LabelExpression(stop func(*SanyToken) bool, stackOp *SanyOperatorInfo) *SanySyntaxNode {
 	label := p.LabelName()
 	colon := p.consume(SanyTokenColoncolon, "expected :: after label")
 	expr := p.ExpressionUntil(stop)
+	if !p.labelDoesNotChangeParse(expr, stackOp) {
+		p.add(label.Range.Begin, "E1300", "removing label would change expression parsing")
+	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Label"], label, colon, expr)
 }
 
 func (p *SanyParser) LabelName() *SanySyntaxNode {
+	if p.startsNoOpExtension() {
+		return p.NoOpExtension()
+	}
 	heirs := []*SanySyntaxNode{
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
 		p.Identifier(),
@@ -1498,6 +1545,36 @@ func (p *SanyParser) LabelName() *SanySyntaxNode {
 		heirs = append(heirs, p.OpArgs())
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], heirs...)
+}
+
+func (p *SanyParser) labelDoesNotChangeParse(expr *SanySyntaxNode, stackOp *SanyOperatorInfo) bool {
+	if expr == nil || stackOp == nil {
+		return true
+	}
+	labelOp, ok := sanyLabelExpressionOperator(expr)
+	if !ok {
+		return true
+	}
+	return SanyOperatorPrec(*stackOp, labelOp)
+}
+
+func sanyLabelExpressionOperator(expr *SanySyntaxNode) (SanyOperatorInfo, bool) {
+	if expr == nil {
+		return SanyOperatorInfo{}, false
+	}
+	switch expr.Kind.JavaName() {
+	case "N_InfixExpr":
+		heirs := expr.GetHeirs()
+		if len(heirs) >= 2 {
+			return GetSanyOperator(sanyOperatorImage(heirs[1]))
+		}
+	case "N_PostfixExpr":
+		heirs := expr.GetHeirs()
+		if len(heirs) >= 2 {
+			return GetSanyOperator(sanyOperatorImage(heirs[1]))
+		}
+	}
+	return SanyOperatorInfo{}, false
 }
 
 func (p *SanyParser) junctionOperatorNode(tok *SanyToken) *SanySyntaxNode {
@@ -1626,7 +1703,8 @@ func (p *SanyParser) Case(stop func(*SanyToken) bool) *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenCase, "expected CASE"))
 	heirs = append(heirs, p.CaseArm(stop))
-	for p.match(SanyTokenCasesep) {
+	for p.check(SanyTokenCasesep) && p.caseSeparatorIsAboveCurrentJunction() {
+		p.advance()
 		sep := NewSanyTokenNode(p.previous())
 		if p.check(SanyTokenOther) {
 			heirs = append(heirs, sep, p.OtherArm(stop))
@@ -1635,6 +1713,11 @@ func (p *SanyParser) Case(stop func(*SanyToken) bool) *SanySyntaxNode {
 		heirs = append(heirs, sep, p.CaseArm(stop))
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Case"], heirs...)
+}
+
+func (p *SanyParser) caseSeparatorIsAboveCurrentJunction() bool {
+	column, ok := p.currentJunctionColumn()
+	return !ok || p.peek().Begin.Column > column
 }
 
 func (p *SanyParser) CaseArm(stop func(*SanyToken) bool) *SanySyntaxNode {
@@ -1905,6 +1988,10 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenLsb, "expected ["))
+	if p.startsSBracketFunctionConstructorWithoutMapTo() &&
+		p.findTopLevelBeforeStop(SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) < 0 {
+		p.add(p.peek().Begin, "E1300", "expected |-> in function constructor")
+	}
 	if p.startsQuantBoundIntro() && p.findTopLevelBeforeStop(SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 &&
 		p.findTopLevelBeforeStop(SanyTokenIN, SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
 		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF))
@@ -1986,6 +2073,37 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 	}
 	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_FcnAppl"], heirs...)
+}
+
+func (p *SanyParser) startsSBracketFunctionConstructorWithoutMapTo() bool {
+	offset := 0
+	if !p.startsQuantBoundIntroAt(offset) {
+		return false
+	}
+	offset = p.skipQuantBoundIntroAt(offset)
+	for p.tokenAt(offset).Kind == SanyTokenComma {
+		offset++
+		if !p.startsQuantBoundIntroAt(offset) {
+			return false
+		}
+		offset = p.skipQuantBoundIntroAt(offset)
+	}
+	return p.tokenAt(offset).Kind == SanyTokenIN
+}
+
+func (p *SanyParser) startsQuantBoundIntroAt(offset int) bool {
+	return p.tokenAt(offset).Kind == SanyTokenIdentifier || p.tokenAt(offset).Kind == SanyTokenLab
+}
+
+func (p *SanyParser) skipQuantBoundIntroAt(offset int) int {
+	if p.tokenAt(offset).Kind != SanyTokenLab {
+		return offset + 1
+	}
+	end := p.findMatchingBracketOffset(offset)
+	if end < 0 {
+		return offset + 1
+	}
+	return end + 1
 }
 
 func (p *SanyParser) FieldVal() *SanySyntaxNode {
@@ -2142,21 +2260,27 @@ func (p *SanyParser) splitLeadingFairnessIdentifier() bool {
 }
 
 func (p *SanyParser) startsStructOp() bool {
-	switch p.peek().Kind {
+	return p.startsStructOpAt(0)
+}
+
+func (p *SanyParser) startsStructOpAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
 	case SanyTokenLab, SanyTokenRab, SanyTokenColon, SanyTokenNumberLiteral:
 		return true
 	case SanyTokenIdentifier:
-		return p.peek().Image == "@"
+		return p.tokenAt(offset).Image == "@"
 	default:
 		return false
 	}
 }
 
 func (p *SanyParser) startsBangOperatorSelector() bool {
-	if _, ok := GetSanyOperator(p.peek().Image); ok {
-		return true
-	}
-	return false
+	return p.isOperatorTokenAt(0)
+}
+
+func (p *SanyParser) isOperatorTokenAt(offset int) bool {
+	_, ok := GetSanyOperator(p.tokenAt(offset).Image)
+	return ok
 }
 
 func (p *SanyParser) startsLabelAt(offset int) bool {
@@ -2166,11 +2290,53 @@ func (p *SanyParser) startsLabelAt(offset int) bool {
 	if p.tokenAt(offset+1).Kind == SanyTokenColoncolon {
 		return true
 	}
-	if p.tokenAt(offset+1).Kind != SanyTokenLbr {
+	if p.tokenAt(offset+1).Kind == SanyTokenLbr {
+		end := p.findMatchingBracketOffset(offset + 1)
+		if end >= 0 && p.tokenAt(end+1).Kind == SanyTokenColoncolon {
+			return true
+		}
+	}
+	return p.startsPrefixedLabelAt(offset)
+}
+
+func (p *SanyParser) startsPrefixedLabelAt(offset int) bool {
+	at := offset
+	if p.tokenAt(at).Kind != SanyTokenIdentifier {
 		return false
 	}
-	end := p.findMatchingBracketOffset(offset + 1)
-	return end >= 0 && p.tokenAt(end+1).Kind == SanyTokenColoncolon
+	at++
+	if p.tokenAt(at).Kind == SanyTokenLbr {
+		end := p.findMatchingBracketOffset(at)
+		if end < 0 {
+			return false
+		}
+		at = end + 1
+	}
+	sawBang := false
+	for p.tokenAt(at).Kind == SanyTokenBang {
+		sawBang = true
+		at++
+		switch {
+		case p.tokenAt(at).Kind == SanyTokenLbr:
+			end := p.findMatchingBracketOffset(at)
+			if end < 0 {
+				return false
+			}
+			at = end + 1
+		case p.startsStructOpAt(at), p.isOperatorTokenAt(at), p.tokenAt(at).Kind == SanyTokenIdentifier:
+			at++
+			if p.tokenAt(at).Kind == SanyTokenLbr {
+				end := p.findMatchingBracketOffset(at)
+				if end < 0 {
+					return false
+				}
+				at = end + 1
+			}
+		default:
+			return false
+		}
+	}
+	return sawBang && p.tokenAt(at).Kind == SanyTokenColoncolon
 }
 
 func (p *SanyParser) startsOpApplication() bool {

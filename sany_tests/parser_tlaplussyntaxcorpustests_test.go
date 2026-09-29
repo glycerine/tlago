@@ -13,14 +13,12 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/TlaPlusSyntaxCorpusTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTlaPlusSyntaxCorpusTests_testAll(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	for _, file := range sanySyntaxCorpusFiles(t) {
 		for _, tc := range readSanySyntaxCorpusCases(t, file) {
 			tc := tc
 			t.Run(filepath.Base(file)+"/"+tc.Title, func(t *testing.T) {
 				_, diags := tlago.ParseSanySyntax("Test.tla", tc.Source)
-				if tc.ExpectError || isExpectedSyntaxCorpusFailure(tc.Title) {
+				if isExpectedSanySyntaxParseFailure(tc) {
 					if !diags.HasErrors() {
 						t.Fatalf("syntax corpus case %q parsed successfully, want parse failure", tc.Title)
 					}
@@ -38,7 +36,7 @@ func TestTlaPlusSyntaxCorpusTests_testAllTlaPlusNodesUsed(t *testing.T) {
 	used := map[string]bool{}
 	for _, file := range sanySyntaxCorpusFiles(t) {
 		for _, tc := range readSanySyntaxCorpusCases(t, file) {
-			if tc.ExpectError || isExpectedSyntaxCorpusFailure(tc.Title) {
+			if isExpectedSanySyntaxParseFailure(tc) {
 				continue
 			}
 			root, diags := tlago.ParseSanySyntax("Test.tla", tc.Source)
@@ -182,7 +180,26 @@ func isExpectedSyntaxCorpusFailure(title string) bool {
 		"Nonfix Double Exclamation Operator (GH TSTLA #GH97, GH tlaplus/tlaplus #884)",
 		"Label with Subexpression Prefix (GH tlaplus/tlaplus #885)",
 		"Empty Tuple Quantification (GH tlaplus/tlaplus #GH888)",
-		"Negative Prefix Op on RHS of Infix (GH tlaplus/tlaplus #GH893)",
+		"Negative Prefix Op on RHS of Infix (GH tlaplus/tlaplus #893)",
+		"Mistaken Set Filter Tuples Test":
+		return true
+	default:
+		return false
+	}
+}
+
+func isExpectedSanySyntaxParseFailure(tc sanySyntaxCorpusCase) bool {
+	if isSanySyntaxCorpusJavaParseSuccess(tc.Title) {
+		return false
+	}
+	return tc.ExpectError || isExpectedSyntaxCorpusFailure(tc.Title)
+}
+
+func isSanySyntaxCorpusJavaParseSuccess(title string) bool {
+	switch title {
+	case "Empty Tuple Quantification (GH tlaplus/tlaplus #888)",
+		"Invalid Use of LOCAL in Proof",
+		"Label with Subexpression Prefix (GH tlaplus/tlaplus #885)",
 		"Mistaken Set Filter Tuples Test":
 		return true
 	default:
