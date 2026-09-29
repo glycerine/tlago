@@ -10,8 +10,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/utilities/VectorTest.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestVectorTest_containsUsesIdentityComparison(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	vector := tlago.NewSanyVector[*sanyVectorBox[string]]()
 	reference := &sanyVectorBox[string]{value: "value"}
 	vector.AddElement(reference)
@@ -25,8 +23,6 @@ func TestVectorTest_containsUsesIdentityComparison(t *testing.T) {
 }
 
 func TestVectorTest_insertElementAtRejectsAppendPosition(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	vector := tlago.NewSanyVector[string]()
 	vector.AddElement("a")
 	vector.AddElement("b")
@@ -40,8 +36,6 @@ func TestVectorTest_insertElementAtRejectsAppendPosition(t *testing.T) {
 }
 
 func TestVectorTest_elementsReturnsSnapshot(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	vector := tlago.NewSanyVector[string]()
 	vector.AddElement("a")
 	vector.AddElement("b")
@@ -55,8 +49,6 @@ func TestVectorTest_elementsReturnsSnapshot(t *testing.T) {
 }
 
 func TestVectorTest_appendNoRepeatsUsesIdentity(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	base := tlago.NewSanyVector[*sanyVectorBox[string]]()
 	shared := &sanyVectorBox[string]{value: "dup"}
 	equalButDistinct := &sanyVectorBox[string]{value: "dup"}

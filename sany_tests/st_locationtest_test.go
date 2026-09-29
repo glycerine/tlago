@@ -10,8 +10,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/st/LocationTest.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestLocationTest_testContains(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	if !sanyLocation(0, 0, 10, 10).Includes(sanyLocation(0, 0, 10, 10)) {
 		t.Fatal("location should include itself")
 	}
@@ -59,8 +57,6 @@ func TestLocationTest_testContains(t *testing.T) {
 }
 
 func TestLocationTest_testContains2(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	outer, ok := tlago.ParseSANYLocation("line 109, col 1 to line 120, col 19 of module EWD998Chan")
 	if !ok {
 		t.Fatal("failed to parse outer location")
@@ -93,8 +89,6 @@ func TestLocationTest_testContains2(t *testing.T) {
 }
 
 func TestLocationTest_testComparator(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	parsedLocations := tlago.ParseSANYLocations("line 15, col 9 to line 15, col 9 of module CostMetrics\n" +
 		"line 15, col 9 to line 15, col 17 of module CostMetrics\n" +
 		"line 8, col 11 to line 8, col 11 of module CostMetrics\n" +

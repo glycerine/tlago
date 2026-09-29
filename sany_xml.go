@@ -4306,13 +4306,19 @@ func (x *sanyXMLExporter) literalXML(e *LiteralExpr, ctx sanyXMLExprContext) (st
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), x.builtin(strings.ToUpper(e.Value)), nil, ""), nil
 	case "number":
 		if strings.Contains(e.Value, ".") {
+			parts := strings.SplitN(e.Value, ".", 2)
 			var b bytes.Buffer
-			b.WriteString("<DecimalNode><mantissa>")
+			b.WriteString("<DecimalNode>")
+			x.writeNode(&b, e.Pos, constantLevel)
+			b.WriteString("<mantissa>")
 			xmlText(&b, strings.ReplaceAll(e.Value, ".", ""))
 			b.WriteString("</mantissa><exponent>")
-			parts := strings.SplitN(e.Value, ".", 2)
 			xmlInt(&b, -len(parts[1]))
-			b.WriteString("</exponent></DecimalNode>")
+			b.WriteString("</exponent><integralPart>")
+			xmlText(&b, parts[0])
+			b.WriteString("</integralPart><fractionalPart>")
+			xmlText(&b, parts[1])
+			b.WriteString("</fractionalPart></DecimalNode>")
 			return b.String(), nil
 		}
 		n := new(big.Int)
