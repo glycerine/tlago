@@ -29,6 +29,51 @@ func sanySubexpressionPath(name string) (string, []int, bool) {
 	return parts[0], selectors, true
 }
 
+type sanySubexpressionSelector struct {
+	index int
+	label string
+}
+
+func sanyParseSubexpressionSelectors(parts []string) ([]sanySubexpressionSelector, bool) {
+	selectors := make([]sanySubexpressionSelector, 0, len(parts))
+	for _, part := range parts {
+		if part == "" {
+			return nil, false
+		}
+		n, err := strconv.Atoi(part)
+		if err == nil && n > 0 {
+			selectors = append(selectors, sanySubexpressionSelector{index: n})
+			continue
+		}
+		if !sanyValidLabelSelector(part) {
+			return nil, false
+		}
+		selectors = append(selectors, sanySubexpressionSelector{label: part})
+	}
+	return selectors, true
+}
+
+func sanyValidLabelSelector(part string) bool {
+	if part == "" {
+		return false
+	}
+	for i, r := range part {
+		switch {
+		case r == '_':
+			continue
+		case r >= 'A' && r <= 'Z':
+			continue
+		case r >= 'a' && r <= 'z':
+			continue
+		case i > 0 && r >= '0' && r <= '9':
+			continue
+		default:
+			return false
+		}
+	}
+	return true
+}
+
 func sanySelectSubexpression(expr Expr, selectors []int) Expr {
 	cur := expr
 	for _, selector := range selectors {

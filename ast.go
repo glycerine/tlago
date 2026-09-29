@@ -8,21 +8,22 @@ type Spec struct {
 }
 
 type Module struct {
-	Name         string
-	SourcePath   string
-	Source       string
-	Library      bool
-	Pos          Position
-	Extends      []string
-	Instances    []Instance
-	Declarations []Declaration
-	Recursives   []Declaration
-	Definitions  []Definition
-	Assumptions  []NamedExpr
-	Theorems     []NamedExpr
-	ProofRefs    []ProofRef
-	Proofs       []ProofSummary
-	Nested       []*Module
+	Name          string
+	SourcePath    string
+	Source        string
+	Library       bool
+	Pos           Position
+	Extends       []string
+	Instances     []Instance
+	Declarations  []Declaration
+	Recursives    []Declaration
+	Definitions   []Definition
+	Assumptions   []NamedExpr
+	Theorems      []NamedExpr
+	ProofRefs     []ProofRef
+	ProofRefNodes []*SanySyntaxNode
+	Proofs        []ProofSummary
+	Nested        []*Module
 }
 
 type Instance struct {

@@ -1980,6 +1980,9 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 				return nil
 			}
 		}
+		if subexpressionReferenceNameDefined(e.Name, defined) {
+			return nil
+		}
 		if _, ok := defined[e.Name]; !ok {
 			diags = append(diags, errorAt(e.Pos, "E1302", "undefined identifier %s", e.Name))
 		}
@@ -2127,6 +2130,32 @@ func theoremStatementReferenceBase(name string) (string, bool) {
 		return "", false
 	}
 	return base, true
+}
+
+func subexpressionReferenceNameDefined(name string, defined map[string]Position) bool {
+	if name == "" || !strings.Contains(name, "!") {
+		return false
+	}
+	if base, ok := sanyBodySelectorBase(name); ok {
+		_, exists := defined[base]
+		return exists
+	}
+	parts := strings.Split(name, "!")
+	if len(parts) < 2 {
+		return false
+	}
+	for cut := len(parts) - 1; cut >= 1; cut-- {
+		candidate := strings.Join(parts[:cut], "!")
+		if candidate == "" {
+			continue
+		}
+		if _, exists := defined[candidate]; !exists {
+			continue
+		}
+		_, valid := sanyParseSubexpressionSelectors(parts[cut:])
+		return valid
+	}
+	return false
 }
 
 func localIdentifierInScope(locals map[string]bool, name string) bool {

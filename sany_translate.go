@@ -390,6 +390,7 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			}
 		case "N_UseOrHide":
 			mod.ProofRefs = append(mod.ProofRefs, sanyUseOrHideRefs(item)...)
+			mod.ProofRefNodes = append(mod.ProofRefNodes, item)
 		}
 	}
 	return mod, diags

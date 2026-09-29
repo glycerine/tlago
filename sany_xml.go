@@ -880,10 +880,26 @@ func (x *sanyXMLExporter) emitModuleEntry(mod *Module) Diagnostics {
 		b.WriteString("</uniquename>")
 	}
 	b.WriteString("</extends>")
+	var ownTheoremRefs []*sanyXMLSymbol
 	for _, ref := range x.moduleMemberRefs(mod) {
+		if x.moduleOwnTheoremRef(mod, ref) {
+			ownTheoremRefs = append(ownTheoremRefs, ref)
+			continue
+		}
 		x.writeRef(&b, ref)
 	}
+	ctx := sanyXMLExprContext{module: mod, scope: x.scopeForModule(mod, map[string]bool{}), formals: map[string]*sanyXMLSymbol{}, defs: map[string]*sanyXMLSymbol{}, proofDefs: map[string]*sanyXMLSymbol{}}
 	var diags Diagnostics
+	for _, node := range mod.ProofRefNodes {
+		xmlText, _, nodeDiags := x.useOrHideXML(node, ctx, sanyNodePosition(node))
+		diags = append(diags, nodeDiags...)
+		if !nodeDiags.HasErrors() {
+			b.WriteString(xmlText)
+		}
+	}
+	for _, ref := range ownTheoremRefs {
+		x.writeRef(&b, ref)
+	}
 	for _, node := range x.moduleInstanceNodes(mod) {
 		instDiags := x.writeInstanceNode(&b, node.owner, node.inst)
 		diags = append(diags, instDiags...)
@@ -891,6 +907,19 @@ func (x *sanyXMLExporter) emitModuleEntry(mod *Module) Diagnostics {
 	b.WriteString("</ModuleNode>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
 	return diags
+}
+
+func (x *sanyXMLExporter) moduleOwnTheoremRef(mod *Module, sym *sanyXMLSymbol) bool {
+	if mod == nil || sym == nil || sym.Kind != "TheoremNode" {
+		return false
+	}
+	for i := range mod.Theorems {
+		key := fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, mod.Theorems[i].Name)
+		if x.theorems[key] == sym {
+			return true
+		}
+	}
+	return false
 }
 
 func (x *sanyXMLExporter) moduleInstanceNodes(mod *Module) []sanyXMLInstanceNode {
@@ -2566,6 +2595,9 @@ func (x *sanyXMLExporter) proofStepsXML(proof *SanySyntaxNode, ctx sanyXMLExprCo
 		if body != nil && body.Kind.JavaName() == "N_PickStep" {
 			stepCtx = x.withProofStepBounds(stepCtx, sanyProofStepBounds(body))
 		}
+		if body != nil && body.Kind.JavaName() == "N_TakeStep" {
+			stepCtx = x.withProofStepBounds(stepCtx, sanyProofStepBounds(body))
+		}
 		if rhs := sanyXMLAssertInfixRHS(body); rhs != nil {
 			stepCtx.proofPrevInfixRHS = rhs
 		} else if body == nil || body.Kind.JavaName() != "N_AssertStep" {
@@ -2613,6 +2645,9 @@ func (x *sanyXMLExporter) markProofBoundLevelHints(proof *SanySyntaxNode, ctx sa
 			scanCtx = x.withAssumeProveNewSymbols(scanCtx, ap)
 		}
 		if body != nil && body.Kind.JavaName() == "N_PickStep" {
+			scanCtx = x.withProofStepBoundHintPlaceholders(scanCtx, sanyProofStepBounds(body))
+		}
+		if body != nil && body.Kind.JavaName() == "N_TakeStep" {
 			scanCtx = x.withProofStepBoundHintPlaceholders(scanCtx, sanyProofStepBounds(body))
 		}
 	}
@@ -2849,6 +2884,8 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 			return "", constantLevel, xmlDiags
 		}
 		return xml, x.boundOpLevel(bounds, expr, ctx), nil
+	case "N_TakeStep":
+		return x.takeStepXML(bodyNode, ctx)
 	case "N_WitnessStep":
 		exprNodes := expressionChildren(bodyNode)
 		operands := make([]string, 0, len(exprNodes))
@@ -2869,6 +2906,52 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 	default:
 		return "", constantLevel, Diagnostics{errorAt(sanyNodePosition(bodyNode), "E7010", "unsupported proof step XML body %s", bodyNode.Kind.JavaName())}
 	}
+}
+
+func (x *sanyXMLExporter) takeStepXML(bodyNode *SanySyntaxNode, ctx sanyXMLExprContext) (string, tlaLevel, Diagnostics) {
+	bounds := sanyProofStepBounds(bodyNode)
+	var boundSymbols bytes.Buffer
+	boundSymbols.WriteString("<boundSymbols>")
+	var diags Diagnostics
+	level := constantLevel
+	for i := 0; i < len(bounds); {
+		set := bounds[i].Set
+		if set == nil {
+			bound := bounds[i]
+			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
+			x.emitFormalEntry(formal)
+			boundSymbols.WriteString("<unbound>")
+			x.writeRef(&boundSymbols, formal)
+			boundSymbols.WriteString("</unbound>")
+			i++
+			continue
+		}
+		setXML, setDiags := x.exprXML(set, ctx)
+		diags = append(diags, setDiags...)
+		level = maxTlaLevel(level, x.exprLevel(set, ctx))
+		var refs bytes.Buffer
+		j := i
+		for j < len(bounds) && bounds[j].Set == set {
+			bound := bounds[j]
+			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
+			x.emitFormalEntry(formal)
+			x.writeRef(&refs, formal)
+			j++
+		}
+		boundSymbols.WriteString("<bound>")
+		boundSymbols.WriteString(refs.String())
+		if sanyXMLBoundsHaveTuple(bounds[i:j]) {
+			boundSymbols.WriteString("<tuple/>")
+		}
+		boundSymbols.WriteString(setXML)
+		boundSymbols.WriteString("</bound>")
+		i = j
+	}
+	boundSymbols.WriteString("</boundSymbols>")
+	if diags.HasErrors() {
+		return "", constantLevel, diags
+	}
+	return x.opApplXML(sanyNodePosition(bodyNode), level, x.builtin("$Take"), nil, boundSymbols.String()), level, nil
 }
 
 func (x *sanyXMLExporter) proofAtInfixXML(expr Expr, ctx sanyXMLExprContext) (string, tlaLevel, bool, Diagnostics) {
@@ -2970,6 +3053,9 @@ func (x *sanyXMLExporter) proofNodeLevel(proof *SanySyntaxNode, ctx sanyXMLExprC
 				stepCtx.proofPrevInfixRHS = rhs
 			} else if body == nil || body.Kind.JavaName() != "N_AssertStep" {
 				stepCtx.proofPrevInfixRHS = nil
+			}
+			if body != nil && body.Kind.JavaName() == "N_TakeStep" {
+				stepCtx = x.withProofStepBounds(stepCtx, sanyProofStepBounds(body))
 			}
 		}
 		return level
@@ -3885,7 +3971,7 @@ func (x *sanyXMLExporter) definitionModuleForSymbol(sym *sanyXMLSymbol) *Module 
 	return nil
 }
 
-func (x *sanyXMLExporter) subexpressionReferenceParts(name string, ctx sanyXMLExprContext) (base string, selectors []int, bodySelector bool, ok bool) {
+func (x *sanyXMLExporter) subexpressionReferenceParts(name string, ctx sanyXMLExprContext) (base string, selectors []sanySubexpressionSelector, bodySelector bool, ok bool) {
 	if name == "" {
 		return "", nil, false, false
 	}
@@ -3905,22 +3991,8 @@ func (x *sanyXMLExporter) subexpressionReferenceParts(name string, ctx sanyXMLEx
 			continue
 		}
 		suffix := parts[cut:]
-		nums := make([]int, 0, len(suffix))
-		valid := true
-		for _, part := range suffix {
-			if part == "" {
-				valid = false
-				break
-			}
-			n, err := strconv.Atoi(part)
-			if err != nil || n <= 0 {
-				valid = false
-				break
-			}
-			nums = append(nums, n)
-		}
-		if valid {
-			return candidate, nums, false, true
+		if selectors, valid := sanyParseSubexpressionSelectors(suffix); valid {
+			return candidate, selectors, false, true
 		}
 	}
 	return "", nil, false, false
@@ -4184,23 +4256,21 @@ type sanyXMLConsumedSelectorArg struct {
 	pos  Position
 }
 
-func sanySelectSubexpressionWithLets(expr Expr, selectors []int) (Expr, []*LetExpr, bool) {
+func sanySelectSubexpressionWithLets(expr Expr, selectors []sanySubexpressionSelector) (Expr, []*LetExpr, bool) {
 	cur := expr
 	var lets []*LetExpr
 	for _, selector := range selectors {
-		children := sanySubexpressionChildren(cur)
-		if selector <= 0 || selector > len(children) {
+		next, nextLets, ok := sanySelectSubexpressionChildWithLets(cur, selector, lets)
+		if !ok {
 			return nil, nil, false
 		}
-		if letExpr, ok := cur.(*LetExpr); ok {
-			lets = append(lets, letExpr)
-		}
-		cur = children[selector-1]
+		cur = next
+		lets = nextLets
 	}
 	return cur, lets, true
 }
 
-func sanySelectSubexpressionWithArgs(body Expr, selectors []int, argCount int) (Expr, []sanyXMLConsumedSelectorArg, []*LetExpr, bool) {
+func sanySelectSubexpressionWithArgs(body Expr, selectors []sanySubexpressionSelector, argCount int) (Expr, []sanyXMLConsumedSelectorArg, []*LetExpr, bool) {
 	var search func(expr Expr, selectorIndex int, argIndex int, lets []*LetExpr) (Expr, []sanyXMLConsumedSelectorArg, []*LetExpr, bool)
 	search = func(expr Expr, selectorIndex int, argIndex int, lets []*LetExpr) (Expr, []sanyXMLConsumedSelectorArg, []*LetExpr, bool) {
 		if expr == nil {
@@ -4210,14 +4280,9 @@ func sanySelectSubexpressionWithArgs(body Expr, selectors []int, argCount int) (
 			return expr, nil, lets, true
 		}
 		if selectorIndex < len(selectors) {
-			children := sanySubexpressionChildren(expr)
 			selector := selectors[selectorIndex]
-			if selector > 0 && selector <= len(children) {
-				nextLets := lets
-				if letExpr, ok := expr.(*LetExpr); ok {
-					nextLets = append(append([]*LetExpr(nil), lets...), letExpr)
-				}
-				if result, consumed, resultLets, ok := search(children[selector-1], selectorIndex+1, argIndex, nextLets); ok {
+			if child, nextLets, ok := sanySelectSubexpressionChildWithLets(expr, selector, lets); ok {
+				if result, consumed, resultLets, ok := search(child, selectorIndex+1, argIndex, nextLets); ok {
 					return result, consumed, resultLets, true
 				}
 			}
@@ -4245,6 +4310,40 @@ func sanySelectSubexpressionWithArgs(body Expr, selectors []int, argCount int) (
 		return nil, nil, nil, false
 	}
 	return search(body, 0, 0, nil)
+}
+
+func sanySelectSubexpressionChildWithLets(expr Expr, selector sanySubexpressionSelector, lets []*LetExpr) (Expr, []*LetExpr, bool) {
+	if selector.label != "" {
+		return sanyFindLabeledSubexpressionWithLets(expr, selector.label, lets)
+	}
+	children := sanySubexpressionChildren(expr)
+	if selector.index <= 0 || selector.index > len(children) {
+		return nil, nil, false
+	}
+	nextLets := lets
+	if letExpr, ok := expr.(*LetExpr); ok {
+		nextLets = append(append([]*LetExpr(nil), lets...), letExpr)
+	}
+	return children[selector.index-1], nextLets, true
+}
+
+func sanyFindLabeledSubexpressionWithLets(expr Expr, label string, lets []*LetExpr) (Expr, []*LetExpr, bool) {
+	if expr == nil || label == "" {
+		return nil, nil, false
+	}
+	if lab, ok := expr.(*LabelExpr); ok && lab.Name == label {
+		return expr, lets, true
+	}
+	nextLets := lets
+	if letExpr, ok := expr.(*LetExpr); ok {
+		nextLets = append(append([]*LetExpr(nil), lets...), letExpr)
+	}
+	for _, child := range sanySubexpressionChildren(expr) {
+		if found, foundLets, ok := sanyFindLabeledSubexpressionWithLets(child, label, nextLets); ok {
+			return found, foundLets, true
+		}
+	}
+	return nil, nil, false
 }
 
 func sanySameJunctionFrame(parent, nested *BinaryExpr) bool {

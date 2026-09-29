@@ -637,6 +637,32 @@ Use == C = C
 		}
 	})
 
+	t.Run("module-level USE commands remain UseOrHideNode module members", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ModuleUseXML.tla", `---- MODULE ModuleUseXML ----
+ASSUME A == TRUE
+USE A
+THEOREM T == A
+  BY A
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		mod := xmlEntryPayloadByKindAndName(root, "ModuleNode", "ModuleUseXML")
+		if mod == nil {
+			t.Fatalf("ModuleNode missing\n%s", xmlText)
+		}
+		useNodes := directChildren(mod, "UseOrHideNode")
+		if len(useNodes) != 1 {
+			t.Fatalf("module UseOrHideNode count = %d, want 1\n%s", len(useNodes), xmlText)
+		}
+		if got := len(xmlNodesByName(useNodes[0], "AssumeDefRef")); got != 1 {
+			t.Fatalf("module USE fact AssumeDefRef count = %d, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("instance assumption clone keys preserve nested qualifier names", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "SameNameAssumeBase.tla"), `---- MODULE SameNameAssumeBase ----
@@ -744,6 +770,34 @@ Use == Op(a, b)!1!(c)
 		}
 		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
 			t.Fatalf("parameterized selector call did not synthesize a lambda operator\n%s", got)
+		}
+	})
+
+	t.Run("label bang subexpression references emit selected label nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LabelSelectorXML.tla", `---- MODULE LabelSelectorXML ----
+Choice == \/ P0:: TRUE
+          \/ Done:: FALSE
+Use == Choice!Done
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		use := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("Use definition missing\n%s", xmlText)
+		}
+		var found bool
+		for _, label := range xmlNodesByName(use, "LabelNode") {
+			if firstChildText(label, "uniquename") == "Done" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("Choice!Done did not emit selected Done label node\n%s", xmlText)
 		}
 	})
 
@@ -3659,6 +3713,51 @@ THEOREM T == TRUE
 			if !strings.Contains(got, want) {
 				t.Fatalf("proof DEFINE XML missing %q\n%s", want, got)
 			}
+		}
+	})
+
+	t.Run("TAKE proof steps emit bound symbols for following steps", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofTakeXML.tla", `---- MODULE ProofTakeXML ----
+CONSTANT S
+THEOREM TRUE
+<1>1. TAKE i \in S
+<1>2. i = i
+  OBVIOUS
+<1>. QED
+  BY <1>2
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		takeUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Take")
+		if takeUID == "" {
+			t.Fatalf("$Take builtin missing\n%s", xmlText)
+		}
+		if firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", takeUID) == nil {
+			t.Fatalf("TAKE proof step did not emit $Take application\n%s", xmlText)
+		}
+		step := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "<1>2")
+		if step == nil {
+			t.Fatalf("following proof step definition missing\n%s", xmlText)
+		}
+		var usesI bool
+		for _, ref := range xmlNodesByName(step, "FormalParamNodeRef") {
+			uid := firstChildText(ref, "UID")
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				if firstChildText(entry, "UID") != uid {
+					continue
+				}
+				payload := canonicalSanyXMLEntryPayload(entry)
+				if payload != nil && payload.Name == "FormalParamNode" && firstChildText(payload, "uniquename") == "i" {
+					usesI = true
+				}
+			}
+		}
+		if !usesI {
+			t.Fatalf("following proof step did not resolve TAKE-bound i\n%s", xmlText)
 		}
 	})
 
