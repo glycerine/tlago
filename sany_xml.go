@@ -120,6 +120,7 @@ type sanyXMLExprContext struct {
 	exceptAtPos        Position
 	exceptAtLevel      tlaLevel
 	recursiveSection   int
+	localRecursiveDefs map[string]int
 	suppressLetDefs    bool
 }
 
@@ -1186,6 +1187,9 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 		}
 	}
 	ownRecursiveSection := x.moduleRecursiveDefinitionSection(ctx.module, sym)
+	if ownRecursiveSection == 0 && ctx.localRecursiveDefs != nil {
+		ownRecursiveSection = ctx.localRecursiveDefs[sym.Name]
+	}
 	if ownRecursiveSection > 0 {
 		defCtx.recursiveSection = ownRecursiveSection
 	}
@@ -1411,6 +1415,21 @@ func (x *sanyXMLExporter) recursiveDefinitionSection(mod *Module, name string) i
 		}
 	}
 	return 0
+}
+
+func letRecursiveDefinitionSections(expr *LetExpr) map[string]int {
+	if expr == nil || len(expr.Recursives) == 0 {
+		return nil
+	}
+	sections := map[string]int{}
+	for i, decl := range expr.Recursives {
+		for _, name := range decl.Names {
+			if name != "" {
+				sections[name] = i + 1
+			}
+		}
+	}
+	return sections
 }
 
 func (x *sanyXMLExporter) moduleRecursiveDefinitionSection(mod *Module, sym *sanyXMLSymbol) int {
@@ -2838,6 +2857,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 	letCtx := ctx
 	letCtx.defs = copySanyXMLSymbolMap(ctx.defs)
 	letCtx.scope = copySanyXMLScope(ctx.scope)
+	letCtx.localRecursiveDefs = letRecursiveDefinitionSections(e)
 	localDefs := x.letDefs[e]
 	if len(localDefs) != len(e.Definitions) {
 		localDefs = make([]*sanyXMLSymbol, 0, len(e.Definitions))
@@ -3790,8 +3810,11 @@ func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shado
 		if e.Name == "@" && ctx.exceptAtBase != "" && ctx.exceptAtComponents != "" {
 			return sanyXMLLevelData{level: ctx.exceptAtLevel}
 		}
+		if shadowed[e.Name] {
+			return sanyXMLLevelData{level: constantLevel}
+		}
 		data := sanyXMLLevelData{level: x.operatorLevel(e.Name, ctx)}
-		if !shadowed[e.Name] && ctx.formals[e.Name] != nil {
+		if ctx.formals[e.Name] != nil {
 			data.addParam(e.Name)
 		}
 		return data

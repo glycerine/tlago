@@ -298,7 +298,7 @@ PROOF
 	})
 
 	t.Run("LET recursive operator is in scope for its own body", func(t *testing.T) {
-		_, diags := SanyXMLSource("LetRecursiveScopeXML.tla", `---- MODULE LetRecursiveScopeXML ----
+		xmlText, diags := SanyXMLSource("LetRecursiveScopeXML.tla", `---- MODULE LetRecursiveScopeXML ----
 Op(a) ==
   LET
     RECURSIVE R(_)
@@ -306,6 +306,48 @@ Op(a) ==
   IN R(1)
 ====`)
 		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		for _, want := range []string{
+			`<uniquename>R</uniquename>`,
+			`<recursive/>`,
+			`<recursiveSection>1</recursiveSection>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("LET recursive XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("bound names shadow outer declarations for levels", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "BoundHelper.tla"), `---- MODULE BoundHelper ----
+F(S) == {n : n \in S}
+====`)
+		rootPath := filepath.Join(dir, "BoundNameLevelShadowXML.tla")
+		writeFile(t, rootPath, `---- MODULE BoundNameLevelShadowXML ----
+EXTENDS BoundHelper
+CONSTANT C
+VARIABLE n
+Use == F(C)
+====`)
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := userDefinedOpAtLocation(root, 5, 1, 11)
+		if def == nil {
+			t.Fatalf("Use definition missing\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != strconv.Itoa(int(constantLevel)) {
+			t.Fatalf("Use level = %s, want 0\n%s", got, xmlText)
+		}
 	})
 
 	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
