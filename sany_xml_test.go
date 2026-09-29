@@ -965,6 +965,23 @@ A == (* inline body comment *) TRUE
 		}
 	})
 
+	t.Run("trims trailing whitespace from pre-comments", func(t *testing.T) {
+		source := "---- MODULE PreCommentWhitespaceXML ----\n" +
+			"\\* comment with trailing space \n" +
+			"A == TRUE\n" +
+			"===="
+		xmlText, diags := SanyXMLSource("PreCommentWhitespaceXML.tla", source)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `\* comment with trailing space ]]>`) {
+			t.Fatalf("pre-comment retained trailing whitespace\n%s", got)
+		}
+		if !strings.Contains(got, `<![CDATA[\* comment with trailing space]]>`) {
+			t.Fatalf("pre-comment missing trimmed text\n%s", got)
+		}
+	})
+
 	t.Run("serializes single bullet branches as SANY junction lists", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("SingleBulletXML.tla", `---- MODULE SingleBulletXML ----
 VARIABLE x

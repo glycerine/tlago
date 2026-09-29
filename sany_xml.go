@@ -3250,7 +3250,7 @@ func normalizedSanyPreComments(comments []string) string {
 	}
 	parts := make([]string, 0, len(comments))
 	for _, comment := range comments {
-		comment = strings.TrimRight(comment, "\r\n")
+		comment = strings.TrimRight(comment, " \t\r\n")
 		if comment == "" {
 			continue
 		}
