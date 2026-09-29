@@ -881,7 +881,7 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 			if target == nil || subst.Expr == nil {
 				continue
 			}
-			exprXML, exprDiags := x.exprXML(subst.Expr, ctx)
+			exprXML, exprDiags := x.substitutionReplacementXML(target, subst.Expr, ctx)
 			diags = append(diags, exprDiags...)
 			if exprDiags.HasErrors() {
 				continue
@@ -922,11 +922,26 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 		hasSubsts = true
 		b.WriteString("<Subst>")
 		x.writeRef(&b, target)
-		b.WriteString(x.opApplXML(inst.SourcePosition(), replacement.Level, replacement, nil, ""))
+		if target.Arity > 0 && replacement.Arity > 0 {
+			b.WriteString(x.opArgXML(inst.SourcePosition(), replacement.Level, replacement))
+		} else {
+			b.WriteString(x.opApplXML(inst.SourcePosition(), replacement.Level, replacement, nil, ""))
+		}
 		b.WriteString("</Subst>")
 	}
 	b.WriteString("</substs>")
 	return b.String(), hasSubsts, diags
+}
+
+func (x *sanyXMLExporter) substitutionReplacementXML(target *sanyXMLSymbol, expr Expr, ctx sanyXMLExprContext) (string, Diagnostics) {
+	if target != nil && target.Arity > 0 {
+		if ident, ok := expr.(*IdentExpr); ok {
+			if sym := x.operatorSymbol(ident.Name, ctx); sym != nil && sym.Arity > 0 {
+				return x.opArgXML(ident.Pos, sym.Level, sym), nil
+			}
+		}
+	}
+	return x.exprXML(expr, ctx)
 }
 
 func (x *sanyXMLExporter) substInXML(pos Position, level tlaLevel, substs, body string, from *Module, to *Module) string {
@@ -1727,29 +1742,40 @@ func (x *sanyXMLExporter) recursiveDefinitionSection(mod *Module, name string) i
 	if mod == nil {
 		return 0
 	}
-	for i, decl := range mod.Recursives {
-		for _, recursive := range decl.Names {
-			if recursive == name {
-				return i + 1
-			}
-		}
-	}
-	return 0
+	return recursiveDeclarationSections(mod.Recursives)[name]
 }
 
 func letRecursiveDefinitionSections(expr *LetExpr) map[string]int {
 	if expr == nil || len(expr.Recursives) == 0 {
 		return nil
 	}
+	return recursiveDeclarationSections(expr.Recursives)
+}
+
+func recursiveDeclarationSections(decls []Declaration) map[string]int {
 	sections := map[string]int{}
-	for i, decl := range expr.Recursives {
+	section := 0
+	var prev Declaration
+	for i, decl := range decls {
+		if i == 0 || !recursiveDeclarationsAreContiguous(prev, decl) {
+			section++
+		}
 		for _, name := range decl.Names {
 			if name != "" {
-				sections[name] = i + 1
+				sections[name] = section
 			}
 		}
+		prev = decl
 	}
 	return sections
+}
+
+func recursiveDeclarationsAreContiguous(prev, next Declaration) bool {
+	prevEnd := prev.Pos.EndLine
+	if prevEnd == 0 {
+		prevEnd = prev.Pos.Line
+	}
+	return prevEnd > 0 && next.Pos.Line == prevEnd+1
 }
 
 func (x *sanyXMLExporter) moduleRecursiveDefinitionSection(mod *Module, sym *sanyXMLSymbol) int {

@@ -600,6 +600,40 @@ Use(_\prec_, S) == TRUE
 		}
 	})
 
+	t.Run("operator constant declaration location covers the full arity declaration", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("OperatorConstantDeclSpanXML.tla", `---- MODULE OperatorConstantDeclSpanXML ----
+CONSTANT F(_,_)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var decl *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "OpDeclNode" && firstChildText(payload, "uniquename") == "F" {
+				decl = payload
+				break
+			}
+		}
+		if decl == nil {
+			t.Fatalf("operator constant declaration missing\n%s", xmlText)
+		}
+		locations := directChildren(decl, "location")
+		if len(locations) != 1 {
+			t.Fatalf("OpDeclNode locations = %d, want 1\n%s", len(locations), xmlText)
+		}
+		columns := directChildren(locations[0], "column")
+		if len(columns) != 1 {
+			t.Fatalf("OpDeclNode column locations = %d, want 1\n%s", len(columns), xmlText)
+		}
+		if begin, end := firstChildText(columns[0], "begin"), firstChildText(columns[0], "end"); begin != "10" || end != "15" {
+			t.Fatalf("operator constant declaration columns = %s..%s, want 10..15\n%s", begin, end, xmlText)
+		}
+	})
+
 	t.Run("higher-order NEW symbol location covers the full arity declaration", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("NewOpDeclSpanXML.tla", `---- MODULE NewOpDeclSpanXML ----
 THEOREM T ==
@@ -797,6 +831,33 @@ Inst == INSTANCE Helper WITH B <- Nat
 			if !strings.Contains(got, want) {
 				t.Fatalf("SANY XML did not include substitution detail %q\n%s", want, got)
 			}
+		}
+	})
+
+	t.Run("emits operator constant substitutions as OpArgNode", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "OperatorTarget.tla"), `---- MODULE OperatorTarget ----
+CONSTANT F(_)
+Use == F(TRUE)
+====`)
+		rootPath := filepath.Join(dir, "OperatorSubstXML.tla")
+		writeFile(t, rootPath, `---- MODULE OperatorSubstXML ----
+CONSTANT F(_)
+Inst == INSTANCE OperatorTarget
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, "<OpArgNode>") {
+			t.Fatalf("operator constant substitution missing OpArgNode\n%s", got)
+		}
+		if strings.Contains(got, "<Subst><OpDeclNodeRef") && !strings.Contains(got, "</OpArgNode></Subst>") {
+			t.Fatalf("operator constant substitution did not wrap replacement as OpArgNode\n%s", got)
 		}
 	})
 
@@ -2708,6 +2769,35 @@ G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
 		yEntry := got[y : y+yEntryEnd]
 		if strings.Contains(yEntry, `<recursive/>`) || !strings.Contains(yEntry, `<recursiveSection>1</recursiveSection>`) {
 			t.Fatalf("recursive local definition did not inherit only recursive section 1\n%s", yEntry)
+		}
+	})
+
+	t.Run("consecutive RECURSIVE declarations share a SANY recursive section", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ConsecutiveRecursiveSectionXML.tla", `---- MODULE ConsecutiveRecursiveSectionXML ----
+RECURSIVE F(_)
+RECURSIVE G(_)
+F(n) == IF n = 0 THEN TRUE ELSE G(n - 1)
+G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+RECURSIVE H(_)
+H(n) == IF n = 0 THEN TRUE ELSE H(n - 1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		f := strings.Index(got, `<uniquename>F</uniquename>`)
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		h := strings.Index(got, `<uniquename>H</uniquename>`)
+		if f < 0 || g < 0 || h < 0 {
+			t.Fatalf("recursive definitions missing\n%s", got)
+		}
+		if !strings.Contains(got[f:], `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("F did not use recursive section 1\n%s", got[f:])
+		}
+		if !strings.Contains(got[g:], `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("G did not share recursive section 1\n%s", got[g:])
+		}
+		if !strings.Contains(got[h:], `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("H did not use recursive section 2\n%s", got[h:])
 		}
 	})
 

@@ -760,8 +760,13 @@ func sanyDeclaration(node *SanySyntaxNode, kind DeclarationKind) Declaration {
 		case "N_IdentDecl":
 			if id := firstSanyIdentifier(child); id != nil {
 				decl.Names = append(decl.Names, id.Image)
-				decl.Arities[id.Image] = countDirectSanyChildren(child, "US")
-				decl.NamePositions[id.Image] = sanyNodePosition(id)
+				arity := countDirectSanyChildren(child, "US")
+				decl.Arities[id.Image] = arity
+				if arity > 0 {
+					decl.NamePositions[id.Image] = sanyNodePosition(child)
+				} else {
+					decl.NamePositions[id.Image] = sanyNodePosition(id)
+				}
 			}
 		case "N_PrefixDecl", "N_PostfixDecl":
 			name := sanyFixDeclOperatorName(child)
