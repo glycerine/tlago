@@ -40,6 +40,8 @@ type TLCStateMut struct {
 	UID      int64
 	level    int
 	values   []Value
+	pred     *TLCStateMut
+	action   *Action
 }
 
 func NewEmptyState() *TLCStateMut {
@@ -91,6 +93,8 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		UID:      s.UID,
 		level:    s.level,
 		values:   values,
+		pred:     s.pred,
+		action:   s.action,
 	}
 }
 
@@ -106,6 +110,8 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		UID:      s.UID,
 		level:    s.level,
 		values:   values,
+		pred:     s.pred,
+		action:   s.action,
 	}
 }
 
@@ -167,17 +173,19 @@ func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
 
 func (s *TLCStateMut) SetPredecessor(pred *TLCStateMut) *TLCStateMut {
 	if pred != nil {
+		s.pred = pred
 		s.level = pred.level + 1
 	}
 	return s
 }
 
 func (s *TLCStateMut) UnsetPredecessor() *TLCStateMut {
+	s.pred = nil
 	return s
 }
 
 func (s *TLCStateMut) Predecessor() *TLCStateMut {
-	return nil
+	return s.pred
 }
 
 func (s *TLCStateMut) Level() int {
@@ -186,6 +194,22 @@ func (s *TLCStateMut) Level() int {
 
 func (s *TLCStateMut) IsInitial() bool {
 	return s.level == TLCStateInitLevel
+}
+
+func (s *TLCStateMut) SetAction(action *Action) *TLCStateMut {
+	s.action = action
+	return s
+}
+
+func (s *TLCStateMut) HasAction() bool {
+	return s != nil && s.action != nil
+}
+
+func (s *TLCStateMut) GetAction() *Action {
+	if s == nil || s.action == nil {
+		return UnknownAction
+	}
+	return s.action
 }
 
 func (s *TLCStateMut) CopyWith(prototype *TLCStateMut) *TLCStateMut {
@@ -296,6 +320,21 @@ func (v *StateVec) Clear()                { v.states = v.states[:0] }
 func (v *StateVec) Add(state *TLCStateMut) *StateVec {
 	v.states = append(v.states, state)
 	return v
+}
+
+func (v *StateVec) AddElement(state *TLCStateMut) (any, error) {
+	v.Add(state)
+	return v, nil
+}
+
+func (v *StateVec) SetElement(state *TLCStateMut) (any, error) {
+	v.Clear()
+	v.Add(state)
+	return v, nil
+}
+
+func (v *StateVec) HasStates() bool {
+	return !v.IsEmpty()
 }
 
 func (v *StateVec) AddWithPredecessor(pred *TLCStateMut, state *TLCStateMut) *StateVec {

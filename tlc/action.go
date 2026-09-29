@@ -15,6 +15,19 @@ type Action struct {
 	Name string
 }
 
+var UnknownAction = &Action{Name: "Unknown"}
+
+func (a *Action) IsNamed() bool {
+	return a != nil && a.Name != ""
+}
+
+func (a *Action) GetName() string {
+	if a == nil || a.Name == "" {
+		return "Unknown"
+	}
+	return a.Name
+}
+
 type ActionItemList struct {
 	Pred SemanticNode
 	Con  *Context

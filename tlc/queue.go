@@ -2,22 +2,6 @@ package tlc
 
 import "sync"
 
-type StateQueue interface {
-	Enqueue(*TLCStateMut)
-	Dequeue() *TLCStateMut
-	SEnqueue(*TLCStateMut)
-	SEnqueueAll([]*TLCStateMut)
-	SDequeue() *TLCStateMut
-	SPeek() *TLCStateMut
-	SDequeueMany(int) []*TLCStateMut
-	FinishAll()
-	SuspendAll() bool
-	ResumeAll()
-	ResumeAllStuck()
-	Size() int64
-	IsEmpty() bool
-}
-
 type MemStateQueue struct {
 	mu         sync.Mutex
 	cond       *sync.Cond

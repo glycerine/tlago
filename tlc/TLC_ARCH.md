@@ -7,7 +7,7 @@ faithful Go port under `tlago/tlc`.
 
 The porting rule for this effort is strict: implement TLC by following the Java
 function decomposition mechanically before translating the Java tests. The Go
-code may use Go idioms for memory, errors, goroutines, and interfaces, but
+code may use Go idioms for memory, errors, goroutines, and concrete structs, but
 semantic boundaries, evaluation order, fingerprinting, state normalization,
 queue behavior, and error precedence must match Java TLC.
 
@@ -71,6 +71,20 @@ inside the same Go package:
 The Go package can still preserve Java names in type and method names where
 useful during the mechanical port. After tests are green, cosmetic refactors can
 be considered separately.
+
+Prefer concrete structs over Go interfaces on the checker/tool side. Java uses
+interfaces such as `ITool`, `IStateFunctor`, `INextStateFunctor`, `IWorker`,
+`FPSet`, and `IStateQueue` heavily, but the Go port should introduce an
+interface only when there are already multiple meaningful implementations or
+when polymorphism is itself part of the runtime value model. For single
+implementations, use concrete structs such as `Tool`, `StateFunctor`,
+`NextStateFunctor`, `Worker`, `MemFPSet`, and `MemStateQueue`; this keeps stack
+traces and debugger inspection straightforward during the mechanical port.
+
+Any Go map whose iteration can affect output, fingerprinting, exploration
+order, diagnostics, or tests must use `InsMap` from `insmap.go`. Built-in Go
+maps are acceptable for lookup-only sets/tables that are never ranged over in
+observable code.
 
 ## Main Execution Architecture
 
@@ -912,7 +926,9 @@ Important codes include:
 Port guidance:
 
 - Port `EC` constants early.
-- Implement a message recorder interface before porting end-to-end tests.
+- Implement message recording before porting end-to-end tests. Use a concrete
+  recorder/broadcaster unless multiple external recorder implementations are
+  truly needed.
 - Keep human text close to Java but assert primarily through codes and
   structured parameters like Java tests do.
 - State string formatting is semantic output. Treat it as part of compatibility.
@@ -972,7 +988,7 @@ Distributed TLC uses Java RMI:
 Port guidance:
 
 - Do not port RMI mechanically as networking first.
-- Preserve interfaces and semantics in local abstractions.
+- Preserve semantics in local concrete abstractions first.
 - Later choose Go RPC/gRPC only after single-process behavior is conformant.
 - Tests under `tlc2/tool/distributed` should remain late-stage tests.
 
@@ -1142,8 +1158,8 @@ Go performance guidance:
 - Keep `Context` as a linked list initially; optimize only with tests.
 - Use goroutines with explicit `sync.Mutex`/`sync.Cond` for queue parity.
 - Use `uint64` internally for FP64 but match Java signed rendering where needed.
-- Avoid `interface{}` churn in inner loops where possible, but do not abstract
-  before behavior is stable.
+- Avoid `interface{}` churn and interface dispatch in inner loops where
+  possible, but do not abstract before behavior is stable.
 - Implement disk-backed structures before declaring performance parity.
 
 ## Initial Go API Shape
@@ -1197,8 +1213,10 @@ Port implementation in this dependency order:
 10. `Action`, `Tool`, evaluator, enabledness.
 11. `TLCState`, state vectors, state printers.
 12. Standard module built-ins and override registry.
-13. `MemFPSet`, `MultiFPSet`, then disk FP sets.
-14. `MemStateQueue`, `StateQueue`, then disk queues.
+13. `MemFPSet`, then `MultiFPSet` and disk FP sets if/when multiple concrete
+    implementations are needed.
+14. `MemStateQueue`, then disk queues if/when multiple concrete
+    implementations are needed.
 15. `ConcurrentTLCTrace`.
 16. `AbstractChecker`, `ModelChecker`, `Worker`.
 17. `Simulator` and simulation workers.

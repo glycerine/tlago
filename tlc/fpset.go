@@ -2,14 +2,6 @@ package tlc
 
 import "sync"
 
-type FPSet interface {
-	Init(numThreads int, metadir string, filename string) FPSet
-	Size() uint64
-	Put(fp uint64) bool
-	Contains(fp uint64) bool
-	CheckFPs() uint64
-}
-
 type MemFPSet struct {
 	mu        sync.Mutex
 	metadir   string
@@ -34,7 +26,7 @@ func NewMemFPSet() *MemFPSet {
 	}
 }
 
-func (s *MemFPSet) Init(numThreads int, metadir string, filename string) FPSet {
+func (s *MemFPSet) Init(numThreads int, metadir string, filename string) *MemFPSet {
 	s.metadir = metadir
 	s.filename = filename
 	return s

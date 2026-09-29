@@ -152,6 +152,10 @@ var (
 	fp64IrredPoly     uint64
 )
 
+func init() {
+	FP64Init()
+}
+
 func FP64IrredPoly() uint64 {
 	return fp64IrredPoly
 }
