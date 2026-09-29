@@ -102,3 +102,58 @@ func TestSanyContextBehaviors(t *testing.T) {
 		}
 	})
 }
+
+func TestSanyBuiltInContextBehaviors(t *testing.T) {
+	t.Run("initial context contains Java SANY built-in properties", func(t *testing.T) {
+		ctx := newSanyInitialContext()
+		for _, tc := range []struct {
+			name  string
+			arity int
+			level tlaLevel
+		}{
+			{name: "TRUE", arity: 0, level: constantLevel},
+			{name: "ENABLED", arity: 1, level: variableLevel},
+			{name: "$Nop", arity: 1, level: constantLevel},
+			{name: "$Witness", arity: -1, level: constantLevel},
+			{name: "$WF", arity: 2, level: temporalLevel},
+		} {
+			symbol, ok := ctx.getSymbol(tc.name).(*sanySemBuiltInSymbol)
+			if !ok {
+				t.Fatalf("builtin %s = %#v, want semantic built-in", tc.name, ctx.getSymbol(tc.name))
+			}
+			if symbol.semArity() != tc.arity || symbol.level != tc.level {
+				t.Fatalf("builtin %s arity/level = %d/%d, want %d/%d", tc.name, symbol.semArity(), symbol.level, tc.arity, tc.level)
+			}
+		}
+	})
+
+	t.Run("initial contexts are fresh per spec", func(t *testing.T) {
+		first := newSanyInitialContext()
+		second := newSanyInitialContext()
+		first.addSymbol(newSanySemSymbol("Extra", sanyUserDefinedOpKind, 0, "First", Position{File: "First.tla", Line: 1, Column: 1}))
+		if second.getSymbol("Extra") != nil {
+			t.Fatalf("fresh initial context observed a symbol added to another context")
+		}
+		if first.getSymbol("TRUE") == second.getSymbol("TRUE") {
+			t.Fatalf("built-in symbols are shared across fresh initial contexts")
+		}
+	})
+
+	t.Run("XML built-in lookup uses Java SANY properties", func(t *testing.T) {
+		for _, tc := range []struct {
+			name  string
+			arity int
+			level tlaLevel
+		}{
+			{name: "$Nop", arity: 1, level: constantLevel},
+			{name: "$Take", arity: 1, level: constantLevel},
+			{name: "$Witness", arity: -1, level: constantLevel},
+			{name: "\\X", arity: -1, level: constantLevel},
+		} {
+			info := sanyXMLBuiltin(tc.name)
+			if info.arity != tc.arity || info.level != tc.level {
+				t.Fatalf("XML builtin %s arity/level = %d/%d, want %d/%d", tc.name, info.arity, info.level, tc.arity, tc.level)
+			}
+		}
+	})
+}

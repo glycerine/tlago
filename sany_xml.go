@@ -5009,6 +5009,15 @@ func sanyXMLBuiltinName(name string) string {
 
 func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 	name = sanyXMLBuiltinName(name)
+	if info, ok := sanyBuiltinOperatorInfo(name); ok {
+		return sanyXMLBuiltinInfo{
+			name:    info.name,
+			arity:   info.arity,
+			level:   info.level,
+			weights: append([]int(nil), info.argWeights...),
+			leibniz: sanyBuiltinLeibniz(info),
+		}
+	}
 	level := constantLevel
 	arity := 0
 	weights := []int{}
