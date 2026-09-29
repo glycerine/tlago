@@ -148,6 +148,27 @@ CONSTANTS
 	requireNestedStrings(t, asList, [][]string{{"Op(1,\"x\",{A,B})", "Result"}, {"Other", "TRUE"}})
 }
 
+func TestModelConfigFinalizesModelValuesInParseOrder(t *testing.T) {
+	cfg, err := ParseModelConfigSource("Spec.cfg", `
+CONSTANTS
+  A = Alpha
+  B = Beta
+`)
+	if err != nil {
+		t.Fatalf("ParseModelConfigSource returned error: %v", err)
+	}
+	if cfg.GetConstants().Len() != 2 {
+		t.Fatalf("constants len = %d, want 2", cfg.GetConstants().Len())
+	}
+	values := ModelValues()
+	if len(values) != 2 {
+		t.Fatalf("model values len = %d, want 2", len(values))
+	}
+	if values[0].String() != "Alpha" || values[1].String() != "Beta" {
+		t.Fatalf("model value order = %v, want Alpha, Beta", values)
+	}
+}
+
 func TestModelConfigCheckDeadlockAndMalformedValues(t *testing.T) {
 	cfg, err := ParseModelConfigSource("Spec.cfg", "CHECK_DEADLOCK FALSE\n")
 	if err != nil {

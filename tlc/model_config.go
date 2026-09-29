@@ -195,6 +195,7 @@ func ParseModelConfigSource(file, source string) (*ModelConfig, error) {
 	if err := parser.parse(); err != nil {
 		return nil, err
 	}
+	SetModelValues()
 	return cfg, nil
 }
 
