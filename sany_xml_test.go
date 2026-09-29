@@ -263,6 +263,32 @@ A == IF x = x THEN /\ x' = x ELSE \/ TRUE
 		}
 	})
 
+	t.Run("serializes prefix minus as the SANY unary minus operator", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("PrefixMinusXML.tla", `---- MODULE PrefixMinusXML ----
+-. x == x
+A == -1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		def := strings.Index(got, `<uniquename>A</uniquename>`)
+		if def < 0 {
+			t.Fatalf("SANY XML missing definition A\n%s", got)
+		}
+		body := got[def:]
+		for _, want := range []string{
+			`<UserDefinedOpKindRef>`,
+			`<IntValue>1</IntValue>`,
+		} {
+			if !strings.Contains(body, want) {
+				t.Fatalf("prefix minus XML missing %q\n%s", want, body)
+			}
+		}
+		if !strings.Contains(got, `<uniquename>-.</uniquename>`) {
+			t.Fatalf("prefix minus XML missing unary minus definition\n%s", got)
+		}
+	})
+
 	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ----
 VARIABLE x

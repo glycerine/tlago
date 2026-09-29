@@ -952,7 +952,11 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 			return unsupportedSanyExpr(node)
 		}
 		expr, diags := sanyExpr(heirs[1])
-		return &UnaryExpr{Op: sanyASTOperator(sanyOperatorImage(heirs[0])), Expr: expr, Pos: sanyNodePosition(node)}, diags
+		op := sanyASTOperator(sanyOperatorImage(heirs[0]))
+		if op == "-" {
+			op = "-."
+		}
+		return &UnaryExpr{Op: op, Expr: expr, Pos: sanyNodePosition(node)}, diags
 	case "N_PostfixExpr":
 		heirs := node.GetHeirs()
 		if len(heirs) < 2 {
