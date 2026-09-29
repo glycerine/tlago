@@ -10,8 +10,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/TestErrors.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestErrors_testWarningMessages(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	loc1 := genSANYErrorLocation(1)
 	warn1 := tlago.Diagnostic{Code: "W4800", Severity: tlago.SeverityWarning, Pos: loc1, Message: "This is a test warning message"}
 	loc2 := genSANYErrorLocation(2)
@@ -43,8 +41,6 @@ func TestTestErrors_testWarningMessages(t *testing.T) {
 }
 
 func TestTestErrors_testErrorMessages(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	loc1 := genSANYErrorLocation(4)
 	err1 := tlago.Diagnostic{Code: "E1300", Severity: tlago.SeverityError, Pos: loc1, Message: "This is a test error message"}
 	loc2 := genSANYErrorLocation(5)
@@ -76,8 +72,6 @@ func TestTestErrors_testErrorMessages(t *testing.T) {
 }
 
 func TestTestErrors_testMixedMessageLevels(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	loc1 := genSANYErrorLocation(7)
 	warn := tlago.Diagnostic{Code: "W4800", Severity: tlago.SeverityWarning, Pos: loc1, Message: "This is a test warning message"}
 	loc2 := genSANYErrorLocation(8)
@@ -101,8 +95,6 @@ func TestTestErrors_testMixedMessageLevels(t *testing.T) {
 }
 
 func TestTestErrors_testDuplicateErrorsIgnored(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	loc1 := genSANYErrorLocation(9)
 	warn := tlago.Diagnostic{Code: "W4800", Severity: tlago.SeverityWarning, Pos: loc1, Message: "This is a test warning message"}
 	loc2 := genSANYErrorLocation(10)

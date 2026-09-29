@@ -1142,6 +1142,25 @@ func syntheticStandardExports(moduleName string, pos Position) []syntheticExport
 	case "Naturals":
 		return []syntheticExport{
 			{Name: "+", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "-", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "*", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "^", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "<", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: ">", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "\\leq", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "\\geq", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "%", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "\\div", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "..", Kind: OperatorDecl, Arity: 2, Pos: pos},
+		}
+	case "Integers":
+		return []syntheticExport{
+			{Name: "-.", Kind: OperatorDecl, Arity: 1, Pos: pos},
+		}
+	case "Reals":
+		return []syntheticExport{
+			{Name: "/", Kind: OperatorDecl, Arity: 2, Pos: pos},
+			{Name: "Infinity", Kind: OperatorDecl, Arity: 0, Pos: pos},
 		}
 	default:
 		return nil
@@ -2248,8 +2267,10 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		}
 	case *LiteralExpr:
 	case *UnaryExpr:
+		diags = append(diags, checkPercentOperatorSymbolDefined(e.Op, e.Pos, defined, locals)...)
 		diags = append(diags, checkExpr(e.Expr, defined, locals)...)
 	case *BinaryExpr:
+		diags = append(diags, checkPercentOperatorSymbolDefined(e.Op, e.Pos, defined, locals)...)
 		diags = append(diags, checkExpr(e.Left, defined, locals)...)
 		diags = append(diags, checkExpr(e.Right, defined, locals)...)
 	case *CallExpr:
@@ -2382,6 +2403,22 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		}
 	}
 	return diags
+}
+
+func checkPercentOperatorSymbolDefined(op string, pos Position, defined map[string]Position, locals map[string]bool) Diagnostics {
+	if op != "%" && op != "%%" {
+		return nil
+	}
+	if op == "" || localIdentifierInScope(locals, op) {
+		return nil
+	}
+	if _, ok := sanyBuiltinOperatorInfo(op); ok {
+		return nil
+	}
+	if _, ok := defined[op]; ok {
+		return nil
+	}
+	return Diagnostics{errorAt(pos, "E1302", "undefined operator %s", op)}
 }
 
 func theoremStatementReferenceBase(name string) (string, bool) {
