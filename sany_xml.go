@@ -3994,7 +3994,10 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 		if diags.HasErrors() {
 			return "", diags
 		}
-		field := x.stringXML(e.Field, apalacheRecordFieldPosition(e.FieldPos, e.Pos))
+		field, fieldDiags := x.stringXML(e.Field, apalacheRecordFieldPosition(e.FieldPos, e.Pos))
+		if fieldDiags.HasErrors() {
+			return "", fieldDiags
+		}
 		return x.opApplXML(e.Pos, x.exprLevel(e, ctx), x.builtin("$RcdSelect"), []string{record, field}, ""), nil
 	case *RecordSetExpr:
 		return x.recordSetXML(e, ctx)
@@ -4333,15 +4336,18 @@ func (x *sanyXMLExporter) literalXML(e *LiteralExpr, ctx sanyXMLExprContext) (st
 		b.WriteString("</IntValue></NumeralNode>")
 		return b.String(), nil
 	case "string", "model":
-		return x.stringXML(e.Value, e.Pos), nil
+		return x.stringXML(e.Value, e.Pos)
 	default:
 		return "", Diagnostics{errorAt(e.Pos, "E7005", "unsupported SANY XML literal kind %q", e.Kind)}
 	}
 }
 
-func (x *sanyXMLExporter) stringXML(value string, pos Position) string {
+func (x *sanyXMLExporter) stringXML(value string, pos Position) (string, Diagnostics) {
 	if unquoted, err := strconv.Unquote(value); err == nil {
 		value = unquoted
+	}
+	if invalid, ok := firstInvalidXMLChar(value); ok {
+		return "", Diagnostics{errorAt(pos, "E7007", "string literal contains XML 1.0 character U+%04X", invalid)}
 	}
 	var b bytes.Buffer
 	b.WriteString("<StringNode>")
@@ -4349,7 +4355,25 @@ func (x *sanyXMLExporter) stringXML(value string, pos Position) string {
 	b.WriteString("<StringValue>")
 	xmlText(&b, value)
 	b.WriteString("</StringValue></StringNode>")
-	return b.String()
+	return b.String(), nil
+}
+
+func firstInvalidXMLChar(text string) (rune, bool) {
+	for _, r := range text {
+		if !validXMLChar(r) {
+			return r, true
+		}
+	}
+	return 0, false
+}
+
+func validXMLChar(r rune) bool {
+	return r == '\t' ||
+		r == '\n' ||
+		r == '\r' ||
+		(r >= 0x20 && r <= 0xD7FF) ||
+		(r >= 0xE000 && r <= 0xFFFD) ||
+		(r >= 0x10000 && r <= 0x10FFFF)
 }
 
 func (x *sanyXMLExporter) junctionListXML(e *BinaryExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
@@ -5174,8 +5198,10 @@ func (x *sanyXMLExporter) recordXML(e *RecordExpr, ctx sanyXMLExprContext) (stri
 	for _, field := range e.Fields {
 		value, valueDiags := x.exprXML(field.Value, ctx)
 		diags = append(diags, valueDiags...)
+		name, nameDiags := x.stringXML(field.Name, field.Pos)
+		diags = append(diags, nameDiags...)
 		pos := fieldSourcePosition(field.Source, field.Pos)
-		pair := x.opApplXML(pos, x.exprLevel(field.Value, ctx), x.builtin("$Pair"), []string{x.stringXML(field.Name, field.Pos), value}, "")
+		pair := x.opApplXML(pos, x.exprLevel(field.Value, ctx), x.builtin("$Pair"), []string{name, value}, "")
 		args = append(args, pair)
 	}
 	if diags.HasErrors() {
@@ -5190,8 +5216,10 @@ func (x *sanyXMLExporter) recordSetXML(e *RecordSetExpr, ctx sanyXMLExprContext)
 	for _, field := range e.Fields {
 		set, setDiags := x.exprXML(field.Set, ctx)
 		diags = append(diags, setDiags...)
+		name, nameDiags := x.stringXML(field.Name, field.Pos)
+		diags = append(diags, nameDiags...)
 		pos := fieldSourcePosition(field.Source, field.Pos)
-		pair := x.opApplXML(pos, x.exprLevel(field.Set, ctx), x.builtin("$Pair"), []string{x.stringXML(field.Name, field.Pos), set}, "")
+		pair := x.opApplXML(pos, x.exprLevel(field.Set, ctx), x.builtin("$Pair"), []string{name, set}, "")
 		args = append(args, pair)
 	}
 	if diags.HasErrors() {
@@ -5231,7 +5259,8 @@ func (x *sanyXMLExporter) exceptXML(e *ExceptExpr, ctx sanyXMLExprContext) (stri
 				}
 			}
 			if component.Field != "" {
-				field := x.stringXML(component.Field, apalacheRecordFieldPosition(component.FieldPos, component.Pos))
+				field, fieldDiags := x.stringXML(component.Field, apalacheRecordFieldPosition(component.FieldPos, component.Pos))
+				diags = append(diags, fieldDiags...)
 				componentArgs = append(componentArgs, field)
 			}
 		}

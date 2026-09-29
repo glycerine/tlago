@@ -11,8 +11,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterStringEscapes.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestXMLExporterStringEscapes_testSupportedStringEscapes(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	got := soleStringValueFromXML(t, checkedSANYXMLForPath(t, sanyTestVectorPath("test-model", "sany", "StringEscapes.tla")))
 	if want := "\\ \n \r \t \""; got != want {
 		t.Fatalf("StringValue = %q, want %q", got, want)
@@ -20,8 +18,6 @@ func TestTestXMLExporterStringEscapes_testSupportedStringEscapes(t *testing.T) {
 }
 
 func TestTestXMLExporterStringEscapes_testFormFeedStringEscapeIsRejected(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	_, diags := xmlForUnrepresentableStringFixture(sanyTestVectorPath("test-model", "sany", "StringFormFeedEscape.tla"))
 	if !diags.HasErrors() {
 		t.Fatal("expected XML export to reject form-feed string escape")
