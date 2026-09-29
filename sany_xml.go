@@ -383,7 +383,13 @@ func (x *sanyXMLExporter) emitModuleEntry(mod *Module) {
 	x.writeLocation(&b, mod.Pos)
 	b.WriteString("<uniquename>")
 	xmlText(&b, mod.Name)
-	b.WriteString("</uniquename>")
+	b.WriteString("</uniquename><extends>")
+	for _, ext := range mod.Extends {
+		b.WriteString("<uniquename>")
+		xmlText(&b, ext)
+		b.WriteString("</uniquename>")
+	}
+	b.WriteString("</extends>")
 	for _, ref := range x.moduleMemberRefs(mod) {
 		x.writeRef(&b, ref)
 	}
@@ -518,7 +524,9 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	xmlText(&b, sym.Name)
 	b.WriteString("</uniquename><arity>")
 	xmlInt(&b, sym.Arity)
-	b.WriteString("</arity><body>")
+	b.WriteString("</arity>")
+	x.writeDefinitionOrigin(&b, sym, ctx.module)
+	b.WriteString("<body>")
 	b.WriteString(body)
 	b.WriteString("</body><params>")
 	for _, param := range sym.Params {
@@ -527,6 +535,10 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 		b.WriteString("<leibniz/></leibnizparam>")
 	}
 	b.WriteString("</params>")
+	x.writePreComments(&b, def.PreComments)
+	if def.Local {
+		b.WriteString("<local/>")
+	}
 	if ctx.scope.defs != nil {
 		if _, ok := ctx.scope.defs[sym.Name]; ok && x.isRecursiveDefinition(ctx.module, sym.Name) {
 			b.WriteString("<recursive/>")
@@ -1616,7 +1628,9 @@ func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx san
 	xmlText(&b, sym.Name)
 	b.WriteString("</uniquename><arity>")
 	xmlInt(&b, sym.Arity)
-	b.WriteString("</arity><body>")
+	b.WriteString("</arity>")
+	x.writeDefinitionOrigin(&b, sym, ctx.module)
+	b.WriteString("<body>")
 	b.WriteString(bodyXML)
 	b.WriteString("</body><params>")
 	for _, param := range sym.Params {
@@ -1708,9 +1722,6 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 	var diags Diagnostics
 	for _, bound := range bounds {
 		formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-		if oper == "$FcnConstructor" {
-			formal.Level = -1
-		}
 		x.emitFormalEntry(formal)
 		boundCtx.formals[bound.Name] = formal
 		if bound.Set == nil {
@@ -1752,7 +1763,7 @@ func (x *sanyXMLExporter) caseXML(e *CaseExpr, ctx sanyXMLExprContext) (string, 
 		if pos.Line == 0 && pos.Column == 0 && pos.File == "" {
 			pos = e.Other.Position()
 		}
-		args = append(args, x.opApplXML(pos, x.exprLevel(e.Other, ctx), x.builtin("$Pair"), []string{"<StringNode>$Other</StringNode>", other}, ""))
+		args = append(args, x.opApplXML(pos, x.exprLevel(e.Other, ctx), x.builtin("$Pair"), []string{"<StringNode><StringValue>$Other</StringValue></StringNode>", other}, ""))
 	}
 	if diags.HasErrors() {
 		return "", diags
@@ -1948,6 +1959,42 @@ func (x *sanyXMLExporter) writeRef(b *bytes.Buffer, sym *sanyXMLSymbol) {
 	b.WriteString("</UID></")
 	b.WriteString(ref)
 	b.WriteByte('>')
+}
+
+func (x *sanyXMLExporter) writeDefinitionOrigin(b *bytes.Buffer, sym *sanyXMLSymbol, mod *Module) {
+	if sym == nil || mod == nil {
+		return
+	}
+	b.WriteString("<originalOperator>")
+	x.writeRef(b, sym)
+	b.WriteString("</originalOperator><originallyDefinedInModule>")
+	x.writeRef(b, x.modules[mod.Name])
+	b.WriteString("</originallyDefinedInModule>")
+}
+
+func (x *sanyXMLExporter) writePreComments(b *bytes.Buffer, comments []string) {
+	normalized := normalizedSanyPreComments(comments)
+	if normalized == "" {
+		return
+	}
+	b.WriteString("<pre-comments><![CDATA[")
+	b.WriteString(strings.ReplaceAll(normalized, "]]>", "]]]]><![CDATA[>"))
+	b.WriteString("]]></pre-comments>")
+}
+
+func normalizedSanyPreComments(comments []string) string {
+	if len(comments) == 0 {
+		return ""
+	}
+	parts := make([]string, 0, len(comments))
+	for _, comment := range comments {
+		comment = strings.TrimRight(comment, "\r\n")
+		if comment == "" {
+			continue
+		}
+		parts = append(parts, comment)
+	}
+	return strings.Join(parts, "\n")
 }
 
 func (x *sanyXMLExporter) writeNode(b *bytes.Buffer, pos Position, level tlaLevel) {

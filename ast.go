@@ -79,6 +79,7 @@ type Definition struct {
 	Params          []string
 	ParamArities    map[string]int
 	ParamPositions  map[string]Position
+	PreComments     []string
 	Expr            Expr
 	Local           bool
 	AssumeProve     bool

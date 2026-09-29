@@ -745,7 +745,7 @@ func sanyHasLocalPrefix(node *SanySyntaxNode) bool {
 }
 
 func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
-	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}}
+	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
 	heirs := sanyDefinitionHeirs(node)
 	if len(heirs) == 0 {
 		return def, nil
@@ -851,6 +851,7 @@ func sanyNamedBodyDefinition(node *SanySyntaxNode) (Definition, bool, Diagnostic
 			AssumeProveBody: assumeProveBody,
 			Pos:             sanyNodePosition(heirs[i]),
 			Source:          sanyNodePosition(node),
+			PreComments:     sanyLeadingPreComments(node),
 		}, true, diags
 	}
 	return Definition{}, false, nil
@@ -869,7 +870,7 @@ func firstSanyBodyExpressionAfter(heirs []*SanySyntaxNode, start int) *SanySynta
 }
 
 func sanyFunctionDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
-	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}}
+	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
 	if id := firstSanyIdentifier(node); id != nil {
 		def.Name = id.Image
 		def.Pos = sanyNodePosition(id)
@@ -889,6 +890,21 @@ func sanyFunctionDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 	fcn.Body = body
 	def.Expr = fcn
 	return def, diags
+}
+
+func sanyLeadingPreComments(node *SanySyntaxNode) []string {
+	if node == nil {
+		return nil
+	}
+	if len(node.PreComments) > 0 {
+		return append([]string(nil), node.PreComments...)
+	}
+	for _, child := range node.GetHeirs() {
+		if comments := sanyLeadingPreComments(child); len(comments) > 0 {
+			return comments
+		}
+	}
+	return nil
 }
 
 func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {

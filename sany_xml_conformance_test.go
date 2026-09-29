@@ -488,7 +488,7 @@ func sortCanonicalSanyXML(node *canonicalXMLNode) {
 	})
 	if node.Name == "context" {
 		sort.SliceStable(node.Children, func(i, j int) bool {
-			return canonicalXMLSortKey(node.Children[i]) < canonicalXMLSortKey(node.Children[j])
+			return canonicalXMLContextSortKey(node.Children[i]) < canonicalXMLContextSortKey(node.Children[j])
 		})
 	}
 	if node.Name == "modules" {
@@ -534,6 +534,13 @@ func canonicalXMLSortKey(node *canonicalXMLNode) string {
 	var b bytes.Buffer
 	writeCanonicalXMLNode(&b, node)
 	return b.String()
+}
+
+func canonicalXMLContextSortKey(node *canonicalXMLNode) string {
+	if node.Name == "entry" {
+		return canonicalSanyXMLEntryKey(node) + ":" + firstChildText(node, "UID")
+	}
+	return canonicalXMLSortKeyIgnoringUIDs(node)
 }
 
 func canonicalXMLSortKeyIgnoringUIDs(node *canonicalXMLNode) string {
