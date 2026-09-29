@@ -451,7 +451,7 @@ func sanyInstance(node *SanySyntaxNode) (Instance, Diagnostics) {
 		return nil
 	}
 	nonLocal := search(node)
-	inst := Instance{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Substitutions: map[string]Expr{}, Local: sanyHasLocalPrefix(node)}
+	inst := Instance{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Substitutions: map[string]Expr{}, Local: sanyHasLocalPrefix(node), PreComments: sanyLeadingPreComments(node)}
 	if nonLocal == nil {
 		return inst, nil
 	}

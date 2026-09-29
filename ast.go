@@ -29,6 +29,7 @@ type Instance struct {
 	Substitutions    map[string]Expr
 	SubstitutionList []Substitution
 	Local            bool
+	PreComments      []string
 	Pos              Position
 	Source           Position
 }

@@ -65,6 +65,7 @@ Zero == 0
 ====`)
 		root := filepath.Join(dir, "LocalInstanceXML.tla")
 		writeFile(t, root, `---- MODULE LocalInstanceXML ----
+\* Helper import
 LOCAL INSTANCE Helper
 Use == Zero
 ====`)
@@ -75,8 +76,68 @@ Use == Zero
 		requireNoErrors(t, sem)
 		xmlText, xmlDiags := SanyXML(spec)
 		requireNoErrors(t, xmlDiags)
-		if !strings.Contains(string(xmlText), `<uniquename>Zero</uniquename>`) {
-			t.Fatalf("SANY XML did not resolve LOCAL INSTANCE symbol Zero\n%s", xmlText)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<InstanceNode>`,
+			`<module>Helper</module>`,
+			`<uniquename>Zero</uniquename>`,
+			`<pre-comments><![CDATA[\* Helper import]]></pre-comments>`,
+			`<local/>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("SANY XML did not include LOCAL INSTANCE detail %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("instance-cloned definitions reuse original LET-local operators", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+A(S) ==
+  LET F[i \in S] == i
+  IN F[1]
+====`)
+		root := filepath.Join(dir, "LetInstanceXML.tla")
+		writeFile(t, root, `---- MODULE LetInstanceXML ----
+LOCAL INSTANCE Helper
+B == A({1})
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if count := strings.Count(got, `<uniquename>F</uniquename>`); count != 1 {
+			t.Fatalf("LET-local operator F appears %d times, want Java SANY-style single original definition\n%s", count, got)
+		}
+	})
+
+	t.Run("extended modules contribute their instance nodes", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Zero == 0
+====`)
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+LOCAL INSTANCE Helper
+Use == Zero
+====`)
+		root := filepath.Join(dir, "ExtendsInstanceXML.tla")
+		writeFile(t, root, `---- MODULE ExtendsInstanceXML ----
+EXTENDS Base
+RootUse == Use
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if count := strings.Count(string(xmlText), `<module>Helper</module>`); count != 2 {
+			t.Fatalf("Helper instance nodes = %d, want one on Base and one imported into ExtendsInstanceXML\n%s", count, xmlText)
 		}
 	})
 
@@ -360,13 +421,16 @@ Cardinality(S) ==
 		for _, want := range []string{
 			`<uniquename>$RecursiveFcnSpec</uniquename>`,
 			`<UID>253</UID>`,
-			`<uniquename>$FcnConstructor</uniquename>`,
+			`<uniquename>$IfThenElse</uniquename>`,
 			`<unbound>`,
 			`<uniquename>CS</uniquename>`,
 		} {
 			if !strings.Contains(got, want) {
 				t.Fatalf("recursive function spec XML missing %q\n%s", want, got)
 			}
+		}
+		if strings.Contains(got, `<uniquename>$FcnConstructor</uniquename>`) {
+			t.Fatalf("recursive function spec XML should use the function body directly, not a $FcnConstructor wrapper\n%s", got)
 		}
 	})
 

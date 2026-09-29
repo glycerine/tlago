@@ -37,6 +37,8 @@ type sanyXMLExporter struct {
 	modules  map[string]*sanyXMLSymbol
 	decls    map[string]*sanyXMLSymbol
 	defs     map[string]*sanyXMLSymbol
+	instDefs map[string]*sanyXMLSymbol
+	letDefs  map[*LetExpr][]*sanyXMLSymbol
 	newDecls map[string]*sanyXMLSymbol
 	bounds   map[string]*sanyXMLSymbol
 	lambdas  map[string]*sanyXMLSymbol
@@ -80,6 +82,7 @@ type sanyXMLExprContext struct {
 	exceptAtPos        Position
 	exceptAtLevel      tlaLevel
 	recursiveSection   int
+	suppressLetDefs    bool
 }
 
 type sanyXMLScope struct {
@@ -110,6 +113,8 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		modules:       map[string]*sanyXMLSymbol{},
 		decls:         map[string]*sanyXMLSymbol{},
 		defs:          map[string]*sanyXMLSymbol{},
+		instDefs:      map[string]*sanyXMLSymbol{},
+		letDefs:       map[*LetExpr][]*sanyXMLSymbol{},
 		newDecls:      map[string]*sanyXMLSymbol{},
 		bounds:        map[string]*sanyXMLSymbol{},
 		lambdas:       map[string]*sanyXMLSymbol{},
@@ -395,6 +400,25 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 			x.allocateAssumeProveNewSymbols(def.AssumeProveBody)
 		}
 	}
+	for instIndex, inst := range mod.Instances {
+		instMod := x.spec.Modules[inst.Module]
+		if instMod == nil {
+			continue
+		}
+		for i := range instMod.Definitions {
+			def := &instMod.Definitions[i]
+			if def.Local || def.TheoremLike {
+				continue
+			}
+			key := x.instanceDefKey(mod.Name, instIndex, inst, def.Name)
+			if x.instDefs[key] != nil {
+				continue
+			}
+			sym := x.newDefinitionSymbol(key, def)
+			sym.Pos = inst.SourcePosition()
+			x.instDefs[key] = sym
+		}
+	}
 	for i, assume := range mod.Assumptions {
 		key := fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assume.Name)
 		if x.assumes[key] == nil {
@@ -536,6 +560,22 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 		def := &mod.Definitions[i]
 		diags = append(diags, x.emitDefinitionEntry(x.defs[x.defKey(mod.Name, def.Name)], def, ctx)...)
 	}
+	for instIndex, inst := range mod.Instances {
+		instMod := x.spec.Modules[inst.Module]
+		if instMod == nil {
+			continue
+		}
+		sourceCtx := sanyXMLExprContext{module: instMod, scope: x.scopeForModule(instMod, map[string]bool{}), formals: map[string]*sanyXMLSymbol{}, defs: map[string]*sanyXMLSymbol{}, proofDefs: map[string]*sanyXMLSymbol{}}
+		for i := range instMod.Definitions {
+			def := &instMod.Definitions[i]
+			if def.Local || def.TheoremLike {
+				continue
+			}
+			sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, def.Name)]
+			original := x.defs[x.defKey(instMod.Name, def.Name)]
+			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, inst, instMod, def, sourceCtx)...)
+		}
+	}
 	for i, assume := range mod.Assumptions {
 		key := fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assume.Name)
 		diags = append(diags, x.emitAssumeEntry(x.assumes[key], assume, ctx)...)
@@ -569,8 +609,68 @@ func (x *sanyXMLExporter) emitModuleEntry(mod *Module) {
 	for _, ref := range x.moduleMemberRefs(mod) {
 		x.writeRef(&b, ref)
 	}
+	for _, inst := range x.moduleInstanceNodes(mod) {
+		x.writeInstanceNode(&b, inst)
+	}
 	b.WriteString("</ModuleNode>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
+}
+
+func (x *sanyXMLExporter) moduleInstanceNodes(mod *Module) []Instance {
+	if mod == nil {
+		return nil
+	}
+	var out []Instance
+	seen := map[string]bool{}
+	for _, ext := range mod.Extends {
+		x.addImportedModuleInstanceNodes(x.spec.Modules[ext], &out, seen, map[string]bool{})
+	}
+	for _, inst := range mod.Instances {
+		key := x.instanceNodeKey(inst)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, inst)
+	}
+	return out
+}
+
+func (x *sanyXMLExporter) addImportedModuleInstanceNodes(mod *Module, out *[]Instance, seen map[string]bool, visiting map[string]bool) {
+	if mod == nil || visiting[mod.Name] {
+		return
+	}
+	visiting[mod.Name] = true
+	for _, ext := range mod.Extends {
+		x.addImportedModuleInstanceNodes(x.spec.Modules[ext], out, seen, visiting)
+	}
+	for _, inst := range mod.Instances {
+		key := x.instanceNodeKey(inst)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		*out = append(*out, inst)
+	}
+	visiting[mod.Name] = false
+}
+
+func (x *sanyXMLExporter) instanceNodeKey(inst Instance) string {
+	pos := inst.SourcePosition()
+	return fmt.Sprintf("%s:%s:%t:%d:%d:%d:%d", inst.Module, inst.qualifier(), inst.Local, pos.Line, pos.Column, pos.EndLine, pos.EndColumn)
+}
+
+func (x *sanyXMLExporter) writeInstanceNode(b *bytes.Buffer, inst Instance) {
+	b.WriteString("<InstanceNode>")
+	x.writeNode(b, inst.SourcePosition(), constantLevel)
+	b.WriteString("<module>")
+	xmlText(b, inst.Module)
+	b.WriteString("</module><substs/>")
+	b.WriteString("<params/>")
+	if inst.Local {
+		b.WriteString("<local/>")
+	}
+	b.WriteString("</InstanceNode>")
 }
 
 func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
@@ -598,6 +698,19 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 			continue
 		}
 		add(x.defs[x.defKey(mod.Name, mod.Definitions[i].Name)])
+	}
+	for instIndex, inst := range mod.Instances {
+		instMod := x.spec.Modules[inst.Module]
+		if instMod == nil {
+			continue
+		}
+		for i := range instMod.Definitions {
+			def := &instMod.Definitions[i]
+			if def.Local || def.TheoremLike {
+				continue
+			}
+			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, def.Name)])
+		}
 	}
 	for i, assume := range mod.Assumptions {
 		add(x.assumes[fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assume.Name)])
@@ -740,6 +853,58 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 		b.WriteString("<recursiveSection>")
 		xmlInt(&b, ctx.recursiveSection)
 		b.WriteString("</recursiveSection>")
+	}
+	b.WriteString("</UserDefinedOpKind>")
+	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
+	return diags
+}
+
+func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, inst Instance, sourceMod *Module, def *Definition, ctx sanyXMLExprContext) Diagnostics {
+	if sym == nil || original == nil || def == nil || x.emitted[sym.Key] {
+		return nil
+	}
+	x.emitted[sym.Key] = true
+	defCtx := ctx
+	defCtx.formals = copySanyXMLSymbolMap(ctx.formals)
+	defCtx.suppressLetDefs = true
+	for i, param := range def.Params {
+		if i < len(original.Params) {
+			defCtx.formals[param] = original.Params[i]
+		}
+	}
+	level := x.exprLevel(def.Expr, defCtx)
+	var body string
+	var diags Diagnostics
+	if fcn, ok := def.Expr.(*FunctionExpr); ok && x.isRecursiveFunctionDefinition(def) {
+		body, diags = x.recursiveFunctionSpecXML(def, fcn, defCtx, level)
+	} else {
+		body, diags = x.exprXML(def.Expr, defCtx)
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+	sym.Level = level
+	var b bytes.Buffer
+	b.WriteString("<UserDefinedOpKind>")
+	x.writeNode(&b, sym.Pos, level)
+	b.WriteString("<uniquename>")
+	xmlText(&b, sym.Name)
+	b.WriteString("</uniquename><arity>")
+	xmlInt(&b, sym.Arity)
+	b.WriteString("</arity>")
+	x.writeDefinitionOriginFor(&b, original, sourceMod)
+	b.WriteString("<body>")
+	b.WriteString(body)
+	b.WriteString("</body><params>")
+	for _, param := range original.Params {
+		b.WriteString("<leibnizparam>")
+		x.writeRef(&b, param)
+		b.WriteString("<leibniz/></leibnizparam>")
+	}
+	b.WriteString("</params>")
+	x.writePreComments(&b, inst.PreComments)
+	if inst.Local {
+		b.WriteString("<local/>")
 	}
 	b.WriteString("</UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
@@ -2044,16 +2209,28 @@ func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx san
 func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
 	letCtx := ctx
 	letCtx.defs = copySanyXMLSymbolMap(ctx.defs)
-	localDefs := make([]*sanyXMLSymbol, 0, len(e.Definitions))
+	localDefs := x.letDefs[e]
+	if len(localDefs) != len(e.Definitions) {
+		localDefs = make([]*sanyXMLSymbol, 0, len(e.Definitions))
+		for i := range e.Definitions {
+			def := &e.Definitions[i]
+			sym := x.newLocalDefinitionSymbol("let", def)
+			localDefs = append(localDefs, sym)
+		}
+		x.letDefs[e] = localDefs
+	}
 	for i := range e.Definitions {
-		def := &e.Definitions[i]
-		sym := x.newLocalDefinitionSymbol("let", def)
-		letCtx.defs[def.Name] = sym
-		localDefs = append(localDefs, sym)
+		if i < len(localDefs) {
+			letCtx.defs[e.Definitions[i].Name] = localDefs[i]
+		}
 	}
 	var diags Diagnostics
-	for i := range e.Definitions {
-		diags = append(diags, x.emitDefinitionEntry(localDefs[i], &e.Definitions[i], letCtx)...)
+	if !ctx.suppressLetDefs {
+		for i := range e.Definitions {
+			if i < len(localDefs) {
+				diags = append(diags, x.emitDefinitionEntry(localDefs[i], &e.Definitions[i], letCtx)...)
+			}
+		}
 	}
 	body, bodyDiags := x.exprXML(e.Body, letCtx)
 	diags = append(diags, bodyDiags...)
@@ -2245,8 +2422,7 @@ func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *Functio
 	if diags.HasErrors() {
 		return "", diags
 	}
-	fcnXML := x.opApplXML(fcn.Pos, x.exprLevel(fcn.Body, boundCtx), x.builtin("$FcnConstructor"), []string{bodyXML}, "")
-	return x.opApplXML(def.SourcePosition(), level, x.builtin("$RecursiveFcnSpec"), []string{fcnXML}, boundSymbols.String()), nil
+	return x.opApplXML(def.SourcePosition(), level, x.builtin("$RecursiveFcnSpec"), []string{bodyXML}, boundSymbols.String()), nil
 }
 
 func (x *sanyXMLExporter) caseXML(e *CaseExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
@@ -2461,6 +2637,10 @@ func (x *sanyXMLExporter) writeRef(b *bytes.Buffer, sym *sanyXMLSymbol) {
 }
 
 func (x *sanyXMLExporter) writeDefinitionOrigin(b *bytes.Buffer, sym *sanyXMLSymbol, mod *Module) {
+	x.writeDefinitionOriginFor(b, sym, mod)
+}
+
+func (x *sanyXMLExporter) writeDefinitionOriginFor(b *bytes.Buffer, sym *sanyXMLSymbol, mod *Module) {
 	if sym == nil || mod == nil {
 		return
 	}
@@ -2684,15 +2864,15 @@ func (x *sanyXMLExporter) scopeForModuleMode(mod *Module, visiting map[string]bo
 			x.addModuleLocalScope(scope, dep, true, false)
 		}
 	}
-	for _, inst := range mod.Instances {
-		x.addInstanceScope(scope, inst, includeLocal, visiting)
+	for instIndex, inst := range mod.Instances {
+		x.addInstanceScope(scope, mod, instIndex, inst, includeLocal, visiting)
 	}
 	x.addModuleLocalScope(scope, mod, false, includeLocal)
 	visiting[visitKey] = false
 	return scope
 }
 
-func (x *sanyXMLExporter) addInstanceScope(scope sanyXMLScope, inst Instance, includeLocal bool, visiting map[string]bool) {
+func (x *sanyXMLExporter) addInstanceScope(scope sanyXMLScope, owner *Module, instIndex int, inst Instance, includeLocal bool, visiting map[string]bool) {
 	if inst.Local && !includeLocal {
 		return
 	}
@@ -2721,9 +2901,28 @@ func (x *sanyXMLExporter) addInstanceScope(scope sanyXMLScope, inst Instance, in
 		if strings.Contains(name, "!") {
 			continue
 		}
-		scope.defs[qualifier+"!"+name] = sym
+		scope.defs[qualifier+"!"+name] = x.instanceDefinitionScopeSymbol(owner, instIndex, inst, name, sym)
 		scope.declKinds[qualifier+"!"+name] = OperatorDecl
 	}
+	if inst.exportsUnqualified() {
+		for name, sym := range instScope.defs {
+			if strings.Contains(name, "!") {
+				continue
+			}
+			scope.defs[name] = x.instanceDefinitionScopeSymbol(owner, instIndex, inst, name, sym)
+			scope.declKinds[name] = OperatorDecl
+		}
+	}
+}
+
+func (x *sanyXMLExporter) instanceDefinitionScopeSymbol(owner *Module, instIndex int, inst Instance, name string, fallback *sanyXMLSymbol) *sanyXMLSymbol {
+	if owner == nil {
+		return fallback
+	}
+	if sym := x.instDefs[x.instanceDefKey(owner.Name, instIndex, inst, name)]; sym != nil {
+		return sym
+	}
+	return fallback
 }
 
 func (x *sanyXMLExporter) addModuleLocalScope(scope sanyXMLScope, mod *Module, qualifiedOnly bool, includeLocal bool) {
@@ -3115,6 +3314,10 @@ func (x *sanyXMLExporter) declKey(module, name string) string {
 
 func (x *sanyXMLExporter) defKey(module, name string) string {
 	return "def:" + module + ":" + name
+}
+
+func (x *sanyXMLExporter) instanceDefKey(module string, index int, inst Instance, name string) string {
+	return fmt.Sprintf("instdef:%s:%d:%s:%s:%s", module, index, inst.qualifier(), inst.Module, name)
 }
 
 func (x *sanyXMLExporter) proofStepKey(module string, step *SanySyntaxNode) string {

@@ -406,7 +406,7 @@ func canonicalSanyXMLUID(key string, index, count int) string {
 
 func registerOwnedFormalParamUIDs(out map[string]string, node *canonicalXMLNode) {
 	switch node.Name {
-	case "BuiltInKind", "UserDefinedOpKind", "LabelNode":
+	case "BuiltInKind", "LabelNode":
 	default:
 		return
 	}
@@ -536,26 +536,22 @@ func sortModuleNodeRefs(node *canonicalXMLNode) {
 }
 
 func sortDirectRefChildren(node *canonicalXMLNode) {
-	type refChild struct {
-		index int
-		node  *canonicalXMLNode
-	}
-	var refs []refChild
+	memberStart := len(node.Children)
 	for i, child := range node.Children {
-		if strings.HasSuffix(child.Name, "Ref") {
-			refs = append(refs, refChild{index: i, node: child})
+		if strings.HasSuffix(child.Name, "Ref") || child.Name == "InstanceNode" {
+			memberStart = i
+			break
 		}
 	}
-	if len(refs) <= 1 {
+	if memberStart >= len(node.Children)-1 {
 		return
 	}
-	sorted := append([]refChild(nil), refs...)
-	sort.SliceStable(sorted, func(i, j int) bool {
-		return canonicalXMLSortKey(sorted[i].node) < canonicalXMLSortKey(sorted[j].node)
+	prefix := append([]*canonicalXMLNode(nil), node.Children[:memberStart]...)
+	members := append([]*canonicalXMLNode(nil), node.Children[memberStart:]...)
+	sort.SliceStable(members, func(i, j int) bool {
+		return canonicalXMLSortKey(members[i]) < canonicalXMLSortKey(members[j])
 	})
-	for i, ref := range refs {
-		node.Children[ref.index] = sorted[i].node
-	}
+	node.Children = append(prefix, members...)
 }
 
 func writeCanonicalXMLNode(b *bytes.Buffer, node *canonicalXMLNode) {
