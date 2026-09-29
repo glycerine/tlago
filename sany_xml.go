@@ -5229,7 +5229,9 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 		}
 		return use
 	case *LabelExpr:
-		return x.exprParamUse(e.Body, ctx, shadowed)
+		use := x.exprParamUse(e.Body, ctx, shadowed)
+		use.nonLeibniz = nil
+		return use
 	case *ActionExpr:
 		actionUse := x.exprParamUse(e.Action, ctx, shadowed)
 		subscriptUse := x.exprParamUse(e.Subscript, ctx, shadowed)
@@ -5402,7 +5404,9 @@ func (x *sanyXMLExporter) exprParamUseWithDefinitionRefs(expr Expr, ctx sanyXMLE
 		}
 		return use
 	case *LabelExpr:
-		return x.exprParamUseWithDefinitionRefs(e.Body, ctx, shadowed, visiting)
+		use := x.exprParamUseWithDefinitionRefs(e.Body, ctx, shadowed, visiting)
+		use.nonLeibniz = nil
+		return use
 	case *ActionExpr:
 		actionUse := x.exprParamUseWithDefinitionRefs(e.Action, ctx, shadowed, visiting)
 		subscriptUse := x.exprParamUseWithDefinitionRefs(e.Subscript, ctx, shadowed, visiting)
