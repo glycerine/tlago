@@ -1,3 +1,3 @@
-module github.com/glycerine/tla-go
+module github.com/glycerine/tlago
 
 go 1.26

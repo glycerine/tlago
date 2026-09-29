@@ -52,9 +52,9 @@ func TestSanyXMLTargetCorpusAgainstJavaSANY(t *testing.T) {
 	if os.Getenv("TLAGO_SANY_XML_CORPUS") == "" {
 		t.Skip("set TLAGO_SANY_XML_CORPUS=1 to compare the target fixture trees against Java SANY XML")
 	}
-	targets := apalacheCorpusTargets(t)
+	targets := sanyXMLGoldenTargets(t)
 	if len(targets) == 0 {
-		t.Fatalf("no .tla corpus files found under target directories")
+		t.Fatalf("no .xml.gold corpus files found under test_vectors")
 	}
 	targets = sanyXMLCorpusWindow(targets)
 	limit := envPositiveInt("TLAGO_SANY_XML_CORPUS_LIMIT")
@@ -79,6 +79,30 @@ func TestSanyXMLTargetCorpusAgainstJavaSANY(t *testing.T) {
 	if len(failures) > 0 {
 		t.Fatalf("SANY XML corpus mismatch:\n%s", strings.Join(failures, "\n\n"))
 	}
+}
+
+func sanyXMLGoldenTargets(t *testing.T) []string {
+	t.Helper()
+	var targets []string
+	err := filepath.WalkDir("test_vectors", func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || !strings.HasSuffix(path, xmlGoldenSuffix) {
+			return nil
+		}
+		sourcePath := strings.TrimSuffix(path, xmlGoldenSuffix)
+		if _, err := os.Stat(sourcePath); err != nil {
+			return fmt.Errorf("golden file %s has no matching source %s: %v", path, sourcePath, err)
+		}
+		targets = append(targets, sourcePath)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk XML goldens: %v", err)
+	}
+	sort.Strings(targets)
+	return targets
 }
 
 func compareSanyXMLCorpusFile(t *testing.T, sourcePath string) string {
