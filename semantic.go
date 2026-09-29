@@ -1257,7 +1257,7 @@ func semanticInstanceSymbolsWithVisiting(inst Instance, spec *Spec, visiting map
 			unqualified.unqualified = true
 			out = append(out, unqualified)
 		}
-		if qualifier == "" || strings.Contains(symbol.name, "!") {
+		if qualifier == "" {
 			continue
 		}
 		qualified := symbol

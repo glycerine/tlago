@@ -254,6 +254,25 @@ Check == Use
 		diags = CheckSpec(spec)
 		requireNoErrors(t, diags)
 	})
+
+	t.Run("named instances export nested named instance members", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Leaf.tla"), `---- MODULE Leaf ----
+Safe == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+Inner == INSTANCE Leaf
+====`)
+		writeFile(t, filepath.Join(dir, "Root.tla"), `---- MODULE Root ----
+Outer == INSTANCE Middle
+UseNested == Outer!Inner!Safe
+====`)
+
+		spec, diags := LoadSanySpec(filepath.Join(dir, "Root.tla"), LoadOptions{})
+		requireNoErrors(t, diags)
+		diags = CheckSpec(spec)
+		requireNoErrors(t, diags)
+	})
 }
 
 func TestCLIBehaviors(t *testing.T) {
