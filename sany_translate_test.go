@@ -1503,6 +1503,24 @@ INSTANCE Illegal WITH c <- 0
 		requireHasErrorContaining(t, sem, "not a CONSTANT or VARIABLE")
 	})
 
+	t.Run("allows INSTANCE substitutions for inherited constants", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Parent.tla"), `---- MODULE Parent ----
+CONSTANT C
+====`)
+		writeFile(t, filepath.Join(dir, "Child.tla"), `---- MODULE Child ----
+EXTENDS Parent
+====`)
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, root, `---- MODULE Root ----
+CONSTANT C
+INSTANCE Child WITH C <- C
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("checks INSTANCE substitution levels for non-constant modules", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")

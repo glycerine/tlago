@@ -672,7 +672,7 @@ Inst == INSTANCE Helper WITH B <- Nat
 		}
 	})
 
-	t.Run("does not clone extended definitions through unqualified INSTANCE", func(t *testing.T) {
+	t.Run("clones extended definitions through unqualified INSTANCE", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
 BaseOp == TRUE
@@ -714,8 +714,8 @@ Use == TargetOp /\ BaseOp
 		if got := countUserDef("UnqualifiedInstanceExtendsXML", "TargetOp"); got != 1 {
 			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
 		}
-		if got := countUserDef("UnqualifiedInstanceExtendsXML", "BaseOp"); got != 0 {
-			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		if got := countUserDef("UnqualifiedInstanceExtendsXML", "BaseOp"); got != 1 {
+			t.Fatalf("root BaseOp clones = %d, want 1\n%s", got, string(xmlText))
 		}
 		if got := countUserDef("Base", "BaseOp"); got != 1 {
 			t.Fatalf("original BaseOp entries = %d, want 1\n%s", got, string(xmlText))
@@ -741,8 +741,84 @@ Use == TargetOp /\ BaseOp
 				}
 			}
 		}
-		if !rootRefs["Base:BaseOp"] {
-			t.Fatalf("root module refs did not include original BaseOp\n%s", string(xmlText))
+		if !rootRefs["UnqualifiedInstanceExtendsXML:BaseOp"] {
+			t.Fatalf("root module refs did not include cloned BaseOp\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("does not unqualified-clone recursive EXTENDS definitions through INSTANCE", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
+GrandOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "MidBase.tla"), `---- MODULE MidBase ----
+EXTENDS GrandBase
+MidOp == GrandOp
+====`)
+		writeFile(t, filepath.Join(dir, "LeafTarget.tla"), `---- MODULE LeafTarget ----
+EXTENDS MidBase
+LeafOp == MidOp
+====`)
+		rootPath := filepath.Join(dir, "ShallowInstanceExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE ShallowInstanceExtendsXML ----
+INSTANCE LeafTarget
+Use == LeafOp /\ MidOp /\ GrandOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countRootUserDef := func(name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(root) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == "ShallowInstanceExtendsXML" {
+					count++
+				}
+			}
+			return count
+		}
+		if got := countRootUserDef("LeafOp"); got != 1 {
+			t.Fatalf("root LeafOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countRootUserDef("MidOp"); got != 1 {
+			t.Fatalf("root MidOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := countRootUserDef("GrandOp"); got != 0 {
+			t.Fatalf("root GrandOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		uidInfo := map[string]string{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" {
+				continue
+			}
+			uidInfo[firstChildText(entry, "UID")] = firstDescendantText(child, "filename") + ":" + firstChildText(child, "uniquename")
+		}
+		rootRefs := map[string]bool{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "ModuleNode" || firstChildText(child, "uniquename") != "ShallowInstanceExtendsXML" {
+				continue
+			}
+			for _, ref := range child.Children {
+				if ref.Name == "UserDefinedOpKindRef" {
+					rootRefs[uidInfo[firstChildText(ref, "UID")]] = true
+				}
+			}
+		}
+		if !rootRefs["GrandBase:GrandOp"] {
+			t.Fatalf("root module refs did not include original GrandOp\n%s", string(xmlText))
 		}
 	})
 

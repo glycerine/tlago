@@ -1584,8 +1584,8 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 	if target == nil {
 		return nil
 	}
-	targets := moduleOwnSubstitutionTargets(target)
-	matchLevels := moduleRequiresSubstitutionLevelMatch(target)
+	targets := moduleSubstitutionTargets(target, spec)
+	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
 	implicit := moduleImplicitSubstitutions(mod, spec)
 	seen := map[string]Position{}
 	for _, subst := range instanceSubstitutions(inst) {
@@ -1684,16 +1684,51 @@ func moduleOwnSubstitutionTargets(mod *Module) map[string]substitutionTarget {
 	return targets
 }
 
-func moduleRequiresSubstitutionLevelMatch(mod *Module) bool {
-	if mod == nil {
+func moduleSubstitutionTargets(mod *Module, spec *Spec) map[string]substitutionTarget {
+	targets := map[string]substitutionTarget{}
+	var collect func(*Module, map[string]bool)
+	collect = func(cur *Module, visiting map[string]bool) {
+		if cur == nil || visiting[cur.Name] || isEmbeddedStandardModule(cur) {
+			return
+		}
+		visiting[cur.Name] = true
+		for _, ext := range cur.Extends {
+			if spec != nil {
+				collect(spec.Modules[ext], visiting)
+			}
+		}
+		for name, target := range moduleOwnSubstitutionTargets(cur) {
+			targets[name] = target
+		}
+		visiting[cur.Name] = false
+	}
+	collect(mod, map[string]bool{})
+	return targets
+}
+
+func moduleRequiresSubstitutionLevelMatch(mod *Module, spec *Spec) bool {
+	var check func(*Module, map[string]bool) bool
+	check = func(cur *Module, visiting map[string]bool) bool {
+		if cur == nil || visiting[cur.Name] {
+			return false
+		}
+		visiting[cur.Name] = true
+		defer func() {
+			visiting[cur.Name] = false
+		}()
+		for _, ext := range cur.Extends {
+			if spec != nil && check(spec.Modules[ext], visiting) {
+				return true
+			}
+		}
+		for _, decl := range cur.Declarations {
+			if decl.Kind == VariableDecl {
+				return true
+			}
+		}
 		return false
 	}
-	for _, decl := range mod.Declarations {
-		if decl.Kind == VariableDecl {
-			return true
-		}
-	}
-	return false
+	return check(mod, map[string]bool{})
 }
 
 func moduleImplicitSubstitutions(mod *Module, spec *Spec) map[string]int {

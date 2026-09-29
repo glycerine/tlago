@@ -794,28 +794,23 @@ func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance)
 		return b.String(), hasSubsts, diags
 	}
 	ownerScope := x.scopeForModule(owner, map[string]bool{})
-	for _, decl := range instMod.Declarations {
-		if decl.Kind != ConstantDecl && decl.Kind != VariableDecl {
+	for _, target := range x.substitutionTargetSymbols(instMod, map[string]bool{}) {
+		name := target.Name
+		if explicit[name] {
 			continue
 		}
-		for _, name := range decl.Names {
-			if explicit[name] {
-				continue
-			}
-			target := x.decls[x.declKey(instMod.Name, name)]
-			replacement := ownerScope.defs[name]
-			if replacement == nil {
-				replacement = ownerScope.decls[name]
-			}
-			if target == nil || replacement == nil {
-				continue
-			}
-			hasSubsts = true
-			b.WriteString("<Subst>")
-			x.writeRef(&b, target)
-			b.WriteString(x.opApplXML(inst.SourcePosition(), replacement.Level, replacement, nil, ""))
-			b.WriteString("</Subst>")
+		replacement := ownerScope.defs[name]
+		if replacement == nil {
+			replacement = ownerScope.decls[name]
 		}
+		if replacement == nil {
+			continue
+		}
+		hasSubsts = true
+		b.WriteString("<Subst>")
+		x.writeRef(&b, target)
+		b.WriteString(x.opApplXML(inst.SourcePosition(), replacement.Level, replacement, nil, ""))
+		b.WriteString("</Subst>")
 	}
 	b.WriteString("</substs>")
 	return b.String(), hasSubsts, diags
@@ -844,13 +839,67 @@ func (x *sanyXMLExporter) substInXML(pos Position, level tlaLevel, substs, body 
 }
 
 func (x *sanyXMLExporter) substitutionTargetSymbol(module, name string) *sanyXMLSymbol {
-	if sym := x.decls[x.declKey(module, name)]; sym != nil {
+	return x.substitutionTargetSymbolInModule(x.spec.Modules[module], name, map[string]bool{})
+}
+
+func (x *sanyXMLExporter) substitutionTargetSymbolInModule(mod *Module, name string, visiting map[string]bool) *sanyXMLSymbol {
+	if mod == nil || visiting[mod.Name] {
+		return nil
+	}
+	visiting[mod.Name] = true
+	defer func() {
+		visiting[mod.Name] = false
+	}()
+	if sym := x.decls[x.declKey(mod.Name, name)]; sym != nil {
 		return sym
 	}
-	if sym := x.defs[x.defKey(module, name)]; sym != nil {
-		return sym
+	for _, ext := range mod.Extends {
+		if sym := x.substitutionTargetSymbolInModule(x.spec.Modules[ext], name, visiting); sym != nil {
+			return sym
+		}
 	}
 	return nil
+}
+
+func (x *sanyXMLExporter) substitutionTargetSymbols(mod *Module, visiting map[string]bool) []*sanyXMLSymbol {
+	if mod == nil || visiting[mod.Name] || isEmbeddedStandardModule(mod) {
+		return nil
+	}
+	visiting[mod.Name] = true
+	defer func() {
+		visiting[mod.Name] = false
+	}()
+	var out []*sanyXMLSymbol
+	for _, ext := range mod.Extends {
+		out = append(out, x.substitutionTargetSymbols(x.spec.Modules[ext], visiting)...)
+	}
+	seen := map[string]bool{}
+	for _, sym := range out {
+		seen[sym.Name] = true
+	}
+	for _, decl := range mod.Declarations {
+		if decl.Kind != ConstantDecl && decl.Kind != VariableDecl {
+			continue
+		}
+		for _, name := range decl.Names {
+			sym := x.decls[x.declKey(mod.Name, name)]
+			if sym == nil {
+				continue
+			}
+			if seen[name] {
+				for i, existing := range out {
+					if existing.Name == name {
+						out[i] = sym
+						break
+					}
+				}
+				continue
+			}
+			seen[name] = true
+			out = append(out, sym)
+		}
+	}
+	return out
 }
 
 func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
@@ -887,7 +936,9 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 		add(x.defs[x.defKey(mod.Name, mod.Definitions[i].Name)])
 	}
 	for instIndex, inst := range mod.Instances {
+		clonedOrSkippedSources := map[string]bool{}
 		for _, source := range x.instanceDefinitionSources(inst) {
+			clonedOrSkippedSources[source.keyName] = true
 			if x.skipInstanceDefinitionClone(mod, inst, source) {
 				if source.fromExtends {
 					add(x.instanceDefinitionSourceOriginalSymbol(source))
@@ -898,6 +949,15 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 				continue
 			}
 			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
+		}
+		for _, source := range x.exportedDefinitionSources(x.spec.Modules[inst.Module], map[string]bool{}) {
+			if !source.fromExtends || clonedOrSkippedSources[source.name] {
+				continue
+			}
+			add(x.instanceDefinitionSourceOriginalSymbol(sanyXMLInstanceDefinitionSource{
+				module: source.module,
+				def:    source.def,
+			}))
 		}
 	}
 	for i, assume := range mod.Assumptions {
@@ -924,9 +984,6 @@ func (x *sanyXMLExporter) moduleHasDefinition(mod *Module, name string) bool {
 func (x *sanyXMLExporter) skipInstanceDefinitionClone(owner *Module, inst Instance, source sanyXMLInstanceDefinitionSource) bool {
 	if !inst.exportsUnqualified() {
 		return false
-	}
-	if source.fromExtends && !inst.Local {
-		return true
 	}
 	name := source.keyName
 	return x.moduleHasDefinition(owner, name) || x.moduleExtendsDefinition(owner, name, map[string]bool{})
@@ -990,6 +1047,9 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 		return nil
 	}
 	sources := x.exportedDefinitionSources(instMod, map[string]bool{})
+	if inst.exportsUnqualified() {
+		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{})
+	}
 	out := make([]sanyXMLInstanceDefinitionSource, 0, len(sources))
 	for _, source := range sources {
 		if source.def == nil || source.module == nil {
@@ -1012,6 +1072,69 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 		})
 	}
 	return out
+}
+
+func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visiting map[string]bool) []sanyXMLDefinitionSource {
+	if mod == nil || visiting[mod.Name] {
+		return nil
+	}
+	visiting[mod.Name] = true
+	defer func() {
+		visiting[mod.Name] = false
+	}()
+
+	byName := map[string]sanyXMLDefinitionSource{}
+	for _, ext := range mod.Extends {
+		dep := x.spec.Modules[ext]
+		if dep == nil {
+			continue
+		}
+		for i := range dep.Definitions {
+			def := &dep.Definitions[i]
+			if def.Local || def.TheoremLike {
+				continue
+			}
+			byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: dep, def: def, fromExtends: true}
+		}
+	}
+	for _, inst := range mod.Instances {
+		if inst.Local {
+			continue
+		}
+		target := x.spec.Modules[inst.Module]
+		for _, source := range x.exportedDefinitionSources(target, visiting) {
+			if source.def == nil || source.module == nil {
+				continue
+			}
+			wrappers := append([]sanyXMLInstanceWrapper(nil), source.wrappers...)
+			wrappers = append(wrappers, sanyXMLInstanceWrapper{owner: mod, inst: inst, target: target})
+			if inst.exportsUnqualified() {
+				source.wrappers = wrappers
+				source.fromExtends = false
+				byName[source.name] = source
+			}
+			if strings.Contains(source.name, "!") {
+				continue
+			}
+			if qualifier := inst.qualifier(); qualifier != "" {
+				byName[qualifier+"!"+source.name] = sanyXMLDefinitionSource{
+					name:        qualifier + "!" + source.name,
+					module:      source.module,
+					def:         source.def,
+					wrappers:    wrappers,
+					fromExtends: false,
+				}
+			}
+		}
+	}
+	for i := range mod.Definitions {
+		def := &mod.Definitions[i]
+		if def.Local || def.TheoremLike {
+			continue
+		}
+		byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: mod, def: def}
+	}
+	return sortedDefinitionSources(byName)
 }
 
 func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[string]bool) []sanyXMLDefinitionSource {
@@ -1068,6 +1191,10 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 		byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: mod, def: def}
 	}
 
+	return sortedDefinitionSources(byName)
+}
+
+func sortedDefinitionSources(byName map[string]sanyXMLDefinitionSource) []sanyXMLDefinitionSource {
 	names := make([]string, 0, len(byName))
 	for name := range byName {
 		names = append(names, name)
