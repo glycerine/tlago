@@ -1799,11 +1799,12 @@ func moduleRequiresSubstitutionLevelMatch(mod *Module, spec *Spec) bool {
 
 func moduleImplicitSubstitutions(mod *Module, spec *Spec) map[string]int {
 	arities := map[string]int{}
-	var collect func(*Module)
-	collect = func(cur *Module) {
-		if cur == nil {
+	var collect func(*Module, map[string]bool)
+	collect = func(cur *Module, visiting map[string]bool) {
+		if cur == nil || visiting[cur.Name] {
 			return
 		}
+		visiting[cur.Name] = true
 		for _, decl := range cur.Declarations {
 			for _, name := range decl.Names {
 				arity := 0
@@ -1825,13 +1826,14 @@ func moduleImplicitSubstitutions(mod *Module, spec *Spec) map[string]int {
 				arities[def.Name] = len(def.Params)
 			}
 		}
-	}
-	collect(mod)
-	if spec != nil && mod != nil {
-		for _, dep := range mod.Extends {
-			collect(spec.Modules[dep])
+		for _, dep := range cur.Extends {
+			if spec != nil {
+				collect(spec.Modules[dep], visiting)
+			}
 		}
+		visiting[cur.Name] = false
 	}
+	collect(mod, map[string]bool{})
 	return arities
 }
 

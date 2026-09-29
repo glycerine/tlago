@@ -1584,6 +1584,32 @@ INSTANCE Child WITH C <- C
 		requireNoErrors(t, CheckSpec(spec))
 	})
 
+	t.Run("allows implicit INSTANCE substitutions from transitive EXTENDS", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Interface.tla"), `---- MODULE Interface ----
+VARIABLE v
+CONSTANT C, Op(_)
+====`)
+		writeFile(t, filepath.Join(dir, "Provider.tla"), `---- MODULE Provider ----
+EXTENDS Interface
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Interface
+CONSTANT R
+Use == Op(C) /\ v = v /\ R = R
+====`)
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, root, `---- MODULE Root ----
+EXTENDS Provider
+CONSTANT R
+I == INSTANCE Target
+Use == I!Use
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("checks INSTANCE substitution levels for non-constant modules", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
