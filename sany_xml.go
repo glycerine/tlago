@@ -98,6 +98,7 @@ type sanyXMLSymbol struct {
 	Name        string
 	Arity       int
 	Level       tlaLevel
+	LevelKnown  bool
 	Pos         Position
 	DeclKind    DeclarationKind
 	XMLDeclKind int
@@ -604,12 +605,9 @@ func (x *sanyXMLExporter) newDefinitionSymbol(key string, def *Definition) *sany
 				pos = paramPos
 			}
 		}
-		level := tlaLevel(-1)
-		if exprReferencesName(def.Expr, param, nil) {
-			level = constantLevel
-		}
 		paramKey := fmt.Sprintf("%s:param:%d:%s", key, len(sym.Params), param)
-		paramSym := x.newSymbol("FormalParamNode", paramKey, param, arity, level, pos)
+		paramSym := x.newSymbol("FormalParamNode", paramKey, param, arity, constantLevel, pos)
+		paramSym.LevelKnown = exprReferencesName(def.Expr, param, nil)
 		sym.Params = append(sym.Params, paramSym)
 	}
 	return sym
@@ -653,13 +651,14 @@ func (x *sanyXMLExporter) newInstanceDefinitionSymbol(key string, source sanyXML
 func (x *sanyXMLExporter) newSymbol(kind, key, name string, arity int, level tlaLevel, pos Position) *sanyXMLSymbol {
 	uid := x.nextGeneratedUID()
 	sym := &sanyXMLSymbol{
-		UID:   uid,
-		Key:   key,
-		Kind:  kind,
-		Name:  name,
-		Arity: arity,
-		Level: level,
-		Pos:   pos,
+		UID:        uid,
+		Key:        key,
+		Kind:       kind,
+		Name:       name,
+		Arity:      arity,
+		Level:      level,
+		LevelKnown: level >= 0,
+		Pos:        pos,
 	}
 	return sym
 }
@@ -2153,7 +2152,7 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 			return "", constantLevel, exprDiags
 		}
 		bounds := sanyProofStepBounds(bodyNode)
-		xml, xmlDiags := x.boundOpXML("$Pick", sanyNodePosition(bodyNode), bounds, expr, ctx)
+		xml, xmlDiags := x.boundOpXML("$Pick", sanyNodePosition(bodyNode), bounds, expr, ctx, true)
 		if xmlDiags.HasErrors() {
 			return "", constantLevel, xmlDiags
 		}
@@ -2756,7 +2755,7 @@ func (x *sanyXMLExporter) emitFormalEntry(sym *sanyXMLSymbol) {
 	b.WriteString("<FormalParamNode>")
 	if sym.Pos.Line > 0 || sym.Pos.Column > 0 || sym.Pos.File != "" {
 		x.writeLocation(&b, sym.Pos)
-		if sym.Level >= 0 {
+		if sym.LevelKnown {
 			b.WriteString("<level>")
 			xmlInt(&b, int(sym.Level))
 			b.WriteString("</level>")
@@ -2904,7 +2903,7 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 		if e.IsLambda {
 			return x.lambdaExprXML(e, ctx)
 		}
-		return x.boundOpXML("$FcnConstructor", e.Pos, e.Bounds, e.Body, ctx)
+		return x.boundOpXML("$FcnConstructor", e.Pos, e.Bounds, e.Body, ctx, false)
 	case *FunctionAppExpr:
 		fn, diags := x.functionApplicationFunctionXML(e, ctx)
 		if diags.HasErrors() {
@@ -2985,7 +2984,7 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 		if e.Predicate != nil {
 			body = e.Predicate
 		}
-		return x.boundOpXML(oper, e.Pos, e.Bounds, body, ctx)
+		return x.boundOpXML(oper, e.Pos, e.Bounds, body, ctx, false)
 	default:
 		return "", Diagnostics{errorAt(expr.Position(), "E7002", "unsupported SANY XML expression %T", expr)}
 	}
@@ -3278,9 +3277,7 @@ func (x *sanyXMLExporter) lambdaExprXML(fcn *FunctionExpr, ctx sanyXMLExprContex
 	params := make([]*sanyXMLSymbol, 0, len(fcn.Bounds))
 	for _, bound := range fcn.Bounds {
 		formal := x.newBoundFormal("lambda", bound.Name, bound.Pos)
-		if !exprReferencesName(fcn.Body, bound.Name, nil) {
-			formal.Level = -1
-		}
+		formal.LevelKnown = exprReferencesName(fcn.Body, bound.Name, nil)
 		x.emitFormalEntry(formal)
 		lambdaCtx.formals[bound.Name] = formal
 		params = append(params, formal)
@@ -3427,7 +3424,7 @@ func (x *sanyXMLExporter) quantifierXML(e *QuantifierExpr, ctx sanyXMLExprContex
 		bounds = append(bounds, BoundVar{Name: next.Var, Set: next.Set, Pos: quantifierVarPosition(next)})
 		body = next.Body
 	}
-	return x.boundOpXML(oper, e.Pos, bounds, body, ctx)
+	return x.boundOpXML(oper, e.Pos, bounds, body, ctx, false)
 }
 
 func quantifierVarPosition(e *QuantifierExpr) Position {
@@ -3455,10 +3452,10 @@ func (x *sanyXMLExporter) chooseXML(e *ChooseExpr, ctx sanyXMLExprContext) (stri
 		pos = e.Pos
 	}
 	bounds := []BoundVar{{Name: e.Var, Set: e.Set, Pos: pos}}
-	return x.boundOpXML(oper, e.Pos, bounds, e.Body, ctx)
+	return x.boundOpXML(oper, e.Pos, bounds, e.Body, ctx, false)
 }
 
-func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVar, body Expr, ctx sanyXMLExprContext) (string, Diagnostics) {
+func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVar, body Expr, ctx sanyXMLExprContext, forceFormalLevel bool) (string, Diagnostics) {
 	boundCtx := ctx
 	boundCtx.formals = copySanyXMLSymbolMap(ctx.formals)
 	var boundSymbols bytes.Buffer
@@ -3470,9 +3467,7 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 		if set == nil {
 			bound := bounds[i]
 			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-			if !exprReferencesName(body, bound.Name, nil) {
-				formal.Level = -1
-			}
+			formal.LevelKnown = forceFormalLevel || exprReferencesName(body, bound.Name, nil)
 			x.emitFormalEntry(formal)
 			boundCtx.formals[bound.Name] = formal
 			boundSymbols.WriteString("<unbound>")
@@ -3491,9 +3486,7 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 		for j < len(bounds) && bounds[j].Set == set {
 			bound := bounds[j]
 			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-			if !exprReferencesName(body, bound.Name, nil) {
-				formal.Level = -1
-			}
+			formal.LevelKnown = forceFormalLevel || exprReferencesName(body, bound.Name, nil)
 			x.emitFormalEntry(formal)
 			boundCtx.formals[bound.Name] = formal
 			x.writeRef(&refs, formal)
@@ -3527,9 +3520,6 @@ func (x *sanyXMLExporter) boundOpLevel(bounds []BoundVar, body Expr, ctx sanyXML
 			level = maxTlaLevel(level, x.exprLevel(bound.Set, ctx))
 		}
 		formal := &sanyXMLSymbol{Name: bound.Name, Kind: "FormalParamNode", Level: constantLevel}
-		if !exprReferencesName(body, bound.Name, nil) {
-			formal.Level = -1
-		}
 		boundCtx.formals[bound.Name] = formal
 	}
 	return maxTlaLevel(level, x.exprLevel(body, boundCtx))
@@ -3562,9 +3552,7 @@ func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *Functio
 		if set == nil {
 			bound := fcn.Bounds[i]
 			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-			if !exprReferencesName(fcn.Body, bound.Name, nil) {
-				formal.Level = -1
-			}
+			formal.LevelKnown = exprReferencesName(fcn.Body, bound.Name, nil)
 			x.emitFormalEntry(formal)
 			boundCtx.formals[bound.Name] = formal
 			boundSymbols.WriteString("<unbound>")
@@ -3581,9 +3569,7 @@ func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *Functio
 		for j < len(fcn.Bounds) && fcn.Bounds[j].Set == set {
 			bound := fcn.Bounds[j]
 			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-			if !exprReferencesName(fcn.Body, bound.Name, nil) {
-				formal.Level = -1
-			}
+			formal.LevelKnown = exprReferencesName(fcn.Body, bound.Name, nil)
 			x.emitFormalEntry(formal)
 			boundCtx.formals[bound.Name] = formal
 			x.writeRef(&refs, formal)
@@ -3620,9 +3606,7 @@ func (x *sanyXMLExporter) nonRecursiveFunctionSpecXML(def *Definition, fcn *Func
 		if set == nil {
 			bound := fcn.Bounds[i]
 			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-			if !exprReferencesName(fcn.Body, bound.Name, nil) {
-				formal.Level = -1
-			}
+			formal.LevelKnown = exprReferencesName(fcn.Body, bound.Name, nil)
 			x.emitFormalEntry(formal)
 			boundCtx.formals[bound.Name] = formal
 			boundSymbols.WriteString("<unbound>")
@@ -3639,9 +3623,7 @@ func (x *sanyXMLExporter) nonRecursiveFunctionSpecXML(def *Definition, fcn *Func
 		for j < len(fcn.Bounds) && fcn.Bounds[j].Set == set {
 			bound := fcn.Bounds[j]
 			formal := x.newBoundFormal("expr", bound.Name, bound.Pos)
-			if !exprReferencesName(fcn.Body, bound.Name, nil) {
-				formal.Level = -1
-			}
+			formal.LevelKnown = exprReferencesName(fcn.Body, bound.Name, nil)
 			x.emitFormalEntry(formal)
 			boundCtx.formals[bound.Name] = formal
 			x.writeRef(&refs, formal)

@@ -1997,6 +1997,33 @@ A == \A x \in S : TRUE
 		}
 	})
 
+	t.Run("function constructor formals emit levels only when checked", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("FunctionConstructorFormalLevelXML.tla", `---- MODULE FunctionConstructorFormalLevelXML ----
+CONSTANT S
+Unused == [x \in S |-> {}]
+Used == [x \in S |-> x]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		unused := formalParamAtLocation(root, "x", 3, 12, 12)
+		if unused == nil {
+			t.Fatalf("unused function constructor formal missing\n%s", xmlText)
+		}
+		if got := firstChildText(unused, "level"); got != "" {
+			t.Fatalf("unused function constructor formal level = %q, want omitted\n%s", got, xmlText)
+		}
+		used := formalParamAtLocation(root, "x", 4, 10, 10)
+		if used == nil {
+			t.Fatalf("used function constructor formal missing\n%s", xmlText)
+		}
+		if got := firstChildText(used, "level"); got != "0" {
+			t.Fatalf("used function constructor formal level = %q, want 0\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("LET node level includes local definition levels", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("LetLevelXML.tla", `---- MODULE LetLevelXML ----
 VARIABLE v
@@ -2325,6 +2352,39 @@ THEOREM T == TRUE
 		}
 		if got := firstChildText(def, "level"); got != "1" {
 			t.Fatalf("PICK proof-step theorem definition level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("PICK proof bound formals keep Java level when unused", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickUnusedFormalLevelXML.tla", `---- MODULE ProofPickUnusedFormalLevelXML ----
+CONSTANT S
+THEOREM T == TRUE
+<1>1. PICK n \in S : TRUE
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "n" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 4, 12, 12) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("PICK formal n at line 4 column 12 missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "0" {
+			t.Fatalf("PICK formal n level = %q, want 0\n%s", got, xmlText)
 		}
 	})
 
@@ -3286,6 +3346,19 @@ func userDefinedOpAtLocation(root *canonicalXMLNode, line, begin, end int) *cano
 	}
 	walk(root)
 	return found
+}
+
+func formalParamAtLocation(root *canonicalXMLNode, name string, line, begin, end int) *canonicalXMLNode {
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != name {
+			continue
+		}
+		if xmlNodeLocationMatches(payload, line, begin, end) {
+			return payload
+		}
+	}
+	return nil
 }
 
 func firstXMLDescendant(root *canonicalXMLNode, name string) *canonicalXMLNode {
