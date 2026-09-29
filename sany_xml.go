@@ -68,18 +68,20 @@ type sanyXMLInstanceNode struct {
 }
 
 type sanyXMLDefinitionSource struct {
-	name     string
-	module   *Module
-	def      *Definition
-	wrappers []sanyXMLInstanceWrapper
+	name        string
+	module      *Module
+	def         *Definition
+	wrappers    []sanyXMLInstanceWrapper
+	fromExtends bool
 }
 
 type sanyXMLInstanceDefinitionSource struct {
-	keyName   string
-	cloneName string
-	module    *Module
-	def       *Definition
-	wrappers  []sanyXMLInstanceWrapper
+	keyName     string
+	cloneName   string
+	module      *Module
+	def         *Definition
+	wrappers    []sanyXMLInstanceWrapper
+	fromExtends bool
 }
 
 type sanyXMLInstanceWrapper struct {
@@ -443,7 +445,7 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 	}
 	for instIndex, inst := range mod.Instances {
 		for _, source := range x.instanceDefinitionSources(inst) {
-			if x.skipInstanceDefinitionClone(mod, inst, source.keyName) {
+			if x.skipInstanceDefinitionClone(mod, inst, source) {
 				continue
 			}
 			key := x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)
@@ -610,7 +612,7 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 		targetMod := x.spec.Modules[inst.Module]
 		sourceContexts := map[string]sanyXMLExprContext{}
 		for _, source := range x.instanceDefinitionSources(inst) {
-			if x.skipInstanceDefinitionClone(mod, inst, source.keyName) {
+			if x.skipInstanceDefinitionClone(mod, inst, source) {
 				continue
 			}
 			if source.module == nil || source.def == nil {
@@ -859,7 +861,10 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 	}
 	for instIndex, inst := range mod.Instances {
 		for _, source := range x.instanceDefinitionSources(inst) {
-			if x.skipInstanceDefinitionClone(mod, inst, source.keyName) {
+			if x.skipInstanceDefinitionClone(mod, inst, source) {
+				if source.fromExtends {
+					add(x.instanceDefinitionSourceOriginalSymbol(source))
+				}
 				continue
 			}
 			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
@@ -886,8 +891,22 @@ func (x *sanyXMLExporter) moduleHasDefinition(mod *Module, name string) bool {
 	return false
 }
 
-func (x *sanyXMLExporter) skipInstanceDefinitionClone(owner *Module, inst Instance, name string) bool {
-	return inst.exportsUnqualified() && (x.moduleHasDefinition(owner, name) || x.moduleExtendsDefinition(owner, name, map[string]bool{}))
+func (x *sanyXMLExporter) skipInstanceDefinitionClone(owner *Module, inst Instance, source sanyXMLInstanceDefinitionSource) bool {
+	if !inst.exportsUnqualified() {
+		return false
+	}
+	if source.fromExtends && !inst.Local {
+		return true
+	}
+	name := source.keyName
+	return x.moduleHasDefinition(owner, name) || x.moduleExtendsDefinition(owner, name, map[string]bool{})
+}
+
+func (x *sanyXMLExporter) instanceDefinitionSourceOriginalSymbol(source sanyXMLInstanceDefinitionSource) *sanyXMLSymbol {
+	if source.module == nil || source.def == nil {
+		return nil
+	}
+	return x.defs[x.defKey(source.module.Name, source.def.Name)]
 }
 
 func (x *sanyXMLExporter) moduleExtendsDefinition(mod *Module, name string, visiting map[string]bool) bool {
@@ -931,11 +950,12 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 			cloneName = inst.qualifier() + "!" + source.name
 		}
 		out = append(out, sanyXMLInstanceDefinitionSource{
-			keyName:   source.name,
-			cloneName: cloneName,
-			module:    source.module,
-			def:       source.def,
-			wrappers:  append([]sanyXMLInstanceWrapper(nil), source.wrappers...),
+			keyName:     source.name,
+			cloneName:   cloneName,
+			module:      source.module,
+			def:         source.def,
+			wrappers:    append([]sanyXMLInstanceWrapper(nil), source.wrappers...),
+			fromExtends: source.fromExtends,
 		})
 	}
 	return out
@@ -953,6 +973,7 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 	byName := map[string]sanyXMLDefinitionSource{}
 	for _, ext := range mod.Extends {
 		for _, source := range x.exportedDefinitionSources(x.spec.Modules[ext], visiting) {
+			source.fromExtends = true
 			byName[source.name] = source
 		}
 	}
@@ -969,6 +990,7 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 			wrappers = append(wrappers, sanyXMLInstanceWrapper{owner: mod, inst: inst, target: target})
 			if inst.exportsUnqualified() {
 				source.wrappers = wrappers
+				source.fromExtends = false
 				byName[source.name] = source
 			}
 			if strings.Contains(source.name, "!") {
@@ -976,10 +998,11 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 			}
 			if qualifier := inst.qualifier(); qualifier != "" {
 				byName[qualifier+"!"+source.name] = sanyXMLDefinitionSource{
-					name:     qualifier + "!" + source.name,
-					module:   source.module,
-					def:      source.def,
-					wrappers: wrappers,
+					name:        qualifier + "!" + source.name,
+					module:      source.module,
+					def:         source.def,
+					wrappers:    wrappers,
+					fromExtends: false,
 				}
 			}
 		}
@@ -1029,7 +1052,10 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 			continue
 		}
 		for _, source := range x.instanceDefinitionSources(inst) {
-			if x.skipInstanceDefinitionClone(mod, inst, source.keyName) {
+			if x.skipInstanceDefinitionClone(mod, inst, source) {
+				if source.fromExtends {
+					add(x.instanceDefinitionSourceOriginalSymbol(source))
+				}
 				continue
 			}
 			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
@@ -3649,6 +3675,7 @@ func normalizedSanyPreComments(comments []string) string {
 	}
 	parts := make([]string, 0, len(comments))
 	for _, comment := range comments {
+		comment = normalizeSanyNestedBlockPreComment(comment)
 		comment = strings.TrimRight(comment, " \t\r\n")
 		if comment == "" {
 			continue
@@ -3656,6 +3683,27 @@ func normalizedSanyPreComments(comments []string) string {
 		parts = append(parts, comment)
 	}
 	return strings.Join(parts, "\n")
+}
+
+func normalizeSanyNestedBlockPreComment(comment string) string {
+	if strings.Count(comment, "(*") <= 1 {
+		return comment
+	}
+	lines := strings.Split(comment, "\n")
+	for i := 1; i < len(lines); i++ {
+		line := lines[i]
+		open := strings.Index(line, "(*")
+		if open < 0 {
+			continue
+		}
+		prefix := line[:open]
+		rest := line[open+2:]
+		lines[i] = prefix + "(*\n" + rest
+		if i+1 < len(lines) && lines[i+1] != "" {
+			lines[i] += "\n"
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (x *sanyXMLExporter) writeNode(b *bytes.Buffer, pos Position, level tlaLevel) {
@@ -4382,7 +4430,7 @@ func sanyXMLBuiltinName(name string) string {
 		return "\\land"
 	case "\\/":
 		return "\\lor"
-	case "\\X":
+	case "\\X", "\\times":
 		return "$CartesianProd"
 	default:
 		return name

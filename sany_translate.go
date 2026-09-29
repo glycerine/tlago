@@ -2029,7 +2029,7 @@ func sanyOperatorImage(node *SanySyntaxNode) string {
 		return ""
 	}
 	if node.Token != nil {
-		return node.Image
+		return sanyCanonicalOperatorImage(node.Image)
 	}
 	for _, child := range node.GetHeirs() {
 		if image := sanyOperatorImage(child); image != "" {
@@ -2037,6 +2037,13 @@ func sanyOperatorImage(node *SanySyntaxNode) string {
 		}
 	}
 	return ""
+}
+
+func sanyCanonicalOperatorImage(image string) string {
+	if canonical := SanyOperatorSynonymCanonical[image]; canonical != "" {
+		return canonical
+	}
+	return image
 }
 
 func sanyASTOperator(op string) string {
