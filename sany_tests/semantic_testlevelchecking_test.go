@@ -9,8 +9,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/TestLevelChecking.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestLevelChecking_testAll(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	for _, tc := range []struct {
 		expr string
 		ok   bool

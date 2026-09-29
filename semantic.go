@@ -3278,7 +3278,14 @@ func checkLevelComposition(expr Expr, declKinds map[string]DeclarationKind, loca
 	switch e := expr.(type) {
 	case *UnaryExpr:
 		if (e.Op == "[]" || e.Op == "<>") && exprLevel(e.Expr, declKinds, locals) == actionLevel {
-			if _, wrapped := e.Expr.(*ActionExpr); !wrapped {
+			if action, wrapped := e.Expr.(*ActionExpr); wrapped {
+				if e.Op == "[]" && actionExprIsAngle(action) {
+					diags = append(diags, errorAt(e.Pos, "E1321", "temporal operator %s cannot be applied to an angle action", e.Op))
+				}
+				if e.Op == "<>" && !actionExprIsAngle(action) {
+					diags = append(diags, errorAt(e.Pos, "E1321", "temporal operator %s cannot be applied to a square action", e.Op))
+				}
+			} else {
 				diags = append(diags, errorAt(e.Pos, "E1321", "temporal operator %s cannot be applied directly to an action-level formula", e.Op))
 			}
 		}
@@ -3348,6 +3355,9 @@ func checkLevelComposition(expr Expr, declKinds map[string]DeclarationKind, loca
 			diags = append(diags, checkLevelComposition(field.Value, declKinds, locals)...)
 		}
 	case *RecordComponentExpr:
+		if exprLevel(e.Record, declKinds, locals) > actionLevel {
+			diags = append(diags, errorAt(e.Pos, "E1321", "record selection cannot be applied to a temporal-level expression"))
+		}
 		diags = append(diags, checkLevelComposition(e.Record, declKinds, locals)...)
 	case *RecordSetExpr:
 		for _, field := range e.Fields {
@@ -3398,6 +3408,13 @@ func checkLevelComposition(expr Expr, declKinds map[string]DeclarationKind, loca
 		}
 	}
 	return diags
+}
+
+func actionExprIsAngle(expr *ActionExpr) bool {
+	if expr == nil {
+		return false
+	}
+	return expr.Kind == "angle" || expr.Kind == "<>" || expr.Kind == "NO_STUTTER"
 }
 
 func logicalOperandLevel(expr Expr, declKinds map[string]DeclarationKind, locals map[string]bool) tlaLevel {
