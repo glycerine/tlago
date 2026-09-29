@@ -1412,3 +1412,400 @@ between `LoadSanySpec` and `CheckSpec`/`SanyXML`:
 `Spec`, `Module`, `Definition`, and `Expr` remain useful as a public, lowered
 view for model checking and future transformations. They should not remain the
 source of truth for SANY conformance.
+
+## Implementation Blueprint From Java
+
+This section is the working checklist for making the Go code match Java SANY's
+architecture. It is intentionally concrete: when a Go function needs to be
+changed, first decide which Java phase owns that responsibility and put the Go
+logic in the corresponding Go file/function family.
+
+### Phase Ownership Rules
+
+The front end has five ownership boundaries:
+
+- source/module loading owns file lookup, `.tla` extension handling, root
+  directory include behavior, file/module name equality, external dependency
+  discovery, and dependency ordering;
+- parsing owns tokens, CST syntax kinds, token images, CST child positions,
+  comments, and node locations;
+- semantic generation owns symbol objects, module contexts, scope stack
+  lifetime, substitutions, qualified instance exports, theorem/assumption
+  definitions, proof nodes, and semantic expression node shapes;
+- level checking owns all level/Leibniz/argument-level information;
+- XML export owns only reference/context traversal and formatting.
+
+Do not move a responsibility to a later phase because doing so is convenient.
+Most current conformance bugs are caused by losing Java semantic information in
+one phase and reconstructing it heuristically in XML export.
+
+### Java-To-Go File Map
+
+Keep everything in `package tlago`, but use Java-like files and function
+families as boundaries:
+
+| Java source | Go owner | Required responsibility |
+| --- | --- | --- |
+| `drivers/SANY.java` | `sany_frontend.go` or `sany_translate.go` top-level APIs | reset built-ins, call loader, call semantic generator in dependency order, call level checker, produce diagnostics |
+| `modanalyzer/SpecObj.java` | `sany_module_graph.go` | parse-unit table, root parse unit, unresolved EXTENDS/INSTANCE loop, cycle detection, semantic order |
+| `modanalyzer/ParseUnit.java` | `sany_module_graph.go` | one file/CST root, root module pointer, `determineModuleRelationships`, file/module equality |
+| `modanalyzer/ModulePointer.java` | `sany_module_graph.go` | pointer to a CST `N_Module`, parse unit, relatives, context |
+| `modanalyzer/ModuleRelatives.java` | `sany_module_graph.go` | outer module, direct inner modules, direct extendee names, direct instancee names, module context |
+| `modanalyzer/ModuleContext.java` | `sany_module_graph.go` | visible module-name bindings before semantic generation |
+| `parser/*` and `st/*` | existing `sany_token*`, `sany_parser*`, `sany_syntax.go` | JavaCC-shaped CST and locations |
+| `semantic/Context.java` | `sany_context.go` | flat symbol map plus insertion order, built-in initial context, EXTENDS merge |
+| `semantic/SymbolTable.java` | `sany_context.go` | stack lookup, duplicate diagnostics, module-name namespace, external-module fallback |
+| `semantic/ExternalModuleTable.java` | `sany_context.go` or `sany_semantic_nodes.go` | external module contexts/nodes in semantic order, root module |
+| `semantic/Generator.java` | `sany_generator.go` | CST to semantic graph, one generator per external module |
+| `semantic/*Node.java` | `sany_semantic_nodes.go` | Java semantic node identities, kind numbers, locations, children, XML hooks |
+| `semantic/LevelNode.java` and node level methods | `sany_level.go` | level constraints, arg-level constraints, Leibniz data |
+| `xml/XMLExporter.java` and `xml/SymbolContext.java` | `sany_semantic_xml.go` | semantic node refs, lazy context table, root module, deterministic pretty XML |
+| existing `ast.go` | `sany_lower.go` | lowered public AST, model checker, future translators |
+
+The current files do not need to be renamed immediately. New code should still
+follow this decomposition, and existing large files should be split only when a
+coherent move is easy to review.
+
+### Front-End API Shape
+
+The target public API should be:
+
+```go
+func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics)
+func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics)
+func CheckSanySpec(spec *Spec) Diagnostics
+func SanyXML(spec *Spec) ([]byte, Diagnostics)
+```
+
+Internally, `LoadSanySpec` should return or attach these Java-shaped products:
+
+- a parse-unit table keyed by external module name;
+- a root parse unit and root module pointer;
+- a module-relationship graph for external and inner modules;
+- a dependency postorder matching `SpecObj.semanticAnalysisVector`;
+- an external module table populated after semantic generation;
+- a lowered `Spec` view for existing callers.
+
+The existing `Spec.SemanticOrder` is the right public hint, but it is not enough
+by itself. We also need parse-unit/module-pointer state because Java visibility
+rules for inner modules are order-sensitive inside a single file.
+
+### Loader Decomposition
+
+Mirror the following `SpecObj` methods:
+
+- `findOrCreateParsedUnit(name, errors, firstCall, out)`
+- `loadSpec(rootExternalModuleName, errors, validateParseUnits, out)`
+- `findNextUnresolvedExtention(rootModule)`
+- `findNextUnresolvedInstantiation(rootModule)`
+- `instanceResolvesToInternalModule(currentModule, instanceeName)`
+- `resolveNamesBetweenSpecAndExtention(extender, extendeeParseUnit)`
+- `resolveNamesBetweenSpecAndInstantiation(instancer, instanceeParseUnit)`
+- `nonCircularityTest(parseUnit, errors)`
+- `calculateDependencies(rootParseUnit)`
+
+The Go loader should not simply recurse over `Module.Extends` and
+`Module.Instances`. That shortcut misses:
+
+- inner modules defined before or after the current module;
+- top-level inner modules made visible by an extended external module;
+- `INSTANCE` names that resolve to earlier inner modules and therefore should
+  not trigger external file loading;
+- dependencies hidden inside LETs, substitutions, and proof expressions;
+- Java's extendees-before-instancees semantic ordering.
+
+The loader should have data structures equivalent to:
+
+```go
+type sanyParseUnit struct {
+    name string
+    path string
+    root *sanyModulePointer
+    syntax *SanySyntaxNode
+    extendees []*sanyParseUnit
+    instancees []*sanyParseUnit
+}
+
+type sanyModulePointer struct {
+    parseUnit *sanyParseUnit
+    syntax *SanySyntaxNode
+    relatives *sanyModuleRelatives
+}
+
+type sanyModuleRelatives struct {
+    outer *sanyModulePointer
+    directInner []*sanyModulePointer
+    directlyExtendedNames []string
+    directlyInstantiatedNames []string
+    context *sanyModuleContext
+}
+```
+
+Names above are private and can evolve, but the responsibilities should not.
+
+### ParseUnit Relationship Extraction
+
+Mirror `ParseUnit.determineModuleRelationships` exactly enough to preserve
+module-name visibility:
+
+1. Allocate relatives for the current module pointer.
+2. Record the immediate outer module pointer.
+3. Read direct extendee names from the module's `N_Extends` CST node.
+4. Compute the module context visible at this module declaration point.
+5. Walk direct body children in source order.
+6. For each direct `N_Module`, create a module pointer, append it to
+   `directInner`, and recurse.
+7. For every non-module body item, recursively scan all descendants for
+   `N_NonLocalInstance` and record the instancee name.
+
+The recursive `getInstances` walk is deliberately broad. Java records instance
+dependencies hidden in LETs and substitutions because those external parse
+units must be available before semantic generation.
+
+`calculateContextWithinParseUnit` also has to be mirrored:
+
+- inherit the parent's context;
+- add earlier peers from the same parent, but not later peers;
+- repeat that peer rule up the ancestor chain;
+- add inner modules of modules extended by the current module's parent or
+  ancestors through `handleExtensions`.
+
+This is a loader concern, not a semantic generator concern.
+
+### Semantic Generator Decomposition
+
+Create a Go generator object equivalent to Java `Generator`:
+
+```go
+type sanyGenerator struct {
+    moduleTable *sanyExternalModuleTable
+    symbolTable *sanySymbolTable
+    errors Diagnostics
+    currentModule *sanyModuleNode
+    // EXCEPT/@, function-recursion, labels, proof, and ASSUME/PROVE stacks
+}
+```
+
+The generator should expose only:
+
+```go
+func (g *sanyGenerator) generate(root *SanySyntaxNode) (*sanyModuleNode, Diagnostics)
+```
+
+Everything else should be private methods following Java names where possible:
+
+- `generateModule`
+- `processExtendsList`
+- `processVariables`
+- `buildParameter`
+- `processParameters`
+- `processRecursive`
+- `processOperator`
+- `processFunction`
+- `processLetIn`
+- `generateExpression`
+- `generateExpressionOrLAP`
+- `processQuantBoundArgs`
+- `processChoose`
+- `processBoundQuant`
+- `processUnboundQuant`
+- `processCase`
+- `processSubsetOf`
+- `processSetOfAll`
+- `processFcnConst`
+- `processRcdForms`
+- `processAction`
+- `processExcept`
+- `generateExprOrOpArg`
+- `generateGenID`
+- `selectorToNode`
+- `generateLambda`
+- `generateOpAppl`
+- `processModuleDefinition`
+- `generateSubst`
+- `generateOpArg`
+- `processSubst`
+- `generateInstance`
+- `processTheorem`
+- `processAssumption`
+- `generateAssumeProve`
+- `generateNewSymb`
+- `generateProof`
+- `generateLeafProof`
+- `generateUseOrHide`
+
+When a behavior fails, first find the Java method on this list that owns it and
+either implement that method or move existing Go logic into it. Avoid adding
+new XML-only functions that bypass the generator.
+
+### Semantic Node Contracts
+
+The semantic graph should have Java-shaped node contracts even without Java
+inheritance:
+
+- every semantic node has a UID, kind, CST pointer, and location;
+- every level node embeds level data and supports `levelCheck(iter, errors)`;
+- every symbol node has name, arity, local flag, original module, and XML ref
+  behavior;
+- module nodes own their external context, extendees, definitions,
+  recursive declarations, instances, assumptions, theorems, top-level nodes,
+  and inner modules;
+- operator definitions own formal parameter nodes and body semantic nodes;
+- operator applications own an operator symbol, operands, bound symbols, range
+  expressions, and tuple-bound flags;
+- LET nodes own local definitions, local instances, body, and LET context;
+- substitution nodes own the body, substitution targets, replacement semantic
+  nodes, and source/target module pointers;
+- proof nodes own child proof steps, facts, definitions, and local proof
+  scopes.
+
+The compact public AST cannot satisfy these contracts. It should be a lowered
+view produced after the semantic graph exists.
+
+### Context And Symbol Rules
+
+`sany_context.go` is already the right seed. Continue expanding it toward Java:
+
+- initial contexts must be fresh per spec, with fresh built-in symbol objects;
+- symbol names and module names are separate namespaces;
+- `Context` must preserve insertion history as well as lookup;
+- adding an existing identical symbol is a no-op;
+- adding a same-origin symbol is a no-op;
+- redefining a built-in is an error;
+- formal and bound symbol duplicate names are errors even when kind/arity
+  match;
+- same-class, same-arity imports from different modules are warnings;
+- different-class conflicts are errors;
+- `mergeExtendContext` imports only non-local symbols and preserves imported
+  context order.
+
+Do not sort symbols as a substitute for context order. Sorting is allowed only
+at test canonicalization or deterministic XML context output points where Java
+uses hash tables.
+
+### Instantiation Rules
+
+Module instantiation is semantic graph construction, not string qualification.
+The generator should implement Java's two paths:
+
+- `processModuleDefinition` for `Name(args) == INSTANCE Module WITH ...`;
+- `generateInstance` for unnamed `INSTANCE Module WITH ...`.
+
+Both should use `processSubst` and `generateSubst`. The source-of-truth
+behavior is:
+
+- implicit substitutions are generated for instancee declarations with same
+  names in the instancer context;
+- explicit substitutions replace or add substitution entries;
+- substitution targets must be constant or variable declarations in the
+  instancee context;
+- positive-arity targets require operator arguments and arity checks;
+- named instances clone non-local definitions, module-instance definitions, and
+  theorem/assumption definitions with `Name!` prefixes;
+- if an imported definition is already qualified by an inner named instance,
+  an outer named instance qualifies it again, e.g. `Outer!Inner!Op`;
+- module-definition formals are prepended to cloned definition formals;
+- substitution wrappers use `SubstInNode` or `APSubstInNode`, not textual
+  replacement.
+
+The current compact `semanticInstanceSymbols` helper is a temporary bridge. It
+must follow these Java rules until the full generator replaces it.
+
+### Expression Generation Rules
+
+Expression generation must preserve semantic built-in operator shapes:
+
+- `N_Number`, `N_Real`, and `N_String` create value nodes;
+- identifiers and generalized identifiers resolve to symbol refs or selector
+  applications;
+- tuple, set, record, function, CASE, EXCEPT, action, fairness, and proof
+  commands become Java built-in operator applications with the same operands;
+- function definitions create `$NonRecursiveFcnSpec` or `$RecursiveFcnSpec`;
+- `@` in EXCEPT creates `AtNode`;
+- `@` in proof steps is resolved by proof-step processing before ordinary
+  expression generation;
+- operator arguments create `OpArgNode` when the formal position expects an
+  operator;
+- subexpression selectors operate on semantic nodes, after resolving the
+  longest operator prefix.
+
+The most important practical rule: do not collapse generalized identifiers to
+plain strings before semantic generation. Strings can be a bridge for the
+current compact AST, but the target generator needs structured selector
+components and selector arguments.
+
+### Level Checker Rules
+
+Port `LevelNode` as data first, then node algorithms:
+
+```go
+type sanyLevelData struct {
+    levelCorrect bool
+    level tlaLevel
+    levelParams map[*sanySymbolNode]bool
+    levelConstraints map[*sanySymbolNode]tlaLevel
+    argLevelConstraints map[sanyParamAndPosition]tlaLevel
+    argLevelParams map[sanyArgLevelParam]bool
+    allParams map[*sanySymbolNode]bool
+    nonLeibnizParams map[*sanySymbolNode]bool
+    levelChecked int
+}
+```
+
+Do not approximate this as `max(child.level)`. Port the algorithms in this
+order:
+
+1. built-in operator levels, max levels, and weights;
+2. value nodes, declarations, and formal params;
+3. operator applications of built-ins and user definitions;
+4. operator definitions;
+5. LET nodes;
+6. function-spec nodes;
+7. substitutions and instances;
+8. modules and recursive sections;
+9. theorem, assumption, ASSUME/PROVE, and proof nodes.
+
+This order gives useful XML progress while converging toward actual Java level
+checking.
+
+### XML Export Rules
+
+The final XML path should be:
+
+`sanyExternalModuleTable -> semantic module refs -> semantic SymbolContext`.
+
+The XML exporter should not allocate synthetic symbol maps by scanning the
+compact AST. Instead:
+
+- `SymbolNode.export` writes a reference and asks `SymbolContext` to record
+  the full definition;
+- `SymbolContext.put` records a UID before exporting the definition, so cycles
+  do not recurse forever;
+- `getContextElement` writes context entries;
+- module refs in `<modules>` follow external module table order;
+- Go may sort context entries for deterministic output, but not semantic child
+  order;
+- pretty-printing should match Java's readable DOM output.
+
+The current `sanyXMLExporter` is a bridge. Keep fixes small there unless they
+also move state toward semantic nodes.
+
+### Conformance Workflow
+
+The architecture-driven loop should be:
+
+1. Add or update a behavior test that names the Java behavior.
+2. Make the relevant Go phase/function match the Java owner.
+3. Run the focused behavior test.
+4. Run the smallest SANY XML corpus target/window that covers the behavior.
+5. Commit the coherent chunk.
+
+For the current corpus goal, prefer these checks:
+
+```sh
+env GOCACHE=$PWD/.codex-gocache GOTMPDIR=$PWD/.codex-gotmp go test -run 'TestResolverAndCheckerBehaviors|TestSanyContextBehaviors|TestSanyXMLBehaviors' ./
+env GOCACHE=$PWD/.codex-gocache GOTMPDIR=$PWD/.codex-gotmp TLAGO_SANY_XML_CORPUS=1 TLAGO_SANY_XML_CORPUS_START=<spec> TLAGO_SANY_XML_CORPUS_LIMIT=1 TLAGO_SANY_XML_CORPUS_MAX_FAILURES=5 TLAGO_SANY_XML_CORPUS_ARTIFACT_DIR=.codex-sany-artifacts go test -run TestSanyXMLTargetCorpusAgainstJavaSANY ./
+```
+
+Do not resume broad sweeps unless explicitly requested. Use targeted corpus
+files to confirm each architecture chunk.
