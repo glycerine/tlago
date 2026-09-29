@@ -354,7 +354,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		if want, recursive := recursiveArities[def.Name]; recursive {
 			satisfiedRecursive[def.Name] = true
 			if got := len(def.Params); got != want {
-				diags = append(diags, errorAt(def.Pos, "E1307", "recursive definition %s arity mismatch: got %d, want %d", def.Name, got, want))
+				diags = append(diags, errorAt(def.Pos, "E1307", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want))
 			}
 			if exprContainsPrime(def.Expr) {
 				diags = append(diags, errorAt(def.Pos, "E1320", "recursive definition %s cannot contain prime", def.Name))
@@ -640,7 +640,7 @@ func checkLetRecursiveSections(expr *LetExpr) Diagnostics {
 			continue
 		}
 		if got, want := len(def.Params), recursiveArities[name]; got != want {
-			diags = append(diags, errorAt(def.Pos, "E1307", "recursive definition %s arity mismatch: got %d, want %d", def.Name, got, want))
+			diags = append(diags, errorAt(def.Pos, "E1307", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want))
 		}
 		if exprContainsPrime(def.Expr) {
 			diags = append(diags, errorAt(def.Pos, "E1320", "recursive definition %s cannot contain prime", def.Name))
@@ -1666,7 +1666,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			continue
 		}
 		if got != want {
-			diags = append(diags, errorAt(inst.Pos, "E1313", "implicit INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want))
+			diags = append(diags, errorAt(inst.Pos, "E1313", "An operator must be substituted for symbol '%s', and it must have arity %d.", name, want))
 		}
 	}
 	return diags
@@ -2320,6 +2320,10 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 						}
 						if got != spec.Arity {
 							diags = append(diags, errorAt(arg.Position(), "E1319", "operator argument arity mismatch for parameter %s: got %d, want %d", spec.Name, got, spec.Arity))
+							continue
+						}
+						if operatorArgumentRequiresOperatorParam(arg, operatorParams, locals) {
+							diags = append(diags, errorAt(e.Pos, "E1319", "Argument number %d to operator '%s' should be a %d-parameter operator.", i+1, ident.Name, spec.Arity))
 						}
 					} else if fn, ok := arg.(*FunctionExpr); ok && fn.IsLambda {
 						diags = append(diags, errorAt(arg.Position(), "E1319", "expression parameter %s cannot accept a LAMBDA operator argument", spec.Name))
@@ -2453,6 +2457,19 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 		}
 	}
 	return diags
+}
+
+func operatorArgumentRequiresOperatorParam(arg Expr, operatorParams map[string][]operatorParamSpec, locals map[string]bool) bool {
+	ident, ok := arg.(*IdentExpr)
+	if !ok || localIdentifierInScope(locals, ident.Name) {
+		return false
+	}
+	for _, spec := range operatorParams[ident.Name] {
+		if spec.Arity >= 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func operatorArgumentArity(expr Expr, arities map[string]int, locals map[string]bool) (int, bool) {
