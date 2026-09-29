@@ -212,7 +212,7 @@ func (s *SanyOperatorStack) reduceWithRightPostfix(n int, oR SanyOperatorInfo) e
 		if oL.IsInfix() {
 			s.reduceInfix(oL)
 		} else {
-			s.reducePrefix()
+			s.reducePrefix(oL)
 		}
 		return nil
 	}
@@ -276,7 +276,7 @@ func (s *SanyOperatorStack) reduceWithRightInfix(n int, oR SanyOperatorInfo) err
 		if oL.IsInfix() {
 			s.reduceInfix(oL)
 		} else if oL.IsPrefix() {
-			s.reducePrefix()
+			s.reducePrefix(oL)
 		} else {
 			return fmt.Errorf("illegal combination of operators %s and %s", oL.Symbol, oR.Symbol)
 		}
@@ -314,17 +314,75 @@ func (s *SanyOperatorStack) reduceInfix(op SanyOperatorInfo) {
 	s.stackOfStacks[topIndex] = top
 }
 
-func (s *SanyOperatorStack) reducePrefix() {
+func (s *SanyOperatorStack) reducePrefix(op SanyOperatorInfo) {
 	topIndex := len(s.stackOfStacks) - 1
 	top := s.stackOfStacks[topIndex]
 	n := len(top) - 1
 	if n < 2 {
 		return
 	}
-	reduced := NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], top[n-2].Node, top[n-1].Node)
+	reduced := NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], sanyMixfixOperatorNode(top[n-2].Node, op), top[n-1].Node)
 	top = append(top[:n-1], top[n:]...)
 	top[n-2] = sanyOperatorStackElement{Node: reduced}
 	s.stackOfStacks[topIndex] = top
+}
+
+func sanyMixfixOperatorNode(node *SanySyntaxNode, op SanyOperatorInfo) *SanySyntaxNode {
+	if node == nil {
+		return nil
+	}
+	kindName := "N_GenInfixOp"
+	if op.IsPrefix() {
+		kindName = "N_GenPrefixOp"
+	} else if op.IsPostfix() {
+		kindName = "N_GenPostfixOp"
+	}
+	kind := SanySyntaxNodeKindByName[kindName]
+	if node.Kind == kind && sanyOperatorImage(node) == op.Symbol {
+		return node
+	}
+	prefix := NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"])
+	if heirs := node.GetHeirs(); len(heirs) > 0 && heirs[0].Kind.JavaName() == "N_IdPrefix" {
+		prefix = heirs[0]
+	}
+	return NewSanyNode(kind, prefix, sanyRetargetOperatorTokenNode(node, op.Symbol))
+}
+
+func sanyRetargetOperatorTokenNode(node *SanySyntaxNode, symbol string) *SanySyntaxNode {
+	tok := sanyFirstToken(node)
+	if tok == nil {
+		return nil
+	}
+	copied := *tok
+	copied.Image = symbol
+	if kind, ok := sanyLiteralTokenKind(symbol); ok {
+		copied.Kind = kind
+	}
+	return NewSanyTokenNode(&copied)
+}
+
+func sanyFirstToken(node *SanySyntaxNode) *SanyToken {
+	if node == nil {
+		return nil
+	}
+	if node.Token != nil {
+		return node.Token
+	}
+	for _, child := range node.GetHeirs() {
+		if tok := sanyFirstToken(child); tok != nil {
+			return tok
+		}
+	}
+	return nil
+}
+
+func sanyLiteralTokenKind(literal string) (SanyTokenKind, bool) {
+	for _, def := range SanyLiteralTokens {
+		if def.Literal == literal {
+			return def.Kind, true
+		}
+	}
+	return SanyTokenInvalid, false
 }
 
 func (s *SanyOperatorStack) reducePostfix() {

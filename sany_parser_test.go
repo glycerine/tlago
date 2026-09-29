@@ -769,6 +769,23 @@ App == F[x, y]
 		}
 	})
 
+	t.Run("parses raw negative sign as Java SANY prefix minus", func(t *testing.T) {
+		root, diags := ParseSanySyntax("Exprs.tla", `---- MODULE Exprs ----
+A == -(N - 1)
+====`)
+		requireNoErrors(t, diags)
+		expr := onlySanyDefinition(t, root).GetHeirs()[2]
+		if expr.Kind.JavaName() != "N_PrefixExpr" {
+			t.Fatalf("negative expression = %s heirs %v, want N_PrefixExpr", expr.Kind.JavaName(), sanyNodeKindNames(expr.GetHeirs()))
+		}
+		if got := sanyOperatorImage(expr.GetHeirs()[0]); got != "-." {
+			t.Fatalf("negative operator = %q, want %q", got, "-.")
+		}
+		if got := expr.GetHeirs()[0].Kind.JavaName(); got != "N_GenPrefixOp" {
+			t.Fatalf("negative operator node = %s, want N_GenPrefixOp", got)
+		}
+	})
+
 	t.Run("parses EXCEPT square bracket forms", func(t *testing.T) {
 		root, diags := ParseSanySyntax("Exprs.tla", `---- MODULE Exprs ----
 Except == [r EXCEPT !.a = v, ![i] = w]

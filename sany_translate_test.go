@@ -588,12 +588,15 @@ Use == OpToRel(=, {})
 
 	t.Run("checks prefix negative operator definitions at body boundaries", func(t *testing.T) {
 		_, diags := CheckSanySource("NegativeOps.tla", `---- MODULE NegativeOps ----
+EXTENDS Naturals
+CONSTANT Node, N
 RefersTo(value, name) == TRUE
 op(-._) == RefersTo(-1, "op!-.")
 CONSTANT -._
 ASSUME RefersTo(-1, "constant_negative")
 -. x == x
 ASSUME RefersTo(-1, "-.")
+Range == [Node -> -(N-1)..(N-1)]
 ====`)
 		requireNoErrors(t, diags)
 	})
