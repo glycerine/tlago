@@ -79,6 +79,7 @@ type sanyXMLExprContext struct {
 	exceptAtComponents string
 	exceptAtPos        Position
 	exceptAtLevel      tlaLevel
+	recursiveSection   int
 }
 
 type sanyXMLScope struct {
@@ -464,8 +465,9 @@ func (x *sanyXMLExporter) newDefinitionSymbol(key string, def *Definition) *sany
 }
 
 func (x *sanyXMLExporter) newSymbol(kind, key, name string, arity int, level tlaLevel, pos Position) *sanyXMLSymbol {
+	uid := x.nextGeneratedUID()
 	sym := &sanyXMLSymbol{
-		UID:   x.nextUID,
+		UID:   uid,
 		Key:   key,
 		Kind:  kind,
 		Name:  name,
@@ -473,8 +475,16 @@ func (x *sanyXMLExporter) newSymbol(kind, key, name string, arity int, level tla
 		Level: level,
 		Pos:   pos,
 	}
-	x.nextUID++
 	return sym
+}
+
+func (x *sanyXMLExporter) nextGeneratedUID() int {
+	for sanyXMLReservedBuiltinUID(x.nextUID) {
+		x.nextUID++
+	}
+	uid := x.nextUID
+	x.nextUID++
+	return uid
 }
 
 func (x *sanyXMLExporter) newLocalDefinitionSymbol(prefix string, def *Definition) *sanyXMLSymbol {
@@ -683,6 +693,10 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 			defCtx.formals[param] = sym.Params[i]
 		}
 	}
+	ownRecursiveSection := x.moduleRecursiveDefinitionSection(ctx.module, sym)
+	if ownRecursiveSection > 0 {
+		defCtx.recursiveSection = ownRecursiveSection
+	}
 	body, diags := x.exprXML(def.Expr, defCtx)
 	if diags.HasErrors() {
 		return diags
@@ -711,10 +725,15 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	if def.Local {
 		b.WriteString("<local/>")
 	}
-	if ctx.scope.defs != nil {
-		if _, ok := ctx.scope.defs[sym.Name]; ok && x.isRecursiveDefinition(ctx.module, sym.Name) {
-			b.WriteString("<recursive/>")
-		}
+	if ownRecursiveSection > 0 {
+		b.WriteString("<recursive/>")
+		b.WriteString("<recursiveSection>")
+		xmlInt(&b, ownRecursiveSection)
+		b.WriteString("</recursiveSection>")
+	} else if ctx.recursiveSection > 0 {
+		b.WriteString("<recursiveSection>")
+		xmlInt(&b, ctx.recursiveSection)
+		b.WriteString("</recursiveSection>")
 	}
 	b.WriteString("</UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
@@ -759,18 +778,25 @@ func (x *sanyXMLExporter) emitTheoremDefEntry(sym *sanyXMLSymbol, def *Definitio
 	return diags
 }
 
-func (x *sanyXMLExporter) isRecursiveDefinition(mod *Module, name string) bool {
+func (x *sanyXMLExporter) recursiveDefinitionSection(mod *Module, name string) int {
 	if mod == nil {
-		return false
+		return 0
 	}
-	for _, decl := range mod.Recursives {
+	for i, decl := range mod.Recursives {
 		for _, recursive := range decl.Names {
 			if recursive == name {
-				return true
+				return i + 1
 			}
 		}
 	}
-	return false
+	return 0
+}
+
+func (x *sanyXMLExporter) moduleRecursiveDefinitionSection(mod *Module, sym *sanyXMLSymbol) int {
+	if mod == nil || sym == nil || x.defs[x.defKey(mod.Name, sym.Name)] != sym {
+		return 0
+	}
+	return x.recursiveDefinitionSection(mod, sym.Name)
 }
 
 func (x *sanyXMLExporter) emitAssumeEntry(sym *sanyXMLSymbol, assume NamedExpr, ctx sanyXMLExprContext) Diagnostics {
@@ -2987,6 +3013,8 @@ func sanyXMLBuiltinName(name string) string {
 		return "\\land"
 	case "\\/":
 		return "\\lor"
+	case "\\X":
+		return "$CartesianProd"
 	default:
 		return name
 	}
@@ -3022,7 +3050,7 @@ func sanyXMLBuiltin(name string) sanyXMLBuiltinInfo {
 		}
 	case "$SubsetOf":
 		arity = 1
-	case "$Case", "$ConjList", "$DisjList", "$Tuple", "$Seq", "$SetEnumerate", "$RcdConstructor", "$SetOfAll", "$SetOfFcns", "$FcnConstructor", "$BoundedForall", "$BoundedExists", "$BoundedChoose", "$SetOfRcds", "$Except":
+	case "$Case", "$ConjList", "$DisjList", "$Tuple", "$Seq", "$SetEnumerate", "$RcdConstructor", "$SetOfAll", "$SetOfFcns", "$FcnConstructor", "$BoundedForall", "$BoundedExists", "$BoundedChoose", "$SetOfRcds", "$Except", "$CartesianProd":
 		arity = -1
 	case "$UnboundedForall", "$UnboundedExists", "$UnboundedChoose", "$TemporalExists", "$TemporalForall":
 		arity = 1
@@ -3117,6 +3145,8 @@ func sanyXMLStableBuiltinUID(name string) int {
 		return 137
 	case "$Pfcase":
 		return 138
+	case "$CartesianProd":
+		return 231
 	}
 	hash := 5381
 	for _, r := range name {
@@ -3126,6 +3156,15 @@ func sanyXMLStableBuiltinUID(name string) int {
 		hash = -hash
 	}
 	return 10000 + hash%1000000
+}
+
+func sanyXMLReservedBuiltinUID(uid int) bool {
+	switch uid {
+	case 1, 2, 4, 13, 15, 19, 22, 31, 40, 61, 63, 78, 79, 80, 82, 83, 84, 85, 89, 90, 96, 99, 105, 106, 107, 108, 113, 116, 125, 126, 137, 138, 231:
+		return true
+	default:
+		return false
+	}
 }
 
 func sanyXMLSourceFilename(file string) string {

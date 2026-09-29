@@ -3,6 +3,7 @@ package tlago
 import (
 	"bytes"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -286,6 +287,82 @@ A == -1
 		}
 		if !strings.Contains(got, `<uniquename>-.</uniquename>`) {
 			t.Fatalf("prefix minus XML missing unary minus definition\n%s", got)
+		}
+	})
+
+	t.Run("serializes Cartesian product as SANY CartesianProd", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("CartesianProductXML.tla", `---- MODULE CartesianProductXML ----
+A == {1} \X {2}
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>$CartesianProd</uniquename>`) {
+			t.Fatalf("Cartesian product XML missing $CartesianProd\n%s", got)
+		}
+	})
+
+	t.Run("does not reuse reserved builtin UIDs for generated symbols", func(t *testing.T) {
+		var source strings.Builder
+		source.WriteString("---- MODULE ReservedBuiltinUIDXML ----\n")
+		source.WriteString("CONSTANTS ")
+		for i := 0; i < 90; i++ {
+			if i > 0 {
+				source.WriteString(", ")
+			}
+			source.WriteString("C")
+			source.WriteString(strconv.Itoa(i))
+		}
+		source.WriteString("\nA == {1} \\X {2}\n====")
+		xmlText, diags := SanyXMLSource("ReservedBuiltinUIDXML.tla", source.String())
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Count(got, "<entry>\n      <UID>231</UID>") != 1 {
+			t.Fatalf("reserved Cartesian product UID was reused by a generated entry\n%s", got)
+		}
+		if !strings.Contains(got, "<UID>231</UID>\n      <BuiltInKind>") {
+			t.Fatalf("reserved Cartesian product UID did not belong to the builtin entry\n%s", got)
+		}
+	})
+
+	t.Run("serializes recursive definitions with a SANY recursive section", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("RecursiveSectionXML.tla", `---- MODULE RecursiveSectionXML ----
+RECURSIVE F(_)
+F(n) == IF n = 0 THEN TRUE ELSE LET y == F(n - 1) IN y
+RECURSIVE G(_)
+G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>F</uniquename>`,
+			`<recursive/>`,
+			`<recursiveSection>1</recursiveSection>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("recursive definition XML missing %q\n%s", want, got)
+			}
+		}
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		if g < 0 {
+			t.Fatalf("recursive definition XML missing definition G\n%s", got)
+		}
+		if !strings.Contains(got[g:], `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("second recursive definition did not use recursive section 2\n%s", got[g:])
+		}
+		y := strings.Index(got, `<uniquename>y</uniquename>`)
+		if y < 0 {
+			t.Fatalf("recursive definition XML missing local definition y\n%s", got)
+		}
+		yEntryEnd := strings.Index(got[y:], `</UserDefinedOpKind>`)
+		if yEntryEnd < 0 {
+			t.Fatalf("recursive local definition XML has unterminated entry\n%s", got[y:])
+		}
+		yEntry := got[y : y+yEntryEnd]
+		if strings.Contains(yEntry, `<recursive/>`) || !strings.Contains(yEntry, `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("recursive local definition did not inherit only recursive section 1\n%s", yEntry)
 		}
 	})
 

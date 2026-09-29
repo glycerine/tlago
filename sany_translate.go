@@ -945,7 +945,7 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 		diags := append(leftDiags, rightDiags...)
 		return &BinaryExpr{Op: sanyASTOperator(sanyOperatorImage(heirs[1])), Left: left, Right: right, Pos: sanyNodePosition(node), JunctionList: node.JunctionList}, diags
 	case "N_Times":
-		return sanyBinaryExpression(node, "\\times")
+		return sanyBinaryExpression(node, sanyNaryOperator(node, "\\times"))
 	case "N_PrefixExpr":
 		heirs := node.GetHeirs()
 		if len(heirs) < 2 {
@@ -1094,6 +1094,17 @@ func sanyBinaryExpression(node *SanySyntaxNode, op string) (Expr, Diagnostics) {
 		left = &BinaryExpr{Op: op, Left: left, Right: right, Pos: sanyNodePosition(node)}
 	}
 	return left, diags
+}
+
+func sanyNaryOperator(node *SanySyntaxNode, fallback string) string {
+	for _, child := range node.GetHeirs() {
+		if child != nil && child.Kind.JavaName() == "N_GenInfixOp" {
+			if op := sanyASTOperator(sanyOperatorImage(child)); op != "" {
+				return op
+			}
+		}
+	}
+	return fallback
 }
 
 func sanyBinaryOperandChildren(node *SanySyntaxNode, op string) []*SanySyntaxNode {
@@ -1992,6 +2003,9 @@ func sanyOperatorImage(node *SanySyntaxNode) string {
 }
 
 func sanyASTOperator(op string) string {
+	if op == "\\X" {
+		return "\\X"
+	}
 	canonical := ResolveSanyOperatorSynonym(op)
 	switch canonical {
 	case "\\land":
