@@ -108,6 +108,10 @@ func NewSanyParser(tokens []*SanyToken, diags Diagnostics) *SanyParser {
 	return &SanyParser{tokens: tokens, diags: diags}
 }
 
+func (p *SanyParser) Diagnostics() Diagnostics {
+	return append(Diagnostics(nil), p.diags...)
+}
+
 func SanyModuleName(root *SanySyntaxNode) string {
 	if root == nil || root.Kind.JavaName() != "N_Module" {
 		return ""
@@ -801,34 +805,24 @@ func (p *SanyParser) StepStartToken() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ExpressionUntilProofBoundary() *SanySyntaxNode {
-	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		return p.isProofBoundaryAfterExpressionStart(tok, startLine)
+		return p.isProofBoundary(tok)
 	})
 }
 
 func (p *SanyParser) ExpressionUntilCommaOrProofBoundary() *SanySyntaxNode {
-	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		return tok.Kind == SanyTokenComma || p.isProofBoundaryAfterExpressionStart(tok, startLine)
+		return tok.Kind == SanyTokenComma || p.isProofBoundary(tok)
 	})
 }
 
 func (p *SanyParser) ExpressionUntilAssumeProveBoundary() *SanySyntaxNode {
-	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenComma ||
 			tok.Kind == SanyTokenProve ||
 			tok.Kind == SanyTokenBoxprove ||
-			p.isProofBoundaryAfterExpressionStart(tok, startLine)
+			p.isProofBoundary(tok)
 	})
-}
-
-func (p *SanyParser) isProofBoundaryAfterExpressionStart(tok *SanyToken, startLine int) bool {
-	if tok != nil && tok.Begin.Line == startLine && isSanyProofStepStartKind(tok.Kind) {
-		return false
-	}
-	return p.isProofBoundary(tok)
 }
 
 func (p *SanyParser) atProofBoundary() bool {
@@ -1302,8 +1296,13 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 	stack.NewStack()
 	sawExpressionToken := false
 	for {
-		if sawExpressionToken && stop(p.peek()) && !(stack.PreInEmptyTop() && p.startsJunctionList(stop)) {
-			break
+		if sawExpressionToken && stop(p.peek()) {
+			if !stack.PreInEmptyTop() {
+				break
+			}
+			if !p.startsJunctionList(stop) && !isSanyProofStepStartKind(p.peek().Kind) {
+				break
+			}
 		}
 		if p.splitLeadingFairnessIdentifier() {
 			continue

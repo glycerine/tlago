@@ -10,8 +10,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/ProofTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestProofTests_test(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	for _, tc := range []struct {
 		proof    string
 		expected sanyProofAST
@@ -48,13 +46,21 @@ func TestProofTests_test(t *testing.T) {
 		},
 	} {
 		t.Run(tc.proof, func(t *testing.T) {
-			source := "---- MODULE Test ----\nTHEOREM T == TRUE\n" + tc.proof + "\n===="
-			root, diags := tlago.ParseSanySyntax("Test.tla", source)
-			requireNoSANYDiagnostics(t, "parse", diags)
-			actual := findSANYNodeByJavaKind(root, "N_Proof")
-			matchSANYProofAST(t, tc.expected, actual)
+			matchSANYProofAST(t, tc.expected, parseSANYProofFragment(t, tc.proof))
 		})
 	}
+}
+
+func parseSANYProofFragment(t *testing.T, proof string) *tlago.SanySyntaxNode {
+	t.Helper()
+	tokenizer := tlago.NewSanyTokenManager("Test.tla", proof)
+	tokenizer.SwitchTo(tlago.SanyLexSpec)
+	tokens, lexDiags := tokenizer.LexAll()
+	requireNoSANYDiagnostics(t, "tokenize", lexDiags)
+	parser := tlago.NewSanyParser(tokens, nil)
+	actual := parser.Proof()
+	requireNoSANYDiagnostics(t, "parse", parser.Diagnostics())
+	return actual
 }
 
 type sanyProofKind int
