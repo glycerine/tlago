@@ -1,0 +1,295 @@
+package tlc
+
+import (
+	"fmt"
+	"strings"
+	"sync"
+)
+
+const (
+	NoError = 0
+
+	ECUnknown  = -1
+	ECUnitTest = -123456
+
+	ECGeneral                      = 1000
+	ECSystemOutOfMemory            = 1001
+	ECSystemOutOfMemoryTooManyInit = 1002
+	ECSystemOutOfMemoryLiveness    = 1003
+	ECSystemStackOverflow          = 1005
+
+	ECWrongCommandlineParamsSimulator = 1101
+	ECWrongCommandlineParamsTLC       = 1102
+
+	ECTLCMetadirExists                                   = 2100
+	ECTLCMetadirCanNotBeCreated                          = 2101
+	ECTLCInitialState                                    = 2102
+	ECTLCNestedExpression                                = 2103
+	ECTLCAssumptionFalse                                 = 2104
+	ECTLCAssumptionEvaluationError                       = 2105
+	ECTLCStateNotCompletelySpecifiedInitial              = 2106
+	ECTLCInvariantViolatedInitial                        = 2107
+	ECTLCPropertyViolatedInitial                         = 2108
+	ECTLCStateNotCompletelySpecifiedNext                 = 2109
+	ECTLCInvariantViolatedBehavior                       = 2110
+	ECTLCInvariantEvaluationFailed                       = 2111
+	ECTLCActionPropertyViolatedBehavior                  = 2112
+	ECTLCActionPropertyEvaluationFailed                  = 2113
+	ECTLCDeadlockReached                                 = 2114
+	ECTLCStatesAndNoNextAction                           = 2115
+	ECTLCTemporalPropertyViolated                        = 2116
+	ECTLCFailedToRecoverNext                             = 2117
+	ECTLCNoStatesSatisfyingInit                          = 2118
+	ECTLCStringModuleNotFound                            = 2119
+	ECTLCErrorState                                      = 2120
+	ECTLCBehaviorUpToThisPoint                           = 2121
+	ECTLCBackToState                                     = 2122
+	ECTLCFailedToRecoverInit                             = 2123
+	ECTLCReporterDied                                    = 2124
+	ECSystemErrorReadingPool                             = 2125
+	ECSystemCheckpointRecoveryCorrupt                    = 2126
+	ECSystemErrorWritingPool                             = 2127
+	ECTLCBug                                             = 2128
+	ECSystemDiskgraphAccess                              = 2129
+	ECTLCRegistryInitError                               = 2131
+	ECTLCValueAssertFailed                               = 2132
+	ECTLCFPNotInSet                                      = 2133
+	ECSystemIndexError                                   = 2134
+	ECSystemStreamEmpty                                  = 2135
+	ECTLCParameterMustBePostfix                          = 2136
+	ECSystemFileNull                                     = 2137
+	ECSystemInterrupted                                  = 2138
+	ECTLCCouldNotDetermineSubscript                      = 2139
+	ECTLCSubscriptContainNoStateVar                      = 2140
+	ECTLCWrongTupleFieldName                             = 2141
+	ECTLCWrongRecordFieldName                            = 2142
+	ECTLCUnchangedVariableChanged                        = 2143
+	ECTLCExceptAppliedToUnknownField                     = 2144
+	ECTLCModuleTLCGetUndefined                           = 2145
+	ECTLCInvariantViolatedLevel                          = 2146
+	ECTLCFingerprintException                            = 2147
+	ECTLCStateNotCompletelySpecifiedLive                 = 2148
+	ECTLCInvariantConstantLevel                          = 2149
+	ECTLCModuleValueJavaMethodOverride                   = 2154
+	ECTLCModuleCompareValue                              = 2155
+	ECTLCFeatureUnsupported                              = 2156
+	ECTLCModuleTransitiveClosure                         = 2157
+	ECTLCModuleCheckMemberOf                             = 2158
+	ECTLCLiveBEGraphFailedToConstruct                    = 2159
+	ECSystemUnableNotRenameFile                          = 2160
+	ECSystemDiskIOErrorForFile                           = 2161
+	ECSystemMetadirExists                                = 2162
+	ECSystemMetadirCreationError                         = 2163
+	ECTLCChooseArgumentsWrong                            = 2164
+	ECTLCChooseUpperBound                                = 2165
+	ECTLCFPValueAlreadyOnDisk                            = 2166
+	ECSystemUnableToOpenFile                             = 2167
+	ECTLCModuleValueJavaMethodOverrideLoaded             = 2168
+	ECTLCModuleArgumentError                             = 2169
+	ECTLCArgumentMismatch                                = 2170
+	ECTLCParsingFailed2                                  = 2171
+	ECTLCTooManyPossibleStates                           = 2172
+	ECTLCErrorReplacingModules                           = 2173
+	ECSystemErrorReadingStates                           = 2174
+	ECSystemErrorWritingStates                           = 2175
+	ECTLCModuleApplyingToWrongValue                      = 2176
+	ECTLCModuleBagUnion1                                 = 2177
+	ECTLCModuleOverflow                                  = 2178
+	ECTLCModuleDivisionByZero                            = 2179
+	ECTLCModuleNullPowerNull                             = 2180
+	ECTLCModuleComputingCardinality                      = 2181
+	ECTLCModuleEvaluating                                = 2182
+	ECTLCModuleArgumentNotInDomain                       = 2183
+	ECTLCModuleApplyEmptySeq                             = 2184
+	ECTLCStarting                                        = 2185
+	ECTLCFinished                                        = 2186
+	ECTLCModeMC                                          = 2187
+	ECTLCModeSimu                                        = 2188
+	ECTLCComputingInit                                   = 2189
+	ECTLCInitGenerated1                                  = 2190
+	ECTLCInitGenerated2                                  = 2191
+	ECTLCCheckingTemporalProps                           = 2192
+	ECTLCSuccess                                         = 2193
+	ECTLCSearchDepth                                     = 2194
+	ECTLCCheckpointStart                                 = 2195
+	ECTLCCheckpointEnd                                   = 2196
+	ECTLCCheckpointRecoverStart                          = 2197
+	ECTLCCheckpointRecoverEnd                            = 2198
+	ECTLCStats                                           = 2199
+	ECTLCProgressStats                                   = 2200
+	ECTLCCoverageStart                                   = 2201
+	ECTLCCoverageEnd                                     = 2202
+	ECTLCCheckpointRecoverEndDFID                        = 2203
+	ECTLCStatsDFID                                       = 2204
+	ECTLCProgressStartStatsDFID                          = 2205
+	ECTLCProgressStatsDFID                               = 2206
+	ECTLCInitGenerated3                                  = 2207
+	ECTLCInitGenerated4                                  = 2208
+	ECTLCProgressSimu                                    = 2209
+	ECTLCStatsSimu                                       = 2210
+	ECTLCFPCompleted                                     = 2211
+	ECTLCLiveImplied                                     = 2212
+	ECTLCStatePrint3                                     = 2218
+	ECTLCSanyEnd                                         = 2219
+	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
+	ECTLCModuleArgumentErrorAn                           = 2266
+	ECTLCCheckingTemporalPropsEnd                        = 2267
+	ECTLCStateGraphOutdegree                             = 2268
+	ECTLCComputingInitProgress                           = 2269
+	ECSystemErrorCleaningPool                            = 2270
+	ECTLCModeMCDFS                                       = 2271
+	ECTLCFeatureUnsupportedLivenessSymmetry              = 2279
+	ECTLCModuleOneArgumentError                          = 2283
+	ECTLCFeatureLivenessConstraints                      = 2284
+	ECTLCSymmetrySetTooSmall                             = 2300
+	ECTLCSpecificationFeaturesTemporalQuantifier         = 2301
+	ECTLCModuleValueJavaMethodOverrideMismatch           = 2400
+	ECTLCModuleValueJavaMethodOverrideModuleMismatch     = 2402
+	ECTLCModuleValueJavaMethodOverrideIdentifierMismatch = 2403
+	ECTLCPostconditionFalse                              = 2404
+	ECTLCPostconditionEvaluationError                    = 2405
+	ECTLCPossibleUnwitnessed                             = 2780
+	ECTLCParsingFailed                                   = 3002
+
+	ECCFGErrorReadingFile = 5001
+	ECCFGGeneral          = 5002
+	ECCFGMissingID        = 5003
+	ECCFGTwiceKeyword     = 5004
+	ECCFGExpectID         = 5005
+	ECCFGExpectedSymbol   = 5006
+
+	ECTLCModuleOverrideStdout = 20000
+)
+
+type Severity int
+
+const (
+	SeverityNone Severity = iota
+	SeverityError
+	SeverityTLCBug
+	SeverityWarning
+	SeverityState
+)
+
+type Message struct {
+	Code     int
+	Severity Severity
+	Params   []string
+	Text     string
+}
+
+type MessageRecorder interface {
+	Record(Message)
+}
+
+type RecorderFunc func(Message)
+
+func (f RecorderFunc) Record(msg Message) {
+	f(msg)
+}
+
+type BroadcastRecorder struct {
+	mu        sync.Mutex
+	recorders []MessageRecorder
+}
+
+func (b *BroadcastRecorder) Add(rec MessageRecorder) {
+	if rec == nil {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.recorders = append(b.recorders, rec)
+}
+
+func (b *BroadcastRecorder) Clear() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.recorders = nil
+}
+
+func (b *BroadcastRecorder) Record(msg Message) {
+	b.mu.Lock()
+	recorders := append([]MessageRecorder(nil), b.recorders...)
+	b.mu.Unlock()
+
+	for _, rec := range recorders {
+		rec.Record(msg)
+	}
+}
+
+type MemoryRecorder struct {
+	mu       sync.Mutex
+	Messages []Message
+}
+
+func (r *MemoryRecorder) Record(msg Message) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.Messages = append(r.Messages, msg)
+}
+
+func (r *MemoryRecorder) Recorded(code int) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, msg := range r.Messages {
+		if msg.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *MemoryRecorder) Records(code int) []Message {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var out []Message
+	for _, msg := range r.Messages {
+		if msg.Code == code {
+			out = append(out, msg)
+		}
+	}
+	return out
+}
+
+var defaultRecorder BroadcastRecorder
+
+func AddMessageRecorder(rec MessageRecorder) {
+	defaultRecorder.Add(rec)
+}
+
+func ClearMessageRecorders() {
+	defaultRecorder.Clear()
+}
+
+func PrintMessage(code int, params ...string) int {
+	recordMessage(code, SeverityNone, params...)
+	return code
+}
+
+func PrintWarning(code int, params ...string) int {
+	recordMessage(code, SeverityWarning, params...)
+	return code
+}
+
+func PrintError(code int, params ...string) int {
+	recordMessage(code, SeverityError, params...)
+	return code
+}
+
+func recordMessage(code int, severity Severity, params ...string) {
+	copied := append([]string(nil), params...)
+	defaultRecorder.Record(Message{
+		Code:     code,
+		Severity: severity,
+		Params:   copied,
+		Text:     formatMessage(code, copied),
+	})
+}
+
+func formatMessage(code int, params []string) string {
+	if len(params) == 0 {
+		return fmt.Sprintf("%d", code)
+	}
+	return fmt.Sprintf("%d %s", code, strings.Join(params, " "))
+}
