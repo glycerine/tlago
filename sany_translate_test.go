@@ -1619,8 +1619,7 @@ Inc(n) == n + 1
 UseF == F(1)
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
-CONSTANT G(_)
-INSTANCE Helper WITH C <- 1, F <- G, Inc <- 1
+INSTANCE Helper WITH C <- 1, F <- 1
 ====`)
 		spec, diags := LoadSanySpec(root, LoadOptions{})
 		requireNoErrors(t, diags)
