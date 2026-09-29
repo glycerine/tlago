@@ -43,3 +43,13 @@ func requireSANYNodeKind(t *testing.T, node *tlago.SanySyntaxNode, kind string) 
 		t.Fatalf("SANY node kind = %s, want %s", got, kind)
 	}
 }
+
+func checkedSANYXMLForPath(t *testing.T, path string) string {
+	t.Helper()
+	spec, diags := tlago.LoadSanySpec(path, tlago.LoadOptions{})
+	requireNoSANYDiagnostics(t, "parse", diags)
+	requireNoSANYDiagnostics(t, "semantic", tlago.CheckSpec(spec))
+	xmlText, xmlDiags := tlago.SanyXML(spec)
+	requireNoSANYDiagnostics(t, "xml", xmlDiags)
+	return string(xmlText)
+}
