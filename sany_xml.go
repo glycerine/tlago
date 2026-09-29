@@ -42,6 +42,8 @@ type sanyXMLExporter struct {
 	instDefs        map[string]*sanyXMLSymbol
 	instParams      map[string][]*sanyXMLSymbol
 	letDefs         map[*LetExpr][]*sanyXMLSymbol
+	letRecOffsets   map[string]int
+	letRecIndexed   map[*Module]bool
 	localDefs       map[string]*sanyXMLSymbol
 	letInsts        map[string]*sanyXMLSymbol
 	letInstDefs     map[string]*sanyXMLSymbol
@@ -219,6 +221,8 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		instDefs:        map[string]*sanyXMLSymbol{},
 		instParams:      map[string][]*sanyXMLSymbol{},
 		letDefs:         map[*LetExpr][]*sanyXMLSymbol{},
+		letRecOffsets:   map[string]int{},
+		letRecIndexed:   map[*Module]bool{},
 		localDefs:       map[string]*sanyXMLSymbol{},
 		letInsts:        map[string]*sanyXMLSymbol{},
 		letInstDefs:     map[string]*sanyXMLSymbol{},
@@ -2257,6 +2261,52 @@ func moduleRecursiveSectionCount(mod *Module) int {
 	return maxSection
 }
 
+func (x *sanyXMLExporter) letRecursiveSectionOffset(mod *Module, expr *LetExpr) int {
+	if mod == nil || expr == nil {
+		return 0
+	}
+	if !x.letRecIndexed[mod] {
+		x.indexLetRecursiveSections(mod)
+	}
+	return x.letRecOffsets[sanyXMLLetRecursiveKey(mod, expr)]
+}
+
+func (x *sanyXMLExporter) indexLetRecursiveSections(mod *Module) {
+	if mod == nil {
+		return
+	}
+	x.letRecIndexed[mod] = true
+	lets := sanyXMLModuleLetExprs(mod)
+	sort.SliceStable(lets, func(i, j int) bool {
+		return sanyXMLPositionBefore(lets[i].Position(), lets[j].Position())
+	})
+	offset := moduleRecursiveSectionCount(mod)
+	seen := map[string]bool{}
+	for _, expr := range lets {
+		key := sanyXMLLetRecursiveKey(mod, expr)
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		sections := letRecursiveDefinitionSections(expr)
+		if len(sections) == 0 {
+			continue
+		}
+		x.letRecOffsets[key] = offset
+		offset += recursiveSectionCount(sections)
+	}
+}
+
+func recursiveSectionCount(sections map[string]int) int {
+	maxSection := 0
+	for _, section := range sections {
+		if section > maxSection {
+			maxSection = section
+		}
+	}
+	return maxSection
+}
+
 func offsetRecursiveSections(sections map[string]int, offset int) map[string]int {
 	if len(sections) == 0 || offset == 0 {
 		return sections
@@ -2292,6 +2342,210 @@ func recursiveDeclarationsAreContiguous(prev, next Declaration) bool {
 		prevEnd = prev.Pos.Line
 	}
 	return prevEnd > 0 && next.Pos.Line == prevEnd+1
+}
+
+func sanyXMLLetRecursiveKey(mod *Module, expr *LetExpr) string {
+	if mod == nil || expr == nil {
+		return ""
+	}
+	pos := expr.Position()
+	file := pos.File
+	if file == "" {
+		file = mod.SourcePath
+	}
+	names := make([]string, 0, len(expr.Recursives))
+	for _, decl := range expr.Recursives {
+		names = append(names, decl.Names...)
+	}
+	return fmt.Sprintf("let-rec:%s:%s:%d:%d:%d:%d:%s", mod.Name, file, pos.Line, pos.Column, pos.EndLine, pos.EndColumn, strings.Join(names, ","))
+}
+
+func sanyXMLPositionBefore(a, b Position) bool {
+	if a.Line != b.Line {
+		return a.Line < b.Line
+	}
+	if a.Column != b.Column {
+		return a.Column < b.Column
+	}
+	if a.EndLine != b.EndLine {
+		return a.EndLine < b.EndLine
+	}
+	if a.EndColumn != b.EndColumn {
+		return a.EndColumn < b.EndColumn
+	}
+	return a.File < b.File
+}
+
+func sanyXMLModuleLetExprs(mod *Module) []*LetExpr {
+	if mod == nil {
+		return nil
+	}
+	var out []*LetExpr
+	for _, inst := range mod.Instances {
+		sanyXMLCollectInstanceLetExprs(inst, &out)
+	}
+	for i := range mod.Definitions {
+		def := &mod.Definitions[i]
+		sanyXMLCollectLetExprs(def.Expr, &out)
+		sanyXMLCollectAssumeProveLetExprs(def.AssumeProveBody, &out)
+	}
+	for i := range mod.Assumptions {
+		assumption := &mod.Assumptions[i]
+		sanyXMLCollectLetExprs(assumption.Expr, &out)
+		sanyXMLCollectAssumeProveLetExprs(assumption.AssumeProveBody, &out)
+	}
+	for i := range mod.Theorems {
+		theorem := &mod.Theorems[i]
+		sanyXMLCollectLetExprs(theorem.Expr, &out)
+		sanyXMLCollectAssumeProveLetExprs(theorem.AssumeProveBody, &out)
+	}
+	for i := range mod.Proofs {
+		sanyXMLCollectProofLetExprs(&mod.Proofs[i], &out)
+	}
+	return out
+}
+
+func sanyXMLCollectInstanceLetExprs(inst Instance, out *[]*LetExpr) {
+	for _, subst := range inst.SubstitutionList {
+		sanyXMLCollectLetExprs(subst.Expr, out)
+	}
+	for _, expr := range inst.Substitutions {
+		sanyXMLCollectLetExprs(expr, out)
+	}
+}
+
+func sanyXMLCollectAssumeProveLetExprs(body *AssumeProve, out *[]*LetExpr) {
+	if body == nil {
+		return
+	}
+	for i := range body.Assumptions {
+		item := &body.Assumptions[i]
+		sanyXMLCollectLetExprs(item.Expr, out)
+		sanyXMLCollectAssumeProveLetExprs(item.Nested, out)
+		if item.NewSymbol != nil {
+			sanyXMLCollectLetExprs(item.NewSymbol.Domain, out)
+		}
+	}
+	sanyXMLCollectLetExprs(body.Prove, out)
+}
+
+func sanyXMLCollectProofLetExprs(proof *ProofSummary, out *[]*LetExpr) {
+	if proof == nil {
+		return
+	}
+	sanyXMLCollectLetExprs(proof.Goal, out)
+	for i := range proof.Steps {
+		step := &proof.Steps[i]
+		sanyXMLCollectLetExprs(step.Expr, out)
+		for _, expr := range step.Exprs {
+			sanyXMLCollectLetExprs(expr, out)
+		}
+		for _, bound := range step.Bounds {
+			sanyXMLCollectLetExprs(bound.Set, out)
+		}
+	}
+}
+
+func sanyXMLCollectLetExprs(expr Expr, out *[]*LetExpr) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *IdentExpr, *LiteralExpr:
+		return
+	case *UnaryExpr:
+		sanyXMLCollectLetExprs(e.Expr, out)
+	case *BinaryExpr:
+		sanyXMLCollectLetExprs(e.Left, out)
+		sanyXMLCollectLetExprs(e.Right, out)
+	case *CallExpr:
+		sanyXMLCollectLetExprs(e.Callee, out)
+		for _, arg := range e.Args {
+			sanyXMLCollectLetExprs(arg, out)
+		}
+	case *IfExpr:
+		sanyXMLCollectLetExprs(e.Cond, out)
+		sanyXMLCollectLetExprs(e.Then, out)
+		sanyXMLCollectLetExprs(e.Else, out)
+	case *LetExpr:
+		*out = append(*out, e)
+		for i := range e.Definitions {
+			def := &e.Definitions[i]
+			sanyXMLCollectLetExprs(def.Expr, out)
+			sanyXMLCollectAssumeProveLetExprs(def.AssumeProveBody, out)
+		}
+		for _, inst := range e.Instances {
+			sanyXMLCollectInstanceLetExprs(inst, out)
+		}
+		sanyXMLCollectLetExprs(e.Body, out)
+	case *QuantifierExpr:
+		sanyXMLCollectLetExprs(e.Set, out)
+		sanyXMLCollectLetExprs(e.Body, out)
+	case *CaseExpr:
+		for _, arm := range e.Arms {
+			sanyXMLCollectLetExprs(arm.Test, out)
+			sanyXMLCollectLetExprs(arm.Value, out)
+		}
+		sanyXMLCollectLetExprs(e.Other, out)
+	case *ChooseExpr:
+		sanyXMLCollectLetExprs(e.Set, out)
+		sanyXMLCollectLetExprs(e.Body, out)
+	case *TupleExpr:
+		for _, elem := range e.Elems {
+			sanyXMLCollectLetExprs(elem, out)
+		}
+	case *SetExpr:
+		for _, elem := range e.Elems {
+			sanyXMLCollectLetExprs(elem, out)
+		}
+	case *RecordExpr:
+		for _, field := range e.Fields {
+			sanyXMLCollectLetExprs(field.Value, out)
+		}
+	case *RecordComponentExpr:
+		sanyXMLCollectLetExprs(e.Record, out)
+	case *RecordSetExpr:
+		for _, field := range e.Fields {
+			sanyXMLCollectLetExprs(field.Set, out)
+		}
+	case *FunctionExpr:
+		for _, bound := range e.Bounds {
+			sanyXMLCollectLetExprs(bound.Set, out)
+		}
+		sanyXMLCollectLetExprs(e.Body, out)
+	case *FunctionAppExpr:
+		sanyXMLCollectLetExprs(e.Function, out)
+		for _, arg := range e.Args {
+			sanyXMLCollectLetExprs(arg, out)
+		}
+	case *ExceptExpr:
+		sanyXMLCollectLetExprs(e.Base, out)
+		for _, spec := range e.Specs {
+			for _, component := range spec.Components {
+				for _, index := range component.Indices {
+					sanyXMLCollectLetExprs(index, out)
+				}
+			}
+			sanyXMLCollectLetExprs(spec.Value, out)
+		}
+	case *LabelExpr:
+		sanyXMLCollectLetExprs(e.Body, out)
+	case *ActionExpr:
+		sanyXMLCollectLetExprs(e.Action, out)
+		sanyXMLCollectLetExprs(e.Subscript, out)
+	case *FairnessExpr:
+		sanyXMLCollectLetExprs(e.Action, out)
+		sanyXMLCollectLetExprs(e.Subscript, out)
+	case *FunctionSetExpr:
+		sanyXMLCollectLetExprs(e.Domain, out)
+		sanyXMLCollectLetExprs(e.Range, out)
+	case *SetComprehensionExpr:
+		for _, bound := range e.Bounds {
+			sanyXMLCollectLetExprs(bound.Set, out)
+		}
+		sanyXMLCollectLetExprs(e.Element, out)
+		sanyXMLCollectLetExprs(e.Predicate, out)
+	}
 }
 
 func (x *sanyXMLExporter) moduleRecursiveDefinitionSection(mod *Module, sym *sanyXMLSymbol) int {
@@ -4480,7 +4734,7 @@ func (x *sanyXMLExporter) prepareLetContext(e *LetExpr, ctx sanyXMLExprContext) 
 	letCtx := ctx
 	letCtx.defs = copySanyXMLSymbolMap(ctx.defs)
 	letCtx.scope = copySanyXMLScope(ctx.scope)
-	letCtx.localRecursiveDefs = offsetRecursiveSections(letRecursiveDefinitionSections(e), moduleRecursiveSectionCount(ctx.module))
+	letCtx.localRecursiveDefs = offsetRecursiveSections(letRecursiveDefinitionSections(e), x.letRecursiveSectionOffset(ctx.module, e))
 	localDefs := x.letDefs[e]
 	if len(localDefs) != len(e.Definitions) {
 		localDefs = make([]*sanyXMLSymbol, 0, len(e.Definitions))

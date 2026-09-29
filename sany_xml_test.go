@@ -4603,6 +4603,40 @@ Use ==
 		}
 	})
 
+	t.Run("LET RECURSIVE sections advance in module source order", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetRecursiveSourceOrderXML.tla", `---- MODULE LetRecursiveSourceOrderXML ----
+First ==
+  LET RECURSIVE F(_)
+      F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+  IN F(1)
+Second ==
+  LET RECURSIVE G(_)
+      G(n) == IF n = 0 THEN TRUE ELSE G(n - 1)
+  IN G(1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		f := strings.Index(got, `<uniquename>F</uniquename>`)
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		if f < 0 || g < 0 {
+			t.Fatalf("LET recursive definitions missing\n%s", got)
+		}
+		fEntryEnd := strings.Index(got[f:], `</UserDefinedOpKind>`)
+		gEntryEnd := strings.Index(got[g:], `</UserDefinedOpKind>`)
+		if fEntryEnd < 0 || gEntryEnd < 0 {
+			t.Fatalf("LET recursive definitions have unterminated entries\n%s", got)
+		}
+		fEntry := got[f : f+fEntryEnd]
+		gEntry := got[g : g+gEntryEnd]
+		if !strings.Contains(fEntry, `<recursiveSection>1</recursiveSection>`) {
+			t.Fatalf("first LET recursive definition did not use recursive section 1\n%s", fEntry)
+		}
+		if !strings.Contains(gEntry, `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("second LET recursive definition did not use recursive section 2\n%s", gEntry)
+		}
+	})
+
 	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ----
 VARIABLE x
