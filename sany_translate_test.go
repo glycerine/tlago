@@ -1563,6 +1563,21 @@ INSTANCE Helper WITH C <- 1, F <- G, Inc <- 1
 		requireHasErrorContaining(t, sem, "arity")
 	})
 
+	t.Run("allows LAMBDA substitutions for operator parameters", func(t *testing.T) {
+		dir := t.TempDir()
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANT Constraint(_, _)
+Use == Constraint(1, 2)
+====`)
+		writeFile(t, root, `---- MODULE Root ----
+INSTANCE Helper WITH Constraint <- LAMBDA s, l : TRUE
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("checks INSTANCE substitution targets and required assignments", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")

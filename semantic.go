@@ -1849,6 +1849,9 @@ func substitutionExprArity(expr Expr, arities map[string]int) int {
 			return arity
 		}
 	}
+	if lambda, ok := expr.(*FunctionExpr); ok && lambda.IsLambda {
+		return len(lambda.Bounds)
+	}
 	return 0
 }
 
