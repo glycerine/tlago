@@ -573,7 +573,7 @@ func (p *SanyParser) ProofOperatorOrFunctionDefinition() *SanySyntaxNode {
 		return p.ProofOperatorDefinition(p.PostfixLHS())
 	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
 		return p.ProofOperatorDefinition(p.InfixLHS())
-	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenDef && p.tokenAt(2).Kind == SanyTokenInstance:
+	case p.startsModuleDefinitionHeadAt(0):
 		return p.ModuleDefinition()
 	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
 		return p.ProofOperatorDefinition(p.IdentLHS())
@@ -1673,7 +1673,7 @@ func (p *SanyParser) LetOperatorOrFunctionDefinition() *SanySyntaxNode {
 		return p.LetOperatorDefinition(p.PostfixLHS())
 	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
 		return p.LetOperatorDefinition(p.InfixLHS())
-	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenDef && p.tokenAt(2).Kind == SanyTokenInstance:
+	case p.startsModuleDefinitionHeadAt(0):
 		return p.ModuleDefinition()
 	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
 		return p.LetOperatorDefinition(p.IdentLHS())

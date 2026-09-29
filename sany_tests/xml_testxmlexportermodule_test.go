@@ -15,8 +15,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/xml/TestXMLExporterModule.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestXMLExporterModule_testExportDieHardModule(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, xmlText := checkedXMLExporterModule(t, "DieHard.tla")
 	if root.Name != "modules" {
 		t.Fatalf("root element = %s, want modules", root.Name)
@@ -57,8 +55,6 @@ func TestTestXMLExporterModule_testExportDieHardModule(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testExportCaseOtherModule(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "CaseOtherXml.tla")
 	for _, node := range xmlDescendants(root, "StringNode") {
 		if child := xmlOnlyChildNamed(node, "StringValue"); child != nil && strings.TrimSpace(child.text()) == "$Other" {
@@ -99,8 +95,6 @@ func TestTestXMLExporterModule_testExportWithRestrictedMode(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testRelationPreComments(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Echo", "Relation.tla")
 	preComments := xmlDescendants(root, "pre-comments")
 	if len(preComments) == 0 {
@@ -120,8 +114,6 @@ func TestTestXMLExporterModule_testRelationPreComments(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testTLACommentStylesPreComments(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "TLACommentStyles.tla")
 	preComments := xmlDescendants(root, "pre-comments")
 	if got := len(preComments); got != 4 {
@@ -162,8 +154,6 @@ func TestTestXMLExporterModule_testTLACommentStylesPreComments(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testNestedModuleIsChildOfEnclosingModule(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "NestedModuleXml.tla")
 	nested := xmlNestedModules(root)
 	requireXMLStringList(t, nested["NestedModuleXml"], []string{"Instantiated", "Standalone"}, "nested modules of NestedModuleXml")
@@ -176,8 +166,6 @@ func TestTestXMLExporterModule_testNestedModuleIsChildOfEnclosingModule(t *testi
 }
 
 func TestTestXMLExporterModule_testNestedModuleIsNotInheritedThroughExtends(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "NestedModuleXmlExtender.tla")
 	nested := xmlNestedModules(root)
 	requireXMLStringList(t, nested["NestedModuleXmlBase"], []string{"Sub"}, "nested modules of NestedModuleXmlBase")
@@ -187,8 +175,6 @@ func TestTestXMLExporterModule_testNestedModuleIsNotInheritedThroughExtends(t *t
 }
 
 func TestTestXMLExporterModule_testLetInstanceOfEmptyModuleExportsModuleInstanceRef(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Github1417.tla")
 	requireXMLStringList(t, xmlLetInOpDefKinds(t, root, "op"), []string{"ModuleInstanceKindRef"}, "op LET opDefs")
 	instance := xmlReferent(t, root, xmlLetInOpDefs(t, root, "op")[0])
@@ -201,8 +187,6 @@ func TestTestXMLExporterModule_testLetInstanceOfEmptyModuleExportsModuleInstance
 }
 
 func TestTestXMLExporterModule_testLetInstanceWithNothingToInlineExportsModuleInstanceRef(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Github1417Variants.tla")
 	requireXMLStringList(t, xmlLetInOpDefKinds(t, root, "opLocal"), []string{"ModuleInstanceKindRef"}, "opLocal LET opDefs")
 	if got := xmlUniqueName(xmlReferent(t, root, xmlLetInOpDefs(t, root, "opLocal")[0])); got != "Local" {
@@ -215,8 +199,6 @@ func TestTestXMLExporterModule_testLetInstanceWithNothingToInlineExportsModuleIn
 }
 
 func TestTestXMLExporterModule_testLetInstanceInlinesDefinitionsOfInstancee(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Github1417Inlined.tla")
 	if got := xmlUniqueName(xmlReferent(t, root, xmlLetInOpDef(t, root, "opOps", "UserDefinedOpKindRef"))); got != "Ops!foo" {
 		t.Fatalf("opOps inlined operator = %s, want Ops!foo", got)
@@ -230,15 +212,11 @@ func TestTestXMLExporterModule_testLetInstanceInlinesDefinitionsOfInstancee(t *t
 }
 
 func TestTestXMLExporterModule_testLetExportsEachModuleDefinitionIndependently(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Github1417Variants.tla")
 	requireXMLStringList(t, xmlLetInOpDefNames(t, root, "opMixed"), []string{"Both!foo", "Both", "Nothing"}, "opMixed LET opDef names")
 }
 
 func TestTestXMLExporterModule_testLetAlwaysExportsModuleInstanceRef(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Github1417Inlined.tla")
 	requireXMLStringList(t, xmlLetInOpDefNames(t, root, "opOps"), []string{"Ops!foo", "Ops"}, "opOps LET opDef names")
 	inlined := xmlLetInOpDefNames(t, root, "opThm")
@@ -252,8 +230,6 @@ func TestTestXMLExporterModule_testLetAlwaysExportsModuleInstanceRef(t *testing.
 }
 
 func TestTestXMLExporterModule_testTopLevelInstanceOfEmptyModuleExportsInstanceNode(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "Github1417TopLevel.tla")
 	instances := xmlDescendants(root, "InstanceNode")
 	if got := len(instances); got != 1 {
@@ -322,8 +298,6 @@ func TestTestXMLExporterModule_testUncommentFlagWithRelations(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testLetInstanceExportsInstantiatedTheoremAndAssumption(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "LetInstanceThmXml.tla")
 	letIns := xmlDescendants(root, "LetInNode")
 	if got := len(letIns); got != 1 {
@@ -338,8 +312,6 @@ func TestTestXMLExporterModule_testLetInstanceExportsInstantiatedTheoremAndAssum
 }
 
 func TestTestXMLExporterModule_testRecursiveSectionGroupsJointDeclaration(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "RecursiveSectionXml.tla")
 	f := xmlUserDefinedOpKind(t, root, "f")
 	g := xmlUserDefinedOpKind(t, root, "g")
@@ -363,8 +335,6 @@ func TestTestXMLExporterModule_testRecursiveSectionGroupsJointDeclaration(t *tes
 }
 
 func TestTestXMLExporterModule_testUseHideDefsExportsModuleReference(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := checkedXMLExporterModule(t, "UseHideModuleDefsXml.tla")
 	useOrHide := xmlDescendants(root, "UseOrHideNode")
 	if got := len(useOrHide); got != 1 {

@@ -47,6 +47,7 @@ type sanyXMLExporter struct {
 	localDefs       map[string]*sanyXMLSymbol
 	letInsts        map[string]*sanyXMLSymbol
 	letInstDefs     map[string]*sanyXMLSymbol
+	letInstAssumes  map[string]*sanyXMLSymbol
 	newDecls        map[string]*sanyXMLSymbol
 	bounds          map[string]*sanyXMLSymbol
 	boundLevelHints map[string]bool
@@ -130,14 +131,22 @@ type sanyXMLLocalInstanceSource struct {
 	sym    *sanyXMLSymbol
 }
 
+type sanyXMLLocalAssumptionSource struct {
+	inst   Instance
+	source sanyXMLAssumptionSource
+	sym    *sanyXMLSymbol
+}
+
 type sanyXMLLetPreparation struct {
-	expr          *LetExpr
-	parentCtx     sanyXMLExprContext
-	ctx           sanyXMLExprContext
-	localDefs     []*sanyXMLSymbol
-	localInsts    []*sanyXMLSymbol
-	localInstDefs []*sanyXMLSymbol
-	localSources  []sanyXMLLocalInstanceSource
+	expr                *LetExpr
+	parentCtx           sanyXMLExprContext
+	ctx                 sanyXMLExprContext
+	localDefs           []*sanyXMLSymbol
+	localInsts          []*sanyXMLSymbol
+	localInstDefs       []*sanyXMLSymbol
+	localAssumes        []*sanyXMLSymbol
+	localSources        []sanyXMLLocalInstanceSource
+	localAssumesSources []sanyXMLLocalAssumptionSource
 }
 
 type sanyXMLSymbol struct {
@@ -226,6 +235,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		localDefs:       map[string]*sanyXMLSymbol{},
 		letInsts:        map[string]*sanyXMLSymbol{},
 		letInstDefs:     map[string]*sanyXMLSymbol{},
+		letInstAssumes:  map[string]*sanyXMLSymbol{},
 		newDecls:        map[string]*sanyXMLSymbol{},
 		bounds:          map[string]*sanyXMLSymbol{},
 		boundLevelHints: map[string]bool{},
@@ -3611,6 +3621,9 @@ func (x *sanyXMLExporter) proofDefinitionSymbol(name string, ctx sanyXMLExprCont
 	if sym := ctx.scope.defs[name]; sym != nil {
 		return sym
 	}
+	if sym := x.modules[name]; sym != nil {
+		return sym
+	}
 	return nil
 }
 
@@ -4789,7 +4802,9 @@ func (x *sanyXMLExporter) prepareLetContext(e *LetExpr, ctx sanyXMLExprContext) 
 	}
 	localInsts := make([]*sanyXMLSymbol, 0, len(e.Instances))
 	localInstDefs := make([]*sanyXMLSymbol, 0)
+	localAssumes := make([]*sanyXMLSymbol, 0)
 	var localSources []sanyXMLLocalInstanceSource
+	var localAssumeSources []sanyXMLLocalAssumptionSource
 	for _, inst := range e.Instances {
 		x.allocateInstanceParams(ctx.module, inst)
 		instKey := x.letInstanceKindKey(ctx.module.Name, e, inst)
@@ -4811,15 +4826,32 @@ func (x *sanyXMLExporter) prepareLetContext(e *LetExpr, ctx sanyXMLExprContext) 
 			localInstDefs = append(localInstDefs, sym)
 			localSources = append(localSources, sanyXMLLocalInstanceSource{inst: inst, source: source, sym: sym})
 		}
+		for _, source := range x.instanceAssumptionSources(inst) {
+			if source.module == nil || source.assume == nil || source.cloneName == "" {
+				continue
+			}
+			assumeKey := x.letInstanceAssumeDefKey(ctx.module.Name, e, inst, source.keyName)
+			sym := x.letInstAssumes[assumeKey]
+			if sym == nil {
+				sym = x.newSymbol("AssumeDef", assumeKey, source.cloneName, 0, constantLevel, inst.SourcePosition())
+				x.letInstAssumes[assumeKey] = sym
+			}
+			letCtx.scope.defs[source.cloneName] = sym
+			letCtx.scope.declKinds[source.cloneName] = OperatorDecl
+			localAssumes = append(localAssumes, sym)
+			localAssumeSources = append(localAssumeSources, sanyXMLLocalAssumptionSource{inst: inst, source: source, sym: sym})
+		}
 	}
 	return sanyXMLLetPreparation{
-		expr:          e,
-		parentCtx:     ctx,
-		ctx:           letCtx,
-		localDefs:     localDefs,
-		localInsts:    localInsts,
-		localInstDefs: localInstDefs,
-		localSources:  localSources,
+		expr:                e,
+		parentCtx:           ctx,
+		ctx:                 letCtx,
+		localDefs:           localDefs,
+		localInsts:          localInsts,
+		localInstDefs:       localInstDefs,
+		localAssumes:        localAssumes,
+		localSources:        localSources,
+		localAssumesSources: localAssumeSources,
 	}
 }
 
@@ -4847,6 +4879,19 @@ func (x *sanyXMLExporter) emitPreparedLetEntries(prep sanyXMLLetPreparation) Dia
 			targetMod := x.spec.Modules[item.inst.Module]
 			original := x.defs[x.defKey(item.source.module.Name, item.source.def.Name)]
 			diags = append(diags, x.emitInstanceDefinitionEntry(item.sym, original, prep.parentCtx.module, item.inst, item.source.module, targetMod, item.source.def, sourceCtx, item.source.wrappers, true)...)
+		}
+		assumeContexts := map[string]sanyXMLExprContext{}
+		for _, item := range prep.localAssumesSources {
+			if item.source.module == nil || item.source.assume == nil {
+				continue
+			}
+			sourceCtx, ok := assumeContexts[item.source.module.Name]
+			if !ok {
+				sourceCtx = sanyXMLExprContext{module: item.source.module, scope: x.scopeForModule(item.source.module, map[string]bool{}), formals: map[string]*sanyXMLSymbol{}, defs: map[string]*sanyXMLSymbol{}, proofDefs: map[string]*sanyXMLSymbol{}}
+				assumeContexts[item.source.module.Name] = sourceCtx
+			}
+			targetMod := x.spec.Modules[item.inst.Module]
+			diags = append(diags, x.emitInstanceAssumeDefEntry(item.sym, prep.parentCtx.module, item.inst, targetMod, item.source, sourceCtx)...)
 		}
 	}
 	return diags
@@ -4887,6 +4932,9 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 		x.writeRef(&b, sym)
 	}
 	for _, sym := range prep.localInstDefs {
+		x.writeRef(&b, sym)
+	}
+	for _, sym := range prep.localAssumes {
 		x.writeRef(&b, sym)
 	}
 	for _, sym := range prep.localInsts {
@@ -7000,6 +7048,10 @@ func (x *sanyXMLExporter) letInstanceKindKey(module string, let *LetExpr, inst I
 
 func (x *sanyXMLExporter) letInstanceDefKey(module string, let *LetExpr, inst Instance, name string) string {
 	return x.letInstanceKindKey(module, let, inst) + ":def:" + name
+}
+
+func (x *sanyXMLExporter) letInstanceAssumeDefKey(module string, let *LetExpr, inst Instance, name string) string {
+	return x.letInstanceKindKey(module, let, inst) + ":assume:" + name
 }
 
 func (x *sanyXMLExporter) proofStepKey(module string, step *SanySyntaxNode) string {

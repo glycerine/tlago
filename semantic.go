@@ -1474,7 +1474,7 @@ func checkProofRef(ref ProofRef, defined map[string]Position) Diagnostics {
 }
 
 func checkHideRef(ref ProofRef, theoremLikeDefs, proofStepNames map[string]bool) Diagnostics {
-	if ref.Mode != "HIDE" || ref.Name == "" || builtinIdentifiers[ref.Name] {
+	if ref.Mode != "HIDE" || ref.Defs || ref.Name == "" || builtinIdentifiers[ref.Name] {
 		return nil
 	}
 	if theoremLikeDefs[ref.Name] || proofStepNames[ref.Name] {

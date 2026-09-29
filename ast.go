@@ -135,6 +135,7 @@ func (e NamedExpr) SourcePosition() Position {
 type ProofRef struct {
 	Name string
 	Mode string
+	Defs bool
 	Pos  Position
 }
 

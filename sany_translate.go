@@ -470,6 +470,11 @@ func moduleImports(mod *Module) []string {
 	for _, theorem := range mod.Theorems {
 		moduleImportsFromExpr(theorem.Expr, add)
 	}
+	for _, nested := range mod.Nested {
+		for _, name := range moduleImports(nested) {
+			add(name)
+		}
+	}
 	return imports
 }
 
@@ -500,6 +505,11 @@ func moduleSemanticImports(mod *Module) []string {
 	}
 	for _, theorem := range mod.Theorems {
 		moduleImportsFromExpr(theorem.Expr, add)
+	}
+	for _, nested := range mod.Nested {
+		for _, name := range moduleSemanticImports(nested) {
+			add(name)
+		}
 	}
 	return imports
 }
@@ -697,6 +707,7 @@ func sanySubstitution(node *SanySyntaxNode) (Substitution, Diagnostics) {
 func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 	var refs []ProofRef
 	mode := ""
+	inDefs := false
 	for _, child := range node.GetHeirs() {
 		if child.Token != nil && (child.Token.Kind == SanyTokenUse || child.Token.Kind == SanyTokenHide) {
 			mode = child.Image
@@ -704,12 +715,16 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 		}
 	}
 	for _, child := range node.GetHeirs() {
+		if child.Token != nil && child.Token.Kind == SanyTokenDF {
+			inDefs = true
+			continue
+		}
 		switch child.Kind.JavaName() {
 		case "IDENTIFIER":
-			refs = append(refs, ProofRef{Name: child.Image, Mode: mode, Pos: sanyNodePosition(child)})
+			refs = append(refs, ProofRef{Name: child.Image, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
 		case "N_GeneralId":
 			if name := sanyGeneralIDName(child); name != "" {
-				refs = append(refs, ProofRef{Name: name, Mode: mode, Pos: sanyNodePosition(child)})
+				refs = append(refs, ProofRef{Name: name, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
 			}
 		}
 	}
