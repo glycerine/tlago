@@ -700,9 +700,22 @@ func letScopeLocals(locals map[string]bool, expr *LetExpr) map[string]bool {
 	return letLocals
 }
 
-func letDefinitionBodyLocals(letLocals map[string]bool, def Definition) map[string]bool {
+func letRecursiveNames(expr *LetExpr) map[string]bool {
+	names := map[string]bool{}
+	if expr == nil {
+		return names
+	}
+	for _, decl := range expr.Recursives {
+		for _, name := range decl.Names {
+			names[name] = true
+		}
+	}
+	return names
+}
+
+func letDefinitionBodyLocals(letLocals map[string]bool, def Definition, recursive bool) map[string]bool {
 	defLocals := copyBoolMap(letLocals)
-	if _, isFunctionDefinition := definitionFunctionArity(def); !isFunctionDefinition {
+	if _, isFunctionDefinition := definitionFunctionArity(def); !isFunctionDefinition && !recursive {
 		delete(defLocals, def.Name)
 	}
 	for _, param := range def.Params {
@@ -1477,8 +1490,9 @@ func checkAssumeProveDefinitionUse(expr Expr, assumeProveDefs map[string]bool, l
 		diags = append(diags, checkAssumeProveDefinitionUse(e.Else, assumeProveDefs, locals)...)
 	case *LetExpr:
 		letLocals := letScopeLocals(locals, e)
+		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
-			defLocals := letDefinitionBodyLocals(letLocals, def)
+			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			diags = append(diags, checkAssumeProveDefinitionUse(def.Expr, assumeProveDefs, defLocals)...)
 		}
 		diags = append(diags, checkAssumeProveDefinitionUse(e.Body, assumeProveDefs, letLocals)...)
@@ -1829,10 +1843,11 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 	case *LetExpr:
 		diags = append(diags, checkLetRecursiveSections(e)...)
 		letLocals := letScopeLocals(locals, e)
+		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
 			diags = append(diags, checkDefinitionParams(def)...)
 			diags = append(diags, checkDefinitionParamCollisions(def, defined, letLocals)...)
-			defLocals := letDefinitionBodyLocals(letLocals, def)
+			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			diags = append(diags, checkExpr(def.Expr, defined, defLocals)...)
 		}
 		diags = append(diags, checkExpr(e.Body, defined, letLocals)...)
@@ -2607,8 +2622,9 @@ func checkPrimedConstants(expr Expr, declKinds map[string]DeclarationKind, local
 		diags = append(diags, checkPrimedConstants(e.Else, declKinds, locals)...)
 	case *LetExpr:
 		letLocals := letScopeLocals(locals, e)
+		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
-			defLocals := letDefinitionBodyLocals(letLocals, def)
+			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, defLocals)...)
 		}
 		diags = append(diags, checkPrimedConstants(e.Body, declKinds, letLocals)...)
@@ -2748,8 +2764,9 @@ func checkLevelComposition(expr Expr, declKinds map[string]DeclarationKind, loca
 		diags = append(diags, checkLevelComposition(e.Else, declKinds, locals)...)
 	case *LetExpr:
 		letLocals := letScopeLocals(locals, e)
+		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
-			defLocals := letDefinitionBodyLocals(letLocals, def)
+			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			diags = append(diags, checkLevelComposition(def.Expr, declKinds, defLocals)...)
 		}
 		diags = append(diags, checkLevelComposition(e.Body, declKinds, letLocals)...)

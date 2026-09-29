@@ -297,6 +297,17 @@ PROOF
 		}
 	})
 
+	t.Run("LET recursive operator is in scope for its own body", func(t *testing.T) {
+		_, diags := SanyXMLSource("LetRecursiveScopeXML.tla", `---- MODULE LetRecursiveScopeXML ----
+Op(a) ==
+  LET
+    RECURSIVE R(_)
+    R(i) == IF i = 0 THEN a ELSE R(i - 1)
+  IN R(1)
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("InfixFormalSpanXML.tla", `---- MODULE InfixFormalSpanXML ----
 Use(_\prec_, S) == TRUE
