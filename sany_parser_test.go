@@ -48,6 +48,25 @@ $ rm *.csv ; tlc TrailingCommand -note -generate -depth -1`)
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("parses adjacent same-line operator definitions", func(t *testing.T) {
+		root, diags := ParseSanySyntax("SameLineDefs.tla", `---- MODULE SameLineDefs ----
+W == 4 H == 5
+Pos == W + H
+====`)
+		requireNoErrors(t, diags)
+		body := root.GetHeirs()[2]
+		defs := collectSanyChildrenByKind(body, "N_OperatorDefinition")
+		if got := len(defs); got != 3 {
+			t.Fatalf("operator definitions = %d, want 3; body heirs = %v", got, sanyNodeKindNames(body.GetHeirs()))
+		}
+		for i, want := range []string{"W", "H", "Pos"} {
+			lhs := defs[i].GetHeirs()[0]
+			if len(lhs.GetHeirs()) == 0 || lhs.GetHeirs()[0].Image != want {
+				t.Fatalf("definition %d lhs = %v, want %s", i, sanyNodeKindNames(lhs.GetHeirs()), want)
+			}
+		}
+	})
+
 	t.Run("reports SANY operator precedence conflicts inside definitions", func(t *testing.T) {
 		_, diags := ParseSanySyntax("Bad.tla", `---- MODULE Bad ----
 Bad == A = B = C

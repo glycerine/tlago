@@ -203,6 +203,15 @@ Use == LET x == CHOOSE x \in S : TRUE
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("LET zero-arity definitions shadow outer operators in arity checks", func(t *testing.T) {
+		_, diags := CheckSanySource("LetShadowArity.tla", `---- MODULE LetShadowArity ----
+Outer(x, y) == x
+Use == LET Outer == {1}
+       IN {d \in Outer : d = 1}
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("checks declared operator constant arity through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("BadOperatorConstantArity.tla", `---- MODULE BadOperatorConstantArity ----
 CONSTANT F(_)

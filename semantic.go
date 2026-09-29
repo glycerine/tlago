@@ -2116,6 +2116,7 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 		for name, arity := range arities {
 			letArities[name] = arity
 		}
+		recursiveNames := letRecursiveNames(e)
 		letOperatorParams := map[string][]operatorParamSpec{}
 		for name, specs := range operatorParams {
 			letOperatorParams[name] = specs
@@ -2130,7 +2131,7 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 			}
 		}
 		for _, def := range e.Definitions {
-			if _, recursive := letArities[def.Name]; !recursive {
+			if !recursiveNames[def.Name] {
 				letArities[def.Name] = len(def.Params)
 			}
 			if specs, ok := definitionOperatorParamSpecs(def); ok {
@@ -2288,6 +2289,7 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 		for name, arity := range arities {
 			letArities[name] = arity
 		}
+		recursiveNames := letRecursiveNames(e)
 		for _, decl := range e.Recursives {
 			for _, name := range decl.Names {
 				arity, ok := declarationArity(decl, name)
@@ -2298,7 +2300,7 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 			}
 		}
 		for _, def := range e.Definitions {
-			if _, recursive := letArities[def.Name]; !recursive {
+			if !recursiveNames[def.Name] {
 				letArities[def.Name] = len(def.Params)
 			}
 			if specs, ok := definitionOperatorParamSpecs(def); ok {

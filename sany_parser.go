@@ -1217,7 +1217,7 @@ func (p *SanyParser) ExpressionUntilDefinitionBoundary(extraStop func(*SanyToken
 		if extraStop != nil && extraStop(tok) {
 			return true
 		}
-		return tok.Begin.Line > startLine && p.startsBodyItemAt(0)
+		return tok.Begin.Line >= startLine && p.startsBodyItemAt(0)
 	})
 }
 
@@ -1227,7 +1227,7 @@ func (p *SanyParser) ExpressionUntilCommaOrBodyBoundary() *SanySyntaxNode {
 		if tok.Kind == SanyTokenComma || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
 			return true
 		}
-		return tok.Begin.Line > startLine && p.startsBodyItemAt(0)
+		return tok.Begin.Line >= startLine && p.startsBodyItemAt(0)
 	})
 }
 
