@@ -1013,6 +1013,17 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 		}
 		add(x.defs[x.defKey(mod.Name, def.Name)])
 	}
+	for instIndex, inst := range mod.Instances {
+		if inst.Local {
+			continue
+		}
+		for _, source := range x.instanceDefinitionSources(inst) {
+			if x.skipInstanceDefinitionClone(mod, inst, source.keyName) {
+				continue
+			}
+			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
+		}
+	}
 	for i, assume := range mod.Assumptions {
 		add(x.assumes[fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assume.Name)])
 	}

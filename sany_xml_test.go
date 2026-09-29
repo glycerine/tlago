@@ -265,6 +265,99 @@ Use == Inst!Op /\ Inst!BaseOp
 		}
 	})
 
+	t.Run("EXTENDS imports named INSTANCE clone refs into the module node", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Mid.tla"), `---- MODULE Mid ----
+Inst == INSTANCE Helper
+====`)
+		rootPath := filepath.Join(dir, "ExtendsInstanceCloneXML.tla")
+		writeFile(t, rootPath, `---- MODULE ExtendsInstanceCloneXML ----
+EXTENDS Mid
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		cloneUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if cloneUID == "" {
+			t.Fatalf("Inst!Op clone missing\n%s", xmlText)
+		}
+		var moduleNode *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "ModuleNode" && firstChildText(payload, "uniquename") == "ExtendsInstanceCloneXML" {
+				moduleNode = payload
+				break
+			}
+		}
+		if moduleNode == nil {
+			t.Fatalf("root ModuleNode missing\n%s", xmlText)
+		}
+		found := false
+		for _, child := range moduleNode.Children {
+			if child.Name == "UserDefinedOpKindRef" && firstChildText(child, "UID") == cloneUID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("root ModuleNode did not import Inst!Op ref\n%s", xmlText)
+		}
+	})
+
+	t.Run("EXTENDS does not import LOCAL INSTANCE clone refs into the module node", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Mid.tla"), `---- MODULE Mid ----
+LOCAL Inst == INSTANCE Helper
+====`)
+		rootPath := filepath.Join(dir, "ExtendsLocalInstanceCloneXML.tla")
+		writeFile(t, rootPath, `---- MODULE ExtendsLocalInstanceCloneXML ----
+EXTENDS Mid
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		cloneUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "Inst!Op")
+		if cloneUID == "" {
+			t.Fatalf("local Inst!Op clone missing from owner module XML\n%s", xmlText)
+		}
+		var moduleNode *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "ModuleNode" && firstChildText(payload, "uniquename") == "ExtendsLocalInstanceCloneXML" {
+				moduleNode = payload
+				break
+			}
+		}
+		if moduleNode == nil {
+			t.Fatalf("root ModuleNode missing\n%s", xmlText)
+		}
+		for _, child := range moduleNode.Children {
+			if child.Name == "UserDefinedOpKindRef" && firstChildText(child, "UID") == cloneUID {
+				t.Fatalf("root ModuleNode imported local Inst!Op ref\n%s", xmlText)
+			}
+		}
+	})
+
 	t.Run("computes named INSTANCE clone levels before owner definitions", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
