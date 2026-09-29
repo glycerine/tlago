@@ -155,11 +155,11 @@ func (s *TLCStateMut) Unassigned() []StateVariable {
 	return out
 }
 
-func (s *TLCStateMut) Values() map[*UniqueString]Value {
-	out := make(map[*UniqueString]Value, len(stateVariables))
+func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
+	out := NewInsMap[*UniqueString, Value]()
 	for i, variable := range stateVariables {
 		if i < len(s.values) {
-			out[variable.Name] = s.values[i]
+			out.Set(variable.Name, s.values[i])
 		}
 	}
 	return out

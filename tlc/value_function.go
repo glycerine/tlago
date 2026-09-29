@@ -24,39 +24,39 @@ type ModelValue struct {
 var modelValues = struct {
 	sync.Mutex
 	count int
-	table map[string]*ModelValue
+	table *InsMap[string, *ModelValue]
 	mvs   []*ModelValue
 }{
-	table: make(map[string]*ModelValue),
+	table: NewInsMap[string, *ModelValue](),
 }
 
 func ModelValueInit() {
 	modelValues.Lock()
 	defer modelValues.Unlock()
 	modelValues.count = 0
-	modelValues.table = make(map[string]*ModelValue)
+	modelValues.table = NewInsMap[string, *ModelValue]()
 	modelValues.mvs = nil
 }
 
 func MakeModelValue(name string) *ModelValue {
 	modelValues.Lock()
 	defer modelValues.Unlock()
-	if mv := modelValues.table[name]; mv != nil {
+	if mv, ok := modelValues.table.Get2(name); ok {
 		return mv
 	}
 	mv := newModelValueLocked(name)
-	modelValues.table[name] = mv
+	modelValues.table.Set(name, mv)
 	return mv
 }
 
 func AddModelValue(name string) *ModelValue {
 	modelValues.Lock()
 	defer modelValues.Unlock()
-	if mv := modelValues.table[name]; mv != nil {
+	if mv, ok := modelValues.table.Get2(name); ok {
 		return mv
 	}
 	mv := newModelValueLocked(name)
-	modelValues.table[name] = mv
+	modelValues.table.Set(name, mv)
 	setModelValuesLocked()
 	return mv
 }
@@ -91,8 +91,8 @@ func newModelValueLocked(name string) *ModelValue {
 }
 
 func setModelValuesLocked() {
-	modelValues.mvs = make([]*ModelValue, len(modelValues.table))
-	for _, mv := range modelValues.table {
+	modelValues.mvs = make([]*ModelValue, modelValues.table.Len())
+	for _, mv := range modelValues.table.All() {
 		modelValues.mvs[mv.Index] = mv
 	}
 }
@@ -215,10 +215,13 @@ func NewRecordValue(names []*UniqueString, values []Value, isNorm bool) *RecordV
 	return &RecordValue{Names: outNames, Values: outValues, IsNorm: isNorm}
 }
 
-func NewRecordValueFromMap(values map[*UniqueString]Value) *RecordValue {
-	names := make([]*UniqueString, 0, len(values))
-	vals := make([]Value, 0, len(values))
-	for name, value := range values {
+func NewRecordValueFromInsMap(values *InsMap[*UniqueString, Value]) *RecordValue {
+	if values == nil {
+		return EmptyRecord
+	}
+	names := make([]*UniqueString, 0, values.Len())
+	vals := make([]Value, 0, values.Len())
+	for name, value := range values.All() {
 		names = append(names, name)
 		vals = append(vals, value)
 	}
