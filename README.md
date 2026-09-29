@@ -60,3 +60,10 @@ Operators like `x \div y`, `x ++ y`, or `x \cap y` with custom TLA+ precedence r
 5. **PlusCal Comments:**
 Many specs embed PlusCal algorithms inside `(* --algorithm ... *)` blocks. Your lexer/parser must either ignore these block comments or handle them cleanly without throwing syntax errors.
 
+---------------
+Author and license:
+
+Copyright (C) 2026 Jason E. Aten, Ph.D.
+
+MIT License. See the LICENSE file here in.
+
