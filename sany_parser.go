@@ -342,7 +342,9 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 			heirs = append(heirs, p.Step())
 		}
 		heirs = append(heirs, p.QEDStep())
-		return NewSanyNode(SanySyntaxNodeKindByName["N_Proof"], heirs...)
+		node := NewSanyNode(SanySyntaxNodeKindByName["N_Proof"], heirs...)
+		node.ProofLevel = p.currentProofLevel()
+		return node
 	}
 	p.add(p.peek().Begin, "E1300", "expected terminal proof")
 	return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)

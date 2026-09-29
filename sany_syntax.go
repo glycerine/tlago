@@ -24,16 +24,17 @@ type SanySyntaxNode struct {
 	FileName     string
 	PreComments  []string
 	JunctionList bool
+	ProofLevel   int
 }
 
 func NewSanyNode(kind SanyNodeKind, heirs ...*SanySyntaxNode) *SanySyntaxNode {
-	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(heirs)}
+	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(heirs), ProofLevel: -1}
 	node.refreshHeirsAndRange()
 	return node
 }
 
 func NewSanySplitNode(kind SanyNodeKind, zero, one []*SanySyntaxNode) *SanySyntaxNode {
-	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one)}
+	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one), ProofLevel: -1}
 	node.refreshHeirsAndRange()
 	return node
 }
@@ -43,10 +44,11 @@ func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
 		return nil
 	}
 	node := &SanySyntaxNode{
-		Kind:  SanyNodeKind(tok.Kind),
-		Image: tok.Image,
-		Range: tok.Range(),
-		Token: tok,
+		Kind:       SanyNodeKind(tok.Kind),
+		Image:      tok.Image,
+		Range:      tok.Range(),
+		Token:      tok,
+		ProofLevel: -1,
 	}
 	for special := tok.Special; special != nil; special = special.Next {
 		node.PreComments = append(node.PreComments, special.Image)
@@ -84,6 +86,13 @@ func (n *SanySyntaxNode) GetHeirs() []*SanySyntaxNode {
 		return nil
 	}
 	return append([]*SanySyntaxNode(nil), n.Heirs...)
+}
+
+func (n *SanySyntaxNode) GetProofLevel() int {
+	if n == nil {
+		return -1
+	}
+	return n.ProofLevel
 }
 
 func (n *SanySyntaxNode) refreshHeirsAndRange() {

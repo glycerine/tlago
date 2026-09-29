@@ -36,6 +36,20 @@ func NewSanyTokenManager(file, input string) *SanyTokenManager {
 	}
 }
 
+func (tm *SanyTokenManager) State() SanyLexState {
+	if tm == nil {
+		return SanyLexDefault
+	}
+	return tm.state
+}
+
+func (tm *SanyTokenManager) SwitchTo(state SanyLexState) {
+	if tm == nil {
+		return
+	}
+	tm.state = state
+}
+
 func SanyTokenize(file, input string) ([]*SanyToken, Diagnostics) {
 	return NewSanyTokenManager(file, input).LexAll()
 }
@@ -64,6 +78,10 @@ func (tm *SanyTokenManager) NextToken() *SanyToken {
 			return tm.nextDefaultToken()
 		case SanyLexPragma:
 			return tm.nextPragmaToken()
+		case SanyLexInEOLComment:
+			tm.consumeStartedLineComment()
+		case SanyLexInComment, SanyLexEmbedded:
+			tm.consumeStartedBlockComment()
 		default:
 			return tm.nextSpecToken()
 		}
@@ -170,6 +188,17 @@ func (tm *SanyTokenManager) consumeLineSpecial() {
 	tm.appendSpecial(tm.emitDetachedToken(SanyTokenEOLComment, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
 }
 
+func (tm *SanyTokenManager) consumeStartedLineComment() {
+	for !tm.eof() {
+		r := tm.peek()
+		tm.advance()
+		if r == '\n' || r == '\r' {
+			break
+		}
+	}
+	tm.state = SanyLexSpec
+}
+
 func (tm *SanyTokenManager) consumeBlockSpecial() {
 	begin := tm.pos()
 	start := tm.offset
@@ -200,6 +229,28 @@ func (tm *SanyTokenManager) consumeBlockSpecial() {
 	tm.state = SanyLexSpec
 	tm.diags = append(tm.diags, errorAt(begin, "E1201", "unterminated block comment"))
 	tm.appendSpecial(tm.emitDetachedToken(SanyTokenBlockComment, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
+}
+
+func (tm *SanyTokenManager) consumeStartedBlockComment() {
+	depth := 1
+	for !tm.eof() {
+		if strings.HasPrefix(tm.rest(), "(*") {
+			depth++
+			tm.consumeBytes(2)
+			tm.state = SanyLexEmbedded
+			continue
+		}
+		if strings.HasPrefix(tm.rest(), "*)") {
+			tm.consumeBytes(2)
+			depth--
+			if depth == 0 {
+				break
+			}
+			continue
+		}
+		tm.advance()
+	}
+	tm.state = SanyLexSpec
 }
 
 func (tm *SanyTokenManager) bestSpecCandidate() sanyLexCandidate {
