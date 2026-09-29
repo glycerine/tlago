@@ -426,6 +426,22 @@ some cases, but `LetInNode` is the expression node used by XML. Go should make
 LET definitions semantic symbols and emit them through the LET node, rather
 than synthesizing XML from expression AST alone.
 
+`LetInNode.levelCheck` has a source-of-truth quirk that matters for XML parity:
+it level-checks LET definitions, the IN body, and LET instances, but then sets
+the LET expression's `level`, `levelParams`, and `allParams` from the IN body
+only. Local definitions affect those sets only when the IN body references the
+local definition's semantic symbol. `LetInNode` does not copy the IN body's
+`nonLeibnizParams` into the LET node. Consequently:
+
+- `F(x) == ENABLED G(x)` can make `x` non-Leibniz.
+- `F(x) == LET D == TRUE IN ENABLED G(x)` keeps `x` Leibniz at the outer
+  definition, because the LET node does not propagate the body's non-Leibniz
+  coloring.
+
+The current compact-AST XML exporter has compatibility code for this rule. In
+the final semantic graph port, this should fall out of a Java-shaped
+`LetInNode.levelCheck` implementation rather than a special XML heuristic.
+
 ### Expressions
 
 `generateExpressionOrLAP` dispatches by CST kind.
@@ -457,6 +473,16 @@ Operator arguments require `generateExprOrOpArg`. If an argument position
 expects an operator (formal parameter arity > 0), SANY can create an `OpArgNode`
 instead of an ordinary expression. The Go semantic graph must support this for
 higher-order operators and for exact XML.
+
+Function application has two easy-to-miss XML details:
+
+- The first `$FcnApply` operand is the function expression serialized with its
+  own level, not with the whole function application level. If `F` is a
+  level-0 function and `arg` is variable level, Java serializes the `F` operand
+  at level 0 even though `F[arg]` as a whole is level 1.
+- `@` inside EXCEPT is always an `AtNode`, including when it is itself the
+  function part of an application such as `@[2]`. It must not be emitted as a
+  built-in operator named `@`.
 
 ### Module Instantiation
 
@@ -648,6 +674,12 @@ For `ModuleInstanceKind`, it emits name and optional local marker.
 
 The `$Case`/`OTHER` null operand is a special case: `SymbolContext.OTHER_BUG`
 causes a null first operand of a `$Pair` to export as a string node `$Other`.
+
+Terminal proof XML uses the terminal proof node's range for `OBVIOUS` and
+`OMITTED`, not necessarily the keyword token's range. Thus `PROOF OMITTED`
+exports an `<omitted>` location beginning at the `PROOF` token and ending at
+the `OMITTED` token. Bare `OMITTED` has the same start/end as the omitted
+keyword because the terminal proof node spans only that token.
 
 ### Determinism
 

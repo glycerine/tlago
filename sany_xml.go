@@ -2269,13 +2269,13 @@ func (x *sanyXMLExporter) terminalProofXML(proof *SanySyntaxNode, ctx sanyXMLExp
 		case SanyTokenObvious:
 			var b bytes.Buffer
 			b.WriteString("<obvious>")
-			x.writeNode(&b, sanyNodePosition(child), constantLevel)
+			x.writeNode(&b, sanyNodePosition(proof), constantLevel)
 			b.WriteString("</obvious>")
 			return b.String(), nil
 		case SanyTokenOmitted:
 			var b bytes.Buffer
 			b.WriteString("<omitted>")
-			x.writeNode(&b, sanyNodePosition(child), constantLevel)
+			x.writeNode(&b, sanyNodePosition(proof), constantLevel)
 			b.WriteString("</omitted>")
 			return b.String(), nil
 		case SanyTokenBy:
@@ -2881,7 +2881,7 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 		}
 		return x.boundOpXML("$FcnConstructor", e.Pos, e.Bounds, e.Body, ctx)
 	case *FunctionAppExpr:
-		fn, diags := x.exprXML(e.Function, ctx)
+		fn, diags := x.functionApplicationFunctionXML(e, ctx)
 		if diags.HasErrors() {
 			return "", diags
 		}
@@ -3759,6 +3759,16 @@ func (x *sanyXMLExporter) caseXML(e *CaseExpr, ctx sanyXMLExprContext) (string, 
 	return x.opApplXML(e.Pos, x.exprLevel(e, ctx), x.builtin("$Case"), args, ""), nil
 }
 
+func (x *sanyXMLExporter) functionApplicationFunctionXML(e *FunctionAppExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
+	if ident, ok := e.Function.(*IdentExpr); ok {
+		if ident.Name == "@" {
+			return x.exprXML(e.Function, ctx)
+		}
+		return x.opApplXML(ident.Pos, x.exprLevel(ident, ctx), x.operatorSymbol(ident.Name, ctx), nil, ""), nil
+	}
+	return x.exprXML(e.Function, ctx)
+}
+
 func (x *sanyXMLExporter) exprListOpXML(oper string, exprs []Expr, pos Position, ctx sanyXMLExprContext) (string, Diagnostics) {
 	var args []string
 	var diags Diagnostics
@@ -4044,6 +4054,7 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 			bodyShadowed[def.Name] = true
 		}
 		use.merge(x.exprParamUse(e.Body, ctx, bodyShadowed))
+		use.nonLeibniz = nil
 		return use
 	case *QuantifierExpr:
 		use := x.exprParamUse(e.Set, ctx, shadowed)
@@ -4359,7 +4370,11 @@ func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shado
 	case *IfExpr:
 		return x.operatorApplicationLevelData("$IfThenElse", nil, []Expr{e.Cond, e.Then, e.Else}, ctx, shadowed)
 	case *LetExpr:
-		return x.exprLevelData(e.Body, ctx, shadowed)
+		data := x.exprLevelData(e.Body, ctx, shadowed)
+		for i := range e.Definitions {
+			data.merge(x.exprLevelData(e.Definitions[i].Expr, ctx, shadowed))
+		}
+		return data
 	case *QuantifierExpr:
 		bodyShadowed := copyBoolMap(shadowed)
 		bodyShadowed[e.Var] = true

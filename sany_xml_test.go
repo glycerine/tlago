@@ -371,6 +371,81 @@ THEOREM TRUE
 		}
 	})
 
+	t.Run("function application function operand carries function level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("FunctionAppFunctionLevelXML.tla", `---- MODULE FunctionAppFunctionLevelXML ----
+CONSTANT S
+VARIABLE v
+F[x \in S] == TRUE
+A == LET arg == v IN F[arg]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		fUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "F")
+		if fUID == "" {
+			t.Fatalf("SANY XML missing F definition\n%s", xmlText)
+		}
+		app := firstOpApplNodeForOperatorUID(root, "UserDefinedOpKindRef", fUID)
+		if app == nil {
+			t.Fatalf("SANY XML missing F application\n%s", xmlText)
+		}
+		if got := firstChildText(app, "level"); got != "0" {
+			t.Fatalf("F application function operand level = %s, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("function definition level includes LET local definitions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("FunctionDefLetLevelXML.tla", `---- MODULE FunctionDefLetLevelXML ----
+CONSTANT S
+VARIABLE v
+F[x \in S] == LET local == v IN local = x
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "F")
+		if def == nil {
+			t.Fatalf("SANY XML missing F definition\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != "1" {
+			t.Fatalf("F definition level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("LET expressions keep SANY non-Leibniz coloring local", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetLeibnizXML.tla", `---- MODULE LetLeibnizXML ----
+VARIABLE v
+G(y) == v' = y
+Plain(x) == ENABLED G(x)
+ViaLet(x) == LET D == TRUE IN ENABLED G(x)
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		plain := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Plain")
+		if plain == nil {
+			t.Fatalf("SANY XML missing Plain definition\n%s", xmlText)
+		}
+		plainParams := directChildren(directChildren(plain, "params")[0], "leibnizparam")
+		if len(plainParams) != 1 || len(directChildren(plainParams[0], "leibniz")) != 0 {
+			t.Fatalf("Plain param has Leibniz marker, want Java SANY non-Leibniz\n%s", xmlText)
+		}
+		viaLet := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "ViaLet")
+		if viaLet == nil {
+			t.Fatalf("SANY XML missing ViaLet definition\n%s", xmlText)
+		}
+		viaLetParams := directChildren(directChildren(viaLet, "params")[0], "leibnizparam")
+		if len(viaLetParams) != 1 || len(directChildren(viaLetParams[0], "leibniz")) != 1 {
+			t.Fatalf("ViaLet param missing Leibniz marker, want Java SANY LetInNode behavior\n%s", xmlText)
+		}
+	})
+
 	t.Run("nested bullet lists remain nested SANY junction nodes", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("NestedJunctionXML.tla", `---- MODULE NestedJunctionXML ----
 VARIABLE x
@@ -2160,6 +2235,40 @@ THEOREM T == TRUE
 		}
 	})
 
+	t.Run("PROOF OMITTED location starts at PROOF token", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofOmittedLocationXML.tla", `---- MODULE ProofOmittedLocationXML ----
+THEOREM T == TRUE
+  PROOF OMITTED
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var omitted *canonicalXMLNode
+		var walk func(*canonicalXMLNode)
+		walk = func(node *canonicalXMLNode) {
+			if node == nil || omitted != nil {
+				return
+			}
+			if node.Name == "omitted" {
+				omitted = node
+				return
+			}
+			for _, child := range node.Children {
+				walk(child)
+			}
+		}
+		walk(root)
+		if omitted == nil {
+			t.Fatalf("SANY XML missing omitted proof node\n%s", xmlText)
+		}
+		locs := directChildren(omitted, "location")
+		if len(locs) != 1 || firstChildText(directChildren(locs[0], "column")[0], "begin") != "3" {
+			t.Fatalf("omitted proof location does not start at PROOF token\n%s", xmlText)
+		}
+	})
+
 	t.Run("serializes WITNESS proof steps as witness builtin applications", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofWitnessXML.tla", `---- MODULE ProofWitnessXML ----
 CONSTANT x, y
@@ -2605,7 +2714,7 @@ G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
 	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ----
 VARIABLE x
-Next == x' = [x EXCEPT ![1] = @ + 1]
+Next == x' = [x EXCEPT ![1] = @ + 1, ![2] = @[2]]
 ====`)
 		requireNoErrors(t, diags)
 
@@ -2619,6 +2728,9 @@ Next == x' = [x EXCEPT ![1] = @ + 1]
 			if !strings.Contains(got, want) {
 				t.Fatalf("EXCEPT @ SANY XML missing %q\n%s", want, got)
 			}
+		}
+		if strings.Contains(got, `<uniquename>@</uniquename>`) {
+			t.Fatalf("EXCEPT @[i] emitted fake @ builtin\n%s", got)
 		}
 	})
 
