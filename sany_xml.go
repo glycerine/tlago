@@ -1311,7 +1311,7 @@ func (x *sanyXMLExporter) instanceDefinitionSources(inst Instance) []sanyXMLInst
 	if inst.exportsUnqualified() {
 		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, inst.Local, len(inst.Params) > 0)
 	} else {
-		sources = append(sources, x.directTheoremDefinitionSources(instMod)...)
+		sources = append(sources, x.directTheoremDefinitionSources(instMod, len(inst.Params) > 0)...)
 	}
 	out := make([]sanyXMLInstanceDefinitionSource, 0, len(sources))
 	for _, source := range sources {
@@ -1428,14 +1428,17 @@ func (x *sanyXMLExporter) exportedAssumptionSources(mod *Module, visiting map[st
 	return out
 }
 
-func (x *sanyXMLExporter) directTheoremDefinitionSources(mod *Module) []sanyXMLDefinitionSource {
+func (x *sanyXMLExporter) directTheoremDefinitionSources(mod *Module, includeLemmas bool) []sanyXMLDefinitionSource {
 	if mod == nil {
 		return nil
 	}
 	var out []sanyXMLDefinitionSource
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if x.moduleDefinitionIsLocal(mod, def) || def.FactKeyword != "theorem" {
+		if x.moduleDefinitionIsLocal(mod, def) || !def.TheoremLike {
+			continue
+		}
+		if !includeLemmas && def.FactKeyword != "theorem" {
 			continue
 		}
 		out = append(out, sanyXMLDefinitionSource{name: def.Name, module: mod, def: def})

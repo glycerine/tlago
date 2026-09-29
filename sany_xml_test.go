@@ -2498,7 +2498,7 @@ RootUse == Use
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
 CONSTANT C
 Op(x) == C = x
-THEOREM Lemma == C = C
+LEMMA Lemma == C = C
 ====`)
 		root := filepath.Join(dir, "ParamInstanceXML.tla")
 		writeFile(t, root, `---- MODULE ParamInstanceXML ----
@@ -2575,6 +2575,7 @@ Use == TRUE
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
 CONSTANT C
+LEMMA Aux == C = C
 THEOREM Lemma == C = C
 ====`)
 		root := filepath.Join(dir, "NamedInstanceTheoremXML.tla")
