@@ -9,8 +9,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/IncrementalSyntaxParseTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestIncrementalSyntaxParseTests_testParseBasicOpDef(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, diags := tlago.ParseSanySyntax("Test.tla", "---- MODULE Test ----\nop == 0\n====")
 	requireNoSANYDiagnostics(t, "parse", diags)
 	def := findSANYNodeByJavaKind(root, "N_OperatorDefinition")
@@ -35,8 +33,6 @@ func TestIncrementalSyntaxParseTests_testParseBasicOpDef(t *testing.T) {
 }
 
 func TestIncrementalSyntaxParseTests_testParseBasicExpression(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, diags := tlago.ParseSanySyntax("Test.tla", "---- MODULE Test ----\nASSUME 0\n====")
 	requireNoSANYDiagnostics(t, "parse", diags)
 	num := findSANYNodeByJavaKind(root, "N_Number")
@@ -48,8 +44,6 @@ func TestIncrementalSyntaxParseTests_testParseBasicExpression(t *testing.T) {
 }
 
 func TestIncrementalSyntaxParseTests_testParseConjunctionList(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, diags := tlago.ParseSanySyntax("Test.tla", "---- MODULE Test ----\nASSUME\n  /\\ TRUE\n  /\\ FALSE\n  /\\ TRUE\n====")
 	requireNoSANYDiagnostics(t, "parse", diags)
 	conj := findSANYNodeByJavaKind(root, "N_ConjList")

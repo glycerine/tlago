@@ -1157,6 +1157,10 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 		return &LiteralExpr{Kind: "string", Value: node.Image, Pos: sanyNodePosition(node)}, nil
 	case "N_ParenExpr":
 		return sanyExpr(firstSanyExpression(node))
+	case "N_ConjList":
+		return sanyJunctionListExpr(node, "/\\")
+	case "N_DisjList":
+		return sanyJunctionListExpr(node, "\\/")
 	case "N_InfixExpr":
 		heirs := node.GetHeirs()
 		if len(heirs) < 3 {
@@ -1277,6 +1281,28 @@ func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 		}
 		return unsupportedSanyExpr(node)
 	}
+}
+
+func sanyJunctionListExpr(node *SanySyntaxNode, op string) (Expr, Diagnostics) {
+	items := node.GetHeirs()
+	if len(items) == 0 {
+		return unsupportedSanyExpr(node)
+	}
+	left, diags := sanyExpr(sanyJunctionItemExpression(items[0]))
+	for _, item := range items[1:] {
+		right, rightDiags := sanyExpr(sanyJunctionItemExpression(item))
+		diags = append(diags, rightDiags...)
+		left = &BinaryExpr{Op: op, Left: left, Right: right, Pos: sanyNodePosition(node), JunctionList: true}
+	}
+	return left, diags
+}
+
+func sanyJunctionItemExpression(item *SanySyntaxNode) *SanySyntaxNode {
+	heirs := item.GetHeirs()
+	if len(heirs) == 0 {
+		return nil
+	}
+	return heirs[len(heirs)-1]
 }
 
 func sanyOperatorReferenceExpr(node *SanySyntaxNode) (Expr, Diagnostics) {

@@ -1430,6 +1430,13 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	left := p.ExpressionUntil(func(tok *SanyToken) bool {
 		return itemStop(tok)
 	})
+	listKind := "N_ConjList"
+	itemKind := "N_ConjItem"
+	if kind == SanyTokenOR {
+		listKind = "N_DisjList"
+		itemKind = "N_DisjItem"
+	}
+	items := []*SanySyntaxNode{NewSanyNode(SanySyntaxNodeKindByName[itemKind], p.junctionOperatorNode(firstBullet), left)}
 	sawMore := false
 	for p.check(kind) && p.peek().Begin.Line > firstBullet.Begin.Line && p.peek().Begin.Column == minColumn {
 		sawMore = true
@@ -1437,15 +1444,15 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 		right := p.ExpressionUntil(func(tok *SanyToken) bool {
 			return itemStop(tok)
 		})
-		infix := NewSanyNode(SanySyntaxNodeKindByName["N_InfixExpr"], left, p.junctionOperatorNode(bullet), right)
-		infix.JunctionList = true
-		infix.Range.Begin = firstBullet.Begin
-		left = infix
+		items = append(items, NewSanyNode(SanySyntaxNodeKindByName[itemKind], p.junctionOperatorNode(bullet), right))
 	}
 	if !sawMore {
 		return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], p.junctionOperatorNode(firstBullet), left)
 	}
-	return left
+	list := NewSanyNode(SanySyntaxNodeKindByName[listKind], items...)
+	list.JunctionList = true
+	list.Range.Begin = firstBullet.Begin
+	return list
 }
 
 func (p *SanyParser) startsOperatorReference(stop func(*SanyToken) bool) bool {
