@@ -1253,7 +1253,17 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 		if dep == nil {
 			continue
 		}
-		if dep.Library && !includeLibraryExtends {
+		if includeLibraryExtends {
+			for _, source := range x.exportedDefinitionSources(dep, visiting) {
+				if source.def == nil || source.module == nil {
+					continue
+				}
+				source.fromExtends = true
+				byName[source.name] = source
+			}
+			continue
+		}
+		if dep.Library {
 			continue
 		}
 		for i := range dep.Definitions {

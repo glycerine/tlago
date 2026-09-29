@@ -811,6 +811,56 @@ Use == BaseOp /\ TargetOp
 		}
 	})
 
+	t.Run("clones transitively extended definitions through LOCAL INSTANCE", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
+GrandOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "MidBase.tla"), `---- MODULE MidBase ----
+EXTENDS GrandBase
+MidOp == GrandOp
+====`)
+		writeFile(t, filepath.Join(dir, "TopTarget.tla"), `---- MODULE TopTarget ----
+EXTENDS MidBase
+TopOp == MidOp
+====`)
+		root := filepath.Join(dir, "LocalInstanceTransitiveExtendsXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceTransitiveExtendsXML ----
+LOCAL INSTANCE TopTarget
+Use == GrandOp /\ MidOp /\ TopOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		countRootUserDef := func(name string) int {
+			count := 0
+			for _, entry := range canonicalSanyXMLEntries(rootXML) {
+				child := canonicalSanyXMLEntryPayload(entry)
+				if child == nil || child.Name != "UserDefinedOpKind" {
+					continue
+				}
+				if firstChildText(child, "uniquename") == name && firstDescendantText(child, "filename") == "LocalInstanceTransitiveExtendsXML" {
+					count++
+				}
+			}
+			return count
+		}
+		for _, name := range []string{"GrandOp", "MidOp", "TopOp"} {
+			if got := countRootUserDef(name); got != 1 {
+				t.Fatalf("LOCAL INSTANCE transitive %s clones = %d, want 1\n%s", name, got, string(xmlText))
+			}
+		}
+	})
+
 	t.Run("deduplicates overlapping unqualified LOCAL INSTANCE clones", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "SharedBase.tla"), `---- MODULE SharedBase ----
