@@ -333,6 +333,54 @@ A == ChooseOne({1}, LAMBDA y : x = x)
 		}
 	})
 
+	t.Run("serializes ENABLED applications with variable level", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("EnabledLevelXML.tla", `---- MODULE EnabledLevelXML ----
+VARIABLE x
+Done == x' = x
+Live == <>(ENABLED Done)
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		enabledUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "ENABLED")
+		if enabledUID == "" {
+			t.Fatalf("ENABLED builtin missing\n%s", string(xmlText))
+		}
+		node := firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", enabledUID)
+		if node == nil {
+			t.Fatalf("ENABLED application missing\n%s", string(xmlText))
+		}
+		if got := firstChildText(node, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("ENABLED level = %s, want %d\n%s", got, variableLevel, string(xmlText))
+		}
+	})
+
+	t.Run("serializes inherited named assumptions as proof facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "BaseAssume.tla"), `---- MODULE BaseAssume ----
+ASSUME NamedFact == TRUE
+====`)
+		rootPath := filepath.Join(dir, "ProofUsesAssume.tla")
+		writeFile(t, rootPath, `---- MODULE ProofUsesAssume ----
+EXTENDS BaseAssume
+THEOREM T == TRUE
+  BY NamedFact
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		if !strings.Contains(string(xmlText), `<AssumeDefRef>`) {
+			t.Fatalf("proof fact did not reference inherited named assumption as AssumeDefRef\n%s", string(xmlText))
+		}
+	})
+
 	t.Run("serializes proof steps as theorem XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofXML.tla", `---- MODULE ProofXML ----
 THEOREM T == TRUE
@@ -775,4 +823,48 @@ PROOF
 			t.Fatalf("SUFFICES AssumeProveNode missing suffices marker\n%s", ap)
 		}
 	})
+}
+
+func xmlEntryUIDByKindAndName(root *canonicalXMLNode, kind, name string) string {
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		payload := canonicalSanyXMLEntryPayload(entry)
+		if payload == nil || payload.Name != kind || firstChildText(payload, "uniquename") != name {
+			continue
+		}
+		return firstChildText(entry, "UID")
+	}
+	return ""
+}
+
+func firstOpApplNodeForOperatorUID(root *canonicalXMLNode, refKind, uid string) *canonicalXMLNode {
+	var found *canonicalXMLNode
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found != nil {
+			return
+		}
+		if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, refKind, uid) {
+			found = node
+			return
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func opApplNodeUsesOperatorUID(node *canonicalXMLNode, refKind, uid string) bool {
+	for _, child := range node.Children {
+		if child.Name != "operator" {
+			continue
+		}
+		for _, ref := range child.Children {
+			if ref.Name == refKind && firstChildText(ref, "UID") == uid {
+				return true
+			}
+		}
+	}
+	return false
 }

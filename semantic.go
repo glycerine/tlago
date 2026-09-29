@@ -2709,6 +2709,9 @@ func exprLevel(expr Expr, declKinds map[string]DeclarationKind, locals map[strin
 		if e.Op == "'" || e.Op == "UNCHANGED" {
 			return maxTlaLevel(actionLevel, exprLevel(e.Expr, declKinds, locals))
 		}
+		if e.Op == "ENABLED" {
+			return variableLevel
+		}
 		if e.Op == "[]" || e.Op == "<>" {
 			return temporalLevel
 		}

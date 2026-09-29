@@ -2998,6 +2998,9 @@ func (x *sanyXMLExporter) exprLevel(expr Expr, ctx sanyXMLExprContext) tlaLevel 
 		if e.Op == "'" || e.Op == "UNCHANGED" {
 			return maxTlaLevel(actionLevel, x.exprLevel(e.Expr, ctx))
 		}
+		if e.Op == "ENABLED" {
+			return variableLevel
+		}
 		if e.Op == "[]" || e.Op == "<>" {
 			return temporalLevel
 		}
@@ -3239,6 +3242,22 @@ func (x *sanyXMLExporter) addModuleLocalScope(scope sanyXMLScope, mod *Module, q
 		}
 		scope.defs[mod.Name+"!"+def.Name] = sym
 		scope.declKinds[mod.Name+"!"+def.Name] = OperatorDecl
+	}
+	for i, assumption := range mod.Assumptions {
+		if assumption.Name == "" {
+			continue
+		}
+		key := fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assumption.Name)
+		sym := x.assumeDefs[key]
+		if sym == nil {
+			continue
+		}
+		if !qualifiedOnly {
+			scope.defs[assumption.Name] = sym
+			scope.declKinds[assumption.Name] = OperatorDecl
+		}
+		scope.defs[mod.Name+"!"+assumption.Name] = sym
+		scope.declKinds[mod.Name+"!"+assumption.Name] = OperatorDecl
 	}
 }
 
