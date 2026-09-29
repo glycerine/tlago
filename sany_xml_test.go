@@ -173,6 +173,36 @@ Root == A /\ B
 		}
 	})
 
+	t.Run("serializes implicit same-name instance substitutions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+VARIABLE x
+Use == x = C
+====`)
+		root := filepath.Join(dir, "InstanceSubstXML.tla")
+		writeFile(t, root, `---- MODULE InstanceSubstXML ----
+CONSTANT C
+VARIABLE x
+INSTANCE Base
+RootUse == Use
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if count := strings.Count(got, `<Subst>`); count != 4 {
+			t.Fatalf("instance substitutions = %d, want C and x substitutions on the instance and cloned body\n%s", count, got)
+		}
+		if !strings.Contains(got, `<SubstInNode>`) {
+			t.Fatalf("instance-cloned definition body did not include SubstInNode\n%s", got)
+		}
+	})
+
 	t.Run("serializes multi-index function application through a tuple operand", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("MultiIndexFunctionAppXML.tla", `---- MODULE MultiIndexFunctionAppXML ----
 VARIABLE f
@@ -236,6 +266,29 @@ A == \A x \in S : TRUE
 		level := got[a+body+levelStart : a+body+levelStart+levelEnd+len(`</level>`)]
 		if level != `<level>1</level>` {
 			t.Fatalf("bounded quantifier level = %s, want <level>1</level>\n%s", level, got[a+body:])
+		}
+	})
+
+	t.Run("LET node level includes local definition levels", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetLevelXML.tla", `---- MODULE LetLevelXML ----
+VARIABLE v
+A == LET F == v IN F
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		let := strings.Index(got, `<LetInNode>`)
+		if let < 0 {
+			t.Fatalf("SANY XML missing LetInNode\n%s", got)
+		}
+		levelStart := strings.Index(got[let:], `<level>`)
+		if levelStart < 0 {
+			t.Fatalf("SANY XML missing LetInNode level\n%s", got[let:])
+		}
+		levelEnd := strings.Index(got[let+levelStart:], `</level>`)
+		level := got[let+levelStart : let+levelStart+levelEnd+len(`</level>`)]
+		if level != `<level>1</level>` {
+			t.Fatalf("LetInNode level = %s, want <level>1</level>\n%s", level, got[let:])
 		}
 	})
 

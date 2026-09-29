@@ -58,6 +58,11 @@ type sanyXMLEntry struct {
 	body string
 }
 
+type sanyXMLInstanceNode struct {
+	owner *Module
+	inst  Instance
+}
+
 type sanyXMLSymbol struct {
 	UID         int
 	Key         string
@@ -410,6 +415,9 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 			if def.Local || def.TheoremLike {
 				continue
 			}
+			if x.moduleHasDefinition(mod, def.Name) {
+				continue
+			}
 			key := x.instanceDefKey(mod.Name, instIndex, inst, def.Name)
 			if x.instDefs[key] != nil {
 				continue
@@ -571,9 +579,12 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 			if def.Local || def.TheoremLike {
 				continue
 			}
+			if x.moduleHasDefinition(mod, def.Name) {
+				continue
+			}
 			sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, def.Name)]
 			original := x.defs[x.defKey(instMod.Name, def.Name)]
-			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, inst, instMod, def, sourceCtx)...)
+			diags = append(diags, x.emitInstanceDefinitionEntry(sym, original, mod, inst, instMod, def, sourceCtx)...)
 		}
 	}
 	for i, assume := range mod.Assumptions {
@@ -584,14 +595,14 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 		key := fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)
 		diags = append(diags, x.emitTheoremEntry(x.theorems[key], theorem, ctx)...)
 	}
-	x.emitModuleEntry(mod)
+	diags = append(diags, x.emitModuleEntry(mod)...)
 	return diags
 }
 
-func (x *sanyXMLExporter) emitModuleEntry(mod *Module) {
+func (x *sanyXMLExporter) emitModuleEntry(mod *Module) Diagnostics {
 	sym := x.modules[mod.Name]
 	if sym == nil || x.emitted[sym.Key] {
-		return
+		return nil
 	}
 	x.emitted[sym.Key] = true
 	var b bytes.Buffer
@@ -611,18 +622,21 @@ func (x *sanyXMLExporter) emitModuleEntry(mod *Module) {
 	for _, ref := range x.moduleMemberRefs(mod) {
 		x.writeRef(&b, ref)
 	}
-	for _, inst := range x.moduleInstanceNodes(mod) {
-		x.writeInstanceNode(&b, inst)
+	var diags Diagnostics
+	for _, node := range x.moduleInstanceNodes(mod) {
+		instDiags := x.writeInstanceNode(&b, node.owner, node.inst)
+		diags = append(diags, instDiags...)
 	}
 	b.WriteString("</ModuleNode>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
+	return diags
 }
 
-func (x *sanyXMLExporter) moduleInstanceNodes(mod *Module) []Instance {
+func (x *sanyXMLExporter) moduleInstanceNodes(mod *Module) []sanyXMLInstanceNode {
 	if mod == nil {
 		return nil
 	}
-	var out []Instance
+	var out []sanyXMLInstanceNode
 	seen := map[string]bool{}
 	for _, ext := range mod.Extends {
 		x.addImportedModuleInstanceNodes(x.spec.Modules[ext], &out, seen, map[string]bool{})
@@ -633,12 +647,12 @@ func (x *sanyXMLExporter) moduleInstanceNodes(mod *Module) []Instance {
 			continue
 		}
 		seen[key] = true
-		out = append(out, inst)
+		out = append(out, sanyXMLInstanceNode{owner: mod, inst: inst})
 	}
 	return out
 }
 
-func (x *sanyXMLExporter) addImportedModuleInstanceNodes(mod *Module, out *[]Instance, seen map[string]bool, visiting map[string]bool) {
+func (x *sanyXMLExporter) addImportedModuleInstanceNodes(mod *Module, out *[]sanyXMLInstanceNode, seen map[string]bool, visiting map[string]bool) {
 	if mod == nil || visiting[mod.Name] {
 		return
 	}
@@ -652,7 +666,7 @@ func (x *sanyXMLExporter) addImportedModuleInstanceNodes(mod *Module, out *[]Ins
 			continue
 		}
 		seen[key] = true
-		*out = append(*out, inst)
+		*out = append(*out, sanyXMLInstanceNode{owner: mod, inst: inst})
 	}
 	visiting[mod.Name] = false
 }
@@ -662,17 +676,110 @@ func (x *sanyXMLExporter) instanceNodeKey(inst Instance) string {
 	return fmt.Sprintf("%s:%s:%t:%d:%d:%d:%d", inst.Module, inst.qualifier(), inst.Local, pos.Line, pos.Column, pos.EndLine, pos.EndColumn)
 }
 
-func (x *sanyXMLExporter) writeInstanceNode(b *bytes.Buffer, inst Instance) {
+func (x *sanyXMLExporter) writeInstanceNode(b *bytes.Buffer, owner *Module, inst Instance) Diagnostics {
 	b.WriteString("<InstanceNode>")
 	x.writeNode(b, inst.SourcePosition(), constantLevel)
 	b.WriteString("<module>")
 	xmlText(b, inst.Module)
-	b.WriteString("</module><substs/>")
+	b.WriteString("</module>")
+	diags := x.writeInstanceSubstitutions(b, owner, inst)
 	b.WriteString("<params/>")
 	if inst.Local {
 		b.WriteString("<local/>")
 	}
 	b.WriteString("</InstanceNode>")
+	return diags
+}
+
+func (x *sanyXMLExporter) writeInstanceSubstitutions(b *bytes.Buffer, owner *Module, inst Instance) Diagnostics {
+	substs, _, diags := x.instanceSubstitutionsXML(owner, inst)
+	b.WriteString(substs)
+	return diags
+}
+
+func (x *sanyXMLExporter) instanceSubstitutionsXML(owner *Module, inst Instance) (string, bool, Diagnostics) {
+	var b bytes.Buffer
+	b.WriteString("<substs>")
+	var diags Diagnostics
+	hasSubsts := false
+	if len(inst.SubstitutionList) > 0 || len(inst.Substitutions) > 0 {
+		ctx := sanyXMLExprContext{module: owner, scope: x.scopeForModule(owner, map[string]bool{}), formals: map[string]*sanyXMLSymbol{}, defs: map[string]*sanyXMLSymbol{}, proofDefs: map[string]*sanyXMLSymbol{}}
+		for _, subst := range instanceSubstitutions(inst) {
+			target := x.substitutionTargetSymbol(inst.Module, subst.Name)
+			if target == nil || subst.Expr == nil {
+				continue
+			}
+			exprXML, exprDiags := x.exprXML(subst.Expr, ctx)
+			diags = append(diags, exprDiags...)
+			if exprDiags.HasErrors() {
+				continue
+			}
+			hasSubsts = true
+			b.WriteString("<Subst>")
+			x.writeRef(&b, target)
+			b.WriteString(exprXML)
+			b.WriteString("</Subst>")
+		}
+		b.WriteString("</substs>")
+		return b.String(), hasSubsts, diags
+	}
+
+	instMod := x.spec.Modules[inst.Module]
+	if owner == nil || instMod == nil {
+		b.WriteString("</substs>")
+		return b.String(), false, nil
+	}
+	for _, decl := range instMod.Declarations {
+		if decl.Kind != ConstantDecl && decl.Kind != VariableDecl {
+			continue
+		}
+		for _, name := range decl.Names {
+			target := x.decls[x.declKey(instMod.Name, name)]
+			replacement := x.decls[x.declKey(owner.Name, name)]
+			if target == nil || replacement == nil {
+				continue
+			}
+			hasSubsts = true
+			b.WriteString("<Subst>")
+			x.writeRef(&b, target)
+			b.WriteString(x.opApplXML(inst.SourcePosition(), replacement.Level, replacement, nil, ""))
+			b.WriteString("</Subst>")
+		}
+	}
+	b.WriteString("</substs>")
+	return b.String(), hasSubsts, nil
+}
+
+func (x *sanyXMLExporter) substInXML(pos Position, level tlaLevel, substs, body string, from *Module, to *Module) string {
+	var b bytes.Buffer
+	b.WriteString("<SubstInNode>")
+	x.writeNode(&b, pos, level)
+	b.WriteString(substs)
+	b.WriteString("<body>")
+	b.WriteString(body)
+	b.WriteString("</body>")
+	if from != nil {
+		b.WriteString("<instFrom>")
+		x.writeRef(&b, x.modules[from.Name])
+		b.WriteString("</instFrom>")
+	}
+	if to != nil {
+		b.WriteString("<instTo>")
+		x.writeRef(&b, x.modules[to.Name])
+		b.WriteString("</instTo>")
+	}
+	b.WriteString("</SubstInNode>")
+	return b.String()
+}
+
+func (x *sanyXMLExporter) substitutionTargetSymbol(module, name string) *sanyXMLSymbol {
+	if sym := x.decls[x.declKey(module, name)]; sym != nil {
+		return sym
+	}
+	if sym := x.defs[x.defKey(module, name)]; sym != nil {
+		return sym
+	}
+	return nil
 }
 
 func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
@@ -711,6 +818,9 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 			if def.Local || def.TheoremLike {
 				continue
 			}
+			if x.moduleHasDefinition(mod, def.Name) {
+				continue
+			}
 			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, def.Name)])
 		}
 	}
@@ -721,6 +831,18 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 		add(x.theorems[fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)])
 	}
 	return refs
+}
+
+func (x *sanyXMLExporter) moduleHasDefinition(mod *Module, name string) bool {
+	if mod == nil {
+		return false
+	}
+	for i := range mod.Definitions {
+		if mod.Definitions[i].Name == name && !mod.Definitions[i].TheoremLike {
+			return true
+		}
+	}
+	return false
 }
 
 func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*sanyXMLSymbol), visiting map[string]bool) {
@@ -865,7 +987,7 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	return diags
 }
 
-func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, inst Instance, sourceMod *Module, def *Definition, ctx sanyXMLExprContext) Diagnostics {
+func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, original *sanyXMLSymbol, owner *Module, inst Instance, sourceMod *Module, def *Definition, ctx sanyXMLExprContext) Diagnostics {
 	if sym == nil || original == nil || def == nil || x.emitted[sym.Key] {
 		return nil
 	}
@@ -893,6 +1015,14 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	if diags.HasErrors() {
 		return diags
 	}
+	substs, hasSubsts, substDiags := x.instanceSubstitutionsXML(owner, inst)
+	diags = append(diags, substDiags...)
+	if diags.HasErrors() {
+		return diags
+	}
+	if hasSubsts {
+		body = x.substInXML(inst.SourcePosition(), level, substs, body, owner, sourceMod)
+	}
 	sym.Level = level
 	var b bytes.Buffer
 	b.WriteString("<UserDefinedOpKind>")
@@ -902,7 +1032,11 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	b.WriteString("</uniquename><arity>")
 	xmlInt(&b, sym.Arity)
 	b.WriteString("</arity>")
-	x.writeDefinitionOriginFor(&b, original, sourceMod)
+	originModule := sourceMod
+	if hasSubsts {
+		originModule = owner
+	}
+	x.writeDefinitionOriginFor(&b, original, originModule)
 	b.WriteString("<body>")
 	b.WriteString(body)
 	b.WriteString("</body><params>")
@@ -2255,7 +2389,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 	}
 	var b bytes.Buffer
 	b.WriteString("<LetInNode>")
-	x.writeNode(&b, e.Pos, x.exprLevel(e, ctx))
+	x.writeNode(&b, e.Pos, x.exprLevel(e.Body, letCtx))
 	b.WriteString("<body>")
 	b.WriteString(body)
 	b.WriteString("</body><opDefs>")
