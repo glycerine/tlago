@@ -432,6 +432,224 @@ Use == T!:
 		}
 	})
 
+	t.Run("instantiated theorem body selectors keep the theorem source context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "TheoremSelectorBase.tla"), `---- MODULE TheoremSelectorBase ----
+Hidden == TRUE
+THEOREM Thm == Hidden
+====`)
+		rootPath := filepath.Join(dir, "TheoremSelectorRoot.tla")
+		writeFile(t, rootPath, `---- MODULE TheoremSelectorRoot ----
+P == INSTANCE TheoremSelectorBase
+Use == P!Thm!:
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if !strings.Contains(string(xmlText), `<uniquename>$Nop</uniquename>`) {
+			t.Fatalf("instantiated theorem body selector did not emit $Nop wrapper\n%s", xmlText)
+		}
+	})
+
+	t.Run("named instances clone assumption definitions with AP substitutions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "AssumeCloneBase.tla"), `---- MODULE AssumeCloneBase ----
+CONSTANT C
+ASSUME A == C = C
+====`)
+		rootPath := filepath.Join(dir, "AssumeCloneRoot.tla")
+		writeFile(t, rootPath, `---- MODULE AssumeCloneRoot ----
+CONSTANT C
+P == INSTANCE AssumeCloneBase WITH C <- C
+Use == P!A
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<AssumeDef>`,
+			`<uniquename>P!A</uniquename>`,
+			`<APSubstInNode>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("named instance assumption clone missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("unreferenced nested named instance assumption clones stay out of the XML context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "NestedAssumeBase.tla"), `---- MODULE NestedAssumeBase ----
+CONSTANT C
+ASSUME A == C = C
+====`)
+		writeFile(t, filepath.Join(dir, "NestedAssumeMid.tla"), `---- MODULE NestedAssumeMid ----
+CONSTANT C
+V == INSTANCE NestedAssumeBase WITH C <- C
+====`)
+		rootPath := filepath.Join(dir, "NestedAssumeRoot.tla")
+		writeFile(t, rootPath, `---- MODULE NestedAssumeRoot ----
+CONSTANT C
+P == INSTANCE NestedAssumeMid WITH C <- C
+Use == C = C
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, unwanted := range []string{
+			`<uniquename>V!A</uniquename>`,
+			`<uniquename>P!V!A</uniquename>`,
+		} {
+			if strings.Contains(got, unwanted) {
+				t.Fatalf("unreferenced nested instance assumption clone leaked into XML context as %q\n%s", unwanted, got)
+			}
+		}
+	})
+
+	t.Run("instance assumption clone keys preserve nested qualifier names", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "SameNameAssumeBase.tla"), `---- MODULE SameNameAssumeBase ----
+CONSTANT C
+ASSUME A == C # C
+====`)
+		writeFile(t, filepath.Join(dir, "SameNameAssumeMid.tla"), `---- MODULE SameNameAssumeMid ----
+CONSTANT C
+V == INSTANCE SameNameAssumeBase WITH C <- C
+ASSUME A == C = C
+====`)
+		rootPath := filepath.Join(dir, "SameNameAssumeRoot.tla")
+		writeFile(t, rootPath, `---- MODULE SameNameAssumeRoot ----
+CONSTANT C
+P == INSTANCE SameNameAssumeMid WITH C <- C
+Use == P!A
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		pIdx := strings.Index(got, `<uniquename>P!A</uniquename>`)
+		if pIdx < 0 {
+			t.Fatalf("P!A assumption clone missing\n%s", got)
+		}
+		nextEntry := strings.Index(got[pIdx:], `</AssumeDef>`)
+		if nextEntry < 0 {
+			t.Fatalf("P!A assumption clone was not an AssumeDef\n%s", got[pIdx:])
+		}
+		pEntry := got[pIdx : pIdx+nextEntry]
+		if !strings.Contains(pEntry, `<filename>SameNameAssumeMid</filename>`) {
+			t.Fatalf("P!A did not clone the direct assumption from SameNameAssumeMid\n%s", pEntry)
+		}
+		if strings.Contains(pEntry, `<filename>SameNameAssumeBase</filename>`) {
+			t.Fatalf("P!A clone was overwritten by nested V!A metadata\n%s", pEntry)
+		}
+	})
+
+	t.Run("qualified bang subexpression references resolve the longest semantic prefix", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+VARIABLE x
+Init == /\ x = x
+        /\ x' = x
+====`)
+		rootPath := filepath.Join(dir, "QualifiedBangXML.tla")
+		writeFile(t, rootPath, `---- MODULE QualifiedBangXML ----
+VARIABLE x
+P == INSTANCE Base WITH x <- x
+Use == P!Init!2
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>$Nop</uniquename>`) {
+			t.Fatalf("qualified bang subexpression did not emit $Nop wrapper\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>P!Init!2</uniquename>`) {
+			t.Fatalf("qualified bang subexpression emitted fake operator name\n%s", got)
+		}
+	})
+
+	t.Run("bang subexpression references preserve selector arguments before numeric selectors", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SelectorArgumentBangXML.tla", `---- MODULE SelectorArgumentBangXML ----
+CONSTANT S, x
+Inv == \A m \in S : /\ m = x
+                     /\ x = x
+Use == Inv!(x)!1
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("argument-bearing bang subexpression did not emit lambda selector wrapper\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>Inv!(!1</uniquename>`) {
+			t.Fatalf("argument-bearing bang subexpression emitted malformed fake operator name\n%s", got)
+		}
+		if strings.Contains(got, `<uniquename>Inv!1</uniquename>`) {
+			t.Fatalf("argument-bearing bang subexpression emitted fake selected operator name\n%s", got)
+		}
+	})
+
+	t.Run("parameterized bang subexpression calls do not become synthetic builtins", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ParameterizedSelectorCallXML.tla", `---- MODULE ParameterizedSelectorCallXML ----
+CONSTANT S, a, b, c
+Op(x, y) == \A z \in S : x = y
+Use == Op(a, b)!1!(c)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `<BuiltInKind>`) && strings.Contains(got, `<uniquename>Op!1</uniquename>`) {
+			t.Fatalf("parameterized selector call was emitted as a fake builtin\n%s", got)
+		}
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("parameterized selector call did not synthesize a lambda operator\n%s", got)
+		}
+	})
+
+	t.Run("unused selector lambda formals omit unchecked levels", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("UnusedSelectorLambdaFormalLevelXML.tla", `---- MODULE UnusedSelectorLambdaFormalLevelXML ----
+CONSTANT S, a, b, c
+Op(x, y) == \A z \in S : TRUE
+Use == Op(a, b)!1!(c)
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		formal := xmlEntryPayloadByKindAndName(root, "FormalParamNode", "z")
+		if formal == nil {
+			t.Fatalf("selector lambda formal z missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "" {
+			t.Fatalf("unused selector lambda formal z level = %q, want omitted\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("function application function operand carries function level", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("FunctionAppFunctionLevelXML.tla", `---- MODULE FunctionAppFunctionLevelXML ----
 CONSTANT S
@@ -474,6 +692,35 @@ F[x \in S] == LET local == v IN local = x
 		}
 		if got := firstChildText(def, "level"); got != "1" {
 			t.Fatalf("F definition level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("recursive function specs level-check their self formal", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("RecursiveFunctionSelfFormalLevelXML.tla", `---- MODULE RecursiveFunctionSelfFormalLevelXML ----
+CONSTANT S
+F[x \in S] == F[x]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "F" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 3, 1, 18) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("recursive function self formal F missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "0" {
+			t.Fatalf("recursive function self formal level = %q, want 0\n%s", got, xmlText)
 		}
 	})
 
@@ -2678,7 +2925,7 @@ THEOREM T == TRUE
 		}
 	})
 
-	t.Run("PICK proof bound formals keep Java level when unused", func(t *testing.T) {
+	t.Run("PICK proof bound formals omit levels until referenced", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofPickUnusedFormalLevelXML.tla", `---- MODULE ProofPickUnusedFormalLevelXML ----
 CONSTANT S
 THEOREM T == TRUE
@@ -2706,8 +2953,76 @@ THEOREM T == TRUE
 		if formal == nil {
 			t.Fatalf("PICK formal n at line 4 column 12 missing\n%s", xmlText)
 		}
+		if got := firstChildText(formal, "level"); got != "" {
+			t.Fatalf("unused PICK formal n level = %q, want omitted\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("PICK proof bound formals emit levels once referenced", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickUsedFormalLevelXML.tla", `---- MODULE ProofPickUsedFormalLevelXML ----
+CONSTANT S
+THEOREM T == TRUE
+<1>1. PICK n \in S : n = n
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "n" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 4, 12, 12) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("PICK formal n at line 4 column 12 missing\n%s", xmlText)
+		}
 		if got := firstChildText(formal, "level"); got != "0" {
-			t.Fatalf("PICK formal n level = %q, want 0\n%s", got, xmlText)
+			t.Fatalf("referenced PICK formal n level = %q, want 0\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("later proof steps level-check previous PICK bounds", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickLaterUseFormalLevelXML.tla", `---- MODULE ProofPickLaterUseFormalLevelXML ----
+CONSTANT S
+THEOREM T == TRUE
+<1> PICK a \in S : TRUE
+  OBVIOUS
+<1>1. a = a
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload == nil || payload.Name != "FormalParamNode" || firstChildText(payload, "uniquename") != "a" {
+				continue
+			}
+			if xmlNodeLocationMatches(payload, 4, 10, 10) {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("PICK formal a at line 4 column 10 missing\n%s", xmlText)
+		}
+		if got := firstChildText(formal, "level"); got != "0" {
+			t.Fatalf("later-used PICK formal a level = %q, want 0\n%s", got, xmlText)
 		}
 	})
 
@@ -2862,6 +3177,33 @@ PROOF
 		operands := directChildren(node, "operands")
 		if len(operands) != 1 || len(operands[0].Children) != 2 {
 			t.Fatalf("$Witness operand count = %d containers/%d operands, want 1/2\n%s", len(operands), len(operands[0].Children), xmlText)
+		}
+	})
+
+	t.Run("serializes HAVE proof steps as have builtin applications", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofHaveXML.tla", `---- MODULE ProofHaveXML ----
+THEOREM T == TRUE
+PROOF
+<1>1. HAVE TRUE
+<1>. QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		haveUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Have")
+		if haveUID == "" {
+			t.Fatalf("SANY XML missing $Have builtin\n%s", xmlText)
+		}
+		node := firstOpApplNodeForOperatorUID(root, "BuiltInKindRef", haveUID)
+		if node == nil {
+			t.Fatalf("proof step body missing $Have application\n%s", xmlText)
+		}
+		operands := directChildren(node, "operands")
+		if len(operands) != 1 || len(operands[0].Children) != 1 {
+			t.Fatalf("$Have operand count = %d containers/%d operands, want 1/1\n%s", len(operands), len(operands[0].Children), xmlText)
 		}
 	})
 
@@ -3030,6 +3372,31 @@ PROOF
 		}
 		if refs := xmlNodesByName(def, "TheoremDefRef"); len(refs) == 0 {
 			t.Fatalf("proof step operand did not reference <1>1 theorem definition\n%s", xmlText)
+		}
+	})
+
+	t.Run("proof assertion at references the previous proof-step expression", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofAtStepXML.tla", `---- MODULE ProofAtStepXML ----
+VARIABLE x
+THEOREM T == TRUE
+PROOF
+<1>1. x = x
+<1>2. @ = x
+  BY <1>1
+<1>. QED
+  BY <1>2
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if strings.Contains(got, `<uniquename>@</uniquename>`) {
+			t.Fatalf("proof @ step exported @ as an operator\n%s", got)
+		}
+		if strings.Contains(got, `<AtNode>`) {
+			t.Fatalf("proof @ step exported EXCEPT AtNode\n%s", got)
+		}
+		if !strings.Contains(got, `<TheoremDefNode>`) {
+			t.Fatalf("proof @ step did not export theorem definition\n%s", got)
 		}
 	})
 

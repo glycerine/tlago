@@ -1397,6 +1397,7 @@ func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, 
 	var diags Diagnostics
 	qualifier := inst.qualifier()
 	exportUnqualified := inst.exportsUnqualified()
+	instMod := spec.Modules[inst.Module]
 	for _, symbol := range semanticInstanceSymbols(inst, spec) {
 		if exportUnqualified && symbol.unqualified {
 			if _, shadowsLocal := localSymbols[symbol.name]; shadowsLocal {
@@ -1408,6 +1409,20 @@ func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, 
 			continue
 		}
 		addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
+	}
+	if instMod != nil {
+		for i := range instMod.Definitions {
+			def := instMod.Definitions[i]
+			if def.Local {
+				continue
+			}
+			if exportUnqualified {
+				addSubexpressionReferenceNames(defined, def.Name, def.Expr)
+			}
+			if qualifier != "" {
+				addSubexpressionReferenceNames(defined, qualifier+"!"+def.Name, def.Expr)
+			}
+		}
 	}
 	return diags
 }

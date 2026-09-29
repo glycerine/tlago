@@ -2170,6 +2170,9 @@ func sanyGeneralIDName(node *SanySyntaxNode) string {
 		if len(elemHeirs) == 0 {
 			continue
 		}
+		if elemHeirs[0].Kind.JavaName() == "N_OpArgs" {
+			continue
+		}
 		if name := sanySelectorName(elemHeirs[0]); name != "" {
 			parts = append(parts, name)
 		}
@@ -2188,28 +2191,31 @@ func sanyGeneralIDCall(node *SanySyntaxNode) (Expr, bool, Diagnostics) {
 	var parts []string
 	var args []Expr
 	var diags Diagnostics
+	collectArgs := func(argRoot *SanySyntaxNode) {
+		for _, argNode := range expressionChildren(argRoot) {
+			arg, argDiags := sanyExpr(argNode)
+			diags = append(diags, argDiags...)
+			args = append(args, arg)
+		}
+	}
 	for _, elem := range heirs[0].GetHeirs() {
 		elemHeirs := elem.GetHeirs()
 		if len(elemHeirs) == 0 {
+			continue
+		}
+		if elemHeirs[0].Kind.JavaName() == "N_OpArgs" {
+			collectArgs(elemHeirs[0])
 			continue
 		}
 		if name := sanySelectorName(elemHeirs[0]); name != "" {
 			parts = append(parts, name)
 		}
 		if len(elemHeirs) > 1 && elemHeirs[1].Kind.JavaName() == "N_OpArgs" {
-			for _, argNode := range expressionChildren(elemHeirs[1]) {
-				arg, argDiags := sanyExpr(argNode)
-				diags = append(diags, argDiags...)
-				args = append(args, arg)
-			}
+			collectArgs(elemHeirs[1])
 		}
 	}
 	if heirs[1].Kind.JavaName() == "N_OpArgs" {
-		for _, argNode := range expressionChildren(heirs[1]) {
-			arg, argDiags := sanyExpr(argNode)
-			diags = append(diags, argDiags...)
-			args = append(args, arg)
-		}
+		collectArgs(heirs[1])
 	} else if name := sanySelectorName(heirs[1]); name != "" {
 		parts = append(parts, name)
 	}
@@ -2226,6 +2232,9 @@ func sanySelectorName(node *SanySyntaxNode) string {
 	}
 	if node.Kind.JavaName() == "IDENTIFIER" {
 		return node.Image
+	}
+	if node.Kind.JavaName() == "N_OpArgs" {
+		return ""
 	}
 	if image := sanyOperatorImage(node); image != "" {
 		return image

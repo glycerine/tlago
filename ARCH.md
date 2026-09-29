@@ -394,7 +394,12 @@ It:
 
 This matters for XML levels: formal parameters are semantic symbols. Their
 presence in `levelParams`, `allParams`, `argLevelParams`, and Leibniz metadata
-drives operator application levels.
+drives operator application levels. A `FormalParamNode` may exist in a context
+before it has been level-checked. Java emits `<level>` for that formal only if
+`FormalParamNode.levelCheck` has actually run; merely appearing in a bounded
+operator's bound-symbol list is not enough. For example, a proof `PICK n \in S :
+TRUE` creates a formal for `n`, but `n` is not level-checked unless it appears
+in the body or in another checked expression.
 
 ### Function Definitions
 
@@ -629,6 +634,22 @@ When a symbol definition is exported into the context, `SymbolNode` emits:
 This means XML context entries are discovered lazily from references. Go should
 implement the same semantic mechanism. Sorting context entries for deterministic
 Go output is fine, but entry contents should be semantic-node exports.
+For `FormalParamNode`, "level when available" specifically means `getLevel()`
+does not throw because level checking reached that symbol. The exporter catches
+the exception and omits `<level>` otherwise.
+
+Proof-step `PICK` formals follow the same rule, but the relevant level-checking
+scope is the containing proof, not just the PICK predicate. If a later sibling
+proof step uses a name introduced by `PICK`, Java has already level-checked
+that shared `FormalParamNode` before XML export reaches the earlier PICK's
+bound-symbol reference. Go therefore needs a proof-level pre-pass or a real
+semantic level-check graph so the context entry is written with the final
+checked state.
+
+Recursive function definitions also create a synthetic self `FormalParamNode`
+for `$RecursiveFcnSpec`, emitted as an unbounded symbol in the function-spec
+application. Java level-checks that self formal, so its context entry carries
+`<level>0</level>` even though it is not an ordinary user parameter.
 
 ### ModuleNode XML
 
@@ -1193,6 +1214,50 @@ rewrites include:
 formal parameter arity expected by the main operator. If the expected arity is
 zero, it generates an expression. If nonzero, it generates an `OpArgNode` or a
 lambda-backed `OpArgNode`. This distinction drives both level checking and XML.
+
+`generateGenID` and `selectorToNode` are the important architecture boundary
+for generalized identifiers. Java does not reduce a generalized identifier to a
+single textual name and then re-parse the string later. It builds a `GenID`
+containing:
+
+- a compound operator name, such as `P!Init` or `TLANext`;
+- expression/operator arguments attached to intermediate selectors, such as the
+  `m` in `2avInv2!(m)!1`;
+- a final operator symbol;
+- the CST location of the whole selector expression.
+
+`selectorToNode` then implements Lamport's `Subexpression.tla` algorithm over
+that structured selector. The selector path can contain ordinary names, module
+instance qualifiers, numeric selectors, structural selectors such as `<<`, `>>`,
+`@`, and `:`, and argument-bearing selectors. Java chooses semantic meaning by
+walking the current semantic node, not by applying string rules globally. The
+Go port should preserve that split:
+
+- the parser/lowerer should keep selector components and selector arguments
+  structured as long as possible;
+- XML/subexpression resolution may use textual names as a bridge only when it
+  first resolves the longest semantic operator prefix and then interprets the
+  remaining suffix as selectors;
+- qualified definitions such as `P!Init!1` must resolve base `P!Init` before
+  reading selector `1`;
+- quantified-definition calls such as `TLANext!1!(self)` select
+  subexpression `TLANext!1` and then apply the generated lambda to `self`;
+- selector arguments such as `2avInv2!(m)!1` are attached to the selector
+  before selecting the numeric child.
+
+The proof generator also has a local `@` meaning that is distinct from EXCEPT
+`@`. In proof-step generation, an infix step whose left hand side is `@`
+expands against the previous proof-step assertion. For example:
+
+```tla
+<1>2. A = B
+<1>3. @ = C
+```
+
+The `@` in `<1>3` is not an `AtNode` and is not a built-in operator reference.
+It is part of proof-step processing and should be resolved before ordinary
+expression XML export sees it. EXCEPT `@` remains handled by `excStack` and
+`excSpecStack` and exports as `AtNode`.
 
 ### Instantiation And Substitution Phase
 

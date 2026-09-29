@@ -41,6 +41,18 @@ func sanySelectSubexpression(expr Expr, selectors []int) Expr {
 	return cur
 }
 
+func sanyCanConsumeQuantifiers(expr Expr, count int) bool {
+	cur := expr
+	for i := 0; i < count; i++ {
+		quant, ok := cur.(*QuantifierExpr)
+		if !ok || quant.Set == nil {
+			return false
+		}
+		cur = quant.Body
+	}
+	return true
+}
+
 func sanySubexpressionChildren(expr Expr) []Expr {
 	switch e := expr.(type) {
 	case *UnaryExpr:
