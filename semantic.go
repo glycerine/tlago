@@ -489,9 +489,10 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 		for _, param := range def.Params {
 			locals[param] = true
 		}
+		defArities := definitionBodyArities(arities, def)
 		diags = append(diags, checkExpr(def.Expr, defined, locals)...)
-		diags = append(diags, checkCallArity(def.Expr, arities, operatorParamSpecs, locals)...)
-		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, arities, locals)...)
+		diags = append(diags, checkCallArity(def.Expr, defArities, operatorParamSpecs, locals)...)
+		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, defArities, locals)...)
 		diags = append(diags, checkFunctionArity(def.Expr, functionArities, locals)...)
 		diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
 		if !def.AssumeProve {
@@ -1215,6 +1216,9 @@ func checkDefinitionParams(def Definition) Diagnostics {
 func checkDefinitionParamCollisions(def Definition, defined map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	for _, param := range def.Params {
+		if _, operatorParam := def.ParamArities[param]; operatorParam && !isIdentifierName(param) {
+			continue
+		}
 		diags = append(diags, checkBindingName("parameter", param, def.Pos, defined, locals)...)
 	}
 	return diags
@@ -1627,6 +1631,30 @@ func definitionOperatorParamSpecs(def Definition) ([]operatorParamSpec, bool) {
 	return specs, true
 }
 
+func definitionBodyArities(base map[string]int, def Definition) map[string]int {
+	out := copyIntMap(base)
+	for _, param := range def.Params {
+		delete(out, localOperatorArityKey(param))
+	}
+	for name, arity := range def.ParamArities {
+		out[localOperatorArityKey(name)] = arity
+	}
+	return out
+}
+
+func quantifierBodyArities(base map[string]int, expr *QuantifierExpr) map[string]int {
+	if expr == nil || !expr.HasOperatorArity {
+		return base
+	}
+	out := copyIntMap(base)
+	out[localOperatorArityKey(expr.Var)] = expr.OperatorArity
+	return out
+}
+
+func localOperatorArityKey(name string) string {
+	return "\x00local-operator-arity:" + name
+}
+
 func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	switch e := expr.(type) {
@@ -1865,14 +1893,15 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 			for _, param := range def.Params {
 				defLocals[param] = true
 			}
-			diags = append(diags, checkCallArity(def.Expr, letArities, letOperatorParams, defLocals)...)
+			defArities := definitionBodyArities(letArities, def)
+			diags = append(diags, checkCallArity(def.Expr, defArities, letOperatorParams, defLocals)...)
 		}
 		diags = append(diags, checkCallArity(e.Body, letArities, letOperatorParams, locals)...)
 	case *QuantifierExpr:
 		diags = append(diags, recur(e.Set, arities, locals)...)
 		quantLocals := copyBoolMap(locals)
 		quantLocals[e.Var] = true
-		diags = append(diags, recur(e.Body, arities, quantLocals)...)
+		diags = append(diags, recur(e.Body, quantifierBodyArities(arities, e), quantLocals)...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
 			diags = append(diags, recur(arm.Test, arities, locals)...)
@@ -2032,14 +2061,15 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 			for _, param := range def.Params {
 				defLocals[param] = true
 			}
-			diags = append(diags, checkOperatorArgumentKinds(def.Expr, letOperatorParams, letArities, defLocals)...)
+			defArities := definitionBodyArities(letArities, def)
+			diags = append(diags, checkOperatorArgumentKinds(def.Expr, letOperatorParams, defArities, defLocals)...)
 		}
 		diags = append(diags, checkOperatorArgumentKinds(e.Body, letOperatorParams, letArities, locals)...)
 	case *QuantifierExpr:
 		diags = append(diags, checkOperatorArgumentKinds(e.Set, operatorParams, arities, locals)...)
 		quantLocals := copyBoolMap(locals)
 		quantLocals[e.Var] = true
-		diags = append(diags, checkOperatorArgumentKinds(e.Body, operatorParams, arities, quantLocals)...)
+		diags = append(diags, checkOperatorArgumentKinds(e.Body, operatorParams, quantifierBodyArities(arities, e), quantLocals)...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
 			diags = append(diags, checkOperatorArgumentKinds(arm.Test, operatorParams, arities, locals)...)
@@ -2122,7 +2152,8 @@ func operatorArgumentArity(expr Expr, arities map[string]int, locals map[string]
 	switch e := expr.(type) {
 	case *IdentExpr:
 		if locals != nil && locals[e.Name] {
-			return 0, false
+			arity, ok := arities[localOperatorArityKey(e.Name)]
+			return arity, ok
 		}
 		if arity, ok := arities[e.Name]; ok {
 			return arity, true
@@ -2394,6 +2425,14 @@ func copyBoolMap(in map[string]bool) map[string]bool {
 	out := map[string]bool{}
 	for name, ok := range in {
 		out[name] = ok
+	}
+	return out
+}
+
+func copyIntMap(in map[string]int) map[string]int {
+	out := map[string]int{}
+	for name, value := range in {
+		out[name] = value
 	}
 	return out
 }

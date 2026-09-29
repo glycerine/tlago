@@ -420,6 +420,22 @@ Use == C
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("checks operator formals passed through higher-order calls", func(t *testing.T) {
+		_, diags := CheckSanySource("HigherOrderOperatorFormals.tla", `---- MODULE HigherOrderOperatorFormals ----
+Apply2(Op(_,_), x, y) == Op(x, y)
+Forward(Op(_,_), x, y) == Apply2(Op, x, y)
+====`)
+		requireNoErrors(t, diags)
+	})
+
+	t.Run("checks mixfix operator formals contribute to definition arity", func(t *testing.T) {
+		_, diags := CheckSanySource("MixfixOperatorFormalArity.tla", `---- MODULE MixfixOperatorFormalArity ----
+OpToRel(_\prec_, S) == TRUE
+Use == OpToRel(=, {})
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("checks prefix negative operator definitions at body boundaries", func(t *testing.T) {
 		_, diags := CheckSanySource("NegativeOps.tla", `---- MODULE NegativeOps ----
 RefersTo(value, name) == TRUE

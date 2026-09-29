@@ -243,12 +243,14 @@ func (e *LetExpr) Position() Position { return e.Pos }
 func (*LetExpr) exprNode()            {}
 
 type QuantifierExpr struct {
-	Kind   string
-	Var    string
-	VarPos Position
-	Set    Expr
-	Body   Expr
-	Pos    Position
+	Kind             string
+	Var              string
+	VarPos           Position
+	Set              Expr
+	Body             Expr
+	OperatorArity    int
+	HasOperatorArity bool
+	Pos              Position
 }
 
 func (e *QuantifierExpr) Position() Position { return e.Pos }
@@ -338,9 +340,11 @@ func (e *RecordSetExpr) Position() Position { return e.Pos }
 func (*RecordSetExpr) exprNode()            {}
 
 type BoundVar struct {
-	Name string
-	Set  Expr
-	Pos  Position
+	Name             string
+	Set              Expr
+	Pos              Position
+	OperatorArity    int
+	HasOperatorArity bool
 }
 
 type FunctionExpr struct {

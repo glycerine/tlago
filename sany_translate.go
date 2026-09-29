@@ -758,7 +758,8 @@ func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 			def.Pos = sanyNodePosition(lhsHeirs[0])
 		}
 		for _, child := range lhsHeirs[1:] {
-			if child.Kind.JavaName() == "N_IdentDecl" {
+			switch child.Kind.JavaName() {
+			case "N_IdentDecl":
 				if id := firstSanyIdentifier(child); id != nil {
 					def.Params = append(def.Params, id.Image)
 					if arity := countDirectSanyChildren(child, "US"); arity > 0 {
@@ -770,6 +771,24 @@ func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 					} else {
 						def.ParamPositions[id.Image] = sanyNodePosition(id)
 					}
+				}
+			case "N_PrefixDecl", "N_PostfixDecl":
+				if name := sanyFixDeclOperatorName(child); name != "" {
+					def.Params = append(def.Params, name)
+					if def.ParamArities == nil {
+						def.ParamArities = map[string]int{}
+					}
+					def.ParamArities[name] = 1
+					def.ParamPositions[name] = sanyFixDeclOperatorPosition(child)
+				}
+			case "N_InfixDecl":
+				if name := sanyFixDeclOperatorName(child); name != "" {
+					def.Params = append(def.Params, name)
+					if def.ParamArities == nil {
+						def.ParamArities = map[string]int{}
+					}
+					def.ParamArities[name] = 2
+					def.ParamPositions[name] = sanyFixDeclOperatorPosition(child)
 				}
 			}
 		}
@@ -1554,12 +1573,14 @@ func wrapQuantifierExprs(kind string, vars []BoundVar, body Expr, pos Position) 
 	out := body
 	for i := len(vars) - 1; i >= 0; i-- {
 		out = &QuantifierExpr{
-			Kind:   kind,
-			Var:    vars[i].Name,
-			VarPos: vars[i].Pos,
-			Set:    vars[i].Set,
-			Body:   out,
-			Pos:    pos,
+			Kind:             kind,
+			Var:              vars[i].Name,
+			VarPos:           vars[i].Pos,
+			Set:              vars[i].Set,
+			Body:             out,
+			OperatorArity:    vars[i].OperatorArity,
+			HasOperatorArity: vars[i].HasOperatorArity,
+			Pos:              pos,
 		}
 	}
 	return out
@@ -1682,7 +1703,12 @@ func assumeProveExpr(body *AssumeProve, pos Position) Expr {
 	var newBounds []BoundVar
 	for _, item := range body.Assumptions {
 		if item.NewSymbol != nil {
-			newBounds = append(newBounds, BoundVar{Name: item.NewSymbol.Name, Set: item.NewSymbol.Domain, Pos: item.NewSymbol.Pos})
+			bound := BoundVar{Name: item.NewSymbol.Name, Set: item.NewSymbol.Domain, Pos: item.NewSymbol.Pos}
+			if item.NewSymbol.Arity > 0 {
+				bound.OperatorArity = item.NewSymbol.Arity
+				bound.HasOperatorArity = true
+			}
+			newBounds = append(newBounds, bound)
 			continue
 		}
 		if item.Nested != nil {
