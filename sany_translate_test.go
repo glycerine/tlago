@@ -100,6 +100,32 @@ Use == LET I == INSTANCE Inner IN I!Op
 		}
 	})
 
+	t.Run("loads sibling modules declared later in the same TLA file", func(t *testing.T) {
+		dir := t.TempDir()
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, root, `---- MODULE Root ----
+EXTENDS Common
+Use == Helper
+====
+
+---- MODULE Common ----
+Helper == TRUE
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		common := spec.Modules["Common"]
+		if common == nil {
+			t.Fatalf("same-file sibling module Common was not registered")
+		}
+		if common.Pos.File != "Common" || common.Pos.Line != 1 {
+			t.Fatalf("Common position = %s:%d, want Common:1", common.Pos.File, common.Pos.Line)
+		}
+		if len(common.Definitions) != 1 || common.Definitions[0].SourcePosition().File != "Common" || common.Definitions[0].SourcePosition().Line != 2 {
+			t.Fatalf("Common helper position = %#v, want Common line 2", common.Definitions)
+		}
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("records SANY semantic analysis order", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "ExtBase.tla"), `---- MODULE ExtBase ----

@@ -1087,9 +1087,10 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 			add(x.decls[x.declKey(mod.Name, name)])
 		}
 	}
+	importedVisibleNames := map[string]bool{}
 	for _, ext := range mod.Extends {
 		if dep := x.spec.Modules[ext]; dep != nil {
-			x.addImportedModuleMemberRefs(dep, add, map[string]bool{})
+			x.addImportedModuleMemberRefs(dep, add, map[string]bool{}, importedVisibleNames, nil)
 		}
 	}
 	for i := range mod.Definitions {
@@ -1404,17 +1405,30 @@ func sortedDefinitionSources(byName map[string]sanyXMLDefinitionSource) []sanyXM
 	return out
 }
 
-func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*sanyXMLSymbol), visiting map[string]bool) {
+func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*sanyXMLSymbol), visiting map[string]bool, visibleNames map[string]bool, hiddenByOwner map[string]bool) {
 	if mod == nil || visiting[mod.Name] {
 		return
 	}
 	visiting[mod.Name] = true
+	hiddenForExtends := mergeSanyXMLHiddenMemberNames(hiddenByOwner, x.directModuleMemberNames(mod))
 	for _, ext := range mod.Extends {
-		x.addImportedModuleMemberRefs(x.spec.Modules[ext], add, visiting)
+		x.addImportedModuleMemberRefs(x.spec.Modules[ext], add, visiting, visibleNames, hiddenForExtends)
+	}
+	addVisible := func(sym *sanyXMLSymbol) {
+		if sym == nil {
+			return
+		}
+		if sanyXMLSymbolUsesVisibleName(sym) {
+			if hiddenByOwner[sym.Name] || visibleNames[sym.Name] {
+				return
+			}
+			visibleNames[sym.Name] = true
+		}
+		add(sym)
 	}
 	for _, decl := range mod.Declarations {
 		for _, name := range decl.Names {
-			add(x.decls[x.declKey(mod.Name, name)])
+			addVisible(x.decls[x.declKey(mod.Name, name)])
 		}
 	}
 	for i := range mod.Definitions {
@@ -1422,7 +1436,7 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 		if x.moduleDefinitionIsLocal(mod, def) || def.TheoremLike {
 			continue
 		}
-		add(x.defs[x.defKey(mod.Name, def.Name)])
+		addVisible(x.defs[x.defKey(mod.Name, def.Name)])
 	}
 	for instIndex, inst := range mod.Instances {
 		if inst.Local {
@@ -1442,7 +1456,7 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 			if sym != nil && sym.Kind == "TheoremDefNode" {
 				continue
 			}
-			add(sym)
+			addVisible(sym)
 		}
 	}
 	for i, assume := range mod.Assumptions {
@@ -1452,6 +1466,60 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 		add(x.theorems[fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)])
 	}
 	visiting[mod.Name] = false
+}
+
+func (x *sanyXMLExporter) directModuleMemberNames(mod *Module) map[string]bool {
+	out := map[string]bool{}
+	if mod == nil {
+		return out
+	}
+	for _, decl := range mod.Declarations {
+		for _, name := range decl.Names {
+			out[name] = true
+		}
+	}
+	for i := range mod.Definitions {
+		def := &mod.Definitions[i]
+		if x.moduleDefinitionIsLocal(mod, def) || def.TheoremLike {
+			continue
+		}
+		out[def.Name] = true
+	}
+	for _, inst := range mod.Instances {
+		if inst.Local {
+			continue
+		}
+		for _, source := range x.instanceDefinitionSources(inst) {
+			out[source.cloneName] = true
+		}
+	}
+	return out
+}
+
+func mergeSanyXMLHiddenMemberNames(parent, local map[string]bool) map[string]bool {
+	if len(parent) == 0 && len(local) == 0 {
+		return nil
+	}
+	out := map[string]bool{}
+	for name := range parent {
+		out[name] = true
+	}
+	for name := range local {
+		out[name] = true
+	}
+	return out
+}
+
+func sanyXMLSymbolUsesVisibleName(sym *sanyXMLSymbol) bool {
+	if sym == nil || sym.Name == "" {
+		return false
+	}
+	switch sym.Kind {
+	case "AssumeNode", "TheoremNode":
+		return false
+	default:
+		return true
+	}
 }
 
 func sortedSymbolMap(m map[string]*sanyXMLSymbol) []*sanyXMLSymbol {

@@ -22,6 +22,29 @@ func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
 	return node, diags
 }
 
+func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics) {
+	tokens, lexDiags := SanyTokenize(file, source)
+	parser := NewSanyParser(tokens, nil)
+	if parser.match(SanyTokenBeginPragma) {
+		for !parser.check(SanyTokenEOF) && !parser.atModuleStart() {
+			parser.advance()
+		}
+	}
+	var modules []*SanySyntaxNode
+	for !parser.check(SanyTokenEOF) {
+		for !parser.check(SanyTokenEOF) && !parser.atModuleStart() {
+			parser.advance()
+		}
+		if parser.check(SanyTokenEOF) {
+			break
+		}
+		modules = append(modules, parser.Module())
+	}
+	diags := append(Diagnostics{}, lexDiags...)
+	diags = append(diags, parser.diags...)
+	return modules, diags
+}
+
 func filterSanyDiagnosticsThroughRootEnd(diags Diagnostics, root *SanySyntaxNode) Diagnostics {
 	if len(diags) == 0 {
 		return diags
@@ -80,6 +103,10 @@ func (p *SanyParser) CompilationUnit() *SanySyntaxNode {
 		}
 	}
 	return p.Module()
+}
+
+func (p *SanyParser) atModuleStart() bool {
+	return p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2)
 }
 
 func (p *SanyParser) Module() *SanySyntaxNode {

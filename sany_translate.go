@@ -139,8 +139,12 @@ func (l *sanyLoader) loadPath(path string, standard bool) *Module {
 		l.diags = append(l.diags, errorAt(Position{File: path, Line: 1, Column: 1}, "E1202", "cannot read %s: %v", path, err))
 		return nil
 	}
-	mod, diags := ParseSanyModuleSource(path, string(data))
+	mods, diags := parseSanyModuleSources(path, string(data))
 	l.diags = append(l.diags, diags...)
+	if len(mods) == 0 {
+		return &Module{SourcePath: path, Source: string(data)}
+	}
+	mod := mods[0]
 	if mod.Name == "" {
 		return mod
 	}
@@ -150,13 +154,20 @@ func (l *sanyLoader) loadPath(path string, standard bool) *Module {
 			l.diags = append(l.diags, errorAt(mod.Pos, "E1203", "file name %q does not match module name %q", fileMod, mod.Name))
 		}
 	}
-	l.modules[mod.Name] = mod
-	for _, nested := range mod.Nested {
-		if nested != nil && nested.Name != "" {
-			l.modules[nested.Name] = nested
-		}
+	for _, loaded := range mods {
+		l.registerModuleRecursive(loaded)
 	}
 	return mod
+}
+
+func (l *sanyLoader) registerModuleRecursive(mod *Module) {
+	if mod == nil || mod.Name == "" {
+		return
+	}
+	l.modules[mod.Name] = mod
+	for _, nested := range mod.Nested {
+		l.registerModuleRecursive(nested)
+	}
 }
 
 func ParseSanyModuleSource(file, source string) (*Module, Diagnostics) {
@@ -173,6 +184,78 @@ func ParseSanyModuleSource(file, source string) (*Module, Diagnostics) {
 	setModuleSourceRecursive(mod, source)
 	diags = append(diags, modDiags...)
 	return mod, diags
+}
+
+func parseSanyModuleSources(file, source string) ([]*Module, Diagnostics) {
+	roots, diags := ParseSanySyntaxModules(file, source)
+	if len(roots) == 0 {
+		return nil, diags
+	}
+	mods := make([]*Module, 0, len(roots))
+	for i, root := range roots {
+		if root == nil {
+			continue
+		}
+		if i > 0 {
+			rebaseSameFileSiblingModuleSyntax(root)
+		}
+		mod, modDiags := sanyModuleFromSyntax(file, root)
+		setModuleSourceRecursive(mod, source)
+		diags = append(diags, modDiags...)
+		mods = append(mods, mod)
+	}
+	return mods, diags
+}
+
+func rebaseSameFileSiblingModuleSyntax(root *SanySyntaxNode) {
+	if root == nil {
+		return
+	}
+	moduleName := SanyModuleName(root)
+	if moduleName == "" {
+		return
+	}
+	lineOffset := root.Range.Begin.Line - 1
+	rebaseSanySyntaxNodePositions(root, moduleName, lineOffset)
+}
+
+func rebaseSanySyntaxNodePositions(node *SanySyntaxNode, file string, lineOffset int) {
+	if node == nil {
+		return
+	}
+	node.FileName = file
+	rebaseSanyRange(&node.Range, file, lineOffset)
+	if node.Token != nil {
+		rebaseSanyPosition(&node.Token.Begin, file, lineOffset)
+		rebaseSanyPosition(&node.Token.End, file, lineOffset)
+	}
+	for _, child := range node.Zero {
+		rebaseSanySyntaxNodePositions(child, file, lineOffset)
+	}
+	for _, child := range node.One {
+		rebaseSanySyntaxNodePositions(child, file, lineOffset)
+	}
+}
+
+func rebaseSanyRange(rng *SanyRange, file string, lineOffset int) {
+	if rng == nil {
+		return
+	}
+	rebaseSanyPosition(&rng.Begin, file, lineOffset)
+	rebaseSanyPosition(&rng.End, file, lineOffset)
+}
+
+func rebaseSanyPosition(pos *Position, file string, lineOffset int) {
+	if pos == nil {
+		return
+	}
+	pos.File = file
+	if pos.Line > 0 {
+		pos.Line -= lineOffset
+	}
+	if pos.EndLine > 0 {
+		pos.EndLine -= lineOffset
+	}
 }
 
 func setModuleSourceRecursive(mod *Module, source string) {

@@ -1348,6 +1348,41 @@ Root == BOp /\ COp
 		}
 	})
 
+	t.Run("direct EXTENDS definitions shadow transitive definitions in module refs", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ShadowBase.tla"), `---- MODULE ShadowBase ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "ShadowIndirect.tla"), `---- MODULE ShadowIndirect ----
+EXTENDS ShadowBase
+Other == Op
+====`)
+		writeFile(t, filepath.Join(dir, "ShadowDirect.tla"), `---- MODULE ShadowDirect ----
+Op == FALSE
+====`)
+		rootPath := filepath.Join(dir, "ShadowExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE ShadowExtendsXML ----
+EXTENDS ShadowDirect, ShadowIndirect
+Use == Op /\ Other
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := moduleRefCountByPayloadName(root, "ShadowExtendsXML", "UserDefinedOpKind", "Op"); got != 1 {
+			t.Fatalf("root module has %d refs to imported Op, want 1 visible definition\n%s", got, xmlText)
+		}
+		if got := moduleRefCountByPayloadName(root, "ShadowExtendsXML", "UserDefinedOpKind", "Other"); got != 1 {
+			t.Fatalf("root module has %d refs to inherited Other, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("does not unqualified-clone recursive EXTENDS definitions through INSTANCE", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "GrandBase.tla"), `---- MODULE GrandBase ----
