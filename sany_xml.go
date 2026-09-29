@@ -1463,7 +1463,6 @@ func (x *sanyXMLExporter) proofStepBodyXML(bodyNode *SanySyntaxNode, ctx sanyXML
 		if xmlDiags.HasErrors() {
 			return "", constantLevel, xmlDiags
 		}
-		x.builtin("$Pair")
 		level := x.exprLevel(expr, ctx)
 		return x.opApplXML(sanyNodePosition(bodyNode), level, x.builtin("$Pfcase"), []string{xml}, ""), level, nil
 	case "N_PickStep":
