@@ -49,7 +49,7 @@ func runSanyXML(args []string, stdout, stderr io.Writer) int {
 		printSanyXMLUsage(stdout)
 		return ExitOK
 	}
-	opts, err := parseCommonCLIOptions(args, false)
+	opts, xmlOpts, err := parseSanyXMLCLIOptions(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
@@ -72,7 +72,7 @@ func runSanyXML(args []string, stdout, stderr io.Writer) int {
 			exit = ExitSemanticFailure
 			continue
 		}
-		data, xmlDiags := SanyXML(spec)
+		data, xmlDiags := SanyXMLWithOptions(spec, xmlOpts)
 		writeDiagnostics(stderr, xmlDiags)
 		if xmlDiags.HasErrors() {
 			exit = ExitSemanticFailure
@@ -100,9 +100,30 @@ func cliArgsContainHelp(args []string) bool {
 }
 
 func printSanyXMLUsage(w io.Writer) {
-	fmt.Fprintln(w, "usage: tlago sany-xml [-I DIR] FILE...")
+	fmt.Fprintln(w, "usage: tlago sany-xml [-o] [-t] [-r] [-u] [-I DIR] FILE...")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Parse, check, and export TLA+ modules as SANY XML.")
+}
+
+func parseSanyXMLCLIOptions(args []string) (commonCLIOptions, SanyXMLOptions, error) {
+	var xmlOpts SanyXMLOptions
+	commonArgs := make([]string, 0, len(args))
+	for _, arg := range args {
+		switch arg {
+		case "-o", "--offline":
+			xmlOpts.Offline = true
+		case "-t", "--terse":
+			xmlOpts.Terse = true
+		case "-r", "--restricted":
+			xmlOpts.Restricted = true
+		case "-u", "--uncomment":
+			xmlOpts.UncommentPreComments = true
+		default:
+			commonArgs = append(commonArgs, arg)
+		}
+	}
+	opts, err := parseCommonCLIOptions(commonArgs, false)
+	return opts, xmlOpts, err
 }
 
 func runApalacheJSON(args []string, stdout, stderr io.Writer) int {

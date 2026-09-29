@@ -65,8 +65,6 @@ func TestTestXMLExporterModule_testExportCaseOtherModule(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testExportWithOfflineMode(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, xmlText := runSANYXMLCommand(t, "-o", xmlExporterModulePath("DieHard.tla"))
 	if root == nil || strings.TrimSpace(xmlText) == "" {
 		t.Fatal("offline XML output is empty")
@@ -74,8 +72,6 @@ func TestTestXMLExporterModule_testExportWithOfflineMode(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testExportWithTerseMode(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, xmlText := runSANYXMLCommand(t, "-t", xmlExporterModulePath("DieHard.tla"))
 	if root == nil || strings.TrimSpace(xmlText) == "" {
 		t.Fatal("terse XML output is empty")
@@ -83,8 +79,6 @@ func TestTestXMLExporterModule_testExportWithTerseMode(t *testing.T) {
 }
 
 func TestTestXMLExporterModule_testExportWithRestrictedMode(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, xmlText := runSANYXMLCommand(t, "-r", xmlExporterModulePath("DieHard.tla"))
 	if root == nil || strings.TrimSpace(xmlText) == "" {
 		t.Fatal("restricted XML output is empty")
@@ -244,8 +238,6 @@ func TestTestXMLExporterModule_testTopLevelInstanceOfEmptyModuleExportsInstanceN
 }
 
 func TestTestXMLExporterModule_testUncommentFlagWithTLACommentStyles(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := runSANYXMLCommand(t, "-u", xmlExporterModulePath("TLACommentStyles.tla"))
 	preComments := xmlDescendants(root, "pre-comments")
 	if got := len(preComments); got != 4 {
@@ -277,8 +269,6 @@ Note the indentation at the start.`,
 }
 
 func TestTestXMLExporterModule_testUncommentFlagWithRelations(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	root, _ := runSANYXMLCommand(t, "-u", xmlExporterModulePath("Echo", "Relation.tla"))
 	preComments := xmlDescendants(root, "pre-comments")
 	if len(preComments) == 0 {

@@ -23,12 +23,24 @@ func SanyXMLSource(file, source string) ([]byte, Diagnostics) {
 }
 
 func SanyXML(spec *Spec) ([]byte, Diagnostics) {
-	x := newSanyXMLExporter(spec)
+	return SanyXMLWithOptions(spec, SanyXMLOptions{})
+}
+
+type SanyXMLOptions struct {
+	Offline              bool
+	Terse                bool
+	Restricted           bool
+	UncommentPreComments bool
+}
+
+func SanyXMLWithOptions(spec *Spec, opts SanyXMLOptions) ([]byte, Diagnostics) {
+	x := newSanyXMLExporter(spec, opts)
 	return x.xml()
 }
 
 type sanyXMLExporter struct {
 	spec      *Spec
+	opts      SanyXMLOptions
 	enclosing map[*Module]*Module
 
 	nextUID  int
@@ -218,9 +230,10 @@ type prettyXMLNode struct {
 	Children []*prettyXMLNode
 }
 
-func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
+func newSanyXMLExporter(spec *Spec, opts SanyXMLOptions) *sanyXMLExporter {
 	x := &sanyXMLExporter{
 		spec:            spec,
+		opts:            opts,
 		enclosing:       enclosingModules(spec),
 		nextUID:         154,
 		builtins:        map[string]*sanyXMLSymbol{},
@@ -6032,6 +6045,9 @@ func (x *sanyXMLExporter) writeDefinitionOriginFor(b *bytes.Buffer, sym *sanyXML
 
 func (x *sanyXMLExporter) writePreComments(b *bytes.Buffer, comments []string) Diagnostics {
 	normalized := normalizedSanyPreComments(comments)
+	if x.opts.UncommentPreComments {
+		normalized = uncommentSanyPreComments(normalized)
+	}
 	if normalized == "" {
 		return nil
 	}
@@ -6079,6 +6095,68 @@ func normalizeSanyNestedBlockPreComment(comment string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func uncommentSanyPreComments(comment string) string {
+	var out []string
+	inBlock := false
+	for _, line := range strings.Split(comment, "\n") {
+		trimmedLeft := strings.TrimLeft(line, " \t")
+		switch {
+		case strings.HasPrefix(trimmedLeft, `\*`):
+			out = append(out, stripSanyCommentPadding(strings.TrimPrefix(trimmedLeft, `\*`)))
+		case strings.HasPrefix(trimmedLeft, "(*"):
+			inBlock = true
+			content := strings.TrimPrefix(trimmedLeft, "(*")
+			content = stripSanyBlockClose(content)
+			content = stripSanyCommentPadding(content)
+			if !isSanyCommentDivider(content) {
+				out = append(out, content)
+			}
+			if strings.Contains(trimmedLeft, "*)") {
+				inBlock = false
+			}
+		case inBlock:
+			content := stripSanyBlockClose(trimmedLeft)
+			content = strings.TrimRight(strings.TrimLeft(content, " \t"), " \t")
+			if !isSanyCommentDivider(content) {
+				out = append(out, content)
+			}
+			if strings.Contains(trimmedLeft, "*)") {
+				inBlock = false
+			}
+		default:
+			out = append(out, strings.TrimRight(trimmedLeft, " \t"))
+		}
+	}
+	return strings.TrimSpace(strings.Join(out, "\n"))
+}
+
+func stripSanyCommentPadding(text string) string {
+	if strings.HasPrefix(text, " ") {
+		text = text[1:]
+	}
+	return strings.TrimRight(text, " \t")
+}
+
+func stripSanyBlockClose(text string) string {
+	if idx := strings.LastIndex(text, "*)"); idx >= 0 {
+		text = text[:idx]
+	}
+	return text
+}
+
+func isSanyCommentDivider(text string) bool {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return false
+	}
+	for _, r := range text {
+		if r != '*' && r != '-' && r != '=' {
+			return false
+		}
+	}
+	return true
 }
 
 func (x *sanyXMLExporter) writeNode(b *bytes.Buffer, pos Position, level tlaLevel) {
