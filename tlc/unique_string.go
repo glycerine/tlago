@@ -27,11 +27,12 @@ var internTable = &uniqueStringTable{
 
 func UniqueStringInitialize() {
 	internTable.mu.Lock()
-	defer internTable.mu.Unlock()
 	internTable.byString = make(map[string]*UniqueString)
 	internTable.byToken = make(map[int]*UniqueString)
 	internTable.tokenCnt = 0
 	internTable.varCount = 0
+	internTable.mu.Unlock()
+	initBuiltInOPs()
 }
 
 func UniqueStringOf(s string) *UniqueString {
