@@ -4990,7 +4990,7 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 	case *UnaryExpr:
 		use := x.exprParamUse(e.Expr, ctx, shadowed)
 		if !x.operatorLeibnizArg(e.Op, 0, ctx) {
-			use.addNonLeibniz(use.all)
+			x.addNonLeibnizUses(&use, use.all, ctx, e.Op)
 		}
 		return use
 	case *BinaryExpr:
@@ -5151,7 +5151,7 @@ func (x *sanyXMLExporter) exprParamUseWithDefinitionRefs(expr Expr, ctx sanyXMLE
 	case *UnaryExpr:
 		use := x.exprParamUseWithDefinitionRefs(e.Expr, ctx, shadowed, visiting)
 		if !x.operatorLeibnizArg(e.Op, 0, ctx) {
-			use.addNonLeibniz(use.all)
+			x.addNonLeibnizUses(&use, use.all, ctx, e.Op)
 		}
 		return use
 	case *BinaryExpr:
@@ -5344,6 +5344,18 @@ func (x *sanyXMLExporter) exprListParamUse(exprs []Expr, ctx sanyXMLExprContext,
 		use.merge(x.exprParamUse(expr, ctx, shadowed))
 	}
 	return use
+}
+
+func (x *sanyXMLExporter) addNonLeibnizUses(use *sanyXMLParamUse, names map[string]bool, ctx sanyXMLExprContext, op string) {
+	if op != "'" && op != "\\prime" {
+		use.addNonLeibniz(names)
+		return
+	}
+	for name := range names {
+		if formal := ctx.formals[name]; formal != nil && formal.Arity > 0 {
+			use.addNonLeibniz(map[string]bool{name: true})
+		}
+	}
 }
 
 func (x *sanyXMLExporter) symbolLeibnizArg(sym *sanyXMLSymbol, index int, ctx sanyXMLExprContext) bool {

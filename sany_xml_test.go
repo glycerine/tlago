@@ -288,6 +288,35 @@ Use == Choose({1}, LAMBDA y : x)
 		}
 	})
 
+	t.Run("value formals under prime remain Leibniz parameters", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("PrimeValueFormalLeibnizXML.tla", `---- MODULE PrimeValueFormalLeibnizXML ----
+VARIABLE x
+Neutral(p) == x = p
+SendAck(p) == Neutral(p)'
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		sendAck := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "SendAck")
+		if sendAck == nil {
+			t.Fatalf("SendAck definition missing\n%s", xmlText)
+		}
+		params := directChildren(sendAck, "params")
+		if len(params) != 1 {
+			t.Fatalf("SendAck params count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 {
+			t.Fatalf("SendAck leibnizparam count = %d, want 1\n%s", len(leibnizParams), xmlText)
+		}
+		if got := len(directChildren(leibnizParams[0], "leibniz")); got != 1 {
+			t.Fatalf("SendAck(p) leibniz marker count = %d, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("LET local definitions keep their own expression levels", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("LetLocalDefinitionLevelXML.tla", `---- MODULE LetLocalDefinitionLevelXML ----
 VARIABLE x
