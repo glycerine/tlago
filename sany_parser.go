@@ -1657,7 +1657,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 	heirs = append(heirs, p.consume(SanyTokenLbc, "expected {"))
 	if p.startsQuantBoundIntro() &&
 		p.findTopLevelBeforeStop(SanyTokenIN, SanyTokenColon, SanyTokenRbc, SanyTokenEOF) >= 0 &&
-		p.findTopLevelBeforeStop(SanyTokenColon, SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
+		p.findTopLevelSetComprehensionColonBeforeStop(SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
 		heirs = append(heirs, p.QuantBoundIntro())
 		in := p.consume(SanyTokenIN, "expected \\in in subset expression")
 		if in != nil {
@@ -1674,7 +1674,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 		heirs = append(heirs, p.consume(SanyTokenRbc, "expected }"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SubsetOf"], heirs...)
 	}
-	if p.findTopLevelBeforeStop(SanyTokenColon, SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
+	if p.findTopLevelSetComprehensionColonBeforeStop(SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenColon || tok.Kind == SanyTokenEOF
 		}))
@@ -2313,6 +2313,50 @@ func (p *SanyParser) findTopLevelBeforeStop(target SanyTokenKind, stops ...SanyT
 		case SanyTokenEOF:
 			return -1
 		}
+	}
+}
+
+func (p *SanyParser) findTopLevelSetComprehensionColonBeforeStop(stops ...SanyTokenKind) int {
+	depth := 0
+	binderColons := 0
+	for offset := 0; ; offset++ {
+		tok := p.tokenAt(offset)
+		if depth == 0 {
+			if tok.Kind == SanyTokenColon {
+				if binderColons > 0 {
+					binderColons--
+				} else {
+					return offset
+				}
+			}
+			for _, stop := range stops {
+				if tok.Kind == stop {
+					return -1
+				}
+			}
+			if sanyTokenOwnsFollowingColon(tok.Kind) {
+				binderColons++
+			}
+		}
+		switch tok.Kind {
+		case SanyTokenLbr, SanyTokenLsb, SanyTokenLbc, SanyTokenLab:
+			depth++
+		case SanyTokenRbr, SanyTokenRsb, SanyTokenRbc, SanyTokenRab:
+			if depth > 0 {
+				depth--
+			}
+		case SanyTokenEOF:
+			return -1
+		}
+	}
+}
+
+func sanyTokenOwnsFollowingColon(kind SanyTokenKind) bool {
+	switch kind {
+	case SanyTokenChoose, SanyTokenForall, SanyTokenExists, SanyTokenTExists, SanyTokenTForall, SanyTokenLambda:
+		return true
+	default:
+		return false
 	}
 }
 

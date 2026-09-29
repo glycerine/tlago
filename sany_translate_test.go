@@ -220,6 +220,16 @@ Val == F[1]
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("checks LET-local bounded function definitions through SANY syntax", func(t *testing.T) {
+		_, diags := CheckSanySource("LetBoundedFunctionDefs.tla", `---- MODULE LetBoundedFunctionDefs ----
+Cardinality(Base) ==
+  LET CS[T \in SUBSET Base] == IF T = {} THEN 0
+                            ELSE 1 + CS[T \ {CHOOSE x : x \in T}]
+  IN  CS[Base]
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("checks function application arity through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("BadFunctionArity.tla", `---- MODULE BadFunctionArity ----
 f[x \in {}] == 0

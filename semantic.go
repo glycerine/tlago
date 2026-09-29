@@ -599,7 +599,9 @@ func letScopeLocals(locals map[string]bool, expr *LetExpr) map[string]bool {
 
 func letDefinitionBodyLocals(letLocals map[string]bool, def Definition) map[string]bool {
 	defLocals := copyBoolMap(letLocals)
-	delete(defLocals, def.Name)
+	if _, isFunctionDefinition := definitionFunctionArity(def); !isFunctionDefinition {
+		delete(defLocals, def.Name)
+	}
 	for _, param := range def.Params {
 		defLocals[param] = true
 	}
