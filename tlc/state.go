@@ -341,12 +341,31 @@ func (v *StateVec) AddWithPredecessor(pred *TLCStateMut, state *TLCStateMut) *St
 	return v.Add(state.SetPredecessor(pred))
 }
 
-func (v *StateVec) AddAll(other *StateVec) *StateVec {
+func (v *StateVec) AddNextElement(pred *TLCStateMut, action *Action, state *TLCStateMut) (any, error) {
+	if state != nil {
+		state.SetPredecessor(pred).SetAction(action)
+	}
+	return v.Add(state), nil
+}
+
+func (v *StateVec) AddElements(other *StateVec) *StateVec {
+	if v == nil {
+		return other
+	}
 	if other == nil {
 		return v
 	}
-	v.states = append(v.states, other.states...)
-	return v
+	target := v
+	source := other
+	if source.Size() > target.Size() {
+		target, source = source, target
+	}
+	target.states = append(target.states, source.states...)
+	return target
+}
+
+func (v *StateVec) AddAll(other *StateVec) *StateVec {
+	return v.AddElements(other)
 }
 
 func (v *StateVec) Remove(index int) {
