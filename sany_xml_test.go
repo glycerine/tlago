@@ -90,6 +90,108 @@ Use == Zero
 		}
 	})
 
+	t.Run("serializes named INSTANCE nodes with their uniquename", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+CONSTANT C
+Op == C
+====`)
+		root := filepath.Join(dir, "NamedInstanceXML.tla")
+		writeFile(t, root, `---- MODULE NamedInstanceXML ----
+CONSTANT C
+Inst == INSTANCE Helper WITH C <- C
+Use == Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		start := strings.Index(got, `<InstanceNode>`)
+		if start < 0 {
+			t.Fatalf("SANY XML missing InstanceNode\n%s", got)
+		}
+		end := strings.Index(got[start:], `</InstanceNode>`)
+		if end < 0 {
+			t.Fatalf("SANY XML has unterminated InstanceNode\n%s", got[start:])
+		}
+		node := got[start : start+end]
+		if !strings.Contains(node, `<uniquename>Inst</uniquename>`) {
+			t.Fatalf("named INSTANCE node missing uniquename\n%s", node)
+		}
+	})
+
+	t.Run("serializes named INSTANCE clones for extended module definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+EXTENDS Base
+Op == BaseOp
+====`)
+		root := filepath.Join(dir, "NamedInstanceExtendsXML.tla")
+		writeFile(t, root, `---- MODULE NamedInstanceExtendsXML ----
+Inst == INSTANCE Helper
+Use == Inst!Op /\ Inst!BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>Inst!Op</uniquename>`,
+			`<uniquename>Inst!BaseOp</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("named INSTANCE clone XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("computes named INSTANCE clone levels before owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE v
+Init == v = 0
+====`)
+		rootPath := filepath.Join(dir, "NamedInstanceLevelXML.tla")
+		writeFile(t, rootPath, `---- MODULE NamedInstanceLevelXML ----
+VARIABLE x
+Inst == INSTANCE Helper WITH v <- x
+RootInit == Inst!Init
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		instInitUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "Inst!Init")
+		if instInitUID == "" {
+			t.Fatalf("Inst!Init clone missing\n%s", string(xmlText))
+		}
+		node := firstOpApplNodeForOperatorUID(root, "UserDefinedOpKindRef", instInitUID)
+		if node == nil {
+			t.Fatalf("RootInit reference to Inst!Init missing\n%s", string(xmlText))
+		}
+		if got := firstChildText(node, "level"); got != strconv.Itoa(int(variableLevel)) {
+			t.Fatalf("Inst!Init reference level = %s, want %d\n%s", got, variableLevel, string(xmlText))
+		}
+	})
+
 	t.Run("instance-cloned definitions reuse original LET-local operators", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
@@ -330,6 +432,22 @@ A == ChooseOne({1}, LAMBDA y : x = x)
 			if !strings.Contains(got, want) {
 				t.Fatalf("lambda expression XML missing %q\n%s", want, got)
 			}
+		}
+	})
+
+	t.Run("serializes operator formals passed as operator arguments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("OperatorFormalArgXML.tla", `---- MODULE OperatorFormalArgXML ----
+Apply(Op(_,_), x, y) == Op(x, y)
+Forward(Op(_,_), x, y) == Apply(Op, x, y)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<OpArgNode>`) {
+			t.Fatalf("operator formal argument XML missing OpArgNode\n%s", got)
+		}
+		if !strings.Contains(got, `<argument>`) || !strings.Contains(got, `<FormalParamNodeRef>`) {
+			t.Fatalf("operator formal argument XML missing FormalParamNodeRef argument\n%s", got)
 		}
 	})
 

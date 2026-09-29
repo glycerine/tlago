@@ -1,6 +1,9 @@
 package tlago
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 func CheckSpec(spec *Spec) Diagnostics {
 	if spec == nil {
@@ -1106,7 +1109,22 @@ func isIdentifierName(name string) bool {
 	return true
 }
 
-func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int, operatorParamSpecs map[string][]operatorParamSpec, instanceSymbols map[string]importedSymbol, localSymbols map[string]localSymbol) Diagnostics {
+type semanticExportedSymbol struct {
+	name              string
+	kind              DeclarationKind
+	pos               Position
+	arity             int
+	hasArity          bool
+	operatorParams    []operatorParamSpec
+	hasOperatorParams bool
+	unqualified       bool
+}
+
+func semanticInstanceSymbols(inst Instance, spec *Spec) []semanticExportedSymbol {
+	return semanticInstanceSymbolsWithVisiting(inst, spec, map[string]bool{})
+}
+
+func semanticInstanceSymbolsWithVisiting(inst Instance, spec *Spec, visiting map[string]bool) []semanticExportedSymbol {
 	if spec == nil {
 		return nil
 	}
@@ -1114,88 +1132,158 @@ func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, 
 	if instMod == nil {
 		return nil
 	}
-	var diags Diagnostics
+	exports := semanticModuleExports(instMod, spec, visiting)
 	qualifier := inst.qualifier()
 	exportUnqualified := inst.exportsUnqualified()
-	for _, d := range instMod.Declarations {
-		for _, name := range d.Names {
-			if exportUnqualified {
-				if _, shadowsLocal := localSymbols[name]; shadowsLocal {
-					diags = append(diags, checkInstanceLocalShadow(name, d.Pos, qualifier, localSymbols)...)
-				} else {
-					diags = append(diags, checkInstanceSymbolAmbiguity(name, d.Kind, d.Pos, qualifier, instanceSymbols)...)
-					if _, exists := defined[name]; !exists {
-						defined[name] = d.Pos
-					}
-					if _, exists := declKinds[name]; !exists {
-						declKinds[name] = d.Kind
-					}
-				}
-			}
-			qualified := qualifier + "!" + name
-			if qualifier != "" {
-				if _, exists := defined[qualified]; !exists {
-					defined[qualified] = d.Pos
-				}
-				if _, exists := declKinds[qualified]; !exists {
-					declKinds[qualified] = d.Kind
-				}
-			}
-			if d.Kind == ConstantDecl {
-				if arity, ok := declarationArity(d, name); ok {
-					if exportUnqualified {
-						if _, exists := arities[name]; !exists {
-							arities[name] = arity
-						}
-					}
-					if qualifier != "" {
-						if _, exists := arities[qualified]; !exists {
-							arities[qualified] = arity
-						}
-					}
-				}
-			}
+	out := make([]semanticExportedSymbol, 0, len(exports))
+	for _, symbol := range exports {
+		if exportUnqualified {
+			unqualified := symbol
+			unqualified.unqualified = true
+			out = append(out, unqualified)
+		}
+		if qualifier == "" || strings.Contains(symbol.name, "!") {
+			continue
+		}
+		qualified := symbol
+		qualified.name = qualifier + "!" + symbol.name
+		qualified.unqualified = false
+		out = append(out, qualified)
+	}
+	return out
+}
+
+func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []semanticExportedSymbol {
+	if mod == nil || visiting[mod.Name] {
+		return nil
+	}
+	visiting[mod.Name] = true
+	defer func() {
+		visiting[mod.Name] = false
+	}()
+
+	byName := map[string]semanticExportedSymbol{}
+	for _, ext := range mod.Extends {
+		for _, symbol := range semanticModuleExports(spec.Modules[ext], spec, visiting) {
+			byName[symbol.name] = symbol
 		}
 	}
-	for _, def := range instMod.Definitions {
+	for _, inst := range mod.Instances {
+		if inst.Local {
+			continue
+		}
+		for _, symbol := range semanticInstanceSymbolsWithVisiting(inst, spec, visiting) {
+			symbol.unqualified = false
+			byName[symbol.name] = symbol
+		}
+	}
+	for _, decl := range mod.Declarations {
+		for _, name := range decl.Names {
+			pos := decl.Pos
+			if decl.NamePositions != nil {
+				if namePos := decl.NamePositions[name]; namePos.Line > 0 || namePos.Column > 0 || namePos.File != "" {
+					pos = namePos
+				}
+			}
+			symbol := semanticExportedSymbol{name: name, kind: decl.Kind, pos: pos}
+			if decl.Kind == ConstantDecl {
+				if arity, ok := declarationArity(decl, name); ok {
+					symbol.arity = arity
+					symbol.hasArity = true
+				}
+			}
+			byName[name] = symbol
+		}
+	}
+	for i := range mod.Definitions {
+		def := mod.Definitions[i]
 		if def.Local {
 			continue
 		}
-		if exportUnqualified {
-			if _, shadowsLocal := localSymbols[def.Name]; shadowsLocal {
-				diags = append(diags, checkInstanceLocalShadow(def.Name, def.Pos, qualifier, localSymbols)...)
+		symbol := semanticExportedSymbol{
+			name:     def.Name,
+			kind:     OperatorDecl,
+			pos:      def.Pos,
+			arity:    len(def.Params),
+			hasArity: true,
+		}
+		if specs, ok := definitionOperatorParamSpecsForModule(mod.Name, def); ok {
+			symbol.operatorParams = specs
+			symbol.hasOperatorParams = true
+		}
+		byName[def.Name] = symbol
+	}
+	for _, assumption := range mod.Assumptions {
+		if assumption.Name == "" {
+			continue
+		}
+		byName[assumption.Name] = semanticExportedSymbol{
+			name:     assumption.Name,
+			kind:     OperatorDecl,
+			pos:      assumption.SourcePosition(),
+			arity:    0,
+			hasArity: true,
+		}
+	}
+	for _, export := range syntheticStandardExports(mod.Name, mod.Pos) {
+		byName[export.Name] = semanticExportedSymbol{
+			name:     export.Name,
+			kind:     export.Kind,
+			pos:      export.Pos,
+			arity:    export.Arity,
+			hasArity: true,
+		}
+	}
+
+	names := make([]string, 0, len(byName))
+	for name := range byName {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := make([]semanticExportedSymbol, 0, len(names))
+	for _, name := range names {
+		out = append(out, byName[name])
+	}
+	return out
+}
+
+func addSemanticSymbol(symbol semanticExportedSymbol, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int, operatorParamSpecs map[string][]operatorParamSpec) {
+	if _, exists := defined[symbol.name]; !exists {
+		defined[symbol.name] = symbol.pos
+	}
+	if _, exists := declKinds[symbol.name]; !exists {
+		declKinds[symbol.name] = symbol.kind
+	}
+	if symbol.hasArity {
+		if _, exists := arities[symbol.name]; !exists {
+			arities[symbol.name] = symbol.arity
+		}
+	}
+	if symbol.hasOperatorParams {
+		if _, exists := operatorParamSpecs[symbol.name]; !exists {
+			operatorParamSpecs[symbol.name] = symbol.operatorParams
+		}
+	}
+}
+
+func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int, operatorParamSpecs map[string][]operatorParamSpec, instanceSymbols map[string]importedSymbol, localSymbols map[string]localSymbol) Diagnostics {
+	if spec == nil {
+		return nil
+	}
+	var diags Diagnostics
+	qualifier := inst.qualifier()
+	exportUnqualified := inst.exportsUnqualified()
+	for _, symbol := range semanticInstanceSymbols(inst, spec) {
+		if exportUnqualified && symbol.unqualified {
+			if _, shadowsLocal := localSymbols[symbol.name]; shadowsLocal {
+				diags = append(diags, checkInstanceLocalShadow(symbol.name, symbol.pos, qualifier, localSymbols)...)
 			} else {
-				diags = append(diags, checkInstanceSymbolAmbiguity(def.Name, OperatorDecl, def.Pos, qualifier, instanceSymbols)...)
-				if _, exists := defined[def.Name]; !exists {
-					defined[def.Name] = def.Pos
-				}
-				if _, exists := arities[def.Name]; !exists {
-					arities[def.Name] = len(def.Params)
-				}
-				if _, exists := declKinds[def.Name]; !exists {
-					declKinds[def.Name] = OperatorDecl
-				}
-				if specs, ok := definitionOperatorParamSpecsForModule(instMod.Name, def); ok {
-					if _, exists := operatorParamSpecs[def.Name]; !exists {
-						operatorParamSpecs[def.Name] = specs
-					}
-				}
+				diags = append(diags, checkInstanceSymbolAmbiguity(symbol.name, symbol.kind, symbol.pos, qualifier, instanceSymbols)...)
+				addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 			}
+			continue
 		}
-		qualified := qualifier + "!" + def.Name
-		if qualifier != "" {
-			if _, exists := defined[qualified]; !exists {
-				defined[qualified] = def.Pos
-			}
-			if _, exists := arities[qualified]; !exists {
-				arities[qualified] = len(def.Params)
-			}
-			if specs, ok := definitionOperatorParamSpecsForModule(instMod.Name, def); ok {
-				if _, exists := operatorParamSpecs[qualified]; !exists {
-					operatorParamSpecs[qualified] = specs
-				}
-			}
-		}
+		addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 	}
 	return diags
 }
