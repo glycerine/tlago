@@ -183,6 +183,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 	for _, mod := range x.semanticModules() {
 		x.allocateModule(mod)
 	}
+	x.rebindInstanceDefinitionParams()
 	return x
 }
 
@@ -492,6 +493,26 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 			x.allocateAssumeProveNewSymbols(theorem.AssumeProveBody)
 		}
 		x.allocateProofSteps(mod, theorem.Syntax)
+	}
+}
+
+func (x *sanyXMLExporter) rebindInstanceDefinitionParams() {
+	for _, mod := range x.semanticModules() {
+		for instIndex, inst := range mod.Instances {
+			instanceParams := x.instanceParamSymbols(mod, inst)
+			for _, source := range x.instanceDefinitionSources(inst) {
+				sym := x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)]
+				if sym == nil || source.module == nil || source.def == nil {
+					continue
+				}
+				original := x.defs[x.defKey(source.module.Name, source.def.Name)]
+				if original == nil {
+					continue
+				}
+				sym.Params = append(append([]*sanyXMLSymbol(nil), instanceParams...), original.Params...)
+				sym.Arity = len(sym.Params)
+			}
+		}
 	}
 }
 
@@ -1569,6 +1590,9 @@ func (x *sanyXMLExporter) emitInstanceDefinitionEntry(sym *sanyXMLSymbol, origin
 	}
 	instanceParamCount := len(x.instanceParamSymbols(owner, inst))
 	x.setInstanceOperatorLevelData(sym, def, levelData, instanceParamCount)
+	for _, param := range sym.Params {
+		x.emitFormalEntry(param)
+	}
 	if sym.Kind == "TheoremDefNode" {
 		var b bytes.Buffer
 		b.WriteString("<TheoremDefNode>")
@@ -3372,6 +3396,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 	}
 	var localSources []localInstanceSource
 	for _, inst := range e.Instances {
+		x.allocateInstanceParams(ctx.module, inst)
 		instKey := x.letInstanceKindKey(ctx.module.Name, e, inst)
 		instSym := x.letInsts[instKey]
 		if instSym == nil {
@@ -3383,9 +3408,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 			defKey := x.letInstanceDefKey(ctx.module.Name, e, inst, source.keyName)
 			sym := x.letInstDefs[defKey]
 			if sym == nil {
-				sym = x.newDefinitionSymbol(defKey, source.def)
-				sym.Name = source.cloneName
-				sym.Pos = inst.SourcePosition()
+				sym = x.newInstanceDefinitionSymbol(defKey, source, inst.SourcePosition(), x.instanceParamSymbols(ctx.module, inst))
 				x.letInstDefs[defKey] = sym
 			}
 			letCtx.scope.defs[source.cloneName] = sym

@@ -1543,6 +1543,15 @@ UseLemma == \A c \in CSet : P(c)!Lemma
 		}
 	})
 
+	t.Run("INSTANCE clones reuse source formal params after late standard module allocation", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("StdInstanceFormalXML.tla", `---- MODULE StdInstanceFormalXML ----
+CC == INSTANCE Naturals
+Use == TRUE
+====`)
+		requireNoErrors(t, diags)
+		assertNoDanglingXMLRefs(t, xmlText)
+	})
+
 	t.Run("levels explicit INSTANCE substitution replacements", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
@@ -2786,6 +2795,40 @@ func moduleRefCountByPayloadName(root *canonicalXMLNode, moduleName, payloadKind
 		}
 	}
 	return count
+}
+
+func assertNoDanglingXMLRefs(t *testing.T, xmlText []byte) {
+	t.Helper()
+	root, err := parseCanonicalXML(xmlText)
+	if err != nil {
+		t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+	}
+	entries := map[string]bool{}
+	for _, entry := range canonicalSanyXMLEntries(root) {
+		if uid := firstChildText(entry, "UID"); uid != "" {
+			entries[uid] = true
+		}
+	}
+	var missing []string
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil {
+			return
+		}
+		if strings.HasSuffix(node.Name, "Ref") {
+			uid := firstChildText(node, "UID")
+			if uid != "" && !entries[uid] {
+				missing = append(missing, node.Name+":"+uid)
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	if len(missing) > 0 {
+		t.Fatalf("SANY XML has dangling refs %v\n%s", missing, xmlText)
+	}
 }
 
 func xmlNodeFilename(node *canonicalXMLNode) string {
