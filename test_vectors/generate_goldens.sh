@@ -352,51 +352,6 @@ apalache_library_path() {
   printf '%s' "${dirs[*]}"
 }
 
-apalache_library_dirs() {
-	local spec="$1"
-	local source_dir parent_dir parent_name
-  source_dir="$(dirname "$spec")"
-  parent_dir="$(dirname "$source_dir")"
-  parent_name="$(basename "$parent_dir")"
-
-  printf '%s\n' "$source_dir"
-	printf '%s\n' "$root/java-sany/StandardModules"
-	printf '%s\n' "$root/tlaplus-standard-modules"
-	printf '%s\n' "$root/CommunityModules/modules"
-	printf '%s\n' "$root/CommunityModules/tests"
-	printf '%s\n' "$root/tlaps-stdlib"
-	printf '%s\n' "$root/apalache-stdlib"
-	if [[ "$spec" == "$root/tla-plus-bench/specs/"* ]]; then
-		bench_manifest_dirs "$spec"
-		printf '%s\n' "$root/tla-plus-bench/specs/gold"
-		printf '%s\n' "$root/tla-plus-bench/specs/silver"
-	fi
-	case "$parent_name" in
-	gold|silver)
-		printf '%s\n' "$parent_dir"
-		;;
-	esac
-}
-
-copy_apalache_modules() {
-	local spec="$1"
-	local stage_dir="$2"
-	local dir module target
-
-	while IFS= read -r dir; do
-		[[ -d "$dir" ]] || continue
-		while IFS= read -r module; do
-			target="$stage_dir/$(basename "$module")"
-			[[ -e "$target" ]] && continue
-			cp -p "$module" "$target"
-		done < <(find "$dir" -maxdepth 1 -type f -name '*.tla' | sort)
-	done < <(apalache_library_dirs "$spec")
-
-	target="$stage_dir/$(basename "$spec")"
-	rm -f "$target"
-	cp -p "$spec" "$target"
-}
-
 generate_air_gold() {
 	local spec="$1"
 	local gold="$spec.air.gold"
@@ -410,18 +365,15 @@ generate_air_gold() {
 	source_dir="$(dirname "$spec")"
 	spec_base="$(basename "$spec")"
 	tmp_dir="$(mktemp -d)"
-	local stage_dir="$tmp_dir/stage"
-	mkdir -p "$stage_dir"
 	out_json="$tmp_dir/out.json"
 	lib_path="$(apalache_library_path "$spec")"
 	tmp_stdout="$tmp_dir/stdout"
 	tmp_stderr="$tmp_dir/stderr"
-	copy_apalache_modules "$spec" "$stage_dir"
 
 	printf 'AIR  %s\n' "$(display_path "$spec")"
 	set +e
 	(
-		cd "$stage_dir"
+		cd "$source_dir"
 		if [[ -n "$apalache_jar" ]]; then
 			export APALACHE_JAR="$apalache_jar"
 		fi
