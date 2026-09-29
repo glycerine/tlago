@@ -8,7 +8,7 @@ Fixtures and corpus inputs are mirrored under `sany_tests/test_vectors/tla2sany/
 Do not use a `testdata/` directory here; local cleanup/fuzzer workflows may
 delete it.
 
-The first pass is intentionally compile-only. Each Java `@Test` method is
-represented by a Go test with `t.Skip("tla2sany wip")` at the top. Porting work
-should remove one skip at a time, translate that Java test's assertions
-faithfully, and make it green against the Go SANY implementation.
+Each Java `@Test` method should have a corresponding Go test in this directory.
+Keep translated assertions faithful to the Java source, and add any copied
+fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
+locations.
