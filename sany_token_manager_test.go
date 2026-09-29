@@ -82,6 +82,21 @@ CONSTANTS WF_x WF_ Enabled ENABLED ∧ ⇒ \in ℕ
 			t.Fatalf("FALSE columns = %d..%d, want 17..21", falsity.Begin.Column, falsity.End.Column)
 		}
 	})
+
+	t.Run("counts CRLF as one Java SANY source line", func(t *testing.T) {
+		source := "---- MODULE M ----\r\nA == TRUE\r\n====\r\n"
+		tokens, diags := SanyTokenize("M.tla", source)
+		requireNoErrors(t, diags)
+
+		defName := findSanyTokenImage(t, tokens, "A")
+		if defName.Begin.Line != 2 || defName.Begin.Column != 1 {
+			t.Fatalf("A position = %d:%d, want 2:1", defName.Begin.Line, defName.Begin.Column)
+		}
+		end := findSanyToken(t, tokens, "END_MODULE")
+		if end.Begin.Line != 3 {
+			t.Fatalf("END_MODULE line = %d, want 3", end.Begin.Line)
+		}
+	})
 }
 
 func requireSanyTokenNames(t *testing.T, tokens []*SanyToken, want ...string) {

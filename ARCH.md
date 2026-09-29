@@ -163,6 +163,9 @@ Important CST properties to preserve:
 - Token leaves preserve source image and source range.
 - Comments are stored as special tokens and attached as pre-comments to the
   following syntactic node.
+- Line endings are normalized the way Java's reader/token manager observes
+  them: `\r\n` is one source newline for all token, CST, semantic-node, and XML
+  locations.
 - Tab handling uses Java SANY columns: tab stops are every 8 columns.
 - Parser-generated nodes sometimes have wider locations than their expression
   children; SANY XML uses these exact node locations.

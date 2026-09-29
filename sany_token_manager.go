@@ -466,7 +466,13 @@ func (tm *SanyTokenManager) advance() rune {
 	}
 	tm.offset += size
 	tm.lastEnd = begin
-	if r == '\n' || r == '\r' {
+	if r == '\r' {
+		if strings.HasPrefix(tm.rest(), "\n") {
+			tm.offset++
+		}
+		tm.line++
+		tm.column = 1
+	} else if r == '\n' {
 		tm.line++
 		tm.column = 1
 	} else if r == '\t' {

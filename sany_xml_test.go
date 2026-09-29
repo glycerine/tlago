@@ -3059,6 +3059,20 @@ A == TRUE
 		}
 	})
 
+	t.Run("uses Java SANY source lines for CRLF definition locations", func(t *testing.T) {
+		source := "---- MODULE CRLFDefinitionLocationXML ----\r\nA == TRUE\r\n====\r\n"
+		xmlText, diags := SanyXMLSource("CRLFDefinitionLocationXML.tla", source)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if def := userDefinedOpAtLocation(root, 2, 1, 9); def == nil || firstChildText(def, "uniquename") != "A" {
+			t.Fatalf("definition A did not use CRLF-normalized location 2:1..9\n%s", xmlText)
+		}
+	})
+
 	t.Run("serializes single bullet branches as SANY junction lists", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("SingleBulletXML.tla", `---- MODULE SingleBulletXML ----
 VARIABLE x
