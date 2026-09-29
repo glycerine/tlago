@@ -18,7 +18,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		stderr = io.Discard
 	}
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|apalache-json|sany-xml FILE...")
+		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|apalache-json|sany-xml [-I DIR] FILE...")
 		return ExitToolFailure
 	}
 	cmd := args[0]
@@ -44,10 +44,19 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func runSanyXML(files []string, stdout, stderr io.Writer) int {
+func runSanyXML(args []string, stdout, stderr io.Writer) int {
+	opts, err := parseCommonCLIOptions(args, false)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	if len(opts.files) == 0 {
+		fmt.Fprintln(stderr, "at least one file is required")
+		return ExitToolFailure
+	}
 	exit := ExitOK
-	for i, file := range files {
-		spec, diags := LoadSanySpec(file, LoadOptions{})
+	for i, file := range opts.files {
+		spec, diags := LoadSanySpec(file, opts.load)
 		if diags.HasErrors() {
 			writeDiagnostics(stderr, diags)
 			exit = ExitSyntaxFailure
@@ -76,10 +85,19 @@ func runSanyXML(files []string, stdout, stderr io.Writer) int {
 	return exit
 }
 
-func runApalacheJSON(files []string, stdout, stderr io.Writer) int {
+func runApalacheJSON(args []string, stdout, stderr io.Writer) int {
+	opts, err := parseCommonCLIOptions(args, false)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	if len(opts.files) == 0 {
+		fmt.Fprintln(stderr, "at least one file is required")
+		return ExitToolFailure
+	}
 	exit := ExitOK
-	for i, file := range files {
-		spec, diags := LoadSanySpec(file, LoadOptions{})
+	for i, file := range opts.files {
+		spec, diags := LoadSanySpec(file, opts.load)
 		if diags.HasErrors() {
 			writeDiagnostics(stderr, diags)
 			exit = ExitSyntaxFailure
@@ -105,47 +123,52 @@ func runApalacheJSON(files []string, stdout, stderr io.Writer) int {
 	return exit
 }
 
-func runParse(files []string, stdout, stderr io.Writer) int {
+func runParse(args []string, stdout, stderr io.Writer) int {
+	opts, err := parseCommonCLIOptions(args, false)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	if len(opts.files) == 0 {
+		fmt.Fprintln(stderr, "at least one file is required")
+		return ExitToolFailure
+	}
 	exit := ExitOK
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			fmt.Fprintf(stderr, "cannot read %s: %v\n", file, err)
-			exit = ExitSyntaxFailure
-			continue
-		}
-		root, diags := ParseSanySyntax(file, string(data))
+	for _, file := range opts.files {
+		spec, diags := LoadSanySpec(file, opts.load)
 		writeDiagnostics(stderr, diags)
 		if diags.HasErrors() {
 			exit = ExitSyntaxFailure
 			continue
 		}
-		fmt.Fprintf(stdout, "Parsed module %s\n", SanyModuleName(root))
+		if spec.Root != nil {
+			fmt.Fprintf(stdout, "Parsed module %s\n", spec.Root.Name)
+		}
 	}
 	return exit
 }
 
-func runCheck(files []string, stdout, stderr io.Writer) int {
-	diagOpts, files, err := parseDiagnosticCLIOptions(files)
+func runCheck(args []string, stdout, stderr io.Writer) int {
+	opts, err := parseCommonCLIOptions(args, true)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
-	if len(files) == 0 {
+	if len(opts.files) == 0 {
 		fmt.Fprintln(stderr, "at least one file is required")
 		return ExitToolFailure
 	}
 	exit := ExitOK
-	for _, file := range files {
-		spec, diags := LoadSanySpec(file, LoadOptions{})
-		diags = diagOpts.apply(diags)
+	for _, file := range opts.files {
+		spec, diags := LoadSanySpec(file, opts.load)
+		diags = opts.diag.apply(diags)
 		if diags.HasErrors() {
 			writeDiagnostics(stderr, diags)
 			exit = ExitSyntaxFailure
 			continue
 		}
 		sem := CheckSpec(spec)
-		sem = diagOpts.apply(sem)
+		sem = opts.diag.apply(sem)
 		writeDiagnostics(stderr, sem)
 		if sem.HasErrors() {
 			exit = ExitSemanticFailure
@@ -158,37 +181,98 @@ func runCheck(files []string, stdout, stderr io.Writer) int {
 	return exit
 }
 
+type commonCLIOptions struct {
+	load  LoadOptions
+	diag  diagnosticCLIOptions
+	files []string
+}
+
 type diagnosticCLIOptions struct {
 	suppressed map[string]bool
 	elevated   map[string]bool
 }
 
-func parseDiagnosticCLIOptions(args []string) (diagnosticCLIOptions, []string, error) {
-	opts := diagnosticCLIOptions{}
-	var files []string
+func parseCommonCLIOptions(args []string, diagnostics bool) (commonCLIOptions, error) {
+	opts := commonCLIOptions{}
 	for i := 0; i < len(args); i++ {
+		if ok, next, err := consumeLoadCLIOption(args, i, &opts.load); ok || err != nil {
+			if err != nil {
+				return opts, err
+			}
+			i = next
+			continue
+		}
 		switch args[i] {
 		case "-suppressMessages", "--suppressMessages", "-suppress-messages", "--suppress-messages":
+			if !diagnostics {
+				opts.files = append(opts.files, args[i])
+				continue
+			}
 			i++
 			if i >= len(args) {
-				return opts, nil, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
+				return opts, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
 			}
-			if err := addDiagnosticCodes(&opts.suppressed, args[i]); err != nil {
-				return opts, nil, err
+			if err := addDiagnosticCodes(&opts.diag.suppressed, args[i]); err != nil {
+				return opts, err
 			}
 		case "-messagesAsErrors", "--messagesAsErrors", "-messages-as-errors", "--messages-as-errors":
+			if !diagnostics {
+				opts.files = append(opts.files, args[i])
+				continue
+			}
 			i++
 			if i >= len(args) {
-				return opts, nil, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
+				return opts, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
 			}
-			if err := addDiagnosticCodes(&opts.elevated, args[i]); err != nil {
-				return opts, nil, err
+			if err := addDiagnosticCodes(&opts.diag.elevated, args[i]); err != nil {
+				return opts, err
 			}
 		default:
-			files = append(files, args[i])
+			opts.files = append(opts.files, args[i])
 		}
 	}
-	return opts, files, nil
+	return opts, nil
+}
+
+func consumeLoadCLIOption(args []string, i int, opts *LoadOptions) (bool, int, error) {
+	arg := args[i]
+	switch {
+	case arg == "-I" || arg == "--include" || arg == "-include" || arg == "--library-path":
+		if i+1 >= len(args) {
+			return true, i, fmt.Errorf("%s requires a directory", arg)
+		}
+		opts.LibraryPaths = append(opts.LibraryPaths, args[i+1])
+		return true, i + 1, nil
+	case strings.HasPrefix(arg, "-I="):
+		dir := strings.TrimPrefix(arg, "-I=")
+		if dir == "" {
+			return true, i, fmt.Errorf("%s requires a directory", arg)
+		}
+		opts.LibraryPaths = append(opts.LibraryPaths, dir)
+		return true, i, nil
+	case strings.HasPrefix(arg, "--include="):
+		dir := strings.TrimPrefix(arg, "--include=")
+		if dir == "" {
+			return true, i, fmt.Errorf("%s requires a directory", arg)
+		}
+		opts.LibraryPaths = append(opts.LibraryPaths, dir)
+		return true, i, nil
+	case strings.HasPrefix(arg, "--library-path="):
+		dir := strings.TrimPrefix(arg, "--library-path=")
+		if dir == "" {
+			return true, i, fmt.Errorf("%s requires a directory", arg)
+		}
+		opts.LibraryPaths = append(opts.LibraryPaths, dir)
+		return true, i, nil
+	case strings.HasPrefix(arg, "-I") && len(arg) > len("-I"):
+		opts.LibraryPaths = append(opts.LibraryPaths, strings.TrimPrefix(arg, "-I"))
+		return true, i, nil
+	case arg == "--prefer-library-modules" || arg == "-preferLibraryModules" || arg == "--preferLibraryModules":
+		opts.PreferLibraryModules = true
+		return true, i, nil
+	default:
+		return false, i, nil
+	}
 }
 
 func addDiagnosticCodes(dst *map[string]bool, text string) error {
@@ -247,8 +331,17 @@ func writeDiagnostics(w io.Writer, diags Diagnostics) {
 func runModelCheck(args []string, stdout, stderr io.Writer) int {
 	cfgPath := ""
 	opts := ModelCheckOptions{}
+	loadOpts := LoadOptions{}
 	var files []string
 	for i := 0; i < len(args); i++ {
+		if ok, next, err := consumeLoadCLIOption(args, i, &loadOpts); ok || err != nil {
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return ExitToolFailure
+			}
+			i = next
+			continue
+		}
 		switch args[i] {
 		case "-config", "--config":
 			i++
@@ -281,7 +374,7 @@ func runModelCheck(args []string, stdout, stderr io.Writer) int {
 	if cfgPath == "" {
 		cfgPath = strings.TrimSuffix(specPath, filepath.Ext(specPath)) + ".cfg"
 	}
-	spec, diags := LoadSanySpec(specPath, LoadOptions{})
+	spec, diags := LoadSanySpec(specPath, loadOpts)
 	if diags.HasErrors() {
 		writeDiagnostics(stderr, diags)
 		return ExitSyntaxFailure

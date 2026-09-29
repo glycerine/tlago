@@ -354,6 +354,21 @@ Inv == x = 0
 	if code := RunCLI([]string{"sany", good}, nil, nil); code != ExitToolFailure {
 		t.Fatalf("sany alias exit = %d, want %d", code, ExitToolFailure)
 	}
+	libDir := filepath.Join(dir, "lib")
+	if err := os.MkdirAll(libDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(libDir, "LibraryModule.tla"), `---- MODULE LibraryModule ----
+LibraryValue == TRUE
+====`)
+	usesLibrary := filepath.Join(dir, "UsesLibrary.tla")
+	writeFile(t, usesLibrary, `---- MODULE UsesLibrary ----
+EXTENDS LibraryModule
+Use == LibraryValue
+====`)
+	if code := RunCLI([]string{"check", "-I", libDir, usesLibrary}, nil, nil); code != ExitOK {
+		t.Fatalf("check with include path exit = %d, want %d", code, ExitOK)
+	}
 	if code := RunCLI([]string{"check", bad}, nil, nil); code != ExitSemanticFailure {
 		t.Fatalf("check exit = %d, want %d", code, ExitSemanticFailure)
 	}
