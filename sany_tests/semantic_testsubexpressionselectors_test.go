@@ -10,22 +10,16 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/TestSubexpressionSelectors.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestTestSubexpressionSelectors_testUnresolvedCompoundOperatorName(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	diags := processSANYSubexpressionSelectorBody(t, "use == module!op")
 	requireSANYSubexpressionSelectorUserError(t, diags, "module!op")
 }
 
 func TestTestSubexpressionSelectors_testConsecutiveTreeNavigationSelectors(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	diags := processSANYSubexpressionSelectorBody(t, "tree_nav == op!<<!>>")
 	requireSANYSubexpressionSelectorUserError(t, diags, "op")
 }
 
 func TestTestSubexpressionSelectors_testAllTreeNavigationSelectors(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	diags := processSANYSubexpressionSelectorBody(t, "tree_nav == op(a, b)!<<!>>!3!(x, y)!:!@")
 	requireSANYSubexpressionSelectorUserError(t, diags, "op")
 }
