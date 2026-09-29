@@ -293,6 +293,76 @@ THEOREM TRUE
 		}
 	})
 
+	t.Run("generated bang subexpression calls emit lambdas", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("BangSubexpressionLambdaXML.tla", `---- MODULE BangSubexpressionLambdaXML ----
+CONSTANT S
+VARIABLE x
+a == /\ x = x
+     /\ IF TRUE
+           THEN /\ \E I \in S : x' = x
+                /\ x = x
+           ELSE TRUE
+     /\ x = x
+THEOREM TRUE
+<1>1. PICK I \in S : a!2!2!1!(I)
+  BY DEF a
+<1> QED OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+		got := normalizeXMLForContains(string(xmlText))
+		if strings.Contains(got, `<uniquename>a!2!2!1</uniquename>`) {
+			t.Fatalf("bang subexpression call emitted fake builtin\n%s", got)
+		}
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("bang subexpression call did not emit lambda\n%s", got)
+		}
+	})
+
+	t.Run("nested bullet lists remain nested SANY junction nodes", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NestedJunctionXML.tla", `---- MODULE NestedJunctionXML ----
+VARIABLE x
+A == /\ /\ x = x
+        /\ x' = x
+     /\ x = x
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		conjUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$ConjList")
+		if conjUID == "" {
+			t.Fatalf("SANY XML missing $ConjList builtin\n%s", xmlText)
+		}
+		if !opApplContainsDirectOperandWithOperator(root, conjUID, conjUID) {
+			t.Fatalf("nested bullet list was flattened instead of preserving a nested $ConjList\n%s", xmlText)
+		}
+	})
+
+	t.Run("same-column bullet lists flatten into one SANY junction node", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("SameColumnJunctionXML.tla", `---- MODULE SameColumnJunctionXML ----
+VARIABLE x
+A == /\ x = x
+     /\ x' = x
+     /\ x = x
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		conjUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$ConjList")
+		if conjUID == "" {
+			t.Fatalf("SANY XML missing $ConjList builtin\n%s", xmlText)
+		}
+		if got := maxDirectOperandsForOperator(root, conjUID); got != 3 {
+			t.Fatalf("same-column junction list has %d direct operands, want 3\n%s", got, xmlText)
+		}
+		if opApplContainsDirectOperandWithOperator(root, conjUID, conjUID) {
+			t.Fatalf("same-column junction list kept a nested $ConjList wrapper\n%s", xmlText)
+		}
+	})
+
 	t.Run("explicit PROOF steps location starts at PROOF token", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExplicitProofStepsLocationXML.tla", `---- MODULE ExplicitProofStepsLocationXML ----
 THEOREM TRUE
@@ -1465,6 +1535,29 @@ THEOREM T == TRUE
 		}
 	})
 
+	t.Run("PICK proof step theorem level includes bounded domains", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ProofPickBoundLevelXML.tla", `---- MODULE ProofPickBoundLevelXML ----
+VARIABLE x
+THEOREM T == TRUE
+<1>1. PICK n \in 1..x : n = n
+  OBVIOUS
+<1> QED
+  BY <1>1
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		def := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "<1>1")
+		if def == nil {
+			t.Fatalf("PICK proof-step theorem definition missing\n%s", xmlText)
+		}
+		if got := firstChildText(def, "level"); got != "1" {
+			t.Fatalf("PICK proof-step theorem definition level = %s, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("serializes multiple proof DEFINE definitions in one step", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofMultiDefineXML.tla", `---- MODULE ProofMultiDefineXML ----
 THEOREM T == TRUE
@@ -2052,14 +2145,25 @@ PROOF
 }
 
 func xmlEntryUIDByKindAndName(root *canonicalXMLNode, kind, name string) string {
+	if payload := xmlEntryPayloadByKindAndName(root, kind, name); payload != nil {
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			if canonicalSanyXMLEntryPayload(entry) == payload {
+				return firstChildText(entry, "UID")
+			}
+		}
+	}
+	return ""
+}
+
+func xmlEntryPayloadByKindAndName(root *canonicalXMLNode, kind, name string) *canonicalXMLNode {
 	for _, entry := range canonicalSanyXMLEntries(root) {
 		payload := canonicalSanyXMLEntryPayload(entry)
 		if payload == nil || payload.Name != kind || firstChildText(payload, "uniquename") != name {
 			continue
 		}
-		return firstChildText(entry, "UID")
+		return payload
 	}
-	return ""
+	return nil
 }
 
 func firstOpApplNodeForOperatorUID(root *canonicalXMLNode, refKind, uid string) *canonicalXMLNode {
@@ -2079,6 +2183,53 @@ func firstOpApplNodeForOperatorUID(root *canonicalXMLNode, refKind, uid string) 
 	}
 	walk(root)
 	return found
+}
+
+func opApplContainsDirectOperandWithOperator(root *canonicalXMLNode, parentUID, operandUID string) bool {
+	var found bool
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil || found {
+			return
+		}
+		if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "BuiltInKindRef", parentUID) {
+			for _, operands := range directChildren(node, "operands") {
+				for _, operand := range directChildren(operands, "OpApplNode") {
+					if opApplNodeUsesOperatorUID(operand, "BuiltInKindRef", operandUID) {
+						found = true
+						return
+					}
+				}
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return found
+}
+
+func maxDirectOperandsForOperator(root *canonicalXMLNode, uid string) int {
+	maxOperands := 0
+	var walk func(*canonicalXMLNode)
+	walk = func(node *canonicalXMLNode) {
+		if node == nil {
+			return
+		}
+		if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "BuiltInKindRef", uid) {
+			for _, operands := range directChildren(node, "operands") {
+				if count := len(operands.Children); count > maxOperands {
+					maxOperands = count
+				}
+			}
+		}
+		for _, child := range node.Children {
+			walk(child)
+		}
+	}
+	walk(root)
+	return maxOperands
 }
 
 func opApplAtLocation(root *canonicalXMLNode, line, begin, end int) *canonicalXMLNode {
