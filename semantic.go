@@ -2103,7 +2103,7 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 						if got != spec.Arity {
 							diags = append(diags, errorAt(arg.Position(), "E1319", "operator argument arity mismatch for parameter %s: got %d, want %d", spec.Name, got, spec.Arity))
 						}
-					} else if _, ok := arg.(*FunctionExpr); ok {
+					} else if fn, ok := arg.(*FunctionExpr); ok && fn.IsLambda {
 						diags = append(diags, errorAt(arg.Position(), "E1319", "expression parameter %s cannot accept a LAMBDA operator argument", spec.Name))
 					}
 				}

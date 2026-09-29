@@ -39,6 +39,15 @@ BadLambdaExpr == NeedsExpr(LAMBDA x : 0)
 		requireHasErrorContaining(t, diags, "expression parameter x")
 	})
 
+	t.Run("allows function constructors as expression arguments", func(t *testing.T) {
+		_, diags := CheckSanySource("FunctionConstructorArg.tla", `---- MODULE FunctionConstructorArg ----
+EXTENDS Naturals
+Use(f) == f[1]
+OK == Use([i \in {1} |-> i])
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("checks duplicate operator parameters through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("BadParams.tla", `---- MODULE BadParams ----
 Dup(n, n) == n
