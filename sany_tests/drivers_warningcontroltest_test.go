@@ -11,8 +11,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/drivers/WarningControlTest.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestWarningControlTest_testWarningAppearsWithDefaultSettings(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	diags := warningControlSemanticDiagnostics(t)
 	if diags.HasErrors() {
 		t.Fatalf("default warning-control spec should not fail:\n%s", diags.Error())
@@ -23,8 +21,6 @@ func TestWarningControlTest_testWarningAppearsWithDefaultSettings(t *testing.T) 
 }
 
 func TestWarningControlTest_testSuppressMessagesViaSettings(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	diags := warningControlSemanticDiagnostics(t)
 	filtered := tlago.DiagnosticOptions{
 		SuppressedCodes: map[string]bool{"W4802": true},
@@ -38,8 +34,6 @@ func TestWarningControlTest_testSuppressMessagesViaSettings(t *testing.T) {
 }
 
 func TestWarningControlTest_testMessagesAsErrorsViaSettings(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	diags := warningControlSemanticDiagnostics(t)
 	filtered := tlago.DiagnosticOptions{
 		ElevatedCodes: map[string]bool{"W4802": true},
@@ -53,8 +47,6 @@ func TestWarningControlTest_testMessagesAsErrorsViaSettings(t *testing.T) {
 }
 
 func TestWarningControlTest_testCLISuppressMessagesSilencesWarning(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-suppressMessages", "4802", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitOK {
@@ -66,8 +58,6 @@ func TestWarningControlTest_testCLISuppressMessagesSilencesWarning(t *testing.T)
 }
 
 func TestWarningControlTest_testCLIMessagesAsErrorsCausesFailure(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-messagesAsErrors", "4802", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitSemanticFailure {
@@ -79,8 +69,6 @@ func TestWarningControlTest_testCLIMessagesAsErrorsCausesFailure(t *testing.T) {
 }
 
 func TestWarningControlTest_testCLIMultipleCodesSuppressed(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-suppressMessages", "4800,4802", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitOK {
@@ -92,8 +80,6 @@ func TestWarningControlTest_testCLIMultipleCodesSuppressed(t *testing.T) {
 }
 
 func TestWarningControlTest_testCLIUnknownCodeInSuppressMessages(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-suppressMessages", "9999", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -105,8 +91,6 @@ func TestWarningControlTest_testCLIUnknownCodeInSuppressMessages(t *testing.T) {
 }
 
 func TestWarningControlTest_testCLIUnknownCodeInMessagesAsErrors(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-messagesAsErrors", "9999", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -118,8 +102,6 @@ func TestWarningControlTest_testCLIUnknownCodeInMessagesAsErrors(t *testing.T) {
 }
 
 func TestWarningControlTest_testCLISuppressMessagesMissingArgument(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-suppressMessages"}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -128,8 +110,6 @@ func TestWarningControlTest_testCLISuppressMessagesMissingArgument(t *testing.T)
 }
 
 func TestWarningControlTest_testCLIMessagesAsErrorsMissingArgument(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-messagesAsErrors"}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -138,8 +118,6 @@ func TestWarningControlTest_testCLIMessagesAsErrorsMissingArgument(t *testing.T)
 }
 
 func TestWarningControlTest_testCLIOverlapBetweenSuppressMessagesAndMessagesAsErrors(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-suppressMessages", "4800", "-messagesAsErrors", "4800", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitToolFailure {
@@ -151,8 +129,6 @@ func TestWarningControlTest_testCLIOverlapBetweenSuppressMessagesAndMessagesAsEr
 }
 
 func TestWarningControlTest_testCLIErrorLevelCodeInSuppressMessages(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	var stderr bytes.Buffer
 	code := tlago.RunCLI([]string{"check", "-suppressMessages", "4200", warningControlSpecPath()}, nil, &stderr)
 	if code != tlago.ExitToolFailure {

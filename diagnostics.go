@@ -19,6 +19,113 @@ const (
 	ExitToolFailure     = 1
 )
 
+type diagnosticCodeInfo struct {
+	Severity Severity
+}
+
+var diagnosticCodeInfos = map[string]diagnosticCodeInfo{
+	"E1200": {Severity: SeverityError},
+	"E1201": {Severity: SeverityError},
+	"E1202": {Severity: SeverityError},
+	"E1203": {Severity: SeverityError},
+	"E1300": {Severity: SeverityError},
+	"E1301": {Severity: SeverityError},
+	"E1302": {Severity: SeverityError},
+	"E1303": {Severity: SeverityError},
+	"E1304": {Severity: SeverityError},
+	"E1305": {Severity: SeverityError},
+	"E1306": {Severity: SeverityError},
+	"E1307": {Severity: SeverityError},
+	"E1308": {Severity: SeverityError},
+	"E1309": {Severity: SeverityError},
+	"E1310": {Severity: SeverityError},
+	"E1311": {Severity: SeverityError},
+	"E1312": {Severity: SeverityError},
+	"E1313": {Severity: SeverityError},
+	"E1314": {Severity: SeverityError},
+	"E1315": {Severity: SeverityError},
+	"E1316": {Severity: SeverityError},
+	"E1317": {Severity: SeverityError},
+	"E1318": {Severity: SeverityError},
+	"E1319": {Severity: SeverityError},
+	"E1320": {Severity: SeverityError},
+	"E1321": {Severity: SeverityError},
+	"E1322": {Severity: SeverityError},
+	"E1400": {Severity: SeverityError},
+	"E1401": {Severity: SeverityError},
+	"E1402": {Severity: SeverityError},
+	"E1403": {Severity: SeverityError},
+	"E1404": {Severity: SeverityError},
+	"E1405": {Severity: SeverityError},
+	"E1406": {Severity: SeverityError},
+	"E1407": {Severity: SeverityError},
+	"E1408": {Severity: SeverityError},
+	"E1409": {Severity: SeverityError},
+	"E1410": {Severity: SeverityError},
+	"E1411": {Severity: SeverityError},
+	"E1412": {Severity: SeverityError},
+	"E1413": {Severity: SeverityError},
+	"E1414": {Severity: SeverityError},
+	"E1500": {Severity: SeverityError},
+	"E1501": {Severity: SeverityError},
+	"E1502": {Severity: SeverityError},
+	"E1503": {Severity: SeverityError},
+	"E1504": {Severity: SeverityError},
+	"E1505": {Severity: SeverityError},
+	"E1506": {Severity: SeverityError},
+	"E1507": {Severity: SeverityError},
+	"E1508": {Severity: SeverityError},
+	"E1510": {Severity: SeverityError},
+	"E1511": {Severity: SeverityError},
+	"E1512": {Severity: SeverityError},
+	"E1513": {Severity: SeverityError},
+	"E1514": {Severity: SeverityError},
+	"E1515": {Severity: SeverityError},
+	"E1516": {Severity: SeverityError},
+	"E4200": {Severity: SeverityError},
+	"E4330": {Severity: SeverityError},
+	"E4331": {Severity: SeverityError},
+	"E4332": {Severity: SeverityError},
+	"E4333": {Severity: SeverityError},
+	"E4335": {Severity: SeverityError},
+	"E4336": {Severity: SeverityError},
+	"E4350": {Severity: SeverityError},
+	"E4352": {Severity: SeverityError},
+	"E4353": {Severity: SeverityError},
+	"E4354": {Severity: SeverityError},
+	"E4355": {Severity: SeverityError},
+	"E4357": {Severity: SeverityError},
+	"E4801": {Severity: SeverityError},
+	"E4802": {Severity: SeverityError},
+	"E4803": {Severity: SeverityError},
+	"E6000": {Severity: SeverityError},
+	"E6001": {Severity: SeverityError},
+	"E6002": {Severity: SeverityError},
+	"E6003": {Severity: SeverityError},
+	"E6004": {Severity: SeverityError},
+	"E6005": {Severity: SeverityError},
+	"E6006": {Severity: SeverityError},
+	"E6007": {Severity: SeverityError},
+	"E6008": {Severity: SeverityError},
+	"E6009": {Severity: SeverityError},
+	"E7000": {Severity: SeverityError},
+	"E7001": {Severity: SeverityError},
+	"E7002": {Severity: SeverityError},
+	"E7003": {Severity: SeverityError},
+	"E7004": {Severity: SeverityError},
+	"E7005": {Severity: SeverityError},
+	"E7006": {Severity: SeverityError},
+	"E7007": {Severity: SeverityError},
+	"E7010": {Severity: SeverityError},
+	"E7011": {Severity: SeverityError},
+	"W4800": {Severity: SeverityWarning},
+	"W4801": {Severity: SeverityWarning},
+	"W4802": {Severity: SeverityWarning},
+	"W4803": {Severity: SeverityWarning},
+	"W4804": {Severity: SeverityWarning},
+	"W4805": {Severity: SeverityWarning},
+}
+
 type Position struct {
 	File      string
 	Line      int
@@ -167,6 +274,12 @@ func diagnosticCodeSetContains(set map[string]bool, code string) bool {
 		}
 	}
 	return false
+}
+
+func lookupDiagnosticCode(code string) (string, diagnosticCodeInfo, bool) {
+	normalized := normalizeDiagnosticCode(code)
+	info, ok := diagnosticCodeInfos[normalized]
+	return normalized, info, ok
 }
 
 func errorAt(pos Position, code, format string, args ...any) Diagnostic {

@@ -251,6 +251,11 @@ func parseCommonCLIOptions(args []string, diagnostics bool) (commonCLIOptions, e
 			opts.files = append(opts.files, args[i])
 		}
 	}
+	if diagnostics {
+		if err := opts.diag.validate(); err != nil {
+			return opts, err
+		}
+	}
 	return opts, nil
 }
 
@@ -317,10 +322,41 @@ func normalizeDiagnosticCode(code string) string {
 	if strings.HasPrefix(code, "E") || strings.HasPrefix(code, "W") {
 		return code
 	}
-	if code[0] == '4' {
+	if _, ok := diagnosticCodeInfos["W"+code]; ok {
 		return "W" + code
 	}
+	if _, ok := diagnosticCodeInfos["E"+code]; ok {
+		return "E" + code
+	}
 	return "E" + code
+}
+
+func (opts diagnosticCLIOptions) validate() error {
+	for code := range opts.suppressed {
+		normalized, info, ok := lookupDiagnosticCode(code)
+		if !ok {
+			return fmt.Errorf("unknown message code %s", code)
+		}
+		if info.Severity != SeverityWarning {
+			return fmt.Errorf("message code %s cannot be suppressed", normalized)
+		}
+	}
+	for code := range opts.elevated {
+		normalized, info, ok := lookupDiagnosticCode(code)
+		if !ok {
+			return fmt.Errorf("unknown message code %s", code)
+		}
+		if info.Severity != SeverityWarning {
+			return fmt.Errorf("message code %s cannot be elevated with -messagesAsErrors", normalized)
+		}
+	}
+	for code := range opts.suppressed {
+		normalized := normalizeDiagnosticCode(code)
+		if diagnosticCodeSetContains(opts.elevated, normalized) {
+			return fmt.Errorf("message code %s cannot be configured in both -suppressMessages and -messagesAsErrors", normalized)
+		}
+	}
+	return nil
 }
 
 func (opts diagnosticCLIOptions) apply(diags Diagnostics) Diagnostics {
