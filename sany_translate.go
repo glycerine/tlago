@@ -1680,7 +1680,7 @@ func sanyChoose(node *SanySyntaxNode) (Expr, Diagnostics) {
 }
 
 func sanyLambda(node *SanySyntaxNode) (Expr, Diagnostics) {
-	lambda := &FunctionExpr{Pos: sanyNodePosition(node), IsLambda: true}
+	lambda := &FunctionExpr{Pos: sanyNodePosition(node), IsLambda: true, PreComments: sanyLeadingPreComments(node)}
 	for _, child := range node.GetHeirs() {
 		if child.Kind.JavaName() != "N_IdentDecl" {
 			continue

@@ -208,6 +208,52 @@ Use == BaseOp /\ TargetOp
 		}
 	})
 
+	t.Run("deduplicates overlapping unqualified LOCAL INSTANCE clones", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "SharedBase.tla"), `---- MODULE SharedBase ----
+SharedOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "LocalA.tla"), `---- MODULE LocalA ----
+EXTENDS SharedBase
+AOp == SharedOp
+====`)
+		writeFile(t, filepath.Join(dir, "LocalB.tla"), `---- MODULE LocalB ----
+EXTENDS SharedBase
+BOp == SharedOp
+====`)
+		root := filepath.Join(dir, "LocalInstanceDedupXML.tla")
+		writeFile(t, root, `---- MODULE LocalInstanceDedupXML ----
+LOCAL INSTANCE LocalA
+LOCAL INSTANCE LocalB
+Use == SharedOp /\ AOp /\ BOp
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		count := 0
+		for _, entry := range canonicalSanyXMLEntries(rootXML) {
+			child := canonicalSanyXMLEntryPayload(entry)
+			if child == nil || child.Name != "UserDefinedOpKind" {
+				continue
+			}
+			if firstChildText(child, "uniquename") == "SharedOp" && firstDescendantText(child, "filename") == "LocalInstanceDedupXML" {
+				count++
+			}
+		}
+		if count != 1 {
+			t.Fatalf("LOCAL INSTANCE SharedOp clones = %d, want 1\n%s", count, string(xmlText))
+		}
+	})
+
 	t.Run("emits implicit substitutions alongside explicit WITH substitutions", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
@@ -944,6 +990,25 @@ A == ChooseOne({1}, LAMBDA y : x = x)
 			if !strings.Contains(got, want) {
 				t.Fatalf("lambda expression XML missing %q\n%s", want, got)
 			}
+		}
+	})
+
+	t.Run("serializes LAMBDA pre-comments", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LambdaPreCommentXML.tla", `---- MODULE LambdaPreCommentXML ----
+Apply(Op(_), x) == Op(x)
+A == Apply(
+  \* lambda explains the accumulator
+  LAMBDA x : x,
+  TRUE)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>LAMBDA</uniquename>`) {
+			t.Fatalf("lambda XML missing\n%s", got)
+		}
+		if !strings.Contains(got, `<pre-comments><![CDATA[\* lambda explains the accumulator]]></pre-comments>`) {
+			t.Fatalf("lambda XML missing pre-comment\n%s", got)
 		}
 	})
 

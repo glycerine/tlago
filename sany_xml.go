@@ -448,6 +448,9 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 			if x.skipInstanceDefinitionClone(mod, inst, source) {
 				continue
 			}
+			if x.duplicateInstanceDefinitionClone(mod, instIndex, inst, source) {
+				continue
+			}
 			key := x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)
 			if x.instDefs[key] != nil {
 				continue
@@ -613,6 +616,9 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 		sourceContexts := map[string]sanyXMLExprContext{}
 		for _, source := range x.instanceDefinitionSources(inst) {
 			if x.skipInstanceDefinitionClone(mod, inst, source) {
+				continue
+			}
+			if x.duplicateInstanceDefinitionClone(mod, instIndex, inst, source) {
 				continue
 			}
 			if source.module == nil || source.def == nil {
@@ -867,6 +873,9 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 				}
 				continue
 			}
+			if x.duplicateInstanceDefinitionClone(mod, instIndex, inst, source) {
+				continue
+			}
 			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
 		}
 	}
@@ -907,6 +916,29 @@ func (x *sanyXMLExporter) instanceDefinitionSourceOriginalSymbol(source sanyXMLI
 		return nil
 	}
 	return x.defs[x.defKey(source.module.Name, source.def.Name)]
+}
+
+func (x *sanyXMLExporter) duplicateInstanceDefinitionClone(owner *Module, instIndex int, inst Instance, source sanyXMLInstanceDefinitionSource) bool {
+	if !inst.exportsUnqualified() {
+		return false
+	}
+	return x.earlierInstanceDefinitionSymbol(owner, instIndex, source.keyName) != nil
+}
+
+func (x *sanyXMLExporter) earlierInstanceDefinitionSymbol(owner *Module, instIndex int, name string) *sanyXMLSymbol {
+	if owner == nil {
+		return nil
+	}
+	if instIndex > len(owner.Instances) {
+		instIndex = len(owner.Instances)
+	}
+	for i := 0; i < instIndex; i++ {
+		inst := owner.Instances[i]
+		if sym := x.instDefs[x.instanceDefKey(owner.Name, i, inst, name)]; sym != nil {
+			return sym
+		}
+	}
+	return nil
 }
 
 func (x *sanyXMLExporter) moduleExtendsDefinition(mod *Module, name string, visiting map[string]bool) bool {
@@ -1056,6 +1088,9 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 				if source.fromExtends {
 					add(x.instanceDefinitionSourceOriginalSymbol(source))
 				}
+				continue
+			}
+			if x.duplicateInstanceDefinitionClone(mod, instIndex, inst, source) {
 				continue
 			}
 			add(x.instDefs[x.instanceDefKey(mod.Name, instIndex, inst, source.keyName)])
@@ -2719,14 +2754,14 @@ func (x *sanyXMLExporter) lambdaForQuantifiedDefinitionCall(e *CallExpr, name st
 	sym := x.newSymbol("UserDefinedOpKind", key, "LAMBDA", len(params), constantLevel, e.Pos)
 	sym.Params = params
 	x.lambdas[key] = sym
-	diags := x.emitLambdaEntry(sym, body, lambdaCtx)
+	diags := x.emitLambdaEntry(sym, body, lambdaCtx, nil)
 	if diags.HasErrors() {
 		return nil, diags
 	}
 	return sym, nil
 }
 
-func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx sanyXMLExprContext) Diagnostics {
+func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx sanyXMLExprContext, preComments []string) Diagnostics {
 	if sym == nil || x.emitted[sym.Key] {
 		return nil
 	}
@@ -2751,6 +2786,7 @@ func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx san
 	b.WriteString("</body>")
 	sym.Leibniz = x.lambdaLeibnizArgs(sym, body, ctx)
 	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
+	x.writePreComments(&b, preComments)
 	b.WriteString("</UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
 	return nil
@@ -2776,7 +2812,7 @@ func (x *sanyXMLExporter) lambdaExprXML(fcn *FunctionExpr, ctx sanyXMLExprContex
 	sym := x.newSymbol("UserDefinedOpKind", key, "LAMBDA", len(params), constantLevel, fcn.Pos)
 	sym.Params = params
 	x.lambdas[key] = sym
-	diags := x.emitLambdaEntry(sym, fcn.Body, lambdaCtx)
+	diags := x.emitLambdaEntry(sym, fcn.Body, lambdaCtx, fcn.PreComments)
 	if diags.HasErrors() {
 		return "", diags
 	}
@@ -3954,6 +3990,11 @@ func (x *sanyXMLExporter) instanceDefinitionScopeSymbol(owner *Module, instIndex
 	}
 	if sym := x.instDefs[x.instanceDefKey(owner.Name, instIndex, inst, name)]; sym != nil {
 		return sym
+	}
+	if inst.exportsUnqualified() {
+		if sym := x.earlierInstanceDefinitionSymbol(owner, instIndex, name); sym != nil {
+			return sym
+		}
 	}
 	return fallback
 }

@@ -113,6 +113,32 @@ BadRef == NeedsArg
 		requireHasErrorContaining(t, diags, "got 0 args")
 	})
 
+	t.Run("allows bound names before later top-level definitions", func(t *testing.T) {
+		_, diags := CheckSanySource("BoundBeforeLaterDef.tla", `---- MODULE BoundBeforeLaterDef ----
+CONSTANT S
+Init == [t \in S |-> t]
+t(self) == self
+====`)
+		requireNoErrors(t, diags)
+	})
+
+	t.Run("allows constant-level substitutions for variable instance parameters", func(t *testing.T) {
+		dir := t.TempDir()
+		helper := filepath.Join(dir, "Helper.tla")
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, helper, `---- MODULE Helper ----
+VARIABLE V
+Use == V
+====`)
+		writeFile(t, root, `---- MODULE Root ----
+CONSTANT C
+I == INSTANCE Helper WITH V <- C
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("checks undefined USE DEF references through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("BadUseDef.tla", `---- MODULE BadUseDef ----
 USE DEF DoesNotExist

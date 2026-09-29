@@ -1360,6 +1360,26 @@ func checkBindingName(kind, name string, pos Position, defined map[string]Positi
 	return nil
 }
 
+func checkBoundName(name string, pos Position, defined map[string]Position, locals map[string]bool) Diagnostics {
+	if name == "" || builtinIdentifiers[name] {
+		return nil
+	}
+	if locals != nil && locals[name] {
+		return Diagnostics{errorAt(pos, "E1301", "bound symbol %s conflicts with an existing local symbol", name)}
+	}
+	if prev, ok := defined[name]; ok {
+		if sameSourceFile(prev, pos) && positionBefore(pos, prev) {
+			return nil
+		}
+		return Diagnostics{errorAt(pos, "E1301", "bound symbol %s conflicts with existing symbol declared at %s", name, prev)}
+	}
+	return nil
+}
+
+func sameSourceFile(a, b Position) bool {
+	return a.File != "" && b.File != "" && a.File == b.File
+}
+
 func checkProofRef(ref ProofRef, defined map[string]Position) Diagnostics {
 	if ref.Name == "" || builtinIdentifiers[ref.Name] {
 		return nil
@@ -1583,7 +1603,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 					diags = append(diags, errorAt(subst.Pos, "E1314", "INSTANCE substitution %s must be constant-level", name))
 				}
 			case VariableDecl:
-				if level != variableLevel {
+				if level > variableLevel {
 					diags = append(diags, errorAt(subst.Pos, "E1314", "INSTANCE substitution %s must be variable-level", name))
 				}
 			}
@@ -1818,7 +1838,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		diags = append(diags, checkExpr(e.Body, defined, letLocals)...)
 	case *QuantifierExpr:
 		diags = append(diags, checkExpr(e.Set, defined, locals)...)
-		diags = append(diags, checkBindingName("bound symbol", e.Var, e.Pos, defined, locals)...)
+		diags = append(diags, checkBoundName(e.Var, e.Pos, defined, locals)...)
 		quantLocals := map[string]bool{}
 		for name, ok := range locals {
 			quantLocals[name] = ok
@@ -1835,7 +1855,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		}
 	case *ChooseExpr:
 		diags = append(diags, checkExpr(e.Set, defined, locals)...)
-		diags = append(diags, checkBindingName("bound symbol", e.Var, e.Pos, defined, locals)...)
+		diags = append(diags, checkBoundName(e.Var, e.Pos, defined, locals)...)
 		chooseLocals := map[string]bool{}
 		for name, ok := range locals {
 			chooseLocals[name] = ok
@@ -1877,7 +1897,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 			fnLocals[name] = ok
 		}
 		for _, bound := range e.Bounds {
-			diags = append(diags, checkBindingName("bound symbol", bound.Name, bound.Pos, defined, fnLocals)...)
+			diags = append(diags, checkBoundName(bound.Name, bound.Pos, defined, fnLocals)...)
 			diags = append(diags, checkExpr(bound.Set, defined, locals)...)
 			fnLocals[bound.Name] = true
 		}
@@ -1916,7 +1936,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 			compLocals[name] = ok
 		}
 		for _, bound := range e.Bounds {
-			diags = append(diags, checkBindingName("bound symbol", bound.Name, bound.Pos, defined, compLocals)...)
+			diags = append(diags, checkBoundName(bound.Name, bound.Pos, defined, compLocals)...)
 			diags = append(diags, checkExpr(bound.Set, defined, locals)...)
 			compLocals[bound.Name] = true
 		}
