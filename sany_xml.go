@@ -2857,6 +2857,9 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 		}
 		boundSymbols.WriteString("<bound>")
 		boundSymbols.WriteString(refs.String())
+		if sanyXMLBoundsHaveTuple(bounds[i:j]) {
+			boundSymbols.WriteString("<tuple/>")
+		}
 		boundSymbols.WriteString(setXML)
 		boundSymbols.WriteString("</bound>")
 		i = j
@@ -2869,6 +2872,15 @@ func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVa
 	}
 	level = maxTlaLevel(level, x.exprLevel(body, boundCtx))
 	return x.opApplXML(pos, level, x.builtin(oper), []string{bodyXML}, boundSymbols.String()), nil
+}
+
+func sanyXMLBoundsHaveTuple(bounds []BoundVar) bool {
+	for _, bound := range bounds {
+		if bound.TupleBound {
+			return true
+		}
+	}
+	return false
 }
 
 func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *FunctionExpr, ctx sanyXMLExprContext, level tlaLevel) (string, Diagnostics) {
@@ -2918,6 +2930,9 @@ func (x *sanyXMLExporter) recursiveFunctionSpecXML(def *Definition, fcn *Functio
 		}
 		boundSymbols.WriteString("<bound>")
 		boundSymbols.WriteString(refs.String())
+		if sanyXMLBoundsHaveTuple(fcn.Bounds[i:j]) {
+			boundSymbols.WriteString("<tuple/>")
+		}
 		boundSymbols.WriteString(setXML)
 		boundSymbols.WriteString("</bound>")
 		i = j
@@ -2973,6 +2988,9 @@ func (x *sanyXMLExporter) nonRecursiveFunctionSpecXML(def *Definition, fcn *Func
 		}
 		boundSymbols.WriteString("<bound>")
 		boundSymbols.WriteString(refs.String())
+		if sanyXMLBoundsHaveTuple(fcn.Bounds[i:j]) {
+			boundSymbols.WriteString("<tuple/>")
+		}
 		boundSymbols.WriteString(setXML)
 		boundSymbols.WriteString("</bound>")
 		i = j

@@ -578,6 +578,19 @@ A(i, j) == [f EXCEPT ![i, j] = 0]
 		}
 	})
 
+	t.Run("marks tuple destructuring bounds", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("TupleBoundXML.tla", `---- MODULE TupleBoundXML ----
+Pairs == { <<1, 2>> }
+A == { x : <<x, y>> \in Pairs }
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		if !strings.Contains(got, `<tuple/>`) {
+			t.Fatalf("tuple-bound XML missing tuple marker\n%s", got)
+		}
+	})
+
 	t.Run("bounded operators include bound set level", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("BoundedLevelXML.tla", `---- MODULE BoundedLevelXML ----
 VARIABLE S

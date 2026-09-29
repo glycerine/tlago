@@ -345,6 +345,7 @@ type BoundVar struct {
 	Pos              Position
 	OperatorArity    int
 	HasOperatorArity bool
+	TupleBound       bool
 }
 
 type FunctionExpr struct {

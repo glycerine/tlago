@@ -1499,7 +1499,7 @@ func sanyBoundIntroVars(node *SanySyntaxNode) []BoundVar {
 	case "N_IdentifierTuple":
 		var vars []BoundVar
 		for _, id := range directSanyIdentifiers(node) {
-			vars = append(vars, BoundVar{Name: id.Image, Pos: sanyNodePosition(id)})
+			vars = append(vars, BoundVar{Name: id.Image, Pos: sanyNodePosition(id), TupleBound: true})
 		}
 		return vars
 	default:
