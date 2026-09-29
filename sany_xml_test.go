@@ -1692,6 +1692,42 @@ Use == LM!Spec
 		}
 	})
 
+	t.Run("nested module XML resolves enclosing module context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE h
+Init == h = h
+====`)
+		rootPath := filepath.Join(dir, "NestedEnclosingXML.tla")
+		writeFile(t, rootPath, `---- MODULE NestedEnclosingXML ----
+EXTENDS Naturals
+VARIABLE x
+ParentDef == x = x
+H == INSTANCE Helper WITH h <- x
+---- MODULE Inner ----
+Use == H!Init /\ ParentDef /\ 1 \in Nat
+====
+I == INSTANCE Inner
+RootUse == I!Use
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		if !strings.Contains(string(xmlText), `<uniquename>I!Use</uniquename>`) {
+			t.Fatalf("nested instance clone missing\n%s", xmlText)
+		}
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if got := moduleRefCountByPayloadName(root, "NestedEnclosingXML", "ModuleNode", "Inner"); got != 1 {
+			t.Fatalf("parent module has %d refs to nested Inner module, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("anonymous INSTANCE does not reclone inherited owner definitions", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----

@@ -1496,6 +1496,29 @@ Use == variableLevelImport!Op
 		requireNoErrors(t, CheckSpec(spec))
 	})
 
+	t.Run("checks nested modules with enclosing module context", func(t *testing.T) {
+		dir := t.TempDir()
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+VARIABLE h
+Init == h = h
+====`)
+		writeFile(t, root, `---- MODULE Root ----
+EXTENDS Naturals
+VARIABLE x
+ParentDef == x = x
+H == INSTANCE Helper WITH h <- x
+---- MODULE Inner ----
+Use == H!Init /\ ParentDef /\ 1 \in Nat
+====
+I == INSTANCE Inner
+RootUse == I!Use
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+	})
+
 	t.Run("checks INSTANCE WITH substitution arity", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")

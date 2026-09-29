@@ -28,7 +28,8 @@ func SanyXML(spec *Spec) ([]byte, Diagnostics) {
 }
 
 type sanyXMLExporter struct {
-	spec *Spec
+	spec      *Spec
+	enclosing map[*Module]*Module
 
 	nextUID int
 	entries []sanyXMLEntry
@@ -160,6 +161,7 @@ type prettyXMLNode struct {
 func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 	x := &sanyXMLExporter{
 		spec:           spec,
+		enclosing:      enclosingModules(spec),
 		nextUID:        154,
 		builtins:       map[string]*sanyXMLSymbol{},
 		modules:        map[string]*sanyXMLSymbol{},
@@ -221,6 +223,9 @@ func (x *sanyXMLExporter) xml() ([]byte, Diagnostics) {
 	}
 	b.WriteString("</context>")
 	for _, mod := range x.semanticModules() {
+		if x.enclosing[mod] != nil {
+			continue
+		}
 		if sym := x.modules[mod.Name]; sym != nil {
 			x.writeRef(&b, sym)
 		}
@@ -512,6 +517,12 @@ func (x *sanyXMLExporter) rebindInstanceDefinitionParams() {
 				instanceParams := x.instanceParamSymbolsWithWrappers(mod, inst, source.wrappers)
 				sym.Params = append(append([]*sanyXMLSymbol(nil), instanceParams...), original.Params...)
 				sym.Arity = len(sym.Params)
+				sourceCtx := sanyXMLExprContext{module: source.module, scope: x.scopeForModule(source.module, map[string]bool{}), formals: map[string]*sanyXMLSymbol{}, defs: map[string]*sanyXMLSymbol{}, proofDefs: map[string]*sanyXMLSymbol{}}
+				levelData := x.exprLevelData(source.def.Expr, sourceCtx, nil)
+				if source.def.AssumeProveBody != nil {
+					levelData.level = x.assumeProveLevel(source.def.AssumeProveBody, sourceCtx)
+				}
+				x.setInstanceOperatorLevelData(sym, source.def, levelData, len(instanceParams))
 			}
 		}
 	}
@@ -1086,6 +1097,12 @@ func (x *sanyXMLExporter) moduleMemberRefs(mod *Module) []*sanyXMLSymbol {
 			continue
 		}
 		add(x.defs[x.defKey(mod.Name, mod.Definitions[i].Name)])
+	}
+	for _, nested := range mod.Nested {
+		if nested == nil {
+			continue
+		}
+		add(x.modules[nested.Name])
 	}
 	for instIndex, inst := range mod.Instances {
 		clonedOrSkippedSources := map[string]bool{}
@@ -4905,6 +4922,10 @@ func (x *sanyXMLExporter) scopeForModuleMode(mod *Module, visiting map[string]bo
 		return scope
 	}
 	visiting[visitKey] = true
+	if parent := x.enclosing[mod]; parent != nil {
+		parentScope := x.scopeForModuleMode(parent, visiting, true)
+		mergeSanyXMLScope(scope, parentScope)
+	}
 	for _, ext := range mod.Extends {
 		dep := x.spec.Modules[ext]
 		depScope := x.exportedScopeForModule(dep, visiting)

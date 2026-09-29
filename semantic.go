@@ -11,13 +11,42 @@ func CheckSpec(spec *Spec) Diagnostics {
 		return Diagnostics{errorAt(Position{}, "E1300", "nil spec")}
 	}
 	var diags Diagnostics
+	enclosing := enclosingModules(spec)
 	for _, mod := range spec.Modules {
-		diags = append(diags, checkModule(mod, spec)...)
+		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
 	}
 	return diags
 }
 
 func checkModule(mod *Module, spec *Spec) Diagnostics {
+	return checkModuleWithEnclosing(mod, spec, nil)
+}
+
+func enclosingModules(spec *Spec) map[*Module]*Module {
+	out := map[*Module]*Module{}
+	if spec == nil {
+		return out
+	}
+	var walk func(parent *Module)
+	walk = func(parent *Module) {
+		if parent == nil {
+			return
+		}
+		for _, nested := range parent.Nested {
+			if nested == nil {
+				continue
+			}
+			out[nested] = parent
+			walk(nested)
+		}
+	}
+	for _, mod := range spec.Modules {
+		walk(mod)
+	}
+	return out
+}
+
+func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagnostics {
 	var diags Diagnostics
 	defined := map[string]Position{}
 	declKinds := map[string]DeclarationKind{}
@@ -117,6 +146,11 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			if _, exists := arities[export.Name]; !exists {
 				arities[export.Name] = export.Arity
 			}
+		}
+	}
+	if enclosing != nil {
+		for _, symbol := range semanticModuleExports(enclosing, spec, map[string]bool{}) {
+			addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 		}
 	}
 	for _, dep := range mod.Extends {
