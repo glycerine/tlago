@@ -772,11 +772,20 @@ App == F[x, y]
 	t.Run("parses EXCEPT square bracket forms", func(t *testing.T) {
 		root, diags := ParseSanySyntax("Exprs.tla", `---- MODULE Exprs ----
 Except == [r EXCEPT !.a = v, ![i] = w]
+ExceptCase == [r EXCEPT !.a = CASE x -> 0 [] OTHER -> @ - 1, !.b = @ + 1]
 ====`)
 		requireNoErrors(t, diags)
-		expr := onlySanyDefinition(t, root).GetHeirs()[2]
+		defs := collectSanyDefinitions(root.GetHeirs()[2])
+		if len(defs) != 2 {
+			t.Fatalf("definition count = %d, want 2", len(defs))
+		}
+		expr := defs[0].GetHeirs()[2]
 		if expr.Kind.JavaName() != "N_Except" || countSanyChildren(expr, "N_ExceptSpec") != 2 {
 			t.Fatalf("EXCEPT expression = %s heirs %v", expr.Kind.JavaName(), sanyNodeKindNames(expr.GetHeirs()))
+		}
+		caseExpr := defs[1].GetHeirs()[2]
+		if caseExpr.Kind.JavaName() != "N_Except" || countSanyChildren(caseExpr, "N_ExceptSpec") != 2 || countSanyDescendants(caseExpr, "N_Case") != 1 {
+			t.Fatalf("EXCEPT CASE expression = %s heirs %v", caseExpr.Kind.JavaName(), sanyNodeKindNames(caseExpr.GetHeirs()))
 		}
 	})
 

@@ -1921,17 +1921,6 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfRcds"], heirs...)
 	}
-	if p.findTopLevelBeforeStop(SanyTokenArrow, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenArrow, "expected -> in function set"))
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfFcns"], heirs...)
-	}
 	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenMapto {
 		heirs = append(heirs, p.FieldVal())
 		for p.match(SanyTokenComma) {
@@ -1953,6 +1942,17 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		}
 		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_Except"], heirs...)
+	}
+	if p.findTopLevelBeforeStop(SanyTokenArrow, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
+		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenEOF
+		}))
+		heirs = append(heirs, p.consume(SanyTokenArrow, "expected -> in function set"))
+		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+		}))
+		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfFcns"], heirs...)
 	}
 	if p.findTopLevelBeforeStop(SanyTokenArsb, SanyTokenRsb, SanyTokenEOF) >= 0 {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
