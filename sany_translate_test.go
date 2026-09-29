@@ -1906,6 +1906,27 @@ Good == Inc(Zero) /\ Helper!Inc(Zero) = 1
 		requireNoErrors(t, sem)
 	})
 
+	t.Run("exports nested named INSTANCE symbols across EXTENDS", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Leaf.tla"), `---- MODULE Leaf ----
+Safe == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+Leaf == INSTANCE Leaf
+====`)
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+Outer == INSTANCE Middle
+====`)
+		writeFile(t, filepath.Join(dir, "Root.tla"), `---- MODULE Root ----
+EXTENDS Base
+UseNested == Outer!Leaf!Safe
+====`)
+		spec, diags := LoadSanySpec(filepath.Join(dir, "Root.tla"), LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+	})
+
 	t.Run("model checks exported INSTANCE symbols across EXTENDS", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")

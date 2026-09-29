@@ -280,80 +280,8 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 				if inst.Local {
 					continue
 				}
-				instMod := spec.Modules[inst.Module]
-				if instMod == nil {
-					continue
-				}
-				qualifier := inst.qualifier()
-				exportUnqualified := inst.exportsUnqualified()
-				for _, d := range instMod.Declarations {
-					for _, name := range d.Names {
-						if exportUnqualified {
-							if _, exists := defined[name]; !exists {
-								defined[name] = d.Pos
-							}
-							if _, exists := declKinds[name]; !exists {
-								declKinds[name] = d.Kind
-							}
-						}
-						qualified := qualifier + "!" + name
-						if qualifier != "" {
-							if _, exists := defined[qualified]; !exists {
-								defined[qualified] = d.Pos
-							}
-							if _, exists := declKinds[qualified]; !exists {
-								declKinds[qualified] = d.Kind
-							}
-						}
-						if d.Kind == ConstantDecl {
-							if arity, ok := declarationArity(d, name); ok {
-								if exportUnqualified {
-									if _, exists := arities[name]; !exists {
-										arities[name] = arity
-									}
-								}
-								if qualifier != "" {
-									if _, exists := arities[qualified]; !exists {
-										arities[qualified] = arity
-									}
-								}
-							}
-						}
-					}
-				}
-				for _, def := range instMod.Definitions {
-					if def.Local {
-						continue
-					}
-					if exportUnqualified {
-						if _, exists := defined[def.Name]; !exists {
-							defined[def.Name] = def.Pos
-						}
-						if _, exists := arities[def.Name]; !exists {
-							arities[def.Name] = len(def.Params)
-						}
-						addSubexpressionReferenceNames(defined, def.Name, def.Expr)
-					}
-					qualified := qualifier + "!" + def.Name
-					if qualifier != "" {
-						if _, exists := defined[qualified]; !exists {
-							defined[qualified] = def.Pos
-						}
-						if _, exists := arities[qualified]; !exists {
-							arities[qualified] = len(def.Params)
-						}
-						addSubexpressionReferenceNames(defined, qualified, def.Expr)
-						if specs, ok := definitionOperatorParamSpecsForModule(depMod.Name, def); ok {
-							if _, exists := operatorParamSpecs[qualified]; !exists {
-								operatorParamSpecs[qualified] = specs
-							}
-						}
-						if arity, ok := definitionFunctionArity(def); ok {
-							if _, exists := functionArities[qualified]; !exists {
-								functionArities[qualified] = arity
-							}
-						}
-					}
+				for _, symbol := range semanticInstanceSymbols(inst, spec) {
+					addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 				}
 			}
 		}
