@@ -1230,7 +1230,7 @@ func (x *sanyXMLExporter) directTheoremDefinitionSources(mod *Module) []sanyXMLD
 	var out []sanyXMLDefinitionSource
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local || !def.TheoremLike {
+		if x.moduleDefinitionIsLocal(mod, def) || !def.TheoremLike {
 			continue
 		}
 		out = append(out, sanyXMLDefinitionSource{name: def.Name, module: mod, def: def})
@@ -1258,7 +1258,7 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 		}
 		for i := range dep.Definitions {
 			def := &dep.Definitions[i]
-			if def.Local || def.TheoremLike {
+			if x.moduleDefinitionIsLocal(dep, def) || def.TheoremLike {
 				continue
 			}
 			byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: dep, def: def, fromExtends: true}
@@ -1293,7 +1293,7 @@ func (x *sanyXMLExporter) instanceExportedDefinitionSources(mod *Module, visitin
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local || (def.TheoremLike && !includeTheoremDefs) {
+		if x.moduleDefinitionIsLocal(mod, def) || (def.TheoremLike && !includeTheoremDefs) {
 			continue
 		}
 		byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: mod, def: def}
@@ -1346,7 +1346,7 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local || def.TheoremLike {
+		if x.moduleDefinitionIsLocal(mod, def) || def.TheoremLike {
 			continue
 		}
 		byName[def.Name] = sanyXMLDefinitionSource{name: def.Name, module: mod, def: def}
@@ -1383,7 +1383,7 @@ func (x *sanyXMLExporter) addImportedModuleMemberRefs(mod *Module, add func(*san
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local || def.TheoremLike {
+		if x.moduleDefinitionIsLocal(mod, def) || def.TheoremLike {
 			continue
 		}
 		add(x.defs[x.defKey(mod.Name, def.Name)])
@@ -1527,7 +1527,7 @@ func (x *sanyXMLExporter) emitDefinitionEntry(sym *sanyXMLSymbol, def *Definitio
 	sym.Leibniz = x.definitionLeibnizArgs(sym, def, defCtx)
 	x.writeLeibnizParams(&b, sym.Params, sym.Leibniz)
 	x.writePreComments(&b, def.PreComments)
-	if def.Local {
+	if x.moduleDefinitionIsLocal(ctx.module, def) {
 		b.WriteString("<local/>")
 	}
 	if ownRecursiveSection > 0 {
@@ -1741,6 +1741,13 @@ func (x *sanyXMLExporter) recursiveDefinitionSection(mod *Module, name string) i
 		return 0
 	}
 	return recursiveDeclarationSections(mod.Recursives)[name]
+}
+
+func (x *sanyXMLExporter) moduleDefinitionIsLocal(mod *Module, def *Definition) bool {
+	if def == nil || !def.Local {
+		return false
+	}
+	return x.recursiveDefinitionSection(mod, def.Name) == 0
 }
 
 func letRecursiveDefinitionSections(expr *LetExpr) map[string]int {
@@ -4731,7 +4738,7 @@ func (x *sanyXMLExporter) addModuleLocalScope(scope sanyXMLScope, mod *Module, q
 	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
-		if def.Local && (qualifiedOnly || !includeLocal) {
+		if x.moduleDefinitionIsLocal(mod, def) && (qualifiedOnly || !includeLocal) {
 			continue
 		}
 		sym := x.defs[x.defKey(mod.Name, def.Name)]

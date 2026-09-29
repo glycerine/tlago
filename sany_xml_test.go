@@ -2956,6 +2956,50 @@ G(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
 		}
 	})
 
+	t.Run("module recursive declarations control locality over LOCAL definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "RecBase.tla"), `---- MODULE RecBase ----
+EXTENDS Naturals
+RECURSIVE F(_)
+LOCAL F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+Public == F(0)
+====`)
+		rootPath := filepath.Join(dir, "RecursiveLocalDefinitionExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE RecursiveLocalDefinitionExtendsXML ----
+EXTENDS RecBase
+Use == Public
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var fDef *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "UserDefinedOpKind" &&
+				firstChildText(payload, "uniquename") == "F" &&
+				xmlNodeFilename(payload) == "RecBase" {
+				fDef = payload
+				break
+			}
+		}
+		if fDef == nil {
+			t.Fatalf("recursive definition F missing\n%s", xmlText)
+		}
+		if len(directChildren(fDef, "local")) != 0 {
+			t.Fatalf("module-level recursive F should not export as local\n%s", xmlText)
+		}
+		if got := moduleRefCountByPayloadLocation(root, "RecursiveLocalDefinitionExtendsXML", "UserDefinedOpKind", "RecBase", 4); got != 1 {
+			t.Fatalf("root module has %d refs to inherited recursive F, want 1\n%s", got, xmlText)
+		}
+	})
+
 	t.Run("consecutive RECURSIVE declarations share a SANY recursive section", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ConsecutiveRecursiveSectionXML.tla", `---- MODULE ConsecutiveRecursiveSectionXML ----
 RECURSIVE F(_)
