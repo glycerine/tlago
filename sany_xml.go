@@ -44,6 +44,7 @@ type sanyXMLExporter struct {
 	lambdas  map[string]*sanyXMLSymbol
 
 	assumes       map[string]*sanyXMLSymbol
+	assumeDefs    map[string]*sanyXMLSymbol
 	theorems      map[string]*sanyXMLSymbol
 	proofTheorems map[*SanySyntaxNode]*sanyXMLSymbol
 	proofDefs     map[*SanySyntaxNode]*sanyXMLSymbol
@@ -124,6 +125,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		bounds:        map[string]*sanyXMLSymbol{},
 		lambdas:       map[string]*sanyXMLSymbol{},
 		assumes:       map[string]*sanyXMLSymbol{},
+		assumeDefs:    map[string]*sanyXMLSymbol{},
 		theorems:      map[string]*sanyXMLSymbol{},
 		proofTheorems: map[*SanySyntaxNode]*sanyXMLSymbol{},
 		proofDefs:     map[*SanySyntaxNode]*sanyXMLSymbol{},
@@ -432,6 +434,9 @@ func (x *sanyXMLExporter) allocateModule(mod *Module) {
 		if x.assumes[key] == nil {
 			x.assumes[key] = x.newSymbol("AssumeNode", key, assume.Name, 0, constantLevel, assume.SourcePosition())
 		}
+		if assume.Name != "" && x.assumeDefs[key] == nil {
+			x.assumeDefs[key] = x.newSymbol("AssumeDef", key+":def", assume.Name, 0, constantLevel, assume.SourcePosition())
+		}
 	}
 	for i, theorem := range mod.Theorems {
 		key := fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)
@@ -589,7 +594,7 @@ func (x *sanyXMLExporter) emitModuleEntries(mod *Module) Diagnostics {
 	}
 	for i, assume := range mod.Assumptions {
 		key := fmt.Sprintf("assume:%s:%d:%s", mod.Name, i, assume.Name)
-		diags = append(diags, x.emitAssumeEntry(x.assumes[key], assume, ctx)...)
+		diags = append(diags, x.emitAssumeEntry(x.assumes[key], x.assumeDefs[key], assume, ctx)...)
 	}
 	for i, theorem := range mod.Theorems {
 		key := fmt.Sprintf("theorem:%s:%d:%s", mod.Name, i, theorem.Name)
@@ -1124,17 +1129,42 @@ func (x *sanyXMLExporter) isRecursiveFunctionDefinition(def *Definition) bool {
 	return exprReferencesName(def.Expr, def.Name, nil)
 }
 
-func (x *sanyXMLExporter) emitAssumeEntry(sym *sanyXMLSymbol, assume NamedExpr, ctx sanyXMLExprContext) Diagnostics {
+func (x *sanyXMLExporter) emitAssumeEntry(sym *sanyXMLSymbol, defSym *sanyXMLSymbol, assume NamedExpr, ctx sanyXMLExprContext) Diagnostics {
 	if sym == nil || x.emitted[sym.Key] {
 		return nil
 	}
-	x.emitted[sym.Key] = true
 	body, diags := x.exprXML(assume.Expr, ctx)
 	if diags.HasErrors() {
 		return diags
 	}
 	level := x.exprLevel(assume.Expr, ctx)
+	if defSym != nil && !x.emitted[defSym.Key] {
+		x.emitted[defSym.Key] = true
+		defSym.Level = level
+		var def bytes.Buffer
+		def.WriteString("<AssumeDef>")
+		x.writeNode(&def, assume.SourcePosition(), level)
+		def.WriteString("<uniquename>")
+		xmlText(&def, assume.Name)
+		def.WriteString("</uniquename>")
+		def.WriteString(body)
+		def.WriteString("</AssumeDef>")
+		x.entries = append(x.entries, sanyXMLEntry{key: defSym.Key, uid: defSym.UID, body: def.String()})
+	}
+	x.emitted[sym.Key] = true
+	sym.Level = level
 	var b bytes.Buffer
+	if defSym != nil {
+		b.WriteString("<AssumeNode>")
+		x.writeNode(&b, assume.SourcePosition(), level)
+		b.WriteString("<definition>")
+		x.writeRef(&b, defSym)
+		b.WriteString("</definition><body>")
+		b.WriteString(body)
+		b.WriteString("</body></AssumeNode>")
+		x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
+		return diags
+	}
 	b.WriteString("<AssumeNode>")
 	x.writeNode(&b, assume.SourcePosition(), level)
 	b.WriteString("<body>")
@@ -2068,6 +2098,9 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 	case *RecordSetExpr:
 		return x.recordSetXML(e, ctx)
 	case *FunctionExpr:
+		if e.IsLambda {
+			return x.lambdaExprXML(e, ctx)
+		}
 		return x.boundOpXML("$FcnConstructor", e.Pos, e.Bounds, e.Body, ctx)
 	case *FunctionAppExpr:
 		fn, diags := x.exprXML(e.Function, ctx)
@@ -2354,6 +2387,33 @@ func (x *sanyXMLExporter) emitLambdaEntry(sym *sanyXMLSymbol, body Expr, ctx san
 	b.WriteString("</params></UserDefinedOpKind>")
 	x.entries = append(x.entries, sanyXMLEntry{key: sym.Key, uid: sym.UID, body: b.String()})
 	return nil
+}
+
+func (x *sanyXMLExporter) lambdaExprXML(fcn *FunctionExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
+	lambdaCtx := ctx
+	lambdaCtx.formals = copySanyXMLSymbolMap(ctx.formals)
+	params := make([]*sanyXMLSymbol, 0, len(fcn.Bounds))
+	for _, bound := range fcn.Bounds {
+		formal := x.newBoundFormal("lambda", bound.Name, bound.Pos)
+		if !exprReferencesName(fcn.Body, bound.Name, nil) {
+			formal.Level = -1
+		}
+		x.emitFormalEntry(formal)
+		lambdaCtx.formals[bound.Name] = formal
+		params = append(params, formal)
+	}
+	key := fmt.Sprintf("lambdaexpr:%s:%d:%d:%d:%d:%d", ctx.module.Name, fcn.Pos.Line, fcn.Pos.Column, fcn.Pos.EndLine, fcn.Pos.EndColumn, len(params))
+	if sym := x.lambdas[key]; sym != nil {
+		return x.opArgXML(fcn.Pos, sym.Level, sym), nil
+	}
+	sym := x.newSymbol("UserDefinedOpKind", key, "LAMBDA", len(params), constantLevel, fcn.Pos)
+	sym.Params = params
+	x.lambdas[key] = sym
+	diags := x.emitLambdaEntry(sym, fcn.Body, lambdaCtx)
+	if diags.HasErrors() {
+		return "", diags
+	}
+	return x.opArgXML(fcn.Pos, sym.Level, sym), nil
 }
 
 func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
@@ -2780,6 +2840,16 @@ func (x *sanyXMLExporter) opApplXML(pos Position, level tlaLevel, operator *sany
 	return b.String()
 }
 
+func (x *sanyXMLExporter) opArgXML(pos Position, level tlaLevel, argument *sanyXMLSymbol) string {
+	var b bytes.Buffer
+	b.WriteString("<OpArgNode>")
+	x.writeNode(&b, pos, level)
+	b.WriteString("<argument>")
+	x.writeRef(&b, argument)
+	b.WriteString("</argument></OpArgNode>")
+	return b.String()
+}
+
 func (x *sanyXMLExporter) operatorSymbol(name string, ctx sanyXMLExprContext) *sanyXMLSymbol {
 	if sym := ctx.formals[name]; sym != nil {
 		return sym
@@ -2837,6 +2907,8 @@ func (x *sanyXMLExporter) writeRef(b *bytes.Buffer, sym *sanyXMLSymbol) {
 		ref = "FormalParamNodeRef"
 	case "AssumeNode":
 		ref = "AssumeNodeRef"
+	case "AssumeDef":
+		ref = "AssumeDefRef"
 	case "TheoremNode":
 		ref = "TheoremNodeRef"
 	case "TheoremDefNode":

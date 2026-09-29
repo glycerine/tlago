@@ -247,7 +247,6 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			var named NamedExpr
 			if def, ok, defDiags := sanyAssumptionDefinition(item); ok {
 				diags = append(diags, defDiags...)
-				mod.Definitions = append(mod.Definitions, def)
 				named = NamedExpr{Name: def.Name, Expr: def.Expr, Pos: sanyNodePosition(item), Source: sanyNodePosition(item), Syntax: item}
 			}
 			if named.Expr == nil {
@@ -1656,7 +1655,7 @@ func sanyChoose(node *SanySyntaxNode) (Expr, Diagnostics) {
 }
 
 func sanyLambda(node *SanySyntaxNode) (Expr, Diagnostics) {
-	lambda := &FunctionExpr{Pos: sanyNodePosition(node)}
+	lambda := &FunctionExpr{Pos: sanyNodePosition(node), IsLambda: true}
 	for _, child := range node.GetHeirs() {
 		if child.Kind.JavaName() != "N_IdentDecl" {
 			continue

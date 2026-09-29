@@ -344,9 +344,10 @@ type BoundVar struct {
 }
 
 type FunctionExpr struct {
-	Bounds []BoundVar
-	Body   Expr
-	Pos    Position
+	Bounds   []BoundVar
+	Body     Expr
+	IsLambda bool
+	Pos      Position
 }
 
 func (e *FunctionExpr) Position() Position { return e.Pos }

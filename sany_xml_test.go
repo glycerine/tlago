@@ -292,6 +292,47 @@ A == LET F == v IN F
 		}
 	})
 
+	t.Run("serializes named assumptions as AssumeDef", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NamedAssumeXML.tla", `---- MODULE NamedAssumeXML ----
+CONSTANT C
+ASSUME CAssumption == C = C
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<AssumeDef>`,
+			`<uniquename>CAssumption</uniquename>`,
+			`<AssumeDefRef>`,
+			`<AssumeNode>`,
+			`<definition>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("named assumption XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
+	t.Run("serializes LAMBDA expressions as local operator definitions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LambdaExprXML.tla", `---- MODULE LambdaExprXML ----
+VARIABLE x
+ChooseOne(S, P(_)) == CHOOSE y \in S : P(y)
+A == ChooseOne({1}, LAMBDA y : x = x)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>LAMBDA</uniquename>`,
+			`<OpArgNode>`,
+			`<uniquename>y</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("lambda expression XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
 	t.Run("serializes proof steps as theorem XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ProofXML.tla", `---- MODULE ProofXML ----
 THEOREM T == TRUE

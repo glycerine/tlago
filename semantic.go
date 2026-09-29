@@ -83,6 +83,23 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 				declKinds[def.Name] = OperatorDecl
 			}
 		}
+		for _, assumption := range depMod.Assumptions {
+			if assumption.Name == "" {
+				continue
+			}
+			pos := assumption.SourcePosition()
+			diags = append(diags, checkImportedSymbolKind(assumption.Name, OperatorDecl, pos, declKinds)...)
+			diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, OperatorDecl, pos, depMod.Name, extendedSymbols, "W4800")...)
+			if _, exists := defined[assumption.Name]; !exists {
+				defined[assumption.Name] = pos
+			}
+			if _, exists := arities[assumption.Name]; !exists {
+				arities[assumption.Name] = 0
+			}
+			if _, exists := declKinds[assumption.Name]; !exists {
+				declKinds[assumption.Name] = OperatorDecl
+			}
+		}
 		for _, export := range syntheticStandardExports(depMod.Name, depMod.Pos) {
 			diags = append(diags, checkImportedSymbolKind(export.Name, export.Kind, export.Pos, declKinds)...)
 			diags = append(diags, checkImportedSymbolAmbiguity(export.Name, export.Kind, export.Pos, depMod.Name, extendedSymbols, "W4800")...)
@@ -171,6 +188,37 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 				if depMod.Name != "" {
 					if _, exists := arities[qualified]; !exists {
 						arities[qualified] = len(def.Params)
+					}
+				}
+			}
+			for _, assumption := range depMod.Assumptions {
+				if assumption.Name == "" {
+					continue
+				}
+				pos := assumption.SourcePosition()
+				diags = append(diags, checkImportedSymbolKind(assumption.Name, OperatorDecl, pos, declKinds)...)
+				diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, OperatorDecl, pos, depMod.Name, extendedSymbols, "W4800")...)
+				if _, exists := defined[assumption.Name]; !exists {
+					defined[assumption.Name] = pos
+				}
+				qualified := depMod.Name + "!" + assumption.Name
+				if depMod.Name != "" {
+					if _, exists := defined[qualified]; !exists {
+						defined[qualified] = pos
+					}
+				}
+				if _, exists := arities[assumption.Name]; !exists {
+					arities[assumption.Name] = 0
+				}
+				if _, exists := declKinds[assumption.Name]; !exists {
+					declKinds[assumption.Name] = OperatorDecl
+				}
+				if depMod.Name != "" {
+					if _, exists := arities[qualified]; !exists {
+						arities[qualified] = 0
+					}
+					if _, exists := declKinds[qualified]; !exists {
+						declKinds[qualified] = OperatorDecl
 					}
 				}
 			}
@@ -364,6 +412,21 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 			}
 		}
 	}
+	for _, assumption := range mod.Assumptions {
+		if assumption.Name == "" {
+			continue
+		}
+		pos := assumption.SourcePosition()
+		addName(assumption.Name, pos)
+		arities[assumption.Name] = 0
+		declKinds[assumption.Name] = OperatorDecl
+		if mod.Name != "" {
+			qualified := mod.Name + "!" + assumption.Name
+			defined[qualified] = pos
+			arities[qualified] = 0
+			declKinds[qualified] = OperatorDecl
+		}
+	}
 	diags = append(diags, checkModuleRecursiveSections(mod)...)
 	for name, pos := range recursivePositions {
 		if !satisfiedRecursive[name] {
@@ -372,6 +435,7 @@ func checkModule(mod *Module, spec *Spec) Diagnostics {
 	}
 	assumeProveDefs := assumeProveDefinitionNames(mod.Definitions)
 	theoremLikeDefs := theoremLikeDefinitionNames(mod.Definitions)
+	addNamedAssumptions(theoremLikeDefs, mod.Assumptions)
 	proofStepNames := proofStepNameSet(mod.Proofs)
 	defExprPositions := definitionExpressionPositions(mod.Definitions)
 	assumeProveExprPositions := assumeProveDefinitionExpressionPositions(mod.Definitions)
@@ -646,6 +710,14 @@ func theoremLikeDefinitionNames(defs []Definition) map[string]bool {
 		}
 	}
 	return names
+}
+
+func addNamedAssumptions(names map[string]bool, assumptions []NamedExpr) {
+	for _, assumption := range assumptions {
+		if assumption.Name != "" {
+			names[assumption.Name] = true
+		}
+	}
 }
 
 func proofStepNameSet(proofs []ProofSummary) map[string]bool {
@@ -952,6 +1024,11 @@ func moduleOwnSymbols(mod *Module) map[string]localSymbol {
 	for _, def := range mod.Definitions {
 		if def.Name != "" {
 			symbols[def.Name] = localSymbol{kind: OperatorDecl, pos: def.Pos}
+		}
+	}
+	for _, assumption := range mod.Assumptions {
+		if assumption.Name != "" {
+			symbols[assumption.Name] = localSymbol{kind: OperatorDecl, pos: assumption.SourcePosition()}
 		}
 	}
 	return symbols
