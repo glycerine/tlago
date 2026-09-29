@@ -742,6 +742,30 @@ func letScopeLocals(locals map[string]bool, expr *LetExpr) map[string]bool {
 	return letLocals
 }
 
+func letScopeLocalsBeforeDefinition(locals map[string]bool, expr *LetExpr, defIndex int) map[string]bool {
+	letLocals := copyBoolMap(locals)
+	if expr == nil {
+		return letLocals
+	}
+	for _, decl := range expr.Recursives {
+		for _, name := range decl.Names {
+			letLocals[name] = true
+		}
+	}
+	if defIndex > len(expr.Definitions) {
+		defIndex = len(expr.Definitions)
+	}
+	for i := 0; i < defIndex; i++ {
+		letLocals[expr.Definitions[i].Name] = true
+	}
+	for _, inst := range expr.Instances {
+		if inst.Name != "" {
+			letLocals[inst.Name+"!"] = true
+		}
+	}
+	return letLocals
+}
+
 func letRecursiveNames(expr *LetExpr) map[string]bool {
 	names := map[string]bool{}
 	if expr == nil {
@@ -1956,9 +1980,9 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		diags = append(diags, checkLetRecursiveSections(e)...)
 		letLocals := letScopeLocals(locals, e)
 		recursiveNames := letRecursiveNames(e)
-		for _, def := range e.Definitions {
+		for defIndex, def := range e.Definitions {
 			diags = append(diags, checkDefinitionParams(def)...)
-			diags = append(diags, checkDefinitionParamCollisions(def, defined, letLocals)...)
+			diags = append(diags, checkDefinitionParamCollisions(def, defined, letScopeLocalsBeforeDefinition(locals, e, defIndex))...)
 			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			diags = append(diags, checkExpr(def.Expr, defined, defLocals)...)
 		}

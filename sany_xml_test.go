@@ -3317,6 +3317,36 @@ H(n) == IF n = 0 THEN TRUE ELSE H(n - 1)
 		}
 	})
 
+	t.Run("LET RECURSIVE sections follow module recursive sections", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LetRecursiveSectionOffsetXML.tla", `---- MODULE LetRecursiveSectionOffsetXML ----
+RECURSIVE F(_)
+F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
+Use ==
+  LET RECURSIVE G(_)
+      G(n) == IF n = 0 THEN TRUE ELSE LET H == G(n - 1) IN H
+  IN G(1)
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		g := strings.Index(got, `<uniquename>G</uniquename>`)
+		h := strings.Index(got, `<uniquename>H</uniquename>`)
+		if g < 0 || h < 0 {
+			t.Fatalf("LET recursive definitions missing\n%s", got)
+		}
+		if !strings.Contains(got[g:], `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("LET recursive G did not use recursive section 2\n%s", got[g:])
+		}
+		hEntryEnd := strings.Index(got[h:], `</UserDefinedOpKind>`)
+		if hEntryEnd < 0 {
+			t.Fatalf("LET local H has unterminated entry\n%s", got[h:])
+		}
+		hEntry := got[h : h+hEntryEnd]
+		if !strings.Contains(hEntry, `<recursiveSection>2</recursiveSection>`) {
+			t.Fatalf("LET local H did not inherit recursive section 2\n%s", hEntry)
+		}
+	})
+
 	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ----
 VARIABLE x

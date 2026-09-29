@@ -161,6 +161,15 @@ VARIABLE state
 		requireNoErrors(t, diags)
 	})
 
+	t.Run("allows LET definition parameters before later LET definitions", func(t *testing.T) {
+		_, diags := CheckSanySource("LetParamBeforeLaterDef.tla", `---- MODULE LetParamBeforeLaterDef ----
+Use == LET F(S) == S
+           S == TRUE
+       IN F(S)
+====`)
+		requireNoErrors(t, diags)
+	})
+
 	t.Run("allows constant-level substitutions for variable instance parameters", func(t *testing.T) {
 		dir := t.TempDir()
 		helper := filepath.Join(dir, "Helper.tla")

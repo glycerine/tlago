@@ -1834,6 +1834,30 @@ func letRecursiveDefinitionSections(expr *LetExpr) map[string]int {
 	return recursiveDeclarationSections(expr.Recursives)
 }
 
+func moduleRecursiveSectionCount(mod *Module) int {
+	if mod == nil {
+		return 0
+	}
+	maxSection := 0
+	for _, section := range recursiveDeclarationSections(mod.Recursives) {
+		if section > maxSection {
+			maxSection = section
+		}
+	}
+	return maxSection
+}
+
+func offsetRecursiveSections(sections map[string]int, offset int) map[string]int {
+	if len(sections) == 0 || offset == 0 {
+		return sections
+	}
+	out := make(map[string]int, len(sections))
+	for name, section := range sections {
+		out[name] = section + offset
+	}
+	return out
+}
+
 func recursiveDeclarationSections(decls []Declaration) map[string]int {
 	sections := map[string]int{}
 	section := 0
@@ -3384,7 +3408,7 @@ func (x *sanyXMLExporter) letXML(e *LetExpr, ctx sanyXMLExprContext) (string, Di
 	letCtx := ctx
 	letCtx.defs = copySanyXMLSymbolMap(ctx.defs)
 	letCtx.scope = copySanyXMLScope(ctx.scope)
-	letCtx.localRecursiveDefs = letRecursiveDefinitionSections(e)
+	letCtx.localRecursiveDefs = offsetRecursiveSections(letRecursiveDefinitionSections(e), moduleRecursiveSectionCount(ctx.module))
 	localDefs := x.letDefs[e]
 	if len(localDefs) != len(e.Definitions) {
 		localDefs = make([]*sanyXMLSymbol, 0, len(e.Definitions))
