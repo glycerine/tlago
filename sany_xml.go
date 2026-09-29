@@ -167,7 +167,9 @@ type sanyXMLExprContext struct {
 	exceptAtBase       string
 	exceptAtComponents string
 	exceptAtPos        Position
-	exceptAtLevel      tlaLevel
+	exceptAtLevelData  sanyXMLLevelData
+	exceptAtParamUse   sanyXMLParamUse
+	exceptAtActive     bool
 	recursiveSection   int
 	localRecursiveDefs map[string]int
 	suppressLetDefs    bool
@@ -3817,7 +3819,7 @@ func (x *sanyXMLExporter) exprXML(expr Expr, ctx sanyXMLExprContext) (string, Di
 
 func (x *sanyXMLExporter) identXML(e *IdentExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
 	if e.Name == "@" && ctx.exceptAtBase != "" && ctx.exceptAtComponents != "" {
-		return x.atXML(ctx.exceptAtPos, ctx.exceptAtLevel, ctx.exceptAtBase, ctx.exceptAtComponents), nil
+		return x.atXML(ctx.exceptAtPos, ctx.exceptAtLevelData.level, ctx.exceptAtBase, ctx.exceptAtComponents), nil
 	}
 	if xmlText, ok, diags := x.subexpressionReferenceXML(e, ctx); ok {
 		return xmlText, diags
@@ -4901,23 +4903,25 @@ func fieldSourcePosition(source, fallback Position) Position {
 
 func (x *sanyXMLExporter) exceptXML(e *ExceptExpr, ctx sanyXMLExprContext) (string, Diagnostics) {
 	base, diags := x.exprXML(e.Base, ctx)
-	baseLevel := x.exprLevel(e.Base, ctx)
+	baseLevelData := x.exprLevelData(e.Base, ctx, nil)
+	atLevelData := copySanyXMLLevelData(baseLevelData)
+	atParamUse := x.exprParamUse(e.Base, ctx, nil).allOnly()
 	args := []string{base}
 	for _, spec := range e.Specs {
 		componentArgs := []string{}
-		componentLevel := constantLevel
+		componentData := sanyXMLLevelData{level: constantLevel}
 		for _, component := range spec.Components {
 			if len(component.Indices) > 1 {
 				tupleXML, tupleDiags := x.exprListOpXML("$Tuple", component.Indices, component.Pos, ctx)
 				diags = append(diags, tupleDiags...)
 				componentArgs = append(componentArgs, tupleXML)
-				componentLevel = maxTlaLevel(componentLevel, x.exprLevel(&TupleExpr{Elems: component.Indices, Pos: component.Pos}, ctx))
+				componentData.merge(x.exprLevelData(&TupleExpr{Elems: component.Indices, Pos: component.Pos}, ctx, nil))
 			} else {
 				for _, index := range component.Indices {
 					indexXML, indexDiags := x.exprXML(index, ctx)
 					diags = append(diags, indexDiags...)
 					componentArgs = append(componentArgs, indexXML)
-					componentLevel = maxTlaLevel(componentLevel, x.exprLevel(index, ctx))
+					componentData.merge(x.exprLevelData(index, ctx, nil))
 				}
 			}
 			if component.Field != "" {
@@ -4925,16 +4929,25 @@ func (x *sanyXMLExporter) exceptXML(e *ExceptExpr, ctx sanyXMLExprContext) (stri
 				componentArgs = append(componentArgs, field)
 			}
 		}
-		components := x.opApplXML(spec.Pos, componentLevel, x.builtin("$Seq"), componentArgs, "")
+		components := x.opApplXML(spec.Pos, componentData.level, x.builtin("$Seq"), componentArgs, "")
 		valueCtx := ctx
 		valueCtx.exceptAtBase = base
 		valueCtx.exceptAtComponents = components
 		valueCtx.exceptAtPos = spec.Pos
-		valueCtx.exceptAtLevel = maxTlaLevel(baseLevel, componentLevel)
+		valueCtx.exceptAtLevelData = copySanyXMLLevelData(atLevelData)
+		valueCtx.exceptAtParamUse = atParamUse.allOnly()
+		valueCtx.exceptAtActive = true
 		value, valueDiags := x.exprXML(spec.Value, valueCtx)
 		diags = append(diags, valueDiags...)
-		valueLevel := x.exprLevel(spec.Value, valueCtx)
-		args = append(args, x.opApplXML(spec.Pos, maxTlaLevel(componentLevel, valueLevel), x.builtin("$Pair"), []string{components, value}, ""))
+		valueLevelData := x.exprLevelData(spec.Value, valueCtx, nil)
+		pairLevelData := mergeSanyXMLLevelData(componentData, valueLevelData)
+		args = append(args, x.opApplXML(spec.Pos, pairLevelData.level, x.builtin("$Pair"), []string{components, value}, ""))
+		atLevelData.merge(pairLevelData)
+		specUse := mergeSanyXMLParamUse(
+			x.exprListParamUse(exceptSpecIndexExprs(spec), ctx, nil),
+			x.exprParamUse(spec.Value, valueCtx, nil),
+		)
+		atParamUse.merge(specUse.allOnly())
 	}
 	if diags.HasErrors() {
 		return "", diags
@@ -5083,6 +5096,9 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if e.Name == "@" && ctx.exceptAtActive {
+			return ctx.exceptAtParamUse.allOnly()
+		}
 		return x.identParamUse(e.Name, ctx, shadowed)
 	case *LiteralExpr:
 		return sanyXMLParamUse{}
@@ -5197,11 +5213,19 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 		return use
 	case *ExceptExpr:
 		use := x.exprParamUse(e.Base, ctx, shadowed)
+		atUse := use.allOnly()
 		for _, spec := range e.Specs {
+			componentUse := sanyXMLParamUse{}
 			for _, component := range spec.Components {
-				use.merge(x.exprListParamUse(component.Indices, ctx, shadowed))
+				componentUse.merge(x.exprListParamUse(component.Indices, ctx, shadowed))
 			}
-			use.merge(x.exprParamUse(spec.Value, ctx, shadowed))
+			valueCtx := ctx
+			valueCtx.exceptAtParamUse = atUse.allOnly()
+			valueCtx.exceptAtActive = true
+			valueUse := x.exprParamUse(spec.Value, valueCtx, shadowed)
+			specUse := mergeSanyXMLParamUse(componentUse, valueUse)
+			use.merge(specUse)
+			atUse.merge(specUse.allOnly())
 		}
 		return use
 	case *LabelExpr:
@@ -5242,6 +5266,9 @@ func (x *sanyXMLExporter) exprParamUseWithDefinitionRefs(expr Expr, ctx sanyXMLE
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if e.Name == "@" && ctx.exceptAtActive {
+			return ctx.exceptAtParamUse.allOnly()
+		}
 		use := x.identParamUse(e.Name, ctx, shadowed)
 		use.merge(x.definitionReferenceParamUse(e.Name, ctx, shadowed, visiting))
 		return use
@@ -5359,11 +5386,19 @@ func (x *sanyXMLExporter) exprParamUseWithDefinitionRefs(expr Expr, ctx sanyXMLE
 		return use
 	case *ExceptExpr:
 		use := x.exprParamUseWithDefinitionRefs(e.Base, ctx, shadowed, visiting)
+		atUse := use.allOnly()
 		for _, spec := range e.Specs {
+			componentUse := sanyXMLParamUse{}
 			for _, component := range spec.Components {
-				use.merge(x.exprListParamUseWithDefinitionRefs(component.Indices, ctx, shadowed, visiting))
+				componentUse.merge(x.exprListParamUseWithDefinitionRefs(component.Indices, ctx, shadowed, visiting))
 			}
-			use.merge(x.exprParamUseWithDefinitionRefs(spec.Value, ctx, shadowed, visiting))
+			valueCtx := ctx
+			valueCtx.exceptAtParamUse = atUse.allOnly()
+			valueCtx.exceptAtActive = true
+			valueUse := x.exprParamUseWithDefinitionRefs(spec.Value, valueCtx, shadowed, visiting)
+			specUse := mergeSanyXMLParamUse(componentUse, valueUse)
+			use.merge(specUse)
+			atUse.merge(specUse.allOnly())
 		}
 		return use
 	case *LabelExpr:
@@ -5445,16 +5480,16 @@ func (x *sanyXMLExporter) exprListParamUse(exprs []Expr, ctx sanyXMLExprContext,
 	return use
 }
 
-func (x *sanyXMLExporter) addNonLeibnizUses(use *sanyXMLParamUse, names map[string]bool, ctx sanyXMLExprContext, op string) {
-	if op != "'" && op != "\\prime" {
-		use.addNonLeibniz(names)
-		return
+func exceptSpecIndexExprs(spec ExceptSpec) []Expr {
+	var exprs []Expr
+	for _, component := range spec.Components {
+		exprs = append(exprs, component.Indices...)
 	}
-	for name := range names {
-		if formal := ctx.formals[name]; formal != nil && formal.Arity > 0 {
-			use.addNonLeibniz(map[string]bool{name: true})
-		}
-	}
+	return exprs
+}
+
+func (x *sanyXMLExporter) addNonLeibnizUses(use *sanyXMLParamUse, names map[string]bool, _ sanyXMLExprContext, _ string) {
+	use.addNonLeibniz(names)
 }
 
 func (x *sanyXMLExporter) symbolLeibnizArg(sym *sanyXMLSymbol, index int, ctx sanyXMLExprContext) bool {
@@ -5483,6 +5518,10 @@ func mergeSanyXMLParamUse(uses ...sanyXMLParamUse) sanyXMLParamUse {
 		out.merge(use)
 	}
 	return out
+}
+
+func (u sanyXMLParamUse) allOnly() sanyXMLParamUse {
+	return sanyXMLParamUse{all: copyBoolMap(u.all)}
 }
 
 func (u *sanyXMLParamUse) merge(other sanyXMLParamUse) {
@@ -5673,8 +5712,8 @@ func (x *sanyXMLExporter) exprLevel(expr Expr, ctx sanyXMLExprContext) tlaLevel 
 func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shadowed map[string]bool) sanyXMLLevelData {
 	switch e := expr.(type) {
 	case *IdentExpr:
-		if e.Name == "@" && ctx.exceptAtBase != "" && ctx.exceptAtComponents != "" {
-			return sanyXMLLevelData{level: ctx.exceptAtLevel}
+		if e.Name == "@" && ctx.exceptAtActive {
+			return copySanyXMLLevelData(ctx.exceptAtLevelData)
 		}
 		if shadowed[e.Name] {
 			return sanyXMLLevelData{level: constantLevel}
@@ -5756,13 +5795,21 @@ func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shado
 		return data
 	case *ExceptExpr:
 		data := x.exprLevelData(e.Base, ctx, shadowed)
+		atData := copySanyXMLLevelData(data)
 		for _, spec := range e.Specs {
+			componentData := sanyXMLLevelData{level: constantLevel}
 			for _, component := range spec.Components {
 				for _, index := range component.Indices {
-					data.merge(x.exprLevelData(index, ctx, shadowed))
+					componentData.merge(x.exprLevelData(index, ctx, shadowed))
 				}
 			}
-			data.merge(x.exprLevelData(spec.Value, ctx, shadowed))
+			valueCtx := ctx
+			valueCtx.exceptAtLevelData = copySanyXMLLevelData(atData)
+			valueCtx.exceptAtActive = true
+			valueData := x.exprLevelData(spec.Value, valueCtx, shadowed)
+			pairData := mergeSanyXMLLevelData(componentData, valueData)
+			data.merge(pairData)
+			atData.merge(pairData)
 		}
 		return data
 	case *LabelExpr:
@@ -6026,6 +6073,13 @@ func mergeSanyXMLLevelData(items ...sanyXMLLevelData) sanyXMLLevelData {
 		out.merge(item)
 	}
 	return out
+}
+
+func copySanyXMLLevelData(data sanyXMLLevelData) sanyXMLLevelData {
+	return sanyXMLLevelData{
+		level:  data.level,
+		params: copyBoolMap(data.params),
+	}
 }
 
 func (d *sanyXMLLevelData) merge(other sanyXMLLevelData) {

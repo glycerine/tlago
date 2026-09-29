@@ -288,7 +288,7 @@ Use == Choose({1}, LAMBDA y : x)
 		}
 	})
 
-	t.Run("value formals under prime remain Leibniz parameters", func(t *testing.T) {
+	t.Run("value formals under prime become non-Leibniz parameters", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("PrimeValueFormalLeibnizXML.tla", `---- MODULE PrimeValueFormalLeibnizXML ----
 VARIABLE x
 Neutral(p) == x = p
@@ -312,8 +312,8 @@ SendAck(p) == Neutral(p)'
 		if len(leibnizParams) != 1 {
 			t.Fatalf("SendAck leibnizparam count = %d, want 1\n%s", len(leibnizParams), xmlText)
 		}
-		if got := len(directChildren(leibnizParams[0], "leibniz")); got != 1 {
-			t.Fatalf("SendAck(p) leibniz marker count = %d, want 1\n%s", got, xmlText)
+		if got := len(directChildren(leibnizParams[0], "leibniz")); got != 0 {
+			t.Fatalf("SendAck(p) leibniz marker count = %d, want Java SANY non-Leibniz\n%s", got, xmlText)
 		}
 	})
 
@@ -1053,6 +1053,55 @@ ViaLet(x) == LET D == TRUE IN ENABLED G(x)
 		viaLetParams := directChildren(directChildren(viaLet, "params")[0], "leibnizparam")
 		if len(viaLetParams) != 1 || len(directChildren(viaLetParams[0], "leibniz")) != 1 {
 			t.Fatalf("ViaLet param missing Leibniz marker, want Java SANY LetInNode behavior\n%s", xmlText)
+		}
+	})
+
+	t.Run("user operator calls propagate non-Leibniz parameter coloring", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("CallLeibnizXML.tla", `---- MODULE CallLeibnizXML ----
+VARIABLE v
+G(y) == ENABLED (v' = y)
+H(x) == G(x)
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		h := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "H")
+		if h == nil {
+			t.Fatalf("SANY XML missing H definition\n%s", xmlText)
+		}
+		params := directChildren(h, "params")
+		if len(params) != 1 {
+			t.Fatalf("H params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 || len(directChildren(leibnizParams[0], "leibniz")) != 0 {
+			t.Fatalf("H param has Leibniz marker, want Java SANY non-Leibniz coloring through G\n%s", xmlText)
+		}
+	})
+
+	t.Run("prime colors value parameters inside its operand non-Leibniz", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("PrimeApplyXML.tla", `---- MODULE PrimeApplyXML ----
+VARIABLE f
+Op(n) == f[n]'
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		op := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Op")
+		if op == nil {
+			t.Fatalf("SANY XML missing Op definition\n%s", xmlText)
+		}
+		params := directChildren(op, "params")
+		if len(params) != 1 {
+			t.Fatalf("Op params container count = %d, want 1\n%s", len(params), xmlText)
+		}
+		leibnizParams := directChildren(params[0], "leibnizparam")
+		if len(leibnizParams) != 1 || len(directChildren(leibnizParams[0], "leibniz")) != 0 {
+			t.Fatalf("Op param has Leibniz marker, want Java SANY non-Leibniz coloring through prime\n%s", xmlText)
 		}
 	})
 
@@ -4508,6 +4557,25 @@ Next == x' = [x EXCEPT ![1] = @ + 1, ![2] = @[2]]
 		}
 		if strings.Contains(got, `<uniquename>@</uniquename>`) {
 			t.Fatalf("EXCEPT @[i] emitted fake @ builtin\n%s", got)
+		}
+	})
+
+	t.Run("EXCEPT @ level includes base and previous exception specs", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("ExceptAtLevelXML.tla", `---- MODULE ExceptAtLevelXML ----
+VARIABLE f, g
+Use(i, j) == [f EXCEPT ![i] = g', ![j] = @]
+====`)
+		requireNoErrors(t, diags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		at := firstXMLDescendant(root, "AtNode")
+		if at == nil {
+			t.Fatalf("SANY XML missing EXCEPT AtNode\n%s", xmlText)
+		}
+		if got := firstChildText(at, "level"); got != strconv.Itoa(int(actionLevel)) {
+			t.Fatalf("EXCEPT @ level = %s, want 2 from previous Java SANY exception spec\n%s", got, xmlText)
 		}
 	})
 
