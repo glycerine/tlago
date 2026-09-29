@@ -526,6 +526,11 @@ func sortCanonicalSanyXML(node *canonicalXMLNode) {
 			return canonicalXMLSortKey(node.Children[i]) < canonicalXMLSortKey(node.Children[j])
 		})
 	}
+	if node.Name == "opDefs" {
+		sort.SliceStable(node.Children, func(i, j int) bool {
+			return canonicalXMLSortKey(node.Children[i]) < canonicalXMLSortKey(node.Children[j])
+		})
+	}
 }
 
 func sortModuleNodeRefs(node *canonicalXMLNode) {

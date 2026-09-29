@@ -219,6 +219,64 @@ Use == HelperOp /\ BaseOp
 		}
 	})
 
+	t.Run("serializes LET INSTANCE qualified definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+Op == TRUE
+====`)
+		rootPath := filepath.Join(dir, "LetInstanceKindXML.tla")
+		writeFile(t, rootPath, `---- MODULE LetInstanceKindXML ----
+Use == LET Inst == INSTANCE Helper IN Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		for _, want := range []string{
+			`<ModuleInstanceKind>`,
+			`<uniquename>Inst</uniquename>`,
+			`<uniquename>Inst!Op</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("LET INSTANCE XML missing %q\n%s", want, got)
+			}
+		}
+		if strings.Contains(got, `<BuiltInKind>`) && strings.Contains(got, `<uniquename>Inst!Op</uniquename><arity>-1</arity>`) {
+			t.Fatalf("LET INSTANCE qualified operator was emitted as builtin\n%s", got)
+		}
+	})
+
+	t.Run("LET INSTANCE substitutions can target inherited declarations", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+Op == C
+====`)
+		rootPath := filepath.Join(dir, "LetInstanceInheritedSubstXML.tla")
+		writeFile(t, rootPath, `---- MODULE LetInstanceInheritedSubstXML ----
+EXTENDS Base
+Use == LET Inst == INSTANCE Base IN Inst!Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if !strings.Contains(got, `<uniquename>Inst!Op</uniquename>`) {
+			t.Fatalf("LET INSTANCE clone missing\n%s", got)
+		}
+		if !strings.Contains(got, `<SubstInNode>`) {
+			t.Fatalf("LET INSTANCE clone missing inherited substitution wrapper\n%s", got)
+		}
+	})
+
 	t.Run("instance-cloned definitions reuse original LET-local operators", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
@@ -267,6 +325,46 @@ RootUse == Use
 		requireNoErrors(t, xmlDiags)
 		if count := strings.Count(string(xmlText), `<module>Helper</module>`); count != 2 {
 			t.Fatalf("Helper instance nodes = %d, want one on Base and one imported into ExtendsInstanceXML\n%s", count, xmlText)
+		}
+	})
+
+	t.Run("preserves duplicate imported instance nodes from distinct EXTENDS paths", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Leaf.tla"), `---- MODULE Leaf ----
+Zero == 0
+====`)
+		writeFile(t, filepath.Join(dir, "Shared.tla"), `---- MODULE Shared ----
+LOCAL INSTANCE Leaf
+====`)
+		writeFile(t, filepath.Join(dir, "Left.tla"), `---- MODULE Left ----
+EXTENDS Shared
+====`)
+		writeFile(t, filepath.Join(dir, "Right.tla"), `---- MODULE Right ----
+EXTENDS Shared
+====`)
+		root := filepath.Join(dir, "DuplicateImportedInstanceXML.tla")
+		writeFile(t, root, `---- MODULE DuplicateImportedInstanceXML ----
+EXTENDS Left, Right
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		sem := CheckSpec(spec)
+		requireNoErrors(t, sem)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		start := strings.Index(got, `<uniquename>DuplicateImportedInstanceXML</uniquename>`)
+		if start < 0 {
+			t.Fatalf("root ModuleNode missing\n%s", got)
+		}
+		end := strings.Index(got[start:], `</ModuleNode>`)
+		if end < 0 {
+			t.Fatalf("root ModuleNode unterminated\n%s", got[start:])
+		}
+		rootNode := got[start : start+end]
+		if count := strings.Count(rootNode, `<module>Leaf</module>`); count != 2 {
+			t.Fatalf("imported Leaf instance nodes = %d, want duplicate paths preserved\n%s", count, rootNode)
 		}
 	})
 
