@@ -33,18 +33,6 @@ If you want focused, bite-sized test cases specifically tailored for grammar val
 * **What it tests:** Highly specific parsing boundaries—such as nested alignment-based conjunction (`/\`) and disjunction (`\/`) lists, record constructs, tuple syntax, and operator fixity/precedence rules.
 * **Repository:** [github.com/tlaplus-community/tree-sitter-tlaplus](https://github.com/tlaplus-community/tree-sitter-tlaplus?utm_source=gemini)
 
-### 3. TLA+-Bench Dataset
-
-A large, cleaned research benchmark consisting of **1,300 verified TLA+ specifications** sourced from over a dozen open-source repositories.
-
-* **Why it's useful:** It provides a pre-filtered, standardized dataset of valid TLA+ files that pass the official SANY parser (`Silver Tier` specs) and TLC model checker (`Gold Tier` specs). It is ideal if you want to set up an automated bulk test runner (e.g., "Must successfully parse 1,300 real-world modules without panicking").
-
-repo: https://zenodo.org/records/21310317/files/tla-plus-bench.zip?download=1&preview=1
-
-paper: https://arxiv.org/html/2607.23425v1
-
-
-
 
 ## Key Syntactic Stress-Tests for Your Parser
 
