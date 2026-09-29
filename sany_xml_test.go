@@ -58,6 +58,58 @@ Init == x = 0
 		}
 	})
 
+	t.Run("emits external module refs in SANY semantic order", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ExtBase.tla"), `---- MODULE ExtBase ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Extender.tla"), `---- MODULE Extender ----
+EXTENDS ExtBase
+ExtOp == BaseOp
+====`)
+		writeFile(t, filepath.Join(dir, "InstBase.tla"), `---- MODULE InstBase ----
+InstBaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Instancer.tla"), `---- MODULE Instancer ----
+EXTENDS InstBase
+InstOp == InstBaseOp
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+EXTENDS Extender
+INSTANCE Instancer
+Use == ExtOp /\ InstOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		moduleNamesByUID := map[string]string{}
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "ModuleNode" {
+				moduleNamesByUID[firstChildText(entry, "UID")] = firstChildText(payload, "uniquename")
+			}
+		}
+		var refs []string
+		for _, child := range root.Children {
+			if child.Name == "ModuleNodeRef" {
+				refs = append(refs, moduleNamesByUID[firstChildText(child, "UID")])
+			}
+		}
+		got := strings.Join(refs, ",")
+		want := "ExtBase,Extender,InstBase,Instancer,Root"
+		if got != want {
+			t.Fatalf("module refs = %s, want %s\n%s", got, want, xmlText)
+		}
+	})
+
 	t.Run("uses operator level for user-defined call nodes", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("UserCallLevelXML.tla", `---- MODULE UserCallLevelXML ----
 VARIABLE x

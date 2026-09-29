@@ -178,7 +178,7 @@ func newSanyXMLExporter(spec *Spec) *sanyXMLExporter {
 		proofLocalDefs: map[*SanySyntaxNode][]*sanyXMLSymbol{},
 		emitted:        map[string]bool{},
 	}
-	for _, mod := range x.sortedModules() {
+	for _, mod := range x.semanticModules() {
 		x.allocateModule(mod)
 	}
 	return x
@@ -189,7 +189,7 @@ func (x *sanyXMLExporter) xml() ([]byte, Diagnostics) {
 		return nil, Diagnostics{errorAt(Position{}, "E7000", "cannot export nil SANY spec to XML")}
 	}
 	var diags Diagnostics
-	for _, mod := range x.sortedModules() {
+	for _, mod := range x.semanticModules() {
 		diags = append(diags, x.emitModuleEntries(mod)...)
 	}
 	if diags.HasErrors() {
@@ -216,7 +216,7 @@ func (x *sanyXMLExporter) xml() ([]byte, Diagnostics) {
 		b.WriteString("</entry>")
 	}
 	b.WriteString("</context>")
-	for _, mod := range x.sortedModules() {
+	for _, mod := range x.semanticModules() {
 		if sym := x.modules[mod.Name]; sym != nil {
 			x.writeRef(&b, sym)
 		}
@@ -229,32 +229,30 @@ func (x *sanyXMLExporter) xml() ([]byte, Diagnostics) {
 	return pretty, nil
 }
 
-func (x *sanyXMLExporter) sortedModules() []*Module {
+func (x *sanyXMLExporter) semanticModules() []*Module {
 	if x.spec == nil {
 		return nil
 	}
 	seen := map[string]bool{}
 	var mods []*Module
-	if x.spec.Root != nil && x.spec.Root.Name != "" {
-		mods = append(mods, x.spec.Root)
-		seen[x.spec.Root.Name] = true
-	}
-	for _, mod := range x.spec.Modules {
+	for _, name := range x.spec.SemanticOrder {
+		mod := x.spec.Modules[name]
 		if mod == nil || mod.Name == "" || seen[mod.Name] {
 			continue
 		}
 		mods = append(mods, mod)
 		seen[mod.Name] = true
 	}
-	sort.SliceStable(mods, func(i, j int) bool {
-		if mods[i] == x.spec.Root {
-			return false
+	var remaining []*Module
+	for _, mod := range x.spec.Modules {
+		if mod == nil || mod.Name == "" || seen[mod.Name] {
+			continue
 		}
-		if mods[j] == x.spec.Root {
-			return true
-		}
-		return mods[i].Name < mods[j].Name
-	})
+		remaining = append(remaining, mod)
+		seen[mod.Name] = true
+	}
+	sort.SliceStable(remaining, func(i, j int) bool { return remaining[i].Name < remaining[j].Name })
+	mods = append(mods, remaining...)
 	return mods
 }
 

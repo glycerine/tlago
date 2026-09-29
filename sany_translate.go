@@ -11,6 +11,7 @@ func CheckSanySource(file, source string) (*Spec, Diagnostics) {
 	spec := &Spec{Root: mod, Modules: map[string]*Module{}}
 	if mod != nil && mod.Name != "" {
 		spec.Modules[mod.Name] = mod
+		spec.SemanticOrder = []string{mod.Name}
 	}
 	if diags.HasErrors() {
 		spec.Diags = diags
@@ -35,12 +36,13 @@ func ModelCheckSanySource(specFile, specSource, cfgSource string, opts ModelChec
 }
 
 type sanyLoader struct {
-	opts    LoadOptions
-	modules map[string]*Module
-	diags   Diagnostics
-	loading map[string]bool
-	loaded  map[string]bool
-	rootDir string
+	opts          LoadOptions
+	modules       map[string]*Module
+	diags         Diagnostics
+	loading       map[string]bool
+	loaded        map[string]bool
+	semanticOrder []string
+	rootDir       string
 }
 
 func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
@@ -62,7 +64,7 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 	if rootMod != nil {
 		l.loadDependencies(rootMod)
 	}
-	return &Spec{Root: rootMod, Modules: l.modules, Diags: l.diags}, l.diags
+	return &Spec{Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), Diags: l.diags}, l.diags
 }
 
 func (l *sanyLoader) loadDependencies(mod *Module) {
@@ -77,12 +79,13 @@ func (l *sanyLoader) loadDependencies(mod *Module) {
 		return
 	}
 	l.loading[mod.Name] = true
-	for _, dep := range moduleImports(mod) {
+	for _, dep := range moduleSemanticImports(mod) {
 		depMod := l.loadModule(dep, mod)
 		l.loadDependencies(depMod)
 	}
 	l.loading[mod.Name] = false
 	l.loaded[mod.Name] = true
+	l.semanticOrder = append(l.semanticOrder, mod.Name)
 }
 
 func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
@@ -300,6 +303,37 @@ func moduleImports(mod *Module) []string {
 	}
 	for _, inst := range mod.Instances {
 		add(inst.Module)
+		moduleImportsFromInstance(inst, add)
+	}
+	for _, def := range mod.Definitions {
+		moduleImportsFromExpr(def.Expr, add)
+	}
+	for _, assume := range mod.Assumptions {
+		moduleImportsFromExpr(assume.Expr, add)
+	}
+	for _, theorem := range mod.Theorems {
+		moduleImportsFromExpr(theorem.Expr, add)
+	}
+	return imports
+}
+
+func moduleSemanticImports(mod *Module) []string {
+	if mod == nil {
+		return nil
+	}
+	imports := make([]string, 0, len(mod.Extends)+len(mod.Instances))
+	seen := map[string]bool{}
+	add := func(name string) {
+		if name == "" || seen[name] {
+			return
+		}
+		seen[name] = true
+		imports = append(imports, name)
+	}
+	for _, name := range mod.Extends {
+		add(name)
+	}
+	for _, inst := range mod.Instances {
 		moduleImportsFromInstance(inst, add)
 	}
 	for _, def := range mod.Definitions {

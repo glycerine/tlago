@@ -100,6 +100,37 @@ Use == LET I == INSTANCE Inner IN I!Op
 		}
 	})
 
+	t.Run("records SANY semantic analysis order", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ExtBase.tla"), `---- MODULE ExtBase ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Extender.tla"), `---- MODULE Extender ----
+EXTENDS ExtBase
+ExtOp == BaseOp
+====`)
+		writeFile(t, filepath.Join(dir, "InstBase.tla"), `---- MODULE InstBase ----
+InstBaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Instancer.tla"), `---- MODULE Instancer ----
+EXTENDS InstBase
+InstOp == InstBaseOp
+====`)
+		root := filepath.Join(dir, "Root.tla")
+		writeFile(t, root, `---- MODULE Root ----
+EXTENDS Extender
+INSTANCE Instancer
+Use == ExtOp /\ InstOp
+====`)
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		got := strings.Join(spec.SemanticOrder, ",")
+		want := "ExtBase,Extender,InstBase,Instancer,Root"
+		if got != want {
+			t.Fatalf("semantic order = %s, want %s", got, want)
+		}
+	})
+
 	t.Run("checks local name collisions and bare operator arity", func(t *testing.T) {
 		_, diags := CheckSanySource("BindingErrors.tla", `---- MODULE BindingErrors ----
 VARIABLE x

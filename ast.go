@@ -1,9 +1,10 @@
 package tlago
 
 type Spec struct {
-	Root    *Module
-	Modules map[string]*Module
-	Diags   Diagnostics
+	Root          *Module
+	Modules       map[string]*Module
+	SemanticOrder []string
+	Diags         Diagnostics
 }
 
 type Module struct {
