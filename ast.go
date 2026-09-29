@@ -92,6 +92,7 @@ type Definition struct {
 	AssumeProveBody *AssumeProve
 	TheoremLike     bool
 	FactKind        string
+	FactKeyword     string
 	Pos             Position
 	Source          Position
 }

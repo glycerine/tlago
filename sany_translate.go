@@ -1038,6 +1038,10 @@ func sanyTheoremDefinition(node *SanySyntaxNode) (Definition, bool, Diagnostics)
 	def.TheoremLike = ok
 	if ok {
 		def.FactKind = "theorem"
+		def.FactKeyword = "theorem"
+		if heirs := node.GetHeirs(); len(heirs) > 0 && heirs[0].Token != nil && heirs[0].Token.Kind == SanyTokenProposition {
+			def.FactKeyword = "lemma"
+		}
 	}
 	return def, ok, diags
 }

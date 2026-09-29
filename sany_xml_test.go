@@ -435,12 +435,14 @@ Use == T!:
 	t.Run("instantiated theorem body selectors keep the theorem source context", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "TheoremSelectorBase.tla"), `---- MODULE TheoremSelectorBase ----
-Hidden == TRUE
+CONSTANT X
+Hidden == X = X
 THEOREM Thm == Hidden
 ====`)
 		rootPath := filepath.Join(dir, "TheoremSelectorRoot.tla")
 		writeFile(t, rootPath, `---- MODULE TheoremSelectorRoot ----
-P == INSTANCE TheoremSelectorBase
+CONSTANT Y
+P == INSTANCE TheoremSelectorBase WITH X <- Y
 Use == P!Thm!:
 ====`)
 
@@ -450,8 +452,22 @@ Use == P!Thm!:
 		requireNoErrors(t, sem)
 		xmlText, xmlDiags := SanyXML(spec)
 		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
 		if !strings.Contains(string(xmlText), `<uniquename>$Nop</uniquename>`) {
 			t.Fatalf("instantiated theorem body selector did not emit $Nop wrapper\n%s", xmlText)
+		}
+		use := xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("instantiated theorem body selector missing Use definition\n%s", xmlText)
+		}
+		if len(xmlNodesByName(use, "SubstInNode")) != 1 {
+			t.Fatalf("instantiated theorem body selector missing SubstInNode\n%s", xmlText)
+		}
+		if len(xmlNodesByName(use, "APSubstInNode")) != 0 {
+			t.Fatalf("instantiated theorem body selector used APSubstInNode inside expression\n%s", xmlText)
 		}
 	})
 
@@ -647,6 +663,137 @@ Use == Op(a, b)!1!(c)
 		}
 		if got := firstChildText(formal, "level"); got != "" {
 			t.Fatalf("unused selector lambda formal z level = %q, want omitted\n%s", got, xmlText)
+		}
+	})
+
+	t.Run("named instance subexpression references preserve substitution wrappers", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT x
+Init == /\ x = 0
+        /\ TRUE
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+CONSTANT y
+P == INSTANCE Base WITH x <- y
+THEOREM T == P!Init!1
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		tDef := xmlEntryPayloadByKindAndName(root, "TheoremDefNode", "T")
+		if tDef == nil {
+			t.Fatalf("SANY XML missing theorem definition T\n%s", xmlText)
+		}
+		nopUID := xmlEntryUIDByKindAndName(root, "BuiltInKind", "$Nop")
+		if nopUID == "" {
+			t.Fatalf("SANY XML missing $Nop builtin\n%s", xmlText)
+		}
+		var nop *canonicalXMLNode
+		var walk func(*canonicalXMLNode)
+		walk = func(node *canonicalXMLNode) {
+			if node == nil || nop != nil {
+				return
+			}
+			if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "BuiltInKindRef", nopUID) {
+				nop = node
+				return
+			}
+			for _, child := range node.Children {
+				walk(child)
+			}
+		}
+		walk(tDef)
+		if nop == nil {
+			t.Fatalf("theorem definition T missing $Nop subexpression wrapper\n%s", xmlText)
+		}
+		var hasSubstOperand bool
+		for _, operands := range directChildren(nop, "operands") {
+			if len(directChildren(operands, "SubstInNode")) > 0 {
+				hasSubstOperand = true
+			}
+		}
+		if !hasSubstOperand {
+			t.Fatalf("P!Init!1 $Nop operand was not wrapped in SubstInNode\n%s", xmlText)
+		}
+	})
+
+	t.Run("named instance selected quantified calls wrap lambda bodies", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+VARIABLE x
+Op(p) == LET Local == {p} IN \A q \in Local : x = x
+====`)
+		rootPath := filepath.Join(dir, "Root.tla")
+		writeFile(t, rootPath, `---- MODULE Root ----
+VARIABLE y
+CONSTANT a
+P == INSTANCE Base WITH x <- y
+Use == P!Op(a)!1
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		lambda := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "LAMBDA")
+		if lambda == nil {
+			t.Fatalf("SANY XML missing selected-call lambda\n%s", xmlText)
+		}
+		lambdaUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "LAMBDA")
+		if lambdaUID == "" {
+			t.Fatalf("SANY XML missing selected-call lambda UID\n%s", xmlText)
+		}
+		if got := firstChildText(lambda, "level"); got != "1" {
+			t.Fatalf("selected instance lambda level = %q, want 1\n%s", got, xmlText)
+		}
+		if got := xmlOriginalModuleName(root, lambda); got != "Root" {
+			t.Fatalf("selected instance lambda origin module = %q, want Root\n%s", got, xmlText)
+		}
+		bodies := directChildren(lambda, "body")
+		if len(bodies) == 0 || len(directChildren(bodies[0], "SubstInNode")) == 0 {
+			t.Fatalf("selected instance lambda body missing SubstInNode\n%s", xmlText)
+		}
+		if local := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Local"); local == nil {
+			t.Fatalf("selected instance lambda did not emit LET-local definition Local\n%s", xmlText)
+		}
+		use := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("SANY XML missing Use definition\n%s", xmlText)
+		}
+		var selectedCall *canonicalXMLNode
+		var walk func(*canonicalXMLNode)
+		walk = func(node *canonicalXMLNode) {
+			if node == nil || selectedCall != nil {
+				return
+			}
+			if node.Name == "OpApplNode" && opApplNodeUsesOperatorUID(node, "UserDefinedOpKindRef", lambdaUID) {
+				selectedCall = node
+				return
+			}
+			for _, child := range node.Children {
+				walk(child)
+			}
+		}
+		walk(use)
+		if selectedCall == nil {
+			t.Fatalf("Use body does not reference selected-call lambda UID %s\n%s", lambdaUID, xmlText)
+		}
+		if got := firstChildText(selectedCall, "level"); got != "1" {
+			t.Fatalf("selected instance lambda application level = %q, want 1\n%s", got, xmlText)
 		}
 	})
 
@@ -2397,6 +2544,7 @@ UseLemma == \A c \in CSet : P(c)!Lemma
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
 CONSTANT C
+LEMMA Aux == C = C
 THEOREM Lemma == C = C
 ====`)
 		root := filepath.Join(dir, "PlainInstanceTheoremXML.tla")
@@ -2420,6 +2568,65 @@ Use == TRUE
 		}
 		if count := xmlPayloadCountByKindNameFile(rootXML, "TheoremDefNode", "Lemma", "Base"); count != 1 {
 			t.Fatalf("plain INSTANCE original theorem facts = %d, want 1\n%s", count, xmlText)
+		}
+	})
+
+	t.Run("named INSTANCE clones theorem facts", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT C
+THEOREM Lemma == C = C
+====`)
+		root := filepath.Join(dir, "NamedInstanceTheoremXML.tla")
+		writeFile(t, root, `---- MODULE NamedInstanceTheoremXML ----
+CONSTANT C
+P == INSTANCE Base
+Use == P!Lemma
+====`)
+
+		spec, diags := LoadSanySpec(root, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if clone := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "P!Lemma"); clone == nil {
+			t.Fatalf("named INSTANCE theorem clone P!Lemma missing\n%s", xmlText)
+		}
+		if clone := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "P!Aux"); clone != nil {
+			t.Fatalf("named INSTANCE cloned lemma alias P!Aux as theorem definition\n%s", xmlText)
+		}
+		if clone := xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "P!Aux"); clone != nil {
+			t.Fatalf("named INSTANCE cloned lemma alias P!Aux as user definition\n%s", xmlText)
+		}
+		if refs := moduleRefCountByPayloadName(rootXML, "NamedInstanceTheoremXML", "TheoremDefNode", "P!Lemma"); refs != 0 {
+			t.Fatalf("NamedInstanceTheoremXML module refs to P!Lemma theorem clone = %d, want 0\n%s", refs, xmlText)
+		}
+	})
+
+	t.Run("lemma assume prove definitions emit scoped theorem definitions", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("LemmaAssumeProveXML.tla", `---- MODULE LemmaAssumeProveXML ----
+LEMMA Lem ==
+  ASSUME NEW S, NEW x \in S
+  PROVE x \in S
+====`)
+		requireNoErrors(t, diags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		lemma := xmlEntryPayloadByKindAndName(rootXML, "TheoremDefNode", "Lem")
+		if lemma == nil {
+			t.Fatalf("lemma assume/prove definition was not emitted as TheoremDefNode\n%s", xmlText)
+		}
+		if len(xmlNodesByName(lemma, "AssumeProveNode")) != 1 {
+			t.Fatalf("lemma assume/prove definition missing AssumeProveNode\n%s", xmlText)
+		}
+		if xmlEntryPayloadByKindAndName(rootXML, "UserDefinedOpKind", "Lem") != nil {
+			t.Fatalf("lemma assume/prove definition was emitted as UserDefinedOpKind\n%s", xmlText)
 		}
 	})
 
