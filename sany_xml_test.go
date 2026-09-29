@@ -1917,6 +1917,78 @@ Use == TargetOp /\ LibOp
 		}
 	})
 
+	t.Run("named INSTANCE keeps qualified library EXTENDS clones", func(t *testing.T) {
+		dir := t.TempDir()
+		libDir := filepath.Join(dir, "lib")
+		if err := os.MkdirAll(libDir, 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", libDir, err)
+		}
+		writeFile(t, filepath.Join(libDir, "Lib.tla"), `---- MODULE Lib ----
+LibOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Lib
+TargetOp == LibOp
+====`)
+		rootPath := filepath.Join(dir, "NamedInstanceLibraryExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE NamedInstanceLibraryExtendsXML ----
+N == INSTANCE Target
+Use == N!TargetOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{LibraryPaths: []string{libDir}, PreferLibraryModules: true})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "N!TargetOp", "NamedInstanceLibraryExtendsXML"); got != 1 {
+			t.Fatalf("root N!TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "N!LibOp", "NamedInstanceLibraryExtendsXML"); got != 1 {
+			t.Fatalf("root N!LibOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("named INSTANCE does not re-export nested inherited definitions unqualified", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+EXTENDS Base
+InnerOp == BaseOp
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+N == INSTANCE Inner
+Use == N!InnerOp
+====`)
+		rootPath := filepath.Join(dir, "NamedNestedInstanceExportXML.tla")
+		writeFile(t, rootPath, `---- MODULE NamedNestedInstanceExportXML ----
+V == INSTANCE Target
+Use == V!Use
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "V!N!BaseOp", "NamedNestedInstanceExportXML"); got != 1 {
+			t.Fatalf("root V!N!BaseOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "V!BaseOp", "NamedNestedInstanceExportXML"); got != 0 {
+			t.Fatalf("root V!BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+	})
+
 	t.Run("LOCAL unqualified INSTANCE clones library EXTENDS definitions", func(t *testing.T) {
 		dir := t.TempDir()
 		libDir := filepath.Join(dir, "lib")

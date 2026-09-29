@@ -1334,11 +1334,12 @@ func (x *sanyXMLExporter) instanceDefinitionSources(owner *Module, inst Instance
 	if instMod == nil {
 		return nil
 	}
-	sources := x.exportedDefinitionSources(instMod, map[string]bool{})
+	var sources []sanyXMLDefinitionSource
 	if inst.exportsUnqualified() {
 		includeExtends := !x.instanceHasSubstitutions(owner, inst) || x.instanceSubstitutesInheritedTargets(owner, inst)
 		sources = x.instanceExportedDefinitionSources(instMod, map[string]bool{}, includeExtends, inst.Local, len(inst.Params) > 0)
 	} else {
+		sources = x.exportedDefinitionSources(instMod, map[string]bool{})
 		sources = append(sources, x.directTheoremDefinitionSources(instMod, len(inst.Params) > 0)...)
 	}
 	out := make([]sanyXMLInstanceDefinitionSource, 0, len(sources))
@@ -1661,11 +1662,13 @@ func (x *sanyXMLExporter) exportedDefinitionSources(mod *Module, visiting map[st
 			byName[source.name] = source
 			clonedNames[source.name] = true
 		}
-		for _, source := range x.exportedDefinitionSources(target, visiting) {
-			if !source.fromExtends || clonedNames[source.name] {
-				continue
+		if inst.exportsUnqualified() {
+			for _, source := range x.exportedDefinitionSources(target, visiting) {
+				if !source.fromExtends || clonedNames[source.name] {
+					continue
+				}
+				byName[source.name] = source
 			}
-			byName[source.name] = source
 		}
 	}
 	for i := range mod.Definitions {
