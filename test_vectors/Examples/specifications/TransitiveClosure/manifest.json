@@ -1,0 +1,24 @@
+{
+  "sources": [],
+  "authors": [
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/TransitiveClosure/TransitiveClosure.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/TransitiveClosure/TransitiveClosure.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        }
+      ]
+    }
+  ]
+}

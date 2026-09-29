@@ -1,0 +1,134 @@
+package tlago
+
+import "fmt"
+
+type SanyRange struct {
+	Begin Position
+	End   Position
+}
+
+type SanySyntaxNodeDefinition struct {
+	Kind SanyNodeKind
+	Name string
+}
+
+type SanySyntaxNode struct {
+	Kind         SanyNodeKind
+	Image        string
+	Original     string
+	Range        SanyRange
+	Zero         []*SanySyntaxNode
+	One          []*SanySyntaxNode
+	Heirs        []*SanySyntaxNode
+	Token        *SanyToken
+	FileName     string
+	PreComments  []string
+	JunctionList bool
+}
+
+func NewSanyNode(kind SanyNodeKind, heirs ...*SanySyntaxNode) *SanySyntaxNode {
+	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(heirs)}
+	node.refreshHeirsAndRange()
+	return node
+}
+
+func NewSanySplitNode(kind SanyNodeKind, zero, one []*SanySyntaxNode) *SanySyntaxNode {
+	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one)}
+	node.refreshHeirsAndRange()
+	return node
+}
+
+func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
+	if tok == nil {
+		return nil
+	}
+	node := &SanySyntaxNode{
+		Kind:  SanyNodeKind(tok.Kind),
+		Image: tok.Image,
+		Range: tok.Range(),
+		Token: tok,
+	}
+	for special := tok.Special; special != nil; special = special.Next {
+		node.PreComments = append(node.PreComments, special.Image)
+	}
+	return node
+}
+
+func (k SanyNodeKind) JavaName() string {
+	for _, def := range SanySyntaxNodeKinds {
+		if def.Kind == k {
+			return def.Name
+		}
+	}
+	tok := SanyTokenKind(k)
+	if int(tok) >= 0 && int(tok) < len(SanyTokenImages) {
+		return tok.JavaName()
+	}
+	return fmt.Sprintf("node(%d)", int(k))
+}
+
+func (n *SanySyntaxNode) IsKind(kind SanyNodeKind) bool {
+	return n != nil && n.Kind == kind
+}
+
+func (n *SanySyntaxNode) AddHeir(heir *SanySyntaxNode) {
+	if n == nil || heir == nil {
+		return
+	}
+	n.Zero = append(n.Zero, heir)
+	n.refreshHeirsAndRange()
+}
+
+func (n *SanySyntaxNode) GetHeirs() []*SanySyntaxNode {
+	if n == nil {
+		return nil
+	}
+	return append([]*SanySyntaxNode(nil), n.Heirs...)
+}
+
+func (n *SanySyntaxNode) refreshHeirsAndRange() {
+	if n == nil {
+		return
+	}
+	n.Heirs = append(append([]*SanySyntaxNode(nil), n.Zero...), n.One...)
+	for _, heir := range n.Heirs {
+		if heir == nil {
+			continue
+		}
+		if n.FileName == "" {
+			n.FileName = heir.FileName
+		}
+		if n.Range.Begin.Line == 0 || positionBefore(heir.Range.Begin, n.Range.Begin) {
+			n.Range.Begin = heir.Range.Begin
+		}
+		if n.Range.End.Line == 0 || positionBefore(n.Range.End, heir.Range.End) {
+			n.Range.End = heir.Range.End
+		}
+	}
+}
+
+func compactSanyHeirs(heirs []*SanySyntaxNode) []*SanySyntaxNode {
+	if len(heirs) == 0 {
+		return nil
+	}
+	out := make([]*SanySyntaxNode, 0, len(heirs))
+	for _, heir := range heirs {
+		if heir != nil {
+			out = append(out, heir)
+		}
+	}
+	return out
+}
+
+func positionBefore(a, b Position) bool {
+	if a.Line == 0 {
+		return false
+	}
+	if b.Line == 0 {
+		return true
+	}
+	if a.Line != b.Line {
+		return a.Line < b.Line
+	}
+	return a.Column < b.Column
+}

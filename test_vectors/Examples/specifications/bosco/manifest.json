@@ -1,0 +1,35 @@
+{
+  "sources": [],
+  "authors": [
+    "Igor Konnov",
+    "Josef Widder",
+    "Thanh Hai Tran"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/bosco/APbosco.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/bosco/APbosco.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/bosco/bosco.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/bosco/bosco.cfg",
+          "runtime": "00:03:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

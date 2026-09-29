@@ -1,0 +1,74 @@
+{
+  "sources": [
+    "http://hdl.handle.net/2268.2/23374"
+  ],
+  "authors": [
+    "Jarod Differdange"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/locks_auxiliary_vars/Lock.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/locks_auxiliary_vars/Lock.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 12,
+          "totalStates": 21,
+          "stateDepth": 5
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/locks_auxiliary_vars/LockHS.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/locks_auxiliary_vars/LockHS.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 28,
+          "totalStates": 41,
+          "stateDepth": 10
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 2
+      }
+    },
+    {
+      "path": "specifications/locks_auxiliary_vars/Peterson.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/locks_auxiliary_vars/Peterson.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 42,
+          "totalStates": 77,
+          "stateDepth": 11
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/locks_auxiliary_vars/Stuttering.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

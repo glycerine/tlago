@@ -1,0 +1,58 @@
+{
+  "sources": [
+    "http://hdl.handle.net/2268.2/23374"
+  ],
+  "authors": [
+    "Jarod Differdange"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/barriers/APBarrier.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/barriers/APBarrier.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/barriers/Barrier.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/barriers/Barrier.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 64,
+          "totalStates": 194,
+          "stateDepth": 7
+        }
+      ]
+    },
+    {
+      "path": "specifications/barriers/Barriers.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/barriers/Barriers.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 29279,
+          "totalStates": 104515,
+          "stateDepth": 93
+        }
+      ],
+      "proof": {
+        "maxRuntimeMinutes": 10
+      }
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "sources": [
+    "https://github.com/byisystems/byihive"
+  ],
+  "authors": [
+    "Santhosh Raju",
+    "Cherry G. Mathew",
+    "Fransisca Andriani"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/byihive/VoucherCancel.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/byihive/VoucherCancel.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4199,
+          "totalStates": 26848,
+          "stateDepth": 11
+        }
+      ]
+    },
+    {
+      "path": "specifications/byihive/VoucherIssue.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/byihive/VoucherIssue.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4199,
+          "totalStates": 26848,
+          "stateDepth": 11
+        }
+      ]
+    },
+    {
+      "path": "specifications/byihive/VoucherLifeCycle.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/byihive/VoucherLifeCycle.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 64,
+          "totalStates": 193,
+          "stateDepth": 7
+        }
+      ]
+    },
+    {
+      "path": "specifications/byihive/VoucherLifeCycle_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/byihive/VoucherRedeem.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/byihive/VoucherRedeem.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4199,
+          "totalStates": 26848,
+          "stateDepth": 11
+        }
+      ]
+    },
+    {
+      "path": "specifications/byihive/VoucherTransfer.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/byihive/VoucherTransfer.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4197,
+          "totalStates": 26848,
+          "stateDepth": 11
+        }
+      ]
+    }
+  ]
+}

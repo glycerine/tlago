@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.lamport.tla.toolbox.tool.tlc.modelCheck">
+    <stringAttribute key="configurationName" value="Model_1"/>
+    <intAttribute key="distributedFPSetCount" value="0"/>
+    <stringAttribute key="distributedNetworkInterface" value="100.64.12.255"/>
+    <intAttribute key="distributedNodesCount" value="1"/>
+    <stringAttribute key="distributedTLC" value="off"/>
+    <intAttribute key="fpIndex" value="0"/>
+    <intAttribute key="maxHeapSize" value="25"/>
+    <stringAttribute key="modelBehaviorInit" value=""/>
+    <stringAttribute key="modelBehaviorNext" value=""/>
+    <stringAttribute key="modelBehaviorSpec" value="Spec"/>
+    <intAttribute key="modelBehaviorSpecType" value="1"/>
+    <stringAttribute key="modelBehaviorVars" value="mom, dist"/>
+    <stringAttribute key="modelComments" value="A graph with 6 nodes.  It uses the Evaluate Constant Expression section of the Model Checking Results page to print the randomly chosen set Edges."/>
+    <booleanAttribute key="modelCorrectnessCheckDeadlock" value="false"/>
+    <listAttribute key="modelCorrectnessInvariants">
+        <listEntry value="1TypeOK"/>
+    </listAttribute>
+    <listAttribute key="modelCorrectnessProperties">
+        <listEntry value="1Safety"/>
+        <listEntry value="1Liveness"/>
+    </listAttribute>
+    <stringAttribute key="modelExpressionEval" value="Edges"/>
+    <listAttribute key="modelParameterConstants">
+        <listEntry value="MaxCardinality;;6;0;0"/>
+        <listEntry value="Nodes;;{n1, n2, n3, n4, n5, n6};1;0"/>
+        <listEntry value="Root;;n1;0;0"/>
+    </listAttribute>
+    <intAttribute key="numberOfWorkers" value="2"/>
+    <stringAttribute key="result.mail.address" value=""/>
+    <stringAttribute key="specName" value="SpanTreeRandom"/>
+    <stringAttribute key="tlcResourcesProfile" value="local custom"/>
+</launchConfiguration>

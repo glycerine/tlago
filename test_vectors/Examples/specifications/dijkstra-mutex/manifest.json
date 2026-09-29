@@ -1,0 +1,56 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [
+    "ewd"
+  ],
+  "modules": [
+    {
+      "path": "specifications/dijkstra-mutex/DijkstraMutex.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/dijkstra-mutex/DijkstraMutex.toolbox/LSpec-model/DijkstraMutex.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/dijkstra-mutex/DijkstraMutex.toolbox/LSpec-model/MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/dijkstra-mutex/DijkstraMutex.toolbox/LSpec-model/MC.cfg",
+          "runtime": "00:00:50",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/dijkstra-mutex/DijkstraMutex.toolbox/Safety-4-processors/DijkstraMutex.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/dijkstra-mutex/DijkstraMutex.toolbox/Safety-4-processors/MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/dijkstra-mutex/DijkstraMutex.toolbox/Safety-4-processors/MC.cfg",
+          "runtime": "00:02:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

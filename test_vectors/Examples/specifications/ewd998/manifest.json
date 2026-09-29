@@ -1,0 +1,207 @@
+{
+  "sources": [],
+  "authors": [
+    "Markus Kuppe",
+    "Stephan Merz"
+  ],
+  "tags": [
+    "ewd"
+  ],
+  "modules": [
+    {
+      "path": "specifications/ewd998/AsyncTerminationDetection.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/AsyncTerminationDetection.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 4097,
+          "totalStates": 53271,
+          "stateDepth": 14
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/AsyncTerminationDetection_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/ewd998/EWD998.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998.cfg",
+          "runtime": "00:50:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/ewd998/EWD998Small.cfg",
+          "runtime": "00:05:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998Chan.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998Chan.cfg",
+          "runtime": "00:05:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998ChanID.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998ChanID.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 14,
+          "totalStates": 15,
+          "stateDepth": 14
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998ChanID_export.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998ChanID_export.cfg",
+          "runtime": "unknown",
+          "mode": "exhaustive search",
+          "result": "unknown"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998ChanID_shiviz.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998ChanID_shiviz.cfg",
+          "runtime": "unknown",
+          "mode": "exhaustive search",
+          "result": "unknown"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998ChanTrace.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998ChanTrace.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998Chan_opts.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd998/EWD998PCal.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [
+        {
+          "path": "specifications/ewd998/EWD998PCal.cfg",
+          "runtime": "00:00:21",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 321370,
+          "totalStates": 2808396,
+          "stateDepth": 47
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/EWD998PCal_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 10
+      }
+    },
+    {
+      "path": "specifications/ewd998/EWD998_anim.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd998/EWD998_opts.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd998/EWD998_optsSC.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd998/EWD998_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 6
+      }
+    },
+    {
+      "path": "specifications/ewd998/Folds.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd998/SmokeEWD998.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/SmokeEWD998.cfg",
+          "runtime": "00:00:05",
+          "mode": {
+            "simulate": {
+              "traceCount": 100
+            }
+          },
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/SmokeEWD998_SC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd998/SmokeEWD998_SC.cfg",
+          "runtime": "unknown",
+          "mode": "exhaustive search",
+          "result": "unknown"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd998/Utils.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

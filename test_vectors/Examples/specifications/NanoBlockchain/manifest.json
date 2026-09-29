@@ -1,0 +1,44 @@
+{
+  "sources": [],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/NanoBlockchain/MCNano.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/NanoBlockchain/MCNanoLarge.cfg",
+          "runtime": "00:20:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/NanoBlockchain/MCNanoMedium.cfg",
+          "runtime": "00:00:15",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 530587,
+          "totalStates": 1120079,
+          "stateDepth": 11
+        },
+        {
+          "path": "specifications/NanoBlockchain/MCNanoSmall.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 3003,
+          "totalStates": 6083,
+          "stateDepth": 7
+        }
+      ]
+    },
+    {
+      "path": "specifications/NanoBlockchain/Nano.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

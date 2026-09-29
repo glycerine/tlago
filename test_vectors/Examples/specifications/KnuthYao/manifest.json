@@ -1,0 +1,34 @@
+{
+  "sources": [
+    "https://old.reddit.com/r/tlaplus/comments/j06ohw/how_do_you_reason_about_a_probabilistic/g6owlxy/"
+  ],
+  "authors": [
+    "Markus Kuppe",
+    "Ron Pressler"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/KnuthYao/KnuthYao.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/KnuthYao/Prob.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/KnuthYao/SimKnuthYao.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/KnuthYao/SimKnuthYao.cfg",
+          "runtime": "unknown",
+          "mode": "generate",
+          "result": "unknown"
+        }
+      ]
+    }
+  ]
+}

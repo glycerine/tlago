@@ -1,0 +1,36 @@
+# misc
+Test.tla
+Test.scm
+debug.txt
+
+# editor config dirs
+.vscode
+.vs
+
+# rust
+Cargo.lock
+
+# node.js
+package-lock.json
+node_modules
+
+# python
+pyvenv.cfg
+*.egg-info
+out
+bin
+lib
+lib64
+dist
+*.whl
+
+# build artifacts
+build
+target
+*.exp
+*.lib
+*.obj
+*.so
+*.obj
+*.wasm
+

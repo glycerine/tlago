@@ -1,0 +1,93 @@
+{
+  "sources": [],
+  "authors": [
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/allocator/AllocatorImplementation.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/allocator/AllocatorImplementation.cfg",
+          "runtime": "00:00:15",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 17701,
+          "totalStates": 64414,
+          "stateDepth": 16
+        }
+      ]
+    },
+    {
+      "path": "specifications/allocator/AllocatorImplementation_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 2
+      }
+    },
+    {
+      "path": "specifications/allocator/AllocatorRefinement.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/allocator/AllocatorRefinement.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 1690,
+          "totalStates": 5854,
+          "stateDepth": 7
+        }
+      ]
+    },
+    {
+      "path": "specifications/allocator/SchedulingAllocator.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/allocator/SchedulingAllocator.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 1690,
+          "totalStates": 5854,
+          "stateDepth": 7
+        }
+      ]
+    },
+    {
+      "path": "specifications/allocator/SchedulingAllocator_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 2
+      }
+    },
+    {
+      "path": "specifications/allocator/SimpleAllocator.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/allocator/SimpleAllocator.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 400,
+          "totalStates": 1633,
+          "stateDepth": 6
+        }
+      ]
+    },
+    {
+      "path": "specifications/allocator/SimpleAllocator_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

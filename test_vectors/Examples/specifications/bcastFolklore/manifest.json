@@ -1,0 +1,35 @@
+{
+  "sources": [],
+  "authors": [
+    "Igor Konnov",
+    "Josef Widder",
+    "Thanh Hai Tran"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/bcastFolklore/APbcastFolklore.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/bcastFolklore/APbcastFolklore.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/bcastFolklore/bcastFolklore.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/bcastFolklore/bcastFolklore.cfg",
+          "runtime": "00:30:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

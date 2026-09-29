@@ -1,0 +1,62 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport",
+    "Markus Kuppe",
+    "Stephan Merz"
+  ],
+  "tags": [
+    "ewd",
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/ewd687a/EWD687a.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd687a/EWD687aPlusCal.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/ewd687a/EWD687a_anim.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd687a/EWD687a_anim.cfg",
+          "runtime": "00:00:01",
+          "mode": {
+            "simulate": {
+              "traceCount": 100
+            }
+          },
+          "result": "safety failure"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd687a/EWD687a_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 3
+      }
+    },
+    {
+      "path": "specifications/ewd687a/MCEWD687a.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd687a/MCEWD687a.cfg",
+          "runtime": "00:01:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

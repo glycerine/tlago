@@ -1,0 +1,10 @@
+*~
+.cache/
+.codex-gocache/
+.codex-gotmp/
+.codex-m2/
+_apalache-out/
+*.xml.gold
+*.xml.red
+*.air.gold
+*.air.red

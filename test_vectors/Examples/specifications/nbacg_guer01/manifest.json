@@ -1,0 +1,38 @@
+{
+  "sources": [],
+  "authors": [
+    "Igor Konnov",
+    "Josef Widder",
+    "Thanh Hai Tran"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/nbacg_guer01/APnbacg_guer01.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/nbacg_guer01/APnbacg_guer01.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/nbacg_guer01/nbacg_guer01.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/nbacg_guer01/nbacg_guer01.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 24922,
+          "totalStates": 159538,
+          "stateDepth": 16
+        }
+      ]
+    }
+  ]
+}

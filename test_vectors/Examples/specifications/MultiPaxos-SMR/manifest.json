@@ -1,0 +1,41 @@
+{
+  "sources": [
+    "https://www.josehu.com/technical/2024/02/19/practical-MultiPaxos-TLA-spec.html"
+  ],
+  "authors": [
+    "Guanzhou Hu"
+  ],
+  "tags": [
+    "intermediate"
+  ],
+  "modules": [
+    {
+      "path": "specifications/MultiPaxos-SMR/MultiPaxos.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/MultiPaxos-SMR/MultiPaxos_MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/MultiPaxos-SMR/MultiPaxos_MC.cfg",
+          "runtime": "00:07:53",
+          "mode": "exhaustive search",
+          "result": "success"
+        },
+        {
+          "path": "specifications/MultiPaxos-SMR/MultiPaxos_MC_small.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 343796,
+          "totalStates": 736012,
+          "stateDepth": 28
+        }
+      ]
+    }
+  ]
+}

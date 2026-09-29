@@ -1,0 +1,49 @@
+{
+  "sources": [],
+  "authors": [
+    "Isaac DeFrain"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/ReadersWriters/APReadersWriters.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ReadersWriters/APReadersWriters.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ReadersWriters/MC.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ReadersWriters/MC.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 21527,
+          "totalStates": 59674,
+          "stateDepth": 13
+        }
+      ]
+    },
+    {
+      "path": "specifications/ReadersWriters/ReadersWriters.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/ReadersWriters/ReadersWriters_proof.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    }
+  ]
+}

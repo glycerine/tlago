@@ -1,0 +1,33 @@
+{
+  "sources": [],
+  "authors": [
+    "Igor Konnov",
+    "Josef Widder",
+    "Thanh Hai Tran"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/detector_chan96/Age_Channel.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/detector_chan96/EPFailureDetector.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/detector_chan96/EnvironmentController.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/detector_chan96/EnvironmentController.cfg",
+          "runtime": "02:00:00",
+          "mode": "exhaustive search",
+          "result": "success"
+        }
+      ]
+    }
+  ]
+}

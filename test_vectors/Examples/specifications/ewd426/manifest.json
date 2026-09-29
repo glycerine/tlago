@@ -1,0 +1,51 @@
+{
+  "sources": [],
+  "authors": [
+    "Markus Kuppe",
+    "Murat Demirbas"
+  ],
+  "tags": [
+    "ewd"
+  ],
+  "modules": [
+    {
+      "path": "specifications/ewd426/APTokenRing.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd426/APTokenRing.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd426/SimTokenRing.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd426/SimTokenRing.cfg",
+          "runtime": "unknown",
+          "mode": "generate",
+          "result": "unknown"
+        }
+      ]
+    },
+    {
+      "path": "specifications/ewd426/TokenRing.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/ewd426/TokenRing.cfg",
+          "runtime": "00:00:05",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 46656,
+          "totalStates": 248832,
+          "stateDepth": 1
+        }
+      ]
+    }
+  ]
+}

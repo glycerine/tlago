@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+	<name>SpanTreeTest</name>
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+			<name>toolbox.builder.TLAParserBuilder</name>
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+		<nature>toolbox.natures.TLANature</nature>
+	</natures>
+	<linkedResources>
+		<link>
+			<name>SpanTreeRandom.tla</name>
+			<type>1</type>
+			<location>PARENT-1_PROJECT_LOC/SpanTreeRandom.tla</location>
+		</link>
+		<link>
+			<name>SpanTreeTest.tla</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/SpanTreeTest.tla</locationURI>
+		</link>
+	</linkedResources>
+</projectDescription>

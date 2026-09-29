@@ -1,0 +1,46 @@
+{
+  "sources": [],
+  "authors": [
+    "Andrew Helwer"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/LearnProofs/AddTwo.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/LearnProofs/FindHighest.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 1
+      }
+    },
+    {
+      "path": "specifications/LearnProofs/MCFindHighest.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/LearnProofs/MCFindHighest.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 742,
+          "totalStates": 1523,
+          "stateDepth": 5
+        }
+      ]
+    }
+  ]
+}

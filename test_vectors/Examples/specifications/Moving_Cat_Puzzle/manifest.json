@@ -1,0 +1,47 @@
+{
+  "sources": [],
+  "authors": [
+    "Florian Schanda"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/Moving_Cat_Puzzle/APCat.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Moving_Cat_Puzzle/APCat.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/Moving_Cat_Puzzle/Cat.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Moving_Cat_Puzzle/CatEvenBoxes.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 48,
+          "totalStates": 128,
+          "stateDepth": 1
+        },
+        {
+          "path": "specifications/Moving_Cat_Puzzle/CatOddBoxes.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 30,
+          "totalStates": 78,
+          "stateDepth": 1
+        }
+      ]
+    }
+  ]
+}

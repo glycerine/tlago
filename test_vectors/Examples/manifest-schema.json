@@ -1,0 +1,85 @@
+{
+  "type": "object",
+  "required": ["sources", "authors", "tags", "modules"],
+  "additionalProperties": false,
+  "properties": {
+    "sources": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "authors": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "tags": {
+      "type": "array",
+      "items": {"enum": ["beginner", "intermediate", "ewd"]}
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "features", "models"],
+        "additionalProperties": false,
+        "properties": {
+          "path": {"type": "string"},
+          "features": {
+            "type": "array",
+            "items": {"enum": ["pluscal", "action composition"]}
+          },
+          "proof": {
+            "type": "object",
+            "required": ["maxRuntimeMinutes"],
+            "additionalProperties": false,
+            "properties": {
+              "maxRuntimeMinutes": {"type": "integer"}
+            }
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["path", "runtime", "mode", "result"],
+              "additionalProperties": false,
+              "properties": {
+                "path": {"type": "string"},
+                "runtime": {
+                  "type": "string",
+                  "pattern": "^(([0-9][0-9]:[0-9][0-9]:[0-9][0-9])|unknown)$"
+                },
+                "distinctStates": {"type": "integer"},
+                "totalStates": {"type": "integer"},
+                "stateDepth": {"type": "integer"},
+                "mode": {
+                  "oneOf": [
+                    {
+                      "enum": ["exhaustive search", "generate", "symbolic"]
+                    },
+                    {
+                      "type": "object",
+                      "required": ["simulate"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "simulate": {
+                          "type": "object",
+                          "required": ["traceCount"],
+                          "additionalProperties": false,
+                          "properties": {
+                            "traceCount": {"type": "number"}
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "result": {"enum": ["success", "assumption failure", "deadlock failure", "safety failure", "liveness failure", "unknown"]},
+                "workers": {"oneOf": [{"type": "integer", "minimum": 1}, {"enum": ["auto"]}]}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+

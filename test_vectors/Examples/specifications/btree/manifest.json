@@ -1,0 +1,47 @@
+{
+  "sources": [
+    "https://github.com/lorin/btree-tla",
+    "https://surfingcomplexity.blog/2024/07/04/modeling-b-trees-in-tla/"
+  ],
+  "authors": [
+    "Lorin Hochstein"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/btree/btree.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/btree/MCbtree.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/btree/MCbtree.cfg",
+          "runtime": "00:00:15",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 374727,
+          "totalStates": 2820091,
+          "stateDepth": 38
+        }
+      ]
+    },
+    {
+      "path": "specifications/btree/kvstore.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/btree/kvstore.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 2641,
+          "totalStates": 28585,
+          "stateDepth": 11
+        }
+      ]
+    }
+  ]
+}

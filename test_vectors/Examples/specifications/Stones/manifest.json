@@ -1,0 +1,26 @@
+{
+  "sources": [],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [
+    "beginner"
+  ],
+  "modules": [
+    {
+      "path": "specifications/Stones/Stones.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/Stones/Stones.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 0,
+          "totalStates": 0,
+          "stateDepth": 0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "sources": [
+    "https://github.com/tlaplus/tlaplus/blob/6bc82f7746ccdfbdf49cdef24448666d11e5e218/tlatools/org.lamport.tlatools/src/tla2sany/semantic/LevelNode.java#L354-L2778"
+  ],
+  "authors": [
+    "Leslie Lamport"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/LevelChecking/LevelSpec.tla",
+      "features": [],
+      "models": []
+    }
+  ]
+}

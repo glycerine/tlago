@@ -1,0 +1,43 @@
+{
+  "sources": [],
+  "authors": [
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/chang_roberts/APChangRoberts.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/chang_roberts/APChangRoberts.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/chang_roberts/ChangRoberts.tla",
+      "features": [
+        "pluscal"
+      ],
+      "models": []
+    },
+    {
+      "path": "specifications/chang_roberts/MCChangRoberts.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/chang_roberts/MCChangRoberts.cfg",
+          "runtime": "00:00:01",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 137,
+          "totalStates": 227,
+          "stateDepth": 10
+        }
+      ]
+    }
+  ]
+}

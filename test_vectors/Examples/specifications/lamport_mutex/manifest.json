@@ -1,0 +1,49 @@
+{
+  "sources": [],
+  "authors": [
+    "Stephan Merz"
+  ],
+  "tags": [],
+  "modules": [
+    {
+      "path": "specifications/lamport_mutex/APLamportMutex.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/lamport_mutex/APLamportMutex.cfg",
+          "runtime": "00:00:01",
+          "mode": "symbolic",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "path": "specifications/lamport_mutex/LamportMutex.tla",
+      "features": [],
+      "models": []
+    },
+    {
+      "path": "specifications/lamport_mutex/LamportMutex_proofs.tla",
+      "features": [],
+      "models": [],
+      "proof": {
+        "maxRuntimeMinutes": 5
+      }
+    },
+    {
+      "path": "specifications/lamport_mutex/MCLamportMutex.tla",
+      "features": [],
+      "models": [
+        {
+          "path": "specifications/lamport_mutex/MCLamportMutex.cfg",
+          "runtime": "00:00:10",
+          "mode": "exhaustive search",
+          "result": "success",
+          "distinctStates": 724274,
+          "totalStates": 2729079,
+          "stateDepth": 61
+        }
+      ]
+    }
+  ]
+}

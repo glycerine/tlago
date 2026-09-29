@@ -1,0 +1,639 @@
+//go:build ignore
+
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"unicode"
+)
+
+const (
+	defaultParserConstants = "test_vectors/java-sany/src/tla2sany/parser/TLAplusParserConstants.java"
+	defaultSyntaxConstants = "test_vectors/java-sany/src/tla2sany/st/SyntaxTreeConstants.java"
+	defaultJavaCCGrammar   = "test_vectors/java-sany/javacc/tla+.jj"
+	defaultOperators       = "test_vectors/java-sany/src/tla2sany/parser/Operators.java"
+	defaultOutput          = "sany_generated.go"
+)
+
+type javaConst struct {
+	Name  string
+	Value int
+	Line  int
+}
+
+func main() {
+	parserPath := envOr("SANY_PARSER_CONSTANTS", defaultParserConstants)
+	syntaxPath := envOr("SANY_SYNTAX_CONSTANTS", defaultSyntaxConstants)
+	grammarPath := envOr("SANY_JAVACC_GRAMMAR", defaultJavaCCGrammar)
+	operatorsPath := envOr("SANY_OPERATORS", defaultOperators)
+	outPath := envOr("SANY_GENERATED_OUT", defaultOutput)
+
+	parserConsts, err := parseJavaIntConstants(parserPath)
+	check(err)
+	syntaxConsts, err := parseJavaIntConstants(syntaxPath)
+	check(err)
+	tokenImages, err := parseTokenImages(parserPath)
+	check(err)
+	literals, err := parseLiteralTokens(grammarPath)
+	check(err)
+	productions, err := parseGrammarProductions(grammarPath)
+	check(err)
+	operators, synonyms, err := parseOperators(operatorsPath)
+	check(err)
+
+	tokens := tokenConstants(parserConsts)
+	sortByValue(tokens)
+	sortByValue(syntaxConsts)
+
+	var out bytes.Buffer
+	writeGeneratedHeader(&out, parserPath, syntaxPath, grammarPath, operatorsPath)
+	writeTokenConstants(&out, tokens, tokenImages, literals)
+	writeOperatorTable(&out, operators, synonyms)
+	writeGrammarProductions(&out, productions)
+	writeSyntaxConstants(&out, syntaxConsts)
+	check(os.WriteFile(outPath, out.Bytes(), 0o644))
+}
+
+func envOr(name, fallback string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func parseJavaIntConstants(path string) ([]javaConst, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	re := regexp.MustCompile(`^\s*int\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([0-9]+)\s*;`)
+	var consts []javaConst
+	scanner := bufio.NewScanner(f)
+	line := 0
+	for scanner.Scan() {
+		line++
+		match := re.FindStringSubmatch(scanner.Text())
+		if len(match) == 0 {
+			continue
+		}
+		value, err := strconv.Atoi(match[2])
+		if err != nil {
+			return nil, fmt.Errorf("%s:%d: %w", path, line, err)
+		}
+		consts = append(consts, javaConst{Name: match[1], Value: value, Line: line})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return consts, nil
+}
+
+func tokenConstants(consts []javaConst) []javaConst {
+	for i, c := range consts {
+		if c.Name == "DEFAULT" {
+			return append([]javaConst(nil), consts[:i]...)
+		}
+	}
+	return append([]javaConst(nil), consts...)
+}
+
+func parseTokenImages(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	text := string(data)
+	start := strings.Index(text, "String[] tokenImage = {")
+	if start < 0 {
+		return nil, fmt.Errorf("%s: tokenImage array not found", path)
+	}
+	body := text[start:]
+	open := strings.Index(body, "{")
+	close := strings.Index(body, "};")
+	if open < 0 || close < 0 || close <= open {
+		return nil, fmt.Errorf("%s: malformed tokenImage array", path)
+	}
+	body = body[open+1 : close]
+
+	var images []string
+	scanner := bufio.NewScanner(strings.NewReader(body))
+	line := 0
+	for scanner.Scan() {
+		line++
+		item := strings.TrimSpace(scanner.Text())
+		if item == "" || strings.HasPrefix(item, "//") {
+			continue
+		}
+		item = strings.TrimSuffix(item, ",")
+		if idx := strings.Index(item, " //"); idx >= 0 {
+			item = strings.TrimSpace(item[:idx])
+		}
+		if item == "" {
+			continue
+		}
+		value, err := unquoteJavaString(item)
+		if err != nil {
+			return nil, fmt.Errorf("%s: tokenImage line %d: %w", path, line, err)
+		}
+		images = append(images, value)
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return images, nil
+}
+
+type literalToken struct {
+	Literal string
+	Name    string
+}
+
+type operatorDef struct {
+	Symbol string
+	Low    int
+	High   int
+	Assoc  string
+	Fixity string
+}
+
+type productionDef struct {
+	Return string
+	Name   string
+}
+
+func parseLiteralTokens(path string) ([]literalToken, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	text := stripJavaCCComments(string(data))
+	specRE := regexp.MustCompile(`(?s)<\s*#?([A-Za-z_][A-Za-z0-9_]*)\s*:\s*((?:"(?:\\.|[^"\\])*"\s*(?:\|\s*)?)+)>`)
+	seen := make(map[string]literalToken)
+	for _, match := range specRE.FindAllStringSubmatch(text, -1) {
+		name := match[1]
+		body := match[2]
+		if name == "BEGIN_PRAGMA" {
+			continue
+		}
+		stringRE := regexp.MustCompile(`"(?:\\.|[^"\\])*"`)
+		for _, lit := range stringRE.FindAllString(body, -1) {
+			value, err := unquoteJavaString(lit)
+			if err != nil {
+				return nil, err
+			}
+			if value == "" {
+				continue
+			}
+			if previous, ok := seen[value]; ok && previous.Name != name {
+				return nil, fmt.Errorf("%s: literal %q maps to both %s and %s", path, value, previous.Name, name)
+			}
+			seen[value] = literalToken{Literal: value, Name: name}
+		}
+	}
+	literals := make([]literalToken, 0, len(seen))
+	for _, lit := range seen {
+		literals = append(literals, lit)
+	}
+	sort.Slice(literals, func(i, j int) bool {
+		if len([]rune(literals[i].Literal)) == len([]rune(literals[j].Literal)) {
+			return literals[i].Literal < literals[j].Literal
+		}
+		return len([]rune(literals[i].Literal)) > len([]rune(literals[j].Literal))
+	})
+	return literals, nil
+}
+
+func stripJavaCCComments(text string) string {
+	var b strings.Builder
+	inString := false
+	escaped := false
+	for i := 0; i < len(text); {
+		if inString {
+			ch := text[i]
+			b.WriteByte(ch)
+			i++
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == '"' {
+				inString = false
+			}
+			continue
+		}
+		if text[i] == '"' {
+			inString = true
+			b.WriteByte(text[i])
+			i++
+			continue
+		}
+		if strings.HasPrefix(text[i:], "/*") {
+			end := strings.Index(text[i+2:], "*/")
+			if end < 0 {
+				return b.String()
+			}
+			i += end + 4
+			continue
+		}
+		if strings.HasPrefix(text[i:], "//") {
+			end := strings.IndexByte(text[i:], '\n')
+			if end < 0 {
+				return b.String()
+			}
+			b.WriteByte('\n')
+			i += end + 1
+			continue
+		}
+		b.WriteByte(text[i])
+		i++
+	}
+	return b.String()
+}
+
+func parseOperators(path string) ([]operatorDef, map[string]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	text := stripJavaCCComments(string(data))
+	operatorRE := regexp.MustCompile(`new\s+Operator\(\s*"((?:\\.|[^"\\])*)"\s*,\s*([0-9]+)\s*,\s*([0-9]+)\s*,\s*Operators\.(assocNone|assocLeft|assocRight)\s*,\s*Operators\.(nofix|prefix|postfix|infix|nfix)\s*\)`)
+	var operators []operatorDef
+	for _, match := range operatorRE.FindAllStringSubmatch(text, -1) {
+		symbol, err := unquoteJavaString(`"` + match[1] + `"`)
+		if err != nil {
+			return nil, nil, err
+		}
+		low, err := strconv.Atoi(match[2])
+		if err != nil {
+			return nil, nil, err
+		}
+		high, err := strconv.Atoi(match[3])
+		if err != nil {
+			return nil, nil, err
+		}
+		operators = append(operators, operatorDef{
+			Symbol: symbol,
+			Low:    low,
+			High:   high,
+			Assoc:  match[4],
+			Fixity: match[5],
+		})
+	}
+	if len(operators) == 0 {
+		return nil, nil, fmt.Errorf("%s: no canonical operators found", path)
+	}
+
+	canonical := make(map[string]bool, len(operators))
+	for _, op := range operators {
+		canonical[op.Symbol] = true
+	}
+	synonyms := make(map[string]string)
+	synonymRE := regexp.MustCompile(`new\s+String\[\]\s*\{([^}]*)\}`)
+	stringRE := regexp.MustCompile(`"(?:\\.|[^"\\])*"`)
+	for _, match := range synonymRE.FindAllStringSubmatch(text, -1) {
+		rawStrings := stringRE.FindAllString(match[1], -1)
+		if len(rawStrings) < 2 {
+			continue
+		}
+		values := make([]string, 0, len(rawStrings))
+		for _, raw := range rawStrings {
+			value, err := unquoteJavaString(raw)
+			if err != nil {
+				return nil, nil, err
+			}
+			values = append(values, value)
+		}
+		if !canonical[values[0]] {
+			return nil, nil, fmt.Errorf("%s: synonym canonical %q is not a canonical operator", path, values[0])
+		}
+		for _, synonym := range values[1:] {
+			synonyms[synonym] = values[0]
+		}
+	}
+	return operators, synonyms, nil
+}
+
+func parseGrammarProductions(path string) ([]productionDef, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	text := stripJavaCCComments(string(data))
+	productionRE := regexp.MustCompile(`(?m)^\s*(SyntaxTreeNode|void|Token|boolean|int)(?:\s+|[^\n]*\n\s*)([A-Za-z][A-Za-z0-9_]*)\s*\(\)\s*:`)
+	var productions []productionDef
+	seen := make(map[string]bool)
+	for _, match := range productionRE.FindAllStringSubmatch(text, -1) {
+		name := match[2]
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		productions = append(productions, productionDef{Return: match[1], Name: name})
+	}
+	if len(productions) == 0 {
+		return nil, fmt.Errorf("%s: no JavaCC productions found", path)
+	}
+	return productions, nil
+}
+
+func unquoteJavaString(s string) (string, error) {
+	if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+		return "", fmt.Errorf("not a Java string literal: %s", s)
+	}
+	var b strings.Builder
+	for i := 1; i < len(s)-1; i++ {
+		ch := s[i]
+		if ch != '\\' {
+			b.WriteByte(ch)
+			continue
+		}
+		i++
+		if i >= len(s)-1 {
+			return "", fmt.Errorf("unfinished escape in %s", s)
+		}
+		switch esc := s[i]; esc {
+		case 'b':
+			b.WriteByte('\b')
+		case 't':
+			b.WriteByte('\t')
+		case 'n':
+			b.WriteByte('\n')
+		case 'f':
+			b.WriteByte('\f')
+		case 'r':
+			b.WriteByte('\r')
+		case '"', '\'', '\\':
+			b.WriteByte(esc)
+		case 'u':
+			if i+4 >= len(s) {
+				return "", fmt.Errorf("short unicode escape in %s", s)
+			}
+			r, err := strconv.ParseInt(s[i+1:i+5], 16, 32)
+			if err != nil {
+				return "", err
+			}
+			b.WriteRune(rune(r))
+			i += 4
+		default:
+			if esc >= '0' && esc <= '7' {
+				start := i
+				for i+1 < len(s)-1 && i-start < 2 && s[i+1] >= '0' && s[i+1] <= '7' {
+					i++
+				}
+				r, err := strconv.ParseInt(s[start:i+1], 8, 32)
+				if err != nil {
+					return "", err
+				}
+				b.WriteRune(rune(r))
+				continue
+			}
+			return "", fmt.Errorf("unsupported escape \\%c in %s", esc, s)
+		}
+	}
+	return b.String(), nil
+}
+
+func sortByValue(consts []javaConst) {
+	sort.SliceStable(consts, func(i, j int) bool {
+		if consts[i].Value == consts[j].Value {
+			return consts[i].Line < consts[j].Line
+		}
+		return consts[i].Value < consts[j].Value
+	})
+}
+
+func writeGeneratedHeader(out *bytes.Buffer, parserPath, syntaxPath, grammarPath, operatorsPath string) {
+	fmt.Fprintln(out, "// Code generated by go generate; DO NOT EDIT.")
+	fmt.Fprintf(out, "// Sources: %s, %s, %s, and %s.\n\n", parserPath, syntaxPath, grammarPath, operatorsPath)
+	fmt.Fprintln(out, "package tlago")
+	fmt.Fprintln(out)
+}
+
+func writeTokenConstants(out *bytes.Buffer, tokens []javaConst, images []string, literals []literalToken) {
+	fmt.Fprintln(out, "type SanyTokenKind int")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "const (")
+	for _, c := range tokens {
+		fmt.Fprintf(out, "\t%s SanyTokenKind = %d\n", tokenGoName(c.Name), c.Value)
+	}
+	fmt.Fprintln(out, ")")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyTokenImages = []string{")
+	for i, image := range images {
+		fmt.Fprintf(out, "\t%d: %q,\n", i, image)
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyTokenKinds = []SanyTokenDefinition{")
+	for _, c := range tokens {
+		image := ""
+		if c.Value >= 0 && c.Value < len(images) {
+			image = images[c.Value]
+		}
+		fmt.Fprintf(out, "\t{Kind: %s, Name: %q, Image: %q},\n", tokenGoName(c.Name), c.Name, image)
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyTokenKindByName = map[string]SanyTokenKind{")
+	for _, c := range tokens {
+		fmt.Fprintf(out, "\t%q: %s,\n", c.Name, tokenGoName(c.Name))
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "type SanyLiteralToken struct {")
+	fmt.Fprintln(out, "\tLiteral string")
+	fmt.Fprintln(out, "\tKind SanyTokenKind")
+	fmt.Fprintln(out, "\tName string")
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyLiteralTokens = []SanyLiteralToken{")
+	for _, lit := range literals {
+		fmt.Fprintf(out, "\t{Literal: %q, Kind: %s, Name: %q},\n", lit.Literal, tokenGoName(lit.Name), lit.Name)
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+}
+
+func writeOperatorTable(out *bytes.Buffer, operators []operatorDef, synonyms map[string]string) {
+	fmt.Fprintln(out, "var SanyCanonicalOperators = []SanyOperatorInfo{")
+	for _, op := range operators {
+		fmt.Fprintf(out, "\t{Symbol: %q, LowPrecedence: %d, HighPrecedence: %d, Associativity: %s, Fixity: %s},\n",
+			op.Symbol, op.Low, op.High, assocGoName(op.Assoc), fixityGoName(op.Fixity))
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	keys := make([]string, 0, len(synonyms))
+	for synonym := range synonyms {
+		keys = append(keys, synonym)
+	}
+	sort.Strings(keys)
+	fmt.Fprintln(out, "var SanyOperatorSynonymCanonical = map[string]string{")
+	for _, synonym := range keys {
+		fmt.Fprintf(out, "\t%q: %q,\n", synonym, synonyms[synonym])
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyOperatorsBySymbol = func() map[string]SanyOperatorInfo {")
+	fmt.Fprintln(out, "\tops := make(map[string]SanyOperatorInfo, len(SanyCanonicalOperators)+len(SanyOperatorSynonymCanonical))")
+	fmt.Fprintln(out, "\tfor _, op := range SanyCanonicalOperators {")
+	fmt.Fprintln(out, "\t\tops[op.Symbol] = op")
+	fmt.Fprintln(out, "\t}")
+	fmt.Fprintln(out, "\tfor synonym, canonical := range SanyOperatorSynonymCanonical {")
+	fmt.Fprintln(out, "\t\tops[synonym] = ops[canonical]")
+	fmt.Fprintln(out, "\t}")
+	fmt.Fprintln(out, "\treturn ops")
+	fmt.Fprintln(out, "}()")
+	fmt.Fprintln(out)
+}
+
+func writeGrammarProductions(out *bytes.Buffer, productions []productionDef) {
+	fmt.Fprintln(out, "type SanyGrammarProduction struct {")
+	fmt.Fprintln(out, "\tReturn string")
+	fmt.Fprintln(out, "\tName string")
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyGrammarProductions = []SanyGrammarProduction{")
+	for _, production := range productions {
+		fmt.Fprintf(out, "\t{Return: %q, Name: %q},\n", production.Return, production.Name)
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanyGrammarProductionByName = map[string]SanyGrammarProduction{")
+	for _, production := range productions {
+		fmt.Fprintf(out, "\t%q: {Return: %q, Name: %q},\n", production.Name, production.Return, production.Name)
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+}
+
+func writeSyntaxConstants(out *bytes.Buffer, nodes []javaConst) {
+	fmt.Fprintln(out, "type SanyNodeKind int")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "const (")
+	for _, c := range nodes {
+		fmt.Fprintf(out, "\t%s SanyNodeKind = %d\n", nodeGoName(c.Name), c.Value)
+	}
+	fmt.Fprintln(out, ")")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanySyntaxNodeKinds = []SanySyntaxNodeDefinition{")
+	for _, c := range nodes {
+		fmt.Fprintf(out, "\t{Kind: %s, Name: %q},\n", nodeGoName(c.Name), c.Name)
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "var SanySyntaxNodeKindByName = map[string]SanyNodeKind{")
+	for _, c := range nodes {
+		fmt.Fprintf(out, "\t%q: %s,\n", c.Name, nodeGoName(c.Name))
+	}
+	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out)
+}
+
+func tokenGoName(javaName string) string {
+	return "SanyToken" + exportedSuffix(javaName)
+}
+
+func nodeGoName(javaName string) string {
+	return "SanyNode" + exportedSuffix(javaName)
+}
+
+func assocGoName(javaName string) string {
+	switch javaName {
+	case "assocNone":
+		return "SanyAssociativityNone"
+	case "assocLeft":
+		return "SanyAssociativityLeft"
+	case "assocRight":
+		return "SanyAssociativityRight"
+	default:
+		panic("unknown associativity " + javaName)
+	}
+}
+
+func fixityGoName(javaName string) string {
+	switch javaName {
+	case "nofix":
+		return "SanyOperatorNoFix"
+	case "prefix":
+		return "SanyOperatorPrefix"
+	case "postfix":
+		return "SanyOperatorPostfix"
+	case "infix":
+		return "SanyOperatorInfix"
+	case "nfix":
+		return "SanyOperatorNfix"
+	default:
+		panic("unknown fixity " + javaName)
+	}
+}
+
+func exportedSuffix(javaName string) string {
+	parts := strings.FieldsFunc(javaName, func(r rune) bool { return r == '_' })
+	if len(parts) == 0 {
+		return "Unnamed"
+	}
+	var b strings.Builder
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+		b.WriteString(exportedPart(part))
+	}
+	if b.Len() == 0 {
+		return "Unnamed"
+	}
+	return b.String()
+}
+
+func exportedPart(part string) string {
+	upper := strings.ToUpper(part)
+	if isInitialism(upper) || allDigits(part) {
+		return upper
+	}
+	if strings.HasPrefix(part, "op") && part != "op" {
+		return "Op" + exportedPart(strings.TrimPrefix(part, "op"))
+	}
+	runes := []rune(strings.ToLower(part))
+	if len(runes) == 0 {
+		return ""
+	}
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+func isInitialism(s string) bool {
+	switch s {
+	case "EOF", "AND", "OR", "IN", "DF", "SF", "WF", "TLC", "XML":
+		return true
+	default:
+		return false
+	}
+}
+
+func allDigits(s string) bool {
+	for _, r := range s {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return s != ""
+}
