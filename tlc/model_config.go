@@ -166,7 +166,13 @@ type ModelConfig struct {
 }
 
 func NewModelConfig(configFileName string) *ModelConfig {
-	ModelValueInit()
+	return newModelConfig(configFileName, true)
+}
+
+func newModelConfig(configFileName string, resetModelValues bool) *ModelConfig {
+	if resetModelValues {
+		ModelValueInit()
+	}
 	return &ModelConfig{
 		configFileName:   configFileName,
 		constants:        NewConfigConstants(),

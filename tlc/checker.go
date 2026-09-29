@@ -129,8 +129,14 @@ func WithModelCheckerTrace(trace *MemoryTrace) ModelCheckerOption {
 }
 
 func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelCheckerOption) *ModelChecker {
+	checkDeadlock := deadlock
+	if tool != nil {
+		if config := tool.GetModelConfig(); config != nil {
+			checkDeadlock = deadlock && config.GetCheckDeadlock()
+		}
+	}
 	mc := &ModelChecker{
-		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), deadlock, "", time.Now()),
+		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		FPSet:           NewMemFPSet(),
 		StateQueue:      NewMemStateQueue(),
 		Trace:           NewMemoryTrace(),

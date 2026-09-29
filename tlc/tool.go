@@ -105,6 +105,7 @@ type Tool struct {
 	RootFile    string
 	ConfigFile  string
 	SpecDir     string
+	ModelConfig *ModelConfig
 	KnownStates *InsMap[uint64, *TLCStateMut]
 
 	GetInitStatesFunc               func(*Tool, *StateFunctor) error
@@ -139,7 +140,29 @@ type Tool struct {
 }
 
 func NewTool() *Tool {
-	return &Tool{Mode: ModeMC, RootName: "Spec", KnownStates: NewInsMap[uint64, *TLCStateMut]()}
+	return &Tool{
+		Mode:        ModeMC,
+		RootName:    "Spec",
+		ModelConfig: newModelConfig("", false),
+		KnownStates: NewInsMap[uint64, *TLCStateMut](),
+	}
+}
+
+func NewToolWithModelConfig(config *ModelConfig) *Tool {
+	tool := NewTool()
+	tool.SetModelConfig(config)
+	return tool
+}
+
+func (t *Tool) SetModelConfig(config *ModelConfig) *Tool {
+	if t == nil {
+		return nil
+	}
+	if config == nil {
+		config = newModelConfig(t.ConfigFile, false)
+	}
+	t.ModelConfig = config
+	return t
 }
 
 func (t *Tool) GetMode() ToolMode {
@@ -415,6 +438,16 @@ func (t *Tool) GetConfigFile() string {
 		return ""
 	}
 	return t.ConfigFile
+}
+
+func (t *Tool) GetModelConfig() *ModelConfig {
+	if t == nil {
+		return nil
+	}
+	if t.ModelConfig == nil {
+		t.ModelConfig = newModelConfig(t.ConfigFile, false)
+	}
+	return t.ModelConfig
 }
 
 func (t *Tool) GetSpecDir() string {

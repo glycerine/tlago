@@ -69,6 +69,62 @@ func TestModelCheckerModelCheckReportsDeadlockFromWorkerLoop(t *testing.T) {
 	}
 }
 
+func TestModelCheckerHonorsConfigCheckDeadlockFalse(t *testing.T) {
+	initTLCCheckerTest(t)
+	action := &Action{Name: "Next"}
+
+	cfg, err := ParseModelConfigSource("Spec.cfg", "CHECK_DEADLOCK FALSE\n")
+	if err != nil {
+		t.Fatalf("ParseModelConfigSource returned error: %v", err)
+	}
+	tool := NewToolWithModelConfig(cfg)
+	tool.InitStates = []*TLCStateMut{checkerTestState(0)}
+	tool.Actions = []*Action{action}
+	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+		return NewStateVec(0), nil
+	}
+
+	mc := NewModelChecker(tool, t.TempDir(), true)
+	code, err := mc.ModelCheck()
+	if err != nil {
+		t.Fatalf("ModelCheck returned error: %v", err)
+	}
+	if code != NoError {
+		t.Fatalf("ModelCheck code = %d, want %d when CHECK_DEADLOCK is FALSE", code, NoError)
+	}
+	if mc.CheckDeadlock {
+		t.Fatalf("checker deadlock flag = true, want false from config")
+	}
+}
+
+func TestModelCheckerKeepsDeadlockDisabledWhenCallerDisablesIt(t *testing.T) {
+	initTLCCheckerTest(t)
+	action := &Action{Name: "Next"}
+
+	cfg, err := ParseModelConfigSource("Spec.cfg", "CHECK_DEADLOCK TRUE\n")
+	if err != nil {
+		t.Fatalf("ParseModelConfigSource returned error: %v", err)
+	}
+	tool := NewToolWithModelConfig(cfg)
+	tool.InitStates = []*TLCStateMut{checkerTestState(0)}
+	tool.Actions = []*Action{action}
+	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+		return NewStateVec(0), nil
+	}
+
+	mc := NewModelChecker(tool, t.TempDir(), false)
+	code, err := mc.ModelCheck()
+	if err != nil {
+		t.Fatalf("ModelCheck returned error: %v", err)
+	}
+	if code != NoError {
+		t.Fatalf("ModelCheck code = %d, want %d when caller disables deadlock", code, NoError)
+	}
+	if mc.CheckDeadlock {
+		t.Fatalf("checker deadlock flag = true, want false from caller")
+	}
+}
+
 func TestModelCheckerModelCheckRejectsStatesWithoutNextAction(t *testing.T) {
 	initTLCCheckerTest(t)
 	recorder := &MemoryRecorder{}
