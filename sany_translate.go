@@ -887,7 +887,11 @@ func sanyFunctionDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 		diags = append(diags, boundDiags...)
 		fcn.Bounds = append(fcn.Bounds, bounds...)
 	}
-	body, bodyDiags := sanyExpr(lastSanyExpression(node))
+	bodyNode := lastSanyExpression(node)
+	if bodyNode != nil {
+		fcn.Pos = sanyNodePosition(bodyNode)
+	}
+	body, bodyDiags := sanyExpr(bodyNode)
 	diags = append(diags, bodyDiags...)
 	fcn.Body = body
 	def.Expr = fcn

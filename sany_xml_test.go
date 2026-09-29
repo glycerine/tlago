@@ -348,6 +348,28 @@ A == {1} \X {2}
 		}
 	})
 
+	t.Run("wraps self-referential function definitions as SANY recursive function specs", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("RecursiveFunctionSpecXML.tla", `---- MODULE RecursiveFunctionSpecXML ----
+Cardinality(S) ==
+  LET CS[T \in SUBSET S] == IF T = {} THEN 0 ELSE CS[T]
+  IN CS[S]
+====`)
+		requireNoErrors(t, diags)
+
+		got := string(xmlText)
+		for _, want := range []string{
+			`<uniquename>$RecursiveFcnSpec</uniquename>`,
+			`<UID>253</UID>`,
+			`<uniquename>$FcnConstructor</uniquename>`,
+			`<unbound>`,
+			`<uniquename>CS</uniquename>`,
+		} {
+			if !strings.Contains(got, want) {
+				t.Fatalf("recursive function spec XML missing %q\n%s", want, got)
+			}
+		}
+	})
+
 	t.Run("serializes recursive definitions with a SANY recursive section", func(t *testing.T) {
 		xmlText, diags := SanyXMLSource("RecursiveSectionXML.tla", `---- MODULE RecursiveSectionXML ----
 RECURSIVE F(_)
