@@ -1708,7 +1708,9 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			}
 		}
 		diags = append(diags, checkExpr(expr, defined, nil)...)
-		diags = append(diags, checkCallArity(expr, arities, operatorParams, nil)...)
+		if !substitutionExprIsOperatorArgument(expr, want, arities) {
+			diags = append(diags, checkCallArity(expr, arities, operatorParams, nil)...)
+		}
 		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
 	}
 	for _, param := range inst.Params {
@@ -1880,6 +1882,18 @@ func substitutionExprArity(expr Expr, arities map[string]int) int {
 		return len(lambda.Bounds)
 	}
 	return 0
+}
+
+func substitutionExprIsOperatorArgument(expr Expr, targetArity int, arities map[string]int) bool {
+	if targetArity <= 0 {
+		return false
+	}
+	ident, ok := expr.(*IdentExpr)
+	if !ok {
+		return false
+	}
+	arity, exists := arities[ident.Name]
+	return exists && arity == targetArity
 }
 
 func declarationArity(decl Declaration, name string) (int, bool) {

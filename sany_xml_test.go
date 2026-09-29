@@ -502,6 +502,78 @@ Use == P!A
 		}
 	})
 
+	t.Run("unqualified instance assumption references use unqualified clones", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "AssumeImportBase.tla"), `---- MODULE AssumeImportBase ----
+CONSTANT C
+ASSUME A == C = C
+====`)
+		rootPath := filepath.Join(dir, "AssumeImportRoot.tla")
+		writeFile(t, rootPath, `---- MODULE AssumeImportRoot ----
+CONSTANT C
+INSTANCE AssumeImportBase WITH C <- C
+Use == A
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		got := string(xmlText)
+		if strings.Contains(got, `<uniquename>AssumeImportBase!A</uniquename>`) {
+			t.Fatalf("unqualified instance assumption reference emitted qualified clone\n%s", got)
+		}
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "AssumeDef", "A", "AssumeImportBase"); count != 1 {
+			t.Fatalf("source AssumeDef A count = %d, want 1\n%s", count, got)
+		}
+		if count := xmlPayloadCountByKindNameFile(rootXML, "AssumeDef", "A", "AssumeImportRoot"); count != 1 {
+			t.Fatalf("unqualified instance AssumeDef clone A count = %d, want 1\n%s", count, got)
+		}
+	})
+
+	t.Run("explicit operator substitutions prefer owner definitions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "SubstBase.tla"), `---- MODULE SubstBase ----
+CONSTANT Op(_)
+Use == Op(1)
+====`)
+		rootPath := filepath.Join(dir, "SubstRoot.tla")
+		writeFile(t, rootPath, `---- MODULE SubstRoot ----
+LocalOp(x) == x = x
+INSTANCE SubstBase WITH Op <- LocalOp
+Check == Use
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		rootXML, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		localUID := xmlEntryUIDByKindAndName(rootXML, "UserDefinedOpKind", "LocalOp")
+		if localUID == "" {
+			t.Fatalf("missing LocalOp UID\n%s", xmlText)
+		}
+		for _, opArg := range xmlNodesByName(rootXML, "OpArgNode") {
+			for _, arg := range directChildren(opArg, "argument") {
+				for _, ref := range xmlNodesByName(arg, "UserDefinedOpKindRef") {
+					if firstChildText(ref, "UID") == localUID {
+						return
+					}
+				}
+			}
+		}
+		t.Fatalf("explicit operator substitution did not use LocalOp as OpArgNode argument\n%s", xmlText)
+	})
+
 	t.Run("unreferenced nested named instance assumption clones stay out of the XML context", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "NestedAssumeBase.tla"), `---- MODULE NestedAssumeBase ----
@@ -1569,6 +1641,191 @@ Use == TargetOp /\ BaseOp
 		}
 		if !rootRefs["UnqualifiedInstanceExtendsXML:BaseOp"] {
 			t.Fatalf("root module refs did not include cloned BaseOp\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("explicit unqualified INSTANCE keeps extended definitions original", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Base
+CONSTANT C
+TargetOp == C = C
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceExplicitExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceExplicitExtendsXML ----
+CONSTANT C
+INSTANCE Target WITH C <- C
+Use == TargetOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "TargetOp", "UnqualifiedInstanceExplicitExtendsXML"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "UnqualifiedInstanceExplicitExtendsXML"); got != 0 {
+			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "Base"); got != 1 {
+			t.Fatalf("original BaseOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("implicit unqualified INSTANCE keeps extended definitions original", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Target.tla"), `---- MODULE Target ----
+EXTENDS Base
+CONSTANT C
+TargetOp == C = C
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceImplicitExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceImplicitExtendsXML ----
+CONSTANT C
+INSTANCE Target
+Use == TargetOp /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "TargetOp", "UnqualifiedInstanceImplicitExtendsXML"); got != 1 {
+			t.Fatalf("root TargetOp clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "UnqualifiedInstanceImplicitExtendsXML"); got != 0 {
+			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "Base"); got != 1 {
+			t.Fatalf("original BaseOp entries = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("unqualified INSTANCE does not re-export module-qualified aliases", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+Op == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+INSTANCE Inner
+====`)
+		rootPath := filepath.Join(dir, "UnqualifiedInstanceReexportXML.tla")
+		writeFile(t, rootPath, `---- MODULE UnqualifiedInstanceReexportXML ----
+INSTANCE Middle
+Use == Op
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if clone := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Inner!Op"); clone != nil {
+			t.Fatalf("root re-exported Inner!Op clone through unqualified INSTANCE\n%s", string(xmlText))
+		}
+	})
+
+	t.Run("nested implicit INSTANCE keeps inherited exports original", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+BaseOp == TRUE
+====`)
+		writeFile(t, filepath.Join(dir, "Inner.tla"), `---- MODULE Inner ----
+EXTENDS Base
+CONSTANT C
+Op == C = C
+====`)
+		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
+CONSTANT C
+INSTANCE Inner
+====`)
+		rootPath := filepath.Join(dir, "NestedImplicitInstanceExtendsXML.tla")
+		writeFile(t, rootPath, `---- MODULE NestedImplicitInstanceExtendsXML ----
+CONSTANT C
+INSTANCE Middle
+Use == Op /\ BaseOp
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "Op", "NestedImplicitInstanceExtendsXML"); got != 1 {
+			t.Fatalf("root Op clones = %d, want 1\n%s", got, string(xmlText))
+		}
+		if got := xmlPayloadCountByKindNameFile(root, "UserDefinedOpKind", "BaseOp", "NestedImplicitInstanceExtendsXML"); got != 0 {
+			t.Fatalf("root BaseOp clones = %d, want 0\n%s", got, string(xmlText))
+		}
+		if got := moduleRefCountByPayloadName(root, "NestedImplicitInstanceExtendsXML", "UserDefinedOpKind", "BaseOp"); got != 1 {
+			t.Fatalf("root module refs to original BaseOp = %d, want 1\n%s", got, string(xmlText))
+		}
+	})
+
+	t.Run("local definitions shadow imported instance declarations in expressions", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "ShadowBase.tla"), `---- MODULE ShadowBase ----
+CONSTANT R
+BaseUse == R
+====`)
+		rootPath := filepath.Join(dir, "InstanceDeclShadowXML.tla")
+		writeFile(t, rootPath, `---- MODULE InstanceDeclShadowXML ----
+R == 1
+INSTANCE ShadowBase
+Use == R
+====`)
+
+		spec, diags := LoadSanySpec(rootPath, LoadOptions{})
+		requireNoErrors(t, diags)
+		requireNoErrors(t, CheckSpec(spec))
+		xmlText, xmlDiags := SanyXML(spec)
+		requireNoErrors(t, xmlDiags)
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v", err)
+		}
+		rootRUID := xmlEntryUIDByKindAndName(root, "UserDefinedOpKind", "R")
+		if rootRUID == "" {
+			t.Fatalf("missing root R definition\n%s", string(xmlText))
+		}
+		use := xmlEntryPayloadByKindAndName(root, "UserDefinedOpKind", "Use")
+		if use == nil {
+			t.Fatalf("missing Use definition\n%s", string(xmlText))
+		}
+		if firstOpApplNodeForOperatorUID(use, "UserDefinedOpKindRef", rootRUID) == nil {
+			t.Fatalf("Use did not reference root R definition\n%s", string(xmlText))
+		}
+		for _, op := range xmlNodesByName(use, "OpApplNode") {
+			for _, operator := range directChildren(op, "operator") {
+				if len(directChildren(operator, "OpDeclNodeRef")) > 0 {
+					t.Fatalf("Use referenced imported R declaration instead of root definition\n%s", string(xmlText))
+				}
+			}
 		}
 	})
 

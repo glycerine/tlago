@@ -236,6 +236,24 @@ Bad == C' = x
 ====`)
 		requireHasErrorContaining(t, diags, "cannot prime constant")
 	})
+
+	t.Run("INSTANCE operator substitutions accept bare local operator replacements", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFile(t, filepath.Join(dir, "Base.tla"), `---- MODULE Base ----
+CONSTANT Op(_)
+Use == Op(1)
+====`)
+		writeFile(t, filepath.Join(dir, "Root.tla"), `---- MODULE Root ----
+LocalOp(x) == x = x
+INSTANCE Base WITH Op <- LocalOp
+Check == Use
+====`)
+
+		spec, diags := LoadSanySpec(filepath.Join(dir, "Root.tla"), LoadOptions{})
+		requireNoErrors(t, diags)
+		diags = CheckSpec(spec)
+		requireNoErrors(t, diags)
+	})
 }
 
 func TestCLIBehaviors(t *testing.T) {
