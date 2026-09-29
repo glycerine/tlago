@@ -8,11 +8,29 @@ import (
 
 func CheckSanySource(file, source string) (*Spec, Diagnostics) {
 	mod, diags := ParseSanyModuleSource(file, source)
-	spec := &Spec{Root: mod, Modules: map[string]*Module{}}
-	if mod != nil && mod.Name != "" {
-		spec.Modules[mod.Name] = mod
-		spec.SemanticOrder = []string{mod.Name}
+	loader := &sanyLoader{
+		modules: map[string]*Module{},
+		loading: map[string]bool{},
+		loaded:  map[string]bool{},
+		rootDir: ".",
 	}
+	if file != "" {
+		rootPath := file
+		if abs, err := filepath.Abs(rootPath); err == nil {
+			rootPath = abs
+		}
+		loader.rootDir = filepath.Dir(rootPath)
+	}
+	loader.registerModuleRecursive(mod)
+	if diags.HasErrors() {
+		spec := &Spec{Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
+		return spec, diags
+	}
+	if mod != nil {
+		loader.loadDependencies(mod)
+		diags = append(diags, loader.diags...)
+	}
+	spec := &Spec{Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
 	if diags.HasErrors() {
 		spec.Diags = diags
 		return spec, diags

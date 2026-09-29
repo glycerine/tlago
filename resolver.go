@@ -125,6 +125,9 @@ Gen(n) == n
 FunAsSeq(f, n, m) == f
 ====`,
 	"TLC": `---- MODULE TLC ----
+LOCAL INSTANCE Naturals
+LOCAL INSTANCE Sequences
+LOCAL INSTANCE FiniteSets
 Print(out, val) == Print(out, val)
 PrintT(x) == TRUE
 Assert(val, out) == Assert(val, out)

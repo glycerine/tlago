@@ -11,8 +11,6 @@ import (
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/IncrementalSemanticParseTests.java.
 // Each test starts skipped until its Java assertions are ported and made green.
 func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	spec := checkedSANYModuleBody(t, "op == 0")
 	def := requireSANYDefinition(t, spec.Root, "op")
 	if got := len(def.Params); got != 0 {
@@ -27,8 +25,6 @@ func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
 }
 
 func TestIncrementalSemanticParseTests_basicExpressionTest(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	spec := checkedSANYModuleBody(t, "ASSUME 0")
 	if got := len(spec.Root.Assumptions); got != 1 {
 		t.Fatalf("assumption count = %d, want 1", got)
@@ -39,8 +35,6 @@ func TestIncrementalSemanticParseTests_basicExpressionTest(t *testing.T) {
 }
 
 func TestIncrementalSemanticParseTests_bigRadixNumeralTest(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	for _, tc := range []struct {
 		literal string
 		radix   int
@@ -70,8 +64,6 @@ func TestIncrementalSemanticParseTests_bigRadixNumeralTest(t *testing.T) {
 }
 
 func TestIncrementalSemanticParseTests_letInExpressionTest(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	spec := checkedSANYModuleBody(t, "op == LET M == INSTANCE Naturals IN M!+(1, 2)")
 	if spec.Modules["Naturals"] == nil {
 		t.Fatal("Naturals dependency was not loaded")
@@ -97,8 +89,6 @@ func TestIncrementalSemanticParseTests_letInExpressionTest(t *testing.T) {
 }
 
 func TestIncrementalSemanticParseTests_letInExpressionWithTransitiveDepsTest(t *testing.T) {
-	t.Skip("tla2sany wip")
-
 	spec := checkedSANYModuleBody(t, "op == LET T == INSTANCE TLC IN T!JavaTime")
 	for _, name := range []string{"TLC", "Naturals", "Sequences", "FiniteSets"} {
 		if spec.Modules[name] == nil {
