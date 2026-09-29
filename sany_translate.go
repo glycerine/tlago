@@ -792,7 +792,7 @@ func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 						def.ParamArities = map[string]int{}
 					}
 					def.ParamArities[name] = 2
-					def.ParamPositions[name] = sanyFixDeclOperatorPosition(child)
+					def.ParamPositions[name] = sanyNodePosition(child)
 				}
 			}
 		}
@@ -1814,8 +1814,12 @@ func sanyNewSymbol(node *SanySyntaxNode) (NewSymbol, Diagnostics, bool) {
 		case "N_IdentDecl":
 			if id := firstSanyIdentifier(child); id != nil {
 				sym.Name = id.Image
-				sym.Pos = sanyNodePosition(id)
 				sym.Arity = countDirectSanyChildren(child, "US")
+				if sym.Arity > 0 {
+					sym.Pos = sanyNodePosition(child)
+				} else {
+					sym.Pos = sanyNodePosition(id)
+				}
 			}
 		case "N_PrefixDecl", "N_PostfixDecl":
 			if name := sanyFixDeclOperatorName(child); name != "" {

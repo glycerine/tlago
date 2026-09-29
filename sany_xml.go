@@ -4099,7 +4099,7 @@ func sanyXMLStableBuiltinUID(name string) int {
 
 func sanyXMLReservedBuiltinUID(uid int) bool {
 	switch uid {
-	case 1, 2, 4, 13, 15, 19, 22, 31, 40, 61, 63, 78, 79, 80, 82, 83, 84, 85, 89, 90, 96, 99, 105, 106, 107, 108, 113, 116, 125, 126, 137, 138, 231, 244, 250, 253:
+	case 1, 2, 4, 13, 15, 19, 22, 31, 40, 61, 63, 78, 79, 80, 82, 83, 84, 85, 89, 90, 96, 99, 105, 106, 107, 108, 113, 116, 125, 126, 137, 138, 231, 244, 250, 253, 294, 297:
 		return true
 	default:
 		return false

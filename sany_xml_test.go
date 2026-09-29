@@ -58,6 +58,77 @@ Init == x = 0
 		}
 	})
 
+	t.Run("symbolic infix formal parameter location covers the full declaration", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("InfixFormalSpanXML.tla", `---- MODULE InfixFormalSpanXML ----
+Use(_\prec_, S) == TRUE
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var formal *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "FormalParamNode" && firstChildText(payload, "uniquename") == `\prec` {
+				formal = payload
+				break
+			}
+		}
+		if formal == nil {
+			t.Fatalf("infix formal parameter missing\n%s", xmlText)
+		}
+		locations := directChildren(formal, "location")
+		if len(locations) != 1 {
+			t.Fatalf("FormalParamNode locations = %d, want 1\n%s", len(locations), xmlText)
+		}
+		columns := directChildren(locations[0], "column")
+		if len(columns) != 1 {
+			t.Fatalf("FormalParamNode column locations = %d, want 1\n%s", len(columns), xmlText)
+		}
+		if begin, end := firstChildText(columns[0], "begin"), firstChildText(columns[0], "end"); begin != "5" || end != "11" {
+			t.Fatalf("infix formal columns = %s..%s, want 5..11\n%s", begin, end, xmlText)
+		}
+	})
+
+	t.Run("higher-order NEW symbol location covers the full arity declaration", func(t *testing.T) {
+		xmlText, diags := SanyXMLSource("NewOpDeclSpanXML.tla", `---- MODULE NewOpDeclSpanXML ----
+THEOREM T ==
+  ASSUME NEW Def(_,_)
+  PROVE TRUE
+PROOF OBVIOUS
+====`)
+		requireNoErrors(t, diags)
+
+		root, err := parseCanonicalXML(xmlText)
+		if err != nil {
+			t.Fatalf("parse SANY XML: %v\n%s", err, xmlText)
+		}
+		var decl *canonicalXMLNode
+		for _, entry := range canonicalSanyXMLEntries(root) {
+			payload := canonicalSanyXMLEntryPayload(entry)
+			if payload != nil && payload.Name == "OpDeclNode" && firstChildText(payload, "uniquename") == "Def" {
+				decl = payload
+				break
+			}
+		}
+		if decl == nil {
+			t.Fatalf("NEW operator declaration missing\n%s", xmlText)
+		}
+		locations := directChildren(decl, "location")
+		if len(locations) != 1 {
+			t.Fatalf("OpDeclNode locations = %d, want 1\n%s", len(locations), xmlText)
+		}
+		columns := directChildren(locations[0], "column")
+		if len(columns) != 1 {
+			t.Fatalf("OpDeclNode column locations = %d, want 1\n%s", len(columns), xmlText)
+		}
+		if begin, end := firstChildText(columns[0], "begin"), firstChildText(columns[0], "end"); begin != "14" || end != "21" {
+			t.Fatalf("NEW operator declaration columns = %s..%s, want 14..21\n%s", begin, end, xmlText)
+		}
+	})
+
 	t.Run("resolves LOCAL INSTANCE symbols while exporting the module body", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
@@ -916,7 +987,7 @@ A == {1} \X {2}
 		var source strings.Builder
 		source.WriteString("---- MODULE ReservedBuiltinUIDXML ----\n")
 		source.WriteString("CONSTANTS ")
-		for i := 0; i < 90; i++ {
+		for i := 0; i < 160; i++ {
 			if i > 0 {
 				source.WriteString(", ")
 			}
@@ -933,6 +1004,11 @@ A == {1} \X {2}
 		}
 		if !strings.Contains(got, "<UID>231</UID>\n      <BuiltInKind>") {
 			t.Fatalf("reserved Cartesian product UID did not belong to the builtin entry\n%s", got)
+		}
+		for _, uid := range []string{"294", "297"} {
+			if strings.Contains(got, "<UID>"+uid+"</UID>\n      <OpDeclNode>") {
+				t.Fatalf("reserved proof builtin UID %s was reused by a generated declaration\n%s", uid, got)
+			}
 		}
 	})
 
