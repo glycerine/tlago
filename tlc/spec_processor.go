@@ -304,6 +304,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
 	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints())
 	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints())
+	p.processConfigPossible()
 }
 
 func (p *SpecProcessor) ApplyToTool(tool *Tool) {
@@ -375,6 +376,31 @@ func (p *SpecProcessor) processConfigProperties() {
 		default:
 			p.addPlaceholderImpliedTemporal(name)
 		}
+	}
+}
+
+func (p *SpecProcessor) processConfigPossible() {
+	if p == nil || p.Config == nil {
+		return
+	}
+	possibleNames := p.Config.GetPossible()
+	if len(possibleNames) == 0 {
+		return
+	}
+	tool := p.configProcessingTool()
+	for _, name := range possibleNames {
+		def, ok := p.defn(name).(*OpDefNode)
+		if !ok || def == nil || def.Arity() != 0 || def.Body == nil {
+			continue
+		}
+		track := NewPossibleTrackNode(def.Body, name)
+		setSemanticToolObject(track, def)
+		if tool.GetLevelBound(def.Body, EmptyContext) <= TLCLevelState {
+			p.ModelConstraints = append(p.ModelConstraints, track)
+		} else {
+			p.ActionConstraints = append(p.ActionConstraints, track)
+		}
+		p.PossiblePostConds = append(p.PossiblePostConds, NewPossibleAction(NewPossibleCheckNode(name), EmptyContext, def))
 	}
 }
 
