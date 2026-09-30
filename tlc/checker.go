@@ -337,6 +337,7 @@ func WithModelCheckerFromCheckpoint(fromCheckpoint string) ModelCheckerOption {
 }
 
 func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelCheckerOption) *ModelChecker {
+	SetTLCStateTool(tool)
 	checkDeadlock := deadlock
 	if tool != nil {
 		if config := tool.GetModelConfig(); config != nil {

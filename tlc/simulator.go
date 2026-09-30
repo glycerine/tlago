@@ -70,6 +70,7 @@ func WithSimulatorLiveCheck(liveCheck *LiveCheck) SimulatorOption {
 }
 
 func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, seed int64, opts ...SimulatorOption) *Simulator {
+	SetTLCStateTool(tool)
 	if traceDepth < 0 {
 		traceDepth = int(^uint(0) >> 1)
 	}
