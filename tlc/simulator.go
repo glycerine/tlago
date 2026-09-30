@@ -57,8 +57,6 @@ func WithSimulatorSchedule(schedule SimulationSchedule) SimulatorOption {
 			s.WorkerMode = SimulationWorkerRL
 		case SimulationScheduleRLAction:
 			s.WorkerMode = SimulationWorkerRLAction
-		default:
-			s.WorkerMode = SimulationWorkerStandard
 		}
 	}
 }
@@ -598,16 +596,25 @@ func (s *Simulator) selectWorkerMode() SimulationWorkerMode {
 }
 
 func simulatorPropertyBool(name string, aliases ...string) bool {
-	for _, key := range append([]string{name}, aliases...) {
+	if value, ok := tlcLookupSystemProperty(name); ok {
+		return javaBooleanProperty(value)
+	}
+	for _, key := range aliases {
 		if value, ok := os.LookupEnv(key); ok {
-			return strings.EqualFold(value, "true")
+			return javaBooleanProperty(value)
 		}
 	}
 	return false
 }
 
 func simulatorPropertyFloat(name string, alias string, fallback float64) float64 {
-	for _, key := range []string{name, alias} {
+	if value, ok := tlcLookupSystemProperty(name); ok {
+		if parsed, err := strconv.ParseFloat(strings.TrimSuffix(value, "d"), 64); err == nil {
+			return parsed
+		}
+		return fallback
+	}
+	for _, key := range []string{alias} {
 		if value, ok := os.LookupEnv(key); ok {
 			if parsed, err := strconv.ParseFloat(strings.TrimSuffix(value, "d"), 64); err == nil {
 				return parsed

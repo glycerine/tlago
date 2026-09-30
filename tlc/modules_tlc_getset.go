@@ -485,15 +485,22 @@ func semanticNodeSetValue(nodes []SemanticNode) Value {
 }
 
 func tlcGetSystemProperty(name string, fallback string) string {
-	tlcSystemProperties.Lock()
-	defer tlcSystemProperties.Unlock()
-	if value, ok := tlcSystemProperties.values[name]; ok {
-		return value
-	}
-	if value, ok := os.LookupEnv(name); ok {
+	if value, ok := tlcLookupSystemProperty(name); ok {
 		return value
 	}
 	return fallback
+}
+
+func tlcLookupSystemProperty(name string) (string, bool) {
+	tlcSystemProperties.Lock()
+	defer tlcSystemProperties.Unlock()
+	if value, ok := tlcSystemProperties.values[name]; ok {
+		return value, true
+	}
+	if value, ok := os.LookupEnv(name); ok {
+		return value, true
+	}
+	return "", false
 }
 
 func tlcSetSystemProperty(name string, value string) {
@@ -506,13 +513,7 @@ func tlcSetSystemProperty(name string, value string) {
 }
 
 func actionCompositionEnabled() bool {
-	tlcSystemProperties.Lock()
-	value, ok := tlcSystemProperties.values[actionCompositionProperty]
-	tlcSystemProperties.Unlock()
-	if ok {
-		return javaBooleanProperty(value)
-	}
-	if value, ok := os.LookupEnv(actionCompositionProperty); ok {
+	if value, ok := tlcLookupSystemProperty(actionCompositionProperty); ok {
 		return javaBooleanProperty(value)
 	}
 	return Globals.Cdot

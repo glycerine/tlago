@@ -298,13 +298,14 @@ func (t *TLC) scheduleStopAfter(stop func()) func() {
 }
 
 func stopAfterDurationFromEnv() time.Duration {
-	for _, key := range []string{"tlc2.TLC.stopAfter", "TLAGO_STOP_AFTER"} {
-		value := os.Getenv(key)
-		if value == "" {
-			continue
+	if value, ok := tlcLookupSystemProperty("tlc2.TLC.stopAfter"); ok {
+		if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds > 0 {
+			return time.Duration(seconds) * time.Second
 		}
-		seconds, err := strconv.ParseInt(value, 10, 64)
-		if err == nil && seconds > 0 {
+		return 0
+	}
+	if value := os.Getenv("TLAGO_STOP_AFTER"); value != "" {
+		if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds > 0 {
 			return time.Duration(seconds) * time.Second
 		}
 	}

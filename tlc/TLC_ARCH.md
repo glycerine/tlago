@@ -1412,6 +1412,11 @@ Important behavior:
   perform liveness/post-trace checks. RL modes remain enum values because they
   select different scheduling and Q-table behavior, while still using the same
   worker struct.
+- Java can select RL simulation with `tlc2.tool.Simulator.rl` or
+  `tlc2.tool.Simulator.rlaction` system properties and tune RL with
+  `.rl.alpha`, `.rl.gamma`, `.rl.reward`, and `.rl.enabledOnly`. Go accepts the
+  same property names through the Java-style `-Dname=value` parser and keeps
+  the `TLAGO_*` environment aliases as non-Java conveniences.
 - Java `SimulationWorker.simulateRandomTrace` calls
   `IdThread.setCurrentState` after selecting the initial state and again after
   each selected successor. Go mirrors that with concrete `SetCurrentState`
