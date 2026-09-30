@@ -977,10 +977,11 @@ Port guidance:
   periodic expression as sufficient reason to suspend workers, evaluates it
   after any liveness work and before checkpointing, and returns
   `TLC_ASSUMPTION_FALSE` only when the evaluated value is exactly `FALSE`.
-- Java's `tlc2.TLC.stopAfter` property is a time-bound model-checking escape
-  hatch. When configured, a timer calls the checker stop method. Cleanup keeps
-  explicit checkpoint data if unexplored work remains and either an error was
-  found or the run was time-bound.
+- Java's `tlc2.TLC.stopAfter` property is a time-bound escape hatch for both
+  model checking and simulation. When configured, a timer calls the active
+  checker or simulator stop method. Cleanup keeps explicit checkpoint data if
+  unexplored work remains and either an error was found or the run was
+  time-bound.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.

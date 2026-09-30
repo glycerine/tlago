@@ -326,6 +326,8 @@ func (t *TLC) processSimulation() (*Result, error) {
 		WithSimulatorSchedule(t.SimulationSchedule),
 		WithSimulatorLiveCheck(t.LiveCheck),
 	)
+	cancelStopAfter := t.scheduleStopAfter(simulator.Stop)
+	defer cancelStopAfter()
 	code, err := simulator.Simulate()
 	return &Result{
 		ErrorCode:       code,
