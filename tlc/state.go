@@ -304,6 +304,37 @@ func valueString(v Value) string {
 	return v.String()
 }
 
+func IsStateSubset(s1 *TLCStateMut, s2 *TLCStateMut) PartialBoolean {
+	if s2 == nil || s2 == EmptyState {
+		return PartialYes
+	}
+	if s1 == nil {
+		s1 = EmptyState
+	}
+	if s1 == s2 {
+		return PartialYes
+	}
+	for _, variable := range stateVariables {
+		key := variable.Name
+		val2 := s2.Lookup(key)
+		if val2 == nil {
+			continue
+		}
+		val1 := s1.Lookup(key)
+		if val1 == nil {
+			return PartialNo
+		}
+		equal, err := val1.Equal(val2)
+		if err != nil {
+			return PartialMaybe
+		}
+		if !equal {
+			return PartialNo
+		}
+	}
+	return PartialYes
+}
+
 type StateVec struct {
 	states []*TLCStateMut
 }

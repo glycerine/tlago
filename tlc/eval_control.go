@@ -17,6 +17,34 @@ const (
 	PartialNo
 )
 
+func (p PartialBoolean) String() string {
+	switch p {
+	case PartialYes:
+		return "YES"
+	case PartialNo:
+		return "NO"
+	case PartialMaybe:
+		return "MAYBE"
+	default:
+		return "UNKNOWN"
+	}
+}
+
+func (p PartialBoolean) IsDefinitely(value bool) bool {
+	switch p {
+	case PartialYes:
+		return value
+	case PartialNo:
+		return !value
+	default:
+		return false
+	}
+}
+
+func (p PartialBoolean) CouldBe(value bool) bool {
+	return !p.IsDefinitely(!value)
+}
+
 func evalControlIsSet(control int, constant int) bool {
 	return control&constant > 0
 }

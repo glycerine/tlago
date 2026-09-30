@@ -68,3 +68,43 @@ func TestTLCStateAddToVecAddsShallowCopy(t *testing.T) {
 		t.Fatalf("added worker/uid = %d/%d, want default/%d", added.WorkerID, added.UID, TLCStateInitUID)
 	}
 }
+
+func TestTLCStateSubsetUsesPartialStateSemantics(t *testing.T) {
+	UniqueStringInitialize()
+	SetStateVariables([]string{"x", "y"})
+	x := UniqueStringOf("x")
+	y := UniqueStringOf("y")
+
+	universe := NewEmptyState()
+	xOne := NewEmptyState().Bind(x, NewIntValue(1))
+	xOneYTwo := NewEmptyState().Bind(x, NewIntValue(1)).Bind(y, NewIntValue(2))
+	xTwo := NewEmptyState().Bind(x, NewIntValue(2))
+
+	if got := IsStateSubset(xOneYTwo, xOne); got != PartialYes {
+		t.Fatalf("x=1,y=2 subset x=1 = %s, want YES", got)
+	}
+	if got := IsStateSubset(xOne, xOneYTwo); got != PartialNo {
+		t.Fatalf("x=1 subset x=1,y=2 = %s, want NO", got)
+	}
+	if got := IsStateSubset(xOne, universe); got != PartialYes {
+		t.Fatalf("x=1 subset universe = %s, want YES", got)
+	}
+	if got := IsStateSubset(nil, xOne); got != PartialNo {
+		t.Fatalf("nil/universe subset x=1 = %s, want NO", got)
+	}
+	if got := IsStateSubset(xTwo, xOne); got != PartialNo {
+		t.Fatalf("x=2 subset x=1 = %s, want NO", got)
+	}
+}
+
+func TestTLCStateSubsetReturnsMaybeForIncomparableValues(t *testing.T) {
+	UniqueStringInitialize()
+	SetStateVariables([]string{"x"})
+	x := UniqueStringOf("x")
+
+	intState := NewEmptyState().Bind(x, NewIntValue(1))
+	boolState := NewEmptyState().Bind(x, BoolTrue)
+	if got := IsStateSubset(intState, boolState); got != PartialMaybe {
+		t.Fatalf("int subset bool = %s, want MAYBE", got)
+	}
+}
