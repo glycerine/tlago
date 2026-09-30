@@ -980,11 +980,50 @@ Port guidance:
 - goto-state events.
 - attach/suspend/halt behavior.
 
+Important Java classes:
+
+- `IDebugTarget`: the central control surface used by `Tool` and stack frames.
+  It defines the stepping enums `StepDirection`, `Granularity`, and `Step`, and
+  a large family of `pushFrame`/`popFrame` overloads. In Go, avoid turning this
+  into an interface while there is only one debugger path; keep the enum values
+  and concrete debugger state on `TLCDebugger`.
+- `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
+  stack-frame list, stepping state, granularity, halt flags, and the connection
+  to the debug adapter. The protocol transport is less important than preserving
+  where model-checker/evaluator state is captured.
+- `DebugTLCVariable`: adapts TLC `Value` objects into debugger variables.
+  Scalars expose `type` and `value`; enumerable/function/record/tuple values
+  receive a non-zero `variablesReference` and lazily produce children.
+- `TLCSourceBreakpoint`: stores source line/column, optional hit count, optional
+  log message, a parsed condition operator, and the source `Location`. Location
+  matching succeeds for `nullLoc`, otherwise it checks equal line and breakpoint
+  column less than or equal to the semantic node begin column. Conditional
+  breakpoints evaluate through `tool.noDebug().eval` and swallow evaluation
+  failures so a broken debugger expression does not crash TLC.
+- `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
+  useful in Go as plain structs even before a debug-adapter server exists.
+
+Debugger variable details:
+
+- Java's `Value.toTLCVariable` sets type to
+  `<ValueClass>: <kind string>` and value to `toString()`.
+- `StringValue` replaces quoted `toString()` output with the unquoted display
+  string for debugger variables.
+- `TupleValue` children are named with zero-padded 1-based indexes.
+- `RecordValue` children are named by record field.
+- `FcnRcdValue` children are named by domain element.
+- `SetEnumValue` children are named by element string.
+- Infinite or non-finite values must not be eagerly expanded.
+
 Port guidance:
 
 - Defer debugger protocol until core CLI TLC is functional.
 - Preserve enough state/action metadata in core structs so debugger support does
   not require a second state model later.
+- Keep debugger structures concrete. Do not port Java's `IDebugTarget` as a Go
+  interface unless a second real implementation appears.
+- Simulation debugging attaches only one worker. Non-attached workers should use
+  `Tool.NoDebug()`; a simple `Debug bool` on `SimulationWorker` is sufficient.
 
 ## Distributed TLC Architecture
 
@@ -997,12 +1036,95 @@ Distributed TLC uses Java RMI:
 - smart proxies.
 - server/worker management beans.
 
+Core Java flow:
+
+1. `TLCServer` owns the state queue, trace, fingerprint-set manager, worker
+   threads, error state, progress counters, and checkpoint lifecycle.
+2. Workers register with the server. Registration wakes stuck server threads
+   through `stateQueue.resumeAllStuck()` and creates one `TLCServerThread`.
+3. `TLCServerThread` dequeues blocks of states, calls a remote `TLCWorker`, then
+   merges the returned new states/fingerprints into trace, queue, and progress
+   counters.
+4. `TLCWorker.getNextStates` computes all successors for a block of predecessor
+   states via `DistApp.getNextStates`.
+5. Each successor fingerprint is checked against a worker-local `SimpleCache`.
+   Cache hits are not sent to the FP-set manager, but the server later adds the
+   skipped count through `addStatesGeneratedDelta`.
+6. Remaining `(fp, successor, predecessor)` triples are sorted by fingerprint in
+   a `TreeSet<Holder>`. Equality is fingerprint-only; two states with the same
+   fingerprint collapse at this stage just as Java's `Holder.compareTo` does.
+7. Sorted holders are partitioned by `fpSetManager.getFPSetIndex(fp)` into
+   parallel vectors of predecessors, successors, and fingerprints.
+8. `fpSetManager.containsBlock` returns bit vectors whose set bits identify
+   fingerprints not yet present.
+9. Only those unseen states are checked with `work.checkState`,
+   `work.isInModel`, and `work.isInActions`. Passing states inherit the
+   predecessor UID and are returned in `NextStateResult`.
+
+Important Java data structures:
+
+- `NextStateResult`: carries `TLCStateVec[] nextStates`,
+  `LongVec[] nextFingerprints`, computation time, and raw states-computed count.
+  `getStatesComputedDelta()` returns `statesComputed - nextStates.length`.
+- `IFPSetManager`: partitions fingerprint space, performs block
+  contains/put/checkpoint operations, and reports states-seen/distinct counts.
+- `IBlockSelector`: chooses how many states to hand to each worker. Java keeps
+  this separate from server threads for performance tuning.
+- `TLCWorkerSmartProxy`: hides dead/slow worker behavior from server threads.
+
 Port guidance:
 
 - Do not port RMI mechanically as networking first.
 - Preserve semantics in local concrete abstractions first.
 - Later choose Go RPC/gRPC only after single-process behavior is conformant.
 - Tests under `tlc2/tool/distributed` should remain late-stage tests.
+- The Go port should keep `TLCServer`, `DistributedWorker`,
+  `DistributedFPSetManager`, and `NextStateResult` concrete. Transport can wrap
+  these structs later.
+- Any worker/server map that is iterated for progress output must use `InsMap`.
+  Fingerprint holder de-duplication may use a Go map only if iteration is over a
+  separately maintained sorted fingerprint slice.
+- Distributed TLC does not support `TLCGet`/`TLCSet` in Java; preserve that
+  eventual error behavior rather than silently sharing mutable variables across
+  workers.
+
+## Management Architecture
+
+Java exposes TLC progress through JMX:
+
+- `TLCStatisticsMXBean` defines status accessors and control actions.
+- `ModelCheckerMXWrapper` wraps single-process model checking.
+- `TLCServerMXWrapper` wraps distributed TLC.
+- `TLCStandardMBean` provides version/revision metadata and registration.
+- `StateMonitor` attaches to a Java VM and periodically prints
+  `getCurrentState()`.
+
+Statistics exposed by both wrappers:
+
+- generated states,
+- distinct generated states,
+- state queue size,
+- generated/distinct states per minute,
+- progress/search depth,
+- worker count,
+- average distributed block count,
+- runtime ratio for liveness,
+- current state string,
+- spec/model names,
+- checkpoint, live-check, stop, suspend, and resume controls.
+
+Port guidance:
+
+- Do not port JMX. Keep the wrapper names and accessors as plain Go structs so
+  CLI status, HTTP, or future RPC layers can call them.
+- `ModelCheckerMXWrapper` should delegate directly to `ModelChecker` and
+  `StateQueue`; `TLCServerMXWrapper` should delegate to the distributed server
+  shell.
+- `checkpoint()` maps to `ForceCheckpoint()`.
+- `liveCheck()` maps to a concrete flag on `LiveCheck` that is consumed by the
+  next `LiveCheck.Check` call.
+- `suspend()` and `resume()` map to the state queue's existing synchronization
+  methods.
 
 ## Checkpointing and Recovery
 
