@@ -45,6 +45,15 @@ func (r SimulationWorkerResult) IsError() bool {
 	return r.Error != nil
 }
 
+type SimulationWorkerMode int
+
+const (
+	SimulationWorkerStandard SimulationWorkerMode = iota
+	SimulationWorkerExploration
+	SimulationWorkerRL
+	SimulationWorkerRLAction
+)
+
 type SimulationWorkerStatistics struct {
 	TraceActions    string
 	NumGenStates    *atomic.Int64
@@ -185,11 +194,18 @@ type SimulationWorker struct {
 	MaxTraceDepth int
 	CheckDeadlock bool
 	debug         bool
+	Mode          SimulationWorkerMode
 	TraceFile     string
 	LiveCheck     *LiveCheck
 	Statistics    *SimulationWorkerStatistics
 	Stopped       atomic.Bool
+	Halted        atomic.Bool
 	NextStates    *StateVec
+	RLAlpha       float64
+	RLGamma       float64
+	RLReward      float64
+	RLEnabledOnly bool
+	RLQ           *InsMap[*Action, *InsMap[int64, float64]]
 }
 
 func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult, seed int64, maxTraceDepth int, maxTraceNum int64, traceActions string, checkDeadlock bool, debug bool, traceFile string, liveCheck *LiveCheck, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorker {
@@ -208,10 +224,14 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 		MaxTraceDepth: maxTraceDepth,
 		CheckDeadlock: checkDeadlock,
 		debug:         debug,
+		Mode:          SimulationWorkerStandard,
 		TraceFile:     traceFile,
 		LiveCheck:     liveCheck,
 		Statistics:    NewSimulationWorkerStatistics(tool, traceActions, states, traces, m2Mean),
 		NextStates:    NewStateVec(1),
+		RLAlpha:       0.3,
+		RLGamma:       0.7,
+		RLReward:      -10,
 	}
 }
 
@@ -266,10 +286,16 @@ func (w *SimulationWorker) GetNextActionIndex(actions []*Action, curState *TLCSt
 	if len(actions) == 0 {
 		return -1
 	}
+	if w.IsRLMode() {
+		return w.GetRLNextActionIndex(actions, curState)
+	}
 	return int(math.Floor(w.Rand.NextDouble() * float64(len(actions))))
 }
 
 func (w *SimulationWorker) GetNextActionAltIndex(index int, p int, actions []*Action, curState *TLCStateMut) int {
+	if w.IsRLMode() {
+		w.UpdateRLDisabledAction(index, actions, curState)
+	}
 	if w != nil && w.Statistics != nil {
 		w.Statistics.CollectNextRetries()
 	}
@@ -283,10 +309,10 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	if w == nil || w.Tool == nil {
 		return &SimulationWorkerError{Code: ECGeneral, Err: newTLCError(ECGeneral, "simulation worker has no tool")}
 	}
-	w.CurState = w.RandomState(w.InitStates)
-	if w.CurState != nil {
-		w.CurState = w.CurState.DeepCopy()
+	if w.Mode == SimulationWorkerExploration {
+		return w.SimulateExplorationTrace()
 	}
+	w.CurState = w.RandomState(w.InitStates)
 	allActions := w.Tool.GetActions()
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
 		if w.Stopped.Load() {
@@ -336,7 +362,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		return nil
 	}
 	if w.LiveCheck != nil {
-		if err := w.LiveCheck.CheckTrace(w.Tool, func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
+		if err := w.LiveCheck.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
 			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
 		}
 	}
@@ -353,10 +379,16 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 }
 
 func (w *SimulationWorker) FilterActions(actions []*Action, curState *TLCStateMut) ([]*Action, *SimulationWorkerError) {
+	if w.IsRLMode() && w.RLEnabledOnly {
+		return w.FilterEnabledRLActions(actions, curState)
+	}
 	return actions, nil
 }
 
 func (w *SimulationWorker) PostTrace(finalState *TLCStateMut) *SimulationWorkerError {
+	if w.Mode == SimulationWorkerRL {
+		return w.PostRLTrace(finalState)
+	}
 	return nil
 }
 
@@ -369,37 +401,47 @@ func (w *SimulationWorker) AddGeneratedSuccessors(action *Action, nextStates *St
 		if succ == nil {
 			continue
 		}
-		if action != nil && action.CM.node != nil {
-			action.CM.IncInvocations()
-		}
-		succ.SetPredecessor(w.CurState).SetAction(action)
-		if !w.Tool.IsGoodState(succ) {
-			return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, StateTrace: w.GetTrace(succ)}
-		}
-		w.Statistics.CollectPreSuccessor(w.CurState, action, succ)
-		if workerErr := w.CheckInvariants(succ); workerErr != nil {
+		if workerErr := w.AddGeneratedSuccessor(w.CurState, action, succ); workerErr != nil {
 			return workerErr
 		}
-		if workerErr := w.CheckImpliedActions(succ); workerErr != nil {
-			return workerErr
-		}
-		inModel, err := w.Tool.IsInModel(succ)
+	}
+	return nil
+}
+
+func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *Action, succ *TLCStateMut) *SimulationWorkerError {
+	if succ == nil {
+		return nil
+	}
+	if action != nil && action.CM.node != nil {
+		action.CM.IncInvocations()
+	}
+	succ.SetPredecessor(curState).SetAction(action)
+	if !w.Tool.IsGoodState(succ) {
+		return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, StateTrace: w.GetTrace(succ)}
+	}
+	w.Statistics.CollectPreSuccessor(curState, action, succ)
+	if workerErr := w.CheckInvariants(succ); workerErr != nil {
+		return workerErr
+	}
+	if workerErr := w.CheckImpliedActions(succ); workerErr != nil {
+		return workerErr
+	}
+	inModel, err := w.Tool.IsInModel(succ)
+	if err != nil {
+		return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(succ), Err: err}
+	}
+	if inModel {
+		inActions, err := w.Tool.IsInActions(curState, succ)
 		if err != nil {
 			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(succ), Err: err}
 		}
-		if inModel {
-			inActions, err := w.Tool.IsInActions(w.CurState, succ)
-			if err != nil {
-				return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(succ), Err: err}
-			}
-			inModel = inActions
+		inModel = inActions
+	}
+	if inModel {
+		if action != nil && action.CM.node != nil {
+			action.CM.IncSecondary()
 		}
-		if inModel {
-			if action != nil && action.CM.node != nil {
-				action.CM.IncSecondary()
-			}
-			w.NextStates.Add(succ)
-		}
+		w.NextStates.Add(succ)
 	}
 	return nil
 }

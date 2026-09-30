@@ -1,6 +1,9 @@
 package tlc
 
 import (
+	"os"
+	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -14,6 +17,7 @@ type Simulator struct {
 	Seed          int64
 	ResultQueue   chan SimulationWorkerResult
 	Workers       []*SimulationWorker
+	WorkerMode    SimulationWorkerMode
 	NumGenStates  atomic.Int64
 	NumGenTraces  atomic.Int64
 	WelfordM2Mean atomic.Int64
@@ -51,32 +55,13 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		Values:        NewInsMap[int, Value](),
 		NamedValues:   NewInsMap[*UniqueString, Value](),
 	}
+	simulator.WorkerMode = simulator.selectWorkerMode()
 	workerCount := NumWorkers()
 	if workerCount < 1 {
 		workerCount = 1
 	}
 	for i := 0; i < workerCount; i++ {
-		debug := tool != nil && i == 0 && tool.IsDebugger()
-		workerTool := tool
-		if tool != nil && i != 0 && tool.IsDebugger() {
-			workerTool = tool.NoDebug()
-		}
-		simulator.Workers = append(simulator.Workers, NewSimulationWorker(
-			i,
-			workerTool,
-			simulator.ResultQueue,
-			simulator.Rand.NextLong(),
-			traceDepth,
-			traceNum,
-			"",
-			checkDeadlock,
-			debug,
-			"",
-			NewNoOpLiveCheck(tool, ""),
-			&simulator.NumGenStates,
-			&simulator.NumGenTraces,
-			&simulator.WelfordM2Mean,
-		))
+		simulator.Workers = append(simulator.Workers, simulator.newSimulationWorker(i))
 	}
 	SetSimulator(simulator)
 	return simulator
@@ -272,23 +257,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 
 func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 	if len(s.Workers) == 0 {
-		debug := s.Tool != nil && s.Tool.IsDebugger()
-		s.Workers = append(s.Workers, NewSimulationWorker(
-			0,
-			s.Tool,
-			s.ResultQueue,
-			s.Rand.NextLong(),
-			s.TraceDepth,
-			s.TraceNum,
-			"",
-			s.CheckDeadlock,
-			debug,
-			"",
-			NewNoOpLiveCheck(s.Tool, ""),
-			&s.NumGenStates,
-			&s.NumGenTraces,
-			&s.WelfordM2Mean,
-		))
+		s.Workers = append(s.Workers, s.newSimulationWorker(0))
 	}
 	running := make(map[int]bool, len(s.Workers))
 	runningCount := 0
@@ -310,6 +279,69 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 		}
 	}
 	return result
+}
+
+func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
+	debug := s.Tool != nil && id == 0 && s.Tool.IsDebugger()
+	workerTool := s.Tool
+	if s.Tool != nil && id != 0 && s.Tool.IsDebugger() {
+		workerTool = s.Tool.NoDebug()
+	}
+	worker := NewSimulationWorker(
+		id,
+		workerTool,
+		s.ResultQueue,
+		s.Rand.NextLong(),
+		s.TraceDepth,
+		s.TraceNum,
+		"",
+		s.CheckDeadlock,
+		debug,
+		"",
+		NewNoOpLiveCheck(s.Tool, ""),
+		&s.NumGenStates,
+		&s.NumGenTraces,
+		&s.WelfordM2Mean,
+	)
+	worker.SetMode(s.WorkerMode)
+	worker.RLAlpha = simulatorPropertyFloat("tlc2.tool.Simulator.rl.alpha", "TLAGO_SIMULATOR_RL_ALPHA", 0.3)
+	worker.RLGamma = simulatorPropertyFloat("tlc2.tool.Simulator.rl.gamma", "TLAGO_SIMULATOR_RL_GAMMA", 0.7)
+	worker.RLReward = simulatorPropertyFloat("tlc2.tool.Simulator.rl.reward", "TLAGO_SIMULATOR_RL_REWARD", -10)
+	worker.RLEnabledOnly = simulatorPropertyBool("tlc2.tool.Simulator.rl.enabledOnly", "TLAGO_SIMULATOR_RL_ENABLED_ONLY")
+	return worker
+}
+
+func (s *Simulator) selectWorkerMode() SimulationWorkerMode {
+	if s != nil && s.Tool != nil && s.Tool.IsDebugger() {
+		return SimulationWorkerExploration
+	}
+	if simulatorPropertyBool("tlc2.tool.Simulator.rl", "TLAGO_SIMULATOR_RL") {
+		return SimulationWorkerRL
+	}
+	if simulatorPropertyBool("tlc2.tool.Simulator.rlaction", "TLAGO_SIMULATOR_RL_ACTION") {
+		return SimulationWorkerRLAction
+	}
+	return SimulationWorkerStandard
+}
+
+func simulatorPropertyBool(name string, aliases ...string) bool {
+	for _, key := range append([]string{name}, aliases...) {
+		if value, ok := os.LookupEnv(key); ok {
+			return strings.EqualFold(value, "true")
+		}
+	}
+	return false
+}
+
+func simulatorPropertyFloat(name string, alias string, fallback float64) float64 {
+	for _, key := range []string{name, alias} {
+		if value, ok := os.LookupEnv(key); ok {
+			if parsed, err := strconv.ParseFloat(strings.TrimSuffix(value, "d"), 64); err == nil {
+				return parsed
+			}
+		}
+	}
+	return fallback
 }
 
 func (s *Simulator) randomSuccessor(cur *TLCStateMut) (*TLCStateMut, int, error) {

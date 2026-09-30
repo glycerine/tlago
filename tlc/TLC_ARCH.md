@@ -791,6 +791,11 @@ Important behavior:
 - Simulation traces compress finite stuttering steps in `getTrace` and then
   repair predecessor links, while `getUncompressedTrace` preserves the raw
   predecessor chain.
+- Java has `SimulationWorker`, `ExplorationWorker`, `RLSimulationWorker`, and
+  `RLActionSimulationWorker`. The Go port keeps these as concrete
+  `SimulationWorkerMode` values and fields on `SimulationWorker`, not as a new
+  interface hierarchy. Debugger simulation selects exploration mode; RL modes
+  keep the Java Q-table shape `Action -> state/action hash -> value`.
 - Some errors are non-continuable even in continuation-like modes.
 
 Port guidance:
