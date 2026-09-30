@@ -8,10 +8,11 @@ import (
 )
 
 const (
-	recordArrow                    = " |-> "
-	fcnRcdLinearSearchThreshold    = 32
-	typedModelValueSeparatorRune   = '_'
-	typedModelValueUntypedCodeUnit = rune(0)
+	recordArrow                         = " |-> "
+	defaultFcnRcdLinearSearchThreshold  = 32
+	fcnRcdLinearSearchThresholdProperty = "tlc2.value.impl.FcnRcdValue.threshold"
+	typedModelValueSeparatorRune        = '_'
+	typedModelValueUntypedCodeUnit      = rune(0)
 )
 
 type ModelValue struct {
@@ -946,7 +947,7 @@ func (v *FcnRcdValue) Select(arg Value) (Value, error) {
 		}
 		return nil, nil
 	}
-	if v.IsNorm && len(v.Domain) >= fcnRcdLinearSearchThreshold {
+	if v.IsNorm && len(v.Domain) >= fcnRcdLinearSearchThreshold() {
 		low, high := 0, len(v.Domain)
 		for low < high {
 			mid := (low + high) >> 1
@@ -979,6 +980,15 @@ func (v *FcnRcdValue) Select(arg Value) (Value, error) {
 		}
 	}
 	return nil, nil
+}
+
+func fcnRcdLinearSearchThreshold() int {
+	if value, ok := tlcLookupSystemProperty(fcnRcdLinearSearchThresholdProperty); ok {
+		if parsed, ok := javaIntProperty(value); ok {
+			return parsed
+		}
+	}
+	return defaultFcnRcdLinearSearchThreshold
 }
 
 func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (Value, error) {

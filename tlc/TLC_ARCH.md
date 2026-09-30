@@ -812,6 +812,9 @@ Important concrete values:
   handling.
 - `IntervalValue`: finite integer interval without materializing all elements.
 - `FcnRcdValue`: explicit finite function, optimized for interval domains.
+  Java's `tlc2.value.impl.FcnRcdValue.threshold` controls when normalized
+  finite function records switch from linear lookup to binary search; Go keeps
+  the default `32` and reads the same property key.
 - `FcnLambdaValue`: lazy function with params/body/tool/context.
 - Function constructors stay lazy unless Java's `Tool.evalApplImpl` can prove
   every bounded domain is `Reducible` and `EvalControl.KeepLazy` is clear. In
