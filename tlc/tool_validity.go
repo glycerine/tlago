@@ -94,10 +94,13 @@ func (t *Tool) CheckPostConditionImpl(ctxt *Context) int {
 	for _, post := range t.GetPostConditionSpecs() {
 		ok, err := t.evalPredicateValue(post.Pred, ctxt, EmptyState, EmptyState, EvalConst, post.GetName())
 		if err != nil {
-			return PrintError(ECGeneral, post.GetName(), err.Error())
+			return PrintError(ECTLCPostconditionEvaluationError, post.GetName(), err.Error())
 		}
 		if !ok {
-			return PrintError(ECGeneral, post.GetName(), SemanticString(post.Pred))
+			if post.IsPossible() {
+				return PrintError(ECTLCPossibleUnwitnessed, post.GetName(), SemanticString(post.Possible.Body))
+			}
+			return PrintError(ECTLCPostconditionFalse, post.GetName(), SemanticString(post.Pred))
 		}
 	}
 	return NoError

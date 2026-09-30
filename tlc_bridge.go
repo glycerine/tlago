@@ -53,6 +53,9 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
 		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
 	},
+	"_Possible": {
+		"_Track", "_Counts", "_CheckName", "_PrintCounts",
+	},
 	"TransitiveClosure": {
 		"Warshall",
 	},
@@ -308,6 +311,7 @@ func (b *tlcBridge) installModelTargets() {
 			b.tool.ActionConstraints = append(b.tool.ActionConstraints, node)
 		}
 	}
+	b.installPossibleTargets()
 	if name := b.cfg.GetView(); name != "" {
 		b.tool.ViewSpec = b.nodeForDefinition(name)
 	}
@@ -324,6 +328,32 @@ func (b *tlcBridge) installModelTargets() {
 		if action := b.actionFromDefinition(name, false); action != nil {
 			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
 		}
+	}
+}
+
+func (b *tlcBridge) installPossibleTargets() {
+	for _, name := range b.cfg.GetPossible() {
+		def := b.defs[name]
+		if def == nil {
+			b.diags = append(b.diags, errorAt(Position{}, "E7014", "_POSSIBLE operator %s not found", name))
+			continue
+		}
+		if len(def.Params) != 0 {
+			b.diags = append(b.diags, errorAt(def.Pos, "E7015", "_POSSIBLE operator %s must be zero-arity", name))
+			continue
+		}
+		opDef := b.convertDefinitionAs(name, def)
+		if opDef == nil || opDef.Symbol == nil {
+			continue
+		}
+		track := tlc.NewPossibleTrackNode(tlc.NewOpApplNode(opDef.Symbol), name)
+		if b.possibleExprIsActionLevel(def.Expr, map[string]bool{}, nil) {
+			b.tool.ActionConstraints = append(b.tool.ActionConstraints, track)
+		} else {
+			b.tool.ModelConstraints = append(b.tool.ModelConstraints, track)
+		}
+		check := tlc.NewPossibleCheckNode(name)
+		b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, tlc.NewPossibleAction(check, tlc.EmptyContext, opDef))
 	}
 }
 
@@ -690,6 +720,187 @@ func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNo
 		node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
 	}
 	return node
+}
+
+func (b *tlcBridge) possibleExprIsActionLevel(expr Expr, seen map[string]bool, locals map[string]*Definition) bool {
+	return b.possibleExprIsActionLevelBound(expr, seen, locals, nil)
+}
+
+func (b *tlcBridge) possibleExprIsActionLevelBound(expr Expr, seen map[string]bool, locals map[string]*Definition, bound map[string]bool) bool {
+	switch e := expr.(type) {
+	case nil, *LiteralExpr:
+		return false
+	case *IdentExpr:
+		if bound != nil && bound[e.Name] {
+			return false
+		}
+		return b.possibleNamedExprIsActionLevel(e.Name, seen, locals, bound)
+	case *UnaryExpr:
+		switch e.Op {
+		case "'", "UNCHANGED":
+			return true
+		case "ENABLED":
+			return false
+		case "[]", "<>":
+			return true
+		default:
+			return b.possibleExprIsActionLevelBound(e.Expr, seen, locals, bound)
+		}
+	case *BinaryExpr:
+		return b.possibleExprIsActionLevelBound(e.Left, seen, locals, bound) ||
+			b.possibleExprIsActionLevelBound(e.Right, seen, locals, bound)
+	case *CallExpr:
+		if ident, ok := e.Callee.(*IdentExpr); ok && (bound == nil || !bound[ident.Name]) {
+			if b.possibleNamedExprIsActionLevel(ident.Name, seen, locals, bound) {
+				return true
+			}
+		} else if b.possibleExprIsActionLevelBound(e.Callee, seen, locals, bound) {
+			return true
+		}
+		for _, arg := range e.Args {
+			if b.possibleExprIsActionLevelBound(arg, seen, locals, bound) {
+				return true
+			}
+		}
+	case *IfExpr:
+		return b.possibleExprIsActionLevelBound(e.Cond, seen, locals, bound) ||
+			b.possibleExprIsActionLevelBound(e.Then, seen, locals, bound) ||
+			b.possibleExprIsActionLevelBound(e.Else, seen, locals, bound)
+	case *LetExpr:
+		letLocals := b.possibleLetLocals(e, locals)
+		return b.possibleExprIsActionLevelBound(e.Body, seen, letLocals, bound)
+	case *QuantifierExpr:
+		nextBound := copyBoolMap(bound)
+		nextBound[e.Var] = true
+		return b.possibleExprIsActionLevelBound(e.Set, seen, locals, bound) ||
+			b.possibleExprIsActionLevelBound(e.Body, seen, locals, nextBound)
+	case *CaseExpr:
+		for _, arm := range e.Arms {
+			if b.possibleExprIsActionLevelBound(arm.Test, seen, locals, bound) ||
+				b.possibleExprIsActionLevelBound(arm.Value, seen, locals, bound) {
+				return true
+			}
+		}
+		return b.possibleExprIsActionLevelBound(e.Other, seen, locals, bound)
+	case *ChooseExpr:
+		nextBound := copyBoolMap(bound)
+		nextBound[e.Var] = true
+		return b.possibleExprIsActionLevelBound(e.Set, seen, locals, bound) ||
+			b.possibleExprIsActionLevelBound(e.Body, seen, locals, nextBound)
+	case *TupleExpr:
+		for _, elem := range e.Elems {
+			if b.possibleExprIsActionLevelBound(elem, seen, locals, bound) {
+				return true
+			}
+		}
+	case *SetExpr:
+		for _, elem := range e.Elems {
+			if b.possibleExprIsActionLevelBound(elem, seen, locals, bound) {
+				return true
+			}
+		}
+	case *RecordExpr:
+		for _, field := range e.Fields {
+			if b.possibleExprIsActionLevelBound(field.Value, seen, locals, bound) {
+				return true
+			}
+		}
+	case *RecordComponentExpr:
+		return b.possibleExprIsActionLevelBound(e.Record, seen, locals, bound)
+	case *RecordSetExpr:
+		for _, field := range e.Fields {
+			if b.possibleExprIsActionLevelBound(field.Set, seen, locals, bound) {
+				return true
+			}
+		}
+	case *FunctionExpr:
+		nextBound := copyBoolMap(bound)
+		for _, next := range e.Bounds {
+			if b.possibleExprIsActionLevelBound(next.Set, seen, locals, bound) {
+				return true
+			}
+			nextBound[next.Name] = true
+		}
+		return b.possibleExprIsActionLevelBound(e.Body, seen, locals, nextBound)
+	case *FunctionAppExpr:
+		if b.possibleExprIsActionLevelBound(e.Function, seen, locals, bound) {
+			return true
+		}
+		for _, arg := range e.Args {
+			if b.possibleExprIsActionLevelBound(arg, seen, locals, bound) {
+				return true
+			}
+		}
+	case *ExceptExpr:
+		if b.possibleExprIsActionLevelBound(e.Base, seen, locals, bound) {
+			return true
+		}
+		for _, spec := range e.Specs {
+			for _, component := range spec.Components {
+				for _, index := range component.Indices {
+					if b.possibleExprIsActionLevelBound(index, seen, locals, bound) {
+						return true
+					}
+				}
+			}
+			if b.possibleExprIsActionLevelBound(spec.Value, seen, locals, bound) {
+				return true
+			}
+		}
+	case *LabelExpr:
+		return b.possibleExprIsActionLevelBound(e.Body, seen, locals, bound)
+	case *ActionExpr, *FairnessExpr:
+		return true
+	case *FunctionSetExpr:
+		return b.possibleExprIsActionLevelBound(e.Domain, seen, locals, bound) ||
+			b.possibleExprIsActionLevelBound(e.Range, seen, locals, bound)
+	case *SetComprehensionExpr:
+		nextBound := copyBoolMap(bound)
+		for _, next := range e.Bounds {
+			if b.possibleExprIsActionLevelBound(next.Set, seen, locals, bound) {
+				return true
+			}
+			nextBound[next.Name] = true
+		}
+		return b.possibleExprIsActionLevelBound(e.Element, seen, locals, nextBound) ||
+			b.possibleExprIsActionLevelBound(e.Predicate, seen, locals, nextBound)
+	}
+	return false
+}
+
+func (b *tlcBridge) possibleNamedExprIsActionLevel(name string, seen map[string]bool, locals map[string]*Definition, bound map[string]bool) bool {
+	if seen[name] {
+		return false
+	}
+	var def *Definition
+	if locals != nil {
+		def = locals[name]
+	}
+	if def == nil {
+		def = b.defs[name]
+	}
+	if def == nil {
+		return false
+	}
+	seen[name] = true
+	defer delete(seen, name)
+	nextBound := copyBoolMap(bound)
+	for _, param := range def.Params {
+		nextBound[param] = true
+	}
+	return b.possibleExprIsActionLevelBound(def.Expr, seen, locals, nextBound)
+}
+
+func (b *tlcBridge) possibleLetLocals(expr *LetExpr, parent map[string]*Definition) map[string]*Definition {
+	locals := make(map[string]*Definition, len(parent)+len(expr.Definitions))
+	for name, def := range parent {
+		locals[name] = def
+	}
+	for i := range expr.Definitions {
+		def := &expr.Definitions[i]
+		locals[def.Name] = def
+	}
+	return locals
 }
 
 func (b *tlcBridge) convertFunctionArgs(args []Expr) tlc.SemanticNode {

@@ -1259,6 +1259,15 @@ Go mapping:
   expressions and the concrete `TLCStateMut` cache for state-level
   expressions, matching Java's split between expression tool objects and
   `TLCStateMutExt`.
+- `_POSSIBLE` is also a config-driven model transformation in Java
+  `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
+  and installed as a model constraint for state-level predicates or an action
+  constraint for action-level predicates. A matching `_Possible!_CheckName`
+  postcondition reports `TLC_POSSIBLE_UNWITNESSED` after model checking if the
+  named predicate was never witnessed. The Go bridge mirrors this with concrete
+  `PossibleTrackNode` and `PossibleCheckNode` structs and stores counts in the
+  named register `s:_possible`, using worker-local checker values so `_Counts`
+  can merge them like Java's `TLCGet("all:named")`.
 
 Port guidance:
 

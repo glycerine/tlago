@@ -168,6 +168,37 @@ func (c *AbstractChecker) SetAllNamedValues(key *UniqueString, value Value) {
 	c.NamedValues.Set(key, value)
 }
 
+func (c *AbstractChecker) SetNamedValue(workerID int, key *UniqueString, value Value) {
+	if c == nil || key == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.NamedValues == nil {
+		c.NamedValues = NewInsMap[*UniqueString, any]()
+	}
+	if workerID < 0 {
+		workerID = 0
+	}
+	current := c.NamedValues.Get(key)
+	size := NumWorkers()
+	if size <= workerID {
+		size = workerID + 1
+	}
+	if size <= 1 && workerID == 0 {
+		c.NamedValues.Set(key, value)
+		return
+	}
+	values := make([]Value, size)
+	if workerValue, ok := current.(*WorkerValue); ok {
+		copy(values, workerValue.values)
+	} else if muxed := MuxWorkerValue(current, 0); muxed != nil {
+		values[0] = muxed
+	}
+	values[workerID] = value
+	c.NamedValues.Set(key, NewWorkerValue(values))
+}
+
 func (c *AbstractChecker) SetAllNamedWorkerValues(key *UniqueString, values []Value) {
 	if c == nil || key == nil {
 		return

@@ -153,6 +153,10 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 		return ValUndef, newTLCError(ECGeneral, "attempted to evaluate @ outside an EXCEPT expression")
 	case *OpArgNode:
 		return t.evalImplOpArgKind(expr, c, s0, s1, control, cm)
+	case *PossibleTrackNode:
+		return t.evalPossibleTrackNode(expr, c, s0, s1, control, cm)
+	case *PossibleCheckNode:
+		return t.evalPossibleCheckNode(expr)
 	default:
 		if value := SemanticToolObject(expr); value != nil {
 			if v, ok := value.(Value); ok {

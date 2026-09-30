@@ -29,6 +29,8 @@ const (
 	SemanticAtNodeKind
 	SemanticOpArgKind
 	SemanticValueKind
+	SemanticPossibleTrackKind
+	SemanticPossibleCheckKind
 )
 
 type SemanticNodeBase struct {
@@ -147,6 +149,10 @@ func SemanticLevel(node SemanticNode) int {
 		return n.GetLevel()
 	case *LiveExprNode:
 		return n.GetLevel()
+	case *PossibleTrackNode:
+		return n.GetLevel()
+	case *PossibleCheckNode:
+		return n.GetLevel()
 	default:
 		return TLCLevelConstant
 	}
@@ -179,6 +185,10 @@ func SemanticLevelParams(node SemanticNode) []*SymbolNode {
 	case *AtNode:
 		return n.GetLevelParams()
 	case *OpArgNode:
+		return n.GetLevelParams()
+	case *PossibleTrackNode:
+		return n.GetLevelParams()
+	case *PossibleCheckNode:
 		return n.GetLevelParams()
 	default:
 		return nil
@@ -348,6 +358,42 @@ func NewOpArgNode(op *SymbolNode) *OpArgNode {
 	return &OpArgNode{SemanticNodeBase: SemanticNodeBase{KindValue: SemanticOpArgKind, Image: op.String()}, Op: op}
 }
 
+type PossibleTrackNode struct {
+	SemanticNodeBase
+	Pred SemanticNode
+	Name string
+}
+
+func NewPossibleTrackNode(pred SemanticNode, name string) *PossibleTrackNode {
+	out := &PossibleTrackNode{
+		SemanticNodeBase: SemanticNodeBase{
+			KindValue:  SemanticPossibleTrackKind,
+			Image:      "_Possible!_Track(" + name + ")",
+			LevelValue: SemanticLevel(pred),
+		},
+		Pred: pred,
+		Name: name,
+	}
+	out.SetLevelParams(SemanticLevelParams(pred)...)
+	return out
+}
+
+type PossibleCheckNode struct {
+	SemanticNodeBase
+	Name string
+}
+
+func NewPossibleCheckNode(name string) *PossibleCheckNode {
+	return &PossibleCheckNode{
+		SemanticNodeBase: SemanticNodeBase{
+			KindValue:  SemanticPossibleCheckKind,
+			Image:      "_Possible!_CheckName(" + name + ")",
+			LevelValue: TLCLevelConstant,
+		},
+		Name: name,
+	}
+}
+
 type ThmOrAssumpDefNode struct {
 	Name *UniqueString
 	Body SemanticNode
@@ -390,6 +436,10 @@ func SemanticKindOf(node SemanticNode) SemanticKind {
 		return SemanticOpArgKind
 	case *ValueNode:
 		return SemanticValueKind
+	case *PossibleTrackNode:
+		return SemanticPossibleTrackKind
+	case *PossibleCheckNode:
+		return SemanticPossibleCheckKind
 	case interface{ Kind() SemanticKind }:
 		return n.Kind()
 	default:

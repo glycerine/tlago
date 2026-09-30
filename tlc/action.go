@@ -249,6 +249,7 @@ type Action struct {
 	ID         int
 	IsInitPred bool
 	Internal   bool
+	Possible   *OpDefNode
 	Auxiliary  map[any]any
 }
 
@@ -393,6 +394,10 @@ func (a *Action) IsInitPredicate() bool {
 
 func (a *Action) IsInternal() bool {
 	return a != nil && a.Internal
+}
+
+func (a *Action) IsPossible() bool {
+	return a != nil && a.Possible != nil
 }
 
 type ActionItemList struct {
