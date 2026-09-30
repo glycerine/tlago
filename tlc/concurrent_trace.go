@@ -259,6 +259,28 @@ func (t *ConcurrentTLCTrace) Recover() error {
 	return nil
 }
 
+func (t *ConcurrentTLCTrace) Elements() (*ConcurrentTraceEnumerator, error) {
+	if t == nil {
+		return &ConcurrentTraceEnumerator{}, nil
+	}
+	enums := make([]*WorkerTraceEnumerator, len(t.Workers))
+	for i, worker := range t.Workers {
+		if worker == nil {
+			enums[i] = &WorkerTraceEnumerator{}
+			continue
+		}
+		enum, err := worker.Elements()
+		if err != nil {
+			for _, opened := range enums {
+				_ = opened.Close()
+			}
+			return nil, err
+		}
+		enums[i] = enum
+	}
+	return &ConcurrentTraceEnumerator{enums: enums}, nil
+}
+
 func (t *ConcurrentTLCTrace) Close() error {
 	if t == nil {
 		return nil
@@ -297,6 +319,60 @@ func (t *ConcurrentTLCTrace) Delete() error {
 		}
 	}
 	return err
+}
+
+type ConcurrentTraceEnumerator struct {
+	idx   int
+	enums []*WorkerTraceEnumerator
+}
+
+func (e *ConcurrentTraceEnumerator) NextPos() int64 {
+	if e == nil || e.idx >= len(e.enums) {
+		return -1
+	}
+	if e.enums[e.idx].HasMoreFP() {
+		return 42
+	}
+	if e.idx+1 >= len(e.enums) {
+		return -1
+	}
+	e.idx++
+	if e.enums[e.idx].HasMoreFP() {
+		return 42
+	}
+	return -1
+}
+
+func (e *ConcurrentTraceEnumerator) NextFP() (uint64, error) {
+	if e == nil || e.idx >= len(e.enums) {
+		return 0, nil
+	}
+	if !e.enums[e.idx].HasMoreFP() {
+		e.idx++
+	}
+	if e.idx >= len(e.enums) {
+		return 0, nil
+	}
+	return e.enums[e.idx].NextFP()
+}
+
+func (e *ConcurrentTraceEnumerator) Close() error {
+	if e == nil {
+		return nil
+	}
+	var err error
+	for _, enum := range e.enums {
+		if closeErr := enum.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	return err
+}
+
+func (e *ConcurrentTraceEnumerator) Reset(pos int64) {
+	if e != nil {
+		e.idx = 0
+	}
 }
 
 type ConcurrentTraceRecord struct {

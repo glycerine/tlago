@@ -1418,6 +1418,10 @@ Port guidance:
   checkpoint path. It checkpoints each worker trace fragment and creates the
   shared `MC.st.chkpt` marker file for Toolbox/script compatibility, matching
   Java's override.
+- `ConcurrentTLCTrace.elements()` merges per-worker trace enumerators. Java's
+  `nextPos` returns sentinel `42` for "has another fingerprint" and `-1` for
+  exhaustion; Go mirrors that odd API so trace-counting and management code can
+  stay mechanically aligned.
 - State numbering and action labels in printed traces are test-observed.
 
 ## Simulation Architecture
