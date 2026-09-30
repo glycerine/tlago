@@ -222,7 +222,7 @@ func (s *Simulator) startProgressReporter() func() {
 func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval time.Duration) bool {
 	genTrace := s.NumGenTraces.Load()
 	m2AndMean := s.WelfordM2Mean.Load()
-	mean := int64(int32(m2AndMean & 0xffffffff))
+	mean := int64(m2AndMean & 0xffffffff)
 	m2 := uint64(m2AndMean) >> 32
 	PrintMessage(ECTLCProgressSimu,
 		fmtInt64(s.NumGenStates.Load()),

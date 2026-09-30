@@ -210,7 +210,7 @@ func (s *SimulationWorkerStatistics) CollectPostTrace(state *TLCStateMut, maxTra
 	for {
 		old := s.WelfordM2Mean.Load()
 		mean := int64(int32(old & 0xffffffff))
-		m2 := old >> 32
+		m2 := int64(uint64(old) >> 32)
 		count := s.NumGenTraces.Load()
 		if count < 1 {
 			count = 1
