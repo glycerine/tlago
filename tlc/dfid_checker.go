@@ -121,34 +121,120 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		}
 		PrintMessage(ECTLCProgressStartStatsDFID, fmtInt(level), fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 		FPIntSetIncLevel()
-		worker := NewDFIDWorker(0, level, mc)
-		mc.DFIDWorkers = []*DFIDWorker{worker}
-		worker.Run()
+		result, err = mc.RunTLC(level)
 		mc.Done = false
-		if worker.Result != NoError || worker.Err != nil {
-			if mc.KeepCallStack {
-				terminated = true
-			} else {
-				mc.PrintSummary(false)
-				return worker.Result, worker.Err
-			}
+		if result != NoError || err != nil {
+			return result, err
 		}
-		if worker.IsTerminated() {
+		worker := mc.dfidWorkerAt(0)
+		if worker != nil && worker.IsTerminated() {
 			terminated = true
 		}
-		if !worker.HasMoreLevel() {
-			terminated = true
+		moreLevel := false
+		if worker != nil && worker.HasMoreLevel() {
+			moreLevel = true
 		}
-		if DoCheckPoint() {
-			if err := mc.Checkpoint(); err != nil {
-				return ECSystemCheckpointRecoveryCorrupt, err
-			}
-		}
+		terminated = terminated || !moreLevel
 	}
 	result = NoError
 	ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
 	mc.PrintSummary(result == NoError)
 	return result, nil
+}
+
+func (mc *DFIDModelChecker) RunTLC(depth int) (int, error) {
+	if depth < 2 {
+		return NoError, nil
+	}
+	worker := NewDFIDWorker(0, depth, mc)
+	mc.DFIDWorkers = []*DFIDWorker{worker}
+	done := make(chan struct{}, 1)
+	go func() {
+		worker.Run()
+		done <- struct{}{}
+	}()
+	select {
+	case <-done:
+		return mc.dfidWorkerResult(worker)
+	case <-time.After(3 * time.Second):
+	}
+	interval := ProgressInterval()
+	coverageCountdown := periodicCoverageCountdown(interval)
+	for {
+		result, err := mc.DoPeriodicWork()
+		if err != nil || result != NoError {
+			return result, err
+		}
+		if mc.isDFIDDone() {
+			<-done
+			return mc.dfidWorkerResult(worker)
+		}
+		mc.runTLCContinueDoing(coverageCountdown, depth)
+		if coverageCountdown == 0 {
+			coverageCountdown = periodicCoverageCountdown(interval)
+		} else if coverageCountdown > 0 {
+			coverageCountdown--
+		}
+		if mc.isDFIDDone() {
+			<-done
+			return mc.dfidWorkerResult(worker)
+		}
+		if interval <= 0 {
+			select {
+			case <-done:
+				return mc.dfidWorkerResult(worker)
+			default:
+				continue
+			}
+		}
+		timer := time.NewTimer(interval)
+		select {
+		case <-done:
+			timer.Stop()
+			return mc.dfidWorkerResult(worker)
+		case <-timer.C:
+		}
+	}
+}
+
+func (mc *DFIDModelChecker) dfidWorkerAt(index int) *DFIDWorker {
+	if mc == nil || index < 0 || index >= len(mc.DFIDWorkers) {
+		return nil
+	}
+	return mc.DFIDWorkers[index]
+}
+
+func (mc *DFIDModelChecker) dfidWorkerResult(worker *DFIDWorker) (int, error) {
+	if worker != nil && (worker.Result != NoError || worker.Err != nil) {
+		if mc != nil && mc.KeepCallStack {
+			return NoError, nil
+		}
+		return worker.Result, worker.Err
+	}
+	if mc != nil && !mc.KeepCallStack && mc.ErrorCode != NoError {
+		return mc.ErrorCode, nil
+	}
+	return NoError, nil
+}
+
+func (mc *DFIDModelChecker) isDFIDDone() bool {
+	if mc == nil || mc.AbstractChecker == nil {
+		return true
+	}
+	mc.mu.Lock()
+	done := mc.Done
+	mc.mu.Unlock()
+	return done
+}
+
+func (mc *DFIDModelChecker) runTLCContinueDoing(count int, depth int) {
+	_ = depth
+	PrintMessage(ECTLCProgressStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
+	if count == 0 {
+		if mc != nil && mc.Tool != nil && CoverageAnyEnabled() && len(mc.Tool.GetActions()) > 0 {
+			reportCoverage(mc.Tool)
+		}
+	}
 }
 
 func (mc *DFIDModelChecker) finishTerminatedDFID() (int, error) {
