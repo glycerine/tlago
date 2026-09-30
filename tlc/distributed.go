@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"sort"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -248,6 +249,165 @@ type DistributedWorker struct {
 	IsInActionsFunc       func(predecessor *TLCStateMut, successor *TLCStateMut) (bool, error)
 }
 
+type TLCServer struct {
+	FPSetManager                *DistributedFPSetManager
+	StateQueue                  StateQueue
+	Trace                       *TLCTrace
+	Metadir                     string
+	FileName                    string
+	ConfigName                  string
+	Done                        atomic.Bool
+	WorkerStatesGenerated       atomic.Int64
+	StatesPerMinute             int64
+	DistinctStatesPerMinute     int64
+	AverageBlockCnt             int64
+	Workers                     *InsMap[string, *DistributedWorker]
+	FinalNumberOfDistinctStates int64
+}
+
+func NewTLCServer(fileName string, configName string, metadir string, manager *DistributedFPSetManager, queue StateQueue, trace *TLCTrace) *TLCServer {
+	if manager == nil {
+		manager = NewDistributedFPSetManager()
+	}
+	if queue == nil {
+		queue = NewStateQueue(metadir)
+	}
+	if trace == nil {
+		trace = NewTLCTrace(metadir, fileName)
+	}
+	return &TLCServer{
+		FPSetManager:                manager,
+		StateQueue:                  queue,
+		Trace:                       trace,
+		Metadir:                     metadir,
+		FileName:                    fileName,
+		ConfigName:                  configName,
+		Workers:                     NewInsMap[string, *DistributedWorker](),
+		FinalNumberOfDistinctStates: -1,
+	}
+}
+
+func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
+	if s == nil || worker == nil {
+		return
+	}
+	if s.Workers == nil {
+		s.Workers = NewInsMap[string, *DistributedWorker]()
+	}
+	if s.StateQueue != nil {
+		s.StateQueue.ResumeAllStuck()
+	}
+	s.Workers.Set(distributedWorkerKey(worker), worker)
+}
+
+func (s *TLCServer) RemoveWorker(worker *DistributedWorker) *DistributedWorker {
+	if s == nil || s.Workers == nil || worker == nil {
+		return nil
+	}
+	key := distributedWorkerKey(worker)
+	removed := s.Workers.Get(key)
+	s.Workers.Delkey(key)
+	return removed
+}
+
+func (s *TLCServer) SetDone() {
+	if s != nil {
+		s.Done.Store(true)
+	}
+}
+
+func (s *TLCServer) IsRunning() bool {
+	return s != nil && !s.Done.Load()
+}
+
+func (s *TLCServer) IsDone() bool {
+	return s == nil || s.Done.Load()
+}
+
+func (s *TLCServer) AddStatesGeneratedDelta(delta int64) {
+	if s != nil && delta != 0 {
+		s.WorkerStatesGenerated.Add(delta)
+	}
+}
+
+func (s *TLCServer) GetStatesGenerated() int64 {
+	if s == nil {
+		return 0
+	}
+	total := s.WorkerStatesGenerated.Load()
+	if s.FPSetManager != nil {
+		total += int64(s.FPSetManager.GetStatesSeen())
+	}
+	return total
+}
+
+func (s *TLCServer) GetNewStates() int64 {
+	if s == nil {
+		return 0
+	}
+	var size int64
+	if s.StateQueue != nil {
+		size += s.StateQueue.Size()
+	}
+	if s.Workers != nil {
+		for _, worker := range s.Workers.All() {
+			if worker != nil && worker.IsComputing() {
+				size++
+			}
+		}
+	}
+	return size
+}
+
+func (s *TLCServer) GetStatesGeneratedPerMinute() int64 {
+	if s == nil {
+		return 0
+	}
+	return s.StatesPerMinute
+}
+
+func (s *TLCServer) GetDistinctStatesGeneratedPerMinute() int64 {
+	if s == nil {
+		return 0
+	}
+	return s.DistinctStatesPerMinute
+}
+
+func (s *TLCServer) GetAverageBlockCnt() int64 {
+	if s == nil {
+		return 0
+	}
+	return s.AverageBlockCnt
+}
+
+func (s *TLCServer) GetWorkerCount() int {
+	if s == nil || s.Workers == nil {
+		return 0
+	}
+	return s.Workers.Len()
+}
+
+func (s *TLCServer) GetFPSetManager() *DistributedFPSetManager {
+	if s == nil {
+		return nil
+	}
+	return s.FPSetManager
+}
+
+func (s *TLCServer) GetSpecFileName() string {
+	if s == nil {
+		return ""
+	}
+	return s.FileName
+}
+
+func (s *TLCServer) GetConfigFileName() string {
+	if s == nil {
+		return ""
+	}
+	return s.ConfigName
+}
+
 func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager) *DistributedWorker {
 	if fpSetManager == nil {
 		fpSetManager = NewDistributedFPSetManager()
@@ -258,6 +418,16 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 		FPSetManager: fpSetManager,
 		Cache:        NewSimpleCache(),
 	}
+}
+
+func distributedWorkerKey(worker *DistributedWorker) string {
+	if worker == nil {
+		return ""
+	}
+	if worker.URI != "" {
+		return worker.URI
+	}
+	return strconv.Itoa(worker.ID)
 }
 
 func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {

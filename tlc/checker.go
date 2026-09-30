@@ -223,12 +223,14 @@ func (c *AbstractChecker) GetAllNamedValues(key *UniqueString) []Value {
 
 type ModelChecker struct {
 	*AbstractChecker
-	NumberOfInitialStates int64
-	FPSet                 FPSet
-	StateQueue            StateQueue
-	Trace                 *TLCTrace
-	LiveCheck             *LiveCheck
-	NextStatesGenerated   int64
+	NumberOfInitialStates   int64
+	FPSet                   FPSet
+	StateQueue              StateQueue
+	Trace                   *TLCTrace
+	LiveCheck               *LiveCheck
+	NextStatesGenerated     int64
+	StatesPerMinute         int64
+	DistinctStatesPerMinute int64
 }
 
 type ModelCheckerOption func(*ModelChecker)

@@ -78,6 +78,20 @@ func NewTLC(opts Options) *TLC {
 	return &TLC{Options: opts}
 }
 
+func (t *TLC) GetSpecName() string {
+	if t == nil || t.SpecFile == "" {
+		return "N/A"
+	}
+	return t.SpecFile
+}
+
+func (t *TLC) GetModelName() string {
+	if t == nil || t.ConfigFile == "" {
+		return "N/A"
+	}
+	return t.ConfigFile
+}
+
 func ModelCheck(ctx context.Context, opts Options) (*Result, error) {
 	opts.Mode = RunModeModelCheck
 	return NewTLC(opts).Process(ctx)

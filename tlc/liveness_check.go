@@ -450,6 +450,7 @@ type LiveCheck struct {
 	MetaDir  string
 	Checkers []*LiveChecker
 	NoOp     bool
+	Forced   bool
 }
 
 func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
@@ -536,10 +537,20 @@ func (lc *LiveCheck) Check(tool *Tool, forceCheck bool) (int, error) {
 	if lc == nil || lc.NoOp {
 		return NoError, nil
 	}
+	if lc.Forced {
+		forceCheck = true
+		lc.Forced = false
+	}
 	if !forceCheck && !lc.DoLiveCheck() {
 		return NoError, nil
 	}
 	return lc.check0(tool, false)
+}
+
+func (lc *LiveCheck) ForceCheck() {
+	if lc != nil {
+		lc.Forced = true
+	}
 }
 
 func (lc *LiveCheck) FinalCheck(tool *Tool) (int, error) {
