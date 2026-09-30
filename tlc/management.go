@@ -117,14 +117,17 @@ func (w *ModelCheckerMXWrapper) GetAverageBlockCnt() int64 {
 }
 
 func (w *ModelCheckerMXWrapper) GetRuntimeRatio() float64 {
-	return 0
+	if w == nil || w.ModelChecker == nil {
+		return 0
+	}
+	return w.ModelChecker.RuntimeRatio
 }
 
 func (w *ModelCheckerMXWrapper) LiveCheck() {
-	if w == nil || w.ModelChecker == nil || w.ModelChecker.LiveCheck == nil {
+	if w == nil || w.ModelChecker == nil {
 		return
 	}
-	w.ModelChecker.LiveCheck.ForceCheck()
+	w.ModelChecker.ForceLivenessCheck()
 }
 
 func (w *ModelCheckerMXWrapper) GetCurrentState() string {

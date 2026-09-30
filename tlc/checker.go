@@ -756,6 +756,16 @@ func (mc *ModelChecker) UpdateRuntimeRatio(delta time.Duration) {
 	mc.RuntimeRatio = (float64(delta) + absLivenessRuntime) / denominator
 }
 
+func (mc *ModelChecker) ForceLivenessCheck() {
+	if mc == nil {
+		return
+	}
+	mc.ForceLiveCheck = true
+	if mc.LiveCheck != nil {
+		mc.LiveCheck.ForceCheck()
+	}
+}
+
 func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
