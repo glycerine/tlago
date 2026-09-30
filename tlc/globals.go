@@ -6,6 +6,8 @@ import (
 )
 
 const DefaultCheckpointDurationMillis = (30 * 60 * 1000) + 42
+const CoverageIndent = '|'
+const MetaRoot = "states"
 
 var Globals = struct {
 	sync.Mutex
@@ -27,6 +29,10 @@ var Globals = struct {
 	LastCheckpoint             time.Time
 	MainChecker                *ModelChecker
 	Simulator                  *Simulator
+	MetaDir                    string
+	UseView                    bool
+	UseGZIP                    bool
+	Debug                      bool
 	StartTime                  time.Time
 }{
 	EnumBound:                  2000,
@@ -41,6 +47,7 @@ var Globals = struct {
 	Expand:                     true,
 	Warn:                       true,
 	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
+	MetaDir:                    "",
 	LastCheckpoint:             time.Now(),
 	StartTime:                  time.Now(),
 }
@@ -93,6 +100,10 @@ func IncNumWorkers(n int) {
 	Globals.NumWorkers += n
 }
 
+func DecNumWorkers() {
+	IncNumWorkers(-1)
+}
+
 func DoLiveness() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
@@ -109,6 +120,42 @@ func CoverageEnabled() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.CoverageInterval >= 0
+}
+
+func SetMetaDir(dir string) {
+	Globals.Lock()
+	Globals.MetaDir = dir
+	Globals.Unlock()
+}
+
+func MetaDir() string {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.MetaDir
+}
+
+func SetUseView(enabled bool) {
+	Globals.Lock()
+	Globals.UseView = enabled
+	Globals.Unlock()
+}
+
+func UseView() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.UseView
+}
+
+func SetUseGZIP(enabled bool) {
+	Globals.Lock()
+	Globals.UseGZIP = enabled
+	Globals.Unlock()
+}
+
+func UseGZIP() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.UseGZIP
 }
 
 func ForceCheckpoint() {

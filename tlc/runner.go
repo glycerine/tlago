@@ -141,6 +141,7 @@ func (t *TLC) applyGlobals() {
 	Globals.NumWorkers = t.Workers
 	Globals.StartTime = t.StartTime
 	Globals.LastCheckpoint = t.StartTime
+	Globals.MetaDir = t.MetaDir
 	if t.CheckpointDurationMillis > 0 {
 		Globals.CheckpointDurationMillis = t.CheckpointDurationMillis
 	}
