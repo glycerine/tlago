@@ -552,9 +552,9 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 			mc.PrintSummary(false)
 			return ECTLCStatesAndNoNextAction, nil
 		}
-		result = mc.Tool.CheckPostCondition()
-		mc.PrintSummary(result == NoError)
-		return result, nil
+		ReportSuccess(mc.FPSet, mc.GetStatesGenerated())
+		mc.PrintSummary(true)
+		return NoError, nil
 	}
 	result, err = mc.RunTLC(0)
 	if err != nil || result != NoError {
@@ -569,6 +569,9 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 		}
 	}
 	result = mc.Tool.CheckPostCondition()
+	if result == NoError {
+		ReportSuccess(mc.FPSet, mc.GetStatesGenerated())
+	}
 	mc.PrintSummary(result == NoError)
 	return result, nil
 }

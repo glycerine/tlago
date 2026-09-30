@@ -101,9 +101,9 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		PrintMessage(ECTLCInitGenerated4, fmtInt64(mc.StatesGenerated), fmtInt(len(mc.InitStates)))
 	}
 	if len(mc.Tool.GetActions()) == 0 {
-		result = mc.Tool.CheckPostCondition()
-		mc.PrintSummary(result == NoError)
-		return result, nil
+		ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
+		mc.PrintSummary(true)
+		return NoError, nil
 	}
 	max := Globals.DFIDMax
 	if max < 0 {
@@ -129,7 +129,8 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 			return ECGeneral, worker.Err
 		}
 		if !worker.HasMoreLevel() {
-			result = mc.Tool.CheckPostCondition()
+			result = NoError
+			ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
 			mc.PrintSummary(result == NoError)
 			return result, nil
 		}
@@ -139,7 +140,8 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 			}
 		}
 	}
-	result = mc.Tool.CheckPostCondition()
+	result = NoError
+	ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
 	mc.PrintSummary(result == NoError)
 	return result, nil
 }

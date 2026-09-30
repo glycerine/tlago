@@ -573,6 +573,11 @@ large `StateVec` of all initial states. Each init state is checked and inserted
 as it is generated. Fresh runs print `TLC_COMPUTING_INIT` before the functor is
 invoked and then print `TLC_INIT_GENERATED1` or `TLC_INIT_GENERATED2` with
 Java's generated-state pluralization and distinct-state-count rule.
+Successful model-checking runs print `TLC_SUCCESS` from the checker rather than
+from the top-level runner. The payload mirrors Java's collision-probability
+reporting: use only the optimistic probability when it is below `1E-10`;
+otherwise also compute the observed probability from `FPSet.checkFPs()`. DFID
+uses the two-probability path directly, matching Java.
 
 Correctness notes:
 

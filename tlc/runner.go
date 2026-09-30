@@ -180,9 +180,6 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	if err != nil && result.ErrorCode == NoError {
 		result.ErrorCode = ECGeneral
 	}
-	if result.ErrorCode == NoError {
-		PrintMessage(ECTLCSuccess)
-	}
 	if traceRecorder != nil && t.FromCheckpoint == "" {
 		if mcError, ok := traceRecorder.MCErrorTrace(); ok {
 			outputDir := t.TraceSpecOutputDir
