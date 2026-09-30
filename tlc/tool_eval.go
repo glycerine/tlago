@@ -701,8 +701,18 @@ func (t *Tool) ContextsRandomized(expr *OpApplNode, c *Context, s0 *TLCStateMut,
 }
 
 func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, randomized bool) (*ContextEnumerator, error) {
-	vars := make([]any, len(expr.BdedQuantBounds))
-	enums := make([]ValueEnumeration, len(expr.BdedQuantBounds))
+	alen := 0
+	for i := range expr.BdedQuantBounds {
+		if i < len(expr.BdedQuantATuple) && expr.BdedQuantATuple[i] {
+			alen++
+			continue
+		}
+		if i < len(expr.BdedQuantSymbolLists) {
+			alen += len(expr.BdedQuantSymbolLists[i])
+		}
+	}
+	vars := make([]any, 0, alen)
+	enums := make([]ValueEnumeration, 0, alen)
 	for i, bound := range expr.BdedQuantBounds {
 		val, err := t.Eval(bound, c, s0, s1, control, cm)
 		if err != nil {
@@ -713,23 +723,36 @@ func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 			return nil, newTLCError(ECGeneral, "bounded quantifier domain is not enumerable: %s", val)
 		}
 		if i < len(expr.BdedQuantATuple) && expr.BdedQuantATuple[i] {
-			vars[i] = expr.BdedQuantSymbolLists[i]
-		} else if i < len(expr.BdedQuantSymbolLists) && len(expr.BdedQuantSymbolLists[i]) > 0 {
-			vars[i] = expr.BdedQuantSymbolLists[i][0]
-		} else {
-			return nil, newTLCError(ECGeneral, "bounded quantifier has no bound variables")
-		}
-		if randomized {
-			enum, err := randomizedValueEnumeration(enumerable)
+			if i >= len(expr.BdedQuantSymbolLists) || len(expr.BdedQuantSymbolLists[i]) == 0 {
+				return nil, newTLCError(ECGeneral, "bounded tuple quantifier has no bound variables")
+			}
+			enum, err := t.boundValueEnumeration(enumerable, randomized)
 			if err != nil {
 				return nil, err
 			}
-			enums[i] = enum
+			vars = append(vars, expr.BdedQuantSymbolLists[i])
+			enums = append(enums, enum)
+		} else if i < len(expr.BdedQuantSymbolLists) && len(expr.BdedQuantSymbolLists[i]) > 0 {
+			for _, symbol := range expr.BdedQuantSymbolLists[i] {
+				enum, err := t.boundValueEnumeration(enumerable, randomized)
+				if err != nil {
+					return nil, err
+				}
+				vars = append(vars, symbol)
+				enums = append(enums, enum)
+			}
 		} else {
-			enums[i] = enumerable.Elements()
+			return nil, newTLCError(ECGeneral, "bounded quantifier has no bound variables")
 		}
 	}
 	return NewContextEnumerator(vars, enums, c), nil
+}
+
+func (t *Tool) boundValueEnumeration(enumerable Enumerable, randomized bool) (ValueEnumeration, error) {
+	if randomized {
+		return randomizedValueEnumeration(enumerable)
+	}
+	return enumerable.Elements(), nil
 }
 
 func (t *Tool) evalArgs(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) ([]Value, error) {
