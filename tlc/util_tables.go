@@ -403,8 +403,8 @@ type LongObjTable[V any] struct {
 }
 
 func NewLongObjTable[V any](size int) *LongObjTable[V] {
-	if size <= 0 {
-		size = 1
+	if size < 0 {
+		size = 0
 	}
 	return &LongObjTable[V]{
 		length: size,
@@ -423,7 +423,6 @@ func (t *LongObjTable[V]) Size() int {
 }
 
 func (t *LongObjTable[V]) Put(key int64, elem V) int {
-	t.ensure()
 	if t.count >= t.thresh {
 		t.grow()
 	}
@@ -459,16 +458,6 @@ func (t *LongObjTable[V]) Get(key int64) (V, bool) {
 		}
 		loc = (loc + 1) % t.length
 	}
-}
-
-func (t *LongObjTable[V]) ensure() {
-	if t.length == 0 {
-		t.length = 1
-		t.keys = make([]int64, 1)
-		t.elems = make([]V, 1)
-		t.used = make([]bool, 1)
-	}
-	t.thresh = t.length / 2
 }
 
 func (t *LongObjTable[V]) grow() {
