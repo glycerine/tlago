@@ -39,7 +39,7 @@ func JsonDeserialize(path *StringValue) (Value, error) {
 	if path == nil {
 		return nil, newTLCError(ECGeneral, "JsonDeserialize expected a string path")
 	}
-	file, err := os.Open(path.UnquotedString())
+	file, err := os.Open(path.RawString())
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func NDJsonDeserialize(path *StringValue) (Value, error) {
 	if path == nil {
 		return nil, newTLCError(ECGeneral, "ndJsonDeserialize expected a string path")
 	}
-	file, err := os.Open(path.UnquotedString())
+	file, err := os.Open(path.RawString())
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func JsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
 	if err := jsonWriteValue(&b, value); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(path.UnquotedString(), b.Bytes(), 0o644); err != nil {
+	if err := os.WriteFile(path.RawString(), b.Bytes(), 0o644); err != nil {
 		return nil, err
 	}
 	return BoolTrue, nil
@@ -112,24 +112,15 @@ func NDJsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
 	if err := ensureJSONParent(path); err != nil {
 		return nil, err
 	}
-	file, err := os.Create(path.UnquotedString())
+	file, err := os.Create(path.RawString())
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
 	writer := bufio.NewWriter(file)
-	for _, elem := range tuple.Elems {
-		var b bytes.Buffer
-		if err := jsonWriteValue(&b, elem); err != nil {
-			return nil, err
-		}
-		if _, err := writer.Write(b.Bytes()); err != nil {
-			return nil, err
-		}
-		if err := writer.WriteByte('\n'); err != nil {
-			return nil, err
-		}
+	if err := jsonWriteNDJSON(writer, tuple); err != nil {
+		return nil, err
 	}
 	if err := writer.Flush(); err != nil {
 		return nil, err
@@ -147,14 +138,27 @@ func JsonTextSerialize(path *StringValue, payload Value, options Value) (*BoolVa
 		return nil, err
 	}
 	formatString, ok := format.(*StringValue)
-	if !ok || formatString.UnquotedString() != "NDJSON" {
+	if !ok || formatString.RawString() != "NDJSON" {
 		return nil, nil
 	}
-	return NDJsonSerialize(path, payload)
+	tuple := asTupleValue(payload)
+	if tuple == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Serialize", "sequence", ValuesPPR(payload))
+	}
+	file, err := os.OpenFile(path.RawString(), ioUtilsOpenFileFlag(opts), 0o644)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	writer := bufio.NewWriter(file)
+	if err := jsonWriteNDJSON(writer, tuple); err != nil {
+		return nil, err
+	}
+	return BoolTrue, writer.Flush()
 }
 
 func ensureJSONParent(path *StringValue) error {
-	parent := filepath.Dir(path.UnquotedString())
+	parent := filepath.Dir(path.RawString())
 	if parent == "." || parent == "" {
 		return nil
 	}
@@ -168,7 +172,7 @@ func jsonWriteValue(b *bytes.Buffer, value Value) error {
 	case *TupleValue:
 		return jsonWriteTuple(b, v)
 	case *StringValue:
-		return jsonWriteString(b, v.UnquotedString())
+		return jsonWriteString(b, v.RawString())
 	case *ModelValue:
 		return jsonWriteString(b, v.String())
 	case *IntValue:
@@ -288,6 +292,22 @@ func jsonWriteTuple(b *bytes.Buffer, value *TupleValue) error {
 	return nil
 }
 
+func jsonWriteNDJSON(writer *bufio.Writer, tuple *TupleValue) error {
+	for _, elem := range tuple.Elems {
+		var b bytes.Buffer
+		if err := jsonWriteValue(&b, elem); err != nil {
+			return err
+		}
+		if _, err := writer.Write(b.Bytes()); err != nil {
+			return err
+		}
+		if err := writer.WriteByte('\n'); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func jsonWriteFcn(b *bytes.Buffer, value *FcnRcdValue) error {
 	if jsonFcnIsSequence(value) {
 		return jsonWriteFcnArray(b, value)
@@ -304,7 +324,7 @@ func jsonWriteFcnObject(b *bytes.Buffer, value *FcnRcdValue) error {
 		}
 		key := dval.String()
 		if sv, ok := dval.(*StringValue); ok {
-			key = sv.UnquotedString()
+			key = sv.RawString()
 		}
 		if err := jsonWriteString(b, key); err != nil {
 			return err

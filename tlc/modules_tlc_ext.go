@@ -26,7 +26,7 @@ func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*Bool
 	if err == nil {
 		return BoolFalse, nil
 	}
-	if err.Error() == expected.UnquotedString() {
+	if err.Error() == expected.RawString() {
 		return BoolTrue, nil
 	}
 	return BoolFalse, nil
@@ -245,7 +245,7 @@ func TLCExtTLCModelValue(value Value) (Value, error) {
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "ModelValue", "string", ValuesPPR(value))
 	}
-	return AddModelValue(str.UnquotedString()), nil
+	return AddModelValue(str.RawString()), nil
 }
 
 func TLCExtTLCFP(value Value) *IntValue {
@@ -389,10 +389,10 @@ func TLCTraceSerialize(value Value, absolutePath *StringValue) (Value, error) {
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "_TLCTraceSerialize expected a string path")
 	}
-	if err := os.MkdirAll(filepath.Dir(absolutePath.UnquotedString()), 0o755); err != nil && !errors.Is(err, os.ErrExist) {
+	if err := os.MkdirAll(filepath.Dir(absolutePath.RawString()), 0o755); err != nil && !errors.Is(err, os.ErrExist) {
 		return nil, err
 	}
-	file, err := os.Create(absolutePath.UnquotedString())
+	file, err := os.Create(absolutePath.RawString())
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +414,7 @@ func TLCTraceDeserialize(absolutePath *StringValue) (Value, error) {
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "_TLCTraceDeserialize expected a string path")
 	}
-	file, err := os.Open(absolutePath.UnquotedString())
+	file, err := os.Open(absolutePath.RawString())
 	if errors.Is(err, os.ErrNotExist) {
 		return EmptyRecord, nil
 	}

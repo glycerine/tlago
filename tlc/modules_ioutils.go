@@ -23,7 +23,7 @@ func IOUtilsIOSerialize(value Value, absolutePath *StringValue, compress *BoolVa
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "IOSerialize expected a string path")
 	}
-	path := absolutePath.UnquotedString()
+	path := absolutePath.RawString()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func IOUtilsIODeserialize(absolutePath *StringValue, compress *BoolValue) (Value
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "IODeserialize expected a string path")
 	}
-	file, err := os.Open(absolutePath.UnquotedString())
+	file, err := os.Open(absolutePath.RawString())
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +85,9 @@ func IOUtilsSerialize(payload Value, dest Value, options Value) (Value, error) {
 	case "NDJSON":
 		path, ok := dest.(*StringValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "second argument of Serialize must be a string for NDJSON")
+			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(dest))
 		}
-		return NDJsonSerialize(path, payload)
+		return JsonTextSerialize(path, payload, options)
 	default:
 		return ValUndef, nil
 	}
@@ -105,7 +105,7 @@ func IOUtilsDeserialize(src Value, options Value) (Value, error) {
 	if !ok {
 		return ioUtilsResult(1, "", "Deserialize error invalid parameters: source is not a string"), nil
 	}
-	data, err := os.ReadFile(path.UnquotedString())
+	data, err := os.ReadFile(path.RawString())
 	if err != nil {
 		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+err.Error()), nil
 	}
@@ -133,7 +133,7 @@ func IOUtilsAtoi(value Value) (Value, error) {
 	if !ok {
 		return nil, newTLCError(ECGeneral, "atoi expected a string, got %s", value)
 	}
-	i, err := strconv.ParseInt(str.UnquotedString(), 10, 32)
+	i, err := strconv.ParseInt(str.RawString(), 10, 32)
 	if err != nil {
 		return nil, newTLCError(ECGeneral, "atoi expected a string containing an integer, got %s", value)
 	}
@@ -204,7 +204,7 @@ func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
 		return ioUtilsResult(1, "", "Serialize error invalid parameters: payload is not a string")
 	}
 	flag := ioUtilsOpenFileFlag(opts)
-	filePath := path.UnquotedString()
+	filePath := path.RawString()
 	if flag&os.O_CREATE != 0 {
 		if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil && filepath.Dir(filePath) != "." {
 			return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
@@ -215,7 +215,7 @@ func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
 		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
 	}
 	defer file.Close()
-	if _, err := file.WriteString(text.UnquotedString()); err != nil {
+	if _, err := file.WriteString(text.RawString()); err != nil {
 		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
 	}
 	return ioUtilsResult(0, "Finish writing to the file with success!", "")
@@ -255,7 +255,7 @@ func ioUtilsResult(exitValue int32, stdout string, stderr string) Value {
 func ioUtilsRecordString(record *RecordValue, key string) string {
 	value := record.Select(NewStringValue(key))
 	if str, ok := value.(*StringValue); ok {
-		return str.UnquotedString()
+		return str.RawString()
 	}
 	return ""
 }
@@ -272,7 +272,7 @@ func ioUtilsRecordTupleStrings(record *RecordValue, key string) []string {
 		if !ok {
 			continue
 		}
-		out = append(out, str.UnquotedString())
+		out = append(out, str.RawString())
 	}
 	return out
 }
@@ -288,7 +288,7 @@ func ioUtilsTupleStrings(name string, value Value) ([]string, error) {
 		if !ok {
 			return nil, newTLCError(ECGeneral, "%s expected a sequence of strings, got %s", name, elem)
 		}
-		out = append(out, str.UnquotedString())
+		out = append(out, str.RawString())
 	}
 	return out, nil
 }
@@ -307,7 +307,7 @@ func ioUtilsEnvRecord(value Value) (map[string]string, error) {
 
 func ioUtilsValueString(value Value) string {
 	if str, ok := value.(*StringValue); ok {
-		return str.UnquotedString()
+		return str.RawString()
 	}
 	return value.String()
 }

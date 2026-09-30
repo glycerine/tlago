@@ -427,6 +427,13 @@ func (v *StringValue) UnquotedString() string {
 	return tlaStringPrintVersion(v.Val.String())
 }
 
+func (v *StringValue) RawString() string {
+	if v == nil || v.Val == nil {
+		return ""
+	}
+	return v.Val.String()
+}
+
 func tlaStringPrintVersion(s string) string {
 	var b strings.Builder
 	for _, c := range utf16.Encode([]rune(s)) {
