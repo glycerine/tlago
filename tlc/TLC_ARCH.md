@@ -538,6 +538,13 @@ Next-state generation flows through:
 - `processUnchanged`
 - assignment/action item list evaluation.
 
+Go represents Java's `IStateFunctor` and `INextStateFunctor` with concrete
+callback structs, not interfaces. Their unsupported operations should remain
+explicit errors: Java has no default for `IStateFunctor.addElement` or
+`INextStateFunctor.addElement(predecessor, action, successor)`, while
+`setElement`, plain next-state `addElement`, and `hasStates` are default
+unsupported operations.
+
 Key semantics:
 
 - State variables are assigned by primed variable equalities.

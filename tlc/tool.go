@@ -27,7 +27,7 @@ func (f *StateFunctor) AddElement(state *TLCStateMut) (any, error) {
 	if f != nil && f.AddElementFunc != nil {
 		return f.AddElementFunc(state)
 	}
-	return nil, nil
+	return nil, newTLCError(ECGeneral, "IStateFunctor.AddElement is unsupported")
 }
 
 func (f *StateFunctor) SetElement(state *TLCStateMut) (any, error) {
@@ -75,7 +75,7 @@ func (f *NextStateFunctor) AddNextElement(curState *TLCStateMut, action *Action,
 	if f != nil && f.AddNextElementFunc != nil {
 		return f.AddNextElementFunc(curState, action, succState)
 	}
-	return nil, nil
+	return nil, newTLCError(ECGeneral, "INextStateFunctor.AddElement is unsupported")
 }
 
 func (f *NextStateFunctor) IncrementStatesGenerated(count int64) {
