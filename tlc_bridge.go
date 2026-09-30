@@ -1,6 +1,7 @@
 package tlago
 
 import (
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -80,6 +81,64 @@ var bridgeStandardModuleMembers = map[string][]string{
 	},
 }
 
+var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
+	"Naturals": setOf(
+		"Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..",
+	),
+	"Integers": setOf(
+		"Int", "-.",
+	),
+	"Sequences": setOf(
+		"Seq", "Len", "Head", "Tail", "Append", "Concat", "\\o", "SubSeq", "SelectSeq",
+	),
+	"FiniteSets": setOf(
+		"IsFiniteSet", "Cardinality",
+	),
+	"Bags": setOf(
+		"EmptyBag", "IsABag", "BagCardinality", "BagIn", "CopiesIn", "BagCup", "\\oplus",
+		"BagDiff", "\\ominus", "BagUnion", "SqSubseteq", "\\sqsubseteq", "BagOfAll",
+		"BagToSet", "SetToBag",
+	),
+	"TLC": setOf(
+		"Print", "PrintT", "Assert", "JavaTime",
+		"TLCGet", "TLCSet", "MakeFcn", "CombineFcn", ":>", "@@", "Permutations",
+		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
+	),
+	"Randomization": setOf(
+		"RandomSubset", "RandomSetOfSubsets", "RandomSubsetSet",
+	),
+	"Json": setOf(
+		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
+		"ndJsonSerialize", "ndJsonDeserialize",
+	),
+	"_JsonTrace": setOf(
+		"_TLCState",
+	),
+	"_TLCTrace": setOf(
+		"_TLCTraceDeserialize", "_TLCTraceSerialize", "_TLCState",
+	),
+	"IOUtils": setOf(
+		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
+		"IOEnvExec", "IOExecTemplate", "IOEnvExecTemplate", "IOEnv", "atoi",
+	),
+	"TLCExt": setOf(
+		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
+		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
+		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
+	),
+	"_Possible": setOf(
+		"_Track", "_Counts", "_CheckName", "_PrintCounts",
+	),
+}
+
+func setOf(values ...string) map[string]bool {
+	out := make(map[string]bool, len(values))
+	for _, value := range values {
+		out[value] = true
+	}
+	return out
+}
+
 // BuildTLCTool converts the production Go SANY semantic tree into the TLC
 // runtime tree used by the mechanical TLC port.
 func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics) {
@@ -137,12 +196,38 @@ func (b *tlcBridge) installDefinitions() {
 		if def == nil {
 			continue
 		}
+		if isNativeStandardDefinitionOverrideName(name, def) {
+			continue
+		}
 		opDef := b.convertDefinitionAs(name, def)
 		if opDef == nil {
 			continue
 		}
 		b.define(opDef.Symbol, opDef)
 	}
+}
+
+func isNativeStandardDefinitionOverrideName(name string, def *Definition) bool {
+	if def == nil {
+		return false
+	}
+	member := name
+	if i := strings.LastIndex(member, "!"); i >= 0 {
+		member = member[i+1:]
+	}
+	module := moduleNameForSourcePosition(def.SourcePosition())
+	if module == "" {
+		return false
+	}
+	return bridgeNativeOverrideModuleMembers[module][member]
+}
+
+func moduleNameForSourcePosition(pos Position) string {
+	if pos.File == "" {
+		return ""
+	}
+	name := filepath.Base(pos.File)
+	return strings.TrimSuffix(name, filepath.Ext(name))
 }
 
 func (b *tlcBridge) installConfigConstants() {

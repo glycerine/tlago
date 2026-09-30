@@ -1,12 +1,20 @@
 package tlago
 
+import (
+	"embed"
+	"strings"
+)
+
+//go:embed test_vectors/java-sany/StandardModules/*.tla
+var embeddedJavaStandardModules embed.FS
+
 type LoadOptions struct {
 	LibraryPaths         []string
 	PreferLibraryModules bool
 	ExtraModules         []string
 }
 
-var standardModules = map[string]string{
+var standardModules = loadStandardModules(map[string]string{
 	"Naturals": `---- MODULE Naturals ----
 CONSTANT Nat
 ====`,
@@ -208,4 +216,27 @@ RuleInvImplication == TRUE
 RuleStepSimulation == TRUE
 PropositionalTemporalLogic == TRUE
 ====`,
+})
+
+func loadStandardModules(fallbacks map[string]string) map[string]string {
+	out := make(map[string]string, len(fallbacks)+32)
+	for name, source := range fallbacks {
+		out[name] = source
+	}
+	entries, err := embeddedJavaStandardModules.ReadDir("test_vectors/java-sany/StandardModules")
+	if err != nil {
+		return out
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tla") {
+			continue
+		}
+		data, err := embeddedJavaStandardModules.ReadFile("test_vectors/java-sany/StandardModules/" + entry.Name())
+		if err != nil {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".tla")
+		out[name] = string(data)
+	}
+	return out
 }

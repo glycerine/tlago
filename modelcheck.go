@@ -466,6 +466,9 @@ func definitionsByName(spec *Spec) map[string]*Definition {
 		}
 		for i := range mod.Definitions {
 			def := &mod.Definitions[i]
+			if isNativeStandardDefinitionOverrideName(def.Name, def) {
+				continue
+			}
 			if moduleName != "" {
 				defs[moduleName+"!"+def.Name] = def
 			}
@@ -508,6 +511,9 @@ func addInstanceDefinitions(defs map[string]*Definition, spec *Spec, inst Instan
 		}
 		def := instantiatedDefinition(&mod.Definitions[i], inst.Substitutions)
 		if def == nil {
+			continue
+		}
+		if isNativeStandardDefinitionOverrideName(def.Name, def) {
 			continue
 		}
 		qualifier := inst.qualifier()
