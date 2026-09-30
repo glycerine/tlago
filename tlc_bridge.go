@@ -303,10 +303,7 @@ func (b *tlcBridge) installModelTargets() {
 		}
 	}
 	for _, name := range b.cfg.GetProperties() {
-		if action := b.actionFromDefinition(name, false); action != nil {
-			b.tool.Temporals = append(b.tool.Temporals, action)
-			b.tool.TemporalNames = append(b.tool.TemporalNames, name)
-		}
+		b.installPropertyTarget(name)
 	}
 	for _, name := range b.cfg.GetConstraints() {
 		if node := b.nodeForDefinition(name); node != nil {
@@ -335,6 +332,84 @@ func (b *tlcBridge) installModelTargets() {
 		if action := b.actionFromDefinition(name, false); action != nil {
 			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
 		}
+	}
+}
+
+func (b *tlcBridge) installPropertyTarget(name string) {
+	def := b.defs[name]
+	if def == nil {
+		b.diags = append(b.diags, errorAt(Position{}, "E7016", "property operator %s not found", name))
+		return
+	}
+	if len(def.Params) != 0 {
+		b.diags = append(b.diags, errorAt(def.Pos, "E7017", "property operator %s must be zero-arity", name))
+		return
+	}
+	b.installPropertyExpr(name, name, def.Expr, tlc.EmptyContext)
+}
+
+func (b *tlcBridge) installPropertyExpr(name string, configName string, expr Expr, con *tlc.Context) {
+	node := b.convertExpr(expr)
+	if node == nil {
+		return
+	}
+	b.installPropertyNode(name, configName, node, con)
+}
+
+func (b *tlcBridge) installPropertyNode(name string, configName string, node tlc.SemanticNode, con *tlc.Context) {
+	if con == nil {
+		con = tlc.EmptyContext
+	}
+	if appl, ok := node.(*tlc.OpApplNode); ok && appl != nil && appl.Operator != nil {
+		opcode := 0
+		if appl.Operator.Name != nil {
+			opcode = tlc.GetOpCode(appl.Operator.Name)
+		}
+		switch opcode {
+		case tlc.OpcodeCL, tlc.OpcodeLand:
+			for _, arg := range appl.Args {
+				b.installPropertyNode(tlc.SemanticString(arg), configName, arg, con)
+			}
+			return
+		case tlc.OpcodeBox:
+			if len(appl.Args) == 0 {
+				return
+			}
+			boxArg := appl.Args[0]
+			if boxAppl, ok := boxArg.(*tlc.OpApplNode); ok && boxAppl.Operator != nil && tlc.GetOpCode(boxAppl.Operator.Name) == tlc.OpcodeSA {
+				action := tlc.NewAction(boxArg, con, configName)
+				b.tool.ImpliedActions = append(b.tool.ImpliedActions, action)
+				b.tool.ImpliedActNames = append(b.tool.ImpliedActNames, name)
+				return
+			}
+			if b.tool.GetLevelBound(boxArg, con) < tlc.TLCLevelAction {
+				action := tlc.NewAction(boxArg, con, configName)
+				b.tool.Invariants = append(b.tool.Invariants, action)
+				b.tool.InvariantNames = append(b.tool.InvariantNames, name)
+				return
+			}
+			action := tlc.NewAction(appl, con, configName)
+			b.tool.ImpliedTemporals = append(b.tool.ImpliedTemporals, action)
+			b.tool.ImpliedTempNames = append(b.tool.ImpliedTempNames, name)
+			return
+		case tlc.OpcodeNop:
+			if len(appl.Args) > 0 {
+				b.installPropertyNode(name, configName, appl.Args[0], con)
+				return
+			}
+		}
+	}
+	action := tlc.NewAction(node, con, configName)
+	switch b.tool.GetLevelBound(node, con) {
+	case tlc.TLCLevelConstant, tlc.TLCLevelState:
+		b.tool.ImpliedInits = append(b.tool.ImpliedInits, action)
+		b.tool.ImpliedInitNames = append(b.tool.ImpliedInitNames, name)
+	case tlc.TLCLevelAction:
+		b.tool.ImpliedActions = append(b.tool.ImpliedActions, action)
+		b.tool.ImpliedActNames = append(b.tool.ImpliedActNames, name)
+	case tlc.TLCLevelTemporal:
+		b.tool.ImpliedTemporals = append(b.tool.ImpliedTemporals, action)
+		b.tool.ImpliedTempNames = append(b.tool.ImpliedTempNames, name)
 	}
 }
 
