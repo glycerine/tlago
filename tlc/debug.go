@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const maxJavaInt = 1<<31 - 1
@@ -1163,15 +1164,83 @@ func parseBreakpointHits(hitCondition string) int {
 }
 
 type TLCDebugger struct {
-	Tool        *Tool
-	Granularity DebugGranularity
-	Direction   DebugStepDirection
-	Step        DebugStep
-	Breakpoints *InsMap[string, []*TLCSourceBreakpoint]
-	HaltSpec    *TLCSourceBreakpoint
-	HaltUnsat   *TLCSourceBreakpoint
-	HaltExp     bool
-	HaltInv     bool
+	mu                sync.Mutex
+	Tool              *Tool
+	Granularity       DebugGranularity
+	Direction         DebugStepDirection
+	Step              DebugStep
+	Stack             []*TLCDebuggerFrame
+	SourceFrame       *TLCStackFrame
+	Breakpoints       *InsMap[string, []*TLCSourceBreakpoint]
+	HaltSpec          *TLCSourceBreakpoint
+	HaltUnsat         *TLCSourceBreakpoint
+	HaltExp           bool
+	HaltInv           bool
+	ExecutionIsHalted bool
+}
+
+type TLCDebuggerFrame struct {
+	Base      *TLCStackFrame
+	State     *TLCStateStackFrame
+	Action    *TLCActionStackFrame
+	Init      *TLCInitStatesStackFrame
+	Next      *TLCNextStatesStackFrame
+	Synthetic *TLCSyntheticStateStackFrame
+}
+
+func NewDebuggerBaseFrame(frame *TLCStackFrame) *TLCDebuggerFrame {
+	return &TLCDebuggerFrame{Base: frame}
+}
+
+func NewDebuggerStateFrame(frame *TLCStateStackFrame) *TLCDebuggerFrame {
+	out := &TLCDebuggerFrame{State: frame}
+	if frame != nil {
+		out.Base = &frame.TLCStackFrame
+	}
+	return out
+}
+
+func NewDebuggerActionFrame(frame *TLCActionStackFrame) *TLCDebuggerFrame {
+	out := &TLCDebuggerFrame{Action: frame}
+	if frame != nil {
+		out.State = &frame.TLCStateStackFrame
+		out.Base = &frame.TLCStackFrame
+	}
+	return out
+}
+
+func NewDebuggerInitFrame(frame *TLCInitStatesStackFrame) *TLCDebuggerFrame {
+	out := &TLCDebuggerFrame{Init: frame}
+	if frame != nil {
+		out.Base = &frame.TLCStackFrame
+	}
+	return out
+}
+
+func NewDebuggerNextFrame(frame *TLCNextStatesStackFrame) *TLCDebuggerFrame {
+	out := &TLCDebuggerFrame{Next: frame}
+	if frame != nil {
+		out.State = &frame.TLCStateStackFrame
+		out.Base = &frame.TLCStackFrame
+	}
+	return out
+}
+
+func NewDebuggerSyntheticFrame(frame *TLCSyntheticStateStackFrame) *TLCDebuggerFrame {
+	out := &TLCDebuggerFrame{Synthetic: frame}
+	if frame != nil {
+		out.State = &frame.TLCStateStackFrame
+		out.Base = &frame.TLCStackFrame
+	}
+	return out
+}
+
+func (f *TLCDebuggerFrame) MatchesNode(node SemanticNode) bool {
+	return f != nil && f.Base != nil && f.Base.MatchesNode(node)
+}
+
+func (f *TLCDebuggerFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
+	return f != nil && f.Base != nil && f.Base.MatchesBreakpoint(bp)
 }
 
 func NewTLCDebugger(tool *Tool) *TLCDebugger {
@@ -1204,4 +1273,185 @@ func (d *TLCDebugger) GetGranularity() DebugGranularity {
 		return DebugGranularityFormula
 	}
 	return d.Granularity
+}
+
+func (d *TLCDebugger) TopFrame() *TLCDebuggerFrame {
+	if d == nil || len(d.Stack) == 0 {
+		return nil
+	}
+	return d.Stack[len(d.Stack)-1]
+}
+
+func (d *TLCDebugger) topBaseFrame() *TLCStackFrame {
+	if top := d.TopFrame(); top != nil {
+		return top.Base
+	}
+	return nil
+}
+
+func (d *TLCDebugger) pushDebuggerFrame(frame *TLCDebuggerFrame) *TLCDebugger {
+	if d == nil || frame == nil {
+		return d
+	}
+	d.Stack = append(d.Stack, frame)
+	return d
+}
+
+func (d *TLCDebugger) popDebuggerFrame() *TLCDebuggerFrame {
+	if d == nil || len(d.Stack) == 0 {
+		return nil
+	}
+	idx := len(d.Stack) - 1
+	frame := d.Stack[idx]
+	d.Stack[idx] = nil
+	d.Stack = d.Stack[:idx]
+	return frame
+}
+
+func (d *TLCDebugger) StackFrames() []*TLCStackFrame {
+	if d == nil || len(d.Stack) == 0 {
+		return nil
+	}
+	out := make([]*TLCStackFrame, 0, len(d.Stack))
+	for i := len(d.Stack) - 1; i >= 0; i-- {
+		if frame := d.Stack[i]; frame != nil && frame.Base != nil {
+			out = append(out, frame.Base)
+		}
+	}
+	return out
+}
+
+func (d *TLCDebugger) HaltExecution(frame *TLCStackFrame, level ...int) {
+	if d == nil {
+		return
+	}
+	d.ExecutionIsHalted = true
+	if frame != nil {
+		d.SourceFrame = frame
+	}
+}
+
+func (d *TLCDebugger) PushFrame(tool *Tool, expr SemanticNode, c *Context) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCStackFrameNoException(d.topBaseFrame(), expr, c, tool)
+	d.pushDebuggerFrame(NewDebuggerBaseFrame(frame))
+	d.HaltExecution(frame, len(d.Stack))
+	return d
+}
+
+func (d *TLCDebugger) PushStateFrame(tool *Tool, expr SemanticNode, c *Context, state *TLCStateMut) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCStateStackFrameNoException(d.topBaseFrame(), expr, c, tool, state)
+	d.pushDebuggerFrame(NewDebuggerStateFrame(frame))
+	d.HaltExecution(&frame.TLCStackFrame, len(d.Stack))
+	return d
+}
+
+func (d *TLCDebugger) PushActionFrame(tool *Tool, expr SemanticNode, c *Context, predecessor *TLCStateMut, action *Action, state *TLCStateMut) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCActionStackFrameNoException(d.topBaseFrame(), expr, c, tool, predecessor, action, state)
+	d.pushDebuggerFrame(NewDebuggerActionFrame(frame))
+	d.HaltExecution(&frame.TLCStackFrame, len(d.Stack))
+	return d
+}
+
+func (d *TLCDebugger) PopFrame(tool *Tool, expr SemanticNode, c *Context) *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	top := d.TopFrame()
+	if top != nil && top.Base == d.SourceFrame {
+		d.SourceFrame = nil
+		d.Step = DebugStepCommandIn
+	}
+	_ = d.popDebuggerFrame()
+	return d
+}
+
+func (d *TLCDebugger) PopValueFrame(tool *Tool, expr SemanticNode, c *Context, value Value) *TLCDebugger {
+	d = d.PopFrame(tool, expr, c)
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.MatchesNode(expr) {
+		top.Base.SetValue(value)
+	}
+	return d
+}
+
+func (d *TLCDebugger) PushNextStatesFrame(tool *Tool, functor *NextStateFunctor, state *TLCStateMut) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	next := UnknownAction
+	if tool != nil && tool.GetNextStateSpec() != nil {
+		next = tool.GetNextStateSpec()
+	}
+	frame := NewTLCNextStatesStackFrame(d.topBaseFrame(), next.Pred, next.Con, tool, state, functor, next)
+	d.pushDebuggerFrame(NewDebuggerNextFrame(frame))
+	return d
+}
+
+func (d *TLCDebugger) PopNextStatesFrame(tool *Tool, functor *NextStateFunctor, state *TLCStateMut) *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	top := d.TopFrame()
+	if d.HaltSpec != nil && top != nil && top.MatchesBreakpoint(d.HaltSpec) {
+		d.HaltExecution(top.Base)
+	}
+	_ = d.popDebuggerFrame()
+	return d
+}
+
+func (d *TLCDebugger) PushInitStatesFrame(tool *Tool, functor *StateFunctor) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	initAction := UnknownAction
+	if tool != nil {
+		inits := tool.GetInitStateSpec()
+		if len(inits) > 0 && inits[0] != nil {
+			initAction = inits[0]
+		}
+	}
+	frame := NewTLCInitStatesStackFrame(d.topBaseFrame(), initAction.Pred, initAction.Con, tool, functor)
+	d.pushDebuggerFrame(NewDebuggerInitFrame(frame))
+	return d
+}
+
+func (d *TLCDebugger) PopInitStatesFrame(tool *Tool, functor *StateFunctor) *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	top := d.TopFrame()
+	if d.HaltSpec != nil && top != nil && top.Init != nil && top.Init.GetStates().Size() > 0 && top.MatchesBreakpoint(d.HaltSpec) {
+		d.HaltExecution(top.Base)
+	}
+	_ = d.popDebuggerFrame()
+	return d
 }

@@ -2106,8 +2106,12 @@ Important Java classes:
   the functor.
 - `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
   stack-frame list, stepping state, granularity, halt flags, and the connection
-  to the debug adapter. The protocol transport is less important than preserving
-  where model-checker/evaluator state is captured.
+  to the debug adapter. The Go port keeps a concrete `TLCDebuggerFrame` union
+  rather than an `IDebugTarget` interface; each pushed frame preserves its
+  concrete kind while exposing the embedded base `TLCStackFrame` for common
+  push/pop, source-frame, and breakpoint operations. The protocol transport is
+  less important than preserving where model-checker/evaluator state is
+  captured.
 - `DebugTLCVariable`: adapts TLC `Value` objects into debugger variables.
   Scalars expose `type` and `value`; enumerable/function/record/tuple values
   receive a non-zero `variablesReference` and lazily produce children.
