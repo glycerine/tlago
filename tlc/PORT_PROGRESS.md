@@ -46,6 +46,7 @@
 - Already audited recently; do not add generic constrained-state writer fallbacks in worker successor processing: Java only writes the specific failed state/action constraints it finds.
 - Already audited recently; do not make DFID worker stack sizing or stop/error handling friendlier than Java: worker arrays are sized from `Globals.DFIDMax`, init exhaustion goes through `DFIDModelChecker.SetStop(1)`, the inner DFS loop is keyed only by `isLeaf`, and panic recovery records a Java-style `GENERAL` worker failure.
 - Already audited recently; do not run DFID workers synchronously from `ModelCheck`: `DFIDModelChecker.RunTLC` now mirrors Java's shared `AbstractChecker.runTLC` shape by starting the worker, running periodic liveness/checkpoint work, and emitting DFID progress/coverage while the depth search is active.
+- Already audited recently; do not move BFS progress/depth/coverage back into `DoPeriodicWork`: Java keeps checkpoint/liveness/periodic-condition work there and emits progress, depth cutoff, coverage, and waiting from `runTLCContinueDoing`.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -95,6 +96,7 @@
   - `ModelChecker.doNextFailed` now preserves `EvalException` error codes/parameters and Java's keep-call-stack behavior for known fatal/system-like TLC errors.
   - Checkpoint recovery now rebinds the checker metadir and all trace fragments to `FromCheckpoint`, matching Java's `FileUtil.makeMetaDir(..., fromChkpt)` behavior for resumed runs.
   - BFS `RunTLC` now follows Java's `keepCallStack` return convention and `ModelCheck` replays next-state failures with `CallStackTool` before final summary output.
+  - BFS `RunTLC` now follows Java's periodic-loop ordering: an initial worker grace wait, then `DoPeriodicWork`, then progress/depth/coverage continuation, then the progress-interval wait.
   - Initial-state exceptions now print the Java-shaped init failure message and replay init generation with `CallStackTool`, including fingerprint-exception handling.
   - Periodic-work liveness/periodic-condition failures now leave the state queue suspended for outer termination, matching Java's error-return path.
   - DFID clean termination now reports success instead of `GENERAL`, and DFID next-state replay can run through `CallStackTool` like Java's `DFIDModelChecker`.

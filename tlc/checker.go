@@ -1016,43 +1016,76 @@ func (mc *ModelChecker) waitForWorkersWithPeriodicWork(maxDepth int) (int, error
 	go func() {
 		done <- mc.joinWorkers()
 	}()
-	interval := ProgressInterval()
-	if interval <= 0 {
-		return NoError, <-done
+	select {
+	case err := <-done:
+		return NoError, err
+	case <-time.After(3 * time.Second):
 	}
+	interval := ProgressInterval()
 	coverageCountdown := periodicCoverageCountdown(interval)
-	timer := time.NewTimer(interval)
-	defer timer.Stop()
 	for {
+		result, err := mc.DoPeriodicWork()
+		if err != nil || result != NoError {
+			if mc.StateQueue != nil {
+				mc.StateQueue.FinishAll()
+			}
+			joinErr := <-done
+			if err != nil {
+				return result, err
+			}
+			return result, joinErr
+		}
+		if mc.isModelCheckerDone() {
+			return NoError, <-done
+		}
+		mc.runTLCContinueDoing(coverageCountdown, maxDepth)
+		if coverageCountdown == 0 {
+			coverageCountdown = periodicCoverageCountdown(interval)
+		} else if coverageCountdown > 0 {
+			coverageCountdown--
+		}
+		if mc.isModelCheckerDone() {
+			return NoError, <-done
+		}
+		if interval <= 0 {
+			select {
+			case err := <-done:
+				return NoError, err
+			default:
+				continue
+			}
+		}
+		timer := time.NewTimer(interval)
 		select {
 		case err := <-done:
+			timer.Stop()
 			return NoError, err
 		case <-timer.C:
-			result, err := mc.DoPeriodicWork()
-			if err != nil || result != NoError {
-				if mc.StateQueue != nil {
-					mc.StateQueue.FinishAll()
-				}
-				joinErr := <-done
-				if err != nil {
-					return result, err
-				}
-				return result, joinErr
-			}
-			if maxDepth > 0 && mc.GetProgress() > int64(maxDepth) {
-				if mc.StateQueue != nil {
-					mc.StateQueue.FinishAll()
-				}
-				return NoError, <-done
-			}
-			if coverageCountdown == 0 {
-				mc.reportPeriodicCoverage()
-				coverageCountdown = periodicCoverageCountdown(interval)
-			} else if coverageCountdown > 0 {
-				coverageCountdown--
-			}
-			timer.Reset(interval)
 		}
+	}
+}
+
+func (mc *ModelChecker) isModelCheckerDone() bool {
+	if mc == nil || mc.AbstractChecker == nil {
+		return true
+	}
+	mc.mu.Lock()
+	done := mc.Done
+	mc.mu.Unlock()
+	return done
+}
+
+func (mc *ModelChecker) runTLCContinueDoing(count int, depth int) {
+	mc.PrintProgressStats(time.Time{}, false)
+	if depth > 0 && mc.GetProgress() > int64(depth) {
+		if mc.StateQueue != nil {
+			mc.StateQueue.FinishAll()
+		}
+		mc.SetDone()
+		return
+	}
+	if count == 0 {
+		mc.reportPeriodicCoverage()
 	}
 }
 
@@ -1094,7 +1127,6 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 	if mc == nil {
 		return NoError, nil
 	}
-	mc.PrintProgressStats(time.Time{}, false)
 	createCheckpoint := DoCheckPoint()
 	var periodic SemanticNode
 	if mc.Tool != nil {
