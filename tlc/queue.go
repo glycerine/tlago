@@ -112,6 +112,7 @@ type MemStateQueue struct {
 }
 
 const memStateQueueInitialSize = 4096
+const maxJavaQueueLength = int64(1<<31 - 1)
 
 func NewMemStateQueue(metaDir ...string) *MemStateQueue {
 	diskdir := ""
@@ -377,6 +378,9 @@ func (q *MemStateQueue) isAvailLocked() bool {
 }
 
 func (q *MemStateQueue) enqueueInner(state *TLCStateMut) {
+	if q.len > maxJavaQueueLength {
+		panic(newTLCErrorCode(ECSystemErrorWritingStates, "queue", "Amount of states exceeds internal storage"))
+	}
 	if q.len == int64(len(q.states)) {
 		q.grow()
 	}
