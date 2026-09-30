@@ -43,6 +43,7 @@
 - Already audited recently; do not force LiveWorker SCC stacks to memory-only: `getStack` now mirrors Java's synchronized graph-size/free-memory threshold and selects `SynchronousDiskIntStack` when the liveness graph is large.
 - Already audited recently; do not replace disk-graph liveness path BFS queues with Go slices: `DiskGraph.GetPath` and `TableauDiskGraph.GetPath` now use `IntQueue` record streams like Java.
 - Already audited recently; do not loosen worker trace checkpoint commit errors: `Worker.commitChkpt` now reports Java's `Trace.commitChkpt: cannot delete ...` text for delete and rename failures.
+- Already audited recently; do not add generic constrained-state writer fallbacks in worker successor processing: Java only writes the specific failed state/action constraints it finds.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -154,6 +155,7 @@
   - `LiveWorker` now selects between memory and disk-backed SCC stacks through the Java synchronized `getStack` threshold algorithm.
   - Disk-backed liveness path reconstruction now uses Java `MemIntQueue` BFS record streams in both non-tableau and tableau graph paths.
   - Worker trace checkpoint commit errors now mirror Java's `Trace.commitChkpt` delete/rename failure text.
+  - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

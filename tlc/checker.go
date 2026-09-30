@@ -1511,14 +1511,12 @@ func (mc *ModelChecker) writeConstrainedTransitionReasons(curState *TLCStateMut,
 	if mc == nil || mc.Tool == nil || mc.AllStateWriter == nil {
 		return nil
 	}
-	wrote := false
 	for _, constraint := range mc.Tool.GetModelConstraints() {
 		ok, err := mc.Tool.IsInModelForConstraint(constraint, succState)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			wrote = true
 			if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
 				return err
 			}
@@ -1530,14 +1528,10 @@ func (mc *ModelChecker) writeConstrainedTransitionReasons(curState *TLCStateMut,
 			return err
 		}
 		if !ok {
-			wrote = true
 			if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
 				return err
 			}
 		}
-	}
-	if !wrote {
-		return mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action)
 	}
 	return nil
 }
