@@ -1733,6 +1733,9 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
   records and `ptrs_N` for `(fingerprint, tableau-index, node-file-pointer)`.
 - write duplicate nodes without rewriting older records; the in-memory pointer
   table determines the distinguishable graph size.
+- write new records at the current file pointer, not unconditionally at EOF.
+  After recovery Java seeks both graph files back to checkpoint positions and
+  subsequent writes overwrite from there while stale tails are ignored.
 - rebuild the pointer table from `ptrs_N` before SCC search or recovery.
 - treat values below `MAX_PTR` as node-file pointers and values in
   `[MAX_PTR, MAX_LINK]` as SCC link numbers.

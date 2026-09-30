@@ -50,14 +50,11 @@ func (g *TableauDiskGraph) AddNode(node *GraphNode) (int64, error) {
 	if node == nil {
 		return -1, fmt.Errorf("cannot add nil graph node")
 	}
-	ptr, err := g.nodeFile.Seek(0, io.SeekEnd)
+	ptr, err := g.nodeFile.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return -1, err
 	}
 	g.putTableauNode(node, ptr)
-	if _, err := g.ptrFile.Seek(0, io.SeekEnd); err != nil {
-		return -1, err
-	}
 	ptrOut := NewValueOutputStream(g.ptrFile)
 	if err := ptrOut.WriteLong(int64(node.StateFP)); err != nil {
 		return -1, err
