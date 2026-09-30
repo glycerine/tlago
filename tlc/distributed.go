@@ -306,7 +306,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		ServerThreads:               NewInsMap[string, *TLCServerThread](),
 		FinalNumberOfDistinctStates: -1,
 	}
-	server.BlockSelector = NewStatisticalBlockSelector(server)
+	server.BlockSelector = NewBlockSelectorFromProperties(server)
 	return server
 }
 
@@ -509,7 +509,7 @@ func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer
 		selector = server.BlockSelector
 	}
 	if selector == nil {
-		selector = NewStatisticalBlockSelector(server)
+		selector = NewBlockSelectorFromProperties(server)
 	}
 	thread := &TLCServerThread{
 		ID:                int(tlcServerThreadCount.Add(1) - 1),
@@ -582,7 +582,7 @@ func (t *TLCServerThread) Run() {
 			t.Selector = t.Server.BlockSelector
 		}
 		if t.Selector == nil {
-			t.Selector = NewStatisticalBlockSelector(t.Server)
+			t.Selector = NewBlockSelectorFromProperties(t.Server)
 		}
 		t.States = t.Selector.GetBlocks(stateQueue, t.underlyingWorker())
 		if t.States == nil {
@@ -832,6 +832,11 @@ const (
 	blockSelectorDefaultMaximum              = 8192
 	blockSelectorDefaultStaticSize           = 1024
 	blockSelectorDefaultNetworkOverheadLimit = 2.5 / 100.0
+
+	distributedSelectorStaticProperty     = "tlc2.tool.distributed.selector.bsf.staticselector"
+	distributedSelectorUnlimitingProperty = "tlc2.tool.distributed.selector.bsf.unlimitingselector"
+	distributedSelectorLimitingProperty   = "tlc2.tool.distributed.selector.bsf.limitingselector"
+	distributedStaticBlockSizeProperty    = "tlc2.tool.distributed.TLCServerThread.BlockSize"
 )
 
 type BlockSelector struct {
@@ -844,7 +849,20 @@ type BlockSelector struct {
 }
 
 func NewBlockSelector(server *TLCServer) *BlockSelector {
-	return NewStatisticalBlockSelector(server)
+	return NewBlockSelectorFromProperties(server)
+}
+
+func NewBlockSelectorFromProperties(server *TLCServer) *BlockSelector {
+	switch {
+	case distributedBooleanProperty(distributedSelectorStaticProperty):
+		return NewStaticBlockSelector(server)
+	case distributedBooleanProperty(distributedSelectorUnlimitingProperty):
+		return NewProportionalBlockSelector(server)
+	case distributedBooleanProperty(distributedSelectorLimitingProperty):
+		return NewLimitingBlockSelector(server)
+	default:
+		return NewStatisticalBlockSelector(server)
+	}
 }
 
 func NewProportionalBlockSelector(server *TLCServer) *BlockSelector {
@@ -877,9 +895,24 @@ func NewStaticBlockSelector(server *TLCServer, blockSize ...int) *BlockSelector 
 	selector.Mode = BlockSelectorStatic
 	if len(blockSize) > 0 {
 		selector.StaticBlockSize = blockSize[0]
+	} else if value, ok := distributedIntProperty(distributedStaticBlockSizeProperty); ok {
+		selector.StaticBlockSize = value
 	}
 	selector.AverageBlockCnt = int64(selector.StaticBlockSize)
 	return selector
+}
+
+func distributedBooleanProperty(name string) bool {
+	value, ok := tlcLookupSystemProperty(name)
+	return ok && javaBooleanProperty(value)
+}
+
+func distributedIntProperty(name string) (int, bool) {
+	value, ok := tlcLookupSystemProperty(name)
+	if !ok {
+		return 0, false
+	}
+	return javaIntProperty(value)
 }
 
 func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWorker) []*TLCStateMut {

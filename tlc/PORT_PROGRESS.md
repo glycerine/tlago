@@ -73,6 +73,7 @@
   - Simulator workers now mirror Java's liveness selection: default per-worker checks use concrete `LiveCheck1` with a shared error flag, while disk-backed simulation liveness is only selected via the Java-style `tlc2.tool.Simulator.experimentalLiveness` property or `TLAGO_SIMULATOR_EXPERIMENTAL_LIVENESS`.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
   - Distributed server publishing now writes accepted successors through a Java-style master `TLCTrace.writeState` primitive, assigning the returned trace UID before enqueueing instead of using the worker-local concurrent trace writer.
+  - Distributed block selection now follows Java's `BlockSelectorFactory` property surface while keeping one concrete Go selector: static, unlimiting/proportional, limiting, and default statistical modes are selected through the Java property names, and static mode honors `tlc2.tool.distributed.TLCServerThread.BlockSize`.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -105,7 +106,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, and distributed master trace writes have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, distributed master trace writes, and distributed block selector properties have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:
