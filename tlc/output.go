@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 )
@@ -223,6 +224,11 @@ func (b *BroadcastRecorder) Add(rec MessageRecorder) {
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	for _, existing := range b.recorders {
+		if sameMessageRecorder(existing, rec) {
+			return
+		}
+	}
 	b.recorders = append(b.recorders, rec)
 }
 
@@ -233,13 +239,31 @@ func (b *BroadcastRecorder) Remove(rec MessageRecorder) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for i, existing := range b.recorders {
-		if existing == rec {
+		if sameMessageRecorder(existing, rec) {
 			copy(b.recorders[i:], b.recorders[i+1:])
 			b.recorders[len(b.recorders)-1] = nil
 			b.recorders = b.recorders[:len(b.recorders)-1]
 			return
 		}
 	}
+}
+
+func sameMessageRecorder(a MessageRecorder, b MessageRecorder) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	av := reflect.ValueOf(a)
+	bv := reflect.ValueOf(b)
+	if !av.IsValid() || !bv.IsValid() || av.Type() != bv.Type() {
+		return false
+	}
+	if av.Comparable() {
+		return av.Interface() == bv.Interface()
+	}
+	if av.Kind() == reflect.Func {
+		return av.Pointer() == bv.Pointer()
+	}
+	return false
 }
 
 func (b *BroadcastRecorder) Clear() {
