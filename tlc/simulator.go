@@ -407,9 +407,13 @@ func (s *Simulator) postSimulationErrorCode(workerResult SimulationWorkerResult)
 
 func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 	debugger := s.Tool != nil && s.Tool.IsDebugger()
+	tool := s.Tool
+	if id != 0 && tool != nil {
+		tool = tool.NoDebug()
+	}
 	worker := NewSimulationWorker(
 		id,
-		s.Tool,
+		tool,
 		s.ResultQueue,
 		s.Rand.NextLong(),
 		s.TraceDepth,
