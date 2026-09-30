@@ -1,6 +1,9 @@
 package tlc
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestBitVectorStringMatchesJavaFormatting(t *testing.T) {
 	bv := NewBitVector(8)
@@ -68,5 +71,33 @@ func TestBitVectorSetRangeAndTrueCount(t *testing.T) {
 	bv.Clear()
 	if got := bv.TrueCount(); got != 0 {
 		t.Fatalf("TrueCount after Clear = %d, want 0", got)
+	}
+}
+
+func TestBitVectorBufferedRandomAccessFileRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bits.bin")
+	raf, err := NewBufferedRandomAccessFile(path, "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := NewBitVector(0)
+	for _, bit := range []int{0, 63, 64, 127, 130} {
+		original.Set(bit)
+	}
+	if err := original.WriteToBufferedRandomAccessFile(raf); err != nil {
+		t.Fatal(err)
+	}
+	if err := raf.Seek(0); err != nil {
+		t.Fatal(err)
+	}
+	decoded := NewBitVector(0)
+	if err := decoded.ReadFromBufferedRandomAccessFile(raf); err != nil {
+		t.Fatal(err)
+	}
+	if !decoded.Equal(original) {
+		t.Fatalf("decoded bit vector did not match original")
+	}
+	if err := raf.Close(); err != nil {
+		t.Fatal(err)
 	}
 }

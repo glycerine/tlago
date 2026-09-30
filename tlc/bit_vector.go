@@ -223,6 +223,37 @@ func (bv *BitVector) Read(in *ValueInputStream) error {
 	return nil
 }
 
+func (bv *BitVector) WriteToBufferedRandomAccessFile(raf *BufferedRandomAccessFile) error {
+	if bv == nil {
+		return raf.WriteNat(0)
+	}
+	if err := raf.WriteNat(len(bv.word)); err != nil {
+		return err
+	}
+	for _, word := range bv.word {
+		if err := raf.WriteLong(int64(word)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (bv *BitVector) ReadFromBufferedRandomAccessFile(raf *BufferedRandomAccessFile) error {
+	length, err := raf.ReadNat()
+	if err != nil {
+		return err
+	}
+	bv.word = make([]uint64, length)
+	for i := range bv.word {
+		word, err := raf.ReadLong()
+		if err != nil {
+			return err
+		}
+		bv.word[i] = uint64(word)
+	}
+	return nil
+}
+
 func (bv *BitVector) grow(wd int) {
 	if wd < len(bv.word) {
 		return
