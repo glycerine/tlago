@@ -68,6 +68,7 @@ type TLCStateMut struct {
 	values   []Value
 	pred     *TLCStateMut
 	action   *Action
+	callable func() (any, error)
 }
 
 func NewEmptyState() *TLCStateMut {
@@ -121,6 +122,7 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		values:   values,
 		pred:     s.pred,
 		action:   s.action,
+		callable: s.callable,
 	}
 }
 
@@ -138,7 +140,21 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		values:   values,
 		pred:     s.pred,
 		action:   s.action,
+		callable: s.callable,
 	}
+}
+
+func (s *TLCStateMut) SetCallable(callable func() (any, error)) {
+	if s != nil {
+		s.callable = callable
+	}
+}
+
+func (s *TLCStateMut) ExecCallable() (any, error) {
+	if s == nil || s.callable == nil {
+		return nil, nil
+	}
+	return s.callable()
 }
 
 func (s *TLCStateMut) AddToVec(states *StateVec) *StateVec {
