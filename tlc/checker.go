@@ -3,6 +3,7 @@ package tlc
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 )
@@ -618,6 +619,57 @@ func (mc *ModelChecker) Recover() (bool, error) {
 	PrintMessage(ECTLCCheckpointRecoverEnd, fmt.Sprint(fpSize), fmt.Sprint(queueSize))
 	mc.NumberOfInitialStates = int64(fpSize)
 	return true, nil
+}
+
+func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
+	_ = success
+	if mc == nil {
+		return nil
+	}
+	var err error
+	vetoCleanup := false
+	if cleanup && CheckpointExplicitlyEnabled() && mc.StateQueue != nil && !mc.StateQueue.IsEmpty() && mc.ErrState != nil {
+		if checkpointErr := mc.Checkpoint(); checkpointErr != nil && err == nil {
+			err = checkpointErr
+		}
+		vetoCleanup = true
+	}
+	if mc.FPSet != nil {
+		mc.FPSet.Close()
+	}
+	if mc.Trace != nil {
+		if closeErr := mc.Trace.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil {
+		if closeErr := mc.LiveCheck.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	if mc.AllStateWriter != nil {
+		if closeErr := mc.AllStateWriter.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	if cleanup && !vetoCleanup {
+		if mc.StateQueue != nil {
+			if deleteErr := mc.StateQueue.Delete(); deleteErr != nil && err == nil {
+				err = deleteErr
+			}
+		}
+		if mc.Trace != nil {
+			if deleteErr := mc.Trace.Delete(); deleteErr != nil && err == nil {
+				err = deleteErr
+			}
+		}
+		if mc.Metadir != "" {
+			if deleteErr := os.RemoveAll(mc.Metadir); deleteErr != nil && err == nil {
+				err = deleteErr
+			}
+		}
+	}
+	return err
 }
 
 func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {

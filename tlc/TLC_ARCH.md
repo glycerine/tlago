@@ -867,7 +867,9 @@ High-level flow in `modelCheckImpl`:
 6. Run final liveness check if needed.
 7. Check postconditions.
 8. Print success/error summary, coverage, statistics.
-9. Cleanup metadata when configured.
+9. Cleanup closes the FP set, trace, liveness checker, and state writer, then
+   deletes metadata when configured and not vetoed by checkpoint-preservation
+   rules.
 
 `doNext` error precedence:
 

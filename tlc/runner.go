@@ -271,10 +271,8 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		QueueSize:       checker.GetStateQueueSize(),
 		SearchDepth:     checker.GetProgress(),
 	}
-	if t.Cleanup && checker.FPSet != nil {
-		if cleanupErr := checker.FPSet.Exit(true); err == nil {
-			err = cleanupErr
-		}
+	if cleanupErr := checker.Cleanup(code == NoError, t.Cleanup); err == nil {
+		err = cleanupErr
 	}
 	return result, err
 }
