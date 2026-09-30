@@ -312,9 +312,6 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 }
 
 func (s *Simulator) selectWorkerMode() SimulationWorkerMode {
-	if s != nil && s.Tool != nil && s.Tool.IsDebugger() {
-		return SimulationWorkerExploration
-	}
 	if simulatorPropertyBool("tlc2.tool.Simulator.rl", "TLAGO_SIMULATOR_RL") {
 		return SimulationWorkerRL
 	}

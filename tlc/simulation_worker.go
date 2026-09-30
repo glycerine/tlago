@@ -49,7 +49,6 @@ type SimulationWorkerMode int
 
 const (
 	SimulationWorkerStandard SimulationWorkerMode = iota
-	SimulationWorkerExploration
 	SimulationWorkerRL
 	SimulationWorkerRLAction
 )
@@ -309,8 +308,8 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	if w == nil || w.Tool == nil {
 		return &SimulationWorkerError{Code: ECGeneral, Err: newTLCError(ECGeneral, "simulation worker has no tool")}
 	}
-	if w.Mode == SimulationWorkerExploration {
-		return w.SimulateExplorationTrace()
+	if w.debug {
+		return w.SimulateDebugTrace()
 	}
 	w.CurState = w.RandomState(w.InitStates)
 	allActions := w.Tool.GetActions()

@@ -57,7 +57,7 @@ func (w *SimulationWorker) NextStateFunctor() *NextStateFunctor {
 	}
 }
 
-func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
+func (w *SimulationWorker) SimulateDebugTrace() *SimulationWorkerError {
 	if w.InitStates == nil {
 		w.InitStates = NewStateVec(0)
 	}
