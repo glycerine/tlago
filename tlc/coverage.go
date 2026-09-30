@@ -17,6 +17,8 @@ const (
 	CoverageRelationConstraint
 )
 
+const costModelCreatorImpliedProperty = "tlc2.tool.coverage.CostModelCreator.implied"
+
 type coveragePair struct {
 	Primary   int64
 	Secondary int64
@@ -299,14 +301,16 @@ func CreateCoverageCostModels(tool *Tool) {
 			invariant.CM = creator.createForAction(invariant, CoverageRelationProp)
 		}
 	}
-	for _, impliedInit := range tool.GetImpliedInits() {
-		if impliedInit != nil {
-			impliedInit.CM = creator.createForAction(impliedInit, CoverageRelationProp)
+	if coverageImpliedEnabled() {
+		for _, impliedInit := range tool.GetImpliedInits() {
+			if impliedInit != nil {
+				impliedInit.CM = creator.createForAction(impliedInit, CoverageRelationProp)
+			}
 		}
-	}
-	for _, impliedAction := range tool.GetImpliedActions() {
-		if impliedAction != nil {
-			impliedAction.CM = creator.createForAction(impliedAction, CoverageRelationProp)
+		for _, impliedAction := range tool.GetImpliedActions() {
+			if impliedAction != nil {
+				impliedAction.CM = creator.createForAction(impliedAction, CoverageRelationProp)
+			}
 		}
 	}
 	for _, constraint := range tool.GetActionConstraints() {
@@ -365,18 +369,27 @@ func reportCoverage(tool *Tool) {
 			invariant.CM.Report()
 		}
 	}
-	for _, impliedInit := range tool.GetImpliedInits() {
-		if impliedInit != nil {
-			impliedInit.CM.Report()
+	if coverageImpliedEnabled() {
+		for _, impliedInit := range tool.GetImpliedInits() {
+			if impliedInit != nil {
+				impliedInit.CM.Report()
+			}
 		}
-	}
-	for _, impliedAction := range tool.GetImpliedActions() {
-		if impliedAction != nil {
-			impliedAction.CM.Report()
+		for _, impliedAction := range tool.GetImpliedActions() {
+			if impliedAction != nil {
+				impliedAction.CM.Report()
+			}
 		}
 	}
 	reportConstraintCoverage(tool.GetActionConstraints())
 	reportConstraintCoverage(tool.GetModelConstraints())
+}
+
+func coverageImpliedEnabled() bool {
+	if value, ok := tlcLookupSystemProperty(costModelCreatorImpliedProperty); ok {
+		return javaBooleanProperty(value)
+	}
+	return true
 }
 
 func reportConstraintCoverage(nodes []SemanticNode) {

@@ -54,6 +54,9 @@ Top-level source package sizes:
   `tlc2.tool.fp.OffHeapDiskFPSet.probeLimit`.
 - Tableau construction mirrors Java's debug export hook:
   `tlc2.tool.liveness.Liveness.tableauExportPath` writes `TBGraph` DOT output.
+- Coverage cost-model creation mirrors
+  `tlc2.tool.coverage.CostModelCreator.implied`, defaulting to true for
+  implied init/action coverage.
 
 Top-level test package sizes:
 
