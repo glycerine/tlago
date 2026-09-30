@@ -285,6 +285,8 @@ type ModelChecker struct {
 	NextStatesGenerated     int64
 	StatesPerMinute         int64
 	DistinctStatesPerMinute int64
+	RuntimeRatio            float64
+	ForceLiveCheck          bool
 }
 
 type ModelCheckerOption func(*ModelChecker)
@@ -636,6 +638,52 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 		worker.MaxDepth = maxDepth
 		worker.Start()
 	}
+	result, joinErr := mc.waitForWorkersWithPeriodicWork()
+	if result != NoError {
+		return result, joinErr
+	}
+	if joinErr != nil {
+		if mc.ErrorCode != NoError {
+			return mc.ErrorCode, joinErr
+		}
+		return ECGeneral, joinErr
+	}
+	return mc.ErrorCode, nil
+}
+
+func (mc *ModelChecker) waitForWorkersWithPeriodicWork() (int, error) {
+	done := make(chan error, 1)
+	go func() {
+		done <- mc.joinWorkers()
+	}()
+	interval := ProgressInterval()
+	if interval <= 0 {
+		return NoError, <-done
+	}
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+	for {
+		select {
+		case err := <-done:
+			return NoError, err
+		case <-timer.C:
+			result, err := mc.DoPeriodicWork()
+			if err != nil || result != NoError {
+				if mc.StateQueue != nil {
+					mc.StateQueue.FinishAll()
+				}
+				joinErr := <-done
+				if err != nil {
+					return result, err
+				}
+				return result, joinErr
+			}
+			timer.Reset(interval)
+		}
+	}
+}
+
+func (mc *ModelChecker) joinWorkers() error {
 	var joinErr error
 	for _, worker := range mc.Workers {
 		if worker == nil {
@@ -645,13 +693,67 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 			joinErr = err
 		}
 	}
-	if joinErr != nil {
-		if mc.ErrorCode != NoError {
-			return mc.ErrorCode, joinErr
-		}
-		return ECGeneral, joinErr
+	return joinErr
+}
+
+func (mc *ModelChecker) DoPeriodicWork() (int, error) {
+	if mc == nil {
+		return NoError, nil
 	}
-	return mc.ErrorCode, nil
+	createCheckpoint := DoCheckPoint()
+	forceLiveCheck := mc.CheckLiveness && mc.LiveCheck != nil && mc.ForceLiveCheck
+	liveCheckNow := mc.CheckLiveness && mc.LiveCheck != nil && (mc.RuntimeRatio < LivenessRatio() || forceLiveCheck) && mc.LiveCheck.DoLiveCheck()
+	if !liveCheckNow && !forceLiveCheck && !createCheckpoint {
+		mc.UpdateRuntimeRatio(0)
+		return NoError, nil
+	}
+	if mc.StateQueue == nil || !mc.StateQueue.SuspendAll() {
+		return NoError, nil
+	}
+	resume := true
+	defer func() {
+		if resume && mc.StateQueue != nil {
+			mc.StateQueue.ResumeAll()
+		}
+	}()
+	if liveCheckNow || forceLiveCheck {
+		start := time.Now()
+		result, err := mc.LiveCheck.Check(mc.Tool.NoDebug(), forceLiveCheck)
+		mc.ForceLiveCheck = false
+		mc.UpdateRuntimeRatio(time.Since(start))
+		if err != nil || result != NoError {
+			return result, err
+		}
+	} else if mc.RuntimeRatio > LivenessRatio() {
+		mc.UpdateRuntimeRatio(0)
+	}
+	if createCheckpoint {
+		if err := mc.Checkpoint(); err != nil {
+			return ECSystemCheckpointRecoveryCorrupt, err
+		}
+		resume = false
+	}
+	return NoError, nil
+}
+
+func (mc *ModelChecker) UpdateRuntimeRatio(delta time.Duration) {
+	if mc == nil {
+		return
+	}
+	if delta < 0 {
+		delta = 0
+	}
+	totalRuntime := time.Since(mc.StartTime) - ProgressInterval() - delta
+	absLivenessRuntime := float64(totalRuntime) * mc.RuntimeRatio
+	if absLivenessRuntime < 0 {
+		absLivenessRuntime = 0
+	}
+	denominator := float64(totalRuntime + ProgressInterval() + delta)
+	if denominator <= 0 {
+		mc.RuntimeRatio = 0
+		return
+	}
+	mc.RuntimeRatio = (float64(delta) + absLivenessRuntime) / denominator
 }
 
 func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {

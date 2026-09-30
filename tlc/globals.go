@@ -6,6 +6,7 @@ import (
 )
 
 const DefaultCheckpointDurationMillis = (30 * 60 * 1000) + 42
+const DefaultProgressIntervalMillis = 60 * 1000
 const CoverageIndent = '|'
 const MetaRoot = "states"
 
@@ -18,6 +19,7 @@ var Globals = struct {
 	LivenessGraphSizeThreshold float64
 	LivenessRatio              float64
 	LNCheck                    string
+	ProgressIntervalMillis     int64
 	CoverageInterval           int
 	DFIDMax                    int
 	Continuation               bool
@@ -45,6 +47,7 @@ var Globals = struct {
 	LivenessGraphSizeThreshold: 0.1,
 	LivenessRatio:              0.2,
 	LNCheck:                    "default",
+	ProgressIntervalMillis:     DefaultProgressIntervalMillis,
 	CoverageInterval:           -1,
 	DFIDMax:                    -1,
 	Expand:                     true,
@@ -125,6 +128,21 @@ func CoverageEnabled() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.CoverageInterval >= 0
+}
+
+func ProgressInterval() time.Duration {
+	Globals.Lock()
+	defer Globals.Unlock()
+	if Globals.ProgressIntervalMillis <= 0 {
+		return time.Duration(DefaultProgressIntervalMillis) * time.Millisecond
+	}
+	return time.Duration(Globals.ProgressIntervalMillis) * time.Millisecond
+}
+
+func LivenessRatio() float64 {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.LivenessRatio
 }
 
 func SetMetaDir(dir string) {

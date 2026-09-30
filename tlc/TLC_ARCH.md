@@ -851,8 +851,9 @@ High-level flow in `modelCheckImpl`:
 3. If no actions exist:
    - success when queue is empty,
    - otherwise error for states with no next action.
-4. Run worker exploration with `runTLC`, which starts all pre-created workers
-   and joins them after the shared queue reaches completion or an error.
+4. Run worker exploration with `runTLC`, which starts all pre-created workers,
+   periodically performs coordinator work while they run, and joins them after
+   the shared queue reaches completion or an error.
 5. During exploration:
    - workers dequeue states,
    - generate all action successors,
@@ -885,6 +886,9 @@ Port guidance:
 
 - Implement worker/error synchronization carefully. Only one worker should own
   the primary error trace unless continuation mode says otherwise.
+- Preserve Java's `AbstractChecker.runTLC` coordinator role: workers do state
+  generation, while the checker thread periodically suspends the queue for
+  liveness/checkpoint work and then resumes or finishes the workers.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
