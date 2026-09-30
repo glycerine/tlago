@@ -472,7 +472,7 @@ func (l *ActionItemList) ConsAction(act *Action, kind int) *ActionItemList {
 	}
 	itemCM := act.CM
 	if CoverageActionEnabled() {
-		itemCM = act.CM.Get(act.Pred)
+		itemCM = act.CM.Get(l.Pred)
 	}
 	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: itemCM, act: act}
 }

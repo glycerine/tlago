@@ -1554,6 +1554,10 @@ Important behavior:
 - Preserve the Java `INextStateFunctor` contract: plain `addElement(TLCState)`
   is unsupported for simulation workers; only `setElement` and the
   action-tagged successor `addElement(s, a, t)` paths are valid.
+- `ActionItemListExt.cons(Action, kind)` has a subtle coverage lookup:
+  Java calls `act.cm.get(this.pred)`, not `act.cm.get(act.pred)`. Keep the Go
+  `ConsAction` lookup on the receiver list's current predicate so coverage
+  counters line up with Java's decomposition.
 - Simulator result consumption follows Java's continuation policy. Worker
   exceptions and liveness exceptions stop the run, and
   `TLC_INVARIANT_EVALUATION_FAILED`,
