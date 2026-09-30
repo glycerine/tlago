@@ -92,6 +92,7 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	}
 	result, err := mc.DoInit(false)
 	if err != nil || result != NoError {
+		mc.PrintSummary(false)
 		return result, err
 	}
 	if recovered {
@@ -100,7 +101,9 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		PrintMessage(ECTLCInitGenerated4, fmtInt64(mc.StatesGenerated), fmtInt(len(mc.InitStates)))
 	}
 	if len(mc.Tool.GetActions()) == 0 {
-		return mc.Tool.CheckPostCondition(), nil
+		result = mc.Tool.CheckPostCondition()
+		mc.PrintSummary(result == NoError)
+		return result, nil
 	}
 	max := Globals.DFIDMax
 	if max < 0 {
@@ -115,15 +118,20 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		mc.Done = false
 		if worker.IsTerminated() {
 			if worker.Result != NoError || worker.Err != nil {
+				mc.PrintSummary(false)
 				return worker.Result, worker.Err
 			}
 			if mc.ErrorCode != NoError {
+				mc.PrintSummary(false)
 				return mc.ErrorCode, nil
 			}
+			mc.PrintSummary(false)
 			return ECGeneral, worker.Err
 		}
 		if !worker.HasMoreLevel() {
-			return mc.Tool.CheckPostCondition(), nil
+			result = mc.Tool.CheckPostCondition()
+			mc.PrintSummary(result == NoError)
+			return result, nil
 		}
 		if DoCheckPoint() {
 			if err := mc.Checkpoint(); err != nil {
@@ -131,7 +139,24 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 			}
 		}
 	}
-	return NoError, nil
+	result = mc.Tool.CheckPostCondition()
+	mc.PrintSummary(result == NoError)
+	return result, nil
+}
+
+func (mc *DFIDModelChecker) PrintSummary(success bool) {
+	_ = success
+	if mc == nil {
+		return
+	}
+	fpSize := uint64(0)
+	if mc.FPSet != nil {
+		fpSize = mc.FPSet.Size()
+	}
+	if toolMode() {
+		PrintMessage(ECTLCProgressStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(fpSize))
+	}
+	PrintMessage(ECTLCStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(fpSize))
 }
 
 func (mc *DFIDModelChecker) SetErrState(curState *TLCStateMut, succState *TLCStateMut, keepCallStack bool, errorCode int) bool {
