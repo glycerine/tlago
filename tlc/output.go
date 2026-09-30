@@ -130,6 +130,7 @@ const (
 	ECTLCStatsSimu                                       = 2210
 	ECTLCFPCompleted                                     = 2211
 	ECTLCLiveImplied                                     = 2212
+	ECTLCCounterExample                                  = 2264
 	ECTLCStatePrint1                                     = 2216
 	ECTLCStatePrint2                                     = 2217
 	ECTLCStatePrint3                                     = 2218

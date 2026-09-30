@@ -258,12 +258,15 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) 
 	}
 	w.Checker.ErrorPrefix = prefix
 	w.Checker.ErrorCycle = cycle
-	counterExample, trace, err := w.buildCounterExample(prefix, cycle)
+	counterExample, trace, closingInfo, loopOrdinal, stuttering, err := w.buildCounterExample(prefix, cycle)
 	if err != nil {
 		return false, err
 	}
 	w.Checker.ErrorTrace = trace
 	w.Checker.ErrorCounterEx = counterExample
+	w.Checker.ErrorClosingInfo = closingInfo
+	w.Checker.ErrorLoopOrdinal = loopOrdinal
+	w.Checker.ErrorStuttering = stuttering
 	if w.Tool != nil && counterExample != nil {
 		w.Tool.CheckPostConditionWithCounterExample(counterExample)
 	}
@@ -312,21 +315,21 @@ func (w *LiveWorker) traceFingerprintLasso(state uint64, tidx int, nodeTbl *Tabl
 	return prefix, postfix, nil
 }
 
-func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*CounterExample, []*TLCStateInfo, error) {
+func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*CounterExample, []*TLCStateInfo, *TLCStateInfo, int, bool, error) {
 	if w.Tool == nil {
-		return nil, nil, fmt.Errorf("cannot reconstruct liveness counterexample without a tool")
+		return nil, nil, nil, 0, false, fmt.Errorf("cannot reconstruct liveness counterexample without a tool")
 	}
 	if prefix == nil || prefix.Size() == 0 {
-		return nil, nil, fmt.Errorf("cannot reconstruct liveness counterexample without a prefix")
+		return nil, nil, nil, 0, false, fmt.Errorf("cannot reconstruct liveness counterexample without a prefix")
 	}
 	plen := prefix.Size()
 	fp := uint64(prefix.ElementAt(plen - 1))
 	sinfo, err := w.Tool.GetState(fp)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, 0, false, err
 	}
 	if sinfo == nil {
-		return nil, nil, fmt.Errorf("failed to recover initial liveness state %d", fp)
+		return nil, nil, nil, 0, false, fmt.Errorf("failed to recover initial liveness state %d", fp)
 	}
 	states := make([]*TLCStateInfo, 0, plen)
 	states = append(states, sinfo)
@@ -338,46 +341,51 @@ func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*Coun
 		}
 		sinfo, err = w.Tool.GetState(curFP, sinfo)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, 0, false, err
 		}
 		if sinfo == nil {
-			return nil, nil, fmt.Errorf("failed to recover liveness successor state %d", curFP)
+			return nil, nil, nil, 0, false, fmt.Errorf("failed to recover liveness successor state %d", curFP)
 		}
 		states = append(states, sinfo)
 		fp = curFP
 	}
 	if len(states) == 0 {
-		return nil, nil, fmt.Errorf("cannot reconstruct empty liveness counterexample")
+		return nil, nil, nil, 0, false, fmt.Errorf("cannot reconstruct empty liveness counterexample")
 	}
 
 	cycleState := states[len(states)-1]
 	loopOrdinal := int(cycleState.StateNumber)
 	sinfo = cycleState
+	closingInfo := sinfo
+	stuttering := true
 	if cycle != nil && !cycle.IsEmpty() {
 		cycle.Pack().RemoveLastIf(int64(cycleState.FingerPrint()))
 		for i := cycle.Size() - 1; i >= 0; i-- {
 			curFP := uint64(cycle.ElementAt(i))
 			sucinfo, err := w.Tool.GetState(curFP, sinfo)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, 0, false, err
 			}
 			if sucinfo == nil {
-				return nil, nil, fmt.Errorf("failed to recover liveness cycle state %d", curFP)
+				return nil, nil, nil, 0, false, fmt.Errorf("failed to recover liveness cycle state %d", curFP)
 			}
 			states = append(states, sucinfo)
 			sinfo = sucinfo
 		}
 		if sinfo.FingerPrint() != cycleState.FingerPrint() {
+			stuttering = false
 			closing, err := w.Tool.GetState(cycleState.FingerPrint(), sinfo)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, 0, false, err
 			}
 			if closing != nil {
-				sinfo = closing
+				closingInfo = closing
 			}
+		} else {
+			closingInfo = sinfo
 		}
 	}
-	return NewCounterExample(states, sinfo.Action(), loopOrdinal, true), states, nil
+	return NewCounterExample(states, closingInfo.Action(), loopOrdinal, true), states, closingInfo, loopOrdinal, stuttering, nil
 }
 
 func (w *LiveWorker) dfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrTable, cycleStack *IntStack) (*GraphNode, error) {

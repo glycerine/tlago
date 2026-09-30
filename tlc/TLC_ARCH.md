@@ -1062,8 +1062,10 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
   `ErrorPrefix` and `ErrorCycle`.
 - reconstructs `TLCStateInfo` traces from the prefix/cycle fingerprints,
   creates a `CounterExample`, and invokes the tool post-condition hook with
-  that value. Human-readable `printTrace` console formatting remains the next
-  output-layer step.
+  that value. The Go checker also emits the temporal-property violation,
+  counterexample marker, state trace, and stuttering/back-to-state marker.
+  Java's post-hoc property attribution (`Liveness.findViolatedProperties`)
+  remains to be ported for exact violated-property names.
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component

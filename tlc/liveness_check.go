@@ -85,6 +85,10 @@ type LiveChecker struct {
 	ErrorCycle       *LongVec
 	ErrorTrace       []*TLCStateInfo
 	ErrorCounterEx   *CounterExample
+	ErrorLoopOrdinal int
+	ErrorClosingInfo *TLCStateInfo
+	ErrorStuttering  bool
+	ErrorPrinted     bool
 	Err              error
 }
 
@@ -504,6 +508,7 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 				return false, err
 			}
 			if found {
+				c.PrintCounterExample()
 				c.LastSize = c.GraphSize()
 				return true, nil
 			}
@@ -547,6 +552,10 @@ func (c *LiveChecker) Reset() {
 	c.ErrorCycle = nil
 	c.ErrorTrace = nil
 	c.ErrorCounterEx = nil
+	c.ErrorLoopOrdinal = 0
+	c.ErrorClosingInfo = nil
+	c.ErrorStuttering = false
+	c.ErrorPrinted = false
 }
 
 func graphNodeKey(fp uint64, tidx int) string {
@@ -883,6 +892,7 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 			return ECGeneral, err
 		}
 		if found {
+			checker.PrintCounterExample()
 			if checker.ErrorCounterEx != nil {
 				return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", checker.ErrorCounterEx)
 			}
@@ -1001,6 +1011,23 @@ func (c *LiveChecker) Recover() error {
 		c.Size = int64(c.DiskGraph.Size())
 	}
 	return nil
+}
+
+func (c *LiveChecker) PrintCounterExample() {
+	if c == nil || c.ErrorPrinted || len(c.ErrorTrace) == 0 {
+		return
+	}
+	c.ErrorPrinted = true
+	PrintError(ECTLCTemporalPropertyViolated)
+	PrintError(ECTLCCounterExample)
+	for _, info := range c.ErrorTrace {
+		PrintInvariantViolationStateTraceState(info)
+	}
+	if c.ErrorStuttering {
+		PrintStutteringState(c.ErrorLoopOrdinal)
+	} else {
+		PrintBackToState(c.ErrorClosingInfo, c.ErrorLoopOrdinal)
+	}
 }
 
 func (lc *LiveCheck) Close() error {
