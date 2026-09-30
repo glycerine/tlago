@@ -535,6 +535,7 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	}
 	result := NoError
 	if !recovered {
+		PrintMessage(ECTLCComputingInit)
 		result, err = mc.DoInit(false)
 		if err != nil || result != NoError {
 			if result != NoError {
@@ -543,6 +544,7 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 			mc.PrintSummary(false)
 			return result, err
 		}
+		mc.PrintInitGenerated()
 	}
 	if len(mc.Tool.GetActions()) == 0 {
 		if !mc.StateQueue.IsEmpty() {
@@ -828,6 +830,23 @@ func (mc *ModelChecker) PrintSummary(success bool) {
 	if success {
 		mc.PrintOutDegreeSummary()
 	}
+}
+
+func (mc *ModelChecker) PrintInitGenerated() {
+	if mc == nil {
+		return
+	}
+	statesGenerated := mc.GetStatesGenerated()
+	plural := ""
+	if statesGenerated != 1 {
+		plural = "s"
+	}
+	distinct := mc.GetDistinctStatesGenerated()
+	if uint64(statesGenerated) == distinct {
+		PrintMessage(ECTLCInitGenerated1, fmtInt64(statesGenerated), plural)
+		return
+	}
+	PrintMessage(ECTLCInitGenerated2, fmtInt64(statesGenerated), plural, fmtUint64(distinct))
 }
 
 func (mc *ModelChecker) PrintProgressStats(startTime time.Time, isFinal bool) {
