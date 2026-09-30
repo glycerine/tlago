@@ -392,21 +392,27 @@ func (mc *ModelChecker) GetStatistics() Value {
 	if mc == nil {
 		return EmptyRecord
 	}
+	workerID := int32(0)
+	if id, ok := CurrentWorkerID(); ok {
+		workerID = int32(id)
+	}
 	names := []*UniqueString{
-		tlcGetGenerated,
+		tlcGetQueue,
 		tlcGetDistinct,
 		tlcGetInitial,
-		tlcGetQueue,
+		tlcGetGenerated,
 		tlcGetDiameter,
 		tlcGetDuration,
+		tlcGetWorker,
 	}
 	values := []Value{
-		intValueFromInt64(mc.GetStatesGenerated()),
+		intValueFromInt64(mc.GetStateQueueSize()),
 		intValueFromUint64(mc.GetDistinctStatesGenerated()),
 		intValueFromInt64(mc.GetInitialStatesGenerated()),
-		intValueFromInt64(mc.GetStateQueueSize()),
+		intValueFromInt64(mc.GetStatesGenerated()),
 		intValueFromInt64(mc.GetProgress()),
 		intValueFromDurationSince(TLCStartTime()),
+		NewIntValue(workerID),
 	}
 	return NewRecordValue(names, values, false)
 }
@@ -415,18 +421,21 @@ func (mc *ModelChecker) GetConfig() Value {
 	if mc == nil {
 		return EmptyRecord
 	}
-	depth := int32(0)
 	names := []*UniqueString{
 		tlcGetMode,
 		tlcGetDeadlock,
 		tlcGetWorker,
-		tlcGetDepth,
+		tlcGetSeed,
+		tlcGetFingerprint,
+		tlcGetInstall,
 	}
 	values := []Value{
-		NewStringValue("model-checking"),
+		NewStringValue("bfs"),
 		NewBoolValue(mc.CheckDeadlock),
 		NewIntValue(int32(NumWorkers())),
-		NewIntValue(depth),
+		NewStringValue(fmt.Sprintf("%d", RandomEnumerableSeed())),
+		NewStringValue(fmt.Sprintf("%d", int64(FP64IrredPoly()))),
+		NewStringValue(""),
 	}
 	return NewRecordValue(names, values, false)
 }

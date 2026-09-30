@@ -1294,6 +1294,17 @@ stamps simulation states with the concrete worker id and uses that id to read
 the worker-local trace count, which also keeps worker-local `TLCGet`/`TLCSet`
 registers aligned with Java.
 
+`TLCGet("generated")`, `"distinct"`, and `"queue"` are direct main-checker
+queries in Java. Simulation exposes generated trace/state counters through
+`TLCGet("stats")`, not those direct string keys. Checker `"stats"` has fields
+`queue`, `distinct`, `initial`, `generated`, `diameter`, `duration`, and
+`worker`; checker `"config"` has fields `mode="bfs"`, `deadlock`, `worker`,
+`seed`, `fingerprint`, and `install`. Simulator `"stats"` has fields `traces`,
+`duration`, `generated`, `behavior`, `worker`, `distinct`, `distinctvalues`,
+`retries`, `actions`, `levelmean`, and `levelvariance`; simulator `"config"`
+has fields `mode="simulate"`, `depth`, `traces`, `deadlock`, `seed`, `aril`,
+`worker`, `install`, and `sched`.
+
 Integer `TLCGet(i)`/`TLCSet(i, v)` and named registers (`"s:..."`) are
 current-worker local in Java when evaluated on an `IdThread`; they do not use
 the predecessor state's stored trace worker id. Outside a worker, Java

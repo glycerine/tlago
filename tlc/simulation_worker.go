@@ -62,6 +62,7 @@ type SimulationWorkerStatistics struct {
 	NextRetries     int64
 	DistinctStates  int64
 	DistinctValues  *InsMap[*UniqueString, int64]
+	ActionCounts    *InsMap[*UniqueString, int64]
 	Extended        bool
 	workerActionIDs *InsMap[*UniqueString, int]
 }
@@ -90,6 +91,7 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 		WelfordM2Mean:   m2Mean,
 		ActionStats:     make([][]int64, size),
 		DistinctValues:  NewInsMap[*UniqueString, int64](),
+		ActionCounts:    NewInsMap[*UniqueString, int64](),
 		workerActionIDs: NewInsMap[*UniqueString, int](),
 	}
 	for i := range stats.ActionStats {
@@ -119,6 +121,9 @@ func (s *SimulationWorkerStatistics) CollectPreSuccessor(state *TLCStateMut, act
 			cur := s.DistinctValues.Get(variable.Name)
 			s.DistinctValues.Set(variable.Name, cur+1)
 		}
+		actionName := state.GetAction().GetName()
+		actionKey := UniqueStringOf(actionName)
+		s.ActionCounts.Set(actionKey, s.ActionCounts.Get(actionKey)+1)
 	}
 }
 
@@ -178,6 +183,60 @@ func (s *SimulationWorkerStatistics) GetNextRetries() Value {
 		return NewIntValue(-1)
 	}
 	return intValueFromInt64(s.NextRetries)
+}
+
+func (s *SimulationWorkerStatistics) GetTraceStatistics(state *TLCStateMut) Value {
+	actionCounts := NewInsMap[*UniqueString, Value]()
+	for cur := state; cur != nil && !cur.IsInitial(); cur = cur.Predecessor() {
+		action := cur.GetAction()
+		actionKey := UniqueStringOf(action.GetName())
+		count := int32(1)
+		if old, ok := actionCounts.Get(actionKey).(*IntValue); ok {
+			count = old.Val + 1
+		}
+		actionCounts.Set(actionKey, NewIntValue(count))
+	}
+	return NewRecordValue(
+		[]*UniqueString{tlcSpecActions, tlcGetID},
+		[]Value{NewRecordValueFromInsMap(actionCounts), intValueFromInt64(s.traceCount())},
+		false,
+	)
+}
+
+func (s *SimulationWorkerStatistics) GetDistinctStates() Value {
+	if s == nil || !s.Extended {
+		return NewIntValue(-1)
+	}
+	return intValueFromInt64(s.DistinctStates)
+}
+
+func (s *SimulationWorkerStatistics) GetDistinctValues() Value {
+	if s == nil || !s.Extended {
+		return NewIntValue(-1)
+	}
+	values := NewInsMap[*UniqueString, Value]()
+	for key, value := range s.DistinctValues.All() {
+		values.Set(key, intValueFromInt64(value))
+	}
+	return NewRecordValueFromInsMap(values)
+}
+
+func (s *SimulationWorkerStatistics) GetActions() Value {
+	if s == nil || !s.Extended {
+		return EmptyRecord
+	}
+	values := NewInsMap[*UniqueString, Value]()
+	for key := range s.workerActionIDs.All() {
+		values.Set(key, intValueFromInt64(s.ActionCounts.Get(key)))
+	}
+	return NewRecordValueFromInsMap(values)
+}
+
+func (s *SimulationWorkerStatistics) traceCount() int64 {
+	if s == nil || s.NumGenTraces == nil {
+		return 0
+	}
+	return s.NumGenTraces.Load()
 }
 
 type SimulationWorker struct {

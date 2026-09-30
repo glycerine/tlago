@@ -1,6 +1,8 @@
 package tlc
 
 import (
+	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -211,23 +213,43 @@ func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
 }
 
 func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
-	level := int32(0)
-	if state != nil {
-		level = int32(state.Level())
+	stats := s.currentWorkerStatistics()
+	m2AndMean := s.WelfordM2Mean.Load()
+	mean := int32(m2AndMean & 0xffffffff)
+	m2 := uint64(m2AndMean) >> 32
+	traces := s.NumGenTraces.Load()
+	if traces == 0 && s.TracesGenerated != 0 {
+		traces = s.TracesGenerated
+	}
+	states := s.NumGenStates.Load()
+	if states == 0 && s.StatesGenerated != 0 {
+		states = s.StatesGenerated
 	}
 	names := []*UniqueString{
-		tlcGetGenerated,
-		tlcGetDiameter,
-		tlcGetRetries,
-		tlcGetLevel,
+		tlcGetTraces,
 		tlcGetDuration,
+		tlcGetGenerated,
+		tlcGetBehavior,
+		tlcGetWorker,
+		tlcGetDistinct,
+		tlcGetDistinctValues,
+		tlcGetRetries,
+		tlcSpecActions,
+		tlcGetLevelMean,
+		tlcGetLevelVar,
 	}
 	values := []Value{
-		intValueFromInt64(s.StatesGenerated),
-		intValueFromInt64(s.TracesGenerated),
-		intValueFromInt64(s.DisabledRetries),
-		NewIntValue(level),
+		intValueFromInt64(traces),
 		intValueFromDurationSince(TLCStartTime()),
+		intValueFromInt64(states),
+		stats.GetTraceStatistics(state),
+		NewIntValue(int32(currentWorkerIDOrZero())),
+		stats.GetDistinctStates(),
+		stats.GetDistinctValues(),
+		stats.GetNextRetries(),
+		stats.GetActions(),
+		NewIntValue(mean),
+		intValueFromInt64(int64(math.Round(float64(m2) / (float64(traces) + 1)))),
 	}
 	return NewRecordValue(names, values, false)
 }
@@ -238,21 +260,67 @@ func (s *Simulator) GetConfig() Value {
 	}
 	names := []*UniqueString{
 		tlcGetMode,
-		tlcGetDeadlock,
-		tlcGetSeed,
 		tlcGetDepth,
 		tlcGetTraces,
+		tlcGetDeadlock,
+		tlcGetSeed,
+		tlcGetAril,
 		tlcGetWorker,
+		tlcGetInstall,
+		tlcGetSched,
+	}
+	depth := int32(s.TraceDepth)
+	if s.TraceDepth == int(^uint(0)>>1) {
+		depth = -1
+	}
+	workerCount := len(s.Workers)
+	if workerCount < 1 {
+		workerCount = 1
 	}
 	values := []Value{
-		NewStringValue("simulation"),
+		NewStringValue("simulate"),
+		NewIntValue(depth),
+		NewIntValue(int32(int64(workerCount) * s.TraceNum)),
 		NewBoolValue(s.CheckDeadlock),
-		intValueFromInt64(s.Seed),
-		NewIntValue(int32(s.TraceDepth)),
-		intValueFromInt64(s.TraceNum),
-		NewIntValue(1),
+		NewStringValue(fmt.Sprintf("%d", s.Seed)),
+		NewStringValue(fmt.Sprintf("%d", s.Rand.Aril())),
+		NewIntValue(int32(workerCount)),
+		NewStringValue(""),
+		NewStringValue(s.schedulerName()),
 	}
 	return NewRecordValue(names, values, false)
+}
+
+func (s *Simulator) currentWorkerStatistics() *SimulationWorkerStatistics {
+	if s == nil || len(s.Workers) == 0 {
+		return NewSimulationWorkerStatistics(nil, "", nil, nil, nil)
+	}
+	workerID := currentWorkerIDOrZero()
+	if workerID < 0 || workerID >= len(s.Workers) || s.Workers[workerID] == nil {
+		workerID = 0
+	}
+	return s.Workers[workerID].Statistics
+}
+
+func currentWorkerIDOrZero() int {
+	if id, ok := CurrentWorkerID(); ok {
+		return id
+	}
+	return 0
+}
+
+func (s *Simulator) schedulerName() string {
+	if s == nil {
+		return "random"
+	}
+	switch s.WorkerMode {
+	case SimulationWorkerRL:
+		return "rl"
+	case SimulationWorkerRLAction:
+		return "rlaction"
+	default:
+		return "random"
+	}
 }
 
 func (s *Simulator) initialStates() (*StateVec, int, error) {
