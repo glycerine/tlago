@@ -200,11 +200,25 @@ func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
 }
 
 func (c *AbstractChecker) GetAllNamedValues(key *UniqueString) []Value {
-	value := c.GetNamedValue(0, key)
-	if value == nil {
+	if c == nil || c.NamedValues == nil || key == nil {
 		return nil
 	}
-	return []Value{value}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	value := c.NamedValues.Get(key)
+	if workerValue, ok := value.(*WorkerValue); ok {
+		out := make([]Value, 0, len(workerValue.values))
+		for _, v := range workerValue.values {
+			if v != nil {
+				out = append(out, v)
+			}
+		}
+		return out
+	}
+	if muxed := MuxWorkerValue(value, 0); muxed != nil {
+		return []Value{muxed}
+	}
+	return nil
 }
 
 type ModelChecker struct {
