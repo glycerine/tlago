@@ -562,9 +562,10 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 	}
 	vetoes := specProcessorVetoedConstantOperators()
 	type update struct {
-		name  *UniqueString
-		def   *OpDefNode
-		value Value
+		name          *UniqueString
+		def           *OpDefNode
+		value         any
+		constantValue Value
 	}
 	updates := make([]update, 0)
 	for name, value := range p.Defns.All() {
@@ -590,12 +591,17 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 		if tool.GetLevelBound(realDef.Body, EmptyContext) != TLCLevelConstant {
 			continue
 		}
-		val, err := tool.Eval(realDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
+		val, err := DemuxWorkerValue(func() (Value, error) {
+			return tool.Eval(realDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
+		}, true, NumWorkers())
 		if err != nil || val == nil {
 			continue
 		}
-		InitializeValue(val)
-		updates = append(updates, update{name: name, def: realDef, value: val})
+		constantValue := MuxWorkerValue(val, 0)
+		if constantValue == nil {
+			continue
+		}
+		updates = append(updates, update{name: name, def: realDef, value: val, constantValue: constantValue})
 	}
 	for _, update := range updates {
 		if update.name == nil || update.value == nil {
@@ -605,7 +611,7 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 			update.def.SetToolObject(update.value)
 		}
 		p.Defns.Put(update.name, update.value)
-		p.ConstantDefns.Set(update.name.String(), update.value)
+		p.ConstantDefns.Set(update.name.String(), update.constantValue)
 		if tool != nil {
 			sym := &SymbolNode{Name: update.name}
 			if update.def != nil && update.def.Symbol != nil {

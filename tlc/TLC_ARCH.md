@@ -305,6 +305,15 @@ Tricky details:
   the concrete processor using the concrete `Tool`, a flat `ConstantDefns`
   cache, Java-style snapshots, and a veto list keyed by
   `tlc2.tool.impl.SpecProcessor.vetoed` or `TLAGO_SPEC_PROCESSOR_VETOED`.
+- Java routes each successfully evaluated zero-arity constant operator through
+  `WorkerValue.demux`. The value is deep-normalized but not eagerly initialized
+  for fingerprinting at spec-processing time. Mutable values with multiple
+  workers are re-evaluated once per worker under the same
+  `RandomEnumerableValues` seed and stored as a `WorkerValue`; immutable
+  primitives stay as plain values. The Go port keeps the same visible storage
+  shape in `Defns` and on the operator tool object, while the convenience
+  `ConstantDefns` cache stores worker zero's concrete value for callers that
+  require a `Value`.
 
 ### Go SANY to TLC Bridge
 
@@ -1420,6 +1429,11 @@ static read/write-lock protected semantic-node cache. Cache reads must mux
 `WorkerValue` through the active worker id before returning it, and cache writes
 must evaluate under `EmptyContext`/`EmptyState` before converting through the
 legacy `toSetEnum`/`toFcnRcd` path.
+Ordinary symbol lookup has the same rule: a cached `WorkerValue` is muxed by the
+current worker id when running inside a worker goroutine, and only falls back to
+the state's worker id outside that scope. This mirrors Java's `IdThread`
+selection and avoids letting copied states override the executing worker's
+per-worker constant value.
 `TLC!TLCGet`, `TLCExt!CounterExample`, `TLCExt!Trace`, `_TLCTrace!_TLCState`,
 `_JsonTrace!_TLCState`, and `_Possible!_Counts` all carry non-constant
 minimum levels in Java to prevent invalid constant folding. `TLCExt!PickSuccessor`

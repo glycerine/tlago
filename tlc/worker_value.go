@@ -38,7 +38,7 @@ func DemuxWorkerValue(evaluate func() (Value, error), mutable bool, workers int)
 	if value != nil {
 		value.DeepNormalize()
 	}
-	if !mutable || workers <= 1 {
+	if !mutable || !ValueMutates(value) || workers <= 1 {
 		return value, nil
 	}
 	values := make([]Value, workers)
@@ -56,6 +56,15 @@ func DemuxWorkerValue(evaluate func() (Value, error), mutable bool, workers int)
 		values[i] = v
 	}
 	return NewWorkerValue(values), nil
+}
+
+func ValueMutates(value Value) bool {
+	switch value.(type) {
+	case nil, *BoolValue, *IntValue, *StringValue, *ModelValue, *IntervalValue, *UndefValue:
+		return false
+	default:
+		return true
+	}
 }
 
 func MuxWorkerValue(value any, workerID int) Value {

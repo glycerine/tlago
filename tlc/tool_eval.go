@@ -105,7 +105,11 @@ func muxToolObject(value any, state *TLCStateMut) any {
 	case nil:
 		return nil
 	case *WorkerValue:
-		return v.ValueForWorker(workerIDFromState(state))
+		workerID, ok := CurrentWorkerID()
+		if !ok {
+			workerID = workerIDFromState(state)
+		}
+		return v.ValueForWorker(workerID)
 	default:
 		return v
 	}
