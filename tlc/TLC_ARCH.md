@@ -1781,6 +1781,12 @@ subsets against `2^Cardinality(S)`, then subset size against `0..Cardinality(S)`
 `RandomSubsetSetProbability`, including for probability parsing and the
 requested-subsets bound.
 
+`TLCGetSet` uses `TLC_MODULE_TLCGET_UNDEFINED` for missing numeric and string
+registers. Invalid `TLCGet` arguments report `TLC_MODULE_ONE_ARGUMENT_ERROR`;
+invalid `TLCSet` arguments report `TLC_MODULE_ARGUMENT_ERROR`. String register
+names are rendered without quotes in the undefined `TLCGet(name)` message, just
+as Java uses `String.valueOf(sv.val)`.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

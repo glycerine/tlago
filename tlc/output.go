@@ -427,6 +427,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("The first argument of Assert evaluated to FALSE; the second argument was:\n%s", params[0])
 		}
+	case ECTLCModuleTLCGetUndefined:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLCGet(%s) was undefined.", params[0])
+		}
 	case ECTLCModuleOverflow:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Overflow when computing %s", params[0])

@@ -94,11 +94,11 @@ func TLCGetValue(tool *Tool, vidx Value, s0 *TLCStateMut, s1 *TLCStateMut, contr
 				return value, nil
 			}
 		}
-		return nil, newTLCError(ECGeneral, "TLCGet(%d) is undefined", idx.Val)
+		return nil, newTLCErrorCode(ECTLCModuleTLCGetUndefined, fmt.Sprintf("%d", idx.Val))
 	case *StringValue:
 		return tlcGetStringValue(tool, idx, s0, control)
 	}
-	return nil, newTLCError(ECGeneral, "first argument of TLCGet must be a nonnegative integer or string, got %s", vidx)
+	return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCGet", "nonnegative integer", ValuesPPR(vidx))
 }
 
 func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control int) (Value, error) {
@@ -195,7 +195,7 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 			return NewStringValue(tlcGetSystemProperty(keyString[2:], keyString)), nil
 		}
 	}
-	return nil, newTLCError(ECGeneral, "TLCGet(%q) is undefined", keyString)
+	return nil, newTLCErrorCode(ECTLCModuleTLCGetUndefined, keyString)
 }
 
 func TLCSet(vidx Value, val Value) (Value, error) {
@@ -265,7 +265,7 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 			}
 		}
 	}
-	return nil, newTLCError(ECGeneral, "first argument of TLCSet must be a nonnegative integer or supported string, got %s", vidx)
+	return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "TLCSet", "nonnegative integer", ValuesPPR(vidx))
 }
 
 func TLCGetOrDefault(vidx Value, defVal Value) Value {
