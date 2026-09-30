@@ -399,6 +399,9 @@ func (mc *ModelChecker) initWorkers() {
 func (mc *ModelChecker) Stop() {
 	if mc != nil && mc.AbstractChecker != nil {
 		mc.SetDone()
+		if mc.StateQueue != nil {
+			mc.StateQueue.FinishAll()
+		}
 	}
 }
 
