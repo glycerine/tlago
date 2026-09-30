@@ -288,14 +288,21 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.Periodic = p.optionalSemanticFromConfigName(p.Config.GetPeriodic())
 
 	p.InitPred = nil
-	if initName := p.Config.GetInit(); initName != "" {
-		p.InitPred = append(p.InitPred, p.actionFromConfigName(initName, true))
-	}
-	if nextName := p.Config.GetNext(); nextName != "" {
-		p.NextPred = p.actionFromConfigName(nextName, false)
+	p.NextPred = nil
+	if p.SpecificationName != "" {
+		p.processSpecificationConfig()
+	} else {
+		if initName := p.Config.GetInit(); initName != "" {
+			p.InitPred = append(p.InitPred, p.actionFromConfigName(initName, true))
+		}
+		if nextName := p.Config.GetNext(); nextName != "" {
+			p.NextPred = p.actionFromConfigName(nextName, false)
+		}
 	}
 	p.Invariants, p.InvariantNames = p.actionsFromConfigNames(p.Config.GetInvariants(), false)
-	p.Temporals, p.TemporalNames = p.actionsFromConfigNames(p.Config.GetProperties(), false)
+	properties, propertyNames := p.actionsFromConfigNames(p.Config.GetProperties(), false)
+	p.Temporals = append(p.Temporals, properties...)
+	p.TemporalNames = append(p.TemporalNames, propertyNames...)
 	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
 	p.ModelConstraints = p.semanticNodesFromConfigNames(p.Config.GetConstraints())
 	p.ActionConstraints = p.semanticNodesFromConfigNames(p.Config.GetActionConstraints())
@@ -315,6 +322,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 			p.Defns.SetDefnCount(len(names))
 		}
 	}
+	p.ProcessConfig()
 	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
 	tool.InitStateSpec = append([]*Action(nil), p.InitPred...)
@@ -338,6 +346,135 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.Periodic = p.Periodic
 	tool.ViewSpec = p.ViewSpec
 	tool.AssignActionIDs()
+}
+
+func (p *SpecProcessor) processSpecificationConfig() {
+	def, ok := p.defn(p.SpecificationName).(*OpDefNode)
+	if !ok || def == nil || def.Arity() != 0 {
+		return
+	}
+	tool := p.configProcessingTool()
+	p.processConfigSpec(tool, def.Body, EmptyContext, EmptyList, nil)
+}
+
+func (p *SpecProcessor) configProcessingTool() *Tool {
+	tool := NewTool()
+	p.applyDefinitionsToTool(tool)
+	return tool
+}
+
+func (p *SpecProcessor) processConfigSpec(tool *Tool, pred SemanticNode, c *Context, subs *List, stack []SemanticNode) {
+	if p == nil || pred == nil {
+		return
+	}
+	if c == nil {
+		c = EmptyContext
+	}
+	if subs == nil {
+		subs = EmptyList
+	}
+	if tool == nil {
+		tool = p.configProcessingTool()
+	}
+	switch node := pred.(type) {
+	case *SubstInNode:
+		p.processConfigSpec(tool, node.Body, c, subs.Cons(node), stack)
+		return
+	case *APSubstInNode:
+		p.processConfigSpec(tool, node.Body, c, subs, stack)
+		return
+	case *LetInNode:
+		p.processConfigSpec(tool, node.Body, c, subs, stack)
+		return
+	case *LabelNode:
+		p.processConfigSpec(tool, node.Body, c, subs, stack)
+		return
+	case *OpApplNode:
+		if p.processConfigSpecAppl(tool, node, c, subs, stack) {
+			return
+		}
+	}
+
+	level := tool.GetLevelBound(pred, c)
+	if level <= TLCLevelState {
+		p.InitPred = append(p.InitPred, NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred)))
+		return
+	}
+	if level == TLCLevelTemporal {
+		action := NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred))
+		p.Temporals = append(p.Temporals, action)
+		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
+	}
+}
+
+func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *Context, subs *List, stack []SemanticNode) bool {
+	if pred == nil || pred.Operator == nil {
+		return false
+	}
+	stack = append(stack, pred)
+	args := pred.Args
+	val := tool.Lookup(pred.Operator, c, EmptyState, false)
+	if len(args) == 0 {
+		switch v := val.(type) {
+		case *OpDefNode:
+			if v == nil || v.Arity() != 0 {
+				return true
+			}
+			if tool.GetLevelBound(v.Body, c) == TLCLevelState {
+				p.InitPred = append(p.InitPred, NewActionFromOpDef(SpecsAddSubsts(v.Body, subs), c, v, true, false))
+				return true
+			}
+			p.processConfigSpec(tool, v.Body, c, subs, stack)
+			return true
+		case *BoolValue:
+			return true
+		case *LazyValue:
+			p.processConfigSpec(tool, v.Expr, v.Con, subs, stack[:len(stack)-1])
+			return true
+		}
+	}
+
+	if def, ok := val.(*OpDefNode); ok && def != nil && def.Body != nil && def.Arity() == len(args) && subs.IsEmpty() {
+		if c1, err := tool.GetOpContext(def, args, c, true, DoNotRecordCostModel); err == nil {
+			p.processConfigSpec(tool, def.Body, c1, subs, stack)
+			return true
+		}
+	}
+
+	opcode := 0
+	if pred.Operator.Name != nil {
+		opcode = GetOpCode(pred.Operator.Name)
+	}
+	switch opcode {
+	case OpcodeTE, OpcodeTF:
+		return true
+	case OpcodeCL, OpcodeLand:
+		for _, arg := range args {
+			p.processConfigSpec(tool, arg, c, subs, append([]SemanticNode(nil), stack...))
+		}
+		return true
+	case OpcodeBox:
+		if len(args) == 0 {
+			return true
+		}
+		boxArg, _ := args[0].(*OpApplNode)
+		if boxArg != nil && boxArg.Operator != nil && GetOpCode(boxArg.Operator.Name) == OpcodeSA && len(boxArg.Args) > 0 {
+			if p.NextPred == nil {
+				p.NextPred = NewAction(SpecsAddSubsts(boxArg.Args[0], subs), c, SemanticString(boxArg.Args[0]))
+			}
+			return true
+		}
+		action := NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred))
+		p.Temporals = append(p.Temporals, action)
+		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
+		return true
+	case OpcodeNop:
+		if len(args) > 0 {
+			p.processConfigSpec(tool, args[0], c, subs, stack)
+			return true
+		}
+	}
+	return false
 }
 
 func (p *SpecProcessor) applyDefinitionsToTool(tool *Tool) {
