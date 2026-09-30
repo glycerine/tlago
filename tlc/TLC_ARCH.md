@@ -1267,6 +1267,16 @@ counterexample. The Go standard operator is therefore registered as an
 evaluating operator rather than a plain method so it can read the current
 postcondition context.
 
+Preserve Java override annotations when registering standard operators.
+`TLC!TLCEval` is an evaluating override because it receives the unevaluated
+expression and caches converted constant-level results on the semantic node.
+`TLC!TLCGet`, `TLCExt!CounterExample`, `TLCExt!Trace`, `_TLCTrace!_TLCState`,
+`_JsonTrace!_TLCState`, and `_Possible!_Counts` all carry non-constant
+minimum levels in Java to prevent invalid constant folding. `TLCExt!PickSuccessor`
+is action-level. Conversely, `TLCExt!TLCGetOrDefault` is a plain Java operator,
+so both arguments are evaluated before it chooses between the register value and
+the default.
+
 `Randomization!RandomSubset(k, S)` must follow Java's `EnumerableValue`
 subset enumerator rather than a plain shuffled sample. Java chooses a seed
 index with `Random.nextInt(|S|)`, chooses an increment with

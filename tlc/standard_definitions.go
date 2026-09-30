@@ -84,8 +84,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("SortSeq", 2, func(args []Value) (Value, error) { return SortSeq(args[0], args[1]) })
 	t.defineStandardMethod("RandomElement", 1, func(args []Value) (Value, error) { return RandomElement(args[0]) })
 	t.defineStandardMethod("ToString", 1, func(args []Value) (Value, error) { return TLCToString(args[0]), nil })
-	t.defineStandardMethod("TLCEval", 1, func(args []Value) (Value, error) { return TLCEval(args[0]), nil })
-	t.defineStandardEvaluating("TLCGet", 1, standardTLCGet)
+	t.defineStandardEvaluating("TLCEval", 1, standardTLCEval)
+	t.defineStandardEvaluatingWithMinLevel("TLCGet", 1, TLCLevelState, standardTLCGet)
 	t.defineStandardEvaluating("TLCSet", 2, standardTLCSet)
 
 	t.defineStandardMethod("RandomSubset", 2, func(args []Value) (Value, error) { return RandomSubset(args[0], args[1]) })
@@ -162,7 +162,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("atoi", 1, func(args []Value) (Value, error) { return IOUtilsAtoi(args[0]) })
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
-	t.defineStandardEvaluating("PickSuccessor", 1, standardPickSuccessor)
+	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)
 	t.defineStandardMethod("ToTrace", 1, func(args []Value) (Value, error) { return TLCExtToTrace(args[0]) })
 	t.defineStandardEvaluatingWithMinLevel("CounterExample", 0, 1, standardCounterExample)
 	t.defineStandardEvaluatingWithMinLevel("Trace", 0, 1, standardTrace)
@@ -172,7 +172,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardEvaluating("TLCCache", 2, standardTLCCache)
 	t.defineStandardMethod("TLCFP", 1, func(args []Value) (Value, error) { return TLCExtTLCFP(args[0]), nil })
 	t.defineStandardEvaluating("TLCEvalDefinition", 1, standardTLCEvalDefinition)
-	t.defineStandardEvaluating("TLCGetOrDefault", 2, standardTLCGetOrDefault)
+	t.defineStandardMethod("TLCGetOrDefault", 2, func(args []Value) (Value, error) { return TLCGetOrDefault(args[0], args[1]), nil })
 	t.defineStandardEvaluating("TLCGetAndSet", 4, standardTLCGetAndSet)
 
 	t.defineStandardMethod("_TLCTraceDeserialize", 1, func(args []Value) (Value, error) {
@@ -189,8 +189,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		}
 		return TLCTraceSerialize(args[0], path)
 	})
-	t.defineStandardEvaluating("_TLCState", 1, standardTLCState, "_TLCTrace!_TLCState", "_JsonTrace!_TLCState")
-	t.defineStandardMethod("_Counts", 0, func(args []Value) (Value, error) { return PossibleCounts(), nil })
+	t.defineStandardEvaluatingWithMinLevel("_TLCState", 1, TLCLevelState, standardTLCState, "_TLCTrace!_TLCState", "_JsonTrace!_TLCState")
+	t.defineStandardMethodWithMinLevel("_Counts", 0, TLCLevelState, func(args []Value) (Value, error) { return PossibleCounts(), nil })
 
 	return t
 }
@@ -203,7 +203,11 @@ func (t *Tool) defineStandardValue(name string, value any, aliases ...string) {
 }
 
 func (t *Tool) defineStandardMethod(name string, arity int, eval func([]Value) (Value, error), aliases ...string) {
-	value := NewMethodValue(name, 0, func(args []Value, control int) (Value, error) {
+	t.defineStandardMethodWithMinLevel(name, arity, 0, eval, aliases...)
+}
+
+func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel int, eval func([]Value) (Value, error), aliases ...string) {
+	value := NewMethodValue(name, minLevel, func(args []Value, control int) (Value, error) {
 		_ = control
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
@@ -271,6 +275,43 @@ func standardTLCGet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 		return nil, err
 	}
 	return TLCGetValue(tool, index, state, pstate, control)
+}
+
+func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	expr := args[0]
+	level := SemanticLevel(expr)
+	if tool != nil && level == TLCLevelConstant {
+		level = tool.GetLevelBound(expr, con)
+	}
+	if level > TLCLevelConstant || (con != nil && !con.IsDeepEmpty()) {
+		value, err := tool.Eval(expr, con, state, pstate, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return TLCEval(value), nil
+	}
+	if value, ok := semanticCachedTLCEvalValue(expr); ok {
+		return value, nil
+	}
+	value, err := tool.Eval(expr, con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	value = TLCEval(value)
+	setSemanticToolObject(expr, value)
+	return value, nil
+}
+
+func semanticCachedTLCEvalValue(node SemanticNode) (Value, bool) {
+	switch node.(type) {
+	case nil, Value, *ValueNode, *NumeralNode, *DecimalNode, *StringNode:
+		return nil, false
+	}
+	if getter, ok := node.(interface{ GetToolObject() any }); ok {
+		value, ok := getter.GetToolObject().(Value)
+		return value, ok && value != nil
+	}
+	return nil, false
 }
 
 func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -402,18 +443,6 @@ func standardTLCEvalDefinition(tool *Tool, args []SemanticNode, con *Context, st
 		return nil, err
 	}
 	return TLCExtTLCEvalDefinition(tool, name, con, state, pstate, control, cm)
-}
-
-func standardTLCGetOrDefault(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	index, err := tool.Eval(args[0], con, state, pstate, control, cm)
-	if err != nil {
-		return nil, err
-	}
-	value, err := TLCGetValue(tool, index, state, pstate, control)
-	if err == nil && value != nil {
-		return value, nil
-	}
-	return tool.Eval(args[1], con, state, pstate, control, cm)
 }
 
 func standardTLCGetAndSet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
