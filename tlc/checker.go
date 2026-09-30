@@ -182,6 +182,7 @@ type ModelChecker struct {
 	FPSet                 *MemFPSet
 	StateQueue            *MemStateQueue
 	Trace                 *MemoryTrace
+	LiveCheck             *LiveCheck
 	NextStatesGenerated   int64
 }
 
@@ -214,6 +215,12 @@ func WithModelCheckerTrace(trace *MemoryTrace) ModelCheckerOption {
 	}
 }
 
+func WithModelCheckerLiveCheck(liveCheck *LiveCheck) ModelCheckerOption {
+	return func(mc *ModelChecker) {
+		mc.LiveCheck = liveCheck
+	}
+}
+
 func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelCheckerOption) *ModelChecker {
 	checkDeadlock := deadlock
 	if tool != nil {
@@ -226,6 +233,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		FPSet:           NewMemFPSet(),
 		StateQueue:      NewMemStateQueue(),
 		Trace:           NewMemoryTrace(),
+		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
 	}
 	for _, opt := range opts {
 		opt(mc)
@@ -238,6 +246,9 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	}
 	if mc.Trace == nil {
 		mc.Trace = NewMemoryTrace()
+	}
+	if mc.LiveCheck == nil {
+		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	}
 	SetMainChecker(mc)
 	return mc
@@ -327,6 +338,12 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	result, err = mc.RunTLC(0)
 	if err != nil || result != NoError {
 		return result, err
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil {
+		result, err = mc.LiveCheck.FinalCheck(mc.Tool)
+		if err != nil || result != NoError {
+			return result, err
+		}
 	}
 	return mc.Tool.CheckPostCondition(), nil
 }
@@ -442,6 +459,13 @@ func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCSt
 	}
 	unseen := true
 	if inModel {
+		if mc.CheckLiveness && mc.LiveCheck != nil {
+			liveStates := NewSetOfStates(1)
+			liveStates.Put(succState)
+			if err := mc.LiveCheck.AddNextState(mc.Tool, curState, curState.FingerPrint(), liveStates); err != nil {
+				return true, false, err
+			}
+		}
 		seen, err := mc.isSeenState(curState, succState, action)
 		if err != nil {
 			return true, false, err
@@ -653,6 +677,13 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 				f.errState = curState
 				f.err = err
 				return f.returnValue, err
+			}
+			if f.mc.CheckLiveness && f.mc.LiveCheck != nil {
+				if err := f.mc.LiveCheck.AddInitState(f.tool, curState, fp); err != nil {
+					f.errState = curState
+					f.err = err
+					return f.returnValue, err
+				}
 			}
 			f.mc.StateQueue.Enqueue(curState)
 		}
