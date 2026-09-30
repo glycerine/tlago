@@ -1411,6 +1411,10 @@ Important behavior:
   `TLC_STATE_NOT_COMPLETELY_SPECIFIED_NEXT` are non-continuable regardless of
   `-continue`. Other behavior errors keep workers running only when
   `Globals.Continuation` is set.
+- After the result loop exits, Java interrupts every simulation worker and
+  joins each for up to ten seconds. The Go port mirrors this with a stop flag
+  and concrete worker `Join` channel so simulation returns without leaving
+  worker goroutines running.
 
 Port guidance:
 

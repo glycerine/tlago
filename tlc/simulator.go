@@ -158,6 +158,19 @@ func (s *Simulator) Stop() {
 	}
 }
 
+func (s *Simulator) shutdownAndJoinWorkers(workers []*SimulationWorker) {
+	for _, worker := range workers {
+		if worker != nil {
+			worker.Stop()
+		}
+	}
+	for _, worker := range workers {
+		if worker != nil {
+			worker.Join(10 * time.Second)
+		}
+	}
+}
+
 func (s *Simulator) GetLocalValue(idx int) Value {
 	if s == nil || idx < 0 {
 		return nil
@@ -474,8 +487,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 		}
 		if result.IsError() {
 			if s.simulationErrorStops(result.Error) {
-				s.Stop()
-				return result
+				break
 			}
 			continue
 		}
@@ -484,6 +496,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 			runningCount--
 		}
 	}
+	s.shutdownAndJoinWorkers(s.Workers)
 	return result
 }
 

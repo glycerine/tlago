@@ -6,6 +6,7 @@ import (
 	"math"
 	"os"
 	"sync/atomic"
+	"time"
 )
 
 type SimulationWorkerError struct {
@@ -317,6 +318,7 @@ type SimulationWorker struct {
 	Statistics     *SimulationWorkerStatistics
 	Stopped        atomic.Bool
 	Halted         atomic.Bool
+	done           chan struct{}
 	NextStates     *StateVec
 	RLAlpha        float64
 	RLGamma        float64
@@ -364,7 +366,12 @@ func (w *SimulationWorker) Start(initStates *StateVec) {
 		return
 	}
 	w.SetInitialStates(initStates)
-	go w.Run()
+	w.Stopped.Store(false)
+	w.done = make(chan struct{})
+	go func() {
+		defer close(w.done)
+		w.Run()
+	}()
 }
 
 func (w *SimulationWorker) Run() {
@@ -372,6 +379,24 @@ func (w *SimulationWorker) Run() {
 		if !w.SimulateAndReport() {
 			return
 		}
+	}
+}
+
+func (w *SimulationWorker) Join(timeout time.Duration) bool {
+	if w == nil || w.done == nil {
+		return true
+	}
+	if timeout <= 0 {
+		<-w.done
+		return true
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-w.done:
+		return true
+	case <-timer.C:
+		return false
 	}
 }
 
