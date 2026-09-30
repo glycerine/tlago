@@ -905,24 +905,36 @@ func (t *Tool) evalFcnApply(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 
 func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
 	dvals := make([]Value, len(expr.BdedQuantBounds))
+	isFcnRcd := true
 	for i, domain := range expr.BdedQuantBounds {
 		value, err := t.Eval(domain, c, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
 		}
 		dvals[i] = value
+		isFcnRcd = isFcnRcd && isReducibleFunctionDomain(value)
 	}
 	params := NewFcnParams(expr.BdedQuantSymbolLists, expr.BdedQuantATuple, dvals)
 	fval := NewFcnLambdaValue(params, expr.Args[0], t, c, s0, s1, control)
 	if opcode == OpcodeRFS && len(expr.UnbdedQuantSymbols) > 0 {
 		fval.MakeRecursive(expr.UnbdedQuantSymbols[0])
+		isFcnRcd = false
 	}
-	if !EvalIsKeepLazy(control) {
+	if isFcnRcd && !EvalIsKeepLazy(control) {
 		if fcn := fval.ToFcnRcd(); fcn != nil {
 			return fcn, nil
 		}
 	}
 	return fval, nil
+}
+
+func isReducibleFunctionDomain(value Value) bool {
+	switch value.(type) {
+	case *IntervalValue, *SetEnumValue:
+		return true
+	default:
+		return false
+	}
 }
 
 func (t *Tool) evalRecordConstructor(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1199,11 +1211,7 @@ func domainValue(value Value) (Value, error) {
 	case *FcnRcdValue:
 		return v.DomainValue(), nil
 	case *FcnLambdaValue:
-		fcn := v.ToFcnRcd()
-		if fcn == nil {
-			return nil, newTLCError(ECGeneral, "could not materialize function domain for %s", value)
-		}
-		return fcn.DomainValue(), nil
+		return v.GetDomain()
 	default:
 		return nil, newTLCError(ECGeneral, "attempted to apply DOMAIN to non-function %s", value)
 	}

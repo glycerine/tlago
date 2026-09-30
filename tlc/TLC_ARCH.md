@@ -721,6 +721,13 @@ Important concrete values:
 - `IntervalValue`: finite integer interval without materializing all elements.
 - `FcnRcdValue`: explicit finite function, optimized for interval domains.
 - `FcnLambdaValue`: lazy function with params/body/tool/context.
+- Function constructors stay lazy unless Java's `Tool.evalApplImpl` can prove
+  every bounded domain is `Reducible` and `EvalControl.KeepLazy` is clear. In
+  Go, mirror that check concretely with `IntervalValue` and `SetEnumValue`
+  rather than adding a one-use `Reducible` interface. Recursive functions also
+  stay lazy. `DOMAIN` on `FcnLambdaValue` reads the lambda's parameter-domain
+  metadata through `GetDomain`, not by materializing the whole function into a
+  `FcnRcdValue`.
 - `SetOfFcnsValue`, `SetOfRcdsValue`, `SetOfTuplesValue`: lazy enumerable set
   spaces.
 - `SubsetValue` and `KSubsetValue`: lazy subset enumeration and unranking.
