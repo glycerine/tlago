@@ -664,6 +664,27 @@ Tricky details:
   lexicographically smallest representative.
 - `TLCGet("level")` depends on exact level initialization.
 
+### `StateVec`
+
+`StateVec` is Java's mutable array-backed state vector and implements both the
+plain state functor and next-state functor contracts. The Go port keeps it as a
+single concrete slice-backed struct in `state.go`:
+
+- `AddElement(state)` appends the state unchanged.
+- `AddNextElement(predecessor, action, state)` stamps predecessor/action before
+  appending, matching Java's `INextStateFunctor.addElement`.
+- `AddElements` returns the larger vector as the receiver of the append, just as
+  Java swaps `s0`/`s1` to reduce copying.
+- `Remove` swaps in the last element; `RemoveAt`/`Replace` only overwrite the
+  slot. These two removal styles are intentionally distinct.
+- `Reset` and `Clear` both set logical size to zero while keeping capacity.
+- `Copy` calls state `copy`; `DeepCopy` calls state `deepCopy`.
+- `ToRecords(append)` returns all current states as record values followed by
+  the appended state.
+- `ToRecordsFrom(from, append)` walks backward until `from`'s fingerprint,
+  then returns that suffix in forward order followed by `append`, matching
+  Java's linked-list `push` behavior.
+
 ## Value System
 
 `tlc2.value.impl.Value` is the base class for all TLA+ runtime values.

@@ -603,6 +603,7 @@ func (v *StateVec) At(i int) *TLCStateMut { return v.states[i] }
 func (v *StateVec) First() *TLCStateMut   { return v.states[0] }
 func (v *StateVec) Last() *TLCStateMut    { return v.states[len(v.states)-1] }
 func (v *StateVec) Clear()                { v.states = v.states[:0] }
+func (v *StateVec) Reset()                { v.states = v.states[:0] }
 
 func (v *StateVec) Add(state *TLCStateMut) *StateVec {
 	v.ensureCanAdd(1)
@@ -662,6 +663,10 @@ func (v *StateVec) Remove(index int) {
 	v.states = v.states[:len(v.states)-1]
 }
 
+func (v *StateVec) RemoveAt(index int) {
+	v.Replace(index, nil)
+}
+
 func (v *StateVec) Replace(index int, state *TLCStateMut) {
 	v.states[index] = state
 }
@@ -702,6 +707,36 @@ func (v *StateVec) ToSlice() []*TLCStateMut {
 	out := make([]*TLCStateMut, len(v.states))
 	copy(out, v.states)
 	return out
+}
+
+func (v *StateVec) ToList() []*TLCStateMut {
+	return v.ToSlice()
+}
+
+func (v *StateVec) ToRecords(appendState *TLCStateMut) []Value {
+	values := make([]Value, 0, len(v.states)+1)
+	for _, state := range v.states {
+		values = append(values, NewRecordValueFromInsMap(state.Values()))
+	}
+	values = append(values, NewRecordValueFromInsMap(appendState.Values()))
+	return values
+}
+
+func (v *StateVec) ToRecordsFrom(from *TLCStateMut, appendState *TLCStateMut) []Value {
+	reversed := make([]Value, 0, len(v.states)+1)
+	reversed = append(reversed, NewRecordValueFromInsMap(appendState.Values()))
+	fromFP := from.FingerPrint()
+	for i := len(v.states) - 1; i >= 0; i-- {
+		state := v.states[i]
+		reversed = append(reversed, NewRecordValueFromInsMap(state.Values()))
+		if state.FingerPrint() == fromFP {
+			break
+		}
+	}
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	return reversed
 }
 
 func (v *StateVec) String() string {
