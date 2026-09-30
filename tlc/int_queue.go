@@ -9,21 +9,24 @@ import (
 )
 
 type IntQueue struct {
-	m        []int32
-	head     int
+	elems    []int32
+	size     int
+	start    int
 	diskdir  string
 	filename string
 }
 
+const intQueueInitialSize = 4096
+
 func NewIntQueue() *IntQueue {
-	return NewIntQueueWithCapacity(0)
+	return NewIntQueueWithCapacity(intQueueInitialSize)
 }
 
 func NewIntQueueWithCapacity(capacity int) *IntQueue {
 	if capacity < 0 {
 		capacity = 0
 	}
-	return &IntQueue{m: make([]int32, 0, capacity)}
+	return &IntQueue{elems: make([]int32, capacity)}
 }
 
 func NewIntQueueWithDisk(metadir string, filename string, capacity int) *IntQueue {
@@ -34,8 +37,17 @@ func NewIntQueueWithDisk(metadir string, filename string, capacity int) *IntQueu
 }
 
 func (q *IntQueue) EnqueueInt(elem int32) {
-	q.compactIfWorthwhile()
-	q.m = append(q.m, elem)
+	if q.size == len(q.elems) {
+		newElems := make([]int32, q.ensureCapacity(intQueueInitialSize))
+		copyLen := len(q.elems) - q.start
+		copy(newElems, q.elems[q.start:])
+		copy(newElems[copyLen:], q.elems[:q.start])
+		q.elems = newElems
+		q.start = 0
+	}
+	last := (q.start + q.size) % len(q.elems)
+	q.elems[last] = elem
+	q.size++
 }
 
 func (q *IntQueue) EnqueueLong(elem int64) {
@@ -44,15 +56,12 @@ func (q *IntQueue) EnqueueLong(elem int64) {
 }
 
 func (q *IntQueue) DequeueInt() int32 {
-	if q.Size() < 1 {
+	if q.size < 1 {
 		panic("IntQueue is empty")
 	}
-	res := q.m[q.head]
-	q.head++
-	if q.head == len(q.m) {
-		q.m = q.m[:0]
-		q.head = 0
-	}
+	res := q.elems[q.start]
+	q.size--
+	q.start = (q.start + 1) % len(q.elems)
 	return res
 }
 
@@ -63,17 +72,11 @@ func (q *IntQueue) DequeueLong() int64 {
 }
 
 func (q *IntQueue) PopInt() int32 {
-	if q.Size() < 1 {
+	if q.size < 1 {
 		panic("IntQueue is empty")
 	}
-	last := len(q.m) - 1
-	res := q.m[last]
-	q.m = q.m[:last]
-	if q.head == len(q.m) {
-		q.m = q.m[:0]
-		q.head = 0
-	}
-	return res
+	q.size--
+	return q.elems[q.size]
 }
 
 func (q *IntQueue) PopLong() int64 {
@@ -83,7 +86,7 @@ func (q *IntQueue) PopLong() int64 {
 }
 
 func (q *IntQueue) Size() int {
-	return len(q.m) - q.head
+	return q.size
 }
 
 func (q *IntQueue) HasElements() bool {
@@ -92,11 +95,11 @@ func (q *IntQueue) HasElements() bool {
 
 func (q *IntQueue) Reset() {
 	var zero int32
-	for i := range q.m {
-		q.m[i] = zero
+	for i := range q.elems {
+		q.elems[i] = zero
 	}
-	q.m = q.m[:0]
-	q.head = 0
+	q.size = 0
+	q.start = 0
 }
 
 func (q *IntQueue) BeginChkpt() error {
@@ -122,10 +125,15 @@ func (q *IntQueue) BeginChkpt() error {
 		_ = out.Close()
 		return err
 	}
-	for i := q.head; i < len(q.m); i++ {
-		if err := out.WriteInt(q.m[i]); err != nil {
+	index := q.start
+	for i := 0; i < q.size; i++ {
+		if err := out.WriteInt(q.elems[index]); err != nil {
 			_ = out.Close()
 			return err
+		}
+		index++
+		if index == len(q.elems) {
+			index = 0
 		}
 	}
 	return out.Close()
@@ -138,10 +146,10 @@ func (q *IntQueue) CommitChkpt() error {
 	oldName := q.chkptName("chkpt")
 	newName := q.chkptName("tmp")
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("IntQueue.CommitChkpt: cannot delete %s: %w", oldName, err)
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s: %w", oldName, err)
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("IntQueue.CommitChkpt: cannot rename %s to %s: %w", newName, oldName, err)
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s: %w", oldName, err)
 	}
 	return nil
 }
@@ -163,9 +171,9 @@ func (q *IntQueue) Recover() error {
 	if err != nil {
 		return err
 	}
-	q.Reset()
-	if cap(q.m) < int(size) {
-		q.m = make([]int32, 0, int(size))
+	q.size = int(size)
+	if len(q.elems) < q.size {
+		q.elems = make([]int32, q.size)
 	}
 	for i := int32(0); i < size; i++ {
 		value, err := in.ReadInt()
@@ -175,9 +183,8 @@ func (q *IntQueue) Recover() error {
 		if err != nil {
 			return err
 		}
-		q.m = append(q.m, value)
+		q.elems[i] = value
 	}
-	q.head = 0
 	return nil
 }
 
@@ -193,19 +200,10 @@ func (q *IntQueue) chkptName(ext string) string {
 	return filepath.Join(q.diskdir, filename+"."+ext)
 }
 
-func (q *IntQueue) compactIfWorthwhile() {
-	if q.head == 0 {
-		return
+func (q *IntQueue) ensureCapacity(minCapacity int) int {
+	newSize := int((int64(q.size)*3)/2) + 1
+	if min := q.size + minCapacity; newSize < min {
+		newSize = min
 	}
-	if q.head == len(q.m) {
-		q.m = q.m[:0]
-		q.head = 0
-		return
-	}
-	if q.head < len(q.m)/2 {
-		return
-	}
-	copy(q.m, q.m[q.head:])
-	q.m = q.m[:len(q.m)-q.head]
-	q.head = 0
+	return newSize
 }

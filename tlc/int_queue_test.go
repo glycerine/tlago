@@ -49,7 +49,7 @@ func TestIntQueueEnqueueDequeueLong(t *testing.T) {
 	expectPanic(t, func() { queue.DequeueLong() })
 }
 
-func TestIntQueueSliceHeadCompactionPreservesFIFOOrder(t *testing.T) {
+func TestIntQueueRingWrapPreservesFIFOOrder(t *testing.T) {
 	queue := NewIntQueueWithCapacity(4)
 	queue.EnqueueInt(0)
 	queue.EnqueueInt(1)
