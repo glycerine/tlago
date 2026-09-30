@@ -554,12 +554,15 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 		}
 		PrintMessage(ECTLCComputingInit)
 		result, err = mc.DoInit(false)
-		if err != nil || result != NoError {
-			if result != NoError {
-				mc.checkPostConditionAfterInitFailure()
-			}
+		if err != nil {
+			result = mc.reportInitException(result, err)
 			mc.PrintSummary(false)
 			return result, err
+		}
+		if result != NoError {
+			mc.checkPostConditionAfterInitFailure()
+			mc.PrintSummary(false)
+			return result, nil
 		}
 		mc.PrintInitGenerated()
 	}
@@ -1171,11 +1174,15 @@ func (mc *ModelChecker) ForceLivenessCheck() {
 }
 
 func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {
-	if mc.Tool == nil {
+	return mc.doInitWithTool(mc.Tool, ignoreCancel)
+}
+
+func (mc *ModelChecker) doInitWithTool(tool *Tool, ignoreCancel bool) (int, error) {
+	if tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
 	}
-	functor := &doInitFunctor{mc: mc, tool: mc.Tool, forceChecks: ignoreCancel, returnValue: NoError}
-	err := mc.Tool.GetInitStates(NewStateFunctor(functor.AddElement))
+	functor := &doInitFunctor{mc: mc, tool: tool, forceChecks: ignoreCancel, returnValue: NoError}
+	err := tool.GetInitStates(NewStateFunctor(functor.AddElement))
 	if errors.Is(err, errInvariantViolated) {
 		mc.ErrState = functor.errState
 		return functor.returnValue, nil
@@ -1196,6 +1203,72 @@ func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {
 		}
 	}
 	return functor.returnValue, nil
+}
+
+func (mc *ModelChecker) reportInitException(result int, err error) int {
+	if err == nil {
+		if result != NoError {
+			return result
+		}
+		return ECGeneral
+	}
+	if result == NoError {
+		result = initExceptionCode(err)
+	}
+	message := err.Error()
+	if message == "" {
+		message = fmt.Sprintf("%T", err)
+	}
+	if mc != nil && mc.ErrState != nil {
+		PrintError(ECTLCInitialState, message, mc.ErrState.String())
+	} else {
+		PrintError(ECGeneral, message)
+	}
+	if replayResult := mc.replayInitErrorCallStack(result); replayResult != NoError {
+		result = replayResult
+	}
+	return result
+}
+
+func initExceptionCode(err error) int {
+	var eval *EvalException
+	if errors.As(err, &eval) && eval != nil {
+		return eval.GetErrorCode()
+	}
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil {
+		return tlcErr.Code
+	}
+	return ECGeneral
+}
+
+func (mc *ModelChecker) replayInitErrorCallStack(fallback int) int {
+	if mc == nil || mc.Tool == nil {
+		if fallback != NoError {
+			return fallback
+		}
+		return ECGeneral
+	}
+	callStackTool := NewCallStackTool(mc.Tool)
+	mc.NumberOfInitialStates = 0
+	if _, err := mc.doInitWithTool(callStackTool, true); err != nil {
+		var fpErr *FingerprintException
+		if errors.As(err, &fpErr) && fpErr != nil {
+			trace := fpErr.GetTrace()
+			if callStackTool.HasCallStack() {
+				trace = callStackTool.CallStackString()
+			}
+			rootMessage := ""
+			if root := fpErr.GetRootCause(); root != nil {
+				rootMessage = root.Error()
+			}
+			PrintError(ECTLCFingerprintException, trace, rootMessage)
+			return ECTLCFingerprintException
+		}
+		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
+		return ECTLCNestedExpression
+	}
+	return fallback
 }
 
 func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
