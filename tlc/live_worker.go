@@ -1,6 +1,9 @@
 package tlc
 
-import "fmt"
+import (
+	"fmt"
+	"runtime"
+)
 
 const liveWorkerSCCMarker = int64(-42)
 
@@ -13,6 +16,11 @@ type LiveWorker struct {
 	FinalCheck bool
 	Solution   *OrderOfSolution
 	PEM        *PossibleErrorModel
+}
+
+type liveIntStack struct {
+	mem  *IntStack
+	disk *SynchronousDiskIntStack
 }
 
 func NewLiveWorker(tool *Tool, id int, numWorkers int, liveCheck *LiveCheck, checker *LiveChecker, pem *PossibleErrorModel, finalCheck bool) *LiveWorker {
@@ -58,8 +66,14 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 	eaaction := w.PEM.EAAction
 	slen := len(w.Solution.CheckState)
 	alen := len(w.Solution.CheckAction)
-	dfsStack := NewIntStack()
-	comStack := NewIntStack()
+	dfsStack, err := w.getStack("dfs")
+	if err != nil {
+		return false, err
+	}
+	comStack, err := w.getStack("com")
+	if err != nil {
+		return false, err
+	}
 
 	for nodeQueue.Size() > 0 {
 		state := uint64(nodeQueue.DequeueLong())
@@ -149,7 +163,106 @@ func (w *LiveWorker) liveCheckMetaDir() string {
 	return ""
 }
 
-func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) (bool, error) {
+func (w *LiveWorker) getStack(name string) (*liveIntStack, error) {
+	numWorkers := w.NumWorkers
+	if numWorkers < 1 {
+		numWorkers = 1
+	}
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	freeMemoryInBytes := float64(uint64(1))
+	if mem.HeapSys > mem.HeapAlloc {
+		freeMemoryInBytes = float64(mem.HeapSys-mem.HeapAlloc) / float64(numWorkers)
+	}
+	graphSizeInBytes, err := w.graphSizeOnDisk()
+	if err != nil {
+		return nil, err
+	}
+	ratio := float64(graphSizeInBytes) / freeMemoryInBytes
+	if ratio > Globals.LivenessGraphSizeThreshold {
+		shift := int(ratio)
+		if shift > 5 {
+			shift = 5
+		}
+		capacity := SynchronousDiskIntStackBufSize << shift
+		if float64(capacity) < freeMemoryInBytes {
+			return newDiskLiveIntStack(w.liveCheckMetaDir(), fmt.Sprintf("%s%d", name, w.ID), capacity), nil
+		}
+		return newDiskLiveIntStack(w.liveCheckMetaDir(), fmt.Sprintf("%s%d", name, w.ID)), nil
+	}
+	return newMemLiveIntStack(), nil
+}
+
+func newMemLiveIntStack() *liveIntStack {
+	return &liveIntStack{mem: NewIntStack()}
+}
+
+func newDiskLiveIntStack(metadir string, name string, capacity ...int) *liveIntStack {
+	return &liveIntStack{disk: NewSynchronousDiskIntStack(metadir, name, capacity...)}
+}
+
+func (s *liveIntStack) Size() int64 {
+	if s == nil {
+		return 0
+	}
+	if s.disk != nil {
+		return s.disk.Size()
+	}
+	return int64(s.mem.Size())
+}
+
+func (s *liveIntStack) PushInt(x int32) {
+	if s.disk != nil {
+		s.disk.PushInt(x)
+		return
+	}
+	s.mem.PushInt(x)
+}
+
+func (s *liveIntStack) PushLong(x int64) {
+	if s.disk != nil {
+		s.disk.PushLong(x)
+		return
+	}
+	s.mem.PushLong(x)
+}
+
+func (s *liveIntStack) PopInt() int32 {
+	if s.disk != nil {
+		return s.disk.PopInt()
+	}
+	return s.mem.PopInt()
+}
+
+func (s *liveIntStack) PopLong() int64 {
+	if s.disk != nil {
+		return s.disk.PopLong()
+	}
+	return s.mem.PopLong()
+}
+
+func (s *liveIntStack) Reset() {
+	if s.disk != nil {
+		s.disk.Reset()
+		return
+	}
+	s.mem.Reset()
+}
+
+func (w *LiveWorker) graphSizeOnDisk() (int64, error) {
+	if w == nil || w.Checker == nil {
+		return 0, nil
+	}
+	if w.Checker.TableauDiskGraph != nil {
+		return w.Checker.TableauDiskGraph.GetSizeOnDisk()
+	}
+	if w.Checker.DiskGraph != nil {
+		return w.Checker.DiskGraph.GetSizeOnDisk()
+	}
+	return 0, nil
+}
+
+func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *liveIntStack) (bool, error) {
 	if comStack == nil || comStack.Size() < 5 || comStack.Size()%5 != 0 {
 		return false, fmt.Errorf("malformed liveness component stack")
 	}
@@ -183,7 +296,7 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) 
 		tidx1 = int(comStack.PopInt())
 		loc1 = comStack.PopLong()
 	}
-	if com.Size() > comStackSize/5 {
+	if int64(com.Size()) > comStackSize/5 {
 		return false, fmt.Errorf("liveness component table larger than source stack")
 	}
 
