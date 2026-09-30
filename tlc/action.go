@@ -103,7 +103,7 @@ func (l *ActionItemList) ConsAction(act *Action, kind int) *ActionItemList {
 }
 
 func (l *ActionItemList) IsEmpty() bool {
-	return l == nil || l == EmptyActionItemList
+	return l == nil || l == EmptyActionItemList || (l.Pred == nil && l.Next == EmptyActionItemList && l.Kind == 0)
 }
 
 func (l *ActionItemList) SetAction(action *Action) {

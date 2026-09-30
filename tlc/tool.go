@@ -240,6 +240,9 @@ func (t *Tool) GetInitStates(functor *StateFunctor) error {
 	if t == nil || functor == nil {
 		return nil
 	}
+	if len(t.InitStateSpec) != 0 {
+		return t.GetInitStatesImpl(functor)
+	}
 	for _, state := range t.InitStates {
 		if _, err := functor.AddElement(state); err != nil {
 			return err
@@ -252,14 +255,20 @@ func (t *Tool) MakeState(pred SemanticNode) (*TLCStateMut, error) {
 	if t != nil && t.MakeStateFunc != nil {
 		return t.MakeStateFunc(t, pred)
 	}
-	return NewEmptyState(), nil
+	if t == nil {
+		return NewEmptyState(), nil
+	}
+	return t.MakeStateImpl(pred)
 }
 
 func (t *Tool) GetNextStates(action *Action, state *TLCStateMut) (*StateVec, error) {
 	if t != nil && t.GetNextStatesFunc != nil {
 		return t.GetNextStatesFunc(t, action, state)
 	}
-	return NewStateVec(0), nil
+	if t == nil || action == nil || action.Pred == nil {
+		return NewStateVec(0), nil
+	}
+	return t.GetNextStatesImpl(action, state)
 }
 
 func (t *Tool) GetNextStatesWithFunctor(functor *NextStateFunctor, state *TLCStateMut) (bool, error) {
