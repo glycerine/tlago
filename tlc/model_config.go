@@ -33,6 +33,8 @@ const (
 	ConfigKeywordCheckDeadlock     = "CHECK_DEADLOCK"
 )
 
+const modelConfigNoSymmetryProperty = "tlc2.tool.impl.ModelConfig.nosymmetry"
+
 var configKeywords = map[string]struct{}{
 	ConfigKeywordConstant:          {},
 	ConfigKeywordConstants:         {},
@@ -324,6 +326,9 @@ func (m *ModelConfig) ConfigDefinesSpecification() bool {
 }
 
 func (m *ModelConfig) GetSymmetry() string {
+	if value, ok := tlcLookupSystemProperty(modelConfigNoSymmetryProperty); ok && javaBooleanProperty(value) {
+		return ""
+	}
 	return m.symmetry
 }
 

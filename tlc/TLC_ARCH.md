@@ -291,6 +291,10 @@ Tricky details:
 - Model values must be initialized and ordered exactly as Java does because
   comparison, printing, and fingerprinting depend on it.
 - Constants can be static, dynamic, module-scoped, or override-driven.
+- `tlc2.tool.impl.ModelConfig.nosymmetry=true` makes Java's
+  `ModelConfig.getSymmetry()` return the empty string even when the cfg file
+  contains `SYMMETRY`; the Go port mirrors this at `GetSymmetry` so downstream
+  tool/state setup sees no symmetry set.
 - Config processing must rebuild every derived vector from scratch when it is
   run. The Go bridge constructs `SpecProcessor` before all definitions and
   variables are installed, then runs it again while applying the processor to a
