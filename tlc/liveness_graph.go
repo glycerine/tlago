@@ -2,8 +2,11 @@ package tlc
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
+
+const livenessTableauExportPathProperty = "tlc2.tool.liveness.Liveness.tableauExportPath"
 
 type TBTriple struct {
 	A *LiveExprNode
@@ -372,7 +375,17 @@ func NewTBGraph(tf *LiveExprNode) *TBGraph {
 	for i, node := range graph.Nodes {
 		node.Index = i
 	}
+	exportTableauGraphIfRequested(graph)
 	return graph
+}
+
+func exportTableauGraphIfRequested(graph *TBGraph) {
+	if graph == nil {
+		return
+	}
+	if path, ok := tlcLookupSystemProperty(livenessTableauExportPathProperty); ok {
+		_ = os.WriteFile(path, []byte(graph.ToDotViz()), 0o644)
+	}
 }
 
 func (g *TBGraph) Size() int {

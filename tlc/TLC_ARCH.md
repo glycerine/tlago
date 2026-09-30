@@ -52,6 +52,8 @@ Top-level source package sizes:
 - FPSet construction follows Java properties through the central property map:
   `tlc2.tool.fp.FPSet.impl`, `tlc2.tool.fp.DiskFPSet.logLockCnt`, and
   `tlc2.tool.fp.OffHeapDiskFPSet.probeLimit`.
+- Tableau construction mirrors Java's debug export hook:
+  `tlc2.tool.liveness.Liveness.tableauExportPath` writes `TBGraph` DOT output.
 
 Top-level test package sizes:
 
