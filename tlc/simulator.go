@@ -151,10 +151,8 @@ func (s *Simulator) GetLocalValue(idx int) Value {
 	if worker := s.currentWorker(); worker != nil {
 		return worker.GetLocalValue(idx)
 	}
-	for _, worker := range s.Workers {
-		if value := worker.GetLocalValue(idx); value != nil {
-			return value
-		}
+	if len(s.Workers) > 0 && s.Workers[0] != nil {
+		return s.Workers[0].GetLocalValue(idx)
 	}
 	return nil
 }
@@ -198,10 +196,8 @@ func (s *Simulator) GetLocalNamedValue(key *UniqueString) Value {
 	if worker := s.currentWorker(); worker != nil {
 		return worker.GetNamedRegister(key)
 	}
-	for _, worker := range s.Workers {
-		if value := worker.GetNamedRegister(key); value != nil {
-			return value
-		}
+	if len(s.Workers) > 0 && s.Workers[0] != nil {
+		return s.Workers[0].GetNamedRegister(key)
 	}
 	return nil
 }

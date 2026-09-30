@@ -1459,14 +1459,15 @@ for distinct states and 10 for distinct variable values as Java does.
 Integer `TLCGet(i)`/`TLCSet(i, v)` and named registers (`"s:..."`) are
 current-worker local in Java when evaluated on an `IdThread`; they do not use
 the predecessor state's stored trace worker id. Outside a worker, Java
-broadcasts `TLCSet` through the checker/simulator. Store these registers on the
-concrete Go `Worker` and `SimulationWorker` structs, not centrally on the
-checker/simulator, because Java's `AbstractChecker` and `Simulator` read them
-back from worker objects. `TLCGet("all")` and `TLCGet("all:named")` return
-functions whose values are per-worker tuples and, like Java, iterate indices or
-named keys visible on worker 0. The Go port's ambient current-worker helper must
-be goroutine-scoped, mirroring
-Java's thread-local worker identity. A single process-wide worker slot is not
+broadcasts `TLCSet` through the checker/simulator; simulator `TLCGet` fallback
+reads worker 0 exactly, even when worker 0 has no value. Store these registers
+on the concrete Go `Worker` and `SimulationWorker` structs, not centrally on
+the checker/simulator, because Java's `AbstractChecker` and `Simulator` read
+them back from worker objects. `TLCGet("all")` and `TLCGet("all:named")`
+return functions whose values are per-worker tuples and, like Java, iterate
+indices or named keys visible on worker 0. The Go port's ambient current-worker
+helper must be goroutine-scoped, mirroring Java's thread-local worker identity.
+A single process-wide worker slot is not
 correct once workers run concurrently. Java `IdThread` also stores the
 predecessor state while next states, alias state records, and reconstruction
 states are evaluated; the Go port mirrors this with a goroutine-local
