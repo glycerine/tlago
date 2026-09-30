@@ -81,7 +81,6 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
-		defer ReportCoverage(mc.Tool, mc.StartTime)
 	}
 	recovered, err := mc.Recover()
 	if err != nil {
@@ -150,6 +149,9 @@ func (mc *DFIDModelChecker) PrintSummary(success bool) {
 	_ = success
 	if mc == nil {
 		return
+	}
+	if CoverageAnyEnabled() {
+		ReportCoverage(mc.Tool, mc.StartTime)
 	}
 	fpSize := uint64(0)
 	if mc.FPSet != nil {

@@ -538,7 +538,6 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
-		defer ReportCoverage(mc.Tool, mc.StartTime)
 	}
 	if result := mc.CheckAssumptions(); result != NoError {
 		return result, nil
@@ -840,6 +839,9 @@ func (mc *ModelChecker) RecoverTrace() error {
 func (mc *ModelChecker) PrintSummary(success bool) {
 	if mc == nil {
 		return
+	}
+	if CoverageAnyEnabled() {
+		ReportCoverage(mc.Tool, mc.StartTime)
 	}
 	if toolMode() {
 		mc.PrintProgressStats(mc.StartTime, true)
