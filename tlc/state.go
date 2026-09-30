@@ -53,6 +53,14 @@ func StateSymmetryPermutations() []*MVPerm {
 	return out
 }
 
+func SetTLCStateTool(tool *Tool) {
+	if tool == nil {
+		SetStateSymmetryPermutations(nil)
+		return
+	}
+	SetStateSymmetryPermutations(tool.GetSymmetryPerms())
+}
+
 type TLCStateMut struct {
 	WorkerID int16
 	UID      int64

@@ -106,6 +106,7 @@ type Tool struct {
 	PostConditionSpecs []*Action
 	ModelConstraints   []SemanticNode
 	ActionConstraints  []SemanticNode
+	SymmetryPerms      []*MVPerm
 
 	RootName    string
 	RootFile    string
@@ -406,8 +407,39 @@ func (t *Tool) RememberState(state *TLCStateMut) uint64 {
 	return fp
 }
 
+func (t *Tool) SetSymmetryPermutations(perms []*MVPerm) *Tool {
+	if t == nil {
+		return nil
+	}
+	if len(perms) == 0 {
+		t.SymmetryPerms = nil
+		return t
+	}
+	t.SymmetryPerms = make([]*MVPerm, len(perms))
+	copy(t.SymmetryPerms, perms)
+	return t
+}
+
+func (t *Tool) GetSymmetryPerms() []*MVPerm {
+	if t == nil || len(t.SymmetryPerms) == 0 {
+		return nil
+	}
+	out := make([]*MVPerm, len(t.SymmetryPerms))
+	copy(out, t.SymmetryPerms)
+	return out
+}
+
 func (t *Tool) HasSymmetry() bool {
-	return t != nil && t.HasSymmetryFunc != nil && t.HasSymmetryFunc(t)
+	if t == nil {
+		return false
+	}
+	if t.HasSymmetryFunc != nil {
+		return t.HasSymmetryFunc(t)
+	}
+	if t.ModelConfig != nil && t.ModelConfig.GetSymmetry() != "" {
+		return true
+	}
+	return len(t.SymmetryPerms) > 0
 }
 
 func (t *Tool) GetInitStateSpec() []*Action {

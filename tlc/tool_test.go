@@ -89,3 +89,65 @@ func TestToolConstraintAndSpecGettersReturnCopies(t *testing.T) {
 		t.Fatalf("GetPostConditionSpecs returned slice aliases internal storage")
 	}
 }
+
+func TestToolSymmetryPermutationsAreConcreteAndCopied(t *testing.T) {
+	ModelValueInit()
+	a := AddModelValue("A")
+	b := AddModelValue("B")
+	swap := NewMVPerm()
+	swap.Put(a, b)
+	swap.Put(b, a)
+
+	tool := NewTool()
+	if tool.HasSymmetry() {
+		t.Fatalf("new tool unexpectedly has symmetry")
+	}
+	tool.SetSymmetryPermutations([]*MVPerm{swap})
+	if !tool.HasSymmetry() {
+		t.Fatalf("tool with concrete permutations reports no symmetry")
+	}
+
+	perms := tool.GetSymmetryPerms()
+	if len(perms) != 1 || perms[0] != swap {
+		t.Fatalf("GetSymmetryPerms = %#v, want stored swap", perms)
+	}
+	perms[0] = nil
+	if tool.GetSymmetryPerms()[0] != swap {
+		t.Fatalf("GetSymmetryPerms returned slice aliases internal storage")
+	}
+}
+
+func TestToolHasSymmetryUsesModelConfigNameLikeJava(t *testing.T) {
+	cfg, err := ParseModelConfigSource("MC.cfg", "SYMMETRY Symmetry")
+	if err != nil {
+		t.Fatalf("ParseModelConfigSource returned error: %v", err)
+	}
+	tool := NewToolWithModelConfig(cfg)
+	if !tool.HasSymmetry() {
+		t.Fatalf("tool with config SYMMETRY reports no symmetry")
+	}
+}
+
+func TestSetTLCStateToolInstallsToolSymmetryPermutations(t *testing.T) {
+	UniqueStringInitialize()
+	ModelValueInit()
+	SetStateVariables([]string{"x", "y"})
+	x := UniqueStringOf("x")
+	y := UniqueStringOf("y")
+	a := AddModelValue("A")
+	b := AddModelValue("B")
+
+	swap := NewMVPerm()
+	swap.Put(a, b)
+	swap.Put(b, a)
+	tool := NewTool()
+	tool.SetSymmetryPermutations([]*MVPerm{swap})
+	SetTLCStateTool(tool)
+	t.Cleanup(func() { SetTLCStateTool(nil) })
+
+	representative := NewEmptyState().Bind(x, a).Bind(y, b)
+	symmetric := NewEmptyState().Bind(x, b).Bind(y, a)
+	if representative.FingerPrint() != symmetric.FingerPrint() {
+		t.Fatalf("tool-installed symmetry did not affect state fingerprints")
+	}
+}
