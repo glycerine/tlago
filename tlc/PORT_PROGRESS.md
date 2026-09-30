@@ -44,6 +44,7 @@
   - Simulator now creates default per-worker live checks when Java would check liveness, using worker-specific graph directories under the simulator metadir.
   - Simulator now has a Java-style progress reporter for simulation progress, coverage/action-flow updates, and `_PERIODIC` false termination.
   - Simulator now prints Java-shaped worker-error behaviors and final simulation summaries (`TLC_STATS_SIMU`) with coverage/action-flow finalization.
+  - Exploration/debug simulation now preserves Java's `ExplorationWorker.halt()` behavior: debugger step-out can command the next-state functor to halt, while state generation separately polls the halted flag.
   - BFS model checking now follows Java's recover-before-fresh-start ordering and preserves the `TLC_LIVE_FORMULA_TAUTOLOGY` guard.
   - BFS model checking now emits Java's final safety progress snapshot immediately before final liveness checking.
   - Worker liveness failures now follow Java's call-stack replay path for `EvalException`/stateful runtime failures and preserve the original error after replay.

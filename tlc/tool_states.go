@@ -755,6 +755,8 @@ func (t *Tool) nextActionComposition(action *Action, args []SemanticNode, acts *
 			AddUnsatisfiedNextStateFn: func(_ *TLCStateMut, _ *Action, succ *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
 				return nss.AddUnsatisfiedNextState(s0, action, succ.SetPredecessor(s0), pred, con)
 			},
+			HaltFunc:       nss.Halt,
+			ShouldHaltFunc: nss.ShouldHalt,
 		}
 		if _, err := t.GetNextStatesForPredicate(action, args[1], acts, c, mid, u, wrapper, cm); err != nil {
 			return res, err

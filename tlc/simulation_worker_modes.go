@@ -47,6 +47,11 @@ func (w *SimulationWorker) NextStateFunctor() *NextStateFunctor {
 			}
 		},
 		HaltFunc: func() bool {
+			old := w.Halted.Load()
+			w.Halted.Store(true)
+			return old
+		},
+		ShouldHaltFunc: func() bool {
 			return w.Halted.Load()
 		},
 	}

@@ -63,6 +63,7 @@ type NextStateFunctor struct {
 	AddNextElementFunc         func(*TLCStateMut, *Action, *TLCStateMut) (any, error)
 	IncrementStatesGeneratedFn func(int64)
 	HaltFunc                   func() bool
+	ShouldHaltFunc             func() bool
 	AddUnsatisfiedNextStateFn  func(*TLCStateMut, *Action, *TLCStateMut, SemanticNode, *Context) *TLCStateMut
 }
 
@@ -89,6 +90,10 @@ func (f *NextStateFunctor) IncrementStatesGenerated(count int64) {
 
 func (f *NextStateFunctor) Halt() bool {
 	return f != nil && f.HaltFunc != nil && f.HaltFunc()
+}
+
+func (f *NextStateFunctor) ShouldHalt() bool {
+	return f != nil && f.ShouldHaltFunc != nil && f.ShouldHaltFunc()
 }
 
 func (f *NextStateFunctor) AddUnsatisfiedNextState(curState *TLCStateMut, action *Action, succState *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
@@ -342,7 +347,7 @@ func (t *Tool) GetNextStatesForAction(functor *NextStateFunctor, state *TLCState
 		if _, err := functor.AddNextElement(state, action, next.At(i)); err != nil {
 			return true, err
 		}
-		if functor.Halt() {
+		if functor.ShouldHalt() {
 			return true, nil
 		}
 	}

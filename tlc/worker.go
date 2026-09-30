@@ -178,7 +178,7 @@ func (w *Worker) NextStateFunctor() *NextStateFunctor {
 		},
 		AddNextElementFunc:         w.AddNextElement,
 		IncrementStatesGeneratedFn: w.IncrementStatesGenerated,
-		HaltFunc:                   w.Halt,
+		ShouldHaltFunc:             w.Halt,
 		AddUnsatisfiedNextStateFn:  w.AddUnsatisfiedNextState,
 	}
 }
