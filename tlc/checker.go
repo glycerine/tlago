@@ -1284,6 +1284,7 @@ func (mc *ModelChecker) doNextCheckInvariants(curState *TLCStateMut, succState *
 		if !valid {
 			if continuationEnabled() {
 				PrintError(ECTLCInvariantViolatedBehavior, nameAt(names, i))
+				mc.printBehaviorTrace(curState, succState)
 				continue
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
@@ -1303,6 +1304,7 @@ func (mc *ModelChecker) doNextCheckImplied(curState *TLCStateMut, succState *TLC
 		if !valid {
 			if continuationEnabled() {
 				PrintError(ECTLCActionPropertyViolatedBehavior, nameAt(names, i))
+				mc.printBehaviorTrace(curState, succState)
 				continue
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
@@ -1326,6 +1328,7 @@ func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLC
 		} else {
 			PrintError(ec, params...)
 		}
+		mc.printBehaviorTrace(curState, succState)
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
 		}
@@ -1356,6 +1359,22 @@ func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, 
 	}
 	trace = mc.aliasErrorTrace(trace)
 	mc.Tool.CheckPostConditionWithCounterExample(NewCounterExample(trace, UnknownAction, 0, isConsole))
+}
+
+func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLCStateMut) {
+	trace := mc.errorTraceInfo(curState, succState)
+	if len(trace) == 0 {
+		return
+	}
+	PrintError(ECTLCBehaviorUpToThisPoint)
+	trace = mc.aliasErrorTrace(trace)
+	for i, info := range trace {
+		var previous *TLCStateMut
+		if i > 0 && trace[i-1] != nil {
+			previous = trace[i-1].OriginalState()
+		}
+		PrintInvariantViolationStateTraceState(info, previous, i+1, i == len(trace)-1)
+	}
 }
 
 func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
@@ -1423,14 +1442,16 @@ func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {
 }
 
 func (mc *ModelChecker) doNextEvalFailed(curState *TLCStateMut, succState *TLCStateMut, ec int, param string, err error) error {
-	mc.SetErrState(curState, succState, true, ec)
-	if param == "" {
-		PrintError(ec, err.Error())
-	} else {
-		PrintError(ec, param, err.Error())
-	}
-	if mc.StateQueue != nil {
-		mc.StateQueue.FinishAll()
+	if mc.SetErrState(curState, succState, true, ec) {
+		if param == "" {
+			PrintError(ec, err.Error())
+		} else {
+			PrintError(ec, param, err.Error())
+		}
+		mc.printBehaviorTrace(curState, succState)
+		if mc.StateQueue != nil {
+			mc.StateQueue.FinishAll()
+		}
 	}
 	return err
 }
@@ -1445,6 +1466,7 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 	}
 	if mc.SetErrState(curState, succState, true, ec) {
 		PrintError(ec, err.Error())
+		mc.printBehaviorTrace(curState, succState)
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
 		}

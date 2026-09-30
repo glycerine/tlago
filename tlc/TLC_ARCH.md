@@ -1196,6 +1196,12 @@ Trace reconstruction and aliasing:
   before wrapping the trace in `CounterExample`, matching Java's
   `Worker.doPostCondition`. The `console` field is omitted only when the checker
   was not already done at the moment the error was accepted.
+- Java also calls `TLCTrace.printTrace(curState, succState)` for next-state
+  safety errors and for continuation-mode invariant/action-property violations.
+  Go mirrors this with `ModelChecker.printBehaviorTrace`, which prints
+  `TLC_BEHAVIOR_UP_TO_THIS_POINT`, aliases each recovered state, and emits
+  state-printer messages in ordinal order before continuing or finishing the
+  queue.
 
 `ConcurrentTLCTrace` merges per-worker trace fragments to reconstruct:
 
