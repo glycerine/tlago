@@ -769,22 +769,28 @@ func (s *SetOfLong) CheckFPs() int64 {
 	if s == nil {
 		return int64(^uint64(0) >> 1)
 	}
-	values := make([]int64, 0, s.count)
-	if s.hasZero {
-		values = append(values, 0)
-	}
-	for _, x := range s.table {
+	cnt := 0
+	for i := 0; i < s.length; i++ {
+		x := s.table[i]
 		if x != 0 {
-			values = append(values, x)
+			s.table[cnt] = x
+			cnt++
 		}
 	}
-	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
+	sort.Slice(s.table[:cnt], func(i, j int) bool { return s.table[i] < s.table[j] })
 	dis := int64(^uint64(0) >> 1)
-	for i := 1; i < len(values); i++ {
-		d := values[i] - values[i-1]
+	var x int64
+	i := 0
+	if !s.hasZero && cnt > 0 {
+		x = s.table[0]
+		i = 1
+	}
+	for ; i < cnt; i++ {
+		d := s.table[i] - x
 		if d < dis {
 			dis = d
 		}
+		x = s.table[i]
 	}
 	return dis
 }

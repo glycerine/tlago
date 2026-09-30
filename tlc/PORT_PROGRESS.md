@@ -15,6 +15,7 @@
 - Already audited recently; do not loop on `UniqueString`/`ValueOutputStream`/`ValueInputStream` unless touched: Go now separates Java's internal token-preserving value serializer from the external serializer, writes UniqueString checkpoint locations through Java's `getVarLoc()` rule, and leaves `varCount` lifecycle to spec processing/recovery context rather than deriving it from checkpoint contents.
 - Already audited recently; do not loop on `Context`/`ContextEnumerator` unless touched: core chain lookup/cutoff/deep-copy behavior matches Java, and `Tool.contexts` now mirrors Java's expansion of non-tuple bounded quantifier formals into one independent enumerator per formal.
 - Already audited recently; do not loop on `SimpleCache` unless touched: slot replacement, sentinel hit/miss counters, and Java `DecimalFormat("###,###.###")`-style hit-ratio strings are mirrored.
+- Already audited recently; do not loop on `ObjLongTable`/`LongObjTable`/`SetOfLong` unless touched: open-addressing/growth/iteration shapes are aligned, and `SetOfLong.CheckFPs` now preserves Java's compact-and-sort backing-table side effect.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -97,6 +98,7 @@
   - TLC state and trace checkpoint value IO now use an internal Java-shaped value serializer (`Write`/`Read`) that preserves UniqueString tokens and record normalization, while `WriteExternal`/`ReadExternal` remain the cross-process/intern-table-safe serializer.
   - Bounded-quantifier context enumeration now mirrors Java's `Tool.contexts` arity expansion for non-tuple formal lists, so `\E x, y \in S` gets independent enumerators for `x` and `y` instead of binding only the first formal.
   - `SimpleCache.GetHitRatioAsString` now mirrors Java's grouped three-decimal `DecimalFormat` output instead of plain Go float text.
+  - `SetOfLong.CheckFPs` now mirrors Java's diagnostic side effect by compacting and sorting the backing table prefix while computing fingerprint distance.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
