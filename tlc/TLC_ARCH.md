@@ -759,6 +759,14 @@ Porting guidance:
 - `Polys` contains selectable polynomial constants.
 - `TLC` selects `fpIndex` unless user specifies it.
 
+Heap-backed disk fingerprint sets allocate Java-style striped read/write locks
+at construction. The default stripe count is
+`2^(floor(log2(NumWorkers)) + 8)`, with `tlc2.tool.fp.DiskFPSet.logLockCnt`
+or `TLAGO_DISK_FPSET_LOG_LOCK_CNT` overriding the exponent. The current Go
+disk FP implementation still protects the table with the coarse `DiskFPSet.mu`;
+fine-grained per-stripe `put`/`contains`/flush locking should be ported as a
+separate disk-FP concurrency chunk.
+
 Visited-state identity is a 64-bit fingerprint of:
 
 - normalized state values in declared variable order,

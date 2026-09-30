@@ -31,6 +31,28 @@ func TestFPSetConfigurationFactoryBehaviors(t *testing.T) {
 	}
 }
 
+func TestDiskFPSetLockCountMirrorsJavaDefaultAndOverride(t *testing.T) {
+	oldWorkers := NumWorkers()
+	SetNumWorkers(1)
+	t.Cleanup(func() { SetNumWorkers(oldWorkers) })
+
+	t.Setenv(DiskFPSetLogLockCntProperty, "")
+	t.Setenv("TLAGO_DISK_FPSET_LOG_LOCK_CNT", "")
+	if got := NewMSBDiskFPSet(NewFPSetConfiguration()).GetLockCnt(); got != 256 {
+		t.Fatalf("default lock count with one worker = %d, want 256", got)
+	}
+
+	SetNumWorkers(3)
+	if got := NewMSBDiskFPSet(NewFPSetConfiguration()).GetLockCnt(); got != 512 {
+		t.Fatalf("default lock count with three workers = %d, want 512", got)
+	}
+
+	t.Setenv("TLAGO_DISK_FPSET_LOG_LOCK_CNT", "4")
+	if got := NewMSBDiskFPSet(NewFPSetConfiguration()).GetLockCnt(); got != 16 {
+		t.Fatalf("override lock count = %d, want 16", got)
+	}
+}
+
 func TestMemFPSetPutContainsAndSize(t *testing.T) {
 	set := NewMemFPSet()
 	if set.Size() != 0 {

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -26,6 +27,7 @@ const (
 	diskFPSetModeMSB              = "msb"
 	diskFPSetDefaultWorkerReaders = 1
 	diskFPSetBRAFPoolSize         = 5
+	DiskFPSetLogLockCntProperty   = "tlc2.tool.fp.DiskFPSet.logLockCnt"
 )
 
 type DiskFPSet struct {
@@ -50,6 +52,7 @@ type DiskFPSet struct {
 
 	tbl          [][]uint64
 	mask         uint64
+	rwLock       *Striped
 	capacity     int
 	logMaxMemCnt int
 	lockCnt      int
@@ -154,15 +157,17 @@ func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) 
 		capacity64 = int64(math.MaxInt32 - 8)
 	}
 	capacity := int(capacity64)
+	lockCnt := diskFPSetLockCount()
 	set := &DiskFPSet{
 		config:       config,
 		maxTblCnt:    int64(1) << uint(logMaxMemCnt),
 		tbl:          make([][]uint64, capacity),
 		mask:         uint64(capacity - 1),
+		rwLock:       StripedReadWriteLock(lockCnt),
 		capacity:     capacity,
 		logMaxMemCnt: logMaxMemCnt,
-		lockCnt:      1,
-		lockMask:     0,
+		lockCnt:      lockCnt,
+		lockMask:     lockCnt - 1,
 		mode:         mode,
 		checkpoint:   checkpoint,
 	}
@@ -178,6 +183,25 @@ func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) 
 		set.mask = uint64(capacity-1) << uint(set.moveBy)
 	}
 	return set
+}
+
+func diskFPSetLockCount() int {
+	if value := os.Getenv(DiskFPSetLogLockCntProperty); value != "" {
+		if logLockCnt, err := strconv.Atoi(value); err == nil && logLockCnt >= 0 {
+			return 1 << uint(logLockCnt)
+		}
+	}
+	if value := os.Getenv("TLAGO_DISK_FPSET_LOG_LOCK_CNT"); value != "" {
+		if logLockCnt, err := strconv.Atoi(value); err == nil && logLockCnt >= 0 {
+			return 1 << uint(logLockCnt)
+		}
+	}
+	workers := NumWorkers()
+	if workers < 1 {
+		workers = 1
+	}
+	logLockCnt := 31 - bitsLeadingZeros32(uint32(workers)) + 8
+	return 1 << uint(logLockCnt)
 }
 
 func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
@@ -1173,6 +1197,17 @@ func bitsLeadingZeros64(x uint64) int {
 	}
 	n := 0
 	for bit := uint64(1) << 63; bit != 0 && x&bit == 0; bit >>= 1 {
+		n++
+	}
+	return n
+}
+
+func bitsLeadingZeros32(x uint32) int {
+	if x == 0 {
+		return 32
+	}
+	n := 0
+	for bit := uint32(1) << 31; bit != 0 && x&bit == 0; bit >>= 1 {
 		n++
 	}
 	return n
