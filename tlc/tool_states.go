@@ -213,11 +213,7 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 	case OpcodeCase:
 		return t.initCase(init, acts, c, ps, states, cm)
 	case OpcodeFA:
-		bval, err := t.Eval(init, c, ps, EmptyState, EvalInit, cm)
-		if err != nil {
-			return err
-		}
-		return t.continueInitIfBool(init, bval, acts, ps, states, cm)
+		return t.initFcnApply(init, acts, c, ps, states, cm)
 	case OpcodeEq:
 		return t.initEquality(init, args[0], args[1], acts, c, ps, states, cm)
 	case OpcodeSubseteq:
@@ -648,6 +644,8 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		return t.ProcessUnchanged(action, args[0], acts, c, s0, s1, nss, cm)
 	case OpcodeNop:
 		return t.GetNextStatesForPredicate(action, args[0], acts, c, s0, s1, nss, cm)
+	case OpcodeFA:
+		return t.nextFcnApply(action, pred, acts, c, s0, s1, nss, cm)
 	default:
 		bval, err := t.Eval(pred, c, s0, s1, EvalClear, cm)
 		if err != nil {
@@ -655,6 +653,28 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		}
 		return t.continueNextIfBool(action, pred, bval, acts, s0, s1, nss, cm)
 	}
+}
+
+func (t *Tool) initFcnApply(init *OpApplNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
+	if len(init.Args) < 2 {
+		return newTLCError(ECGeneral, "malformed function application in initial-state predicate: %s", SemanticString(init))
+	}
+	fval, err := t.Eval(init.Args[0], c, ps, EmptyState, EvalInit, cm)
+	if err != nil {
+		return err
+	}
+	if fcn, ok := fval.(*FcnLambdaValue); ok && fcn.FcnRcd == nil {
+		c1, err := t.getFcnContext(fcn, init, c, ps, EmptyState, EvalInit, cm)
+		if err != nil {
+			return err
+		}
+		return t.GetInitStatesForPredicate(fcn.Body, acts, c1, ps, states, cm)
+	}
+	bval, err := t.applyEvaluatedFunction(init, fval, c, ps, EmptyState, EvalInit, cm, false)
+	if err != nil {
+		return err
+	}
+	return t.continueInitIfBool(init, bval, acts, ps, states, cm)
 }
 
 func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
@@ -666,6 +686,28 @@ func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value
 		return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
 	}
 	return s1, nil
+}
+
+func (t *Tool) nextFcnApply(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+	if len(pred.Args) < 2 {
+		return s1, newTLCError(ECGeneral, "malformed function application in next-state predicate: %s", SemanticString(pred))
+	}
+	fval, err := t.Eval(pred.Args[0], c, s0, s1, EvalKeepLazy, cm)
+	if err != nil {
+		return s1, err
+	}
+	if fcn, ok := fval.(*FcnLambdaValue); ok && fcn.FcnRcd == nil {
+		c1, err := t.getFcnContext(fcn, pred, c, s0, s1, EvalClear, cm)
+		if err != nil {
+			return s1, err
+		}
+		return t.GetNextStatesForPredicate(action, fcn.Body, acts, c1, s0, s1, nss, cm)
+	}
+	bval, err := t.applyEvaluatedFunction(pred, fval, c, s0, s1, EvalClear, cm, false)
+	if err != nil {
+		return s1, err
+	}
+	return t.continueNextIfBool(action, pred, bval, acts, s0, s1, nss, cm)
 }
 
 func (t *Tool) nextBoundedExists(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {

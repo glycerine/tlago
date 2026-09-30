@@ -138,6 +138,8 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		return t.enabledBoundedForall(pred, acts, c, s0, s1, cm)
 	case OpcodeCase:
 		return t.enabledCase(pred, acts, c, s0, s1, cm)
+	case OpcodeFA:
+		return t.enabledFcnApply(pred, acts, c, s0, s1, cm)
 	case OpcodeCL, OpcodeLand:
 		if len(args) == 0 {
 			return t.EnabledFromActionList(acts, s0, s1, cm)
@@ -215,6 +217,28 @@ func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, acts *Actio
 		return t.EnabledFromActionList(acts, s0, s1, cm)
 	}
 	return nil, nil
+}
+
+func (t *Tool) enabledFcnApply(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	if len(pred.Args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed function application in ENABLED expression: %s", SemanticString(pred))
+	}
+	fval, err := t.Eval(pred.Args[0], c, s0, s1, EvalSetKeepLazy(EvalEnabled), cm)
+	if err != nil {
+		return nil, err
+	}
+	if fcn, ok := fval.(*FcnLambdaValue); ok && fcn.FcnRcd == nil {
+		c1, err := t.getFcnContext(fcn, pred, c, s0, s1, EvalEnabled, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.EnabledImpl(fcn.Body, acts, c1, s0, s1, cm)
+	}
+	bval, err := t.applyEvaluatedFunction(pred, fval, c, s0, s1, EvalEnabled, cm, false)
+	if err != nil {
+		return nil, err
+	}
+	return t.enabledContinueIfBool(pred, bval, acts, s0, s1, cm)
 }
 
 func (t *Tool) enabledBoundedForall(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {

@@ -885,6 +885,11 @@ func (t *Tool) evalFcnApply(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	if err != nil {
 		return nil, err
 	}
+	return t.applyEvaluatedFunction(expr, fval, c, s0, s1, control, cm, true)
+}
+
+func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, rejectTupleRecordMultiArg bool) (Value, error) {
+	args := expr.Args
 	switch f := fval.(type) {
 	case *FcnRcdValue:
 		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
@@ -899,7 +904,7 @@ func (t *Tool) evalFcnApply(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return f.ApplyWithControl(argVal, control)
 	case *TupleValue:
-		if len(args) != 2 {
+		if rejectTupleRecordMultiArg && len(args) != 2 {
 			return nil, newTLCError(ECGeneral, "attempted to evaluate f[e1, ... , eN] with f a tuple and N > 1: %s", SemanticString(expr))
 		}
 		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
@@ -908,7 +913,7 @@ func (t *Tool) evalFcnApply(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return f.Apply(argVal)
 	case *RecordValue:
-		if len(args) != 2 {
+		if rejectTupleRecordMultiArg && len(args) != 2 {
 			return nil, newTLCError(ECGeneral, "attempted to evaluate f[e1, ... , eN] with f a record and N > 1: %s", SemanticString(expr))
 		}
 		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
@@ -926,6 +931,21 @@ func (t *Tool) evalFunctionApplicationArgument(expr *OpApplNode, c *Context, s0 
 		return nil, newTLCError(ECGeneral, "malformed function application: %s", SemanticString(expr))
 	}
 	return t.Eval(expr.Args[1], c, s0, s1, control, cm)
+}
+
+func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*Context, error) {
+	argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	ctx, ok, err := fcn.bindArgument(argVal)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, newTLCError(ECGeneral, "in applying the function\n%s,\nthe argument is:\n%s\nwhich is not in its domain", fcn, argVal)
+	}
+	return ctx, nil
 }
 
 func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {

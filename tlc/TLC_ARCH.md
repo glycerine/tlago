@@ -516,6 +516,12 @@ Port guidance:
   lambdas evaluate `args[1]`, while tuples and records first reject
   `f[e1, ... , eN]` when `N > 1`. The tuple/record argument must not be
   evaluated before that arity check.
+- The initial-state, next-state, and `ENABLED` interpreters have their own
+  `OPCODE_fa` paths. When the function expression evaluates to a
+  `FcnLambdaValue` without a materialized function record, Java calls
+  `getFcnContext` and recurses into the lambda body under that argument-bound
+  context. This preserves symbolic state generation for predicates hidden
+  behind function application.
 - In `evalApplImpl`, if a looked-up `LazyValue` is forced with `s1 == null`,
   Java evaluates the lazy expression directly with the lazy value's saved
   context and cost model. The cached path is reserved for the `s1 != null`
