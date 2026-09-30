@@ -433,6 +433,16 @@ with `getVal(arg, context, cachable)` before evaluating the body. The Go
 `ThmOrAssumpDefNode` therefore carries `Params`, and eval/init/next/enabled all
 route through `GetThmOrAssumpContext`.
 
+### Model Presentation
+
+`tlc2/model` contains Toolbox-facing data holders, not checker algorithms:
+`Formula`, `Assignment`, `TypedSet`, `MCVariable`, `MCState`, `MCError`, and
+trace-expression metadata. Keep these as concrete structs in `model.go`.
+
+`TypedSet` owns its own string, equality, hash, and type-validation helpers,
+mirroring Java's `TypedSet` class. Spec-writing code should call those methods
+rather than define model formatting locally.
+
 ### `ModelConfig`
 
 `ModelConfig` parses `.cfg` files with the TLA+ token manager rather than a

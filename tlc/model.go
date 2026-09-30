@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf16"
 )
 
 const (
@@ -24,6 +25,8 @@ const (
 )
 
 var formulaNamePattern = regexp.MustCompile(`(?s)^\s*(\w+)\s*==(.*)$`)
+var typedSetValidTypePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
+var typedSetNumberOnlyPattern = regexp.MustCompile(`^[0-9]*$`)
 
 type Formula struct {
 	Text string
@@ -328,6 +331,13 @@ func (s *TypedSet) HasType() bool {
 	return s != nil && s.Type != ""
 }
 
+func (s *TypedSet) GetType() string {
+	if s == nil {
+		return ""
+	}
+	return s.Type
+}
+
 func TypeOfTypedSetID(id string) string {
 	if len(id) < 2 || id[1:2] != "_" {
 		return ""
@@ -357,6 +367,15 @@ func (s *TypedSet) Contains(value string) bool {
 		}
 	}
 	return false
+}
+
+func (s *TypedSet) GetValues() []string {
+	if s == nil {
+		return nil
+	}
+	out := make([]string, len(s.Values))
+	copy(out, s.Values)
+	return out
 }
 
 func (s *TypedSet) ValuesAsList() []string {
@@ -396,6 +415,89 @@ func (s *TypedSet) SetValues(values []string) {
 		return
 	}
 	s.Values = append([]string(nil), values...)
+}
+
+func (s *TypedSet) Equals(other *TypedSet) bool {
+	if s == other {
+		return true
+	}
+	if s == nil || other == nil {
+		return false
+	}
+	if s.Type != other.Type || len(s.Values) != len(other.Values) {
+		return false
+	}
+	for i := range s.Values {
+		if s.Values[i] != other.Values[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *TypedSet) HashCode() int32 {
+	if s == nil {
+		return 0
+	}
+	result := int32(1)
+	result = 31*result + javaStringHashCode(s.Type)
+	result = 31*result + javaStringArrayHashCode(s.Values)
+	return result
+}
+
+func javaStringArrayHashCode(values []string) int32 {
+	if values == nil {
+		return 0
+	}
+	result := int32(1)
+	for _, value := range values {
+		result = 31*result + javaStringHashCode(value)
+	}
+	return result
+}
+
+func javaStringHashCode(value string) int32 {
+	hash := int32(0)
+	for _, unit := range utf16.Encode([]rune(value)) {
+		hash = 31*hash + int32(unit)
+	}
+	return hash
+}
+
+func (s *TypedSet) String() string {
+	if s == nil {
+		return "{}"
+	}
+	return "{" + s.StringWithoutBraces() + "}"
+}
+
+func (s *TypedSet) StringWithoutBraces() string {
+	if s == nil {
+		return ""
+	}
+	return strings.Join(s.ValuesAsList(), ", ")
+}
+
+func (s *TypedSet) HasANumberOnlyValue() bool {
+	if s == nil {
+		return false
+	}
+	if s.HasType() {
+		return !s.HasValidType()
+	}
+	for _, value := range s.Values {
+		if typedSetNumberOnlyPattern.MatchString(value) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *TypedSet) HasValidType() bool {
+	if s == nil || !s.HasType() {
+		return true
+	}
+	return typedSetValidTypePattern.MatchString(s.Type)
 }
 
 type MCVariable struct {

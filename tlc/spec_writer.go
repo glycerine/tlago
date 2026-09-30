@@ -2021,20 +2021,6 @@ func specTraceExpressionStateConjunction(state *MCState, prefixConjunct string) 
 	return SpecTraceExpressionIndentString(formula.String(), 2)
 }
 
-func (s *TypedSet) StringWithoutBraces() string {
-	if s == nil {
-		return ""
-	}
-	return strings.Join(s.ValuesAsList(), ", ")
-}
-
-func (s *TypedSet) String() string {
-	if s == nil {
-		return "{}"
-	}
-	return "{" + s.StringWithoutBraces() + "}"
-}
-
 func specWriterClosingSep() string {
 	return tlaCR + tlaSep + tlaCR
 }
