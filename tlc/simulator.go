@@ -317,13 +317,9 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 
 func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 	debugger := s.Tool != nil && s.Tool.IsDebugger()
-	workerTool := s.Tool
-	if debugger && id != 0 {
-		workerTool = s.Tool.NoDebug()
-	}
 	worker := NewSimulationWorker(
 		id,
-		workerTool,
+		s.Tool,
 		s.ResultQueue,
 		s.Rand.NextLong(),
 		s.TraceDepth,

@@ -1428,8 +1428,9 @@ Port guidance:
   interface unless a second real implementation appears.
 - Simulation debugging attaches only one worker to the debugger, but Java still
   uses `ExplorationWorker` for every simulator worker when `tool.isDebugger()`
-  is true. In Go this means every worker has `debug bool=true`; worker 0 keeps
-  the debugger-attached `Tool`, and other workers use `Tool.NoDebug()`.
+  is true. In Go this means every worker is still the same concrete
+  `SimulationWorker`; its `debug bool` selects exploration behavior without a
+  second worker type.
 
 ## Distributed TLC Architecture
 
