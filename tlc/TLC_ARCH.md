@@ -1538,6 +1538,16 @@ self-successor and the next trace state as successors. It then adds the final
 state with an empty successor set, runs a final liveness check, and resets the
 graph for the next simulated behavior.
 
+Tableau liveness has an important safety-like short-circuit. When
+`TableauLiveChecker.addNextState` recursively finds an accepting sink tableau
+node and the `OrderOfSolution` has an empty possible-error model, Java records
+`errorGraphNode`, reconstructs the prefix after the surrounding graph updates
+complete, prints a temporal-property counterexample, stops the main checker,
+and throws the invariant-violation control exception to escape the worker
+without printing a second generic error. The Go port mirrors this with
+`LiveChecker.printSafetyLikeLivenessError` and the existing
+`errInvariantViolated` sentinel.
+
 `LiveWorker`:
 
 - implements Java's iterative Tarjan SCC search over disk-backed behavior

@@ -446,8 +446,109 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 		}
 		c.ErrorPrefix = prefix
 		c.ErrorGraphNode = nil
+		return c.printSafetyLikeLivenessError(tool, prefix)
 	}
 	return nil
+}
+
+func (c *LiveChecker) printSafetyLikeLivenessError(tool *Tool, prefix *LongVec) error {
+	if c == nil {
+		return nil
+	}
+	trace, err := c.reconstructSafetyLikeLivenessPrefix(tool, prefix)
+	if err != nil {
+		return err
+	}
+	if len(trace) == 0 {
+		return nil
+	}
+	if mc := MainChecker(); mc != nil {
+		mc.mu.Lock()
+		if mc.PrintedLivenessErrorStack {
+			mc.mu.Unlock()
+			return errInvariantViolated
+		}
+		mc.PrintedLivenessErrorStack = true
+		mc.mu.Unlock()
+	}
+
+	names := LivenessFindViolatedPropertiesFromTrace(tool, trace, len(trace)-1)
+	PrintError(ECTLCTemporalPropertyViolated, names...)
+	PrintError(ECTLCCounterExample)
+	for _, info := range trace {
+		PrintInvariantViolationStateTraceState(info)
+	}
+
+	c.ErrorTrace = trace
+	c.ErrorLoopOrdinal = len(trace)
+	c.ErrorStuttering = true
+	c.ErrorClosingInfo = trace[len(trace)-1]
+	c.ErrorCounterEx = NewCounterExampleFromTrace(trace)
+	c.ErrorPrinted = true
+
+	if mc := MainChecker(); mc != nil {
+		last := trace[len(trace)-1].OriginalState()
+		var pred *TLCStateMut
+		if len(trace) > 1 {
+			pred = trace[len(trace)-2].OriginalState()
+		} else {
+			pred = last
+			last = nil
+		}
+		mc.SetErrState(pred, last, false, ECTLCInvariantViolatedBehavior)
+		mc.Stop()
+		if tool != nil {
+			tool.CheckPostConditionWithCounterExample(NewCounterExampleFromTrace(trace))
+		}
+	}
+	return errInvariantViolated
+}
+
+func (c *LiveChecker) reconstructSafetyLikeLivenessPrefix(tool *Tool, prefix *LongVec) ([]*TLCStateInfo, error) {
+	if tool == nil {
+		return nil, newTLCError(ECTLCFailedToRecoverInit, "cannot recover liveness trace without a tool")
+	}
+	if prefix == nil || prefix.Size() == 0 {
+		return nil, newTLCError(ECTLCFailedToRecoverInit, "cannot recover empty liveness trace")
+	}
+	plen := prefix.Size()
+	fp := uint64(prefix.ElementAt(plen - 1))
+	info, err := tool.GetState(fp)
+	if err != nil {
+		return nil, err
+	}
+	if info == nil {
+		return nil, newTLCError(ECTLCFailedToRecoverInit, "initial state fingerprint %d could not be regenerated", fp)
+	}
+	trace := []*TLCStateInfo{info}
+	for i := plen - 2; i >= 0; i-- {
+		curFP := uint64(prefix.ElementAt(i))
+		if curFP == fp {
+			continue
+		}
+		next, err := tool.GetState(curFP, info)
+		if err != nil {
+			return nil, err
+		}
+		if next == nil {
+			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", curFP)
+		}
+		if alias, err := tool.EvalAliasInfoPrefix(trace[len(trace)-1], next.State, trace[:len(trace)-1]); err != nil {
+			return nil, err
+		} else if alias != nil {
+			trace[len(trace)-1] = alias
+		}
+		trace = append(trace, next)
+		info = next
+		fp = curFP
+	}
+	last := trace[len(trace)-1]
+	if alias, err := tool.EvalAliasInfoPrefix(last, last.State, trace[:len(trace)-1]); err != nil {
+		return nil, err
+	} else if alias != nil {
+		trace[len(trace)-1] = alias
+	}
+	return trace, nil
 }
 
 func (c *LiveChecker) addNextStateTableauDone(tool *Tool, state *TLCStateMut, fp uint64, tnode *TBGraphNode) error {

@@ -222,6 +222,12 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	if w.Checker.CheckLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
+			if errors.Is(err, errInvariantViolated) {
+				if w.Checker.StateQueue != nil {
+					w.Checker.StateQueue.FinishAll()
+				}
+				return true, nil
+			}
 			w.Checker.doNextFailed(curState, nil, err)
 			return true, err
 		}
