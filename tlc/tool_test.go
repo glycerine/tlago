@@ -90,6 +90,21 @@ func TestToolConstraintAndSpecGettersReturnCopies(t *testing.T) {
 	}
 }
 
+func TestStateFunctorGetStatesReturnsSetOfStatesLikeJava(t *testing.T) {
+	initTLCCheckerTest(t)
+	state := checkerTestState(1)
+	set := NewSetOfStates(1)
+	set.Put(state)
+	functor := &StateFunctor{GetStatesFunc: func() *SetOfStates { return set }}
+
+	if got := functor.GetStates(); got != set {
+		t.Fatalf("GetStates returned %p, want configured set %p", got, set)
+	}
+	if got := (*StateFunctor)(nil).GetStates(); got == nil || got.Size() != 0 {
+		t.Fatalf("nil functor GetStates = %#v, want empty set", got)
+	}
+}
+
 func TestToolSymmetryPermutationsAreConcreteAndCopied(t *testing.T) {
 	ModelValueInit()
 	a := AddModelValue("A")

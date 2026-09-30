@@ -13,7 +13,7 @@ type StateFunctor struct {
 	AddElementFunc          func(*TLCStateMut) (any, error)
 	SetElementFunc          func(*TLCStateMut) (any, error)
 	HasStatesFunc           func() bool
-	GetStatesFunc           func() *StateVec
+	GetStatesFunc           func() *SetOfStates
 	AddUnsatisfiedStateFunc func(*TLCStateMut, SemanticNode, *Context) *TLCStateMut
 }
 
@@ -39,11 +39,11 @@ func (f *StateFunctor) HasStates() bool {
 	return f != nil && f.HasStatesFunc != nil && f.HasStatesFunc()
 }
 
-func (f *StateFunctor) GetStates() *StateVec {
+func (f *StateFunctor) GetStates() *SetOfStates {
 	if f != nil && f.GetStatesFunc != nil {
 		return f.GetStatesFunc()
 	}
-	return NewStateVec(0)
+	return NewSetOfStates(0)
 }
 
 func (f *StateFunctor) AddUnsatisfiedState(state *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
