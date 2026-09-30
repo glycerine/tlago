@@ -1064,8 +1064,13 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
   creates a `CounterExample`, and invokes the tool post-condition hook with
   that value. The Go checker also emits the temporal-property violation,
   counterexample marker, state trace, and stuttering/back-to-state marker.
-  Java's post-hoc property attribution (`Liveness.findViolatedProperties`)
-  remains to be ported for exact violated-property names.
+- post-hoc property attribution mirrors Java's
+  `Liveness.findViolatedProperties`: evaluate each implied temporal property
+  over the reconstructed lasso and print the violated property names in
+  deterministic action order. Go reuses a `*LiveExprNode` stored directly as
+  `Action.Pred` or in the action's auxiliary map via `AttachLiveExprToAction`;
+  the full Java `astToLive` bridge still has to fill this hook during
+  parse-liveness processing.
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component

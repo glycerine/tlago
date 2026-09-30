@@ -508,7 +508,7 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 				return false, err
 			}
 			if found {
-				c.PrintCounterExample()
+				c.PrintCounterExample(tool)
 				c.LastSize = c.GraphSize()
 				return true, nil
 			}
@@ -892,7 +892,7 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 			return ECGeneral, err
 		}
 		if found {
-			checker.PrintCounterExample()
+			checker.PrintCounterExample(tool)
 			if checker.ErrorCounterEx != nil {
 				return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", checker.ErrorCounterEx)
 			}
@@ -1013,12 +1013,13 @@ func (c *LiveChecker) Recover() error {
 	return nil
 }
 
-func (c *LiveChecker) PrintCounterExample() {
+func (c *LiveChecker) PrintCounterExample(tool *Tool) {
 	if c == nil || c.ErrorPrinted || len(c.ErrorTrace) == 0 {
 		return
 	}
 	c.ErrorPrinted = true
-	PrintError(ECTLCTemporalPropertyViolated)
+	names := LivenessFindViolatedPropertiesFromTrace(tool, c.ErrorTrace, c.ErrorLoopOrdinal-1)
+	PrintError(ECTLCTemporalPropertyViolated, names...)
 	PrintError(ECTLCCounterExample)
 	for _, info := range c.ErrorTrace {
 		PrintInvariantViolationStateTraceState(info)
