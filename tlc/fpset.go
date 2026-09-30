@@ -105,7 +105,7 @@ func (s *MemFPSet) CheckFPs() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	dis := ^uint64(0)
+	dis := uint64(1<<63 - 1)
 	for i, bucket := range s.table {
 		for j, x := range bucket {
 			for k := j + 1; k < len(bucket); k++ {
