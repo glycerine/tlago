@@ -1379,6 +1379,14 @@ BFS mode.
 Preserve Java override annotations when registering standard operators.
 `TLC!TLCEval` is an evaluating override because it receives the unevaluated
 expression and caches converted constant-level results on the semantic node.
+Its Java implementation branches directly on the argument semantic level:
+state/action/temporal expressions evaluate in the incoming context and are not
+cached; constant-level expressions with a non-empty context also evaluate
+without caching; only constant-level expressions under an empty context use the
+static read/write-lock protected semantic-node cache. Cache reads must mux
+`WorkerValue` through the active worker id before returning it, and cache writes
+must evaluate under `EmptyContext`/`EmptyState` before converting through the
+legacy `toSetEnum`/`toFcnRcd` path.
 `TLC!TLCGet`, `TLCExt!CounterExample`, `TLCExt!Trace`, `_TLCTrace!_TLCState`,
 `_JsonTrace!_TLCState`, and `_Possible!_Counts` all carry non-constant
 minimum levels in Java to prevent invalid constant folding. `TLCExt!PickSuccessor`

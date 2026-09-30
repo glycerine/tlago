@@ -1,5 +1,9 @@
 package tlc
 
+import "sync"
+
+var standardTLCEvalMu sync.RWMutex
+
 func (t *Tool) InstallStandardDefinitions() *Tool {
 	if t == nil {
 		return nil
@@ -280,9 +284,6 @@ func standardTLCGet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 	expr := args[0]
 	level := SemanticLevel(expr)
-	if tool != nil && level == TLCLevelConstant {
-		level = tool.GetLevelBound(expr, con)
-	}
 	if level > TLCLevelConstant || (con != nil && !con.IsDeepEmpty()) {
 		value, err := tool.Eval(expr, con, state, pstate, control, cm)
 		if err != nil {
@@ -290,10 +291,23 @@ func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCSt
 		}
 		return TLCEval(value), nil
 	}
-	if value, ok := semanticCachedTLCEvalValue(expr); ok {
+	return standardTLCEvalConst(tool, expr, state, cm)
+}
+
+func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm CostModel) (Value, error) {
+	standardTLCEvalMu.RLock()
+	if value, ok := semanticCachedTLCEvalValue(expr, state); ok {
+		standardTLCEvalMu.RUnlock()
 		return value, nil
 	}
-	value, err := tool.Eval(expr, con, state, pstate, control, cm)
+	standardTLCEvalMu.RUnlock()
+
+	standardTLCEvalMu.Lock()
+	defer standardTLCEvalMu.Unlock()
+	if value, ok := semanticCachedTLCEvalValue(expr, state); ok {
+		return value, nil
+	}
+	value, err := tool.Eval(expr, EmptyContext, EmptyState, nil, EvalClear, cm)
 	if err != nil {
 		return nil, err
 	}
@@ -302,14 +316,23 @@ func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCSt
 	return value, nil
 }
 
-func semanticCachedTLCEvalValue(node SemanticNode) (Value, bool) {
+func semanticCachedTLCEvalValue(node SemanticNode, state *TLCStateMut) (Value, bool) {
 	switch node.(type) {
 	case nil, Value, *ValueNode, *NumeralNode, *DecimalNode, *StringNode:
 		return nil, false
 	}
 	if getter, ok := node.(interface{ GetToolObject() any }); ok {
-		value, ok := getter.GetToolObject().(Value)
-		return value, ok && value != nil
+		switch value := getter.GetToolObject().(type) {
+		case Value:
+			return value, value != nil
+		case *WorkerValue:
+			workerID, ok := CurrentWorkerID()
+			if !ok {
+				workerID = workerIDFromState(state)
+			}
+			muxed := MuxWorkerValue(value, workerID)
+			return muxed, muxed != nil
+		}
 	}
 	return nil, false
 }
