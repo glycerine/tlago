@@ -311,8 +311,20 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 }
 
 func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
-	if s == nil || worker == nil {
+	key := s.registerWorkerOnly(worker)
+	if key == "" {
 		return
+	}
+	if s.ServerThreads != nil && s.ServerThreads.Get(key) != nil {
+		return
+	}
+	thread := NewTLCServerThread(worker, key, s, s.BlockSelector)
+	thread.Start()
+}
+
+func (s *TLCServer) registerWorkerOnly(worker *DistributedWorker) string {
+	if s == nil || worker == nil {
+		return ""
 	}
 	if s.Workers == nil {
 		s.Workers = NewInsMap[string, *DistributedWorker]()
@@ -320,7 +332,9 @@ func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 	if s.StateQueue != nil {
 		s.StateQueue.ResumeAllStuck()
 	}
-	s.Workers.Set(distributedWorkerKey(worker), worker)
+	key := distributedWorkerKey(worker)
+	s.Workers.Set(key, worker)
+	return key
 }
 
 func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
@@ -331,7 +345,7 @@ func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
 		s.ServerThreads = NewInsMap[string, *TLCServerThread]()
 	}
 	if thread.Worker != nil && thread.Worker.Worker != nil {
-		s.RegisterWorker(thread.Worker.Worker)
+		s.registerWorkerOnly(thread.Worker.Worker)
 	}
 	s.ServerThreads.Set(thread.GetURI(), thread)
 }
