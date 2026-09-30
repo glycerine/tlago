@@ -1793,6 +1793,13 @@ surface: `ToTrace` expects a `CounterExample`, `TLCModelValue` reports as
 non-string names, unreachable definitions, and non-zero arity definitions through
 that same error code.
 
+`Json` standard operators use `TLC_MODULE_ARGUMENT_ERROR` for the public payload
+shape checks Java performs inside the module: `JsonSerialize` requires its
+second argument to be a sequence or record, and `ndJsonSerialize` requires a
+sequence. The separate registered `IOUtils!Serialize` path is implemented in
+`modules_ioutils.go`; do not silently merge its result-record convention with
+the direct `Json` module exceptions.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

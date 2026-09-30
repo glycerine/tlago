@@ -86,7 +86,7 @@ func JsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
 		return nil, newTLCError(ECGeneral, "JsonSerialize expected a string path")
 	}
 	if asTupleValue(value) == nil && asRecordValue(value) == nil {
-		return nil, newTLCError(ECGeneral, "second argument of JsonSerialize must be a sequence or record, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "JsonSerialize", "sequence or record", ValuesPPR(value))
 	}
 	if err := ensureJSONParent(path); err != nil {
 		return nil, err
@@ -107,7 +107,7 @@ func NDJsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
 	}
 	tuple := asTupleValue(value)
 	if tuple == nil {
-		return nil, newTLCError(ECGeneral, "second argument of ndJsonSerialize must be a sequence, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(value))
 	}
 	if err := ensureJSONParent(path); err != nil {
 		return nil, err
@@ -137,9 +137,10 @@ func NDJsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
 	return BoolTrue, nil
 }
 
-func JsonTextSerialize(path *StringValue, payload Value, opts *RecordValue) (*BoolValue, error) {
+func JsonTextSerialize(path *StringValue, payload Value, options Value) (*BoolValue, error) {
+	opts := asRecordValue(options)
 	if opts == nil {
-		return nil, newTLCError(ECGeneral, "third argument of Serialize must be an options record")
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "ndJsonSerialize", "sequence", ValuesPPR(options))
 	}
 	format, err := opts.Apply(NewStringValue("format"))
 	if err != nil {
