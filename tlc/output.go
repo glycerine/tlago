@@ -129,6 +129,8 @@ const (
 	ECTLCStatsSimu                                       = 2210
 	ECTLCFPCompleted                                     = 2211
 	ECTLCLiveImplied                                     = 2212
+	ECTLCStatePrint1                                     = 2216
+	ECTLCStatePrint2                                     = 2217
 	ECTLCStatePrint3                                     = 2218
 	ECTLCSanyEnd                                         = 2219
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
@@ -172,10 +174,13 @@ const (
 )
 
 type Message struct {
-	Code     int
-	Severity Severity
-	Params   []string
-	Text     string
+	Code        int
+	Severity    Severity
+	Params      []string
+	Text        string
+	State       *TLCStateMut
+	StateInfo   *TLCStateInfo
+	StateNumber int
 }
 
 type MessageRecorder interface {
@@ -297,6 +302,22 @@ func PrintError(code int, params ...string) int {
 	return code
 }
 
+func PrintState(code int, params []string, state *TLCStateMut, stateNumber int) string {
+	text := formatMessage(code, params)
+	recordStateMessage(code, params, text, state, nil, stateNumber)
+	return text
+}
+
+func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber int) string {
+	text := formatMessage(code, params)
+	var state *TLCStateMut
+	if info != nil {
+		state = info.State
+	}
+	recordStateMessage(code, params, text, state, info, stateNumber)
+	return text
+}
+
 func recordMessage(code int, severity Severity, params ...string) {
 	copied := append([]string(nil), params...)
 	defaultRecorder.Record(Message{
@@ -304,6 +325,19 @@ func recordMessage(code int, severity Severity, params ...string) {
 		Severity: severity,
 		Params:   copied,
 		Text:     formatMessage(code, copied),
+	})
+}
+
+func recordStateMessage(code int, params []string, text string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) {
+	copied := append([]string(nil), params...)
+	defaultRecorder.Record(Message{
+		Code:        code,
+		Severity:    SeverityState,
+		Params:      copied,
+		Text:        text,
+		State:       state,
+		StateInfo:   info,
+		StateNumber: stateNumber,
 	})
 }
 
