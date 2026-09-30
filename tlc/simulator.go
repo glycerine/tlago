@@ -317,7 +317,6 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 
 func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 	debugger := s.Tool != nil && s.Tool.IsDebugger()
-	debug := debugger && id == 0
 	workerTool := s.Tool
 	if debugger && id != 0 {
 		workerTool = s.Tool.NoDebug()
@@ -331,18 +330,14 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 		s.TraceNum,
 		s.TraceActions,
 		s.CheckDeadlock,
-		debug,
+		debugger,
 		s.TraceFile,
 		NewNoOpLiveCheck(s.Tool, ""),
 		&s.NumGenStates,
 		&s.NumGenTraces,
 		&s.WelfordM2Mean,
 	)
-	mode := s.WorkerMode
-	if debugger {
-		mode = SimulationWorkerExplore
-	}
-	worker.SetMode(mode)
+	worker.SetMode(s.WorkerMode)
 	worker.RLAlpha = simulatorPropertyFloat("tlc2.tool.Simulator.rl.alpha", "TLAGO_SIMULATOR_RL_ALPHA", 0.3)
 	worker.RLGamma = simulatorPropertyFloat("tlc2.tool.Simulator.rl.gamma", "TLAGO_SIMULATOR_RL_GAMMA", 0.7)
 	worker.RLReward = simulatorPropertyFloat("tlc2.tool.Simulator.rl.reward", "TLAGO_SIMULATOR_RL_REWARD", -10)

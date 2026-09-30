@@ -833,6 +833,29 @@ Port guidance:
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
 
+### CheckImpl and CheckImplFile
+
+`CheckImpl` is Java TLC's implementation checker. It reuses the model-checking
+engine to build a partial state space from a supplied starting state, tracks
+covered states in `coverSet`, keeps a current-state enumerator, and exports new
+traces to states that have not yet been covered by the external implementation.
+It is not a normal exhaustive run: the checker repeatedly imports a concrete
+trace, verifies that each adjacent state pair is reachable in the spec, marks
+the visited states, and emits another trace when uncovered behavior remains.
+
+`CheckImplFile` is the file-backed variant used to communicate with an external
+simulation engine. It reads trace inputs named by a prefix plus a monotonically
+increasing counter, and writes exported traces using the same prefix with
+`_out_` plus a separate output counter. The output format is deliberately plain:
+`STATE_n` headers followed by each TLC state's text form.
+
+Java parses input trace files as TLA+ modules and turns operation bodies into
+states through `Tool.makeState`. The Go port keeps `CheckImplFile` concrete and
+uses a `LoadTraceFunc` hook at this layer until SANY semantic-node-to-state
+wiring is available without introducing package cycles. The command option
+parser mirrors Java's `CheckImplFile.main` surface: `-config`, `-deadlock`,
+`-recover`, `-workers`, `-depth`, `-trace`, `-coverage`, and the root module.
+
 ## DFID Architecture
 
 `DFIDModelChecker` is the depth-first iterative-deepening checker. Java keeps it
@@ -962,12 +985,13 @@ Important behavior:
   repair predecessor links, while `getUncompressedTrace` preserves the raw
   predecessor chain.
 - Java has `SimulationWorker`, `ExplorationWorker`, `RLSimulationWorker`, and
-  `RLActionSimulationWorker`. The Go port keeps these as concrete
-  `SimulationWorkerMode` values and fields on the same `SimulationWorker`
-  struct. `SimulationWorkerExplore` mirrors Java `ExplorationWorker`: generate
-  all successors through the next-state functor, randomly select one successor,
-  execute deferred callables, and perform liveness/post-trace checks. RL modes
-  keep the Java Q-table shape `Action -> state/action hash -> value`.
+  `RLActionSimulationWorker`. The Go port keeps one concrete
+  `SimulationWorker` struct. The `debug bool` selects Java
+  `ExplorationWorker` behavior: generate all successors through the next-state
+  functor, randomly select one successor, execute deferred callables, and
+  perform liveness/post-trace checks. RL modes remain enum values because they
+  select different scheduling and Q-table behavior, while still using the same
+  worker struct.
 - Some errors are non-continuable even in continuation-like modes.
 
 Port guidance:
@@ -1315,8 +1339,8 @@ Port guidance:
   interface unless a second real implementation appears.
 - Simulation debugging attaches only one worker to the debugger, but Java still
   uses `ExplorationWorker` for every simulator worker when `tool.isDebugger()`
-  is true. In Go this means every worker runs `SimulationWorkerExplore`; worker
-  0 keeps `debug bool=true` and other workers use `Tool.NoDebug()`.
+  is true. In Go this means every worker has `debug bool=true`; worker 0 keeps
+  the debugger-attached `Tool`, and other workers use `Tool.NoDebug()`.
 
 ## Distributed TLC Architecture
 
