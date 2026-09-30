@@ -748,6 +748,10 @@ It is optimized for model checking:
   `MVPerms.permutationSubgroup` result before fingerprints are taken. Go mirrors
   this in `SpecProcessor.processConfigSymmetry`, leaving `HasSymmetry` config
   based while `GetSymmetryPerms` returns only the concrete installed subgroup.
+  Java also warns with `TLC_SYMMETRY_SET_TOO_SMALL` when a configured symmetry
+  set has fewer than two useful model values; the Go port mirrors this for
+  direct `Permutations(S)` argument shapes whose constant set value is available
+  through the processed tool definition table.
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.
 - `setPredecessor` is also the level increment path. Java fails with

@@ -421,6 +421,10 @@ func formatMessage(code int, params []string) string {
 		return "The configuration file did not specify the initial state predicate."
 	case ECTLCConfigMissingNext:
 		return "The configuration file did not specify the next state predicate."
+	case ECTLCSymmetrySetTooSmall:
+		if len(params) >= 4 {
+			return fmt.Sprintf("The set%s %s %s been defined to be a symmetry set but contain%s less than two elements.", params[0], params[1], params[2], params[3])
+		}
 	case ECTLCConfigIDMustNotBeConstant:
 		if len(params) >= 2 {
 			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])

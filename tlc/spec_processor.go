@@ -788,8 +788,14 @@ func (p *SpecProcessor) processConfigSymmetry(tool *Tool) {
 		tool.SetSymmetryPermutations(nil)
 		return
 	}
-	if _, ok := value.(*SetEnumValue); !ok {
+	setValue, ok := value.(*SetEnumValue)
+	if !ok {
 		p.addConfigError(ECTLCConfigIDHasValue, "symmetry function", name, "a set of functions")
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	if offenders := p.symmetryTooSmallOffenders(def.Body, tool, setValue.Elems.Len(), nil); len(offenders) > 0 {
+		printSymmetrySetTooSmallWarning(offenders)
 		tool.SetSymmetryPermutations(nil)
 		return
 	}
@@ -799,7 +805,101 @@ func (p *SpecProcessor) processConfigSymmetry(tool *Tool) {
 		tool.SetSymmetryPermutations(nil)
 		return
 	}
+	if offenders := p.symmetryTooSmallOffenders(def.Body, tool, setValue.Elems.Len(), perms); len(offenders) > 0 {
+		printSymmetrySetTooSmallWarning(offenders)
+	}
 	tool.SetSymmetryPermutations(perms)
+}
+
+func (p *SpecProcessor) symmetryTooSmallOffenders(body SemanticNode, tool *Tool, valueCount int, subgroup []*MVPerm) []string {
+	appl, ok := body.(*OpApplNode)
+	if !ok || appl == nil || len(appl.Args) == 0 {
+		return nil
+	}
+	if subgroup == nil {
+		if len(appl.Args) < valueCount {
+			return nil
+		}
+		offenders := make([]string, 0, len(appl.Args))
+		for _, arg := range appl.Args {
+			offenders = append(offenders, p.symmetryArgumentDisplayName(arg))
+		}
+		return offenders
+	}
+	members := NewInsMap[*ModelValue, struct{}]()
+	for _, perm := range subgroup {
+		if perm == nil {
+			continue
+		}
+		for _, mv := range perm.AllModelValues() {
+			members.Set(mv, struct{}{})
+		}
+	}
+	var offenders []string
+	for _, arg := range appl.Args {
+		set := p.symmetrySetEnumFromArgumentNode(tool, arg)
+		if set == nil {
+			continue
+		}
+		found := false
+		enum := set.Elements()
+		for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+			mv, ok := elem.(*ModelValue)
+			if !ok {
+				continue
+			}
+			if _, ok := members.Get2(mv); ok {
+				found = true
+				break
+			}
+		}
+		if !found {
+			offenders = append(offenders, p.symmetryArgumentDisplayName(arg))
+		}
+	}
+	return offenders
+}
+
+func (p *SpecProcessor) symmetrySetEnumFromArgumentNode(tool *Tool, node SemanticNode) *SetEnumValue {
+	appl, ok := node.(*OpApplNode)
+	if !ok || appl == nil || appl.Operator == nil || appl.Operator.Name == nil || appl.Operator.Name.String() != "Permutations" || len(appl.Args) != 1 {
+		return nil
+	}
+	arg, ok := appl.Args[0].(*OpApplNode)
+	if !ok || arg == nil || arg.Operator == nil {
+		return nil
+	}
+	value := MuxWorkerValue(tool.Lookup(arg.Operator, EmptyContext, EmptyState, false), 0)
+	set, _ := value.(*SetEnumValue)
+	return set
+}
+
+func (p *SpecProcessor) symmetryArgumentDisplayName(node SemanticNode) string {
+	name := SemanticString(node)
+	if appl, ok := node.(*OpApplNode); ok && appl != nil && appl.Operator != nil && appl.Operator.Name != nil && appl.Operator.Name.String() == "Permutations" && len(appl.Args) == 1 {
+		name = SemanticString(appl.Args[0])
+	}
+	if p != nil && p.Config != nil {
+		if override := p.Config.GetOverridenSpecNameForConfigName(name); override != "" {
+			name = override
+		}
+	}
+	return name
+}
+
+func printSymmetrySetTooSmallWarning(offenders []string) {
+	if len(offenders) == 0 {
+		return
+	}
+	plurality := ""
+	antiPlurality := "s"
+	toHave := "has"
+	if len(offenders) > 1 {
+		plurality = "s"
+		antiPlurality = ""
+		toHave = "have"
+	}
+	PrintWarning(ECTLCSymmetrySetTooSmall, plurality, strings.Join(offenders, ", and "), toHave, antiPlurality)
 }
 
 func (p *SpecProcessor) processMissingInitNextConfig() {
