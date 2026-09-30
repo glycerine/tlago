@@ -215,6 +215,11 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 	}
 	curFP := curState.FingerPrint()
 	w.SetOfStates.PutFP(curFP, curState)
+	if w.Checker.AllStateWriter != nil {
+		if err := w.Checker.AllStateWriter.WriteTransitionVisual(curState, curState, StateVisitUnseen, nil, StateVisualizationStuttering); err != nil {
+			return err
+		}
+	}
 	return w.Checker.LiveCheck.AddNextState(w.Tool.NoDebug(), curState, curFP, w.SetOfStates)
 }
 

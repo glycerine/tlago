@@ -1136,8 +1136,10 @@ Worker loop:
 3. Allocate `SetOfStates` if liveness/debug mode needs successor collection.
 4. Ask `Tool` to generate successors through the functor callback.
 5. Detect deadlock if no successors were generated.
-6. Add the stuttering self-loop and the collected successor set to the
-   liveness graph with one `LiveCheck.addNextState` call for the predecessor.
+6. Add the stuttering self-loop to the liveness successor set, write the
+   `Visualization.STUTTERING` transition to the all-state writer, and add the
+   collected successor set to the liveness graph with one
+   `LiveCheck.addNextState` call for the predecessor.
 7. Record out-degree statistics.
 
 Constrained dumps:
