@@ -265,6 +265,18 @@ Tricky details:
 - Model values must be initialized and ordered exactly as Java does because
   comparison, printing, and fingerprinting depend on it.
 - Constants can be static, dynamic, module-scoped, or override-driven.
+- Config processing must rebuild every derived vector from scratch when it is
+  run. The Go bridge constructs `SpecProcessor` before all definitions and
+  variables are installed, then runs it again while applying the processor to a
+  `Tool`; accumulated init/property/temporal vectors would diverge from Java.
+  Refresh the pre-constant definition snapshot immediately before
+  `ProcessConstantDefinitions`, because Java uses that snapshot for
+  `_RL_REWARD` and `_PERIODIC` after ordinary constants have been evaluated.
+- Config keyword validation is keyword-specific. `INIT`, `NEXT`, `VIEW`,
+  `POSTCONDITION`, `_POSSIBLE`, `_PERIODIC`, and `_RL_REWARD` require
+  zero-arity operator definitions; `INVARIANT` and `PROPERTY` ignore literal
+  `TRUE` but reject literal `FALSE` or non-boolean values with
+  `TLC_CONFIG_ID_HAS_VALUE`; `SPECIFICATION` has its own value error wording.
 - Model constraints and action constraints accept zero-arity operator
   definitions. Java stores the operator definition on the body node for later
   coverage reporting, appends the body to the constraint list, ignores literal

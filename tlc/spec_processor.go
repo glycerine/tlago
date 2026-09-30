@@ -286,32 +286,59 @@ func (p *SpecProcessor) ProcessConfig() {
 	if p == nil || p.Config == nil {
 		return
 	}
-	p.ConfigErrors = nil
+	p.resetProcessedConfig()
 	p.SpecificationName = p.Config.GetSpec()
 	p.SymmetrySpec = p.Config.GetSymmetry()
 	p.AliasSpec = p.Config.GetAlias()
-	p.ViewSpec = p.optionalSemanticFromConfigName(p.Config.GetView())
-	p.RLReward = p.optionalSemanticFromConfigName(p.Config.GetRLReward())
-	p.Periodic = p.optionalSemanticFromConfigName(p.Config.GetPeriodic())
 
-	p.InitPred = nil
-	p.NextPred = nil
+	p.processConfigInvariants()
 	if p.SpecificationName != "" {
-		p.processSpecificationConfig()
+		if p.Config.GetInit() != "" || p.Config.GetNext() != "" {
+			p.addConfigError(ECTLCConfigNotBothSpecAndInit)
+		} else {
+			p.processSpecificationConfig()
+		}
 	} else {
 		if initName := p.Config.GetInit(); initName != "" {
-			p.InitPred = append(p.InitPred, p.actionFromConfigName(initName, true))
+			if action := p.actionFromConfigName(initName, true, "initial predicate"); action != nil {
+				p.InitPred = append(p.InitPred, action)
+			}
 		}
 		if nextName := p.Config.GetNext(); nextName != "" {
-			p.NextPred = p.actionFromConfigName(nextName, false)
+			p.NextPred = p.actionFromConfigName(nextName, false, "next state action")
 		}
 	}
-	p.Invariants, p.InvariantNames = p.actionsFromConfigNames(p.Config.GetInvariants(), false)
 	p.processConfigProperties()
-	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
+	p.processConfigPostConditions()
+	p.processMissingInitNextConfig()
 	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints(), "constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
 	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints(), "action constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
+	p.RLReward = p.optionalOpBodyFromConfigName(p.Config.GetRLReward(), "rlreward", p.preConstantDefinitions())
+	p.Periodic = p.optionalOpBodyFromConfigName(p.Config.GetPeriodic(), "periodic", p.preConstantDefinitions())
 	p.processConfigPossible()
+	p.ViewSpec = p.optionalOpBodyFromConfigName(p.Config.GetView(), "view function", p.Defns)
+}
+
+func (p *SpecProcessor) resetProcessedConfig() {
+	p.ConfigErrors = nil
+	p.InitPred = nil
+	p.NextPred = nil
+	p.Temporals = nil
+	p.TemporalNames = nil
+	p.ImpliedTemporals = nil
+	p.ImpliedTempNames = nil
+	p.Invariants = nil
+	p.InvariantNames = nil
+	p.ImpliedInits = nil
+	p.ImpliedInitNames = nil
+	p.ImpliedActions = nil
+	p.ImpliedActNames = nil
+	p.ModelConstraints = nil
+	p.ActionConstraints = nil
+	p.PossiblePostConds = nil
+	p.RLReward = nil
+	p.Periodic = nil
+	p.ViewSpec = nil
 }
 
 func (p *SpecProcessor) ApplyToTool(tool *Tool) {
@@ -329,6 +356,9 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 		}
 	}
 	p.applyDefinitionsToTool(tool)
+	if p.Defns != nil {
+		p.PreConstantSnap = p.Defns.Snapshot()
+	}
 	p.ProcessConstantDefinitions(tool)
 	p.ProcessConfig()
 	p.applyDefinitionsToTool(tool)
@@ -613,12 +643,45 @@ func specProcessorConstantVetoed(vetoes map[string]bool, names ...*UniqueString)
 }
 
 func (p *SpecProcessor) processSpecificationConfig() {
-	def, ok := p.defn(p.SpecificationName).(*OpDefNode)
-	if !ok || def == nil || def.Arity() != 0 {
+	switch spec := p.defn(p.SpecificationName).(type) {
+	case *OpDefNode:
+		if spec == nil {
+			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "name", p.SpecificationName)
+			return
+		}
+		if spec.Arity() != 0 {
+			p.addConfigError(ECTLCConfigIDRequiresNoArg, p.SpecificationName)
+			return
+		}
+		tool := p.configProcessingTool()
+		p.processConfigSpec(tool, spec.Body, EmptyContext, EmptyList, nil)
+	case nil:
+		p.addConfigError(ECTLCConfigSpecifiedNotDefined, "name", p.SpecificationName)
+	default:
+		p.addConfigError(ECTLCConfigIDHasValue, "value", p.SpecificationName, configValueString(spec))
+	}
+}
+
+func (p *SpecProcessor) processConfigInvariants() {
+	if p == nil || p.Config == nil {
 		return
 	}
-	tool := p.configProcessingTool()
-	p.processConfigSpec(tool, def.Body, EmptyContext, EmptyList, nil)
+	for _, name := range p.Config.GetInvariants() {
+		def, ok := p.configPredicateOpDef(name, "invariant", p.Defns)
+		if !ok {
+			continue
+		}
+		if def.GetLevel() >= TLCLevelAction {
+			params := []string{name}
+			if len(def.GetLevelParams()) != 0 {
+				params = append(params, "includeWarning")
+			}
+			p.addConfigError(ECTLCInvariantViolatedLevel, params...)
+			continue
+		}
+		p.InvariantNames = append(p.InvariantNames, name)
+		p.Invariants = append(p.Invariants, NewActionFromOpDef(def.Body, EmptyContext, def, false, false))
+	}
 }
 
 func (p *SpecProcessor) processConfigProperties() {
@@ -627,20 +690,24 @@ func (p *SpecProcessor) processConfigProperties() {
 	}
 	tool := p.configProcessingTool()
 	for _, name := range p.Config.GetProperties() {
-		switch prop := p.defn(name).(type) {
-		case *OpDefNode:
-			if prop != nil && prop.Arity() == 0 {
-				p.processConfigProperty(tool, name, name, prop.Body, EmptyContext, EmptyList)
-			}
-		case *BoolValue:
-			if !prop.Val {
-				p.addPlaceholderImpliedTemporal(name)
-			}
-		case nil:
-			p.addPlaceholderImpliedTemporal(name)
-		default:
-			p.addPlaceholderImpliedTemporal(name)
+		def, ok := p.configPredicateOpDef(name, "property", p.Defns)
+		if !ok {
+			continue
 		}
+		p.processConfigProperty(tool, name, name, def.Body, EmptyContext, EmptyList)
+	}
+}
+
+func (p *SpecProcessor) processConfigPostConditions() {
+	if p == nil || p.Config == nil {
+		return
+	}
+	for _, name := range p.Config.GetPostConditions() {
+		def, ok := p.configOpDef(name, "post condition", p.Defns)
+		if !ok {
+			continue
+		}
+		p.PossiblePostConds = append(p.PossiblePostConds, NewActionFromOpDef(def.Body, EmptyContext, def, false, false))
 	}
 }
 
@@ -654,8 +721,12 @@ func (p *SpecProcessor) processConfigPossible() {
 	}
 	tool := p.configProcessingTool()
 	for _, name := range possibleNames {
-		def, ok := p.defn(name).(*OpDefNode)
-		if !ok || def == nil || def.Arity() != 0 || def.Body == nil {
+		def, ok := p.configOpDef(name, "possible", p.Defns)
+		if !ok || def.Body == nil {
+			continue
+		}
+		if def.GetLevel() >= TLCLevelTemporal {
+			p.addConfigError(ECTLCConfigIDHasValue, "possible", name, "a temporal formula; only state- and action-level predicates are supported")
 			continue
 		}
 		track := NewPossibleTrackNode(def.Body, name)
@@ -669,12 +740,16 @@ func (p *SpecProcessor) processConfigPossible() {
 	}
 }
 
-func (p *SpecProcessor) addPlaceholderImpliedTemporal(name string) {
-	if name == "" {
+func (p *SpecProcessor) processMissingInitNextConfig() {
+	if p == nil {
 		return
 	}
-	p.ImpliedTemporals = append(p.ImpliedTemporals, &Action{Name: name, Con: EmptyContext})
-	p.ImpliedTempNames = append(p.ImpliedTempNames, name)
+	if len(p.InitPred) == 0 && (len(p.ImpliedInits) != 0 || len(p.ImpliedActions) != 0 || len(p.Variables) != 0 || len(p.Invariants) != 0 || len(p.ImpliedTemporals) != 0) {
+		p.addConfigError(ECTLCConfigMissingInit)
+	}
+	if p.NextPred == nil && (len(p.ImpliedActions) != 0 || len(p.Invariants) != 0 || len(p.ImpliedTemporals) != 0) {
+		p.addConfigError(ECTLCConfigMissingNext)
+	}
 }
 
 func (p *SpecProcessor) configProcessingTool() *Tool {
@@ -956,51 +1031,107 @@ func (p *SpecProcessor) defn(name string) any {
 	return p.Defns.Get(name)
 }
 
-func (p *SpecProcessor) actionFromConfigName(name string, init bool) *Action {
-	if def, ok := p.defn(name).(*OpDefNode); ok && def != nil && def.Arity() == 0 {
-		return NewActionFromOpDef(def.Body, EmptyContext, def, init, false)
-	}
-	return &Action{Name: name, IsInitPred: init, Con: EmptyContext}
-}
-
-func (p *SpecProcessor) actionsFromConfigNames(names []string, init bool) ([]*Action, []string) {
-	actions := make([]*Action, 0, len(names))
-	labels := make([]string, 0, len(names))
-	for _, name := range names {
-		action := p.actionFromConfigName(name, init)
-		actions = append(actions, action)
-		labels = append(labels, name)
-	}
-	return actions, labels
-}
-
-func (p *SpecProcessor) optionalSemanticFromConfigName(name string) SemanticNode {
+func (p *SpecProcessor) defnFrom(defns *Defns, name string) any {
 	if name == "" {
 		return nil
 	}
-	return p.semanticNodeFromConfigName(name)
+	if defns == nil {
+		return p.defn(name)
+	}
+	return defns.Get(name)
 }
 
-func (p *SpecProcessor) semanticNodeFromConfigName(name string) SemanticNode {
-	switch def := p.defn(name).(type) {
-	case *OpDefNode:
-		if def != nil && def.Arity() == 0 {
-			return def.Body
+func (p *SpecProcessor) preConstantDefinitions() *Defns {
+	if p == nil || p.PreConstantSnap == nil {
+		if p == nil {
+			return nil
 		}
-	case SemanticNode:
-		return def
-	case Value:
-		return def
+		return p.Defns
 	}
-	return name
+	return p.PreConstantSnap
 }
 
-func (p *SpecProcessor) semanticNodesFromConfigNames(names []string) []SemanticNode {
-	nodes := make([]SemanticNode, len(names))
-	for i, name := range names {
-		nodes[i] = p.semanticNodeFromConfigName(name)
+func (p *SpecProcessor) actionFromConfigName(name string, init bool, kind string) *Action {
+	def, ok := p.configOpDef(name, kind, p.Defns)
+	if !ok {
+		return nil
 	}
-	return nodes
+	return NewActionFromOpDef(def.Body, EmptyContext, def, init, false)
+}
+
+func (p *SpecProcessor) optionalOpBodyFromConfigName(name string, kind string, defns *Defns) SemanticNode {
+	if name == "" {
+		return nil
+	}
+	def, ok := p.configOpDef(name, kind, defns)
+	if !ok {
+		return nil
+	}
+	return def.Body
+}
+
+func (p *SpecProcessor) configOpDef(name string, kind string, defns *Defns) (*OpDefNode, bool) {
+	switch def := p.defnFrom(defns, name).(type) {
+	case *OpDefNode:
+		if def == nil {
+			p.addConfigError(ECTLCConfigSpecifiedNotDefined, kind, name)
+			return nil, false
+		}
+		if def.Arity() != 0 {
+			p.addConfigError(ECTLCConfigIDRequiresNoArg, kind, name)
+			return nil, false
+		}
+		return def, true
+	case Value:
+		p.addConfigError(ECTLCConfigIDMustNotBeConstant, kind, name)
+		return nil, false
+	case nil:
+		p.addConfigError(ECTLCConfigSpecifiedNotDefined, kind, name)
+		return nil, false
+	default:
+		p.addConfigError(ECTLCConfigIDMustNotBeConstant, kind, name)
+		return nil, false
+	}
+}
+
+func (p *SpecProcessor) configPredicateOpDef(name string, kind string, defns *Defns) (*OpDefNode, bool) {
+	switch def := p.defnFrom(defns, name).(type) {
+	case *OpDefNode:
+		if def == nil {
+			p.addConfigError(ECTLCConfigSpecifiedNotDefined, kind, name)
+			return nil, false
+		}
+		if def.Arity() != 0 {
+			p.addConfigError(ECTLCConfigIDRequiresNoArg, kind, name)
+			return nil, false
+		}
+		return def, true
+	case *BoolValue:
+		if def.Val {
+			return nil, false
+		}
+		p.addConfigError(ECTLCConfigIDHasValue, kind, name, def.String())
+		return nil, false
+	case Value:
+		p.addConfigError(ECTLCConfigIDHasValue, kind, name, def.String())
+		return nil, false
+	case nil:
+		p.addConfigError(ECTLCConfigSpecifiedNotDefined, kind, name)
+		return nil, false
+	default:
+		p.addConfigError(ECTLCConfigIDHasValue, kind, name, configValueString(def))
+		return nil, false
+	}
+}
+
+func configValueString(value any) string {
+	if value == nil {
+		return "<nil>"
+	}
+	if s, ok := value.(interface{ String() string }); ok {
+		return s.String()
+	}
+	return fmt.Sprint(value)
 }
 
 func (p *SpecProcessor) constraintNodesFromConfigNames(names []string, kind string, noArgCode int, undefinedCode int, valueCode int) []SemanticNode {

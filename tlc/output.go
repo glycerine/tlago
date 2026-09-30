@@ -135,9 +135,13 @@ const (
 	ECTLCStatePrint2                                     = 2217
 	ECTLCStatePrint3                                     = 2218
 	ECTLCSanyEnd                                         = 2219
+	ECTLCConfigNotBothSpecAndInit                        = 2227
 	ECTLCConfigIDRequiresNoArg                           = 2228
 	ECTLCConfigSpecifiedNotDefined                       = 2229
 	ECTLCConfigIDHasValue                                = 2230
+	ECTLCConfigMissingInit                               = 2231
+	ECTLCConfigMissingNext                               = 2232
+	ECTLCConfigIDMustNotBeConstant                       = 2233
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
 	ECTLCCheckingTemporalPropsEnd                        = 2267
@@ -369,6 +373,8 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 
 func formatMessage(code int, params []string) string {
 	switch code {
+	case ECTLCConfigNotBothSpecAndInit:
+		return "The configuration file cannot specify both INIT/NEXT and SPECIFICATION fields."
 	case ECTLCConfigIDRequiresNoArg:
 		if len(params) == 1 {
 			return fmt.Sprintf("TLC requires %s not to take any argument.", params[0])
@@ -383,6 +389,14 @@ func formatMessage(code int, params []string) string {
 	case ECTLCConfigIDHasValue:
 		if len(params) >= 3 {
 			return fmt.Sprintf("The %s of %s is equal to %s", params[0], params[1], params[2])
+		}
+	case ECTLCConfigMissingInit:
+		return "The configuration file did not specify the initial state predicate."
+	case ECTLCConfigMissingNext:
+		return "The configuration file did not specify the next state predicate."
+	case ECTLCConfigIDMustNotBeConstant:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])
 		}
 	}
 	if len(params) == 0 {
@@ -444,9 +458,13 @@ func ExitStatusForErrorCode(code int) int {
 		ECCFGTwiceKeyword,
 		ECCFGExpectID,
 		ECCFGExpectedSymbol,
+		ECTLCConfigNotBothSpecAndInit,
 		ECTLCConfigIDRequiresNoArg,
 		ECTLCConfigSpecifiedNotDefined,
-		ECTLCConfigIDHasValue:
+		ECTLCConfigIDHasValue,
+		ECTLCConfigMissingInit,
+		ECTLCConfigMissingNext,
+		ECTLCConfigIDMustNotBeConstant:
 		return ExitStatusErrorConfigParse
 	case ECTLCParsingFailed2,
 		ECTLCParsingFailed:
