@@ -1632,6 +1632,11 @@ Java decomposes startup liveness processing into two distinct phases:
   subscripted-action pieces as ordinary concrete `LiveExprNode` state/action
   nodes with `EvalFunc`, rather than introducing Java's `LNStateEnabled` and
   subclass hierarchy.
+- Bounded temporal quantifiers are expanded only when their domains enumerate:
+  `\E` becomes an `LNDisj`, `\A` becomes an `LNConj`, and empty domains collapse
+  to `FALSE`/`TRUE` respectively. Enumeration or child-conversion failure falls
+  back through the whole expression's level, matching Java's guarded
+  try/catch around `tool.contexts`.
 - `processLiveness(tool)` tags state/action predicates, pushes negation into
   positive form, simplifies, converts to DNF, classifies each DNF conjunct into
   `<>[]A`, `[]<>A`, `<>[]S`, and remaining action-free temporal formulae, bins

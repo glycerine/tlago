@@ -75,3 +75,24 @@ func TestASTToLiveExpandsStrongFairnessLikeJava(t *testing.T) {
 		t.Fatalf("SF right body = %#v, want action", action)
 	}
 }
+
+func TestASTToLiveExpandsBoundedExistsLikeJava(t *testing.T) {
+	body := NewOpApplNode(&SymbolNode{Name: OpBox}, NewOpApplNode(NewSymbolNode("P")))
+	expr := NewOpApplNode(&SymbolNode{Name: OpBE}, body)
+	expr.BdedQuantBounds = []SemanticNode{NewValueNode(NewSetEnumValue([]Value{IntOne, NewIntValue(2)}, true))}
+	expr.BdedQuantSymbolLists = [][]*SymbolNode{{NewSymbolNode("x")}}
+	expr.BdedQuantATuple = []bool{false}
+
+	live, err := ASTToLive(&Tool{}, expr, EmptyContext)
+	if err != nil {
+		t.Fatalf("ASTToLive(\\E) error = %v", err)
+	}
+	if live == nil || live.Kind != LiveExprDisj || live.Count() != 2 {
+		t.Fatalf("ASTToLive(\\E) = %#v, want two-branch disjunction", live)
+	}
+	for i := 0; i < live.Count(); i++ {
+		if branch := live.GetBody(i); branch == nil || branch.Kind != LiveExprAll {
+			t.Fatalf("branch %d = %#v, want temporal body", i, branch)
+		}
+	}
+}

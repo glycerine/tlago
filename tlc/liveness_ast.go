@@ -72,6 +72,14 @@ func astToLiveLevel(tool *Tool, expr SemanticNode, con *Context, level int) (*Li
 	return NewLNAction(label, expr, con, nil), nil
 }
 
+func astToLiveFallback(tool *Tool, expr SemanticNode, con *Context) (*LiveExprNode, error) {
+	level := SemanticLevel(expr)
+	if tool != nil {
+		level = tool.GetLevelBound(expr, con)
+	}
+	return astToLiveLevel(tool, expr, con, level)
+}
+
 func newLiveStateEnabled(body SemanticNode, con *Context, subscript SemanticNode, isBox bool) *LiveExprNode {
 	label := "ENABLED " + SemanticString(body)
 	return NewLNState(label, body, con, func(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
@@ -172,6 +180,62 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 	}
 
 	switch opcode {
+	case OpcodeBE:
+		if len(args) >= 1 && tool != nil {
+			enum, err := tool.Contexts(expr, con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)
+			if err == nil {
+				out := NewLNDisj()
+				ok := true
+				for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
+					kid, err := ASTToLive(tool, args[0], c1)
+					if err != nil {
+						ok = false
+						break
+					}
+					out.AddDisj(kid)
+				}
+				if err := enum.Err(); err != nil {
+					ok = false
+				}
+				if ok {
+					if out.Count() == 0 {
+						return LNFalse, nil
+					}
+					if out.GetLevel() > LiveLevelAction {
+						return out, nil
+					}
+					return astToLiveFallback(tool, expr, con)
+				}
+			}
+		}
+	case OpcodeBF:
+		if len(args) >= 1 && tool != nil {
+			enum, err := tool.Contexts(expr, con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)
+			if err == nil {
+				out := NewLNConj()
+				ok := true
+				for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
+					kid, err := ASTToLive(tool, args[0], c1)
+					if err != nil {
+						ok = false
+						break
+					}
+					out.AddConj(kid)
+				}
+				if err := enum.Err(); err != nil {
+					ok = false
+				}
+				if ok {
+					if out.Count() == 0 {
+						return LNTrue, nil
+					}
+					if out.GetLevel() > LiveLevelAction {
+						return out, nil
+					}
+					return astToLiveFallback(tool, expr, con)
+				}
+			}
+		}
 	case OpcodeCL, OpcodeLand:
 		out := NewLNConj()
 		for _, arg := range args {
@@ -301,9 +365,5 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	}
 
-	level := SemanticLevel(expr)
-	if tool != nil {
-		level = tool.GetLevelBound(expr, con)
-	}
-	return astToLiveLevel(tool, expr, con, level)
+	return astToLiveFallback(tool, expr, con)
 }
