@@ -86,6 +86,22 @@ func IsEmptyValue(value Value) (bool, error) {
 		return !domainEmpty && rangeEmpty, nil
 	case *SubsetValue:
 		return false, nil
+	case *KSubsetValue:
+		if v.K < 0 {
+			return true, nil
+		}
+		finite, err := v.Set.IsFinite()
+		if err != nil {
+			return false, err
+		}
+		if finite {
+			size, err := v.Set.Size()
+			if err != nil {
+				return false, err
+			}
+			return size < v.K, nil
+		}
+		return false, nil
 	case *UserValue:
 		if obj, ok := v.UserObj.(UserObjWithIsEmpty); ok {
 			return obj.IsEmpty()
@@ -117,6 +133,8 @@ func toSetEnumValue(value Value) (*SetEnumValue, error) {
 	case *SetOfFcnsValue:
 		return v.ToSetEnum()
 	case *SubsetValue:
+		return v.ToSetEnum()
+	case *KSubsetValue:
 		return v.ToSetEnum()
 	default:
 		return nil, newTLCError(ECGeneral, "value %s cannot be converted to an enumerated set", value)
