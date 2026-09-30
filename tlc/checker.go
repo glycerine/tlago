@@ -1459,11 +1459,11 @@ func workerIDForReplayWorker(worker *Worker) int {
 }
 
 func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
-	if succState != nil {
-		succState.SetPredecessor(curState).SetAction(action)
-	}
 	if !mc.Tool.IsGoodState(succState) {
 		return mc.doNextSetErrParams(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
+	}
+	if succState != nil {
+		succState.SetPredecessor(curState).SetAction(action)
 	}
 	inModel, err := mc.Tool.IsInModel(succState)
 	if err != nil {
