@@ -11,6 +11,7 @@ type TLCStateInfo struct {
 	State       *TLCStateMut
 	FP          *uint64
 	action      *Action
+	original    *TLCStateMut
 }
 
 func NewTLCStateInfo(state *TLCStateMut, action ...*Action) *TLCStateInfo {
@@ -40,6 +41,7 @@ func AliasTLCStateInfo(state *TLCStateMut, info *TLCStateInfo) *TLCStateInfo {
 		out.StateNumber = info.StateNumber
 		out.FP = info.FP
 		out.action = info.action
+		out.original = info.State
 	}
 	return out
 }
@@ -93,12 +95,18 @@ func (i *TLCStateInfo) OriginalState() *TLCStateMut {
 	if i == nil {
 		return nil
 	}
+	if i.original != nil {
+		return i.original
+	}
 	return i.State
 }
 
 func (i *TLCStateInfo) Action() *Action {
 	if i == nil {
 		return UnknownAction
+	}
+	if i.original != nil && i.original.HasAction() {
+		return i.original.GetAction()
 	}
 	if i.State != nil && i.State.HasAction() {
 		return i.State.GetAction()
@@ -112,6 +120,9 @@ func (i *TLCStateInfo) Action() *Action {
 func (i *TLCStateInfo) GetStateNumber() int {
 	if i == nil {
 		return 0
+	}
+	if i.original != nil {
+		return i.original.Level()
 	}
 	return int(i.StateNumber)
 }
