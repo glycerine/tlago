@@ -260,6 +260,31 @@ Tricky details:
   comparison, printing, and fingerprinting depend on it.
 - Constants can be static, dynamic, module-scoped, or override-driven.
 
+### Go SANY to TLC Bridge
+
+The root package owns the production Go SANY parser and semantic tree. The TLC
+runtime package must not import the root package, so the adapter lives in the
+root package as `BuildTLCTool`. Import direction is one-way: root `tlago`
+imports concrete `tlc` structs and builds a `Tool`; `tlc` remains independent.
+
+Current adapter responsibilities:
+
+- collect the root module variables and install TLC state variable locations.
+- convert SANY `Definition` and `Expr` nodes into TLC `OpDefNode`,
+  `OpApplNode`, `LetInNode`, quantifier, value, and action nodes.
+- install zero-arity config constants and operator overrides into `Tool`.
+- resolve config-selected `INIT`, `NEXT`, `SPECIFICATION`, invariants,
+  properties, constraints, view, and postconditions into `Action` or semantic
+  nodes.
+- preserve deterministic definition installation by sorting the collected names.
+
+This bridge is a staging boundary, not a replacement for Java `SpecProcessor`.
+The mechanical port still has to move exact Java visibility, INSTANCE
+processing, module constants, action decomposition, implied init/action
+splitting, symmetry, aliases, `_POSSIBLE`, `_PERIODIC`, and `_RL_REWARD` into
+the TLC-side `SpecProcessor` shape. Until that is complete, the adapter should
+stay simple and explicit so mismatches are easy to see.
+
 ### `Defns` and `Specs`
 
 `Defns` is a compact definition table keyed indirectly by `UniqueString.loc`.
@@ -281,6 +306,12 @@ embeds the same base rather than hiding level behind an interface.
 
 `Specs.addSubsts` wraps an expression in the queued `SubstInNode` substitutions
 in list order. This is a structural SANY helper and should remain mechanical.
+
+`LET` context extension is shared by evaluation, enabledness, init generation,
+next-state generation, and variable lookup. Zero-arity local definitions bind as
+lazy values, while arity-bearing local operators bind as concrete `OpDefNode`
+values in the same context. This mirrors Java's semantic-node environment
+without introducing a one-implementation closure interface.
 
 ### `ModelConfig`
 

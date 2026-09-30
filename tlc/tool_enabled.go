@@ -16,13 +16,7 @@ func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, 
 	case *OpApplNode:
 		return t.EnabledAppl(pred, acts, c, s0, s1, cm)
 	case *LetInNode:
-		c1 := c
-		for _, opDef := range pred.Lets {
-			if opDef != nil && opDef.Arity() == 0 {
-				c1 = c1.Cons(&SymbolNode{Name: opDef.Name}, NewLazyValue(opDef.Body, c1, true))
-			}
-		}
-		return t.EnabledImpl(pred.Body, acts, c1, s0, s1, cm)
+		return t.EnabledImpl(pred.Body, acts, letDefinitionsContext(c, pred.Lets), s0, s1, cm)
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
