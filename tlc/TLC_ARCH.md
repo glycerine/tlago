@@ -1759,6 +1759,11 @@ not the expected finite function/set shape. `BagIn`, `CopiesIn`, `BagCup`,
 set whose element is not a bag, it reports `TLC_MODULE_BAG_UNION1` against the
 whole set, not the individual element.
 
+`TransitiveClosure.Warshall` reports a non-enumerable relation with
+`TLC_MODULE_APPLYING_TO_WRONG_VALUE` and a non-pair element with
+`TLC_MODULE_TRANSITIVE_CLOSURE`. The algorithm itself is Warshall over the
+distinct relation endpoints in first-seen order from relation enumeration.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

@@ -467,6 +467,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("Attempted to apply BagUnion to the following set, whose\nelement is not a bag:\n%s", params[0])
 		}
+	case ECTLCModuleTransitiveClosure:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Attempted to apply TransitiveClosure to a set containing\nthe following value:\n%s", params[0])
+		}
 	case ECTLCModuleComputingCardinality:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Attempted to compute cardinality of the value\n%s", params[0])

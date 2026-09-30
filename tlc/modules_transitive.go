@@ -3,7 +3,7 @@ package tlc
 func Warshall(rel Value) (Value, error) {
 	enumerable, ok := asEnumerable(rel)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "TransitiveClosure expected an enumerable set, got %s", rel)
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "TransitiveClosure", "an enumerable set", ValuesPPR(rel))
 	}
 	size, err := rel.Size()
 	if err != nil {
@@ -31,7 +31,7 @@ func Warshall(rel Value) (Value, error) {
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
 		tuple := asTupleValue(elem)
 		if tuple == nil || len(tuple.Elems) != 2 {
-			return nil, newTLCError(ECGeneral, "TransitiveClosure expected ordered pairs, got %s", elem)
+			return nil, newTLCErrorCode(ECTLCModuleTransitiveClosure, ValuesPPR(elem))
 		}
 		i, err := indexOf(tuple.Elems[0])
 		if err != nil {
