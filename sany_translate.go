@@ -80,9 +80,27 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 	l.rootDir = filepath.Dir(rootPath)
 	rootMod := l.loadPath(rootPath, false)
 	if rootMod != nil {
+		rootMod.Extends = appendModuleNames(rootMod.Extends, l.opts.ExtraModules...)
 		l.loadDependencies(rootMod)
 	}
 	return &Spec{Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), Diags: l.diags}, l.diags
+}
+
+func appendModuleNames(names []string, extra ...string) []string {
+	seen := map[string]bool{}
+	for _, name := range names {
+		if name != "" {
+			seen[name] = true
+		}
+	}
+	for _, name := range extra {
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		names = append(names, name)
+	}
+	return names
 }
 
 func (l *sanyLoader) loadDependencies(mod *Module) {

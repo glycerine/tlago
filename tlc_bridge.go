@@ -12,6 +12,7 @@ type tlcBridge struct {
 	tool    *tlc.Tool
 	spec    *Spec
 	cfg     *tlc.ModelConfig
+	runtime tlc.RuntimeParameters
 	defs    map[string]*Definition
 	diags   Diagnostics
 	symbols map[string]*tlc.SymbolNode
@@ -79,7 +80,7 @@ var bridgeStandardModuleMembers = map[string][]string{
 
 // BuildTLCTool converts the production Go SANY semantic tree into the TLC
 // runtime tree used by the mechanical TLC port.
-func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig) (*tlc.Tool, Diagnostics) {
+func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics) {
 	if spec == nil || spec.Root == nil {
 		return nil, Diagnostics{errorAt(Position{}, "E7000", "missing root module for TLC tool")}
 	}
@@ -90,6 +91,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig) (*tlc.Tool, Diagnostics) {
 		tool:    tlc.NewToolWithModelConfig(cfg),
 		spec:    spec,
 		cfg:     cfg,
+		runtime: runtime,
 		defs:    definitionsByName(spec),
 		symbols: map[string]*tlc.SymbolNode{},
 	}
@@ -103,6 +105,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig) (*tlc.Tool, Diagnostics) {
 	bridge.installInstanceAliases()
 	bridge.installAssumptions()
 	bridge.installModelTargets()
+	bridge.installRuntimeParameters()
 	bridge.tool.AssignActionIDs()
 	return bridge.tool, bridge.diags
 }
@@ -339,6 +342,108 @@ func (b *tlcBridge) installModelTargets() {
 			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
 		}
 	}
+}
+
+func (b *tlcBridge) installRuntimeParameters() {
+	if b == nil {
+		return
+	}
+	b.installRuntimeConstants()
+	for _, inv := range b.runtime.Invariants {
+		expr, diags := parseRuntimeTLAExpression(inv.Expression, inv.Modules)
+		b.diags = append(b.diags, diags...)
+		if diags.HasErrors() || expr == nil {
+			continue
+		}
+		action := b.actionFromExpr(inv.Expression, expr, nil, false)
+		if action != nil {
+			b.tool.Invariants = append(b.tool.Invariants, action)
+			b.tool.InvariantNames = append(b.tool.InvariantNames, inv.Expression)
+		}
+	}
+	for _, constraint := range b.runtime.Constraints {
+		if node := b.nodeForModuleDefinition(constraint.Module, constraint.Operator, "runtime constraint"); node != nil {
+			b.tool.ModelConstraints = append(b.tool.ModelConstraints, node)
+		}
+	}
+	if b.cfg == nil || b.cfg.GetView() == "" {
+		if view := b.runtime.View; view != nil {
+			b.tool.ViewSpec = b.nodeForModuleDefinition(view.Module, view.Operator, "runtime view")
+		}
+	}
+	for _, post := range b.runtime.PostConditions {
+		if action := b.actionFromModuleDefinition(post.Module, post.Operator, false); action != nil {
+			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
+		}
+	}
+}
+
+func (b *tlcBridge) installRuntimeConstants() {
+	for _, constraint := range b.runtime.Constraints {
+		b.defineRuntimeStringConstant(constraint.ConstantName, constraint.FileName)
+	}
+	for _, post := range b.runtime.PostConditions {
+		b.defineRuntimeStringConstant(post.ConstantName, post.FileName)
+	}
+}
+
+func (b *tlcBridge) defineRuntimeStringConstant(name string, value string) {
+	if name == "" {
+		return
+	}
+	b.tool.DefineName(name, tlc.NewStringValue(value))
+}
+
+func (b *tlcBridge) nodeForModuleDefinition(module string, operator string, slot string) tlc.SemanticNode {
+	name := moduleQualifiedName(module, operator)
+	if name == "" {
+		b.diags = append(b.diags, errorAt(Position{}, "E7018", "%s requires a module and operator", slot))
+		return nil
+	}
+	return b.nodeForDefinition(name)
+}
+
+func (b *tlcBridge) actionFromModuleDefinition(module string, operator string, init bool) *tlc.Action {
+	name := moduleQualifiedName(module, operator)
+	if name == "" {
+		b.diags = append(b.diags, errorAt(Position{}, "E7019", "runtime postcondition requires a module and operator"))
+		return nil
+	}
+	return b.actionFromDefinition(name, init)
+}
+
+func moduleQualifiedName(module string, operator string) string {
+	if module == "" || operator == "" {
+		return ""
+	}
+	return module + "!" + operator
+}
+
+func parseRuntimeTLAExpression(expr string, modules []string) (Expr, Diagnostics) {
+	if strings.TrimSpace(expr) == "" {
+		return nil, Diagnostics{errorAt(Position{}, "E7020", "runtime invariant expression is empty")}
+	}
+	var source strings.Builder
+	source.WriteString("---- MODULE __TLCRuntimeExpression ----\n")
+	if len(modules) > 0 {
+		source.WriteString("EXTENDS ")
+		source.WriteString(strings.Join(modules, ", "))
+		source.WriteByte('\n')
+	}
+	source.WriteString("__RuntimeExpression == ")
+	source.WriteString(expr)
+	source.WriteString("\n====\n")
+	mod, diags := ParseSanyModuleSource("__TLCRuntimeExpression.tla", source.String())
+	if diags.HasErrors() || mod == nil {
+		return nil, diags
+	}
+	for i := range mod.Definitions {
+		if mod.Definitions[i].Name == "__RuntimeExpression" {
+			return mod.Definitions[i].Expr, diags
+		}
+	}
+	diags = append(diags, errorAt(Position{}, "E7021", "runtime invariant expression did not produce a definition"))
+	return nil, diags
 }
 
 func (b *tlcBridge) installPropertyTarget(name string) {

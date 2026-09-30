@@ -506,6 +506,7 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
+	loadOpts.ExtraModules = appendModuleNames(loadOpts.ExtraModules, tlcRuntimeParameterModules(opts.RuntimeParams)...)
 	spec, diags := LoadSanySpec(opts.SpecFile, loadOpts)
 	if diags.HasErrors() {
 		writeDiagnostics(stderr, diags)
@@ -521,7 +522,7 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitSyntaxFailure
 	}
-	tool, toolDiags := BuildTLCTool(spec, cfg)
+	tool, toolDiags := BuildTLCTool(spec, cfg, opts.RuntimeParams)
 	if toolDiags.HasErrors() {
 		writeDiagnostics(stderr, toolDiags)
 		return ExitSemanticFailure
@@ -548,6 +549,23 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "TLC model checking completed: %d states generated, %d distinct states\n", result.StatesGenerated, result.DistinctStates)
 	return ExitOK
+}
+
+func tlcRuntimeParameterModules(params tlcruntime.RuntimeParameters) []string {
+	var modules []string
+	for _, inv := range params.Invariants {
+		modules = appendModuleNames(modules, inv.Modules...)
+	}
+	for _, constraint := range params.Constraints {
+		modules = appendModuleNames(modules, constraint.Module)
+	}
+	for _, post := range params.PostConditions {
+		modules = appendModuleNames(modules, post.Module)
+	}
+	if params.View != nil {
+		modules = appendModuleNames(modules, params.View.Module)
+	}
+	return modules
 }
 
 func extractTLCLoadOptions(args []string) ([]string, LoadOptions, error) {

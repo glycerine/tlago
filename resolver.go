@@ -3,6 +3,7 @@ package tlago
 type LoadOptions struct {
 	LibraryPaths         []string
 	PreferLibraryModules bool
+	ExtraModules         []string
 }
 
 var standardModules = map[string]string{
