@@ -96,6 +96,26 @@ func TLCExtTLCFP(value Value) *IntValue {
 	return NewIntValue(FP64Hash(value.FingerPrint(FP64New())))
 }
 
+func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error) {
+	if tool == nil {
+		return nil, newTLCError(ECGeneral, "TLCEvalDefinition has no tool")
+	}
+	str, ok := name.(*StringValue)
+	if !ok {
+		return nil, newTLCError(ECGeneral, "TLCEvalDefinition expected a string definition name, got %s", name)
+	}
+	value := tool.DefnsByName[str.Val]
+	opDef, ok := value.(*OpDefNode)
+	if !ok || opDef == nil {
+		return nil, newTLCError(ECGeneral, "TLCEvalDefinition could not find zero-arity definition %q", str.UnquotedString())
+	}
+	if opDef.Arity() != 0 {
+		return nil, newTLCError(ECGeneral, "TLCEvalDefinition expected a zero-arity definition, got %s", opDef)
+	}
+	con, s0, s1, control, cm := parseEvalArgs(args...)
+	return tool.Eval(opDef.Body, con, s0, s1, control, cm)
+}
+
 type TLCExtCache struct {
 	mu     sync.RWMutex
 	values *InsMap[string, Value]

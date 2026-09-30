@@ -1171,6 +1171,14 @@ Java TLC implements standard modules in `tlc2/module`:
 - `TransitiveClosure`
 - `AnySet`
 
+The Go port keeps these as concrete functions in `modules_*.go`. Related Java
+modules may be folded together when the behavior is still direct; for example
+`Strings` and `FiniteSets` live in `modules_misc.go`, and `TLCEval`'s value
+conversion helper lives beside other TLC module operators. `TLCExt` includes
+the definition-by-name hook as `TLCExtTLCEvalDefinition`, which looks up a
+zero-arity `OpDefNode` in the concrete `Tool` definition table and evaluates
+its body in the existing context/state pair.
+
 Override infrastructure:
 
 - `TLARegistry` maps TLA+ names to Java names.

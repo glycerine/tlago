@@ -43,6 +43,19 @@ func compareWithOperator(cmp Value, left Value, right Value) (bool, error) {
 	return boolValue.Val, nil
 }
 
+func TLCEval(value Value) Value {
+	if value == nil {
+		return ValUndef
+	}
+	if set, err := toSetEnumValue(value); err == nil && set != nil {
+		return set
+	}
+	if fcn := asFcnRcdValue(value); fcn != nil {
+		return fcn
+	}
+	return value
+}
+
 func RandomElement(value Value) (Value, error) {
 	switch v := value.(type) {
 	case *SetOfFcnsValue:
