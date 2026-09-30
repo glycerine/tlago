@@ -258,14 +258,16 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) 
 	}
 	w.Checker.ErrorPrefix = prefix
 	w.Checker.ErrorCycle = cycle
-	counterExample, trace, closingInfo, loopOrdinal, stuttering, err := w.buildCounterExample(prefix, cycle)
+	counterExample, printableTrace, rawTrace, closingInfo, loopOrdinal, cycleIndex, stuttering, err := w.buildCounterExample(prefix, cycle)
 	if err != nil {
 		return false, err
 	}
-	w.Checker.ErrorTrace = trace
+	w.Checker.ErrorTrace = printableTrace
+	w.Checker.ErrorRawTrace = rawTrace
 	w.Checker.ErrorCounterEx = counterExample
 	w.Checker.ErrorClosingInfo = closingInfo
 	w.Checker.ErrorLoopOrdinal = loopOrdinal
+	w.Checker.ErrorCycleIndex = cycleIndex
 	w.Checker.ErrorStuttering = stuttering
 	if w.Tool != nil && counterExample != nil {
 		w.Tool.CheckPostConditionWithCounterExample(counterExample)
@@ -315,21 +317,21 @@ func (w *LiveWorker) traceFingerprintLasso(state uint64, tidx int, nodeTbl *Tabl
 	return prefix, postfix, nil
 }
 
-func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*CounterExample, []*TLCStateInfo, *TLCStateInfo, int, bool, error) {
+func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*CounterExample, []*TLCStateInfo, []*TLCStateInfo, *TLCStateInfo, int, int, bool, error) {
 	if w.Tool == nil {
-		return nil, nil, nil, 0, false, fmt.Errorf("cannot reconstruct liveness counterexample without a tool")
+		return nil, nil, nil, nil, 0, 0, false, fmt.Errorf("cannot reconstruct liveness counterexample without a tool")
 	}
 	if prefix == nil || prefix.Size() == 0 {
-		return nil, nil, nil, 0, false, fmt.Errorf("cannot reconstruct liveness counterexample without a prefix")
+		return nil, nil, nil, nil, 0, 0, false, fmt.Errorf("cannot reconstruct liveness counterexample without a prefix")
 	}
 	plen := prefix.Size()
 	fp := uint64(prefix.ElementAt(plen - 1))
 	sinfo, err := w.Tool.GetState(fp)
 	if err != nil {
-		return nil, nil, nil, 0, false, err
+		return nil, nil, nil, nil, 0, 0, false, err
 	}
 	if sinfo == nil {
-		return nil, nil, nil, 0, false, fmt.Errorf("failed to recover initial liveness state %d", fp)
+		return nil, nil, nil, nil, 0, 0, false, fmt.Errorf("failed to recover initial liveness state %d", fp)
 	}
 	states := make([]*TLCStateInfo, 0, plen)
 	states = append(states, sinfo)
@@ -341,19 +343,29 @@ func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*Coun
 		}
 		sinfo, err = w.Tool.GetState(curFP, sinfo)
 		if err != nil {
-			return nil, nil, nil, 0, false, err
+			return nil, nil, nil, nil, 0, 0, false, err
 		}
 		if sinfo == nil {
-			return nil, nil, nil, 0, false, fmt.Errorf("failed to recover liveness successor state %d", curFP)
+			return nil, nil, nil, nil, 0, 0, false, fmt.Errorf("failed to recover liveness successor state %d", curFP)
 		}
 		states = append(states, sinfo)
 		fp = curFP
 	}
 	if len(states) == 0 {
-		return nil, nil, nil, 0, false, fmt.Errorf("cannot reconstruct empty liveness counterexample")
+		return nil, nil, nil, nil, 0, 0, false, fmt.Errorf("cannot reconstruct empty liveness counterexample")
+	}
+
+	printableStates := make([]*TLCStateInfo, 0, len(states)+16)
+	for i := 0; i < len(states)-1; i++ {
+		alias, err := w.Tool.EvalAliasInfoPrefix(states[i], states[i+1].State, states[:i])
+		if err != nil {
+			return nil, nil, nil, nil, 0, 0, false, err
+		}
+		printableStates = append(printableStates, alias)
 	}
 
 	cycleState := states[len(states)-1]
+	cycleIndex := len(states) - 1
 	loopOrdinal := int(cycleState.StateNumber)
 	sinfo = cycleState
 	closingInfo := sinfo
@@ -364,19 +376,29 @@ func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*Coun
 			curFP := uint64(cycle.ElementAt(i))
 			sucinfo, err := w.Tool.GetState(curFP, sinfo)
 			if err != nil {
-				return nil, nil, nil, 0, false, err
+				return nil, nil, nil, nil, 0, 0, false, err
 			}
 			if sucinfo == nil {
-				return nil, nil, nil, 0, false, fmt.Errorf("failed to recover liveness cycle state %d", curFP)
+				return nil, nil, nil, nil, 0, 0, false, fmt.Errorf("failed to recover liveness cycle state %d", curFP)
 			}
+			alias, err := w.Tool.EvalAliasInfoPrefix(sinfo, sucinfo.State, states)
+			if err != nil {
+				return nil, nil, nil, nil, 0, 0, false, err
+			}
+			printableStates = append(printableStates, alias)
 			states = append(states, sucinfo)
 			sinfo = sucinfo
 		}
+		alias, err := w.Tool.EvalAliasInfoPrefix(sinfo, cycleState.State, states)
+		if err != nil {
+			return nil, nil, nil, nil, 0, 0, false, err
+		}
+		printableStates = append(printableStates, alias)
 		if sinfo.FingerPrint() != cycleState.FingerPrint() {
 			stuttering = false
 			closing, err := w.Tool.GetState(cycleState.FingerPrint(), sinfo)
 			if err != nil {
-				return nil, nil, nil, 0, false, err
+				return nil, nil, nil, nil, 0, 0, false, err
 			}
 			if closing != nil {
 				closingInfo = closing
@@ -384,8 +406,14 @@ func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*Coun
 		} else {
 			closingInfo = sinfo
 		}
+	} else {
+		alias, err := w.Tool.EvalAliasInfoPrefix(cycleState, cycleState.State, states)
+		if err != nil {
+			return nil, nil, nil, nil, 0, 0, false, err
+		}
+		printableStates = append(printableStates, alias)
 	}
-	return NewCounterExample(states, closingInfo.Action(), loopOrdinal, true), states, closingInfo, loopOrdinal, stuttering, nil
+	return NewCounterExample(states, closingInfo.Action(), loopOrdinal, true), printableStates, states, closingInfo, loopOrdinal, cycleIndex, stuttering, nil
 }
 
 func (w *LiveWorker) dfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrTable, cycleStack *IntStack) (*GraphNode, error) {

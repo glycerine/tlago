@@ -71,6 +71,39 @@ func LivenessFindViolatedPropertiesFromTrace(tool *Tool, trace []*TLCStateInfo, 
 	return LivenessFindViolatedProperties(tool, states, cyclePos)
 }
 
+func LivenessPrintStutteringCounterExampleWarning(tool *Tool) {
+	if tool == nil {
+		return
+	}
+	config := tool.GetModelConfig()
+	specName := ""
+	if config != nil {
+		specName = config.GetSpec()
+	}
+	if specName != "" && len(tool.GetTemporals()) == 0 {
+		PrintWarning(ECTLCConfigNoFairnessButLiveProperty, specName, livenessSpecLocation(tool, specName))
+		return
+	}
+	if specName == "" {
+		PrintWarning(ECTLCConfigNoSpecButProperty, "")
+	}
+}
+
+func livenessSpecLocation(tool *Tool, specName string) string {
+	if tool == nil || tool.SpecProcessor == nil {
+		return specName
+	}
+	if op, ok := tool.SpecProcessor.defn(specName).(*OpDefNode); ok && op != nil {
+		if loc, ok := semanticNodeSourceLocation(op.Body); ok && !loc.IsNull() {
+			return loc.String()
+		}
+		if op.Body != nil {
+			return SemanticString(op.Body)
+		}
+	}
+	return specName
+}
+
 func liveExprFallbackForAction(action *Action) *LiveExprNode {
 	if action == nil || action.Pred == nil {
 		return nil

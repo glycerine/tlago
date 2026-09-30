@@ -146,6 +146,8 @@ const (
 	ECTLCConfigMissingNext                               = 2232
 	ECTLCConfigIDMustNotBeConstant                       = 2233
 	ECTLCLiveFormulaTautology                            = 2253
+	ECTLCConfigNoSpecButProperty                         = 2257
+	ECTLCConfigNoFairnessButLiveProperty                 = 2259
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
 	ECTLCCheckingTemporalPropsEnd                        = 2267
@@ -504,6 +506,12 @@ func formatMessage(code int, params []string) string {
 		}
 	case ECTLCLiveFormulaTautology:
 		return "Temporal formula is a tautology (its negation is unsatisfiable)."
+	case ECTLCConfigNoSpecButProperty:
+		return "The stuttering counterexample above may be caused by the absence of a behavior specification (SPECIFICATION). Only INIT and NEXT have been provided, so TLC permits infinite stuttering. To rule out such counterexamples, use SPECIFICATION Spec, with Spec asserting a suitable fairness constraint (compare Chapter 8, page 87ff of Specifying Systems at https://lamport.azurewebsites.net/tla/book.html)."
+	case ECTLCConfigNoFairnessButLiveProperty:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The stuttering counterexample above may be caused by the absence of a fairness constraint in the behavior specification %s defined at %s. To rule out such counterexamples, conjoin a suitable fairness constraint to %s (compare Chapter 8, page 87ff of Specifying Systems at https://lamport.azurewebsites.net/tla/book.html).", params[0], params[1], params[0])
+		}
 	}
 	if len(params) == 0 {
 		return fmt.Sprintf("%d", code)

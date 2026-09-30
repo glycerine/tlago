@@ -59,6 +59,7 @@
   - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
   - Liveness SCC checks now emit Java-style temporal-property start/end messages with graph size and current/complete mode.
   - Disk-backed liveness SCC checking now creates the graph cache for the whole PEM pass, records graph size on the disk graph like Java, and lets liveness violations take precedence over checker failures after all checkers have run.
+  - Liveness counterexample reconstruction now keeps Java's raw-vs-printable trace split: raw states feed violated-property attribution and `CounterExample`, printed states go through `ALIAS`, and stuttering lassos emit Java's fairness/specification warning when applicable.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -96,8 +97,8 @@
   - `7eb9c3f Align periodic failure suspension`
   - `89053f3 Replay init errors for call stacks`
 - Last verified commands before this file:
-  - `go test ./tlc`
+  - `go test ./...`
 - Immediate next steps:
-  1. Continue breadth-first liveness comparison, especially counterexample reconstruction, stuttering warnings, and DOT/debug output edge cases.
+  1. Continue breadth-first liveness comparison, especially DOT/debug output edge cases and remaining LiveCheck1/in-memory reconciliation.
   2. Then continue into remaining checkpoint/distributed/debugger surfaces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.

@@ -180,8 +180,10 @@ type LiveChecker struct {
 	ErrorPrefix      *LongVec
 	ErrorCycle       *LongVec
 	ErrorTrace       []*TLCStateInfo
+	ErrorRawTrace    []*TLCStateInfo
 	ErrorCounterEx   *CounterExample
 	ErrorLoopOrdinal int
+	ErrorCycleIndex  int
 	ErrorClosingInfo *TLCStateInfo
 	ErrorStuttering  bool
 	ErrorPrinted     bool
@@ -752,8 +754,10 @@ func (c *LiveChecker) Reset() {
 	c.ErrorPrefix = nil
 	c.ErrorCycle = nil
 	c.ErrorTrace = nil
+	c.ErrorRawTrace = nil
 	c.ErrorCounterEx = nil
 	c.ErrorLoopOrdinal = 0
+	c.ErrorCycleIndex = 0
 	c.ErrorClosingInfo = nil
 	c.ErrorStuttering = false
 	c.ErrorPrinted = false
@@ -1367,7 +1371,11 @@ func (c *LiveChecker) PrintCounterExample(tool *Tool) {
 		return
 	}
 	c.ErrorPrinted = true
-	names := LivenessFindViolatedPropertiesFromTrace(tool, c.ErrorTrace, c.ErrorLoopOrdinal-1)
+	rawTrace := c.ErrorRawTrace
+	if len(rawTrace) == 0 {
+		rawTrace = c.ErrorTrace
+	}
+	names := LivenessFindViolatedPropertiesFromTrace(tool, rawTrace, c.ErrorCycleIndex)
 	PrintError(ECTLCTemporalPropertyViolated, names...)
 	PrintError(ECTLCCounterExample)
 	for _, info := range c.ErrorTrace {
@@ -1375,6 +1383,9 @@ func (c *LiveChecker) PrintCounterExample(tool *Tool) {
 	}
 	if c.ErrorStuttering {
 		PrintStutteringState(c.ErrorLoopOrdinal)
+		if c.Solution != nil && !c.Solution.HasEmptyPEMAndBoxFreePromises() {
+			LivenessPrintStutteringCounterExampleWarning(tool)
+		}
 	} else {
 		PrintBackToState(c.ErrorClosingInfo, c.ErrorLoopOrdinal)
 	}
