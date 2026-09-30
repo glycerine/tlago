@@ -537,7 +537,7 @@ func (c *LiveChecker) reconstructSafetyLikeLivenessPrefix(tool *Tool, prefix *Lo
 		if next == nil {
 			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", curFP)
 		}
-		if alias, err := tool.EvalAliasInfoPrefix(trace[len(trace)-1], next.State, trace[:len(trace)-1]); err != nil {
+		if alias, err := tool.EvalAliasInfoPair(trace[len(trace)-1], next.State); err != nil {
 			return nil, err
 		} else if alias != nil {
 			trace[len(trace)-1] = alias
@@ -547,7 +547,7 @@ func (c *LiveChecker) reconstructSafetyLikeLivenessPrefix(tool *Tool, prefix *Lo
 		fp = curFP
 	}
 	last := trace[len(trace)-1]
-	if alias, err := tool.EvalAliasInfoPrefix(last, last.State, trace[:len(trace)-1]); err != nil {
+	if alias, err := tool.EvalAliasInfoPair(last, last.State); err != nil {
 		return nil, err
 	} else if alias != nil {
 		trace[len(trace)-1] = alias

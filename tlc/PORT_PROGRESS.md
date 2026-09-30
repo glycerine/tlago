@@ -61,6 +61,7 @@
   - Disk-backed liveness SCC checking now creates the graph cache for the whole PEM pass, records graph size on the disk graph like Java, and lets liveness violations take precedence over checker failures after all checkers have run.
   - Liveness counterexample reconstruction now keeps Java's raw-vs-printable trace split: raw states feed violated-property attribution and `CounterExample`, printed states go through `ALIAS`, and stuttering lassos emit Java's fairness/specification warning when applicable.
   - Disk-backed liveness graphs now collect Java-style out-degree samples at node insertion and expose in/out-degree recomputation through `LiveCheck`'s auxiliary statistics methods.
+  - Safety-like liveness counterexample prefix reconstruction now uses Java's non-prefix `ALIAS` overload instead of passing a `TLCExt!Trace` context.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -73,6 +74,7 @@
   - State queue interaction with fingerprint set and trace file at full Java fidelity.
 - Complete liveness checker parity:
   - final SCC/cycle checking flow, accepting-component error reporting, lasso reconstruction, violated-property attribution, DOT output edge cases.
+  - optional `LIVENESS_STATS` raw statistics printing still needs an output-channel decision; graph collection/recomputation helpers are now present.
   - retire or clearly reconcile any temporary in-memory liveness paths once disk graph worker parity is complete.
 - Complete FPSet/DiskFPSet parity:
   - fine-grained striped locking and block IO concurrency, disk flushing, checkpoint/recovery edge cases, management/MX statistics.
@@ -98,7 +100,7 @@
   - `7eb9c3f Align periodic failure suspension`
   - `89053f3 Replay init errors for call stacks`
 - Last verified commands before this file:
-  - `go test ./...`
+  - `go test ./tlc`
 - Immediate next steps:
   1. Continue breadth-first liveness comparison, especially DOT/debug output edge cases and remaining LiveCheck1/in-memory reconciliation.
   2. Then continue into remaining checkpoint/distributed/debugger surfaces.
