@@ -162,14 +162,14 @@ func (w *ModelCheckerMXWrapper) Stop() {
 }
 
 func (w *ModelCheckerMXWrapper) Suspend() {
-	if w != nil && w.ModelChecker != nil && w.ModelChecker.StateQueue != nil {
-		w.ModelChecker.StateQueue.SuspendAll()
+	if w != nil && w.ModelChecker != nil {
+		w.ModelChecker.Suspend()
 	}
 }
 
 func (w *ModelCheckerMXWrapper) Resume() {
-	if w != nil && w.ModelChecker != nil && w.ModelChecker.StateQueue != nil {
-		w.ModelChecker.StateQueue.ResumeAll()
+	if w != nil && w.ModelChecker != nil {
+		w.ModelChecker.Resume()
 	}
 }
 

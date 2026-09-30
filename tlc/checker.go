@@ -405,6 +405,18 @@ func (mc *ModelChecker) Stop() {
 	}
 }
 
+func (mc *ModelChecker) Suspend() {
+	if mc != nil && mc.StateQueue != nil {
+		mc.StateQueue.SuspendAll()
+	}
+}
+
+func (mc *ModelChecker) Resume() {
+	if mc != nil && mc.StateQueue != nil {
+		mc.StateQueue.ResumeAll()
+	}
+}
+
 func (mc *ModelChecker) GetProgress() int64 {
 	if mc == nil || mc.Trace == nil {
 		return 0
