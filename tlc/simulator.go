@@ -137,7 +137,6 @@ func (s *Simulator) Simulate() (int, error) {
 	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(s.Tool)
-		defer ReportCoverage(s.Tool, TLCStartTime())
 	}
 	if result := s.Tool.CheckAssumptions(); result != NoError {
 		return result, nil
@@ -155,14 +154,37 @@ func (s *Simulator) Simulate() (int, error) {
 	stopProgress()
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()
-	if err := s.writeActionFlowGraph(); err != nil {
-		PrintError(ECTLCReporterDied, err.Error())
-	}
 	code := s.postSimulationErrorCode(workerResult)
+	if code == NoError {
+		s.PrintSummary()
+	}
 	if workerResult.IsError() {
 		return code, workerResult.Error.Err
 	}
 	return code, nil
+}
+
+func (s *Simulator) PrintSummary() {
+	if s == nil {
+		return
+	}
+	if CoverageAnyEnabled() {
+		ReportCoverage(s.Tool, TLCStartTime())
+	}
+	if err := s.writeActionFlowGraph(); err != nil {
+		PrintError(ECTLCReporterDied, err.Error())
+	}
+	if toolMode() {
+		PrintMessage(ECTLCProgressSimu,
+			fmtInt64(s.NumGenStates.Load()),
+			fmtInt64(s.NumGenTraces.Load()),
+		)
+	}
+	PrintMessage(ECTLCStatsSimu,
+		fmtInt64(s.NumGenStates.Load()),
+		fmtInt64(s.Seed),
+		fmtInt64(s.Aril),
+	)
 }
 
 func (s *Simulator) startProgressReporter() func() {
@@ -576,6 +598,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 			break
 		}
 		if result.IsError() {
+			s.printSimulationWorkerError(result.Error)
 			if s.simulationErrorStops(result.Error) {
 				break
 			}
@@ -588,6 +611,101 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 	}
 	s.shutdownAndJoinWorkers(s.Workers)
 	return result
+}
+
+func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
+	if err == nil {
+		return
+	}
+	if err.Err != nil {
+		var liveCounterExample *LiveCounterExampleException
+		if errors.As(err.Err, &liveCounterExample) && liveCounterExample != nil && liveCounterExample.LiveException != nil {
+			err.Code = liveCounterExample.LiveException.ErrorCode
+			s.PrintSummary()
+			return
+		}
+		var live *LiveException
+		if errors.As(err.Err, &live) && live != nil {
+			err.Code = live.ErrorCode
+			s.PrintSummary()
+			return
+		}
+		var eval *EvalException
+		if errors.As(err.Err, &eval) && eval != nil {
+			if err.Code == NoError {
+				err.Code = eval.ErrorCode
+			}
+			if len(err.Params) == 0 {
+				err.Params = eval.GetParameters()
+			}
+		}
+		var tlcErr *TLCError
+		if errors.As(err.Err, &tlcErr) && tlcErr != nil && err.Code == NoError {
+			err.Code = tlcErr.Code
+		}
+		if err.Code == NoError {
+			err.Code = ECGeneral
+		}
+		if len(err.Params) == 0 {
+			err.Params = []string{err.Err.Error()}
+		}
+		s.printBehavior(err.Code, err.Params, err.StateTrace)
+		return
+	}
+	if err.Code == NoError {
+		err.Code = ECGeneral
+	}
+	s.printBehavior(err.Code, err.Params, err.StateTrace)
+}
+
+func (s *Simulator) printBehavior(errorCode int, params []string, stateTrace *StateVec) {
+	PrintError(errorCode, params...)
+	s.printBehaviorTrace(stateTrace)
+	s.PrintSummary()
+}
+
+func (s *Simulator) printBehaviorTrace(stateTrace *StateVec) {
+	if stateTrace == nil || stateTrace.Size() == 0 {
+		return
+	}
+	if s.TraceDepth == int(^uint(0)>>1) {
+		PrintMessage(ECTLCErrorState)
+		PrintStandaloneErrorState(stateTrace.Last())
+		return
+	}
+	PrintError(ECTLCBehaviorUpToThisPoint)
+	var lastState *TLCStateMut
+	aliasedPrefix := make([]*TLCStateInfo, 0, stateTrace.Size())
+	omitted := 0
+	for i := 0; i < stateTrace.Size(); i++ {
+		curState := stateTrace.At(i)
+		sucState := stateTrace.At(min(i+1, stateTrace.Size()-1))
+		info := NewTLCStateInfo(curState)
+		if s.Tool != nil {
+			aliased, err := s.Tool.EvalAliasInfo(info, sucState, func() []*TLCStateInfo {
+				return append([]*TLCStateInfo(nil), aliasedPrefix...)
+			})
+			if err == nil && aliased != nil {
+				info = aliased
+			}
+		}
+		if lastState != nil && curState != nil && printDiffsOnly() && curState.FingerPrint() == lastState.FingerPrint() {
+			omitted++
+			aliasedPrefix = append(aliasedPrefix, info)
+			lastState = curState
+			continue
+		}
+		level := i + 1
+		if curState != nil {
+			level = curState.Level()
+		}
+		PrintInvariantViolationStateTraceState(info, lastState, level, i+1 == stateTrace.Size())
+		aliasedPrefix = append(aliasedPrefix, info)
+		lastState = curState
+	}
+	if omitted > 0 {
+		PrintMessage(ECGeneral, fmt.Sprintf("difftrace requested: Shortened behavior by omitting finite stuttering (%d states), which is an artifact of simulation mode.\n", omitted))
+	}
 }
 
 func (s *Simulator) isNonContinuableError(code int) bool {

@@ -43,6 +43,7 @@
   - Simulator and SimulationWorker with standard, debug-exploration, RL, and RL-action modes folded into one concrete worker plus mode flags.
   - Simulator now creates default per-worker live checks when Java would check liveness, using worker-specific graph directories under the simulator metadir.
   - Simulator now has a Java-style progress reporter for simulation progress, coverage/action-flow updates, and `_PERIODIC` false termination.
+  - Simulator now prints Java-shaped worker-error behaviors and final simulation summaries (`TLC_STATS_SIMU`) with coverage/action-flow finalization.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -83,6 +84,6 @@
   - `go test ./tlc`
   - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Commit the simulator progress reporter chunk.
-  2. Finish the remaining simulator audit against `Simulator.java`, especially summary printing and behavior printing. Action-flow graph output and progress/periodic handling have been addressed.
-  3. Continue breadth-first into `ModelChecker.java`, `Worker.java`, then remaining liveness/checkpoint/distributed pieces.
+  1. Run fast tests and commit the simulator summary/behavior-printing chunk if green.
+  2. Continue breadth-first into `ModelChecker.java` and `Worker.java`, focusing on checkpoint/recovery, trace reconstruction, and error precedence.
+  3. Then continue into remaining liveness/checkpoint/distributed pieces.
