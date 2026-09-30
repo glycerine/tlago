@@ -174,6 +174,8 @@ func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, record
 	if t == nil || t.Tool == nil || len(records) == 0 {
 		return nil, nil
 	}
+	snapshot := ResetRandomEnumerableValues()
+	defer SetRandomEnumerableGenerator(snapshot)
 	end := len(records) - 1
 	if sinfo == nil {
 		initRecord := records[end]

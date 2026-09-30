@@ -1169,6 +1169,10 @@ Trace reconstruction and aliasing:
   first checks the in-memory `KnownStates` registry when present to preserve
   identity for existing trace records, then falls back to Java-style
   regeneration.
+- Before replaying trace fingerprints into concrete states, Java snapshots and
+  resets `RandomEnumerableValues`; restore the snapshot after replay so specs
+  using randomized enumeration regenerate the same path without perturbing the
+  active runtime RNG.
 - Java's no-alias behavior returns the current state/info, not the successor.
   Go `EvalAlias`, `EvalAliasInfo`, and `EvalAliasInfoPair` must preserve that.
 - The Java default `evalAlias` overloads build a prefix supplier from prefix
