@@ -79,7 +79,16 @@ func (c *CheckImpl) MakeStateSpace(state *TLCStateMut, depth int) (int, error) {
 	}
 	depth1 := depth
 	if state != nil {
-		depth1 += state.Level()
+		if c.Trace != nil {
+			traceLevel := c.Trace.GetLevelForState(state)
+			if traceLevel > 0 {
+				depth1 += traceLevel
+			} else {
+				depth1 += state.Level()
+			}
+		} else {
+			depth1 += state.Level()
+		}
 	}
 	c.StateQueue = NewDiskStateQueue(c.Metadir)
 	if state != nil {

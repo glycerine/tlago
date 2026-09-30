@@ -258,6 +258,48 @@ func (t *TLCTrace) GetLevelForReporting() int {
 	return t.level
 }
 
+func (t *TLCTrace) GetLevel(startUID int64) int {
+	if t == nil || startUID < 0 {
+		return 0
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.getLevelLocked(startUID)
+}
+
+func (t *TLCTrace) GetLevelForState(state *TLCStateMut) int {
+	if t == nil || state == nil {
+		return 0
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if state.UID >= 0 && state.UID < int64(len(t.records)) && t.records[state.UID].State == state {
+		return t.getLevelLocked(state.UID)
+	}
+	for i := range t.records {
+		if t.records[i].State == state {
+			return t.getLevelLocked(int64(i))
+		}
+	}
+	return 0
+}
+
+func (t *TLCTrace) getLevelLocked(startUID int64) int {
+	level := 0
+	for uid := startUID; uid >= 0 && uid < int64(len(t.records)); {
+		level++
+		prev := t.records[uid].PreviousUID
+		if uid == 0 && prev == 1 {
+			break
+		}
+		if prev < 0 || prev == uid || prev >= int64(len(t.records)) {
+			break
+		}
+		uid = prev
+	}
+	return level
+}
+
 func (t *TLCTrace) Elements() *TLCTraceEnumerator {
 	return &TLCTraceEnumerator{records: t.Records()}
 }

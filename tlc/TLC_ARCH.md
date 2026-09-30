@@ -770,6 +770,13 @@ Disk fingerprint reads mirror Java `IdThread.GetId(braf.length)`: a goroutine
 with a current worker id uses its corresponding fixed `BufferedRandomAccessFile`
 reader; calls outside worker scope fall back to the reader pool.
 
+Trace level is trace-authoritative when extending partial state spaces:
+`CheckImpl.makeStateSpace` uses `TLCTrace.getLevel(state.uid) + depth` in Java,
+so Go's `CheckImpl.MakeStateSpace` uses `TLCTrace.GetLevelForState(state)`
+rather than trusting the mutable state's cached level when a trace is present.
+That helper uses the state's UID when it is the in-memory trace index and falls
+back to the mirrored state object identity for worker-local trace UIDs.
+
 Visited-state identity is a 64-bit fingerprint of:
 
 - normalized state values in declared variable order,
