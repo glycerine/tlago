@@ -945,6 +945,11 @@ Porting guidance:
 
 - Keep deterministic iteration order for any structure whose order reaches
   fingerprints, traces, XML/JSON output, or diagnostics.
+- Java's small hash tables (`ObjLongTable`, `LongObjTable`, and the
+  semantic-node variant used by primed-location coverage) expose probe-slot
+  effects through returned indices and slot-order enumeration. Do not replace
+  those paths with ordinary Go maps; mirror Java's `count/length/thresh`
+  arrays, linear probing, `2*length+1` growth, and physical-slot scans.
 - Prefer concrete Go structs. Java's `ExternalSortable` has `BigInt` as its
   practical TLC implementation, so the Go external-sort helpers operate on
   `[]*BigInt` directly instead of creating a one-implementation interface.

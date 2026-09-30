@@ -111,7 +111,12 @@ func (e *ObjLongTableEnumerator[K]) NextElement() (K, bool) {
 }
 
 type SemanticNodeLongTable struct {
-	elems *InsMap[semanticNodeKey, SemanticNodeLongEntry]
+	count  int
+	length int
+	thresh int
+	keys   []semanticNodeKey
+	elems  []SemanticNodeLongEntry
+	used   []bool
 }
 
 type SemanticNodeLongEntry struct {
@@ -120,67 +125,111 @@ type SemanticNodeLongEntry struct {
 }
 
 func NewSemanticNodeLongTable(size int) *SemanticNodeLongTable {
-	_ = size
-	return &SemanticNodeLongTable{elems: NewInsMap[semanticNodeKey, SemanticNodeLongEntry]()}
+	if size <= 0 {
+		size = 1
+	}
+	return &SemanticNodeLongTable{
+		length: size,
+		thresh: size / 2,
+		keys:   make([]semanticNodeKey, size),
+		elems:  make([]SemanticNodeLongEntry, size),
+		used:   make([]bool, size),
+	}
 }
 
 func (t *SemanticNodeLongTable) Size() int {
-	if t == nil || t.elems == nil {
+	if t == nil {
 		return 0
 	}
-	return t.elems.Len()
+	return t.count
 }
 
 func (t *SemanticNodeLongTable) Put(node SemanticNode, elem int64) int {
 	t.ensure()
-	key := newSemanticNodeKey(node)
-	if _, ok := t.elems.Get2(key); !ok {
-		t.elems.Set(key, SemanticNodeLongEntry{Node: node, Value: elem})
-		return t.elems.Len() - 1
+	if t.count >= t.thresh {
+		t.grow()
 	}
-	index := t.indexOf(key)
-	t.elems.Set(key, SemanticNodeLongEntry{Node: node, Value: elem})
-	return index
+	key := newSemanticNodeKey(node)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = SemanticNodeLongEntry{Node: node, Value: elem}
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] = SemanticNodeLongEntry{Node: node, Value: elem}
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *SemanticNodeLongTable) Add(node SemanticNode, elem int64) int {
 	t.ensure()
-	key := newSemanticNodeKey(node)
-	if cur, ok := t.elems.Get2(key); ok {
-		index := t.indexOf(key)
-		cur.Value += elem
-		t.elems.Set(key, cur)
-		return index
+	if t.count >= t.thresh {
+		t.grow()
 	}
-	t.elems.Set(key, SemanticNodeLongEntry{Node: node, Value: elem})
-	return t.elems.Len() - 1
+	key := newSemanticNodeKey(node)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = SemanticNodeLongEntry{Node: node, Value: elem}
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc].Value += elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *SemanticNodeLongTable) Get(node SemanticNode) int64 {
-	if t == nil || t.elems == nil {
+	if t == nil || t.length == 0 {
 		return 0
 	}
-	return t.elems.Get(newSemanticNodeKey(node)).Value
+	key := newSemanticNodeKey(node)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			return 0
+		}
+		if t.keys[loc] == key {
+			return t.elems[loc].Value
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *SemanticNodeLongTable) MergeInto(other *SemanticNodeLongTable) *SemanticNodeLongTable {
-	if other == nil || other.elems == nil {
+	if other == nil {
 		return t
 	}
 	t.ensure()
-	for _, entry := range other.elems.All() {
-		t.Add(entry.Node, entry.Value)
+	for i := 0; i < other.length; i++ {
+		if other.used[i] {
+			entry := other.elems[i]
+			t.Add(entry.Node, entry.Value)
+		}
 	}
 	return t
 }
 
 func (t *SemanticNodeLongTable) ToArray() []SemanticNode {
-	if t == nil || t.elems == nil {
+	if t == nil {
 		return nil
 	}
-	out := make([]SemanticNode, 0, t.elems.Len())
-	for _, entry := range t.elems.All() {
-		out = append(out, entry.Node)
+	out := make([]SemanticNode, 0, t.count)
+	for i := 0; i < t.length; i++ {
+		if t.used[i] {
+			out = append(out, t.elems[i].Node)
+		}
 	}
 	return out
 }
@@ -190,20 +239,46 @@ func (t *SemanticNodeLongTable) Keys() *SemanticNodeLongTableEnumerator {
 }
 
 func (t *SemanticNodeLongTable) ensure() {
-	if t.elems == nil {
-		t.elems = NewInsMap[semanticNodeKey, SemanticNodeLongEntry]()
+	if t.length == 0 {
+		t.length = 1
+		t.keys = make([]semanticNodeKey, 1)
+		t.elems = make([]SemanticNodeLongEntry, 1)
+		t.used = make([]bool, 1)
+	}
+	t.thresh = t.length / 2
+}
+
+func (t *SemanticNodeLongTable) grow() {
+	oldKeys := t.keys
+	oldElems := t.elems
+	oldUsed := t.used
+	t.count = 0
+	t.length = 2*t.length + 1
+	t.thresh = t.length / 2
+	t.keys = make([]semanticNodeKey, t.length)
+	t.elems = make([]SemanticNodeLongEntry, t.length)
+	t.used = make([]bool, t.length)
+	for i := 0; i < len(oldKeys); i++ {
+		if oldUsed[i] {
+			t.Put(oldElems[i].Node, oldElems[i].Value)
+		}
 	}
 }
 
-func (t *SemanticNodeLongTable) indexOf(key semanticNodeKey) int {
-	i := 0
-	for existing := range t.elems.All() {
-		if existing == key {
-			return i
-		}
-		i++
+func (t *SemanticNodeLongTable) location(key semanticNodeKey) int {
+	hash := semanticNodeKeyHashCode(key)
+	return int(uint32(hash)&0x7fffffff) % t.length
+}
+
+func semanticNodeKeyHashCode(key semanticNodeKey) int32 {
+	result := int32(1)
+	result = 31*result + javaStringHashCode(key.typ)
+	if key.ptr != 0 {
+		result = 31*result + int32(uintptr(key.ptr))
+	} else {
+		result = 31*result + javaStringHashCode(key.image)
 	}
-	return -1
+	return result
 }
 
 type SemanticNodeLongTableEnumerator struct {
@@ -221,55 +296,102 @@ func (e *SemanticNodeLongTableEnumerator) NextElement() SemanticNode {
 }
 
 type LongObjTable[V any] struct {
-	elems *InsMap[int64, V]
+	count  int
+	length int
+	thresh int
+	keys   []int64
+	elems  []V
+	used   []bool
 }
 
 func NewLongObjTable[V any](size int) *LongObjTable[V] {
-	_ = size
-	return &LongObjTable[V]{elems: NewInsMap[int64, V]()}
+	if size <= 0 {
+		size = 1
+	}
+	return &LongObjTable[V]{
+		length: size,
+		thresh: size / 2,
+		keys:   make([]int64, size),
+		elems:  make([]V, size),
+		used:   make([]bool, size),
+	}
 }
 
 func (t *LongObjTable[V]) Size() int {
-	if t == nil || t.elems == nil {
+	if t == nil {
 		return 0
 	}
-	return t.elems.Len()
+	return t.count
 }
 
 func (t *LongObjTable[V]) Put(key int64, elem V) int {
 	t.ensure()
-	if _, ok := t.elems.Get2(key); !ok {
-		t.elems.Set(key, elem)
-		return t.elems.Len() - 1
+	if t.count >= t.thresh {
+		t.grow()
 	}
-	index := t.indexOf(key)
-	t.elems.Set(key, elem)
-	return index
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = elem
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] = elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *LongObjTable[V]) Get(key int64) (V, bool) {
 	var zero V
-	if t == nil || t.elems == nil {
+	if t == nil || t.length == 0 {
 		return zero, false
 	}
-	return t.elems.Get2(key)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			return zero, false
+		}
+		if t.keys[loc] == key {
+			return t.elems[loc], true
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *LongObjTable[V]) ensure() {
-	if t.elems == nil {
-		t.elems = NewInsMap[int64, V]()
+	if t.length == 0 {
+		t.length = 1
+		t.keys = make([]int64, 1)
+		t.elems = make([]V, 1)
+		t.used = make([]bool, 1)
+	}
+	t.thresh = t.length / 2
+}
+
+func (t *LongObjTable[V]) grow() {
+	oldKeys := t.keys
+	oldElems := t.elems
+	oldUsed := t.used
+	t.count = 0
+	t.length = 2*t.length + 1
+	t.thresh = t.length / 2
+	t.keys = make([]int64, t.length)
+	t.elems = make([]V, t.length)
+	t.used = make([]bool, t.length)
+	for i := 0; i < len(oldKeys); i++ {
+		if oldUsed[i] {
+			t.Put(oldKeys[i], oldElems[i])
+		}
 	}
 }
 
-func (t *LongObjTable[V]) indexOf(key int64) int {
-	i := 0
-	for existing := range t.elems.All() {
-		if existing == key {
-			return i
-		}
-		i++
-	}
-	return -1
+func (t *LongObjTable[V]) location(key int64) int {
+	return int(uint32(key)&0x7fffffff) % t.length
 }
 
 type Vect[E any] struct {
