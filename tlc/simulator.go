@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"math/rand"
+	"sync/atomic"
 	"time"
 )
 
@@ -12,6 +13,11 @@ type Simulator struct {
 	TraceNum      int64
 	Rand          *rand.Rand
 	Seed          int64
+	ResultQueue   chan SimulationWorkerResult
+	Workers       []*SimulationWorker
+	NumGenStates  atomic.Int64
+	NumGenTraces  atomic.Int64
+	WelfordM2Mean atomic.Int64
 
 	StatesGenerated int64
 	TracesGenerated int64
@@ -42,8 +48,30 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		TraceNum:      traceNum,
 		Seed:          seed,
 		Rand:          rand.New(rand.NewSource(seed)),
+		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
 		Values:        NewInsMap[int, Value](),
 		NamedValues:   NewInsMap[*UniqueString, Value](),
+	}
+	workerCount := NumWorkers()
+	if workerCount < 1 {
+		workerCount = 1
+	}
+	for i := 0; i < workerCount; i++ {
+		simulator.Workers = append(simulator.Workers, NewSimulationWorker(
+			i,
+			tool,
+			simulator.ResultQueue,
+			simulator.Rand.Int63(),
+			traceDepth,
+			traceNum,
+			"",
+			checkDeadlock,
+			"",
+			NewNoOpLiveCheck(tool, ""),
+			&simulator.NumGenStates,
+			&simulator.NumGenTraces,
+			&simulator.WelfordM2Mean,
+		))
 	}
 	SetSimulator(simulator)
 	return simulator
@@ -64,19 +92,15 @@ func (s *Simulator) Simulate() (int, error) {
 		return ECTLCNoStatesSatisfyingInit, nil
 	}
 	initStates.DeepNormalize()
-	for trace := int64(0); trace < s.TraceNum && !s.Stopped; trace++ {
-		cur := initStates.At(s.Rand.Intn(initStates.Size())).DeepCopy()
-		for depth := 0; depth < s.TraceDepth && !s.Stopped; depth++ {
-			next, result, err := s.randomSuccessor(cur)
-			if err != nil || result != NoError {
-				return result, err
-			}
-			if next == nil {
-				break
-			}
-			cur = next
+	workerResult := s.simulate(initStates)
+	s.StatesGenerated = s.NumGenStates.Load()
+	s.TracesGenerated = s.NumGenTraces.Load()
+	if workerResult.IsError() {
+		code := workerResult.Error.Code
+		if code == 0 {
+			code = ECGeneral
 		}
-		s.TracesGenerated++
+		return code, workerResult.Error.Err
 	}
 	return NoError, nil
 }
@@ -84,6 +108,9 @@ func (s *Simulator) Simulate() (int, error) {
 func (s *Simulator) Stop() {
 	if s != nil {
 		s.Stopped = true
+		for _, worker := range s.Workers {
+			worker.Stop()
+		}
 	}
 }
 
@@ -210,6 +237,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 		return nil, ECGeneral, err
 	}
 	s.StatesGenerated += int64(all.Size())
+	s.NumGenStates.Add(int64(all.Size()))
 	filtered := NewStateVec(all.Size())
 	for i := 0; i < all.Size(); i++ {
 		state := all.At(i)
@@ -231,6 +259,46 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 		return nil, ECTLCNoStatesSatisfyingInitAndConstraint, nil
 	}
 	return filtered, NoError, nil
+}
+
+func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
+	if len(s.Workers) == 0 {
+		s.Workers = append(s.Workers, NewSimulationWorker(
+			0,
+			s.Tool,
+			s.ResultQueue,
+			s.Rand.Int63(),
+			s.TraceDepth,
+			s.TraceNum,
+			"",
+			s.CheckDeadlock,
+			"",
+			NewNoOpLiveCheck(s.Tool, ""),
+			&s.NumGenStates,
+			&s.NumGenTraces,
+			&s.WelfordM2Mean,
+		))
+	}
+	running := make(map[int]bool, len(s.Workers))
+	runningCount := 0
+	for i, worker := range s.Workers {
+		worker.Start(initStates)
+		running[i] = true
+		runningCount++
+	}
+	var result SimulationWorkerResult
+	for runningCount > 0 {
+		result = <-s.ResultQueue
+		if result.IsError() {
+			s.Stop()
+			return result
+		}
+		if running[result.WorkerID] {
+			delete(running, result.WorkerID)
+			runningCount--
+		}
+	}
+	return result
 }
 
 func (s *Simulator) randomSuccessor(cur *TLCStateMut) (*TLCStateMut, int, error) {
