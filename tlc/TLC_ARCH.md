@@ -1100,6 +1100,10 @@ Port guidance:
   periodic expression as sufficient reason to suspend workers, evaluates it
   after any liveness work and before checkpointing, and returns
   `TLC_ASSUMPTION_FALSE` only when the evaluated value is exactly `FALSE`.
+- `LiveCheck.doLiveCheck()` only decides whether liveness itself should trigger
+  an expensive queue suspension. If checkpointing or `_PERIODIC` already caused
+  the suspension, Java still runs `liveCheck.check` whenever liveness is enabled
+  and the runtime ratio is below the configured liveness ratio.
 - Java's `tlc2.TLC.stopAfter` property is a time-bound escape hatch for both
   model checking and simulation. When configured, a timer calls the active
   checker or simulator stop method. Cleanup keeps explicit checkpoint data if

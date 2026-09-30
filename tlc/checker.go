@@ -1014,8 +1014,8 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 		periodic = mc.Tool.Periodic
 	}
 	forceLiveCheck := mc.CheckLiveness && mc.LiveCheck != nil && mc.ForceLiveCheck
-	liveCheckNow := mc.CheckLiveness && mc.LiveCheck != nil && (mc.RuntimeRatio < LivenessRatio() || forceLiveCheck) && mc.LiveCheck.DoLiveCheck()
-	if !liveCheckNow && !forceLiveCheck && !createCheckpoint && periodic == nil {
+	liveCheckDue := mc.CheckLiveness && mc.LiveCheck != nil && mc.RuntimeRatio <= LivenessRatio() && mc.LiveCheck.DoLiveCheck()
+	if !liveCheckDue && !forceLiveCheck && !createCheckpoint && periodic == nil {
 		mc.UpdateRuntimeRatio(0)
 		return NoError, nil
 	}
@@ -1028,7 +1028,7 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 			mc.StateQueue.ResumeAll()
 		}
 	}()
-	if liveCheckNow || forceLiveCheck {
+	if mc.CheckLiveness && mc.LiveCheck != nil && (mc.RuntimeRatio < LivenessRatio() || forceLiveCheck) {
 		start := time.Now()
 		result, err := mc.LiveCheck.Check(mc.Tool.NoDebug(), forceLiveCheck)
 		mc.ForceLiveCheck = false
