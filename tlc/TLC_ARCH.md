@@ -531,6 +531,10 @@ Port guidance:
   Java evaluates the lazy expression directly with the lazy value's saved
   context and cost model. The cached path is reserved for the `s1 != null`
   branch through `LazyValue.getValue`.
+- `tlc2.value.impl.LazyValue.off=true` disables LazyValue caching in Java by
+  constructing every lazy value with the `UndefValue` sentinel. Go mirrors this
+  through the same Java-style property key so lazy expressions still exist as
+  thunks but never cache evaluated values.
 - Preserve exact undefined-value behavior. TLC distinguishes "not enumerable",
   "undefined", "not comparable", and ordinary false in user-visible ways.
 

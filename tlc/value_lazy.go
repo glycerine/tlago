@@ -2,6 +2,8 @@ package tlc
 
 import "strings"
 
+const lazyValueOffProperty = "tlc2.value.impl.LazyValue.off"
+
 type LazyValue struct {
 	BaseValue
 	Expr       SemanticNode
@@ -27,7 +29,7 @@ func NewLazyValue(expr SemanticNode, con *Context, cacheable bool, cms ...CostMo
 		cm = cm.Get(expr)
 	}
 	out := &LazyValue{Expr: expr, Con: con, CM: cm}
-	if !cacheable {
+	if lazyValueOff() || !cacheable {
 		out.Val = ValUndef
 	}
 	return out
@@ -38,6 +40,13 @@ func (v *LazyValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *LazyValue) IsCacheable() bool {
 	return v != nil && v.Val != ValUndef
+}
+
+func lazyValueOff() bool {
+	if value, ok := tlcLookupSystemProperty(lazyValueOffProperty); ok {
+		return javaBooleanProperty(value)
+	}
+	return false
 }
 
 func (v *LazyValue) GetCachedValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut, control int) Value {
