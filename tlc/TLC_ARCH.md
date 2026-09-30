@@ -999,6 +999,15 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
   tableau node index.
 - Java stores graphs on disk for scale.
 - state/action check results are cached as booleans/bitvectors.
+- During the Go transition, `LiveChecker` keeps the existing in-memory graph for
+  the current SCC implementation and also populates the Java-style
+  `DiskGraph`/`TableauDiskGraph`. Lifecycle calls (`close`, checkpoint,
+  recover, reset, flush) must go to the concrete disk graph fields. Once
+  `LiveWorker` is ported, disk graphs become the primary SCC input and the
+  in-memory checker can be retired.
+- Tableau safety-like liveness shortcuts mirror Java's `errorGraphNode`
+  handoff with concrete `ErrorGraphNode` and `ErrorPrefix` fields; trace
+  printing will consume those when the Java `printErrorTrace` path is ported.
 
 `AbstractDiskGraph` responsibilities:
 

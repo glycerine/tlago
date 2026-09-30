@@ -71,30 +71,46 @@ func NewNoopLivenessStateWriter() *LivenessStateWriter {
 }
 
 type LiveChecker struct {
-	Solution *OrderOfSolution
-	Soln     int
-	Writer   *LivenessStateWriter
-	Graph    *InsMap[string, *GraphNode]
-	Initial  []*GraphNode
-	Size     int64
-	LastSize int64
+	Solution         *OrderOfSolution
+	Soln             int
+	Writer           *LivenessStateWriter
+	Graph            *InsMap[string, *GraphNode]
+	Initial          []*GraphNode
+	Size             int64
+	LastSize         int64
+	DiskGraph        *DiskGraph
+	TableauDiskGraph *TableauDiskGraph
+	ErrorGraphNode   *GraphNode
+	ErrorPrefix      *LongVec
+	Err              error
 }
 
-func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWriter) *LiveChecker {
+func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWriter, metadir ...string) *LiveChecker {
 	if writer == nil {
 		writer = NewNoopLivenessStateWriter()
 	}
-	return &LiveChecker{
+	checker := &LiveChecker{
 		Solution: solution,
 		Soln:     soln,
 		Writer:   writer,
 		Graph:    NewInsMap[string, *GraphNode](),
 	}
+	if len(metadir) > 0 && metadir[0] != "" && solution != nil {
+		if solution.HasTableau() {
+			checker.TableauDiskGraph, checker.Err = NewTableauDiskGraph(metadir[0], soln)
+		} else {
+			checker.DiskGraph, checker.Err = NewDiskGraph(metadir[0], soln)
+		}
+	}
+	return checker
 }
 
 func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint64) error {
 	if c == nil || c.Solution == nil {
 		return nil
+	}
+	if c.Err != nil {
+		return c.Err
 	}
 	if c.Solution.HasTableau() {
 		for i := 0; i < c.Solution.Tableau.InitCnt; i++ {
@@ -104,6 +120,10 @@ func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint6
 				return err
 			}
 			if ok {
+				if c.TableauDiskGraph != nil {
+					c.TableauDiskGraph.AddInitNode(stateFP, tnode.Index)
+					c.TableauDiskGraph.RecordNode(stateFP, tnode.Index)
+				}
 				node, err := c.ensureGraphNode(tool, state, stateFP, tnode.Index)
 				if err != nil {
 					return err
@@ -112,6 +132,9 @@ func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint6
 			}
 		}
 		return nil
+	}
+	if c.DiskGraph != nil {
+		c.DiskGraph.AddInitNode(stateFP, -1)
 	}
 	node, err := c.ensureGraphNode(tool, state, stateFP, -1)
 	if err != nil {
@@ -125,8 +148,16 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	if c == nil || c.Solution == nil || nextStates == nil {
 		return nil
 	}
+	if c.Err != nil {
+		return c.Err
+	}
 	if c.Solution.HasTableau() {
 		return c.addNextStateTableau(tool, s0, fp0, nextStates, actionResults, checkStateRes)
+	}
+	if c.DiskGraph != nil {
+		if err := c.addNextStateDisk(fp0, nextStates, actionResults, checkStateRes); err != nil {
+			return err
+		}
 	}
 	source, err := c.ensureGraphNodeWithStateChecks(fp0, -1, checkStateRes)
 	if err != nil {
@@ -150,7 +181,50 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	return nil
 }
 
+func (c *LiveChecker) addNextStateDisk(fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
+	dgraph := c.DiskGraph
+	if dgraph == nil {
+		return nil
+	}
+	cnt := 0
+	succCnt := nextStates.Size()
+	alen := len(c.Solution.CheckAction)
+	node0, err := dgraph.GetNodeNoTableau(fp0)
+	if err != nil {
+		return err
+	}
+	originalSuccSize := node0.SuccSize()
+	node0.SetCheckState(checkStateRes)
+	nextStates.ResetNext()
+	for sidx := 0; sidx < succCnt; sidx++ {
+		successorState := nextStates.Next()
+		if successorState == nil {
+			continue
+		}
+		successor := successorState.FingerPrint()
+		ptr1 := dgraph.GetPtr(successor, -1)
+		if ptr1 == -1 || !node0.TransExists(successor, -1) {
+			node0.AddTransition(successor, -1, len(checkStateRes), alen, actionResults, sidx*alen, succCnt-cnt)
+		}
+		cnt++
+	}
+	nextStates.ResetNext()
+	if (originalSuccSize == 0 && originalSuccSize == node0.SuccSize()) || originalSuccSize < node0.SuccSize() {
+		node0.Realign()
+		if _, err := dgraph.AddNode(node0); err != nil {
+			return err
+		}
+		c.Size = int64(dgraph.Size())
+	}
+	return nil
+}
+
 func (c *LiveChecker) addNextStateTableau(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
+	if c.TableauDiskGraph != nil {
+		if err := c.addNextStateTableauDisk(tool, s0, fp0, nextStates, actionResults, checkStateRes); err != nil {
+			return err
+		}
+	}
 	alen := len(c.Solution.CheckAction)
 	nextStates.ResetNext()
 	for idx := 0; idx < nextStates.Size(); idx++ {
@@ -183,6 +257,212 @@ func (c *LiveChecker) addNextStateTableau(tool *Tool, s0 *TLCStateMut, fp0 uint6
 	}
 	nextStates.ResetNext()
 	_ = checkStateRes
+	return nil
+}
+
+func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
+	dgraph := c.TableauDiskGraph
+	oos := c.Solution
+	if dgraph == nil || oos == nil || oos.Tableau == nil {
+		return nil
+	}
+	cnt := 0
+	succCnt := nextStates.Size()
+	tableau := oos.Tableau
+	consistency := NewBitVector(tableau.Size() * succCnt)
+	for _, tableauNode := range tableau.Nodes {
+		nextStates.ResetNext()
+		for sidx := 0; sidx < succCnt; sidx++ {
+			s1 := nextStates.Next()
+			if s1 == nil {
+				continue
+			}
+			ok, err := tableauNode.IsConsistent(s1, tool)
+			if err != nil {
+				return err
+			}
+			if ok {
+				consistency.Set(tableauNode.Index*succCnt + sidx)
+			}
+		}
+	}
+
+	loc0 := dgraph.SetDone(fp0)
+	nodes := dgraph.GetNodesByLoc(loc0)
+	if nodes == nil {
+		return nil
+	}
+	alen := len(oos.CheckAction)
+	allocationHint := (len(nodes) / dgraph.GetElemLength()) * succCnt
+	for nidx := 2; nidx < len(nodes); nidx += dgraph.GetElemLength() {
+		tidx0 := int(nodes[nidx])
+		tnode0 := oos.Tableau.GetNode(tidx0)
+		node0, err := dgraph.GetNode(fp0, tidx0)
+		if err != nil {
+			return err
+		}
+		originalSuccSize := node0.SuccSize()
+		node0.SetCheckState(checkStateRes)
+		nextStates.ResetNext()
+		for sidx := 0; sidx < succCnt; sidx++ {
+			s1 := nextStates.Next()
+			if s1 == nil {
+				continue
+			}
+			successor := s1.FingerPrint()
+			isDone := dgraph.IsDone(successor)
+			for _, tnode1 := range tnode0.Nexts {
+				ptr1 := dgraph.GetPtr(successor, tnode1.Index)
+				if consistency.Get(tnode1.Index*succCnt+sidx) && (ptr1 == -1 || !node0.TransExists(successor, tnode1.Index)) {
+					node0.AddTransition(successor, tnode1.Index, len(checkStateRes), alen, actionResults, sidx*alen, allocationHint-cnt)
+					if ptr1 == -1 {
+						dgraph.RecordNode(successor, tnode1.Index)
+						if isDone {
+							if err := c.addNextStateTableauDone(tool, s1, successor, tnode1); err != nil {
+								return err
+							}
+						}
+					}
+				}
+				cnt++
+			}
+		}
+		nextStates.ResetNext()
+		if (originalSuccSize == 0 && originalSuccSize == node0.SuccSize()) || originalSuccSize < node0.SuccSize() {
+			node0.Realign()
+			if _, err := dgraph.AddNode(node0); err != nil {
+				return err
+			}
+			c.Size = int64(dgraph.Size())
+		}
+	}
+	if c.ErrorGraphNode != nil {
+		dgraph.CreateCache()
+		prefix, err := dgraph.GetPath(c.ErrorGraphNode.StateFP, c.ErrorGraphNode.TIndex)
+		dgraph.DestroyCache()
+		if err != nil {
+			return err
+		}
+		c.ErrorPrefix = prefix
+		c.ErrorGraphNode = nil
+	}
+	return nil
+}
+
+func (c *LiveChecker) addNextStateTableauDone(tool *Tool, state *TLCStateMut, fp uint64, tnode *TBGraphNode) error {
+	dgraph := c.TableauDiskGraph
+	oos := c.Solution
+	if dgraph == nil || oos == nil || tnode == nil {
+		return nil
+	}
+	checkStateRes, err := oos.CheckStateValues(tool, state)
+	if err != nil {
+		return err
+	}
+	slen := len(checkStateRes)
+	alen := len(oos.CheckAction)
+	node, err := dgraph.GetNode(fp, tnode.Index)
+	if err != nil {
+		return err
+	}
+	numSucc := node.SuccSize()
+	node.SetCheckState(checkStateRes)
+
+	cnt := 0
+	nextSize := len(tnode.Nexts)
+	var selfLoopActionResults *BitVector
+	if nextSize > 0 {
+		selfLoopActionResults, err = oos.CheckActionBitVector(tool, state, state, NewBitVector(alen), 0)
+		if err != nil {
+			return err
+		}
+	}
+	for _, tnode1 := range tnode.Nexts {
+		tidx1 := tnode1.Index
+		ptr1 := dgraph.GetPtr(fp, tidx1)
+		ok, err := tnode1.IsConsistent(state, tool)
+		if err != nil {
+			return err
+		}
+		if ok {
+			if tnode1.IsAccepting() && oos.HasEmptyPEM() {
+				c.ErrorGraphNode = node
+				return nil
+			}
+			if ptr1 == -1 || !node.TransExists(fp, tidx1) {
+				node.AddTransition(fp, tidx1, slen, alen, selfLoopActionResults, 0, nextSize-cnt)
+				if ptr1 == -1 {
+					dgraph.RecordNode(fp, tidx1)
+					if err := c.addNextStateTableauDone(tool, state, fp, tnode1); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		cnt++
+	}
+
+	cnt = 0
+	actions := tool.GetActions()
+	for _, action := range actions {
+		nextStates, err := tool.GetNextStates(action, state)
+		if err != nil {
+			return err
+		}
+		nextCnt := nextStates.Size()
+		for j := 0; j < nextCnt; j++ {
+			s1 := nextStates.At(j)
+			inModel, err := tool.IsInModel(s1)
+			if err != nil {
+				return err
+			}
+			inActions := false
+			if inModel {
+				inActions, err = tool.IsInActions(state, s1)
+				if err != nil {
+					return err
+				}
+			}
+			if inModel && inActions {
+				fp1 := s1.FingerPrint()
+				checkActionRes, err := oos.CheckActionBitVector(tool, state, s1, NewBitVector(alen), 0)
+				if err != nil {
+					return err
+				}
+				isDone := dgraph.IsDone(fp1)
+				for _, tnode1 := range tnode.Nexts {
+					tidx1 := tnode1.Index
+					ptr1 := dgraph.GetPtr(fp1, tidx1)
+					total := len(actions) * nextCnt * len(tnode.Nexts)
+					ok, err := tnode1.IsConsistent(s1, tool)
+					if err != nil {
+						return err
+					}
+					if ok && (ptr1 == -1 || !node.TransExists(fp1, tidx1)) {
+						node.AddTransition(fp1, tidx1, slen, alen, checkActionRes, 0, total-cnt)
+						if ptr1 == -1 {
+							dgraph.RecordNode(fp1, tidx1)
+							if isDone {
+								if err := c.addNextStateTableauDone(tool, s1, fp1, tnode1); err != nil {
+									return err
+								}
+							}
+						}
+					}
+					cnt++
+				}
+			} else {
+				cnt++
+			}
+		}
+	}
+	if numSucc < node.SuccSize() {
+		node.Realign()
+		if _, err := dgraph.AddNode(node); err != nil {
+			return err
+		}
+		c.Size = int64(dgraph.Size())
+	}
 	return nil
 }
 
@@ -219,11 +499,11 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 	for _, pem := range c.Solution.PEMs {
 		search := newLiveSCCSearch(c, pem)
 		if search.check() {
-			c.LastSize = c.Size
+			c.LastSize = c.GraphSize()
 			return true, nil
 		}
 	}
-	c.LastSize = c.Size
+	c.LastSize = c.GraphSize()
 	return false, nil
 }
 
@@ -232,6 +512,8 @@ func (c *LiveChecker) Reset() {
 	c.Initial = nil
 	c.Size = 0
 	c.LastSize = 0
+	c.ErrorGraphNode = nil
+	c.ErrorPrefix = nil
 }
 
 func graphNodeKey(fp uint64, tidx int) string {
@@ -460,7 +742,7 @@ func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
 func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
 	check := &LiveCheck{Tool: tool, MetaDir: metadir}
 	for i, solution := range solutions {
-		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, NewNoopLivenessStateWriter()))
+		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, NewNoopLivenessStateWriter(), metadir))
 	}
 	return check
 }
@@ -520,11 +802,12 @@ func (lc *LiveCheck) DoLiveCheck() bool {
 	threshold = Globals.LivenessThreshold
 	Globals.Unlock()
 	for _, checker := range lc.Checkers {
-		if checker.LastSize == 0 && checker.Size > 0 {
+		size := checker.GraphSize()
+		if checker.LastSize == 0 && size > 0 {
 			return true
 		}
 		if checker.LastSize > 0 {
-			delta := float64(checker.Size-checker.LastSize) / float64(checker.LastSize)
+			delta := float64(size-checker.LastSize) / float64(checker.LastSize)
 			if delta > threshold {
 				return true
 			}
@@ -599,14 +882,165 @@ func (lc *LiveCheck) CheckTrace(tool *Tool, trace func() *StateVec) error {
 	return err
 }
 
-func (lc *LiveCheck) Close() error                  { return nil }
-func (lc *LiveCheck) BeginChkpt() error             { return nil }
-func (lc *LiveCheck) CommitChkpt() error            { return nil }
-func (lc *LiveCheck) FlushWritesToDiskFiles() error { return nil }
-func (lc *LiveCheck) Recover() error                { return nil }
+func (c *LiveChecker) GraphSize() int64 {
+	if c == nil {
+		return 0
+	}
+	if c.TableauDiskGraph != nil {
+		return int64(c.TableauDiskGraph.Size())
+	}
+	if c.DiskGraph != nil {
+		return int64(c.DiskGraph.Size())
+	}
+	return c.Size
+}
+
+func (c *LiveChecker) Close() error {
+	if c == nil {
+		return nil
+	}
+	if c.TableauDiskGraph != nil {
+		return c.TableauDiskGraph.Close()
+	}
+	if c.DiskGraph != nil {
+		return c.DiskGraph.Close()
+	}
+	return nil
+}
+
+func (c *LiveChecker) BeginChkpt() error {
+	if c == nil {
+		return nil
+	}
+	if c.TableauDiskGraph != nil {
+		return c.TableauDiskGraph.BeginChkpt()
+	}
+	if c.DiskGraph != nil {
+		return c.DiskGraph.BeginChkpt()
+	}
+	return nil
+}
+
+func (c *LiveChecker) CommitChkpt() error {
+	if c == nil {
+		return nil
+	}
+	if c.TableauDiskGraph != nil {
+		return c.TableauDiskGraph.CommitChkpt()
+	}
+	if c.DiskGraph != nil {
+		return c.DiskGraph.CommitChkpt()
+	}
+	return nil
+}
+
+func (c *LiveChecker) FlushWritesToDiskFiles() error {
+	if c == nil {
+		return nil
+	}
+	if c.TableauDiskGraph != nil {
+		return c.TableauDiskGraph.FlushWritesToDiskFiles()
+	}
+	if c.DiskGraph != nil {
+		return c.DiskGraph.FlushWritesToDiskFiles()
+	}
+	return nil
+}
+
+func (c *LiveChecker) Recover() error {
+	if c == nil {
+		return nil
+	}
+	if c.TableauDiskGraph != nil {
+		if err := c.TableauDiskGraph.Recover(); err != nil {
+			return err
+		}
+		c.Size = int64(c.TableauDiskGraph.Size())
+		return nil
+	}
+	if c.DiskGraph != nil {
+		if err := c.DiskGraph.Recover(); err != nil {
+			return err
+		}
+		c.Size = int64(c.DiskGraph.Size())
+	}
+	return nil
+}
+
+func (lc *LiveCheck) Close() error {
+	if lc == nil || lc.NoOp {
+		return nil
+	}
+	var err error
+	for _, checker := range lc.Checkers {
+		if e := checker.Close(); err == nil {
+			err = e
+		}
+	}
+	return err
+}
+
+func (lc *LiveCheck) BeginChkpt() error {
+	if lc == nil || lc.NoOp {
+		return nil
+	}
+	for _, checker := range lc.Checkers {
+		if err := checker.BeginChkpt(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (lc *LiveCheck) CommitChkpt() error {
+	if lc == nil || lc.NoOp {
+		return nil
+	}
+	for _, checker := range lc.Checkers {
+		if err := checker.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (lc *LiveCheck) FlushWritesToDiskFiles() error {
+	if lc == nil || lc.NoOp {
+		return nil
+	}
+	for _, checker := range lc.Checkers {
+		if err := checker.FlushWritesToDiskFiles(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (lc *LiveCheck) Recover() error {
+	if lc == nil || lc.NoOp {
+		return nil
+	}
+	for _, checker := range lc.Checkers {
+		if err := checker.Recover(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (lc *LiveCheck) Reset() error {
 	if lc != nil {
 		for _, checker := range lc.Checkers {
+			if checker.TableauDiskGraph != nil {
+				if err := checker.TableauDiskGraph.Reset(); err != nil {
+					return err
+				}
+			}
+			if checker.DiskGraph != nil {
+				if err := checker.DiskGraph.Reset(); err != nil {
+					return err
+				}
+			}
 			checker.Reset()
 		}
 	}
