@@ -9,6 +9,7 @@ import (
 type Defns struct {
 	defnIdx int
 	table   []any
+	order   *InsMap[*UniqueString, struct{}]
 }
 
 func NewDefns(initialSize ...int) *Defns {
@@ -16,7 +17,7 @@ func NewDefns(initialSize ...int) *Defns {
 	if len(initialSize) > 0 {
 		idx = initialSize[0]
 	}
-	return &Defns{defnIdx: idx, table: make([]any, idx+32)}
+	return &Defns{defnIdx: idx, table: make([]any, idx+32), order: NewInsMap[*UniqueString, struct{}]()}
 }
 
 func (d *Defns) Put(key any, value any) {
@@ -40,6 +41,10 @@ func (d *Defns) Put(key any, value any) {
 		copy(d.table, old)
 	}
 	d.table[loc] = value
+	if d.order == nil {
+		d.order = NewInsMap[*UniqueString, struct{}]()
+	}
+	d.order.Set(us, struct{}{})
 }
 
 func (d *Defns) Get(key any) any {
@@ -67,9 +72,34 @@ func (d *Defns) Snapshot() *Defns {
 	if d == nil {
 		return NewDefns()
 	}
-	out := &Defns{defnIdx: d.defnIdx, table: make([]any, len(d.table))}
+	out := &Defns{defnIdx: d.defnIdx, table: make([]any, len(d.table)), order: NewInsMap[*UniqueString, struct{}]()}
 	copy(out.table, d.table)
+	if d.order != nil {
+		for key := range d.order.All() {
+			out.order.Set(key, struct{}{})
+		}
+	}
 	return out
+}
+
+func (d *Defns) All() func(func(*UniqueString, any) bool) {
+	return func(yield func(*UniqueString, any) bool) {
+		if d == nil || d.order == nil {
+			return
+		}
+		for key := range d.order.All() {
+			if key == nil {
+				continue
+			}
+			loc := key.DefnLoc()
+			if loc < 0 || loc >= len(d.table) {
+				continue
+			}
+			if !yield(key, d.table[loc]) {
+				return
+			}
+		}
+	}
 }
 
 func defnKey(key any) *UniqueString {
@@ -253,22 +283,22 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.SpecificationName = p.Config.GetSpec()
 	p.SymmetrySpec = p.Config.GetSymmetry()
 	p.AliasSpec = p.Config.GetAlias()
-	p.ViewSpec = p.Config.GetView()
-	p.RLReward = p.Config.GetRLReward()
-	p.Periodic = p.Config.GetPeriodic()
+	p.ViewSpec = p.optionalSemanticFromConfigName(p.Config.GetView())
+	p.RLReward = p.optionalSemanticFromConfigName(p.Config.GetRLReward())
+	p.Periodic = p.optionalSemanticFromConfigName(p.Config.GetPeriodic())
 
 	p.InitPred = nil
 	if initName := p.Config.GetInit(); initName != "" {
-		p.InitPred = append(p.InitPred, &Action{Name: initName, IsInitPred: true})
+		p.InitPred = append(p.InitPred, p.actionFromConfigName(initName, true))
 	}
 	if nextName := p.Config.GetNext(); nextName != "" {
-		p.NextPred = &Action{Name: nextName}
+		p.NextPred = p.actionFromConfigName(nextName, false)
 	}
-	p.Invariants, p.InvariantNames = actionsFromNames(p.Config.GetInvariants(), false)
-	p.Temporals, p.TemporalNames = actionsFromNames(p.Config.GetProperties(), false)
-	p.PossiblePostConds, _ = actionsFromNames(p.Config.GetPostConditions(), false)
-	p.ModelConstraints = semanticNodesFromNames(p.Config.GetConstraints())
-	p.ActionConstraints = semanticNodesFromNames(p.Config.GetActionConstraints())
+	p.Invariants, p.InvariantNames = p.actionsFromConfigNames(p.Config.GetInvariants(), false)
+	p.Temporals, p.TemporalNames = p.actionsFromConfigNames(p.Config.GetProperties(), false)
+	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
+	p.ModelConstraints = p.semanticNodesFromConfigNames(p.Config.GetConstraints())
+	p.ActionConstraints = p.semanticNodesFromConfigNames(p.Config.GetActionConstraints())
 }
 
 func (p *SpecProcessor) ApplyToTool(tool *Tool) {
@@ -285,6 +315,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 			p.Defns.SetDefnCount(len(names))
 		}
 	}
+	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
 	tool.InitStateSpec = append([]*Action(nil), p.InitPred...)
 	tool.NextStateSpec = p.NextPred
@@ -309,21 +340,77 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.AssignActionIDs()
 }
 
-func actionsFromNames(names []string, init bool) ([]*Action, []string) {
+func (p *SpecProcessor) applyDefinitionsToTool(tool *Tool) {
+	if p == nil || p.Defns == nil || tool == nil {
+		return
+	}
+	if tool.DefnsByName == nil {
+		tool.DefnsByName = make(map[*UniqueString]any)
+	}
+	for name, value := range p.Defns.All() {
+		if name == nil || value == nil {
+			continue
+		}
+		tool.DefnsByName[name] = value
+		if opDef, ok := value.(*OpDefNode); ok && opDef != nil && opDef.Symbol != nil {
+			if tool.Definitions == nil {
+				tool.Definitions = make(map[*SymbolNode]any)
+			}
+			tool.Definitions[opDef.Symbol] = value
+		}
+	}
+}
+
+func (p *SpecProcessor) defn(name string) any {
+	if p == nil || p.Defns == nil || name == "" {
+		return nil
+	}
+	return p.Defns.Get(name)
+}
+
+func (p *SpecProcessor) actionFromConfigName(name string, init bool) *Action {
+	if def, ok := p.defn(name).(*OpDefNode); ok && def != nil && def.Arity() == 0 {
+		return NewActionFromOpDef(def.Body, EmptyContext, def, init, false)
+	}
+	return &Action{Name: name, IsInitPred: init, Con: EmptyContext}
+}
+
+func (p *SpecProcessor) actionsFromConfigNames(names []string, init bool) ([]*Action, []string) {
 	actions := make([]*Action, 0, len(names))
 	labels := make([]string, 0, len(names))
 	for _, name := range names {
-		action := &Action{Name: name, IsInitPred: init}
+		action := p.actionFromConfigName(name, init)
 		actions = append(actions, action)
 		labels = append(labels, name)
 	}
 	return actions, labels
 }
 
-func semanticNodesFromNames(names []string) []SemanticNode {
+func (p *SpecProcessor) optionalSemanticFromConfigName(name string) SemanticNode {
+	if name == "" {
+		return nil
+	}
+	return p.semanticNodeFromConfigName(name)
+}
+
+func (p *SpecProcessor) semanticNodeFromConfigName(name string) SemanticNode {
+	switch def := p.defn(name).(type) {
+	case *OpDefNode:
+		if def != nil && def.Arity() == 0 {
+			return def.Body
+		}
+	case SemanticNode:
+		return def
+	case Value:
+		return def
+	}
+	return name
+}
+
+func (p *SpecProcessor) semanticNodesFromConfigNames(names []string) []SemanticNode {
 	nodes := make([]SemanticNode, len(names))
 	for i, name := range names {
-		nodes[i] = name
+		nodes[i] = p.semanticNodeFromConfigName(name)
 	}
 	return nodes
 }
