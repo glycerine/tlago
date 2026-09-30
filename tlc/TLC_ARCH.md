@@ -190,10 +190,13 @@ Port guidance:
   invariant actions are appended after normal config processing, so the missing
   `INIT`/`NEXT` checks only see the static model config just as Java's
   `SpecProcessor` does.
-- Java's `-dump class,...` loads an `IStateWriter` by reflection. Go records the
-  requested class name in `RuntimeParameters.CustomStateWriterClass` and uses a
-  no-op writer until a Go extension hook exists; do not add a one-method writer
-  interface only for this placeholder.
+- Java's `-dump class,...` loads an `IStateWriter` by reflection. Go keeps this
+  concrete with `StateWriterFactory` functions registered by class name through
+  `RegisterStateWriterClass`; built-in parity names cover Java's zero-argument
+  `NoopStateWriter` and `DotStateWriter`, and unknown class names fail during
+  option parsing instead of silently dropping state output. The requested class
+  name is still recorded in `RuntimeParameters.CustomStateWriterClass` for
+  downstream visibility.
 - Java's `DotStateWriter` prints full successor labels unless
   `TLCGlobals.printDiffsOnly` is set. Stuttering is an explicit
   `Visualization.STUTTERING` hint; an ordinary self-loop is still an ordinary

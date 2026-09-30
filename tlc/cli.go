@@ -440,8 +440,12 @@ func ParseTLCOptions(args []string) (Options, error) {
 		}
 		opts.StateWriter = writer
 	} else if dump.CustomClass != "" {
+		writer, err := NewCustomStateWriter(dump.CustomClass)
+		if err != nil {
+			return opts, tlcCommandLineError(fmt.Sprintf("Error: Could not instantiate a custom IStateWriter implementation %s.", dump.CustomClass))
+		}
 		opts.RuntimeParams.CustomStateWriterClass = dump.CustomClass
-		opts.StateWriter = NewNoopStateWriter()
+		opts.StateWriter = writer
 	}
 
 	opts.ForceGenerateTraceSpec = forceGenerateTESpec
@@ -595,7 +599,7 @@ func parseTLCDumpOption(args []string, index int) (int, tlcDumpOption, error) {
 
 func (d tlcDumpOption) newStateWriter(metadir string) (*StateWriter, error) {
 	if d.CustomClass != "" {
-		return &StateWriter{Noop: true}, nil
+		return NewCustomStateWriter(d.CustomClass)
 	}
 	file := strings.Replace(d.File, "${metadir}", metadir, 1)
 	if d.AsDot {

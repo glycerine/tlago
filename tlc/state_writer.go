@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type StateVisitStatus int
@@ -45,6 +46,52 @@ type StateWriter struct {
 	rankToNodes         map[int]map[uint64]struct{}
 	colorGen            int
 	closed              bool
+}
+
+type StateWriterFactory func() (*StateWriter, error)
+
+var (
+	stateWriterFactoryMu sync.RWMutex
+	stateWriterFactories = map[string]StateWriterFactory{}
+)
+
+func init() {
+	RegisterStateWriterClass("NoopStateWriter", func() (*StateWriter, error) {
+		return NewNoopStateWriter(), nil
+	})
+	RegisterStateWriterClass("tlc2.util.NoopStateWriter", func() (*StateWriter, error) {
+		return NewNoopStateWriter(), nil
+	})
+	RegisterStateWriterClass("DotStateWriter", func() (*StateWriter, error) {
+		return NewDotStateWriter("DotStateWriter.dot", DotStateWriterOptions{})
+	})
+	RegisterStateWriterClass("tlc2.util.DotStateWriter", func() (*StateWriter, error) {
+		return NewDotStateWriter("DotStateWriter.dot", DotStateWriterOptions{})
+	})
+}
+
+func RegisterStateWriterClass(name string, factory StateWriterFactory) {
+	name = strings.TrimSpace(name)
+	if name == "" || factory == nil {
+		return
+	}
+	stateWriterFactoryMu.Lock()
+	stateWriterFactories[name] = factory
+	stateWriterFactoryMu.Unlock()
+}
+
+func NewCustomStateWriter(className string) (*StateWriter, error) {
+	className = strings.TrimSpace(className)
+	if className == "" {
+		return nil, fmt.Errorf("custom state writer class name is empty")
+	}
+	stateWriterFactoryMu.RLock()
+	factory := stateWriterFactories[className]
+	stateWriterFactoryMu.RUnlock()
+	if factory == nil {
+		return nil, fmt.Errorf("custom state writer class %s is not registered", className)
+	}
+	return factory()
 }
 
 func NewNoopStateWriter() *StateWriter {
