@@ -1186,7 +1186,13 @@ Important behavior:
   perform liveness/post-trace checks. RL modes remain enum values because they
   select different scheduling and Q-table behavior, while still using the same
   worker struct.
-- Some errors are non-continuable even in continuation-like modes.
+- Simulator result consumption follows Java's continuation policy. Worker
+  exceptions and liveness exceptions stop the run, and
+  `TLC_INVARIANT_EVALUATION_FAILED`,
+  `TLC_ACTION_PROPERTY_EVALUATION_FAILED`, and
+  `TLC_STATE_NOT_COMPLETELY_SPECIFIED_NEXT` are non-continuable regardless of
+  `-continue`. Other behavior errors keep workers running only when
+  `Globals.Continuation` is set.
 
 Port guidance:
 

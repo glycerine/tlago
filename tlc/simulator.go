@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -445,9 +446,15 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 	var result SimulationWorkerResult
 	for runningCount > 0 {
 		result = <-s.ResultQueue
+		if result.WorkerID == -1 {
+			break
+		}
 		if result.IsError() {
-			s.Stop()
-			return result
+			if s.simulationErrorStops(result.Error) {
+				s.Stop()
+				return result
+			}
+			continue
 		}
 		if running[result.WorkerID] {
 			delete(running, result.WorkerID)
@@ -455,6 +462,37 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 		}
 	}
 	return result
+}
+
+func (s *Simulator) isNonContinuableError(code int) bool {
+	return code == ECTLCInvariantEvaluationFailed ||
+		code == ECTLCActionPropertyEvaluationFailed ||
+		code == ECTLCStateNotCompletelySpecifiedNext
+}
+
+func (s *Simulator) simulationErrorStops(err *SimulationWorkerError) bool {
+	if err == nil {
+		return false
+	}
+	if err.Err != nil {
+		var live *LiveException
+		if errors.As(err.Err, &live) && live != nil {
+			err.Code = live.ErrorCode
+		} else if err.Code == NoError {
+			err.Code = ECGeneral
+		}
+		return true
+	}
+	if s.isNonContinuableError(err.Code) {
+		return true
+	}
+	if !Globals.Continuation {
+		return true
+	}
+	if err.Code == NoError {
+		err.Code = ECGeneral
+	}
+	return false
 }
 
 func (s *Simulator) postSimulationErrorCode(workerResult SimulationWorkerResult) int {
