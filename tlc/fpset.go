@@ -524,42 +524,6 @@ func NewMemFPSet2(config *FPSetConfiguration) *MemFPSet2 {
 	return &MemFPSet2{MemFPSet: NewMemFPSetWithConfig(config)}
 }
 
-type DiskFPSet struct{ *MemFPSet }
-
-func NewDiskFPSet(config *FPSetConfiguration) *DiskFPSet {
-	return &DiskFPSet{MemFPSet: NewMemFPSetWithConfig(config)}
-}
-
-type HeapBasedDiskFPSet struct{ *DiskFPSet }
-
-func NewHeapBasedDiskFPSet(config *FPSetConfiguration) *HeapBasedDiskFPSet {
-	return &HeapBasedDiskFPSet{DiskFPSet: NewDiskFPSet(config)}
-}
-
-type LSBDiskFPSet struct{ *HeapBasedDiskFPSet }
-
-func NewLSBDiskFPSet(config *FPSetConfiguration) *LSBDiskFPSet {
-	return &LSBDiskFPSet{HeapBasedDiskFPSet: NewHeapBasedDiskFPSet(config)}
-}
-
-type MSBDiskFPSet struct{ *HeapBasedDiskFPSet }
-
-func NewMSBDiskFPSet(config *FPSetConfiguration) *MSBDiskFPSet {
-	return &MSBDiskFPSet{HeapBasedDiskFPSet: NewHeapBasedDiskFPSet(config)}
-}
-
-type OffHeapDiskFPSet struct{ *DiskFPSet }
-
-func NewOffHeapDiskFPSet(config *FPSetConfiguration) *OffHeapDiskFPSet {
-	return &OffHeapDiskFPSet{DiskFPSet: NewDiskFPSet(config)}
-}
-
-type NonCheckpointableDiskFPSet struct{ *DiskFPSet }
-
-func NewNonCheckpointableDiskFPSet(config *FPSetConfiguration) *NonCheckpointableDiskFPSet {
-	return &NonCheckpointableDiskFPSet{DiskFPSet: NewDiskFPSet(config)}
-}
-
 type MultiFPSet struct {
 	Sets       []*MemFPSet
 	FPBits     int
