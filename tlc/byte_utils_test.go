@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"math"
+	"math/big"
 	"testing"
 )
 
@@ -100,6 +101,76 @@ func TestByteUtilsByteArrayPaddingMatchesJavaSignExtension(t *testing.T) {
 	}
 	if _, err := ByteArrayToByteArray([]byte{1, 2, 3, 4, 5}, 4); err == nil {
 		t.Fatalf("ByteArrayToByteArray too-large input returned nil error")
+	}
+}
+
+func TestByteUtilsBigIntEncodingUsesJavaTwosComplementBytes(t *testing.T) {
+	cases := []struct {
+		value string
+		bytes []byte
+	}{
+		{"0", []byte{0x00}},
+		{"1", []byte{0x01}},
+		{"127", []byte{0x7f}},
+		{"128", []byte{0x00, 0x80}},
+		{"255", []byte{0x00, 0xff}},
+		{"256", []byte{0x01, 0x00}},
+		{"-1", []byte{0xff}},
+		{"-2", []byte{0xfe}},
+		{"-128", []byte{0x80}},
+		{"-129", []byte{0xff, 0x7f}},
+		{"-256", []byte{0xff, 0x00}},
+		{"-257", []byte{0xfe, 0xff}},
+	}
+	for _, tc := range cases {
+		value, ok := new(big.Int).SetString(tc.value, 10)
+		if !ok {
+			t.Fatalf("bad test integer %q", tc.value)
+		}
+		if got := BigIntToJavaBytes(value); !bytes.Equal(got, tc.bytes) {
+			t.Fatalf("BigIntToJavaBytes(%s) = %v, want %v", tc.value, got, tc.bytes)
+		}
+		roundTrip, err := JavaBytesToBigInt(tc.bytes)
+		if err != nil {
+			t.Fatalf("JavaBytesToBigInt(%v) returned error: %v", tc.bytes, err)
+		}
+		if roundTrip.Cmp(value) != 0 {
+			t.Fatalf("JavaBytesToBigInt(%v) = %s, want %s", tc.bytes, roundTrip, value)
+		}
+	}
+}
+
+func TestByteUtilsBigIntReadWriteRoundTripWithoutWrapper(t *testing.T) {
+	values := []*big.Int{
+		big.NewInt(0),
+		big.NewInt(128),
+		big.NewInt(-129),
+		new(big.Int).Lsh(big.NewInt(1), 90),
+		new(big.Int).Neg(new(big.Int).Lsh(big.NewInt(1), 90)),
+	}
+	var buf bytes.Buffer
+	if err := WriteSizeArrayOfSizeBigInts(&buf, values, 0, len(values)-1); err != nil {
+		t.Fatalf("WriteSizeArrayOfSizeBigInts returned error: %v", err)
+	}
+	got, err := ReadSizeArrayOfSizeBigInts(&buf)
+	if err != nil {
+		t.Fatalf("ReadSizeArrayOfSizeBigInts returned error: %v", err)
+	}
+	if len(got) != len(values) {
+		t.Fatalf("round trip length = %d, want %d", len(got), len(values))
+	}
+	for i := range values {
+		if got[i].Cmp(values[i]) != 0 {
+			t.Fatalf("round trip[%d] = %s, want %s", i, got[i], values[i])
+		}
+	}
+
+	padded, err := BigIntToByteArray(big.NewInt(-1), 4)
+	if err != nil {
+		t.Fatalf("BigIntToByteArray(-1, 4) returned error: %v", err)
+	}
+	if !bytes.Equal(padded, []byte{0xff, 0xff, 0xff, 0xff}) {
+		t.Fatalf("BigIntToByteArray(-1, 4) = %v, want [255 255 255 255]", padded)
 	}
 }
 

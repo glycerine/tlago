@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/big"
 )
 
 func IntToByteArray(x int32) []byte {
@@ -42,6 +43,50 @@ func ByteArrayToByteArray(src []byte, length int) ([]byte, error) {
 	return out, nil
 }
 
+func BigIntToJavaBytes(value *big.Int) []byte {
+	if value == nil || value.Sign() == 0 {
+		return []byte{0}
+	}
+	if value.Sign() > 0 {
+		out := value.Bytes()
+		if out[0]&0x80 != 0 {
+			padded := make([]byte, len(out)+1)
+			copy(padded[1:], out)
+			out = padded
+		}
+		return out
+	}
+	for length := 1; ; length++ {
+		min := new(big.Int).Lsh(big.NewInt(1), uint(8*length-1))
+		min.Neg(min)
+		max := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), uint(8*length-1)), big.NewInt(1))
+		if value.Cmp(min) < 0 || value.Cmp(max) > 0 {
+			continue
+		}
+		mod := new(big.Int).Lsh(big.NewInt(1), uint(8*length))
+		encoded := new(big.Int).Add(value, mod).Bytes()
+		out := make([]byte, length)
+		copy(out[length-len(encoded):], encoded)
+		return out
+	}
+}
+
+func JavaBytesToBigInt(bytes []byte) (*big.Int, error) {
+	if len(bytes) == 0 {
+		return nil, fmt.Errorf("JavaBytesToBigInt: empty byte array.")
+	}
+	value := new(big.Int).SetBytes(bytes)
+	if bytes[0]&0x80 == 0 {
+		return value, nil
+	}
+	mod := new(big.Int).Lsh(big.NewInt(1), uint(8*len(bytes)))
+	return value.Sub(value, mod), nil
+}
+
+func BigIntToByteArray(value *big.Int, length int) ([]byte, error) {
+	return ByteArrayToByteArray(BigIntToJavaBytes(value), length)
+}
+
 func WriteInt(out io.Writer, i int32) error {
 	_, err := out.Write(IntToByteArray(i))
 	return err
@@ -60,6 +105,10 @@ func WriteSizeByteArray(out io.Writer, bytes []byte) error {
 	return err
 }
 
+func WriteSizeBigInt(out io.Writer, value *big.Int) error {
+	return WriteSizeByteArray(out, BigIntToJavaBytes(value))
+}
+
 func WriteByteArray(out io.Writer, bytes []byte, length int) error {
 	if len(bytes) > length {
 		return fmt.Errorf("writeByteArray: the byte array too large")
@@ -70,6 +119,32 @@ func WriteByteArray(out io.Writer, bytes []byte, length int) error {
 	}
 	_, err = out.Write(padded)
 	return err
+}
+
+func WriteBigInt(out io.Writer, value *big.Int, length int) error {
+	return WriteByteArray(out, BigIntToJavaBytes(value), length)
+}
+
+func WriteSizeArrayOfSizeBigInts(out io.Writer, values []*big.Int, start int, finish int) error {
+	if start < 0 || finish < start-1 || finish >= len(values) {
+		return fmt.Errorf("WriteSizeArrayOfSizeBigInts: invalid start/finish")
+	}
+	if err := WriteInt(out, int32(finish-start+1)); err != nil {
+		return err
+	}
+	return WriteArrayOfSizeBigInts(out, values, start, finish)
+}
+
+func WriteArrayOfSizeBigInts(out io.Writer, values []*big.Int, start int, finish int) error {
+	if start < 0 || finish < start-1 || finish >= len(values) {
+		return fmt.Errorf("WriteArrayOfSizeBigInts: invalid start/finish")
+	}
+	for i := start; i <= finish; i++ {
+		if err := WriteSizeBigInt(out, values[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ReadInto(in io.Reader, b []byte, off int, length int) (int, error) {
@@ -146,6 +221,45 @@ func ReadSizeByteArray(in io.Reader) ([]byte, error) {
 		return nil, fmt.Errorf("readSizeByteArray: not enough bytes.")
 	}
 	return out, nil
+}
+
+func ReadSizeBigInt(in io.Reader) (*big.Int, error) {
+	bytes, err := ReadSizeByteArray(in)
+	if err != nil {
+		return nil, err
+	}
+	value, err := JavaBytesToBigInt(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func ReadSizeArrayOfSizeBigInts(in io.Reader) ([]*big.Int, error) {
+	length, err := ReadInt(in)
+	if err != nil {
+		return nil, fmt.Errorf("Can't read an array of BigInts from the input stream; it's empty.")
+	}
+	out := make([]*big.Int, int(length))
+	for i := range out {
+		value, err := ReadSizeBigInt(in)
+		if err != nil {
+			return nil, fmt.Errorf("Can't read an array of BigInts from the input stream; not enough bytes, but not empty.")
+		}
+		out[i] = value
+	}
+	return out, nil
+}
+
+func ReadArrayOfSizeBigInts(in io.Reader) []*big.Int {
+	var out []*big.Int
+	for {
+		value, err := ReadSizeBigInt(in)
+		if err != nil {
+			return out
+		}
+		out = append(out, value)
+	}
 }
 
 func AppendByteArray(in io.Reader, out io.Writer) error {
