@@ -479,6 +479,8 @@ func simulatorPropertyFloat(name string, alias string, fallback float64) float64
 func (s *Simulator) randomSuccessor(cur *TLCStateMut) (*TLCStateMut, int, error) {
 	successors := make([]*TLCStateMut, 0)
 	actions := make([]*Action, 0)
+	restoreCurrentState := PushCurrentState(cur)
+	defer restoreCurrentState()
 	for _, action := range s.Tool.GetActions() {
 		nextStates, err := s.Tool.GetNextStates(action, cur)
 		if err != nil {

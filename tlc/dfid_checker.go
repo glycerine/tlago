@@ -214,6 +214,8 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 	if mc.CheckLiveness && isLeaf {
 		liveNextStates = NewSetOfStates(dfidInitialSetOfStatesCapacity)
 	}
+	restoreCurrentState := PushCurrentState(cur)
+	defer restoreCurrentState()
 	for _, action := range mc.Tool.GetActions() {
 		nextStates, err := mc.Tool.GetNextStates(action, cur)
 		if err != nil {

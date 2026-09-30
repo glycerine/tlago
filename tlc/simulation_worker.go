@@ -465,7 +465,13 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		step := w.Rand.NextPrime()
 		for i := 0; i < len(actions); i++ {
 			action := actions[index]
-			nextStates, err := w.Tool.GetNextStates(action, w.CurState)
+			var nextStates *StateVec
+			var err error
+			func() {
+				restoreCurrentState := PushCurrentState(w.CurState)
+				defer restoreCurrentState()
+				nextStates, err = w.Tool.GetNextStates(action, w.CurState)
+			}()
 			if err != nil {
 				return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
 			}

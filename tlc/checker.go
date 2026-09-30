@@ -70,6 +70,7 @@ func (c *AbstractChecker) SetErrState(curState *TLCStateMut, succState *TLCState
 	if !continuationEnabled() && c.Done {
 		return false
 	}
+	ResetCurrentState()
 	c.PredErrState = curState
 	if succState == nil {
 		c.ErrState = curState
@@ -85,6 +86,7 @@ func (c *AbstractChecker) SetErrState(curState *TLCStateMut, succState *TLCState
 func (c *AbstractChecker) SetError(keepCallStack bool, errorCode int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	ResetCurrentState()
 	c.ErrorCode = errorCode
 	c.Done = true
 	c.KeepCallStack = keepCallStack
@@ -1082,6 +1084,8 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	restoreRandomState := PushRandomEnumerableState(curState)
 	defer restoreRandomState()
+	restoreCurrentState := PushCurrentState(curState)
+	defer restoreCurrentState()
 	deadLocked := true
 	var succState *TLCStateMut
 	for _, action := range mc.Tool.GetActions() {

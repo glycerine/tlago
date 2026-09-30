@@ -176,6 +176,8 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	restoreWorkerID := PushCurrentWorkerID(w.ID)
 	defer restoreWorkerID()
+	restoreCurrentState := PushCurrentState(curState)
+	defer restoreCurrentState()
 	restoreRandomState := PushRandomEnumerableState(curState)
 	defer restoreRandomState()
 	preNext := w.StatesGenerated

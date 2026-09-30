@@ -524,6 +524,8 @@ func (t *Tool) GetStateAfter(fp uint64, predecessor *TLCStateMut) (*TLCStateInfo
 	}
 	restoreRandomState := PushRandomEnumerableState(predecessor)
 	defer restoreRandomState()
+	restoreCurrentState := PushCurrentState(predecessor)
+	defer restoreCurrentState()
 	for _, action := range t.GetActions() {
 		nextStates, err := t.GetNextStates(action, predecessor)
 		if err != nil {
@@ -546,6 +548,8 @@ func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCSta
 	}
 	restoreRandomState := PushRandomEnumerableState(predecessor)
 	defer restoreRandomState()
+	restoreCurrentState := PushCurrentState(predecessor)
+	defer restoreCurrentState()
 	for _, action := range t.GetActions() {
 		nextStates, err := t.GetNextStates(action, predecessor)
 		if err != nil {
@@ -826,6 +830,13 @@ func (t *Tool) LivenessIsTrue() bool {
 
 func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, prefix func() []*TLCStateInfo) (*TLCStateInfo, error) {
 	if t != nil && t.EvalAliasInfoFunc != nil {
+		var restore func()
+		if current != nil {
+			restore = PushCurrentState(current.State)
+		} else {
+			restore = PushCurrentState(nil)
+		}
+		defer restore()
 		return t.EvalAliasInfoFunc(t, current, successor, prefix)
 	}
 	return current, nil
@@ -855,6 +866,8 @@ func (t *Tool) EvalAliasInfoPrefixSuffix(current *TLCStateInfo, successor *TLCSt
 
 func (t *Tool) EvalAlias(curState *TLCStateMut, sucState *TLCStateMut) *TLCStateMut {
 	if t != nil && t.EvalAliasFunc != nil {
+		restore := PushCurrentState(curState)
+		defer restore()
 		return t.EvalAliasFunc(t, curState, sucState)
 	}
 	return curState

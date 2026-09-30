@@ -90,7 +90,13 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 			return nil
 		}
 		w.NextStates.Clear()
-		if _, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), w.CurState); err != nil {
+		var err error
+		func() {
+			restoreCurrentState := PushCurrentState(w.CurState)
+			defer restoreCurrentState()
+			_, err = w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), w.CurState)
+		}()
+		if err != nil {
 			if workerErr, ok := err.(*SimulationWorkerError); ok {
 				return workerErr
 			}
@@ -250,7 +256,13 @@ func (w *SimulationWorker) UpdateRLDisabledAction(index int, actions []*Action, 
 func (w *SimulationWorker) FilterEnabledRLActions(actions []*Action, curState *TLCStateMut) ([]*Action, *SimulationWorkerError) {
 	enabled := make([]*Action, 0, len(actions))
 	for _, action := range actions {
-		nextStates, err := w.Tool.GetNextStates(action, curState)
+		var nextStates *StateVec
+		var err error
+		func() {
+			restoreCurrentState := PushCurrentState(curState)
+			defer restoreCurrentState()
+			nextStates, err = w.Tool.GetNextStates(action, curState)
+		}()
 		if err != nil {
 			return nil, &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(curState), Err: err}
 		}

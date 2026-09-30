@@ -12,6 +12,11 @@ var currentWorkerScope = struct {
 	stack map[uint64][]int
 }{stack: make(map[uint64][]int)}
 
+var currentStateScope = struct {
+	sync.Mutex
+	stack map[uint64][]*TLCStateMut
+}{stack: make(map[uint64][]*TLCStateMut)}
+
 type WorkerValue struct {
 	values []Value
 }
@@ -92,6 +97,47 @@ func CurrentWorkerID() (int, bool) {
 		return 0, false
 	}
 	return stack[len(stack)-1], true
+}
+
+func PushCurrentState(state *TLCStateMut) func() {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	currentStateScope.stack[gid] = append(currentStateScope.stack[gid], state)
+	currentStateScope.Unlock()
+	return func() {
+		currentStateScope.Lock()
+		stack := currentStateScope.stack[gid]
+		if len(stack) <= 1 {
+			delete(currentStateScope.stack, gid)
+		} else {
+			currentStateScope.stack[gid] = stack[:len(stack)-1]
+		}
+		currentStateScope.Unlock()
+	}
+}
+
+func CurrentState() (*TLCStateMut, bool) {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	defer currentStateScope.Unlock()
+	stack := currentStateScope.stack[gid]
+	if len(stack) == 0 {
+		return nil, false
+	}
+	return stack[len(stack)-1], true
+}
+
+func ResetCurrentState() *TLCStateMut {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	defer currentStateScope.Unlock()
+	stack := currentStateScope.stack[gid]
+	if len(stack) == 0 {
+		return nil
+	}
+	state := stack[len(stack)-1]
+	delete(currentStateScope.stack, gid)
+	return state
 }
 
 func currentGoroutineID() uint64 {

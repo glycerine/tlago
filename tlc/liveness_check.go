@@ -505,6 +505,8 @@ func (c *LiveChecker) addNextStateTableauDone(tool *Tool, state *TLCStateMut, fp
 
 	cnt = 0
 	actions := tool.GetActions()
+	restoreCurrentState := PushCurrentState(state)
+	defer restoreCurrentState()
 	for _, action := range actions {
 		nextStates, err := tool.GetNextStates(action, state)
 		if err != nil {
