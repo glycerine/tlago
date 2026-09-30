@@ -176,6 +176,11 @@ Port guidance:
   model values, overrides, variable locations, and action names are available.
 - Port `FastTool` as either an alias/wrapper or simply as constructor options
   on `Tool`. The important thing is behavior, not Java inheritance.
+- Java's `SymbolNodeValueLookupProvider` is a default-method interface mixed
+  into `Tool` and `TraceApp`. In Go it should stay as concrete `Tool` methods:
+  `LookupWithCutoff`, `GetVal`, `GetOpContext`, `GetVar`, `GetLevelBound`, and
+  `GetLevelBoundAppl`. This keeps lookup semantics centralized without adding a
+  one-implementation interface.
 
 ## Spec and Config Processing
 
@@ -329,6 +334,14 @@ Important implementation patterns:
 - `evalImpl` dispatches on semantic node kind.
 - `evalApplImpl` dispatches on builtin opcode or user-defined operators.
 - Values returned by evaluation are `Value` implementations and may be lazy.
+- `GetVar` must recurse through `SubstInNode`, `APSubstInNode`, `LetInNode`,
+  labels, lazy values, and operator definitions before deciding that an
+  operator application is a state variable.
+- `GetLevelBound` is only a conservative bound. It returns temporal/action
+  constants immediately for temporal/action opcodes, treats `ENABLED` as state
+  level, scans bounded-quantifier ranges and arguments, avoids recursive
+  function bodies by binding the function name to `1`, and follows user
+  operator definitions, lazy values, `EvaluatingValue`, and `MethodValue`.
 - `setSource` associates semantic nodes with values for better fingerprint
   exception diagnostics.
 - Errors are not generic exceptions; they carry TLC error codes and source

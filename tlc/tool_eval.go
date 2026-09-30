@@ -63,14 +63,21 @@ func (t *Tool) DefineName(name string, value any) *SymbolNode {
 }
 
 func (t *Tool) Lookup(sym *SymbolNode, con *Context, state *TLCStateMut, primed bool) any {
+	return t.LookupWithCutoff(sym, con, false, state, primed)
+}
+
+func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, state *TLCStateMut, primed bool) any {
 	if sym == nil {
 		return nil
 	}
 	if con == nil {
 		con = EmptyContext
 	}
-	if val := con.Lookup(sym); val != nil {
+	if val := con.LookupCutoff(sym, cutoff); val != nil {
 		return val
+	}
+	if sym.Data != nil {
+		return muxToolObject(sym.Data, state)
 	}
 	if sym.Name != nil {
 		if state != nil {
@@ -80,10 +87,10 @@ func (t *Tool) Lookup(sym *SymbolNode, con *Context, state *TLCStateMut, primed 
 		}
 		if t != nil {
 			if val := t.Definitions[sym]; val != nil {
-				return val
+				return muxToolObject(val, state)
 			}
 			if val := t.DefnsByName[sym.Name]; val != nil {
-				return val
+				return muxToolObject(val, state)
 			}
 		}
 		if primed && state != nil {
@@ -91,6 +98,17 @@ func (t *Tool) Lookup(sym *SymbolNode, con *Context, state *TLCStateMut, primed 
 		}
 	}
 	return nil
+}
+
+func muxToolObject(value any, state *TLCStateMut) any {
+	switch v := value.(type) {
+	case nil:
+		return nil
+	case *WorkerValue:
+		return v.ValueForWorker(workerIDFromState(state))
+	default:
+		return v
+	}
 }
 
 func (t *Tool) EvalPure(opDef *OpDefNode, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -495,6 +513,115 @@ func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, l
 		c1 = c1.Cons(param, val)
 	}
 	return c1, nil
+}
+
+func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
+	if c == nil {
+		c = EmptyContext
+	}
+	switch expr := expr.(type) {
+	case *OpApplNode:
+		return t.GetLevelBoundAppl(expr, c)
+	case *LetInNode:
+		c1 := c
+		level := TLCLevelConstant
+		for _, opDef := range expr.Lets {
+			if opDef == nil {
+				continue
+			}
+			if bodyLevel := t.GetLevelBound(opDef.Body, c1); bodyLevel > level {
+				level = bodyLevel
+			}
+			c1 = c1.Cons(&SymbolNode{Name: opDef.Name}, IntOne)
+		}
+		if bodyLevel := t.GetLevelBound(expr.Body, c1); bodyLevel > level {
+			level = bodyLevel
+		}
+		return level
+	case *SubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, true, DoNotRecordCostModel))
+		}
+		return t.GetLevelBound(expr.Body, c1)
+	case *APSubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, true, DoNotRecordCostModel))
+		}
+		return t.GetLevelBound(expr.Body, c1)
+	case *LabelNode:
+		return t.GetLevelBound(expr.Body, c)
+	default:
+		return TLCLevelConstant
+	}
+}
+
+func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
+	if expr == nil || expr.Operator == nil || expr.Operator.Name == nil {
+		return TLCLevelConstant
+	}
+	opNode := expr.Operator
+	opName := opNode.Name
+	opcode := GetOpCode(opName)
+
+	if IsTemporalOpcode(opcode) {
+		return TLCLevelTemporal
+	}
+	if IsActionOpcode(opcode) {
+		return TLCLevelAction
+	}
+	if opcode == OpcodeEnabled {
+		return TLCLevelState
+	}
+
+	level := TLCLevelConstant
+	for _, bound := range expr.BdedQuantBounds {
+		if boundLevel := t.GetLevelBound(bound, c); boundLevel > level {
+			level = boundLevel
+		}
+	}
+
+	if opcode == OpcodeRFS && len(expr.UnbdedQuantSymbols) > 0 {
+		c = c.Cons(expr.UnbdedQuantSymbols[0], IntOne)
+	}
+
+	for _, arg := range expr.Args {
+		if arg == nil {
+			continue
+		}
+		if argLevel := t.GetLevelBound(arg, c); argLevel > level {
+			level = argLevel
+		}
+	}
+
+	if opcode != 0 {
+		return level
+	}
+	if opName.VarLoc() >= 0 {
+		return TLCLevelState
+	}
+	val := t.LookupWithCutoff(opNode, c, false, EmptyState, false)
+	switch v := val.(type) {
+	case *OpDefNode:
+		c1 := c.Cons(opNode, IntOne)
+		if bodyLevel := t.GetLevelBound(v.Body, c1); bodyLevel > level {
+			level = bodyLevel
+		}
+	case *LazyValue:
+		if lazyLevel := t.GetLevelBound(v.Expr, v.Con); lazyLevel > level {
+			level = lazyLevel
+		}
+	case *EvaluatingValue:
+		if v.MinLevel > level {
+			level = v.MinLevel
+		}
+	case *MethodValue:
+		if v.MinLevel > level {
+			level = v.MinLevel
+		}
+	}
+	return level
 }
 
 func (t *Tool) Contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*ContextEnumerator, error) {

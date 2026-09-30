@@ -777,22 +777,52 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 }
 
 func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
-	appl, ok := expr.(*OpApplNode)
-	if !ok || len(appl.Args) != 0 || appl.Operator == nil || appl.Operator.Name == nil {
-		return nil
+	if c == nil {
+		c = EmptyContext
 	}
-	if GetOpCode(appl.Operator.Name) != 0 {
-		return nil
-	}
-	if appl.Operator.Name.VarLoc() >= 0 {
-		return appl.Operator
-	}
-	val := t.Lookup(appl.Operator, c, EmptyState, false)
-	switch v := val.(type) {
-	case *LazyValue:
-		return t.GetVar(v.Expr, v.Con, cutoff)
-	case *OpDefNode:
-		return t.GetVar(v.Body, c, cutoff)
+	switch expr := expr.(type) {
+	case *SubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, DoNotRecordCostModel))
+		}
+		return t.GetVar(expr.Body, c1, cutoff)
+	case *APSubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, DoNotRecordCostModel))
+		}
+		return t.GetVar(expr.Body, c1, cutoff)
+	case *LetInNode:
+		c1 := c
+		for _, opDef := range expr.Lets {
+			if opDef != nil && opDef.Arity() == 0 {
+				c1 = c1.Cons(&SymbolNode{Name: opDef.Name}, NewLazyValue(opDef.Body, c1, true))
+			}
+		}
+		return t.GetVar(expr.Body, c1, cutoff)
+	case *LabelNode:
+		return t.GetVar(expr.Body, c, cutoff)
+	case *OpApplNode:
+		if len(expr.Args) != 0 || expr.Operator == nil || expr.Operator.Name == nil {
+			return nil
+		}
+		if GetOpCode(expr.Operator.Name) != 0 {
+			return nil
+		}
+		isVarDecl := expr.Operator.Name.VarLoc() >= 0
+		val := t.LookupWithCutoff(expr.Operator, c, cutoff && isVarDecl, EmptyState, false)
+		switch v := val.(type) {
+		case *LazyValue:
+			return t.GetVar(v.Expr, v.Con, cutoff)
+		case *OpDefNode:
+			return t.GetVar(v.Body, c, cutoff)
+		default:
+			if isVarDecl {
+				return expr.Operator
+			}
+			return nil
+		}
 	default:
 		return nil
 	}
