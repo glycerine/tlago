@@ -63,6 +63,12 @@ func SetUniqueStringVariableCount(n int) {
 	internTable.varCount = n
 }
 
+func UniqueStringVariableCount() int {
+	internTable.mu.Lock()
+	defer internTable.mu.Unlock()
+	return internTable.varCount
+}
+
 func UniqueStringJoin(delim string, values ...*UniqueString) *UniqueString {
 	parts := make([]string, 0, len(values))
 	for _, value := range values {

@@ -1,40 +1,98 @@
 package tlc
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 )
 
 type Defns struct {
-	values *InsMap[string, any]
+	defnIdx int
+	table   []any
 }
 
-func NewDefns() *Defns {
-	return &Defns{values: NewInsMap[string, any]()}
-}
-
-func (d *Defns) Put(name string, value any) {
-	if d != nil {
-		d.values.Set(name, value)
+func NewDefns(initialSize ...int) *Defns {
+	idx := UniqueStringVariableCount()
+	if len(initialSize) > 0 && initialSize[0] > idx {
+		idx = initialSize[0]
 	}
+	return &Defns{defnIdx: idx, table: make([]any, idx+32)}
 }
 
-func (d *Defns) Get(name string) any {
+func (d *Defns) Put(key any, value any) {
+	if d == nil {
+		return
+	}
+	us := defnKey(key)
+	if us == nil {
+		return
+	}
+	loc := us.DefnLoc()
+	if loc == -1 {
+		if d.defnIdx < UniqueStringVariableCount() {
+			d.defnIdx = UniqueStringVariableCount()
+		}
+		loc = d.defnIdx
+		d.defnIdx++
+		us.SetLoc(loc)
+	}
+	if loc >= len(d.table) {
+		old := d.table
+		newSize := max(2*len(old), loc+1)
+		d.table = make([]any, newSize)
+		copy(d.table, old)
+	}
+	d.table[loc] = value
+}
+
+func (d *Defns) Get(key any) any {
 	if d == nil {
 		return nil
 	}
-	return d.values.Get(name)
+	us := defnKey(key)
+	if us == nil {
+		return nil
+	}
+	loc := us.DefnLoc()
+	if loc < 0 || loc >= len(d.table) {
+		return nil
+	}
+	return d.table[loc]
+}
+
+func (d *Defns) SetDefnCount(index int) {
+	if d != nil {
+		d.defnIdx = index
+	}
 }
 
 func (d *Defns) Snapshot() *Defns {
-	out := NewDefns()
 	if d == nil {
-		return out
+		return NewDefns()
 	}
-	for name, value := range d.values.All() {
-		out.Put(name, value)
-	}
+	out := &Defns{defnIdx: d.defnIdx, table: make([]any, len(d.table))}
+	copy(out.table, d.table)
 	return out
+}
+
+func defnKey(key any) *UniqueString {
+	switch k := key.(type) {
+	case nil:
+		return nil
+	case *UniqueString:
+		return k
+	case UniqueString:
+		return UniqueStringOf(k.String())
+	case string:
+		return UniqueStringOf(k)
+	case *SymbolNode:
+		if k == nil {
+			return nil
+		}
+		return k.Name
+	default:
+		return UniqueStringOf(fmt.Sprint(k))
+	}
 }
 
 type TLAClass struct {
