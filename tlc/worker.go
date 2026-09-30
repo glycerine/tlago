@@ -216,9 +216,10 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	if halt || w.Halted {
 		return true, nil
 	}
+	deadlocked := false
 	if w.Checker.CheckDeadlock && preNext == w.StatesGenerated {
-		w.RecordOutDegree()
-		return w.Checker.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, ""), nil
+		w.Checker.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, "")
+		deadlocked = true
 	}
 	if w.Checker.CheckLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
@@ -236,6 +237,9 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 		w.SetOfStatesMultiplier++
 	}
 	w.RecordOutDegree()
+	if deadlocked {
+		return true, nil
+	}
 	return false, nil
 }
 
