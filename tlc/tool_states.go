@@ -716,8 +716,8 @@ func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value
 
 func (t *Tool) actionCompositionIntermediateStates(action *Action, pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*StateVec, *TLCStateMut, error) {
 	intermediate := NewStateVec(0)
-	collector := NewNextStateFunctor(func(_ *TLCStateMut, _ *Action, state *TLCStateMut) (any, error) {
-		intermediate.Add(state)
+	collector := NewNextStateFunctor(func(predecessor *TLCStateMut, act *Action, state *TLCStateMut) (any, error) {
+		intermediate.Add(state.SetPredecessor(predecessor).SetAction(act))
 		return intermediate, nil
 	})
 	collector.HasStatesFunc = intermediate.HasStates
