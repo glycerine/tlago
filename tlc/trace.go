@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -726,9 +727,12 @@ func (t *TLCTrace) CommitChkpt() error {
 	oldChkpt := t.chkptName("chkpt")
 	newChkpt := t.chkptName("tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
 	}
-	return os.Rename(newChkpt, oldChkpt)
+	if err := os.Rename(newChkpt, oldChkpt); err != nil {
+		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
+	}
+	return nil
 }
 
 func (t *TLCTrace) Recover() error {

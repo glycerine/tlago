@@ -47,6 +47,7 @@
 - Already audited recently; do not make DFID worker stack sizing or stop/error handling friendlier than Java: worker arrays are sized from `Globals.DFIDMax`, init exhaustion goes through `DFIDModelChecker.SetStop(1)`, the inner DFS loop is keyed only by `isLeaf`, and panic recovery records a Java-style `GENERAL` worker failure.
 - Already audited recently; do not run DFID workers synchronously from `ModelCheck`: `DFIDModelChecker.RunTLC` now mirrors Java's shared `AbstractChecker.runTLC` shape by starting the worker, running periodic liveness/checkpoint work, and emitting DFID progress/coverage while the depth search is active.
 - Already audited recently; do not move BFS progress/depth/coverage back into `DoPeriodicWork`: Java keeps checkpoint/liveness/periodic-condition work there and emits progress, depth cutoff, coverage, and waiting from `runTLCContinueDoing`.
+- Already audited recently; do not loosen central `TLCTrace.commitChkpt` errors: failed delete or rename now reports Java's `Trace.commitChkpt: cannot delete ...` text.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -159,6 +160,7 @@
   - `LiveWorker` now selects between memory and disk-backed SCC stacks through the Java synchronized `getStack` threshold algorithm.
   - Disk-backed liveness path reconstruction now uses Java `MemIntQueue` BFS record streams in both non-tableau and tableau graph paths.
   - Worker trace checkpoint commit errors now mirror Java's `Trace.commitChkpt` delete/rename failure text.
+  - Central `TLCTrace` checkpoint commit errors now mirror the same Java `Trace.commitChkpt: cannot delete ...` contract.
   - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
