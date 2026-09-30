@@ -729,6 +729,10 @@ Worker loop:
 Trace writing:
 
 - Each worker owns a trace fragment file named by spec and worker id.
+- Java backs worker trace fragments, `TLCTrace`, disk FP sets, and bit-vector
+  persistence with `BufferedRandomAccessFile`. The port should preserve its
+  concrete buffer state (`dirty`, `length`, `curr`, `lo`, `diskPos`, `mark`),
+  8K page size, `seeek` page-read signal, and nat encodings.
 - Initial state record contains previous pointer `1`, worker id, fingerprint.
 - Successor record contains predecessor pointer, predecessor worker id,
   successor fingerprint.
