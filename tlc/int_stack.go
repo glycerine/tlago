@@ -1,26 +1,35 @@
 package tlc
 
 type IntStack struct {
-	m []int32
+	elems []int32
+	size  int
 }
 
+const intStackMinCapacity = 1024
+
 func NewIntStack() *IntStack {
-	return NewIntStackWithCapacity(0)
+	return NewIntStackWithCapacity(intStackMinCapacity)
 }
 
 func NewIntStackWithCapacity(capacity int) *IntStack {
 	if capacity < 0 {
 		capacity = 0
 	}
-	return &IntStack{m: make([]int32, 0, capacity)}
+	return &IntStack{elems: make([]int32, capacity)}
 }
 
 func (s *IntStack) Size() int {
-	return len(s.m)
+	return s.size
 }
 
 func (s *IntStack) PushInt(x int32) {
-	s.m = append(s.m, x)
+	if s.size == len(s.elems) {
+		newElems := make([]int32, s.ensureCapacity(intStackMinCapacity))
+		copy(newElems, s.elems[:s.size])
+		s.elems = newElems
+	}
+	s.elems[s.size] = x
+	s.size++
 }
 
 func (s *IntStack) PushLong(x int64) {
@@ -29,13 +38,11 @@ func (s *IntStack) PushLong(x int64) {
 }
 
 func (s *IntStack) PopInt() int32 {
-	if len(s.m) == 0 {
+	if s.size == 0 {
 		panic("IntStack is empty")
 	}
-	last := len(s.m) - 1
-	x := s.m[last]
-	s.m = s.m[:last]
-	return x
+	s.size--
+	return s.elems[s.size]
 }
 
 func (s *IntStack) PopLong() int64 {
@@ -45,18 +52,18 @@ func (s *IntStack) PopLong() int64 {
 }
 
 func (s *IntStack) PeekInt() int32 {
-	return s.PeekIntAt(len(s.m) - 1)
+	return s.PeekIntAt(s.size - 1)
 }
 
 func (s *IntStack) PeekIntAt(pos int) int32 {
-	if pos < 0 || pos >= len(s.m) {
+	if pos < 0 || pos >= s.size {
 		panic("IntStack index out of range")
 	}
-	return s.m[pos]
+	return s.elems[pos]
 }
 
 func (s *IntStack) PeekLong() int64 {
-	return s.PeekLongAt(len(s.m) - 2)
+	return s.PeekLongAt(s.size - 2)
 }
 
 func (s *IntStack) PeekLongAt(pos int) int64 {
@@ -66,5 +73,13 @@ func (s *IntStack) PeekLongAt(pos int) int64 {
 }
 
 func (s *IntStack) Reset() {
-	s.m = s.m[:0]
+	s.size = 0
+}
+
+func (s *IntStack) ensureCapacity(minCapacity int) int {
+	newSize := int((int64(s.size)*3)/2) + 1
+	if min := s.size + minCapacity; newSize < min {
+		newSize = min
+	}
+	return newSize
 }
