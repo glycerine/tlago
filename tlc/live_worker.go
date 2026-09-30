@@ -258,6 +258,15 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) 
 	}
 	w.Checker.ErrorPrefix = prefix
 	w.Checker.ErrorCycle = cycle
+	counterExample, trace, err := w.buildCounterExample(prefix, cycle)
+	if err != nil {
+		return false, err
+	}
+	w.Checker.ErrorTrace = trace
+	w.Checker.ErrorCounterEx = counterExample
+	if w.Tool != nil && counterExample != nil {
+		w.Tool.CheckPostConditionWithCounterExample(counterExample)
+	}
 	return false, nil
 }
 
@@ -301,6 +310,74 @@ func (w *LiveWorker) traceFingerprintLasso(state uint64, tidx int, nodeTbl *Tabl
 		_ = cycleStack.PopInt()
 	}
 	return prefix, postfix, nil
+}
+
+func (w *LiveWorker) buildCounterExample(prefix *LongVec, cycle *LongVec) (*CounterExample, []*TLCStateInfo, error) {
+	if w.Tool == nil {
+		return nil, nil, fmt.Errorf("cannot reconstruct liveness counterexample without a tool")
+	}
+	if prefix == nil || prefix.Size() == 0 {
+		return nil, nil, fmt.Errorf("cannot reconstruct liveness counterexample without a prefix")
+	}
+	plen := prefix.Size()
+	fp := uint64(prefix.ElementAt(plen - 1))
+	sinfo, err := w.Tool.GetState(fp)
+	if err != nil {
+		return nil, nil, err
+	}
+	if sinfo == nil {
+		return nil, nil, fmt.Errorf("failed to recover initial liveness state %d", fp)
+	}
+	states := make([]*TLCStateInfo, 0, plen)
+	states = append(states, sinfo)
+
+	for i := plen - 2; i >= 0; i-- {
+		curFP := uint64(prefix.ElementAt(i))
+		if curFP == fp {
+			continue
+		}
+		sinfo, err = w.Tool.GetState(curFP, sinfo)
+		if err != nil {
+			return nil, nil, err
+		}
+		if sinfo == nil {
+			return nil, nil, fmt.Errorf("failed to recover liveness successor state %d", curFP)
+		}
+		states = append(states, sinfo)
+		fp = curFP
+	}
+	if len(states) == 0 {
+		return nil, nil, fmt.Errorf("cannot reconstruct empty liveness counterexample")
+	}
+
+	cycleState := states[len(states)-1]
+	loopOrdinal := int(cycleState.StateNumber)
+	sinfo = cycleState
+	if cycle != nil && !cycle.IsEmpty() {
+		cycle.Pack().RemoveLastIf(int64(cycleState.FingerPrint()))
+		for i := cycle.Size() - 1; i >= 0; i-- {
+			curFP := uint64(cycle.ElementAt(i))
+			sucinfo, err := w.Tool.GetState(curFP, sinfo)
+			if err != nil {
+				return nil, nil, err
+			}
+			if sucinfo == nil {
+				return nil, nil, fmt.Errorf("failed to recover liveness cycle state %d", curFP)
+			}
+			states = append(states, sucinfo)
+			sinfo = sucinfo
+		}
+		if sinfo.FingerPrint() != cycleState.FingerPrint() {
+			closing, err := w.Tool.GetState(cycleState.FingerPrint(), sinfo)
+			if err != nil {
+				return nil, nil, err
+			}
+			if closing != nil {
+				sinfo = closing
+			}
+		}
+	}
+	return NewCounterExample(states, sinfo.Action(), loopOrdinal, true), states, nil
 }
 
 func (w *LiveWorker) dfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrTable, cycleStack *IntStack) (*GraphNode, error) {

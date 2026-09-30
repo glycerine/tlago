@@ -83,6 +83,8 @@ type LiveChecker struct {
 	ErrorGraphNode   *GraphNode
 	ErrorPrefix      *LongVec
 	ErrorCycle       *LongVec
+	ErrorTrace       []*TLCStateInfo
+	ErrorCounterEx   *CounterExample
 	Err              error
 }
 
@@ -543,6 +545,8 @@ func (c *LiveChecker) Reset() {
 	c.ErrorGraphNode = nil
 	c.ErrorPrefix = nil
 	c.ErrorCycle = nil
+	c.ErrorTrace = nil
+	c.ErrorCounterEx = nil
 }
 
 func graphNodeKey(fp uint64, tidx int) string {
@@ -879,7 +883,10 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 			return ECGeneral, err
 		}
 		if found {
-			return ECGeneral, nil
+			if checker.ErrorCounterEx != nil {
+				return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", checker.ErrorCounterEx)
+			}
+			return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
 		}
 	}
 	return NoError, nil

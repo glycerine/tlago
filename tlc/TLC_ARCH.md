@@ -1059,8 +1059,11 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - ports Java's lasso construction in data form: `GetPath` reconstructs the
   prefix, `dfsPostFix` greedily finds the component segment satisfying the PEM,
   and `bfsPostFix` closes the cycle. The current Go fields store the fingerprint
-  `ErrorPrefix` and `ErrorCycle`; human-readable `printTrace` output remains
-  the next output-layer step.
+  `ErrorPrefix` and `ErrorCycle`.
+- reconstructs `TLCStateInfo` traces from the prefix/cycle fingerprints,
+  creates a `CounterExample`, and invokes the tool post-condition hook with
+  that value. Human-readable `printTrace` console formatting remains the next
+  output-layer step.
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component
