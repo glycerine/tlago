@@ -507,14 +507,12 @@ func (v *Vect[E]) AddElement(elem E) {
 }
 
 func (v *Vect[E]) Concat(other *Vect[E]) *Vect[E] {
-	out := NewVectWithCapacity[E](v.Size() + other.Size())
+	out := NewVect[E]()
 	for _, elem := range v.data {
 		out.AddElement(elem)
 	}
-	if other != nil {
-		for _, elem := range other.data {
-			out.AddElement(elem)
-		}
+	for _, elem := range other.data {
+		out.AddElement(elem)
 	}
 	return out
 }
@@ -536,7 +534,7 @@ func (v *Vect[E]) ElementAt(index int) E {
 }
 
 func (v *Vect[E]) Elements() *VectEnumerator[E] {
-	return &VectEnumerator[E]{values: v.ToSlice()}
+	return &VectEnumerator[E]{vect: v}
 }
 
 func (v *Vect[E]) EnsureCapacity(minCapacity int) {
@@ -671,19 +669,19 @@ func (v *Vect[E]) String() string {
 }
 
 type VectEnumerator[E any] struct {
-	values []E
-	index  int
+	vect  *Vect[E]
+	index int
 }
 
 func (e *VectEnumerator[E]) HasMoreElements() bool {
-	return e != nil && e.index < len(e.values)
+	return e != nil && e.vect != nil && e.index < len(e.vect.data)
 }
 
 func (e *VectEnumerator[E]) NextElement() E {
-	if e == nil || e.index >= len(e.values) {
+	if e == nil || e.vect == nil || e.index >= len(e.vect.data) {
 		panic("Vect enumerator exhausted")
 	}
-	value := e.values[e.index]
+	value := e.vect.data[e.index]
 	e.index++
 	return value
 }
