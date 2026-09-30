@@ -388,13 +388,12 @@ func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStat
 }
 
 func standardCounterExample(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	_ = tool
 	_ = args
 	_ = state
 	_ = pstate
 	_ = control
 	_ = cm
-	return TLCExtCounterExampleWithContext(con), nil
+	return TLCExtCounterExampleWithTool(tool, con), nil
 }
 
 func standardTLCState(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

@@ -718,10 +718,14 @@ func (t *Tool) CheckPostConditionWithCounterExample(value Value) int {
 	if t != nil && t.CheckPostConditionCEFunc != nil {
 		return t.CheckPostConditionCEFunc(t, value)
 	}
+	def := t.GetCounterExampleDef()
+	if t == nil || def == nil || def.Symbol == nil {
+		return t.CheckPostCondition()
+	}
 	if value == nil {
 		value = NewEmptyCounterExample()
 	}
-	return t.CheckPostConditionImpl(EmptyContext.Cons(counterExampleContextSymbol, value))
+	return t.CheckPostConditionImpl(EmptyContext.Cons(def.Symbol, value))
 }
 
 func (t *Tool) GetInvNames() []string {

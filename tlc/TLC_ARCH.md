@@ -1833,11 +1833,12 @@ sequence. The separate registered `IOUtils!Serialize` path is implemented in
 the direct `Json` module exceptions.
 
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
-conses the current `CounterExample` value into the evaluation context and the
-module operator returns that value when present, otherwise an empty
-counterexample. The Go standard operator is therefore registered as an
-evaluating operator rather than a plain method so it can read the current
-postcondition context.
+conses the current `CounterExample` value under the actual
+`CounterExample` `OpDefNode` symbol and the module operator returns that value
+when present, otherwise an empty counterexample. The Go standard operator is
+therefore registered as an evaluating operator rather than a plain method so it
+can read the current postcondition context; do not bind by name through a
+synthetic symbol.
 
 `TLCExt!Trace` is also an evaluating operator. In simulation mode Java asks the
 active `Simulator` to build the current trace. In model-checking mode Java uses

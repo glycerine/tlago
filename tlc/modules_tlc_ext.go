@@ -11,7 +11,6 @@ import (
 )
 
 var possibleCountsKey = UniqueStringOf("s:_possible")
-var counterExampleContextSymbol = NewSymbolNode("CounterExample")
 var tlcExtActionField = UniqueStringOf("_action")
 var pickSuccessorMu sync.Mutex
 
@@ -125,9 +124,10 @@ func TLCExtCounterExample() Value {
 	return NewEmptyCounterExample()
 }
 
-func TLCExtCounterExampleWithContext(ctxt *Context) Value {
-	if ctxt != nil {
-		if value, ok := ctxt.Lookup(counterExampleContextSymbol).(Value); ok {
+func TLCExtCounterExampleWithTool(tool *Tool, ctxt *Context) Value {
+	def := tool.GetCounterExampleDef()
+	if def != nil && def.Symbol != nil && ctxt != nil {
+		if value, ok := ctxt.Lookup(def.Symbol).(Value); ok {
 			return value
 		}
 	}
