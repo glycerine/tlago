@@ -130,15 +130,28 @@ func (a *Action) GetLocationNamed(name string) string {
 	if name == "" {
 		name = "Action"
 	}
-	params := a.GetParameters()
-	if params.Len() == 0 {
+	parts := a.locationParameters()
+	if len(parts) == 0 {
 		return "<" + name + " " + a.GetDefinition() + ">"
 	}
-	parts := make([]string, 0, params.Len())
-	for _, value := range params.All() {
-		parts = append(parts, value.String())
-	}
 	return "<" + name + "(" + strings.Join(parts, ",") + ") " + a.GetDefinition() + ">"
+}
+
+func (a *Action) locationParameters() []string {
+	if a == nil || a.OpDef == nil || a.Con == nil {
+		return nil
+	}
+	parts := make([]string, 0, len(a.OpDef.Params))
+	for _, param := range a.OpDef.Params {
+		if param == nil {
+			continue
+		}
+		value := a.Con.Lookup(param)
+		if value != nil {
+			parts = append(parts, toContextString(value))
+		}
+	}
+	return parts
 }
 
 func (a *Action) ToRecordValue() *RecordValue {
