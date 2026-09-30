@@ -1025,47 +1025,40 @@ func (e *singleValueEnumeration) NextElement() Value {
 func (e *singleValueEnumeration) Err() error { return nil }
 
 type subsetEnumeration struct {
-	elems      *ValueVec
-	descriptor []bool
-	done       bool
+	elems *ValueVec
+	k     int
+	cur   *kSubsetEnumeration
+	done  bool
+	err   error
 }
 
 func (e *subsetEnumeration) Reset() {
-	e.descriptor = make([]bool, e.elems.Len())
 	e.done = false
+	e.err = nil
+	e.k = 0
+	e.cur = newKSubsetEnumeration(e.elems, e.k)
 }
 
 func (e *subsetEnumeration) NextElement() Value {
-	if e.descriptor == nil {
+	if e.cur == nil {
 		e.Reset()
 	}
-	if e.done {
-		return nil
-	}
-	vals := NewValueVec(0)
-	size := e.elems.Len()
-	if size == 0 {
-		e.done = true
-	} else {
-		for i := 0; i < size; i++ {
-			if e.descriptor[i] {
-				vals.Add(e.elems.At(i))
-			}
+	for !e.done && e.err == nil {
+		if value := e.cur.NextElement(); value != nil {
+			return value
 		}
-		for i := 0; i < size; i++ {
-			if e.descriptor[i] {
-				e.descriptor[i] = false
-				if i >= size-1 {
-					e.done = true
-					break
-				}
-			} else {
-				e.descriptor[i] = true
-				break
-			}
+		if err := e.cur.Err(); err != nil {
+			e.err = err
+			return nil
 		}
+		e.k++
+		if e.k > e.elems.Len() {
+			e.done = true
+			return nil
+		}
+		e.cur = newKSubsetEnumeration(e.elems, e.k)
 	}
-	return NewSetEnumValueVec(vals, true)
+	return nil
 }
 
-func (e *subsetEnumeration) Err() error { return nil }
+func (e *subsetEnumeration) Err() error { return e.err }
