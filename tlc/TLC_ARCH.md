@@ -468,6 +468,10 @@ Important implementation patterns:
 - `evalImpl` dispatches on semantic node kind.
 - `evalApplImpl` dispatches on builtin opcode or user-defined operators.
 - Values returned by evaluation are `Value` implementations and may be lazy.
+- When a primed variable lookup cannot be resolved, Java reports an incomplete
+  state only outside `ENABLED`. Under `ENABLED`, the same primed lookup must fall
+  through to the ordinary undefined-operator handling so enabledness exploration
+  can continue to use its special context/control flow.
 - `GetVar` must recurse through `SubstInNode`, `APSubstInNode`, `LetInNode`,
   labels, lazy values, and operator definitions before deciding that an
   operator application is a state variable.

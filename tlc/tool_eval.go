@@ -259,7 +259,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			}
 			return t.Eval(v.Body, c1, s0, s1, control, cm)
 		case nil:
-			if EvalIsPrimed(control) && opNode != nil && opNode.Name != nil && opNode.Name.VarLoc() >= 0 {
+			if !EvalIsEnabled(control) && EvalIsPrimed(control) && opNode != nil && opNode.Name != nil && opNode.Name.VarLoc() >= 0 {
 				return nil, newTLCError(ECGeneral, "state is not completely specified: %s in %s", opNode.Name, SemanticString(expr))
 			}
 			return nil, newTLCError(ECGeneral, "undefined operator %s in %s", opNode, SemanticString(expr))
