@@ -41,6 +41,7 @@
 - Ported major checker/simulator scaffolding:
   - Model checker/DFID/check-impl/worker outlines and selected worker behavior.
   - Simulator and SimulationWorker with standard, debug-exploration, RL, and RL-action modes folded into one concrete worker plus mode flags.
+  - Simulator now creates default per-worker live checks when Java would check liveness, using worker-specific graph directories under the simulator metadir.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -68,8 +69,8 @@
 
 ## Current Position
 
-- Worktree was clean before creating this file.
 - Latest commits:
+  - `4d8e5e8 Track TLC port progress`
   - `ca4060d Honor disk graph recovery pointers`
   - `e985339 Port memory FPSet variants`
   - `835dd2b Align LongObjTable growth`
@@ -78,11 +79,9 @@
   - `0b3230c Port DiskStateQueue pool cleaner`
   - `0de29bb Add parser-backed liveness operator test`
 - Last verified commands before this file:
-  - `go test -run TestParseLivenessFromParsedSANYSpec ./`
   - `go test ./tlc`
+  - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Commit this progress file.
-  2. Finish the simulator/SimulationWorker audit against Java, patch only concrete gaps.
-  3. Update this file after that audit with either "no changes needed" or a summary of fixes.
-  4. Run `go test ./tlc` and commit the coherent simulator/audit chunk.
-  5. Continue breadth-first into `Simulator.java`, `ModelChecker.java`, `Worker.java`, then remaining liveness/checkpoint/distributed pieces.
+  1. Commit the simulator liveness wiring chunk.
+  2. Finish the remaining simulator audit against `Simulator.java`, especially progress/periodic handling, summary printing, action-flow graph output, and behavior printing.
+  3. Continue breadth-first into `ModelChecker.java`, `Worker.java`, then remaining liveness/checkpoint/distributed pieces.

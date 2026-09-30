@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -12,23 +13,25 @@ import (
 )
 
 type Simulator struct {
-	Tool          *Tool
-	CheckDeadlock bool
-	TraceDepth    int
-	TraceNum      int64
-	TraceFile     string
-	TraceActions  string
-	Rand          *JavaRandom
-	Seed          int64
-	Aril          int64
-	Config        Value
-	ResultQueue   chan SimulationWorkerResult
-	Workers       []*SimulationWorker
-	WorkerMode    SimulationWorkerMode
-	LiveCheck     *LiveCheck
-	NumGenStates  atomic.Int64
-	NumGenTraces  atomic.Int64
-	WelfordM2Mean atomic.Int64
+	Tool             *Tool
+	CheckDeadlock    bool
+	TraceDepth       int
+	TraceNum         int64
+	TraceFile        string
+	TraceActions     string
+	MetaDir          string
+	Rand             *JavaRandom
+	Seed             int64
+	Aril             int64
+	Config           Value
+	ResultQueue      chan SimulationWorkerResult
+	Workers          []*SimulationWorker
+	WorkerMode       SimulationWorkerMode
+	LiveCheck        *LiveCheck
+	LiveCheckInitErr error
+	NumGenStates     atomic.Int64
+	NumGenTraces     atomic.Int64
+	WelfordM2Mean    atomic.Int64
 
 	StatesGenerated int64
 	TracesGenerated int64
@@ -47,6 +50,12 @@ func WithSimulatorTraceFile(traceFile string) SimulatorOption {
 func WithSimulatorTraceActions(traceActions string) SimulatorOption {
 	return func(s *Simulator) {
 		s.TraceActions = traceActions
+	}
+}
+
+func WithSimulatorMetaDir(metadir string) SimulatorOption {
+	return func(s *Simulator) {
+		s.MetaDir = metadir
 	}
 }
 
@@ -91,6 +100,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		TraceDepth:    traceDepth,
 		TraceNum:      traceNum,
 		Seed:          seed,
+		MetaDir:       "states",
 		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
@@ -98,6 +108,9 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		if opt != nil {
 			opt(simulator)
 		}
+	}
+	if simulator.MetaDir == "" {
+		simulator.MetaDir = "states"
 	}
 	simulator.Rand = NewJavaRandom(simulator.Seed)
 	if simulator.Aril > 0 {
@@ -118,6 +131,9 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 func (s *Simulator) Simulate() (int, error) {
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "simulator has no tool")
+	}
+	if s.LiveCheckInitErr != nil {
+		return ECGeneral, s.LiveCheckInitErr
 	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(s.Tool)
@@ -563,7 +579,7 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 	}
 	liveCheck := s.LiveCheck
 	if liveCheck == nil {
-		liveCheck = NewNoOpLiveCheck(tool, "")
+		liveCheck = s.newWorkerLiveCheck(tool, id)
 	}
 	worker := NewSimulationWorker(
 		id,
@@ -591,6 +607,21 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 	worker.RLReward = simulatorPropertyFloat("tlc2.tool.Simulator.rl.reward", "TLAGO_SIMULATOR_RL_REWARD", -10)
 	worker.RLEnabledOnly = simulatorPropertyBool("tlc2.tool.Simulator.rl.enabledOnly", "TLAGO_SIMULATOR_RL_ENABLED_ONLY")
 	return worker
+}
+
+func (s *Simulator) newWorkerLiveCheck(tool *Tool, workerID int) *LiveCheck {
+	metadir := filepath.Join(s.MetaDir, fmt.Sprintf("simulator_%d", workerID))
+	if tool == nil || tool.LivenessIsTrue() {
+		return NewNoOpLiveCheck(tool, metadir)
+	}
+	check, err := NewLiveCheckFromTool(tool.NoDebug(), metadir, nil)
+	if err != nil {
+		if s.LiveCheckInitErr == nil {
+			s.LiveCheckInitErr = err
+		}
+		return NewNoOpLiveCheck(tool, metadir)
+	}
+	return check
 }
 
 func (s *Simulator) selectWorkerMode() SimulationWorkerMode {

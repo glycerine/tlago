@@ -347,6 +347,7 @@ func (t *TLC) processSimulation() (*Result, error) {
 	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, t.Seed,
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),
+		WithSimulatorMetaDir(t.MetaDir),
 		WithSimulatorSchedule(t.SimulationSchedule),
 		WithSimulatorAril(t.Aril),
 		WithSimulatorLiveCheck(t.LiveCheck),
