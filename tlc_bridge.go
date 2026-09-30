@@ -523,7 +523,14 @@ func (b *tlcBridge) nodeForDefinition(name string) tlc.SemanticNode {
 		b.diags = append(b.diags, errorAt(def.Pos, "E7008", "operator %s must be zero-arity in this TLC model slot", name))
 		return nil
 	}
-	return b.convertExpr(def.Expr)
+	opDef := b.convertDefinitionAs(name, def)
+	if opDef == nil {
+		return nil
+	}
+	if setter, ok := opDef.Body.(interface{ SetToolObject(any) }); ok {
+		setter.SetToolObject(opDef)
+	}
+	return opDef.Body
 }
 
 func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDefNode {
