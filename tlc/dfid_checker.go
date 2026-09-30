@@ -11,8 +11,11 @@ type DFIDModelChecker struct {
 	InitFPs         []uint64
 	FPSet           *MemFPIntSet
 	LiveCheck       *LiveCheck
+	DFIDWorkers     []*DFIDWorker
 	StatesGenerated int64
 }
+
+const dfidInitialSetOfStatesCapacity = 16
 
 type DFIDModelCheckerOption func(*DFIDModelChecker)
 
@@ -107,6 +110,7 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		PrintMessage(ECTLCProgressStartStatsDFID, fmtInt(level), fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 		FPIntSetIncLevel()
 		worker := NewDFIDWorker(0, level, mc)
+		mc.DFIDWorkers = []*DFIDWorker{worker}
 		worker.Run()
 		mc.Done = false
 		if worker.IsTerminated() {
@@ -130,10 +134,36 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	return NoError, nil
 }
 
+func (mc *DFIDModelChecker) SetErrState(curState *TLCStateMut, succState *TLCStateMut, keepCallStack bool, errorCode int) bool {
+	if mc == nil || mc.AbstractChecker == nil {
+		return false
+	}
+	ok := mc.AbstractChecker.SetErrState(curState, succState, keepCallStack, errorCode)
+	if ok {
+		mc.SetStop(2)
+	}
+	return ok
+}
+
+func (mc *DFIDModelChecker) SetStop(code int) {
+	if mc == nil {
+		return
+	}
+	for _, worker := range mc.DFIDWorkers {
+		if worker != nil {
+			worker.SetStop(code)
+		}
+	}
+}
+
 func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool, states *StateVec, fps *LongVec) (bool, int, error) {
 	deadlocked := true
 	allSuccDone := true
 	allSuccNonLeaf := true
+	var liveNextStates *SetOfStates
+	if mc.CheckLiveness && isLeaf {
+		liveNextStates = NewSetOfStates(dfidInitialSetOfStatesCapacity)
+	}
 	for _, action := range mc.Tool.GetActions() {
 		nextStates, err := mc.Tool.GetNextStates(action, cur)
 		if err != nil {
@@ -184,6 +214,9 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 					states.Add(succ)
 					fps.AddElement(int64(fp))
 				}
+				if liveNextStates != nil {
+					liveNextStates.PutFP(fp, succ)
+				}
 			}
 			if status == FPIntStatusNew {
 				for _, invariant := range mc.Tool.GetInvariants() {
@@ -214,6 +247,14 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 	if deadlocked && mc.CheckDeadlock {
 		mc.SetErrState(cur, nil, false, ECTLCDeadlockReached)
 		return allSuccNonLeaf, ECTLCDeadlockReached, nil
+	}
+	if liveNextStates != nil {
+		liveNextStates.PutFP(cfp, cur)
+		if mc.LiveCheck != nil {
+			if err := mc.LiveCheck.AddNextState(mc.Tool, cur, cfp, liveNextStates); err != nil {
+				return allSuccNonLeaf, ECGeneral, err
+			}
+		}
 	}
 	if allSuccDone || (isLeaf && allSuccNonLeaf) {
 		mc.FPSet.SetStatus(cfp, FPIntStatusDone)
@@ -266,16 +307,8 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 		if status != FPIntStatusNew {
 			continue
 		}
-		for _, invariant := range mc.Tool.GetInvariants() {
-			valid, err := mc.Tool.IsValidState(invariant, state)
-			if err != nil {
-				return ECTLCInvariantEvaluationFailed, err
-			}
-			if !valid {
-				mc.SetErrState(state, nil, false, ECTLCInvariantViolatedInitial)
-				return ECTLCInvariantViolatedInitial, nil
-			}
-		}
+		mc.InitStates = append(mc.InitStates, state)
+		mc.InitFPs = append(mc.InitFPs, fp)
 		if mc.AllStateWriter != nil {
 			if err := mc.AllStateWriter.WriteInitState(state); err != nil {
 				return ECGeneral, err
@@ -286,8 +319,26 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 				return ECGeneral, err
 			}
 		}
-		mc.InitStates = append(mc.InitStates, state)
-		mc.InitFPs = append(mc.InitFPs, fp)
+		for _, invariant := range mc.Tool.GetInvariants() {
+			valid, err := mc.Tool.IsValidState(invariant, state)
+			if err != nil {
+				return ECTLCInvariantEvaluationFailed, err
+			}
+			if !valid {
+				mc.SetErrState(state, nil, false, ECTLCInvariantViolatedInitial)
+				return ECTLCInvariantViolatedInitial, nil
+			}
+		}
+		for _, implied := range mc.Tool.GetImpliedInits() {
+			valid, err := mc.Tool.IsValidState(implied, state)
+			if err != nil {
+				return ECTLCPropertyViolatedInitial, err
+			}
+			if !valid {
+				mc.SetErrState(state, nil, false, ECTLCPropertyViolatedInitial)
+				return ECTLCPropertyViolatedInitial, nil
+			}
+		}
 	}
 	if vec.Size() == 0 {
 		return ECTLCNoStatesSatisfyingInit, nil
@@ -296,101 +347,6 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 		return ECTLCNoStatesSatisfyingInitAndConstraint, nil
 	}
 	return NoError, nil
-}
-
-func (mc *DFIDModelChecker) doNext(cur *TLCStateMut, cfp uint64, depth int, maxDepth int) (bool, int, error) {
-	if depth >= maxDepth {
-		if mc.FPSet != nil {
-			mc.FPSet.SetLeveled(cfp)
-		}
-		return true, NoError, nil
-	}
-	status := mc.FPSet.GetStatus(cfp)
-	if FPIntSetIsCompleted(status) {
-		return false, NoError, nil
-	}
-
-	deadlocked := true
-	more := false
-	allSuccDone := true
-	allSuccNonLeaf := true
-	for _, action := range mc.Tool.GetActions() {
-		nextStates, err := mc.Tool.GetNextStates(action, cur)
-		if err != nil {
-			return false, ECGeneral, err
-		}
-		if nextStates == nil || nextStates.Size() == 0 {
-			continue
-		}
-		deadlocked = false
-		mc.StatesGenerated += int64(nextStates.Size())
-		for i := 0; i < nextStates.Size(); i++ {
-			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
-			if action != nil && action.CM.node != nil {
-				action.CM.IncInvocations()
-			}
-			if !mc.Tool.IsGoodState(succ) {
-				mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext)
-				return false, ECTLCStateNotCompletelySpecifiedNext, nil
-			}
-			inModel, err := mc.Tool.IsInModel(succ)
-			if err != nil {
-				return false, ECGeneral, err
-			}
-			if inModel {
-				inActions, err := mc.Tool.IsInActions(cur, succ)
-				if err != nil {
-					return false, ECGeneral, err
-				}
-				inModel = inActions
-			}
-			if !inModel {
-				continue
-			}
-			fp := succ.FingerPrint()
-			status := mc.FPSet.SetStatus(fp, FPIntStatusNew)
-			if status == FPIntStatusNew && action != nil && action.CM.node != nil {
-				action.CM.IncSecondary()
-			}
-			allSuccDone = allSuccDone && FPIntSetIsDone(status)
-			allSuccNonLeaf = allSuccNonLeaf && !FPIntSetIsLeaf(status)
-			if mc.AllStateWriter != nil {
-				writeStatus := StateVisitSeen
-				if status == FPIntStatusNew {
-					writeStatus = StateVisitUnseen
-				}
-				if err := mc.AllStateWriter.WriteTransition(cur, succ, writeStatus, action); err != nil {
-					return false, ECGeneral, err
-				}
-			}
-			for _, invariant := range mc.Tool.GetInvariants() {
-				valid, err := mc.Tool.IsValidState(invariant, succ)
-				if err != nil {
-					return false, ECTLCInvariantEvaluationFailed, err
-				}
-				if !valid {
-					mc.SetErrState(cur, succ, false, ECTLCInvariantViolatedBehavior)
-					return false, ECTLCInvariantViolatedBehavior, nil
-				}
-			}
-			childMore, result, err := mc.doNext(succ, fp, depth+1, maxDepth)
-			if err != nil || result != NoError {
-				return childMore, result, err
-			}
-			more = more || childMore
-		}
-	}
-	if deadlocked && mc.CheckDeadlock {
-		mc.SetErrState(cur, nil, false, ECTLCDeadlockReached)
-		return false, ECTLCDeadlockReached, nil
-	}
-	if allSuccDone || (depth == maxDepth-1 && allSuccNonLeaf) {
-		mc.FPSet.SetStatus(cfp, FPIntStatusDone)
-	}
-	if !more {
-		mc.FPSet.SetLeveled(cfp)
-	}
-	return more, NoError, nil
 }
 
 func (mc *DFIDModelChecker) Checkpoint() error {

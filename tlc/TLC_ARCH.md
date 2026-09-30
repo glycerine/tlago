@@ -931,6 +931,11 @@ Important behavior:
 - `doNext` for DFID is a one-step generator. It fills successor vectors with
   states not completed at the current level and returns whether all successors
   were non-leaf.
+- DFID initial-state processing records new in-model states before checking
+  invariants and implied-init properties, matching Java's array/write/liveness
+  ordering.
+- DFID `setErrState` stops the DFID workers after the abstract checker accepts
+  the error state.
 - Backtracking marks fingerprints leveled. States are marked done when all
   children are done or when a leaf has no new child.
 - Keep DFID as worker-plus-stacks, not recursive traversal; recursion diverges
