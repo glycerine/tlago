@@ -700,6 +700,8 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 		return false, nil
 	}
 	if c.DiskGraph != nil || c.TableauDiskGraph != nil {
+		c.createDiskGraphCache()
+		defer c.destroyDiskGraphCache()
 		for _, pem := range c.Solution.PEMs {
 			worker := NewLiveWorker(tool, c.Soln, 1, nil, c, pem, finalCheck)
 			found, err := worker.CheckSccs()
@@ -708,7 +710,7 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 			}
 			if found {
 				c.PrintCounterExample(tool)
-				c.LastSize = c.GraphSize()
+				c.recordGraphSize()
 				return true, nil
 			}
 		}
@@ -724,7 +726,7 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 				}
 			}
 		}
-		c.LastSize = c.GraphSize()
+		c.recordGraphSize()
 		return false, nil
 	}
 	for _, node := range c.Graph.All() {
@@ -1097,11 +1099,9 @@ func (lc *LiveCheck) DoLiveCheck() bool {
 	Globals.Unlock()
 	for _, checker := range lc.Checkers {
 		size := checker.GraphSize()
-		if checker.LastSize == 0 && size > 0 {
-			return true
-		}
-		if checker.LastSize > 0 {
-			delta := float64(size-checker.LastSize) / float64(checker.LastSize)
+		sizeAtLastCheck := checker.SizeAtLastCheck()
+		if sizeAtLastCheck > 0 {
+			delta := float64(size-sizeAtLastCheck) / float64(sizeAtLastCheck)
 			if delta > threshold {
 				return true
 			}
@@ -1164,10 +1164,14 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 		space = "complete"
 	}
 	PrintMessage(ECTLCCheckingTemporalProps, space, fmtInt64(sum), branches)
+	var firstErr error
 	for _, checker := range lc.Checkers {
 		found, err := checker.CheckSccs(tool, finalCheck)
 		if err != nil {
-			return ECGeneral, err
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
 		}
 		if found {
 			PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
@@ -1177,6 +1181,9 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 			}
 			return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
 		}
+	}
+	if firstErr != nil {
+		return ECGeneral, firstErr
 	}
 	PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
 	return NoError, nil
@@ -1225,6 +1232,62 @@ func (c *LiveChecker) GraphSize() int64 {
 		return int64(c.DiskGraph.Size())
 	}
 	return c.Size
+}
+
+func (c *LiveChecker) SizeAtLastCheck() int64 {
+	if c == nil {
+		return 0
+	}
+	if c.TableauDiskGraph != nil {
+		return c.TableauDiskGraph.GetSizeAtLastCheck()
+	}
+	if c.DiskGraph != nil {
+		return c.DiskGraph.GetSizeAtLastCheck()
+	}
+	return c.LastSize
+}
+
+func (c *LiveChecker) recordGraphSize() {
+	if c == nil {
+		return
+	}
+	if c.TableauDiskGraph != nil {
+		c.TableauDiskGraph.RecordSize()
+		c.LastSize = c.GraphSize()
+		return
+	}
+	if c.DiskGraph != nil {
+		c.DiskGraph.RecordSize()
+		c.LastSize = c.GraphSize()
+		return
+	}
+	c.LastSize = c.GraphSize()
+}
+
+func (c *LiveChecker) createDiskGraphCache() {
+	if c == nil {
+		return
+	}
+	if c.TableauDiskGraph != nil {
+		c.TableauDiskGraph.CreateCache()
+		return
+	}
+	if c.DiskGraph != nil {
+		c.DiskGraph.CreateCache()
+	}
+}
+
+func (c *LiveChecker) destroyDiskGraphCache() {
+	if c == nil {
+		return
+	}
+	if c.TableauDiskGraph != nil {
+		c.TableauDiskGraph.DestroyCache()
+		return
+	}
+	if c.DiskGraph != nil {
+		c.DiskGraph.DestroyCache()
+	}
 }
 
 func (c *LiveChecker) Close() error {

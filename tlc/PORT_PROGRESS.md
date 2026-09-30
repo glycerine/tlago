@@ -58,6 +58,7 @@
   - DFID checkpoint recovery now rebinds `Metadir` to `FromCheckpoint`, matching Java's resumed-run metadir setup.
   - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
   - Liveness SCC checks now emit Java-style temporal-property start/end messages with graph size and current/complete mode.
+  - Disk-backed liveness SCC checking now creates the graph cache for the whole PEM pass, records graph size on the disk graph like Java, and lets liveness violations take precedence over checker failures after all checkers have run.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -86,18 +87,17 @@
 ## Current Position
 
 - Latest commits:
-  - `598ad23 Report safety progress before liveness`
-  - `e8f3e6f Match BFS recovery ordering`
-  - `0531296 Align checker coverage summaries`
-  - `4e82177 Port simulator summary printing`
-  - `ee204c5 Port simulator progress reporting`
-  - `4e2d94f Wire simulator liveness checks`
-  - `4d8e5e8 Track TLC port progress`
-  - `ca4060d Honor disk graph recovery pointers`
+  - `73dd5bd Report liveness check progress`
+  - `964aa46 Honor liveness check gates`
+  - `e90c5fc Rebind DFID recovery metadir`
+  - `523ec43 Scope DFID worker ids`
+  - `74baaa2 Mirror DFID init diagnostics`
+  - `e5b08a1 Align DFID termination flow`
+  - `7eb9c3f Align periodic failure suspension`
+  - `89053f3 Replay init errors for call stacks`
 - Last verified commands before this file:
   - `go test ./tlc`
-  - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Continue breadth-first liveness comparison, especially `LiveCheck.check0`, SCC worker precedence, and counterexample reconstruction details.
+  1. Continue breadth-first liveness comparison, especially counterexample reconstruction, stuttering warnings, and DOT/debug output edge cases.
   2. Then continue into remaining checkpoint/distributed/debugger surfaces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
