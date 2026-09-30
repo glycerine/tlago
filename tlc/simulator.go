@@ -81,9 +81,6 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	if traceNum <= 0 {
 		traceNum = int64(^uint64(0) >> 1)
 	}
-	if seed == 0 {
-		seed = time.Now().UnixNano()
-	}
 	checkDeadlock := deadlock
 	if tool != nil && tool.GetModelConfig() != nil {
 		checkDeadlock = deadlock && tool.GetModelConfig().GetCheckDeadlock()

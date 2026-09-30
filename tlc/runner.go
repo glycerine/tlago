@@ -162,6 +162,7 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		return &Result{ExitStatus: ExitStatusError, ErrorCode: ECGeneral}, newTLCError(ECGeneral, "TLC runner has no tool")
 	}
 
+	t.prepareRandomSeed()
 	t.applyGlobals()
 	recorder := &MemoryRecorder{}
 	AddMessageRecorder(recorder)
@@ -228,9 +229,16 @@ func (t *TLC) applyGlobals() {
 		Globals.DFIDMax = t.DFIDDepth
 	}
 	Globals.Unlock()
-	if t.Seed != 0 {
-		SetRandomEnumerableSeed(t.Seed)
+	SetRandomEnumerableSeed(t.Seed)
+}
+
+func (t *TLC) prepareRandomSeed() {
+	if t == nil || !t.NoSeed {
+		return
 	}
+	rng := NewJavaRandomDefault()
+	t.Seed = rng.NextLong()
+	t.Aril = 0
 }
 
 func (t *TLC) processModelChecking() (*Result, error) {
@@ -336,8 +344,7 @@ func defaultTLCDebugHalt() bool {
 
 func (t *TLC) processSimulation() (*Result, error) {
 	PrintMessage(ECTLCModeSimu)
-	seed := t.Seed
-	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, seed,
+	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, t.Seed,
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),
 		WithSimulatorSchedule(t.SimulationSchedule),

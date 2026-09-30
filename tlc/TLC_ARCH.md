@@ -1207,6 +1207,11 @@ Port guidance:
   seeds the simulator RNG with `seed`, advances it by `aril` `nextDouble()`
   calls, and seeds `RandomEnumerableValues` with the original `seed`, not
   `seed + aril`. `TLCGet("config")` must report the original pair.
+- Java treats seed absence, not seed value zero, as the cue to draw a seed from
+  a no-argument `RandomGenerator`. An explicit `-seed 0` must be replayable as
+  zero. The no-argument generator follows `java.util.Random()` seeding via the
+  `seedUniquifier() ^ nanoTime` pattern; DFID uses the same constructor before
+  reseeding its worker RNG from `nextLong()`.
 - Java's `tlc2.tool.ModelChecker.vetoCleanup` property forces metadata
   retention even when `-cleanup` was requested; Go mirrors it with the same key
   plus `TLAGO_MODEL_CHECKER_VETO_CLEANUP`.

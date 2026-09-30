@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"math"
-	"time"
 )
 
 type DFIDWorker struct {
@@ -33,7 +32,7 @@ func NewDFIDWorker(id int, toLevel int, checker *DFIDModelChecker) *DFIDWorker {
 	if maxDepth < 1 {
 		maxDepth = 1
 	}
-	seedSource := NewJavaRandom(time.Now().UnixNano())
+	seedSource := NewJavaRandomDefault()
 	rng := NewJavaRandom(seedSource.NextLong())
 	worker := &DFIDWorker{
 		ID:             id,

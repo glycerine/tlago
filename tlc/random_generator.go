@@ -3,6 +3,8 @@ package tlc
 import (
 	"math"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 const (
@@ -20,11 +22,26 @@ type JavaRandom struct {
 }
 
 var javaRandomPrimes = generateJavaRandomPrimes()
+var javaRandomSeedUniquifierValue int64 = 8682522807148012
 
 func NewJavaRandom(seed int64) *JavaRandom {
 	r := &JavaRandom{}
 	r.SetSeed(seed)
 	return r
+}
+
+func NewJavaRandomDefault() *JavaRandom {
+	return NewJavaRandom(javaRandomSeedUniquifier() ^ time.Now().UnixNano())
+}
+
+func javaRandomSeedUniquifier() int64 {
+	for {
+		current := atomic.LoadInt64(&javaRandomSeedUniquifierValue)
+		next := current * 1181783497276652981
+		if atomic.CompareAndSwapInt64(&javaRandomSeedUniquifierValue, current, next) {
+			return next
+		}
+	}
 }
 
 func (r *JavaRandom) SetSeed(seed int64) {
