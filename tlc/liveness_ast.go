@@ -236,6 +236,17 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 				}
 			}
 		}
+	case OpcodeFA:
+		if len(args) >= 2 && tool != nil {
+			fval, err := tool.Eval(args[0], con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)
+			if err == nil {
+				if fcn, ok := fval.(*FcnLambdaValue); ok && fcn.FcnRcd == nil {
+					if _, err := tool.getFcnContext(fcn, expr, con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel); err == nil {
+						return ASTToLive(tool, fcn.Body, con)
+					}
+				}
+			}
+		}
 	case OpcodeCL, OpcodeLand:
 		out := NewLNConj()
 		for _, arg := range args {

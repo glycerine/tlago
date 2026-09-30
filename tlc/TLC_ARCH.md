@@ -1637,6 +1637,10 @@ Java decomposes startup liveness processing into two distinct phases:
   to `FALSE`/`TRUE` respectively. Enumeration or child-conversion failure falls
   back through the whole expression's level, matching Java's guarded
   try/catch around `tool.contexts`.
+- Function application mirrors Java's `OPCODE_fa` handling: if the function
+  expression evaluates to a non-record lambda, the application context is
+  validated with `getFcnContext`, then the lambda body is translated with the
+  original context just as Java does.
 - `processLiveness(tool)` tags state/action predicates, pushes negation into
   positive form, simplifies, converts to DNF, classifies each DNF conjunct into
   `<>[]A`, `[]<>A`, `<>[]S`, and remaining action-free temporal formulae, bins
