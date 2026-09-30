@@ -9,9 +9,10 @@ import (
 )
 
 type ValueOutputStream struct {
-	out     io.Writer
-	closer  io.Closer
-	handles map[uintptr]int
+	out            io.Writer
+	closer         io.Closer
+	handles        map[uintptr]int
+	disableHandles bool
 }
 
 type orderedCloser []io.Closer
@@ -41,6 +42,12 @@ func (c orderedCloser) Close() error {
 
 func NewValueOutputStream(out io.Writer) *ValueOutputStream {
 	return NewValueOutputStreamWithCompression(out, false)
+}
+
+func NewValueOutputStreamWithoutHandles(out io.Writer) *ValueOutputStream {
+	stream := NewValueOutputStream(out)
+	stream.disableHandles = true
+	return stream
 }
 
 func NewValueOutputStreamWithCompression(out io.Writer, compress bool) *ValueOutputStream {
@@ -127,6 +134,9 @@ func (s *ValueOutputStream) Close() error {
 }
 
 func (s *ValueOutputStream) Put(value any) int {
+	if s.disableHandles {
+		return -1
+	}
 	key := pointerKey(value)
 	if key == 0 {
 		return -1

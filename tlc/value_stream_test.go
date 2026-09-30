@@ -113,6 +113,37 @@ func TestValueStreamsGlobalCompressionRoundTrip(t *testing.T) {
 	}
 }
 
+func TestValueOutputStreamWithoutHandlesExpandsRepeatedObjects(t *testing.T) {
+	repeated := NewTupleValue([]Value{NewIntValue(1)})
+
+	var shared bytes.Buffer
+	sharedOut := NewValueOutputStream(&shared)
+	if err := sharedOut.Write(repeated); err != nil {
+		t.Fatalf("shared first Write returned error: %v", err)
+	}
+	if err := sharedOut.Write(repeated); err != nil {
+		t.Fatalf("shared second Write returned error: %v", err)
+	}
+	if !bytes.Contains(shared.Bytes(), []byte{byte(DummyValueKind)}) {
+		t.Fatalf("ordinary stream did not emit dummy handle for repeated value: %x", shared.Bytes())
+	}
+
+	var expanded bytes.Buffer
+	expandedOut := NewValueOutputStreamWithoutHandles(&expanded)
+	if err := expandedOut.Write(repeated); err != nil {
+		t.Fatalf("expanded first Write returned error: %v", err)
+	}
+	if err := expandedOut.Write(repeated); err != nil {
+		t.Fatalf("expanded second Write returned error: %v", err)
+	}
+	if bytes.Contains(expanded.Bytes(), []byte{byte(DummyValueKind)}) {
+		t.Fatalf("no-handle stream emitted dummy handle: %x", expanded.Bytes())
+	}
+	if expanded.Len() <= shared.Len() {
+		t.Fatalf("expanded stream length = %d, want larger than handle-sharing length %d", expanded.Len(), shared.Len())
+	}
+}
+
 func TestValueInputStreamBlindReadStringValue(t *testing.T) {
 	const text = "Hippopotomonstrosesquippedaliophobia"
 	var buf bytes.Buffer
