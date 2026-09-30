@@ -1895,6 +1895,13 @@ Port guidance:
 - The Go port should keep `TLCServer`, `DistributedWorker`,
   `DistributedFPSetManager`, and `NextStateResult` concrete. Transport can wrap
   these structs later.
+- Distributed fingerprint checkpointing is filename-paired. Java
+  `FPSetManager.Checkpoint.run` calls `beginChkpt(filename)` and
+  `commitChkpt(filename)` on the same remote FP set; the later manager-level
+  `commitChkpt()` is a no-op for the distributed manager. The Go concrete
+  `DistributedFPSetManager` records the active checkpoint filename so
+  `Checkpoint(filename)` and `CommitCheckpoint()` commit the same file-named
+  checkpoint.
 - Any worker/server map that is iterated for progress output must use `InsMap`.
   Fingerprint holder de-duplication may use a Go map only if iteration is over a
   separately maintained sorted fingerprint slice.

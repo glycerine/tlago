@@ -63,10 +63,11 @@ func (r *NextStateResult) GetNextStates() []*StateVec {
 }
 
 type DistributedFPSetManager struct {
-	Sets        []FPSet
-	Shift       uint
-	StatesSeen  atomic.Uint64
-	Description string
+	Sets               []FPSet
+	Shift              uint
+	StatesSeen         atomic.Uint64
+	Description        string
+	checkpointFilename string
 }
 
 func NewDistributedFPSetManager(sets ...FPSet) *DistributedFPSetManager {
@@ -195,6 +196,7 @@ func (m *DistributedFPSetManager) Checkpoint(filename string) error {
 	if m == nil {
 		return nil
 	}
+	m.checkpointFilename = filename
 	for _, set := range m.Sets {
 		if set != nil {
 			if err := set.BeginChkptFile(filename); err != nil {
@@ -209,13 +211,19 @@ func (m *DistributedFPSetManager) CommitCheckpoint() error {
 	if m == nil {
 		return nil
 	}
+	filename := m.checkpointFilename
 	for _, set := range m.Sets {
 		if set != nil {
-			if err := set.CommitChkpt(); err != nil {
+			if filename != "" {
+				if err := set.CommitChkptFile(filename); err != nil {
+					return err
+				}
+			} else if err := set.CommitChkpt(); err != nil {
 				return err
 			}
 		}
 	}
+	m.checkpointFilename = ""
 	return nil
 }
 
