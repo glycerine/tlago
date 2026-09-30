@@ -611,6 +611,10 @@ Implementations:
 - `MultiFPSet`: partitions fingerprints by high-order bits over nested FPSets.
 - `NoopFPSet`: testing/no-op behavior.
 - distributed wrappers and managers for RMI-based distributed TLC.
+- `OffHeapDiskFPSet` uses open addressing over `LongArray` and chooses one of
+  three indexers: bit-shifting for power-of-two position counts, a multiply-high
+  1024MiB-multiple indexer, or an exact/infinite-precision fallback. The Go port
+  keeps these as one concrete `OffHeapIndexer` with a kind field.
 
 Factory/configuration behavior:
 
