@@ -336,6 +336,11 @@ Tricky details:
   zero-arity operator definitions; `INVARIANT` and `PROPERTY` ignore literal
   `TRUE` but reject literal `FALSE` or non-boolean values with
   `TLC_CONFIG_ID_HAS_VALUE`; `SPECIFICATION` has its own value error wording.
+- Structural config decomposition has the same checks when it follows a
+  zero-argument operator reference inside `SPECIFICATION` or `PROPERTY`: Java
+  rejects references to parameterized operators, unknown names, literal
+  `FALSE`, and non-boolean values immediately instead of falling through and
+  classifying the expression by level.
 - Model constraints and action constraints accept zero-arity operator
   definitions. Java stores the operator definition on the body node for later
   coverage reporting, appends the body to the constraint list, ignores literal

@@ -824,6 +824,7 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 		switch v := val.(type) {
 		case *OpDefNode:
 			if v == nil || v.Arity() != 0 {
+				p.addConfigError(ECTLCConfigIDRequiresNoArg, opNodeName(pred.Operator))
 				return true
 			}
 			if tool.GetLevelBound(v.Body, c) == TLCLevelState {
@@ -833,9 +834,18 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 			p.processConfigSpec(tool, v.Body, c, subs, stack)
 			return true
 		case *BoolValue:
+			if !v.Val {
+				p.addConfigError(ECTLCConfigIDHasValue, "specification", opNodeName(pred.Operator), v.String())
+			}
 			return true
 		case *LazyValue:
 			p.processConfigSpec(tool, v.Expr, v.Con, subs, stack[:len(stack)-1])
+			return true
+		case nil:
+			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "specification", opNodeName(pred.Operator))
+			return true
+		default:
+			p.addConfigError(ECTLCConfigIDHasValue, "specification", opNodeName(pred.Operator), configValueString(v))
 			return true
 		}
 	}
@@ -939,6 +949,7 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 		switch v := val.(type) {
 		case *OpDefNode:
 			if v == nil || v.Arity() != 0 {
+				p.addConfigError(ECTLCConfigIDRequiresNoArg, opNodeName(opNode))
 				return true
 			}
 			opName := name
@@ -948,9 +959,18 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 			p.processConfigProperty(tool, opName, configName, v.Body, c, subs)
 			return true
 		case *BoolValue:
+			if !v.Val {
+				p.addConfigError(ECTLCConfigIDHasValue, "property", opNodeName(opNode), v.String())
+			}
 			return true
 		case *LazyValue:
 			p.processConfigProperty(tool, name, configName, v.Expr, v.Con, subs)
+			return true
+		case nil:
+			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "property", opNodeName(opNode))
+			return true
+		default:
+			p.addConfigError(ECTLCConfigIDHasValue, "property", opNodeName(opNode), configValueString(v))
 			return true
 		}
 	}
@@ -1143,6 +1163,13 @@ func configValueString(value any) string {
 		return s.String()
 	}
 	return fmt.Sprint(value)
+}
+
+func opNodeName(node *SymbolNode) string {
+	if node == nil || node.Name == nil {
+		return "<unknown>"
+	}
+	return node.Name.String()
 }
 
 func (p *SpecProcessor) constraintNodesFromConfigNames(names []string, kind string, noArgCode int, undefinedCode int, valueCode int) []SemanticNode {
