@@ -53,6 +53,7 @@
   - Initial-state exceptions now print the Java-shaped init failure message and replay init generation with `CallStackTool`, including fingerprint-exception handling.
   - Periodic-work liveness/periodic-condition failures now leave the state queue suspended for outer termination, matching Java's error-return path.
   - DFID clean termination now reports success instead of `GENERAL`, and DFID next-state replay can run through `CallStackTool` like Java's `DFIDModelChecker`.
+  - DFID init now prints Java-shaped invariant/implied-init diagnostics and replays init exceptions with `CallStackTool`.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -93,6 +94,6 @@
   - `go test ./tlc`
   - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Continue breadth-first comparison of `DFIDModelChecker.java`/`DFIDWorker.java`, especially init diagnostics and trace printing fidelity.
+  1. Continue breadth-first comparison of `DFIDModelChecker.java`/`DFIDWorker.java`, especially trace printing fidelity and checkpoint/recovery details.
   2. Then continue into remaining liveness checkpoint/error-trace and distributed pieces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.

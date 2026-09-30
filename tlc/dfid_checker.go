@@ -91,9 +91,14 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		return result, nil
 	}
 	result, err := mc.DoInit(false)
-	if err != nil || result != NoError {
+	if err != nil {
+		result = mc.reportInitException(result, err)
 		mc.PrintSummary(false)
 		return result, err
+	}
+	if result != NoError {
+		mc.PrintSummary(false)
+		return result, nil
 	}
 	if recovered {
 		PrintMessage(ECTLCInitGenerated3, fmtInt64(mc.StatesGenerated), fmtInt(len(mc.InitStates)))
@@ -456,8 +461,15 @@ func (mc *DFIDModelChecker) DoPeriodicWork() (int, error) {
 
 func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	_ = ignoreCancel
+	return mc.doInitWithTool(mc.Tool)
+}
+
+func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 	vec := NewStateVec(0)
-	if err := mc.Tool.GetInitStates(NewStateFunctor(vec.AddElement)); err != nil {
+	if tool == nil {
+		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
+	}
+	if err := tool.GetInitStates(NewStateFunctor(vec.AddElement)); err != nil {
 		return ECGeneral, err
 	}
 	mc.StatesGenerated += int64(vec.Size())
@@ -465,15 +477,16 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	mc.InitFPs = make([]uint64, 0, vec.Size())
 	for i := 0; i < vec.Size(); i++ {
 		state := vec.At(i)
-		if !mc.Tool.IsGoodState(state) {
+		if !tool.IsGoodState(state) {
 			if mc.SetErrState(state, nil, false, ECTLCStateNotCompletelySpecifiedInitial) {
 				PrintError(ECTLCStateNotCompletelySpecifiedInitial, state.String())
 			}
 			return ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
 		status := FPIntStatusNew
-		inModel, err := mc.Tool.IsInModel(state)
+		inModel, err := tool.IsInModel(state)
 		if err != nil {
+			mc.ErrState = state
 			return ECGeneral, err
 		}
 		if inModel {
@@ -488,7 +501,8 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 					}
 				}
 				if mc.CheckLiveness && mc.LiveCheck != nil {
-					if err := mc.LiveCheck.AddInitState(mc.Tool, state, fp); err != nil {
+					if err := mc.LiveCheck.AddInitState(tool, state, fp); err != nil {
+						mc.ErrState = state
 						return ECGeneral, err
 					}
 				}
@@ -497,23 +511,35 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 		if status != FPIntStatusNew {
 			continue
 		}
-		for _, invariant := range mc.Tool.GetInvariants() {
-			valid, err := mc.Tool.IsValidState(invariant, state)
+		for k, invariant := range tool.GetInvariants() {
+			valid, err := tool.IsValidState(invariant, state)
 			if err != nil {
+				mc.ErrState = state
 				return ECTLCInvariantEvaluationFailed, err
 			}
 			if !valid {
 				mc.SetErrState(state, nil, false, ECTLCInvariantViolatedInitial)
+				alias := state
+				if tool != nil {
+					alias = tool.EvalAlias(state, state)
+				}
+				PrintError(ECTLCInvariantViolatedInitial, nameAt(tool.GetInvNames(), k), alias.String())
 				return ECTLCInvariantViolatedInitial, nil
 			}
 		}
-		for _, implied := range mc.Tool.GetImpliedInits() {
-			valid, err := mc.Tool.IsValidState(implied, state)
+		for k, implied := range tool.GetImpliedInits() {
+			valid, err := tool.IsValidState(implied, state)
 			if err != nil {
+				mc.ErrState = state
 				return ECTLCPropertyViolatedInitial, err
 			}
 			if !valid {
 				mc.SetErrState(state, nil, false, ECTLCPropertyViolatedInitial)
+				alias := state
+				if tool != nil {
+					alias = tool.EvalAlias(state, state)
+				}
+				PrintError(ECTLCPropertyViolatedInitial, nameAt(tool.GetImpliedInitNames(), k), alias.String())
 				return ECTLCPropertyViolatedInitial, nil
 			}
 		}
@@ -525,6 +551,41 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 		return ECTLCNoStatesSatisfyingInitAndConstraint, nil
 	}
 	return NoError, nil
+}
+
+func (mc *DFIDModelChecker) reportInitException(result int, err error) int {
+	if result == NoError {
+		result = initExceptionCode(err)
+	}
+	message := ""
+	if err != nil {
+		message = err.Error()
+	}
+	if message == "" {
+		message = fmt.Sprintf("%T", err)
+	}
+	if mc.ErrState != nil {
+		PrintError(ECTLCInitialState, message, mc.ErrState.String())
+	} else {
+		PrintError(ECGeneral, "computing initial states", message)
+	}
+	if replayResult := mc.replayInitErrorCallStack(result); replayResult != NoError {
+		result = replayResult
+	}
+	return result
+}
+
+func (mc *DFIDModelChecker) replayInitErrorCallStack(fallback int) int {
+	if mc == nil || mc.Tool == nil {
+		return fallback
+	}
+	mc.StatesGenerated = 0
+	callStackTool := NewCallStackTool(mc.Tool)
+	if _, err := mc.doInitWithTool(callStackTool); err != nil {
+		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
+		return ECTLCNestedExpression
+	}
+	return fallback
 }
 
 func (mc *DFIDModelChecker) Checkpoint() error {
