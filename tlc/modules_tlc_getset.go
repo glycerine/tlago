@@ -32,6 +32,7 @@ var (
 	tlcGetDepth      = UniqueStringOf("depth")
 	tlcGetAril       = UniqueStringOf("aril")
 	tlcGetSched      = UniqueStringOf("sched")
+	tlcGetRevision   = UniqueStringOf("revision")
 	tlcGetLevel      = UniqueStringOf("level")
 	tlcGetStats      = UniqueStringOf("stats")
 	tlcGetDuration   = UniqueStringOf("duration")
@@ -44,6 +45,10 @@ var (
 	tlcGetLevelMean  = UniqueStringOf("levelmean")
 	tlcGetLevelVar   = UniqueStringOf("levelvariance")
 	tlcGetCount      = UniqueStringOf("count")
+	tlcRevTimestamp  = UniqueStringOf("timestamp")
+	tlcRevDate       = UniqueStringOf("date")
+	tlcRevTag        = UniqueStringOf("tag")
+	tlcRevCalver     = UniqueStringOf("calver")
 	tlcSpecInits     = UniqueStringOf("inits")
 	tlcSpecActions   = UniqueStringOf("actions")
 	tlcSpecTemporals = UniqueStringOf("temporals")
@@ -135,6 +140,8 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 		if simulator != nil {
 			return simulator.GetConfig(), nil
 		}
+	case tlcGetRevision:
+		return tlcRevisionRecord(), nil
 	case tlcGetSpec:
 		return tlcSpecRecord(tool), nil
 	case tlcGetLevel:
@@ -252,21 +259,51 @@ func tlcSpecRecord(tool *Tool) Value {
 		tlcSpecImplActs,
 	}
 	values := []Value{
-		actionSetValue(tool.GetInitStateSpec()),
-		actionSetValue(tool.GetActions()),
-		actionSetValue(tool.GetTemporals()),
-		actionSetValue(filterInternalActions(tool.GetInvariants())),
-		actionSetValue(tool.GetImpliedInits()),
-		actionSetValue(tool.GetImpliedTemporals()),
+		initActionSetValue(tool.GetInitStateSpec()),
+		nextActionSetValue(tool.GetActions()),
+		propertyActionSetValue(tool.GetTemporals()),
+		propertyActionSetValue(filterInternalActions(tool.GetInvariants())),
+		propertyActionSetValue(tool.GetImpliedInits()),
+		propertyActionSetValue(tool.GetImpliedTemporals()),
 		stateVariablesSetValue(),
 		semanticNodeSetValue(tool.GetActionConstraints()),
 		semanticNodeSetValue(tool.GetModelConstraints()),
-		actionSetValue(tool.GetImpliedActions()),
+		propertyActionSetValue(tool.GetImpliedActions()),
 	}
 	return NewRecordValue(names, values, false)
 }
 
-func actionSetValue(actions []*Action) Value {
+func tlcRevisionRecord() Value {
+	names := []*UniqueString{
+		tlcGetCount,
+		tlcRevTimestamp,
+		tlcRevDate,
+		tlcRevTag,
+		tlcRevCalver,
+	}
+	values := []Value{
+		IntZero,
+		IntZero,
+		NewStringValue("1970-01-01T00:00:00.0Z"),
+		NewStringValue("dev"),
+		NewStringValue("dev"),
+	}
+	return NewRecordValue(names, values, false)
+}
+
+func initActionSetValue(actions []*Action) Value {
+	return actionSetValue(actions, initActionRecordValue)
+}
+
+func nextActionSetValue(actions []*Action) Value {
+	return actionSetValue(actions, nextActionRecordValue)
+}
+
+func propertyActionSetValue(actions []*Action) Value {
+	return actionSetValue(actions, propertyActionRecordValue)
+}
+
+func actionSetValue(actions []*Action, convert func(*Action) Value) Value {
 	if len(actions) == 0 {
 		return EmptySet
 	}
@@ -275,9 +312,57 @@ func actionSetValue(actions []*Action) Value {
 		if action == nil {
 			action = UnknownAction
 		}
-		values = append(values, action.ToRecordValue())
+		values = append(values, convert(action))
 	}
 	return NewSetEnumValue(values, false)
+}
+
+func nextActionRecordValue(action *Action) Value {
+	if action != nil && action.CM.HasValues() {
+		coverage := NewRecordValue(
+			[]*UniqueString{tlcGetGenerated, tlcGetDistinct},
+			[]Value{intValueFromInt64(action.CM.GetPrimary()), intValueFromInt64(action.CM.GetSecondary())},
+			false,
+		)
+		return actionRecordValueWithCoverage(action, coverage)
+	}
+	return action.ToRecordValue()
+}
+
+func initActionRecordValue(action *Action) Value {
+	if action != nil && action.CM.HasValues() {
+		coverage := NewRecordValue(
+			[]*UniqueString{tlcGetGenerated, tlcGetDistinct},
+			[]Value{intValueFromInt64(action.CM.GetPrimary() + action.CM.GetSecondary()), intValueFromInt64(action.CM.GetPrimary())},
+			false,
+		)
+		return actionRecordValueWithCoverage(action, coverage)
+	}
+	return action.ToRecordValue()
+}
+
+func propertyActionRecordValue(action *Action) Value {
+	if action != nil && action.CM.HasValues() {
+		child := action.CM.GetChild()
+		coverage := NewRecordValue(
+			[]*UniqueString{tlcGetCount},
+			[]Value{intValueFromInt64(child.GetPrimary())},
+			false,
+		)
+		return actionRecordValueWithCoverage(action, coverage)
+	}
+	return action.ToRecordValue()
+}
+
+func actionRecordValueWithCoverage(action *Action, coverage Value) Value {
+	if action == nil {
+		action = UnknownAction
+	}
+	return NewRecordValue(
+		[]*UniqueString{actionRecordName, actionRecordLocation, tlcGetCoverage},
+		[]Value{NewStringValue(action.GetName()), NewStringValue(action.GetLocation()), coverage},
+		false,
+	)
 }
 
 func filterInternalActions(actions []*Action) []*Action {
