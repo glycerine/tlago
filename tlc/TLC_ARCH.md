@@ -1167,6 +1167,10 @@ Port guidance:
   fully to Java-style fingerprint replay.
 - Worker-local concurrent traces keep Java's separate record format:
   `longNat(predecessorPointer)`, `shortNat(predecessorWorker)`, fingerprint.
+- `ConcurrentTLCTrace` checkpointing deliberately skips the shared `TLCTrace`
+  checkpoint path. It checkpoints each worker trace fragment and creates the
+  shared `MC.st.chkpt` marker file for Toolbox/script compatibility, matching
+  Java's override.
 - State numbering and action labels in printed traces are test-observed.
 
 ## Simulation Architecture

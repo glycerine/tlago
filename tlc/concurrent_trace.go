@@ -216,15 +216,13 @@ func (t *ConcurrentTLCTrace) CommitChkpt() error {
 			}
 		}
 	}
-	if t.TLCTrace != nil {
-		if err := t.TLCTrace.CommitChkpt(); err != nil {
-			return err
-		}
-	}
 	if t.TLCTrace == nil || t.diskdir == "" {
 		return nil
 	}
-	file, err := os.OpenFile(t.chkptName("chkpt"), os.O_CREATE|os.O_RDWR, 0o644)
+	file, err := os.OpenFile(t.chkptName("chkpt"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -242,9 +240,6 @@ func (t *ConcurrentTLCTrace) BeginChkpt() error {
 			}
 		}
 	}
-	if t.TLCTrace != nil {
-		return t.TLCTrace.BeginChkpt()
-	}
 	return nil
 }
 
@@ -258,9 +253,6 @@ func (t *ConcurrentTLCTrace) Recover() error {
 				return err
 			}
 		}
-	}
-	if t.TLCTrace != nil {
-		return t.TLCTrace.Recover()
 	}
 	return nil
 }
