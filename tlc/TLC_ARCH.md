@@ -427,6 +427,10 @@ Important implementation patterns:
 - `GetVar` must recurse through `SubstInNode`, `APSubstInNode`, `LetInNode`,
   labels, lazy values, and operator definitions before deciding that an
   operator application is a state variable.
+- `GetPrimedVar` has the same decomposition shape and only succeeds when the
+  expanded expression is a prime application whose argument resolves through
+  `GetVar`. This is how Java recognizes assignments hidden behind labels,
+  substitutions, LET aliases, lazy values, or zero-arity operator definitions.
 - `GetLevelBound` is only a conservative bound. It returns temporal/action
   constants immediately for temporal/action opcodes, treats `ENABLED` as state
   level, scans bounded-quantifier ranges and arguments, avoids recursive

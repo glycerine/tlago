@@ -836,12 +836,47 @@ func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
 }
 
 func (t *Tool) GetPrimedVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
-	appl, ok := expr.(*OpApplNode)
-	if !ok || appl.Operator == nil || appl.Operator.Name == nil {
+	if c == nil {
+		c = EmptyContext
+	}
+	switch expr := expr.(type) {
+	case *SubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, DoNotRecordCostModel))
+		}
+		return t.GetPrimedVar(expr.Body, c1, cutoff)
+	case *APSubstInNode:
+		c1 := c
+		for _, sub := range expr.Substs {
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, DoNotRecordCostModel))
+		}
+		return t.GetPrimedVar(expr.Body, c1, cutoff)
+	case *LetInNode:
+		return t.GetPrimedVar(expr.Body, letDefinitionsContext(c, expr.Lets, expr.Bindings...), cutoff)
+	case *LabelNode:
+		return t.GetPrimedVar(expr.Body, c, cutoff)
+	case *OpApplNode:
+		if expr.Operator == nil || expr.Operator.Name == nil {
+			return nil
+		}
+		if GetOpCode(expr.Operator.Name) == OpcodePrime && len(expr.Args) == 1 {
+			return t.GetVar(expr.Args[0], c, cutoff)
+		}
+		if len(expr.Args) != 0 {
+			return nil
+		}
+		isVarDecl := expr.Operator.Name.VarLoc() >= 0
+		val := t.LookupWithCutoff(expr.Operator, c, cutoff && isVarDecl, EmptyState, false)
+		switch v := val.(type) {
+		case *LazyValue:
+			return t.GetPrimedVar(v.Expr, v.Con, cutoff)
+		case *OpDefNode:
+			return t.GetPrimedVar(v.Body, c, cutoff)
+		default:
+			return nil
+		}
+	default:
 		return nil
 	}
-	if GetOpCode(appl.Operator.Name) == OpcodePrime && len(appl.Args) == 1 {
-		return t.GetVar(appl.Args[0], c, cutoff)
-	}
-	return nil
 }
