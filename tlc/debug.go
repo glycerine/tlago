@@ -93,15 +93,17 @@ func (s DebugStep) String() string {
 }
 
 type TLCStackFrame struct {
-	ID        int
-	Name      string
-	Node      SemanticNode
-	Context   *Context
-	Tool      *Tool
-	Exception error
-	Value     Value
-	Parent    *TLCStackFrame
-	ContextID int
+	ID              int
+	Name            string
+	Node            SemanticNode
+	Context         *Context
+	Tool            *Tool
+	Exception       error
+	Value           Value
+	Parent          *TLCStackFrame
+	ContextID       int
+	NestedVariables *InsMap[int, *DebugTLCVariable]
+	NestedConstants *InsMap[int, []*DebugTLCVariable]
 }
 
 func NewTLCStackFrame(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, exception error) *TLCStackFrame {
@@ -113,6 +115,8 @@ func NewTLCStackFrame(parent *TLCStackFrame, node SemanticNode, ctxt *Context, t
 		Exception: exception,
 		ContextID: debugVariableReference(nil),
 	}
+	frame.NestedVariables = NewInsMap[int, *DebugTLCVariable]()
+	frame.NestedConstants = NewInsMap[int, []*DebugTLCVariable]()
 	frame.ID = semanticNodeDebugID(node)
 	frame.Name = semanticNodeDebugName(node, exception)
 	return frame
@@ -182,6 +186,158 @@ func (f *TLCStackFrame) GetStackID() int {
 	return f.ContextID + 3
 }
 
+func (f *TLCStackFrame) GetScopes() []TLCScope {
+	if f == nil {
+		return nil
+	}
+	scopes := []TLCScope{}
+	if f.Context != nil && !f.Context.IsEmpty() {
+		scopes = append(scopes, TLCScope{Name: debugScopeContext, VariablesReference: f.ContextID})
+	}
+	if f.Tool != nil && f.Tool.SpecProcessor != nil && f.Tool.SpecProcessor.GetConstantDefns().Len() > 0 {
+		scopes = append(scopes, TLCScope{Name: debugScopeConstants, VariablesReference: f.GetConstantsID(), PresentationHint: debugScopeHintRegisters})
+	}
+	if f.HasStackVariables() {
+		scopes = append(scopes, TLCScope{Name: debugScopeStack, VariablesReference: f.GetStackID()})
+	}
+	return scopes
+}
+
+func (f *TLCStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	if rnd == nil {
+		rnd = rand.New(rand.NewSource(1))
+	}
+	var variables []*DebugTLCVariable
+	if f.NestedVariables != nil {
+		if variable, ok := f.NestedVariables.Get2(ref); ok && variable != nil {
+			for _, nested := range variable.Nested(rnd) {
+				f.rememberNestedVariable(nested)
+				variables = append(variables, nested)
+			}
+		}
+	}
+	if f.NestedConstants != nil {
+		if constants, ok := f.NestedConstants.Get2(ref); ok {
+			for _, constant := range constants {
+				f.rememberNestedVariable(constant)
+				variables = append(variables, constant)
+				for _, nested := range constant.Nested(rnd) {
+					f.rememberNestedVariable(nested)
+				}
+			}
+		}
+	}
+	switch ref {
+	case f.ContextID:
+		variables = append(variables, f.contextVariables(rnd)...)
+	case f.GetConstantsID():
+		variables = append(variables, f.constantVariables(rnd)...)
+	case f.GetStackID():
+		return f.stackVariables(rnd)
+	}
+	return sortedDistinctDebugVariables(variables)
+}
+
+func (f *TLCStackFrame) GetConstants(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	return f.GetVariables(f.GetConstantsID(), rnd)
+}
+
+func (f *TLCStackFrame) GetExceptionAsVariable() []*DebugTLCVariable {
+	if f == nil || f.Exception == nil {
+		return nil
+	}
+	return []*DebugTLCVariable{{
+		Name:  semanticNodeDebugName(f.Node, nil),
+		Value: f.Exception.Error(),
+		Type:  reflect.TypeOf(f.Exception).String(),
+	}}
+}
+
+func (f *TLCStackFrame) HasStackVariables() bool {
+	for cur := f; cur != nil; cur = cur.Parent {
+		if cur.Value != nil {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *TLCStackFrame) contextVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	var variables []*DebugTLCVariable
+	for c := f.Context; c != nil && c != EmptyContext; c = c.Next() {
+		name := c.Name()
+		value := c.Value()
+		if name == nil && value == nil {
+			continue
+		}
+		variables = append(variables, f.debugVariableForAny(value, symbolNodeDebugName(name), rnd))
+	}
+	return variables
+}
+
+func (f *TLCStackFrame) constantVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil || f.Tool == nil || f.Tool.SpecProcessor == nil {
+		return nil
+	}
+	constants := f.Tool.SpecProcessor.GetConstantDefns()
+	out := make([]*DebugTLCVariable, 0, constants.Len())
+	for name, value := range constants.All() {
+		out = append(out, f.debugVariableForValue(value, name, rnd))
+	}
+	return out
+}
+
+func (f *TLCStackFrame) stackVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	var variables []*DebugTLCVariable
+	for cur := f; cur != nil; cur = cur.Parent {
+		if cur.Value == nil {
+			continue
+		}
+		variables = append(variables, cur.debugVariableForValue(cur.Value, semanticNodeDebugName(cur.Node, nil), rnd))
+	}
+	return variables
+}
+
+func (f *TLCStackFrame) debugVariableForAny(value any, name string, rnd *rand.Rand) *DebugTLCVariable {
+	if workerValue, ok := value.(*WorkerValue); ok {
+		value = workerValue.ValueForWorker(CurrentThreadIDOr(0))
+	}
+	switch v := value.(type) {
+	case nil:
+		return &DebugTLCVariable{Name: name, Value: "<nil>"}
+	case Value:
+		return f.debugVariableForValue(v, name, rnd)
+	case SemanticNode:
+		return &DebugTLCVariable{Name: name, Value: SemanticString(v), Type: reflect.TypeOf(v).String()}
+	case error:
+		return &DebugTLCVariable{Name: name, Value: v.Error(), Type: reflect.TypeOf(v).String()}
+	default:
+		return &DebugTLCVariable{Name: name, Value: fmt.Sprint(v), Type: reflect.TypeOf(v).String()}
+	}
+}
+
+func (f *TLCStackFrame) debugVariableForValue(value Value, name string, rnd *rand.Rand) *DebugTLCVariable {
+	variable := debugValueToVariable(NewDebugTLCVariableName(name).SetInstance(value), value, rnd)
+	f.rememberNestedVariable(variable)
+	return variable
+}
+
+func (f *TLCStackFrame) rememberNestedVariable(variable *DebugTLCVariable) {
+	if f == nil || variable == nil || variable.VariablesReference == 0 {
+		return
+	}
+	if f.NestedVariables == nil {
+		f.NestedVariables = NewInsMap[int, *DebugTLCVariable]()
+	}
+	f.NestedVariables.Set(variable.VariablesReference, variable)
+}
+
 func (f *TLCStackFrame) MatchesFrame(other *TLCStackFrame) bool {
 	if f == nil || other == nil {
 		return f == other
@@ -233,11 +389,17 @@ func (e *AbortEvalException) Error() string {
 var DebuggerNotEvaluatedValue Value = NewStringValue("?")
 
 const (
+	debugScopeException  = "Exception"
+	debugScopeConstants  = "Constants"
+	debugScopeContext    = "Context"
+	debugScopeStack      = "Stack"
 	debugScopeState      = "State"
 	debugScopeAction     = "Action"
 	debugScopeInitials   = "Initials"
 	debugScopeSuccessors = "Successors"
 	debugScopeTrace      = "Trace"
+
+	debugScopeHintRegisters = "registers"
 )
 
 type TLCStateStackFrame struct {
@@ -294,6 +456,65 @@ func (f *TLCStateStackFrame) ToVariable(rnd *rand.Rand) *DebugTLCVariable {
 	return debugStateAsVariable(state, f.ToRecordValue(), name, rnd)
 }
 
+func (f *TLCStateStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	if ref == f.StateID {
+		return []*DebugTLCVariable{f.ToVariable(rnd)}
+	}
+	if ref == f.StateID+1 {
+		return f.TraceVariables(rnd)
+	}
+	return f.TLCStackFrame.GetVariables(ref, rnd)
+}
+
+func (f *TLCStateStackFrame) GetScopes() []TLCScope {
+	if f == nil {
+		return nil
+	}
+	scopes := append([]TLCScope{}, f.TLCStackFrame.GetScopes()...)
+	if f.HasScope() {
+		scopes = append(scopes, TLCScope{Name: f.ScopeName(), VariablesReference: f.StateID})
+	}
+	scopes = append(scopes, TLCScope{Name: debugScopeTrace, VariablesReference: f.StateID + 1})
+	return scopes
+}
+
+func (f *TLCStateStackFrame) HasScope() bool {
+	return true
+}
+
+func (f *TLCStateStackFrame) ScopeName() string {
+	return debugScopeState
+}
+
+func (f *TLCStateStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	state := f.GetT()
+	if state == nil {
+		return nil
+	}
+	var out []*DebugTLCVariable
+	if state.IsInitial() {
+		out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, nil), "1: "+debugActionLocation(state.GetAction()), rnd))
+		return out
+	}
+	if f.AddT() {
+		out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, state.Predecessor()), fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction())), rnd))
+	}
+	for predecessor := state.Predecessor(); predecessor != nil; predecessor = predecessor.Predecessor() {
+		name := fmt.Sprintf("%d: %s", predecessor.Level(), debugActionLocation(predecessor.GetAction()))
+		out = append(out, debugStateAsVariable(predecessor, debugStateRecordValue(predecessor, nil), name, rnd))
+		if predecessor.IsInitial() {
+			break
+		}
+	}
+	return out
+}
+
 type TLCActionStackFrame struct {
 	TLCStateStackFrame
 	Action *Action
@@ -343,6 +564,68 @@ func (f *TLCActionStackFrame) ToRecordValue() *RecordValue {
 	return debugStateRecordValue(state, f.GetS())
 }
 
+func (f *TLCActionStackFrame) ToVariable(rnd *rand.Rand) *DebugTLCVariable {
+	state := f.GetT()
+	name := "Action"
+	if state != nil {
+		name = fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction()))
+	}
+	return debugStateAsVariable(state, f.ToRecordValue(), name, rnd)
+}
+
+func (f *TLCActionStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	if ref == f.StateID {
+		return []*DebugTLCVariable{f.ToVariable(rnd)}
+	}
+	if ref == f.StateID+1 {
+		return f.TraceVariables(rnd)
+	}
+	return f.TLCStackFrame.GetVariables(ref, rnd)
+}
+
+func (f *TLCActionStackFrame) GetScopes() []TLCScope {
+	if f == nil {
+		return nil
+	}
+	scopes := append([]TLCScope{}, f.TLCStackFrame.GetScopes()...)
+	if f.HasScope() {
+		scopes = append(scopes, TLCScope{Name: f.ScopeName(), VariablesReference: f.StateID})
+	}
+	scopes = append(scopes, TLCScope{Name: debugScopeTrace, VariablesReference: f.StateID + 1})
+	return scopes
+}
+
+func (f *TLCActionStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	state := f.GetT()
+	if state == nil {
+		return nil
+	}
+	var out []*DebugTLCVariable
+	if state.IsInitial() {
+		out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, nil), "1: "+debugActionLocation(state.GetAction()), rnd))
+		return out
+	}
+	out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, f.GetS()), fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction())), rnd))
+	for predecessor := state.Predecessor(); predecessor != nil; predecessor = predecessor.Predecessor() {
+		name := fmt.Sprintf("%d: %s", predecessor.Level(), debugActionLocation(predecessor.GetAction()))
+		out = append(out, debugStateAsVariable(predecessor, debugStateRecordValue(predecessor, nil), name, rnd))
+		if predecessor.IsInitial() {
+			break
+		}
+	}
+	return out
+}
+
+func (f *TLCActionStackFrame) ScopeName() string {
+	return debugScopeAction
+}
+
 type TLCInitStatesStackFrame struct {
 	TLCStackFrame
 	Functor      *StateFunctor
@@ -380,6 +663,37 @@ func (f *TLCInitStatesStackFrame) GetStateVariables(rnd *rand.Rand) []*DebugTLCV
 		out = append(out, variable)
 	}
 	return out
+}
+
+func (f *TLCInitStatesStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	if ref == f.StateID {
+		return f.GetStateVariables(rnd)
+	}
+	return f.TLCStackFrame.GetVariables(ref, rnd)
+}
+
+func (f *TLCInitStatesStackFrame) GetScopes() []TLCScope {
+	if f == nil {
+		return nil
+	}
+	scopes := append([]TLCScope{}, f.TLCStackFrame.GetScopes()...)
+	scopes = append(scopes, TLCScope{Name: debugScopeInitials, VariablesReference: f.StateID})
+	return scopes
+}
+
+func (f *TLCInitStatesStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
+	if f == nil || !f.TLCStackFrame.MatchesBreakpoint(bp) {
+		return false
+	}
+	for _, state := range f.GetStates().ToSlice() {
+		if bp.MatchesExpression(f.Tool, state, EmptyState, f.Context, true) {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *TLCInitStatesStackFrame) SelectStateByReference(ref int) (bool, error) {
@@ -486,6 +800,67 @@ func (f *TLCNextStatesStackFrame) GetSuccessorVariables(rnd *rand.Rand) []*Debug
 		out = append(out, variable)
 	}
 	return out
+}
+
+func (f *TLCNextStatesStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	if ref == f.StateID {
+		return f.GetSuccessorVariables(rnd)
+	}
+	if ref == f.StateID+1 {
+		return f.TraceVariables(rnd)
+	}
+	return f.TLCStackFrame.GetVariables(ref, rnd)
+}
+
+func (f *TLCNextStatesStackFrame) GetScopes() []TLCScope {
+	if f == nil {
+		return nil
+	}
+	scopes := append([]TLCScope{}, f.TLCStackFrame.GetScopes()...)
+	if f.HasScope() {
+		scopes = append(scopes, TLCScope{Name: debugScopeSuccessors, VariablesReference: f.StateID})
+	}
+	scopes = append(scopes, TLCScope{Name: debugScopeTrace, VariablesReference: f.StateID + 1})
+	return scopes
+}
+
+func (f *TLCNextStatesStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	state := f.GetT()
+	if state == nil {
+		return nil
+	}
+	var out []*DebugTLCVariable
+	out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, nil), fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction())), rnd))
+	for predecessor := state.Predecessor(); predecessor != nil; predecessor = predecessor.Predecessor() {
+		name := fmt.Sprintf("%d: %s", predecessor.Level(), debugActionLocation(predecessor.GetAction()))
+		out = append(out, debugStateAsVariable(predecessor, debugStateRecordValue(predecessor, nil), name, rnd))
+		if predecessor.IsInitial() {
+			break
+		}
+	}
+	return out
+}
+
+func (f *TLCNextStatesStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
+	if f == nil || !f.TLCStackFrame.MatchesBreakpoint(bp) {
+		return false
+	}
+	successors := f.GetSuccessors().ToSlice()
+	if len(successors) == 0 {
+		return bp.MatchesExpression(f.Tool, f.GetS(), EmptyState, f.Context, true)
+	}
+	for _, successor := range successors {
+		if bp.MatchesExpression(f.Tool, f.GetS(), successor, f.Context, true) {
+			return true
+		}
+	}
+	return false
 }
 
 func (f *TLCNextStatesStackFrame) SelectStateByReference(ref int) (bool, error) {
@@ -621,6 +996,12 @@ type TLCBreakpoint struct {
 	Column   *int
 	Verified bool
 	Message  string
+}
+
+type TLCScope struct {
+	Name               string
+	VariablesReference int
+	PresentationHint   string
 }
 
 type DebugTLCVariable struct {
@@ -804,6 +1185,13 @@ func semanticNodeDebugName(node SemanticNode, exception error) string {
 		return "(Exception) " + name
 	}
 	return name
+}
+
+func symbolNodeDebugName(node *SymbolNode) string {
+	if node == nil || node.Name == nil {
+		return ""
+	}
+	return node.Name.String()
 }
 
 func semanticNodeLevel(node SemanticNode) int {
@@ -1086,6 +1474,25 @@ func valueStringOrEmpty(value Value) string {
 	return value.String()
 }
 
+func sortedDistinctDebugVariables(variables []*DebugTLCVariable) []*DebugTLCVariable {
+	if len(variables) == 0 {
+		return nil
+	}
+	sort.SliceStable(variables, func(i, j int) bool {
+		return variables[i].Compare(variables[j]) < 0
+	})
+	out := variables[:0]
+	for _, variable := range variables {
+		if variable == nil {
+			continue
+		}
+		if len(out) == 0 || out[len(out)-1].Compare(variable) != 0 {
+			out = append(out, variable)
+		}
+	}
+	return out
+}
+
 type TLCSourceBreakpoint struct {
 	Line               int
 	Column             *int
@@ -1321,7 +1728,60 @@ func (f *TLCDebuggerFrame) MatchesNode(node SemanticNode) bool {
 }
 
 func (f *TLCDebuggerFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
-	return f != nil && f.Base != nil && f.Base.MatchesBreakpoint(bp)
+	if f == nil {
+		return false
+	}
+	if f.Init != nil {
+		return f.Init.MatchesBreakpoint(bp)
+	}
+	if f.Next != nil {
+		return f.Next.MatchesBreakpoint(bp)
+	}
+	return f.Base != nil && f.Base.MatchesBreakpoint(bp)
+}
+
+func (f *TLCDebuggerFrame) GetScopes() []TLCScope {
+	if f == nil {
+		return nil
+	}
+	switch {
+	case f.Next != nil:
+		return f.Next.GetScopes()
+	case f.Init != nil:
+		return f.Init.GetScopes()
+	case f.Action != nil:
+		return f.Action.GetScopes()
+	case f.Synthetic != nil:
+		return f.Synthetic.GetScopes()
+	case f.State != nil:
+		return f.State.GetScopes()
+	case f.Base != nil:
+		return f.Base.GetScopes()
+	default:
+		return nil
+	}
+}
+
+func (f *TLCDebuggerFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	switch {
+	case f.Next != nil:
+		return f.Next.GetVariables(ref, rnd)
+	case f.Init != nil:
+		return f.Init.GetVariables(ref, rnd)
+	case f.Action != nil:
+		return f.Action.GetVariables(ref, rnd)
+	case f.Synthetic != nil:
+		return f.Synthetic.GetVariables(ref, rnd)
+	case f.State != nil:
+		return f.State.GetVariables(ref, rnd)
+	case f.Base != nil:
+		return f.Base.GetVariables(ref, rnd)
+	default:
+		return nil
+	}
 }
 
 func (f *TLCDebuggerFrame) Handle(debugger *TLCDebugger) bool {
@@ -1621,6 +2081,34 @@ func (d *TLCDebugger) StackFrames() []*TLCStackFrame {
 		}
 	}
 	return out
+}
+
+func (d *TLCDebugger) Scopes(frameID int) []TLCScope {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, frame := range d.Stack {
+		if frame != nil && frame.Base != nil && frame.Base.ID == frameID {
+			return frame.GetScopes()
+		}
+	}
+	return nil
+}
+
+func (d *TLCDebugger) Variables(ref int) []*DebugTLCVariable {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	rnd := rand.New(rand.NewSource(int64(max(ref, 1))))
+	var out []*DebugTLCVariable
+	for _, frame := range d.Stack {
+		out = append(out, frame.GetVariables(ref, rnd)...)
+	}
+	return sortedDistinctDebugVariables(out)
 }
 
 func (d *TLCDebugger) HaltExecution(frame *TLCStackFrame, level ...int) {

@@ -2086,12 +2086,18 @@ Important Java classes:
   context, tool, optional exception, parent, and eventual value. Java uses it
   for stepping/breakpoint target checks and for `ResetEvalException`; Go mirrors
   that as concrete `TLCStackFrame`, `ResetEvalException`, and
-  `AbortEvalException` structs.
+  `AbortEvalException` structs. Java also keeps nested variable-reference
+  caches on the frame; Go mirrors those as insertion-ordered maps and exposes
+  concrete `TLCScope`/`DebugTLCVariable` slices for `Context`, `Constants`, and
+  `Stack` scopes without pulling in DAP transport types.
 - `TLCStateStackFrame` and `TLCActionStackFrame`: Java specializes frames for
   state and action evaluation. The state frame's `getS/getT` both return the
   captured state; the action frame's `getS` returns the predecessor and `getT`
   returns the successor. Go mirrors those as embedded concrete structs and keeps
-  the pending debugger value as `"?"`.
+  the pending debugger value as `"?"`. The state/action scope split is explicit
+  because Go embedding is not Java virtual dispatch: action frames provide their
+  own `Action` and `Trace` variable accessors rather than relying on inherited
+  state-frame methods to override themselves.
 - `TLCSyntheticStateStackFrame`: a manually inserted marker frame for trace
   display. It is still a state frame, but it also stores the successor used when
   evaluating expressions against a trace edge.
@@ -2103,7 +2109,9 @@ Important Java classes:
   lexicographically by state text; successor states cluster by action location
   before state text. Step-in chooses the successor with minimum string Hamming
   distance; step-over chooses maximum; step-out selects the predecessor or halts
-  the functor.
+  the functor. The Go frames expose `Initials`, `Successors`, and `Trace`
+  scopes directly, maintain the variable-reference-to-state selection maps, and
+  apply conditional breakpoint expressions against the generated states.
 - `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
   stack-frame list, stepping state, granularity, halt flags, and the connection
   to the debug adapter. The Go port keeps a concrete `TLCDebuggerFrame` union
