@@ -107,7 +107,7 @@ func (w *LivenessStateWriter) WriteLivenessInitState(state *TLCStateMut, tableau
 	_, err := fmt.Fprintf(w.writer, "\"%d.%d\" [style = filled] [label=\"%s\\n#%d.%d#\"]\n",
 		fp,
 		tableauNode.Index,
-		stateToDot(state, nil),
+		stateToDot(state, nil, false),
 		fp,
 		tableauNode.Index,
 	)
@@ -155,7 +155,7 @@ func (w *LivenessStateWriter) WriteLivenessTransitionVisual(state *TLCStateMut, 
 		_, err := fmt.Fprintf(w.writer, "\"%d.%d\" [label=\"%s\\n#%d.%d#\"];\n",
 			successorFP,
 			successorTableauNode.Index,
-			stateToDot(successor, nil),
+			stateToDot(successor, nil, false),
 			successorFP,
 			successorTableauNode.Index,
 		)

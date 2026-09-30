@@ -113,7 +113,7 @@ func (w *StateWriter) WriteInitState(state *TLCStateMut) error {
 	}
 	if w.Dot {
 		fp := state.FingerPrint()
-		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", fp, stateToDot(state, nil))
+		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", fp, stateToDot(state, nil, false))
 		w.maintainRank(state)
 		if err == nil && w.snapshot {
 			err = w.Snapshot()
@@ -180,7 +180,12 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 		if status == StateVisitNotInModel {
 			style = ",style = filled, fillcolor=lightyellow"
 		}
-		_, err = fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"%s];\n", sfp, stateToDot(succState, curState), stateToDot(succState, nil), style)
+		_, err = fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"%s];\n",
+			sfp,
+			stateToDot(succState, curState, printDiffsOnly()),
+			stateToDot(succState, nil, false),
+			style,
+		)
 	}
 	w.maintainRank(curState)
 	if err == nil && w.snapshot {
@@ -329,11 +334,14 @@ func (w *StateWriter) dotClosingTrailer() string {
 	return b.String()
 }
 
-func stateToDot(state *TLCStateMut, pred *TLCStateMut) string {
+func stateToDot(state *TLCStateMut, pred *TLCStateMut, diffsOnly bool) string {
 	if state == nil {
 		return ""
 	}
-	return dotEscape(strings.TrimSpace(state.StringForVariables(pred)))
+	if pred != nil && diffsOnly {
+		return dotEscape(strings.TrimSpace(state.StringForVariables(pred)))
+	}
+	return dotEscape(strings.TrimSpace(state.String()))
 }
 
 func dotEscape(text string) string {

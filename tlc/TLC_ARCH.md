@@ -165,6 +165,11 @@ Port guidance:
   requested class name in `RuntimeParameters.CustomStateWriterClass` and uses a
   no-op writer until a Go extension hook exists; do not add a one-method writer
   interface only for this placeholder.
+- Java's `DotStateWriter` prints full successor labels unless
+  `TLCGlobals.printDiffsOnly` is set. Stuttering is an explicit
+  `Visualization.STUTTERING` hint; an ordinary self-loop is still an ordinary
+  edge. Keep those decisions on the concrete `StateWriter` rather than adding
+  writer interfaces.
 - Java defaults simulation `traceNum` to `Long.MAX_VALUE`, not one trace. Go
   runner and simulator defaults must preserve that, with explicit `num=` or API
   options narrowing the trace count.
