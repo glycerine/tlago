@@ -82,6 +82,10 @@ func PrintBackToState(currentStateInfo *TLCStateInfo, stateNum int) {
 	if currentStateInfo != nil {
 		infoString = fmt.Sprint(currentStateInfo.Info)
 	}
+	if toolModeEnabled() {
+		PrintState(ECTLCBackToState, []string{fmt.Sprintf("%d", stateNum), infoString}, nil, stateNum)
+		return
+	}
 	PrintMessage(ECTLCBackToState, fmt.Sprintf("%d", stateNum), infoString)
 }
 
@@ -89,4 +93,10 @@ func printDiffsOnly() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.PrintDiffsOnly
+}
+
+func toolModeEnabled() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.Tool
 }
