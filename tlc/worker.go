@@ -91,11 +91,29 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 		w.RecordOutDegree()
 		return w.Checker.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, ""), nil
 	}
+	if w.Checker.CheckLiveness {
+		if err := w.CheckLiveness(curState); err != nil {
+			w.Checker.doNextFailed(curState, nil, err)
+			return true, err
+		}
+	}
 	if w.SetOfStates != nil && w.SetOfStates.Capacity() > w.SetOfStatesMultiplier*workerSetOfStatesInitialCapacity {
 		w.SetOfStatesMultiplier++
 	}
 	w.RecordOutDegree()
 	return false, nil
+}
+
+func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
+	if w == nil || w.Checker == nil || w.Checker.LiveCheck == nil || curState == nil {
+		return nil
+	}
+	if w.SetOfStates == nil {
+		w.SetOfStates = w.CreateSetOfStates()
+	}
+	curFP := curState.FingerPrint()
+	w.SetOfStates.PutFP(curFP, curState)
+	return w.Checker.LiveCheck.AddNextState(w.Tool.NoDebug(), curState, curFP, w.SetOfStates)
 }
 
 func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {

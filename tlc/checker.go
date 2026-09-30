@@ -676,13 +676,6 @@ func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCSt
 	}
 	unseen := true
 	if inModel {
-		if mc.CheckLiveness && mc.LiveCheck != nil {
-			liveStates := NewSetOfStates(1)
-			liveStates.Put(succState)
-			if err := mc.LiveCheck.AddNextState(mc.Tool, curState, curState.FingerPrint(), liveStates); err != nil {
-				return true, false, err
-			}
-		}
 		seen, err := mc.isSeenState(curState, succState, action)
 		if err != nil {
 			return true, false, err
