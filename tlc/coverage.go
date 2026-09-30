@@ -39,7 +39,7 @@ func newActionCostModel(action *Action, relation CoverageRelation) CostModel {
 	root := newCostModelNode(action.Pred, nil)
 	root.Action = action
 	root.Relation = relation
-	root.Substs = NewInsMap[semanticNodeKey, *CostModelNode]()
+	root.Substs = NewInsMap[uint64, *CostModelNode]()
 	return CostModel{node: root}
 }
 
@@ -49,9 +49,9 @@ func (m CostModel) PutSubst(subst Subst, child CostModel) CostModel {
 		return m
 	}
 	if root.node.Substs == nil {
-		root.node.Substs = NewInsMap[semanticNodeKey, *CostModelNode]()
+		root.node.Substs = NewInsMap[uint64, *CostModelNode]()
 	}
-	root.node.Substs.Set(newSemanticNodeKey(subst.Expr), child.node)
+	root.node.Substs.Set(substIdentity(subst), child.node)
 	return m
 }
 

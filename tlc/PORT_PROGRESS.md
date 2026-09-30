@@ -10,6 +10,7 @@
 - Already audited recently; do not loop on the standard TLC module override registry unless touched: Java's built-in overrides are `TLCGetSet`, `TLCEval`, `TLCExt`, `Json`, `_TLCTrace`, `_JsonTrace`, and `_Possible`; the older static module surfaces for Naturals/Integers/Sequences/FiniteSets/Bags/TLC/Randomization/TransitiveClosure/Strings are represented in `standard_definitions.go` and `modules_*.go`. Public-looking `Remove`, `FApply`, `FSum`, and FiniteSets list helpers in Java source are commented-out code, not active override surface.
 - Already audited recently; do not loop on `TraceApp`: Java only defines reconstruction/evalAlias methods as an interface; Go keeps the equivalent behavior as concrete `Tool`, `TLCTrace`, and `ConcurrentTLCTrace` methods.
 - Already audited recently; do not loop on the core `TLCState` hierarchy unless touched: Go intentionally collapses Java `TLCStateMut`/`TLCStateMutExt` into one concrete mutable state; raw `GetAction` now matches Java by returning nil when no action is attached, while `TLCStateInfo.Action()`/counterexample code provide the `UnknownAction` fallback.
+- Already audited recently; do not loop on coverage substitution keying unless touched: Java keys `ActionWrapper.substs` by `Subst` object identity, and Go now gives each `Subst` an internal stable identity assigned by `NewSubstInNode`/`NewAPSubstInNode`.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -85,6 +86,7 @@
   - `StateVec` now mirrors Java's explicit backing-array growth policy instead of relying on Go's hidden slice growth, preserving the larger-vector `addElements` behavior and configured `setBound` checks at growth points.
   - `MemFPIntSet` now mirrors Java's bucket-splitting rehash order for DFID fingerprint statuses, preserving checkpoint write order instead of using Go append redistribution.
   - `TLCStateMut.GetAction` now preserves Java's distinction between no attached action and the explicit `Action.UNKNOWN` fallback used by TLCGet/counterexample records.
+  - Coverage cost models now key substitution wrappers by stable substitution identity instead of substituted-expression identity, matching Java `Subst` object-key behavior and avoiding accidental collapse of distinct substitutions with the same expression.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

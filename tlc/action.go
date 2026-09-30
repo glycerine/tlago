@@ -21,7 +21,7 @@ type CostModelNode struct {
 	Parent            *CostModelNode
 	Children          *InsMap[semanticNodeKey, *CostModelNode]
 	Lets              *InsMap[semanticNodeKey, *CostModelNode]
-	Substs            *InsMap[semanticNodeKey, *CostModelNode]
+	Substs            *InsMap[uint64, *CostModelNode]
 	ChildCounts       []coveragePair
 	Recursive         *CostModelNode
 	Primed            bool
@@ -234,7 +234,7 @@ func (m CostModel) GetSubst(subst Subst) CostModel {
 	if root.node == nil || root.node.Substs == nil {
 		return DoNotRecordCostModel
 	}
-	if child := root.node.Substs.Get(newSemanticNodeKey(subst.Expr)); child != nil {
+	if child := root.node.Substs.Get(substIdentity(subst)); child != nil {
 		return CostModel{node: child}
 	}
 	return DoNotRecordCostModel

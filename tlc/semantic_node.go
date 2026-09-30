@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"strconv"
+	"sync/atomic"
 )
 
 type SemanticNode any
@@ -261,6 +262,28 @@ func NewLetInNode(body SemanticNode, lets ...*OpDefNode) *LetInNode {
 type Subst struct {
 	Op   *SymbolNode
 	Expr SemanticNode
+	id   uint64
+}
+
+var nextSubstID atomic.Uint64
+
+func ensureSubstIdentity(subst Subst) Subst {
+	if subst.id == 0 {
+		subst.id = nextSubstID.Add(1)
+	}
+	return subst
+}
+
+func substIdentity(subst Subst) uint64 {
+	return ensureSubstIdentity(subst).id
+}
+
+func copySubstsWithIdentity(substs []Subst) []Subst {
+	out := make([]Subst, len(substs))
+	for i, subst := range substs {
+		out[i] = ensureSubstIdentity(subst)
+	}
+	return out
 }
 
 type SubstInNode struct {
@@ -272,7 +295,7 @@ type SubstInNode struct {
 func NewSubstInNode(body SemanticNode, substs ...Subst) *SubstInNode {
 	return &SubstInNode{
 		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticSubstInKind, Image: "subst"},
-		Substs:           append([]Subst(nil), substs...),
+		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
 }
@@ -286,7 +309,7 @@ type APSubstInNode struct {
 func NewAPSubstInNode(body SemanticNode, substs ...Subst) *APSubstInNode {
 	return &APSubstInNode{
 		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticAPSubstInKind, Image: "ap-subst"},
-		Substs:           append([]Subst(nil), substs...),
+		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
 }
