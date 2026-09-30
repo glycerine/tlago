@@ -107,7 +107,13 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 			return intValueFromInt64(checker.GetProgress()), nil
 		}
 		if simulator != nil {
-			return intValueFromInt64(simulator.TracesGenerated), nil
+			if s0 != nil && s0.WorkerID >= 0 {
+				workerID := int(s0.WorkerID)
+				if workerID < len(simulator.Workers) && simulator.Workers[workerID] != nil {
+					return intValueFromInt64(simulator.Workers[workerID].GetTraceCnt()), nil
+				}
+			}
+			return IntZero, nil
 		}
 	case tlcGetGenerated:
 		if checker != nil {

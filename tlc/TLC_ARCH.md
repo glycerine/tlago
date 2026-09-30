@@ -1259,6 +1259,13 @@ sequence `1..n` is routed back to the array writer even under `ToJsonObject`.
 This oddity is source-compatible with Java and must be preserved for
 round-tripping existing specs.
 
+`TLCGet("diameter")` is mode-sensitive. In model checking it reports checker
+progress. In simulation Java reads the current `SimulationWorker` trace count,
+returning zero while initial states are generated outside a worker. The Go port
+stamps simulation states with the concrete worker id and uses that id to read
+the worker-local trace count, which also keeps worker-local `TLCGet`/`TLCSet`
+registers aligned with Java.
+
 Override infrastructure:
 
 - `TLARegistry` maps TLA+ names to Java names.
