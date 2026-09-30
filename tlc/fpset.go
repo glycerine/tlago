@@ -14,6 +14,7 @@ const (
 	fpSetLongSize       = 8
 	multiFPSetMaxFPBits = 30
 	multiFPSetMinFPBits = 0
+	FPSetImplProperty   = "tlc2.tool.fp.FPSet.impl"
 )
 
 type FPSetConfiguration struct {
@@ -30,11 +31,18 @@ func NewFPSetConfiguration() *FPSetConfiguration {
 }
 
 func NewFPSetConfigurationWithRatio(ratio float64) *FPSetConfiguration {
+	return NewFPSetConfigurationWithRatioAndImplementation(ratio, fpSetImplementationFromEnv())
+}
+
+func NewFPSetConfigurationWithRatioAndImplementation(ratio float64, implementation string) *FPSetConfiguration {
+	if implementation == "" {
+		implementation = GetFPSetImplementationDefault()
+	}
 	return &FPSetConfiguration{
 		FPBits:         1,
 		MemoryInBytes:  -1,
 		Ratio:          ratio,
-		Implementation: "tlc2.tool.fp.MSBDiskFPSet",
+		Implementation: implementation,
 	}
 }
 
@@ -123,6 +131,60 @@ func (c *FPSetConfiguration) GetImplementation() string {
 	return c.Implementation
 }
 
+func (c *FPSetConfiguration) SetImplementation(implementation string) {
+	if implementation == "" {
+		implementation = GetFPSetImplementationDefault()
+	}
+	c.Implementation = implementation
+}
+
+func fpSetImplementationFromEnv() string {
+	for _, key := range []string{FPSetImplProperty, "TLAGO_FPSET_IMPL"} {
+		if value, ok := os.LookupEnv(key); ok {
+			return value
+		}
+	}
+	return GetFPSetImplementationDefault()
+}
+
+func GetFPSetImplementations() []string {
+	return []string{
+		"tlc2.tool.fp.MSBDiskFPSet",
+		"tlc2.tool.fp.LSBDiskFPSet",
+		"tlc2.tool.fp.OffHeapDiskFPSet",
+	}
+}
+
+func GetFPSetImplementationDefault() string {
+	return "tlc2.tool.fp.MSBDiskFPSet"
+}
+
+func FPSetAllocatesOnHeap(implementation string) bool {
+	switch implementation {
+	case "tlc2.tool.fp.OffHeapDiskFPSet":
+		return false
+	case "tlc2.tool.fp.DiskFPSet",
+		"tlc2.tool.fp.HeapBasedDiskFPSet",
+		"tlc2.tool.fp.LSBDiskFPSet",
+		"tlc2.tool.fp.MSBDiskFPSet",
+		"tlc2.tool.fp.NonCheckpointableDiskFPSet",
+		"tlc2.tool.fp.MemFPSet",
+		"tlc2.tool.fp.MemFPSet1",
+		"tlc2.tool.fp.MemFPSet2",
+		"tlc2.tool.fp.NoopFPSet":
+		return true
+	default:
+		return false
+	}
+}
+
+func GetFPSetVMArguments(implementation string, memoryMiB int64) string {
+	if FPSetAllocatesOnHeap(implementation) {
+		return fmt.Sprintf("-Xmx%dm", memoryMiB)
+	}
+	return fmt.Sprintf("-XX:MaxDirectMemorySize=%dm", memoryMiB)
+}
+
 func IsValidFPBits(fpBits int) bool {
 	return fpBits >= multiFPSetMinFPBits && fpBits <= multiFPSetMaxFPBits
 }
@@ -133,7 +195,8 @@ func isDiskFPSetImplementation(implementation string) bool {
 		"tlc2.tool.fp.HeapBasedDiskFPSet",
 		"tlc2.tool.fp.LSBDiskFPSet",
 		"tlc2.tool.fp.MSBDiskFPSet",
-		"tlc2.tool.fp.OffHeapDiskFPSet":
+		"tlc2.tool.fp.OffHeapDiskFPSet",
+		"tlc2.tool.fp.NonCheckpointableDiskFPSet":
 		return true
 	default:
 		return false
@@ -571,7 +634,7 @@ func (s *NoopFPSet) CommitChkpt() error                      { return nil }
 func (s *NoopFPSet) CommitChkptFile(fname string) error      { return nil }
 func (s *NoopFPSet) Recover() error                          { return nil }
 func (s *NoopFPSet) RecoverFile(fname string) error          { return nil }
-func (s *NoopFPSet) RecoverTrace(trace *TLCTrace) error   { return nil }
+func (s *NoopFPSet) RecoverTrace(trace *TLCTrace) error      { return nil }
 func (s *NoopFPSet) RecoverFP(fp uint64) error               { return nil }
 func (s *NoopFPSet) Close()                                  {}
 func (s *NoopFPSet) AddThread() error                        { return nil }

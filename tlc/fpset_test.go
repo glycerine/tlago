@@ -2,8 +2,34 @@ package tlc
 
 import (
 	"math"
+	"reflect"
 	"testing"
 )
+
+func TestFPSetConfigurationFactoryBehaviors(t *testing.T) {
+	t.Setenv(FPSetImplProperty, "tlc2.tool.fp.LSBDiskFPSet")
+	cfg := NewFPSetConfiguration()
+	if got := cfg.GetImplementation(); got != "tlc2.tool.fp.LSBDiskFPSet" {
+		t.Fatalf("implementation from property = %q, want LSBDiskFPSet", got)
+	}
+	if !isDiskFPSetImplementation("tlc2.tool.fp.NonCheckpointableDiskFPSet") {
+		t.Fatalf("NonCheckpointableDiskFPSet should be recognized as disk-backed")
+	}
+	if got := GetFPSetVMArguments("tlc2.tool.fp.MSBDiskFPSet", 2048); got != "-Xmx2048m" {
+		t.Fatalf("heap VM args = %q", got)
+	}
+	if got := GetFPSetVMArguments("tlc2.tool.fp.OffHeapDiskFPSet", 2048); got != "-XX:MaxDirectMemorySize=2048m" {
+		t.Fatalf("offheap VM args = %q", got)
+	}
+	want := []string{
+		"tlc2.tool.fp.MSBDiskFPSet",
+		"tlc2.tool.fp.LSBDiskFPSet",
+		"tlc2.tool.fp.OffHeapDiskFPSet",
+	}
+	if got := GetFPSetImplementations(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("implementations = %v, want %v", got, want)
+	}
+}
 
 func TestMemFPSetPutContainsAndSize(t *testing.T) {
 	set := NewMemFPSet()

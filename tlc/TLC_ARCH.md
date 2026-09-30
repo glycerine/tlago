@@ -612,6 +612,15 @@ Implementations:
 - `NoopFPSet`: testing/no-op behavior.
 - distributed wrappers and managers for RMI-based distributed TLC.
 
+Factory/configuration behavior:
+
+- Java property `tlc2.tool.fp.FPSet.impl` selects the implementation class;
+  the Go port reads that environment key plus `TLAGO_FPSET_IMPL`.
+- `getImplementations()` advertises `MSBDiskFPSet`, `LSBDiskFPSet`, and
+  `OffHeapDiskFPSet`, with `MSBDiskFPSet` as the default.
+- VM argument recommendations split on storage type: heap-based sets use
+  `-Xmx`, while off-heap sets use `-XX:MaxDirectMemorySize`.
+
 Checkpointing:
 
 - `beginChkpt`: write temporary snapshot.
