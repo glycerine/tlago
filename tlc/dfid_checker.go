@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -108,30 +109,30 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if max < 0 {
 		max = int(^uint(0) >> 1)
 	}
+	terminated := false
 	for level := 2; level <= max; level++ {
+		if terminated {
+			return mc.finishTerminatedDFID()
+		}
 		PrintMessage(ECTLCProgressStartStatsDFID, fmtInt(level), fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 		FPIntSetIncLevel()
 		worker := NewDFIDWorker(0, level, mc)
 		mc.DFIDWorkers = []*DFIDWorker{worker}
 		worker.Run()
 		mc.Done = false
-		if worker.IsTerminated() {
-			if worker.Result != NoError || worker.Err != nil {
+		if worker.Result != NoError || worker.Err != nil {
+			if mc.KeepCallStack {
+				terminated = true
+			} else {
 				mc.PrintSummary(false)
 				return worker.Result, worker.Err
 			}
-			if mc.ErrorCode != NoError {
-				mc.PrintSummary(false)
-				return mc.ErrorCode, nil
-			}
-			mc.PrintSummary(false)
-			return ECGeneral, worker.Err
+		}
+		if worker.IsTerminated() {
+			terminated = true
 		}
 		if !worker.HasMoreLevel() {
-			result = NoError
-			ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
-			mc.PrintSummary(result == NoError)
-			return result, nil
+			terminated = true
 		}
 		if DoCheckPoint() {
 			if err := mc.Checkpoint(); err != nil {
@@ -141,6 +142,27 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	}
 	result = NoError
 	ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
+	mc.PrintSummary(result == NoError)
+	return result, nil
+}
+
+func (mc *DFIDModelChecker) finishTerminatedDFID() (int, error) {
+	if mc == nil {
+		return ECGeneral, nil
+	}
+	result := NoError
+	if mc.ErrState == nil {
+		ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
+		mc.PrintSummary(true)
+		return NoError, nil
+	}
+	if mc.KeepCallStack {
+		result = mc.replayDFIDNextErrorCallStack()
+	} else if mc.ErrorCode != NoError {
+		result = mc.ErrorCode
+	} else {
+		result = ECGeneral
+	}
 	mc.PrintSummary(result == NoError)
 	return result, nil
 }
@@ -211,6 +233,33 @@ func (mc *DFIDModelChecker) SetStop(code int) {
 }
 
 func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool, states *StateVec, fps *LongVec) (bool, int, error) {
+	return mc.doNextIntoWithTool(mc.Tool, cur, cfp, isLeaf, states, fps)
+}
+
+func (mc *DFIDModelChecker) replayDFIDNextErrorCallStack() int {
+	if mc == nil || mc.Tool == nil || mc.PredErrState == nil {
+		if mc != nil && mc.ErrorCode != NoError {
+			return mc.ErrorCode
+		}
+		return ECGeneral
+	}
+	callStackTool := NewCallStackTool(mc.Tool)
+	_, result, err := mc.doNextIntoWithTool(callStackTool, mc.PredErrState, mc.PredErrState.FingerPrint(), true, NewStateVec(1), NewLongVecWithCapacity(1))
+	if err != nil || result != NoError {
+		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
+		if result != NoError {
+			return result
+		}
+		return ECTLCNestedExpression
+	}
+	return NoError
+}
+
+func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp uint64, isLeaf bool, states *StateVec, fps *LongVec) (bool, int, error) {
+	if tool == nil {
+		err := newTLCError(ECGeneral, "DFID model checker has no tool")
+		return true, ECGeneral, err
+	}
 	deadlocked := true
 	allSuccDone := true
 	allSuccNonLeaf := true
@@ -220,10 +269,10 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 	}
 	restoreCurrentState := PushCurrentState(cur)
 	defer restoreCurrentState()
-	for _, action := range mc.Tool.GetActions() {
-		nextStates, err := mc.Tool.GetNextStates(action, cur)
+	for _, action := range tool.GetActions() {
+		nextStates, err := tool.GetNextStates(action, cur)
 		if err != nil {
-			return allSuccNonLeaf, ECGeneral, err
+			return allSuccNonLeaf, mc.dfidNextFailed(cur, nil, err), err
 		}
 		size := 0
 		if nextStates != nil {
@@ -236,20 +285,20 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 		deadlocked = deadlocked && size == 0
 		for i := 0; i < size; i++ {
 			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
-			if !mc.Tool.IsGoodState(succ) {
+			if !tool.IsGoodState(succ) {
 				if mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext) {
-					mc.printTrace(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succ), cur, succ)
+					mc.printTrace(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(tool, action, succ), cur, succ)
 				}
 				return allSuccNonLeaf, ECTLCStateNotCompletelySpecifiedNext, nil
 			}
-			inModel, err := mc.Tool.IsInModel(succ)
+			inModel, err := tool.IsInModel(succ)
 			if err != nil {
-				return allSuccNonLeaf, ECGeneral, err
+				return allSuccNonLeaf, mc.dfidNextFailed(cur, succ, err), err
 			}
 			if inModel {
-				inActions, err := mc.Tool.IsInActions(cur, succ)
+				inActions, err := tool.IsInActions(cur, succ)
 				if err != nil {
-					return allSuccNonLeaf, ECGeneral, err
+					return allSuccNonLeaf, mc.dfidNextFailed(cur, succ, err), err
 				}
 				inModel = inActions
 			}
@@ -278,9 +327,9 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 			}
 			if status == FPIntStatusNew {
 				invariantViolated := false
-				invariantNames := mc.Tool.GetInvNames()
-				for k, invariant := range mc.Tool.GetInvariants() {
-					valid, err := mc.Tool.IsValidState(invariant, succ)
+				invariantNames := tool.GetInvNames()
+				for k, invariant := range tool.GetInvariants() {
+					valid, err := tool.IsValidState(invariant, succ)
 					if err != nil {
 						if mc.SetErrState(cur, succ, true, ECTLCInvariantEvaluationFailed) {
 							mc.printTrace(ECTLCInvariantEvaluationFailed, []string{nameAt(invariantNames, k)}, cur, succ)
@@ -304,9 +353,9 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 				}
 			}
 			impliedViolated := false
-			impliedNames := mc.Tool.GetImpliedActNames()
-			for k, implied := range mc.Tool.GetImpliedActions() {
-				valid, err := mc.Tool.IsValidTransition(implied, cur, succ)
+			impliedNames := tool.GetImpliedActNames()
+			for k, implied := range tool.GetImpliedActions() {
+				valid, err := tool.IsValidTransition(implied, cur, succ)
 				if err != nil {
 					if mc.SetErrState(cur, succ, true, ECTLCActionPropertyEvaluationFailed) {
 						mc.printTrace(ECTLCActionPropertyEvaluationFailed, []string{nameAt(impliedNames, k)}, cur, succ)
@@ -339,8 +388,8 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 	if liveNextStates != nil {
 		liveNextStates.PutFP(cfp, cur)
 		if mc.LiveCheck != nil {
-			if err := mc.LiveCheck.AddNextState(mc.Tool, cur, cfp, liveNextStates); err != nil {
-				return allSuccNonLeaf, ECGeneral, err
+			if err := mc.LiveCheck.AddNextState(tool, cur, cfp, liveNextStates); err != nil {
+				return allSuccNonLeaf, mc.dfidNextFailed(cur, nil, err), err
 			}
 		}
 	}
@@ -348,6 +397,23 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 		mc.FPSet.SetStatus(cfp, FPIntStatusDone)
 	}
 	return allSuccNonLeaf, NoError, nil
+}
+
+func (mc *DFIDModelChecker) dfidNextFailed(curState *TLCStateMut, succState *TLCStateMut, err error) int {
+	if err == nil {
+		return NoError
+	}
+	ec := ECGeneral
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil {
+		ec = tlcErr.Code
+	}
+	keepCallStack := ec != ECSystemStackOverflow && ec != ECSystemOutOfMemory
+	if mc.SetErrState(curState, succState, keepCallStack, ec) {
+		params := []string{err.Error()}
+		mc.printTrace(ec, params, curState, succState)
+	}
+	return ec
 }
 
 func (mc *DFIDModelChecker) printTrace(errorCode int, params []string, curState *TLCStateMut, succState *TLCStateMut) {
