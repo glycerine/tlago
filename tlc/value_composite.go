@@ -711,9 +711,8 @@ func randomizedValueEnumeration(enumerable Enumerable) (ValueEnumeration, error)
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	perm := RandomEnumerableGenerator().Perm(len(values))
 	randomized := make([]Value, len(values))
-	for i, idx := range perm {
+	for i, idx := range randomSubsetIndices(len(values), len(values)) {
 		randomized[i] = values[idx]
 	}
 	return &sliceValueEnumeration{values: randomized}, nil

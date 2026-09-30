@@ -1863,9 +1863,12 @@ index with `Random.nextInt(|S|)`, chooses an increment with
 `EnumerableValue.computeOptimalMandA`, and emits `k` random indices from the
 LCG. The emitted `SetEnumValue` is initially unnormalized, so duplicate draws
 are preserved until normal set comparison/fingerprinting forces
-normalization. This is observable for seeded runs and aril replay. Java does
-not reject a negative integer `k` for `RandomSubset`; it simply yields the
-empty set because the enumerator has no next element.
+normalization. Randomized enumeration (`elements(Ordering.RANDOMIZED)`) uses
+that same `SubsetEnumerator` path with `k = size`, so it must not be
+implemented as a Fisher-Yates shuffle; the random-value consumption is
+observable for seeded runs and aril replay. Java does not reject a negative
+integer `k` for `RandomSubset`; it simply yields the empty set because the
+enumerator has no next element.
 
 `TLC!RandomElement` also uses `RandomEnumerableValues.get().nextDouble()` for
 intervals and finite enumerated sets. The Go port must use the shared
