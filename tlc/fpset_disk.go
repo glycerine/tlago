@@ -81,7 +81,13 @@ type MSBDiskFPSet struct{ *HeapBasedDiskFPSet }
 
 type NonCheckpointableDiskFPSet struct{ *DiskFPSet }
 
-type OffHeapDiskFPSet struct{ *NonCheckpointableDiskFPSet }
+type OffHeapDiskFPSet struct {
+	*NonCheckpointableDiskFPSet
+	array      *LongArray
+	indexer    *OffHeapIndexer
+	numThreads int
+	probeLimit int
+}
 
 func NewDiskFPSet(config *FPSetConfiguration) *DiskFPSet {
 	return newHeapDiskFPSet(config, diskFPSetModeMSB, true)
@@ -104,7 +110,24 @@ func NewNonCheckpointableDiskFPSet(config *FPSetConfiguration) *NonCheckpointabl
 }
 
 func NewOffHeapDiskFPSet(config *FPSetConfiguration) *OffHeapDiskFPSet {
-	return &OffHeapDiskFPSet{NonCheckpointableDiskFPSet: NewNonCheckpointableDiskFPSet(config)}
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	positions := config.GetMemoryInFingerprintCnt()
+	if positions <= 0 {
+		positions = diskFPSetDefaultMaxTblCnt
+	}
+	base := NewNonCheckpointableDiskFPSet(config)
+	base.DiskFPSet.maxTblCnt = positions
+	base.DiskFPSet.tbl = nil
+	base.DiskFPSet.capacity = 0
+	base.DiskFPSet.mask = 0
+	return &OffHeapDiskFPSet{
+		NonCheckpointableDiskFPSet: base,
+		array:                      NewLongArray(positions),
+		indexer:                    NewOffHeapIndexer(positions, config.GetFPBits()),
+		probeLimit:                 offHeapProbeLimit,
+	}
 }
 
 func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) *DiskFPSet {
@@ -207,6 +230,10 @@ func (s *NonCheckpointableDiskFPSet) Init(numThreads int, metadir string, filena
 
 func (s *OffHeapDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
+	s.numThreads = numThreads
+	if err := s.array.ZeroMemory(numThreads); err != nil {
+		panic(err)
+	}
 	return s
 }
 

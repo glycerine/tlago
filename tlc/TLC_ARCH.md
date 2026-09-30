@@ -615,6 +615,10 @@ Implementations:
   three indexers: bit-shifting for power-of-two position counts, a multiply-high
   1024MiB-multiple indexer, or an exact/infinite-precision fallback. The Go port
   keeps these as one concrete `OffHeapIndexer` with a kind field.
+- In the off-heap primary table, `0` means empty, a positive fingerprint means
+  not yet evicted, and the same value with the high bit set means already
+  evicted to the sorted disk file. Flushed slots still detect duplicates and can
+  be reused for different fingerprints.
 
 Factory/configuration behavior:
 
