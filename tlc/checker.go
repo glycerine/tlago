@@ -3,6 +3,7 @@ package tlc
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 	"time"
@@ -287,6 +288,8 @@ type ModelChecker struct {
 	NextStatesGenerated     int64
 	StatesPerMinute         int64
 	DistinctStatesPerMinute int64
+	OldNumOfGenStates       int64
+	OldFPSetSize            uint64
 	RuntimeRatio            float64
 	ForceLiveCheck          bool
 }
@@ -527,27 +530,35 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 			if result != NoError {
 				mc.checkPostConditionAfterInitFailure()
 			}
+			mc.PrintSummary(false)
 			return result, err
 		}
 	}
 	if len(mc.Tool.GetActions()) == 0 {
 		if !mc.StateQueue.IsEmpty() {
 			PrintError(ECTLCStatesAndNoNextAction)
+			mc.PrintSummary(false)
 			return ECTLCStatesAndNoNextAction, nil
 		}
-		return mc.Tool.CheckPostCondition(), nil
+		result = mc.Tool.CheckPostCondition()
+		mc.PrintSummary(result == NoError)
+		return result, nil
 	}
 	result, err = mc.RunTLC(0)
 	if err != nil || result != NoError {
+		mc.PrintSummary(false)
 		return result, err
 	}
 	if mc.CheckLiveness && mc.LiveCheck != nil {
 		result, err = mc.LiveCheck.FinalCheck(mc.Tool)
 		if err != nil || result != NoError {
+			mc.PrintSummary(false)
 			return result, err
 		}
 	}
-	return mc.Tool.CheckPostCondition(), nil
+	result = mc.Tool.CheckPostCondition()
+	mc.PrintSummary(result == NoError)
+	return result, nil
 }
 
 func (mc *ModelChecker) Checkpoint() error {
@@ -787,6 +798,95 @@ func (mc *ModelChecker) RecoverTrace() error {
 	return nil
 }
 
+func (mc *ModelChecker) PrintSummary(success bool) {
+	if mc == nil {
+		return
+	}
+	if toolMode() {
+		mc.PrintProgressStats(mc.StartTime, true)
+	}
+	PrintMessage(ECTLCStats,
+		fmtInt64(mc.GetStatesGenerated()),
+		fmtUint64(mc.GetDistinctStatesGenerated()),
+		fmtInt64(mc.GetStateQueueSize()),
+	)
+	depth := int64(0)
+	if mc.GetStatesGenerated() != 0 {
+		depth = mc.GetProgress()
+	}
+	PrintMessage(ECTLCSearchDepth, fmtInt64(depth))
+	if success {
+		mc.PrintOutDegreeSummary()
+	}
+}
+
+func (mc *ModelChecker) PrintProgressStats(startTime time.Time, isFinal bool) {
+	_ = isFinal
+	if mc == nil {
+		return
+	}
+	fpSetSize := uint64(0)
+	if mc.FPSet != nil {
+		fpSetSize = mc.FPSet.Size()
+	}
+	factor := ProgressInterval().Minutes()
+	if !startTime.IsZero() {
+		mc.OldNumOfGenStates = 0
+		mc.OldFPSetSize = 0
+		factor = time.Since(startTime).Minutes()
+	}
+	if factor <= 0 {
+		factor = 1
+	}
+	generated := mc.GetStatesGenerated()
+	mc.StatesPerMinute = int64(float64(generated-mc.OldNumOfGenStates) / factor)
+	mc.OldNumOfGenStates = generated
+	var distinctDelta uint64
+	if fpSetSize >= mc.OldFPSetSize {
+		distinctDelta = fpSetSize - mc.OldFPSetSize
+	}
+	mc.DistinctStatesPerMinute = int64(float64(distinctDelta) / factor)
+	mc.OldFPSetSize = fpSetSize
+	PrintMessage(ECTLCProgressStats,
+		fmtInt64(mc.GetProgress()),
+		fmtInt64(generated),
+		fmtUint64(fpSetSize),
+		fmtInt64(mc.GetStateQueueSize()),
+		fmtInt64(mc.StatesPerMinute),
+		fmtInt64(mc.DistinctStatesPerMinute),
+	)
+}
+
+func (mc *ModelChecker) PrintOutDegreeSummary() {
+	if mc == nil {
+		return
+	}
+	agg := NewBucketStatistics("State Graph OutDegree")
+	for _, worker := range mc.Workers {
+		if worker == nil || worker.OutDegree == nil {
+			continue
+		}
+		for _, sample := range worker.OutDegree.Samples() {
+			agg.AddSampleCount(sample.Amount, sample.Count)
+		}
+	}
+	if agg.Observations() == 0 {
+		return
+	}
+	PrintMessage(ECTLCStateGraphOutdegree,
+		fmtInt(agg.Min()),
+		fmtInt64(int64(math.Round(agg.Mean()))),
+		fmtInt64(int64(math.Round(agg.Percentile(.95)))),
+		fmtInt(agg.Max()),
+	)
+}
+
+func toolMode() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.Tool
+}
+
 func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
@@ -867,6 +967,7 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 	if mc == nil {
 		return NoError, nil
 	}
+	mc.PrintProgressStats(time.Time{}, false)
 	createCheckpoint := DoCheckPoint()
 	forceLiveCheck := mc.CheckLiveness && mc.LiveCheck != nil && mc.ForceLiveCheck
 	liveCheckNow := mc.CheckLiveness && mc.LiveCheck != nil && (mc.RuntimeRatio < LivenessRatio() || forceLiveCheck) && mc.LiveCheck.DoLiveCheck()

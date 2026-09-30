@@ -33,14 +33,24 @@ func (s *BucketStatistics) AddSample(amount int) {
 	if amount < 0 {
 		panic("Negative amount invalid")
 	}
+	s.AddSampleCount(amount, 1)
+}
+
+func (s *BucketStatistics) AddSampleCount(amount int, count int64) {
+	if amount < 0 {
+		panic("Negative amount invalid")
+	}
+	if count <= 0 {
+		return
+	}
 	if _, ok := s.counts[amount]; !ok {
 		idx := sort.SearchInts(s.keys, amount)
 		s.keys = append(s.keys, 0)
 		copy(s.keys[idx+1:], s.keys[idx:])
 		s.keys[idx] = amount
 	}
-	s.counts[amount]++
-	s.observations++
+	s.counts[amount] += count
+	s.observations += count
 }
 
 func (s *BucketStatistics) Observations() int64 {
