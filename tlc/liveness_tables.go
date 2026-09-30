@@ -1,6 +1,18 @@
 package tlc
 
-const nodePtrEmpty = int64(-1)
+const (
+	nodePtrEmpty              = int64(-1)
+	DiskGraphMaxPtr           = int64(0x4000000000000000)
+	DiskGraphMaxLink          = int64(0x7fffffffffffffff)
+	TableauNodePtrTableUndone = int64(-2) << 32
+	TableauNodePtrTableDone   = int64(-3) << 32
+	TableauEndMarker          = -1
+	TableauNoParent           = -1
+)
+
+func IsDiskGraphFilePointer(loc int64) bool {
+	return loc < DiskGraphMaxPtr
+}
 
 type NodePtrTable struct {
 	count  int
@@ -388,4 +400,333 @@ func btNodesKey(nodes any) uint64 {
 
 func livenessHashLoc(k uint64, length int) int {
 	return int(uint32(k)&0x7fffffff) % length
+}
+
+type TableauNodePtrTable struct {
+	count  int
+	length int
+	thresh int
+	nodes  [][]int32
+}
+
+func NewTableauNodePtrTable(size int) *TableauNodePtrTable {
+	if size <= 0 {
+		size = 1
+	}
+	return &TableauNodePtrTable{
+		length: size,
+		thresh: int(float64(size) * 0.75),
+		nodes:  make([][]int32, size),
+	}
+}
+
+func (t *TableauNodePtrTable) Size() int {
+	if t == nil {
+		return 0
+	}
+	return t.count
+}
+
+func (t *TableauNodePtrTable) GetSize() int {
+	if t == nil {
+		return 0
+	}
+	return t.length
+}
+
+func (t *TableauNodePtrTable) Get(k uint64, tidx int) int64 {
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := livenessHashLoc(k, t.length)
+	for {
+		node := t.nodes[loc]
+		if node == nil {
+			return -1
+		}
+		if TableauGetKey(node) == k {
+			idx := t.GetIdx(node, tidx)
+			if idx == -1 {
+				return -1
+			}
+			return TableauGetElem(node, idx)
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) Put(k uint64, tidx int) {
+	t.put(k, tidx, TableauNodePtrTableUndone, TableauNodePtrTableDone)
+}
+
+func (t *TableauNodePtrTable) PutElem(k uint64, tidx int, elem int64) {
+	t.put(k, tidx, elem, elem)
+}
+
+func (t *TableauNodePtrTable) put(k uint64, tidx int, addElem int64, newElem int64) {
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := livenessHashLoc(k, t.length)
+	for {
+		node := t.nodes[loc]
+		if node == nil {
+			t.nodes[loc] = t.addElem(k, tidx, addElem)
+			t.count++
+			return
+		}
+		if TableauGetKey(node) == k {
+			cloc := t.GetIdx(node, tidx)
+			if cloc == -1 {
+				t.nodes[loc] = t.appendElem(node, tidx, newElem)
+			} else {
+				t.PutRecordElem(t.nodes[loc], addElem, tidx, cloc)
+			}
+			return
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) GetLoc(k uint64, tidx int) int {
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := livenessHashLoc(k, t.length)
+	for {
+		node := t.nodes[loc]
+		if node == nil {
+			return -1
+		}
+		if TableauGetKey(node) == k {
+			if t.GetIdx(node, tidx) == -1 {
+				return -1
+			}
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) GetNodes(k uint64) []int32 {
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := livenessHashLoc(k, t.length)
+	for {
+		node := t.nodes[loc]
+		if node == nil {
+			return nil
+		}
+		if TableauGetKey(node) == k {
+			return node
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) GetNodesLoc(k uint64) int {
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := livenessHashLoc(k, t.length)
+	for {
+		node := t.nodes[loc]
+		if node == nil {
+			return -1
+		}
+		if TableauGetKey(node) == k {
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) GetNodesByLoc(loc int) []int32 {
+	return t.nodes[loc]
+}
+
+func (t *TableauNodePtrTable) IsDone(k uint64) bool {
+	node := t.GetNodes(k)
+	if node == nil {
+		return false
+	}
+	if len(node) == 2 {
+		return true
+	}
+	return node[3] != -2
+}
+
+func (t *TableauNodePtrTable) SetDone(k uint64) int {
+	if t.count >= t.thresh {
+		t.grow()
+	}
+	loc := livenessHashLoc(k, t.length)
+	for {
+		node := t.nodes[loc]
+		if node == nil {
+			t.nodes[loc] = tableauAddKey(k)
+			t.count++
+			return loc
+		}
+		if TableauGetKey(node) == k {
+			if len(node) > 2 && node[3] == -2 {
+				node[3] = -3
+			}
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) ResetElems() {
+	for _, node := range t.nodes {
+		if node == nil {
+			continue
+		}
+		for j := 3; j < len(node); j += t.GetElemLength() {
+			node[j] &= 0x7fffffff
+		}
+	}
+}
+
+func (t *TableauNodePtrTable) GetElemLength() int {
+	return 3
+}
+
+func (t *TableauNodePtrTable) GetIdx(node []int32, tidx int) int {
+	for i := 2; i < len(node); i += t.GetElemLength() {
+		if int(node[i]) == tidx {
+			return i
+		}
+	}
+	return -1
+}
+
+func (t *TableauNodePtrTable) GetElemTidx(node []int32, loc int) int {
+	return -1
+}
+
+func (t *TableauNodePtrTable) PutRecordElem(node []int32, elem int64, tableauIdx int, loc int) {
+	TableauPutElem(node, elem, loc)
+}
+
+func (t *TableauNodePtrTable) grow() {
+	t.length = 2*t.length + 1
+	t.thresh = int(float64(t.length) * 0.75)
+	oldNodes := t.nodes
+	t.nodes = make([][]int32, t.length)
+	for _, node := range oldNodes {
+		if node != nil {
+			t.putNode(node)
+		}
+	}
+}
+
+func (t *TableauNodePtrTable) putNode(node []int32) {
+	k := TableauGetKey(node)
+	loc := livenessHashLoc(k, t.length)
+	for {
+		if t.nodes[loc] == nil {
+			t.nodes[loc] = node
+			return
+		}
+		loc = (loc + 1) % t.length
+	}
+}
+
+func (t *TableauNodePtrTable) addElem(key uint64, tidx int, elem int64) []int32 {
+	node := make([]int32, 3+t.GetElemLength()-1)
+	node[0] = int32(key >> 32)
+	node[1] = int32(uint32(key))
+	node[2] = int32(tidx)
+	node[3] = int32(elem >> 32)
+	node[4] = int32(uint32(elem))
+	return node
+}
+
+func (t *TableauNodePtrTable) appendElem(node []int32, tidx int, elem int64) []int32 {
+	oldLen := len(node)
+	next := make([]int32, oldLen+t.GetElemLength())
+	copy(next, node)
+	next[oldLen] = int32(tidx)
+	next[oldLen+1] = int32(elem >> 32)
+	next[oldLen+2] = int32(uint32(elem))
+	return next
+}
+
+func tableauAddKey(key uint64) []int32 {
+	return []int32{int32(key >> 32), int32(uint32(key))}
+}
+
+func TableauGetKey(node []int32) uint64 {
+	high := uint64(uint32(node[0]))
+	low := uint64(uint32(node[1]))
+	return (high << 32) | low
+}
+
+func TableauGetElem(node []int32, loc int) int64 {
+	high := int64(node[loc+1])
+	low := int64(uint32(node[loc+2]))
+	return (high << 32) | low
+}
+
+func TableauPutElem(node []int32, elem int64, loc int) {
+	node[loc+1] = int32(elem >> 32)
+	node[loc+2] = int32(uint32(elem))
+}
+
+func TableauGetTidx(node []int32, loc int) int {
+	return int(node[loc])
+}
+
+func TableauStartLoc(node []int32) int {
+	if len(node) > 2 {
+		return 2
+	}
+	return TableauEndMarker
+}
+
+func TableauNextLoc(node []int32, curLoc int) int {
+	loc := curLoc + 3
+	if loc < len(node) {
+		return loc
+	}
+	return TableauEndMarker
+}
+
+func TableauIsSeenAt(node []int32, tloc int) bool {
+	return TableauGetElem(node, tloc) < 0
+}
+
+func TableauSetSeenAt(node []int32, tloc int) {
+	ptr := TableauGetElem(node, tloc)
+	TableauPutElem(node, ptr|int64(-1<<63), tloc)
+}
+
+func TableauGetPtr(ptr int64) int64 {
+	return ptr & 0x7fffffffffffffff
+}
+
+func TableauIsSeen(node []int32) bool {
+	return len(node) > 3 && node[3] < 0
+}
+
+func TableauSetSeen(node []int32) {
+	if len(node) > 3 {
+		node[3] = int32(uint32(node[3]) | 0x80000000)
+	}
+}
+
+func TableauGetParent(node []int32) int {
+	if len(node) <= 4 {
+		return TableauNoParent
+	}
+	return int(node[4])
+}
+
+func TableauSetParent(node []int32, loc int) {
+	if len(node) > 4 {
+		node[4] = int32(loc)
+	}
 }
