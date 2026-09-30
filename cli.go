@@ -1,6 +1,7 @@
 package tlago
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -8,6 +9,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	tlcruntime "github.com/glycerine/tlago/tlc"
 )
 
 func RunCLI(args []string, stdout, stderr io.Writer) int {
@@ -394,6 +397,9 @@ func writeDiagnostics(w io.Writer, diags Diagnostics) {
 }
 
 func runModelCheck(args []string, stdout, stderr io.Writer) int {
+	if tlcArgs, ok := stripTLCModelCheckFlag(args); ok {
+		return runTLCModelCheck(tlcArgs, stdout, stderr)
+	}
 	cfgPath := ""
 	opts := ModelCheckOptions{}
 	loadOpts := LoadOptions{}
@@ -473,6 +479,91 @@ func runModelCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "Model checking completed: %d states explored\n", result.StatesExplored)
 	return ExitOK
+}
+
+func stripTLCModelCheckFlag(args []string) ([]string, bool) {
+	out := make([]string, 0, len(args))
+	found := false
+	for _, arg := range args {
+		switch arg {
+		case "-tlc", "--tlc", "-go-tlc", "--go-tlc":
+			found = true
+		default:
+			out = append(out, arg)
+		}
+	}
+	return out, found
+}
+
+func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
+	tlcArgs, loadOpts, err := extractTLCLoadOptions(args)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	opts, err := tlcruntime.ParseTLCOptions(tlcArgs)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	spec, diags := LoadSanySpec(opts.SpecFile, loadOpts)
+	if diags.HasErrors() {
+		writeDiagnostics(stderr, diags)
+		return ExitSyntaxFailure
+	}
+	sem := CheckSpec(spec)
+	if sem.HasErrors() {
+		writeDiagnostics(stderr, sem)
+		return ExitSemanticFailure
+	}
+	cfg, err := tlcruntime.ParseModelConfigFile(opts.ConfigFile)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitSyntaxFailure
+	}
+	tool, toolDiags := BuildTLCTool(spec, cfg)
+	if toolDiags.HasErrors() {
+		writeDiagnostics(stderr, toolDiags)
+		return ExitSemanticFailure
+	}
+	opts.Tool = tool
+	if cfg.GetCheckDeadlock() {
+		opts.Deadlock = true
+	} else {
+		opts.NoDeadlock = true
+		opts.Deadlock = false
+	}
+	result, err := tlcruntime.NewTLC(opts).Process(context.Background())
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+	}
+	if result == nil {
+		return ExitToolFailure
+	}
+	if result.ErrorCode != tlcruntime.NoError {
+		if err == nil {
+			fmt.Fprintf(stderr, "TLC failed with error code %d\n", result.ErrorCode)
+		}
+		return ExitSemanticFailure
+	}
+	fmt.Fprintf(stdout, "TLC model checking completed: %d states generated, %d distinct states\n", result.StatesGenerated, result.DistinctStates)
+	return ExitOK
+}
+
+func extractTLCLoadOptions(args []string) ([]string, LoadOptions, error) {
+	loadOpts := LoadOptions{}
+	tlcArgs := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		if ok, next, err := consumeLoadCLIOption(args, i, &loadOpts); ok || err != nil {
+			if err != nil {
+				return nil, loadOpts, err
+			}
+			i = next
+			continue
+		}
+		tlcArgs = append(tlcArgs, args[i])
+	}
+	return tlcArgs, loadOpts, nil
 }
 
 func formatState(st State) string {
