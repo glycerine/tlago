@@ -218,8 +218,8 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 		_, err = w.writer.WriteString(" [style=\"dashed\",color=\"lightgray\"];\n")
 		return err
 	}
-	if label := w.dotTransitionLabel(action, reason...); label != "" {
-		_, _ = w.writer.WriteString(label)
+	if action != nil {
+		_, _ = w.writer.WriteString(w.dotTransitionLabel(action, reason...))
 	}
 	_, _ = w.writer.WriteString(";\n")
 	if status != StateVisitSeen {
@@ -252,13 +252,11 @@ func (w *StateWriter) dotTransitionLabel(action *Action, reason ...SemanticNode)
 	if w.actionLabels && action != nil {
 		actionName = dotEscape(strings.TrimSpace(action.GetInvocationSignature()))
 	}
+	predText := ""
 	if len(reason) > 0 && reason[0] != nil {
-		actionName += "\\n" + dotEscape(fmt.Sprint(reason[0]))
+		predText = "\n" + fmt.Sprint(reason[0])
 	}
-	if actionName == "" && color == "black" {
-		return ""
-	}
-	return fmt.Sprintf(" [label=\"%s\",color=\"%s\",fontcolor=\"%s\"]", actionName, color, color)
+	return fmt.Sprintf(" [label=\"%s%s\",color=\"%s\",fontcolor=\"%s\"]", actionName, predText, color, color)
 }
 
 func (w *StateWriter) getActionColor(action *Action) int {
