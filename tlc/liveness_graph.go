@@ -1015,6 +1015,60 @@ func (n *BEGraphNode) SetNumber(num int64) {
 		n.Number = num
 	}
 }
+
+type BTGraphNode struct {
+	*BEGraphNode
+	TIndex int32
+}
+
+func NewBTGraphNode(fp uint64, index int) *BTGraphNode {
+	return &BTGraphNode{BEGraphNode: NewBEGraphNode(fp), TIndex: int32(index)}
+}
+
+func (n *BTGraphNode) GetIndex() int {
+	if n == nil {
+		return 0
+	}
+	return int(uint32(n.TIndex) & 0x3fffffff)
+}
+
+func (n *BTGraphNode) SetIndex(index int) {
+	if n != nil {
+		n.TIndex = int32((uint32(n.TIndex) & 0xc0000000) | (uint32(index) & 0x3fffffff))
+	}
+}
+
+func (n *BTGraphNode) IsDone() bool {
+	return n != nil && n.TIndex < 0
+}
+
+func (n *BTGraphNode) SetDone() {
+	if n != nil {
+		n.TIndex = int32(uint32(n.TIndex) | 0x80000000)
+	}
+}
+
+func NewDummyBTGraphNode(fp uint64) *BTGraphNode {
+	return NewBTGraphNode(fp, 0x40000000)
+}
+
+func (n *BTGraphNode) IsDummy() bool {
+	return n != nil && (uint32(n.TIndex)&0x40000000) != 0
+}
+
+func (n *BTGraphNode) GetTNode(tableau *TBGraph) *TBGraphNode {
+	if n == nil || tableau == nil {
+		return nil
+	}
+	return tableau.GetNode(n.GetIndex())
+}
+
+func (n *BTGraphNode) NodeInfo() string {
+	if n == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("<%d,%d>", n.StateFP, n.GetIndex())
+}
 func (n *BEGraphNode) GetVisited() bool { return n.Number < 0 }
 func (n *BEGraphNode) FlipVisited()     { n.Number ^= beGraphVisitedMask }
 func (n *BEGraphNode) AddTransition(target *BEGraphNode, slen int, alen int, acts []bool) {
