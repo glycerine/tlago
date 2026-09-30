@@ -71,6 +71,69 @@ func TestFixedSizedBucketStatisticsUsesOverflowBucket(t *testing.T) {
 	}
 }
 
+func TestPortedStatisticUtilityVariants(t *testing.T) {
+	dummy := NewDummyBucketStatistics()
+	dummy.AddSample(100)
+	if dummy.Observations() != 0 || dummy.Mean() != 0 || len(dummy.Samples()) != 0 {
+		t.Fatalf("dummy stats obs/mean/samples = %d/%v/%d, want 0/0/0",
+			dummy.Observations(), dummy.Mean(), len(dummy.Samples()))
+	}
+
+	concurrent := NewConcurrentBucketStatistics("ConcurrentBucketStatisticsTest")
+	concurrent.AddSample(3)
+	concurrent.AddSample(3)
+	concurrent.AddSample(5)
+	if concurrent.Observations() != 3 || concurrent.Median() != 3 || concurrent.Max() != 5 {
+		t.Fatalf("concurrent stats obs/median/max = %d/%d/%d, want 3/3/5",
+			concurrent.Observations(), concurrent.Median(), concurrent.Max())
+	}
+
+	fixed := NewFixedSizedConcurrentBucketStatistics("FixedSizedConcurrentBucketStatisticsTest", 4)
+	fixed.AddSample(9)
+	fixed.AddSample(0)
+	if fixed.Max() != 3 || fixed.Min() != 0 || fixed.Observations() != 2 {
+		t.Fatalf("fixed concurrent min/max/obs = %d/%d/%d, want 0/3/2",
+			fixed.Min(), fixed.Max(), fixed.Observations())
+	}
+}
+
+func TestCounterAndCountDistinctUtilities(t *testing.T) {
+	noopCounter := NewCounterStatistic(false)
+	noopCounter.Increment()
+	noopCounter.Add(10)
+	if noopCounter.GetCount() != 0 {
+		t.Fatalf("noop counter = %d, want 0", noopCounter.GetCount())
+	}
+
+	counter := NewCounterStatistic(true)
+	counter.Increment()
+	counter.Add(10)
+	if counter.GetCount() != 11 {
+		t.Fatalf("counter = %d, want 11", counter.GetCount())
+	}
+
+	noopDistinct := NewCountDistinctNoop()
+	noopDistinct.AddHash(1)
+	if noopDistinct.Count() != -1 {
+		t.Fatalf("noop distinct count = %d, want -1", noopDistinct.Count())
+	}
+
+	naive := NewCountDistinctNaive()
+	naive.AddHash(1)
+	naive.AddHash(1)
+	naive.AddHash(2)
+	if naive.Count() != 2 {
+		t.Fatalf("naive distinct count = %d, want 2", naive.Count())
+	}
+
+	hll := NewCountDistinctHyperLogLog(4)
+	hll.AddHash(0x1000000000000000)
+	hll.AddHash(0x2000000000000000)
+	if hll.Count() <= 0 {
+		t.Fatalf("hyperloglog count = %d, want positive estimate", hll.Count())
+	}
+}
+
 func requirePanic(t *testing.T, fn func()) {
 	t.Helper()
 	defer func() {
