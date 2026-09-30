@@ -416,10 +416,12 @@ func (q *DiskStateQueue) isAvailLocked() bool {
 	}
 	for q.len == 0 || q.stop {
 		q.numWaiting++
-		if q.numWaiting >= NumWorkers() && q.len == 0 {
-			q.numWaiting--
+		if q.numWaiting >= NumWorkers() {
 			q.cond.Broadcast()
-			return false
+			if q.len == 0 {
+				q.numWaiting--
+				return false
+			}
 		}
 		q.cond.Wait()
 		q.numWaiting--

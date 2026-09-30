@@ -816,6 +816,11 @@ Implementations:
 Important synchronization details:
 
 - `numWaiting >= numWorkers` and empty queue means no work remains.
+- `numWaiting >= numWorkers` while `stop` is true but the queue is not empty
+  means checkpoint suspension has reached its barrier. Java notifies the
+  separate `mu` monitor in this case; the Go queues broadcast on their concrete
+  condition variable so `SuspendAll` can return and checkpoint the still-live
+  queue.
 - `finish` is volatile in Java to avoid checkpoint race deadlocks.
 - `suspendAll` uses a second monitor `mu` to coordinate checkpoint waiting.
 - Lock ordering is deliberate. Preserve it when translating to Go mutex/cond.
