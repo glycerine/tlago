@@ -116,22 +116,37 @@ func (b *tlcBridge) installDefinitions() {
 }
 
 func (b *tlcBridge) installConfigConstants() {
-	if b.cfg == nil || b.cfg.GetConstants() == nil {
+	if b.cfg == nil {
+		return
+	}
+	b.installConfigConstantsUnder("", b.cfg.GetConstants())
+	for moduleName, constants := range b.cfg.GetModConstants().All() {
+		b.installConfigConstantsUnder(moduleName+"!", constants)
+	}
+	b.installConfigOverridesUnder("", b.cfg.GetOverrides())
+	for moduleName, overrides := range b.cfg.GetModOverrides().All() {
+		b.installConfigOverridesUnder(moduleName+"!", overrides)
+	}
+}
+
+func (b *tlcBridge) installConfigConstantsUnder(prefix string, constants *tlc.ConfigConstants) {
+	if constants == nil {
 		return
 	}
 	opConstants := map[string]*tlc.OpRcdValue{}
-	for _, constant := range b.cfg.GetConstants().All() {
+	for _, constant := range constants.All() {
 		if constant.Value == nil {
 			continue
 		}
+		name := prefix + constant.Name
 		if len(constant.Args) != 0 {
-			opVal := opConstants[constant.Name]
+			opVal := opConstants[name]
 			if opVal == nil {
 				opVal = tlc.NewOpRcdValue()
-				opConstants[constant.Name] = opVal
-				b.tool.DefineName(constant.Name, opVal)
+				opConstants[name] = opVal
+				b.tool.DefineName(name, opVal)
 			} else if len(opVal.Domain) != 0 && len(opVal.Domain[0]) != len(constant.Args) {
-				b.diags = append(b.diags, errorAt(Position{}, "E7001", "operator-valued CONSTANT assignment %s has inconsistent arity", constant.Name))
+				b.diags = append(b.diags, errorAt(Position{}, "E7001", "operator-valued CONSTANT assignment %s has inconsistent arity", name))
 				continue
 			}
 			values := make([]tlc.Value, 0, len(constant.Args)+2)
@@ -141,15 +156,25 @@ func (b *tlcBridge) installConfigConstants() {
 			opVal.AddLine(values)
 			continue
 		}
-		b.tool.DefineName(constant.Name, constant.Value)
+		b.tool.DefineName(name, constant.Value)
 	}
-	for specName, configName := range b.cfg.GetOverrides().All() {
+}
+
+func (b *tlcBridge) installConfigOverridesUnder(prefix string, overrides *tlc.InsMap[string, string]) {
+	if overrides == nil {
+		return
+	}
+	for specName, configName := range overrides.All() {
 		def := b.defs[configName]
+		if def == nil && prefix != "" {
+			def = b.defs[prefix+configName]
+		}
+		qualifiedSpecName := prefix + specName
 		if def == nil {
-			b.diags = append(b.diags, errorAt(Position{}, "E7002", "CONSTANT override %s <- %s references an unknown operator", specName, configName))
+			b.diags = append(b.diags, errorAt(Position{}, "E7002", "CONSTANT override %s <- %s references an unknown operator", qualifiedSpecName, configName))
 			continue
 		}
-		opDef := b.convertDefinitionAs(specName, def)
+		opDef := b.convertDefinitionAs(qualifiedSpecName, def)
 		if opDef != nil {
 			b.tool.Define(opDef.Symbol, opDef)
 		}
