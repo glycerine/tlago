@@ -110,6 +110,116 @@ func (e *ObjLongTableEnumerator[K]) NextElement() (K, bool) {
 	return value, true
 }
 
+type SemanticNodeLongTable struct {
+	elems *InsMap[semanticNodeKey, SemanticNodeLongEntry]
+}
+
+type SemanticNodeLongEntry struct {
+	Node  SemanticNode
+	Value int64
+}
+
+func NewSemanticNodeLongTable(size int) *SemanticNodeLongTable {
+	_ = size
+	return &SemanticNodeLongTable{elems: NewInsMap[semanticNodeKey, SemanticNodeLongEntry]()}
+}
+
+func (t *SemanticNodeLongTable) Size() int {
+	if t == nil || t.elems == nil {
+		return 0
+	}
+	return t.elems.Len()
+}
+
+func (t *SemanticNodeLongTable) Put(node SemanticNode, elem int64) int {
+	t.ensure()
+	key := newSemanticNodeKey(node)
+	if _, ok := t.elems.Get2(key); !ok {
+		t.elems.Set(key, SemanticNodeLongEntry{Node: node, Value: elem})
+		return t.elems.Len() - 1
+	}
+	index := t.indexOf(key)
+	t.elems.Set(key, SemanticNodeLongEntry{Node: node, Value: elem})
+	return index
+}
+
+func (t *SemanticNodeLongTable) Add(node SemanticNode, elem int64) int {
+	t.ensure()
+	key := newSemanticNodeKey(node)
+	if cur, ok := t.elems.Get2(key); ok {
+		index := t.indexOf(key)
+		cur.Value += elem
+		t.elems.Set(key, cur)
+		return index
+	}
+	t.elems.Set(key, SemanticNodeLongEntry{Node: node, Value: elem})
+	return t.elems.Len() - 1
+}
+
+func (t *SemanticNodeLongTable) Get(node SemanticNode) int64 {
+	if t == nil || t.elems == nil {
+		return 0
+	}
+	return t.elems.Get(newSemanticNodeKey(node)).Value
+}
+
+func (t *SemanticNodeLongTable) MergeInto(other *SemanticNodeLongTable) *SemanticNodeLongTable {
+	if other == nil || other.elems == nil {
+		return t
+	}
+	t.ensure()
+	for _, entry := range other.elems.All() {
+		t.Add(entry.Node, entry.Value)
+	}
+	return t
+}
+
+func (t *SemanticNodeLongTable) ToArray() []SemanticNode {
+	if t == nil || t.elems == nil {
+		return nil
+	}
+	out := make([]SemanticNode, 0, t.elems.Len())
+	for _, entry := range t.elems.All() {
+		out = append(out, entry.Node)
+	}
+	return out
+}
+
+func (t *SemanticNodeLongTable) Keys() *SemanticNodeLongTableEnumerator {
+	return &SemanticNodeLongTableEnumerator{keys: t.ToArray()}
+}
+
+func (t *SemanticNodeLongTable) ensure() {
+	if t.elems == nil {
+		t.elems = NewInsMap[semanticNodeKey, SemanticNodeLongEntry]()
+	}
+}
+
+func (t *SemanticNodeLongTable) indexOf(key semanticNodeKey) int {
+	i := 0
+	for existing := range t.elems.All() {
+		if existing == key {
+			return i
+		}
+		i++
+	}
+	return -1
+}
+
+type SemanticNodeLongTableEnumerator struct {
+	keys  []SemanticNode
+	index int
+}
+
+func (e *SemanticNodeLongTableEnumerator) NextElement() SemanticNode {
+	if e == nil || e.index >= len(e.keys) {
+		return nil
+	}
+	value := e.keys[e.index]
+	e.index++
+	return value
+}
+
 type LongObjTable[V any] struct {
 	elems *InsMap[int64, V]
 }
