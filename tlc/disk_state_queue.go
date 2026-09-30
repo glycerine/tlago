@@ -12,6 +12,7 @@ import (
 const (
 	diskStateQueueDefaultBufferSize  = 8192
 	diskStateQueueBufferSizeProperty = "tlc2.tool.queue.DiskStateQueue.BufSize"
+	diskStateQueueCleanerThreshold   = 100
 )
 
 type DiskStateQueue struct {
@@ -33,6 +34,7 @@ type DiskStateQueue struct {
 	loFile        string
 	lastLoPool    int
 	newLastLoPool int
+	cleaner       *StatePoolCleaner
 }
 
 func NewDiskStateQueue(metaDir string) *DiskStateQueue {
@@ -52,6 +54,8 @@ func NewDiskStateQueue(metaDir string) *DiskStateQueue {
 	q.reader.Start()
 	q.writer = NewStatePoolWriter(bufSize, q.reader)
 	q.writer.Start()
+	q.cleaner = NewStatePoolCleaner(q)
+	q.cleaner.Start()
 	q.loFile = q.poolName(q.loPool)
 	return q
 }
@@ -169,6 +173,9 @@ func (q *DiskStateQueue) FinishAll() {
 	if q.reader != nil {
 		q.reader.SetFinished()
 	}
+	if q.cleaner != nil {
+		q.cleaner.SetFinished()
+	}
 	q.cond.Broadcast()
 }
 
@@ -211,6 +218,9 @@ func (q *DiskStateQueue) IsEmpty() bool {
 }
 
 func (q *DiskStateQueue) BeginChkpt() error {
+	if q.cleaner != nil {
+		q.cleaner.FinishAndWait()
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
@@ -379,6 +389,7 @@ func (q *DiskStateQueue) fillDequeueBuffer() error {
 		q.deqIndex = 0
 		q.loPool++
 		q.loFile = q.poolName(q.loPool)
+		q.maybeCleanStatePools()
 		return nil
 	}
 	if q.writer != nil {
@@ -396,6 +407,7 @@ func (q *DiskStateQueue) fillDequeueBuffer() error {
 			q.deqIndex = 0
 			q.loPool++
 			q.loFile = q.poolName(q.loPool)
+			q.maybeCleanStatePools()
 			return nil
 		}
 	}
@@ -408,6 +420,7 @@ func (q *DiskStateQueue) fillDequeueBuffer() error {
 		q.enqBuf[i] = nil
 	}
 	q.enqIndex = 0
+	q.maybeCleanStatePools()
 	return nil
 }
 
@@ -452,4 +465,110 @@ func (q *DiskStateQueue) isAvailLocked() bool {
 
 func (q *DiskStateQueue) poolName(pool int) string {
 	return filepath.Join(q.diskdir, fmt.Sprint(pool))
+}
+
+func (q *DiskStateQueue) maybeCleanStatePools() {
+	if q.cleaner == nil {
+		return
+	}
+	if q.loPool-q.lastLoPool > diskStateQueueCleanerThreshold {
+		q.cleaner.DeleteUpTo(q.loPool - 1)
+	}
+}
+
+type StatePoolCleaner struct {
+	mu         sync.Mutex
+	cond       *sync.Cond
+	queue      *DiskStateQueue
+	deleteUpTo int
+	finished   bool
+	done       chan struct{}
+}
+
+func NewStatePoolCleaner(queue *DiskStateQueue) *StatePoolCleaner {
+	c := &StatePoolCleaner{
+		queue: queue,
+		done:  make(chan struct{}),
+	}
+	c.cond = sync.NewCond(&c.mu)
+	return c
+}
+
+func (c *StatePoolCleaner) Start() {
+	go c.run()
+}
+
+func (c *StatePoolCleaner) DeleteUpTo(pool int) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.finished {
+		return
+	}
+	if pool > c.deleteUpTo {
+		c.deleteUpTo = pool
+	}
+	c.cond.Signal()
+}
+
+func (c *StatePoolCleaner) SetFinished() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.finished = true
+	c.cond.Broadcast()
+	c.mu.Unlock()
+}
+
+func (c *StatePoolCleaner) FinishAndWait() {
+	if c == nil {
+		return
+	}
+	c.SetFinished()
+	<-c.done
+}
+
+func (c *StatePoolCleaner) run() {
+	defer close(c.done)
+	for {
+		c.mu.Lock()
+		for !c.finished && c.deleteUpTo <= 0 {
+			c.cond.Wait()
+		}
+		if c.finished {
+			c.mu.Unlock()
+			return
+		}
+		target := c.deleteUpTo
+		c.deleteUpTo = 0
+		c.mu.Unlock()
+
+		q := c.queue
+		if q == nil {
+			continue
+		}
+		q.mu.Lock()
+		start := q.lastLoPool
+		q.mu.Unlock()
+		if target <= start {
+			continue
+		}
+		for i := start; i < target; i++ {
+			name := q.poolName(i)
+			if err := os.Remove(name); err != nil && !errors.Is(err, os.ErrNotExist) {
+				if abs, absErr := filepath.Abs(name); absErr == nil {
+					name = abs
+				}
+				PrintWarning(ECSystemErrorCleaningPool, name)
+			}
+		}
+		q.mu.Lock()
+		if q.lastLoPool < target {
+			q.lastLoPool = target
+		}
+		q.mu.Unlock()
+	}
 }

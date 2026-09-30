@@ -1136,7 +1136,9 @@ Disk queue behavior:
 - State-pool files are full-buffer writes. Java calls `TLCState.write` on every
   pool slot and therefore fails on a null entry; Go must not substitute empty
   states for nil slots because that hides queue corruption.
-- a cleaner thread deletes old pool files.
+- A cleaner thread deletes old pool files once `loPool - lastLoPool > 100`.
+  Checkpointing stops the cleaner before writing queue metadata, and after the
+  first checkpoint the checkpoint commit path owns obsolete pool-file deletion.
 - checkpoint includes queue metadata and buffered states.
 
 Port guidance:
