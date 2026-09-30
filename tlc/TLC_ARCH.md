@@ -1210,6 +1210,11 @@ Go mapping:
 - Context-sensitive operators such as `TLCGet` and `TLCSet` use
   `EvaluatingValue` so their implementations receive the concrete `Tool`,
   context, current state, successor state, eval control, and cost model.
+- JSON, TLCExt, `_TLCTrace`, and `_Possible` overrides follow the same table.
+  `TLCExt!TLCCache` uses a concrete `TLCExtCache` for constant-level
+  expressions and the concrete `TLCStateMut` cache for state-level
+  expressions, matching Java's split between expression tool objects and
+  `TLCStateMutExt`.
 
 Port guidance:
 

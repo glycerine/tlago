@@ -96,6 +96,68 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	})
 	t.defineStandardMethod("Warshall", 1, func(args []Value) (Value, error) { return Warshall(args[0]) })
 
+	t.defineStandardMethod("ToJson", 1, func(args []Value) (Value, error) { return JsonToJson(args[0]) })
+	t.defineStandardMethod("ToJsonArray", 1, func(args []Value) (Value, error) { return JsonToJsonArray(args[0]) })
+	t.defineStandardMethod("ToJsonObject", 1, func(args []Value) (Value, error) { return JsonToJsonObject(args[0]) })
+	t.defineStandardMethod("JsonDeserialize", 1, func(args []Value) (Value, error) {
+		path, err := standardStringArg("JsonDeserialize", args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return JsonDeserialize(path)
+	})
+	t.defineStandardMethod("ndJsonDeserialize", 1, func(args []Value) (Value, error) {
+		path, err := standardStringArg("ndJsonDeserialize", args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return NDJsonDeserialize(path)
+	})
+	t.defineStandardMethod("JsonSerialize", 2, func(args []Value) (Value, error) {
+		path, err := standardStringArg("JsonSerialize", args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return JsonSerialize(path, args[1])
+	})
+	t.defineStandardMethod("ndJsonSerialize", 2, func(args []Value) (Value, error) {
+		path, err := standardStringArg("ndJsonSerialize", args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return NDJsonSerialize(path, args[1])
+	})
+
+	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
+	t.defineStandardEvaluating("PickSuccessor", 1, standardPickSuccessor)
+	t.defineStandardMethod("ToTrace", 1, func(args []Value) (Value, error) { return TLCExtToTrace(args[0]) })
+	t.defineStandardMethod("CounterExample", 0, func(args []Value) (Value, error) { return TLCExtCounterExample(), nil })
+	t.defineStandardEvaluating("Trace", 0, standardTrace)
+	t.defineStandardEvaluating("TLCDefer", 1, standardTLCDefer)
+	t.defineStandardMethod("TLCNoOp", 1, func(args []Value) (Value, error) { return TLCExtTLCNoOp(args[0]), nil })
+	t.defineStandardMethod("TLCModelValue", 1, func(args []Value) (Value, error) { return TLCExtTLCModelValue(args[0]) })
+	t.defineStandardEvaluating("TLCCache", 2, standardTLCCache)
+	t.defineStandardMethod("TLCFP", 1, func(args []Value) (Value, error) { return TLCExtTLCFP(args[0]), nil })
+	t.defineStandardEvaluating("TLCEvalDefinition", 1, standardTLCEvalDefinition)
+	t.defineStandardEvaluating("TLCGetOrDefault", 2, standardTLCGetOrDefault)
+	t.defineStandardEvaluating("TLCGetAndSet", 4, standardTLCGetAndSet)
+
+	t.defineStandardMethod("_TLCTraceDeserialize", 1, func(args []Value) (Value, error) {
+		path, err := standardStringArg("_TLCTraceDeserialize", args, 0)
+		if err != nil {
+			return nil, err
+		}
+		return TLCTraceDeserialize(path)
+	})
+	t.defineStandardMethod("_TLCTraceSerialize", 2, func(args []Value) (Value, error) {
+		path, err := standardStringArg("_TLCTraceSerialize", args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return TLCTraceSerialize(args[0], path)
+	})
+	t.defineStandardMethod("_Counts", 0, func(args []Value) (Value, error) { return PossibleCounts(), nil })
+
 	return t
 }
 
@@ -149,6 +211,14 @@ func standardIntArg(name string, args []Value, index int) (*IntValue, error) {
 	return value, nil
 }
 
+func standardStringArg(name string, args []Value, index int) (*StringValue, error) {
+	value, ok := args[index].(*StringValue)
+	if !ok {
+		return nil, newTLCError(ECGeneral, "%s argument %d must be a string, got %s", name, index+1, args[index])
+	}
+	return value, nil
+}
+
 func standardTLCGet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 	index, err := tool.Eval(args[0], con, state, pstate, control, cm)
 	if err != nil {
@@ -167,4 +237,145 @@ func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 		return nil, err
 	}
 	return TLCSet(index, value)
+}
+
+func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	expected, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	expectedString, ok := expected.(*StringValue)
+	if !ok {
+		return nil, newTLCError(ECGeneral, "AssertError expected a string error, got %s", expected)
+	}
+	return TLCExtAssertError(expectedString, func() (Value, error) {
+		return tool.Eval(args[1], con, state, pstate, control, cm)
+	})
+}
+
+func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	guard, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	return TLCExtPickSuccessor(guard, state, pstate)
+}
+
+func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	_ = tool
+	_ = args
+	_ = con
+	_ = pstate
+	_ = control
+	_ = cm
+	return TLCExtTrace(state)
+}
+
+func standardTLCDefer(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	callable := func() (any, error) {
+		for _, arg := range args {
+			if _, err := tool.Eval(arg, con, state, pstate, control, cm); err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+	}
+	return TLCExtTLCDefer([]*TLCStateMut{state, pstate}, callable), nil
+}
+
+func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	expr := args[0]
+	closure := args[1]
+	key, err := tool.Eval(closure, con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+
+	level := SemanticLevel(expr)
+	if tool != nil && level == TLCLevelConstant {
+		level = tool.GetLevelBound(expr, con)
+	}
+	if level == TLCLevelConstant {
+		cache, _ := SemanticToolObject(expr).(*TLCExtCache)
+		if cache == nil {
+			cache = NewTLCExtCache()
+			if SemanticToolObject(expr) == nil {
+				setSemanticToolObject(expr, cache)
+			}
+		}
+		return cache.Eval(key, func() (Value, error) {
+			return tool.Eval(expr, con, state, pstate, control, cm)
+		})
+	}
+	if level == TLCLevelState && state != nil {
+		cacheKey := standardTLCCacheKey(expr, closure, key)
+		if value := state.GetCached(cacheKey); value != nil {
+			return value, nil
+		}
+		value, err := tool.Eval(expr, con, state, pstate, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return state.SetCached(cacheKey, value), nil
+	}
+	return tool.Eval(expr, con, state, pstate, control, cm)
+}
+
+func standardTLCCacheKey(expr SemanticNode, closure SemanticNode, key Value) int {
+	fp := FP64NewString(SemanticString(expr))
+	fp = FP64ExtendString(fp, SemanticString(closure))
+	if key != nil {
+		fp = key.FingerPrint(fp)
+	}
+	return int(FP64Hash(fp))
+}
+
+func standardTLCEvalDefinition(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	name, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	return TLCExtTLCEvalDefinition(tool, name, con, state, pstate, control, cm)
+}
+
+func standardTLCGetOrDefault(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	index, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	value, err := TLCGetValue(tool, index, state, pstate, control)
+	if err == nil && value != nil {
+		return value, nil
+	}
+	return tool.Eval(args[1], con, state, pstate, control, cm)
+}
+
+func standardTLCGetAndSet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	index, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	oldValue, err := TLCGetValue(tool, index, state, pstate, control)
+	if err != nil || oldValue == nil {
+		oldValue, err = tool.Eval(args[3], con, state, pstate, control, cm)
+		if err != nil {
+			return nil, err
+		}
+	}
+	op, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	value, err := tool.Eval(args[2], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	newValue, err := EvalOperatorValue(op, []Value{oldValue, value}, control)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := TLCSet(index, newValue); err != nil {
+		return nil, err
+	}
+	return oldValue, nil
 }

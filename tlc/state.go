@@ -70,6 +70,7 @@ type TLCStateMut struct {
 	pred     *TLCStateMut
 	action   *Action
 	callable func() (any, error)
+	cached   map[int]Value
 }
 
 func NewEmptyState() *TLCStateMut {
@@ -168,6 +169,24 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		action:   s.action,
 		callable: s.callable,
 	}
+}
+
+func (s *TLCStateMut) GetCached(key int) Value {
+	if s == nil || s.cached == nil {
+		return nil
+	}
+	return s.cached[key]
+}
+
+func (s *TLCStateMut) SetCached(key int, value Value) Value {
+	if s == nil {
+		return value
+	}
+	if s.cached == nil {
+		s.cached = make(map[int]Value)
+	}
+	s.cached[key] = value
+	return value
 }
 
 func (s *TLCStateMut) SetCallable(callable func() (any, error)) {
