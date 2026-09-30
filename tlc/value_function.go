@@ -1300,6 +1300,8 @@ func asFcnRcdValue(value Value) *FcnRcdValue {
 	switch v := value.(type) {
 	case *FcnRcdValue:
 		return v
+	case *TupleValue:
+		return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems)
 	case *RecordValue:
 		return v.ToFcnRcd()
 	default:
