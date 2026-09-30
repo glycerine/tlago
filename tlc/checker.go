@@ -1300,8 +1300,8 @@ func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLC
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
 		}
-		mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
 	}
+	mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
 	return true
 }
 
