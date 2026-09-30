@@ -275,9 +275,9 @@ func fpSetInitialized(set FPSet) bool {
 	case *MemFPSet:
 		return s.metadir != "" && s.filename != ""
 	case *MemFPSet1:
-		return s.MemFPSet != nil && s.MemFPSet.metadir != "" && s.MemFPSet.filename != ""
+		return s.metadir != "" && s.filename != ""
 	case *MemFPSet2:
-		return s.MemFPSet != nil && s.MemFPSet.metadir != "" && s.MemFPSet.filename != ""
+		return s.metadir != "" && s.filename != ""
 	case *DiskFPSet:
 		return s.metadir != "" && s.filename != ""
 	case *HeapBasedDiskFPSet:
@@ -684,16 +684,461 @@ func (s *NoopFPSet) GetConfiguration() *FPSetConfiguration {
 	return s.config
 }
 
-type MemFPSet1 struct{ *MemFPSet }
-
-func NewMemFPSet1(config *FPSetConfiguration) *MemFPSet1 {
-	return &MemFPSet1{MemFPSet: NewMemFPSetWithConfig(config)}
+type MemFPSet1 struct {
+	mu         sync.Mutex
+	metadir    string
+	filename   string
+	set        *SetOfLong
+	statesSeen uint64
+	config     *FPSetConfiguration
 }
 
-type MemFPSet2 struct{ *MemFPSet }
+func NewMemFPSet1(config *FPSetConfiguration) *MemFPSet1 {
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	return &MemFPSet1{
+		set:    NewSetOfLong(10001),
+		config: config,
+	}
+}
+
+func (s *MemFPSet1) Init(numThreads int, metadir string, filename string) FPSet {
+	s.metadir = metadir
+	s.filename = filename
+	return s
+}
+
+func (s *MemFPSet1) Size() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return uint64(s.set.Size())
+}
+
+func (s *MemFPSet1) Sizeof() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return uint64(8 + s.set.Sizeof())
+}
+
+func (s *MemFPSet1) Put(fp uint64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.set.Put(int64(fp))
+}
+
+func (s *MemFPSet1) Contains(fp uint64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.set.Contains(int64(fp))
+}
+
+func (s *MemFPSet1) PutBlock(fpv *LongVec) *BitVector {
+	if fpv == nil {
+		return NewBitVector(0)
+	}
+	size := fpv.Size()
+	bv := NewBitVector(size)
+	for i := 0; i < size; i++ {
+		if !s.Put(uint64(fpv.ElementAt(i))) {
+			bv.Set(i)
+		}
+	}
+	return bv
+}
+
+func (s *MemFPSet1) ContainsBlock(fpv *LongVec) *BitVector {
+	if fpv == nil {
+		return NewBitVector(0)
+	}
+	size := fpv.Size()
+	s.mu.Lock()
+	s.statesSeen += uint64(size)
+	s.mu.Unlock()
+	bv := NewBitVector(size)
+	for i := 0; i < size; i++ {
+		if !s.Contains(uint64(fpv.ElementAt(i))) {
+			bv.Set(i)
+		}
+	}
+	return bv
+}
+
+func (s *MemFPSet1) GetStatesSeen() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.statesSeen
+}
+
+func (s *MemFPSet1) GetConfiguration() *FPSetConfiguration {
+	if s == nil || s.config == nil {
+		return NewFPSetConfiguration()
+	}
+	return s.config
+}
+
+func (s *MemFPSet1) Close() {}
+
+func (s *MemFPSet1) AddThread() error {
+	return nil
+}
+
+func (s *MemFPSet1) IncWorkers(num int) {}
+
+func (s *MemFPSet1) Exit(cleanup bool) error {
+	if cleanup && s.metadir != "" {
+		return os.RemoveAll(s.metadir)
+	}
+	return nil
+}
+
+func (s *MemFPSet1) CheckInvariant(expectFPs ...uint64) bool {
+	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+}
+
+func (s *MemFPSet1) CheckFPs() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return uint64(s.set.CheckFPs())
+}
+
+func (s *MemFPSet1) BeginChkpt() error {
+	return s.BeginChkptFile(s.filename)
+}
+
+func (s *MemFPSet1) BeginChkptFile(fname string) error {
+	path := s.chkptName(fname, "tmp")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	out := NewValueOutputStream(file)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.set.BeginChkpt(out); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+func (s *MemFPSet1) CommitChkpt() error {
+	return s.CommitChkptFile(s.filename)
+}
+
+func (s *MemFPSet1) CommitChkptFile(fname string) error {
+	oldChkpt := s.chkptName(fname, "chkpt")
+	newChkpt := s.chkptName(fname, "tmp")
+	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("MemFPSet1.CommitChkpt: cannot delete %s: %w", oldChkpt, err)
+	}
+	if err := os.Rename(newChkpt, oldChkpt); err != nil {
+		return fmt.Errorf("MemFPSet1.CommitChkpt: cannot rename %s to %s: %w", newChkpt, oldChkpt, err)
+	}
+	return nil
+}
+
+func (s *MemFPSet1) Recover() error {
+	return s.RecoverFile(s.filename)
+}
+
+func (s *MemFPSet1) RecoverFile(fname string) error {
+	file, err := os.Open(s.chkptName(fname, "chkpt"))
+	if err != nil {
+		return err
+	}
+	in := NewValueInputStream(file)
+	defer in.Close()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.set.Recover(in)
+}
+
+func (s *MemFPSet1) RecoverTrace(trace *TLCTrace) error {
+	return s.Recover()
+}
+
+func (s *MemFPSet1) RecoverFP(fp uint64) error {
+	if s.Put(fp) {
+		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+	}
+	return nil
+}
+
+func (s *MemFPSet1) UnexportObject(force bool) {}
+
+func (s *MemFPSet1) chkptName(fname string, ext string) string {
+	if fname == "" {
+		fname = "fpset"
+	}
+	return filepath.Join(s.metadir, fname+".fp."+ext)
+}
+
+const memFPSet2LogSpineSize = 24
+
+type MemFPSet2 struct {
+	mu         sync.Mutex
+	metadir    string
+	filename   string
+	table      [][]byte
+	count      uint64
+	mask       uint64
+	statesSeen uint64
+	config     *FPSetConfiguration
+}
 
 func NewMemFPSet2(config *FPSetConfiguration) *MemFPSet2 {
-	return &MemFPSet2{MemFPSet: NewMemFPSetWithConfig(config)}
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	spineSize := 1 << memFPSet2LogSpineSize
+	return &MemFPSet2{
+		table:  make([][]byte, spineSize),
+		mask:   uint64(spineSize - 1),
+		config: config,
+	}
+}
+
+func (s *MemFPSet2) Init(numThreads int, metadir string, filename string) FPSet {
+	s.metadir = metadir
+	s.filename = filepath.Join(metadir, filename)
+	return s
+}
+
+func (s *MemFPSet2) Size() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.count
+}
+
+func (s *MemFPSet2) Sizeof() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	size := uint64(28)
+	size += 16 + uint64(len(s.table))*8
+	for _, bucket := range s.table {
+		if bucket != nil {
+			size += 16 + uint64(len(bucket))
+		}
+	}
+	return size
+}
+
+func (s *MemFPSet2) Put(fp uint64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	index := int(fp & s.mask)
+	bucket := s.table[index]
+	b1, b2, b3, b4, b5 := memFPSet2HighBytes(fp)
+	for i := 0; i < len(bucket); i += 5 {
+		if bucket[i] == b1 && bucket[i+1] == b2 && bucket[i+2] == b3 && bucket[i+3] == b4 && bucket[i+4] == b5 {
+			return true
+		}
+	}
+	s.table[index] = append(bucket, b1, b2, b3, b4, b5)
+	s.count++
+	return false
+}
+
+func (s *MemFPSet2) Contains(fp uint64) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	index := int(fp & s.mask)
+	bucket := s.table[index]
+	b1, b2, b3, b4, b5 := memFPSet2HighBytes(fp)
+	for i := 0; i < len(bucket); i += 5 {
+		if bucket[i] == b1 && bucket[i+1] == b2 && bucket[i+2] == b3 && bucket[i+3] == b4 && bucket[i+4] == b5 {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *MemFPSet2) PutBlock(fpv *LongVec) *BitVector {
+	if fpv == nil {
+		return NewBitVector(0)
+	}
+	size := fpv.Size()
+	bv := NewBitVector(size)
+	for i := 0; i < size; i++ {
+		if !s.Put(uint64(fpv.ElementAt(i))) {
+			bv.Set(i)
+		}
+	}
+	return bv
+}
+
+func (s *MemFPSet2) ContainsBlock(fpv *LongVec) *BitVector {
+	if fpv == nil {
+		return NewBitVector(0)
+	}
+	size := fpv.Size()
+	s.mu.Lock()
+	s.statesSeen += uint64(size)
+	s.mu.Unlock()
+	bv := NewBitVector(size)
+	for i := 0; i < size; i++ {
+		if !s.Contains(uint64(fpv.ElementAt(i))) {
+			bv.Set(i)
+		}
+	}
+	return bv
+}
+
+func (s *MemFPSet2) GetStatesSeen() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.statesSeen
+}
+
+func (s *MemFPSet2) GetConfiguration() *FPSetConfiguration {
+	if s == nil || s.config == nil {
+		return NewFPSetConfiguration()
+	}
+	return s.config
+}
+
+func (s *MemFPSet2) Close() {}
+
+func (s *MemFPSet2) AddThread() error {
+	return nil
+}
+
+func (s *MemFPSet2) IncWorkers(num int) {}
+
+func (s *MemFPSet2) Exit(cleanup bool) error {
+	if cleanup && s.metadir != "" {
+		return os.RemoveAll(s.metadir)
+	}
+	return nil
+}
+
+func (s *MemFPSet2) CheckInvariant(expectFPs ...uint64) bool {
+	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+}
+
+func (s *MemFPSet2) CheckFPs() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	values := make([]uint64, 0, s.count)
+	for i, bucket := range s.table {
+		low := uint64(i) & 0xffffff
+		for j := 0; j < len(bucket); j += 5 {
+			values = append(values, memFPSet2Fingerprint(low, bucket[j], bucket[j+1], bucket[j+2], bucket[j+3], bucket[j+4]))
+		}
+	}
+	dis := uint64(1<<63 - 1)
+	for i := 0; i < len(values); i++ {
+		for j := i + 1; j < len(values); j++ {
+			dis = minUint64(dis, absDiffUint64(values[i], values[j]))
+		}
+	}
+	return dis
+}
+
+func (s *MemFPSet2) BeginChkpt() error {
+	return s.BeginChkptFile(s.filename)
+}
+
+func (s *MemFPSet2) BeginChkptFile(fname string) error {
+	path := s.chkptName(fname, "tmp")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	out := NewValueOutputStream(file)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, bucket := range s.table {
+		low := uint64(i) & 0xffffff
+		for j := 0; j < len(bucket); j += 5 {
+			fp := memFPSet2Fingerprint(low, bucket[j], bucket[j+1], bucket[j+2], bucket[j+3], bucket[j+4])
+			if err := out.WriteLong(int64(fp)); err != nil {
+				_ = out.Close()
+				return err
+			}
+		}
+	}
+	return out.Close()
+}
+
+func (s *MemFPSet2) CommitChkpt() error {
+	return s.CommitChkptFile(s.filename)
+}
+
+func (s *MemFPSet2) CommitChkptFile(fname string) error {
+	oldChkpt := s.chkptName(fname, "chkpt")
+	newChkpt := s.chkptName(fname, "tmp")
+	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("MemFPSet2.CommitChkpt: cannot delete %s: %w", oldChkpt, err)
+	}
+	if err := os.Rename(newChkpt, oldChkpt); err != nil {
+		return fmt.Errorf("MemFPSet2.CommitChkpt: cannot rename %s to %s: %w", newChkpt, oldChkpt, err)
+	}
+	return nil
+}
+
+func (s *MemFPSet2) Recover() error {
+	return s.RecoverFile(s.filename)
+}
+
+func (s *MemFPSet2) RecoverFile(fname string) error {
+	file, err := os.Open(s.chkptName(fname, "chkpt"))
+	if err != nil {
+		return err
+	}
+	in := NewValueInputStream(file)
+	defer in.Close()
+	for {
+		fp, err := in.ReadLong()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if err := s.RecoverFP(uint64(fp)); err != nil {
+			return err
+		}
+	}
+}
+
+func (s *MemFPSet2) RecoverTrace(trace *TLCTrace) error {
+	return s.Recover()
+}
+
+func (s *MemFPSet2) RecoverFP(fp uint64) error {
+	if s.Put(fp) {
+		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+	}
+	return nil
+}
+
+func (s *MemFPSet2) UnexportObject(force bool) {}
+
+func (s *MemFPSet2) chkptName(fname string, ext string) string {
+	if fname == "" {
+		fname = "fpset"
+	}
+	return filepath.Join(s.metadir, fname+".fp."+ext)
+}
+
+func memFPSet2HighBytes(fp uint64) (byte, byte, byte, byte, byte) {
+	return byte((fp >> 24) & 0xff),
+		byte((fp >> 32) & 0xff),
+		byte((fp >> 40) & 0xff),
+		byte((fp >> 48) & 0xff),
+		byte((fp >> 56) & 0xff)
+}
+
+func memFPSet2Fingerprint(low uint64, b1 byte, b2 byte, b3 byte, b4 byte, b5 byte) uint64 {
+	return (uint64(b5) << 56) | (uint64(b4) << 48) | (uint64(b3) << 40) | (uint64(b2) << 32) | (uint64(b1) << 24) | low
 }
 
 type MultiFPSet struct {

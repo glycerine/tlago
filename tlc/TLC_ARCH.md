@@ -1028,6 +1028,11 @@ Implementations:
 
 - `MemFPSet`: synchronized in-memory hash table of buckets. Rehashes by
   doubling table capacity and splitting buckets by one bit.
+- `MemFPSet1`: deprecated memory variant backed by `SetOfLong` with Java's
+  open-addressing table and checkpoint format.
+- `MemFPSet2`: deprecated memory variant with a `2^24` spine. The low 24 bits
+  are encoded by the bucket index and only the five higher bytes are stored in
+  each collision bucket.
 - `DiskFPSet`: bounded memory plus sorted disk backing file with per-worker
   buffered random-access readers and reader/writer locking.
 - `MSBDiskFPSet`, `LSBDiskFPSet`, `HeapBasedDiskFPSet`,
