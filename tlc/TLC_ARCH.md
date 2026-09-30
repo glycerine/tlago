@@ -380,6 +380,11 @@ without introducing a one-implementation closure interface. Local module
 instance aliases that resolve directly to built-in method values are stored as
 explicit `LetBinding` entries on `LetInNode`; the same binding path is used by
 evaluation, enabledness, init, next, level calculation, and variable discovery.
+Parameterized theorem and assumption definitions use Java's separate
+`Spec.getOpContext(ThmOrAssumpDefNode, ...)` path: bind their formal parameters
+with `getVal(arg, context, cachable)` before evaluating the body. The Go
+`ThmOrAssumpDefNode` therefore carries `Params`, and eval/init/next/enabled all
+route through `GetThmOrAssumpContext`.
 
 ### `ModelConfig`
 

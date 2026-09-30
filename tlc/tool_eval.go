@@ -253,7 +253,11 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			}
 			return v, nil
 		case *ThmOrAssumpDefNode:
-			return t.Eval(v.Body, c, s0, s1, control, cm)
+			c1, err := t.GetThmOrAssumpContext(v, args, c, true)
+			if err != nil {
+				return nil, err
+			}
+			return t.Eval(v.Body, c1, s0, s1, control, cm)
 		case nil:
 			if EvalIsPrimed(control) && opNode != nil && opNode.Name != nil && opNode.Name.VarLoc() >= 0 {
 				return nil, newTLCError(ECGeneral, "state is not completely specified: %s in %s", opNode.Name, SemanticString(expr))
@@ -514,6 +518,23 @@ func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, l
 			return c1, err
 		}
 		c1 = c1.Cons(param, val)
+	}
+	return c1, nil
+}
+
+func (t *Tool) GetThmOrAssumpContext(opDef *ThmOrAssumpDefNode, args []SemanticNode, c *Context, cachable bool) (*Context, error) {
+	if opDef == nil {
+		return c, newTLCError(ECGeneral, "attempted to apply nil theorem or assumption definition")
+	}
+	if len(opDef.Params) != len(args) {
+		return c, newTLCError(ECGeneral, "applying theorem or assumption %s with wrong number of arguments", opDef)
+	}
+	c1 := c
+	if c1 == nil {
+		c1 = EmptyContext
+	}
+	for i, param := range opDef.Params {
+		c1 = c1.Cons(param, t.GetVal(args[i], c, cachable, DoNotRecordCostModel))
 	}
 	return c1, nil
 }

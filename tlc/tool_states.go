@@ -145,7 +145,11 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 				return t.GetInitStatesForPredicate(v.Body, acts, c1, ps, states, cm)
 			}
 		case *ThmOrAssumpDefNode:
-			return t.GetInitStatesForPredicate(v.Body, acts, c, ps, states, cm)
+			c1, err := t.GetThmOrAssumpContext(v, args, c, true)
+			if err != nil {
+				return err
+			}
+			return t.GetInitStatesForPredicate(v.Body, acts, c1, ps, states, cm)
 		case Value:
 			if isOperatorValue(v) {
 				bval, err := EvalOperatorValueWithTool(v, t, args, c, ps, EmptyState, EvalInit, cm)
@@ -556,7 +560,11 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 				return t.GetNextStatesForPredicate(action, v.Body, acts, c1, s0, s1, nss, cm)
 			}
 		case *ThmOrAssumpDefNode:
-			return t.GetNextStatesForPredicate(action, v.Body, acts, c, s0, s1, nss, cm)
+			c1, err := t.GetThmOrAssumpContext(v, args, c, true)
+			if err != nil {
+				return s1, err
+			}
+			return t.GetNextStatesForPredicate(action, v.Body, acts, c1, s0, s1, nss, cm)
 		case Value:
 			if isOperatorValue(v) {
 				bval, err := EvalOperatorValueWithTool(v, t, args, c, s0, s1, EvalClear, cm)

@@ -395,12 +395,13 @@ func NewPossibleCheckNode(name string) *PossibleCheckNode {
 }
 
 type ThmOrAssumpDefNode struct {
-	Name *UniqueString
-	Body SemanticNode
+	Name   *UniqueString
+	Body   SemanticNode
+	Params []*SymbolNode
 }
 
-func NewThmOrAssumpDefNode(name string, body SemanticNode) *ThmOrAssumpDefNode {
-	return &ThmOrAssumpDefNode{Name: UniqueStringOf(name), Body: body}
+func NewThmOrAssumpDefNode(name string, body SemanticNode, params ...*SymbolNode) *ThmOrAssumpDefNode {
+	return &ThmOrAssumpDefNode{Name: UniqueStringOf(name), Body: body, Params: append([]*SymbolNode(nil), params...)}
 }
 
 func (n *ThmOrAssumpDefNode) String() string {
