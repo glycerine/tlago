@@ -766,6 +766,9 @@ or `TLAGO_DISK_FPSET_LOG_LOCK_CNT` overriding the exponent. The current Go
 disk FP implementation still protects the table with the coarse `DiskFPSet.mu`;
 fine-grained per-stripe `put`/`contains`/flush locking should be ported as a
 separate disk-FP concurrency chunk.
+Disk fingerprint reads mirror Java `IdThread.GetId(braf.length)`: a goroutine
+with a current worker id uses its corresponding fixed `BufferedRandomAccessFile`
+reader; calls outside worker scope fall back to the reader pool.
 
 Visited-state identity is a 64-bit fingerprint of:
 

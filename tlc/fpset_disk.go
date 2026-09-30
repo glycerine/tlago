@@ -983,8 +983,9 @@ func (s *DiskFPSet) reopenBRAFReaders() error {
 }
 
 func (s *DiskFPSet) openDiskReader() (*BufferedRandomAccessFile, bool, error) {
-	if len(s.braf) > 0 && s.braf[0] != nil {
-		return s.braf[0], false, nil
+	id := CurrentThreadIDOr(len(s.braf))
+	if id >= 0 && id < len(s.braf) && s.braf[id] != nil {
+		return s.braf[id], false, nil
 	}
 	if len(s.brafPool) > 0 && s.poolIndex < len(s.brafPool) {
 		raf := s.brafPool[s.poolIndex]

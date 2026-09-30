@@ -99,6 +99,13 @@ func CurrentWorkerID() (int, bool) {
 	return stack[len(stack)-1], true
 }
 
+func CurrentThreadIDOr(otherID int) int {
+	if id, ok := CurrentWorkerID(); ok {
+		return id
+	}
+	return otherID
+}
+
 func PushCurrentState(state *TLCStateMut) func() {
 	gid := currentGoroutineID()
 	currentStateScope.Lock()

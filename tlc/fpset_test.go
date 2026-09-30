@@ -53,6 +53,34 @@ func TestDiskFPSetLockCountMirrorsJavaDefaultAndOverride(t *testing.T) {
 	}
 }
 
+func TestDiskFPSetReaderSelectionUsesCurrentWorkerIDLikeIdThread(t *testing.T) {
+	set := NewMSBDiskFPSet(NewFPSetConfiguration())
+	set.Init(2, t.TempDir(), "reader-selection")
+	defer set.Close()
+
+	raf, pooled, err := set.openDiskReader()
+	if err != nil {
+		t.Fatalf("openDiskReader outside worker returned error: %v", err)
+	}
+	if !pooled {
+		t.Fatalf("openDiskReader outside worker used fixed reader, want pool fallback")
+	}
+	set.poolClose(raf)
+
+	restore := PushCurrentWorkerID(1)
+	defer restore()
+	raf, pooled, err = set.openDiskReader()
+	if err != nil {
+		t.Fatalf("openDiskReader for worker returned error: %v", err)
+	}
+	if pooled {
+		t.Fatalf("openDiskReader for worker used pool, want worker-indexed reader")
+	}
+	if raf != set.braf[1] {
+		t.Fatalf("openDiskReader returned %p, want braf[1] %p", raf, set.braf[1])
+	}
+}
+
 func TestMemFPSetPutContainsAndSize(t *testing.T) {
 	set := NewMemFPSet()
 	if set.Size() != 0 {
