@@ -450,12 +450,13 @@ func standardTLCGetAndSet(tool *Tool, args []SemanticNode, con *Context, state *
 	if err != nil {
 		return nil, err
 	}
+	defaultValue, err := tool.Eval(args[3], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
 	oldValue, err := TLCGetValue(tool, index, state, pstate, control)
 	if err != nil || oldValue == nil {
-		oldValue, err = tool.Eval(args[3], con, state, pstate, control, cm)
-		if err != nil {
-			return nil, err
-		}
+		oldValue = defaultValue
 	}
 	op, err := tool.Eval(args[1], con, state, pstate, control, cm)
 	if err != nil {

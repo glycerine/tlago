@@ -1275,7 +1275,10 @@ expression and caches converted constant-level results on the semantic node.
 minimum levels in Java to prevent invalid constant folding. `TLCExt!PickSuccessor`
 is action-level. Conversely, `TLCExt!TLCGetOrDefault` is a plain Java operator,
 so both arguments are evaluated before it chooses between the register value and
-the default.
+the default. `TLCExt!TLCGetAndSet` is a TLA definition, but it calls the
+Java-overridden `TLCGetOrDefault`; a direct Go implementation must therefore
+evaluate `defaultVal` before reading the register rather than lazily only on a
+missing register.
 
 `Randomization!RandomSubset(k, S)` must follow Java's `EnumerableValue`
 subset enumerator rather than a plain shuffled sample. Java chooses a seed
