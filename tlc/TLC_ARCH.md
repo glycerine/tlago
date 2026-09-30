@@ -1617,7 +1617,7 @@ The translator then normalizes:
 
 Java decomposes startup liveness processing into two distinct phases:
 
-- `parseLiveness(tool)` builds `livespec /\ ~livecheck` from config-derived
+- `ParseLiveness(tool)` builds `livespec /\ ~livecheck` from config-derived
   actions. It conjoins every fairness/temporal action from
   `tool.getTemporals()`. If there is one implied temporal property, it appends
   its negation directly; if there are several, it appends a disjunction of

@@ -3,12 +3,12 @@ package tlc
 import "testing"
 
 func TestParseLivenessReturnsNilWithoutFairnessOrProperties(t *testing.T) {
-	live, err := parseLiveness(&Tool{})
+	live, err := ParseLiveness(&Tool{})
 	if err != nil {
-		t.Fatalf("parseLiveness error = %v", err)
+		t.Fatalf("ParseLiveness error = %v", err)
 	}
 	if live != nil {
-		t.Fatalf("parseLiveness = %v, want nil", live)
+		t.Fatalf("ParseLiveness = %v, want nil", live)
 	}
 }
 
@@ -16,12 +16,12 @@ func TestParseLivenessNegatesSingleProperty(t *testing.T) {
 	prop := NewLNState("P", nil, EmptyContext, nil)
 	tool := &Tool{ImpliedTemporals: []*Action{NewAction(prop, EmptyContext, "Prop")}}
 
-	live, err := parseLiveness(tool)
+	live, err := ParseLiveness(tool)
 	if err != nil {
-		t.Fatalf("parseLiveness error = %v", err)
+		t.Fatalf("ParseLiveness error = %v", err)
 	}
 	if live == nil || live.Kind != LiveExprNeg || live.Body != prop {
-		t.Fatalf("parseLiveness = %#v, want negated property", live)
+		t.Fatalf("ParseLiveness = %#v, want negated property", live)
 	}
 	if tool.LivenessIsTrue() {
 		t.Fatalf("Tool.LivenessIsTrue = true, want false with implied temporal property")
@@ -42,12 +42,12 @@ func TestParseLivenessCombinesFairnessAndMultiplePropertiesLikeJava(t *testing.T
 		},
 	}
 
-	live, err := parseLiveness(tool)
+	live, err := ParseLiveness(tool)
 	if err != nil {
-		t.Fatalf("parseLiveness error = %v", err)
+		t.Fatalf("ParseLiveness error = %v", err)
 	}
 	if live == nil || live.Kind != LiveExprConj || live.Count() != 2 {
-		t.Fatalf("parseLiveness = %#v, want fairness /\\ property-disjunction", live)
+		t.Fatalf("ParseLiveness = %#v, want fairness /\\ property-disjunction", live)
 	}
 	if live.GetBody(0) != fair {
 		t.Fatalf("first conjunct = %#v, want fairness", live.GetBody(0))

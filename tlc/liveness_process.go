@@ -23,7 +23,7 @@ func (p *osExprPem) toTFS() *LiveExprNode {
 	}
 }
 
-func parseLiveness(tool *Tool) (*LiveExprNode, error) {
+func ParseLiveness(tool *Tool) (*LiveExprNode, error) {
 	fairs := tool.GetTemporals()
 	livespec := NewLNConj()
 	for _, fair := range fairs {
@@ -72,7 +72,7 @@ func ProcessLiveness(tool *Tool) ([]*OrderOfSolution, error) {
 }
 
 func ProcessLivenessSilent(tool *Tool, silent bool) ([]*OrderOfSolution, error) {
-	lexpr, err := parseLiveness(tool)
+	lexpr, err := ParseLiveness(tool)
 	if err != nil {
 		return nil, err
 	}
