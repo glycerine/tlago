@@ -1182,7 +1182,9 @@ Important behavior:
   were non-leaf.
 - DFID initial-state processing records new in-model states before checking
   invariants and implied-init properties, matching Java's array/write/liveness
-  ordering.
+  ordering. Initial states excluded by model constraints are still checked
+  against invariants and implied-init properties because Java leaves their
+  `status` as `FPIntSet.NEW`.
 - DFID `setErrState` stops the DFID workers after the abstract checker accepts
   the error state.
 - Backtracking marks fingerprints leveled. States are marked done when all

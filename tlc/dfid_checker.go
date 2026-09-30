@@ -353,29 +353,31 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 			}
 			return ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
+		status := FPIntStatusNew
 		inModel, err := mc.Tool.IsInModel(state)
 		if err != nil {
 			return ECGeneral, err
 		}
-		if !inModel {
-			continue
+		if inModel {
+			fp := state.FingerPrint()
+			status = mc.FPSet.SetStatus(fp, FPIntStatusNew)
+			if status == FPIntStatusNew {
+				mc.InitStates = append(mc.InitStates, state)
+				mc.InitFPs = append(mc.InitFPs, fp)
+				if mc.AllStateWriter != nil {
+					if err := mc.AllStateWriter.WriteInitState(state); err != nil {
+						return ECGeneral, err
+					}
+				}
+				if mc.CheckLiveness && mc.LiveCheck != nil {
+					if err := mc.LiveCheck.AddInitState(mc.Tool, state, fp); err != nil {
+						return ECGeneral, err
+					}
+				}
+			}
 		}
-		fp := state.FingerPrint()
-		status := mc.FPSet.SetStatus(fp, FPIntStatusNew)
 		if status != FPIntStatusNew {
 			continue
-		}
-		mc.InitStates = append(mc.InitStates, state)
-		mc.InitFPs = append(mc.InitFPs, fp)
-		if mc.AllStateWriter != nil {
-			if err := mc.AllStateWriter.WriteInitState(state); err != nil {
-				return ECGeneral, err
-			}
-		}
-		if mc.CheckLiveness && mc.LiveCheck != nil {
-			if err := mc.LiveCheck.AddInitState(mc.Tool, state, fp); err != nil {
-				return ECGeneral, err
-			}
 		}
 		for _, invariant := range mc.Tool.GetInvariants() {
 			valid, err := mc.Tool.IsValidState(invariant, state)
