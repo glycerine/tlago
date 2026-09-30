@@ -49,6 +49,9 @@ Top-level source package sizes:
   `tlc2.tool.ModelChecker.BAQueue`.
 - Disk state queues and disk byte-array queues both use Java's
   `tlc2.tool.queue.DiskStateQueue.BufSize` property, defaulting to 8192.
+- FPSet construction follows Java properties through the central property map:
+  `tlc2.tool.fp.FPSet.impl`, `tlc2.tool.fp.DiskFPSet.logLockCnt`, and
+  `tlc2.tool.fp.OffHeapDiskFPSet.probeLimit`.
 
 Top-level test package sizes:
 

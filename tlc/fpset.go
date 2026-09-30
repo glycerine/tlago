@@ -145,10 +145,11 @@ func NewMultiFPSetConfiguration(config *FPSetConfiguration) *FPSetConfiguration 
 }
 
 func fpSetImplementationFromEnv() string {
-	for _, key := range []string{FPSetImplProperty, "TLAGO_FPSET_IMPL"} {
-		if value, ok := os.LookupEnv(key); ok {
-			return value
-		}
+	if value, ok := tlcLookupSystemProperty(FPSetImplProperty); ok {
+		return value
+	}
+	if value, ok := os.LookupEnv("TLAGO_FPSET_IMPL"); ok {
+		return value
 	}
 	return GetFPSetImplementationDefault()
 }

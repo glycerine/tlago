@@ -10,9 +10,19 @@ import (
 )
 
 const (
-	offHeapProbeLimit = 1024
-	offHeapFound      = -1
+	offHeapDefaultProbeLimit  = 1024
+	offHeapProbeLimitProperty = "tlc2.tool.fp.OffHeapDiskFPSet.probeLimit"
+	offHeapFound              = -1
 )
+
+func offHeapDiskFPSetProbeLimit() int {
+	if value, ok := tlcLookupSystemProperty(offHeapProbeLimitProperty); ok {
+		if parsed, ok := javaIntProperty(value); ok {
+			return parsed
+		}
+	}
+	return offHeapDefaultProbeLimit
+}
 
 func (s *OffHeapDiskFPSet) Put(fp uint64) bool {
 	s.mu.Lock()

@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -129,7 +128,7 @@ func NewOffHeapDiskFPSet(config *FPSetConfiguration) *OffHeapDiskFPSet {
 		NonCheckpointableDiskFPSet: base,
 		array:                      NewLongArray(positions),
 		indexer:                    NewOffHeapIndexer(positions, config.GetFPBits()),
-		probeLimit:                 offHeapProbeLimit,
+		probeLimit:                 offHeapDiskFPSetProbeLimit(),
 	}
 }
 
@@ -186,13 +185,13 @@ func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) 
 }
 
 func diskFPSetLockCount() int {
-	if value := os.Getenv(DiskFPSetLogLockCntProperty); value != "" {
-		if logLockCnt, err := strconv.Atoi(value); err == nil && logLockCnt >= 0 {
+	if value, ok := tlcLookupSystemProperty(DiskFPSetLogLockCntProperty); ok {
+		if logLockCnt, ok := javaIntProperty(value); ok && logLockCnt >= 0 {
 			return 1 << uint(logLockCnt)
 		}
 	}
 	if value := os.Getenv("TLAGO_DISK_FPSET_LOG_LOCK_CNT"); value != "" {
-		if logLockCnt, err := strconv.Atoi(value); err == nil && logLockCnt >= 0 {
+		if logLockCnt, ok := javaIntProperty(value); ok && logLockCnt >= 0 {
 			return 1 << uint(logLockCnt)
 		}
 	}
