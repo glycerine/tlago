@@ -248,7 +248,7 @@ func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
 func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 	stats := s.currentWorkerStatistics()
 	m2AndMean := s.WelfordM2Mean.Load()
-	mean := int32(m2AndMean & 0xffffffff)
+	mean := int64(m2AndMean & 0xffffffff)
 	m2 := uint64(m2AndMean) >> 32
 	traces := s.NumGenTraces.Load()
 	if traces == 0 && s.TracesGenerated != 0 {
@@ -281,7 +281,7 @@ func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 		stats.GetDistinctValues(),
 		stats.GetNextRetries(),
 		stats.GetActions(),
-		NewIntValue(mean),
+		intValueFromInt64(mean),
 		intValueFromInt64(int64(math.Round(float64(m2) / (float64(traces) + 1)))),
 	}
 	return NewRecordValue(names, values, false)
