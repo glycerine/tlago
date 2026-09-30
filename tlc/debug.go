@@ -82,6 +82,144 @@ func (s DebugStep) String() string {
 	}
 }
 
+type TLCStackFrame struct {
+	ID        int
+	Name      string
+	Node      SemanticNode
+	Context   *Context
+	Tool      *Tool
+	Exception error
+	Value     Value
+	Parent    *TLCStackFrame
+	ContextID int
+}
+
+func NewTLCStackFrame(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, exception error) *TLCStackFrame {
+	frame := &TLCStackFrame{
+		Parent:    parent,
+		Node:      node,
+		Context:   ctxt,
+		Tool:      tool,
+		Exception: exception,
+		ContextID: debugVariableReference(nil),
+	}
+	frame.ID = semanticNodeDebugID(node)
+	frame.Name = semanticNodeDebugName(node, exception)
+	return frame
+}
+
+func NewTLCStackFrameNoException(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool) *TLCStackFrame {
+	return NewTLCStackFrame(parent, node, ctxt, tool, nil)
+}
+
+func (f *TLCStackFrame) GetNode() SemanticNode {
+	if f == nil {
+		return nil
+	}
+	return f.Node
+}
+
+func (f *TLCStackFrame) GetContext() *Context {
+	if f == nil {
+		return nil
+	}
+	return f.Context
+}
+
+func (f *TLCStackFrame) GetTool() *Tool {
+	if f == nil {
+		return nil
+	}
+	return f.Tool
+}
+
+func (f *TLCStackFrame) HasException() bool {
+	return f != nil && f.Exception != nil
+}
+
+func (f *TLCStackFrame) GetException() error {
+	if f == nil {
+		return nil
+	}
+	return f.Exception
+}
+
+func (f *TLCStackFrame) String() string {
+	if f == nil {
+		return "TLCStackFrame [node=<nil>]"
+	}
+	return fmt.Sprintf("TLCStackFrame [node=%v]", f.Node)
+}
+
+func (f *TLCStackFrame) SetValue(value Value) Value {
+	if f != nil {
+		f.Value = value
+	}
+	return value
+}
+
+func (f *TLCStackFrame) GetConstantsID() int {
+	if f == nil {
+		return 1
+	}
+	return f.ContextID + 1
+}
+
+func (f *TLCStackFrame) GetStackID() int {
+	if f == nil {
+		return 3
+	}
+	return f.ContextID + 3
+}
+
+func (f *TLCStackFrame) MatchesFrame(other *TLCStackFrame) bool {
+	if f == nil || other == nil {
+		return f == other
+	}
+	return semanticNodeLevel(f.Node) == semanticNodeLevel(other.Node) && semanticNodeSame(f.Node, other.Node)
+}
+
+func (f *TLCStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
+	if f == nil || bp == nil {
+		return false
+	}
+	loc, ok := semanticNodeSourceLocation(f.Node)
+	if !ok {
+		return false
+	}
+	return bp.MatchesLocation(loc)
+}
+
+func (f *TLCStackFrame) MatchesNode(expr SemanticNode) bool {
+	return f != nil && semanticNodeSame(f.Node, expr)
+}
+
+func (f *TLCStackFrame) IsTarget(expr SemanticNode) bool {
+	return f.MatchesNode(expr)
+}
+
+type ResetEvalException struct {
+	Frame *TLCStackFrame
+}
+
+func NewResetEvalException(frame *TLCStackFrame) *ResetEvalException {
+	return &ResetEvalException{Frame: frame}
+}
+
+func (e *ResetEvalException) Error() string {
+	return "debug reset evaluation"
+}
+
+func (e *ResetEvalException) IsTarget(expr SemanticNode) bool {
+	return e != nil && e.Frame != nil && e.Frame.IsTarget(expr)
+}
+
+type AbortEvalException struct{}
+
+func (e *AbortEvalException) Error() string {
+	return "debug abort evaluation"
+}
+
 type TLCCapabilities struct {
 	SupportsStepBack  bool
 	SupportsGotoState bool
@@ -288,9 +426,56 @@ func debugValueTypeString(value Value) string {
 
 func debugVariableReference(rnd *rand.Rand) int {
 	if rnd == nil {
-		return 1
+		return rand.Intn(maxJavaInt-1) + 1
 	}
 	return rnd.Intn(maxJavaInt-1) + 1
+}
+
+func semanticNodeDebugID(node SemanticNode) int {
+	if node == nil {
+		return debugVariableReference(nil)
+	}
+	return int(FP64Hash(FP64NewString(fmt.Sprint(node))))
+}
+
+func semanticNodeDebugName(node SemanticNode, exception error) string {
+	name := fmt.Sprint(node)
+	if name == "" || name == "<nil>" {
+		name = "<semantic node>"
+	}
+	if exception != nil {
+		return "(Exception) " + name
+	}
+	return name
+}
+
+func semanticNodeLevel(node SemanticNode) int {
+	if getter, ok := node.(interface{ GetLevel() int }); ok {
+		return getter.GetLevel()
+	}
+	return SemanticLevel(node)
+}
+
+func semanticNodeSame(left SemanticNode, right SemanticNode) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	leftValue := reflect.ValueOf(left)
+	rightValue := reflect.ValueOf(right)
+	if leftValue.IsValid() && rightValue.IsValid() && leftValue.Type() == rightValue.Type() && leftValue.Type().Comparable() {
+		return leftValue.Interface() == rightValue.Interface()
+	}
+	return fmt.Sprint(left) == fmt.Sprint(right)
+}
+
+func semanticNodeSourceLocation(node SemanticNode) (SourceLocation, bool) {
+	if located, ok := node.(interface{ SourceLocation() SourceLocation }); ok {
+		return located.SourceLocation(), true
+	}
+	if located, ok := node.(interface{ GetSourceLocation() SourceLocation }); ok {
+		return located.GetSourceLocation(), true
+	}
+	return NullSourceLocation, false
 }
 
 func debugValueNested(value Value, prototype *DebugTLCVariable, rnd *rand.Rand) []*DebugTLCVariable {

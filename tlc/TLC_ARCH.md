@@ -2082,6 +2082,11 @@ Important Java classes:
   a large family of `pushFrame`/`popFrame` overloads. In Go, avoid turning this
   into an interface while there is only one debugger path; keep the enum values
   and concrete debugger state on `TLCDebugger`.
+- `TLCStackFrame`: the base debugger frame. It carries semantic-node identity,
+  context, tool, optional exception, parent, and eventual value. Java uses it
+  for stepping/breakpoint target checks and for `ResetEvalException`; Go mirrors
+  that as concrete `TLCStackFrame`, `ResetEvalException`, and
+  `AbortEvalException` structs.
 - `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
   stack-frame list, stepping state, granularity, halt flags, and the connection
   to the debug adapter. The protocol transport is less important than preserving
