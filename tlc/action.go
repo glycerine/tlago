@@ -447,7 +447,11 @@ func (l *ActionItemList) Cdr() *ActionItemList {
 }
 
 func (l *ActionItemList) Cons(pred SemanticNode, con *Context, cm CostModel, kind int) *ActionItemList {
-	item := NewActionItemList(pred, con, kind, l, cm.Get(pred))
+	itemCM := cm
+	if CoverageActionEnabled() {
+		itemCM = cm.Get(pred)
+	}
+	item := NewActionItemList(pred, con, kind, l, itemCM)
 	item.act = l.GetAction()
 	return item
 }
@@ -458,7 +462,11 @@ func (l *ActionItemList) ConsAction(act *Action, kind int) *ActionItemList {
 		item.act = l.GetAction()
 		return item
 	}
-	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: act.CM.Get(act.Pred), act: act}
+	itemCM := act.CM
+	if CoverageActionEnabled() {
+		itemCM = act.CM.Get(act.Pred)
+	}
+	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: itemCM, act: act}
 }
 
 func (l *ActionItemList) IsEmpty() bool {

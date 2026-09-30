@@ -483,6 +483,10 @@ Key semantics:
   action and a previous-node pointer across `cdr()` traversal. Go folds this
   into the single concrete `ActionItemList` struct with `act` and `prev` fields
   to avoid another type while preserving `getAction()` behavior.
+- `ActionItemList.cons` must mirror Java's coverage guard: it descends from the
+  parent cost model with `cm.get(pred)` only when action coverage is enabled.
+  When coverage is disabled, or only variable coverage is enabled through the
+  coverage bitmask, it keeps the incoming cost model.
 - A complete state must assign every declared variable.
 - `isGoodState` detects incomplete or illegal states.
 - Model constraints and action constraints filter states but do not replace
@@ -1575,6 +1579,17 @@ Coverage counts:
 - secondary action counts for newly discovered successor states,
 - zero/non-zero coverage,
 - cost coverage.
+
+Java has two knobs. `TLCGlobals.isCoverageEnabled()` is driven by the
+`-coverage` interval and enables all coverage. `TLCGlobals.Coverage.coverage`
+is a bitmask read from the `tlc2.TLCGlobals.coverage` system property: bit `1`
+enables action coverage and bit `2` enables variable coverage. `Coverage.isEnabled`
+is true for either interval coverage or any bit, while `Coverage.isActionEnabled`
+guards action cost-model traversal and action `incInvocations`/`incSecondary`
+counts. The Go port mirrors this with `CoverageInterval`, `CoverageFlags`,
+`CoverageAnyEnabled`, `CoverageActionEnabled`, and `CoverageVariableEnabled`;
+`TLAGO_COVERAGE` is accepted as the Go-friendly environment spelling of the
+Java bitmask property.
 
 Port guidance:
 

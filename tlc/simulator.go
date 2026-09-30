@@ -114,7 +114,7 @@ func (s *Simulator) Simulate() (int, error) {
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "simulator has no tool")
 	}
-	if CoverageEnabled() {
+	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(s.Tool)
 		defer ReportCoverage(s.Tool, TLCStartTime())
 	}

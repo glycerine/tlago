@@ -513,7 +513,7 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
 	}
-	if CoverageEnabled() {
+	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
 		defer ReportCoverage(mc.Tool, mc.StartTime)
 	}
@@ -1239,7 +1239,7 @@ func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succSta
 		}
 	}
 	if !seen {
-		if action != nil && action.CM.node != nil {
+		if action != nil && CoverageActionEnabled() {
 			action.CM.IncSecondary()
 		}
 		if mc.Tool != nil {

@@ -544,7 +544,7 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 	if succ == nil {
 		return nil
 	}
-	if action != nil && action.CM.node != nil {
+	if action != nil && CoverageActionEnabled() {
 		action.CM.IncInvocations()
 	}
 	w.markWorkerState(succ)
@@ -571,7 +571,7 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 		inModel = inActions
 	}
 	if inModel {
-		if action != nil && action.CM.node != nil {
+		if action != nil && CoverageActionEnabled() {
 			action.CM.IncSecondary()
 		}
 		w.NextStates.Add(succ)

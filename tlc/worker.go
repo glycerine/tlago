@@ -226,7 +226,7 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 	if w.Halted {
 		return w, nil
 	}
-	if action != nil && action.CM.node != nil {
+	if action != nil && CoverageActionEnabled() {
 		action.CM.IncInvocations()
 	}
 	w.StatesGenerated++

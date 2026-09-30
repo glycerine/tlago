@@ -1,6 +1,8 @@
 package tlc
 
 import (
+	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -21,6 +23,7 @@ var Globals = struct {
 	LNCheck                    string
 	ProgressIntervalMillis     int64
 	CoverageInterval           int
+	CoverageFlags              int
 	DFIDMax                    int
 	Continuation               bool
 	Expand                     bool
@@ -49,6 +52,7 @@ var Globals = struct {
 	LNCheck:                    "default",
 	ProgressIntervalMillis:     DefaultProgressIntervalMillis,
 	CoverageInterval:           -1,
+	CoverageFlags:              initialCoverageFlags(),
 	DFIDMax:                    -1,
 	Expand:                     true,
 	Warn:                       true,
@@ -128,6 +132,38 @@ func CoverageEnabled() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.CoverageInterval >= 0
+}
+
+func CoverageVariableEnabled() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.CoverageInterval >= 0 || (Globals.CoverageFlags&2) > 0
+}
+
+func CoverageActionEnabled() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.CoverageInterval >= 0 || (Globals.CoverageFlags&1) > 0
+}
+
+func CoverageAnyEnabled() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.CoverageInterval >= 0 || Globals.CoverageFlags > 0
+}
+
+func initialCoverageFlags() int {
+	for _, key := range []string{"tlc2.TLCGlobals.coverage", "TLAGO_COVERAGE"} {
+		value := os.Getenv(key)
+		if value == "" {
+			continue
+		}
+		flags, err := strconv.Atoi(value)
+		if err == nil {
+			return flags
+		}
+	}
+	return 0
 }
 
 func ProgressInterval() time.Duration {

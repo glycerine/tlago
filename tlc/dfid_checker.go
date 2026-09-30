@@ -79,7 +79,7 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if mc.CheckLiveness {
 		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support checking liveness properties. Please check liveness properties in Breadth-First-Search mode.")
 	}
-	if CoverageEnabled() {
+	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
 		defer ReportCoverage(mc.Tool, mc.StartTime)
 	}
@@ -227,7 +227,7 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 		deadlocked = deadlocked && size == 0
 		for i := 0; i < size; i++ {
 			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
-			if action != nil && action.CM.node != nil {
+			if action != nil && CoverageActionEnabled() {
 				action.CM.IncInvocations()
 			}
 			if !mc.Tool.IsGoodState(succ) {

@@ -87,7 +87,7 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 		rootAction = acts.GetAction()
 	}
 	if acts == nil || acts.IsEmpty() {
-		if cm.node != nil {
+		if CoverageActionEnabled() {
 			cm.IncInvocations()
 			cm.GetRoot().IncInvocations()
 		}
@@ -101,7 +101,7 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 				return err
 			}
 			if !bval.Val {
-				if cm.node != nil {
+				if CoverageActionEnabled() {
 					cm.GetRoot().IncSecondary()
 				}
 				states.AddUnsatisfiedState(ps, acts.CarPred(), acts.CarContext())
@@ -109,7 +109,7 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 			}
 			acts = acts.Cdr()
 		}
-		if cm.node != nil {
+		if CoverageActionEnabled() {
 			cm.IncInvocations()
 			cm.GetRoot().IncInvocations()
 		}
