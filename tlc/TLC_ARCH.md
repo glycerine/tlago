@@ -1023,7 +1023,8 @@ Port guidance:
 - Keep debugger structures concrete. Do not port Java's `IDebugTarget` as a Go
   interface unless a second real implementation appears.
 - Simulation debugging attaches only one worker. Non-attached workers should use
-  `Tool.NoDebug()`; a simple `Debug bool` on `SimulationWorker` is sufficient.
+  `Tool.NoDebug()`; a simple private `debug bool` on `SimulationWorker` is
+  sufficient.
 
 ## Distributed TLC Architecture
 

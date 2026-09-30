@@ -185,7 +185,7 @@ type SimulationWorker struct {
 	MaxTraceNum   int64
 	MaxTraceDepth int
 	CheckDeadlock bool
-	Debug         bool
+	debug         bool
 	TraceFile     string
 	LiveCheck     *LiveCheck
 	Statistics    *SimulationWorkerStatistics
@@ -208,7 +208,7 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 		MaxTraceNum:   maxTraceNum,
 		MaxTraceDepth: maxTraceDepth,
 		CheckDeadlock: checkDeadlock,
-		Debug:         debug,
+		debug:         debug,
 		TraceFile:     traceFile,
 		LiveCheck:     liveCheck,
 		Statistics:    NewSimulationWorkerStatistics(tool, traceActions, states, traces, m2Mean),
