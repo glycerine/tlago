@@ -19,6 +19,8 @@ type JavaRandom struct {
 	nextGaussian     float64
 }
 
+var javaRandomPrimes = generateJavaRandomPrimes()
+
 func NewJavaRandom(seed int64) *JavaRandom {
 	r := &JavaRandom{}
 	r.SetSeed(seed)
@@ -135,6 +137,41 @@ func (r *JavaRandom) NextGaussian() float64 {
 	r.nextGaussian = v2 * multiplier
 	r.haveNextGaussian = true
 	return v1 * multiplier
+}
+
+func (r *JavaRandom) NextPrime() int {
+	index := len(javaRandomPrimes)
+	for index == len(javaRandomPrimes) {
+		index = int(math.Floor(r.NextDouble() * float64(index)))
+	}
+	return javaRandomPrimes[index]
+}
+
+func generateJavaRandomPrimes() []int {
+	// Java RandomGenerator.primes is exactly the ascending list of all primes in
+	// this interval. Generate it to avoid carrying a large static table in Go.
+	primes := make([]int, 0, 1341)
+	for n := 1277011; n <= 1295953; n++ {
+		if isJavaRandomPrime(n) {
+			primes = append(primes, n)
+		}
+	}
+	return primes
+}
+
+func isJavaRandomPrime(n int) bool {
+	if n < 2 {
+		return false
+	}
+	if n%2 == 0 {
+		return n == 2
+	}
+	for d := 3; d*d <= n; d += 2 {
+		if n%d == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *JavaRandom) Perm(n int) []int {

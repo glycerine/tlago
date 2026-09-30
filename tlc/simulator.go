@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"math/rand"
 	"sync/atomic"
 	"time"
 )
@@ -11,7 +10,7 @@ type Simulator struct {
 	CheckDeadlock bool
 	TraceDepth    int
 	TraceNum      int64
-	Rand          *rand.Rand
+	Rand          *JavaRandom
 	Seed          int64
 	ResultQueue   chan SimulationWorkerResult
 	Workers       []*SimulationWorker
@@ -47,7 +46,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		TraceDepth:    traceDepth,
 		TraceNum:      traceNum,
 		Seed:          seed,
-		Rand:          rand.New(rand.NewSource(seed)),
+		Rand:          NewJavaRandom(seed),
 		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
 		Values:        NewInsMap[int, Value](),
 		NamedValues:   NewInsMap[*UniqueString, Value](),
@@ -66,7 +65,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 			i,
 			workerTool,
 			simulator.ResultQueue,
-			simulator.Rand.Int63(),
+			simulator.Rand.NextLong(),
 			traceDepth,
 			traceNum,
 			"",
@@ -278,7 +277,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 			0,
 			s.Tool,
 			s.ResultQueue,
-			s.Rand.Int63(),
+			s.Rand.NextLong(),
 			s.TraceDepth,
 			s.TraceNum,
 			"",
@@ -358,7 +357,7 @@ func (s *Simulator) randomSuccessor(cur *TLCStateMut) (*TLCStateMut, int, error)
 		}
 		return nil, NoError, nil
 	}
-	idx := s.Rand.Intn(len(successors))
+	idx := int(s.Rand.NextIntN(int32(len(successors))))
 	return successors[idx].SetPredecessor(cur).SetAction(actions[idx]), NoError, nil
 }
 

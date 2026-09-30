@@ -784,7 +784,13 @@ Important behavior:
 - Simulation is not just model checking with random queue order. It has separate
   liveness checking, trace file behavior, random element/subset hooks, and
   worker result aggregation.
-- Seed and aril are printed and must be reproducible.
+- Seed and aril are printed and must be reproducible. `SimulationWorker` uses
+  TLC's Java-compatible `RandomGenerator` semantics, including `nextDouble`
+  based element selection, worker seeds from `nextLong`, and `nextPrime` as the
+  alternative-action stride.
+- Simulation traces compress finite stuttering steps in `getTrace` and then
+  repair predecessor links, while `getUncompressedTrace` preserves the raw
+  predecessor chain.
 - Some errors are non-continuable even in continuation-like modes.
 
 Port guidance:

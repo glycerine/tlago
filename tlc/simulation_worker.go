@@ -3,7 +3,6 @@ package tlc
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"sync/atomic"
 )
@@ -176,7 +175,7 @@ func (s *SimulationWorkerStatistics) GetNextRetries() Value {
 type SimulationWorker struct {
 	ID            int
 	Tool          *Tool
-	Rand          *rand.Rand
+	Rand          *JavaRandom
 	CurState      *TLCStateMut
 	InitStates    *StateVec
 	ResultQueue   chan SimulationWorkerResult
@@ -203,7 +202,7 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 	return &SimulationWorker{
 		ID:            id,
 		Tool:          tool,
-		Rand:          rand.New(rand.NewSource(seed)),
+		Rand:          NewJavaRandom(seed),
 		ResultQueue:   results,
 		MaxTraceNum:   maxTraceNum,
 		MaxTraceDepth: maxTraceDepth,
@@ -226,7 +225,7 @@ func (w *SimulationWorker) Start(initStates *StateVec) {
 	if w == nil {
 		return
 	}
-	w.InitStates = initStates
+	w.SetInitialStates(initStates)
 	go w.Run()
 }
 
@@ -259,14 +258,15 @@ func (w *SimulationWorker) RandomState(states *StateVec) *TLCStateMut {
 	if states == nil || states.Size() == 0 {
 		return nil
 	}
-	return states.At(w.Rand.Intn(states.Size()))
+	index := int(math.Floor(w.Rand.NextDouble() * float64(states.Size())))
+	return states.At(index)
 }
 
 func (w *SimulationWorker) GetNextActionIndex(actions []*Action, curState *TLCStateMut) int {
 	if len(actions) == 0 {
 		return -1
 	}
-	return w.Rand.Intn(len(actions))
+	return int(math.Floor(w.Rand.NextDouble() * float64(len(actions))))
 }
 
 func (w *SimulationWorker) GetNextActionAltIndex(index int, p int, actions []*Action, curState *TLCStateMut) int {
@@ -287,12 +287,16 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	if w.CurState != nil {
 		w.CurState = w.CurState.DeepCopy()
 	}
-	actions := w.Tool.GetActions()
+	allActions := w.Tool.GetActions()
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
 		if w.Stopped.Load() {
 			return nil
 		}
 		w.NextStates.Clear()
+		actions, workerErr := w.FilterActions(allActions, w.CurState)
+		if workerErr != nil {
+			return workerErr
+		}
 		if len(actions) == 0 {
 			if w.CheckDeadlock {
 				return &SimulationWorkerError{Code: ECTLCDeadlockReached, StateTrace: w.GetTrace(w.CurState)}
@@ -300,7 +304,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 			break
 		}
 		index := w.GetNextActionIndex(actions, w.CurState)
-		step := 1
+		step := w.Rand.NextPrime()
 		for i := 0; i < len(actions); i++ {
 			action := actions[index]
 			nextStates, err := w.Tool.GetNextStates(action, w.CurState)
@@ -342,6 +346,17 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
 		}
 	}
+	if workerErr := w.PostTrace(w.CurState); workerErr != nil {
+		return workerErr
+	}
+	return nil
+}
+
+func (w *SimulationWorker) FilterActions(actions []*Action, curState *TLCStateMut) ([]*Action, *SimulationWorkerError) {
+	return actions, nil
+}
+
+func (w *SimulationWorker) PostTrace(finalState *TLCStateMut) *SimulationWorkerError {
 	return nil
 }
 
@@ -420,6 +435,25 @@ func (w *SimulationWorker) CheckImpliedActions(state *TLCStateMut) *SimulationWo
 func (w *SimulationWorker) GetTrace(state *TLCStateMut) *StateVec {
 	stack := make([]*TLCStateMut, 0)
 	for cur := state; cur != nil; cur = cur.Predecessor() {
+		pred := cur.Predecessor()
+		if cur.Equal(pred) {
+			continue
+		}
+		stack = append(stack, cur)
+	}
+	trace := NewStateVec(len(stack))
+	for i := len(stack) - 1; i >= 0; i-- {
+		trace.Add(stack[i])
+	}
+	for i := 1; i < trace.Size(); i++ {
+		trace.At(i).SetPredecessor(trace.At(i - 1))
+	}
+	return trace
+}
+
+func (w *SimulationWorker) GetUncompressedTrace(state *TLCStateMut) *StateVec {
+	stack := make([]*TLCStateMut, 0)
+	for cur := state; cur != nil; cur = cur.Predecessor() {
 		stack = append(stack, cur)
 	}
 	trace := NewStateVec(len(stack))
@@ -427,6 +461,26 @@ func (w *SimulationWorker) GetTrace(state *TLCStateMut) *StateVec {
 		trace.Add(stack[i])
 	}
 	return trace
+}
+
+func (w *SimulationWorker) SetInitialStates(initStates *StateVec) {
+	if w != nil {
+		w.InitStates = initStates
+	}
+}
+
+func (w *SimulationWorker) GetTraceCnt() int64 {
+	if w == nil {
+		return 0
+	}
+	return w.TraceCnt + 1
+}
+
+func (w *SimulationWorker) GetRNG() *JavaRandom {
+	if w == nil {
+		return nil
+	}
+	return w.Rand
 }
 
 func (w *SimulationWorker) WriteTraceFile() error {
