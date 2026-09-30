@@ -278,6 +278,9 @@ Current adapter responsibilities:
   and later operator application use the same symbols.
 - install named-instance aliases for TLC standard-module overrides and local
   LET instance aliases such as `T!PrintT`.
+- evaluate `ALIAS` config operators by converting complete record values back
+  into TLC states, falling back to the original state if evaluation or
+  conversion fails.
 - resolve config-selected `INIT`, `NEXT`, `SPECIFICATION`, invariants,
   properties, constraints, view, and postconditions into `Action` or semantic
   nodes.
