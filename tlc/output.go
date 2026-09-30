@@ -423,6 +423,18 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])
 		}
+	case ECTLCModuleCompareValue:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Attempted to compare %s with the value\n%s", params[0], params[1])
+		}
+	case ECTLCModuleCheckMemberOf:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of %s.", params[0], params[1])
+		}
+	case ECTLCModuleComputingCardinality:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Attempted to compute cardinality of the value\n%s", params[0])
+		}
 	}
 	if len(params) == 0 {
 		return fmt.Sprintf("%d", code)

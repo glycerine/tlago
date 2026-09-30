@@ -26,7 +26,7 @@ func IsFiniteSet(value Value) (*BoolValue, error) {
 
 func Cardinality(value Value) (*IntValue, error) {
 	if _, ok := asEnumerable(value); !ok {
-		return nil, newTLCError(ECGeneral, "attempted to compute Cardinality of non-enumerable value %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleComputingCardinality, ValuesPPR(value))
 	}
 	size, err := value.Size()
 	if err != nil {
@@ -270,7 +270,7 @@ func (stringsObj) Compare(val Value) (int, error) {
 	if _, ok := val.(*ModelValue); ok {
 		return 1, nil
 	}
-	return 0, newTLCError(ECGeneral, "attempted to compare STRING with %s", val)
+	return 0, newTLCErrorCode(ECTLCModuleCompareValue, "STRING", ValuesPPR(val))
 }
 
 func (stringsObj) Member(val Value) (bool, error) {
@@ -280,7 +280,7 @@ func (stringsObj) Member(val Value) (bool, error) {
 	if mv, ok := val.(*ModelValue); ok {
 		return mv.modelValueMember(StringSetValue)
 	}
-	return false, newTLCError(ECGeneral, "attempted to check if %s is in STRING", val)
+	return false, newTLCErrorCode(ECTLCModuleCheckMemberOf, ValuesPPR(val), "STRING")
 }
 
 func (stringsObj) IsFinite() (bool, error) { return false, nil }

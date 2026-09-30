@@ -21,6 +21,10 @@ func newTLCError(code int, format string, args ...any) *TLCError {
 	return &TLCError{Code: code, Msg: fmt.Sprintf(format, args...)}
 }
 
+func newTLCErrorCode(code int, params ...string) *TLCError {
+	return &TLCError{Code: code, Msg: formatMessage(code, params)}
+}
+
 type ConfigError struct {
 	Code   int
 	Params []string

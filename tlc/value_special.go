@@ -135,7 +135,7 @@ type AnySet struct{}
 var AnySetValue = NewUserValue(AnySet{})
 
 func (AnySet) Compare(val Value) (int, error) {
-	return 0, newTLCError(ECGeneral, "attempted to compare ANY with %s", val)
+	return 0, newTLCErrorCode(ECTLCModuleCompareValue, "ANY", ValuesPPR(val))
 }
 
 func (AnySet) Member(Value) (bool, error) {

@@ -1727,6 +1727,14 @@ the definition-by-name hook as `TLCExtTLCEvalDefinition`, which looks up a
 zero-arity `OpDefNode` in the concrete `Tool` definition table and evaluates
 its body in the existing context/state pair.
 
+Standard module failures should preserve Java's specific `EC.TLC_MODULE_*`
+codes and `Values.ppr` value rendering. In particular, `FiniteSets.Cardinality`
+throws `TLC_MODULE_COMPUTING_CARDINALITY` for non-enumerable values, `STRING`
+membership failures throw `TLC_MODULE_CHECK_MEMBER_OF`, and `STRING`/`ANY`
+comparison failures throw `TLC_MODULE_COMPARE_VALUE`. These are observable
+through error reporting and debugger paths, so avoid replacing them with generic
+Go errors while porting module code.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty
