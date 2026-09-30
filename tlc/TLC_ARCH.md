@@ -1093,6 +1093,9 @@ Implementations:
 - `DiskStateQueue`: two in-memory buffers plus state-pool disk files.
 - `DiskByteArrayQueue`: byte-array backed disk queue that serializes states
   before taking the queue lock and stores raw state bytes in its disk buffers.
+  Java gives this queue the same reader/writer/cleaner choreography as
+  `DiskStateQueue`; the Go port keeps a concrete byte-array cleaner rather
+  than generalizing through an interface.
 - `SynchronousDiskIntStack`: real disk-backed integer stack used by utility
   code. Java's `DiskIntStack` is documented as an unused asynchronous sketch.
 
@@ -1139,6 +1142,8 @@ Disk queue behavior:
 - A cleaner thread deletes old pool files once `loPool - lastLoPool > 100`.
   Checkpointing stops the cleaner before writing queue metadata, and after the
   first checkpoint the checkpoint commit path owns obsolete pool-file deletion.
+- `DiskByteArrayQueue` uses the same cleaner threshold and checkpoint handoff
+  for liveness/raw-state pool files.
 - checkpoint includes queue metadata and buffered states.
 
 Port guidance:

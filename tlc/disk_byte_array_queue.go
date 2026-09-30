@@ -28,6 +28,7 @@ type DiskByteArrayQueue struct {
 	lastLoPool    int
 	newLastLoPool int
 	loFile        string
+	cleaner       *ByteArrayPoolCleaner
 }
 
 func NewDiskByteArrayQueue(metaDir string) *DiskByteArrayQueue {
@@ -47,6 +48,8 @@ func NewDiskByteArrayQueue(metaDir string) *DiskByteArrayQueue {
 	q.reader.Start()
 	q.writer = NewByteArrayPoolWriter(bufSize, q.reader)
 	q.writer.Start()
+	q.cleaner = NewByteArrayPoolCleaner(q)
+	q.cleaner.Start()
 	q.loFile = q.poolName(q.loPool)
 	return q
 }
@@ -174,6 +177,9 @@ func (q *DiskByteArrayQueue) FinishAll() {
 	if q.reader != nil {
 		q.reader.SetFinished()
 	}
+	if q.cleaner != nil {
+		q.cleaner.SetFinished()
+	}
 	q.cond.Broadcast()
 }
 
@@ -216,6 +222,9 @@ func (q *DiskByteArrayQueue) IsEmpty() bool {
 }
 
 func (q *DiskByteArrayQueue) BeginChkpt() error {
+	if q.cleaner != nil {
+		q.cleaner.FinishAndWait()
+	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
@@ -357,6 +366,7 @@ func (q *DiskByteArrayQueue) fillDequeueBuffer() error {
 		q.deqIndex = 0
 		q.loPool++
 		q.loFile = q.poolName(q.loPool)
+		q.maybeCleanByteArrayPools()
 		return nil
 	}
 	if q.writer != nil {
@@ -374,6 +384,7 @@ func (q *DiskByteArrayQueue) fillDequeueBuffer() error {
 			q.deqIndex = 0
 			q.loPool++
 			q.loFile = q.poolName(q.loPool)
+			q.maybeCleanByteArrayPools()
 			return nil
 		}
 	}
@@ -382,6 +393,7 @@ func (q *DiskByteArrayQueue) fillDequeueBuffer() error {
 	copy(q.deqBuf[q.deqIndex:], q.enqBuf[:q.enqIndex])
 	clearByteArrayBuffer(q.enqBuf[:q.enqIndex])
 	q.enqIndex = 0
+	q.maybeCleanByteArrayPools()
 	return nil
 }
 
@@ -424,6 +436,112 @@ func (q *DiskByteArrayQueue) isAvailLocked() bool {
 
 func (q *DiskByteArrayQueue) poolName(pool int) string {
 	return filepath.Join(q.diskdir, intToDecimal(pool))
+}
+
+func (q *DiskByteArrayQueue) maybeCleanByteArrayPools() {
+	if q.cleaner == nil {
+		return
+	}
+	if q.loPool-q.lastLoPool > diskStateQueueCleanerThreshold {
+		q.cleaner.DeleteUpTo(q.loPool - 1)
+	}
+}
+
+type ByteArrayPoolCleaner struct {
+	mu         sync.Mutex
+	cond       *sync.Cond
+	queue      *DiskByteArrayQueue
+	deleteUpTo int
+	finished   bool
+	done       chan struct{}
+}
+
+func NewByteArrayPoolCleaner(queue *DiskByteArrayQueue) *ByteArrayPoolCleaner {
+	c := &ByteArrayPoolCleaner{
+		queue: queue,
+		done:  make(chan struct{}),
+	}
+	c.cond = sync.NewCond(&c.mu)
+	return c
+}
+
+func (c *ByteArrayPoolCleaner) Start() {
+	go c.run()
+}
+
+func (c *ByteArrayPoolCleaner) DeleteUpTo(pool int) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.finished {
+		return
+	}
+	if pool > c.deleteUpTo {
+		c.deleteUpTo = pool
+	}
+	c.cond.Signal()
+}
+
+func (c *ByteArrayPoolCleaner) SetFinished() {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	c.finished = true
+	c.cond.Broadcast()
+	c.mu.Unlock()
+}
+
+func (c *ByteArrayPoolCleaner) FinishAndWait() {
+	if c == nil {
+		return
+	}
+	c.SetFinished()
+	<-c.done
+}
+
+func (c *ByteArrayPoolCleaner) run() {
+	defer close(c.done)
+	for {
+		c.mu.Lock()
+		for !c.finished && c.deleteUpTo <= 0 {
+			c.cond.Wait()
+		}
+		if c.finished {
+			c.mu.Unlock()
+			return
+		}
+		target := c.deleteUpTo
+		c.deleteUpTo = 0
+		c.mu.Unlock()
+
+		q := c.queue
+		if q == nil {
+			continue
+		}
+		q.mu.Lock()
+		start := q.lastLoPool
+		q.mu.Unlock()
+		if target <= start {
+			continue
+		}
+		for i := start; i < target; i++ {
+			name := q.poolName(i)
+			if err := os.Remove(name); err != nil && !errors.Is(err, os.ErrNotExist) {
+				if abs, absErr := filepath.Abs(name); absErr == nil {
+					name = abs
+				}
+				PrintWarning(ECSystemErrorCleaningPool, name)
+			}
+		}
+		q.mu.Lock()
+		if q.lastLoPool < target {
+			q.lastLoPool = target
+		}
+		q.mu.Unlock()
+	}
 }
 
 type ByteArrayPoolReader struct {
