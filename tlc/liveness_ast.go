@@ -51,6 +51,9 @@ func ASTToLive(tool *Tool, expr SemanticNode, con *Context) (*LiveExprNode, erro
 }
 
 func astToLiveLevel(tool *Tool, expr SemanticNode, con *Context, level int) (*LiveExprNode, error) {
+	if level > TLCLevelAction {
+		return nil, newTLCError(ECTLCLiveCannotHandleFormula, "cannot handle liveness formula %s", SemanticString(expr))
+	}
 	if level == TLCLevelConstant && tool != nil {
 		value, err := tool.Eval(expr, con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)
 		if err == nil {

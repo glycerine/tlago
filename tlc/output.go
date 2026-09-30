@@ -131,6 +131,8 @@ const (
 	ECTLCStatsSimu                                       = 2210
 	ECTLCFPCompleted                                     = 2211
 	ECTLCLiveImplied                                     = 2212
+	ECTLCLiveCannotHandleFormula                         = 2213
+	ECTLCLiveWrongFormulaFormat                          = 2214
 	ECTLCCounterExample                                  = 2264
 	ECTLCStatePrint1                                     = 2216
 	ECTLCStatePrint2                                     = 2217
@@ -523,6 +525,9 @@ func ExitStatusForErrorCode(code int) int {
 	case ECTLCInvariantEvaluationFailed,
 		ECTLCInvariantViolatedLevel:
 		return ExitStatusFailureSafetyEval
+	case ECTLCLiveCannotHandleFormula,
+		ECTLCLiveWrongFormulaFormat:
+		return ExitStatusFailureLivenessEval
 	case ECTLCInvariantViolatedInitial,
 		ECTLCInvariantViolatedBehavior:
 		return ExitStatusViolationSafety

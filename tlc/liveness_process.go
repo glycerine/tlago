@@ -173,7 +173,7 @@ func classifyLivenessExpr(expr *LiveExprNode, pem *osExprPem) error {
 		if even := expr.Body; even != nil && even.Kind == LiveExprEven {
 			body := even.Body
 			if body == nil {
-				return newTLCError(ECGeneral, "liveness formula has the wrong format")
+				return newTLCError(ECTLCLiveWrongFormulaFormat, "liveness formula has the wrong format")
 			}
 			level := body.GetLevel()
 			if level <= LiveLevelState {
@@ -187,7 +187,7 @@ func classifyLivenessExpr(expr *LiveExprNode, pem *osExprPem) error {
 		}
 	}
 	if expr.ContainAction() {
-		return newTLCError(ECGeneral, "liveness formula has the wrong format")
+		return newTLCError(ECTLCLiveWrongFormulaFormat, "liveness formula has the wrong format")
 	}
 	pem.TFs = append(pem.TFs, expr)
 	return nil
