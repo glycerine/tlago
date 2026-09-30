@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -403,6 +404,138 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 
 func formatMessage(code int, params []string) string {
 	switch code {
+	case ECTLCStarting:
+		return fmt.Sprintf("Starting... (%s)", messageNow())
+	case ECTLCFinished:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Finished in %s at (%s)", params[0], messageNow())
+		}
+	case ECTLCModeMC:
+		return formatModeMCMessage(params, false)
+	case ECTLCModeMCDFS:
+		return formatModeMCMessage(params, true)
+	case ECTLCModeSimu:
+		return formatModeSimulationMessage(params)
+	case ECTLCComputingInit:
+		return "Computing initial states..."
+	case ECTLCComputingInitProgress:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Computed %s initial states...", params[0])
+		}
+	case ECTLCInitGenerated1:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Finished computing initial states: %s distinct state%s generated at %s.", params[0], params[1], messageNow())
+		}
+	case ECTLCInitGenerated2:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Finished computing initial states: %s state%s generated, with %s of them distinct at %s.", params[0], params[1], params[2], messageNow())
+		}
+	case ECTLCInitGenerated3:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Finished computing initial states: %s states generated.\nBecause TLC recovers from a previous checkpoint, only %s of them require further exploration at %s.", params[0], params[1], messageNow())
+		}
+	case ECTLCInitGenerated4:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Finished computing initial states: %s states generated, with %s of them distinct.", params[0], params[1])
+		}
+	case ECTLCSuccess:
+		if len(params) == 1 {
+			return fmt.Sprintf("Model checking completed. No error has been found.\n  Estimates of the probability that TLC did not check all reachable states\n  because two distinct states had the same fingerprint:\n  calculated (optimistic):  %s", params[0])
+		}
+		if len(params) >= 2 {
+			return fmt.Sprintf("Model checking completed. No error has been found.\n  Estimates of the probability that TLC did not check all reachable states\n  because two distinct states had the same fingerprint:\n  calculated (optimistic):  %s\n  based on the actual fingerprints:  %s", params[0], params[1])
+		}
+	case ECTLCSearchDepth:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The depth of the complete state graph search is %s.", params[0])
+		}
+	case ECTLCStateGraphOutdegree:
+		if len(params) >= 4 {
+			return fmt.Sprintf("The average outdegree of the complete state graph is %s (minimum is %s, the maximum %s and the 95th percentile is %s).", params[1], params[0], params[3], params[2])
+		}
+	case ECTLCCheckpointStart:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Checkpointing of run %s", params[0])
+		}
+	case ECTLCCheckpointEnd:
+		return fmt.Sprintf("Checkpointing completed at (%s)", messageNow())
+	case ECTLCCheckpointRecoverStart:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Starting recovery from checkpoint %s", params[0])
+		}
+	case ECTLCCheckpointRecoverEnd:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Recovery completed. %s states examined. %s states on queue.", params[0], params[1])
+		}
+	case ECTLCCheckpointRecoverEndDFID:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Recovery completed. %s states examined.", params[0])
+		}
+	case ECTLCStats:
+		if len(params) >= 3 {
+			return fmt.Sprintf("%s states generated, %s distinct states found, %s states left on queue.", params[0], params[1], params[2])
+		}
+	case ECTLCStatsDFID:
+		if len(params) >= 2 {
+			return fmt.Sprintf("%s states generated, %s distinct states found.", params[0], params[1])
+		}
+	case ECTLCStatsSimu:
+		if len(params) >= 3 {
+			return fmt.Sprintf("The number of states generated: %s\nSimulation using seed %s and aril %s", params[0], params[1], params[2])
+		}
+	case ECTLCProgressStats:
+		if len(params) == 4 {
+			return fmt.Sprintf("Progress(%s) at %s: %s states generated, %s distinct states found, %s states left on queue.", params[0], messageNow(), params[1], params[2], params[3])
+		}
+		if len(params) >= 6 {
+			return fmt.Sprintf("Progress(%s) at %s: %s states generated (%s s/min), %s distinct states found (%s ds/min), %s states left on queue.", params[0], messageNow(), params[1], params[4], params[2], params[5], params[3])
+		}
+	case ECTLCProgressStartStatsDFID:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Starting level %s: %s states generated, %s distinct states found.", params[0], params[1], params[2])
+		}
+	case ECTLCProgressStatsDFID:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Progress: %s states generated, %s distinct states found.", params[0], params[1])
+		}
+	case ECTLCProgressSimu:
+		if len(params) >= 5 {
+			return fmt.Sprintf("Progress: %s states checked, %s traces generated (trace length: mean=%s, var(x)=%s, sd=%s)", params[0], params[1], params[2], params[3], params[4])
+		}
+	case ECTLCCoverageStart:
+		return fmt.Sprintf("The coverage statistics at %s (see https://explain.tlapl.us/module-coverage-statistics for how to interpret the following statistics).", messageNow())
+	case ECTLCCoverageValue:
+		if len(params) >= 2 {
+			return fmt.Sprintf("  %s: %s", params[0], params[1])
+		}
+	case ECTLCCoverageValueCost:
+		if len(params) >= 3 {
+			return fmt.Sprintf("  %s: %s:%s", params[0], params[1], params[2])
+		}
+	case ECTLCCoverageVar:
+		if len(params) >= 3 {
+			return fmt.Sprintf("<%s %s>: %s", params[0], params[1], params[2])
+		}
+	case ECTLCCoverageInit, ECTLCCoverageNext, ECTLCCoverageConstraint:
+		if len(params) >= 3 {
+			return fmt.Sprintf("%s: %s:%s", params[0], params[1], params[2])
+		}
+	case ECTLCCoverageProperty:
+		if len(params) >= 1 {
+			return params[0]
+		}
+	case ECTLCCoverageMismatch:
+		if len(params) >= 2 {
+			return fmt.Sprintf("CostModel lookup failed for expression <%s>. Reporting costs into <%s> instead (Safety and Liveness checking is unaffected. Please report a bug.)", params[0], params[1])
+		}
+	case ECTLCCoverageEnd:
+		return "End of statistics."
+	case ECTLCCoverageEndOverhead:
+		return "End of statistics (please note that for performance reasons large models\nare best checked with coverage and cost statistics disabled)."
+	case ECTLCFPCompleted:
+		if len(params) >= 1 {
+			return fmt.Sprintf("%s, work completed. Thank you!", params[0])
+		}
 	case ECTLCConfigNotBothSpecAndInit:
 		return "The configuration file cannot specify both INIT/NEXT and SPECIFICATION fields."
 	case ECTLCConfigIDRequiresNoArg:
@@ -514,11 +647,11 @@ func formatMessage(code int, params []string) string {
 		}
 	case ECTLCCheckingTemporalProps:
 		if len(params) >= 3 {
-			return fmt.Sprintf("Checking %stemporal properties for the %s state space with %s total distinct states.", params[2], params[0], params[1])
+			return fmt.Sprintf("Checking %stemporal properties for the %s state space with %s total distinct states at (%s)", params[2], params[0], params[1], messageNow())
 		}
 	case ECTLCCheckingTemporalPropsEnd:
 		if len(params) >= 1 {
-			return fmt.Sprintf("Finished checking temporal properties in %s.", params[0])
+			return fmt.Sprintf("Finished checking temporal properties in %s at %s", params[0], messageNow())
 		}
 	case ECTLCLiveFormulaTautology:
 		return "Temporal formula is a tautology (its negation is unsatisfiable)."
@@ -533,6 +666,72 @@ func formatMessage(code int, params []string) string {
 		return fmt.Sprintf("%d", code)
 	}
 	return fmt.Sprintf("%d %s", code, strings.Join(params, " "))
+}
+
+func messageNow() string {
+	return time.Now().String()
+}
+
+func messageParam(params []string, index int) string {
+	if index < 0 || index >= len(params) {
+		return ""
+	}
+	return params[index]
+}
+
+func formatModeMCMessage(params []string, dfs bool) string {
+	mode := "breadth-first search"
+	if dfs {
+		mode = "depth-first search"
+	}
+	workerCount := messageParam(params, 0)
+	workerPlural := messageParam(params, 1)
+	cores := messageParam(params, 2)
+	osName := messageParam(params, 3)
+	osVersion := messageParam(params, 4)
+	osArch := messageParam(params, 5)
+	javaVendor := messageParam(params, 6)
+	javaVersion := messageParam(params, 7)
+	javaArch := messageParam(params, 8)
+	heap := messageParam(params, 9)
+	offheap := messageParam(params, 10)
+	seed := messageParam(params, 11)
+	fp := messageParam(params, 12)
+	pid := messageParam(params, 13)
+	extra1 := messageParam(params, 14)
+	extra2 := messageParam(params, 15)
+	msg := fmt.Sprintf("Running %s Model-Checking with fp %s and seed %s with %s worker%s on %s cores with %sMB heap and %sMB offheap memory",
+		mode, fp, seed, workerCount, workerPlural, cores, heap, offheap)
+	if pid != "" {
+		msg += fmt.Sprintf(" [pid: %s]", pid)
+	}
+	if dfs {
+		return fmt.Sprintf("%s (%s %s %s, %s %s %s).", msg, osName, osVersion, osArch, javaVendor, javaVersion, javaArch)
+	}
+	return fmt.Sprintf("%s (%s %s %s, %s %s %s, %s, %s).", msg, osName, osVersion, osArch, javaVendor, javaVersion, javaArch, extra1, extra2)
+}
+
+func formatModeSimulationMessage(params []string) string {
+	seed := messageParam(params, 0)
+	workerCount := messageParam(params, 1)
+	workerPlural := messageParam(params, 2)
+	cores := messageParam(params, 3)
+	osName := messageParam(params, 4)
+	osVersion := messageParam(params, 5)
+	osArch := messageParam(params, 6)
+	javaVendor := messageParam(params, 7)
+	javaVersion := messageParam(params, 8)
+	javaArch := messageParam(params, 9)
+	heap := messageParam(params, 10)
+	offheap := messageParam(params, 11)
+	pid := messageParam(params, 12)
+	mode := messageParam(params, 13)
+	msg := fmt.Sprintf("Running %s Simulation with seed %s with %s worker%s on %s cores with %sMB heap and %sMB offheap memory",
+		mode, seed, workerCount, workerPlural, cores, heap, offheap)
+	if pid != "" {
+		msg += fmt.Sprintf(" [pid: %s]", pid)
+	}
+	return fmt.Sprintf("%s (%s %s %s, %s %s %s).", msg, osName, osVersion, osArch, javaVendor, javaVersion, javaArch)
 }
 
 const (
