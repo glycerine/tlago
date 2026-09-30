@@ -226,7 +226,8 @@ func (q *DiskStateQueue) BeginChkpt() error {
 	}
 	for i := q.deqIndex; i < len(q.deqBuf); i++ {
 		if q.deqBuf[i] == nil {
-			continue
+			_ = out.Close()
+			return fmt.Errorf("disk state queue checkpoint encountered nil dequeue slot %d", i)
 		}
 		if err := q.deqBuf[i].Write(out); err != nil {
 			_ = out.Close()
