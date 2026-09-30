@@ -350,17 +350,15 @@ func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCSta
 }
 
 func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	expected, err := tool.Eval(args[0], con, state, pstate, control, cm)
-	if err != nil {
-		return nil, err
-	}
-	expectedString, ok := expected.(*StringValue)
+	expectedNode, ok := args[0].(*StringNode)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "AssertError expected a string error, got %s", expected)
+		return nil, newTLCError(ECGeneral, "In computing AssertError, a non-string expression (%s) was used as the err of an AssertError(err, exp).", SemanticString(args[0]))
 	}
-	return TLCExtAssertError(expectedString, func() (Value, error) {
-		return tool.Eval(args[1], con, state, pstate, control, cm)
-	})
+	_, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if err == nil {
+		return BoolFalse, nil
+	}
+	return TLCExtAssertError(expectedNode.Value, func() (Value, error) { return nil, err })
 }
 
 func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

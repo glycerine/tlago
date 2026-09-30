@@ -1798,6 +1798,12 @@ surface: `ToTrace` expects a `CounterExample`, `TLCModelValue` reports as
 non-string names, unreachable definitions, and non-zero arity definitions through
 that same error code.
 
+`TLCExt!AssertError` is an evaluating operator with an important ordering
+constraint. Java first requires the expected-error argument to be syntactically
+a `StringNode`; an expression that happens to evaluate to a string is rejected.
+It then evaluates the expression that is expected to fail, and only compares the
+string literal with the caught exception message when that expression throws.
+
 `Json` standard operators use `TLC_MODULE_ARGUMENT_ERROR` for the public payload
 shape checks Java performs inside the module: `JsonSerialize` requires its
 second argument to be a sequence or record, and `ndJsonSerialize` requires a
