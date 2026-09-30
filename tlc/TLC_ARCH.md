@@ -1067,10 +1067,12 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - post-hoc property attribution mirrors Java's
   `Liveness.findViolatedProperties`: evaluate each implied temporal property
   over the reconstructed lasso and print the violated property names in
-  deterministic action order. Go reuses a `*LiveExprNode` stored directly as
-  `Action.Pred` or in the action's auxiliary map via `AttachLiveExprToAction`;
-  the full Java `astToLive` bridge still has to fill this hook during
-  parse-liveness processing.
+  deterministic action order. `ASTToLive` converts each action predicate to
+  the same `LiveExprNode` family used by the liveness checker, and the result
+  is cached in the action's auxiliary map via `AttachLiveExprToAction`.
+  The structural core is in place; bounded quantifier expansion, function
+  lambda values, and exact WF/SF subscript handling still need the same
+  breadth-first mechanical deepening as their Java counterparts.
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component

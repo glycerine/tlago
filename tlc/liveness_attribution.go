@@ -37,7 +37,14 @@ func LivenessFindViolatedProperties(tool *Tool, states []*TLCStateMut, cyclePos 
 	for _, check := range checks {
 		prop, ok := LiveExprFromAction(check)
 		if !ok {
-			prop = liveExprFallbackForAction(check)
+			live, err := ASTToLive(tool, check.Pred, check.Con)
+			if err != nil {
+				PrintError(ECGeneral, err.Error())
+				prop = liveExprFallbackForAction(check)
+			} else {
+				prop = live
+				AttachLiveExprToAction(check, prop)
+			}
 		}
 		if prop == nil {
 			continue
