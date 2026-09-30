@@ -75,6 +75,7 @@
   - Distributed server publishing now writes accepted successors through a Java-style master `TLCTrace.writeState` primitive, assigning the returned trace UID before enqueueing instead of using the worker-local concurrent trace writer.
   - Distributed block selection now follows Java's `BlockSelectorFactory` property surface while keeping one concrete Go selector: static, unlimiting/proportional, limiting, and default statistical modes are selected through the Java property names, and static mode honors `tlc2.tool.distributed.TLCServerThread.BlockSize`.
   - Distributed worker registration now mirrors Java's server lifecycle: registering a worker wakes stuck queue threads, creates the corresponding master `TLCServerThread`, registers it, and starts it; explicit thread construction still uses the lower-level thread registration hook.
+  - Distributed server lifecycle now has Java-shaped checkpoint/recover/close, init-state generation through a distributed `DoInitFunctor`, joinable server threads, periodic checkpoint/progress reporting, final summary/success reporting, and a Go-library `ModelCheck` path for explicitly registered in-process workers.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -107,7 +108,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, distributed master trace writes, distributed block selector properties, and distributed worker registration have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, distributed master trace writes, distributed block selector properties, distributed worker registration, and distributed server lifecycle have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:

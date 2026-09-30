@@ -16,6 +16,7 @@ const (
 	TLCServerThreadNamePrefix = "TLCServerThread-"
 	TLCWorkerThreadNamePrefix = "TLCWorkerThread-"
 	TLCServerDefaultPort      = 10997
+	tlcServerVetoCleanup      = "tlc2.tool.distributed.TLCServer.vetoCleanup"
 )
 
 type NextStateResult struct {
@@ -135,6 +136,32 @@ func (m *DistributedFPSetManager) ContainsBlock(fingerprints []*LongVec) []*BitV
 	return out
 }
 
+func (m *DistributedFPSetManager) Put(fp uint64) bool {
+	if m == nil || len(m.Sets) == 0 {
+		m.addStatesSeen(1)
+		return false
+	}
+	index := m.GetFPSetIndex(fp)
+	if index < 0 || index >= len(m.Sets) || m.Sets[index] == nil {
+		m.addStatesSeen(1)
+		return false
+	}
+	return m.Sets[index].Put(fp)
+}
+
+func (m *DistributedFPSetManager) Contains(fp uint64) bool {
+	if m == nil || len(m.Sets) == 0 {
+		m.addStatesSeen(1)
+		return false
+	}
+	index := m.GetFPSetIndex(fp)
+	if index < 0 || index >= len(m.Sets) || m.Sets[index] == nil {
+		m.addStatesSeen(1)
+		return false
+	}
+	return m.Sets[index].Contains(fp)
+}
+
 func (m *DistributedFPSetManager) PutBlock(fingerprints []*LongVec) []*BitVector {
 	out := make([]*BitVector, len(fingerprints))
 	for i, fpv := range fingerprints {
@@ -163,6 +190,25 @@ func (m *DistributedFPSetManager) Size() uint64 {
 		}
 	}
 	return size
+}
+
+func (m *DistributedFPSetManager) CheckFPs() uint64 {
+	if m == nil || len(m.Sets) == 0 {
+		return 0
+	}
+	actualDistance := uint64(math.MaxUint64)
+	checked := false
+	for _, set := range m.Sets {
+		if set == nil {
+			continue
+		}
+		actualDistance = minUint64(actualDistance, set.CheckFPs())
+		checked = true
+	}
+	if !checked {
+		return 0
+	}
+	return actualDistance
 }
 
 func (m *DistributedFPSetManager) GetStatesSeen() uint64 {
@@ -266,6 +312,7 @@ type TLCServer struct {
 	FPSetManager                *DistributedFPSetManager
 	StateQueue                  StateQueue
 	Trace                       *TLCTrace
+	Tool                        *Tool
 	Metadir                     string
 	FileName                    string
 	ConfigName                  string
@@ -279,6 +326,7 @@ type TLCServer struct {
 	StatesPerMinute             int64
 	DistinctStatesPerMinute     int64
 	AverageBlockCnt             int64
+	NumberOfInitialStates       int64
 	Workers                     *InsMap[string, *DistributedWorker]
 	ServerThreads               *InsMap[string, *TLCServerThread]
 	BlockSelector               *BlockSelector
@@ -308,6 +356,361 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 	}
 	server.BlockSelector = NewBlockSelectorFromProperties(server)
 	return server
+}
+
+func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
+	if s != nil {
+		s.Tool = tool
+	}
+	return s
+}
+
+func (s *TLCServer) HasNoErrors() bool {
+	return s != nil && s.ErrState == nil && s.LastError == nil
+}
+
+func (s *TLCServer) Checkpoint() error {
+	if s == nil || s.StateQueue == nil {
+		return nil
+	}
+	if !s.StateQueue.SuspendAll() {
+		return nil
+	}
+	PrintMessage(ECTLCCheckpointStart, s.Metadir)
+	if err := s.StateQueue.BeginChkpt(); err != nil {
+		s.StateQueue.ResumeAll()
+		return err
+	}
+	if s.Trace != nil {
+		if err := s.Trace.BeginChkpt(); err != nil {
+			s.StateQueue.ResumeAll()
+			return err
+		}
+	}
+	if s.FPSetManager != nil {
+		if err := s.FPSetManager.Checkpoint(s.FileName); err != nil {
+			s.StateQueue.ResumeAll()
+			return err
+		}
+	}
+	s.StateQueue.ResumeAll()
+	if err := s.StateQueue.CommitChkpt(); err != nil {
+		return err
+	}
+	if s.Trace != nil {
+		if err := s.Trace.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	if s.FPSetManager != nil {
+		if err := s.FPSetManager.CommitCheckpoint(); err != nil {
+			return err
+		}
+	}
+	PrintMessage(ECTLCCheckpointEnd)
+	return nil
+}
+
+func (s *TLCServer) Recover() error {
+	if s == nil {
+		return nil
+	}
+	if s.Trace != nil {
+		if err := s.Trace.Recover(); err != nil {
+			return err
+		}
+	}
+	if s.StateQueue != nil {
+		if err := s.StateQueue.Recover(); err != nil {
+			return err
+		}
+	}
+	if s.FPSetManager != nil {
+		if err := s.FPSetManager.Recover(s.FileName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *TLCServer) Close(cleanup bool) error {
+	if s == nil {
+		return nil
+	}
+	if s.Trace != nil {
+		if err := s.Trace.Close(); err != nil {
+			return err
+		}
+	}
+	if s.FPSetManager != nil {
+		if err := s.FPSetManager.Close(cleanup); err != nil {
+			return err
+		}
+	}
+	if cleanup && !distributedVetoCleanup() {
+		if s.StateQueue != nil {
+			if err := s.StateQueue.Delete(); err != nil {
+				return err
+			}
+		}
+		if s.Trace != nil {
+			if err := s.Trace.Delete(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *TLCServer) DoInit(tool ...*Tool) (int, error) {
+	if s == nil {
+		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server is nil")
+	}
+	if len(tool) > 0 {
+		s.Tool = tool[0]
+	}
+	if s.Tool == nil {
+		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
+	}
+	functor := &distributedDoInitFunctor{server: s, tool: s.Tool, returnValue: NoError}
+	err := s.Tool.GetInitStates(NewStateFunctor(functor.AddElement))
+	if errors.Is(err, errInvariantViolated) {
+		s.ErrState = functor.errState
+		return functor.returnValue, nil
+	}
+	if err != nil {
+		if functor.errState != nil {
+			s.ErrState = functor.errState
+		}
+		if functor.returnValue != NoError {
+			return functor.returnValue, err
+		}
+		return ECGeneral, err
+	}
+	if functor.errState != nil {
+		s.ErrState = functor.errState
+		if functor.err != nil {
+			return functor.returnValue, functor.err
+		}
+	}
+	return functor.returnValue, nil
+}
+
+func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
+	if s == nil {
+		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server is nil")
+	}
+	startTime := time.Now()
+	if len(tool) > 0 {
+		s.Tool = tool[0]
+	}
+	if s.Tool == nil {
+		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
+	}
+	PrintMessage(ECTLCComputingInit)
+	result, err := s.DoInit()
+	if err != nil {
+		if result == NoError {
+			result = ECGeneral
+		}
+		s.PrintSummary(1, 0, s.GetNewStates(), s.fpSetSize(), false)
+		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+		_ = s.Close(false)
+		return result, err
+	}
+	if result != NoError || !s.HasNoErrors() {
+		if result == NoError {
+			result = ECGeneral
+		}
+		s.PrintSummary(1, 0, s.GetNewStates(), s.fpSetSize(), false)
+		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+		_ = s.Close(false)
+		return result, nil
+	}
+	s.PrintInitGenerated()
+	if len(s.Tool.GetActions()) == 0 {
+		if s.StateQueue != nil && !s.StateQueue.IsEmpty() {
+			PrintError(ECTLCStatesAndNoNextAction)
+			s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), false)
+			_ = s.Close(false)
+			return ECTLCStatesAndNoNextAction, nil
+		}
+		s.ReportSuccess()
+		s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), true)
+		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+		_ = s.Close(true)
+		return NoError, nil
+	}
+	if s.GetWorkerCount() == 0 {
+		err := newTLCError(ECGeneral, "distributed TLC server has no registered workers")
+		s.LastError = err
+		s.SetDone()
+		s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), false)
+		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+		_ = s.Close(false)
+		return ECGeneral, err
+	}
+	for _, thread := range s.ServerThreads.All() {
+		if thread != nil {
+			thread.Start()
+		}
+	}
+	s.waitForDistributedCompletion(startTime)
+	for _, thread := range s.ServerThreads.All() {
+		if thread == nil {
+			continue
+		}
+		thread.Join()
+		if thread.Worker != nil {
+			_ = thread.Worker.Exit()
+		}
+	}
+	s.FinalNumberOfDistinctStates = int64(s.fpSetSize())
+	statesGenerated := s.GetStatesGenerated()
+	statesLeft := s.GetNewStates()
+	level := 1
+	if s.Trace != nil {
+		level = s.Trace.GetLevelForReporting()
+	}
+	s.StatesPerMinute = 0
+	s.DistinctStatesPerMinute = 0
+	if s.HasNoErrors() {
+		s.ReportSuccess()
+	} else if s.KeepCallStack {
+		// The concrete call-stack replay is handled by Tool/CallStackTool in the
+		// local checker. Distributed TLC records the intent here for callers.
+		s.KeepCallStack = true
+	}
+	s.PrintSummary(level, statesGenerated, statesLeft, s.fpSetSize(), s.HasNoErrors())
+	PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+	if err := s.Close(s.HasNoErrors()); err != nil && s.HasNoErrors() {
+		return ECGeneral, err
+	}
+	if s.HasNoErrors() {
+		return NoError, nil
+	}
+	if s.ErrorCode != NoError {
+		return s.ErrorCode, s.LastError
+	}
+	return ECGeneral, s.LastError
+}
+
+func (s *TLCServer) waitForDistributedCompletion(startTime time.Time) {
+	progress := ProgressInterval()
+	if progress <= 0 {
+		progress = time.Duration(DefaultProgressIntervalMillis) * time.Millisecond
+	}
+	ticker := time.NewTicker(progress)
+	defer ticker.Stop()
+	oldGenerated := int64(0)
+	oldDistinct := uint64(0)
+	for !s.IsDone() {
+		<-ticker.C
+		if DoCheckPoint() {
+			if err := s.Checkpoint(); err != nil {
+				s.LastError = err
+				s.SetErrState(nil, nil, true, ECGeneral)
+				return
+			}
+		}
+		if s.IsDone() {
+			return
+		}
+		s.PrintProgressStats(startTime, &oldGenerated, &oldDistinct)
+	}
+}
+
+func (s *TLCServer) PrintProgressStats(startTime time.Time, oldGenerated *int64, oldDistinct *uint64) {
+	if s == nil {
+		return
+	}
+	generated := s.GetStatesGenerated()
+	distinct := s.fpSetSize()
+	factor := ProgressInterval().Minutes()
+	if factor <= 0 {
+		factor = 1
+	}
+	if oldGenerated != nil {
+		s.StatesPerMinute = int64(float64(generated-*oldGenerated) / factor)
+		*oldGenerated = generated
+	}
+	if oldDistinct != nil {
+		var distinctDelta uint64
+		if distinct >= *oldDistinct {
+			distinctDelta = distinct - *oldDistinct
+		}
+		s.DistinctStatesPerMinute = int64(float64(distinctDelta) / factor)
+		*oldDistinct = distinct
+	}
+	level := 1
+	if s.Trace != nil {
+		level = s.Trace.GetLevelForReporting()
+	}
+	PrintMessage(ECTLCProgressStats,
+		fmtInt(level),
+		fmtInt64(generated),
+		fmtUint64(distinct),
+		fmtInt64(s.GetNewStates()),
+		fmtInt64(s.StatesPerMinute),
+		fmtInt64(s.DistinctStatesPerMinute),
+	)
+	_ = startTime
+}
+
+func (s *TLCServer) PrintInitGenerated() {
+	if s == nil {
+		return
+	}
+	statesGenerated := s.GetStatesGenerated()
+	distinct := s.fpSetSize()
+	plural := ""
+	if statesGenerated != 1 {
+		plural = "s"
+	}
+	if uint64(statesGenerated) == distinct {
+		PrintMessage(ECTLCInitGenerated1, fmtInt64(statesGenerated), plural)
+		return
+	}
+	PrintMessage(ECTLCInitGenerated2, fmtInt64(statesGenerated), plural, fmtUint64(distinct))
+}
+
+func (s *TLCServer) PrintSummary(level int, statesGenerated int64, statesLeftInQueue int64, distinctStates uint64, success bool) {
+	if toolMode() {
+		PrintMessage(ECTLCProgressStats, fmtInt(level), fmtInt64(statesGenerated), fmtUint64(distinctStates), fmtInt64(statesLeftInQueue), "0", "0")
+	}
+	PrintMessage(ECTLCStats, fmtInt64(statesGenerated), fmtUint64(distinctStates), fmtInt64(statesLeftInQueue))
+	if success {
+		PrintMessage(ECTLCSearchDepth, fmtInt(level))
+	}
+}
+
+func (s *TLCServer) ReportSuccess() {
+	if s == nil {
+		ReportSuccessCounts(0, 0)
+		return
+	}
+	generated := s.GetStatesGenerated()
+	distinct := s.fpSetSize()
+	if CalculateOptimisticProbability(distinct, generated) < 1e-10 {
+		ReportSuccessCounts(distinct, generated)
+		return
+	}
+	actualDistance := uint64(0)
+	if s.FPSetManager != nil {
+		actualDistance = s.FPSetManager.CheckFPs()
+	}
+	if actualDistance == 0 {
+		ReportSuccessCounts(distinct, generated)
+		return
+	}
+	ReportSuccessCountsDistance(distinct, actualDistance, generated)
+}
+
+func (s *TLCServer) fpSetSize() uint64 {
+	if s == nil || s.FPSetManager == nil {
+		return 0
+	}
+	return s.FPSetManager.Size()
 }
 
 func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
@@ -399,6 +802,115 @@ func (s *TLCServer) SetErrState(curState *TLCStateMut, succState *TLCStateMut, k
 		s.ErrorCode = errorCode[0]
 	}
 	return true
+}
+
+type distributedDoInitFunctor struct {
+	server      *TLCServer
+	tool        *Tool
+	errState    *TLCStateMut
+	err         error
+	returnValue int
+}
+
+func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
+	if f == nil || f.server == nil {
+		return nil, newTLCError(ECGeneral, "distributed init functor has no server")
+	}
+	if isPowerOfTwo(f.server.NumberOfInitialStates) && f.server.NumberOfInitialStates > 1 {
+		PrintMessage(ECTLCComputingInitProgress, fmt.Sprintf("%d", f.server.NumberOfInitialStates))
+	}
+	f.server.NumberOfInitialStates++
+	if f.errState != nil {
+		if f.returnValue == NoError {
+			f.returnValue = ECTLCInitialState
+		}
+		return f.returnValue, nil
+	}
+	if f.tool == nil {
+		f.err = newTLCError(ECGeneral, "distributed init functor has no tool")
+		return ECGeneral, f.err
+	}
+	if !f.tool.IsGoodState(curState) {
+		PrintError(ECTLCInitialState, "current state is not a legal state", curState.String())
+		f.errState = curState
+		f.returnValue = ECTLCInitialState
+		_ = f.server.SetErrState(curState, nil, true, f.returnValue)
+		return f.returnValue, errInvariantViolated
+	}
+	inModel, err := f.tool.IsInModel(curState)
+	if err != nil {
+		f.errState = curState
+		f.err = err
+		_ = f.server.SetErrState(curState, nil, true, ECGeneral)
+		return f.returnValue, err
+	}
+	seen := false
+	if inModel {
+		fp := curState.FingerPrint()
+		if f.server.FPSetManager != nil {
+			seen = f.server.FPSetManager.Put(fp)
+		}
+		if !seen {
+			f.tool.RememberState(curState)
+			if f.server.Trace != nil {
+				if _, err := f.server.Trace.WriteState(nil, fp, curState, curState.GetAction()); err != nil {
+					f.errState = curState
+					f.err = err
+					_ = f.server.SetErrState(curState, nil, true, ECGeneral)
+					return f.returnValue, err
+				}
+			}
+			if f.server.StateQueue != nil {
+				f.server.StateQueue.SEnqueue(curState)
+			}
+		}
+	}
+	if !seen {
+		for i, invariant := range f.tool.GetInvariants() {
+			valid, err := f.tool.IsValidState(invariant, curState)
+			if err != nil {
+				f.errState = curState
+				f.err = err
+				_ = f.server.SetErrState(curState, nil, true, ECGeneral)
+				return f.returnValue, err
+			}
+			if !valid {
+				alias := f.tool.EvalAlias(curState, curState)
+				PrintError(ECTLCInvariantViolatedInitial, nameAt(f.tool.GetInvNames(), i), alias.String())
+				if !continuationEnabled() {
+					f.errState = curState
+					f.returnValue = ECTLCInvariantViolatedInitial
+					_ = f.server.SetErrState(curState, nil, true, f.returnValue)
+					return f.returnValue, errInvariantViolated
+				}
+			}
+		}
+		for i, implied := range f.tool.GetImpliedInits() {
+			valid, err := f.tool.IsValidState(implied, curState)
+			if err != nil {
+				f.errState = curState
+				f.err = err
+				_ = f.server.SetErrState(curState, nil, true, ECGeneral)
+				return f.returnValue, err
+			}
+			if !valid {
+				alias := f.tool.EvalAlias(curState, curState)
+				PrintError(ECTLCPropertyViolatedInitial, nameAt(f.tool.GetImpliedInitNames(), i), alias.String())
+				f.errState = curState
+				f.returnValue = ECTLCPropertyViolatedInitial
+				_ = f.server.SetErrState(curState, nil, true, f.returnValue)
+				return f.returnValue, errInvariantViolated
+			}
+		}
+	}
+	return f.returnValue, nil
+}
+
+func distributedVetoCleanup() bool {
+	if value, ok := tlcLookupSystemProperty(tlcServerVetoCleanup); ok {
+		return javaBooleanProperty(value)
+	}
+	return false
 }
 
 func (s *TLCServer) IsRunning() bool {
@@ -513,6 +1025,7 @@ type TLCServerThread struct {
 	started           atomic.Bool
 	keepAliveStopped  atomic.Bool
 	keepAliveDone     chan struct{}
+	runDone           chan struct{}
 }
 
 func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
@@ -534,6 +1047,7 @@ func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer
 		Server:            server,
 		URI:               uri,
 		keepAliveDone:     make(chan struct{}),
+		runDone:           make(chan struct{}),
 	}
 	thread.cleanupGlobals.Store(true)
 	thread.TimerTask = &TLCTimerTask{Thread: thread}
@@ -555,7 +1069,17 @@ func (t *TLCServerThread) Start() {
 		return
 	}
 	t.startKeepAlive()
-	go t.Run()
+	go func() {
+		defer close(t.runDone)
+		t.Run()
+	}()
+}
+
+func (t *TLCServerThread) Join() {
+	if t == nil || t.runDone == nil {
+		return
+	}
+	<-t.runDone
 }
 
 func (t *TLCServerThread) startKeepAlive() {
