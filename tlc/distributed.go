@@ -579,10 +579,11 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 		fpSetManager = NewDistributedFPSetManager()
 	}
 	return &DistributedWorker{
-		ID:           id,
-		Tool:         tool,
-		FPSetManager: fpSetManager,
-		Cache:        NewSimpleCache(),
+		ID:              id,
+		Tool:            tool,
+		FPSetManager:    fpSetManager,
+		Cache:           NewSimpleCache(),
+		NetworkOverhead: math.MaxFloat64,
 	}
 }
 
@@ -594,6 +595,76 @@ func distributedWorkerKey(worker *DistributedWorker) string {
 		return worker.URI
 	}
 	return strconv.Itoa(worker.ID)
+}
+
+type DistributedWorkerSmartProxy struct {
+	Worker          *DistributedWorker
+	NetworkOverhead float64
+}
+
+func NewDistributedWorkerSmartProxy(worker *DistributedWorker) *DistributedWorkerSmartProxy {
+	return &DistributedWorkerSmartProxy{Worker: worker, NetworkOverhead: math.MaxFloat64}
+}
+
+func (p *DistributedWorkerSmartProxy) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
+	if p == nil || p.Worker == nil {
+		return nil, newTLCError(ECGeneral, "distributed worker proxy has no worker")
+	}
+	start := time.Now()
+	nextStates, err := p.Worker.GetNextStates(states)
+	if err != nil {
+		return nil, err
+	}
+	roundTripTime := time.Since(start).Milliseconds() + 1
+	computationTime := sanitizeDistributedComputationTime(nextStates.GetComputationTime())
+	networkTime := math.Max(float64(roundTripTime-computationTime), 0.00001)
+	percentageNetworkOverhead := networkTime / float64(roundTripTime)
+	stateCount := len(states)
+	if stateCount <= 0 {
+		stateCount = 1
+	}
+	p.NetworkOverhead = percentageNetworkOverhead / float64(stateCount)
+	p.Worker.NetworkOverhead = p.NetworkOverhead
+	return nextStates, nil
+}
+
+func (p *DistributedWorkerSmartProxy) GetNetworkOverhead() float64 {
+	if p == nil {
+		return math.MaxFloat64
+	}
+	return p.NetworkOverhead
+}
+
+func (p *DistributedWorkerSmartProxy) Exit() error {
+	return nil
+}
+
+func (p *DistributedWorkerSmartProxy) GetURI() string {
+	if p == nil || p.Worker == nil {
+		return ""
+	}
+	return p.Worker.URI
+}
+
+func (p *DistributedWorkerSmartProxy) IsAlive() bool {
+	return p != nil && p.Worker != nil && p.Worker.IsAlive()
+}
+
+func (p *DistributedWorkerSmartProxy) GetCacheRateRatio() float64 {
+	if p == nil || p.Worker == nil {
+		return 0
+	}
+	return p.Worker.GetCacheRateRatio()
+}
+
+func sanitizeDistributedComputationTime(computationTime int64) int64 {
+	if computationTime < 0 {
+		computationTime = -computationTime
+	}
+	if computationTime < 1 {
+		return 1
+	}
+	return computationTime
 }
 
 func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
