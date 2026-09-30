@@ -375,13 +375,24 @@ func (w *SimulationWorker) Run() {
 	}
 }
 
-func (w *SimulationWorker) SimulateAndReport() bool {
+func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	if w == nil {
 		return false
 	}
 	restoreWorkerID := PushCurrentWorkerID(w.ID)
 	defer restoreWorkerID()
 	defer ResetCurrentState()
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			workerErr := &SimulationWorkerError{
+				Code:       NoError,
+				StateTrace: w.GetTrace(w.CurState),
+				Err:        recoveredAsError(recovered),
+			}
+			w.ResultQueue <- SimulationWorkerFailed(w.ID, workerErr)
+			keepRunning = false
+		}
+	}()
 	w.GlobalTrace = w.Statistics.CollectPreTrace()
 	w.Statistics.TraceID = w.GlobalTrace
 	err := w.SimulateRandomTrace()
@@ -394,6 +405,13 @@ func (w *SimulationWorker) SimulateAndReport() bool {
 		return false
 	}
 	return true
+}
+
+func recoveredAsError(recovered any) error {
+	if err, ok := recovered.(error); ok {
+		return err
+	}
+	return fmt.Errorf("%v", recovered)
 }
 
 func (w *SimulationWorker) RandomState(states *StateVec) *TLCStateMut {

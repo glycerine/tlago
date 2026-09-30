@@ -1283,6 +1283,10 @@ Important behavior:
   each selected successor. Go mirrors that with concrete `SetCurrentState`
   replacement semantics; scoped `PushCurrentState` remains for nested evaluator
   calls such as next-state generation.
+- Java `SimulationWorker.simulateAndReport` catches generic `Exception`,
+  publishes a worker error with code `0`, and stops that worker. Go mirrors this
+  with a recover boundary because many ported Java `Assert.fail` paths are
+  represented as panics carrying `*TLCError`.
 - In simulation mode, `TLCExt!Trace` uses Java's
   `RecordValue(TLCState, Action)` constructor: each tuple element is a record
   whose first field is `_action`, followed by the state's variables. The
