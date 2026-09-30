@@ -1686,6 +1686,11 @@ self-successor and the next trace state as successors. It then adds the final
 state with an empty successor set, runs a final liveness check, and resets the
 graph for the next simulated behavior.
 
+`AddAndCheckLiveCheck` is Java's testing-only subclass that synchronizes
+`addInitState` and `addNextState`, then calls `check0(tool, false)` after every
+addition. Go keeps this on the concrete `LiveCheck` as an `AddAndCheck` flag
+and mutex instead of creating another checker type.
+
 Tableau liveness has an important safety-like short-circuit. When
 `TableauLiveChecker.addNextState` recursively finds an accepting sink tableau
 node and the `OrderOfSolution` has an empty possible-error model, Java records

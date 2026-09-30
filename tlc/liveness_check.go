@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type LiveException struct {
@@ -967,11 +968,13 @@ func (s *liveSCCSearch) hasComponentSelfLoop(node *GraphNode) bool {
 }
 
 type LiveCheck struct {
-	Tool     *Tool
-	MetaDir  string
-	Checkers []*LiveChecker
-	NoOp     bool
-	Forced   bool
+	Tool        *Tool
+	MetaDir     string
+	Checkers    []*LiveChecker
+	NoOp        bool
+	Forced      bool
+	AddAndCheck bool
+	mu          sync.Mutex
 }
 
 func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
@@ -1000,13 +1003,31 @@ func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metad
 }
 
 func NewAddAndCheckLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
-	return NewLiveCheck(tool, solutions, metadir)
+	check := NewLiveCheck(tool, solutions, metadir)
+	if check != nil {
+		check.AddAndCheck = true
+	}
+	PrintWarning(ECUnitTest, "!!!WARNING: TLC is running in inefficient unit testing mode!!!", "")
+	return check
 }
 
 func (lc *LiveCheck) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint64) error {
 	if lc == nil || lc.NoOp {
 		return nil
 	}
+	if lc.AddAndCheck {
+		lc.mu.Lock()
+		defer lc.mu.Unlock()
+		if err := lc.addInitState(tool, state, stateFP); err != nil {
+			return err
+		}
+		_, err := lc.check0(tool, false)
+		return err
+	}
+	return lc.addInitState(tool, state, stateFP)
+}
+
+func (lc *LiveCheck) addInitState(tool *Tool, state *TLCStateMut, stateFP uint64) error {
 	for _, checker := range lc.Checkers {
 		if err := checker.AddInitState(tool, state, stateFP); err != nil {
 			return err
@@ -1019,6 +1040,19 @@ func (lc *LiveCheck) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextS
 	if lc == nil || lc.NoOp {
 		return nil
 	}
+	if lc.AddAndCheck {
+		lc.mu.Lock()
+		defer lc.mu.Unlock()
+		if err := lc.addNextState(tool, s0, fp0, nextStates); err != nil {
+			return err
+		}
+		_, err := lc.check0(tool, false)
+		return err
+	}
+	return lc.addNextState(tool, s0, fp0, nextStates)
+}
+
+func (lc *LiveCheck) addNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates) error {
 	for _, checker := range lc.Checkers {
 		oos := checker.Solution
 		alen := len(oos.CheckAction)
