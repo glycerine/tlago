@@ -136,9 +136,6 @@ func (s *MemObjectStack) CommitChkpt() error {
 	}
 	oldName := s.filename + ".chkpt"
 	newName := s.filename + ".tmp"
-	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemObjectStack.CommitChkpt: cannot delete %s: %w", oldName, err)
-	}
 	if err := os.Rename(newName, oldName); err != nil {
 		return fmt.Errorf("MemObjectStack.CommitChkpt: cannot rename %s to %s: %w", newName, oldName, err)
 	}
