@@ -505,13 +505,45 @@ func semanticNodeSetValue(nodes []SemanticNode) Value {
 	}
 	values := make([]Value, 0, len(nodes))
 	for _, node := range nodes {
-		values = append(values, NewRecordValue(
-			[]*UniqueString{actionRecordName},
-			[]Value{NewStringValue(fmt.Sprint(node))},
-			false,
-		))
+		values = append(values, constraintRecordValue(node))
 	}
 	return NewSetEnumValue(values, false)
+}
+
+func constraintRecordValue(node SemanticNode) Value {
+	switch value := SemanticToolObject(node).(type) {
+	case *OpDefNode:
+		return opDefRecordValue(value)
+	case *Action:
+		return value.ToRecordValue()
+	}
+	return NewRecordValue(
+		[]*UniqueString{actionRecordName},
+		[]Value{NewStringValue(fmt.Sprint(node))},
+		false,
+	)
+}
+
+func opDefRecordValue(op *OpDefNode) Value {
+	if op == nil {
+		return EmptyRecord
+	}
+	name := ""
+	if op.Name != nil {
+		name = op.Name.String()
+	}
+	return NewRecordValue(
+		[]*UniqueString{actionRecordName, actionRecordLocation},
+		[]Value{NewStringValue(name), sourceLocationRecordValue(semanticNodeLocation(op))},
+		false,
+	)
+}
+
+func semanticNodeLocation(node SemanticNode) SourceLocation {
+	if loc, ok := semanticNodeSourceLocation(node); ok {
+		return loc
+	}
+	return NullSourceLocation
 }
 
 func tlcGetSystemProperty(name string, fallback string) string {

@@ -89,6 +89,7 @@
   - `TLCStateMut.GetAction` now preserves Java's distinction between no attached action and the explicit `Action.UNKNOWN` fallback used by TLCGet/counterexample records.
   - Coverage cost models now key substitution wrappers by stable substitution identity instead of substituted-expression identity, matching Java `Subst` object-key behavior and avoiding accidental collapse of distinct substitutions with the same expression.
   - Action records used by `TLCGet("action")`, `TLCExt`, and counterexamples now store Java-shaped structured location records instead of display strings.
+  - `TLCGet("spec")` constraint/action-constraint entries now mirror Java's `constraint2Value` path by using the semantic node's tool object when it is an `OpDefNode` or `Action`, instead of always emitting a name-only placeholder.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
