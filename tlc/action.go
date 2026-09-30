@@ -336,6 +336,9 @@ func (a *Action) GetDefinition() string {
 	if a == nil {
 		return ""
 	}
+	if loc, ok := semanticNodeSourceLocation(a.Pred); ok && !loc.IsNull() {
+		return loc.String()
+	}
 	return SemanticString(a.Pred)
 }
 
