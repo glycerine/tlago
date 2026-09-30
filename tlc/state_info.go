@@ -124,9 +124,6 @@ func (i *TLCStateInfo) GetStateNumber() int {
 	if i == nil {
 		return 0
 	}
-	if i.original != nil {
-		return i.original.Level()
-	}
 	return int(i.StateNumber)
 }
 

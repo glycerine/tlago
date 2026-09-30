@@ -1203,6 +1203,9 @@ Trace reconstruction and aliasing:
   string conversion, matching Java `Action.getLocation`. Counterexample action
   records still use `Action.getParameters`, which includes only parameter
   bindings that are TLC `Value`s.
+- `TLCStateInfo.getStateNumber()` returns the stored trace ordinal. Alias
+  states preserve that ordinal instead of recomputing from any retained original
+  state object.
 - Before replaying trace fingerprints into concrete states, Java snapshots and
   resets `RandomEnumerableValues`; restore the snapshot after replay so specs
   using randomized enumeration regenerate the same path without perturbing the
