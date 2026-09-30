@@ -283,27 +283,24 @@ func (g *TableauDiskGraph) GetPath(state uint64, tidx int) (*LongVec, error) {
 		return nil, err
 	}
 
-	type tableauPathEntry struct {
-		state uint64
-		tidx  int
-		ptr   int64
-	}
-	queue := make([]tableauPathEntry, 0, max(numOfInits/2, 1))
+	queue := NewIntQueueWithDisk(g.MetaDir, "", intQueueInitialSize)
 	for i := 0; i < numOfInits; i += 2 {
 		state0 := uint64(g.InitNodes.ElementAt(i))
 		tidx0 := int(g.InitNodes.ElementAt(i + 1))
 		ptr := reverseTable.Get(state0, tidx0)
 		if ptr != -1 {
-			queue = append(queue, tableauPathEntry{state: state0, tidx: tidx0, ptr: ptr})
+			queue.EnqueueLong(int64(state0))
+			queue.EnqueueInt(int32(tidx0))
+			queue.EnqueueLong(ptr)
 			reverseTable.PutElem(state0, tidx0, DiskGraphMaxPtr)
 		}
 	}
 
-	for head := 0; head < len(queue); head++ {
-		entry := queue[head]
-		curState := entry.state
-		curTidx := entry.tidx
-		curNode, err := g.diskGraphNodeAt(curState, curTidx, entry.ptr)
+	for queue.Size() > 0 {
+		curState := uint64(queue.DequeueLong())
+		curTidx := int(queue.DequeueInt())
+		curPtr := queue.DequeueLong()
+		curNode, err := g.diskGraphNodeAt(curState, curTidx, curPtr)
 		if err != nil {
 			return nil, err
 		}
@@ -328,7 +325,9 @@ func (g *TableauDiskGraph) GetPath(state uint64, tidx int) (*LongVec, error) {
 			}
 			nextPtr := TableauGetElem(nextNodes, cloc)
 			if IsDiskGraphFilePointer(nextPtr) {
-				queue = append(queue, tableauPathEntry{state: nextState, tidx: nextTidx, ptr: nextPtr})
+				queue.EnqueueLong(int64(nextState))
+				queue.EnqueueInt(int32(nextTidx))
+				queue.EnqueueLong(nextPtr)
 				curLoc := reverseTable.GetNodesLoc(curState)
 				if curLoc == -1 {
 					return nil, fmt.Errorf("liveness path predecessor missing for state %d", curState)

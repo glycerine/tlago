@@ -41,6 +41,7 @@
 - Already audited recently; do not replace LiveWorker SCC/postfix queues with Go slice queues: they now use the Java-shaped `IntQueue` long/int streams (`state`, `tidx`, `loc` and `state`, `parentLoc`).
 - Already audited recently; do not replace `IntStack` with raw Go append growth: it now mirrors Java `MemIntStack`'s explicit backing array, 1024 minimum capacity, and 1.5x-or-plus-1024 growth rule.
 - Already audited recently; do not force LiveWorker SCC stacks to memory-only: `getStack` now mirrors Java's synchronized graph-size/free-memory threshold and selects `SynchronousDiskIntStack` when the liveness graph is large.
+- Already audited recently; do not replace disk-graph liveness path BFS queues with Go slices: `DiskGraph.GetPath` and `TableauDiskGraph.GetPath` now use `IntQueue` record streams like Java.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -150,6 +151,7 @@
   - `LiveWorker` SCC root traversal and BFS postfix reconstruction now consume the same Java `MemIntQueue` record streams instead of Go slice queues.
   - `IntStack` now mirrors Java `MemIntStack` storage and growth instead of relying on Go's append growth.
   - `LiveWorker` now selects between memory and disk-backed SCC stacks through the Java synchronized `getStack` threshold algorithm.
+  - Disk-backed liveness path reconstruction now uses Java `MemIntQueue` BFS record streams in both non-tableau and tableau graph paths.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

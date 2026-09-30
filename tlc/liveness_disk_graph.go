@@ -466,24 +466,21 @@ func (g *DiskGraph) GetPath(state uint64, tidxIgnored int) (*LongVec, error) {
 	}
 
 	offset := DiskGraphMaxPtr + 1
-	type diskPathEntry struct {
-		state uint64
-		ptr   int64
-	}
-	queue := make([]diskPathEntry, 0, max(numOfInits/2, 1))
+	queue := NewIntQueueWithDisk(g.MetaDir, "", intQueueInitialSize)
 	for i := 0; i < numOfInits; i += 2 {
 		state0 := uint64(g.InitNodes.ElementAt(i))
 		ptr := g.NodePtrTbl.Get(state0)
 		if ptr != -1 {
-			queue = append(queue, diskPathEntry{state: state0, ptr: ptr})
+			queue.EnqueueLong(int64(state0))
+			queue.EnqueueLong(ptr)
 			g.NodePtrTbl.Put(state0, DiskGraphMaxPtr)
 		}
 	}
 
-	for head := 0; head < len(queue); head++ {
-		entry := queue[head]
-		curState := entry.state
-		curNode, err := g.diskGraphNodeAt(curState, -1, entry.ptr)
+	for queue.Size() > 0 {
+		curState := uint64(queue.DequeueLong())
+		curPtr := queue.DequeueLong()
+		curNode, err := g.diskGraphNodeAt(curState, -1, curPtr)
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +514,8 @@ func (g *DiskGraph) GetPath(state uint64, tidxIgnored int) (*LongVec, error) {
 			}
 			nextPtr := g.NodePtrTbl.GetByLoc(nextLoc)
 			if IsDiskGraphFilePointer(nextPtr) {
-				queue = append(queue, diskPathEntry{state: nextState, ptr: nextPtr})
+				queue.EnqueueLong(int64(nextState))
+				queue.EnqueueLong(nextPtr)
 				curLoc := g.NodePtrTbl.GetLoc(curState)
 				if curLoc == -1 {
 					return nil, fmt.Errorf("liveness path predecessor missing for state %d", curState)
