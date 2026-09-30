@@ -1199,6 +1199,18 @@ Override infrastructure:
 - `TLCBuiltInOverrides`, `ITLCOverrides`, and annotations describe overrides.
 - `MethodValue` and `EvaluatingValue` bridge operator calls to module methods.
 
+Go mapping:
+
+- Java standard-module static initializers are represented by
+  `Tool.InstallStandardDefinitions`.
+- `NewTool` installs concrete values such as `Nat`, `Int`, `STRING`, and
+  `Any`, plus `MethodValue` entries for pure module operators.
+- Java's `TLARegistry` aliases are installed beside the method names, e.g.
+  `Plus` and `+`, `Concat` and `\o`, `MakeFcn` and `:>`.
+- Context-sensitive operators such as `TLCGet` and `TLCSet` use
+  `EvaluatingValue` so their implementations receive the concrete `Tool`,
+  context, current state, successor state, eval control, and cost model.
+
 Port guidance:
 
 - Implement built-ins as Go functions registered in a central table.

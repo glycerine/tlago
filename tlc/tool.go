@@ -164,7 +164,7 @@ type Tool struct {
 var nextToolID atomic.Int64
 
 func NewTool() *Tool {
-	return &Tool{
+	tool := &Tool{
 		ID:          nextToolID.Add(1),
 		Mode:        ModeMC,
 		RootName:    "Spec",
@@ -173,6 +173,8 @@ func NewTool() *Tool {
 		Definitions: make(map[*SymbolNode]any),
 		DefnsByName: make(map[*UniqueString]any),
 	}
+	tool.InstallStandardDefinitions()
+	return tool
 }
 
 func (t *Tool) GetID() int64 {

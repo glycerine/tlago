@@ -148,13 +148,13 @@ func SubSeq(s, m, n Value) (Value, error) {
 	return NewTupleValue(out), nil
 }
 
-func SelectInSeq(s Value, test interface{ Apply(Value) (Value, error) }) (Value, error) {
+func SelectInSeq(s Value, test Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
 		return nil, newTLCError(ECGeneral, "first argument of SelectInSeq must be a sequence, got %s", s)
 	}
 	for i, elem := range seq.Elems {
-		value, err := test.Apply(elem)
+		value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
 		if err != nil {
 			return nil, err
 		}
@@ -167,6 +167,31 @@ func SelectInSeq(s Value, test interface{ Apply(Value) (Value, error) }) (Value,
 		}
 	}
 	return IntZero, nil
+}
+
+func SelectSeq(s Value, test Value) (Value, error) {
+	seq := asTupleValue(s)
+	if seq == nil {
+		return nil, newTLCError(ECGeneral, "first argument of SelectSeq must be a sequence, got %s", s)
+	}
+	if len(seq.Elems) == 0 {
+		return EmptyTuple, nil
+	}
+	out := NewValueVec(0)
+	for _, elem := range seq.Elems {
+		value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
+		if err != nil {
+			return nil, err
+		}
+		boolValue, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCError(ECGeneral, "second argument of SelectSeq must be boolean-valued")
+		}
+		if boolValue.Val {
+			out.Add(elem)
+		}
+	}
+	return NewTupleValue(out.ToArray()), nil
 }
 
 func asTupleValue(value Value) *TupleValue {
