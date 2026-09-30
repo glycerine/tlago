@@ -311,6 +311,9 @@ func (a *Action) GetPred() SemanticNode {
 	if a == nil {
 		return nil
 	}
+	if a.Possible != nil && a.Possible.Body != nil {
+		return a.Possible.Body
+	}
 	return a.Pred
 }
 

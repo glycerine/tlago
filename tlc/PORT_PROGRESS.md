@@ -22,6 +22,7 @@
 - Already audited recently; do not loop on bucket/statistics utilities unless touched: bucket ordering, median/percentile math, dummy/concurrent/fixed variants, Java's literal `%n` statistics string quirk, counter gating, and CountDistinct HyperLogLog integer-shift/narrowing behavior are mirrored.
 - Already audited recently; do not loop on `ActionItemList`, `TLCStateFun`, `Specs`, `Defns`, or in-memory state queues unless touched: Java action-list kind/action propagation, immutable functional states, definition-table indexing, and `MemStateQueue` ring/checkpoint/over-capacity behavior are mirrored.
 - Already audited recently; do not loop on `DiskByteArrayQueue` unless touched: byte-array queue locking/checkpoint/pool helper shape is mirrored, including Java's raw queue serializer behavior of disabling value object handle sharing.
+- Already audited recently; do not loop on `PossibleAction`, `WorkerValue`, or TLC exception wrappers unless touched: possible-action reporting uses the Java `getPred()` override shape, worker-local value mux/demux follows Java seed-reset/evaluate-per-worker behavior, and worker/stateful/fingerprint exception fields match the Java API shape.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -111,6 +112,7 @@
   - Bucket/statistics utilities now mirror Java's visible statistics string formatting quirk and CountDistinct HyperLogLog's Java integer-shift and `(int)` narrowing behavior.
   - `MemStateQueue` now preserves Java's explicit over-capacity failure for the in-memory unexplored-state queue, and the corresponding read/write state system messages are formatted.
   - `DiskByteArrayQueue` now serializes queued states with a Java `ByteValueOutputStream`-style no-handle value stream, avoiding dummy/reference records in raw queued-state byte arrays.
+  - `PossibleAction` now centralizes Java's `getPred()` override behavior in `Action.GetPred()` so possible-postcondition diagnostics report the user predicate body through the same accessor shape.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

@@ -115,10 +115,7 @@ func postConditionPredicateString(post *Action) string {
 	if post == nil {
 		return ""
 	}
-	if post.IsPossible() && post.Possible.Body != nil {
-		return SemanticString(post.Possible.Body)
-	}
-	return SemanticString(post.Pred)
+	return SemanticString(post.GetPred())
 }
 
 func (t *Tool) evalPredicateValue(expr SemanticNode, ctxt *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, where string) (bool, error) {
