@@ -15,6 +15,10 @@ type Simulator struct {
 
 	StatesGenerated int64
 	TracesGenerated int64
+	DisabledRetries int64
+	Stopped         bool
+	Values          *InsMap[int, Value]
+	NamedValues     *InsMap[*UniqueString, Value]
 }
 
 func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, seed int64) *Simulator {
@@ -31,14 +35,18 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	if tool != nil && tool.GetModelConfig() != nil {
 		checkDeadlock = deadlock && tool.GetModelConfig().GetCheckDeadlock()
 	}
-	return &Simulator{
+	simulator := &Simulator{
 		Tool:          tool,
 		CheckDeadlock: checkDeadlock,
 		TraceDepth:    traceDepth,
 		TraceNum:      traceNum,
 		Seed:          seed,
 		Rand:          rand.New(rand.NewSource(seed)),
+		Values:        NewInsMap[int, Value](),
+		NamedValues:   NewInsMap[*UniqueString, Value](),
 	}
+	SetSimulator(simulator)
+	return simulator
 }
 
 func (s *Simulator) Simulate() (int, error) {
@@ -56,9 +64,9 @@ func (s *Simulator) Simulate() (int, error) {
 		return ECTLCNoStatesSatisfyingInit, nil
 	}
 	initStates.DeepNormalize()
-	for trace := int64(0); trace < s.TraceNum; trace++ {
+	for trace := int64(0); trace < s.TraceNum && !s.Stopped; trace++ {
 		cur := initStates.At(s.Rand.Intn(initStates.Size())).DeepCopy()
-		for depth := 0; depth < s.TraceDepth; depth++ {
+		for depth := 0; depth < s.TraceDepth && !s.Stopped; depth++ {
 			next, result, err := s.randomSuccessor(cur)
 			if err != nil || result != NoError {
 				return result, err
@@ -71,6 +79,125 @@ func (s *Simulator) Simulate() (int, error) {
 		s.TracesGenerated++
 	}
 	return NoError, nil
+}
+
+func (s *Simulator) Stop() {
+	if s != nil {
+		s.Stopped = true
+	}
+}
+
+func (s *Simulator) GetLocalValue(idx int) Value {
+	if s == nil || s.Values == nil {
+		return nil
+	}
+	return s.Values.Get(idx)
+}
+
+func (s *Simulator) SetAllValues(idx int, value Value) {
+	if s == nil {
+		return
+	}
+	if s.Values == nil {
+		s.Values = NewInsMap[int, Value]()
+	}
+	s.Values.Set(idx, value)
+}
+
+func (s *Simulator) GetAllValues() Value {
+	if s == nil || s.Values == nil {
+		return EmptyFcn
+	}
+	domain := make([]Value, 0, s.Values.Len())
+	values := make([]Value, 0, s.Values.Len())
+	for idx, value := range s.Values.All() {
+		domain = append(domain, NewIntValue(int32(idx)))
+		values = append(values, value)
+	}
+	return NewFcnRcdValue(domain, values, false)
+}
+
+func (s *Simulator) GetLocalNamedValue(key *UniqueString) Value {
+	if s == nil || s.NamedValues == nil {
+		return nil
+	}
+	return s.NamedValues.Get(key)
+}
+
+func (s *Simulator) SetAllNamedValues(key *UniqueString, value Value) {
+	if s == nil || key == nil {
+		return
+	}
+	if s.NamedValues == nil {
+		s.NamedValues = NewInsMap[*UniqueString, Value]()
+	}
+	s.NamedValues.Set(key, value)
+}
+
+func (s *Simulator) GetAllNamedRegisterValues() Value {
+	if s == nil || s.NamedValues == nil {
+		return EmptyFcn
+	}
+	domain := make([]Value, 0, s.NamedValues.Len())
+	values := make([]Value, 0, s.NamedValues.Len())
+	for key, value := range s.NamedValues.All() {
+		domain = append(domain, NewStringValueFromUnique(key))
+		values = append(values, value)
+	}
+	return NewFcnRcdValue(domain, values, false)
+}
+
+func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
+	value := s.GetLocalNamedValue(key)
+	if value == nil {
+		return nil
+	}
+	return []Value{value}
+}
+
+func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
+	level := int32(0)
+	if state != nil {
+		level = int32(state.Level())
+	}
+	names := []*UniqueString{
+		tlcGetGenerated,
+		tlcGetDiameter,
+		tlcGetRetries,
+		tlcGetLevel,
+		tlcGetDuration,
+	}
+	values := []Value{
+		intValueFromInt64(s.StatesGenerated),
+		intValueFromInt64(s.TracesGenerated),
+		intValueFromInt64(s.DisabledRetries),
+		NewIntValue(level),
+		intValueFromDurationSince(TLCStartTime()),
+	}
+	return NewRecordValue(names, values, false)
+}
+
+func (s *Simulator) GetConfig() Value {
+	if s == nil {
+		return EmptyRecord
+	}
+	names := []*UniqueString{
+		tlcGetMode,
+		tlcGetDeadlock,
+		tlcGetSeed,
+		tlcGetDepth,
+		tlcGetTraces,
+		tlcGetWorker,
+	}
+	values := []Value{
+		NewStringValue("simulation"),
+		NewBoolValue(s.CheckDeadlock),
+		intValueFromInt64(s.Seed),
+		NewIntValue(int32(s.TraceDepth)),
+		intValueFromInt64(s.TraceNum),
+		NewIntValue(1),
+	}
+	return NewRecordValue(names, values, false)
 }
 
 func (s *Simulator) initialStates() (*StateVec, int, error) {

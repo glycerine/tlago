@@ -1,6 +1,9 @@
 package tlc
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 const DefaultCheckpointDurationMillis = (30 * 60 * 1000) + 42
 
@@ -20,6 +23,9 @@ var Globals = struct {
 	PrintDiffsOnly             bool
 	Warn                       bool
 	CheckpointDurationMillis   int64
+	MainChecker                *ModelChecker
+	Simulator                  *Simulator
+	StartTime                  time.Time
 }{
 	EnumBound:                  2000,
 	SetBound:                   1000000,
@@ -33,6 +39,37 @@ var Globals = struct {
 	Expand:                     true,
 	Warn:                       true,
 	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
+	StartTime:                  time.Now(),
+}
+
+func SetMainChecker(checker *ModelChecker) {
+	Globals.Lock()
+	defer Globals.Unlock()
+	Globals.MainChecker = checker
+}
+
+func MainChecker() *ModelChecker {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.MainChecker
+}
+
+func SetSimulator(simulator *Simulator) {
+	Globals.Lock()
+	defer Globals.Unlock()
+	Globals.Simulator = simulator
+}
+
+func CurrentSimulator() *Simulator {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.Simulator
+}
+
+func TLCStartTime() time.Time {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.StartTime
 }
 
 func SetNumWorkers(n int) {

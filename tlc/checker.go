@@ -25,6 +25,8 @@ type AbstractChecker struct {
 	Workers                   []*Worker
 	PrintedLivenessErrorStack bool
 	StartTime                 time.Time
+	Values                    *InsMap[int, Value]
+	NamedValues               *InsMap[*UniqueString, Value]
 }
 
 func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
@@ -47,6 +49,8 @@ func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, de
 		Tool:           tool,
 		AllStateWriter: stateWriter,
 		StartTime:      startTime,
+		Values:         NewInsMap[int, Value](),
+		NamedValues:    NewInsMap[*UniqueString, Value](),
 	}
 }
 
@@ -88,6 +92,88 @@ func continuationEnabled() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.Continuation
+}
+
+func (c *AbstractChecker) GetValue(workerID int, idx int) Value {
+	_ = workerID
+	if c == nil || c.Values == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Values.Get(idx)
+}
+
+func (c *AbstractChecker) SetAllValues(idx int, value Value) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Values == nil {
+		c.Values = NewInsMap[int, Value]()
+	}
+	c.Values.Set(idx, value)
+}
+
+func (c *AbstractChecker) GetAllValues() Value {
+	if c == nil || c.Values == nil {
+		return EmptyFcn
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	domain := make([]Value, 0, c.Values.Len())
+	values := make([]Value, 0, c.Values.Len())
+	for idx, value := range c.Values.All() {
+		domain = append(domain, NewIntValue(int32(idx)))
+		values = append(values, value)
+	}
+	return NewFcnRcdValue(domain, values, false)
+}
+
+func (c *AbstractChecker) GetNamedValue(workerID int, key *UniqueString) Value {
+	_ = workerID
+	if c == nil || c.NamedValues == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.NamedValues.Get(key)
+}
+
+func (c *AbstractChecker) SetAllNamedValues(key *UniqueString, value Value) {
+	if c == nil || key == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.NamedValues == nil {
+		c.NamedValues = NewInsMap[*UniqueString, Value]()
+	}
+	c.NamedValues.Set(key, value)
+}
+
+func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
+	if c == nil || c.NamedValues == nil {
+		return EmptyFcn
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	domain := make([]Value, 0, c.NamedValues.Len())
+	values := make([]Value, 0, c.NamedValues.Len())
+	for key, value := range c.NamedValues.All() {
+		domain = append(domain, NewStringValueFromUnique(key))
+		values = append(values, value)
+	}
+	return NewFcnRcdValue(domain, values, false)
+}
+
+func (c *AbstractChecker) GetAllNamedValues(key *UniqueString) []Value {
+	value := c.GetNamedValue(0, key)
+	if value == nil {
+		return nil
+	}
+	return []Value{value}
 }
 
 type ModelChecker struct {
@@ -153,7 +239,64 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	if mc.Trace == nil {
 		mc.Trace = NewMemoryTrace()
 	}
+	SetMainChecker(mc)
 	return mc
+}
+
+func (mc *ModelChecker) Stop() {
+	if mc != nil && mc.AbstractChecker != nil {
+		mc.SetDone()
+	}
+}
+
+func (mc *ModelChecker) GetProgress() int64 {
+	if mc == nil || mc.Trace == nil {
+		return 0
+	}
+	return int64(mc.Trace.GetLevelForReporting())
+}
+
+func (mc *ModelChecker) GetStatistics() Value {
+	if mc == nil {
+		return EmptyRecord
+	}
+	names := []*UniqueString{
+		tlcGetGenerated,
+		tlcGetDistinct,
+		tlcGetInitial,
+		tlcGetQueue,
+		tlcGetDiameter,
+		tlcGetDuration,
+	}
+	values := []Value{
+		intValueFromInt64(mc.GetStatesGenerated()),
+		intValueFromUint64(mc.GetDistinctStatesGenerated()),
+		intValueFromInt64(mc.GetInitialStatesGenerated()),
+		intValueFromInt64(mc.GetStateQueueSize()),
+		intValueFromInt64(mc.GetProgress()),
+		intValueFromDurationSince(TLCStartTime()),
+	}
+	return NewRecordValue(names, values, false)
+}
+
+func (mc *ModelChecker) GetConfig() Value {
+	if mc == nil {
+		return EmptyRecord
+	}
+	depth := int32(0)
+	names := []*UniqueString{
+		tlcGetMode,
+		tlcGetDeadlock,
+		tlcGetWorker,
+		tlcGetDepth,
+	}
+	values := []Value{
+		NewStringValue("model-checking"),
+		NewBoolValue(mc.CheckDeadlock),
+		NewIntValue(int32(NumWorkers())),
+		NewIntValue(depth),
+	}
+	return NewRecordValue(names, values, false)
 }
 
 func (mc *ModelChecker) CheckAssumptions() int {
