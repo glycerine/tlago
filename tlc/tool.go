@@ -112,6 +112,10 @@ type Tool struct {
 	ImpliedActNames    []string
 	ViewSpec           SemanticNode
 	PostConditionSpecs []*Action
+	Assumptions        []SemanticNode
+	AssumptionIsAxiom  []bool
+	RLReward           SemanticNode
+	Periodic           SemanticNode
 	ModelConstraints   []SemanticNode
 	ActionConstraints  []SemanticNode
 	SymmetryPerms      []*MVPerm
@@ -325,35 +329,35 @@ func (t *Tool) IsInModel(state *TLCStateMut) (bool, error) {
 	if t != nil && t.IsInModelFunc != nil {
 		return t.IsInModelFunc(t, state)
 	}
-	return true, nil
+	return t.IsInModelImpl(state)
 }
 
 func (t *Tool) IsInModelForConstraint(constraint SemanticNode, state *TLCStateMut) (bool, error) {
 	if t != nil && t.IsInModelForConstraintFunc != nil {
 		return t.IsInModelForConstraintFunc(t, constraint, state)
 	}
-	return t.IsInModel(state)
+	return t.IsInModelForConstraintImpl(constraint, state)
 }
 
 func (t *Tool) IsInActions(s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
 	if t != nil && t.IsInActionsFunc != nil {
 		return t.IsInActionsFunc(t, s1, s2)
 	}
-	return true, nil
+	return t.IsInActionsImpl(s1, s2)
 }
 
 func (t *Tool) IsInActionsForConstraint(constraint SemanticNode, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
 	if t != nil && t.IsInActionsForConstraintFn != nil {
 		return t.IsInActionsForConstraintFn(t, constraint, s1, s2)
 	}
-	return t.IsInActions(s1, s2)
+	return t.IsInActionsForConstraintImpl(constraint, s1, s2)
 }
 
 func (t *Tool) EvalReward(s1 *TLCStateMut, s2 *TLCStateMut, fallback float64) (float64, error) {
 	if t != nil && t.EvalRewardFunc != nil {
 		return t.EvalRewardFunc(t, s1, s2, fallback)
 	}
-	return fallback, nil
+	return t.EvalRewardImpl(s1, s2, fallback)
 }
 
 func (t *Tool) HasStateOrActionConstraints() bool {
@@ -384,28 +388,28 @@ func (t *Tool) IsValidExpr(expr SemanticNode, ctxt *Context) (bool, error) {
 	if t != nil && t.IsValidExprFunc != nil {
 		return t.IsValidExprFunc(t, expr, ctxt)
 	}
-	return true, nil
+	return t.IsValidExprImpl(expr, ctxt)
 }
 
 func (t *Tool) IsValidTransition(action *Action, s0 *TLCStateMut, s1 *TLCStateMut) (bool, error) {
 	if t != nil && t.IsValidTransitionFunc != nil {
 		return t.IsValidTransitionFunc(t, action, s0, s1)
 	}
-	return true, nil
+	return t.IsValidTransitionImpl(action, s0, s1)
 }
 
 func (t *Tool) IsValidState(action *Action, state *TLCStateMut) (bool, error) {
 	if t != nil && t.IsValidStateFunc != nil {
 		return t.IsValidStateFunc(t, action, state)
 	}
-	return true, nil
+	return t.IsValidStateImpl(action, state)
 }
 
 func (t *Tool) IsValidAction(action *Action) (bool, error) {
 	if t != nil && t.IsValidActionFunc != nil {
 		return t.IsValidActionFunc(t, action)
 	}
-	return true, nil
+	return t.IsValidActionImpl(action)
 }
 
 func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
@@ -537,14 +541,14 @@ func (t *Tool) CheckAssumptions() int {
 	if t != nil && t.CheckAssumptionsFunc != nil {
 		return t.CheckAssumptionsFunc(t)
 	}
-	return NoError
+	return t.CheckAssumptionsImpl()
 }
 
 func (t *Tool) CheckPostCondition() int {
 	if t != nil && t.CheckPostConditionFunc != nil {
 		return t.CheckPostConditionFunc(t)
 	}
-	return NoError
+	return t.CheckPostConditionImpl(EmptyContext)
 }
 
 func (t *Tool) CheckPostConditionWithCounterExample(value Value) int {

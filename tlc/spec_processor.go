@@ -237,6 +237,10 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.ModelConstraints = append([]SemanticNode(nil), p.ModelConstraints...)
 	tool.ActionConstraints = append([]SemanticNode(nil), p.ActionConstraints...)
 	tool.PostConditionSpecs = append([]*Action(nil), p.PossiblePostConds...)
+	tool.Assumptions = append([]SemanticNode(nil), p.Assumptions...)
+	tool.AssumptionIsAxiom = append([]bool(nil), p.AssumptionIsAxiom...)
+	tool.RLReward = p.RLReward
+	tool.Periodic = p.Periodic
 	tool.ViewSpec = p.ViewSpec
 	tool.AssignActionIDs()
 }
