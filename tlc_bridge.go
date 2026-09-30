@@ -1,6 +1,7 @@
 package tlago
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -163,6 +164,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.tool.RootFile = spec.Root.SourcePath
 	bridge.tool.SpecDir = ""
 	bridge.tool.ConfigFile = spec.Root.Name
+	bridge.tool.ParseDebuggerExpressionFunc = bridge.parseDebuggerExpression
 	bridge.installVariables()
 	bridge.installDefinitions()
 	bridge.installConfigConstants()
@@ -508,6 +510,465 @@ func parseRuntimeTLAExpression(expr string, modules []string) (Expr, Diagnostics
 	}
 	diags = append(diags, errorAt(Position{}, "E7021", "runtime invariant expression did not produce a definition"))
 	return nil, diags
+}
+
+func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, location tlc.SourceLocation, condition string) (*tlc.OpDefNode, error) {
+	_ = tool
+	condition = strings.TrimSpace(condition)
+	if condition == "" || strings.EqualFold(condition, "TRUE") {
+		return nil, nil
+	}
+	if b == nil || b.spec == nil || b.spec.Root == nil {
+		return nil, fmt.Errorf("cannot parse debugger expression %q without a root module", condition)
+	}
+
+	rootName := b.spec.Root.Name
+	moduleName := b.unusedDebuggerModuleName()
+	opName := b.unusedDebuggerOpName()
+	scope := b.debuggerExpressionScope(location)
+	var source strings.Builder
+	source.WriteString("---- MODULE ")
+	source.WriteString(moduleName)
+	source.WriteString(" ----\nEXTENDS ")
+	source.WriteString(rootName)
+	source.WriteString("\n")
+	source.WriteString(opName)
+	if params := scope.paramSignatures(); len(params) > 0 {
+		source.WriteString("(")
+		source.WriteString(strings.Join(params, ", "))
+		source.WriteString(")")
+	}
+	source.WriteString(" == ")
+	if letStubs := scope.letStubSignatures(); len(letStubs) > 0 {
+		source.WriteString("LET\n")
+		for _, stub := range letStubs {
+			source.WriteString(stub)
+			source.WriteString(" == TRUE\n")
+		}
+		source.WriteString("IN ")
+	}
+	source.WriteString(condition)
+	source.WriteString("\n====\n")
+
+	file := moduleName + ".tla"
+	if b.spec.Root.SourcePath != "" {
+		file = filepath.Join(filepath.Dir(b.spec.Root.SourcePath), file)
+	}
+	mod, parseDiags := ParseSanyModuleSource(file, source.String())
+	if parseDiags.HasErrors() || mod == nil {
+		return nil, fmt.Errorf("syntax error while parsing breakpoint expression %q:\n%s", condition, parseDiags.Error())
+	}
+
+	modules := make(map[string]*Module, len(b.spec.Modules)+1)
+	for name, module := range b.spec.Modules {
+		modules[name] = module
+	}
+	modules[moduleName] = mod
+	semanticOrder := append([]string(nil), b.spec.SemanticOrder...)
+	semanticOrder = append(semanticOrder, moduleName)
+	wrapped := &Spec{Root: mod, Modules: modules, SemanticOrder: semanticOrder}
+	if checkDiags := CheckSpec(wrapped); checkDiags.HasErrors() {
+		return nil, fmt.Errorf("semantic error while parsing breakpoint expression %q:\n%s", condition, checkDiags.Error())
+	}
+
+	var def *Definition
+	for i := range mod.Definitions {
+		if mod.Definitions[i].Name == opName {
+			def = &mod.Definitions[i]
+			break
+		}
+	}
+	if def == nil {
+		return nil, fmt.Errorf("unable to find debugger expression op %s", opName)
+	}
+
+	convert := &tlcBridge{
+		tool:      b.tool,
+		processor: b.processor,
+		spec:      wrapped,
+		cfg:       b.cfg,
+		runtime:   b.runtime,
+		defs:      definitionsByName(wrapped),
+		defns:     b.defns,
+		symbols:   b.symbols,
+	}
+	op := convert.convertDefinitionAs(opName, def)
+	if op == nil {
+		return nil, fmt.Errorf("unable to convert debugger expression %q", condition)
+	}
+	if len(scope.letDefs) > 0 {
+		lets := make([]*tlc.OpDefNode, 0, len(scope.letDefs))
+		for _, letDef := range scope.letDefs {
+			defCopy := letDef
+			letOp := convert.convertDefinitionAs(defCopy.Name, &defCopy)
+			if letOp != nil {
+				lets = append(lets, letOp)
+			}
+		}
+		replaceDebuggerLetStubs(op.Body, lets)
+	}
+	if convert.diags.HasErrors() {
+		return nil, fmt.Errorf("semantic error while converting breakpoint expression %q:\n%s", condition, convert.diags.Error())
+	}
+	return op, nil
+}
+
+type debuggerScopedOperator struct {
+	name  string
+	arity int
+}
+
+type debuggerExpressionScope struct {
+	params   []debuggerScopedOperator
+	paramSet map[string]bool
+	letDefs  []Definition
+	letSet   map[string]bool
+	letNames map[string]bool
+	letStubs []string
+	stubSet  map[string]bool
+}
+
+func (s *debuggerExpressionScope) addParam(name string, arity int) {
+	if s == nil || name == "" || s.letNames[name] {
+		return
+	}
+	signature := debuggerOperatorSignature(name, arity)
+	if s.paramSet == nil {
+		s.paramSet = map[string]bool{}
+	}
+	if s.paramSet[signature] {
+		return
+	}
+	s.paramSet[signature] = true
+	s.params = append(s.params, debuggerScopedOperator{name: name, arity: arity})
+}
+
+func (s *debuggerExpressionScope) addDefinitionParams(def Definition) {
+	for _, name := range def.Params {
+		s.addParam(name, def.ParamArities[name])
+	}
+}
+
+func (s *debuggerExpressionScope) addBound(bound BoundVar) {
+	arity := 0
+	if bound.HasOperatorArity {
+		arity = bound.OperatorArity
+	}
+	s.addParam(bound.Name, arity)
+}
+
+func (s *debuggerExpressionScope) addLet(def Definition) {
+	if s == nil || def.Name == "" {
+		return
+	}
+	if s.letSet == nil {
+		s.letSet = map[string]bool{}
+	}
+	if s.letNames == nil {
+		s.letNames = map[string]bool{}
+	}
+	signature := debuggerDefinitionSignature(def)
+	if s.letSet[signature] {
+		return
+	}
+	s.letSet[signature] = true
+	s.letNames[def.Name] = true
+	s.letDefs = append(s.letDefs, def)
+}
+
+func (s *debuggerExpressionScope) paramSignatures() []string {
+	if s == nil || len(s.params) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(s.params))
+	for _, param := range s.params {
+		if s.letNames[param.name] {
+			continue
+		}
+		out = append(out, debuggerOperatorSignature(param.name, param.arity))
+	}
+	sort.Strings(out)
+	return out
+}
+
+func (s *debuggerExpressionScope) addLetStub(signature string) {
+	if s == nil || signature == "" {
+		return
+	}
+	if s.stubSet == nil {
+		s.stubSet = map[string]bool{}
+	}
+	if s.stubSet[signature] {
+		return
+	}
+	s.stubSet[signature] = true
+	s.letStubs = append(s.letStubs, signature)
+}
+
+func (s *debuggerExpressionScope) letStubSignatures() []string {
+	if s == nil || len(s.letDefs) == 0 {
+		return nil
+	}
+	for _, def := range s.letDefs {
+		s.addLetStub(debuggerDefinitionSignature(def))
+	}
+	out := append([]string(nil), s.letStubs...)
+	sort.Strings(out)
+	return out
+}
+
+func debuggerOperatorSignature(name string, arity int) string {
+	if arity <= 0 {
+		return name
+	}
+	parts := make([]string, arity)
+	for i := range parts {
+		parts[i] = "_"
+	}
+	return name + "(" + strings.Join(parts, ",") + ")"
+}
+
+func debuggerDefinitionSignature(def Definition) string {
+	if len(def.Params) == 0 {
+		return def.Name
+	}
+	parts := make([]string, len(def.Params))
+	for i, param := range def.Params {
+		parts[i] = debuggerOperatorSignature(param, def.ParamArities[param])
+	}
+	return def.Name + "(" + strings.Join(parts, ", ") + ")"
+}
+
+func replaceDebuggerLetStubs(node tlc.SemanticNode, lets []*tlc.OpDefNode) {
+	if len(lets) == 0 {
+		return
+	}
+	if letIn, ok := node.(*tlc.LetInNode); ok && letIn != nil {
+		letIn.Lets = lets
+	}
+}
+
+func (b *tlcBridge) debuggerExpressionScope(location tlc.SourceLocation) *debuggerExpressionScope {
+	scope := &debuggerExpressionScope{letNames: map[string]bool{}}
+	if b == nil || b.spec == nil || location.IsNull() {
+		return scope
+	}
+	mod := b.debuggerModuleForLocation(location)
+	if mod == nil {
+		return scope
+	}
+	point := Position{Line: location.BeginLine, Column: location.BeginColumn, EndLine: location.BeginLine, EndColumn: location.BeginColumn}
+	for i := range mod.Definitions {
+		def := mod.Definitions[i]
+		if !exprIncludesPoint(def.Expr, point) {
+			continue
+		}
+		scope.addDefinitionParams(def)
+		collectDebuggerExpressionScope(def.Expr, point, scope)
+	}
+	for _, assumption := range mod.Assumptions {
+		if exprIncludesPoint(assumption.Expr, point) {
+			collectDebuggerExpressionScope(assumption.Expr, point, scope)
+		}
+	}
+	for _, theorem := range mod.Theorems {
+		if exprIncludesPoint(theorem.Expr, point) {
+			collectDebuggerExpressionScope(theorem.Expr, point, scope)
+		}
+	}
+	return scope
+}
+
+func (b *tlcBridge) debuggerModuleForLocation(location tlc.SourceLocation) *Module {
+	if b == nil || b.spec == nil {
+		return nil
+	}
+	if location.Source != "" {
+		if mod := b.spec.Modules[location.Source]; mod != nil {
+			return mod
+		}
+		sourceBase := strings.TrimSuffix(filepath.Base(location.Source), filepath.Ext(location.Source))
+		if mod := b.spec.Modules[sourceBase]; mod != nil {
+			return mod
+		}
+		moduleNames := make([]string, 0, len(b.spec.Modules))
+		for name := range b.spec.Modules {
+			moduleNames = append(moduleNames, name)
+		}
+		sort.Strings(moduleNames)
+		for _, name := range moduleNames {
+			mod := b.spec.Modules[name]
+			if mod == nil {
+				continue
+			}
+			modBase := strings.TrimSuffix(filepath.Base(mod.SourcePath), filepath.Ext(mod.SourcePath))
+			if mod.Name == location.Source || modBase == sourceBase {
+				return mod
+			}
+		}
+	}
+	return b.spec.Root
+}
+
+func exprIncludesPoint(expr Expr, point Position) bool {
+	if expr == nil || point.Line == 0 {
+		return false
+	}
+	pos := expr.Position()
+	if pos.Line == 0 {
+		return false
+	}
+	return pos.Includes(point)
+}
+
+func collectDebuggerExpressionScope(expr Expr, point Position, scope *debuggerExpressionScope) {
+	if !exprIncludesPoint(expr, point) || scope == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *UnaryExpr:
+		collectDebuggerExpressionScope(e.Expr, point, scope)
+	case *BinaryExpr:
+		collectDebuggerExpressionScope(e.Left, point, scope)
+		collectDebuggerExpressionScope(e.Right, point, scope)
+	case *CallExpr:
+		collectDebuggerExpressionScope(e.Callee, point, scope)
+		for _, arg := range e.Args {
+			collectDebuggerExpressionScope(arg, point, scope)
+		}
+	case *IfExpr:
+		collectDebuggerExpressionScope(e.Cond, point, scope)
+		collectDebuggerExpressionScope(e.Then, point, scope)
+		collectDebuggerExpressionScope(e.Else, point, scope)
+	case *LetExpr:
+		for _, def := range e.Definitions {
+			scope.addLet(def)
+		}
+		for _, def := range e.Definitions {
+			if exprIncludesPoint(def.Expr, point) {
+				scope.addDefinitionParams(def)
+				collectDebuggerExpressionScope(def.Expr, point, scope)
+			}
+		}
+		collectDebuggerExpressionScope(e.Body, point, scope)
+	case *QuantifierExpr:
+		if exprIncludesPoint(e.Body, point) {
+			scope.addParam(e.Var, debuggerBoundArity(e.HasOperatorArity, e.OperatorArity))
+		}
+		collectDebuggerExpressionScope(e.Set, point, scope)
+		collectDebuggerExpressionScope(e.Body, point, scope)
+	case *CaseExpr:
+		for _, arm := range e.Arms {
+			collectDebuggerExpressionScope(arm.Test, point, scope)
+			collectDebuggerExpressionScope(arm.Value, point, scope)
+		}
+		collectDebuggerExpressionScope(e.Other, point, scope)
+	case *ChooseExpr:
+		if exprIncludesPoint(e.Body, point) {
+			scope.addParam(e.Var, 0)
+		}
+		collectDebuggerExpressionScope(e.Set, point, scope)
+		collectDebuggerExpressionScope(e.Body, point, scope)
+	case *TupleExpr:
+		for _, elem := range e.Elems {
+			collectDebuggerExpressionScope(elem, point, scope)
+		}
+	case *SetExpr:
+		for _, elem := range e.Elems {
+			collectDebuggerExpressionScope(elem, point, scope)
+		}
+	case *RecordExpr:
+		for _, field := range e.Fields {
+			collectDebuggerExpressionScope(field.Value, point, scope)
+		}
+	case *RecordComponentExpr:
+		collectDebuggerExpressionScope(e.Record, point, scope)
+	case *RecordSetExpr:
+		for _, field := range e.Fields {
+			collectDebuggerExpressionScope(field.Set, point, scope)
+		}
+	case *FunctionExpr:
+		if exprIncludesPoint(e.Body, point) {
+			for _, bound := range e.Bounds {
+				scope.addBound(bound)
+			}
+		}
+		for _, bound := range e.Bounds {
+			collectDebuggerExpressionScope(bound.Set, point, scope)
+		}
+		collectDebuggerExpressionScope(e.Body, point, scope)
+	case *FunctionAppExpr:
+		collectDebuggerExpressionScope(e.Function, point, scope)
+		for _, arg := range e.Args {
+			collectDebuggerExpressionScope(arg, point, scope)
+		}
+	case *ExceptExpr:
+		collectDebuggerExpressionScope(e.Base, point, scope)
+		for _, spec := range e.Specs {
+			for _, component := range spec.Components {
+				for _, index := range component.Indices {
+					collectDebuggerExpressionScope(index, point, scope)
+				}
+			}
+			collectDebuggerExpressionScope(spec.Value, point, scope)
+		}
+	case *LabelExpr:
+		collectDebuggerExpressionScope(e.Body, point, scope)
+	case *ActionExpr:
+		collectDebuggerExpressionScope(e.Action, point, scope)
+		collectDebuggerExpressionScope(e.Subscript, point, scope)
+	case *FairnessExpr:
+		collectDebuggerExpressionScope(e.Action, point, scope)
+		collectDebuggerExpressionScope(e.Subscript, point, scope)
+	case *FunctionSetExpr:
+		collectDebuggerExpressionScope(e.Domain, point, scope)
+		collectDebuggerExpressionScope(e.Range, point, scope)
+	case *SetComprehensionExpr:
+		if exprIncludesPoint(e.Element, point) || exprIncludesPoint(e.Predicate, point) {
+			for _, bound := range e.Bounds {
+				scope.addBound(bound)
+			}
+		}
+		for _, bound := range e.Bounds {
+			collectDebuggerExpressionScope(bound.Set, point, scope)
+		}
+		collectDebuggerExpressionScope(e.Element, point, scope)
+		collectDebuggerExpressionScope(e.Predicate, point, scope)
+	}
+}
+
+func debuggerBoundArity(hasArity bool, arity int) int {
+	if hasArity {
+		return arity
+	}
+	return 0
+}
+
+func (b *tlcBridge) unusedDebuggerModuleName() string {
+	return b.unusedDebuggerName("__DebuggerModule__%d", func(name string) bool {
+		return b != nil && b.spec != nil && b.spec.Modules != nil && b.spec.Modules[name] != nil
+	})
+}
+
+func (b *tlcBridge) unusedDebuggerOpName() string {
+	defs := map[string]bool{}
+	if b != nil {
+		for name := range b.defs {
+			defs[name] = true
+		}
+	}
+	return b.unusedDebuggerName("__DebuggerExpr__%d", func(name string) bool {
+		return defs[name]
+	})
+}
+
+func (b *tlcBridge) unusedDebuggerName(format string, used func(string) bool) string {
+	for i := 0; ; i++ {
+		name := fmt.Sprintf(format, i)
+		if used == nil || !used(name) {
+			return name
+		}
+	}
 }
 
 func (b *tlcBridge) installAliasTarget(name string) {

@@ -2368,11 +2368,19 @@ Important Java classes:
   matching succeeds for `nullLoc`, otherwise it checks equal line and breakpoint
   column less than or equal to the semantic node begin column. Conditional
   breakpoints evaluate through `tool.noDebug().eval` and swallow evaluation
-  failures so a broken debugger expression does not crash TLC. Until
-  `TLCDebuggerExpression.process` has a full Go port, named operator
-  conditions are resolved from `SpecProcessor`; arbitrary unparsed non-`TRUE`
-  conditions are stored with a condition error and fail closed instead of
-  becoming unconditional.
+  failures so a broken debugger expression does not crash TLC. Named operator
+  conditions are resolved directly from `SpecProcessor`. Arbitrary non-`TRUE`
+  conditions go through `Tool.ParseDebuggerExpressionFunc`, installed by the
+  root `tlcBridge`; it mirrors Java `TLCDebuggerExpression.process` by building
+  a synthetic `__DebuggerModule__N` module that `EXTENDS` the root module,
+  defining `__DebuggerExpr__N == <condition>`, parsing/checking it through the
+  production SANY path, and converting the generated operator back into TLC's
+  semantic node graph. The hook is source-location aware, matching Java's API
+  shape. The bridge collects scoped definition parameters, LET definitions,
+  quantifier/CHOOSE/function/comprehension bound variables, and operator-arity
+  parameters from the Go AST around the breakpoint location. LET definitions are
+  first emitted as parseable wrapper stubs and then replaced with the original
+  converted LET operator bodies, mirroring Java's stub/substitution strategy.
 - `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
   useful in Go as plain structs even before a debug-adapter server exists.
 

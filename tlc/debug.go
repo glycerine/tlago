@@ -1640,11 +1640,11 @@ func (d *TLCDebugger) newConditionalBreakpointLocked(condition string) *TLCSourc
 	if condition == "" {
 		condition = "TRUE"
 	}
-	op, err := d.breakpointConditionOpLocked(condition)
+	op, err := d.breakpointConditionOpLocked(condition, NullSourceLocation)
 	return NewTLCSourceBreakpoint(condition, op, err)
 }
 
-func (d *TLCDebugger) breakpointConditionOpLocked(condition string) (*OpDefNode, error) {
+func (d *TLCDebugger) breakpointConditionOpLocked(condition string, location SourceLocation) (*OpDefNode, error) {
 	condition = strings.TrimSpace(condition)
 	if condition == "" || strings.EqualFold(condition, "TRUE") {
 		return nil, nil
@@ -1654,7 +1654,10 @@ func (d *TLCDebugger) breakpointConditionOpLocked(condition string) (*OpDefNode,
 			return op, nil
 		}
 	}
-	return nil, fmt.Errorf("debug breakpoint expression parsing is not yet ported: %s", condition)
+	if d != nil && d.Tool != nil {
+		return d.Tool.ParseDebuggerExpression(location, condition)
+	}
+	return nil, fmt.Errorf("debug breakpoint expression parsing is not configured: %s", condition)
 }
 
 type TLCDebugger struct {
@@ -1947,7 +1950,12 @@ func (d *TLCDebugger) SetBreakpoints(source string, requested []TLCSourceBreakpo
 	breakpoints := make([]*TLCSourceBreakpoint, 0, len(requested))
 	results := make([]TLCBreakpoint, 0, len(requested))
 	for i, req := range requested {
-		op, conditionErr := d.breakpointConditionOpLocked(req.Condition)
+		col := 1
+		if req.Column != nil {
+			col = *req.Column
+		}
+		location := NewSourceLocation(module, req.Line+1, col, req.Line, col+1)
+		op, conditionErr := d.breakpointConditionOpLocked(req.Condition, location)
 		breakpoint := NewTLCSourceBreakpointAt(module, req.Line, req.Column, req.Condition, req.LogMessage, req.HitCondition, op, conditionErr)
 		breakpoints = append(breakpoints, breakpoint)
 		result := TLCBreakpoint{

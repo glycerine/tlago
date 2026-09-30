@@ -1,6 +1,9 @@
 package tlc
 
-import "sync/atomic"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 type ToolMode int
 
@@ -168,6 +171,7 @@ type Tool struct {
 	EvalAliasInfoFunc               func(*Tool, *TLCStateInfo, *TLCStateMut, func() []*TLCStateInfo) (*TLCStateInfo, error)
 	EvalAliasInfoPairFunc           func(*Tool, *TLCStateInfo, *TLCStateMut) (*TLCStateInfo, error)
 	EvalAliasFunc                   func(*Tool, *TLCStateMut, *TLCStateMut) *TLCStateMut
+	ParseDebuggerExpressionFunc     func(*Tool, SourceLocation, string) (*OpDefNode, error)
 	NoDebugFunc                     func(*Tool) *Tool
 	IsDebuggerFunc                  func(*Tool) bool
 }
@@ -1045,6 +1049,13 @@ func (t *Tool) NoDebug() *Tool {
 		return t.NoDebugFunc(t)
 	}
 	return t
+}
+
+func (t *Tool) ParseDebuggerExpression(location SourceLocation, condition string) (*OpDefNode, error) {
+	if t != nil && t.ParseDebuggerExpressionFunc != nil {
+		return t.ParseDebuggerExpressionFunc(t, location, condition)
+	}
+	return nil, fmt.Errorf("debug breakpoint expression parsing is not configured: %s", condition)
 }
 
 func (t *Tool) IsDebugger() bool {
