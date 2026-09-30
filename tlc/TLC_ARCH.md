@@ -698,6 +698,22 @@ Important concrete values:
 - `UserValue`: module-defined values such as unbounded standard sets.
 - `UndefValue`: explicit undefined marker.
 
+Value stream details:
+
+- Java's `ValueOutputStream` handle table is a format-level compression
+  detail, not a generic "all values get IDs" rule. Only the concrete `write`
+  methods that call `vos.put` can later emit `DUMMYVALUE`: `StringValue`,
+  `TupleValue`, `SetEnumValue`, `FcnRcdValue`, `RecordValue`, and record field
+  `UniqueString` names. `BoolValue`, `IntValue`, `IntervalValue`, and
+  `ModelValue` always write themselves directly.
+- `ModelValue` serializes as kind `MODELVALUE` followed by the short index into
+  the global `ModelValue.mvs` table. The Go port mirrors this with
+  `ModelValueAtIndex`.
+- Compound lengths follow Java's encodings: tuples and function records use
+  compact naturals, set enumerations and records use signed lengths to preserve
+  normalizedness, and function records write an interval-domain marker byte
+  before either interval bounds plus values or explicit domain/value pairs.
+
 Correctness notes:
 
 - Value comparison order is semantic and must match Java for normalization,

@@ -86,8 +86,8 @@ func (s *ValueOutputStream) Close() error {
 	return nil
 }
 
-func (s *ValueOutputStream) Put(value Value) int {
-	key := valuePointerKey(value)
+func (s *ValueOutputStream) Put(value any) int {
+	key := pointerKey(value)
 	if key == 0 {
 		return -1
 	}
@@ -102,12 +102,6 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 	if value == nil {
 		return fmt.Errorf("cannot pickle nil TLC value")
 	}
-	if idx := s.Put(value); idx >= 0 {
-		if err := s.WriteByte(byte(DummyValueKind)); err != nil {
-			return err
-		}
-		return s.WriteNat(int32(idx))
-	}
 	switch v := value.(type) {
 	case *BoolValue:
 		if err := s.WriteByte(byte(BoolValueKind)); err != nil {
@@ -120,15 +114,26 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 		}
 		return s.WriteInt(v.Val)
 	case *StringValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
 		if err := s.WriteByte(byte(StringValueKind)); err != nil {
 			return err
 		}
 		return s.WriteUniqueString(v.Val)
+	case *ModelValue:
+		if err := s.WriteByte(byte(ModelValueKind)); err != nil {
+			return err
+		}
+		return s.WriteShort(int16(v.Index))
 	case *TupleValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
 		if err := s.WriteByte(byte(TupleValueKind)); err != nil {
 			return err
 		}
-		if err := s.WriteInt(int32(len(v.Elems))); err != nil {
+		if err := s.WriteNat(int32(len(v.Elems))); err != nil {
 			return err
 		}
 		for _, elem := range v.Elems {
@@ -138,10 +143,17 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 		}
 		return nil
 	case *SetEnumValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
 		if err := s.WriteByte(byte(SetEnumValueKind)); err != nil {
 			return err
 		}
-		if err := s.WriteInt(int32(v.Elems.Len())); err != nil {
+		length := int32(v.Elems.Len())
+		if !v.IsNorm {
+			length = -length
+		}
+		if err := s.WriteInt(length); err != nil {
 			return err
 		}
 		for i := 0; i < v.Elems.Len(); i++ {
@@ -159,14 +171,40 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 		}
 		return s.WriteInt(v.High)
 	case *FcnRcdValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
 		if err := s.WriteByte(byte(FcnRcdValueKind)); err != nil {
 			return err
 		}
-		domain := v.DomainAsValues()
-		if err := s.WriteInt(int32(len(domain))); err != nil {
+		if err := s.WriteNat(int32(len(v.Values))); err != nil {
 			return err
 		}
-		for i, dval := range domain {
+		if v.Intv != nil {
+			if err := s.WriteByte(0); err != nil {
+				return err
+			}
+			if err := s.WriteInt(v.Intv.Low); err != nil {
+				return err
+			}
+			if err := s.WriteInt(v.Intv.High); err != nil {
+				return err
+			}
+			for _, value := range v.Values {
+				if err := s.WriteExternal(value); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		info := byte(2)
+		if v.IsNorm {
+			info = 1
+		}
+		if err := s.WriteByte(info); err != nil {
+			return err
+		}
+		for i, dval := range v.Domain {
 			if err := s.WriteExternal(dval); err != nil {
 				return err
 			}
@@ -176,19 +214,31 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 		}
 		return nil
 	case *RecordValue:
+		if idx := s.Put(v); idx >= 0 {
+			return s.writeDummy(idx)
+		}
 		if err := s.WriteByte(byte(RecordValueKind)); err != nil {
 			return err
 		}
 		length := int32(len(v.Names))
+		if !v.IsNorm {
+			length = -length
+		}
 		if err := s.WriteInt(length); err != nil {
 			return err
 		}
 		for i, name := range v.Names {
-			if err := s.WriteByte(byte(StringValueKind)); err != nil {
-				return err
-			}
-			if err := s.WriteUniqueString(name); err != nil {
-				return err
+			if idx := s.Put(name); idx >= 0 {
+				if err := s.writeDummy(idx); err != nil {
+					return err
+				}
+			} else {
+				if err := s.WriteByte(byte(StringValueKind)); err != nil {
+					return err
+				}
+				if err := s.WriteUniqueString(name); err != nil {
+					return err
+				}
 			}
 			if err := s.WriteExternal(v.Values[i]); err != nil {
 				return err
@@ -198,6 +248,13 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 	default:
 		return fmt.Errorf("cannot pickle value of kind %s", value.KindString())
 	}
+}
+
+func (s *ValueOutputStream) writeDummy(index int) error {
+	if err := s.WriteByte(byte(DummyValueKind)); err != nil {
+		return err
+	}
+	return s.WriteNat(int32(index))
 }
 
 func (s *ValueOutputStream) WriteUniqueString(value *UniqueString) error {
@@ -218,7 +275,7 @@ func (s *ValueOutputStream) WriteUniqueString(value *UniqueString) error {
 	return err
 }
 
-func valuePointerKey(value Value) uintptr {
+func pointerKey(value any) uintptr {
 	if value == nil {
 		return 0
 	}
@@ -227,6 +284,10 @@ func valuePointerKey(value Value) uintptr {
 		return 0
 	}
 	return rv.Pointer()
+}
+
+func valuePointerKey(value Value) uintptr {
+	return pointerKey(value)
 }
 
 type ValueInputStream struct {
@@ -352,6 +413,16 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 		return NewIntValue(value), nil
 	case StringValueKind:
 		return s.readExternalStringValue()
+	case ModelValueKind:
+		index, err := s.ReadShort()
+		if err != nil {
+			return nil, err
+		}
+		value := ModelValueAtIndex(int(index))
+		if value == nil {
+			return nil, fmt.Errorf("model value index %d is not defined", index)
+		}
+		return value, nil
 	case TupleValueKind:
 		return s.readExternalTupleValue()
 	case SetEnumValueKind:
@@ -387,7 +458,7 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 
 func (s *ValueInputStream) readExternalTupleValue() (Value, error) {
 	index := s.GetIndex()
-	length, err := s.ReadInt()
+	length, err := s.ReadNat()
 	if err != nil {
 		return nil, err
 	}
@@ -410,6 +481,11 @@ func (s *ValueInputStream) readExternalSetEnumValue() (Value, error) {
 	if err != nil {
 		return nil, err
 	}
+	isNorm := true
+	if length < 0 {
+		length = -length
+		isNorm = false
+	}
 	elems := make([]Value, int(length))
 	for i := range elems {
 		value, err := s.ReadExternal()
@@ -418,32 +494,53 @@ func (s *ValueInputStream) readExternalSetEnumValue() (Value, error) {
 		}
 		elems[i] = value
 	}
-	value := NewSetEnumValue(elems, false)
+	value := NewSetEnumValue(elems, isNorm)
 	s.Assign(value, index)
 	return value, nil
 }
 
 func (s *ValueInputStream) readExternalFcnRcdValue() (Value, error) {
 	index := s.GetIndex()
-	length, err := s.ReadInt()
+	length, err := s.ReadNat()
 	if err != nil {
 		return nil, err
 	}
-	domain := make([]Value, int(length))
-	values := make([]Value, int(length))
-	for i := range domain {
-		dval, err := s.ReadExternal()
-		if err != nil {
-			return nil, err
-		}
-		value, err := s.ReadExternal()
-		if err != nil {
-			return nil, err
-		}
-		domain[i] = dval
-		values[i] = value
+	info, err := s.ReadByte()
+	if err != nil {
+		return nil, err
 	}
-	value := NewFcnRcdValue(domain, values, false)
+	values := make([]Value, int(length))
+	var value Value
+	if info == 0 {
+		low, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		high, err := s.ReadInt()
+		if err != nil {
+			return nil, err
+		}
+		for i := range values {
+			values[i], err = s.ReadExternal()
+			if err != nil {
+				return nil, err
+			}
+		}
+		value = NewFcnRcdIntervalValue(NewIntervalValue(low, high), values)
+	} else {
+		domain := make([]Value, int(length))
+		for i := range domain {
+			domain[i], err = s.ReadExternal()
+			if err != nil {
+				return nil, err
+			}
+			values[i], err = s.ReadExternal()
+			if err != nil {
+				return nil, err
+			}
+		}
+		value = NewFcnRcdValue(domain, values, info == 1)
+	}
 	s.Assign(value, index)
 	return value, nil
 }

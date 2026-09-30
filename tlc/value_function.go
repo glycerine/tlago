@@ -76,6 +76,18 @@ func ModelValues() []*ModelValue {
 	return out
 }
 
+func ModelValueAtIndex(index int) *ModelValue {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	if len(modelValues.mvs) != modelValues.count {
+		setModelValuesLocked()
+	}
+	if index < 0 || index >= len(modelValues.mvs) {
+		return nil
+	}
+	return modelValues.mvs[index]
+}
+
 type MVPerm struct {
 	elems  []*ModelValue
 	domain []*ModelValue
