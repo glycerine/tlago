@@ -302,8 +302,8 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.Invariants, p.InvariantNames = p.actionsFromConfigNames(p.Config.GetInvariants(), false)
 	p.processConfigProperties()
 	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
-	p.ModelConstraints = p.semanticNodesFromConfigNames(p.Config.GetConstraints())
-	p.ActionConstraints = p.semanticNodesFromConfigNames(p.Config.GetActionConstraints())
+	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints())
+	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints())
 }
 
 func (p *SpecProcessor) ApplyToTool(tool *Tool) {
@@ -708,6 +708,28 @@ func (p *SpecProcessor) semanticNodesFromConfigNames(names []string) []SemanticN
 	nodes := make([]SemanticNode, len(names))
 	for i, name := range names {
 		nodes[i] = p.semanticNodeFromConfigName(name)
+	}
+	return nodes
+}
+
+func (p *SpecProcessor) constraintNodesFromConfigNames(names []string) []SemanticNode {
+	nodes := make([]SemanticNode, 0, len(names))
+	for _, name := range names {
+		switch def := p.defn(name).(type) {
+		case *OpDefNode:
+			if def != nil && def.Arity() == 0 && def.Body != nil {
+				setSemanticToolObject(def.Body, def)
+				nodes = append(nodes, def.Body)
+			}
+		case *BoolValue:
+			if !def.Val {
+				nodes = append(nodes, def)
+			}
+		case SemanticNode:
+			nodes = append(nodes, def)
+		default:
+			nodes = append(nodes, name)
+		}
 	}
 	return nodes
 }
