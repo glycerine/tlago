@@ -578,22 +578,26 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 		mc.PrintSummary(false)
 		return result, err
 	}
-	if mc.CheckLiveness && mc.LiveCheck != nil {
-		PrintMessage(ECTLCProgressStats,
-			fmtInt64(mc.GetProgress()),
-			fmtInt64(mc.GetStatesGenerated()),
-			fmtUint64(mc.GetDistinctStatesGenerated()),
-			fmtInt64(mc.GetStateQueueSize()),
-		)
-		result, err = mc.LiveCheck.FinalCheck(mc.Tool)
-		if err != nil || result != NoError {
-			mc.PrintSummary(false)
-			return result, err
+	if mc.ErrState == nil {
+		if mc.CheckLiveness && mc.LiveCheck != nil {
+			PrintMessage(ECTLCProgressStats,
+				fmtInt64(mc.GetProgress()),
+				fmtInt64(mc.GetStatesGenerated()),
+				fmtUint64(mc.GetDistinctStatesGenerated()),
+				fmtInt64(mc.GetStateQueueSize()),
+			)
+			result, err = mc.LiveCheck.FinalCheck(mc.Tool)
+			if err != nil || result != NoError {
+				mc.PrintSummary(false)
+				return result, err
+			}
 		}
-	}
-	result = mc.Tool.CheckPostCondition()
-	if result == NoError {
-		ReportSuccess(mc.FPSet, mc.GetStatesGenerated())
+		result = mc.Tool.CheckPostCondition()
+		if result == NoError {
+			ReportSuccess(mc.FPSet, mc.GetStatesGenerated())
+		}
+	} else if mc.KeepCallStack {
+		result = mc.replayNextErrorCallStack()
 	}
 	mc.PrintSummary(result == NoError)
 	return result, nil
@@ -990,11 +994,17 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 	}
 	if joinErr != nil {
 		if mc.ErrorCode != NoError {
-			return mc.ErrorCode, joinErr
+			if mc.KeepCallStack {
+				return NoError, nil
+			}
+			return mc.ErrorCode, nil
 		}
 		return ECGeneral, joinErr
 	}
-	return mc.ErrorCode, nil
+	if !mc.KeepCallStack && mc.ErrorCode != NoError {
+		return mc.ErrorCode, nil
+	}
+	return NoError, nil
 }
 
 func (mc *ModelChecker) waitForWorkersWithPeriodicWork(maxDepth int) (int, error) {
@@ -1232,6 +1242,146 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 	return false, nil
 }
 
+func (mc *ModelChecker) replayNextErrorCallStack() int {
+	if mc == nil || mc.Tool == nil || mc.PredErrState == nil {
+		return mcErrorCodeOrGeneral(mc)
+	}
+	callStackTool := NewCallStackTool(mc.Tool)
+	var liveNextStates *SetOfStates
+	if mc.CheckLiveness {
+		liveNextStates = NewSetOfStates()
+	}
+	replayWorker := NewWorker(4223)
+	replayWorker.Checker = mc
+	replayWorker.Tool = mc.Tool
+	rootName := "Spec"
+	if mc.Tool.GetRootName() != "" {
+		rootName = mc.Tool.GetRootName()
+	}
+	replayWorker.SetTraceContext(mc.Metadir, rootName)
+	if _, err := mc.doNextWithTool(callStackTool, mc.PredErrState, liveNextStates, replayWorker); err != nil {
+		var fpErr *FingerprintException
+		if errors.As(err, &fpErr) && fpErr != nil {
+			trace := fpErr.GetTrace()
+			if callStackTool.HasCallStack() {
+				trace = callStackTool.CallStackString()
+			}
+			rootMessage := ""
+			if root := fpErr.GetRootCause(); root != nil {
+				rootMessage = root.Error()
+			}
+			PrintError(ECTLCFingerprintException, trace, rootMessage)
+			return ECTLCFingerprintException
+		}
+		var eval *EvalException
+		if errors.As(err, &eval) && eval != nil {
+			PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
+			return eval.GetErrorCode()
+		}
+		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
+		return ECTLCNestedExpression
+	}
+	return NoError
+}
+
+func mcErrorCodeOrGeneral(mc *ModelChecker) int {
+	if mc != nil && mc.ErrorCode != NoError {
+		return mc.ErrorCode
+	}
+	return ECGeneral
+}
+
+func (mc *ModelChecker) doNextWithTool(tool *Tool, curState *TLCStateMut, liveNextStates *SetOfStates, worker *Worker) (bool, error) {
+	if mc == nil {
+		return true, newTLCError(ECGeneral, "model checker is nil")
+	}
+	if tool == nil {
+		return true, newTLCError(ECGeneral, "model checker has no tool")
+	}
+	restoreRandomState := PushRandomEnumerableState(curState)
+	defer restoreRandomState()
+	restoreCurrentState := PushCurrentState(curState)
+	defer restoreCurrentState()
+	deadLocked := true
+	var succState *TLCStateMut
+	for _, action := range tool.GetActions() {
+		nextStates, err := tool.GetNextStates(action, curState)
+		if err != nil {
+			mc.doNextFailed(curState, succState, err)
+			return true, err
+		}
+		size := 0
+		if nextStates != nil {
+			size = nextStates.Size()
+		}
+		if worker != nil {
+			worker.IncrementStatesGenerated(int64(size))
+		} else {
+			mc.NextStatesGenerated += int64(size)
+		}
+		deadLocked = deadLocked && size == 0
+		for i := 0; i < size; i++ {
+			succState = nextStates.At(i)
+			if !tool.IsGoodState(succState) {
+				return mc.doNextSetErrParams(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(tool, action, succState)...), nil
+			}
+			if succState != nil {
+				succState.SetPredecessor(curState).SetAction(action)
+			}
+			inModel, err := tool.IsInModel(succState)
+			if err != nil {
+				mc.doNextFailed(curState, succState, err)
+				return true, err
+			}
+			if inModel {
+				inActions, err := tool.IsInActions(curState, succState)
+				if err != nil {
+					mc.doNextFailed(curState, succState, err)
+					return true, err
+				}
+				inModel = inActions
+			}
+			unseen := true
+			if inModel {
+				seen, err := mc.isSeenStateUsingWorker(workerIDForReplayWorker(worker), worker, curState, succState, action)
+				if err != nil {
+					mc.doNextFailed(curState, succState, err)
+					return true, err
+				}
+				unseen = !seen
+				if liveNextStates != nil {
+					liveNextStates.PutFP(succState.FingerPrint(), succState)
+				}
+			}
+			if unseen {
+				stop, err := mc.doNextCheckInvariantsWithTool(tool, curState, succState)
+				if stop || err != nil {
+					return stop, err
+				}
+			}
+			stop, err := mc.doNextCheckImpliedWithTool(tool, curState, succState)
+			if stop || err != nil {
+				return stop, err
+			}
+			if inModel && unseen && mc.StateQueue != nil {
+				mc.StateQueue.SEnqueue(succState)
+			}
+		}
+		succState = nil
+	}
+	if deadLocked && mc.CheckDeadlock {
+		return mc.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, ""), nil
+	}
+	return false, nil
+}
+
+func workerIDForReplayWorker(worker *Worker) int {
+	if worker == nil {
+		return 0
+	}
+	return worker.ID
+}
+
 func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
 	if succState != nil {
 		succState.SetPredecessor(curState).SetAction(action)
@@ -1347,6 +1497,10 @@ func (mc *ModelChecker) GetDistinctStatesGenerated() uint64 {
 }
 
 func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, error) {
+	return mc.isSeenStateUsingWorker(workerID, mc.workerAt(workerID), curState, succState, action)
+}
+
+func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, error) {
 	fp := succState.FingerPrint()
 	seen := mc.FPSet.Put(fp)
 	if mc.AllStateWriter != nil {
@@ -1365,7 +1519,7 @@ func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succSta
 		if mc.Tool != nil {
 			mc.Tool.RememberState(succState)
 		}
-		if worker := mc.workerAt(workerID); worker != nil {
+		if worker != nil {
 			if err := worker.WriteNextState(curState, fp, succState, action); err != nil {
 				return seen, err
 			}
@@ -1379,10 +1533,14 @@ func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succSta
 }
 
 func (mc *ModelChecker) doNextCheckInvariants(curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
-	invariants := mc.Tool.GetInvariants()
-	names := mc.Tool.GetInvNames()
+	return mc.doNextCheckInvariantsWithTool(mc.Tool, curState, succState)
+}
+
+func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
+	invariants := tool.GetInvariants()
+	names := tool.GetInvNames()
 	for i, invariant := range invariants {
-		valid, err := mc.Tool.IsValidState(invariant, succState)
+		valid, err := tool.IsValidState(invariant, succState)
 		if err != nil {
 			return true, mc.doNextEvalFailed(curState, succState, ECTLCInvariantEvaluationFailed, nameAt(names, i), err)
 		}
@@ -1399,10 +1557,14 @@ func (mc *ModelChecker) doNextCheckInvariants(curState *TLCStateMut, succState *
 }
 
 func (mc *ModelChecker) doNextCheckImplied(curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
-	implied := mc.Tool.GetImpliedActions()
-	names := mc.Tool.GetImpliedActNames()
+	return mc.doNextCheckImpliedWithTool(mc.Tool, curState, succState)
+}
+
+func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
+	implied := tool.GetImpliedActions()
+	names := tool.GetImpliedActNames()
 	for i, action := range implied {
-		valid, err := mc.Tool.IsValidTransition(action, curState, succState)
+		valid, err := tool.IsValidTransition(action, curState, succState)
 		if err != nil {
 			return true, mc.doNextEvalFailed(curState, succState, ECTLCActionPropertyEvaluationFailed, nameAt(names, i), err)
 		}
