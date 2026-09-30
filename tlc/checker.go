@@ -180,7 +180,7 @@ type ModelChecker struct {
 	*AbstractChecker
 	NumberOfInitialStates int64
 	FPSet                 FPSet
-	StateQueue            *MemStateQueue
+	StateQueue            StateQueue
 	Trace                 *MemoryTrace
 	LiveCheck             *LiveCheck
 	NextStatesGenerated   int64
@@ -194,7 +194,7 @@ func WithModelCheckerFPSet(fpSet FPSet) ModelCheckerOption {
 	}
 }
 
-func WithModelCheckerStateQueue(queue *MemStateQueue) ModelCheckerOption {
+func WithModelCheckerStateQueue(queue StateQueue) ModelCheckerOption {
 	return func(mc *ModelChecker) {
 		mc.StateQueue = queue
 	}
@@ -243,7 +243,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	mc := &ModelChecker{
 		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		FPSet:           NewFPSet(NewFPSetConfiguration()).Init(NumWorkers(), metadir, rootName),
-		StateQueue:      NewMemStateQueue(metadir),
+		StateQueue:      NewStateQueue(metadir),
 		Trace:           NewMemoryTrace(metadir, rootName),
 		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
 	}
@@ -257,10 +257,10 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		mc.FPSet = mc.FPSet.Init(NumWorkers(), metadir, rootName)
 	}
 	if mc.StateQueue == nil {
-		mc.StateQueue = NewMemStateQueue(metadir)
+		mc.StateQueue = NewStateQueue(metadir)
 	}
-	if mc.StateQueue.diskdir == "" {
-		mc.StateQueue.diskdir = metadir
+	if !stateQueueInitialized(mc.StateQueue) {
+		setStateQueueDir(mc.StateQueue, metadir)
 	}
 	if mc.Trace == nil {
 		mc.Trace = NewMemoryTrace(metadir, rootName)
@@ -448,7 +448,7 @@ func (mc *ModelChecker) Recover() (bool, error) {
 		}
 	}
 	if mc.StateQueue != nil {
-		mc.StateQueue.diskdir = mc.FromCheckpoint
+		setStateQueueDir(mc.StateQueue, mc.FromCheckpoint)
 		if err := mc.StateQueue.Recover(); err != nil {
 			return false, err
 		}

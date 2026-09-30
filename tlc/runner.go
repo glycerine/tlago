@@ -31,7 +31,7 @@ type Options struct {
 	CheckpointDurationMillis int64
 	StateWriter              *StateWriter
 	FPSet                    FPSet
-	StateQueue               *MemStateQueue
+	StateQueue               StateQueue
 	Trace                    *MemoryTrace
 	LiveCheck                *LiveCheck
 	StartTime                time.Time

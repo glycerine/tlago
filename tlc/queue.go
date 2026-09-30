@@ -6,6 +6,65 @@ import (
 	"sync"
 )
 
+type StateQueue interface {
+	Enqueue(state *TLCStateMut)
+	Dequeue() *TLCStateMut
+	SEnqueue(state *TLCStateMut)
+	SEnqueueAll(states []*TLCStateMut)
+	SEnqueueVec(states *StateVec)
+	SPeek() *TLCStateMut
+	SDequeue() *TLCStateMut
+	SDequeueMany(cnt int) []*TLCStateMut
+	FinishAll()
+	SuspendAll() bool
+	ResumeAll()
+	ResumeAllStuck()
+	Size() int64
+	IsEmpty() bool
+	BeginChkpt() error
+	CommitChkpt() error
+	Recover() error
+	Delete() error
+}
+
+func NewStateQueue(metaDir string) StateQueue {
+	return NewDiskStateQueue(metaDir)
+}
+
+func stateQueueInitialized(queue StateQueue) bool {
+	switch q := queue.(type) {
+	case nil:
+		return false
+	case *MemStateQueue:
+		return q.diskdir != ""
+	case *DiskStateQueue:
+		return q.diskdir != ""
+	case *DiskByteArrayQueue:
+		return q.MemStateQueue != nil && q.MemStateQueue.diskdir != ""
+	case *StateDeque:
+		return q.MemStateQueue != nil && q.MemStateQueue.diskdir != ""
+	default:
+		return true
+	}
+}
+
+func setStateQueueDir(queue StateQueue, diskdir string) {
+	switch q := queue.(type) {
+	case *MemStateQueue:
+		q.diskdir = diskdir
+	case *DiskStateQueue:
+		q.diskdir = diskdir
+	case *DiskByteArrayQueue:
+		if q.MemStateQueue != nil {
+			q.MemStateQueue.diskdir = diskdir
+		}
+	case *StateDeque:
+		if q.MemStateQueue != nil {
+			q.MemStateQueue.diskdir = diskdir
+		}
+	}
+}
+
 type MemStateQueue struct {
 	mu         sync.Mutex
 	cond       *sync.Cond
