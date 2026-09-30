@@ -370,7 +370,14 @@ func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLC
 	if t != nil && t.EnabledFunc != nil {
 		return t.EnabledFunc(t, pred, con, s0, s1)
 	}
-	return s1
+	if t == nil {
+		return s1
+	}
+	state, err := t.EnabledImpl(pred, EmptyActionItemList, con, s0, s1, CostModel{})
+	if err != nil {
+		return nil
+	}
+	return state
 }
 
 func (t *Tool) IsValidExpr(expr SemanticNode, ctxt *Context) (bool, error) {
