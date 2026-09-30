@@ -449,6 +449,7 @@ func (v *StateVec) Last() *TLCStateMut    { return v.states[len(v.states)-1] }
 func (v *StateVec) Clear()                { v.states = v.states[:0] }
 
 func (v *StateVec) Add(state *TLCStateMut) *StateVec {
+	v.ensureCanAdd(1)
 	v.states = append(v.states, state)
 	return v
 }
@@ -491,6 +492,7 @@ func (v *StateVec) AddElements(other *StateVec) *StateVec {
 	if source.Size() > target.Size() {
 		target, source = source, target
 	}
+	target.ensureCanAdd(source.Size())
 	target.states = append(target.states, source.states...)
 	return target
 }
@@ -552,4 +554,16 @@ func (v *StateVec) String() string {
 		parts[i] = state.String()
 	}
 	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+func (v *StateVec) ensureCanAdd(add int) {
+	if add <= 0 {
+		return
+	}
+	Globals.Lock()
+	bound := Globals.SetBound
+	Globals.Unlock()
+	if len(v.states)+add > bound {
+		panic(newTLCError(ECTLCTooManyPossibleStates, "too many possible states"))
+	}
 }

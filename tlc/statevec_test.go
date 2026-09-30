@@ -71,3 +71,38 @@ func TestStateVecAddElementsAppendsOtherWhenReceiverIsLarger(t *testing.T) {
 		t.Fatalf("result order = %v, want receiver contents followed by other contents", result)
 	}
 }
+
+func TestStateVecAddRespectsConfiguredSetBound(t *testing.T) {
+	initTLCCheckerTest(t)
+	Globals.Lock()
+	oldBound := Globals.SetBound
+	Globals.SetBound = 2
+	Globals.Unlock()
+	t.Cleanup(func() {
+		Globals.Lock()
+		Globals.SetBound = oldBound
+		Globals.Unlock()
+	})
+
+	vec := NewStateVec(0)
+	vec.Add(checkerTestState(1))
+	vec.Add(checkerTestState(2))
+	expectPanic(t, func() { vec.Add(checkerTestState(3)) })
+}
+
+func TestStateVecAddElementsRespectsConfiguredSetBound(t *testing.T) {
+	initTLCCheckerTest(t)
+	Globals.Lock()
+	oldBound := Globals.SetBound
+	Globals.SetBound = 2
+	Globals.Unlock()
+	t.Cleanup(func() {
+		Globals.Lock()
+		Globals.SetBound = oldBound
+		Globals.Unlock()
+	})
+
+	left := NewStateVecFrom([]*TLCStateMut{checkerTestState(1)})
+	right := NewStateVecFrom([]*TLCStateMut{checkerTestState(2), checkerTestState(3)})
+	expectPanic(t, func() { left.AddElements(right) })
+}
