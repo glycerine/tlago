@@ -447,6 +447,10 @@ func formatMessage(code int, params []string) string {
 		return "The second argument of \\div is 0."
 	case ECTLCModuleNullPowerNull:
 		return "0^0 is undefined."
+	case ECTLCModuleApplyingToWrongValue:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Applying %s to the following value,\nwhich is not %s:\n%s", params[0], params[1], params[2])
+		}
 	case ECTLCModuleApplyEmptySeq:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Attempted to apply %s to the empty sequence.", params[0])
@@ -458,6 +462,10 @@ func formatMessage(code int, params []string) string {
 	case ECTLCModuleCheckMemberOf:
 		if len(params) >= 2 {
 			return fmt.Sprintf("Attempted to check if the value:\n%s\nis an element of %s.", params[0], params[1])
+		}
+	case ECTLCModuleBagUnion1:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Attempted to apply BagUnion to the following set, whose\nelement is not a bag:\n%s", params[0])
 		}
 	case ECTLCModuleComputingCardinality:
 		if len(params) >= 1 {

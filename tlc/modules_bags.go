@@ -19,15 +19,15 @@ func IsABag(value Value) (*BoolValue, error) {
 }
 
 func BagCardinality(value Value) (*IntValue, error) {
-	fcn, err := requireBagFunction("BagCardinality", value)
-	if err != nil {
-		return nil, err
+	fcn := asFcnRcdValue(value)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a function with a finite domain", ValuesPPR(value))
 	}
 	total := int32(0)
-	for _, value := range fcn.Values {
-		count, ok := value.(*IntValue)
+	for _, elem := range fcn.Values {
+		count, ok := elem.(*IntValue)
 		if !ok || count.Val <= 0 {
-			return nil, newTLCError(ECGeneral, "BagCardinality expected a bag, got %s", value)
+			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagCardinality", "a bag", ValuesPPR(value))
 		}
 		total += count.Val
 	}
@@ -35,9 +35,9 @@ func BagCardinality(value Value) (*IntValue, error) {
 }
 
 func BagIn(elem Value, bag Value) (*BoolValue, error) {
-	fcn, err := requireBagFunction("BagIn", bag)
-	if err != nil {
-		return nil, err
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagIn", "bag", ValuesPPR(bag))
 	}
 	domain := fcn.DomainAsValues()
 	for i, dval := range domain {
@@ -48,7 +48,7 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 		if eq {
 			count, ok := fcn.Values[i].(*IntValue)
 			if !ok {
-				return nil, newTLCError(ECGeneral, "second argument of BagIn must be a bag, got %s", bag)
+				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagIn", "bag", ValuesPPR(bag))
 			}
 			return NewBoolValue(count.Val > 0), nil
 		}
@@ -57,9 +57,9 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 }
 
 func CopiesIn(elem Value, bag Value) (*IntValue, error) {
-	fcn, err := requireBagFunction("CopiesIn", bag)
-	if err != nil {
-		return nil, err
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "CopiesIn", "bag", ValuesPPR(bag))
 	}
 	domain := fcn.DomainAsValues()
 	for i, dval := range domain {
@@ -70,7 +70,7 @@ func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 		if eq {
 			count, ok := fcn.Values[i].(*IntValue)
 			if !ok {
-				return nil, newTLCError(ECGeneral, "second argument of CopiesIn must be a bag, got %s", bag)
+				return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "CopiesIn", "bag", ValuesPPR(bag))
 			}
 			return count, nil
 		}
@@ -118,13 +118,13 @@ func BagCup(b1 Value, b2 Value) (Value, error) {
 }
 
 func BagDiff(b1 Value, b2 Value) (Value, error) {
-	fcn1, err := requireBagFunction("first argument of (-)", b1)
-	if err != nil {
-		return nil, err
+	fcn1 := asFcnRcdValue(b1)
+	if fcn1 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "(-)", "bag", ValuesPPR(b1))
 	}
-	fcn2, err := requireBagFunction("second argument of (-)", b2)
-	if err != nil {
-		return nil, err
+	fcn2 := asFcnRcdValue(b2)
+	if fcn2 == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "(-)", "bag", ValuesPPR(b2))
 	}
 	domain := NewValueVec(0)
 	values := NewValueVec(0)
@@ -152,7 +152,7 @@ func BagDiff(b1 Value, b2 Value) (Value, error) {
 func BagUnion(set Value) (Value, error) {
 	setEnum, err := toSetEnumValue(set)
 	if err != nil {
-		return nil, err
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagUnion", "a finite enumerable set", ValuesPPR(set))
 	}
 	setEnum.Normalize()
 	if setEnum.Elems.Len() == 0 {
@@ -161,9 +161,9 @@ func BagUnion(set Value) (Value, error) {
 	if setEnum.Elems.Len() == 1 {
 		return setEnum.Elems.At(0), nil
 	}
-	first, err := requireBagFunction("BagUnion", setEnum.Elems.At(0))
-	if err != nil {
-		return nil, err
+	first := asFcnRcdValue(setEnum.Elems.At(0))
+	if first == nil {
+		return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
 	}
 	domain := NewValueVec(0)
 	values := NewValueVec(0)
@@ -172,9 +172,9 @@ func BagUnion(set Value) (Value, error) {
 		values.Add(first.Values[i])
 	}
 	for i := 1; i < setEnum.Elems.Len(); i++ {
-		fcn, err := requireBagFunction("BagUnion", setEnum.Elems.At(i))
-		if err != nil {
-			return nil, err
+		fcn := asFcnRcdValue(setEnum.Elems.At(i))
+		if fcn == nil {
+			return nil, newTLCErrorCode(ECTLCModuleBagUnion1, ValuesPPR(set))
 		}
 		for j, dval := range fcn.DomainAsValues() {
 			found := false
@@ -230,9 +230,12 @@ func SqSubseteq(b1 Value, b2 Value) (*BoolValue, error) {
 }
 
 func BagOfAll(op Value, bag Value) (Value, error) {
-	fcn, err := requireBagFunction("BagOfAll", bag)
-	if err != nil {
-		return nil, err
+	if !isOperatorValue(op) {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "first", "BagOfAll", "operator", ValuesPPR(op))
+	}
+	fcn := asFcnRcdValue(bag)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagOfAll", "function with a finite domain", ValuesPPR(bag))
 	}
 	domain := NewValueVec(0)
 	values := NewValueVec(0)
@@ -274,7 +277,7 @@ func BagToSet(bag Value) (Value, error) {
 func SetToBag(set Value) (Value, error) {
 	setEnum, err := toSetEnumValue(set)
 	if err != nil {
-		return nil, err
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(set))
 	}
 	if !setEnum.IsNormalized() {
 		setEnum.Normalize()
@@ -290,22 +293,22 @@ func SetToBag(set Value) (Value, error) {
 func requireBagFunction(name string, value Value) (*FcnRcdValue, error) {
 	fcn := asFcnRcdValue(value)
 	if fcn == nil {
-		return nil, newTLCError(ECGeneral, "%s expected a function with finite domain, got %s", name, value)
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, name, "a function with a finite domain", ValuesPPR(value))
 	}
 	return fcn, nil
 }
 
 func requireBag(position string, operator string, value Value) (*FcnRcdValue, error) {
-	fcn, err := requireBagFunction(operator, value)
-	if err != nil {
-		return nil, err
+	fcn := asFcnRcdValue(value)
+	if fcn == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, "bag", ValuesPPR(value))
 	}
 	ok, err := IsABag(fcn)
 	if err != nil {
 		return nil, err
 	}
 	if !ok.Val {
-		return nil, newTLCError(ECGeneral, "%s argument of %s must be a bag, got %s", position, operator, value)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, "bag", ValuesPPR(value))
 	}
 	return fcn, nil
 }

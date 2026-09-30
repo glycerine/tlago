@@ -1750,6 +1750,15 @@ Java's sequence-specific `ONE_ARGUMENT_ERROR`, `APPLY_EMPTY_SEQ`,
 Java `Remove` helper is explicitly marked not part of the standard interface and
 is not registered by the Go standard definitions.
 
+`Bags` distinguishes wrong-shape values from malformed bags. Operators such as
+`BagCardinality`, `BagUnion`, `SqSubseteq`, `BagToSet`, and Java's odd
+`SetToBag` error path use `TLC_MODULE_APPLYING_TO_WRONG_VALUE` when the value is
+not the expected finite function/set shape. `BagIn`, `CopiesIn`, `BagCup`,
+`BagDiff`, and `BagOfAll` use `TLC_MODULE_ARGUMENT_ERROR` or
+`TLC_MODULE_ARGUMENT_ERROR_AN` for bad arguments. When `BagUnion` sees a finite
+set whose element is not a bag, it reports `TLC_MODULE_BAG_UNION1` against the
+whole set, not the individual element.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty
