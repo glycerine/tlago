@@ -1297,6 +1297,8 @@ func asRecordValue(value Value) *RecordValue {
 		return v
 	case *FcnRcdValue:
 		return v.ToRecord()
+	case *FcnLambdaValue:
+		return v.ToRecord()
 	default:
 		return nil
 	}
@@ -1306,6 +1308,8 @@ func asFcnRcdValue(value Value) *FcnRcdValue {
 	switch v := value.(type) {
 	case *FcnRcdValue:
 		return v
+	case *FcnLambdaValue:
+		return v.ToFcnRcd()
 	case *TupleValue:
 		return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems)
 	case *RecordValue:

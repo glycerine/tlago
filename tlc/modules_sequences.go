@@ -175,6 +175,8 @@ func asTupleValue(value Value) *TupleValue {
 		return v
 	case *FcnRcdValue:
 		return v.ToTuple()
+	case *FcnLambdaValue:
+		return v.ToTuple()
 	case *RecordValue:
 		return v.ToTuple()
 	default:
