@@ -685,7 +685,7 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 		}
 		unseen = !seen
 	} else if mc.AllStateWriter != nil && mc.AllStateWriter.IsConstrained() {
-		if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action); err != nil {
+		if err := mc.writeConstrainedTransitionReasons(curState, succState, action); err != nil {
 			return true, false, err
 		}
 	}
@@ -704,6 +704,41 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 		return false, true, nil
 	}
 	return false, false, nil
+}
+
+func (mc *ModelChecker) writeConstrainedTransitionReasons(curState *TLCStateMut, succState *TLCStateMut, action *Action) error {
+	if mc == nil || mc.Tool == nil || mc.AllStateWriter == nil {
+		return nil
+	}
+	wrote := false
+	for _, constraint := range mc.Tool.GetModelConstraints() {
+		ok, err := mc.Tool.IsInModelForConstraint(constraint, succState)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			wrote = true
+			if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
+				return err
+			}
+		}
+	}
+	for _, constraint := range mc.Tool.GetActionConstraints() {
+		ok, err := mc.Tool.IsInActionsForConstraint(constraint, curState, succState)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			wrote = true
+			if err := mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action, constraint); err != nil {
+				return err
+			}
+		}
+	}
+	if !wrote {
+		return mc.AllStateWriter.WriteTransition(curState, succState, StateVisitNotInModel, action)
+	}
+	return nil
 }
 
 func (mc *ModelChecker) GetStatesGenerated() int64 {

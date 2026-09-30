@@ -956,6 +956,14 @@ Worker loop:
    liveness graph with one `LiveCheck.addNextState` call for the predecessor.
 7. Record out-degree statistics.
 
+Constrained dumps:
+
+- When a generated successor is excluded by state or action constraints and
+  the state writer is in constrained mode, Java rechecks each configured
+  constraint and writes one transition per failed constraint with that
+  constraint as the DOT reason. Generic not-in-model output is only a fallback
+  when no individual reason can be identified.
+
 Trace writing:
 
 - Each worker owns a trace fragment file named by spec and worker id.
