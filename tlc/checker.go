@@ -969,9 +969,13 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 	}
 	mc.PrintProgressStats(time.Time{}, false)
 	createCheckpoint := DoCheckPoint()
+	var periodic SemanticNode
+	if mc.Tool != nil {
+		periodic = mc.Tool.Periodic
+	}
 	forceLiveCheck := mc.CheckLiveness && mc.LiveCheck != nil && mc.ForceLiveCheck
 	liveCheckNow := mc.CheckLiveness && mc.LiveCheck != nil && (mc.RuntimeRatio < LivenessRatio() || forceLiveCheck) && mc.LiveCheck.DoLiveCheck()
-	if !liveCheckNow && !forceLiveCheck && !createCheckpoint {
+	if !liveCheckNow && !forceLiveCheck && !createCheckpoint && periodic == nil {
 		mc.UpdateRuntimeRatio(0)
 		return NoError, nil
 	}
@@ -994,6 +998,15 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 		}
 	} else if mc.RuntimeRatio > LivenessRatio() {
 		mc.UpdateRuntimeRatio(0)
+	}
+	if periodic != nil {
+		value, err := mc.Tool.NoDebug().Eval(periodic)
+		if err != nil {
+			return ECTLCAssumptionEvaluationError, err
+		}
+		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
+			return ECTLCAssumptionFalse, nil
+		}
 	}
 	if createCheckpoint {
 		if err := mc.Checkpoint(); err != nil {

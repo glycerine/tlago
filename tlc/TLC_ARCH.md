@@ -906,6 +906,10 @@ Port guidance:
 - Preserve Java's `AbstractChecker.runTLC` coordinator role: workers do state
   generation, while the checker thread periodically suspends the queue for
   liveness/checkpoint work and then resumes or finishes the workers.
+- `_PERIODIC` is part of that coordinator loop. Java treats a configured
+  periodic expression as sufficient reason to suspend workers, evaluates it
+  after any liveness work and before checkpointing, and returns
+  `TLC_ASSUMPTION_FALSE` only when the evaluated value is exactly `FALSE`.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
