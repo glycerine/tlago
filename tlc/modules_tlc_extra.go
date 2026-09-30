@@ -1,7 +1,5 @@
 package tlc
 
-import "math/rand"
-
 func SortSeq(seq Value, cmp Value) (Value, error) {
 	tuple := asTupleValue(seq)
 	if tuple == nil {
@@ -105,7 +103,8 @@ func RandomElement(value Value) (Value, error) {
 		if size == 0 {
 			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty interval %s", v)
 		}
-		return NewIntValue(v.Low + int32(rand.Intn(size))), nil
+		index := int(RandomEnumerableGenerator().NextDouble() * float64(size))
+		return NewIntValue(v.Low + int32(index)), nil
 	default:
 		set, err := toSetEnumValue(value)
 		if err != nil {
@@ -114,7 +113,8 @@ func RandomElement(value Value) (Value, error) {
 		if set.Elems.Len() == 0 {
 			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty set %s", value)
 		}
-		return set.Elems.At(rand.Intn(set.Elems.Len())), nil
+		index := int(RandomEnumerableGenerator().NextDouble() * float64(set.Elems.Len()))
+		return set.Elems.At(index), nil
 	}
 }
 

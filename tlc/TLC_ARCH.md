@@ -1247,6 +1247,12 @@ normalization. This is observable for seeded runs and aril replay. Java does
 not reject a negative integer `k` for `RandomSubset`; it simply yields the
 empty set because the enumerator has no next element.
 
+`TLC!RandomElement` also uses `RandomEnumerableValues.get().nextDouble()` for
+intervals and finite enumerated sets. The Go port must use the shared
+Java-compatible random enumerable generator here, not Go's process-global
+random source, so seeded simulation and trace replay consume random values in
+the same places Java does.
+
 Override infrastructure:
 
 - `TLARegistry` maps TLA+ names to Java names.
