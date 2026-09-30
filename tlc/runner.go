@@ -15,6 +15,14 @@ const (
 	RunModeSimulate
 )
 
+const (
+	tlcNoSuspendProperty        = "tlc2.TLC.nosuspend"
+	tlcNoHaltProperty           = "tlc2.TLC.nohalt"
+	tlcStopAfterProperty        = "tlc2.TLC.stopAfter"
+	modelCheckerVetoProperty    = "tlc2.tool.ModelChecker.vetoCleanup"
+	modelCheckerBAQueueProperty = "tlc2.tool.ModelChecker.BAQueue"
+)
+
 type Options struct {
 	Tool                      *Tool
 	SpecFile                  string
@@ -298,7 +306,7 @@ func (t *TLC) scheduleStopAfter(stop func()) func() {
 }
 
 func stopAfterDurationFromEnv() time.Duration {
-	if value, ok := tlcLookupSystemProperty("tlc2.TLC.stopAfter"); ok {
+	if value, ok := tlcLookupSystemProperty(tlcStopAfterProperty); ok {
 		if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds > 0 {
 			return time.Duration(seconds) * time.Second
 		}
@@ -310,6 +318,20 @@ func stopAfterDurationFromEnv() time.Duration {
 		}
 	}
 	return 0
+}
+
+func defaultTLCDebugSuspend() bool {
+	if value, ok := tlcLookupSystemProperty(tlcNoSuspendProperty); ok {
+		return !javaBooleanProperty(value)
+	}
+	return true
+}
+
+func defaultTLCDebugHalt() bool {
+	if value, ok := tlcLookupSystemProperty(tlcNoHaltProperty); ok {
+		return !javaBooleanProperty(value)
+	}
+	return true
 }
 
 func (t *TLC) processSimulation() (*Result, error) {

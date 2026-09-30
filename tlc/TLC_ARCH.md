@@ -42,6 +42,11 @@ Top-level source package sizes:
 - `tlc2.tool.impl.SpecProcessor.vetoed` controls Java's constant-operator
   pre-evaluation veto list. The Go constant-definition pass reads the same
   property through the central TLC property map.
+- Java system properties that steer runner/checker behavior are read through
+  the same central property map: `tlc2.TLC.nosuspend`,
+  `tlc2.TLC.nohalt`, `tlc2.TLC.stopAfter`,
+  `tlc2.tool.ModelChecker.vetoCleanup`, and
+  `tlc2.tool.ModelChecker.BAQueue`.
 
 Top-level test package sizes:
 

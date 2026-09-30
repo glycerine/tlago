@@ -755,10 +755,11 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 }
 
 func modelCheckerVetoCleanup() bool {
-	for _, key := range []string{"tlc2.tool.ModelChecker.vetoCleanup", "TLAGO_MODEL_CHECKER_VETO_CLEANUP"} {
-		if value, ok := os.LookupEnv(key); ok {
-			return strings.EqualFold(value, "true")
-		}
+	if value, ok := tlcLookupSystemProperty(modelCheckerVetoProperty); ok {
+		return javaBooleanProperty(value)
+	}
+	if value, ok := os.LookupEnv("TLAGO_MODEL_CHECKER_VETO_CLEANUP"); ok {
+		return strings.EqualFold(value, "true")
 	}
 	return false
 }

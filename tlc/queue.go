@@ -4,7 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 )
 
@@ -30,7 +29,7 @@ type StateQueue interface {
 }
 
 func NewStateQueue(metaDir string) StateQueue {
-	if stateQueuePropertyBool("tlc2.tool.ModelChecker.BAQueue", "TLAGO_MODEL_CHECKER_BAQUEUE") {
+	if stateQueuePropertyBool(modelCheckerBAQueueProperty, "TLAGO_MODEL_CHECKER_BAQUEUE") {
 		return NewDiskByteArrayQueue(metaDir)
 	}
 	switch GetStateQueueName() {
@@ -53,7 +52,10 @@ func GetStateQueueName() string {
 }
 
 func stateQueueProperty(name string, aliases ...string) (string, bool) {
-	for _, key := range append([]string{name}, aliases...) {
+	if value, ok := tlcLookupSystemProperty(name); ok {
+		return value, true
+	}
+	for _, key := range aliases {
 		if value, ok := os.LookupEnv(key); ok {
 			return value, true
 		}
@@ -63,7 +65,7 @@ func stateQueueProperty(name string, aliases ...string) (string, bool) {
 
 func stateQueuePropertyBool(name string, aliases ...string) bool {
 	if value, ok := stateQueueProperty(name, aliases...); ok {
-		return strings.EqualFold(value, "true")
+		return javaBooleanProperty(value)
 	}
 	return false
 }

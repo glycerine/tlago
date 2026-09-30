@@ -180,8 +180,8 @@ func ParseTLCOptions(args []string) (Options, error) {
 			index += 2
 		case arg == "-debugger":
 			opts.DebugPort = 4712
-			opts.DebugSuspend = true
-			opts.DebugHalt = true
+			opts.DebugSuspend = defaultTLCDebugSuspend()
+			opts.DebugHalt = defaultTLCDebugHalt()
 			index++
 			if index < len(args) && isDebuggerSubargument(args[index]) {
 				sub := strings.ToLower(args[index])
@@ -480,8 +480,8 @@ func defaultTLCCommandLineOptions() Options {
 		FPIndex:                   rng.Intn(len(FP64Polys)),
 		FPSetConfiguration:        NewFPSetConfiguration(),
 		DebugPort:                 -1,
-		DebugSuspend:              true,
-		DebugHalt:                 true,
+		DebugSuspend:              defaultTLCDebugSuspend(),
+		DebugHalt:                 defaultTLCDebugHalt(),
 		GenerateTraceSpecBinary:   true,
 		GenerateTraceSpecMonolith: true,
 	}
