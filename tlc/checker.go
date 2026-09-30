@@ -379,6 +379,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	} else {
 		mc.Trace.SetCheckpointContext(metadir, rootName)
 	}
+	mc.Trace.SetTool(tool)
 	if mc.ConcurrentTrace == nil {
 		mc.ConcurrentTrace = NewConcurrentTLCTrace(metadir, rootName)
 	}

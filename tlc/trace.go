@@ -17,6 +17,7 @@ type TraceRecord struct {
 
 type TLCTrace struct {
 	mu            sync.Mutex
+	Tool          *Tool
 	records       []TraceRecord
 	level         int
 	previousLevel int
@@ -39,6 +40,15 @@ func NewTLCTrace(metaDir ...string) *TLCTrace {
 		trace.traceErr = trace.ensureTraceRAFLocked()
 	}
 	return trace
+}
+
+func (t *TLCTrace) SetTool(tool *Tool) {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	t.Tool = tool
+	t.mu.Unlock()
 }
 
 func (t *TLCTrace) SetCheckpointContext(metadir string, rootName string) {
@@ -337,6 +347,9 @@ func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
 	if t == nil || pos < 0 {
 		return nil
 	}
+	if trace, recovered, err := t.getTraceAtFromDisk(pos, included); err == nil && recovered {
+		return trace
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	var state *TLCStateMut
@@ -355,6 +368,94 @@ func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
 		state = state.Predecessor()
 	}
 	return traceFromState(state)
+}
+
+func (t *TLCTrace) getTraceAtFromDisk(pos int64, included bool) ([]*TLCStateInfo, bool, error) {
+	if t == nil || t.Tool == nil {
+		return nil, false, nil
+	}
+	fps, err := t.traceFPsFromDisk(pos, included)
+	if err != nil {
+		return nil, false, err
+	}
+	if fps == nil {
+		return nil, false, nil
+	}
+	if len(fps) == 0 {
+		return []*TLCStateInfo{}, true, nil
+	}
+	trace, err := t.recoverTraceFromFPs(nil, fps)
+	return trace, err == nil, err
+}
+
+func (t *TLCTrace) traceFPsFromDisk(pos int64, included bool) ([]uint64, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if err := t.ensureTraceRAFLocked(); err != nil {
+		return nil, err
+	}
+	if t.raf == nil {
+		return nil, nil
+	}
+	current, err := t.raf.GetFilePointer()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = t.raf.Seek(current) }()
+	loc := pos
+	if !included {
+		loc, err = t.getPrevFromDiskLocked(pos)
+		if err != nil {
+			return nil, err
+		}
+	}
+	fps := make([]uint64, 0)
+	for predecessorLoc := loc; predecessorLoc != 1; {
+		fp, err := t.getFPFromDiskLocked(predecessorLoc)
+		if err != nil {
+			return nil, err
+		}
+		fps = append(fps, fp)
+		next, err := t.getPrevFromDiskLocked(predecessorLoc)
+		if err != nil {
+			return nil, err
+		}
+		if next == predecessorLoc {
+			break
+		}
+		predecessorLoc = next
+	}
+	return fps, nil
+}
+
+func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TLCStateInfo, error) {
+	if t == nil || t.Tool == nil || len(fps) == 0 {
+		return nil, nil
+	}
+	snapshot := ResetRandomEnumerableValues()
+	defer SetRandomEnumerableGenerator(snapshot)
+	out := make([]*TLCStateInfo, 0, len(fps))
+	if sinfo == nil {
+		fp := fps[len(fps)-1]
+		info, err := t.Tool.GetState(fp)
+		if err != nil || info == nil {
+			return nil, err
+		}
+		info.FP = &fp
+		sinfo = info
+	}
+	out = append(out, sinfo)
+	for i := len(fps) - 2; i >= 0; i-- {
+		fp := fps[i]
+		info, err := t.Tool.GetState(fp, sinfo)
+		if err != nil || info == nil {
+			return nil, err
+		}
+		info.FP = &fp
+		out = append(out, info)
+		sinfo = info
+	}
+	return out, nil
 }
 
 func (t *TLCTrace) GetLevelForReporting() int {
@@ -447,6 +548,33 @@ func (t *TLCTrace) getLevelFromDiskLocked(startLoc int64) (int, error) {
 		predecessorLoc = next
 	}
 	return level, nil
+}
+
+func (t *TLCTrace) getPrevFromDiskLocked(loc int64) (int64, error) {
+	if t == nil || t.raf == nil {
+		return 0, nil
+	}
+	if err := t.raf.Seek(loc); err != nil {
+		return 0, err
+	}
+	return t.raf.ReadLongNat()
+}
+
+func (t *TLCTrace) getFPFromDiskLocked(loc int64) (uint64, error) {
+	if t == nil || t.raf == nil {
+		return 0, nil
+	}
+	if err := t.raf.Seek(loc); err != nil {
+		return 0, err
+	}
+	if _, err := t.raf.ReadLongNat(); err != nil {
+		return 0, err
+	}
+	fp, err := t.raf.ReadLong()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(fp), nil
 }
 
 func (t *TLCTrace) recordIndexByUIDLocked(uid int64) int {

@@ -362,6 +362,9 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
 	if s != nil {
 		s.Tool = tool
+		if s.Trace != nil {
+			s.Trace.SetTool(tool)
+		}
 	}
 	return s
 }

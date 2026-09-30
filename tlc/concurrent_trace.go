@@ -30,6 +30,9 @@ func NewConcurrentTLCTrace(metadir string, specFile string, workerCount ...int) 
 func (t *ConcurrentTLCTrace) SetTool(tool *Tool) {
 	if t != nil {
 		t.Tool = tool
+		if t.TLCTrace != nil {
+			t.TLCTrace.SetTool(tool)
+		}
 	}
 }
 
