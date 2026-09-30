@@ -51,3 +51,32 @@ func TestIntStackResetClearsElements(t *testing.T) {
 	}
 	expectPanic(t, func() { stack.PopInt() })
 }
+
+func TestSynchronousDiskIntStackPushIntNoWrite(t *testing.T) {
+	const size = 8
+	stack := NewSynchronousDiskIntStack(t.TempDir(), "SynchronousDiskIntStackTest", size)
+	for i := 0; i < size; i++ {
+		stack.PushInt(int32(i))
+	}
+	for i := size - 1; i >= 0; i-- {
+		if got := stack.PopInt(); got != int32(i) {
+			t.Fatalf("PopInt = %d, want %d", got, i)
+		}
+	}
+}
+
+func TestSynchronousDiskIntStackPushIntWrite(t *testing.T) {
+	const size = 8
+	stack := NewSynchronousDiskIntStack(t.TempDir(), "SynchronousDiskIntStackTest", size)
+	for i := 0; i < size*3; i++ {
+		stack.PushInt(int32(i))
+	}
+	for i := size*3 - 1; i >= 0; i-- {
+		if got := stack.PopInt(); got != int32(i) {
+			t.Fatalf("PopInt = %d, want %d", got, i)
+		}
+	}
+	if got := stack.Size(); got != 0 {
+		t.Fatalf("Size = %d, want 0", got)
+	}
+}

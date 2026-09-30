@@ -621,6 +621,8 @@ Implementations:
 - `StateDeque`: deque variant.
 - `DiskStateQueue`: two in-memory buffers plus state-pool disk files.
 - `DiskByteArrayQueue`: byte-array backed disk queue.
+- `SynchronousDiskIntStack`: real disk-backed integer stack used by utility
+  code. Java's `DiskIntStack` is documented as an unused asynchronous sketch.
 
 `StateQueue` behavior:
 
