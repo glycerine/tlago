@@ -163,6 +163,22 @@ func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCSta
 	return reversed
 }
 
+func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
+	if t == nil || pos < 0 {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if pos >= int64(len(t.records)) {
+		return nil
+	}
+	state := t.records[pos].State
+	if !included && state != nil {
+		state = state.Predecessor()
+	}
+	return traceFromState(state)
+}
+
 func (t *TLCTrace) GetLevelForReporting() int {
 	if t == nil {
 		return 0
@@ -170,6 +186,10 @@ func (t *TLCTrace) GetLevelForReporting() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.level
+}
+
+func (t *TLCTrace) Elements() *TLCTraceEnumerator {
+	return &TLCTraceEnumerator{records: t.Records()}
 }
 
 func (t *TLCTrace) BeginChkpt() error {
@@ -393,4 +413,60 @@ func (t *TLCTrace) chkptName(ext string) string {
 
 func (t *TLCTrace) Close() error {
 	return nil
+}
+
+type TLCTraceEnumerator struct {
+	records []TraceRecord
+	index   int
+}
+
+func (e *TLCTraceEnumerator) NextPos() int64 {
+	if e == nil || e.index >= len(e.records) {
+		return -1
+	}
+	return int64(e.index)
+}
+
+func (e *TLCTraceEnumerator) NextFP() uint64 {
+	if e == nil || e.index >= len(e.records) {
+		return 0
+	}
+	fp := e.records[e.index].FP
+	e.index++
+	return fp
+}
+
+func (e *TLCTraceEnumerator) Close() error {
+	return nil
+}
+
+func (e *TLCTraceEnumerator) Reset(pos int64) {
+	if e == nil {
+		return
+	}
+	if pos < 0 {
+		e.index = 0
+		return
+	}
+	if pos > int64(len(e.records)) {
+		pos = int64(len(e.records))
+	}
+	e.index = int(pos)
+}
+
+func traceFromState(state *TLCStateMut) []*TLCStateInfo {
+	if state == nil {
+		return nil
+	}
+	var reversed []*TLCStateInfo
+	for cur := state; cur != nil; cur = cur.Predecessor() {
+		info := NewTLCStateInfo(cur)
+		fp := cur.FingerPrint()
+		info.FP = &fp
+		reversed = append(reversed, info)
+	}
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	return reversed
 }
