@@ -476,6 +476,13 @@ func (s *TLCStateMut) Equal(other *TLCStateMut) bool {
 }
 
 func (s *TLCStateMut) String() string {
+	if UseView() && stateTool != nil && stateTool.ViewSpec != nil {
+		value, err := stateTool.Eval(stateTool.ViewSpec, EmptyContext, s)
+		if err != nil {
+			panic(err)
+		}
+		return valueString(value)
+	}
 	return s.StringForVariables(nil)
 }
 

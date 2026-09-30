@@ -625,6 +625,8 @@ It is optimized for model checking:
   checkers or simulators. The order is important: first select the symmetry
   representative, then fingerprint either the raw representative values or the
   value produced by evaluating VIEW on that representative.
+- `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
+  flag is enabled; fingerprinting uses VIEW whenever the active tool has one.
 
 ### `TLCStateMutExt`
 
