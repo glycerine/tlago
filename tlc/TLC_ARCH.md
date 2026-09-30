@@ -618,7 +618,9 @@ Implementations:
 
 - `StateQueue`: synchronization and worker coordination base class.
 - `MemStateQueue`: in-memory queue.
-- `StateDeque`: deque variant.
+- `StateDeque`: deque variant; Java adds every state to the front and polls
+  from the front, so this is LIFO search order and it does not support
+  checkpointing.
 - `DiskStateQueue`: two in-memory buffers plus state-pool disk files.
 - `DiskByteArrayQueue`: byte-array backed disk queue that serializes states
   before taking the queue lock and stores raw state bytes in its disk buffers.
@@ -627,6 +629,12 @@ Implementations:
 
 `StateQueue` behavior:
 
+- Queue selection is normally `DiskStateQueue`. Java property
+  `tlc2.tool.queue.IStateQueue` selects `MemStateQueue`, `StateDeque`, or
+  `DiskByteArrayQueue`; the Go port reads that environment key and the
+  command-line-friendly alias `TLAGO_STATE_QUEUE`. The legacy Java boolean
+  `tlc2.tool.ModelChecker.BAQueue` is mirrored by
+  `TLAGO_MODEL_CHECKER_BAQUEUE`.
 - `sEnqueue` adds states and wakes waiting workers.
 - `sDequeue` blocks when empty until work appears or all workers are waiting.
 - `finishAll` terminates all workers and wakes main/checkpoint waiters.
