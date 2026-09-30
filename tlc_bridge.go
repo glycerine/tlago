@@ -18,15 +18,43 @@ type tlcBridge struct {
 }
 
 var bridgeStandardModuleMembers = map[string][]string{
+	"Naturals": {
+		"Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..",
+	},
+	"Integers": {
+		"Int", "-.",
+	},
+	"Sequences": {
+		"Seq", "BSeq", "Len", "Head", "Tail", "Cons", "Append", "Concat", "\\o",
+		"SubSeq", "SelectInSeq", "SelectSeq",
+	},
+	"FiniteSets": {
+		"IsFiniteSet", "Cardinality",
+	},
+	"Bags": {
+		"EmptyBag", "IsABag", "BagCardinality", "BagIn", "CopiesIn", "BagCup", "\\oplus",
+		"BagDiff", "\\ominus", "BagUnion", "SqSubseteq", "\\sqsubseteq", "BagOfAll",
+		"BagToSet", "SetToBag",
+	},
 	"TLC": {
 		"Print", "PrintT", "Assert", "JavaTime",
 		"TLCGet", "TLCSet", "MakeFcn", "CombineFcn", "Permutations",
 		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
 	},
+	"Randomization": {
+		"RandomSubset", "RandomSetOfSubsets", "RandomSubsetSet",
+	},
+	"Json": {
+		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
+		"ndJsonSerialize", "ndJsonDeserialize",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
 		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
+	},
+	"TransitiveClosure": {
+		"Warshall",
 	},
 }
 
