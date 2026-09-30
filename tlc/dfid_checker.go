@@ -181,7 +181,9 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 				action.CM.IncInvocations()
 			}
 			if !mc.Tool.IsGoodState(succ) {
-				mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext)
+				if mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext) {
+					PrintError(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succ)...)
+				}
 				return allSuccNonLeaf, ECTLCStateNotCompletelySpecifiedNext, nil
 			}
 			inModel, err := mc.Tool.IsInModel(succ)
@@ -292,7 +294,9 @@ func (mc *DFIDModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	for i := 0; i < vec.Size(); i++ {
 		state := vec.At(i)
 		if !mc.Tool.IsGoodState(state) {
-			mc.SetErrState(state, nil, false, ECTLCStateNotCompletelySpecifiedInitial)
+			if mc.SetErrState(state, nil, false, ECTLCStateNotCompletelySpecifiedInitial) {
+				PrintError(ECTLCStateNotCompletelySpecifiedInitial, state.String())
+			}
 			return ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
 		inModel, err := mc.Tool.IsInModel(state)
