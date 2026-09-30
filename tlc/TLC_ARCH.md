@@ -1482,7 +1482,9 @@ queries in Java. Simulation exposes generated trace/state counters through
 `duration`, `generated`, `behavior`, `worker`, `distinct`, `distinctvalues`,
 `retries`, `actions`, `levelmean`, and `levelvariance`; simulator `"config"`
 has fields `mode="simulate"`, `depth`, `traces`, `deadlock`, `seed`, `aril`,
-`worker`, `install`, and `sched`.
+`worker`, `install`, and `sched`. Java eagerly caches checker and simulator
+config records; simulator `aril` in that record is the construction-time field,
+not a recomputation from the RNG after worker seeds have been drawn.
 Java distinguishes direct `TLCGet` counters from stats-record counters:
 `TLCGet("generated")`, `"distinct"`, `"queue"`, and `"duration"` use
 `Math.toIntExact` and report overflow, while stats and coverage records use

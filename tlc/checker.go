@@ -26,6 +26,7 @@ type AbstractChecker struct {
 	AllStateWriter            *StateWriter
 	Workers                   []*Worker
 	PrintedLivenessErrorStack bool
+	Config                    Value
 	StartTime                 time.Time
 }
 
@@ -40,7 +41,7 @@ func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, de
 	if tool != nil {
 		checkLiveness = !tool.LivenessIsTrue()
 	}
-	return &AbstractChecker{
+	checker := &AbstractChecker{
 		ErrorCode:      NoError,
 		CheckDeadlock:  deadlock,
 		CheckLiveness:  checkLiveness,
@@ -50,6 +51,8 @@ func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, de
 		AllStateWriter: stateWriter,
 		StartTime:      startTime,
 	}
+	checker.Config = checker.createConfig()
+	return checker
 }
 
 func (c *AbstractChecker) SetDone() bool {
@@ -478,6 +481,16 @@ func (mc *ModelChecker) GetConfig() Value {
 	if mc == nil {
 		return EmptyRecord
 	}
+	if mc.Config != nil {
+		return mc.Config
+	}
+	return mc.createConfig()
+}
+
+func (c *AbstractChecker) createConfig() Value {
+	if c == nil {
+		return EmptyRecord
+	}
 	names := []*UniqueString{
 		tlcGetMode,
 		tlcGetDeadlock,
@@ -488,7 +501,7 @@ func (mc *ModelChecker) GetConfig() Value {
 	}
 	values := []Value{
 		NewStringValue("bfs"),
-		NewBoolValue(mc.CheckDeadlock),
+		NewBoolValue(c.CheckDeadlock),
 		NewIntValue(int32(NumWorkers())),
 		NewStringValue(fmt.Sprintf("%d", RandomEnumerableSeed())),
 		NewStringValue(fmt.Sprintf("%d", int64(FP64IrredPoly()))),

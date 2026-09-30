@@ -20,6 +20,8 @@ type Simulator struct {
 	TraceActions  string
 	Rand          *JavaRandom
 	Seed          int64
+	Aril          int64
+	Config        Value
 	ResultQueue   chan SimulationWorkerResult
 	Workers       []*SimulationWorker
 	WorkerMode    SimulationWorkerMode
@@ -103,6 +105,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	for i := 0; i < workerCount; i++ {
 		simulator.Workers = append(simulator.Workers, simulator.newSimulationWorker(i))
 	}
+	simulator.Config = simulator.createConfig()
 	SetSimulator(simulator)
 	return simulator
 }
@@ -126,6 +129,7 @@ func (s *Simulator) Simulate() (int, error) {
 		return ECTLCNoStatesSatisfyingInit, nil
 	}
 	initStates.DeepNormalize()
+	s.Aril = s.Rand.Aril()
 	workerResult := s.simulate(initStates)
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()
@@ -314,6 +318,16 @@ func (s *Simulator) GetConfig() Value {
 	if s == nil {
 		return EmptyRecord
 	}
+	if s.Config != nil {
+		return s.Config
+	}
+	return s.createConfig()
+}
+
+func (s *Simulator) createConfig() Value {
+	if s == nil {
+		return EmptyRecord
+	}
 	names := []*UniqueString{
 		tlcGetMode,
 		tlcGetDepth,
@@ -339,7 +353,7 @@ func (s *Simulator) GetConfig() Value {
 		NewIntValue(int32(int64(workerCount) * s.TraceNum)),
 		NewBoolValue(s.CheckDeadlock),
 		NewStringValue(fmt.Sprintf("%d", s.Seed)),
-		NewStringValue(fmt.Sprintf("%d", s.Rand.Aril())),
+		NewStringValue(fmt.Sprintf("%d", s.Aril)),
 		NewIntValue(int32(workerCount)),
 		NewStringValue(TLCInstallLocation()),
 		NewStringValue(s.schedulerName()),
