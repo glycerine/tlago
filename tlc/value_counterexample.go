@@ -1,5 +1,7 @@
 package tlc
 
+import "strings"
+
 var (
 	counterExampleStates  = UniqueStringOf("state")
 	counterExampleActions = UniqueStringOf("action")
@@ -101,10 +103,19 @@ func (a *Action) GetLocation() string {
 	if a == nil {
 		return ""
 	}
-	if a.Name == "" {
-		return "<Action>"
+	name := "Action"
+	if a.IsNamed() {
+		name = a.GetName()
 	}
-	return "<" + a.Name + ">"
+	params := a.GetParameters()
+	if params.Len() == 0 {
+		return "<" + name + " " + a.GetDefinition() + ">"
+	}
+	parts := make([]string, 0, params.Len())
+	for _, value := range params.All() {
+		parts = append(parts, value.String())
+	}
+	return "<" + name + "(" + strings.Join(parts, ",") + ") " + a.GetDefinition() + ">"
 }
 
 func (a *Action) ToRecordValue() *RecordValue {

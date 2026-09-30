@@ -1,6 +1,10 @@
 package tlc
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+	"strings"
+)
 
 type CostModel struct {
 	node *CostModelNode
@@ -227,12 +231,33 @@ type Action struct {
 	Con        *Context
 	CM         CostModel
 	Name       string
+	OpDef      *OpDefNode
 	ID         int
 	IsInitPred bool
 	Internal   bool
+	Auxiliary  map[any]any
 }
 
 var UnknownAction = &Action{Name: "Unknown"}
+
+func NewAction(pred SemanticNode, con *Context, name string) *Action {
+	if con == nil {
+		con = EmptyContext
+	}
+	return &Action{Pred: pred, Con: con, Name: name, CM: DoNotRecordCostModel}
+}
+
+func NewActionFromOpDef(pred SemanticNode, con *Context, opDef *OpDefNode, isInitPred bool, internal bool) *Action {
+	name := ""
+	if opDef != nil && opDef.Name != nil {
+		name = opDef.Name.String()
+	}
+	action := NewAction(pred, con, name)
+	action.OpDef = opDef
+	action.IsInitPred = isInitPred
+	action.Internal = internal
+	return action
+}
 
 func (a *Action) IsNamed() bool {
 	return a != nil && a.Name != ""
@@ -243,6 +268,96 @@ func (a *Action) GetName() string {
 		return "Unknown"
 	}
 	return a.Name
+}
+
+func (a *Action) GetNameOfDefault() string {
+	if a == nil {
+		return "Unknown"
+	}
+	if a.IsNamed() {
+		return a.GetName()
+	}
+	return a.String()
+}
+
+func (a *Action) String() string {
+	if a == nil {
+		return "<Action nil>"
+	}
+	return "<Action " + SemanticString(a.Pred) + ">"
+}
+
+func (a *Action) GetPred() SemanticNode {
+	if a == nil {
+		return nil
+	}
+	return a.Pred
+}
+
+func (a *Action) GetOpDef() *OpDefNode {
+	if a == nil {
+		return nil
+	}
+	return a.OpDef
+}
+
+func (a *Action) IsDeclared() bool {
+	return a != nil && a.OpDef != nil
+}
+
+func (a *Action) GetDeclaration() string {
+	if !a.IsDeclared() {
+		return ""
+	}
+	return SemanticString(a.OpDef)
+}
+
+func (a *Action) GetDefinition() string {
+	if a == nil {
+		return ""
+	}
+	return SemanticString(a.Pred)
+}
+
+func (a *Action) GetParameters() *InsMap[*UniqueString, Value] {
+	out := NewInsMap[*UniqueString, Value]()
+	if a == nil || a.OpDef == nil || a.Con == nil {
+		return out
+	}
+	for _, param := range a.OpDef.Params {
+		if param == nil || param.Name == nil {
+			continue
+		}
+		if value, ok := a.Con.Lookup(param).(Value); ok {
+			out.Set(param.Name, value)
+		}
+	}
+	return out
+}
+
+func (a *Action) GetInvocationSignature() string {
+	if a == nil {
+		return "Unknown"
+	}
+	params := a.GetParameters()
+	if params.Len() == 0 {
+		return a.GetName()
+	}
+	parts := make([]string, 0, params.Len())
+	for _, value := range params.All() {
+		parts = append(parts, value.String())
+	}
+	return fmt.Sprintf("%s(%s)", a.GetName(), strings.Join(parts, ","))
+}
+
+func (a *Action) GetAuxiliary() map[any]any {
+	if a == nil {
+		return nil
+	}
+	if a.Auxiliary == nil {
+		a.Auxiliary = make(map[any]any)
+	}
+	return a.Auxiliary
 }
 
 func (a *Action) SetID(id int) {
