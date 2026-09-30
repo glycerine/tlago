@@ -130,6 +130,8 @@ type Tool struct {
 	DefnsByName map[*UniqueString]any
 	CallStack   *CallStack
 
+	actionsPrepared bool
+
 	GetInitStatesFunc               func(*Tool, *StateFunctor) error
 	GetNextStatesFunc               func(*Tool, *Action, *TLCStateMut) (*StateVec, error)
 	GetNextStatesWithFunctorFn      func(*Tool, *NextStateFunctor, *TLCStateMut) (bool, error)
@@ -212,19 +214,36 @@ func (t *Tool) GetActions() []*Action {
 	if t == nil {
 		return nil
 	}
+	if err := t.ensureActionsPrepared(); err != nil {
+		panic(err)
+	}
 	return append([]*Action(nil), t.Actions...)
 }
 
 func (t *Tool) SetActions(actions []*Action) {
 	if t != nil {
 		t.Actions = append([]*Action(nil), actions...)
+		t.actionsPrepared = true
 	}
+}
+
+func (t *Tool) SetNextStateSpec(action *Action) {
+	if t == nil {
+		return
+	}
+	t.NextStateSpec = action
+	t.Actions = nil
+	t.actionsPrepared = false
 }
 
 func (t *Tool) AssignActionIDs() {
 	if t == nil {
 		return
 	}
+	t.assignActionIDs(t.GetActions())
+}
+
+func (t *Tool) assignActionIDs(actions []*Action) {
 	id := 0
 	for _, action := range t.InitStateSpec {
 		if action != nil {
@@ -232,7 +251,7 @@ func (t *Tool) AssignActionIDs() {
 		}
 		id++
 	}
-	for _, action := range t.Actions {
+	for _, action := range actions {
 		if action != nil {
 			action.SetID(id)
 		}
@@ -623,9 +642,10 @@ func (t *Tool) GetSpecActions() []*Action {
 	if t == nil {
 		return nil
 	}
-	out := make([]*Action, 0, len(t.InitStateSpec)+len(t.Actions))
+	actions := t.GetActions()
+	out := make([]*Action, 0, len(t.InitStateSpec)+len(actions))
 	out = append(out, t.InitStateSpec...)
-	out = append(out, t.Actions...)
+	out = append(out, actions...)
 	return out
 }
 
