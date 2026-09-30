@@ -2095,6 +2095,15 @@ Important Java classes:
 - `TLCSyntheticStateStackFrame`: a manually inserted marker frame for trace
   display. It is still a state frame, but it also stores the successor used when
   evaluating expressions against a trace edge.
+- `TLCInitStatesStackFrame` and `TLCNextStatesStackFrame`: Java debugger frames
+  that expose generated initial or successor states. Both keep a
+  variable-reference-to-state map because DAP variable references are integers
+  and partial states may not have fingerprints. Go mirrors this as concrete
+  structs over `StateFunctor` and `NextStateFunctor`. Initial states sort
+  lexicographically by state text; successor states cluster by action location
+  before state text. Step-in chooses the successor with minimum string Hamming
+  distance; step-over chooses maximum; step-out selects the predecessor or halts
+  the functor.
 - `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
   stack-frame list, stepping state, granularity, halt flags, and the connection
   to the debug adapter. The protocol transport is less important than preserving

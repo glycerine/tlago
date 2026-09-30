@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -222,6 +223,14 @@ func (e *AbortEvalException) Error() string {
 
 var DebuggerNotEvaluatedValue Value = NewStringValue("?")
 
+const (
+	debugScopeState      = "State"
+	debugScopeAction     = "Action"
+	debugScopeInitials   = "Initials"
+	debugScopeSuccessors = "Successors"
+	debugScopeTrace      = "Trace"
+)
+
 type TLCStateStackFrame struct {
 	TLCStackFrame
 	State   *TLCStateMut
@@ -273,17 +282,7 @@ func (f *TLCStateStackFrame) ToVariable(rnd *rand.Rand) *DebugTLCVariable {
 	if state != nil {
 		name = fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction()))
 	}
-	variable := NewDebugTLCVariableName(name).SetInstance(f.ToRecordValue())
-	variable.SetVscodeVariableMenuContext("state")
-	variable.Type = "TLCState"
-	if state != nil && state.AllAssigned() {
-		variable.Type = fmt.Sprintf("FP64: %d", int64(state.FingerPrint()))
-	}
-	if debugValueMayHaveNested(variable.TLCValue) {
-		variable.VariablesReference = debugVariableReference(rnd)
-	}
-	variable.Value = debugValueString(variable.TLCValue)
-	return variable
+	return debugStateAsVariable(state, f.ToRecordValue(), name, rnd)
 }
 
 type TLCActionStackFrame struct {
@@ -335,6 +334,57 @@ func (f *TLCActionStackFrame) ToRecordValue() *RecordValue {
 	return debugStateRecordValue(state, f.GetS())
 }
 
+type TLCInitStatesStackFrame struct {
+	TLCStackFrame
+	Functor      *StateFunctor
+	IDToStateMap map[int]*TLCStateMut
+	StateID      int
+}
+
+func NewTLCInitStatesStackFrame(parent *TLCStackFrame, pred SemanticNode, con *Context, tool *Tool, functor *StateFunctor) *TLCInitStatesStackFrame {
+	return &TLCInitStatesStackFrame{
+		TLCStackFrame: *NewTLCStackFrameNoException(parent, pred, con, tool),
+		Functor:       functor,
+		IDToStateMap:  make(map[int]*TLCStateMut),
+		StateID:       debugVariableReference(nil),
+	}
+}
+
+func (f *TLCInitStatesStackFrame) GetStates() *SetOfStates {
+	if f == nil || f.Functor == nil {
+		return NewSetOfStates(0)
+	}
+	return f.Functor.GetStates()
+}
+
+func (f *TLCInitStatesStackFrame) GetStateVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	states := sortedStatesByString(f.GetStates())
+	width := len(strconv.Itoa(len(states)))
+	out := make([]*DebugTLCVariable, 0, len(states))
+	for i, state := range states {
+		name := fmt.Sprintf("%d.%0*d: %s", state.Level(), width, i+1, debugActionLocation(state.GetAction()))
+		variable := debugStateAsVariable(state, NewRecordValueFromInsMap(state.Values()), name, rnd)
+		f.IDToStateMap[variable.VariablesReference] = state
+		out = append(out, variable)
+	}
+	return out
+}
+
+func (f *TLCInitStatesStackFrame) SelectStateByReference(ref int) (bool, error) {
+	if f == nil || f.Functor == nil {
+		return false, nil
+	}
+	state := f.IDToStateMap[ref]
+	if state == nil {
+		return false, nil
+	}
+	_, err := f.Functor.SetElement(state)
+	return err == nil, err
+}
+
 type TLCSyntheticStateStackFrame struct {
 	TLCStateStackFrame
 	Successor *TLCStateMut
@@ -371,6 +421,119 @@ func (f *TLCSyntheticStateStackFrame) GetSuccessor() *TLCStateMut {
 		return nil
 	}
 	return f.Successor
+}
+
+type TLCNextStatesStackFrame struct {
+	TLCStateStackFrame
+	Action       *Action
+	Functor      *NextStateFunctor
+	IDToStateMap map[int]*TLCStateMut
+}
+
+func NewTLCNextStatesStackFrame(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, state *TLCStateMut, functor *NextStateFunctor, action *Action) *TLCNextStatesStackFrame {
+	frame := NewTLCStateStackFrameNoException(parent, node, ctxt, tool, state)
+	frame.Name = fmt.Sprint(node)
+	return &TLCNextStatesStackFrame{
+		TLCStateStackFrame: *frame,
+		Action:             action,
+		Functor:            functor,
+		IDToStateMap:       make(map[int]*TLCStateMut),
+	}
+}
+
+func (f *TLCNextStatesStackFrame) AddT() bool {
+	return true
+}
+
+func (f *TLCNextStatesStackFrame) GetSuccessors() *SetOfStates {
+	if f == nil || f.Functor == nil {
+		return NewSetOfStates(0)
+	}
+	return f.Functor.GetStates()
+}
+
+func (f *TLCNextStatesStackFrame) HasScope() bool {
+	return f != nil && f.GetSuccessors().Size() > 0
+}
+
+func (f *TLCNextStatesStackFrame) GetStateVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	return []*DebugTLCVariable{f.ToVariable(rnd)}
+}
+
+func (f *TLCNextStatesStackFrame) GetSuccessorVariables(rnd *rand.Rand) []*DebugTLCVariable {
+	if f == nil {
+		return nil
+	}
+	successors := sortedSuccessors(f.GetSuccessors())
+	width := len(strconv.Itoa(len(successors)))
+	out := make([]*DebugTLCVariable, 0, len(successors))
+	for i, state := range successors {
+		name := fmt.Sprintf("%d.%0*d: %s", state.Level(), width, i+1, debugActionLocation(state.GetAction()))
+		variable := debugStateAsVariable(state, NewRecordValueFromInsMap(state.Values()), name, rnd)
+		f.IDToStateMap[variable.VariablesReference] = state
+		out = append(out, variable)
+	}
+	return out
+}
+
+func (f *TLCNextStatesStackFrame) SelectStateByReference(ref int) (bool, error) {
+	if f == nil || f.Functor == nil {
+		return false, nil
+	}
+	state := f.IDToStateMap[ref]
+	if state == nil {
+		return false, nil
+	}
+	_, err := f.Functor.SetElement(state)
+	return err == nil, err
+}
+
+func (f *TLCNextStatesStackFrame) StepInSelect() (bool, error) {
+	return f.selectSuccessorByDistance(true)
+}
+
+func (f *TLCNextStatesStackFrame) StepOverSelect() (bool, error) {
+	return f.selectSuccessorByDistance(false)
+}
+
+func (f *TLCNextStatesStackFrame) StepOutSelect() (bool, error) {
+	if f == nil || f.Functor == nil {
+		return false, nil
+	}
+	predecessor := (*TLCStateMut)(nil)
+	if state := f.GetS(); state != nil {
+		predecessor = state.Predecessor()
+	}
+	if predecessor == nil {
+		return f.Functor.Halt(), nil
+	}
+	_, err := f.Functor.SetElement(predecessor)
+	return err == nil, err
+}
+
+func (f *TLCNextStatesStackFrame) selectSuccessorByDistance(minimum bool) (bool, error) {
+	if f == nil || f.Functor == nil {
+		return false, nil
+	}
+	states := f.GetSuccessors().ToSlice()
+	if len(states) == 0 {
+		return false, nil
+	}
+	current := f.GetS()
+	selected := states[0]
+	selectedDistance := debugHammingDistance(current, selected)
+	for _, state := range states[1:] {
+		distance := debugHammingDistance(current, state)
+		if minimum && distance < selectedDistance || !minimum && distance > selectedDistance {
+			selected = state
+			selectedDistance = distance
+		}
+	}
+	_, err := f.Functor.SetElement(selected)
+	return err == nil, err
 }
 
 type TLCCapabilities struct {
@@ -638,6 +801,20 @@ func debugStateCopy(state *TLCStateMut) *TLCStateMut {
 	return state.DeepCopy()
 }
 
+func debugStateAsVariable(state *TLCStateMut, record Value, name string, rnd *rand.Rand) *DebugTLCVariable {
+	variable := NewDebugTLCVariableName(name).SetInstance(record)
+	variable.SetVscodeVariableMenuContext("state")
+	variable.Type = "TLCState"
+	if state != nil && state.AllAssigned() {
+		variable.Type = fmt.Sprintf("FP64: %d", int64(state.FingerPrint()))
+	}
+	if debugValueMayHaveNested(variable.TLCValue) {
+		variable.VariablesReference = debugVariableReference(rnd)
+	}
+	variable.Value = debugValueString(variable.TLCValue)
+	return variable
+}
+
 func stateInfoState(info *TLCStateInfo) *TLCStateMut {
 	if info == nil {
 		return nil
@@ -680,6 +857,59 @@ func debugStateRecordValue(state *TLCStateMut, predecessor *TLCStateMut) *Record
 		values = append(values, value)
 	}
 	return NewRecordValue(names, values, false)
+}
+
+func sortedStatesByString(set *SetOfStates) []*TLCStateMut {
+	if set == nil {
+		return nil
+	}
+	states := set.ToSlice()
+	sort.Slice(states, func(i, j int) bool {
+		return states[i].String() < states[j].String()
+	})
+	return states
+}
+
+func sortedSuccessors(set *SetOfStates) []*TLCStateMut {
+	states := sortedStatesByString(set)
+	sort.SliceStable(states, func(i, j int) bool {
+		left := debugActionLocation(states[i].GetAction())
+		right := debugActionLocation(states[j].GetAction())
+		if left != right {
+			return left < right
+		}
+		return states[i].String() < states[j].String()
+	})
+	return states
+}
+
+func debugHammingDistance(left *TLCStateMut, right *TLCStateMut) int {
+	leftText := ""
+	if left != nil {
+		leftText = left.String()
+	}
+	rightText := ""
+	if right != nil {
+		rightText = right.String()
+	}
+	minLen := len(leftText)
+	if len(rightText) < minLen {
+		minLen = len(rightText)
+	}
+	distance := absInt(len(leftText) - len(rightText))
+	for i := 0; i < minLen; i++ {
+		if leftText[i] != rightText[i] {
+			distance++
+		}
+	}
+	return distance
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
 func debugValueNested(value Value, prototype *DebugTLCVariable, rnd *rand.Rand) []*DebugTLCVariable {
