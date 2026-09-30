@@ -1019,22 +1019,28 @@ func (lc *LiveCheck) CheckTrace(tool *Tool, trace func() *StateVec) error {
 	if states == nil || states.Size() == 0 {
 		return nil
 	}
-	for i := 0; i < states.Size(); i++ {
+	first := states.At(0)
+	if err := lc.AddInitState(tool, first, first.FingerPrint()); err != nil {
+		return err
+	}
+	successors := NewSetOfStates(states.Size() * 2)
+	for i := 0; i < states.Size()-1; i++ {
+		successors.Clear()
 		state := states.At(i)
-		if i == 0 {
-			if err := lc.AddInitState(tool, state, state.FingerPrint()); err != nil {
-				return err
-			}
-			continue
-		}
-		set := NewSetOfStates(1)
-		set.Put(state)
-		if err := lc.AddNextState(tool, states.At(i-1), states.At(i-1).FingerPrint(), set); err != nil {
+		successors.Put(state)
+		successors.Put(states.At(i + 1))
+		if err := lc.AddNextState(tool, state, state.FingerPrint(), successors); err != nil {
 			return err
 		}
 	}
-	_, err := lc.FinalCheck(tool)
-	return err
+	last := states.At(states.Size() - 1)
+	if err := lc.AddNextState(tool, last, last.FingerPrint(), NewSetOfStates(0)); err != nil {
+		return err
+	}
+	if _, err := lc.FinalCheck(tool); err != nil {
+		return err
+	}
+	return lc.Reset()
 }
 
 func (c *LiveChecker) GraphSize() int64 {

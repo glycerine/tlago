@@ -1531,6 +1531,13 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - handles worker failure precedence: liveness violation wins over checker
   failure until all live workers complete.
 
+`LiveCheck.checkTrace` is the simulation/debug trace path. Java converts the
+current trace into a temporary behavior graph by adding the first state as an
+init state, then for every non-final state adding both the stuttering
+self-successor and the next trace state as successors. It then adds the final
+state with an empty successor set, runs a final liveness check, and resets the
+graph for the next simulated behavior.
+
 `LiveWorker`:
 
 - implements Java's iterative Tarjan SCC search over disk-backed behavior
