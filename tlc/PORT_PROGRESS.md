@@ -51,6 +51,7 @@
   - Checkpoint recovery now rebinds the checker metadir and all trace fragments to `FromCheckpoint`, matching Java's `FileUtil.makeMetaDir(..., fromChkpt)` behavior for resumed runs.
   - BFS `RunTLC` now follows Java's `keepCallStack` return convention and `ModelCheck` replays next-state failures with `CallStackTool` before final summary output.
   - Initial-state exceptions now print the Java-shaped init failure message and replay init generation with `CallStackTool`, including fingerprint-exception handling.
+  - Periodic-work liveness/periodic-condition failures now leave the state queue suspended for outer termination, matching Java's error-return path.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 

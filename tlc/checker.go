@@ -1120,6 +1120,7 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 		mc.ForceLiveCheck = false
 		mc.UpdateRuntimeRatio(time.Since(start))
 		if err != nil || result != NoError {
+			resume = false
 			return result, err
 		}
 	} else if mc.RuntimeRatio > LivenessRatio() {
@@ -1128,9 +1129,11 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 	if periodic != nil {
 		value, err := mc.Tool.NoDebug().Eval(periodic)
 		if err != nil {
+			resume = false
 			return ECTLCAssumptionEvaluationError, err
 		}
 		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
+			resume = false
 			return ECTLCAssumptionFalse, nil
 		}
 	}
