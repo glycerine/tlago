@@ -126,6 +126,10 @@ func (w *StateWriter) WriteInitState(state *TLCStateMut) error {
 }
 
 func (w *StateWriter) WriteTransition(curState *TLCStateMut, succState *TLCStateMut, status StateVisitStatus, action *Action, reason ...SemanticNode) error {
+	return w.WriteTransitionVisual(curState, succState, status, action, StateVisualizationDefault, reason...)
+}
+
+func (w *StateWriter) WriteTransitionVisual(curState *TLCStateMut, succState *TLCStateMut, status StateVisitStatus, action *Action, visualization StateVisualization, reason ...SemanticNode) error {
 	if w != nil && w.WriteTransitionFunc != nil {
 		if err := w.WriteTransitionFunc(curState, succState, status, action, reason...); err != nil {
 			return err
@@ -140,12 +144,15 @@ func (w *StateWriter) WriteTransition(curState *TLCStateMut, succState *TLCState
 		}
 		return nil
 	}
-	return w.writeDotTransition(curState, succState, status, action, reason...)
+	return w.writeDotTransition(curState, succState, status, visualization, action, reason...)
 }
 
-func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCStateMut, status StateVisitStatus, action *Action, reason ...SemanticNode) error {
+func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCStateMut, status StateVisitStatus, visualization StateVisualization, action *Action, reason ...SemanticNode) error {
 	if curState == nil {
 		return w.WriteInitState(succState)
+	}
+	if !w.stuttering && visualization == StateVisualizationStuttering {
+		return nil
 	}
 	cfp := curState.FingerPrint()
 	sfp := succState.FingerPrint()
@@ -156,14 +163,11 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 		}
 		w.strict[key] = struct{}{}
 	}
-	if !w.stuttering && curState.Equal(succState) {
-		return nil
-	}
 	_, err := fmt.Fprintf(w.writer, "%d -> %d", cfp, sfp)
 	if err != nil {
 		return err
 	}
-	if curState.Equal(succState) {
+	if visualization == StateVisualizationStuttering {
 		_, err = w.writer.WriteString(" [style=\"dashed\",color=\"lightgray\"];\n")
 		return err
 	}
