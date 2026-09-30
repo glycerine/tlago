@@ -1,78 +1,60 @@
 package tlc
 
+import "math"
+
 func (s *TLCStateMut) Write(out *ValueOutputStream) error {
 	if s == nil {
-		if err := out.WriteInt(0); err != nil {
-			return err
-		}
-		return nil
+		return newTLCError(ECGeneral, "cannot write nil TLC state")
 	}
-	if err := out.WriteInt(int32(len(s.values))); err != nil {
+	if s.level > math.MaxInt16 {
+		return newTLCError(ECTLCTraceTooLong, "%s", s.String())
+	}
+	if err := out.WriteShortNat(s.WorkerID); err != nil {
+		return err
+	}
+	if err := out.WriteLongNat(s.UID); err != nil {
+		return err
+	}
+	if err := out.WriteShortNat(int16(s.level)); err != nil {
 		return err
 	}
 	for _, value := range s.values {
-		assigned := value != nil
-		if err := out.WriteBool(assigned); err != nil {
+		if value == nil {
+			return newTLCError(ECTLCStateNotCompletelySpecifiedNext, "%s", s.String())
+		}
+		if err := out.WriteExternal(value); err != nil {
 			return err
 		}
-		if assigned {
-			if err := out.WriteExternal(value); err != nil {
-				return err
-			}
-		}
 	}
-	if err := out.WriteInt(int32(s.level)); err != nil {
-		return err
-	}
-	if s.action == nil {
-		return out.WriteBool(false)
-	}
-	if err := out.WriteBool(true); err != nil {
-		return err
-	}
-	return out.WriteUniqueString(UniqueStringOf(s.action.GetName()))
+	return nil
 }
 
 func (s *TLCStateMut) Read(in *ValueInputStream) error {
-	count, err := in.ReadInt()
+	workerID, err := in.ReadShortNat()
 	if err != nil {
 		return err
 	}
-	if int(count) != len(s.values) {
-		s.values = make([]Value, int(count))
+	uid, err := in.ReadLongNat()
+	if err != nil {
+		return err
 	}
-	for i := 0; i < int(count); i++ {
-		assigned, err := in.ReadBool()
-		if err != nil {
-			return err
-		}
-		if !assigned {
-			s.values[i] = nil
-			continue
-		}
+	level, err := in.ReadShortNat()
+	if err != nil {
+		return err
+	}
+	s.WorkerID = workerID
+	s.UID = uid
+	s.level = int(level)
+	if len(s.values) != len(stateVariables) {
+		s.values = make([]Value, len(stateVariables))
+	}
+	for i := range s.values {
 		value, err := in.ReadExternal()
 		if err != nil {
 			return err
 		}
 		s.values[i] = value
 	}
-	level, err := in.ReadInt()
-	if err != nil {
-		return err
-	}
-	s.level = int(level)
-	hasAction, err := in.ReadBool()
-	if err != nil {
-		return err
-	}
-	if hasAction {
-		name, err := in.readExternalUniqueString()
-		if err != nil {
-			return err
-		}
-		s.action = &Action{Name: name.String()}
-	} else {
-		s.action = nil
-	}
+	s.action = nil
 	return nil
 }

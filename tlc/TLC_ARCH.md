@@ -1240,6 +1240,10 @@ Port guidance:
 - Normal `TLCTrace` writes the Java-compatible `MC.st`-style file: each record
   is `longNat(predecessorPointer)` followed by the state fingerprint, and
   checkpoints store only the current file pointer and `lastPtr`.
+- `TLCState` disk serialization follows Java field order: `shortNat(workerId)`,
+  `longNat(uid)`, `shortNat(level)`, then every state variable value. It does
+  not serialize variable-count headers, nil markers, predecessors, or action
+  names; those are runtime/trace-reconstruction metadata.
 - The Go `TLCTrace` still keeps an in-memory mirror of `TraceRecord` values as a
   transitional convenience for direct state-object trace access. This mirror is
   not the source-of-truth file format and should shrink as reconstruction moves

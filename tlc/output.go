@@ -151,6 +151,7 @@ const (
 	ECSystemErrorCleaningPool                            = 2270
 	ECTLCModeMCDFS                                       = 2271
 	ECTLCFeatureUnsupportedLivenessSymmetry              = 2279
+	ECTLCTraceTooLong                                    = 2282
 	ECTLCModuleOneArgumentError                          = 2283
 	ECTLCFeatureLivenessConstraints                      = 2284
 	ECTLCSymmetrySetTooSmall                             = 2300
