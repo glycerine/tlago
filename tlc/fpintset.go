@@ -82,6 +82,11 @@ type MemFPIntSet struct {
 	mask      uint64
 }
 
+type MultiFPIntSet struct {
+	Sets   []*MemFPIntSet
+	FPBits uint
+}
+
 func NewMemFPIntSet() *MemFPIntSet {
 	return NewMemFPIntSetWithCapacity(memFPIntSetLogInitialCapacity, memFPIntSetMaxLoad)
 }
@@ -101,10 +106,34 @@ func NewMemFPIntSetWithCapacity(logInitialCapacity int, maxLoad int) *MemFPIntSe
 	}
 }
 
+func NewMultiFPIntSet(bits int) *MultiFPIntSet {
+	if bits < 0 {
+		bits = 0
+	}
+	count := 1 << bits
+	sets := make([]*MemFPIntSet, count)
+	for i := range sets {
+		sets[i] = NewMemFPIntSet()
+	}
+	return &MultiFPIntSet{Sets: sets, FPBits: uint(64 - bits)}
+}
+
 func (s *MemFPIntSet) Init(numThreads int, metadir string, filename string) *MemFPIntSet {
 	_ = numThreads
 	s.metadir = metadir
 	s.filename = filename
+	return s
+}
+
+func (s *MultiFPIntSet) Init(numThreads int, metadir string, filename string) *MultiFPIntSet {
+	if s == nil {
+		return nil
+	}
+	for i, set := range s.Sets {
+		if set != nil {
+			set.Init(numThreads, metadir, fmt.Sprintf("%s_%d", filename, i))
+		}
+	}
 	return s
 }
 
@@ -115,6 +144,19 @@ func (s *MemFPIntSet) Size() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.count
+}
+
+func (s *MultiFPIntSet) Size() uint64 {
+	if s == nil {
+		return 0
+	}
+	var total uint64
+	for _, set := range s.Sets {
+		if set != nil {
+			total += set.Size()
+		}
+	}
+	return total
 }
 
 func (s *MemFPIntSet) Sizeof() uint64 {
@@ -133,6 +175,19 @@ func (s *MemFPIntSet) Sizeof() uint64 {
 	return size
 }
 
+func (s *MultiFPIntSet) Sizeof() uint64 {
+	if s == nil {
+		return 0
+	}
+	var total uint64
+	for _, set := range s.Sets {
+		if set != nil {
+			total += set.Sizeof()
+		}
+	}
+	return total
+}
+
 func (s *MemFPIntSet) SetLeveled(fp uint64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -146,6 +201,12 @@ func (s *MemFPIntSet) SetLeveled(fp uint64) {
 		}
 	}
 	panic("MemFPIntSet.SetLeveled: fingerprint must already be in the set")
+}
+
+func (s *MultiFPIntSet) SetLeveled(fp uint64) {
+	if set := s.fpSet(fp); set != nil {
+		set.SetLeveled(fp)
+	}
 }
 
 func (s *MemFPIntSet) SetStatus(fp uint64, status int32) int32 {
@@ -171,6 +232,13 @@ func (s *MemFPIntSet) SetStatus(fp uint64, status int32) int32 {
 	return FPIntStatusNew
 }
 
+func (s *MultiFPIntSet) SetStatus(fp uint64, status int32) int32 {
+	if set := s.fpSet(fp); set != nil {
+		return set.SetStatus(fp, status)
+	}
+	return FPIntStatusNew
+}
+
 func (s *MemFPIntSet) GetStatus(fp uint64) int32 {
 	if s == nil {
 		return FPIntStatusNew
@@ -184,6 +252,13 @@ func (s *MemFPIntSet) GetStatus(fp uint64) int32 {
 		if bucket[i] == hi && bucket[i+1] == lo {
 			return bucket[i+2]
 		}
+	}
+	return FPIntStatusNew
+}
+
+func (s *MultiFPIntSet) GetStatus(fp uint64) int32 {
+	if set := s.fpSet(fp); set != nil {
+		return set.GetStatus(fp)
 	}
 	return FPIntStatusNew
 }
@@ -205,15 +280,66 @@ func (s *MemFPIntSet) AllLeveled() bool {
 	return true
 }
 
+func (s *MultiFPIntSet) AllLeveled() bool {
+	if s == nil {
+		return true
+	}
+	for _, set := range s.Sets {
+		if set != nil && !set.AllLeveled() {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *MemFPIntSet) Close() {}
 
+func (s *MultiFPIntSet) Close() {
+	if s == nil {
+		return
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			set.Close()
+		}
+	}
+}
+
 func (s *MemFPIntSet) AddThread() error {
+	return nil
+}
+
+func (s *MultiFPIntSet) AddThread() error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.AddThread(); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
 func (s *MemFPIntSet) Exit(cleanup bool) error {
 	if cleanup && s.metadir != "" {
 		return os.RemoveAll(s.metadir)
+	}
+	return nil
+}
+
+func (s *MultiFPIntSet) Exit(cleanup bool) error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.Exit(cleanup); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
@@ -243,8 +369,37 @@ func (s *MemFPIntSet) CheckFPs() uint64 {
 	return dis
 }
 
+func (s *MultiFPIntSet) CheckFPs() uint64 {
+	if s == nil {
+		return 0
+	}
+	var maxDistance uint64
+	for _, set := range s.Sets {
+		if set != nil {
+			if distance := set.CheckFPs(); distance > maxDistance {
+				maxDistance = distance
+			}
+		}
+	}
+	return maxDistance
+}
+
 func (s *MemFPIntSet) BeginChkpt() error {
 	return s.BeginChkptFile(s.filename)
+}
+
+func (s *MultiFPIntSet) BeginChkpt() error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.BeginChkpt(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (s *MemFPIntSet) BeginChkptFile(fname string) error {
@@ -270,8 +425,36 @@ func (s *MemFPIntSet) BeginChkptFile(fname string) error {
 	return out.Close()
 }
 
+func (s *MultiFPIntSet) BeginChkptFile(fname string) error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.BeginChkptFile(fname); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (s *MemFPIntSet) CommitChkpt() error {
 	return s.CommitChkptFile(s.filename)
+}
+
+func (s *MultiFPIntSet) CommitChkpt() error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.CommitChkpt(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (s *MemFPIntSet) CommitChkptFile(fname string) error {
@@ -286,8 +469,36 @@ func (s *MemFPIntSet) CommitChkptFile(fname string) error {
 	return nil
 }
 
+func (s *MultiFPIntSet) CommitChkptFile(fname string) error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.CommitChkptFile(fname); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (s *MemFPIntSet) Recover() error {
 	return s.RecoverFile(s.filename)
+}
+
+func (s *MultiFPIntSet) Recover() error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.Recover(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (s *MemFPIntSet) RecoverFile(fname string) error {
@@ -323,6 +534,31 @@ func (s *MemFPIntSet) RecoverFile(fname string) error {
 		s.table[index] = append(s.table[index], hi, lo, status)
 		s.count++
 	}
+}
+
+func (s *MultiFPIntSet) RecoverFile(fname string) error {
+	if s == nil {
+		return nil
+	}
+	for _, set := range s.Sets {
+		if set != nil {
+			if err := set.RecoverFile(fname); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *MultiFPIntSet) fpSet(fp uint64) *MemFPIntSet {
+	if s == nil || len(s.Sets) == 0 {
+		return nil
+	}
+	idx := int(fp >> s.FPBits)
+	if idx >= len(s.Sets) {
+		idx %= len(s.Sets)
+	}
+	return s.Sets[idx]
 }
 
 func (s *MemFPIntSet) rehash() {
