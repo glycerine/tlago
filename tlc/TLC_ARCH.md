@@ -1010,6 +1010,9 @@ Port guidance:
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
+- Preserve Java's `doNextFailed` keep-call-stack polarity. Generic next-state
+  failures call `setErrState(cur, succ, true, ec)` in the ordinary case; Java
+  only flips that flag for stack overflow, out-of-memory, and assertion errors.
 - Preserve Java's error-time postcondition behavior: init failures with an
   `errState` call `checkPostConditionWithCounterExample(new CounterExample(errState))`,
   and worker `doNextSetErr` paths build a safety counterexample, evaluate aliases

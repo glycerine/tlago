@@ -1442,7 +1442,7 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 	if tlcErr, ok := err.(*TLCError); ok {
 		ec = tlcErr.Code
 	}
-	if mc.SetErrState(curState, succState, false, ec) {
+	if mc.SetErrState(curState, succState, true, ec) {
 		PrintError(ec, err.Error())
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
