@@ -1627,6 +1627,11 @@ Java decomposes startup liveness processing into two distinct phases:
   `TLC_LIVE_CANNOT_HANDLE_FORMULA`; in particular Java deliberately rejects
   `CASE` in temporal properties instead of inheriting TLC's first-match runtime
   evaluator semantics.
+- `SF_e(A)` expands to `<>[]-ENABLED <A>_e \/ []<><A>_e`, and `WF_e(A)`
+  expands to `[]<>(-ENABLED <A>_e \/ <A>_e)`. Go keeps the enabled-action and
+  subscripted-action pieces as ordinary concrete `LiveExprNode` state/action
+  nodes with `EvalFunc`, rather than introducing Java's `LNStateEnabled` and
+  subclass hierarchy.
 - `processLiveness(tool)` tags state/action predicates, pushes negation into
   positive form, simplifies, converts to DNF, classifies each DNF conjunct into
   `<>[]A`, `[]<>A`, `<>[]S`, and remaining action-free temporal formulae, bins

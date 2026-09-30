@@ -72,6 +72,66 @@ func astToLiveLevel(tool *Tool, expr SemanticNode, con *Context, level int) (*Li
 	return NewLNAction(label, expr, con, nil), nil
 }
 
+func newLiveStateEnabled(body SemanticNode, con *Context, subscript SemanticNode, isBox bool) *LiveExprNode {
+	label := "ENABLED " + SemanticString(body)
+	return NewLNState(label, body, con, func(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
+		if tool == nil {
+			return true, nil
+		}
+		if isBox && subscript != nil {
+			return true, nil
+		}
+		sfun := NewEmptyState()
+		acts := EmptyActionItemList
+		if subscript != nil {
+			acts = acts.Cons(subscript, con, DoNotRecordCostModel, ActionItemChanged)
+		}
+		state, err := tool.EnabledImpl(body, acts, BranchContext(con), s1, sfun, DoNotRecordCostModel)
+		if err != nil {
+			return false, err
+		}
+		return state != nil, nil
+	})
+}
+
+func newLiveAction(body SemanticNode, con *Context, subscript SemanticNode, isBox bool) *LiveExprNode {
+	label := SemanticString(body)
+	return NewLNAction(label, body, con, func(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
+		if tool == nil {
+			return true, nil
+		}
+		if subscript != nil {
+			v1, err := tool.Eval(subscript, con, s1, EmptyState, EvalClear, DoNotRecordCostModel)
+			if err != nil {
+				return false, err
+			}
+			v2, err := tool.Eval(subscript, con, s2, nil, EvalClear, DoNotRecordCostModel)
+			if err != nil {
+				return false, err
+			}
+			eq, err := v1.Equal(v2)
+			if err != nil {
+				return false, err
+			}
+			if isBox && eq {
+				return true, nil
+			}
+			if !isBox && eq {
+				return false, nil
+			}
+		}
+		value, err := tool.Eval(body, con, s1, s2, EvalClear, DoNotRecordCostModel)
+		if err != nil {
+			return false, err
+		}
+		boolValue, ok := value.(*BoolValue)
+		if !ok {
+			return false, newTLCError(ECGeneral, "liveness predicate %s evaluated to non-boolean %s", label, value)
+		}
+		return boolValue.Val, nil
+	})
+}
+
 func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, error) {
 	if expr == nil {
 		return LNTrue, nil
@@ -191,6 +251,22 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodePrime, OpcodeAA:
 		return NewLNAction(SemanticString(expr), expr, con, nil), nil
+	case OpcodeSF:
+		if len(args) >= 2 {
+			subscript := args[0]
+			body := args[1]
+			enabled := NewLNNeg(newLiveStateEnabled(body, con, subscript, false))
+			action := newLiveAction(body, con, subscript, false)
+			return NewLNDisj(NewLNEven(NewLNAll(enabled)), NewLNAll(NewLNEven(action))), nil
+		}
+	case OpcodeWF:
+		if len(args) >= 2 {
+			subscript := args[0]
+			body := args[1]
+			enabled := NewLNNeg(newLiveStateEnabled(body, con, subscript, false))
+			action := newLiveAction(body, con, subscript, false)
+			return NewLNAll(NewLNEven(NewLNDisj(enabled, action))), nil
+		}
 	case OpcodeLeadsto:
 		if len(args) >= 2 {
 			left, err := ASTToLive(tool, args[0], con)
