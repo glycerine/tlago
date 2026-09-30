@@ -1787,6 +1787,12 @@ invalid `TLCSet` arguments report `TLC_MODULE_ARGUMENT_ERROR`. String register
 names are rendered without quotes in the undefined `TLCGet(name)` message, just
 as Java uses `String.valueOf(sv.val)`.
 
+`TLCExt` one-argument operators should use Java's `TLC_MODULE_ONE_ARGUMENT_ERROR`
+surface: `ToTrace` expects a `CounterExample`, `TLCModelValue` reports as
+`ModelValue` and expects a string, and `TLCEvalDefinition` distinguishes
+non-string names, unreachable definitions, and non-zero arity definitions through
+that same error code.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

@@ -116,7 +116,7 @@ func pickSuccessorAction(tool *Tool, curState *TLCStateMut, succState *TLCStateM
 func TLCExtToTrace(value Value) (Value, error) {
 	counterExample, ok := value.(*CounterExample)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "ToTrace expected a CounterExample, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "ToTrace", "CounterExample", ValuesPPR(value))
 	}
 	return counterExample.ToTrace(), nil
 }
@@ -242,7 +242,7 @@ func TLCExtTLCNoOp(value Value) Value {
 func TLCExtTLCModelValue(value Value) (Value, error) {
 	str, ok := value.(*StringValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "ModelValue expected a string, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "ModelValue", "string", ValuesPPR(value))
 	}
 	return AddModelValue(str.UnquotedString()), nil
 }
@@ -258,15 +258,15 @@ func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error)
 	}
 	str, ok := name.(*StringValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "TLCEvalDefinition expected a string definition name, got %s", name)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "string", ValuesPPR(name))
 	}
 	value := tool.DefnsByName[str.Val]
 	opDef, ok := value.(*OpDefNode)
 	if !ok || opDef == nil {
-		return nil, newTLCError(ECGeneral, "TLCEvalDefinition could not find zero-arity definition %q", str.UnquotedString())
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "name of a definition reachable from the root module", ValuesPPR(name))
 	}
 	if opDef.Arity() != 0 {
-		return nil, newTLCError(ECGeneral, "TLCEvalDefinition expected a zero-arity definition, got %s", opDef)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "a zero-arity definition", opDef.String())
 	}
 	con, s0, s1, control, cm := parseEvalArgs(args...)
 	return tool.Eval(opDef.Body, con, s0, s1, control, cm)
