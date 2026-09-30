@@ -551,6 +551,21 @@ Context is used for:
 operator parameters. Enumeration order is user-visible in traces, random
 simulation, and sometimes coverage, so preserve Java order.
 
+## Utility Collections
+
+`tlc2.util` contains deliberately small custom collections and IO helpers used
+by values, queues, traces, liveness graphs, and fingerprint sets.
+
+Porting guidance:
+
+- Keep deterministic iteration order for any structure whose order reaches
+  fingerprints, traces, XML/JSON output, or diagnostics.
+- Prefer concrete Go structs. Java's `ExternalSortable` has `BigInt` as its
+  practical TLC implementation, so the Go external-sort helpers operate on
+  `[]*BigInt` directly instead of creating a one-implementation interface.
+- Port utility tests early. These are cheap, stable conformance checks and do
+  not disturb the mechanical core model-checker port.
+
 ## Fingerprinting
 
 `tlc2.util.FP64` implements 64-bit fingerprints over GF(2^64):
