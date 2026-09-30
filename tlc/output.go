@@ -202,6 +202,22 @@ func (b *BroadcastRecorder) Add(rec MessageRecorder) {
 	b.recorders = append(b.recorders, rec)
 }
 
+func (b *BroadcastRecorder) Remove(rec MessageRecorder) {
+	if rec == nil {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	for i, existing := range b.recorders {
+		if existing == rec {
+			copy(b.recorders[i:], b.recorders[i+1:])
+			b.recorders[len(b.recorders)-1] = nil
+			b.recorders = b.recorders[:len(b.recorders)-1]
+			return
+		}
+	}
+}
+
 func (b *BroadcastRecorder) Clear() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -258,6 +274,10 @@ func AddMessageRecorder(rec MessageRecorder) {
 	defaultRecorder.Add(rec)
 }
 
+func RemoveMessageRecorder(rec MessageRecorder) {
+	defaultRecorder.Remove(rec)
+}
+
 func ClearMessageRecorders() {
 	defaultRecorder.Clear()
 }
@@ -292,4 +312,66 @@ func formatMessage(code int, params []string) string {
 		return fmt.Sprintf("%d", code)
 	}
 	return fmt.Sprintf("%d %s", code, strings.Join(params, " "))
+}
+
+const (
+	ExitStatusError                = 255
+	ExitStatusSuccess              = 0
+	ExitStatusViolationAssumption  = 10
+	ExitStatusViolationDeadlock    = 11
+	ExitStatusViolationSafety      = 12
+	ExitStatusViolationLiveness    = 13
+	ExitStatusViolationAssert      = 14
+	ExitStatusFailureSpecEval      = 75
+	ExitStatusFailureSafetyEval    = 76
+	ExitStatusFailureLivenessEval  = 77
+	ExitStatusErrorSpecParse       = 150
+	ExitStatusErrorConfigParse     = 151
+	ExitStatusErrorStateSpaceLarge = 152
+	ExitStatusErrorSystem          = 153
+)
+
+func ExitStatusForErrorCode(code int) int {
+	switch code {
+	case NoError:
+		return ExitStatusSuccess
+	case ECTLCStateNotCompletelySpecifiedNext,
+		ECTLCStatesAndNoNextAction,
+		ECTLCNestedExpression,
+		ECTLCFingerprintException:
+		return ExitStatusFailureSpecEval
+	case ECTLCInvariantEvaluationFailed,
+		ECTLCInvariantViolatedLevel:
+		return ExitStatusFailureSafetyEval
+	case ECTLCInvariantViolatedInitial,
+		ECTLCInvariantViolatedBehavior:
+		return ExitStatusViolationSafety
+	case ECTLCActionPropertyViolatedBehavior,
+		ECTLCActionPropertyEvaluationFailed,
+		ECTLCTemporalPropertyViolated,
+		ECTLCPropertyViolatedInitial:
+		return ExitStatusViolationLiveness
+	case ECTLCDeadlockReached:
+		return ExitStatusViolationDeadlock
+	case ECTLCAssumptionFalse,
+		ECTLCAssumptionEvaluationError,
+		ECTLCPostconditionFalse,
+		ECTLCPostconditionEvaluationError,
+		ECTLCPossibleUnwitnessed:
+		return ExitStatusViolationAssumption
+	case ECTLCValueAssertFailed:
+		return ExitStatusViolationAssert
+	case ECCFGErrorReadingFile,
+		ECCFGGeneral,
+		ECCFGMissingID,
+		ECCFGTwiceKeyword,
+		ECCFGExpectID,
+		ECCFGExpectedSymbol:
+		return ExitStatusErrorConfigParse
+	case ECTLCParsingFailed2,
+		ECTLCParsingFailed:
+		return ExitStatusErrorSpecParse
+	default:
+		return ExitStatusError
+	}
 }
