@@ -658,11 +658,20 @@ func (mc *ModelChecker) Recover() (bool, error) {
 		return false, nil
 	}
 	PrintMessage(ECTLCCheckpointRecoverStart, mc.FromCheckpoint)
+	mc.Metadir = mc.FromCheckpoint
 	if err := RecoverUniqueStrings(mc.FromCheckpoint); err != nil {
 		return false, err
 	}
-	if mc.Trace != nil {
-		mc.Trace.SetCheckpointContext(mc.FromCheckpoint, mc.Tool.GetRootName())
+	rootName := "Spec"
+	if mc.Tool != nil && mc.Tool.GetRootName() != "" {
+		rootName = mc.Tool.GetRootName()
+	}
+	if mc.ConcurrentTrace != nil {
+		mc.ConcurrentTrace.SetCheckpointContext(mc.FromCheckpoint, rootName)
+	} else if mc.Trace != nil {
+		mc.Trace.SetCheckpointContext(mc.FromCheckpoint, rootName)
+	}
+	if mc.ConcurrentTrace != nil || mc.Trace != nil {
 		if err := mc.RecoverTrace(); err != nil {
 			return false, err
 		}

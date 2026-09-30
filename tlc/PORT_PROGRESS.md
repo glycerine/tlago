@@ -48,6 +48,7 @@
   - BFS model checking now emits Java's final safety progress snapshot immediately before final liveness checking.
   - Worker liveness failures now follow Java's call-stack replay path for `EvalException`/stateful runtime failures and preserve the original error after replay.
   - `ModelChecker.doNextFailed` now preserves `EvalException` error codes/parameters and Java's keep-call-stack behavior for known fatal/system-like TLC errors.
+  - Checkpoint recovery now rebinds the checker metadir and all trace fragments to `FromCheckpoint`, matching Java's `FileUtil.makeMetaDir(..., fromChkpt)` behavior for resumed runs.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -88,6 +89,6 @@
   - `go test ./tlc`
   - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Continue breadth-first comparison of `ModelChecker.java`/`Worker.java`, with checkpoint/recovery cleanup and trace reconstruction next.
+  1. Continue breadth-first comparison of `ModelChecker.java`/`Worker.java`, with trace reconstruction and worker lifecycle details next.
   2. Then continue into remaining liveness checkpoint/error-trace and distributed pieces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.

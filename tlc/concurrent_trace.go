@@ -33,6 +33,20 @@ func (t *ConcurrentTLCTrace) SetTool(tool *Tool) {
 	}
 }
 
+func (t *ConcurrentTLCTrace) SetCheckpointContext(metadir string, rootName string) {
+	if t == nil {
+		return
+	}
+	if t.TLCTrace != nil {
+		t.TLCTrace.SetCheckpointContext(metadir, rootName)
+	}
+	for _, worker := range t.Workers {
+		if worker != nil {
+			worker.SetTraceContext(metadir, rootName)
+		}
+	}
+}
+
 func (t *ConcurrentTLCTrace) AddWorker(worker *Worker) *Worker {
 	if t == nil || worker == nil {
 		return worker

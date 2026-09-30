@@ -47,11 +47,30 @@ func (t *TLCTrace) SetCheckpointContext(metadir string, rootName string) {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	oldName := ""
+	if t.diskdir != "" {
+		oldName = t.traceFileName()
+	}
 	if metadir != "" {
 		t.diskdir = metadir
 	}
 	if rootName != "" {
 		t.rootName = rootName
+	}
+	newName := ""
+	if t.diskdir != "" {
+		newName = t.traceFileName()
+	}
+	if oldName != newName {
+		if t.raf != nil {
+			if err := t.raf.Close(); err != nil {
+				t.traceErr = err
+				t.raf = nil
+				return
+			}
+			t.raf = nil
+		}
+		t.traceErr = nil
 	}
 	t.traceErr = t.ensureTraceRAFLocked()
 }

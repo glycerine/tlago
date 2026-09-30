@@ -415,7 +415,40 @@ func (w *Worker) configureTrace() {
 	if metadir == "" {
 		return
 	}
-	w.traceFileBase = filepath.Join(metadir, fmt.Sprintf("%s-%d", rootName, w.ID))
+	w.traceFileBase = workerTraceFileBase(metadir, rootName, w.ID)
+}
+
+func workerTraceFileBase(metadir string, rootName string, id int) string {
+	if metadir == "" {
+		return ""
+	}
+	if rootName == "" {
+		rootName = "Spec"
+	}
+	return filepath.Join(metadir, fmt.Sprintf("%s-%d", rootName, id))
+}
+
+func (w *Worker) SetTraceContext(metadir string, rootName string) {
+	if w == nil {
+		return
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	base := workerTraceFileBase(metadir, rootName, w.ID)
+	if base == w.traceFileBase {
+		return
+	}
+	if w.traceRAF != nil {
+		if err := w.traceRAF.Close(); err != nil {
+			w.traceErr = err
+			w.traceRAF = nil
+			w.traceFileBase = base
+			return
+		}
+		w.traceRAF = nil
+	}
+	w.traceErr = nil
+	w.traceFileBase = base
 }
 
 func (w *Worker) ensureTraceRAF() error {
