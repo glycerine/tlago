@@ -522,8 +522,27 @@ func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
 	case *OpApplNode:
 		return t.GetLevelBoundAppl(expr, c)
 	case *LetInNode:
-		c1 := letDefinitionsLevelContext(c, expr.Lets, expr.Bindings...)
 		level := TLCLevelConstant
+		c1 := c
+		for _, opDef := range expr.Lets {
+			if opDef == nil || opDef.Name == nil {
+				continue
+			}
+			if bodyLevel := t.GetLevelBound(opDef.Body, c1); bodyLevel > level {
+				level = bodyLevel
+			}
+			sym := opDef.Symbol
+			if sym == nil {
+				sym = &SymbolNode{Name: opDef.Name}
+			}
+			c1 = c1.Cons(sym, IntOne)
+		}
+		for _, binding := range expr.Bindings {
+			if binding.Symbol == nil {
+				continue
+			}
+			c1 = c1.Cons(binding.Symbol, binding.Value)
+		}
 		if bodyLevel := t.GetLevelBound(expr.Body, c1); bodyLevel > level {
 			level = bodyLevel
 		}
@@ -567,30 +586,6 @@ func letDefinitionsContextWithCostModel(c *Context, lets []*OpDefNode, cm CostMo
 		if opDef.Arity() == 0 {
 			c1 = c1.Cons(sym, NewLazyValue(opDef.Body, c1, true, cm))
 			continue
-		}
-		c1 = c1.Cons(sym, opDef)
-	}
-	for _, binding := range bindings {
-		if binding.Symbol == nil {
-			continue
-		}
-		c1 = c1.Cons(binding.Symbol, binding.Value)
-	}
-	return c1
-}
-
-func letDefinitionsLevelContext(c *Context, lets []*OpDefNode, bindings ...LetBinding) *Context {
-	if c == nil {
-		c = EmptyContext
-	}
-	c1 := c
-	for _, opDef := range lets {
-		if opDef == nil || opDef.Name == nil {
-			continue
-		}
-		sym := opDef.Symbol
-		if sym == nil {
-			sym = &SymbolNode{Name: opDef.Name}
 		}
 		c1 = c1.Cons(sym, opDef)
 	}

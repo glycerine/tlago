@@ -433,9 +433,14 @@ Important implementation patterns:
   substitutions, LET aliases, lazy values, or zero-arity operator definitions.
 - `GetLevelBound` is only a conservative bound. It returns temporal/action
   constants immediately for temporal/action opcodes, treats `ENABLED` as state
-  level, scans bounded-quantifier ranges and arguments, avoids recursive
-  function bodies by binding the function name to `1`, and follows user
+  level, scans bounded-quantifier ranges and arguments, and follows user
   operator definitions, lazy values, `EvaluatingValue`, and `MethodValue`.
+  For `LET`, Java first takes the maximum level of every local definition body,
+  then binds each local operator name to `1` before checking the `IN` body; use
+  the same pattern to avoid recursive level walks and to classify hidden
+  higher-level local definitions conservatively.
+  Recursive functions use the same `name -> 1` sentinel for the recursive
+  function body.
 - `setSource` associates semantic nodes with values for better fingerprint
   exception diagnostics.
 - Errors are not generic exceptions; they carry TLC error codes and source
