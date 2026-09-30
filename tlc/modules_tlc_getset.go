@@ -109,28 +109,28 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 	switch key {
 	case tlcGetDiameter:
 		if checker != nil {
-			return intValueFromInt64(checker.GetProgress()), nil
+			return exactIntValueFromInt64(checker.GetProgress())
 		}
 		if simulator != nil {
 			if worker := simulator.currentWorker(); worker != nil {
-				return intValueFromInt64(worker.GetTraceCnt()), nil
+				return saturatedIntValueFromInt64(worker.GetTraceCnt()), nil
 			}
 			return IntZero, nil
 		}
 	case tlcGetGenerated:
 		if checker != nil {
-			return intValueFromInt64(checker.GetStatesGenerated()), nil
+			return exactIntValueFromInt64(checker.GetStatesGenerated())
 		}
 	case tlcGetDistinct:
 		if checker != nil {
-			return intValueFromUint64(checker.GetDistinctStatesGenerated()), nil
+			return exactIntValueFromUint64(checker.GetDistinctStatesGenerated())
 		}
 	case tlcGetQueue:
 		if checker != nil {
-			return intValueFromInt64(checker.GetStateQueueSize()), nil
+			return exactIntValueFromInt64(checker.GetStateQueueSize())
 		}
 	case tlcGetDuration:
-		return intValueFromDurationSince(TLCStartTime()), nil
+		return exactIntValueFromDurationSince(TLCStartTime())
 	case tlcGetStats:
 		if checker != nil {
 			return checker.GetStatistics(), nil
@@ -470,12 +470,40 @@ func intValueFromDurationSince(start time.Time) *IntValue {
 
 func intValueFromUint64(value uint64) *IntValue {
 	if value > uint64(math.MaxInt32) {
-		return NewIntValue(math.MaxInt32)
+		return IntNegOne
 	}
 	return NewIntValue(int32(value))
 }
 
 func intValueFromInt64(value int64) *IntValue {
+	if int64(int32(value)) != value {
+		return IntNegOne
+	}
+	return NewIntValue(int32(value))
+}
+
+func exactIntValueFromDurationSince(start time.Time) (*IntValue, error) {
+	if start.IsZero() {
+		return IntZero, nil
+	}
+	return exactIntValueFromInt64(int64(time.Since(start).Seconds()))
+}
+
+func exactIntValueFromUint64(value uint64) (*IntValue, error) {
+	if value > uint64(math.MaxInt32) {
+		return nil, newTLCError(ECTLCModuleOverflow, "%d", value)
+	}
+	return NewIntValue(int32(value)), nil
+}
+
+func exactIntValueFromInt64(value int64) (*IntValue, error) {
+	if value > math.MaxInt32 || value < math.MinInt32 {
+		return nil, newTLCError(ECTLCModuleOverflow, "%d", value)
+	}
+	return NewIntValue(int32(value)), nil
+}
+
+func saturatedIntValueFromInt64(value int64) *IntValue {
 	if value > math.MaxInt32 {
 		return NewIntValue(math.MaxInt32)
 	}

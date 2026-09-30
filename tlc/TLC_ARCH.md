@@ -1450,6 +1450,11 @@ queries in Java. Simulation exposes generated trace/state counters through
 `retries`, `actions`, `levelmean`, and `levelvariance`; simulator `"config"`
 has fields `mode="simulate"`, `depth`, `traces`, `deadlock`, `seed`, `aril`,
 `worker`, `install`, and `sched`.
+Java distinguishes direct `TLCGet` counters from stats-record counters:
+`TLCGet("generated")`, `"distinct"`, `"queue"`, and `"duration"` use
+`Math.toIntExact` and report overflow, while stats and coverage records use
+`IntValue.narrowToIntValue`, which returns `-1` when a `long` does not fit in
+TLC's 32-bit integer value.
 Java enables expensive simulator extended statistics through
 `tlc2.tool.Simulator.extendedStatistics` and switches exact counters on with
 `.extendedStatistics.naive`. The Go port supports those property names and
