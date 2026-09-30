@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -64,12 +65,63 @@ func TLCExtCounterExampleWithContext(ctxt *Context) Value {
 }
 
 func TLCExtTrace(state *TLCStateMut) (Value, error) {
+	return TLCExtTraceWithTool(nil, state)
+}
+
+func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
+	_ = tool
 	if state == nil {
 		return EmptyTuple, nil
 	}
 	if !state.AllAssigned() {
-		return nil, newTLCError(ECGeneral, "In evaluating TLCExt!Trace, the state is not completely specified yet")
+		unassigned := state.Unassigned()
+		names := make([]string, 0, len(unassigned))
+		for _, variable := range unassigned {
+			if variable.Name != nil {
+				names = append(names, variable.Name.String())
+			}
+		}
+		plural := ""
+		if len(names) > 1 {
+			plural = "s"
+		}
+		return nil, newTLCError(ECGeneral, "In evaluating TLCExt!Trace, the state is not completely specified yet (variable%s %s undefined).", plural, strings.Join(names, ", "))
 	}
+	if simulator := CurrentSimulator(); simulator != nil {
+		trace := simulator.GetTrace(state)
+		values := make([]Value, 0, trace.Size())
+		for i := 0; i < trace.Size(); i++ {
+			values = append(values, NewRecordValueFromInsMap(trace.At(i).Values()))
+		}
+		return NewTupleValue(values), nil
+	}
+	if state.IsInitial() {
+		return NewTupleValue([]Value{NewRecordValueFromInsMap(state.Values())}), nil
+	}
+	if state.UID == TLCStateInitUID {
+		current, ok := CurrentState()
+		if ok && current != nil {
+			trace := make([]*TLCStateInfo, 0)
+			if current.IsInitial() {
+				trace = append(trace, NewTLCStateInfo(current), NewTLCStateInfo(state))
+			} else if checker := MainChecker(); checker != nil {
+				trace = append(trace, checker.traceInfoPrefix(current)...)
+				trace = appendTraceStateIfMissing(trace, current)
+				trace = appendTraceStateIfMissing(trace, state)
+			}
+			if len(trace) > 0 {
+				return traceInfoTupleValue(trace), nil
+			}
+		}
+	}
+	if checker := MainChecker(); checker != nil {
+		trace := appendTraceStateIfMissing(checker.traceInfoPrefix(state), state)
+		return traceInfoTupleValue(trace), nil
+	}
+	return predecessorTraceTupleValue(state), nil
+}
+
+func predecessorTraceTupleValue(state *TLCStateMut) Value {
 	reversed := make([]Value, 0)
 	for cur := state; cur != nil; cur = cur.Predecessor() {
 		reversed = append(reversed, NewRecordValueFromInsMap(cur.Values()))
@@ -77,7 +129,17 @@ func TLCExtTrace(state *TLCStateMut) (Value, error) {
 	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
 		reversed[i], reversed[j] = reversed[j], reversed[i]
 	}
-	return NewTupleValue(reversed), nil
+	return NewTupleValue(reversed)
+}
+
+func traceInfoTupleValue(trace []*TLCStateInfo) Value {
+	values := make([]Value, 0, len(trace))
+	for _, info := range trace {
+		if info != nil && info.State != nil {
+			values = append(values, NewRecordValueFromInsMap(info.State.Values()))
+		}
+	}
+	return NewTupleValue(values)
 }
 
 func TLCExtTLCDefer(states []*TLCStateMut, callable func() (any, error)) Value {

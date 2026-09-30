@@ -349,13 +349,12 @@ func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state 
 }
 
 func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	_ = tool
 	_ = args
 	_ = con
 	_ = pstate
 	_ = control
 	_ = cm
-	return TLCExtTrace(state)
+	return TLCExtTraceWithTool(tool, state)
 }
 
 func standardCounterExample(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

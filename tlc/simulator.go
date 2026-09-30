@@ -258,6 +258,28 @@ func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 	return NewRecordValue(names, values, false)
 }
 
+func (s *Simulator) GetTrace(state *TLCStateMut) *StateVec {
+	if s == nil || len(s.Workers) == 0 {
+		return NewStateVec(0)
+	}
+	workerID := currentWorkerIDOrZero()
+	if workerID < 0 || workerID >= len(s.Workers) || s.Workers[workerID] == nil {
+		workerID = 0
+	}
+	return s.Workers[workerID].GetTrace(state)
+}
+
+func (s *Simulator) GetUncompressedTrace(state *TLCStateMut) *StateVec {
+	if s == nil || len(s.Workers) == 0 {
+		return NewStateVec(0)
+	}
+	workerID := currentWorkerIDOrZero()
+	if workerID < 0 || workerID >= len(s.Workers) || s.Workers[workerID] == nil {
+		workerID = 0
+	}
+	return s.Workers[workerID].GetUncompressedTrace(state)
+}
+
 func (s *Simulator) GetConfig() Value {
 	if s == nil {
 		return EmptyRecord

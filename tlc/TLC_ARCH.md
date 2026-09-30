@@ -1358,6 +1358,15 @@ counterexample. The Go standard operator is therefore registered as an
 evaluating operator rather than a plain method so it can read the current
 postcondition context.
 
+`TLCExt!Trace` is also an evaluating operator. In simulation mode Java asks the
+active `Simulator` to build the current trace. In model-checking mode Java uses
+the trace file for committed states, but has a special transient-state path when
+the current state still has `TLCState.INIT_UID`: it reads
+`IdThread.currentState`, reconstructs the committed prefix for that predecessor,
+then appends the predecessor and transient state. The Go port mirrors this with
+the goroutine-local current-state scope and the concrete `ModelChecker`
+trace-reconstruction helpers.
+
 Preserve Java override annotations when registering standard operators.
 `TLC!TLCEval` is an evaluating override because it receives the unevaluated
 expression and caches converted constant-level results on the semantic node.
