@@ -22,14 +22,20 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..",
 	},
 	"Integers": {
-		"Int", "-.",
+		"Int", "Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..", "-.",
 	},
 	"Sequences": {
 		"Seq", "BSeq", "Len", "Head", "Tail", "Cons", "Append", "Concat", "\\o",
-		"SubSeq", "SelectInSeq", "SelectSeq",
+		"SubSeq", "SelectInSeq", "SelectSeq", "Insert",
 	},
 	"FiniteSets": {
 		"IsFiniteSet", "Cardinality",
+	},
+	"Strings": {
+		"STRING",
+	},
+	"AnySet": {
+		"ANY", "Any",
 	},
 	"Bags": {
 		"EmptyBag", "IsABag", "BagCardinality", "BagIn", "CopiesIn", "BagCup", "\\oplus",
