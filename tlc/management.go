@@ -76,6 +76,9 @@ func (w *ModelCheckerMXWrapper) GetDistinctStatesGenerated() int64 {
 	if w == nil || w.ModelChecker == nil {
 		return 0
 	}
+	if fpSet, ok := diskFPSetForMX(w.ModelChecker.FPSet); ok {
+		return fpSet.GetFileCnt() + fpSet.GetTblCnt()
+	}
 	return int64(w.ModelChecker.GetDistinctStatesGenerated())
 }
 
@@ -173,6 +176,40 @@ func (w *ModelCheckerMXWrapper) Suspend() {
 func (w *ModelCheckerMXWrapper) Resume() {
 	if w != nil && w.ModelChecker != nil {
 		w.ModelChecker.Resume()
+	}
+}
+
+func diskFPSetForMX(set FPSet) (*DiskFPSet, bool) {
+	switch s := set.(type) {
+	case *DiskFPSet:
+		return s, s != nil
+	case *HeapBasedDiskFPSet:
+		if s == nil || s.DiskFPSet == nil {
+			return nil, false
+		}
+		return s.DiskFPSet, true
+	case *LSBDiskFPSet:
+		if s == nil || s.HeapBasedDiskFPSet == nil || s.DiskFPSet == nil {
+			return nil, false
+		}
+		return s.DiskFPSet, true
+	case *MSBDiskFPSet:
+		if s == nil || s.HeapBasedDiskFPSet == nil || s.DiskFPSet == nil {
+			return nil, false
+		}
+		return s.DiskFPSet, true
+	case *NonCheckpointableDiskFPSet:
+		if s == nil || s.DiskFPSet == nil {
+			return nil, false
+		}
+		return s.DiskFPSet, true
+	case *OffHeapDiskFPSet:
+		if s == nil || s.NonCheckpointableDiskFPSet == nil || s.DiskFPSet == nil {
+			return nil, false
+		}
+		return s.DiskFPSet, true
+	default:
+		return nil, false
 	}
 }
 
