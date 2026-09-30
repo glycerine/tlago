@@ -615,7 +615,7 @@ func (w *SimulationWorker) WriteTraceFile() error {
 	}
 	for i := 0; i < trace.Size(); i++ {
 		state := trace.At(i)
-		if state.GetAction() != nil {
+		if state.HasAction() {
 			if _, err := fmt.Fprintf(file, "\\* %s\n", state.GetAction().GetLocation()); err != nil {
 				return err
 			}
