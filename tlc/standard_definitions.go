@@ -127,6 +127,38 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		}
 		return NDJsonSerialize(path, args[1])
 	})
+	t.defineStandardMethod("IOSerialize", 3, func(args []Value) (Value, error) {
+		path, err := standardStringArg("IOSerialize", args, 1)
+		if err != nil {
+			return nil, err
+		}
+		compress, err := standardBoolArg("IOSerialize", args, 2)
+		if err != nil {
+			return nil, err
+		}
+		return IOUtilsIOSerialize(args[0], path, compress)
+	})
+	t.defineStandardMethod("IODeserialize", 2, func(args []Value) (Value, error) {
+		path, err := standardStringArg("IODeserialize", args, 0)
+		if err != nil {
+			return nil, err
+		}
+		compress, err := standardBoolArg("IODeserialize", args, 1)
+		if err != nil {
+			return nil, err
+		}
+		return IOUtilsIODeserialize(path, compress)
+	})
+	t.defineStandardMethod("Serialize", 3, func(args []Value) (Value, error) { return IOUtilsSerialize(args[0], args[1], args[2]) })
+	t.defineStandardMethod("Deserialize", 2, func(args []Value) (Value, error) { return IOUtilsDeserialize(args[0], args[1]) })
+	t.defineStandardMethod("IOEnv", 0, func(args []Value) (Value, error) { return IOUtilsIOEnv(), nil })
+	t.defineStandardMethod("IOExec", 1, func(args []Value) (Value, error) { return IOUtilsIOExec(args[0]) })
+	t.defineStandardMethod("IOEnvExec", 2, func(args []Value) (Value, error) { return IOUtilsIOEnvExec(args[0], args[1]) })
+	t.defineStandardMethod("IOExecTemplate", 2, func(args []Value) (Value, error) { return IOUtilsIOExecTemplate(args[0], args[1]) })
+	t.defineStandardMethod("IOEnvExecTemplate", 3, func(args []Value) (Value, error) {
+		return IOUtilsIOEnvExecTemplate(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("atoi", 1, func(args []Value) (Value, error) { return IOUtilsAtoi(args[0]) })
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluating("PickSuccessor", 1, standardPickSuccessor)
@@ -208,6 +240,14 @@ func standardIntArg(name string, args []Value, index int) (*IntValue, error) {
 	value, ok := args[index].(*IntValue)
 	if !ok {
 		return nil, newTLCError(ECGeneral, "%s argument %d must be an integer, got %s", name, index+1, args[index])
+	}
+	return value, nil
+}
+
+func standardBoolArg(name string, args []Value, index int) (*BoolValue, error) {
+	value, ok := args[index].(*BoolValue)
+	if !ok {
+		return nil, newTLCError(ECGeneral, "%s argument %d must be a boolean, got %s", name, index+1, args[index])
 	}
 	return value, nil
 }

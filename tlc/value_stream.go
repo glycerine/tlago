@@ -124,6 +124,32 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 			return err
 		}
 		return s.WriteUniqueString(v.Val)
+	case *TupleValue:
+		if err := s.WriteByte(byte(TupleValueKind)); err != nil {
+			return err
+		}
+		if err := s.WriteInt(int32(len(v.Elems))); err != nil {
+			return err
+		}
+		for _, elem := range v.Elems {
+			if err := s.WriteExternal(elem); err != nil {
+				return err
+			}
+		}
+		return nil
+	case *SetEnumValue:
+		if err := s.WriteByte(byte(SetEnumValueKind)); err != nil {
+			return err
+		}
+		if err := s.WriteInt(int32(v.Elems.Len())); err != nil {
+			return err
+		}
+		for i := 0; i < v.Elems.Len(); i++ {
+			if err := s.WriteExternal(v.Elems.At(i)); err != nil {
+				return err
+			}
+		}
+		return nil
 	case *IntervalValue:
 		if err := s.WriteByte(byte(IntervalValueKind)); err != nil {
 			return err
@@ -132,6 +158,23 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 			return err
 		}
 		return s.WriteInt(v.High)
+	case *FcnRcdValue:
+		if err := s.WriteByte(byte(FcnRcdValueKind)); err != nil {
+			return err
+		}
+		domain := v.DomainAsValues()
+		if err := s.WriteInt(int32(len(domain))); err != nil {
+			return err
+		}
+		for i, dval := range domain {
+			if err := s.WriteExternal(dval); err != nil {
+				return err
+			}
+			if err := s.WriteExternal(v.Values[i]); err != nil {
+				return err
+			}
+		}
+		return nil
 	case *RecordValue:
 		if err := s.WriteByte(byte(RecordValueKind)); err != nil {
 			return err
@@ -309,6 +352,10 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 		return NewIntValue(value), nil
 	case StringValueKind:
 		return s.readExternalStringValue()
+	case TupleValueKind:
+		return s.readExternalTupleValue()
+	case SetEnumValueKind:
+		return s.readExternalSetEnumValue()
 	case IntervalValueKind:
 		low, err := s.ReadInt()
 		if err != nil {
@@ -319,6 +366,8 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 			return nil, err
 		}
 		return NewIntervalValue(low, high), nil
+	case FcnRcdValueKind:
+		return s.readExternalFcnRcdValue()
 	case RecordValueKind:
 		return s.readExternalRecordValue()
 	case DummyValueKind:
@@ -334,6 +383,69 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 	default:
 		return nil, fmt.Errorf("cannot unpickle value of kind %d", kind)
 	}
+}
+
+func (s *ValueInputStream) readExternalTupleValue() (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	elems := make([]Value, int(length))
+	for i := range elems {
+		value, err := s.ReadExternal()
+		if err != nil {
+			return nil, err
+		}
+		elems[i] = value
+	}
+	value := NewTupleValue(elems)
+	s.Assign(value, index)
+	return value, nil
+}
+
+func (s *ValueInputStream) readExternalSetEnumValue() (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	elems := make([]Value, int(length))
+	for i := range elems {
+		value, err := s.ReadExternal()
+		if err != nil {
+			return nil, err
+		}
+		elems[i] = value
+	}
+	value := NewSetEnumValue(elems, false)
+	s.Assign(value, index)
+	return value, nil
+}
+
+func (s *ValueInputStream) readExternalFcnRcdValue() (Value, error) {
+	index := s.GetIndex()
+	length, err := s.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	domain := make([]Value, int(length))
+	values := make([]Value, int(length))
+	for i := range domain {
+		dval, err := s.ReadExternal()
+		if err != nil {
+			return nil, err
+		}
+		value, err := s.ReadExternal()
+		if err != nil {
+			return nil, err
+		}
+		domain[i] = dval
+		values[i] = value
+	}
+	value := NewFcnRcdValue(domain, values, false)
+	s.Assign(value, index)
+	return value, nil
 }
 
 func (s *ValueInputStream) readExternalStringValue() (Value, error) {

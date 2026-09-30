@@ -54,6 +54,10 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"_TLCTrace": {
 		"_TLCTraceDeserialize", "_TLCTraceSerialize", "_TLCState",
 	},
+	"IOUtils": {
+		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
+		"IOEnvExec", "IOExecTemplate", "IOEnvExecTemplate", "IOEnv", "atoi",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",

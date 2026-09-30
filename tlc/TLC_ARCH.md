@@ -1264,6 +1264,14 @@ Go mapping:
   representation of the current state directly, avoiding reconstruction through
   `TLCExt!Trace`. The Go port registers `_TLCState` as an `EvaluatingValue`
   with both module-qualified aliases.
+- CommunityModules `IOUtils` is also part of the practical TLC runtime surface.
+  Java implements it in `tlc2.overrides.IOUtils`, not in the core
+  `tlc2.module` package. The Go port keeps it in the same central `tlc`
+  package with concrete functions for `IOSerialize`, `IODeserialize`,
+  text/NDJSON `Serialize`, text `Deserialize`, environment lookup, process
+  execution, template execution, and `atoi`. Compressed Java value streams are
+  an explicit unsupported branch until the Go value stream layer grows gzip
+  framing.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action
