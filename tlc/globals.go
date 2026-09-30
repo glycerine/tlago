@@ -23,6 +23,8 @@ var Globals = struct {
 	PrintDiffsOnly             bool
 	Warn                       bool
 	CheckpointDurationMillis   int64
+	ForceCheckpoint            bool
+	LastCheckpoint             time.Time
 	MainChecker                *ModelChecker
 	Simulator                  *Simulator
 	StartTime                  time.Time
@@ -39,6 +41,7 @@ var Globals = struct {
 	Expand:                     true,
 	Warn:                       true,
 	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
+	LastCheckpoint:             time.Now(),
 	StartTime:                  time.Now(),
 }
 
@@ -106,4 +109,34 @@ func CoverageEnabled() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.CoverageInterval >= 0
+}
+
+func ForceCheckpoint() {
+	Globals.Lock()
+	Globals.ForceCheckpoint = true
+	Globals.Unlock()
+}
+
+func CheckpointExplicitlyEnabled() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.CheckpointDurationMillis > 0 && Globals.CheckpointDurationMillis != DefaultCheckpointDurationMillis
+}
+
+func DoCheckPoint() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	if Globals.ForceCheckpoint {
+		Globals.ForceCheckpoint = false
+		return true
+	}
+	if Globals.CheckpointDurationMillis == 0 {
+		return false
+	}
+	now := time.Now()
+	if now.Sub(Globals.LastCheckpoint) >= time.Duration(Globals.CheckpointDurationMillis)*time.Millisecond {
+		Globals.LastCheckpoint = now
+		return true
+	}
+	return false
 }

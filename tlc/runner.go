@@ -140,6 +140,7 @@ func (t *TLC) applyGlobals() {
 	Globals.Lock()
 	Globals.NumWorkers = t.Workers
 	Globals.StartTime = t.StartTime
+	Globals.LastCheckpoint = t.StartTime
 	if t.CheckpointDurationMillis > 0 {
 		Globals.CheckpointDurationMillis = t.CheckpointDurationMillis
 	}
@@ -155,11 +156,19 @@ func (t *TLC) applyGlobals() {
 func (t *TLC) processModelChecking() (*Result, error) {
 	PrintMessage(ECTLCModeMC)
 	if t.DFIDDepth > 0 {
-		checker := NewDFIDModelChecker(t.Tool, t.MetaDir, t.Deadlock)
+		opts := make([]DFIDModelCheckerOption, 0, 2)
+		if t.FromCheckpoint != "" {
+			opts = append(opts, WithDFIDFromCheckpoint(t.FromCheckpoint))
+		}
+		if t.LiveCheck != nil {
+			opts = append(opts, WithDFIDLiveCheck(t.LiveCheck))
+		}
+		checker := NewDFIDModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 		code, err := checker.ModelCheck()
 		return &Result{
 			ErrorCode:       code,
 			StatesGenerated: checker.StatesGenerated,
+			DistinctStates:  checker.FPSet.Size(),
 			InitialStates:   int64(len(checker.InitStates)),
 		}, err
 	}
