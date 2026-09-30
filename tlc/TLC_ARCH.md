@@ -503,6 +503,10 @@ Port guidance:
 - Preserve short-circuiting for boolean operators.
 - Preserve Java's eager/lazy choices. Lazy values are not optional; they avoid
   explosive enumeration and support recursive/function semantics.
+- In `evalApplImpl`, if a looked-up `LazyValue` is forced with `s1 == null`,
+  Java evaluates the lazy expression directly with the lazy value's saved
+  context and cost model. The cached path is reserved for the `s1 != null`
+  branch through `LazyValue.getValue`.
 - Preserve exact undefined-value behavior. TLC distinguishes "not enumerable",
   "undefined", "not comparable", and ordinary false in user-visible ways.
 

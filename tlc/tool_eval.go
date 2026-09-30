@@ -233,7 +233,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		val := t.Lookup(opNode, c, s0, EvalIsPrimed(control))
 		if lv, ok := val.(*LazyValue); ok {
 			if s1 == nil {
-				return t.Eval(lv.Expr, lv.Con, s0, nil, control, cm)
+				return t.Eval(lv.Expr, lv.Con, s0, nil, control, lv.CM)
 			}
 			return lv.GetValue(t, s0, s1, control)
 		}
