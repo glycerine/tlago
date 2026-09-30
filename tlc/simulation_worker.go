@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -26,6 +27,21 @@ func (e *SimulationWorkerError) Error() string {
 
 func (e *SimulationWorkerError) HasTrace() bool {
 	return e != nil && e.StateTrace != nil && e.StateTrace.Size() > 0
+}
+
+func (e *SimulationWorkerError) GetCounterExample() *CounterExample {
+	if e == nil {
+		return NewEmptyCounterExample()
+	}
+	var liveCounterExample *LiveCounterExampleException
+	if errors.As(e.Err, &liveCounterExample) && liveCounterExample.CounterExample != nil {
+		return liveCounterExample.CounterExample
+	}
+	var liveException *LiveException
+	if errors.As(e.Err, &liveException) && liveException.CounterExample != nil {
+		return liveException.CounterExample
+	}
+	return NewCounterExampleFromStateVec(e.StateTrace)
 }
 
 type SimulationWorkerResult struct {

@@ -8,6 +8,7 @@ import (
 )
 
 var possibleCountsKey = UniqueStringOf("s:_possible")
+var counterExampleContextSymbol = NewSymbolNode("CounterExample")
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
 	if expected == nil {
@@ -51,6 +52,15 @@ func TLCExtToTrace(value Value) (Value, error) {
 
 func TLCExtCounterExample() Value {
 	return NewEmptyCounterExample()
+}
+
+func TLCExtCounterExampleWithContext(ctxt *Context) Value {
+	if ctxt != nil {
+		if value, ok := ctxt.Lookup(counterExampleContextSymbol).(Value); ok {
+			return value
+		}
+	}
+	return TLCExtCounterExample()
 }
 
 func TLCExtTrace(state *TLCStateMut) (Value, error) {

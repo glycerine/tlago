@@ -125,14 +125,11 @@ func (s *Simulator) Simulate() (int, error) {
 	workerResult := s.simulate(initStates)
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()
+	code := s.postSimulationErrorCode(workerResult)
 	if workerResult.IsError() {
-		code := workerResult.Error.Code
-		if code == 0 {
-			code = ECGeneral
-		}
 		return code, workerResult.Error.Err
 	}
-	return NoError, nil
+	return code, nil
 }
 
 func (s *Simulator) Stop() {
@@ -341,6 +338,9 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 			return nil, ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
 		if result, err := s.checkInvariants(state, true); result != NoError || err != nil {
+			if result == ECTLCInvariantViolatedInitial {
+				s.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(state))
+			}
 			return nil, result, err
 		}
 		inModel, err := s.Tool.IsInModel(state)
@@ -381,6 +381,28 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 		}
 	}
 	return result
+}
+
+func (s *Simulator) postSimulationErrorCode(workerResult SimulationWorkerResult) int {
+	errorCode := NoError
+	if workerResult.IsError() {
+		errorCode = workerResult.Error.Code
+		if errorCode == 0 {
+			errorCode = ECGeneral
+		}
+	}
+	pcErrorCode := NoError
+	if s != nil && s.Tool != nil {
+		if workerResult.IsError() && workerResult.Error.HasTrace() {
+			pcErrorCode = s.Tool.CheckPostConditionWithCounterExample(workerResult.Error.GetCounterExample())
+		} else {
+			pcErrorCode = s.Tool.CheckPostCondition()
+		}
+	}
+	if ExitStatusForErrorCode(pcErrorCode) > ExitStatusForErrorCode(errorCode) {
+		return pcErrorCode
+	}
+	return errorCode
 }
 
 func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {

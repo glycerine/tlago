@@ -1052,6 +1052,15 @@ Important behavior:
 - Simulation traces compress finite stuttering steps in `getTrace` and then
   repair predecessor links, while `getUncompressedTrace` preserves the raw
   predecessor chain.
+- After worker completion, Java evaluates postconditions even on simulation
+  errors. If the worker result has a trace, it passes
+  `SimulationWorkerError.getCounterExample()` into
+  `Tool.checkPostConditionWithCounterExample`; otherwise it calls the ordinary
+  postcondition check. The returned error code replaces the worker error only
+  when its mapped exit status is more severe. Initial-state invariant
+  violations are different: Java evaluates postconditions with a one-state
+  `CounterExample` for output side effects and still returns the invariant
+  violation code.
 - Java has `SimulationWorker`, `ExplorationWorker`, `RLSimulationWorker`, and
   `RLActionSimulationWorker`. The Go port keeps one concrete
   `SimulationWorker` struct. The `debug bool` selects Java
@@ -1250,6 +1259,13 @@ conversion helper lives beside other TLC module operators. `TLCExt` includes
 the definition-by-name hook as `TLCExtTLCEvalDefinition`, which looks up a
 zero-arity `OpDefNode` in the concrete `Tool` definition table and evaluates
 its body in the existing context/state pair.
+
+`TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
+conses the current `CounterExample` value into the evaluation context and the
+module operator returns that value when present, otherwise an empty
+counterexample. The Go standard operator is therefore registered as an
+evaluating operator rather than a plain method so it can read the current
+postcondition context.
 
 `Randomization!RandomSubset(k, S)` must follow Java's `EnumerableValue`
 subset enumerator rather than a plain shuffled sample. Java chooses a seed

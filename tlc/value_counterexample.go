@@ -65,6 +65,17 @@ func NewCounterExampleFromInitialState(state *TLCStateMut) *CounterExample {
 	return NewCounterExample([]*TLCStateInfo{NewTLCStateInfo(state)}, UnknownAction, 0, true)
 }
 
+func NewCounterExampleFromStateVec(vec *StateVec) *CounterExample {
+	if vec == nil || vec.Size() == 0 {
+		return NewEmptyCounterExample()
+	}
+	trace := make([]*TLCStateInfo, 0, vec.Size())
+	for i := 0; i < vec.Size(); i++ {
+		trace = append(trace, NewTLCStateInfo(vec.At(i)))
+	}
+	return NewCounterExampleFromTrace(trace)
+}
+
 func (c *CounterExample) ToTrace() Value {
 	if c == nil || c.RecordValue == nil {
 		return EmptyTuple

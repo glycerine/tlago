@@ -164,8 +164,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluating("PickSuccessor", 1, standardPickSuccessor)
 	t.defineStandardMethod("ToTrace", 1, func(args []Value) (Value, error) { return TLCExtToTrace(args[0]) })
-	t.defineStandardMethod("CounterExample", 0, func(args []Value) (Value, error) { return TLCExtCounterExample(), nil })
-	t.defineStandardEvaluating("Trace", 0, standardTrace)
+	t.defineStandardEvaluatingWithMinLevel("CounterExample", 0, 1, standardCounterExample)
+	t.defineStandardEvaluatingWithMinLevel("Trace", 0, 1, standardTrace)
 	t.defineStandardEvaluating("TLCDefer", 1, standardTLCDefer)
 	t.defineStandardMethod("TLCNoOp", 1, func(args []Value) (Value, error) { return TLCExtTLCNoOp(args[0]), nil })
 	t.defineStandardMethod("TLCModelValue", 1, func(args []Value) (Value, error) { return TLCExtTLCModelValue(args[0]) })
@@ -214,7 +214,11 @@ func (t *Tool) defineStandardMethod(name string, arity int, eval func([]Value) (
 }
 
 func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingEvalFunc, aliases ...string) {
-	value := NewEvaluatingValue(name, 0, 100, nil, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	t.defineStandardEvaluatingWithMinLevel(name, arity, 0, eval, aliases...)
+}
+
+func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minLevel int, eval EvaluatingEvalFunc, aliases ...string) {
+	value := NewEvaluatingValue(name, minLevel, 100, nil, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}
@@ -311,6 +315,16 @@ func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStat
 	_ = control
 	_ = cm
 	return TLCExtTrace(state)
+}
+
+func standardCounterExample(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	_ = tool
+	_ = args
+	_ = state
+	_ = pstate
+	_ = control
+	_ = cm
+	return TLCExtCounterExampleWithContext(con), nil
 }
 
 func standardTLCState(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

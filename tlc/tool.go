@@ -682,7 +682,10 @@ func (t *Tool) CheckPostConditionWithCounterExample(value Value) int {
 	if t != nil && t.CheckPostConditionCEFunc != nil {
 		return t.CheckPostConditionCEFunc(t, value)
 	}
-	return t.CheckPostCondition()
+	if value == nil {
+		value = NewEmptyCounterExample()
+	}
+	return t.CheckPostConditionImpl(EmptyContext.Cons(counterExampleContextSymbol, value))
 }
 
 func (t *Tool) GetInvNames() []string {
