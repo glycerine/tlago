@@ -102,6 +102,10 @@ type Tool struct {
 	InitStates         []*TLCStateMut
 	Invariants         []*Action
 	InvariantNames     []string
+	Temporals          []*Action
+	TemporalNames      []string
+	ImpliedTemporals   []*Action
+	ImpliedTempNames   []string
 	ImpliedInits       []*Action
 	ImpliedInitNames   []string
 	ImpliedActions     []*Action
@@ -478,6 +482,34 @@ func (t *Tool) GetInvariants() []*Action {
 		return nil
 	}
 	return t.Invariants
+}
+
+func (t *Tool) GetTemporals() []*Action {
+	if t == nil {
+		return nil
+	}
+	return t.Temporals
+}
+
+func (t *Tool) GetTemporalNames() []string {
+	if t == nil {
+		return nil
+	}
+	return t.TemporalNames
+}
+
+func (t *Tool) GetImpliedTemporals() []*Action {
+	if t == nil {
+		return nil
+	}
+	return t.ImpliedTemporals
+}
+
+func (t *Tool) GetImpliedTemporalNames() []string {
+	if t == nil {
+		return nil
+	}
+	return t.ImpliedTempNames
 }
 
 func (t *Tool) CheckAssumptions() int {

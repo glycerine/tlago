@@ -253,10 +253,10 @@ func tlcSpecRecord(tool *Tool) Value {
 	values := []Value{
 		actionSetValue(tool.GetInitStateSpec()),
 		actionSetValue(tool.GetActions()),
-		EmptySet,
+		actionSetValue(tool.GetTemporals()),
 		actionSetValue(filterInternalActions(tool.GetInvariants())),
 		actionSetValue(tool.GetImpliedInits()),
-		EmptySet,
+		actionSetValue(tool.GetImpliedTemporals()),
 		stateVariablesSetValue(),
 		semanticNodeSetValue(tool.GetActionConstraints()),
 		semanticNodeSetValue(tool.GetModelConstraints()),
