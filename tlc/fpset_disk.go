@@ -25,6 +25,7 @@ const (
 	diskFPSetModeLSB              = "lsb"
 	diskFPSetModeMSB              = "msb"
 	diskFPSetDefaultWorkerReaders = 1
+	diskFPSetBRAFPoolSize         = 5
 )
 
 type DiskFPSet struct {
@@ -66,6 +67,10 @@ type DiskFPSet struct {
 	statesSeen    uint64
 
 	lsbBuff []uint64
+
+	braf      []*BufferedRandomAccessFile
+	brafPool  []*BufferedRandomAccessFile
+	poolIndex int
 }
 
 type HeapBasedDiskFPSet struct{ *DiskFPSet }
@@ -171,6 +176,9 @@ func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet 
 	s.tmpFilename = base + ".tmp"
 	s.fpFilename = base + ".fp"
 	_ = os.WriteFile(s.fpFilename, nil, 0o644)
+	if err := s.openBRAFReaders(numThreads, diskFPSetBRAFPoolSize); err != nil {
+		panic(err)
+	}
 	s.fileCnt = 0
 	s.index = nil
 	s.clearTable()
@@ -296,13 +304,40 @@ func (s *DiskFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	return bv
 }
 
-func (s *DiskFPSet) Close() {}
+func (s *DiskFPSet) Close() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_ = s.closeBRAFReaders()
+}
 
-func (s *DiskFPSet) AddThread() error { return nil }
+func (s *DiskFPSet) AddThread() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+	if err != nil {
+		return err
+	}
+	s.braf = append(s.braf, raf)
+	return nil
+}
 
-func (s *DiskFPSet) IncWorkers(num int) {}
+func (s *DiskFPSet) IncWorkers(num int) {
+	if num <= 0 {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := 0; i < num; i++ {
+		raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+		if err != nil {
+			panic(err)
+		}
+		s.braf = append(s.braf, raf)
+	}
+}
 
 func (s *DiskFPSet) Exit(cleanup bool) error {
+	s.Close()
 	if cleanup && s.metadir != "" {
 		return os.RemoveAll(s.metadir)
 	}
@@ -451,7 +486,7 @@ func (s *DiskFPSet) GetCheckPointMark() int   { return s.checkPointMark }
 func (s *DiskFPSet) GetFlushTime() int64      { return s.flushTime }
 func (s *DiskFPSet) ForceFlush()              { s.forceFlush = true }
 func (s *DiskFPSet) GetLockCnt() int          { return s.lockCnt }
-func (s *DiskFPSet) GetReaderWriterCnt() int  { return s.lockCnt + 5 }
+func (s *DiskFPSet) GetReaderWriterCnt() int  { return len(s.braf) + len(s.brafPool) }
 func (s *DiskFPSet) GetLoadFactor() float64 {
 	if s.maxTblCnt == 0 {
 		return 0
@@ -603,20 +638,27 @@ func (s *DiskFPSet) calculateMidEntry(loVal uint64, hiVal uint64, dfp float64, l
 }
 
 func (s *DiskFPSet) readDiskFP(entry int64) (uint64, error) {
-	file, err := os.Open(s.fpFilename)
+	raf, pooled, err := s.openDiskReader()
 	if err != nil {
 		return 0, err
 	}
-	defer file.Close()
-	if _, err := file.Seek(entry*fpSetLongSize, io.SeekStart); err != nil {
+	if pooled {
+		defer s.poolClose(raf)
+	}
+	seeked, err := raf.Seeek(entry * fpSetLongSize)
+	if err != nil {
 		return 0, err
 	}
-	var buf [8]byte
-	if _, err := io.ReadFull(file, buf[:]); err != nil {
+	if seeked {
+		s.diskSeekCnt++
+	} else {
+		s.diskSeekCache++
+	}
+	value, err := raf.ReadLong()
+	if err != nil {
 		return 0, err
 	}
-	s.diskSeekCnt++
-	return binary.BigEndian.Uint64(buf[:]), nil
+	return uint64(value), nil
 }
 
 func (s *DiskFPSet) flushTable() error {
@@ -758,10 +800,20 @@ func (s *DiskFPSet) mergeNewEntries() error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
+	readerCnt := len(s.braf)
+	poolCnt := len(s.brafPool)
+	if err := s.closeBRAFReaders(); err != nil {
+		return err
+	}
 	if currIndex != indexLen-1 {
+		_ = s.openBRAFReaders(readerCnt, poolCnt)
 		return fmt.Errorf("DiskFPSet index mismatch: got %d want %d", currIndex, indexLen-1)
 	}
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
+		_ = s.openBRAFReaders(readerCnt, poolCnt)
+		return err
+	}
+	if err := s.openBRAFReaders(readerCnt, poolCnt); err != nil {
 		return err
 	}
 	s.index = newIndex
@@ -809,7 +861,101 @@ func (s *DiskFPSet) recoverFileLocked(path string) error {
 	}
 	s.fileCnt = int64(len(values))
 	s.rebuildIndex(values)
+	if err := s.reopenBRAFReaders(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *DiskFPSet) openBRAFReaders(numReaders int, poolSize int) error {
+	if numReaders <= 0 {
+		numReaders = diskFPSetDefaultWorkerReaders
+	}
+	if poolSize <= 0 {
+		poolSize = diskFPSetBRAFPoolSize
+	}
+	s.braf = make([]*BufferedRandomAccessFile, numReaders)
+	for i := range s.braf {
+		raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+		if err != nil {
+			_ = s.closeBRAFReaders()
+			return err
+		}
+		s.braf[i] = raf
+	}
+	s.brafPool = make([]*BufferedRandomAccessFile, poolSize)
+	for i := range s.brafPool {
+		raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+		if err != nil {
+			_ = s.closeBRAFReaders()
+			return err
+		}
+		s.brafPool[i] = raf
+	}
+	s.poolIndex = 0
+	return nil
+}
+
+func (s *DiskFPSet) closeBRAFReaders() error {
+	var firstErr error
+	for i, raf := range s.braf {
+		if err := raf.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+		s.braf[i] = nil
+	}
+	for i, raf := range s.brafPool {
+		if err := raf.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+		s.brafPool[i] = nil
+	}
+	s.braf = nil
+	s.brafPool = nil
+	s.poolIndex = 0
+	return firstErr
+}
+
+func (s *DiskFPSet) reopenBRAFReaders() error {
+	readerCnt := len(s.braf)
+	poolCnt := len(s.brafPool)
+	if readerCnt <= 0 {
+		readerCnt = diskFPSetDefaultWorkerReaders
+	}
+	if poolCnt <= 0 {
+		poolCnt = diskFPSetBRAFPoolSize
+	}
+	if err := s.closeBRAFReaders(); err != nil {
+		return err
+	}
+	return s.openBRAFReaders(readerCnt, poolCnt)
+}
+
+func (s *DiskFPSet) openDiskReader() (*BufferedRandomAccessFile, bool, error) {
+	if len(s.braf) > 0 && s.braf[0] != nil {
+		return s.braf[0], false, nil
+	}
+	if len(s.brafPool) > 0 && s.poolIndex < len(s.brafPool) {
+		raf := s.brafPool[s.poolIndex]
+		s.poolIndex++
+		if raf != nil {
+			return raf, true, nil
+		}
+	}
+	raf, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+	return raf, true, err
+}
+
+func (s *DiskFPSet) poolClose(raf *BufferedRandomAccessFile) {
+	if raf == nil {
+		return
+	}
+	if len(s.brafPool) > 0 && s.poolIndex > 0 {
+		s.poolIndex--
+		s.brafPool[s.poolIndex] = raf
+		return
+	}
+	_ = raf.Close()
 }
 
 func (s *DiskFPSet) rebuildIndex(values []uint64) {

@@ -628,6 +628,10 @@ Port guidance:
 - Preserve checkpoint file semantics for later Java test parity.
 - Disk/off-heap implementations matter for performance and large models; do not
   permanently replace them with maps.
+- `DiskFPSet` keeps persistent `BufferedRandomAccessFile` readers over the
+  backing `.fp` file. After a flush merges into a temporary file and replaces
+  the old backing file, all readers must be closed and reopened, otherwise
+  lookups can keep reading the old file handle.
 
 ## State Queues
 
