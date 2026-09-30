@@ -202,11 +202,11 @@ func (g *DiskGraph) CommitChkpt() error {
 	newName := g.chkptName + ".chkpt.tmp"
 	if _, err := os.Stat(oldName); err == nil {
 		if err := os.Remove(oldName); err != nil {
-			return fmt.Errorf("DiskGraph.commitChkpt: cannot delete %s: %w", oldName, err)
+			return fmt.Errorf("DiskGraph.commitChkpt: cannot delete %s", oldName)
 		}
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("DiskGraph.commitChkpt: cannot delete %s: %w", oldName, err)
+		return fmt.Errorf("DiskGraph.commitChkpt: cannot delete %s", oldName)
 	}
 	return nil
 }

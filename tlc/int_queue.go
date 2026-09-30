@@ -149,10 +149,10 @@ func (q *IntQueue) CommitChkpt() error {
 	oldName := q.chkptName("chkpt")
 	newName := q.chkptName("tmp")
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s: %w", oldName, err)
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s: %w", oldName, err)
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
 	}
 	return nil
 }

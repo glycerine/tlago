@@ -646,10 +646,10 @@ func (w *Worker) CommitChkpt() error {
 	oldChkpt := w.traceFileBase + ".chkpt"
 	newChkpt := w.traceFileBase + ".tmp"
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("Trace.commitChkpt: cannot delete %s: %w", oldChkpt, err)
+		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("Trace.commitChkpt: cannot delete %s: %w", oldChkpt, err)
+		return fmt.Errorf("Trace.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	return nil
 }

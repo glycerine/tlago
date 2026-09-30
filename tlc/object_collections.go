@@ -137,7 +137,7 @@ func (s *MemObjectStack) CommitChkpt() error {
 	oldName := s.filename + ".chkpt"
 	newName := s.filename + ".tmp"
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("MemObjectStack.CommitChkpt: cannot rename %s to %s: %w", newName, oldName, err)
+		return fmt.Errorf("MemObjectStack.commitChkpt: cannot delete %s", oldName)
 	}
 	return nil
 }
@@ -250,10 +250,10 @@ func (q *MemObjectQueue) CommitChkpt() error {
 	oldName := filepath.Join(q.diskdir, "queue.chkpt")
 	newName := filepath.Join(q.diskdir, "queue.tmp")
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemObjectQueue.CommitChkpt: cannot delete %s: %w", oldName, err)
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("MemObjectQueue.CommitChkpt: cannot rename %s to %s: %w", newName, oldName, err)
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
 	}
 	return nil
 }
@@ -503,10 +503,10 @@ func (s *DiskObjectStack) CommitChkpt() error {
 	oldName := s.filePrefix + ".chkpt"
 	newName := s.filePrefix + ".tmp"
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("DiskObjectStack.CommitChkpt: cannot delete %s: %w", oldName, err)
+		return fmt.Errorf("DiskObjectStack.commitChkpt: cannot delete %s", oldName)
 	}
 	if err := os.Rename(newName, oldName); err != nil {
-		return fmt.Errorf("DiskObjectStack.CommitChkpt: cannot rename %s to %s: %w", newName, oldName, err)
+		return fmt.Errorf("DiskObjectStack.commitChkpt: cannot delete %s", oldName)
 	}
 	return nil
 }

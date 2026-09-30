@@ -546,10 +546,10 @@ func (s *MemFPSet) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPSet.CommitChkpt: cannot delete %s: %w", oldChkpt, err)
+		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPSet.CommitChkpt: cannot rename %s to %s: %w", newChkpt, oldChkpt, err)
+		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	return nil
 }
@@ -833,10 +833,10 @@ func (s *MemFPSet1) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPSet1.CommitChkpt: cannot delete %s: %w", oldChkpt, err)
+		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPSet1.CommitChkpt: cannot rename %s to %s: %w", newChkpt, oldChkpt, err)
+		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	return nil
 }
@@ -1076,10 +1076,10 @@ func (s *MemFPSet2) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("MemFPSet2.CommitChkpt: cannot delete %s: %w", oldChkpt, err)
+		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("MemFPSet2.CommitChkpt: cannot rename %s to %s: %w", newChkpt, oldChkpt, err)
+		return fmt.Errorf("MemFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
 	return nil
 }
