@@ -31,6 +31,32 @@ type Worker struct {
 	traceErr              error
 }
 
+type workerNextStateError struct {
+	Err   error
+	State *TLCStateMut
+}
+
+func newWorkerNextStateError(err error, state *TLCStateMut) error {
+	if err == nil {
+		return nil
+	}
+	return &workerNextStateError{Err: err, State: state}
+}
+
+func (e *workerNextStateError) Error() string {
+	if e == nil || e.Err == nil {
+		return ""
+	}
+	return e.Err.Error()
+}
+
+func (e *workerNextStateError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
 func NewWorker(id int) *Worker {
 	return &Worker{
 		ID:                    id,
@@ -183,6 +209,11 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	preNext := w.StatesGenerated
 	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
 	if err != nil {
+		var wrapped *workerNextStateError
+		if errors.As(err, &wrapped) {
+			w.Checker.doNextFailed(curState, wrapped.State, wrapped.Err)
+			return true, wrapped.Err
+		}
 		w.Checker.doNextFailed(curState, nil, err)
 		return true, err
 	}
@@ -242,7 +273,7 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 		w.Halted = true
 	}
 	if err != nil {
-		return nil, err
+		return nil, newWorkerNextStateError(err, succState)
 	}
 	if stop {
 		return w, nil

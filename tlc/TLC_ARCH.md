@@ -1069,6 +1069,10 @@ Port guidance:
 - Preserve Java's `doNextFailed` keep-call-stack polarity. Generic next-state
   failures call `setErrState(cur, succ, true, ec)` in the ordinary case; Java
   only flips that flag for stack overflow, out-of-memory, and assertion errors.
+- Java `Worker.addElement(cur, action, succ)` wraps callback exceptions in a
+  `WrappingRuntimeException` carrying `succ`. Go mirrors this with the concrete
+  `workerNextStateError` struct so outer worker error handling can pass the
+  partially generated successor to `doNextFailed` without adding an interface.
 - Preserve Java's error-time postcondition behavior: init failures with an
   `errState` call `checkPostConditionWithCounterExample(new CounterExample(errState))`,
   and worker `doNextSetErr` paths build a safety counterexample, evaluate aliases
