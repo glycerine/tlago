@@ -66,6 +66,7 @@ type TLCStateMut struct {
 	UID      int64
 	level    int
 	values   []Value
+	sources  []SemanticNode
 	pred     *TLCStateMut
 	action   *Action
 	callable func() (any, error)
@@ -92,10 +93,23 @@ func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
 	return s
 }
 
+func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source SemanticNode) *TLCStateMut {
+	loc := name.VarLoc()
+	if loc >= 0 && loc < len(s.values) {
+		s.values[loc] = value
+		s.ensureSources()
+		s.sources[loc] = source
+	}
+	return s
+}
+
 func (s *TLCStateMut) Unbind(name *UniqueString) *TLCStateMut {
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) {
 		s.values[loc] = nil
+		if s.sources != nil {
+			s.sources[loc] = nil
+		}
 	}
 	return s
 }
@@ -115,11 +129,17 @@ func (s *TLCStateMut) ContainsKey(name *UniqueString) bool {
 func (s *TLCStateMut) Copy() *TLCStateMut {
 	values := make([]Value, len(s.values))
 	copy(values, s.values)
+	var sources []SemanticNode
+	if s.sources != nil {
+		sources = make([]SemanticNode, len(s.sources))
+		copy(sources, s.sources)
+	}
 	return &TLCStateMut{
 		WorkerID: TLCStateInitWorkerID,
 		UID:      TLCStateInitUID,
 		level:    s.level,
 		values:   values,
+		sources:  sources,
 		pred:     s.pred,
 		action:   s.action,
 		callable: s.callable,
@@ -128,6 +148,11 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 
 func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 	values := make([]Value, len(s.values))
+	var sources []SemanticNode
+	if s.sources != nil {
+		sources = make([]SemanticNode, len(s.sources))
+		copy(sources, s.sources)
+	}
 	for i, value := range s.values {
 		if value != nil {
 			values[i] = value.DeepCopy()
@@ -138,6 +163,7 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		UID:      s.UID,
 		level:    s.level,
 		values:   values,
+		sources:  sources,
 		pred:     s.pred,
 		action:   s.action,
 		callable: s.callable,
@@ -169,6 +195,32 @@ func (s *TLCStateMut) DeepNormalize() {
 		if value != nil {
 			value.DeepNormalize()
 		}
+	}
+}
+
+func (s *TLCStateMut) AddCounts(counts *SemanticNodeLongTable) {
+	if s == nil || counts == nil {
+		return
+	}
+	for _, source := range s.sources {
+		if source != nil {
+			counts.Add(source, 1)
+		}
+	}
+}
+
+func (s *TLCStateMut) Sources() []SemanticNode {
+	if s == nil || s.sources == nil {
+		return nil
+	}
+	out := make([]SemanticNode, len(s.sources))
+	copy(out, s.sources)
+	return out
+}
+
+func (s *TLCStateMut) ensureSources() {
+	if s.sources == nil {
+		s.sources = make([]SemanticNode, len(s.values))
 	}
 }
 
