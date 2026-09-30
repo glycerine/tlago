@@ -252,6 +252,12 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) 
 		}
 	}
 	w.Checker.ErrorGraphNode = NewGraphNode(state, tidx)
+	prefix, cycle, err := w.traceFingerprintLasso(state, tidx, com)
+	if err != nil {
+		return false, err
+	}
+	w.Checker.ErrorPrefix = prefix
+	w.Checker.ErrorCycle = cycle
 	return false, nil
 }
 
@@ -270,6 +276,267 @@ func (w *LiveWorker) isStuttering(state uint64, tidx int, loc int64) (bool, erro
 	return false, nil
 }
 
+func (w *LiveWorker) traceFingerprintLasso(state uint64, tidx int, nodeTbl *TableauNodePtrTable) (*LongVec, *LongVec, error) {
+	w.createCache()
+	defer w.destroyCache()
+
+	prefix, err := w.getPath(state, tidx)
+	if err != nil {
+		return nil, nil, err
+	}
+	cycleStack := NewIntStack()
+	curNode, err := w.dfsPostFix(state, tidx, nodeTbl, cycleStack)
+	if err != nil {
+		return nil, nil, err
+	}
+	postfix, err := w.bfsPostFix(state, tidx, nodeTbl, curNode)
+	if err != nil {
+		return nil, nil, err
+	}
+	for cycleStack.Size() > 0 {
+		fp := cycleStack.PopLong()
+		if postfix.IsEmpty() || postfix.LastElement() != fp {
+			postfix.AddElement(fp)
+		}
+		_ = cycleStack.PopInt()
+	}
+	return prefix, postfix, nil
+}
+
+func (w *LiveWorker) dfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrTable, cycleStack *IntStack) (*GraphNode, error) {
+	slen := len(w.Solution.CheckState)
+	alen := len(w.Solution.CheckAction)
+	aeStateRes := make([]bool, len(w.PEM.AEState))
+	aeActionRes := make([]bool, len(w.PEM.AEAction))
+	promiseRes := make([]bool, len(w.Solution.Promises))
+	eaaction := w.PEM.EAAction
+	cnt := len(aeStateRes) + len(aeActionRes) + len(promiseRes)
+
+	nodes := nodeTbl.GetNodes(state)
+	if nodes == nil {
+		return nil, fmt.Errorf("liveness SCC missing start state %d", state)
+	}
+	tloc := nodeTbl.GetIdx(nodes, tidx)
+	if tloc == -1 {
+		return nil, fmt.Errorf("liveness SCC missing start tableau index %d for state %d", tidx, state)
+	}
+	ptr := TableauGetElem(nodes, tloc)
+	TableauSetSeenAt(nodes, tloc)
+	curNode, err := w.getNode(state, tidx, ptr)
+	if err != nil {
+		return nil, err
+	}
+
+	for cnt > 0 {
+		cnt0 := cnt
+	next:
+		for {
+			for i, idx := range w.PEM.AEState {
+				if !aeStateRes[i] && curNode.GetCheckState(idx) {
+					aeStateRes[i] = true
+					cnt--
+				}
+			}
+			if w.Solution.HasTableau() && curNode.TIndex >= 0 && curNode.TIndex < w.Solution.Tableau.Size() {
+				par := curNode.GetTNode(w.Solution.Tableau).Par
+				for i, promise := range w.Solution.Promises {
+					if !promiseRes[i] && par.IsFulfilling(promise) {
+						promiseRes[i] = true
+						cnt--
+					}
+				}
+			}
+			if cnt <= 0 {
+				break
+			}
+
+			var nextState1 uint64
+			var nextState2 uint64
+			nextTidx1 := 0
+			nextTidx2 := 0
+			tloc1 := -1
+			tloc2 := -1
+			var nodes1 []int32
+			var nodes2 []int32
+			hasUnvisitedSucc := false
+			cnt1 := cnt
+			for i := 0; i < curNode.SuccSize(); i++ {
+				nextState := curNode.GetStateFP(i)
+				nextTidx := curNode.GetTIndex(i)
+				nodes = nodeTbl.GetNodes(nextState)
+				tloc = -1
+				if nodes != nil {
+					tloc = nodeTbl.GetIdx(nodes, nextTidx)
+					if tloc == -1 {
+						continue
+					}
+					if !curNode.GetCheckActionAll(slen, alen, i, eaaction) {
+						continue
+					}
+					nextState1 = nextState
+					nextTidx1 = nextTidx
+					tloc1 = tloc
+					nodes1 = nodes
+					for j, idx := range w.PEM.AEAction {
+						if !aeActionRes[j] && curNode.GetCheckAction(slen, alen, i, idx) {
+							aeActionRes[j] = true
+							cnt--
+						}
+					}
+				}
+				if cnt < cnt1 {
+					cycleStack.PushInt(int32(curNode.TIndex))
+					cycleStack.PushLong(int64(curNode.StateFP))
+					nextPtr := TableauGetPtr(TableauGetElem(nodes, tloc))
+					curNode, err = w.getNode(nextState, nextTidx, nextPtr)
+					if err != nil {
+						return nil, err
+					}
+					nodeTbl.ResetElems()
+					break next
+				}
+				if nodes != nil && tloc != -1 && !TableauIsSeenAt(nodes, tloc) {
+					hasUnvisitedSucc = true
+					nextState2 = nextState
+					nextTidx2 = nextTidx
+					tloc2 = tloc
+					nodes2 = nodes
+				}
+			}
+
+			if cnt < cnt0 {
+				cycleStack.PushInt(int32(curNode.TIndex))
+				cycleStack.PushLong(int64(curNode.StateFP))
+				nextPtr := TableauGetPtr(TableauGetElem(nodes1, tloc1))
+				curNode, err = w.getNode(nextState1, nextTidx1, nextPtr)
+				if err != nil {
+					return nil, err
+				}
+				nodeTbl.ResetElems()
+				break
+			}
+
+			for !hasUnvisitedSucc {
+				if cycleStack.Size() < 3 {
+					return nil, fmt.Errorf("liveness DFS postfix could not find unvisited successor")
+				}
+				curState := uint64(cycleStack.PopLong())
+				curTidx := int(cycleStack.PopInt())
+				curPtr := TableauGetPtr(nodeTbl.Get(curState, curTidx))
+				curNode, err = w.getNode(curState, curTidx, curPtr)
+				if err != nil {
+					return nil, err
+				}
+				for i := 0; i < curNode.SuccSize(); i++ {
+					nextState2 = curNode.GetStateFP(i)
+					nextTidx2 = curNode.GetTIndex(i)
+					nodes2 = nodeTbl.GetNodes(nextState2)
+					if nodes2 != nil {
+						tloc2 = nodeTbl.GetIdx(nodes2, nextTidx2)
+						if tloc2 != -1 && !TableauIsSeenAt(nodes2, tloc2) {
+							hasUnvisitedSucc = true
+							break
+						}
+					}
+				}
+			}
+
+			cycleStack.PushInt(int32(curNode.TIndex))
+			cycleStack.PushLong(int64(curNode.StateFP))
+			nextPtr := TableauGetPtr(TableauGetElem(nodes2, tloc2))
+			curNode, err = w.getNode(nextState2, nextTidx2, nextPtr)
+			if err != nil {
+				return nil, err
+			}
+			TableauSetSeenAt(nodes2, tloc2)
+		}
+	}
+	nodeTbl.ResetElems()
+	return curNode, nil
+}
+
+func (w *LiveWorker) bfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrTable, curNode *GraphNode) (*LongVec, error) {
+	slen := len(w.Solution.CheckState)
+	alen := len(w.Solution.CheckAction)
+	eaaction := w.PEM.EAAction
+	postfix := NewLongVecWithCapacity(16)
+	startState := curNode.StateFP
+	startTidx := curNode.TIndex
+
+	if startState == state && startTidx == tidx {
+		return postfix, nil
+	}
+
+	type postfixEntry struct {
+		state uint64
+		ploc  int
+	}
+	queue := make([]postfixEntry, 0)
+	curState := startState
+	ploc := TableauNoParent
+	curLoc := nodeTbl.GetNodesLoc(curState)
+	nodes := nodeTbl.GetNodesByLoc(curLoc)
+	if nodes == nil {
+		return nil, fmt.Errorf("liveness BFS postfix missing start state %d", curState)
+	}
+	TableauSetSeen(nodes)
+
+	for {
+		tloc := TableauStartLoc(nodes)
+		for tloc != TableauEndMarker {
+			curTidx := TableauGetTidx(nodes, tloc)
+			curPtr := TableauGetPtr(TableauGetElem(nodes, tloc))
+			curNode, err := w.getNode(curState, curTidx, curPtr)
+			if err != nil {
+				return nil, err
+			}
+			for j := 0; j < curNode.SuccSize(); j++ {
+				nextState := curNode.GetStateFP(j)
+				nextTidx := curNode.GetTIndex(j)
+				if curState == nextState && curTidx == nextTidx {
+					continue
+				}
+				if !curNode.GetCheckActionAll(slen, alen, j, eaaction) {
+					continue
+				}
+				if nextState == state && nextTidx == tidx {
+					for curState != startState {
+						postfix.AddElement(int64(curState))
+						nodes = nodeTbl.GetNodesByLoc(ploc)
+						if nodes == nil {
+							return nil, fmt.Errorf("liveness BFS postfix missing parent at %d", ploc)
+						}
+						curState = TableauGetKey(nodes)
+						ploc = TableauGetParent(nodes)
+					}
+					postfix.AddElement(int64(startState))
+					return postfix, nil
+				}
+
+				nodes1 := nodeTbl.GetNodes(nextState)
+				if nodes1 != nil && !TableauIsSeen(nodes1) {
+					TableauSetSeen(nodes1)
+					queue = append(queue, postfixEntry{state: nextState, ploc: curLoc})
+				}
+			}
+			tloc = TableauNextLoc(nodes, tloc)
+		}
+		TableauSetParent(nodes, ploc)
+		if len(queue) == 0 {
+			return nil, fmt.Errorf("liveness BFS postfix could not close cycle")
+		}
+		entry := queue[0]
+		queue = queue[1:]
+		curState = entry.state
+		ploc = entry.ploc
+		curLoc = nodeTbl.GetNodesLoc(curState)
+		nodes = nodeTbl.GetNodesByLoc(curLoc)
+		if nodes == nil {
+			return nil, fmt.Errorf("liveness BFS postfix missing queued state %d", curState)
+		}
+	}
+}
+
 func (w *LiveWorker) makeNodePtrTable() error {
 	if w.Checker.TableauDiskGraph != nil {
 		return w.Checker.TableauDiskGraph.MakeNodePtrTbl()
@@ -278,6 +545,36 @@ func (w *LiveWorker) makeNodePtrTable() error {
 		return w.Checker.DiskGraph.MakeNodePtrTbl()
 	}
 	return nil
+}
+
+func (w *LiveWorker) createCache() {
+	if w.Checker.TableauDiskGraph != nil {
+		w.Checker.TableauDiskGraph.CreateCache()
+		return
+	}
+	if w.Checker.DiskGraph != nil {
+		w.Checker.DiskGraph.CreateCache()
+	}
+}
+
+func (w *LiveWorker) destroyCache() {
+	if w.Checker.TableauDiskGraph != nil {
+		w.Checker.TableauDiskGraph.DestroyCache()
+		return
+	}
+	if w.Checker.DiskGraph != nil {
+		w.Checker.DiskGraph.DestroyCache()
+	}
+}
+
+func (w *LiveWorker) getPath(state uint64, tidx int) (*LongVec, error) {
+	if w.Checker.TableauDiskGraph != nil {
+		return w.Checker.TableauDiskGraph.GetPath(state, tidx)
+	}
+	if w.Checker.DiskGraph != nil {
+		return w.Checker.DiskGraph.GetPath(state, tidx)
+	}
+	return nil, fmt.Errorf("liveness worker has no disk graph")
 }
 
 func (w *LiveWorker) initNodes() *LongVec {

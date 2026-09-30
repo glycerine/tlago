@@ -1056,6 +1056,11 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - dispatches to the concrete `DiskGraph` or `TableauDiskGraph` fields on
   `LiveChecker`. There is intentionally no Go `AbstractDiskGraph` interface;
   the helper methods are private concrete switches.
+- ports Java's lasso construction in data form: `GetPath` reconstructs the
+  prefix, `dfsPostFix` greedily finds the component segment satisfying the PEM,
+  and `bfsPostFix` closes the cycle. The current Go fields store the fingerprint
+  `ErrorPrefix` and `ErrorCycle`; human-readable `printTrace` output remains
+  the next output-layer step.
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component

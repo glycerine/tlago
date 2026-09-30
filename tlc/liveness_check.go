@@ -82,6 +82,7 @@ type LiveChecker struct {
 	TableauDiskGraph *TableauDiskGraph
 	ErrorGraphNode   *GraphNode
 	ErrorPrefix      *LongVec
+	ErrorCycle       *LongVec
 	Err              error
 }
 
@@ -541,6 +542,7 @@ func (c *LiveChecker) Reset() {
 	c.LastSize = 0
 	c.ErrorGraphNode = nil
 	c.ErrorPrefix = nil
+	c.ErrorCycle = nil
 }
 
 func graphNodeKey(fp uint64, tidx int) string {
