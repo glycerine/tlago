@@ -466,6 +466,9 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	if !recovered {
 		result, err = mc.DoInit(false)
 		if err != nil || result != NoError {
+			if result != NoError {
+				mc.checkPostConditionAfterInitFailure()
+			}
 			return result, err
 		}
 	}
@@ -691,10 +694,12 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 }
 
 func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
+	if succState != nil {
+		succState.SetPredecessor(curState).SetAction(action)
+	}
 	if !mc.Tool.IsGoodState(succState) {
 		return mc.doNextSetErrParams(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
 	}
-	succState.SetPredecessor(curState).SetAction(action)
 	inModel, err := mc.Tool.IsInModel(succState)
 	if err != nil {
 		mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
@@ -875,6 +880,7 @@ func (mc *ModelChecker) doNextSetErr(curState *TLCStateMut, succState *TLCStateM
 }
 
 func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
+	isConsole := !mc.Done
 	if mc.SetErrState(curState, succState, keep, ec) {
 		if len(params) == 0 {
 			PrintError(ec)
@@ -884,8 +890,69 @@ func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLC
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
 		}
+		mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
 	}
 	return true
+}
+
+func (mc *ModelChecker) checkPostConditionAfterInitFailure() {
+	if mc == nil || mc.Tool == nil {
+		return
+	}
+	if mc.ErrState != nil {
+		mc.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(mc.ErrState))
+		return
+	}
+	mc.Tool.CheckPostCondition()
+}
+
+func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, succState *TLCStateMut, isConsole bool) {
+	if mc == nil || mc.Tool == nil {
+		return
+	}
+	trace := mc.errorTraceInfo(curState, succState)
+	if len(trace) == 0 {
+		mc.Tool.CheckPostCondition()
+		return
+	}
+	trace = mc.aliasErrorTrace(trace)
+	mc.Tool.CheckPostConditionWithCounterExample(NewCounterExample(trace, UnknownAction, 0, isConsole))
+}
+
+func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
+	if succState != nil {
+		if mc.Trace != nil {
+			return mc.Trace.GetTrace(succState)
+		}
+		return NewTLCTrace().GetTrace(succState)
+	}
+	if curState != nil {
+		if mc.Trace != nil {
+			return mc.Trace.GetTrace(curState)
+		}
+		return NewTLCTrace().GetTrace(curState)
+	}
+	return nil
+}
+
+func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {
+	if mc == nil || mc.Tool == nil || len(trace) == 0 {
+		return trace
+	}
+	aliased := append([]*TLCStateInfo(nil), trace...)
+	for i, current := range aliased {
+		successor := current.OriginalState()
+		if i+1 < len(aliased) {
+			successor = aliased[i+1].OriginalState()
+		}
+		alias, err := mc.Tool.EvalAliasInfo(current, successor, func() []*TLCStateInfo {
+			return append([]*TLCStateInfo(nil), aliased[:i]...)
+		})
+		if err == nil && alias != nil {
+			aliased[i] = alias
+		}
+	}
+	return aliased
 }
 
 func (mc *ModelChecker) doNextEvalFailed(curState *TLCStateMut, succState *TLCStateMut, ec int, param string, err error) error {

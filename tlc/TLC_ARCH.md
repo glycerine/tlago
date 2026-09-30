@@ -885,6 +885,11 @@ Port guidance:
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
+- Preserve Java's error-time postcondition behavior: init failures with an
+  `errState` call `checkPostConditionWithCounterExample(new CounterExample(errState))`,
+  and worker `doNextSetErr` paths build a safety counterexample, evaluate aliases
+  over that trace, and call the postcondition hook before returning the safety
+  error. Evaluation failures remain on Java's separate `doNextEvalFailed` path.
 
 ### CheckImpl and CheckImplFile
 
@@ -995,6 +1000,10 @@ Trace reconstruction and aliasing:
 - The Java default `evalAlias` overloads build a prefix supplier from prefix
   and suffix arrays. Go uses concrete `Tool` helper methods that build the same
   supplier closure without introducing a separate interface.
+- Safety-error postcondition traces run alias evaluation over each trace entry
+  before wrapping the trace in `CounterExample`, matching Java's
+  `Worker.doPostCondition`. The `console` field is omitted only when the checker
+  was not already done at the moment the error was accepted.
 
 `ConcurrentTLCTrace` merges per-worker trace fragments to reconstruct:
 
