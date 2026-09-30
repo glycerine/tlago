@@ -36,6 +36,9 @@ Top-level source package sizes:
 - `tlc2/debug`: debugger protocol and stack-frame support.
 - `tlc2/overrides`: Java module override discovery and annotations.
 - `tlc2/pprint`: pretty-printer support used by output paths.
+  Go mirrors this as central concrete helpers in `pretty_print.go`.
+  `ValuesPPR`/`ValuesPPRString` correspond to Java `tlc2.value.Values.ppr`
+  and read the Java property `tlc2.value.Values.width` with default width 80.
 
 Top-level test package sizes:
 
