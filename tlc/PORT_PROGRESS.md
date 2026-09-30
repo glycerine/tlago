@@ -44,6 +44,7 @@
 - Already audited recently; do not replace disk-graph liveness path BFS queues with Go slices: `DiskGraph.GetPath` and `TableauDiskGraph.GetPath` now use `IntQueue` record streams like Java.
 - Already audited recently; do not loosen worker trace checkpoint commit errors: `Worker.commitChkpt` now reports Java's `Trace.commitChkpt: cannot delete ...` text for delete and rename failures.
 - Already audited recently; do not add generic constrained-state writer fallbacks in worker successor processing: Java only writes the specific failed state/action constraints it finds.
+- Already audited recently; do not make DFID worker stack sizing or stop/error handling friendlier than Java: worker arrays are sized from `Globals.DFIDMax`, init exhaustion goes through `DFIDModelChecker.SetStop(1)`, the inner DFS loop is keyed only by `isLeaf`, and panic recovery records a Java-style `GENERAL` worker failure.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.

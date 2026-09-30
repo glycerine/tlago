@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"math"
 )
 
@@ -26,12 +27,6 @@ type DFIDWorker struct {
 
 func NewDFIDWorker(id int, toLevel int, checker *DFIDModelChecker) *DFIDWorker {
 	maxDepth := Globals.DFIDMax
-	if maxDepth < toLevel {
-		maxDepth = toLevel
-	}
-	if maxDepth < 1 {
-		maxDepth = 1
-	}
 	seedSource := NewJavaRandomDefault()
 	rng := NewJavaRandom(seedSource.NextLong())
 	worker := &DFIDWorker{
@@ -111,11 +106,24 @@ func (w *DFIDWorker) Run() {
 	restoreWorkerID := PushCurrentWorkerID(w.ID)
 	defer restoreWorkerID()
 	var curState *TLCStateMut
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			w.Result = ECGeneral
+			w.Err = newTLCError(ECGeneral, "%v", recovered)
+			if w.Checker != nil {
+				w.Checker.SetStop(2)
+				if w.Checker.SetErrState(curState, nil, true, ECGeneral) {
+					PrintError(ECGeneral, fmt.Sprint(recovered))
+				}
+				w.Checker.SetDone()
+			}
+		}
+	}()
 	for w.StopCode == 0 {
 		index := w.getInit()
 		if index == -1 {
-			w.StopCode = 1
 			if w.Checker != nil {
+				w.Checker.SetStop(1)
 				w.Checker.SetDone()
 			}
 			return
@@ -133,7 +141,7 @@ func (w *DFIDWorker) Run() {
 		}
 		w.MoreLevel = w.MoreLevel || !noLeaf
 		w.CurLevel = 1
-		for !isLeaf && w.StopCode == 0 {
+		for !isLeaf {
 			index = w.getNext(curState, cfp)
 			if index == -1 {
 				w.FPSet.SetLeveled(cfp)
