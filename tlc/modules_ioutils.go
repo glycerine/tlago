@@ -2,7 +2,9 @@ package tlc
 
 import (
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -21,9 +23,6 @@ func IOUtilsIOSerialize(value Value, absolutePath *StringValue, compress *BoolVa
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "IOSerialize expected a string path")
 	}
-	if compress != nil && compress.Val {
-		return nil, newTLCError(ECGeneral, "IOSerialize compressed value streams are not yet supported")
-	}
 	path := absolutePath.UnquotedString()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil && filepath.Dir(path) != "." {
 		return nil, err
@@ -36,7 +35,13 @@ func IOUtilsIOSerialize(value Value, absolutePath *StringValue, compress *BoolVa
 	if value != nil {
 		value.FingerPrint(0)
 	}
-	out := NewValueOutputStream(file)
+	var writer io.Writer = file
+	var gzipWriter *gzip.Writer
+	if compress != nil && compress.Val {
+		gzipWriter = gzip.NewWriter(file)
+		writer = gzipWriter
+	}
+	out := NewValueOutputStream(writer)
 	if err := out.WriteExternal(value); err != nil {
 		return nil, err
 	}
@@ -50,15 +55,22 @@ func IOUtilsIODeserialize(absolutePath *StringValue, compress *BoolValue) (Value
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "IODeserialize expected a string path")
 	}
-	if compress != nil && compress.Val {
-		return nil, newTLCError(ECGeneral, "IODeserialize compressed value streams are not yet supported")
-	}
 	file, err := os.Open(absolutePath.UnquotedString())
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
-	return NewValueInputStream(file).ReadExternal()
+	var reader io.Reader = file
+	var gzipReader *gzip.Reader
+	if compress != nil && compress.Val {
+		gzipReader, err = gzip.NewReader(file)
+		if err != nil {
+			return nil, err
+		}
+		defer gzipReader.Close()
+		reader = gzipReader
+	}
+	return NewValueInputStream(reader).ReadExternal()
 }
 
 func IOUtilsSerialize(payload Value, dest Value, options Value) (Value, error) {
