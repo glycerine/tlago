@@ -986,6 +986,10 @@ Implementations:
   `tlc2.tool.ModelChecker.BAQueue` is mirrored by
   `TLAGO_MODEL_CHECKER_BAQUEUE`.
 - `sEnqueue` adds states and wakes waiting workers.
+- The array/slice enqueue overload enqueues every entry and does not filter
+  `null`/`nil`; callers are expected to pass dense state arrays. The `StateVec`
+  overload is different and skips nil elements. Keep this distinction even
+  though it is easy to accidentally collapse the two in Go.
 - `sDequeue` blocks when empty until work appears or all workers are waiting.
 - `finishAll` terminates all workers and wakes main/checkpoint waiters.
 - `suspendAll` stops workers at a barrier for checkpointing.

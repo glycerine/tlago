@@ -145,9 +145,7 @@ func (q *MemStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for _, state := range states {
-		if state != nil {
-			q.enqueueInner(state)
-		}
+		q.enqueueInner(state)
 	}
 	if q.numWaiting > 0 && !q.stop {
 		q.cond.Broadcast()

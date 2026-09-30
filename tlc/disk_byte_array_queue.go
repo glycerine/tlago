@@ -86,9 +86,7 @@ func (q *DiskByteArrayQueue) SEnqueue(state *TLCStateMut) {
 func (q *DiskByteArrayQueue) SEnqueueAll(states []*TLCStateMut) {
 	raw := make([][]byte, 0, len(states))
 	for _, state := range states {
-		if state != nil {
-			raw = append(raw, mustStateToBytes(state))
-		}
+		raw = append(raw, mustStateToBytes(state))
 	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
