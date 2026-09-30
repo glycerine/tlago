@@ -40,7 +40,7 @@ func stateQueueInitialized(queue StateQueue) bool {
 	case *DiskStateQueue:
 		return q.diskdir != ""
 	case *DiskByteArrayQueue:
-		return q.MemStateQueue != nil && q.MemStateQueue.diskdir != ""
+		return q.diskdir != ""
 	case *StateDeque:
 		return q.MemStateQueue != nil && q.MemStateQueue.diskdir != ""
 	default:
@@ -55,9 +55,7 @@ func setStateQueueDir(queue StateQueue, diskdir string) {
 	case *DiskStateQueue:
 		q.diskdir = diskdir
 	case *DiskByteArrayQueue:
-		if q.MemStateQueue != nil {
-			q.MemStateQueue.diskdir = diskdir
-		}
+		q.SetDiskDir(diskdir)
 	case *StateDeque:
 		if q.MemStateQueue != nil {
 			q.MemStateQueue.diskdir = diskdir
@@ -367,14 +365,6 @@ func (q *MemStateQueue) grow() {
 	copy(newStates[copyLen:], old[:q.start])
 	q.states = newStates
 	q.start = 0
-}
-
-type DiskByteArrayQueue struct {
-	*MemStateQueue
-}
-
-func NewDiskByteArrayQueue(metaDir string) *DiskByteArrayQueue {
-	return &DiskByteArrayQueue{MemStateQueue: NewMemStateQueue(metaDir)}
 }
 
 type StateDeque struct {
