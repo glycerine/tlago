@@ -1014,6 +1014,9 @@ Disk queue behavior:
 - `deqBuf` drains then refills through `StatePoolReader`, which can return a
   prefetched full buffer, synchronously read a pending pool file, or fall back
   to the in-memory `enqBuf`.
+- State-pool files are full-buffer writes. Java calls `TLCState.write` on every
+  pool slot and therefore fails on a null entry; Go must not substitute empty
+  states for nil slots because that hides queue corruption.
 - a cleaner thread deletes old pool files.
 - checkpoint includes queue metadata and buffered states.
 

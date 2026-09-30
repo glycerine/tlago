@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"os"
 	"sync"
 )
@@ -234,9 +235,10 @@ func writeStatePoolFile(name string, states []*TLCStateMut) error {
 		return err
 	}
 	out := NewValueOutputStreamWithGlobalCompression(file)
-	for _, state := range states {
+	for i, state := range states {
 		if state == nil {
-			state = NewEmptyState()
+			_ = out.Close()
+			return fmt.Errorf("state pool write encountered nil state at slot %d", i)
 		}
 		if err := state.Write(out); err != nil {
 			_ = out.Close()
