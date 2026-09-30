@@ -159,6 +159,31 @@ func (mc *DFIDModelChecker) PrintSummary(success bool) {
 	PrintMessage(ECTLCStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(fpSize))
 }
 
+func (mc *DFIDModelChecker) Cleanup(success bool, cleanup bool) error {
+	_ = success
+	if mc == nil {
+		return nil
+	}
+	var err error
+	if mc.FPSet != nil {
+		mc.FPSet.Close()
+		if exitErr := mc.FPSet.Exit(cleanup); exitErr != nil && err == nil {
+			err = exitErr
+		}
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil {
+		if closeErr := mc.LiveCheck.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	if mc.AllStateWriter != nil {
+		if closeErr := mc.AllStateWriter.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	return err
+}
+
 func (mc *DFIDModelChecker) SetErrState(curState *TLCStateMut, succState *TLCStateMut, keepCallStack bool, errorCode int) bool {
 	if mc == nil || mc.AbstractChecker == nil {
 		return false

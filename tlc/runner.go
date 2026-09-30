@@ -234,12 +234,16 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		}
 		checker := NewDFIDModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 		code, err := checker.ModelCheck()
-		return &Result{
+		result := &Result{
 			ErrorCode:       code,
 			StatesGenerated: checker.StatesGenerated,
 			DistinctStates:  checker.FPSet.Size(),
 			InitialStates:   int64(len(checker.InitStates)),
-		}, err
+		}
+		if cleanupErr := checker.Cleanup(code == NoError, t.Cleanup); err == nil {
+			err = cleanupErr
+		}
+		return result, err
 	}
 
 	opts := make([]ModelCheckerOption, 0, 5)
