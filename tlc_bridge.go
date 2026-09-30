@@ -286,6 +286,12 @@ func (b *tlcBridge) installModelTargets() {
 	if name := b.cfg.GetView(); name != "" {
 		b.tool.ViewSpec = b.nodeForDefinition(name)
 	}
+	if name := b.cfg.GetPeriodic(); name != "" {
+		b.tool.Periodic = b.nodeForDefinition(name)
+	}
+	if name := b.cfg.GetRLReward(); name != "" {
+		b.tool.RLReward = b.nodeForDefinition(name)
+	}
 	for _, name := range b.cfg.GetPostConditions() {
 		if action := b.actionFromDefinition(name, false); action != nil {
 			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
