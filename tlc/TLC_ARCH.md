@@ -1274,6 +1274,12 @@ sequence `1..n` is routed back to the array writer even under `ToJsonObject`.
 This oddity is source-compatible with Java and must be preserved for
 round-tripping existing specs.
 
+`Sequences!Insert` is part of Java's live `Sequences` surface and performs an
+insertion-sort style scan from the right, calling the supplied binary predicate
+and also requiring the inserted value to compare less than the shifted element.
+The historical `Sequences!Remove` helper is commented out in Java and should
+not be registered unless upstream re-enables it.
+
 `TLCGet("diameter")` is mode-sensitive. In model checking it reports checker
 progress. In simulation Java reads the current `SimulationWorker` trace count,
 returning zero while initial states are generated outside a worker. The Go port

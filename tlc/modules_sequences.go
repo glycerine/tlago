@@ -194,6 +194,45 @@ func SelectSeq(s Value, test Value) (Value, error) {
 	return NewTupleValue(out.ToArray()), nil
 }
 
+func Insert(s Value, v Value, test Value) (Value, error) {
+	seq := asTupleValue(s)
+	if seq == nil {
+		return nil, newTLCError(ECGeneral, "first argument of Insert must be a sequence, got %s", s)
+	}
+	values := make([]Value, len(seq.Elems)+1)
+	idx := len(seq.Elems)
+	for idx > 0 {
+		right := seq.Elems[idx-1]
+		value, err := EvalOperatorValue(test, []Value{v, right}, EvalClear)
+		if err != nil {
+			return nil, err
+		}
+		boolValue, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCError(ECGeneral, "third argument of Insert must be boolean-valued")
+		}
+		cmp, err := v.Compare(right)
+		if err != nil {
+			return nil, err
+		}
+		if boolValue.Val && cmp < 0 {
+			values[idx] = right
+			idx--
+		} else {
+			values[idx] = v
+			break
+		}
+	}
+	if idx == 0 {
+		values[0] = v
+	} else {
+		for i := idx - 1; i >= 0; i-- {
+			values[i] = seq.Elems[i]
+		}
+	}
+	return NewTupleValue(values), nil
+}
+
 func asTupleValue(value Value) *TupleValue {
 	switch v := value.(type) {
 	case *TupleValue:

@@ -59,6 +59,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("SubSeq", 3, func(args []Value) (Value, error) { return SubSeq(args[0], args[1], args[2]) })
 	t.defineStandardMethod("SelectInSeq", 2, func(args []Value) (Value, error) { return SelectInSeq(args[0], args[1]) })
 	t.defineStandardMethod("SelectSeq", 2, func(args []Value) (Value, error) { return SelectSeq(args[0], args[1]) })
+	t.defineStandardMethod("Insert", 3, func(args []Value) (Value, error) { return Insert(args[0], args[1], args[2]) })
 
 	t.defineStandardMethod("EmptyBag", 0, func(args []Value) (Value, error) { return EmptyBag(), nil })
 	t.defineStandardMethod("IsABag", 1, func(args []Value) (Value, error) { return IsABag(args[0]) })
