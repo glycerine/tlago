@@ -1424,6 +1424,11 @@ Port guidance:
 - Normal `TLCTrace` writes the Java-compatible `MC.st`-style file: each record
   is `longNat(predecessorPointer)` followed by the state fingerprint, and
   checkpoints store only the current file pointer and `lastPtr`.
+- Java's static `TLCTrace.writeBehavior(File, TLCState, StateVec)` writes a
+  compressed `ValueOutputStream` containing one non-normalized `TupleValue`.
+  Each tuple element is `RecordValue(TLCState)` for the corresponding trace
+  state. The Go helper `TLCTraceWriteBehavior` mirrors that format so
+  `IOUtils!IODeserialize` can read serialized behaviors.
 - `TLCState` disk serialization follows Java field order: `shortNat(workerId)`,
   `longNat(uid)`, `shortNat(level)`, then every state variable value. It does
   not serialize variable-count headers, nil markers, predecessors, or action

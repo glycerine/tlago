@@ -821,6 +821,39 @@ func (e *TLCTraceEnumerator) Reset(pos int64) {
 	e.index = int(pos)
 }
 
+func TLCTraceWriteBehavior(fileName string, state *TLCStateMut, stateTrace *StateVec) error {
+	_ = state
+	dir := filepath.Dir(fileName)
+	if dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	out := NewValueOutputStreamWithCompression(file, true)
+	size := 0
+	if stateTrace != nil {
+		size = stateTrace.Size()
+	}
+	values := make([]Value, size)
+	for i := 0; i < size; i++ {
+		traceState := stateTrace.At(i)
+		if traceState == nil {
+			_ = out.Close()
+			return newTLCError(ECSystemDiskIOErrorForFile, "%s", fileName)
+		}
+		values[i] = NewRecordValueFromInsMap(traceState.Values())
+	}
+	if err := out.WriteExternal(NewTupleValue(values)); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
+}
+
 func traceFromState(state *TLCStateMut) []*TLCStateInfo {
 	if state == nil {
 		return nil
