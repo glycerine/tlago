@@ -253,11 +253,16 @@ type Action struct {
 	Auxiliary  map[any]any
 }
 
-var UnknownAction = &Action{Name: "UnnamedAction"}
+const unnamedActionName = "UnnamedAction"
+
+var UnknownAction = &Action{Name: unnamedActionName}
 
 func NewAction(pred SemanticNode, con *Context, name string) *Action {
 	if con == nil {
 		con = EmptyContext
+	}
+	if name == "" {
+		name = unnamedActionName
 	}
 	return &Action{Pred: pred, Con: con, Name: name, CM: DoNotRecordCostModel}
 }
@@ -275,12 +280,12 @@ func NewActionFromOpDef(pred SemanticNode, con *Context, opDef *OpDefNode, isIni
 }
 
 func (a *Action) IsNamed() bool {
-	return a != nil && a.Name != ""
+	return a != nil && a.Name != "" && a.Name != unnamedActionName
 }
 
 func (a *Action) GetName() string {
 	if a == nil || a.Name == "" {
-		return "Unknown"
+		return unnamedActionName
 	}
 	return a.Name
 }

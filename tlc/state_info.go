@@ -47,13 +47,16 @@ func AliasTLCStateInfo(state *TLCStateMut, info *TLCStateInfo) *TLCStateInfo {
 }
 
 func actionInfo(state *TLCStateMut, action *Action) any {
-	if state != nil && state.IsInitial() && (action == nil || !action.IsNamed()) {
+	if state != nil && state.IsInitial() && action == nil {
 		return InitialPredicate
+	}
+	if state != nil && state.IsInitial() && !action.IsNamed() {
+		return action.GetLocationNamed(InitialPredicateNoAngle)
 	}
 	if action == nil {
 		return UnknownAction.GetName()
 	}
-	return action.GetName()
+	return action.GetLocation()
 }
 
 func (i *TLCStateInfo) FingerPrint() uint64 {

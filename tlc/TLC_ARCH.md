@@ -1194,6 +1194,11 @@ Trace reconstruction and aliasing:
   first checks the in-memory `KnownStates` registry when present to preserve
   identity for existing trace records, then falls back to Java-style
   regeneration.
+- Unnamed actions carry Java's literal `UnnamedAction` sentinel while
+  `Action.isNamed()` remains false for that sentinel. Printed
+  `TLCStateInfo.info` values are action locations (`<Action ...>` or named
+  variants), and unnamed initial actions use `<Initial predicate ...>` rather
+  than dropping source context.
 - Before replaying trace fingerprints into concrete states, Java snapshots and
   resets `RandomEnumerableValues`; restore the snapshot after replay so specs
   using randomized enumeration regenerate the same path without perturbing the

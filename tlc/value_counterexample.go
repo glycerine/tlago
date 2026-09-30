@@ -120,6 +120,16 @@ func (a *Action) GetLocation() string {
 	if a.IsNamed() {
 		name = a.GetName()
 	}
+	return a.GetLocationNamed(name)
+}
+
+func (a *Action) GetLocationNamed(name string) string {
+	if a == nil {
+		return ""
+	}
+	if name == "" {
+		name = "Action"
+	}
 	params := a.GetParameters()
 	if params.Len() == 0 {
 		return "<" + name + " " + a.GetDefinition() + ">"
