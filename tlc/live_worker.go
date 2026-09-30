@@ -3,9 +3,12 @@ package tlc
 import (
 	"fmt"
 	"runtime"
+	"sync"
 )
 
 const liveWorkerSCCMarker = int64(-42)
+
+var liveWorkerStackMu sync.Mutex
 
 type LiveWorker struct {
 	Tool       *Tool
@@ -66,11 +69,14 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 	eaaction := w.PEM.EAAction
 	slen := len(w.Solution.CheckState)
 	alen := len(w.Solution.CheckAction)
+	liveWorkerStackMu.Lock()
 	dfsStack, err := w.getStack("dfs")
 	if err != nil {
+		liveWorkerStackMu.Unlock()
 		return false, err
 	}
 	comStack, err := w.getStack("com")
+	liveWorkerStackMu.Unlock()
 	if err != nil {
 		return false, err
 	}
