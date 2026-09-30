@@ -8,6 +8,8 @@ var (
 	counterExampleConsole = UniqueStringOf("console")
 	actionRecordName      = UniqueStringOf("name")
 	actionRecordLocation  = UniqueStringOf("location")
+	actionRecordContext   = UniqueStringOf("context")
+	actionRecordParams    = UniqueStringOf("parameters")
 )
 
 type CounterExample struct {
@@ -130,9 +132,31 @@ func (a *Action) GetLocation() string {
 }
 
 func (a *Action) ToRecordValue() *RecordValue {
-	return NewRecordValue(
-		[]*UniqueString{actionRecordName, actionRecordLocation},
-		[]Value{NewStringValue(a.GetName()), NewStringValue(a.GetLocation())},
-		false,
-	)
+	return actionRecordValue(a, nil, nil)
+}
+
+func actionRecordValue(a *Action, extraName *UniqueString, extraValue Value) *RecordValue {
+	if a == nil {
+		a = UnknownAction
+	}
+	names := []*UniqueString{actionRecordName, actionRecordLocation}
+	values := []Value{NewStringValue(a.GetName()), NewStringValue(a.GetLocation())}
+	if extraName != nil {
+		names = append(names, extraName)
+		values = append(values, extraValue)
+	}
+	params := a.GetParameters()
+	if params.Len() != 0 {
+		paramNames := make([]Value, 0, params.Len())
+		contextNames := make([]*UniqueString, 0, params.Len())
+		contextValues := make([]Value, 0, params.Len())
+		for name, value := range params.All() {
+			paramNames = append(paramNames, NewStringValueFromUnique(name))
+			contextNames = append(contextNames, name)
+			contextValues = append(contextValues, value)
+		}
+		names = append(names, actionRecordContext, actionRecordParams)
+		values = append(values, NewRecordValue(contextNames, contextValues, false), NewTupleValue(paramNames))
+	}
+	return NewRecordValue(names, values, false)
 }

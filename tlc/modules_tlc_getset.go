@@ -430,11 +430,7 @@ func actionRecordValueWithCoverage(action *Action, coverage Value) Value {
 	if action == nil {
 		action = UnknownAction
 	}
-	return NewRecordValue(
-		[]*UniqueString{actionRecordName, actionRecordLocation, tlcGetCoverage},
-		[]Value{NewStringValue(action.GetName()), NewStringValue(action.GetLocation()), coverage},
-		false,
-	)
+	return actionRecordValue(action, tlcGetCoverage, coverage)
 }
 
 func filterInternalActions(actions []*Action) []*Action {

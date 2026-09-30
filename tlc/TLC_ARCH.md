@@ -1291,6 +1291,11 @@ Important behavior:
   `RecordValue(TLCState, Action)` constructor: each tuple element is a record
   whose first field is `_action`, followed by the state's variables. The
   non-simulation trace constructors remain state-record only.
+- Java `RecordValue(Action)` emits `name`, structured `location`, and, for
+  parameterized action instances, `context` and `parameters` in parameter
+  order. Go mirrors the parameter fields on the concrete `Action` record helper
+  and keeps the current string location until the SANY semantic nodes carry the
+  Java `Location` coordinates.
 - Preserve the Java `INextStateFunctor` contract: plain `addElement(TLCState)`
   is unsupported for simulation workers; only `setElement` and the
   action-tagged successor `addElement(s, a, t)` paths are valid.

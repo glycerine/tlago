@@ -253,7 +253,7 @@ type Action struct {
 	Auxiliary  map[any]any
 }
 
-var UnknownAction = &Action{Name: "Unknown"}
+var UnknownAction = &Action{Name: "UnnamedAction"}
 
 func NewAction(pred SemanticNode, con *Context, name string) *Action {
 	if con == nil {
