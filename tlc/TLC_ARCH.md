@@ -1745,6 +1745,14 @@ The Go port mirrors this with `CoverageInterval`, `CoverageFlags`,
 `TLAGO_COVERAGE` is accepted as the Go-friendly environment spelling of the
 Java bitmask property.
 
+Variable coverage is a separate count-distinct path. During cost-model
+creation, Java installs a `CountDistinct.SyncedHyperLogLog(10)` on every state
+variable declaration. `Worker.addElement` updates those counters only when an
+unseen in-model successor is enqueued, and coverage reporting plus
+`TLCGet("variables")` expose the resulting distinct-value estimate. The Go port
+stores the same counter on each concrete `StateVariable` and updates it at the
+same successor enqueue point in `processSuccessorForWorker`.
+
 Port guidance:
 
 - Do not wire coverage into the first evaluator pass unless the code shape

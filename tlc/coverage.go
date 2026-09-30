@@ -273,6 +273,7 @@ func CreateCoverageCostModels(tool *Tool) {
 	if tool == nil {
 		return
 	}
+	InitializeStateVariableCoverageCounters()
 	creator := newCoverageCreator(tool)
 	init := tool.GetInitStateSpec()
 	for _, action := range init {
@@ -331,7 +332,13 @@ func reportCoverage(tool *Tool) {
 	}
 	PrintMessage(ECTLCCoverageStart)
 	for _, variable := range StateVariables() {
-		PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.Name.String(), "0")
+		if variable.CountDistinct == nil {
+			continue
+		}
+		count := variable.CountDistinct.Count()
+		if count >= 0 {
+			PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.Name.String(), fmt.Sprint(count))
+		}
 	}
 	for _, action := range tool.GetInitStateSpec() {
 		if action != nil {

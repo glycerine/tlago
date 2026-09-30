@@ -419,11 +419,18 @@ func stateVariablesSetValue() Value {
 	}
 	values := make([]Value, 0, len(vars))
 	for _, variable := range vars {
-		values = append(values, NewRecordValue(
-			[]*UniqueString{actionRecordName},
-			[]Value{NewStringValueFromUnique(variable.Name)},
-			false,
-		))
+		names := []*UniqueString{actionRecordName}
+		fields := []Value{NewStringValueFromUnique(variable.Name)}
+		if variable.CountDistinct != nil {
+			coverage := NewRecordValue(
+				[]*UniqueString{tlcGetDistinct},
+				[]Value{intValueFromInt64(variable.CountDistinct.Count())},
+				false,
+			)
+			names = append(names, tlcGetCoverage)
+			fields = append(fields, coverage)
+		}
+		values = append(values, NewRecordValue(names, fields, false))
 	}
 	return NewSetEnumValue(values, false)
 }

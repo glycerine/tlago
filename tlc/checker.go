@@ -1171,6 +1171,7 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 	}
 	if inModel && unseen {
 		mc.StateQueue.SEnqueue(succState)
+		CountStateVariableCoverage(succState)
 		return false, true, nil
 	}
 	return false, false, nil

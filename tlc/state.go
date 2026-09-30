@@ -12,7 +12,8 @@ const (
 )
 
 type StateVariable struct {
-	Name *UniqueString
+	Name          *UniqueString
+	CountDistinct *CountDistinct
 }
 
 var (
@@ -36,6 +37,29 @@ func StateVariables() []StateVariable {
 	out := make([]StateVariable, len(stateVariables))
 	copy(out, stateVariables)
 	return out
+}
+
+func InitializeStateVariableCoverageCounters() {
+	for i := range stateVariables {
+		stateVariables[i].CountDistinct = NewCountDistinctSyncedHyperLogLog(10)
+	}
+}
+
+func CountStateVariableCoverage(state *TLCStateMut) {
+	if state == nil || !CoverageVariableEnabled() {
+		return
+	}
+	for i := range stateVariables {
+		counter := stateVariables[i].CountDistinct
+		if counter == nil {
+			continue
+		}
+		var value Value
+		if i < len(state.values) {
+			value = state.values[i]
+		}
+		counter.AddValue(value)
+	}
 }
 
 func SetStateSymmetryPermutations(perms []*MVPerm) {
