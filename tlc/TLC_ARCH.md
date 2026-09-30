@@ -199,6 +199,9 @@ Port guidance:
   `Visualization.STUTTERING` hint; an ordinary self-loop is still an ordinary
   edge. Keep those decisions on the concrete `StateWriter` rather than adding
   writer interfaces.
+- DOT transition colors are assigned by action name, but transition labels use
+  `Action.getInvocationSignature()`, so parameterized action instances print
+  their concrete values on edges.
 - `DotStateWriter` fingerprints and ranks the original states but labels
   initial and successor nodes with `state.evalStateLevelAlias()`. Successor
   tooltips remain the original state text. The local `ModelCheckerMXWrapper`

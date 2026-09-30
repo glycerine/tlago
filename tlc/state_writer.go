@@ -203,7 +203,7 @@ func (w *StateWriter) dotTransitionLabel(action *Action, reason ...SemanticNode)
 	}
 	actionName := ""
 	if w.actionLabels && action != nil {
-		actionName = dotEscape(action.GetName())
+		actionName = dotEscape(strings.TrimSpace(action.GetInvocationSignature()))
 	}
 	if len(reason) > 0 && reason[0] != nil {
 		actionName += "\\n" + dotEscape(fmt.Sprint(reason[0]))
