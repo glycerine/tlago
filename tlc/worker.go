@@ -644,7 +644,7 @@ func (w *Worker) CommitChkpt() error {
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	if err := os.Rename(newChkpt, oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err := os.Rename(newChkpt, oldChkpt); err != nil {
 		return err
 	}
 	return nil
