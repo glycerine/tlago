@@ -66,6 +66,8 @@ type SimulationWorkerStatistics struct {
 	Extended        bool
 	TraceID         int64
 	workerActionIDs *InsMap[*UniqueString, int]
+	distinctStates  *CountDistinct
+	distinctValues  *InsMap[*UniqueString, *CountDistinct]
 }
 
 func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorkerStatistics {
@@ -94,6 +96,16 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 		DistinctValues:  NewInsMap[*UniqueString, int64](),
 		ActionCounts:    NewInsMap[*UniqueString, int64](),
 		workerActionIDs: NewInsMap[*UniqueString, int](),
+		Extended:        simulatorPropertyBool("tlc2.tool.Simulator.extendedStatistics", "TLAGO_SIMULATOR_EXTENDED_STATISTICS"),
+		distinctValues:  NewInsMap[*UniqueString, *CountDistinct](),
+	}
+	if stats.Extended {
+		stats.distinctStates = newSimulationCountDistinct(8)
+		for _, variable := range StateVariables() {
+			if variable.Name != nil {
+				stats.distinctValues.Set(variable.Name, newSimulationCountDistinct(10))
+			}
+		}
 	}
 	for i := range stats.ActionStats {
 		stats.ActionStats[i] = make([]int64, size)
@@ -114,18 +126,35 @@ func (s *SimulationWorkerStatistics) CollectPreSuccessor(state *TLCStateMut, act
 	}
 	s.NumGenStates.Add(1)
 	if s.Extended && next != nil {
-		s.DistinctStates++
+		if s.distinctStates != nil {
+			s.distinctStates.AddState(next)
+			s.DistinctStates = s.distinctStates.Count()
+		}
 		for _, variable := range StateVariables() {
-			if variable.Name == nil || next.Lookup(variable.Name) == nil {
+			if variable.Name == nil {
 				continue
 			}
-			cur := s.DistinctValues.Get(variable.Name)
-			s.DistinctValues.Set(variable.Name, cur+1)
+			value := next.Lookup(variable.Name)
+			if value == nil {
+				continue
+			}
+			counter := s.distinctValues.Get(variable.Name)
+			if counter != nil {
+				counter.AddValue(value)
+				s.DistinctValues.Set(variable.Name, counter.Count())
+			}
 		}
 		actionName := state.GetAction().GetName()
 		actionKey := UniqueStringOf(actionName)
 		s.ActionCounts.Set(actionKey, s.ActionCounts.Get(actionKey)+1)
 	}
+}
+
+func newSimulationCountDistinct(bits int) *CountDistinct {
+	if simulatorPropertyBool("tlc2.tool.Simulator.extendedStatistics.naive", "TLAGO_SIMULATOR_EXTENDED_STATISTICS_NAIVE") {
+		return NewCountDistinctNaive()
+	}
+	return NewCountDistinctHyperLogLog(bits)
 }
 
 func (s *SimulationWorkerStatistics) CollectPostSuccessor(state *TLCStateMut, action *Action, next *TLCStateMut) {
@@ -208,6 +237,9 @@ func (s *SimulationWorkerStatistics) GetDistinctStates() Value {
 	if s == nil || !s.Extended {
 		return NewIntValue(-1)
 	}
+	if s.distinctStates != nil {
+		return intValueFromInt64(s.distinctStates.Count())
+	}
 	return intValueFromInt64(s.DistinctStates)
 }
 
@@ -216,8 +248,16 @@ func (s *SimulationWorkerStatistics) GetDistinctValues() Value {
 		return NewIntValue(-1)
 	}
 	values := NewInsMap[*UniqueString, Value]()
-	for key, value := range s.DistinctValues.All() {
-		values.Set(key, intValueFromInt64(value))
+	for _, variable := range StateVariables() {
+		if variable.Name == nil {
+			continue
+		}
+		counter := s.distinctValues.Get(variable.Name)
+		count := s.DistinctValues.Get(variable.Name)
+		if counter != nil {
+			count = counter.Count()
+		}
+		values.Set(variable.Name, intValueFromInt64(count))
 	}
 	return NewRecordValueFromInsMap(values)
 }

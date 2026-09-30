@@ -1304,6 +1304,11 @@ queries in Java. Simulation exposes generated trace/state counters through
 `retries`, `actions`, `levelmean`, and `levelvariance`; simulator `"config"`
 has fields `mode="simulate"`, `depth`, `traces`, `deadlock`, `seed`, `aril`,
 `worker`, `install`, and `sched`.
+Java enables expensive simulator extended statistics through
+`tlc2.tool.Simulator.extendedStatistics` and switches exact counters on with
+`.extendedStatistics.naive`. The Go port supports those property names and
+`TLAGO_SIMULATOR_EXTENDED_STATISTICS(_NAIVE)` aliases, using HyperLogLog bits 8
+for distinct states and 10 for distinct variable values as Java does.
 
 Integer `TLCGet(i)`/`TLCSet(i, v)` and named registers (`"s:..."`) are
 current-worker local in Java when evaluated on an `IdThread`; they do not use
