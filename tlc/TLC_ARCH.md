@@ -1367,6 +1367,15 @@ then appends the predecessor and transient state. The Go port mirrors this with
 the goroutine-local current-state scope and the concrete `ModelChecker`
 trace-reconstruction helpers.
 
+`TLCExt!PickSuccessor` is synchronized and deliberately interactive. Before
+prompting, Java accepts already-seen BFS successor fingerprints because TLC
+checks action constraints before it filters old states. When the guard is
+`FALSE` and the successor state is complete, Java identifies the action from the
+extended successor state or regenerates next states to find the first matching
+action, then reads `stdin` commands: yes/blank accepts, `n` rejects, `s` prints
+both states, `d` prints the state diff, and `e` marks the successor explored in
+BFS mode.
+
 Preserve Java override annotations when registering standard operators.
 `TLC!TLCEval` is an evaluating override because it receives the unevaluated
 expression and caches converted constant-level results on the semantic node.

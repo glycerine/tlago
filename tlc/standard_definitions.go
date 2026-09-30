@@ -341,11 +341,13 @@ func standardAssertError(tool *Tool, args []SemanticNode, con *Context, state *T
 }
 
 func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	pickSuccessorMu.Lock()
+	defer pickSuccessorMu.Unlock()
 	guard, err := tool.Eval(args[0], con, state, pstate, control, cm)
 	if err != nil {
 		return nil, err
 	}
-	return TLCExtPickSuccessor(guard, state, pstate)
+	return TLCExtPickSuccessor(tool, guard, state, pstate)
 }
 
 func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

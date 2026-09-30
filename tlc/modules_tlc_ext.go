@@ -1,7 +1,9 @@
 package tlc
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 var possibleCountsKey = UniqueStringOf("s:_possible")
 var counterExampleContextSymbol = NewSymbolNode("CounterExample")
+var pickSuccessorMu sync.Mutex
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
 	if expected == nil {
@@ -28,7 +31,12 @@ func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*Bool
 	return BoolFalse, nil
 }
 
-func TLCExtPickSuccessor(guard Value, curState *TLCStateMut, succState *TLCStateMut) (*BoolValue, error) {
+func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succState *TLCStateMut) (*BoolValue, error) {
+	if checker := MainChecker(); checker != nil && checker.FPSet != nil && succState != nil {
+		if checker.FPSet.Contains(succState.FingerPrint()) {
+			return BoolTrue, nil
+		}
+	}
 	boolGuard, ok := guard.(*BoolValue)
 	if !ok {
 		return nil, newTLCError(ECGeneral, "PickSuccessor guard must be boolean, got %s", guard)
@@ -36,11 +44,72 @@ func TLCExtPickSuccessor(guard Value, curState *TLCStateMut, succState *TLCState
 	if boolGuard.Val {
 		return BoolTrue, nil
 	}
-	if succState == nil || !succState.AllAssigned() {
+	if succState == nil || succState == EmptyState || !succState.AllAssigned() {
 		return BoolTrue, nil
 	}
-	_ = curState
-	return BoolTrue, nil
+	action, err := pickSuccessorAction(tool, curState, succState)
+	if err != nil {
+		return nil, err
+	}
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		level := 0
+		if curState != nil {
+			level = curState.Level()
+		}
+		fmt.Fprintf(os.Stdout, "Extend behavior of length %d with a %q step [%s]? (Yes/no/explored/states/diff):\n", level, actionName(action), action)
+		_ = os.Stdout.Sync()
+		nextLine, err := reader.ReadString('\n')
+		if err != nil && nextLine == "" {
+			return nil, err
+		}
+		nextLine = strings.TrimRight(nextLine, "\r\n")
+		if strings.TrimSpace(nextLine) == "" || strings.HasPrefix(strings.ToLower(nextLine), "y") {
+			return BoolTrue, nil
+		}
+		switch nextLine[0] {
+		case 's':
+			curText := ""
+			if curState != nil {
+				curText = strings.TrimSpace(curState.String())
+			}
+			fmt.Fprintf(os.Stdout, "%s\n~>\n%s\n", curText, strings.TrimSpace(succState.String()))
+		case 'd':
+			if curState != nil {
+				fmt.Fprint(os.Stdout, succState.StringForVariables(curState))
+			} else {
+				fmt.Fprint(os.Stdout, succState.String())
+			}
+		case 'e':
+			if checker := MainChecker(); checker != nil && checker.FPSet != nil {
+				checker.FPSet.Put(succState.FingerPrint())
+				return BoolTrue, nil
+			}
+			fmt.Fprintln(os.Stdout, "Marking a state explored is unsupported by the current TLC mode. Is TLC running in simulation mode?")
+		case 'n':
+			return BoolFalse, nil
+		}
+	}
+}
+
+func pickSuccessorAction(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) (*Action, error) {
+	if succState != nil && succState.HasAction() {
+		return succState.GetAction(), nil
+	}
+	if tool != nil && curState != nil && succState != nil {
+		restoreCurrentState := PushCurrentState(curState)
+		defer restoreCurrentState()
+		for _, action := range tool.GetActions() {
+			nextStates, err := tool.GetNextStates(action, curState)
+			if err != nil {
+				return nil, err
+			}
+			if nextStates.Contains(succState) {
+				return action, nil
+			}
+		}
+	}
+	return UnknownAction, nil
 }
 
 func TLCExtToTrace(value Value) (Value, error) {
