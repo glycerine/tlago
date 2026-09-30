@@ -240,12 +240,18 @@ func (v *ModelValue) KindString() string { return v.KindStringFor(v.Kind()) }
 func (v *ModelValue) Compare(other Value) (int, error) {
 	if v.Type == typedModelValueUntypedCodeUnit {
 		if o, ok := other.(*ModelValue); ok {
+			if o.Type != typedModelValueUntypedCodeUnit {
+				return -1, nil
+			}
 			return v.Val.Compare(o.Val), nil
 		}
 		return -1, nil
 	}
 	if o, ok := other.(*ModelValue); ok {
-		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
+		if o.Type == typedModelValueUntypedCodeUnit {
+			return 1, nil
+		}
+		if o.Type == v.Type {
 			return v.Val.Compare(o.Val), nil
 		}
 		return 0, v.unsupported("attempted to compare the differently-typed model values %s and %s", v, o)
