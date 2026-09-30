@@ -479,8 +479,8 @@ func (s *TLCStateMut) HasAction() bool {
 }
 
 func (s *TLCStateMut) GetAction() *Action {
-	if s == nil || s.action == nil {
-		return UnknownAction
+	if s == nil {
+		return nil
 	}
 	return s.action
 }
