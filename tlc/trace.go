@@ -107,41 +107,55 @@ func (t *TLCTrace) traceFileName() string {
 }
 
 func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
+	_, err := t.WriteState(nil, fp, state, nil)
+	return err
+}
+
+func (t *TLCTrace) WriteState(predecessor *TLCStateMut, fp uint64, state *TLCStateMut, action *Action) (int64, error) {
 	if t == nil {
-		return nil
+		return TLCStateInitUID, nil
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	uid := int64(len(t.records))
+	prevUID := int64(1)
+	if predecessor != nil {
+		prevUID = predecessor.UID
+	}
 	if err := t.ensureTraceRAFLocked(); err != nil {
-		return err
+		return TLCStateInitUID, err
 	}
 	if t.raf != nil {
 		ptr, err := t.raf.GetFilePointer()
 		if err != nil {
-			return err
+			return TLCStateInitUID, err
 		}
 		uid = ptr
-		if err := t.raf.WriteLongNat(1); err != nil {
-			return err
+		if err := t.raf.WriteLongNat(prevUID); err != nil {
+			return TLCStateInitUID, err
 		}
 		if err := t.raf.WriteLong(int64(fp)); err != nil {
-			return err
+			return TLCStateInitUID, err
 		}
 		t.lastPtr = ptr
 	}
 	t.records = append(t.records, TraceRecord{
-		PreviousUID: 1,
+		PreviousUID: prevUID,
 		WorkerID:    0,
 		FP:          fp,
 		State:       state,
+		Action:      action,
 	})
-	state.WorkerID = 0
-	state.UID = uid
-	if state.Level() > t.level {
-		t.level = state.Level()
+	if state != nil {
+		state.WorkerID = 0
+		state.UID = uid
+		state.SetPredecessor(predecessor)
+		state.SetAction(action)
+		if state.Level() > t.level {
+			t.level = state.Level()
+		}
 	}
-	return nil
+	return uid, nil
 }
 
 func (t *TLCTrace) MirrorInitStateForWorker(workerID int, state *TLCStateMut, fp uint64, uid int64) {

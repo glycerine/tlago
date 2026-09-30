@@ -655,7 +655,7 @@ func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*State
 			state := newStates[i].At(index)
 			fp := uint64(newFps[i].ElementAt(index))
 			if t.Server.Trace != nil {
-				if err := t.Server.Trace.WriteNextState(state.Predecessor(), fp, state, state.GetAction()); err != nil {
+				if _, err := t.Server.Trace.WriteState(state.Predecessor(), fp, state, state.GetAction()); err != nil {
 					t.handleRunError(err, stateQueue)
 					return
 				}
