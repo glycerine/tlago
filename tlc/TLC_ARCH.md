@@ -834,7 +834,9 @@ Main fields:
 - `theFPSet`: reachable fingerprints.
 - `theStateQueue`: frontier.
 - `trace`: concurrent trace for error reconstruction.
-- `workers`: exploration workers.
+- `workers`: exploration workers. Java allocates these in the constructor,
+  before initial-state generation: worker 0 keeps the normal/debug-capable tool
+  and later workers use `tool.noDebug()`.
 - `liveCheck`: liveness subsystem.
 - `errState`, `predErrState`, `errorCode`, `done`, `keepCallStack`.
 
@@ -849,7 +851,8 @@ High-level flow in `modelCheckImpl`:
 3. If no actions exist:
    - success when queue is empty,
    - otherwise error for states with no next action.
-4. Run worker exploration with `runTLC`.
+4. Run worker exploration with `runTLC`, which starts all pre-created workers
+   and joins them after the shared queue reaches completion or an error.
 5. During exploration:
    - workers dequeue states,
    - generate all action successors,
@@ -952,7 +955,9 @@ Important behavior:
 
 Worker loop:
 
-1. `sDequeue` current state.
+1. `sDequeue` current state from the shared blocking queue. A `null`/`nil`
+   dequeue means all workers are waiting and the frontier is empty; the worker
+   sets checker completion and finishes the queue.
 2. Set thread-local current state.
 3. Allocate `SetOfStates` if liveness/debug mode needs successor collection.
 4. Ask `Tool` to generate successors through the functor callback.

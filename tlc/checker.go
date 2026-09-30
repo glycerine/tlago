@@ -371,8 +371,26 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	if mc.LiveCheck == nil {
 		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	}
+	mc.initWorkers()
 	SetMainChecker(mc)
 	return mc
+}
+
+func (mc *ModelChecker) initWorkers() {
+	if mc == nil || len(mc.Workers) > 0 {
+		return
+	}
+	workerCount := NumWorkers()
+	if workerCount < 1 {
+		workerCount = 1
+	}
+	for id := 0; id < workerCount; id++ {
+		workerTool := mc.Tool
+		if id > 0 && workerTool != nil {
+			workerTool = workerTool.NoDebug()
+		}
+		NewModelCheckingWorker(id, mc, workerTool)
+	}
 }
 
 func (mc *ModelChecker) Stop() {
@@ -604,30 +622,36 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
 	}
-	worker := NewModelCheckingWorker(len(mc.Workers), mc, mc.Tool)
-	for {
-		if mc.Done {
-			return mc.ErrorCode, nil
-		}
-		curState := mc.StateQueue.Dequeue()
-		if curState == nil {
-			mc.SetDone()
-			return mc.ErrorCode, nil
-		}
-		if maxDepth > 0 && curState.Level() >= maxDepth {
+	if mc.StateQueue == nil {
+		return ECGeneral, newTLCError(ECGeneral, "model checker has no state queue")
+	}
+	mc.initWorkers()
+	if mc.FPSet != nil {
+		mc.FPSet.IncWorkers(len(mc.Workers))
+	}
+	for _, worker := range mc.Workers {
+		if worker == nil {
 			continue
 		}
-		stop, err := worker.DoNext(curState)
-		if err != nil {
-			if mc.ErrorCode != NoError {
-				return mc.ErrorCode, err
-			}
-			return ECGeneral, err
+		worker.MaxDepth = maxDepth
+		worker.Start()
+	}
+	var joinErr error
+	for _, worker := range mc.Workers {
+		if worker == nil {
+			continue
 		}
-		if stop {
-			return mc.ErrorCode, nil
+		if err := worker.Join(); err != nil && joinErr == nil {
+			joinErr = err
 		}
 	}
+	if joinErr != nil {
+		if mc.ErrorCode != NoError {
+			return mc.ErrorCode, joinErr
+		}
+		return ECGeneral, joinErr
+	}
+	return mc.ErrorCode, nil
 }
 
 func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {

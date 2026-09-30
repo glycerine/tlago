@@ -15,6 +15,9 @@ type Worker struct {
 	Halted                bool
 	MaxLevel              int
 	UnseenSuccessorStates int
+	MaxDepth              int
+	done                  chan struct{}
+	Err                   error
 }
 
 func NewWorker(id int) *Worker {
@@ -46,10 +49,85 @@ func (w *Worker) MyGetID() int {
 	return w.ID
 }
 
-func (w *Worker) Start() {}
+func (w *Worker) Start() {
+	if w == nil {
+		return
+	}
+	if w.done != nil {
+		select {
+		case <-w.done:
+		default:
+			return
+		}
+	}
+	w.Halted = false
+	w.Err = nil
+	w.done = make(chan struct{})
+	go func() {
+		defer close(w.done)
+		w.Err = w.Run()
+	}()
+}
 
 func (w *Worker) Join() error {
-	return nil
+	if w == nil || w.done == nil {
+		return nil
+	}
+	<-w.done
+	return w.Err
+}
+
+func (w *Worker) Run() (err error) {
+	if w == nil {
+		return newTLCError(ECGeneral, "worker is nil")
+	}
+	var curState *TLCStateMut
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = newTLCError(ECGeneral, "%v", recovered)
+			if w.Checker != nil {
+				if w.Checker.SetErrState(curState, nil, true, ECGeneral) {
+					PrintError(ECGeneral, fmt.Sprint(recovered))
+				}
+				if w.Checker.StateQueue != nil {
+					w.Checker.StateQueue.FinishAll()
+				}
+			}
+		}
+	}()
+	if w.Tool == nil {
+		return newTLCError(ECGeneral, "worker has no tool")
+	}
+	if w.Checker == nil {
+		return newTLCError(ECGeneral, "worker has no model checker")
+	}
+	if w.Checker.StateQueue == nil {
+		return newTLCError(ECGeneral, "model checker has no state queue")
+	}
+	for {
+		curState = w.Checker.StateQueue.SDequeue()
+		if curState == nil {
+			w.Checker.SetDone()
+			w.Checker.StateQueue.FinishAll()
+			return nil
+		}
+		if w.MaxDepth > 0 && curState.Level() >= w.MaxDepth {
+			continue
+		}
+		stop, runErr := w.DoNext(curState)
+		if runErr != nil {
+			if w.Checker.StateQueue != nil {
+				w.Checker.StateQueue.FinishAll()
+			}
+			return runErr
+		}
+		if stop {
+			if w.Checker.StateQueue != nil {
+				w.Checker.StateQueue.FinishAll()
+			}
+			return nil
+		}
+	}
 }
 
 func (w *Worker) NextStateFunctor() *NextStateFunctor {
