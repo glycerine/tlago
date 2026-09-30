@@ -552,6 +552,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 		return all, nil
 	}))
 	if err != nil {
+		s.printInitialStateException(nil, err)
 		return nil, ECGeneral, err
 	}
 	s.StatesGenerated += int64(all.Size())
@@ -564,6 +565,10 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 			return nil, ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
 		if result, err := s.checkInvariants(state, true); result != NoError || err != nil {
+			if err != nil {
+				code := s.printInitialStateException(state, err)
+				return nil, code, err
+			}
 			if result == ECTLCInvariantViolatedInitial {
 				s.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(state))
 			}
@@ -571,7 +576,8 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 		}
 		inModel, err := s.Tool.IsInModel(state)
 		if err != nil {
-			return nil, ECGeneral, err
+			code := s.printInitialStateException(state, err)
+			return nil, code, err
 		}
 		if inModel {
 			filtered.Add(state)
@@ -581,6 +587,24 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 		return nil, ECTLCNoStatesSatisfyingInitAndConstraint, nil
 	}
 	return filtered, NoError, nil
+}
+
+func (s *Simulator) printInitialStateException(state *TLCStateMut, err error) int {
+	message := ""
+	if err != nil {
+		message = err.Error()
+	}
+	if message == "" {
+		message = fmt.Sprintf("%T", err)
+	}
+	code := ECGeneral
+	if state != nil {
+		code = PrintError(ECTLCInitialState, message, state.String())
+	} else {
+		code = PrintError(ECGeneral, message)
+	}
+	s.PrintSummary()
+	return code
 }
 
 func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
