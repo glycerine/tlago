@@ -1606,9 +1606,11 @@ Go mapping:
   `tlc2.module` package. The Go port keeps it in the same central `tlc`
   package with concrete functions for `IOSerialize`, `IODeserialize`,
   text/NDJSON `Serialize`, text `Deserialize`, environment lookup, process
-  execution, template execution, and `atoi`. Compressed Java value streams are
-  an explicit unsupported branch until the Go value stream layer grows gzip
-  framing.
+  execution, template execution, and `atoi`. Explicit IOUtils compression uses
+  gzip-wrapped Java value streams. Generic value-stream file paths that
+  correspond to Java's `ValueOutputStream(File/String)` and
+  `ValueInputStream(File/String)` honor the global gzip flag; raw
+  `DataOutputStream`/random-access graph files remain uncompressed like Java.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

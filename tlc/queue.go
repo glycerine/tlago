@@ -269,15 +269,15 @@ func (q *MemStateQueue) BeginChkpt() error {
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	out := NewValueOutputStreamWithGlobalCompression(file)
 	if err := out.WriteInt(int32(q.len)); err != nil {
-		file.Close()
+		_ = out.Close()
 		return err
 	}
 	index := q.start
 	for i := int64(0); i < q.len; i++ {
 		if err := q.states[index].Write(out); err != nil {
-			file.Close()
+			_ = out.Close()
 			return err
 		}
 		index++
@@ -310,10 +310,14 @@ func (q *MemStateQueue) Recover() error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
+	in, err := NewValueInputStreamWithGlobalCompression(file)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
 	length, err := in.ReadInt()
 	if err != nil {
-		file.Close()
+		_ = in.Close()
 		return err
 	}
 	if int(length) > len(q.states) {
@@ -327,7 +331,7 @@ func (q *MemStateQueue) Recover() error {
 	for i := int32(0); i < length; i++ {
 		state := NewEmptyState()
 		if err := state.Read(in); err != nil {
-			file.Close()
+			_ = in.Close()
 			return err
 		}
 		q.states[i] = state

@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -13,12 +14,51 @@ type ValueOutputStream struct {
 	handles map[uintptr]int
 }
 
-func NewValueOutputStream(out io.Writer) *ValueOutputStream {
-	stream := &ValueOutputStream{out: out, handles: make(map[uintptr]int)}
-	if closer, ok := out.(io.Closer); ok {
-		stream.closer = closer
+type orderedCloser []io.Closer
+
+func closeInOrder(closers ...io.Closer) io.Closer {
+	out := make(orderedCloser, 0, len(closers))
+	for _, closer := range closers {
+		if closer != nil {
+			out = append(out, closer)
+		}
 	}
-	return stream
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+func (c orderedCloser) Close() error {
+	var first error
+	for _, closer := range c {
+		if err := closer.Close(); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
+}
+
+func NewValueOutputStream(out io.Writer) *ValueOutputStream {
+	return NewValueOutputStreamWithCompression(out, false)
+}
+
+func NewValueOutputStreamWithCompression(out io.Writer, compress bool) *ValueOutputStream {
+	writer := out
+	var closer io.Closer
+	if c, ok := out.(io.Closer); ok {
+		closer = c
+	}
+	if compress {
+		gzipWriter := gzip.NewWriter(out)
+		writer = gzipWriter
+		closer = closeInOrder(gzipWriter, closer)
+	}
+	return &ValueOutputStream{out: writer, closer: closer, handles: make(map[uintptr]int)}
+}
+
+func NewValueOutputStreamWithGlobalCompression(out io.Writer) *ValueOutputStream {
+	return NewValueOutputStreamWithCompression(out, UseGZIP())
 }
 
 func (s *ValueOutputStream) WriteShort(value int16) error {
@@ -302,6 +342,27 @@ func NewValueInputStream(in io.Reader) *ValueInputStream {
 		stream.closer = closer
 	}
 	return stream
+}
+
+func NewValueInputStreamWithCompression(in io.Reader, compressed bool) (*ValueInputStream, error) {
+	reader := in
+	var closer io.Closer
+	if c, ok := in.(io.Closer); ok {
+		closer = c
+	}
+	if compressed {
+		gzipReader, err := gzip.NewReader(in)
+		if err != nil {
+			return nil, err
+		}
+		reader = gzipReader
+		closer = closeInOrder(gzipReader, closer)
+	}
+	return &ValueInputStream{in: reader, closer: closer}, nil
+}
+
+func NewValueInputStreamWithGlobalCompression(in io.Reader) (*ValueInputStream, error) {
+	return NewValueInputStreamWithCompression(in, UseGZIP())
 }
 
 func (s *ValueInputStream) ReadShort() (int16, error) {

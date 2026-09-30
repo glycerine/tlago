@@ -381,8 +381,9 @@ func TLCTraceSerialize(value Value, absolutePath *StringValue) (Value, error) {
 	defer file.Close()
 
 	value.FingerPrint(0)
-	out := NewValueOutputStream(file)
+	out := NewValueOutputStreamWithCompression(file, true)
 	if err := out.WriteExternal(value); err != nil {
+		_ = out.Close()
 		return nil, err
 	}
 	if err := out.Close(); err != nil {
@@ -403,7 +404,12 @@ func TLCTraceDeserialize(absolutePath *StringValue) (Value, error) {
 		return nil, err
 	}
 	defer file.Close()
-	return NewValueInputStream(file).ReadExternal()
+	in, err := NewValueInputStreamWithCompression(file, true)
+	if err != nil {
+		return nil, err
+	}
+	defer in.Close()
+	return in.ReadExternal()
 }
 
 func TLCTraceState(state *TLCStateMut) Value {

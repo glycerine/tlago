@@ -83,6 +83,36 @@ func TestValueStreamsCompactNaturalEncodings(t *testing.T) {
 	}
 }
 
+func TestValueStreamsGlobalCompressionRoundTrip(t *testing.T) {
+	old := UseGZIP()
+	SetUseGZIP(true)
+	defer SetUseGZIP(old)
+
+	var buf bytes.Buffer
+	out := NewValueOutputStreamWithGlobalCompression(&buf)
+	if err := out.WriteExternal(NewStringValue("compressed-value-stream")); err != nil {
+		t.Fatalf("WriteExternal returned error: %v", err)
+	}
+	if err := out.Close(); err != nil {
+		t.Fatalf("Close returned error: %v", err)
+	}
+	if got := buf.Bytes(); len(got) < 2 || got[0] != 0x1f || got[1] != 0x8b {
+		t.Fatalf("compressed stream missing gzip header: %x", got[:min(len(got), 2)])
+	}
+
+	in, err := NewValueInputStreamWithGlobalCompression(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("NewValueInputStreamWithGlobalCompression returned error: %v", err)
+	}
+	value, err := in.ReadExternal()
+	if err != nil {
+		t.Fatalf("ReadExternal returned error: %v", err)
+	}
+	if !mustValueEqual(value, NewStringValue("compressed-value-stream")) {
+		t.Fatalf("roundtrip value = %v", value)
+	}
+}
+
 func TestValueInputStreamBlindReadStringValue(t *testing.T) {
 	const text = "Hippopotomonstrosesquippedaliophobia"
 	var buf bytes.Buffer

@@ -212,7 +212,11 @@ func readStatePoolFile(name string, states []*TLCStateMut) error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
+	in, err := NewValueInputStreamWithGlobalCompression(file)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
 	defer in.Close()
 	for i := range states {
 		state := NewEmptyState()
@@ -229,7 +233,7 @@ func writeStatePoolFile(name string, states []*TLCStateMut) error {
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	out := NewValueOutputStreamWithGlobalCompression(file)
 	for _, state := range states {
 		if state == nil {
 			state = NewEmptyState()

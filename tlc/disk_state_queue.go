@@ -207,7 +207,7 @@ func (q *DiskStateQueue) BeginChkpt() error {
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
+	out := NewValueOutputStreamWithGlobalCompression(file)
 	if err := out.WriteLongNat(q.len); err != nil {
 		_ = out.Close()
 		return err
@@ -261,7 +261,11 @@ func (q *DiskStateQueue) Recover() error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
+	in, err := NewValueInputStreamWithGlobalCompression(file)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
 	defer in.Close()
 	length, err := in.ReadLongNat()
 	if err != nil {
