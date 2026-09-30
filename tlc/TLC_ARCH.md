@@ -1092,6 +1092,10 @@ Port guidance:
 - Preserve Java's `AbstractChecker.runTLC` coordinator role: workers do state
   generation, while the checker thread periodically suspends the queue for
   liveness/checkpoint work and then resumes or finishes the workers.
+- Positive `runTLC(depth)` limits are enforced by that coordinator after
+  progress reporting: if the reported level exceeds `depth`, it finishes the
+  shared state queue. Workers must not skip next-state generation locally based
+  on depth; that would change Java's scheduling, trace, and liveness handoff.
 - `_PERIODIC` is part of that coordinator loop. Java treats a configured
   periodic expression as sufficient reason to suspend workers, evaluates it
   after any liveness work and before checkpointing, and returns

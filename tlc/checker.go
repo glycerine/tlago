@@ -926,6 +926,9 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 	if mc.StateQueue == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no state queue")
 	}
+	if maxDepth > 0 && maxDepth < 2 {
+		return NoError, nil
+	}
 	mc.initWorkers()
 	if mc.FPSet != nil {
 		mc.FPSet.IncWorkers(len(mc.Workers))
@@ -934,10 +937,9 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 		if worker == nil {
 			continue
 		}
-		worker.MaxDepth = maxDepth
 		worker.Start()
 	}
-	result, joinErr := mc.waitForWorkersWithPeriodicWork()
+	result, joinErr := mc.waitForWorkersWithPeriodicWork(maxDepth)
 	if result != NoError {
 		return result, joinErr
 	}
@@ -950,7 +952,7 @@ func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
 	return mc.ErrorCode, nil
 }
 
-func (mc *ModelChecker) waitForWorkersWithPeriodicWork() (int, error) {
+func (mc *ModelChecker) waitForWorkersWithPeriodicWork(maxDepth int) (int, error) {
 	done := make(chan error, 1)
 	go func() {
 		done <- mc.joinWorkers()
@@ -976,6 +978,12 @@ func (mc *ModelChecker) waitForWorkersWithPeriodicWork() (int, error) {
 					return result, err
 				}
 				return result, joinErr
+			}
+			if maxDepth > 0 && mc.GetProgress() > int64(maxDepth) {
+				if mc.StateQueue != nil {
+					mc.StateQueue.FinishAll()
+				}
+				return NoError, <-done
 			}
 			timer.Reset(interval)
 		}

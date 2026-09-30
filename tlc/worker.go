@@ -22,7 +22,6 @@ type Worker struct {
 	Halted                bool
 	MaxLevel              int
 	UnseenSuccessorStates int
-	MaxDepth              int
 	done                  chan struct{}
 	Err                   error
 	traceFileBase         string
@@ -154,9 +153,6 @@ func (w *Worker) Run() (err error) {
 			w.Checker.SetDone()
 			w.Checker.StateQueue.FinishAll()
 			return nil
-		}
-		if w.MaxDepth > 0 && curState.Level() >= w.MaxDepth {
-			continue
 		}
 		stop, runErr := w.DoNext(curState)
 		if runErr != nil {
