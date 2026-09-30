@@ -1000,6 +1000,19 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - Java stores graphs on disk for scale.
 - state/action check results are cached as booleans/bitvectors.
 
+`AbstractDiskGraph` responsibilities:
+
+- keep two files per solution, `nodes_N` for serialized `GraphNode` successor
+  records and `ptrs_N` for `(fingerprint, tableau-index, node-file-pointer)`.
+- write duplicate nodes without rewriting older records; the in-memory pointer
+  table determines the distinguishable graph size.
+- rebuild the pointer table from `ptrs_N` before SCC search or recovery.
+- treat values below `MAX_PTR` as node-file pointers and values in
+  `[MAX_PTR, MAX_LINK]` as SCC link numbers.
+- support checkpoint/recover by saving and restoring the current file pointers.
+- provide optional fixed-size node caching, invariant checks over all graph
+  records, and DOT/string traversal helpers for debugging.
+
 ### Checking
 
 `LiveCheck.check0`:
