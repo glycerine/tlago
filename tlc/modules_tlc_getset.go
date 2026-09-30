@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -513,6 +514,27 @@ func tlcSetSystemProperty(name string, value string) {
 	if name == toolProbabilisticProperty {
 		Globals.Probabilistic = javaBooleanProperty(value)
 	}
+	if name == tlcGlobalsCoverageProperty {
+		if parsed, ok := javaIntProperty(value); ok {
+			Globals.CoverageFlags = parsed
+		}
+	}
+	if name == tlcProgressIntervalProperty {
+		if seconds, ok := javaIntProperty(value); ok {
+			if seconds < 0 {
+				seconds = -seconds
+			}
+			if seconds < 1 {
+				seconds = 1
+			}
+			Globals.ProgressIntervalMillis = int64(seconds) * 1000
+		}
+	}
+	if name == tlcGlobalsCheckpointProperty {
+		if millis, ok := javaIntProperty(value); ok {
+			Globals.CheckpointDurationMillis = int64(millis)
+		}
+	}
 }
 
 func actionCompositionEnabled() bool {
@@ -524,6 +546,11 @@ func actionCompositionEnabled() bool {
 
 func javaBooleanProperty(value string) bool {
 	return strings.EqualFold(value, "true")
+}
+
+func javaIntProperty(value string) (int, bool) {
+	parsed, err := strconv.Atoi(strings.TrimSpace(value))
+	return parsed, err == nil
 }
 
 func toolProbabilisticEnabled() bool {

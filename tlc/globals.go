@@ -12,6 +12,9 @@ const DefaultCheckpointDurationMillis = (30 * 60 * 1000) + 42
 const DefaultProgressIntervalMillis = 60 * 1000
 const CoverageIndent = '|'
 const MetaRoot = "states"
+const tlcProgressIntervalProperty = "tlc2.TLC.progressInterval"
+const tlcGlobalsCheckpointProperty = "tlc2.TLCGlobals.chkpt"
+const tlcGlobalsCoverageProperty = "tlc2.TLCGlobals.coverage"
 
 var Globals = struct {
 	sync.Mutex
@@ -53,13 +56,13 @@ var Globals = struct {
 	LivenessGraphSizeThreshold: 0.1,
 	LivenessRatio:              0.2,
 	LNCheck:                    "default",
-	ProgressIntervalMillis:     DefaultProgressIntervalMillis,
+	ProgressIntervalMillis:     initialProgressIntervalMillis(),
 	CoverageInterval:           -1,
 	CoverageFlags:              initialCoverageFlags(),
 	DFIDMax:                    -1,
 	Expand:                     true,
 	Warn:                       true,
-	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
+	CheckpointDurationMillis:   initialCheckpointDurationMillis(),
 	MetaDir:                    "",
 	LastCheckpoint:             time.Now(),
 	SuppressedMessages:         NewInsMap[int, bool](),
@@ -248,7 +251,7 @@ func CoverageAnyEnabled() bool {
 }
 
 func initialCoverageFlags() int {
-	for _, key := range []string{"tlc2.TLCGlobals.coverage", "TLAGO_COVERAGE"} {
+	for _, key := range []string{tlcGlobalsCoverageProperty, "TLAGO_COVERAGE"} {
 		value := os.Getenv(key)
 		if value == "" {
 			continue
@@ -259,6 +262,35 @@ func initialCoverageFlags() int {
 		}
 	}
 	return 0
+}
+
+func initialProgressIntervalMillis() int64 {
+	if seconds, ok := initialIntProperty(tlcProgressIntervalProperty); ok {
+		if seconds < 0 {
+			seconds = -seconds
+		}
+		if seconds < 1 {
+			seconds = 1
+		}
+		return int64(seconds) * 1000
+	}
+	return DefaultProgressIntervalMillis
+}
+
+func initialCheckpointDurationMillis() int64 {
+	if millis, ok := initialIntProperty(tlcGlobalsCheckpointProperty); ok {
+		return int64(millis)
+	}
+	return DefaultCheckpointDurationMillis
+}
+
+func initialIntProperty(name string) (int, bool) {
+	value := os.Getenv(name)
+	if value == "" {
+		return 0, false
+	}
+	parsed, err := strconv.Atoi(value)
+	return parsed, err == nil
 }
 
 func ProgressInterval() time.Duration {

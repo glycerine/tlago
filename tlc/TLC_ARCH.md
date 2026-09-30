@@ -132,6 +132,12 @@ Port guidance:
   `TLCGlobals.Version` feeds management beans, `TLCGet("revision")`, and
   `TLCGet("config")` install fields; Go should route all of those through the
   same helper functions.
+- Preserve Java's global property defaults and live property updates:
+  `tlc2.TLC.progressInterval` is seconds coerced with `max(abs(x), 1)`,
+  `tlc2.TLCGlobals.chkpt` is milliseconds, and
+  `tlc2.TLCGlobals.coverage` is the coverage bitmask. Go initializes these
+  from the process environment and updates them when the Java-style `-D`
+  parser or `TLCSet("-D...")` writes the same property names.
 - Preserve exit-status categories and message codes, because the Java tests
   assert message recorder events rather than only stdout text.
 - Mirror `handleParameters` as a real library parser, not only as command
