@@ -145,6 +145,7 @@ const (
 	ECTLCConfigMissingInit                               = 2231
 	ECTLCConfigMissingNext                               = 2232
 	ECTLCConfigIDMustNotBeConstant                       = 2233
+	ECTLCLiveFormulaTautology                            = 2253
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
 	ECTLCCheckingTemporalPropsEnd                        = 2267
@@ -493,6 +494,8 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 3 {
 			return fmt.Sprintf("Evaluating an expression of the form %s when s is not a %s:\n%s", params[0], params[1], params[2])
 		}
+	case ECTLCLiveFormulaTautology:
+		return "Temporal formula is a tautology (its negation is unsatisfiable)."
 	}
 	if len(params) == 0 {
 		return fmt.Sprintf("%d", code)
@@ -529,7 +532,8 @@ func ExitStatusForErrorCode(code int) int {
 	case ECTLCInvariantEvaluationFailed,
 		ECTLCInvariantViolatedLevel:
 		return ExitStatusFailureSafetyEval
-	case ECTLCLiveCannotHandleFormula,
+	case ECTLCLiveFormulaTautology,
+		ECTLCLiveCannotHandleFormula,
 		ECTLCLiveWrongFormulaFormat:
 		return ExitStatusFailureLivenessEval
 	case ECTLCInvariantViolatedInitial,

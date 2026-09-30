@@ -539,15 +539,19 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
 	}
-	if result := mc.CheckAssumptions(); result != NoError {
-		return result, nil
-	}
 	recovered, err := mc.Recover()
 	if err != nil {
 		return ECSystemCheckpointRecoveryCorrupt, err
 	}
 	result := NoError
 	if !recovered {
+		if mc.CheckLiveness && mc.LiveCheck != nil && mc.LiveCheck.NumChecker() == 0 {
+			PrintError(ECTLCLiveFormulaTautology)
+			return ECTLCLiveFormulaTautology, nil
+		}
+		if result := mc.CheckAssumptions(); result != NoError {
+			return result, nil
+		}
 		PrintMessage(ECTLCComputingInit)
 		result, err = mc.DoInit(false)
 		if err != nil || result != NoError {

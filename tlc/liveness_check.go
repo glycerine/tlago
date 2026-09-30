@@ -1011,6 +1011,13 @@ func NewAddAndCheckLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir s
 	return check
 }
 
+func (lc *LiveCheck) NumChecker() int {
+	if lc == nil {
+		return 0
+	}
+	return len(lc.Checkers)
+}
+
 func (lc *LiveCheck) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint64) error {
 	if lc == nil || lc.NoOp {
 		return nil
