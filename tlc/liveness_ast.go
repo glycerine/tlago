@@ -324,8 +324,12 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 				return NewLNDisj(NewLNNeg(left), right), nil
 			}
 		}
-	case OpcodePrime, OpcodeAA:
+	case OpcodePrime:
 		return NewLNAction(SemanticString(expr), expr, con, nil), nil
+	case OpcodeAA:
+		if len(args) >= 2 {
+			return newLiveAction(args[0], con, args[1], false), nil
+		}
 	case OpcodeSF:
 		if len(args) >= 2 {
 			subscript := args[0]

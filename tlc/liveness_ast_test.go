@@ -96,3 +96,23 @@ func TestASTToLiveExpandsBoundedExistsLikeJava(t *testing.T) {
 		}
 	}
 }
+
+func TestASTToLiveConvertsAngleActToSubscriptedAction(t *testing.T) {
+	body := NewOpApplNode(NewSymbolNode("A"))
+	subscript := NewNumeralNode(0)
+	expr := NewOpApplNode(&SymbolNode{Name: OpAA}, body, subscript)
+
+	live, err := ASTToLive(nil, expr, EmptyContext)
+	if err != nil {
+		t.Fatalf("ASTToLive(<<A>>_e) error = %v", err)
+	}
+	if live == nil || live.Kind != LiveExprAction {
+		t.Fatalf("ASTToLive(<<A>>_e) = %#v, want action", live)
+	}
+	if live.Pred != body {
+		t.Fatalf("action predicate = %#v, want body %#v", live.Pred, body)
+	}
+	if live.EvalFunc == nil {
+		t.Fatalf("action EvalFunc is nil, want subscript-aware action evaluator")
+	}
+}

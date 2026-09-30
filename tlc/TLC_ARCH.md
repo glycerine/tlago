@@ -1632,6 +1632,9 @@ Java decomposes startup liveness processing into two distinct phases:
   subscripted-action pieces as ordinary concrete `LiveExprNode` state/action
   nodes with `EvalFunc`, rather than introducing Java's `LNStateEnabled` and
   subclass hierarchy.
+- `<<A>>_e` (`OPCODE_aa`) becomes the same subscript-aware action node, with
+  the action body and subscript preserved separately. Prime still becomes an
+  action over the whole primed expression.
 - Bounded temporal quantifiers are expanded only when their domains enumerate:
   `\E` becomes an `LNDisj`, `\A` becomes an `LNConj`, and empty domains collapse
   to `FALSE`/`TRUE` respectively. Enumeration or child-conversion failure falls
