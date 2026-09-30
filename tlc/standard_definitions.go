@@ -226,7 +226,8 @@ func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingE
 }
 
 func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minLevel int, eval EvaluatingEvalFunc, aliases ...string) {
-	value := NewEvaluatingValue(name, minLevel, 100, nil, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	opDef := &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name)}
+	value := NewEvaluatingValue(name, minLevel, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}
@@ -380,10 +381,14 @@ func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state 
 
 func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 	_ = args
-	_ = con
 	_ = pstate
 	_ = control
 	_ = cm
+	if traceDef := tool.GetTraceDef(); traceDef != nil && traceDef.Symbol != nil && con != nil {
+		if value, ok := con.Lookup(traceDef.Symbol).(Value); ok {
+			return value, nil
+		}
+	}
 	return TLCExtTraceWithTool(tool, state)
 }
 

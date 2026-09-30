@@ -248,8 +248,9 @@ type SpecProcessor struct {
 	RLReward          SemanticNode
 	Periodic          SemanticNode
 	ViewSpec          SemanticNode
+	AliasNode         SemanticNode
 	SymmetrySpec      string
-	AliasSpec         string
+	AliasSpecName     string
 	SpecificationName string
 }
 
@@ -295,7 +296,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.resetProcessedConfig()
 	p.SpecificationName = p.Config.GetSpec()
 	p.SymmetrySpec = p.Config.GetSymmetry()
-	p.AliasSpec = p.Config.GetAlias()
+	p.AliasSpecName = p.Config.GetAlias()
 
 	p.processConfigInvariants()
 	if p.SpecificationName != "" {
@@ -323,6 +324,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.Periodic = p.optionalOpBodyFromConfigName(p.Config.GetPeriodic(), "periodic", p.preConstantDefinitions())
 	p.processConfigPossible()
 	p.ViewSpec = p.optionalOpBodyFromConfigName(p.Config.GetView(), "view function", p.Defns)
+	p.AliasNode = p.optionalOpBodyFromConfigName(p.AliasSpecName, "alias", p.Defns)
 }
 
 func (p *SpecProcessor) resetProcessedConfig() {
@@ -345,6 +347,7 @@ func (p *SpecProcessor) resetProcessedConfig() {
 	p.RLReward = nil
 	p.Periodic = nil
 	p.ViewSpec = nil
+	p.AliasNode = nil
 }
 
 func (p *SpecProcessor) ApplyToTool(tool *Tool) {
@@ -391,6 +394,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.RLReward = p.RLReward
 	tool.Periodic = p.Periodic
 	tool.ViewSpec = p.ViewSpec
+	tool.AliasSpec = p.AliasNode
 	tool.AssignActionIDs()
 }
 

@@ -386,9 +386,11 @@ Current adapter responsibilities:
   and later operator application use the same symbols.
 - install named-instance aliases for TLC standard-module overrides and local
   LET instance aliases such as `T!PrintT`.
-- evaluate `ALIAS` config operators by converting complete record values back
-  into TLC states, falling back to the original state if evaluation or
-  conversion fails.
+- evaluate `ALIAS` config operators by converting record/function-record values
+  into printable TLC states. Java's `RecordValue.toState()` permits aliases
+  that are subsets or supersets of the spec variables; Go mirrors that with a
+  concrete record-backed state, preserving state-variable fingerprint/equality
+  behavior while printing the alias record and honoring `_format`.
 - resolve config-selected `INIT`, `NEXT`, `SPECIFICATION`, invariants,
   properties, constraints, view, and postconditions into `Action` or semantic
   nodes.
@@ -1384,10 +1386,14 @@ Trace reconstruction and aliasing:
   using randomized enumeration regenerate the same path without perturbing the
   active runtime RNG.
 - Java's no-alias behavior returns the current state/info, not the successor.
-  Go `EvalAlias`, `EvalAliasInfo`, and `EvalAliasInfoPair` must preserve that.
-- The Java default `evalAlias` overloads build a prefix supplier from prefix
-  and suffix arrays. Go uses concrete `Tool` helper methods that build the same
-  supplier closure without introducing a separate interface.
+  Go `EvalAlias`, `EvalAliasInfo`, and `EvalAliasInfoPair` preserve that.
+- The Java default `evalAlias` overloads evaluate the resolved `ALIAS` operator
+  body under `EvalControl.Clear`, convert record-like values to alias states,
+  and on evaluation errors attach `_ALIASEvalError` to an alias record instead
+  of throwing. Go keeps this concrete on `Tool`, not behind a separate alias
+  interface. Prefix/suffix trace aliases bind `TLCExt!Trace` through the
+  standard operator's `OpDefNode` symbol so aliases using `Trace()` see the
+  supplied prefix records.
 - Safety-error postcondition traces run alias evaluation over each trace entry
   before wrapping the trace in `CounterExample`, matching Java's
   `Worker.doPostCondition`. The `console` field is omitted only when the checker

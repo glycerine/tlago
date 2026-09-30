@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -536,22 +537,47 @@ func (v *RecordValue) ToState() *TLCStateMut {
 	}
 	state := NewEmptyState()
 	for _, variable := range StateVariables() {
-		found := false
 		for i, name := range v.Names {
 			if name == variable.Name {
 				state.Bind(variable.Name, v.Values[i])
-				found = true
 				break
 			}
 		}
-		if !found {
-			return nil
+	}
+	state.printRecord = v
+	return state
+}
+
+func (v *RecordValue) StateString() string {
+	if v == nil {
+		return ""
+	}
+	format := ""
+	formatIndex := -1
+	for i, name := range v.Names {
+		if name == UniqueStringOf("_format") {
+			if sv, ok := v.Values[i].(*StringValue); ok {
+				format = sv.Val.String()
+			}
+			formatIndex = i
+			break
 		}
 	}
-	if !state.AllAssigned() {
-		return nil
+	if format == "" {
+		if len(v.Names) == 1 || (len(v.Names) == 2 && formatIndex >= 0) {
+			format = "%s = %s\n"
+		} else {
+			format = "/\\ %s = %s\n"
+		}
 	}
-	return state
+	var b strings.Builder
+	for i, name := range v.Names {
+		if i == formatIndex {
+			continue
+		}
+		b.WriteString(fmt.Sprintf(format, name.String(), valueString(v.Values[i])))
+	}
+	return b.String()
 }
 
 func (v *RecordValue) Size() (int, error) { return len(v.Names), nil }

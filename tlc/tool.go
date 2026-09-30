@@ -133,6 +133,7 @@ type Tool struct {
 	SpecProcessor     *SpecProcessor
 	ModuleFiles       []string
 	CounterExampleDef *OpDefNode
+	AliasSpec         SemanticNode
 	KnownStates       *InsMap[uint64, *TLCStateMut]
 	Definitions       map[*SymbolNode]any
 	DefnsByName       map[*UniqueString]any
@@ -829,6 +830,17 @@ func (t *Tool) GetViewSpec() SemanticNode {
 	return t.ViewSpec
 }
 
+func (t *Tool) HasAlias() bool {
+	return t != nil && t.AliasSpec != nil
+}
+
+func (t *Tool) GetAliasSpec() SemanticNode {
+	if t == nil {
+		return nil
+	}
+	return t.AliasSpec
+}
+
 func (t *Tool) GetPostConditionSpecs() []*Action {
 	if t == nil {
 		return nil
@@ -878,6 +890,17 @@ func (t *Tool) GetCounterExampleDef() *OpDefNode {
 	return nil
 }
 
+func (t *Tool) GetTraceDef() *OpDefNode {
+	if t == nil {
+		return nil
+	}
+	val := t.Lookup(NewSymbolNode("Trace"), EmptyContext, EmptyState, false)
+	if ev, ok := val.(*EvaluatingValue); ok {
+		return ev.OpDef
+	}
+	return nil
+}
+
 func (t *Tool) LivenessIsTrue() bool {
 	if t != nil && t.LivenessIsTrueFunc != nil {
 		return t.LivenessIsTrueFunc(t)
@@ -896,6 +919,24 @@ func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, pref
 		defer restore()
 		return t.EvalAliasInfoFunc(t, current, successor, prefix)
 	}
+	if t == nil || !t.HasAlias() || current == nil || current.State == nil {
+		return current, nil
+	}
+	ctxt := EmptyContext
+	if prefix != nil {
+		if traceDef := t.GetTraceDef(); traceDef != nil && traceDef.Symbol != nil {
+			ctxt = ctxt.Cons(traceDef.Symbol, traceTupleFromStateInfos(prefix()))
+		}
+	}
+	restore := PushCurrentState(current.State)
+	defer restore()
+	alias, err := t.evalAliasState(current.State, successor, ctxt)
+	if err != nil {
+		return AliasTLCStateInfo(aliasEvaluationErrorState(current.State, err), current), nil
+	}
+	if alias != nil {
+		return AliasTLCStateInfo(alias, current), nil
+	}
 	return current, nil
 }
 
@@ -903,7 +944,7 @@ func (t *Tool) EvalAliasInfoPair(curState *TLCStateInfo, sucState *TLCStateMut) 
 	if t != nil && t.EvalAliasInfoPairFunc != nil {
 		return t.EvalAliasInfoPairFunc(t, curState, sucState)
 	}
-	return curState, nil
+	return t.EvalAliasInfo(curState, sucState, nil)
 }
 
 func (t *Tool) EvalAliasInfoPrefix(current *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo) (*TLCStateInfo, error) {
@@ -927,7 +968,76 @@ func (t *Tool) EvalAlias(curState *TLCStateMut, sucState *TLCStateMut) *TLCState
 		defer restore()
 		return t.EvalAliasFunc(t, curState, sucState)
 	}
+	if t == nil || !t.HasAlias() || curState == nil {
+		return curState
+	}
+	restore := PushCurrentState(curState)
+	defer restore()
+	alias, err := t.evalAliasState(curState, sucState, EmptyContext)
+	if err != nil {
+		return aliasEvaluationErrorState(curState, err)
+	}
+	if alias != nil {
+		return alias
+	}
 	return curState
+}
+
+func (t *Tool) evalAliasState(current *TLCStateMut, successor *TLCStateMut, ctxt *Context) (*TLCStateMut, error) {
+	if t == nil || t.AliasSpec == nil {
+		return current, nil
+	}
+	if successor == nil {
+		successor = EmptyState
+	}
+	value, err := t.Eval(t.AliasSpec, ctxt, current, successor, EvalClear, CostModel{})
+	if err != nil {
+		return nil, err
+	}
+	rcd := asRecordValue(value)
+	if rcd == nil {
+		return nil, nil
+	}
+	alias := rcd.ToState()
+	if alias != nil && current != nil {
+		alias.level = current.level
+		alias.pred = current.pred
+		alias.action = current.action
+	}
+	return alias, nil
+}
+
+func aliasEvaluationErrorState(current *TLCStateMut, err error) *TLCStateMut {
+	record := EmptyRecord
+	if current != nil {
+		record = NewRecordValueFromInsMap(current.Values())
+	}
+	names := append([]*UniqueString(nil), record.Names...)
+	values := append([]Value(nil), record.Values...)
+	names = append(names, UniqueStringOf("_ALIASEvalError"))
+	msg := ""
+	if err != nil {
+		msg = err.Error()
+	}
+	values = append(values, NewStringValue(msg))
+	state := NewRecordValue(names, values, false).ToState()
+	if state != nil && current != nil {
+		state.level = current.level
+		state.pred = current.pred
+		state.action = current.action
+	}
+	return state
+}
+
+func traceTupleFromStateInfos(infos []*TLCStateInfo) Value {
+	values := make([]Value, 0, len(infos))
+	for _, info := range infos {
+		if info == nil || info.State == nil {
+			continue
+		}
+		values = append(values, NewRecordValueFromInsMap(info.State.Values()))
+	}
+	return NewTupleValue(values)
 }
 
 func (t *Tool) NoDebug() *Tool {

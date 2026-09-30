@@ -89,15 +89,16 @@ func SetTLCStateTool(tool *Tool) {
 }
 
 type TLCStateMut struct {
-	WorkerID int16
-	UID      int64
-	level    int
-	values   []Value
-	sources  []SemanticNode
-	pred     *TLCStateMut
-	action   *Action
-	callable func() (any, error)
-	cached   map[int]Value
+	WorkerID    int16
+	UID         int64
+	level       int
+	values      []Value
+	sources     []SemanticNode
+	pred        *TLCStateMut
+	action      *Action
+	callable    func() (any, error)
+	cached      map[int]Value
+	printRecord *RecordValue
 }
 
 func NewEmptyState() *TLCStateMut {
@@ -143,15 +144,27 @@ func (s *TLCStateMut) Unbind(name *UniqueString) *TLCStateMut {
 }
 
 func (s *TLCStateMut) Lookup(name *UniqueString) Value {
-	loc := name.VarLoc()
-	if loc < 0 || loc >= len(s.values) {
+	if s == nil || name == nil {
 		return nil
 	}
-	return s.values[loc]
+	loc := name.VarLoc()
+	if loc >= 0 && loc < len(s.values) && s.values[loc] != nil {
+		return s.values[loc]
+	}
+	if s.printRecord != nil {
+		return s.printRecord.Select(NewStringValueFromUnique(name))
+	}
+	return nil
 }
 
 func (s *TLCStateMut) ContainsKey(name *UniqueString) bool {
-	return s.Lookup(name) != nil
+	if s.Lookup(name) != nil {
+		return true
+	}
+	if s != nil && s.printRecord != nil {
+		return s.printRecord.Select(NewStringValueFromUnique(name)) != nil
+	}
+	return false
 }
 
 func (s *TLCStateMut) Copy() *TLCStateMut {
@@ -163,13 +176,14 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		copy(sources, s.sources)
 	}
 	return &TLCStateMut{
-		WorkerID: TLCStateInitWorkerID,
-		UID:      TLCStateInitUID,
-		level:    s.level,
-		values:   values,
-		sources:  sources,
-		pred:     s.pred,
-		action:   s.action,
+		WorkerID:    TLCStateInitWorkerID,
+		UID:         TLCStateInitUID,
+		level:       s.level,
+		values:      values,
+		sources:     sources,
+		pred:        s.pred,
+		action:      s.action,
+		printRecord: s.printRecord,
 	}
 }
 
@@ -186,13 +200,14 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		}
 	}
 	return &TLCStateMut{
-		WorkerID: s.WorkerID,
-		UID:      s.UID,
-		level:    s.level,
-		values:   values,
-		sources:  sources,
-		pred:     s.pred,
-		action:   s.action,
+		WorkerID:    s.WorkerID,
+		UID:         s.UID,
+		level:       s.level,
+		values:      values,
+		sources:     sources,
+		pred:        s.pred,
+		action:      s.action,
+		printRecord: s.printRecord,
 	}
 }
 
@@ -398,6 +413,15 @@ func incompleteNextStateParams(tool *Tool, action *Action, state *TLCStateMut) [
 }
 
 func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
+	if s != nil && s.printRecord != nil {
+		out := NewInsMap[*UniqueString, Value]()
+		for i, name := range s.printRecord.Names {
+			if i < len(s.printRecord.Values) {
+				out.Set(name, s.printRecord.Values[i])
+			}
+		}
+		return out
+	}
 	out := NewInsMap[*UniqueString, Value]()
 	for i, variable := range stateVariables {
 		if i < len(s.values) {
@@ -488,6 +512,9 @@ func (s *TLCStateMut) Equal(other *TLCStateMut) bool {
 }
 
 func (s *TLCStateMut) String() string {
+	if s != nil && s.printRecord != nil {
+		return s.printRecord.StateString()
+	}
 	if UseView() && stateTool != nil && stateTool.ViewSpec != nil {
 		value, err := stateTool.Eval(stateTool.ViewSpec, EmptyContext, s)
 		if err != nil {
@@ -499,6 +526,9 @@ func (s *TLCStateMut) String() string {
 }
 
 func (s *TLCStateMut) StringForVariables(last *TLCStateMut, vars ...*UniqueString) string {
+	if s != nil && s.printRecord != nil && len(vars) == 0 {
+		return s.printRecord.StateString()
+	}
 	if len(vars) == 0 {
 		vars = make([]*UniqueString, len(stateVariables))
 		for i, variable := range stateVariables {
