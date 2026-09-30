@@ -1,6 +1,8 @@
 package tlc
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"sort"
 	"strconv"
@@ -11,6 +13,7 @@ import (
 const (
 	TLCServerName             = "TLCServer"
 	TLCServerWorkerName       = TLCServerName + "WORKER"
+	TLCServerThreadNamePrefix = "TLCServerThread-"
 	TLCWorkerThreadNamePrefix = "TLCWorkerThread-"
 	TLCServerDefaultPort      = 10997
 )
@@ -259,11 +262,17 @@ type TLCServer struct {
 	FileName                    string
 	ConfigName                  string
 	Done                        atomic.Bool
+	ErrState                    *TLCStateMut
+	PredErrState                *TLCStateMut
+	KeepCallStack               bool
+	ErrorCode                   int
+	LastError                   error
 	WorkerStatesGenerated       atomic.Int64
 	StatesPerMinute             int64
 	DistinctStatesPerMinute     int64
 	AverageBlockCnt             int64
 	Workers                     *InsMap[string, *DistributedWorker]
+	ServerThreads               *InsMap[string, *TLCServerThread]
 	BlockSelector               *BlockSelector
 	FinalNumberOfDistinctStates int64
 }
@@ -286,6 +295,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		FileName:                    fileName,
 		ConfigName:                  configName,
 		Workers:                     NewInsMap[string, *DistributedWorker](),
+		ServerThreads:               NewInsMap[string, *TLCServerThread](),
 		FinalNumberOfDistinctStates: -1,
 	}
 	server.BlockSelector = NewStatisticalBlockSelector(server)
@@ -305,6 +315,34 @@ func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 	s.Workers.Set(distributedWorkerKey(worker), worker)
 }
 
+func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
+	if s == nil || thread == nil {
+		return
+	}
+	if s.ServerThreads == nil {
+		s.ServerThreads = NewInsMap[string, *TLCServerThread]()
+	}
+	if thread.Worker != nil && thread.Worker.Worker != nil {
+		s.RegisterWorker(thread.Worker.Worker)
+	}
+	s.ServerThreads.Set(thread.GetURI(), thread)
+}
+
+func (s *TLCServer) RemoveTLCServerThread(thread *TLCServerThread) *TLCServerThread {
+	if s == nil || thread == nil {
+		return nil
+	}
+	if thread.Worker != nil && thread.Worker.Worker != nil {
+		s.RemoveWorker(thread.Worker.Worker)
+	}
+	if s.ServerThreads == nil {
+		return nil
+	}
+	removed := s.ServerThreads.Get(thread.GetURI())
+	s.ServerThreads.Delkey(thread.GetURI())
+	return removed
+}
+
 func (s *TLCServer) RemoveWorker(worker *DistributedWorker) *DistributedWorker {
 	if s == nil || s.Workers == nil || worker == nil {
 		return nil
@@ -319,6 +357,26 @@ func (s *TLCServer) SetDone() {
 	if s != nil {
 		s.Done.Store(true)
 	}
+}
+
+func (s *TLCServer) SetErrState(curState *TLCStateMut, succState *TLCStateMut, keepCallStack bool, errorCode ...int) bool {
+	if s == nil {
+		return false
+	}
+	if !s.Done.CompareAndSwap(false, true) {
+		return false
+	}
+	s.PredErrState = curState
+	if succState == nil {
+		s.ErrState = curState
+	} else {
+		s.ErrState = succState
+	}
+	s.KeepCallStack = keepCallStack
+	if len(errorCode) > 0 {
+		s.ErrorCode = errorCode[0]
+	}
+	return true
 }
 
 func (s *TLCServer) IsRunning() bool {
@@ -414,6 +472,343 @@ func (s *TLCServer) GetConfigFileName() string {
 		return ""
 	}
 	return s.ConfigName
+}
+
+var tlcServerThreadCount atomic.Int64
+
+type TLCServerThread struct {
+	ID                int
+	ReceivedStates    int
+	SentStates        int
+	CacheRateHitRatio float64
+	Selector          *BlockSelector
+	States            []*TLCStateMut
+	TimerTask         *TLCTimerTask
+	Worker            *DistributedWorkerSmartProxy
+	Server            *TLCServer
+	URI               string
+	cleanupGlobals    atomic.Bool
+	started           atomic.Bool
+	keepAliveStopped  atomic.Bool
+	keepAliveDone     chan struct{}
+}
+
+func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
+	if uri == "" && worker != nil {
+		uri = distributedWorkerKey(worker)
+	}
+	if selector == nil && server != nil {
+		selector = server.BlockSelector
+	}
+	if selector == nil {
+		selector = NewStatisticalBlockSelector(server)
+	}
+	thread := &TLCServerThread{
+		ID:                int(tlcServerThreadCount.Add(1) - 1),
+		CacheRateHitRatio: -1,
+		Selector:          selector,
+		States:            []*TLCStateMut{},
+		Worker:            NewDistributedWorkerSmartProxy(worker),
+		Server:            server,
+		URI:               uri,
+		keepAliveDone:     make(chan struct{}),
+	}
+	thread.cleanupGlobals.Store(true)
+	thread.TimerTask = &TLCTimerTask{Thread: thread}
+	if server != nil {
+		server.RegisterTLCServerThread(thread)
+	}
+	return thread
+}
+
+func (t *TLCServerThread) Name() string {
+	if t == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s%03d-[%s]", TLCServerThreadNamePrefix, t.ID, t.URI)
+}
+
+func (t *TLCServerThread) Start() {
+	if t == nil || !t.started.CompareAndSwap(false, true) {
+		return
+	}
+	t.startKeepAlive()
+	go t.Run()
+}
+
+func (t *TLCServerThread) startKeepAlive() {
+	if t == nil || t.TimerTask == nil || t.keepAliveDone == nil {
+		return
+	}
+	go func() {
+		timer := time.NewTimer(10 * time.Second)
+		defer timer.Stop()
+		for {
+			select {
+			case <-timer.C:
+				t.TimerTask.Run()
+				timer.Reset(60 * time.Second)
+			case <-t.keepAliveDone:
+				return
+			}
+		}
+	}()
+}
+
+func (t *TLCServerThread) Run() {
+	if t == nil || t.Server == nil {
+		return
+	}
+	IncNumWorkers(1)
+	stateQueue := t.Server.StateQueue
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			t.handleRunError(fmt.Errorf("panic in TLCServerThread: %v", recovered), stateQueue)
+		}
+		t.readCacheRateRatio()
+		t.cancelKeepAlive()
+		t.States = []*TLCStateMut{}
+	}()
+	for {
+		if t.Selector == nil {
+			t.Selector = t.Server.BlockSelector
+		}
+		if t.Selector == nil {
+			t.Selector = NewStatisticalBlockSelector(t.Server)
+		}
+		t.States = t.Selector.GetBlocks(stateQueue, t.underlyingWorker())
+		if t.States == nil {
+			t.Server.SetDone()
+			if stateQueue != nil {
+				stateQueue.FinishAll()
+			}
+			return
+		}
+		if len(t.States) == 0 {
+			continue
+		}
+		t.SentStates += len(t.States)
+
+		res, ok := t.computeBlock(stateQueue)
+		if !ok {
+			return
+		}
+		if res == nil {
+			continue
+		}
+		newStates := res.GetNextStates()
+		newFps := res.GetNextFingerprints()
+		if len(newStates) > 0 && newStates[0] != nil {
+			t.ReceivedStates += newStates[0].Size()
+		}
+		if t.TimerTask != nil {
+			t.TimerTask.SetLastInvocation(time.Now())
+		}
+		t.Server.AddStatesGeneratedDelta(res.GetStatesComputedDelta())
+		t.publishBlock(stateQueue, newStates, newFps)
+	}
+}
+
+func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult, bool) {
+	for {
+		res, err := t.Worker.GetNextStates(t.States)
+		if err == nil {
+			return res, true
+		}
+		if isRecoverableDistributedError(err) && len(t.States) > 1 {
+			if stateQueue != nil {
+				stateQueue.SEnqueueAll(t.States)
+			}
+			if t.Selector != nil {
+				t.Selector.SetMaxTXSize(len(t.States) / 2)
+			}
+			return nil, true
+		}
+		t.HandleRemoteWorkerLost(stateQueue)
+		return nil, false
+	}
+}
+
+func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*StateVec, newFps []*LongVec) {
+	if t == nil || t.Server == nil || t.Server.FPSetManager == nil {
+		return
+	}
+	visited := t.Server.FPSetManager.PutBlock(newFps)
+	for i, vector := range visited {
+		if i >= len(newStates) || i >= len(newFps) || newStates[i] == nil || newFps[i] == nil {
+			continue
+		}
+		iter := NewBitVectorIter(vector)
+		for {
+			index := iter.Next()
+			if index == -1 {
+				break
+			}
+			state := newStates[i].At(index)
+			fp := uint64(newFps[i].ElementAt(index))
+			if t.Server.Trace != nil {
+				if err := t.Server.Trace.WriteNextState(state.Predecessor(), fp, state, state.GetAction()); err != nil {
+					t.handleRunError(err, stateQueue)
+					return
+				}
+			}
+			if stateQueue != nil {
+				stateQueue.SEnqueue(state)
+			}
+		}
+	}
+}
+
+func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
+	if t == nil || t.Server == nil {
+		return
+	}
+	t.Server.LastError = err
+	var workerErr *WorkerException
+	if errors.As(err, &workerErr) {
+		if t.Server.SetErrState(workerErr.State1, workerErr.State2, workerErr.KeepCallStack, ECGeneral) && stateQueue != nil {
+			stateQueue.FinishAll()
+		}
+		return
+	}
+	if t.Server.SetErrState(nil, nil, true, ECGeneral) && stateQueue != nil {
+		stateQueue.FinishAll()
+	}
+}
+
+func (t *TLCServerThread) HandleRemoteWorkerLost(stateQueue StateQueue) {
+	if t == nil {
+		return
+	}
+	t.cancelKeepAlive()
+	if !t.cleanupGlobals.CompareAndSwap(true, false) {
+		return
+	}
+	if t.Server != nil {
+		t.Server.RemoveTLCServerThread(t)
+	}
+	if stateQueue != nil {
+		stateQueue.SEnqueueAll(t.States)
+	}
+	t.States = []*TLCStateMut{}
+	if stateQueue != nil {
+		stateQueue.ResumeAllStuck()
+	}
+	DecNumWorkers()
+}
+
+func (t *TLCServerThread) GetCurrentSize() int {
+	if t == nil {
+		return 0
+	}
+	return len(t.States)
+}
+
+func (t *TLCServerThread) GetURI() string {
+	if t == nil {
+		return ""
+	}
+	return t.URI
+}
+
+func (t *TLCServerThread) GetReceivedStates() int {
+	if t == nil {
+		return 0
+	}
+	return t.ReceivedStates
+}
+
+func (t *TLCServerThread) GetSentStates() int {
+	if t == nil {
+		return 0
+	}
+	return t.SentStates
+}
+
+func (t *TLCServerThread) GetCacheRateRatio() float64 {
+	if t == nil {
+		return -1
+	}
+	return t.CacheRateHitRatio
+}
+
+func (t *TLCServerThread) readCacheRateRatio() {
+	if t == nil || t.Worker == nil {
+		return
+	}
+	t.CacheRateHitRatio = t.Worker.GetCacheRateRatio()
+}
+
+func (t *TLCServerThread) cancelKeepAlive() {
+	if t == nil || t.keepAliveDone == nil {
+		return
+	}
+	if t.keepAliveStopped.CompareAndSwap(false, true) {
+		close(t.keepAliveDone)
+	}
+}
+
+func (t *TLCServerThread) underlyingWorker() *DistributedWorker {
+	if t == nil || t.Worker == nil {
+		return nil
+	}
+	return t.Worker.Worker
+}
+
+type TLCTimerTask struct {
+	Thread         *TLCServerThread
+	LastInvocation atomic.Int64
+}
+
+func (t *TLCTimerTask) Run() {
+	if t == nil || t.Thread == nil {
+		return
+	}
+	now := time.Now().UnixMilli()
+	last := t.LastInvocation.Load()
+	if last == 0 || now-last > int64(time.Minute/time.Millisecond) {
+		if t.Thread.Worker == nil || !t.Thread.Worker.IsAlive() {
+			queue := StateQueue(nil)
+			if t.Thread.Server != nil {
+				queue = t.Thread.Server.StateQueue
+			}
+			t.Thread.HandleRemoteWorkerLost(queue)
+		}
+	}
+}
+
+func (t *TLCTimerTask) SetLastInvocation(when time.Time) {
+	if t == nil {
+		return
+	}
+	t.LastInvocation.Store(when.UnixMilli())
+}
+
+type DistributedRecoverableError struct {
+	Err error
+}
+
+func NewDistributedRecoverableError(err error) *DistributedRecoverableError {
+	return &DistributedRecoverableError{Err: err}
+}
+
+func (e *DistributedRecoverableError) Error() string {
+	if e == nil || e.Err == nil {
+		return "recoverable distributed worker error"
+	}
+	return e.Err.Error()
+}
+
+func (e *DistributedRecoverableError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
+
+func isRecoverableDistributedError(err error) bool {
+	var recoverable *DistributedRecoverableError
+	return errors.As(err, &recoverable)
 }
 
 type BlockSelectorMode int
@@ -683,7 +1078,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 		state1 = state
 		nextStates, err := w.computeNextStates(state)
 		if err != nil {
-			return nil, NewWorkerException(err.Error(), err, state1, state2, true)
+			return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
 		}
 		statesComputed += int64(nextStates.Size())
 		for i := 0; i < nextStates.Size(); i++ {
@@ -736,15 +1131,15 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 			state1 = predecessors[i].At(index)
 			state2 = successors[i].At(index)
 			if err := w.CheckState(state1, state2); err != nil {
-				return nil, NewWorkerException(err.Error(), err, state1, state2, true)
+				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
 			}
 			inModel, err := w.IsInModel(state2)
 			if err != nil {
-				return nil, NewWorkerException(err.Error(), err, state1, state2, true)
+				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
 			}
 			inActions, err := w.IsInActions(state1, state2)
 			if err != nil {
-				return nil, NewWorkerException(err.Error(), err, state1, state2, true)
+				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
 			}
 			if inModel && inActions {
 				state2.UID = state1.UID
