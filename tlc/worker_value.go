@@ -132,6 +132,21 @@ func PushCurrentState(state *TLCStateMut) func() {
 	}
 }
 
+func SetCurrentState(state *TLCStateMut) *TLCStateMut {
+	gid := currentGoroutineID()
+	currentStateScope.Lock()
+	defer currentStateScope.Unlock()
+	stack := currentStateScope.stack[gid]
+	if len(stack) == 0 {
+		currentStateScope.stack[gid] = []*TLCStateMut{state}
+		return nil
+	}
+	old := stack[len(stack)-1]
+	stack[len(stack)-1] = state
+	currentStateScope.stack[gid] = stack
+	return old
+}
+
 func CurrentState() (*TLCStateMut, bool) {
 	gid := currentGoroutineID()
 	currentStateScope.Lock()

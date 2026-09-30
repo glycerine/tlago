@@ -1278,6 +1278,11 @@ Important behavior:
   perform liveness/post-trace checks. RL modes remain enum values because they
   select different scheduling and Q-table behavior, while still using the same
   worker struct.
+- Java `SimulationWorker.simulateRandomTrace` calls
+  `IdThread.setCurrentState` after selecting the initial state and again after
+  each selected successor. Go mirrors that with concrete `SetCurrentState`
+  replacement semantics; scoped `PushCurrentState` remains for nested evaluator
+  calls such as next-state generation.
 - Preserve the Java `INextStateFunctor` contract: plain `addElement(TLCState)`
   is unsupported for simulation workers; only `setElement` and the
   action-tagged successor `addElement(s, a, t)` paths are valid.

@@ -381,6 +381,7 @@ func (w *SimulationWorker) SimulateAndReport() bool {
 	}
 	restoreWorkerID := PushCurrentWorkerID(w.ID)
 	defer restoreWorkerID()
+	defer ResetCurrentState()
 	w.GlobalTrace = w.Statistics.CollectPreTrace()
 	w.Statistics.TraceID = w.GlobalTrace
 	err := w.SimulateRandomTrace()
@@ -448,6 +449,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		return w.SimulateExplorationTrace()
 	}
 	w.CurState = w.claimInitialState(w.RandomState(w.InitStates))
+	SetCurrentState(w.CurState)
 	allActions := w.Tool.GetActions()
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
 		if w.Stopped.Load() {
@@ -498,6 +500,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		}
 		w.Statistics.CollectPostSuccessor(w.CurState, next.GetAction(), next)
 		w.CurState = next
+		SetCurrentState(w.CurState)
 	}
 	if w.Stopped.Load() {
 		return nil

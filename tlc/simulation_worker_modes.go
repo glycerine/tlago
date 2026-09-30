@@ -80,6 +80,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 		return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
 	}
 	w.CurState = w.claimInitialState(w.RandomState(w.InitStates))
+	SetCurrentState(w.CurState)
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
 		if w.Stopped.Load() {
 			return nil
@@ -113,6 +114,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 		}
 		w.Statistics.CollectPostSuccessor(w.CurState, next.GetAction(), next)
 		w.CurState = next
+		SetCurrentState(w.CurState)
 	}
 	if w.Stopped.Load() {
 		return nil
