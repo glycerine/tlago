@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"math"
 	"sort"
 	"strconv"
 	"sync/atomic"
@@ -247,6 +248,7 @@ type DistributedWorker struct {
 	CheckStateFunc        func(predecessor *TLCStateMut, successor *TLCStateMut) error
 	IsInModelFunc         func(state *TLCStateMut) (bool, error)
 	IsInActionsFunc       func(predecessor *TLCStateMut, successor *TLCStateMut) (bool, error)
+	NetworkOverhead       float64
 }
 
 type TLCServer struct {
@@ -262,6 +264,7 @@ type TLCServer struct {
 	DistinctStatesPerMinute     int64
 	AverageBlockCnt             int64
 	Workers                     *InsMap[string, *DistributedWorker]
+	BlockSelector               *BlockSelector
 	FinalNumberOfDistinctStates int64
 }
 
@@ -275,7 +278,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 	if trace == nil {
 		trace = NewTLCTrace(metadir, fileName)
 	}
-	return &TLCServer{
+	server := &TLCServer{
 		FPSetManager:                manager,
 		StateQueue:                  queue,
 		Trace:                       trace,
@@ -285,6 +288,8 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		Workers:                     NewInsMap[string, *DistributedWorker](),
 		FinalNumberOfDistinctStates: -1,
 	}
+	server.BlockSelector = NewStatisticalBlockSelector(server)
+	return server
 }
 
 func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
@@ -377,6 +382,9 @@ func (s *TLCServer) GetAverageBlockCnt() int64 {
 	if s == nil {
 		return 0
 	}
+	if s.BlockSelector != nil {
+		return s.BlockSelector.GetAverageBlockCnt()
+	}
 	return s.AverageBlockCnt
 }
 
@@ -406,6 +414,164 @@ func (s *TLCServer) GetConfigFileName() string {
 		return ""
 	}
 	return s.ConfigName
+}
+
+type BlockSelectorMode int
+
+const (
+	BlockSelectorProportional BlockSelectorMode = iota
+	BlockSelectorLimiting
+	BlockSelectorStatistical
+	BlockSelectorStatic
+)
+
+const (
+	blockSelectorDefaultMaximum              = 8192
+	blockSelectorDefaultStaticSize           = 1024
+	blockSelectorDefaultNetworkOverheadLimit = 2.5 / 100.0
+)
+
+type BlockSelector struct {
+	Server               *TLCServer
+	Mode                 BlockSelectorMode
+	Maximum              int
+	StaticBlockSize      int
+	NetworkOverheadLimit float64
+	AverageBlockCnt      int64
+}
+
+func NewBlockSelector(server *TLCServer) *BlockSelector {
+	return NewStatisticalBlockSelector(server)
+}
+
+func NewProportionalBlockSelector(server *TLCServer) *BlockSelector {
+	return &BlockSelector{
+		Server:               server,
+		Mode:                 BlockSelectorProportional,
+		Maximum:              blockSelectorDefaultMaximum,
+		StaticBlockSize:      blockSelectorDefaultStaticSize,
+		NetworkOverheadLimit: blockSelectorDefaultNetworkOverheadLimit,
+	}
+}
+
+func NewLimitingBlockSelector(server *TLCServer, maximum ...int) *BlockSelector {
+	selector := NewProportionalBlockSelector(server)
+	selector.Mode = BlockSelectorLimiting
+	if len(maximum) > 0 {
+		selector.Maximum = maximum[0]
+	}
+	return selector
+}
+
+func NewStatisticalBlockSelector(server *TLCServer) *BlockSelector {
+	selector := NewLimitingBlockSelector(server)
+	selector.Mode = BlockSelectorStatistical
+	return selector
+}
+
+func NewStaticBlockSelector(server *TLCServer, blockSize ...int) *BlockSelector {
+	selector := NewProportionalBlockSelector(server)
+	selector.Mode = BlockSelectorStatic
+	if len(blockSize) > 0 {
+		selector.StaticBlockSize = blockSize[0]
+	}
+	selector.AverageBlockCnt = int64(selector.StaticBlockSize)
+	return selector
+}
+
+func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWorker) []*TLCStateMut {
+	if b == nil || stateQueue == nil {
+		return nil
+	}
+	if b.Mode == BlockSelectorStatic {
+		return stateQueue.SDequeueMany(b.StaticBlockSize)
+	}
+	amountOfStates := stateQueue.Size()
+	blockSize := b.getBlockSize(amountOfStates, worker)
+	if blockSize > amountOfStates {
+		blockSize = amountOfStates
+	}
+	if blockSize < 1 {
+		blockSize = 1
+	}
+	if blockSize > int64(maxJavaInt) {
+		blockSize = int64(maxJavaInt)
+	}
+	states := stateQueue.SDequeueMany(int(blockSize))
+	b.setAverageBlockCnt(int64(len(states)))
+	return states
+}
+
+func (b *BlockSelector) SetMaxTXSize(maximum int) {
+	if b != nil {
+		b.Maximum = maximum
+	}
+}
+
+func (b *BlockSelector) GetAverageBlockCnt() int64 {
+	if b == nil {
+		return 0
+	}
+	return b.AverageBlockCnt
+}
+
+func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorker) int64 {
+	if b == nil {
+		return 1
+	}
+	switch b.Mode {
+	case BlockSelectorStatic:
+		return int64(b.StaticBlockSize)
+	case BlockSelectorStatistical:
+		if worker != nil && worker.NetworkOverhead != 0 {
+			limit := b.NetworkOverheadLimit
+			if limit == 0 {
+				limit = blockSelectorDefaultNetworkOverheadLimit
+			}
+			maximum := b.Maximum
+			if maximum <= 0 {
+				maximum = blockSelectorDefaultMaximum
+			}
+			blockSize := math.Abs(math.Ceil(float64(size) * (worker.NetworkOverhead / limit)))
+			blockSize = math.Min(math.Max(blockSize, 1), float64(maximum))
+			return int64(blockSize)
+		}
+		fallthrough
+	case BlockSelectorLimiting:
+		blockSize := b.proportionalBlockSize(size)
+		maximum := b.Maximum
+		if maximum <= 0 {
+			maximum = blockSelectorDefaultMaximum
+		}
+		if blockSize > int64(maximum) {
+			return int64(maximum)
+		}
+		return blockSize
+	default:
+		return b.proportionalBlockSize(size)
+	}
+}
+
+func (b *BlockSelector) proportionalBlockSize(size int64) int64 {
+	workerCount := 1
+	if b != nil && b.Server != nil {
+		workerCount = b.Server.GetWorkerCount()
+	}
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+	return int64(math.Ceil(float64(size) * (1.0 / float64(workerCount))))
+}
+
+func (b *BlockSelector) setAverageBlockCnt(blockCnt int64) {
+	if b == nil || b.Mode == BlockSelectorStatic {
+		return
+	}
+	if b.AverageBlockCnt > 0 {
+		b.AverageBlockCnt = (blockCnt + b.AverageBlockCnt) / 2
+	} else {
+		b.AverageBlockCnt = blockCnt
+	}
 }
 
 func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager) *DistributedWorker {
