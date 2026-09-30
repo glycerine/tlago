@@ -1785,9 +1785,9 @@ without printing a second generic error. The Go port mirrors this with
   deterministic action order. `ASTToLive` converts each action predicate to
   the same `LiveExprNode` family used by the liveness checker, and the result
   is cached in the action's auxiliary map via `AttachLiveExprToAction`.
-  The structural core is in place; bounded quantifier expansion, function
-  lambda values, and exact WF/SF subscript handling still need the same
-  breadth-first mechanical deepening as their Java counterparts.
+  The structural core is in place; recursive temporal-operator metadata and
+  exact Java diagnostic wording still need the same breadth-first mechanical
+  deepening as their Java counterparts.
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component
