@@ -12,6 +12,7 @@ import (
 
 var possibleCountsKey = UniqueStringOf("s:_possible")
 var counterExampleContextSymbol = NewSymbolNode("CounterExample")
+var tlcExtActionField = UniqueStringOf("_action")
 var pickSuccessorMu sync.Mutex
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
@@ -160,7 +161,8 @@ func TLCExtTraceWithTool(tool *Tool, state *TLCStateMut) (Value, error) {
 		trace := simulator.GetTrace(state)
 		values := make([]Value, 0, trace.Size())
 		for i := 0; i < trace.Size(); i++ {
-			values = append(values, NewRecordValueFromInsMap(trace.At(i).Values()))
+			traceState := trace.At(i)
+			values = append(values, stateActionRecordValue(traceState, traceState.GetAction()))
 		}
 		return NewTupleValue(values), nil
 	}
@@ -199,6 +201,19 @@ func predecessorTraceTupleValue(state *TLCStateMut) Value {
 		reversed[i], reversed[j] = reversed[j], reversed[i]
 	}
 	return NewTupleValue(reversed)
+}
+
+func stateActionRecordValue(state *TLCStateMut, action *Action) *RecordValue {
+	if state == nil {
+		return EmptyRecord
+	}
+	names := []*UniqueString{tlcExtActionField}
+	values := []Value{action.ToRecordValue()}
+	for name, value := range state.Values().All() {
+		names = append(names, name)
+		values = append(values, value)
+	}
+	return NewRecordValue(names, values, false)
 }
 
 func traceInfoTupleValue(trace []*TLCStateInfo) Value {

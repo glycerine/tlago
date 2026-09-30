@@ -1283,6 +1283,10 @@ Important behavior:
   each selected successor. Go mirrors that with concrete `SetCurrentState`
   replacement semantics; scoped `PushCurrentState` remains for nested evaluator
   calls such as next-state generation.
+- In simulation mode, `TLCExt!Trace` uses Java's
+  `RecordValue(TLCState, Action)` constructor: each tuple element is a record
+  whose first field is `_action`, followed by the state's variables. The
+  non-simulation trace constructors remain state-record only.
 - Preserve the Java `INextStateFunctor` contract: plain `addElement(TLCState)`
   is unsupported for simulation workers; only `setElement` and the
   action-tagged successor `addElement(s, a, t)` paths are valid.
