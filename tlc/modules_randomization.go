@@ -7,7 +7,7 @@ import (
 
 func RandomSubset(k Value, set Value) (Value, error) {
 	count, ok := k.(*IntValue)
-	if !ok || count.Val < 0 {
+	if !ok {
 		return nil, newTLCError(ECGeneral, "first argument of RandomSubset must be a nonnegative integer, got %s", k)
 	}
 	return randomSubsetOfEnumerable(int(count.Val), set)
@@ -80,15 +80,88 @@ func randomSubsetOfEnumerable(k int, value Value) (Value, error) {
 		return nil, err
 	}
 	n := values.Len()
-	if k > n {
-		k = n
-	}
-	perm := RandomEnumerableGenerator().Perm(n)
 	out := NewValueVec(k)
-	for i := 0; i < k; i++ {
-		out.Add(values.At(perm[i]))
+	for _, index := range randomSubsetIndices(k, n) {
+		out.Add(values.At(index))
 	}
 	return NewSetEnumValueVec(out, false), nil
+}
+
+func randomSubsetIndices(k int, n int) []int {
+	if k <= 0 || n <= 0 {
+		return nil
+	}
+	m, a := randomSubsetLCGParameters(n)
+	rng := RandomEnumerableGenerator()
+	index := int(rng.NextIntN(int32(n)))
+	c := rng.NextPrime()
+	indices := make([]int, 0, k)
+	for len(indices) < k {
+		for {
+			index = int((int64(a)*int64(index) + int64(c)) % int64(m))
+			if index < n {
+				break
+			}
+		}
+		indices = append(indices, index)
+	}
+	return indices
+}
+
+func randomSubsetLCGParameters(n int) (int, int) {
+	if n < 9 {
+		n = 9
+	}
+	factors := primeFactors(n)
+	for n%4 == 0 || primeFactorsAreSquareFree(factors) {
+		n++
+		factors = primeFactors(n)
+	}
+	a := 1
+	var used []int
+	for _, factor := range factors {
+		seen := false
+		for _, existing := range used {
+			if existing == factor {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			used = append(used, factor)
+			a *= factor
+		}
+	}
+	return n, a + 1
+}
+
+func primeFactorsAreSquareFree(factors []int) bool {
+	for i := 0; i < len(factors); i++ {
+		for j := i + 1; j < len(factors); j++ {
+			if factors[i] == factors[j] {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func primeFactors(n int) []int {
+	var factors []int
+	for n%2 == 0 {
+		factors = append(factors, 2)
+		n /= 2
+	}
+	for d := 3; d*d <= n; d += 2 {
+		for n%d == 0 {
+			factors = append(factors, d)
+			n /= d
+		}
+	}
+	if n > 1 {
+		factors = append(factors, n)
+	}
+	return factors
 }
 
 func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) {

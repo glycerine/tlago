@@ -1236,6 +1236,17 @@ the definition-by-name hook as `TLCExtTLCEvalDefinition`, which looks up a
 zero-arity `OpDefNode` in the concrete `Tool` definition table and evaluates
 its body in the existing context/state pair.
 
+`Randomization!RandomSubset(k, S)` must follow Java's `EnumerableValue`
+subset enumerator rather than a plain shuffled sample. Java chooses a seed
+index with `Random.nextInt(|S|)`, chooses an increment with
+`RandomGenerator.nextPrime`, computes the same `m/a` LCG parameters used by
+`EnumerableValue.computeOptimalMandA`, and emits `k` random indices from the
+LCG. The emitted `SetEnumValue` is initially unnormalized, so duplicate draws
+are preserved until normal set comparison/fingerprinting forces
+normalization. This is observable for seeded runs and aril replay. Java does
+not reject a negative integer `k` for `RandomSubset`; it simply yields the
+empty set because the enumerator has no next element.
+
 Override infrastructure:
 
 - `TLARegistry` maps TLA+ names to Java names.
