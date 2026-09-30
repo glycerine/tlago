@@ -166,6 +166,9 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 
 	switch opcode {
 	case OpcodeDL, OpcodeLor:
+		if len(args) == 0 {
+			return nil
+		}
 		for _, arg := range args {
 			if err := t.GetInitStatesForPredicate(arg, acts, c, ps, states, cm); err != nil {
 				return err
@@ -173,6 +176,9 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 		}
 		return nil
 	case OpcodeCL, OpcodeLand:
+		if len(args) == 0 {
+			return t.GetInitStatesFromActionList(acts, ps, states, cm)
+		}
 		acts1 := acts
 		for i := len(args) - 1; i > 0; i-- {
 			acts1 = acts1.Cons(args[i], c, cm, i)
@@ -507,12 +513,18 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 	}
 	switch opcode {
 	case OpcodeCL, OpcodeLand:
+		if len(args) == 0 {
+			return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
+		}
 		acts1 := acts
 		for i := len(args) - 1; i > 0; i-- {
 			acts1 = acts1.Cons(args[i], c, cm, i)
 		}
 		return t.GetNextStatesForPredicate(action, args[0], acts1, c, s0, s1, nss, cm)
 	case OpcodeDL, OpcodeLor:
+		if len(args) == 0 {
+			return s1, nil
+		}
 		res := s1
 		for _, arg := range args {
 			next, err := t.GetNextStatesForPredicate(action, arg, acts, c, s0, res, nss, cm)

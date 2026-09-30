@@ -136,12 +136,18 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 	case OpcodeCase:
 		return t.enabledCase(pred, acts, c, s0, s1, cm)
 	case OpcodeCL, OpcodeLand:
+		if len(args) == 0 {
+			return t.EnabledFromActionList(acts, s0, s1, cm)
+		}
 		acts1 := acts
 		for i := len(args) - 1; i > 0; i-- {
 			acts1 = acts1.Cons(args[i], c, cm, i)
 		}
 		return t.EnabledImpl(args[0], acts1, c, s0, s1, cm)
 	case OpcodeDL, OpcodeLor:
+		if len(args) == 0 {
+			return nil, nil
+		}
 		for _, arg := range args {
 			s2, err := t.EnabledImpl(arg, acts, c, s0, s1, cm)
 			if err != nil || s2 != nil {
