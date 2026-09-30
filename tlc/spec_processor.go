@@ -300,9 +300,7 @@ func (p *SpecProcessor) ProcessConfig() {
 		}
 	}
 	p.Invariants, p.InvariantNames = p.actionsFromConfigNames(p.Config.GetInvariants(), false)
-	properties, propertyNames := p.actionsFromConfigNames(p.Config.GetProperties(), false)
-	p.Temporals = append(p.Temporals, properties...)
-	p.TemporalNames = append(p.TemporalNames, propertyNames...)
+	p.processConfigProperties()
 	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
 	p.ModelConstraints = p.semanticNodesFromConfigNames(p.Config.GetConstraints())
 	p.ActionConstraints = p.semanticNodesFromConfigNames(p.Config.GetActionConstraints())
@@ -355,6 +353,37 @@ func (p *SpecProcessor) processSpecificationConfig() {
 	}
 	tool := p.configProcessingTool()
 	p.processConfigSpec(tool, def.Body, EmptyContext, EmptyList, nil)
+}
+
+func (p *SpecProcessor) processConfigProperties() {
+	if p == nil || p.Config == nil {
+		return
+	}
+	tool := p.configProcessingTool()
+	for _, name := range p.Config.GetProperties() {
+		switch prop := p.defn(name).(type) {
+		case *OpDefNode:
+			if prop != nil && prop.Arity() == 0 {
+				p.processConfigProperty(tool, name, name, prop.Body, EmptyContext, EmptyList)
+			}
+		case *BoolValue:
+			if !prop.Val {
+				p.addPlaceholderImpliedTemporal(name)
+			}
+		case nil:
+			p.addPlaceholderImpliedTemporal(name)
+		default:
+			p.addPlaceholderImpliedTemporal(name)
+		}
+	}
+}
+
+func (p *SpecProcessor) addPlaceholderImpliedTemporal(name string) {
+	if name == "" {
+		return
+	}
+	p.ImpliedTemporals = append(p.ImpliedTemporals, &Action{Name: name, Con: EmptyContext})
+	p.ImpliedTempNames = append(p.ImpliedTempNames, name)
 }
 
 func (p *SpecProcessor) configProcessingTool() *Tool {
@@ -471,6 +500,137 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 	case OpcodeNop:
 		if len(args) > 0 {
 			p.processConfigSpec(tool, args[0], c, subs, stack)
+			return true
+		}
+	}
+	return false
+}
+
+func (p *SpecProcessor) processConfigProperty(tool *Tool, name string, configName string, pred SemanticNode, c *Context, subs *List) {
+	if p == nil || pred == nil {
+		return
+	}
+	if c == nil {
+		c = EmptyContext
+	}
+	if subs == nil {
+		subs = EmptyList
+	}
+	if tool == nil {
+		tool = p.configProcessingTool()
+	}
+	switch node := pred.(type) {
+	case *SubstInNode:
+		p.processConfigProperty(tool, name, configName, node.Body, c, subs.Cons(node))
+		return
+	case *APSubstInNode:
+		p.processConfigProperty(tool, name, configName, node.Body, c, subs)
+		return
+	case *LetInNode:
+		p.processConfigProperty(tool, name, configName, node.Body, c, subs)
+		return
+	case *LabelNode:
+		p.processConfigProperty(tool, name, configName, node.Body, c, subs)
+		return
+	case *OpApplNode:
+		if p.processConfigPropertyAppl(tool, name, configName, node, c, subs) {
+			return
+		}
+	}
+	level := tool.GetLevelBound(pred, c)
+	switch level {
+	case TLCLevelConstant, TLCLevelState:
+		p.ImpliedInits = append(p.ImpliedInits, NewAction(SpecsAddSubsts(pred, subs), c, configName))
+		p.ImpliedInitNames = append(p.ImpliedInitNames, name)
+	case TLCLevelAction:
+		p.ImpliedActions = append(p.ImpliedActions, NewAction(SpecsAddSubsts(pred, subs), c, configName))
+		p.ImpliedActNames = append(p.ImpliedActNames, name)
+	case TLCLevelTemporal:
+		p.ImpliedTemporals = append(p.ImpliedTemporals, NewAction(SpecsAddSubsts(pred, subs), c, configName))
+		p.ImpliedTempNames = append(p.ImpliedTempNames, name)
+	}
+}
+
+func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, configName string, pred *OpApplNode, c *Context, subs *List) bool {
+	if pred == nil || pred.Operator == nil {
+		return false
+	}
+	args := pred.Args
+	opNode := pred.Operator
+	val := tool.Lookup(opNode, c, EmptyState, false)
+	if len(args) == 0 {
+		switch v := val.(type) {
+		case *OpDefNode:
+			if v == nil || v.Arity() != 0 {
+				return true
+			}
+			opName := name
+			if opNode.Name != nil {
+				opName = opNode.Name.String()
+			}
+			p.processConfigProperty(tool, opName, configName, v.Body, c, subs)
+			return true
+		case *BoolValue:
+			return true
+		case *LazyValue:
+			p.processConfigProperty(tool, name, configName, v.Expr, v.Con, subs)
+			return true
+		}
+	}
+	if def, ok := val.(*OpDefNode); ok && def != nil && def.Body != nil && def.Arity() == len(args) && subs.IsEmpty() {
+		if c1, err := tool.GetOpContext(def, args, c, true, DoNotRecordCostModel); err == nil {
+			opName := name
+			if opNode.Name != nil {
+				opName = opNode.Name.String()
+			}
+			p.processConfigProperty(tool, opName, configName, def.Body, c1, subs)
+			return true
+		}
+	}
+	opcode := 0
+	if opNode.Name != nil {
+		opcode = GetOpCode(opNode.Name)
+	}
+	switch opcode {
+	case OpcodeBF:
+		if len(args) > 0 {
+			if ctxts, err := tool.Contexts(pred, c, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel); err == nil && ctxts != nil && ctxts.Err() == nil && !ctxts.IsDone() {
+				for c1 := ctxts.NextElement(); c1 != nil; c1 = ctxts.NextElement() {
+					p.processConfigProperty(tool, SemanticString(args[0]), configName, args[0], c1, subs)
+				}
+				return true
+			}
+		}
+	case OpcodeCL, OpcodeLand:
+		for _, arg := range args {
+			p.processConfigProperty(tool, SemanticString(arg), configName, arg, c, subs)
+		}
+		return true
+	case OpcodeBox:
+		if len(args) == 0 {
+			return true
+		}
+		boxArg := args[0]
+		if boxAppl, ok := boxArg.(*OpApplNode); ok && boxAppl.Operator != nil && GetOpCode(boxAppl.Operator.Name) == OpcodeSA {
+			actName := name
+			if len(boxAppl.Args) == 0 && boxAppl.Operator.Name != nil {
+				actName = boxAppl.Operator.Name.String()
+			}
+			p.ImpliedActions = append(p.ImpliedActions, NewAction(SpecsAddSubsts(boxArg, subs), c, configName))
+			p.ImpliedActNames = append(p.ImpliedActNames, actName)
+			return true
+		}
+		if tool.GetLevelBound(boxArg, c) < TLCLevelAction {
+			p.Invariants = append(p.Invariants, NewAction(SpecsAddSubsts(boxArg, subs), c, configName))
+			p.InvariantNames = append(p.InvariantNames, name)
+			return true
+		}
+		p.ImpliedTemporals = append(p.ImpliedTemporals, NewAction(SpecsAddSubsts(pred, subs), c, configName))
+		p.ImpliedTempNames = append(p.ImpliedTempNames, name)
+		return true
+	case OpcodeNop:
+		if len(args) > 0 {
+			p.processConfigProperty(tool, name, configName, args[0], c, subs)
 			return true
 		}
 	}
