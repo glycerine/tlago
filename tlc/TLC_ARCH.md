@@ -512,6 +512,10 @@ Port guidance:
 - Preserve short-circuiting for boolean operators.
 - Preserve Java's eager/lazy choices. Lazy values are not optional; they avoid
   explosive enumeration and support recursive/function semantics.
+- Preserve Java's special `OPCODE_fa` branch: function records and function
+  lambdas evaluate `args[1]`, while tuples and records first reject
+  `f[e1, ... , eN]` when `N > 1`. The tuple/record argument must not be
+  evaluated before that arity check.
 - In `evalApplImpl`, if a looked-up `LazyValue` is forced with `s1 == null`,
   Java evaluates the lazy expression directly with the lazy value's saved
   context and cost model. The cached path is reserved for the `s1 != null`

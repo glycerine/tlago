@@ -885,22 +885,47 @@ func (t *Tool) evalFcnApply(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	if err != nil {
 		return nil, err
 	}
-	argVal, err := t.Eval(args[1], c, s0, s1, control, cm)
-	if err != nil {
-		return nil, err
-	}
 	switch f := fval.(type) {
 	case *FcnRcdValue:
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
 		return f.Apply(argVal)
 	case *FcnLambdaValue:
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
 		return f.ApplyWithControl(argVal, control)
 	case *TupleValue:
+		if len(args) != 2 {
+			return nil, newTLCError(ECGeneral, "attempted to evaluate f[e1, ... , eN] with f a tuple and N > 1: %s", SemanticString(expr))
+		}
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
 		return f.Apply(argVal)
 	case *RecordValue:
+		if len(args) != 2 {
+			return nil, newTLCError(ECGeneral, "attempted to evaluate f[e1, ... , eN] with f a record and N > 1: %s", SemanticString(expr))
+		}
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
 		return f.Apply(argVal)
 	default:
 		return nil, newTLCError(ECGeneral, "a non-function (%s) was applied as a function", fval.KindString())
 	}
+}
+
+func (t *Tool) evalFunctionApplicationArgument(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if len(expr.Args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed function application: %s", SemanticString(expr))
+	}
+	return t.Eval(expr.Args[1], c, s0, s1, control, cm)
 }
 
 func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
