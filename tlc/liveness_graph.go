@@ -999,9 +999,11 @@ func NewGraphTransition(fp uint64, tidx int, checks *BitVector) GraphTransition 
 
 type BEGraphNode struct {
 	AbstractGraphNode
-	StateFP uint64
-	Nexts   []*BEGraphNode
-	Number  int64
+	StateFP    uint64
+	Nexts      []*BEGraphNode
+	Number     int64
+	Tableau    bool
+	TableauIdx int32
 }
 
 const beGraphVisitedMask = int64(-1 << 63)
@@ -1035,7 +1037,28 @@ type BTGraphNode struct {
 }
 
 func NewBTGraphNode(fp uint64, index int) *BTGraphNode {
-	return &BTGraphNode{BEGraphNode: NewBEGraphNode(fp), TIndex: int32(index)}
+	node := NewBEGraphNode(fp)
+	node.Tableau = true
+	node.TableauIdx = int32(index)
+	return &BTGraphNode{BEGraphNode: node, TIndex: int32(index)}
+}
+
+func (n *BEGraphNode) IsTableauNode() bool {
+	return n != nil && n.Tableau
+}
+
+func (n *BEGraphNode) GetIndex() int {
+	if n == nil {
+		return 0
+	}
+	return int(uint32(n.TableauIdx) & 0x3fffffff)
+}
+
+func (n *BEGraphNode) GetTNode(tableau *TBGraph) *TBGraphNode {
+	if n == nil || tableau == nil || !n.Tableau {
+		return nil
+	}
+	return tableau.GetNode(n.GetIndex())
 }
 
 func (n *BTGraphNode) GetIndex() int {
@@ -1048,6 +1071,7 @@ func (n *BTGraphNode) GetIndex() int {
 func (n *BTGraphNode) SetIndex(index int) {
 	if n != nil {
 		n.TIndex = int32((uint32(n.TIndex) & 0xc0000000) | (uint32(index) & 0x3fffffff))
+		n.TableauIdx = n.TIndex
 	}
 }
 
@@ -1058,6 +1082,7 @@ func (n *BTGraphNode) IsDone() bool {
 func (n *BTGraphNode) SetDone() {
 	if n != nil {
 		n.TIndex = int32(uint32(n.TIndex) | 0x80000000)
+		n.TableauIdx = n.TIndex
 	}
 }
 
@@ -1144,7 +1169,7 @@ func BEGraphGetPath(start *BEGraphNode, end *BEGraphNode) ([]*BEGraphNode, error
 	if start == nil || end == nil {
 		return nil, newTLCError(ECGeneral, "failed to construct behavior graph path")
 	}
-	if start == end || start.StateFP == end.StateFP {
+	if beGraphNodesEqual(start, end) {
 		start.SetParent(nil)
 	} else {
 		unseen := start.GetVisited()
@@ -1162,7 +1187,7 @@ func BEGraphGetPath(start *BEGraphNode, end *BEGraphNode) ([]*BEGraphNode, error
 				if nextNode == nil || nextNode.GetVisited() != unseen {
 					continue
 				}
-				if nextNode == end || nextNode.StateFP == end.StateFP {
+				if beGraphNodesEqual(nextNode, end) {
 					end.SetParent(curNode)
 					found = true
 					break
@@ -1220,14 +1245,36 @@ func (n *BEGraphNode) AddTransition(target *BEGraphNode, slen int, alen int, act
 
 func (n *BEGraphNode) TransExists(target *BEGraphNode) bool {
 	for _, next := range n.Nexts {
-		if next == target || (next != nil && target != nil && next.StateFP == target.StateFP) {
+		if beGraphNodesEqual(next, target) {
 			return true
 		}
 	}
 	return false
 }
 
+func beGraphNodesEqual(left *BEGraphNode, right *BEGraphNode) bool {
+	if left == right {
+		return true
+	}
+	if left == nil || right == nil {
+		return false
+	}
+	if left.StateFP != right.StateFP {
+		return false
+	}
+	if left.Tableau != right.Tableau {
+		return false
+	}
+	if left.Tableau {
+		return left.GetIndex() == right.GetIndex()
+	}
+	return true
+}
+
 func (n *BEGraphNode) NodeInfo() string {
+	if n != nil && n.Tableau {
+		return fmt.Sprintf("<%d,%d>", n.StateFP, n.GetIndex())
+	}
 	return fmt.Sprint(n.StateFP)
 }
 

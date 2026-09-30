@@ -6,7 +6,7 @@
 - The source of truth is Java TLC under `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2` and, later, its tests under `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
 - The current experiment is breadth-first mechanical porting first. Do not start porting the Java TLC test suite yet. Existing fast Go tests may be run; small utility tests are acceptable.
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
-- Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
+- Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `liveness_check1.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
 
@@ -63,6 +63,7 @@
   - Disk-backed liveness graphs now collect Java-style out-degree samples at node insertion and expose in/out-degree recomputation through `LiveCheck`'s auxiliary statistics methods.
   - Safety-like liveness counterexample prefix reconstruction now uses Java's non-prefix `ALIAS` overload instead of passing a `TLCExt!Trace` context.
   - Liveness DOT/debug writer calls now mirror Java's disk-backed liveness paths: initial states are written for non-tableau/tableau checkers, non-tableau transitions carry bit-vector labels and seen/unseen status, tableau cross-product edges are emitted on insertion, and recursive done-expansion writes dotted edges for generated state successors.
+  - Legacy in-memory `LiveCheck1` is now ported as a concrete Go struct: trace graph construction, incremental BE/BT graph updates, Tarjan SCC passes, PEM subcomponent checking, and liveness error trace reconstruction are present. `BEGraphNode` now preserves tableau identity so Java's BT-node equality semantics are not collapsed to state fingerprints.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -74,9 +75,9 @@
   - Trace reconstruction and counterexample printing through safety and liveness paths.
   - State queue interaction with fingerprint set and trace file at full Java fidelity.
 - Complete liveness checker parity:
-  - final SCC/cycle checking flow, accepting-component error reporting, lasso reconstruction, violated-property attribution, and any remaining DOT formatting differences.
+  - final disk-backed SCC/cycle checking flow, accepting-component error reporting, lasso reconstruction, violated-property attribution, and any remaining DOT formatting differences.
   - optional `LIVENESS_STATS` raw statistics printing still needs an output-channel decision; graph collection/recomputation helpers are now present.
-  - retire or clearly reconcile any temporary in-memory liveness paths once disk graph worker parity is complete.
+  - rewire simulator defaults to use `LiveCheck1`, keeping disk-backed simulation behind the Java-style experimental liveness property.
 - Complete FPSet/DiskFPSet parity:
   - fine-grained striped locking and block IO concurrency, disk flushing, checkpoint/recovery edge cases, management/MX statistics.
   - distributed FP set manager/proxy behavior.
@@ -103,6 +104,6 @@
 - Last verified commands before this file:
   - `go test ./tlc`
 - Immediate next steps:
-  1. Continue breadth-first liveness comparison, especially remaining LiveCheck1/in-memory reconciliation and final SCC/counterexample details.
+  1. Rewire simulator workers to use `LiveCheck1` by default and disk-backed `LiveCheck` only when experimental simulation liveness is requested.
   2. Then continue into remaining checkpoint/distributed/debugger surfaces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
