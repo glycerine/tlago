@@ -25,6 +25,9 @@ type DiskStateQueue struct {
 	enqIndex      int
 	loPool        int
 	hiPool        int
+	reader        *StatePoolReader
+	writer        *StatePoolWriter
+	loFile        string
 	lastLoPool    int
 	newLastLoPool int
 }
@@ -41,6 +44,11 @@ func NewDiskStateQueue(metaDir string) *DiskStateQueue {
 		loPool:   1,
 	}
 	q.cond = sync.NewCond(&q.mu)
+	q.reader = NewStatePoolReader(diskStateQueueBufferSize, q.poolName(0))
+	q.reader.Start()
+	q.writer = NewStatePoolWriter(diskStateQueueBufferSize, q.reader)
+	q.writer.Start()
+	q.loFile = q.poolName(q.loPool)
 	return q
 }
 
@@ -142,6 +150,12 @@ func (q *DiskStateQueue) FinishAll() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.finish = true
+	if q.writer != nil {
+		q.writer.SetFinished()
+	}
+	if q.reader != nil {
+		q.reader.SetFinished()
+	}
 	q.cond.Broadcast()
 }
 
@@ -263,6 +277,10 @@ func (q *DiskStateQueue) Recover() error {
 		*ptr = int(value)
 	}
 	q.lastLoPool = q.loPool - 1
+	if q.reader != nil {
+		q.reader.Restart(q.poolName(q.lastLoPool), q.lastLoPool < q.hiPool)
+	}
+	q.loFile = q.poolName(q.loPool)
 	for i := range q.enqBuf {
 		q.enqBuf[i] = nil
 	}
@@ -330,12 +348,38 @@ func (q *DiskStateQueue) peekInner() *TLCStateMut {
 
 func (q *DiskStateQueue) fillDequeueBuffer() error {
 	if q.loPool+1 <= q.hiPool {
-		if err := q.readPool(q.loPool, q.deqBuf); err != nil {
+		if q.loPool+1 >= q.hiPool && q.writer != nil {
+			if err := q.writer.EnsureWritten(); err != nil {
+				return err
+			}
+		}
+		buf, err := q.reader.DoWork(q.deqBuf, q.loFile)
+		if err != nil {
 			return err
 		}
+		q.deqBuf = buf
 		q.deqIndex = 0
 		q.loPool++
+		q.loFile = q.poolName(q.loPool)
 		return nil
+	}
+	if q.writer != nil {
+		if err := q.writer.EnsureWritten(); err != nil {
+			return err
+		}
+	}
+	if q.reader != nil {
+		buf, err := q.reader.GetCache(q.deqBuf, q.loFile)
+		if err != nil {
+			return err
+		}
+		if buf != nil {
+			q.deqBuf = buf
+			q.deqIndex = 0
+			q.loPool++
+			q.loFile = q.poolName(q.loPool)
+			return nil
+		}
 	}
 	q.deqIndex = len(q.deqBuf) - q.enqIndex
 	for i := range q.deqBuf {
@@ -353,49 +397,16 @@ func (q *DiskStateQueue) spillEnqueueBuffer() error {
 	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
 		return err
 	}
-	if err := q.writePool(q.hiPool, q.enqBuf); err != nil {
+	buf, err := q.writer.DoWork(q.enqBuf, q.poolName(q.hiPool))
+	if err != nil {
 		return err
 	}
+	q.enqBuf = buf
 	for i := range q.enqBuf {
 		q.enqBuf[i] = nil
 	}
 	q.hiPool++
 	q.enqIndex = 0
-	return nil
-}
-
-func (q *DiskStateQueue) writePool(pool int, states []*TLCStateMut) error {
-	file, err := os.Create(q.poolName(pool))
-	if err != nil {
-		return err
-	}
-	out := NewValueOutputStream(file)
-	for _, state := range states {
-		if state == nil {
-			state = NewEmptyState()
-		}
-		if err := state.Write(out); err != nil {
-			_ = out.Close()
-			return err
-		}
-	}
-	return out.Close()
-}
-
-func (q *DiskStateQueue) readPool(pool int, states []*TLCStateMut) error {
-	file, err := os.Open(q.poolName(pool))
-	if err != nil {
-		return err
-	}
-	in := NewValueInputStream(file)
-	defer in.Close()
-	for i := range states {
-		state := NewEmptyState()
-		if err := state.Read(in); err != nil {
-			return err
-		}
-		states[i] = state
-	}
 	return nil
 }
 

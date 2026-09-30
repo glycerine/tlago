@@ -641,7 +641,9 @@ Important synchronization details:
 Disk queue behavior:
 
 - `enqBuf` fills then spills to disk through `StatePoolWriter`.
-- `deqBuf` drains then refills from disk or from `enqBuf`.
+- `deqBuf` drains then refills through `StatePoolReader`, which can return a
+  prefetched full buffer, synchronously read a pending pool file, or fall back
+  to the in-memory `enqBuf`.
 - a cleaner thread deletes old pool files.
 - checkpoint includes queue metadata and buffered states.
 
