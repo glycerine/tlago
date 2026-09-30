@@ -150,7 +150,9 @@ func (s *Simulator) Simulate() (int, error) {
 		return ECTLCNoStatesSatisfyingInit, nil
 	}
 	initStates.DeepNormalize()
+	stopProgress := s.startProgressReporter()
 	workerResult := s.simulate(initStates)
+	stopProgress()
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()
 	if err := s.writeActionFlowGraph(); err != nil {
@@ -161,6 +163,76 @@ func (s *Simulator) Simulate() (int, error) {
 		return code, workerResult.Error.Err
 	}
 	return code, nil
+}
+
+func (s *Simulator) startProgressReporter() func() {
+	if s == nil || s.Tool == nil {
+		return func() {}
+	}
+	interval := ProgressInterval()
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		coverageCountdown := periodicCoverageCountdown(interval)
+		for {
+			select {
+			case <-ticker.C:
+				if !s.reportSimulationProgress(&coverageCountdown, interval) {
+					s.ResultQueue <- SimulationWorkerOK(-1)
+					return
+				}
+			case <-stop:
+				s.reportSimulationProgress(&coverageCountdown, interval)
+				return
+			}
+		}
+	}()
+	return func() {
+		close(stop)
+		<-done
+	}
+}
+
+func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval time.Duration) bool {
+	genTrace := s.NumGenTraces.Load()
+	m2AndMean := s.WelfordM2Mean.Load()
+	mean := int64(int32(m2AndMean & 0xffffffff))
+	m2 := uint64(m2AndMean) >> 32
+	PrintMessage(ECTLCProgressSimu,
+		fmtInt64(s.NumGenStates.Load()),
+		fmtInt64(genTrace),
+		fmtInt64(mean),
+		fmtInt64(int64(math.Round(float64(m2)/(float64(genTrace)+1)))),
+		fmtInt64(int64(math.Round(math.Sqrt(float64(m2)/(float64(genTrace)+1))))),
+	)
+	if coverageCountdown != nil {
+		if *coverageCountdown > 1 {
+			(*coverageCountdown)--
+		} else {
+			if CoverageAnyEnabled() {
+				ReportCoverage(s.Tool, TLCStartTime())
+			}
+			*coverageCountdown = periodicCoverageCountdown(interval)
+		}
+	}
+	if err := s.writeActionFlowGraph(); err != nil {
+		PrintError(ECTLCReporterDied, err.Error())
+	}
+	if s.Tool != nil && s.Tool.Periodic != nil {
+		value, err := s.Tool.NoDebug().Eval(s.Tool.Periodic)
+		if err != nil {
+			PrintError(ECTLCAssumptionEvaluationError, err.Error())
+			return false
+		}
+		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
+			PrintError(ECTLCAssumptionFalse, SemanticString(s.Tool.Periodic))
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Simulator) Stop() {
