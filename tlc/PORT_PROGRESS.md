@@ -6,7 +6,7 @@
 - The source of truth is Java TLC under `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2` and, later, its tests under `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
 - The current experiment is breadth-first mechanical porting first. Do not start porting the Java TLC test suite yet. Existing fast Go tests may be run; small utility tests are acceptable.
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
-- Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
+- Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
 
@@ -62,6 +62,7 @@
   - Liveness counterexample reconstruction now keeps Java's raw-vs-printable trace split: raw states feed violated-property attribution and `CounterExample`, printed states go through `ALIAS`, and stuttering lassos emit Java's fairness/specification warning when applicable.
   - Disk-backed liveness graphs now collect Java-style out-degree samples at node insertion and expose in/out-degree recomputation through `LiveCheck`'s auxiliary statistics methods.
   - Safety-like liveness counterexample prefix reconstruction now uses Java's non-prefix `ALIAS` overload instead of passing a `TLCExt!Trace` context.
+  - Liveness DOT/debug writer calls now mirror Java's disk-backed liveness paths: initial states are written for non-tableau/tableau checkers, non-tableau transitions carry bit-vector labels and seen/unseen status, tableau cross-product edges are emitted on insertion, and recursive done-expansion writes dotted edges for generated state successors.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -73,7 +74,7 @@
   - Trace reconstruction and counterexample printing through safety and liveness paths.
   - State queue interaction with fingerprint set and trace file at full Java fidelity.
 - Complete liveness checker parity:
-  - final SCC/cycle checking flow, accepting-component error reporting, lasso reconstruction, violated-property attribution, DOT output edge cases.
+  - final SCC/cycle checking flow, accepting-component error reporting, lasso reconstruction, violated-property attribution, and any remaining DOT formatting differences.
   - optional `LIVENESS_STATS` raw statistics printing still needs an output-channel decision; graph collection/recomputation helpers are now present.
   - retire or clearly reconcile any temporary in-memory liveness paths once disk graph worker parity is complete.
 - Complete FPSet/DiskFPSet parity:
@@ -91,17 +92,17 @@
 ## Current Position
 
 - Latest commits:
+  - `d3b0923 Match safety liveness aliasing`
+  - `0290400 Track liveness graph degree stats`
+  - `f1c89ea Align liveness trace printing`
+  - `82f0a84 Align liveness checker scheduling`
   - `73dd5bd Report liveness check progress`
   - `964aa46 Honor liveness check gates`
   - `e90c5fc Rebind DFID recovery metadir`
   - `523ec43 Scope DFID worker ids`
-  - `74baaa2 Mirror DFID init diagnostics`
-  - `e5b08a1 Align DFID termination flow`
-  - `7eb9c3f Align periodic failure suspension`
-  - `89053f3 Replay init errors for call stacks`
 - Last verified commands before this file:
   - `go test ./tlc`
 - Immediate next steps:
-  1. Continue breadth-first liveness comparison, especially DOT/debug output edge cases and remaining LiveCheck1/in-memory reconciliation.
+  1. Continue breadth-first liveness comparison, especially remaining LiveCheck1/in-memory reconciliation and final SCC/counterexample details.
   2. Then continue into remaining checkpoint/distributed/debugger surfaces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.

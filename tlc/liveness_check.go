@@ -101,6 +101,55 @@ func (w *LivenessStateWriter) Close() error {
 	return w.StateWriter.Close()
 }
 
+func (w *LivenessStateWriter) WriteLivenessState(state *TLCStateMut) error {
+	if w == nil || w.IsNoop() || w.StateWriter == nil {
+		return nil
+	}
+	return w.StateWriter.WriteInitState(state)
+}
+
+func (w *LivenessStateWriter) WriteLivenessStateTransition(state *TLCStateMut, successor *TLCStateMut, actionChecks *BitVector, from int, length int, status StateVisitStatus, visualization StateVisualization) error {
+	if w == nil || w.IsNoop() || w.writer == nil || state == nil || successor == nil {
+		return nil
+	}
+	if !w.stuttering && visualization == StateVisualizationStuttering {
+		return nil
+	}
+	sourceFP := state.FingerPrint()
+	successorFP := successor.FingerPrint()
+	if w.strict != nil {
+		key := sourceFP ^ successorFP
+		if _, ok := w.strict[key]; ok {
+			return nil
+		}
+		w.strict[key] = struct{}{}
+	}
+	if _, err := fmt.Fprintf(w.writer, "%d -> %d", sourceFP, successorFP); err != nil {
+		return err
+	}
+	if visualization == StateVisualizationStuttering {
+		_, err := w.writer.WriteString(" [style=\"dashed\",color=\"lightgray\"];\n")
+		return err
+	}
+	if length > 0 && actionChecks != nil {
+		if _, err := fmt.Fprintf(w.writer, " [label=\"%s\"]", dotEscape(actionChecks.StringRangeChars(from, length, 't', 'f'))); err != nil {
+			return err
+		}
+	}
+	if _, err := w.writer.WriteString(";\n"); err != nil {
+		return err
+	}
+	if status != StateVisitSeen {
+		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"];\n",
+			successorFP,
+			stateToDot(successor.EvalStateLevelAlias(), state.EvalStateLevelAlias(), printDiffsOnly()),
+			stateToDot(successor, nil, false),
+		)
+		return err
+	}
+	return nil
+}
+
 func (w *LivenessStateWriter) WriteLivenessInitState(state *TLCStateMut, tableauNode *TBGraphNode) error {
 	if w == nil || w.IsNoop() || w.writer == nil || state == nil || tableauNode == nil {
 		return nil
@@ -145,7 +194,7 @@ func (w *LivenessStateWriter) WriteLivenessTransitionVisual(state *TLCStateMut, 
 		}
 	}
 	if length > 0 && actionChecks != nil {
-		label := strings.Trim(actionChecks.StringRangeChars(from, length, 't', 'f'), "[]")
+		label := actionChecks.StringRangeChars(from, length, 't', 'f')
 		if _, err := fmt.Fprintf(w.writer, " [label=\"%s\"]", dotEscape(label)); err != nil {
 			return err
 		}
@@ -229,6 +278,9 @@ func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint6
 					c.TableauDiskGraph.AddInitNode(stateFP, tnode.Index)
 					c.TableauDiskGraph.RecordNode(stateFP, tnode.Index)
 				}
+				if err := c.Writer.WriteLivenessInitState(state, tnode); err != nil {
+					return err
+				}
 				node, err := c.ensureGraphNode(tool, state, stateFP, tnode.Index)
 				if err != nil {
 					return err
@@ -240,6 +292,9 @@ func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint6
 	}
 	if c.DiskGraph != nil {
 		c.DiskGraph.AddInitNode(stateFP, -1)
+	}
+	if err := c.Writer.WriteLivenessState(state); err != nil {
+		return err
 	}
 	node, err := c.ensureGraphNode(tool, state, stateFP, -1)
 	if err != nil {
@@ -260,7 +315,7 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 		return c.addNextStateTableau(tool, s0, fp0, nextStates, actionResults, checkStateRes)
 	}
 	if c.DiskGraph != nil {
-		if err := c.addNextStateDisk(fp0, nextStates, actionResults, checkStateRes); err != nil {
+		if err := c.addNextStateDisk(s0, fp0, nextStates, actionResults, checkStateRes); err != nil {
 			return err
 		}
 	}
@@ -286,7 +341,7 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	return nil
 }
 
-func (c *LiveChecker) addNextStateDisk(fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
+func (c *LiveChecker) addNextStateDisk(s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
 	dgraph := c.DiskGraph
 	if dgraph == nil {
 		return nil
@@ -310,6 +365,13 @@ func (c *LiveChecker) addNextStateDisk(fp0 uint64, nextStates *SetOfStates, acti
 		ptr1 := dgraph.GetPtr(successor, -1)
 		if ptr1 == -1 || !node0.TransExists(successor, -1) {
 			node0.AddTransition(successor, -1, len(checkStateRes), alen, actionResults, sidx*alen, succCnt-cnt)
+		}
+		status := StateVisitSeen
+		if ptr1 == -1 {
+			status = StateVisitUnseen
+		}
+		if err := c.Writer.WriteLivenessStateTransition(s0, successorState, actionResults, sidx*alen, alen, status, StateVisualizationDefault); err != nil {
+			return err
 		}
 		cnt++
 	}
@@ -420,6 +482,9 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 				ptr1 := dgraph.GetPtr(successor, tnode1.Index)
 				if consistency.Get(tnode1.Index*succCnt+sidx) && (ptr1 == -1 || !node0.TransExists(successor, tnode1.Index)) {
 					node0.AddTransition(successor, tnode1.Index, len(checkStateRes), alen, actionResults, sidx*alen, allocationHint-cnt)
+					if err := c.Writer.WriteLivenessTransition(s0, tnode0, s1, tnode1, actionResults, sidx*alen, alen, StateVisitUnseen); err != nil {
+						return err
+					}
 					if ptr1 == -1 {
 						dgraph.RecordNode(successor, tnode1.Index)
 						if isDone {
@@ -591,7 +656,7 @@ func (c *LiveChecker) addNextStateTableauDone(tool *Tool, state *TLCStateMut, fp
 			return err
 		}
 		if ok {
-			if tnode1.IsAccepting() && oos.HasEmptyPEM() {
+			if tnode1.IsAccepting() && c.ErrorGraphNode == nil && oos.HasEmptyPEM() {
 				c.ErrorGraphNode = node
 				return nil
 			}
@@ -648,6 +713,9 @@ func (c *LiveChecker) addNextStateTableauDone(tool *Tool, state *TLCStateMut, fp
 					}
 					if ok && (ptr1 == -1 || !node.TransExists(fp1, tidx1)) {
 						node.AddTransition(fp1, tidx1, slen, alen, checkActionRes, 0, total-cnt)
+						if err := c.Writer.WriteLivenessTransitionVisual(state, tnode, s1, tnode1, checkActionRes, 0, alen, StateVisitSeen, StateVisualizationDotted); err != nil {
+							return err
+						}
 						if ptr1 == -1 {
 							dgraph.RecordNode(fp1, tidx1)
 							if isDone {
