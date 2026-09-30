@@ -27,8 +27,6 @@ type AbstractChecker struct {
 	Workers                   []*Worker
 	PrintedLivenessErrorStack bool
 	StartTime                 time.Time
-	Values                    *InsMap[int, any]
-	NamedValues               *InsMap[*UniqueString, any]
 }
 
 func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
@@ -51,8 +49,6 @@ func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, de
 		Tool:           tool,
 		AllStateWriter: stateWriter,
 		StartTime:      startTime,
-		Values:         NewInsMap[int, any](),
-		NamedValues:    NewInsMap[*UniqueString, any](),
 	}
 }
 
@@ -99,92 +95,92 @@ func continuationEnabled() bool {
 }
 
 func (c *AbstractChecker) GetValue(workerID int, idx int) Value {
-	if c == nil || c.Values == nil {
+	if c == nil || idx < 0 {
 		return nil
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return MuxWorkerValue(c.Values.Get(idx), workerID)
+	worker := c.workerAt(workerID)
+	if worker == nil {
+		return nil
+	}
+	return worker.GetLocalValue(idx)
 }
 
 func (c *AbstractChecker) SetAllValues(idx int, value Value) {
-	if c == nil {
+	if c == nil || idx < 0 {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.Values == nil {
-		c.Values = NewInsMap[int, any]()
+	for _, worker := range c.Workers {
+		if worker != nil {
+			worker.SetLocalValue(idx, value)
+		}
 	}
-	c.Values.Set(idx, value)
 }
 
 func (c *AbstractChecker) SetValue(workerID int, idx int, value Value) {
-	if c == nil {
+	if c == nil || idx < 0 {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.Values == nil {
-		c.Values = NewInsMap[int, any]()
+	worker := c.workerAt(workerID)
+	if worker != nil {
+		worker.SetLocalValue(idx, value)
 	}
-	if workerID < 0 {
-		workerID = 0
-	}
-	current := c.Values.Get(idx)
-	size := NumWorkers()
-	if size <= workerID {
-		size = workerID + 1
-	}
-	if size <= 1 && workerID == 0 {
-		c.Values.Set(idx, value)
-		return
-	}
-	values := make([]Value, size)
-	if workerValue, ok := current.(*WorkerValue); ok {
-		copy(values, workerValue.values)
-	} else if muxed := MuxWorkerValue(current, 0); muxed != nil {
-		values[0] = muxed
-	}
-	values[workerID] = value
-	c.Values.Set(idx, NewWorkerValue(values))
 }
 
 func (c *AbstractChecker) SetWorkerValues(idx int, values []Value) {
-	if c == nil {
+	if c == nil || idx < 0 {
 		return
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.Values == nil {
-		c.Values = NewInsMap[int, any]()
+	for i, value := range values {
+		if worker := c.workerAt(i); worker != nil {
+			worker.SetLocalValue(idx, value)
+		}
 	}
-	c.Values.Set(idx, NewWorkerValue(values))
 }
 
 func (c *AbstractChecker) GetAllValues() Value {
-	if c == nil || c.Values == nil {
+	if c == nil || len(c.Workers) == 0 || c.Workers[0] == nil {
 		return EmptyFcn
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	domain := make([]Value, 0, c.Values.Len())
-	values := make([]Value, 0, c.Values.Len())
-	for idx, value := range c.Values.All() {
+	localValues := c.Workers[0].LocalValues
+	domain := make([]Value, 0, len(localValues))
+	values := make([]Value, 0, len(localValues))
+	for idx, value := range localValues {
+		if value == nil {
+			continue
+		}
+		workerValues := make([]Value, len(c.Workers))
+		for i, worker := range c.Workers {
+			if worker != nil {
+				workerValues[i] = worker.GetLocalValue(idx)
+			}
+		}
 		domain = append(domain, NewIntValue(int32(idx)))
-		values = append(values, workerValueTuple(value))
+		values = append(values, NewTupleValue(workerValues))
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
 
 func (c *AbstractChecker) GetNamedValue(workerID int, key *UniqueString) Value {
-	_ = workerID
-	if c == nil || c.NamedValues == nil {
+	if c == nil || key == nil {
 		return nil
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return MuxWorkerValue(c.NamedValues.Get(key), workerID)
+	worker := c.workerAt(workerID)
+	if worker == nil {
+		return nil
+	}
+	return worker.GetNamedRegister(key)
 }
 
 func (c *AbstractChecker) SetAllNamedValues(key *UniqueString, value Value) {
@@ -193,10 +189,11 @@ func (c *AbstractChecker) SetAllNamedValues(key *UniqueString, value Value) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.NamedValues == nil {
-		c.NamedValues = NewInsMap[*UniqueString, any]()
+	for _, worker := range c.Workers {
+		if worker != nil {
+			worker.SetNamedRegister(key, value)
+		}
 	}
-	c.NamedValues.Set(key, value)
 }
 
 func (c *AbstractChecker) SetNamedValue(workerID int, key *UniqueString, value Value) {
@@ -205,29 +202,10 @@ func (c *AbstractChecker) SetNamedValue(workerID int, key *UniqueString, value V
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.NamedValues == nil {
-		c.NamedValues = NewInsMap[*UniqueString, any]()
+	worker := c.workerAt(workerID)
+	if worker != nil {
+		worker.SetNamedRegister(key, value)
 	}
-	if workerID < 0 {
-		workerID = 0
-	}
-	current := c.NamedValues.Get(key)
-	size := NumWorkers()
-	if size <= workerID {
-		size = workerID + 1
-	}
-	if size <= 1 && workerID == 0 {
-		c.NamedValues.Set(key, value)
-		return
-	}
-	values := make([]Value, size)
-	if workerValue, ok := current.(*WorkerValue); ok {
-		copy(values, workerValue.values)
-	} else if muxed := MuxWorkerValue(current, 0); muxed != nil {
-		values[0] = muxed
-	}
-	values[workerID] = value
-	c.NamedValues.Set(key, NewWorkerValue(values))
 }
 
 func (c *AbstractChecker) SetAllNamedWorkerValues(key *UniqueString, values []Value) {
@@ -236,47 +214,62 @@ func (c *AbstractChecker) SetAllNamedWorkerValues(key *UniqueString, values []Va
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.NamedValues == nil {
-		c.NamedValues = NewInsMap[*UniqueString, any]()
+	for i, value := range values {
+		if worker := c.workerAt(i); worker != nil {
+			worker.SetNamedRegister(key, value)
+		}
 	}
-	c.NamedValues.Set(key, NewWorkerValue(values))
 }
 
 func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
-	if c == nil || c.NamedValues == nil {
+	if c == nil || len(c.Workers) == 0 || c.Workers[0] == nil || c.Workers[0].NamedRegisters == nil {
 		return EmptyFcn
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	domain := make([]Value, 0, c.NamedValues.Len())
-	values := make([]Value, 0, c.NamedValues.Len())
-	for key, value := range c.NamedValues.All() {
+	domain := make([]Value, 0, c.Workers[0].NamedRegisters.Len())
+	values := make([]Value, 0, c.Workers[0].NamedRegisters.Len())
+	for key := range c.Workers[0].NamedRegisters.All() {
+		workerValues := make([]Value, len(c.Workers))
+		for i, worker := range c.Workers {
+			if worker != nil {
+				workerValues[i] = worker.GetNamedRegister(key)
+			}
+		}
 		domain = append(domain, NewStringValueFromUnique(key))
-		values = append(values, workerValueTuple(value))
+		values = append(values, NewTupleValue(workerValues))
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
 
 func (c *AbstractChecker) GetAllNamedValues(key *UniqueString) []Value {
-	if c == nil || c.NamedValues == nil || key == nil {
+	if c == nil || key == nil {
 		return nil
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	value := c.NamedValues.Get(key)
-	if workerValue, ok := value.(*WorkerValue); ok {
-		out := make([]Value, 0, len(workerValue.values))
-		for _, v := range workerValue.values {
-			if v != nil {
-				out = append(out, v)
-			}
+	values := make([]Value, 0, len(c.Workers))
+	for _, worker := range c.Workers {
+		if worker == nil {
+			values = append(values, nil)
+			continue
 		}
-		return out
+		values = append(values, worker.GetNamedRegister(key))
 	}
-	if muxed := MuxWorkerValue(value, 0); muxed != nil {
-		return []Value{muxed}
+	return values
+}
+
+func (c *AbstractChecker) workerAt(workerID int) *Worker {
+	if c == nil {
+		return nil
 	}
-	return nil
+	if workerID < 0 {
+		workerID = 0
+	}
+	if workerID < 0 || workerID >= len(c.Workers) {
+		return nil
+	}
+	return c.Workers[workerID]
 }
 
 type ModelChecker struct {

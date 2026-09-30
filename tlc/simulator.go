@@ -31,8 +31,6 @@ type Simulator struct {
 	TracesGenerated int64
 	DisabledRetries int64
 	Stopped         bool
-	Values          *InsMap[int, Value]
-	NamedValues     *InsMap[*UniqueString, Value]
 }
 
 type SimulatorOption func(*Simulator)
@@ -90,8 +88,6 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		Seed:          seed,
 		Rand:          NewJavaRandom(seed),
 		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
-		Values:        NewInsMap[int, Value](),
-		NamedValues:   NewInsMap[*UniqueString, Value](),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
 	for _, opt := range opts {
@@ -149,71 +145,108 @@ func (s *Simulator) Stop() {
 }
 
 func (s *Simulator) GetLocalValue(idx int) Value {
-	if s == nil || s.Values == nil {
+	if s == nil || idx < 0 {
 		return nil
 	}
-	return s.Values.Get(idx)
+	if worker := s.currentWorker(); worker != nil {
+		return worker.GetLocalValue(idx)
+	}
+	for _, worker := range s.Workers {
+		if value := worker.GetLocalValue(idx); value != nil {
+			return value
+		}
+	}
+	return nil
 }
 
 func (s *Simulator) SetAllValues(idx int, value Value) {
-	if s == nil {
+	if s == nil || idx < 0 {
 		return
 	}
-	if s.Values == nil {
-		s.Values = NewInsMap[int, Value]()
+	for _, worker := range s.Workers {
+		worker.SetLocalValue(idx, value)
 	}
-	s.Values.Set(idx, value)
 }
 
 func (s *Simulator) GetAllValues() Value {
-	if s == nil || s.Values == nil {
+	if s == nil || len(s.Workers) == 0 || s.Workers[0] == nil {
 		return EmptyFcn
 	}
-	domain := make([]Value, 0, s.Values.Len())
-	values := make([]Value, 0, s.Values.Len())
-	for idx, value := range s.Values.All() {
+	localValues := s.Workers[0].LocalValues
+	domain := make([]Value, 0, len(localValues))
+	values := make([]Value, 0, len(localValues))
+	for idx, value := range localValues {
+		if value == nil {
+			continue
+		}
+		workerValues := make([]Value, len(s.Workers))
+		for i, worker := range s.Workers {
+			if worker != nil {
+				workerValues[i] = worker.GetLocalValue(idx)
+			}
+		}
 		domain = append(domain, NewIntValue(int32(idx)))
-		values = append(values, value)
+		values = append(values, NewTupleValue(workerValues))
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
 
 func (s *Simulator) GetLocalNamedValue(key *UniqueString) Value {
-	if s == nil || s.NamedValues == nil {
+	if s == nil || key == nil {
 		return nil
 	}
-	return s.NamedValues.Get(key)
+	if worker := s.currentWorker(); worker != nil {
+		return worker.GetNamedRegister(key)
+	}
+	for _, worker := range s.Workers {
+		if value := worker.GetNamedRegister(key); value != nil {
+			return value
+		}
+	}
+	return nil
 }
 
 func (s *Simulator) SetAllNamedValues(key *UniqueString, value Value) {
 	if s == nil || key == nil {
 		return
 	}
-	if s.NamedValues == nil {
-		s.NamedValues = NewInsMap[*UniqueString, Value]()
+	for _, worker := range s.Workers {
+		worker.SetNamedRegister(key, value)
 	}
-	s.NamedValues.Set(key, value)
 }
 
 func (s *Simulator) GetAllNamedRegisterValues() Value {
-	if s == nil || s.NamedValues == nil {
+	if s == nil || len(s.Workers) == 0 || s.Workers[0] == nil || s.Workers[0].NamedRegisters == nil {
 		return EmptyFcn
 	}
-	domain := make([]Value, 0, s.NamedValues.Len())
-	values := make([]Value, 0, s.NamedValues.Len())
-	for key, value := range s.NamedValues.All() {
+	domain := make([]Value, 0, s.Workers[0].NamedRegisters.Len())
+	values := make([]Value, 0, s.Workers[0].NamedRegisters.Len())
+	for key := range s.Workers[0].NamedRegisters.All() {
+		workerValues := make([]Value, len(s.Workers))
+		for i, worker := range s.Workers {
+			if worker != nil {
+				workerValues[i] = worker.GetNamedRegister(key)
+			}
+		}
 		domain = append(domain, NewStringValueFromUnique(key))
-		values = append(values, value)
+		values = append(values, NewTupleValue(workerValues))
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
 
 func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
-	value := s.GetLocalNamedValue(key)
-	if value == nil {
+	if s == nil || key == nil {
 		return nil
 	}
-	return []Value{value}
+	values := make([]Value, 0, len(s.Workers))
+	for _, worker := range s.Workers {
+		if worker == nil {
+			values = append(values, nil)
+			continue
+		}
+		values = append(values, worker.GetNamedRegister(key))
+	}
+	return values
 }
 
 func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
@@ -321,11 +354,27 @@ func (s *Simulator) currentWorkerStatistics() *SimulationWorkerStatistics {
 	if s == nil || len(s.Workers) == 0 {
 		return NewSimulationWorkerStatistics(nil, "", nil, nil, nil)
 	}
-	workerID := currentWorkerIDOrZero()
-	if workerID < 0 || workerID >= len(s.Workers) || s.Workers[workerID] == nil {
-		workerID = 0
+	if worker := s.currentWorker(); worker != nil {
+		return worker.Statistics
 	}
-	return s.Workers[workerID].Statistics
+	if s.Workers[0] != nil {
+		return s.Workers[0].Statistics
+	}
+	return NewSimulationWorkerStatistics(nil, "", nil, nil, nil)
+}
+
+func (s *Simulator) currentWorker() *SimulationWorker {
+	if s == nil || len(s.Workers) == 0 {
+		return nil
+	}
+	workerID, ok := CurrentWorkerID()
+	if !ok {
+		return nil
+	}
+	if workerID < 0 || workerID >= len(s.Workers) || s.Workers[workerID] == nil {
+		return nil
+	}
+	return s.Workers[workerID]
 }
 
 func currentWorkerIDOrZero() int {

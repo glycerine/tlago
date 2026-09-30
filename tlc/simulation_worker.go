@@ -297,30 +297,32 @@ func (s *SimulationWorkerStatistics) traceCount() int64 {
 }
 
 type SimulationWorker struct {
-	ID            int
-	Tool          *Tool
-	Rand          *JavaRandom
-	CurState      *TLCStateMut
-	InitStates    *StateVec
-	ResultQueue   chan SimulationWorkerResult
-	TraceCnt      int64
-	GlobalTrace   int64
-	MaxTraceNum   int64
-	MaxTraceDepth int
-	CheckDeadlock bool
-	debug         bool
-	Mode          SimulationWorkerMode
-	TraceFile     string
-	LiveCheck     *LiveCheck
-	Statistics    *SimulationWorkerStatistics
-	Stopped       atomic.Bool
-	Halted        atomic.Bool
-	NextStates    *StateVec
-	RLAlpha       float64
-	RLGamma       float64
-	RLReward      float64
-	RLEnabledOnly bool
-	RLQ           *InsMap[*Action, *InsMap[int64, float64]]
+	ID             int
+	Tool           *Tool
+	Rand           *JavaRandom
+	CurState       *TLCStateMut
+	InitStates     *StateVec
+	LocalValues    []Value
+	NamedRegisters *InsMap[*UniqueString, Value]
+	ResultQueue    chan SimulationWorkerResult
+	TraceCnt       int64
+	GlobalTrace    int64
+	MaxTraceNum    int64
+	MaxTraceDepth  int
+	CheckDeadlock  bool
+	debug          bool
+	Mode           SimulationWorkerMode
+	TraceFile      string
+	LiveCheck      *LiveCheck
+	Statistics     *SimulationWorkerStatistics
+	Stopped        atomic.Bool
+	Halted         atomic.Bool
+	NextStates     *StateVec
+	RLAlpha        float64
+	RLGamma        float64
+	RLReward       float64
+	RLEnabledOnly  bool
+	RLQ            *InsMap[*Action, *InsMap[int64, float64]]
 }
 
 func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult, seed int64, maxTraceDepth int, maxTraceNum int64, traceActions string, checkDeadlock bool, debug bool, traceFile string, liveCheck *LiveCheck, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorker {
@@ -331,22 +333,23 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 		maxTraceNum = math.MaxInt64
 	}
 	return &SimulationWorker{
-		ID:            id,
-		Tool:          tool,
-		Rand:          NewJavaRandom(seed),
-		ResultQueue:   results,
-		MaxTraceNum:   maxTraceNum,
-		MaxTraceDepth: maxTraceDepth,
-		CheckDeadlock: checkDeadlock,
-		debug:         debug,
-		Mode:          SimulationWorkerStandard,
-		TraceFile:     traceFile,
-		LiveCheck:     liveCheck,
-		Statistics:    NewSimulationWorkerStatistics(tool, traceActions, states, traces, m2Mean),
-		NextStates:    NewStateVec(1),
-		RLAlpha:       0.3,
-		RLGamma:       0.7,
-		RLReward:      -10,
+		ID:             id,
+		Tool:           tool,
+		Rand:           NewJavaRandom(seed),
+		NamedRegisters: NewInsMap[*UniqueString, Value](),
+		ResultQueue:    results,
+		MaxTraceNum:    maxTraceNum,
+		MaxTraceDepth:  maxTraceDepth,
+		CheckDeadlock:  checkDeadlock,
+		debug:          debug,
+		Mode:           SimulationWorkerStandard,
+		TraceFile:      traceFile,
+		LiveCheck:      liveCheck,
+		Statistics:     NewSimulationWorkerStatistics(tool, traceActions, states, traces, m2Mean),
+		NextStates:     NewStateVec(1),
+		RLAlpha:        0.3,
+		RLGamma:        0.7,
+		RLReward:       -10,
 	}
 }
 
@@ -662,6 +665,40 @@ func (w *SimulationWorker) GetRNG() *JavaRandom {
 		return nil
 	}
 	return w.Rand
+}
+
+func (w *SimulationWorker) GetLocalValue(index int) Value {
+	if w == nil || index < 0 || index >= len(w.LocalValues) {
+		return nil
+	}
+	return w.LocalValues[index]
+}
+
+func (w *SimulationWorker) SetLocalValue(index int, value Value) {
+	if w == nil || index < 0 {
+		return
+	}
+	for len(w.LocalValues) <= index {
+		w.LocalValues = append(w.LocalValues, nil)
+	}
+	w.LocalValues[index] = value
+}
+
+func (w *SimulationWorker) GetNamedRegister(name *UniqueString) Value {
+	if w == nil || w.NamedRegisters == nil {
+		return nil
+	}
+	return w.NamedRegisters.Get(name)
+}
+
+func (w *SimulationWorker) SetNamedRegister(name *UniqueString, value Value) {
+	if w == nil || name == nil {
+		return
+	}
+	if w.NamedRegisters == nil {
+		w.NamedRegisters = NewInsMap[*UniqueString, Value]()
+	}
+	w.NamedRegisters.Set(name, value)
 }
 
 func (w *SimulationWorker) WriteTraceFile() error {

@@ -213,7 +213,11 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 				checker.SetAllValues(int(idx.Val), val)
 			}
 		} else if simulator := CurrentSimulator(); simulator != nil {
-			simulator.SetAllValues(int(idx.Val), val)
+			if worker := simulator.currentWorker(); worker != nil {
+				worker.SetLocalValue(int(idx.Val), val)
+			} else {
+				simulator.SetAllValues(int(idx.Val), val)
+			}
 		}
 		return BoolTrue, nil
 	case *StringValue:
@@ -249,7 +253,11 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 						checker.SetAllNamedValues(key, val)
 					}
 				} else if simulator := CurrentSimulator(); simulator != nil {
-					simulator.SetAllNamedValues(key, val)
+					if worker := simulator.currentWorker(); worker != nil {
+						worker.SetNamedRegister(key, val)
+					} else {
+						simulator.SetAllNamedValues(key, val)
+					}
 				}
 				return BoolTrue, nil
 			}
