@@ -57,13 +57,21 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range init.Substs {
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
+			subCM := cm
+			if cm.node != nil {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
 		}
 		return t.GetInitStatesForPredicate(init.Body, acts, c1, ps, states, cm)
 	case *APSubstInNode:
 		c1 := c
 		for _, sub := range init.Substs {
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
+			subCM := cm
+			if cm.node != nil {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
 		}
 		return t.GetInitStatesForPredicate(init.Body, acts, c1, ps, states, cm)
 	case *LabelNode:
@@ -79,6 +87,10 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 		rootAction = acts.GetAction()
 	}
 	if acts == nil || acts.IsEmpty() {
+		if cm.node != nil {
+			cm.IncInvocations()
+			cm.GetRoot().IncInvocations()
+		}
 		_, err := states.AddElement(ps.Copy().SetAction(rootAction))
 		return err
 	}
@@ -89,10 +101,17 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 				return err
 			}
 			if !bval.Val {
+				if cm.node != nil {
+					cm.GetRoot().IncSecondary()
+				}
 				states.AddUnsatisfiedState(ps, acts.CarPred(), acts.CarContext())
 				return nil
 			}
 			acts = acts.Cdr()
+		}
+		if cm.node != nil {
+			cm.IncInvocations()
+			cm.GetRoot().IncInvocations()
 		}
 		_, err := states.AddElement(ps.Copy().SetAction(rootAction))
 		return err
@@ -384,13 +403,21 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
+			subCM := cm
+			if cm.node != nil {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
 		}
 		return t.GetNextStatesForPredicate(action, pred.Body, acts, c1, s0, s1, nss, cm)
 	case *APSubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
+			subCM := cm
+			if cm.node != nil {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
 		}
 		return t.GetNextStatesForPredicate(action, pred.Body, acts, c1, s0, s1, nss, cm)
 	case *LabelNode:

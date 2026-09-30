@@ -108,6 +108,9 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 	if w.Halted {
 		return w, nil
 	}
+	if action != nil && action.CM.node != nil {
+		action.CM.IncInvocations()
+	}
 	w.StatesGenerated++
 	stop, queued, err := w.Checker.processSuccessor(curState, succState, action, w.SetOfStates)
 	if stop || err != nil {

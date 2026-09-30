@@ -70,6 +70,10 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
 	}
+	if CoverageEnabled() {
+		CreateCoverageCostModels(mc.Tool)
+		defer ReportCoverage(mc.Tool, mc.StartTime)
+	}
 	recovered, err := mc.Recover()
 	if err != nil {
 		return ECSystemCheckpointRecoveryCorrupt, err
@@ -225,6 +229,9 @@ func (mc *DFIDModelChecker) doNext(cur *TLCStateMut, cfp uint64, depth int, maxD
 		mc.StatesGenerated += int64(nextStates.Size())
 		for i := 0; i < nextStates.Size(); i++ {
 			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
+			if action != nil && action.CM.node != nil {
+				action.CM.IncInvocations()
+			}
 			if !mc.Tool.IsGoodState(succ) {
 				mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext)
 				return false, ECTLCStateNotCompletelySpecifiedNext, nil
@@ -245,6 +252,9 @@ func (mc *DFIDModelChecker) doNext(cur *TLCStateMut, cfp uint64, depth int, maxD
 			}
 			fp := succ.FingerPrint()
 			status := mc.FPSet.SetStatus(fp, FPIntStatusNew)
+			if status == FPIntStatusNew && action != nil && action.CM.node != nil {
+				action.CM.IncSecondary()
+			}
 			allSuccDone = allSuccDone && FPIntSetIsDone(status)
 			allSuccNonLeaf = allSuccNonLeaf && !FPIntSetIsLeaf(status)
 			if mc.AllStateWriter != nil {

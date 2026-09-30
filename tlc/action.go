@@ -11,15 +11,22 @@ type CostModel struct {
 }
 
 type CostModelNode struct {
-	Expr      SemanticNode
-	Primary   int64
-	Secondary int64
-	Parent    *CostModelNode
-	Children  *InsMap[semanticNodeKey, *CostModelNode]
-	Lets      *InsMap[semanticNodeKey, *CostModelNode]
-	Recursive *CostModelNode
-	Primed    bool
-	Level     int
+	Expr              SemanticNode
+	Action            *Action
+	Relation          CoverageRelation
+	Primary           int64
+	Secondary         int64
+	SnapshotPrimary   int64
+	SnapshotSecondary int64
+	Parent            *CostModelNode
+	Children          *InsMap[semanticNodeKey, *CostModelNode]
+	Lets              *InsMap[semanticNodeKey, *CostModelNode]
+	Substs            *InsMap[semanticNodeKey, *CostModelNode]
+	ChildCounts       []coveragePair
+	Recursive         *CostModelNode
+	Primed            bool
+	Unchanged         bool
+	Level             int
 }
 
 var DoNotRecordCostModel = CostModel{}
@@ -106,7 +113,7 @@ func (m CostModel) HasValues() bool {
 }
 
 func (m CostModel) Report() CostModel {
-	return m
+	return m.report()
 }
 
 func (m CostModel) Get(expr SemanticNode) CostModel {
@@ -223,7 +230,14 @@ func (m CostModel) GetChild() CostModel {
 }
 
 func (m CostModel) GetSubst(subst Subst) CostModel {
-	return m.GetRoot().Get(subst.Expr)
+	root := m.GetRoot()
+	if root.node == nil || root.node.Substs == nil {
+		return DoNotRecordCostModel
+	}
+	if child := root.node.Substs.Get(newSemanticNodeKey(subst.Expr)); child != nil {
+		return CostModel{node: child}
+	}
+	return DoNotRecordCostModel
 }
 
 type Action struct {

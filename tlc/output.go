@@ -119,6 +119,7 @@ const (
 	ECTLCProgressStats                                   = 2200
 	ECTLCCoverageStart                                   = 2201
 	ECTLCCoverageEnd                                     = 2202
+	ECTLCCoverageValue                                   = 2221
 	ECTLCCheckpointRecoverEndDFID                        = 2203
 	ECTLCStatsDFID                                       = 2204
 	ECTLCProgressStartStatsDFID                          = 2205
@@ -150,6 +151,14 @@ const (
 	ECTLCModuleValueJavaMethodOverrideIdentifierMismatch = 2403
 	ECTLCPostconditionFalse                              = 2404
 	ECTLCPostconditionEvaluationError                    = 2405
+	ECTLCCoverageNext                                    = 2772
+	ECTLCCoverageInit                                    = 2773
+	ECTLCCoverageProperty                                = 2774
+	ECTLCCoverageValueCost                               = 2775
+	ECTLCCoverageMismatch                                = 2776
+	ECTLCCoverageEndOverhead                             = 2777
+	ECTLCCoverageConstraint                              = 2778
+	ECTLCCoverageVar                                     = 2779
 	ECTLCPossibleUnwitnessed                             = 2780
 	ECTLCParsingFailed                                   = 3002
 

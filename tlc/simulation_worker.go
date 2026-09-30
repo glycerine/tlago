@@ -354,6 +354,9 @@ func (w *SimulationWorker) AddGeneratedSuccessors(action *Action, nextStates *St
 		if succ == nil {
 			continue
 		}
+		if action != nil && action.CM.node != nil {
+			action.CM.IncInvocations()
+		}
 		succ.SetPredecessor(w.CurState).SetAction(action)
 		if !w.Tool.IsGoodState(succ) {
 			return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, StateTrace: w.GetTrace(succ)}
@@ -377,6 +380,9 @@ func (w *SimulationWorker) AddGeneratedSuccessors(action *Action, nextStates *St
 			inModel = inActions
 		}
 		if inModel {
+			if action != nil && action.CM.node != nil {
+				action.CM.IncSecondary()
+			}
 			w.NextStates.Add(succ)
 		}
 	}

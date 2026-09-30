@@ -26,13 +26,21 @@ func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, 
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
+			subCM := cm
+			if cm.node != nil {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
 		}
 		return t.EnabledImpl(pred.Body, acts, c1, s0, s1, cm)
 	case *APSubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
+			subCM := cm
+			if cm.node != nil {
+				subCM = cm.GetSubst(sub)
+			}
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
 		}
 		return t.EnabledImpl(pred.Body, acts, c1, s0, s1, cm)
 	case *LabelNode:

@@ -158,7 +158,11 @@ func (t *Tool) evalImplLetInKind(expr *LetInNode, c *Context, s0 *TLCStateMut, s
 func (t *Tool) evalImplSubstInKind(expr *SubstInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
 	c1 := c
 	for _, sub := range expr.Substs {
-		val := t.GetVal(sub.Expr, c, true, cm)
+		subCM := cm
+		if cm.node != nil {
+			subCM = cm.GetSubst(sub)
+		}
+		val := t.GetVal(sub.Expr, c, true, subCM)
 		c1 = c1.Cons(sub.Op, val)
 	}
 	return t.Eval(expr.Body, c1, s0, s1, control, cm)
@@ -167,7 +171,11 @@ func (t *Tool) evalImplSubstInKind(expr *SubstInNode, c *Context, s0 *TLCStateMu
 func (t *Tool) evalImplAPSubstInKind(expr *APSubstInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
 	c1 := c
 	for _, sub := range expr.Substs {
-		val := t.GetVal(sub.Expr, c, true, cm)
+		subCM := cm
+		if cm.node != nil {
+			subCM = cm.GetSubst(sub)
+		}
+		val := t.GetVal(sub.Expr, c, true, subCM)
 		c1 = c1.Cons(sub.Op, val)
 	}
 	return t.Eval(expr.Body, c1, s0, s1, control, cm)
@@ -197,6 +205,9 @@ func (t *Tool) EvalAppl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 }
 
 func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if cm.node != nil {
+		cm = cm.GetAndIncrement(expr)
+	}
 	args := expr.Args
 	opNode := expr.Operator
 	opcode := GetOpCode(opNode.Name)
