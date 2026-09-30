@@ -535,6 +535,12 @@ Key semantics:
   descends from the parent cost model with `cm.get(pred)` only when action
   coverage is enabled. When coverage is disabled, or only variable coverage is
   enabled through the coverage bitmask, it keeps the incoming cost model.
+- Preserve Java's next-state action-list decomposition inside the port:
+  public `GetNextStatesFromActionList` is the coverage wrapper,
+  `getNextStates0` is the ordinary recursive dispatcher, and
+  `getNextStatesAllAssigned` is the `TLCGlobals.warn && s1.allAssigned()`
+  branch that evaluates remaining predicates directly while routing
+  `UNCHANGED` and unsatisfied predicates through the same functor hooks as Java.
 - A complete state must assign every declared variable.
 - `isGoodState` detects incomplete or illegal states.
 - Model constraints and action constraints filter states but do not replace

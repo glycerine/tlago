@@ -432,11 +432,25 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 }
 
 func (t *Tool) GetNextStatesFromActionList(action *Action, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+	copyState, err := t.getNextStates0(action, acts, s0, s1, nss, cm)
+	if err != nil {
+		return copyState, err
+	}
+	if CoverageEnabled() && copyState != s1 {
+		cm.IncInvocations()
+	}
+	return copyState, nil
+}
+
+func (t *Tool) getNextStates0(action *Action, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
 	if acts == nil || acts.IsEmpty() {
-		if _, err := nss.AddNextElement(s0, action, s1.Copy()); err != nil {
+		if _, err := nss.AddNextElement(s0, action, s1); err != nil {
 			return s1, err
 		}
 		return s1.Copy(), nil
+	}
+	if Globals.Warn && s1 != nil && s1.AllAssigned() {
+		return t.getNextStatesAllAssigned(action, acts, s0, s1, nss, cm)
 	}
 	kind := acts.CarKind()
 	pred := acts.CarPred()
@@ -460,10 +474,60 @@ func (t *Tool) GetNextStatesFromActionList(action *Action, acts *ActionItemList,
 		if err != nil || eq {
 			return s1, err
 		}
-		return t.GetNextStatesFromActionList(action, acts1, s0, s1, nss, acts.CM)
+		if CoverageEnabled() {
+			return t.GetNextStatesFromActionList(action, acts1, s0, s1, nss, acts.CM)
+		}
+		return t.getNextStates0(action, acts1, s0, s1, nss, acts.CM)
 	default:
 		return t.GetNextStatesForPredicate(action, pred, acts1, c, s0, s1, nss, acts.CM)
 	}
+}
+
+func (t *Tool) getNextStatesAllAssigned(action *Action, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+	for !acts.IsEmpty() {
+		kind := acts.CarKind()
+		pred := acts.CarPred()
+		c := acts.CarContext()
+		cm2 := acts.CM
+		switch {
+		case kind > ActionItemConjunct || kind == ActionItemPred:
+			bval, err := t.evalBool(pred, c, s0, s1, EvalClear, cm2, "next states")
+			if err != nil {
+				return s1, err
+			}
+			if !bval.Val {
+				return nss.AddUnsatisfiedNextState(s0, action, s1, pred, c), nil
+			}
+		case kind == ActionItemUnchanged:
+			return t.ProcessUnchanged(action, pred, acts.Cdr(), c, s0, s1, nss, cm2)
+		case kind == ActionItemChanged:
+			v1, err := t.Eval(pred, c, s0, EmptyState, EvalClear, cm2)
+			if err != nil {
+				return s1, err
+			}
+			v2, err := t.Eval(pred, c, s1, EmptyState, EvalClear, cm2)
+			if err != nil {
+				return s1, err
+			}
+			eq, err := v1.Equal(v2)
+			if err != nil || eq {
+				return s1, err
+			}
+		default:
+			bval, err := t.evalBool(pred, c, s0, s1, EvalClear, cm2, "next states")
+			if err != nil {
+				return s1, err
+			}
+			if !bval.Val {
+				return nss.AddUnsatisfiedNextState(s0, action, s1, pred, c), nil
+			}
+		}
+		acts = acts.Cdr()
+	}
+	if _, err := nss.AddNextElement(s0, action, s1); err != nil {
+		return s1, err
+	}
+	return s1.Copy(), nil
 }
 
 func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
