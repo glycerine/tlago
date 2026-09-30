@@ -1212,6 +1212,9 @@ Important behavior:
   perform liveness/post-trace checks. RL modes remain enum values because they
   select different scheduling and Q-table behavior, while still using the same
   worker struct.
+- Preserve the Java `INextStateFunctor` contract: plain `addElement(TLCState)`
+  is unsupported for simulation workers; only `setElement` and the
+  action-tagged successor `addElement(s, a, t)` paths are valid.
 - Simulator result consumption follows Java's continuation policy. Worker
   exceptions and liveness exceptions stop the run, and
   `TLC_INVARIANT_EVALUATION_FAILED`,

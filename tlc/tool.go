@@ -67,6 +67,10 @@ func NewNextStateFunctor(addNextElement func(*TLCStateMut, *Action, *TLCStateMut
 	return &NextStateFunctor{AddNextElementFunc: addNextElement}
 }
 
+func (f *NextStateFunctor) AddElement(state *TLCStateMut) (any, error) {
+	return nil, newTLCError(ECGeneral, "INextStateFunctor.AddElement is unsupported")
+}
+
 func (f *NextStateFunctor) AddNextElement(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {
 	if f != nil && f.AddNextElementFunc != nil {
 		return f.AddNextElementFunc(curState, action, succState)

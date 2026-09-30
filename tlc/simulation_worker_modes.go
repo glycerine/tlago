@@ -23,11 +23,6 @@ func (w *SimulationWorker) IsRLMode() bool {
 func (w *SimulationWorker) NextStateFunctor() *NextStateFunctor {
 	return &NextStateFunctor{
 		StateFunctor: StateFunctor{
-			AddElementFunc: func(state *TLCStateMut) (any, error) {
-				w.NextStates.Clear()
-				w.NextStates.Add(w.markWorkerState(state))
-				return w, nil
-			},
 			SetElementFunc: func(state *TLCStateMut) (any, error) {
 				w.NextStates.Clear()
 				w.NextStates.Add(w.markWorkerState(state))
