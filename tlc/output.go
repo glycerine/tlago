@@ -494,6 +494,14 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 3 {
 			return fmt.Sprintf("Evaluating an expression of the form %s when s is not a %s:\n%s", params[0], params[1], params[2])
 		}
+	case ECTLCCheckingTemporalProps:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Checking %stemporal properties for the %s state space with %s total distinct states.", params[2], params[0], params[1])
+		}
+	case ECTLCCheckingTemporalPropsEnd:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Finished checking temporal properties in %s.", params[0])
+		}
 	case ECTLCLiveFormulaTautology:
 		return "Temporal formula is a tautology (its negation is unsatisfiable)."
 	}

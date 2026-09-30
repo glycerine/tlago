@@ -57,6 +57,7 @@
   - DFID workers now push the current worker id during `Run`, matching Java `IdThread` behavior for `TLCGet("worker")` and worker-local values.
   - DFID checkpoint recovery now rebinds `Metadir` to `FromCheckpoint`, matching Java's resumed-run metadir setup.
   - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
+  - Liveness SCC checks now emit Java-style temporal-property start/end messages with graph size and current/complete mode.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 

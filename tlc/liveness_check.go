@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
 type LiveException struct {
@@ -1149,12 +1150,27 @@ func livenessFinalCheckOff() bool {
 }
 
 func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
+	start := time.Now()
+	sum := int64(0)
+	for _, checker := range lc.Checkers {
+		sum += checker.GraphSize()
+	}
+	branches := ""
+	if len(lc.Checkers) != 1 {
+		branches = fmt.Sprintf("%d branches of ", len(lc.Checkers))
+	}
+	space := "current"
+	if finalCheck {
+		space = "complete"
+	}
+	PrintMessage(ECTLCCheckingTemporalProps, space, fmtInt64(sum), branches)
 	for _, checker := range lc.Checkers {
 		found, err := checker.CheckSccs(tool, finalCheck)
 		if err != nil {
 			return ECGeneral, err
 		}
 		if found {
+			PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
 			checker.PrintCounterExample(tool)
 			if checker.ErrorCounterEx != nil {
 				return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", checker.ErrorCounterEx)
@@ -1162,6 +1178,7 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 			return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
 		}
 	}
+	PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
 	return NoError, nil
 }
 
