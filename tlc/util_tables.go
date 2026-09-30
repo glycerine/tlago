@@ -483,6 +483,85 @@ func (s *SetOfLong) ToSlice() []int64 {
 	return values
 }
 
+func (s *SetOfLong) BeginChkpt(out *ValueOutputStream) error {
+	if s == nil {
+		if err := out.WriteInt(0); err != nil {
+			return err
+		}
+		if err := out.WriteInt(0); err != nil {
+			return err
+		}
+		if err := out.WriteInt(0); err != nil {
+			return err
+		}
+		return out.WriteBool(false)
+	}
+	if err := out.WriteInt(int32(s.count)); err != nil {
+		return err
+	}
+	if err := out.WriteInt(int32(s.length)); err != nil {
+		return err
+	}
+	if err := out.WriteInt(int32(s.thresh)); err != nil {
+		return err
+	}
+	if err := out.WriteBool(s.hasZero); err != nil {
+		return err
+	}
+	for _, key := range s.table {
+		if key == 0 {
+			continue
+		}
+		if err := out.WriteLong(key); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SetOfLong) Recover(in *ValueInputStream) error {
+	count, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	length, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	thresh, err := in.ReadInt()
+	if err != nil {
+		return err
+	}
+	hasZero, err := in.ReadBool()
+	if err != nil {
+		return err
+	}
+	if length <= 0 {
+		length = 1
+	}
+	s.count = 0
+	s.length = int(length)
+	s.thresh = int(thresh)
+	s.table = make([]int64, s.length)
+	s.hasZero = false
+	if hasZero {
+		s.hasZero = true
+		s.count = 1
+	}
+	num := int(count)
+	if hasZero {
+		num--
+	}
+	for i := 0; i < num; i++ {
+		key, err := in.ReadLong()
+		if err != nil {
+			return err
+		}
+		s.putWithoutGrow(key)
+	}
+	return nil
+}
+
 func (s *SetOfLong) grow() {
 	old := s.table
 	oldHasZero := s.hasZero
@@ -498,5 +577,28 @@ func (s *SetOfLong) grow() {
 		if key != 0 {
 			s.Put(key)
 		}
+	}
+}
+
+func (s *SetOfLong) putWithoutGrow(key int64) {
+	if key == 0 {
+		if !s.hasZero {
+			s.hasZero = true
+			s.count++
+		}
+		return
+	}
+	loc := int(uint32(key)&0x7fffffff) % s.length
+	for {
+		elem := s.table[loc]
+		if elem == key {
+			return
+		}
+		if elem == 0 {
+			s.table[loc] = key
+			s.count++
+			return
+		}
+		loc = (loc + 1) % s.length
 	}
 }
