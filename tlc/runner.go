@@ -291,6 +291,7 @@ func (t *TLC) processSimulation() (*Result, error) {
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),
 		WithSimulatorSchedule(t.SimulationSchedule),
+		WithSimulatorLiveCheck(t.LiveCheck),
 	)
 	code, err := simulator.Simulate()
 	return &Result{

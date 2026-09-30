@@ -22,6 +22,7 @@ type Simulator struct {
 	ResultQueue   chan SimulationWorkerResult
 	Workers       []*SimulationWorker
 	WorkerMode    SimulationWorkerMode
+	LiveCheck     *LiveCheck
 	NumGenStates  atomic.Int64
 	NumGenTraces  atomic.Int64
 	WelfordM2Mean atomic.Int64
@@ -58,6 +59,12 @@ func WithSimulatorSchedule(schedule SimulationSchedule) SimulatorOption {
 		default:
 			s.WorkerMode = SimulationWorkerStandard
 		}
+	}
+}
+
+func WithSimulatorLiveCheck(liveCheck *LiveCheck) SimulatorOption {
+	return func(s *Simulator) {
+		s.LiveCheck = liveCheck
 	}
 }
 
@@ -411,6 +418,10 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 	if id != 0 && tool != nil {
 		tool = tool.NoDebug()
 	}
+	liveCheck := s.LiveCheck
+	if liveCheck == nil {
+		liveCheck = NewNoOpLiveCheck(tool, "")
+	}
 	worker := NewSimulationWorker(
 		id,
 		tool,
@@ -422,7 +433,7 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 		s.CheckDeadlock,
 		debugger,
 		s.TraceFile,
-		NewNoOpLiveCheck(s.Tool, ""),
+		liveCheck,
 		&s.NumGenStates,
 		&s.NumGenTraces,
 		&s.WelfordM2Mean,
