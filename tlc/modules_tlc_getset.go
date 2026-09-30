@@ -268,11 +268,49 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 }
 
 func TLCGetOrDefault(vidx Value, defVal Value) Value {
-	value, err := TLCGet(vidx)
-	if err != nil || value == nil {
-		return defVal
+	switch idx := vidx.(type) {
+	case *IntValue:
+		if idx.Val < 0 {
+			return defVal
+		}
+		workerID := 0
+		if id, ok := CurrentWorkerID(); ok {
+			workerID = id
+		}
+		if checker := MainChecker(); checker != nil {
+			if value := checker.GetValue(workerID, int(idx.Val)); value != nil {
+				return value
+			}
+			return defVal
+		}
+		if simulator := CurrentSimulator(); simulator != nil {
+			if value := simulator.GetLocalValue(int(idx.Val)); value != nil {
+				return value
+			}
+			return defVal
+		}
+	case *StringValue:
+		key := idx.Val
+		if key != nil && strings.HasPrefix(key.String(), TLCNamedRegisterPrefix) {
+			workerID := 0
+			if id, ok := CurrentWorkerID(); ok {
+				workerID = id
+			}
+			if checker := MainChecker(); checker != nil {
+				if value := checker.GetNamedValue(workerID, key); value != nil {
+					return value
+				}
+				return defVal
+			}
+			if simulator := CurrentSimulator(); simulator != nil {
+				if value := simulator.GetLocalNamedValue(key); value != nil {
+					return value
+				}
+				return defVal
+			}
+		}
 	}
-	return value
+	return defVal
 }
 
 func tlcSpecRecord(tool *Tool) Value {
