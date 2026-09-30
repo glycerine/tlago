@@ -200,12 +200,13 @@ func (t *uniqueStringTable) BeginChkpt(metadir string) error {
 		_ = out.Close()
 		return err
 	}
+	varCount := t.varCount
 	for tok := 1; tok <= t.tokenCnt; tok++ {
 		us := t.byToken[tok]
 		if us == nil {
 			continue
 		}
-		if err := writeJavaUniqueString(out, us); err != nil {
+		if err := writeJavaUniqueStringWithVarCount(out, us, varCount); err != nil {
 			_ = out.Close()
 			return err
 		}
@@ -241,7 +242,6 @@ func (t *uniqueStringTable) Recover(metadir string) error {
 	}
 	byString := make(map[string]*UniqueString)
 	byToken := make(map[int]*UniqueString)
-	varCount := 0
 	for {
 		us, err := readJavaUniqueString(in)
 		if errors.Is(err, io.EOF) {
@@ -253,9 +253,6 @@ func (t *uniqueStringTable) Recover(metadir string) error {
 		}
 		byString[us.s] = us
 		byToken[us.tok] = us
-		if us.loc >= varCount {
-			varCount = us.loc + 1
-		}
 	}
 	if err := in.Close(); err != nil {
 		return err
@@ -264,25 +261,47 @@ func (t *uniqueStringTable) Recover(metadir string) error {
 	t.byString = byString
 	t.byToken = byToken
 	t.tokenCnt = int(tokenCnt)
-	t.varCount = varCount
 	t.mu.Unlock()
 	return nil
 }
 
 func writeJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
+	varCount := UniqueStringVariableCount()
+	return writeJavaUniqueStringWithVarCount(out, us, varCount)
+}
+
+func writeJavaUniqueStringWithVarCount(out *ValueOutputStream, us *UniqueString, varCount int) error {
 	if err := out.WriteInt(int32(us.tok)); err != nil {
 		return err
 	}
-	if err := out.WriteInt(int32(us.loc)); err != nil {
+	loc := -1
+	if us.loc < varCount {
+		loc = us.loc
+	}
+	if err := out.WriteInt(int32(loc)); err != nil {
 		return err
 	}
-	units := utf16.Encode([]rune(us.s))
-	if err := out.WriteInt(int32(len(units))); err != nil {
+	bytes := javaLegacyStringBytes(us.s)
+	if err := out.WriteInt(int32(len(bytes))); err != nil {
 		return err
 	}
-	bytes := make([]byte, len(units))
-	for i, unit := range units {
-		bytes[i] = byte(unit)
+	_, err := out.WriteRaw(bytes)
+	return err
+}
+
+func writeExternalJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
+	if us == nil {
+		us = UniqueStringOf("")
+	}
+	if err := out.WriteInt(-1); err != nil {
+		return err
+	}
+	if err := out.WriteInt(-1); err != nil {
+		return err
+	}
+	bytes := javaLegacyStringBytes(us.s)
+	if err := out.WriteInt(int32(len(bytes))); err != nil {
+		return err
 	}
 	_, err := out.WriteRaw(bytes)
 	return err
@@ -308,11 +327,45 @@ func readJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
 	if _, err := io.ReadFull(in.in, bytes); err != nil {
 		return nil, err
 	}
+	return &UniqueString{s: javaLegacyStringFromBytes(bytes), tok: int(tok), loc: int(loc)}, nil
+}
+
+func readExternalJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
+	if _, err := in.ReadInt(); err != nil {
+		return nil, err
+	}
+	if _, err := in.ReadInt(); err != nil {
+		return nil, err
+	}
+	length, err := in.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	if length < 0 {
+		return nil, newTLCError(ECGeneral, "negative unique string length %d", length)
+	}
+	bytes := make([]byte, int(length))
+	if _, err := io.ReadFull(in.in, bytes); err != nil {
+		return nil, err
+	}
+	return UniqueStringOf(javaLegacyStringFromBytes(bytes)), nil
+}
+
+func javaLegacyStringBytes(s string) []byte {
+	units := utf16.Encode([]rune(s))
+	bytes := make([]byte, len(units))
+	for i, unit := range units {
+		bytes[i] = byte(unit)
+	}
+	return bytes
+}
+
+func javaLegacyStringFromBytes(bytes []byte) string {
 	runes := make([]rune, len(bytes))
 	for i, b := range bytes {
 		runes[i] = rune(uint16(int16(int8(b))))
 	}
-	return &UniqueString{s: string(runes), tok: int(tok), loc: int(loc)}, nil
+	return string(runes)
 }
 
 func uniqueStringChkptName(metadir string, ext string) string {

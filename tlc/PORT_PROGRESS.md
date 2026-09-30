@@ -12,6 +12,7 @@
 - Already audited recently; do not loop on the core `TLCState` hierarchy unless touched: Go intentionally collapses Java `TLCStateMut`/`TLCStateMutExt` into one concrete mutable state; raw `GetAction` now matches Java by returning nil when no action is attached, while `TLCStateInfo.Action()`/counterexample code provide the `UnknownAction` fallback.
 - Already audited recently; do not loop on coverage substitution keying unless touched: Java keys `ActionWrapper.substs` by `Subst` object identity, and Go now gives each `Subst` an internal stable identity assigned by `NewSubstInNode`/`NewAPSubstInNode`.
 - Already audited recently; do not loop on `Action`/`CounterExample` record shape unless touched: Java action records store `location` as a structured location record from `action.getDefinition()`, while `Action.getLocation()` remains only the display string.
+- Already audited recently; do not loop on `UniqueString`/`ValueOutputStream`/`ValueInputStream` unless touched: Go now separates Java's internal token-preserving value serializer from the external serializer, writes UniqueString checkpoint locations through Java's `getVarLoc()` rule, and leaves `varCount` lifecycle to spec processing/recovery context rather than deriving it from checkpoint contents.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -90,6 +91,8 @@
   - Coverage cost models now key substitution wrappers by stable substitution identity instead of substituted-expression identity, matching Java `Subst` object-key behavior and avoiding accidental collapse of distinct substitutions with the same expression.
   - Action records used by `TLCGet("action")`, `TLCExt`, and counterexamples now store Java-shaped structured location records instead of display strings.
   - `TLCGet("spec")` constraint/action-constraint entries now mirror Java's `constraint2Value` path by using the semantic node's tool object when it is an `OpDefNode` or `Action`, instead of always emitting a name-only placeholder.
+  - `UniqueString` checkpointing now mirrors Java's `UniqueString.write` behavior by serializing `getVarLoc()` rather than raw definition slots, and recovery no longer guesses `varCount` from recovered string locations.
+  - TLC state and trace checkpoint value IO now use an internal Java-shaped value serializer (`Write`/`Read`) that preserves UniqueString tokens and record normalization, while `WriteExternal`/`ReadExternal` remain the cross-process/intern-table-safe serializer.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -122,7 +125,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, standard module override surface audit, `TLCSet("pause")`, management dirty disk-FP statistics, `StateVec` growth semantics, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, and distributed reporting messages have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, standard module override surface audit, `TLCSet("pause")`, management dirty disk-FP statistics, `StateVec` growth semantics, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, distributed reporting messages, and internal value/UniqueString checkpoint serialization have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:

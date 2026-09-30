@@ -22,7 +22,7 @@ func (s *TLCStateMut) Write(out *ValueOutputStream) error {
 		if value == nil {
 			return newTLCError(ECTLCStateNotCompletelySpecifiedNext, "%s", s.String())
 		}
-		if err := out.WriteExternal(value); err != nil {
+		if err := out.Write(value); err != nil {
 			return err
 		}
 	}
@@ -49,7 +49,7 @@ func (s *TLCStateMut) Read(in *ValueInputStream) error {
 		s.values = make([]Value, len(stateVariables))
 	}
 	for i := range s.values {
-		value, err := in.ReadExternal()
+		value, err := in.Read()
 		if err != nil {
 			return err
 		}

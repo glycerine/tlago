@@ -686,7 +686,7 @@ func (t *TLCTrace) Recover() error {
 		}
 		var action *Action
 		if hasAction {
-			name, err := in.readExternalUniqueString()
+			name, err := readJavaUniqueString(in)
 			if err != nil {
 				_ = in.Close()
 				return err

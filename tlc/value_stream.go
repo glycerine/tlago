@@ -138,7 +138,15 @@ func (s *ValueOutputStream) Put(value any) int {
 	return -1
 }
 
+func (s *ValueOutputStream) Write(value Value) error {
+	return s.writeValue(value, false)
+}
+
 func (s *ValueOutputStream) WriteExternal(value Value) error {
+	return s.writeValue(value, true)
+}
+
+func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 	if value == nil {
 		return fmt.Errorf("cannot pickle nil TLC value")
 	}
@@ -160,6 +168,9 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 		if err := s.WriteByte(byte(StringValueKind)); err != nil {
 			return err
 		}
+		if external {
+			return s.WriteExternalUniqueString(v.Val)
+		}
 		return s.WriteUniqueString(v.Val)
 	case *ModelValue:
 		if err := s.WriteByte(byte(ModelValueKind)); err != nil {
@@ -177,7 +188,7 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 			return err
 		}
 		for _, elem := range v.Elems {
-			if err := s.WriteExternal(elem); err != nil {
+			if err := s.writeValue(elem, external); err != nil {
 				return err
 			}
 		}
@@ -197,7 +208,7 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 			return err
 		}
 		for i := 0; i < v.Elems.Len(); i++ {
-			if err := s.WriteExternal(v.Elems.At(i)); err != nil {
+			if err := s.writeValue(v.Elems.At(i), external); err != nil {
 				return err
 			}
 		}
@@ -231,7 +242,7 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 				return err
 			}
 			for _, value := range v.Values {
-				if err := s.WriteExternal(value); err != nil {
+				if err := s.writeValue(value, external); err != nil {
 					return err
 				}
 			}
@@ -245,10 +256,10 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 			return err
 		}
 		for i, dval := range v.Domain {
-			if err := s.WriteExternal(dval); err != nil {
+			if err := s.writeValue(dval, external); err != nil {
 				return err
 			}
-			if err := s.WriteExternal(v.Values[i]); err != nil {
+			if err := s.writeValue(v.Values[i], external); err != nil {
 				return err
 			}
 		}
@@ -276,11 +287,15 @@ func (s *ValueOutputStream) WriteExternal(value Value) error {
 				if err := s.WriteByte(byte(StringValueKind)); err != nil {
 					return err
 				}
-				if err := s.WriteUniqueString(name); err != nil {
+				if external {
+					if err := s.WriteExternalUniqueString(name); err != nil {
+						return err
+					}
+				} else if err := s.WriteUniqueString(name); err != nil {
 					return err
 				}
 			}
-			if err := s.WriteExternal(v.Values[i]); err != nil {
+			if err := s.writeValue(v.Values[i], external); err != nil {
 				return err
 			}
 		}
@@ -301,18 +316,11 @@ func (s *ValueOutputStream) WriteUniqueString(value *UniqueString) error {
 	if value == nil {
 		value = UniqueStringOf("")
 	}
-	raw := []byte(value.String())
-	if err := s.WriteInt(-1); err != nil {
-		return err
-	}
-	if err := s.WriteInt(-1); err != nil {
-		return err
-	}
-	if err := s.WriteInt(int32(len(raw))); err != nil {
-		return err
-	}
-	_, err := s.WriteRaw(raw)
-	return err
+	return writeJavaUniqueString(s, value)
+}
+
+func (s *ValueOutputStream) WriteExternalUniqueString(value *UniqueString) error {
+	return writeExternalJavaUniqueString(s, value)
 }
 
 func pointerKey(value any) uintptr {
@@ -450,15 +458,23 @@ func (s *ValueInputStream) Close() error {
 	return nil
 }
 
+func (s *ValueInputStream) Read() (Value, error) {
+	return s.readValue(false)
+}
+
 func (s *ValueInputStream) ReadExternal() (Value, error) {
+	return s.readValue(true)
+}
+
+func (s *ValueInputStream) readValue(external bool) (Value, error) {
 	kind, err := s.ReadByte()
 	if err != nil {
 		return nil, err
 	}
-	return s.readExternalKind(ValueKind(kind))
+	return s.readKind(ValueKind(kind), external)
 }
 
-func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
+func (s *ValueInputStream) readKind(kind ValueKind, external bool) (Value, error) {
 	switch kind {
 	case BoolValueKind:
 		value, err := s.ReadBool()
@@ -473,7 +489,7 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 		}
 		return NewIntValue(value), nil
 	case StringValueKind:
-		return s.readExternalStringValue()
+		return s.readStringValue(external)
 	case ModelValueKind:
 		index, err := s.ReadShort()
 		if err != nil {
@@ -485,9 +501,9 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 		}
 		return value, nil
 	case TupleValueKind:
-		return s.readExternalTupleValue()
+		return s.readTupleValue(external)
 	case SetEnumValueKind:
-		return s.readExternalSetEnumValue()
+		return s.readSetEnumValue(external)
 	case IntervalValueKind:
 		low, err := s.ReadInt()
 		if err != nil {
@@ -499,9 +515,9 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 		}
 		return NewIntervalValue(low, high), nil
 	case FcnRcdValueKind:
-		return s.readExternalFcnRcdValue()
+		return s.readFcnRcdValue(external)
 	case RecordValueKind:
-		return s.readExternalRecordValue()
+		return s.readRecordValue(external)
 	case DummyValueKind:
 		idx, err := s.ReadNat()
 		if err != nil {
@@ -517,7 +533,7 @@ func (s *ValueInputStream) readExternalKind(kind ValueKind) (Value, error) {
 	}
 }
 
-func (s *ValueInputStream) readExternalTupleValue() (Value, error) {
+func (s *ValueInputStream) readTupleValue(external bool) (Value, error) {
 	index := s.GetIndex()
 	length, err := s.ReadNat()
 	if err != nil {
@@ -525,7 +541,7 @@ func (s *ValueInputStream) readExternalTupleValue() (Value, error) {
 	}
 	elems := make([]Value, int(length))
 	for i := range elems {
-		value, err := s.ReadExternal()
+		value, err := s.readValue(external)
 		if err != nil {
 			return nil, err
 		}
@@ -536,7 +552,7 @@ func (s *ValueInputStream) readExternalTupleValue() (Value, error) {
 	return value, nil
 }
 
-func (s *ValueInputStream) readExternalSetEnumValue() (Value, error) {
+func (s *ValueInputStream) readSetEnumValue(external bool) (Value, error) {
 	index := s.GetIndex()
 	length, err := s.ReadInt()
 	if err != nil {
@@ -549,7 +565,7 @@ func (s *ValueInputStream) readExternalSetEnumValue() (Value, error) {
 	}
 	elems := make([]Value, int(length))
 	for i := range elems {
-		value, err := s.ReadExternal()
+		value, err := s.readValue(external)
 		if err != nil {
 			return nil, err
 		}
@@ -560,7 +576,7 @@ func (s *ValueInputStream) readExternalSetEnumValue() (Value, error) {
 	return value, nil
 }
 
-func (s *ValueInputStream) readExternalFcnRcdValue() (Value, error) {
+func (s *ValueInputStream) readFcnRcdValue(external bool) (Value, error) {
 	index := s.GetIndex()
 	length, err := s.ReadNat()
 	if err != nil {
@@ -582,7 +598,7 @@ func (s *ValueInputStream) readExternalFcnRcdValue() (Value, error) {
 			return nil, err
 		}
 		for i := range values {
-			values[i], err = s.ReadExternal()
+			values[i], err = s.readValue(external)
 			if err != nil {
 				return nil, err
 			}
@@ -591,11 +607,11 @@ func (s *ValueInputStream) readExternalFcnRcdValue() (Value, error) {
 	} else {
 		domain := make([]Value, int(length))
 		for i := range domain {
-			domain[i], err = s.ReadExternal()
+			domain[i], err = s.readValue(external)
 			if err != nil {
 				return nil, err
 			}
-			values[i], err = s.ReadExternal()
+			values[i], err = s.readValue(external)
 			if err != nil {
 				return nil, err
 			}
@@ -606,8 +622,14 @@ func (s *ValueInputStream) readExternalFcnRcdValue() (Value, error) {
 	return value, nil
 }
 
-func (s *ValueInputStream) readExternalStringValue() (Value, error) {
-	str, err := s.readExternalUniqueString()
+func (s *ValueInputStream) readStringValue(external bool) (Value, error) {
+	var str *UniqueString
+	var err error
+	if external {
+		str, err = s.readExternalUniqueString()
+	} else {
+		str, err = readJavaUniqueString(s)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -616,15 +638,16 @@ func (s *ValueInputStream) readExternalStringValue() (Value, error) {
 	return value, nil
 }
 
-func (s *ValueInputStream) readExternalRecordValue() (Value, error) {
+func (s *ValueInputStream) readRecordValue(external bool) (Value, error) {
 	index := s.GetIndex()
 	length, err := s.ReadInt()
 	if err != nil {
 		return nil, err
 	}
-	isNorm := false
+	isNorm := !external
 	if length < 0 {
 		length = -length
+		isNorm = false
 	}
 	names := make([]*UniqueString, int(length))
 	values := make([]Value, int(length))
@@ -645,14 +668,19 @@ func (s *ValueInputStream) readExternalRecordValue() (Value, error) {
 			names[i] = name
 		} else {
 			stringIndex := s.GetIndex()
-			name, err := s.readExternalUniqueString()
+			var name *UniqueString
+			if external {
+				name, err = s.readExternalUniqueString()
+			} else {
+				name, err = readJavaUniqueString(s)
+			}
 			if err != nil {
 				return nil, err
 			}
 			s.Assign(name, stringIndex)
 			names[i] = name
 		}
-		value, err := s.ReadExternal()
+		value, err := s.readValue(external)
 		if err != nil {
 			return nil, err
 		}
@@ -664,24 +692,7 @@ func (s *ValueInputStream) readExternalRecordValue() (Value, error) {
 }
 
 func (s *ValueInputStream) readExternalUniqueString() (*UniqueString, error) {
-	if _, err := s.ReadInt(); err != nil {
-		return nil, err
-	}
-	if _, err := s.ReadInt(); err != nil {
-		return nil, err
-	}
-	length, err := s.ReadInt()
-	if err != nil {
-		return nil, err
-	}
-	if length < 0 {
-		return nil, fmt.Errorf("negative unique string byte length: %d", length)
-	}
-	buf := make([]byte, int(length))
-	if _, err := io.ReadFull(s.in, buf); err != nil {
-		return nil, err
-	}
-	return UniqueStringOf(string(buf)), nil
+	return readExternalJavaUniqueString(s)
 }
 
 func (s *ValueInputStream) GetIndex() int {
