@@ -57,15 +57,21 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		workerCount = 1
 	}
 	for i := 0; i < workerCount; i++ {
+		debug := tool != nil && i == 0 && tool.IsDebugger()
+		workerTool := tool
+		if tool != nil && i != 0 && tool.IsDebugger() {
+			workerTool = tool.NoDebug()
+		}
 		simulator.Workers = append(simulator.Workers, NewSimulationWorker(
 			i,
-			tool,
+			workerTool,
 			simulator.ResultQueue,
 			simulator.Rand.Int63(),
 			traceDepth,
 			traceNum,
 			"",
 			checkDeadlock,
+			debug,
 			"",
 			NewNoOpLiveCheck(tool, ""),
 			&simulator.NumGenStates,
@@ -263,6 +269,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 
 func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 	if len(s.Workers) == 0 {
+		debug := s.Tool != nil && s.Tool.IsDebugger()
 		s.Workers = append(s.Workers, NewSimulationWorker(
 			0,
 			s.Tool,
@@ -272,6 +279,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 			s.TraceNum,
 			"",
 			s.CheckDeadlock,
+			debug,
 			"",
 			NewNoOpLiveCheck(s.Tool, ""),
 			&s.NumGenStates,

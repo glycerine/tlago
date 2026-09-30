@@ -185,6 +185,7 @@ type SimulationWorker struct {
 	MaxTraceNum   int64
 	MaxTraceDepth int
 	CheckDeadlock bool
+	Debug         bool
 	TraceFile     string
 	LiveCheck     *LiveCheck
 	Statistics    *SimulationWorkerStatistics
@@ -192,7 +193,7 @@ type SimulationWorker struct {
 	NextStates    *StateVec
 }
 
-func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult, seed int64, maxTraceDepth int, maxTraceNum int64, traceActions string, checkDeadlock bool, traceFile string, liveCheck *LiveCheck, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorker {
+func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult, seed int64, maxTraceDepth int, maxTraceNum int64, traceActions string, checkDeadlock bool, debug bool, traceFile string, liveCheck *LiveCheck, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorker {
 	if results == nil {
 		results = make(chan SimulationWorkerResult, 1)
 	}
@@ -207,6 +208,7 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 		MaxTraceNum:   maxTraceNum,
 		MaxTraceDepth: maxTraceDepth,
 		CheckDeadlock: checkDeadlock,
+		Debug:         debug,
 		TraceFile:     traceFile,
 		LiveCheck:     liveCheck,
 		Statistics:    NewSimulationWorkerStatistics(tool, traceActions, states, traces, m2Mean),
