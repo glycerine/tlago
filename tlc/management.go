@@ -16,10 +16,13 @@ func NewTLCStandardMBean() *TLCStandardMBean {
 }
 
 func (m *TLCStandardMBean) GetVersion() string {
-	return "dev"
+	return TLCVersion()
 }
 
 func (m *TLCStandardMBean) GetRevision() string {
+	if rev := TLCRevision(); rev != "" {
+		return rev
+	}
 	return "N/A"
 }
 

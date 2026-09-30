@@ -302,6 +302,7 @@ func tlcSpecRecord(tool *Tool) Value {
 }
 
 func tlcRevisionRecord() Value {
+	buildDate := TLCBuildDate().UTC()
 	names := []*UniqueString{
 		tlcGetCount,
 		tlcRevTimestamp,
@@ -310,11 +311,11 @@ func tlcRevisionRecord() Value {
 		tlcRevCalver,
 	}
 	values := []Value{
-		IntZero,
-		IntZero,
-		NewStringValue("1970-01-01T00:00:00.0Z"),
-		NewStringValue("dev"),
-		NewStringValue("dev"),
+		NewIntValue(int32(TLCScmCommits())),
+		NewIntValue(int32(buildDate.Unix())),
+		NewStringValue(buildDate.Format("2006-01-02T15:04:05.0Z")),
+		NewStringValue(TLCRevisionOrDev()),
+		NewStringValue(TLCVersionNumber()),
 	}
 	return NewRecordValue(names, values, false)
 }

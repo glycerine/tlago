@@ -128,6 +128,10 @@ Port guidance:
 - Do not hide global options initially. Java code depends heavily on
   `TLCGlobals`; mirror it with a package-level `Globals` struct to preserve
   behavior, then later reduce global mutation if tests allow.
+- Keep version metadata centralized in the TLC globals layer. Java's
+  `TLCGlobals.Version` feeds management beans, `TLCGet("revision")`, and
+  `TLCGet("config")` install fields; Go should route all of those through the
+  same helper functions.
 - Preserve exit-status categories and message codes, because the Java tests
   assert message recorder events rather than only stdout text.
 - Mirror `handleParameters` as a real library parser, not only as command

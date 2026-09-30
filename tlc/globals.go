@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"os"
+	"runtime/debug"
 	"strconv"
 	"sync"
 	"time"
@@ -64,6 +65,11 @@ var Globals = struct {
 	StartTime:                  time.Now(),
 }
 
+var tlcVersionNumber struct {
+	sync.Once
+	value string
+}
+
 func SetMainChecker(checker *ModelChecker) {
 	Globals.Lock()
 	defer Globals.Unlock()
@@ -92,6 +98,93 @@ func TLCStartTime() time.Time {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.StartTime
+}
+
+func TLCVersionNumber() string {
+	tlcVersionNumber.Do(func() {
+		tlcVersionNumber.value = TLCBuildDate().UTC().Format("2006.01.02.150405")
+	})
+	return tlcVersionNumber.value
+}
+
+func TLCVersion() string {
+	return "Version " + TLCVersionNumber()
+}
+
+func TLCRevision() string {
+	if rev := os.Getenv("TLAGO_REVISION"); rev != "" {
+		return rev
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" && setting.Value != "" {
+				if len(setting.Value) > 7 {
+					return setting.Value[:7]
+				}
+				return setting.Value
+			}
+		}
+	}
+	return ""
+}
+
+func TLCRevisionOrDev() string {
+	if rev := TLCRevision(); rev != "" {
+		return rev
+	}
+	return "development"
+}
+
+func TLCBuildDate() time.Time {
+	for _, key := range []string{"TLAGO_BUILD_TIMESTAMP", "SOURCE_DATE_EPOCH"} {
+		value := os.Getenv(key)
+		if value == "" {
+			continue
+		}
+		if key == "SOURCE_DATE_EPOCH" {
+			if seconds, err := strconv.ParseInt(value, 10, 64); err == nil {
+				return time.Unix(seconds, 0).UTC()
+			}
+			continue
+		}
+		for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02T15:04:05.0Z"} {
+			if parsed, err := time.Parse(layout, value); err == nil {
+				return parsed.UTC()
+			}
+		}
+	}
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.time" && setting.Value != "" {
+				if parsed, err := time.Parse(time.RFC3339, setting.Value); err == nil {
+					return parsed.UTC()
+				}
+			}
+		}
+	}
+	return time.Now().UTC()
+}
+
+func TLCScmCommits() int {
+	for _, key := range []string{"TLAGO_COMMITS", "TLAGO_SCM_COMMITS"} {
+		if value := os.Getenv(key); value != "" {
+			if commits, err := strconv.Atoi(value); err == nil {
+				return commits
+			}
+		}
+	}
+	return 0
+}
+
+func TLCInstallLocation() string {
+	if exe, err := os.Executable(); err == nil && exe != "" {
+		return exe
+	}
+	return "unknown"
+}
+
+func IsValidSetSize(bound int) bool {
+	return bound >= 1
 }
 
 func SetNumWorkers(n int) {

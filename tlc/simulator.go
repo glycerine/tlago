@@ -289,7 +289,7 @@ func (s *Simulator) GetConfig() Value {
 		NewStringValue(fmt.Sprintf("%d", s.Seed)),
 		NewStringValue(fmt.Sprintf("%d", s.Rand.Aril())),
 		NewIntValue(int32(workerCount)),
-		NewStringValue(""),
+		NewStringValue(TLCInstallLocation()),
 		NewStringValue(s.schedulerName()),
 	}
 	return NewRecordValue(names, values, false)

@@ -497,7 +497,7 @@ func (mc *ModelChecker) GetConfig() Value {
 		NewIntValue(int32(NumWorkers())),
 		NewStringValue(fmt.Sprintf("%d", RandomEnumerableSeed())),
 		NewStringValue(fmt.Sprintf("%d", int64(FP64IrredPoly()))),
-		NewStringValue(""),
+		NewStringValue(TLCInstallLocation()),
 	}
 	return NewRecordValue(names, values, false)
 }
