@@ -58,12 +58,12 @@ func (t *Tool) EnabledFromActionList(acts *ActionItemList, s0 *TLCStateMut, s1 *
 	pred := acts.CarPred()
 	c := acts.CarContext()
 	acts1 := acts.Cdr()
-	switch kind {
-	case ActionItemPred, ActionItemConjunct:
+	switch {
+	case kind > ActionItemConjunct || kind == ActionItemPred:
 		return t.EnabledImpl(pred, acts1, c, s0, s1, acts.CM)
-	case ActionItemUnchanged:
+	case kind == ActionItemUnchanged:
 		return t.EnabledUnchanged(pred, acts1, c, s0, s1, acts.CM)
-	case ActionItemChanged:
+	case kind == ActionItemChanged:
 		v1, err := t.Eval(pred, c, s0, EmptyState, EvalEnabled, acts.CM)
 		if err != nil {
 			return nil, err
@@ -144,7 +144,7 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 	case OpcodeCL, OpcodeLand:
 		acts1 := acts
 		for i := len(args) - 1; i > 0; i-- {
-			acts1 = acts1.Cons(args[i], c, cm, ActionItemConjunct)
+			acts1 = acts1.Cons(args[i], c, cm, i)
 		}
 		return t.EnabledImpl(args[0], acts1, c, s0, s1, cm)
 	case OpcodeDL, OpcodeLor:

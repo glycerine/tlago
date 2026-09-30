@@ -175,7 +175,7 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 	case OpcodeCL, OpcodeLand:
 		acts1 := acts
 		for i := len(args) - 1; i > 0; i-- {
-			acts1 = acts1.Cons(args[i], c, cm, ActionItemConjunct)
+			acts1 = acts1.Cons(args[i], c, cm, i)
 		}
 		return t.GetInitStatesForPredicate(args[0], acts1, c, ps, states, cm)
 	case OpcodeBE:
@@ -438,12 +438,12 @@ func (t *Tool) GetNextStatesFromActionList(action *Action, acts *ActionItemList,
 	pred := acts.CarPred()
 	c := acts.CarContext()
 	acts1 := acts.Cdr()
-	switch kind {
-	case ActionItemPred, ActionItemConjunct:
+	switch {
+	case kind > ActionItemConjunct || kind == ActionItemPred:
 		return t.GetNextStatesForPredicate(action, pred, acts1, c, s0, s1, nss, acts.CM)
-	case ActionItemUnchanged:
+	case kind == ActionItemUnchanged:
 		return t.ProcessUnchanged(action, pred, acts1, c, s0, s1, nss, acts.CM)
-	case ActionItemChanged:
+	case kind == ActionItemChanged:
 		v1, err := t.Eval(pred, c, s0, EmptyState, EvalClear, acts.CM)
 		if err != nil {
 			return s1, err
@@ -509,7 +509,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 	case OpcodeCL, OpcodeLand:
 		acts1 := acts
 		for i := len(args) - 1; i > 0; i-- {
-			acts1 = acts1.Cons(args[i], c, cm, ActionItemConjunct)
+			acts1 = acts1.Cons(args[i], c, cm, i)
 		}
 		return t.GetNextStatesForPredicate(action, args[0], acts1, c, s0, s1, nss, cm)
 	case OpcodeDL, OpcodeLor:

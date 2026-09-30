@@ -402,13 +402,14 @@ type ActionItemList struct {
 	Next *ActionItemList
 	CM   CostModel
 	act  *Action
+	prev *ActionItemList
 }
 
 const (
-	ActionItemConjunct = iota
-	ActionItemPred
-	ActionItemUnchanged
-	ActionItemChanged
+	ActionItemConjunct  = 0
+	ActionItemPred      = -1
+	ActionItemUnchanged = -2
+	ActionItemChanged   = -3
 )
 
 var EmptyActionItemList = &ActionItemList{}
@@ -433,16 +434,24 @@ func (l *ActionItemList) CarKind() int {
 }
 
 func (l *ActionItemList) Cdr() *ActionItemList {
+	if l == nil || l.Next == nil {
+		return EmptyActionItemList
+	}
+	l.Next.prev = l
 	return l.Next
 }
 
 func (l *ActionItemList) Cons(pred SemanticNode, con *Context, cm CostModel, kind int) *ActionItemList {
-	return NewActionItemList(pred, con, kind, l, cm.Get(pred))
+	item := NewActionItemList(pred, con, kind, l, cm.Get(pred))
+	item.act = l.GetAction()
+	return item
 }
 
 func (l *ActionItemList) ConsAction(act *Action, kind int) *ActionItemList {
 	if act == nil {
-		return NewActionItemList(nil, nil, kind, l, CostModel{})
+		item := NewActionItemList(nil, nil, kind, l, CostModel{})
+		item.act = l.GetAction()
+		return item
 	}
 	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: act.CM.Get(act.Pred), act: act}
 }
@@ -452,9 +461,18 @@ func (l *ActionItemList) IsEmpty() bool {
 }
 
 func (l *ActionItemList) SetAction(action *Action) {
+	if l == nil {
+		return
+	}
 	l.act = action
 }
 
 func (l *ActionItemList) GetAction() *Action {
+	if l == nil {
+		return nil
+	}
+	if l.prev != nil {
+		return l.prev.act
+	}
 	return l.act
 }

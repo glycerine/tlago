@@ -414,6 +414,15 @@ Key semantics:
 - Partial successor states are legal during construction.
 - `UNCHANGED` copies values from current to successor.
 - `ENABLED` uses a special context branch/cutoff mechanism.
+- Java represents delayed conjuncts with positive action-list `kind` values,
+  where the integer is the original conjunct position. The special sentinels
+  are `0` for the base conjunct marker, `-1` for plain predicates, `-2` for
+  `UNCHANGED`, and `-3` for changed expressions. Keep these numeric values
+  exact rather than replacing them with an ordinary Go enum.
+- Java's `ActionItemListExt` subclasses `ActionItemList` only to carry an
+  action and a previous-node pointer across `cdr()` traversal. Go folds this
+  into the single concrete `ActionItemList` struct with `act` and `prev` fields
+  to avoid another type while preserving `getAction()` behavior.
 - A complete state must assign every declared variable.
 - `isGoodState` detects incomplete or illegal states.
 - Model constraints and action constraints filter states but do not replace
