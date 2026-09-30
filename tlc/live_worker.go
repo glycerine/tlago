@@ -15,12 +15,6 @@ type LiveWorker struct {
 	PEM        *PossibleErrorModel
 }
 
-type liveWorkerNodeEntry struct {
-	state uint64
-	tidx  int
-	loc   int64
-}
-
 func NewLiveWorker(tool *Tool, id int, numWorkers int, liveCheck *LiveCheck, checker *LiveChecker, pem *PossibleErrorModel, finalCheck bool) *LiveWorker {
 	worker := &LiveWorker{
 		Tool:       tool,
@@ -47,13 +41,15 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 
 	initNodes := w.initNodes()
 	numOfInits := initNodes.Size()
-	nodeQueue := make([]liveWorkerNodeEntry, 0, max(numOfInits/2, 1))
+	nodeQueue := NewIntQueueWithDisk(w.liveCheckMetaDir(), "root", (numOfInits/2)*5)
 	for j := 0; j < numOfInits; j += 2 {
 		state := uint64(initNodes.ElementAt(j))
 		tidx := int(initNodes.ElementAt(j + 1))
 		ptr := w.getLink(state, tidx)
 		if ptr >= 0 {
-			nodeQueue = append(nodeQueue, liveWorkerNodeEntry{state: state, tidx: tidx, loc: ptr})
+			nodeQueue.EnqueueLong(int64(state))
+			nodeQueue.EnqueueInt(int32(tidx))
+			nodeQueue.EnqueueLong(ptr)
 		} else if w.FinalCheck && (ptr == TableauNodePtrTableUndone || ptr == TableauNodePtrTableDone) {
 			return false, fmt.Errorf("final liveness check found malformed initial node link %d", ptr)
 		}
@@ -65,12 +61,14 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 	dfsStack := NewIntStack()
 	comStack := NewIntStack()
 
-	for head := 0; head < len(nodeQueue); head++ {
-		entry := nodeQueue[head]
+	for nodeQueue.Size() > 0 {
+		state := uint64(nodeQueue.DequeueLong())
+		tidx := int(nodeQueue.DequeueInt())
+		loc := nodeQueue.DequeueLong()
 		dfsStack.Reset()
-		dfsStack.PushLong(int64(entry.state))
-		dfsStack.PushInt(int32(entry.tidx))
-		dfsStack.PushLong(entry.loc)
+		dfsStack.PushLong(int64(state))
+		dfsStack.PushInt(int32(tidx))
+		dfsStack.PushLong(loc)
 		dfsStack.PushLong(DiskGraphMaxPtr)
 		newLink := DiskGraphMaxPtr
 
@@ -124,7 +122,9 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 								nextLowLink = minInt64(nextLowLink, nextLink)
 							}
 						} else if IsDiskGraphFilePointer(nextLink) {
-							nodeQueue = append(nodeQueue, liveWorkerNodeEntry{state: nextState, tidx: nextTidx, loc: nextLink})
+							nodeQueue.EnqueueLong(int64(nextState))
+							nodeQueue.EnqueueInt(int32(nextTidx))
+							nodeQueue.EnqueueLong(nextLink)
 						}
 					} else if w.FinalCheck && nextLink == TableauNodePtrTableUndone {
 						return false, fmt.Errorf("final liveness check found undone successor link %d", nextLink)
@@ -140,6 +140,13 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 		return false, fmt.Errorf("liveness component stack not empty after SCC search")
 	}
 	return false, nil
+}
+
+func (w *LiveWorker) liveCheckMetaDir() string {
+	if w != nil && w.Check != nil {
+		return w.Check.MetaDir
+	}
+	return ""
 }
 
 func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) (bool, error) {
@@ -583,11 +590,7 @@ func (w *LiveWorker) bfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrT
 		return postfix, nil
 	}
 
-	type postfixEntry struct {
-		state uint64
-		ploc  int
-	}
-	queue := make([]postfixEntry, 0)
+	queue := NewIntQueueWithDisk(w.liveCheckMetaDir(), "", intQueueInitialSize)
 	curState := startState
 	ploc := TableauNoParent
 	curLoc := nodeTbl.GetNodesLoc(curState)
@@ -632,19 +635,18 @@ func (w *LiveWorker) bfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrT
 				nodes1 := nodeTbl.GetNodes(nextState)
 				if nodes1 != nil && !TableauIsSeen(nodes1) {
 					TableauSetSeen(nodes1)
-					queue = append(queue, postfixEntry{state: nextState, ploc: curLoc})
+					queue.EnqueueLong(int64(nextState))
+					queue.EnqueueInt(int32(curLoc))
 				}
 			}
 			tloc = TableauNextLoc(nodes, tloc)
 		}
 		TableauSetParent(nodes, ploc)
-		if len(queue) == 0 {
+		if queue.Size() == 0 {
 			return nil, fmt.Errorf("liveness BFS postfix could not close cycle")
 		}
-		entry := queue[0]
-		queue = queue[1:]
-		curState = entry.state
-		ploc = entry.ploc
+		curState = uint64(queue.DequeueLong())
+		ploc = int(queue.DequeueInt())
 		curLoc = nodeTbl.GetNodesLoc(curState)
 		nodes = nodeTbl.GetNodesByLoc(curLoc)
 		if nodes == nil {
