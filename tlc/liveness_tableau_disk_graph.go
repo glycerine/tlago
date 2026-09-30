@@ -3,6 +3,8 @@ package tlc
 import (
 	"fmt"
 	"io"
+	"os"
+	"strings"
 )
 
 const tableauDiskGraphInitState = DiskGraphMaxPtr + 1
@@ -122,8 +124,52 @@ func (g *TableauDiskGraph) Reset() error {
 	return nil
 }
 
+func (g *TableauDiskGraph) Recover() error {
+	if g == nil {
+		return nil
+	}
+	file, err := os.Open(g.chkptName + ".chkpt")
+	if err != nil {
+		return err
+	}
+	in := NewValueInputStream(file)
+	nodePos, err := in.ReadLong()
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+	ptrPos, err := in.ReadLong()
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	g.TableauNodePtrTbl = NewTableauNodePtrTable(255)
+	if err := g.MakeNodePtrTblTo(ptrPos); err != nil {
+		return err
+	}
+	if _, err := g.nodeFile.Seek(nodePos, io.SeekStart); err != nil {
+		return err
+	}
+	_, err = g.ptrFile.Seek(ptrPos, io.SeekStart)
+	return err
+}
+
 func (g *TableauDiskGraph) Size() int {
 	return g.TableauNodePtrTbl.Size()
+}
+
+func (g *TableauDiskGraph) CheckInvariants(slen int, alen int) (bool, error) {
+	ok := true
+	err := g.eachTableauGraphNode(func(node *GraphNode) error {
+		if !node.CheckInvariants(slen, alen) {
+			ok = false
+		}
+		return nil
+	})
+	return ok, err
 }
 
 func (g *TableauDiskGraph) MakeNodePtrTbl() error {
@@ -173,4 +219,102 @@ func (g *TableauDiskGraph) MakeNodePtrTblToTable(ptr int64, table *TableauNodePt
 		}
 		table.PutElem(uint64(fp), int(tidx), loc)
 	}
+}
+
+func (g *TableauDiskGraph) String() string {
+	if g == nil || g.Cache == nil {
+		return ""
+	}
+	var b strings.Builder
+	_ = g.eachTableauGraphNode(func(node *GraphNode) error {
+		b.WriteString(fmt.Sprintf("<%d,%d> -> ", node.StateFP, node.TIndex))
+		for i := 0; i < node.SuccSize(); i++ {
+			b.WriteString(fmt.Sprintf("<%d,%d> ", node.GetStateFP(i), node.GetTIndex(i)))
+		}
+		b.WriteByte('\n')
+		return nil
+	})
+	return b.String()
+}
+
+func (g *TableauDiskGraph) ToDotViz(oos *OrderOfSolution, labels map[uint64]string) string {
+	if g == nil || g.Cache == nil || oos == nil {
+		return ""
+	}
+	slen := len(oos.CheckState)
+	alen := len(oos.CheckAction)
+	var b strings.Builder
+	b.WriteString("digraph DiskGraph {\n")
+	b.WriteString("nodesep = 0.7\n")
+	b.WriteString("rankdir=LR;\n")
+	b.WriteString(diskGraphDotVizLegend(oos))
+	b.WriteString(g.TableauNodePtrTbl.ToDotViz())
+	b.WriteString("subgraph cluster_graph {\n")
+	b.WriteString("color=\"white\";\n")
+	_ = g.eachTableauGraphNode(func(node *GraphNode) error {
+		b.WriteString(node.ToDotViz(g.isInitState(node), true, slen, alen, oos, labels))
+		return nil
+	})
+	b.WriteString("}}")
+	return b.String()
+}
+
+func (g *TableauDiskGraph) eachTableauGraphNode(fn func(*GraphNode) error) error {
+	if g == nil || g.ptrFile == nil || fn == nil {
+		return nil
+	}
+	nodePtr, err := g.nodeFile.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+	ptrPtr, err := g.ptrFile.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+	end, err := g.ptrFile.Seek(0, io.SeekEnd)
+	if err != nil {
+		return err
+	}
+	if _, err := g.ptrFile.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	in := NewValueInputStream(g.ptrFile)
+	for {
+		cur, err := g.ptrFile.Seek(0, io.SeekCurrent)
+		if err != nil {
+			return err
+		}
+		if cur >= end {
+			break
+		}
+		fp, err := in.ReadLong()
+		if err != nil {
+			return err
+		}
+		tidx, err := in.ReadInt()
+		if err != nil {
+			return err
+		}
+		loc, err := in.ReadLongNat()
+		if err != nil {
+			return err
+		}
+		var node *GraphNode
+		if g.Cache == nil {
+			node, err = g.getNodeFromDisk(uint64(fp), int(tidx), loc)
+		} else {
+			node, err = g.getNode(uint64(fp), int(tidx), loc)
+		}
+		if err != nil {
+			return err
+		}
+		if err := fn(node); err != nil {
+			return err
+		}
+	}
+	if _, err := g.nodeFile.Seek(nodePtr, io.SeekStart); err != nil {
+		return err
+	}
+	_, err = g.ptrFile.Seek(ptrPtr, io.SeekStart)
+	return err
 }

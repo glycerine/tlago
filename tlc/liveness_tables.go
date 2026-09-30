@@ -1,5 +1,7 @@
 package tlc
 
+import "fmt"
+
 const (
 	nodePtrEmpty              = int64(-1)
 	DiskGraphMaxPtr           = int64(0x4000000000000000)
@@ -609,6 +611,54 @@ func (t *TableauNodePtrTable) GetElemTidx(node []int32, loc int) int {
 
 func (t *TableauNodePtrTable) PutRecordElem(node []int32, elem int64, tableauIdx int, loc int) {
 	TableauPutElem(node, elem, loc)
+}
+
+func (t *TableauNodePtrTable) ToDotViz() string {
+	if t == nil {
+		return ""
+	}
+	out := "subgraph cluster_table {graph[style=bold];label = \"NodePtrTable\" style=\"solid\"\n"
+	out += "node [ labeljust=\"l\",shape=record ]\n"
+	out += "key [label=<<table border=\"1\" cellpadding=\"2\" cellspacing=\"0\" cellborder=\"1\">\n"
+	out += "<tr> <td BGCOLOR=\"lightblue\">fp</td> <td BGCOLOR=\"lightblue\">tid</td> <td BGCOLOR=\"lightblue\">idx</td> <td BGCOLOR=\"lightblue\">isDone</td> <td BGCOLOR=\"lightblue\">isSeen</td> <td BGCOLOR=\"lightblue\">ptr</td> <td BGCOLOR=\"lightblue\">pred tid</td> </tr>\n"
+	for i, node := range t.nodes {
+		if node == nil {
+			continue
+		}
+		fp := TableauGetKey(node)
+		fpText := fmt.Sprintf("%d", fp)
+		if len(fpText) > 6 {
+			fpText = fpText[:6]
+		}
+		if len(node) == 2 {
+			out += fmt.Sprintf("<tr> <td>%s</td> <td>%s</td> <td>%d</td> <td>%v</td> <td>%s</td> <td>%s</td> <td>%s</td> </tr>\n", fpText, "NA", i, t.IsDone(fp), "NA", "NA", "NA")
+			continue
+		}
+		for j := 2; j < len(node)-1; j += t.GetElemLength() {
+			tidx := TableauGetTidx(node, j)
+			elem := TableauGetElem(node, j)
+			ptr := fmt.Sprintf("%d", elem)
+			switch {
+			case IsDiskGraphFilePointer(elem):
+				if elem == TableauNodePtrTableUndone {
+					ptr = "undone"
+				} else if elem == TableauNodePtrTableDone {
+					ptr = "done"
+				}
+			case elem == DiskGraphMaxPtr:
+				ptr = "Initial"
+			default:
+				ptr = fmt.Sprintf("%d", elem-tableauDiskGraphInitState)
+			}
+			predTidx := "-"
+			if tidx := t.GetElemTidx(node, j); tidx != -1 {
+				predTidx = fmt.Sprintf("%d", tidx)
+			}
+			out += fmt.Sprintf("<tr> <td>%s</td> <td>%d</td> <td>%d</td> <td>%v</td> <td>%v</td> <td>%s</td> <td>%s</td> </tr>\n", fpText, tidx, i, t.IsDone(fp), !TableauIsSeenAt(node, j), ptr, predTidx)
+		}
+	}
+	out += "</table>>]\n}"
+	return out
 }
 
 func (t *TableauNodePtrTable) grow() {
