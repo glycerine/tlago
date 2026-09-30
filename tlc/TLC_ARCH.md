@@ -1498,7 +1498,10 @@ Go mapping:
   `TLCExt!TLCCache` uses a concrete `TLCExtCache` for constant-level
   expressions and the concrete `TLCStateMut` cache for state-level
   expressions, matching Java's split between expression tool objects and
-  `TLCStateMutExt`.
+  `TLCStateMutExt`. Java only evaluates the closure in those two cacheable
+  cases; action- and temporal-level expressions bypass the cache and evaluate
+  the expression directly. The state-level closure key is evaluated against the
+  current state only, mirroring `tool.eval(closure, c, s0)`.
 - `_TLCTrace!_TLCState` and `_JsonTrace!_TLCState` are evaluation overrides in
   Java. They ignore the syntactic level argument and return a record
   representation of the current state directly, avoiding reconstruction through

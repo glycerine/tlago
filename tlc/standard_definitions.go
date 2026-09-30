@@ -392,16 +392,13 @@ func standardTLCDefer(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 	expr := args[0]
 	closure := args[1]
-	key, err := tool.Eval(closure, con, state, pstate, control, cm)
-	if err != nil {
-		return nil, err
-	}
 
 	level := SemanticLevel(expr)
-	if tool != nil && level == TLCLevelConstant {
-		level = tool.GetLevelBound(expr, con)
-	}
 	if level == TLCLevelConstant {
+		key, err := tool.Eval(closure, con, state, pstate, control, cm)
+		if err != nil {
+			return nil, err
+		}
 		cache, _ := SemanticToolObject(expr).(*TLCExtCache)
 		if cache == nil {
 			cache = NewTLCExtCache()
@@ -414,6 +411,10 @@ func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 		})
 	}
 	if level == TLCLevelState && state != nil {
+		key, err := tool.Eval(closure, con, state, nil, EvalClear, cm)
+		if err != nil {
+			return nil, err
+		}
 		cacheKey := standardTLCCacheKey(expr, closure, key)
 		if value := state.GetCached(cacheKey); value != nil {
 			return value, nil

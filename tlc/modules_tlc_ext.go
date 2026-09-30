@@ -190,29 +190,33 @@ func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error)
 
 type TLCExtCache struct {
 	mu     sync.RWMutex
-	values *InsMap[string, Value]
+	values []tlcExtCacheEntry
+}
+
+type tlcExtCacheEntry struct {
+	key   Value
+	value Value
 }
 
 func NewTLCExtCache() *TLCExtCache {
-	return &TLCExtCache{values: NewInsMap[string, Value]()}
+	return &TLCExtCache{}
 }
 
 func (c *TLCExtCache) Eval(key Value, compute func() (Value, error)) (Value, error) {
 	if c == nil {
 		c = NewTLCExtCache()
 	}
-	cacheKey := key.String()
 	c.mu.RLock()
-	if value := c.values.Get(cacheKey); value != nil {
+	if value, err := c.lookup(key); value != nil || err != nil {
 		c.mu.RUnlock()
-		return value, nil
+		return value, err
 	}
 	c.mu.RUnlock()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if value := c.values.Get(cacheKey); value != nil {
-		return value, nil
+	if value, err := c.lookup(key); value != nil || err != nil {
+		return value, err
 	}
 	if compute == nil {
 		return ValUndef, nil
@@ -222,8 +226,28 @@ func (c *TLCExtCache) Eval(key Value, compute func() (Value, error)) (Value, err
 		return nil, err
 	}
 	InitializeValue(value)
-	c.values.Set(cacheKey, value)
+	c.values = append(c.values, tlcExtCacheEntry{key: key, value: value})
 	return value, nil
+}
+
+func (c *TLCExtCache) lookup(key Value) (Value, error) {
+	if c == nil {
+		return nil, nil
+	}
+	for _, entry := range c.values {
+		equal, err := valuesEqualForCache(entry.key, key)
+		if err != nil || equal {
+			return entry.value, err
+		}
+	}
+	return nil, nil
+}
+
+func valuesEqualForCache(left Value, right Value) (bool, error) {
+	if left == nil || right == nil {
+		return left == right, nil
+	}
+	return left.Equal(right)
 }
 
 func PossibleCounts() Value {
