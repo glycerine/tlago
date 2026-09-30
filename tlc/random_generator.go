@@ -1,0 +1,199 @@
+package tlc
+
+import (
+	"math"
+	"sync"
+)
+
+const (
+	javaRandomMultiplier = int64(0x5DEECE66D)
+	javaRandomAddend     = int64(0xB)
+	javaRandomMask       = int64((1 << 48) - 1)
+)
+
+type JavaRandom struct {
+	mu               sync.Mutex
+	seed             int64
+	aril             int64
+	haveNextGaussian bool
+	nextGaussian     float64
+}
+
+func NewJavaRandom(seed int64) *JavaRandom {
+	r := &JavaRandom{}
+	r.SetSeed(seed)
+	return r
+}
+
+func (r *JavaRandom) SetSeed(seed int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.seed = (seed ^ javaRandomMultiplier) & javaRandomMask
+	r.aril = 0
+	r.haveNextGaussian = false
+}
+
+func (r *JavaRandom) SetSeedWithAril(seed int64, cnt int64) {
+	r.SetSeed(seed)
+	for cnt > 0 {
+		r.NextDouble()
+		cnt--
+	}
+}
+
+func (r *JavaRandom) Aril() int64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.aril
+}
+
+func (r *JavaRandom) Next(bits int) int32 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.nextLocked(bits)
+}
+
+func (r *JavaRandom) nextLocked(bits int) int32 {
+	r.seed = (r.seed*javaRandomMultiplier + javaRandomAddend) & javaRandomMask
+	return int32(uint64(r.seed) >> uint(48-bits))
+}
+
+func (r *JavaRandom) NextBytes(bytes []byte) {
+	for i := 0; i < len(bytes); {
+		rnd := r.NextInt()
+		for n := min(len(bytes)-i, 4); n > 0; n-- {
+			bytes[i] = byte(rnd)
+			i++
+			rnd >>= 8
+		}
+	}
+}
+
+func (r *JavaRandom) NextInt() int32 {
+	return r.Next(32)
+}
+
+func (r *JavaRandom) NextIntN(bound int32) int32 {
+	if bound <= 0 {
+		panic("bound must be positive")
+	}
+	if bound&-bound == bound {
+		return int32((int64(bound) * int64(r.Next(31))) >> 31)
+	}
+	for {
+		bits := r.Next(31)
+		val := bits % bound
+		if bits-val+(bound-1) >= 0 {
+			return val
+		}
+	}
+}
+
+func (r *JavaRandom) NextLong() int64 {
+	hi := int64(r.Next(32))
+	lo := int64(r.Next(32))
+	return (hi << 32) + lo
+}
+
+func (r *JavaRandom) NextFloat() float32 {
+	return float32(r.Next(24)) / float32(1<<24)
+}
+
+func (r *JavaRandom) NextDouble() float64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.aril++
+	hi := int64(r.nextLocked(26))
+	lo := int64(r.nextLocked(27))
+	return float64((hi<<27)+lo) / float64(1<<53)
+}
+
+func (r *JavaRandom) NextGaussian() float64 {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.haveNextGaussian {
+		r.haveNextGaussian = false
+		return r.nextGaussian
+	}
+	var v1, v2, s float64
+	for {
+		r.aril += 2
+		hi1 := int64(r.nextLocked(26))
+		lo1 := int64(r.nextLocked(27))
+		u1 := float64((hi1<<27)+lo1) / float64(1<<53)
+		hi2 := int64(r.nextLocked(26))
+		lo2 := int64(r.nextLocked(27))
+		u2 := float64((hi2<<27)+lo2) / float64(1<<53)
+		v1 = 2*u1 - 1
+		v2 = 2*u2 - 1
+		s = v1*v1 + v2*v2
+		if s < 1 && s != 0 {
+			break
+		}
+	}
+	multiplier := math.Sqrt(-2 * math.Log(s) / s)
+	r.nextGaussian = v2 * multiplier
+	r.haveNextGaussian = true
+	return v1 * multiplier
+}
+
+func (r *JavaRandom) Perm(n int) []int {
+	perm := make([]int, n)
+	for i := range perm {
+		perm[i] = i
+	}
+	for i := n; i > 1; i-- {
+		j := int(r.NextIntN(int32(i)))
+		perm[i-1], perm[j] = perm[j], perm[i-1]
+	}
+	return perm
+}
+
+var randomEnumerableValues = struct {
+	sync.Mutex
+	seed int64
+	rng  *JavaRandom
+}{
+	rng: NewJavaRandom(0),
+}
+
+func RandomEnumerableSeed() int64 {
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	return randomEnumerableValues.seed
+}
+
+func SetRandomEnumerableSeed(seed int64) {
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	randomEnumerableValues.seed = seed
+	randomEnumerableValues.rng = NewJavaRandom(seed)
+}
+
+func ResetRandomEnumerableValues() *JavaRandom {
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	old := randomEnumerableValues.rng
+	randomEnumerableValues.rng = NewJavaRandom(randomEnumerableValues.seed)
+	return old
+}
+
+func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
+	if rng == nil {
+		rng = NewJavaRandom(randomEnumerableValues.seed)
+	}
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	old := randomEnumerableValues.rng
+	randomEnumerableValues.rng = rng
+	return old
+}
+
+func RandomEnumerableGenerator() *JavaRandom {
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
+	if randomEnumerableValues.rng == nil {
+		randomEnumerableValues.rng = NewJavaRandom(randomEnumerableValues.seed)
+	}
+	return randomEnumerableValues.rng
+}

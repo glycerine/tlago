@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"math"
-	"math/rand"
 	"strconv"
 )
 
@@ -84,7 +83,7 @@ func randomSubsetOfEnumerable(k int, value Value) (Value, error) {
 	if k > n {
 		k = n
 	}
-	perm := rand.Perm(n)
+	perm := RandomEnumerableGenerator().Perm(n)
 	out := NewValueVec(k)
 	for i := 0; i < k; i++ {
 		out.Add(values.At(perm[i]))
@@ -99,10 +98,11 @@ func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) 
 	}
 	base := set.Elems.ToArray()
 	subsets := NewValueVec(k)
+	rng := RandomEnumerableGenerator()
 	for i := 0; i < k; i++ {
 		subset := NewValueVec(0)
 		for _, elem := range base {
-			if rand.Float64() < probability {
+			if rng.NextDouble() < probability {
 				subset.Add(elem)
 			}
 		}

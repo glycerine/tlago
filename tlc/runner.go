@@ -146,6 +146,9 @@ func (t *TLC) applyGlobals() {
 		Globals.DFIDMax = t.DFIDDepth
 	}
 	Globals.Unlock()
+	if t.Seed != 0 {
+		SetRandomEnumerableSeed(t.Seed + t.Aril)
+	}
 }
 
 func (t *TLC) processModelChecking() (*Result, error) {
