@@ -5,6 +5,7 @@ import (
 )
 
 type OpDefNode struct {
+	SemanticNodeBase
 	Name   *UniqueString
 	Params []*SymbolNode
 	Body   SemanticNode
@@ -13,7 +14,12 @@ type OpDefNode struct {
 func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNode {
 	outParams := make([]*SymbolNode, len(params))
 	copy(outParams, params)
-	return &OpDefNode{Name: UniqueStringOf(name), Params: outParams, Body: body}
+	return &OpDefNode{
+		SemanticNodeBase: SemanticNodeBase{Image: name},
+		Name:             UniqueStringOf(name),
+		Params:           outParams,
+		Body:             body,
+	}
 }
 
 func (n *OpDefNode) Arity() int {

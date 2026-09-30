@@ -10,6 +10,13 @@ type SemanticNode any
 type SemanticKind int
 
 const (
+	TLCLevelConstant = iota
+	TLCLevelState
+	TLCLevelAction
+	TLCLevelTemporal
+)
+
+const (
 	SemanticUnknownKind SemanticKind = iota
 	SemanticLabelKind
 	SemanticOpApplKind
@@ -25,9 +32,11 @@ const (
 )
 
 type SemanticNodeBase struct {
-	KindValue  SemanticKind
-	ToolObject any
-	Image      string
+	KindValue     SemanticKind
+	ToolObject    any
+	Image         string
+	LevelValue    int
+	LevelParamSet []*SymbolNode
 }
 
 func (n *SemanticNodeBase) Kind() SemanticKind {
@@ -55,6 +64,125 @@ func (n *SemanticNodeBase) String() string {
 		return "<semantic node>"
 	}
 	return n.Image
+}
+
+func (n *SemanticNodeBase) GetLevel() int {
+	if n == nil {
+		return TLCLevelConstant
+	}
+	return n.LevelValue
+}
+
+func (n *SemanticNodeBase) SetLevel(level int) {
+	if n != nil {
+		n.LevelValue = level
+	}
+}
+
+func (n *SemanticNodeBase) GetLevelParams() []*SymbolNode {
+	if n == nil || len(n.LevelParamSet) == 0 {
+		return nil
+	}
+	out := make([]*SymbolNode, len(n.LevelParamSet))
+	copy(out, n.LevelParamSet)
+	return out
+}
+
+func (n *SemanticNodeBase) SetLevelParams(params ...*SymbolNode) {
+	if n == nil {
+		return
+	}
+	n.LevelParamSet = nil
+	n.AddLevelParams(params...)
+}
+
+func (n *SemanticNodeBase) AddLevelParams(params ...*SymbolNode) {
+	if n == nil {
+		return
+	}
+	for _, param := range params {
+		if param == nil || n.hasLevelParam(param) {
+			continue
+		}
+		n.LevelParamSet = append(n.LevelParamSet, param)
+	}
+}
+
+func (n *SemanticNodeBase) hasLevelParam(param *SymbolNode) bool {
+	for _, existing := range n.LevelParamSet {
+		if existing == param {
+			return true
+		}
+	}
+	return false
+}
+
+func SemanticLevel(node SemanticNode) int {
+	switch n := node.(type) {
+	case nil:
+		return TLCLevelConstant
+	case *OpDefNode:
+		return n.GetLevel()
+	case *LabelNode:
+		return n.GetLevel()
+	case *OpApplNode:
+		return n.GetLevel()
+	case *LetInNode:
+		return n.GetLevel()
+	case *SubstInNode:
+		return n.GetLevel()
+	case *APSubstInNode:
+		return n.GetLevel()
+	case *ValueNode:
+		return n.GetLevel()
+	case *NumeralNode:
+		return n.GetLevel()
+	case *DecimalNode:
+		return n.GetLevel()
+	case *StringNode:
+		return n.GetLevel()
+	case *AtNode:
+		return n.GetLevel()
+	case *OpArgNode:
+		return n.GetLevel()
+	case *LiveExprNode:
+		return n.GetLevel()
+	default:
+		return TLCLevelConstant
+	}
+}
+
+func SemanticLevelParams(node SemanticNode) []*SymbolNode {
+	switch n := node.(type) {
+	case nil:
+		return nil
+	case *OpDefNode:
+		return n.GetLevelParams()
+	case *LabelNode:
+		return n.GetLevelParams()
+	case *OpApplNode:
+		return n.GetLevelParams()
+	case *LetInNode:
+		return n.GetLevelParams()
+	case *SubstInNode:
+		return n.GetLevelParams()
+	case *APSubstInNode:
+		return n.GetLevelParams()
+	case *ValueNode:
+		return n.GetLevelParams()
+	case *NumeralNode:
+		return n.GetLevelParams()
+	case *DecimalNode:
+		return n.GetLevelParams()
+	case *StringNode:
+		return n.GetLevelParams()
+	case *AtNode:
+		return n.GetLevelParams()
+	case *OpArgNode:
+		return n.GetLevelParams()
+	default:
+		return nil
+	}
 }
 
 type LabelNode struct {

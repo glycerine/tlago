@@ -12,8 +12,8 @@ type Defns struct {
 }
 
 func NewDefns(initialSize ...int) *Defns {
-	idx := UniqueStringVariableCount()
-	if len(initialSize) > 0 && initialSize[0] > idx {
+	idx := 0
+	if len(initialSize) > 0 {
 		idx = initialSize[0]
 	}
 	return &Defns{defnIdx: idx, table: make([]any, idx+32)}
@@ -29,9 +29,6 @@ func (d *Defns) Put(key any, value any) {
 	}
 	loc := us.DefnLoc()
 	if loc == -1 {
-		if d.defnIdx < UniqueStringVariableCount() {
-			d.defnIdx = UniqueStringVariableCount()
-		}
 		loc = d.defnIdx
 		d.defnIdx++
 		us.SetLoc(loc)
@@ -239,7 +236,13 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 func (p *SpecProcessor) SetVariables(names []string) {
 	p.Variables = make([]*UniqueString, len(names))
 	for i, name := range names {
-		p.Variables[i] = UniqueStringOf(name)
+		variable := UniqueStringOf(name)
+		variable.SetLoc(i)
+		p.Variables[i] = variable
+	}
+	SetUniqueStringVariableCount(len(names))
+	if p.Defns != nil {
+		p.Defns.SetDefnCount(len(names))
 	}
 }
 
@@ -278,6 +281,9 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	}
 	if len(names) != 0 {
 		SetStateVariables(names)
+		if p.Defns != nil {
+			p.Defns.SetDefnCount(len(names))
+		}
 	}
 	tool.ModelConfig = p.Config
 	tool.InitStateSpec = append([]*Action(nil), p.InitPred...)

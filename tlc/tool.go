@@ -427,12 +427,122 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 	if t != nil && t.GetStateFunc != nil {
 		return t.GetStateFunc(t, fp, prev...)
 	}
+	if t == nil {
+		return nil, newTLCError(ECTLCFailedToRecoverInit, "state fingerprint %d cannot be recovered without a tool", fp)
+	}
+	if len(prev) != 0 {
+		switch predecessor := prev[0].(type) {
+		case *TLCStateInfo:
+			if fallback := t.getKnownState(fp, predecessor); fallback != nil {
+				fallback.StateNumber = predecessor.StateNumber + 1
+				return fallback, nil
+			}
+			info, err := t.GetStateAfter(fp, predecessor.State)
+			if err == nil && info != nil {
+				info.StateNumber = predecessor.StateNumber + 1
+				info.FP = &fp
+				return info, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
+		case *TLCStateMut:
+			if fallback := t.getKnownState(fp, predecessor); fallback != nil {
+				return fallback, nil
+			}
+			info, err := t.GetStateAfter(fp, predecessor)
+			if err == nil && info != nil {
+				return info, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
+		}
+	}
+	info, err := t.GetInitState(fp)
+	if err == nil && info != nil {
+		return info, nil
+	}
+	if fallback := t.getKnownState(fp); fallback != nil {
+		return fallback, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return nil, newTLCError(ECTLCFailedToRecoverInit, "initial state fingerprint %d could not be regenerated", fp)
+}
+
+func (t *Tool) GetInitState(fp uint64) (*TLCStateInfo, error) {
+	if t == nil {
+		return nil, nil
+	}
+	var found *TLCStateMut
+	functor := NewStateFunctor(func(state *TLCStateMut) (any, error) {
+		if state != nil && found == nil && state.FingerPrint() == fp {
+			found = state
+		}
+		return nil, nil
+	})
+	if err := t.GetInitStates(functor); err != nil {
+		return nil, err
+	}
+	if found == nil {
+		return nil, nil
+	}
+	info := NewTLCStateInfo(found)
+	info.FP = &fp
+	return info, nil
+}
+
+func (t *Tool) GetStateAfter(fp uint64, predecessor *TLCStateMut) (*TLCStateInfo, error) {
+	if t == nil || predecessor == nil {
+		return nil, nil
+	}
+	for _, action := range t.GetActions() {
+		nextStates, err := t.GetNextStates(action, predecessor)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; nextStates != nil && i < nextStates.Size(); i++ {
+			state := nextStates.At(i)
+			if state != nil && state.FingerPrint() == fp {
+				state.SetPredecessor(predecessor)
+				return NewTLCStateInfo(state, action), nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCStateMut) (*TLCStateInfo, error) {
+	if t == nil || successor == nil || predecessor == nil {
+		return nil, nil
+	}
+	for _, action := range t.GetActions() {
+		nextStates, err := t.GetNextStates(action, predecessor)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; nextStates != nil && i < nextStates.Size(); i++ {
+			state := nextStates.At(i)
+			if state != nil && successor.Equal(state) {
+				state.SetPredecessor(predecessor)
+				return NewTLCStateInfo(state, action), nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (t *Tool) getKnownState(fp uint64, prev ...any) *TLCStateInfo {
 	if t == nil || t.KnownStates == nil {
-		return nil, newTLCError(ECTLCFailedToRecoverInit, "state fingerprint %d is not in the state registry", fp)
+		return nil
 	}
 	state, ok := t.KnownStates.Get2(fp)
 	if !ok || state == nil {
-		return nil, newTLCError(ECTLCFailedToRecoverInit, "state fingerprint %d is not in the state registry", fp)
+		return nil
 	}
 	info := NewTLCStateInfo(state)
 	info.FP = &fp
@@ -446,7 +556,7 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 			state.SetPredecessor(predecessor)
 		}
 	}
-	return info, nil
+	return info
 }
 
 func (t *Tool) RememberState(state *TLCStateMut) uint64 {
@@ -688,21 +798,36 @@ func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, pref
 	if t != nil && t.EvalAliasInfoFunc != nil {
 		return t.EvalAliasInfoFunc(t, current, successor, prefix)
 	}
-	return NewTLCStateInfo(successor), nil
+	return current, nil
 }
 
 func (t *Tool) EvalAliasInfoPair(curState *TLCStateInfo, sucState *TLCStateMut) (*TLCStateInfo, error) {
 	if t != nil && t.EvalAliasInfoPairFunc != nil {
 		return t.EvalAliasInfoPairFunc(t, curState, sucState)
 	}
-	return NewTLCStateInfo(sucState), nil
+	return curState, nil
+}
+
+func (t *Tool) EvalAliasInfoPrefix(current *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo) (*TLCStateInfo, error) {
+	return t.EvalAliasInfo(current, successor, func() []*TLCStateInfo {
+		return append([]*TLCStateInfo(nil), prefix...)
+	})
+}
+
+func (t *Tool) EvalAliasInfoPrefixSuffix(current *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo, suffix ...*TLCStateInfo) (*TLCStateInfo, error) {
+	return t.EvalAliasInfo(current, successor, func() []*TLCStateInfo {
+		out := make([]*TLCStateInfo, 0, len(prefix)+len(suffix))
+		out = append(out, prefix...)
+		out = append(out, suffix...)
+		return out
+	})
 }
 
 func (t *Tool) EvalAlias(curState *TLCStateMut, sucState *TLCStateMut) *TLCStateMut {
 	if t != nil && t.EvalAliasFunc != nil {
 		return t.EvalAliasFunc(t, curState, sucState)
 	}
-	return sucState
+	return curState
 }
 
 func (t *Tool) NoDebug() *Tool {

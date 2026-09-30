@@ -210,6 +210,9 @@ objects. Key jobs:
 - Build `Action` objects with contexts and names.
 - Initialize `ModelValue` state.
 - Set variable locations on `UniqueString`.
+- Set the definition table count to the number of variables before storing
+  definitions. Java does this explicitly with `defns.setDefnCount(varDecls.length)`;
+  the Go port keeps the same visible step instead of hiding it in `Defns`.
 
 Tricky details:
 
@@ -221,6 +224,28 @@ Tricky details:
 - Model values must be initialized and ordered exactly as Java does because
   comparison, printing, and fingerprinting depend on it.
 - Constants can be static, dynamic, module-scoped, or override-driven.
+
+### `Defns` and `Specs`
+
+`Defns` is a compact definition table keyed indirectly by `UniqueString.loc`.
+The same `loc` field is also used for state variable positions:
+
+- variables occupy locations `[0, varCount)`.
+- definitions start at `defnIdx`, normally initialized to `varCount`.
+- `UniqueString.getDefnLoc` returns `-1` for variable locations.
+- `put` assigns a new location only when the key's definition location is `-1`.
+- `snapshot` copies the backing array and the current index.
+
+`Specs.getLevel` is a static helper used by TLC to compute the effective level
+of a level-checked expression under a context. It starts from the node's SANY
+level, then follows each level parameter through the context. If the binding is
+a `LazyValue`, it recurses on the lazy expression and context; if the binding is
+an `OpDefNode`, it recurses on that operator definition. The Go semantic nodes
+therefore carry concrete level metadata on `SemanticNodeBase`, and `OpDefNode`
+embeds the same base rather than hiding level behind an interface.
+
+`Specs.addSubsts` wraps an expression in the queued `SubstInNode` substitutions
+in list order. This is a structural SANY helper and should remain mechanical.
 
 ### `ModelConfig`
 
@@ -818,6 +843,24 @@ Trace writing:
   successor fingerprint.
 - The successor state receives `(workerId, uid)` for later reconstruction.
 - Reads/writes are synchronized so trace printing sees consistent fragments.
+
+Trace reconstruction and aliasing:
+
+- Java exposes `TraceApp`/`ITool` methods to reconstruct an initial state from
+  a fingerprint, reconstruct a successor from a predecessor plus fingerprint,
+  and reconstruct transition metadata from a successor/predecessor pair.
+- The Go port keeps those duties as concrete `Tool` methods:
+  `GetInitState`, `GetStateAfter`, and `GetStateForTransition`; no Go
+  `TraceApp` interface is needed.
+- Java regenerates states from the init and next-state predicates. The Go port
+  first checks the in-memory `KnownStates` registry when present to preserve
+  identity for existing trace records, then falls back to Java-style
+  regeneration.
+- Java's no-alias behavior returns the current state/info, not the successor.
+  Go `EvalAlias`, `EvalAliasInfo`, and `EvalAliasInfoPair` must preserve that.
+- The Java default `evalAlias` overloads build a prefix supplier from prefix
+  and suffix arrays. Go uses concrete `Tool` helper methods that build the same
+  supplier closure without introducing a separate interface.
 
 `ConcurrentTLCTrace` merges per-worker trace fragments to reconstruct:
 
