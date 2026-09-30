@@ -282,6 +282,7 @@ type ModelChecker struct {
 	FPSet                   FPSet
 	StateQueue              StateQueue
 	Trace                   *TLCTrace
+	ConcurrentTrace         *ConcurrentTLCTrace
 	LiveCheck               *LiveCheck
 	NextStatesGenerated     int64
 	StatesPerMinute         int64
@@ -344,11 +345,14 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	if tool != nil {
 		rootName = tool.GetRootName()
 	}
+	concurrentTrace := NewConcurrentTLCTrace(metadir, rootName)
+	concurrentTrace.SetTool(tool)
 	mc := &ModelChecker{
 		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		FPSet:           NewFPSet(NewFPSetConfiguration()).Init(NumWorkers(), metadir, rootName),
 		StateQueue:      NewStateQueue(metadir),
-		Trace:           NewTLCTrace(metadir, rootName),
+		Trace:           concurrentTrace.TLCTrace,
+		ConcurrentTrace: concurrentTrace,
 		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
 	}
 	for _, opt := range opts {
@@ -371,6 +375,11 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	} else {
 		mc.Trace.SetCheckpointContext(metadir, rootName)
 	}
+	if mc.ConcurrentTrace == nil {
+		mc.ConcurrentTrace = NewConcurrentTLCTrace(metadir, rootName)
+	}
+	mc.ConcurrentTrace.TLCTrace = mc.Trace
+	mc.ConcurrentTrace.SetTool(tool)
 	if mc.LiveCheck == nil {
 		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	}
@@ -425,7 +434,13 @@ func (mc *ModelChecker) Resume() {
 }
 
 func (mc *ModelChecker) GetProgress() int64 {
-	if mc == nil || mc.Trace == nil {
+	if mc == nil {
+		return 0
+	}
+	if mc.ConcurrentTrace != nil {
+		return int64(mc.ConcurrentTrace.GetLevelForReporting())
+	}
+	if mc.Trace == nil {
 		return 0
 	}
 	return int64(mc.Trace.GetLevelForReporting())
@@ -655,15 +670,19 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 	if mc.FPSet != nil {
 		mc.FPSet.Close()
 	}
-	if mc.Trace != nil {
+	if mc.ConcurrentTrace != nil {
+		if closeErr := mc.ConcurrentTrace.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	} else if mc.Trace != nil {
 		if closeErr := mc.Trace.Close(); closeErr != nil && err == nil {
 			err = closeErr
 		}
-	}
-	for _, worker := range mc.Workers {
-		if worker != nil {
-			if closeErr := worker.CloseTrace(); closeErr != nil && err == nil {
-				err = closeErr
+		for _, worker := range mc.Workers {
+			if worker != nil {
+				if closeErr := worker.CloseTrace(); closeErr != nil && err == nil {
+					err = closeErr
+				}
 			}
 		}
 	}
@@ -683,15 +702,19 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 				err = deleteErr
 			}
 		}
-		if mc.Trace != nil {
+		if mc.ConcurrentTrace != nil {
+			if deleteErr := mc.ConcurrentTrace.Delete(); deleteErr != nil && err == nil {
+				err = deleteErr
+			}
+		} else if mc.Trace != nil {
 			if deleteErr := mc.Trace.Delete(); deleteErr != nil && err == nil {
 				err = deleteErr
 			}
-		}
-		for _, worker := range mc.Workers {
-			if worker != nil {
-				if deleteErr := worker.DeleteTrace(); deleteErr != nil && err == nil {
-					err = deleteErr
+			for _, worker := range mc.Workers {
+				if worker != nil {
+					if deleteErr := worker.DeleteTrace(); deleteErr != nil && err == nil {
+						err = deleteErr
+					}
 				}
 			}
 		}
@@ -707,6 +730,9 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 func (mc *ModelChecker) BeginTraceChkpt() error {
 	if mc == nil {
 		return nil
+	}
+	if mc.ConcurrentTrace != nil {
+		return mc.ConcurrentTrace.BeginChkpt()
 	}
 	for _, worker := range mc.Workers {
 		if worker != nil {
@@ -725,6 +751,9 @@ func (mc *ModelChecker) CommitTraceChkpt() error {
 	if mc == nil {
 		return nil
 	}
+	if mc.ConcurrentTrace != nil {
+		return mc.ConcurrentTrace.CommitChkpt()
+	}
 	for _, worker := range mc.Workers {
 		if worker != nil {
 			if err := worker.CommitChkpt(); err != nil {
@@ -741,6 +770,9 @@ func (mc *ModelChecker) CommitTraceChkpt() error {
 func (mc *ModelChecker) RecoverTrace() error {
 	if mc == nil {
 		return nil
+	}
+	if mc.ConcurrentTrace != nil {
+		return mc.ConcurrentTrace.Recover()
 	}
 	for _, worker := range mc.Workers {
 		if worker != nil {
@@ -1198,18 +1230,46 @@ func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, 
 
 func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
 	if succState != nil {
-		if mc.Trace != nil {
-			return mc.Trace.GetTrace(succState)
+		if curState != nil {
+			return appendTraceStateIfMissing(mc.traceInfoPrefix(curState), succState)
 		}
-		return NewTLCTrace().GetTrace(succState)
+		return appendTraceStateIfMissing(mc.traceInfoPrefix(succState), succState)
 	}
 	if curState != nil {
-		if mc.Trace != nil {
-			return mc.Trace.GetTrace(curState)
-		}
-		return NewTLCTrace().GetTrace(curState)
+		return appendTraceStateIfMissing(mc.traceInfoPrefix(curState), curState)
 	}
 	return nil
+}
+
+func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
+	if state == nil {
+		return nil
+	}
+	if mc != nil && mc.ConcurrentTrace != nil {
+		if trace := mc.ConcurrentTrace.GetTraceFromState(state); len(trace) > 0 {
+			return trace
+		}
+	}
+	if mc != nil && mc.Trace != nil {
+		return mc.Trace.GetTrace(state)
+	}
+	return NewTLCTrace().GetTrace(state)
+}
+
+func appendTraceStateIfMissing(trace []*TLCStateInfo, state *TLCStateMut) []*TLCStateInfo {
+	if state == nil {
+		return trace
+	}
+	if len(trace) > 0 {
+		last := trace[len(trace)-1]
+		if last != nil && last.State != nil && (last.State == state || last.State.Equal(state)) {
+			return trace
+		}
+	}
+	info := NewTLCStateInfo(state)
+	fp := state.FingerPrint()
+	info.FP = &fp
+	return append(trace, info)
 }
 
 func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {

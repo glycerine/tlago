@@ -53,6 +53,9 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 			checker.Workers = append(checker.Workers, nil)
 		}
 		checker.Workers[id] = worker
+		if checker.ConcurrentTrace != nil {
+			checker.ConcurrentTrace.AddWorker(worker)
+		}
 	}
 	return worker
 }

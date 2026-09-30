@@ -983,10 +983,13 @@ Constrained dumps:
 Trace writing:
 
 - Each worker owns a trace fragment file named by spec and worker id.
-- The Go port now writes Java-style worker fragment files as the authoritative
-  worker path, and mirrors records into the existing in-memory `TLCTrace`
-  structure while the rest of the Go API is still converging on Java's
-  reconstruction model.
+- The Go port now keeps a concrete `ConcurrentTLCTrace` on `ModelChecker`,
+  writes Java-style worker fragment files as the authoritative model-checking
+  path, and mirrors records into the existing in-memory `TLCTrace` for current
+  Go callers.
+- Error trace reconstruction follows Java's two-phase model: walk worker
+  records backward to collect fingerprints and predecessor locations, then ask
+  `Tool.GetState` to regenerate states forward from the initial fingerprint.
 - Java backs worker trace fragments, `TLCTrace`, disk FP sets, and bit-vector
   persistence with `BufferedRandomAccessFile`. The port should preserve its
   concrete buffer state (`dirty`, `length`, `curr`, `lo`, `diskPos`, `mark`),

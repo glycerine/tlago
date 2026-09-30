@@ -1,9 +1,15 @@
 package tlc
 
-import "os"
+import (
+	"errors"
+	"os"
+)
+
+var errConcurrentTraceUnavailable = errors.New("concurrent trace record unavailable")
 
 type ConcurrentTLCTrace struct {
 	*TLCTrace
+	Tool    *Tool
 	Workers []*Worker
 }
 
@@ -18,6 +24,12 @@ func NewConcurrentTLCTrace(metadir string, specFile string, workerCount ...int) 
 	return &ConcurrentTLCTrace{
 		TLCTrace: NewTLCTrace(metadir, specFile),
 		Workers:  make([]*Worker, count),
+	}
+}
+
+func (t *ConcurrentTLCTrace) SetTool(tool *Tool) {
+	if t != nil {
+		t.Tool = tool
 	}
 }
 
@@ -62,9 +74,11 @@ func (t *ConcurrentTLCTrace) GetTraceFromState(state *TLCStateMut) []*TLCStateIn
 	if state == nil {
 		return nil
 	}
+	if trace, err := t.recoverTrace(state, nil); err == nil && len(trace) > 0 {
+		return trace
+	}
 	if t == nil || t.TLCTrace == nil {
-		trace := NewTLCTrace()
-		return trace.GetTrace(state)
+		return traceFromState(state)
 	}
 	return t.TLCTrace.GetTrace(state)
 }
@@ -73,11 +87,122 @@ func (t *ConcurrentTLCTrace) GetTraceBetweenStates(from *TLCStateMut, to *TLCSta
 	if to == nil {
 		return nil
 	}
+	if trace, err := t.recoverTrace(to, from); err == nil && len(trace) > 0 {
+		return trace
+	}
 	if t == nil || t.TLCTrace == nil {
-		trace := NewTLCTrace()
-		return trace.GetTraceBetween(from, to)
+		return NewTLCTrace().GetTraceBetween(from, to)
 	}
 	return t.TLCTrace.GetTraceBetween(from, to)
+}
+
+func (t *ConcurrentTLCTrace) recoverTrace(state *TLCStateMut, from *TLCStateMut) ([]*TLCStateInfo, error) {
+	if t == nil || t.Tool == nil || state == nil || len(t.Workers) == 0 || state.WorkerID < 0 || int(state.WorkerID) >= len(t.Workers) {
+		return nil, nil
+	}
+	if state.IsInitial() {
+		return []*TLCStateInfo{NewTLCStateInfo(state)}, nil
+	}
+	records, err := t.collectTraceRecords(state, from)
+	if errors.Is(err, errConcurrentTraceUnavailable) {
+		return nil, nil
+	}
+	if err != nil || len(records) == 0 {
+		return nil, err
+	}
+	if from != nil {
+		return t.recoverTraceFromRecords(NewTLCStateInfo(from), records)
+	}
+	return t.recoverTraceFromRecords(nil, records)
+}
+
+func (t *ConcurrentTLCTrace) collectTraceRecords(state *TLCStateMut, from *TLCStateMut) ([]ConcurrentTraceRecord, error) {
+	record, err := t.recordForState(state)
+	if err != nil {
+		return nil, err
+	}
+	if from != nil && state.Equal(from) {
+		return []ConcurrentTraceRecord{record}, nil
+	}
+	records := []ConcurrentTraceRecord{record}
+	for {
+		pred, err := t.predecessorRecord(record)
+		if err != nil {
+			return nil, err
+		}
+		if pred.IsInitial() {
+			records = append(records, pred)
+			return records, nil
+		}
+		records = append(records, pred)
+		if from != nil && pred.FP == from.FingerPrint() {
+			return records, nil
+		}
+		record = pred
+	}
+}
+
+func (t *ConcurrentTLCTrace) recordForState(state *TLCStateMut) (ConcurrentTraceRecord, error) {
+	if state == nil || state.WorkerID < 0 || int(state.WorkerID) >= len(t.Workers) || t.Workers[state.WorkerID] == nil {
+		return ConcurrentTraceRecord{}, errConcurrentTraceUnavailable
+	}
+	record, err := t.Workers[state.WorkerID].ReadStateRecord(state.UID)
+	if err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	record.Workers = t.Workers
+	return record, nil
+}
+
+func (t *ConcurrentTLCTrace) predecessorRecord(record ConcurrentTraceRecord) (ConcurrentTraceRecord, error) {
+	if record.IsInitial() {
+		return record, nil
+	}
+	worker := record.GetWorker()
+	if worker == nil {
+		return ConcurrentTraceRecord{}, errConcurrentTraceUnavailable
+	}
+	pred, err := worker.ReadStateRecord(record.Ptr)
+	if err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	pred.Workers = record.Workers
+	return pred, nil
+}
+
+func (t *ConcurrentTLCTrace) recoverTraceFromRecords(sinfo *TLCStateInfo, records []ConcurrentTraceRecord) ([]*TLCStateInfo, error) {
+	if t == nil || t.Tool == nil || len(records) == 0 {
+		return nil, nil
+	}
+	end := len(records) - 1
+	if sinfo == nil {
+		initRecord := records[end]
+		info, err := t.Tool.GetState(initRecord.FP)
+		if err != nil || info == nil {
+			return nil, err
+		}
+		sinfo = info
+		if end > 0 {
+			prev := records[end-1]
+			sinfo.State.WorkerID = int16(prev.Worker)
+			sinfo.State.UID = prev.Ptr
+		}
+	}
+	out := make([]*TLCStateInfo, 0, end+1)
+	out = append(out, sinfo)
+	for i := end - 2; i >= 0; i-- {
+		record := records[i+1]
+		info, err := t.Tool.GetState(record.FP, sinfo.State)
+		if err != nil || info == nil {
+			return nil, err
+		}
+		prev := records[i]
+		info.State.WorkerID = int16(prev.Worker)
+		info.State.UID = prev.Ptr
+		out = append(out, info)
+		sinfo = info
+	}
+	return out, nil
 }
 
 func (t *ConcurrentTLCTrace) CommitChkpt() error {
@@ -160,10 +285,31 @@ func (t *ConcurrentTLCTrace) Close() error {
 	return err
 }
 
+func (t *ConcurrentTLCTrace) Delete() error {
+	if t == nil {
+		return nil
+	}
+	var err error
+	for _, worker := range t.Workers {
+		if worker != nil {
+			if deleteErr := worker.DeleteTrace(); deleteErr != nil && err == nil {
+				err = deleteErr
+			}
+		}
+	}
+	if t.TLCTrace != nil {
+		if deleteErr := t.TLCTrace.Delete(); deleteErr != nil && err == nil {
+			err = deleteErr
+		}
+	}
+	return err
+}
+
 type ConcurrentTraceRecord struct {
-	Ptr    int64
-	Worker int
-	FP     uint64
+	Ptr     int64
+	Worker  int
+	FP      uint64
+	Workers []*Worker
 }
 
 func NewConcurrentTraceRecord(ptr int64, worker int, fp uint64) ConcurrentTraceRecord {
@@ -172,4 +318,11 @@ func NewConcurrentTraceRecord(ptr int64, worker int, fp uint64) ConcurrentTraceR
 
 func (r ConcurrentTraceRecord) IsInitial() bool {
 	return r.Ptr == 1
+}
+
+func (r ConcurrentTraceRecord) GetWorker() *Worker {
+	if r.Worker < 0 || r.Worker >= len(r.Workers) {
+		return nil
+	}
+	return r.Workers[r.Worker]
 }
