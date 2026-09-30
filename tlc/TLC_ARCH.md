@@ -1593,6 +1593,11 @@ The guards are intentionally not interchangeable. `Spec.coverage` and
 `processUnchanged`, substitution cost lookup, and `LazyValue` construction.
 `ActionItemList.coverage` is `Coverage.isActionEnabled()`; it guards delayed
 action-list cost traversal and action `incInvocations`/`incSecondary` counts.
+Java's worker and simulation functor paths count action invocations one
+successor at a time through `addElement`, but Java's direct bulk
+`tool.getNextStates(action, state)` path increments `action.cm` by the generated
+`StateVec` size when `Spec.coverage` is enabled. Keep those paths separate in
+Go to avoid double counting simulation, which uses a bulk vector internally.
 The Go port mirrors this with `CoverageInterval`, `CoverageFlags`,
 `CoverageAnyEnabled`, `CoverageActionEnabled`, and `CoverageVariableEnabled`;
 `TLAGO_COVERAGE` is accepted as the Go-friendly environment spelling of the

@@ -223,13 +223,13 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 		if nextStates != nil {
 			size = nextStates.Size()
 		}
+		if action != nil && CoverageEnabled() {
+			action.CM.IncInvocations(int64(size))
+		}
 		mc.StatesGenerated += int64(size)
 		deadlocked = deadlocked && size == 0
 		for i := 0; i < size; i++ {
 			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
-			if action != nil && CoverageActionEnabled() {
-				action.CM.IncInvocations()
-			}
 			if !mc.Tool.IsGoodState(succ) {
 				if mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext) {
 					PrintError(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succ)...)
