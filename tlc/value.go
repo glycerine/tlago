@@ -89,6 +89,15 @@ type Value interface {
 	TakeExcepts([]ValueExcept) (Value, error)
 }
 
+func InitializeValue(value Value) Value {
+	if value == nil {
+		return nil
+	}
+	value.DeepNormalize()
+	value.FingerPrint(0)
+	return value
+}
+
 type ValueExcept struct {
 	Path  []Value
 	Index int
