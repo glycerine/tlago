@@ -1112,6 +1112,9 @@ Port guidance:
   checker or simulator stop method. Cleanup keeps explicit checkpoint data if
   unexplored work remains and either an error was found or the run was
   time-bound.
+- Java's `tlc2.tool.ModelChecker.vetoCleanup` property forces metadata
+  retention even when `-cleanup` was requested; Go mirrors it with the same key
+  plus `TLAGO_MODEL_CHECKER_VETO_CLEANUP`.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -686,7 +687,7 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 		return nil
 	}
 	var err error
-	vetoCleanup := false
+	vetoCleanup := modelCheckerVetoCleanup()
 	if cleanup && CheckpointExplicitlyEnabled() && mc.StateQueue != nil && !mc.StateQueue.IsEmpty() && (mc.ErrState != nil || mc.TimeBound) {
 		if checkpointErr := mc.Checkpoint(); checkpointErr != nil && err == nil {
 			err = checkpointErr
@@ -751,6 +752,15 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 		}
 	}
 	return err
+}
+
+func modelCheckerVetoCleanup() bool {
+	for _, key := range []string{"tlc2.tool.ModelChecker.vetoCleanup", "TLAGO_MODEL_CHECKER_VETO_CLEANUP"} {
+		if value, ok := os.LookupEnv(key); ok {
+			return strings.EqualFold(value, "true")
+		}
+	}
+	return false
 }
 
 func (mc *ModelChecker) BeginTraceChkpt() error {
