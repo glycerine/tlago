@@ -14,77 +14,13 @@ const (
 	diskObjectBufSize    = 8192
 )
 
-type ObjectStack struct {
+type objectStackFields struct {
 	mu  sync.Mutex
 	len int
 }
 
-func (s *ObjectStack) Push(state any) {
-	s.enqueueInner(state)
-	s.len++
-}
-
-func (s *ObjectStack) Pop() any {
-	if s.len == 0 {
-		return nil
-	}
-	state := s.dequeueInner()
-	s.len--
-	return state
-}
-
-func (s *ObjectStack) SPush(state any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.enqueueInner(state)
-	s.len++
-}
-
-func (s *ObjectStack) SPushAll(states []any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, state := range states {
-		s.enqueueInner(state)
-		s.len++
-	}
-}
-
-func (s *ObjectStack) SPop() any {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	state := s.dequeueInner()
-	s.len--
-	return state
-}
-
-func (s *ObjectStack) SPopMany(cnt int) []any {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	states := make([]any, 0, cnt)
-	for idx := 0; idx < cnt && s.len > 0; idx++ {
-		states = append(states, s.dequeueInner())
-		s.len--
-	}
-	return states
-}
-
-func (s *ObjectStack) Size() int {
-	if s == nil {
-		return 0
-	}
-	return s.len
-}
-
-func (s *ObjectStack) enqueueInner(state any) {
-	panic("ObjectStack.enqueueInner must be implemented by embedding type")
-}
-
-func (s *ObjectStack) dequeueInner() any {
-	panic("ObjectStack.dequeueInner must be implemented by embedding type")
-}
-
 type MemObjectStack struct {
-	ObjectStack
+	objectStackFields
 	states   []any
 	filename string
 }
@@ -143,6 +79,13 @@ func (s *MemObjectStack) SPopMany(cnt int) []any {
 		s.len--
 	}
 	return states
+}
+
+func (s *MemObjectStack) Size() int {
+	if s == nil {
+		return 0
+	}
+	return s.len
 }
 
 func (s *MemObjectStack) enqueueInner(state any) {
@@ -406,7 +349,7 @@ func (p *ObjectPoolStack) Recover(dec *gob.Decoder) error {
 }
 
 type DiskObjectStack struct {
-	ObjectStack
+	objectStackFields
 	filePrefix string
 	buf1       []any
 	buf2       []any
@@ -455,6 +398,33 @@ func (s *DiskObjectStack) SPop() any {
 	state := s.dequeueInner()
 	s.len--
 	return state
+}
+
+func (s *DiskObjectStack) SPushAll(states []any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, state := range states {
+		s.enqueueInner(state)
+		s.len++
+	}
+}
+
+func (s *DiskObjectStack) SPopMany(cnt int) []any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	states := make([]any, 0, cnt)
+	for idx := 0; idx < cnt && s.len > 0; idx++ {
+		states = append(states, s.dequeueInner())
+		s.len--
+	}
+	return states
+}
+
+func (s *DiskObjectStack) Size() int {
+	if s == nil {
+		return 0
+	}
+	return s.len
 }
 
 func (s *DiskObjectStack) enqueueInner(state any) {

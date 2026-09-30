@@ -108,6 +108,8 @@ func TestDiskObjectStackBasicBufferLIFOBehavior(t *testing.T) {
 	if got := stack.SPop(); got != 3 {
 		t.Fatalf("SPop = %v, want 3", got)
 	}
+	stack.SPushAll([]any{4, 5})
+	requireAnySlice(t, stack.SPopMany(2), []any{5, 4})
 	if got := stack.Pop(); got != 2 {
 		t.Fatalf("Pop = %v, want 2", got)
 	}

@@ -563,6 +563,10 @@ Porting guidance:
 - Prefer concrete Go structs. Java's `ExternalSortable` has `BigInt` as its
   practical TLC implementation, so the Go external-sort helpers operate on
   `[]*BigInt` directly instead of creating a one-implementation interface.
+- Do not create public pseudo-abstract base structs whose methods rely on Go
+  method dispatch that does not exist. Java abstract bases such as
+  `ObjectStack` should become private shared fields plus concrete methods on
+  `MemObjectStack` and `DiskObjectStack`.
 - Port utility tests early. These are cheap, stable conformance checks and do
   not disturb the mechanical core model-checker port.
 
