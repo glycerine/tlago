@@ -7,6 +7,7 @@
 - The current experiment is breadth-first mechanical porting first. Do not start porting the Java TLC test suite yet. Existing fast Go tests may be run; small utility tests are acceptable.
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
 - Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `fpset_disk.go` high-level DiskFPSet checkpoint/recovery/merge API shape, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `liveness_check1.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
+- Already audited recently; do not loop on the standard TLC module override registry unless touched: Java's built-in overrides are `TLCGetSet`, `TLCEval`, `TLCExt`, `Json`, `_TLCTrace`, `_JsonTrace`, and `_Possible`; the older static module surfaces for Naturals/Integers/Sequences/FiniteSets/Bags/TLC/Randomization/TransitiveClosure/Strings are represented in `standard_definitions.go` and `modules_*.go`. Public-looking `Remove`, `FApply`, `FSum`, and FiniteSets list helpers in Java source are commented-out code, not active override surface.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -77,6 +78,7 @@
   - Distributed worker registration now mirrors Java's server lifecycle: registering a worker wakes stuck queue threads, creates the corresponding master `TLCServerThread`, registers it, and starts it; explicit thread construction still uses the lower-level thread registration hook.
   - Distributed server lifecycle now has Java-shaped checkpoint/recover/close, init-state generation through a distributed `DoInitFunctor`, joinable server threads, periodic checkpoint/progress reporting, final summary/success reporting, and a Go-library `ModelCheck` path for explicitly registered in-process workers.
   - Distributed TLC output codes and Java-shaped message text are now present for server-ready, worker register/deregister, worker stats, worker lost, recoverable block-size reduction, FPSet wait/register, server-not-running, server-finished, and VM-version diagnostics; the currently ported distributed paths emit the matching lifecycle messages.
+  - `TLCSet("pause", TRUE)` now mirrors Java's synchronized state-queue pause path more closely by holding the concrete queue monitor while waiting for stdin, without using the blocking `SuspendAll` helper.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -109,7 +111,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, and distributed reporting messages have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, standard module override surface audit, `TLCSet("pause")`, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, and distributed reporting messages have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:

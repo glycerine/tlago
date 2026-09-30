@@ -233,12 +233,11 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 			}
 			return BoolTrue, nil
 		case tlcSetPause:
-			if val == BoolTrue && MainChecker() != nil {
-				fmt.Fprintln(os.Stdout, "Press enter to resume model checking.")
-				_ = os.Stdout.Sync()
-				var buf [1]byte
-				if _, err := os.Stdin.Read(buf[:]); err != nil {
-					return nil, newTLCError(ECGeneral, "%s", err.Error())
+			if val == BoolTrue {
+				if checker := MainChecker(); checker != nil {
+					if err := tlcPauseModelChecker(checker); err != nil {
+						return nil, err
+					}
 				}
 			}
 			return BoolTrue, nil
@@ -266,6 +265,36 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 		}
 	}
 	return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "TLCSet", "nonnegative integer", ValuesPPR(vidx))
+}
+
+func tlcPauseModelChecker(checker *ModelChecker) error {
+	return withStateQueueMonitor(checker.StateQueue, func() error {
+		fmt.Fprintln(os.Stdout, "Press enter to resume model checking.")
+		_ = os.Stdout.Sync()
+		var buf [1]byte
+		if _, err := os.Stdin.Read(buf[:]); err != nil {
+			return newTLCError(ECGeneral, "%s", err.Error())
+		}
+		return nil
+	})
+}
+
+func withStateQueueMonitor(queue StateQueue, fn func() error) error {
+	switch q := queue.(type) {
+	case *MemStateQueue:
+		q.mu.Lock()
+		defer q.mu.Unlock()
+	case *DiskStateQueue:
+		q.mu.Lock()
+		defer q.mu.Unlock()
+	case *DiskByteArrayQueue:
+		q.mu.Lock()
+		defer q.mu.Unlock()
+	case *StateDeque:
+		q.mu.Lock()
+		defer q.mu.Unlock()
+	}
+	return fn()
 }
 
 func TLCGetOrDefault(vidx Value, defVal Value) Value {
