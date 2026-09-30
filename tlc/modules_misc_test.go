@@ -46,6 +46,53 @@ func TestTLCCombineFcnMaxIntIntervalKeepsLeftValue(t *testing.T) {
 	assertMaxIntCombine(t, explicitLeft, intervalRight)
 }
 
+func TestTLCPermutationsIntervalHasAllDistinctFunctions(t *testing.T) {
+	in := NewIntervalValue(1, 5).ToSetEnum()
+	size, err := in.Size()
+	if err != nil {
+		t.Fatalf("input set size returned error: %v", err)
+	}
+	if size != 5 {
+		t.Fatalf("input set size = %d, want 5", size)
+	}
+
+	permutations, err := Permutations(in)
+	if err != nil {
+		t.Fatalf("Permutations returned error: %v", err)
+	}
+	permSize, err := permutations.Size()
+	if err != nil {
+		t.Fatalf("permutations size returned error: %v", err)
+	}
+	if permSize != 120 {
+		t.Fatalf("permutations size = %d, want 120", permSize)
+	}
+
+	seen := make(map[string]struct{})
+	enum := permutations.Elements()
+	for {
+		value := enum.NextElement()
+		if value == nil {
+			if err := enum.Err(); err != nil {
+				t.Fatalf("permutation enumeration returned error: %v", err)
+			}
+			break
+		}
+		fcn := requireFcnRcdValue(t, value)
+		fcnSize, err := fcn.Size()
+		if err != nil {
+			t.Fatalf("permutation function size returned error: %v", err)
+		}
+		if fcnSize != size {
+			t.Fatalf("permutation function size = %d, want %d", fcnSize, size)
+		}
+		seen[fcn.String()] = struct{}{}
+	}
+	if len(seen) != 120 {
+		t.Fatalf("distinct permutations = %d, want 120", len(seen))
+	}
+}
+
 func assertMaxIntCombine(t *testing.T, left Value, right Value) {
 	t.Helper()
 	combined, err := CombineFcn(left, right)
