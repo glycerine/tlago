@@ -72,8 +72,9 @@ func TLCGetValue(tool *Tool, vidx Value, s0 *TLCStateMut, s1 *TLCStateMut, contr
 		if idx.Val < 0 {
 			break
 		}
+		workerID := workerIDFromState(s0)
 		if checker := MainChecker(); checker != nil {
-			if value := checker.GetValue(0, int(idx.Val)); value != nil {
+			if value := checker.GetValue(workerID, int(idx.Val)); value != nil {
 				return value, nil
 			}
 		}
@@ -163,7 +164,7 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 	default:
 		if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
 			if checker != nil {
-				if value := checker.GetNamedValue(0, key); value != nil {
+				if value := checker.GetNamedValue(workerIDFromState(s0), key); value != nil {
 					return value, nil
 				}
 			}

@@ -25,8 +25,8 @@ type AbstractChecker struct {
 	Workers                   []*Worker
 	PrintedLivenessErrorStack bool
 	StartTime                 time.Time
-	Values                    *InsMap[int, Value]
-	NamedValues               *InsMap[*UniqueString, Value]
+	Values                    *InsMap[int, any]
+	NamedValues               *InsMap[*UniqueString, any]
 }
 
 func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
@@ -49,8 +49,8 @@ func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, de
 		Tool:           tool,
 		AllStateWriter: stateWriter,
 		StartTime:      startTime,
-		Values:         NewInsMap[int, Value](),
-		NamedValues:    NewInsMap[*UniqueString, Value](),
+		Values:         NewInsMap[int, any](),
+		NamedValues:    NewInsMap[*UniqueString, any](),
 	}
 }
 
@@ -95,13 +95,12 @@ func continuationEnabled() bool {
 }
 
 func (c *AbstractChecker) GetValue(workerID int, idx int) Value {
-	_ = workerID
 	if c == nil || c.Values == nil {
 		return nil
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.Values.Get(idx)
+	return MuxWorkerValue(c.Values.Get(idx), workerID)
 }
 
 func (c *AbstractChecker) SetAllValues(idx int, value Value) {
@@ -111,9 +110,21 @@ func (c *AbstractChecker) SetAllValues(idx int, value Value) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.Values == nil {
-		c.Values = NewInsMap[int, Value]()
+		c.Values = NewInsMap[int, any]()
 	}
 	c.Values.Set(idx, value)
+}
+
+func (c *AbstractChecker) SetWorkerValues(idx int, values []Value) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Values == nil {
+		c.Values = NewInsMap[int, any]()
+	}
+	c.Values.Set(idx, NewWorkerValue(values))
 }
 
 func (c *AbstractChecker) GetAllValues() Value {
@@ -126,7 +137,11 @@ func (c *AbstractChecker) GetAllValues() Value {
 	values := make([]Value, 0, c.Values.Len())
 	for idx, value := range c.Values.All() {
 		domain = append(domain, NewIntValue(int32(idx)))
-		values = append(values, value)
+		if muxed := MuxWorkerValue(value, 0); muxed != nil {
+			values = append(values, muxed)
+		} else {
+			values = append(values, ValUndef)
+		}
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
@@ -138,7 +153,7 @@ func (c *AbstractChecker) GetNamedValue(workerID int, key *UniqueString) Value {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.NamedValues.Get(key)
+	return MuxWorkerValue(c.NamedValues.Get(key), workerID)
 }
 
 func (c *AbstractChecker) SetAllNamedValues(key *UniqueString, value Value) {
@@ -148,9 +163,21 @@ func (c *AbstractChecker) SetAllNamedValues(key *UniqueString, value Value) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.NamedValues == nil {
-		c.NamedValues = NewInsMap[*UniqueString, Value]()
+		c.NamedValues = NewInsMap[*UniqueString, any]()
 	}
 	c.NamedValues.Set(key, value)
+}
+
+func (c *AbstractChecker) SetAllNamedWorkerValues(key *UniqueString, values []Value) {
+	if c == nil || key == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.NamedValues == nil {
+		c.NamedValues = NewInsMap[*UniqueString, any]()
+	}
+	c.NamedValues.Set(key, NewWorkerValue(values))
 }
 
 func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
@@ -163,7 +190,11 @@ func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
 	values := make([]Value, 0, c.NamedValues.Len())
 	for key, value := range c.NamedValues.All() {
 		domain = append(domain, NewStringValueFromUnique(key))
-		values = append(values, value)
+		if muxed := MuxWorkerValue(value, 0); muxed != nil {
+			values = append(values, muxed)
+		} else {
+			values = append(values, ValUndef)
+		}
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
