@@ -331,6 +331,17 @@ func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber i
 }
 
 func recordMessage(code int, severity Severity, params ...string) {
+	suppressed, asError, warn := messageControlFor(code)
+	if severity == SeverityWarning {
+		if !warn || suppressed {
+			return
+		}
+	} else if suppressed {
+		return
+	}
+	if asError && severity != SeverityError {
+		severity = SeverityError
+	}
 	copied := append([]string(nil), params...)
 	defaultRecorder.Record(Message{
 		Code:     code,

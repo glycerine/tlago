@@ -130,6 +130,36 @@ Port guidance:
   behavior, then later reduce global mutation if tests allow.
 - Preserve exit-status categories and message codes, because the Java tests
   assert message recorder events rather than only stdout text.
+- Mirror `handleParameters` as a real library parser, not only as command
+  wrapper glue. Java accepts a broad command vocabulary before it constructs
+  `FastTool`, and later subsystems depend on those parsed fields being present:
+  `-simulate`/`-generate` with `num=`, `file=`, `stats=basic|full`, and
+  `sched=rl|rlaction`; model-checking controls such as `-dfid`, `-workers`,
+  `-recover`, `-metadir`, `-checkpoint`, `-coverage`, `-cleanup`, `-deadlock`;
+  evaluator/output globals such as `-difftrace`, `-nowarning`, `-gzip`,
+  `-terse`, `-continue`, `-view`, `-debug`, `-tool`; fingerprint controls
+  `-fp`, `-fpmem`, and `-fpbits`; debugger controls `-debugger` with optional
+  `port=`, `nosuspend`, and `nohalt`; trace exploration controls
+  `-generateSpecTE`, `nomonolith`, `-noTE`, `-noTEBin`, and `-teSpecOutDir`;
+  state/trace dump controls `-dump`, `-dumpTrace`, and `-loadTrace`; and
+  runtime spec additions `-inv`, `-invlevel`, and `-postCondition`.
+- The Go port keeps these in concrete structs: `Options` for direct runner
+  fields, `SimulationSchedule` for RL scheduling, and `RuntimeParameters` for
+  dynamically generated invariant/constraint/postcondition/view additions.
+  This mirrors Java's `params` map without introducing an untyped central map
+  into the Go API. `InsMap` backs parsed message-control sets to keep any later
+  iteration deterministic.
+- Java's `-dump class,...` loads an `IStateWriter` by reflection. Go records the
+  requested class name in `RuntimeParameters.CustomStateWriterClass` and uses a
+  no-op writer until a Go extension hook exists; do not add a one-method writer
+  interface only for this placeholder.
+- Java defaults simulation `traceNum` to `Long.MAX_VALUE`, not one trace. Go
+  runner and simulator defaults must preserve that, with explicit `num=` or API
+  options narrowing the trace count.
+- Per-message suppression/elevation belongs in the output recorder path because
+  Java's tests observe `MP` recorder events. In Go, `PrintWarning` honors
+  `Globals.Warn` and per-code suppression, and `MessagesAsErrors` upgrades the
+  recorded severity.
 
 ### `Tool`, `FastTool`, and `ITool`
 

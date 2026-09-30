@@ -13,6 +13,8 @@ type Simulator struct {
 	CheckDeadlock bool
 	TraceDepth    int
 	TraceNum      int64
+	TraceFile     string
+	TraceActions  string
 	Rand          *JavaRandom
 	Seed          int64
 	ResultQueue   chan SimulationWorkerResult
@@ -30,12 +32,39 @@ type Simulator struct {
 	NamedValues     *InsMap[*UniqueString, Value]
 }
 
-func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, seed int64) *Simulator {
+type SimulatorOption func(*Simulator)
+
+func WithSimulatorTraceFile(traceFile string) SimulatorOption {
+	return func(s *Simulator) {
+		s.TraceFile = traceFile
+	}
+}
+
+func WithSimulatorTraceActions(traceActions string) SimulatorOption {
+	return func(s *Simulator) {
+		s.TraceActions = traceActions
+	}
+}
+
+func WithSimulatorSchedule(schedule SimulationSchedule) SimulatorOption {
+	return func(s *Simulator) {
+		switch schedule {
+		case SimulationScheduleRL:
+			s.WorkerMode = SimulationWorkerRL
+		case SimulationScheduleRLAction:
+			s.WorkerMode = SimulationWorkerRLAction
+		default:
+			s.WorkerMode = SimulationWorkerStandard
+		}
+	}
+}
+
+func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, seed int64, opts ...SimulatorOption) *Simulator {
 	if traceDepth < 0 {
 		traceDepth = int(^uint(0) >> 1)
 	}
 	if traceNum <= 0 {
-		traceNum = 1
+		traceNum = int64(^uint64(0) >> 1)
 	}
 	if seed == 0 {
 		seed = time.Now().UnixNano()
@@ -56,6 +85,11 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		NamedValues:   NewInsMap[*UniqueString, Value](),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
+	for _, opt := range opts {
+		if opt != nil {
+			opt(simulator)
+		}
+	}
 	workerCount := NumWorkers()
 	if workerCount < 1 {
 		workerCount = 1
@@ -294,10 +328,10 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 		s.Rand.NextLong(),
 		s.TraceDepth,
 		s.TraceNum,
-		"",
+		s.TraceActions,
 		s.CheckDeadlock,
 		debug,
-		"",
+		s.TraceFile,
 		NewNoOpLiveCheck(s.Tool, ""),
 		&s.NumGenStates,
 		&s.NumGenTraces,

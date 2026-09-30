@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"context"
+	"math"
 	"time"
 )
 
@@ -13,31 +14,54 @@ const (
 )
 
 type Options struct {
-	Tool                     *Tool
-	SpecFile                 string
-	ConfigFile               string
-	MetaDir                  string
-	FromCheckpoint           string
-	Mode                     RunMode
-	Workers                  int
-	Deadlock                 bool
-	NoDeadlock               bool
-	Cleanup                  bool
-	Seed                     int64
-	Aril                     int64
-	TraceDepth               int
-	TraceNum                 int64
-	DFIDDepth                int
-	CheckpointDurationMillis int64
-	StateWriter              *StateWriter
-	FPSet                    FPSet
-	StateQueue               StateQueue
-	Trace                    *TLCTrace
-	LiveCheck                *LiveCheck
-	StartTime                time.Time
-	GenerateTraceSpec        bool
-	TraceSpecOutputDir       string
+	Tool                      *Tool
+	SpecFile                  string
+	ConfigFile                string
+	MetaDir                   string
+	FromCheckpoint            string
+	Mode                      RunMode
+	Workers                   int
+	Deadlock                  bool
+	NoDeadlock                bool
+	Cleanup                   bool
+	NoSeed                    bool
+	Seed                      int64
+	Aril                      int64
+	TraceDepth                int
+	TraceNum                  int64
+	TraceFile                 string
+	TraceActions              string
+	Probabilistic             bool
+	SimulationSchedule        SimulationSchedule
+	DFIDDepth                 int
+	CheckpointDurationMillis  int64
+	StateWriter               *StateWriter
+	FPSet                     FPSet
+	FPIndex                   int
+	FPSetConfiguration        *FPSetConfiguration
+	StateQueue                StateQueue
+	Trace                     *TLCTrace
+	LiveCheck                 *LiveCheck
+	StartTime                 time.Time
+	GenerateTraceSpec         bool
+	ForceGenerateTraceSpec    bool
+	GenerateTraceSpecBinary   bool
+	GenerateTraceSpecMonolith bool
+	TraceSpecOutputDir        string
+	ToolMode                  bool
+	DebugPort                 int
+	DebugSuspend              bool
+	DebugHalt                 bool
+	RuntimeParams             RuntimeParameters
 }
+
+type SimulationSchedule int
+
+const (
+	SimulationScheduleRandom SimulationSchedule = iota
+	SimulationScheduleRL
+	SimulationScheduleRLAction
+)
 
 type Result struct {
 	ExitStatus      int
@@ -64,10 +88,16 @@ func NewTLC(opts Options) *TLC {
 		opts.TraceDepth = 100
 	}
 	if opts.TraceNum == 0 {
-		opts.TraceNum = 1
+		opts.TraceNum = math.MaxInt64
 	}
 	if opts.Workers <= 0 {
 		opts.Workers = 1
+	}
+	if opts.FPSetConfiguration == nil {
+		opts.FPSetConfiguration = NewFPSetConfiguration()
+	}
+	if opts.DebugPort == 0 {
+		opts.DebugPort = -1
 	}
 	if opts.NoDeadlock {
 		opts.Deadlock = false
@@ -179,6 +209,7 @@ func (t *TLC) applyGlobals() {
 	Globals.StartTime = t.StartTime
 	Globals.LastCheckpoint = t.StartTime
 	Globals.MetaDir = t.MetaDir
+	Globals.Tool = t.ToolMode
 	if t.CheckpointDurationMillis > 0 {
 		Globals.CheckpointDurationMillis = t.CheckpointDurationMillis
 	}
@@ -254,7 +285,11 @@ func (t *TLC) processSimulation() (*Result, error) {
 	if seed != 0 {
 		seed += t.Aril
 	}
-	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, seed)
+	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, seed,
+		WithSimulatorTraceFile(t.TraceFile),
+		WithSimulatorTraceActions(t.TraceActions),
+		WithSimulatorSchedule(t.SimulationSchedule),
+	)
 	code, err := simulator.Simulate()
 	return &Result{
 		ErrorCode:       code,

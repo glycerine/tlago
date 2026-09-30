@@ -33,6 +33,9 @@ var Globals = struct {
 	UseView                    bool
 	UseGZIP                    bool
 	Debug                      bool
+	Tool                       bool
+	SuppressedMessages         *InsMap[int, bool]
+	MessagesAsErrors           *InsMap[int, bool]
 	StartTime                  time.Time
 }{
 	EnumBound:                  2000,
@@ -49,6 +52,8 @@ var Globals = struct {
 	CheckpointDurationMillis:   DefaultCheckpointDurationMillis,
 	MetaDir:                    "",
 	LastCheckpoint:             time.Now(),
+	SuppressedMessages:         NewInsMap[int, bool](),
+	MessagesAsErrors:           NewInsMap[int, bool](),
 	StartTime:                  time.Now(),
 }
 
@@ -162,6 +167,37 @@ func ForceCheckpoint() {
 	Globals.Lock()
 	Globals.ForceCheckpoint = true
 	Globals.Unlock()
+}
+
+func SuppressTLCMessage(code int) {
+	Globals.Lock()
+	if Globals.SuppressedMessages == nil {
+		Globals.SuppressedMessages = NewInsMap[int, bool]()
+	}
+	Globals.SuppressedMessages.Set(code, true)
+	Globals.Unlock()
+}
+
+func TreatTLCMessageAsError(code int) {
+	Globals.Lock()
+	if Globals.MessagesAsErrors == nil {
+		Globals.MessagesAsErrors = NewInsMap[int, bool]()
+	}
+	Globals.MessagesAsErrors.Set(code, true)
+	Globals.Unlock()
+}
+
+func messageControlFor(code int) (suppressed bool, asError bool, warn bool) {
+	Globals.Lock()
+	defer Globals.Unlock()
+	warn = Globals.Warn
+	if Globals.SuppressedMessages != nil {
+		_, suppressed = Globals.SuppressedMessages.Get2(code)
+	}
+	if Globals.MessagesAsErrors != nil {
+		_, asError = Globals.MessagesAsErrors.Get2(code)
+	}
+	return suppressed, asError, warn
 }
 
 func CheckpointExplicitlyEnabled() bool {
