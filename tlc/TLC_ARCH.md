@@ -2111,7 +2111,10 @@ Important Java classes:
   concrete kind while exposing the embedded base `TLCStackFrame` for common
   push/pop, source-frame, and breakpoint operations. The protocol transport is
   less important than preserving where model-checker/evaluator state is
-  captured.
+  captured. Exception, unsatisfied-state, invariant-violation, and
+  assumption-violation hooks duplicate the active frame just like Java; the Go
+  stack layer accepts ordinary `error` values until the Java
+  `StatefulRuntimeException` hierarchy has a full concrete Go mirror.
 - `DebugTLCVariable`: adapts TLC `Value` objects into debugger variables.
   Scalars expose `type` and `value`; enumerable/function/record/tuple values
   receive a non-zero `variablesReference` and lazily produce children.

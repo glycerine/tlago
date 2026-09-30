@@ -1455,3 +1455,104 @@ func (d *TLCDebugger) PopInitStatesFrame(tool *Tool, functor *StateFunctor) *TLC
 	_ = d.popDebuggerFrame()
 	return d
 }
+
+func (d *TLCDebugger) pushFrameAndMaybeHalt(halt bool, frame *TLCDebuggerFrame) *TLCDebugger {
+	if d == nil || frame == nil {
+		return d
+	}
+	d.pushDebuggerFrame(frame)
+	if halt && frame.Base != nil {
+		d.HaltExecution(frame.Base)
+	}
+	return d
+}
+
+func (d *TLCDebugger) PushExceptionFrame(tool *Tool, expr SemanticNode, c *Context, err error) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCStackFrame(d.topBaseFrame(), expr, c, tool, err)
+	return d.pushFrameAndMaybeHalt(d.HaltExp, NewDebuggerBaseFrame(frame))
+}
+
+func (d *TLCDebugger) PushStateExceptionFrame(tool *Tool, expr SemanticNode, c *Context, state *TLCStateMut, err error) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCStateStackFrame(d.topBaseFrame(), expr, c, tool, state, err)
+	return d.pushFrameAndMaybeHalt(d.HaltExp, NewDebuggerStateFrame(frame))
+}
+
+func (d *TLCDebugger) PushActionExceptionFrame(tool *Tool, expr SemanticNode, c *Context, predecessor *TLCStateMut, action *Action, state *TLCStateMut, err error) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCActionStackFrame(d.topBaseFrame(), expr, c, tool, predecessor, action, state, err)
+	return d.pushFrameAndMaybeHalt(d.HaltExp, NewDebuggerActionFrame(frame))
+}
+
+func (d *TLCDebugger) PopExceptionFrame(tool *Tool, expr SemanticNode, c *Context, value Value, err error) *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	_ = d.popDebuggerFrame()
+	return d
+}
+
+func (d *TLCDebugger) PushUnsatisfiedFrame(tool *Tool, expr SemanticNode, c *Context, state *TLCStateMut) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCStateStackFrameNoException(d.topBaseFrame(), expr, c, tool, state)
+	debuggerFrame := NewDebuggerStateFrame(frame)
+	d.pushDebuggerFrame(debuggerFrame)
+	if d.HaltUnsat != nil && debuggerFrame.MatchesBreakpoint(d.HaltUnsat) {
+		d.HaltExecution(debuggerFrame.Base)
+	}
+	return d
+}
+
+func (d *TLCDebugger) PushUnsatisfiedActionFrame(tool *Tool, expr SemanticNode, c *Context, predecessor *TLCStateMut, action *Action, state *TLCStateMut) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCActionStackFrameNoException(d.topBaseFrame(), expr, c, tool, predecessor, action, state)
+	debuggerFrame := NewDebuggerActionFrame(frame)
+	d.pushDebuggerFrame(debuggerFrame)
+	if d.HaltUnsat != nil && debuggerFrame.MatchesBreakpoint(d.HaltUnsat) {
+		d.HaltExecution(debuggerFrame.Base)
+	}
+	return d
+}
+
+func (d *TLCDebugger) MarkInvariantViolatedFrame(tool *Tool, expr SemanticNode, c *Context, predecessor *TLCStateMut, action *Action, state *TLCStateMut, err error) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCActionStackFrame(d.topBaseFrame(), expr, c, tool, predecessor, action, state, err)
+	return d.pushFrameAndMaybeHalt(d.HaltInv, NewDebuggerActionFrame(frame))
+}
+
+func (d *TLCDebugger) MarkAssumptionViolatedFrame(tool *Tool, expr SemanticNode, c *Context) *TLCDebugger {
+	if d == nil {
+		d = NewTLCDebugger(tool)
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	frame := NewTLCStackFrameNoException(nil, expr, c, tool)
+	return d.pushFrameAndMaybeHalt(d.HaltInv, NewDebuggerBaseFrame(frame))
+}
