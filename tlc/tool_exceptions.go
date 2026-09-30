@@ -1,5 +1,69 @@
 package tlc
 
+type ConfigFileException struct {
+	ErrorCode  int
+	Parameters []string
+	Cause      error
+}
+
+func NewConfigFileException(errorCode int, parameters []string, cause ...error) *ConfigFileException {
+	ex := &ConfigFileException{ErrorCode: errorCode, Parameters: append([]string(nil), parameters...)}
+	if len(cause) > 0 {
+		ex.Cause = cause[0]
+	}
+	return ex
+}
+
+func (e *ConfigFileException) Error() string {
+	if e == nil {
+		return ""
+	}
+	return formatMessage(e.ErrorCode, e.Parameters)
+}
+
+func (e *ConfigFileException) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+type EvalException struct {
+	*StatefulRuntimeException
+	ErrorCode  int
+	Parameters []string
+}
+
+func NewEvalException(errorCode int, parameters ...string) *EvalException {
+	var copied []string
+	if parameters != nil {
+		copied = append([]string(nil), parameters...)
+	}
+	return &EvalException{
+		StatefulRuntimeException: NewStatefulRuntimeException(formatMessage(errorCode, copied)),
+		ErrorCode:                errorCode,
+		Parameters:               copied,
+	}
+}
+
+func (e *EvalException) GetErrorCode() int {
+	if e == nil {
+		return NoError
+	}
+	return e.ErrorCode
+}
+
+func (e *EvalException) GetParameters() []string {
+	if e == nil {
+		return nil
+	}
+	return append([]string(nil), e.Parameters...)
+}
+
+func (e *EvalException) HasParameters() bool {
+	return e != nil && e.Parameters != nil
+}
+
 type WorkerException struct {
 	Msg           string
 	Cause         error

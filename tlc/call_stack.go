@@ -28,7 +28,7 @@ func (s *CallStack) Pop() {
 	s.stack = s.stack[:len(s.stack)-1]
 }
 
-func (s *CallStack) Freeze(errors ...*FingerprintError) {
+func (s *CallStack) Freeze(errors ...*FingerprintException) {
 	if s == nil || s.frozen {
 		return
 	}
@@ -70,78 +70,35 @@ func (s *CallStack) String() string {
 	return b.String()
 }
 
-type StatefulRuntimeError struct {
-	Message string
-	Cause   error
-	known   bool
-}
-
-func NewStatefulRuntimeError(message string, cause ...error) *StatefulRuntimeError {
-	var c error
-	if len(cause) > 0 {
-		c = cause[0]
-	}
-	return &StatefulRuntimeError{Message: message, Cause: c}
-}
-
-func (e *StatefulRuntimeError) Error() string {
-	if e == nil {
-		return ""
-	}
-	if e.Message != "" {
-		return e.Message
-	}
-	if e.Cause != nil {
-		return e.Cause.Error()
-	}
-	return "stateful runtime error"
-}
-
-func (e *StatefulRuntimeError) Unwrap() error {
-	if e == nil {
-		return nil
-	}
-	return e.Cause
-}
-
-func (e *StatefulRuntimeError) SetKnown() bool {
-	if e == nil {
-		return false
-	}
-	old := e.known
-	e.known = true
-	return old
-}
-
-func (e *StatefulRuntimeError) IsKnown() bool {
-	return e != nil && e.known
-}
-
-type FingerprintError struct {
+type FingerprintException struct {
 	Value Value
 	Node  SemanticNode
-	Next  *FingerprintError
+	Next  *FingerprintException
 	Cause error
 }
 
-func NewFingerprintErrorHead(value Value, cause error) *FingerprintError {
-	if existing, ok := cause.(*FingerprintError); ok {
-		return existing.Prepend(value)
+func NewFingerprintExceptionHead(value Value, cause error) *FingerprintException {
+	if existing, ok := cause.(*FingerprintException); ok {
+		return existing.PrependNewHead(value)
 	}
+	return NewFingerprintException(value, cause)
+}
+
+func NewFingerprintException(value Value, cause error) *FingerprintException {
 	if value == nil || cause == nil {
 		return nil
 	}
-	return &FingerprintError{Value: value, Cause: cause}
+	return &FingerprintException{Value: value, Node: valueSource(value), Cause: cause}
 }
 
-func (e *FingerprintError) Prepend(value Value) *FingerprintError {
+func (e *FingerprintException) PrependNewHead(value Value) *FingerprintException {
 	if value == nil {
 		return nil
 	}
-	return &FingerprintError{Value: value, Next: e}
+	return &FingerprintException{Value: value, Node: valueSource(value), Next: e}
 }
 
-func (e *FingerprintError) Error() string {
+func (e *FingerprintException) Error() string {
 	if e == nil {
 		return ""
 	}
@@ -157,7 +114,7 @@ func (e *FingerprintError) Error() string {
 	return "fingerprint error"
 }
 
-func (e *FingerprintError) Unwrap() error {
+func (e *FingerprintException) Unwrap() error {
 	if e == nil {
 		return nil
 	}
@@ -170,7 +127,7 @@ func (e *FingerprintError) Unwrap() error {
 	return nil
 }
 
-func (e *FingerprintError) RootCause() error {
+func (e *FingerprintException) GetRootCause() error {
 	ptr := e
 	for ptr != nil && ptr.Next != nil {
 		ptr = ptr.Next
@@ -181,7 +138,7 @@ func (e *FingerprintError) RootCause() error {
 	return ptr.Cause
 }
 
-func (e *FingerprintError) Trace() string {
+func (e *FingerprintException) GetTrace() string {
 	var nodes []string
 	for ptr := e; ptr != nil; ptr = ptr.Next {
 		if ptr.Node != nil {
@@ -207,7 +164,7 @@ func (e *FingerprintError) Trace() string {
 	return b.String()
 }
 
-func (e *FingerprintError) AsTrace() []SemanticNode {
+func (e *FingerprintException) AsTrace() []SemanticNode {
 	var out []SemanticNode
 	for ptr := e; ptr != nil; ptr = ptr.Next {
 		if ptr.Node != nil {
@@ -215,4 +172,18 @@ func (e *FingerprintError) AsTrace() []SemanticNode {
 		}
 	}
 	return out
+}
+
+type sourcedValue interface {
+	GetSource() SemanticNode
+}
+
+func valueSource(value Value) SemanticNode {
+	if value == nil {
+		return nil
+	}
+	if sourced, ok := value.(sourcedValue); ok {
+		return sourced.GetSource()
+	}
+	return nil
 }
