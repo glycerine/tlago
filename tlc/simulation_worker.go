@@ -64,6 +64,7 @@ type SimulationWorkerStatistics struct {
 	DistinctValues  *InsMap[*UniqueString, int64]
 	ActionCounts    *InsMap[*UniqueString, int64]
 	Extended        bool
+	TraceID         int64
 	workerActionIDs *InsMap[*UniqueString, int]
 }
 
@@ -233,10 +234,10 @@ func (s *SimulationWorkerStatistics) GetActions() Value {
 }
 
 func (s *SimulationWorkerStatistics) traceCount() int64 {
-	if s == nil || s.NumGenTraces == nil {
+	if s == nil {
 		return 0
 	}
-	return s.NumGenTraces.Load()
+	return s.TraceID
 }
 
 type SimulationWorker struct {
@@ -319,7 +320,10 @@ func (w *SimulationWorker) SimulateAndReport() bool {
 	if w == nil {
 		return false
 	}
+	restoreWorkerID := PushCurrentWorkerID(w.ID)
+	defer restoreWorkerID()
 	w.GlobalTrace = w.Statistics.CollectPreTrace()
+	w.Statistics.TraceID = w.GlobalTrace
 	err := w.SimulateRandomTrace()
 	w.TraceCnt++
 	if err != nil {

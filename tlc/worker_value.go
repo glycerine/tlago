@@ -1,12 +1,16 @@
 package tlc
 
-import "sync"
+import (
+	"bytes"
+	"runtime"
+	"strconv"
+	"sync"
+)
 
 var currentWorkerScope = struct {
 	sync.Mutex
-	id int
-	ok bool
-}{}
+	stack map[uint64][]int
+}{stack: make(map[uint64][]int)}
 
 type WorkerValue struct {
 	values []Value
@@ -63,24 +67,51 @@ func MuxWorkerValue(value any, workerID int) Value {
 }
 
 func PushCurrentWorkerID(workerID int) func() {
+	gid := currentGoroutineID()
 	currentWorkerScope.Lock()
-	oldID := currentWorkerScope.id
-	oldOK := currentWorkerScope.ok
-	currentWorkerScope.id = workerID
-	currentWorkerScope.ok = true
+	currentWorkerScope.stack[gid] = append(currentWorkerScope.stack[gid], workerID)
 	currentWorkerScope.Unlock()
 	return func() {
 		currentWorkerScope.Lock()
-		currentWorkerScope.id = oldID
-		currentWorkerScope.ok = oldOK
+		stack := currentWorkerScope.stack[gid]
+		if len(stack) <= 1 {
+			delete(currentWorkerScope.stack, gid)
+		} else {
+			currentWorkerScope.stack[gid] = stack[:len(stack)-1]
+		}
 		currentWorkerScope.Unlock()
 	}
 }
 
 func CurrentWorkerID() (int, bool) {
+	gid := currentGoroutineID()
 	currentWorkerScope.Lock()
 	defer currentWorkerScope.Unlock()
-	return currentWorkerScope.id, currentWorkerScope.ok
+	stack := currentWorkerScope.stack[gid]
+	if len(stack) == 0 {
+		return 0, false
+	}
+	return stack[len(stack)-1], true
+}
+
+func currentGoroutineID() uint64 {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	line := buf[:n]
+	prefix := []byte("goroutine ")
+	if !bytes.HasPrefix(line, prefix) {
+		return 0
+	}
+	start := len(prefix)
+	end := start
+	for end < len(line) && line[end] >= '0' && line[end] <= '9' {
+		end++
+	}
+	id, err := strconv.ParseUint(string(line[start:end]), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }
 
 func (v *WorkerValue) ValueForWorker(workerID int) Value {

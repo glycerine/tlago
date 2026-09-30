@@ -1309,7 +1309,10 @@ Integer `TLCGet(i)`/`TLCSet(i, v)` and named registers (`"s:..."`) are
 current-worker local in Java when evaluated on an `IdThread`; they do not use
 the predecessor state's stored trace worker id. Outside a worker, Java
 broadcasts `TLCSet` through the checker/simulator. `TLCGet("all")` and
-`TLCGet("all:named")` return functions whose values are per-worker tuples.
+`TLCGet("all:named")` return functions whose values are per-worker tuples. The
+Go port's ambient current-worker helper must be goroutine-scoped, mirroring
+Java's thread-local worker identity. A single process-wide worker slot is not
+correct once workers run concurrently.
 
 Random subsets of product-shaped values (`[S -> T]`, record sets, tuple
 products) must use Java's product-index strategy from
