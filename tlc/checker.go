@@ -292,6 +292,7 @@ type ModelChecker struct {
 	RuntimeRatio            float64
 	ForceLiveCheck          bool
 	TimeBound               bool
+	LiveCheckInitErr        error
 }
 
 type ModelCheckerOption func(*ModelChecker)
@@ -357,7 +358,6 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		StateQueue:      NewStateQueue(metadir),
 		Trace:           concurrentTrace.TLCTrace,
 		ConcurrentTrace: concurrentTrace,
-		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
 	}
 	for _, opt := range opts {
 		opt(mc)
@@ -384,6 +384,16 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	}
 	mc.ConcurrentTrace.TLCTrace = mc.Trace
 	mc.ConcurrentTrace.SetTool(tool)
+	if mc.LiveCheck == nil {
+		if mc.CheckLiveness {
+			if tool != nil && tool.HasSymmetry() {
+				PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry)
+			}
+			mc.LiveCheck, mc.LiveCheckInitErr = NewLiveCheckFromTool(tool, metadir, mc.AllStateWriter)
+		} else {
+			mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
+		}
+	}
 	if mc.LiveCheck == nil {
 		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	}
@@ -522,6 +532,9 @@ func (mc *ModelChecker) CheckAssumptions() int {
 func (mc *ModelChecker) ModelCheck() (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
+	}
+	if mc.LiveCheckInitErr != nil {
+		return ECGeneral, mc.LiveCheckInitErr
 	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)

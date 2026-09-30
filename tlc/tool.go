@@ -905,7 +905,7 @@ func (t *Tool) LivenessIsTrue() bool {
 	if t != nil && t.LivenessIsTrueFunc != nil {
 		return t.LivenessIsTrueFunc(t)
 	}
-	return true
+	return t == nil || len(t.GetImpliedTemporals()) == 0
 }
 
 func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, prefix func() []*TLCStateInfo) (*TLCStateInfo, error) {

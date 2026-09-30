@@ -1144,7 +1144,12 @@ Main fields:
 - `workers`: exploration workers. Java allocates these in the constructor,
   before initial-state generation: worker 0 keeps the normal/debug-capable tool
   and later workers use `tool.noDebug()`.
-- `liveCheck`: liveness subsystem.
+- `liveCheck`: liveness subsystem. Java `AbstractChecker` creates
+  `NoOpLiveCheck` only when `tool.livenessIsTrue()` is true; otherwise it
+  warns for liveness plus symmetry and constructs `LiveCheck`, whose
+  constructor immediately calls `Liveness.processLiveness(tool)`. The Go port
+  mirrors this in `NewModelChecker` with a concrete `LiveCheck`; callers may
+  still inject a prebuilt `LiveCheck` through options for tests.
 - `errState`, `predErrState`, `errorCode`, `done`, `keepCallStack`.
 
 High-level flow in `modelCheckImpl`:
@@ -1609,6 +1614,24 @@ The translator then normalizes:
 - promises,
 - state/action checks,
 - possible error models.
+
+Java decomposes startup liveness processing into two distinct phases:
+
+- `parseLiveness(tool)` builds `livespec /\ ~livecheck` from config-derived
+  actions. It conjoins every fairness/temporal action from
+  `tool.getTemporals()`. If there is one implied temporal property, it appends
+  its negation directly; if there are several, it appends a disjunction of
+  their negations. If both lists are empty, it returns nil.
+- `processLiveness(tool)` tags state/action predicates, pushes negation into
+  positive form, simplifies, converts to DNF, classifies each DNF conjunct into
+  `<>[]A`, `[]<>A`, `<>[]S`, and remaining action-free temporal formulae, bins
+  equivalent temporal formulae, and creates one `OrderOfSolution` per temporal
+  formula bin.
+
+The Go port keeps that decomposition in `liveness_process.go`. `ProcessLiveness`
+returns the concrete `[]*OrderOfSolution` used by `LiveCheck`; it does not hide
+the work behind an interface. Fast unit tests cover the parser/normalizer shape
+because this code is lightweight and easy to drift away from Java.
 
 ### `OrderOfSolution`
 
