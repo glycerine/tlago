@@ -119,10 +119,8 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 	if w.Stopped.Load() {
 		return nil
 	}
-	if w.LiveCheck != nil {
-		if err := w.LiveCheck.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
-		}
+	if workerErr := w.CheckLivenessTrace(); workerErr != nil {
+		return workerErr
 	}
 	w.Statistics.CollectPostTrace(w.CurState, w.MaxTraceDepth)
 	return w.PostTrace(w.CurState)

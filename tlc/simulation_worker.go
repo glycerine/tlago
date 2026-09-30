@@ -315,6 +315,7 @@ type SimulationWorker struct {
 	Mode           SimulationWorkerMode
 	TraceFile      string
 	LiveCheck      *LiveCheck
+	LiveCheck1     *LiveCheck1
 	Statistics     *SimulationWorkerStatistics
 	Stopped        atomic.Bool
 	Halted         atomic.Bool
@@ -548,10 +549,8 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	if w.Stopped.Load() {
 		return nil
 	}
-	if w.LiveCheck != nil {
-		if err := w.LiveCheck.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
-		}
+	if workerErr := w.CheckLivenessTrace(); workerErr != nil {
+		return workerErr
 	}
 	w.Statistics.CollectPostTrace(w.CurState, w.MaxTraceDepth)
 	if w.TraceFile != "" {
@@ -561,6 +560,24 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	}
 	if workerErr := w.PostTrace(w.CurState); workerErr != nil {
 		return workerErr
+	}
+	return nil
+}
+
+func (w *SimulationWorker) CheckLivenessTrace() *SimulationWorkerError {
+	if w == nil || w.Tool == nil {
+		return nil
+	}
+	if w.LiveCheck1 != nil {
+		if err := w.LiveCheck1.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
+			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+		}
+		return nil
+	}
+	if w.LiveCheck != nil {
+		if err := w.LiveCheck.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
+			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+		}
 	}
 	return nil
 }

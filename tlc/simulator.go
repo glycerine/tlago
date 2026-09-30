@@ -29,6 +29,7 @@ type Simulator struct {
 	WorkerMode       SimulationWorkerMode
 	LiveCheck        *LiveCheck
 	LiveCheckInitErr error
+	LiveCheck1Errors atomic.Bool
 	NumGenStates     atomic.Int64
 	NumGenTraces     atomic.Int64
 	WelfordM2Mean    atomic.Int64
@@ -768,8 +769,13 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 		tool = tool.NoDebug()
 	}
 	liveCheck := s.LiveCheck
+	var liveCheck1 *LiveCheck1
 	if liveCheck == nil {
-		liveCheck = s.newWorkerLiveCheck(tool, id)
+		if simulatorPropertyBool("tlc2.tool.Simulator.experimentalLiveness", "TLAGO_SIMULATOR_EXPERIMENTAL_LIVENESS") {
+			liveCheck = s.newWorkerLiveCheck(tool, id)
+		} else {
+			liveCheck1 = s.newWorkerLiveCheck1(tool, id)
+		}
 	}
 	worker := NewSimulationWorker(
 		id,
@@ -787,6 +793,7 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 		&s.NumGenTraces,
 		&s.WelfordM2Mean,
 	)
+	worker.LiveCheck1 = liveCheck1
 	workerMode := s.WorkerMode
 	if debugger {
 		workerMode = SimulationWorkerStandard
@@ -810,6 +817,20 @@ func (s *Simulator) newWorkerLiveCheck(tool *Tool, workerID int) *LiveCheck {
 			s.LiveCheckInitErr = err
 		}
 		return NewNoOpLiveCheck(tool, metadir)
+	}
+	return check
+}
+
+func (s *Simulator) newWorkerLiveCheck1(tool *Tool, workerID int) *LiveCheck1 {
+	if tool == nil || tool.LivenessIsTrue() {
+		return nil
+	}
+	check, err := NewLiveCheck1WithError(tool.NoDebug(), &s.LiveCheck1Errors, workerID != 0)
+	if err != nil {
+		if s.LiveCheckInitErr == nil {
+			s.LiveCheckInitErr = err
+		}
+		return nil
 	}
 	return check
 }
