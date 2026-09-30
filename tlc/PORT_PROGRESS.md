@@ -49,6 +49,7 @@
   - `CheckImpl` now mirrors more of Java's visible control flow: partial-state-space start/completion/failure messages, illegal-transition standalone state printing, implied-action standalone state printing, false-result short-circuiting in `checkTrace`, and Java-shaped `CheckImplFile` trace polling output.
   - Worker trace checkpoint commit now fails when the worker `.tmp` checkpoint cannot be renamed, matching Java's `Worker.commitChkpt()` behavior instead of silently ignoring a missing checkpoint.
   - Core TLC message formatting now covers Java-shaped run/progress/statistics/checkpoint/coverage strings for the message codes already emitted by the Go checker, simulator, and coverage paths.
+  - The TLC runner now supplies Java-shaped startup mode banner parameters and finished-runtime strings for BFS, DFID, and simulation runs.
   - BFS model checking now follows Java's recover-before-fresh-start ordering and preserves the `TLC_LIVE_FORMULA_TAUTOLOGY` guard.
   - BFS model checking now emits Java's final safety progress snapshot immediately before final liveness checking.
   - Worker liveness failures now follow Java's call-stack replay path for `EvalException`/stateful runtime failures and preserve the original error after replay.
@@ -103,7 +104,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, and core TLC reporting/coverage message formatting have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, and runner startup/finish banners have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:

@@ -2,9 +2,12 @@ package tlc
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -205,7 +208,7 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		}
 	}
 	result.ExitStatus = ExitStatusForErrorCode(result.ErrorCode)
-	PrintMessage(ECTLCFinished)
+	PrintMessage(ECTLCFinished, t.finishedRuntime())
 	recorder.mu.Lock()
 	result.Messages = append([]Message(nil), recorder.Messages...)
 	recorder.mu.Unlock()
@@ -242,8 +245,8 @@ func (t *TLC) prepareRandomSeed() {
 }
 
 func (t *TLC) processModelChecking() (*Result, error) {
-	PrintMessage(ECTLCModeMC)
 	if t.DFIDDepth > 0 {
+		PrintMessage(ECTLCModeMCDFS, t.modelCheckingRuntimeParams()...)
 		opts := make([]DFIDModelCheckerOption, 0, 2)
 		if t.FromCheckpoint != "" {
 			opts = append(opts, WithDFIDFromCheckpoint(t.FromCheckpoint))
@@ -265,6 +268,7 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		return result, err
 	}
 
+	PrintMessage(ECTLCModeMC, t.modelCheckingRuntimeParams()...)
 	opts := make([]ModelCheckerOption, 0, 5)
 	if t.FPSet != nil {
 		opts = append(opts, WithModelCheckerFPSet(t.FPSet))
@@ -343,7 +347,7 @@ func defaultTLCDebugHalt() bool {
 }
 
 func (t *TLC) processSimulation() (*Result, error) {
-	PrintMessage(ECTLCModeSimu)
+	PrintMessage(ECTLCModeSimu, t.simulationRuntimeParams()...)
 	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, t.Seed,
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),
@@ -362,4 +366,130 @@ func (t *TLC) processSimulation() (*Result, error) {
 		TraceCount:      simulator.TracesGenerated,
 		SearchDepth:     int64(t.TraceDepth),
 	}, err
+}
+
+func (t *TLC) finishedRuntime() string {
+	if t == nil || t.StartTime.IsZero() {
+		return "0s"
+	}
+	elapsed := time.Since(t.StartTime)
+	if t.ToolMode || javaBooleanPropertyValue(tlcSystemPropertyOrEnv("tlc2.TLC.asMilliSeconds")) {
+		return fmt.Sprintf("%dms", elapsed.Milliseconds())
+	}
+	return humanReadableTLCRuntime(elapsed)
+}
+
+func humanReadableTLCRuntime(elapsed time.Duration) string {
+	if elapsed < 0 {
+		elapsed = 0
+	}
+	totalSeconds := int64(elapsed / time.Second)
+	days := totalSeconds / 86400
+	hours := (totalSeconds / 3600) % 24
+	minutes := (totalSeconds / 60) % 60
+	seconds := totalSeconds % 60
+	switch {
+	case days > 0:
+		return fmt.Sprintf("%dd %02dh", days, hours)
+	case hours > 0:
+		return fmt.Sprintf("%02dh %02dmin", hours, minutes)
+	case minutes > 0:
+		return fmt.Sprintf("%02dmin %02ds", minutes, seconds)
+	default:
+		return fmt.Sprintf("%02ds", seconds)
+	}
+}
+
+func (t *TLC) modelCheckingRuntimeParams() []string {
+	workers := NumWorkers()
+	cfg := t.FPSetConfiguration
+	if cfg == nil {
+		cfg = NewFPSetConfiguration()
+	}
+	return []string{
+		fmt.Sprintf("%d", workers),
+		pluralSuffix(workers),
+		fmt.Sprintf("%d", runtime.NumCPU()),
+		runtime.GOOS,
+		"",
+		runtime.GOARCH,
+		"Go",
+		runtime.Version(),
+		runtime.GOARCH,
+		fmt.Sprintf("%d", runtimeHeapMB()),
+		"0",
+		fmt.Sprintf("%d", RandomEnumerableSeed()),
+		fmt.Sprintf("%d", t.FPIndex),
+		fmt.Sprintf("%d", os.Getpid()),
+		simpleJavaName(cfg.GetImplementation()),
+		GetStateQueueName(),
+	}
+}
+
+func (t *TLC) simulationRuntimeParams() []string {
+	workers := NumWorkers()
+	return []string{
+		fmt.Sprintf("%d", t.Seed),
+		fmt.Sprintf("%d", workers),
+		pluralSuffix(workers),
+		fmt.Sprintf("%d", runtime.NumCPU()),
+		runtime.GOOS,
+		"",
+		runtime.GOARCH,
+		"Go",
+		runtime.Version(),
+		runtime.GOARCH,
+		fmt.Sprintf("%d", runtimeHeapMB()),
+		"0",
+		fmt.Sprintf("%d", os.Getpid()),
+		t.simulationScheduleName(),
+	}
+}
+
+func (t *TLC) simulationScheduleName() string {
+	if t == nil {
+		return "Random"
+	}
+	switch t.SimulationSchedule {
+	case SimulationScheduleRL:
+		return "RL"
+	case SimulationScheduleRLAction:
+		return "RLAction"
+	default:
+		return "Random"
+	}
+}
+
+func pluralSuffix(count int) string {
+	if count == 1 {
+		return ""
+	}
+	return "s"
+}
+
+func runtimeHeapMB() uint64 {
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	return stats.Sys / 1024 / 1024
+}
+
+func simpleJavaName(name string) string {
+	if idx := strings.LastIndex(name, "."); idx >= 0 {
+		return name[idx+1:]
+	}
+	return name
+}
+
+func tlcSystemPropertyOrEnv(name string) string {
+	if value, ok := tlcLookupSystemProperty(name); ok {
+		return value
+	}
+	return ""
+}
+
+func javaBooleanPropertyValue(value string) bool {
+	if value == "" {
+		return false
+	}
+	return javaBooleanProperty(value)
 }
