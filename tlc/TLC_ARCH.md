@@ -1355,7 +1355,10 @@ broadcasts `TLCSet` through the checker/simulator. `TLCGet("all")` and
 `TLCGet("all:named")` return functions whose values are per-worker tuples. The
 Go port's ambient current-worker helper must be goroutine-scoped, mirroring
 Java's thread-local worker identity. A single process-wide worker slot is not
-correct once workers run concurrently.
+correct once workers run concurrently. `TLCSet("exit", TRUE)` stops the active
+checker and simulator. `TLCSet("pause", TRUE)` is a blocking BFS model-checker
+control: Java prints `Press enter to resume model checking.` and waits on
+standard input before returning `TRUE`.
 
 Incomplete next-state errors must carry Java's parameter vector: for a
 single-action spec, the plurality fragment and comma-joined unassigned variable

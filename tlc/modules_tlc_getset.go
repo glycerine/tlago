@@ -231,6 +231,14 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 			}
 			return BoolTrue, nil
 		case tlcSetPause:
+			if val == BoolTrue && MainChecker() != nil {
+				fmt.Fprintln(os.Stdout, "Press enter to resume model checking.")
+				_ = os.Stdout.Sync()
+				var buf [1]byte
+				if _, err := os.Stdin.Read(buf[:]); err != nil {
+					return nil, newTLCError(ECGeneral, "%s", err.Error())
+				}
+			}
 			return BoolTrue, nil
 		default:
 			if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
