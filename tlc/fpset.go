@@ -1313,8 +1313,11 @@ func (s *MultiFPSet) RecoverTrace(trace *TLCTrace) error {
 	if trace == nil {
 		return s.Recover()
 	}
-	for _, record := range trace.Records() {
-		if err := s.RecoverFP(record.FP); err != nil {
+	elements := trace.Elements()
+	defer elements.Close()
+	for pos := elements.NextPos(); pos != -1; pos = elements.NextPos() {
+		fp := elements.NextFP()
+		if err := s.RecoverFP(fp); err != nil {
 			return err
 		}
 	}

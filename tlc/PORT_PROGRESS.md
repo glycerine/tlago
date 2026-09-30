@@ -29,6 +29,7 @@
 - Already audited recently; do not loop on `_Possible!_Counts` unless touched: it now mirrors Java's checker-else-simulator source selection before aggregating per-worker count records.
 - Already audited recently; do not loop on worker successor ordering unless touched: `processSuccessorForWorker` mirrors Java `Worker.addElement` by checking `isGoodState` before attaching predecessor/action, then attaching predecessor/action before state/action constraints.
 - Already audited recently; do not loop on `TLCTrace.GetTraceAt` unless touched: local traces now carry the concrete `Tool` like Java `TraceApp` and reconstruct CheckImpl uncovered traces from disk fingerprints before falling back to the in-memory mirror.
+- Already audited recently; do not loop on disk FPSet trace recovery unless touched: disk, off-heap, and multi FP sets now recover by streaming `trace.Elements()` like Java instead of iterating Go's in-memory trace mirror; memory FP sets still recover from their checkpoint files as Java does.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -126,6 +127,7 @@
   - `_Possible!_Counts` now uses the Java checker-or-simulator selection instead of merging both global sources if both handles are present.
   - Worker successor processing now follows Java `Worker.addElement` ordering around incomplete-state checks, predecessor/action attachment, model constraints, seen-state writes, invariant checks, implied-action checks, and queueing.
   - `TLCTrace.GetTraceAt` now follows Java's disk-fingerprint reconstruction algorithm for CheckImpl uncovered traces when the trace has a `Tool`, including RNG reset around `Tool.GetState` replay.
+  - Disk-backed and multi fingerprint sets now rebuild from the trace enumerator during checkpoint recovery, matching Java's `recover(TLCTrace)` path and avoiding dependency on Go-only trace mirror records.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
