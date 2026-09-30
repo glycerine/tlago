@@ -1505,6 +1505,12 @@ Important behavior:
   `TLCGet("actions")` from `tool.getSpecActions()`, i.e. initial-state actions
   followed by next-state actions. Go must use `Tool.GetSpecActions()` here too;
   using only next actions shifts ids and drops init-action entries.
+- Java writes `Root_actions.dot` when trace-action output is `BASIC` or `FULL`.
+  `BASIC` reduces action instances by source definition; `FULL` keeps each
+  instantiated action and clusters vertices by context string. Both modes
+  aggregate per-worker matrices, draw weighted seen edges with the Java log-log
+  formula rounded to two decimals, and draw dotted unseen edges only when the
+  sink is not an init predicate.
 - Java `SimulationWorker.simulateRandomTrace` calls
   `IdThread.setCurrentState` after selecting the initial state and again after
   each selected successor. Go mirrors that with concrete `SetCurrentState`

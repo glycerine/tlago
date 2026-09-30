@@ -137,6 +137,9 @@ func (s *Simulator) Simulate() (int, error) {
 	workerResult := s.simulate(initStates)
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()
+	if err := s.writeActionFlowGraph(); err != nil {
+		PrintError(ECTLCReporterDied, err.Error())
+	}
 	code := s.postSimulationErrorCode(workerResult)
 	if workerResult.IsError() {
 		return code, workerResult.Error.Err
@@ -693,4 +696,177 @@ func (s *Simulator) checkInvariants(state *TLCStateMut, initial bool) (int, erro
 		}
 	}
 	return NoError, nil
+}
+
+type actionFlowGraphContexts int
+
+const (
+	actionFlowGraphKeep actionFlowGraphContexts = iota
+	actionFlowGraphReduce
+)
+
+type actionFlowGraphSnapshot struct {
+	actions     []*Action
+	actionStats [][]int64
+}
+
+func (s *Simulator) writeActionFlowGraph() error {
+	if s == nil {
+		return nil
+	}
+	switch s.TraceActions {
+	case "BASIC":
+		return s.writeActionFlowGraphBasic()
+	case "FULL":
+		return s.writeActionFlowGraphFull()
+	default:
+		return nil
+	}
+}
+
+func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts) *actionFlowGraphSnapshot {
+	if s == nil || s.Tool == nil {
+		return &actionFlowGraphSnapshot{}
+	}
+	actions := s.Tool.GetSpecActions()
+	length := len(actions)
+	aggregate := make([][]int64, length)
+	for i := range aggregate {
+		aggregate[i] = make([]int64, length)
+	}
+	for _, worker := range s.Workers {
+		if worker == nil || worker.Statistics == nil {
+			continue
+		}
+		workerStats := worker.Statistics.ActionStats
+		for i := 0; i < length && i < len(workerStats); i++ {
+			for j := 0; j < length && j < len(workerStats[i]); j++ {
+				aggregate[i][j] += workerStats[i][j]
+			}
+		}
+	}
+	if contexts == actionFlowGraphKeep {
+		return &actionFlowGraphSnapshot{actions: actions, actionStats: aggregate}
+	}
+	reducedActions := make([]*Action, 0, length)
+	actionToID := NewInsMap[string, int]()
+	actionsToDistinctActions := make([]int, length)
+	for _, action := range actions {
+		if action == nil {
+			continue
+		}
+		definition := action.GetDefinition()
+		id, ok := actionToID.Get2(definition)
+		if !ok {
+			id = len(reducedActions)
+			actionToID.Set(definition, id)
+			reducedActions = append(reducedActions, action)
+		}
+		actionID := action.GetID()
+		if actionID >= 0 && actionID < len(actionsToDistinctActions) {
+			actionsToDistinctActions[actionID] = id
+		}
+	}
+	reducedStats := make([][]int64, len(reducedActions))
+	for i := range reducedStats {
+		reducedStats[i] = make([]int64, len(reducedActions))
+	}
+	for i := 0; i < length; i++ {
+		originID := actionsToDistinctActions[i]
+		for j := 0; j < length; j++ {
+			nextID := actionsToDistinctActions[j]
+			if originID >= 0 && originID < len(reducedStats) && nextID >= 0 && nextID < len(reducedStats[originID]) {
+				reducedStats[originID][nextID] += aggregate[i][j]
+			}
+		}
+	}
+	return &actionFlowGraphSnapshot{actions: reducedActions, actionStats: reducedStats}
+}
+
+func (s *Simulator) writeActionFlowGraphFull() error {
+	snapshot := s.getActionFlowGraphSnapshot(actionFlowGraphKeep)
+	if len(snapshot.actions) == 0 {
+		return nil
+	}
+	clusters := NewInsMap[string, []int]()
+	for id, action := range snapshot.actions {
+		context := "[]"
+		if action != nil && action.Con != nil {
+			context = action.Con.String()
+		}
+		clusters.Set(context, append(clusters.Get(context), id))
+	}
+	writer, err := NewDotActionWriter(s.Tool.GetRootName()+"_actions.dot", "")
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+	for context, ids := range clusters.All() {
+		key := javaAbsStringHash(context)
+		if err := writer.WriteSubGraphStart(key, context); err != nil {
+			return err
+		}
+		for _, id := range ids {
+			if err := writer.WriteAction(snapshot.actions[id], id); err != nil {
+				return err
+			}
+		}
+		if err := writer.WriteSubGraphEnd(); err != nil {
+			return err
+		}
+	}
+	return writeActionFlowGraphEdges(writer, snapshot)
+}
+
+func (s *Simulator) writeActionFlowGraphBasic() error {
+	snapshot := s.getActionFlowGraphSnapshot(actionFlowGraphReduce)
+	if len(snapshot.actions) == 0 {
+		return nil
+	}
+	writer, err := NewDotActionWriter(s.Tool.GetRootName()+"_actions.dot", "")
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+	for id, action := range snapshot.actions {
+		if err := writer.WriteAction(action, id); err != nil {
+			return err
+		}
+	}
+	return writeActionFlowGraphEdges(writer, snapshot)
+}
+
+func writeActionFlowGraphEdges(writer *DotActionWriter, snapshot *actionFlowGraphSnapshot) error {
+	length := len(snapshot.actions)
+	for i := 0; i < length; i++ {
+		for j := 0; j < length; j++ {
+			count := int64(0)
+			if i < len(snapshot.actionStats) && j < len(snapshot.actionStats[i]) {
+				count = snapshot.actionStats[i][j]
+			}
+			if count > 0 {
+				if err := writer.WriteEdge(i, j, actionFlowGraphWeight(count)); err != nil {
+					return err
+				}
+			} else if snapshot.actions[j] == nil || !snapshot.actions[j].IsInitPredicate() {
+				if err := writer.WriteEdge(i, j); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func actionFlowGraphWeight(count int64) float64 {
+	weight := math.Log10(math.Log10(float64(count)+1) + 1)
+	return math.Round(weight*100) / 100
+}
+
+func javaAbsStringHash(value string) string {
+	hash := javaStringHashCode(value)
+	if hash < 0 {
+		hash = -hash
+	}
+	return fmt.Sprintf("%d", hash)
 }
