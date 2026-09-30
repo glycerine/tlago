@@ -206,6 +206,10 @@ func (s *Spec) ApplyToTool(tool *Tool) *Tool {
 	tool.ConfigFile = s.ConfigFile
 	tool.SpecDir = s.SpecDir
 	tool.ModelConfig = s.Config
+	tool.SpecProcessor = s.Processor
+	if s.RootFile != "" && len(tool.ModuleFiles) == 0 {
+		tool.ModuleFiles = []string{s.RootFile}
+	}
 	return tool
 }
 
@@ -345,6 +349,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	if p == nil || tool == nil {
 		return
 	}
+	tool.SpecProcessor = p
 	names := make([]string, len(p.Variables))
 	for i, variable := range p.Variables {
 		names[i] = variable.String()

@@ -223,6 +223,10 @@ Port guidance:
   `LookupWithCutoff`, `GetVal`, `GetOpContext`, `GetVar`, `GetLevelBound`, and
   `GetLevelBoundAppl`. This keeps lookup semantics centralized without adding a
   one-implementation interface.
+- Mirror Java `ITool` accessors as concrete `Tool` fields and methods. In
+  particular, expose `SpecProcessor`, module-file paths, assumptions,
+  assumption-axiom flags, and `CounterExample`'s backing operator definition on
+  `Tool` itself instead of adding an `ITool`-style interface.
 
 ## Spec and Config Processing
 

@@ -125,15 +125,18 @@ type Tool struct {
 	ConfigErrors       []*ConfigError
 	SymmetryPerms      []*MVPerm
 
-	RootName    string
-	RootFile    string
-	ConfigFile  string
-	SpecDir     string
-	ModelConfig *ModelConfig
-	KnownStates *InsMap[uint64, *TLCStateMut]
-	Definitions map[*SymbolNode]any
-	DefnsByName map[*UniqueString]any
-	CallStack   *CallStack
+	RootName          string
+	RootFile          string
+	ConfigFile        string
+	SpecDir           string
+	ModelConfig       *ModelConfig
+	SpecProcessor     *SpecProcessor
+	ModuleFiles       []string
+	CounterExampleDef *OpDefNode
+	KnownStates       *InsMap[uint64, *TLCStateMut]
+	Definitions       map[*SymbolNode]any
+	DefnsByName       map[*UniqueString]any
+	CallStack         *CallStack
 
 	actionsPrepared bool
 
@@ -189,6 +192,10 @@ func (t *Tool) GetID() int64 {
 		return 0
 	}
 	return t.ID
+}
+
+func (t *Tool) GetId() int {
+	return int(t.GetID())
 }
 
 func NewToolWithModelConfig(config *ModelConfig) *Tool {
@@ -762,6 +769,20 @@ func (t *Tool) GetModelConfig() *ModelConfig {
 	return t.ModelConfig
 }
 
+func (t *Tool) GetSpecProcessor() *SpecProcessor {
+	if t == nil {
+		return nil
+	}
+	return t.SpecProcessor
+}
+
+func (t *Tool) GetModuleFiles() []string {
+	if t == nil {
+		return nil
+	}
+	return append([]string(nil), t.ModuleFiles...)
+}
+
 func (t *Tool) GetSpecDir() string {
 	if t == nil {
 		return ""
@@ -823,6 +844,34 @@ func (t *Tool) GetActionConstraints() []SemanticNode {
 		return nil
 	}
 	return append([]SemanticNode(nil), t.ActionConstraints...)
+}
+
+func (t *Tool) GetAssumptions() []SemanticNode {
+	if t == nil {
+		return nil
+	}
+	return append([]SemanticNode(nil), t.Assumptions...)
+}
+
+func (t *Tool) GetAssumptionIsAxiom() []bool {
+	if t == nil {
+		return nil
+	}
+	return append([]bool(nil), t.AssumptionIsAxiom...)
+}
+
+func (t *Tool) GetCounterExampleDef() *OpDefNode {
+	if t == nil {
+		return nil
+	}
+	if t.CounterExampleDef != nil {
+		return t.CounterExampleDef
+	}
+	val := t.Lookup(NewSymbolNode("CounterExample"), EmptyContext, EmptyState, false)
+	if ev, ok := val.(*EvaluatingValue); ok {
+		return ev.OpDef
+	}
+	return nil
 }
 
 func (t *Tool) LivenessIsTrue() bool {
