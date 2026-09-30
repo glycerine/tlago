@@ -2087,6 +2087,11 @@ Important Java classes:
   for stepping/breakpoint target checks and for `ResetEvalException`; Go mirrors
   that as concrete `TLCStackFrame`, `ResetEvalException`, and
   `AbortEvalException` structs.
+- `TLCStateStackFrame` and `TLCActionStackFrame`: Java specializes frames for
+  state and action evaluation. The state frame's `getS/getT` both return the
+  captured state; the action frame's `getS` returns the predecessor and `getT`
+  returns the successor. Go mirrors those as embedded concrete structs and keeps
+  the pending debugger value as `"?"`.
 - `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
   stack-frame list, stepping state, granularity, halt flags, and the connection
   to the debug adapter. The protocol transport is less important than preserving

@@ -220,6 +220,121 @@ func (e *AbortEvalException) Error() string {
 	return "debug abort evaluation"
 }
 
+var DebuggerNotEvaluatedValue Value = NewStringValue("?")
+
+type TLCStateStackFrame struct {
+	TLCStackFrame
+	State   *TLCStateMut
+	StateID int
+}
+
+func NewTLCStateStackFrame(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, state *TLCStateMut, exception error) *TLCStateStackFrame {
+	frame := &TLCStateStackFrame{
+		TLCStackFrame: *NewTLCStackFrame(parent, node, ctxt, tool, exception),
+		State:         debugStateCopy(state),
+		StateID:       debugVariableReference(nil),
+	}
+	return frame
+}
+
+func NewTLCStateStackFrameNoException(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, state *TLCStateMut) *TLCStateStackFrame {
+	return NewTLCStateStackFrame(parent, node, ctxt, tool, state, nil)
+}
+
+func (f *TLCStateStackFrame) GetS() *TLCStateMut {
+	if f == nil {
+		return nil
+	}
+	return f.GetT()
+}
+
+func (f *TLCStateStackFrame) GetT() *TLCStateMut {
+	if f == nil {
+		return nil
+	}
+	return f.State
+}
+
+func (f *TLCStateStackFrame) AddT() bool {
+	return false
+}
+
+func (f *TLCStateStackFrame) ToRecordValue() *RecordValue {
+	state := f.GetT()
+	if state == nil {
+		return EmptyRecord
+	}
+	return debugStateRecordValue(state, nil)
+}
+
+func (f *TLCStateStackFrame) ToVariable(rnd *rand.Rand) *DebugTLCVariable {
+	state := f.GetT()
+	name := "State"
+	if state != nil {
+		name = fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction()))
+	}
+	variable := NewDebugTLCVariableName(name).SetInstance(f.ToRecordValue())
+	variable.SetVscodeVariableMenuContext("state")
+	variable.Type = "TLCState"
+	if state != nil && state.AllAssigned() {
+		variable.Type = fmt.Sprintf("FP64: %d", int64(state.FingerPrint()))
+	}
+	if debugValueMayHaveNested(variable.TLCValue) {
+		variable.VariablesReference = debugVariableReference(rnd)
+	}
+	variable.Value = debugValueString(variable.TLCValue)
+	return variable
+}
+
+type TLCActionStackFrame struct {
+	TLCStateStackFrame
+	Action *Action
+}
+
+func NewTLCActionStackFrame(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, predecessor *TLCStateMut, action *Action, state *TLCStateMut, exception error) *TLCActionStackFrame {
+	copied := debugStateCopy(state)
+	if copied != nil && copied.Predecessor() == nil && predecessor != nil {
+		copied.SetPredecessor(debugStateCopy(predecessor))
+	}
+	if copied != nil && action != nil {
+		copied.SetAction(action)
+	}
+	return &TLCActionStackFrame{
+		TLCStateStackFrame: *NewTLCStateStackFrame(parent, node, ctxt, tool, copied, exception),
+		Action:             action,
+	}
+}
+
+func NewTLCActionStackFrameNoException(parent *TLCStackFrame, node SemanticNode, ctxt *Context, tool *Tool, predecessor *TLCStateMut, action *Action, state *TLCStateMut) *TLCActionStackFrame {
+	return NewTLCActionStackFrame(parent, node, ctxt, tool, predecessor, action, state, nil)
+}
+
+func (f *TLCActionStackFrame) GetS() *TLCStateMut {
+	if f == nil || f.State == nil {
+		return nil
+	}
+	return f.State.Predecessor()
+}
+
+func (f *TLCActionStackFrame) GetT() *TLCStateMut {
+	if f == nil {
+		return nil
+	}
+	return f.State
+}
+
+func (f *TLCActionStackFrame) AddT() bool {
+	return true
+}
+
+func (f *TLCActionStackFrame) ToRecordValue() *RecordValue {
+	state := f.GetT()
+	if state == nil {
+		return EmptyRecord
+	}
+	return debugStateRecordValue(state, f.GetS())
+}
+
 type TLCCapabilities struct {
 	SupportsStepBack  bool
 	SupportsGotoState bool
@@ -476,6 +591,50 @@ func semanticNodeSourceLocation(node SemanticNode) (SourceLocation, bool) {
 		return located.GetSourceLocation(), true
 	}
 	return NullSourceLocation, false
+}
+
+func debugStateCopy(state *TLCStateMut) *TLCStateMut {
+	if state == nil {
+		return nil
+	}
+	return state.DeepCopy()
+}
+
+func debugActionLocation(action *Action) string {
+	if action == nil {
+		return "<???>"
+	}
+	location := action.GetLocation()
+	if location == "" {
+		return "<???>"
+	}
+	return location
+}
+
+func debugStateRecordValue(state *TLCStateMut, predecessor *TLCStateMut) *RecordValue {
+	if state == nil {
+		return EmptyRecord
+	}
+	names := []*UniqueString{}
+	values := []Value{}
+	if predecessor != nil {
+		for name, value := range predecessor.Values().All() {
+			names = append(names, UniqueStringOf(name.String()))
+			values = append(values, value)
+		}
+	}
+	for name, value := range state.Values().All() {
+		field := name
+		if predecessor != nil {
+			field = UniqueStringOf(name.String() + "'")
+		}
+		if value == nil {
+			value = DebuggerNotEvaluatedValue
+		}
+		names = append(names, field)
+		values = append(values, value)
+	}
+	return NewRecordValue(names, values, false)
 }
 
 func debugValueNested(value Value, prototype *DebugTLCVariable, rnd *rand.Rand) []*DebugTLCVariable {
