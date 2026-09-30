@@ -851,6 +851,11 @@ Factory/configuration behavior:
   `OffHeapDiskFPSet`, with `MSBDiskFPSet` as the default.
 - VM argument recommendations split on storage type: heap-based sets use
   `-Xmx`, while off-heap sets use `-XX:MaxDirectMemorySize`.
+- `FPSetConfiguration.getMemoryInBytes()` applies the ratio to explicit memory
+  too, matching Java's call to `TLCRuntime.getFPMemSize(memoryInBytes * ratio)`.
+- `MultiFPSet` creates nested sets through a Go `NewMultiFPSetConfiguration`
+  helper corresponding to Java `MultiFPSetConfiguration`: it copies the parent
+  config, disables nesting, and divides memory across `2^fpBits` children.
 
 Checkpointing:
 

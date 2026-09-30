@@ -77,11 +77,7 @@ func (c *FPSetConfiguration) GetMemoryInBytes() int64 {
 	}
 	var memory int64
 	if c.MemoryInBytes > 0 {
-		if c.Ratio > 0 {
-			memory = int64(float64(c.MemoryInBytes) * c.Ratio)
-		} else {
-			memory = c.MemoryInBytes
-		}
+		memory = int64(float64(c.MemoryInBytes) * c.Ratio)
 	} else {
 		memory = c.MemoryInBytes
 	}
@@ -136,6 +132,16 @@ func (c *FPSetConfiguration) SetImplementation(implementation string) {
 		implementation = GetFPSetImplementationDefault()
 	}
 	c.Implementation = implementation
+}
+
+func NewMultiFPSetConfiguration(config *FPSetConfiguration) *FPSetConfiguration {
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	child := *config
+	child.NoNesting = true
+	child.MemoryDivisor = int64(config.GetMultiFPSetCnt())
+	return &child
 }
 
 func fpSetImplementationFromEnv() string {
@@ -709,11 +715,9 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 	}
 	count := 1 << bits
 	sets := make([]FPSet, count)
-	childConfig := *config
-	childConfig.NoNesting = true
-	childConfig.MemoryDivisor = int64(count)
+	childConfig := NewMultiFPSetConfiguration(config)
 	for i := range sets {
-		sets[i] = NewFPSet(&childConfig)
+		sets[i] = NewFPSet(childConfig)
 	}
 	return &MultiFPSet{
 		Sets:   sets,
