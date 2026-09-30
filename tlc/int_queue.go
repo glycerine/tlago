@@ -32,6 +32,9 @@ func NewIntQueueWithCapacity(capacity int) *IntQueue {
 func NewIntQueueWithDisk(metadir string, filename string, capacity int) *IntQueue {
 	q := NewIntQueueWithCapacity(capacity)
 	q.diskdir = metadir
+	if filename == "" {
+		filename = "null"
+	}
 	q.filename = filename
 	return q
 }
@@ -111,7 +114,7 @@ func (q *IntQueue) BeginChkpt() error {
 		q.diskdir = dir
 	}
 	if q.filename == "" {
-		q.filename = "queue"
+		q.filename = "null"
 	}
 	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
 		return err
@@ -159,7 +162,7 @@ func (q *IntQueue) Recover() error {
 		return nil
 	}
 	if q.filename == "" {
-		q.filename = "queue"
+		q.filename = "null"
 	}
 	file, err := os.Open(q.chkptName("chkpt"))
 	if err != nil {
@@ -195,7 +198,7 @@ func (q *IntQueue) String() string {
 func (q *IntQueue) chkptName(ext string) string {
 	filename := q.filename
 	if filename == "" {
-		filename = "queue"
+		filename = "null"
 	}
 	return filepath.Join(q.diskdir, filename+"."+ext)
 }

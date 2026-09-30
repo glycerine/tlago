@@ -37,7 +37,7 @@
 - Already audited recently; do not flatten `LiveCheck.check0` back to a sequential loop: it now mirrors Java's queue-of-checkers worker orchestration, waits for all liveness workers, and lets liveness violations outrank worker errors.
 - Already audited recently; do not simplify action-composition intermediate collection: when `tlc2.tool.impl.Tool.cdot=true` is enabled, intermediate states must be collected through Java `StateVec.addElement(predecessor, action, state)` semantics, including predecessor/action attachment.
 - Already audited recently; do not loosen disk graph checkpoint commit errors: `DiskGraph.commitChkpt` now reports Java-style delete/rename failures.
-- Already audited recently; do not replace `IntQueue` with a compacting Go slice queue: it now mirrors Java `MemIntQueue`'s circular buffer, growth rule, physical-index `popInt`, ring-ordered checkpointing, and historical checkpoint error text.
+- Already audited recently; do not replace `IntQueue` with a compacting Go slice queue: it now mirrors Java `MemIntQueue`'s circular buffer, growth rule, physical-index `popInt`, ring-ordered checkpointing, Java null-filename convention, and historical checkpoint error text.
 - Already audited recently; do not replace LiveWorker SCC/postfix queues with Go slice queues: they now use the Java-shaped `IntQueue` long/int streams (`state`, `tidx`, `loc` and `state`, `parentLoc`).
 - Already audited recently; do not replace `IntStack` with raw Go append growth: it now mirrors Java `MemIntStack`'s explicit backing array, 1024 minimum capacity, and 1.5x-or-plus-1024 growth rule.
 - Already audited recently; do not force LiveWorker SCC stacks to memory-only: `getStack` now mirrors Java's synchronized graph-size/free-memory threshold and selects `SynchronousDiskIntStack` when the liveness graph is large.
@@ -147,7 +147,7 @@
   - `LiveCheck.check0` now uses Java's worker-pool/checker-queue orchestration, including one winning liveness error and violation-over-worker-error precedence.
   - Experimental action composition now attaches predecessor/action metadata to collected intermediate states like Java's `StateVec` next-state functor.
   - Disk graph checkpoint commit errors now mirror Java's `DiskGraph.commitChkpt` delete/rename failure contract.
-  - `IntQueue` now mirrors Java `MemIntQueue`'s circular buffer algorithm instead of a Go-specific compacting slice queue, including checkpoint serialization order and `popInt` indexing behavior.
+  - `IntQueue` now mirrors Java `MemIntQueue`'s circular buffer algorithm instead of a Go-specific compacting slice queue, including checkpoint serialization order, null-filename checkpoint naming, and `popInt` indexing behavior.
   - `LiveWorker` SCC root traversal and BFS postfix reconstruction now consume the same Java `MemIntQueue` record streams instead of Go slice queues.
   - `IntStack` now mirrors Java `MemIntStack` storage and growth instead of relying on Go's append growth.
   - `LiveWorker` now selects between memory and disk-backed SCC stacks through the Java synchronized `getStack` threshold algorithm.
