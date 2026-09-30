@@ -122,6 +122,8 @@ type Tool struct {
 	SpecDir     string
 	ModelConfig *ModelConfig
 	KnownStates *InsMap[uint64, *TLCStateMut]
+	Definitions map[*SymbolNode]any
+	DefnsByName map[*UniqueString]any
 
 	GetInitStatesFunc               func(*Tool, *StateFunctor) error
 	GetNextStatesFunc               func(*Tool, *Action, *TLCStateMut) (*StateVec, error)
@@ -163,6 +165,8 @@ func NewTool() *Tool {
 		RootName:    "Spec",
 		ModelConfig: newModelConfig("", false),
 		KnownStates: NewInsMap[uint64, *TLCStateMut](),
+		Definitions: make(map[*SymbolNode]any),
+		DefnsByName: make(map[*UniqueString]any),
 	}
 }
 
@@ -297,7 +301,8 @@ func (t *Tool) Eval(expr SemanticNode, args ...any) (Value, error) {
 	if t != nil && t.EvalFunc != nil {
 		return t.EvalFunc(t, expr, args...)
 	}
-	return ValUndef, nil
+	con, s0, s1, control, cm := parseEvalArgs(args...)
+	return t.EvalImpl(expr, con, s0, s1, control, cm)
 }
 
 func (t *Tool) IsGoodState(state *TLCStateMut) bool {

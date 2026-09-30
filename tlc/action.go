@@ -1,7 +1,5 @@
 package tlc
 
-type SemanticNode any
-
 type CostModel struct{}
 
 func (CostModel) Get(SemanticNode) CostModel {
@@ -60,6 +58,13 @@ type ActionItemList struct {
 	CM   CostModel
 	act  *Action
 }
+
+const (
+	ActionItemConjunct = iota
+	ActionItemPred
+	ActionItemUnchanged
+	ActionItemChanged
+)
 
 var EmptyActionItemList = &ActionItemList{}
 
