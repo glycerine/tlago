@@ -643,7 +643,7 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 		deadLocked = deadLocked && size == 0
 		for i := 0; i < size; i++ {
 			succState = nextStates.At(i)
-			stop, _, err := mc.processSuccessor(curState, succState, action, nil)
+			stop, _, err := mc.processSuccessorForWorker(0, curState, succState, action, nil)
 			if stop || err != nil {
 				return stop, err
 			}
@@ -656,7 +656,7 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 	return false, nil
 }
 
-func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
+func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
 	if !mc.Tool.IsGoodState(succState) {
 		return mc.doNextSetErr(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, actionName(action)), false, nil
 	}
@@ -676,7 +676,7 @@ func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCSt
 	}
 	unseen := true
 	if inModel {
-		seen, err := mc.isSeenState(curState, succState, action)
+		seen, err := mc.isSeenState(workerID, curState, succState, action)
 		if err != nil {
 			return true, false, err
 		}
@@ -734,7 +734,7 @@ func (mc *ModelChecker) GetDistinctStatesGenerated() uint64 {
 	return mc.FPSet.Size()
 }
 
-func (mc *ModelChecker) isSeenState(curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, error) {
+func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, error) {
 	fp := succState.FingerPrint()
 	seen := mc.FPSet.Put(fp)
 	if mc.AllStateWriter != nil {
@@ -753,7 +753,7 @@ func (mc *ModelChecker) isSeenState(curState *TLCStateMut, succState *TLCStateMu
 		if mc.Tool != nil {
 			mc.Tool.RememberState(succState)
 		}
-		if err := mc.Trace.WriteNextState(curState, fp, succState, action); err != nil {
+		if err := mc.Trace.WriteNextStateForWorker(workerID, curState, fp, succState, action); err != nil {
 			return seen, err
 		}
 	}

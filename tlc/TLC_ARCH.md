@@ -966,7 +966,8 @@ Trace writing:
 - Initial state record contains previous pointer `1`, worker id, fingerprint.
 - Successor record contains predecessor pointer, predecessor worker id,
   successor fingerprint.
-- The successor state receives `(workerId, uid)` for later reconstruction.
+- The successor state receives `(workerId, uid)` for later reconstruction; the
+  `workerId` is the generating worker, not the predecessor's worker.
 - Reads/writes are synchronized so trace printing sees consistent fragments.
 
 Trace reconstruction and aliasing:

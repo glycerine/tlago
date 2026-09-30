@@ -70,6 +70,10 @@ func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
 }
 
 func (t *TLCTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
+	return t.WriteNextStateForWorker(0, curState, succFP, succState, action)
+}
+
+func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
 	if t == nil {
 		return nil
 	}
@@ -77,19 +81,23 @@ func (t *TLCTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succStat
 	defer t.mu.Unlock()
 	uid := int64(len(t.records))
 	prevUID := TLCStateInitUID
-	workerID := int16(0)
+	predecessorWorkerID := int16(0)
 	if curState != nil {
 		prevUID = curState.UID
-		workerID = curState.WorkerID
+		predecessorWorkerID = curState.WorkerID
+	}
+	generatedWorkerID := int16(workerID)
+	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {
+		generatedWorkerID = TLCStateInitWorkerID
 	}
 	t.records = append(t.records, TraceRecord{
 		PreviousUID: prevUID,
-		WorkerID:    workerID,
+		WorkerID:    predecessorWorkerID,
 		FP:          succFP,
 		State:       succState,
 		Action:      action,
 	})
-	succState.WorkerID = workerID
+	succState.WorkerID = generatedWorkerID
 	succState.UID = uid
 	succState.SetPredecessor(curState)
 	succState.SetAction(action)
