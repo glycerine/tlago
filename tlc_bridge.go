@@ -9,13 +9,15 @@ import (
 )
 
 type tlcBridge struct {
-	tool    *tlc.Tool
-	spec    *Spec
-	cfg     *tlc.ModelConfig
-	runtime tlc.RuntimeParameters
-	defs    map[string]*Definition
-	diags   Diagnostics
-	symbols map[string]*tlc.SymbolNode
+	tool      *tlc.Tool
+	processor *tlc.SpecProcessor
+	spec      *Spec
+	cfg       *tlc.ModelConfig
+	runtime   tlc.RuntimeParameters
+	defs      map[string]*Definition
+	defns     *tlc.Defns
+	diags     Diagnostics
+	symbols   map[string]*tlc.SymbolNode
 }
 
 var bridgeStandardModuleMembers = map[string][]string{
@@ -87,13 +89,16 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	if cfg == nil {
 		cfg = tlc.NewModelConfig(spec.Root.Name)
 	}
+	defns := tlc.NewDefns()
 	bridge := &tlcBridge{
-		tool:    tlc.NewToolWithModelConfig(cfg),
-		spec:    spec,
-		cfg:     cfg,
-		runtime: runtime,
-		defs:    definitionsByName(spec),
-		symbols: map[string]*tlc.SymbolNode{},
+		tool:      tlc.NewToolWithModelConfig(cfg),
+		processor: tlc.NewSpecProcessor(spec.Root.Name, defns, cfg),
+		spec:      spec,
+		cfg:       cfg,
+		runtime:   runtime,
+		defs:      definitionsByName(spec),
+		defns:     defns,
+		symbols:   map[string]*tlc.SymbolNode{},
 	}
 	bridge.tool.RootName = spec.Root.Name
 	bridge.tool.RootFile = spec.Root.SourcePath
@@ -103,8 +108,8 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installDefinitions()
 	bridge.installConfigConstants()
 	bridge.installInstanceAliases()
-	bridge.installAssumptions()
 	bridge.installModelTargets()
+	bridge.installAssumptions()
 	bridge.installRuntimeParameters()
 	bridge.tool.AssignActionIDs()
 	return bridge.tool, bridge.diags
@@ -113,6 +118,9 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 func (b *tlcBridge) installVariables() {
 	vars := moduleVariables(b.spec.Root)
 	tlc.SetStateVariables(vars)
+	if b.processor != nil {
+		b.processor.SetVariables(vars)
+	}
 	for _, name := range vars {
 		b.symbol(name)
 	}
@@ -133,7 +141,7 @@ func (b *tlcBridge) installDefinitions() {
 		if opDef == nil {
 			continue
 		}
-		b.tool.Define(opDef.Symbol, opDef)
+		b.define(opDef.Symbol, opDef)
 	}
 }
 
@@ -166,7 +174,7 @@ func (b *tlcBridge) installConfigConstantsUnder(prefix string, constants *tlc.Co
 			if opVal == nil {
 				opVal = tlc.NewOpRcdValue()
 				opConstants[name] = opVal
-				b.tool.DefineName(name, opVal)
+				b.defineName(name, opVal)
 			} else if len(opVal.Domain) != 0 && len(opVal.Domain[0]) != len(constant.Args) {
 				b.diags = append(b.diags, errorAt(Position{}, "E7001", "operator-valued CONSTANT assignment %s has inconsistent arity", name))
 				continue
@@ -178,7 +186,7 @@ func (b *tlcBridge) installConfigConstantsUnder(prefix string, constants *tlc.Co
 			opVal.AddLine(values)
 			continue
 		}
-		b.tool.DefineName(name, constant.Value)
+		b.defineName(name, constant.Value)
 	}
 }
 
@@ -198,7 +206,7 @@ func (b *tlcBridge) installConfigOverridesUnder(prefix string, overrides *tlc.In
 		}
 		opDef := b.convertDefinitionAs(qualifiedSpecName, def)
 		if opDef != nil {
-			b.tool.Define(opDef.Symbol, opDef)
+			b.define(opDef.Symbol, opDef)
 		}
 	}
 }
@@ -210,10 +218,31 @@ func (b *tlcBridge) installInstanceAliases() {
 	for _, inst := range b.spec.Root.Instances {
 		for _, binding := range b.standardInstanceBindings(inst) {
 			if binding.Symbol != nil {
-				b.tool.Define(binding.Symbol, binding.Value)
+				b.define(binding.Symbol, binding.Value)
 			}
 		}
 	}
+}
+
+func (b *tlcBridge) define(sym *tlc.SymbolNode, value any) {
+	if b == nil || sym == nil {
+		return
+	}
+	if b.tool != nil {
+		b.tool.Define(sym, value)
+	}
+	if b.defns != nil {
+		b.defns.Put(sym, value)
+	}
+}
+
+func (b *tlcBridge) defineName(name string, value any) *tlc.SymbolNode {
+	if b == nil || name == "" {
+		return nil
+	}
+	sym := b.symbol(name)
+	b.define(sym, value)
+	return sym
 }
 
 func (b *tlcBridge) instanceOpDefinitions(inst Instance) []*tlc.OpDefNode {
@@ -281,66 +310,14 @@ func (b *tlcBridge) installAssumptions() {
 }
 
 func (b *tlcBridge) installModelTargets() {
-	if b.cfg == nil {
+	if b == nil || b.cfg == nil {
 		return
 	}
-	initName := b.cfg.GetInit()
-	nextName := b.cfg.GetNext()
-	if (initName == "" || nextName == "") && b.cfg.GetSpec() != "" {
-		def := b.defs[b.cfg.GetSpec()]
-		if def == nil {
-			b.diags = append(b.diags, errorAt(Position{}, "E7003", "SPECIFICATION operator %s not found", b.cfg.GetSpec()))
-		} else if initExpr, nextExpr, ok := decomposeTemporalSpecification(def.Expr); ok {
-			b.tool.InitStateSpec = append(b.tool.InitStateSpec, b.actionFromExpr(b.cfg.GetSpec()+"!Init", initExpr, nil, true))
-			b.tool.SetNextStateSpec(b.actionFromExpr(b.cfg.GetSpec()+"!Next", nextExpr, nil, false))
-		} else {
-			b.diags = append(b.diags, errorAt(def.Pos, "E7004", "SPECIFICATION %s must have form Init /\\ [][Next]_vars for TLC bridge decomposition", b.cfg.GetSpec()))
-		}
-	}
-	if len(b.tool.InitStateSpec) == 0 && initName != "" {
-		if action := b.actionFromDefinition(initName, true); action != nil {
-			b.tool.InitStateSpec = append(b.tool.InitStateSpec, action)
-		}
-	}
-	if b.tool.NextStateSpec == nil && nextName != "" {
-		b.tool.SetNextStateSpec(b.actionFromDefinition(nextName, false))
-	}
-	for _, name := range b.cfg.GetInvariants() {
-		if action := b.actionFromDefinition(name, false); action != nil {
-			b.tool.Invariants = append(b.tool.Invariants, action)
-			b.tool.InvariantNames = append(b.tool.InvariantNames, name)
-		}
-	}
-	for _, name := range b.cfg.GetProperties() {
-		b.installPropertyTarget(name)
-	}
-	for _, name := range b.cfg.GetConstraints() {
-		if node := b.nodeForDefinition(name); node != nil {
-			b.tool.ModelConstraints = append(b.tool.ModelConstraints, node)
-		}
-	}
-	for _, name := range b.cfg.GetActionConstraints() {
-		if node := b.nodeForDefinition(name); node != nil {
-			b.tool.ActionConstraints = append(b.tool.ActionConstraints, node)
-		}
-	}
-	b.installPossibleTargets()
-	if name := b.cfg.GetView(); name != "" {
-		b.tool.ViewSpec = b.nodeForDefinition(name)
+	if b.processor != nil {
+		b.processor.ApplyToTool(b.tool)
 	}
 	if name := b.cfg.GetAlias(); name != "" {
 		b.installAliasTarget(name)
-	}
-	if name := b.cfg.GetPeriodic(); name != "" {
-		b.tool.Periodic = b.nodeForDefinition(name)
-	}
-	if name := b.cfg.GetRLReward(); name != "" {
-		b.tool.RLReward = b.nodeForDefinition(name)
-	}
-	for _, name := range b.cfg.GetPostConditions() {
-		if action := b.actionFromDefinition(name, false); action != nil {
-			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
-		}
 	}
 }
 
@@ -391,7 +368,7 @@ func (b *tlcBridge) defineRuntimeStringConstant(name string, value string) {
 	if name == "" {
 		return
 	}
-	b.tool.DefineName(name, tlc.NewStringValue(value))
+	b.defineName(name, tlc.NewStringValue(value))
 }
 
 func (b *tlcBridge) nodeForModuleDefinition(module string, operator string, slot string) tlc.SemanticNode {
@@ -444,110 +421,6 @@ func parseRuntimeTLAExpression(expr string, modules []string) (Expr, Diagnostics
 	}
 	diags = append(diags, errorAt(Position{}, "E7021", "runtime invariant expression did not produce a definition"))
 	return nil, diags
-}
-
-func (b *tlcBridge) installPropertyTarget(name string) {
-	def := b.defs[name]
-	if def == nil {
-		b.diags = append(b.diags, errorAt(Position{}, "E7016", "property operator %s not found", name))
-		return
-	}
-	if len(def.Params) != 0 {
-		b.diags = append(b.diags, errorAt(def.Pos, "E7017", "property operator %s must be zero-arity", name))
-		return
-	}
-	b.installPropertyExpr(name, name, def.Expr, tlc.EmptyContext)
-}
-
-func (b *tlcBridge) installPropertyExpr(name string, configName string, expr Expr, con *tlc.Context) {
-	node := b.convertExpr(expr)
-	if node == nil {
-		return
-	}
-	b.installPropertyNode(name, configName, node, con)
-}
-
-func (b *tlcBridge) installPropertyNode(name string, configName string, node tlc.SemanticNode, con *tlc.Context) {
-	if con == nil {
-		con = tlc.EmptyContext
-	}
-	if appl, ok := node.(*tlc.OpApplNode); ok && appl != nil && appl.Operator != nil {
-		opcode := 0
-		if appl.Operator.Name != nil {
-			opcode = tlc.GetOpCode(appl.Operator.Name)
-		}
-		switch opcode {
-		case tlc.OpcodeCL, tlc.OpcodeLand:
-			for _, arg := range appl.Args {
-				b.installPropertyNode(tlc.SemanticString(arg), configName, arg, con)
-			}
-			return
-		case tlc.OpcodeBox:
-			if len(appl.Args) == 0 {
-				return
-			}
-			boxArg := appl.Args[0]
-			if boxAppl, ok := boxArg.(*tlc.OpApplNode); ok && boxAppl.Operator != nil && tlc.GetOpCode(boxAppl.Operator.Name) == tlc.OpcodeSA {
-				action := tlc.NewAction(boxArg, con, configName)
-				b.tool.ImpliedActions = append(b.tool.ImpliedActions, action)
-				b.tool.ImpliedActNames = append(b.tool.ImpliedActNames, name)
-				return
-			}
-			if b.tool.GetLevelBound(boxArg, con) < tlc.TLCLevelAction {
-				action := tlc.NewAction(boxArg, con, configName)
-				b.tool.Invariants = append(b.tool.Invariants, action)
-				b.tool.InvariantNames = append(b.tool.InvariantNames, name)
-				return
-			}
-			action := tlc.NewAction(appl, con, configName)
-			b.tool.ImpliedTemporals = append(b.tool.ImpliedTemporals, action)
-			b.tool.ImpliedTempNames = append(b.tool.ImpliedTempNames, name)
-			return
-		case tlc.OpcodeNop:
-			if len(appl.Args) > 0 {
-				b.installPropertyNode(name, configName, appl.Args[0], con)
-				return
-			}
-		}
-	}
-	action := tlc.NewAction(node, con, configName)
-	switch b.tool.GetLevelBound(node, con) {
-	case tlc.TLCLevelConstant, tlc.TLCLevelState:
-		b.tool.ImpliedInits = append(b.tool.ImpliedInits, action)
-		b.tool.ImpliedInitNames = append(b.tool.ImpliedInitNames, name)
-	case tlc.TLCLevelAction:
-		b.tool.ImpliedActions = append(b.tool.ImpliedActions, action)
-		b.tool.ImpliedActNames = append(b.tool.ImpliedActNames, name)
-	case tlc.TLCLevelTemporal:
-		b.tool.ImpliedTemporals = append(b.tool.ImpliedTemporals, action)
-		b.tool.ImpliedTempNames = append(b.tool.ImpliedTempNames, name)
-	}
-}
-
-func (b *tlcBridge) installPossibleTargets() {
-	for _, name := range b.cfg.GetPossible() {
-		def := b.defs[name]
-		if def == nil {
-			b.diags = append(b.diags, errorAt(Position{}, "E7014", "_POSSIBLE operator %s not found", name))
-			continue
-		}
-		if len(def.Params) != 0 {
-			b.diags = append(b.diags, errorAt(def.Pos, "E7015", "_POSSIBLE operator %s must be zero-arity", name))
-			continue
-		}
-		opDef := b.convertDefinitionAs(name, def)
-		if opDef == nil || opDef.Symbol == nil {
-			continue
-		}
-		track := tlc.NewPossibleTrackNode(tlc.NewOpApplNode(opDef.Symbol), name)
-		if b.possibleExprIsActionLevel(def.Expr, map[string]bool{}, nil) {
-			b.tool.ActionConstraints = append(b.tool.ActionConstraints, track)
-		} else {
-			b.tool.ModelConstraints = append(b.tool.ModelConstraints, track)
-		}
-		check := tlc.NewPossibleCheckNode(name)
-		b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, tlc.NewPossibleAction(check, tlc.EmptyContext, opDef))
-	}
 }
 
 func (b *tlcBridge) installAliasTarget(name string) {
@@ -920,187 +793,6 @@ func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNo
 		node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
 	}
 	return node
-}
-
-func (b *tlcBridge) possibleExprIsActionLevel(expr Expr, seen map[string]bool, locals map[string]*Definition) bool {
-	return b.possibleExprIsActionLevelBound(expr, seen, locals, nil)
-}
-
-func (b *tlcBridge) possibleExprIsActionLevelBound(expr Expr, seen map[string]bool, locals map[string]*Definition, bound map[string]bool) bool {
-	switch e := expr.(type) {
-	case nil, *LiteralExpr:
-		return false
-	case *IdentExpr:
-		if bound != nil && bound[e.Name] {
-			return false
-		}
-		return b.possibleNamedExprIsActionLevel(e.Name, seen, locals, bound)
-	case *UnaryExpr:
-		switch e.Op {
-		case "'", "UNCHANGED":
-			return true
-		case "ENABLED":
-			return false
-		case "[]", "<>":
-			return true
-		default:
-			return b.possibleExprIsActionLevelBound(e.Expr, seen, locals, bound)
-		}
-	case *BinaryExpr:
-		return b.possibleExprIsActionLevelBound(e.Left, seen, locals, bound) ||
-			b.possibleExprIsActionLevelBound(e.Right, seen, locals, bound)
-	case *CallExpr:
-		if ident, ok := e.Callee.(*IdentExpr); ok && (bound == nil || !bound[ident.Name]) {
-			if b.possibleNamedExprIsActionLevel(ident.Name, seen, locals, bound) {
-				return true
-			}
-		} else if b.possibleExprIsActionLevelBound(e.Callee, seen, locals, bound) {
-			return true
-		}
-		for _, arg := range e.Args {
-			if b.possibleExprIsActionLevelBound(arg, seen, locals, bound) {
-				return true
-			}
-		}
-	case *IfExpr:
-		return b.possibleExprIsActionLevelBound(e.Cond, seen, locals, bound) ||
-			b.possibleExprIsActionLevelBound(e.Then, seen, locals, bound) ||
-			b.possibleExprIsActionLevelBound(e.Else, seen, locals, bound)
-	case *LetExpr:
-		letLocals := b.possibleLetLocals(e, locals)
-		return b.possibleExprIsActionLevelBound(e.Body, seen, letLocals, bound)
-	case *QuantifierExpr:
-		nextBound := copyBoolMap(bound)
-		nextBound[e.Var] = true
-		return b.possibleExprIsActionLevelBound(e.Set, seen, locals, bound) ||
-			b.possibleExprIsActionLevelBound(e.Body, seen, locals, nextBound)
-	case *CaseExpr:
-		for _, arm := range e.Arms {
-			if b.possibleExprIsActionLevelBound(arm.Test, seen, locals, bound) ||
-				b.possibleExprIsActionLevelBound(arm.Value, seen, locals, bound) {
-				return true
-			}
-		}
-		return b.possibleExprIsActionLevelBound(e.Other, seen, locals, bound)
-	case *ChooseExpr:
-		nextBound := copyBoolMap(bound)
-		nextBound[e.Var] = true
-		return b.possibleExprIsActionLevelBound(e.Set, seen, locals, bound) ||
-			b.possibleExprIsActionLevelBound(e.Body, seen, locals, nextBound)
-	case *TupleExpr:
-		for _, elem := range e.Elems {
-			if b.possibleExprIsActionLevelBound(elem, seen, locals, bound) {
-				return true
-			}
-		}
-	case *SetExpr:
-		for _, elem := range e.Elems {
-			if b.possibleExprIsActionLevelBound(elem, seen, locals, bound) {
-				return true
-			}
-		}
-	case *RecordExpr:
-		for _, field := range e.Fields {
-			if b.possibleExprIsActionLevelBound(field.Value, seen, locals, bound) {
-				return true
-			}
-		}
-	case *RecordComponentExpr:
-		return b.possibleExprIsActionLevelBound(e.Record, seen, locals, bound)
-	case *RecordSetExpr:
-		for _, field := range e.Fields {
-			if b.possibleExprIsActionLevelBound(field.Set, seen, locals, bound) {
-				return true
-			}
-		}
-	case *FunctionExpr:
-		nextBound := copyBoolMap(bound)
-		for _, next := range e.Bounds {
-			if b.possibleExprIsActionLevelBound(next.Set, seen, locals, bound) {
-				return true
-			}
-			nextBound[next.Name] = true
-		}
-		return b.possibleExprIsActionLevelBound(e.Body, seen, locals, nextBound)
-	case *FunctionAppExpr:
-		if b.possibleExprIsActionLevelBound(e.Function, seen, locals, bound) {
-			return true
-		}
-		for _, arg := range e.Args {
-			if b.possibleExprIsActionLevelBound(arg, seen, locals, bound) {
-				return true
-			}
-		}
-	case *ExceptExpr:
-		if b.possibleExprIsActionLevelBound(e.Base, seen, locals, bound) {
-			return true
-		}
-		for _, spec := range e.Specs {
-			for _, component := range spec.Components {
-				for _, index := range component.Indices {
-					if b.possibleExprIsActionLevelBound(index, seen, locals, bound) {
-						return true
-					}
-				}
-			}
-			if b.possibleExprIsActionLevelBound(spec.Value, seen, locals, bound) {
-				return true
-			}
-		}
-	case *LabelExpr:
-		return b.possibleExprIsActionLevelBound(e.Body, seen, locals, bound)
-	case *ActionExpr, *FairnessExpr:
-		return true
-	case *FunctionSetExpr:
-		return b.possibleExprIsActionLevelBound(e.Domain, seen, locals, bound) ||
-			b.possibleExprIsActionLevelBound(e.Range, seen, locals, bound)
-	case *SetComprehensionExpr:
-		nextBound := copyBoolMap(bound)
-		for _, next := range e.Bounds {
-			if b.possibleExprIsActionLevelBound(next.Set, seen, locals, bound) {
-				return true
-			}
-			nextBound[next.Name] = true
-		}
-		return b.possibleExprIsActionLevelBound(e.Element, seen, locals, nextBound) ||
-			b.possibleExprIsActionLevelBound(e.Predicate, seen, locals, nextBound)
-	}
-	return false
-}
-
-func (b *tlcBridge) possibleNamedExprIsActionLevel(name string, seen map[string]bool, locals map[string]*Definition, bound map[string]bool) bool {
-	if seen[name] {
-		return false
-	}
-	var def *Definition
-	if locals != nil {
-		def = locals[name]
-	}
-	if def == nil {
-		def = b.defs[name]
-	}
-	if def == nil {
-		return false
-	}
-	seen[name] = true
-	defer delete(seen, name)
-	nextBound := copyBoolMap(bound)
-	for _, param := range def.Params {
-		nextBound[param] = true
-	}
-	return b.possibleExprIsActionLevelBound(def.Expr, seen, locals, nextBound)
-}
-
-func (b *tlcBridge) possibleLetLocals(expr *LetExpr, parent map[string]*Definition) map[string]*Definition {
-	locals := make(map[string]*Definition, len(parent)+len(expr.Definitions))
-	for name, def := range parent {
-		locals[name] = def
-	}
-	for i := range expr.Definitions {
-		def := &expr.Definitions[i]
-		locals[def.Name] = def
-	}
-	return locals
 }
 
 func (b *tlcBridge) convertFunctionArgs(args []Expr) tlc.SemanticNode {
