@@ -194,29 +194,28 @@ func (e *FingerprintException) GetRootCause() error {
 }
 
 func (e *FingerprintException) GetTrace() string {
-	var nodes []string
-	for ptr := e; ptr != nil; ptr = ptr.Next {
-		if ptr.Node != nil {
-			nodes = append(nodes, SemanticString(ptr.Node))
-		} else if ptr.Value != nil {
-			nodes = append(nodes, ptr.Value.String())
-		}
+	if e == nil {
+		return ""
 	}
-	var b strings.Builder
-	last := ""
-	label := 0
-	for i := len(nodes) - 1; i >= 0; i-- {
-		if nodes[i] == "" || nodes[i] == last {
-			continue
-		}
-		b.WriteString(strconv.Itoa(label))
-		b.WriteString(") ")
-		b.WriteString(nodes[i])
-		b.WriteString("\n")
-		last = nodes[i]
-		label++
+	return e.getTraceImpl(0, nil)
+}
+
+func (e *FingerprintException) getTraceImpl(traceIndexLabel int, last SemanticNode) string {
+	if e == nil {
+		return ""
 	}
-	return b.String()
+	node := e.Node
+	if node == nil || semanticNodeSame(node, last) {
+		if e.Next == nil {
+			return ""
+		}
+		return e.Next.getTraceImpl(traceIndexLabel, last)
+	}
+	description := strconv.Itoa(traceIndexLabel) + ") " + SemanticString(node) + "\n"
+	if e.Next == nil {
+		return description
+	}
+	return e.Next.getTraceImpl(traceIndexLabel+1, node) + description
 }
 
 func (e *FingerprintException) AsTrace() []SemanticNode {

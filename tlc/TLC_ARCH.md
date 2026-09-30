@@ -548,6 +548,10 @@ Important implementation patterns:
   function body.
 - `setSource` associates semantic nodes with values for better fingerprint
   exception diagnostics.
+- `FingerprintException.getTrace` is intentionally recursive: Java assigns
+  labels while walking the linked exception head, then prints the recursive tail
+  before the current frame. Preserve that order because the formatted trace is
+  user-facing diagnostic text.
 - Errors are not generic exceptions; they carry TLC error codes and source
   context.
 
