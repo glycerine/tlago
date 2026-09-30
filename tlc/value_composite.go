@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"math"
 	"sort"
 	"strings"
 )
@@ -512,8 +513,14 @@ func (v *IntervalValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *IntervalValue) Compare(other Value) (int, error) {
 	if o, ok := other.(*IntervalValue); ok {
-		sz, _ := v.Size()
-		osz, _ := o.Size()
+		sz, err := v.Size()
+		if err != nil {
+			return 0, err
+		}
+		osz, err := o.Size()
+		if err != nil {
+			return 0, err
+		}
 		if sz != osz {
 			return sz - osz, nil
 		}
@@ -533,8 +540,14 @@ func (v *IntervalValue) Compare(other Value) (int, error) {
 
 func (v *IntervalValue) Equal(other Value) (bool, error) {
 	if o, ok := other.(*IntervalValue); ok {
-		sz, _ := v.Size()
-		osz, _ := o.Size()
+		sz, err := v.Size()
+		if err != nil {
+			return false, err
+		}
+		osz, err := o.Size()
+		if err != nil {
+			return false, err
+		}
 		if sz == 0 {
 			return osz == 0, nil
 		}
@@ -546,7 +559,10 @@ func (v *IntervalValue) Equal(other Value) (bool, error) {
 func (v *IntervalValue) Member(elem Value) (bool, error) {
 	i, ok := elem.(*IntValue)
 	if !ok {
-		sz, _ := v.Size()
+		sz, err := v.Size()
+		if err != nil {
+			return false, err
+		}
 		if sz > 0 {
 			return false, v.unsupported("attempted to check if %s is in the integer interval %s", elem, v)
 		}
@@ -561,7 +577,11 @@ func (v *IntervalValue) Size() (int, error) {
 	if v.High < v.Low {
 		return 0, nil
 	}
-	return int(v.High-v.Low) + 1, nil
+	size := int64(v.High) - int64(v.Low) + 1
+	if size > math.MaxInt32 {
+		return 0, newTLCError(ECGeneral, "Size of interval value exceeds the maximum representable size (32bits)")
+	}
+	return int(size), nil
 }
 
 func (v *IntervalValue) Normalize() Value      { return v }
@@ -572,7 +592,10 @@ func (v *IntervalValue) DeepCopy() Value       { return v }
 func (v *IntervalValue) Permute(*MVPerm) Value { return v }
 
 func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
-	sz, _ := v.Size()
+	sz, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
 	fp = FP64ExtendInt(fp, int32(SetEnumValueKind))
 	fp = FP64ExtendInt(fp, int32(sz))
 	for i := 0; i < sz; i++ {
@@ -597,7 +620,10 @@ func (v *IntervalValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *IntervalValue) ToSetEnum() *SetEnumValue {
-	sz, _ := v.Size()
+	sz, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
 	values := make([]Value, sz)
 	for i := 0; i < sz; i++ {
 		values[i] = NewIntValue(v.Low + int32(i))
@@ -606,7 +632,10 @@ func (v *IntervalValue) ToSetEnum() *SetEnumValue {
 }
 
 func (v *IntervalValue) AsValues() []Value {
-	sz, _ := v.Size()
+	sz, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
 	values := make([]Value, sz)
 	for i := 0; i < sz; i++ {
 		values[i] = NewIntValue(v.Low + int32(i))
@@ -615,7 +644,10 @@ func (v *IntervalValue) AsValues() []Value {
 }
 
 func (v *IntervalValue) Elements() ValueEnumeration {
-	sz, _ := v.Size()
+	sz, err := v.Size()
+	if err != nil {
+		panic(err)
+	}
 	values := make([]Value, sz)
 	for i := 0; i < sz; i++ {
 		values[i] = NewIntValue(v.Low + int32(i))
