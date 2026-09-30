@@ -1636,17 +1636,44 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 	if err == nil {
 		return
 	}
-	ec := ECGeneral
-	if tlcErr, ok := err.(*TLCError); ok {
-		ec = tlcErr.Code
-	}
-	if mc.SetErrState(curState, succState, true, ec) {
-		PrintError(ec, err.Error())
+	ec, params, keepCallStack := doNextFailureMessage(err)
+	if mc.SetErrState(curState, succState, keepCallStack, ec) {
+		if len(params) > 0 {
+			PrintError(ec, params...)
+		} else {
+			PrintError(ec)
+		}
 		mc.printBehaviorTrace(curState, succState)
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()
 		}
 	}
+}
+
+func doNextFailureMessage(err error) (int, []string, bool) {
+	ec := ECGeneral
+	params := []string{err.Error()}
+	keepCallStack := true
+
+	var eval *EvalException
+	if errors.As(err, &eval) && eval != nil {
+		ec = eval.GetErrorCode()
+		if eval.HasParameters() {
+			params = eval.GetParameters()
+		}
+		return ec, params, keepCallStack
+	}
+
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil {
+		ec = tlcErr.Code
+		if ec == ECSystemStackOverflow || ec == ECSystemOutOfMemory || ec == ECTLCBug {
+			keepCallStack = false
+		}
+		return ec, params, keepCallStack
+	}
+
+	return ec, params, keepCallStack
 }
 
 type doInitFunctor struct {

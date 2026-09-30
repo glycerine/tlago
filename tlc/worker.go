@@ -253,7 +253,51 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 			return err
 		}
 	}
-	return w.Checker.LiveCheck.AddNextState(w.Tool.NoDebug(), curState, curFP, w.SetOfStates)
+	err := w.Checker.LiveCheck.AddNextState(w.Tool.NoDebug(), curState, curFP, w.SetOfStates)
+	if err == nil || !livenessErrorNeedsCallStackReplay(err) {
+		return err
+	}
+	if !w.claimLivenessErrorStackPrinter() {
+		return nil
+	}
+	w.SetOfStates.ResetNext()
+	callStackTool := NewCallStackTool(w.Tool.NoDebug())
+	rerunErr := w.Checker.LiveCheck.AddNextState(callStackTool, curState, curFP, w.SetOfStates)
+	if rerunErr != nil && !livenessErrorNeedsCallStackReplay(rerunErr) {
+		return rerunErr
+	}
+	if callStackTool.HasCallStack() {
+		w.Checker.mu.Lock()
+		w.Checker.KeepCallStack = false
+		w.Checker.mu.Unlock()
+		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
+	}
+	return err
+}
+
+func livenessErrorNeedsCallStackReplay(err error) bool {
+	if err == nil {
+		return false
+	}
+	var eval *EvalException
+	if errors.As(err, &eval) {
+		return true
+	}
+	var stateful *StatefulRuntimeException
+	return errors.As(err, &stateful)
+}
+
+func (w *Worker) claimLivenessErrorStackPrinter() bool {
+	if w == nil || w.Checker == nil {
+		return false
+	}
+	w.Checker.mu.Lock()
+	defer w.Checker.mu.Unlock()
+	if w.Checker.PrintedLivenessErrorStack {
+		return false
+	}
+	w.Checker.PrintedLivenessErrorStack = true
+	return true
 }
 
 func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {

@@ -46,6 +46,8 @@
   - Simulator now prints Java-shaped worker-error behaviors and final simulation summaries (`TLC_STATS_SIMU`) with coverage/action-flow finalization.
   - BFS model checking now follows Java's recover-before-fresh-start ordering and preserves the `TLC_LIVE_FORMULA_TAUTOLOGY` guard.
   - BFS model checking now emits Java's final safety progress snapshot immediately before final liveness checking.
+  - Worker liveness failures now follow Java's call-stack replay path for `EvalException`/stateful runtime failures and preserve the original error after replay.
+  - `ModelChecker.doNextFailed` now preserves `EvalException` error codes/parameters and Java's keep-call-stack behavior for known fatal/system-like TLC errors.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -74,18 +76,18 @@
 ## Current Position
 
 - Latest commits:
+  - `598ad23 Report safety progress before liveness`
+  - `e8f3e6f Match BFS recovery ordering`
+  - `0531296 Align checker coverage summaries`
+  - `4e82177 Port simulator summary printing`
+  - `ee204c5 Port simulator progress reporting`
+  - `4e2d94f Wire simulator liveness checks`
   - `4d8e5e8 Track TLC port progress`
   - `ca4060d Honor disk graph recovery pointers`
-  - `e985339 Port memory FPSet variants`
-  - `835dd2b Align LongObjTable growth`
-  - `bbba936 Mirror ObjLongTable probing`
-  - `d282d2b Mirror byte-array queue pool cleanup`
-  - `0b3230c Port DiskStateQueue pool cleaner`
-  - `0de29bb Add parser-backed liveness operator test`
 - Last verified commands before this file:
   - `go test ./tlc`
   - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Continue breadth-first into `ModelChecker.java` and `Worker.java`, focusing on checkpoint/recovery cleanup, trace reconstruction, and error precedence.
-  2. Then continue into remaining liveness/checkpoint/distributed pieces.
+  1. Continue breadth-first comparison of `ModelChecker.java`/`Worker.java`, with checkpoint/recovery cleanup and trace reconstruction next.
+  2. Then continue into remaining liveness checkpoint/error-trace and distributed pieces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
