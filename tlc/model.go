@@ -471,11 +471,27 @@ func NewMCState(vars []*MCVariable, name string, label string, location string, 
 	return &MCState{Variables: vars, Name: name, Label: label, Location: location, Stuttering: stuttering, BackToState: backToState, StateNumber: ordinal}
 }
 
-func NewMCStateFromTLCStateInfo(info *TLCStateInfo) *MCState {
-	state := &MCState{StateNumber: int(info.StateNumber)}
-	if info == nil || info.State == nil {
-		return state
+func NewMCStateMarker(other *MCState, stuttering bool, backToState bool) *MCState {
+	if other == nil {
+		return &MCState{Stuttering: stuttering, BackToState: backToState}
 	}
+	return &MCState{
+		Variables:   append([]*MCVariable(nil), other.Variables...),
+		Name:        other.Name,
+		Label:       other.Label,
+		Location:    other.Location,
+		Stuttering:  stuttering,
+		BackToState: backToState,
+		StateNumber: other.StateNumber,
+		Record:      other.Record,
+	}
+}
+
+func NewMCStateFromTLCStateInfo(info *TLCStateInfo) *MCState {
+	if info == nil || info.State == nil {
+		return &MCState{}
+	}
+	state := &MCState{StateNumber: int(info.StateNumber)}
 	values := info.State.Values()
 	var vars []*MCVariable
 	for name, value := range values.All() {

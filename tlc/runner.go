@@ -35,6 +35,8 @@ type Options struct {
 	Trace                    *TLCTrace
 	LiveCheck                *LiveCheck
 	StartTime                time.Time
+	GenerateTraceSpec        bool
+	TraceSpecOutputDir       string
 }
 
 type Result struct {
@@ -120,6 +122,12 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	recorder := &MemoryRecorder{}
 	AddMessageRecorder(recorder)
 	defer RemoveMessageRecorder(recorder)
+	var traceRecorder *ErrorTraceMessageRecorder
+	if t.GenerateTraceSpec {
+		traceRecorder = NewErrorTraceMessageRecorder()
+		AddMessageRecorder(traceRecorder)
+		defer RemoveMessageRecorder(traceRecorder)
+	}
 
 	PrintMessage(ECTLCStarting)
 	var result *Result
@@ -136,10 +144,25 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	if err != nil && result.ErrorCode == NoError {
 		result.ErrorCode = ECGeneral
 	}
-	result.ExitStatus = ExitStatusForErrorCode(result.ErrorCode)
 	if result.ErrorCode == NoError {
 		PrintMessage(ECTLCSuccess)
 	}
+	if traceRecorder != nil && t.FromCheckpoint == "" {
+		if mcError, ok := traceRecorder.MCErrorTrace(); ok {
+			outputDir := t.TraceSpecOutputDir
+			if outputDir == "" {
+				outputDir = "."
+			}
+			teSpec := NewTraceExplorationSpec(outputDir, time.Now(), t.Tool.GetRootName())
+			if _, genErr := teSpec.Generate(t.Tool, mcError); genErr != nil && err == nil {
+				err = genErr
+				if result.ErrorCode == NoError {
+					result.ErrorCode = ECGeneral
+				}
+			}
+		}
+	}
+	result.ExitStatus = ExitStatusForErrorCode(result.ErrorCode)
 	PrintMessage(ECTLCFinished)
 	recorder.mu.Lock()
 	result.Messages = append([]Message(nil), recorder.Messages...)
