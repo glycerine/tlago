@@ -518,6 +518,8 @@ Core control inputs:
 - `s0`: current state.
 - `s1`: successor/prototype state.
 - `EvalControl`: control flags for priming, enabledness, and evaluation mode.
+  The helper `PartialBoolean` mirrors Java enum order `YES, NO, MAYBE`; avoid
+  relying on Go's zero value as semantic "maybe".
 - `CostModel`: coverage accounting.
 
 Important implementation patterns:

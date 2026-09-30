@@ -12,9 +12,9 @@ const (
 type PartialBoolean int
 
 const (
-	PartialMaybe PartialBoolean = iota
-	PartialYes
+	PartialYes PartialBoolean = iota
 	PartialNo
+	PartialMaybe
 )
 
 func (p PartialBoolean) String() string {
