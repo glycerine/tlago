@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"strings"
 )
 
 type LiveException struct {
@@ -64,10 +65,103 @@ func (e *LiveCounterExampleException) Error() string {
 
 type LivenessStateWriter struct {
 	Noop bool
+	*StateWriter
 }
 
 func NewNoopLivenessStateWriter() *LivenessStateWriter {
 	return &LivenessStateWriter{Noop: true}
+}
+
+func NewDotLivenessStateWriter(stateWriter *StateWriter) (*LivenessStateWriter, error) {
+	fname := "DotStateWriter_liveness.dot"
+	if stateWriter != nil && stateWriter.GetDumpFileName() != "" {
+		fname = strings.Replace(stateWriter.GetDumpFileName(), ".dot", "_liveness.dot", 1)
+	}
+	writer, err := NewDotStateWriter(fname, DotStateWriterOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return &LivenessStateWriter{StateWriter: writer}, nil
+}
+
+func (w *LivenessStateWriter) IsNoop() bool {
+	return w == nil || w.Noop || w.StateWriter == nil || w.StateWriter.IsNoop()
+}
+
+func (w *LivenessStateWriter) IsDot() bool {
+	return w != nil && w.StateWriter != nil && w.StateWriter.IsDot()
+}
+
+func (w *LivenessStateWriter) Close() error {
+	if w == nil || w.StateWriter == nil {
+		return nil
+	}
+	return w.StateWriter.Close()
+}
+
+func (w *LivenessStateWriter) WriteLivenessInitState(state *TLCStateMut, tableauNode *TBGraphNode) error {
+	if w == nil || w.IsNoop() || w.writer == nil || state == nil || tableauNode == nil {
+		return nil
+	}
+	fp := state.FingerPrint()
+	_, err := fmt.Fprintf(w.writer, "\"%d.%d\" [style = filled] [label=\"%s\\n#%d.%d#\"]\n",
+		fp,
+		tableauNode.Index,
+		stateToDot(state, nil),
+		fp,
+		tableauNode.Index,
+	)
+	return err
+}
+
+func (w *LivenessStateWriter) WriteLivenessTransition(state *TLCStateMut, tableauNode *TBGraphNode, successor *TLCStateMut, successorTableauNode *TBGraphNode, actionChecks *BitVector, from int, length int, status StateVisitStatus) error {
+	return w.WriteLivenessTransitionVisual(state, tableauNode, successor, successorTableauNode, actionChecks, from, length, status, StateVisualizationDefault)
+}
+
+func (w *LivenessStateWriter) WriteLivenessTransitionVisual(state *TLCStateMut, tableauNode *TBGraphNode, successor *TLCStateMut, successorTableauNode *TBGraphNode, actionChecks *BitVector, from int, length int, status StateVisitStatus, visualization StateVisualization) error {
+	if w == nil || w.IsNoop() || w.writer == nil || state == nil || tableauNode == nil || successor == nil || successorTableauNode == nil {
+		return nil
+	}
+	sourceFP := state.FingerPrint()
+	successorFP := successor.FingerPrint()
+	if _, err := fmt.Fprintf(w.writer, "\"%d.%d\" -> \"%d.%d\"",
+		sourceFP,
+		tableauNode.Index,
+		successorFP,
+		successorTableauNode.Index,
+	); err != nil {
+		return err
+	}
+	switch visualization {
+	case StateVisualizationStuttering:
+		if _, err := w.writer.WriteString(" [style=\"dashed\"]"); err != nil {
+			return err
+		}
+	case StateVisualizationDotted:
+		if _, err := w.writer.WriteString(" [style=\"dotted\"]"); err != nil {
+			return err
+		}
+	}
+	if length > 0 && actionChecks != nil {
+		label := strings.Trim(actionChecks.StringRangeChars(from, length, 't', 'f'), "[]")
+		if _, err := fmt.Fprintf(w.writer, " [label=\"%s\"]", dotEscape(label)); err != nil {
+			return err
+		}
+	}
+	if _, err := w.writer.WriteString(";\n"); err != nil {
+		return err
+	}
+	if status != StateVisitSeen {
+		_, err := fmt.Fprintf(w.writer, "\"%d.%d\" [label=\"%s\\n#%d.%d#\"];\n",
+			successorFP,
+			successorTableauNode.Index,
+			stateToDot(successor, nil),
+			successorFP,
+			successorTableauNode.Index,
+		)
+		return err
+	}
+	return nil
 }
 
 type LiveChecker struct {
@@ -782,11 +876,24 @@ func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
 }
 
 func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
+	check, _ := NewLiveCheckWithStateWriter(tool, solutions, metadir, nil)
+	return check
+}
+
+func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metadir string, stateWriter *StateWriter) (*LiveCheck, error) {
 	check := &LiveCheck{Tool: tool, MetaDir: metadir}
 	for i, solution := range solutions {
-		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, NewNoopLivenessStateWriter(), metadir))
+		writer := NewNoopLivenessStateWriter()
+		if stateWriter != nil && !stateWriter.IsNoop() && stateWriter.IsDot() {
+			dotWriter, err := NewDotLivenessStateWriter(stateWriter)
+			if err != nil {
+				return nil, err
+			}
+			writer = dotWriter
+		}
+		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, writer, metadir))
 	}
-	return check
+	return check, nil
 }
 
 func NewAddAndCheckLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {

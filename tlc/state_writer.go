@@ -17,6 +17,14 @@ const (
 	StateVisitNotInModel
 )
 
+type StateVisualization int
+
+const (
+	StateVisualizationStuttering StateVisualization = iota
+	StateVisualizationDefault
+	StateVisualizationDotted
+)
+
 type StateWriter struct {
 	Noop                bool
 	Dot                 bool

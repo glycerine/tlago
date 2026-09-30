@@ -1064,6 +1064,10 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - Tableau safety-like liveness shortcuts mirror Java's `errorGraphNode`
   handoff with concrete `ErrorGraphNode` and `ErrorPrefix` fields; trace
   printing will consume those when the Java `printErrorTrace` path is ported.
+- `LivenessStateWriter` embeds the concrete `StateWriter` for DOT output
+  instead of introducing `ILivenessStateWriter`. `NewDotLivenessStateWriter`
+  writes Java's product-graph node ids (`stateFP.tableauIndex`) and preserves
+  the stuttering/dotted/default visualization hints.
 - The older in-memory `BEGraph` owner keeps Java's `initNodes`, `metadir`, and
   `NodeTable` fields. Its reset and shortest-path routines are intentionally
   iterative: `ResetNumberField` uses `MemObjectStack`, and `BEGraphGetPath`
