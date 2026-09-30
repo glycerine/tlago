@@ -1,6 +1,10 @@
 package tlc
 
+import "sync/atomic"
+
 const ModelCheckerMXObjectName = "tlc2.tool:type=ModelChecker"
+
+var diskFPSetMXWrapperCount atomic.Int64
 
 type TLCStandardMBean struct {
 	ObjectName string
@@ -294,4 +298,198 @@ func (w *TLCServerMXWrapper) Resume() {
 	if w != nil && w.Server != nil && w.Server.StateQueue != nil {
 		w.Server.StateQueue.ResumeAll()
 	}
+}
+
+type DiskFPSetMXWrapper struct {
+	*TLCStandardMBean
+	FPSet      *DiskFPSet
+	ObjectName string
+}
+
+func NewDiskFPSetMXWrapper(fpSet *DiskFPSet) *DiskFPSetMXWrapper {
+	id := diskFPSetMXWrapperCount.Add(1) - 1
+	wrapper := &DiskFPSetMXWrapper{
+		TLCStandardMBean: NewTLCStandardMBean(),
+		FPSet:            fpSet,
+		ObjectName:       "DiskFPSet" + fmtInt64(id),
+	}
+	wrapper.RegisterMBean("tlc2.tool.fp:type=" + wrapper.ObjectName)
+	return wrapper
+}
+
+func (w *DiskFPSetMXWrapper) GetObjectName() string {
+	if w == nil {
+		return ""
+	}
+	return w.ObjectName
+}
+
+func (w *DiskFPSetMXWrapper) GetTblCnt() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetTblCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetFileCnt() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetFileCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetIndexCnt() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetIndexCapacity()
+}
+
+func (w *DiskFPSetMXWrapper) GetIndexCapacity() int64 {
+	return w.GetIndexCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetDiskLookupCnt() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetDiskLookupCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetMemHitCnt() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetMemHitCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetDiskHitCnt() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetDiskHitCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetDiskWriteCnt() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetDiskWriteCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetDiskSeekCnt() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetDiskSeekCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetDiskSeekCache() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetDiskSeekCache()
+}
+
+func (w *DiskFPSetMXWrapper) GetDiskSeekRate() float64 {
+	diskSeekCnt := w.GetDiskSeekCnt()
+	diskSeekCache := w.GetDiskSeekCache()
+	return float64(diskSeekCache) / float64(diskSeekCache+diskSeekCnt)
+}
+
+func (w *DiskFPSetMXWrapper) GetGrowDiskMark() int {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetGrowDiskMark()
+}
+
+func (w *DiskFPSetMXWrapper) GetCheckPointMark() int {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetCheckPointMark()
+}
+
+func (w *DiskFPSetMXWrapper) GetBucketCapacity() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetBucketCapacity()
+}
+
+func (w *DiskFPSetMXWrapper) GetTblCapacity() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetTblCapacity()
+}
+
+func (w *DiskFPSetMXWrapper) GetOverallCapacity() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetOverallCapacity()
+}
+
+func (w *DiskFPSetMXWrapper) GetTblLoad() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetTblLoad()
+}
+
+func (w *DiskFPSetMXWrapper) GetMaxTblCnt() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetMaxTblCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetSizeOf() uint64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.Sizeof()
+}
+
+func (w *DiskFPSetMXWrapper) GetFlushTime() int64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetFlushTime()
+}
+
+func (w *DiskFPSetMXWrapper) GetReaderWriterCnt() int {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetReaderWriterCnt()
+}
+
+func (w *DiskFPSetMXWrapper) GetLoadFactor() float64 {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetLoadFactor()
+}
+
+func (w *DiskFPSetMXWrapper) ForceFlush() {
+	if w != nil && w.FPSet != nil {
+		w.FPSet.ForceFlush()
+	}
+}
+
+func (w *DiskFPSetMXWrapper) CheckInvariant() bool {
+	if w == nil || w.FPSet == nil {
+		return true
+	}
+	return w.FPSet.CheckInvariant()
+}
+
+func (w *DiskFPSetMXWrapper) GetLockCnt() int {
+	if w == nil || w.FPSet == nil {
+		return 0
+	}
+	return w.FPSet.GetLockCnt()
 }
