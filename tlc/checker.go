@@ -1402,9 +1402,6 @@ func (mc *ModelChecker) doNextWithTool(tool *Tool, curState *TLCStateMut, liveNe
 			if !tool.IsGoodState(succState) {
 				return mc.doNextSetErrParams(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(tool, action, succState)...), nil
 			}
-			if succState != nil {
-				succState.SetPredecessor(curState).SetAction(action)
-			}
 			inModel, err := tool.IsInModel(succState)
 			if err != nil {
 				mc.doNextFailed(curState, succState, err)

@@ -31,6 +31,7 @@
 - Already audited recently; do not loop on `TLCTrace.GetTraceAt` unless touched: local traces now carry the concrete `Tool` like Java `TraceApp` and reconstruct CheckImpl uncovered traces from disk fingerprints before falling back to the in-memory mirror.
 - Already audited recently; do not loop on disk FPSet trace recovery unless touched: disk, off-heap, and multi FP sets now recover by streaming `trace.Elements()` like Java instead of iterating Go's in-memory trace mirror; memory FP sets still recover from their checkpoint files as Java does.
 - Already audited recently; do not loop on worker deadlock tail ordering unless touched: deadlock detection now reports the error before liveness, but still runs Java's liveness graph update and out-degree sample before the worker stops.
+- Already audited recently; do not loop on replay `doNextWithTool` constraint ordering unless touched: replay mirrors Java `ModelChecker.doNext` and does not attach predecessor/action before `isInModel`/`isInActions`; the normal worker functor path still follows Java `Worker.addElement`.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -130,6 +131,7 @@
   - `TLCTrace.GetTraceAt` now follows Java's disk-fingerprint reconstruction algorithm for CheckImpl uncovered traces when the trace has a `Tool`, including RNG reset around `Tool.GetState` replay.
   - Disk-backed and multi fingerprint sets now rebuild from the trace enumerator during checkpoint recovery, matching Java's `recover(TLCTrace)` path and avoiding dependency on Go-only trace mirror records.
   - Worker deadlock handling now mirrors Java's trailing loop order by recording the deadlock, then still adding the current state to liveness and sampling out-degree before returning.
+  - Call-stack replay `doNextWithTool` now keeps Java `ModelChecker.doNext` ordering by checking model/action constraints before any explicit predecessor/action attachment in that replay path.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
