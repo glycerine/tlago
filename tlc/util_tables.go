@@ -8,68 +8,113 @@ import (
 )
 
 type ObjLongTable[K comparable] struct {
-	elems *InsMap[K, int64]
+	count  int
+	length int
+	thresh int
+	keys   []K
+	elems  []int64
+	used   []bool
 }
 
 func NewObjLongTable[K comparable](size int) *ObjLongTable[K] {
-	_ = size
-	return &ObjLongTable[K]{elems: NewInsMap[K, int64]()}
+	if size < 0 {
+		size = 0
+	}
+	return &ObjLongTable[K]{
+		length: size,
+		thresh: size / 2,
+		keys:   make([]K, size),
+		elems:  make([]int64, size),
+		used:   make([]bool, size),
+	}
 }
 
 func (t *ObjLongTable[K]) Size() int {
-	if t == nil || t.elems == nil {
+	if t == nil {
 		return 0
 	}
-	return t.elems.Len()
+	return t.count
 }
 
 func (t *ObjLongTable[K]) Put(key K, elem int64) int {
-	t.ensure()
-	if _, ok := t.elems.Get2(key); !ok {
-		t.elems.Set(key, elem)
-		return t.elems.Len() - 1
+	if t.count >= t.thresh {
+		t.grow()
 	}
-	index := t.indexOf(key)
-	t.elems.Set(key, elem)
-	return index
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = elem
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] = elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *ObjLongTable[K]) Add(key K, elem int64) int {
-	t.ensure()
-	if cur, ok := t.elems.Get2(key); ok {
-		index := t.indexOf(key)
-		t.elems.Set(key, cur+elem)
-		return index
+	if t.count >= t.thresh {
+		t.grow()
 	}
-	t.elems.Set(key, elem)
-	return t.elems.Len() - 1
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			t.keys[loc] = key
+			t.elems[loc] = elem
+			t.used[loc] = true
+			t.count++
+			return loc
+		}
+		if t.keys[loc] == key {
+			t.elems[loc] += elem
+			return loc
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *ObjLongTable[K]) Get(key K) int64 {
-	if t == nil || t.elems == nil {
+	if t == nil || t.length == 0 {
 		return 0
 	}
-	return t.elems.Get(key)
+	loc := t.location(key)
+	for {
+		if !t.used[loc] {
+			return 0
+		}
+		if t.keys[loc] == key {
+			return t.elems[loc]
+		}
+		loc = (loc + 1) % t.length
+	}
 }
 
 func (t *ObjLongTable[K]) MergeInto(other *ObjLongTable[K]) *ObjLongTable[K] {
-	if other == nil || other.elems == nil {
+	if other == nil {
 		return t
 	}
-	t.ensure()
-	for key, value := range other.elems.All() {
-		t.Add(key, value)
+	for i := 0; i < other.length; i++ {
+		if other.used[i] {
+			t.Add(other.keys[i], other.elems[i])
+		}
 	}
 	return t
 }
 
 func (t *ObjLongTable[K]) ToArray() []K {
-	if t == nil || t.elems == nil {
+	if t == nil {
 		return nil
 	}
-	out := make([]K, 0, t.elems.Len())
-	for key := range t.elems.All() {
-		out = append(out, key)
+	out := make([]K, 0, t.count)
+	for i := 0; i < t.length; i++ {
+		if t.used[i] {
+			out = append(out, t.keys[i])
+		}
 	}
 	return out
 }
@@ -78,21 +123,26 @@ func (t *ObjLongTable[K]) Keys() *ObjLongTableEnumerator[K] {
 	return &ObjLongTableEnumerator[K]{keys: t.ToArray()}
 }
 
-func (t *ObjLongTable[K]) ensure() {
-	if t.elems == nil {
-		t.elems = NewInsMap[K, int64]()
+func (t *ObjLongTable[K]) grow() {
+	oldKeys := t.keys
+	oldElems := t.elems
+	oldUsed := t.used
+	t.count = 0
+	t.length = 2*t.length + 1
+	t.thresh = t.length / 2
+	t.keys = make([]K, t.length)
+	t.elems = make([]int64, t.length)
+	t.used = make([]bool, t.length)
+	for i := 0; i < len(oldKeys); i++ {
+		if oldUsed[i] {
+			t.Put(oldKeys[i], oldElems[i])
+		}
 	}
 }
 
-func (t *ObjLongTable[K]) indexOf(key K) int {
-	i := 0
-	for existing := range t.elems.All() {
-		if existing == key {
-			return i
-		}
-		i++
-	}
-	return -1
+func (t *ObjLongTable[K]) location(key K) int {
+	hash := objLongKeyHashCode(key)
+	return int(uint32(hash)&0x7fffffff) % t.length
 }
 
 type ObjLongTableEnumerator[K comparable] struct {
@@ -108,6 +158,54 @@ func (e *ObjLongTableEnumerator[K]) NextElement() (K, bool) {
 	value := e.keys[e.index]
 	e.index++
 	return value, true
+}
+
+func objLongKeyHashCode[K comparable](key K) int32 {
+	if h, ok := any(key).(interface{ HashCode() int32 }); ok {
+		return h.HashCode()
+	}
+	if h, ok := any(key).(interface{ JavaHashCode() int32 }); ok {
+		return h.JavaHashCode()
+	}
+	switch value := any(key).(type) {
+	case string:
+		return javaStringHashCode(value)
+	case *UniqueString:
+		return javaStringHashCode(value.String())
+	case int:
+		return int32(value)
+	case int8:
+		return int32(value)
+	case int16:
+		return int32(value)
+	case int32:
+		return value
+	case int64:
+		return int32(value)
+	case uint:
+		return int32(value)
+	case uint8:
+		return int32(value)
+	case uint16:
+		return int32(value)
+	case uint32:
+		return int32(value)
+	case uint64:
+		return int32(value)
+	case uintptr:
+		return int32(value)
+	case bool:
+		if value {
+			return 1231
+		}
+		return 1237
+	}
+	rv := reflect.ValueOf(key)
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Chan, reflect.UnsafePointer:
+		return int32(rv.Pointer())
+	}
+	return javaStringHashCode(fmt.Sprintf("%#v", key))
 }
 
 type SemanticNodeLongTable struct {
