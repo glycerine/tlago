@@ -63,6 +63,12 @@ func WithSimulatorSchedule(schedule SimulationSchedule) SimulatorOption {
 	}
 }
 
+func WithSimulatorAril(aril int64) SimulatorOption {
+	return func(s *Simulator) {
+		s.Aril = aril
+	}
+}
+
 func WithSimulatorLiveCheck(liveCheck *LiveCheck) SimulatorOption {
 	return func(s *Simulator) {
 		s.LiveCheck = liveCheck
@@ -90,7 +96,6 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		TraceDepth:    traceDepth,
 		TraceNum:      traceNum,
 		Seed:          seed,
-		Rand:          NewJavaRandom(seed),
 		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
@@ -98,6 +103,10 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		if opt != nil {
 			opt(simulator)
 		}
+	}
+	simulator.Rand = NewJavaRandom(simulator.Seed)
+	if simulator.Aril > 0 {
+		simulator.Rand.SetSeedWithAril(simulator.Seed, simulator.Aril)
 	}
 	workerCount := NumWorkers()
 	if workerCount < 1 {
@@ -130,7 +139,6 @@ func (s *Simulator) Simulate() (int, error) {
 		return ECTLCNoStatesSatisfyingInit, nil
 	}
 	initStates.DeepNormalize()
-	s.Aril = s.Rand.Aril()
 	workerResult := s.simulate(initStates)
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()

@@ -221,7 +221,7 @@ func (t *TLC) applyGlobals() {
 	}
 	Globals.Unlock()
 	if t.Seed != 0 {
-		SetRandomEnumerableSeed(t.Seed + t.Aril)
+		SetRandomEnumerableSeed(t.Seed)
 	}
 }
 
@@ -314,15 +314,14 @@ func stopAfterDurationFromEnv() time.Duration {
 func (t *TLC) processSimulation() (*Result, error) {
 	PrintMessage(ECTLCModeSimu)
 	seed := t.Seed
-	if seed != 0 {
-		seed += t.Aril
-	}
 	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, seed,
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),
 		WithSimulatorSchedule(t.SimulationSchedule),
+		WithSimulatorAril(t.Aril),
 		WithSimulatorLiveCheck(t.LiveCheck),
 	)
+	SetRandomEnumerableSeed(simulator.Seed)
 	cancelStopAfter := t.scheduleStopAfter(simulator.Stop)
 	defer cancelStopAfter()
 	code, err := simulator.Simulate()
