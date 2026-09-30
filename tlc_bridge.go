@@ -77,12 +77,26 @@ func (b *tlcBridge) installConfigConstants() {
 	if b.cfg == nil || b.cfg.GetConstants() == nil {
 		return
 	}
+	opConstants := map[string]*tlc.OpRcdValue{}
 	for _, constant := range b.cfg.GetConstants().All() {
-		if len(constant.Args) != 0 {
-			b.diags = append(b.diags, errorAt(Position{}, "E7001", "operator-valued CONSTANT assignment %s is not yet supported by the TLC bridge", constant.Name))
+		if constant.Value == nil {
 			continue
 		}
-		if constant.Value == nil {
+		if len(constant.Args) != 0 {
+			opVal := opConstants[constant.Name]
+			if opVal == nil {
+				opVal = tlc.NewOpRcdValue()
+				opConstants[constant.Name] = opVal
+				b.tool.DefineName(constant.Name, opVal)
+			} else if len(opVal.Domain) != 0 && len(opVal.Domain[0]) != len(constant.Args) {
+				b.diags = append(b.diags, errorAt(Position{}, "E7001", "operator-valued CONSTANT assignment %s has inconsistent arity", constant.Name))
+				continue
+			}
+			values := make([]tlc.Value, 0, len(constant.Args)+2)
+			values = append(values, nil)
+			values = append(values, constant.Args...)
+			values = append(values, constant.Value)
+			opVal.AddLine(values)
 			continue
 		}
 		b.tool.DefineName(constant.Name, constant.Value)
