@@ -13,6 +13,7 @@ import (
 var possibleCountsKey = UniqueStringOf("s:_possible")
 var tlcExtActionField = UniqueStringOf("_action")
 var pickSuccessorMu sync.Mutex
+var tlcExtFingerprintMu sync.Mutex
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
 	if expected == nil {
@@ -248,6 +249,8 @@ func TLCExtTLCModelValue(value Value) (Value, error) {
 }
 
 func TLCExtTLCFP(value Value) *IntValue {
+	tlcExtFingerprintMu.Lock()
+	defer tlcExtFingerprintMu.Unlock()
 	value.DeepNormalize()
 	return NewIntValue(FP64Hash(value.FingerPrint(FP64New())))
 }

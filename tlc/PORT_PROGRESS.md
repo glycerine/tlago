@@ -24,6 +24,7 @@
 - Already audited recently; do not loop on `DiskByteArrayQueue` unless touched: byte-array queue locking/checkpoint/pool helper shape is mirrored, including Java's raw queue serializer behavior of disabling value object handle sharing.
 - Already audited recently; do not loop on `PossibleAction`, `WorkerValue`, or TLC exception wrappers unless touched: possible-action reporting uses the Java `getPred()` override shape, worker-local value mux/demux follows Java seed-reset/evaluate-per-worker behavior, and worker/stateful/fingerprint exception fields match the Java API shape.
 - Already audited recently; do not loop on `TLCGetSet` register/config/spec surfaces unless touched: direct checker counters use exact Java overflow, stats/coverage records use `IntValue.narrowToIntValue` semantics, named/integer registers use current worker id only when running inside a worker and otherwise fall back to checker worker 0, and simulator/config/statistics fields follow Java's mode split.
+- Already audited recently; do not loop on `TLCExt` hash/cache details unless touched: `TLCExt!TLCFP` is synchronized like Java, semantic node kinds use Java `ASTConstants` ids where mirrored, semantic-node hash follows `31*(31+kind)+uid`, value hash follows Java `Value.hashCode()`, and `TLCCache` state-level keys use Java's direct XOR expression.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -115,6 +116,7 @@
   - `DiskByteArrayQueue` now serializes queued states with a Java `ByteValueOutputStream`-style no-handle value stream, avoiding dummy/reference records in raw queued-state byte arrays.
   - `PossibleAction` now centralizes Java's `getPred()` override behavior in `Action.GetPred()` so possible-postcondition diagnostics report the user predicate body through the same accessor shape.
   - `TLCGet`/`TLCGetOrDefault` now mirror Java's checker register fallback: outside a worker thread, integer and named registers read checker worker 0 rather than using the state-attached worker id.
+  - `TLCExt!TLCFP` and state-level `TLCCache` keying now mirror Java's synchronized fingerprint path and direct semantic-node/value hash XOR algorithm.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

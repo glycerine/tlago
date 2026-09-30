@@ -28,7 +28,7 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 		image = name.String()
 	}
 	return &OpDefNode{
-		SemanticNodeBase: SemanticNodeBase{Image: image},
+		SemanticNodeBase: newSemanticNodeBase(SemanticUserDefinedOpKind, image),
 		Symbol:           symbol,
 		Name:             name,
 		Params:           outParams,

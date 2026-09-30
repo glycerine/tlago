@@ -98,6 +98,14 @@ func InitializeValue(value Value) Value {
 	return value
 }
 
+func ValueJavaHashCode(value Value) int32 {
+	if value == nil {
+		return 0
+	}
+	fp := value.FingerPrint(FP64New())
+	return int32(uint32(fp>>32) ^ uint32(fp))
+}
+
 type ValueExcept struct {
 	Path  []Value
 	Index int

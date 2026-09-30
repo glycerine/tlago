@@ -18,28 +18,37 @@ const (
 )
 
 const (
-	SemanticUnknownKind SemanticKind = iota
-	SemanticLabelKind
-	SemanticOpApplKind
-	SemanticLetInKind
-	SemanticSubstInKind
-	SemanticAPSubstInKind
-	SemanticNumeralKind
-	SemanticDecimalKind
-	SemanticStringKind
-	SemanticAtNodeKind
-	SemanticOpArgKind
-	SemanticValueKind
-	SemanticPossibleTrackKind
-	SemanticPossibleCheckKind
+	SemanticUnknownKind       SemanticKind = 0
+	SemanticUserDefinedOpKind SemanticKind = 5
+	SemanticOpArgKind         SemanticKind = 8
+	SemanticOpApplKind        SemanticKind = 9
+	SemanticLetInKind         SemanticKind = 10
+	SemanticSubstInKind       SemanticKind = 13
+	SemanticNumeralKind       SemanticKind = 16
+	SemanticDecimalKind       SemanticKind = 17
+	SemanticStringKind        SemanticKind = 18
+	SemanticAtNodeKind        SemanticKind = 19
+	SemanticThmOrAssumpKind   SemanticKind = 23
+	SemanticLabelKind         SemanticKind = 29
+	SemanticAPSubstInKind     SemanticKind = 30
+	SemanticValueKind         SemanticKind = 1001
+	SemanticPossibleTrackKind SemanticKind = 1002
+	SemanticPossibleCheckKind SemanticKind = 1003
 )
 
 type SemanticNodeBase struct {
 	KindValue     SemanticKind
+	uidPlusOne    int32
 	ToolObject    any
 	Image         string
 	LevelValue    int
 	LevelParamSet []*SymbolNode
+}
+
+var nextSemanticNodeUID atomic.Int32
+
+func newSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
+	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), Image: image}
 }
 
 func (n *SemanticNodeBase) Kind() SemanticKind {
@@ -47,6 +56,32 @@ func (n *SemanticNodeBase) Kind() SemanticKind {
 		return SemanticUnknownKind
 	}
 	return n.KindValue
+}
+
+func (n *SemanticNodeBase) GetUID() int32 {
+	if n == nil {
+		return -1
+	}
+	uidPlusOne := atomic.LoadInt32(&n.uidPlusOne)
+	if uidPlusOne == 0 {
+		next := nextSemanticNodeUID.Add(1)
+		if atomic.CompareAndSwapInt32(&n.uidPlusOne, 0, next) {
+			uidPlusOne = next
+		} else {
+			uidPlusOne = atomic.LoadInt32(&n.uidPlusOne)
+		}
+	}
+	return uidPlusOne - 1
+}
+
+func (n *SemanticNodeBase) JavaHashCode() int32 {
+	if n == nil {
+		return 0
+	}
+	result := int32(1)
+	result = 31*result + int32(n.Kind())
+	result = 31*result + n.GetUID()
+	return result
 }
 
 func (n *SemanticNodeBase) GetToolObject() any {
@@ -202,7 +237,7 @@ type LabelNode struct {
 }
 
 func NewLabelNode(body SemanticNode) *LabelNode {
-	return &LabelNode{SemanticNodeBase: SemanticNodeBase{KindValue: SemanticLabelKind, Image: "label"}, Body: body}
+	return &LabelNode{SemanticNodeBase: newSemanticNodeBase(SemanticLabelKind, "label"), Body: body}
 }
 
 type OpApplNode struct {
@@ -217,7 +252,7 @@ type OpApplNode struct {
 
 func NewOpApplNode(operator *SymbolNode, args ...SemanticNode) *OpApplNode {
 	out := &OpApplNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticOpApplKind},
+		SemanticNodeBase: newSemanticNodeBase(SemanticOpApplKind, ""),
 		Operator:         operator,
 		Args:             append([]SemanticNode(nil), args...),
 	}
@@ -253,7 +288,7 @@ type LetBinding struct {
 
 func NewLetInNode(body SemanticNode, lets ...*OpDefNode) *LetInNode {
 	return &LetInNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticLetInKind, Image: "LET"},
+		SemanticNodeBase: newSemanticNodeBase(SemanticLetInKind, "LET"),
 		Lets:             append([]*OpDefNode(nil), lets...),
 		Body:             body,
 	}
@@ -294,7 +329,7 @@ type SubstInNode struct {
 
 func NewSubstInNode(body SemanticNode, substs ...Subst) *SubstInNode {
 	return &SubstInNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticSubstInKind, Image: "subst"},
+		SemanticNodeBase: newSemanticNodeBase(SemanticSubstInKind, "subst"),
 		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
@@ -308,7 +343,7 @@ type APSubstInNode struct {
 
 func NewAPSubstInNode(body SemanticNode, substs ...Subst) *APSubstInNode {
 	return &APSubstInNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticAPSubstInKind, Image: "ap-subst"},
+		SemanticNodeBase: newSemanticNodeBase(SemanticAPSubstInKind, "ap-subst"),
 		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
@@ -320,8 +355,10 @@ type ValueNode struct {
 }
 
 func NewValueNode(value Value) *ValueNode {
+	base := newSemanticNodeBase(SemanticValueKind, semanticValueString(value))
+	base.ToolObject = value
 	return &ValueNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticValueKind, ToolObject: value, Image: semanticValueString(value)},
+		SemanticNodeBase: base,
 		Value:            value,
 	}
 }
@@ -333,8 +370,10 @@ type NumeralNode struct {
 
 func NewNumeralNode(value int32) *NumeralNode {
 	intValue := NewIntValue(value)
+	base := newSemanticNodeBase(SemanticNumeralKind, strconv.FormatInt(int64(value), 10))
+	base.ToolObject = intValue
 	return &NumeralNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticNumeralKind, ToolObject: intValue, Image: strconv.FormatInt(int64(value), 10)},
+		SemanticNodeBase: base,
 		Value:            intValue,
 	}
 }
@@ -345,8 +384,10 @@ type DecimalNode struct {
 }
 
 func NewDecimalNode(value Value, image string) *DecimalNode {
+	base := newSemanticNodeBase(SemanticDecimalKind, image)
+	base.ToolObject = value
 	return &DecimalNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticDecimalKind, ToolObject: value, Image: image},
+		SemanticNodeBase: base,
 		Value:            value,
 	}
 }
@@ -358,8 +399,10 @@ type StringNode struct {
 
 func NewStringNode(value string) *StringNode {
 	stringValue := NewStringValue(value)
+	base := newSemanticNodeBase(SemanticStringKind, strconv.Quote(value))
+	base.ToolObject = stringValue
 	return &StringNode{
-		SemanticNodeBase: SemanticNodeBase{KindValue: SemanticStringKind, ToolObject: stringValue, Image: strconv.Quote(value)},
+		SemanticNodeBase: base,
 		Value:            stringValue,
 	}
 }
@@ -369,7 +412,7 @@ type AtNode struct {
 }
 
 func NewAtNode() *AtNode {
-	return &AtNode{SemanticNodeBase: SemanticNodeBase{KindValue: SemanticAtNodeKind, Image: "@"}}
+	return &AtNode{SemanticNodeBase: newSemanticNodeBase(SemanticAtNodeKind, "@")}
 }
 
 type OpArgNode struct {
@@ -378,7 +421,7 @@ type OpArgNode struct {
 }
 
 func NewOpArgNode(op *SymbolNode) *OpArgNode {
-	return &OpArgNode{SemanticNodeBase: SemanticNodeBase{KindValue: SemanticOpArgKind, Image: op.String()}, Op: op}
+	return &OpArgNode{SemanticNodeBase: newSemanticNodeBase(SemanticOpArgKind, op.String()), Op: op}
 }
 
 type PossibleTrackNode struct {
@@ -388,14 +431,12 @@ type PossibleTrackNode struct {
 }
 
 func NewPossibleTrackNode(pred SemanticNode, name string) *PossibleTrackNode {
+	base := newSemanticNodeBase(SemanticPossibleTrackKind, "_Possible!_Track("+name+")")
+	base.LevelValue = SemanticLevel(pred)
 	out := &PossibleTrackNode{
-		SemanticNodeBase: SemanticNodeBase{
-			KindValue:  SemanticPossibleTrackKind,
-			Image:      "_Possible!_Track(" + name + ")",
-			LevelValue: SemanticLevel(pred),
-		},
-		Pred: pred,
-		Name: name,
+		SemanticNodeBase: base,
+		Pred:             pred,
+		Name:             name,
 	}
 	out.SetLevelParams(SemanticLevelParams(pred)...)
 	return out
@@ -407,13 +448,11 @@ type PossibleCheckNode struct {
 }
 
 func NewPossibleCheckNode(name string) *PossibleCheckNode {
+	base := newSemanticNodeBase(SemanticPossibleCheckKind, "_Possible!_CheckName("+name+")")
+	base.LevelValue = TLCLevelConstant
 	return &PossibleCheckNode{
-		SemanticNodeBase: SemanticNodeBase{
-			KindValue:  SemanticPossibleCheckKind,
-			Image:      "_Possible!_CheckName(" + name + ")",
-			LevelValue: TLCLevelConstant,
-		},
-		Name: name,
+		SemanticNodeBase: base,
+		Name:             name,
 	}
 }
 
@@ -438,6 +477,8 @@ func SemanticKindOf(node SemanticNode) SemanticKind {
 	switch n := node.(type) {
 	case nil:
 		return SemanticUnknownKind
+	case *OpDefNode:
+		return SemanticUserDefinedOpKind
 	case *LabelNode:
 		return SemanticLabelKind
 	case *OpApplNode:
@@ -469,6 +510,28 @@ func SemanticKindOf(node SemanticNode) SemanticKind {
 	default:
 		return SemanticUnknownKind
 	}
+}
+
+func SemanticJavaHashCode(node SemanticNode) int32 {
+	if node == nil {
+		return 0
+	}
+	if h, ok := node.(interface{ JavaHashCode() int32 }); ok {
+		return h.JavaHashCode()
+	}
+	if n, ok := node.(interface {
+		Kind() SemanticKind
+		GetUID() int32
+	}); ok {
+		result := int32(1)
+		result = 31*result + int32(n.Kind())
+		result = 31*result + n.GetUID()
+		return result
+	}
+	result := int32(1)
+	result = 31*result + int32(SemanticKindOf(node))
+	result = 31 * result
+	return result
 }
 
 func SemanticToolObject(node SemanticNode) any {

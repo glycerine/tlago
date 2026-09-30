@@ -463,12 +463,7 @@ func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 }
 
 func standardTLCCacheKey(expr SemanticNode, closure SemanticNode, key Value) int {
-	fp := FP64NewString(SemanticString(expr))
-	fp = FP64ExtendString(fp, SemanticString(closure))
-	if key != nil {
-		fp = key.FingerPrint(fp)
-	}
-	return int(FP64Hash(fp))
+	return int(SemanticJavaHashCode(expr) ^ SemanticJavaHashCode(closure) ^ ValueJavaHashCode(key))
 }
 
 func standardTLCEvalDefinition(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
