@@ -742,6 +742,12 @@ It is optimized for model checking:
   checkers or simulators. The order is important: first select the symmetry
   representative, then fingerprint either the raw representative values or the
   value produced by evaluating VIEW on that representative.
+- Configured `SYMMETRY` is not only a boolean flag. Java evaluates the named
+  zero-arity operator from the unprocessed definition table, evaluates its body
+  with the processed constant environment, and installs the concrete
+  `MVPerms.permutationSubgroup` result before fingerprints are taken. Go mirrors
+  this in `SpecProcessor.processConfigSymmetry`, leaving `HasSymmetry` config
+  based while `GetSymmetryPerms` returns only the concrete installed subgroup.
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.
 - `setPredecessor` is also the level increment path. Java fails with

@@ -395,6 +395,8 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.Periodic = p.Periodic
 	tool.ViewSpec = p.ViewSpec
 	tool.AliasSpec = p.AliasNode
+	p.processConfigSymmetry(tool)
+	tool.ConfigErrors = append([]*ConfigError(nil), p.ConfigErrors...)
 	tool.AssignActionIDs()
 }
 
@@ -753,6 +755,51 @@ func (p *SpecProcessor) processConfigPossible() {
 		}
 		p.PossiblePostConds = append(p.PossiblePostConds, NewPossibleAction(NewPossibleCheckNode(name), EmptyContext, def))
 	}
+}
+
+func (p *SpecProcessor) processConfigSymmetry(tool *Tool) {
+	if p == nil || p.Config == nil || tool == nil {
+		return
+	}
+	name := p.Config.GetSymmetry()
+	if name == "" {
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	def, ok := p.defnFrom(p.preConstantDefinitions(), name).(*OpDefNode)
+	if !ok || def == nil {
+		p.addConfigError(ECTLCConfigSpecifiedNotDefined, "symmetry function", name)
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	if def.Arity() != 0 {
+		p.addConfigError(ECTLCConfigIDRequiresNoArg, name)
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	if def.Body == nil {
+		p.addConfigError(ECTLCConfigIDHasValue, "symmetry function", name, "a set of functions")
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	value, err := tool.Eval(def.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
+	if err != nil {
+		p.addConfigError(ECTLCConfigIDHasValue, "symmetry function", name, err.Error())
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	if _, ok := value.(*SetEnumValue); !ok {
+		p.addConfigError(ECTLCConfigIDHasValue, "symmetry function", name, "a set of functions")
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	perms, err := PermutationSubgroup(value)
+	if err != nil {
+		p.addConfigError(ECTLCConfigIDHasValue, "symmetry function", name, err.Error())
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
+	tool.SetSymmetryPermutations(perms)
 }
 
 func (p *SpecProcessor) processMissingInitNextConfig() {
