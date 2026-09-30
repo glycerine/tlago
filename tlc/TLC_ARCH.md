@@ -639,6 +639,9 @@ It is optimized for model checking:
   value produced by evaluating VIEW on that representative.
 - `TLCStateMut.toString` also honors VIEW, but only when the global `useView`
   flag is enabled; fingerprinting uses VIEW whenever the active tool has one.
+- `setPredecessor` is also the level increment path. Java fails with
+  `TLC_TRACE_TOO_LONG` when the predecessor is already at `Integer.MAX_VALUE`;
+  Go keeps the same 32-bit ceiling even on wider `int` platforms.
 
 ### `TLCStateMutExt`
 

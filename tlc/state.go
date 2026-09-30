@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"math"
 	"sort"
 	"strings"
 )
@@ -408,6 +409,9 @@ func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
 
 func (s *TLCStateMut) SetPredecessor(pred *TLCStateMut) *TLCStateMut {
 	if pred != nil {
+		if pred.level >= math.MaxInt32 {
+			panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
+		}
 		s.pred = pred
 		s.level = pred.level + 1
 	}
