@@ -10,6 +10,11 @@ var (
 	actionRecordLocation  = UniqueStringOf("location")
 	actionRecordContext   = UniqueStringOf("context")
 	actionRecordParams    = UniqueStringOf("parameters")
+	locationBeginLine     = UniqueStringOf("beginLine")
+	locationBeginColumn   = UniqueStringOf("beginColumn")
+	locationEndLine       = UniqueStringOf("endLine")
+	locationEndColumn     = UniqueStringOf("endColumn")
+	locationModule        = UniqueStringOf("module")
 )
 
 type CounterExample struct {
@@ -163,7 +168,7 @@ func actionRecordValue(a *Action, extraName *UniqueString, extraValue Value) *Re
 		a = UnknownAction
 	}
 	names := []*UniqueString{actionRecordName, actionRecordLocation}
-	values := []Value{NewStringValue(a.GetName()), NewStringValue(a.GetLocation())}
+	values := []Value{NewStringValue(a.GetName()), sourceLocationRecordValue(a.GetDefinitionLocation())}
 	if extraName != nil {
 		names = append(names, extraName)
 		values = append(values, extraValue)
@@ -182,4 +187,18 @@ func actionRecordValue(a *Action, extraName *UniqueString, extraValue Value) *Re
 		values = append(values, NewRecordValue(contextNames, contextValues, false), NewTupleValue(paramNames))
 	}
 	return NewRecordValue(names, values, false)
+}
+
+func sourceLocationRecordValue(location SourceLocation) *RecordValue {
+	return NewRecordValue(
+		[]*UniqueString{locationBeginLine, locationBeginColumn, locationEndLine, locationEndColumn, locationModule},
+		[]Value{
+			NewIntValue(int32(location.BeginLine)),
+			NewIntValue(int32(location.BeginColumn)),
+			NewIntValue(int32(location.EndLine)),
+			NewIntValue(int32(location.EndColumn)),
+			NewStringValue(location.Source),
+		},
+		false,
+	)
 }

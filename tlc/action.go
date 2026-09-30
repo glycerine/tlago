@@ -336,10 +336,20 @@ func (a *Action) GetDefinition() string {
 	if a == nil {
 		return ""
 	}
-	if loc, ok := semanticNodeSourceLocation(a.Pred); ok && !loc.IsNull() {
+	if loc := a.GetDefinitionLocation(); !loc.IsNull() {
 		return loc.String()
 	}
 	return SemanticString(a.Pred)
+}
+
+func (a *Action) GetDefinitionLocation() SourceLocation {
+	if a == nil {
+		return NullSourceLocation
+	}
+	if loc, ok := semanticNodeSourceLocation(a.Pred); ok {
+		return loc
+	}
+	return NullSourceLocation
 }
 
 func (a *Action) GetParameters() *InsMap[*UniqueString, Value] {
