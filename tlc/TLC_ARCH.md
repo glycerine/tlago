@@ -51,7 +51,9 @@ Top-level source package sizes:
   `tlc2.tool.queue.DiskStateQueue.BufSize` property, defaulting to 8192.
 - FPSet construction follows Java properties through the central property map:
   `tlc2.tool.fp.FPSet.impl`, `tlc2.tool.fp.DiskFPSet.logLockCnt`, and
-  `tlc2.tool.fp.OffHeapDiskFPSet.probeLimit`.
+  `tlc2.tool.fp.OffHeapDiskFPSet.probeLimit`. Disk fingerprint sets also
+  honor `tlc2.tool.fp.DiskFPSet.metadirPrefix` and
+  `tlc2.tool.fp.DiskFPSet.error2warning`.
 - Tableau construction mirrors Java's debug export hook:
   `tlc2.tool.liveness.Liveness.tableauExportPath` writes `TBGraph` DOT output.
 - Coverage cost-model creation mirrors

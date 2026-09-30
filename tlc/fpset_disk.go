@@ -14,19 +14,21 @@ import (
 )
 
 const (
-	diskFPSetMarkFlushed          = uint64(0x8000000000000000)
-	diskFPSetFlushedMask          = uint64(0x7fffffffffffffff)
-	diskFPSetLogMaxLoad           = 4
-	diskFPSetInitialBucketCap     = 1 << diskFPSetLogMaxLoad
-	diskFPSetNumEntriesPerPage    = 8192 / fpSetLongSize
-	diskFPSetBucketSizeIncrement  = 4
-	diskFPSetLogDefaultMaxTblCnt  = 19
-	diskFPSetDefaultMaxTblCnt     = 1 << diskFPSetLogDefaultMaxTblCnt
-	diskFPSetModeLSB              = "lsb"
-	diskFPSetModeMSB              = "msb"
-	diskFPSetDefaultWorkerReaders = 1
-	diskFPSetBRAFPoolSize         = 5
-	DiskFPSetLogLockCntProperty   = "tlc2.tool.fp.DiskFPSet.logLockCnt"
+	diskFPSetMarkFlushed           = uint64(0x8000000000000000)
+	diskFPSetFlushedMask           = uint64(0x7fffffffffffffff)
+	diskFPSetLogMaxLoad            = 4
+	diskFPSetInitialBucketCap      = 1 << diskFPSetLogMaxLoad
+	diskFPSetNumEntriesPerPage     = 8192 / fpSetLongSize
+	diskFPSetBucketSizeIncrement   = 4
+	diskFPSetLogDefaultMaxTblCnt   = 19
+	diskFPSetDefaultMaxTblCnt      = 1 << diskFPSetLogDefaultMaxTblCnt
+	diskFPSetModeLSB               = "lsb"
+	diskFPSetModeMSB               = "msb"
+	diskFPSetDefaultWorkerReaders  = 1
+	diskFPSetBRAFPoolSize          = 5
+	DiskFPSetLogLockCntProperty    = "tlc2.tool.fp.DiskFPSet.logLockCnt"
+	DiskFPSetMetadirPrefixProperty = "tlc2.tool.fp.DiskFPSet.metadirPrefix"
+	DiskFPSetError2WarningProperty = "tlc2.tool.fp.DiskFPSet.error2warning"
 )
 
 type DiskFPSet struct {
@@ -203,13 +205,30 @@ func diskFPSetLockCount() int {
 	return 1 << uint(logLockCnt)
 }
 
+func diskFPSetMetadir(metadir string) string {
+	if prefix, ok := tlcLookupSystemProperty(DiskFPSetMetadirPrefixProperty); ok {
+		if filepath.IsAbs(metadir) {
+			metadir = filepath.Base(metadir)
+		}
+		return filepath.Join(prefix, metadir)
+	}
+	return metadir
+}
+
+func diskFPSetError2Warning() bool {
+	if value, ok := tlcLookupSystemProperty(DiskFPSetError2WarningProperty); ok {
+		return javaBooleanProperty(value)
+	}
+	return false
+}
+
 func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if numThreads <= 0 {
 		numThreads = diskFPSetDefaultWorkerReaders
 	}
-	s.metadir = metadir
+	s.metadir = diskFPSetMetadir(metadir)
 	s.filename = filename
 	if s.metadir == "" {
 		s.metadir = filepath.Join(os.TempDir(), "DiskFPSet")
@@ -460,6 +479,10 @@ func (s *DiskFPSet) RecoverFP(fp uint64) error {
 	defer s.mu.Unlock()
 	fp0 := fp & diskFPSetFlushedMask
 	if s.memInsert(fp0) {
+		if diskFPSetError2Warning() {
+			PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
+			return nil
+		}
 		return fmt.Errorf("duplicate fingerprint %d during DiskFPSet recovery", fp0)
 	}
 	if s.needsDiskFlush() {
