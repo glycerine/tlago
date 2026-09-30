@@ -77,6 +77,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 		case arg == "-simulate" || arg == "-generate":
 			if arg == "-generate" {
 				opts.Probabilistic = true
+				tlcSetSystemProperty(toolProbabilisticProperty, "true")
 			}
 			opts.Mode = RunModeSimulate
 			index++

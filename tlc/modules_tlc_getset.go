@@ -510,6 +510,9 @@ func tlcSetSystemProperty(name string, value string) {
 	if name == actionCompositionProperty {
 		Globals.Cdot = javaBooleanProperty(value)
 	}
+	if name == toolProbabilisticProperty {
+		Globals.Probabilistic = javaBooleanProperty(value)
+	}
 }
 
 func actionCompositionEnabled() bool {
@@ -521,6 +524,13 @@ func actionCompositionEnabled() bool {
 
 func javaBooleanProperty(value string) bool {
 	return strings.EqualFold(value, "true")
+}
+
+func toolProbabilisticEnabled() bool {
+	if value, ok := tlcLookupSystemProperty(toolProbabilisticProperty); ok {
+		return javaBooleanProperty(value)
+	}
+	return Globals.Probabilistic
 }
 
 func intValueFromDurationSince(start time.Time) *IntValue {

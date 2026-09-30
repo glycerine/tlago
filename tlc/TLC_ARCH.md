@@ -597,6 +597,14 @@ Key semantics:
   concrete `NextStateFunctor`, and stamps the original predecessor/action on
   `u`. The predicate-evaluation path intentionally starts from a fresh empty
   intermediate state, matching Java's `TLCState.Empty.createEmpty()` comment.
+- Java `-generate` sets `tlc2.tool.impl.Tool.probabilistic=true`. In that
+  mode, next-state generation randomizes disjunction order with the simulator
+  RNG's `nextDouble` start index and `nextPrime` stride, randomizes bounded
+  existential and assignment enumeration, and returns as soon as the next-state
+  functor reports that a successor exists. If no successor is found in the
+  randomized pass for assignments, Java falls back to ordinary sequential
+  enumeration. `CASE` in the next-state relation remains deliberately
+  unsupported in probabilistic mode.
 - A complete state must assign every declared variable.
 - `isGoodState` detects incomplete or illegal states.
 - Model constraints and action constraints filter states but do not replace

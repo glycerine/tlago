@@ -3,6 +3,7 @@ package tlc
 const (
 	actionCompositionProperty           = "tlc2.tool.impl.Tool.cdot"
 	actionCompositionUnsupportedMessage = "The current version of TLC does not support action composition.  An incomplete implementation can be enabled via the tlc2.tool.impl.Tool.cdot=true java property."
+	toolProbabilisticProperty           = "tlc2.tool.impl.Tool.probabilistic"
 )
 
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
@@ -391,6 +392,7 @@ func (t *Tool) GetNextStatesImpl(action *Action, state *TLCStateMut) (*StateVec,
 		nss.Add(succ)
 		return nil, nil
 	})
+	functor.HasStatesFunc = nss.HasStates
 	s1 := NewEmptyState().SetPredecessor(state).SetAction(action)
 	_, err := t.GetNextStatesForPredicate(action, action.Pred, EmptyActionItemList, action.Con, state, s1, functor, action.CM)
 	return nss, err
@@ -597,6 +599,23 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 			return s1, nil
 		}
 		res := s1
+		if toolProbabilisticEnabled() {
+			rng := probabilisticRandomGenerator()
+			index := int(rng.NextDouble() * float64(len(args)))
+			stride := rng.NextPrime()
+			for i := 0; i < len(args); i++ {
+				next, err := t.GetNextStatesForPredicate(action, args[index], acts, c, s0, res, nss, cm)
+				if err != nil {
+					return res, err
+				}
+				res = next
+				if nss.HasStates() {
+					return res, nil
+				}
+				index = (index + stride) % len(args)
+			}
+			return res, nil
+		}
 		for _, arg := range args {
 			next, err := t.GetNextStatesForPredicate(action, arg, acts, c, s0, res, nss, cm)
 			if err != nil {
@@ -701,8 +720,16 @@ func (t *Tool) actionCompositionIntermediateStates(action *Action, pred Semantic
 		intermediate.Add(state)
 		return intermediate, nil
 	})
+	collector.HasStatesFunc = intermediate.HasStates
 	res, err := t.GetNextStatesForPredicate(action, pred, acts, c, s0, s1, collector, cm)
 	return intermediate, res, err
+}
+
+func probabilisticRandomGenerator() *JavaRandom {
+	if simulator := CurrentSimulator(); simulator != nil && simulator.Rand != nil {
+		return simulator.Rand
+	}
+	return RandomEnumerableGenerator()
 }
 
 func (t *Tool) nextActionComposition(action *Action, args []SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
@@ -759,7 +786,13 @@ func (t *Tool) nextFcnApply(action *Action, pred *OpApplNode, acts *ActionItemLi
 }
 
 func (t *Tool) nextBoundedExists(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
-	enum, err := t.Contexts(pred, c, s0, s1, EvalClear, cm)
+	var enum *ContextEnumerator
+	var err error
+	if toolProbabilisticEnabled() {
+		enum, err = t.ContextsRandomized(pred, c, s0, s1, EvalClear, cm)
+	} else {
+		enum, err = t.Contexts(pred, c, s0, s1, EvalClear, cm)
+	}
 	if err != nil {
 		return s1, err
 	}
@@ -770,6 +803,9 @@ func (t *Tool) nextBoundedExists(action *Action, pred *OpApplNode, acts *ActionI
 			return res, err
 		}
 		res = next
+		if toolProbabilisticEnabled() && nss.HasStates() {
+			return res, nil
+		}
 	}
 	return res, enum.Err()
 }
@@ -794,6 +830,9 @@ func (t *Tool) nextBoundedForall(action *Action, pred *OpApplNode, acts *ActionI
 }
 
 func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+	if toolProbabilisticEnabled() {
+		return s1, newTLCError(ECGeneral, "Probabilistic evaluation of next-state relation not implemented for CASE yet.")
+	}
 	var other SemanticNode
 	for _, arg := range pred.Args {
 		pair, ok := arg.(*OpApplNode)
@@ -891,6 +930,27 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 		return s1, newTLCError(ECGeneral, "right side of \\in is not enumerable while assigning %s'", varName)
 	}
 	res := s1
+	if toolProbabilisticEnabled() {
+		enum, err := randomizedValueEnumeration(enumerable)
+		if err != nil {
+			return res, err
+		}
+		for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+			res.Bind(varName, elem)
+			next, err := t.GetNextStatesFromActionList(action, acts, s0, res, nss, cm)
+			res.Unbind(varName)
+			if err != nil {
+				return res, err
+			}
+			res = next
+			if nss.HasStates() {
+				return res, nil
+			}
+		}
+		if err := enum.Err(); err != nil {
+			return res, err
+		}
+	}
 	enum := enumerable.Elements()
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
 		res.Bind(varName, elem)

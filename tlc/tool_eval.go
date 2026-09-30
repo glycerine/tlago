@@ -693,6 +693,14 @@ func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
 }
 
 func (t *Tool) Contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*ContextEnumerator, error) {
+	return t.contexts(expr, c, s0, s1, control, cm, false)
+}
+
+func (t *Tool) ContextsRandomized(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*ContextEnumerator, error) {
+	return t.contexts(expr, c, s0, s1, control, cm, true)
+}
+
+func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, randomized bool) (*ContextEnumerator, error) {
 	vars := make([]any, len(expr.BdedQuantBounds))
 	enums := make([]ValueEnumeration, len(expr.BdedQuantBounds))
 	for i, bound := range expr.BdedQuantBounds {
@@ -711,7 +719,15 @@ func (t *Tool) Contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		} else {
 			return nil, newTLCError(ECGeneral, "bounded quantifier has no bound variables")
 		}
-		enums[i] = enumerable.Elements()
+		if randomized {
+			enum, err := randomizedValueEnumeration(enumerable)
+			if err != nil {
+				return nil, err
+			}
+			enums[i] = enum
+		} else {
+			enums[i] = enumerable.Elements()
+		}
 	}
 	return NewContextEnumerator(vars, enums, c), nil
 }

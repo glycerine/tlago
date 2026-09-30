@@ -701,3 +701,20 @@ func (e *sliceValueEnumeration) NextElement() Value {
 func (e *sliceValueEnumeration) Err() error {
 	return nil
 }
+
+func randomizedValueEnumeration(enumerable Enumerable) (ValueEnumeration, error) {
+	enum := enumerable.Elements()
+	values := make([]Value, 0)
+	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+		values = append(values, elem)
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	perm := RandomEnumerableGenerator().Perm(len(values))
+	randomized := make([]Value, len(values))
+	for i, idx := range perm {
+		randomized[i] = values[idx]
+	}
+	return &sliceValueEnumeration{values: randomized}, nil
+}
