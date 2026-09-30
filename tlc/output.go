@@ -423,6 +423,22 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])
 		}
+	case ECTLCModuleOverflow:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Overflow when computing %s", params[0])
+		}
+	case ECTLCModuleArgumentError:
+		if len(params) >= 4 {
+			return fmt.Sprintf("The %s argument of %s should be a %s, but instead it is:\n%s", params[0], params[1], params[2], params[3])
+		}
+	case ECTLCModuleArgumentErrorAn:
+		if len(params) >= 4 {
+			return fmt.Sprintf("The %s argument of %s should be an %s, but instead it is:\n%s", params[0], params[1], params[2], params[3])
+		}
+	case ECTLCModuleDivisionByZero:
+		return "The second argument of \\div is 0."
+	case ECTLCModuleNullPowerNull:
+		return "0^0 is undefined."
 	case ECTLCModuleCompareValue:
 		if len(params) >= 2 {
 			return fmt.Sprintf("Attempted to compare %s with the value\n%s", params[0], params[1])

@@ -1,6 +1,9 @@
 package tlc
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 var (
 	NatValue    = NewUserValue(naturalsObj{})
@@ -13,7 +16,7 @@ func Int() Value { return IntValueSet }
 func NatPlus(x, y *IntValue) (*IntValue, error) {
 	res := int64(x.Val) + int64(y.Val)
 	if res < math.MinInt32 || res > math.MaxInt32 {
-		return nil, newTLCError(ECGeneral, "integer overflow in %d+%d", x.Val, y.Val)
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, fmt.Sprintf("%d+%d", x.Val, y.Val))
 	}
 	return NewIntValue(int32(res)), nil
 }
@@ -21,7 +24,7 @@ func NatPlus(x, y *IntValue) (*IntValue, error) {
 func NatMinus(x, y *IntValue) (*IntValue, error) {
 	res := int64(x.Val) - int64(y.Val)
 	if res < math.MinInt32 || res > math.MaxInt32 {
-		return nil, newTLCError(ECGeneral, "integer overflow in %d-%d", x.Val, y.Val)
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, fmt.Sprintf("%d-%d", x.Val, y.Val))
 	}
 	return NewIntValue(int32(res)), nil
 }
@@ -29,7 +32,7 @@ func NatMinus(x, y *IntValue) (*IntValue, error) {
 func NatTimes(x, y *IntValue) (*IntValue, error) {
 	res := int64(x.Val) * int64(y.Val)
 	if res < math.MinInt32 || res > math.MaxInt32 {
-		return nil, newTLCError(ECGeneral, "integer overflow in %d*%d", x.Val, y.Val)
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, fmt.Sprintf("%d*%d", x.Val, y.Val))
 	}
 	return NewIntValue(int32(res)), nil
 }
@@ -38,13 +41,13 @@ func NatLT(x, y Value) (*BoolValue, error) {
 	return intComparison("<", x, y, func(a, b int32) bool { return a < b })
 }
 func NatLE(x, y Value) (*BoolValue, error) {
-	return intComparison("\\leq", x, y, func(a, b int32) bool { return a <= b })
+	return intComparison("<=", x, y, func(a, b int32) bool { return a <= b })
 }
 func NatGT(x, y Value) (*BoolValue, error) {
 	return intComparison(">", x, y, func(a, b int32) bool { return a > b })
 }
 func NatGEQ(x, y Value) (*BoolValue, error) {
-	return intComparison("\\geq", x, y, func(a, b int32) bool { return a >= b })
+	return intComparison(">=", x, y, func(a, b int32) bool { return a >= b })
 }
 
 func DotDot(x, y *IntValue) *IntervalValue {
@@ -53,14 +56,14 @@ func DotDot(x, y *IntValue) *IntervalValue {
 
 func IntNeg(x *IntValue) (*IntValue, error) {
 	if x.Val == math.MinInt32 {
-		return nil, newTLCError(ECGeneral, "integer overflow in --2147483648")
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, "--2147483648")
 	}
 	return NewIntValue(-x.Val), nil
 }
 
 func NatDivide(x, y *IntValue) (*IntValue, error) {
 	if y.Val == 0 {
-		return nil, newTLCError(ECGeneral, "division by zero")
+		return nil, newTLCErrorCode(ECTLCModuleDivisionByZero)
 	}
 	q := x.Val / y.Val
 	if q < 0 && q*y.Val != x.Val {
@@ -71,10 +74,10 @@ func NatDivide(x, y *IntValue) (*IntValue, error) {
 
 func IntDivide(x, y *IntValue) (*IntValue, error) {
 	if y.Val == 0 {
-		return nil, newTLCError(ECGeneral, "division by zero")
+		return nil, newTLCErrorCode(ECTLCModuleDivisionByZero)
 	}
 	if x.Val == math.MinInt32 && y.Val == -1 {
-		return nil, newTLCError(ECGeneral, "integer overflow in -2147483648 \\div -1")
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, "-2147483648 \\div -1")
 	}
 	q := x.Val / y.Val
 	if ((x.Val < 0 && y.Val > 0) || (x.Val > 0 && y.Val < 0)) && q*y.Val != x.Val {
@@ -85,7 +88,7 @@ func IntDivide(x, y *IntValue) (*IntValue, error) {
 
 func NatMod(x, y *IntValue) (*IntValue, error) {
 	if y.Val <= 0 {
-		return nil, newTLCError(ECGeneral, "second argument of %% must be a positive number, got %s", y)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "%", "positive number", y.String())
 	}
 	r := x.Val % y.Val
 	if r < 0 {
@@ -96,11 +99,11 @@ func NatMod(x, y *IntValue) (*IntValue, error) {
 
 func NatExpt(x, y *IntValue) (*IntValue, error) {
 	if y.Val < 0 {
-		return nil, newTLCError(ECGeneral, "second argument of ^ must be a natural number, got %s", y)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "^", "natural number", y.String())
 	}
 	if y.Val == 0 {
 		if x.Val == 0 {
-			return nil, newTLCError(ECGeneral, "0^0 is undefined")
+			return nil, newTLCErrorCode(ECTLCModuleNullPowerNull)
 		}
 		return IntOne, nil
 	}
@@ -108,7 +111,7 @@ func NatExpt(x, y *IntValue) (*IntValue, error) {
 	for i := int32(1); i < y.Val; i++ {
 		res *= int64(x.Val)
 		if res < math.MinInt32 || res > math.MaxInt32 {
-			return nil, newTLCError(ECGeneral, "integer overflow in %d^%d", x.Val, y.Val)
+			return nil, newTLCErrorCode(ECTLCModuleOverflow, fmt.Sprintf("%d^%d", x.Val, y.Val))
 		}
 	}
 	return NewIntValue(int32(res)), nil
@@ -117,11 +120,11 @@ func NatExpt(x, y *IntValue) (*IntValue, error) {
 func intComparison(op string, x, y Value, cmp func(int32, int32) bool) (*BoolValue, error) {
 	ix, ok := x.(*IntValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "first argument of %s must be an integer, got %s", op, x)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "first", op, "integer", ValuesPPR(x))
 	}
 	iy, ok := y.(*IntValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "second argument of %s must be an integer, got %s", op, y)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentErrorAn, "second", op, "integer", ValuesPPR(y))
 	}
 	return NewBoolValue(cmp(ix.Val, iy.Val)), nil
 }
@@ -140,7 +143,7 @@ func (naturalsObj) Compare(val Value) (int, error) {
 	if _, ok := val.(*ModelValue); ok {
 		return 1, nil
 	}
-	return 0, newTLCError(ECGeneral, "attempted to compare Nat with %s", val)
+	return 0, newTLCErrorCode(ECTLCModuleCompareValue, "Nat", ValuesPPR(val))
 }
 
 func (naturalsObj) Member(val Value) (bool, error) {
@@ -150,7 +153,7 @@ func (naturalsObj) Member(val Value) (bool, error) {
 	if mv, ok := val.(*ModelValue); ok {
 		return mv.modelValueMember(NatValue)
 	}
-	return false, newTLCError(ECGeneral, "attempted to check if %s is in Nat", val)
+	return false, newTLCErrorCode(ECTLCModuleCheckMemberOf, ValuesPPR(val), "Nat")
 }
 
 func (naturalsObj) IsFinite() (bool, error) { return false, nil }
@@ -171,7 +174,7 @@ func (integersObj) Compare(val Value) (int, error) {
 	if _, ok := val.(*ModelValue); ok {
 		return 1, nil
 	}
-	return 0, newTLCError(ECGeneral, "attempted to compare Int with %s", val)
+	return 0, newTLCErrorCode(ECTLCModuleCompareValue, "Int", ValuesPPR(val))
 }
 
 func (integersObj) Member(val Value) (bool, error) {
@@ -181,7 +184,7 @@ func (integersObj) Member(val Value) (bool, error) {
 	if mv, ok := val.(*ModelValue); ok {
 		return mv.modelValueMember(IntValueSet)
 	}
-	return false, newTLCError(ECGeneral, "attempted to check if %s is in Int", val)
+	return false, newTLCErrorCode(ECTLCModuleCheckMemberOf, ValuesPPR(val), "Int")
 }
 
 func (integersObj) IsFinite() (bool, error) { return false, nil }

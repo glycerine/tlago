@@ -1733,7 +1733,12 @@ throws `TLC_MODULE_COMPUTING_CARDINALITY` for non-enumerable values, `STRING`
 membership failures throw `TLC_MODULE_CHECK_MEMBER_OF`, and `STRING`/`ANY`
 comparison failures throw `TLC_MODULE_COMPARE_VALUE`. These are observable
 through error reporting and debugger paths, so avoid replacing them with generic
-Go errors while porting module code.
+Go errors while porting module code. The numeric modules follow the same rule:
+arithmetic overflow uses `TLC_MODULE_OVERFLOW`, `\div` by zero uses
+`TLC_MODULE_DIVISION_BY_ZERO`, `0^0` uses `TLC_MODULE_NULL_POWER_NULL`, invalid
+`%`/`^` arguments use `TLC_MODULE_ARGUMENT_ERROR`, comparison type errors use
+`TLC_MODULE_ARGUMENT_ERROR_AN`, and `Nat`/`Int` membership/compare failures use
+the same module membership/compare codes as Java.
 
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
