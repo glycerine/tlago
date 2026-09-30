@@ -962,10 +962,12 @@ Important behavior:
   repair predecessor links, while `getUncompressedTrace` preserves the raw
   predecessor chain.
 - Java has `SimulationWorker`, `ExplorationWorker`, `RLSimulationWorker`, and
-  `RLActionSimulationWorker`. The Go port keeps debugger simulation behind a
-  concrete `debug bool` on `SimulationWorker`; RL variants are concrete
-  `SimulationWorkerMode` values and fields on the same struct. RL modes keep
-  the Java Q-table shape `Action -> state/action hash -> value`.
+  `RLActionSimulationWorker`. The Go port keeps these as concrete
+  `SimulationWorkerMode` values and fields on the same `SimulationWorker`
+  struct. `SimulationWorkerExplore` mirrors Java `ExplorationWorker`: generate
+  all successors through the next-state functor, randomly select one successor,
+  execute deferred callables, and perform liveness/post-trace checks. RL modes
+  keep the Java Q-table shape `Action -> state/action hash -> value`.
 - Some errors are non-continuable even in continuation-like modes.
 
 Port guidance:
@@ -1311,9 +1313,10 @@ Port guidance:
   not require a second state model later.
 - Keep debugger structures concrete. Do not port Java's `IDebugTarget` as a Go
   interface unless a second real implementation appears.
-- Simulation debugging attaches only one worker. Non-attached workers should use
-  `Tool.NoDebug()`; a simple private `debug bool` on `SimulationWorker` is
-  sufficient.
+- Simulation debugging attaches only one worker to the debugger, but Java still
+  uses `ExplorationWorker` for every simulator worker when `tool.isDebugger()`
+  is true. In Go this means every worker runs `SimulationWorkerExplore`; worker
+  0 keeps `debug bool=true` and other workers use `Tool.NoDebug()`.
 
 ## Distributed TLC Architecture
 

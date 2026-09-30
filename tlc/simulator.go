@@ -316,9 +316,10 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 }
 
 func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
-	debug := s.Tool != nil && id == 0 && s.Tool.IsDebugger()
+	debugger := s.Tool != nil && s.Tool.IsDebugger()
+	debug := debugger && id == 0
 	workerTool := s.Tool
-	if s.Tool != nil && id != 0 && s.Tool.IsDebugger() {
+	if debugger && id != 0 {
 		workerTool = s.Tool.NoDebug()
 	}
 	worker := NewSimulationWorker(
@@ -337,7 +338,11 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 		&s.NumGenTraces,
 		&s.WelfordM2Mean,
 	)
-	worker.SetMode(s.WorkerMode)
+	mode := s.WorkerMode
+	if debugger {
+		mode = SimulationWorkerExplore
+	}
+	worker.SetMode(mode)
 	worker.RLAlpha = simulatorPropertyFloat("tlc2.tool.Simulator.rl.alpha", "TLAGO_SIMULATOR_RL_ALPHA", 0.3)
 	worker.RLGamma = simulatorPropertyFloat("tlc2.tool.Simulator.rl.gamma", "TLAGO_SIMULATOR_RL_GAMMA", 0.7)
 	worker.RLReward = simulatorPropertyFloat("tlc2.tool.Simulator.rl.reward", "TLAGO_SIMULATOR_RL_REWARD", -10)
