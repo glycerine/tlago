@@ -310,14 +310,6 @@ func (q *MemStateQueue) grow() {
 	q.start = 0
 }
 
-type DiskStateQueue struct {
-	*MemStateQueue
-}
-
-func NewDiskStateQueue(metaDir string) *DiskStateQueue {
-	return &DiskStateQueue{MemStateQueue: NewMemStateQueue(metaDir)}
-}
-
 type DiskByteArrayQueue struct {
 	*MemStateQueue
 }
