@@ -170,6 +170,11 @@ Port guidance:
   `Visualization.STUTTERING` hint; an ordinary self-loop is still an ordinary
   edge. Keep those decisions on the concrete `StateWriter` rather than adding
   writer interfaces.
+- `DotStateWriter` fingerprints and ranks the original states but labels
+  initial and successor nodes with `state.evalStateLevelAlias()`. Successor
+  tooltips remain the original state text. The local `ModelCheckerMXWrapper`
+  also renders `getCurrentState()` through the same state-level alias; the
+  distributed server wrapper does not.
 - Java defaults simulation `traceNum` to `Long.MAX_VALUE`, not one trace. Go
   runner and simulator defaults must preserve that, with explicit `num=` or API
   options narrowing the trace count.

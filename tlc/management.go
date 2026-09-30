@@ -141,7 +141,7 @@ func (w *ModelCheckerMXWrapper) GetCurrentState() string {
 	if state == nil {
 		return "N/A"
 	}
-	return state.String()
+	return state.EvalStateLevelAlias().String()
 }
 
 func (w *ModelCheckerMXWrapper) GetSpecName() string {

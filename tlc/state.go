@@ -435,6 +435,16 @@ func (s *TLCStateMut) IsInitial() bool {
 	return s.level == TLCStateInitLevel
 }
 
+func (s *TLCStateMut) EvalStateLevelAlias() *TLCStateMut {
+	if s == nil || stateTool == nil {
+		return s
+	}
+	if alias := stateTool.EvalAlias(s, EmptyState); alias != nil {
+		return alias
+	}
+	return s
+}
+
 func (s *TLCStateMut) SetAction(action *Action) *TLCStateMut {
 	s.action = action
 	return s

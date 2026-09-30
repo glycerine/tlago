@@ -113,7 +113,7 @@ func (w *StateWriter) WriteInitState(state *TLCStateMut) error {
 	}
 	if w.Dot {
 		fp := state.FingerPrint()
-		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", fp, stateToDot(state, nil, false))
+		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", fp, stateToDot(state.EvalStateLevelAlias(), nil, false))
 		w.maintainRank(state)
 		if err == nil && w.snapshot {
 			err = w.Snapshot()
@@ -180,9 +180,11 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 		if status == StateVisitNotInModel {
 			style = ",style = filled, fillcolor=lightyellow"
 		}
+		predLabelState := curState.EvalStateLevelAlias()
+		succLabelState := succState.EvalStateLevelAlias()
 		_, err = fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"%s];\n",
 			sfp,
-			stateToDot(succState, curState, printDiffsOnly()),
+			stateToDot(succLabelState, predLabelState, printDiffsOnly()),
 			stateToDot(succState, nil, false),
 			style,
 		)
