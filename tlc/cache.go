@@ -63,7 +63,7 @@ func (c *SimpleCache) GetHitRatioAsString() string {
 	if text == "" {
 		return "0"
 	}
-	return text
+	return groupDecimalIntegerPart(text)
 }
 
 func (c *SimpleCache) GetHitRate() int64 {
@@ -71,4 +71,33 @@ func (c *SimpleCache) GetHitRate() int64 {
 		return 0
 	}
 	return c.cacheHit.Load()
+}
+
+func groupDecimalIntegerPart(text string) string {
+	parts := strings.SplitN(text, ".", 2)
+	intPart := parts[0]
+	sign := ""
+	if strings.HasPrefix(intPart, "-") {
+		sign = "-"
+		intPart = intPart[1:]
+	}
+	if len(intPart) <= 3 {
+		return text
+	}
+	var b strings.Builder
+	b.WriteString(sign)
+	head := len(intPart) % 3
+	if head == 0 {
+		head = 3
+	}
+	b.WriteString(intPart[:head])
+	for i := head; i < len(intPart); i += 3 {
+		b.WriteByte(',')
+		b.WriteString(intPart[i : i+3])
+	}
+	if len(parts) == 2 {
+		b.WriteByte('.')
+		b.WriteString(parts[1])
+	}
+	return b.String()
 }

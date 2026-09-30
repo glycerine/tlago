@@ -40,4 +40,9 @@ func TestSimpleCacheHitRatioStringIsCompact(t *testing.T) {
 	if got := cache.GetHitRatioAsString(); got != "0.5" {
 		t.Fatalf("ratio string after miss = %q, want 0.5", got)
 	}
+	cache.cacheHit.Store(1234568)
+	cache.cacheMiss.Store(1000)
+	if got := cache.GetHitRatioAsString(); got != "1,234.568" {
+		t.Fatalf("large ratio string = %q, want 1,234.568", got)
+	}
 }
