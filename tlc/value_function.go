@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -185,6 +186,20 @@ func (p *MVPerm) String() string {
 		wrote = true
 	}
 	b.WriteByte(']')
+	return b.String()
+}
+
+func (p *MVPerm) key() string {
+	var b strings.Builder
+	for i, mv := range p.elems {
+		if mv == nil {
+			continue
+		}
+		b.WriteString(strconv.Itoa(i))
+		b.WriteByte('>')
+		b.WriteString(strconv.Itoa(mv.Index))
+		b.WriteByte(';')
+	}
 	return b.String()
 }
 

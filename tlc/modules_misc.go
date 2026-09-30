@@ -105,6 +105,152 @@ func CombineFcn(f1, f2 Value) (Value, error) {
 	return NewFcnRcdValue(dom.ToArray(), vals.ToArray(), false), nil
 }
 
+func Permutations(value Value) (*SetEnumValue, error) {
+	set, err := toSetEnumValue(value)
+	if err != nil {
+		return nil, err
+	}
+	if set == nil {
+		return nil, newTLCError(ECGeneral, "attempted to apply Permutations to non-finite set %s", value)
+	}
+	if _, err := set.normalizeSet(); err != nil {
+		return nil, err
+	}
+
+	length := set.Elems.Len()
+	if length == 0 {
+		return NewSetEnumValue([]Value{EmptyFcn}, true), nil
+	}
+
+	factorial := 1
+	domain := make([]Value, length)
+	idxArray := make([]int, length)
+	inUse := make([]bool, length)
+	for i := 0; i < length; i++ {
+		domain[i] = set.Elems.At(i)
+		idxArray[i] = i
+		inUse[i] = true
+		factorial *= i + 1
+	}
+
+	fcns := NewValueVec(factorial)
+	for {
+		vals := make([]Value, length)
+		for i := 0; i < length; i++ {
+			vals[i] = domain[idxArray[i]]
+		}
+		fcns.Add(NewFcnRcdValue(domain, vals, true))
+
+		i := length - 1
+		done := false
+		for ; i >= 0; i-- {
+			found := false
+			for j := idxArray[i] + 1; j < length; j++ {
+				if !inUse[j] {
+					inUse[j] = true
+					inUse[idxArray[i]] = false
+					idxArray[i] = j
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+			if i == 0 {
+				done = true
+				break
+			}
+			inUse[idxArray[i]] = false
+		}
+		if done {
+			break
+		}
+		for j := i + 1; j < length; j++ {
+			for k := 0; k < length; k++ {
+				if !inUse[k] {
+					inUse[k] = true
+					idxArray[j] = k
+					break
+				}
+			}
+		}
+	}
+	return NewSetEnumValueVec(fcns, false), nil
+}
+
+func PermutationSubgroup(value Value) ([]*MVPerm, error) {
+	enumerable, ok := asEnumerable(value)
+	if !ok {
+		return nil, newTLCError(ECGeneral, "symmetry operator must specify an enumerable set of functions")
+	}
+	if _, err := value.Size(); err != nil {
+		return nil, err
+	}
+
+	seen := make(map[string]struct{})
+	perms := make([]*MVPerm, 0)
+	enum := enumerable.Elements()
+	for {
+		elem := enum.NextElement()
+		if elem == nil {
+			if err := enum.Err(); err != nil {
+				return nil, err
+			}
+			break
+		}
+		fcn := asFcnRcdValue(elem)
+		if fcn == nil {
+			return nil, newTLCError(ECGeneral, "symmetry operator must specify a set of functions")
+		}
+		perm := NewMVPerm()
+		domain := fcn.DomainAsValues()
+		for i, dval := range domain {
+			dmv, ok := dval.(*ModelValue)
+			if !ok {
+				return nil, newTLCError(ECGeneral, "symmetry function must have model values as domain and range")
+			}
+			rmv, ok := fcn.Values[i].(*ModelValue)
+			if !ok {
+				return nil, newTLCError(ECGeneral, "symmetry function must have model values as domain and range")
+			}
+			perm.Put(dmv, rmv)
+		}
+		if perm.Size() > 0 {
+			key := perm.key()
+			if _, ok := seen[key]; !ok {
+				seen[key] = struct{}{}
+				perms = append(perms, perm)
+			}
+		}
+	}
+
+	generatorCount := len(perms)
+	start := 0
+	for {
+		sizeBefore := len(perms)
+		for i := 0; i < generatorCount; i++ {
+			for j := start; j < sizeBefore; j++ {
+				perm := perms[i].Compose(perms[j])
+				if perm.Size() == 0 {
+					continue
+				}
+				key := perm.key()
+				if _, ok := seen[key]; ok {
+					continue
+				}
+				seen[key] = struct{}{}
+				perms = append(perms, perm)
+			}
+		}
+		if sizeBefore == len(perms) {
+			break
+		}
+		start = sizeBefore
+	}
+	return perms, nil
+}
+
 func appendFunctionPairs(dom *ValueVec, vals *ValueVec, fcn *FcnRcdValue) {
 	domain := fcn.DomainAsValues()
 	for i, value := range domain {
