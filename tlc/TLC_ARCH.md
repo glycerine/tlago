@@ -1266,6 +1266,18 @@ stamps simulation states with the concrete worker id and uses that id to read
 the worker-local trace count, which also keeps worker-local `TLCGet`/`TLCSet`
 registers aligned with Java.
 
+Random subsets of product-shaped values (`[S -> T]`, record sets, tuple
+products) must use Java's product-index strategy from
+`SetOfFcnsOrRcdsValue`. TLC converts each constituent to a `SetEnumValue`,
+draws random indices over the mixed-radix product, and reconstructs the
+corresponding function, record, or tuple. When the product cardinality exceeds
+32-bit size, Java switches to a `BigInteger` path using `Long.MAX_VALUE - 24`
+as the stride and `RandomEnumerableValues.nextLong()` as the offset.
+For `SUBSET S`, Java's `SubsetValue.elements(k)` draws random bit-mask indices
+when `|S| < 31` and `k <= 2^16`; otherwise it uses coin tossing over the
+normalized base elements. The Go randomization module follows those branches
+instead of enumerating the powerset first.
+
 Override infrastructure:
 
 - `TLARegistry` maps TLA+ names to Java names.
