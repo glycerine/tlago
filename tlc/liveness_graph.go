@@ -1069,6 +1069,127 @@ func (n *BTGraphNode) NodeInfo() string {
 	}
 	return fmt.Sprintf("<%d,%d>", n.StateFP, n.GetIndex())
 }
+
+type BEGraph struct {
+	InitNodes []*BEGraphNode
+	Metadir   string
+	AllNodes  *NodeTable
+}
+
+func NewBEGraph(metadir string, isBT bool) *BEGraph {
+	return &BEGraph{
+		InitNodes: make([]*BEGraphNode, 0),
+		Metadir:   metadir,
+		AllNodes:  NewNodeTable(127, isBT),
+	}
+}
+
+func (g *BEGraph) ResetNumberField() {
+	if g == nil {
+		return
+	}
+	stack := NewMemObjectStack(g.Metadir, "resetstack")
+	for _, node := range g.InitNodes {
+		if node != nil && node.ResetNumberField() != 0 {
+			stack.Push(node)
+		}
+	}
+	for stack.Size() != 0 {
+		node, _ := stack.Pop().(*BEGraphNode)
+		if node == nil {
+			continue
+		}
+		for _, next := range node.Nexts {
+			if next != nil && next.ResetNumberField() != 0 {
+				stack.Push(next)
+			}
+		}
+	}
+}
+
+func (g *BEGraph) GetInitNode(i int) *BEGraphNode {
+	if g == nil || i < 0 || i >= len(g.InitNodes) {
+		return nil
+	}
+	return g.InitNodes[i]
+}
+
+func (g *BEGraph) AddInitNode(node *BEGraphNode) {
+	if g != nil {
+		g.InitNodes = append(g.InitNodes, node)
+	}
+}
+
+func (g *BEGraph) InitSize() int {
+	if g == nil {
+		return 0
+	}
+	return len(g.InitNodes)
+}
+
+func BEGraphGetPath(start *BEGraphNode, end *BEGraphNode) ([]*BEGraphNode, error) {
+	if start == nil || end == nil {
+		return nil, newTLCError(ECGeneral, "failed to construct behavior graph path")
+	}
+	if start == end || start.StateFP == end.StateFP {
+		start.SetParent(nil)
+	} else {
+		unseen := start.GetVisited()
+		queue := NewMemObjectQueue("")
+		start.FlipVisited()
+		queue.Enqueue(beGraphNodeAndParent{node: start})
+		found := false
+		for !found {
+			item, _ := queue.Dequeue().(beGraphNodeAndParent)
+			if item.node == nil {
+				return nil, newTLCError(ECGeneral, "failed to construct behavior graph path")
+			}
+			curNode := item.node
+			for _, nextNode := range curNode.Nexts {
+				if nextNode == nil || nextNode.GetVisited() != unseen {
+					continue
+				}
+				if nextNode == end || nextNode.StateFP == end.StateFP {
+					end.SetParent(curNode)
+					found = true
+					break
+				}
+				nextNode.FlipVisited()
+				queue.Enqueue(beGraphNodeAndParent{node: nextNode, parent: curNode})
+			}
+			curNode.SetParent(item.parent)
+		}
+	}
+	var rev []*BEGraphNode
+	for cur := end; cur != nil; cur = cur.GetParent() {
+		rev = append(rev, cur)
+	}
+	path := make([]*BEGraphNode, len(rev))
+	for i := range rev {
+		path[i] = rev[len(rev)-i-1]
+	}
+	return path, nil
+}
+
+func (g *BEGraph) String() string {
+	if g == nil || len(g.InitNodes) == 0 || g.InitNodes[0] == nil {
+		return ""
+	}
+	var b strings.Builder
+	unseen := g.InitNodes[0].GetVisited()
+	for _, node := range g.InitNodes {
+		if node != nil {
+			node.writeString(&b, unseen)
+		}
+	}
+	return b.String()
+}
+
+type beGraphNodeAndParent struct {
+	node   *BEGraphNode
+	parent *BEGraphNode
+}
+
 func (n *BEGraphNode) GetVisited() bool { return n.Number < 0 }
 func (n *BEGraphNode) FlipVisited()     { n.Number ^= beGraphVisitedMask }
 func (n *BEGraphNode) AddTransition(target *BEGraphNode, slen int, alen int, acts []bool) {
@@ -1113,7 +1234,7 @@ func (n *BEGraphNode) GetParent() *BEGraphNode {
 
 func (n *BEGraphNode) String() string {
 	var b strings.Builder
-	n.writeString(&b, !n.GetVisited())
+	n.writeString(&b, n.GetVisited())
 	return b.String()
 }
 

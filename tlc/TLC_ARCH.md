@@ -1064,6 +1064,11 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - Tableau safety-like liveness shortcuts mirror Java's `errorGraphNode`
   handoff with concrete `ErrorGraphNode` and `ErrorPrefix` fields; trace
   printing will consume those when the Java `printErrorTrace` path is ported.
+- The older in-memory `BEGraph` owner keeps Java's `initNodes`, `metadir`, and
+  `NodeTable` fields. Its reset and shortest-path routines are intentionally
+  iterative: `ResetNumberField` uses `MemObjectStack`, and `BEGraphGetPath`
+  uses `MemObjectQueue` while destructively reusing parent pointers just like
+  Java.
 
 `AbstractDiskGraph` responsibilities:
 
@@ -1132,7 +1137,9 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component
-numbering ranges.
+numbering ranges. The Go port keeps the supporting `BEGraph`, `BEGraphNode`,
+`BTGraphNode`, and `NodeTable` concrete; Java's subclass polymorphism is mapped
+onto embedded structs only where the existing code already uses it.
 
 Port guidance:
 
