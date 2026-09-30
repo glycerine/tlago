@@ -1221,6 +1221,12 @@ Trace writing:
   Keep that placement: the counter describes unseen successors discovered while
   evaluating `Next`, even if later invariant or implied-action checks stop the
   run before the state is enqueued.
+- Java trace recovery for transition errors treats the stored trace as a prefix:
+  `ConcurrentTLCTrace.getTrace(state)` excludes `state` itself except for the
+  initial-state special case. Error printing and postcondition counterexamples
+  then recover `curState` and `succState` explicitly through `Tool.getState`.
+  Preserve the same prefix-plus-explicit-state construction; otherwise
+  non-initial transition errors silently drop the predecessor state.
 - The Go port now keeps a concrete `ConcurrentTLCTrace` on `ModelChecker`,
   writes Java-style worker fragment files as the authoritative model-checking
   path, and mirrors records into the existing in-memory `TLCTrace` for current

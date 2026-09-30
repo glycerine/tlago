@@ -1446,31 +1446,96 @@ func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLC
 }
 
 func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
-	if succState != nil {
-		if curState != nil {
-			return appendTraceStateIfMissing(mc.traceInfoPrefix(curState), succState)
+	if curState == nil {
+		if succState == nil {
+			return nil
 		}
-		return appendTraceStateIfMissing(mc.traceInfoPrefix(succState), succState)
+		trace := mc.traceInfoPrefix(succState)
+		return append(trace, mc.stateInfoForState(succState, nil))
 	}
-	if curState != nil {
-		return appendTraceStateIfMissing(mc.traceInfoPrefix(curState), curState)
+	if succState == nil {
+		if curState.IsInitial() {
+			return []*TLCStateInfo{mc.stateInfoForState(curState, nil)}
+		}
+		trace := mc.traceInfoPrefix(curState)
+		return append(trace, mc.stateInfoForState(curState, lastTraceState(trace)))
 	}
-	return nil
+	if succState.AllAssigned() && succState.WorkerID == TLCStateInitWorkerID {
+		if curState.IsInitial() {
+			return []*TLCStateInfo{
+				mc.stateInfoForState(curState, nil),
+				mc.stateInfoForTransition(succState, curState),
+			}
+		}
+		trace := mc.traceInfoPrefix(curState)
+		trace = append(trace, mc.stateInfoForState(curState, lastTraceState(trace)))
+		return append(trace, mc.stateInfoForTransition(succState, curState))
+	}
+	trace := mc.traceInfoPrefix(succState)
+	return append(trace, mc.stateInfoForTransition(succState, curState))
 }
 
-func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
+func lastTraceState(trace []*TLCStateInfo) *TLCStateMut {
+	if len(trace) == 0 || trace[len(trace)-1] == nil {
+		return nil
+	}
+	return trace[len(trace)-1].State
+}
+
+func (mc *ModelChecker) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
 	if state == nil {
 		return nil
 	}
-	if mc != nil && mc.ConcurrentTrace != nil {
-		if trace := mc.ConcurrentTrace.GetTraceFromState(state); len(trace) > 0 {
-			return trace
+	if mc != nil && mc.Tool != nil {
+		var (
+			info *TLCStateInfo
+			err  error
+		)
+		fp := state.FingerPrint()
+		if predecessor == nil {
+			info, err = mc.Tool.GetState(fp)
+		} else {
+			info, err = mc.Tool.GetState(fp, predecessor)
+		}
+		if err == nil && info != nil && info.State != nil {
+			info.State.WorkerID = state.WorkerID
+			info.State.UID = state.UID
+			return info
 		}
 	}
-	if mc != nil && mc.Trace != nil {
-		return mc.Trace.GetTrace(state)
+	info := NewTLCStateInfo(state)
+	fp := state.FingerPrint()
+	info.FP = &fp
+	return info
+}
+
+func (mc *ModelChecker) stateInfoForTransition(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
+	if state == nil {
+		return nil
 	}
-	return NewTLCTrace().GetTrace(state)
+	if mc != nil && mc.Tool != nil && predecessor != nil {
+		info, err := mc.Tool.GetStateForTransition(state, predecessor)
+		if err == nil && info != nil && info.State != nil {
+			info.State.WorkerID = state.WorkerID
+			info.State.UID = state.UID
+			return info
+		}
+	}
+	info := NewTLCStateInfo(state)
+	fp := state.FingerPrint()
+	info.FP = &fp
+	return info
+}
+
+func trimTraceState(trace []*TLCStateInfo, state *TLCStateMut) []*TLCStateInfo {
+	if len(trace) == 0 || state == nil {
+		return trace
+	}
+	last := trace[len(trace)-1]
+	if last != nil && last.State != nil && (last.State == state || last.State.Equal(state)) {
+		return trace[:len(trace)-1]
+	}
+	return trace
 }
 
 func appendTraceStateIfMissing(trace []*TLCStateInfo, state *TLCStateMut) []*TLCStateInfo {
@@ -1487,6 +1552,21 @@ func appendTraceStateIfMissing(trace []*TLCStateInfo, state *TLCStateMut) []*TLC
 	fp := state.FingerPrint()
 	info.FP = &fp
 	return append(trace, info)
+}
+
+func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
+	if state == nil || state.IsInitial() {
+		return nil
+	}
+	if mc != nil && mc.ConcurrentTrace != nil {
+		if trace := mc.ConcurrentTrace.GetTraceFromState(state); len(trace) > 0 {
+			return trimTraceState(trace, state)
+		}
+	}
+	if mc != nil && mc.Trace != nil {
+		return trimTraceState(mc.Trace.GetTrace(state), state)
+	}
+	return trimTraceState(NewTLCTrace().GetTrace(state), state)
 }
 
 func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {
