@@ -16,20 +16,27 @@ type TraceRecord struct {
 }
 
 type TLCTrace struct {
-	mu       sync.Mutex
-	records  []TraceRecord
-	level    int
-	diskdir  string
-	rootName string
+	mu            sync.Mutex
+	records       []TraceRecord
+	level         int
+	previousLevel int
+	diskdir       string
+	rootName      string
+	raf           *BufferedRandomAccessFile
+	lastPtr       int64
+	traceErr      error
 }
 
 func NewTLCTrace(metaDir ...string) *TLCTrace {
-	trace := &TLCTrace{}
+	trace := &TLCTrace{lastPtr: 1}
 	if len(metaDir) > 0 {
 		trace.diskdir = metaDir[0]
 	}
 	if len(metaDir) > 1 {
 		trace.rootName = metaDir[1]
+	}
+	if trace.diskdir != "" {
+		trace.traceErr = trace.ensureTraceRAFLocked()
 	}
 	return trace
 }
@@ -46,6 +53,38 @@ func (t *TLCTrace) SetCheckpointContext(metadir string, rootName string) {
 	if rootName != "" {
 		t.rootName = rootName
 	}
+	t.traceErr = t.ensureTraceRAFLocked()
+}
+
+func (t *TLCTrace) ensureTraceRAFLocked() error {
+	if t == nil || t.raf != nil {
+		return nil
+	}
+	if t.traceErr != nil {
+		return t.traceErr
+	}
+	if t.diskdir == "" {
+		return nil
+	}
+	if err := os.MkdirAll(t.diskdir, 0o755); err != nil {
+		t.traceErr = err
+		return err
+	}
+	raf, err := NewBufferedRandomAccessFile(t.traceFileName(), "rw")
+	if err != nil {
+		t.traceErr = err
+		return err
+	}
+	t.raf = raf
+	return nil
+}
+
+func (t *TLCTrace) traceFileName() string {
+	rootName := t.rootName
+	if rootName == "" {
+		rootName = "Spec"
+	}
+	return filepath.Join(t.diskdir, rootName+tlcTraceExt)
 }
 
 func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
@@ -55,6 +94,23 @@ func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	uid := int64(len(t.records))
+	if err := t.ensureTraceRAFLocked(); err != nil {
+		return err
+	}
+	if t.raf != nil {
+		ptr, err := t.raf.GetFilePointer()
+		if err != nil {
+			return err
+		}
+		uid = ptr
+		if err := t.raf.WriteLongNat(1); err != nil {
+			return err
+		}
+		if err := t.raf.WriteLong(int64(fp)); err != nil {
+			return err
+		}
+		t.lastPtr = ptr
+	}
 	t.records = append(t.records, TraceRecord{
 		PreviousUID: 1,
 		WorkerID:    0,
@@ -108,6 +164,23 @@ func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, 
 	if curState != nil {
 		prevUID = curState.UID
 		predecessorWorkerID = curState.WorkerID
+	}
+	if err := t.ensureTraceRAFLocked(); err != nil {
+		return err
+	}
+	if t.raf != nil {
+		ptr, err := t.raf.GetFilePointer()
+		if err != nil {
+			return err
+		}
+		uid = ptr
+		if err := t.raf.WriteLongNat(prevUID); err != nil {
+			return err
+		}
+		if err := t.raf.WriteLong(int64(succFP)); err != nil {
+			return err
+		}
+		t.lastPtr = ptr
 	}
 	generatedWorkerID := int16(workerID)
 	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {
@@ -179,12 +252,6 @@ func (t *TLCTrace) RecordFor(state *TLCStateMut) (TraceRecord, bool) {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if state.UID >= 0 && state.UID < int64(len(t.records)) {
-		record := t.records[state.UID]
-		if record.State == state {
-			return record, true
-		}
-	}
 	for _, record := range t.records {
 		if record.State == state {
 			return record, true
@@ -239,10 +306,18 @@ func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if pos >= int64(len(t.records)) {
+	var state *TLCStateMut
+	if pos >= 0 && pos < int64(len(t.records)) {
+		state = t.records[pos].State
+	}
+	if state == nil {
+		if idx := t.recordIndexByUIDLocked(pos); idx != -1 {
+			state = t.records[idx].State
+		}
+	}
+	if state == nil {
 		return nil
 	}
-	state := t.records[pos].State
 	if !included && state != nil {
 		state = state.Predecessor()
 	}
@@ -255,6 +330,13 @@ func (t *TLCTrace) GetLevelForReporting() int {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.raf != nil && t.lastPtr != 1 {
+		level, err := t.getLevelFromDiskLocked(t.lastPtr)
+		if err == nil && level > t.previousLevel {
+			t.previousLevel = level
+		}
+		return t.previousLevel
+	}
 	return t.level
 }
 
@@ -264,6 +346,12 @@ func (t *TLCTrace) GetLevel(startUID int64) int {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.raf != nil {
+		level, err := t.getLevelFromDiskLocked(startUID)
+		if err == nil {
+			return level
+		}
+	}
 	return t.getLevelLocked(startUID)
 }
 
@@ -273,12 +361,9 @@ func (t *TLCTrace) GetLevelForState(state *TLCStateMut) int {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if state.UID >= 0 && state.UID < int64(len(t.records)) && t.records[state.UID].State == state {
-		return t.getLevelLocked(state.UID)
-	}
 	for i := range t.records {
 		if t.records[i].State == state {
-			return t.getLevelLocked(int64(i))
+			return t.getLevelLocked(t.records[i].State.UID)
 		}
 	}
 	return 0
@@ -286,13 +371,17 @@ func (t *TLCTrace) GetLevelForState(state *TLCStateMut) int {
 
 func (t *TLCTrace) getLevelLocked(startUID int64) int {
 	level := 0
-	for uid := startUID; uid >= 0 && uid < int64(len(t.records)); {
-		level++
-		prev := t.records[uid].PreviousUID
-		if uid == 0 && prev == 1 {
+	for uid := startUID; uid >= 0; {
+		idx := t.recordIndexByUIDLocked(uid)
+		if idx == -1 {
 			break
 		}
-		if prev < 0 || prev == uid || prev >= int64(len(t.records)) {
+		level++
+		prev := t.records[idx].PreviousUID
+		if prev == 1 {
+			break
+		}
+		if prev < 0 || prev == uid {
 			break
 		}
 		uid = prev
@@ -300,8 +389,62 @@ func (t *TLCTrace) getLevelLocked(startUID int64) int {
 	return level
 }
 
+func (t *TLCTrace) getLevelFromDiskLocked(startLoc int64) (int, error) {
+	if t == nil || t.raf == nil {
+		return 0, nil
+	}
+	current, err := t.raf.GetFilePointer()
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = t.raf.Seek(current) }()
+	level := 0
+	for predecessorLoc := startLoc; predecessorLoc != 1; {
+		level++
+		if err := t.raf.Seek(predecessorLoc); err != nil {
+			return 0, err
+		}
+		next, err := t.raf.ReadLongNat()
+		if err != nil {
+			return 0, err
+		}
+		if next == predecessorLoc {
+			break
+		}
+		predecessorLoc = next
+	}
+	return level, nil
+}
+
+func (t *TLCTrace) recordIndexByUIDLocked(uid int64) int {
+	for i := range t.records {
+		if t.records[i].State != nil && t.records[i].State.UID == uid {
+			return i
+		}
+	}
+	return -1
+}
+
 func (t *TLCTrace) Elements() *TLCTraceEnumerator {
-	return &TLCTraceEnumerator{records: t.Records()}
+	if t == nil {
+		return &TLCTraceEnumerator{}
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if err := t.ensureTraceRAFLocked(); err == nil && t.raf != nil {
+		if err := t.raf.Flush(); err == nil {
+			length, lenErr := t.raf.Length()
+			if lenErr == nil {
+				enumRAF, openErr := NewBufferedRandomAccessFile(t.traceFileName(), "r")
+				if openErr == nil {
+					return &TLCTraceEnumerator{length: length, raf: enumRAF, path: t.traceFileName()}
+				}
+			}
+		}
+	}
+	out := make([]TraceRecord, len(t.records))
+	copy(out, t.records)
+	return &TLCTraceEnumerator{records: out}
 }
 
 func (t *TLCTrace) BeginChkpt() error {
@@ -310,6 +453,35 @@ func (t *TLCTrace) BeginChkpt() error {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	if t.diskdir != "" {
+		if err := t.ensureTraceRAFLocked(); err != nil {
+			return err
+		}
+		if t.raf != nil {
+			if err := t.raf.Flush(); err != nil {
+				return err
+			}
+			file, err := os.Create(t.chkptName("tmp"))
+			if err != nil {
+				return err
+			}
+			out := NewValueOutputStream(file)
+			filePtr, err := t.raf.GetFilePointer()
+			if err != nil {
+				_ = out.Close()
+				return err
+			}
+			if err := out.WriteLong(filePtr); err != nil {
+				_ = out.Close()
+				return err
+			}
+			if err := out.WriteLong(t.lastPtr); err != nil {
+				_ = out.Close()
+				return err
+			}
+			return out.Close()
+		}
+	}
 	if t.diskdir == "" {
 		dir, err := os.MkdirTemp("", "TLCTrace")
 		if err != nil {
@@ -407,11 +579,31 @@ func (t *TLCTrace) Recover() error {
 	if t.diskdir == "" {
 		return nil
 	}
+	if err := t.ensureTraceRAFLocked(); err != nil {
+		return err
+	}
 	file, err := os.Open(t.chkptName("chkpt"))
 	if err != nil {
 		return err
 	}
 	in := NewValueInputStream(file)
+	if t.raf != nil {
+		filePos, err := in.ReadLong()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		lastPtr, err := in.ReadLong()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		if err := in.Close(); err != nil {
+			return err
+		}
+		t.lastPtr = lastPtr
+		return t.raf.Seek(filePos)
+	}
 	length, err := in.ReadInt()
 	if err != nil {
 		_ = in.Close()
@@ -506,6 +698,15 @@ func (t *TLCTrace) Delete() error {
 	if t.diskdir == "" {
 		return nil
 	}
+	if t.raf != nil {
+		if err := t.raf.Close(); err != nil {
+			return err
+		}
+		t.raf = nil
+	}
+	if err := os.Remove(t.traceFileName()); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
 	if err := os.Remove(t.chkptName("tmp")); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -524,15 +725,35 @@ func (t *TLCTrace) chkptName(ext string) string {
 }
 
 func (t *TLCTrace) Close() error {
-	return nil
+	if t == nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.raf == nil {
+		return nil
+	}
+	err := t.raf.Close()
+	t.raf = nil
+	return err
 }
 
 type TLCTraceEnumerator struct {
 	records []TraceRecord
 	index   int
+	length  int64
+	raf     *BufferedRandomAccessFile
+	path    string
 }
 
 func (e *TLCTraceEnumerator) NextPos() int64 {
+	if e != nil && e.raf != nil {
+		pos, err := e.raf.GetFilePointer()
+		if err != nil || pos >= e.length {
+			return -1
+		}
+		return pos
+	}
 	if e == nil || e.index >= len(e.records) {
 		return -1
 	}
@@ -540,6 +761,16 @@ func (e *TLCTraceEnumerator) NextPos() int64 {
 }
 
 func (e *TLCTraceEnumerator) NextFP() uint64 {
+	if e != nil && e.raf != nil {
+		if _, err := e.raf.ReadLongNat(); err != nil {
+			return 0
+		}
+		fp, err := e.raf.ReadLong()
+		if err != nil {
+			return 0
+		}
+		return uint64(fp)
+	}
 	if e == nil || e.index >= len(e.records) {
 		return 0
 	}
@@ -549,11 +780,35 @@ func (e *TLCTraceEnumerator) NextFP() uint64 {
 }
 
 func (e *TLCTraceEnumerator) Close() error {
+	if e != nil && e.raf != nil {
+		err := e.raf.Close()
+		e.raf = nil
+		return err
+	}
 	return nil
 }
 
 func (e *TLCTraceEnumerator) Reset(pos int64) {
 	if e == nil {
+		return
+	}
+	if e.raf != nil {
+		if pos == -1 {
+			pos, _ = e.raf.GetFilePointer()
+		}
+		path := e.path
+		length := e.length
+		_ = e.raf.Close()
+		raf, err := NewBufferedRandomAccessFile(path, "r")
+		if err != nil {
+			e.raf = nil
+			e.length = 0
+			e.index = 0
+			return
+		}
+		e.raf = raf
+		e.length = length
+		_ = e.raf.Seek(pos)
 		return
 	}
 	if pos < 0 {

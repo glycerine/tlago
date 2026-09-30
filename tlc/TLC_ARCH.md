@@ -1158,9 +1158,15 @@ Port guidance:
 
 - Go goroutines can replace worker threads, but trace fragment ownership and
   synchronization must stay equivalent.
-- Initial implementation may keep trace records in memory for small models only
-  if marked as a temporary internal step, but final parity needs checkpointable
-  on-disk trace files.
+- Normal `TLCTrace` writes the Java-compatible `MC.st`-style file: each record
+  is `longNat(predecessorPointer)` followed by the state fingerprint, and
+  checkpoints store only the current file pointer and `lastPtr`.
+- The Go `TLCTrace` still keeps an in-memory mirror of `TraceRecord` values as a
+  transitional convenience for direct state-object trace access. This mirror is
+  not the source-of-truth file format and should shrink as reconstruction moves
+  fully to Java-style fingerprint replay.
+- Worker-local concurrent traces keep Java's separate record format:
+  `longNat(predecessorPointer)`, `shortNat(predecessorWorker)`, fingerprint.
 - State numbering and action labels in printed traces are test-observed.
 
 ## Simulation Architecture
