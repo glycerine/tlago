@@ -63,8 +63,14 @@ func TestWorkerFunctorPathProcessesSuccessorsLikeModelChecker(t *testing.T) {
 	if impliedChecks != 2 {
 		t.Fatalf("implied-action checks = %d, want 2 for seen and unseen successors", impliedChecks)
 	}
-	if worker.UnseenSuccessorStates != 1 {
-		t.Fatalf("worker unseen successor count = %d, want 1", worker.UnseenSuccessorStates)
+	if worker.UnseenSuccessorStates != 0 {
+		t.Fatalf("worker unseen successor count = %d, want reset after out-degree sample", worker.UnseenSuccessorStates)
+	}
+	if worker.OutDegree == nil {
+		t.Fatalf("worker out-degree statistics were not initialized")
+	}
+	if worker.OutDegree.Observations() != 1 || worker.OutDegree.Median() != 1 {
+		t.Fatalf("worker out-degree observations/median = %v/%v, want 1/1", worker.OutDegree.Observations(), worker.OutDegree.Median())
 	}
 	if worker.MaxLevel != 2 {
 		t.Fatalf("worker max level = %d, want 2", worker.MaxLevel)
@@ -96,6 +102,12 @@ func TestWorkerFunctorPathReportsDeadlockWhenNoSuccessorsAreGenerated(t *testing
 	}
 	if mc.ErrState != cur {
 		t.Fatalf("error state = %p, want current state %p", mc.ErrState, cur)
+	}
+	if worker.OutDegree == nil {
+		t.Fatalf("worker out-degree statistics were not initialized")
+	}
+	if worker.OutDegree.Observations() != 1 || worker.OutDegree.Median() != 0 {
+		t.Fatalf("worker deadlock out-degree observations/median = %v/%v, want 1/0", worker.OutDegree.Observations(), worker.OutDegree.Median())
 	}
 }
 

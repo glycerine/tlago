@@ -1,11 +1,14 @@
 package tlc
 
+import "fmt"
+
 type Worker struct {
 	ID                    int
 	LocalValues           []Value
 	NamedRegisters        *InsMap[*UniqueString, Value]
 	SetOfStates           *SetOfStates
 	SetOfStatesMultiplier int
+	OutDegree             *FixedSizedBucketStatistics
 	StatesGenerated       int64
 	Checker               *ModelChecker
 	Tool                  *Tool
@@ -19,6 +22,7 @@ func NewWorker(id int) *Worker {
 		ID:                    id,
 		NamedRegisters:        NewInsMap[*UniqueString, Value](),
 		SetOfStatesMultiplier: 1,
+		OutDegree:             NewFixedSizedBucketStatistics(fmt.Sprintf("TLCWorkerThread-%03d", id), workerOutDegreeBucketCount),
 	}
 }
 
@@ -84,11 +88,13 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 		return true, nil
 	}
 	if w.Checker.CheckDeadlock && preNext == w.StatesGenerated {
+		w.RecordOutDegree()
 		return w.Checker.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, ""), nil
 	}
 	if w.SetOfStates != nil && w.SetOfStates.Capacity() > w.SetOfStatesMultiplier*workerSetOfStatesInitialCapacity {
 		w.SetOfStatesMultiplier++
 	}
+	w.RecordOutDegree()
 	return false, nil
 }
 
@@ -147,6 +153,7 @@ func (w *Worker) GetStatesGenerated() int64 {
 }
 
 const workerSetOfStatesInitialCapacity = 16
+const workerOutDegreeBucketCount = 32
 
 func (w *Worker) CreateSetOfStates() *SetOfStates {
 	if w == nil {
@@ -169,6 +176,17 @@ func (w *Worker) GetStates() *SetOfStates {
 		return w.SetOfStates
 	}
 	return NewSetOfStates(0)
+}
+
+func (w *Worker) RecordOutDegree() {
+	if w == nil {
+		return
+	}
+	if w.OutDegree == nil {
+		w.OutDegree = NewFixedSizedBucketStatistics(fmt.Sprintf("TLCWorkerThread-%03d", w.ID), workerOutDegreeBucketCount)
+	}
+	w.OutDegree.AddSample(w.UnseenSuccessorStates)
+	w.UnseenSuccessorStates = 0
 }
 
 func (w *Worker) GetLocalValue(index int) Value {
