@@ -98,3 +98,88 @@ func TestWorkerFunctorPathReportsDeadlockWhenNoSuccessorsAreGenerated(t *testing
 		t.Fatalf("error state = %p, want current state %p", mc.ErrState, cur)
 	}
 }
+
+func TestWorkerCollectsInModelSuccessorsForLivenessSet(t *testing.T) {
+	initTLCCheckerTest(t)
+	action := &Action{Name: "Next"}
+	cur := checkerTestState(1)
+	seenSucc := checkerTestState(1)
+	newSucc := checkerTestState(2)
+
+	tool := NewTool()
+	tool.Actions = []*Action{action}
+	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+		return NewStateVecFrom([]*TLCStateMut{seenSucc, newSucc}), nil
+	}
+
+	mc := NewModelChecker(tool, t.TempDir(), true)
+	mc.FPSet.Put(cur.FingerPrint())
+	worker := NewModelCheckingWorker(0, mc, tool)
+	worker.SetOfStates = NewSetOfStates(1)
+
+	stop, err := worker.DoNext(cur)
+	if err != nil {
+		t.Fatalf("Worker.DoNext returned error: %v", err)
+	}
+	if stop {
+		t.Fatalf("Worker.DoNext stop = true, want false")
+	}
+	if worker.SetOfStates.Size() != 2 {
+		t.Fatalf("collected states = %d, want 2 seen and unseen in-model successors", worker.SetOfStates.Size())
+	}
+	if !stateSetContains(worker.SetOfStates, seenSucc) || !stateSetContains(worker.SetOfStates, newSucc) {
+		t.Fatalf("collected set does not contain both in-model successors")
+	}
+	if got := mc.GetStateQueueSize(); got != 1 {
+		t.Fatalf("queued states = %d, want 1 unseen successor", got)
+	}
+}
+
+func TestWorkerDoesNotCollectOutOfModelSuccessors(t *testing.T) {
+	initTLCCheckerTest(t)
+	action := &Action{Name: "Next"}
+	cur := checkerTestState(1)
+	inModelSucc := checkerTestState(2)
+	outOfModelSucc := checkerTestState(99)
+
+	tool := NewTool()
+	tool.Actions = []*Action{action}
+	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+		return NewStateVecFrom([]*TLCStateMut{inModelSucc, outOfModelSucc}), nil
+	}
+	tool.IsInModelFunc = func(tl *Tool, state *TLCStateMut) (bool, error) {
+		value := state.Lookup(UniqueStringOf("x"))
+		intValue, ok := value.(*IntValue)
+		return !ok || intValue.Val != 99, nil
+	}
+
+	mc := NewModelChecker(tool, t.TempDir(), true)
+	worker := NewModelCheckingWorker(0, mc, tool)
+	worker.SetOfStates = NewSetOfStates(1)
+
+	stop, err := worker.DoNext(cur)
+	if err != nil {
+		t.Fatalf("Worker.DoNext returned error: %v", err)
+	}
+	if stop {
+		t.Fatalf("Worker.DoNext stop = true, want false")
+	}
+	if worker.SetOfStates.Size() != 1 {
+		t.Fatalf("collected states = %d, want only the in-model successor", worker.SetOfStates.Size())
+	}
+	if !stateSetContains(worker.SetOfStates, inModelSucc) {
+		t.Fatalf("collected set does not contain the in-model successor")
+	}
+	if stateSetContains(worker.SetOfStates, outOfModelSucc) {
+		t.Fatalf("collected set contains an out-of-model successor")
+	}
+}
+
+func stateSetContains(set *SetOfStates, want *TLCStateMut) bool {
+	for _, state := range set.ToSlice() {
+		if state.Equal(want) {
+			return true
+		}
+	}
+	return false
+}

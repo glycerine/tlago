@@ -266,7 +266,7 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 		deadLocked = deadLocked && size == 0
 		for i := 0; i < size; i++ {
 			succState = nextStates.At(i)
-			stop, _, err := mc.processSuccessor(curState, succState, action)
+			stop, _, err := mc.processSuccessor(curState, succState, action, nil)
 			if stop || err != nil {
 				return stop, err
 			}
@@ -279,7 +279,7 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 	return false, nil
 }
 
-func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, bool, error) {
+func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
 	if !mc.Tool.IsGoodState(succState) {
 		return mc.doNextSetErr(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, actionName(action)), false, nil
 	}
@@ -302,6 +302,9 @@ func (mc *ModelChecker) processSuccessor(curState *TLCStateMut, succState *TLCSt
 		seen, err := mc.isSeenState(curState, succState, action)
 		if err != nil {
 			return true, false, err
+		}
+		if collectedStates != nil {
+			collectedStates.PutFP(succState.FingerPrint(), succState)
 		}
 		unseen = !seen
 	} else if mc.AllStateWriter != nil && mc.AllStateWriter.IsConstrained() {
