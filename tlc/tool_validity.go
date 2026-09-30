@@ -99,16 +99,26 @@ func (t *Tool) CheckPostConditionImpl(ctxt *Context) int {
 	for _, post := range t.GetPostConditionSpecs() {
 		ok, err := t.evalPredicateValue(post.Pred, ctxt, EmptyState, EmptyState, EvalConst, post.GetName())
 		if err != nil {
-			return PrintError(ECTLCPostconditionEvaluationError, post.GetName(), err.Error())
+			return PrintError(ECTLCPostconditionEvaluationError, post.GetName(), postConditionPredicateString(post), err.Error())
 		}
 		if !ok {
 			if post.IsPossible() {
-				return PrintError(ECTLCPossibleUnwitnessed, post.GetName(), SemanticString(post.Possible.Body))
+				return PrintError(ECTLCPossibleUnwitnessed, post.GetName(), postConditionPredicateString(post))
 			}
-			return PrintError(ECTLCPostconditionFalse, post.GetName(), SemanticString(post.Pred))
+			return PrintError(ECTLCPostconditionFalse, post.GetName(), postConditionPredicateString(post))
 		}
 	}
 	return NoError
+}
+
+func postConditionPredicateString(post *Action) string {
+	if post == nil {
+		return ""
+	}
+	if post.IsPossible() && post.Possible.Body != nil {
+		return SemanticString(post.Possible.Body)
+	}
+	return SemanticString(post.Pred)
 }
 
 func (t *Tool) evalPredicateValue(expr SemanticNode, ctxt *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, where string) (bool, error) {
