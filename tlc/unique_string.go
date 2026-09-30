@@ -1,6 +1,9 @@
 package tlc
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unicode/utf16"
@@ -157,4 +160,139 @@ func (u *UniqueString) Substring(begin int) string {
 		return ""
 	}
 	return u.s[begin:]
+}
+
+func BeginChkptUniqueStrings(metadir string) error {
+	return internTable.BeginChkpt(metadir)
+}
+
+func CommitChkptUniqueStrings(metadir string) error {
+	return internTable.CommitChkpt(metadir)
+}
+
+func RecoverUniqueStrings(metadir string) error {
+	return internTable.Recover(metadir)
+}
+
+func (t *uniqueStringTable) BeginChkpt(metadir string) error {
+	if t == nil || metadir == "" {
+		return nil
+	}
+	path := uniqueStringChkptName(metadir, "tmp")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	out := NewValueOutputStream(file)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if err := out.WriteInt(int32(t.tokenCnt)); err != nil {
+		_ = out.Close()
+		return err
+	}
+	if err := out.WriteInt(int32(t.varCount)); err != nil {
+		_ = out.Close()
+		return err
+	}
+	count := int32(len(t.byToken))
+	if err := out.WriteInt(count); err != nil {
+		_ = out.Close()
+		return err
+	}
+	for tok := 1; tok <= t.tokenCnt; tok++ {
+		us := t.byToken[tok]
+		if us == nil {
+			continue
+		}
+		if err := out.WriteInt(int32(us.tok)); err != nil {
+			_ = out.Close()
+			return err
+		}
+		if err := out.WriteInt(int32(us.loc)); err != nil {
+			_ = out.Close()
+			return err
+		}
+		if err := out.WriteUniqueString(us); err != nil {
+			_ = out.Close()
+			return err
+		}
+	}
+	return out.Close()
+}
+
+func (t *uniqueStringTable) CommitChkpt(metadir string) error {
+	if t == nil || metadir == "" {
+		return nil
+	}
+	oldChkpt := uniqueStringChkptName(metadir, "chkpt")
+	newChkpt := uniqueStringChkptName(metadir, "tmp")
+	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return os.Rename(newChkpt, oldChkpt)
+}
+
+func (t *uniqueStringTable) Recover(metadir string) error {
+	if t == nil || metadir == "" {
+		return nil
+	}
+	file, err := os.Open(uniqueStringChkptName(metadir, "chkpt"))
+	if err != nil {
+		return err
+	}
+	in := NewValueInputStream(file)
+	tokenCnt, err := in.ReadInt()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	varCount, err := in.ReadInt()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	count, err := in.ReadInt()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	byString := make(map[string]*UniqueString, int(count))
+	byToken := make(map[int]*UniqueString, int(count))
+	for i := int32(0); i < count; i++ {
+		tok, err := in.ReadInt()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		loc, err := in.ReadInt()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		str, err := in.readExternalUniqueString()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		us := &UniqueString{s: str.String(), tok: int(tok), loc: int(loc)}
+		byString[us.s] = us
+		byToken[us.tok] = us
+	}
+	if err := in.Close(); err != nil {
+		return err
+	}
+	t.mu.Lock()
+	t.byString = byString
+	t.byToken = byToken
+	t.tokenCnt = int(tokenCnt)
+	t.varCount = int(varCount)
+	t.mu.Unlock()
+	return nil
+}
+
+func uniqueStringChkptName(metadir string, ext string) string {
+	return filepath.Join(metadir, "vars."+ext)
 }

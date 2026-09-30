@@ -1,6 +1,11 @@
 package tlc
 
-import "sync"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"sync"
+)
 
 type TraceRecord struct {
 	PreviousUID int64
@@ -11,13 +16,36 @@ type TraceRecord struct {
 }
 
 type MemoryTrace struct {
-	mu      sync.Mutex
-	records []TraceRecord
-	level   int
+	mu       sync.Mutex
+	records  []TraceRecord
+	level    int
+	diskdir  string
+	rootName string
 }
 
-func NewMemoryTrace() *MemoryTrace {
-	return &MemoryTrace{}
+func NewMemoryTrace(metaDir ...string) *MemoryTrace {
+	trace := &MemoryTrace{}
+	if len(metaDir) > 0 {
+		trace.diskdir = metaDir[0]
+	}
+	if len(metaDir) > 1 {
+		trace.rootName = metaDir[1]
+	}
+	return trace
+}
+
+func (t *MemoryTrace) SetCheckpointContext(metadir string, rootName string) {
+	if t == nil {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if metadir != "" {
+		t.diskdir = metadir
+	}
+	if rootName != "" {
+		t.rootName = rootName
+	}
 }
 
 func (t *MemoryTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
@@ -142,6 +170,225 @@ func (t *MemoryTrace) GetLevelForReporting() int {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.level
+}
+
+func (t *MemoryTrace) BeginChkpt() error {
+	if t == nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.diskdir == "" {
+		dir, err := os.MkdirTemp("", "TLCTrace")
+		if err != nil {
+			return err
+		}
+		t.diskdir = dir
+	}
+	path := t.chkptName("tmp")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	out := NewValueOutputStream(file)
+	if err := out.WriteInt(int32(len(t.records))); err != nil {
+		_ = out.Close()
+		return err
+	}
+	if err := out.WriteInt(int32(t.level)); err != nil {
+		_ = out.Close()
+		return err
+	}
+	for _, record := range t.records {
+		if err := out.WriteLong(record.PreviousUID); err != nil {
+			_ = out.Close()
+			return err
+		}
+		if err := out.WriteShort(record.WorkerID); err != nil {
+			_ = out.Close()
+			return err
+		}
+		if err := out.WriteLong(int64(record.FP)); err != nil {
+			_ = out.Close()
+			return err
+		}
+		if record.State == nil {
+			if err := out.WriteBool(false); err != nil {
+				_ = out.Close()
+				return err
+			}
+		} else {
+			if err := out.WriteBool(true); err != nil {
+				_ = out.Close()
+				return err
+			}
+			if err := record.State.Write(out); err != nil {
+				_ = out.Close()
+				return err
+			}
+		}
+		if record.Action == nil {
+			if err := out.WriteBool(false); err != nil {
+				_ = out.Close()
+				return err
+			}
+		} else {
+			if err := out.WriteBool(true); err != nil {
+				_ = out.Close()
+				return err
+			}
+			if err := out.WriteUniqueString(UniqueStringOf(record.Action.GetName())); err != nil {
+				_ = out.Close()
+				return err
+			}
+		}
+	}
+	return out.Close()
+}
+
+func (t *MemoryTrace) CommitChkpt() error {
+	if t == nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.diskdir == "" {
+		return nil
+	}
+	oldChkpt := t.chkptName("chkpt")
+	newChkpt := t.chkptName("tmp")
+	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return os.Rename(newChkpt, oldChkpt)
+}
+
+func (t *MemoryTrace) Recover() error {
+	if t == nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.diskdir == "" {
+		return nil
+	}
+	file, err := os.Open(t.chkptName("chkpt"))
+	if err != nil {
+		return err
+	}
+	in := NewValueInputStream(file)
+	length, err := in.ReadInt()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	level, err := in.ReadInt()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	records := make([]TraceRecord, int(length))
+	for i := range records {
+		prev, err := in.ReadLong()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		workerID, err := in.ReadShort()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		fp, err := in.ReadLong()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		hasState, err := in.ReadBool()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		var state *TLCStateMut
+		if hasState {
+			state = NewEmptyState()
+			if err := state.Read(in); err != nil {
+				_ = in.Close()
+				return err
+			}
+			state.UID = int64(i)
+			state.WorkerID = workerID
+		}
+		hasAction, err := in.ReadBool()
+		if err != nil {
+			_ = in.Close()
+			return err
+		}
+		var action *Action
+		if hasAction {
+			name, err := in.readExternalUniqueString()
+			if err != nil {
+				_ = in.Close()
+				return err
+			}
+			action = &Action{Name: name.String()}
+			if state != nil {
+				state.SetAction(action)
+			}
+		}
+		records[i] = TraceRecord{
+			PreviousUID: prev,
+			WorkerID:    workerID,
+			FP:          uint64(fp),
+			State:       state,
+			Action:      action,
+		}
+	}
+	if err := in.Close(); err != nil {
+		return err
+	}
+	for i := range records {
+		record := &records[i]
+		if record.State == nil || record.PreviousUID < 0 || record.PreviousUID >= int64(len(records)) || record.PreviousUID == int64(i) {
+			continue
+		}
+		pred := records[record.PreviousUID].State
+		if pred != nil && record.State.Level() > pred.Level() {
+			record.State.pred = pred
+		}
+	}
+	t.records = records
+	t.level = int(level)
+	return nil
+}
+
+func (t *MemoryTrace) Delete() error {
+	if t == nil {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.diskdir == "" {
+		return nil
+	}
+	if err := os.Remove(t.chkptName("tmp")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Remove(t.chkptName("chkpt")); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+func (t *MemoryTrace) chkptName(ext string) string {
+	rootName := t.rootName
+	if rootName == "" {
+		rootName = "Spec"
+	}
+	return filepath.Join(t.diskdir, rootName+".st."+ext)
 }
 
 func (t *MemoryTrace) Close() error {

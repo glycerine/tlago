@@ -17,6 +17,7 @@ type Options struct {
 	SpecFile                 string
 	ConfigFile               string
 	MetaDir                  string
+	FromCheckpoint           string
 	Mode                     RunMode
 	Workers                  int
 	Deadlock                 bool
@@ -178,6 +179,9 @@ func (t *TLC) processModelChecking() (*Result, error) {
 	}
 	if t.LiveCheck != nil {
 		opts = append(opts, WithModelCheckerLiveCheck(t.LiveCheck))
+	}
+	if t.FromCheckpoint != "" {
+		opts = append(opts, WithModelCheckerFromCheckpoint(t.FromCheckpoint))
 	}
 	checker := NewModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 	code, err := checker.ModelCheck()

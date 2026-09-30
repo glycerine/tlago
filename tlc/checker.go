@@ -221,6 +221,14 @@ func WithModelCheckerLiveCheck(liveCheck *LiveCheck) ModelCheckerOption {
 	}
 }
 
+func WithModelCheckerFromCheckpoint(fromCheckpoint string) ModelCheckerOption {
+	return func(mc *ModelChecker) {
+		if mc.AbstractChecker != nil {
+			mc.FromCheckpoint = fromCheckpoint
+		}
+	}
+}
+
 func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelCheckerOption) *ModelChecker {
 	checkDeadlock := deadlock
 	if tool != nil {
@@ -228,11 +236,15 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 			checkDeadlock = deadlock && config.GetCheckDeadlock()
 		}
 	}
+	rootName := "Spec"
+	if tool != nil {
+		rootName = tool.GetRootName()
+	}
 	mc := &ModelChecker{
 		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
-		FPSet:           NewMemFPSet(),
-		StateQueue:      NewMemStateQueue(),
-		Trace:           NewMemoryTrace(),
+		FPSet:           NewMemFPSet().Init(NumWorkers(), metadir, rootName),
+		StateQueue:      NewMemStateQueue(metadir),
+		Trace:           NewMemoryTrace(metadir, rootName),
 		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
 	}
 	for _, opt := range opts {
@@ -241,11 +253,19 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	if mc.FPSet == nil {
 		mc.FPSet = NewMemFPSet()
 	}
+	if mc.FPSet.metadir == "" || mc.FPSet.filename == "" {
+		mc.FPSet.Init(NumWorkers(), metadir, rootName)
+	}
 	if mc.StateQueue == nil {
-		mc.StateQueue = NewMemStateQueue()
+		mc.StateQueue = NewMemStateQueue(metadir)
+	}
+	if mc.StateQueue.diskdir == "" {
+		mc.StateQueue.diskdir = metadir
 	}
 	if mc.Trace == nil {
-		mc.Trace = NewMemoryTrace()
+		mc.Trace = NewMemoryTrace(metadir, rootName)
+	} else {
+		mc.Trace.SetCheckpointContext(metadir, rootName)
 	}
 	if mc.LiveCheck == nil {
 		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
@@ -324,9 +344,16 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	if result := mc.CheckAssumptions(); result != NoError {
 		return result, nil
 	}
-	result, err := mc.DoInit(false)
-	if err != nil || result != NoError {
-		return result, err
+	recovered, err := mc.Recover()
+	if err != nil {
+		return ECSystemCheckpointRecoveryCorrupt, err
+	}
+	result := NoError
+	if !recovered {
+		result, err = mc.DoInit(false)
+		if err != nil || result != NoError {
+			return result, err
+		}
 	}
 	if len(mc.Tool.GetActions()) == 0 {
 		if !mc.StateQueue.IsEmpty() {
@@ -346,6 +373,114 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 		}
 	}
 	return mc.Tool.CheckPostCondition(), nil
+}
+
+func (mc *ModelChecker) Checkpoint() error {
+	if mc == nil {
+		return nil
+	}
+	PrintMessage(ECTLCCheckpointStart, mc.Metadir)
+	if mc.StateQueue != nil {
+		if err := mc.StateQueue.BeginChkpt(); err != nil {
+			return err
+		}
+	}
+	if mc.Trace != nil {
+		if err := mc.Trace.BeginChkpt(); err != nil {
+			return err
+		}
+	}
+	if mc.FPSet != nil {
+		if err := mc.FPSet.BeginChkpt(); err != nil {
+			return err
+		}
+	}
+	if err := BeginChkptUniqueStrings(mc.Metadir); err != nil {
+		return err
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil {
+		if err := mc.LiveCheck.BeginChkpt(); err != nil {
+			return err
+		}
+	}
+	if mc.StateQueue != nil {
+		mc.StateQueue.ResumeAll()
+	}
+	if mc.StateQueue != nil {
+		if err := mc.StateQueue.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	if mc.Trace != nil {
+		if err := mc.Trace.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	if mc.FPSet != nil {
+		if err := mc.FPSet.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	if err := CommitChkptUniqueStrings(mc.Metadir); err != nil {
+		return err
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil {
+		if err := mc.LiveCheck.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	PrintMessage(ECTLCCheckpointEnd)
+	return nil
+}
+
+func (mc *ModelChecker) Recover() (bool, error) {
+	if mc == nil || mc.FromCheckpoint == "" {
+		return false, nil
+	}
+	PrintMessage(ECTLCCheckpointRecoverStart, mc.FromCheckpoint)
+	if err := RecoverUniqueStrings(mc.FromCheckpoint); err != nil {
+		return false, err
+	}
+	if mc.Trace != nil {
+		mc.Trace.SetCheckpointContext(mc.FromCheckpoint, mc.Tool.GetRootName())
+		if err := mc.Trace.Recover(); err != nil {
+			return false, err
+		}
+	}
+	if mc.StateQueue != nil {
+		mc.StateQueue.diskdir = mc.FromCheckpoint
+		if err := mc.StateQueue.Recover(); err != nil {
+			return false, err
+		}
+	}
+	if mc.FPSet != nil {
+		mc.FPSet.Init(NumWorkers(), mc.FromCheckpoint, mc.Tool.GetRootName())
+		if err := mc.FPSet.RecoverTrace(mc.Trace); err != nil {
+			return false, err
+		}
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil {
+		err := mc.Tool.GetInitStates(NewStateFunctor(func(state *TLCStateMut) (any, error) {
+			return nil, mc.LiveCheck.AddInitState(mc.Tool, state, state.FingerPrint())
+		}))
+		if err != nil {
+			return false, err
+		}
+		if err := mc.LiveCheck.Recover(); err != nil {
+			return false, err
+		}
+	}
+	fpSize := uint64(0)
+	queueSize := int64(0)
+	if mc.FPSet != nil {
+		fpSize = mc.FPSet.Size()
+	}
+	if mc.StateQueue != nil {
+		queueSize = mc.StateQueue.Size()
+	}
+	PrintMessage(ECTLCCheckpointRecoverEnd, fmt.Sprint(fpSize), fmt.Sprint(queueSize))
+	mc.NumberOfInitialStates = int64(fpSize)
+	return true, nil
 }
 
 func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
