@@ -30,6 +30,7 @@ var Globals = struct {
 	Expand                     bool
 	PrintDiffsOnly             bool
 	Warn                       bool
+	Cdot                       bool
 	CheckpointDurationMillis   int64
 	ForceCheckpoint            bool
 	LastCheckpoint             time.Time

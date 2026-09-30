@@ -195,6 +195,8 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		return t.EnabledFromActionList(acts, s0, s1, cm)
 	case OpcodeNop:
 		return t.EnabledImpl(args[0], acts, c, s0, s1, cm)
+	case OpcodeCdot:
+		return t.enabledActionComposition(args, acts, c, s0, s1, cm)
 	case OpcodeTE, OpcodeTF, OpcodeSF, OpcodeWF, OpcodeBox, OpcodeDiamond, OpcodeLeadsto, OpcodeArrow:
 		return nil, newTLCError(ECGeneral, "encountered temporal formula while computing ENABLED: %s", SemanticString(pred))
 	case OpcodeUC, OpcodeUE, OpcodeUF:
@@ -215,6 +217,27 @@ func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, acts *Actio
 	}
 	if bval.Val {
 		return t.EnabledFromActionList(acts, s0, s1, cm)
+	}
+	return nil, nil
+}
+
+func (t *Tool) enabledActionComposition(args []SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+	if !Globals.Cdot {
+		return nil, newTLCError(ECGeneral, actionCompositionUnsupportedMessage)
+	}
+	if len(args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed action composition")
+	}
+	tState := s0.CopyWith(s1)
+	intermediate, _, err := t.actionCompositionIntermediateStates(UnknownAction, args[0], EmptyActionItemList, c, s0, tState, cm)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < intermediate.Size(); i++ {
+		s2, err := t.EnabledImpl(args[1], acts, c, intermediate.At(i), s1, cm)
+		if err != nil || s2 != nil {
+			return s2, err
+		}
 	}
 	return nil, nil
 }

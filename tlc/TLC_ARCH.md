@@ -585,6 +585,17 @@ Key semantics:
   `getNextStatesAllAssigned` is the `TLCGlobals.warn && s1.allAssigned()`
   branch that evaluates remaining predicates directly while routing
   `UNCHANGED` and unsatisfied predicates through the same functor hooks as Java.
+- Java recognizes `OPCODE_cdot` for action composition but disables it by
+  default behind the `tlc2.tool.impl.Tool.cdot` system property. The Go port
+  keeps the same default via `Globals.Cdot == false` and returns Java's
+  unsupported-action-composition message from evaluation, next-state
+  generation, and `ENABLED`. When explicitly enabled, `A \cdot B` first
+  collects intermediate `s -A-> t` states into a concrete `StateVec`, then
+  evaluates or generates `t -B-> u`. The next-state path uses `s0.CopyWith(s1)`
+  for Java's partial intermediate state, forwards composed successors through a
+  concrete `NextStateFunctor`, and stamps the original predecessor/action on
+  `u`. The predicate-evaluation path intentionally starts from a fresh empty
+  intermediate state, matching Java's `TLCState.Empty.createEmpty()` comment.
 - A complete state must assign every declared variable.
 - `isGoodState` detects incomplete or illegal states.
 - Model constraints and action constraints filter states but do not replace

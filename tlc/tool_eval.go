@@ -479,6 +479,8 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		return NewBoolValue(eq), nil
 	case OpcodeAA, OpcodeSA:
 		return t.evalActionSubscript(opcode, args, c, s0, s1, control, cm)
+	case OpcodeCdot:
+		return t.evalActionComposition(args, c, s0, s1, control, cm)
 	case OpcodeSF, OpcodeWF, OpcodeTE, OpcodeTF, OpcodeLeadsto, OpcodeArrow, OpcodeBox, OpcodeDiamond:
 		return nil, newTLCError(ECGeneral, "TLC encountered temporal formula in a predicate: %s", SemanticString(expr))
 	default:
@@ -1168,6 +1170,29 @@ func (t *Tool) evalActionSubscript(opcode int, args []SemanticNode, c *Context, 
 		return NewBoolValue(res.Val && !eq), nil
 	}
 	return NewBoolValue(res.Val || eq), nil
+}
+
+func (t *Tool) evalActionComposition(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	if !Globals.Cdot {
+		return nil, newTLCError(ECGeneral, actionCompositionUnsupportedMessage)
+	}
+	if len(args) < 2 {
+		return nil, newTLCError(ECGeneral, "malformed action composition")
+	}
+	intermediate, _, err := t.actionCompositionIntermediateStates(UnknownAction, args[0], EmptyActionItemList, c, s0, NewEmptyState(), cm)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < intermediate.Size(); i++ {
+		res, err := t.evalBool(args[1], c, intermediate.At(i), s1, control, cm, "action composition")
+		if err != nil {
+			return nil, err
+		}
+		if res.Val {
+			return BoolTrue, nil
+		}
+	}
+	return BoolFalse, nil
 }
 
 func isOperatorValue(value Value) bool {

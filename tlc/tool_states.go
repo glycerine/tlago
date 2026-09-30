@@ -1,5 +1,7 @@
 package tlc
 
+const actionCompositionUnsupportedMessage = "The current version of TLC does not support action composition.  An incomplete implementation can be enabled via the tlc2.tool.impl.Tool.cdot=true java property."
+
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
 	init := t.GetInitStateSpec()
 	acts := EmptyActionItemList
@@ -644,6 +646,8 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		return t.ProcessUnchanged(action, args[0], acts, c, s0, s1, nss, cm)
 	case OpcodeNop:
 		return t.GetNextStatesForPredicate(action, args[0], acts, c, s0, s1, nss, cm)
+	case OpcodeCdot:
+		return t.nextActionComposition(action, args, acts, c, s0, s1, nss, cm)
 	case OpcodeFA:
 		return t.nextFcnApply(action, pred, acts, c, s0, s1, nss, cm)
 	default:
@@ -686,6 +690,47 @@ func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value
 		return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
 	}
 	return s1, nil
+}
+
+func (t *Tool) actionCompositionIntermediateStates(action *Action, pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*StateVec, *TLCStateMut, error) {
+	intermediate := NewStateVec(0)
+	collector := NewNextStateFunctor(func(_ *TLCStateMut, _ *Action, state *TLCStateMut) (any, error) {
+		intermediate.Add(state)
+		return intermediate, nil
+	})
+	res, err := t.GetNextStatesForPredicate(action, pred, acts, c, s0, s1, collector, cm)
+	return intermediate, res, err
+}
+
+func (t *Tool) nextActionComposition(action *Action, args []SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+	if !Globals.Cdot {
+		return s1, newTLCError(ECGeneral, actionCompositionUnsupportedMessage)
+	}
+	if len(args) < 2 {
+		return s1, newTLCError(ECGeneral, "malformed action composition")
+	}
+	tState := s0.CopyWith(s1)
+	intermediate, res, err := t.actionCompositionIntermediateStates(action, args[0], acts, c, s0, tState, cm)
+	if err != nil {
+		return res, err
+	}
+	nss.IncrementStatesGenerated(int64(intermediate.Size()))
+	for i := 0; i < intermediate.Size(); i++ {
+		mid := intermediate.At(i)
+		u := s1.Copy()
+		wrapper := &NextStateFunctor{
+			AddNextElementFunc: func(_ *TLCStateMut, _ *Action, succ *TLCStateMut) (any, error) {
+				return nss.AddNextElement(s0, action, succ.SetPredecessor(s0))
+			},
+			AddUnsatisfiedNextStateFn: func(_ *TLCStateMut, _ *Action, succ *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
+				return nss.AddUnsatisfiedNextState(s0, action, succ.SetPredecessor(s0), pred, con)
+			},
+		}
+		if _, err := t.GetNextStatesForPredicate(action, args[1], acts, c, mid, u, wrapper, cm); err != nil {
+			return res, err
+		}
+	}
+	return res, nil
 }
 
 func (t *Tool) nextFcnApply(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
