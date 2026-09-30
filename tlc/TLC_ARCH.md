@@ -1501,6 +1501,9 @@ Important behavior:
   `.rl.alpha`, `.rl.gamma`, `.rl.reward`, and `.rl.enabledOnly`. Go accepts the
   same property names through the Java-style `-Dname=value` parser and keeps
   the `TLAGO_*` environment aliases as non-Java conveniences.
+- Java reports `TLCGet("config").mode` as `"generate"` when
+  `tlc2.tool.impl.Tool.probabilistic` is true and `"simulate"` otherwise.
+  This is separate from the scheduler name (`random`, `rl`, or `rlaction`).
 - Java's simulation statistics size action-transition matrices and report
   `TLCGet("actions")` from `tool.getSpecActions()`, i.e. initial-state actions
   followed by next-state actions. Go must use `Tool.GetSpecActions()` here too;

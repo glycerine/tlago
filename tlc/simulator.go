@@ -367,8 +367,12 @@ func (s *Simulator) createConfig() Value {
 	if workerCount < 1 {
 		workerCount = 1
 	}
+	mode := "simulate"
+	if toolProbabilisticEnabled() {
+		mode = "generate"
+	}
 	values := []Value{
-		NewStringValue("simulate"),
+		NewStringValue(mode),
 		NewIntValue(depth),
 		NewIntValue(int32(int64(workerCount) * s.TraceNum)),
 		NewBoolValue(s.CheckDeadlock),
