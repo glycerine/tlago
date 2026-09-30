@@ -559,3 +559,230 @@ type NonCheckpointableDiskFPSet struct{ *DiskFPSet }
 func NewNonCheckpointableDiskFPSet(config *FPSetConfiguration) *NonCheckpointableDiskFPSet {
 	return &NonCheckpointableDiskFPSet{DiskFPSet: NewDiskFPSet(config)}
 }
+
+type MultiFPSet struct {
+	Sets       []*MemFPSet
+	FPBits     int
+	Shift      uint
+	metadir    string
+	filename   string
+	statesSeen uint64
+	config     *FPSetConfiguration
+}
+
+func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	bits := config.GetFPBits()
+	if bits <= 0 || bits > multiFPSetMaxFPBits {
+		panic("Illegal number of FPSets found.")
+	}
+	count := 1 << bits
+	sets := make([]*MemFPSet, count)
+	childConfig := *config
+	childConfig.FPBits = 0
+	for i := range sets {
+		sets[i] = NewMemFPSetWithConfig(&childConfig)
+	}
+	return &MultiFPSet{
+		Sets:   sets,
+		FPBits: bits,
+		Shift:  uint(64 - bits),
+		config: config,
+	}
+}
+
+func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) *MultiFPSet {
+	s.metadir = metadir
+	s.filename = filename
+	for i, set := range s.Sets {
+		set.Init(numThreads, metadir, fmt.Sprintf("%s_%d", filename, i))
+	}
+	return s
+}
+
+func (s *MultiFPSet) Size() uint64 {
+	var total uint64
+	for _, set := range s.Sets {
+		total += set.Size()
+	}
+	return total
+}
+
+func (s *MultiFPSet) Sizeof() uint64 {
+	var total uint64
+	for _, set := range s.Sets {
+		total += set.Sizeof()
+	}
+	return total
+}
+
+func (s *MultiFPSet) fpSet(fp uint64) *MemFPSet {
+	idx := int(fp >> s.Shift)
+	return s.Sets[idx]
+}
+
+func (s *MultiFPSet) Put(fp uint64) bool {
+	return s.fpSet(fp).Put(fp)
+}
+
+func (s *MultiFPSet) Contains(fp uint64) bool {
+	return s.fpSet(fp).Contains(fp)
+}
+
+func (s *MultiFPSet) PutBlock(fpv *LongVec) *BitVector {
+	if fpv == nil {
+		return NewBitVector(0)
+	}
+	bv := NewBitVector(fpv.Size())
+	for i := 0; i < fpv.Size(); i++ {
+		if !s.Put(uint64(fpv.ElementAt(i))) {
+			bv.Set(i)
+		}
+	}
+	return bv
+}
+
+func (s *MultiFPSet) ContainsBlock(fpv *LongVec) *BitVector {
+	if fpv == nil {
+		return NewBitVector(0)
+	}
+	s.statesSeen += uint64(fpv.Size())
+	bv := NewBitVector(fpv.Size())
+	for i := 0; i < fpv.Size(); i++ {
+		if !s.Contains(uint64(fpv.ElementAt(i))) {
+			bv.Set(i)
+		}
+	}
+	return bv
+}
+
+func (s *MultiFPSet) GetStatesSeen() uint64 {
+	total := s.statesSeen
+	for _, set := range s.Sets {
+		total += set.GetStatesSeen()
+	}
+	return total
+}
+
+func (s *MultiFPSet) GetConfiguration() *FPSetConfiguration {
+	if s == nil || s.config == nil {
+		return NewFPSetConfiguration()
+	}
+	return s.config
+}
+
+func (s *MultiFPSet) CheckFPs() uint64 {
+	dis := uint64(1<<63 - 1)
+	for _, set := range s.Sets {
+		dis = minUint64(dis, set.CheckFPs())
+	}
+	return dis
+}
+
+func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
+	for _, set := range s.Sets {
+		if !set.CheckInvariant() {
+			return false
+		}
+	}
+	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
+}
+
+func (s *MultiFPSet) BeginChkpt() error {
+	return s.BeginChkptFile(s.filename)
+}
+
+func (s *MultiFPSet) BeginChkptFile(fname string) error {
+	for i, set := range s.Sets {
+		if err := set.BeginChkptFile(fmt.Sprintf("%s_%d", fname, i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *MultiFPSet) CommitChkpt() error {
+	return s.CommitChkptFile(s.filename)
+}
+
+func (s *MultiFPSet) CommitChkptFile(fname string) error {
+	for i, set := range s.Sets {
+		if err := set.CommitChkptFile(fmt.Sprintf("%s_%d", fname, i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *MultiFPSet) Recover() error {
+	return s.RecoverFile(s.filename)
+}
+
+func (s *MultiFPSet) RecoverFile(fname string) error {
+	for i, set := range s.Sets {
+		if err := set.RecoverFile(fmt.Sprintf("%s_%d", fname, i)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *MultiFPSet) RecoverTrace(trace *MemoryTrace) error {
+	if trace == nil {
+		return s.Recover()
+	}
+	for _, record := range trace.Records() {
+		if err := s.RecoverFP(record.FP); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *MultiFPSet) RecoverFP(fp uint64) error {
+	if s.Put(fp) {
+		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+	}
+	return nil
+}
+
+func (s *MultiFPSet) Close() {
+	for _, set := range s.Sets {
+		set.Close()
+	}
+}
+
+func (s *MultiFPSet) AddThread() error {
+	for _, set := range s.Sets {
+		if err := set.AddThread(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *MultiFPSet) IncWorkers(num int) {
+	for _, set := range s.Sets {
+		set.IncWorkers(num)
+	}
+}
+
+func (s *MultiFPSet) Exit(cleanup bool) error {
+	for _, set := range s.Sets {
+		if err := set.Exit(false); err != nil {
+			return err
+		}
+	}
+	if cleanup && s.metadir != "" {
+		return os.RemoveAll(s.metadir)
+	}
+	return nil
+}
+
+func (s *MultiFPSet) UnexportObject(force bool) {
+	for _, set := range s.Sets {
+		set.UnexportObject(force)
+	}
+}
