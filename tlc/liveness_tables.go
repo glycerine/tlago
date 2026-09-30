@@ -94,9 +94,6 @@ func (t *NodePtrTable) GetKeyByLoc(loc int) uint64 {
 
 func (t *NodePtrTable) PutByLoc(k uint64, elem int64, loc int) {
 	t.keys[loc] = k
-	if t.elems[loc] == nodePtrEmpty {
-		t.count++
-	}
 	t.elems[loc] = elem
 }
 
@@ -492,7 +489,7 @@ func (t *TableauNodePtrTable) put(k uint64, tidx int, addElem int64, newElem int
 			if cloc == -1 {
 				t.nodes[loc] = t.appendElem(node, tidx, newElem)
 			} else {
-				t.PutRecordElem(t.nodes[loc], addElem, tidx, cloc)
+				TableauPutElem(t.nodes[loc], addElem, cloc)
 			}
 			return
 		}
