@@ -179,7 +179,7 @@ func (c *AbstractChecker) GetAllNamedValues(key *UniqueString) []Value {
 type ModelChecker struct {
 	*AbstractChecker
 	NumberOfInitialStates int64
-	FPSet                 *MemFPSet
+	FPSet                 FPSet
 	StateQueue            *MemStateQueue
 	Trace                 *MemoryTrace
 	LiveCheck             *LiveCheck
@@ -188,7 +188,7 @@ type ModelChecker struct {
 
 type ModelCheckerOption func(*ModelChecker)
 
-func WithModelCheckerFPSet(fpSet *MemFPSet) ModelCheckerOption {
+func WithModelCheckerFPSet(fpSet FPSet) ModelCheckerOption {
 	return func(mc *ModelChecker) {
 		mc.FPSet = fpSet
 	}
@@ -242,7 +242,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	}
 	mc := &ModelChecker{
 		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
-		FPSet:           NewMemFPSet().Init(NumWorkers(), metadir, rootName),
+		FPSet:           NewFPSet(NewFPSetConfiguration()).Init(NumWorkers(), metadir, rootName),
 		StateQueue:      NewMemStateQueue(metadir),
 		Trace:           NewMemoryTrace(metadir, rootName),
 		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
@@ -251,10 +251,10 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		opt(mc)
 	}
 	if mc.FPSet == nil {
-		mc.FPSet = NewMemFPSet()
+		mc.FPSet = NewFPSet(NewFPSetConfiguration())
 	}
-	if mc.FPSet.metadir == "" || mc.FPSet.filename == "" {
-		mc.FPSet.Init(NumWorkers(), metadir, rootName)
+	if !fpSetInitialized(mc.FPSet) {
+		mc.FPSet = mc.FPSet.Init(NumWorkers(), metadir, rootName)
 	}
 	if mc.StateQueue == nil {
 		mc.StateQueue = NewMemStateQueue(metadir)

@@ -152,7 +152,7 @@ func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) 
 	return set
 }
 
-func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) *DiskFPSet {
+func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if numThreads <= 0 {
@@ -177,27 +177,27 @@ func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) *DiskF
 	return s
 }
 
-func (s *HeapBasedDiskFPSet) Init(numThreads int, metadir string, filename string) *HeapBasedDiskFPSet {
+func (s *HeapBasedDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	return s
 }
 
-func (s *LSBDiskFPSet) Init(numThreads int, metadir string, filename string) *LSBDiskFPSet {
+func (s *LSBDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	return s
 }
 
-func (s *MSBDiskFPSet) Init(numThreads int, metadir string, filename string) *MSBDiskFPSet {
+func (s *MSBDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	return s
 }
 
-func (s *NonCheckpointableDiskFPSet) Init(numThreads int, metadir string, filename string) *NonCheckpointableDiskFPSet {
+func (s *NonCheckpointableDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	return s
 }
 
-func (s *OffHeapDiskFPSet) Init(numThreads int, metadir string, filename string) *OffHeapDiskFPSet {
+func (s *OffHeapDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	return s
 }

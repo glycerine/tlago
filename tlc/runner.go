@@ -30,7 +30,7 @@ type Options struct {
 	DFIDDepth                int
 	CheckpointDurationMillis int64
 	StateWriter              *StateWriter
-	FPSet                    *MemFPSet
+	FPSet                    FPSet
 	StateQueue               *MemStateQueue
 	Trace                    *MemoryTrace
 	LiveCheck                *LiveCheck

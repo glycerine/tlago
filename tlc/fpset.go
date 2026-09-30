@@ -21,6 +21,8 @@ type FPSetConfiguration struct {
 	MemoryInBytes  int64
 	Ratio          float64
 	Implementation string
+	NoNesting      bool
+	MemoryDivisor  int64
 }
 
 func NewFPSetConfiguration() *FPSetConfiguration {
@@ -37,7 +39,7 @@ func NewFPSetConfigurationWithRatio(ratio float64) *FPSetConfiguration {
 }
 
 func (c *FPSetConfiguration) AllowsNesting() bool {
-	return c.GetFPBits() > 0
+	return !c.NoNesting && c.GetFPBits() > 0
 }
 
 func (c *FPSetConfiguration) GetFPBits() int {
@@ -61,13 +63,24 @@ func (c *FPSetConfiguration) GetMemoryInBytes() int64 {
 	if c == nil {
 		return 0
 	}
+	divisor := c.MemoryDivisor
+	if divisor <= 0 {
+		divisor = 1
+	}
+	var memory int64
 	if c.MemoryInBytes > 0 {
 		if c.Ratio > 0 {
-			return int64(float64(c.MemoryInBytes) * c.Ratio)
+			memory = int64(float64(c.MemoryInBytes) * c.Ratio)
+		} else {
+			memory = c.MemoryInBytes
 		}
-		return c.MemoryInBytes
+	} else {
+		memory = c.MemoryInBytes
 	}
-	return c.MemoryInBytes
+	if memory > 0 && divisor > 1 {
+		return memory / divisor
+	}
+	return memory
 }
 
 func (c *FPSetConfiguration) GetMemoryInFingerprintCnt() int64 {
@@ -127,6 +140,95 @@ func isDiskFPSetImplementation(implementation string) bool {
 	}
 }
 
+type FPSet interface {
+	Init(numThreads int, metadir string, filename string) FPSet
+	Size() uint64
+	Sizeof() uint64
+	Put(fp uint64) bool
+	Contains(fp uint64) bool
+	PutBlock(fpv *LongVec) *BitVector
+	ContainsBlock(fpv *LongVec) *BitVector
+	GetStatesSeen() uint64
+	GetConfiguration() *FPSetConfiguration
+	Close()
+	AddThread() error
+	IncWorkers(num int)
+	Exit(cleanup bool) error
+	CheckInvariant(expectFPs ...uint64) bool
+	CheckFPs() uint64
+	BeginChkpt() error
+	BeginChkptFile(fname string) error
+	CommitChkpt() error
+	CommitChkptFile(fname string) error
+	Recover() error
+	RecoverFile(fname string) error
+	RecoverTrace(trace *MemoryTrace) error
+	RecoverFP(fp uint64) error
+	UnexportObject(force bool)
+}
+
+func NewFPSet(config *FPSetConfiguration) FPSet {
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	if config.AllowsNesting() {
+		return NewMultiFPSet(config)
+	}
+	switch config.GetImplementation() {
+	case "tlc2.tool.fp.MemFPSet":
+		return NewMemFPSetWithConfig(config)
+	case "tlc2.tool.fp.MemFPSet1":
+		return NewMemFPSet1(config)
+	case "tlc2.tool.fp.MemFPSet2":
+		return NewMemFPSet2(config)
+	case "tlc2.tool.fp.NoopFPSet":
+		return NewNoopFPSet(config)
+	case "tlc2.tool.fp.LSBDiskFPSet":
+		return NewLSBDiskFPSet(config)
+	case "tlc2.tool.fp.HeapBasedDiskFPSet":
+		return NewHeapBasedDiskFPSet(config)
+	case "tlc2.tool.fp.DiskFPSet", "tlc2.tool.fp.MSBDiskFPSet", "":
+		return NewMSBDiskFPSet(config)
+	case "tlc2.tool.fp.NonCheckpointableDiskFPSet":
+		return NewNonCheckpointableDiskFPSet(config)
+	case "tlc2.tool.fp.OffHeapDiskFPSet":
+		return NewOffHeapDiskFPSet(config)
+	default:
+		return NewMSBDiskFPSet(config)
+	}
+}
+
+func fpSetInitialized(set FPSet) bool {
+	switch s := set.(type) {
+	case nil:
+		return false
+	case *MemFPSet:
+		return s.metadir != "" && s.filename != ""
+	case *MemFPSet1:
+		return s.MemFPSet != nil && s.MemFPSet.metadir != "" && s.MemFPSet.filename != ""
+	case *MemFPSet2:
+		return s.MemFPSet != nil && s.MemFPSet.metadir != "" && s.MemFPSet.filename != ""
+	case *DiskFPSet:
+		return s.metadir != "" && s.filename != ""
+	case *HeapBasedDiskFPSet:
+		return s.DiskFPSet != nil && s.DiskFPSet.metadir != "" && s.DiskFPSet.filename != ""
+	case *LSBDiskFPSet:
+		return s.DiskFPSet != nil && s.DiskFPSet.metadir != "" && s.DiskFPSet.filename != ""
+	case *MSBDiskFPSet:
+		return s.DiskFPSet != nil && s.DiskFPSet.metadir != "" && s.DiskFPSet.filename != ""
+	case *NonCheckpointableDiskFPSet:
+		return s.DiskFPSet != nil && s.DiskFPSet.metadir != "" && s.DiskFPSet.filename != ""
+	case *OffHeapDiskFPSet:
+		return s.DiskFPSet != nil && s.DiskFPSet.metadir != "" && s.DiskFPSet.filename != ""
+	case *MultiFPSet:
+		return s.metadir != "" && s.filename != ""
+	case *NoopFPSet:
+		return true
+	default:
+		return true
+	}
+}
+
 type MemFPSet struct {
 	mu         sync.Mutex
 	metadir    string
@@ -165,7 +267,7 @@ func NewMemFPSetUnchecked() *MemFPSet {
 	return NewMemFPSet()
 }
 
-func (s *MemFPSet) Init(numThreads int, metadir string, filename string) *MemFPSet {
+func (s *MemFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.metadir = metadir
 	s.filename = filename
 	return s
@@ -454,7 +556,7 @@ func NewNoopFPSet(config *FPSetConfiguration) *NoopFPSet {
 	return &NoopFPSet{config: config}
 }
 
-func (s *NoopFPSet) Init(numThreads int, metadir string, filename string) *NoopFPSet {
+func (s *NoopFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	return s
 }
 
@@ -525,7 +627,7 @@ func NewMemFPSet2(config *FPSetConfiguration) *MemFPSet2 {
 }
 
 type MultiFPSet struct {
-	Sets       []*MemFPSet
+	Sets       []FPSet
 	FPBits     int
 	Shift      uint
 	metadir    string
@@ -543,11 +645,12 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 		panic("Illegal number of FPSets found.")
 	}
 	count := 1 << bits
-	sets := make([]*MemFPSet, count)
+	sets := make([]FPSet, count)
 	childConfig := *config
-	childConfig.FPBits = 0
+	childConfig.NoNesting = true
+	childConfig.MemoryDivisor = int64(count)
 	for i := range sets {
-		sets[i] = NewMemFPSetWithConfig(&childConfig)
+		sets[i] = NewFPSet(&childConfig)
 	}
 	return &MultiFPSet{
 		Sets:   sets,
@@ -557,11 +660,11 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 	}
 }
 
-func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) *MultiFPSet {
+func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.metadir = metadir
 	s.filename = filename
 	for i, set := range s.Sets {
-		set.Init(numThreads, metadir, fmt.Sprintf("%s_%d", filename, i))
+		s.Sets[i] = set.Init(numThreads, metadir, fmt.Sprintf("%s_%d", filename, i))
 	}
 	return s
 }
@@ -582,7 +685,7 @@ func (s *MultiFPSet) Sizeof() uint64 {
 	return total
 }
 
-func (s *MultiFPSet) fpSet(fp uint64) *MemFPSet {
+func (s *MultiFPSet) fpSet(fp uint64) FPSet {
 	idx := int(fp >> s.Shift)
 	return s.Sets[idx]
 }
