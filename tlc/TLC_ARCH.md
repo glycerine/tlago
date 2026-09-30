@@ -1487,7 +1487,10 @@ Important behavior:
   functor, randomly select one successor, execute deferred callables, and
   perform liveness/post-trace checks. RL modes remain enum values because they
   select different scheduling and Q-table behavior, while still using the same
-  worker struct.
+  worker struct. Java gives debugger/exploration worker construction precedence
+  over RL worker construction; the Go constructor therefore keeps the configured
+  scheduler on `Simulator` but forces the effective worker mode to standard when
+  `debug bool` is set.
 - Java can select RL simulation with `tlc2.tool.Simulator.rl` or
   `tlc2.tool.Simulator.rlaction` system properties and tune RL with
   `.rl.alpha`, `.rl.gamma`, `.rl.reward`, and `.rl.enabledOnly`. Go accepts the
