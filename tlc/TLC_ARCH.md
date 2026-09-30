@@ -1501,6 +1501,10 @@ Important behavior:
   `.rl.alpha`, `.rl.gamma`, `.rl.reward`, and `.rl.enabledOnly`. Go accepts the
   same property names through the Java-style `-Dname=value` parser and keeps
   the `TLAGO_*` environment aliases as non-Java conveniences.
+- Java's simulation statistics size action-transition matrices and report
+  `TLCGet("actions")` from `tool.getSpecActions()`, i.e. initial-state actions
+  followed by next-state actions. Go must use `Tool.GetSpecActions()` here too;
+  using only next actions shifts ids and drops init-action entries.
 - Java `SimulationWorker.simulateRandomTrace` calls
   `IdThread.setCurrentState` after selecting the initial state and again after
   each selected successor. Go mirrors that with concrete `SetCurrentState`

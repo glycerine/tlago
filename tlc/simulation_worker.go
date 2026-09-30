@@ -99,7 +99,7 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 	}
 	size := 1
 	if traceActions != "" && tool != nil {
-		size = len(tool.GetActions())
+		size = len(tool.GetSpecActions())
 		if size < 1 {
 			size = 1
 		}
@@ -128,7 +128,7 @@ func NewSimulationWorkerStatistics(tool *Tool, traceActions string, states *atom
 		stats.ActionStats[i] = make([]int64, size)
 	}
 	if tool != nil {
-		for id, action := range tool.GetActions() {
+		for id, action := range tool.GetSpecActions() {
 			if action != nil {
 				stats.workerActionIDs.Set(UniqueStringOf(action.GetName()), id)
 			}
