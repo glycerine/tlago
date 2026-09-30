@@ -24,6 +24,9 @@ func RegisterStandardTLAOperators() {
 	TLARegistryPut("Concat", "\\o")
 	TLARegistryPut("MakeFcn", ":>")
 	TLARegistryPut("CombineFcn", "@@")
+	TLARegistryPut("BagCup", "\\oplus")
+	TLARegistryPut("BagDiff", "\\ominus")
+	TLARegistryPut("SqSubseteq", "\\sqsubseteq")
 }
 
 func TLARegistryGet(name string) (string, bool) {
