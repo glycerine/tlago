@@ -156,6 +156,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		}
 		return TLCTraceSerialize(args[0], path)
 	})
+	t.defineStandardEvaluating("_TLCState", 1, standardTLCState, "_TLCTrace!_TLCState", "_JsonTrace!_TLCState")
 	t.defineStandardMethod("_Counts", 0, func(args []Value) (Value, error) { return PossibleCounts(), nil })
 
 	return t
@@ -269,6 +270,16 @@ func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStat
 	_ = control
 	_ = cm
 	return TLCExtTrace(state)
+}
+
+func standardTLCState(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	_ = tool
+	_ = args
+	_ = con
+	_ = pstate
+	_ = control
+	_ = cm
+	return TLCTraceState(state), nil
 }
 
 func standardTLCDefer(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

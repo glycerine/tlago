@@ -48,6 +48,12 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
 		"ndJsonSerialize", "ndJsonDeserialize",
 	},
+	"_JsonTrace": {
+		"_TLCState",
+	},
+	"_TLCTrace": {
+		"_TLCTraceDeserialize", "_TLCTraceSerialize", "_TLCState",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",

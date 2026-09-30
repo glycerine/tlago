@@ -1259,6 +1259,11 @@ Go mapping:
   expressions and the concrete `TLCStateMut` cache for state-level
   expressions, matching Java's split between expression tool objects and
   `TLCStateMutExt`.
+- `_TLCTrace!_TLCState` and `_JsonTrace!_TLCState` are evaluation overrides in
+  Java. They ignore the syntactic level argument and return a record
+  representation of the current state directly, avoiding reconstruction through
+  `TLCExt!Trace`. The Go port registers `_TLCState` as an `EvaluatingValue`
+  with both module-qualified aliases.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action
