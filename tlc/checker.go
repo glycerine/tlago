@@ -1682,14 +1682,14 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 					return f.returnValue, err
 				}
 			}
+			f.mc.StateQueue.Enqueue(curState)
 			if f.mc.CheckLiveness && f.mc.LiveCheck != nil {
-				if err := f.mc.LiveCheck.AddInitState(f.tool, curState, fp); err != nil {
+				if err := f.mc.LiveCheck.AddInitState(f.tool.NoDebug(), curState, fp); err != nil {
 					f.errState = curState
 					f.err = err
 					return f.returnValue, err
 				}
 			}
-			f.mc.StateQueue.Enqueue(curState)
 		}
 	}
 	if !seen || f.forceChecks {

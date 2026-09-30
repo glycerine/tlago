@@ -1562,6 +1562,9 @@ Important behavior:
   state-writer paths bubble out to the caller's `doNextFailed` path. Only
   invariant and implied-action evaluation errors use Java's dedicated
   `doNextEvalFailed` path with the property/action name parameter.
+- Initial-state processing writes unseen states to the state writer and worker
+  trace, enqueues them, and only then calls `liveCheck.addInitState` with
+  `tool.noDebug()`, matching Java `DoInitFunctor`.
 - Simulator result consumption follows Java's continuation policy. Worker
   exceptions and liveness exceptions stop the run, and
   `TLC_INVARIANT_EVALUATION_FAILED`,
