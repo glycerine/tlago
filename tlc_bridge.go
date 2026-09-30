@@ -283,7 +283,7 @@ func (b *tlcBridge) installModelTargets() {
 			b.diags = append(b.diags, errorAt(Position{}, "E7003", "SPECIFICATION operator %s not found", b.cfg.GetSpec()))
 		} else if initExpr, nextExpr, ok := decomposeTemporalSpecification(def.Expr); ok {
 			b.tool.InitStateSpec = append(b.tool.InitStateSpec, b.actionFromExpr(b.cfg.GetSpec()+"!Init", initExpr, nil, true))
-			b.tool.NextStateSpec = b.actionFromExpr(b.cfg.GetSpec()+"!Next", nextExpr, nil, false)
+			b.tool.SetNextStateSpec(b.actionFromExpr(b.cfg.GetSpec()+"!Next", nextExpr, nil, false))
 		} else {
 			b.diags = append(b.diags, errorAt(def.Pos, "E7004", "SPECIFICATION %s must have form Init /\\ [][Next]_vars for TLC bridge decomposition", b.cfg.GetSpec()))
 		}
@@ -294,10 +294,7 @@ func (b *tlcBridge) installModelTargets() {
 		}
 	}
 	if b.tool.NextStateSpec == nil && nextName != "" {
-		b.tool.NextStateSpec = b.actionFromDefinition(nextName, false)
-	}
-	if b.tool.NextStateSpec != nil {
-		b.tool.Actions = []*tlc.Action{b.tool.NextStateSpec}
+		b.tool.SetNextStateSpec(b.actionFromDefinition(nextName, false))
 	}
 	for _, name := range b.cfg.GetInvariants() {
 		if action := b.actionFromDefinition(name, false); action != nil {
