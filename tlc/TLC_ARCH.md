@@ -39,6 +39,9 @@ Top-level source package sizes:
   Go mirrors this as central concrete helpers in `pretty_print.go`.
   `ValuesPPR`/`ValuesPPRString` correspond to Java `tlc2.value.Values.ppr`
   and read the Java property `tlc2.value.Values.width` with default width 80.
+- `tlc2.tool.impl.SpecProcessor.vetoed` controls Java's constant-operator
+  pre-evaluation veto list. The Go constant-definition pass reads the same
+  property through the central TLC property map.
 
 Top-level test package sizes:
 

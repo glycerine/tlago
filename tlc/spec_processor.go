@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const specProcessorVetoedProperty = "tlc2.tool.impl.SpecProcessor.vetoed"
+
 type Defns struct {
 	defnIdx int
 	table   []any
@@ -630,15 +632,13 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 
 func specProcessorVetoedConstantOperators() map[string]bool {
 	out := make(map[string]bool)
-	for _, key := range []string{
-		"tlc2.tool.impl.SpecProcessor.vetoed",
-		"TLAGO_SPEC_PROCESSOR_VETOED",
-	} {
-		for _, name := range strings.Split(os.Getenv(key), ",") {
-			name = strings.TrimSpace(name)
-			if name != "" {
-				out[name] = true
-			}
+	if name, ok := tlcLookupSystemProperty(specProcessorVetoedProperty); ok && name != "" {
+		out[name] = true
+	}
+	for _, name := range strings.Split(os.Getenv("TLAGO_SPEC_PROCESSOR_VETOED"), ",") {
+		name = strings.TrimSpace(name)
+		if name != "" {
+			out[name] = true
 		}
 	}
 	return out
