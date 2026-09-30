@@ -19,6 +19,7 @@ type StateVariable struct {
 var (
 	stateVariables            []StateVariable
 	stateSymmetryPermutations []*MVPerm
+	stateTool                 *Tool
 	EmptyState                *TLCStateMut
 )
 
@@ -78,6 +79,7 @@ func StateSymmetryPermutations() []*MVPerm {
 }
 
 func SetTLCStateTool(tool *Tool) {
+	stateTool = tool
 	if tool == nil {
 		SetStateSymmetryPermutations(nil)
 		return
@@ -270,6 +272,26 @@ func (s *TLCStateMut) ensureSources() {
 func (s *TLCStateMut) FingerPrint() uint64 {
 	values := s.symmetryRepresentativeValues()
 	fp := FP64New()
+	if stateTool != nil && stateTool.ViewSpec != nil {
+		for _, value := range s.values {
+			if value != nil {
+				value.DeepNormalize()
+			}
+		}
+		state := s
+		if len(values) != 0 && len(s.values) != 0 && &values[0] != &s.values[0] {
+			state = NewEmptyState()
+			state.values = values
+		}
+		value, err := stateTool.Eval(stateTool.ViewSpec, EmptyContext, state)
+		if err != nil {
+			panic(err)
+		}
+		if value != nil {
+			return value.FingerPrint(fp)
+		}
+		return fp
+	}
 	for _, value := range values {
 		if value != nil {
 			fp = value.FingerPrint(fp)

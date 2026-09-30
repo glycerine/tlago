@@ -619,9 +619,12 @@ It is optimized for model checking:
 - optional symmetry permutations choose the lexicographically smallest
   representative before fingerprinting.
 - Java installs the active `Tool` into `TLCStateMut`/`TLCStateMutExt` during
-  tool construction so state fingerprints can see symmetry permutations. The Go
-  port keeps the same static state context through `SetTLCStateTool(tool)` and
-  must call it when constructing model checkers or simulators.
+  tool construction so state fingerprints can see the VIEW expression and
+  symmetry permutations. The Go port keeps the same static state context
+  through `SetTLCStateTool(tool)` and must call it when constructing model
+  checkers or simulators. The order is important: first select the symmetry
+  representative, then fingerprint either the raw representative values or the
+  value produced by evaluating VIEW on that representative.
 
 ### `TLCStateMutExt`
 
