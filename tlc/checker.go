@@ -1182,8 +1182,12 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 		for i := 0; i < size; i++ {
 			succState = nextStates.At(i)
 			stop, _, err := mc.processSuccessorForWorker(0, curState, succState, action, nil)
-			if stop || err != nil {
-				return stop, err
+			if err != nil {
+				mc.doNextFailed(curState, succState, err)
+				return true, err
+			}
+			if stop {
+				return true, nil
 			}
 		}
 		succState = nil
@@ -1203,13 +1207,11 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 	}
 	inModel, err := mc.Tool.IsInModel(succState)
 	if err != nil {
-		mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
 		return true, false, err
 	}
 	if inModel {
 		inActions, err := mc.Tool.IsInActions(curState, succState)
 		if err != nil {
-			mc.doNextEvalFailed(curState, succState, ECGeneral, "", err)
 			return true, false, err
 		}
 		inModel = inActions

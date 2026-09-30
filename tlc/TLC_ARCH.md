@@ -1558,6 +1558,10 @@ Important behavior:
   Java calls `act.cm.get(this.pred)`, not `act.cm.get(act.pred)`. Keep the Go
   `ConsAction` lookup on the receiver list's current predicate so coverage
   counters line up with Java's decomposition.
+- Successor-processing errors from model/action constraints, trace writes, or
+  state-writer paths bubble out to the caller's `doNextFailed` path. Only
+  invariant and implied-action evaluation errors use Java's dedicated
+  `doNextEvalFailed` path with the property/action name parameter.
 - Simulator result consumption follows Java's continuation policy. Worker
   exceptions and liveness exceptions stop the run, and
   `TLC_INVARIANT_EVALUATION_FAILED`,
