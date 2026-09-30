@@ -1,5 +1,7 @@
 package tlc
 
+import "reflect"
+
 type CostModel struct {
 	node *CostModelNode
 }
@@ -9,13 +11,52 @@ type CostModelNode struct {
 	Primary   int64
 	Secondary int64
 	Parent    *CostModelNode
-	Children  *InsMap[string, *CostModelNode]
+	Children  *InsMap[semanticNodeKey, *CostModelNode]
+	Lets      *InsMap[semanticNodeKey, *CostModelNode]
+	Recursive *CostModelNode
+	Primed    bool
+	Level     int
 }
 
 var DoNotRecordCostModel = CostModel{}
 
 func NewCostModel(expr SemanticNode) CostModel {
-	return CostModel{node: &CostModelNode{Expr: expr, Children: NewInsMap[string, *CostModelNode]()}}
+	return CostModel{node: newCostModelNode(expr, nil)}
+}
+
+func newCostModelNode(expr SemanticNode, parent *CostModelNode) *CostModelNode {
+	level := 0
+	if parent != nil {
+		level = parent.Level + 1
+	}
+	return &CostModelNode{
+		Expr:     expr,
+		Parent:   parent,
+		Children: NewInsMap[semanticNodeKey, *CostModelNode](),
+		Lets:     NewInsMap[semanticNodeKey, *CostModelNode](),
+		Level:    level,
+	}
+}
+
+type semanticNodeKey struct {
+	typ   string
+	ptr   uintptr
+	image string
+}
+
+func newSemanticNodeKey(node SemanticNode) semanticNodeKey {
+	if node == nil {
+		return semanticNodeKey{}
+	}
+	rv := reflect.ValueOf(node)
+	if rv.IsValid() && rv.Kind() == reflect.Pointer && !rv.IsNil() {
+		return semanticNodeKey{typ: rv.Type().String(), ptr: rv.Pointer()}
+	}
+	return semanticNodeKey{typ: rv.Type().String(), image: SemanticString(node)}
+}
+
+func sameSemanticNode(a SemanticNode, b SemanticNode) bool {
+	return newSemanticNodeKey(a) == newSemanticNodeKey(b)
 }
 
 func (m CostModel) IncInvocations(values ...int64) CostModel {
@@ -57,7 +98,7 @@ func (m CostModel) GetSecondary() int64 {
 }
 
 func (m CostModel) HasValues() bool {
-	return m.node != nil && (m.node.Primary != 0 || m.node.Secondary != 0)
+	return m.node != nil
 }
 
 func (m CostModel) Report() CostModel {
@@ -69,15 +110,85 @@ func (m CostModel) Get(expr SemanticNode) CostModel {
 		return m
 	}
 	if m.node.Children == nil {
-		m.node.Children = NewInsMap[string, *CostModelNode]()
+		m.node.Children = NewInsMap[semanticNodeKey, *CostModelNode]()
 	}
-	key := SemanticString(expr)
-	child := m.node.Children.Get(key)
-	if child == nil {
-		child = &CostModelNode{Expr: expr, Parent: m.node, Children: NewInsMap[string, *CostModelNode]()}
-		m.node.Children.Set(key, child)
+	if sameSemanticNode(expr, m.node.Expr) || SemanticKindOf(expr) != SemanticOpApplKind {
+		return m
 	}
+	key := newSemanticNodeKey(expr)
+	if child := m.node.Children.Get(key); child != nil {
+		return CostModel{node: child}
+	}
+	if m.node.Recursive != nil && m.node.Recursive.Children != nil {
+		if child := m.node.Recursive.Children.Get(key); child != nil {
+			return CostModel{node: child}
+		}
+	}
+	if m.node.Lets != nil {
+		if child := m.node.Lets.Get(key); child != nil {
+			return CostModel{node: child}
+		}
+	}
+	return m
+}
+
+func (m CostModel) AddChild(expr SemanticNode) CostModel {
+	if m.node == nil {
+		return m
+	}
+	if m.node.Children == nil {
+		m.node.Children = NewInsMap[semanticNodeKey, *CostModelNode]()
+	}
+	key := newSemanticNodeKey(expr)
+	if child := m.node.Children.Get(key); child != nil {
+		return CostModel{node: child}
+	}
+	child := newCostModelNode(expr, m.node)
+	m.node.Children.Set(key, child)
 	return CostModel{node: child}
+}
+
+func (m CostModel) AddLet(expr SemanticNode, child CostModel) CostModel {
+	if m.node == nil || child.node == nil {
+		return m
+	}
+	if m.node.Lets == nil {
+		m.node.Lets = NewInsMap[semanticNodeKey, *CostModelNode]()
+	}
+	m.node.Lets.Set(newSemanticNodeKey(expr), child.node)
+	return m
+}
+
+func (m CostModel) SetRecursive(recursive CostModel) CostModel {
+	if m.node != nil {
+		m.node.Recursive = recursive.node
+	}
+	return m
+}
+
+func (m CostModel) SetPrimed() CostModel {
+	if m.node != nil {
+		m.node.Primed = true
+	}
+	return m
+}
+
+func (m CostModel) IsPrimed() bool {
+	return m.node != nil && m.node.Primed
+}
+
+func (m CostModel) SetLevel(level int) CostModel {
+	if m.node != nil {
+		m.node.Level = level
+	}
+	return m
+}
+
+func (m CostModel) GetLevel() int {
+	if m.node == nil {
+		return 0
+	}
+	return m.node.Level
 }
 
 func (m CostModel) GetAndIncrement(expr SemanticNode) CostModel {
@@ -99,7 +210,12 @@ func (m CostModel) GetChild() CostModel {
 	if m.node == nil {
 		return m
 	}
-	return m.Get(m.node.Expr)
+	if m.node.Children != nil {
+		for _, child := range m.node.Children.All() {
+			return CostModel{node: child}
+		}
+	}
+	return m
 }
 
 func (m CostModel) GetSubst(subst Subst) CostModel {
