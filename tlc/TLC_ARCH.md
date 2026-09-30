@@ -265,6 +265,12 @@ Tricky details:
 - Model values must be initialized and ordered exactly as Java does because
   comparison, printing, and fingerprinting depend on it.
 - Constants can be static, dynamic, module-scoped, or override-driven.
+- Model constraints and action constraints accept zero-arity operator
+  definitions. Java stores the operator definition on the body node for later
+  coverage reporting, appends the body to the constraint list, ignores literal
+  `TRUE` values, and treats non-zero-arity definitions, literal `FALSE`,
+  non-boolean values, and unknown names as configuration errors before model
+  checking begins.
 - After definitions and config substitutions are installed, Java
   `SpecProcessor.processConstantDefns` walks zero-arity operator definitions
   whose effective level is constant and pre-evaluates them into TLC `Value`s.

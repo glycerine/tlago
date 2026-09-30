@@ -20,3 +20,20 @@ func (e *TLCError) Error() string {
 func newTLCError(code int, format string, args ...any) *TLCError {
 	return &TLCError{Code: code, Msg: fmt.Sprintf(format, args...)}
 }
+
+type ConfigError struct {
+	Code   int
+	Params []string
+}
+
+func NewConfigError(code int, params ...string) *ConfigError {
+	copied := append([]string(nil), params...)
+	return &ConfigError{Code: code, Params: copied}
+}
+
+func (e *ConfigError) Error() string {
+	if e == nil {
+		return ""
+	}
+	return formatMessage(e.Code, e.Params)
+}

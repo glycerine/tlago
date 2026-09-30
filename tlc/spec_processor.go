@@ -235,6 +235,7 @@ type SpecProcessor struct {
 	ImpliedActNames   []string
 	ModelConstraints  []SemanticNode
 	ActionConstraints []SemanticNode
+	ConfigErrors      []*ConfigError
 	PossiblePostConds []*Action
 	Assumptions       []SemanticNode
 	AssumptionIsAxiom []bool
@@ -285,6 +286,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	if p == nil || p.Config == nil {
 		return
 	}
+	p.ConfigErrors = nil
 	p.SpecificationName = p.Config.GetSpec()
 	p.SymmetrySpec = p.Config.GetSymmetry()
 	p.AliasSpec = p.Config.GetAlias()
@@ -307,8 +309,8 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.Invariants, p.InvariantNames = p.actionsFromConfigNames(p.Config.GetInvariants(), false)
 	p.processConfigProperties()
 	p.PossiblePostConds, _ = p.actionsFromConfigNames(p.Config.GetPostConditions(), false)
-	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints())
-	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints())
+	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints(), "constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
+	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints(), "action constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
 	p.processConfigPossible()
 }
 
@@ -345,6 +347,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.ImpliedActNames = append([]string(nil), p.ImpliedActNames...)
 	tool.ModelConstraints = append([]SemanticNode(nil), p.ModelConstraints...)
 	tool.ActionConstraints = append([]SemanticNode(nil), p.ActionConstraints...)
+	tool.ConfigErrors = append([]*ConfigError(nil), p.ConfigErrors...)
 	tool.PostConditionSpecs = append([]*Action(nil), p.PossiblePostConds...)
 	tool.Assumptions = append([]SemanticNode(nil), p.Assumptions...)
 	tool.AssumptionIsAxiom = append([]bool(nil), p.AssumptionIsAxiom...)
@@ -1000,24 +1003,37 @@ func (p *SpecProcessor) semanticNodesFromConfigNames(names []string) []SemanticN
 	return nodes
 }
 
-func (p *SpecProcessor) constraintNodesFromConfigNames(names []string) []SemanticNode {
+func (p *SpecProcessor) constraintNodesFromConfigNames(names []string, kind string, noArgCode int, undefinedCode int, valueCode int) []SemanticNode {
 	nodes := make([]SemanticNode, 0, len(names))
 	for _, name := range names {
 		switch def := p.defn(name).(type) {
 		case *OpDefNode:
-			if def != nil && def.Arity() == 0 && def.Body != nil {
+			if def == nil {
+				p.addConfigError(undefinedCode, kind, name)
+			} else if def.Arity() != 0 {
+				p.addConfigError(noArgCode, kind, name)
+			} else if def.Body != nil {
 				setSemanticToolObject(def.Body, def)
 				nodes = append(nodes, def.Body)
 			}
 		case *BoolValue:
 			if !def.Val {
-				nodes = append(nodes, def)
+				p.addConfigError(valueCode, kind, name, def.String())
 			}
 		case SemanticNode:
-			nodes = append(nodes, def)
+			p.addConfigError(valueCode, kind, name, SemanticString(def))
+		case Value:
+			p.addConfigError(valueCode, kind, name, def.String())
 		default:
-			nodes = append(nodes, name)
+			p.addConfigError(undefinedCode, kind, name)
 		}
 	}
 	return nodes
+}
+
+func (p *SpecProcessor) addConfigError(code int, params ...string) {
+	if p == nil {
+		return
+	}
+	p.ConfigErrors = append(p.ConfigErrors, NewConfigError(code, params...))
 }

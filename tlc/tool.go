@@ -118,6 +118,7 @@ type Tool struct {
 	Periodic           SemanticNode
 	ModelConstraints   []SemanticNode
 	ActionConstraints  []SemanticNode
+	ConfigErrors       []*ConfigError
 	SymmetryPerms      []*MVPerm
 
 	RootName    string

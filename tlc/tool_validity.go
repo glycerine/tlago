@@ -72,6 +72,11 @@ func (t *Tool) IsValidActionImpl(action *Action) (bool, error) {
 }
 
 func (t *Tool) CheckAssumptionsImpl() int {
+	for _, err := range t.ConfigErrors {
+		if err != nil {
+			return PrintError(err.Code, err.Params...)
+		}
+	}
 	for i, assumption := range t.Assumptions {
 		if i < len(t.AssumptionIsAxiom) && t.AssumptionIsAxiom[i] {
 			continue

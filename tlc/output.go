@@ -135,6 +135,9 @@ const (
 	ECTLCStatePrint2                                     = 2217
 	ECTLCStatePrint3                                     = 2218
 	ECTLCSanyEnd                                         = 2219
+	ECTLCConfigIDRequiresNoArg                           = 2228
+	ECTLCConfigSpecifiedNotDefined                       = 2229
+	ECTLCConfigIDHasValue                                = 2230
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
 	ECTLCCheckingTemporalPropsEnd                        = 2267
@@ -365,6 +368,23 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 }
 
 func formatMessage(code int, params []string) string {
+	switch code {
+	case ECTLCConfigIDRequiresNoArg:
+		if len(params) == 1 {
+			return fmt.Sprintf("TLC requires %s not to take any argument.", params[0])
+		}
+		if len(params) >= 2 {
+			return fmt.Sprintf("TLC requires %s not to take any argument, but one was given: %s", params[0], params[1])
+		}
+	case ECTLCConfigSpecifiedNotDefined:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The %s %s specified in the configuration file\nis not defined in the specification.", params[0], params[1])
+		}
+	case ECTLCConfigIDHasValue:
+		if len(params) >= 3 {
+			return fmt.Sprintf("The %s of %s is equal to %s", params[0], params[1], params[2])
+		}
+	}
 	if len(params) == 0 {
 		return fmt.Sprintf("%d", code)
 	}
@@ -423,7 +443,10 @@ func ExitStatusForErrorCode(code int) int {
 		ECCFGMissingID,
 		ECCFGTwiceKeyword,
 		ECCFGExpectID,
-		ECCFGExpectedSymbol:
+		ECCFGExpectedSymbol,
+		ECTLCConfigIDRequiresNoArg,
+		ECTLCConfigSpecifiedNotDefined,
+		ECTLCConfigIDHasValue:
 		return ExitStatusErrorConfigParse
 	case ECTLCParsingFailed2,
 		ECTLCParsingFailed:
