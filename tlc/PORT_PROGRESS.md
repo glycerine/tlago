@@ -45,6 +45,7 @@
   - Simulator now has a Java-style progress reporter for simulation progress, coverage/action-flow updates, and `_PERIODIC` false termination.
   - Simulator now prints Java-shaped worker-error behaviors and final simulation summaries (`TLC_STATS_SIMU`) with coverage/action-flow finalization.
   - BFS model checking now follows Java's recover-before-fresh-start ordering and preserves the `TLC_LIVE_FORMULA_TAUTOLOGY` guard.
+  - BFS model checking now emits Java's final safety progress snapshot immediately before final liveness checking.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 

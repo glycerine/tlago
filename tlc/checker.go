@@ -579,6 +579,12 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 		return result, err
 	}
 	if mc.CheckLiveness && mc.LiveCheck != nil {
+		PrintMessage(ECTLCProgressStats,
+			fmtInt64(mc.GetProgress()),
+			fmtInt64(mc.GetStatesGenerated()),
+			fmtUint64(mc.GetDistinctStatesGenerated()),
+			fmtInt64(mc.GetStateQueueSize()),
+		)
 		result, err = mc.LiveCheck.FinalCheck(mc.Tool)
 		if err != nil || result != NoError {
 			mc.PrintSummary(false)
