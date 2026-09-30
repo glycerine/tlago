@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -799,18 +800,7 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 		c.recordGraphSize()
 		return false, nil
 	}
-	for _, node := range c.Graph.All() {
-		node.Realign()
-	}
-	for _, pem := range c.Solution.PEMs {
-		search := newLiveSCCSearch(c, pem)
-		if search.check() {
-			c.LastSize = c.GraphSize()
-			return true, nil
-		}
-	}
-	c.LastSize = c.GraphSize()
-	return false, nil
+	return false, fmt.Errorf("liveness checker missing disk graph")
 }
 
 func (c *LiveChecker) Reset() {
@@ -835,213 +825,6 @@ func graphNodeKey(fp uint64, tidx int) string {
 	return fmt.Sprintf("%d:%d", fp, tidx)
 }
 
-type liveSCCSearch struct {
-	checker *LiveChecker
-	pem     *PossibleErrorModel
-	slen    int
-	alen    int
-	next    int
-	index   map[string]int
-	lowlink map[string]int
-	onStack map[string]bool
-	stack   []*GraphNode
-	found   bool
-}
-
-func newLiveSCCSearch(checker *LiveChecker, pem *PossibleErrorModel) *liveSCCSearch {
-	return &liveSCCSearch{
-		checker: checker,
-		pem:     pem,
-		slen:    len(checker.Solution.CheckState),
-		alen:    len(checker.Solution.CheckAction),
-		index:   make(map[string]int),
-		lowlink: make(map[string]int),
-		onStack: make(map[string]bool),
-	}
-}
-
-func (s *liveSCCSearch) check() bool {
-	for _, init := range s.checker.Initial {
-		if init == nil {
-			continue
-		}
-		key := graphNodeKey(init.StateFP, init.TIndex)
-		if _, ok := s.index[key]; !ok {
-			s.strongConnect(init)
-			if s.found {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func (s *liveSCCSearch) strongConnect(node *GraphNode) {
-	if node == nil || s.found {
-		return
-	}
-	key := graphNodeKey(node.StateFP, node.TIndex)
-	s.index[key] = s.next
-	s.lowlink[key] = s.next
-	s.next++
-	s.stack = append(s.stack, node)
-	s.onStack[key] = true
-
-	for _, edge := range s.successors(node) {
-		succ := edge.node
-		succKey := graphNodeKey(succ.StateFP, succ.TIndex)
-		if _, ok := s.index[succKey]; !ok {
-			s.strongConnect(succ)
-			if s.found {
-				return
-			}
-			if s.lowlink[succKey] < s.lowlink[key] {
-				s.lowlink[key] = s.lowlink[succKey]
-			}
-		} else if s.onStack[succKey] && s.index[succKey] < s.lowlink[key] {
-			s.lowlink[key] = s.index[succKey]
-		}
-	}
-
-	if s.lowlink[key] != s.index[key] {
-		return
-	}
-	component := make([]*GraphNode, 0)
-	for len(s.stack) > 0 {
-		last := s.stack[len(s.stack)-1]
-		s.stack = s.stack[:len(s.stack)-1]
-		lastKey := graphNodeKey(last.StateFP, last.TIndex)
-		s.onStack[lastKey] = false
-		component = append(component, last)
-		if lastKey == key {
-			break
-		}
-	}
-	if s.componentViolates(component) {
-		s.found = true
-	}
-}
-
-type liveGraphEdge struct {
-	node  *GraphNode
-	index int
-}
-
-func (s *liveSCCSearch) successors(node *GraphNode) []liveGraphEdge {
-	out := make([]liveGraphEdge, 0, node.SuccSize())
-	for i := 0; i < node.SuccSize(); i++ {
-		if !s.edgeSatisfiesEA(node, i) {
-			continue
-		}
-		fp := node.GetStateFP(i)
-		tidx := node.GetTIndex(i)
-		succ := s.checker.Graph.Get(graphNodeKey(fp, tidx))
-		if succ != nil {
-			out = append(out, liveGraphEdge{node: succ, index: i})
-		}
-	}
-	return out
-}
-
-func (s *liveSCCSearch) edgeSatisfiesEA(node *GraphNode, edge int) bool {
-	if s.pem == nil {
-		return true
-	}
-	for _, idx := range s.pem.EAAction {
-		if !node.GetCheckAction(s.slen, s.alen, edge, idx) {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *liveSCCSearch) componentViolates(component []*GraphNode) bool {
-	if len(component) == 0 {
-		return false
-	}
-	componentSet := make(map[string]struct{}, len(component))
-	for _, node := range component {
-		componentSet[graphNodeKey(node.StateFP, node.TIndex)] = struct{}{}
-	}
-	if len(component) == 1 && !s.hasComponentSelfLoop(component[0]) {
-		return false
-	}
-
-	aeslen := 0
-	aealen := 0
-	if s.pem != nil {
-		aeslen = len(s.pem.AEState)
-		aealen = len(s.pem.AEAction)
-	}
-	aeStateRes := make([]bool, aeslen)
-	aeActionRes := make([]bool, aealen)
-	promiseRes := make([]bool, len(s.checker.Solution.Promises))
-
-	for _, node := range component {
-		for i := 0; i < aeslen; i++ {
-			if !aeStateRes[i] {
-				aeStateRes[i] = node.GetCheckState(s.pem.AEState[i])
-			}
-		}
-
-		if aealen > 0 {
-			for edge := 0; edge < node.SuccSize(); edge++ {
-				if !s.edgeSatisfiesEA(node, edge) {
-					continue
-				}
-				fp := node.GetStateFP(edge)
-				tidx := node.GetTIndex(edge)
-				if _, ok := componentSet[graphNodeKey(fp, tidx)]; !ok {
-					continue
-				}
-				for i := 0; i < aealen; i++ {
-					if !aeActionRes[i] {
-						aeActionRes[i] = node.GetCheckAction(s.slen, s.alen, edge, s.pem.AEAction[i])
-					}
-				}
-			}
-		}
-
-		if s.checker.Solution.HasTableau() && node.TIndex >= 0 && node.TIndex < s.checker.Solution.Tableau.Size() {
-			par := s.checker.Solution.Tableau.GetNode(node.TIndex).Par
-			for i, promise := range s.checker.Solution.Promises {
-				if !promiseRes[i] && par.IsFulfilling(promise) {
-					promiseRes[i] = true
-				}
-			}
-		}
-	}
-
-	for _, ok := range aeStateRes {
-		if !ok {
-			return false
-		}
-	}
-	for _, ok := range aeActionRes {
-		if !ok {
-			return false
-		}
-	}
-	for _, ok := range promiseRes {
-		if !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *liveSCCSearch) hasComponentSelfLoop(node *GraphNode) bool {
-	if node == nil {
-		return false
-	}
-	for i := 0; i < node.SuccSize(); i++ {
-		if node.GetStateFP(i) == node.StateFP && node.GetTIndex(i) == node.TIndex && s.edgeSatisfiesEA(node, i) {
-			return true
-		}
-	}
-	return false
-}
-
 type LiveCheck struct {
 	Tool           *Tool
 	MetaDir        string
@@ -1063,6 +846,13 @@ func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *Liv
 }
 
 func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metadir string, stateWriter *StateWriter) (*LiveCheck, error) {
+	if metadir == "" {
+		tmp, err := os.MkdirTemp("", "tlago-livecheck-")
+		if err != nil {
+			return nil, err
+		}
+		metadir = tmp
+	}
 	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree")}
 	for i, solution := range solutions {
 		writer := NewNoopLivenessStateWriter()
