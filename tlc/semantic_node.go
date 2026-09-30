@@ -230,8 +230,14 @@ func (n *OpApplNode) String() string {
 
 type LetInNode struct {
 	SemanticNodeBase
-	Lets []*OpDefNode
-	Body SemanticNode
+	Lets     []*OpDefNode
+	Bindings []LetBinding
+	Body     SemanticNode
+}
+
+type LetBinding struct {
+	Symbol *SymbolNode
+	Value  any
 }
 
 func NewLetInNode(body SemanticNode, lets ...*OpDefNode) *LetInNode {

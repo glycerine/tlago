@@ -53,7 +53,7 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 	case *OpApplNode:
 		return t.GetInitStatesAppl(init, acts, c, ps, states, cm)
 	case *LetInNode:
-		return t.GetInitStatesForPredicate(init.Body, acts, letDefinitionsContext(c, init.Lets), ps, states, cm)
+		return t.GetInitStatesForPredicate(init.Body, acts, letDefinitionsContext(c, init.Lets, init.Bindings...), ps, states, cm)
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range init.Substs {
@@ -399,7 +399,7 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	case *OpApplNode:
 		return t.GetNextStatesAppl(action, pred, acts, c, s0, s1, nss, cm)
 	case *LetInNode:
-		return t.GetNextStatesForPredicate(action, pred.Body, acts, letDefinitionsContext(c, pred.Lets), s0, s1, nss, cm)
+		return t.GetNextStatesForPredicate(action, pred.Body, acts, letDefinitionsContext(c, pred.Lets, pred.Bindings...), s0, s1, nss, cm)
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
@@ -794,7 +794,7 @@ func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
 		}
 		return t.GetVar(expr.Body, c1, cutoff)
 	case *LetInNode:
-		return t.GetVar(expr.Body, letDefinitionsContext(c, expr.Lets), cutoff)
+		return t.GetVar(expr.Body, letDefinitionsContext(c, expr.Lets, expr.Bindings...), cutoff)
 	case *LabelNode:
 		return t.GetVar(expr.Body, c, cutoff)
 	case *OpApplNode:

@@ -6,17 +6,31 @@ import (
 
 type OpDefNode struct {
 	SemanticNodeBase
+	Symbol *SymbolNode
 	Name   *UniqueString
 	Params []*SymbolNode
 	Body   SemanticNode
 }
 
 func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNode {
+	return NewOpDefNodeForSymbol(NewSymbolNode(name), params, body)
+}
+
+func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body SemanticNode) *OpDefNode {
 	outParams := make([]*SymbolNode, len(params))
 	copy(outParams, params)
+	if symbol == nil {
+		symbol = NewSymbolNode("")
+	}
+	name := symbol.Name
+	image := ""
+	if name != nil {
+		image = name.String()
+	}
 	return &OpDefNode{
-		SemanticNodeBase: SemanticNodeBase{Image: name},
-		Name:             UniqueStringOf(name),
+		SemanticNodeBase: SemanticNodeBase{Image: image},
+		Symbol:           symbol,
+		Name:             name,
 		Params:           outParams,
 		Body:             body,
 	}

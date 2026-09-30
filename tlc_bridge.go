@@ -17,6 +17,19 @@ type tlcBridge struct {
 	symbols map[string]*tlc.SymbolNode
 }
 
+var bridgeStandardModuleMembers = map[string][]string{
+	"TLC": {
+		"Print", "PrintT", "Assert", "JavaTime",
+		"TLCGet", "TLCSet", "MakeFcn", "CombineFcn", "Permutations",
+		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
+	},
+	"TLCExt": {
+		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
+		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
+		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
+	},
+}
+
 // BuildTLCTool converts the production Go SANY semantic tree into the TLC
 // runtime tree used by the mechanical TLC port.
 func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig) (*tlc.Tool, Diagnostics) {
@@ -40,6 +53,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig) (*tlc.Tool, Diagnostics) {
 	bridge.installVariables()
 	bridge.installDefinitions()
 	bridge.installConfigConstants()
+	bridge.installInstanceAliases()
 	bridge.installAssumptions()
 	bridge.installModelTargets()
 	bridge.tool.AssignActionIDs()
@@ -69,7 +83,7 @@ func (b *tlcBridge) installDefinitions() {
 		if opDef == nil {
 			continue
 		}
-		b.tool.Define(&tlc.SymbolNode{Name: opDef.Name}, opDef)
+		b.tool.Define(opDef.Symbol, opDef)
 	}
 }
 
@@ -109,9 +123,70 @@ func (b *tlcBridge) installConfigConstants() {
 		}
 		opDef := b.convertDefinitionAs(specName, def)
 		if opDef != nil {
-			b.tool.Define(&tlc.SymbolNode{Name: opDef.Name}, opDef)
+			b.tool.Define(opDef.Symbol, opDef)
 		}
 	}
+}
+
+func (b *tlcBridge) installInstanceAliases() {
+	if b == nil || b.spec == nil || b.spec.Root == nil {
+		return
+	}
+	for _, inst := range b.spec.Root.Instances {
+		for _, binding := range b.standardInstanceBindings(inst) {
+			if binding.Symbol != nil {
+				b.tool.Define(binding.Symbol, binding.Value)
+			}
+		}
+	}
+}
+
+func (b *tlcBridge) instanceOpDefinitions(inst Instance) []*tlc.OpDefNode {
+	if b == nil || b.spec == nil || inst.Module == "" || inst.qualifier() == "" {
+		return nil
+	}
+	mod := b.spec.Modules[inst.Module]
+	if mod == nil {
+		return nil
+	}
+	out := make([]*tlc.OpDefNode, 0, len(mod.Definitions))
+	for i := range mod.Definitions {
+		def := &mod.Definitions[i]
+		if def.Local {
+			continue
+		}
+		instDef := instantiatedDefinition(def, inst.Substitutions)
+		if instDef == nil {
+			continue
+		}
+		opDef := b.convertDefinitionAs(inst.qualifier()+"!"+instDef.Name, instDef)
+		if opDef != nil {
+			out = append(out, opDef)
+		}
+	}
+	return out
+}
+
+func (b *tlcBridge) standardInstanceBindings(inst Instance) []tlc.LetBinding {
+	if b == nil || b.tool == nil || inst.Module == "" || inst.qualifier() == "" {
+		return nil
+	}
+	members := bridgeStandardModuleMembers[inst.Module]
+	if len(members) == 0 {
+		return nil
+	}
+	out := make([]tlc.LetBinding, 0, len(members))
+	for _, member := range members {
+		value := b.tool.DefnsByName[tlc.UniqueStringOf(member)]
+		if value == nil {
+			continue
+		}
+		out = append(out, tlc.LetBinding{
+			Symbol: b.symbol(inst.qualifier() + "!" + member),
+			Value:  value,
+		})
+	}
+	return out
 }
 
 func (b *tlcBridge) installAssumptions() {
@@ -235,6 +310,7 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if def == nil {
 		return nil
 	}
+	sym := b.symbol(name)
 	params := make([]*tlc.SymbolNode, len(def.Params))
 	for i, param := range def.Params {
 		params[i] = b.symbol(param)
@@ -243,7 +319,7 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if body == nil {
 		return nil
 	}
-	return tlc.NewOpDefNode(name, params, body)
+	return tlc.NewOpDefNodeForSymbol(sym, params, body)
 }
 
 func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
@@ -398,7 +474,14 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 		next := def
 		lets = append(lets, b.convertDefinitionAs(next.Name, &next))
 	}
-	return tlc.NewLetInNode(b.convertExpr(e.Body), lets...)
+	for _, inst := range e.Instances {
+		lets = append(lets, b.instanceOpDefinitions(inst)...)
+	}
+	node := tlc.NewLetInNode(b.convertExpr(e.Body), lets...)
+	for _, inst := range e.Instances {
+		node.Bindings = append(node.Bindings, b.standardInstanceBindings(inst)...)
+	}
+	return node
 }
 
 func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {

@@ -164,7 +164,7 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 }
 
 func (t *Tool) evalImplLetInKind(expr *LetInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
-	c1 := letDefinitionsContext(c, expr.Lets)
+	c1 := letDefinitionsContext(c, expr.Lets, expr.Bindings...)
 	return t.Eval(expr.Body, c1, s0, s1, control, cm)
 }
 
@@ -383,20 +383,24 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	case OpcodeEq:
 		return t.evalEq(args[0], args[1], c, s0, s1, control, cm, false)
 	case OpcodeLand:
-		arg1, err := t.evalBool(args[0], c, s0, s1, control, cm, "/\\")
-		if err != nil || !arg1.Val {
-			return arg1, err
+		for _, arg := range args {
+			bval, err := t.evalBool(arg, c, s0, s1, control, cm, "/\\")
+			if err != nil || !bval.Val {
+				return bval, err
+			}
 		}
-		return t.evalBool(args[1], c, s0, s1, control, cm, "/\\")
+		return BoolTrue, nil
 	case OpcodeLor:
-		arg1, err := t.evalBool(args[0], c, s0, s1, control, cm, "\\/")
-		if err != nil {
-			return nil, err
+		for _, arg := range args {
+			bval, err := t.evalBool(arg, c, s0, s1, control, cm, "\\/")
+			if err != nil {
+				return nil, err
+			}
+			if bval.Val {
+				return BoolTrue, nil
+			}
 		}
-		if arg1.Val {
-			return BoolTrue, nil
-		}
-		return t.evalBool(args[1], c, s0, s1, control, cm, "\\/")
+		return BoolFalse, nil
 	case OpcodeImplies:
 		arg1, err := t.evalBool(args[0], c, s0, s1, control, cm, "=>")
 		if err != nil {
@@ -518,7 +522,7 @@ func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
 	case *OpApplNode:
 		return t.GetLevelBoundAppl(expr, c)
 	case *LetInNode:
-		c1 := letDefinitionsLevelContext(c, expr.Lets)
+		c1 := letDefinitionsLevelContext(c, expr.Lets, expr.Bindings...)
 		level := TLCLevelConstant
 		if bodyLevel := t.GetLevelBound(expr.Body, c1); bodyLevel > level {
 			level = bodyLevel
@@ -543,7 +547,7 @@ func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
 	}
 }
 
-func letDefinitionsContext(c *Context, lets []*OpDefNode) *Context {
+func letDefinitionsContext(c *Context, lets []*OpDefNode, bindings ...LetBinding) *Context {
 	if c == nil {
 		c = EmptyContext
 	}
@@ -552,17 +556,26 @@ func letDefinitionsContext(c *Context, lets []*OpDefNode) *Context {
 		if opDef == nil || opDef.Name == nil {
 			continue
 		}
-		sym := &SymbolNode{Name: opDef.Name}
+		sym := opDef.Symbol
+		if sym == nil {
+			sym = &SymbolNode{Name: opDef.Name}
+		}
 		if opDef.Arity() == 0 {
 			c1 = c1.Cons(sym, NewLazyValue(opDef.Body, c1, true))
 			continue
 		}
 		c1 = c1.Cons(sym, opDef)
 	}
+	for _, binding := range bindings {
+		if binding.Symbol == nil {
+			continue
+		}
+		c1 = c1.Cons(binding.Symbol, binding.Value)
+	}
 	return c1
 }
 
-func letDefinitionsLevelContext(c *Context, lets []*OpDefNode) *Context {
+func letDefinitionsLevelContext(c *Context, lets []*OpDefNode, bindings ...LetBinding) *Context {
 	if c == nil {
 		c = EmptyContext
 	}
@@ -571,7 +584,17 @@ func letDefinitionsLevelContext(c *Context, lets []*OpDefNode) *Context {
 		if opDef == nil || opDef.Name == nil {
 			continue
 		}
-		c1 = c1.Cons(&SymbolNode{Name: opDef.Name}, opDef)
+		sym := opDef.Symbol
+		if sym == nil {
+			sym = &SymbolNode{Name: opDef.Name}
+		}
+		c1 = c1.Cons(sym, opDef)
+	}
+	for _, binding := range bindings {
+		if binding.Symbol == nil {
+			continue
+		}
+		c1 = c1.Cons(binding.Symbol, binding.Value)
 	}
 	return c1
 }
