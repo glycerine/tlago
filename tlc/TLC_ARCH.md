@@ -1159,6 +1159,48 @@ Port guidance:
   structured parameters like Java tests do.
 - State string formatting is semantic output. Treat it as part of compatibility.
 
+## Trace Exploration and Spec Writers
+
+Java TLC has a small but important output-writing subsystem that creates TLA+
+modules and configs from model data:
+
+- `AbstractSpecWriter`: owns TLA and CFG buffers, appends module closing tags,
+  writes streams/files, emits constants, formulas, views, aliases, and model
+  value declarations.
+- `SpecWriterUtilities`: creates generated identifiers, module primers,
+  closing tags, formula/source content arrays, and override definitions.
+- `SpecTraceExpressionWriter`: builds trace-exploration Init/Next relations,
+  trace functions, trace-expression stubs, properties/invariants that reproduce
+  error traces, lasso views, and config wrappers.
+- `TraceExpressionExplorerSpecWriter`: creates the `TEExpression` helper module
+  for user trace expressions, preserving a deterministic variable-expression
+  map in comments.
+- `TraceExplorationSpec`: coordinates the full generated `_TTrace`/`TETrace`
+  spec from an `MCError` trace and registers the binary trace postcondition.
+
+Go keeps this as concrete structs in the central `tlc` package:
+
+- `SpecWriter` is the non-abstract buffer owner corresponding to Java's
+  `AbstractSpecWriter`.
+- `SpecTraceExpressionWriter` embeds `SpecWriter` and ports the trace-specific
+  emitters.
+- `TraceExpressionExplorerSpecWriter` stores the variable-expression map in
+  `InsMap` so generated module order is deterministic.
+- `TraceExplorationSpec` currently captures the naming/postcondition shell; the
+  full `generate` method still needs the mechanical port once MCError recorder
+  plumbing is complete.
+
+Correctness notes:
+
+- Generated identifiers intentionally mirror Java's `scheme + currentMillis +
+  counter*1000` shape.
+- Writer output order is semantic. Do not use unordered Go maps in emitters.
+- The generated timestamp text is not a semantic input to TLC tests; compare
+  structural output or normalize that line when doing byte-level writer tests.
+- Trace expressions are represented as variables and definitions, with
+  temporal-level expressions initialized to `"--"` and primed according to
+  Java's level rules.
+
 ## Coverage Architecture
 
 Coverage is represented by:
