@@ -108,3 +108,32 @@ func TestTLCStateSubsetReturnsMaybeForIncomparableValues(t *testing.T) {
 		t.Fatalf("int subset bool = %s, want MAYBE", got)
 	}
 }
+
+func TestTLCStateFingerprintUsesSymmetryRepresentative(t *testing.T) {
+	UniqueStringInitialize()
+	ModelValueInit()
+	SetStateVariables([]string{"x", "y"})
+	x := UniqueStringOf("x")
+	y := UniqueStringOf("y")
+	a := AddModelValue("A")
+	b := AddModelValue("B")
+
+	representative := NewEmptyState().Bind(x, a).Bind(y, b)
+	symmetric := NewEmptyState().Bind(x, b).Bind(y, a)
+	if representative.FingerPrint() == symmetric.FingerPrint() {
+		t.Fatalf("fingerprints unexpectedly match before symmetry is configured")
+	}
+
+	swap := NewMVPerm()
+	swap.Put(a, b)
+	swap.Put(b, a)
+	SetStateSymmetryPermutations([]*MVPerm{swap})
+	t.Cleanup(func() { SetStateSymmetryPermutations(nil) })
+
+	if representative.FingerPrint() != symmetric.FingerPrint() {
+		t.Fatalf("symmetric states have different fingerprints")
+	}
+	if symmetric.Lookup(x) != b || symmetric.Lookup(y) != a {
+		t.Fatalf("fingerprinting mutated symmetric state to x=%v y=%v", symmetric.Lookup(x), symmetric.Lookup(y))
+	}
+}

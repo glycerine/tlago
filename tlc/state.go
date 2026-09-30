@@ -16,8 +16,9 @@ type StateVariable struct {
 }
 
 var (
-	stateVariables []StateVariable
-	EmptyState     *TLCStateMut
+	stateVariables            []StateVariable
+	stateSymmetryPermutations []*MVPerm
+	EmptyState                *TLCStateMut
 )
 
 func SetStateVariables(names []string) {
@@ -34,6 +35,21 @@ func SetStateVariables(names []string) {
 func StateVariables() []StateVariable {
 	out := make([]StateVariable, len(stateVariables))
 	copy(out, stateVariables)
+	return out
+}
+
+func SetStateSymmetryPermutations(perms []*MVPerm) {
+	if len(perms) == 0 {
+		stateSymmetryPermutations = nil
+		return
+	}
+	stateSymmetryPermutations = make([]*MVPerm, len(perms))
+	copy(stateSymmetryPermutations, perms)
+}
+
+func StateSymmetryPermutations() []*MVPerm {
+	out := make([]*MVPerm, len(stateSymmetryPermutations))
+	copy(out, stateSymmetryPermutations)
 	return out
 }
 
@@ -133,13 +149,63 @@ func (s *TLCStateMut) DeepNormalize() {
 }
 
 func (s *TLCStateMut) FingerPrint() uint64 {
+	values := s.symmetryRepresentativeValues()
 	fp := FP64New()
-	for _, value := range s.values {
+	for _, value := range values {
 		if value != nil {
 			fp = value.FingerPrint(fp)
 		}
 	}
 	return fp
+}
+
+func (s *TLCStateMut) symmetryRepresentativeValues() []Value {
+	if len(stateSymmetryPermutations) == 0 {
+		return s.values
+	}
+	size := len(s.values)
+	minVals := s.values
+	vals := make([]Value, size)
+	usingOriginal := true
+
+nextPerm:
+	for _, perm := range stateSymmetryPermutations {
+		cmp := 0
+		for j := 0; j < size; j++ {
+			if s.values[j] != nil {
+				vals[j] = s.values[j].Permute(perm)
+			} else {
+				vals[j] = nil
+			}
+			if cmp == 0 {
+				var err error
+				cmp, err = compareStateValues(vals[j], minVals[j])
+				if err != nil {
+					panic(err)
+				}
+				if cmp > 0 {
+					continue nextPerm
+				}
+			}
+		}
+		if cmp < 0 {
+			if usingOriginal {
+				minVals = vals
+				vals = make([]Value, size)
+				usingOriginal = false
+			} else {
+				minVals, vals = vals, minVals
+			}
+		}
+	}
+	if !usingOriginal {
+		for _, value := range s.values {
+			if value != nil {
+				value.DeepNormalize()
+			}
+		}
+	}
+	return minVals
 }
 
 func (s *TLCStateMut) AllAssigned() bool {
@@ -295,6 +361,20 @@ func stateValuesEqual(a, b Value) bool {
 	}
 	eq, err := a.Equal(b)
 	return err == nil && eq
+}
+
+func compareStateValues(a, b Value) (int, error) {
+	if a == nil || b == nil {
+		switch {
+		case a == b:
+			return 0, nil
+		case a == nil:
+			return -1, nil
+		default:
+			return 1, nil
+		}
+	}
+	return a.Compare(b)
 }
 
 func valueString(v Value) string {
