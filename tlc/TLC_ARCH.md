@@ -1773,6 +1773,14 @@ an empty sequence; Java's first-argument message says "natural number" and the
 Go port intentionally preserves that wording. `Permutations` and the finite-set
 paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE`.
 
+`Randomization` validates public arguments in Java order and reports
+`TLC_MODULE_ARGUMENT_ERROR`. `RandomSetOfSubsets` checks first-argument count,
+second-argument subset size, third-argument finite set, requested number of
+subsets against `2^Cardinality(S)`, then subset size against `0..Cardinality(S)`.
+`RandomSubsetSet` reports under the Java operator name
+`RandomSubsetSetProbability`, including for probability parsing and the
+requested-subsets bound.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

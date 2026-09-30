@@ -9,7 +9,7 @@ import (
 func RandomSubset(k Value, set Value) (Value, error) {
 	count, ok := k.(*IntValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "first argument of RandomSubset must be a nonnegative integer, got %s", k)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RandomSubset", "nonnegative integer", ValuesPPR(k))
 	}
 	return randomSubsetOfEnumerable(int(count.Val), set)
 }
@@ -17,44 +17,48 @@ func RandomSubset(k Value, set Value) (Value, error) {
 func RandomSetOfSubsets(numberOfPicks Value, subsetSize Value, set Value) (Value, error) {
 	picks, ok := numberOfPicks.(*IntValue)
 	if !ok || picks.Val < 0 {
-		return nil, newTLCError(ECGeneral, "first argument of RandomSetOfSubsets must be a nonnegative integer, got %s", numberOfPicks)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RandomSetOfSubsets", "nonnegative integer", ValuesPPR(numberOfPicks))
 	}
 	n, ok := subsetSize.(*IntValue)
 	if !ok || n.Val < 0 {
-		return nil, newTLCError(ECGeneral, "second argument of RandomSetOfSubsets must be a nonnegative integer, got %s", subsetSize)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSetOfSubsets", "nonnegative integer", ValuesPPR(subsetSize))
 	}
-	size, err := set.Size()
+	size, err := randomizationFiniteSetSize("third", "RandomSetOfSubsets", "finite set", set)
 	if err != nil {
 		return nil, err
 	}
-	if int(n.Val) > size {
-		return nil, newTLCError(ECGeneral, "second argument of RandomSetOfSubsets must be in 0..Cardinality(S), got %s", subsetSize)
-	}
-	if err := checkRandomSubsetPickCount(int(picks.Val), size); err != nil {
+	if err := checkRandomSubsetPickCount("RandomSetOfSubsets", int(picks.Val), size); err != nil {
 		return nil, err
 	}
+	if int(n.Val) > size {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSetOfSubsets", "nonnegative integer in range 0..Cardinality(S)", ValuesPPR(subsetSize))
+	}
 	probability := float64(n.Val) / float64(size)
+	if probability < 0 || probability > 1 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSetOfSubsets", "nonnegative integer in range 0..Cardinality(S)", ValuesPPR(subsetSize))
+	}
 	return randomSetOfSubsets(int(picks.Val), probability, set)
 }
 
 func RandomSubsetSet(numberOfPicks Value, probabilityString Value, set Value) (Value, error) {
+	const operator = "RandomSubsetSetProbability"
 	picks, ok := numberOfPicks.(*IntValue)
 	if !ok || picks.Val < 0 {
-		return nil, newTLCError(ECGeneral, "first argument of RandomSubsetSet must be a nonnegative integer, got %s", numberOfPicks)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", operator, "nonnegative integer", ValuesPPR(numberOfPicks))
 	}
 	probText, ok := probabilityString.(*StringValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "second argument of RandomSubsetSet must be a string probability, got %s", probabilityString)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", operator, "string literal representing a probability", ValuesPPR(probabilityString))
 	}
 	probability, err := strconv.ParseFloat(probText.Val.String(), 64)
 	if err != nil || probability < 0 || probability > 1 {
-		return nil, newTLCError(ECGeneral, "second argument of RandomSubsetSet must parse to a probability in [0,1], got %s", probabilityString)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", operator, "string literal does not represent a parsable probability", ValuesPPR(probabilityString))
 	}
-	size, err := set.Size()
+	size, err := randomizationFiniteSetSize("third", operator, "finite set", set)
 	if err != nil {
 		return nil, err
 	}
-	if err := checkRandomSubsetPickCount(int(picks.Val), size); err != nil {
+	if err := checkRandomSubsetPickCount(operator, int(picks.Val), size); err != nil {
 		return nil, err
 	}
 	return randomSetOfSubsets(int(picks.Val), probability, set)
@@ -63,14 +67,14 @@ func RandomSubsetSet(numberOfPicks Value, probabilityString Value, set Value) (V
 func randomSubsetOfEnumerable(k int, value Value) (Value, error) {
 	enum, ok := asEnumerable(value)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "expected a finite enumerable set, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSubset", "a finite set", ValuesPPR(value))
 	}
 	finite, err := value.IsFinite()
 	if err != nil {
 		return nil, err
 	}
 	if !finite {
-		return nil, newTLCError(ECGeneral, "expected a finite enumerable set, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSubset", "a finite set", ValuesPPR(value))
 	}
 	if subset, ok := value.(*SubsetValue); ok {
 		return randomSubsetOfSubsetValue(k, subset)
@@ -407,13 +411,33 @@ func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) 
 	return NewSetEnumValueVec(subsets, false), nil
 }
 
-func checkRandomSubsetPickCount(picks int, size int) error {
+func randomizationFiniteSetSize(position string, operator string, expected string, value Value) (int, error) {
+	_, ok := asEnumerable(value)
+	if !ok {
+		return 0, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, expected, ValuesPPR(value))
+	}
+	finite, err := value.IsFinite()
+	if err != nil {
+		return 0, err
+	}
+	if !finite {
+		return 0, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, expected, ValuesPPR(value))
+	}
+	size, err := value.Size()
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
+}
+
+func checkRandomSubsetPickCount(operator string, picks int, size int) error {
 	if size >= 31 {
 		return nil
 	}
 	max := int(math.Pow(2, float64(size)))
 	if picks > max {
-		return newTLCError(ECGeneral, "number of requested random subsets %d exceeds subset space size 2^%d", picks, size)
+		expected := "nonnegative integer that is smaller than the subset's size of 2^" + strconv.Itoa(size)
+		return newTLCErrorCode(ECTLCModuleArgumentError, "first", operator, expected, strconv.Itoa(picks))
 	}
 	return nil
 }
