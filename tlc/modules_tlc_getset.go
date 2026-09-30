@@ -80,11 +80,11 @@ func TLCGetValue(tool *Tool, vidx Value, s0 *TLCStateMut, s1 *TLCStateMut, contr
 		if idx.Val < 0 {
 			break
 		}
-		workerID, ok := CurrentWorkerID()
-		if !ok {
-			workerID = workerIDFromState(s0)
-		}
 		if checker := MainChecker(); checker != nil {
+			workerID := 0
+			if id, ok := CurrentWorkerID(); ok {
+				workerID = id
+			}
 			if value := checker.GetValue(workerID, int(idx.Val)); value != nil {
 				return value, nil
 			}
@@ -177,9 +177,9 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 	default:
 		if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
 			if checker != nil {
-				workerID, ok := CurrentWorkerID()
-				if !ok {
-					workerID = workerIDFromState(s0)
+				workerID := 0
+				if id, ok := CurrentWorkerID(); ok {
+					workerID = id
 				}
 				if value := checker.GetNamedValue(workerID, key); value != nil {
 					return value, nil
@@ -304,10 +304,10 @@ func TLCGetOrDefault(vidx Value, defVal Value) Value {
 			return defVal
 		}
 		workerID := 0
-		if id, ok := CurrentWorkerID(); ok {
-			workerID = id
-		}
 		if checker := MainChecker(); checker != nil {
+			if id, ok := CurrentWorkerID(); ok {
+				workerID = id
+			}
 			if value := checker.GetValue(workerID, int(idx.Val)); value != nil {
 				return value
 			}
@@ -323,10 +323,10 @@ func TLCGetOrDefault(vidx Value, defVal Value) Value {
 		key := idx.Val
 		if key != nil && strings.HasPrefix(key.String(), TLCNamedRegisterPrefix) {
 			workerID := 0
-			if id, ok := CurrentWorkerID(); ok {
-				workerID = id
-			}
 			if checker := MainChecker(); checker != nil {
+				if id, ok := CurrentWorkerID(); ok {
+					workerID = id
+				}
 				if value := checker.GetNamedValue(workerID, key); value != nil {
 					return value
 				}
