@@ -1,9 +1,109 @@
 package tlc
 
-type CostModel struct{}
+type CostModel struct {
+	node *CostModelNode
+}
 
-func (CostModel) Get(SemanticNode) CostModel {
-	return CostModel{}
+type CostModelNode struct {
+	Expr      SemanticNode
+	Primary   int64
+	Secondary int64
+	Parent    *CostModelNode
+	Children  *InsMap[string, *CostModelNode]
+}
+
+var DoNotRecordCostModel = CostModel{}
+
+func NewCostModel(expr SemanticNode) CostModel {
+	return CostModel{node: &CostModelNode{Expr: expr, Children: NewInsMap[string, *CostModelNode]()}}
+}
+
+func (m CostModel) IncInvocations(values ...int64) CostModel {
+	if m.node == nil {
+		return m
+	}
+	value := int64(1)
+	if len(values) > 0 {
+		value = values[0]
+	}
+	m.node.Primary += value
+	return m
+}
+
+func (m CostModel) IncSecondary(values ...int64) CostModel {
+	if m.node == nil {
+		return m
+	}
+	value := int64(1)
+	if len(values) > 0 {
+		value = values[0]
+	}
+	m.node.Secondary += value
+	return m
+}
+
+func (m CostModel) GetPrimary() int64 {
+	if m.node == nil {
+		return -1
+	}
+	return m.node.Primary
+}
+
+func (m CostModel) GetSecondary() int64 {
+	if m.node == nil {
+		return -1
+	}
+	return m.node.Secondary
+}
+
+func (m CostModel) HasValues() bool {
+	return m.node != nil && (m.node.Primary != 0 || m.node.Secondary != 0)
+}
+
+func (m CostModel) Report() CostModel {
+	return m
+}
+
+func (m CostModel) Get(expr SemanticNode) CostModel {
+	if m.node == nil {
+		return m
+	}
+	if m.node.Children == nil {
+		m.node.Children = NewInsMap[string, *CostModelNode]()
+	}
+	key := SemanticString(expr)
+	child := m.node.Children.Get(key)
+	if child == nil {
+		child = &CostModelNode{Expr: expr, Parent: m.node, Children: NewInsMap[string, *CostModelNode]()}
+		m.node.Children.Set(key, child)
+	}
+	return CostModel{node: child}
+}
+
+func (m CostModel) GetAndIncrement(expr SemanticNode) CostModel {
+	return m.Get(expr).IncInvocations()
+}
+
+func (m CostModel) GetRoot() CostModel {
+	if m.node == nil {
+		return m
+	}
+	ptr := m.node
+	for ptr.Parent != nil {
+		ptr = ptr.Parent
+	}
+	return CostModel{node: ptr}
+}
+
+func (m CostModel) GetChild() CostModel {
+	if m.node == nil {
+		return m
+	}
+	return m.Get(m.node.Expr)
+}
+
+func (m CostModel) GetSubst(subst Subst) CostModel {
+	return m.GetRoot().Get(subst.Expr)
 }
 
 type Action struct {
