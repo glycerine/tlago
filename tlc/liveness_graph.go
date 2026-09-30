@@ -703,6 +703,25 @@ func (n *AbstractGraphNode) GetCheckAction(slen int, alen int, nodeIdx int, i in
 	return n.Checks.Get(slen + alen*nodeIdx + i)
 }
 
+func (n *AbstractGraphNode) GetCheckActionVector(slen int, alen int, nodeIdx int) *BitVector {
+	out := NewBitVector(alen)
+	for i := 0; i < alen; i++ {
+		if n.GetCheckAction(slen, alen, nodeIdx, i) {
+			out.Set(i)
+		}
+	}
+	return out
+}
+
+func (n *AbstractGraphNode) GetCheckActionAll(slen int, alen int, nodeIdx int, indices []int) bool {
+	for _, i := range indices {
+		if !n.GetCheckAction(slen, alen, nodeIdx, i) {
+			return false
+		}
+	}
+	return true
+}
+
 func (n *AbstractGraphNode) SetCheckState(values []bool) {
 	for i, value := range values {
 		if value {
@@ -799,6 +818,172 @@ func (n *GraphNode) TransExists(fp uint64, tidx int) bool {
 	return false
 }
 
+func (n *GraphNode) CheckInvariants(slen int, alen int) bool {
+	seen := make(map[GraphTransition]struct{}, n.SuccSize())
+	for _, transition := range n.GetTransitions(slen, alen) {
+		if _, ok := seen[transition]; ok {
+			return false
+		}
+		seen[transition] = struct{}{}
+	}
+	return len(seen) == n.SuccSize()
+}
+
+func (n *GraphNode) GetTransitions(slen int, alen int) []GraphTransition {
+	transitions := make([]GraphTransition, 0, n.SuccSize())
+	for i := 0; i < n.SuccSize(); i++ {
+		transitions = append(transitions, NewGraphTransition(n.GetStateFP(i), n.GetTIndex(i), n.GetCheckActionVector(slen, alen, i)))
+	}
+	return transitions
+}
+
+func (n *GraphNode) GetTNode(tableau *TBGraph) *TBGraphNode {
+	if tableau == nil {
+		return nil
+	}
+	return tableau.GetNode(n.TIndex)
+}
+
+func (n *GraphNode) Write(out *ValueOutputStream) error {
+	n.Realign()
+	if err := out.WriteNat(int32(len(n.Nodes))); err != nil {
+		return err
+	}
+	for _, value := range n.Nodes {
+		if err := out.WriteInt(int32(value)); err != nil {
+			return err
+		}
+	}
+	return n.Checks.Write(out)
+}
+
+func (n *GraphNode) Read(in *ValueInputStream) error {
+	count, err := in.ReadNat()
+	if err != nil {
+		return err
+	}
+	n.Nodes = make([]int, int(count))
+	for i := range n.Nodes {
+		value, err := in.ReadInt()
+		if err != nil {
+			return err
+		}
+		n.Nodes[i] = int(value)
+	}
+	n.Checks = NewBitVector(0)
+	if err := n.Checks.Read(in); err != nil {
+		return err
+	}
+	n.offset = graphNodeNoFreeSlots
+	return nil
+}
+
+func (n *GraphNode) String() string {
+	return strings.ReplaceAll(n.StringWithActionLength(0), "[] ", "")
+}
+
+func (n *GraphNode) StringWithActionLength(alen int) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("<%d,%d> --> ", n.StateFP, n.TIndex))
+	for i := 0; i < n.SuccSize(); i++ {
+		b.WriteByte('[')
+		for j := 0; j < alen; j++ {
+			if n.GetCheckAction(0, 2, i, j) {
+				b.WriteByte('t')
+			} else {
+				b.WriteByte('f')
+			}
+		}
+		b.WriteString(fmt.Sprintf("] <%d,%d>, ", n.GetStateFP(i), n.GetTIndex(i)))
+	}
+	out := b.String()
+	if strings.HasSuffix(out, ", ") {
+		return out[:len(out)-2]
+	}
+	return out
+}
+
+func (n *GraphNode) ToDotViz(isInitState bool, hasTableau bool, slen int, alen int, oos *OrderOfSolution, labels map[uint64]string) string {
+	id := fmt.Sprint(n.StateFP)
+	if hasTableau {
+		id += fmt.Sprintf(".%d", n.TIndex)
+	}
+	labelPrefix := ""
+	if labels != nil {
+		labelPrefix = labels[n.StateFP]
+	}
+	fpLabel := fmt.Sprint(n.StateFP)
+	if len(fpLabel) > 6 {
+		fpLabel = fpLabel[:6]
+	}
+	label := labelPrefix + fpLabel
+	if hasTableau {
+		label += fmt.Sprintf(".%d", n.TIndex)
+	}
+	if slen > 0 {
+		label += "\n"
+		for i := 0; i < slen; i++ {
+			if n.GetCheckState(i) {
+				label += "t"
+			} else {
+				label += "f"
+			}
+		}
+	}
+	if oos != nil && len(oos.Promises) > 0 && hasTableau && oos.Tableau != nil {
+		label += "\n"
+		tnode := n.GetTNode(oos.Tableau)
+		for _, promise := range oos.Promises {
+			if tnode != nil && tnode.Par.IsFulfilling(promise) {
+				label += "t"
+			} else {
+				label += "f"
+			}
+		}
+	}
+	var b strings.Builder
+	if isInitState {
+		b.WriteString(fmt.Sprintf("%q [style = filled][label = %q]\n", id, label))
+	} else {
+		b.WriteString(fmt.Sprintf("%q [label = %q]\n", id, label))
+	}
+	for i := 0; i < n.SuccSize(); i++ {
+		stateFP := n.GetStateFP(i)
+		tidx := n.GetTIndex(i)
+		target := fmt.Sprint(stateFP)
+		if hasTableau {
+			target += fmt.Sprintf(".%d", tidx)
+		}
+		b.WriteString(fmt.Sprintf("%q -> %q [label=\"", id, target))
+		for j := 0; j < alen; j++ {
+			if n.GetCheckAction(slen, alen, i, j) {
+				b.WriteByte('t')
+			} else {
+				b.WriteByte('f')
+			}
+		}
+		b.WriteString("\"];\n")
+	}
+	return b.String()
+}
+
+type GraphTransition struct {
+	FP         uint64
+	TIndex     int
+	checksHash int
+	checksText string
+}
+
+func NewGraphTransition(fp uint64, tidx int, checks *BitVector) GraphTransition {
+	text := ""
+	hash := 0
+	if checks != nil {
+		text = checks.String()
+		hash = checks.Hash()
+	}
+	return GraphTransition{FP: fp, TIndex: tidx, checksHash: hash, checksText: text}
+}
+
 type BEGraphNode struct {
 	AbstractGraphNode
 	StateFP uint64
@@ -811,6 +996,9 @@ const beGraphVisitedMask = int64(-1 << 63)
 func NewBEGraphNode(fp uint64) *BEGraphNode {
 	return &BEGraphNode{AbstractGraphNode: NewAbstractGraphNode(NewBitVector(0)), StateFP: fp}
 }
+
+func (n *BEGraphNode) NextAt(i int) *BEGraphNode { return n.Nexts[i] }
+func (n *BEGraphNode) NextSize() int             { return len(n.Nexts) }
 
 func (n *BEGraphNode) ResetNumberField() int64 {
 	old := n.Number
@@ -849,4 +1037,52 @@ func (n *BEGraphNode) TransExists(target *BEGraphNode) bool {
 		}
 	}
 	return false
+}
+
+func (n *BEGraphNode) NodeInfo() string {
+	return fmt.Sprint(n.StateFP)
+}
+
+func (n *BEGraphNode) SetParent(parent *BEGraphNode) {
+	if len(n.Nexts) == 0 {
+		n.Nexts = make([]*BEGraphNode, 1)
+	}
+	n.Nexts[0] = parent
+}
+
+func (n *BEGraphNode) GetParent() *BEGraphNode {
+	if len(n.Nexts) == 0 {
+		return nil
+	}
+	return n.Nexts[0]
+}
+
+func (n *BEGraphNode) String() string {
+	var b strings.Builder
+	n.writeString(&b, !n.GetVisited())
+	return b.String()
+}
+
+func (n *BEGraphNode) writeString(b *strings.Builder, unseen bool) {
+	if n.GetVisited() != unseen {
+		return
+	}
+	n.FlipVisited()
+	b.WriteString(fmt.Sprintf("%d --> ", n.StateFP))
+	if len(n.Nexts) != 0 && n.Nexts[0] != nil {
+		b.WriteString(fmt.Sprint(n.Nexts[0].StateFP))
+	}
+	for i := 1; i < len(n.Nexts); i++ {
+		if n.Nexts[i] == nil {
+			continue
+		}
+		b.WriteString(", ")
+		b.WriteString(fmt.Sprint(n.Nexts[i].StateFP))
+	}
+	b.WriteByte('\n')
+	for _, next := range n.Nexts {
+		if next != nil {
+			next.writeString(b, unseen)
+		}
+	}
 }

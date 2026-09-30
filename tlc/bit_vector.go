@@ -192,6 +192,37 @@ func (bv *BitVector) StringRangeChars(start, length int, one, zero byte) string 
 	return "[" + string(buf) + "]"
 }
 
+func (bv *BitVector) Write(out *ValueOutputStream) error {
+	if bv == nil {
+		return out.WriteNat(0)
+	}
+	if err := out.WriteNat(int32(len(bv.word))); err != nil {
+		return err
+	}
+	for _, word := range bv.word {
+		if err := out.WriteLong(int64(word)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (bv *BitVector) Read(in *ValueInputStream) error {
+	length, err := in.ReadNat()
+	if err != nil {
+		return err
+	}
+	bv.word = make([]uint64, int(length))
+	for i := range bv.word {
+		word, err := in.ReadLong()
+		if err != nil {
+			return err
+		}
+		bv.word[i] = uint64(word)
+	}
+	return nil
+}
+
 func (bv *BitVector) grow(wd int) {
 	if wd < len(bv.word) {
 		return
