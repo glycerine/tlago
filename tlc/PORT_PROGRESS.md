@@ -56,6 +56,7 @@
   - DFID init now prints Java-shaped invariant/implied-init diagnostics and replays init exceptions with `CallStackTool`.
   - DFID workers now push the current worker id during `Run`, matching Java `IdThread` behavior for `TLCGet("worker")` and worker-local values.
   - DFID checkpoint recovery now rebinds `Metadir` to `FromCheckpoint`, matching Java's resumed-run metadir setup.
+  - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
@@ -96,6 +97,6 @@
   - `go test ./tlc`
   - `go test -run TestParseLivenessFromParsedSANYSpec ./`
 - Immediate next steps:
-  1. Continue breadth-first comparison of `DFIDModelChecker.java`/`DFIDWorker.java`, especially trace printing fidelity and checkpoint/recovery details.
-  2. Then continue into remaining liveness checkpoint/error-trace and distributed pieces.
+  1. Continue breadth-first liveness comparison, especially `LiveCheck.check0`, SCC worker precedence, and counterexample reconstruction details.
+  2. Then continue into remaining checkpoint/distributed/debugger surfaces.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.

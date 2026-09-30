@@ -1117,6 +1117,9 @@ func (lc *LiveCheck) Check(tool *Tool, forceCheck bool) (int, error) {
 		forceCheck = true
 		lc.Forced = false
 	}
+	if !forceCheck && !DoLiveness() {
+		return NoError, nil
+	}
 	if !forceCheck && !lc.DoLiveCheck() {
 		return NoError, nil
 	}
@@ -1133,7 +1136,16 @@ func (lc *LiveCheck) FinalCheck(tool *Tool) (int, error) {
 	if lc == nil || lc.NoOp {
 		return NoError, nil
 	}
+	if livenessFinalCheckOff() {
+		return NoError, nil
+	}
 	return lc.check0(tool, true)
+}
+
+func livenessFinalCheckOff() bool {
+	Globals.Lock()
+	defer Globals.Unlock()
+	return Globals.LNCheck == "off"
 }
 
 func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
