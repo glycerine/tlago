@@ -341,8 +341,7 @@ func PossibleCounts() Value {
 	values := []Value(nil)
 	if checker := MainChecker(); checker != nil {
 		values = append(values, checker.GetAllNamedValues(possibleCountsKey)...)
-	}
-	if simulator := CurrentSimulator(); simulator != nil {
+	} else if simulator := CurrentSimulator(); simulator != nil {
 		values = append(values, simulator.GetAllNamedValues(possibleCountsKey)...)
 	}
 	domain := NewValueVec(0)

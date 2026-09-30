@@ -26,6 +26,7 @@
 - Already audited recently; do not loop on `TLCGetSet` register/config/spec surfaces unless touched: direct checker counters use exact Java overflow, stats/coverage records use `IntValue.narrowToIntValue` semantics, named/integer registers use current worker id only when running inside a worker and otherwise fall back to checker worker 0, and simulator/config/statistics fields follow Java's mode split.
 - Already audited recently; do not loop on `TLCExt` hash/cache details unless touched: `TLCExt!TLCFP` is synchronized like Java, semantic node kinds use Java `ASTConstants` ids where mirrored, semantic-node hash follows `31*(31+kind)+uid`, value hash follows Java `Value.hashCode()`, and `TLCCache` state-level keys use Java's direct XOR expression.
 - Already audited recently; do not loop on `Json`/raw string conversion unless touched: Go keeps printable `StringValue.UnquotedString()` separate from raw `StringValue.RawString()`, and module overrides now use raw `UniqueString` contents for JSON payload strings, file paths, model values, process arguments, and trace binary paths. `IOUtils!Serialize` NDJSON now follows Java's `Json.textSerialize` path by honoring `openOptions` and not creating parent directories.
+- Already audited recently; do not loop on `_Possible!_Counts` unless touched: it now mirrors Java's checker-else-simulator source selection before aggregating per-worker count records.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -120,6 +121,7 @@
   - `TLCExt!TLCFP` and state-level `TLCCache` keying now mirror Java's synchronized fingerprint path and direct semantic-node/value hash XOR algorithm.
   - JSON, IO, TLCExt model-value, and trace-path string consumers now use raw `UniqueString` text where Java calls `StringValue.val.toString()`, while printable string escaping remains available for display paths.
   - The NDJSON `IOUtils!Serialize` override now uses the Java JSON override shape, applying `openOptions` instead of always using the parent-creating `Json!ndJsonSerialize` path.
+  - `_Possible!_Counts` now uses the Java checker-or-simulator selection instead of merging both global sources if both handles are present.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
