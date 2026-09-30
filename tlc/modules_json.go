@@ -220,10 +220,10 @@ func jsonWriteObject(b *bytes.Buffer, value Value) error {
 		b.WriteByte('}')
 		return nil
 	case *FcnRcdValue:
-		return jsonWriteFcnObject(b, v)
+		return jsonWriteFcn(b, v)
 	case *FcnLambdaValue:
 		fcn := v.ToFcnRcd()
-		return jsonWriteFcnObject(b, fcn)
+		return jsonWriteFcn(b, fcn)
 	default:
 		return newTLCError(ECGeneral, "Cannot convert value: unsupported value type %T", value)
 	}

@@ -1253,6 +1253,12 @@ Java-compatible random enumerable generator here, not Go's process-global
 random source, so seeded simulation and trace replay consume random values in
 the same places Java does.
 
+`Json!ToJsonObject` mirrors Java's `getObjectNode` dispatch. Records and
+tuples become JSON objects, but a function record whose domain is a valid
+sequence `1..n` is routed back to the array writer even under `ToJsonObject`.
+This oddity is source-compatible with Java and must be preserved for
+round-tripping existing specs.
+
 Override infrastructure:
 
 - `TLARegistry` maps TLA+ names to Java names.
