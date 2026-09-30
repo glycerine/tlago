@@ -1244,6 +1244,9 @@ Port guidance:
   `longNat(uid)`, `shortNat(level)`, then every state variable value. It does
   not serialize variable-count headers, nil markers, predecessors, or action
   names; those are runtime/trace-reconstruction metadata.
+- `TLCStateMutExt.copy` preserves level, predecessor, and action but resets
+  worker id and uid; `deepCopy` preserves worker id and uid. Neither copy path
+  carries deferred executor callables, matching Java's `TLCStateMutExt`.
 - The Go `TLCTrace` still keeps an in-memory mirror of `TraceRecord` values as a
   transitional convenience for direct state-object trace access. This mirror is
   not the source-of-truth file format and should shrink as reconstruction moves

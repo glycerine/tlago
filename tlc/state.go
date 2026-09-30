@@ -169,7 +169,6 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		sources:  sources,
 		pred:     s.pred,
 		action:   s.action,
-		callable: s.callable,
 	}
 }
 
@@ -193,7 +192,6 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		sources:  sources,
 		pred:     s.pred,
 		action:   s.action,
-		callable: s.callable,
 	}
 }
 
