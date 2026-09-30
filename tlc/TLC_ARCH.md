@@ -2115,6 +2115,10 @@ Important Java classes:
   assumption-violation hooks duplicate the active frame just like Java; the Go
   stack layer accepts ordinary `error` values until the Java
   `StatefulRuntimeException` hierarchy has a full concrete Go mirror.
+  Continue/step-over/step-in/step-out/step-back/reverse-continue/goto-state
+  commands update `Step`, `SourceFrame`, `Granularity`, and generated-state
+  selection in the same place as Java's DAP handlers, while leaving the protocol
+  transport itself for a later pass.
 - `DebugTLCVariable`: adapts TLC `Value` objects into debugger variables.
   Scalars expose `type` and `value`; enumerable/function/record/tuple values
   receive a non-zero `variablesReference` and lazily produce children.

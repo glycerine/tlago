@@ -1177,6 +1177,7 @@ type TLCDebugger struct {
 	HaltExp           bool
 	HaltInv           bool
 	ExecutionIsHalted bool
+	Paused            bool
 }
 
 type TLCDebuggerFrame struct {
@@ -1241,6 +1242,19 @@ func (f *TLCDebuggerFrame) MatchesNode(node SemanticNode) bool {
 
 func (f *TLCDebuggerFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
 	return f != nil && f.Base != nil && f.Base.MatchesBreakpoint(bp)
+}
+
+func (f *TLCDebuggerFrame) Handle(debugger *TLCDebugger) bool {
+	if f == nil {
+		return false
+	}
+	if f.Next != nil {
+		return true
+	}
+	if f.Init != nil && debugger != nil {
+		return len(debugger.Stack) == 1
+	}
+	return false
 }
 
 func NewTLCDebugger(tool *Tool) *TLCDebugger {
@@ -1329,6 +1343,146 @@ func (d *TLCDebugger) HaltExecution(frame *TLCStackFrame, level ...int) {
 	if frame != nil {
 		d.SourceFrame = frame
 	}
+}
+
+func (d *TLCDebugger) ContinueCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.Handle(d) {
+		d.Granularity = DebugGranularityFormula
+		d.Paused = false
+		return d
+	}
+	d.SourceFrame = nil
+	d.Step = DebugStepCommandContinue
+	d.Paused = false
+	return d
+}
+
+func (d *TLCDebugger) StepOverCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.Handle(d) {
+		if top.Next != nil {
+			_, _ = top.Next.StepOverSelect()
+		}
+		d.Granularity = DebugGranularityFormula
+		d.Paused = false
+		return d
+	}
+	d.SourceFrame = d.topBaseFrame()
+	d.Step = DebugStepCommandOver
+	d.Paused = false
+	return d
+}
+
+func (d *TLCDebugger) StepInCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.Handle(d) {
+		if top.Next != nil {
+			_, _ = top.Next.StepInSelect()
+		}
+		d.Granularity = DebugGranularityFormula
+		d.Paused = false
+		return d
+	}
+	d.Step = DebugStepCommandIn
+	d.Paused = false
+	return d
+}
+
+func (d *TLCDebugger) StepOutCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil {
+		if top.Handle(d) {
+			if top.Next != nil {
+				_, _ = top.Next.StepOutSelect()
+			}
+			d.Granularity = DebugGranularityFormula
+			d.Paused = false
+			return d
+		}
+		if top.Base != nil {
+			d.SourceFrame = top.Base.Parent
+		}
+		d.Step = DebugStepCommandOut
+	}
+	d.Paused = false
+	return d
+}
+
+func (d *TLCDebugger) PauseCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.Paused = true
+	return d
+}
+
+func (d *TLCDebugger) StepBackCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.Handle(d) {
+		d.Granularity = DebugGranularityFormula
+		d.Paused = false
+		return d
+	}
+	d.Step = DebugStepCommandReset
+	d.Paused = false
+	return d
+}
+
+func (d *TLCDebugger) ReverseContinueCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.Handle(d) {
+		d.Granularity = DebugGranularityFormula
+		d.Paused = false
+		return d
+	}
+	d.Step = DebugStepCommandResetStart
+	d.Paused = false
+	return d
+}
+
+func (d *TLCDebugger) GotoStateCommand(ref int) *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if top := d.TopFrame(); top != nil && top.Handle(d) {
+		if top.Next != nil {
+			_, _ = top.Next.SelectStateByReference(ref)
+		} else if top.Init != nil {
+			_, _ = top.Init.SelectStateByReference(ref)
+		}
+		d.Granularity = DebugGranularityFormula
+		d.Paused = false
+	}
+	return d
 }
 
 func (d *TLCDebugger) PushFrame(tool *Tool, expr SemanticNode, c *Context) *TLCDebugger {
