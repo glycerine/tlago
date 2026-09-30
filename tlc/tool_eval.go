@@ -185,7 +185,14 @@ func (t *Tool) evalImplOpArgKind(expr *OpArgNode, c *Context, s0 *TLCStateMut, s
 	}
 }
 
-func (t *Tool) EvalAppl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+func (t *Tool) EvalAppl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
+	done := t.callStackEnter(expr)
+	defer func() {
+		if err == nil {
+			value = t.callStackToolValue(value)
+		}
+		done(err)
+	}()
 	return t.EvalApplImpl(expr, c, s0, s1, control, cm)
 }
 

@@ -37,7 +37,9 @@ func (t *Tool) MakeStateImpl(pred SemanticNode) (*TLCStateMut, error) {
 	return state, nil
 }
 
-func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
+func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) (err error) {
+	done := t.callStackEnter(init)
+	defer func() { done(err) }()
 	if c == nil {
 		c = EmptyContext
 	}
@@ -99,7 +101,9 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 	return t.GetInitStatesForPredicate(acts.CarPred(), acts1, acts.CarContext(), ps, states, acts.CM)
 }
 
-func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
+func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) (err error) {
+	done := t.callStackEnter(init)
+	defer func() { done(err) }()
 	args := init.Args
 	opNode := init.Operator
 	opcode := GetOpCode(opNode.Name)
@@ -363,7 +367,9 @@ func (t *Tool) GetNextStatesImpl(action *Action, state *TLCStateMut) (*StateVec,
 	return nss, err
 }
 
-func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
 	if c == nil {
 		c = EmptyContext
 	}
@@ -429,7 +435,9 @@ func (t *Tool) GetNextStatesFromActionList(action *Action, acts *ActionItemList,
 	}
 }
 
-func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
 	args := pred.Args
 	opNode := pred.Operator
 	opcode := GetOpCode(opNode.Name)
@@ -697,7 +705,9 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 	return res, enum.Err()
 }
 
-func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
+	done := t.callStackEnter(expr)
+	defer func() { done(err) }()
 	if varNode := t.GetVar(expr, c, false); varNode != nil {
 		varName := varNode.Name
 		val0 := s0.Lookup(varName)

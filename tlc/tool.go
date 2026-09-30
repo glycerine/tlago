@@ -128,6 +128,7 @@ type Tool struct {
 	KnownStates *InsMap[uint64, *TLCStateMut]
 	Definitions map[*SymbolNode]any
 	DefnsByName map[*UniqueString]any
+	CallStack   *CallStack
 
 	GetInitStatesFunc               func(*Tool, *StateFunctor) error
 	GetNextStatesFunc               func(*Tool, *Action, *TLCStateMut) (*StateVec, error)
@@ -310,7 +311,14 @@ func (t *Tool) GetNextStatesForAction(functor *NextStateFunctor, state *TLCState
 	return false, nil
 }
 
-func (t *Tool) Eval(expr SemanticNode, args ...any) (Value, error) {
+func (t *Tool) Eval(expr SemanticNode, args ...any) (value Value, err error) {
+	done := t.callStackEnter(expr)
+	defer func() {
+		if err == nil {
+			value = t.callStackToolValue(value)
+		}
+		done(err)
+	}()
 	if t != nil && t.EvalFunc != nil {
 		return t.EvalFunc(t, expr, args...)
 	}
@@ -370,14 +378,17 @@ func (t *Tool) HasStateOrActionConstraints() bool {
 	return len(t.ModelConstraints) > 0 || len(t.ActionConstraints) > 0
 }
 
-func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLCStateMut) *TLCStateMut {
+func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLCStateMut) (state *TLCStateMut) {
+	var err error
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
 	if t != nil && t.EnabledFunc != nil {
 		return t.EnabledFunc(t, pred, con, s0, s1)
 	}
 	if t == nil {
 		return s1
 	}
-	state, err := t.EnabledImpl(pred, EmptyActionItemList, con, s0, s1, CostModel{})
+	state, err = t.EnabledImpl(pred, EmptyActionItemList, con, s0, s1, CostModel{})
 	if err != nil {
 		return nil
 	}

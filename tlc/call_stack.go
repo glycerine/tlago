@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 )
@@ -12,6 +13,60 @@ type CallStack struct {
 
 func NewCallStack() *CallStack {
 	return &CallStack{stack: make([]SemanticNode, 0, 64)}
+}
+
+func NewCallStackTool(other *Tool) *Tool {
+	if other == nil {
+		other = NewTool()
+	}
+	tool := *other
+	tool.CallStack = NewCallStack()
+	return &tool
+}
+
+func (t *Tool) HasCallStack() bool {
+	return t != nil && t.CallStack != nil && t.CallStack.Size() > 0
+}
+
+func (t *Tool) CallStackString() string {
+	if t == nil || t.CallStack == nil {
+		return NewCallStack().String()
+	}
+	return t.CallStack.String()
+}
+
+func (t *Tool) callStackEnter(expr SemanticNode) func(error) {
+	if t == nil || t.CallStack == nil || expr == nil {
+		return func(error) {}
+	}
+	t.CallStack.Push(expr)
+	return func(err error) {
+		if err != nil {
+			var fpErr *FingerprintException
+			if errors.As(err, &fpErr) {
+				t.CallStack.Freeze(fpErr)
+			} else {
+				t.CallStack.Freeze()
+			}
+		}
+		t.CallStack.Pop()
+	}
+}
+
+func (t *Tool) callStackToolValue(value Value) Value {
+	if t == nil || t.CallStack == nil || value == nil {
+		return value
+	}
+	switch v := value.(type) {
+	case *SetPredValue:
+		return NewSetPredValueFrom(v, t)
+	case *FcnLambdaValue:
+		return NewFcnLambdaValueFrom(v, t)
+	case *OpLambdaValue:
+		return NewOpLambdaValueFrom(v, t)
+	default:
+		return value
+	}
 }
 
 func (s *CallStack) Push(expr SemanticNode) {

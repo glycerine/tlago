@@ -1,6 +1,8 @@
 package tlc
 
-func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
 	if c == nil {
 		c = EmptyContext
 	}
@@ -72,7 +74,9 @@ func (t *Tool) EnabledFromActionList(acts *ActionItemList, s0 *TLCStateMut, s1 *
 	}
 }
 
-func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	done := t.callStackEnter(pred)
+	defer func() { done(err) }()
 	args := pred.Args
 	opNode := pred.Operator
 	opcode := GetOpCode(opNode.Name)
@@ -328,7 +332,9 @@ func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, a
 	return nil, enum.Err()
 }
 
-func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
+	done := t.callStackEnter(expr)
+	defer func() { done(err) }()
 	if varNode := t.GetVar(expr, c, true); varNode != nil {
 		varName := varNode.Name
 		v0, err := t.Eval(expr, c, s0, s1, EvalEnabled, cm)
