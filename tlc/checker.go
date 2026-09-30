@@ -692,7 +692,7 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 
 func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
 	if !mc.Tool.IsGoodState(succState) {
-		return mc.doNextSetErr(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, actionName(action)), false, nil
+		return mc.doNextSetErrParams(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
 	}
 	succState.SetPredecessor(curState).SetAction(action)
 	inModel, err := mc.Tool.IsInModel(succState)
@@ -868,11 +868,18 @@ func (mc *ModelChecker) doNextCheckImplied(curState *TLCStateMut, succState *TLC
 }
 
 func (mc *ModelChecker) doNextSetErr(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, param string) bool {
+	if param == "" {
+		return mc.doNextSetErrParams(curState, succState, keep, ec)
+	}
+	return mc.doNextSetErrParams(curState, succState, keep, ec, param)
+}
+
+func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
 	if mc.SetErrState(curState, succState, keep, ec) {
-		if param == "" {
+		if len(params) == 0 {
 			PrintError(ec)
 		} else {
-			PrintError(ec, param)
+			PrintError(ec, params...)
 		}
 		if mc.StateQueue != nil {
 			mc.StateQueue.FinishAll()

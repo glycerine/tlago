@@ -334,6 +334,24 @@ func (s *TLCStateMut) Unassigned() []StateVariable {
 	return out
 }
 
+func incompleteNextStateParams(tool *Tool, action *Action, state *TLCStateMut) []string {
+	unassigned := state.Unassigned()
+	names := make([]string, 0, len(unassigned))
+	for _, variable := range unassigned {
+		if variable.Name != nil {
+			names = append(names, variable.Name.String())
+		}
+	}
+	verb := " is"
+	if len(unassigned) > 1 {
+		verb = "s are"
+	}
+	if tool != nil && len(tool.GetActions()) == 1 {
+		return []string{verb, strings.Join(names, ", ")}
+	}
+	return []string{actionName(action), verb, strings.Join(names, ", ")}
+}
+
 func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
 	out := NewInsMap[*UniqueString, Value]()
 	for i, variable := range stateVariables {

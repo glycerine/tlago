@@ -494,7 +494,7 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 	w.markWorkerState(succ)
 	succ.SetPredecessor(curState).SetAction(action)
 	if !w.Tool.IsGoodState(succ) {
-		return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, StateTrace: w.GetTrace(succ)}
+		return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, Params: incompleteNextStateParams(w.Tool, action, succ), StateTrace: w.GetTrace(succ)}
 	}
 	w.Statistics.CollectPreSuccessor(curState, action, succ)
 	if workerErr := w.CheckInvariants(succ); workerErr != nil {

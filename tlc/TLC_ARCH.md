@@ -1314,6 +1314,11 @@ Go port's ambient current-worker helper must be goroutine-scoped, mirroring
 Java's thread-local worker identity. A single process-wide worker slot is not
 correct once workers run concurrently.
 
+Incomplete next-state errors must carry Java's parameter vector: for a
+single-action spec, the plurality fragment and comma-joined unassigned variable
+names; for multi-action specs, the action name followed by those two fields.
+Simulation and BFS both use this exact shape.
+
 Random subsets of product-shaped values (`[S -> T]`, record sets, tuple
 products) must use Java's product-index strategy from
 `SetOfFcnsOrRcdsValue`. TLC converts each constituent to a `SetEnumValue`,
