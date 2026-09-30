@@ -47,6 +47,8 @@ Top-level source package sizes:
   `tlc2.TLC.nohalt`, `tlc2.TLC.stopAfter`,
   `tlc2.tool.ModelChecker.vetoCleanup`, and
   `tlc2.tool.ModelChecker.BAQueue`.
+- Disk state queues and disk byte-array queues both use Java's
+  `tlc2.tool.queue.DiskStateQueue.BufSize` property, defaulting to 8192.
 
 Top-level test package sizes:
 

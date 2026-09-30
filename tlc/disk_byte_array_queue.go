@@ -34,17 +34,18 @@ func NewDiskByteArrayQueue(metaDir string) *DiskByteArrayQueue {
 	if metaDir == "" {
 		metaDir = filepath.Join(os.TempDir(), "DiskByteArrayQueue")
 	}
+	bufSize := diskStateQueueBufferSize()
 	q := &DiskByteArrayQueue{
 		diskdir:  metaDir,
-		deqBuf:   make([][]byte, diskStateQueueBufferSize),
-		enqBuf:   make([][]byte, diskStateQueueBufferSize),
-		deqIndex: diskStateQueueBufferSize,
+		deqBuf:   make([][]byte, bufSize),
+		enqBuf:   make([][]byte, bufSize),
+		deqIndex: bufSize,
 		loPool:   1,
 	}
 	q.cond = sync.NewCond(&q.mu)
-	q.reader = NewByteArrayPoolReader(diskStateQueueBufferSize, q.poolName(0))
+	q.reader = NewByteArrayPoolReader(bufSize, q.poolName(0))
 	q.reader.Start()
-	q.writer = NewByteArrayPoolWriter(diskStateQueueBufferSize, q.reader)
+	q.writer = NewByteArrayPoolWriter(bufSize, q.reader)
 	q.writer.Start()
 	q.loFile = q.poolName(q.loPool)
 	return q

@@ -9,7 +9,10 @@ import (
 	"sync"
 )
 
-const diskStateQueueBufferSize = 8192
+const (
+	diskStateQueueDefaultBufferSize  = 8192
+	diskStateQueueBufferSizeProperty = "tlc2.tool.queue.DiskStateQueue.BufSize"
+)
 
 type DiskStateQueue struct {
 	mu            sync.Mutex
@@ -36,20 +39,30 @@ func NewDiskStateQueue(metaDir string) *DiskStateQueue {
 	if metaDir == "" {
 		metaDir = filepath.Join(os.TempDir(), "DiskStateQueue")
 	}
+	bufSize := diskStateQueueBufferSize()
 	q := &DiskStateQueue{
 		diskdir:  metaDir,
-		deqBuf:   make([]*TLCStateMut, diskStateQueueBufferSize),
-		enqBuf:   make([]*TLCStateMut, diskStateQueueBufferSize),
-		deqIndex: diskStateQueueBufferSize,
+		deqBuf:   make([]*TLCStateMut, bufSize),
+		enqBuf:   make([]*TLCStateMut, bufSize),
+		deqIndex: bufSize,
 		loPool:   1,
 	}
 	q.cond = sync.NewCond(&q.mu)
-	q.reader = NewStatePoolReader(diskStateQueueBufferSize, q.poolName(0))
+	q.reader = NewStatePoolReader(bufSize, q.poolName(0))
 	q.reader.Start()
-	q.writer = NewStatePoolWriter(diskStateQueueBufferSize, q.reader)
+	q.writer = NewStatePoolWriter(bufSize, q.reader)
 	q.writer.Start()
 	q.loFile = q.poolName(q.loPool)
 	return q
+}
+
+func diskStateQueueBufferSize() int {
+	if value, ok := tlcLookupSystemProperty(diskStateQueueBufferSizeProperty); ok {
+		if parsed, ok := javaIntProperty(value); ok {
+			return parsed
+		}
+	}
+	return diskStateQueueDefaultBufferSize
 }
 
 func (q *DiskStateQueue) Enqueue(state *TLCStateMut) {
