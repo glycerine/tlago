@@ -19,6 +19,7 @@
 - Already audited recently; do not loop on `Vect`/`LongVec` unless touched: Java capacity growth, removal, reverse/pack behavior, and live `Vect` enumeration are mirrored.
 - Already audited recently; do not loop on `MemObjectStack`/`MemObjectQueue`/`DiskObjectStack` unless touched: stack/queue ordering, buffer rollover, checkpoint layout, and Java's direct `MemObjectStack` checkpoint rename are mirrored.
 - Already audited recently; do not loop on `StateWriter`/`DotStateWriter`/`DotActionWriter` unless touched: DOT headers/trailers, ranks/legends, action graph output, and Java's action-present transition label attribute behavior are mirrored.
+- Already audited recently; do not loop on bucket/statistics utilities unless touched: bucket ordering, median/percentile math, dummy/concurrent/fixed variants, Java's literal `%n` statistics string quirk, counter gating, and CountDistinct HyperLogLog integer-shift/narrowing behavior are mirrored.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -105,6 +106,7 @@
   - `Vect.Elements` now returns a live Java-style enumerator rather than a snapshot, and `Vect.Concat` uses Java's default-capacity destination construction.
   - `MemObjectStack.CommitChkpt` now mirrors Java's direct temporary-to-checkpoint rename instead of deleting the old checkpoint first.
   - `DotStateWriter` transition attributes now mirror Java by emitting the label/color/fontcolor block for every action-bearing edge, even when labels/colorization are disabled, and by omitting it on actionless edges.
+  - Bucket/statistics utilities now mirror Java's visible statistics string formatting quirk and CountDistinct HyperLogLog's Java integer-shift and `(int)` narrowing behavior.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

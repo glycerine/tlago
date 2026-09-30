@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -27,6 +28,9 @@ func TestBucketStatisticsJavaMetrics(t *testing.T) {
 	}
 	if stats.Min() != 0 || stats.Max() != 2 || stats.Observations() != 5 {
 		t.Fatalf("min/max/obs = %d/%d/%d, want 0/2/5", stats.Min(), stats.Max(), stats.Observations())
+	}
+	if got := stats.String(); !strings.HasPrefix(got, "============================%n=BucketStatisticsTest=%n") {
+		t.Fatalf("String() header = %q, want Java literal %%n separators", got[:min(len(got), 64)])
 	}
 }
 

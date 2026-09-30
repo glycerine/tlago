@@ -343,11 +343,11 @@ func bucketPercentile(observations int64, samples []BucketSample, quantile float
 
 func bucketString(title string, observations int64, samples []BucketSample, min int, max int, mean float64, median int, stddev float64, percentile func(float64) float64) string {
 	var b strings.Builder
-	b.WriteString("============================\n")
+	b.WriteString("============================%n")
 	b.WriteString("=")
 	b.WriteString(title)
-	b.WriteString("=\n")
-	b.WriteString("============================\n")
+	b.WriteString("=%n")
+	b.WriteString("============================%n")
 	b.WriteString(fmt.Sprintf("Observations: %d\n", observations))
 	b.WriteString(fmt.Sprintf("Min: %d\n", min))
 	b.WriteString(fmt.Sprintf("Max: %d\n", max))
@@ -359,14 +359,14 @@ func bucketString(title string, observations int64, samples []BucketSample, min 
 	b.WriteString(fmt.Sprintf("98%%: %.2f\n", percentile(0.98)))
 	b.WriteString(fmt.Sprintf("99%%: %.2f\n", percentile(0.99)))
 	b.WriteString(fmt.Sprintf("99.9%%: %.2f\n", percentile(0.999)))
-	b.WriteString("numEdges/occurrences (log scale)\n")
-	b.WriteString("--------------------------------\n")
+	b.WriteString("numEdges/occurrences (log scale)%n")
+	b.WriteString("--------------------------------%n")
 	for _, sample := range samples {
 		b.WriteString(fmt.Sprintf("%02d:%02d ", sample.Amount, sample.Count))
 		for j := 0; j < int(math.Log(float64(sample.Count))); j++ {
 			b.WriteByte('#')
 		}
-		b.WriteByte('\n')
+		b.WriteString("%n")
 	}
 	b.WriteString("============================")
 	return b.String()
@@ -702,9 +702,9 @@ func (c *CountDistinct) countHyperLogLog() int64 {
 	alpha := c.hyperLogLogAlpha()
 	z := 0.0
 	for _, register := range c.regs {
-		z += 1.0 / math.Pow(2, float64(register))
+		z += 1.0 / float64(javaIntOneLeftShift(register))
 	}
-	estimate := alpha * float64(c.m*c.m) / z
+	estimate := alpha * float64(c.m) * float64(c.m) / z
 	if estimate <= 2.5*float64(c.m) {
 		zeros := 0
 		for _, register := range c.regs {
@@ -718,7 +718,24 @@ func (c *CountDistinct) countHyperLogLog() int64 {
 	} else if estimate > (1.0/30.0)*math.Pow(2, 64) {
 		estimate = -math.Pow(2, 64) * math.Log(1-estimate/math.Pow(2, 64))
 	}
-	return int64(estimate)
+	return int64(javaDoubleToInt(estimate))
+}
+
+func javaIntOneLeftShift(shift int) int32 {
+	return int32(uint32(1) << (uint(shift) & 31))
+}
+
+func javaDoubleToInt(value float64) int32 {
+	if math.IsNaN(value) {
+		return 0
+	}
+	if value <= math.MinInt32 {
+		return math.MinInt32
+	}
+	if value >= math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(value)
 }
 
 func (c *CountDistinct) hyperLogLogAlpha() float64 {
