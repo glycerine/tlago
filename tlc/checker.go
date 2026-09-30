@@ -292,6 +292,7 @@ type ModelChecker struct {
 	OldFPSetSize            uint64
 	RuntimeRatio            float64
 	ForceLiveCheck          bool
+	TimeBound               bool
 }
 
 type ModelCheckerOption func(*ModelChecker)
@@ -672,7 +673,7 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 	}
 	var err error
 	vetoCleanup := false
-	if cleanup && CheckpointExplicitlyEnabled() && mc.StateQueue != nil && !mc.StateQueue.IsEmpty() && mc.ErrState != nil {
+	if cleanup && CheckpointExplicitlyEnabled() && mc.StateQueue != nil && !mc.StateQueue.IsEmpty() && (mc.ErrState != nil || mc.TimeBound) {
 		if checkpointErr := mc.Checkpoint(); checkpointErr != nil && err == nil {
 			err = checkpointErr
 		}

@@ -3,6 +3,8 @@ package tlc
 import (
 	"context"
 	"math"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -43,6 +45,7 @@ type Options struct {
 	Trace                     *TLCTrace
 	LiveCheck                 *LiveCheck
 	StartTime                 time.Time
+	StopAfter                 time.Duration
 	GenerateTraceSpec         bool
 	ForceGenerateTraceSpec    bool
 	GenerateTraceSpecBinary   bool
@@ -106,6 +109,9 @@ func NewTLC(opts Options) *TLC {
 	}
 	if opts.StartTime.IsZero() {
 		opts.StartTime = time.Now()
+	}
+	if opts.StopAfter == 0 {
+		opts.StopAfter = stopAfterDurationFromEnv()
 	}
 	return &TLC{Options: opts}
 }
@@ -266,6 +272,9 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		opts = append(opts, WithModelCheckerFromCheckpoint(t.FromCheckpoint))
 	}
 	checker := NewModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
+	checker.TimeBound = t.StopAfter > 0
+	cancelStopAfter := t.scheduleStopAfter(checker.Stop)
+	defer cancelStopAfter()
 	code, err := checker.ModelCheck()
 	result := &Result{
 		ErrorCode:       code,
@@ -279,6 +288,30 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		err = cleanupErr
 	}
 	return result, err
+}
+
+func (t *TLC) scheduleStopAfter(stop func()) func() {
+	if t == nil || t.StopAfter <= 0 || stop == nil {
+		return func() {}
+	}
+	timer := time.AfterFunc(t.StopAfter, stop)
+	return func() {
+		timer.Stop()
+	}
+}
+
+func stopAfterDurationFromEnv() time.Duration {
+	for _, key := range []string{"tlc2.TLC.stopAfter", "TLAGO_STOP_AFTER"} {
+		value := os.Getenv(key)
+		if value == "" {
+			continue
+		}
+		seconds, err := strconv.ParseInt(value, 10, 64)
+		if err == nil && seconds > 0 {
+			return time.Duration(seconds) * time.Second
+		}
+	}
+	return 0
 }
 
 func (t *TLC) processSimulation() (*Result, error) {
