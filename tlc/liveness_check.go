@@ -190,7 +190,7 @@ type LiveChecker struct {
 	Err              error
 }
 
-func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWriter, metadir ...string) *LiveChecker {
+func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWriter, metadir string, outDegreeStats *BucketStatistics) *LiveChecker {
 	if writer == nil {
 		writer = NewNoopLivenessStateWriter()
 	}
@@ -200,11 +200,11 @@ func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWr
 		Writer:   writer,
 		Graph:    NewInsMap[string, *GraphNode](),
 	}
-	if len(metadir) > 0 && metadir[0] != "" && solution != nil {
+	if metadir != "" && solution != nil {
 		if solution.HasTableau() {
-			checker.TableauDiskGraph, checker.Err = NewTableauDiskGraph(metadir[0], soln)
+			checker.TableauDiskGraph, checker.Err = NewTableauDiskGraph(metadir, soln, outDegreeStats)
 		} else {
-			checker.DiskGraph, checker.Err = NewDiskGraph(metadir[0], soln)
+			checker.DiskGraph, checker.Err = NewDiskGraph(metadir, soln, outDegreeStats)
 		}
 	}
 	return checker
@@ -975,17 +975,18 @@ func (s *liveSCCSearch) hasComponentSelfLoop(node *GraphNode) bool {
 }
 
 type LiveCheck struct {
-	Tool        *Tool
-	MetaDir     string
-	Checkers    []*LiveChecker
-	NoOp        bool
-	Forced      bool
-	AddAndCheck bool
-	mu          sync.Mutex
+	Tool           *Tool
+	MetaDir        string
+	Checkers       []*LiveChecker
+	OutDegreeStats *BucketStatistics
+	NoOp           bool
+	Forced         bool
+	AddAndCheck    bool
+	mu             sync.Mutex
 }
 
 func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
-	return &LiveCheck{Tool: tool, MetaDir: metadir, NoOp: true}
+	return &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree"), NoOp: true}
 }
 
 func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
@@ -994,7 +995,7 @@ func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *Liv
 }
 
 func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metadir string, stateWriter *StateWriter) (*LiveCheck, error) {
-	check := &LiveCheck{Tool: tool, MetaDir: metadir}
+	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree")}
 	for i, solution := range solutions {
 		writer := NewNoopLivenessStateWriter()
 		if stateWriter != nil && !stateWriter.IsNoop() && stateWriter.IsDot() {
@@ -1004,7 +1005,7 @@ func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metad
 			}
 			writer = dotWriter
 		}
-		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, writer, metadir))
+		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, writer, metadir, check.OutDegreeStats))
 	}
 	return check, nil
 }
@@ -1438,6 +1439,55 @@ func (lc *LiveCheck) FlushWritesToDiskFiles() error {
 		}
 	}
 	return nil
+}
+
+func (lc *LiveCheck) GetOutDegreeStatistics() *BucketStatistics {
+	if lc == nil || lc.OutDegreeStats == nil {
+		return NewBucketStatistics("Histogram vertex out-degree")
+	}
+	return lc.OutDegreeStats
+}
+
+func (lc *LiveCheck) CalculateInDegreeDiskGraphs(stats *BucketStatistics) (*BucketStatistics, error) {
+	if stats == nil {
+		stats = NewBucketStatistics("Histogram vertex in-degree")
+	}
+	if lc == nil || lc.NoOp {
+		return stats, nil
+	}
+	for _, checker := range lc.Checkers {
+		var err error
+		if checker.TableauDiskGraph != nil {
+			stats, err = checker.TableauDiskGraph.CalculateInDegreeDiskGraph(stats)
+		} else if checker.DiskGraph != nil {
+			stats, err = checker.DiskGraph.CalculateInDegreeDiskGraph(stats)
+		}
+		if err != nil {
+			return stats, err
+		}
+	}
+	return stats, nil
+}
+
+func (lc *LiveCheck) CalculateOutDegreeDiskGraphs(stats *BucketStatistics) (*BucketStatistics, error) {
+	if stats == nil {
+		stats = NewBucketStatistics("Histogram vertex out-degree")
+	}
+	if lc == nil || lc.NoOp {
+		return stats, nil
+	}
+	for _, checker := range lc.Checkers {
+		var err error
+		if checker.TableauDiskGraph != nil {
+			stats, err = checker.TableauDiskGraph.CalculateOutDegreeDiskGraph(stats)
+		} else if checker.DiskGraph != nil {
+			stats, err = checker.DiskGraph.CalculateOutDegreeDiskGraph(stats)
+		}
+		if err != nil {
+			return stats, err
+		}
+	}
+	return stats, nil
 }
 
 func (lc *LiveCheck) Recover() error {

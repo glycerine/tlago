@@ -9,18 +9,19 @@ import (
 )
 
 type DiskGraph struct {
-	MetaDir     string
-	Solution    int
-	chkptName   string
-	nodeFile    *os.File
-	ptrFile     *os.File
-	InitNodes   *LongVec
-	Cache       []*GraphNode
-	NodePtrTbl  *NodePtrTable
-	sizeAtCheck int64
+	MetaDir        string
+	Solution       int
+	chkptName      string
+	nodeFile       *os.File
+	ptrFile        *os.File
+	InitNodes      *LongVec
+	Cache          []*GraphNode
+	NodePtrTbl     *NodePtrTable
+	OutDegreeStats *BucketStatistics
+	sizeAtCheck    int64
 }
 
-func NewDiskGraph(metadir string, soln int) (*DiskGraph, error) {
+func NewDiskGraph(metadir string, soln int, outDegreeStats ...*BucketStatistics) (*DiskGraph, error) {
 	if err := os.MkdirAll(metadir, 0o755); err != nil {
 		return nil, err
 	}
@@ -33,15 +34,20 @@ func NewDiskGraph(metadir string, soln int) (*DiskGraph, error) {
 		_ = nodeFile.Close()
 		return nil, err
 	}
+	var stats *BucketStatistics
+	if len(outDegreeStats) > 0 {
+		stats = outDegreeStats[0]
+	}
 	return &DiskGraph{
-		MetaDir:     metadir,
-		Solution:    soln,
-		chkptName:   filepath.Join(metadir, fmt.Sprintf("dgraph_%d", soln)),
-		nodeFile:    nodeFile,
-		ptrFile:     ptrFile,
-		InitNodes:   NewLongVecWithCapacity(1),
-		NodePtrTbl:  NewNodePtrTable(255),
-		sizeAtCheck: 1,
+		MetaDir:        metadir,
+		Solution:       soln,
+		chkptName:      filepath.Join(metadir, fmt.Sprintf("dgraph_%d", soln)),
+		nodeFile:       nodeFile,
+		ptrFile:        ptrFile,
+		InitNodes:      NewLongVecWithCapacity(1),
+		NodePtrTbl:     NewNodePtrTable(255),
+		OutDegreeStats: stats,
+		sizeAtCheck:    1,
 	}, nil
 }
 
@@ -78,6 +84,9 @@ func (g *DiskGraph) Close() error {
 func (g *DiskGraph) AddNode(node *GraphNode) (int64, error) {
 	if node == nil {
 		return -1, fmt.Errorf("cannot add nil graph node")
+	}
+	if g.OutDegreeStats != nil {
+		g.OutDegreeStats.AddSample(node.SuccSize())
 	}
 	ptr, err := g.nodeFile.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -353,6 +362,49 @@ func (g *DiskGraph) CheckInvariants(slen int, alen int) (bool, error) {
 		return nil
 	})
 	return ok, err
+}
+
+func (g *DiskGraph) CalculateOutDegreeDiskGraph(stats *BucketStatistics) (*BucketStatistics, error) {
+	if stats == nil {
+		stats = NewBucketStatistics("Histogram vertex out-degree")
+	}
+	if g == nil {
+		return stats, nil
+	}
+	err := g.eachGraphNode(func(node *GraphNode) error {
+		if node != nil {
+			stats.AddSample(node.SuccSize())
+		}
+		return nil
+	})
+	return stats, err
+}
+
+func (g *DiskGraph) CalculateInDegreeDiskGraph(stats *BucketStatistics) (*BucketStatistics, error) {
+	if stats == nil {
+		stats = NewBucketStatistics("Histogram vertex in-degree")
+	}
+	if g == nil {
+		return stats, nil
+	}
+	counts := NewInsMap[string, int]()
+	err := g.eachGraphNode(func(node *GraphNode) error {
+		if node == nil {
+			return nil
+		}
+		for i := 0; i < node.SuccSize(); i++ {
+			key := graphNodeKey(node.GetStateFP(i), node.GetTIndex(i))
+			counts.Set(key, counts.Get(key)+1)
+		}
+		return nil
+	})
+	if err != nil {
+		return stats, err
+	}
+	for _, count := range counts.All() {
+		stats.AddSample(count)
+	}
+	return stats, nil
 }
 
 func (g *DiskGraph) String() string {

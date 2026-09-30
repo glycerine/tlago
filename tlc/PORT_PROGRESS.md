@@ -60,6 +60,7 @@
   - Liveness SCC checks now emit Java-style temporal-property start/end messages with graph size and current/complete mode.
   - Disk-backed liveness SCC checking now creates the graph cache for the whole PEM pass, records graph size on the disk graph like Java, and lets liveness violations take precedence over checker failures after all checkers have run.
   - Liveness counterexample reconstruction now keeps Java's raw-vs-printable trace split: raw states feed violated-property attribution and `CounterExample`, printed states go through `ALIAS`, and stuttering lassos emit Java's fairness/specification warning when applicable.
+  - Disk-backed liveness graphs now collect Java-style out-degree samples at node insertion and expose in/out-degree recomputation through `LiveCheck`'s auxiliary statistics methods.
   - Liveness check/worker/error-trace skeletons with concrete disk graph fields.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
