@@ -2118,7 +2118,20 @@ Important Java classes:
   Continue/step-over/step-in/step-out/step-back/reverse-continue/goto-state
   commands update `Step`, `SourceFrame`, `Granularity`, and generated-state
   selection in the same place as Java's DAP handlers, while leaving the protocol
-  transport itself for a later pass.
+  transport itself for a later pass. Java initializes `step` to `In` so the
+  first ordinary pushed frame can halt; the Go port mirrors that with
+  `MaybeHaltExecution`, leaving `HaltExecution` for already-decided stops such
+  as exception, spec, unsatisfied, and violation breakpoints.
+- `TLCDebugger` breakpoint ownership is concrete state on the debugger:
+  `breakpoints` keyed by module/source, boolean exception and invariant halt
+  flags, and two conditional `TLCSourceBreakpoint` values for the Java "after
+  Init/Next" and "unsatisfied" filters. The Go port mirrors Java's filter IDs
+  and multi-worker warning as plain `TLCExceptionBreakpointFilter` values, not
+  DAP protocol objects. Source breakpoint setting derives the module from the
+  source name, replaces the module's breakpoint list, returns concrete
+  `TLCBreakpoint` verification records, and keeps Java's parent-frame
+  suppression rule: if an ancestor stack frame already matches the same source
+  breakpoint, a nested frame does not fire it again.
 - `DebugTLCVariable`: adapts TLC `Value` objects into debugger variables.
   Scalars expose `type` and `value`; enumerable/function/record/tuple values
   receive a non-zero `variablesReference` and lazily produce children.
@@ -2127,7 +2140,11 @@ Important Java classes:
   matching succeeds for `nullLoc`, otherwise it checks equal line and breakpoint
   column less than or equal to the semantic node begin column. Conditional
   breakpoints evaluate through `tool.noDebug().eval` and swallow evaluation
-  failures so a broken debugger expression does not crash TLC.
+  failures so a broken debugger expression does not crash TLC. Until
+  `TLCDebuggerExpression.process` has a full Go port, named operator
+  conditions are resolved from `SpecProcessor`; arbitrary unparsed non-`TRUE`
+  conditions are stored with a condition error and fail closed instead of
+  becoming unconditional.
 - `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
   useful in Go as plain structs even before a debug-adapter server exists.
 

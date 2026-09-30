@@ -12,6 +12,14 @@ import (
 
 const maxJavaInt = 1<<31 - 1
 
+const (
+	TLCExceptionBreakpointsFilter   = "ExceptionBreakpointsFilter"
+	TLCUnsatisfiedBreakpointsFilter = "UnsatisfiedBreakpointsFilter"
+	TLCSpecBreakpointsFilter        = "SpecBreakpointsFilter"
+	TLCInvariantBreakpointsFilter   = "InvariantBreakpointsFilter"
+	TLCMultiWorkerWarningFilter     = "MultiWorkerWarningFilter"
+)
+
 type DebugStepDirection int
 
 const (
@@ -583,6 +591,38 @@ func (l SourceLocation) IsNull() bool {
 	return l.Source == "" && l.BeginLine == 0 && l.BeginColumn == 0 && l.EndLine == 0 && l.EndColumn == 0
 }
 
+type TLCExceptionBreakpointFilter struct {
+	Filter               string
+	Label                string
+	Description          string
+	ConditionDescription string
+	Default              bool
+	SupportsCondition    bool
+}
+
+type TLCExceptionBreakpointFilterOption struct {
+	FilterID  string
+	Condition string
+}
+
+type TLCSourceBreakpointRequest struct {
+	Line         int
+	Column       *int
+	Condition    string
+	LogMessage   string
+	HitCondition string
+}
+
+type TLCBreakpoint struct {
+	ID       int
+	Source   string
+	Module   string
+	Line     int
+	Column   *int
+	Verified bool
+	Message  string
+}
+
 type DebugTLCVariable struct {
 	Name                      string
 	Type                      string
@@ -1119,8 +1159,15 @@ func (b *TLCSourceBreakpoint) GetConditionException() error {
 }
 
 func (b *TLCSourceBreakpoint) MatchesExpression(tool *Tool, s *TLCStateMut, t *TLCStateMut, c *Context, fire bool) bool {
-	if b == nil || b.ConditionOp == nil || tool == nil {
+	if b == nil || tool == nil {
 		return fire
+	}
+	if b.ConditionOp == nil {
+		condition := strings.TrimSpace(b.Condition)
+		if condition == "" || strings.EqualFold(condition, "TRUE") {
+			return fire
+		}
+		return false
 	}
 	ctxt := EmptyContext
 	if c == nil {
@@ -1161,6 +1208,39 @@ func parseBreakpointHits(hitCondition string) int {
 		return 0
 	}
 	return hits
+}
+
+func debugModuleNameFromSource(source string) string {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return ""
+	}
+	if idx := strings.LastIndexAny(source, `/\`); idx >= 0 {
+		source = source[idx+1:]
+	}
+	return strings.TrimSuffix(source, ".tla")
+}
+
+func (d *TLCDebugger) newConditionalBreakpointLocked(condition string) *TLCSourceBreakpoint {
+	condition = strings.TrimSpace(condition)
+	if condition == "" {
+		condition = "TRUE"
+	}
+	op, err := d.breakpointConditionOpLocked(condition)
+	return NewTLCSourceBreakpoint(condition, op, err)
+}
+
+func (d *TLCDebugger) breakpointConditionOpLocked(condition string) (*OpDefNode, error) {
+	condition = strings.TrimSpace(condition)
+	if condition == "" || strings.EqualFold(condition, "TRUE") {
+		return nil, nil
+	}
+	if d != nil && d.Tool != nil && d.Tool.SpecProcessor != nil {
+		if op, ok := d.Tool.SpecProcessor.defn(condition).(*OpDefNode); ok && op != nil {
+			return op, nil
+		}
+	}
+	return nil, fmt.Errorf("debug breakpoint expression parsing is not yet ported: %s", condition)
 }
 
 type TLCDebugger struct {
@@ -1262,7 +1342,7 @@ func NewTLCDebugger(tool *Tool) *TLCDebugger {
 		Tool:        tool,
 		Granularity: DebugGranularityFormula,
 		Direction:   DebugStepContinue,
-		Step:        DebugStepCommandContinue,
+		Step:        DebugStepCommandIn,
 		Breakpoints: NewInsMap[string, []*TLCSourceBreakpoint](),
 	}
 }
@@ -1287,6 +1367,183 @@ func (d *TLCDebugger) GetGranularity() DebugGranularity {
 		return DebugGranularityFormula
 	}
 	return d.Granularity
+}
+
+func (d *TLCDebugger) ExceptionBreakpointFilters() []TLCExceptionBreakpointFilter {
+	return d.ExceptionBreakpointFiltersForWorkers(NumWorkers())
+}
+
+func (d *TLCDebugger) ExceptionBreakpointFiltersForWorkers(workers int) []TLCExceptionBreakpointFilter {
+	haltExp := false
+	haltInv := false
+	haltSpec := false
+	haltUnsat := false
+	if d != nil {
+		d.mu.Lock()
+		haltExp = d.HaltExp
+		haltInv = d.HaltInv
+		haltSpec = d.HaltSpec != nil
+		haltUnsat = d.HaltUnsat != nil
+		d.mu.Unlock()
+	}
+	filters := []TLCExceptionBreakpointFilter{
+		{
+			Filter:      TLCExceptionBreakpointsFilter,
+			Label:       "Halt (break) on exceptions",
+			Description: "TLC will halt when it encounters a silly expression",
+			Default:     haltExp,
+		},
+		{
+			Filter:               TLCUnsatisfiedBreakpointsFilter,
+			Label:                "Halt (break) on unsatisfied",
+			Description:          "TLC will halt when a successor state does not satisfy the next-state relation.",
+			ConditionDescription: "A constant, state, or action level formula",
+			Default:              haltUnsat,
+			SupportsCondition:    true,
+		},
+		{
+			Filter:               TLCSpecBreakpointsFilter,
+			Label:                "Halt (break) after Init and Next",
+			Description:          "TLC will halt after initial- and next-states have been generated.",
+			ConditionDescription: "Init: constant or state formula. Next: constant, state, or action-level formula.",
+			Default:              haltSpec,
+			SupportsCondition:    true,
+		},
+		{
+			Filter:      TLCInvariantBreakpointsFilter,
+			Label:       "Halt (break) on violations",
+			Description: "TLC will halt when an invariant is violated.",
+			Default:     haltInv,
+		},
+	}
+	if workers > 1 {
+		warning := TLCExceptionBreakpointFilter{
+			Filter:            TLCMultiWorkerWarningFilter,
+			Label:             "MULTIPLE WORKER WARNING: Breakpoints only fire for one worker (use -workers 1)",
+			Description:       "The debugger only attaches to one worker thread. With multiple workers, the breakpoints in this list will only fire if they occur in the attached worker. Breakpoint triggers in other workers will be missed. To consistently catch all breakpoint triggers, restart TLC with -workers 1.",
+			SupportsCondition: false,
+		}
+		filters = append([]TLCExceptionBreakpointFilter{warning}, filters...)
+	}
+	return filters
+}
+
+func (d *TLCDebugger) SetExceptionBreakpointFilters(filterIDs []string) *TLCDebugger {
+	options := make([]TLCExceptionBreakpointFilterOption, 0, len(filterIDs))
+	for _, id := range filterIDs {
+		options = append(options, TLCExceptionBreakpointFilterOption{FilterID: id})
+	}
+	return d.SetExceptionBreakpoints(options)
+}
+
+func (d *TLCDebugger) SetExceptionBreakpoints(options []TLCExceptionBreakpointFilterOption) *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.HaltExp = false
+	d.HaltInv = false
+	d.HaltSpec = nil
+	d.HaltUnsat = nil
+	for _, option := range options {
+		switch option.FilterID {
+		case TLCExceptionBreakpointsFilter:
+			d.HaltExp = true
+		case TLCInvariantBreakpointsFilter:
+			d.HaltInv = true
+		case TLCSpecBreakpointsFilter:
+			d.HaltSpec = d.newConditionalBreakpointLocked(option.Condition)
+		case TLCUnsatisfiedBreakpointsFilter:
+			d.HaltUnsat = d.newConditionalBreakpointLocked(option.Condition)
+		}
+	}
+	return d
+}
+
+func (d *TLCDebugger) SetBreakpoints(source string, requested []TLCSourceBreakpointRequest) []TLCBreakpoint {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.Breakpoints == nil {
+		d.Breakpoints = NewInsMap[string, []*TLCSourceBreakpoint]()
+	}
+	module := debugModuleNameFromSource(source)
+	if len(requested) == 0 {
+		if _, ok := d.Breakpoints.Get2(module); ok {
+			d.Breakpoints.Set(module, nil)
+		}
+		return nil
+	}
+	breakpoints := make([]*TLCSourceBreakpoint, 0, len(requested))
+	results := make([]TLCBreakpoint, 0, len(requested))
+	for i, req := range requested {
+		op, conditionErr := d.breakpointConditionOpLocked(req.Condition)
+		breakpoint := NewTLCSourceBreakpointAt(module, req.Line, req.Column, req.Condition, req.LogMessage, req.HitCondition, op, conditionErr)
+		breakpoints = append(breakpoints, breakpoint)
+		result := TLCBreakpoint{
+			ID:       i,
+			Source:   source,
+			Module:   module,
+			Line:     breakpoint.Line,
+			Column:   breakpoint.Column,
+			Verified: true,
+		}
+		if conditionErr != nil {
+			result.Verified = false
+			result.Message = conditionErr.Error()
+		}
+		results = append(results, result)
+	}
+	d.Breakpoints.Set(module, breakpoints)
+	return results
+}
+
+func (d *TLCDebugger) BreakpointsForSource(source string) []*TLCSourceBreakpoint {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.Breakpoints == nil {
+		return nil
+	}
+	module := debugModuleNameFromSource(source)
+	breakpoints, ok := d.Breakpoints.Get2(module)
+	if !ok || len(breakpoints) == 0 {
+		return nil
+	}
+	return append([]*TLCSourceBreakpoint(nil), breakpoints...)
+}
+
+func (d *TLCDebugger) MatchesBreakpointFrame(frame *TLCStackFrame) bool {
+	if d == nil || frame == nil {
+		return false
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.matchesBreakpointFrameLocked(frame)
+}
+
+func (d *TLCDebugger) DisconnectCommand() *TLCDebugger {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.Breakpoints != nil {
+		d.Breakpoints.DeleteAll()
+	}
+	d.SourceFrame = nil
+	d.Step = DebugStepCommandContinue
+	d.HaltExp = false
+	d.HaltInv = false
+	d.HaltSpec = nil
+	d.HaltUnsat = nil
+	d.Paused = false
+	return d
 }
 
 func (d *TLCDebugger) TopFrame() *TLCDebuggerFrame {
@@ -1322,6 +1579,37 @@ func (d *TLCDebugger) popDebuggerFrame() *TLCDebuggerFrame {
 	return frame
 }
 
+func (d *TLCDebugger) matchesBreakpointFrameLocked(frame *TLCStackFrame) bool {
+	if d == nil || frame == nil || d.Breakpoints == nil {
+		return false
+	}
+	loc, ok := semanticNodeSourceLocation(frame.Node)
+	if !ok {
+		return false
+	}
+	module := debugModuleNameFromSource(loc.Source)
+	breakpoints, ok := d.Breakpoints.Get2(module)
+	if !ok || len(breakpoints) == 0 {
+		return false
+	}
+	for _, breakpoint := range breakpoints {
+		if breakpoint == nil || !frame.MatchesBreakpoint(breakpoint) {
+			continue
+		}
+		matchedParent := false
+		for parent := frame.Parent; parent != nil; parent = parent.Parent {
+			if parent.MatchesBreakpoint(breakpoint) {
+				matchedParent = true
+				break
+			}
+		}
+		if !matchedParent {
+			return true
+		}
+	}
+	return false
+}
+
 func (d *TLCDebugger) StackFrames() []*TLCStackFrame {
 	if d == nil || len(d.Stack) == 0 {
 		return nil
@@ -1343,6 +1631,25 @@ func (d *TLCDebugger) HaltExecution(frame *TLCStackFrame, level ...int) {
 	if frame != nil {
 		d.SourceFrame = frame
 	}
+}
+
+func (d *TLCDebugger) MaybeHaltExecution(frame *TLCStackFrame, level ...int) {
+	if d == nil || frame == nil {
+		return
+	}
+	if debugStepMatches(d.Step, d.SourceFrame, frame) || d.matchesBreakpointFrameLocked(frame) {
+		d.HaltExecution(frame)
+	}
+}
+
+func debugStepMatches(step DebugStep, sourceFrame *TLCStackFrame, currentFrame *TLCStackFrame) bool {
+	if step == DebugStepCommandIn {
+		return true
+	}
+	if sourceFrame != nil && (step == DebugStepCommandOver || step == DebugStepCommandOut) {
+		return sourceFrame.MatchesFrame(currentFrame)
+	}
+	return false
 }
 
 func (d *TLCDebugger) ContinueCommand() *TLCDebugger {
@@ -1493,7 +1800,7 @@ func (d *TLCDebugger) PushFrame(tool *Tool, expr SemanticNode, c *Context) *TLCD
 	defer d.mu.Unlock()
 	frame := NewTLCStackFrameNoException(d.topBaseFrame(), expr, c, tool)
 	d.pushDebuggerFrame(NewDebuggerBaseFrame(frame))
-	d.HaltExecution(frame, len(d.Stack))
+	d.MaybeHaltExecution(frame, len(d.Stack))
 	return d
 }
 
@@ -1505,7 +1812,7 @@ func (d *TLCDebugger) PushStateFrame(tool *Tool, expr SemanticNode, c *Context, 
 	defer d.mu.Unlock()
 	frame := NewTLCStateStackFrameNoException(d.topBaseFrame(), expr, c, tool, state)
 	d.pushDebuggerFrame(NewDebuggerStateFrame(frame))
-	d.HaltExecution(&frame.TLCStackFrame, len(d.Stack))
+	d.MaybeHaltExecution(&frame.TLCStackFrame, len(d.Stack))
 	return d
 }
 
@@ -1517,7 +1824,7 @@ func (d *TLCDebugger) PushActionFrame(tool *Tool, expr SemanticNode, c *Context,
 	defer d.mu.Unlock()
 	frame := NewTLCActionStackFrameNoException(d.topBaseFrame(), expr, c, tool, predecessor, action, state)
 	d.pushDebuggerFrame(NewDebuggerActionFrame(frame))
-	d.HaltExecution(&frame.TLCStackFrame, len(d.Stack))
+	d.MaybeHaltExecution(&frame.TLCStackFrame, len(d.Stack))
 	return d
 }
 
