@@ -1096,6 +1096,9 @@ Port guidance:
   progress reporting: if the reported level exceeds `depth`, it finishes the
   shared state queue. Workers must not skip next-state generation locally based
   on depth; that would change Java's scheduling, trace, and liveness handoff.
+- Periodic coverage reporting is also driven by the coordinator, using
+  `coverageInterval / progressInterval` as Java does. This is separate from the
+  final coverage report emitted when model checking exits.
 - `_PERIODIC` is part of that coordinator loop. Java treats a configured
   periodic expression as sufficient reason to suspend workers, evaluates it
   after any liveness work and before checkpointing, and returns

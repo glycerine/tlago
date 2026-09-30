@@ -961,6 +961,7 @@ func (mc *ModelChecker) waitForWorkersWithPeriodicWork(maxDepth int) (int, error
 	if interval <= 0 {
 		return NoError, <-done
 	}
+	coverageCountdown := periodicCoverageCountdown(interval)
 	timer := time.NewTimer(interval)
 	defer timer.Stop()
 	for {
@@ -985,9 +986,36 @@ func (mc *ModelChecker) waitForWorkersWithPeriodicWork(maxDepth int) (int, error
 				}
 				return NoError, <-done
 			}
+			if coverageCountdown == 0 {
+				mc.reportPeriodicCoverage()
+				coverageCountdown = periodicCoverageCountdown(interval)
+			} else if coverageCountdown > 0 {
+				coverageCountdown--
+			}
 			timer.Reset(interval)
 		}
 	}
+}
+
+func periodicCoverageCountdown(interval time.Duration) int {
+	Globals.Lock()
+	coverageMillis := Globals.CoverageInterval
+	Globals.Unlock()
+	if coverageMillis < 0 {
+		return -1
+	}
+	progressMillis := int(interval / time.Millisecond)
+	if progressMillis <= 0 {
+		return 0
+	}
+	return coverageMillis / progressMillis
+}
+
+func (mc *ModelChecker) reportPeriodicCoverage() {
+	if mc == nil || mc.Tool == nil || !CoverageAnyEnabled() || len(mc.Tool.GetActions()) == 0 {
+		return
+	}
+	reportCoverage(mc.Tool)
 }
 
 func (mc *ModelChecker) joinWorkers() error {
