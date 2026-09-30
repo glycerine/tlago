@@ -286,6 +286,9 @@ func (b *tlcBridge) installModelTargets() {
 	if name := b.cfg.GetView(); name != "" {
 		b.tool.ViewSpec = b.nodeForDefinition(name)
 	}
+	if name := b.cfg.GetAlias(); name != "" {
+		b.installAliasTarget(name)
+	}
 	if name := b.cfg.GetPeriodic(); name != "" {
 		b.tool.Periodic = b.nodeForDefinition(name)
 	}
@@ -296,6 +299,52 @@ func (b *tlcBridge) installModelTargets() {
 		if action := b.actionFromDefinition(name, false); action != nil {
 			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
 		}
+	}
+}
+
+func (b *tlcBridge) installAliasTarget(name string) {
+	alias := b.nodeForDefinition(name)
+	if alias == nil {
+		return
+	}
+	evalAlias := func(tool *tlc.Tool, curState *tlc.TLCStateMut, sucState *tlc.TLCStateMut) *tlc.TLCStateMut {
+		if curState == nil {
+			return curState
+		}
+		value, err := tool.Eval(alias, tlc.EmptyContext, curState, sucState, tlc.EvalClear, tlc.CostModel{})
+		if err != nil {
+			return curState
+		}
+		record, ok := value.(*tlc.RecordValue)
+		if !ok {
+			return curState
+		}
+		if state := record.ToState(); state != nil {
+			return state
+		}
+		return curState
+	}
+	b.tool.EvalAliasFunc = evalAlias
+	b.tool.EvalAliasInfoFunc = func(tool *tlc.Tool, current *tlc.TLCStateInfo, successor *tlc.TLCStateMut, prefix func() []*tlc.TLCStateInfo) (*tlc.TLCStateInfo, error) {
+		_ = prefix
+		if current == nil || current.State == nil {
+			return current, nil
+		}
+		aliasState := evalAlias(tool, current.State, successor)
+		if aliasState == current.State {
+			return current, nil
+		}
+		return tlc.AliasTLCStateInfo(aliasState, current), nil
+	}
+	b.tool.EvalAliasInfoPairFunc = func(tool *tlc.Tool, current *tlc.TLCStateInfo, successor *tlc.TLCStateMut) (*tlc.TLCStateInfo, error) {
+		if current == nil || current.State == nil {
+			return current, nil
+		}
+		aliasState := evalAlias(tool, current.State, successor)
+		if aliasState == current.State {
+			return current, nil
+		}
+		return tlc.AliasTLCStateInfo(aliasState, current), nil
 	}
 }
 

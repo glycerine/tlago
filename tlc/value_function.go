@@ -517,6 +517,30 @@ func (v *RecordValue) ToTuple() *TupleValue {
 	return nil
 }
 
+func (v *RecordValue) ToState() *TLCStateMut {
+	if v == nil {
+		return nil
+	}
+	state := NewEmptyState()
+	for _, variable := range StateVariables() {
+		found := false
+		for i, name := range v.Names {
+			if name == variable.Name {
+				state.Bind(variable.Name, v.Values[i])
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	if !state.AllAssigned() {
+		return nil
+	}
+	return state
+}
+
 func (v *RecordValue) Size() (int, error) { return len(v.Names), nil }
 
 func (v *RecordValue) Apply(arg Value) (Value, error) {
