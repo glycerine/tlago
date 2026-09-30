@@ -53,12 +53,12 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 	case *OpApplNode:
 		return t.GetInitStatesAppl(init, acts, c, ps, states, cm)
 	case *LetInNode:
-		return t.GetInitStatesForPredicate(init.Body, acts, letDefinitionsContext(c, init.Lets, init.Bindings...), ps, states, cm)
+		return t.GetInitStatesForPredicate(init.Body, acts, letDefinitionsContextWithCostModel(c, init.Lets, cm, init.Bindings...), ps, states, cm)
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range init.Substs {
 			subCM := cm
-			if cm.node != nil {
+			if CoverageEnabled() {
 				subCM = cm.GetSubst(sub)
 			}
 			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
@@ -67,11 +67,7 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 	case *APSubstInNode:
 		c1 := c
 		for _, sub := range init.Substs {
-			subCM := cm
-			if cm.node != nil {
-				subCM = cm.GetSubst(sub)
-			}
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
 		}
 		return t.GetInitStatesForPredicate(init.Body, acts, c1, ps, states, cm)
 	case *LabelNode:
@@ -123,6 +119,9 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) (err error) {
 	done := t.callStackEnter(init)
 	defer func() { done(err) }()
+	if CoverageEnabled() {
+		cm = cm.Get(init)
+	}
 	args := init.Args
 	opNode := init.Operator
 	opcode := GetOpCode(opNode.Name)
@@ -403,14 +402,17 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	}
 	switch pred := pred.(type) {
 	case *OpApplNode:
+		if CoverageEnabled() {
+			cm = cm.Get(pred)
+		}
 		return t.GetNextStatesAppl(action, pred, acts, c, s0, s1, nss, cm)
 	case *LetInNode:
-		return t.GetNextStatesForPredicate(action, pred.Body, acts, letDefinitionsContext(c, pred.Lets, pred.Bindings...), s0, s1, nss, cm)
+		return t.GetNextStatesForPredicate(action, pred.Body, acts, letDefinitionsContextWithCostModel(c, pred.Lets, cm, pred.Bindings...), s0, s1, nss, cm)
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
 			subCM := cm
-			if cm.node != nil {
+			if CoverageEnabled() {
 				subCM = cm.GetSubst(sub)
 			}
 			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
@@ -419,11 +421,7 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	case *APSubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
-			subCM := cm
-			if cm.node != nil {
-				subCM = cm.GetSubst(sub)
-			}
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
 		}
 		return t.GetNextStatesForPredicate(action, pred.Body, acts, c1, s0, s1, nss, cm)
 	case *LabelNode:
@@ -747,6 +745,9 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(expr)
 	defer func() { done(err) }()
+	if CoverageEnabled() {
+		cm = cm.Get(expr)
+	}
 	if varNode := t.GetVar(expr, c, false); varNode != nil {
 		varName := varNode.Name
 		val0 := s0.Lookup(varName)

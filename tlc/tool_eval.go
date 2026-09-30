@@ -168,7 +168,7 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 }
 
 func (t *Tool) evalImplLetInKind(expr *LetInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
-	c1 := letDefinitionsContext(c, expr.Lets, expr.Bindings...)
+	c1 := letDefinitionsContextWithCostModel(c, expr.Lets, cm, expr.Bindings...)
 	return t.Eval(expr.Body, c1, s0, s1, control, cm)
 }
 
@@ -176,7 +176,7 @@ func (t *Tool) evalImplSubstInKind(expr *SubstInNode, c *Context, s0 *TLCStateMu
 	c1 := c
 	for _, sub := range expr.Substs {
 		subCM := cm
-		if cm.node != nil {
+		if CoverageEnabled() {
 			subCM = cm.GetSubst(sub)
 		}
 		val := t.GetVal(sub.Expr, c, true, subCM)
@@ -188,11 +188,7 @@ func (t *Tool) evalImplSubstInKind(expr *SubstInNode, c *Context, s0 *TLCStateMu
 func (t *Tool) evalImplAPSubstInKind(expr *APSubstInNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
 	c1 := c
 	for _, sub := range expr.Substs {
-		subCM := cm
-		if cm.node != nil {
-			subCM = cm.GetSubst(sub)
-		}
-		val := t.GetVal(sub.Expr, c, true, subCM)
+		val := t.GetVal(sub.Expr, c, true, cm)
 		c1 = c1.Cons(sub.Op, val)
 	}
 	return t.Eval(expr.Body, c1, s0, s1, control, cm)
@@ -222,7 +218,7 @@ func (t *Tool) EvalAppl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 }
 
 func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
-	if cm.node != nil {
+	if CoverageEnabled() {
 		cm = cm.GetAndIncrement(expr)
 	}
 	args := expr.Args
@@ -484,7 +480,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 
 func (t *Tool) GetVal(expr SemanticNode, c *Context, lazy bool, cm CostModel) any {
 	if lazy {
-		return NewLazyValue(expr, c, true)
+		return NewLazyValue(expr, c, true, cm)
 	}
 	val, err := t.Eval(expr, c, EmptyState, EmptyState, EvalClear, cm)
 	if err != nil {
@@ -506,7 +502,7 @@ func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, l
 	}
 	for i, param := range opDef.Params {
 		if lazy {
-			c1 = c1.Cons(param, NewLazyValue(args[i], c, true))
+			c1 = c1.Cons(param, NewLazyValue(args[i], c, true, cm))
 			continue
 		}
 		val, err := t.Eval(args[i], c, EmptyState, EmptyState, EvalClear, cm)
@@ -552,6 +548,10 @@ func (t *Tool) GetLevelBound(expr SemanticNode, c *Context) int {
 }
 
 func letDefinitionsContext(c *Context, lets []*OpDefNode, bindings ...LetBinding) *Context {
+	return letDefinitionsContextWithCostModel(c, lets, DoNotRecordCostModel, bindings...)
+}
+
+func letDefinitionsContextWithCostModel(c *Context, lets []*OpDefNode, cm CostModel, bindings ...LetBinding) *Context {
 	if c == nil {
 		c = EmptyContext
 	}
@@ -565,7 +565,7 @@ func letDefinitionsContext(c *Context, lets []*OpDefNode, bindings ...LetBinding
 			sym = &SymbolNode{Name: opDef.Name}
 		}
 		if opDef.Arity() == 0 {
-			c1 = c1.Cons(sym, NewLazyValue(opDef.Body, c1, true))
+			c1 = c1.Cons(sym, NewLazyValue(opDef.Body, c1, true, cm))
 			continue
 		}
 		c1 = c1.Cons(sym, opDef)

@@ -6,6 +6,7 @@ type LazyValue struct {
 	BaseValue
 	Expr       SemanticNode
 	Con        *Context
+	CM         CostModel
 	Val        Value
 	ToolID     int64
 	State      *TLCStateMut
@@ -14,11 +15,18 @@ type LazyValue struct {
 	CacheCount int
 }
 
-func NewLazyValue(expr SemanticNode, con *Context, cacheable bool) *LazyValue {
+func NewLazyValue(expr SemanticNode, con *Context, cacheable bool, cms ...CostModel) *LazyValue {
 	if con == nil {
 		con = EmptyContext
 	}
-	out := &LazyValue{Expr: expr, Con: con}
+	cm := DoNotRecordCostModel
+	if len(cms) > 0 {
+		cm = cms[0]
+	}
+	if CoverageEnabled() {
+		cm = cm.Get(expr)
+	}
+	out := &LazyValue{Expr: expr, Con: con, CM: cm}
 	if !cacheable {
 		out.Val = ValUndef
 	}
@@ -59,7 +67,7 @@ func (v *LazyValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut
 	if ctx == nil {
 		ctx = EmptyContext
 	}
-	res, err := tool.Eval(v.Expr, ctx, state, pstate, control)
+	res, err := tool.Eval(v.Expr, ctx, state, pstate, control, v.CM)
 	if err != nil {
 		return nil, err
 	}

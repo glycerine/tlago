@@ -16,12 +16,12 @@ func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, 
 	case *OpApplNode:
 		return t.EnabledAppl(pred, acts, c, s0, s1, cm)
 	case *LetInNode:
-		return t.EnabledImpl(pred.Body, acts, letDefinitionsContext(c, pred.Lets, pred.Bindings...), s0, s1, cm)
+		return t.EnabledImpl(pred.Body, acts, letDefinitionsContextWithCostModel(c, pred.Lets, cm, pred.Bindings...), s0, s1, cm)
 	case *SubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
 			subCM := cm
-			if cm.node != nil {
+			if CoverageEnabled() {
 				subCM = cm.GetSubst(sub)
 			}
 			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
@@ -30,11 +30,7 @@ func (t *Tool) EnabledImpl(pred SemanticNode, acts *ActionItemList, c *Context, 
 	case *APSubstInNode:
 		c1 := c
 		for _, sub := range pred.Substs {
-			subCM := cm
-			if cm.node != nil {
-				subCM = cm.GetSubst(sub)
-			}
-			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, subCM))
+			c1 = c1.Cons(sub.Op, t.GetVal(sub.Expr, c, false, cm))
 		}
 		return t.EnabledImpl(pred.Body, acts, c1, s0, s1, cm)
 	case *LabelNode:
@@ -79,6 +75,9 @@ func (t *Tool) EnabledFromActionList(acts *ActionItemList, s0 *TLCStateMut, s1 *
 func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(pred)
 	defer func() { done(err) }()
+	if CoverageEnabled() {
+		cm = cm.Get(pred)
+	}
 	args := pred.Args
 	opNode := pred.Operator
 	opcode := GetOpCode(opNode.Name)
