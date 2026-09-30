@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -199,29 +200,12 @@ func (t *uniqueStringTable) BeginChkpt(metadir string) error {
 		_ = out.Close()
 		return err
 	}
-	if err := out.WriteInt(int32(t.varCount)); err != nil {
-		_ = out.Close()
-		return err
-	}
-	count := int32(len(t.byToken))
-	if err := out.WriteInt(count); err != nil {
-		_ = out.Close()
-		return err
-	}
 	for tok := 1; tok <= t.tokenCnt; tok++ {
 		us := t.byToken[tok]
 		if us == nil {
 			continue
 		}
-		if err := out.WriteInt(int32(us.tok)); err != nil {
-			_ = out.Close()
-			return err
-		}
-		if err := out.WriteInt(int32(us.loc)); err != nil {
-			_ = out.Close()
-			return err
-		}
-		if err := out.WriteUniqueString(us); err != nil {
+		if err := writeJavaUniqueString(out, us); err != nil {
 			_ = out.Close()
 			return err
 		}
@@ -255,37 +239,23 @@ func (t *uniqueStringTable) Recover(metadir string) error {
 		_ = in.Close()
 		return err
 	}
-	varCount, err := in.ReadInt()
-	if err != nil {
-		_ = in.Close()
-		return err
-	}
-	count, err := in.ReadInt()
-	if err != nil {
-		_ = in.Close()
-		return err
-	}
-	byString := make(map[string]*UniqueString, int(count))
-	byToken := make(map[int]*UniqueString, int(count))
-	for i := int32(0); i < count; i++ {
-		tok, err := in.ReadInt()
+	byString := make(map[string]*UniqueString)
+	byToken := make(map[int]*UniqueString)
+	varCount := 0
+	for {
+		us, err := readJavaUniqueString(in)
+		if errors.Is(err, io.EOF) {
+			break
+		}
 		if err != nil {
 			_ = in.Close()
 			return err
 		}
-		loc, err := in.ReadInt()
-		if err != nil {
-			_ = in.Close()
-			return err
-		}
-		str, err := in.readExternalUniqueString()
-		if err != nil {
-			_ = in.Close()
-			return err
-		}
-		us := &UniqueString{s: str.String(), tok: int(tok), loc: int(loc)}
 		byString[us.s] = us
 		byToken[us.tok] = us
+		if us.loc >= varCount {
+			varCount = us.loc + 1
+		}
 	}
 	if err := in.Close(); err != nil {
 		return err
@@ -294,9 +264,55 @@ func (t *uniqueStringTable) Recover(metadir string) error {
 	t.byString = byString
 	t.byToken = byToken
 	t.tokenCnt = int(tokenCnt)
-	t.varCount = int(varCount)
+	t.varCount = varCount
 	t.mu.Unlock()
 	return nil
+}
+
+func writeJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
+	if err := out.WriteInt(int32(us.tok)); err != nil {
+		return err
+	}
+	if err := out.WriteInt(int32(us.loc)); err != nil {
+		return err
+	}
+	units := utf16.Encode([]rune(us.s))
+	if err := out.WriteInt(int32(len(units))); err != nil {
+		return err
+	}
+	bytes := make([]byte, len(units))
+	for i, unit := range units {
+		bytes[i] = byte(unit)
+	}
+	_, err := out.WriteRaw(bytes)
+	return err
+}
+
+func readJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
+	tok, err := in.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	loc, err := in.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	length, err := in.ReadInt()
+	if err != nil {
+		return nil, err
+	}
+	if length < 0 {
+		return nil, newTLCError(ECGeneral, "negative unique string length %d", length)
+	}
+	bytes := make([]byte, int(length))
+	if _, err := io.ReadFull(in.in, bytes); err != nil {
+		return nil, err
+	}
+	runes := make([]rune, len(bytes))
+	for i, b := range bytes {
+		runes[i] = rune(uint16(int16(int8(b))))
+	}
+	return &UniqueString{s: string(runes), tok: int(tok), loc: int(loc)}, nil
 }
 
 func uniqueStringChkptName(metadir string, ext string) string {

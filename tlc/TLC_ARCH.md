@@ -1964,6 +1964,10 @@ Correctness notes:
   condition-variable protocol.
 - Checkpoint commits must be atomic enough for crash recovery assumptions.
 - Disk file formats matter if tests inspect sizes or recovery behavior.
+- `vars.chkpt` follows Java `InternTable`: a single `tokenCnt` integer,
+  followed by `UniqueString` records until EOF. Each record is token, variable
+  location, Java string length, and the low byte of each UTF-16 code unit. Do
+  not add record counts or value-stream handle encoding.
 
 ## Test Architecture
 
