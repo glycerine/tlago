@@ -272,18 +272,24 @@ Current adapter responsibilities:
 - collect the root module variables and install TLC state variable locations.
 - convert SANY `Definition` and `Expr` nodes into TLC `OpDefNode`,
   `OpApplNode`, `LetInNode`, quantifier, value, and action nodes.
-- install zero-arity config constants and operator overrides into `Tool`.
+- install config constants, including arity-bearing operator-constant rows as
+  `OpRcdValue`, and install operator overrides into `Tool`.
+- attach stable `SymbolNode` identities to bridged `OpDefNode`s so LET binding
+  and later operator application use the same symbols.
+- install named-instance aliases for TLC standard-module overrides and local
+  LET instance aliases such as `T!PrintT`.
 - resolve config-selected `INIT`, `NEXT`, `SPECIFICATION`, invariants,
   properties, constraints, view, and postconditions into `Action` or semantic
   nodes.
 - preserve deterministic definition installation by sorting the collected names.
 
 This bridge is a staging boundary, not a replacement for Java `SpecProcessor`.
-The mechanical port still has to move exact Java visibility, INSTANCE
-processing, module constants, action decomposition, implied init/action
-splitting, symmetry, aliases, `_POSSIBLE`, `_PERIODIC`, and `_RL_REWARD` into
-the TLC-side `SpecProcessor` shape. Until that is complete, the adapter should
-stay simple and explicit so mismatches are easy to see.
+The mechanical port still has to move exact Java visibility, full INSTANCE
+processing for parameterized and non-standard modules, module constants, action
+decomposition, implied init/action splitting, symmetry, aliases, `_POSSIBLE`,
+`_PERIODIC`, and `_RL_REWARD` into the TLC-side `SpecProcessor` shape. Until
+that is complete, the adapter should stay simple and explicit so mismatches are
+easy to see.
 
 ### `Defns` and `Specs`
 
@@ -311,7 +317,10 @@ in list order. This is a structural SANY helper and should remain mechanical.
 next-state generation, and variable lookup. Zero-arity local definitions bind as
 lazy values, while arity-bearing local operators bind as concrete `OpDefNode`
 values in the same context. This mirrors Java's semantic-node environment
-without introducing a one-implementation closure interface.
+without introducing a one-implementation closure interface. Local module
+instance aliases that resolve directly to built-in method values are stored as
+explicit `LetBinding` entries on `LetInNode`; the same binding path is used by
+evaluation, enabledness, init, next, level calculation, and variable discovery.
 
 ### `ModelConfig`
 
