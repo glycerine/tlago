@@ -5,25 +5,60 @@ import (
 )
 
 type LiveException struct {
-	Code int
-	Err  error
+	ErrorCode      int
+	Msg            string
+	CounterExample *CounterExample
+	Err            error
+}
+
+func NewLiveException(errorCode int, msg ...string) *LiveException {
+	ex := &LiveException{ErrorCode: errorCode}
+	if len(msg) > 0 {
+		ex.Msg = msg[0]
+	}
+	return ex
+}
+
+func NewLiveExceptionWithCounterExample(errorCode int, msg string, counterExample *CounterExample) *LiveException {
+	return &LiveException{ErrorCode: errorCode, Msg: msg, CounterExample: counterExample}
 }
 
 func (e *LiveException) Error() string {
 	if e == nil {
 		return ""
 	}
+	if e.Msg != "" {
+		return e.Msg
+	}
 	if e.Err != nil {
 		return e.Err.Error()
 	}
-	return fmt.Sprintf("liveness error %d", e.Code)
+	return fmt.Sprintf("liveness error %d", e.ErrorCode)
+}
+
+func (e *LiveException) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
 }
 
 type LiveCounterExampleException struct {
-	Trace []*TLCStateInfo
+	*LiveException
+	CounterExample *CounterExample
+}
+
+func NewLiveCounterExampleException(errorCode int, msg string, counterExample *CounterExample) *LiveCounterExampleException {
+	return &LiveCounterExampleException{
+		LiveException:  NewLiveExceptionWithCounterExample(errorCode, msg, counterExample),
+		CounterExample: counterExample,
+	}
 }
 
 func (e *LiveCounterExampleException) Error() string {
+	if e != nil && e.LiveException != nil && e.LiveException.Msg != "" {
+		return e.LiveException.Msg
+	}
 	return "temporal property violated"
 }
 
