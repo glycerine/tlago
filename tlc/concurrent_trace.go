@@ -81,13 +81,22 @@ func (t *ConcurrentTLCTrace) GetTraceBetweenStates(from *TLCStateMut, to *TLCSta
 }
 
 func (t *ConcurrentTLCTrace) CommitChkpt() error {
-	if t == nil || t.TLCTrace == nil {
+	if t == nil {
 		return nil
 	}
-	if err := t.TLCTrace.CommitChkpt(); err != nil {
-		return err
+	for _, worker := range t.Workers {
+		if worker != nil {
+			if err := worker.CommitChkpt(); err != nil {
+				return err
+			}
+		}
 	}
-	if t.diskdir == "" {
+	if t.TLCTrace != nil {
+		if err := t.TLCTrace.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	if t.TLCTrace == nil || t.diskdir == "" {
 		return nil
 	}
 	file, err := os.OpenFile(t.chkptName("chkpt"), os.O_CREATE|os.O_RDWR, 0o644)
@@ -95,6 +104,60 @@ func (t *ConcurrentTLCTrace) CommitChkpt() error {
 		return err
 	}
 	return file.Close()
+}
+
+func (t *ConcurrentTLCTrace) BeginChkpt() error {
+	if t == nil {
+		return nil
+	}
+	for _, worker := range t.Workers {
+		if worker != nil {
+			if err := worker.BeginChkpt(); err != nil {
+				return err
+			}
+		}
+	}
+	if t.TLCTrace != nil {
+		return t.TLCTrace.BeginChkpt()
+	}
+	return nil
+}
+
+func (t *ConcurrentTLCTrace) Recover() error {
+	if t == nil {
+		return nil
+	}
+	for _, worker := range t.Workers {
+		if worker != nil {
+			if err := worker.RecoverTrace(); err != nil {
+				return err
+			}
+		}
+	}
+	if t.TLCTrace != nil {
+		return t.TLCTrace.Recover()
+	}
+	return nil
+}
+
+func (t *ConcurrentTLCTrace) Close() error {
+	if t == nil {
+		return nil
+	}
+	var err error
+	for _, worker := range t.Workers {
+		if worker != nil {
+			if closeErr := worker.CloseTrace(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}
+	}
+	if t.TLCTrace != nil {
+		if closeErr := t.TLCTrace.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}
+	return err
 }
 
 type ConcurrentTraceRecord struct {

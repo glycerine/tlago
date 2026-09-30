@@ -396,6 +396,13 @@ func (mc *ModelChecker) initWorkers() {
 	}
 }
 
+func (mc *ModelChecker) workerAt(id int) *Worker {
+	if mc == nil || id < 0 || id >= len(mc.Workers) {
+		return nil
+	}
+	return mc.Workers[id]
+}
+
 func (mc *ModelChecker) Stop() {
 	if mc != nil && mc.AbstractChecker != nil {
 		mc.SetDone()
@@ -538,10 +545,8 @@ func (mc *ModelChecker) Checkpoint() error {
 			return err
 		}
 	}
-	if mc.Trace != nil {
-		if err := mc.Trace.BeginChkpt(); err != nil {
-			return err
-		}
+	if err := mc.BeginTraceChkpt(); err != nil {
+		return err
 	}
 	if mc.FPSet != nil {
 		if err := mc.FPSet.BeginChkpt(); err != nil {
@@ -564,10 +569,8 @@ func (mc *ModelChecker) Checkpoint() error {
 			return err
 		}
 	}
-	if mc.Trace != nil {
-		if err := mc.Trace.CommitChkpt(); err != nil {
-			return err
-		}
+	if err := mc.CommitTraceChkpt(); err != nil {
+		return err
 	}
 	if mc.FPSet != nil {
 		if err := mc.FPSet.CommitChkpt(); err != nil {
@@ -596,7 +599,7 @@ func (mc *ModelChecker) Recover() (bool, error) {
 	}
 	if mc.Trace != nil {
 		mc.Trace.SetCheckpointContext(mc.FromCheckpoint, mc.Tool.GetRootName())
-		if err := mc.Trace.Recover(); err != nil {
+		if err := mc.RecoverTrace(); err != nil {
 			return false, err
 		}
 	}
@@ -657,6 +660,13 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 			err = closeErr
 		}
 	}
+	for _, worker := range mc.Workers {
+		if worker != nil {
+			if closeErr := worker.CloseTrace(); closeErr != nil && err == nil {
+				err = closeErr
+			}
+		}
+	}
 	if mc.CheckLiveness && mc.LiveCheck != nil {
 		if closeErr := mc.LiveCheck.Close(); closeErr != nil && err == nil {
 			err = closeErr
@@ -678,6 +688,13 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 				err = deleteErr
 			}
 		}
+		for _, worker := range mc.Workers {
+			if worker != nil {
+				if deleteErr := worker.DeleteTrace(); deleteErr != nil && err == nil {
+					err = deleteErr
+				}
+			}
+		}
 		if mc.Metadir != "" {
 			if deleteErr := os.RemoveAll(mc.Metadir); deleteErr != nil && err == nil {
 				err = deleteErr
@@ -685,6 +702,57 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 		}
 	}
 	return err
+}
+
+func (mc *ModelChecker) BeginTraceChkpt() error {
+	if mc == nil {
+		return nil
+	}
+	for _, worker := range mc.Workers {
+		if worker != nil {
+			if err := worker.BeginChkpt(); err != nil {
+				return err
+			}
+		}
+	}
+	if mc.Trace != nil {
+		return mc.Trace.BeginChkpt()
+	}
+	return nil
+}
+
+func (mc *ModelChecker) CommitTraceChkpt() error {
+	if mc == nil {
+		return nil
+	}
+	for _, worker := range mc.Workers {
+		if worker != nil {
+			if err := worker.CommitChkpt(); err != nil {
+				return err
+			}
+		}
+	}
+	if mc.Trace != nil {
+		return mc.Trace.CommitChkpt()
+	}
+	return nil
+}
+
+func (mc *ModelChecker) RecoverTrace() error {
+	if mc == nil {
+		return nil
+	}
+	for _, worker := range mc.Workers {
+		if worker != nil {
+			if err := worker.RecoverTrace(); err != nil {
+				return err
+			}
+		}
+	}
+	if mc.Trace != nil {
+		return mc.Trace.Recover()
+	}
+	return nil
 }
 
 func (mc *ModelChecker) RunTLC(maxDepth int) (int, error) {
@@ -1030,8 +1098,14 @@ func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succSta
 		if mc.Tool != nil {
 			mc.Tool.RememberState(succState)
 		}
-		if err := mc.Trace.WriteNextStateForWorker(workerID, curState, fp, succState, action); err != nil {
-			return seen, err
+		if worker := mc.workerAt(workerID); worker != nil {
+			if err := worker.WriteNextState(curState, fp, succState, action); err != nil {
+				return seen, err
+			}
+		} else if mc.Trace != nil {
+			if err := mc.Trace.WriteNextStateForWorker(workerID, curState, fp, succState, action); err != nil {
+				return seen, err
+			}
 		}
 	}
 	return seen, nil
@@ -1232,10 +1306,18 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 				f.err = err
 				return f.returnValue, err
 			}
-			if err := f.mc.Trace.WriteInitState(curState, fp); err != nil {
-				f.errState = curState
-				f.err = err
-				return f.returnValue, err
+			if worker := f.mc.workerAt(0); worker != nil {
+				if err := worker.WriteInitState(curState, fp); err != nil {
+					f.errState = curState
+					f.err = err
+					return f.returnValue, err
+				}
+			} else if f.mc.Trace != nil {
+				if err := f.mc.Trace.WriteInitState(curState, fp); err != nil {
+					f.errState = curState
+					f.err = err
+					return f.returnValue, err
+				}
 			}
 			if f.mc.CheckLiveness && f.mc.LiveCheck != nil {
 				if err := f.mc.LiveCheck.AddInitState(f.tool, curState, fp); err != nil {

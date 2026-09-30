@@ -1,8 +1,15 @@
 package tlc
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+)
 
 type Worker struct {
+	mu                    sync.Mutex
 	ID                    int
 	LocalValues           []Value
 	NamedRegisters        *InsMap[*UniqueString, Value]
@@ -18,6 +25,10 @@ type Worker struct {
 	MaxDepth              int
 	done                  chan struct{}
 	Err                   error
+	traceFileBase         string
+	traceRAF              *BufferedRandomAccessFile
+	lastPtr               int64
+	traceErr              error
 }
 
 func NewWorker(id int) *Worker {
@@ -36,8 +47,12 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 	worker := NewWorker(id)
 	worker.Checker = checker
 	worker.Tool = tool
+	worker.configureTrace()
 	if checker != nil {
-		checker.Workers = append(checker.Workers, worker)
+		for len(checker.Workers) <= id {
+			checker.Workers = append(checker.Workers, nil)
+		}
+		checker.Workers[id] = worker
 	}
 	return worker
 }
@@ -290,6 +305,358 @@ func (w *Worker) RecordOutDegree() {
 	}
 	w.OutDegree.AddSample(w.UnseenSuccessorStates)
 	w.UnseenSuccessorStates = 0
+}
+
+const tlcTraceExt = ".st"
+
+func (w *Worker) configureTrace() {
+	if w == nil || w.Checker == nil {
+		return
+	}
+	metadir := w.Checker.Metadir
+	rootName := "Spec"
+	if w.Checker.Trace != nil {
+		if w.Checker.Trace.diskdir != "" {
+			metadir = w.Checker.Trace.diskdir
+		}
+		if w.Checker.Trace.rootName != "" {
+			rootName = w.Checker.Trace.rootName
+		}
+	}
+	if w.Checker.Tool != nil && w.Checker.Tool.GetRootName() != "" {
+		rootName = w.Checker.Tool.GetRootName()
+	}
+	if metadir == "" {
+		return
+	}
+	w.traceFileBase = filepath.Join(metadir, fmt.Sprintf("%s-%d", rootName, w.ID))
+}
+
+func (w *Worker) ensureTraceRAF() error {
+	if w == nil {
+		return newTLCError(ECGeneral, "worker is nil")
+	}
+	if w.traceErr != nil {
+		return w.traceErr
+	}
+	if w.traceRAF != nil {
+		return nil
+	}
+	if w.traceFileBase == "" {
+		w.configureTrace()
+	}
+	if w.traceFileBase == "" {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(w.traceFileBase), 0o755); err != nil {
+		w.traceErr = err
+		return err
+	}
+	raf, err := NewBufferedRandomAccessFile(w.traceFileBase+tlcTraceExt, "rw")
+	if err != nil {
+		w.traceErr = err
+		return err
+	}
+	w.traceRAF = raf
+	return nil
+}
+
+func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
+	if w == nil || initialState == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.ensureTraceRAF(); err != nil {
+		return err
+	}
+	ptr := int64(len(w.traceRecordsFallback()))
+	if w.traceRAF != nil {
+		filePtr, err := w.traceRAF.GetFilePointer()
+		if err != nil {
+			return err
+		}
+		ptr = filePtr
+		if err := w.traceRAF.WriteLongNat(1); err != nil {
+			return err
+		}
+		if err := w.traceRAF.WriteShortNat(w.ID); err != nil {
+			return err
+		}
+		if err := w.traceRAF.WriteLong(int64(fp)); err != nil {
+			return err
+		}
+	}
+	w.lastPtr = ptr
+	initialState.WorkerID = int16(w.ID)
+	initialState.UID = ptr
+	if w.Checker != nil && w.Checker.Trace != nil {
+		w.Checker.Trace.MirrorInitStateForWorker(w.ID, initialState, fp, ptr)
+	}
+	return nil
+}
+
+func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
+	if w == nil || succState == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.ensureTraceRAF(); err != nil {
+		return err
+	}
+	prevUID := TLCStateInitUID
+	prevWorker := TLCStateInitWorkerID
+	if curState != nil {
+		prevUID = curState.UID
+		prevWorker = curState.WorkerID
+		if level := curState.Level() + 1; level > w.MaxLevel {
+			w.MaxLevel = level
+		}
+	}
+	ptr := int64(len(w.traceRecordsFallback()))
+	if w.traceRAF != nil {
+		filePtr, err := w.traceRAF.GetFilePointer()
+		if err != nil {
+			return err
+		}
+		ptr = filePtr
+		if err := w.traceRAF.WriteLongNat(prevUID); err != nil {
+			return err
+		}
+		if err := w.traceRAF.WriteShortNat(int(prevWorker)); err != nil {
+			return err
+		}
+		if err := w.traceRAF.WriteLong(int64(succFP)); err != nil {
+			return err
+		}
+	}
+	w.lastPtr = ptr
+	succState.WorkerID = int16(w.ID)
+	succState.UID = ptr
+	succState.SetPredecessor(curState)
+	succState.SetAction(action)
+	if w.Checker != nil && w.Checker.Trace != nil {
+		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, ptr)
+	}
+	return nil
+}
+
+func (w *Worker) traceRecordsFallback() []TraceRecord {
+	if w == nil || w.Checker == nil || w.Checker.Trace == nil {
+		return nil
+	}
+	return w.Checker.Trace.records
+}
+
+func (w *Worker) ReadStateRecord(ptr int64) (ConcurrentTraceRecord, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.ensureTraceRAF(); err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	if w.traceRAF == nil {
+		return ConcurrentTraceRecord{}, newTLCError(ECGeneral, "worker has no trace file")
+	}
+	w.traceRAF.Mark()
+	if err := w.traceRAF.Seek(ptr); err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	prev, err := w.traceRAF.ReadLongNat()
+	if err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	workerID, err := w.traceRAF.ReadShortNat()
+	if err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	fp, err := w.traceRAF.ReadLong()
+	if err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	if err := w.traceRAF.Seek(w.traceRAF.GetMark()); err != nil {
+		return ConcurrentTraceRecord{}, err
+	}
+	return NewConcurrentTraceRecord(prev, workerID, uint64(fp)), nil
+}
+
+func (w *Worker) BeginChkpt() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.ensureTraceRAF(); err != nil {
+		return err
+	}
+	if w.traceRAF == nil || w.traceFileBase == "" {
+		return nil
+	}
+	if err := w.traceRAF.Flush(); err != nil {
+		return err
+	}
+	file, err := os.Create(w.traceFileBase + ".tmp")
+	if err != nil {
+		return err
+	}
+	out := NewValueOutputStream(file)
+	filePtr, err := w.traceRAF.GetFilePointer()
+	if err != nil {
+		_ = out.Close()
+		return err
+	}
+	if err := out.WriteLong(filePtr); err != nil {
+		_ = out.Close()
+		return err
+	}
+	if err := out.WriteLong(w.lastPtr); err != nil {
+		_ = out.Close()
+		return err
+	}
+	return out.Close()
+}
+
+func (w *Worker) CommitChkpt() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.traceFileBase == "" {
+		return nil
+	}
+	oldChkpt := w.traceFileBase + ".chkpt"
+	newChkpt := w.traceFileBase + ".tmp"
+	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.Rename(newChkpt, oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
+}
+
+func (w *Worker) RecoverTrace() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.traceFileBase == "" {
+		w.configureTrace()
+	}
+	if w.traceFileBase == "" {
+		return nil
+	}
+	file, err := os.Open(w.traceFileBase + ".chkpt")
+	if err != nil {
+		return err
+	}
+	in := NewValueInputStream(file)
+	filePos, err := in.ReadLong()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	lastPtr, err := in.ReadLong()
+	if err != nil {
+		_ = in.Close()
+		return err
+	}
+	if err := in.Close(); err != nil {
+		return err
+	}
+	if err := w.ensureTraceRAF(); err != nil {
+		return err
+	}
+	w.lastPtr = lastPtr
+	if w.traceRAF != nil {
+		return w.traceRAF.Seek(filePos)
+	}
+	return nil
+}
+
+func (w *Worker) CloseTrace() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.traceRAF == nil {
+		return nil
+	}
+	err := w.traceRAF.Close()
+	w.traceRAF = nil
+	return err
+}
+
+func (w *Worker) DeleteTrace() error {
+	if w == nil || w.traceFileBase == "" {
+		return nil
+	}
+	var err error
+	for _, suffix := range []string{tlcTraceExt, ".tmp", ".chkpt"} {
+		if removeErr := os.Remove(w.traceFileBase + suffix); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) && err == nil {
+			err = removeErr
+		}
+	}
+	return err
+}
+
+func (w *Worker) Elements() (*WorkerTraceEnumerator, error) {
+	if w == nil {
+		return &WorkerTraceEnumerator{}, nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.ensureTraceRAF(); err != nil {
+		return nil, err
+	}
+	if w.traceRAF != nil {
+		if err := w.traceRAF.Flush(); err != nil {
+			return nil, err
+		}
+	}
+	if w.traceFileBase == "" {
+		return &WorkerTraceEnumerator{}, nil
+	}
+	raf, err := NewBufferedRandomAccessFile(w.traceFileBase+tlcTraceExt, "r")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &WorkerTraceEnumerator{}, nil
+		}
+		return nil, err
+	}
+	length, err := raf.Length()
+	if err != nil {
+		_ = raf.Close()
+		return nil, err
+	}
+	return &WorkerTraceEnumerator{length: length, raf: raf}, nil
+}
+
+type WorkerTraceEnumerator struct {
+	length int64
+	raf    *BufferedRandomAccessFile
+}
+
+func (e *WorkerTraceEnumerator) HasMoreFP() bool {
+	if e == nil || e.raf == nil {
+		return false
+	}
+	pos, err := e.raf.GetFilePointer()
+	return err == nil && pos < e.length
+}
+
+func (e *WorkerTraceEnumerator) NextFP() (uint64, error) {
+	if e == nil || e.raf == nil {
+		return 0, nil
+	}
+	if _, err := e.raf.ReadLongNat(); err != nil {
+		return 0, err
+	}
+	if _, err := e.raf.ReadShortNat(); err != nil {
+		return 0, err
+	}
+	fp, err := e.raf.ReadLong()
+	return uint64(fp), err
+}
+
+func (e *WorkerTraceEnumerator) Close() error {
+	if e == nil || e.raf == nil {
+		return nil
+	}
+	err := e.raf.Close()
+	e.raf = nil
+	return err
 }
 
 func (w *Worker) GetLocalValue(index int) Value {

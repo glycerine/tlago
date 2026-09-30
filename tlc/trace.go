@@ -69,6 +69,29 @@ func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
 	return nil
 }
 
+func (t *TLCTrace) MirrorInitStateForWorker(workerID int, state *TLCStateMut, fp uint64, uid int64) {
+	if t == nil || state == nil {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	traceWorkerID := int16(workerID)
+	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {
+		traceWorkerID = TLCStateInitWorkerID
+	}
+	t.records = append(t.records, TraceRecord{
+		PreviousUID: 1,
+		WorkerID:    traceWorkerID,
+		FP:          fp,
+		State:       state,
+	})
+	state.WorkerID = traceWorkerID
+	state.UID = uid
+	if state.Level() > t.level {
+		t.level = state.Level()
+	}
+}
+
 func (t *TLCTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
 	return t.WriteNextStateForWorker(0, curState, succFP, succState, action)
 }
@@ -107,6 +130,38 @@ func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, 
 	return nil
 }
 
+func (t *TLCTrace) MirrorNextStateForWorker(workerID int, curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action, uid int64) {
+	if t == nil || succState == nil {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	prevUID := TLCStateInitUID
+	predecessorWorkerID := int16(0)
+	if curState != nil {
+		prevUID = curState.UID
+		predecessorWorkerID = curState.WorkerID
+	}
+	generatedWorkerID := int16(workerID)
+	if workerID < 0 || workerID > int(TLCStateInitWorkerID) {
+		generatedWorkerID = TLCStateInitWorkerID
+	}
+	t.records = append(t.records, TraceRecord{
+		PreviousUID: prevUID,
+		WorkerID:    predecessorWorkerID,
+		FP:          succFP,
+		State:       succState,
+		Action:      action,
+	})
+	succState.WorkerID = generatedWorkerID
+	succState.UID = uid
+	succState.SetPredecessor(curState)
+	succState.SetAction(action)
+	if succState.Level() > t.level {
+		t.level = succState.Level()
+	}
+}
+
 func (t *TLCTrace) Records() []TraceRecord {
 	if t == nil {
 		return nil
@@ -124,11 +179,18 @@ func (t *TLCTrace) RecordFor(state *TLCStateMut) (TraceRecord, bool) {
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if state.UID >= int64(len(t.records)) {
-		return TraceRecord{}, false
+	if state.UID >= 0 && state.UID < int64(len(t.records)) {
+		record := t.records[state.UID]
+		if record.State == state {
+			return record, true
+		}
 	}
-	record := t.records[state.UID]
-	return record, record.State == state
+	for _, record := range t.records {
+		if record.State == state {
+			return record, true
+		}
+	}
+	return TraceRecord{}, false
 }
 
 func (t *TLCTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {

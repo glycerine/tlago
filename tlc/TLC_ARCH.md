@@ -983,6 +983,10 @@ Constrained dumps:
 Trace writing:
 
 - Each worker owns a trace fragment file named by spec and worker id.
+- The Go port now writes Java-style worker fragment files as the authoritative
+  worker path, and mirrors records into the existing in-memory `TLCTrace`
+  structure while the rest of the Go API is still converging on Java's
+  reconstruction model.
 - Java backs worker trace fragments, `TLCTrace`, disk FP sets, and bit-vector
   persistence with `BufferedRandomAccessFile`. The port should preserve its
   concrete buffer state (`dirty`, `length`, `curr`, `lo`, `diskPos`, `mark`),
