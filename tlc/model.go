@@ -492,7 +492,11 @@ func NewMCStateFromTLCStateInfo(info *TLCStateInfo) *MCState {
 		return &MCState{}
 	}
 	state := &MCState{StateNumber: int(info.StateNumber)}
-	values := info.State.Values()
+	original := info.OriginalState()
+	if original == nil {
+		original = info.State
+	}
+	values := original.Values()
 	var vars []*MCVariable
 	for name, value := range values.All() {
 		vars = append(vars, NewMCVariable(name.String(), value))
