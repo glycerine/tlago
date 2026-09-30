@@ -54,6 +54,22 @@ func (q *MemStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	}
 }
 
+func (q *MemStateQueue) SEnqueueVec(states *StateVec) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if states == nil {
+		return
+	}
+	for i := 0; i < states.Size(); i++ {
+		if state := states.At(i); state != nil {
+			q.enqueueInner(state)
+		}
+	}
+	if q.numWaiting > 0 && !q.stop {
+		q.cond.Broadcast()
+	}
+}
+
 func (q *MemStateQueue) SDequeue() *TLCStateMut {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -131,6 +147,8 @@ func (q *MemStateQueue) Size() int64 {
 }
 
 func (q *MemStateQueue) IsEmpty() bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
 	return q.len < 1
 }
 
