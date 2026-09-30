@@ -1,5 +1,13 @@
 package tlc
 
+import "sync"
+
+var currentWorkerScope = struct {
+	sync.Mutex
+	id int
+	ok bool
+}{}
+
 type WorkerValue struct {
 	values []Value
 }
@@ -54,6 +62,27 @@ func MuxWorkerValue(value any, workerID int) Value {
 	}
 }
 
+func PushCurrentWorkerID(workerID int) func() {
+	currentWorkerScope.Lock()
+	oldID := currentWorkerScope.id
+	oldOK := currentWorkerScope.ok
+	currentWorkerScope.id = workerID
+	currentWorkerScope.ok = true
+	currentWorkerScope.Unlock()
+	return func() {
+		currentWorkerScope.Lock()
+		currentWorkerScope.id = oldID
+		currentWorkerScope.ok = oldOK
+		currentWorkerScope.Unlock()
+	}
+}
+
+func CurrentWorkerID() (int, bool) {
+	currentWorkerScope.Lock()
+	defer currentWorkerScope.Unlock()
+	return currentWorkerScope.id, currentWorkerScope.ok
+}
+
 func (v *WorkerValue) ValueForWorker(workerID int) Value {
 	if v == nil || len(v.values) == 0 {
 		return nil
@@ -62,6 +91,43 @@ func (v *WorkerValue) ValueForWorker(workerID int) Value {
 		workerID = 0
 	}
 	return v.values[workerID]
+}
+
+func workerValueTuple(value any) Value {
+	size := NumWorkers()
+	if size < 1 {
+		size = 1
+	}
+	switch v := value.(type) {
+	case nil:
+		return tupleOfUndefined(size)
+	case Value:
+		values := make([]Value, size)
+		for i := range values {
+			values[i] = v
+		}
+		return NewTupleValue(values)
+	case *WorkerValue:
+		values := make([]Value, size)
+		for i := range values {
+			if i < len(v.values) && v.values[i] != nil {
+				values[i] = v.values[i]
+			} else {
+				values[i] = ValUndef
+			}
+		}
+		return NewTupleValue(values)
+	default:
+		return tupleOfUndefined(size)
+	}
+}
+
+func tupleOfUndefined(size int) Value {
+	values := make([]Value, size)
+	for i := range values {
+		values[i] = ValUndef
+	}
+	return NewTupleValue(values)
 }
 
 func workerIDFromState(state *TLCStateMut) int {

@@ -115,6 +115,37 @@ func (c *AbstractChecker) SetAllValues(idx int, value Value) {
 	c.Values.Set(idx, value)
 }
 
+func (c *AbstractChecker) SetValue(workerID int, idx int, value Value) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.Values == nil {
+		c.Values = NewInsMap[int, any]()
+	}
+	if workerID < 0 {
+		workerID = 0
+	}
+	current := c.Values.Get(idx)
+	size := NumWorkers()
+	if size <= workerID {
+		size = workerID + 1
+	}
+	if size <= 1 && workerID == 0 {
+		c.Values.Set(idx, value)
+		return
+	}
+	values := make([]Value, size)
+	if workerValue, ok := current.(*WorkerValue); ok {
+		copy(values, workerValue.values)
+	} else if muxed := MuxWorkerValue(current, 0); muxed != nil {
+		values[0] = muxed
+	}
+	values[workerID] = value
+	c.Values.Set(idx, NewWorkerValue(values))
+}
+
 func (c *AbstractChecker) SetWorkerValues(idx int, values []Value) {
 	if c == nil {
 		return
@@ -137,11 +168,7 @@ func (c *AbstractChecker) GetAllValues() Value {
 	values := make([]Value, 0, c.Values.Len())
 	for idx, value := range c.Values.All() {
 		domain = append(domain, NewIntValue(int32(idx)))
-		if muxed := MuxWorkerValue(value, 0); muxed != nil {
-			values = append(values, muxed)
-		} else {
-			values = append(values, ValUndef)
-		}
+		values = append(values, workerValueTuple(value))
 	}
 	return NewFcnRcdValue(domain, values, false)
 }
@@ -221,11 +248,7 @@ func (c *AbstractChecker) GetAllNamedRegisterValues() Value {
 	values := make([]Value, 0, c.NamedValues.Len())
 	for key, value := range c.NamedValues.All() {
 		domain = append(domain, NewStringValueFromUnique(key))
-		if muxed := MuxWorkerValue(value, 0); muxed != nil {
-			values = append(values, muxed)
-		} else {
-			values = append(values, ValUndef)
-		}
+		values = append(values, workerValueTuple(value))
 	}
 	return NewFcnRcdValue(domain, values, false)
 }

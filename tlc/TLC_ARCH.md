@@ -1294,6 +1294,12 @@ stamps simulation states with the concrete worker id and uses that id to read
 the worker-local trace count, which also keeps worker-local `TLCGet`/`TLCSet`
 registers aligned with Java.
 
+Integer `TLCGet(i)`/`TLCSet(i, v)` and named registers (`"s:..."`) are
+current-worker local in Java when evaluated on an `IdThread`; they do not use
+the predecessor state's stored trace worker id. Outside a worker, Java
+broadcasts `TLCSet` through the checker/simulator. `TLCGet("all")` and
+`TLCGet("all:named")` return functions whose values are per-worker tuples.
+
 Random subsets of product-shaped values (`[S -> T]`, record sets, tuple
 products) must use Java's product-index strategy from
 `SetOfFcnsOrRcdsValue`. TLC converts each constituent to a `SetEnumValue`,

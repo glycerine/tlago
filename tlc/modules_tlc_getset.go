@@ -77,7 +77,10 @@ func TLCGetValue(tool *Tool, vidx Value, s0 *TLCStateMut, s1 *TLCStateMut, contr
 		if idx.Val < 0 {
 			break
 		}
-		workerID := workerIDFromState(s0)
+		workerID, ok := CurrentWorkerID()
+		if !ok {
+			workerID = workerIDFromState(s0)
+		}
 		if checker := MainChecker(); checker != nil {
 			if value := checker.GetValue(workerID, int(idx.Val)); value != nil {
 				return value, nil
@@ -177,7 +180,11 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 	default:
 		if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
 			if checker != nil {
-				if value := checker.GetNamedValue(workerIDFromState(s0), key); value != nil {
+				workerID, ok := CurrentWorkerID()
+				if !ok {
+					workerID = workerIDFromState(s0)
+				}
+				if value := checker.GetNamedValue(workerID, key); value != nil {
 					return value, nil
 				}
 			}
@@ -201,7 +208,11 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 			break
 		}
 		if checker := MainChecker(); checker != nil {
-			checker.SetAllValues(int(idx.Val), val)
+			if workerID, ok := CurrentWorkerID(); ok {
+				checker.SetValue(workerID, int(idx.Val), val)
+			} else {
+				checker.SetAllValues(int(idx.Val), val)
+			}
 		} else if simulator := CurrentSimulator(); simulator != nil {
 			simulator.SetAllValues(int(idx.Val), val)
 		}
@@ -225,7 +236,11 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 		default:
 			if strings.HasPrefix(keyString, TLCNamedRegisterPrefix) {
 				if checker := MainChecker(); checker != nil {
-					checker.SetAllNamedValues(key, val)
+					if workerID, ok := CurrentWorkerID(); ok {
+						checker.SetNamedValue(workerID, key, val)
+					} else {
+						checker.SetAllNamedValues(key, val)
+					}
 				} else if simulator := CurrentSimulator(); simulator != nil {
 					simulator.SetAllNamedValues(key, val)
 				}
