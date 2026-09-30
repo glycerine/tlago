@@ -89,7 +89,7 @@ func (v *SetCupValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SetCupValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetCupValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
@@ -270,7 +270,7 @@ func (v *SetCapValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SetCapValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetCapValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
@@ -434,7 +434,7 @@ func (v *SetDiffValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SetDiffValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetDiffValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
@@ -620,7 +620,7 @@ func (v *UnionValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *UnionValue) Permute(perm ModelValuePermutation) Value {
+func (v *UnionValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v

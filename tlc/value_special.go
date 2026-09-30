@@ -47,14 +47,14 @@ func (v *UndefValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	return v, nil
 }
 
-func (v *UndefValue) IsNormalized() bool                  { return true }
-func (v *UndefValue) Normalize() Value                    { return v }
-func (v *UndefValue) DeepNormalize()                      {}
-func (v *UndefValue) IsDefined() bool                     { return false }
-func (v *UndefValue) DeepCopy() Value                     { return v }
-func (v *UndefValue) FingerPrint(fp uint64) uint64        { return fp }
-func (v *UndefValue) Permute(ModelValuePermutation) Value { return v }
-func (v *UndefValue) String() string                      { return "UNDEF" }
+func (v *UndefValue) IsNormalized() bool           { return true }
+func (v *UndefValue) Normalize() Value             { return v }
+func (v *UndefValue) DeepNormalize()               {}
+func (v *UndefValue) IsDefined() bool              { return false }
+func (v *UndefValue) DeepCopy() Value              { return v }
+func (v *UndefValue) FingerPrint(fp uint64) uint64 { return fp }
+func (v *UndefValue) Permute(*MVPerm) Value        { return v }
+func (v *UndefValue) String() string               { return "UNDEF" }
 
 type UserObj interface {
 	Compare(Value) (int, error)
@@ -121,14 +121,14 @@ func (v *UserValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	return v, nil
 }
 
-func (v *UserValue) IsNormalized() bool                  { return true }
-func (v *UserValue) Normalize() Value                    { return v }
-func (v *UserValue) DeepNormalize()                      {}
-func (v *UserValue) IsDefined() bool                     { return true }
-func (v *UserValue) DeepCopy() Value                     { return v }
-func (v *UserValue) FingerPrint(fp uint64) uint64        { return fp }
-func (v *UserValue) Permute(ModelValuePermutation) Value { return v }
-func (v *UserValue) String() string                      { return v.UserObj.String() }
+func (v *UserValue) IsNormalized() bool           { return true }
+func (v *UserValue) Normalize() Value             { return v }
+func (v *UserValue) DeepNormalize()               {}
+func (v *UserValue) IsDefined() bool              { return true }
+func (v *UserValue) DeepCopy() Value              { return v }
+func (v *UserValue) FingerPrint(fp uint64) uint64 { return fp }
+func (v *UserValue) Permute(*MVPerm) Value        { return v }
+func (v *UserValue) String() string               { return v.UserObj.String() }
 
 type AnySet struct{}
 

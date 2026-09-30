@@ -236,7 +236,7 @@ func (v *TupleValue) DeepCopy() Value {
 	return &TupleValue{Elems: out}
 }
 
-func (v *TupleValue) Permute(perm ModelValuePermutation) Value {
+func (v *TupleValue) Permute(perm *MVPerm) Value {
 	out := make([]Value, len(v.Elems))
 	changed := false
 	for i, elem := range v.Elems {
@@ -445,7 +445,7 @@ func (v *SetEnumValue) IsDefined() bool {
 
 func (v *SetEnumValue) DeepCopy() Value { return v }
 
-func (v *SetEnumValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetEnumValue) Permute(perm *MVPerm) Value {
 	out := make([]Value, v.Elems.Len())
 	changed := false
 	for i := range out {
@@ -564,12 +564,12 @@ func (v *IntervalValue) Size() (int, error) {
 	return int(v.High-v.Low) + 1, nil
 }
 
-func (v *IntervalValue) Normalize() Value                    { return v }
-func (v *IntervalValue) DeepNormalize()                      {}
-func (v *IntervalValue) IsNormalized() bool                  { return true }
-func (v *IntervalValue) IsDefined() bool                     { return true }
-func (v *IntervalValue) DeepCopy() Value                     { return v }
-func (v *IntervalValue) Permute(ModelValuePermutation) Value { return v }
+func (v *IntervalValue) Normalize() Value      { return v }
+func (v *IntervalValue) DeepNormalize()        {}
+func (v *IntervalValue) IsNormalized() bool    { return true }
+func (v *IntervalValue) IsDefined() bool       { return true }
+func (v *IntervalValue) DeepCopy() Value       { return v }
+func (v *IntervalValue) Permute(*MVPerm) Value { return v }
 
 func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 	sz, _ := v.Size()

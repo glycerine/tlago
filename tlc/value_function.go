@@ -75,6 +75,128 @@ func ModelValues() []*ModelValue {
 	return out
 }
 
+type MVPerm struct {
+	elems  []*ModelValue
+	domain []*ModelValue
+	count  int
+}
+
+func NewMVPerm() *MVPerm {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	if len(modelValues.mvs) != modelValues.count {
+		setModelValuesLocked()
+	}
+	domain := make([]*ModelValue, len(modelValues.mvs))
+	copy(domain, modelValues.mvs)
+	return &MVPerm{
+		elems:  make([]*ModelValue, len(domain)),
+		domain: domain,
+	}
+}
+
+func (p *MVPerm) Get(value Value) Value {
+	mv := value.(*ModelValue)
+	res := p.elems[mv.Index]
+	if res == nil {
+		return nil
+	}
+	return res
+}
+
+func (p *MVPerm) Put(dval, rval *ModelValue) {
+	eq, err := dval.Equal(rval)
+	if err != nil {
+		panic(err)
+	}
+	if !eq && p.elems[dval.Index] == nil {
+		p.elems[dval.Index] = rval
+		p.count++
+	}
+}
+
+func (p *MVPerm) putIndex(index int, elem *ModelValue) {
+	if p.elems[index] == nil && elem != nil {
+		p.elems[index] = elem
+		p.count++
+	}
+}
+
+func (p *MVPerm) Size() int {
+	return p.count
+}
+
+func (p *MVPerm) Compose(perm *MVPerm) *MVPerm {
+	res := p.emptyLike()
+	for i, mv := range p.elems {
+		if mv == nil {
+			res.putIndex(i, perm.elems[i])
+			continue
+		}
+		mv1 := perm.elems[mv.Index]
+		if mv1 == nil {
+			res.putIndex(i, mv)
+		} else if !p.domain[i].sameModelValue(mv1) {
+			res.putIndex(i, mv1)
+		}
+	}
+	return res
+}
+
+func (p *MVPerm) Equal(other *MVPerm) bool {
+	if p == nil || other == nil {
+		return p == other
+	}
+	if len(p.elems) != len(other.elems) {
+		return false
+	}
+	for i, mv := range p.elems {
+		if !mv.sameModelValue(other.elems[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (p *MVPerm) AllModelValues() []*ModelValue {
+	values := make([]*ModelValue, 0, p.count)
+	for _, mv := range p.elems {
+		if mv != nil {
+			values = append(values, mv)
+		}
+	}
+	return values
+}
+
+func (p *MVPerm) String() string {
+	var b strings.Builder
+	b.WriteByte('[')
+	wrote := false
+	for i, mv := range p.elems {
+		if mv == nil {
+			continue
+		}
+		if wrote {
+			b.WriteString(", ")
+		}
+		b.WriteString(p.domain[i].String())
+		b.WriteString(" -> ")
+		b.WriteString(mv.String())
+		wrote = true
+	}
+	b.WriteByte(']')
+	return b.String()
+}
+
+func (p *MVPerm) emptyLike() *MVPerm {
+	domain := make([]*ModelValue, len(p.domain))
+	copy(domain, p.domain)
+	return &MVPerm{
+		elems:  make([]*ModelValue, len(p.elems)),
+		domain: domain,
+	}
+}
+
 func newModelValueLocked(name string) *ModelValue {
 	typ := typedModelValueUntypedCodeUnit
 	runes := []rune(name)
@@ -163,12 +285,18 @@ func (v *ModelValue) Size() (int, error) {
 	return 0, v.unsupported("attempted to compute the number of elements in the model value %s", v)
 }
 
-func (v *ModelValue) Normalize() Value                    { return v }
-func (v *ModelValue) DeepNormalize()                      {}
-func (v *ModelValue) IsNormalized() bool                  { return true }
-func (v *ModelValue) IsDefined() bool                     { return true }
-func (v *ModelValue) DeepCopy() Value                     { return v }
-func (v *ModelValue) Permute(ModelValuePermutation) Value { return v }
+func (v *ModelValue) Normalize() Value   { return v }
+func (v *ModelValue) DeepNormalize()     {}
+func (v *ModelValue) IsNormalized() bool { return true }
+func (v *ModelValue) IsDefined() bool    { return true }
+func (v *ModelValue) DeepCopy() Value    { return v }
+
+func (v *ModelValue) Permute(perm *MVPerm) Value {
+	if res := perm.Get(v); res != nil {
+		return res
+	}
+	return v
+}
 
 func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 	return v.Val.FingerPrint(FP64ExtendInt(fp, int32(ModelValueKind)))
@@ -197,6 +325,17 @@ func (v *ModelValue) SetData(obj any) any {
 }
 
 func (v *ModelValue) String() string { return v.Val.String() }
+
+func (v *ModelValue) sameModelValue(other *ModelValue) bool {
+	if v == nil || other == nil {
+		return v == other
+	}
+	eq, err := v.Equal(other)
+	if err != nil {
+		panic(err)
+	}
+	return eq
+}
 
 type RecordValue struct {
 	BaseValue
@@ -475,7 +614,7 @@ func (v *RecordValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *RecordValue) Permute(perm ModelValuePermutation) Value {
+func (v *RecordValue) Permute(perm *MVPerm) Value {
 	_ = v.normalizeRecord()
 	values := make([]Value, len(v.Values))
 	changed := false
@@ -1017,7 +1156,7 @@ func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *FcnRcdValue) Permute(perm ModelValuePermutation) Value {
+func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
 	_ = v.normalizeFcn()
 	values := make([]Value, len(v.Values))
 	vchanged := false

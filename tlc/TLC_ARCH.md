@@ -82,6 +82,12 @@ implementations, use concrete structs such as `Tool`, `StateFunctor`,
 `ConfigConstant`; this keeps stack traces, debugger watches, and crash dumps
 straightforward during the mechanical port.
 
+When Java has an interface with exactly one production implementation, port the
+implementation as a concrete Go struct and let call sites name that struct
+directly. `IMVPerm`/`MVPerm` is the model: Java exposes an interface, but Go uses
+`*MVPerm` because there is only one real permutation representation and the
+fixed indexed array is important to understand in a debugger.
+
 Any Go map whose iteration can affect output, fingerprinting, exploration
 order, diagnostics, or tests must use `InsMap` from `insmap.go`. Built-in Go
 maps are acceptable for lookup-only sets/tables that are never ranged over in

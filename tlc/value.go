@@ -84,12 +84,10 @@ type Value interface {
 	IsDefined() bool
 	DeepCopy() Value
 	FingerPrint(uint64) uint64
-	Permute(ModelValuePermutation) Value
+	Permute(*MVPerm) Value
 	TakeExcept(ValueExcept) (Value, error)
 	TakeExcepts([]ValueExcept) (Value, error)
 }
-
-type ModelValuePermutation interface{}
 
 type ValueExcept struct {
 	Path  []Value
@@ -171,12 +169,12 @@ func (v *BoolValue) Size() (int, error) {
 	return 0, v.unsupported("attempted to compute the number of elements in the boolean %s", v)
 }
 
-func (v *BoolValue) Normalize() Value                    { return v }
-func (v *BoolValue) DeepNormalize()                      {}
-func (v *BoolValue) IsNormalized() bool                  { return true }
-func (v *BoolValue) IsDefined() bool                     { return true }
-func (v *BoolValue) DeepCopy() Value                     { return v }
-func (v *BoolValue) Permute(ModelValuePermutation) Value { return v }
+func (v *BoolValue) Normalize() Value      { return v }
+func (v *BoolValue) DeepNormalize()        {}
+func (v *BoolValue) IsNormalized() bool    { return true }
+func (v *BoolValue) IsDefined() bool       { return true }
+func (v *BoolValue) DeepCopy() Value       { return v }
+func (v *BoolValue) Permute(*MVPerm) Value { return v }
 
 func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 	fp = FP64ExtendInt(fp, int32(BoolValueKind))
@@ -290,12 +288,12 @@ func (v *IntValue) Size() (int, error) {
 	return 0, v.unsupported("attempted to compute the number of elements in the integer %s", v)
 }
 
-func (v *IntValue) Normalize() Value                    { return v }
-func (v *IntValue) DeepNormalize()                      {}
-func (v *IntValue) IsNormalized() bool                  { return true }
-func (v *IntValue) IsDefined() bool                     { return true }
-func (v *IntValue) DeepCopy() Value                     { return v }
-func (v *IntValue) Permute(ModelValuePermutation) Value { return v }
+func (v *IntValue) Normalize() Value      { return v }
+func (v *IntValue) DeepNormalize()        {}
+func (v *IntValue) IsNormalized() bool    { return true }
+func (v *IntValue) IsDefined() bool       { return true }
+func (v *IntValue) DeepCopy() Value       { return v }
+func (v *IntValue) Permute(*MVPerm) Value { return v }
 
 func (v *IntValue) FingerPrint(fp uint64) uint64 {
 	return FP64ExtendInt(FP64ExtendInt(fp, int32(IntValueKind)), v.Val)
@@ -377,12 +375,12 @@ func (v *StringValue) Size() (int, error) {
 	return 0, v.unsupported("attempted to compute the number of elements in the string %s", v)
 }
 
-func (v *StringValue) Normalize() Value                    { return v }
-func (v *StringValue) DeepNormalize()                      {}
-func (v *StringValue) IsNormalized() bool                  { return true }
-func (v *StringValue) IsDefined() bool                     { return true }
-func (v *StringValue) DeepCopy() Value                     { return v }
-func (v *StringValue) Permute(ModelValuePermutation) Value { return v }
+func (v *StringValue) Normalize() Value      { return v }
+func (v *StringValue) DeepNormalize()        {}
+func (v *StringValue) IsNormalized() bool    { return true }
+func (v *StringValue) IsDefined() bool       { return true }
+func (v *StringValue) DeepCopy() Value       { return v }
+func (v *StringValue) Permute(*MVPerm) Value { return v }
 
 func (v *StringValue) FingerPrint(fp uint64) uint64 {
 	fp = FP64ExtendInt(fp, int32(StringValueKind))

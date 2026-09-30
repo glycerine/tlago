@@ -168,7 +168,7 @@ func (v *SetOfTuplesValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SetOfTuplesValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetOfTuplesValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
@@ -409,7 +409,7 @@ func (v *SetOfRcdsValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SetOfRcdsValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetOfRcdsValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
@@ -727,7 +727,7 @@ func (v *SetOfFcnsValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SetOfFcnsValue) Permute(perm ModelValuePermutation) Value {
+func (v *SetOfFcnsValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
@@ -946,7 +946,7 @@ func (v *SubsetValue) FingerPrint(fp uint64) uint64 {
 	return set.FingerPrint(fp)
 }
 
-func (v *SubsetValue) Permute(perm ModelValuePermutation) Value {
+func (v *SubsetValue) Permute(perm *MVPerm) Value {
 	set, err := v.convertAndCache()
 	if err != nil {
 		return v
