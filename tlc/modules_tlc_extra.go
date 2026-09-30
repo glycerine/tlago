@@ -1,0 +1,110 @@
+package tlc
+
+import "math/rand"
+
+func SortSeq(seq Value, cmp Value) (Value, error) {
+	tuple := asTupleValue(seq)
+	if tuple == nil {
+		return nil, newTLCError(ECGeneral, "first argument of SortSeq must be a sequence, got %s", seq)
+	}
+	if len(tuple.Elems) == 0 {
+		return tuple, nil
+	}
+	newElems := make([]Value, len(tuple.Elems))
+	newElems[0] = tuple.Elems[0]
+	for i := 1; i < len(tuple.Elems); i++ {
+		j := i
+		arg0 := tuple.Elems[i]
+		for j > 0 {
+			less, err := compareWithOperator(cmp, arg0, newElems[j-1])
+			if err != nil {
+				return nil, err
+			}
+			if !less {
+				break
+			}
+			newElems[j] = newElems[j-1]
+			j--
+		}
+		newElems[j] = arg0
+	}
+	return NewTupleValue(newElems), nil
+}
+
+func compareWithOperator(cmp Value, left Value, right Value) (bool, error) {
+	res, err := EvalOperatorValue(cmp, []Value{left, right}, EvalClear)
+	if err != nil {
+		return false, err
+	}
+	boolValue, ok := res.(*BoolValue)
+	if !ok {
+		return false, newTLCError(ECGeneral, "second argument of SortSeq must be a boolean function, got %s", res)
+	}
+	return boolValue.Val, nil
+}
+
+func RandomElement(value Value) (Value, error) {
+	switch v := value.(type) {
+	case *SetOfFcnsValue:
+		v.Normalize()
+		domain, err := toSetEnumValue(v.Domain)
+		if err != nil {
+			return nil, err
+		}
+		domain.Normalize()
+		dom := domain.Elems.ToArray()
+		vals := make([]Value, len(dom))
+		for i := range vals {
+			elem, err := RandomElement(v.Range)
+			if err != nil {
+				return nil, err
+			}
+			vals[i] = elem
+		}
+		return NewFcnRcdValue(dom, vals, true), nil
+	case *SetOfRcdsValue:
+		v.Normalize()
+		vals := make([]Value, len(v.Values))
+		for i := range vals {
+			elem, err := RandomElement(v.Values[i])
+			if err != nil {
+				return nil, err
+			}
+			vals[i] = elem
+		}
+		return NewRecordValue(v.Names, vals, true), nil
+	case *SetOfTuplesValue:
+		v.Normalize()
+		vals := make([]Value, len(v.Sets))
+		for i := range vals {
+			elem, err := RandomElement(v.Sets[i])
+			if err != nil {
+				return nil, err
+			}
+			vals[i] = elem
+		}
+		return NewTupleValue(vals), nil
+	case *IntervalValue:
+		size, err := v.Size()
+		if err != nil {
+			return nil, err
+		}
+		if size == 0 {
+			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty interval %s", v)
+		}
+		return NewIntValue(v.Low + int32(rand.Intn(size))), nil
+	default:
+		set, err := toSetEnumValue(value)
+		if err != nil {
+			return nil, err
+		}
+		if set.Elems.Len() == 0 {
+			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty set %s", value)
+		}
+		return set.Elems.At(rand.Intn(set.Elems.Len())), nil
+	}
+}
+
+func Any() Value {
+	return AnySetValue
+}
