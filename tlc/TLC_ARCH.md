@@ -273,7 +273,8 @@ Current adapter responsibilities:
 - convert SANY `Definition` and `Expr` nodes into TLC `OpDefNode`,
   `OpApplNode`, `LetInNode`, quantifier, value, and action nodes.
 - install config constants, including arity-bearing operator-constant rows as
-  `OpRcdValue`, and install operator overrides into `Tool`.
+  `OpRcdValue`, module-qualified constants as `Module!Name`, and install
+  operator overrides into `Tool`.
 - attach stable `SymbolNode` identities to bridged `OpDefNode`s so LET binding
   and later operator application use the same symbols.
 - install named-instance aliases for TLC standard-module overrides and local
@@ -288,11 +289,11 @@ Current adapter responsibilities:
 
 This bridge is a staging boundary, not a replacement for Java `SpecProcessor`.
 The mechanical port still has to move exact Java visibility, full INSTANCE
-processing for parameterized and non-standard modules, module constants, action
-decomposition, implied init/action splitting, symmetry, aliases, `_POSSIBLE`,
-`_PERIODIC`, and `_RL_REWARD` into the TLC-side `SpecProcessor` shape. Until
-that is complete, the adapter should stay simple and explicit so mismatches are
-easy to see.
+processing for parameterized and non-standard modules, exact module-constant
+scoping, action decomposition, implied init/action splitting, symmetry, aliases,
+`_POSSIBLE`, `_PERIODIC`, and `_RL_REWARD` into the TLC-side `SpecProcessor`
+shape. Until that is complete, the adapter should stay simple and explicit so
+mismatches are easy to see.
 
 ### `Defns` and `Specs`
 
