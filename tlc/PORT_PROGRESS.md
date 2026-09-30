@@ -50,6 +50,7 @@
 - Already audited recently; do not loosen central `TLCTrace.commitChkpt` errors: failed delete or rename now reports Java's `Trace.commitChkpt: cannot delete ...` text.
 - Already audited recently; do not add Go-wrapped causes or Go method names to checkpoint delete/rename errors in trace, liveness disk graph, queue, object stack/queue, memory FP set, or DFID FP-int set commit paths; they now use the Java `*.commitChkpt: cannot delete ...` strings.
 - Already audited recently; do not decode simulator packed Welford statistics with signed shifts: Java uses `>>> 32` for M2 and an unsigned low-32-bit mask for progress/statistics reporting.
+- Already audited recently; do not skip simulator init progress messages: simulation now emits Java's computed-init progress and `TLC_INIT_GENERATED1` messages before normalizing/starting workers.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -165,6 +166,7 @@
   - Central `TLCTrace` checkpoint commit errors now mirror the same Java `Trace.commitChkpt: cannot delete ...` contract.
   - Checkpoint commit delete/rename errors across the core queue/object/FP/liveness disk graph paths now use Java's lowercase `commitChkpt` class strings instead of Go method names or wrapped filesystem causes.
   - Simulator packed Welford trace-length statistics now mirror Java's unsigned high/low 32-bit extraction for update and progress reporting.
+  - Simulator initial-state reporting now emits Java's computed-init progress and final init-generated messages before simulation workers start.
   - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.

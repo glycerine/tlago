@@ -149,6 +149,7 @@ func (s *Simulator) Simulate() (int, error) {
 	if initStates.IsEmpty() {
 		return ECTLCNoStatesSatisfyingInit, nil
 	}
+	PrintMessage(ECTLCInitGenerated1, fmtInt(initStates.Size()), "")
 	initStates.DeepNormalize()
 	stopProgress := s.startProgressReporter()
 	workerResult := s.simulate(initStates)
@@ -555,6 +556,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 	}
 	s.StatesGenerated += int64(all.Size())
 	s.NumGenStates.Add(int64(all.Size()))
+	PrintMessage(ECTLCComputingInitProgress, fmtInt64(s.NumGenStates.Load()))
 	filtered := NewStateVec(all.Size())
 	for i := 0; i < all.Size(); i++ {
 		state := all.At(i)
