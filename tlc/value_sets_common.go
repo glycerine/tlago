@@ -116,6 +116,8 @@ func toSetEnumValue(value Value) (*SetEnumValue, error) {
 	switch v := value.(type) {
 	case *SetEnumValue:
 		return v, nil
+	case *SetPredValue:
+		return v.ToSetEnum()
 	case *IntervalValue:
 		return v.ToSetEnum(), nil
 	case *SetCupValue:

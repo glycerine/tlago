@@ -1,5 +1,7 @@
 package tlc
 
+import "sync/atomic"
+
 type ToolMode int
 
 const (
@@ -90,6 +92,8 @@ func (f *NextStateFunctor) AddUnsatisfiedNextState(curState *TLCStateMut, action
 }
 
 type Tool struct {
+	ID int64
+
 	Mode ToolMode
 
 	Actions            []*Action
@@ -146,13 +150,23 @@ type Tool struct {
 	IsDebuggerFunc                  func(*Tool) bool
 }
 
+var nextToolID atomic.Int64
+
 func NewTool() *Tool {
 	return &Tool{
+		ID:          nextToolID.Add(1),
 		Mode:        ModeMC,
 		RootName:    "Spec",
 		ModelConfig: newModelConfig("", false),
 		KnownStates: NewInsMap[uint64, *TLCStateMut](),
 	}
+}
+
+func (t *Tool) GetID() int64 {
+	if t == nil {
+		return 0
+	}
+	return t.ID
 }
 
 func NewToolWithModelConfig(config *ModelConfig) *Tool {
