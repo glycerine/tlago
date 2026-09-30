@@ -188,8 +188,13 @@ func (r *JavaRandom) Perm(n int) []int {
 
 var randomEnumerableValues = struct {
 	sync.Mutex
-	seed int64
-	rng  *JavaRandom
+	seed          int64
+	rng           *JavaRandom
+	currentState  *TLCStateMut
+	stateRNG      *JavaRandom
+	stateRNGState *TLCStateMut
+	scope         uint64
+	stateRNGScope uint64
 }{
 	rng: NewJavaRandom(0),
 }
@@ -205,6 +210,8 @@ func SetRandomEnumerableSeed(seed int64) {
 	defer randomEnumerableValues.Unlock()
 	randomEnumerableValues.seed = seed
 	randomEnumerableValues.rng = NewJavaRandom(seed)
+	randomEnumerableValues.stateRNG = nil
+	randomEnumerableValues.stateRNGState = nil
 }
 
 func ResetRandomEnumerableValues() *JavaRandom {
@@ -212,6 +219,8 @@ func ResetRandomEnumerableValues() *JavaRandom {
 	defer randomEnumerableValues.Unlock()
 	old := randomEnumerableValues.rng
 	randomEnumerableValues.rng = NewJavaRandom(randomEnumerableValues.seed)
+	randomEnumerableValues.stateRNG = nil
+	randomEnumerableValues.stateRNGState = nil
 	return old
 }
 
@@ -223,12 +232,38 @@ func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
 	defer randomEnumerableValues.Unlock()
 	old := randomEnumerableValues.rng
 	randomEnumerableValues.rng = rng
+	randomEnumerableValues.stateRNG = nil
+	randomEnumerableValues.stateRNGState = nil
 	return old
 }
 
+func PushRandomEnumerableState(state *TLCStateMut) func() {
+	randomEnumerableValues.Lock()
+	oldState := randomEnumerableValues.currentState
+	randomEnumerableValues.scope++
+	randomEnumerableValues.currentState = state
+	randomEnumerableValues.Unlock()
+	return func() {
+		randomEnumerableValues.Lock()
+		randomEnumerableValues.scope++
+		randomEnumerableValues.currentState = oldState
+		randomEnumerableValues.Unlock()
+	}
+}
+
 func RandomEnumerableGenerator() *JavaRandom {
+	modelChecking := MainChecker() != nil && CurrentSimulator() == nil
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
+	if modelChecking && randomEnumerableValues.currentState != nil {
+		if randomEnumerableValues.stateRNG == nil || randomEnumerableValues.stateRNGState != randomEnumerableValues.currentState || randomEnumerableValues.stateRNGScope != randomEnumerableValues.scope {
+			seed := int64(randomEnumerableValues.currentState.FingerPrint()) ^ randomEnumerableValues.seed
+			randomEnumerableValues.stateRNG = NewJavaRandom(seed)
+			randomEnumerableValues.stateRNGState = randomEnumerableValues.currentState
+			randomEnumerableValues.stateRNGScope = randomEnumerableValues.scope
+		}
+		return randomEnumerableValues.stateRNG
+	}
 	if randomEnumerableValues.rng == nil {
 		randomEnumerableValues.rng = NewJavaRandom(randomEnumerableValues.seed)
 	}

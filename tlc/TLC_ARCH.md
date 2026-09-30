@@ -1268,6 +1268,13 @@ Java-compatible random enumerable generator here, not Go's process-global
 random source, so seeded simulation and trace replay consume random values in
 the same places Java does.
 
+`RandomEnumerableValues` is mode-sensitive in Java. During BFS model checking,
+worker evaluation and trace reconstruction set the current predecessor state;
+the random-enumerable generator is then seeded with
+`enumFractionSeed XOR predecessor.fingerPrint()`, and repeated random choices
+within the same predecessor continue the same stream. Initial-state generation,
+DFID, and simulation use the default seed stream without predecessor reseeding.
+
 `Json!ToJsonObject` mirrors Java's `getObjectNode` dispatch. Records and
 tuples become JSON objects, but a function record whose domain is a valid
 sequence `1..n` is routed back to the array writer even under `ToJsonObject`.

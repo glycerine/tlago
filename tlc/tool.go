@@ -502,6 +502,8 @@ func (t *Tool) GetStateAfter(fp uint64, predecessor *TLCStateMut) (*TLCStateInfo
 	if t == nil || predecessor == nil {
 		return nil, nil
 	}
+	restoreRandomState := PushRandomEnumerableState(predecessor)
+	defer restoreRandomState()
 	for _, action := range t.GetActions() {
 		nextStates, err := t.GetNextStates(action, predecessor)
 		if err != nil {
@@ -522,6 +524,8 @@ func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCSta
 	if t == nil || successor == nil || predecessor == nil {
 		return nil, nil
 	}
+	restoreRandomState := PushRandomEnumerableState(predecessor)
+	defer restoreRandomState()
 	for _, action := range t.GetActions() {
 		nextStates, err := t.GetNextStates(action, predecessor)
 		if err != nil {

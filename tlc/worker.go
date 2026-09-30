@@ -78,6 +78,8 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	if w.Checker.CheckLiveness || w.Tool.GetMode() == ModeDebugger {
 		w.SetOfStates = w.CreateSetOfStates()
 	}
+	restoreRandomState := PushRandomEnumerableState(curState)
+	defer restoreRandomState()
 	preNext := w.StatesGenerated
 	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
 	if err != nil {

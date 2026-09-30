@@ -627,6 +627,8 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 	if mc.Tool == nil {
 		return true, newTLCError(ECGeneral, "model checker has no tool")
 	}
+	restoreRandomState := PushRandomEnumerableState(curState)
+	defer restoreRandomState()
 	deadLocked := true
 	var succState *TLCStateMut
 	for _, action := range mc.Tool.GetActions() {
