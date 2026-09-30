@@ -1740,6 +1740,16 @@ arithmetic overflow uses `TLC_MODULE_OVERFLOW`, `\div` by zero uses
 `TLC_MODULE_ARGUMENT_ERROR_AN`, and `Nat`/`Int` membership/compare failures use
 the same module membership/compare codes as Java.
 
+`Sequences` has a few source-order details to preserve. `SubSeq` first decides
+whether its first argument is a string or sequence and reports a first-argument
+`TLC_MODULE_ARGUMENT_ERROR` before checking `m` and `n`; only after that does it
+check natural-number arguments and domain membership. `Len`, `Head`, `Tail`,
+`Cons`, `Append`, `Concat`, `SelectInSeq`, `SelectSeq`, and `Insert` should use
+Java's sequence-specific `ONE_ARGUMENT_ERROR`, `APPLY_EMPTY_SEQ`,
+`EVALUATING`, `ARGUMENT_ERROR`, and `ARGUMENT_NOT_IN_DOMAIN` codes. The public
+Java `Remove` helper is explicitly marked not part of the standard interface and
+is not registered by the Go standard definitions.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

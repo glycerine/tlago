@@ -427,6 +427,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("Overflow when computing %s", params[0])
 		}
+	case ECTLCModuleOneArgumentError:
+		if len(params) >= 3 {
+			return fmt.Sprintf("The argument of %s should be a %s, but instead it is:\n%s", params[0], params[1], params[2])
+		}
 	case ECTLCModuleArgumentError:
 		if len(params) >= 4 {
 			return fmt.Sprintf("The %s argument of %s should be a %s, but instead it is:\n%s", params[0], params[1], params[2], params[3])
@@ -435,10 +439,18 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 4 {
 			return fmt.Sprintf("The %s argument of %s should be an %s, but instead it is:\n%s", params[0], params[1], params[2], params[3])
 		}
+	case ECTLCModuleArgumentNotInDomain:
+		if len(params) >= 5 {
+			return fmt.Sprintf("The %s argument of %s must be in the domain of its %s argument:\n%s\n, but instead it is\n%s", params[0], params[1], params[2], params[3], params[4])
+		}
 	case ECTLCModuleDivisionByZero:
 		return "The second argument of \\div is 0."
 	case ECTLCModuleNullPowerNull:
 		return "0^0 is undefined."
+	case ECTLCModuleApplyEmptySeq:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Attempted to apply %s to the empty sequence.", params[0])
+		}
 	case ECTLCModuleCompareValue:
 		if len(params) >= 2 {
 			return fmt.Sprintf("Attempted to compare %s with the value\n%s", params[0], params[1])
@@ -450,6 +462,10 @@ func formatMessage(code int, params []string) string {
 	case ECTLCModuleComputingCardinality:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Attempted to compute cardinality of the value\n%s", params[0])
+		}
+	case ECTLCModuleEvaluating:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Evaluating an expression of the form %s when s is not a %s:\n%s", params[0], params[1], params[2])
 		}
 	}
 	if len(params) == 0 {

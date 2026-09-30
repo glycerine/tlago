@@ -21,7 +21,7 @@ func Len(s Value) (*IntValue, error) {
 	}
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "Len expected a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Len", "sequence", ValuesPPR(s))
 	}
 	return NewIntValue(int32(len(seq.Elems))), nil
 }
@@ -29,10 +29,10 @@ func Len(s Value) (*IntValue, error) {
 func Head(s Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "Head expected a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Head", "sequence", ValuesPPR(s))
 	}
 	if len(seq.Elems) == 0 {
-		return nil, newTLCError(ECGeneral, "Head applied to empty sequence")
+		return nil, newTLCErrorCode(ECTLCModuleApplyEmptySeq, "Head")
 	}
 	return seq.Elems[0], nil
 }
@@ -40,16 +40,16 @@ func Head(s Value) (Value, error) {
 func Tail(s Value) (Value, error) {
 	if sv, ok := s.(*StringValue); ok {
 		if sv.Val.String() == "" {
-			return nil, newTLCError(ECGeneral, "Tail applied to empty sequence")
+			return nil, newTLCErrorCode(ECTLCModuleApplyEmptySeq, "Tail")
 		}
 		return NewStringValue(utf16Substring(sv.Val.String(), 1, sv.Length())), nil
 	}
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "Tail expected a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "Tail", "sequence", ValuesPPR(s))
 	}
 	if len(seq.Elems) == 0 {
-		return nil, newTLCError(ECGeneral, "Tail applied to empty sequence")
+		return nil, newTLCErrorCode(ECTLCModuleApplyEmptySeq, "Tail")
 	}
 	out := make([]Value, len(seq.Elems)-1)
 	copy(out, seq.Elems[1:])
@@ -59,7 +59,7 @@ func Tail(s Value) (Value, error) {
 func Cons(v Value, s Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "Cons expected a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "Cons(v, s)", "sequence", ValuesPPR(s))
 	}
 	out := make([]Value, len(seq.Elems)+1)
 	out[0] = v
@@ -70,7 +70,7 @@ func Cons(v Value, s Value) (Value, error) {
 func Append(s Value, v Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "Append expected a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "Append(s, v)", "sequence", ValuesPPR(s))
 	}
 	out := make([]Value, len(seq.Elems)+1)
 	copy(out, seq.Elems)
@@ -82,17 +82,17 @@ func Concat(s1, s2 Value) (Value, error) {
 	if sv1, ok := s1.(*StringValue); ok {
 		sv2, ok := s2.(*StringValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "right argument of \\o must be a string, got %s", s2)
+			return nil, newTLCErrorCode(ECTLCModuleEvaluating, "t \\o s", "string", ValuesPPR(s2))
 		}
 		return NewStringValue(sv1.Val.String() + sv2.Val.String()), nil
 	}
 	seq1 := asTupleValue(s1)
 	if seq1 == nil {
-		return nil, newTLCError(ECGeneral, "left argument of \\o must be a sequence, got %s", s1)
+		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "s \\o t", "sequence", ValuesPPR(s1))
 	}
 	seq2 := asTupleValue(s2)
 	if seq2 == nil {
-		return nil, newTLCError(ECGeneral, "right argument of \\o must be a sequence, got %s", s2)
+		return nil, newTLCErrorCode(ECTLCModuleEvaluating, "t \\o s", "sequence", ValuesPPR(s2))
 	}
 	if len(seq1.Elems) == 0 {
 		return seq2, nil
@@ -107,41 +107,51 @@ func Concat(s1, s2 Value) (Value, error) {
 }
 
 func SubSeq(s, m, n Value) (Value, error) {
+	var (
+		sv       *StringValue
+		seq      *TupleValue
+		isString bool
+	)
+	if value, ok := s.(*StringValue); ok {
+		sv = value
+		isString = true
+	} else {
+		seq = asTupleValue(s)
+		if seq == nil {
+			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SubSeq", "sequence", ValuesPPR(s))
+		}
+	}
 	begValue, ok := m.(*IntValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "second argument of SubSeq must be a natural number, got %s", m)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SubSeq", "natural number", ValuesPPR(m))
 	}
 	endValue, ok := n.(*IntValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "third argument of SubSeq must be a natural number, got %s", n)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "SubSeq", "natural number", ValuesPPR(n))
 	}
 	beg := int(begValue.Val)
 	end := int(endValue.Val)
-	if sv, ok := s.(*StringValue); ok {
+	if isString {
 		if beg > end {
 			return NewStringValue(""), nil
 		}
 		length := sv.Length()
 		if beg < 1 || beg > length {
-			return nil, newTLCError(ECGeneral, "second argument of SubSeq is not in the string domain")
+			return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "second", "SubSeq", "first", ValuesPPR(s), ValuesPPR(m))
 		}
 		if end < 1 || end > length {
-			return nil, newTLCError(ECGeneral, "third argument of SubSeq is not in the string domain")
+			return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "third", "SubSeq", "first", ValuesPPR(s), ValuesPPR(n))
 		}
 		return NewStringValue(utf16Substring(sv.Val.String(), beg-1, end)), nil
-	}
-	seq := asTupleValue(s)
-	if seq == nil {
-		return nil, newTLCError(ECGeneral, "first argument of SubSeq must be a sequence, got %s", s)
 	}
 	if beg > end {
 		return EmptyTuple, nil
 	}
 	if beg < 1 || beg > len(seq.Elems) {
-		return nil, newTLCError(ECGeneral, "second argument of SubSeq is not in the sequence domain")
+		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "second", "SubSeq", "first", ValuesPPR(s), ValuesPPR(m))
 	}
 	if end < 1 || end > len(seq.Elems) {
-		return nil, newTLCError(ECGeneral, "third argument of SubSeq is not in the sequence domain")
+		return nil, newTLCErrorCode(ECTLCModuleArgumentNotInDomain, "third", "SubSeq", "first", ValuesPPR(s), ValuesPPR(n))
 	}
 	out := make([]Value, end-beg+1)
 	copy(out, seq.Elems[beg-1:end])
@@ -151,7 +161,10 @@ func SubSeq(s, m, n Value) (Value, error) {
 func SelectInSeq(s Value, test Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "first argument of SelectInSeq must be a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectInSeq", "sequence", ValuesPPR(s))
+	}
+	if !isOperatorValue(test) {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectInSeq", "function", ValuesPPR(test))
 	}
 	for i, elem := range seq.Elems {
 		value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
@@ -160,7 +173,7 @@ func SelectInSeq(s Value, test Value) (Value, error) {
 		}
 		boolValue, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "second argument of SelectInSeq must be boolean-valued")
+			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectInSeq", "boolean-valued function", ValuesPPR(test))
 		}
 		if boolValue.Val {
 			return NewIntValue(int32(i + 1)), nil
@@ -172,10 +185,13 @@ func SelectInSeq(s Value, test Value) (Value, error) {
 func SelectSeq(s Value, test Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "first argument of SelectSeq must be a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectSeq", "sequence", ValuesPPR(s))
 	}
 	if len(seq.Elems) == 0 {
 		return EmptyTuple, nil
+	}
+	if !isOperatorValue(test) {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectSeq", "operator", ValuesPPR(test))
 	}
 	out := NewValueVec(0)
 	for _, elem := range seq.Elems {
@@ -185,7 +201,7 @@ func SelectSeq(s Value, test Value) (Value, error) {
 		}
 		boolValue, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "second argument of SelectSeq must be boolean-valued")
+			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectSeq", "boolean-valued operator", ValuesPPR(test))
 		}
 		if boolValue.Val {
 			out.Add(elem)
@@ -197,7 +213,10 @@ func SelectSeq(s Value, test Value) (Value, error) {
 func Insert(s Value, v Value, test Value) (Value, error) {
 	seq := asTupleValue(s)
 	if seq == nil {
-		return nil, newTLCError(ECGeneral, "first argument of Insert must be a sequence, got %s", s)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Insert", "sequence", ValuesPPR(s))
+	}
+	if !isOperatorValue(test) {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "Insert", "function", ValuesPPR(test))
 	}
 	values := make([]Value, len(seq.Elems)+1)
 	idx := len(seq.Elems)
@@ -209,7 +228,7 @@ func Insert(s Value, v Value, test Value) (Value, error) {
 		}
 		boolValue, ok := value.(*BoolValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "third argument of Insert must be boolean-valued")
+			return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "Insert", "boolean-valued operator", ValuesPPR(test))
 		}
 		cmp, err := v.Compare(right)
 		if err != nil {
@@ -273,11 +292,11 @@ func (s *sequencesObj) Compare(value Value) (int, error) {
 		if _, ok := value.(*ModelValue); ok {
 			return 1, nil
 		}
-		return 0, newTLCError(ECGeneral, "attempted to compare %s with %s", s, value)
+		return 0, newTLCErrorCode(ECTLCModuleCompareValue, ValuesPPRString(s.String()), ValuesPPR(value))
 	}
 	other, ok := uv.UserObj.(*sequencesObj)
 	if !ok {
-		return 0, newTLCError(ECGeneral, "attempted to compare %s with %s", s, value)
+		return 0, newTLCErrorCode(ECTLCModuleCompareValue, ValuesPPRString(s.String()), ValuesPPR(value))
 	}
 	if s.SizeBound != other.SizeBound {
 		return s.SizeBound - other.SizeBound, nil
@@ -291,7 +310,7 @@ func (s *sequencesObj) Member(value Value) (bool, error) {
 		if mv, ok := value.(*ModelValue); ok {
 			return mv.modelValueMember(NewUserValue(s))
 		}
-		return false, newTLCError(ECGeneral, "attempted to check if %s is in %s", value, s)
+		return false, newTLCErrorCode(ECTLCModuleCheckMemberOf, ValuesPPR(value), ValuesPPRString(s.String()))
 	}
 	if len(seq.Elems) > s.SizeBound {
 		return false, nil
