@@ -354,6 +354,167 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.AssignActionIDs()
 }
 
+func (p *SpecProcessor) GetVariablesNodes() []*UniqueString {
+	if p == nil {
+		return nil
+	}
+	return append([]*UniqueString(nil), p.Variables...)
+}
+
+func (p *SpecProcessor) GetInitPred() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.InitPred...)
+}
+
+func (p *SpecProcessor) GetNextPred() *Action {
+	if p == nil {
+		return nil
+	}
+	return p.NextPred
+}
+
+func (p *SpecProcessor) GetTemporal() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.Temporals...)
+}
+
+func (p *SpecProcessor) GetTemporalNames() []string {
+	if p == nil {
+		return nil
+	}
+	return append([]string(nil), p.TemporalNames...)
+}
+
+func (p *SpecProcessor) GetImpliedTemporals() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.ImpliedTemporals...)
+}
+
+func (p *SpecProcessor) GetImpliedTemporalNames() []string {
+	if p == nil {
+		return nil
+	}
+	return append([]string(nil), p.ImpliedTempNames...)
+}
+
+func (p *SpecProcessor) GetInvariants() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.Invariants...)
+}
+
+func (p *SpecProcessor) GetInvariantsNames() []string {
+	if p == nil {
+		return nil
+	}
+	return append([]string(nil), p.InvariantNames...)
+}
+
+func (p *SpecProcessor) GetImpliedInits() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.ImpliedInits...)
+}
+
+func (p *SpecProcessor) GetImpliedInitNames() []string {
+	if p == nil {
+		return nil
+	}
+	return append([]string(nil), p.ImpliedInitNames...)
+}
+
+func (p *SpecProcessor) GetImpliedActions() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.ImpliedActions...)
+}
+
+func (p *SpecProcessor) GetImpliedActionNames() []string {
+	if p == nil {
+		return nil
+	}
+	return append([]string(nil), p.ImpliedActNames...)
+}
+
+func (p *SpecProcessor) GetModelConstraints() []SemanticNode {
+	if p == nil {
+		return nil
+	}
+	return append([]SemanticNode(nil), p.ModelConstraints...)
+}
+
+func (p *SpecProcessor) GetActionConstraints() []SemanticNode {
+	if p == nil {
+		return nil
+	}
+	return append([]SemanticNode(nil), p.ActionConstraints...)
+}
+
+func (p *SpecProcessor) GetRLReward() SemanticNode {
+	if p == nil {
+		return nil
+	}
+	return p.RLReward
+}
+
+func (p *SpecProcessor) GetPeriodic() SemanticNode {
+	if p == nil {
+		return nil
+	}
+	return p.Periodic
+}
+
+func (p *SpecProcessor) GetAssumptions() []SemanticNode {
+	if p == nil {
+		return nil
+	}
+	return append([]SemanticNode(nil), p.Assumptions...)
+}
+
+func (p *SpecProcessor) GetAssumptionIsAxiom() []bool {
+	if p == nil {
+		return nil
+	}
+	return append([]bool(nil), p.AssumptionIsAxiom...)
+}
+
+func (p *SpecProcessor) GetUnprocessedDefns() *Defns {
+	if p == nil {
+		return nil
+	}
+	return p.Snapshot
+}
+
+func (p *SpecProcessor) GetDefns() *Defns {
+	if p == nil {
+		return nil
+	}
+	return p.Defns
+}
+
+func (p *SpecProcessor) GetConstantDefns() *InsMap[string, Value] {
+	if p == nil {
+		return nil
+	}
+	return p.ConstantDefns
+}
+
+func (p *SpecProcessor) GetPostConditionSpecs() []*Action {
+	if p == nil {
+		return nil
+	}
+	return append([]*Action(nil), p.PossiblePostConds...)
+}
+
 func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 	if p == nil || p.Defns == nil {
 		return

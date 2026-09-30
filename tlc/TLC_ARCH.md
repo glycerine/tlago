@@ -248,6 +248,12 @@ objects. Key jobs:
 - Set the definition table count to the number of variables before storing
   definitions. Java does this explicitly with `defns.setDefnCount(varDecls.length)`;
   the Go port keeps the same visible step instead of hiding it in `Defns`.
+- Expose the same processed-spec accessor surface as Java
+  `SpecProcessor`: init/next predicates, temporal and implied temporal actions,
+  invariants, implied init/action checks, model/action constraints, assumptions,
+  `_RL_REWARD`, `_PERIODIC`, definition snapshots, constant-definition cache,
+  and postcondition specs. Go returns slice copies from these concrete methods
+  to keep callers from mutating processor-owned slices by accident.
 
 Tricky details:
 
