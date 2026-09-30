@@ -552,20 +552,7 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 }
 
 func tlcRuntimeParameterModules(params tlcruntime.RuntimeParameters) []string {
-	var modules []string
-	for _, inv := range params.Invariants {
-		modules = appendModuleNames(modules, inv.Modules...)
-	}
-	for _, constraint := range params.Constraints {
-		modules = appendModuleNames(modules, constraint.Module)
-	}
-	for _, post := range params.PostConditions {
-		modules = appendModuleNames(modules, post.Module)
-	}
-	if params.View != nil {
-		modules = appendModuleNames(modules, params.View.Module)
-	}
-	return modules
+	return params.ExtendeeModules()
 }
 
 func extractTLCLoadOptions(args []string) ([]string, LoadOptions, error) {

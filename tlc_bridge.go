@@ -428,6 +428,11 @@ func (b *tlcBridge) installRuntimeParameters() {
 			b.tool.ModelConstraints = append(b.tool.ModelConstraints, node)
 		}
 	}
+	for _, constraint := range b.runtime.ActionConstraints {
+		if node := b.nodeForModuleDefinition(constraint.Module, constraint.Operator, "runtime action constraint"); node != nil {
+			b.tool.ActionConstraints = append(b.tool.ActionConstraints, node)
+		}
+	}
 	if b.cfg == nil || b.cfg.GetView() == "" {
 		if view := b.runtime.View; view != nil {
 			b.tool.ViewSpec = b.nodeForModuleDefinition(view.Module, view.Operator, "runtime view")
@@ -441,11 +446,8 @@ func (b *tlcBridge) installRuntimeParameters() {
 }
 
 func (b *tlcBridge) installRuntimeConstants() {
-	for _, constraint := range b.runtime.Constraints {
-		b.defineRuntimeStringConstant(constraint.ConstantName, constraint.FileName)
-	}
-	for _, post := range b.runtime.PostConditions {
-		b.defineRuntimeStringConstant(post.ConstantName, post.FileName)
+	for _, constant := range b.runtime.StringConstants() {
+		b.defineRuntimeStringConstant(constant.Name, constant.Value)
 	}
 }
 

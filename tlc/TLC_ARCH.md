@@ -153,6 +153,14 @@ Port guidance:
   This mirrors Java's `params` map without introducing an untyped central map
   into the Go API. `InsMap` backs parsed message-control sets to keep any later
   iteration deterministic.
+- Runtime parameters follow Java `ParameterizedSpecObj` ordering. Runtime
+  extendees are postcondition modules, invariant dependency modules, model
+  constraint modules, action constraint modules, then view. Runtime string
+  constants are bound in the same order Java's `processConstantDefns` visits
+  them: model constraints, action constraints, then postconditions. Runtime
+  invariant actions are appended after normal config processing, so the missing
+  `INIT`/`NEXT` checks only see the static model config just as Java's
+  `SpecProcessor` does.
 - Java's `-dump class,...` loads an `IStateWriter` by reflection. Go records the
   requested class name in `RuntimeParameters.CustomStateWriterClass` and uses a
   no-op writer until a Go extension hook exists; do not add a one-method writer

@@ -15,6 +15,7 @@ import (
 type RuntimeParameters struct {
 	Invariants             []RuntimeInvariantTemplate
 	Constraints            []RuntimeConstraint
+	ActionConstraints      []RuntimeConstraint
 	PostConditions         []RuntimePostCondition
 	View                   *RuntimeView
 	CustomStateWriterClass string
@@ -241,11 +242,11 @@ func ParseTLCOptions(args []string) (Options, error) {
 			fileName := args[index+2]
 			switch {
 			case strings.EqualFold(format, "tlc"):
-				opts.RuntimeParams.Constraints = append(opts.RuntimeParams.Constraints, RuntimeConstraint{"_TLCTrace", "_TLCTraceConstraint", "_TLCTraceInputFile", fileName})
-				opts.RuntimeParams.View = &RuntimeView{"_TLCTrace", "_TLCTraceView"}
+				opts.RuntimeParams.Constraints = append(opts.RuntimeParams.Constraints, RuntimeConstraint{Module: "_TLCTrace", Operator: "_TLCTraceConstraint", ConstantName: "_TLCTraceInputFile", FileName: fileName})
+				opts.RuntimeParams.View = &RuntimeView{Module: "_TLCTrace", Operator: "_TLCTraceView"}
 			case strings.EqualFold(format, "json"):
-				opts.RuntimeParams.Constraints = append(opts.RuntimeParams.Constraints, RuntimeConstraint{"_JsonTrace", "_JsonTraceConstraint", "_JsonTraceInputFile", fileName})
-				opts.RuntimeParams.View = &RuntimeView{"_JsonTrace", "_JsonTraceView"}
+				opts.RuntimeParams.Constraints = append(opts.RuntimeParams.Constraints, RuntimeConstraint{Module: "_JsonTrace", Operator: "_JsonTraceConstraint", ConstantName: "_JsonTraceInputFile", FileName: fileName})
+				opts.RuntimeParams.View = &RuntimeView{Module: "_JsonTrace", Operator: "_JsonTraceView"}
 			default:
 				return opts, tlcCommandLineError("Error: Unknown format " + format + " given to -loadTrace.")
 			}
@@ -590,19 +591,19 @@ func (d tlcDumpOption) newStateWriter(metadir string) (*StateWriter, error) {
 func runtimePostConditionForTraceFormat(format string, fileName string) (RuntimePostCondition, error) {
 	switch {
 	case strings.EqualFold(format, "json"):
-		return RuntimePostCondition{"_JsonTrace", "_JsonTrace", "_JsonTraceFile", fileName}, nil
+		return RuntimePostCondition{Module: "_JsonTrace", Operator: "_JsonTrace", ConstantName: "_JsonTraceFile", FileName: fileName}, nil
 	case strings.EqualFold(format, "tla"):
-		return RuntimePostCondition{"_TLAPlusCounterExample", "_TLAPlusCounterExample", "_TLAPlusCounterExampleFile", fileName}, nil
+		return RuntimePostCondition{Module: "_TLAPlusCounterExample", Operator: "_TLAPlusCounterExample", ConstantName: "_TLAPlusCounterExampleFile", FileName: fileName}, nil
 	case strings.EqualFold(format, "tlc"):
-		return RuntimePostCondition{"_TLCTrace", "_TLCTrace", "_TLCTraceFile", fileName}, nil
+		return RuntimePostCondition{Module: "_TLCTrace", Operator: "_TLCTrace", ConstantName: "_TLCTraceFile", FileName: fileName}, nil
 	case strings.EqualFold(format, "tlcplain"):
-		return RuntimePostCondition{"_TLCTracePlain", "_TLCTrace", "_TLCTraceFile", fileName}, nil
+		return RuntimePostCondition{Module: "_TLCTracePlain", Operator: "_TLCTrace", ConstantName: "_TLCTraceFile", FileName: fileName}, nil
 	case strings.EqualFold(format, "tlcTESpec"):
-		return RuntimePostCondition{"_TLCTESpec", "_TLCTrace", "_TLCTraceFile", fileName}, nil
+		return RuntimePostCondition{Module: "_TLCTESpec", Operator: "_TLCTrace", ConstantName: "_TLCTraceFile", FileName: fileName}, nil
 	case strings.EqualFold(format, "tlcaction"):
-		return RuntimePostCondition{"_TLCActionTrace", "_TLCTrace", "_TLCTraceFile", fileName}, nil
+		return RuntimePostCondition{Module: "_TLCActionTrace", Operator: "_TLCTrace", ConstantName: "_TLCTraceFile", FileName: fileName}, nil
 	case strings.EqualFold(format, "dot"):
-		return RuntimePostCondition{"_DotTrace", "_DotTrace", "_DotTraceFile", fileName}, nil
+		return RuntimePostCondition{Module: "_DotTrace", Operator: "_DotTrace", ConstantName: "_DotTraceFile", FileName: fileName}, nil
 	default:
 		return RuntimePostCondition{}, tlcCommandLineError("Error: Unknown format " + format + " given to -dumpTrace.")
 	}
