@@ -358,7 +358,7 @@ func (s *DiskFPSet) RecoverFile(fname string) error {
 	return s.recoverFileLocked(s.chkptName(fname, "chkpt"))
 }
 
-func (s *DiskFPSet) RecoverTrace(trace *MemoryTrace) error {
+func (s *DiskFPSet) RecoverTrace(trace *TLCTrace) error {
 	if trace == nil {
 		return s.Recover()
 	}

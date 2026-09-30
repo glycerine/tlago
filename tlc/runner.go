@@ -32,7 +32,7 @@ type Options struct {
 	StateWriter              *StateWriter
 	FPSet                    FPSet
 	StateQueue               StateQueue
-	Trace                    *MemoryTrace
+	Trace                    *TLCTrace
 	LiveCheck                *LiveCheck
 	StartTime                time.Time
 }

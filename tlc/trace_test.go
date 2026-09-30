@@ -2,7 +2,7 @@ package tlc
 
 import "testing"
 
-func TestMemoryTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
+func TestTLCTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
 	initTLCCheckerTest(t)
 	action := &Action{Name: "Next"}
 	initState := checkerTestState(0)

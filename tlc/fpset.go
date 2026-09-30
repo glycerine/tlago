@@ -162,7 +162,7 @@ type FPSet interface {
 	CommitChkptFile(fname string) error
 	Recover() error
 	RecoverFile(fname string) error
-	RecoverTrace(trace *MemoryTrace) error
+	RecoverTrace(trace *TLCTrace) error
 	RecoverFP(fp uint64) error
 	UnexportObject(force bool)
 }
@@ -510,7 +510,7 @@ func (s *MemFPSet) RecoverFile(fname string) error {
 	}
 }
 
-func (s *MemFPSet) RecoverTrace(trace *MemoryTrace) error {
+func (s *MemFPSet) RecoverTrace(trace *TLCTrace) error {
 	return s.Recover()
 }
 
@@ -571,7 +571,7 @@ func (s *NoopFPSet) CommitChkpt() error                      { return nil }
 func (s *NoopFPSet) CommitChkptFile(fname string) error      { return nil }
 func (s *NoopFPSet) Recover() error                          { return nil }
 func (s *NoopFPSet) RecoverFile(fname string) error          { return nil }
-func (s *NoopFPSet) RecoverTrace(trace *MemoryTrace) error   { return nil }
+func (s *NoopFPSet) RecoverTrace(trace *TLCTrace) error   { return nil }
 func (s *NoopFPSet) RecoverFP(fp uint64) error               { return nil }
 func (s *NoopFPSet) Close()                                  {}
 func (s *NoopFPSet) AddThread() error                        { return nil }
@@ -796,7 +796,7 @@ func (s *MultiFPSet) RecoverFile(fname string) error {
 	return nil
 }
 
-func (s *MultiFPSet) RecoverTrace(trace *MemoryTrace) error {
+func (s *MultiFPSet) RecoverTrace(trace *TLCTrace) error {
 	if trace == nil {
 		return s.Recover()
 	}

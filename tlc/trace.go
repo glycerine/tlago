@@ -15,7 +15,7 @@ type TraceRecord struct {
 	Action      *Action
 }
 
-type MemoryTrace struct {
+type TLCTrace struct {
 	mu       sync.Mutex
 	records  []TraceRecord
 	level    int
@@ -23,8 +23,8 @@ type MemoryTrace struct {
 	rootName string
 }
 
-func NewMemoryTrace(metaDir ...string) *MemoryTrace {
-	trace := &MemoryTrace{}
+func NewTLCTrace(metaDir ...string) *TLCTrace {
+	trace := &TLCTrace{}
 	if len(metaDir) > 0 {
 		trace.diskdir = metaDir[0]
 	}
@@ -34,7 +34,7 @@ func NewMemoryTrace(metaDir ...string) *MemoryTrace {
 	return trace
 }
 
-func (t *MemoryTrace) SetCheckpointContext(metadir string, rootName string) {
+func (t *TLCTrace) SetCheckpointContext(metadir string, rootName string) {
 	if t == nil {
 		return
 	}
@@ -48,7 +48,7 @@ func (t *MemoryTrace) SetCheckpointContext(metadir string, rootName string) {
 	}
 }
 
-func (t *MemoryTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
+func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
 	if t == nil {
 		return nil
 	}
@@ -69,7 +69,7 @@ func (t *MemoryTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
 	return nil
 }
 
-func (t *MemoryTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
+func (t *TLCTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succState *TLCStateMut, action *Action) error {
 	if t == nil {
 		return nil
 	}
@@ -99,7 +99,7 @@ func (t *MemoryTrace) WriteNextState(curState *TLCStateMut, succFP uint64, succS
 	return nil
 }
 
-func (t *MemoryTrace) Records() []TraceRecord {
+func (t *TLCTrace) Records() []TraceRecord {
 	if t == nil {
 		return nil
 	}
@@ -110,7 +110,7 @@ func (t *MemoryTrace) Records() []TraceRecord {
 	return out
 }
 
-func (t *MemoryTrace) RecordFor(state *TLCStateMut) (TraceRecord, bool) {
+func (t *TLCTrace) RecordFor(state *TLCStateMut) (TraceRecord, bool) {
 	if t == nil || state == nil || state.UID < 0 {
 		return TraceRecord{}, false
 	}
@@ -123,7 +123,7 @@ func (t *MemoryTrace) RecordFor(state *TLCStateMut) (TraceRecord, bool) {
 	return record, record.State == state
 }
 
-func (t *MemoryTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
+func (t *TLCTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
 	if state == nil {
 		return nil
 	}
@@ -140,7 +140,7 @@ func (t *MemoryTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
 	return reversed
 }
 
-func (t *MemoryTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
+func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
 	if to == nil {
 		return nil
 	}
@@ -163,7 +163,7 @@ func (t *MemoryTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLC
 	return reversed
 }
 
-func (t *MemoryTrace) GetLevelForReporting() int {
+func (t *TLCTrace) GetLevelForReporting() int {
 	if t == nil {
 		return 0
 	}
@@ -172,7 +172,7 @@ func (t *MemoryTrace) GetLevelForReporting() int {
 	return t.level
 }
 
-func (t *MemoryTrace) BeginChkpt() error {
+func (t *TLCTrace) BeginChkpt() error {
 	if t == nil {
 		return nil
 	}
@@ -249,7 +249,7 @@ func (t *MemoryTrace) BeginChkpt() error {
 	return out.Close()
 }
 
-func (t *MemoryTrace) CommitChkpt() error {
+func (t *TLCTrace) CommitChkpt() error {
 	if t == nil {
 		return nil
 	}
@@ -266,7 +266,7 @@ func (t *MemoryTrace) CommitChkpt() error {
 	return os.Rename(newChkpt, oldChkpt)
 }
 
-func (t *MemoryTrace) Recover() error {
+func (t *TLCTrace) Recover() error {
 	if t == nil {
 		return nil
 	}
@@ -365,7 +365,7 @@ func (t *MemoryTrace) Recover() error {
 	return nil
 }
 
-func (t *MemoryTrace) Delete() error {
+func (t *TLCTrace) Delete() error {
 	if t == nil {
 		return nil
 	}
@@ -383,7 +383,7 @@ func (t *MemoryTrace) Delete() error {
 	return nil
 }
 
-func (t *MemoryTrace) chkptName(ext string) string {
+func (t *TLCTrace) chkptName(ext string) string {
 	rootName := t.rootName
 	if rootName == "" {
 		rootName = "Spec"
@@ -391,6 +391,6 @@ func (t *MemoryTrace) chkptName(ext string) string {
 	return filepath.Join(t.diskdir, rootName+".st."+ext)
 }
 
-func (t *MemoryTrace) Close() error {
+func (t *TLCTrace) Close() error {
 	return nil
 }

@@ -181,7 +181,7 @@ type ModelChecker struct {
 	NumberOfInitialStates int64
 	FPSet                 FPSet
 	StateQueue            StateQueue
-	Trace                 *MemoryTrace
+	Trace                 *TLCTrace
 	LiveCheck             *LiveCheck
 	NextStatesGenerated   int64
 }
@@ -209,7 +209,7 @@ func WithModelCheckerStateWriter(writer *StateWriter) ModelCheckerOption {
 	}
 }
 
-func WithModelCheckerTrace(trace *MemoryTrace) ModelCheckerOption {
+func WithModelCheckerTrace(trace *TLCTrace) ModelCheckerOption {
 	return func(mc *ModelChecker) {
 		mc.Trace = trace
 	}
@@ -244,7 +244,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		FPSet:           NewFPSet(NewFPSetConfiguration()).Init(NumWorkers(), metadir, rootName),
 		StateQueue:      NewStateQueue(metadir),
-		Trace:           NewMemoryTrace(metadir, rootName),
+		Trace:           NewTLCTrace(metadir, rootName),
 		LiveCheck:       NewNoOpLiveCheck(tool, metadir),
 	}
 	for _, opt := range opts {
@@ -263,7 +263,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		setStateQueueDir(mc.StateQueue, metadir)
 	}
 	if mc.Trace == nil {
-		mc.Trace = NewMemoryTrace(metadir, rootName)
+		mc.Trace = NewTLCTrace(metadir, rootName)
 	} else {
 		mc.Trace.SetCheckpointContext(metadir, rootName)
 	}
