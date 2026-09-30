@@ -312,6 +312,9 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if err != nil {
 				return opts, err
 			}
+			if !IsValidSetSize(value) {
+				return opts, tlcCommandLineError("Error: Value in interval [0, 2147483647] for maxSetSize required. But encountered " + args[index+1])
+			}
 			Globals.SetBound = value
 			index += 2
 		case arg == "-recover":
