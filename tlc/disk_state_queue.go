@@ -265,17 +265,21 @@ func (q *DiskStateQueue) CommitChkpt() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for i := q.lastLoPool; i < q.newLastLoPool; i++ {
-		if err := os.Remove(q.poolName(i)); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return err
+		oldPool := q.poolName(i)
+		if err := os.Remove(oldPool); err != nil {
+			return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s: %w", oldPool, err)
 		}
 	}
 	q.lastLoPool = q.newLastLoPool
 	oldName := filepath.Join(q.diskdir, "queue.chkpt")
 	newName := filepath.Join(q.diskdir, "queue.tmp")
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+		return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s: %w", oldName, err)
 	}
-	return os.Rename(newName, oldName)
+	if err := os.Rename(newName, oldName); err != nil {
+		return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s: %w", oldName, err)
+	}
+	return nil
 }
 
 func (q *DiskStateQueue) Recover() error {
