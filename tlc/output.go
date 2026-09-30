@@ -152,6 +152,8 @@ const (
 	ECTLCModuleValueJavaMethodOverrideIdentifierMismatch = 2403
 	ECTLCPostconditionFalse                              = 2404
 	ECTLCPostconditionEvaluationError                    = 2405
+	ECTLCTESpecGenerationComplete                        = 2501
+	ECTLCTESpecGenerationError                           = 2502
 	ECTLCCoverageNext                                    = 2772
 	ECTLCCoverageInit                                    = 2773
 	ECTLCCoverageProperty                                = 2774

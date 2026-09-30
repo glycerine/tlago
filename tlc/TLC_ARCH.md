@@ -1186,9 +1186,9 @@ Go keeps this as concrete structs in the central `tlc` package:
   emitters.
 - `TraceExpressionExplorerSpecWriter` stores the variable-expression map in
   `InsMap` so generated module order is deterministic.
-- `TraceExplorationSpec` currently captures the naming/postcondition shell; the
-  full `generate` method still needs the mechanical port once MCError recorder
-  plumbing is complete.
+- `TraceExplorationSpec` captures the naming/postcondition shell and can now
+  generate the monolithic TE `.tla` file from an `MCError`; runner integration
+  still has to wire this to the message recorder that captures TLC error traces.
 
 Correctness notes:
 

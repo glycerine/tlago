@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -1773,6 +1774,164 @@ func NewTraceExplorationSpecNamed(outputPath string, teModuleName string, origin
 	return spec
 }
 
+func (s *TraceExplorationSpec) Generate(tool *Tool, errTrace *MCError) (string, error) {
+	if s == nil || errTrace == nil || len(errTrace.States) <= 1 {
+		return "", nil
+	}
+	if s.OutputPath == "" {
+		s.OutputPath = "."
+	}
+	if s.OriginalModule == "" && tool != nil {
+		s.OriginalModule = tool.GetRootName()
+	}
+	if s.OriginalModule == "" {
+		s.OriginalModule = "Spec"
+	}
+	if s.TESpecModuleName == "" {
+		s.TESpecModuleName = DeriveTESpecModuleName(s.OriginalModule, time.Now())
+	}
+	if err := os.MkdirAll(s.OutputPath, 0o755); err != nil {
+		PrintMessage(ECTLCTESpecGenerationError, err.Error())
+		return "", err
+	}
+	path := filepath.Join(s.OutputPath, s.TESpecModuleName+".tla")
+	file, err := os.Create(path)
+	if err != nil {
+		PrintMessage(ECTLCTESpecGenerationError, err.Error())
+		return "", err
+	}
+	defer file.Close()
+	if err := s.WriteSpecTE(tool, errTrace, file); err != nil {
+		PrintMessage(ECTLCTESpecGenerationError, err.Error())
+		return "", err
+	}
+	PrintMessage(ECTLCTESpecGenerationComplete, path)
+	return path, nil
+}
+
+func (s *TraceExplorationSpec) WriteSpecTE(tool *Tool, errTrace *MCError, out io.Writer) error {
+	if s == nil || errTrace == nil || out == nil || len(errTrace.States) == 0 {
+		return nil
+	}
+	if s.OriginalModule == "" && tool != nil {
+		s.OriginalModule = tool.GetRootName()
+	}
+	if s.OriginalModule == "" {
+		s.OriginalModule = "Spec"
+	}
+	if s.TESpecModuleName == "" {
+		s.TESpecModuleName = DeriveTESpecModuleName(s.OriginalModule, time.Now())
+	}
+	modelConfig := newModelConfig("", false)
+	if tool != nil && tool.GetModelConfig() != nil {
+		modelConfig = tool.GetModelConfig()
+	}
+	variables := traceExplorationVariables(errTrace)
+	writer := NewSpecTraceExpressionWriter()
+
+	constants := modelConfig.GetConstantsAsList()
+	declaredConstantNames := make(map[string]struct{}, len(constants))
+	var indentedConstants []string
+	for _, entry := range constants {
+		if len(entry) == 0 {
+			continue
+		}
+		declaredConstantNames[entry[0]] = struct{}{}
+		line := entry[0]
+		if len(entry) > 1 {
+			line = entry[0] + tlaEqSp + entry[1]
+		}
+		indentedConstants = append(indentedConstants, SpecTraceExpressionIndentString(line, 1))
+	}
+	SetModelValues()
+	for _, mv := range ModelValues() {
+		if mv == nil {
+			continue
+		}
+		name := mv.String()
+		indentedConstants = append(indentedConstants, SpecTraceExpressionIndentString(name+tlaEqSp+name, 1))
+	}
+	if errTrace.IsLasso() {
+		last := errTrace.States[len(errTrace.States)-1]
+		indentedConstants = append(indentedConstants, tlaSpecTELassoStart+tlaEqSp+fmt.Sprint(last.StateNumber))
+		indentedConstants = append(indentedConstants, tlaSpecTELassoEnd+tlaEqSp+fmt.Sprint(len(errTrace.States)-1))
+	}
+	writer.AddConstantsRaw(indentedConstants)
+
+	var modConstants []string
+	for _, mv := range ModelValues() {
+		if mv == nil {
+			continue
+		}
+		name := mv.String()
+		if _, declared := declaredConstantNames[name]; !declared {
+			modConstants = append(modConstants, name)
+		}
+	}
+	if errTrace.IsLasso() {
+		modConstants = append(modConstants, tlaSpecTELassoStart, tlaSpecTELassoEnd)
+	}
+	teConstantSpecName := fmt.Sprintf("%s_%s", s.OriginalModule, tlaSpecTEConstantsName)
+	teConstantModules := []string{tlaModuleTLC}
+	modelValuesAsConstants := ""
+	if len(modConstants) != 0 {
+		teConstantModules = append(teConstantModules, teConstantSpecName)
+		modelValuesAsConstants = "CONSTANTS " + strings.Join(modConstants, ", ") + tlaCR
+	}
+
+	specTEExtendedModules := traceExploreSortedUnique(tlaModuleToolbox, tlaModuleTLCExt, tlaModuleNaturals, tlaModuleSequences)
+	specTEExtendedModules = traceExploreSortedUnique(append(specTEExtendedModules, teConstantModules...)...)
+	writer.AddPrimer(s.TESpecModuleName, s.OriginalModule, specTEExtendedModules)
+	writer.AddTraceExpressionInstance(fmt.Sprintf("%s_%s", s.OriginalModule, tlaTraceExploreModule))
+	teTraceName := fmt.Sprintf("%s_%s", s.OriginalModule, tlaSpecTETraceModuleName)
+	writer.AddTraceFunctionInstance(teTraceName)
+	writer.AddProperties(errTrace.States, s.OriginalModule)
+	writer.AddInitNextTraceFunction(errTrace.States, s.TESpecModuleName, variables, modelConfig)
+	if errTrace.IsLassoWithDuplicates() {
+		writer.AddTraceView(strings.Join(variables, ", "))
+	}
+	writer.AddFooter()
+
+	writer.Append(tlaCR)
+	te := NewSpecTraceExpressionWriter()
+	teModuleName := fmt.Sprintf("%s_%s", s.OriginalModule, tlaTraceExploreModule)
+	te.Append(tlaCR)
+	writer.Append(fmt.Sprintf(" Note that you can extract this module `%s`", teModuleName)).WriteString(tlaCR)
+	writer.Append("  to a dedicated file to reuse `expression` (the module in the ").WriteString(tlaCR)
+	writer.Append(fmt.Sprintf("  dedicated `%s.tla` file takes precedence ", teModuleName)).WriteString(tlaCR)
+	writer.Append(fmt.Sprintf("  over the module `%s` below).", teModuleName))
+	te.AddPrimer(teModuleName, s.OriginalModule, specTEExtendedModules)
+	te.AddTraceExpressionStub(s.OriginalModule, tlaSpecTEExpression, variables)
+	te.AddFooter()
+	writer.Append(tlaCR + te.String() + tlaCR + tlaCR)
+
+	writer.Append(tlaCR)
+	writer.Append("Parsing and semantic processing can take forever if the trace below is long.").WriteString(tlaCR)
+	writer.Append(" In this case, it is advised to uncomment the module below to deserialize the").WriteString(tlaCR)
+	writer.Append(" trace from a generated binary file.").WriteString(tlaCR)
+	overrideModules := traceExploreSortedUnique(tlaModuleIOUtils)
+	overrideModules = traceExploreSortedUnique(append(overrideModules, teConstantModules...)...)
+	overrideWriter := NewSpecTraceExpressionWriter()
+	overrideWriter.Append(tlaCR)
+	overrideWriter.AddPrimer(teTraceName, s.OriginalModule, overrideModules)
+	overrideWriter.Append(tlaSpecTETraceDef).WriteString(tlaDefines)
+	overrideWriter.Append(fmt.Sprintf("IODeserialize(\"%s%s\", TRUE)\n\n", s.TESpecModuleName, ".bin"))
+	overrideWriter.AddFooter()
+	writer.Append(tlaCR + overrideWriter.GetComment() + tlaCR + tlaCR)
+
+	writer.AddPrimer(teTraceName, s.OriginalModule, traceExploreSortedUnique(teConstantModules...))
+	writer.AddTraceFunction(errTrace.States, tlaSpecTETraceDef, tlaSpecTETrace)
+	writer.AddAliasToCfg(tlaSpecTETTraceExpr)
+	if modelValuesAsConstants != "" {
+		writer.AddFooter()
+		writer.Append(tlaCR)
+		writer.AddPrimer(teConstantSpecName, s.OriginalModule)
+		writer.Append(modelValuesAsConstants).WriteString(tlaCR)
+	}
+	writer.WrapConfig(s.TESpecModuleName)
+	return writer.WriteStreams(out, out)
+}
+
 func TraceExplorationModuleID(timestamp time.Time) string {
 	return fmt.Sprint(timestamp.Unix())
 }
@@ -1788,6 +1947,52 @@ func IsTESpecFile(tlaFilePath string) bool {
 	base := filepath.Base(tlaFilePath)
 	ok, _ := regexp.MatchString("^.*_"+tlaTraceExprModuleName+".*(.tla)?$", base)
 	return ok
+}
+
+func traceExplorationVariables(errTrace *MCError) []string {
+	vars := StateVariables()
+	if len(vars) != 0 {
+		out := make([]string, 0, len(vars))
+		for _, variable := range vars {
+			if variable.Name != nil {
+				out = append(out, variable.Name.String())
+			}
+		}
+		return out
+	}
+	if errTrace == nil {
+		return nil
+	}
+	for _, state := range errTrace.States {
+		if state == nil || state.BackToState || state.Stuttering {
+			continue
+		}
+		out := make([]string, 0, len(state.Variables))
+		for _, variable := range state.Variables {
+			if variable != nil {
+				out = append(out, variable.Name)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+func traceExploreSortedUnique(names ...string) []string {
+	seen := make(map[string]struct{}, len(names))
+	out := make([]string, 0, len(names))
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		seen[name] = struct{}{}
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 func specTraceExpressionStateConjunction(state *MCState, prefixConjunct string) string {
