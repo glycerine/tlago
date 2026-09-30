@@ -187,6 +187,18 @@ const (
 	ECCFGExpectID         = 5005
 	ECCFGExpectedSymbol   = 5006
 
+	ECTLCDistributedServerRunning         = 7000
+	ECTLCDistributedWorkerRegistered      = 7001
+	ECTLCDistributedWorkerDeregistered    = 7002
+	ECTLCDistributedWorkerStats           = 7003
+	ECTLCDistributedServerNotRunning      = 7004
+	ECTLCDistributedVMVersion             = 7005
+	ECTLCDistributedWorkerLost            = 7006
+	ECTLCDistributedExceedBlocksize       = 7007
+	ECTLCDistributedServerFPSetWaiting    = 7008
+	ECTLCDistributedServerFPSetRegistered = 7009
+	ECTLCDistributedServerFinished        = 7010
+
 	ECTLCModuleOverrideStdout = 20000
 )
 
@@ -535,6 +547,46 @@ func formatMessage(code int, params []string) string {
 	case ECTLCFPCompleted:
 		if len(params) >= 1 {
 			return fmt.Sprintf("%s, work completed. Thank you!", params[0])
+		}
+	case ECTLCDistributedServerRunning:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC server at %s is ready (%s)", params[0], messageNow())
+		}
+	case ECTLCDistributedWorkerRegistered:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Registration for worker at %s completed (%s)", params[0], messageNow())
+		}
+	case ECTLCDistributedWorkerDeregistered:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC worker %s disconnected (%s)", params[0], messageNow())
+		}
+	case ECTLCDistributedWorkerStats:
+		if len(params) >= 4 {
+			return fmt.Sprintf("Worker: %s Sent: %s Rcvd: %s CacheRatio: %s (%s)", params[0], params[1], params[2], params[3], messageNow())
+		}
+	case ECTLCDistributedServerNotRunning:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLCServer is gone due to %s, exiting worker... (%s)", params[0], messageNow())
+		}
+	case ECTLCDistributedServerFinished:
+		return fmt.Sprintf("TLCServer has finished, exiting worker... (%s)", messageNow())
+	case ECTLCDistributedVMVersion:
+		return fmt.Sprintf("VM does not allow to get the UnicastRef port.\nWorker will be identified with port 0 in output (%s)", messageNow())
+	case ECTLCDistributedWorkerLost:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC worker connection lost %s (%s)", params[0], messageNow())
+		}
+	case ECTLCDistributedExceedBlocksize:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Trying to limit max block size (to recover from transport failure): %s (%s)", params[0], messageNow())
+		}
+	case ECTLCDistributedServerFPSetRegistered:
+		if len(params) >= 2 {
+			return fmt.Sprintf("%s out of %s FPSet server(s) registered (%s)", params[0], params[1], messageNow())
+		}
+	case ECTLCDistributedServerFPSetWaiting:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Waiting for %s FPSet server(s) to register (%s)", params[0], messageNow())
 		}
 	case ECTLCConfigNotBothSpecAndInit:
 		return "The configuration file cannot specify both INIT/NEXT and SPECIFICATION fields."

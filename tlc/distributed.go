@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 	"sort"
 	"strconv"
 	"sync/atomic"
@@ -528,6 +529,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		return result, nil
 	}
 	s.PrintInitGenerated()
+	PrintMessage(ECTLCDistributedServerRunning, distributedServerHost())
 	if len(s.Tool.GetActions()) == 0 {
 		if s.StateQueue != nil && !s.StateQueue.IsEmpty() {
 			PrintError(ECTLCStatesAndNoNextAction)
@@ -564,6 +566,16 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		if thread.Worker != nil {
 			_ = thread.Worker.Exit()
 		}
+		cacheRatio := "n/a"
+		if thread.GetCacheRateRatio() >= 0 {
+			cacheRatio = fmt.Sprintf("%.2f", thread.GetCacheRateRatio())
+		}
+		PrintMessage(ECTLCDistributedWorkerStats,
+			thread.GetURI(),
+			fmtInt(thread.GetSentStates()),
+			fmtInt(thread.GetReceivedStates()),
+			cacheRatio,
+		)
 	}
 	s.FinalNumberOfDistinctStates = int64(s.fpSetSize())
 	statesGenerated := s.GetStatesGenerated()
@@ -713,6 +725,13 @@ func (s *TLCServer) fpSetSize() uint64 {
 	return s.FPSetManager.Size()
 }
 
+func distributedServerHost() string {
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+		return hostname
+	}
+	return "localhost"
+}
+
 func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 	key := s.registerWorkerOnly(worker)
 	if key == "" {
@@ -723,6 +742,7 @@ func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 	}
 	thread := NewTLCServerThread(worker, key, s, s.BlockSelector)
 	thread.Start()
+	PrintMessage(ECTLCDistributedWorkerRegistered, key)
 }
 
 func (s *TLCServer) registerWorkerOnly(worker *DistributedWorker) string {
@@ -765,6 +785,9 @@ func (s *TLCServer) RemoveTLCServerThread(thread *TLCServerThread) *TLCServerThr
 	}
 	removed := s.ServerThreads.Get(thread.GetURI())
 	s.ServerThreads.Delkey(thread.GetURI())
+	if removed != nil {
+		PrintMessage(ECTLCDistributedWorkerDeregistered, thread.GetURI())
+	}
 	return removed
 }
 
@@ -1168,8 +1191,10 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 			if t.Selector != nil {
 				t.Selector.SetMaxTXSize(len(t.States) / 2)
 			}
+			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.States)/2))
 			return nil, true
 		}
+		PrintMessage(ECTLCDistributedWorkerLost, t.GetURI())
 		t.HandleRemoteWorkerLost(stateQueue)
 		return nil, false
 	}

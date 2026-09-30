@@ -76,6 +76,7 @@
   - Distributed block selection now follows Java's `BlockSelectorFactory` property surface while keeping one concrete Go selector: static, unlimiting/proportional, limiting, and default statistical modes are selected through the Java property names, and static mode honors `tlc2.tool.distributed.TLCServerThread.BlockSize`.
   - Distributed worker registration now mirrors Java's server lifecycle: registering a worker wakes stuck queue threads, creates the corresponding master `TLCServerThread`, registers it, and starts it; explicit thread construction still uses the lower-level thread registration hook.
   - Distributed server lifecycle now has Java-shaped checkpoint/recover/close, init-state generation through a distributed `DoInitFunctor`, joinable server threads, periodic checkpoint/progress reporting, final summary/success reporting, and a Go-library `ModelCheck` path for explicitly registered in-process workers.
+  - Distributed TLC output codes and Java-shaped message text are now present for server-ready, worker register/deregister, worker stats, worker lost, recoverable block-size reduction, FPSet wait/register, server-not-running, server-finished, and VM-version diagnostics; the currently ported distributed paths emit the matching lifecycle messages.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -108,7 +109,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, distributed master trace writes, distributed block selector properties, distributed worker registration, and distributed server lifecycle have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, and distributed reporting messages have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:
