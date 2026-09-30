@@ -108,6 +108,8 @@ func (w *DFIDWorker) getNext(curState *TLCStateMut, cfp uint64) int {
 }
 
 func (w *DFIDWorker) Run() {
+	restoreWorkerID := PushCurrentWorkerID(w.ID)
+	defer restoreWorkerID()
 	var curState *TLCStateMut
 	for w.StopCode == 0 {
 		index := w.getInit()
