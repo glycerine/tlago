@@ -205,15 +205,19 @@ func (r *JavaRandom) Perm(n int) []int {
 
 var randomEnumerableValues = struct {
 	sync.Mutex
-	seed          int64
+	seed    int64
+	threads map[uint64]*randomEnumerableThreadState
+}{
+	threads: make(map[uint64]*randomEnumerableThreadState),
+}
+
+type randomEnumerableThreadState struct {
 	rng           *JavaRandom
 	currentState  *TLCStateMut
 	stateRNG      *JavaRandom
 	stateRNGState *TLCStateMut
 	scope         uint64
 	stateRNGScope uint64
-}{
-	rng: NewJavaRandom(0),
 }
 
 func RandomEnumerableSeed() int64 {
@@ -226,44 +230,47 @@ func SetRandomEnumerableSeed(seed int64) {
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
 	randomEnumerableValues.seed = seed
-	randomEnumerableValues.rng = NewJavaRandom(seed)
-	randomEnumerableValues.stateRNG = nil
-	randomEnumerableValues.stateRNGState = nil
+	randomEnumerableValues.threads = make(map[uint64]*randomEnumerableThreadState)
 }
 
 func ResetRandomEnumerableValues() *JavaRandom {
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
-	old := randomEnumerableValues.rng
-	randomEnumerableValues.rng = NewJavaRandom(randomEnumerableValues.seed)
-	randomEnumerableValues.stateRNG = nil
-	randomEnumerableValues.stateRNGState = nil
+	gid := currentGoroutineID()
+	state := randomEnumerableThreadStateForLocked(gid)
+	old := state.rng
+	delete(randomEnumerableValues.threads, gid)
 	return old
 }
 
 func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
+	randomEnumerableValues.Lock()
+	defer randomEnumerableValues.Unlock()
 	if rng == nil {
 		rng = NewJavaRandom(randomEnumerableValues.seed)
 	}
-	randomEnumerableValues.Lock()
-	defer randomEnumerableValues.Unlock()
-	old := randomEnumerableValues.rng
-	randomEnumerableValues.rng = rng
-	randomEnumerableValues.stateRNG = nil
-	randomEnumerableValues.stateRNGState = nil
+	gid := currentGoroutineID()
+	state := randomEnumerableThreadStateForLocked(gid)
+	old := state.rng
+	state.rng = rng
+	state.stateRNG = nil
+	state.stateRNGState = nil
 	return old
 }
 
 func PushRandomEnumerableState(state *TLCStateMut) func() {
+	gid := currentGoroutineID()
 	randomEnumerableValues.Lock()
-	oldState := randomEnumerableValues.currentState
-	randomEnumerableValues.scope++
-	randomEnumerableValues.currentState = state
+	threadState := randomEnumerableThreadStateForLocked(gid)
+	oldState := threadState.currentState
+	threadState.scope++
+	threadState.currentState = state
 	randomEnumerableValues.Unlock()
 	return func() {
 		randomEnumerableValues.Lock()
-		randomEnumerableValues.scope++
-		randomEnumerableValues.currentState = oldState
+		threadState := randomEnumerableThreadStateForLocked(gid)
+		threadState.scope++
+		threadState.currentState = oldState
 		randomEnumerableValues.Unlock()
 	}
 }
@@ -272,17 +279,30 @@ func RandomEnumerableGenerator() *JavaRandom {
 	modelChecking := MainChecker() != nil && CurrentSimulator() == nil
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
-	if modelChecking && randomEnumerableValues.currentState != nil {
-		if randomEnumerableValues.stateRNG == nil || randomEnumerableValues.stateRNGState != randomEnumerableValues.currentState || randomEnumerableValues.stateRNGScope != randomEnumerableValues.scope {
-			seed := int64(randomEnumerableValues.currentState.FingerPrint()) ^ randomEnumerableValues.seed
-			randomEnumerableValues.stateRNG = NewJavaRandom(seed)
-			randomEnumerableValues.stateRNGState = randomEnumerableValues.currentState
-			randomEnumerableValues.stateRNGScope = randomEnumerableValues.scope
+	threadState := randomEnumerableThreadStateForLocked(currentGoroutineID())
+	if modelChecking && threadState.currentState != nil {
+		if threadState.stateRNG == nil || threadState.stateRNGState != threadState.currentState || threadState.stateRNGScope != threadState.scope {
+			seed := int64(threadState.currentState.FingerPrint()) ^ randomEnumerableValues.seed
+			threadState.stateRNG = NewJavaRandom(seed)
+			threadState.stateRNGState = threadState.currentState
+			threadState.stateRNGScope = threadState.scope
 		}
-		return randomEnumerableValues.stateRNG
+		return threadState.stateRNG
 	}
-	if randomEnumerableValues.rng == nil {
-		randomEnumerableValues.rng = NewJavaRandom(randomEnumerableValues.seed)
+	if threadState.rng == nil {
+		threadState.rng = NewJavaRandom(randomEnumerableValues.seed)
 	}
-	return randomEnumerableValues.rng
+	return threadState.rng
+}
+
+func randomEnumerableThreadStateForLocked(gid uint64) *randomEnumerableThreadState {
+	if randomEnumerableValues.threads == nil {
+		randomEnumerableValues.threads = make(map[uint64]*randomEnumerableThreadState)
+	}
+	state := randomEnumerableValues.threads[gid]
+	if state == nil {
+		state = &randomEnumerableThreadState{rng: NewJavaRandom(randomEnumerableValues.seed)}
+		randomEnumerableValues.threads[gid] = state
+	}
+	return state
 }
