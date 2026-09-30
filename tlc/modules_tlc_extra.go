@@ -3,7 +3,10 @@ package tlc
 func SortSeq(seq Value, cmp Value) (Value, error) {
 	tuple := asTupleValue(seq)
 	if tuple == nil {
-		return nil, newTLCError(ECGeneral, "first argument of SortSeq must be a sequence, got %s", seq)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SortSeq", "natural number", ValuesPPR(seq))
+	}
+	if !isOperatorValue(cmp) {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SortSeq", "operator", ValuesPPR(cmp))
 	}
 	if len(tuple.Elems) == 0 {
 		return tuple, nil
@@ -36,7 +39,7 @@ func compareWithOperator(cmp Value, left Value, right Value) (bool, error) {
 	}
 	boolValue, ok := res.(*BoolValue)
 	if !ok {
-		return false, newTLCError(ECGeneral, "second argument of SortSeq must be a boolean function, got %s", res)
+		return false, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SortSeq", "boolean function", ValuesPPR(res))
 	}
 	return boolValue.Val, nil
 }
@@ -60,7 +63,7 @@ func RandomElement(value Value) (Value, error) {
 		v.Normalize()
 		domain, err := toSetEnumValue(v.Domain)
 		if err != nil {
-			return nil, err
+			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
 		domain.Normalize()
 		dom := domain.Elems.ToArray()
@@ -108,7 +111,7 @@ func RandomElement(value Value) (Value, error) {
 	default:
 		set, err := toSetEnumValue(value)
 		if err != nil {
-			return nil, err
+			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
 		if set.Elems.Len() == 0 {
 			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty set %s", value)

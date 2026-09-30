@@ -1764,6 +1764,15 @@ whole set, not the individual element.
 `TLC_MODULE_TRANSITIVE_CLOSURE`. The algorithm itself is Warshall over the
 distinct relation endpoints in first-seen order from relation enumeration.
 
+Core `TLC` module operators also carry observable Java validation order.
+`Assert` throws `TLC_VALUE_ASSERT_FAILED` with `Values.ppr` of the second
+argument. `@@` reports first/second function-shape errors with
+`TLC_MODULE_ARGUMENT_ERROR`. `SortSeq` checks that its first argument converts
+to a tuple, then checks that the comparator is an operator before returning for
+an empty sequence; Java's first-argument message says "natural number" and the
+Go port intentionally preserves that wording. `Permutations` and the finite-set
+paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE`.
+
 `TLCExt!CounterExample` is context-sensitive in Java: postcondition checking
 conses the current `CounterExample` value into the evaluation context and the
 module operator returns that value when present, otherwise an empty

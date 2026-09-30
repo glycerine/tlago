@@ -59,7 +59,7 @@ func TLCAssert(condition Value, message Value) (Value, error) {
 	if b, ok := condition.(*BoolValue); ok && b.Val {
 		return condition, nil
 	}
-	return nil, newTLCError(ECGeneral, "assertion failed: %s", message)
+	return nil, newTLCErrorCode(ECTLCValueAssertFailed, ValuesPPR(message))
 }
 
 func JavaTime() Value {
@@ -74,11 +74,11 @@ func MakeFcn(domain Value, elem Value) Value {
 func CombineFcn(f1, f2 Value) (Value, error) {
 	fcn1 := asFcnRcdValue(f1)
 	if fcn1 == nil {
-		return nil, newTLCError(ECGeneral, "first argument of @@ must be a function, got %s", f1)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "@@", "function", ValuesPPR(f1))
 	}
 	fcn2 := asFcnRcdValue(f2)
 	if fcn2 == nil {
-		return nil, newTLCError(ECGeneral, "second argument of @@ must be a function, got %s", f2)
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "@@", "function", ValuesPPR(f2))
 	}
 	dom := NewValueVec(0)
 	vals := NewValueVec(0)
@@ -108,10 +108,10 @@ func CombineFcn(f1, f2 Value) (Value, error) {
 func Permutations(value Value) (*SetEnumValue, error) {
 	set, err := toSetEnumValue(value)
 	if err != nil {
-		return nil, err
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "Permutations", "a finite set", ValuesPPR(value))
 	}
 	if set == nil {
-		return nil, newTLCError(ECGeneral, "attempted to apply Permutations to non-finite set %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "Permutations", "a finite set", ValuesPPR(value))
 	}
 	if _, err := set.normalizeSet(); err != nil {
 		return nil, err
