@@ -236,7 +236,7 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
 			if !mc.Tool.IsGoodState(succ) {
 				if mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext) {
-					PrintError(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succ)...)
+					mc.printTrace(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succ), cur, succ)
 				}
 				return allSuccNonLeaf, ECTLCStateNotCompletelySpecifiedNext, nil
 			}
@@ -275,33 +275,63 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 				}
 			}
 			if status == FPIntStatusNew {
-				for _, invariant := range mc.Tool.GetInvariants() {
+				invariantViolated := false
+				invariantNames := mc.Tool.GetInvNames()
+				for k, invariant := range mc.Tool.GetInvariants() {
 					valid, err := mc.Tool.IsValidState(invariant, succ)
 					if err != nil {
-						mc.SetErrState(cur, succ, true, ECTLCInvariantEvaluationFailed)
+						if mc.SetErrState(cur, succ, true, ECTLCInvariantEvaluationFailed) {
+							mc.printTrace(ECTLCInvariantEvaluationFailed, []string{nameAt(invariantNames, k)}, cur, succ)
+						}
 						return allSuccNonLeaf, ECTLCInvariantEvaluationFailed, err
 					}
 					if !valid {
-						mc.SetErrState(cur, succ, false, ECTLCInvariantViolatedBehavior)
+						if continuationEnabled() {
+							mc.printTrace(ECTLCInvariantViolatedBehavior, []string{nameAt(invariantNames, k)}, cur, succ)
+							invariantViolated = true
+							break
+						}
+						if mc.SetErrState(cur, succ, false, ECTLCInvariantViolatedBehavior) {
+							mc.printTrace(ECTLCInvariantViolatedBehavior, []string{nameAt(invariantNames, k)}, cur, succ)
+						}
 						return allSuccNonLeaf, ECTLCInvariantViolatedBehavior, nil
 					}
 				}
+				if invariantViolated {
+					continue
+				}
 			}
-			for _, implied := range mc.Tool.GetImpliedActions() {
+			impliedViolated := false
+			impliedNames := mc.Tool.GetImpliedActNames()
+			for k, implied := range mc.Tool.GetImpliedActions() {
 				valid, err := mc.Tool.IsValidTransition(implied, cur, succ)
 				if err != nil {
-					mc.SetErrState(cur, succ, true, ECTLCActionPropertyEvaluationFailed)
+					if mc.SetErrState(cur, succ, true, ECTLCActionPropertyEvaluationFailed) {
+						mc.printTrace(ECTLCActionPropertyEvaluationFailed, []string{nameAt(impliedNames, k)}, cur, succ)
+					}
 					return allSuccNonLeaf, ECTLCActionPropertyEvaluationFailed, err
 				}
 				if !valid {
-					mc.SetErrState(cur, succ, false, ECTLCActionPropertyViolatedBehavior)
+					if continuationEnabled() {
+						mc.printTrace(ECTLCActionPropertyViolatedBehavior, []string{nameAt(impliedNames, k)}, cur, succ)
+						impliedViolated = true
+						break
+					}
+					if mc.SetErrState(cur, succ, false, ECTLCActionPropertyViolatedBehavior) {
+						mc.printTrace(ECTLCActionPropertyViolatedBehavior, []string{nameAt(impliedNames, k)}, cur, succ)
+					}
 					return allSuccNonLeaf, ECTLCActionPropertyViolatedBehavior, nil
 				}
+			}
+			if impliedViolated {
+				continue
 			}
 		}
 	}
 	if deadlocked && mc.CheckDeadlock {
-		mc.SetErrState(cur, nil, false, ECTLCDeadlockReached)
+		if mc.SetErrState(cur, nil, false, ECTLCDeadlockReached) {
+			mc.printTrace(ECTLCDeadlockReached, nil, cur, nil)
+		}
 		return allSuccNonLeaf, ECTLCDeadlockReached, nil
 	}
 	if liveNextStates != nil {
@@ -316,6 +346,26 @@ func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool
 		mc.FPSet.SetStatus(cfp, FPIntStatusDone)
 	}
 	return allSuccNonLeaf, NoError, nil
+}
+
+func (mc *DFIDModelChecker) printTrace(errorCode int, params []string, curState *TLCStateMut, succState *TLCStateMut) {
+	PrintError(errorCode, params...)
+	traceEnd := succState
+	if traceEnd == nil {
+		traceEnd = curState
+	}
+	trace := traceFromState(traceEnd)
+	if len(trace) == 0 {
+		return
+	}
+	PrintError(ECTLCBehaviorUpToThisPoint)
+	for i, info := range trace {
+		var previous *TLCStateMut
+		if i > 0 && trace[i-1] != nil {
+			previous = trace[i-1].OriginalState()
+		}
+		PrintInvariantViolationStateTraceState(info, previous, i+1, i == len(trace)-1)
+	}
 }
 
 func (mc *DFIDModelChecker) DoPeriodicWork() (int, error) {
