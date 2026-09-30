@@ -80,6 +80,7 @@ func (c *CheckImplFile) GetTrace() (bool, error) {
 		return false, nil
 	}
 	filename := fmt.Sprintf("%s%d", c.TraceFile, c.TraceInCount)
+	fmt.Fprintf(os.Stdout, "Trying to work on trace %s ...\n", filename)
 	if _, err := os.Stat(filename); err != nil {
 		if os.IsNotExist(err) {
 			return false, nil

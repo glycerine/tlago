@@ -1,6 +1,10 @@
 package tlc
 
-import "time"
+import (
+	"fmt"
+	"os"
+	"time"
+)
 
 const checkImplTraceDuration = 30 * time.Second
 
@@ -50,10 +54,13 @@ func (c *CheckImpl) Init() (int, error) {
 			return result, err
 		}
 	}
+	fmt.Fprintf(os.Stdout, "Creating a partial state space of depth %d ... \n", c.Depth)
 	result, err := c.RunTLC(c.Depth)
 	if err != nil || result != NoError {
+		fmt.Fprintln(os.Stdout, "\nExit: failed to create the partial state space.")
 		return result, err
 	}
+	fmt.Fprintln(os.Stdout, "completed.")
 	c.LastTraceTime = time.Now()
 	if c.Trace != nil {
 		c.StateEnum = c.Trace.Elements()
@@ -94,7 +101,11 @@ func (c *CheckImpl) MakeStateSpace(state *TLCStateMut, depth int) (int, error) {
 	if state != nil {
 		c.StateQueue.Enqueue(state)
 	}
-	return c.RunTLC(depth1)
+	result, err := c.RunTLC(depth1)
+	if err != nil || result != NoError {
+		return result, err
+	}
+	return NoError, nil
 }
 
 func (c *CheckImpl) GetState() *TLCStateMut {
@@ -117,18 +128,29 @@ func (c *CheckImpl) CheckReachability(s0 *TLCStateMut, s1 *TLCStateMut) (bool, e
 	}
 	if c.Tool.NextStateSpec != nil {
 		ok, err := c.Tool.IsValidTransition(c.Tool.NextStateSpec, s0, s1)
-		if err != nil || !ok {
+		if err != nil {
 			return false, err
+		}
+		if !ok {
+			fmt.Fprintln(os.Stdout, "The following transition is illegal: ")
+			PrintStandaloneErrorState(s0)
+			PrintStandaloneErrorState(s1)
+			return false, nil
 		}
 	}
 	actions := c.Tool.GetImpliedActions()
 	for i, action := range actions {
 		ok, err := c.Tool.IsValidTransition(action, s0, s1)
-		if err != nil || !ok {
+		if err != nil {
+			return false, err
+		}
+		if !ok {
 			if i < len(c.Tool.ImpliedActNames) {
 				PrintError(ECTLCActionPropertyViolatedBehavior, c.Tool.ImpliedActNames[i])
 			}
-			return false, err
+			PrintStandaloneErrorState(s0)
+			PrintStandaloneErrorState(s1)
+			return false, nil
 		}
 	}
 	return true, nil
@@ -160,11 +182,15 @@ func (c *CheckImpl) CheckState(state *TLCStateMut) (bool, error) {
 		}
 		for i, invariant := range c.Tool.GetInvariants() {
 			ok, err := c.Tool.IsValidState(invariant, state)
-			if err != nil || !ok {
+			if err != nil {
+				return false, err
+			}
+			if !ok {
 				if i < len(c.Tool.InvariantNames) {
 					PrintError(ECTLCInvariantViolatedBehavior, c.Tool.InvariantNames[i])
 				}
-				return false, err
+				fmt.Fprintln(os.Stdout, "The behavior up to this point is:")
+				return false, nil
 			}
 		}
 	}
@@ -192,7 +218,7 @@ func (c *CheckImpl) CheckTrace() error {
 	if c.CurState == nil {
 		return nil
 	}
-	if _, err := c.CheckState(c.CurState); err != nil {
+	if ok, err := c.CheckState(c.CurState); err != nil || !ok {
 		return err
 	}
 	for {
@@ -200,10 +226,10 @@ func (c *CheckImpl) CheckTrace() error {
 		if state == nil {
 			return nil
 		}
-		if _, err := c.CheckState(state); err != nil {
+		if ok, err := c.CheckState(state); err != nil || !ok {
 			return err
 		}
-		if _, err := c.CheckReachability(c.CurState, state); err != nil {
+		if ok, err := c.CheckReachability(c.CurState, state); err != nil || !ok {
 			return err
 		}
 		c.CurState = state

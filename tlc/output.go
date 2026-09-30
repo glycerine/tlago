@@ -428,6 +428,22 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 4 {
 			return fmt.Sprintf("The set%s %s %s been defined to be a symmetry set but contain%s less than two elements.", params[0], params[1], params[2], params[3])
 		}
+	case ECTLCInvariantViolatedBehavior:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Invariant %s is violated.", params[0])
+		}
+	case ECTLCActionPropertyViolatedBehavior:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Action property %s is violated.", params[0])
+		}
+	case ECTLCBehaviorUpToThisPoint:
+		return "The behavior up to this point is:"
+	case ECTLCErrorState:
+		return "The error state is:\n"
+	case ECTLCStatePrint1:
+		if len(params) >= 2 {
+			return fmt.Sprintf("%s:\n%s", params[0], params[1])
+		}
 	case ECTLCConfigIDMustNotBeConstant:
 		if len(params) >= 2 {
 			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])

@@ -7,6 +7,7 @@
 - The current experiment is breadth-first mechanical porting first. Do not start porting the Java TLC test suite yet. Existing fast Go tests may be run; small utility tests are acceptable.
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
 - Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `liveness_check1.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
+- `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
 
@@ -45,6 +46,7 @@
   - Simulator now has a Java-style progress reporter for simulation progress, coverage/action-flow updates, and `_PERIODIC` false termination.
   - Simulator now prints Java-shaped worker-error behaviors and final simulation summaries (`TLC_STATS_SIMU`) with coverage/action-flow finalization.
   - Exploration/debug simulation now preserves Java's `ExplorationWorker.halt()` behavior: debugger step-out can command the next-state functor to halt, while state generation separately polls the halted flag.
+  - `CheckImpl` now mirrors more of Java's visible control flow: partial-state-space start/completion/failure messages, illegal-transition standalone state printing, implied-action standalone state printing, false-result short-circuiting in `checkTrace`, and Java-shaped `CheckImplFile` trace polling output.
   - BFS model checking now follows Java's recover-before-fresh-start ordering and preserves the `TLC_LIVE_FORMULA_TAUTOLOGY` guard.
   - BFS model checking now emits Java's final safety progress snapshot immediately before final liveness checking.
   - Worker liveness failures now follow Java's call-stack replay path for `EvalException`/stateful runtime failures and preserve the original error after replay.
@@ -93,16 +95,14 @@
 
 ## Current Position
 
-- Latest commits:
-  - `d3b0923 Match safety liveness aliasing`
-  - `0290400 Track liveness graph degree stats`
-  - `f1c89ea Align liveness trace printing`
-  - `82f0a84 Align liveness checker scheduling`
-  - `73dd5bd Report liveness check progress`
-  - `964aa46 Honor liveness check gates`
-  - `e90c5fc Rebind DFID recovery metadir`
-  - `523ec43 Scope DFID worker ids`
-- Last verified commands before this file:
+- Latest committed chunks before the `CheckImpl` parity checkpoint:
+  - `6773c66 Wire liveness DOT writer paths`
+  - `7af6643 Port in-memory LiveCheck1 core`
+  - `e7a0e89 Use LiveCheck1 for simulation liveness`
+  - `1570bae Mirror exploration halt command`
+- Current checkpoint:
+  - `CheckImpl`, `CheckImplFile`, and the message formatting they rely on have just been tightened against Java.
+- Last verified command:
   - `go test ./tlc`
 - Immediate next steps:
   1. Continue breadth-first audit into remaining checkpoint/distributed/debugger surfaces and any disk-backed liveness final-SCC details.
