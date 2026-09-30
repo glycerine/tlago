@@ -98,6 +98,83 @@ func (s *ValueOutputStream) Put(value Value) int {
 	return -1
 }
 
+func (s *ValueOutputStream) WriteExternal(value Value) error {
+	if value == nil {
+		return fmt.Errorf("cannot pickle nil TLC value")
+	}
+	if idx := s.Put(value); idx >= 0 {
+		if err := s.WriteByte(byte(DummyValueKind)); err != nil {
+			return err
+		}
+		return s.WriteNat(int32(idx))
+	}
+	switch v := value.(type) {
+	case *BoolValue:
+		if err := s.WriteByte(byte(BoolValueKind)); err != nil {
+			return err
+		}
+		return s.WriteBool(v.Val)
+	case *IntValue:
+		if err := s.WriteByte(byte(IntValueKind)); err != nil {
+			return err
+		}
+		return s.WriteInt(v.Val)
+	case *StringValue:
+		if err := s.WriteByte(byte(StringValueKind)); err != nil {
+			return err
+		}
+		return s.WriteUniqueString(v.Val)
+	case *IntervalValue:
+		if err := s.WriteByte(byte(IntervalValueKind)); err != nil {
+			return err
+		}
+		if err := s.WriteInt(v.Low); err != nil {
+			return err
+		}
+		return s.WriteInt(v.High)
+	case *RecordValue:
+		if err := s.WriteByte(byte(RecordValueKind)); err != nil {
+			return err
+		}
+		length := int32(len(v.Names))
+		if err := s.WriteInt(length); err != nil {
+			return err
+		}
+		for i, name := range v.Names {
+			if err := s.WriteByte(byte(StringValueKind)); err != nil {
+				return err
+			}
+			if err := s.WriteUniqueString(name); err != nil {
+				return err
+			}
+			if err := s.WriteExternal(v.Values[i]); err != nil {
+				return err
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("cannot pickle value of kind %s", value.KindString())
+	}
+}
+
+func (s *ValueOutputStream) WriteUniqueString(value *UniqueString) error {
+	if value == nil {
+		value = UniqueStringOf("")
+	}
+	raw := []byte(value.String())
+	if err := s.WriteInt(-1); err != nil {
+		return err
+	}
+	if err := s.WriteInt(-1); err != nil {
+		return err
+	}
+	if err := s.WriteInt(int32(len(raw))); err != nil {
+		return err
+	}
+	_, err := s.WriteRaw(raw)
+	return err
+}
+
 func valuePointerKey(value Value) uintptr {
 	if value == nil {
 		return 0
