@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -218,6 +219,8 @@ type SpecProcessor struct {
 	ProcessedDefs     *InsMap[string, struct{}]
 	UnprocessedDefns  *Defns
 	ConstantDefns     *InsMap[string, Value]
+	Snapshot          *Defns
+	PreConstantSnap   *Defns
 	InitPred          []*Action
 	NextPred          *Action
 	Temporals         []*Action
@@ -259,7 +262,9 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 		UnprocessedDefns: NewDefns(),
 		ConstantDefns:    NewInsMap[string, Value](),
 	}
+	p.PreConstantSnap = p.Defns.Snapshot()
 	p.ProcessConfig()
+	p.Snapshot = p.Defns.Snapshot()
 	return p
 }
 
@@ -321,6 +326,8 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 			p.Defns.SetDefnCount(len(names))
 		}
 	}
+	p.applyDefinitionsToTool(tool)
+	p.ProcessConstantDefinitions(tool)
 	p.ProcessConfig()
 	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
@@ -345,6 +352,100 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.Periodic = p.Periodic
 	tool.ViewSpec = p.ViewSpec
 	tool.AssignActionIDs()
+}
+
+func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
+	if p == nil || p.Defns == nil {
+		return
+	}
+	if tool == nil {
+		tool = p.configProcessingTool()
+	} else {
+		p.applyDefinitionsToTool(tool)
+	}
+	if p.ConstantDefns == nil {
+		p.ConstantDefns = NewInsMap[string, Value]()
+	}
+	vetoes := specProcessorVetoedConstantOperators()
+	type update struct {
+		name  *UniqueString
+		def   *OpDefNode
+		value Value
+	}
+	updates := make([]update, 0)
+	for name, value := range p.Defns.All() {
+		opDef, ok := value.(*OpDefNode)
+		if !ok || opDef == nil || opDef.Arity() != 0 || opDef.Body == nil {
+			continue
+		}
+		if specProcessorConstantVetoed(vetoes, name, opDef.Name) {
+			continue
+		}
+		realDef := opDef
+		if opDef.Symbol != nil && tool != nil {
+			if lookedUp, ok := tool.Lookup(opDef.Symbol, EmptyContext, EmptyState, false).(*OpDefNode); ok && lookedUp != nil {
+				realDef = lookedUp
+			}
+		}
+		if realDef == nil || realDef.Arity() != 0 || realDef.Body == nil {
+			continue
+		}
+		if specProcessorConstantVetoed(vetoes, name, realDef.Name) {
+			continue
+		}
+		if tool.GetLevelBound(realDef.Body, EmptyContext) != TLCLevelConstant {
+			continue
+		}
+		val, err := tool.Eval(realDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
+		if err != nil || val == nil {
+			continue
+		}
+		InitializeValue(val)
+		updates = append(updates, update{name: name, def: realDef, value: val})
+	}
+	for _, update := range updates {
+		if update.name == nil || update.value == nil {
+			continue
+		}
+		if update.def != nil {
+			update.def.SetToolObject(update.value)
+		}
+		p.Defns.Put(update.name, update.value)
+		p.ConstantDefns.Set(update.name.String(), update.value)
+		if tool != nil {
+			sym := &SymbolNode{Name: update.name}
+			if update.def != nil && update.def.Symbol != nil {
+				sym = update.def.Symbol
+			}
+			tool.Define(sym, update.value)
+		}
+	}
+	p.Snapshot = p.Defns.Snapshot()
+}
+
+func specProcessorVetoedConstantOperators() map[string]bool {
+	out := make(map[string]bool)
+	for _, key := range []string{
+		"tlc2.tool.impl.SpecProcessor.vetoed",
+		"TLAGO_SPEC_PROCESSOR_VETOED",
+	} {
+		for _, name := range strings.Split(os.Getenv(key), ",") {
+			name = strings.TrimSpace(name)
+			if name != "" {
+				out[name] = true
+			}
+		}
+	}
+	return out
+}
+
+func specProcessorConstantVetoed(vetoes map[string]bool, names ...*UniqueString) bool {
+	for _, name := range names {
+		if name != nil && vetoes[name.String()] {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *SpecProcessor) processSpecificationConfig() {

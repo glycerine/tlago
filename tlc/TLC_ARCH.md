@@ -259,6 +259,16 @@ Tricky details:
 - Model values must be initialized and ordered exactly as Java does because
   comparison, printing, and fingerprinting depend on it.
 - Constants can be static, dynamic, module-scoped, or override-driven.
+- After definitions and config substitutions are installed, Java
+  `SpecProcessor.processConstantDefns` walks zero-arity operator definitions
+  whose effective level is constant and pre-evaluates them into TLC `Value`s.
+  Evaluation failures are deliberately swallowed for constant-level operators
+  such as `Seq(S)` or failing `TLCGet` expressions so that the ordinary
+  model-checking path reports the real use-site error later. The Go port mirrors
+  this with `SpecProcessor.ProcessConstantDefinitions`: no new abstraction, just
+  the concrete processor using the concrete `Tool`, a flat `ConstantDefns`
+  cache, Java-style snapshots, and a veto list keyed by
+  `tlc2.tool.impl.SpecProcessor.vetoed` or `TLAGO_SPEC_PROCESSOR_VETOED`.
 
 ### Go SANY to TLC Bridge
 
