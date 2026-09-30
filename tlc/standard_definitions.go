@@ -307,10 +307,17 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 	if value, ok := semanticCachedTLCEvalValue(expr, state); ok {
 		return value, nil
 	}
-	value, err := tool.Eval(expr, EmptyContext, EmptyState, nil, EvalClear, cm)
+	demuxed, err := DemuxWorkerValue(func() (Value, error) {
+		return tool.Eval(expr, EmptyContext, EmptyState, nil, EvalClear, cm)
+	}, true, NumWorkers())
 	if err != nil {
 		return nil, err
 	}
+	workerID, ok := CurrentWorkerID()
+	if !ok {
+		workerID = workerIDFromState(state)
+	}
+	value := MuxWorkerValue(demuxed, workerID)
 	value = TLCEval(value)
 	setSemanticToolObject(expr, value)
 	return value, nil

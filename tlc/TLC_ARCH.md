@@ -1844,9 +1844,12 @@ state/action/temporal expressions evaluate in the incoming context and are not
 cached; constant-level expressions with a non-empty context also evaluate
 without caching; only constant-level expressions under an empty context use the
 static read/write-lock protected semantic-node cache. Cache reads must mux
-`WorkerValue` through the active worker id before returning it, and cache writes
-must evaluate under `EmptyContext`/`EmptyState` before converting through the
-legacy `toSetEnum`/`toFcnRcd` path.
+`WorkerValue` through the active worker id before returning it. Cache writes
+must mirror Java's `WorkerValue.demux`: evaluate under
+`EmptyContext`/`EmptyState`, deep-normalize, and, when a mutable value is shared
+across multiple workers, reevaluate it once per worker with the same
+random-enumerable seed before muxing the active worker's copy and converting it
+through the legacy `toSetEnum`/`toFcnRcd` path.
 Ordinary symbol lookup has the same rule: a cached `WorkerValue` is muxed by the
 current worker id when running inside a worker goroutine, and only falls back to
 the state's worker id outside that scope. This mirrors Java's `IdThread`
