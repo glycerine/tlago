@@ -6,7 +6,7 @@
 - The source of truth is Java TLC under `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2` and, later, its tests under `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
 - The current experiment is breadth-first mechanical porting first. Do not start porting the Java TLC test suite yet. Existing fast Go tests may be run; small utility tests are acceptable.
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
-- Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `fpset_disk.go` high-level DiskFPSet checkpoint/recovery/merge API shape, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `liveness_check1.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, and `simulation_worker.go`/`simulation_worker_modes.go`.
+- Already audited recently; do not loop on these unless touched: `fpset.go` MemFPSet1/MemFPSet2, `fpset_disk.go` high-level DiskFPSet checkpoint/recovery/merge API shape, `fpintset.go`, `liveness_tables.go`, `liveness_disk_graph.go`, `liveness_tableau_disk_graph.go`, `liveness_process.go`, `liveness_graph.go`, liveness DOT/debug writer call sites in `liveness_check.go`, `liveness_check1.go`, `random_generator.go`, `object_collections.go`, `int_stack.go`, `int_queue.go`, `state_pool.go`, `disk_state_queue.go`, `state.go` `StateVec`, and `simulation_worker.go`/`simulation_worker_modes.go`.
 - Already audited recently; do not loop on the standard TLC module override registry unless touched: Java's built-in overrides are `TLCGetSet`, `TLCEval`, `TLCExt`, `Json`, `_TLCTrace`, `_JsonTrace`, and `_Possible`; the older static module surfaces for Naturals/Integers/Sequences/FiniteSets/Bags/TLC/Randomization/TransitiveClosure/Strings are represented in `standard_definitions.go` and `modules_*.go`. Public-looking `Remove`, `FApply`, `FSum`, and FiniteSets list helpers in Java source are commented-out code, not active override surface.
 - Already audited recently; do not loop on `TraceApp`: Java only defines reconstruction/evalAlias methods as an interface; Go keeps the equivalent behavior as concrete `Tool`, `TLCTrace`, and `ConcurrentTLCTrace` methods.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
@@ -81,6 +81,8 @@
   - Distributed TLC output codes and Java-shaped message text are now present for server-ready, worker register/deregister, worker stats, worker lost, recoverable block-size reduction, FPSet wait/register, server-not-running, server-finished, and VM-version diagnostics; the currently ported distributed paths emit the matching lifecycle messages.
   - `TLCSet("pause", TRUE)` now mirrors Java's synchronized state-queue pause path more closely by holding the concrete queue monitor while waiting for stdin, without using the blocking `SuspendAll` helper.
   - `ModelCheckerMXWrapper.GetDistinctStatesGenerated` now mirrors Java's dirty `DiskFPSet` counter path for disk-backed fingerprint sets, unwrapping Go embedded disk FPSet variants that correspond to Java subclasses.
+  - `StateVec` now mirrors Java's explicit backing-array growth policy instead of relying on Go's hidden slice growth, preserving the larger-vector `addElements` behavior and configured `setBound` checks at growth points.
+  - `MemFPIntSet` now mirrors Java's bucket-splitting rehash order for DFID fingerprint statuses, preserving checkpoint write order instead of using Go append redistribution.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -113,7 +115,7 @@
   - `e7a0e89 Use LiveCheck1 for simulation liveness`
   - `1570bae Mirror exploration halt command`
 - Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, standard module override surface audit, `TLCSet("pause")`, management dirty disk-FP statistics, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, and distributed reporting messages have just been tightened against Java.
+  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, standard module override surface audit, `TLCSet("pause")`, management dirty disk-FP statistics, `StateVec` growth semantics, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, and distributed reporting messages have just been tightened against Java.
 - Last verified command:
   - `go test ./tlc`
 - Immediate next steps:

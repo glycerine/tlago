@@ -795,10 +795,24 @@ func (v *StateVec) ensureCanAdd(add int) {
 	if add <= 0 {
 		return
 	}
+	needed := len(v.states) + add
+	if needed <= cap(v.states) {
+		return
+	}
 	Globals.Lock()
 	bound := Globals.SetBound
 	Globals.Unlock()
-	if len(v.states)+add > bound {
+	if cap(v.states) >= bound || needed > bound {
 		panic(newTLCError(ECTLCTooManyPossibleStates, "too many possible states"))
 	}
+	newCap := cap(v.states) + add
+	if doubled := 2 * cap(v.states); doubled > newCap {
+		newCap = doubled
+	}
+	if newCap > bound {
+		newCap = bound
+	}
+	next := make([]*TLCStateMut, len(v.states), newCap)
+	copy(next, v.states)
+	v.states = next
 }

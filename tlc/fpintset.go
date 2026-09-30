@@ -563,21 +563,50 @@ func (s *MultiFPIntSet) fpSet(fp uint64) *MemFPIntSet {
 
 func (s *MemFPIntSet) rehash() {
 	oldTable := s.table
-	newTable := make([][]int32, len(oldTable)*2)
-	oldCount := s.count
-	s.count = 0
+	oldCapacity := len(oldTable)
+	newTable := make([][]int32, oldCapacity*2)
+	oneBitMask := int32(oldCapacity)
+	for i, bucket := range oldTable {
+		if bucket == nil {
+			continue
+		}
+		cnt0, cnt1 := 0, 0
+		for j := 0; j < len(bucket); j += 3 {
+			if bucket[j+1]&oneBitMask == 0 {
+				cnt0 += 3
+			} else {
+				cnt1 += 3
+			}
+		}
+		if cnt0 == 0 {
+			newTable[i+oldCapacity] = bucket
+			continue
+		}
+		if cnt1 == 0 {
+			newTable[i] = bucket
+			continue
+		}
+		list0 := make([]int32, cnt0)
+		list1 := make([]int32, cnt1)
+		for j := 0; j < len(bucket); j += 3 {
+			if bucket[j+1]&oneBitMask == 0 {
+				list0[cnt0-3] = bucket[j]
+				list0[cnt0-2] = bucket[j+1]
+				list0[cnt0-1] = bucket[j+2]
+				cnt0 -= 3
+			} else {
+				list1[cnt1-3] = bucket[j]
+				list1[cnt1-2] = bucket[j+1]
+				list1[cnt1-1] = bucket[j+2]
+				cnt1 -= 3
+			}
+		}
+		newTable[i] = list0
+		newTable[i+oldCapacity] = list1
+	}
 	s.table = newTable
 	s.threshold *= 2
 	s.mask = uint64(len(newTable) - 1)
-	for _, bucket := range oldTable {
-		for i := 0; i < len(bucket); i += 3 {
-			fp := joinFingerprint(bucket[i], bucket[i+1])
-			index := fp & s.mask
-			s.table[index] = append(s.table[index], bucket[i], bucket[i+1], bucket[i+2])
-			s.count++
-		}
-	}
-	s.count = oldCount
 }
 
 func (s *MemFPIntSet) chkptName(fname string, ext string) string {
