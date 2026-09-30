@@ -2092,6 +2092,9 @@ Important Java classes:
   captured state; the action frame's `getS` returns the predecessor and `getT`
   returns the successor. Go mirrors those as embedded concrete structs and keeps
   the pending debugger value as `"?"`.
+- `TLCSyntheticStateStackFrame`: a manually inserted marker frame for trace
+  display. It is still a state frame, but it also stores the successor used when
+  evaluating expressions against a trace edge.
 - `TLCDebugger`: owns breakpoints, exception-breakpoint filters, the active
   stack-frame list, stepping state, granularity, halt flags, and the connection
   to the debug adapter. The protocol transport is less important than preserving

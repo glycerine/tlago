@@ -335,6 +335,44 @@ func (f *TLCActionStackFrame) ToRecordValue() *RecordValue {
 	return debugStateRecordValue(state, f.GetS())
 }
 
+type TLCSyntheticStateStackFrame struct {
+	TLCStateStackFrame
+	Successor *TLCStateMut
+}
+
+func NewTLCSyntheticStateStackFrame(tool *Tool, info *TLCStateInfo, successor *TLCStateMut, width int) *TLCSyntheticStateStackFrame {
+	action := UnknownAction
+	if info != nil {
+		action = info.Action()
+	}
+	frame := NewTLCStateStackFrame(nil, action.Pred, action.Con, tool, stateInfoState(info), nil)
+	level := 0
+	label := ""
+	if info != nil {
+		level = info.GetStateNumber()
+		label = fmt.Sprint(info.Info)
+	}
+	frame.Name = fmt.Sprintf("%0*d: %s", width, level, label)
+	return &TLCSyntheticStateStackFrame{
+		TLCStateStackFrame: *frame,
+		Successor:          debugStateCopy(successor),
+	}
+}
+
+func (f *TLCSyntheticStateStackFrame) GetT() *TLCStateMut {
+	if f == nil {
+		return nil
+	}
+	return f.State
+}
+
+func (f *TLCSyntheticStateStackFrame) GetSuccessor() *TLCStateMut {
+	if f == nil {
+		return nil
+	}
+	return f.Successor
+}
+
 type TLCCapabilities struct {
 	SupportsStepBack  bool
 	SupportsGotoState bool
@@ -598,6 +636,13 @@ func debugStateCopy(state *TLCStateMut) *TLCStateMut {
 		return nil
 	}
 	return state.DeepCopy()
+}
+
+func stateInfoState(info *TLCStateInfo) *TLCStateMut {
+	if info == nil {
+		return nil
+	}
+	return info.State
 }
 
 func debugActionLocation(action *Action) string {
