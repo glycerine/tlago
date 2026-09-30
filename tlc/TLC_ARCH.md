@@ -1012,6 +1012,12 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - support checkpoint/recover by saving and restoring the current file pointers.
 - provide optional fixed-size node caching, invariant checks over all graph
   records, and DOT/string traversal helpers for debugging.
+- reconstruct counterexample prefixes with breadth-first `GetPath` searches.
+  The search rebuilds the pointer table from `ptrs_N` and then destructively
+  reuses element slots as predecessor links. `TableauDiskGraph` needs the same
+  concrete table with a `reverse` flag that adds one packed predecessor tableau
+  index per record; this mirrors Java's reverse traversable table subclass
+  without adding a Go interface or duplicate table hierarchy.
 - `TableauDiskGraph` must have its own recovery and traversal methods in Go.
   Java gets virtual dispatch through `AbstractDiskGraph`; Go embedding does not
   make `DiskGraph.Recover` rebuild a `TableauNodePtrTable`.

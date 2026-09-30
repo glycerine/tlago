@@ -259,6 +259,135 @@ func (g *TableauDiskGraph) ToDotViz(oos *OrderOfSolution, labels map[uint64]stri
 	return b.String()
 }
 
+func (g *TableauDiskGraph) GetPath(state uint64, tidx int) (*LongVec, error) {
+	if g == nil {
+		return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidx)
+	}
+	numOfInits := g.InitNodes.Size()
+	for i := 0; i < numOfInits; i += 2 {
+		state0 := uint64(g.InitNodes.ElementAt(i))
+		tidx0 := int(g.InitNodes.ElementAt(i + 1))
+		if state0 == state && tidx0 == tidx {
+			res := NewLongVecWithCapacity(1)
+			res.AddElement(int64(state0))
+			return res, nil
+		}
+	}
+
+	ptrEnd, err := g.ptrFile.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+	reverseTable := NewReverseTableauNodePtrTable(255)
+	if err := g.MakeNodePtrTblToTable(ptrEnd, reverseTable); err != nil {
+		return nil, err
+	}
+
+	type tableauPathEntry struct {
+		state uint64
+		tidx  int
+		ptr   int64
+	}
+	queue := make([]tableauPathEntry, 0, max(numOfInits/2, 1))
+	for i := 0; i < numOfInits; i += 2 {
+		state0 := uint64(g.InitNodes.ElementAt(i))
+		tidx0 := int(g.InitNodes.ElementAt(i + 1))
+		ptr := reverseTable.Get(state0, tidx0)
+		if ptr != -1 {
+			queue = append(queue, tableauPathEntry{state: state0, tidx: tidx0, ptr: ptr})
+			reverseTable.PutElem(state0, tidx0, DiskGraphMaxPtr)
+		}
+	}
+
+	for head := 0; head < len(queue); head++ {
+		entry := queue[head]
+		curState := entry.state
+		curTidx := entry.tidx
+		curNode, err := g.diskGraphNodeAt(curState, curTidx, entry.ptr)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < curNode.SuccSize(); i++ {
+			nextState := curNode.GetStateFP(i)
+			nextTidx := curNode.GetTIndex(i)
+			if nextState == curState && nextTidx == curTidx {
+				continue
+			}
+			if nextState == state && nextTidx == tidx {
+				return g.reconstructReversePath(reverseTable, curState, curTidx, nextState, nextTidx)
+			}
+
+			nextLoc := reverseTable.GetNodesLoc(nextState)
+			if nextLoc == -1 {
+				continue
+			}
+			nextNodes := reverseTable.GetNodesByLoc(nextLoc)
+			cloc := reverseTable.GetIdx(nextNodes, nextTidx)
+			if cloc == -1 {
+				return nil, fmt.Errorf("liveness path successor missing tableau index %d for state %d", nextTidx, nextState)
+			}
+			nextPtr := TableauGetElem(nextNodes, cloc)
+			if IsDiskGraphFilePointer(nextPtr) {
+				queue = append(queue, tableauPathEntry{state: nextState, tidx: nextTidx, ptr: nextPtr})
+				curLoc := reverseTable.GetNodesLoc(curState)
+				if curLoc == -1 {
+					return nil, fmt.Errorf("liveness path predecessor missing for state %d", curState)
+				}
+				reverseTable.PutRecordElem(nextNodes, tableauDiskGraphInitState+int64(curLoc), curTidx, cloc)
+			}
+		}
+	}
+	return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidx)
+}
+
+func (g *TableauDiskGraph) reconstructReversePath(reverseTable *TableauNodePtrTable, startState uint64, startTidx int, finalState uint64, finalTidx int) (*LongVec, error) {
+	res := NewLongVecWithCapacity(2)
+	res.AddElement(int64(finalState))
+
+	lastTidx := finalTidx
+	currentState := startState
+	currentTidx := startTidx
+	currentLoc := reverseTable.GetNodesLoc(currentState)
+	if currentLoc == -1 {
+		return nil, fmt.Errorf("liveness path predecessor missing for state %d", currentState)
+	}
+	nodes := reverseTable.GetNodesByLoc(currentLoc)
+	for {
+		if uint64(res.LastElement()) == currentState && lastTidx == currentTidx {
+			return nil, fmt.Errorf("self loop in trace path reconstruction")
+		}
+		res.AddElement(int64(currentState))
+		lastTidx = currentTidx
+		predecessorLocation := int64(-1)
+		predecessorTidx := -1
+		for j := 2; j < len(nodes); j += reverseTable.GetElemLength() {
+			candidateLocation := TableauGetElem(nodes, j)
+			candidateTidx := TableauGetTidx(nodes, j)
+			if currentTidx == candidateTidx && !IsDiskGraphFilePointer(candidateLocation) {
+				predecessorLocation = candidateLocation
+				predecessorTidx = reverseTable.GetElemTidx(nodes, j)
+				if candidateLocation == DiskGraphMaxPtr {
+					break
+				}
+			}
+		}
+		if predecessorLocation == DiskGraphMaxPtr {
+			break
+		}
+		currentLoc = int(predecessorLocation - tableauDiskGraphInitState)
+		if currentLoc < 0 || currentLoc >= reverseTable.GetSize() {
+			return nil, fmt.Errorf("liveness path predecessor location out of range: %d", currentLoc)
+		}
+		nodes = reverseTable.GetNodesByLoc(currentLoc)
+		if nodes == nil {
+			return nil, fmt.Errorf("liveness path predecessor node missing at location %d", currentLoc)
+		}
+		currentState = TableauGetKey(nodes)
+		currentTidx = predecessorTidx
+	}
+	return res, nil
+}
+
 func (g *TableauDiskGraph) eachTableauGraphNode(fn func(*GraphNode) error) error {
 	if g == nil || g.ptrFile == nil || fn == nil {
 		return nil

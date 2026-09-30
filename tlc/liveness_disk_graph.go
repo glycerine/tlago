@@ -395,6 +395,88 @@ func (g *DiskGraph) ToDotViz(oos *OrderOfSolution, labels map[uint64]string) str
 	return b.String()
 }
 
+func (g *DiskGraph) GetPath(state uint64, tidxIgnored int) (*LongVec, error) {
+	if g == nil {
+		return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidxIgnored)
+	}
+	numOfInits := g.InitNodes.Size()
+	for i := 0; i < numOfInits; i += 2 {
+		state0 := uint64(g.InitNodes.ElementAt(i))
+		if state0 == state {
+			res := NewLongVecWithCapacity(1)
+			res.AddElement(int64(state0))
+			return res, nil
+		}
+	}
+
+	if err := g.MakeNodePtrTbl(); err != nil {
+		return nil, err
+	}
+
+	offset := DiskGraphMaxPtr + 1
+	type diskPathEntry struct {
+		state uint64
+		ptr   int64
+	}
+	queue := make([]diskPathEntry, 0, max(numOfInits/2, 1))
+	for i := 0; i < numOfInits; i += 2 {
+		state0 := uint64(g.InitNodes.ElementAt(i))
+		ptr := g.NodePtrTbl.Get(state0)
+		if ptr != -1 {
+			queue = append(queue, diskPathEntry{state: state0, ptr: ptr})
+			g.NodePtrTbl.Put(state0, DiskGraphMaxPtr)
+		}
+	}
+
+	for head := 0; head < len(queue); head++ {
+		entry := queue[head]
+		curState := entry.state
+		curNode, err := g.diskGraphNodeAt(curState, -1, entry.ptr)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < curNode.SuccSize(); i++ {
+			nextState := curNode.GetStateFP(i)
+			if nextState == state {
+				res := NewLongVecWithCapacity(2)
+				res.AddElement(int64(nextState))
+				curLoc := g.NodePtrTbl.GetLoc(curState)
+				if curLoc == -1 {
+					return nil, fmt.Errorf("liveness path predecessor missing for state %d", curState)
+				}
+				for {
+					res.AddElement(int64(curState))
+					ploc := g.NodePtrTbl.GetByLoc(curLoc)
+					if ploc == DiskGraphMaxPtr {
+						break
+					}
+					curLoc = int(ploc - offset)
+					if curLoc < 0 || curLoc >= g.NodePtrTbl.GetSize() {
+						return nil, fmt.Errorf("liveness path predecessor location out of range: %d", curLoc)
+					}
+					curState = g.NodePtrTbl.GetKeyByLoc(curLoc)
+				}
+				return res, nil
+			}
+
+			nextLoc := g.NodePtrTbl.GetLoc(nextState)
+			if nextLoc == -1 {
+				continue
+			}
+			nextPtr := g.NodePtrTbl.GetByLoc(nextLoc)
+			if IsDiskGraphFilePointer(nextPtr) {
+				queue = append(queue, diskPathEntry{state: nextState, ptr: nextPtr})
+				curLoc := g.NodePtrTbl.GetLoc(curState)
+				if curLoc == -1 {
+					return nil, fmt.Errorf("liveness path predecessor missing for state %d", curState)
+				}
+				g.NodePtrTbl.PutByLoc(nextState, offset+int64(curLoc), nextLoc)
+			}
+		}
+	}
+	return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidxIgnored)
+}
+
 func (g *DiskGraph) eachGraphNode(fn func(*GraphNode) error) error {
 	if g == nil || g.ptrFile == nil || fn == nil {
 		return nil
@@ -453,6 +535,13 @@ func (g *DiskGraph) eachGraphNode(fn func(*GraphNode) error) error {
 	}
 	_, err = g.ptrFile.Seek(ptrPtr, io.SeekStart)
 	return err
+}
+
+func (g *DiskGraph) diskGraphNodeAt(fp uint64, tidx int, ptr int64) (*GraphNode, error) {
+	if g.Cache == nil {
+		return g.getNodeFromDisk(fp, tidx, ptr)
+	}
+	return g.getNode(fp, tidx, ptr)
 }
 
 func (g *DiskGraph) isInitState(node *GraphNode) bool {

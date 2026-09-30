@@ -405,20 +405,30 @@ func livenessHashLoc(k uint64, length int) int {
 }
 
 type TableauNodePtrTable struct {
-	count  int
-	length int
-	thresh int
-	nodes  [][]int32
+	count   int
+	length  int
+	thresh  int
+	nodes   [][]int32
+	reverse bool
 }
 
 func NewTableauNodePtrTable(size int) *TableauNodePtrTable {
+	return newTableauNodePtrTable(size, false)
+}
+
+func NewReverseTableauNodePtrTable(size int) *TableauNodePtrTable {
+	return newTableauNodePtrTable(size, true)
+}
+
+func newTableauNodePtrTable(size int, reverse bool) *TableauNodePtrTable {
 	if size <= 0 {
 		size = 1
 	}
 	return &TableauNodePtrTable{
-		length: size,
-		thresh: int(float64(size) * 0.75),
-		nodes:  make([][]int32, size),
+		length:  size,
+		thresh:  int(float64(size) * 0.75),
+		nodes:   make([][]int32, size),
+		reverse: reverse,
 	}
 }
 
@@ -593,6 +603,9 @@ func (t *TableauNodePtrTable) ResetElems() {
 }
 
 func (t *TableauNodePtrTable) GetElemLength() int {
+	if t.reverse {
+		return 4
+	}
 	return 3
 }
 
@@ -606,11 +619,17 @@ func (t *TableauNodePtrTable) GetIdx(node []int32, tidx int) int {
 }
 
 func (t *TableauNodePtrTable) GetElemTidx(node []int32, loc int) int {
+	if t.reverse {
+		return int(node[loc+3])
+	}
 	return -1
 }
 
 func (t *TableauNodePtrTable) PutRecordElem(node []int32, elem int64, tableauIdx int, loc int) {
 	TableauPutElem(node, elem, loc)
+	if t.reverse {
+		node[loc+3] = int32(tableauIdx)
+	}
 }
 
 func (t *TableauNodePtrTable) ToDotViz() string {
@@ -692,6 +711,9 @@ func (t *TableauNodePtrTable) addElem(key uint64, tidx int, elem int64) []int32 
 	node[2] = int32(tidx)
 	node[3] = int32(elem >> 32)
 	node[4] = int32(uint32(elem))
+	if t.reverse {
+		node[5] = -1
+	}
 	return node
 }
 
@@ -702,6 +724,9 @@ func (t *TableauNodePtrTable) appendElem(node []int32, tidx int, elem int64) []i
 	next[oldLen] = int32(tidx)
 	next[oldLen+1] = int32(elem >> 32)
 	next[oldLen+2] = int32(uint32(elem))
+	if t.reverse {
+		next[oldLen+3] = -1
+	}
 	return next
 }
 
