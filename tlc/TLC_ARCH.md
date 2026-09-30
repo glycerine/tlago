@@ -765,6 +765,33 @@ Port guidance:
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
 
+## DFID Architecture
+
+`DFIDModelChecker` is the depth-first iterative-deepening checker. Java keeps it
+separate from the breadth-first `ModelChecker` and runs only with one worker and
+without liveness checking.
+
+Important structures:
+
+- `MemFPIntSet`: fingerprint table that stores both membership and DFID level
+  status bits.
+- `DFIDWorker`: owns explicit stacks for states, fingerprints, successor
+  vectors, and successor fingerprints up to `DFIDMax`.
+- The worker randomly chooses an unfinished initial state and then randomly
+  chooses unfinished successors from the current depth stack.
+
+Important behavior:
+
+- Each outer iteration increments `FPIntSet`'s global level and searches up to
+  that level.
+- `doNext` for DFID is a one-step generator. It fills successor vectors with
+  states not completed at the current level and returns whether all successors
+  were non-leaf.
+- Backtracking marks fingerprints leveled. States are marked done when all
+  children are done or when a leaf has no new child.
+- Keep DFID as worker-plus-stacks, not recursive traversal; recursion diverges
+  from Java's scheduling, status updates, and randomization points.
+
 ## Worker and Trace Architecture
 
 `Worker` is both a thread and an `INextStateFunctor`.

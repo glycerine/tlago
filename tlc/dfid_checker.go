@@ -70,6 +70,12 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
 	}
+	if NumWorkers() != 1 {
+		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support multiple workers. Please run TLC with a single worker.")
+	}
+	if mc.CheckLiveness {
+		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support checking liveness properties. Please check liveness properties in Breadth-First-Search mode.")
+	}
 	if CoverageEnabled() {
 		CreateCoverageCostModels(mc.Tool)
 		defer ReportCoverage(mc.Tool, mc.StartTime)
@@ -100,21 +106,21 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	for level := 2; level <= max; level++ {
 		PrintMessage(ECTLCProgressStartStatsDFID, fmtInt(level), fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 		FPIntSetIncLevel()
-		more := false
-		for _, init := range mc.InitStates {
-			hasMore, result, err := mc.doNext(init, init.FingerPrint(), 1, level)
-			if err != nil || result != NoError {
-				return result, err
+		worker := NewDFIDWorker(0, level, mc)
+		worker.Run()
+		mc.Done = false
+		if worker.IsTerminated() {
+			if worker.Result != NoError || worker.Err != nil {
+				return worker.Result, worker.Err
 			}
-			more = more || hasMore
-			if mc.Done {
+			if mc.ErrorCode != NoError {
 				return mc.ErrorCode, nil
 			}
+			return ECGeneral, worker.Err
 		}
-		if !more {
+		if !worker.HasMoreLevel() {
 			return mc.Tool.CheckPostCondition(), nil
 		}
-		mc.Done = false
 		if DoCheckPoint() {
 			if err := mc.Checkpoint(); err != nil {
 				return ECSystemCheckpointRecoveryCorrupt, err
@@ -122,6 +128,97 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		}
 	}
 	return NoError, nil
+}
+
+func (mc *DFIDModelChecker) DoNextInto(cur *TLCStateMut, cfp uint64, isLeaf bool, states *StateVec, fps *LongVec) (bool, int, error) {
+	deadlocked := true
+	allSuccDone := true
+	allSuccNonLeaf := true
+	for _, action := range mc.Tool.GetActions() {
+		nextStates, err := mc.Tool.GetNextStates(action, cur)
+		if err != nil {
+			return allSuccNonLeaf, ECGeneral, err
+		}
+		size := 0
+		if nextStates != nil {
+			size = nextStates.Size()
+		}
+		mc.StatesGenerated += int64(size)
+		deadlocked = deadlocked && size == 0
+		for i := 0; i < size; i++ {
+			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
+			if action != nil && action.CM.node != nil {
+				action.CM.IncInvocations()
+			}
+			if !mc.Tool.IsGoodState(succ) {
+				mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext)
+				return allSuccNonLeaf, ECTLCStateNotCompletelySpecifiedNext, nil
+			}
+			inModel, err := mc.Tool.IsInModel(succ)
+			if err != nil {
+				return allSuccNonLeaf, ECGeneral, err
+			}
+			if inModel {
+				inActions, err := mc.Tool.IsInActions(cur, succ)
+				if err != nil {
+					return allSuccNonLeaf, ECGeneral, err
+				}
+				inModel = inActions
+			}
+			status := FPIntStatusNew
+			if inModel {
+				fp := succ.FingerPrint()
+				status = mc.FPSet.SetStatus(fp, FPIntStatusNew)
+				allSuccDone = allSuccDone && FPIntSetIsDone(status)
+				allSuccNonLeaf = allSuccNonLeaf && !FPIntSetIsLeaf(status)
+				if mc.AllStateWriter != nil {
+					writeStatus := StateVisitSeen
+					if status == FPIntStatusNew {
+						writeStatus = StateVisitUnseen
+					}
+					if err := mc.AllStateWriter.WriteTransition(cur, succ, writeStatus, action); err != nil {
+						return allSuccNonLeaf, ECGeneral, err
+					}
+				}
+				if !FPIntSetIsCompleted(status) {
+					states.Add(succ)
+					fps.AddElement(int64(fp))
+				}
+			}
+			if status == FPIntStatusNew {
+				for _, invariant := range mc.Tool.GetInvariants() {
+					valid, err := mc.Tool.IsValidState(invariant, succ)
+					if err != nil {
+						mc.SetErrState(cur, succ, true, ECTLCInvariantEvaluationFailed)
+						return allSuccNonLeaf, ECTLCInvariantEvaluationFailed, err
+					}
+					if !valid {
+						mc.SetErrState(cur, succ, false, ECTLCInvariantViolatedBehavior)
+						return allSuccNonLeaf, ECTLCInvariantViolatedBehavior, nil
+					}
+				}
+			}
+			for _, implied := range mc.Tool.GetImpliedActions() {
+				valid, err := mc.Tool.IsValidTransition(implied, cur, succ)
+				if err != nil {
+					mc.SetErrState(cur, succ, true, ECTLCActionPropertyEvaluationFailed)
+					return allSuccNonLeaf, ECTLCActionPropertyEvaluationFailed, err
+				}
+				if !valid {
+					mc.SetErrState(cur, succ, false, ECTLCActionPropertyViolatedBehavior)
+					return allSuccNonLeaf, ECTLCActionPropertyViolatedBehavior, nil
+				}
+			}
+		}
+	}
+	if deadlocked && mc.CheckDeadlock {
+		mc.SetErrState(cur, nil, false, ECTLCDeadlockReached)
+		return allSuccNonLeaf, ECTLCDeadlockReached, nil
+	}
+	if allSuccDone || (isLeaf && allSuccNonLeaf) {
+		mc.FPSet.SetStatus(cfp, FPIntStatusDone)
+	}
+	return allSuccNonLeaf, NoError, nil
 }
 
 func (mc *DFIDModelChecker) DoPeriodicWork() (int, error) {
