@@ -251,6 +251,9 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *IntStack) 
 			return true, nil
 		}
 	}
+	if w.Check != nil && !w.Check.claimLiveError(w.ID) {
+		return false, nil
+	}
 	w.Checker.ErrorGraphNode = NewGraphNode(state, tidx)
 	prefix, cycle, err := w.traceFingerprintLasso(state, tidx, com)
 	if err != nil {

@@ -34,6 +34,7 @@
 - Already audited recently; do not loop on replay `doNextWithTool` constraint ordering unless touched: replay mirrors Java `ModelChecker.doNext` and does not attach predecessor/action before `isInModel`/`isInActions`; the normal worker functor path still follows Java `Worker.addElement`.
 - Already audited recently; do not loop on disk state/byte queue checkpoint commit semantics unless touched: committed pool-file deletion and checkpoint rename failures now report Java-style errors instead of silently tolerating missing files in the committed range.
 - Already audited recently; do not reintroduce a second production SCC algorithm in `LiveCheck`: `LiveCheck` now always uses Java's disk-graph/`LiveWorker` SCC path, creating a temporary metadir if a caller omits one. `LiveCheck1` remains separate because Java has that legacy checker too.
+- Already audited recently; do not flatten `LiveCheck.check0` back to a sequential loop: it now mirrors Java's queue-of-checkers worker orchestration, waits for all liveness workers, and lets liveness violations outrank worker errors.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -136,6 +137,7 @@
   - Call-stack replay `doNextWithTool` now keeps Java `ModelChecker.doNext` ordering by checking model/action constraints before any explicit predecessor/action attachment in that replay path.
   - Disk-backed state queues and byte-array queues now mirror Java checkpoint commit failure semantics for obsolete pool-file deletion and checkpoint rename failure.
   - `LiveCheck` no longer has a Go-only recursive Tarjan fallback; it always constructs disk graphs and runs the Java-shaped `LiveWorker` SCC algorithm.
+  - `LiveCheck.check0` now uses Java's worker-pool/checker-queue orchestration, including one winning liveness error and violation-over-worker-error precedence.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do

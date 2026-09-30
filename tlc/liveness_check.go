@@ -764,7 +764,7 @@ func (c *LiveChecker) ensureGraphNodeWithStateChecks(fp uint64, tidx int, checks
 	return node, nil
 }
 
-func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
+func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool, liveCheck *LiveCheck, workerID int, numWorkers int) (bool, error) {
 	_ = tool
 	_ = finalCheck
 	if c == nil || c.Solution == nil || c.Graph == nil {
@@ -774,7 +774,10 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 		c.createDiskGraphCache()
 		defer c.destroyDiskGraphCache()
 		for _, pem := range c.Solution.PEMs {
-			worker := NewLiveWorker(tool, c.Soln, 1, nil, c, pem, finalCheck)
+			if liveCheck != nil && liveCheck.hasLiveError() {
+				break
+			}
+			worker := NewLiveWorker(tool, workerID, numWorkers, liveCheck, c, pem, finalCheck)
 			found, err := worker.CheckSccs()
 			if err != nil {
 				return false, err
@@ -834,10 +837,12 @@ type LiveCheck struct {
 	Forced         bool
 	AddAndCheck    bool
 	mu             sync.Mutex
+	errMu          sync.Mutex
+	errFoundByID   int
 }
 
 func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
-	return &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree"), NoOp: true}
+	return &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree"), NoOp: true, errFoundByID: -1}
 }
 
 func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
@@ -853,7 +858,7 @@ func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metad
 		}
 		metadir = tmp
 	}
-	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree")}
+	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree"), errFoundByID: -1}
 	for i, solution := range solutions {
 		writer := NewNoopLivenessStateWriter()
 		if stateWriter != nil && !stateWriter.IsNoop() && stateWriter.IsDot() {
@@ -1027,29 +1032,99 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 		space = "complete"
 	}
 	PrintMessage(ECTLCCheckingTemporalProps, space, fmtInt64(sum), branches)
-	var firstErr error
+	lc.resetLiveError()
+
+	type liveCheckResult struct {
+		found   bool
+		checker *LiveChecker
+		err     error
+	}
+	wNum := 1
+	if !DoSequentialLiveness() {
+		wNum = min(len(lc.Checkers), NumWorkers())
+		if wNum < 1 {
+			wNum = 1
+		}
+	}
+	queue := make(chan *LiveChecker, len(lc.Checkers))
 	for _, checker := range lc.Checkers {
-		found, err := checker.CheckSccs(tool, finalCheck)
-		if err != nil {
-			if firstErr == nil {
-				firstErr = err
+		queue <- checker
+	}
+	close(queue)
+	results := make(chan liveCheckResult, wNum)
+	for id := 0; id < wNum; id++ {
+		go func(workerID int) {
+			var result liveCheckResult
+			for checker := range queue {
+				if lc.hasLiveError() {
+					break
+				}
+				found, err := checker.CheckSccs(tool, finalCheck, lc, workerID, wNum)
+				if err != nil {
+					result.err = err
+					break
+				}
+				if found {
+					result.found = true
+					result.checker = checker
+					break
+				}
 			}
-			continue
+			results <- result
+		}(id)
+	}
+
+	var firstErr error
+	var foundChecker *LiveChecker
+	for i := 0; i < wNum; i++ {
+		result := <-results
+		if result.found && foundChecker == nil {
+			foundChecker = result.checker
 		}
-		if found {
-			PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
-			checker.PrintCounterExample(tool)
-			if checker.ErrorCounterEx != nil {
-				return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", checker.ErrorCounterEx)
-			}
-			return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
+		if result.err != nil && firstErr == nil {
+			firstErr = result.err
 		}
+	}
+	if foundChecker != nil {
+		PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
+		if foundChecker.ErrorCounterEx != nil {
+			return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", foundChecker.ErrorCounterEx)
+		}
+		return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
 	}
 	if firstErr != nil {
 		return ECGeneral, firstErr
 	}
 	PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
 	return NoError, nil
+}
+
+func (lc *LiveCheck) resetLiveError() {
+	lc.errMu.Lock()
+	lc.errFoundByID = -1
+	lc.errMu.Unlock()
+}
+
+func (lc *LiveCheck) hasLiveError() bool {
+	if lc == nil {
+		return false
+	}
+	lc.errMu.Lock()
+	defer lc.errMu.Unlock()
+	return lc.errFoundByID != -1
+}
+
+func (lc *LiveCheck) claimLiveError(workerID int) bool {
+	if lc == nil {
+		return true
+	}
+	lc.errMu.Lock()
+	defer lc.errMu.Unlock()
+	if lc.errFoundByID == -1 {
+		lc.errFoundByID = workerID
+		return true
+	}
+	return lc.errFoundByID == workerID
 }
 
 func (lc *LiveCheck) CheckTrace(tool *Tool, trace func() *StateVec) error {
