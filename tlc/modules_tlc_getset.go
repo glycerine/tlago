@@ -500,6 +500,26 @@ func tlcSetSystemProperty(name string, value string) {
 	tlcSystemProperties.Lock()
 	defer tlcSystemProperties.Unlock()
 	tlcSystemProperties.values[name] = value
+	if name == actionCompositionProperty {
+		Globals.Cdot = javaBooleanProperty(value)
+	}
+}
+
+func actionCompositionEnabled() bool {
+	tlcSystemProperties.Lock()
+	value, ok := tlcSystemProperties.values[actionCompositionProperty]
+	tlcSystemProperties.Unlock()
+	if ok {
+		return javaBooleanProperty(value)
+	}
+	if value, ok := os.LookupEnv(actionCompositionProperty); ok {
+		return javaBooleanProperty(value)
+	}
+	return Globals.Cdot
+}
+
+func javaBooleanProperty(value string) bool {
+	return strings.EqualFold(value, "true")
 }
 
 func intValueFromDurationSince(start time.Time) *IntValue {

@@ -1,6 +1,9 @@
 package tlc
 
-const actionCompositionUnsupportedMessage = "The current version of TLC does not support action composition.  An incomplete implementation can be enabled via the tlc2.tool.impl.Tool.cdot=true java property."
+const (
+	actionCompositionProperty           = "tlc2.tool.impl.Tool.cdot"
+	actionCompositionUnsupportedMessage = "The current version of TLC does not support action composition.  An incomplete implementation can be enabled via the tlc2.tool.impl.Tool.cdot=true java property."
+)
 
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
 	init := t.GetInitStateSpec()
@@ -703,7 +706,7 @@ func (t *Tool) actionCompositionIntermediateStates(action *Action, pred Semantic
 }
 
 func (t *Tool) nextActionComposition(action *Action, args []SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
-	if !Globals.Cdot {
+	if !actionCompositionEnabled() {
 		return s1, newTLCError(ECGeneral, actionCompositionUnsupportedMessage)
 	}
 	if len(args) < 2 {

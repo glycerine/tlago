@@ -148,6 +148,13 @@ func ParseTLCOptions(args []string) (Options, error) {
 		case arg == "-debug":
 			Globals.Debug = true
 			index++
+		case strings.HasPrefix(arg, "-D"):
+			name, value, err := parseTLCSystemPropertyOption(arg)
+			if err != nil {
+				return opts, err
+			}
+			tlcSetSystemProperty(name, value)
+			index++
 		case arg == "-inv":
 			if index+1 >= len(args) {
 				return opts, tlcCommandLineError("Error: invariant expression required.")
@@ -477,6 +484,21 @@ func defaultTLCCommandLineOptions() Options {
 		GenerateTraceSpecBinary:   true,
 		GenerateTraceSpecMonolith: true,
 	}
+}
+
+func parseTLCSystemPropertyOption(arg string) (string, string, error) {
+	property := strings.TrimPrefix(arg, "-D")
+	if property == "" {
+		return "", "", tlcCommandLineError("Error: expected a property name after -D.")
+	}
+	name, value, hasValue := strings.Cut(property, "=")
+	if name == "" {
+		return "", "", tlcCommandLineError("Error: expected a property name after -D.")
+	}
+	if !hasValue {
+		value = ""
+	}
+	return name, value, nil
 }
 
 func tlcCommandLineError(msg string) error {

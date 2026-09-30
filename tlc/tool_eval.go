@@ -1173,7 +1173,7 @@ func (t *Tool) evalActionSubscript(opcode int, args []SemanticNode, c *Context, 
 }
 
 func (t *Tool) evalActionComposition(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
-	if !Globals.Cdot {
+	if !actionCompositionEnabled() {
 		return nil, newTLCError(ECGeneral, actionCompositionUnsupportedMessage)
 	}
 	if len(args) < 2 {

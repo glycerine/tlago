@@ -222,7 +222,7 @@ func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, acts *Actio
 }
 
 func (t *Tool) enabledActionComposition(args []SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
-	if !Globals.Cdot {
+	if !actionCompositionEnabled() {
 		return nil, newTLCError(ECGeneral, actionCompositionUnsupportedMessage)
 	}
 	if len(args) < 2 {

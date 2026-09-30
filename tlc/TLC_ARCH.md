@@ -587,7 +587,8 @@ Key semantics:
   `UNCHANGED` and unsatisfied predicates through the same functor hooks as Java.
 - Java recognizes `OPCODE_cdot` for action composition but disables it by
   default behind the `tlc2.tool.impl.Tool.cdot` system property. The Go port
-  keeps the same default via `Globals.Cdot == false` and returns Java's
+  keeps the same default via `Globals.Cdot == false` and the same property key
+  through `-Dtlc2.tool.impl.Tool.cdot=true` or `TLCSet`. It returns Java's
   unsupported-action-composition message from evaluation, next-state
   generation, and `ENABLED`. When explicitly enabled, `A \cdot B` first
   collects intermediate `s -A-> t` states into a concrete `StateVec`, then
