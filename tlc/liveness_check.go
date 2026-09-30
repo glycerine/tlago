@@ -493,6 +493,33 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool) (bool, error) {
 	if c == nil || c.Solution == nil || c.Graph == nil {
 		return false, nil
 	}
+	if c.DiskGraph != nil || c.TableauDiskGraph != nil {
+		for _, pem := range c.Solution.PEMs {
+			worker := NewLiveWorker(tool, c.Soln, 1, nil, c, pem, finalCheck)
+			found, err := worker.CheckSccs()
+			if err != nil {
+				return false, err
+			}
+			if found {
+				c.LastSize = c.GraphSize()
+				return true, nil
+			}
+		}
+		if !finalCheck {
+			if c.TableauDiskGraph != nil {
+				if err := c.TableauDiskGraph.MakeNodePtrTbl(); err != nil {
+					return false, err
+				}
+			}
+			if c.DiskGraph != nil {
+				if err := c.DiskGraph.MakeNodePtrTbl(); err != nil {
+					return false, err
+				}
+			}
+		}
+		c.LastSize = c.GraphSize()
+		return false, nil
+	}
 	for _, node := range c.Graph.All() {
 		node.Realign()
 	}

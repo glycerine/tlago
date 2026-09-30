@@ -1042,6 +1042,21 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - handles worker failure precedence: liveness violation wins over checker
   failure until all live workers complete.
 
+`LiveWorker`:
+
+- implements Java's iterative Tarjan SCC search over disk-backed behavior
+  graphs. The DFS stack stores packed `(state, tableau-index, location,
+  lowlink)` cells and uses `SCC_MARKER = -42` to revisit a node after its
+  successors have been explored.
+- starts from disk graph initial nodes instead of preloading every vertex;
+  successors that do not satisfy the PEM's EA action are queued as fresh roots
+  if they still point to disk.
+- uses `TableauNodePtrTable` as the temporary SCC component set, matching Java
+  even for non-tableau graphs so trace construction can share the same shape.
+- dispatches to the concrete `DiskGraph` or `TableauDiskGraph` fields on
+  `LiveChecker`. There is intentionally no Go `AbstractDiskGraph` interface;
+  the helper methods are private concrete switches.
+
 `LiveCheck1` is an older in-memory implementation used by simulation and some
 trace checks. It follows the Manna-Pnueli book algorithm with component
 numbering ranges.
