@@ -278,7 +278,6 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 		if succState.Level() > w.MaxLevel {
 			w.MaxLevel = succState.Level()
 		}
-		w.UnseenSuccessorStates++
 	}
 	return w, nil
 }
@@ -473,6 +472,7 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	succState.UID = ptr
 	succState.SetPredecessor(curState)
 	succState.SetAction(action)
+	w.UnseenSuccessorStates++
 	if w.Checker != nil && w.Checker.Trace != nil {
 		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, ptr)
 	}

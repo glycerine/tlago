@@ -1216,6 +1216,11 @@ Constrained dumps:
 Trace writing:
 
 - Each worker owns a trace fragment file named by spec and worker id.
+- Java increments the worker out-degree counter in `writeState(curState, fp,
+  succState)`, immediately after recording an unseen successor in the trace.
+  Keep that placement: the counter describes unseen successors discovered while
+  evaluating `Next`, even if later invariant or implied-action checks stop the
+  run before the state is enqueued.
 - The Go port now keeps a concrete `ConcurrentTLCTrace` on `ModelChecker`,
   writes Java-style worker fragment files as the authoritative model-checking
   path, and mirrors records into the existing in-memory `TLCTrace` for current
