@@ -112,7 +112,9 @@ type ValueExcept struct {
 	Value Value
 }
 
-type BaseValue struct{}
+type BaseValue struct {
+	source SemanticNode
+}
 
 func (BaseValue) KindStringFor(kind ValueKind) string {
 	if int(kind) >= 0 && int(kind) < len(valueKindImage) {
@@ -123,6 +125,23 @@ func (BaseValue) KindStringFor(kind ValueKind) string {
 
 func (BaseValue) unsupported(format string, args ...any) error {
 	return newTLCError(ECGeneral, format, args...)
+}
+
+func (v *BaseValue) SetSource(source SemanticNode) {
+	if v != nil {
+		v.source = source
+	}
+}
+
+func (v *BaseValue) GetSource() SemanticNode {
+	if v == nil {
+		return nil
+	}
+	return v.source
+}
+
+func (v *BaseValue) HasSource() bool {
+	return v != nil && v.source != nil
 }
 
 type BoolValue struct {

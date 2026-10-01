@@ -80,6 +80,7 @@ func (v *LazyValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut
 	if err != nil {
 		return nil, err
 	}
+	attachValueSourceIfMissing(res, v.Expr)
 	if v.IsCacheable() {
 		v.Val = res
 		v.ToolID = tool.GetID()
@@ -207,6 +208,7 @@ func (v *LazyValue) Eval(tool *Tool, state *TLCStateMut, pstate *TLCStateMut) (V
 	if err != nil {
 		return nil, err
 	}
+	attachValueSourceIfMissing(value, v.Expr)
 	return value, nil
 }
 
@@ -237,7 +239,9 @@ func (v *LazySupplierValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLC
 	if v.Supplier == nil {
 		return ValUndef, nil
 	}
-	return v.Supplier(), nil
+	value := v.Supplier()
+	attachValueSourceIfMissing(value, v.Expr)
+	return value, nil
 }
 
 func asLazyValue(value any) *LazyValue {
@@ -268,6 +272,22 @@ func lazyValueGetValue(value any, tool *Tool, state *TLCStateMut, pstate *TLCSta
 	default:
 		return nil, nil, false
 	}
+}
+
+type sourceAssignableValue interface {
+	GetSource() SemanticNode
+	SetSource(SemanticNode)
+}
+
+func attachValueSourceIfMissing(value Value, source SemanticNode) {
+	if value == nil || source == nil {
+		return
+	}
+	assignable, ok := value.(sourceAssignableValue)
+	if !ok || assignable.GetSource() != nil {
+		return
+	}
+	assignable.SetSource(source)
 }
 
 type SetPredValue struct {
