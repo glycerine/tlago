@@ -691,7 +691,7 @@ func (s *MemFPSet) RecoverTrace(trace *TLCTrace) error {
 
 func (s *MemFPSet) RecoverFP(fp uint64) error {
 	if s.Put(fp) {
-		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+		return newTLCErrorCode(ECTLCFPNotInSet)
 	}
 	return nil
 }
@@ -968,7 +968,7 @@ func (s *MemFPSet1) RecoverTrace(trace *TLCTrace) error {
 
 func (s *MemFPSet1) RecoverFP(fp uint64) error {
 	if s.Put(fp) {
-		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+		return newTLCErrorCode(ECTLCFPNotInSet)
 	}
 	return nil
 }
@@ -1233,7 +1233,7 @@ func (s *MemFPSet2) RecoverTrace(trace *TLCTrace) error {
 
 func (s *MemFPSet2) RecoverFP(fp uint64) error {
 	if s.Put(fp) {
-		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+		return newTLCErrorCode(ECTLCFPNotInSet)
 	}
 	return nil
 }
@@ -1454,7 +1454,7 @@ func (s *MultiFPSet) RecoverTrace(trace *TLCTrace) error {
 
 func (s *MultiFPSet) RecoverFP(fp uint64) error {
 	if s.Put(fp) {
-		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+		return newTLCErrorCode(ECTLCFPNotInSet)
 	}
 	return nil
 }

@@ -287,6 +287,36 @@ func TestDiskFPSetRecoverDuplicateUsesJavaCheckpointCorruptError(t *testing.T) {
 	}
 }
 
+func TestMemoryFPSetRecoverDuplicateUsesJavaFPNotInSetError(t *testing.T) {
+	cases := []struct {
+		name string
+		set  FPSet
+	}{
+		{name: "MemFPSet", set: NewMemFPSet()},
+		{name: "MemFPSet1", set: NewMemFPSet1(NewFPSetConfiguration())},
+		{name: "MemFPSet2", set: NewMemFPSet2(NewFPSetConfiguration())},
+		{name: "MultiFPSet", set: &MultiFPSet{Sets: []FPSet{NewMemFPSet()}, Shift: 64}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.set.RecoverFP(42); err != nil {
+				t.Fatalf("first RecoverFP returned error: %v", err)
+			}
+			err := tc.set.RecoverFP(42)
+			tlcErr, ok := err.(*TLCError)
+			if !ok {
+				t.Fatalf("duplicate RecoverFP error = %T %v, want TLCError", err, err)
+			}
+			if tlcErr.Code != ECTLCFPNotInSet {
+				t.Fatalf("error code = %d, want %d", tlcErr.Code, ECTLCFPNotInSet)
+			}
+			if tlcErr.Error() != "The fingerprint is not in set." {
+				t.Fatalf("error = %q", tlcErr.Error())
+			}
+		})
+	}
+}
+
 func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
 	ClearMessageRecorders()
 	recorder := &MemoryRecorder{}
