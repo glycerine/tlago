@@ -112,7 +112,9 @@ func (m CostModel) reportNode(level int, fresh bool) {
 	node := coveragePair{Primary: m.evalCount(fresh), Secondary: m.secondaryCount(fresh)}
 	if len(collected) == 1 {
 		consistent := collected[0]
-		if consistent.Primary < node.Primary || consistent.Secondary < node.Secondary {
+		// Java compares consistentChildren.secondary to itself here. Preserve that
+		// typo because it affects when coverage subtrees collapse in reports.
+		if consistent.Primary < node.Primary || consistent.Secondary < consistent.Secondary {
 			m.printSelf(level)
 			m.printChildren(level + 1)
 			return
@@ -151,7 +153,7 @@ func (m CostModel) reportUnchangedNode(level int, fresh bool) {
 		m.printSelf(level)
 		return
 	}
-	count := m.evalCount(fresh)
+	count := m.GetPrimary()
 	if collected[0].Primary > count {
 		count = collected[0].Primary
 	}
