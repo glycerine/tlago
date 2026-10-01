@@ -71,6 +71,8 @@ type DistributedFPSetManager struct {
 	StatesSeen         atomic.Uint64
 	Description        string
 	ExpectedNumServers int
+	NonDistributed     bool
+	Trace              *TLCTrace
 	checkpointFilename string
 }
 
@@ -103,6 +105,16 @@ func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
 		}
 	}
 	return NewDistributedFPSetManager(set)
+}
+
+func NewNonDistributedFPSetManager(set FPSet, hostname string, trace *TLCTrace) *DistributedFPSetManager {
+	return &DistributedFPSetManager{
+		Sets:           []FPSet{set},
+		Mask:           math.MaxInt64,
+		Description:    hostname,
+		NonDistributed: true,
+		Trace:          trace,
+	}
 }
 
 func (m *DistributedFPSetManager) normalize() {
@@ -198,6 +210,9 @@ func (m *DistributedFPSetManager) GetMask() uint64 {
 }
 
 func (m *DistributedFPSetManager) GetHostName() string {
+	if m != nil && m.NonDistributed && m.Description != "" {
+		return m.Description
+	}
 	return distributedServerHost()
 }
 
@@ -213,6 +228,9 @@ func (m *DistributedFPSetManager) GetFPSetIndex(fp uint64) int {
 }
 
 func (m *DistributedFPSetManager) ContainsBlock(fingerprints []*LongVec) []*BitVector {
+	if m != nil && m.NonDistributed {
+		return m.singleSetContainsBlock(fingerprints)
+	}
 	out := make([]*BitVector, len(fingerprints))
 	for i, fpv := range fingerprints {
 		size := 0
@@ -256,6 +274,9 @@ func (m *DistributedFPSetManager) Contains(fp uint64) bool {
 }
 
 func (m *DistributedFPSetManager) PutBlock(fingerprints []*LongVec) []*BitVector {
+	if m != nil && m.NonDistributed {
+		return m.singleSetPutBlock(fingerprints)
+	}
 	out := make([]*BitVector, len(fingerprints))
 	for i, fpv := range fingerprints {
 		size := 0
@@ -320,6 +341,12 @@ func (m *DistributedFPSetManager) GetStatesSeen() uint64 {
 	if m == nil {
 		return 0
 	}
+	if m.NonDistributed {
+		if len(m.Sets) == 0 || m.Sets[0] == nil {
+			return 0
+		}
+		return m.Sets[0].Size()
+	}
 	total := uint64(1) + m.StatesSeen.Load()
 	for _, set := range m.Sets {
 		if set != nil {
@@ -333,6 +360,13 @@ func (m *DistributedFPSetManager) Close(cleanup bool) error {
 	if m == nil {
 		return nil
 	}
+	if m.NonDistributed {
+		if len(m.Sets) == 0 || m.Sets[0] == nil {
+			return nil
+		}
+		m.Sets[0].Close()
+		return m.Sets[0].Exit(cleanup)
+	}
 	for _, set := range m.distinctFPSets() {
 		if err := set.Exit(cleanup); err != nil {
 			return err
@@ -344,6 +378,12 @@ func (m *DistributedFPSetManager) Close(cleanup bool) error {
 func (m *DistributedFPSetManager) Checkpoint(filename string) error {
 	if m == nil {
 		return nil
+	}
+	if m.NonDistributed {
+		if len(m.Sets) == 0 || m.Sets[0] == nil {
+			return nil
+		}
+		return m.Sets[0].BeginChkpt()
 	}
 	m.checkpointFilename = ""
 	for _, set := range m.distinctFPSets() {
@@ -367,6 +407,12 @@ func (m *DistributedFPSetManager) Checkpoint(filename string) error {
 }
 
 func (m *DistributedFPSetManager) CommitCheckpoint() error {
+	if m != nil && m.NonDistributed {
+		if len(m.Sets) == 0 || m.Sets[0] == nil {
+			return nil
+		}
+		return m.Sets[0].CommitChkpt()
+	}
 	if m != nil {
 		m.checkpointFilename = ""
 	}
@@ -376,6 +422,12 @@ func (m *DistributedFPSetManager) CommitCheckpoint() error {
 func (m *DistributedFPSetManager) Recover(filename string) error {
 	if m == nil {
 		return nil
+	}
+	if m.NonDistributed {
+		if len(m.Sets) == 0 || m.Sets[0] == nil {
+			return nil
+		}
+		return m.Sets[0].RecoverTrace(m.Trace)
 	}
 	for _, set := range m.distinctFPSets() {
 		if err := set.RecoverFile(filename); err != nil {
@@ -389,6 +441,40 @@ func (m *DistributedFPSetManager) addStatesSeen(delta uint64) {
 	if m != nil && delta != 0 {
 		m.StatesSeen.Add(delta)
 	}
+}
+
+func (m *DistributedFPSetManager) singleSetPutBlock(fingerprints []*LongVec) []*BitVector {
+	out := make([]*BitVector, len(fingerprints))
+	for i, fpv := range fingerprints {
+		size := 0
+		if fpv != nil {
+			size = fpv.Size()
+		}
+		if m == nil || len(m.Sets) == 0 || m.Sets[0] == nil {
+			out[i] = newAllTrueBitVector(size)
+			m.addStatesSeen(uint64(size))
+			continue
+		}
+		out[i] = m.Sets[0].PutBlock(fpv)
+	}
+	return out
+}
+
+func (m *DistributedFPSetManager) singleSetContainsBlock(fingerprints []*LongVec) []*BitVector {
+	out := make([]*BitVector, len(fingerprints))
+	for i, fpv := range fingerprints {
+		size := 0
+		if fpv != nil {
+			size = fpv.Size()
+		}
+		if m == nil || len(m.Sets) == 0 || m.Sets[0] == nil {
+			out[i] = newAllTrueBitVector(size)
+			m.addStatesSeen(uint64(size))
+			continue
+		}
+		out[i] = m.Sets[0].ContainsBlock(fpv)
+	}
+	return out
 }
 
 type DistributedWorker struct {

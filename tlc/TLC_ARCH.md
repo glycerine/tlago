@@ -2787,6 +2787,11 @@ Port guidance:
   `while expected > 0 { expected /= 2; log++ }`, yielding `(1<<log)-1`.
   Preserve that mask calculation even when it looks different from a direct
   power-of-two helper.
+- Java's `NonDistributedFPSetManager` is also folded into the concrete Go
+  manager. It sends every `LongVec` block to the single wrapped FP set, reports
+  `getStatesSeen()` as the wrapped set's `size()`, performs checkpoint begin
+  and commit in separate calls, recovers by replaying the local trace, and
+  closes by calling both `Close` and `Exit(cleanup)` on the wrapped set.
 - Distributed fingerprint checkpointing is filename-paired. Java
   `FPSetManager.Checkpoint.run` calls `beginChkpt(filename)` and
   `commitChkpt(filename)` on the same remote FP set; the later manager-level
