@@ -206,8 +206,11 @@ func (s *Simulator) startProgressReporter() func() {
 		for {
 			select {
 			case <-ticker.C:
-				if !s.reportSimulationProgress(&coverageCountdown, interval) {
+				switch s.reportSimulationProgress(&coverageCountdown, interval) {
+				case simulatorProgressStop:
 					s.ResultQueue <- SimulationWorkerOK(-1)
+					return
+				case simulatorProgressReporterDone:
 					return
 				}
 			case <-stop:
@@ -222,7 +225,15 @@ func (s *Simulator) startProgressReporter() func() {
 	}
 }
 
-func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval time.Duration) bool {
+type simulatorProgressStatus int
+
+const (
+	simulatorProgressContinue simulatorProgressStatus = iota
+	simulatorProgressStop
+	simulatorProgressReporterDone
+)
+
+func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval time.Duration) simulatorProgressStatus {
 	genTrace := s.NumGenTraces.Load()
 	m2AndMean := s.WelfordM2Mean.Load()
 	mean := int64(m2AndMean & 0xffffffff)
@@ -246,19 +257,20 @@ func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval ti
 	}
 	if err := s.writeActionFlowGraph(); err != nil {
 		PrintTLCBug(ECTLCReporterDied)
+		return simulatorProgressReporterDone
 	}
 	if s.Tool != nil && s.Tool.Periodic != nil {
 		value, err := s.Tool.NoDebug().Eval(s.Tool.Periodic)
 		if err != nil {
 			PrintTLCBug(ECTLCReporterDied)
-			return false
+			return simulatorProgressReporterDone
 		}
 		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
 			PrintError(ECTLCAssumptionFalse, SemanticString(s.Tool.Periodic))
-			return false
+			return simulatorProgressStop
 		}
 	}
-	return true
+	return simulatorProgressContinue
 }
 
 func (s *Simulator) Stop() {
