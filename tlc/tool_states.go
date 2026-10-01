@@ -89,16 +89,12 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 }
 
 func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
-	rootAction := UnknownAction
-	if acts != nil && acts.GetAction() != nil {
-		rootAction = acts.GetAction()
-	}
 	if acts == nil || acts.IsEmpty() {
 		if CoverageActionEnabled() {
 			cm.IncInvocations()
 			cm.GetRoot().IncInvocations()
 		}
-		_, err := states.AddElement(ps.Copy().SetAction(rootAction))
+		_, err := states.AddElement(ps.Copy().SetAction(actionItemListAction(acts)))
 		return err
 	}
 	if ps.AllAssigned() {
@@ -120,11 +116,20 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 			cm.IncInvocations()
 			cm.GetRoot().IncInvocations()
 		}
-		_, err := states.AddElement(ps.Copy().SetAction(rootAction))
+		_, err := states.AddElement(ps.Copy().SetAction(actionItemListAction(acts)))
 		return err
 	}
 	acts1 := acts.Cdr()
 	return t.GetInitStatesForPredicate(acts.CarPred(), acts1, acts.CarContext(), ps, states, acts.CM)
+}
+
+func actionItemListAction(acts *ActionItemList) *Action {
+	if acts != nil {
+		if action := acts.GetAction(); action != nil {
+			return action
+		}
+	}
+	return UnknownAction
 }
 
 func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) (err error) {
