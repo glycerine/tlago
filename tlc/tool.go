@@ -163,7 +163,7 @@ type Tool struct {
 	IsInActionsForConstraintFn      func(*Tool, SemanticNode, *TLCStateMut, *TLCStateMut) (bool, error)
 	EvalRewardFunc                  func(*Tool, *TLCStateMut, *TLCStateMut, float64) (float64, error)
 	HasStateOrActionConstraintsFunc func(*Tool) bool
-	EnabledFunc                     func(*Tool, SemanticNode, *Context, *TLCStateMut, *TLCStateMut) *TLCStateMut
+	EnabledFunc                     func(*Tool, SemanticNode, *Context, *TLCStateMut, *TLCStateMut) (*TLCStateMut, error)
 	IsValidExprFunc                 func(*Tool, SemanticNode, *Context) (bool, error)
 	IsValidTransitionFunc           func(*Tool, *Action, *TLCStateMut, *TLCStateMut) (bool, error)
 	IsValidStateFunc                func(*Tool, *Action, *TLCStateMut) (bool, error)
@@ -434,21 +434,16 @@ func (t *Tool) HasStateOrActionConstraints() bool {
 	return len(t.ModelConstraints) > 0 || len(t.ActionConstraints) > 0
 }
 
-func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLCStateMut) (state *TLCStateMut) {
-	var err error
+func (t *Tool) Enabled(pred SemanticNode, con *Context, s0 *TLCStateMut, s1 *TLCStateMut) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(pred)
 	defer func() { done(err) }()
 	if t != nil && t.EnabledFunc != nil {
 		return t.EnabledFunc(t, pred, con, s0, s1)
 	}
 	if t == nil {
-		return s1
+		return s1, nil
 	}
-	state, err = t.EnabledImpl(pred, EmptyActionItemList, con, s0, s1, CostModel{})
-	if err != nil {
-		return nil
-	}
-	return state
+	return t.EnabledImpl(pred, EmptyActionItemList, con, s0, s1, CostModel{})
 }
 
 func (t *Tool) IsValidExpr(expr SemanticNode, ctxt *Context) (bool, error) {
