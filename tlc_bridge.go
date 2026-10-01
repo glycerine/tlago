@@ -84,6 +84,12 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"BagsExt": {
 		"FoldBag",
 	},
+	"CSV": {
+		"CSVWriteRecord", "CSVWrite", "CSVRead", "CSVRecords",
+	},
+	"GraphViz": {
+		"DotDiGraph",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -154,6 +160,12 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"BagsExt": setOf(
 		"FoldBag",
+	),
+	"CSV": setOf(
+		"CSVWriteRecord", "CSVWrite", "CSVRead", "CSVRecords",
+	),
+	"GraphViz": setOf(
+		"DotDiGraph",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",

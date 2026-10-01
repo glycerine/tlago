@@ -2199,6 +2199,14 @@ Go mapping:
   overrides intentionally differ in accumulator order: `Functions` and
   `FiniteSetsExt` call `op(value, acc)`, while `BagsExt.FoldBag` follows Java's
   `op(acc, bagElement)` loop for each multiplicity.
+- CommunityModules `CSV` and `GraphViz` are side-effect/string rendering
+  overrides. CSV appends UTF-8 text lines with Java `String.format`-style
+  `%1$s` placeholders, normalizes records before header/value emission, uses
+  raw `StringValue` contents for paths and delimiters, treats the delimiter in
+  `CSVRead` as a Java regex, returns an empty tuple/zero count for missing
+  files, and overflows beyond signed 32-bit record counts. `GraphViz.DotDiGraph`
+  renders a fixed `digraph MyGraph {...}` string; node ids are Java signed
+  `long` fingerprints, not unsigned Go `uint64` decimal strings.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

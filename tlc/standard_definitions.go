@@ -170,6 +170,15 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("kSubset", 2, func(args []Value) (Value, error) { return FiniteSetsExtKSubset(args[0], args[1]) })
 	t.defineStandardMethod("FoldSet", 3, func(args []Value) (Value, error) { return FiniteSetsExtFoldSet(args[0], args[1], args[2]) })
 	t.defineStandardMethod("FoldBag", 3, func(args []Value) (Value, error) { return BagsExtFoldBag(args[0], args[1], args[2]) })
+	t.defineStandardMethod("CSVWriteRecord", 4, func(args []Value) (Value, error) {
+		return CSVWriteRecord(args[0], args[1], args[2], args[3])
+	})
+	t.defineStandardMethod("CSVWrite", 3, func(args []Value) (Value, error) { return CSVWrite(args[0], args[1], args[2]) })
+	t.defineStandardMethod("CSVRead", 3, func(args []Value) (Value, error) { return CSVRead(args[0], args[1], args[2]) })
+	t.defineStandardMethod("CSVRecords", 1, func(args []Value) (Value, error) { return CSVRecords(args[0]) })
+	t.defineStandardMethod("DotDiGraph", 3, func(args []Value) (Value, error) {
+		return GraphVizDotDiGraph(args[0], args[1], args[2])
+	})
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)
