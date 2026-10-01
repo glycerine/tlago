@@ -127,10 +127,13 @@ func (b *operatorValueBase) IsDefined() bool { return true }
 func (b *operatorValueBase) DeepCopy() Value { return b }
 
 func (b *operatorValueBase) FingerPrint(fp uint64) uint64 {
-	return fp
+	return unsupportedValueFingerprint(b)
 }
 
-func (b *operatorValueBase) Permute(*MVPerm) Value { return b }
+func (b *operatorValueBase) Permute(*MVPerm) Value {
+	unsupportedValueFingerprint(b)
+	return b
+}
 
 func (b *operatorValueBase) TakeExcept(ex ValueExcept) (Value, error) {
 	return nil, b.unsupported("attempted to apply EXCEPT construct to the operator %s", b)
