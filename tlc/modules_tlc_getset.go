@@ -216,6 +216,8 @@ func TLCSet(vidx Value, val Value) (Value, error) {
 			} else {
 				simulator.SetAllValues(int(idx.Val), val)
 			}
+		} else {
+			return nil, newTLCError(ECGeneral, "TLCSet cannot set integer register %d without a checker or simulator", idx.Val)
 		}
 		return BoolTrue, nil
 	case *StringValue:
