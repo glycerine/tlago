@@ -146,11 +146,18 @@ func JsonTextSerialize(path *StringValue, payload Value, options Value) (*BoolVa
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Serialize", "sequence", ValuesPPR(payload))
 	}
-	file, err := os.OpenFile(path.RawString(), ioUtilsOpenFileFlag(opts), 0o644)
+	fileOptions, err := ioUtilsOpenFileOptions(opts)
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.OpenFile(path.RawString(), fileOptions.flag, 0o644)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
+	if fileOptions.deleteOnClose {
+		defer os.Remove(path.RawString())
+	}
 	charset := ioUtilsRecordString(opts, "charset")
 	if err := jsonWriteNDJSONWithCharset(file, tuple, charset); err != nil {
 		return nil, err
