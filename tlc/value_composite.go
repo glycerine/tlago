@@ -34,16 +34,25 @@ func NewValueVecFrom(values []Value) *ValueVec {
 }
 
 func (v *ValueVec) Add(val Value) {
+	if len(v.data) == cap(v.data) {
+		v.ensureCapacity(len(v.data) + 1)
+	}
 	v.data = append(v.data, val)
 }
 
 func (v *ValueVec) AddAt(val Value, index int) {
-	if index == len(v.data) {
-		v.data = append(v.data, val)
-		return
+	oldLen := len(v.data)
+	newLen := oldLen + 1
+	if index < 0 || index >= cap(v.data) || newLen > cap(v.data) {
+		panic("ValueVec index out of bounds")
 	}
-	v.data = append(v.data[:index+1], v.data[index:]...)
+	if index >= len(v.data) {
+		v.data = v.data[:index+1]
+	}
 	v.data[index] = val
+	if len(v.data) != newLen {
+		v.data = v.data[:newLen]
+	}
 }
 
 func (v *ValueVec) AddSortedUnique(val Value) error {
@@ -56,12 +65,22 @@ func (v *ValueVec) AddSortedUnique(val Value) error {
 			return nil
 		}
 		if cmp > 0 {
-			v.AddAt(val, i)
+			v.insertAt(val, i)
 			return nil
 		}
 	}
 	v.Add(val)
 	return nil
+}
+
+func (v *ValueVec) insertAt(val Value, index int) {
+	if len(v.data) == cap(v.data) {
+		v.ensureCapacity(len(v.data) + 1)
+	}
+	var zero Value
+	v.data = append(v.data, zero)
+	copy(v.data[index+1:], v.data[index:len(v.data)-1])
+	v.data[index] = val
 }
 
 func (v *ValueVec) Len() int             { return len(v.data) }
@@ -153,6 +172,25 @@ func (v *ValueVec) String() string {
 		parts[i] = elem.String()
 	}
 	return "{" + strings.Join(parts, ", ") + "}"
+}
+
+func (v *ValueVec) ensureCapacity(minCapacity int) {
+	if cap(v.data) >= Globals.SetBound {
+		panic(newTLCError(ECGeneral, "Attempted to construct a set with too many elements (>%d).", Globals.SetBound))
+	}
+	if cap(v.data) >= minCapacity {
+		return
+	}
+	newCapacity := cap(v.data) + cap(v.data)
+	if newCapacity < minCapacity {
+		newCapacity = minCapacity
+	}
+	if newCapacity > Globals.SetBound {
+		newCapacity = Globals.SetBound
+	}
+	out := make([]Value, len(v.data), newCapacity)
+	copy(out, v.data)
+	v.data = out
 }
 
 type TupleValue struct {
