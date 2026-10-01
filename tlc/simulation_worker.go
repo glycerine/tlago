@@ -498,7 +498,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 				if workerErr, ok := err.(*SimulationWorkerError); ok {
 					return workerErr
 				}
-				return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+				panic(err)
 			}
 			if !w.NextStates.IsEmpty() {
 				break
@@ -513,7 +513,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		}
 		next := w.RandomState(w.NextStates)
 		if _, err := next.ExecCallable(); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(next), Err: err}
+			panic(err)
 		}
 		w.Statistics.CollectPostSuccessor(w.CurState, next.GetAction(), next)
 		w.CurState = next
@@ -528,7 +528,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	w.Statistics.CollectPostTrace(w.CurState, w.MaxTraceDepth)
 	if w.TraceFile != "" {
 		if err := w.WriteTraceFile(); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+			panic(err)
 		}
 	}
 	if workerErr := w.PostTrace(w.CurState); workerErr != nil {
@@ -543,13 +543,13 @@ func (w *SimulationWorker) CheckLivenessTrace() *SimulationWorkerError {
 	}
 	if w.LiveCheck1 != nil {
 		if err := w.LiveCheck1.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+			panic(err)
 		}
 		return nil
 	}
 	if w.LiveCheck != nil {
 		if err := w.LiveCheck.CheckTrace(w.Tool.NoDebug(), func() *StateVec { return w.GetTrace(w.CurState) }); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+			panic(err)
 		}
 	}
 	return nil
@@ -589,12 +589,12 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 	}
 	inModel, err := w.Tool.IsInModel(succ)
 	if err != nil {
-		return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(succ), Err: err}
+		panic(err)
 	}
 	if inModel {
 		inActions, err := w.Tool.IsInActions(curState, succ)
 		if err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(succ), Err: err}
+			panic(err)
 		}
 		inModel = inActions
 	}
