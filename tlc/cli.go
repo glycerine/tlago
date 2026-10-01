@@ -205,8 +205,6 @@ func ParseTLCOptions(args []string) (Options, error) {
 			index++
 		case arg == "-generateSpecTE":
 			forceGenerateTESpec = true
-			opts.ToolMode = true
-			Globals.Tool = true
 			index++
 			if index < len(args) && args[index] == "nomonolith" {
 				teSpecMonolith = false
