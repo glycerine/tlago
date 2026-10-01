@@ -2,6 +2,8 @@ package tlc
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -130,6 +132,37 @@ func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
 			t.Fatalf("record %d params = %v, want %q", i, record.Params, want[i])
 		}
 	}
+}
+
+func TestMultiFPSetExitDelegatesCleanupLikeJava(t *testing.T) {
+	metadir := t.TempDir()
+	artifact := filepath.Join(metadir, "owned-by-child")
+	if err := os.WriteFile(artifact, []byte("preserve"), 0o644); err != nil {
+		t.Fatalf("WriteFile artifact: %v", err)
+	}
+	child := &cleanupRecordingFPSet{NoopFPSet: NewNoopFPSet(nil)}
+	set := &MultiFPSet{Sets: []FPSet{child}, metadir: metadir}
+	if err := set.Exit(true); err != nil {
+		t.Fatalf("Exit returned error: %v", err)
+	}
+	if !child.exitCalled || !child.cleanupArg {
+		t.Fatalf("child exit called/cleanup = %v/%v, want true/true", child.exitCalled, child.cleanupArg)
+	}
+	if _, err := os.Stat(artifact); err != nil {
+		t.Fatalf("MultiFPSet removed metadir directly; Java delegates cleanup to child FPSets: %v", err)
+	}
+}
+
+type cleanupRecordingFPSet struct {
+	*NoopFPSet
+	exitCalled bool
+	cleanupArg bool
+}
+
+func (s *cleanupRecordingFPSet) Exit(cleanup bool) error {
+	s.exitCalled = true
+	s.cleanupArg = cleanup
+	return nil
 }
 
 func TestMemFPSetPutContainsAndSize(t *testing.T) {

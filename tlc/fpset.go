@@ -1364,12 +1364,9 @@ func (s *MultiFPSet) IncWorkers(num int) {
 
 func (s *MultiFPSet) Exit(cleanup bool) error {
 	for _, set := range s.Sets {
-		if err := set.Exit(false); err != nil {
+		if err := set.Exit(cleanup); err != nil {
 			return err
 		}
-	}
-	if cleanup && s.metadir != "" {
-		return os.RemoveAll(s.metadir)
 	}
 	return nil
 }
