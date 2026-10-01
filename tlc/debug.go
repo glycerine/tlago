@@ -1255,6 +1255,9 @@ func debugValueToVariable(variable *DebugTLCVariable, value Value, rnd *rand.Ran
 	if variable == nil {
 		variable = &DebugTLCVariable{}
 	}
+	if interval, ok := value.(*IntervalValue); ok {
+		return debugValueToVariable(variable, interval.ToSetEnum(), rnd)
+	}
 	variable.SetInstance(value)
 	if value == nil {
 		return variable
@@ -1460,7 +1463,7 @@ func debugStateCopy(state *TLCStateMut) *TLCStateMut {
 func debugStateAsVariable(state *TLCStateMut, record Value, name string, rnd *rand.Rand) *DebugTLCVariable {
 	variable := NewDebugTLCVariableName(name).SetInstance(record)
 	variable.SetVscodeVariableMenuContext("state")
-	variable.Type = "TLCState"
+	variable.Type = "State"
 	if state != nil && state.AllAssigned() {
 		variable.Type = fmt.Sprintf("FP64: %d", int64(state.FingerPrint()))
 	}
