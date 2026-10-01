@@ -155,10 +155,10 @@ func (s *Simulator) Simulate() (int, error) {
 	initStates.DeepNormalize()
 	stopProgress := s.startProgressReporter()
 	workerResult := s.simulate(initStates)
-	stopProgress()
 	s.StatesGenerated = s.NumGenStates.Load()
 	s.TracesGenerated = s.NumGenTraces.Load()
 	code := s.postSimulationErrorCode(workerResult)
+	stopProgress()
 	if code == NoError {
 		s.PrintSummary()
 	}
