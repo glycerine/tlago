@@ -147,6 +147,40 @@ func (m *DistributedFPSetManager) NumOfServers() int {
 	return len(m.Sets)
 }
 
+func (m *DistributedFPSetManager) NumOfAliveServers() int {
+	if m == nil {
+		return 0
+	}
+	return len(m.distinctFPSets())
+}
+
+func (m *DistributedFPSetManager) RegisterFPSet(set FPSet, hostname ...string) {
+	if m == nil || set == nil {
+		return
+	}
+	m.Sets = append(m.Sets, set)
+	if len(hostname) > 0 && hostname[0] != "" {
+		if m.Description == "" {
+			m.Description = hostname[0]
+		} else {
+			m.Description += "," + hostname[0]
+		}
+	}
+	m.normalize()
+}
+
+func (m *DistributedFPSetManager) GetMask() uint64 {
+	if m == nil {
+		return uint64(math.MaxInt64)
+	}
+	m.normalize()
+	return m.Mask
+}
+
+func (m *DistributedFPSetManager) GetHostName() string {
+	return distributedServerHost()
+}
+
 func (m *DistributedFPSetManager) GetFPSetIndex(fp uint64) int {
 	if m == nil || len(m.Sets) <= 1 {
 		return 0
@@ -248,6 +282,18 @@ func (m *DistributedFPSetManager) CheckFPs() uint64 {
 		return 0
 	}
 	return actualDistance
+}
+
+func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
+	if m == nil {
+		return true
+	}
+	for _, set := range m.Sets {
+		if set != nil && !set.CheckInvariant(expectFPs...) {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *DistributedFPSetManager) GetStatesSeen() uint64 {
