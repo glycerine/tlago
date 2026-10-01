@@ -458,7 +458,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 						if mc.SetErrState(cur, succ, true, ECTLCInvariantEvaluationFailed) {
 							mc.printTrace(ECTLCInvariantEvaluationFailed, []string{nameAt(invariantNames, k)}, cur, succ)
 						}
-						return allSuccNonLeaf, ECTLCInvariantEvaluationFailed, err
+						return allSuccNonLeaf, ECTLCInvariantEvaluationFailed, nil
 					}
 					if !valid {
 						if continuationEnabled() {
@@ -484,7 +484,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 					if mc.SetErrState(cur, succ, true, ECTLCActionPropertyEvaluationFailed) {
 						mc.printTrace(ECTLCActionPropertyEvaluationFailed, []string{nameAt(impliedNames, k)}, cur, succ)
 					}
-					return allSuccNonLeaf, ECTLCActionPropertyEvaluationFailed, err
+					return allSuccNonLeaf, ECTLCActionPropertyEvaluationFailed, nil
 				}
 				if !valid {
 					if continuationEnabled() {
