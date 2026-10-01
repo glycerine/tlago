@@ -272,7 +272,6 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 		ConstantDefns:    NewInsMap[string, Value](),
 	}
 	p.PreConstantSnap = p.Defns.Snapshot()
-	p.ProcessConfig()
 	p.Snapshot = p.Defns.Snapshot()
 	return p
 }
