@@ -161,12 +161,16 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		}
 		return nil, nil
 	case OpcodeITE:
-		guard, err := t.evalBool(args[0], c, s0, s1, EvalEnabled, cm, "ENABLED IF")
+		guard, err := t.Eval(args[0], c, s0, s1, EvalEnabled, cm)
 		if err != nil {
 			return nil, err
 		}
+		bguard, ok := guard.(*BoolValue)
+		if !ok {
+			return nil, newTLCError(ECGeneral, "In computing ENABLED, a non-boolean expression(%s) was used as the guard condition of an IF.\n%s", guard.KindString(), SemanticString(pred))
+		}
 		idx := 2
-		if guard.Val {
+		if bguard.Val {
 			idx = 1
 		}
 		return t.EnabledImpl(args[idx], acts, c, s0, s1, cm)
@@ -257,11 +261,14 @@ func (t *Tool) enabledFcnApply(pred *OpApplNode, acts *ActionItemList, c *Contex
 		}
 		return t.EnabledImpl(fcn.Body, acts, c1, s0, s1, cm)
 	}
-	bval, err := t.applyEvaluatedFunction(pred, fval, c, s0, s1, EvalEnabled, cm, false)
+	bval, err := t.applyPredicateFunction("ENABLED", pred, fval, c, s0, s1, EvalEnabled, cm)
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledContinueIfBool(pred, bval, acts, s0, s1, cm)
+	if !bval.Val {
+		return nil, nil
+	}
+	return t.EnabledFromActionList(acts, s0, s1, cm)
 }
 
 func (t *Tool) enabledBoundedForall(pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
@@ -294,16 +301,20 @@ func (t *Tool) enabledCase(pred *OpApplNode, acts *ActionItemList, c *Context, s
 			other = pair.Args[1]
 			continue
 		}
-		bval, err := t.evalBool(pair.Args[0], c, s0, s1, EvalEnabled, cm, "ENABLED CASE")
+		value, err := t.Eval(pair.Args[0], c, s0, s1, EvalEnabled, cm)
 		if err != nil {
 			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCError(ECGeneral, "In computing ENABLED, a non-boolean expression(%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1]))
 		}
 		if bval.Val {
 			return t.EnabledImpl(pair.Args[1], acts, c, s0, s1, cm)
 		}
 	}
 	if other == nil {
-		return nil, newTLCError(ECGeneral, "CASE has no true condition in ENABLED: %s", SemanticString(pred))
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred))
 	}
 	return t.EnabledImpl(other, acts, c, s0, s1, cm)
 }

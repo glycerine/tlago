@@ -217,12 +217,16 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 	case OpcodeBF:
 		return t.initBoundedForall(init, acts, c, ps, states, cm)
 	case OpcodeITE:
-		guard, err := t.evalBool(args[0], c, ps, EmptyState, EvalInit, cm, "initial IF")
+		guard, err := t.Eval(args[0], c, ps, EmptyState, EvalInit, cm)
 		if err != nil {
 			return err
 		}
+		bguard, ok := guard.(*BoolValue)
+		if !ok {
+			return newTLCError(ECGeneral, "In computing initial states, a non-boolean expression (%s) was used as the condition of an IF.\n%s", guard.KindString(), SemanticString(init))
+		}
 		idx := 2
-		if guard.Val {
+		if bguard.Val {
 			idx = 1
 		}
 		return t.GetInitStatesForPredicate(args[idx], acts, c, ps, states, cm)
@@ -297,16 +301,20 @@ func (t *Tool) initCase(init *OpApplNode, acts *ActionItemList, c *Context, ps *
 			other = pair.Args[1]
 			continue
 		}
-		bval, err := t.evalBool(pair.Args[0], c, ps, EmptyState, EvalInit, cm, "initial CASE")
+		value, err := t.Eval(pair.Args[0], c, ps, EmptyState, EvalInit, cm)
 		if err != nil {
 			return err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return newTLCError(ECGeneral, "In computing initial states, a non-boolean expression (%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1]))
 		}
 		if bval.Val {
 			return t.GetInitStatesForPredicate(pair.Args[1], acts, c, ps, states, cm)
 		}
 	}
 	if other == nil {
-		return newTLCError(ECGeneral, "CASE has no true condition in initial predicate: %s", SemanticString(init))
+		return newTLCError(ECGeneral, "In computing initial states, TLC encountered a CASE with no conditions true.\n%s", SemanticString(init))
 	}
 	return t.GetInitStatesForPredicate(other, acts, c, ps, states, cm)
 }
@@ -654,12 +662,16 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		}
 		return t.ProcessUnchanged(action, args[1], acts, c, s0, res, nss, cm)
 	case OpcodeITE:
-		guard, err := t.evalBool(args[0], c, s0, s1, EvalClear, cm, "next IF")
+		guard, err := t.Eval(args[0], c, s0, s1, EvalClear, cm)
 		if err != nil {
 			return s1, err
 		}
+		bguard, ok := guard.(*BoolValue)
+		if !ok {
+			return s1, newTLCError(ECGeneral, "In computing next states, a non-boolean expression (%s) was used as the condition of an IF.%s", guard.KindString(), SemanticString(pred))
+		}
 		idx := 2
-		if guard.Val {
+		if bguard.Val {
 			idx = 1
 		}
 		return t.GetNextStatesForPredicate(action, args[idx], acts, c, s0, s1, nss, cm)
@@ -712,11 +724,14 @@ func (t *Tool) initFcnApply(init *OpApplNode, acts *ActionItemList, c *Context, 
 		}
 		return t.GetInitStatesForPredicate(fcn.Body, acts, c1, ps, states, cm)
 	}
-	bval, err := t.applyEvaluatedFunction(init, fval, c, ps, EmptyState, EvalInit, cm, false)
+	bval, err := t.applyPredicateFunction("initial states", init, fval, c, ps, EmptyState, EvalInit, cm)
 	if err != nil {
 		return err
 	}
-	return t.continueInitIfBool(init, bval, acts, ps, states, cm)
+	if bval.Val {
+		return t.GetInitStatesFromActionList(acts, ps, states, cm)
+	}
+	return nil
 }
 
 func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
@@ -796,11 +811,14 @@ func (t *Tool) nextFcnApply(action *Action, pred *OpApplNode, acts *ActionItemLi
 		}
 		return t.GetNextStatesForPredicate(action, fcn.Body, acts, c1, s0, s1, nss, fcn.CM)
 	}
-	bval, err := t.applyEvaluatedFunction(pred, fval, c, s0, s1, EvalClear, cm, false)
+	bval, err := t.applyPredicateFunction("next states", pred, fval, c, s0, s1, EvalClear, cm)
 	if err != nil {
 		return s1, err
 	}
-	return t.continueNextIfBool(action, pred, bval, acts, s0, s1, nss, cm)
+	if bval.Val {
+		return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
+	}
+	return s1, nil
 }
 
 func (t *Tool) nextBoundedExists(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
@@ -865,22 +883,50 @@ func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, 
 			other = pair.Args[1]
 			continue
 		}
-		bval, err := t.evalBool(pair.Args[0], c, s0, s1, EvalClear, armCM, "next CASE")
+		value, err := t.Eval(pair.Args[0], c, s0, s1, EvalClear, armCM)
 		if err != nil {
 			return s1, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return s1, newTLCError(ECGeneral, "In computing next states, a non-boolean expression (%s) was used as a guard condition of a CASE.\n%s", value.KindString(), SemanticString(pair.Args[1]))
 		}
 		if bval.Val {
 			return t.GetNextStatesForPredicate(action, pair.Args[1], acts, c, s0, s1, nss, armCM)
 		}
 	}
 	if other == nil {
-		return s1, newTLCError(ECGeneral, "CASE has no true condition in next-state predicate: %s", SemanticString(pred))
+		return s1, newTLCError(ECGeneral, "In computing next states, TLC encountered a CASE with no conditions true.\n%s", SemanticString(pred))
 	}
 	otherCM := cm
 	if CoverageEnabled() && len(pred.Args) > 0 {
 		otherCM = cm.Get(pred.Args[len(pred.Args)-1])
 	}
 	return t.GetNextStatesForPredicate(action, other, acts, c, s0, s1, nss, otherCM)
+}
+
+func (t *Tool) applyPredicateFunction(where string, expr *OpApplNode, fval Value, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*BoolValue, error) {
+	if fval == nil {
+		return nil, newTLCError(ECGeneral, "In computing %s, a non-function (<nil>) was applied as a function.\n%s", where, SemanticString(expr))
+	}
+	switch f := fval.(type) {
+	case *FcnLambdaValue:
+		if f.FcnRcd != nil {
+			fval = f.FcnRcd
+		}
+	case *FcnRcdValue, *TupleValue, *RecordValue:
+	default:
+		return nil, newTLCError(ECGeneral, "In computing %s, a non-function (%s) was applied as a function.\n%s", where, fval.KindString(), SemanticString(expr))
+	}
+	value, err := t.applyEvaluatedFunction(expr, fval, c, s0, s1, control, cm, false)
+	if err != nil {
+		return nil, err
+	}
+	bval, ok := value.(*BoolValue)
+	if !ok {
+		return nil, newTLCErrorCode(ECTLCExpectedExpressionInComputing2, where, "boolean", SemanticString(expr))
+	}
+	return bval, nil
 }
 
 func (t *Tool) nextEquality(action *Action, pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
