@@ -203,8 +203,17 @@ func TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava(t *testing.T) {
 	if err := set.mergeOffHeapValues([]uint64{42}); err != nil {
 		t.Fatalf("initial merge returned error: %v", err)
 	}
+	if len(set.index) != 1 {
+		t.Fatalf("initial index length = %d, want Java offheap special-case length 1", len(set.index))
+	}
 	if err := set.mergeOffHeapValues([]uint64{42}); err != nil {
 		t.Fatalf("duplicate merge returned error: %v", err)
+	}
+	if len(set.index) != 2 {
+		t.Fatalf("duplicate index length = %d, want 2", len(set.index))
+	}
+	if set.fileCnt != 2 {
+		t.Fatalf("fileCnt = %d, want Java table-count increment quirk 2", set.fileCnt)
 	}
 	records := recorder.Records(ECTLCFPValueAlreadyOnDisk)
 	if len(records) != 1 {

@@ -249,7 +249,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	indexLen := s.calculateIndexLen(int64(len(newValues)))
+	indexLen := s.calculateOffHeapIndexLen(int64(len(newValues)))
 	newIndex := make([]uint64, indexLen)
 	if err := os.MkdirAll(filepath.Dir(s.tmpFilename), 0o755); err != nil {
 		return err
@@ -259,7 +259,6 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 		return err
 	}
 	currIndex := 0
-	counter := 0
 	written := int64(0)
 	var last uint64
 	writeFP := func(fp uint64) error {
@@ -269,16 +268,10 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 			return err
 		}
 		s.diskWriteCnt++
-		if counter == 0 {
-			if currIndex >= len(newIndex)-1 {
-				_ = tmp.Close()
-				return fmt.Errorf("OffHeapDiskFPSet index overflow")
-			}
+		if written%diskFPSetNumEntriesPerPage == 0 && currIndex < len(newIndex) {
 			newIndex[currIndex] = fp
 			currIndex++
-			counter = diskFPSetNumEntriesPerPage
 		}
-		counter--
 		last = fp
 		written++
 		return nil
@@ -323,8 +316,9 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 	if written == 0 {
 		last = 0
 	}
-	if len(newIndex) > 0 {
-		newIndex[len(newIndex)-1] = last
+	if currIndex < len(newIndex) {
+		newIndex[currIndex] = last
+		currIndex++
 	}
 	if err := tmp.Close(); err != nil {
 		return err
@@ -334,9 +328,9 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 	if err := s.closeBRAFReaders(); err != nil {
 		return err
 	}
-	if currIndex != indexLen-1 {
+	if currIndex != indexLen {
 		_ = s.openBRAFReaders(readerCnt, poolCnt)
-		return fmt.Errorf("OffHeapDiskFPSet index mismatch: got %d want %d", currIndex, indexLen-1)
+		return fmt.Errorf("OffHeapDiskFPSet index mismatch: got %d want %d", currIndex, indexLen)
 	}
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
 		_ = s.openBRAFReaders(readerCnt, poolCnt)
@@ -346,6 +340,14 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 		return err
 	}
 	s.index = newIndex
-	s.fileCnt = written
+	s.fileCnt += int64(len(newValues))
 	return nil
+}
+
+func (s *OffHeapDiskFPSet) calculateOffHeapIndexLen(buffLen int64) int {
+	indexLen := s.calculateIndexLen(buffLen)
+	if (buffLen+s.fileCnt-1)%diskFPSetNumEntriesPerPage == 0 {
+		indexLen--
+	}
+	return indexLen
 }
