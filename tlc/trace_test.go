@@ -2,7 +2,7 @@ package tlc
 
 import "testing"
 
-func TestTLCTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
+func TestTLCTraceAndToolRegenerateBehaviorPath(t *testing.T) {
 	initTLCCheckerTest(t)
 	action := &Action{Name: "Next"}
 	initState := checkerTestState(0)
@@ -30,6 +30,7 @@ func TestTLCTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
 	if succState == nil {
 		t.Fatalf("successor state was not generated")
 	}
+	traceSuccState := succState
 
 	initFP := initState.FingerPrint()
 	initInfo, err := tool.GetState(initFP)
@@ -45,8 +46,11 @@ func TestTLCTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetState(successor) returned error: %v", err)
 	}
-	if succInfo.State != succState {
-		t.Fatalf("GetState(successor) state = %p, want %p", succInfo.State, succState)
+	if succInfo.State == traceSuccState {
+		t.Fatalf("GetState(successor) reused traced state pointer; Java regenerates successors")
+	}
+	if !succInfo.State.Equal(traceSuccState) {
+		t.Fatalf("GetState(successor) state = %v, want equal to %v", succInfo.State, traceSuccState)
 	}
 	if succInfo.State.Predecessor() != initState {
 		t.Fatalf("successor predecessor = %p, want %p", succInfo.State.Predecessor(), initState)
@@ -56,7 +60,7 @@ func TestTLCTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
 	if len(records) != 2 {
 		t.Fatalf("trace records = %d, want 2", len(records))
 	}
-	record, ok := mc.Trace.RecordFor(succState)
+	record, ok := mc.Trace.RecordFor(traceSuccState)
 	if !ok {
 		t.Fatalf("successor trace record not found")
 	}

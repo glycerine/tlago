@@ -144,7 +144,6 @@ type Tool struct {
 	CounterExampleDef *OpDefNode
 	TraceDef          *OpDefNode
 	AliasSpec         SemanticNode
-	KnownStates       *InsMap[uint64, *TLCStateMut]
 	Definitions       map[*SymbolNode]any
 	DefnsByName       map[*UniqueString]any
 	CallStack         *CallStack
@@ -191,7 +190,6 @@ func NewTool() *Tool {
 		Mode:        ModeMC,
 		RootName:    "Spec",
 		ModelConfig: newModelConfig("", false),
-		KnownStates: NewInsMap[uint64, *TLCStateMut](),
 		Definitions: make(map[*SymbolNode]any),
 		DefnsByName: make(map[*UniqueString]any),
 	}
@@ -485,10 +483,6 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 	if len(prev) != 0 {
 		switch predecessor := prev[0].(type) {
 		case *TLCStateInfo:
-			if fallback := t.getKnownState(fp, predecessor); fallback != nil {
-				fallback.StateNumber = predecessor.StateNumber + 1
-				return fallback, nil
-			}
 			info, err := t.GetStateAfter(fp, predecessor.State)
 			if err == nil && info != nil {
 				info.StateNumber = predecessor.StateNumber + 1
@@ -500,9 +494,6 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 			}
 			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
 		case *TLCStateMut:
-			if fallback := t.getKnownState(fp, predecessor); fallback != nil {
-				return fallback, nil
-			}
 			info, err := t.GetStateAfter(fp, predecessor)
 			if err == nil && info != nil {
 				return info, nil
@@ -516,9 +507,6 @@ func (t *Tool) GetState(fp uint64, prev ...any) (*TLCStateInfo, error) {
 	info, err := t.GetInitState(fp)
 	if err == nil && info != nil {
 		return info, nil
-	}
-	if fallback := t.getKnownState(fp); fallback != nil {
-		return fallback, nil
 	}
 	if err != nil {
 		return nil, err
@@ -594,41 +582,6 @@ func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCSta
 		}
 	}
 	return nil, nil
-}
-
-func (t *Tool) getKnownState(fp uint64, prev ...any) *TLCStateInfo {
-	if t == nil || t.KnownStates == nil {
-		return nil
-	}
-	state, ok := t.KnownStates.Get2(fp)
-	if !ok || state == nil {
-		return nil
-	}
-	info := NewTLCStateInfo(state)
-	info.FP = &fp
-	if len(prev) > 0 {
-		switch predecessor := prev[0].(type) {
-		case *TLCStateInfo:
-			if predecessor != nil {
-				state.SetPredecessor(predecessor.State)
-			}
-		case *TLCStateMut:
-			state.SetPredecessor(predecessor)
-		}
-	}
-	return info
-}
-
-func (t *Tool) RememberState(state *TLCStateMut) uint64 {
-	if state == nil {
-		return 0
-	}
-	if t.KnownStates == nil {
-		t.KnownStates = NewInsMap[uint64, *TLCStateMut]()
-	}
-	fp := state.FingerPrint()
-	t.KnownStates.Set(fp, state)
-	return fp
 }
 
 func (t *Tool) SetSymmetryPermutations(perms []*MVPerm) *Tool {

@@ -1651,9 +1651,6 @@ func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, cur
 		if action != nil && CoverageActionEnabled() {
 			action.CM.IncSecondary()
 		}
-		if mc.Tool != nil {
-			mc.Tool.RememberState(succState)
-		}
 		if worker != nil {
 			if err := worker.WriteNextState(curState, fp, succState, action); err != nil {
 				return seen, err
@@ -2042,9 +2039,6 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		fp := curState.FingerPrint()
 		seen = f.mc.FPSet.Put(fp)
 		if !seen {
-			if f.tool != nil {
-				f.tool.RememberState(curState)
-			}
 			if err := f.mc.AllStateWriter.WriteInitState(curState); err != nil {
 				return f.handleInitError(curState, err)
 			}

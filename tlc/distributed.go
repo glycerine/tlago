@@ -866,7 +866,6 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error
 			seen = f.server.FPSetManager.Put(fp)
 		}
 		if !seen {
-			f.tool.RememberState(curState)
 			if f.server.Trace != nil {
 				if _, err := f.server.Trace.WriteState(nil, fp, curState, curState.GetAction()); err != nil {
 					f.errState = curState
