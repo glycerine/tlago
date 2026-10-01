@@ -263,12 +263,16 @@ func coverageNodeLocation(node *CostModelNode) string {
 }
 
 type coverageCreator struct {
-	tool      *Tool
-	primed    map[semanticNodeKey]bool
-	stack     []CostModel
-	root      CostModel
-	visiting  map[semanticNodeKey]bool
-	recursive map[*OpDefNode]CostModel
+	tool         *Tool
+	primed       map[semanticNodeKey]bool
+	stack        []CostModel
+	root         CostModel
+	ctx          *Context
+	visiting     map[semanticNodeKey]bool
+	opDefNodes   map[*OpDefNode]bool
+	substs       map[semanticNodeKey]Subst
+	node2Wrapper map[semanticNodeKey][]CostModel
+	letIns       map[semanticNodeKey]SemanticNode
 }
 
 func CreateCoverageCostModels(tool *Tool) {
@@ -441,10 +445,13 @@ func reportConstraintCoverage(nodes []SemanticNode) {
 
 func newCoverageCreator(tool *Tool) *coverageCreator {
 	creator := &coverageCreator{
-		tool:      tool,
-		primed:    make(map[semanticNodeKey]bool),
-		visiting:  make(map[semanticNodeKey]bool),
-		recursive: make(map[*OpDefNode]CostModel),
+		tool:         tool,
+		primed:       make(map[semanticNodeKey]bool),
+		visiting:     make(map[semanticNodeKey]bool),
+		opDefNodes:   make(map[*OpDefNode]bool),
+		substs:       make(map[semanticNodeKey]Subst),
+		node2Wrapper: make(map[semanticNodeKey][]CostModel),
+		letIns:       make(map[semanticNodeKey]SemanticNode),
 	}
 	for enum := tool.GetPrimedLocs().Keys(); ; {
 		node := enum.NextElement()
@@ -458,8 +465,12 @@ func newCoverageCreator(tool *Tool) *coverageCreator {
 
 func (c *coverageCreator) createForAction(action *Action, relation CoverageRelation) CostModel {
 	c.stack = c.stack[:0]
+	c.ctx = EmptyContext
 	c.visiting = make(map[semanticNodeKey]bool)
-	c.recursive = make(map[*OpDefNode]CostModel)
+	c.opDefNodes = make(map[*OpDefNode]bool)
+	c.substs = make(map[semanticNodeKey]Subst)
+	c.node2Wrapper = make(map[semanticNodeKey][]CostModel)
+	c.letIns = make(map[semanticNodeKey]SemanticNode)
 	c.root = newActionCostModel(action, relation)
 	c.stack = append(c.stack, c.root)
 	c.walk(action.Pred)
@@ -502,31 +513,38 @@ func (c *coverageCreator) walk(node SemanticNode) {
 		c.postOpAppl(n)
 	case *LetInNode:
 		for _, let := range n.Lets {
+			if let != nil && let.Body != nil {
+				c.letIns[newSemanticNodeKey(let.Body)] = n.Body
+			}
+		}
+		for _, let := range n.Lets {
 			c.walkOpDef(let)
 		}
 		c.walk(n.Body)
 	case *SubstInNode:
 		for _, subst := range n.Substs {
-			c.walk(subst.Expr)
-			if c.root.node != nil {
-				substCM := c.root.Get(subst.Expr)
-				if substCM.node != c.root.node {
-					c.root.PutSubst(subst, substCM)
-				}
+			if subst.Expr != nil {
+				c.substs[newSemanticNodeKey(subst.Expr)] = subst
 			}
+		}
+		for _, subst := range n.Substs {
+			c.walk(subst.Expr)
 		}
 		c.walk(n.Body)
 	case *APSubstInNode:
 		for _, subst := range n.Substs {
-			c.walk(subst.Expr)
-			if c.root.node != nil {
-				substCM := c.root.Get(subst.Expr)
-				if substCM.node != c.root.node {
-					c.root.PutSubst(subst, substCM)
-				}
+			if subst.Expr != nil {
+				c.substs[newSemanticNodeKey(subst.Expr)] = subst
 			}
 		}
+		for _, subst := range n.Substs {
+			c.walk(subst.Expr)
+		}
 		c.walk(n.Body)
+	case *OpDefNode:
+		c.preOpDef(n)
+		c.walk(n.Body)
+		c.postOpDef(n)
 	case *LabelNode:
 		c.walk(n.Body)
 	case *ThmOrAssumpDefNode:
@@ -547,13 +565,12 @@ func (c *coverageCreator) walkOpDef(def *OpDefNode) {
 	if def == nil {
 		return
 	}
-	if prior, ok := c.recursive[def]; ok {
-		c.peek().SetRecursive(prior)
+	if def.GetInRecursive() && c.opDefNodes[def] {
 		return
 	}
-	c.recursive[def] = c.peek()
+	c.preOpDef(def)
 	c.walk(def.Body)
-	delete(c.recursive, def)
+	c.postOpDef(def)
 }
 
 func (c *coverageCreator) preOpAppl(node *OpApplNode) {
@@ -568,8 +585,38 @@ func (c *coverageCreator) preOpAppl(node *OpApplNode) {
 	if node.Operator != nil && node.Operator.Name != nil && GetOpCode(node.Operator.Name) == OpcodeUnchanged {
 		cm.MarkUnchanged()
 	}
+	c.attachLetAlias(node, cm)
+	if def, ok := c.lookupToolOpDef(node); ok && !sameSymbol(def.Symbol, node.Operator) {
+		cm.AddChildModel(c.createSubstitutionChild(def.Body))
+	}
+	if def, ok := c.lookupToolOpDef(node); ok && def.GetInRecursive() {
+		if prior := c.findRecursiveWrapper(def); prior.node != nil {
+			cm.SetRecursive(prior)
+		}
+	}
+	if def, ok := c.lookupToolOpDef(node); ok && sameSymbol(def.Symbol, node.Operator) && c.argsContainOpArgNodes(node) && !c.isStandardOpDef(def) {
+		c.ctx = c.coverageOpContext(def, node.Args, c.ctx)
+	}
+	if def, ok := c.lookupContextOpDef(node); ok {
+		if body, ok := def.Body.(*OpApplNode); ok {
+			key := newSemanticNodeKey(body)
+			if !costModelSliceContains(c.node2Wrapper[key], cm) {
+				c.node2Wrapper[key] = append(c.node2Wrapper[key], cm)
+			}
+		}
+	}
+	if wrappers := c.node2Wrapper[newSemanticNodeKey(node)]; len(wrappers) > 0 {
+		for _, wrapper := range wrappers {
+			if wrapper.node != nil && wrapper.node != cm.node {
+				wrapper.AddChildModel(cm)
+			}
+		}
+	}
+	if subst, ok := c.substs[newSemanticNodeKey(node)]; ok {
+		c.root.PutSubst(subst, cm)
+	}
 	c.stack = append(c.stack, cm)
-	if def, ok := c.lookupOpDef(node); ok {
+	if def, ok := c.lookupToolOpDef(node); ok && sameSymbol(def.Symbol, node.Operator) {
 		c.walkOpDef(def)
 	}
 }
@@ -583,13 +630,137 @@ func (c *coverageCreator) postOpAppl(node *OpApplNode) {
 	}
 }
 
-func (c *coverageCreator) lookupOpDef(node *OpApplNode) (*OpDefNode, bool) {
+func (c *coverageCreator) preOpDef(def *OpDefNode) {
+	if def != nil {
+		c.opDefNodes[def] = true
+	}
+}
+
+func (c *coverageCreator) postOpDef(def *OpDefNode) {
+	if def != nil {
+		delete(c.opDefNodes, def)
+	}
+}
+
+func (c *coverageCreator) attachLetAlias(node *OpApplNode, cm CostModel) {
+	in, ok := c.letIns[newSemanticNodeKey(node)]
+	if !ok {
+		return
+	}
+	for _, candidate := range c.stack {
+		if candidate.node != nil && sameSemanticNode(candidate.node.Expr, in) {
+			candidate.AddLet(node, cm)
+		}
+	}
+}
+
+func (c *coverageCreator) createSubstitutionChild(body SemanticNode) CostModel {
+	bodyAppl, ok := body.(*OpApplNode)
+	if !ok || bodyAppl == nil {
+		return DoNotRecordCostModel
+	}
+	sub := &coverageCreator{
+		tool:         c.tool,
+		primed:       make(map[semanticNodeKey]bool),
+		root:         c.root,
+		ctx:          EmptyContext,
+		visiting:     make(map[semanticNodeKey]bool),
+		opDefNodes:   make(map[*OpDefNode]bool),
+		substs:       make(map[semanticNodeKey]Subst),
+		node2Wrapper: make(map[semanticNodeKey][]CostModel),
+		letIns:       make(map[semanticNodeKey]SemanticNode),
+	}
+	sentinel := NewCostModel(nil)
+	sub.stack = append(sub.stack, sentinel)
+	sub.walk(bodyAppl)
+	child := sentinel.GetChild()
+	if child.node == sentinel.node {
+		return DoNotRecordCostModel
+	}
+	return child
+}
+
+func (c *coverageCreator) findRecursiveWrapper(def *OpDefNode) CostModel {
+	for i := len(c.stack) - 1; i >= 0; i-- {
+		candidate := c.stack[i]
+		if candidate.node == nil {
+			continue
+		}
+		appl, ok := candidate.node.Expr.(*OpApplNode)
+		if !ok || appl == nil {
+			continue
+		}
+		if sameSymbol(appl.Operator, def.Symbol) {
+			return candidate
+		}
+		if lookedUp, ok := c.lookupToolOpDef(appl); ok && lookedUp == def {
+			return candidate
+		}
+	}
+	return DoNotRecordCostModel
+}
+
+func (c *coverageCreator) argsContainOpArgNodes(node *OpApplNode) bool {
+	if node == nil {
+		return false
+	}
+	for _, arg := range node.Args {
+		if _, ok := arg.(*OpArgNode); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *coverageCreator) coverageOpContext(def *OpDefNode, args []SemanticNode, base *Context) *Context {
+	if def == nil {
+		return base
+	}
+	if base == nil {
+		base = EmptyContext
+	}
+	c1 := base
+	limit := len(def.Params)
+	if len(args) < limit {
+		limit = len(args)
+	}
+	for i := 0; i < limit; i++ {
+		c1 = c1.Cons(def.Params[i], c.coverageVal(args[i], base))
+	}
+	return c1
+}
+
+func (c *coverageCreator) coverageVal(expr SemanticNode, con *Context) any {
+	if opArg, ok := expr.(*OpArgNode); ok {
+		if c != nil && c.tool != nil {
+			if val := c.tool.Lookup(opArg.Op, con, EmptyState, false); val != nil {
+				return val
+			}
+		}
+		return opArg.Op
+	}
+	return NewLazyValue(expr, con, false, DoNotRecordCostModel)
+}
+
+func (c *coverageCreator) lookupToolOpDef(node *OpApplNode) (*OpDefNode, bool) {
 	if c == nil || c.tool == nil || node == nil || node.Operator == nil {
 		return nil, false
 	}
 	val := c.tool.Lookup(node.Operator, EmptyContext, EmptyState, false)
 	def, ok := val.(*OpDefNode)
 	return def, ok && def != nil
+}
+
+func (c *coverageCreator) lookupContextOpDef(node *OpApplNode) (*OpDefNode, bool) {
+	if c == nil || node == nil || node.Operator == nil || c.ctx == nil {
+		return nil, false
+	}
+	def, ok := c.ctx.Lookup(node.Operator).(*OpDefNode)
+	return def, ok && def != nil
+}
+
+func (c *coverageCreator) isStandardOpDef(def *OpDefNode) bool {
+	return def == nil || def.Name == nil || GetOpCode(def.Name) != 0
 }
 
 func (c *coverageCreator) isStandardModuleNode(node *OpApplNode) bool {
@@ -610,4 +781,23 @@ func setSemanticToolObject(node SemanticNode, value any) {
 	if setter, ok := node.(interface{ SetToolObject(any) }); ok {
 		setter.SetToolObject(value)
 	}
+}
+
+func sameSymbol(left *SymbolNode, right *SymbolNode) bool {
+	if left == right {
+		return true
+	}
+	if left == nil || right == nil || left.Name == nil || right.Name == nil {
+		return false
+	}
+	return left.Name == right.Name || left.Name.String() == right.Name.String()
+}
+
+func costModelSliceContains(models []CostModel, target CostModel) bool {
+	for _, model := range models {
+		if model.node == target.node {
+			return true
+		}
+	}
+	return false
 }

@@ -159,6 +159,22 @@ func (m CostModel) AddChild(expr SemanticNode) CostModel {
 	return CostModel{node: child}
 }
 
+func (m CostModel) AddChildModel(child CostModel) CostModel {
+	if m.node == nil || child.node == nil {
+		return m
+	}
+	if m.node.Children == nil {
+		m.node.Children = NewInsMap[semanticNodeKey, *CostModelNode]()
+	}
+	key := newSemanticNodeKey(child.node.Expr)
+	if existing := m.node.Children.Get(key); existing != nil {
+		return CostModel{node: existing}
+	}
+	child.node.Parent = m.node
+	m.node.Children.Set(key, child.node)
+	return child
+}
+
 func (m CostModel) AddLet(expr SemanticNode, child CostModel) CostModel {
 	if m.node == nil || child.node == nil {
 		return m

@@ -6,10 +6,11 @@ import (
 
 type OpDefNode struct {
 	SemanticNodeBase
-	Symbol *SymbolNode
-	Name   *UniqueString
-	Params []*SymbolNode
-	Body   SemanticNode
+	Symbol      *SymbolNode
+	Name        *UniqueString
+	Params      []*SymbolNode
+	Body        SemanticNode
+	InRecursive bool
 }
 
 func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNode {
@@ -41,6 +42,16 @@ func (n *OpDefNode) Arity() int {
 		return 0
 	}
 	return len(n.Params)
+}
+
+func (n *OpDefNode) SetInRecursive(value bool) {
+	if n != nil {
+		n.InRecursive = value
+	}
+}
+
+func (n *OpDefNode) GetInRecursive() bool {
+	return n != nil && n.InRecursive
 }
 
 func (n *OpDefNode) String() string {

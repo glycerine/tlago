@@ -2415,6 +2415,31 @@ Coverage is represented by:
 - coverage hash tables.
 - reporting through `CostModelCreator` and output messages.
 
+`CostModelCreator` does not merely walk the syntax tree and add children. Java
+reconstructs one call tree per action because the SANY semantic graph shares
+operator definitions globally, while coverage must be reported per action. Its
+per-action state is load-bearing:
+
+- a stack of current `CostModelNode`s, rooted at the current `ActionWrapper`;
+- a substitution map from substituted expression nodes to `Subst` identity;
+- a map from higher-order operator body nodes to wrappers that should later
+  receive that body as a child;
+- an active `OpDefNode` set used with `CoverageHashTable` to stop recursive
+  operator expansion only when a recursive definition is already on the path;
+- a LET-IN map from each LET body to the IN body wrapper that should also see
+  the LET part through `OpApplNodeWrapper.addLets`;
+- a global context approximation used only when an operator application has
+  operator arguments, so `Op(s)` can later be connected to the passed
+  operator/LAMBDA body.
+
+The Go port keeps the same side-table shape in `coverageCreator`. It uses
+`InsMap` for child order and ordinary Go maps only for key lookup where no
+iteration order is observable. Because Go's semantic nodes store an operator
+symbol rather than Java's `SymbolNode` subclass hierarchy, the coverage creator
+resolves `OpDefNode`s through `Tool.Lookup` and `Context.Lookup`; the parser
+front-end must preserve recursive flags and operator-argument nodes for full
+Java-equivalent coverage trees.
+
 Coverage counts:
 
 - expression/action hit counts,
