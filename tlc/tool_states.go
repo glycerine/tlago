@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
@@ -140,6 +141,16 @@ func actionItemListAction(acts *ActionItemList) *Action {
 func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) (err error) {
 	done := t.callStackEnter(init)
 	defer func() { done(err) }()
+	if debugToolActive(t) {
+		if t.DebugEvalMode == DebugEvalDebugger {
+			return t.NoDebug().GetInitStatesAppl(init, acts, c, ps, states, cm)
+		}
+		old := t.DebugEvalMode
+		t.DebugEvalMode = DebugEvalState
+		defer func() { t.DebugEvalMode = old }()
+		t.Debugger.PushStateFrame(t, init, c, ps)
+		defer t.Debugger.PopFrame(t, init, c)
+	}
 	if CoverageEnabled() {
 		cm = cm.Get(init)
 	}
@@ -434,6 +445,9 @@ func (t *Tool) GetNextStatesImpl(action *Action, state *TLCStateMut) (*StateVec,
 func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(pred)
 	defer func() { done(err) }()
+	if debugToolActive(t) && t.DebugEvalMode == DebugEvalDebugger {
+		return t.NoDebug().GetNextStatesForPredicate(action, pred, acts, c, s0, s1, nss, cm)
+	}
 	if c == nil {
 		c = EmptyContext
 	}
@@ -581,6 +595,26 @@ func (t *Tool) getNextStatesAllAssigned(action *Action, acts *ActionItemList, s0
 func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(pred)
 	defer func() { done(err) }()
+	if debugToolActive(t) {
+		if t.DebugEvalMode == DebugEvalDebugger {
+			return t.NoDebug().GetNextStatesAppl(action, pred, acts, c, s0, s1, nss, cm)
+		}
+		old := t.DebugEvalMode
+		t.DebugEvalMode = DebugEvalAction
+		defer func() { t.DebugEvalMode = old }()
+		t.Debugger.PushActionFrame(t, pred, c, s0, action, s1)
+		defer func() {
+			if err != nil && !debugErrorKnown(err) {
+				if errors.Is(err, errInvariantViolated) {
+					t.Debugger.MarkInvariantViolatedFrame(t, pred, c, s0, action, s1, err)
+				} else {
+					t.Debugger.PushActionExceptionFrame(t, pred, c, s0, action, s1, err)
+				}
+				t.Debugger.PopExceptionFrame(t, pred, c, nil, err)
+			}
+			t.Debugger.PopFrame(t, pred, c)
+		}()
+	}
 	args := pred.Args
 	opNode := pred.Operator
 	opcode := GetOpCode(opNode.Name)
@@ -1066,6 +1100,21 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(expr)
 	defer func() { done(err) }()
+	if debugToolActive(t) {
+		if t.DebugEvalMode == DebugEvalDebugger {
+			return t.NoDebug().ProcessUnchanged(action, expr, acts, c, s0, s1, nss, cm)
+		}
+		defer func() {
+			if err != nil && !debugErrorKnown(err) {
+				if errors.Is(err, errInvariantViolated) {
+					t.Debugger.MarkInvariantViolatedFrame(t, expr, c, s0, action, s1, err)
+				} else {
+					t.Debugger.PushActionExceptionFrame(t, expr, c, s0, action, s1, err)
+				}
+				t.Debugger.PopExceptionFrame(t, expr, c, nil, err)
+			}
+		}()
+	}
 	if CoverageEnabled() {
 		cm = cm.Get(expr)
 	}

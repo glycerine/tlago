@@ -237,6 +237,7 @@ func debugToolGetNextStatesForAction(t *Tool, functor *NextStateFunctor, state *
 	if t.DebugEvalMode == DebugEvalDebugger {
 		return t.NoDebug().GetNextStatesForAction(functor, state, action)
 	}
+	functor = debugWrapNextStateFunctor(t, functor)
 	defer func() {
 		if t.GetMode() == ModeDebugger && state != nil {
 			state.UnsetPredecessor()
@@ -326,7 +327,29 @@ func debugWrapStateFunctor(tool *Tool, functor *StateFunctor) *StateFunctor {
 		defer tool.Debugger.PopFrame(tool, nil, EmptyContext)
 		return functor.AddElement(state)
 	}
+	wrapped.AddUnsatisfiedStateFunc = func(state *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
+		tool.Debugger.PushUnsatisfiedFrame(tool, pred, con, state)
+		defer tool.Debugger.PopFrame(tool, pred, con)
+		return functor.AddUnsatisfiedState(state, pred, con)
+	}
 	return &wrapped
+}
+
+func debugWrapNextStateFunctor(tool *Tool, functor *NextStateFunctor) *NextStateFunctor {
+	if tool == nil || tool.Debugger == nil || functor == nil {
+		return functor
+	}
+	wrapped := *functor
+	wrapped.AddUnsatisfiedNextStateFn = func(curState *TLCStateMut, action *Action, succState *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {
+		tool.Debugger.PushUnsatisfiedActionFrame(tool, pred, con, curState, action, succState)
+		defer tool.Debugger.PopFrame(tool, pred, con)
+		return functor.AddUnsatisfiedNextState(curState, action, succState, pred, con)
+	}
+	return &wrapped
+}
+
+func debugToolActive(t *Tool) bool {
+	return t != nil && t.Debugger != nil && t.DebugFastTool != nil
 }
 
 func (t *Tool) debugToolIsInitializing() bool {
