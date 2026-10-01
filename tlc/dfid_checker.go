@@ -230,11 +230,17 @@ func (mc *DFIDModelChecker) dfidWorkerAt(index int) *DFIDWorker {
 }
 
 func (mc *DFIDModelChecker) dfidWorkerResult(worker *DFIDWorker) (int, error) {
-	if worker != nil && (worker.Result != NoError || worker.Err != nil) {
+	if worker != nil && worker.Result != NoError {
 		if mc != nil && mc.KeepCallStack {
 			return NoError, nil
 		}
-		return worker.Result, worker.Err
+		return worker.Result, nil
+	}
+	if worker != nil && worker.Err != nil {
+		if mc != nil && mc.KeepCallStack {
+			return NoError, nil
+		}
+		return ECGeneral, worker.Err
 	}
 	if mc != nil && !mc.KeepCallStack && mc.ErrorCode != NoError {
 		return mc.ErrorCode, nil
