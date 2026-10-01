@@ -18,10 +18,10 @@ func NewSimpleCache(size ...int) *SimpleCache {
 	if len(size) > 0 {
 		bits = size[0]
 	}
-	if bits < 0 {
-		bits = 0
+	capacity := javaSimpleCacheCapacity(bits)
+	if capacity < 0 {
+		panic("java.lang.NegativeArraySizeException")
 	}
-	capacity := 1 << bits
 	out := &SimpleCache{
 		mask:  uint64(capacity - 1),
 		cache: make([]uint64, capacity),
@@ -29,6 +29,11 @@ func NewSimpleCache(size ...int) *SimpleCache {
 	out.cacheHit.Store(1)
 	out.cacheMiss.Store(1)
 	return out
+}
+
+func javaSimpleCacheCapacity(size int) int {
+	shift := uint(size) & 31
+	return int(int32(1) << shift)
 }
 
 func (c *SimpleCache) Hit(fp uint64) bool {
