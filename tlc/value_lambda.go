@@ -267,7 +267,6 @@ func NewFcnLambdaValueFrom(other *FcnLambdaValue, tool *Tool) *FcnLambdaValue {
 		State:   other.State,
 		PState:  other.PState,
 		Control: other.Control,
-		CM:      other.CM,
 		FcnRcd:  other.FcnRcd,
 	}
 }
