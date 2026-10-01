@@ -2452,6 +2452,9 @@ Go keeps this as concrete structs in the central `tlc` package:
   `InsMap` so generated module order is deterministic.
 - `TraceExplorationSpec` captures the naming/postcondition shell and can now
   generate the monolithic TE `.tla` file from an `MCError`.
+  Its variable list comes from the global TLC state variables, matching Java's
+  `TLCState.Empty.getVarsAsStrings()` call, rather than being reconstructed
+  from the recorded `MCError`.
 - `ErrorTraceMessageRecorder` mirrors Java's
   `ErrorTraceMessagePrinterRecorder`: it observes state-print/back-to-state
   message codes and builds an `MCError` for TE generation. The `TLC` runner

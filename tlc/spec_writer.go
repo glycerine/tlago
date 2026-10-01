@@ -1834,7 +1834,7 @@ func (s *TraceExplorationSpec) WriteSpecTE(tool *Tool, errTrace *MCError, out io
 	if tool != nil && tool.GetModelConfig() != nil {
 		modelConfig = tool.GetModelConfig()
 	}
-	variables := traceExplorationVariables(errTrace)
+	variables := traceExplorationVariables()
 	writer := NewSpecTraceExpressionWriter()
 
 	constants := modelConfig.GetConstantsAsList()
@@ -1959,33 +1959,15 @@ func IsTESpecFile(tlaFilePath string) bool {
 	return ok
 }
 
-func traceExplorationVariables(errTrace *MCError) []string {
+func traceExplorationVariables() []string {
 	vars := StateVariables()
-	if len(vars) != 0 {
-		out := make([]string, 0, len(vars))
-		for _, variable := range vars {
-			if variable.Name != nil {
-				out = append(out, variable.Name.String())
-			}
+	out := make([]string, 0, len(vars))
+	for _, variable := range vars {
+		if variable.Name != nil {
+			out = append(out, variable.Name.String())
 		}
-		return out
 	}
-	if errTrace == nil {
-		return nil
-	}
-	for _, state := range errTrace.States {
-		if state == nil || state.BackToState || state.Stuttering {
-			continue
-		}
-		out := make([]string, 0, len(state.Variables))
-		for _, variable := range state.Variables {
-			if variable != nil {
-				out = append(out, variable.Name)
-			}
-		}
-		return out
-	}
-	return nil
+	return out
 }
 
 func traceExploreSortedUnique(names ...string) []string {
