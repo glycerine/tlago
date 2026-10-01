@@ -573,7 +573,7 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 	if err := tool.GetInitStates(NewStateFunctor(vec.AddElement)); err != nil {
 		return ECGeneral, err
 	}
-	mc.StatesGenerated += int64(vec.Size())
+	mc.StatesGenerated = int64(vec.Size())
 	mc.InitStates = make([]*TLCStateMut, 0, vec.Size())
 	mc.InitFPs = make([]uint64, 0, vec.Size())
 	for i := 0; i < vec.Size(); i++ {
@@ -647,12 +647,6 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 				return ECTLCPropertyViolatedInitial, nil
 			}
 		}
-	}
-	if vec.Size() == 0 {
-		return ECTLCNoStatesSatisfyingInit, nil
-	}
-	if len(mc.InitStates) == 0 {
-		return ECTLCNoStatesSatisfyingInitAndConstraint, nil
 	}
 	return NoError, nil
 }

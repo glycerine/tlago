@@ -76,6 +76,7 @@
 - Already audited recently; do not reject liveness in DFID mode. Java DFID performs the tautology check, periodic liveness checks, and a final `liveCheck.finalCheck(tool)` after depth search terminates; Go now follows that instead of returning an unsupported-mode error.
 - Already audited recently; do not return from a failed DFID depth run without printing the DFID summary. Java's depth-search loop is inside a `finally` that prints summary on `runTLC` errors.
 - Already audited recently; do not make DFID init continuation friendlier than Java. Initial invariants honor continuation mode, but implied-init violations always return `TLC_PROPERTY_VIOLATED_INITIAL`.
+- Already audited recently; do not import BFS no-init errors into DFID. Java DFID sets the generated-init count to `states.size()`, trims accepted init arrays, and returns `NO_ERROR` even when no initial state survives model constraints.
 - Already audited recently; do not duplicate BFS-style invariant reporting in distributed TLC. Java routes distributed init and successor property checks through `TLCApp.checkState`, while deadlock and incomplete-successor checks happen in distributed next-state generation before fingerprinting.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
@@ -131,6 +132,7 @@
   - Periodic-work liveness/periodic-condition failures now leave the state queue suspended for outer termination, matching Java's error-return path.
   - DFID clean termination now reports success instead of `GENERAL`, and DFID next-state replay can run through `CallStackTool` like Java's `DFIDModelChecker`.
   - DFID init now prints Java-shaped invariant/implied-init diagnostics and replays init exceptions with `CallStackTool`.
+  - DFID init now mirrors Java's generated-count and empty-init behavior instead of returning the local model checker's no-state errors.
   - DFID workers now push the current worker id during `Run`, matching Java `IdThread` behavior for `TLCGet("worker")` and worker-local values.
   - DFID checkpoint recovery now rebinds `Metadir` to `FromCheckpoint`, matching Java's resumed-run metadir setup.
   - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
