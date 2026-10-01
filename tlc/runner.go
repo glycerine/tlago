@@ -69,6 +69,7 @@ type Options struct {
 	DebugPort                 int
 	DebugSuspend              bool
 	DebugHalt                 bool
+	UserOutput                *os.File
 	RuntimeParams             RuntimeParameters
 }
 
@@ -165,8 +166,12 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		t = NewTLC(Options{})
 	}
 	if t.Tool == nil {
+		if t.UserOutput != nil {
+			_ = t.UserOutput.Close()
+		}
 		return &Result{ExitStatus: ExitStatusError, ErrorCode: ECGeneral}, newTLCError(ECGeneral, "TLC runner has no tool")
 	}
+	closeUserOutput := t.installUserOutput()
 
 	t.prepareRandomSeed()
 	t.applyGlobals()
@@ -208,6 +213,12 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	if err != nil && result.ErrorCode == NoError {
 		result.ErrorCode = ECGeneral
 	}
+	if closeErr := closeUserOutput(); closeErr != nil && err == nil {
+		err = closeErr
+		if result.ErrorCode == NoError {
+			result.ErrorCode = ECGeneral
+		}
+	}
 	if traceRecorder != nil && t.FromCheckpoint == "" {
 		if mcError, ok := traceRecorder.MCErrorTrace(); ok {
 			outputDir := t.TraceSpecOutputDir
@@ -232,6 +243,29 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		return result, err
 	}
 	return result, err
+}
+
+func (t *TLC) installUserOutput() func() error {
+	if t == nil || t.UserOutput == nil {
+		return func() error { return nil }
+	}
+	file := t.UserOutput
+	previous := TLCOutput
+	previousUserFile := TLCOutputToUserFile
+	TLCOutput = file
+	TLCOutputToUserFile = true
+	closed := false
+	return func() error {
+		if closed {
+			return nil
+		}
+		closed = true
+		if TLCOutput == file {
+			TLCOutput = previous
+		}
+		TLCOutputToUserFile = previousUserFile
+		return file.Close()
+	}
 }
 
 func panicValueAsError(value any) error {

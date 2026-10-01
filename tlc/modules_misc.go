@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	StringSetValue Value     = NewUserValue(stringsObj{})
-	TLCOutput      io.Writer = os.Stdout
+	StringSetValue      Value     = NewUserValue(stringsObj{})
+	TLCOutput           io.Writer = os.Stdout
+	TLCOutputToUserFile bool
 )
 
 func STRING() Value {
@@ -40,14 +41,24 @@ func TLCPrint(v1, v2 Value) Value {
 	v2c := v2.DeepCopy()
 	v1c.DeepNormalize()
 	v2c.DeepNormalize()
-	fmt.Fprintf(TLCOutput, "%s  %s\n", ValuesPPR(v1c), ValuesPPR(v2c))
+	if _, err := fmt.Fprintf(TLCOutput, "%s  %s\n", ValuesPPR(v1c), ValuesPPR(v2c)); err != nil {
+		PrintError(ECGeneral, javaGeneralErrorMessage("", err))
+	}
 	return v2
 }
 
 func TLCPrintT(v Value) Value {
 	vc := v.DeepCopy()
 	vc.DeepNormalize()
-	fmt.Fprintln(TLCOutput, ValuesPPR(vc))
+	var err error
+	if TLCOutputToUserFile {
+		_, err = fmt.Fprint(TLCOutput, ValuesPPR(vc))
+	} else {
+		_, err = fmt.Fprintln(TLCOutput, ValuesPPR(vc))
+	}
+	if err != nil {
+		PrintError(ECGeneral, javaGeneralErrorMessage("", err))
+	}
 	return BoolTrue
 }
 

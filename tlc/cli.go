@@ -61,6 +61,12 @@ func (e *TLCCommandLineError) Error() string {
 
 func ParseTLCOptions(args []string) (Options, error) {
 	opts := defaultTLCCommandLineOptions()
+	parseOK := false
+	defer func() {
+		if !parseOK && opts.UserOutput != nil {
+			_ = opts.UserOutput.Close()
+		}
+	}()
 	dump := tlcDumpOption{}
 	generateTESpec := true
 	generateTESpecBinaryTrace := true
@@ -344,7 +350,15 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if index+1 >= len(args) {
 				return opts, tlcCommandLineError("Error: need to specify the full qualified file.")
 			}
+			file, err := os.Create(args[index+1])
+			if err != nil {
+				return opts, tlcCommandLineError("Error: Failed to create user output log file.")
+			}
+			if opts.UserOutput != nil {
+				_ = opts.UserOutput.Close()
+			}
 			opts.RuntimeParams.UserFile = args[index+1]
+			opts.UserOutput = file
 			index += 2
 		case arg == "-workers":
 			if index+1 >= len(args) {
@@ -466,6 +480,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 	opts.GenerateTraceSpecBinary = generateTESpecBinaryTrace
 	opts.GenerateTraceSpecMonolith = teSpecMonolith
 	opts.TraceSpecOutputDir = teSpecOut
+	parseOK = true
 	return opts, nil
 }
 
