@@ -552,6 +552,8 @@ func formatMessage(code int, params []string) string {
 		return "End of statistics."
 	case ECTLCCoverageEndOverhead:
 		return "End of statistics (please note that for performance reasons large models\nare best checked with coverage and cost statistics disabled)."
+	case ECGeneral:
+		return strings.Join(params, "")
 	case ECTLCFPCompleted:
 		if len(params) >= 1 {
 			return fmt.Sprintf("%s, work completed. Thank you!", params[0])
@@ -621,14 +623,60 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 4 {
 			return fmt.Sprintf("The set%s %s %s been defined to be a symmetry set but contain%s less than two elements.", params[0], params[1], params[2], params[3])
 		}
+	case ECTLCInitialState:
+		if len(params) >= 2 {
+			return fmt.Sprintf("%s\nWhile working on the initial state:\n%s", params[0], params[1])
+		}
+	case ECTLCStateNotCompletelySpecifiedInitial:
+		if len(params) >= 1 {
+			return fmt.Sprintf("State is not completely specified by the initial predicate:\n%s", params[0])
+		}
+	case ECTLCInvariantViolatedInitial:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Invariant %s is violated by the initial state:\n%s", params[0], params[1])
+		}
+	case ECTLCPropertyViolatedInitial:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Property %s is violated by the initial state:\n%s", params[0], params[1])
+		}
+	case ECTLCStateNotCompletelySpecifiedNext:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Successor state is not completely specified by action %s of the next-state relation. The following variable%s not defined: %s.\n", params[0], params[1], params[2])
+		}
+		if len(params) >= 2 {
+			return fmt.Sprintf("Successor state is not completely specified by the next-state action. The following variable%s not defined: %s.\n", params[0], params[1])
+		}
+		return "Successor state is not completely specified by the next-state action.\n"
 	case ECTLCInvariantViolatedBehavior:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Invariant %s is violated.", params[0])
+		}
+	case ECTLCInvariantEvaluationFailed:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Evaluating invariant %s failed.\n%s", params[0], params[1])
+		}
+		if len(params) >= 1 {
+			return fmt.Sprintf("Evaluating invariant %s failed.", params[0])
 		}
 	case ECTLCActionPropertyViolatedBehavior:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Action property %s is violated.", params[0])
 		}
+	case ECTLCActionPropertyEvaluationFailed:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Evaluating action property %s failed.\n%s", params[0], params[1])
+		}
+		if len(params) >= 1 {
+			return fmt.Sprintf("Evaluating action property %s failed.", params[0])
+		}
+	case ECTLCDeadlockReached:
+		return "Deadlock reached."
+	case ECTLCStatesAndNoNextAction:
+		return "No next state actions defined to generate successor states from."
+	case ECTLCNoStatesSatisfyingInit:
+		return "There is no state satisfying the initial state predicate."
+	case ECTLCNoStatesSatisfyingInitAndConstraint:
+		return "There is no state satisfying the initial state predicate and the state-constraint(s)."
 	case ECTLCBehaviorUpToThisPoint:
 		return "The behavior up to this point is:"
 	case ECTLCErrorState:

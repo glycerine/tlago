@@ -714,7 +714,7 @@ func (mc *DFIDModelChecker) reportInitException(result int, err error) int {
 	if mc.ErrState != nil {
 		PrintError(ECTLCInitialState, message, mc.ErrState.String())
 	} else {
-		PrintError(ECGeneral, "computing initial states", message)
+		PrintError(ECGeneral, javaGeneralErrorMessage("computing initial states", err))
 	}
 	if replayResult := mc.replayInitErrorCallStack(result); replayResult != NoError {
 		result = replayResult

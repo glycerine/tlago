@@ -879,7 +879,7 @@ func (lc *LiveCheck1) checkSubcomponent(node *BEGraphNode) error {
 	if lc.ErrorFound == nil || lc.ErrorFound.CompareAndSwap(false, true) {
 		counterExample, err := lc.printErrorTrace(node)
 		if err != nil {
-			PrintError(ECGeneral, "printing an error trace", err.Error())
+			PrintError(ECGeneral, javaGeneralErrorMessage("printing an error trace", err))
 			return NewLiveException(ECTLCTemporalPropertyViolated, "LiveCheck: Found error trace.")
 		}
 		return NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "LiveCheck: Found error trace.", counterExample)
