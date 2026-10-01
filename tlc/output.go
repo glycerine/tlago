@@ -364,6 +364,11 @@ func PrintError(code int, params ...string) int {
 	return code
 }
 
+func PrintTLCBug(code int, params ...string) int {
+	recordMessage(code, SeverityTLCBug, params...)
+	return code
+}
+
 func PrintState(code int, params []string, state *TLCStateMut, stateNumber int) string {
 	text := formatMessage(code, params)
 	recordStateMessage(code, params, text, state, nil, stateNumber)
@@ -710,6 +715,8 @@ func formatMessage(code int, params []string) string {
 		return "The behavior up to this point is:"
 	case ECTLCErrorState:
 		return "The error state is:\n"
+	case ECTLCReporterDied:
+		return "Progress report thread died."
 	case ECTLCStatePrint1:
 		if len(params) >= 2 {
 			return fmt.Sprintf("%s:\n%s", params[0], params[1])

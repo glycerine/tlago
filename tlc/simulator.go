@@ -176,7 +176,7 @@ func (s *Simulator) PrintSummary() {
 		ReportCoverage(s.Tool, s.StartTime)
 	}
 	if err := s.writeActionFlowGraph(); err != nil {
-		PrintError(ECTLCReporterDied, err.Error())
+		PrintTLCBug(ECTLCReporterDied)
 	}
 	if toolMode() {
 		PrintMessage(ECTLCProgressSimu,
@@ -245,12 +245,12 @@ func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval ti
 		}
 	}
 	if err := s.writeActionFlowGraph(); err != nil {
-		PrintError(ECTLCReporterDied, err.Error())
+		PrintTLCBug(ECTLCReporterDied)
 	}
 	if s.Tool != nil && s.Tool.Periodic != nil {
 		value, err := s.Tool.NoDebug().Eval(s.Tool.Periodic)
 		if err != nil {
-			PrintError(ECTLCReporterDied, err.Error())
+			PrintTLCBug(ECTLCReporterDied)
 			return false
 		}
 		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
