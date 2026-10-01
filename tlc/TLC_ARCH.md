@@ -496,9 +496,10 @@ for the configured milliseconds and emits terminal reset sequences unless the
 state is final.
 
 Generic spec-writer utilities also carry visible Java details. The generated
-identifier counter starts at zero and increments before use, so a fresh process
-first emits suffix `1000`; timestamps and modification-history dates use Java
-`Date.toString()`-style strings rather than Go's `time.Time.String()` output.
+identifier counter starts like Java's `AtomicLong(1L)` and uses
+`incrementAndGet()` before formatting, so a fresh process first emits suffix
+`2000`; timestamps and modification-history dates use Java `Date.toString()`-
+style strings rather than Go's `time.Time.String()` output.
 
 `ErrorTraceMessagePrinterRecorder` observes printed state messages to reconstruct
 the error trace. Its back-to-state path treats any parseable positive ordinal as
