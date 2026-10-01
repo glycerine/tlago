@@ -25,7 +25,7 @@ func (w *SimulationWorker) NextStateFunctor() *NextStateFunctor {
 		StateFunctor: StateFunctor{
 			SetElementFunc: func(state *TLCStateMut) (any, error) {
 				w.NextStates.Clear()
-				w.NextStates.Add(w.markWorkerState(state))
+				w.NextStates.Add(state)
 				return w, nil
 			},
 			HasStatesFunc: func() bool {
@@ -84,7 +84,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 	if err := w.Tool.GetInitStates(initFunctor); err != nil {
 		return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
 	}
-	w.CurState = w.claimInitialState(w.RandomState(w.InitStates))
+	w.CurState = w.RandomState(w.InitStates)
 	SetCurrentState(w.CurState)
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
 		if w.Stopped.Load() {

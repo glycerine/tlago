@@ -448,20 +448,6 @@ func (w *SimulationWorker) RandomState(states *StateVec) *TLCStateMut {
 	return states.At(index)
 }
 
-func (w *SimulationWorker) claimInitialState(state *TLCStateMut) *TLCStateMut {
-	if state == nil {
-		return nil
-	}
-	return w.markWorkerState(state.DeepCopy())
-}
-
-func (w *SimulationWorker) markWorkerState(state *TLCStateMut) *TLCStateMut {
-	if w != nil && state != nil && w.ID >= 0 && w.ID < int(TLCStateInitWorkerID) {
-		state.WorkerID = int16(w.ID)
-	}
-	return state
-}
-
 func (w *SimulationWorker) GetNextActionIndex(actions []*Action, curState *TLCStateMut) int {
 	if len(actions) == 0 {
 		return -1
@@ -492,7 +478,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	if w.debug {
 		return w.SimulateExplorationTrace()
 	}
-	w.CurState = w.claimInitialState(w.RandomState(w.InitStates))
+	w.CurState = w.RandomState(w.InitStates)
 	SetCurrentState(w.CurState)
 	allActions := w.Tool.GetActions()
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
@@ -619,7 +605,6 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 	if action != nil && CoverageActionEnabled() {
 		action.CM.IncInvocations()
 	}
-	w.markWorkerState(succ)
 	succ.SetPredecessor(curState).SetAction(action)
 	if !w.Tool.IsGoodState(succ) {
 		return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, Params: incompleteNextStateParams(w.Tool, action, succ), StateTrace: w.GetTrace(succ)}
