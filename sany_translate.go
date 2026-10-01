@@ -7,8 +7,13 @@ import (
 )
 
 func CheckSanySource(file, source string) (*Spec, Diagnostics) {
+	return CheckSanySourceWithOptions(file, source, LoadOptions{})
+}
+
+func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, Diagnostics) {
 	mod, diags := ParseSanyModuleSource(file, source)
 	loader := &sanyLoader{
+		opts:    opts,
 		modules: map[string]*Module{},
 		loading: map[string]bool{},
 		loaded:  map[string]bool{},

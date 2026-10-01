@@ -1357,10 +1357,16 @@ increasing counter, and writes exported traces using the same prefix with
 
 Java parses input trace files as TLA+ modules and turns operation bodies into
 states through `Tool.makeState`. The Go port keeps `CheckImplFile` concrete and
-uses a `LoadTraceFunc` hook at this layer until SANY semantic-node-to-state
-wiring is available without introducing package cycles. The command option
-parser mirrors Java's `CheckImplFile.main` surface: `-config`, `-deadlock`,
-`-recover`, `-workers`, `-depth`, `-trace`, `-coverage`, and the root module.
+uses a `LoadTraceFunc` hook at this layer so the `tlc` package does not import
+the production SANY parser. The root `tlago` package wires that hook with
+`NewCheckImplFileTraceLoader`: it parses the exact trace filename rather than
+adding `.tla`, converts each root-module operator definition body through the
+same SANY-to-TLC bridge used for normal model checking, temporarily installs the
+trace definitions for helper-definition lookup, calls `Tool.MakeState`, then
+restores the main tool definition table. The command option parser mirrors
+Java's `CheckImplFile.main` surface: `-config`, `-deadlock`, `-recover`,
+`-workers`, `-depth`, `-trace`, `-coverage`, and the root module; the root CLI
+exposes it as `tlago checkimplfile`.
 
 ## DFID Architecture
 

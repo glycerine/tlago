@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	tlcruntime "github.com/glycerine/tlago/tlc"
 )
@@ -21,7 +22,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		stderr = io.Discard
 	}
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|apalache-json|sany-xml [-I DIR] FILE...")
+		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|checkimplfile|apalache-json|sany-xml [-I DIR] FILE...")
 		return ExitToolFailure
 	}
 	cmd := args[0]
@@ -37,6 +38,8 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		return runCheck(files, stdout, stderr)
 	case "modelcheck", "mc":
 		return runModelCheck(files, stdout, stderr)
+	case "checkimplfile", "check-impl-file":
+		return runCheckImplFile(files, stdout, stderr)
 	case "apalache-json":
 		return runApalacheJSON(files, stdout, stderr)
 	case "sany-xml":
@@ -552,6 +555,91 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "TLC model checking completed: %d states generated, %d distinct states\n", result.StatesGenerated, result.DistinctStates)
 	return ExitOK
+}
+
+func runCheckImplFile(args []string, stdout, stderr io.Writer) int {
+	opts, err := tlcruntime.ParseCheckImplFileOptions(args)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	spec, diags := LoadSanySpec(opts.MainFile, LoadOptions{})
+	if diags.HasErrors() {
+		writeDiagnostics(stderr, diags)
+		return ExitSyntaxFailure
+	}
+	sem := CheckSpec(spec)
+	if sem.HasErrors() {
+		writeDiagnostics(stderr, sem)
+		return ExitSemanticFailure
+	}
+	cfg, err := tlcruntime.ParseModelConfigFile(opts.ConfigFile)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitSyntaxFailure
+	}
+	tool, toolDiags := BuildTLCTool(spec, cfg, tlcruntime.RuntimeParameters{})
+	if toolDiags.HasErrors() {
+		writeDiagnostics(stderr, toolDiags)
+		return ExitSemanticFailure
+	}
+	metadir, err := makeCheckImplFileMetaDir(opts.MainFile, opts.FromCheckpoint)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return ExitToolFailure
+	}
+	fmt.Fprintln(stdout, "TLC CheckImpl")
+	checker := tlcruntime.NewCheckImplFile(tool, metadir, opts.Deadlock, opts.Depth, opts.FromCheckpoint, opts.TraceFile)
+	checker.LoadTraceFunc = NewCheckImplFileTraceLoader(tool, LoadOptions{})
+	if result, err := checker.Init(); err != nil || result != tlcruntime.NoError {
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+		} else {
+			fmt.Fprintf(stderr, "CheckImplFile failed with error code %d\n", result)
+		}
+		return ExitSemanticFailure
+	}
+	for {
+		if err := checker.Export(); err != nil {
+			fmt.Fprintln(stderr, err)
+			return ExitToolFailure
+		}
+		ok, err := checker.GetTrace()
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return ExitSemanticFailure
+		}
+		if ok {
+			if err := checker.CheckTrace(); err != nil {
+				fmt.Fprintln(stderr, err)
+				return ExitSemanticFailure
+			}
+			continue
+		}
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func makeCheckImplFileMetaDir(mainFile string, fromCheckpoint string) (string, error) {
+	if fromCheckpoint != "" {
+		return fromCheckpoint, nil
+	}
+	specDir := ""
+	if filepath.IsAbs(mainFile) {
+		specDir = filepath.Dir(mainFile)
+	}
+	root := filepath.Join(specDir, tlcruntime.MetaRoot)
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", err
+	}
+	name := time.Now().Format("06-01-02-15-04-05.000")
+	path := filepath.Join(root, name)
+	if err := os.Mkdir(path, 0o755); err == nil {
+		return path, nil
+	} else if !os.IsExist(err) {
+		return "", err
+	}
+	return os.MkdirTemp(root, name)
 }
 
 func tlcRuntimeParameterModules(params tlcruntime.RuntimeParameters) []string {
