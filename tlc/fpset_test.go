@@ -227,6 +227,28 @@ func TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava(t *testing.T) {
 	}
 }
 
+func TestDiskFPSetRecoverDuplicateUsesJavaCheckpointCorruptError(t *testing.T) {
+	set := NewMSBDiskFPSet(NewFPSetConfiguration())
+	set.Init(1, t.TempDir(), "recover-duplicate")
+	defer set.Close()
+
+	if err := set.RecoverFP(42); err != nil {
+		t.Fatalf("first RecoverFP returned error: %v", err)
+	}
+	err := set.RecoverFP(42)
+	tlcErr, ok := err.(*TLCError)
+	if !ok {
+		t.Fatalf("duplicate RecoverFP error = %T %v, want TLCError", err, err)
+	}
+	if tlcErr.Code != ECSystemCheckpointRecoveryCorrupt {
+		t.Fatalf("error code = %d, want %d", tlcErr.Code, ECSystemCheckpointRecoveryCorrupt)
+	}
+	want := "TLC encountered the following error while restarting from a checkpoint;\n the checkpoint file is probably corrupted.\n"
+	if tlcErr.Error() != want {
+		t.Fatalf("error = %q, want %q", tlcErr.Error(), want)
+	}
+}
+
 func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
 	ClearMessageRecorders()
 	recorder := &MemoryRecorder{}

@@ -527,7 +527,7 @@ func (s *DiskFPSet) RecoverFP(fp uint64) error {
 			PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
 			return nil
 		}
-		return fmt.Errorf("duplicate fingerprint %d during DiskFPSet recovery", fp0)
+		return newTLCErrorCode(ECSystemCheckpointRecoveryCorrupt, "")
 	}
 	if s.needsDiskFlush() {
 		return s.flushTable()

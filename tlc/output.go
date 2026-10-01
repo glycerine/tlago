@@ -521,6 +521,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("Recovery completed. %s states examined.", params[0])
 		}
+	case ECSystemCheckpointRecoveryCorrupt:
+		if len(params) >= 1 {
+			return "TLC encountered the following error while restarting from a checkpoint;\n the checkpoint file is probably corrupted.\n" + params[0]
+		}
 	case ECSystemErrorReadingStates:
 		if len(params) >= 2 {
 			return fmt.Sprintf("TLC encountered the following error reading the %s of unexplored states:\n%s", params[0], params[1])
