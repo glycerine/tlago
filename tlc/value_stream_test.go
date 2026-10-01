@@ -204,6 +204,51 @@ func TestValueInputStreamBlindReadRecordValue(t *testing.T) {
 	}
 }
 
+func TestValueStreamsWriteReducibleSetValuesAsJavaSetEnums(t *testing.T) {
+	one := NewIntValue(1)
+	two := NewIntValue(2)
+	s1 := NewSetEnumValue([]Value{one}, true)
+	s2 := NewSetEnumValue([]Value{two}, true)
+
+	values := []Value{
+		NewSubsetValue(s1),
+		NewSetCupValue(s1, s2),
+		NewSetCapValue(s1, s1),
+		NewSetDiffValue(s1, s2),
+		NewUnionValue(NewSetEnumValue([]Value{s1, s2}, true)),
+		NewSetOfTuplesValue([]Value{s1, s2}),
+		NewSetOfFcnsValue(s1, s2),
+		NewKSubsetValue(1, s2),
+	}
+
+	rcds, err := NewSetOfRcdsValue([]*UniqueString{UniqueStringOf("x")}, []Value{s1}, true)
+	if err != nil {
+		t.Fatalf("NewSetOfRcdsValue returned error: %v", err)
+	}
+	values = append(values, rcds)
+
+	for _, value := range values {
+		expected, err := toSetEnumValue(value)
+		if err != nil {
+			t.Fatalf("%T toSetEnumValue returned error: %v", value, err)
+		}
+		expected.DeepNormalize()
+
+		var buf bytes.Buffer
+		out := NewValueOutputStream(&buf)
+		if err := out.Write(value); err != nil {
+			t.Fatalf("%T Write returned error: %v", value, err)
+		}
+		got, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).Read()
+		if err != nil {
+			t.Fatalf("%T Read returned error: %v", value, err)
+		}
+		if !mustValueEqual(got, expected) {
+			t.Fatalf("%T roundtrip = %v, want %v", value, got, expected)
+		}
+	}
+}
+
 func writeExternalUniqueString(t *testing.T, out *ValueOutputStream, value string) {
 	t.Helper()
 	if err := out.WriteInt(-1); err != nil {

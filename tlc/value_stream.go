@@ -310,6 +310,62 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 			}
 		}
 		return nil
+	case *SetOfTuplesValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SetOfRcdsValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SetOfFcnsValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SubsetValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *KSubsetValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SetCupValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SetCapValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SetDiffValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *UnionValue:
+		set, err := v.convertAndCache()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(set, external)
+	case *SetPredValue:
+		return s.writeValue(v.InVal, external)
 	default:
 		return fmt.Errorf("cannot pickle value of kind %s", value.KindString())
 	}
