@@ -140,6 +140,7 @@
 - Already audited recently; do not drop operator-argument lambda cost models. Java constructs `OpLambdaValue(..., cm)` from `OpArgKind` and evaluates the operator body with that `cm`; copies of `OpLambdaValue` still do not copy `cm`, matching Java's copy constructor.
 - Already audited recently; do not drop set-predicate cost models. Java constructs `SetPredValue(..., cm)`, copies that `cm`, and uses it when evaluating membership/enumeration predicates.
 - Already audited recently; do not pass a debug/call-stack tool into final liveness checking. Java calls `liveCheck.finalCheck(tool.noDebug())`; Go now mirrors that final-check call just like periodic liveness calls.
+- Liveness worker-failure diagnostics belong inside `LiveCheck.check0`: Java prints liveness worker `OutOfMemoryError` as `SYSTEM_OUT_OF_MEMORY_LIVENESS`, stack overflow as `SYSTEM_STACK_OVERFLOW`, and other causes as `GENERAL` before terminating. Go now emits the same diagnostic before returning the worker error to the checker.
 - Already audited recently; do not loop on normal tableau disk graph semantics unless touched: Go has the ordinary `TableauDiskGraph` path. Java's `DebugTableauDiskGraph` is a `TLCGlobals.tool` GraphViz-after-every-mutation output wrapper, not a different graph algorithm; port that later with debugger/output surfaces if needed.
 - Already audited recently; do not allow DFID liveness despite the dead code in `DFIDModelChecker`. Current Java asserts that DFID does not support checking liveness properties before model checking starts.
 - Already audited recently; do not return from a failed DFID depth run without printing the DFID summary. Java's depth-search loop is inside a `finally` that prints summary on `runTLC` errors.
@@ -210,6 +211,7 @@
   - DFID checkpoint recovery now rebinds `Metadir` to `FromCheckpoint`, matching Java's resumed-run metadir setup.
   - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
   - Liveness SCC checks now emit Java-style temporal-property start/end messages with graph size and current/complete mode.
+  - Liveness worker errors now print the Java-shaped system/general diagnostic at the `LiveCheck.check0` boundary before returning to the checker.
   - Disk-backed liveness SCC checking now creates the graph cache for the whole PEM pass, records graph size on the disk graph like Java, and lets liveness violations take precedence over checker failures after all checkers have run.
   - Liveness counterexample reconstruction now keeps Java's raw-vs-printable trace split: raw states feed violated-property attribution and `CounterExample`, printed states go through `ALIAS`, and stuttering lassos emit Java's fairness/specification warning when applicable.
   - Disk-backed liveness graphs now collect Java-style out-degree samples at node insertion and expose in/out-degree recomputation through `LiveCheck`'s auxiliary statistics methods.

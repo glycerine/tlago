@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -1093,10 +1094,41 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 		return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
 	}
 	if firstErr != nil {
-		return ECGeneral, firstErr
+		return printLivenessWorkerFailure(firstErr), firstErr
 	}
 	PrintMessage(ECTLCCheckingTemporalPropsEnd, humanReadableTLCRuntime(time.Since(start)))
 	return NoError, nil
+}
+
+func printLivenessWorkerFailure(err error) int {
+	if err == nil {
+		PrintError(ECGeneral)
+		return ECGeneral
+	}
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil {
+		switch tlcErr.Code {
+		case ECSystemOutOfMemory, ECSystemOutOfMemoryLiveness:
+			PrintError(ECSystemOutOfMemoryLiveness)
+			return ECSystemOutOfMemoryLiveness
+		case ECSystemStackOverflow:
+			PrintError(ECSystemStackOverflow)
+			return ECSystemStackOverflow
+		}
+	}
+	var evalErr *EvalException
+	if errors.As(err, &evalErr) && evalErr != nil {
+		switch evalErr.GetErrorCode() {
+		case ECSystemOutOfMemory, ECSystemOutOfMemoryLiveness:
+			PrintError(ECSystemOutOfMemoryLiveness)
+			return ECSystemOutOfMemoryLiveness
+		case ECSystemStackOverflow:
+			PrintError(ECSystemStackOverflow)
+			return ECSystemStackOverflow
+		}
+	}
+	PrintError(ECGeneral, generalErrorParams("", err)...)
+	return ECGeneral
 }
 
 func (lc *LiveCheck) resetLiveError() {
