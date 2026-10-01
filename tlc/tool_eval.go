@@ -872,14 +872,21 @@ func (t *Tool) evalCase(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		}
 		if pair.Args[0] == nil {
 			other = pair.Args[1]
+			if CoverageEnabled() {
+				cm = cm.Get(pair)
+			}
 			continue
 		}
-		guard, err := t.evalBool(pair.Args[0], c, s0, s1, control, cm, "CASE")
+		armCM := cm
+		if CoverageEnabled() {
+			armCM = cm.Get(pair)
+		}
+		guard, err := t.evalBool(pair.Args[0], c, s0, s1, control, armCM, "CASE")
 		if err != nil {
 			return nil, err
 		}
 		if guard.Val {
-			return t.Eval(pair.Args[1], c, s0, s1, control, cm)
+			return t.Eval(pair.Args[1], c, s0, s1, control, armCM)
 		}
 	}
 	if other == nil {

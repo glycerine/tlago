@@ -130,6 +130,7 @@
 - Already audited recently; do not preserve arbitrary `TLCError` codes in BFS `ModelChecker.doNextFailed`. Java preserves `EvalException` codes and treats stack overflow/out-of-memory/assertion as special, but leaves ordinary runtime-style failures as `GENERAL` with Java `ECGeneralMsg` text.
 - Already audited recently; do not print every violated invariant/action property in continuation mode for one successor. Java prints the first violation it encounters for that successor and returns to the caller; the successor may still continue through the surrounding model-checking flow.
 - Already audited recently; do not flatten next-state `CASE` coverage to the parent cost model. Java evaluates each next-state CASE guard and selected arm with `coverage ? cm.get(args[i]) : cm`; the `OTHER` fall-through uses `cm.get(args[alen-1])` exactly like Java, even though that is only identical to the `OTHER` arm when `OTHER` is last.
+- Expression `CASE` coverage has the same Java arm-local shape: guards and selected arms use `cm.get(pairNode)`, and seeing an `OTHER` arm mutates the fallback cost model before the final `eval(other, ..., cm)` call.
 - Already audited recently; do not pass the caller cost model when `ENABLED` recurses into a looked-up `LazyValue`. Java uses the lazy value's stored `lv.cm`, and Go mirrors that with `v.CM`.
 - Already audited recently; do not lose function-lambda cost models in next-state function application. Java stores `cm` on `FcnLambdaValue`, evaluates lambda bodies through that `cm`, and next-state `f[x]` recurses into `fcn.body` with `fcn.cm`.
 - Already audited recently; do not collapse Java `TLCState.Null` eval arguments to `EmptyState`. The Go variadic eval parser now assigns state arguments positionally, including explicit nil second states, so primed/lazy evaluation paths can mirror Java.
@@ -298,6 +299,7 @@
   - State copy semantics now follow Java's selected state implementation: ordinary MC/DFID copies drop predecessor/action metadata, while simulation/debug/executor copies preserve it like `TLCStateMutExt`.
   - Continuation-mode invariant and implied-action checks now stop scanning after Java's first printed violation for a successor instead of printing all failed properties on that successor.
   - Next-state `CASE` coverage now charges guard and branch evaluation to the Java-matching arm-local cost model.
+  - Expression `CASE` coverage now charges guard/selected-arm evaluation to the Java-matching arm-local cost model and preserves Java's fallback cost-model mutation for `OTHER`.
   - Optional liveness statistics now mirror Java's `tlc2.tool.liveness.statistics` path by recording SCC component sizes, calculating final in-degree/out-degree disk-graph bucket statistics, and printing the raw stats to stdout after the checker summary.
   - `MultiFPSet.Exit` now mirrors Java's child-delegating cleanup shape instead of removing the metadir directly from the aggregate wrapper.
   - `NewFPSet` now mirrors Java factory load failures by warning and returning nil for unknown or abstract implementation names instead of silently falling back to MSB.
