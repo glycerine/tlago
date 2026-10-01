@@ -377,11 +377,11 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return NewTupleValue(values), nil
 	case OpcodeUC:
-		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded CHOOSE: %s", SemanticString(expr))
+		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded CHOOSE.\nMake sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(expr))
 	case OpcodeUE:
-		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\E: %s", SemanticString(expr))
+		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\E.\nMake sure that the expression is of form \\E x \\in S: P(x).\n%s", SemanticString(expr))
 	case OpcodeUF:
-		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\A: %s", SemanticString(expr))
+		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\A.\nMake sure that the expression is of form \\A x \\in S: P(x).\n%s", SemanticString(expr))
 	case OpcodeLnot:
 		value, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
@@ -409,7 +409,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return domainValue(arg)
+		return domainValue(expr, arg)
 	case OpcodeEnabled:
 		sfun := NewEmptyState()
 		if t.Enabled(args[0], BranchContext(c), s0, sfun) != nil {
@@ -1086,7 +1086,7 @@ func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, 
 		return f.ApplyWithControl(argVal, control)
 	case *TupleValue:
 		if rejectTupleRecordMultiArg && len(args) != 2 {
-			return nil, newTLCError(ECGeneral, "attempted to evaluate f[e1, ... , eN] with f a tuple and N > 1: %s", SemanticString(expr))
+			return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form f[e1, ... , eN]\nwith f a tuple or record and N > 1.\n%s", SemanticString(expr))
 		}
 		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
 		if err != nil {
@@ -1095,7 +1095,7 @@ func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, 
 		return f.Apply(argVal)
 	case *RecordValue:
 		if rejectTupleRecordMultiArg && len(args) != 2 {
-			return nil, newTLCError(ECGeneral, "attempted to evaluate f[e1, ... , eN] with f a record and N > 1: %s", SemanticString(expr))
+			return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form f[e1, ... , eN]\nwith f a tuple or record and N > 1.\n%s", SemanticString(expr))
 		}
 		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
 		if err != nil {
@@ -1103,7 +1103,7 @@ func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, 
 		}
 		return f.Apply(argVal)
 	default:
-		return nil, newTLCError(ECGeneral, "a non-function (%s) was applied as a function", fval.KindString())
+		return nil, newTLCError(ECGeneral, "A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr))
 	}
 }
 
@@ -1463,7 +1463,7 @@ func stringUniqueFromNode(node SemanticNode) (*UniqueString, error) {
 	return nil, newTLCError(ECGeneral, "record field name is not a string: %s", SemanticString(node))
 }
 
-func domainValue(value Value) (Value, error) {
+func domainValue(expr SemanticNode, value Value) (Value, error) {
 	switch v := value.(type) {
 	case *TupleValue:
 		return v.Domain(), nil
@@ -1474,7 +1474,7 @@ func domainValue(value Value) (Value, error) {
 	case *FcnLambdaValue:
 		return v.GetDomain()
 	default:
-		return nil, newTLCError(ECGeneral, "attempted to apply DOMAIN to non-function %s", value)
+		return nil, newTLCError(ECGeneral, "Attempted to apply the operator DOMAIN to a non-function\n(%s)\n%s", valueKindString(value), SemanticString(expr))
 	}
 }
 
