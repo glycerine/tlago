@@ -10,19 +10,10 @@ type FcnParams struct {
 }
 
 func NewFcnParams(formals [][]*SymbolNode, isTuples []bool, domains []Value) *FcnParams {
-	outFormals := make([][]*SymbolNode, len(formals))
-	for i, ids := range formals {
-		outFormals[i] = make([]*SymbolNode, len(ids))
-		copy(outFormals[i], ids)
-	}
-	outIsTuples := make([]bool, len(isTuples))
-	copy(outIsTuples, isTuples)
-	outDomains := make([]Value, len(domains))
-	copy(outDomains, domains)
 	params := &FcnParams{
-		Formals:  outFormals,
-		IsTuples: outIsTuples,
-		Domains:  outDomains,
+		Formals:  formals,
+		IsTuples: isTuples,
+		Domains:  domains,
 	}
 	for i := range params.Formals {
 		if i < len(params.IsTuples) && params.IsTuples[i] {
@@ -265,7 +256,7 @@ func NewFcnLambdaValueFrom(other *FcnLambdaValue, tool *Tool) *FcnLambdaValue {
 	return &FcnLambdaValue{
 		Params:  other.Params,
 		Body:    other.Body,
-		Excepts: copyValueExcepts(other.Excepts),
+		Excepts: other.Excepts,
 		Tool:    tool,
 		Con:     other.Con,
 		State:   other.State,
@@ -310,11 +301,11 @@ func (v *FcnLambdaValue) Equal(other Value) (bool, error) {
 }
 
 func (v *FcnLambdaValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if the value:\n%s\nis an element of the function %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v))
 }
 
 func (v *FcnLambdaValue) IsFinite() (bool, error) {
-	return false, v.unsupported("attempted to check if the function:\n%s\nis a finite set", v)
+	return false, v.unsupported("Attempted to check if the function:\n%s\nis a finite set.", ValuesPPR(v))
 }
 
 func (v *FcnLambdaValue) Apply(arg Value) (Value, error) {
@@ -366,13 +357,13 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 			return nil, false, err
 		}
 		if !in {
-			return nil, false, v.unsupported("in applying the function\n%s,\nthe first argument is:\n%s\nwhich is not in its domain", v, arg)
+			return nil, false, v.unsupported("In applying the function\n%s,\nthe first argument is:\n%s\nwhich is not in its domain.\n", ValuesPPR(v), ValuesPPR(arg))
 		}
 		if isTuples[0] {
 			ids := formals[0]
 			argTuple := asTupleValue(arg)
 			if argTuple == nil {
-				return nil, false, v.unsupported("in applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter", v, arg)
+				return nil, false, v.unsupported("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
 			}
 			if len(argTuple.Elems) != len(ids) {
 				return nil, true, nil
@@ -389,7 +380,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 	}
 	argTuple := asTupleValue(arg)
 	if argTuple == nil {
-		return nil, false, v.unsupported("in applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter", v, arg)
+		return nil, false, v.unsupported("In applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
 	}
 	elems := argTuple.Elems
 	argn := 0
@@ -404,12 +395,12 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 				return nil, false, err
 			}
 			if !in {
-				return nil, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain", v, argn+1, elems[argn])
+				return nil, false, v.unsupported("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n", ValuesPPR(v), argn+1, ValuesPPR(elems[argn]))
 			}
 			tv := asTupleValue(elems[argn])
 			argn++
 			if tv == nil || len(tv.Elems) != len(ids) {
-				return nil, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter", v, argn, elems[argn-1])
+				return nil, false, v.unsupported("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(elems[argn-1]))
 			}
 			for j, id := range ids {
 				ctx = ctx.Cons(id, tv.Elems[j])
@@ -429,7 +420,7 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 				if derr != nil {
 					return nil, false, derr
 				}
-				return nil, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in the function's domain %s", v, argn+1, elems[argn], domainValue)
+				return nil, false, v.unsupported("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in the function's domain %s.\n", ValuesPPR(v), argn+1, ValuesPPR(elems[argn]), domainValue)
 			}
 			ctx = ctx.Cons(id, elems[argn])
 			argn++
@@ -489,7 +480,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			ids := formals[0]
 			argTuple := asTupleValue(arg)
 			if argTuple == nil {
-				return ctx, false, v.unsupported("in applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter", v, arg)
+				return ctx, false, v.unsupported("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
 			}
 			if len(argTuple.Elems) != len(ids) {
 				return ctx, false, nil
@@ -506,7 +497,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 	}
 	argTuple := asTupleValue(arg)
 	if argTuple == nil {
-		return ctx, false, v.unsupported("in applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter", v, arg)
+		return ctx, false, v.unsupported("In applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
 	}
 	elems := argTuple.Elems
 	argn := 0
@@ -523,7 +514,7 @@ func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {
 			tv := asTupleValue(elems[argn])
 			argn++
 			if tv == nil {
-				return ctx, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter", v, argn, elems[argn-1])
+				return ctx, false, v.unsupported("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(elems[argn-1]))
 			}
 			if len(tv.Elems) != len(ids) {
 				return ctx, false, nil
@@ -557,7 +548,7 @@ func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value) (*Context, error) {
 		if v.Params.IsTuples[0] {
 			tuple := asTupleValue(arg)
 			if tuple == nil {
-				return nil, v.unsupported("in applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter", v, arg)
+				return nil, v.unsupported("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
 			}
 			for i, id := range v.Params.Formals[0] {
 				ctx = ctx.Cons(id, tuple.Elems[i])
@@ -571,7 +562,7 @@ func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value) (*Context, error) {
 	}
 	argTuple := asTupleValue(arg)
 	if argTuple == nil {
-		return nil, v.unsupported("in applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter", v, arg)
+		return nil, v.unsupported("In applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
 	}
 	argn := 0
 	for i, ids := range v.Params.Formals {
@@ -579,7 +570,7 @@ func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value) (*Context, error) {
 			tv := asTupleValue(argTuple.Elems[argn])
 			argn++
 			if tv == nil {
-				return nil, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter", v, argn, argTuple.Elems[argn-1])
+				return nil, v.unsupported("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(argTuple.Elems[argn-1]))
 			}
 			for j, id := range ids {
 				ctx = ctx.Cons(id, tv.Elems[j])
@@ -902,9 +893,6 @@ func (ex ValueExcept) Advanced() ValueExcept {
 }
 
 func copyValueExcept(ex ValueExcept) ValueExcept {
-	path := make([]Value, len(ex.Path))
-	copy(path, ex.Path)
-	ex.Path = path
 	return ex
 }
 
