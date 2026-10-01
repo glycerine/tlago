@@ -446,9 +446,6 @@ func (w *SimulationWorker) RandomState(states *StateVec) *TLCStateMut {
 }
 
 func (w *SimulationWorker) GetNextActionIndex(actions []*Action, curState *TLCStateMut) int {
-	if len(actions) == 0 {
-		return -1
-	}
 	if w.IsRLMode() {
 		return w.GetRLNextActionIndex(actions, curState)
 	}
@@ -486,12 +483,6 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		actions, workerErr := w.FilterActions(allActions, w.CurState)
 		if workerErr != nil {
 			return workerErr
-		}
-		if len(actions) == 0 {
-			if w.CheckDeadlock {
-				return &SimulationWorkerError{Code: ECTLCDeadlockReached, StateTrace: w.GetTrace(w.CurState)}
-			}
-			break
 		}
 		index := w.GetNextActionIndex(actions, w.CurState)
 		step := w.Rand.NextPrime()
