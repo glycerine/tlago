@@ -596,7 +596,7 @@ func (s *ValueInputStream) readKind(kind ValueKind, external bool) (Value, error
 		}
 		return nil, fmt.Errorf("dummy value index %d does not reference a Value", idx)
 	default:
-		return nil, fmt.Errorf("cannot unpickle value of kind %d", kind)
+		return nil, fmt.Errorf("ValueInputStream: Can not unpickle a value of kind %d", kind)
 	}
 }
 

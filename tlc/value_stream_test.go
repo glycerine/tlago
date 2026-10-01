@@ -113,6 +113,13 @@ func TestValueStreamsGlobalCompressionRoundTrip(t *testing.T) {
 	}
 }
 
+func TestValueInputStreamUnknownKindUsesJavaMessage(t *testing.T) {
+	_, err := NewValueInputStream(bytes.NewReader([]byte{0x7f})).Read()
+	if err == nil || err.Error() != "ValueInputStream: Can not unpickle a value of kind 127" {
+		t.Fatalf("unknown kind error = %v", err)
+	}
+}
+
 func TestValueOutputStreamWithoutHandlesExpandsRepeatedObjects(t *testing.T) {
 	repeated := NewTupleValue([]Value{NewIntValue(1)})
 
