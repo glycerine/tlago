@@ -91,8 +91,10 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 
 func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
 	if acts == nil || acts.IsEmpty() {
-		if CoverageActionEnabled() {
+		if CoverageEnabled() {
 			cm.IncInvocations()
+		}
+		if CoverageActionEnabled() {
 			cm.GetRoot().IncInvocations()
 		}
 		_, err := states.AddElement(ps.Copy().SetAction(actionItemListAction(acts)))
@@ -110,7 +112,7 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 				return newTLCErrorCode(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(pred))
 			}
 			if !bval.Val {
-				if CoverageActionEnabled() {
+				if CoverageEnabled() {
 					cm.GetRoot().IncSecondary()
 				}
 				states.AddUnsatisfiedState(ps, acts.CarPred(), acts.CarContext())
@@ -118,7 +120,7 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 			}
 			acts = acts.Cdr()
 		}
-		if CoverageActionEnabled() {
+		if CoverageEnabled() {
 			cm.IncInvocations()
 			cm.GetRoot().IncInvocations()
 		}
