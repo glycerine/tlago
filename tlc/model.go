@@ -27,6 +27,7 @@ const (
 var formulaNamePattern = regexp.MustCompile(`(?s)^\s*(\w+)\s*==(.*)$`)
 var typedSetValidTypePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
 var typedSetNumberOnlyPattern = regexp.MustCompile(`^[0-9]*$`)
+var typedSetSplitPattern = regexp.MustCompile(`\s*,\s*`)
 
 type Formula struct {
 	Text string
@@ -295,7 +296,10 @@ func ParseTypedSet(set string) *TypedSet {
 	if set == "" {
 		return result
 	}
-	parts := regexp.MustCompile(`[ \t\r\n]*,[ \t\r\n]*`).Split(set, -1)
+	parts := typedSetSplit(set)
+	if len(parts) == 0 {
+		return result
+	}
 	typeSep := strings.Index(parts[0], "_")
 	if typeSep <= 0 {
 		result.SetValues(parts)
@@ -319,12 +323,20 @@ func ParseTypedSet(set string) *TypedSet {
 		}
 	}
 	if violated {
-		result.SetValues(regexp.MustCompile(`[ \t\r\n]*,[ \t\r\n]*`).Split(set, -1))
+		result.SetValues(typedSetSplit(set))
 		return result
 	}
 	result.Type = typ
 	result.SetValues(parts)
 	return result
+}
+
+func typedSetSplit(set string) []string {
+	parts := typedSetSplitPattern.Split(set, -1)
+	for len(parts) > 0 && parts[len(parts)-1] == "" {
+		parts = parts[:len(parts)-1]
+	}
+	return parts
 }
 
 func (s *TypedSet) HasType() bool {
@@ -358,7 +370,7 @@ func (s *TypedSet) UnsetType() {
 }
 
 func (s *TypedSet) Contains(value string) bool {
-	if s == nil || value == "" {
+	if s == nil {
 		return false
 	}
 	for _, existing := range s.Values {

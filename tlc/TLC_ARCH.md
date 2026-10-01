@@ -454,7 +454,9 @@ trace-expression metadata. Keep these as concrete structs in `model.go`.
 
 `TypedSet` owns its own string, equality, hash, and type-validation helpers,
 mirroring Java's `TypedSet` class. Spec-writing code should call those methods
-rather than define model formatting locally.
+rather than define model formatting locally. Its parser also preserves Java
+`String.split(pattern, 0)` behavior: trailing empty pieces are discarded, so
+inputs such as `", , , ,"` and `"{, , , ,}"` parse as the empty set.
 
 `MCVariable.isTraceExplorerExpression()` is a nullness test in Java, not a
 non-empty-string test. Go therefore tracks whether `SetTraceExpression` was
