@@ -251,11 +251,16 @@ type SetPredValue struct {
 	State     *TLCStateMut
 	PState    *TLCStateMut
 	Control   int
+	CM        CostModel
 }
 
-func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int) *SetPredValue {
+func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *SetPredValue {
 	if con == nil {
 		con = EmptyContext
+	}
+	cm := DoNotRecordCostModel
+	if len(cms) > 0 {
+		cm = cms[0]
 	}
 	return &SetPredValue{
 		Vars:    vars,
@@ -266,6 +271,7 @@ func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *
 		State:   copyTLCStateForLambda(state),
 		PState:  copyTLCStateForLambda(pstate),
 		Control: control,
+		CM:      cm,
 	}
 }
 
@@ -276,7 +282,7 @@ func NewSetPredValueFrom(other *SetPredValue, tool *Tool) *SetPredValue {
 	if tool == nil {
 		tool = other.Tool
 	}
-	return NewSetPredValue(other.Vars, other.InVal, other.Pred, tool, other.Con, other.State, other.PState, other.Control)
+	return NewSetPredValue(other.Vars, other.InVal, other.Pred, tool, other.Con, other.State, other.PState, other.Control, other.CM)
 }
 
 func (v *SetPredValue) Kind() ValueKind    { return SetPredValueKind }
@@ -320,7 +326,7 @@ func (v *SetPredValue) Member(elem Value) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	res, err := v.Tool.Eval(v.Pred, ctx, v.State, v.PState, v.Control)
+	res, err := v.Tool.Eval(v.Pred, ctx, v.State, v.PState, v.Control, v.CM)
 	if err != nil {
 		return false, v.unsupported("cannot decide if element:\n%s\nis element of:\n%s\nand satisfies the predicate %s", elem, v.InVal, v.Pred)
 	}
@@ -491,7 +497,7 @@ func (e *setPredEnumeration) NextElement() Value {
 			e.err = err
 			return nil
 		}
-		res, err := e.set.Tool.Eval(e.set.Pred, ctx, e.set.State, e.set.PState, e.set.Control)
+		res, err := e.set.Tool.Eval(e.set.Pred, ctx, e.set.State, e.set.PState, e.set.Control, e.set.CM)
 		if err != nil {
 			e.err = err
 			return nil

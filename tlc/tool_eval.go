@@ -1152,9 +1152,9 @@ func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		return NewSetEnumValueVec(values, inVal.IsNormalized()), nil
 	}
 	if isTuple {
-		return NewSetPredValue(bvars, inVal, expr.Args[0], t, c, s0, s1, control), nil
+		return NewSetPredValue(bvars, inVal, expr.Args[0], t, c, s0, s1, control, cm), nil
 	}
-	return NewSetPredValue(bvars[0], inVal, expr.Args[0], t, c, s0, s1, control), nil
+	return NewSetPredValue(bvars[0], inVal, expr.Args[0], t, c, s0, s1, control, cm), nil
 }
 
 func (t *Tool) evalEq(left SemanticNode, right SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, negate bool) (Value, error) {
