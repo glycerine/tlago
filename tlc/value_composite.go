@@ -595,9 +595,6 @@ func (v *IntervalValue) Compare(other Value) (int, error) {
 		}
 		return 0, nil
 	}
-	if mv, ok := other.(*ModelValue); ok {
-		return mv.modelValueCompareTo(v)
-	}
 	return v.ToSetEnum().Compare(other)
 }
 
@@ -616,21 +613,17 @@ func (v *IntervalValue) Equal(other Value) (bool, error) {
 		}
 		return v.Low == o.Low && v.High == o.High, nil
 	}
-	if mv, ok := other.(*ModelValue); ok {
-		return mv.modelValueEquals(v)
-	}
 	return v.ToSetEnum().Equal(other)
 }
 
 func (v *IntervalValue) Member(elem Value) (bool, error) {
 	i, ok := elem.(*IntValue)
 	if !ok {
-		sz, err := v.Size()
-		if err != nil {
-			return false, err
-		}
-		if sz > 0 {
-			return false, v.unsupported("attempted to check if %s is in the integer interval %s", elem, v)
+		if v.Low <= v.High {
+			if mv, ok := elem.(*ModelValue); ok && mv.Type == typedModelValueUntypedCodeUnit {
+				return false, nil
+			}
+			return false, v.unsupported("Attempted to check if the value:\n%s\nis in the integer interval %s", elem, v)
 		}
 		return false, nil
 	}
@@ -645,7 +638,7 @@ func (v *IntervalValue) Size() (int, error) {
 	}
 	size := int64(v.High) - int64(v.Low) + 1
 	if size > math.MaxInt32 {
-		return 0, newTLCError(ECGeneral, "Size of interval value exceeds the maximum representable size (32bits)")
+		return 0, newTLCError(ECGeneral, "Size of interval value exceeds the maximum representable size (32bits): %s.", v)
 	}
 	return int(size), nil
 }
@@ -673,14 +666,14 @@ func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 
 func (v *IntervalValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the interval value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the interval value %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *IntervalValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the interval value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the interval value %s.", v)
 	}
 	return v, nil
 }
@@ -710,15 +703,7 @@ func (v *IntervalValue) AsValues() []Value {
 }
 
 func (v *IntervalValue) Elements() ValueEnumeration {
-	sz, err := v.Size()
-	if err != nil {
-		panic(err)
-	}
-	values := make([]Value, sz)
-	for i := 0; i < sz; i++ {
-		values[i] = NewIntValue(v.Low + int32(i))
-	}
-	return &sliceValueEnumeration{values: values}
+	return newIntervalValueEnumeration(v.Low, v.High)
 }
 
 func (v *IntervalValue) String() string {
@@ -726,6 +711,41 @@ func (v *IntervalValue) String() string {
 		return NewIntValue(v.Low).String() + ".." + NewIntValue(v.High).String()
 	}
 	return "{}"
+}
+
+type intervalValueEnumeration struct {
+	low   int32
+	high  int32
+	index int32
+	done  bool
+}
+
+func newIntervalValueEnumeration(low int32, high int32) *intervalValueEnumeration {
+	e := &intervalValueEnumeration{low: low, high: high}
+	e.Reset()
+	return e
+}
+
+func (e *intervalValueEnumeration) Reset() {
+	e.index = e.low
+	e.done = e.high < e.low
+}
+
+func (e *intervalValueEnumeration) NextElement() Value {
+	if e.done {
+		return nil
+	}
+	current := e.index
+	if current == e.high {
+		e.done = true
+	} else {
+		e.index++
+	}
+	return NewIntValue(current)
+}
+
+func (e *intervalValueEnumeration) Err() error {
+	return nil
 }
 
 type sliceValueEnumeration struct {
