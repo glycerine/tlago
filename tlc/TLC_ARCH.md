@@ -2183,10 +2183,14 @@ Go mapping:
   named predicate was never witnessed. The Go bridge mirrors this with concrete
   `PossibleTrackNode` and `PossibleCheckNode` structs and stores counts in the
   named register `s:_possible`, using worker-local checker values so `_Counts`
-  can merge them like Java's `TLCGet("all:named")`. For postcondition errors,
-  Java evaluates the generated `_CheckName` predicate but reports the user's
-  original predicate body; ordinary postcondition evaluation errors also include
-  the predicate body as the second message parameter.
+  can merge them like Java's `TLCGet("all:named")`. Java's `_Possible.java`
+  only declares `_Counts` as a native override; `_Track`, `_CheckName`, and
+  `_PrintCounts` remain ordinary TLA definitions in `_Possible.tla`, so the Go
+  bridge must install them as `OpDefNode`s for explicit standard-module use and
+  named instances. For postcondition errors, Java evaluates the generated
+  `_CheckName` predicate but reports the user's original predicate body;
+  ordinary postcondition evaluation errors also include the predicate body as
+  the second message parameter.
 
 Port guidance:
 

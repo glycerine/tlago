@@ -128,7 +128,7 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
 	),
 	"_Possible": setOf(
-		"_Track", "_Counts", "_CheckName", "_PrintCounts",
+		"_Counts",
 	),
 }
 
