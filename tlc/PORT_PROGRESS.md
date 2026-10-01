@@ -704,6 +704,7 @@
 - `CounterExample` lasso construction now fails loudly for positive loop ordinals outside the trace, matching Java's direct `states.get(loopIdx)` failure shape instead of silently omitting the closing edge.
 - No-code audit note: the remaining generic `evalBool` callers were rechecked against Java's init/next/ENABLED equality, membership, and subset fallback branches. They are still the Java raw-cast whole-predicate paths: if no assignable variable is found, evaluate the original predicate and continue only when it is boolean true. `CounterExample` set construction was also rechecked: unnormalized `SetEnumValue` preserves insertion order until Java-style normalization is explicitly requested, so `ToTrace()` reconstructs by state ordinal rather than relying on set iteration order.
 - Special value permutation now follows Java `Value.permute`: `UserValue` and `UndefValue` do not silently return themselves under model-value permutation, and instead fail through the same base unsupported-value path used by fingerprinting.
+- `CallableValue` now requires a successor state for deferred-call attachment like Java's `s1.setCallable(cl)` path. A nil successor surfaces the Java-method-override error instead of silently dropping the callable and returning `TRUE`.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:

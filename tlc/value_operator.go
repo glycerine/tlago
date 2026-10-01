@@ -480,9 +480,10 @@ func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Conte
 	if err != nil {
 		return nil, err
 	}
-	if pstate != nil {
-		pstate.SetCallable(callable)
+	if pstate == nil {
+		return nil, javaMethodOverrideError(v.Name, "null")
 	}
+	pstate.SetCallable(callable)
 	return BoolTrue, nil
 }
 
