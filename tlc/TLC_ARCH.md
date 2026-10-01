@@ -482,6 +482,14 @@ split semantics by dropping trailing empty lines. The concrete
 so generated declarations and conjuncts use lexicographic variable-name order
 rather than insertion order.
 
+`StatePrinter` is the Java helper that gives state trace messages their
+metadata. Preserve its small details: invariant traces use predecessor diffs
+only when `TLCGlobals.printDiffsOnly` is set, incomplete states print
+fingerprint `-1`, `TLC_BACK_TO_STATE` routes through `printState` only in
+tool mode, and the opt-in `tlc2.output.StatePrinter.overwrite` property sleeps
+for the configured milliseconds and emits terminal reset sequences unless the
+state is final.
+
 ### `ModelConfig`
 
 `ModelConfig` parses `.cfg` files with the TLA+ token manager rather than a

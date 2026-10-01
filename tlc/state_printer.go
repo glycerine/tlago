@@ -1,6 +1,13 @@
 package tlc
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"strings"
+	"time"
+)
+
+const statePrinterOverwriteProperty = "tlc2.output.StatePrinter.overwrite"
 
 func PrintRuntimeErrorStateTraceState(currentState *TLCStateMut, num int) {
 	stateString := ""
@@ -65,12 +72,19 @@ func printInvariantViolationStateTraceState(currentStateInfo *TLCStateInfo, prev
 			}
 		}
 	}
-	PrintStateInfo(ECTLCStatePrint2, []string{
+	message := PrintStateInfo(ECTLCStatePrint2, []string{
 		fmt.Sprintf("%d", num),
 		infoString,
 		stateString,
 		fingerprint,
 	}, currentStateInfo, num)
+	if interval := statePrinterOverwriteInterval(); interval > 0 {
+		time.Sleep(time.Duration(interval) * time.Millisecond)
+		if !isFinal {
+			lines := strings.Count(message, "\n") + 1
+			fmt.Fprint(os.Stdout, strings.Repeat("\033[F\033[K", lines))
+		}
+	}
 }
 
 func PrintStutteringState(num int) {
@@ -99,4 +113,13 @@ func toolModeEnabled() bool {
 	Globals.Lock()
 	defer Globals.Unlock()
 	return Globals.Tool
+}
+
+func statePrinterOverwriteInterval() int {
+	if value, ok := tlcLookupSystemProperty(statePrinterOverwriteProperty); ok {
+		if parsed, ok := javaIntProperty(value); ok {
+			return parsed
+		}
+	}
+	return -1
 }
