@@ -21,6 +21,7 @@ var (
 	stateVariables            []StateVariable
 	stateSymmetryPermutations []*MVPerm
 	stateTool                 *Tool
+	statePreserveMetadata     bool
 	EmptyState                *TLCStateMut
 )
 
@@ -83,8 +84,10 @@ func SetTLCStateTool(tool *Tool) {
 	stateTool = tool
 	if tool == nil {
 		SetStateSymmetryPermutations(nil)
+		statePreserveMetadata = false
 		return
 	}
+	statePreserveMetadata = tool.usesExtendedStateMetadata()
 	SetStateSymmetryPermutations(tool.GetSymmetryPerms())
 }
 
@@ -175,16 +178,19 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		sources = make([]SemanticNode, len(s.sources))
 		copy(sources, s.sources)
 	}
-	return &TLCStateMut{
+	out := &TLCStateMut{
 		WorkerID:    TLCStateInitWorkerID,
 		UID:         TLCStateInitUID,
 		level:       s.level,
 		values:      values,
 		sources:     sources,
-		pred:        s.pred,
-		action:      s.action,
 		printRecord: s.printRecord,
 	}
+	if statePreserveMetadata {
+		out.pred = s.pred
+		out.action = s.action
+	}
+	return out
 }
 
 func (s *TLCStateMut) DeepCopy() *TLCStateMut {
@@ -199,16 +205,19 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 			values[i] = value.DeepCopy()
 		}
 	}
-	return &TLCStateMut{
+	out := &TLCStateMut{
 		WorkerID:    s.WorkerID,
 		UID:         s.UID,
 		level:       s.level,
 		values:      values,
 		sources:     sources,
-		pred:        s.pred,
-		action:      s.action,
 		printRecord: s.printRecord,
 	}
+	if statePreserveMetadata {
+		out.pred = s.pred
+		out.action = s.action
+	}
+	return out
 }
 
 func (s *TLCStateMut) GetCached(key int) Value {

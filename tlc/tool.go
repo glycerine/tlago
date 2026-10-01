@@ -12,6 +12,7 @@ const (
 	ModeMCDFS
 	ModeSimulation
 	ModeDebugger
+	ModeExecutor
 )
 
 type StateFunctor struct {
@@ -230,6 +231,26 @@ func (t *Tool) GetMode() ToolMode {
 		return ModeMC
 	}
 	return t.Mode
+}
+
+func (t *Tool) SetMode(mode ToolMode) *Tool {
+	if t == nil {
+		return nil
+	}
+	t.Mode = mode
+	if stateTool == t {
+		SetTLCStateTool(t)
+	}
+	return t
+}
+
+func (t *Tool) usesExtendedStateMetadata() bool {
+	switch t.GetMode() {
+	case ModeSimulation, ModeDebugger, ModeExecutor:
+		return true
+	default:
+		return false
+	}
 }
 
 func (t *Tool) GetActions() []*Action {

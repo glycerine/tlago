@@ -41,6 +41,10 @@ func WithDFIDLiveCheck(liveCheck *LiveCheck) DFIDModelCheckerOption {
 }
 
 func NewDFIDModelChecker(tool *Tool, metadir string, deadlock bool, opts ...DFIDModelCheckerOption) *DFIDModelChecker {
+	if tool != nil && tool.GetMode() != ModeDebugger && tool.GetMode() != ModeExecutor {
+		tool.SetMode(ModeMCDFS)
+	}
+	SetTLCStateTool(tool)
 	rootName := "Spec"
 	if tool != nil {
 		rootName = tool.GetRootName()

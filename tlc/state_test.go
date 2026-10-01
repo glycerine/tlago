@@ -19,8 +19,10 @@ func TestTLCStateUnassignedVariablesAreLexicographic(t *testing.T) {
 func TestTLCStateCopyPreservesLevelButNotWorkerOrUID(t *testing.T) {
 	UniqueStringInitialize()
 	SetStateVariables([]string{"x"})
+	SetTLCStateTool(nil)
 	pred := checkerTestState(0)
-	state := checkerTestState(1).SetPredecessor(pred)
+	action := NewAction(nil, EmptyContext, "Next")
+	state := checkerTestState(1).SetPredecessor(pred).SetAction(action)
 	state.WorkerID = 7
 	state.UID = 42
 
@@ -34,11 +36,39 @@ func TestTLCStateCopyPreservesLevelButNotWorkerOrUID(t *testing.T) {
 	if shallow.UID != TLCStateInitUID {
 		t.Fatalf("copy uid = %d, want %d", shallow.UID, TLCStateInitUID)
 	}
+	if shallow.Predecessor() != nil || shallow.GetAction() != nil {
+		t.Fatalf("ordinary copy preserved predecessor/action; Java TLCStateMut.copy drops both")
+	}
 
 	deep := state.DeepCopy()
 	if deep.Level() != state.Level() || deep.WorkerID != state.WorkerID || deep.UID != state.UID {
 		t.Fatalf("deep copy level/worker/uid = %d/%d/%d, want %d/%d/%d",
 			deep.Level(), deep.WorkerID, deep.UID, state.Level(), state.WorkerID, state.UID)
+	}
+	if deep.Predecessor() != nil || deep.GetAction() != nil {
+		t.Fatalf("ordinary deep copy preserved predecessor/action; Java TLCStateMut.deepCopy drops both")
+	}
+}
+
+func TestTLCStateCopyPreservesMetadataInExtendedMode(t *testing.T) {
+	UniqueStringInitialize()
+	SetStateVariables([]string{"x"})
+	tool := NewTool().SetMode(ModeSimulation)
+	SetTLCStateTool(tool)
+	t.Cleanup(func() { SetTLCStateTool(nil) })
+	pred := checkerTestState(0)
+	action := NewAction(nil, EmptyContext, "Next")
+	state := checkerTestState(1).SetPredecessor(pred).SetAction(action)
+
+	shallow := state.Copy()
+	if shallow.Predecessor() != pred || shallow.GetAction() != action {
+		t.Fatalf("extended copy predecessor/action = %p/%p, want %p/%p",
+			shallow.Predecessor(), shallow.GetAction(), pred, action)
+	}
+	deep := state.DeepCopy()
+	if deep.Predecessor() != pred || deep.GetAction() != action {
+		t.Fatalf("extended deep copy predecessor/action = %p/%p, want %p/%p",
+			deep.Predecessor(), deep.GetAction(), pred, action)
 	}
 }
 
