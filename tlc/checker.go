@@ -1026,10 +1026,7 @@ func (mc *ModelChecker) PrintProgressStats(startTime time.Time, isFinal bool) {
 	generated := mc.GetStatesGenerated()
 	mc.StatesPerMinute = javaDoubleToLong(float64(generated-mc.OldNumOfGenStates) / factor)
 	mc.OldNumOfGenStates = generated
-	var distinctDelta uint64
-	if fpSetSize >= mc.OldFPSetSize {
-		distinctDelta = fpSetSize - mc.OldFPSetSize
-	}
+	distinctDelta := int64(fpSetSize) - int64(mc.OldFPSetSize)
 	mc.DistinctStatesPerMinute = javaDoubleToLong(float64(distinctDelta) / factor)
 	mc.OldFPSetSize = fpSetSize
 	PrintMessage(ECTLCProgressStats,
