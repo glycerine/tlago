@@ -11,15 +11,19 @@ import (
 )
 
 type tlcBridge struct {
-	tool      *tlc.Tool
-	processor *tlc.SpecProcessor
-	spec      *Spec
-	cfg       *tlc.ModelConfig
-	runtime   tlc.RuntimeParameters
-	defs      map[string]*Definition
-	defns     *tlc.Defns
-	diags     Diagnostics
-	symbols   map[string]*tlc.SymbolNode
+	tool                  *tlc.Tool
+	processor             *tlc.SpecProcessor
+	spec                  *Spec
+	cfg                   *tlc.ModelConfig
+	runtime               tlc.RuntimeParameters
+	defs                  map[string]*Definition
+	defns                 *tlc.Defns
+	diags                 Diagnostics
+	symbols               map[string]*tlc.SymbolNode
+	rootModuleName        string
+	moduleDefinitionNames map[string]map[string]bool
+	convertingModule      string
+	convertBoundNames     map[string]int
 }
 
 var bridgeStandardModuleMembers = map[string][]string{
@@ -231,6 +235,32 @@ func setOf(values ...string) map[string]bool {
 	return out
 }
 
+func moduleDefinitionNameIndex(spec *Spec) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	if spec == nil {
+		return out
+	}
+	moduleNames := make([]string, 0, len(spec.Modules))
+	for name := range spec.Modules {
+		moduleNames = append(moduleNames, name)
+	}
+	sort.Strings(moduleNames)
+	for _, moduleName := range moduleNames {
+		mod := spec.Modules[moduleName]
+		if mod == nil {
+			continue
+		}
+		names := map[string]bool{}
+		for i := range mod.Definitions {
+			if mod.Definitions[i].Name != "" {
+				names[mod.Definitions[i].Name] = true
+			}
+		}
+		out[moduleName] = names
+	}
+	return out
+}
+
 // BuildTLCTool converts the production Go SANY semantic tree into the TLC
 // runtime tree used by the mechanical TLC port.
 func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics) {
@@ -240,16 +270,20 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	if cfg == nil {
 		cfg = tlc.NewModelConfig(spec.Root.Name)
 	}
+	tlc.ResetUniqueStringLocations()
 	defns := tlc.NewDefns()
 	bridge := &tlcBridge{
-		tool:      tlc.NewToolWithModelConfig(cfg),
-		processor: tlc.NewSpecProcessor(spec.Root.Name, defns, cfg),
-		spec:      spec,
-		cfg:       cfg,
-		runtime:   runtime,
-		defs:      definitionsByName(spec),
-		defns:     defns,
-		symbols:   map[string]*tlc.SymbolNode{},
+		tool:                  tlc.NewToolWithModelConfig(cfg),
+		processor:             tlc.NewSpecProcessor(spec.Root.Name, defns, cfg),
+		spec:                  spec,
+		cfg:                   cfg,
+		runtime:               runtime,
+		defs:                  tlcBridgeDefinitionsByName(spec),
+		defns:                 defns,
+		symbols:               map[string]*tlc.SymbolNode{},
+		rootModuleName:        spec.Root.Name,
+		moduleDefinitionNames: moduleDefinitionNameIndex(spec),
+		convertBoundNames:     map[string]int{},
 	}
 	bridge.tool.RootName = spec.Root.Name
 	bridge.tool.RootFile = spec.Root.SourcePath
@@ -700,14 +734,17 @@ func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, location tlc.SourceL
 	}
 
 	convert := &tlcBridge{
-		tool:      b.tool,
-		processor: b.processor,
-		spec:      wrapped,
-		cfg:       b.cfg,
-		runtime:   b.runtime,
-		defs:      definitionsByName(wrapped),
-		defns:     b.defns,
-		symbols:   b.symbols,
+		tool:                  b.tool,
+		processor:             b.processor,
+		spec:                  wrapped,
+		cfg:                   b.cfg,
+		runtime:               b.runtime,
+		defs:                  tlcBridgeDefinitionsByName(wrapped),
+		defns:                 b.defns,
+		symbols:               b.symbols,
+		rootModuleName:        wrapped.Root.Name,
+		moduleDefinitionNames: moduleDefinitionNameIndex(wrapped),
+		convertBoundNames:     map[string]int{},
 	}
 	op := convert.convertDefinitionAs(opName, def)
 	if op == nil {
@@ -1191,6 +1228,15 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	for i, param := range def.Params {
 		params[i] = b.symbol(param)
 	}
+	prevModule := b.convertingModule
+	if module := moduleNameForSourcePosition(def.SourcePosition()); module != "" {
+		b.convertingModule = module
+	}
+	restore := b.pushConvertBoundNames(def.Params...)
+	defer func() {
+		restore()
+		b.convertingModule = prevModule
+	}()
 	body := b.convertExpr(def.Expr)
 	if body == nil {
 		return nil
@@ -1198,12 +1244,63 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	return tlc.NewOpDefNodeForSymbol(sym, params, body)
 }
 
+func (b *tlcBridge) pushConvertBoundNames(names ...string) func() {
+	if b.convertBoundNames == nil {
+		b.convertBoundNames = map[string]int{}
+	}
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+		b.convertBoundNames[name]++
+	}
+	return func() {
+		for _, name := range names {
+			if name == "" {
+				continue
+			}
+			next := b.convertBoundNames[name] - 1
+			if next <= 0 {
+				delete(b.convertBoundNames, name)
+			} else {
+				b.convertBoundNames[name] = next
+			}
+		}
+	}
+}
+
+func (b *tlcBridge) convertBound(name string) bool {
+	if b == nil || name == "" {
+		return false
+	}
+	return b.convertBoundNames[name] > 0
+}
+
+func (b *tlcBridge) resolveExprName(name string) string {
+	name = tlcSymbolName(name)
+	if b == nil || name == "" || strings.Contains(name, "!") || b.convertBound(name) {
+		return name
+	}
+	module := b.convertingModule
+	if module == "" || module == b.rootModuleName {
+		return name
+	}
+	if b.moduleDefinitionNames[module][name] {
+		return module + "!" + name
+	}
+	return name
+}
+
+func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
+	return b.symbol(b.resolveExprName(name))
+}
+
 func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 	switch e := expr.(type) {
 	case nil:
 		return nil
 	case *IdentExpr:
-		return tlc.NewOpApplNode(b.symbol(e.Name))
+		return tlc.NewOpApplNode(b.exprSymbol(e.Name))
 	case *LiteralExpr:
 		return b.convertLiteral(e)
 	case *UnaryExpr:
@@ -1316,12 +1413,12 @@ func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
 	case "-.":
 		op = "-"
 	}
-	return tlc.NewOpApplNode(b.symbol(op), b.convertExpr(e.Expr))
+	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Expr))
 }
 
 func (b *tlcBridge) binaryNode(e *BinaryExpr) tlc.SemanticNode {
 	op := tlcBinaryOperator(e.Op)
-	return tlc.NewOpApplNode(b.symbol(op), b.convertExpr(e.Left), b.convertExpr(e.Right))
+	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Left), b.convertExpr(e.Right))
 }
 
 func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
@@ -1341,11 +1438,19 @@ func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
 	for _, arg := range e.Args {
 		args = append(args, b.convertExpr(arg))
 	}
-	return tlc.NewOpApplNode(b.symbol(callee.Name), args...)
+	return tlc.NewOpApplNode(b.exprSymbol(callee.Name), args...)
 }
 
 func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 	lets := make([]*tlc.OpDefNode, 0, len(e.Definitions))
+	letNames := make([]string, 0, len(e.Definitions))
+	for _, def := range e.Definitions {
+		if def.Name != "" {
+			letNames = append(letNames, def.Name)
+		}
+	}
+	restore := b.pushConvertBoundNames(letNames...)
+	defer restore()
 	for _, def := range e.Definitions {
 		next := def
 		lets = append(lets, b.convertDefinitionAs(next.Name, &next))
@@ -1371,10 +1476,17 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 	} else if e.Kind == "\\E" {
 		op = tlc.OpUE
 	}
-	node := tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Body))
+	var bound tlc.SemanticNode
+	if e.Set != nil {
+		bound = b.convertExpr(e.Set)
+	}
+	restore := b.pushConvertBoundNames(e.Var)
+	body := b.convertExpr(e.Body)
+	restore()
+	node := tlc.NewBuiltinOpApplNode(op, body)
 	if e.Set != nil {
 		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{b.symbol(e.Var)}}
-		node.BdedQuantBounds = []tlc.SemanticNode{b.convertExpr(e.Set)}
+		node.BdedQuantBounds = []tlc.SemanticNode{bound}
 		node.BdedQuantATuple = []bool{e.TupleBound}
 	} else {
 		node.UnbdedQuantSymbols = []*tlc.SymbolNode{b.symbol(e.Var)}
@@ -1398,10 +1510,17 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 	if e.Set != nil {
 		op = tlc.OpBC
 	}
-	node := tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Body))
+	var bound tlc.SemanticNode
+	if e.Set != nil {
+		bound = b.convertExpr(e.Set)
+	}
+	restore := b.pushConvertBoundNames(e.Var)
+	body := b.convertExpr(e.Body)
+	restore()
+	node := tlc.NewBuiltinOpApplNode(op, body)
 	if e.Set != nil {
 		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{b.symbol(e.Var)}}
-		node.BdedQuantBounds = []tlc.SemanticNode{b.convertExpr(e.Set)}
+		node.BdedQuantBounds = []tlc.SemanticNode{bound}
 		node.BdedQuantATuple = []bool{false}
 	} else {
 		node.UnbdedQuantSymbols = []*tlc.SymbolNode{b.symbol(e.Var)}
@@ -1410,10 +1529,21 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
-	node := tlc.NewBuiltinOpApplNode(tlc.OpFC, b.convertExpr(e.Body))
+	priorBound := make([]string, 0, len(e.Bounds))
+	boundExprs := make([]tlc.SemanticNode, 0, len(e.Bounds))
 	for _, bound := range e.Bounds {
+		restorePrior := b.pushConvertBoundNames(priorBound...)
+		boundExprs = append(boundExprs, b.convertExpr(bound.Set))
+		restorePrior()
+		priorBound = append(priorBound, bound.Name)
+	}
+	restore := b.pushConvertBoundNames(priorBound...)
+	body := b.convertExpr(e.Body)
+	restore()
+	node := tlc.NewBuiltinOpApplNode(tlc.OpFC, body)
+	for i, bound := range e.Bounds {
 		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, []*tlc.SymbolNode{b.symbol(bound.Name)})
-		node.BdedQuantBounds = append(node.BdedQuantBounds, b.convertExpr(bound.Set))
+		node.BdedQuantBounds = append(node.BdedQuantBounds, boundExprs[i])
 		node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
 	}
 	return node
@@ -1438,23 +1568,36 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNode {
+	priorBound := make([]string, 0, len(e.Bounds))
+	boundExprs := make([]tlc.SemanticNode, 0, len(e.Bounds))
+	for _, bound := range e.Bounds {
+		restorePrior := b.pushConvertBoundNames(priorBound...)
+		boundExprs = append(boundExprs, b.convertExpr(bound.Set))
+		restorePrior()
+		priorBound = append(priorBound, bound.Name)
+	}
 	if e.Predicate != nil {
 		if !setComprehensionElementIsBound(e) {
 			b.diags = append(b.diags, errorAt(e.Pos, "E7013", "set comprehension with mapped element and predicate is not yet supported by the TLC bridge"))
 		}
-		node := tlc.NewBuiltinOpApplNode(tlc.OpSSO, b.convertExpr(e.Predicate))
-		for _, bound := range e.Bounds {
+		restore := b.pushConvertBoundNames(priorBound...)
+		predicate := b.convertExpr(e.Predicate)
+		restore()
+		node := tlc.NewBuiltinOpApplNode(tlc.OpSSO, predicate)
+		for i, bound := range e.Bounds {
 			node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, []*tlc.SymbolNode{b.symbol(bound.Name)})
-			node.BdedQuantBounds = append(node.BdedQuantBounds, b.convertExpr(bound.Set))
+			node.BdedQuantBounds = append(node.BdedQuantBounds, boundExprs[i])
 			node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
 		}
 		return node
 	}
+	restore := b.pushConvertBoundNames(priorBound...)
 	body := b.convertExpr(e.Element)
+	restore()
 	node := tlc.NewBuiltinOpApplNode(tlc.OpSOA, body)
-	for _, bound := range e.Bounds {
+	for i, bound := range e.Bounds {
 		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, []*tlc.SymbolNode{b.symbol(bound.Name)})
-		node.BdedQuantBounds = append(node.BdedQuantBounds, b.convertExpr(bound.Set))
+		node.BdedQuantBounds = append(node.BdedQuantBounds, boundExprs[i])
 		node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
 	}
 	return node

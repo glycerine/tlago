@@ -447,6 +447,14 @@ func transitionSatisfiesAll(defs map[string]*Definition, names []string, current
 }
 
 func definitionsByName(spec *Spec) map[string]*Definition {
+	return definitionsByNameWithOptions(spec, false, true)
+}
+
+func tlcBridgeDefinitionsByName(spec *Spec) map[string]*Definition {
+	return definitionsByNameWithOptions(spec, true, false)
+}
+
+func definitionsByNameWithOptions(spec *Spec, includeNativeOverrides bool, exportExtendedLocals bool) map[string]*Definition {
 	defs := map[string]*Definition{}
 	if spec == nil || spec.Root == nil {
 		return defs
@@ -468,7 +476,7 @@ func definitionsByName(spec *Spec) map[string]*Definition {
 		}
 		for i := range mod.Definitions {
 			def := &mod.Definitions[i]
-			if isNativeStandardDefinitionOverrideName(def.Name, def) {
+			if !includeNativeOverrides && isNativeStandardDefinitionOverrideName(def.Name, def) {
 				continue
 			}
 			if moduleName != "" {
@@ -478,7 +486,7 @@ func definitionsByName(spec *Spec) map[string]*Definition {
 				defs[def.Name] = def
 				continue
 			}
-			if rootExtends[moduleName] {
+			if rootExtends[moduleName] && (exportExtendedLocals || !def.Local) {
 				if _, exists := defs[def.Name]; !exists {
 					defs[def.Name] = def
 				}
@@ -489,17 +497,17 @@ func definitionsByName(spec *Spec) map[string]*Definition {
 				if inst.Local {
 					continue
 				}
-				addInstanceDefinitions(defs, spec, inst)
+				addInstanceDefinitions(defs, spec, inst, includeNativeOverrides)
 			}
 		}
 	}
 	for _, inst := range spec.Root.Instances {
-		addInstanceDefinitions(defs, spec, inst)
+		addInstanceDefinitions(defs, spec, inst, includeNativeOverrides)
 	}
 	return defs
 }
 
-func addInstanceDefinitions(defs map[string]*Definition, spec *Spec, inst Instance) {
+func addInstanceDefinitions(defs map[string]*Definition, spec *Spec, inst Instance, includeNativeOverrides bool) {
 	if spec == nil {
 		return
 	}
@@ -515,7 +523,7 @@ func addInstanceDefinitions(defs map[string]*Definition, spec *Spec, inst Instan
 		if def == nil {
 			continue
 		}
-		if isNativeStandardDefinitionOverrideName(def.Name, def) {
+		if !includeNativeOverrides && isNativeStandardDefinitionOverrideName(def.Name, def) {
 			continue
 		}
 		qualifier := inst.qualifier()

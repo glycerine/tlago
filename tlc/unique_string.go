@@ -64,6 +64,17 @@ func SetUniqueStringVariableCount(n int) {
 	internTable.varCount = n
 }
 
+func ResetUniqueStringLocations() {
+	internTable.mu.Lock()
+	defer internTable.mu.Unlock()
+	for _, us := range internTable.byString {
+		if us != nil {
+			us.loc = -1
+		}
+	}
+	internTable.varCount = 0
+}
+
 func UniqueStringVariableCount() int {
 	internTable.mu.Lock()
 	defer internTable.mu.Unlock()
