@@ -88,17 +88,8 @@ func (c *CheckImpl) MakeStateSpace(state *TLCStateMut, depth int) (int, error) {
 		return ECGeneral, newTLCError(ECGeneral, "CheckImpl has no model checker")
 	}
 	depth1 := depth
-	if state != nil {
-		if c.Trace != nil {
-			traceLevel := c.Trace.GetLevelForState(state)
-			if traceLevel > 0 {
-				depth1 += traceLevel
-			} else {
-				depth1 += state.Level()
-			}
-		} else {
-			depth1 += state.Level()
-		}
+	if state != nil && c.Trace != nil {
+		depth1 += c.Trace.GetLevel(state.UID)
 	}
 	c.StateQueue = NewDiskStateQueue(c.Metadir)
 	if state != nil {
