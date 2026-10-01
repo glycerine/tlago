@@ -426,17 +426,6 @@ func (q *MemStateQueue) Recover() error {
 }
 
 func (q *MemStateQueue) Delete() error {
-	q.mu.Lock()
-	defer q.mu.Unlock()
-	if q.diskdir == "" {
-		return nil
-	}
-	if err := os.Remove(filepath.Join(q.diskdir, "queue.tmp")); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if err := os.Remove(filepath.Join(q.diskdir, "queue.chkpt")); err != nil && !os.IsNotExist(err) {
-		return err
-	}
 	return nil
 }
 
@@ -735,6 +724,9 @@ func (q *StateDeque) needsWaiting() bool {
 }
 
 func (q *StateDeque) enqueueInner(state *TLCStateMut) {
+	if state == nil {
+		panic("nil state")
+	}
 	if q.len == int64(len(q.states)) {
 		q.grow()
 	}
