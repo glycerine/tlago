@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -19,9 +20,10 @@ type DiskStateQueue struct {
 	mu            sync.Mutex
 	cond          *sync.Cond
 	len           int64
-	numWaiting    int
-	finish        bool
+	numWaiting    atomic.Int32
+	finish        atomic.Bool
 	stop          bool
+	suspend       stateQueueSuspendBarrier
 	diskdir       string
 	deqBuf        []*TLCStateMut
 	enqBuf        []*TLCStateMut
@@ -50,6 +52,7 @@ func NewDiskStateQueue(metaDir string) *DiskStateQueue {
 		loPool:   1,
 	}
 	q.cond = sync.NewCond(&q.mu)
+	q.suspend.ensure()
 	q.reader = NewStatePoolReader(bufSize, q.poolName(0))
 	q.reader.Start()
 	q.writer = NewStatePoolWriter(bufSize, q.reader)
@@ -88,7 +91,7 @@ func (q *DiskStateQueue) SEnqueue(state *TLCStateMut) {
 	defer q.mu.Unlock()
 	q.enqueueInner(state)
 	q.len++
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -100,7 +103,7 @@ func (q *DiskStateQueue) SEnqueueAll(states []*TLCStateMut) {
 		q.enqueueInner(state)
 		q.len++
 	}
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -118,7 +121,7 @@ func (q *DiskStateQueue) SEnqueueVec(states *StateVec) {
 			q.len++
 		}
 	}
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -165,8 +168,7 @@ func (q *DiskStateQueue) SDequeueMany(cnt int) []*TLCStateMut {
 
 func (q *DiskStateQueue) FinishAll() {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.finish = true
+	q.finish.Store(true)
 	if q.writer != nil {
 		q.writer.SetFinished()
 	}
@@ -177,19 +179,41 @@ func (q *DiskStateQueue) FinishAll() {
 		q.cleaner.SetFinished()
 	}
 	q.cond.Broadcast()
+	q.mu.Unlock()
+	q.suspend.signal()
 }
 
 func (q *DiskStateQueue) SuspendAll() bool {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	if q.finish {
+	if q.finish.Load() {
+		q.mu.Unlock()
 		return false
 	}
 	q.stop = true
-	for !q.finish && q.numWaiting < NumWorkers() {
-		q.cond.Wait()
+	needWait := q.needsWaiting()
+	q.mu.Unlock()
+	for needWait {
+		q.suspend.ensure()
+		q.suspend.mu.Lock()
+		if q.finish.Load() {
+			q.suspend.mu.Unlock()
+			return false
+		}
+		if !q.needsWaiting() {
+			q.suspend.mu.Unlock()
+			return true
+		}
+		q.suspend.cond.Wait()
+		q.suspend.mu.Unlock()
+		q.mu.Lock()
+		if q.finish.Load() {
+			q.mu.Unlock()
+			return false
+		}
+		needWait = q.needsWaiting()
+		q.mu.Unlock()
 	}
-	return !q.finish
+	return true
 }
 
 func (q *DiskStateQueue) ResumeAll() {
@@ -201,8 +225,16 @@ func (q *DiskStateQueue) ResumeAll() {
 
 func (q *DiskStateQueue) ResumeAllStuck() {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.cond.Broadcast()
+	stop := q.stop
+	nonempty := q.len >= 1
+	waiting := q.numWaiting.Load()
+	if !stop && nonempty && waiting > 0 {
+		q.cond.Broadcast()
+	}
+	q.mu.Unlock()
+	if stop {
+		q.suspend.broadcast()
+	}
 }
 
 func (q *DiskStateQueue) Size() int64 {
@@ -443,25 +475,29 @@ func (q *DiskStateQueue) spillEnqueueBuffer() error {
 }
 
 func (q *DiskStateQueue) isAvailLocked() bool {
-	if q.finish {
+	if q.finish.Load() {
 		return false
 	}
 	for q.len == 0 || q.stop {
-		q.numWaiting++
-		if q.numWaiting >= NumWorkers() {
-			q.cond.Broadcast()
+		waiting := q.numWaiting.Add(1)
+		if int(waiting) >= NumWorkers() {
 			if q.len == 0 {
-				q.numWaiting--
+				q.numWaiting.Add(-1)
 				return false
 			}
+			q.suspend.signal()
 		}
 		q.cond.Wait()
-		q.numWaiting--
-		if q.finish {
+		q.numWaiting.Add(-1)
+		if q.finish.Load() {
 			return false
 		}
 	}
 	return true
+}
+
+func (q *DiskStateQueue) needsWaiting() bool {
+	return int(q.numWaiting.Load()) < NumWorkers()
 }
 
 func (q *DiskStateQueue) poolName(pool int) string {

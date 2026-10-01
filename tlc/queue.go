@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 )
 
 type StateQueue interface {
@@ -112,15 +113,42 @@ func setStateQueueDir(queue StateQueue, diskdir string) {
 	}
 }
 
+type stateQueueSuspendBarrier struct {
+	once sync.Once
+	mu   sync.Mutex
+	cond *sync.Cond
+}
+
+func (b *stateQueueSuspendBarrier) ensure() {
+	b.once.Do(func() {
+		b.cond = sync.NewCond(&b.mu)
+	})
+}
+
+func (b *stateQueueSuspendBarrier) signal() {
+	b.ensure()
+	b.mu.Lock()
+	b.cond.Signal()
+	b.mu.Unlock()
+}
+
+func (b *stateQueueSuspendBarrier) broadcast() {
+	b.ensure()
+	b.mu.Lock()
+	b.cond.Broadcast()
+	b.mu.Unlock()
+}
+
 type MemStateQueue struct {
 	mu         sync.Mutex
 	cond       *sync.Cond
 	states     []*TLCStateMut
 	start      int
 	len        int64
-	numWaiting int
-	finish     bool
+	numWaiting atomic.Int32
+	finish     atomic.Bool
 	stop       bool
+	suspend    stateQueueSuspendBarrier
 	diskdir    string
 }
 
@@ -134,6 +162,7 @@ func NewMemStateQueue(metaDir ...string) *MemStateQueue {
 	}
 	q := &MemStateQueue{states: make([]*TLCStateMut, memStateQueueInitialSize), diskdir: diskdir}
 	q.cond = sync.NewCond(&q.mu)
+	q.suspend.ensure()
 	return q
 }
 
@@ -152,7 +181,7 @@ func (q *MemStateQueue) SEnqueue(state *TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.enqueueInner(state)
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -163,7 +192,7 @@ func (q *MemStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	for _, state := range states {
 		q.enqueueInner(state)
 	}
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -179,7 +208,7 @@ func (q *MemStateQueue) SEnqueueVec(states *StateVec) {
 			q.enqueueInner(state)
 		}
 	}
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -223,22 +252,43 @@ func (q *MemStateQueue) SDequeueMany(cnt int) []*TLCStateMut {
 
 func (q *MemStateQueue) FinishAll() {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.finish = true
+	q.finish.Store(true)
 	q.cond.Broadcast()
+	q.mu.Unlock()
+	q.suspend.signal()
 }
 
 func (q *MemStateQueue) SuspendAll() bool {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	if q.finish {
+	if q.finish.Load() {
+		q.mu.Unlock()
 		return false
 	}
 	q.stop = true
-	for !q.finish && q.numWaiting < NumWorkers() {
-		q.cond.Wait()
+	needWait := q.needsWaiting()
+	q.mu.Unlock()
+	for needWait {
+		q.suspend.ensure()
+		q.suspend.mu.Lock()
+		if q.finish.Load() {
+			q.suspend.mu.Unlock()
+			return false
+		}
+		if !q.needsWaiting() {
+			q.suspend.mu.Unlock()
+			return true
+		}
+		q.suspend.cond.Wait()
+		q.suspend.mu.Unlock()
+		q.mu.Lock()
+		if q.finish.Load() {
+			q.mu.Unlock()
+			return false
+		}
+		needWait = q.needsWaiting()
+		q.mu.Unlock()
 	}
-	return !q.finish
+	return true
 }
 
 func (q *MemStateQueue) ResumeAll() {
@@ -250,8 +300,16 @@ func (q *MemStateQueue) ResumeAll() {
 
 func (q *MemStateQueue) ResumeAllStuck() {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.cond.Broadcast()
+	stop := q.stop
+	nonempty := q.len >= 1
+	waiting := q.numWaiting.Load()
+	if !stop && nonempty && waiting > 0 {
+		q.cond.Broadcast()
+	}
+	q.mu.Unlock()
+	if stop {
+		q.suspend.broadcast()
+	}
 }
 
 func (q *MemStateQueue) Size() int64 {
@@ -374,25 +432,29 @@ func (q *MemStateQueue) Delete() error {
 }
 
 func (q *MemStateQueue) isAvailLocked() bool {
-	if q.finish {
+	if q.finish.Load() {
 		return false
 	}
 	for q.len == 0 || q.stop {
-		q.numWaiting++
-		if q.numWaiting >= NumWorkers() {
-			q.cond.Broadcast()
+		waiting := q.numWaiting.Add(1)
+		if int(waiting) >= NumWorkers() {
 			if q.len == 0 {
-				q.numWaiting--
+				q.numWaiting.Add(-1)
 				return false
 			}
+			q.suspend.signal()
 		}
 		q.cond.Wait()
-		q.numWaiting--
-		if q.finish {
+		q.numWaiting.Add(-1)
+		if q.finish.Load() {
 			return false
 		}
 	}
 	return true
+}
+
+func (q *MemStateQueue) needsWaiting() bool {
+	return int(q.numWaiting.Load()) < NumWorkers()
 }
 
 func (q *MemStateQueue) enqueueInner(state *TLCStateMut) {
@@ -435,14 +497,16 @@ type StateDeque struct {
 	states     []*TLCStateMut
 	start      int
 	len        int64
-	numWaiting int
-	finish     bool
+	numWaiting atomic.Int32
+	finish     atomic.Bool
 	stop       bool
+	suspend    stateQueueSuspendBarrier
 }
 
 func NewStateDeque() *StateDeque {
 	q := &StateDeque{states: make([]*TLCStateMut, memStateQueueInitialSize)}
 	q.cond = sync.NewCond(&q.mu)
+	q.suspend.ensure()
 	return q
 }
 
@@ -461,7 +525,7 @@ func (q *StateDeque) SEnqueue(state *TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.enqueueInner(state)
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -472,7 +536,7 @@ func (q *StateDeque) SEnqueueAll(states []*TLCStateMut) {
 	for _, state := range states {
 		q.enqueueInner(state)
 	}
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -488,7 +552,7 @@ func (q *StateDeque) SEnqueueVec(states *StateVec) {
 			q.enqueueInner(state)
 		}
 	}
-	if q.numWaiting > 0 && !q.stop {
+	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
 }
@@ -532,22 +596,43 @@ func (q *StateDeque) SDequeueMany(cnt int) []*TLCStateMut {
 
 func (q *StateDeque) FinishAll() {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.finish = true
+	q.finish.Store(true)
 	q.cond.Broadcast()
+	q.mu.Unlock()
+	q.suspend.signal()
 }
 
 func (q *StateDeque) SuspendAll() bool {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	if q.finish {
+	if q.finish.Load() {
+		q.mu.Unlock()
 		return false
 	}
 	q.stop = true
-	for !q.finish && q.numWaiting < NumWorkers() {
-		q.cond.Wait()
+	needWait := q.needsWaiting()
+	q.mu.Unlock()
+	for needWait {
+		q.suspend.ensure()
+		q.suspend.mu.Lock()
+		if q.finish.Load() {
+			q.suspend.mu.Unlock()
+			return false
+		}
+		if !q.needsWaiting() {
+			q.suspend.mu.Unlock()
+			return true
+		}
+		q.suspend.cond.Wait()
+		q.suspend.mu.Unlock()
+		q.mu.Lock()
+		if q.finish.Load() {
+			q.mu.Unlock()
+			return false
+		}
+		needWait = q.needsWaiting()
+		q.mu.Unlock()
 	}
-	return !q.finish
+	return true
 }
 
 func (q *StateDeque) ResumeAll() {
@@ -559,8 +644,16 @@ func (q *StateDeque) ResumeAll() {
 
 func (q *StateDeque) ResumeAllStuck() {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.cond.Broadcast()
+	stop := q.stop
+	nonempty := q.len >= 1
+	waiting := q.numWaiting.Load()
+	if !stop && nonempty && waiting > 0 {
+		q.cond.Broadcast()
+	}
+	q.mu.Unlock()
+	if stop {
+		q.suspend.broadcast()
+	}
 }
 
 func (q *StateDeque) Size() int64 {
@@ -600,25 +693,29 @@ func (q *StateDeque) Pop() *TLCStateMut {
 }
 
 func (q *StateDeque) isAvailLocked() bool {
-	if q.finish {
+	if q.finish.Load() {
 		return false
 	}
 	for q.len == 0 || q.stop {
-		q.numWaiting++
-		if q.numWaiting >= NumWorkers() {
-			q.cond.Broadcast()
+		waiting := q.numWaiting.Add(1)
+		if int(waiting) >= NumWorkers() {
 			if q.len == 0 {
-				q.numWaiting--
+				q.numWaiting.Add(-1)
 				return false
 			}
+			q.suspend.signal()
 		}
 		q.cond.Wait()
-		q.numWaiting--
-		if q.finish {
+		q.numWaiting.Add(-1)
+		if q.finish.Load() {
 			return false
 		}
 	}
 	return true
+}
+
+func (q *StateDeque) needsWaiting() bool {
+	return int(q.numWaiting.Load()) < NumWorkers()
 }
 
 func (q *StateDeque) enqueueInner(state *TLCStateMut) {
