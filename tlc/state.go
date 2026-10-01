@@ -719,9 +719,7 @@ func NewStateVec(capacity int) *StateVec {
 }
 
 func NewStateVecFrom(states []*TLCStateMut) *StateVec {
-	out := make([]*TLCStateMut, len(states))
-	copy(out, states)
-	return &StateVec{states: out}
+	return &StateVec{states: states}
 }
 
 func (v *StateVec) Empty() bool           { return len(v.states) == 0 }
