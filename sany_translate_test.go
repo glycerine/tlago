@@ -2189,11 +2189,22 @@ Removed == RemoveAt(<<1, 2, 3>>, 2)
 FrontPart == Front(<<1, 2, 3>>)
 Strict == IsStrictPrefix(<<1>>, <<1, 2>>)
 Common == LongestCommonPrefix({<<1, 2>>, <<1, 3>>})
+Prepended == Cons(0, <<1, 2, 3>>)
 ====`)
 		spec, diags := LoadSanySpec(root, LoadOptions{})
 		requireNoErrors(t, diags)
 		sem := CheckSpec(spec)
 		requireNoErrors(t, sem)
+	})
+
+	t.Run("keeps SequencesExt helpers out of base Sequences", func(t *testing.T) {
+		_, diags := CheckSanySource("BaseSequencesNoCons.tla", `---- MODULE BaseSequencesNoCons ----
+EXTENDS Sequences
+Prepended == Cons(0, <<1, 2, 3>>)
+====`)
+		if !diags.HasErrors() || !strings.Contains(diags.Error(), "undefined identifier Cons") {
+			t.Fatalf("expected Cons to stay undefined under base Sequences, got:\n%s", diags.Error())
+		}
 	})
 }
 

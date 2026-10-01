@@ -70,6 +70,7 @@ BoundedSeq(S, n) == Seq(S)
 SetToSeq(S) == <<>>
 SeqToSet(s) == {}
 RemoveAt(s, i) == SubSeq(s, 1, i-1) \o SubSeq(s, i+1, Len(s))
+Cons(elt, seq) == <<elt>> \o seq
 Front(s) == SubSeq(s, 1, Len(s)-1)
 IsPrefix(s, t) == Len(s) <= Len(t) /\ SubSeq(s, 1, Len(s)) = SubSeq(t, 1, Len(s))
 IsStrictPrefix(s, t) == IsPrefix(s, t) /\ s # t
@@ -223,20 +224,24 @@ func loadStandardModules(fallbacks map[string]string) map[string]string {
 	for name, source := range fallbacks {
 		out[name] = source
 	}
-	entries, err := embeddedJavaStandardModules.ReadDir("test_vectors/java-sany/StandardModules")
+	loadEmbeddedModules(out, embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	return out
+}
+
+func loadEmbeddedModules(out map[string]string, fs embed.FS, dir string) {
+	entries, err := fs.ReadDir(dir)
 	if err != nil {
-		return out
+		return
 	}
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".tla") {
 			continue
 		}
-		data, err := embeddedJavaStandardModules.ReadFile("test_vectors/java-sany/StandardModules/" + entry.Name())
+		data, err := fs.ReadFile(dir + "/" + entry.Name())
 		if err != nil {
 			continue
 		}
 		name := strings.TrimSuffix(entry.Name(), ".tla")
 		out[name] = string(data)
 	}
-	return out
 }
