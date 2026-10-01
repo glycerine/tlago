@@ -1217,7 +1217,8 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 		value, err := mc.Tool.NoDebug().Eval(periodic)
 		if err != nil {
 			resume = false
-			return ECTLCAssumptionEvaluationError, err
+			PrintError(ECGeneral, generalErrorParams("", err)...)
+			return ECGeneral, err
 		}
 		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
 			resume = false
