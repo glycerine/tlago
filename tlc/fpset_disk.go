@@ -477,10 +477,10 @@ func (s *DiskFPSet) CommitChkptFile(fname string) error {
 	}
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
-	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+	if err := os.Rename(newChkpt, oldChkpt); err != nil {
+		return fmt.Errorf("DiskFPSet.commitChkpt: cannot delete %s", oldChkpt)
 	}
-	return os.Rename(newChkpt, oldChkpt)
+	return nil
 }
 
 func (s *DiskFPSet) Recover() error {

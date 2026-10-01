@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -163,6 +164,39 @@ func (s *cleanupRecordingFPSet) Exit(cleanup bool) error {
 	s.exitCalled = true
 	s.cleanupArg = cleanup
 	return nil
+}
+
+func TestFPSetCommitCheckpointErrorsUseJavaClassNames(t *testing.T) {
+	metadir := t.TempDir()
+	cases := []struct {
+		name string
+		err  error
+		want string
+	}{
+		{
+			name: "disk",
+			err:  func() error { set := NewDiskFPSet(nil); set.metadir = metadir; return set.CommitChkptFile("disk") }(),
+			want: "DiskFPSet.commitChkpt: cannot delete " + filepath.Join(metadir, "disk.fp.chkpt"),
+		},
+		{
+			name: "mem1",
+			err:  (&MemFPSet1{metadir: metadir}).CommitChkptFile("mem1"),
+			want: "MemFPSet1.commitChkpt: cannot delete " + filepath.Join(metadir, "mem1.fp.chkpt"),
+		},
+		{
+			name: "mem2",
+			err:  (&MemFPSet2{metadir: metadir}).CommitChkptFile("mem2"),
+			want: "MemFPSet2.commitChkpt: cannot delete " + filepath.Join(metadir, "mem2.fp.chkpt"),
+		},
+	}
+	for _, tc := range cases {
+		if tc.err == nil {
+			t.Fatalf("%s CommitChkptFile returned nil, want Java-shaped error", tc.name)
+		}
+		if got := tc.err.Error(); !strings.Contains(got, tc.want) {
+			t.Fatalf("%s CommitChkptFile error = %q, want to contain %q", tc.name, got, tc.want)
+		}
+	}
 }
 
 func TestMemFPSetPutContainsAndSize(t *testing.T) {

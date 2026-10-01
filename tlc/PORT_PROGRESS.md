@@ -8,6 +8,7 @@
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
 - Cleanup rule: do not preserve Java's likely early-return resource leak, but do preserve the load-bearing `FileUtil.deleteDir(metadir, success)` behavior. When checker cleanup is called with `success=false`, it must close resources while keeping non-empty metadata/artifact directories; when called with `success=true`, it may recursively remove them. See `TestModelCheckerCleanupPreservesFailureArtifactsLikeJava`.
 - FP-set cleanup delegation: `MultiFPSet.exit(cleanup)` must delegate the exact cleanup flag to every child FP set and must not add its own Go-only metadir removal. Java's base `FPSet.exit` only signals distributed shutdown/notify; concrete child FP sets own deletion. See `TestMultiFPSetExitDelegatesCleanupLikeJava`.
+- FP-set checkpoint errors: disk and memory FP-set commit paths must keep Java's class-specific `*.commitChkpt: cannot delete ...` text. `DiskFPSet.commitChkpt(String)` directly renames tmp to chkpt; do not pre-delete the old disk checkpoint there. See `TestFPSetCommitCheckpointErrorsUseJavaClassNames`.
 - Special values: Java `UndefValue` and `UserValue` inherit base `Value.fingerPrint`, which deliberately fails when such values reach a state fingerprint. Go must not silently return the previous fingerprint for `UNDEF`, `ANY`, or other user values; see `TestSpecialValuesCannotBeFingerprintedLikeJava`.
 - Core checker diagnostics: Java MP templates for initial-state, incomplete-state, invariant/action evaluation, deadlock, no-next-action, no-init-state, system stack/heap failures, failed trace recovery, fingerprint exceptions, TLC bugs, key liveness failures, and `GENERAL` substitution have been mirrored in `output.go`; keep `GENERAL` cause/throwable call sites collapsed through `javaGeneralErrorMessage`.
 - Worker error-time postconditions are load-bearing and worker-owned in Java. `Worker.doNextSetErr` wraps `ModelChecker.doNextSetErr` and then invokes the postcondition hook with a reconstructed counterexample, but Java's direct `ModelChecker.doNext` helper does not invoke that hook; keep Go's worker wrapper and direct helper separate.
@@ -252,6 +253,7 @@
   - Next-state `CASE` coverage now charges guard and branch evaluation to the Java-matching arm-local cost model.
   - Optional liveness statistics now mirror Java's `tlc2.tool.liveness.statistics` path by recording SCC component sizes, calculating final in-degree/out-degree disk-graph bucket statistics, and printing the raw stats to stdout after the checker summary.
   - `MultiFPSet.Exit` now mirrors Java's child-delegating cleanup shape instead of removing the metadir directly from the aggregate wrapper.
+  - Disk and memory FP-set checkpoint commit errors now use the Java concrete-class message text, and disk FP-set commit follows Java's direct tmp-to-checkpoint rename.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
