@@ -2638,6 +2638,10 @@ Important Java classes:
   request surface without importing DAP transport types; `startFrame` outside
   the active frame range returns an empty response, and positive `levels`
   restricts the returned slice exactly like Java's `StackTraceArguments`.
+  The small Java request handlers with no deeper TLC semantics are also kept
+  concrete: `threads` returns one thread `{0, "worker"}`, `setVariable` returns
+  an empty response, `configurationDone` is a no-op, and `terminate` stops the
+  active checker/simulator before running the same disconnect cleanup path.
 
 Debugger variable details:
 

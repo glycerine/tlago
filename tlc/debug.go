@@ -1040,6 +1040,17 @@ type TLCStackTraceResponse struct {
 	TotalFrames int
 }
 
+type TLCThread struct {
+	ID   int
+	Name string
+}
+
+type TLCThreadsResponse struct {
+	Threads []TLCThread
+}
+
+type TLCSetVariableResponse struct{}
+
 type GotoStateArgument struct {
 	VariablesReference int
 }
@@ -2101,6 +2112,16 @@ func (d *TLCDebugger) SetExceptionBreakpoints(options []TLCExceptionBreakpointFi
 	return d
 }
 
+func (d *TLCDebugger) Threads() TLCThreadsResponse {
+	return TLCThreadsResponse{Threads: []TLCThread{{ID: 0, Name: "worker"}}}
+}
+
+func (d *TLCDebugger) SetVariable() TLCSetVariableResponse {
+	return TLCSetVariableResponse{}
+}
+
+func (d *TLCDebugger) ConfigurationDone() {}
+
 func (d *TLCDebugger) SetBreakpoints(source string, requested []TLCSourceBreakpointRequest) []TLCBreakpoint {
 	if d == nil {
 		return nil
@@ -2191,6 +2212,16 @@ func (d *TLCDebugger) DisconnectCommand() *TLCDebugger {
 	d.Paused = false
 	d.clearSyntheticTraceFramesLocked()
 	return d
+}
+
+func (d *TLCDebugger) TerminateCommand() *TLCDebugger {
+	if checker := MainChecker(); checker != nil {
+		checker.Stop()
+	}
+	if simulator := CurrentSimulator(); simulator != nil {
+		simulator.Stop()
+	}
+	return d.DisconnectCommand()
 }
 
 func (d *TLCDebugger) TopFrame() *TLCDebuggerFrame {
