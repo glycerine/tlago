@@ -159,9 +159,6 @@ type FixedSizedBucketStatistics struct {
 }
 
 func NewFixedSizedBucketStatistics(title string, maximum int) *FixedSizedBucketStatistics {
-	if maximum <= 0 {
-		panic("FixedSizedBucketStatistics requires a positive maximum")
-	}
 	return &FixedSizedBucketStatistics{
 		Title:   title,
 		buckets: make([]int64, maximum),
@@ -473,9 +470,6 @@ type FixedSizedConcurrentBucketStatistics struct {
 }
 
 func NewFixedSizedConcurrentBucketStatistics(title string, maximum int) *FixedSizedConcurrentBucketStatistics {
-	if maximum <= 0 {
-		panic("FixedSizedConcurrentBucketStatistics requires a positive maximum")
-	}
 	return &FixedSizedConcurrentBucketStatistics{Title: title, buckets: make([]atomic.Int64, maximum)}
 }
 

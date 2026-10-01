@@ -75,6 +75,22 @@ func TestFixedSizedBucketStatisticsUsesOverflowBucket(t *testing.T) {
 	}
 }
 
+func TestFixedSizedBucketStatisticsAllowsZeroSizeUntilSampleLikeJava(t *testing.T) {
+	stats := NewFixedSizedBucketStatistics("FixedSizedBucketStatisticsTest", 0)
+	if stats.Observations() != 0 || stats.Min() != -1 || stats.Max() != -1 {
+		t.Fatalf("zero-sized stats obs/min/max = %d/%d/%d, want Java empty metrics",
+			stats.Observations(), stats.Min(), stats.Max())
+	}
+	requirePanic(t, func() { stats.AddSample(0) })
+
+	concurrent := NewFixedSizedConcurrentBucketStatistics("FixedSizedConcurrentBucketStatisticsTest", 0)
+	if concurrent.Observations() != 0 || concurrent.Min() != -1 || concurrent.Max() != -1 {
+		t.Fatalf("zero-sized concurrent stats obs/min/max = %d/%d/%d, want Java empty metrics",
+			concurrent.Observations(), concurrent.Min(), concurrent.Max())
+	}
+	requirePanic(t, func() { concurrent.AddSample(0) })
+}
+
 func TestPortedStatisticUtilityVariants(t *testing.T) {
 	dummy := NewDummyBucketStatistics()
 	dummy.AddSample(100)
