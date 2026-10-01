@@ -1067,7 +1067,6 @@ func (e *TLCTraceEnumerator) Reset(pos int64) {
 			pos, _ = e.raf.GetFilePointer()
 		}
 		path := e.path
-		length := e.length
 		_ = e.raf.Close()
 		raf, err := NewBufferedRandomAccessFile(path, "r")
 		if err != nil {
@@ -1077,12 +1076,13 @@ func (e *TLCTraceEnumerator) Reset(pos int64) {
 			return
 		}
 		e.raf = raf
-		e.length = length
+		if length, err := e.raf.Length(); err == nil {
+			e.length = length
+		}
 		_ = e.raf.Seek(pos)
 		return
 	}
 	if pos < 0 {
-		e.index = 0
 		return
 	}
 	if pos > int64(len(e.records)) {
