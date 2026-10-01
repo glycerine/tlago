@@ -243,7 +243,7 @@ type LiveChecker struct {
 	Err              error
 }
 
-func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWriter, metadir string, outDegreeStats *BucketStatistics) *LiveChecker {
+func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWriter, metadir string, outDegreeStats any) *LiveChecker {
 	if writer == nil {
 		writer = NewNoopLivenessStateWriter()
 	}
@@ -835,7 +835,7 @@ type LiveCheck struct {
 	Tool           *Tool
 	MetaDir        string
 	Checkers       []*LiveChecker
-	OutDegreeStats *BucketStatistics
+	OutDegreeStats any
 	NoOp           bool
 	Forced         bool
 	AddAndCheck    bool
@@ -845,7 +845,7 @@ type LiveCheck struct {
 }
 
 func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
-	return &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree"), NoOp: true, errFoundByID: -1}
+	return &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewDummyBucketStatistics(), NoOp: true, errFoundByID: -1}
 }
 
 func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
@@ -861,9 +861,9 @@ func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metad
 		}
 		metadir = tmp
 	}
-	outDegreeStats := NewBucketStatistics("Histogram vertex out-degree")
+	var outDegreeStats any = NewDummyBucketStatistics()
 	if livenessStatsEnabled() {
-		outDegreeStats = NewBucketStatisticsWithMX("Histogram vertex out-degree", javaLivenessPackageName, "DiskGraphsOutDegree")
+		outDegreeStats = NewConcurrentBucketStatisticsWithMX("Histogram vertex out-degree", javaLivenessPackageName, "DiskGraphsOutDegree")
 	}
 	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: outDegreeStats, errFoundByID: -1}
 	for i, solution := range solutions {
@@ -1415,14 +1415,14 @@ func (lc *LiveCheck) FlushWritesToDiskFiles() error {
 	return nil
 }
 
-func (lc *LiveCheck) GetOutDegreeStatistics() *BucketStatistics {
+func (lc *LiveCheck) GetOutDegreeStatistics() any {
 	if lc == nil || lc.OutDegreeStats == nil {
-		return NewBucketStatistics("Histogram vertex out-degree")
+		return NewDummyBucketStatistics()
 	}
 	return lc.OutDegreeStats
 }
 
-func (lc *LiveCheck) CalculateInDegreeDiskGraphs(stats *BucketStatistics) (*BucketStatistics, error) {
+func (lc *LiveCheck) CalculateInDegreeDiskGraphs(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex in-degree")
 	}
@@ -1443,7 +1443,7 @@ func (lc *LiveCheck) CalculateInDegreeDiskGraphs(stats *BucketStatistics) (*Buck
 	return stats, nil
 }
 
-func (lc *LiveCheck) CalculateOutDegreeDiskGraphs(stats *BucketStatistics) (*BucketStatistics, error) {
+func (lc *LiveCheck) CalculateOutDegreeDiskGraphs(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex out-degree")
 	}

@@ -417,6 +417,21 @@ func NewConcurrentBucketStatisticsWithMX(title string, pkg string, name string) 
 	return stats
 }
 
+func bucketStatisticsAddSample(stats any, amount int) {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		s.AddSample(amount)
+	case *FixedSizedBucketStatistics:
+		s.AddSample(amount)
+	case *ConcurrentBucketStatistics:
+		s.AddSample(amount)
+	case *FixedSizedConcurrentBucketStatistics:
+		s.AddSample(amount)
+	case *DummyBucketStatistics:
+		s.AddSample(amount)
+	}
+}
+
 func (s *ConcurrentBucketStatistics) AddSample(amount int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

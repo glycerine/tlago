@@ -1032,8 +1032,8 @@ func (lc *LiveCheck1) GetTool() *Tool {
 	return lc.MyTool
 }
 
-func (lc *LiveCheck1) GetOutDegreeStatistics() *BucketStatistics {
-	return NewBucketStatistics("Histogram vertex out-degree")
+func (lc *LiveCheck1) GetOutDegreeStatistics() any {
+	return NewDummyBucketStatistics()
 }
 
 func (lc *LiveCheck1) NumChecker() int { return 0 }
@@ -1044,14 +1044,14 @@ func (lc *LiveCheck1) CommitChkpt() error            { return nil }
 func (lc *LiveCheck1) Recover() error                { return nil }
 func (lc *LiveCheck1) FlushWritesToDiskFiles() error { return nil }
 
-func (lc *LiveCheck1) CalculateInDegreeDiskGraphs(stats *BucketStatistics) (*BucketStatistics, error) {
+func (lc *LiveCheck1) CalculateInDegreeDiskGraphs(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex in-degree")
 	}
 	return stats, nil
 }
 
-func (lc *LiveCheck1) CalculateOutDegreeDiskGraphs(stats *BucketStatistics) (*BucketStatistics, error) {
+func (lc *LiveCheck1) CalculateOutDegreeDiskGraphs(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex out-degree")
 	}

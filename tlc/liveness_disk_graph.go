@@ -17,11 +17,11 @@ type DiskGraph struct {
 	InitNodes      *LongVec
 	Cache          []*GraphNode
 	NodePtrTbl     *NodePtrTable
-	OutDegreeStats *BucketStatistics
+	OutDegreeStats any
 	sizeAtCheck    int64
 }
 
-func NewDiskGraph(metadir string, soln int, outDegreeStats ...*BucketStatistics) (*DiskGraph, error) {
+func NewDiskGraph(metadir string, soln int, outDegreeStats ...any) (*DiskGraph, error) {
 	if err := os.MkdirAll(metadir, 0o755); err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func NewDiskGraph(metadir string, soln int, outDegreeStats ...*BucketStatistics)
 		_ = nodeFile.Close()
 		return nil, err
 	}
-	var stats *BucketStatistics
+	var stats any
 	if len(outDegreeStats) > 0 {
 		stats = outDegreeStats[0]
 	}
@@ -86,7 +86,7 @@ func (g *DiskGraph) AddNode(node *GraphNode) (int64, error) {
 		return -1, fmt.Errorf("cannot add nil graph node")
 	}
 	if g.OutDegreeStats != nil {
-		g.OutDegreeStats.AddSample(node.SuccSize())
+		bucketStatisticsAddSample(g.OutDegreeStats, node.SuccSize())
 	}
 	ptr, err := g.nodeFile.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -367,7 +367,7 @@ func (g *DiskGraph) CheckInvariants(slen int, alen int) (bool, error) {
 	return ok, err
 }
 
-func (g *DiskGraph) CalculateOutDegreeDiskGraph(stats *BucketStatistics) (*BucketStatistics, error) {
+func (g *DiskGraph) CalculateOutDegreeDiskGraph(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex out-degree")
 	}
@@ -376,14 +376,14 @@ func (g *DiskGraph) CalculateOutDegreeDiskGraph(stats *BucketStatistics) (*Bucke
 	}
 	err := g.eachGraphNode(func(node *GraphNode) error {
 		if node != nil {
-			stats.AddSample(node.SuccSize())
+			bucketStatisticsAddSample(stats, node.SuccSize())
 		}
 		return nil
 	})
 	return stats, err
 }
 
-func (g *DiskGraph) CalculateInDegreeDiskGraph(stats *BucketStatistics) (*BucketStatistics, error) {
+func (g *DiskGraph) CalculateInDegreeDiskGraph(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex in-degree")
 	}
@@ -405,7 +405,7 @@ func (g *DiskGraph) CalculateInDegreeDiskGraph(stats *BucketStatistics) (*Bucket
 		return stats, err
 	}
 	for _, count := range counts.All() {
-		stats.AddSample(count)
+		bucketStatisticsAddSample(stats, count)
 	}
 	return stats, nil
 }

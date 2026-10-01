@@ -14,7 +14,7 @@ type TableauDiskGraph struct {
 	TableauNodePtrTbl *TableauNodePtrTable
 }
 
-func NewTableauDiskGraph(metadir string, soln int, outDegreeStats ...*BucketStatistics) (*TableauDiskGraph, error) {
+func NewTableauDiskGraph(metadir string, soln int, outDegreeStats ...any) (*TableauDiskGraph, error) {
 	base, err := NewDiskGraph(metadir, soln, outDegreeStats...)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (g *TableauDiskGraph) AddNode(node *GraphNode) (int64, error) {
 		return -1, fmt.Errorf("cannot add nil graph node")
 	}
 	if g.OutDegreeStats != nil {
-		g.OutDegreeStats.AddSample(node.SuccSize())
+		bucketStatisticsAddSample(g.OutDegreeStats, node.SuccSize())
 	}
 	ptr, err := g.nodeFile.Seek(0, io.SeekCurrent)
 	if err != nil {

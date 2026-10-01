@@ -977,7 +977,7 @@ func livenessStatsEnabled() bool {
 	return ok && javaBooleanProperty(value)
 }
 
-func printLivenessStatistics(inDegree *BucketStatistics, outDegree *BucketStatistics) {
+func printLivenessStatistics(inDegree any, outDegree any) {
 	fmt.Println(outDegree)
 	fmt.Println(inDegree)
 	stats, observations := liveWorkerStatsSnapshot()
