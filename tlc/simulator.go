@@ -732,23 +732,18 @@ func (s *Simulator) printBehaviorTrace(stateTrace *StateVec) {
 	}
 	PrintError(ECTLCBehaviorUpToThisPoint)
 	var lastState *TLCStateMut
-	aliasedPrefix := make([]*TLCStateInfo, 0, stateTrace.Size())
 	omitted := 0
 	for i := 0; i < stateTrace.Size(); i++ {
 		curState := stateTrace.At(i)
 		sucState := stateTrace.At(min(i+1, stateTrace.Size()-1))
 		info := NewTLCStateInfo(curState)
 		if s.Tool != nil {
-			aliased, err := s.Tool.EvalAliasInfo(info, sucState, func() []*TLCStateInfo {
-				return append([]*TLCStateInfo(nil), aliasedPrefix...)
-			})
-			if err == nil && aliased != nil {
+			if aliased, err := s.Tool.EvalAliasInfoPair(info, sucState); err == nil && aliased != nil {
 				info = aliased
 			}
 		}
 		if lastState != nil && curState != nil && printDiffsOnly() && curState.FingerPrint() == lastState.FingerPrint() {
 			omitted++
-			aliasedPrefix = append(aliasedPrefix, info)
 			lastState = curState
 			continue
 		}
@@ -757,7 +752,6 @@ func (s *Simulator) printBehaviorTrace(stateTrace *StateVec) {
 			level = curState.Level()
 		}
 		PrintInvariantViolationStateTraceState(info, lastState, level, i+1 == stateTrace.Size())
-		aliasedPrefix = append(aliasedPrefix, info)
 		lastState = curState
 	}
 	if omitted > 0 {

@@ -1511,16 +1511,21 @@ Trace reconstruction and aliasing:
 - Safety-error postcondition traces run Java's pairwise alias evaluation over
   each trace entry before wrapping the trace in `CounterExample`, matching
   `Worker.doPostCondition`'s `evalAlias(current, successor)` overload. Do not
-  bind `TLCExt!Trace` on this path; prefix/suffix trace aliases are for printed
-  traces and liveness/error-trace reconstruction paths that call the prefix
-  overload. The `console` field is omitted only when the checker was not already
-  done at the moment the error was accepted.
+  bind `TLCExt!Trace` on this path. Prefix/suffix trace aliases belong only to
+  Java paths that explicitly call the prefix overload, such as checker
+  `TLCTrace.printTrace` and liveness/error-trace reconstruction. The `console`
+  field is omitted only when the checker was not already done at the moment the
+  error was accepted.
 - Java also calls `TLCTrace.printTrace(curState, succState)` for next-state
   safety errors and for continuation-mode invariant/action-property violations.
   Go mirrors this with `ModelChecker.printBehaviorTrace`, which prints
   `TLC_BEHAVIOR_UP_TO_THIS_POINT`, aliases each recovered state, and emits
   state-printer messages in ordinal order before continuing or finishing the
   queue.
+- Simulator behavior printing is different: Java `Simulator.printBehavior`
+  constructs `TLCStateInfo` directly from each stored simulated state and calls
+  pairwise `evalAlias(current, successor)`, so Go simulator printing must not
+  bind `TLCExt!Trace` either.
 
 `ConcurrentTLCTrace` merges per-worker trace fragments to reconstruct:
 
