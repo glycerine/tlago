@@ -89,7 +89,7 @@ func newLiveStateEnabled(body SemanticNode, con *Context, subscript SemanticNode
 		if isBox && subscript != nil {
 			return true, nil
 		}
-		sfun := NewEmptyState()
+		sfun := NewFunctionalState()
 		acts := EmptyActionItemList
 		if subscript != nil {
 			acts = acts.Cons(subscript, con, DoNotRecordCostModel, ActionItemChanged)
