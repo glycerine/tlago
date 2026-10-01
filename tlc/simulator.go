@@ -987,13 +987,13 @@ func (s *Simulator) getActionFlowGraphSnapshot(contexts actionFlowGraphContexts)
 		return &actionFlowGraphSnapshot{actions: actions, actionStats: aggregate}
 	}
 	reducedActions := make([]*Action, 0, length)
-	actionToID := NewInsMap[string, int]()
+	actionToID := NewInsMap[SourceLocation, int]()
 	actionsToDistinctActions := make([]int, length)
 	for _, action := range actions {
 		if action == nil {
 			continue
 		}
-		definition := action.GetDefinition()
+		definition := action.GetDefinitionLocation()
 		id, ok := actionToID.Get2(definition)
 		if !ok {
 			id = len(reducedActions)
