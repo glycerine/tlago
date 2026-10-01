@@ -120,17 +120,15 @@ func (c *CheckImpl) CheckReachability(s0 *TLCStateMut, s1 *TLCStateMut) (bool, e
 	if c == nil || c.Tool == nil {
 		return false, newTLCError(ECGeneral, "CheckImpl has no tool")
 	}
-	if c.Tool.NextStateSpec != nil {
-		ok, err := c.Tool.IsValidTransition(c.Tool.NextStateSpec, s0, s1)
-		if err != nil {
-			return false, err
-		}
-		if !ok {
-			fmt.Fprintln(os.Stdout, "The following transition is illegal: ")
-			PrintStandaloneErrorState(s0)
-			PrintStandaloneErrorState(s1)
-			return false, nil
-		}
+	ok, err := c.Tool.IsValidTransition(c.Tool.GetNextStateSpec(), s0, s1)
+	if err != nil {
+		return false, err
+	}
+	if !ok {
+		fmt.Fprintln(os.Stdout, "The following transition is illegal: ")
+		PrintStandaloneErrorState(s0)
+		PrintStandaloneErrorState(s1)
+		return false, nil
 	}
 	actions := c.Tool.GetImpliedActions()
 	for i, action := range actions {
