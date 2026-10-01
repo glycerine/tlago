@@ -63,7 +63,9 @@ func (s *IntStack) PeekIntAt(pos int) int32 {
 }
 
 func (s *IntStack) PeekLong() int64 {
-	return s.PeekLongAt(s.size - 2)
+	high := int64(s.PeekInt())
+	low := int64(s.PeekInt())
+	return (high << 32) | (low & 0xffffffff)
 }
 
 func (s *IntStack) PeekLongAt(pos int) int64 {

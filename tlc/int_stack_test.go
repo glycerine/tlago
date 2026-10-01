@@ -40,6 +40,18 @@ func TestIntStackPushPopLongUsesJavaLowThenHighCellOrder(t *testing.T) {
 	expectPanic(t, func() { stack.PopInt() })
 }
 
+func TestIntStackPeekLongMirrorsJavaTopCellQuirk(t *testing.T) {
+	stack := NewIntStack()
+	stack.PushLong(0x0102030405060708)
+
+	if got := stack.PeekLong(); got != 0x0102030401020304 {
+		t.Fatalf("PeekLong = %#x, want Java top-cell-twice value %#x", got, int64(0x0102030401020304))
+	}
+	if got := stack.PeekLongAt(0); got != 0x0102030405060708 {
+		t.Fatalf("PeekLongAt(0) = %#x, want indexed long %#x", got, int64(0x0102030405060708))
+	}
+}
+
 func TestIntStackResetClearsElements(t *testing.T) {
 	stack := NewIntStack()
 	stack.PushInt(1)
