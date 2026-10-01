@@ -406,7 +406,10 @@ func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) 
 				subset.Add(elem)
 			}
 		}
-		subsets.Add(NewSetEnumValueVec(subset, false))
+		value := NewSetEnumValueVec(subset, false)
+		if !subsets.Contains(value) {
+			subsets.Add(value)
+		}
 	}
 	return NewSetEnumValueVec(subsets, false), nil
 }
