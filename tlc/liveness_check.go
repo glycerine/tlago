@@ -1100,6 +1100,22 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 	if firstErr != nil {
 		return printLivenessWorkerFailure(firstErr), firstErr
 	}
+	if !finalCheck {
+		for _, checker := range lc.Checkers {
+			if checker == nil {
+				continue
+			}
+			if checker.TableauDiskGraph != nil {
+				if err := checker.TableauDiskGraph.MakeNodePtrTbl(); err != nil {
+					return ECGeneral, err
+				}
+			} else if checker.DiskGraph != nil {
+				if err := checker.DiskGraph.MakeNodePtrTbl(); err != nil {
+					return ECGeneral, err
+				}
+			}
+		}
+	}
 	PrintMessage(ECTLCCheckingTemporalPropsEnd, humanReadableTLCRuntime(time.Since(start)))
 	return NoError, nil
 }
