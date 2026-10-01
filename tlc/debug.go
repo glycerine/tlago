@@ -1700,11 +1700,7 @@ func (b *TLCSourceBreakpoint) MatchesExpression(tool *Tool, s *TLCStateMut, t *T
 		return fire
 	}
 	if b.ConditionOp == nil {
-		condition := strings.TrimSpace(b.Condition)
-		if condition == "" || strings.EqualFold(condition, "TRUE") {
-			return fire
-		}
-		return false
+		return fire
 	}
 	ctxt := EmptyContext
 	if c == nil {

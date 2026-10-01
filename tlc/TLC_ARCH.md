@@ -2600,6 +2600,10 @@ Important Java classes:
   assumption-violation hooks duplicate the active frame just like Java; the Go
   stack layer accepts ordinary `error` values until the Java
   `StatefulRuntimeException` hierarchy has a full concrete Go mirror.
+  Conditional breakpoint parse/semantic failures are reported back on the
+  breakpoint object, but Java leaves the compiled `condition` field null; a null
+  condition does not suppress a later location match. Go mirrors that by letting
+  a breakpoint with no compiled condition op keep the incoming `fire` value.
   Continue/step-over/step-in/step-out/step-back/reverse-continue/goto-state
   commands update `Step`, `SourceFrame`, `Granularity`, and generated-state
   selection in the same place as Java's DAP handlers, while leaving the protocol
