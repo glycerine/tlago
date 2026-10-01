@@ -104,6 +104,9 @@ func (t *ConcurrentTLCTrace) GetTraceBetweenStates(from *TLCStateMut, to *TLCSta
 	if to == nil {
 		return nil
 	}
+	if to.IsInitial() || (from != nil && from.Equal(to)) {
+		return []*TLCStateInfo{NewTLCStateInfo(to)}
+	}
 	if trace, err := t.recoverTrace(to, from); err == nil && len(trace) > 0 {
 		return trace
 	}
