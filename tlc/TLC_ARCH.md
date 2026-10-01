@@ -2363,6 +2363,13 @@ Port guidance:
 - Implement message recording before porting end-to-end tests. Use a concrete
   recorder/broadcaster unless multiple external recorder implementations are
   truly needed.
+- Java records messages before suppression/`-nowarning` decides whether the
+  console sees them. Go `Message.Suppressed` preserves that split for callers
+  that need recorder parity while still knowing whether a diagnostic was
+  user-visible. Java `printError` does not consult suppression, while
+  `printMessage`, `printWarning`, `printTLCBug`, and state printing do.
+- `-messagesAsErrors` is a warning path: Java `printWarning` aborts through
+  `Assert.fail` before recording the warning.
 - Keep human text close to Java but assert primarily through codes and
   structured parameters like Java tests do.
 - State string formatting is semantic output. Treat it as part of compatibility.

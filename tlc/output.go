@@ -232,6 +232,7 @@ type Message struct {
 	Severity    Severity
 	Params      []string
 	Text        string
+	Suppressed  bool
 	State       *TLCStateMut
 	StateInfo   *TLCStateInfo
 	StateNumber int
@@ -402,32 +403,34 @@ func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber i
 
 func recordMessage(code int, severity Severity, params ...string) {
 	suppressed, asError, warn := messageControlFor(code)
+	visible := !suppressed
 	if severity == SeverityWarning {
-		if !warn || suppressed {
-			return
+		if asError {
+			panic(NewEvalException(code, params...))
 		}
-	} else if suppressed {
-		return
-	}
-	if asError && severity != SeverityError {
-		severity = SeverityError
+		visible = warn && !suppressed
+	} else if severity == SeverityError {
+		visible = true
 	}
 	copied := append([]string(nil), params...)
 	defaultRecorder.Record(Message{
-		Code:     code,
-		Severity: severity,
-		Params:   copied,
-		Text:     formatMessage(code, copied),
+		Code:       code,
+		Severity:   severity,
+		Params:     copied,
+		Text:       formatMessage(code, copied),
+		Suppressed: !visible,
 	})
 }
 
 func recordStateMessage(code int, params []string, text string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) {
+	suppressed, _, _ := messageControlFor(code)
 	copied := append([]string(nil), params...)
 	defaultRecorder.Record(Message{
 		Code:        code,
 		Severity:    SeverityState,
 		Params:      copied,
 		Text:        text,
+		Suppressed:  suppressed,
 		State:       state,
 		StateInfo:   info,
 		StateNumber: stateNumber,
