@@ -251,7 +251,16 @@ func coverageActionLocation(action *Action) string {
 	if action == nil {
 		return "<unknown>"
 	}
-	return action.GetLocation()
+	if !action.IsDeclared() || action.OpDef == nil {
+		return action.String()
+	}
+	declaration := action.GetDeclarationLocation()
+	definition := semanticNodeLocation(action.OpDef.Body)
+	actual := semanticNodeLocation(action.Pred)
+	if definition == actual {
+		return fmt.Sprintf("<%s %s>", action.GetName(), declaration.String())
+	}
+	return fmt.Sprintf("<%s %s (%d %d %d %d)>", action.GetName(), declaration.String(), actual.BeginLine, actual.BeginColumn, actual.EndLine, actual.EndColumn)
 }
 
 func coverageNodeLocation(node *CostModelNode) string {

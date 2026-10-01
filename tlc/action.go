@@ -341,14 +341,21 @@ func (a *Action) GetOpDef() *OpDefNode {
 }
 
 func (a *Action) IsDeclared() bool {
-	return a != nil && a.OpDef != nil
+	return a != nil && a.OpDef != nil && !a.GetDeclarationLocation().IsNull()
 }
 
 func (a *Action) GetDeclaration() string {
 	if !a.IsDeclared() {
 		return ""
 	}
-	return SemanticString(a.OpDef)
+	return a.GetDeclarationLocation().String()
+}
+
+func (a *Action) GetDeclarationLocation() SourceLocation {
+	if a == nil || a.OpDef == nil {
+		return NullSourceLocation
+	}
+	return semanticNodeLocation(a.OpDef)
 }
 
 func (a *Action) GetDefinition() string {
