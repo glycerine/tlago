@@ -595,7 +595,7 @@ func runCheckImplFile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
-	fmt.Fprintln(stdout, "TLC CheckImpl")
+	fmt.Fprintln(stdout, "TLC CheckImpl"+tlcruntime.TLCVersion())
 	checker := tlcruntime.NewCheckImplFile(tool, metadir, opts.Deadlock, opts.Depth, opts.FromCheckpoint, opts.TraceFile)
 	checker.LoadTraceFunc = NewCheckImplFileTraceLoader(tool, LoadOptions{})
 	if result, err := checker.Init(); err != nil || result != tlcruntime.NoError {
