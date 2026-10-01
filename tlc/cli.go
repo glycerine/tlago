@@ -108,8 +108,10 @@ func ParseTLCOptions(args []string) (Options, error) {
 					case simArg == "stats=full":
 						opts.TraceActions = "FULL"
 					case simArg == "sched=rl":
+						tlcSetStartupSystemProperty(simulatorRLProperty, "true")
 						opts.SimulationSchedule = SimulationScheduleRL
 					case simArg == "sched=rlaction":
+						tlcSetStartupSystemProperty(simulatorRLActionProperty, "true")
 						opts.SimulationSchedule = SimulationScheduleRLAction
 					}
 				}

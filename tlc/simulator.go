@@ -43,6 +43,11 @@ type Simulator struct {
 
 const simulatorUnboundedTraceDepth = math.MaxInt32
 
+const (
+	simulatorRLProperty       = "tlc2.tool.Simulator.rl"
+	simulatorRLActionProperty = "tlc2.tool.Simulator.rlaction"
+)
+
 type SimulatorOption func(*Simulator)
 
 func WithSimulatorTraceFile(traceFile string) SimulatorOption {
@@ -886,10 +891,10 @@ func (s *Simulator) newWorkerLiveCheck1(tool *Tool, workerID int) *LiveCheck1 {
 }
 
 func (s *Simulator) selectWorkerMode() SimulationWorkerMode {
-	if simulatorPropertyBool("tlc2.tool.Simulator.rl", "TLAGO_SIMULATOR_RL") {
+	if simulatorPropertyBool(simulatorRLProperty, "TLAGO_SIMULATOR_RL") {
 		return SimulationWorkerRL
 	}
-	if simulatorPropertyBool("tlc2.tool.Simulator.rlaction", "TLAGO_SIMULATOR_RL_ACTION") {
+	if simulatorPropertyBool(simulatorRLActionProperty, "TLAGO_SIMULATOR_RL_ACTION") {
 		return SimulationWorkerRLAction
 	}
 	return SimulationWorkerStandard

@@ -111,6 +111,48 @@ func TestGenerateSpecTEInstallsBinaryTracePostConditionLikeJava(t *testing.T) {
 	}
 }
 
+func TestParseSimulationScheduleSetsJavaProperties(t *testing.T) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	temp := t.TempDir()
+	if err := os.Chdir(temp); err != nil {
+		t.Fatalf("Chdir temp: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(cwd)
+		tlcSetSystemProperty(simulatorRLProperty, "false")
+		tlcSetSystemProperty(simulatorRLActionProperty, "false")
+	})
+
+	tlcSetSystemProperty(simulatorRLProperty, "false")
+	tlcSetSystemProperty(simulatorRLActionProperty, "false")
+	opts, err := ParseTLCOptions([]string{"-simulate", "sched=rl", "Spec.tla"})
+	if err != nil {
+		t.Fatalf("ParseTLCOptions sched=rl returned error: %v", err)
+	}
+	if opts.SimulationSchedule != SimulationScheduleRL {
+		t.Fatalf("schedule = %v, want RL", opts.SimulationSchedule)
+	}
+	if value, _ := tlcLookupSystemProperty(simulatorRLProperty); value != "true" {
+		t.Fatalf("%s = %q, want true", simulatorRLProperty, value)
+	}
+
+	tlcSetSystemProperty(simulatorRLProperty, "false")
+	tlcSetSystemProperty(simulatorRLActionProperty, "false")
+	opts, err = ParseTLCOptions([]string{"-simulate", "sched=rlaction", "Spec.tla"})
+	if err != nil {
+		t.Fatalf("ParseTLCOptions sched=rlaction returned error: %v", err)
+	}
+	if opts.SimulationSchedule != SimulationScheduleRLAction {
+		t.Fatalf("schedule = %v, want RLAction", opts.SimulationSchedule)
+	}
+	if value, _ := tlcLookupSystemProperty(simulatorRLActionProperty); value != "true" {
+		t.Fatalf("%s = %q, want true", simulatorRLActionProperty, value)
+	}
+}
+
 func runnerCleanupSuccessTool() *Tool {
 	action := &Action{Name: "Next"}
 	tool := NewTool()
