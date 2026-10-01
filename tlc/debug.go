@@ -1005,8 +1005,24 @@ func (f *TLCNextStatesStackFrame) selectSuccessorByDistance(minimum bool) (bool,
 }
 
 type TLCCapabilities struct {
-	SupportsStepBack  bool
-	SupportsGotoState bool
+	SupportsStepBack                  bool
+	SupportsGotoState                 bool
+	SupportsEvaluateForHovers         bool
+	SupportsTerminateRequest          bool
+	SupportsExceptionInfoRequest      bool
+	ExceptionBreakpointFilters        []TLCExceptionBreakpointFilter
+	SupportsExceptionFilterOptions    bool
+	SupportsHitConditionalBreakpoints bool
+	SupportsConditionalBreakpoints    bool
+	SupportsLogPoints                 bool
+	SupportsValueFormattingOptions    bool
+	SupportsSteppingGranularity       bool
+	SupportsGotoTargetsRequest        bool
+	SupportsDataBreakpoints           bool
+	SupportsFunctionBreakpoints       bool
+	SupportsInstructionBreakpoints    bool
+	SupportsDisassembleRequest        bool
+	SupportsClipboardContext          bool
 }
 
 var (
@@ -1967,6 +1983,30 @@ func (d *TLCDebugger) GetGranularity() DebugGranularity {
 		return DebugGranularityFormula
 	}
 	return d.Granularity
+}
+
+func (d *TLCDebugger) InitializeCapabilities() TLCCapabilities {
+	filters := d.ExceptionBreakpointFilters()
+	return TLCCapabilities{
+		SupportsGotoState:                 CurrentSimulator() != nil,
+		SupportsEvaluateForHovers:         true,
+		SupportsTerminateRequest:          true,
+		SupportsExceptionInfoRequest:      false,
+		ExceptionBreakpointFilters:        append([]TLCExceptionBreakpointFilter(nil), filters...),
+		SupportsExceptionFilterOptions:    true,
+		SupportsHitConditionalBreakpoints: true,
+		SupportsConditionalBreakpoints:    true,
+		SupportsLogPoints:                 false,
+		SupportsStepBack:                  true,
+		SupportsValueFormattingOptions:    false,
+		SupportsSteppingGranularity:       false,
+		SupportsGotoTargetsRequest:        false,
+		SupportsDataBreakpoints:           false,
+		SupportsFunctionBreakpoints:       false,
+		SupportsInstructionBreakpoints:    false,
+		SupportsDisassembleRequest:        false,
+		SupportsClipboardContext:          true,
+	}
 }
 
 func (d *TLCDebugger) ExceptionBreakpointFilters() []TLCExceptionBreakpointFilter {

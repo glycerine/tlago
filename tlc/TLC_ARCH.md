@@ -2626,6 +2626,14 @@ Important Java classes:
   converted LET operator bodies, mirroring Java's stub/substitution strategy.
 - `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
   useful in Go as plain structs even before a debug-adapter server exists.
+  `TLCDebugger.InitializeCapabilities` mirrors Java `initialize`: goto-state is
+  enabled only while a simulator exists, hover evaluation, terminate requests,
+  exception-filter options, hit-conditional breakpoints, conditional
+  breakpoints, step-back, and clipboard context are enabled; exception-info,
+  log points, value-formatting options, stepping granularity, goto-targets,
+  data/function/instruction breakpoints, and disassembly remain disabled. The
+  returned exception-breakpoint filters are the same Java filter IDs plus the
+  multi-worker warning when `NumWorkers() > 1`.
   `TLCStackTraceArguments`/`TLCStackTraceResponse` likewise model the Java
   request surface without importing DAP transport types; `startFrame` outside
   the active frame range returns an empty response, and positive `levels`
