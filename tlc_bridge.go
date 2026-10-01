@@ -72,6 +72,9 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"Combinatorics": {
 		"factorial", "choose",
 	},
+	"Bitwise": {
+		"&", "|", "^^", "Not", "shiftR",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -127,6 +130,9 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"Combinatorics": setOf(
 		"factorial", "choose",
+	),
+	"Bitwise": setOf(
+		"And", "Or", "Xor", "Not", "shiftR",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",

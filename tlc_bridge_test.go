@@ -59,3 +59,34 @@ C == choose(6, 2) + factorial[3]
 		}
 	}
 }
+
+func TestBitwiseStandardModuleKeepsLocalHelpersUnexported(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "BitwiseBridge.tla")
+	writeFile(t, root, `---- MODULE BitwiseBridge ----
+EXTENDS Bitwise
+B == INSTANCE Bitwise
+C == B!shiftR(8, 1) + B!Not(5) + (6 & 3)
+====`)
+
+	spec, diags := LoadSanySpec(root, LoadOptions{LibraryPaths: []string{
+		filepath.Join("test_vectors", "CommunityModules", "modules"),
+	}})
+	requireNoErrors(t, diags)
+	requireNoErrors(t, CheckSpec(spec))
+
+	tool, toolDiags := BuildTLCTool(spec, tlc.NewModelConfig("BitwiseBridge"), tlc.RuntimeParameters{})
+	requireNoErrors(t, toolDiags)
+
+	for _, name := range []string{"And", "Or", "Xor", "Not", "shiftR", "B!Not", "B!shiftR"} {
+		if _, ok := tool.DefnsByName[tlc.UniqueStringOf(name)].(*tlc.MethodValue); !ok {
+			t.Fatalf("%s = %T, want native MethodValue", name, tool.DefnsByName[tlc.UniqueStringOf(name)])
+		}
+	}
+	if _, ok := tool.DefnsByName[tlc.UniqueStringOf("B!&")].(*tlc.OpDefNode); !ok {
+		t.Fatalf("B!& = %T, want exported TLA OpDefNode", tool.DefnsByName[tlc.UniqueStringOf("B!&")])
+	}
+	if got := tool.DefnsByName[tlc.UniqueStringOf("B!And")]; got != nil {
+		t.Fatalf("B!And = %T, want no alias for LOCAL helper", got)
+	}
+}

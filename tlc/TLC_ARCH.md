@@ -2182,6 +2182,13 @@ Go mapping:
   module operators as native standard definitions, and has the root bridge skip
   the recursive TLA definitions from `Combinatorics.tla` when the frozen
   CommunityModules library is loaded.
+- CommunityModules `Bitwise` contributes native overrides for LOCAL recursive
+  helper definitions `And`, `Or`, and `Xor`, plus exported `Not` and `shiftR`.
+  The exported infix operators `&`, `|`, and `^^` remain TLA definitions that
+  call the native helpers. The bridge therefore skips all five annotated native
+  definitions when converting `Bitwise.tla`, but named-instance export bindings
+  include only `&`, `|`, `^^`, `Not`, and `shiftR`; exporting `B!And` would
+  violate the module's LOCAL boundary.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

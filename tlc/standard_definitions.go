@@ -154,6 +154,11 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("atoi", 1, func(args []Value) (Value, error) { return IOUtilsAtoi(args[0]) })
 	t.defineStandardMethod("factorial", 1, func(args []Value) (Value, error) { return CombinatoricsFactorial(args[0]) })
 	t.defineStandardMethod("choose", 2, func(args []Value) (Value, error) { return CombinatoricsChoose(args[0], args[1]) })
+	t.defineStandardMethod("And", 4, func(args []Value) (Value, error) { return BitwiseAnd(args[0], args[1], args[2], args[3]) })
+	t.defineStandardMethod("Or", 4, func(args []Value) (Value, error) { return BitwiseOr(args[0], args[1], args[2], args[3]) })
+	t.defineStandardMethod("Xor", 4, func(args []Value) (Value, error) { return BitwiseXor(args[0], args[1], args[2], args[3]) })
+	t.defineStandardMethod("Not", 1, func(args []Value) (Value, error) { return BitwiseNot(args[0]) })
+	t.defineStandardMethod("shiftR", 2, func(args []Value) (Value, error) { return BitwiseShiftR(args[0], args[1]) })
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)
