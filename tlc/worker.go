@@ -294,6 +294,10 @@ func livenessErrorNeedsCallStackReplay(err error) bool {
 	if errors.As(err, &eval) {
 		return true
 	}
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) {
+		return true
+	}
 	var stateful *StatefulRuntimeException
 	return errors.As(err, &stateful)
 }

@@ -2,6 +2,12 @@ package tlc
 
 import "testing"
 
+func TestLivenessErrorNeedsCallStackReplayRecognizesTLCError(t *testing.T) {
+	if !livenessErrorNeedsCallStackReplay(newTLCErrorCode(ECTLCLiveStatePredicateNonBool)) {
+		t.Fatalf("livenessErrorNeedsCallStackReplay(TLCError) = false, want true like Java EvalException")
+	}
+}
+
 func TestWorkerFunctorPathProcessesSuccessorsLikeModelChecker(t *testing.T) {
 	initTLCCheckerTest(t)
 	action := &Action{Name: "Next"}
