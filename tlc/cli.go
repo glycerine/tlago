@@ -133,13 +133,13 @@ func ParseTLCOptions(args []string) (Options, error) {
 			index++
 		case arg == "-suppressMessages":
 			var err error
-			index, err = parseTLCMessageCodeList(args, index, tlcSuppressedCodes, "-suppressMessages")
+			index, err = parseTLCMessageCodeList(args, index, tlcSuppressedCodes, "-suppressMessages", true)
 			if err != nil {
 				return opts, err
 			}
 		case arg == "-messagesAsErrors":
 			var err error
-			index, err = parseTLCMessageCodeList(args, index, tlcMessagesAsErrors, "-messagesAsErrors")
+			index, err = parseTLCMessageCodeList(args, index, tlcMessagesAsErrors, "-messagesAsErrors", false)
 			if err != nil {
 				return opts, err
 			}
@@ -546,7 +546,7 @@ func isDebuggerSubargument(arg string) bool {
 	return strings.Contains(lower, "port=") || strings.Contains(lower, "nosuspend") || strings.Contains(lower, "nohalt") || strings.Contains(lower, "suspend") || strings.Contains(lower, "halt")
 }
 
-func parseTLCMessageCodeList(args []string, index int, dst *InsMap[int, bool], option string) (int, error) {
+func parseTLCMessageCodeList(args []string, index int, dst *InsMap[int, bool], option string, suppress bool) (int, error) {
 	if index+1 >= len(args) {
 		return index, tlcCommandLineError("Error: " + option + " requires a comma-separated list of message codes.")
 	}
@@ -557,6 +557,9 @@ func parseTLCMessageCodeList(args []string, index int, dst *InsMap[int, bool], o
 		}
 		if !knownJavaMessageCode(code) {
 			return index, tlcCommandLineError("Error: unknown message code: " + strings.TrimSpace(part))
+		}
+		if suppress && isJavaSANYErrorMessageCode(code) {
+			return index, tlcCommandLineError(fmt.Sprintf("Error: code %d is an error and cannot be suppressed.", code))
 		}
 		dst.Set(code, true)
 	}
@@ -569,6 +572,14 @@ func knownJavaMessageCode(code int) bool {
 	}
 	_, ok := knownJavaSANYMessageCodes[code]
 	return ok
+}
+
+func isJavaSANYErrorMessageCode(code int) bool {
+	if _, ok := knownJavaSANYMessageCodes[code]; !ok {
+		return false
+	}
+	_, warning := knownJavaSANYWarningMessageCodes[code]
+	return !warning
 }
 
 func intSet(values ...int) map[int]struct{} {
@@ -616,6 +627,8 @@ var knownJavaSANYMessageCodes = intSet(
 	4337, 4350, 4351, 4352, 4353, 4354, 4355, 4356, 4357, 4800,
 	4801, 4802, 4803, 4804, 4805,
 )
+
+var knownJavaSANYWarningMessageCodes = intSet(4800, 4801, 4802, 4803, 4804, 4805)
 
 func messageCodeOverlap(a *InsMap[int, bool], b *InsMap[int, bool]) string {
 	if a == nil || b == nil {
