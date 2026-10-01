@@ -490,6 +490,11 @@ tool mode, and the opt-in `tlc2.output.StatePrinter.overwrite` property sleeps
 for the configured milliseconds and emits terminal reset sequences unless the
 state is final.
 
+Generic spec-writer utilities also carry visible Java details. The generated
+identifier counter starts at zero and increments before use, so a fresh process
+first emits suffix `1000`; timestamps and modification-history dates use Java
+`Date.toString()`-style strings rather than Go's `time.Time.String()` output.
+
 ### `ModelConfig`
 
 `ModelConfig` parses `.cfg` files with the TLA+ token manager rather than a

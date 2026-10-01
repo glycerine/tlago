@@ -112,7 +112,7 @@ const (
 var specWriterCounter atomic.Int64
 
 func init() {
-	specWriterCounter.Store(1)
+	specWriterCounter.Store(0)
 }
 
 type SpecWriter struct {
@@ -139,7 +139,7 @@ func SpecWriterModuleClosingTag(rightMarginWidth int, addModificationHistory boo
 		b.WriteString("\\* Modification History")
 		b.WriteString(tlaCR)
 		b.WriteString("\\* Created ")
-		b.WriteString(time.Now().String())
+		b.WriteString(specWriterJavaDateString(time.Now()))
 		b.WriteString(" by ")
 		b.WriteString(os.Getenv("USER"))
 		b.WriteString(tlaCR)
@@ -148,7 +148,11 @@ func SpecWriterModuleClosingTag(rightMarginWidth int, addModificationHistory boo
 }
 
 func SpecWriterGeneratedTimestampLine() string {
-	return tlaGenerationPrefix + time.Now().String()
+	return tlaGenerationPrefix + specWriterJavaDateString(time.Now())
+}
+
+func specWriterJavaDateString(t time.Time) string {
+	return t.Format("Mon Jan 02 15:04:05 MST 2006")
 }
 
 func SpecWriterValidIdentifier(scheme string) string {
