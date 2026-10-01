@@ -657,7 +657,7 @@ func (g *DiskGraph) getNode(fp uint64, tidx int, ptr int64) (*GraphNode, error) 
 
 func (g *DiskGraph) getNodeFromDisk(fp uint64, tidx int, ptr int64) (*GraphNode, error) {
 	if ptr < 0 {
-		return nil, fmt.Errorf("invalid negative file pointer: %d", ptr)
+		return nil, fmt.Errorf("Invalid negative file pointer: %d", ptr)
 	}
 	cur, err := g.nodeFile.Seek(0, io.SeekCurrent)
 	if err != nil {
