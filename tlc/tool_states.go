@@ -847,7 +847,6 @@ func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, 
 		return s1, newTLCError(ECGeneral, "Probabilistic evaluation of next-state relation not implemented for CASE yet.")
 	}
 	var other SemanticNode
-	otherCM := cm
 	for _, arg := range pred.Args {
 		armCM := cm
 		if CoverageEnabled() {
@@ -859,7 +858,6 @@ func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, 
 		}
 		if pair.Args[0] == nil {
 			other = pair.Args[1]
-			otherCM = armCM
 			continue
 		}
 		bval, err := t.evalBool(pair.Args[0], c, s0, s1, EvalClear, armCM, "next CASE")
@@ -872,6 +870,10 @@ func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, 
 	}
 	if other == nil {
 		return s1, newTLCError(ECGeneral, "CASE has no true condition in next-state predicate: %s", SemanticString(pred))
+	}
+	otherCM := cm
+	if CoverageEnabled() && len(pred.Args) > 0 {
+		otherCM = cm.Get(pred.Args[len(pred.Args)-1])
 	}
 	return t.GetNextStatesForPredicate(action, other, acts, c, s0, s1, nss, otherCM)
 }
