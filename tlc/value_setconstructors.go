@@ -932,7 +932,7 @@ func (v *SubsetValue) Equal(other Value) (bool, error) {
 func (v *SubsetValue) Member(elem Value) (bool, error) {
 	enum, ok := asEnumerable(elem)
 	if !ok {
-		return false, v.unsupported("attempted to check if the non-enumerable value\n%s\nis element of\n%s", elem, v)
+		return false, v.unsupported("Attempted to check if the non-enumerable value\n%s\nis element of\n%s", ValuesPPR(elem), ValuesPPR(v))
 	}
 	e := enum.Elements()
 	for {
@@ -960,7 +960,7 @@ func (v *SubsetValue) Size() (int, error) {
 		return 0, err
 	}
 	if size >= 31 {
-		return 0, v.unsupported("overflow when computing the number of elements in:\n%s", v)
+		return 0, newTLCErrorCode(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
 	}
 	return 1 << size, nil
 }
