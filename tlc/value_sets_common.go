@@ -143,7 +143,7 @@ func toSetEnumValue(value Value) (*SetEnumValue, error) {
 	}
 }
 
-func checkedProductSize(values []Value, rendered string) (int, error) {
+func checkedProductSize(values []Value, overflow func() error) (int, error) {
 	size := int64(1)
 	for _, value := range values {
 		next, err := value.Size()
@@ -152,7 +152,7 @@ func checkedProductSize(values []Value, rendered string) (int, error) {
 		}
 		size *= int64(next)
 		if size < math.MinInt32 || size > math.MaxInt32 {
-			return 0, newTLCError(ECGeneral, "overflow when computing the number of elements in %s", rendered)
+			return 0, overflow()
 		}
 	}
 	return int(size), nil

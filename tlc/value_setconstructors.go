@@ -113,7 +113,9 @@ func (v *SetOfTuplesValue) Size() (int, error) {
 	if err != nil || empty {
 		return 0, err
 	}
-	return checkedProductSize(v.Sets, v.String())
+	return checkedProductSize(v.Sets, func() error {
+		return newTLCError(ECGeneral, "Overflow when computing the number of elements in %s", ValuesPPR(v))
+	})
 }
 
 func (v *SetOfTuplesValue) IsNormalized() bool {
@@ -368,7 +370,9 @@ func (v *SetOfRcdsValue) Size() (int, error) {
 	if err != nil || empty {
 		return 0, err
 	}
-	return checkedProductSize(v.Values, v.String())
+	return checkedProductSize(v.Values, func() error {
+		return newTLCErrorCode(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
+	})
 }
 
 func (v *SetOfRcdsValue) IsNormalized() bool {
