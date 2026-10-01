@@ -593,7 +593,7 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 				fmtUint64(mc.GetDistinctStatesGenerated()),
 				fmtInt64(mc.GetStateQueueSize()),
 			)
-			result, err = mc.LiveCheck.FinalCheck(mc.Tool)
+			result, err = mc.LiveCheck.FinalCheck(mc.Tool.NoDebug())
 			if err != nil || result != NoError {
 				mc.PrintSummary(false)
 				return result, err
