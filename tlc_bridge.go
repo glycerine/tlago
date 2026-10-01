@@ -1570,6 +1570,11 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 	} else if e.Kind == "\\E" {
 		op = tlc.OpUE
 	}
+	if e.Set != nil && e.TupleBound {
+		if node, ok := b.tupleQuantifierNode(e, op); ok {
+			return node
+		}
+	}
 	var bound tlc.SemanticNode
 	if e.Set != nil {
 		bound = b.convertExpr(e.Set)
@@ -1586,6 +1591,38 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 		node.UnbdedQuantSymbols = []*tlc.SymbolNode{b.symbol(e.Var)}
 	}
 	return node
+}
+
+func (b *tlcBridge) tupleQuantifierNode(e *QuantifierExpr, op *tlc.UniqueString) (tlc.SemanticNode, bool) {
+	if e == nil || e.Set == nil || !e.TupleBound {
+		return nil, false
+	}
+	vars := []string{e.Var}
+	body := e.Body
+	for {
+		next, ok := body.(*QuantifierExpr)
+		if !ok || next.Set == nil || !next.TupleBound || next.Kind != e.Kind || next.Set != e.Set {
+			break
+		}
+		vars = append(vars, next.Var)
+		body = next.Body
+	}
+	if len(vars) == 1 {
+		return nil, false
+	}
+	bound := b.convertExpr(e.Set)
+	restore := b.pushConvertBoundNames(vars...)
+	convertedBody := b.convertExpr(body)
+	restore()
+	node := tlc.NewBuiltinOpApplNode(op, convertedBody)
+	symbols := make([]*tlc.SymbolNode, 0, len(vars))
+	for _, name := range vars {
+		symbols = append(symbols, b.symbol(name))
+	}
+	node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{symbols}
+	node.BdedQuantBounds = []tlc.SemanticNode{bound}
+	node.BdedQuantATuple = []bool{true}
+	return node, true
 }
 
 func (b *tlcBridge) caseNode(e *CaseExpr) tlc.SemanticNode {
