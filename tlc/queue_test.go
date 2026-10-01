@@ -1,6 +1,12 @@
 package tlc
 
-import "testing"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"sync"
+	"testing"
+)
 
 func TestMemStateQueuePortedJavaBasicBehaviors(t *testing.T) {
 	initTLCCheckerTest(t)
@@ -72,6 +78,51 @@ func TestMemStateQueueSEnqueueVecSkipsNilStatesLikeJavaStateVecPath(t *testing.T
 	}
 	if got := q.Dequeue(); got != second {
 		t.Fatalf("second dequeue = %p, want second state %p", got, second)
+	}
+}
+
+func TestDiskQueueDeleteUsesJavaNonRecursiveDirectoryDelete(t *testing.T) {
+	deleteStateQueue := func(dir string) error {
+		q := &DiskStateQueue{diskdir: dir}
+		q.cond = sync.NewCond(&q.mu)
+		return q.Delete()
+	}
+	deleteByteArrayQueue := func(dir string) error {
+		q := &DiskByteArrayQueue{diskdir: dir}
+		q.cond = sync.NewCond(&q.mu)
+		return q.Delete()
+	}
+
+	for _, tc := range []struct {
+		name   string
+		delete func(string) error
+	}{
+		{name: "DiskStateQueue", delete: deleteStateQueue},
+		{name: "DiskByteArrayQueue", delete: deleteByteArrayQueue},
+	} {
+		t.Run(tc.name+"/empty", func(t *testing.T) {
+			dir := t.TempDir()
+			if err := tc.delete(dir); err != nil {
+				t.Fatalf("Delete empty queue dir returned error: %v", err)
+			}
+			if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("empty queue dir exists/error = %v, want Java File.delete-style removal", err)
+			}
+		})
+
+		t.Run(tc.name+"/non-empty", func(t *testing.T) {
+			dir := t.TempDir()
+			artifact := filepath.Join(dir, "queue-artifact")
+			if err := os.WriteFile(artifact, []byte("preserve"), 0o644); err != nil {
+				t.Fatalf("WriteFile artifact: %v", err)
+			}
+			if err := tc.delete(dir); err != nil {
+				t.Fatalf("Delete non-empty queue dir returned error: %v", err)
+			}
+			if _, err := os.Stat(artifact); err != nil {
+				t.Fatalf("Delete removed non-empty queue dir recursively; Java File.delete preserves it: %v", err)
+			}
+		})
 	}
 }
 

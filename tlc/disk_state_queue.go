@@ -341,10 +341,7 @@ func (q *DiskStateQueue) Recover() error {
 
 func (q *DiskStateQueue) Delete() error {
 	q.FinishAll()
-	if q.diskdir == "" {
-		return nil
-	}
-	return os.RemoveAll(q.diskdir)
+	return deleteQueueDirLikeJava(q.diskdir)
 }
 
 func (q *DiskStateQueue) enqueueInner(state *TLCStateMut) {

@@ -319,10 +319,7 @@ func (q *DiskByteArrayQueue) Recover() error {
 
 func (q *DiskByteArrayQueue) Delete() error {
 	q.FinishAll()
-	if q.diskdir == "" {
-		return nil
-	}
-	return os.RemoveAll(q.diskdir)
+	return deleteQueueDirLikeJava(q.diskdir)
 }
 
 func (q *DiskByteArrayQueue) enqueueRaw(state []byte) {

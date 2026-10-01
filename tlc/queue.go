@@ -28,6 +28,18 @@ type StateQueue interface {
 	Delete() error
 }
 
+func deleteQueueDirLikeJava(path string) error {
+	if path == "" {
+		return nil
+	}
+	// Java's DiskStateQueue.delete/DiskByteArrayQueue.delete call
+	// File.delete() on the queue directory and ignore the boolean result.
+	// This is intentionally non-recursive; ModelChecker cleanup owns the
+	// success-vs-failure recursive metadata-directory policy.
+	_ = os.Remove(path)
+	return nil
+}
+
 func NewStateQueue(metaDir string) StateQueue {
 	if stateQueuePropertyBool(modelCheckerBAQueueProperty, "TLAGO_MODEL_CHECKER_BAQUEUE") {
 		return NewDiskByteArrayQueue(metaDir)
