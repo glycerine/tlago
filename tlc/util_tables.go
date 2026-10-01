@@ -120,7 +120,7 @@ func (t *ObjLongTable[K]) ToArray() []K {
 }
 
 func (t *ObjLongTable[K]) Keys() *ObjLongTableEnumerator[K] {
-	return &ObjLongTableEnumerator[K]{keys: t.ToArray()}
+	return &ObjLongTableEnumerator[K]{table: t}
 }
 
 func (t *ObjLongTable[K]) grow() {
@@ -146,18 +146,24 @@ func (t *ObjLongTable[K]) location(key K) int {
 }
 
 type ObjLongTableEnumerator[K comparable] struct {
-	keys  []K
+	table *ObjLongTable[K]
 	index int
 }
 
 func (e *ObjLongTableEnumerator[K]) NextElement() (K, bool) {
 	var zero K
-	if e == nil || e.index >= len(e.keys) {
+	if e == nil || e.table == nil {
 		return zero, false
 	}
-	value := e.keys[e.index]
-	e.index++
-	return value, true
+	for e.index < e.table.length {
+		if e.table.used[e.index] {
+			value := e.table.keys[e.index]
+			e.index++
+			return value, true
+		}
+		e.index++
+	}
+	return zero, false
 }
 
 func objLongKeyHashCode[K comparable](key K) int32 {
@@ -333,7 +339,7 @@ func (t *SemanticNodeLongTable) ToArray() []SemanticNode {
 }
 
 func (t *SemanticNodeLongTable) Keys() *SemanticNodeLongTableEnumerator {
-	return &SemanticNodeLongTableEnumerator{keys: t.ToArray()}
+	return &SemanticNodeLongTableEnumerator{table: t}
 }
 
 func (t *SemanticNodeLongTable) ensure() {
@@ -380,17 +386,23 @@ func semanticNodeKeyHashCode(key semanticNodeKey) int32 {
 }
 
 type SemanticNodeLongTableEnumerator struct {
-	keys  []SemanticNode
+	table *SemanticNodeLongTable
 	index int
 }
 
 func (e *SemanticNodeLongTableEnumerator) NextElement() SemanticNode {
-	if e == nil || e.index >= len(e.keys) {
+	if e == nil || e.table == nil {
 		return nil
 	}
-	value := e.keys[e.index]
-	e.index++
-	return value
+	for e.index < e.table.length {
+		if e.table.used[e.index] {
+			value := e.table.elems[e.index].Node
+			e.index++
+			return value
+		}
+		e.index++
+	}
+	return nil
 }
 
 type LongObjTable[V any] struct {
