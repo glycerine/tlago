@@ -10,6 +10,7 @@ import (
 )
 
 const javaLivenessPackageName = "tlc2.tool.liveness"
+const liveCheckDebugProperty = "tlc2.tool.liveness.LiveCheck.debug"
 
 type LiveException struct {
 	ErrorCode      int
@@ -255,12 +256,21 @@ func NewLiveChecker(solution *OrderOfSolution, soln int, writer *LivenessStateWr
 	}
 	if metadir != "" && solution != nil {
 		if solution.HasTableau() {
-			checker.TableauDiskGraph, checker.Err = NewTableauDiskGraph(metadir, soln, outDegreeStats)
+			if liveCheckDebugEnabled() {
+				checker.TableauDiskGraph, checker.Err = NewDebugTableauDiskGraph(metadir, soln, outDegreeStats, solution)
+			} else {
+				checker.TableauDiskGraph, checker.Err = NewTableauDiskGraph(metadir, soln, outDegreeStats)
+			}
 		} else {
 			checker.DiskGraph, checker.Err = NewDiskGraph(metadir, soln, outDegreeStats)
 		}
 	}
 	return checker
+}
+
+func liveCheckDebugEnabled() bool {
+	value, ok := tlcLookupSystemProperty(liveCheckDebugProperty)
+	return ok && javaBooleanProperty(value)
 }
 
 func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint64) error {

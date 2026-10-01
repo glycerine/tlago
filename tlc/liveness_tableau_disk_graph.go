@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -12,6 +14,9 @@ const tableauDiskGraphInitState = DiskGraphMaxPtr + 1
 type TableauDiskGraph struct {
 	*DiskGraph
 	TableauNodePtrTbl *TableauNodePtrTable
+	DebugEnabled      bool
+	DebugOOS          *OrderOfSolution
+	DebugCounter      int
 }
 
 func NewTableauDiskGraph(metadir string, soln int, outDegreeStats ...any) (*TableauDiskGraph, error) {
@@ -20,6 +25,16 @@ func NewTableauDiskGraph(metadir string, soln int, outDegreeStats ...any) (*Tabl
 		return nil, err
 	}
 	return &TableauDiskGraph{DiskGraph: base, TableauNodePtrTbl: NewTableauNodePtrTable(255)}, nil
+}
+
+func NewDebugTableauDiskGraph(metadir string, soln int, outDegreeStats any, oos *OrderOfSolution) (*TableauDiskGraph, error) {
+	graph, err := NewTableauDiskGraph(metadir, soln, outDegreeStats)
+	if err != nil {
+		return nil, err
+	}
+	graph.DebugEnabled = true
+	graph.DebugOOS = oos
+	return graph, nil
 }
 
 func (g *TableauDiskGraph) GetPtr(fp uint64, tidx int) int64 {
@@ -35,10 +50,12 @@ func (g *TableauDiskGraph) IsDone(fp uint64) bool {
 }
 
 func (g *TableauDiskGraph) SetDone(fp uint64) int {
+	defer g.debugWriteDotForFP(fp)
 	return g.TableauNodePtrTbl.SetDone(fp)
 }
 
 func (g *TableauDiskGraph) RecordNode(fp uint64, tidx int) {
+	defer g.debugWriteDotForFP(fp)
 	g.TableauNodePtrTbl.Put(fp, tidx)
 }
 
@@ -50,6 +67,7 @@ func (g *TableauDiskGraph) AddNode(node *GraphNode) (int64, error) {
 	if node == nil {
 		return -1, fmt.Errorf("cannot add nil graph node")
 	}
+	defer g.debugWriteDotForFP(node.StateFP)
 	if g.OutDegreeStats != nil {
 		bucketStatisticsAddSample(g.OutDegreeStats, node.SuccSize())
 	}
@@ -73,6 +91,27 @@ func (g *TableauDiskGraph) AddNode(node *GraphNode) (int64, error) {
 		return -1, err
 	}
 	return ptr, nil
+}
+
+func (g *TableauDiskGraph) debugWriteDotForFP(fp uint64) {
+	if g == nil || !g.DebugEnabled || g.DebugOOS == nil {
+		return
+	}
+	fragment := strconv.FormatInt(int64(fp), 10)
+	if len(fragment) > 6 {
+		fragment = fragment[:6]
+	}
+	path := filepath.Join(g.MetaDir, fmt.Sprintf("dgraph_%03d_%s.dot", g.DebugCounter, fragment))
+	g.DebugCounter++
+
+	hadCache := g.Cache != nil
+	if !hadCache {
+		g.CreateCache()
+		defer g.DestroyCache()
+	}
+	if err := os.WriteFile(path, []byte(g.ToDotViz(g.DebugOOS, map[uint64]string{})), 0o644); err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err)
+	}
 }
 
 func (g *TableauDiskGraph) putTableauNode(node *GraphNode, ptr int64) {

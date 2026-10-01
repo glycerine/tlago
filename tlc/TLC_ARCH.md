@@ -1853,6 +1853,12 @@ Each temporal formula or conjunct maps to an `OrderOfSolution`:
 - support checkpoint/recover by saving and restoring the current file pointers.
 - provide optional fixed-size node caching, invariant checks over all graph
   records, and DOT/string traversal helpers for debugging.
+- `DebugTableauDiskGraph` is selected by Java property
+  `tlc2.tool.liveness.LiveCheck.debug` only for tableau disk graphs. It is not a
+  different graph algorithm: after each `addNode`, `setDone`, and `recordNode`
+  it creates the normal disk-graph cache, writes `dgraph_NNN_prefix.dot`, and
+  destroys the cache in a `finally` path. Snapshot write failures are diagnostic
+  and print rather than changing liveness checking results.
 - reconstruct counterexample prefixes with breadth-first `GetPath` searches.
   The search rebuilds the pointer table from `ptrs_N` and then destructively
   reuses element slots as predecessor links. `TableauDiskGraph` needs the same
