@@ -802,6 +802,11 @@ func (p *SpecProcessor) processConfigSymmetry(tool *Tool) {
 		tool.SetSymmetryPermutations(nil)
 		return
 	}
+	if !symmetryValuesAreFunctionRecords(setValue) {
+		p.addConfigError(ECTLCConfigIDHasValue, "symmetry function", name, "function records")
+		tool.SetSymmetryPermutations(nil)
+		return
+	}
 	if offenders := p.symmetryTooSmallOffenders(def.Body, tool, setValue.Elems.Len(), nil); len(offenders) > 0 {
 		printSymmetrySetTooSmallWarning(offenders)
 		tool.SetSymmetryPermutations(nil)
@@ -817,6 +822,19 @@ func (p *SpecProcessor) processConfigSymmetry(tool *Tool) {
 		printSymmetrySetTooSmallWarning(offenders)
 	}
 	tool.SetSymmetryPermutations(perms)
+}
+
+func symmetryValuesAreFunctionRecords(setValue *SetEnumValue) bool {
+	if setValue == nil {
+		return false
+	}
+	enum := setValue.Elements()
+	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+		if _, ok := elem.(*FcnRcdValue); !ok {
+			return false
+		}
+	}
+	return enum.Err() == nil
 }
 
 func (p *SpecProcessor) symmetryTooSmallOffenders(body SemanticNode, tool *Tool, valueCount int, subgroup []*MVPerm) []string {

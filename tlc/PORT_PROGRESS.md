@@ -64,6 +64,7 @@
 - Special values: Java `UndefValue` and `UserValue` inherit base `Value.fingerPrint`, which deliberately fails when such values reach a state fingerprint. Go must not silently return the previous fingerprint for `UNDEF`, `ANY`, or other user values; see `TestSpecialValuesCannotBeFingerprintedLikeJava`.
 - Operator values inherit the same Java base-value fingerprint/permutation failure path. Do not let `OpLambdaValue`, `OpRcdValue`, `MethodValue`, `EvaluatingValue`, or callable wrappers silently act as no-op fingerprints if they leak into ordinary values or states.
 - Model-value ordering is Java `UniqueString` token order across typed and untyped model values. Typed values reject differently typed model values and non-model values, but typed-vs-untyped comparison is not a separate type tier; see `TestModelValueTypedEqualityAndOrdering`.
+- Symmetry setup preserves Java's validation order: after evaluating the configured symmetry operator to a `SetEnumValue`, every element must be a concrete function-record value before the sub-two-element symmetry-set warning is considered. Do not let malformed non-function symmetry values degrade into the small-set warning path.
 - Already audited recently; do not loop on record/function-record normalization unless touched: `RecordValue` and `FcnRcdValue` normalize with Java's insertion-sort shape, duplicate detection, fingerprint token stream, deep-copy normalization flags, and permutation return paths.
 - Function-lambda `apply` and `select` intentionally diverge like Java: `select` returns nil for ordinary out-of-domain lookup, while `apply` raises the Java argument-position diagnostics, except for the single tuple-formal arity mismatch that Java returns as null. Do not collapse both paths back through one generic binder.
 - `FcnParams` enumeration preserves Java's tuple-initialization quirk: a tuple parameter group initializes `currentElems[idx]` from `enums[i]`, not `enums[idx]`, so tuple groups after expanded non-tuple groups consume the earlier enumerator for their first emitted tuple-slot value.
@@ -370,6 +371,7 @@
   - DFID `FPIntSet` status level decoding now uses Java unsigned-shift semantics for high-bit statuses.
   - DFID `MemFPIntSet.CheckFPs` now uses Java's signed low-int reconstruction for reported collision distances.
   - Distributed FP-set manager indexing now follows Java's least-significant-bit partitioning, distributed worker holder sorting uses signed Java `long` ordering, and distributed states-seen accounting includes Java's initial-state offset.
+  - Symmetry setup was re-audited against Java `Tool.getSymmetryPerms`; malformed non-function symmetry values now fail before the too-small symmetry-set warning logic, matching Java's validation order.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
