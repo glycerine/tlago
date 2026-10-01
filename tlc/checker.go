@@ -497,7 +497,7 @@ func (mc *ModelChecker) GetStatistics() Value {
 		intValueFromInt64(mc.GetInitialStatesGenerated()),
 		intValueFromInt64(mc.GetStatesGenerated()),
 		intValueFromInt64(mc.GetProgress()),
-		intValueFromDurationSince(TLCStartTime()),
+		intValueFromDurationSince(mc.StartTime),
 		NewIntValue(workerID),
 	}
 	return NewRecordValue(names, values, false)
