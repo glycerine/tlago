@@ -201,6 +201,26 @@ func TestByteUtilsReadPrimitiveErrorsMatchJavaCases(t *testing.T) {
 	}
 }
 
+func TestByteUtilsSizeBigIntErrorsAndHexMatchJava(t *testing.T) {
+	var truncated bytes.Buffer
+	if err := WriteInt(&truncated, 2); err != nil {
+		t.Fatalf("WriteInt: %v", err)
+	}
+	truncated.WriteByte(0xff)
+	if _, err := ReadSizeBigInt(bytes.NewReader(truncated.Bytes())); err == nil || err.Error() != "readSizeBigInt: not enough bytes." {
+		t.Fatalf("ReadSizeBigInt(short) error = %v", err)
+	}
+	if got := PrintHex([]byte{0x00, 0x01, 0x0f, 0x10, 0x80, 0xff}); got != "01f1080ff" {
+		t.Fatalf("PrintHex = %q, want 01f1080ff", got)
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("ReadSizeByteArray(negative length) did not panic like Java")
+		}
+	}()
+	_, _ = ReadSizeByteArray(bytes.NewReader([]byte{0xff, 0xff, 0xff, 0xff}))
+}
+
 func TestByteUtilsSizeByteArrayRoundTripAndAppend(t *testing.T) {
 	var src bytes.Buffer
 	first := []byte{1, 2, 3}

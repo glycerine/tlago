@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strconv"
+	"strings"
 )
 
 func IntToByteArray(x int32) []byte {
@@ -210,7 +212,7 @@ func ReadSizeByteArray(in io.Reader) ([]byte, error) {
 		return nil, err
 	}
 	if length < 0 {
-		return nil, fmt.Errorf("readSizeByteArray: negative length.")
+		panic("java.lang.NegativeArraySizeException")
 	}
 	out := make([]byte, int(length))
 	count, err := ReadBytes(in, out)
@@ -224,9 +226,20 @@ func ReadSizeByteArray(in io.Reader) ([]byte, error) {
 }
 
 func ReadSizeBigInt(in io.Reader) (*big.Int, error) {
-	bytes, err := ReadSizeByteArray(in)
+	length, err := ReadInt(in)
 	if err != nil {
 		return nil, err
+	}
+	if length < 0 {
+		panic("java.lang.NegativeArraySizeException")
+	}
+	bytes := make([]byte, int(length))
+	count, err := ReadBytes(in, bytes)
+	if err != nil {
+		return nil, err
+	}
+	if count != int(length) {
+		return nil, fmt.Errorf("readSizeBigInt: not enough bytes.")
 	}
 	value, err := JavaBytesToBigInt(bytes)
 	if err != nil {
@@ -297,4 +310,16 @@ func AppendSizeByteArray(in io.Reader, out io.Writer) error {
 		}
 	}
 	return nil
+}
+
+func PrintHex(bytes []byte) string {
+	var out strings.Builder
+	for _, value := range bytes {
+		text := strconv.FormatUint(uint64(value), 16)
+		if len(text) > 2 {
+			text = text[len(text)-2:]
+		}
+		out.WriteString(text)
+	}
+	return out.String()
 }
