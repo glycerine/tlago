@@ -62,6 +62,29 @@ func TestMemStateQueueSDequeueManyMatchesJavaAbuseCases(t *testing.T) {
 	if len(got) != 1 || got[0] != state {
 		t.Fatalf("SDequeueMany huge request = %#v, want single queued state", got)
 	}
+	if q.Size() != 0 {
+		t.Fatalf("size after SDequeueMany = %d, want 0", q.Size())
+	}
+}
+
+func TestStateDequeSDequeueManyUpdatesSizeLikeJavaStateQueue(t *testing.T) {
+	initTLCCheckerTest(t)
+	oldWorkers := NumWorkers()
+	SetNumWorkers(1)
+	t.Cleanup(func() { SetNumWorkers(oldWorkers) })
+
+	q := NewStateDeque()
+	first := checkerTestState(1)
+	second := checkerTestState(2)
+	q.SEnqueue(first)
+	q.SEnqueue(second)
+	got := q.SDequeueMany(2)
+	if len(got) != 2 || got[0] != second || got[1] != first {
+		t.Fatalf("SDequeueMany = %#v, want LIFO batch", got)
+	}
+	if q.Size() != 0 {
+		t.Fatalf("size after StateDeque SDequeueMany = %d, want 0", q.Size())
+	}
 }
 
 func TestMemStateQueueSEnqueueVecSkipsNilStatesLikeJavaStateVecPath(t *testing.T) {
