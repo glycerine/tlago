@@ -581,22 +581,6 @@ func (w *SimulationWorker) PostTrace(finalState *TLCStateMut) *SimulationWorkerE
 	return nil
 }
 
-func (w *SimulationWorker) AddGeneratedSuccessors(action *Action, nextStates *StateVec) *SimulationWorkerError {
-	if nextStates == nil {
-		return nil
-	}
-	for i := 0; i < nextStates.Size(); i++ {
-		succ := nextStates.At(i)
-		if succ == nil {
-			continue
-		}
-		if workerErr := w.AddGeneratedSuccessor(w.CurState, action, succ); workerErr != nil {
-			return workerErr
-		}
-	}
-	return nil
-}
-
 func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *Action, succ *TLCStateMut) *SimulationWorkerError {
 	if succ == nil {
 		return nil

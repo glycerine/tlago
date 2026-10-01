@@ -900,57 +900,6 @@ func simulatorPropertyFloat(name string, alias string, fallback float64) float64
 	return fallback
 }
 
-func (s *Simulator) randomSuccessor(cur *TLCStateMut) (*TLCStateMut, int, error) {
-	successors := make([]*TLCStateMut, 0)
-	actions := make([]*Action, 0)
-	restoreCurrentState := PushCurrentState(cur)
-	defer restoreCurrentState()
-	for _, action := range s.Tool.GetActions() {
-		nextStates, err := s.Tool.GetNextStates(action, cur)
-		if err != nil {
-			return nil, ECGeneral, err
-		}
-		if nextStates == nil {
-			continue
-		}
-		s.StatesGenerated += int64(nextStates.Size())
-		for i := 0; i < nextStates.Size(); i++ {
-			succ := nextStates.At(i)
-			if !s.Tool.IsGoodState(succ) {
-				return nil, ECTLCStateNotCompletelySpecifiedNext, nil
-			}
-			succ.SetPredecessor(cur).SetAction(action)
-			inModel, err := s.Tool.IsInModel(succ)
-			if err != nil {
-				return nil, ECGeneral, err
-			}
-			if inModel {
-				inActions, err := s.Tool.IsInActions(cur, succ)
-				if err != nil {
-					return nil, ECGeneral, err
-				}
-				inModel = inActions
-			}
-			if !inModel {
-				continue
-			}
-			if result, err := s.checkInvariants(succ, false); result != NoError || err != nil {
-				return nil, result, err
-			}
-			successors = append(successors, succ)
-			actions = append(actions, action)
-		}
-	}
-	if len(successors) == 0 {
-		if s.CheckDeadlock {
-			return nil, ECTLCDeadlockReached, nil
-		}
-		return nil, NoError, nil
-	}
-	idx := int(s.Rand.NextIntN(int32(len(successors))))
-	return successors[idx].SetPredecessor(cur).SetAction(actions[idx]), NoError, nil
-}
-
 func (s *Simulator) checkInvariants(state *TLCStateMut, initial bool) (int, error) {
 	for _, invariant := range s.Tool.GetInvariants() {
 		valid, err := s.Tool.IsValidState(invariant, state)
