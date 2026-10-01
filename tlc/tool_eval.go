@@ -1431,9 +1431,17 @@ func selectPath(root Value, path []Value) (Value, error) {
 	for _, step := range path {
 		switch v := cur.(type) {
 		case *TupleValue:
-			cur = v.Select(step)
+			next, err := selectTupleValue(v, step)
+			if err != nil {
+				return nil, err
+			}
+			cur = next
 		case *RecordValue:
-			cur = v.Select(step)
+			next, err := selectRecordValue(v, step)
+			if err != nil {
+				return nil, err
+			}
+			cur = next
 		case *FcnRcdValue:
 			next, err := v.Select(step)
 			if err != nil {
@@ -1447,13 +1455,38 @@ func selectPath(root Value, path []Value) (Value, error) {
 			}
 			cur = next
 		default:
-			return nil, newTLCError(ECGeneral, "cannot select %s from %s", step, cur)
+			return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the value %s.", valueString(cur))
 		}
 		if cur == nil {
 			return nil, nil
 		}
 	}
 	return cur, nil
+}
+
+func selectTupleValue(v *TupleValue, arg Value) (Value, error) {
+	i, ok := arg.(*IntValue)
+	if !ok {
+		return nil, v.unsupported("attempted to access tuple at a non integral index: %s", arg)
+	}
+	idx := int(i.Val)
+	if idx > 0 && idx <= len(v.Elems) {
+		return v.Elems[idx-1], nil
+	}
+	return nil, nil
+}
+
+func selectRecordValue(v *RecordValue, arg Value) (Value, error) {
+	sv, ok := arg.(*StringValue)
+	if !ok {
+		return nil, v.unsupported("attempted to access record by a non-string argument: %s", arg)
+	}
+	for i, name := range v.Names {
+		if sv.Val.Equal(name) {
+			return v.Values[i], nil
+		}
+	}
+	return nil, nil
 }
 
 func stringUniqueFromNode(node SemanticNode) (*UniqueString, error) {
