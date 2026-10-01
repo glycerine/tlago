@@ -1023,17 +1023,30 @@ func (s *MemFPSet2) CheckInvariant(expectFPs ...uint64) bool {
 func (s *MemFPSet2) CheckFPs() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	values := make([]uint64, 0, s.count)
+	dis := uint64(1<<63 - 1)
 	for i, bucket := range s.table {
 		low := uint64(i) & 0xffffff
-		for j := 0; j < len(bucket); j += 5 {
-			values = append(values, memFPSet2Fingerprint(low, bucket[j], bucket[j+1], bucket[j+2], bucket[j+3], bucket[j+4]))
-		}
-	}
-	dis := uint64(1<<63 - 1)
-	for i := 0; i < len(values); i++ {
-		for j := i + 1; j < len(values); j++ {
-			dis = minUint64(dis, absDiffUint64(values[i], values[j]))
+		j := 0
+		for j < len(bucket) {
+			fp := memFPSet2Fingerprint(low, bucket[j], bucket[j+1], bucket[j+2], bucket[j+3], bucket[j+4])
+			j += 5
+			for k := j; k < len(bucket); k += 5 {
+				fp1 := memFPSet2Fingerprint(low, bucket[k], bucket[k+1], bucket[k+2], bucket[k+3], bucket[k+4])
+				dis = minUint64(dis, absDiffUint64(fp, fp1))
+			}
+			for k := i + 1; k < len(s.table); k++ {
+				bucket1 := s.table[k]
+				if bucket1 == nil {
+					continue
+				}
+				low1 := uint64(k) & 0xffffff
+				// Java MemFPSet2.checkFPs accidentally iterates the current
+				// bucket here, not bucket1. Preserve that diagnostic quirk.
+				for k1 := 0; k1 < len(bucket); k1 += 5 {
+					fp1 := memFPSet2Fingerprint(low1, bucket[k1], bucket[k1+1], bucket[k1+2], bucket[k1+3], bucket[k1+4])
+					dis = minUint64(dis, absDiffUint64(fp, fp1))
+				}
+			}
 		}
 	}
 	return dis

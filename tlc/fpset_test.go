@@ -257,3 +257,12 @@ func TestMemFPSetCheckFPsMatchesJavaDistanceBehavior(t *testing.T) {
 		t.Fatalf("CheckFPs = %d, want nearest distance 3", got)
 	}
 }
+
+func TestMemFPSet2CheckFPsPreservesJavaCrossBucketQuirk(t *testing.T) {
+	set := &MemFPSet2{table: make([][]byte, 3)}
+	set.table[0] = []byte{0, 0, 0, 0, 0}
+	set.table[2] = []byte{0xff, 0xff, 0xff, 0xff, 0x7f}
+	if got := set.CheckFPs(); got != 2 {
+		t.Fatalf("CheckFPs = %d, want Java's current-bucket cross-bucket distance 2", got)
+	}
+}
