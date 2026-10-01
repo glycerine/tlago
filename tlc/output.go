@@ -154,6 +154,9 @@ const (
 	ECTLCExpectedExpression                              = 2246
 	ECTLCExpectedExpressionInComputing                   = 2247
 	ECTLCExpectedExpressionInComputing2                  = 2248
+	ECTLCLiveEncounteredActions                          = 2249
+	ECTLCLiveStatePredicateNonBool                       = 2250
+	ECTLCLiveCannotEvalFormula                           = 2251
 	ECTLCLiveEncounteredNonboolPredicate                 = 2252
 	ECTLCLiveFormulaTautology                            = 2253
 	ECTLCLiveFormulaStateLevel                           = 2255
@@ -885,6 +888,15 @@ func formatMessage(code int, params []string) string {
 		}
 	case ECTLCLiveWrongFormulaFormat:
 		return "Temporal formulas containing actions must be of forms <>[]A or []<>A."
+	case ECTLCLiveEncounteredActions:
+		return "TLC encountered actions when computing closure."
+	case ECTLCLiveStatePredicateNonBool:
+		return "A state predicate was evaluated to a non-boolean value."
+	case ECTLCLiveCannotEvalFormula:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Can not evaluate a temporal formula %sF.", params[0])
+		}
+		return "Can not evaluate a temporal formula %1%F."
 	case ECTLCLiveEncounteredNonboolPredicate:
 		return "Encountered an action predicate that's not a boolean."
 	case ECTLCExpectedValue:

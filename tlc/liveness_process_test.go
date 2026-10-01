@@ -20,6 +20,50 @@ func TestLiveExprNonBooleanPredicateUsesJavaErrorCode(t *testing.T) {
 	}
 }
 
+func TestLiveExprStateNonBooleanPredicateUsesJavaErrorCode(t *testing.T) {
+	expr := NewLNState("bad-state", NewValueNode(NewIntValue(1)), EmptyContext, nil)
+	_, err := expr.Eval(&Tool{}, EmptyState, EmptyState)
+	if err == nil {
+		t.Fatalf("Eval returned nil error for non-boolean state predicate")
+	}
+	tlcErr, ok := err.(*TLCError)
+	if !ok {
+		t.Fatalf("Eval error = %T, want TLCError", err)
+	}
+	if tlcErr.Code != ECTLCLiveStatePredicateNonBool {
+		t.Fatalf("Eval error code = %d, want %d", tlcErr.Code, ECTLCLiveStatePredicateNonBool)
+	}
+	if got, want := tlcErr.Error(), "A state predicate was evaluated to a non-boolean value."; got != want {
+		t.Fatalf("Eval error = %q, want Java message %q", got, want)
+	}
+}
+
+func TestLiveExprTemporalDirectEvalUsesJavaErrorCode(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		expr *LiveExprNode
+		want string
+	}{
+		{name: "always", expr: NewLNAll(LNTrue), want: "Can not evaluate a temporal formula []F."},
+		{name: "eventually", expr: NewLNEven(LNTrue), want: "Can not evaluate a temporal formula <>F."},
+	} {
+		_, err := tc.expr.Eval(&Tool{}, EmptyState, EmptyState)
+		if err == nil {
+			t.Fatalf("%s Eval returned nil error", tc.name)
+		}
+		tlcErr, ok := err.(*TLCError)
+		if !ok {
+			t.Fatalf("%s Eval error = %T, want TLCError", tc.name, err)
+		}
+		if tlcErr.Code != ECTLCLiveCannotEvalFormula {
+			t.Fatalf("%s Eval error code = %d, want %d", tc.name, tlcErr.Code, ECTLCLiveCannotEvalFormula)
+		}
+		if got := tlcErr.Error(); got != tc.want {
+			t.Fatalf("%s Eval error = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestParseLivenessReturnsNilWithoutFairnessOrProperties(t *testing.T) {
 	live, err := ParseLiveness(&Tool{})
 	if err != nil {

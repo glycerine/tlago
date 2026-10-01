@@ -230,9 +230,16 @@ func (n *LiveExprNode) Eval(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool,
 		}
 		boolValue, ok := value.(*BoolValue)
 		if !ok {
+			if n.Kind == LiveExprState {
+				return false, newTLCErrorCode(ECTLCLiveStatePredicateNonBool)
+			}
 			return false, newTLCErrorCode(ECTLCLiveEncounteredNonboolPredicate)
 		}
 		return boolValue.Val, nil
+	case LiveExprAll:
+		return false, newTLCErrorCode(ECTLCLiveCannotEvalFormula, "[]")
+	case LiveExprEven:
+		return false, newTLCErrorCode(ECTLCLiveCannotEvalFormula, "<>")
 	default:
 		return false, newTLCError(ECGeneral, "cannot directly evaluate temporal liveness formula %s", n)
 	}
