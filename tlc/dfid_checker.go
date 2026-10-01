@@ -123,7 +123,6 @@ func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
 		return result, err
 	}
 	if result != NoError {
-		mc.PrintSummary(false)
 		return result, nil
 	}
 	if recovered {
