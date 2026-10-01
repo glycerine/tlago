@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"sync/atomic"
@@ -95,6 +96,48 @@ func (m *DistributedFPSetManager) normalize() {
 	if m.Mask == 0 {
 		m.Mask = math.MaxInt64
 	}
+}
+
+type distributedFPSetIdentity struct {
+	typ reflect.Type
+	ptr uintptr
+}
+
+func fpSetIdentity(set FPSet) (distributedFPSetIdentity, bool) {
+	if set == nil {
+		return distributedFPSetIdentity{}, false
+	}
+	value := reflect.ValueOf(set)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
+		if value.IsNil() {
+			return distributedFPSetIdentity{}, false
+		}
+		return distributedFPSetIdentity{typ: value.Type(), ptr: value.Pointer()}, true
+	default:
+		return distributedFPSetIdentity{}, false
+	}
+}
+
+func (m *DistributedFPSetManager) distinctFPSets() []FPSet {
+	if m == nil {
+		return nil
+	}
+	sets := make([]FPSet, 0, len(m.Sets))
+	seen := make(map[distributedFPSetIdentity]struct{}, len(m.Sets))
+	for _, set := range m.Sets {
+		if set == nil {
+			continue
+		}
+		if key, ok := fpSetIdentity(set); ok {
+			if _, exists := seen[key]; exists {
+				continue
+			}
+			seen[key] = struct{}{}
+		}
+		sets = append(sets, set)
+	}
+	return sets
 }
 
 func (m *DistributedFPSetManager) NumOfServers() int {
@@ -224,11 +267,9 @@ func (m *DistributedFPSetManager) Close(cleanup bool) error {
 	if m == nil {
 		return nil
 	}
-	for _, set := range m.Sets {
-		if set != nil {
-			if err := set.Exit(cleanup); err != nil {
-				return err
-			}
+	for _, set := range m.distinctFPSets() {
+		if err := set.Exit(cleanup); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -238,10 +279,20 @@ func (m *DistributedFPSetManager) Checkpoint(filename string) error {
 	if m == nil {
 		return nil
 	}
-	m.checkpointFilename = filename
-	for _, set := range m.Sets {
-		if set != nil {
+	m.checkpointFilename = ""
+	for _, set := range m.distinctFPSets() {
+		if filename != "" {
 			if err := set.BeginChkptFile(filename); err != nil {
+				return err
+			}
+			if err := set.CommitChkptFile(filename); err != nil {
+				return err
+			}
+		} else {
+			if err := set.BeginChkpt(); err != nil {
+				return err
+			}
+			if err := set.CommitChkpt(); err != nil {
 				return err
 			}
 		}
@@ -250,22 +301,9 @@ func (m *DistributedFPSetManager) Checkpoint(filename string) error {
 }
 
 func (m *DistributedFPSetManager) CommitCheckpoint() error {
-	if m == nil {
-		return nil
+	if m != nil {
+		m.checkpointFilename = ""
 	}
-	filename := m.checkpointFilename
-	for _, set := range m.Sets {
-		if set != nil {
-			if filename != "" {
-				if err := set.CommitChkptFile(filename); err != nil {
-					return err
-				}
-			} else if err := set.CommitChkpt(); err != nil {
-				return err
-			}
-		}
-	}
-	m.checkpointFilename = ""
 	return nil
 }
 
@@ -273,11 +311,9 @@ func (m *DistributedFPSetManager) Recover(filename string) error {
 	if m == nil {
 		return nil
 	}
-	for _, set := range m.Sets {
-		if set != nil {
-			if err := set.RecoverFile(filename); err != nil {
-				return err
-			}
+	for _, set := range m.distinctFPSets() {
+		if err := set.RecoverFile(filename); err != nil {
+			return err
 		}
 	}
 	return nil
