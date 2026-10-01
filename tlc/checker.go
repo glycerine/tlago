@@ -2051,8 +2051,12 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 
 	var tlcErr *TLCError
 	if errors.As(err, &tlcErr) && tlcErr != nil {
+		keepCallStack = true
 		if tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory || tlcErr.Code == ECTLCBug {
-			return tlcErr.Code, params, false
+			keepCallStack = false
+		}
+		if tlcErr.Code != ECGeneral && tlcErr.Params != nil {
+			return tlcErr.Code, tlcErr.Params, keepCallStack
 		}
 	}
 

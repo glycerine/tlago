@@ -3,8 +3,9 @@ package tlc
 import "fmt"
 
 type TLCError struct {
-	Code int
-	Msg  string
+	Code   int
+	Msg    string
+	Params []string
 }
 
 func (e *TLCError) Error() string {
@@ -22,7 +23,8 @@ func newTLCError(code int, format string, args ...any) *TLCError {
 }
 
 func newTLCErrorCode(code int, params ...string) *TLCError {
-	return &TLCError{Code: code, Msg: formatMessage(code, params)}
+	copied := append([]string(nil), params...)
+	return &TLCError{Code: code, Msg: formatMessage(code, copied), Params: copied}
 }
 
 func javaMethodOverrideError(signature string, message string) *TLCError {

@@ -7,6 +7,20 @@ import (
 	"testing"
 )
 
+func TestDoNextFailureMessagePreservesTLCErrorCodeParamsLikeJavaEvalException(t *testing.T) {
+	err := newTLCErrorCode(ECTLCExpectedValue, "boolean", "x")
+	code, params, keep := doNextFailureMessage(err)
+	if code != ECTLCExpectedValue {
+		t.Fatalf("code = %d, want %d", code, ECTLCExpectedValue)
+	}
+	if len(params) != 2 || params[0] != "boolean" || params[1] != "x" {
+		t.Fatalf("params = %#v, want original TLCError params", params)
+	}
+	if !keep {
+		t.Fatalf("keepCallStack = false, want true for Java EvalException-shaped errors")
+	}
+}
+
 func TestModelCheckerDoInitDeduplicatesAndSkipsDuplicateInvariantChecks(t *testing.T) {
 	initTLCCheckerTest(t)
 	state := checkerTestState(1)
