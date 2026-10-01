@@ -160,6 +160,7 @@ const (
 	ECTLCLiveFormulaAndFairnessTautology                 = 2258
 	ECTLCConfigNoFairnessButLiveProperty                 = 2259
 	ECTLCEnabledWrongFormula                             = 2260
+	ECTLCEncounteredFormulaInPredicate                   = 2261
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
 	ECTLCCheckingTemporalPropsEnd                        = 2267
@@ -901,6 +902,10 @@ func formatMessage(code int, params []string) string {
 	case ECTLCEnabledWrongFormula:
 		if len(params) >= 2 {
 			return fmt.Sprintf("In computing ENABLED, TLC encountered a temporal formula (%s).\n%s", params[0], params[1])
+		}
+	case ECTLCEncounteredFormulaInPredicate:
+		if len(params) >= 2 {
+			return fmt.Sprintf("TLC encountered a temporal formula (%s) when evaluating a predicate or action.\n%s", params[0], params[1])
 		}
 	}
 	if len(params) == 0 {

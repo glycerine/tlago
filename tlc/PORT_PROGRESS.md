@@ -28,6 +28,7 @@
 - Nearby expression diagnostics now mirror Java for unbounded `CHOOSE`/`\E`/`\A`, ordinary function application to non-functions or tuple/record multi-argument calls, and `DOMAIN` applied to non-functions.
 - Predicate-decomposition implication diagnostics now mirror Java for init, next, and `ENABLED`; assignment enumeration failures now use Java's context-specific right-side-of-`\IN` messages.
 - `ENABLED` temporal and unbounded-formula diagnostics now use Java's split: temporal quantifiers, unbounded `CHOOSE`/`\E`/`\A`, `SF`/`WF`/`[]`/`<>` via `TLC_ENABLED_WRONG_FORMULA`, and `~>`/`-+->` all report their Java text.
+- Predicate/action evaluation of temporal formulas now reports Java's `TLC_ENCOUNTERED_FORMULA_IN_PREDICATE` code with the same per-form labels (`SF`, `WF`, `\EE`, `\AA`, `a ~> b`, `a -+-> formula`, `[]A`, `<>A`).
 - No-code audit note: next-state `CASE` under probabilistic evaluation intentionally fails with the same explicit Java message; do not treat the Go `not implemented for CASE yet` string as an unported feature. Stuttering counterexample warning messages and the no-SPEC/no-fairness split were rechecked and already match Java's liveness warning path.
 - No-code audit note: Java `AbstractChecker.runTLC` worker-error precedence was rechecked. Normal worker next-state/evaluation/liveness failures are recorded through the checker error state and return the stored code unless call-stack replay is requested. Go matches that path; its extra join-error return remains a Go-library guard for structural misuse before an error code can be recorded.
 - No-code audit note: `TLCGet("all")` and `TLCGet("all:named")` preserve Java's worker-0 iteration quirk for local register aggregation. Do not "fix" this to a union over all workers without intentionally diverging from Java.
@@ -391,6 +392,7 @@
   - Expression-level unbounded quantifier, function application, and `DOMAIN` non-function diagnostics now use Java text.
   - Predicate-decomposition `=>` and right-side-of-`\IN` diagnostics now use Java text. Remaining generic `evalBool` callers are equality/membership/subset fallback branches whose Java source mostly relies on casts rather than specialized messages, plus experimental action composition.
   - `ENABLED` temporal/unbounded formula diagnostics now follow Java's per-form messages and `TLC_ENABLED_WRONG_FORMULA` code.
+  - Predicate/action temporal formula diagnostics now use Java's `TLC_ENCOUNTERED_FORMULA_IN_PREDICATE` code and labels.
   - Worker result precedence and worker-local register aggregation were re-audited with no code changes needed.
 - Last verified command:
   - `go test ./...`

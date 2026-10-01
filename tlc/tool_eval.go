@@ -507,8 +507,22 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		return t.evalActionSubscript(expr, opcode, args, c, s0, s1, control, cm)
 	case OpcodeCdot:
 		return t.evalActionComposition(args, c, s0, s1, control, cm)
-	case OpcodeSF, OpcodeWF, OpcodeTE, OpcodeTF, OpcodeLeadsto, OpcodeArrow, OpcodeBox, OpcodeDiamond:
-		return nil, newTLCError(ECGeneral, "TLC encountered temporal formula in a predicate: %s", SemanticString(expr))
+	case OpcodeSF:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "SF", SemanticString(expr))
+	case OpcodeWF:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "WF", SemanticString(expr))
+	case OpcodeTE:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "\\EE", SemanticString(expr))
+	case OpcodeTF:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "\\AA", SemanticString(expr))
+	case OpcodeLeadsto:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "a ~> b", SemanticString(expr))
+	case OpcodeArrow:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "a -+-> formula", SemanticString(expr))
+	case OpcodeBox:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "[]A", SemanticString(expr))
+	case OpcodeDiamond:
+		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "<>A", SemanticString(expr))
 	default:
 		return nil, newTLCError(ECGeneral, "TLC BUG: could not evaluate expression %s", SemanticString(expr))
 	}
