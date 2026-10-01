@@ -13,6 +13,8 @@ import (
 
 var errInvariantViolated = errors.New("tlc invariant violated")
 
+const javaIntegerMaxValue = int(1<<31 - 1)
+
 type AbstractChecker struct {
 	mu                        sync.Mutex
 	PredErrState              *TLCStateMut
@@ -640,7 +642,7 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		mc.PrintSummary(true)
 		return NoError, nil
 	}
-	result, err = mc.RunTLC(0)
+	result, err = mc.RunTLC(javaIntegerMaxValue)
 	if err != nil || result != NoError {
 		mc.PrintSummary(false)
 		if statsErr := mc.PrintLivenessStatistics(); err == nil {
