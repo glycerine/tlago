@@ -142,6 +142,7 @@ type Tool struct {
 	SpecProcessor     *SpecProcessor
 	ModuleFiles       []string
 	CounterExampleDef *OpDefNode
+	TraceDef          *OpDefNode
 	AliasSpec         SemanticNode
 	KnownStates       *InsMap[uint64, *TLCStateMut]
 	Definitions       map[*SymbolNode]any
@@ -897,25 +898,28 @@ func (t *Tool) GetCounterExampleDef() *OpDefNode {
 	if t == nil {
 		return nil
 	}
-	if t.CounterExampleDef != nil {
-		return t.CounterExampleDef
-	}
-	val := t.Lookup(NewSymbolNode("CounterExample"), EmptyContext, EmptyState, false)
-	if ev, ok := val.(*EvaluatingValue); ok {
-		return ev.OpDef
-	}
-	return nil
+	return t.CounterExampleDef
 }
 
 func (t *Tool) GetTraceDef() *OpDefNode {
 	if t == nil {
 		return nil
 	}
+	if t.TraceDef != nil {
+		return t.TraceDef
+	}
 	val := t.Lookup(NewSymbolNode("Trace"), EmptyContext, EmptyState, false)
 	if ev, ok := val.(*EvaluatingValue); ok {
 		return ev.OpDef
 	}
 	return nil
+}
+
+func (t *Tool) GetImportedTraceDef() *OpDefNode {
+	if t == nil {
+		return nil
+	}
+	return t.TraceDef
 }
 
 func (t *Tool) LivenessIsTrue() bool {
@@ -941,7 +945,7 @@ func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, pref
 	}
 	ctxt := EmptyContext
 	if prefix != nil {
-		if traceDef := t.GetTraceDef(); traceDef != nil && traceDef.Symbol != nil {
+		if traceDef := t.GetImportedTraceDef(); traceDef != nil && traceDef.Symbol != nil {
 			ctxt = ctxt.Cons(traceDef.Symbol, traceTupleFromStateInfos(prefix()))
 		}
 	}

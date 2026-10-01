@@ -369,16 +369,37 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	if value == nil {
 		return
 	}
+	var opDef *tlc.OpDefNode
 	if _, ok := value.(*tlc.EvaluatingValue); ok {
-		if opDef := b.convertDefinitionAs(name, def); opDef != nil {
+		if opDef = b.convertDefinitionAs(name, def); opDef != nil {
 			value = tlc.WithEvaluatingOpDef(value, opDef)
 		}
 	} else if _, ok := value.(*tlc.PriorityEvaluatingValue); ok {
-		if opDef := b.convertDefinitionAs(name, def); opDef != nil {
+		if opDef = b.convertDefinitionAs(name, def); opDef != nil {
 			value = tlc.WithEvaluatingOpDef(value, opDef)
 		}
 	}
+	b.rememberNativeStandardDefinition(module, member, name, opDef)
 	b.define(b.symbol(name), value)
+}
+
+func (b *tlcBridge) rememberNativeStandardDefinition(module string, member string, name string, opDef *tlc.OpDefNode) {
+	if b == nil || b.tool == nil || opDef == nil {
+		return
+	}
+	if module != "TLCExt" {
+		return
+	}
+	switch member {
+	case "CounterExample":
+		if name == "CounterExample" || b.tool.CounterExampleDef == nil {
+			b.tool.CounterExampleDef = opDef
+		}
+	case "Trace":
+		if name == "TLCExt!Trace" || b.tool.TraceDef == nil {
+			b.tool.TraceDef = opDef
+		}
+	}
 }
 
 func moduleNameForSourcePosition(pos Position) string {
