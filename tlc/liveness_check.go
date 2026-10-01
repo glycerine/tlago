@@ -55,7 +55,7 @@ type LiveCounterExampleException struct {
 
 func NewLiveCounterExampleException(errorCode int, msg string, counterExample *CounterExample) *LiveCounterExampleException {
 	return &LiveCounterExampleException{
-		LiveException:  NewLiveExceptionWithCounterExample(errorCode, msg, counterExample),
+		LiveException:  NewLiveException(errorCode, msg),
 		CounterExample: counterExample,
 	}
 }
