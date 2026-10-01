@@ -324,13 +324,14 @@
 ## Current Position
 
 - Latest audit focus:
-  - `Tool.enabled`, `Tool.getNextStates`, `Tool.processUnchanged`, and `Tool.evalAppl` have just been re-audited against Java control flow.
-  - `ModelChecker.doInit`/`doNext`, worker successor processing, cleanup, `TLCEval`, `ANY`, `STRING`, no-op/add-and-check liveness, and normal tableau disk graph behavior were re-checked against Java control flow. No code changes were needed in this audit pass; Java's unsupported probabilistic `CASE` and TLCEval's current-worker cache quirk are intentionally mirrored.
-  - Deferred value objects now preserve or deliberately drop cost models according to the Java constructors for `LazyValue`, `FcnLambdaValue`, `OpLambdaValue`, and `SetPredValue`.
-  - DFID now rejects requested liveness checking at model-check entry like current Java; the older Java liveness calls remain dead behind that guard.
+  - Simulator and `SimulationWorker` were re-audited against Java standard/RL worker loops. Recent fixes covered Java-shaped outer exception boundaries, explicit `num=0`, negative depth handling, aril config text, RNG draws before deadlock, reporter error severity, progress completion ordering, action-flow hash corner cases, and RL reward/filter error escape.
+  - Runner/CLI wiring was re-audited for cleanup, FP index, seed/aril, startup banners, `CHECK_DEADLOCK`, and Java system-property behavior. Recent fixes covered DFID honoring config deadlock and the action-Q scheduler banner text.
+  - Coverage reporting was re-audited against Java `CostModelCreator.report`: next-action report ordering now uses source locations, constraints are created/reported before implied properties, and the remaining larger gap is the 2026 call-tree reconstruction visitor.
+  - `TLCGetSet`, `CheckImpl`, and liveness construction were re-audited. Recent fixes covered `TLCGet("spec").variables` location records, `CheckImpl` FP-set construction, and `tlc2.tool.liveness.ILiveCheck.testing` selecting the AddAndCheck checker path.
 - Last verified command:
-  - `go test ./...`
+  - `go test ./tlc`
+  - `go test ./`
 - Immediate next steps:
-  1. Continue breadth-first audit from the Java `Tool`/value layer into remaining checker, liveness, simulator, and module-function parity gaps.
-  2. Continue checker error-precedence audit outside the recently covered cleanup/no-action/DFID next-state exception paths.
+  1. Continue breadth-first audit of local checker/liveness/value/module surfaces before moving to distributed/debugger/management surfaces.
+  2. Continue checker error-precedence and trace reconstruction audit outside the recently covered cleanup/no-action/DFID/simulator exception paths.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
