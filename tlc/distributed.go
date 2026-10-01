@@ -66,14 +66,14 @@ func (r *NextStateResult) GetNextStates() []*StateVec {
 
 type DistributedFPSetManager struct {
 	Sets               []FPSet
-	Shift              uint
+	Mask               uint64
 	StatesSeen         atomic.Uint64
 	Description        string
 	checkpointFilename string
 }
 
 func NewDistributedFPSetManager(sets ...FPSet) *DistributedFPSetManager {
-	out := &DistributedFPSetManager{Sets: append([]FPSet(nil), sets...)}
+	out := &DistributedFPSetManager{Sets: append([]FPSet(nil), sets...), Mask: math.MaxInt64}
 	out.normalize()
 	return out
 }
@@ -81,22 +81,20 @@ func NewDistributedFPSetManager(sets ...FPSet) *DistributedFPSetManager {
 func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
 	if multi, ok := set.(*MultiFPSet); ok && multi != nil {
 		return &DistributedFPSetManager{
-			Sets:  append([]FPSet(nil), multi.Sets...),
-			Shift: multi.Shift,
+			Sets: append([]FPSet(nil), multi.Sets...),
+			Mask: math.MaxInt64,
 		}
 	}
 	return NewDistributedFPSetManager(set)
 }
 
 func (m *DistributedFPSetManager) normalize() {
-	if m == nil || len(m.Sets) <= 1 || m.Shift != 0 {
+	if m == nil {
 		return
 	}
-	bits := 0
-	for count := len(m.Sets); count > 1; count >>= 1 {
-		bits++
+	if m.Mask == 0 {
+		m.Mask = math.MaxInt64
 	}
-	m.Shift = uint(64 - bits)
 }
 
 func (m *DistributedFPSetManager) NumOfServers() int {
@@ -110,14 +108,11 @@ func (m *DistributedFPSetManager) GetFPSetIndex(fp uint64) int {
 	if m == nil || len(m.Sets) <= 1 {
 		return 0
 	}
-	index := int(fp >> m.Shift)
-	if index < 0 {
-		return 0
+	mask := m.Mask
+	if mask == 0 {
+		mask = math.MaxInt64
 	}
-	if index >= len(m.Sets) {
-		index %= len(m.Sets)
-	}
-	return index
+	return int((fp & mask) % uint64(len(m.Sets)))
 }
 
 func (m *DistributedFPSetManager) ContainsBlock(fingerprints []*LongVec) []*BitVector {
@@ -1678,7 +1673,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 	}
 	w.OverallStatesComputed += statesComputed
 
-	sort.Slice(orderedFPs, func(i, j int) bool { return orderedFPs[i] < orderedFPs[j] })
+	sort.Slice(orderedFPs, func(i, j int) bool { return int64(orderedFPs[i]) < int64(orderedFPs[j]) })
 	serverCount := w.FPSetManager.NumOfServers()
 	predecessors := make([]*StateVec, serverCount)
 	successors := make([]*StateVec, serverCount)
