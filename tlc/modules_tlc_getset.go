@@ -385,11 +385,17 @@ func tlcRevisionRecord() Value {
 	values := []Value{
 		NewIntValue(int32(TLCScmCommits())),
 		NewIntValue(int32(buildDate.Unix())),
-		NewStringValue(buildDate.Format("2006-01-02T15:04:05.0Z")),
+		NewStringValue(javaRevisionDate(buildDate)),
 		NewStringValue(TLCRevisionOrDev()),
 		NewStringValue(TLCVersionNumber()),
 	}
 	return NewRecordValue(names, values, false)
+}
+
+func javaRevisionDate(buildDate time.Time) string {
+	buildDate = buildDate.UTC()
+	millis := buildDate.Nanosecond() / int(time.Millisecond)
+	return buildDate.Format("2006-01-02T15:04:05.") + strconv.Itoa(millis) + "Z"
 }
 
 func initActionSetValue(actions []*Action) Value {
