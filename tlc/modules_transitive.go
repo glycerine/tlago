@@ -14,18 +14,22 @@ func Warshall(rel Value) (Value, error) {
 		matrix[i] = make([]bool, 2*size)
 	}
 	elemList := NewValueVec(0)
+	buckets := make(map[int32][]int)
 	indexOf := func(value Value) (int, error) {
-		for i := 0; i < elemList.Len(); i++ {
-			eq, err := elemList.At(i).Equal(value)
+		hash := ValueJavaHashCode(value)
+		for _, idx := range buckets[hash] {
+			eq, err := elemList.At(idx).Equal(value)
 			if err != nil {
 				return 0, err
 			}
 			if eq {
-				return i, nil
+				return idx, nil
 			}
 		}
+		idx := elemList.Len()
 		elemList.Add(value)
-		return elemList.Len() - 1, nil
+		buckets[hash] = append(buckets[hash], idx)
+		return idx, nil
 	}
 	enum := enumerable.Elements()
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
