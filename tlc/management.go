@@ -536,3 +536,196 @@ func (w *DiskFPSetMXWrapper) GetLockCnt() int {
 	}
 	return w.FPSet.GetLockCnt()
 }
+
+type BucketStatisticsMXWrapper struct {
+	*TLCStandardMBean
+	Stats      any
+	ObjectName string
+}
+
+func NewBucketStatisticsMXWrapper(stats any, graphName string, pkg string) *BucketStatisticsMXWrapper {
+	wrapper := &BucketStatisticsMXWrapper{
+		TLCStandardMBean: NewTLCStandardMBean(),
+		Stats:            stats,
+		ObjectName:       graphName,
+	}
+	wrapper.RegisterMBean(pkg + ":type=" + graphName)
+	return wrapper
+}
+
+func (w *BucketStatisticsMXWrapper) GetObjectName() string {
+	if w == nil {
+		return ""
+	}
+	return w.ObjectName
+}
+
+func (w *BucketStatisticsMXWrapper) GetObservations() int64 {
+	return bucketMXObservations(w.bucketStats())
+}
+
+func (w *BucketStatisticsMXWrapper) GetMedian() int {
+	return bucketMXMedian(w.bucketStats())
+}
+
+func (w *BucketStatisticsMXWrapper) GetMean() float64 {
+	return bucketMXMean(w.bucketStats())
+}
+
+func (w *BucketStatisticsMXWrapper) GetMin() int {
+	return bucketMXMin(w.bucketStats())
+}
+
+func (w *BucketStatisticsMXWrapper) GetMax() int {
+	return bucketMXMax(w.bucketStats())
+}
+
+func (w *BucketStatisticsMXWrapper) GetStdDev() float64 {
+	return bucketMXStdDev(w.bucketStats())
+}
+
+func (w *BucketStatisticsMXWrapper) Get75Percentile() float64 {
+	return bucketMXPercentile(w.bucketStats(), 0.75)
+}
+
+func (w *BucketStatisticsMXWrapper) Get95Percentile() float64 {
+	return bucketMXPercentile(w.bucketStats(), 0.95)
+}
+
+func (w *BucketStatisticsMXWrapper) Get98Percentile() float64 {
+	return bucketMXPercentile(w.bucketStats(), 0.98)
+}
+
+func (w *BucketStatisticsMXWrapper) Get99Percentile() float64 {
+	return bucketMXPercentile(w.bucketStats(), 0.99)
+}
+
+func (w *BucketStatisticsMXWrapper) Get999Percentile() float64 {
+	return bucketMXPercentile(w.bucketStats(), 0.999)
+}
+
+func (w *BucketStatisticsMXWrapper) bucketStats() any {
+	if w == nil {
+		return nil
+	}
+	return w.Stats
+}
+
+func bucketMXObservations(stats any) int64 {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetObservations()
+	case *FixedSizedBucketStatistics:
+		return s.GetObservations()
+	case *ConcurrentBucketStatistics:
+		return s.GetObservations()
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetObservations()
+	case *DummyBucketStatistics:
+		return s.GetObservations()
+	default:
+		return 0
+	}
+}
+
+func bucketMXMedian(stats any) int {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetMedian()
+	case *FixedSizedBucketStatistics:
+		return s.GetMedian()
+	case *ConcurrentBucketStatistics:
+		return s.GetMedian()
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetMedian()
+	case *DummyBucketStatistics:
+		return s.GetMedian()
+	default:
+		return 0
+	}
+}
+
+func bucketMXMean(stats any) float64 {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetMean()
+	case *FixedSizedBucketStatistics:
+		return s.GetMean()
+	case *ConcurrentBucketStatistics:
+		return s.GetMean()
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetMean()
+	case *DummyBucketStatistics:
+		return s.GetMean()
+	default:
+		return 0
+	}
+}
+
+func bucketMXMin(stats any) int {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetMin()
+	case *FixedSizedBucketStatistics:
+		return s.GetMin()
+	case *ConcurrentBucketStatistics:
+		return s.GetMin()
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetMin()
+	case *DummyBucketStatistics:
+		return s.GetMin()
+	default:
+		return 0
+	}
+}
+
+func bucketMXMax(stats any) int {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetMax()
+	case *FixedSizedBucketStatistics:
+		return s.GetMax()
+	case *ConcurrentBucketStatistics:
+		return s.GetMax()
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetMax()
+	case *DummyBucketStatistics:
+		return s.GetMax()
+	default:
+		return 0
+	}
+}
+
+func bucketMXStdDev(stats any) float64 {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetStdDev()
+	case *FixedSizedBucketStatistics:
+		return s.GetStdDev()
+	case *ConcurrentBucketStatistics:
+		return s.GetStdDev()
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetStdDev()
+	case *DummyBucketStatistics:
+		return s.GetStdDev()
+	default:
+		return 0
+	}
+}
+
+func bucketMXPercentile(stats any, quantile float64) float64 {
+	switch s := stats.(type) {
+	case *BucketStatistics:
+		return s.GetPercentile(quantile)
+	case *FixedSizedBucketStatistics:
+		return s.GetPercentile(quantile)
+	case *ConcurrentBucketStatistics:
+		return s.GetPercentile(quantile)
+	case *FixedSizedConcurrentBucketStatistics:
+		return s.GetPercentile(quantile)
+	case *DummyBucketStatistics:
+		return s.GetPercentile(quantile)
+	default:
+		return 0
+	}
+}
