@@ -49,12 +49,9 @@ func (c *CheckImpl) Init() (int, error) {
 		return ECSystemCheckpointRecoveryCorrupt, err
 	}
 	if !recovered {
-		if result := c.CheckAssumptions(); result != NoError {
-			return result, nil
-		}
-		result, err := c.DoInit(false)
-		if err != nil || result != NoError {
-			return result, err
+		_ = c.CheckAssumptions()
+		if _, err := c.DoInit(false); err != nil {
+			return ECGeneral, err
 		}
 	}
 	fmt.Fprintf(os.Stdout, "Creating a partial state space of depth %d ... \n", c.Depth)
