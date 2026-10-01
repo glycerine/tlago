@@ -189,9 +189,13 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 	case OpcodeIn:
 		return t.enabledMembership(pred, args[0], args[1], acts, c, s0, s1, cm)
 	case OpcodeImplies:
-		bval, err := t.evalBool(args[0], c, s0, s1, EvalEnabled, cm, "ENABLED implication")
+		value, err := t.Eval(args[0], c, s0, s1, EvalEnabled, cm)
 		if err != nil {
 			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCError(ECGeneral, "While computing ENABLED of an expression of the form P => Q, P was %s.\n%s", valueKindString(value), SemanticString(pred))
 		}
 		if bval.Val {
 			return t.EnabledImpl(args[1], acts, c, s0, s1, cm)
@@ -357,7 +361,7 @@ func (t *Tool) enabledMembership(pred SemanticNode, left SemanticNode, right Sem
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode.Name, rval, acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode.Name, rval, pred, acts, s0, s1, cm)
 }
 
 func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
@@ -373,10 +377,10 @@ func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right Seman
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode.Name, NewSubsetValue(rset), acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode.Name, NewSubsetValue(rset), pred, acts, s0, s1, cm)
 }
 
-func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
 	lval := s1.Lookup(varName)
 	if lval != nil {
 		member, err := domain.Member(lval)
@@ -387,7 +391,7 @@ func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, a
 	}
 	enumerable, ok := asEnumerable(domain)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "right side of \\in is not enumerable while computing ENABLED")
+		return nil, newTLCError(ECGeneral, "The right side of \\IN is not enumerable.\n%s", SemanticString(pred))
 	}
 	enum := enumerable.Elements()
 	for val := enum.NextElement(); val != nil; val = enum.NextElement() {

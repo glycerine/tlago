@@ -246,9 +246,13 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 	case OpcodeIn:
 		return t.initMembership(init, args[0], args[1], acts, c, ps, states, cm)
 	case OpcodeImplies:
-		lval, err := t.evalBool(args[0], c, ps, EmptyState, EvalInit, cm, "initial implication")
+		value, err := t.Eval(args[0], c, ps, EmptyState, EvalInit, cm)
 		if err != nil {
 			return err
+		}
+		lval, ok := value.(*BoolValue)
+		if !ok {
+			return newTLCError(ECGeneral, "In computing initial states of a predicate of form P => Q, P was %s\n.%s", valueKindString(value), SemanticString(init))
 		}
 		if lval.Val {
 			return t.GetInitStatesForPredicate(args[1], acts, c, ps, states, cm)
@@ -365,7 +369,7 @@ func (t *Tool) initMembership(init SemanticNode, left SemanticNode, right Semant
 	if err != nil {
 		return err
 	}
-	return t.enumerateInitAssignment(varNode.Name, rval, acts, ps, states, cm)
+	return t.enumerateInitAssignment(varNode.Name, rval, init, acts, ps, states, cm)
 }
 
 func (t *Tool) initSubsetEq(init SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
@@ -381,10 +385,10 @@ func (t *Tool) initSubsetEq(init SemanticNode, left SemanticNode, right Semantic
 	if err != nil {
 		return err
 	}
-	return t.enumerateInitAssignment(varNode.Name, NewSubsetValue(rset), acts, ps, states, cm)
+	return t.enumerateInitAssignment(varNode.Name, NewSubsetValue(rset), init, acts, ps, states, cm)
 }
 
-func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
+func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
 	lval := ps.Lookup(varName)
 	if lval != nil {
 		member, err := domain.Member(lval)
@@ -395,7 +399,7 @@ func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, acts
 	}
 	enumerable, ok := asEnumerable(domain)
 	if !ok {
-		return newTLCError(ECGeneral, "right side of \\in is not enumerable while assigning %s", varName)
+		return newTLCError(ECGeneral, "In computing initial states, the right side of \\IN is not enumerable.\n%s", SemanticString(pred))
 	}
 	enum := enumerable.Elements()
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
@@ -697,9 +701,13 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 	case OpcodeIn:
 		return t.nextMembership(action, pred, args[0], args[1], acts, c, s0, s1, nss, cm)
 	case OpcodeImplies:
-		bval, err := t.evalBool(args[0], c, s0, s1, EvalClear, cm, "next implication")
+		value, err := t.Eval(args[0], c, s0, s1, EvalClear, cm)
 		if err != nil {
 			return s1, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return s1, newTLCError(ECGeneral, "In computing next states of a predicate of the form P => Q, P was\n%s.\n%s", valueKindString(value), SemanticString(pred))
 		}
 		if bval.Val {
 			return t.GetNextStatesForPredicate(action, args[1], acts, c, s0, s1, nss, cm)
@@ -984,7 +992,7 @@ func (t *Tool) nextMembership(action *Action, pred SemanticNode, left SemanticNo
 	if err != nil {
 		return s1, err
 	}
-	return t.enumerateNextAssignment(action, varNode.Name, rval, acts, s0, s1, nss, cm)
+	return t.enumerateNextAssignment(action, varNode.Name, rval, pred, acts, s0, s1, nss, cm)
 }
 
 func (t *Tool) nextSubsetEq(action *Action, pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
@@ -1000,10 +1008,10 @@ func (t *Tool) nextSubsetEq(action *Action, pred SemanticNode, left SemanticNode
 	if err != nil {
 		return s1, err
 	}
-	return t.enumerateNextAssignment(action, varNode.Name, NewSubsetValue(rset), acts, s0, s1, nss, cm)
+	return t.enumerateNextAssignment(action, varNode.Name, NewSubsetValue(rset), pred, acts, s0, s1, nss, cm)
 }
 
-func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, domain Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
+func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
 	lval := s1.Lookup(varName)
 	if lval != nil {
 		member, err := domain.Member(lval)
@@ -1014,7 +1022,7 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 	}
 	enumerable, ok := asEnumerable(domain)
 	if !ok {
-		return s1, newTLCError(ECGeneral, "right side of \\in is not enumerable while assigning %s'", varName)
+		return s1, newTLCError(ECGeneral, "In computing next states, the right side of \\IN is not enumerable.\n%s", SemanticString(pred))
 	}
 	res := s1
 	if toolProbabilisticEnabled() {
