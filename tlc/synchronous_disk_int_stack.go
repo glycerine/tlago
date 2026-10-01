@@ -31,9 +31,6 @@ func NewSynchronousDiskIntStack(diskdir string, name string, capacity ...int) *S
 	if capacityValue > synchronousDiskIntStackBufSizeMax {
 		capacityValue = synchronousDiskIntStackBufSizeMax
 	}
-	if capacityValue < 1 {
-		capacityValue = 1
-	}
 	return &SynchronousDiskIntStack{
 		bufSize:    capacityValue,
 		filePrefix: filepath.Join(diskdir, name),

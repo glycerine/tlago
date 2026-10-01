@@ -80,3 +80,10 @@ func TestSynchronousDiskIntStackPushIntWrite(t *testing.T) {
 		t.Fatalf("Size = %d, want 0", got)
 	}
 }
+
+func TestSynchronousDiskIntStackCapacityEdgeCasesMatchJava(t *testing.T) {
+	expectPanic(t, func() { NewSynchronousDiskIntStack(t.TempDir(), "negative", -1) })
+
+	stack := NewSynchronousDiskIntStack(t.TempDir(), "zero", 0)
+	expectPanic(t, func() { stack.PushInt(1) })
+}
