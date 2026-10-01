@@ -193,6 +193,11 @@ Port guidance:
   `ParameterizedSpecObj.View.constDefs`. Runtime invariant actions are appended
   after normal config processing, so the missing `INIT`/`NEXT` checks only see
   the static model config just as Java's `SpecProcessor` does.
+- Runtime postconditions follow Java `Spec.getPostConditionSpecs`: actions from
+  `ParameterizedSpecObj.getPostConditionSpecs()` come before config-file
+  `POSTCONDITION(S)`, and their user-visible action name is the unqualified
+  operator name even though the Go bridge resolves the qualified module
+  definition internally. This matters for diagnostic/postcondition output order.
 - Java's `-dump class,...` loads an `IStateWriter` by reflection. Go keeps this
   concrete with `StateWriterFactory` functions registered by class name through
   `RegisterStateWriterClass`; built-in parity names cover Java's zero-argument

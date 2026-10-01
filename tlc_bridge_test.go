@@ -98,7 +98,13 @@ func TestRuntimePostConditionCanTargetQualifiedLocalStandardDefinition(t *testin
 VARIABLE x
 Init == x = 0
 Next == x' = x
+CfgPost == x = 0
 ====`)
+	cfgPath := filepath.Join(dir, "TracePostBridge.cfg")
+	writeFile(t, cfgPath, `INIT Init
+NEXT Next
+POSTCONDITION CfgPost
+`)
 
 	params := tlc.RuntimeParameters{
 		PostConditions: []tlc.RuntimePostCondition{{
@@ -112,7 +118,11 @@ Next == x' = x
 	requireNoErrors(t, diags)
 	requireNoErrors(t, CheckSpec(spec))
 
-	tool, toolDiags := BuildTLCTool(spec, tlc.NewModelConfig("TracePostBridge"), params)
+	cfg, err := tlc.ParseModelConfigFile(cfgPath)
+	if err != nil {
+		t.Fatalf("ParseModelConfigFile: %v", err)
+	}
+	tool, toolDiags := BuildTLCTool(spec, cfg, params)
 	requireNoErrors(t, toolDiags)
 
 	if _, ok := tool.DefnsByName[tlc.UniqueStringOf("_TLCTrace!_TLCTraceSilent")].(*tlc.OpDefNode); !ok {
@@ -121,7 +131,14 @@ Next == x' = x
 	if got := tool.DefnsByName[tlc.UniqueStringOf("_TLCTraceSilent")]; got != nil {
 		t.Fatalf("_TLCTraceSilent = %T, want LOCAL helper not exported unqualified", got)
 	}
-	if postConditions := tool.GetPostConditionSpecs(); len(postConditions) != 1 {
-		t.Fatalf("postconditions = %d, want 1 runtime postcondition", len(postConditions))
+	postConditions := tool.GetPostConditionSpecs()
+	if len(postConditions) != 2 {
+		t.Fatalf("postconditions = %d, want runtime plus config postcondition", len(postConditions))
+	}
+	if got := postConditions[0].GetName(); got != "_TLCTraceSilent" {
+		t.Fatalf("postconditions[0] = %q, want runtime postcondition first like Java", got)
+	}
+	if got := postConditions[1].GetName(); got != "CfgPost" {
+		t.Fatalf("postconditions[1] = %q, want config postcondition second like Java", got)
 	}
 }

@@ -621,10 +621,14 @@ func (b *tlcBridge) installRuntimeParameters() {
 			b.tool.ViewSpec = b.nodeForModuleDefinition(view.Module, view.Operator, "runtime view")
 		}
 	}
+	runtimePosts := make([]*tlc.Action, 0, len(b.runtime.PostConditions))
 	for _, post := range b.runtime.PostConditions {
 		if action := b.actionFromModuleDefinition(post.Module, post.Operator, false); action != nil {
-			b.tool.PostConditionSpecs = append(b.tool.PostConditionSpecs, action)
+			runtimePosts = append(runtimePosts, action)
 		}
+	}
+	if len(runtimePosts) != 0 {
+		b.tool.PostConditionSpecs = append(runtimePosts, b.tool.PostConditionSpecs...)
 	}
 }
 
@@ -656,7 +660,11 @@ func (b *tlcBridge) actionFromModuleDefinition(module string, operator string, i
 		b.diags = append(b.diags, errorAt(Position{}, "E7019", "runtime postcondition requires a module and operator"))
 		return nil
 	}
-	return b.actionFromDefinition(name, init)
+	action := b.actionFromDefinition(name, init)
+	if action != nil {
+		action.Name = operator
+	}
+	return action
 }
 
 func moduleQualifiedName(module string, operator string) string {
