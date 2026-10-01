@@ -2620,7 +2620,17 @@ Important Java classes:
   source name, replaces the module's breakpoint list, returns concrete
   `TLCBreakpoint` verification records, and keeps Java's parent-frame
   suppression rule: if an ancestor stack frame already matches the same source
-  breakpoint, a nested frame does not fire it again.
+  breakpoint, a nested frame does not fire it again. Verification is fuzzy like
+  Java: the breakpoint is always stored, but the response is marked verified
+  only when a same-line semantic node is found under a source range that
+  `Location.includes` the breakpoint range. Java walks a `ModuleNode`; Go does
+  not retain that exact SANY module object, so it walks the processed semantic
+  definitions for the module while preserving Java's range-in-range inclusion
+  logic, including the deliberately non-point breakpoint range with begin line
+  `line + 1` and end line `line`. Breakpoints in modules that are not part of
+  the debugged spec remain verified, matching Java's `moduleNode == null` case.
+  A hit condition on the configured `Next` predicate is reported as unverified
+  with Java's "A Next breakpoint does not support a hit condition." message.
 - `DebugTLCVariable`: adapts TLC `Value` objects into debugger variables.
   Scalars expose `type` and `value`; enumerable/function/record/tuple values
   receive a non-zero `variablesReference` and lazily produce children.

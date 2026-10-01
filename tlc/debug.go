@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"math/rand"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -1094,6 +1095,25 @@ func (l SourceLocation) String() string {
 	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s", l.BeginLine, l.BeginColumn, l.EndLine, l.EndColumn, l.Source)
 }
 
+func (l SourceLocation) Includes(other SourceLocation) bool {
+	if l.Source != other.Source {
+		return false
+	}
+	if l.BeginLine > other.BeginLine {
+		return false
+	}
+	if l.BeginLine == other.BeginLine && l.BeginColumn > other.BeginColumn {
+		return false
+	}
+	if l.EndLine < other.EndLine {
+		return false
+	}
+	if l.EndLine == other.EndLine && l.EndColumn < other.EndColumn {
+		return false
+	}
+	return true
+}
+
 type TLCExceptionBreakpointFilter struct {
 	Filter               string
 	Label                string
@@ -1349,6 +1369,85 @@ func semanticNodeSourceLocation(node SemanticNode) (SourceLocation, bool) {
 		return located.GetSourceLocation(), true
 	}
 	return NullSourceLocation, false
+}
+
+func semanticWalk(node SemanticNode, visit func(SemanticNode) bool) {
+	seen := make(map[uintptr]struct{})
+	var walk func(SemanticNode)
+	walk = func(current SemanticNode) {
+		if current == nil {
+			return
+		}
+		if key := semanticNodePointerKey(current); key != 0 {
+			if _, ok := seen[key]; ok {
+				return
+			}
+			seen[key] = struct{}{}
+		}
+		if visit != nil && !visit(current) {
+			return
+		}
+		switch n := current.(type) {
+		case *OpDefNode:
+			walk(n.Body)
+		case *LabelNode:
+			walk(n.Body)
+		case *OpApplNode:
+			for _, arg := range n.Args {
+				walk(arg)
+			}
+			for _, bound := range n.BdedQuantBounds {
+				walk(bound)
+			}
+		case *LetInNode:
+			for _, def := range n.Lets {
+				walk(def)
+			}
+			for _, binding := range n.Bindings {
+				if child, ok := binding.Value.(SemanticNode); ok {
+					walk(child)
+				}
+			}
+			walk(n.Body)
+		case *SubstInNode:
+			for _, subst := range n.Substs {
+				walk(subst.Expr)
+			}
+			walk(n.Body)
+		case *APSubstInNode:
+			for _, subst := range n.Substs {
+				walk(subst.Expr)
+			}
+			walk(n.Body)
+		case *PossibleTrackNode:
+			walk(n.Pred)
+		case *ThmOrAssumpDefNode:
+			walk(n.Body)
+		case *LiveExprNode:
+			walk(n.Body)
+			for _, body := range n.Bodies {
+				walk(body)
+			}
+			walk(n.Pred)
+		}
+	}
+	walk(node)
+}
+
+func semanticNodePointerKey(node SemanticNode) uintptr {
+	value := reflect.ValueOf(node)
+	if !value.IsValid() {
+		return 0
+	}
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
+		if value.IsNil() {
+			return 0
+		}
+		return value.Pointer()
+	default:
+		return 0
+	}
 }
 
 func debugStateCopy(state *TLCStateMut) *TLCStateMut {
@@ -2145,15 +2244,20 @@ func (d *TLCDebugger) SetBreakpoints(source string, requested []TLCSourceBreakpo
 		op, conditionErr := d.breakpointConditionOpLocked(req.Condition, location)
 		breakpoint := NewTLCSourceBreakpointAt(module, req.Line, req.Column, req.Condition, req.LogMessage, req.HitCondition, op, conditionErr)
 		breakpoints = append(breakpoints, breakpoint)
+		moduleKnown, verified := d.verifyBreakpointLocationLocked(module, breakpoint)
 		result := TLCBreakpoint{
 			ID:       i,
 			Source:   source,
 			Module:   module,
 			Line:     breakpoint.Line,
 			Column:   breakpoint.Column,
-			Verified: true,
+			Verified: verified,
 		}
-		if conditionErr != nil {
+		if d.nextBreakpointRejectsHitConditionLocked(breakpoint) {
+			result.Verified = false
+			result.Message = "A Next breakpoint does not support a hit condition."
+		}
+		if moduleKnown && conditionErr != nil {
 			result.Verified = false
 			result.Message = conditionErr.Error()
 		}
@@ -2161,6 +2265,79 @@ func (d *TLCDebugger) SetBreakpoints(source string, requested []TLCSourceBreakpo
 	}
 	d.Breakpoints.Set(module, breakpoints)
 	return results
+}
+
+func (d *TLCDebugger) verifyBreakpointLocationLocked(module string, breakpoint *TLCSourceBreakpoint) (bool, bool) {
+	if breakpoint == nil {
+		return false, true
+	}
+	moduleKnown := d.debugModuleKnownLocked(module)
+	verified := !moduleKnown
+	target := breakpoint.GetLocation()
+	if d == nil || d.Tool == nil || d.Tool.SpecProcessor == nil || d.Tool.SpecProcessor.Defns == nil {
+		return moduleKnown, verified
+	}
+	for _, value := range d.Tool.SpecProcessor.Defns.All() {
+		node, ok := value.(SemanticNode)
+		if !ok || node == nil {
+			continue
+		}
+		semanticWalk(node, func(current SemanticNode) bool {
+			if verified {
+				return false
+			}
+			loc, ok := semanticNodeSourceLocation(current)
+			if !ok || loc.IsNull() {
+				return true
+			}
+			if loc.Source == module {
+				moduleKnown = true
+			}
+			if loc.Source != "" && loc.Source != module {
+				return false
+			}
+			if !loc.Includes(target) {
+				return false
+			}
+			if loc.BeginLine == breakpoint.Line && loc.EndLine == breakpoint.Line {
+				verified = true
+				return false
+			}
+			return true
+		})
+	}
+	if !moduleKnown {
+		return false, true
+	}
+	return true, verified
+}
+
+func (d *TLCDebugger) debugModuleKnownLocked(module string) bool {
+	if d == nil || d.Tool == nil || module == "" {
+		return false
+	}
+	if d.Tool.RootName == module {
+		return true
+	}
+	for _, file := range d.Tool.ModuleFiles {
+		base := filepath.Base(file)
+		base = strings.TrimSuffix(base, filepath.Ext(base))
+		if base == module {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *TLCDebugger) nextBreakpointRejectsHitConditionLocked(breakpoint *TLCSourceBreakpoint) bool {
+	if d == nil || d.Tool == nil || d.Tool.SpecProcessor == nil || breakpoint == nil || breakpoint.GetHits() <= 0 {
+		return false
+	}
+	nextPred := d.Tool.SpecProcessor.GetNextPred()
+	if nextPred == nil {
+		return false
+	}
+	return nextPred.GetDefinitionLocation().Includes(breakpoint.GetLocation())
 }
 
 func (d *TLCDebugger) BreakpointsForSource(source string) []*TLCSourceBreakpoint {
