@@ -39,7 +39,7 @@ func NewFormula(text string) *Formula {
 func DeserializeFormulaList(serialized []string) []*Formula {
 	out := make([]*Formula, 0, len(serialized))
 	for _, entry := range serialized {
-		if strings.HasPrefix(entry, "1") {
+		if entry[:1] == "1" {
 			out = append(out, NewFormula(entry[1:]))
 		}
 	}
@@ -97,7 +97,7 @@ type Assignment struct {
 func NewAssignment(label string, params []string, right string) *Assignment {
 	a := &Assignment{Formula: Formula{Text: right}, Label: label}
 	a.SetParams(params)
-	if label != "" && label == right {
+	if label == right {
 		a.SetModelValue(true)
 	}
 	return a
@@ -171,6 +171,10 @@ func (a *Assignment) SetRight(right string) {
 	a.setOfModelValues = nil
 }
 
+func (a *Assignment) SetFormula(string) {
+	panic("Not implemented yet")
+}
+
 func (a *Assignment) GetFormattedRight() string {
 	right := a.GetRight()
 	if idx := strings.Index(right, "\n"); idx >= 0 {
@@ -183,9 +187,13 @@ func (a *Assignment) SetParams(params []string) {
 	if a == nil {
 		return
 	}
-	a.Params = a.Params[:0]
-	for _, param := range params {
-		a.Params = append(a.Params, strings.TrimSpace(param))
+	if params != nil {
+		a.Params = params
+		for i := range a.Params {
+			a.Params[i] = strings.TrimSpace(a.Params[i])
+		}
+	} else {
+		a.Params = []string{}
 	}
 }
 
@@ -220,7 +228,7 @@ func (a *Assignment) SetSymmetric(sym bool) {
 		return
 	}
 	if sym && !a.ModelValue {
-		panic("current assignment is not a set of model values")
+		panic("Current assignment is not a set of model values")
 	}
 	a.Symmetry = sym
 }
@@ -230,7 +238,7 @@ func (a *Assignment) SetModelValue(modelValue bool) {
 		return
 	}
 	if modelValue && len(a.Params) != 0 {
-		panic("operators can not be instantiated with model values")
+		panic("Operators can not be instantiated with model values")
 	}
 	a.ModelValue = modelValue
 }
