@@ -1267,6 +1267,13 @@ High-level flow in `modelCheckImpl`:
    deletes metadata when configured and not vetoed by checkpoint-preservation
    rules.
 
+Java wraps `modelCheckImpl` with `AbstractChecker.modelCheck`, which returns
+the stored `errorCode` when the implementation result is `NO_ERROR`. This is
+observable after kept-call-stack worker failures because `runTLC` deliberately
+returns `NO_ERROR` so the outer code can replay the error. Go keeps the same
+wrapper precedence after the cleanup decision, so cleanup still sees the
+implementation result Java would have used.
+
 `doNext` error precedence:
 
 - incomplete successor state,

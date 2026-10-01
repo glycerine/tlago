@@ -98,6 +98,9 @@ func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
 		if cleanupErr := mc.Cleanup(result == NoError, mc.CleanupEnabled); err == nil {
 			err = cleanupErr
 		}
+		if result == NoError && mc.ErrorCode != NoError {
+			result = mc.ErrorCode
+		}
 	}()
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
