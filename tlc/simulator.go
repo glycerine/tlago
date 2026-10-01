@@ -1100,7 +1100,7 @@ func actionFlowGraphWeight(count int64) float64 {
 
 func javaAbsStringHash(value string) string {
 	hash := javaStringHashCode(value)
-	if hash < 0 {
+	if hash < 0 && hash != math.MinInt32 {
 		hash = -hash
 	}
 	return fmt.Sprintf("%d", hash)
