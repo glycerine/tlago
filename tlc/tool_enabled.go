@@ -101,6 +101,9 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 			return t.EnabledImpl(v.Body, acts, c1, s0, s1, cm)
 		case *LazyValue:
 			return t.EnabledImpl(v.Expr, acts, v.Con, s0, s1, v.CM)
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			return t.EnabledImpl(lv.Expr, acts, lv.Con, s0, s1, lv.CM)
 		case Value:
 			if isOperatorValue(v) {
 				bval, err := EvalOperatorValueWithTool(v, t, args, c, s0, s1, EvalEnabled, cm)
@@ -465,6 +468,9 @@ func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Cont
 			switch v := val.(type) {
 			case *LazyValue:
 				return t.EnabledUnchanged(v.Expr, acts, v.Con, s0, s1, cm)
+			case *LazySupplierValue:
+				lv := asLazyValue(v)
+				return t.EnabledUnchanged(lv.Expr, acts, lv.Con, s0, s1, cm)
 			case *OpDefNode:
 				return t.EnabledUnchanged(v.Body, acts, c, s0, s1, cm)
 			case nil:

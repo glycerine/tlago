@@ -116,6 +116,9 @@ func (t *Tool) collectPrimedLocsAppl(pred *OpApplNode, c *Context, tbl *Semantic
 			delete(visiting, v)
 		case *LazyValue:
 			t.collectPrimedLocs(v.Expr, v.Con, tbl, visiting)
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			t.collectPrimedLocs(lv.Expr, lv.Con, tbl, visiting)
 		}
 	}
 }

@@ -240,6 +240,36 @@ func (v *LazySupplierValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLC
 	return v.Supplier(), nil
 }
 
+func asLazyValue(value any) *LazyValue {
+	switch v := value.(type) {
+	case *LazyValue:
+		return v
+	case *LazySupplierValue:
+		if v == nil {
+			return nil
+		}
+		return v.LazyValue
+	default:
+		return nil
+	}
+}
+
+func lazyValueGetValue(value any, tool *Tool, state *TLCStateMut, pstate *TLCStateMut, control int) (Value, error, bool) {
+	switch v := value.(type) {
+	case *LazyValue:
+		res, err := v.GetValue(tool, state, pstate, control)
+		return res, err, true
+	case *LazySupplierValue:
+		if v == nil {
+			return nil, nil, false
+		}
+		res, err := v.GetValue(tool, state, pstate, control)
+		return res, err, true
+	default:
+		return nil, nil, false
+	}
+}
+
 type SetPredValue struct {
 	BaseValue
 	Vars      any

@@ -243,7 +243,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 
 	if opcode == 0 {
 		val := t.Lookup(opNode, c, s0, EvalIsPrimed(control))
-		if lv, ok := val.(*LazyValue); ok {
+		if lv := asLazyValue(val); lv != nil {
 			if s1 == nil {
 				evaluated, err := t.Eval(lv.Expr, lv.Con, s0, nil, control, lv.CM)
 				if err != nil {
@@ -251,7 +251,10 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 				}
 				val = evaluated
 			} else {
-				return lv.GetValue(t, s0, s1, control)
+				evaluated, err, ok := lazyValueGetValue(val, t, s0, s1, control)
+				if ok {
+					return evaluated, err
+				}
 			}
 		}
 		switch v := val.(type) {
@@ -718,6 +721,11 @@ func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
 		}
 	case *LazyValue:
 		if lazyLevel := t.GetLevelBound(v.Expr, v.Con); lazyLevel > level {
+			level = lazyLevel
+		}
+	case *LazySupplierValue:
+		lv := asLazyValue(v)
+		if lazyLevel := t.GetLevelBound(lv.Expr, lv.Con); lazyLevel > level {
 			level = lazyLevel
 		}
 	case *EvaluatingValue:

@@ -148,7 +148,7 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 	opcode := GetOpCode(opNode.Name)
 	if opcode == 0 {
 		val := t.Lookup(opNode, c, ps, false)
-		if lv, ok := val.(*LazyValue); ok {
+		if lv := asLazyValue(val); lv != nil {
 			cached := lv.GetCachedValue(t, ps, nil, EvalClear)
 			if cached == nil {
 				return t.GetInitStatesForPredicate(lv.Expr, acts, lv.Con, ps, states, cm)
@@ -586,7 +586,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 	opcode := GetOpCode(opNode.Name)
 	if opcode == 0 {
 		val := t.Lookup(opNode, c, s0, false)
-		if lv, ok := val.(*LazyValue); ok {
+		if lv := asLazyValue(val); lv != nil {
 			cached := lv.GetCachedValue(t, s0, s1, EvalClear)
 			if cached == nil {
 				return t.GetNextStatesForPredicate(action, lv.Expr, acts, lv.Con, s0, s1, nss, lv.CM)
@@ -1115,6 +1115,9 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 				return t.ProcessUnchanged(action, v.Body, acts, c, s0, s1, nss, cm)
 			case *LazyValue:
 				return t.ProcessUnchanged(action, v.Expr, acts, v.Con, s0, s1, nss, cm)
+			case *LazySupplierValue:
+				lv := asLazyValue(v)
+				return t.ProcessUnchanged(action, lv.Expr, acts, lv.Con, s0, s1, nss, cm)
 			case nil:
 				return s1, newTLCError(ECGeneral, "undefined identifier %s in UNCHANGED expression %s", opName, SemanticString(expr))
 			default:
@@ -1170,6 +1173,9 @@ func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
 		switch v := val.(type) {
 		case *LazyValue:
 			return t.GetVar(v.Expr, v.Con, cutoff)
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			return t.GetVar(lv.Expr, lv.Con, cutoff)
 		case *OpDefNode:
 			return t.GetVar(v.Body, c, cutoff)
 		default:
@@ -1219,6 +1225,9 @@ func (t *Tool) GetPrimedVar(expr SemanticNode, c *Context, cutoff bool) *SymbolN
 		switch v := val.(type) {
 		case *LazyValue:
 			return t.GetPrimedVar(v.Expr, v.Con, cutoff)
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			return t.GetPrimedVar(lv.Expr, lv.Con, cutoff)
 		case *OpDefNode:
 			return t.GetPrimedVar(v.Body, c, cutoff)
 		default:

@@ -1068,6 +1068,10 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 		case *LazyValue:
 			p.processConfigSpec(tool, v.Expr, v.Con, subs, stack[:len(stack)-1])
 			return true
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			p.processConfigSpec(tool, lv.Expr, lv.Con, subs, stack[:len(stack)-1])
+			return true
 		case nil:
 			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "specification", opNodeName(pred.Operator))
 			return true
@@ -1216,6 +1220,10 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 			return true
 		case *LazyValue:
 			p.processConfigProperty(tool, name, configName, v.Expr, v.Con, subs)
+			return true
+		case *LazySupplierValue:
+			lv := asLazyValue(v)
+			p.processConfigProperty(tool, name, configName, lv.Expr, lv.Con, subs)
 			return true
 		case nil:
 			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "property", opNodeName(opNode))

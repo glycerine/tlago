@@ -17,6 +17,12 @@ func SpecsGetLevel(expr SemanticNode, c *Context) int {
 			if plevel > level {
 				level = plevel
 			}
+		case *LazySupplierValue:
+			lv := asLazyValue(value)
+			plevel := SpecsGetLevel(lv.Expr, lv.Con)
+			if plevel > level {
+				level = plevel
+			}
 		case *OpDefNode:
 			plevel := SpecsGetLevel(value, c)
 			if plevel > level {
