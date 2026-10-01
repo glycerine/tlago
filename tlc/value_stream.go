@@ -346,22 +346,22 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 		}
 		return s.writeValue(v.PSet, external)
 	case *SetCupValue:
-		if v.CupSet == nil {
+		if v.CupSet == nil || v.CupSetDummy {
 			return fmt.Errorf("cannot pickle unmaterialized set union")
 		}
 		return s.writeValue(v.CupSet, external)
 	case *SetCapValue:
-		if v.CapSet == nil {
+		if v.CapSet == nil || v.CapSetDummy {
 			return fmt.Errorf("cannot pickle unmaterialized set intersection")
 		}
 		return s.writeValue(v.CapSet, external)
 	case *SetDiffValue:
-		if v.DiffSet == nil {
+		if v.DiffSet == nil || v.DiffSetDummy {
 			return fmt.Errorf("cannot pickle unmaterialized set difference")
 		}
 		return s.writeValue(v.DiffSet, external)
 	case *UnionValue:
-		if v.RealSet == nil {
+		if v.RealSet == nil || v.RealSetDummy {
 			return fmt.Errorf("cannot pickle unmaterialized union value")
 		}
 		return s.writeValue(v.RealSet, external)

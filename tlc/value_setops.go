@@ -4,9 +4,10 @@ import "strings"
 
 type SetCupValue struct {
 	BaseValue
-	Set1   Value
-	Set2   Value
-	CupSet *SetEnumValue
+	Set1        Value
+	Set2        Value
+	CupSet      *SetEnumValue
+	CupSetDummy bool
 }
 
 func NewSetCupValue(set1, set2 Value) *SetCupValue {
@@ -57,11 +58,11 @@ func (v *SetCupValue) Size() (int, error) {
 }
 
 func (v *SetCupValue) IsNormalized() bool {
-	return v.CupSet != nil && v.CupSet.IsNormalized()
+	return v.CupSet != nil && !v.CupSetDummy && v.CupSet.IsNormalized()
 }
 
 func (v *SetCupValue) Normalize() Value {
-	if v.CupSet != nil {
+	if v.CupSet != nil && !v.CupSetDummy {
 		v.CupSet.Normalize()
 	}
 	return v
@@ -70,7 +71,9 @@ func (v *SetCupValue) Normalize() Value {
 func (v *SetCupValue) DeepNormalize() {
 	v.Set1.DeepNormalize()
 	v.Set2.DeepNormalize()
-	if v.CupSet != nil {
+	if v.CupSet == nil {
+		v.CupSetDummy = true
+	} else if !v.CupSetDummy {
 		v.CupSet.DeepNormalize()
 	}
 }
@@ -106,7 +109,7 @@ func (v *SetCupValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetCupValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.CupSet != nil {
+	if v.CupSet != nil && !v.CupSetDummy {
 		return v.CupSet, nil
 	}
 	enum := v.Elements()
@@ -114,18 +117,27 @@ func (v *SetCupValue) ToSetEnum() (*SetEnumValue, error) {
 }
 
 func (v *SetCupValue) convertAndCache() (*SetEnumValue, error) {
-	if v.CupSet == nil {
+	if v.CupSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.CupSet = set
+		v.CupSetDummy = false
+	} else if v.CupSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.CupSet = set
+		v.CupSetDummy = false
 	}
 	return v.CupSet, nil
 }
 
 func (v *SetCupValue) Elements() ValueEnumeration {
-	if v.CupSet != nil {
+	if v.CupSet != nil && !v.CupSetDummy {
 		return v.CupSet.Elements()
 	}
 	enum1, ok1 := asEnumerable(v.Set1)
@@ -172,9 +184,10 @@ func (e *setCupEnumeration) Err() error {
 
 type SetCapValue struct {
 	BaseValue
-	Set1   Value
-	Set2   Value
-	CapSet *SetEnumValue
+	Set1        Value
+	Set2        Value
+	CapSet      *SetEnumValue
+	CapSetDummy bool
 }
 
 func NewSetCapValue(set1, set2 Value) *SetCapValue {
@@ -232,14 +245,14 @@ func (v *SetCapValue) Size() (int, error) {
 }
 
 func (v *SetCapValue) IsNormalized() bool {
-	if v.CapSet == nil {
+	if v.CapSet == nil || v.CapSetDummy {
 		return v.Set1.IsNormalized() && v.Set2.IsNormalized()
 	}
 	return v.CapSet.IsNormalized()
 }
 
 func (v *SetCapValue) Normalize() Value {
-	if v.CapSet == nil {
+	if v.CapSet == nil || v.CapSetDummy {
 		v.Set1.Normalize()
 		v.Set2.Normalize()
 	} else {
@@ -251,7 +264,9 @@ func (v *SetCapValue) Normalize() Value {
 func (v *SetCapValue) DeepNormalize() {
 	v.Set1.DeepNormalize()
 	v.Set2.DeepNormalize()
-	if v.CapSet != nil {
+	if v.CapSet == nil {
+		v.CapSetDummy = true
+	} else if !v.CapSetDummy {
 		v.CapSet.DeepNormalize()
 	}
 }
@@ -287,7 +302,7 @@ func (v *SetCapValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetCapValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.CapSet != nil {
+	if v.CapSet != nil && !v.CapSetDummy {
 		return v.CapSet, nil
 	}
 	enum := v.Elements()
@@ -295,18 +310,27 @@ func (v *SetCapValue) ToSetEnum() (*SetEnumValue, error) {
 }
 
 func (v *SetCapValue) convertAndCache() (*SetEnumValue, error) {
-	if v.CapSet == nil {
+	if v.CapSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.CapSet = set
+		v.CapSetDummy = false
+	} else if v.CapSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.CapSet = set
+		v.CapSetDummy = false
 	}
 	return v.CapSet, nil
 }
 
 func (v *SetCapValue) Elements() ValueEnumeration {
-	if v.CapSet != nil {
+	if v.CapSet != nil && !v.CapSetDummy {
 		return v.CapSet.Elements()
 	}
 	if enum1, ok := asEnumerable(v.Set1); ok {
@@ -329,9 +353,10 @@ func (v *SetCapValue) String() string {
 
 type SetDiffValue struct {
 	BaseValue
-	Set1    Value
-	Set2    Value
-	DiffSet *SetEnumValue
+	Set1         Value
+	Set2         Value
+	DiffSet      *SetEnumValue
+	DiffSetDummy bool
 }
 
 func NewSetDiffValue(set1, set2 Value) *SetDiffValue {
@@ -396,14 +421,14 @@ func (v *SetDiffValue) Size() (int, error) {
 }
 
 func (v *SetDiffValue) IsNormalized() bool {
-	if v.DiffSet == nil {
+	if v.DiffSet == nil || v.DiffSetDummy {
 		return v.Set1.IsNormalized()
 	}
 	return v.DiffSet.IsNormalized()
 }
 
 func (v *SetDiffValue) Normalize() Value {
-	if v.DiffSet == nil {
+	if v.DiffSet == nil || v.DiffSetDummy {
 		v.Set1.Normalize()
 		v.Set2.Normalize()
 	} else {
@@ -415,7 +440,9 @@ func (v *SetDiffValue) Normalize() Value {
 func (v *SetDiffValue) DeepNormalize() {
 	v.Set1.DeepNormalize()
 	v.Set2.DeepNormalize()
-	if v.DiffSet != nil {
+	if v.DiffSet == nil {
+		v.DiffSetDummy = true
+	} else if !v.DiffSetDummy {
 		v.DiffSet.DeepNormalize()
 	}
 }
@@ -451,7 +478,7 @@ func (v *SetDiffValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetDiffValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.DiffSet != nil {
+	if v.DiffSet != nil && !v.DiffSetDummy {
 		return v.DiffSet, nil
 	}
 	enum := v.Elements()
@@ -459,18 +486,27 @@ func (v *SetDiffValue) ToSetEnum() (*SetEnumValue, error) {
 }
 
 func (v *SetDiffValue) convertAndCache() (*SetEnumValue, error) {
-	if v.DiffSet == nil {
+	if v.DiffSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.DiffSet = set
+		v.DiffSetDummy = false
+	} else if v.DiffSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.DiffSet = set
+		v.DiffSetDummy = false
 	}
 	return v.DiffSet, nil
 }
 
 func (v *SetDiffValue) Elements() ValueEnumeration {
-	if v.DiffSet != nil {
+	if v.DiffSet != nil && !v.DiffSetDummy {
 		return v.DiffSet.Elements()
 	}
 	enum1, ok := asEnumerable(v.Set1)
@@ -491,8 +527,9 @@ func (v *SetDiffValue) String() string {
 
 type UnionValue struct {
 	BaseValue
-	Set     Value
-	RealSet *SetEnumValue
+	Set          Value
+	RealSet      *SetEnumValue
+	RealSetDummy bool
 }
 
 func NewUnionValue(set Value) *UnionValue {
@@ -592,11 +629,11 @@ func (v *UnionValue) Size() (int, error) {
 }
 
 func (v *UnionValue) IsNormalized() bool {
-	return v.RealSet != nil && v.RealSet.IsNormalized()
+	return v.RealSet != nil && !v.RealSetDummy && v.RealSet.IsNormalized()
 }
 
 func (v *UnionValue) Normalize() Value {
-	if v.RealSet != nil {
+	if v.RealSet != nil && !v.RealSetDummy {
 		v.RealSet.Normalize()
 	}
 	return v
@@ -604,7 +641,9 @@ func (v *UnionValue) Normalize() Value {
 
 func (v *UnionValue) DeepNormalize() {
 	v.Set.DeepNormalize()
-	if v.RealSet != nil {
+	if v.RealSet == nil {
+		v.RealSetDummy = true
+	} else if !v.RealSetDummy {
 		v.RealSet.DeepNormalize()
 	}
 }
@@ -643,7 +682,7 @@ func (v *UnionValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *UnionValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.RealSet != nil {
+	if v.RealSet != nil && !v.RealSetDummy {
 		return v.RealSet, nil
 	}
 	enum := v.Elements()
@@ -651,18 +690,27 @@ func (v *UnionValue) ToSetEnum() (*SetEnumValue, error) {
 }
 
 func (v *UnionValue) convertAndCache() (*SetEnumValue, error) {
-	if v.RealSet == nil {
+	if v.RealSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.RealSet = set
+		v.RealSetDummy = false
+	} else if v.RealSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.RealSet = set
+		v.RealSetDummy = false
 	}
 	return v.RealSet, nil
 }
 
 func (v *UnionValue) Elements() ValueEnumeration {
-	if v.RealSet != nil {
+	if v.RealSet != nil && !v.RealSetDummy {
 		return v.RealSet.Elements()
 	}
 	enum, ok := asEnumerable(v.Set)
