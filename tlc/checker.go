@@ -1019,17 +1019,14 @@ func (mc *ModelChecker) PrintProgressStats(startTime time.Time, isFinal bool) {
 		mc.OldFPSetSize = 0
 		factor = time.Since(startTime).Minutes()
 	}
-	if factor <= 0 {
-		factor = 1
-	}
 	generated := mc.GetStatesGenerated()
-	mc.StatesPerMinute = int64(float64(generated-mc.OldNumOfGenStates) / factor)
+	mc.StatesPerMinute = javaDoubleToLong(float64(generated-mc.OldNumOfGenStates) / factor)
 	mc.OldNumOfGenStates = generated
 	var distinctDelta uint64
 	if fpSetSize >= mc.OldFPSetSize {
 		distinctDelta = fpSetSize - mc.OldFPSetSize
 	}
-	mc.DistinctStatesPerMinute = int64(float64(distinctDelta) / factor)
+	mc.DistinctStatesPerMinute = javaDoubleToLong(float64(distinctDelta) / factor)
 	mc.OldFPSetSize = fpSetSize
 	PrintMessage(ECTLCProgressStats,
 		fmtInt64(mc.GetProgress()),
@@ -1039,6 +1036,19 @@ func (mc *ModelChecker) PrintProgressStats(startTime time.Time, isFinal bool) {
 		fmtInt64(mc.StatesPerMinute),
 		fmtInt64(mc.DistinctStatesPerMinute),
 	)
+}
+
+func javaDoubleToLong(value float64) int64 {
+	if math.IsNaN(value) {
+		return 0
+	}
+	if value <= float64(math.MinInt64) {
+		return math.MinInt64
+	}
+	if value >= float64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	return int64(value)
 }
 
 func (mc *ModelChecker) PrintOutDegreeSummary() {
