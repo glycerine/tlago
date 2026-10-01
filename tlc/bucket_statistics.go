@@ -16,10 +16,11 @@ type BucketSample struct {
 }
 
 type BucketStatistics struct {
-	Title        string
-	observations int64
-	counts       map[int]int64
-	keys         []int
+	Title          string
+	observations   int64
+	counts         map[int]int64
+	keys           []int
+	managementBean *BucketStatisticsMXWrapper
 }
 
 func NewBucketStatistics(title string) *BucketStatistics {
@@ -27,6 +28,12 @@ func NewBucketStatistics(title string) *BucketStatistics {
 		Title:  title,
 		counts: make(map[int]int64),
 	}
+}
+
+func NewBucketStatisticsWithMX(title string, pkg string, name string) *BucketStatistics {
+	stats := NewBucketStatistics(title)
+	stats.managementBean = NewBucketStatisticsMXWrapper(stats, name, pkg)
+	return stats
 }
 
 func (s *BucketStatistics) AddSample(amount int) {
@@ -395,12 +402,19 @@ func (s *DummyBucketStatistics) GetPercentile(float64) float64 {
 func (s *DummyBucketStatistics) AddSamples(any) {}
 
 type ConcurrentBucketStatistics struct {
-	mu    sync.Mutex
-	stats *BucketStatistics
+	mu             sync.Mutex
+	stats          *BucketStatistics
+	managementBean *BucketStatisticsMXWrapper
 }
 
 func NewConcurrentBucketStatistics(title string) *ConcurrentBucketStatistics {
 	return &ConcurrentBucketStatistics{stats: NewBucketStatistics(title)}
+}
+
+func NewConcurrentBucketStatisticsWithMX(title string, pkg string, name string) *ConcurrentBucketStatistics {
+	stats := NewConcurrentBucketStatistics(title)
+	stats.managementBean = NewBucketStatisticsMXWrapper(stats, name, pkg)
+	return stats
 }
 
 func (s *ConcurrentBucketStatistics) AddSample(amount int) {

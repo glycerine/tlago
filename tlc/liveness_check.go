@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const javaLivenessPackageName = "tlc2.tool.liveness"
+
 type LiveException struct {
 	ErrorCode      int
 	Msg            string
@@ -859,7 +861,11 @@ func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metad
 		}
 		metadir = tmp
 	}
-	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: NewBucketStatistics("Histogram vertex out-degree"), errFoundByID: -1}
+	outDegreeStats := NewBucketStatistics("Histogram vertex out-degree")
+	if livenessStatsEnabled() {
+		outDegreeStats = NewBucketStatisticsWithMX("Histogram vertex out-degree", javaLivenessPackageName, "DiskGraphsOutDegree")
+	}
+	check := &LiveCheck{Tool: tool, MetaDir: metadir, OutDegreeStats: outDegreeStats, errFoundByID: -1}
 	for i, solution := range solutions {
 		writer := NewNoopLivenessStateWriter()
 		if stateWriter != nil && !stateWriter.IsNoop() && stateWriter.IsDot() {

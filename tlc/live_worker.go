@@ -11,7 +11,7 @@ const liveWorkerSCCMarker = int64(-42)
 var (
 	liveWorkerStackMu sync.Mutex
 	liveWorkerStatsMu sync.Mutex
-	liveWorkerStats   = NewBucketStatistics("Histogram SCC sizes")
+	liveWorkerStats   = NewBucketStatisticsWithMX("Histogram SCC sizes", javaLivenessPackageName, "StronglyConnectedComponent sizes")
 )
 
 type LiveWorker struct {

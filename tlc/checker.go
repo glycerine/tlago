@@ -962,7 +962,9 @@ func (mc *ModelChecker) PrintLivenessStatistics() error {
 		return nil
 	}
 	runtime.GC()
-	inDegree, err := mc.LiveCheck.CalculateInDegreeDiskGraphs(NewBucketStatistics("Histogram vertex in-degree"))
+	inDegree, err := mc.LiveCheck.CalculateInDegreeDiskGraphs(
+		NewBucketStatisticsWithMX("Histogram vertex in-degree", javaLivenessPackageName, "DiskGraphsInDegree"),
+	)
 	if err != nil {
 		return err
 	}
