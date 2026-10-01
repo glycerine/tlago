@@ -1,5 +1,11 @@
 package tlc
 
+const (
+	javaBagsBagInSignature    = "public static tlc2.value.IBoolValue tlc2.module.Bags.BagIn(tlc2.value.impl.Value,tlc2.value.impl.Value)"
+	javaBagsCopiesInSignature = "public static tlc2.value.impl.IntValue tlc2.module.Bags.CopiesIn(tlc2.value.impl.Value,tlc2.value.impl.Value)"
+	javaBagsBagCupSignature   = "public static tlc2.value.impl.Value tlc2.module.Bags.BagCup(tlc2.value.impl.Value,tlc2.value.impl.Value)"
+)
+
 func EmptyBag() Value {
 	return EmptyFcn
 }
@@ -37,7 +43,7 @@ func BagCardinality(value Value) (*IntValue, error) {
 func BagIn(elem Value, bag Value) (*BoolValue, error) {
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
-		return nil, newTLCError(ECGeneral, `Cannot read field "values" because "fcn" is null`)
+		return nil, javaMethodOverrideError(javaBagsBagInSignature, `Cannot read field "values" because "fcn" is null`)
 	}
 	domain := fcn.DomainAsValues()
 	for i, dval := range domain {
@@ -59,7 +65,7 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
-		return nil, newTLCError(ECGeneral, `Cannot read field "values" because "fcn" is null`)
+		return nil, javaMethodOverrideError(javaBagsCopiesInSignature, `Cannot read field "values" because "fcn" is null`)
 	}
 	domain := fcn.DomainAsValues()
 	for i, dval := range domain {
@@ -301,7 +307,7 @@ func requireBagFunction(name string, value Value) (*FcnRcdValue, error) {
 func requireBag(position string, operator string, value Value) (*FcnRcdValue, error) {
 	fcn := asFcnRcdValue(value)
 	if fcn == nil {
-		return nil, newTLCError(ECGeneral, `Cannot invoke "tlc2.value.impl.Value.toFcnRcd()" because "b" is null`)
+		return nil, javaMethodOverrideError(javaBagsBagCupSignature, `Cannot invoke "tlc2.value.impl.Value.toFcnRcd()" because "b" is null`)
 	}
 	ok, err := IsABag(fcn)
 	if err != nil {
@@ -311,4 +317,8 @@ func requireBag(position string, operator string, value Value) (*FcnRcdValue, er
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, "bag", ValuesPPR(value))
 	}
 	return fcn, nil
+}
+
+func javaMethodOverrideError(signature string, message string) *TLCError {
+	return newTLCErrorCode(ECTLCModuleValueJavaMethodOverride, signature, message)
 }

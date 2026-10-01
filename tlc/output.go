@@ -804,6 +804,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 3 {
 			return fmt.Sprintf("The argument of %s should be a %s, but instead it is:\n%s", params[0], params[1], params[2])
 		}
+	case ECTLCModuleValueJavaMethodOverride:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Attempted to apply the operator overridden by the Java method\n%s,\nbut it produced the following error:\n%s", params[0], params[1])
+		}
 	case ECTLCModuleArgumentError:
 		if len(params) >= 4 {
 			return fmt.Sprintf("The %s argument of %s should be a %s, but instead it is:\n%s", params[0], params[1], params[2], params[3])
