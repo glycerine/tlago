@@ -322,15 +322,17 @@ func SequencesExtReplaceAllSubSeqs(replacement Value, subseq Value, target Value
 func SequencesExtIsPrefix(left Value, right Value) (Value, error) {
 	if s1, ok := left.(*StringValue); ok {
 		s2, ok := right.(*StringValue)
-		if !ok {
-			return BoolFalse, nil
+		if ok {
+			return NewBoolValue(strings.HasPrefix(s2.RawString(), s1.RawString())), nil
 		}
-		return NewBoolValue(strings.HasPrefix(s2.RawString(), s1.RawString())), nil
 	}
 	s := asTupleValue(left)
+	if s == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "IsPrefix", "sequence", ValuesPPR(left))
+	}
 	t := asTupleValue(right)
-	if s == nil || t == nil {
-		return BoolFalse, nil
+	if t == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "IsPrefix", "sequence", ValuesPPR(right))
 	}
 	if len(s.Elems) > len(t.Elems) {
 		return BoolFalse, nil
