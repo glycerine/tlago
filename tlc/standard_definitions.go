@@ -87,9 +87,6 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("RandomSetOfSubsets", 3, func(args []Value) (Value, error) {
 		return RandomSetOfSubsets(args[0], args[1], args[2])
 	})
-	t.defineStandardMethod("RandomSubsetSet", 3, func(args []Value) (Value, error) {
-		return RandomSubsetSet(args[0], args[1], args[2])
-	})
 	t.defineStandardMethod("Warshall", 1, func(args []Value) (Value, error) { return Warshall(args[0]) })
 
 	t.defineStandardMethod("ToJson", 1, func(args []Value) (Value, error) { return JsonToJson(args[0]) })

@@ -1921,12 +1921,14 @@ paths of `RandomElement` report `TLC_MODULE_APPLYING_TO_WRONG_VALUE`.
 `TLC_MODULE_ARGUMENT_ERROR`. `RandomSetOfSubsets` checks first-argument count,
 second-argument subset size, third-argument finite set, requested number of
 subsets against `2^Cardinality(S)`, then subset size against `0..Cardinality(S)`.
-`RandomSubsetSet` reports under the Java operator name
-`RandomSubsetSetProbability`, including for probability parsing and the
-requested-subsets bound. The requested-subsets bound uses Java's
-`31 - Integer.numberOfLeadingZeros(numberOfPicks) + 1 > Cardinality(S)` guard
-and Java `int` left-shift overflow semantics, not a floating-point `2^n`
-shortcut.
+Java also has a `RandomSubsetSet` helper that reports under the internal
+operator name `RandomSubsetSetProbability`, including for probability parsing
+and the requested-subsets bound. The frozen standard `Randomization.tla` module
+does not export this operator, so the Go standard registry must not install it.
+The helper remains useful for direct module parity. The requested-subsets bound
+uses Java's
+`31 - Integer.numberOfLeadingZeros(numberOfPicks) + 1 > Cardinality(S)` guard and
+Java `int` left-shift overflow semantics, not a floating-point `2^n` shortcut.
 
 `TLCGetSet` uses `TLC_MODULE_TLCGET_UNDEFINED` for missing numeric and string
 registers. Invalid `TLCGet` arguments report `TLC_MODULE_ONE_ARGUMENT_ERROR`;
