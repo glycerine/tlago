@@ -22,7 +22,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		stderr = io.Discard
 	}
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|checkimplfile|apalache-json|sany-xml [-I DIR] FILE...")
+		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|checkimplfile|repl-expr|apalache-json|sany-xml [-I DIR] FILE...")
 		return ExitToolFailure
 	}
 	cmd := args[0]
@@ -40,6 +40,8 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		return runModelCheck(files, stdout, stderr)
 	case "checkimplfile", "check-impl-file":
 		return runCheckImplFile(files, stdout, stderr)
+	case "repl-expr", "repl":
+		return runREPLExpression(files, stdout, stderr)
 	case "apalache-json":
 		return runApalacheJSON(files, stdout, stderr)
 	case "sany-xml":
@@ -93,6 +95,64 @@ func runSanyXML(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return exit
+}
+
+func runREPLExpression(args []string, stdout, stderr io.Writer) int {
+	opts := REPLEvalOptions{PrintOutput: stdout}
+	var exprs []string
+	for i := 0; i < len(args); i++ {
+		loadOpts := LoadOptions{
+			LibraryPaths:         opts.LibraryPaths,
+			PreferLibraryModules: opts.PreferLibraryModules,
+		}
+		if ok, next, err := consumeLoadCLIOption(args, i, &loadOpts); ok || err != nil {
+			if err != nil {
+				fmt.Fprintln(stderr, err)
+				return ExitToolFailure
+			}
+			opts.LibraryPaths = loadOpts.LibraryPaths
+			opts.PreferLibraryModules = loadOpts.PreferLibraryModules
+			i = next
+			continue
+		}
+		switch args[i] {
+		case "-spec", "--spec":
+			i++
+			if i >= len(args) {
+				fmt.Fprintln(stderr, "-spec requires a TLA+ module file")
+				return ExitToolFailure
+			}
+			opts.SpecFile = args[i]
+		case "--":
+			exprs = append(exprs, args[i+1:]...)
+			i = len(args)
+		default:
+			exprs = append(exprs, args[i])
+		}
+	}
+	if len(exprs) != 1 {
+		fmt.Fprintln(stderr, "repl-expr requires exactly one expression argument")
+		return ExitToolFailure
+	}
+	value, diags, err := EvaluateREPLExpression(exprs[0], opts)
+	writeDiagnostics(stderr, diags)
+	if diags.HasErrors() {
+		return ExitSemanticFailure
+	}
+	if err != nil {
+		fmt.Fprintf(stderr, "Error evaluating expression: '%s'\n%s\n", exprs[0], sanitizeREPLError(err.Error()))
+		return ExitSemanticFailure
+	}
+	if value != "" {
+		fmt.Fprintln(stdout, value)
+	}
+	return ExitOK
+}
+
+func sanitizeREPLError(text string) string {
+	text = strings.TrimSpace(text)
+	text = strings.ReplaceAll(text, "\n", " ")
+	return strings.TrimSpace(text)
 }
 
 func cliArgsContainHelp(args []string) bool {

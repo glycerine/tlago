@@ -464,6 +464,16 @@ func definitionsByNameWithOptions(spec *Spec, includeNativeOverrides bool, expor
 	for _, name := range spec.Root.Extends {
 		rootExtends[name] = true
 	}
+	for i := range spec.Root.Definitions {
+		def := &spec.Root.Definitions[i]
+		if !includeNativeOverrides && isNativeStandardDefinitionOverrideName(def.Name, def) {
+			continue
+		}
+		if rootName != "" {
+			defs[rootName+"!"+def.Name] = def
+		}
+		defs[def.Name] = def
+	}
 	moduleNames := make([]string, 0, len(spec.Modules))
 	for name := range spec.Modules {
 		moduleNames = append(moduleNames, name)
