@@ -274,6 +274,12 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 			}
 		}
 		return nil
+	case *FcnLambdaValue:
+		fcn, err := v.materializeFcnRcd()
+		if err != nil {
+			return err
+		}
+		return s.writeValue(fcn, external)
 	case *RecordValue:
 		if idx := s.Put(v); idx >= 0 {
 			return s.writeDummy(idx)

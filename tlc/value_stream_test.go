@@ -249,6 +249,24 @@ func TestValueStreamsWriteReducibleSetValuesAsJavaSetEnums(t *testing.T) {
 	}
 }
 
+func TestValueStreamsWriteMaterializedFcnLambdaAsJavaFcnRcd(t *testing.T) {
+	fcn := NewFcnRcdValue([]Value{NewStringValue("k")}, []Value{NewIntValue(99)}, true)
+	lambda := &FcnLambdaValue{FcnRcd: fcn}
+
+	var buf bytes.Buffer
+	out := NewValueOutputStream(&buf)
+	if err := out.Write(lambda); err != nil {
+		t.Fatalf("Write materialized FcnLambdaValue returned error: %v", err)
+	}
+	got, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).Read()
+	if err != nil {
+		t.Fatalf("Read materialized FcnLambdaValue returned error: %v", err)
+	}
+	if !mustValueEqual(got, fcn) {
+		t.Fatalf("materialized FcnLambdaValue roundtrip = %v, want %v", got, fcn)
+	}
+}
+
 func writeExternalUniqueString(t *testing.T, out *ValueOutputStream, value string) {
 	t.Helper()
 	if err := out.WriteInt(-1); err != nil {
