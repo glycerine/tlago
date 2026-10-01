@@ -163,11 +163,11 @@ func SelectInSeq(s Value, test Value) (Value, error) {
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "SelectInSeq", "sequence", ValuesPPR(s))
 	}
-	if !isOperatorValue(test) {
+	if !isFunctionValue(test) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "SelectInSeq", "function", ValuesPPR(test))
 	}
 	for i, elem := range seq.Elems {
-		value, err := EvalOperatorValue(test, []Value{elem}, EvalClear)
+		value, err, _ := applyFunctionValue(test, []Value{elem}, EvalClear)
 		if err != nil {
 			return nil, err
 		}
@@ -215,14 +215,14 @@ func Insert(s Value, v Value, test Value) (Value, error) {
 	if seq == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Insert", "sequence", ValuesPPR(s))
 	}
-	if !isOperatorValue(test) {
+	if !isFunctionValue(test) {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "Insert", "function", ValuesPPR(test))
 	}
 	values := make([]Value, len(seq.Elems)+1)
 	idx := len(seq.Elems)
 	for idx > 0 {
 		right := seq.Elems[idx-1]
-		value, err := EvalOperatorValue(test, []Value{v, right}, EvalClear)
+		value, err, _ := applyFunctionValue(test, []Value{v, right}, EvalClear)
 		if err != nil {
 			return nil, err
 		}
@@ -250,6 +250,49 @@ func Insert(s Value, v Value, test Value) (Value, error) {
 		}
 	}
 	return NewTupleValue(values), nil
+}
+
+func isFunctionValue(value Value) bool {
+	switch value.(type) {
+	case *TupleValue, *RecordValue, *CounterExample, *FcnRcdValue, *FcnLambdaValue:
+		return true
+	default:
+		return false
+	}
+}
+
+func applyFunctionValue(value Value, args []Value, control int) (Value, error, bool) {
+	arg := functionApplyArg(args)
+	switch v := value.(type) {
+	case *TupleValue:
+		out, err := v.Apply(arg)
+		return out, err, true
+	case *RecordValue:
+		out, err := v.Apply(arg)
+		return out, err, true
+	case *CounterExample:
+		if v == nil || v.RecordValue == nil {
+			out, err := EmptyRecord.Apply(arg)
+			return out, err, true
+		}
+		out, err := v.RecordValue.Apply(arg)
+		return out, err, true
+	case *FcnRcdValue:
+		out, err := v.Apply(arg)
+		return out, err, true
+	case *FcnLambdaValue:
+		out, err := v.ApplyArgs(args, control)
+		return out, err, true
+	default:
+		return nil, nil, false
+	}
+}
+
+func functionApplyArg(args []Value) Value {
+	if len(args) == 1 {
+		return args[0]
+	}
+	return NewTupleValue(args)
 }
 
 func asTupleValue(value Value) *TupleValue {
