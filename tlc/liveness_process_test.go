@@ -64,6 +64,25 @@ func TestLiveExprTemporalDirectEvalUsesJavaErrorCode(t *testing.T) {
 	}
 }
 
+func TestTBParPositiveClosureActionUsesJavaErrorCode(t *testing.T) {
+	defer func() {
+		recovered := recover()
+		tlcErr, ok := recovered.(*TLCError)
+		if !ok {
+			t.Fatalf("panic = %T %v, want TLCError", recovered, recovered)
+		}
+		if tlcErr.Code != ECTLCLiveEncounteredActions {
+			t.Fatalf("panic code = %d, want %d", tlcErr.Code, ECTLCLiveEncounteredActions)
+		}
+		if got, want := tlcErr.Error(), "TLC encountered actions when computing closure."; got != want {
+			t.Fatalf("panic message = %q, want %q", got, want)
+		}
+	}()
+	par := NewTBPar(1)
+	par.AddElement(NewLNAction("A", nil, EmptyContext, nil))
+	_ = par.PositiveClosure()
+}
+
 func TestParseLivenessReturnsNilWithoutFairnessOrProperties(t *testing.T) {
 	live, err := ParseLiveness(&Tool{})
 	if err != nil {

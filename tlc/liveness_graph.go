@@ -265,7 +265,7 @@ func (p *TBPar) PositiveClosure() *TBPar {
 		case LiveExprState, LiveExprBool:
 			result.AddElement(ln)
 		case LiveExprAction:
-			panic(newTLCError(ECGeneral, "encountered action formula while building liveness tableau"))
+			panic(newTLCErrorCode(ECTLCLiveEncounteredActions))
 		}
 	}
 	return result
