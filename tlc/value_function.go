@@ -1365,6 +1365,11 @@ func asRecordValue(value Value) *RecordValue {
 		return v.ToRecord()
 	case *FcnLambdaValue:
 		return v.ToRecord()
+	case *TupleValue:
+		if len(v.Elems) == 0 {
+			return EmptyRecord
+		}
+		return nil
 	default:
 		return nil
 	}
