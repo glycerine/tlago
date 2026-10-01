@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -232,9 +233,12 @@ func (t *uniqueStringTable) CommitChkpt(metadir string) error {
 	oldChkpt := uniqueStringChkptName(metadir, "chkpt")
 	newChkpt := uniqueStringChkptName(metadir, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+		return fmt.Errorf("InternTable.commitChkpt: cannot delete %s", oldChkpt)
 	}
-	return os.Rename(newChkpt, oldChkpt)
+	if err := os.Rename(newChkpt, oldChkpt); err != nil {
+		return fmt.Errorf("InternTable.commitChkpt: cannot delete %s", oldChkpt)
+	}
+	return nil
 }
 
 func (t *uniqueStringTable) Recover(metadir string) error {
