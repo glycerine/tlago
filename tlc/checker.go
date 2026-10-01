@@ -403,7 +403,11 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 			if tool != nil && tool.HasSymmetry() {
 				PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry)
 			}
-			mc.LiveCheck, mc.LiveCheckInitErr = NewLiveCheckFromTool(tool, metadir, mc.AllStateWriter)
+			if livenessTestingImplementationEnabled() {
+				mc.LiveCheck, mc.LiveCheckInitErr = NewAddAndCheckLiveCheckFromTool(tool, metadir)
+			} else {
+				mc.LiveCheck, mc.LiveCheckInitErr = NewLiveCheckFromTool(tool, metadir, mc.AllStateWriter)
+			}
 		} else {
 			mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 		}
@@ -414,6 +418,13 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	mc.initWorkers()
 	SetMainChecker(mc)
 	return mc
+}
+
+func livenessTestingImplementationEnabled() bool {
+	if value, ok := tlcLookupSystemProperty("tlc2.tool.liveness.ILiveCheck.testing"); ok {
+		return javaBooleanProperty(value)
+	}
+	return false
 }
 
 func (mc *ModelChecker) initWorkers() {

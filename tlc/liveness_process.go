@@ -221,3 +221,15 @@ func NewLiveCheckFromTool(tool *Tool, metadir string, stateWriter *StateWriter) 
 	}
 	return NewLiveCheckWithStateWriter(tool, solutions, metadir, stateWriter)
 }
+
+func NewAddAndCheckLiveCheckFromTool(tool *Tool, metadir string) (*LiveCheck, error) {
+	liveTool := tool
+	if liveTool != nil {
+		liveTool = liveTool.NoDebug()
+	}
+	solutions, err := ProcessLiveness(liveTool)
+	if err != nil {
+		return nil, err
+	}
+	return NewAddAndCheckLiveCheck(liveTool, solutions, metadir), nil
+}
