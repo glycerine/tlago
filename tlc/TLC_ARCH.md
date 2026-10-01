@@ -1356,6 +1356,11 @@ Port guidance:
   diagnostics. Go preserves this with a concrete `Worker.DisableTraceMirror`
   flag: replay may use its own worker trace context, but it must not append to
   `ModelChecker.Trace` through the normal worker mirror hook.
+- Liveness `addNextState` call-stack replay has an additional Java bug path:
+  if ordinary liveness evaluation fails but the `CallStackTool` rerun succeeds,
+  Java calls `Assert.fail(EC.GENERAL, origExp)` because replay success "should
+  never happen." Go preserves that as a general TLC error rather than silently
+  reporting the original liveness error code.
 - Preserve Java's error-time postcondition behavior: init failures with an
   `errState` call `checkPostConditionWithCounterExample(new CounterExample(errState))`,
   and worker `doNextSetErr` paths build a safety counterexample, evaluate aliases

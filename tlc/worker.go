@@ -275,7 +275,10 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 	w.SetOfStates.ResetNext()
 	callStackTool := NewCallStackTool(w.Tool.NoDebug())
 	rerunErr := w.Checker.LiveCheck.AddNextState(callStackTool, curState, curFP, w.SetOfStates)
-	if rerunErr != nil && !livenessErrorNeedsCallStackReplay(rerunErr) {
+	if rerunErr == nil {
+		return newTLCError(ECGeneral, "%s", err.Error())
+	}
+	if !livenessErrorNeedsCallStackReplay(rerunErr) {
 		return rerunErr
 	}
 	if callStackTool.HasCallStack() {
