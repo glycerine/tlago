@@ -1265,12 +1265,10 @@ func (c *LiveChecker) Close() error {
 		return nil
 	}
 	var err error
-	if !modelCheckerVetoCleanup() {
-		if c.TableauDiskGraph != nil {
-			err = c.TableauDiskGraph.Close()
-		} else if c.DiskGraph != nil {
-			err = c.DiskGraph.Close()
-		}
+	if c.TableauDiskGraph != nil {
+		err = c.TableauDiskGraph.Close()
+	} else if c.DiskGraph != nil {
+		err = c.DiskGraph.Close()
 	}
 	if c.Writer != nil {
 		if closeErr := c.Writer.Close(); err == nil {
