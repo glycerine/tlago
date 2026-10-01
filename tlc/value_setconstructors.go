@@ -908,6 +908,20 @@ func (v *SubsetValue) Kind() ValueKind    { return SubsetValueKind }
 func (v *SubsetValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *SubsetValue) Compare(other Value) (int, error) {
+	if kSubset, ok := other.(*KSubsetValue); ok {
+		cmp, err := kSubset.Compare(v)
+		if err != nil {
+			return 0, err
+		}
+		switch {
+		case cmp < 0:
+			return 1, nil
+		case cmp > 0:
+			return -1, nil
+		default:
+			return 0, nil
+		}
+	}
 	if o, ok := other.(*SubsetValue); ok {
 		return v.Set.Compare(o.Set)
 	}
@@ -919,6 +933,9 @@ func (v *SubsetValue) Compare(other Value) (int, error) {
 }
 
 func (v *SubsetValue) Equal(other Value) (bool, error) {
+	if kSubset, ok := other.(*KSubsetValue); ok {
+		return kSubset.Equal(v)
+	}
 	if o, ok := other.(*SubsetValue); ok {
 		return v.Set.Equal(o.Set)
 	}

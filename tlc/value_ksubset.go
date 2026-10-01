@@ -74,6 +74,30 @@ func (v *KSubsetValue) Compare(other Value) (int, error) {
 		if setEqual {
 			return v.K - o.K, nil
 		}
+	} else if o, ok := other.(*SubsetValue); ok {
+		empty, err := v.hasNoElements()
+		if err != nil {
+			return 0, err
+		}
+		if empty {
+			return -1, nil
+		}
+		cmp, err := v.compareSubsetCardinality(o)
+		if err != nil {
+			return 0, err
+		}
+		if cmp != nil && *cmp != 0 {
+			return *cmp, nil
+		}
+		if v.K == 0 {
+			otherEmpty, err := IsEmptyValue(o.Set)
+			if err != nil {
+				return 0, err
+			}
+			if otherEmpty {
+				return 0, nil
+			}
+		}
 	}
 	set, err := v.convertAndCache()
 	if err != nil {
@@ -105,11 +129,22 @@ func (v *KSubsetValue) Equal(other Value) (bool, error) {
 	}
 	if _, ok := other.(*SubsetValue); ok {
 		empty, err := v.hasNoElements()
-		if err != nil || empty {
+		if err != nil {
 			return false, err
 		}
+		if empty {
+			return false, nil
+		}
+		subset := other.(*SubsetValue)
+		cmp, err := v.compareSubsetCardinality(subset)
+		if err != nil {
+			return false, err
+		}
+		if cmp != nil && *cmp != 0 {
+			return false, nil
+		}
 		if v.K == 0 {
-			otherEmpty, err := IsEmptyValue(other)
+			otherEmpty, err := IsEmptyValue(subset.Set)
 			if err != nil {
 				return false, err
 			}
@@ -123,6 +158,31 @@ func (v *KSubsetValue) Equal(other Value) (bool, error) {
 		return false, err
 	}
 	return set.Equal(other)
+}
+
+func (v *KSubsetValue) compareSubsetCardinality(other *SubsetValue) (*int, error) {
+	vFinite, err := v.Set.IsFinite()
+	if err != nil {
+		return nil, err
+	}
+	otherFinite, err := other.Set.IsFinite()
+	if err != nil {
+		return nil, err
+	}
+	if !vFinite || !otherFinite {
+		return nil, nil
+	}
+	count, err := v.count()
+	if err != nil {
+		return nil, err
+	}
+	otherSize, err := other.Set.Size()
+	if err != nil {
+		return nil, err
+	}
+	otherCount := new(big.Int).Lsh(big.NewInt(1), uint(otherSize))
+	cmp := count.Cmp(otherCount)
+	return &cmp, nil
 }
 
 func (v *KSubsetValue) Member(elem Value) (bool, error) {

@@ -944,6 +944,9 @@ Important concrete values:
 - `SetOfFcnsValue`, `SetOfRcdsValue`, `SetOfTuplesValue`: lazy enumerable set
   spaces.
 - `SubsetValue` and `KSubsetValue`: lazy subset enumeration and unranking.
+  `KSubsetValue` keeps Java's special comparison/equality shortcuts against
+  ordinary `SUBSET S`: finite cardinalities are compared without materializing
+  powersets, and `kSubset(0, S)` equals `SUBSET {}` independent of `S`.
 - Lazy set constructors and set operations preserve Java's
   `SetEnumValue.DummyEnum` state after `deepNormalize` with explicit Go dummy
   flags. A dummy cache means "deep-normalized but not materialized"; when later

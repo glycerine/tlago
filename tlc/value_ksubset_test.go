@@ -163,3 +163,57 @@ func TestKSubsetValueLargeStringDoesNotNeedIntSizedCardinality(t *testing.T) {
 		t.Fatalf("String = %q, want %q", got, want)
 	}
 }
+
+func TestKSubsetValueComparesToPowerSetByCardinalityLikeJava(t *testing.T) {
+	kSubset := NewKSubsetValue(2, NewIntervalValue(1, 64))
+	powerSet := NewSubsetValue(NewIntervalValue(1, 64))
+
+	cmp, err := kSubset.Compare(powerSet)
+	if err != nil {
+		t.Fatalf("kSubset.Compare(SUBSET) returned error: %v", err)
+	}
+	if cmp >= 0 {
+		t.Fatalf("kSubset.Compare(SUBSET) = %d, want negative", cmp)
+	}
+	cmp, err = powerSet.Compare(kSubset)
+	if err != nil {
+		t.Fatalf("SUBSET.Compare(kSubset) returned error: %v", err)
+	}
+	if cmp <= 0 {
+		t.Fatalf("SUBSET.Compare(kSubset) = %d, want positive", cmp)
+	}
+	eq, err := kSubset.Equal(powerSet)
+	if err != nil {
+		t.Fatalf("kSubset.Equal(SUBSET) returned error: %v", err)
+	}
+	if eq {
+		t.Fatalf("kSubset(2, 1..64) unexpectedly equals SUBSET (1..64)")
+	}
+}
+
+func TestKSubsetZeroEqualsPowerSetOfEmptySetLikeJava(t *testing.T) {
+	kSubset := NewKSubsetValue(0, NewIntervalValue(1, 3))
+	powerSetEmpty := NewSubsetValue(EmptySet)
+
+	eq, err := kSubset.Equal(powerSetEmpty)
+	if err != nil {
+		t.Fatalf("kSubset.Equal(SUBSET {}) returned error: %v", err)
+	}
+	if !eq {
+		t.Fatalf("kSubset(0, S) should equal SUBSET {}")
+	}
+	cmp, err := kSubset.Compare(powerSetEmpty)
+	if err != nil {
+		t.Fatalf("kSubset.Compare(SUBSET {}) returned error: %v", err)
+	}
+	if cmp != 0 {
+		t.Fatalf("kSubset.Compare(SUBSET {}) = %d, want 0", cmp)
+	}
+	cmp, err = powerSetEmpty.Compare(kSubset)
+	if err != nil {
+		t.Fatalf("SUBSET {}.Compare(kSubset) returned error: %v", err)
+	}
+	if cmp != 0 {
+		t.Fatalf("SUBSET {}.Compare(kSubset) = %d, want 0", cmp)
+	}
+}
