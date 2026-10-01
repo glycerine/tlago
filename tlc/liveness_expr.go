@@ -271,6 +271,27 @@ func (n *LiveExprNode) EvalOnLasso(tool *Tool, states []*TLCStateMut, cyclePos i
 		return nil
 	}
 	switch n.Kind {
+	case LiveExprBool:
+		return n.Bool, nil
+	case LiveExprNeg:
+		value, err := n.Body.EvalOnLasso(tool, states, cyclePos, pos)
+		return !value, err
+	case LiveExprConj:
+		for _, body := range n.Bodies {
+			value, err := body.EvalOnLasso(tool, states, cyclePos, pos)
+			if err != nil || !value {
+				return value, err
+			}
+		}
+		return true, nil
+	case LiveExprDisj:
+		for _, body := range n.Bodies {
+			value, err := body.EvalOnLasso(tool, states, cyclePos, pos)
+			if err != nil || value {
+				return value, err
+			}
+		}
+		return false, nil
 	case LiveExprAll:
 		if pos < cyclePos {
 			for i := pos; i < cyclePos; i++ {
@@ -309,10 +330,12 @@ func (n *LiveExprNode) EvalOnLasso(tool *Tool, states []*TLCStateMut, cyclePos i
 			nextPos = cyclePos
 		}
 		return n.Body.EvalOnLasso(tool, states, cyclePos, nextPos)
+	case LiveExprState:
+		return n.Eval(tool, states[pos], EmptyState)
 	case LiveExprAction:
 		return n.Eval(tool, states[pos], nextState(pos))
 	default:
-		return n.Eval(tool, states[pos], nextState(pos))
+		return false, newTLCError(ECGeneral, "cannot evaluate liveness formula %s on lasso", n)
 	}
 }
 

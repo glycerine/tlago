@@ -64,6 +64,77 @@ func TestLiveExprTemporalDirectEvalUsesJavaErrorCode(t *testing.T) {
 	}
 }
 
+func TestLiveExprEvalOnLassoStateAndActionArgumentsMatchJava(t *testing.T) {
+	current := NewEmptyState()
+	next := NewEmptyState()
+	states := []*TLCStateMut{current, next}
+
+	stateCalled := false
+	state := NewLNState("S", nil, EmptyContext, func(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
+		stateCalled = true
+		if s1 != current {
+			t.Fatalf("state predicate s1 = %p, want current state %p", s1, current)
+		}
+		return s2 == EmptyState, nil
+	})
+	ok, err := state.EvalOnLasso(nil, states, 1, 0)
+	if err != nil {
+		t.Fatalf("state EvalOnLasso error = %v", err)
+	}
+	if !stateCalled {
+		t.Fatalf("state EvalOnLasso did not call predicate")
+	}
+	if !ok {
+		t.Fatalf("state EvalOnLasso = false, want state predicates to receive EmptyState successor")
+	}
+
+	actionCalled := false
+	action := NewLNAction("A", nil, EmptyContext, func(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
+		actionCalled = true
+		if s1 != current {
+			t.Fatalf("action predicate s1 = %p, want current state %p", s1, current)
+		}
+		return s2 == next, nil
+	})
+	ok, err = action.EvalOnLasso(nil, states, 1, 0)
+	if err != nil {
+		t.Fatalf("action EvalOnLasso error = %v", err)
+	}
+	if !actionCalled {
+		t.Fatalf("action EvalOnLasso did not call predicate")
+	}
+	if !ok {
+		t.Fatalf("action EvalOnLasso = false, want action predicates to receive next lasso state")
+	}
+}
+
+func TestLiveExprEvalOnLassoJunctionsRecurseLikeJava(t *testing.T) {
+	current := NewEmptyState()
+	next := NewEmptyState()
+	states := []*TLCStateMut{current, next}
+	state := NewLNState("S", nil, EmptyContext, func(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
+		return s2 == EmptyState, nil
+	})
+
+	conj := NewLNConj(state)
+	ok, err := conj.EvalOnLasso(nil, states, 1, 0)
+	if err != nil {
+		t.Fatalf("conjunction EvalOnLasso error = %v", err)
+	}
+	if !ok {
+		t.Fatalf("conjunction EvalOnLasso = false, want child state predicate evaluated with EmptyState successor")
+	}
+
+	neg := NewLNNeg(state)
+	ok, err = neg.EvalOnLasso(nil, states, 1, 0)
+	if err != nil {
+		t.Fatalf("negation EvalOnLasso error = %v", err)
+	}
+	if ok {
+		t.Fatalf("negation EvalOnLasso = true, want negated child lasso result")
+	}
+}
+
 func TestTBParPositiveClosureActionUsesJavaErrorCode(t *testing.T) {
 	defer func() {
 		recovered := recover()
