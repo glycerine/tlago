@@ -969,11 +969,9 @@ func (lc *LiveCheck) DoLiveCheck() bool {
 	for _, checker := range lc.Checkers {
 		size := checker.GraphSize()
 		sizeAtLastCheck := checker.SizeAtLastCheck()
-		if sizeAtLastCheck > 0 {
-			delta := float64(size-sizeAtLastCheck) / float64(sizeAtLastCheck)
-			if delta > threshold {
-				return true
-			}
+		delta := float64(size-sizeAtLastCheck) / float64(sizeAtLastCheck)
+		if delta > threshold {
+			return true
 		}
 	}
 	return false
