@@ -1,6 +1,11 @@
 package tlc
 
-import "testing"
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestModelCheckerDoInitDeduplicatesAndSkipsDuplicateInvariantChecks(t *testing.T) {
 	initTLCCheckerTest(t)
@@ -162,6 +167,43 @@ func TestModelCheckerDoNextReportsDeadlockWhenNoActionProducesSuccessors(t *test
 	}
 	if !recorder.Recorded(ECTLCDeadlockReached) {
 		t.Fatalf("deadlock error was not recorded")
+	}
+}
+
+func TestModelCheckerCleanupPreservesFailureArtifactsLikeJava(t *testing.T) {
+	tlcSetSystemProperty(modelCheckerVetoProperty, "false")
+	t.Setenv("TLAGO_MODEL_CHECKER_VETO_CLEANUP", "false")
+
+	failedMetadir := t.TempDir()
+	failedArtifact := filepath.Join(failedMetadir, "trace.chkpt")
+	if err := os.WriteFile(failedArtifact, []byte("keep me"), 0o644); err != nil {
+		t.Fatalf("WriteFile failed artifact: %v", err)
+	}
+	failed := &ModelChecker{
+		AbstractChecker: &AbstractChecker{Metadir: failedMetadir},
+		CleanupEnabled:  true,
+	}
+	if err := failed.Cleanup(false, true); err != nil {
+		t.Fatalf("failure Cleanup returned error: %v", err)
+	}
+	if _, err := os.Stat(failedArtifact); err != nil {
+		t.Fatalf("failure cleanup removed artifact; Java non-recursive delete preserves it: %v", err)
+	}
+
+	successMetadir := t.TempDir()
+	successArtifact := filepath.Join(successMetadir, "trace.chkpt")
+	if err := os.WriteFile(successArtifact, []byte("remove me"), 0o644); err != nil {
+		t.Fatalf("WriteFile success artifact: %v", err)
+	}
+	success := &ModelChecker{
+		AbstractChecker: &AbstractChecker{Metadir: successMetadir},
+		CleanupEnabled:  true,
+	}
+	if err := success.Cleanup(true, true); err != nil {
+		t.Fatalf("success Cleanup returned error: %v", err)
+	}
+	if _, err := os.Stat(successMetadir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("success cleanup metadir exists/error = %v, want deleted like Java recursive delete", err)
 	}
 }
 

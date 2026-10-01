@@ -1260,6 +1260,12 @@ Port guidance:
 - Java's `tlc2.tool.ModelChecker.vetoCleanup` property forces metadata
   retention even when `-cleanup` was requested; Go mirrors it with the same key
   plus `TLAGO_MODEL_CHECKER_VETO_CLEANUP`.
+- Cleanup has one deliberately load-bearing Java quirk: `FileUtil.deleteDir`
+  receives the checker success flag as its `recurse` argument. Failed runs
+  close checker resources but only attempt a non-recursive metadir delete, so a
+  non-empty metadir with trace/checkpoint artifacts is preserved for debugging.
+  Successful runs may recursively remove the metadir. Do not copy Java's likely
+  early-return cleanup leak, but do preserve this failure-artifact retention.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
