@@ -201,10 +201,10 @@ func (v *OpLambdaValue) Permute(perm *MVPerm) Value {
 
 func (v *OpLambdaValue) Eval(args []Value, control int) (Value, error) {
 	if v.OpDef == nil {
-		return nil, newTLCError(ECGeneral, "attempted to apply a nil operator")
+		return nil, newTLCError(ECGeneral, "Attempted to apply a nil operator.")
 	}
 	if v.OpDef.Arity() != len(args) {
-		return nil, v.unsupported("applying the operator %s with wrong number of arguments", v)
+		return nil, v.unsupported("Applying the operator %s with wrong number of arguments.", ValuesPPR(v))
 	}
 	ctx := v.Con
 	if ctx == nil {
@@ -235,17 +235,10 @@ func NewOpRcdValue() *OpRcdValue {
 }
 
 func NewOpRcdValueFrom(domain [][]Value, values []Value) *OpRcdValue {
-	outDomain := make([][]Value, len(domain))
-	for i, args := range domain {
-		outDomain[i] = make([]Value, len(args))
-		copy(outDomain[i], args)
-	}
-	outValues := make([]Value, len(values))
-	copy(outValues, values)
 	return &OpRcdValue{
 		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>", NormalizeMessage: "Should not normalize an operator."},
-		Domain:            outDomain,
-		Values:            outValues,
+		Domain:            domain,
+		Values:            values,
 	}
 }
 
@@ -263,7 +256,7 @@ func (v *OpRcdValue) Eval(args []Value, control int) (Value, error) {
 	_ = control
 	for i, vals := range v.Domain {
 		if len(args) != len(vals) {
-			return nil, v.unsupported("attempted to apply the operator %s\nwith wrong number of arguments", v)
+			return nil, v.unsupported("Attempted to apply the operator %s\nwith wrong number of arguments.", ValuesPPR(v))
 		}
 		matched := true
 		for j := range vals {
@@ -280,7 +273,7 @@ func (v *OpRcdValue) Eval(args []Value, control int) (Value, error) {
 			return v.Values[i], nil
 		}
 	}
-	return nil, v.unsupported("attempted to apply operator:\n%s\nto arguments (%s), which is undefined", v, joinValueStrings(args, ", "))
+	return nil, v.unsupported("Attempted to apply operator:\n%s\nto arguments (%s), which is undefined.", ValuesPPR(v), joinValueStrings(args, ", "))
 }
 
 func (v *OpRcdValue) IsDefined() bool {
@@ -345,7 +338,7 @@ func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodVal
 
 func (v *MethodValue) Eval(args []Value, control int) (Value, error) {
 	if v.EvalFunc == nil {
-		return nil, v.unsupported("attempted to apply Java method %s without an implementation", v.Name)
+		return nil, v.unsupported("Attempted to apply Java method %s without an implementation.", v.Name)
 	}
 	return v.EvalFunc(args, control)
 }
@@ -376,7 +369,7 @@ func NewEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNod
 }
 
 func (v *EvaluatingValue) Eval(args []Value, control int) (Value, error) {
-	return nil, v.unsupported("it is a TLC bug: should use the unevaluated-argument eval method for %s", v)
+	return nil, v.unsupported("It is a TLC bug: should use the unevaluated-argument eval method for %s", v)
 }
 
 func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -466,7 +459,7 @@ func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Conte
 		argVals[i] = value
 	}
 	if v.CallableFunc == nil {
-		return nil, v.unsupported("attempted to apply callable Java method %s without an implementation", v.Name)
+		return nil, v.unsupported("Attempted to apply callable Java method %s without an implementation.", v.Name)
 	}
 	callable, err := v.CallableFunc(argVals)
 	if err != nil {
