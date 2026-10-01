@@ -444,7 +444,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 						writeStatus = StateVisitUnseen
 					}
 					if err := mc.AllStateWriter.WriteTransition(cur, succ, writeStatus, nil); err != nil {
-						return allSuccNonLeaf, ECGeneral, err
+						return allSuccNonLeaf, mc.dfidNextFailed(cur, succ, err), err
 					}
 				}
 				if !FPIntSetIsCompleted(status) {
@@ -519,7 +519,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 		liveNextStates.PutFP(cfp, cur)
 		if mc.AllStateWriter != nil {
 			if err := mc.AllStateWriter.WriteTransitionVisual(cur, cur, StateVisitUnseen, nil, StateVisualizationStuttering); err != nil {
-				return allSuccNonLeaf, ECGeneral, err
+				return allSuccNonLeaf, mc.dfidNextFailed(cur, nil, err), err
 			}
 		}
 		if mc.LiveCheck != nil {
