@@ -1786,12 +1786,28 @@ func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLC
 	PrintError(ECTLCBehaviorUpToThisPoint)
 	trace = mc.aliasErrorTrace(trace)
 	for i, info := range trace {
-		var previous *TLCStateMut
-		if i > 0 && trace[i-1] != nil {
-			previous = trace[i-1].OriginalState()
-		}
+		previous := javaTracePrintPredecessor(trace, i, curState, succState)
 		PrintInvariantViolationStateTraceState(info, previous, i+1, i == len(trace)-1)
 	}
+}
+
+func javaTracePrintPredecessor(trace []*TLCStateInfo, index int, curState *TLCStateMut, succState *TLCStateMut) *TLCStateMut {
+	if index < 0 || index >= len(trace) {
+		return nil
+	}
+	if curState != nil && curState.IsInitial() {
+		if succState != nil {
+			return curState
+		}
+		return nil
+	}
+	if index == len(trace)-1 {
+		return nil
+	}
+	if index > 0 && trace[index-1] != nil {
+		return trace[index-1].OriginalState()
+	}
+	return nil
 }
 
 func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
