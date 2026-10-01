@@ -112,7 +112,7 @@ const (
 var specWriterCounter atomic.Int64
 
 func init() {
-	specWriterCounter.Store(0)
+	specWriterCounter.Store(1)
 }
 
 type SpecWriter struct {
@@ -152,7 +152,13 @@ func SpecWriterGeneratedTimestampLine() string {
 }
 
 func specWriterJavaDateString(t time.Time) string {
-	return t.Format("Mon Jan 02 15:04:05 MST 2006")
+	return fmt.Sprintf("%s %s %2d %s %s %d",
+		t.Weekday().String()[:3],
+		t.Month().String()[:3],
+		t.Day(),
+		t.Format("15:04:05"),
+		t.Format("MST"),
+		t.Year())
 }
 
 func SpecWriterValidIdentifier(scheme string) string {
