@@ -774,6 +774,11 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 	var err error
 	vetoCleanup := modelCheckerVetoCleanup()
 	if cleanup && CheckpointExplicitlyEnabled() && mc.StateQueue != nil && !mc.StateQueue.IsEmpty() && (mc.ErrState != nil || mc.TimeBound) {
+		// Important Java compatibility: this branch is load-bearing.  Java TLC
+		// snapshots an interrupted/error run with queued work and then vetoes
+		// metadata deletion so users can recover and continue.  Do not "tidy"
+		// the metadir here.  The Go port still closes owned resources below;
+		// preserving recovery artifacts must not preserve open handles too.
 		if checkpointErr := mc.Checkpoint(); checkpointErr != nil && err == nil {
 			err = checkpointErr
 		}

@@ -224,6 +224,61 @@ func TestModelCheckerCleanupPreservesFailureArtifactsLikeJava(t *testing.T) {
 	}
 }
 
+func TestModelCheckerCleanupSnapshotsRecoverableRunAndStillClosesResources(t *testing.T) {
+	initTLCCheckerTest(t)
+	tlcSetSystemProperty(modelCheckerVetoProperty, "false")
+	t.Setenv("TLAGO_MODEL_CHECKER_VETO_CLEANUP", "false")
+
+	Globals.Lock()
+	oldCheckpointDuration := Globals.CheckpointDurationMillis
+	Globals.CheckpointDurationMillis = 1
+	Globals.Unlock()
+	defer func() {
+		Globals.Lock()
+		Globals.CheckpointDurationMillis = oldCheckpointDuration
+		Globals.Unlock()
+	}()
+
+	metadir := t.TempDir()
+	sentinel := filepath.Join(metadir, "recoverable-artifact")
+	if err := os.WriteFile(sentinel, []byte("keep me"), 0o644); err != nil {
+		t.Fatalf("WriteFile sentinel: %v", err)
+	}
+
+	queue := &recordingStateQueue{size: 1}
+	fpSet := &recordingFPSet{NoopFPSet: NewNoopFPSet(nil)}
+	writerClosed := false
+	checker := &ModelChecker{
+		AbstractChecker: &AbstractChecker{
+			Metadir: metadir,
+			AllStateWriter: &StateWriter{CloseFunc: func() error {
+				writerClosed = true
+				return nil
+			}},
+		},
+		CleanupEnabled: true,
+		FPSet:          fpSet,
+		StateQueue:     queue,
+		TimeBound:      true,
+	}
+
+	if err := checker.Cleanup(true, true); err != nil {
+		t.Fatalf("recoverable Cleanup returned error: %v", err)
+	}
+	if queue.beginChkpt != 1 || queue.commitChkpt != 1 || queue.resumeAll != 1 {
+		t.Fatalf("cleanup checkpoint queue calls begin/commit/resume = %d/%d/%d, want 1/1/1", queue.beginChkpt, queue.commitChkpt, queue.resumeAll)
+	}
+	if _, err := os.Stat(sentinel); err != nil {
+		t.Fatalf("recoverable cleanup removed metadata despite Java checkpoint veto: %v", err)
+	}
+	if !fpSet.closed {
+		t.Fatalf("recoverable cleanup preserved metadata but leaked FPSet close")
+	}
+	if !writerClosed {
+		t.Fatalf("recoverable cleanup preserved metadata but leaked all-state writer close")
+	}
+}
+
 type recordingFPSet struct {
 	*NoopFPSet
 	closed bool
@@ -232,6 +287,32 @@ type recordingFPSet struct {
 func (s *recordingFPSet) Close() {
 	s.closed = true
 }
+
+type recordingStateQueue struct {
+	size        int64
+	beginChkpt  int
+	commitChkpt int
+	resumeAll   int
+}
+
+func (q *recordingStateQueue) Enqueue(state *TLCStateMut)          {}
+func (q *recordingStateQueue) Dequeue() *TLCStateMut               { return nil }
+func (q *recordingStateQueue) SEnqueue(state *TLCStateMut)         {}
+func (q *recordingStateQueue) SEnqueueAll(states []*TLCStateMut)   {}
+func (q *recordingStateQueue) SEnqueueVec(states *StateVec)        {}
+func (q *recordingStateQueue) SPeek() *TLCStateMut                 { return nil }
+func (q *recordingStateQueue) SDequeue() *TLCStateMut              { return nil }
+func (q *recordingStateQueue) SDequeueMany(cnt int) []*TLCStateMut { return nil }
+func (q *recordingStateQueue) FinishAll()                          {}
+func (q *recordingStateQueue) SuspendAll() bool                    { return true }
+func (q *recordingStateQueue) ResumeAll()                          { q.resumeAll++ }
+func (q *recordingStateQueue) ResumeAllStuck()                     {}
+func (q *recordingStateQueue) Size() int64                         { return q.size }
+func (q *recordingStateQueue) IsEmpty() bool                       { return q.size == 0 }
+func (q *recordingStateQueue) BeginChkpt() error                   { q.beginChkpt++; return nil }
+func (q *recordingStateQueue) CommitChkpt() error                  { q.commitChkpt++; return nil }
+func (q *recordingStateQueue) Recover() error                      { return nil }
+func (q *recordingStateQueue) Delete() error                       { return nil }
 
 func initTLCCheckerTest(t *testing.T) {
 	t.Helper()
