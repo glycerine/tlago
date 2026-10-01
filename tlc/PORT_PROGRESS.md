@@ -226,6 +226,7 @@
 - Already audited recently; do not reintroduce simulator-wide random successor collection: Java standard simulation randomly selects an action first and then a successor from that action's generated states.
 - Already audited recently; do not short-circuit `CheckImpl.checkTrace` on `false` results from state/reachability checks: Java calls those methods for reporting side effects and only thrown exceptions stop the loop.
 - `CheckImpl` FP-set construction mirrors Java: the constructor's `FPSetConfiguration` belongs to the inherited `ModelChecker` FP set, while the coverage `coverSet` is created from the default FP-set factory with the `_cs` suffix.
+- `CheckImpl` refinement failure output follows Java's plain `ToolIO` text for illegal transitions, implied-action violations, and invariant violations instead of routing those refinement-driver messages through generic TLC message-code formatting.
 - Already audited recently; do not unbind failed `ENABLED` enumeration assignments between candidates: Java mutates the candidate successor state in place while enumerating `x' \in S`/`x' \subseteq S`.
 - Already audited recently; do not count vector-path action coverage in individual checker callers: Java increments `action.cm` inside `Tool.getNextStates(action, state)` after generation.
 - Coverage subtree collapse intentionally preserves Java `OpApplNodeWrapper.print`'s secondary-count self-comparison typo, and `UNCHANGED` coverage uses the live primary count in its max calculation even during cached subtree reporting.

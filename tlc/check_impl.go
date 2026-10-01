@@ -137,9 +137,7 @@ func (c *CheckImpl) CheckReachability(s0 *TLCStateMut, s1 *TLCStateMut) (bool, e
 			return false, err
 		}
 		if !ok {
-			if i < len(c.Tool.ImpliedActNames) {
-				PrintError(ECTLCActionPropertyViolatedBehavior, c.Tool.ImpliedActNames[i])
-			}
+			fmt.Fprintf(os.Stdout, "Error: Action property %s is violated.\n", nameAt(c.Tool.ImpliedActNames, i))
 			PrintStandaloneErrorState(s0)
 			PrintStandaloneErrorState(s1)
 			return false, nil
@@ -178,10 +176,7 @@ func (c *CheckImpl) CheckState(state *TLCStateMut) (bool, error) {
 				return false, err
 			}
 			if !ok {
-				if i < len(c.Tool.InvariantNames) {
-					PrintError(ECTLCInvariantViolatedBehavior, c.Tool.InvariantNames[i])
-				}
-				fmt.Fprintln(os.Stdout, "The behavior up to this point is:")
+				fmt.Fprintf(os.Stdout, "Error: Invariant %s is violated. The behavior up to this point is:\n", nameAt(c.Tool.InvariantNames, i))
 				return false, nil
 			}
 		}
