@@ -733,24 +733,17 @@ func (s *TLCServer) PrintSummary(level int, statesGenerated int64, statesLeftInQ
 
 func (s *TLCServer) ReportSuccess() {
 	if s == nil {
-		ReportSuccessCounts(0, 0)
+		ReportSuccessCountsDistance(0, 0, 0)
 		return
 	}
-	generated := s.GetStatesGenerated()
 	distinct := s.fpSetSize()
-	if CalculateOptimisticProbability(distinct, generated) < 1e-10 {
-		ReportSuccessCounts(distinct, generated)
-		return
-	}
 	actualDistance := uint64(0)
+	statesSeen := uint64(0)
 	if s.FPSetManager != nil {
 		actualDistance = s.FPSetManager.CheckFPs()
+		statesSeen = s.FPSetManager.GetStatesSeen()
 	}
-	if actualDistance == 0 {
-		ReportSuccessCounts(distinct, generated)
-		return
-	}
-	ReportSuccessCountsDistance(distinct, actualDistance, generated)
+	ReportSuccessCountsDistance(distinct, actualDistance, int64(statesSeen))
 }
 
 func (s *TLCServer) fpSetSize() uint64 {
