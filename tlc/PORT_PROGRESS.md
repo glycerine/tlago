@@ -53,6 +53,7 @@
 - Already audited recently; do not skip simulator init progress messages: simulation now emits Java's computed-init progress and `TLC_INIT_GENERATED1` messages before normalizing/starting workers.
 - Already audited recently; do not bubble simulator initial-state exceptions straight to the runner: Java prints `TLC_INITIAL_STATE` (or `GENERAL` before a current state exists), prints the simulator summary, and returns that printed code.
 - Already audited recently; do not deep-copy or worker-stamp simulation states on selection/generation: Java uses the selected initial state directly and only attaches predecessor/action metadata to generated successors.
+- Already audited recently; do not regenerate standard simulation successors through an intermediate `StateVec`: Java streams successors by passing the `SimulationWorker` as `INextStateFunctor` into `Tool.getNextStates`.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -171,6 +172,7 @@
   - Simulator initial-state reporting now emits Java's computed-init progress and final init-generated messages before simulation workers start.
   - Simulator initial-state exceptions now print Java-shaped `TLC_INITIAL_STATE`/`GENERAL` diagnostics plus the simulator summary before returning.
   - Simulation workers now use initial and successor state objects like Java, without Go-only deep copies or worker-id stamping.
+  - Standard simulation successor generation now streams through the worker `NextStateFunctor` and `Tool.GetNextStatesForPredicate`, matching Java's `tool.getNextStates(this, curState, action)` path instead of collecting a separate `StateVec` first.
   - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.

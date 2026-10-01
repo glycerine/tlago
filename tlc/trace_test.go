@@ -11,13 +11,13 @@ func TestTLCTraceAndToolStateRegistryRecoverBehaviorPath(t *testing.T) {
 	tool := NewTool()
 	tool.InitStates = []*TLCStateMut{initState}
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		if checkerStateX(state) != 0 {
 			return NewStateVec(0), nil
 		}
 		succState = checkerTestState(1)
 		return NewStateVecFrom([]*TLCStateMut{succState}), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), false)
 	code, err := mc.ModelCheck()

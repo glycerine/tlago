@@ -336,22 +336,14 @@ func (t *Tool) GetNextStatesForAction(functor *NextStateFunctor, state *TLCState
 	if t != nil && t.GetNextStatesForActionFunc != nil {
 		return t.GetNextStatesForActionFunc(t, functor, state, action)
 	}
-	next, err := t.GetNextStates(action, state)
-	if err != nil {
-		return true, err
-	}
-	if next == nil {
+	if t == nil || action == nil || action.Pred == nil {
 		return false, nil
 	}
-	for i := 0; i < next.Size(); i++ {
-		if _, err := functor.AddNextElement(state, action, next.At(i)); err != nil {
-			return true, err
-		}
-		if functor.ShouldHalt() {
-			return true, nil
-		}
+	s1 := NewEmptyState().SetPredecessor(state).SetAction(action)
+	if _, err := t.GetNextStatesForPredicate(action, action.Pred, EmptyActionItemList, action.Con, state, s1, functor, action.CM); err != nil {
+		return true, err
 	}
-	return false, nil
+	return functor.ShouldHalt(), nil
 }
 
 func (t *Tool) Eval(expr SemanticNode, args ...any) (value Value, err error) {

@@ -10,14 +10,14 @@ func TestModelCheckerModelCheckExploresFiniteStateGraph(t *testing.T) {
 	tool := NewTool()
 	tool.InitStates = []*TLCStateMut{checkerTestState(0)}
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		switch checkerStateX(state) {
 		case 0:
 			return NewStateVecFrom([]*TLCStateMut{checkerTestState(1)}), nil
 		default:
 			return NewStateVec(0), nil
 		}
-	}
+	})
 	tool.CheckPostConditionFunc = func(tl *Tool) int {
 		postChecks++
 		return NoError
@@ -52,9 +52,9 @@ func TestModelCheckerModelCheckReportsDeadlockFromWorkerLoop(t *testing.T) {
 	tool := NewTool()
 	tool.InitStates = []*TLCStateMut{checkerTestState(0)}
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVec(0), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), true)
 	code, err := mc.ModelCheck()
@@ -80,9 +80,9 @@ func TestModelCheckerHonorsConfigCheckDeadlockFalse(t *testing.T) {
 	tool := NewToolWithModelConfig(cfg)
 	tool.InitStates = []*TLCStateMut{checkerTestState(0)}
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVec(0), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), true)
 	code, err := mc.ModelCheck()
@@ -108,9 +108,9 @@ func TestModelCheckerKeepsDeadlockDisabledWhenCallerDisablesIt(t *testing.T) {
 	tool := NewToolWithModelConfig(cfg)
 	tool.InitStates = []*TLCStateMut{checkerTestState(0)}
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVec(0), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), false)
 	code, err := mc.ModelCheck()

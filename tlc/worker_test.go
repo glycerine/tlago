@@ -19,9 +19,9 @@ func TestWorkerFunctorPathProcessesSuccessorsLikeModelChecker(t *testing.T) {
 	tool.InvariantNames = []string{"Inv"}
 	tool.ImpliedActions = []*Action{implied}
 	tool.ImpliedActNames = []string{"Imp"}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVecFrom([]*TLCStateMut{seenSucc, newSucc}), nil
-	}
+	})
 	tool.IsValidStateFunc = func(tl *Tool, a *Action, state *TLCStateMut) (bool, error) {
 		if a == invariant {
 			invariantChecks++
@@ -84,9 +84,9 @@ func TestWorkerFunctorPathReportsDeadlockWhenNoSuccessorsAreGenerated(t *testing
 
 	tool := NewTool()
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVec(0), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), true)
 	worker := NewModelCheckingWorker(0, mc, tool)
@@ -120,9 +120,9 @@ func TestWorkerCollectsInModelSuccessorsForLivenessSet(t *testing.T) {
 
 	tool := NewTool()
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVecFrom([]*TLCStateMut{seenSucc, newSucc}), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), true)
 	mc.FPSet.Put(cur.FingerPrint())
@@ -156,9 +156,9 @@ func TestWorkerDoesNotCollectOutOfModelSuccessors(t *testing.T) {
 
 	tool := NewTool()
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVecFrom([]*TLCStateMut{inModelSucc, outOfModelSucc}), nil
-	}
+	})
 	tool.IsInModelFunc = func(tl *Tool, state *TLCStateMut) (bool, error) {
 		value := state.Lookup(UniqueStringOf("x"))
 		intValue, ok := value.(*IntValue)

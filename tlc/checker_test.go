@@ -88,9 +88,9 @@ func TestModelCheckerDoNextEnqueuesOnlyUnseenInModelSuccessorsButChecksAllImplie
 	tool.InvariantNames = []string{"Inv"}
 	tool.ImpliedActions = []*Action{implied}
 	tool.ImpliedActNames = []string{"Imp"}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVecFrom([]*TLCStateMut{seenSucc, newSucc}), nil
-	}
+	})
 	tool.IsValidStateFunc = func(tl *Tool, a *Action, state *TLCStateMut) (bool, error) {
 		if a == invariant {
 			invariantChecks++
@@ -142,9 +142,9 @@ func TestModelCheckerDoNextReportsDeadlockWhenNoActionProducesSuccessors(t *test
 
 	tool := NewTool()
 	tool.Actions = []*Action{action}
-	tool.GetNextStatesFunc = func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
+	installTestNextStateGenerator(tool, func(tl *Tool, a *Action, state *TLCStateMut) (*StateVec, error) {
 		return NewStateVec(0), nil
-	}
+	})
 
 	mc := NewModelChecker(tool, t.TempDir(), true)
 	stop, err := mc.DoNext(cur)
@@ -175,4 +175,23 @@ func initTLCCheckerTest(t *testing.T) {
 
 func checkerTestState(x int32) *TLCStateMut {
 	return NewEmptyState().Bind(UniqueStringOf("x"), NewIntValue(x))
+}
+
+func installTestNextStateGenerator(tool *Tool, generator func(*Tool, *Action, *TLCStateMut) (*StateVec, error)) {
+	tool.GetNextStatesFunc = generator
+	tool.GetNextStatesForActionFunc = func(tl *Tool, functor *NextStateFunctor, state *TLCStateMut, action *Action) (bool, error) {
+		next, err := generator(tl, action, state)
+		if err != nil {
+			return true, err
+		}
+		for i := 0; next != nil && i < next.Size(); i++ {
+			if _, err := functor.AddNextElement(state, action, next.At(i)); err != nil {
+				return true, err
+			}
+			if functor.ShouldHalt() {
+				return true, nil
+			}
+		}
+		return false, nil
+	}
 }
