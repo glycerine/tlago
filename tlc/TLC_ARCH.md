@@ -2247,6 +2247,14 @@ Go mapping:
   tuple behavior itself. Keep the Java quirks: `SelectInSubSeq` and
   `SelectLastInSubSeq` return indices in the original sequence range, and
   `SelectInSeq` reports the non-boolean predicate position as `"third"`.
+- CommunityModules `Statistics.ChiSquare` delegates to Apache Commons Math
+  `ChiSquareTest`. Java normalizes/converts both inputs to function records,
+  ignores the function domains after normalization, converts values to expected
+  `double[]` and observed `long[]`, parses alpha from a `StringValue`, and
+  returns `FALSE` when Commons Math rejects the null hypothesis. Go mirrors the
+  Commons Math statistic, including rescaling expected counts by
+  `sumObserved/sumExpected` when totals differ, and computes the chi-square
+  survival probability through the regularized gamma Q function locally.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

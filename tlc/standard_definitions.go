@@ -259,6 +259,9 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("AllSubSeqs", 1, func(args []Value) (Value, error) {
 		return SequencesExtAllSubSeqs(args[0])
 	})
+	t.defineStandardMethod("ChiSquare", 3, func(args []Value) (Value, error) {
+		return StatisticsChiSquare(args[0], args[1], args[2])
+	})
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)

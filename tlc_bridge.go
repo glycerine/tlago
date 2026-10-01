@@ -110,6 +110,9 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"SelectLastInSubSeq", "RemoveFirst", "RemoveFirstMatch",
 		"Suffixes", "AllSubSeqs",
 	},
+	"Statistics": {
+		"ChiSquare",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -206,6 +209,9 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
 		"SelectLastInSubSeq", "RemoveFirst", "RemoveFirstMatch",
 		"Suffixes", "AllSubSeqs",
+	),
+	"Statistics": setOf(
+		"ChiSquare",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
