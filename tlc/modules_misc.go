@@ -40,14 +40,14 @@ func TLCPrint(v1, v2 Value) Value {
 	v2c := v2.DeepCopy()
 	v1c.DeepNormalize()
 	v2c.DeepNormalize()
-	fmt.Fprintf(TLCOutput, "%s  %s\n", v1c, v2c)
+	fmt.Fprintf(TLCOutput, "%s  %s\n", ValuesPPR(v1c), ValuesPPR(v2c))
 	return v2
 }
 
 func TLCPrintT(v Value) Value {
 	vc := v.DeepCopy()
 	vc.DeepNormalize()
-	fmt.Fprintln(TLCOutput, vc)
+	fmt.Fprintln(TLCOutput, ValuesPPR(vc))
 	return BoolTrue
 }
 

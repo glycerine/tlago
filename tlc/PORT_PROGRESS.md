@@ -160,6 +160,7 @@
   - Coverage cost models now key substitution wrappers by stable substitution identity instead of substituted-expression identity, matching Java `Subst` object-key behavior and avoiding accidental collapse of distinct substitutions with the same expression.
   - Action records used by `TLCGet("action")`, `TLCExt`, and counterexamples now store Java-shaped structured location records instead of display strings.
   - `TLCGet("spec")` constraint/action-constraint entries now mirror Java's `constraint2Value` path by using the semantic node's tool object when it is an `OpDefNode` or `Action`, instead of always emitting a name-only placeholder.
+  - `TLC!Print` and `TLC!PrintT` now deep-normalize copied values and route output through `ValuesPPR`, matching Java `Values.ppr` visible formatting.
   - `UniqueString` checkpointing now mirrors Java's `UniqueString.write` behavior by serializing `getVarLoc()` rather than raw definition slots, and recovery no longer guesses `varCount` from recovered string locations.
   - TLC state and trace checkpoint value IO now use an internal Java-shaped value serializer (`Write`/`Read`) that preserves UniqueString tokens and record normalization, while `WriteExternal`/`ReadExternal` remain the cross-process/intern-table-safe serializer.
   - Bounded-quantifier context enumeration now mirrors Java's `Tool.contexts` arity expansion for non-tuple formal lists, so `\E x, y \in S` gets independent enumerators for `x` and `y` instead of binding only the first formal.
