@@ -47,16 +47,39 @@ func compareWithOperator(cmp Value, left Value, right Value) (bool, error) {
 }
 
 func TLCEval(value Value) Value {
-	if value == nil {
-		return ValUndef
+	converted, err := TLCEvalChecked(value)
+	if err != nil {
+		panic(err)
 	}
-	if set, err := toSetEnumValue(value); err == nil && set != nil {
-		return set
+	return converted
+}
+
+func TLCEvalChecked(value Value) (Value, error) {
+	if value == nil {
+		return ValUndef, nil
+	}
+	if tlcEvalCanConvertToSet(value) {
+		set, err := toSetEnumValue(value)
+		if err != nil {
+			return nil, err
+		}
+		if set != nil {
+			return set, nil
+		}
 	}
 	if fcn := asFcnRcdValue(value); fcn != nil {
-		return fcn
+		return fcn, nil
 	}
-	return value
+	return value, nil
+}
+
+func tlcEvalCanConvertToSet(value Value) bool {
+	switch value.(type) {
+	case *SetEnumValue, *SetPredValue, *IntervalValue, *SetCupValue, *SetCapValue, *SetDiffValue, *UnionValue, *SetOfTuplesValue, *SetOfRcdsValue, *SetOfFcnsValue, *SubsetValue, *KSubsetValue:
+		return true
+	default:
+		return false
+	}
 }
 
 func RandomElement(value Value) (Value, error) {

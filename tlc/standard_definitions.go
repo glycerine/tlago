@@ -557,7 +557,7 @@ func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCSt
 		if err != nil {
 			return nil, err
 		}
-		return TLCEval(value), nil
+		return TLCEvalChecked(value)
 	}
 	return standardTLCEvalConst(tool, expr, state, cm)
 }
@@ -586,7 +586,10 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 		workerID = workerIDFromState(state)
 	}
 	value := MuxWorkerValue(demuxed, workerID)
-	value = TLCEval(value)
+	value, err = TLCEvalChecked(value)
+	if err != nil {
+		return nil, err
+	}
 	setSemanticToolObject(expr, value)
 	return value, nil
 }
