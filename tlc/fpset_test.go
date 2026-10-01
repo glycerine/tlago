@@ -128,6 +128,36 @@ func TestDiskFPSetReaderSelectionUsesCurrentWorkerIDLikeIdThread(t *testing.T) {
 	}
 }
 
+func TestDiskFPSetDuplicateMergeUsesJavaErrorCode(t *testing.T) {
+	set := NewMSBDiskFPSet(NewFPSetConfiguration())
+	set.Init(1, t.TempDir(), "duplicate-merge")
+	defer set.Close()
+
+	fp := uint64(42)
+	idx := set.getIndex(fp)
+	set.tbl[idx] = make([]uint64, diskFPSetInitialBucketCap)
+	set.tbl[idx][0] = fp
+	set.tblCnt = 1
+	if err := set.flushTable(); err != nil {
+		t.Fatalf("initial flush returned error: %v", err)
+	}
+
+	set.tbl[idx][0] = fp
+	set.tblCnt = 1
+	err := set.flushTable()
+	tlcErr, ok := err.(*TLCError)
+	if !ok {
+		t.Fatalf("duplicate flush error = %T %v, want TLCError", err, err)
+	}
+	if tlcErr.Code != ECTLCFPValueAlreadyOnDisk {
+		t.Fatalf("error code = %d, want %d", tlcErr.Code, ECTLCFPValueAlreadyOnDisk)
+	}
+	want := "DiskFPSet.mergeNewEntries: 42 is already on disk.\n"
+	if tlcErr.Error() != want {
+		t.Fatalf("error = %q, want %q", tlcErr.Error(), want)
+	}
+}
+
 func TestOffHeapDiskFPSetContainsDoesNotCountMemoryHitsLikeJava(t *testing.T) {
 	cfg := NewFPSetConfiguration()
 	cfg.SetMemory(64)

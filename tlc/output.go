@@ -596,6 +596,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("%s, work completed. Thank you!", params[0])
 		}
+	case ECTLCFPValueAlreadyOnDisk:
+		if len(params) >= 1 {
+			return fmt.Sprintf("DiskFPSet.mergeNewEntries: %s is already on disk.\n", params[0])
+		}
 	case ECTLCDistributedServerRunning:
 		if len(params) >= 1 {
 			return fmt.Sprintf("TLC server at %s is ready (%s)", params[0], messageNow())

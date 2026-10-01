@@ -899,7 +899,7 @@ func (s *DiskFPSet) mergeNewEntries() error {
 			j++
 		} else {
 			_ = tmp.Close()
-			return fmt.Errorf("fingerprint %d already on disk", oldValues[i])
+			return newTLCErrorCode(ECTLCFPValueAlreadyOnDisk, fmt.Sprint(oldValues[i]))
 		}
 	}
 	for ; i < len(oldValues); i++ {
