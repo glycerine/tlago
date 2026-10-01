@@ -159,6 +159,17 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("Xor", 4, func(args []Value) (Value, error) { return BitwiseXor(args[0], args[1], args[2], args[3]) })
 	t.defineStandardMethod("Not", 1, func(args []Value) (Value, error) { return BitwiseNot(args[0]) })
 	t.defineStandardMethod("shiftR", 2, func(args []Value) (Value, error) { return BitwiseShiftR(args[0], args[1]) })
+	t.defineStandardMethod("Reduce", 1, func(args []Value) (Value, error) { return DyadicRationalsReduce(args[0]) })
+	t.defineStandardMethod("IsInjective", 1, func(args []Value) (Value, error) { return FunctionsIsInjective(args[0]) })
+	t.defineStandardMethod("AntiFunction", 1, func(args []Value) (Value, error) { return FunctionsAntiFunction(args[0]) })
+	t.defineStandardMethod("FoldFunction", 3, func(args []Value) (Value, error) { return FunctionsFoldFunction(args[0], args[1], args[2]) })
+	t.defineStandardMethod("FoldFunctionOnSet", 4, func(args []Value) (Value, error) {
+		return FunctionsFoldFunctionOnSet(args[0], args[1], args[2], args[3])
+	})
+	t.defineStandardMethod("Quantify", 2, func(args []Value) (Value, error) { return FiniteSetsExtQuantify(args[0], args[1]) })
+	t.defineStandardMethod("kSubset", 2, func(args []Value) (Value, error) { return FiniteSetsExtKSubset(args[0], args[1]) })
+	t.defineStandardMethod("FoldSet", 3, func(args []Value) (Value, error) { return FiniteSetsExtFoldSet(args[0], args[1], args[2]) })
+	t.defineStandardMethod("FoldBag", 3, func(args []Value) (Value, error) { return BagsExtFoldBag(args[0], args[1], args[2]) })
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)

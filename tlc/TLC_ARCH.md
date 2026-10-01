@@ -2189,6 +2189,16 @@ Go mapping:
   definitions when converting `Bitwise.tla`, but named-instance export bindings
   include only `&`, `|`, `^^`, `Not`, and `shiftR`; exporting `B!And` would
   violate the module's LOCAL boundary.
+- CommunityModules fold/function/set/bag helpers are practical native override
+  surface too. Java overrides `DyadicRationals!Reduce` even though it is LOCAL,
+  so the Go bridge skips the TLA definition but does not export `D!Reduce` for
+  named instances. Java `Functions.IsInjective` uses a non-mutating O(n^2)
+  duplicate check for already-user-visible tuples and interval functions, but
+  sorts freshly converted tuple values in place. `Functions.AntiFunction`
+  materializes a function record and normalizes the inverse record. The fold
+  overrides intentionally differ in accumulator order: `Functions` and
+  `FiniteSetsExt` call `op(value, acc)`, while `BagsExt.FoldBag` follows Java's
+  `op(acc, bagElement)` loop for each multiplicity.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

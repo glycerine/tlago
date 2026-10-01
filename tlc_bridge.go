@@ -75,6 +75,15 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"Bitwise": {
 		"&", "|", "^^", "Not", "shiftR",
 	},
+	"Functions": {
+		"IsInjective", "AntiFunction", "FoldFunction", "FoldFunctionOnSet",
+	},
+	"FiniteSetsExt": {
+		"Quantify", "kSubset", "FoldSet",
+	},
+	"BagsExt": {
+		"FoldBag",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -133,6 +142,18 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"Bitwise": setOf(
 		"And", "Or", "Xor", "Not", "shiftR",
+	),
+	"DyadicRationals": setOf(
+		"Reduce",
+	),
+	"Functions": setOf(
+		"IsInjective", "AntiFunction", "FoldFunction", "FoldFunctionOnSet",
+	),
+	"FiniteSetsExt": setOf(
+		"Quantify", "kSubset", "FoldSet",
+	),
+	"BagsExt": setOf(
+		"FoldBag",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
