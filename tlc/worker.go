@@ -73,6 +73,7 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 	worker.Checker = checker
 	worker.Tool = tool
 	worker.configureTrace()
+	worker.traceErr = worker.ensureTraceRAF()
 	if checker != nil {
 		for len(checker.Workers) <= id {
 			checker.Workers = append(checker.Workers, nil)
