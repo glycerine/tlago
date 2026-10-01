@@ -332,12 +332,11 @@
   - Standard-module/native override audit was refreshed for `TLC`, `TLCExt`, `TLCEval`, `TLCGetSet`, `Naturals`, `Integers`, `Sequences`, `FiniteSets`, `Bags`, and `Randomization`. No local valid-operand algorithm patch was needed from that pass. Java TLC was also probed for the `\div` `MinInt / -1` edge, and both `EXTENDS Naturals` and `EXTENDS Integers` use the overflow-checking runtime binding.
   - Simulator and `SimulationWorker` were re-audited against Java standard/RL worker loops. Recent fixes covered Java-shaped outer exception boundaries, explicit `num=0`, negative depth handling, aril config text, RNG draws before deadlock, reporter error severity, progress completion ordering, action-flow hash corner cases, and RL reward/filter error escape.
   - Runner/CLI wiring was re-audited for cleanup, FP index, seed/aril, startup banners, `CHECK_DEADLOCK`, and Java system-property behavior. Recent fixes covered DFID honoring config deadlock and the action-Q scheduler banner text.
-  - Coverage reporting was re-audited against Java `CostModelCreator.report`: next-action report ordering now uses source locations, constraints are created/reported before implied properties, and the remaining larger gap is the 2026 call-tree reconstruction visitor.
+  - Coverage reporting and cost-model creation were re-audited against Java `CostModelCreator`: next-action report ordering now uses source locations, constraints are created/reported before implied properties, and the creator now keeps Java-shaped side tables for substitutions, LET-IN aliases, recursive calls, constant-definition subtrees, and higher-order operator body linking.
   - Checker coverage summary gating mirrors Java `AbstractChecker.reportCoverage`: BFS/DFID summaries and periodic coverage skip coverage reporting when the spec has no next actions. Simulator coverage is intentionally separate because Java `Simulator.reportCoverage` uses its own coverage-enabled-only gate.
   - `TLCGetSet`, `CheckImpl`, and liveness construction were re-audited. Recent fixes covered `TLCGet("spec").variables` location records, `CheckImpl` FP-set construction, and `tlc2.tool.liveness.ILiveCheck.testing` selecting the AddAndCheck checker path.
 - Last verified command:
-  - `go test ./tlc`
-  - `go test ./`
+  - `go test ./...`
 - Immediate next steps:
   1. Continue breadth-first audit of local checker/liveness/value/module surfaces before moving to distributed/debugger/management surfaces.
   2. Continue checker error-precedence and trace reconstruction audit outside the recently covered cleanup/no-action/DFID/simulator exception paths.
