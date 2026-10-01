@@ -166,7 +166,7 @@ func (s *Simulator) Simulate() (int, error) {
 		s.PrintSummary()
 	}
 	if workerResult.IsError() {
-		return code, workerResult.Error.Err
+		return code, nil
 	}
 	return code, nil
 }
