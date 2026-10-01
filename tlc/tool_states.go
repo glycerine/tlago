@@ -1167,10 +1167,6 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 			case *LazySupplierValue:
 				lv := asLazyValue(v)
 				return t.ProcessUnchanged(action, lv.Expr, acts, lv.Con, s0, s1, nss, cm)
-			case nil:
-				return s1, newTLCError(ECGeneral, "undefined identifier %s in UNCHANGED expression %s", opName, SemanticString(expr))
-			default:
-				return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
 			}
 		}
 	}
