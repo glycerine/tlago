@@ -27,9 +27,7 @@ func NewValueVec(capacity int) *ValueVec {
 }
 
 func NewValueVecFrom(values []Value) *ValueVec {
-	out := make([]Value, len(values))
-	copy(out, values)
-	return &ValueVec{data: out}
+	return &ValueVec{data: values}
 }
 
 func (v *ValueVec) Add(val Value) {
@@ -407,7 +405,7 @@ func (v *SetEnumValue) Compare(other Value) (int, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("attempted to compare the set %s with the value %s", v, other)
+		return 0, v.unsupported("Attempted to compare the set %s with the value:\n%s", v, other)
 	}
 	if _, err := v.normalizeSet(); err != nil {
 		return 0, err
@@ -433,7 +431,7 @@ func (v *SetEnumValue) Equal(other Value) (bool, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("attempted to check equality of the set %s with the value %s", v, other)
+		return false, v.unsupported("Attempted to check equality of the set %s with the value:\n%s", v, other)
 	}
 	if _, err := v.normalizeSet(); err != nil {
 		return false, err
@@ -531,14 +529,14 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 
 func (v *SetEnumValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT to the set %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT to the set %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *SetEnumValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT to the set %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT to the set %s.", v)
 	}
 	return v, nil
 }
