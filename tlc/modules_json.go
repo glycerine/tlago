@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"unicode/utf16"
 )
 
 func JsonToJson(value Value) (*StringValue, error) {
@@ -62,22 +61,27 @@ func NDJsonDeserialize(path *StringValue) (Value, error) {
 	defer file.Close()
 
 	values := make([]Value, 0)
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-		dec := json.NewDecoder(strings.NewReader(line))
-		dec.UseNumber()
-		value, err := jsonReadValue(dec)
-		if err != nil {
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
 			return nil, err
 		}
-		values = append(values, value)
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
+		if len(line) != 0 {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				dec := json.NewDecoder(strings.NewReader(line))
+				dec.UseNumber()
+				value, err := jsonReadValue(dec)
+				if err != nil {
+					return nil, err
+				}
+				values = append(values, value)
+			}
+		}
+		if err == io.EOF {
+			break
+		}
 	}
 	return NewTupleValue(values), nil
 }
@@ -158,7 +162,10 @@ func JsonTextSerialize(path *StringValue, payload Value, options Value) (*BoolVa
 	if fileOptions.deleteOnClose {
 		defer os.Remove(path.RawString())
 	}
-	charset := ioUtilsRecordString(opts, "charset")
+	charset, err := ioUtilsRecordRequiredString(opts, "charset")
+	if err != nil {
+		return nil, err
+	}
 	if err := jsonWriteNDJSONWithCharset(file, tuple, charset); err != nil {
 		return nil, err
 	}
@@ -329,62 +336,12 @@ func jsonWriteNDJSONWithCharset(writer io.Writer, tuple *TupleValue, charset str
 	if err := buffered.Flush(); err != nil {
 		return err
 	}
-	encoded, err := encodeJavaCharset(charset, utf8.String())
+	encoded, err := ioUtilsEncodeString(utf8.String(), charset)
 	if err != nil {
 		return err
 	}
 	_, err = writer.Write(encoded)
 	return err
-}
-
-func encodeJavaCharset(name string, text string) ([]byte, error) {
-	normalized := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(name), "_", "-"))
-	switch normalized {
-	case "", "UTF-8", "UTF8":
-		return []byte(text), nil
-	case "US-ASCII", "ASCII":
-		out := make([]byte, 0, len(text))
-		for _, r := range text {
-			if r <= 0x7f {
-				out = append(out, byte(r))
-			} else {
-				out = append(out, '?')
-			}
-		}
-		return out, nil
-	case "ISO-8859-1", "ISO8859-1", "LATIN1", "LATIN-1":
-		out := make([]byte, 0, len(text))
-		for _, r := range text {
-			if r <= 0xff {
-				out = append(out, byte(r))
-			} else {
-				out = append(out, '?')
-			}
-		}
-		return out, nil
-	case "UTF-16":
-		encoded := encodeUTF16(text, true)
-		return append([]byte{0xfe, 0xff}, encoded...), nil
-	case "UTF-16BE":
-		return encodeUTF16(text, true), nil
-	case "UTF-16LE":
-		return encodeUTF16(text, false), nil
-	default:
-		return nil, newTLCError(ECGeneral, "Unsupported charset: %s", name)
-	}
-}
-
-func encodeUTF16(text string, bigEndian bool) []byte {
-	units := utf16.Encode([]rune(text))
-	out := make([]byte, 0, len(units)*2)
-	for _, unit := range units {
-		if bigEndian {
-			out = append(out, byte(unit>>8), byte(unit))
-		} else {
-			out = append(out, byte(unit), byte(unit>>8))
-		}
-	}
-	return out
 }
 
 func jsonWriteFcn(b *bytes.Buffer, value *FcnRcdValue) error {
