@@ -22,6 +22,8 @@
 - SpecProcessor lifecycle parity: `NewSpecProcessor` no longer runs config processing before the parser bridge has populated variables/definitions. Config processing now happens in the Java-shaped `ApplyToTool` phase, avoiding duplicate warning side effects and premature empty-definition classification.
 - Tool predicate validation now reports Java's `TLC_EXPECTED_VALUE` text for non-boolean predicate results. Assumption and postcondition checks still wrap that inner message with their Java evaluation-error codes.
 - No-code audit note: next-state `CASE` under probabilistic evaluation intentionally fails with the same explicit Java message; do not treat the Go `not implemented for CASE yet` string as an unported feature. Stuttering counterexample warning messages and the no-SPEC/no-fairness split were rechecked and already match Java's liveness warning path.
+- No-code audit note: Java `AbstractChecker.runTLC` worker-error precedence was rechecked. Normal worker next-state/evaluation/liveness failures are recorded through the checker error state and return the stored code unless call-stack replay is requested. Go matches that path; its extra join-error return remains a Go-library guard for structural misuse before an error code can be recorded.
+- No-code audit note: `TLCGet("all")` and `TLCGet("all:named")` preserve Java's worker-0 iteration quirk for local register aggregation. Do not "fix" this to a union over all workers without intentionally diverging from Java.
 - Runner FP-set configuration must be wired into the checker, not just printed in the startup banner. Java passes `FPSetConfiguration` into `ModelChecker`; Go runner now constructs the configured FP set unless a caller injected an explicit `FPSet`.
 - Runner FP index must initialize the global fingerprint polynomial before checking/simulation, like Java `FP64.Init(fpIndex)`, not merely appear in the startup banner. See `TestTLCRunnerAppliesFPIndexLikeJava`.
 - Runner process failures must pass through a top-level Java `TLC.process()`-style catch before the finished banner. Checker/simulator panics should become TLC result codes/messages instead of bypassing `TLC_FINISHED`.
@@ -375,6 +377,7 @@
   - SPEC/PROPERTY liveness-origin tagging now drives Java's fairness-tautology warning.
   - `NewSpecProcessor` was made snapshot-only; `ApplyToTool` owns config processing like the Java construction phase.
   - Predicate validation diagnostics now use Java's `TLC_EXPECTED_VALUE`, and the probabilistic-CASE/stuttering-warning paths were re-audited with no code change needed.
+  - Worker result precedence and worker-local register aggregation were re-audited with no code changes needed.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:
