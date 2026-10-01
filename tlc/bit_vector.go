@@ -63,14 +63,14 @@ func (bv *BitVector) Equal(other *BitVector) bool {
 }
 
 func (bv *BitVector) Hash() int {
-	res := 0
+	var res int32
 	for _, word := range bv.word {
 		if word != 0 {
-			res ^= int(word & 0xffff)
-			res ^= int(word >> 32)
+			res ^= int32(word & 0xffff)
+			res ^= int32(word >> 32)
 		}
 	}
-	return res
+	return int(res)
 }
 
 func (bv *BitVector) Clear() {

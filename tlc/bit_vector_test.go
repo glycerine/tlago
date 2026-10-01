@@ -37,6 +37,15 @@ func TestBitVectorEqualityIgnoresTrailingZeroWords(t *testing.T) {
 	}
 }
 
+func TestBitVectorHashUsesJavaIntNarrowing(t *testing.T) {
+	bv := NewBitVector(64)
+	bv.Set(63)
+
+	if got, want := bv.Hash(), -2147483648; got != want {
+		t.Fatalf("Hash = %d, want Java signed int hash %d", got, want)
+	}
+}
+
 func TestBitVectorIteratorReturnsSetBitsInAscendingOrder(t *testing.T) {
 	bv := NewBitVector(0)
 	for _, bit := range []int{70, 1, 64} {
