@@ -1474,12 +1474,12 @@ func (mc *ModelChecker) doNextWithTool(tool *Tool, curState *TLCStateMut, liveNe
 				}
 			}
 			if unseen {
-				stop, err := mc.doNextCheckInvariantsWithTool(tool, curState, succState)
+				stop, err := mc.doNextCheckInvariantsWithTool(tool, curState, succState, false)
 				if stop || err != nil {
 					return stop, err
 				}
 			}
-			stop, err := mc.doNextCheckImpliedWithTool(tool, curState, succState)
+			stop, err := mc.doNextCheckImpliedWithTool(tool, curState, succState, false)
 			if stop || err != nil {
 				return stop, err
 			}
@@ -1504,7 +1504,7 @@ func workerIDForReplayWorker(worker *Worker) int {
 
 func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, bool, error) {
 	if !mc.Tool.IsGoodState(succState) {
-		return mc.doNextSetErrParams(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
+		return mc.doNextSetErrParamsWithPostCondition(curState, succState, false, ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(mc.Tool, action, succState)...), false, nil
 	}
 	if succState != nil {
 		succState.SetPredecessor(curState).SetAction(action)
@@ -1647,10 +1647,10 @@ func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, cur
 }
 
 func (mc *ModelChecker) doNextCheckInvariants(curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
-	return mc.doNextCheckInvariantsWithTool(mc.Tool, curState, succState)
+	return mc.doNextCheckInvariantsWithTool(mc.Tool, curState, succState, true)
 }
 
-func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
+func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, withPostCondition bool) (bool, error) {
 	invariants := tool.GetInvariants()
 	names := tool.GetInvNames()
 	for i, invariant := range invariants {
@@ -1664,6 +1664,9 @@ func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCS
 				mc.printBehaviorTrace(curState, succState)
 				return false, nil
 			}
+			if withPostCondition {
+				return mc.doNextSetErrWithPostCondition(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
+			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
 		}
 	}
@@ -1671,10 +1674,10 @@ func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCS
 }
 
 func (mc *ModelChecker) doNextCheckImplied(curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
-	return mc.doNextCheckImpliedWithTool(mc.Tool, curState, succState)
+	return mc.doNextCheckImpliedWithTool(mc.Tool, curState, succState, true)
 }
 
-func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut) (bool, error) {
+func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStateMut, succState *TLCStateMut, withPostCondition bool) (bool, error) {
 	implied := tool.GetImpliedActions()
 	names := tool.GetImpliedActNames()
 	for i, action := range implied {
@@ -1687,6 +1690,9 @@ func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStat
 				PrintError(ECTLCActionPropertyViolatedBehavior, nameAt(names, i))
 				mc.printBehaviorTrace(curState, succState)
 				return false, nil
+			}
+			if withPostCondition {
+				return mc.doNextSetErrWithPostCondition(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
 		}
@@ -1702,7 +1708,6 @@ func (mc *ModelChecker) doNextSetErr(curState *TLCStateMut, succState *TLCStateM
 }
 
 func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
-	isConsole := !mc.Done
 	if mc.SetErrState(curState, succState, keep, ec) {
 		if len(params) == 0 {
 			PrintError(ec)
@@ -1714,8 +1719,21 @@ func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLC
 			mc.StateQueue.FinishAll()
 		}
 	}
-	mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
 	return true
+}
+
+func (mc *ModelChecker) doNextSetErrWithPostCondition(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, param string) bool {
+	if param == "" {
+		return mc.doNextSetErrParamsWithPostCondition(curState, succState, keep, ec)
+	}
+	return mc.doNextSetErrParamsWithPostCondition(curState, succState, keep, ec, param)
+}
+
+func (mc *ModelChecker) doNextSetErrParamsWithPostCondition(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
+	isConsole := !mc.Done
+	result := mc.doNextSetErrParams(curState, succState, keep, ec, params...)
+	mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
+	return result
 }
 
 func (mc *ModelChecker) checkPostConditionAfterInitFailure() {

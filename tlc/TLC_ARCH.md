@@ -1282,7 +1282,10 @@ Port guidance:
   `errState` call `checkPostConditionWithCounterExample(new CounterExample(errState))`,
   and worker `doNextSetErr` paths build a safety counterexample, evaluate aliases
   over that trace, and call the postcondition hook before returning the safety
-  error. Evaluation failures remain on Java's separate `doNextEvalFailed` path.
+  error. Java's direct `ModelChecker.doNext` helper is different: its
+  `doNextSetErr` path prints and terminates but does not invoke the
+  postcondition hook. Evaluation failures remain on Java's separate
+  `doNextEvalFailed` path.
 
 ### CheckImpl and CheckImplFile
 

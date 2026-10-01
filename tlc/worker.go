@@ -218,7 +218,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	deadlocked := false
 	if w.Checker.CheckDeadlock && preNext == w.StatesGenerated {
-		w.Checker.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, "")
+		w.Checker.doNextSetErrWithPostCondition(curState, nil, false, ECTLCDeadlockReached, "")
 		deadlocked = true
 	}
 	if w.Checker.CheckLiveness {
