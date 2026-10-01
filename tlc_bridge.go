@@ -292,6 +292,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.tool.ParseDebuggerExpressionFunc = bridge.parseDebuggerExpression
 	bridge.installVariables()
 	bridge.installDefinitions()
+	bridge.installRuntimeConstants()
 	bridge.installConfigConstants()
 	bridge.installInstanceAliases()
 	bridge.installModelTargets()
@@ -593,7 +594,6 @@ func (b *tlcBridge) installRuntimeParameters() {
 	if b == nil {
 		return
 	}
-	b.installRuntimeConstants()
 	for _, inv := range b.runtime.Invariants {
 		expr, diags := parseRuntimeTLAExpression(inv.Expression, inv.Modules)
 		b.diags = append(b.diags, diags...)

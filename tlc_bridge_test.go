@@ -95,6 +95,7 @@ func TestRuntimePostConditionCanTargetQualifiedLocalStandardDefinition(t *testin
 	dir := t.TempDir()
 	root := filepath.Join(dir, "TracePostBridge.tla")
 	writeFile(t, root, `---- MODULE TracePostBridge ----
+CONSTANT K
 VARIABLE x
 Init == x = 0
 Next == x' = x
@@ -103,6 +104,7 @@ CfgPost == x = 0
 	cfgPath := filepath.Join(dir, "TracePostBridge.cfg")
 	writeFile(t, cfgPath, `INIT Init
 NEXT Next
+CONSTANT K = "config"
 POSTCONDITION CfgPost
 `)
 
@@ -110,8 +112,8 @@ POSTCONDITION CfgPost
 		PostConditions: []tlc.RuntimePostCondition{{
 			Module:       "_TLCTrace",
 			Operator:     "_TLCTraceSilent",
-			ConstantName: "_TLCTraceFile",
-			FileName:     "trace.bin",
+			ConstantName: "K",
+			FileName:     "runtime",
 		}},
 	}
 	spec, diags := LoadSanySpec(root, LoadOptions{ExtraModules: params.ExtendeeModules()})
@@ -140,5 +142,9 @@ POSTCONDITION CfgPost
 	}
 	if got := postConditions[1].GetName(); got != "CfgPost" {
 		t.Fatalf("postconditions[1] = %q, want config postcondition second like Java", got)
+	}
+	k, ok := tool.DefnsByName[tlc.UniqueStringOf("K")].(*tlc.StringValue)
+	if !ok || k.RawString() != "config" {
+		t.Fatalf("K = %#v, want config constant to override runtime constant like Java", tool.DefnsByName[tlc.UniqueStringOf("K")])
 	}
 }

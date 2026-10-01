@@ -190,9 +190,13 @@ Port guidance:
   dependency modules if they declare constants, then view. The current Go
   runtime invariant template form has no constant definitions of its own, but
   view constants are still carried through `RuntimeView` like Java
-  `ParameterizedSpecObj.View.constDefs`. Runtime invariant actions are appended
-  after normal config processing, so the missing `INIT`/`NEXT` checks only see
-  the static model config just as Java's `SpecProcessor` does.
+  `ParameterizedSpecObj.View.constDefs`. The Go bridge installs these runtime
+  constants before ordinary config constants because Java
+  `ParameterizedSpecObj.processConstantDefns` runs before
+  `SpecObj.processConstantDefns`; if the same constant name appears in both,
+  the config constant wins. Runtime invariant actions are appended after normal
+  config processing, so the missing `INIT`/`NEXT` checks only see the static
+  model config just as Java's `SpecProcessor` does.
 - Runtime postconditions follow Java `Spec.getPostConditionSpecs`: actions from
   `ParameterizedSpecObj.getPostConditionSpecs()` come before config-file
   `POSTCONDITION(S)`, and their user-visible action name is the unqualified
