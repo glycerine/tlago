@@ -84,8 +84,9 @@ type CallableEvalFunc func(args []Value) (func() (any, error), error)
 
 type operatorValueBase struct {
 	BaseValue
-	KindValue ValueKind
-	Label     string
+	KindValue        ValueKind
+	Label            string
+	NormalizeMessage string
 }
 
 func (b *operatorValueBase) Kind() ValueKind { return b.KindValue }
@@ -94,33 +95,33 @@ func (b *operatorValueBase) KindString() string {
 }
 
 func (b *operatorValueBase) Compare(other Value) (int, error) {
-	return 0, b.unsupported("attempted to compare operator %s with value:\n%s", b, other)
+	return 0, b.unsupported("Attempted to compare operator %s with value:\n%s", b, other)
 }
 
 func (b *operatorValueBase) Equal(other Value) (bool, error) {
-	return false, b.unsupported("attempted to check equality of operator %s with value:\n%s", b, other)
+	return false, b.unsupported("Attempted to check equality of operator %s with value:\n%s", b, other)
 }
 
 func (b *operatorValueBase) Member(elem Value) (bool, error) {
-	return false, b.unsupported("attempted to check if the value:\n%s\nis an element of operator %s", elem, b)
+	return false, b.unsupported("Attempted to check if the value:\n%s\nis an element of operator %s", elem, b)
 }
 
 func (b *operatorValueBase) IsFinite() (bool, error) {
-	return false, b.unsupported("attempted to check if the operator %s is a finite set", b)
+	return false, b.unsupported("Attempted to check if the operator %s is a finite set.", b)
 }
 
 func (b *operatorValueBase) Size() (int, error) {
-	return 0, b.unsupported("attempted to compute the number of elements in the operator %s", b)
+	return 0, b.unsupported("Attempted to compute the number of elements in the operator %s.", b)
 }
 
 func (b *operatorValueBase) Normalize() Value {
-	panic(newTLCError(ECGeneral, "it is a TLC bug: attempted to normalize an operator"))
+	panic(newTLCError(ECGeneral, "%s", b.normalizeMessage()))
 }
 
 func (b *operatorValueBase) DeepNormalize() {}
 
 func (b *operatorValueBase) IsNormalized() bool {
-	panic(newTLCError(ECGeneral, "it is a TLC bug: attempted to normalize an operator"))
+	panic(newTLCError(ECGeneral, "%s", b.normalizeMessage()))
 }
 
 func (b *operatorValueBase) IsDefined() bool { return true }
@@ -136,14 +137,21 @@ func (b *operatorValueBase) Permute(*MVPerm) Value {
 }
 
 func (b *operatorValueBase) TakeExcept(ex ValueExcept) (Value, error) {
-	return nil, b.unsupported("attempted to apply EXCEPT construct to the operator %s", b)
+	return nil, b.unsupported("Attempted to appy EXCEPT construct to the operator %s.", b)
 }
 
 func (b *operatorValueBase) TakeExcepts(exs []ValueExcept) (Value, error) {
-	return nil, b.unsupported("attempted to apply EXCEPT construct to the operator %s", b)
+	return nil, b.unsupported("Attempted to apply EXCEPT construct to the operator %s.", b)
 }
 
 func (b *operatorValueBase) String() string { return b.Label }
+
+func (b *operatorValueBase) normalizeMessage() string {
+	if b.NormalizeMessage != "" {
+		return b.NormalizeMessage
+	}
+	return "It is a TLC bug: Attempted to normalize an operator."
+}
 
 type OpLambdaValue struct {
 	operatorValueBase
@@ -165,7 +173,7 @@ func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStat
 		cm = cms[0]
 	}
 	return &OpLambdaValue{
-		operatorValueBase: operatorValueBase{KindValue: OpLambdaValueKind, Label: "<Operator " + opDef.String() + ">"},
+		operatorValueBase: operatorValueBase{KindValue: OpLambdaValueKind, Label: "<Operator " + opDef.String() + ">", NormalizeMessage: "Should not normalize an operator."},
 		OpDef:             opDef,
 		Tool:              tool,
 		Con:               con,
@@ -187,8 +195,8 @@ func NewOpLambdaValueFrom(other *OpLambdaValue, tool *Tool) *OpLambdaValue {
 }
 
 func (v *OpLambdaValue) DeepCopy() Value { return v }
-func (v *OpLambdaValue) Permute(*MVPerm) Value {
-	return v
+func (v *OpLambdaValue) Permute(perm *MVPerm) Value {
+	return v.operatorValueBase.Permute(perm)
 }
 
 func (v *OpLambdaValue) Eval(args []Value, control int) (Value, error) {
@@ -222,7 +230,7 @@ type OpRcdValue struct {
 
 func NewOpRcdValue() *OpRcdValue {
 	return &OpRcdValue{
-		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>"},
+		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>", NormalizeMessage: "Should not normalize an operator."},
 	}
 }
 
@@ -235,7 +243,7 @@ func NewOpRcdValueFrom(domain [][]Value, values []Value) *OpRcdValue {
 	outValues := make([]Value, len(values))
 	copy(outValues, values)
 	return &OpRcdValue{
-		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>"},
+		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>", NormalizeMessage: "Should not normalize an operator."},
 		Domain:            outDomain,
 		Values:            outValues,
 	}
@@ -296,8 +304,8 @@ func (v *OpRcdValue) DeepNormalize() {
 }
 
 func (v *OpRcdValue) DeepCopy() Value { return v }
-func (v *OpRcdValue) Permute(*MVPerm) Value {
-	return v
+func (v *OpRcdValue) Permute(perm *MVPerm) Value {
+	return v.operatorValueBase.Permute(perm)
 }
 
 func (v *OpRcdValue) String() string {
@@ -328,7 +336,7 @@ type MethodValue struct {
 
 func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodValue {
 	return &MethodValue{
-		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">"},
+		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">", NormalizeMessage: "It is a TLC bug: Attempted to normalize an operator."},
 		Name:              name,
 		MinLevel:          minLevel,
 		EvalFunc:          eval,
@@ -343,8 +351,8 @@ func (v *MethodValue) Eval(args []Value, control int) (Value, error) {
 }
 
 func (v *MethodValue) DeepCopy() Value { return v }
-func (v *MethodValue) Permute(*MVPerm) Value {
-	return v
+func (v *MethodValue) Permute(perm *MVPerm) Value {
+	return v.operatorValueBase.Permute(perm)
 }
 
 type EvaluatingValue struct {
@@ -358,7 +366,7 @@ type EvaluatingValue struct {
 
 func NewEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNode, eval EvaluatingEvalFunc) *EvaluatingValue {
 	return &EvaluatingValue{
-		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">"},
+		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">", NormalizeMessage: "It is a TLC bug: Attempted to normalize an operator."},
 		Name:              name,
 		MinLevel:          minLevel,
 		Priority:          priority,
@@ -385,8 +393,8 @@ func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Con
 }
 
 func (v *EvaluatingValue) DeepCopy() Value { return v }
-func (v *EvaluatingValue) Permute(*MVPerm) Value {
-	return v
+func (v *EvaluatingValue) Permute(perm *MVPerm) Value {
+	return v.operatorValueBase.Permute(perm)
 }
 
 type PriorityEvaluatingValue struct {
