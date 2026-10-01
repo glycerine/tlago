@@ -121,6 +121,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	if simulator.Aril > 0 {
 		simulator.Rand.SetSeedWithAril(simulator.Seed, simulator.Aril)
 	}
+	simulator.Aril = simulator.Rand.Aril()
 	workerCount := NumWorkers()
 	if workerCount < 1 {
 		workerCount = 1
