@@ -274,7 +274,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardEvaluating("TLCCache", 2, standardTLCCache)
 	t.defineStandardMethod("TLCFP", 1, func(args []Value) (Value, error) { return TLCExtTLCFP(args[0]), nil })
 	t.defineStandardEvaluating("TLCEvalDefinition", 1, standardTLCEvalDefinition)
-	t.defineStandardMethod("TLCGetOrDefault", 2, func(args []Value) (Value, error) { return TLCGetOrDefault(args[0], args[1]), nil })
+	t.defineStandardMethod("TLCGetOrDefault", 2, func(args []Value) (Value, error) { return TLCGetOrDefault(args[0], args[1]) })
 	t.defineStandardEvaluating("TLCGetAndSet", 4, standardTLCGetAndSet)
 
 	t.defineStandardMethod("_TLCTraceDeserialize", 1, func(args []Value) (Value, error) {

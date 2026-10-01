@@ -299,11 +299,17 @@ func withStateQueueMonitor(queue StateQueue, fn func() error) error {
 	return fn()
 }
 
-func TLCGetOrDefault(vidx Value, defVal Value) Value {
+func TLCGetOrDefault(vidx Value, defVal Value) (Value, error) {
 	switch idx := vidx.(type) {
 	case *IntValue:
 		if idx.Val < 0 {
-			return defVal
+			if _, ok := CurrentWorkerID(); ok {
+				return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCGetOrDefault", "nonnegative integer", ValuesPPR(vidx))
+			}
+			if MainChecker() != nil || CurrentSimulator() != nil {
+				return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCGetOrDefault", "nonnegative integer", ValuesPPR(vidx))
+			}
+			return defVal, nil
 		}
 		workerID := 0
 		if checker := MainChecker(); checker != nil {
@@ -311,15 +317,15 @@ func TLCGetOrDefault(vidx Value, defVal Value) Value {
 				workerID = id
 			}
 			if value := checker.GetValue(workerID, int(idx.Val)); value != nil {
-				return value
+				return value, nil
 			}
-			return defVal
+			return defVal, nil
 		}
 		if simulator := CurrentSimulator(); simulator != nil {
 			if value := simulator.GetLocalValue(int(idx.Val)); value != nil {
-				return value
+				return value, nil
 			}
-			return defVal
+			return defVal, nil
 		}
 	case *StringValue:
 		key := idx.Val
@@ -330,19 +336,19 @@ func TLCGetOrDefault(vidx Value, defVal Value) Value {
 					workerID = id
 				}
 				if value := checker.GetNamedValue(workerID, key); value != nil {
-					return value
+					return value, nil
 				}
-				return defVal
+				return defVal, nil
 			}
 			if simulator := CurrentSimulator(); simulator != nil {
 				if value := simulator.GetLocalNamedValue(key); value != nil {
-					return value
+					return value, nil
 				}
-				return defVal
+				return defVal, nil
 			}
 		}
 	}
-	return defVal
+	return defVal, nil
 }
 
 func tlcSpecRecord(tool *Tool) Value {
