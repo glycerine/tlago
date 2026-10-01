@@ -152,17 +152,18 @@ var (
 	SimpThms     = SxNil
 
 	simpTrop = map[string]string{
-		"\\lnot": "F_NOT",
-		"=":      "F_EQ",
-		"/=":     "F_NEQ",
-		"=>":     "F_IMPLIES",
-		"\\land": "F_AND",
-		"\\lor":  "F_OR",
-		"\\in":   "in",
-		"..":     "intv",
-		"\\leq":  "F_LE",
-		"\\geq":  "F_GE",
-		">":      "F_GT",
+		"\\lnot":         "F_NOT",
+		"=":              "F_EQ",
+		"/=":             "F_NEQ",
+		"=>":             "F_IMPLIES",
+		"\\land":         "F_AND",
+		"\\lor":          "F_OR",
+		"\\in":           "in",
+		"..":             "intv",
+		"\\leq":          "F_LE",
+		"\\geq":          "F_GE",
+		">":              "F_GT",
+		"$CartesianProd": "cross2",
 	}
 	SimpDefns = NewInsMap[string, *Sx]()
 )

@@ -24,6 +24,9 @@ func TestSimpUtilPortedBuilders(t *testing.T) {
 	if got := SimpTransOp(UniqueStringOf("\\land")).String(); got != "F_AND" {
 		t.Fatalf("SimpTransOp(land) = %q, want F_AND", got)
 	}
+	if got := SimpTransOp(OpCP).String(); got != "cross2" {
+		t.Fatalf("SimpTransOp(cartesian product) = %q, want cross2", got)
+	}
 	expr := SimpMkImplies(SxAtom("p"), SxAtom("q"))
 	if got := expr.String(); got != "(F_IMPLIES p q)" {
 		t.Fatalf("SimpMkImplies = %q, want (F_IMPLIES p q)", got)
