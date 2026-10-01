@@ -1371,10 +1371,6 @@ func (mc *ModelChecker) reportInitException(result int, err error) int {
 }
 
 func initExceptionCode(err error) int {
-	var eval *EvalException
-	if errors.As(err, &eval) && eval != nil {
-		return eval.GetErrorCode()
-	}
 	var tlcErr *TLCError
 	if errors.As(err, &tlcErr) && tlcErr != nil {
 		return tlcErr.Code
