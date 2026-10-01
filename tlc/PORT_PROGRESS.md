@@ -562,6 +562,7 @@
   - Liveness expression normalization was re-audited. Go now keeps Java's tag-only atom equality and raw two-child `makeBinary` shape; `pushNeg`, `simplify`, DNF construction, promise extraction, and general temporal formula detection already matched the Java algorithms.
 - Liveness graph debug/DOT string surfaces now render fingerprints as Java signed `long` decimals instead of Go `uint64` decimals; storage, hashing, and graph algorithms still retain the raw fingerprint bits.
 - Legacy BEGraph path construction now reports Java's dedicated `TLC_LIVE_BEGRAPH_FAILED_TO_CONSTRUCT` diagnostic for disconnected/nil path failures instead of a generic Go error. Object stack/queue helpers used by BEGraph/LiveCheck1 were rechecked: active LIFO/FIFO/growth behavior matches Java; Go intentionally keeps its usable gob checkpoints rather than importing Java `MemObjectStack.beginChkpt`'s inactive every-other-entry write bug because `LiveCheck1.beginChkpt` is a no-op in Java.
+- Liveness predicate evaluation now reports Java's `TLC_LIVE_ENCOUNTERED_NONBOOL_PREDICATE` code/message when an `LNAction`/fallback liveness predicate evaluates to a non-boolean value, matching Java `LNAction.eval`'s `Assert.fail` path instead of a Go-specific generic message.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:

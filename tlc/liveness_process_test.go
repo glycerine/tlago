@@ -2,6 +2,24 @@ package tlc
 
 import "testing"
 
+func TestLiveExprNonBooleanPredicateUsesJavaErrorCode(t *testing.T) {
+	expr := NewLNAction("bad", NewValueNode(NewIntValue(1)), EmptyContext, nil)
+	_, err := expr.Eval(&Tool{}, EmptyState, EmptyState)
+	if err == nil {
+		t.Fatalf("Eval returned nil error for non-boolean liveness predicate")
+	}
+	tlcErr, ok := err.(*TLCError)
+	if !ok {
+		t.Fatalf("Eval error = %T, want TLCError", err)
+	}
+	if tlcErr.Code != ECTLCLiveEncounteredNonboolPredicate {
+		t.Fatalf("Eval error code = %d, want %d", tlcErr.Code, ECTLCLiveEncounteredNonboolPredicate)
+	}
+	if got, want := tlcErr.Error(), "Encountered an action predicate that's not a boolean."; got != want {
+		t.Fatalf("Eval error = %q, want Java message %q", got, want)
+	}
+}
+
 func TestParseLivenessReturnsNilWithoutFairnessOrProperties(t *testing.T) {
 	live, err := ParseLiveness(&Tool{})
 	if err != nil {

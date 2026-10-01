@@ -134,7 +134,7 @@ func newLiveAction(body SemanticNode, con *Context, subscript SemanticNode, isBo
 		}
 		boolValue, ok := value.(*BoolValue)
 		if !ok {
-			return false, newTLCError(ECGeneral, "liveness predicate %s evaluated to non-boolean %s", label, value)
+			return false, newTLCErrorCode(ECTLCLiveEncounteredNonboolPredicate)
 		}
 		return boolValue.Val, nil
 	})

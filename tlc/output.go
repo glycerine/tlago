@@ -154,6 +154,7 @@ const (
 	ECTLCExpectedExpression                              = 2246
 	ECTLCExpectedExpressionInComputing                   = 2247
 	ECTLCExpectedExpressionInComputing2                  = 2248
+	ECTLCLiveEncounteredNonboolPredicate                 = 2252
 	ECTLCLiveFormulaTautology                            = 2253
 	ECTLCLiveFormulaStateLevel                           = 2255
 	ECTLCConfigNoSpecButProperty                         = 2257
@@ -884,6 +885,8 @@ func formatMessage(code int, params []string) string {
 		}
 	case ECTLCLiveWrongFormulaFormat:
 		return "Temporal formulas containing actions must be of forms <>[]A or []<>A."
+	case ECTLCLiveEncounteredNonboolPredicate:
+		return "Encountered an action predicate that's not a boolean."
 	case ECTLCExpectedValue:
 		if len(params) >= 2 {
 			return fmt.Sprintf("TLC expected a %s value, but did not find one. %s", params[0], params[1])

@@ -230,7 +230,7 @@ func (n *LiveExprNode) Eval(tool *Tool, s1 *TLCStateMut, s2 *TLCStateMut) (bool,
 		}
 		boolValue, ok := value.(*BoolValue)
 		if !ok {
-			return false, newTLCError(ECGeneral, "liveness predicate %s evaluated to non-boolean %s", n.Label, value)
+			return false, newTLCErrorCode(ECTLCLiveEncounteredNonboolPredicate)
 		}
 		return boolValue.Val, nil
 	default:
