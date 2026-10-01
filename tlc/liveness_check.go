@@ -1086,7 +1086,7 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 		}
 	}
 	if foundChecker != nil {
-		PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
+		PrintMessage(ECTLCCheckingTemporalPropsEnd, humanReadableTLCRuntime(time.Since(start)))
 		if foundChecker.ErrorCounterEx != nil {
 			return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", foundChecker.ErrorCounterEx)
 		}
@@ -1095,7 +1095,7 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 	if firstErr != nil {
 		return ECGeneral, firstErr
 	}
-	PrintMessage(ECTLCCheckingTemporalPropsEnd, time.Since(start).String())
+	PrintMessage(ECTLCCheckingTemporalPropsEnd, humanReadableTLCRuntime(time.Since(start)))
 	return NoError, nil
 }
 
