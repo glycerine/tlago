@@ -24,12 +24,15 @@ func NewCheckImpl(tool *Tool, metadir string, deadlock bool, depth int, fromChkp
 	if len(config) > 0 && config[0] != nil {
 		fpConfig = config[0]
 	}
-	mc := NewModelChecker(tool, metadir, deadlock, WithModelCheckerFromCheckpoint(fromChkpt))
+	mc := NewModelChecker(tool, metadir, deadlock,
+		WithModelCheckerFromCheckpoint(fromChkpt),
+		WithModelCheckerFPSet(NewFPSet(fpConfig)),
+	)
 	rootName := "Spec"
 	if tool != nil {
 		rootName = tool.GetRootName()
 	}
-	coverSet := NewFPSet(fpConfig).Init(NumWorkers(), metadir, rootName+"_cs")
+	coverSet := NewFPSet(NewFPSetConfiguration()).Init(NumWorkers(), metadir, rootName+"_cs")
 	return &CheckImpl{
 		ModelChecker: mc,
 		Depth:        depth,

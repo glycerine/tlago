@@ -115,6 +115,7 @@
 - Already audited recently; do not regenerate standard simulation successors through an intermediate `StateVec`: Java streams successors by passing the `SimulationWorker` as `INextStateFunctor` into `Tool.getNextStates`.
 - Already audited recently; do not reintroduce simulator-wide random successor collection: Java standard simulation randomly selects an action first and then a successor from that action's generated states.
 - Already audited recently; do not short-circuit `CheckImpl.checkTrace` on `false` results from state/reachability checks: Java calls those methods for reporting side effects and only thrown exceptions stop the loop.
+- `CheckImpl` FP-set construction mirrors Java: the constructor's `FPSetConfiguration` belongs to the inherited `ModelChecker` FP set, while the coverage `coverSet` is created from the default FP-set factory with the `_cs` suffix.
 - Already audited recently; do not unbind failed `ENABLED` enumeration assignments between candidates: Java mutates the candidate successor state in place while enumerating `x' \in S`/`x' \subseteq S`.
 - Already audited recently; do not count vector-path action coverage in individual checker callers: Java increments `action.cm` inside `Tool.getNextStates(action, state)` after generation.
 - Already audited recently; do not route direct `ModelChecker.DoNext` through the worker successor helper: Java's direct checker path checks model/action constraints before any eager predecessor/action attachment.
