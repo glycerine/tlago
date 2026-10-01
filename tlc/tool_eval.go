@@ -297,15 +297,26 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		return NewSetOfTuplesValue(values), nil
 	case OpcodeCL:
 		for _, arg := range args {
-			bval, err := t.evalBool(arg, c, s0, s1, control, cm, "conjunction")
-			if err != nil || !bval.Val {
-				return bval, err
+			value, err := t.Eval(arg, c, s0, s1, control, cm)
+			if err != nil {
+				return nil, err
+			}
+			bval, err := requireBoolValue(value, "A non-boolean expression (%s) was used as a formula in a conjunction.\n%s", valueKindString(value), SemanticString(arg))
+			if err != nil {
+				return nil, err
+			}
+			if !bval.Val {
+				return BoolFalse, nil
 			}
 		}
 		return BoolTrue, nil
 	case OpcodeDL:
 		for _, arg := range args {
-			bval, err := t.evalBool(arg, c, s0, s1, control, cm, "disjunction")
+			value, err := t.Eval(arg, c, s0, s1, control, cm)
+			if err != nil {
+				return nil, err
+			}
+			bval, err := requireBoolValue(value, "A non-boolean expression (%s) was used as a formula in a disjunction.\n%s", valueKindString(value), SemanticString(arg))
 			if err != nil {
 				return nil, err
 			}
@@ -321,7 +332,11 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	case OpcodeFC, OpcodeNRFS, OpcodeRFS:
 		return t.evalFcnConstructor(expr, opcode, c, s0, s1, control, cm)
 	case OpcodeITE:
-		guard, err := t.evalBool(args[0], c, s0, s1, control, cm, "IF")
+		guardValue, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		guard, err := requireBoolValue(guardValue, "A non-boolean expression (%s) was used as the condition of an IF.\n%s", valueKindString(guardValue), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -368,7 +383,11 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	case OpcodeUF:
 		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded \\A: %s", SemanticString(expr))
 	case OpcodeLnot:
-		arg, err := t.evalBool(args[0], c, s0, s1, control, cm, "~")
+		value, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg, err := requireBoolValue(value, "Attempted to apply the operator ~ to a non-boolean\n(%s)\n%s", valueKindString(value), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
@@ -400,41 +419,39 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	case OpcodeEq:
 		return t.evalEq(args[0], args[1], c, s0, s1, control, cm, false)
 	case OpcodeLand:
-		for _, arg := range args {
-			bval, err := t.evalBool(arg, c, s0, s1, control, cm, "/\\")
-			if err != nil || !bval.Val {
-				return bval, err
-			}
-		}
-		return BoolTrue, nil
+		return t.evalBinaryConjunction(args, c, s0, s1, control, cm, expr)
 	case OpcodeLor:
-		for _, arg := range args {
-			bval, err := t.evalBool(arg, c, s0, s1, control, cm, "\\/")
-			if err != nil {
-				return nil, err
-			}
-			if bval.Val {
-				return BoolTrue, nil
-			}
-		}
-		return BoolFalse, nil
+		return t.evalBinaryDisjunction(args, c, s0, s1, control, cm, expr)
 	case OpcodeImplies:
-		arg1, err := t.evalBool(args[0], c, s0, s1, control, cm, "=>")
+		value1, err := t.Eval(args[0], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg1, err := requireBoolValue(value1, "Attempted to evaluate an expression of form P => Q when P was\n%s.\n%s", valueKindString(value1), SemanticString(expr))
 		if err != nil {
 			return nil, err
 		}
 		if !arg1.Val {
 			return BoolTrue, nil
 		}
-		return t.evalBool(args[1], c, s0, s1, control, cm, "=>")
-	case OpcodeEquiv:
-		arg1, err := t.evalBool(args[0], c, s0, s1, control, cm, "<=>")
+		value2, err := t.Eval(args[1], c, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
 		}
-		arg2, err := t.evalBool(args[1], c, s0, s1, control, cm, "<=>")
+		return requireBoolValue(value2, "Attempted to evaluate an expression of form P => Q when Q was\n%s.\n%s", valueKindString(value2), SemanticString(expr))
+	case OpcodeEquiv:
+		value1, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
+		}
+		value2, err := t.Eval(args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		arg1, ok1 := value1.(*BoolValue)
+		arg2, ok2 := value2.(*BoolValue)
+		if !ok1 || !ok2 {
+			return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form P <=> Q when P or Q was not a boolean.\n%s", SemanticString(expr))
 		}
 		return NewBoolValue(arg1.Val == arg2.Val), nil
 	case OpcodeNoteq:
@@ -487,7 +504,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return NewBoolValue(eq), nil
 	case OpcodeAA, OpcodeSA:
-		return t.evalActionSubscript(opcode, args, c, s0, s1, control, cm)
+		return t.evalActionSubscript(expr, opcode, args, c, s0, s1, control, cm)
 	case OpcodeCdot:
 		return t.evalActionComposition(args, c, s0, s1, control, cm)
 	case OpcodeSF, OpcodeWF, OpcodeTE, OpcodeTF, OpcodeLeadsto, OpcodeArrow, OpcodeBox, OpcodeDiamond:
@@ -788,6 +805,62 @@ func (t *Tool) evalBool(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 	return bval, nil
 }
 
+func requireBoolValue(value Value, format string, args ...any) (*BoolValue, error) {
+	if bval, ok := value.(*BoolValue); ok {
+		return bval, nil
+	}
+	return nil, newTLCError(ECGeneral, format, args...)
+}
+
+func valueKindString(value Value) string {
+	if value == nil {
+		return "<nil>"
+	}
+	return value.KindString()
+}
+
+func (t *Tool) evalBinaryConjunction(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, expr SemanticNode) (Value, error) {
+	for i, arg := range args {
+		value, err := t.Eval(arg, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		side := "Q"
+		if i == 0 {
+			side = "P"
+		}
+		bval, err := requireBoolValue(value, "Attempted to evaluate an expression of form P /\\ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		if !bval.Val {
+			return BoolFalse, nil
+		}
+	}
+	return BoolTrue, nil
+}
+
+func (t *Tool) evalBinaryDisjunction(args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, expr SemanticNode) (Value, error) {
+	for i, arg := range args {
+		value, err := t.Eval(arg, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		side := "Q"
+		if i == 0 {
+			side = "P"
+		}
+		bval, err := requireBoolValue(value, "Attempted to evaluate an expression of form P \\/ Q when %s was\n%s.\n%s", side, valueKindString(value), SemanticString(expr))
+		if err != nil {
+			return nil, err
+		}
+		if bval.Val {
+			return BoolTrue, nil
+		}
+	}
+	return BoolFalse, nil
+}
+
 func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
 	if len(expr.Args) == 0 || len(expr.BdedQuantBounds) == 0 {
 		return nil, newTLCError(ECGeneral, "malformed bounded CHOOSE")
@@ -799,7 +872,7 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 	inVal = inVal.Normalize()
 	enumerable, ok := asEnumerable(inVal)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "CHOOSE domain is not enumerable: %s", inVal)
+		return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of\nform CHOOSE x \\in S: P, but S was not enumerable.\n%s", SemanticString(expr))
 	}
 	pred := expr.Args[0]
 	bvars := expr.BdedQuantSymbolLists[0]
@@ -813,9 +886,13 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		if err != nil {
 			return nil, err
 		}
-		bval, err := t.evalBool(pred, c1, s0, s1, control, cm, "CHOOSE")
+		value, err := t.Eval(pred, c1, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
 		}
 		if bval.Val {
 			return val, nil
@@ -824,7 +901,7 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	return nil, newTLCError(ECGeneral, "CHOOSE had no satisfying element: %s", SemanticString(expr))
+	return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of form\nCHOOSE x \\in S: P, but no element of S satisfied P.\n%s", SemanticString(expr))
 }
 
 func normalizedChooseEnumeration(value Value, enumerable Enumerable) (ValueEnumeration, error) {
@@ -864,9 +941,13 @@ func (t *Tool) evalBoundedExists(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		return nil, err
 	}
 	for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
-		bval, err := t.evalBool(expr.Args[0], c1, s0, s1, control, cm, "\\E")
+		value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
 		}
 		if bval.Val {
 			return BoolTrue, nil
@@ -884,9 +965,13 @@ func (t *Tool) evalBoundedForall(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		return nil, err
 	}
 	for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
-		bval, err := t.evalBool(expr.Args[0], c1, s0, s1, control, cm, "\\A")
+		value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
+		}
+		bval, ok := value.(*BoolValue)
+		if !ok {
+			return nil, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
 		}
 		if !bval.Val {
 			return BoolFalse, nil
@@ -916,7 +1001,11 @@ func (t *Tool) evalCase(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		if CoverageEnabled() {
 			armCM = cm.Get(pair)
 		}
-		guard, err := t.evalBool(pair.Args[0], c, s0, s1, control, armCM, "CASE")
+		value, err := t.Eval(pair.Args[0], c, s0, s1, control, armCM)
+		if err != nil {
+			return nil, err
+		}
+		guard, err := requireBoolValue(value, "A non-boolean expression (%s) was used as a condition of a CASE. %s", valueKindString(value), SemanticString(pair.Args[0]))
 		if err != nil {
 			return nil, err
 		}
@@ -925,7 +1014,7 @@ func (t *Tool) evalCase(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		}
 	}
 	if other == nil {
-		return nil, newTLCError(ECGeneral, "CASE had no true condition: %s", SemanticString(expr))
+		return nil, newTLCError(ECGeneral, "Attempted to evaluate a CASE with no conditions true.\n%s", SemanticString(expr))
 	}
 	return t.Eval(other, c, s0, s1, control, cm)
 }
@@ -1180,7 +1269,11 @@ func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			if err != nil {
 				return nil, err
 			}
-			bval, err := t.evalBool(expr.Args[0], c1, s0, s1, control, cm, "set predicate")
+			value, err := t.Eval(expr.Args[0], c1, s0, s1, control, cm)
+			if err != nil {
+				return nil, err
+			}
+			bval, err := requireBoolValue(value, "Attempted to evaluate an expression of form {x \\in S : P(x)} when P was %s.\n%s", valueKindString(value), SemanticString(expr.Args[0]))
 			if err != nil {
 				return nil, err
 			}
@@ -1239,8 +1332,16 @@ func (t *Tool) evalSetOp(opcode int, left SemanticNode, right SemanticNode, c *C
 	}
 }
 
-func (t *Tool) evalActionSubscript(opcode int, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
-	res, err := t.evalBool(args[0], c, s0, s1, control, cm, "action subscript")
+func (t *Tool) evalActionSubscript(expr SemanticNode, opcode int, args []SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	value, err := t.Eval(args[0], c, s0, s1, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	form := "<A>_e"
+	if opcode == OpcodeSA {
+		form = "[A]_e"
+	}
+	res, err := requireBoolValue(value, "Attempted to evaluate an expression of form %s, but A was not a boolean.\n%s", form, SemanticString(expr))
 	if err != nil {
 		return nil, err
 	}
