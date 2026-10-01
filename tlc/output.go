@@ -133,6 +133,7 @@ const (
 	ECTLCStatsSimu                                       = 2210
 	ECTLCFPCompleted                                     = 2211
 	ECTLCLiveImplied                                     = 2212
+	ECTLCLiveImpliedDebug                                = 2263
 	ECTLCLiveCannotHandleFormula                         = 2213
 	ECTLCLiveWrongFormulaFormat                          = 2214
 	ECTLCExpectedValue                                   = 2215
@@ -881,6 +882,10 @@ func formatMessage(code int, params []string) string {
 	case ECTLCLiveImplied:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Implied-temporal checking--satisfiability problem has %s branches.", params[0])
+		}
+	case ECTLCLiveImpliedDebug:
+		if len(params) >= 5 {
+			return fmt.Sprintf("Implied-temporal checking--branch of satisfiable problem has %s possible error model(s), %s promise(s), %s state check(s), %s action check(s), and a tableau with %s node(s).", params[0], params[1], params[2], params[3], params[4])
 		}
 	case ECTLCLiveCannotHandleFormula:
 		if len(params) > 1 {

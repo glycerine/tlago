@@ -2,6 +2,8 @@ package tlc
 
 import "fmt"
 
+const livenessDebugProperty = "tlc2.tool.liveness.Liveness.debug"
+
 type osExprPem struct {
 	EAAction []*LiveExprNode
 	AEState  []*LiveExprNode
@@ -149,12 +151,25 @@ func ProcessLivenessSilent(tool *Tool, silent bool) ([]*OrderOfSolution, error) 
 		solutions[i].SetPEMs(models)
 		solutions[i].SetCheckState(stateBin)
 		solutions[i].SetCheckAction(actionBin)
+		if livenessDebugEnabled() {
+			PrintMessage(ECTLCLiveImpliedDebug,
+				fmt.Sprintf("%d", len(pembin[i])),
+				fmt.Sprintf("%d", len(solutions[i].Promises)),
+				fmt.Sprintf("%d", len(solutions[i].CheckAction)),
+				fmt.Sprintf("%d", len(solutions[i].CheckState)),
+				fmt.Sprintf("%d", solutions[i].Tableau.Size()))
+		}
 	}
 
 	if !silent {
 		PrintMessage(ECTLCLiveImplied, fmt.Sprintf("%d", len(solutions)))
 	}
 	return solutions, nil
+}
+
+func livenessDebugEnabled() bool {
+	value, ok := tlcLookupSystemProperty(livenessDebugProperty)
+	return ok && javaBooleanProperty(value)
 }
 
 func classifyLivenessExpr(expr *LiveExprNode, pem *osExprPem) error {
