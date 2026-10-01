@@ -78,6 +78,7 @@
 - Already audited recently; do not return from a failed DFID depth run without printing the DFID summary. Java's depth-search loop is inside a `finally` that prints summary on `runTLC` errors.
 - Already audited recently; do not make DFID init continuation friendlier than Java. Initial invariants honor continuation mode, but implied-init violations always return `TLC_PROPERTY_VIOLATED_INITIAL`.
 - Already audited recently; do not import BFS no-init errors into DFID. Java DFID sets the generated-init count to `states.size()`, trims accepted init arrays, and returns `NO_ERROR` even when no initial state survives model constraints.
+- Already audited recently; do not make DFID next-state exceptions more precise than Java. Java DFID only treats stack overflow and out-of-memory as special; every other unexpected `doNext` failure is reported as `GENERAL` with the "computing the set of next states" context, even when BFS would preserve an `EvalException` code.
 - Already audited recently; do not duplicate BFS-style invariant reporting in distributed TLC. Java routes distributed init and successor property checks through `TLCApp.checkState`, while deadlock and incomplete-successor checks happen in distributed next-state generation before fingerprinting.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
@@ -250,5 +251,5 @@
   - `go test ./...`
 - Immediate next steps:
   1. Continue breadth-first audit from the Java `Tool`/value layer into remaining checker, liveness, simulator, and module-function parity gaps.
-  2. Re-check model-checker/DFID cleanup, final reporting, and error-precedence paths against Java's `finally` blocks.
+  2. Continue checker error-precedence audit outside the recently covered cleanup/no-action/DFID next-state exception paths.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.

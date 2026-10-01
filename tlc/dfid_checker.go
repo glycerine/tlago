@@ -533,17 +533,42 @@ func (mc *DFIDModelChecker) dfidNextFailed(curState *TLCStateMut, succState *TLC
 	if err == nil {
 		return NoError
 	}
-	ec := ECGeneral
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil {
-		ec = tlcErr.Code
-	}
-	keepCallStack := ec != ECSystemStackOverflow && ec != ECSystemOutOfMemory
+	ec, params, keepCallStack := dfidNextFailureMessage(err)
 	if mc.SetErrState(curState, succState, keepCallStack, ec) {
-		params := []string{err.Error()}
 		mc.printTrace(ec, params, curState, succState)
 	}
 	return ec
+}
+
+func dfidNextFailureMessage(err error) (int, []string, bool) {
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil && (tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory) {
+		return tlcErr.Code, nil, false
+	}
+	var evalErr *EvalException
+	if errors.As(err, &evalErr) && evalErr != nil && (evalErr.GetErrorCode() == ECSystemStackOverflow || evalErr.GetErrorCode() == ECSystemOutOfMemory) {
+		return evalErr.GetErrorCode(), nil, false
+	}
+	return ECGeneral, []string{javaGeneralErrorMessage("computing the set of next states", err)}, true
+}
+
+func javaGeneralErrorMessage(cause string, err error) string {
+	msg := "TLC threw an unexpected exception."
+	msg += "\nThis was probably caused by an error in the spec or model."
+	if cause == "" {
+		msg += "\nSee the User Output or TLC Console for clues to what happened."
+	} else {
+		msg += "\nThe error occurred when TLC was " + cause + "."
+	}
+	if err == nil {
+		msg += "\nThe exception was a <nil>\n"
+		return msg
+	}
+	msg += fmt.Sprintf("\nThe exception was a %T\n", err)
+	if err.Error() != "" {
+		msg += ": " + err.Error()
+	}
+	return msg
 }
 
 func (mc *DFIDModelChecker) printTrace(errorCode int, params []string, curState *TLCStateMut, succState *TLCStateMut) {
