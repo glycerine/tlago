@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -85,6 +86,16 @@ func TestNaturalsAndIntegersSetMembershipAndOrdering(t *testing.T) {
 	cmp, err = Int().Compare(Nat())
 	if err != nil || cmp <= 0 {
 		t.Fatalf("Int compare Nat = %d/%v, want positive/nil", cmp, err)
+	}
+}
+
+func TestNaturalsGEQArgumentErrorUsesJavaGreaterThanLabel(t *testing.T) {
+	_, err := NatGEQ(NewStringValue("x"), IntZero)
+	if err == nil {
+		t.Fatalf("NatGEQ with non-integer first argument returned nil error")
+	}
+	if !strings.Contains(err.Error(), "argument of > should be an integer") {
+		t.Fatalf("NatGEQ error = %q, want Java Naturals.GEQ > label", err.Error())
 	}
 }
 
