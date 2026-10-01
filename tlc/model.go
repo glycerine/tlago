@@ -501,10 +501,11 @@ func (s *TypedSet) HasValidType() bool {
 }
 
 type MCVariable struct {
-	Name            string
-	ValueAsString   string
-	TLCValue        Value
-	TraceExpression string
+	Name               string
+	ValueAsString      string
+	TLCValue           Value
+	TraceExpression    string
+	traceExpressionSet bool
 }
 
 func NewMCVariable(name string, value any) *MCVariable {
@@ -549,12 +550,13 @@ func (v *MCVariable) ValueAsStringReIndentedAs(indent string) string {
 }
 
 func (v *MCVariable) IsTraceExplorerExpression() bool {
-	return v != nil && v.TraceExpression != ""
+	return v != nil && v.traceExpressionSet
 }
 
 func (v *MCVariable) SetTraceExpression(expr string) {
 	if v != nil {
 		v.TraceExpression = expr
+		v.traceExpressionSet = true
 	}
 }
 
@@ -710,6 +712,7 @@ func (s *MCState) ConjunctiveDescription(includeTraceExpressions bool, indent st
 	if s == nil {
 		return ""
 	}
+	useANSI := len(ansiMarkup) > 0 && ansiMarkup[0]
 	var b strings.Builder
 	for _, variable := range s.Variables {
 		if variable.IsTraceExplorerExpression() && !includeTraceExpressions {
@@ -719,7 +722,13 @@ func (s *MCState) ConjunctiveDescription(includeTraceExpressions bool, indent st
 		b.WriteString(tlaAnd)
 		b.WriteString(" ")
 		if variable.IsTraceExplorerExpression() {
+			if useANSI {
+				b.WriteString("\033[1m")
+			}
 			b.WriteString(variable.SingleLineDisplayName())
+			if useANSI {
+				b.WriteString("\033[0m")
+			}
 		} else {
 			b.WriteString(variable.Name)
 		}
@@ -799,20 +808,18 @@ func (e *MCError) ToSequenceOfRecords(includeHeaders bool) string {
 	var b strings.Builder
 	b.WriteString(tlaBeginTuple)
 	b.WriteString(tlaCR)
-	wrote := false
-	for _, state := range e.States {
+	for i, state := range e.States {
 		if state.BackToState || state.Stuttering {
 			continue
 		}
 		if len(state.Variables) == 0 && !includeHeaders {
 			break
 		}
-		if wrote {
+		if i > 0 {
 			b.WriteString(tlaComma)
 			b.WriteString(tlaCR)
 		}
 		b.WriteString(state.AsRecord(includeHeaders))
-		wrote = true
 	}
 	b.WriteString(tlaCR)
 	b.WriteString(tlaEndTuple)
@@ -827,13 +834,31 @@ func (e *MCError) IsLassoWithDuplicates() bool {
 	if !e.IsLasso() {
 		return false
 	}
+	values := NewValueVec(0)
+	for i := 0; i < len(e.States)-1; i++ {
+		if e.States[i] == nil || e.States[i].Record == nil {
+			return e.isLassoWithDuplicateSimpleRecords()
+		}
+		values.Add(e.States[i].Record)
+	}
+	size, err := NewSetEnumValueVec(values, false).Size()
+	if err != nil {
+		return e.isLassoWithDuplicateSimpleRecords()
+	}
+	return len(e.States) != size
+}
+
+func (e *MCError) isLassoWithDuplicateSimpleRecords() bool {
 	seen := make(map[string]struct{}, len(e.States))
 	for i := 0; i < len(e.States)-1; i++ {
+		if e.States[i] == nil {
+			continue
+		}
 		record := e.States[i].AsSimpleRecord()
 		if _, ok := seen[record]; ok {
 			return true
 		}
 		seen[record] = struct{}{}
 	}
-	return false
+	return len(e.States) != len(seen)
 }

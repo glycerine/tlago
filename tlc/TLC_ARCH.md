@@ -456,6 +456,20 @@ trace-expression metadata. Keep these as concrete structs in `model.go`.
 mirroring Java's `TypedSet` class. Spec-writing code should call those methods
 rather than define model formatting locally.
 
+`MCVariable.isTraceExplorerExpression()` is a nullness test in Java, not a
+non-empty-string test. Go therefore tracks whether `SetTraceExpression` was
+called separately from the stored expression text. `MCState` conjunctive
+descriptions also preserve Java's optional ANSI bold/reset wrapping for trace
+expressions.
+
+`MCError` has two easy-to-clean-up Java quirks that affect trace exploration:
+`toSequenceOfRecords` decides comma insertion from the original state index, not
+from whether a previous non-marker record was emitted, and
+`isLassoWithDuplicates` compares the full lasso trace length against the unique
+normalized records from all states except the final back-to-state marker. The
+method name sounds narrower than the algorithm; keep the algorithm because it
+controls whether a liveness trace gets an explicit trace-view definition.
+
 ### `ModelConfig`
 
 `ModelConfig` parses `.cfg` files with the TLA+ token manager rather than a
