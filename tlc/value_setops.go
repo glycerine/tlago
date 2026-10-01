@@ -131,7 +131,7 @@ func (v *SetCupValue) Elements() ValueEnumeration {
 	enum1, ok1 := asEnumerable(v.Set1)
 	enum2, ok2 := asEnumerable(v.Set2)
 	if !ok1 || !ok2 {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate S \\cup T when S:\n%s\nand T:\n%s\nare not both enumerable", v.Set1, v.Set2))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\cup T when S:\n%s\nand T:\n%s\nare not both enumerable", v.Set1, v.Set2))
 	}
 	return &setCupEnumeration{enum1: enum1.Elements(), enum2: enum2.Elements()}
 }
@@ -218,7 +218,7 @@ func (v *SetCapValue) IsFinite() (bool, error) {
 		return false, err
 	}
 	if !f1 && !f2 {
-		return false, v.unsupported("attempted to check if the set %s is finite", v)
+		return false, v.unsupported("Attempted to check if the set %sis finite.", v)
 	}
 	return true, nil
 }
@@ -315,7 +315,7 @@ func (v *SetCapValue) Elements() ValueEnumeration {
 	if enum2, ok := asEnumerable(v.Set2); ok {
 		return &setFilterEnumeration{enum: enum2.Elements(), predicate: v.Set1, includeWhenMember: true}
 	}
-	return newErrorEnumeration(v.unsupported("attempted to enumerate S \\cap T when neither S:\n%s\nnor T:\n%s\nis enumerable", v.Set1, v.Set2))
+	return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\cap T when neither S:\n%s\nnor T:\n%s\nis enumerable", v.Set1, v.Set2))
 }
 
 func (v *SetCapValue) String() string {
@@ -382,7 +382,7 @@ func (v *SetDiffValue) IsFinite() (bool, error) {
 		return false, err
 	}
 	if !f2 {
-		return false, v.unsupported("attempted to check if the set %s is finite", v)
+		return false, v.unsupported("Attempted to check if the set %sis finite.", v)
 	}
 	return false, nil
 }
@@ -475,7 +475,7 @@ func (v *SetDiffValue) Elements() ValueEnumeration {
 	}
 	enum1, ok := asEnumerable(v.Set1)
 	if !ok {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate S \\ T when S:\n%s\nis not enumerable", v.Set1))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\ T when S:\n%s\nis not enumerable.", v.Set1))
 	}
 	return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: false}
 }
@@ -550,7 +550,7 @@ func (v *UnionValue) Equal(other Value) (bool, error) {
 func (v *UnionValue) Member(elem Value) (bool, error) {
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return false, v.unsupported("attempted to check if:\n%s\nis an element of the non-enumerable set:\n%s", elem, v)
+		return false, v.unsupported("Attempted to check if:\n %s\nis an element of the non-enumerable set\n%s", elem, v)
 	}
 	e := enum.Elements()
 	for {
@@ -568,7 +568,7 @@ func (v *UnionValue) Member(elem Value) (bool, error) {
 func (v *UnionValue) IsFinite() (bool, error) {
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return false, v.unsupported("attempted to check if the nonenumerable set:\n%s\nis a finite set", v)
+		return false, v.unsupported("Attempted to check if the nonenumerable set:\n%s\nis a finite set.", v)
 	}
 	e := enum.Elements()
 	for {
@@ -629,11 +629,17 @@ func (v *UnionValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *UnionValue) TakeExcept(ex ValueExcept) (Value, error) {
-	return takeExceptOnSet(v, ex)
+	if ex.Index < len(ex.Path) {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set:\n%s", v)
+	}
+	return ex.Value, nil
 }
 
 func (v *UnionValue) TakeExcepts(exs []ValueExcept) (Value, error) {
-	return takeExceptsOnSet(v, exs)
+	if len(exs) != 0 {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set:\n %s.", v)
+	}
+	return v, nil
 }
 
 func (v *UnionValue) ToSetEnum() (*SetEnumValue, error) {
@@ -661,7 +667,7 @@ func (v *UnionValue) Elements() ValueEnumeration {
 	}
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate the nonenumerable set:\n%s", v.Set))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate the nonenumerable set:\n%s", v.Set))
 	}
 	return newUnionEnumeration(enum.Elements(), v)
 }
@@ -768,7 +774,7 @@ func (e *unionEnumeration) advanceElementSet() {
 	}
 	enum, ok := asEnumerable(e.elemSet)
 	if !ok {
-		e.err = e.owner.unsupported("attempted to enumerate UNION(s), but some element of s is nonenumerable")
+		e.err = e.owner.unsupported("Attempted to enumerate UNION(s), but some element of s is nonenumerable.")
 		return
 	}
 	e.elemSetEnum = enum.Elements()
@@ -807,14 +813,14 @@ func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool) (*SetEnumValue, 
 
 func takeExceptOnSet(v Value, ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, newTLCError(ECGeneral, "attempted to apply EXCEPT to the set %s", v)
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func takeExceptsOnSet(v Value, exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, newTLCError(ECGeneral, "attempted to apply EXCEPT to the set %s", v)
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set %s.", v)
 	}
 	return v, nil
 }
