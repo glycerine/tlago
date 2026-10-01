@@ -2407,6 +2407,10 @@ Go keeps this as concrete structs in the central `tlc` package:
   `ErrorTraceMessagePrinterRecorder`: it observes state-print/back-to-state
   message codes and builds an `MCError` for TE generation. The `TLC` runner
   subscribes it only when `Options.GenerateTraceSpec` is set.
+- `-generateSpecTE` also installs Java's implicit binary-trace postcondition
+  before the tool is built when binary trace generation is enabled. Go stores
+  the derived TE module name in `Options.TraceSpecModuleName` so the
+  postcondition path and final generated `.tla` module use the same name.
 
 Correctness notes:
 

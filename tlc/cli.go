@@ -481,6 +481,17 @@ func ParseTLCOptions(args []string) (Options, error) {
 	opts.GenerateTraceSpecBinary = generateTESpecBinaryTrace
 	opts.GenerateTraceSpecMonolith = teSpecMonolith
 	opts.TraceSpecOutputDir = teSpecOut
+	if opts.GenerateTraceSpec {
+		opts.TraceSpecOutputDir, opts.TraceSpecModuleName = traceSpecOutputAndModule(opts.SpecFile, opts.TraceSpecOutputDir, opts.StartTime)
+		if opts.GenerateTraceSpecBinary {
+			opts.RuntimeParams.PostConditions = append(opts.RuntimeParams.PostConditions, RuntimePostCondition{
+				Module:       "_TLCTrace",
+				Operator:     "_TLCTraceSilent",
+				ConstantName: "_TLCTraceFile",
+				FileName:     filepath.Join(opts.TraceSpecOutputDir, opts.TraceSpecModuleName+".bin"),
+			})
+		}
+	}
 	parseOK = true
 	return opts, nil
 }
@@ -833,6 +844,28 @@ func cleanPathWithSeparator(path string) string {
 		return clean + string(filepath.Separator)
 	}
 	return clean + string(filepath.Separator)
+}
+
+func traceSpecOutputAndModule(specFile string, output string, timestamp time.Time) (string, string) {
+	originalModule := filepath.Base(trimTLAExtension(specFile))
+	if originalModule == "" || originalModule == "." {
+		originalModule = "Spec"
+	}
+	if output == "" {
+		dir := filepath.Dir(specFile)
+		if dir == "" {
+			dir = "."
+		}
+		return dir, DeriveTESpecModuleName(originalModule, timestamp)
+	}
+	if strings.EqualFold(filepath.Ext(output), ".tla") {
+		dir := filepath.Dir(output)
+		if dir == "" {
+			dir = "."
+		}
+		return dir, strings.TrimSuffix(filepath.Base(output), filepath.Ext(output))
+	}
+	return output, DeriveTESpecModuleName(originalModule, timestamp)
 }
 
 func makeTLCMetaDir(date time.Time, specDir string, metaDirRoot string, fromCheckpoint string) (string, error) {

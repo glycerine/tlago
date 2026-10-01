@@ -65,6 +65,7 @@ type Options struct {
 	GenerateTraceSpecBinary   bool
 	GenerateTraceSpecMonolith bool
 	TraceSpecOutputDir        string
+	TraceSpecModuleName       string
 	ToolMode                  bool
 	DebugPort                 int
 	DebugPortSet              bool
@@ -227,7 +228,10 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 			if outputDir == "" {
 				outputDir = "."
 			}
-			teSpec := NewTraceExplorationSpec(outputDir, time.Now(), t.Tool.GetRootName())
+			teSpec := NewTraceExplorationSpec(outputDir, t.StartTime, t.Tool.GetRootName())
+			if t.TraceSpecModuleName != "" {
+				teSpec = NewTraceExplorationSpecNamed(outputDir, t.TraceSpecModuleName, t.Tool.GetRootName())
+			}
 			if _, genErr := teSpec.Generate(t.Tool, mcError); genErr != nil && err == nil {
 				err = genErr
 				if result.ErrorCode == NoError {
