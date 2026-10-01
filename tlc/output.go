@@ -53,6 +53,7 @@ const (
 	ECSystemErrorWritingPool                             = 2127
 	ECTLCBug                                             = 2128
 	ECSystemDiskgraphAccess                              = 2129
+	ECTLCAAAAAAA                                         = 2130
 	ECTLCRegistryInitError                               = 2131
 	ECTLCValueAssertFailed                               = 2132
 	ECTLCFPNotInSet                                      = 2133
@@ -761,6 +762,8 @@ func formatMessage(code int, params []string) string {
 		return "The error state is:\n"
 	case ECTLCReporterDied:
 		return "Progress report thread died."
+	case ECTLCAAAAAAA:
+		return "AAAAAA"
 	case ECTLCStatePrint1:
 		if len(params) >= 2 {
 			return fmt.Sprintf("%s:\n%s", params[0], params[1])

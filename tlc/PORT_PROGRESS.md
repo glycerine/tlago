@@ -82,6 +82,7 @@
 - Runner process failures must pass through a top-level Java `TLC.process()`-style catch before the finished banner. Checker/simulator panics should become TLC result codes/messages instead of bypassing `TLC_FINISHED`.
 - Periodic checkpointing owns queue resume exactly like Java `ModelChecker.checkpoint`: `DoPeriodicWork` must not defer-resume workers if checkpoint setup fails before the Java resume point. The outer error path finishes the suspended queue instead.
 - Periodic liveness work preserves Java's success-only cleanup: `forceLiveCheck` is cleared and the liveness runtime ratio is updated only after `liveCheck.check(...)` returns `NO_ERROR`. Liveness errors leave the queue suspended for outer termination and keep the forced flag just as Java does.
+- Liveness checkpoint recovery emits Java's odd `EC.TLC_AAAAAAA` marker before each disk-graph recover. Keep the literal `AAAAAA` output even though it is not descriptive, because Java prints it during recovery.
 - Simulation startup banner scheduler text follows Java's runtime map: only plain RL prints `RL`; the action-Q scheduler still prints `Random` even though the worker mode is `RLAction`.
 - BFS `_PERIODIC` evaluation exceptions follow Java `ModelChecker.doPeriodicWork`/outer-catch behavior: report `GENERAL` and stop. A clean boolean `FALSE` remains `TLC_ASSUMPTION_FALSE`; do not reuse initial-assumption evaluation codes for this path.
 - Checker statistics records must use the checker instance `startTime`, not the global TLC runner start time, matching Java `AbstractChecker.getStatistics`.

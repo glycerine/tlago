@@ -1465,6 +1465,7 @@ func (lc *LiveCheck) Recover() error {
 		return nil
 	}
 	for _, checker := range lc.Checkers {
+		PrintMessage(ECTLCAAAAAAA)
 		if err := checker.Recover(); err != nil {
 			return err
 		}
