@@ -376,7 +376,7 @@ func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Con
 		}
 	}
 	if tool != nil && v.OpDef != nil {
-		return tool.Eval(v.OpDef.Body, con, state, pstate, control, cm)
+		return tool.EvalPure(v.OpDef, args, con, state, pstate, control, cm)
 	}
 	return ValUndef, nil
 }
