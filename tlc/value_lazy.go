@@ -91,15 +91,15 @@ func (v *LazyValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut
 	return res, nil
 }
 
-func (v *LazyValue) ready() (Value, error) {
+func (v *LazyValue) ready(message string) (Value, error) {
 	if v.Val == nil || v.Val == ValUndef {
-		return nil, v.unsupported("error(TLC): attempted to use an unreduced lazy value")
+		return nil, v.unsupported("%s", message)
 	}
 	return v.Val, nil
 }
 
 func (v *LazyValue) Compare(other Value) (int, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to compare lazy values.")
 	if err != nil {
 		return 0, err
 	}
@@ -107,7 +107,7 @@ func (v *LazyValue) Compare(other Value) (int, error) {
 }
 
 func (v *LazyValue) Equal(other Value) (bool, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to check equality of lazy values.")
 	if err != nil {
 		return false, err
 	}
@@ -115,7 +115,7 @@ func (v *LazyValue) Equal(other Value) (bool, error) {
 }
 
 func (v *LazyValue) Member(elem Value) (bool, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to check set membership of lazy values.")
 	if err != nil {
 		return false, err
 	}
@@ -123,7 +123,7 @@ func (v *LazyValue) Member(elem Value) (bool, error) {
 }
 
 func (v *LazyValue) IsFinite() (bool, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to check if a lazy value is a finite set.")
 	if err != nil {
 		return false, err
 	}
@@ -131,7 +131,7 @@ func (v *LazyValue) IsFinite() (bool, error) {
 }
 
 func (v *LazyValue) Size() (int, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to compute size of lazy value.")
 	if err != nil {
 		return 0, err
 	}
@@ -139,7 +139,7 @@ func (v *LazyValue) Size() (int, error) {
 }
 
 func (v *LazyValue) Normalize() Value {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to normalize lazy value.")
 	if err != nil {
 		panic(err)
 	}
@@ -154,7 +154,7 @@ func (v *LazyValue) DeepNormalize() {
 }
 
 func (v *LazyValue) IsNormalized() bool {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to normalize lazy value.")
 	if err != nil {
 		panic(err)
 	}
@@ -171,7 +171,7 @@ func (v *LazyValue) DeepCopy() Value {
 }
 
 func (v *LazyValue) FingerPrint(fp uint64) uint64 {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to fingerprint a lazy value.")
 	if err != nil {
 		panic(err)
 	}
@@ -179,15 +179,15 @@ func (v *LazyValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *LazyValue) Permute(perm *MVPerm) Value {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to apply permutation to lazy value.")
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return val.Permute(perm)
 }
 
 func (v *LazyValue) TakeExcept(ex ValueExcept) (Value, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to apply EXCEPT construct to lazy value.")
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +195,7 @@ func (v *LazyValue) TakeExcept(ex ValueExcept) (Value, error) {
 }
 
 func (v *LazyValue) TakeExcepts(exs []ValueExcept) (Value, error) {
-	val, err := v.ready()
+	val, err := v.ready("Error(TLC): Attempted to apply EXCEPT construct to lazy value.")
 	if err != nil {
 		return nil, err
 	}
