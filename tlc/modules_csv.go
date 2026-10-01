@@ -3,6 +3,7 @@ package tlc
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"regexp"
@@ -168,12 +169,20 @@ func csvReadLines(path string) ([]string, error) {
 	}
 	defer file.Close()
 	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return nil, err
+		}
+		if len(line) != 0 {
+			line = strings.TrimSuffix(line, "\n")
+			line = strings.TrimSuffix(line, "\r")
+			lines = append(lines, line)
+		}
+		if err == io.EOF {
+			break
+		}
 	}
 	return lines, nil
 }
