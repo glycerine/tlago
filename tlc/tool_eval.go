@@ -796,14 +796,18 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 	if err != nil {
 		return nil, err
 	}
-	enumerable, ok := asEnumerable(inVal.Normalize())
+	inVal = inVal.Normalize()
+	enumerable, ok := asEnumerable(inVal)
 	if !ok {
 		return nil, newTLCError(ECGeneral, "CHOOSE domain is not enumerable: %s", inVal)
 	}
 	pred := expr.Args[0]
 	bvars := expr.BdedQuantSymbolLists[0]
 	isTuple := len(expr.BdedQuantATuple) > 0 && expr.BdedQuantATuple[0]
-	enum := enumerable.Elements()
+	enum, err := normalizedChooseEnumeration(inVal, enumerable)
+	if err != nil {
+		return nil, err
+	}
 	for val := enum.NextElement(); val != nil; val = enum.NextElement() {
 		c1, err := bindBoundedValue(c, bvars, isTuple, val)
 		if err != nil {
@@ -821,6 +825,37 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		return nil, err
 	}
 	return nil, newTLCError(ECGeneral, "CHOOSE had no satisfying element: %s", SemanticString(expr))
+}
+
+func normalizedChooseEnumeration(value Value, enumerable Enumerable) (ValueEnumeration, error) {
+	switch v := value.(type) {
+	case *SetEnumValue:
+		if _, err := v.normalizeSet(); err != nil {
+			return nil, err
+		}
+		return v.Elements(), nil
+	case *SubsetValue:
+		v.Normalize()
+		return v.Elements(), nil
+	case *KSubsetValue:
+		v.Normalize()
+		return v.Elements(), nil
+	case *IntervalValue:
+		return v.Elements(), nil
+	}
+	// Java EnumerableValue.elements(Ordering.NORMALIZED) falls back to
+	// enumerating into a SetEnumValue and normalizing that enumerated set.
+	set, err := toSetEnumValue(value)
+	if err != nil {
+		set, err = setEnumFromEnumeration(enumerable.Elements(), false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, err := set.normalizeSet(); err != nil {
+		return nil, err
+	}
+	return set.Elements(), nil
 }
 
 func (t *Tool) evalBoundedExists(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
