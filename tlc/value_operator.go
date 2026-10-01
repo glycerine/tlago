@@ -122,11 +122,16 @@ type OpLambdaValue struct {
 	State   *TLCStateMut
 	PState  *TLCStateMut
 	Control int
+	CM      CostModel
 }
 
-func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int) *OpLambdaValue {
+func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *OpLambdaValue {
 	if con == nil {
 		con = EmptyContext
+	}
+	cm := DoNotRecordCostModel
+	if len(cms) > 0 {
+		cm = cms[0]
 	}
 	return &OpLambdaValue{
 		operatorValueBase: operatorValueBase{KindValue: OpLambdaValueKind, Label: "<Operator " + opDef.String() + ">"},
@@ -136,6 +141,7 @@ func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStat
 		State:             state,
 		PState:            pstate,
 		Control:           control,
+		CM:                cm,
 	}
 }
 
@@ -174,7 +180,7 @@ func (v *OpLambdaValue) Eval(args []Value, control int) (Value, error) {
 	if EvalIsEnabled(v.Control) {
 		control = EvalSetEnabled(control)
 	}
-	return v.Tool.Eval(v.OpDef.Body, ctx, v.State, v.PState, control)
+	return v.Tool.Eval(v.OpDef.Body, ctx, v.State, v.PState, control, v.CM)
 }
 
 type OpRcdValue struct {

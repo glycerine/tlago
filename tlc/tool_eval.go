@@ -206,7 +206,7 @@ func (t *Tool) evalImplOpArgKind(expr *OpArgNode, c *Context, s0 *TLCStateMut, s
 	val := t.Lookup(expr.Op, c, s0, false)
 	switch v := val.(type) {
 	case *OpDefNode:
-		return NewOpLambdaValue(v, t, c, s0, s1, control), nil
+		return NewOpLambdaValue(v, t, c, s0, s1, control, cm), nil
 	case Value:
 		return v, nil
 	default:
