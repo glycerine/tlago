@@ -20,6 +20,7 @@ type Simulator struct {
 	TraceFile        string
 	TraceActions     string
 	MetaDir          string
+	StartTime        time.Time
 	Rand             *JavaRandom
 	Seed             int64
 	Aril             int64
@@ -105,6 +106,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		TraceNum:      traceNum,
 		Seed:          seed,
 		MetaDir:       "states",
+		StartTime:     time.Now(),
 		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
@@ -174,7 +176,7 @@ func (s *Simulator) PrintSummary() {
 		return
 	}
 	if CoverageAnyEnabled() {
-		ReportCoverage(s.Tool, TLCStartTime())
+		ReportCoverage(s.Tool, s.StartTime)
 	}
 	if err := s.writeActionFlowGraph(); err != nil {
 		PrintError(ECTLCReporterDied, err.Error())
@@ -240,7 +242,7 @@ func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval ti
 			(*coverageCountdown)--
 		} else {
 			if CoverageAnyEnabled() {
-				ReportCoverage(s.Tool, TLCStartTime())
+				ReportCoverage(s.Tool, s.StartTime)
 			}
 			*coverageCountdown = periodicCoverageCountdown(interval)
 		}
@@ -391,13 +393,7 @@ func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 	mean := int64(m2AndMean & 0xffffffff)
 	m2 := uint64(m2AndMean) >> 32
 	traces := s.NumGenTraces.Load()
-	if traces == 0 && s.TracesGenerated != 0 {
-		traces = s.TracesGenerated
-	}
 	states := s.NumGenStates.Load()
-	if states == 0 && s.StatesGenerated != 0 {
-		states = s.StatesGenerated
-	}
 	names := []*UniqueString{
 		tlcGetTraces,
 		tlcGetDuration,
@@ -413,7 +409,7 @@ func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
 	}
 	values := []Value{
 		intValueFromInt64(traces),
-		intValueFromDurationSince(TLCStartTime()),
+		intValueFromDurationSince(s.StartTime),
 		intValueFromInt64(states),
 		stats.GetTraceStatistics(state),
 		NewIntValue(int32(currentWorkerIDOrZero())),
