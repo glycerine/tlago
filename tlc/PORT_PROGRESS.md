@@ -108,6 +108,7 @@
 - Already audited recently; do not drop operator-argument lambda cost models. Java constructs `OpLambdaValue(..., cm)` from `OpArgKind` and evaluates the operator body with that `cm`; copies of `OpLambdaValue` still do not copy `cm`, matching Java's copy constructor.
 - Already audited recently; do not drop set-predicate cost models. Java constructs `SetPredValue(..., cm)`, copies that `cm`, and uses it when evaluating membership/enumeration predicates.
 - Already audited recently; do not pass a debug/call-stack tool into final liveness checking. Java calls `liveCheck.finalCheck(tool.noDebug())`; Go now mirrors that final-check call just like periodic liveness calls.
+- Already audited recently; do not loop on normal tableau disk graph semantics unless touched: Go has the ordinary `TableauDiskGraph` path. Java's `DebugTableauDiskGraph` is a `TLCGlobals.tool` GraphViz-after-every-mutation output wrapper, not a different graph algorithm; port that later with debugger/output surfaces if needed.
 - Already audited recently; do not allow DFID liveness despite the dead code in `DFIDModelChecker`. Current Java asserts that DFID does not support checking liveness properties before model checking starts.
 - Already audited recently; do not return from a failed DFID depth run without printing the DFID summary. Java's depth-search loop is inside a `finally` that prints summary on `runTLC` errors.
 - Already audited recently; do not make DFID init continuation friendlier than Java. Initial invariants honor continuation mode, but implied-init violations always return `TLC_PROPERTY_VIOLATED_INITIAL`.
@@ -294,6 +295,7 @@
 
 - Latest audit focus:
   - `Tool.enabled`, `Tool.getNextStates`, `Tool.processUnchanged`, and `Tool.evalAppl` have just been re-audited against Java control flow.
+  - `ModelChecker.doInit`/`doNext`, worker successor processing, cleanup, `TLCEval`, `ANY`, `STRING`, no-op/add-and-check liveness, and normal tableau disk graph behavior were re-checked against Java control flow. No code changes were needed in this audit pass; Java's unsupported probabilistic `CASE` and TLCEval's current-worker cache quirk are intentionally mirrored.
   - Deferred value objects now preserve or deliberately drop cost models according to the Java constructors for `LazyValue`, `FcnLambdaValue`, `OpLambdaValue`, and `SetPredValue`.
   - DFID now rejects requested liveness checking at model-check entry like current Java; the older Java liveness calls remain dead behind that guard.
 - Last verified command:
