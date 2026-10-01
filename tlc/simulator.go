@@ -150,7 +150,7 @@ func (s *Simulator) Simulate() (int, error) {
 		return result, err
 	}
 	if initStates.IsEmpty() {
-		return ECTLCNoStatesSatisfyingInit, nil
+		return PrintError(ECTLCNoStatesSatisfyingInit), nil
 	}
 	PrintMessage(ECTLCInitGenerated1, fmtInt(initStates.Size()), "")
 	initStates.DeepNormalize()
@@ -591,7 +591,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 		}
 	}
 	if all.Size() > 0 && filtered.IsEmpty() {
-		return nil, ECTLCNoStatesSatisfyingInitAndConstraint, nil
+		return nil, PrintError(ECTLCNoStatesSatisfyingInitAndConstraint), nil
 	}
 	return filtered, NoError, nil
 }
