@@ -60,10 +60,13 @@ func (r *ErrorTraceMessageRecorder) Record(msg Message) {
 		} else if len(msg.Params) > 0 {
 			stateOrdinal, _ = strconv.Atoi(msg.Params[0])
 		}
-		if stateOrdinal <= 0 || r.errorTrace == nil || stateOrdinal > len(r.errorTrace.States) {
+		if stateOrdinal <= 0 {
 			return
 		}
 		r.traceFinished = true
+		if r.errorTrace == nil || stateOrdinal > len(r.errorTrace.States) {
+			return
+		}
 		target := r.errorTrace.States[stateOrdinal-1]
 		r.errorTrace.AddState(NewMCStateMarker(target, false, true))
 	}

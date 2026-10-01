@@ -495,6 +495,11 @@ identifier counter starts at zero and increments before use, so a fresh process
 first emits suffix `1000`; timestamps and modification-history dates use Java
 `Date.toString()`-style strings rather than Go's `time.Time.String()` output.
 
+`ErrorTraceMessagePrinterRecorder` observes printed state messages to reconstruct
+the error trace. Its back-to-state path treats any parseable positive ordinal as
+a terminal marker before it validates that the ordinal points at an existing
+state, so Go's recorder must finish the trace before target validation too.
+
 ### `ModelConfig`
 
 `ModelConfig` parses `.cfg` files with the TLA+ token manager rather than a
