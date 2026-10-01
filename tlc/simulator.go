@@ -485,7 +485,7 @@ func (s *Simulator) createConfig() Value {
 		NewIntValue(int32(int64(workerCount) * s.TraceNum)),
 		NewBoolValue(s.CheckDeadlock),
 		NewStringValue(fmt.Sprintf("%d", s.Seed)),
-		NewStringValue(fmt.Sprintf("%d", s.Aril)),
+		NewStringValue("0"),
 		NewIntValue(int32(workerCount)),
 		NewStringValue(TLCInstallLocation()),
 		NewStringValue(s.schedulerName()),
