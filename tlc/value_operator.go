@@ -485,6 +485,8 @@ func WithEvaluatingOpDef(value any, opDef *OpDefNode) any {
 			out.Add(handle.withOpDef(opDef))
 		}
 		return out
+	case *CallableValue:
+		return v.withOpDef(opDef)
 	default:
 		return value
 	}
@@ -496,6 +498,15 @@ func (v *EvaluatingValue) withOpDef(opDef *OpDefNode) *EvaluatingValue {
 	}
 	out := *v
 	out.OpDef = opDef
+	return &out
+}
+
+func (v *CallableValue) withOpDef(opDef *OpDefNode) *CallableValue {
+	if v == nil || opDef == nil {
+		return v
+	}
+	out := *v
+	out.EvaluatingValue = v.EvaluatingValue.withOpDef(opDef)
 	return &out
 }
 
