@@ -64,10 +64,10 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"ndJsonSerialize", "ndJsonDeserialize",
 	},
 	"_JsonTrace": {
-		"_TLCState",
+		"_JsonTrace",
 	},
 	"_TLCTrace": {
-		"_TLCTraceDeserialize", "_TLCTraceSerialize", "_TLCState",
+		"_TLCTrace",
 	},
 	"IOUtils": {
 		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
