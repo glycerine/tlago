@@ -291,8 +291,12 @@ type TypedSet struct {
 	Type   string
 }
 
+func NewTypedSet() *TypedSet {
+	return &TypedSet{Values: []string{}}
+}
+
 func ParseTypedSet(set string) *TypedSet {
-	result := &TypedSet{}
+	result := NewTypedSet()
 	set = strings.TrimSpace(set)
 	if set == "" {
 		return result
@@ -392,20 +396,17 @@ func (s *TypedSet) GetValues() []string {
 	if s == nil {
 		return nil
 	}
-	out := make([]string, len(s.Values))
-	copy(out, s.Values)
-	return out
+	return s.Values
 }
 
 func (s *TypedSet) ValuesAsList() []string {
 	if s == nil {
 		return nil
 	}
-	out := make([]string, len(s.Values))
 	if !s.HasType() {
-		copy(out, s.Values)
-		return out
+		return s.Values
 	}
+	out := make([]string, len(s.Values))
 	for i, value := range s.Values {
 		out[i] = s.Type + "_" + value
 	}
@@ -420,7 +421,7 @@ func (s *TypedSet) ValueCount() int {
 }
 
 func (s *TypedSet) Value(index int) string {
-	if s == nil || index < 0 || index >= len(s.Values) {
+	if s == nil || index >= len(s.Values) {
 		return ""
 	}
 	if s.HasType() {
@@ -433,7 +434,11 @@ func (s *TypedSet) SetValues(values []string) {
 	if s == nil {
 		return
 	}
-	s.Values = append([]string(nil), values...)
+	if values == nil {
+		s.Values = []string{}
+		return
+	}
+	s.Values = values
 }
 
 func (s *TypedSet) Equals(other *TypedSet) bool {
@@ -465,9 +470,6 @@ func (s *TypedSet) HashCode() int32 {
 }
 
 func javaStringArrayHashCode(values []string) int32 {
-	if values == nil {
-		return 0
-	}
 	result := int32(1)
 	for _, value := range values {
 		result = 31*result + javaStringHashCode(value)
