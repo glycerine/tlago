@@ -211,7 +211,7 @@ func (m *DistributedFPSetManager) GetStatesSeen() uint64 {
 	if m == nil {
 		return 0
 	}
-	total := m.StatesSeen.Load()
+	total := uint64(1) + m.StatesSeen.Load()
 	for _, set := range m.Sets {
 		if set != nil {
 			total += set.GetStatesSeen()

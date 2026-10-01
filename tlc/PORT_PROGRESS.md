@@ -56,7 +56,7 @@
 - MemFPSet2 collision diagnostics: preserve Java's `checkFPs` cross-bucket loop quirk that tests a later bucket for non-nil but iterates the current bucket's bytes with the later bucket's low bits. This affects reported collision probability; see `TestMemFPSet2CheckFPsPreservesJavaCrossBucketQuirk`.
 - DFID FP-int status decoding: Java uses unsigned `>>> SBits` for `getLevel` and `isLeaf`; Go must cast through `uint32` before shifting high-bit statuses. See `TestFPIntSetStatusLevelUsesJavaUnsignedShift`.
 - DFID `MemFPIntSet.checkFPs` reconstructs diagnostic longs with Java's signed low-int OR, not the normal unsigned-low fingerprint join used by lookup/status code. See `TestMemFPIntSetCheckFPsUsesJavaSignedLowBits`.
-- Distributed FP-set partitioning is not the same as local `MultiFPSet`: Java `FPSetManager.getFPSetIndex` uses least significant bits, `(fp & 0x7fffffffffffffff) % numServers`, because distributed reassignment must not consume the high bits reserved by MSB disk FP sets. Distributed worker holder ordering uses Java signed-`long` sort order before partitioning.
+- Distributed FP-set partitioning is not the same as local `MultiFPSet`: Java `FPSetManager.getFPSetIndex` uses least significant bits, `(fp & 0x7fffffffffffffff) % numServers`, because distributed reassignment must not consume the high bits reserved by MSB disk FP sets. Distributed worker holder ordering uses Java signed-`long` sort order before partitioning, and distributed `getStatesSeen` includes Java's initial-state `+1` offset.
 - Special values: Java `UndefValue` and `UserValue` inherit base `Value.fingerPrint`, which deliberately fails when such values reach a state fingerprint. Go must not silently return the previous fingerprint for `UNDEF`, `ANY`, or other user values; see `TestSpecialValuesCannotBeFingerprintedLikeJava`.
 - Core checker diagnostics: Java MP templates for initial-state, incomplete-state, invariant/action evaluation, deadlock, no-next-action, no-init-state, system stack/heap failures, failed trace recovery, fingerprint exceptions, TLC bugs, key liveness failures, and `GENERAL` substitution have been mirrored in `output.go`; keep `GENERAL` cause/throwable call sites collapsed through `javaGeneralErrorMessage`.
 - Worker error-time postconditions are load-bearing and worker-owned in Java. `Worker.doNextSetErr` wraps `ModelChecker.doNextSetErr` and then invokes the postcondition hook with a reconstructed counterexample, but Java's direct `ModelChecker.doNext` helper does not invoke that hook; keep Go's worker wrapper and direct helper separate.
@@ -343,7 +343,7 @@
   - `MemFPSet2.CheckFPs` now preserves Java's current-bucket cross-bucket diagnostic quirk.
   - DFID `FPIntSet` status level decoding now uses Java unsigned-shift semantics for high-bit statuses.
   - DFID `MemFPIntSet.CheckFPs` now uses Java's signed low-int reconstruction for reported collision distances.
-  - Distributed FP-set manager indexing now follows Java's least-significant-bit partitioning, and distributed worker holder sorting uses signed Java `long` ordering.
+  - Distributed FP-set manager indexing now follows Java's least-significant-bit partitioning, distributed worker holder sorting uses signed Java `long` ordering, and distributed states-seen accounting includes Java's initial-state offset.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -401,7 +401,7 @@
   - `GetVal`/`GetOpContext` now use Java's always-lazy expression binding with cacheability controlled by the boolean flag; this corrects the old eager-evaluation interpretation of `false`.
   - Predicate/action temporal formula diagnostics now use Java's `TLC_ENCOUNTERED_FORMULA_IN_PREDICATE` code and labels.
   - Expression fallback diagnostics now use Java text for non-enumerable `\subseteq` left operands and the final TLC-bug evaluator fallback.
-  - Distributed FP-set manager indexing and distributed worker sorted holder order were re-audited against Java `FPSetManager`/`TLCWorker`; Go now uses Java's low-bit server partition and signed-`long` sort order instead of local `MultiFPSet` high-bit partitioning and unsigned sorting.
+  - Distributed FP-set manager indexing, states-seen accounting, and distributed worker sorted holder order were re-audited against Java `FPSetManager`/`TLCWorker`; Go now uses Java's low-bit server partition, initial-state accounting offset, and signed-`long` sort order instead of local `MultiFPSet` high-bit partitioning and unsigned sorting.
   - Worker result precedence and worker-local register aggregation were re-audited with no code changes needed.
 - Last verified command:
   - `go test ./...`
