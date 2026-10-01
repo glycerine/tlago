@@ -643,6 +643,13 @@ func standardPickSuccessor(tool *Tool, args []SemanticNode, con *Context, state 
 	if err != nil {
 		return nil, err
 	}
+	if _, ok := guard.(*BoolValue); !ok {
+		kind := "<nil>"
+		if guard != nil {
+			kind = guard.KindString()
+		}
+		return nil, newTLCError(ECGeneral, "In evaluating TLCExt!PickSuccessor, a non-boolean expression (%s) was used as the condition of an IF.\n%s", kind, SemanticString(args[0]))
+	}
 	return TLCExtPickSuccessor(tool, guard, state, pstate)
 }
 
