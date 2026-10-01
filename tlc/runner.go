@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -183,12 +184,22 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	PrintMessage(ECTLCStarting)
 	var result *Result
 	var err error
-	switch t.Mode {
-	case RunModeSimulate:
-		result, err = t.processSimulation()
-	default:
-		result, err = t.processModelChecking()
-	}
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				err = panicValueAsError(recovered)
+				code, params := tlcProcessFailureMessage(err)
+				PrintError(code, params...)
+				result = &Result{ErrorCode: code}
+			}
+		}()
+		switch t.Mode {
+		case RunModeSimulate:
+			result, err = t.processSimulation()
+		default:
+			result, err = t.processModelChecking()
+		}
+	}()
 	if result == nil {
 		result = &Result{ErrorCode: ECGeneral}
 	}
@@ -219,6 +230,41 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		return result, err
 	}
 	return result, err
+}
+
+func panicValueAsError(value any) error {
+	switch v := value.(type) {
+	case nil:
+		return nil
+	case error:
+		return v
+	case string:
+		return errors.New(v)
+	default:
+		return fmt.Errorf("%v", v)
+	}
+}
+
+func tlcProcessFailureMessage(err error) (int, []string) {
+	var eval *EvalException
+	if errors.As(err, &eval) && eval != nil {
+		code := eval.GetErrorCode()
+		if eval.HasParameters() {
+			return code, eval.GetParameters()
+		}
+		if code == ECGeneral {
+			return code, generalErrorParams("", err)
+		}
+		return code, nil
+	}
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil {
+		switch tlcErr.Code {
+		case ECSystemStackOverflow, ECSystemOutOfMemory, ECTLCBug:
+			return tlcErr.Code, nil
+		}
+	}
+	return ECGeneral, generalErrorParams("", err)
 }
 
 func (t *TLC) applyGlobals() {
