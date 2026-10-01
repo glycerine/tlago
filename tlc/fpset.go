@@ -7,6 +7,8 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
+	"runtime/debug"
 	"sync"
 )
 
@@ -15,6 +17,11 @@ const (
 	multiFPSetMaxFPBits = 30
 	multiFPSetMinFPBits = 0
 	FPSetImplProperty   = "tlc2.tool.fp.FPSet.impl"
+)
+
+const (
+	tlcRuntimeMinFPMemSize        = int64(20 * (1 << 19))
+	tlcRuntimeDefaultNonHeapBytes = int64(64 * 1024 * 1024)
 )
 
 type FPSetConfiguration struct {
@@ -76,12 +83,16 @@ func (c *FPSetConfiguration) GetMemoryInBytes() int64 {
 		divisor = 1
 	}
 	var memory int64
-	if c.MemoryInBytes > 0 {
-		memory = int64(float64(c.MemoryInBytes) * c.Ratio)
+	if FPSetAllocatesOnHeap(c.Implementation) {
+		requested := c.Ratio
+		if c.MemoryInBytes > 0 {
+			requested = float64(c.MemoryInBytes) * c.Ratio
+		}
+		memory = tlcRuntimeFPMemSize(requested)
 	} else {
-		memory = c.MemoryInBytes
+		memory = tlcRuntimeNonHeapPhysicalMemory()
 	}
-	if memory > 0 && divisor > 1 {
+	if divisor > 1 {
 		return memory / divisor
 	}
 	return memory
@@ -142,6 +153,43 @@ func NewMultiFPSetConfiguration(config *FPSetConfiguration) *FPSetConfiguration 
 	child.NoNesting = true
 	child.MemoryDivisor = int64(config.GetMultiFPSetCnt())
 	return &child
+}
+
+func tlcRuntimeFPMemSize(fpMemSize float64) int64 {
+	maxMemory := tlcRuntimeMaxHeapMemoryBytes()
+	if fpMemSize == -1 {
+		fpMemSize = float64(maxMemory >> 2)
+	}
+	if 0 <= fpMemSize && fpMemSize <= 1 {
+		fpMemSize = float64(maxMemory) * fpMemSize
+	}
+	if fpMemSize < float64(tlcRuntimeMinFPMemSize) {
+		fpMemSize = float64(tlcRuntimeMinFPMemSize)
+	}
+	if fpMemSize >= float64(maxMemory) {
+		fpMemSize = float64(maxMemory - (maxMemory >> 2))
+	}
+	if fpMemSize < 0 {
+		return 0
+	}
+	return int64(fpMemSize)
+}
+
+func tlcRuntimeMaxHeapMemoryBytes() int64 {
+	limit := debug.SetMemoryLimit(-1)
+	if limit > 0 && limit < math.MaxInt64/4 {
+		return limit
+	}
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	if stats.Sys > 0 {
+		return int64(stats.Sys)
+	}
+	return tlcRuntimeMinFPMemSize * 4
+}
+
+func tlcRuntimeNonHeapPhysicalMemory() int64 {
+	return tlcRuntimeDefaultNonHeapBytes
 }
 
 func fpSetImplementationFromEnv() string {
