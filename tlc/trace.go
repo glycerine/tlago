@@ -123,6 +123,14 @@ func (t *TLCTrace) WriteInitState(state *TLCStateMut, fp uint64) error {
 }
 
 func (t *TLCTrace) WriteState(predecessor *TLCStateMut, fp uint64, state *TLCStateMut, action *Action) (int64, error) {
+	return t.writeState(predecessor, fp, state, action, true)
+}
+
+func (t *TLCTrace) WriteStateRecord(predecessor *TLCStateMut, fp uint64, state *TLCStateMut) (int64, error) {
+	return t.writeState(predecessor, fp, state, nil, false)
+}
+
+func (t *TLCTrace) writeState(predecessor *TLCStateMut, fp uint64, state *TLCStateMut, action *Action, attachMetadata bool) (int64, error) {
 	if t == nil {
 		return TLCStateInitUID, nil
 	}
@@ -158,9 +166,11 @@ func (t *TLCTrace) WriteState(predecessor *TLCStateMut, fp uint64, state *TLCSta
 		Action:      action,
 	})
 	if state != nil {
-		state.WorkerID = 0
 		state.UID = uid
-		state.attachTraceMetadata(predecessor, action)
+		if attachMetadata {
+			state.WorkerID = 0
+			state.attachTraceMetadata(predecessor, action)
+		}
 		if state.Level() > t.level {
 			t.level = state.Level()
 		}

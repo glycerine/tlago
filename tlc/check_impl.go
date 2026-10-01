@@ -160,12 +160,7 @@ func (c *CheckImpl) CheckState(state *TLCStateMut) (bool, error) {
 	}
 	if c.FPSet == nil || !c.FPSet.Contains(fp) {
 		if c.Trace != nil {
-			var err error
-			if c.CurState == nil {
-				err = c.Trace.WriteInitState(state, fp)
-			} else {
-				err = c.Trace.WriteNextState(c.CurState, fp, state, nil)
-			}
+			_, err := c.Trace.WriteStateRecord(c.CurState, fp, state)
 			if err != nil {
 				return false, err
 			}
