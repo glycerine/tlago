@@ -41,6 +41,8 @@ type Simulator struct {
 	Stopped         bool
 }
 
+const simulatorUnboundedTraceDepth = math.MaxInt32
+
 type SimulatorOption func(*Simulator)
 
 func WithSimulatorTraceFile(traceFile string) SimulatorOption {
@@ -90,7 +92,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	}
 	SetTLCStateTool(tool)
 	if traceDepth == -1 {
-		traceDepth = int(^uint(0) >> 1)
+		traceDepth = simulatorUnboundedTraceDepth
 	}
 	checkDeadlock := deadlock
 	if tool != nil && tool.GetModelConfig() != nil {
@@ -480,7 +482,7 @@ func (s *Simulator) createConfig() Value {
 		tlcGetSched,
 	}
 	depth := int32(s.TraceDepth)
-	if s.TraceDepth == int(^uint(0)>>1) {
+	if s.TraceDepth == simulatorUnboundedTraceDepth {
 		depth = -1
 	}
 	workerCount := len(s.Workers)
@@ -721,7 +723,7 @@ func (s *Simulator) printBehaviorTrace(stateTrace *StateVec) {
 	if stateTrace == nil || stateTrace.Size() == 0 {
 		return
 	}
-	if s.TraceDepth == int(^uint(0)>>1) {
+	if s.TraceDepth == simulatorUnboundedTraceDepth {
 		PrintMessage(ECTLCErrorState)
 		PrintStandaloneErrorState(stateTrace.Last())
 		return
