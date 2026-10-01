@@ -107,6 +107,7 @@ type TLCStateMut struct {
 	callable    func() (any, error)
 	cached      map[int]Value
 	printRecord *RecordValue
+	functional  bool
 }
 
 func NewEmptyState() *TLCStateMut {
@@ -118,11 +119,20 @@ func NewEmptyState() *TLCStateMut {
 	}
 }
 
+func NewFunctionalState() *TLCStateMut {
+	state := NewEmptyState()
+	state.functional = true
+	return state
+}
+
 func (s *TLCStateMut) CreateEmpty() *TLCStateMut {
 	return NewEmptyState()
 }
 
 func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
+	if s != nil && s.functional {
+		s = s.functionalCopy()
+	}
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) {
 		s.values[loc] = value
@@ -131,6 +141,9 @@ func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
 }
 
 func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source SemanticNode) *TLCStateMut {
+	if s != nil && s.functional {
+		s = s.functionalCopy()
+	}
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) {
 		s.values[loc] = value
@@ -141,6 +154,9 @@ func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source Sem
 }
 
 func (s *TLCStateMut) Unbind(name *UniqueString) *TLCStateMut {
+	if s != nil && s.functional {
+		s = s.functionalCopy()
+	}
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) {
 		s.values[loc] = nil
@@ -149,6 +165,32 @@ func (s *TLCStateMut) Unbind(name *UniqueString) *TLCStateMut {
 		}
 	}
 	return s
+}
+
+func (s *TLCStateMut) functionalCopy() *TLCStateMut {
+	if s == nil {
+		return NewFunctionalState()
+	}
+	values := make([]Value, len(s.values))
+	copy(values, s.values)
+	var sources []SemanticNode
+	if s.sources != nil {
+		sources = make([]SemanticNode, len(s.sources))
+		copy(sources, s.sources)
+	}
+	return &TLCStateMut{
+		WorkerID:    s.WorkerID,
+		UID:         s.UID,
+		level:       s.level,
+		values:      values,
+		sources:     sources,
+		pred:        s.pred,
+		action:      s.action,
+		callable:    s.callable,
+		cached:      s.cached,
+		printRecord: s.printRecord,
+		functional:  true,
+	}
 }
 
 func (s *TLCStateMut) Lookup(name *UniqueString) Value {
@@ -195,6 +237,7 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		values:      values,
 		sources:     sources,
 		printRecord: s.printRecord,
+		functional:  s.functional,
 	}
 	if statePreserveMetadata {
 		out.pred = s.pred
@@ -222,6 +265,7 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		values:      values,
 		sources:     sources,
 		printRecord: s.printRecord,
+		functional:  s.functional,
 	}
 	if statePreserveMetadata {
 		out.pred = s.pred

@@ -422,7 +422,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return domainValue(expr, arg)
 	case OpcodeEnabled:
-		sfun := NewEmptyState()
+		sfun := NewFunctionalState()
 		enabled, err := t.Enabled(args[0], BranchContext(c), s0, sfun)
 		if err != nil {
 			return nil, err

@@ -357,7 +357,7 @@ func (t *Tool) enabledEquality(pred SemanticNode, left SemanticNode, right Seman
 	}
 	lval := s1.Lookup(varNode.Name)
 	if lval == nil {
-		s1.Bind(varNode.Name, rval)
+		s1 = s1.Bind(varNode.Name, rval)
 		return t.EnabledFromActionList(acts, s0, s1, cm)
 	}
 	eq, err := lval.Equal(rval)
@@ -414,8 +414,8 @@ func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, p
 	}
 	enum := enumerable.Elements()
 	for val := enum.NextElement(); val != nil; val = enum.NextElement() {
-		s1.Bind(varName, val)
-		s2, err := t.EnabledFromActionList(acts, s0, s1, cm)
+		s2State := s1.Bind(varName, val)
+		s2, err := t.EnabledFromActionList(acts, s0, s2State, cm)
 		if err != nil || s2 != nil {
 			return s2, err
 		}
@@ -437,7 +437,7 @@ func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Cont
 		}
 		v1 := s1.Lookup(varName)
 		if v1 == nil {
-			s1.Bind(varName, v0)
+			s1 = s1.Bind(varName, v0)
 			return t.EnabledFromActionList(acts, s0, s1, cm)
 		}
 		eq, err := v1.Equal(v0)
