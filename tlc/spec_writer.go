@@ -1838,13 +1838,11 @@ func (s *TraceExplorationSpec) WriteSpecTE(tool *Tool, errTrace *MCError, out io
 	writer := NewSpecTraceExpressionWriter()
 
 	constants := modelConfig.GetConstantsAsList()
-	declaredConstantNames := make(map[string]struct{}, len(constants))
 	var indentedConstants []string
 	for _, entry := range constants {
 		if len(entry) == 0 {
 			continue
 		}
-		declaredConstantNames[entry[0]] = struct{}{}
 		line := entry[0]
 		if len(entry) > 1 {
 			line = entry[0] + tlaEqSp + entry[1]
@@ -1866,13 +1864,17 @@ func (s *TraceExplorationSpec) WriteSpecTE(tool *Tool, errTrace *MCError, out io
 	}
 	writer.AddConstantsRaw(indentedConstants)
 
+	var processedDefns *Defns
+	if tool != nil && tool.GetSpecProcessor() != nil {
+		processedDefns = tool.GetSpecProcessor().GetDefns()
+	}
 	var modConstants []string
 	for _, mv := range ModelValues() {
 		if mv == nil {
 			continue
 		}
 		name := mv.String()
-		if _, declared := declaredConstantNames[name]; !declared {
+		if processedDefns == nil || processedDefns.Get(name) == nil {
 			modConstants = append(modConstants, name)
 		}
 	}
