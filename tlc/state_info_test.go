@@ -4,6 +4,8 @@ import "testing"
 
 func TestAliasTLCStateInfoPreservesOriginalStateActionAndLevel(t *testing.T) {
 	initTLCCheckerTest(t)
+	SetTLCStateTool(NewTool().SetMode(ModeSimulation))
+	t.Cleanup(func() { SetTLCStateTool(nil) })
 	originalAction := &Action{Name: "OriginalNext"}
 	initState := checkerTestState(0)
 	original := checkerTestState(1).SetPredecessor(initState).SetAction(originalAction)

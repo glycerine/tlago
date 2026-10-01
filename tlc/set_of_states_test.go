@@ -80,6 +80,8 @@ func TestSetOfStatesDuplicatesUseStateEqualityAfterFingerprintCollision(t *testi
 
 func TestSetOfStatesSubsetUsesActionIdentity(t *testing.T) {
 	initTLCCheckerTest(t)
+	SetTLCStateTool(NewTool().SetMode(ModeSimulation))
+	t.Cleanup(func() { SetTLCStateTool(nil) })
 	actionA := &Action{Name: "A"}
 	actionB := &Action{Name: "A"}
 	stateA := checkerTestState(1).SetAction(actionA)

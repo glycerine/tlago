@@ -4,6 +4,8 @@ import "testing"
 
 func TestStateVecAddNextElementStampsPredecessorAndAction(t *testing.T) {
 	initTLCCheckerTest(t)
+	SetTLCStateTool(NewTool().SetMode(ModeSimulation))
+	t.Cleanup(func() { SetTLCStateTool(nil) })
 	pred := checkerTestState(1)
 	succ := checkerTestState(2)
 	action := &Action{Name: "Next"}

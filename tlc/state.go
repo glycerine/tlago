@@ -450,8 +450,12 @@ func (s *TLCStateMut) SetPredecessor(pred *TLCStateMut) *TLCStateMut {
 		if pred.level >= math.MaxInt32 {
 			panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
 		}
-		s.pred = pred
 		s.level = pred.level + 1
+		if statePreserveMetadata {
+			s.pred = pred
+		} else {
+			s.pred = nil
+		}
 	}
 	return s
 }
@@ -484,7 +488,9 @@ func (s *TLCStateMut) EvalStateLevelAlias() *TLCStateMut {
 }
 
 func (s *TLCStateMut) SetAction(action *Action) *TLCStateMut {
-	s.action = action
+	if statePreserveMetadata {
+		s.action = action
+	}
 	return s
 }
 
@@ -497,6 +503,21 @@ func (s *TLCStateMut) GetAction() *Action {
 		return nil
 	}
 	return s.action
+}
+
+func (s *TLCStateMut) attachTraceMetadata(pred *TLCStateMut, action *Action) *TLCStateMut {
+	if s == nil {
+		return nil
+	}
+	s.pred = pred
+	s.action = action
+	if pred != nil {
+		if pred.level >= math.MaxInt32 {
+			panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
+		}
+		s.level = pred.level + 1
+	}
+	return s
 }
 
 func (s *TLCStateMut) CopyWith(prototype *TLCStateMut) *TLCStateMut {

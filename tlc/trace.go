@@ -160,8 +160,7 @@ func (t *TLCTrace) WriteState(predecessor *TLCStateMut, fp uint64, state *TLCSta
 	if state != nil {
 		state.WorkerID = 0
 		state.UID = uid
-		state.SetPredecessor(predecessor)
-		state.SetAction(action)
+		state.attachTraceMetadata(predecessor, action)
 		if state.Level() > t.level {
 			t.level = state.Level()
 		}
@@ -239,8 +238,7 @@ func (t *TLCTrace) WriteNextStateForWorker(workerID int, curState *TLCStateMut, 
 	})
 	succState.WorkerID = generatedWorkerID
 	succState.UID = uid
-	succState.SetPredecessor(curState)
-	succState.SetAction(action)
+	succState.attachTraceMetadata(curState, action)
 	if succState.Level() > t.level {
 		t.level = succState.Level()
 	}
@@ -272,8 +270,7 @@ func (t *TLCTrace) MirrorNextStateForWorker(workerID int, curState *TLCStateMut,
 	})
 	succState.WorkerID = generatedWorkerID
 	succState.UID = uid
-	succState.SetPredecessor(curState)
-	succState.SetAction(action)
+	succState.attachTraceMetadata(curState, action)
 	if succState.Level() > t.level {
 		t.level = succState.Level()
 	}
@@ -835,7 +832,7 @@ func (t *TLCTrace) Recover() error {
 			}
 			action = &Action{Name: name.String()}
 			if state != nil {
-				state.SetAction(action)
+				state.action = action
 			}
 		}
 		records[i] = TraceRecord{

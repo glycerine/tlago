@@ -1740,7 +1740,7 @@ func (w *DistributedWorker) computeNextStates(state *TLCStateMut) (*StateVec, er
 	}
 	functor := NewNextStateFunctor(func(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {
 		if succState != nil {
-			succState.SetPredecessor(curState).SetAction(action)
+			succState.attachTraceMetadata(curState, action)
 			out.Add(succState)
 		}
 		return out, nil
