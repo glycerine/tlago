@@ -6,9 +6,6 @@ import (
 )
 
 func WriteSizeArrayOfExternalSortableBigInts(out io.Writer, values []*BigInt, start int, finish int) error {
-	if err := validateBigIntRange(values, start, finish, "WriteSizeArrayOfExternalSortableBigInts"); err != nil {
-		return err
-	}
 	if err := WriteInt(out, int32(finish-start+1)); err != nil {
 		return err
 	}
@@ -16,9 +13,6 @@ func WriteSizeArrayOfExternalSortableBigInts(out io.Writer, values []*BigInt, st
 }
 
 func WriteArrayOfExternalSortableBigInts(out io.Writer, values []*BigInt, start int, finish int) error {
-	if err := validateBigIntRange(values, start, finish, "WriteArrayOfExternalSortableBigInts"); err != nil {
-		return err
-	}
 	for i := start; i <= finish; i++ {
 		if err := values[i].Write(out); err != nil {
 			return err
@@ -87,13 +81,6 @@ func AppendSizeExternalSortableBigIntArrayArray(in io.Reader, out io.Writer) err
 		if err := value.Write(out); err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-func validateBigIntRange(values []*BigInt, start int, finish int, name string) error {
-	if start < 0 || finish < start-1 || finish >= len(values) {
-		return fmt.Errorf("%s: invalid start/finish", name)
 	}
 	return nil
 }

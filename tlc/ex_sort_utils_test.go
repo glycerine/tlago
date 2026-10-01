@@ -54,6 +54,23 @@ func TestExSortUtilsBigIntReadErrorsMatchJavaMessages(t *testing.T) {
 	}
 }
 
+func TestExSortUtilsWritesJavaLengthBeforeRangeUse(t *testing.T) {
+	var out bytes.Buffer
+	if err := WriteSizeArrayOfExternalSortableBigInts(&out, nil, 3, 1); err != nil {
+		t.Fatalf("WriteSizeArrayOfExternalSortableBigInts negative range: %v", err)
+	}
+	got, err := ReadInt(bytes.NewReader(out.Bytes()))
+	if err != nil {
+		t.Fatalf("ReadInt: %v", err)
+	}
+	if got != -1 {
+		t.Fatalf("written length = %d, want Java finish-start+1 = -1", got)
+	}
+	if out.Len() != 4 {
+		t.Fatalf("bytes written = %d, want only Java int length", out.Len())
+	}
+}
+
 func assertBigIntsEqual(t *testing.T, got []*BigInt, want []*BigInt) {
 	t.Helper()
 	if len(got) != len(want) {
