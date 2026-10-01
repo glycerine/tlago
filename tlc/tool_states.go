@@ -559,7 +559,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		if lv, ok := val.(*LazyValue); ok {
 			cached := lv.GetCachedValue(t, s0, s1, EvalClear)
 			if cached == nil {
-				return t.GetNextStatesForPredicate(action, lv.Expr, acts, lv.Con, s0, s1, nss, cm)
+				return t.GetNextStatesForPredicate(action, lv.Expr, acts, lv.Con, s0, s1, nss, lv.CM)
 			}
 			val = cached
 		}
@@ -789,7 +789,7 @@ func (t *Tool) nextFcnApply(action *Action, pred *OpApplNode, acts *ActionItemLi
 		if err != nil {
 			return s1, err
 		}
-		return t.GetNextStatesForPredicate(action, fcn.Body, acts, c1, s0, s1, nss, cm)
+		return t.GetNextStatesForPredicate(action, fcn.Body, acts, c1, s0, s1, nss, fcn.CM)
 	}
 	bval, err := t.applyEvaluatedFunction(pred, fval, c, s0, s1, EvalClear, cm, false)
 	if err != nil {

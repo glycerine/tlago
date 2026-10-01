@@ -227,12 +227,17 @@ type FcnLambdaValue struct {
 	State   *TLCStateMut
 	PState  *TLCStateMut
 	Control int
+	CM      CostModel
 	FcnRcd  *FcnRcdValue
 }
 
-func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int) *FcnLambdaValue {
+func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *FcnLambdaValue {
 	if con == nil {
 		con = EmptyContext
+	}
+	cm := DoNotRecordCostModel
+	if len(cms) > 0 {
+		cm = cms[0]
 	}
 	return &FcnLambdaValue{
 		Params:  params,
@@ -242,6 +247,7 @@ func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Co
 		State:   copyTLCStateForLambda(state),
 		PState:  copyTLCStateForLambda(pstate),
 		Control: control,
+		CM:      cm,
 	}
 }
 
@@ -261,6 +267,7 @@ func NewFcnLambdaValueFrom(other *FcnLambdaValue, tool *Tool) *FcnLambdaValue {
 		State:   other.State,
 		PState:  other.PState,
 		Control: other.Control,
+		CM:      other.CM,
 		FcnRcd:  other.FcnRcd,
 	}
 }
@@ -370,7 +377,7 @@ func (v *FcnLambdaValue) evalBody(ctx *Context, control int) (Value, error) {
 	if v.Tool == nil {
 		return ValUndef, nil
 	}
-	return v.Tool.Eval(v.Body, ctx, v.State, v.PState, control)
+	return v.Tool.Eval(v.Body, ctx, v.State, v.PState, control, v.CM)
 }
 
 func (v *FcnLambdaValue) bindArgument(arg Value) (*Context, bool, error) {

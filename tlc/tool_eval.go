@@ -1001,7 +1001,7 @@ func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *
 		isFcnRcd = isFcnRcd && isReducibleFunctionDomain(value)
 	}
 	params := NewFcnParams(expr.BdedQuantSymbolLists, expr.BdedQuantATuple, dvals)
-	fval := NewFcnLambdaValue(params, expr.Args[0], t, c, s0, s1, control)
+	fval := NewFcnLambdaValue(params, expr.Args[0], t, c, s0, s1, control, cm)
 	if opcode == OpcodeRFS && len(expr.UnbdedQuantSymbols) > 0 {
 		fval.MakeRecursive(expr.UnbdedQuantSymbols[0])
 		isFcnRcd = false
