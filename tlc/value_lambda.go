@@ -133,8 +133,12 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 		}
 		if params.IsTuples[i] {
 			out.enums[idx] = enumDomain.Elements()
-			out.currentElems[idx] = out.enums[idx].NextElement()
-			if err := out.enums[idx].Err(); err != nil {
+			// Java FcnParams.Enumerator initializes tuple groups from enums[i],
+			// not enums[idx].  When earlier groups expanded to multiple formals,
+			// this consumes the earlier domain's enumerator for the initial tuple
+			// slot.  Preserve the quirk for byte-for-byte TLC behavior.
+			out.currentElems[idx] = out.enums[i].NextElement()
+			if err := out.enums[i].Err(); err != nil {
 				out.err = err
 				out.done = true
 				return out
