@@ -373,6 +373,7 @@
   - DFID init now prints Java-shaped invariant/implied-init diagnostics and replays init exceptions with `CallStackTool`.
   - DFID init now mirrors Java's generated-count and empty-init behavior instead of returning the local model checker's no-state errors.
   - DFID workers now push the current worker id during `Run`, matching Java `IdThread` behavior for `TLCGet("worker")` and worker-local values.
+  - DFID trace printing now mirrors Java's worker-stack split: invariant-behavior failures use `DFIDWorker.printInvariantTrace`, while other next-state/runtime failures use `printErrorTrace` and `TLC_STATE_PRINT1`-style runtime state output.
   - DFID checkpoint recovery now rebinds `Metadir` to `FromCheckpoint`, matching Java's resumed-run metadir setup.
   - Liveness `Check`/`FinalCheck` now honor Java's `LNCheck` gates: periodic checks obey `DoLiveness`, and final checks skip when liveness checking is `off`.
   - Liveness SCC checks now emit Java-style temporal-property start/end messages with graph size and current/complete mode.

@@ -583,6 +583,16 @@ func javaGeneralErrorMessage(cause string, err error) string {
 }
 
 func (mc *DFIDModelChecker) printTrace(errorCode int, params []string, curState *TLCStateMut, succState *TLCStateMut) {
+	if workerID, ok := CurrentWorkerID(); ok {
+		if worker := mc.dfidWorkerAt(workerID); worker != nil {
+			if errorCode == ECTLCInvariantViolatedBehavior {
+				worker.PrintInvariantTrace(errorCode, params, curState, succState)
+			} else {
+				worker.PrintErrorTrace(errorCode, params, curState, succState)
+			}
+			return
+		}
+	}
 	PrintError(errorCode, params...)
 	traceEnd := succState
 	if traceEnd == nil {

@@ -102,6 +102,38 @@ func (w *DFIDWorker) getNext(curState *TLCStateMut, cfp uint64) int {
 	return -1
 }
 
+func (w *DFIDWorker) PrintErrorTrace(errorCode int, params []string, s1 *TLCStateMut, s2 *TLCStateMut) {
+	PrintError(errorCode, params...)
+	PrintError(ECTLCBehaviorUpToThisPoint)
+	idx := 0
+	for idx < w.CurLevel && idx < len(w.StateStack) {
+		PrintRuntimeErrorStateTraceState(w.StateStack[idx], idx+1)
+		idx++
+	}
+	PrintRuntimeErrorStateTraceState(s1, idx+1)
+	if s2 != nil {
+		PrintRuntimeErrorStateTraceState(s2, idx+2)
+	}
+}
+
+func (w *DFIDWorker) PrintInvariantTrace(errorCode int, params []string, s1 *TLCStateMut, s2 *TLCStateMut) {
+	PrintError(errorCode, params...)
+	PrintError(ECTLCBehaviorUpToThisPoint)
+	idx := 0
+	for ; idx <= w.CurLevel && idx < len(w.StateStack); idx++ {
+		ordinal := idx + 1
+		info := NewTLCStateInfoWithOrdinal(w.StateStack[idx], ordinal)
+		var previous *TLCStateMut
+		if idx > 0 {
+			previous = w.StateStack[idx-1]
+		}
+		PrintInvariantViolationStateTraceState(info, previous, ordinal)
+	}
+	ordinal := idx + 1
+	info := NewTLCStateInfoWithOrdinal(s2, ordinal)
+	PrintInvariantViolationStateTraceState(info, s1, ordinal, true)
+}
+
 func (w *DFIDWorker) Run() {
 	restoreWorkerID := PushCurrentWorkerID(w.ID)
 	defer restoreWorkerID()
