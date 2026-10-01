@@ -14,6 +14,8 @@ type DFIDModelChecker struct {
 	LiveCheck       *LiveCheck
 	DFIDWorkers     []*DFIDWorker
 	StatesGenerated int64
+	CleanupEnabled  bool
+	cleanupDone     bool
 }
 
 const dfidInitialSetOfStatesCapacity = 16
@@ -40,6 +42,12 @@ func WithDFIDLiveCheck(liveCheck *LiveCheck) DFIDModelCheckerOption {
 	}
 }
 
+func WithDFIDCleanup(cleanup bool) DFIDModelCheckerOption {
+	return func(mc *DFIDModelChecker) {
+		mc.CleanupEnabled = cleanup
+	}
+}
+
 func NewDFIDModelChecker(tool *Tool, metadir string, deadlock bool, opts ...DFIDModelCheckerOption) *DFIDModelChecker {
 	if tool != nil && tool.GetMode() != ModeDebugger && tool.GetMode() != ModeExecutor {
 		tool.SetMode(ModeMCDFS)
@@ -56,6 +64,7 @@ func NewDFIDModelChecker(tool *Tool, metadir string, deadlock bool, opts ...DFID
 	mc := &DFIDModelChecker{
 		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), deadlock, "", time.Now()),
 		FPSet:           NewMemFPIntSet().Init(NumWorkers(), metadir, rootName),
+		CleanupEnabled:  true,
 	}
 	mc.CheckLiveness = checkLiveness
 	mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
@@ -74,7 +83,16 @@ func NewDFIDModelChecker(tool *Tool, metadir string, deadlock bool, opts ...DFID
 	return mc
 }
 
-func (mc *DFIDModelChecker) ModelCheck() (int, error) {
+func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
+	result = NoError
+	defer func() {
+		if mc == nil {
+			return
+		}
+		if cleanupErr := mc.Cleanup(result == NoError, mc.CleanupEnabled); err == nil {
+			err = cleanupErr
+		}
+	}()
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
 	}
@@ -98,7 +116,7 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if result := mc.Tool.CheckAssumptions(); result != NoError {
 		return result, nil
 	}
-	result, err := mc.DoInit(false)
+	result, err = mc.DoInit(false)
 	if err != nil {
 		result = mc.reportInitException(result, err)
 		mc.PrintSummary(false)
@@ -297,6 +315,10 @@ func (mc *DFIDModelChecker) Cleanup(success bool, cleanup bool) error {
 	if mc == nil {
 		return nil
 	}
+	if mc.cleanupDone {
+		return nil
+	}
+	mc.cleanupDone = true
 	var err error
 	if mc.FPSet != nil {
 		mc.FPSet.Close()

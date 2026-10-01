@@ -254,6 +254,7 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		if t.LiveCheck != nil {
 			opts = append(opts, WithDFIDLiveCheck(t.LiveCheck))
 		}
+		opts = append(opts, WithDFIDCleanup(t.Cleanup))
 		checker := NewDFIDModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 		code, err := checker.ModelCheck()
 		result := &Result{
@@ -261,9 +262,6 @@ func (t *TLC) processModelChecking() (*Result, error) {
 			StatesGenerated: checker.StatesGenerated,
 			DistinctStates:  checker.FPSet.Size(),
 			InitialStates:   int64(len(checker.InitStates)),
-		}
-		if cleanupErr := checker.Cleanup(code == NoError, t.Cleanup); err == nil {
-			err = cleanupErr
 		}
 		return result, err
 	}
@@ -288,6 +286,7 @@ func (t *TLC) processModelChecking() (*Result, error) {
 	if t.FromCheckpoint != "" {
 		opts = append(opts, WithModelCheckerFromCheckpoint(t.FromCheckpoint))
 	}
+	opts = append(opts, WithModelCheckerCleanup(t.Cleanup))
 	checker := NewModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 	checker.TimeBound = t.StopAfter > 0
 	cancelStopAfter := t.scheduleStopAfter(checker.Stop)
@@ -300,9 +299,6 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		InitialStates:   checker.GetInitialStatesGenerated(),
 		QueueSize:       checker.GetStateQueueSize(),
 		SearchDepth:     checker.GetProgress(),
-	}
-	if cleanupErr := checker.Cleanup(code == NoError, t.Cleanup); err == nil {
-		err = cleanupErr
 	}
 	return result, err
 }

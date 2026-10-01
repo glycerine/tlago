@@ -293,6 +293,8 @@ type ModelChecker struct {
 	ForceLiveCheck          bool
 	TimeBound               bool
 	LiveCheckInitErr        error
+	CleanupEnabled          bool
+	cleanupDone             bool
 }
 
 type ModelCheckerOption func(*ModelChecker)
@@ -338,6 +340,12 @@ func WithModelCheckerFromCheckpoint(fromCheckpoint string) ModelCheckerOption {
 	}
 }
 
+func WithModelCheckerCleanup(cleanup bool) ModelCheckerOption {
+	return func(mc *ModelChecker) {
+		mc.CleanupEnabled = cleanup
+	}
+}
+
 func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelCheckerOption) *ModelChecker {
 	if tool != nil && tool.GetMode() != ModeDebugger && tool.GetMode() != ModeExecutor {
 		tool.SetMode(ModeMC)
@@ -361,6 +369,7 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		StateQueue:      NewStateQueue(metadir),
 		Trace:           concurrentTrace.TLCTrace,
 		ConcurrentTrace: concurrentTrace,
+		CleanupEnabled:  true,
 	}
 	for _, opt := range opts {
 		opt(mc)
@@ -533,7 +542,16 @@ func (mc *ModelChecker) CheckAssumptions() int {
 	return mc.Tool.CheckAssumptions()
 }
 
-func (mc *ModelChecker) ModelCheck() (int, error) {
+func (mc *ModelChecker) ModelCheck() (result int, err error) {
+	result = NoError
+	defer func() {
+		if mc == nil {
+			return
+		}
+		if cleanupErr := mc.Cleanup(result == NoError, mc.CleanupEnabled); err == nil {
+			err = cleanupErr
+		}
+	}()
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
 	}
@@ -547,7 +565,6 @@ func (mc *ModelChecker) ModelCheck() (int, error) {
 	if err != nil {
 		return ECSystemCheckpointRecoveryCorrupt, err
 	}
-	result := NoError
 	if !recovered {
 		if mc.CheckLiveness && mc.LiveCheck != nil && mc.LiveCheck.NumChecker() == 0 {
 			PrintError(ECTLCLiveFormulaTautology)
@@ -728,6 +745,10 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 	if mc == nil {
 		return nil
 	}
+	if mc.cleanupDone {
+		return nil
+	}
+	mc.cleanupDone = true
 	var err error
 	vetoCleanup := modelCheckerVetoCleanup()
 	if cleanup && CheckpointExplicitlyEnabled() && mc.StateQueue != nil && !mc.StateQueue.IsEmpty() && (mc.ErrState != nil || mc.TimeBound) {

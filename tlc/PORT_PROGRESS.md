@@ -211,6 +211,7 @@
   - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
   - DFID next-state processing now relies on `Tool.GetNextStates`/`StateVec` stamping like Java, writes depth-first all-state transitions without an action label, and emits Java's leaf stuttering edge before liveness graph insertion.
+  - `ModelChecker.ModelCheck` and `DFIDModelChecker.ModelCheck` now own cleanup through Java-shaped deferred/finally cleanup, with the runner passing its cleanup policy into the checker instead of running a second cleanup pass afterward.
   - State copy semantics now follow Java's selected state implementation: ordinary MC/DFID copies drop predecessor/action metadata, while simulation/debug/executor copies preserve it like `TLCStateMutExt`.
   - Continuation-mode invariant and implied-action checks now stop scanning after Java's first printed violation for a successor instead of printing all failed properties on that successor.
   - Next-state `CASE` coverage now charges guard and branch evaluation to the Java-matching arm-local cost model.
