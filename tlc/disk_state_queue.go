@@ -341,10 +341,6 @@ func (q *DiskStateQueue) Recover() error {
 		*ptr = int(value)
 	}
 	q.lastLoPool = q.loPool - 1
-	if q.reader != nil {
-		q.reader.Restart(q.poolName(q.lastLoPool), q.lastLoPool < q.hiPool)
-	}
-	q.loFile = q.poolName(q.loPool)
 	for i := range q.enqBuf {
 		q.enqBuf[i] = nil
 	}
@@ -368,6 +364,10 @@ func (q *DiskStateQueue) Recover() error {
 		}
 		q.deqBuf[i] = state
 	}
+	if q.reader != nil {
+		q.reader.Restart(q.poolName(q.lastLoPool), q.lastLoPool < q.hiPool)
+	}
+	q.loFile = q.poolName(q.loPool)
 	return nil
 }
 
