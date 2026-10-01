@@ -1208,7 +1208,10 @@ func (t *Tool) evalRecordSelect(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 		}
 	}
 	if record, ok := rval.(*RecordValue); ok {
-		result := record.Select(sval)
+		result, err := record.Select(sval)
+		if err != nil {
+			return nil, err
+		}
 		if result == nil {
 			return nil, newTLCError(ECGeneral, "attempted to select nonexistent field %s from record %s", sval, record)
 		}
@@ -1465,28 +1468,11 @@ func selectPath(root Value, path []Value) (Value, error) {
 }
 
 func selectTupleValue(v *TupleValue, arg Value) (Value, error) {
-	i, ok := arg.(*IntValue)
-	if !ok {
-		return nil, v.unsupported("attempted to access tuple at a non integral index: %s", arg)
-	}
-	idx := int(i.Val)
-	if idx > 0 && idx <= len(v.Elems) {
-		return v.Elems[idx-1], nil
-	}
-	return nil, nil
+	return v.Select(arg)
 }
 
 func selectRecordValue(v *RecordValue, arg Value) (Value, error) {
-	sv, ok := arg.(*StringValue)
-	if !ok {
-		return nil, v.unsupported("attempted to access record by a non-string argument: %s", arg)
-	}
-	for i, name := range v.Names {
-		if sv.Val.Equal(name) {
-			return v.Values[i], nil
-		}
-	}
-	return nil, nil
+	return v.Select(arg)
 }
 
 func stringUniqueFromNode(node SemanticNode) (*UniqueString, error) {

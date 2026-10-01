@@ -87,7 +87,10 @@ func (c *CounterExample) ToTrace() Value {
 	if c == nil || c.RecordValue == nil {
 		return EmptyTuple
 	}
-	value := c.Select(NewStringValueFromUnique(counterExampleStates))
+	value, err := c.Select(NewStringValueFromUnique(counterExampleStates))
+	if err != nil {
+		return EmptyTuple
+	}
 	set, ok := value.(*SetEnumValue)
 	if !ok {
 		return EmptyTuple

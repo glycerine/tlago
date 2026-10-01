@@ -573,7 +573,10 @@ func (v *RecordValue) StateString() string {
 func (v *RecordValue) Size() (int, error) { return len(v.Names), nil }
 
 func (v *RecordValue) Apply(arg Value) (Value, error) {
-	out := v.Select(arg)
+	out, err := v.Select(arg)
+	if err != nil {
+		return nil, err
+	}
 	if out == nil {
 		if sv, ok := arg.(*StringValue); ok {
 			return nil, v.unsupported("attempted to access nonexistent field '%s' of record\n%s", sv.Val, v)
@@ -583,17 +586,17 @@ func (v *RecordValue) Apply(arg Value) (Value, error) {
 	return out, nil
 }
 
-func (v *RecordValue) Select(arg Value) Value {
+func (v *RecordValue) Select(arg Value) (Value, error) {
 	sv, ok := arg.(*StringValue)
 	if !ok {
-		return nil
+		return nil, v.unsupported("attempted to access record by a non-string argument: %s", arg)
 	}
 	for i, name := range v.Names {
 		if sv.Val.Equal(name) {
-			return v.Values[i]
+			return v.Values[i], nil
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (v *RecordValue) DomainValue() Value {
@@ -616,7 +619,7 @@ func (v *RecordValue) normalizeRecord() error {
 	for i := 1; i < len(v.Names); i++ {
 		cmp := v.Names[0].Compare(v.Names[i])
 		if cmp == 0 {
-			return v.unsupported("field name %s occurs multiple times in record", v.Names[i])
+			return v.unsupported("Field name %s occurs multiple times in record.", v.Names[i])
 		}
 		if cmp > 0 {
 			v.Names[0], v.Names[i] = v.Names[i], v.Names[0]
@@ -638,7 +641,7 @@ func (v *RecordValue) normalizeRecord() error {
 			j--
 		}
 		if cmp == 0 {
-			return v.unsupported("field name %s occurs multiple times in record", v.Names[i])
+			return v.unsupported("Field name %s occurs multiple times in record.", v.Names[i])
 		}
 		v.Names[j] = st
 		v.Values[j] = val

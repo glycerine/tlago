@@ -160,7 +160,11 @@ func (s *TLCStateMut) Lookup(name *UniqueString) Value {
 		return s.values[loc]
 	}
 	if s.printRecord != nil {
-		return s.printRecord.Select(NewStringValueFromUnique(name))
+		value, err := s.printRecord.Select(NewStringValueFromUnique(name))
+		if err != nil {
+			return nil
+		}
+		return value
 	}
 	return nil
 }
@@ -170,7 +174,8 @@ func (s *TLCStateMut) ContainsKey(name *UniqueString) bool {
 		return true
 	}
 	if s != nil && s.printRecord != nil {
-		return s.printRecord.Select(NewStringValueFromUnique(name)) != nil
+		value, err := s.printRecord.Select(NewStringValueFromUnique(name))
+		return err == nil && value != nil
 	}
 	return false
 }

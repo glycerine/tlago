@@ -317,16 +317,16 @@ func (v *TupleValue) Apply(arg Value) (Value, error) {
 	return v.Elems[idx-1], nil
 }
 
-func (v *TupleValue) Select(arg Value) Value {
+func (v *TupleValue) Select(arg Value) (Value, error) {
 	i, ok := arg.(*IntValue)
 	if !ok {
-		return nil
+		return nil, v.unsupported("attempted to access tuple at a non integral index: %s", arg)
 	}
 	idx := int(i.Val)
 	if idx > 0 && idx <= len(v.Elems) {
-		return v.Elems[idx-1]
+		return v.Elems[idx-1], nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (v *TupleValue) Domain() Value {

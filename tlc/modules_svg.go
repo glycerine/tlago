@@ -176,7 +176,10 @@ func SVGPointOnLine(from Value, to Value, idx Value) (Value, error) {
 }
 
 func svgRecordInt(record *RecordValue, field string) (*IntValue, error) {
-	value := record.Select(NewStringValue(field))
+	value, err := record.Select(NewStringValue(field))
+	if err != nil {
+		return nil, err
+	}
 	intValue, ok := value.(*IntValue)
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "record", "SVG", "integer field "+field, ValuesPPR(record))

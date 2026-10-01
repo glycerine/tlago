@@ -253,7 +253,10 @@ func ioUtilsResult(exitValue int32, stdout string, stderr string) Value {
 }
 
 func ioUtilsRecordString(record *RecordValue, key string) string {
-	value := record.Select(NewStringValue(key))
+	value, err := record.Select(NewStringValue(key))
+	if err != nil {
+		return ""
+	}
 	if str, ok := value.(*StringValue); ok {
 		return str.RawString()
 	}
@@ -261,7 +264,10 @@ func ioUtilsRecordString(record *RecordValue, key string) string {
 }
 
 func ioUtilsRecordTupleStrings(record *RecordValue, key string) []string {
-	value := record.Select(NewStringValue(key))
+	value, err := record.Select(NewStringValue(key))
+	if err != nil {
+		return nil
+	}
 	tuple := asTupleValue(value)
 	if tuple == nil {
 		return nil

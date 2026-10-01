@@ -148,14 +148,20 @@ func graphToGraph(op string, argPos string, kind string, value Value) (*RecordVa
 	if record == nil {
 		return nil, graphArgError(op, argPos, kind, "record with a node and an edge field", value)
 	}
-	node := record.Select(NewStringValue("node"))
+	node, err := record.Select(NewStringValue("node"))
+	if err != nil {
+		return nil, err
+	}
 	if node == nil {
 		return nil, graphArgError(op, argPos, kind, "record whose node field is a set", value)
 	}
 	if _, err := toSetEnumValue(node); err != nil {
 		return nil, graphArgError(op, argPos, kind, "record whose node field is a set", value)
 	}
-	edge := record.Select(NewStringValue("edge"))
+	edge, err := record.Select(NewStringValue("edge"))
+	if err != nil {
+		return nil, err
+	}
 	if edge == nil {
 		return nil, graphArgError(op, argPos, kind, "record whose edge field is a set", value)
 	}
@@ -170,7 +176,10 @@ func graphArgError(op string, argPos string, kind string, detail string, value V
 }
 
 func graphNodes(g *RecordValue) (*SetEnumValue, error) {
-	value := g.Select(NewStringValue("node"))
+	value, err := g.Select(NewStringValue("node"))
+	if err != nil {
+		return nil, err
+	}
 	nodes, err := toSetEnumValue(value)
 	if err != nil {
 		return nil, err
@@ -180,7 +189,10 @@ func graphNodes(g *RecordValue) (*SetEnumValue, error) {
 }
 
 func graphEdges(g *RecordValue) (*SetEnumValue, error) {
-	value := g.Select(NewStringValue("edge"))
+	value, err := g.Select(NewStringValue("edge"))
+	if err != nil {
+		return nil, err
+	}
 	edges, err := toSetEnumValue(value)
 	if err != nil {
 		return nil, err

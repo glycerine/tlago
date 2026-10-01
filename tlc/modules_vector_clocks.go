@@ -219,11 +219,19 @@ func vectorClockSelect(container Value, arg Value) (Value, error) {
 			return value, nil
 		}
 	case *TupleValue:
-		if value := v.Select(arg); value != nil {
+		value, err := v.Select(arg)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil {
 			return value, nil
 		}
 	case *RecordValue:
-		if value := v.Select(arg); value != nil {
+		value, err := v.Select(arg)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil {
 			return value, nil
 		}
 	}

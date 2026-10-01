@@ -195,7 +195,10 @@ func TestValueInputStreamBlindReadRecordValue(t *testing.T) {
 	if !ok {
 		t.Fatalf("ReadExternal returned %T, want *RecordValue", value)
 	}
-	got := record.Select(NewStringValue(key))
+	got, err := record.Select(NewStringValue(key))
+	if err != nil {
+		t.Fatalf("record.Select returned error: %v", err)
+	}
 	if !mustValueEqual(got, NewIntValue(42)) {
 		t.Fatalf("record[%q] = %v, want 42", key, got)
 	}
