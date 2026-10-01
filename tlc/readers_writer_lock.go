@@ -90,9 +90,6 @@ type Striped struct {
 }
 
 func NewStriped(lockCnt int) *Striped {
-	if lockCnt < 0 {
-		lockCnt = 0
-	}
 	striped := &Striped{locks: make([]*sync.RWMutex, lockCnt)}
 	for i := range striped.locks {
 		striped.locks[i] = &sync.RWMutex{}

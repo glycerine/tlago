@@ -80,3 +80,12 @@ func TestStripedAcquireAndReleaseAllLocks(t *testing.T) {
 		t.Fatalf("stripe lock did not release")
 	}
 }
+
+func TestStripedNegativeLockCountFailsLikeJavaArrayAllocation(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("negative stripe count did not panic")
+		}
+	}()
+	_ = StripedReadWriteLock(-1)
+}
