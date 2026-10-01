@@ -47,14 +47,14 @@ func FPIntSetIsDone(status int32) bool {
 }
 
 func FPIntSetLevelOf(status int32) int32 {
-	return status >> fpIntSetSBits
+	return int32(uint32(status) >> fpIntSetSBits)
 }
 
 func FPIntSetIsLeaf(status int32) bool {
 	fpIntSetMu.Lock()
 	level := fpIntSetLevel
 	fpIntSetMu.Unlock()
-	return status == FPIntStatusNew || (status>>fpIntSetSBits) == level
+	return status == FPIntStatusNew || int32(uint32(status)>>fpIntSetSBits) == level
 }
 
 func fpIntSetNewStatus(status int32) int32 {
