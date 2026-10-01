@@ -250,7 +250,7 @@ func (v *TupleValue) Equal(other Value) (bool, error) {
 }
 
 func (v *TupleValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check set membership in a tuple value")
+	return false, v.unsupported("Attempted to check set membership in a tuple value.")
 }
 
 func (v *TupleValue) IsFinite() (bool, error) { return true, nil }
@@ -308,11 +308,11 @@ func (v *TupleValue) FingerPrint(fp uint64) uint64 {
 func (v *TupleValue) Apply(arg Value) (Value, error) {
 	i, ok := arg.(*IntValue)
 	if !ok {
-		return nil, v.unsupported("attempted to access tuple at a non integral index: %s", arg)
+		return nil, v.unsupported("Attempted to access tuple at a non integral index: %s", arg)
 	}
 	idx := int(i.Val)
 	if idx <= 0 || idx > len(v.Elems) {
-		return nil, v.unsupported("attempted to access index %d of tuple %s which is out of bounds", idx, v)
+		return nil, v.unsupported("Attempted to access index %d of tuple\n%s\nwhich is out of bounds.", idx, v)
 	}
 	return v.Elems[idx-1], nil
 }
@@ -320,7 +320,7 @@ func (v *TupleValue) Apply(arg Value) (Value, error) {
 func (v *TupleValue) Select(arg Value) (Value, error) {
 	i, ok := arg.(*IntValue)
 	if !ok {
-		return nil, v.unsupported("attempted to access tuple at a non integral index: %s", arg)
+		return nil, v.unsupported("Attempted to access tuple at a non integral index: %s", arg)
 	}
 	idx := int(i.Val)
 	if idx > 0 && idx <= len(v.Elems) {
