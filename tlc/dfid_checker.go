@@ -81,6 +81,9 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if NumWorkers() != 1 {
 		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support multiple workers. Please run TLC with a single worker.")
 	}
+	if mc.CheckLiveness {
+		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support checking liveness properties (https://github.com/tlaplus/tlaplus/issues/548).  Please check liveness properties in Breadth-First-Search mode.")
+	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
 	}

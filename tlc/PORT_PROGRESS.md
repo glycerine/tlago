@@ -45,7 +45,7 @@
 - Already audited recently; do not loosen worker trace checkpoint commit errors: `Worker.commitChkpt` now reports Java's `Trace.commitChkpt: cannot delete ...` text for delete and rename failures.
 - Already audited recently; do not add generic constrained-state writer fallbacks in worker successor processing: Java only writes the specific failed state/action constraints it finds.
 - Already audited recently; do not make DFID worker stack sizing or stop/error handling friendlier than Java: worker arrays are sized from `Globals.DFIDMax`, init exhaustion goes through `DFIDModelChecker.SetStop(1)`, the inner DFS loop is keyed only by `isLeaf`, and panic recovery records a Java-style `GENERAL` worker failure.
-- Already audited recently; do not run DFID workers synchronously from `ModelCheck`: `DFIDModelChecker.RunTLC` now mirrors Java's shared `AbstractChecker.runTLC` shape by starting the worker, running periodic liveness/checkpoint work, and emitting DFID progress/coverage while the depth search is active.
+- Already audited recently; do not run DFID workers synchronously from `ModelCheck`: `DFIDModelChecker.RunTLC` now mirrors Java's shared `AbstractChecker.runTLC` shape by starting the worker, running periodic checkpoint work, and emitting DFID progress/coverage while the depth search is active.
 - Already audited recently; do not move BFS progress/depth/coverage back into `DoPeriodicWork`: Java keeps checkpoint/liveness/periodic-condition work there and emits progress, depth cutoff, coverage, and waiting from `runTLCContinueDoing`.
 - Already audited recently; do not loosen central `TLCTrace.commitChkpt` errors: failed delete or rename now reports Java's `Trace.commitChkpt: cannot delete ...` text.
 - Already audited recently; do not add Go-wrapped causes or Go method names to checkpoint delete/rename errors in trace, liveness disk graph, queue, object stack/queue, memory FP set, or DFID FP-int set commit paths; they now use the Java `*.commitChkpt: cannot delete ...` strings.
@@ -73,7 +73,7 @@
 - Already audited recently; do not drop operator-argument lambda cost models. Java constructs `OpLambdaValue(..., cm)` from `OpArgKind` and evaluates the operator body with that `cm`; copies of `OpLambdaValue` still do not copy `cm`, matching Java's copy constructor.
 - Already audited recently; do not drop set-predicate cost models. Java constructs `SetPredValue(..., cm)`, copies that `cm`, and uses it when evaluating membership/enumeration predicates.
 - Already audited recently; do not pass a debug/call-stack tool into final liveness checking. Java calls `liveCheck.finalCheck(tool.noDebug())`; Go now mirrors that final-check call just like periodic liveness calls.
-- Already audited recently; do not reject liveness in DFID mode. Java DFID performs the tautology check, periodic liveness checks, and a final `liveCheck.finalCheck(tool)` after depth search terminates; Go now follows that instead of returning an unsupported-mode error.
+- Already audited recently; do not allow DFID liveness despite the dead code in `DFIDModelChecker`. Current Java asserts that DFID does not support checking liveness properties before model checking starts.
 - Already audited recently; do not return from a failed DFID depth run without printing the DFID summary. Java's depth-search loop is inside a `finally` that prints summary on `runTLC` errors.
 - Already audited recently; do not make DFID init continuation friendlier than Java. Initial invariants honor continuation mode, but implied-init violations always return `TLC_PROPERTY_VIOLATED_INITIAL`.
 - Already audited recently; do not import BFS no-init errors into DFID. Java DFID sets the generated-init count to `states.size()`, trims accepted init arrays, and returns `NO_ERROR` even when no initial state survives model constraints.
@@ -131,6 +131,7 @@
   - Initial-state exceptions now print the Java-shaped init failure message and replay init generation with `CallStackTool`, including fingerprint-exception handling.
   - Periodic-work liveness/periodic-condition failures now leave the state queue suspended for outer termination, matching Java's error-return path.
   - DFID clean termination now reports success instead of `GENERAL`, and DFID next-state replay can run through `CallStackTool` like Java's `DFIDModelChecker`.
+  - DFID liveness requests now fail with Java's issue-548 guard instead of entering the obsolete liveness body.
   - DFID init now prints Java-shaped invariant/implied-init diagnostics and replays init exceptions with `CallStackTool`.
   - DFID init now mirrors Java's generated-count and empty-init behavior instead of returning the local model checker's no-state errors.
   - DFID workers now push the current worker id during `Run`, matching Java `IdThread` behavior for `TLCGet("worker")` and worker-local values.
@@ -239,7 +240,7 @@
 - Latest audit focus:
   - `Tool.enabled`, `Tool.getNextStates`, `Tool.processUnchanged`, and `Tool.evalAppl` have just been re-audited against Java control flow.
   - Deferred value objects now preserve or deliberately drop cost models according to the Java constructors for `LazyValue`, `FcnLambdaValue`, `OpLambdaValue`, and `SetPredValue`.
-  - DFID no longer rejects liveness outright; it follows Java's tautology, periodic-check, final-check, and depth-error-summary behavior.
+  - DFID now rejects requested liveness checking at model-check entry like current Java; the older Java liveness calls remain dead behind that guard.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:
