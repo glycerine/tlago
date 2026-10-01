@@ -204,23 +204,32 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	restoreRandomState := PushRandomEnumerableState(curState)
 	defer restoreRandomState()
 	preNext := w.StatesGenerated
+	recordedOutcome := false
 	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
 	if err != nil {
 		var wrapped *workerNextStateError
 		if errors.As(err, &wrapped) {
 			w.Checker.doNextFailed(curState, wrapped.State, wrapped.Err)
-			return true, wrapped.Err
+			recordedOutcome = true
+		} else {
+			w.Checker.doNextFailed(curState, nil, err)
+			recordedOutcome = true
 		}
-		w.Checker.doNextFailed(curState, nil, err)
-		return true, err
 	}
-	if halt || w.Halted {
-		return true, nil
+	if (halt || w.Halted) && !recordedOutcome {
+		if w.Checker.ErrorCode != NoError {
+			recordedOutcome = true
+		} else {
+			return true, nil
+		}
 	}
-	deadlocked := false
+	// Java Worker.run catches expected next-state failures inside the
+	// iteration, records them through doNextFailed/doNextSetErr, and still
+	// executes the deadlock/liveness/out-degree tail before the next dequeue
+	// observes finishAll().
 	if w.Checker.CheckDeadlock && preNext == w.StatesGenerated {
 		w.Checker.doNextSetErrWithPostCondition(curState, nil, false, ECTLCDeadlockReached, "")
-		deadlocked = true
+		recordedOutcome = true
 	}
 	if w.Checker.CheckLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
@@ -231,16 +240,13 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 				return true, nil
 			}
 			w.Checker.doNextFailed(curState, nil, err)
-			return true, err
+			recordedOutcome = true
 		}
 	}
 	if w.SetOfStates != nil && w.SetOfStates.Capacity() > w.SetOfStatesMultiplier*workerSetOfStatesInitialCapacity {
 		w.SetOfStatesMultiplier++
 	}
 	w.RecordOutDegree()
-	if deadlocked {
-		return true, nil
-	}
 	return false, nil
 }
 

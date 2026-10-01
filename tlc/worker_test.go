@@ -94,8 +94,8 @@ func TestWorkerFunctorPathReportsDeadlockWhenNoSuccessorsAreGenerated(t *testing
 	if err != nil {
 		t.Fatalf("Worker.DoNext returned error: %v", err)
 	}
-	if !stop {
-		t.Fatalf("Worker.DoNext stop = false, want true")
+	if stop {
+		t.Fatalf("Worker.DoNext stop = true, want false so Worker.Run observes the finished queue like Java")
 	}
 	if mc.ErrorCode != ECTLCDeadlockReached {
 		t.Fatalf("error code = %d, want %d", mc.ErrorCode, ECTLCDeadlockReached)
@@ -108,6 +108,9 @@ func TestWorkerFunctorPathReportsDeadlockWhenNoSuccessorsAreGenerated(t *testing
 	}
 	if worker.OutDegree.Observations() != 1 || worker.OutDegree.Median() != 0 {
 		t.Fatalf("worker deadlock out-degree observations/median = %v/%v, want 1/0", worker.OutDegree.Observations(), worker.OutDegree.Median())
+	}
+	if dequeued := mc.StateQueue.SDequeue(); dequeued != nil {
+		t.Fatalf("SDequeue after deadlock = %p, want nil after finishAll", dequeued)
 	}
 }
 
