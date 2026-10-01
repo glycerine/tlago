@@ -1308,44 +1308,7 @@ func (mc *ModelChecker) replayInitErrorCallStack(fallback int) int {
 }
 
 func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
-	if mc.Tool == nil {
-		return true, newTLCError(ECGeneral, "model checker has no tool")
-	}
-	restoreRandomState := PushRandomEnumerableState(curState)
-	defer restoreRandomState()
-	restoreCurrentState := PushCurrentState(curState)
-	defer restoreCurrentState()
-	deadLocked := true
-	var succState *TLCStateMut
-	for _, action := range mc.Tool.GetActions() {
-		nextStates, err := mc.Tool.GetNextStates(action, curState)
-		if err != nil {
-			mc.doNextFailed(curState, succState, err)
-			return true, err
-		}
-		size := 0
-		if nextStates != nil {
-			size = nextStates.Size()
-		}
-		mc.NextStatesGenerated += int64(size)
-		deadLocked = deadLocked && size == 0
-		for i := 0; i < size; i++ {
-			succState = nextStates.At(i)
-			stop, _, err := mc.processSuccessorForWorker(0, curState, succState, action, nil)
-			if err != nil {
-				mc.doNextFailed(curState, succState, err)
-				return true, err
-			}
-			if stop {
-				return true, nil
-			}
-		}
-		succState = nil
-	}
-	if deadLocked && mc.CheckDeadlock {
-		return mc.doNextSetErr(curState, nil, false, ECTLCDeadlockReached, ""), nil
-	}
-	return false, nil
+	return mc.doNextWithTool(mc.Tool, curState, nil, nil)
 }
 
 func (mc *ModelChecker) replayNextErrorCallStack() int {
