@@ -341,7 +341,11 @@ func (s *DiskFPSet) Put(fp uint64) bool {
 		s.memHitCnt++
 		return true
 	}
-	if hit, _ := s.diskLookup(fp0); hit {
+	hit, err := s.diskLookup(fp0)
+	if err != nil {
+		panic(err)
+	}
+	if hit {
 		s.diskHitCnt++
 		return true
 	}
@@ -371,7 +375,10 @@ func (s *DiskFPSet) Contains(fp uint64) bool {
 		s.memHitCnt++
 		return true
 	}
-	hit, _ := s.diskLookup(fp0)
+	hit, err := s.diskLookup(fp0)
+	if err != nil {
+		panic(err)
+	}
 	if hit {
 		s.diskHitCnt++
 	}
@@ -714,17 +721,17 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 	if loPage == indexLength-2 {
 		hiEntry = s.fileCnt - 1
 	}
-	for loEntry <= hiEntry {
+	for loEntry < hiEntry {
 		midEntry := s.calculateMidEntry(loVal, hiVal, dfp, loEntry, hiEntry)
-		if midEntry < loEntry || midEntry > hiEntry {
-			midEntry = loEntry + ((hiEntry - loEntry) / 2)
+		if midEntry < loEntry || midEntry >= hiEntry {
+			return false, newTLCErrorCode(ECSystemIndexError)
 		}
 		v, err := s.readDiskFP(midEntry)
 		if err != nil {
 			return false, err
 		}
 		if fp < v {
-			hiEntry = midEntry - 1
+			hiEntry = midEntry
 			hiVal = v
 		} else if fp > v {
 			loEntry = midEntry + 1
