@@ -326,12 +326,9 @@ func (v *FcnLambdaValue) ApplyWithControl(arg Value, control int) (Value, error)
 		return nil, err
 	}
 	if !matchedTerminal {
-		ctx, ok, err := v.bindArgument(arg)
-		if err != nil {
+		ctx, returnsNull, err := v.bindArgumentForApply(arg)
+		if err != nil || returnsNull {
 			return nil, err
-		}
-		if !ok {
-			return nil, v.unsupported("in applying the function\n%s,\nthe argument is:\n%s\nwhich is not in its domain", v, arg)
 		}
 		res, err = v.evalBody(ctx, control)
 		if err != nil {
@@ -346,6 +343,95 @@ func (v *FcnLambdaValue) ApplyArgs(args []Value, control int) (Value, error) {
 		return v.ApplyWithControl(args[0], control)
 	}
 	return v.ApplyWithControl(NewTupleValue(args), control)
+}
+
+func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error) {
+	if v.Params == nil {
+		return v.Con, true, nil
+	}
+	ctx := v.Con
+	if ctx == nil {
+		ctx = EmptyContext
+	}
+	formals := v.Params.Formals
+	domains := v.Params.Domains
+	isTuples := v.Params.IsTuples
+	if v.Params.Length() == 1 {
+		in, err := domains[0].Member(arg)
+		if err != nil {
+			return nil, false, err
+		}
+		if !in {
+			return nil, false, v.unsupported("in applying the function\n%s,\nthe first argument is:\n%s\nwhich is not in its domain", v, arg)
+		}
+		if isTuples[0] {
+			ids := formals[0]
+			argTuple := asTupleValue(arg)
+			if argTuple == nil {
+				return nil, false, v.unsupported("in applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter", v, arg)
+			}
+			if len(argTuple.Elems) != len(ids) {
+				return nil, true, nil
+			}
+			for i, id := range ids {
+				ctx = ctx.Cons(id, argTuple.Elems[i])
+			}
+			return ctx, false, nil
+		}
+		if len(formals[0]) != 0 {
+			ctx = ctx.Cons(formals[0][0], arg)
+		}
+		return ctx, false, nil
+	}
+	argTuple := asTupleValue(arg)
+	if argTuple == nil {
+		return nil, false, v.unsupported("in applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter", v, arg)
+	}
+	elems := argTuple.Elems
+	argn := 0
+	for i, ids := range formals {
+		domain := domains[i]
+		if isTuples[i] {
+			if argn >= len(elems) {
+				return nil, true, nil
+			}
+			in, err := domain.Member(elems[argn])
+			if err != nil {
+				return nil, false, err
+			}
+			if !in {
+				return nil, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain", v, argn+1, elems[argn])
+			}
+			tv := asTupleValue(elems[argn])
+			argn++
+			if tv == nil || len(tv.Elems) != len(ids) {
+				return nil, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter", v, argn, elems[argn-1])
+			}
+			for j, id := range ids {
+				ctx = ctx.Cons(id, tv.Elems[j])
+			}
+			continue
+		}
+		for _, id := range ids {
+			if argn >= len(elems) {
+				return nil, true, nil
+			}
+			in, err := domain.Member(elems[argn])
+			if err != nil {
+				return nil, false, err
+			}
+			if !in {
+				domainValue, derr := v.GetDomain()
+				if derr != nil {
+					return nil, false, derr
+				}
+				return nil, false, v.unsupported("in applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in the function's domain %s", v, argn+1, elems[argn], domainValue)
+			}
+			ctx = ctx.Cons(id, elems[argn])
+			argn++
+		}
+	}
+	return ctx, false, nil
 }
 
 func (v *FcnLambdaValue) Select(arg Value) (Value, error) {
