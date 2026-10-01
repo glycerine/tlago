@@ -560,7 +560,8 @@
   - Simulator action-flow graph output, trace routing/compression, and local register aggregation were re-audited with no code changes needed.
   - Liveness `OrderOfSolution`/PEM construction was re-audited. The Go constructor now mirrors Java's non-null empty promise array for no-tableau solutions; bin/index ordering already matched Java.
   - Liveness expression normalization was re-audited. Go now keeps Java's tag-only atom equality and raw two-child `makeBinary` shape; `pushNeg`, `simplify`, DNF construction, promise extraction, and general temporal formula detection already matched the Java algorithms.
-  - Liveness graph debug/DOT string surfaces now render fingerprints as Java signed `long` decimals instead of Go `uint64` decimals; storage, hashing, and graph algorithms still retain the raw fingerprint bits.
+- Liveness graph debug/DOT string surfaces now render fingerprints as Java signed `long` decimals instead of Go `uint64` decimals; storage, hashing, and graph algorithms still retain the raw fingerprint bits.
+- Legacy BEGraph path construction now reports Java's dedicated `TLC_LIVE_BEGRAPH_FAILED_TO_CONSTRUCT` diagnostic for disconnected/nil path failures instead of a generic Go error. Object stack/queue helpers used by BEGraph/LiveCheck1 were rechecked: active LIFO/FIFO/growth behavior matches Java; Go intentionally keeps its usable gob checkpoints rather than importing Java `MemObjectStack.beginChkpt`'s inactive every-other-entry write bug because `LiveCheck1.beginChkpt` is a no-op in Java.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:

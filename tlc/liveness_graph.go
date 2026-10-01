@@ -1174,7 +1174,7 @@ func (g *BEGraph) InitSize() int {
 
 func BEGraphGetPath(start *BEGraphNode, end *BEGraphNode) ([]*BEGraphNode, error) {
 	if start == nil || end == nil {
-		return nil, newTLCError(ECGeneral, "failed to construct behavior graph path")
+		return nil, newTLCErrorCode(ECTLCLiveBEGraphFailedToConstruct)
 	}
 	if beGraphNodesEqual(start, end) {
 		start.SetParent(nil)
@@ -1187,7 +1187,7 @@ func BEGraphGetPath(start *BEGraphNode, end *BEGraphNode) ([]*BEGraphNode, error
 		for !found {
 			item, _ := queue.Dequeue().(beGraphNodeAndParent)
 			if item.node == nil {
-				return nil, newTLCError(ECGeneral, "failed to construct behavior graph path")
+				return nil, newTLCErrorCode(ECTLCLiveBEGraphFailedToConstruct)
 			}
 			curNode := item.node
 			for _, nextNode := range curNode.Nexts {
