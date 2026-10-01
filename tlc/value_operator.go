@@ -61,6 +61,23 @@ func (n *OpDefNode) String() string {
 	return n.Name.String()
 }
 
+func (n *OpDefNode) Signature() string {
+	if n == nil || n.Name == nil {
+		return "<anonymous>"
+	}
+	if len(n.Params) == 0 {
+		return n.Name.String()
+	}
+	parts := make([]string, 0, len(n.Params))
+	for _, param := range n.Params {
+		if param == nil || param.Name == nil {
+			continue
+		}
+		parts = append(parts, param.Name.String())
+	}
+	return n.Name.String() + "(" + strings.Join(parts, ", ") + ")"
+}
+
 type OperatorEvalFunc func(args []Value, control int) (Value, error)
 type EvaluatingEvalFunc func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error)
 type CallableEvalFunc func(args []Value) (func() (any, error), error)

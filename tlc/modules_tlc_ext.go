@@ -268,7 +268,7 @@ func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error)
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "name of a definition reachable from the root module", ValuesPPR(name))
 	}
 	if opDef.Arity() != 0 {
-		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "a zero-arity definition", opDef.String())
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCEvalDefinition", "a zero-arity definition", opDef.Signature())
 	}
 	con, s0, s1, control, cm := parseEvalArgs(args...)
 	return tool.Eval(opDef.Body, con, s0, s1, control, cm)
