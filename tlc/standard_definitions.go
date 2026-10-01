@@ -195,6 +195,9 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("UndirectedGraphs!ConnectedComponents", 1, func(args []Value) (Value, error) {
 		return UndirectedGraphsConnectedComponents(args[0])
 	})
+	t.defineStandardMethod("CausalOrder", 4, func(args []Value) (Value, error) {
+		return VectorClocksCausalOrder(args[0], args[1], args[2], args[3])
+	})
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)

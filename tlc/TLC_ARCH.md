@@ -2218,6 +2218,14 @@ Go mapping:
   semantics, the Go port registers module-qualified native values such as
   `Graphs!SimplePath` and lets the root bridge alias skipped SANY definitions
   and named instances to the module-qualified value.
+- CommunityModules `VectorClocks.CausalOrder` is a ShiViz-style topological
+  sort over vector-clock log entries. Java first groups entries by the node
+  returned from `node(entry)`, stable-sorts each node's log by its own clock
+  value, constructs parent links whenever another host's clock component
+  advances beyond the per-host global clock, then repeatedly emits root entries
+  with no remaining parents. The Go port keeps this phase decomposition and the
+  same parent-removal behavior, but stores host logs and parent/child sets in
+  explicit slices so iteration remains deterministic.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

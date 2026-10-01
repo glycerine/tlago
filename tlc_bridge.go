@@ -96,6 +96,9 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"UndirectedGraphs": {
 		"SimplePath", "AreConnectedIn", "ConnectedComponents",
 	},
+	"VectorClocks": {
+		"CausalOrder",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -178,6 +181,9 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"UndirectedGraphs": setOf(
 		"SimplePath", "AreConnectedIn", "ConnectedComponents",
+	),
+	"VectorClocks": setOf(
+		"CausalOrder",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
