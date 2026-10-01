@@ -37,7 +37,7 @@ func BagCardinality(value Value) (*IntValue, error) {
 func BagIn(elem Value, bag Value) (*BoolValue, error) {
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "BagIn", "bag", ValuesPPR(bag))
+		return nil, newTLCError(ECGeneral, `Cannot read field "values" because "fcn" is null`)
 	}
 	domain := fcn.DomainAsValues()
 	for i, dval := range domain {
@@ -59,7 +59,7 @@ func BagIn(elem Value, bag Value) (*BoolValue, error) {
 func CopiesIn(elem Value, bag Value) (*IntValue, error) {
 	fcn := asFcnRcdValue(bag)
 	if fcn == nil {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "CopiesIn", "bag", ValuesPPR(bag))
+		return nil, newTLCError(ECGeneral, `Cannot read field "values" because "fcn" is null`)
 	}
 	domain := fcn.DomainAsValues()
 	for i, dval := range domain {
@@ -301,7 +301,7 @@ func requireBagFunction(name string, value Value) (*FcnRcdValue, error) {
 func requireBag(position string, operator string, value Value) (*FcnRcdValue, error) {
 	fcn := asFcnRcdValue(value)
 	if fcn == nil {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, position, operator, "bag", ValuesPPR(value))
+		return nil, newTLCError(ECGeneral, `Cannot invoke "tlc2.value.impl.Value.toFcnRcd()" because "b" is null`)
 	}
 	ok, err := IsABag(fcn)
 	if err != nil {
