@@ -2207,6 +2207,17 @@ Go mapping:
   files, and overflows beyond signed 32-bit record counts. `GraphViz.DotDiGraph`
   renders a fixed `digraph MyGraph {...}` string; node ids are Java signed
   `long` fingerprints, not unsigned Go `uint64` decimal strings.
+- CommunityModules `Graphs` and `UndirectedGraphs` share Java
+  `AbstractGraphs`: validate graph records, normalize node/edge sets, build
+  adjacency restricted to endpoints in `G.node`, skip malformed edge values,
+  enumerate simple paths with depth-first backtracking, and answer connectivity
+  with breadth-first reachability. Directed edges are ordered 2-tuples;
+  undirected edges are sets of one or two nodes, with singleton sets treated as
+  self-loops. `UndirectedGraphs.ConnectedComponents` uses union-find. Because
+  `SimplePath` and `AreConnectedIn` are exported by both modules but differ in
+  semantics, the Go port registers module-qualified native values such as
+  `Graphs!SimplePath` and lets the root bridge alias skipped SANY definitions
+  and named instances to the module-qualified value.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

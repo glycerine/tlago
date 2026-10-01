@@ -179,6 +179,22 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("DotDiGraph", 3, func(args []Value) (Value, error) {
 		return GraphVizDotDiGraph(args[0], args[1], args[2])
 	})
+	t.defineStandardMethod("Graphs!SimplePath", 1, func(args []Value) (Value, error) { return GraphsSimplePath(args[0]) })
+	t.defineStandardMethod("Graphs!AreConnectedIn", 3, func(args []Value) (Value, error) {
+		return GraphsAreConnectedIn(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("Graphs!IsStronglyConnected", 1, func(args []Value) (Value, error) {
+		return GraphsIsStronglyConnected(args[0])
+	})
+	t.defineStandardMethod("UndirectedGraphs!SimplePath", 1, func(args []Value) (Value, error) {
+		return UndirectedGraphsSimplePath(args[0])
+	})
+	t.defineStandardMethod("UndirectedGraphs!AreConnectedIn", 3, func(args []Value) (Value, error) {
+		return UndirectedGraphsAreConnectedIn(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("UndirectedGraphs!ConnectedComponents", 1, func(args []Value) (Value, error) {
+		return UndirectedGraphsConnectedComponents(args[0])
+	})
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)

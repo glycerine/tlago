@@ -90,6 +90,12 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"GraphViz": {
 		"DotDiGraph",
 	},
+	"Graphs": {
+		"SimplePath", "AreConnectedIn", "IsStronglyConnected",
+	},
+	"UndirectedGraphs": {
+		"SimplePath", "AreConnectedIn", "ConnectedComponents",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -166,6 +172,12 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"GraphViz": setOf(
 		"DotDiGraph",
+	),
+	"Graphs": setOf(
+		"SimplePath", "AreConnectedIn", "IsStronglyConnected",
+	),
+	"UndirectedGraphs": setOf(
+		"SimplePath", "AreConnectedIn", "ConnectedComponents",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
@@ -244,6 +256,7 @@ func (b *tlcBridge) installDefinitions() {
 			continue
 		}
 		if isNativeStandardDefinitionOverrideName(name, def) {
+			b.installNativeStandardDefinitionOverrideAlias(name, def)
 			continue
 		}
 		opDef := b.convertDefinitionAs(name, def)
@@ -267,6 +280,28 @@ func isNativeStandardDefinitionOverrideName(name string, def *Definition) bool {
 		return false
 	}
 	return bridgeNativeOverrideModuleMembers[module][member]
+}
+
+func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, def *Definition) {
+	if b == nil || b.tool == nil || def == nil || name == "" {
+		return
+	}
+	module := moduleNameForSourcePosition(def.SourcePosition())
+	if module == "" {
+		return
+	}
+	member := name
+	if i := strings.LastIndex(member, "!"); i >= 0 {
+		member = member[i+1:]
+	}
+	value := b.tool.DefnsByName[tlc.UniqueStringOf(module+"!"+member)]
+	if value == nil {
+		value = b.tool.DefnsByName[tlc.UniqueStringOf(member)]
+	}
+	if value == nil {
+		return
+	}
+	b.define(b.symbol(name), value)
 }
 
 func moduleNameForSourcePosition(pos Position) string {
@@ -413,7 +448,10 @@ func (b *tlcBridge) standardInstanceBindings(inst Instance) []tlc.LetBinding {
 	}
 	out := make([]tlc.LetBinding, 0, len(members))
 	for _, member := range members {
-		value := b.tool.DefnsByName[tlc.UniqueStringOf(member)]
+		value := b.tool.DefnsByName[tlc.UniqueStringOf(inst.Module+"!"+member)]
+		if value == nil {
+			value = b.tool.DefnsByName[tlc.UniqueStringOf(member)]
+		}
 		if value == nil {
 			continue
 		}
