@@ -309,6 +309,7 @@
   - ensure no Go map iteration leaks into user-visible order or fingerprints.
 - Complete coverage parity:
   - Java's 2026 `CostModelCreator` has extra call-tree reconstruction for higher-order operator arguments, LET-IN aliases, recursive operator calls, substituted expressions, and action location printing for one declaration with multiple actual disjuncts. Go has the main action/node counters and substitution identity keying, but this richer coverage tree should be ported as a coherent coverage chunk rather than patched piecemeal.
+  - Next-action coverage report ordering now follows Java's source `Location` comparator shape rather than expression-text ordering; remaining coverage work is the richer call-tree reconstruction above.
 - Complete simulator parity:
   - finish comparison to `Simulator.java`, `SimulationWorker.java`, `RLSimulationWorker.java`, and `RLActionSimulationWorker.java`.
   - verify trace-file names/content, continuation behavior, post-condition/error-code precedence, periodic condition handling, and action-flow graph output.

@@ -351,7 +351,7 @@ func reportCoverage(tool *Tool) {
 	}
 	actions := tool.GetActions()
 	sort.SliceStable(actions, func(i, j int) bool {
-		return SemanticString(actions[i].Pred) < SemanticString(actions[j].Pred)
+		return coverageActionLess(actions[i], actions[j])
 	})
 	reported := NewInsMap[*CostModelNode, bool]()
 	for _, action := range actions {
@@ -383,6 +383,45 @@ func reportCoverage(tool *Tool) {
 	}
 	reportConstraintCoverage(tool.GetActionConstraints())
 	reportConstraintCoverage(tool.GetModelConstraints())
+}
+
+func coverageActionLess(left *Action, right *Action) bool {
+	if left == nil || right == nil {
+		return right != nil
+	}
+	lloc := left.GetDefinitionLocation()
+	rloc := right.GetDefinitionLocation()
+	if lloc != rloc {
+		return sourceLocationLess(lloc, rloc)
+	}
+	lpred := ""
+	if left != nil {
+		lpred = SemanticString(left.Pred)
+	}
+	rpred := ""
+	if right != nil {
+		rpred = SemanticString(right.Pred)
+	}
+	if lpred != rpred {
+		return lpred < rpred
+	}
+	return left.GetName() < right.GetName()
+}
+
+func sourceLocationLess(left SourceLocation, right SourceLocation) bool {
+	if left.Source != right.Source {
+		return left.Source < right.Source
+	}
+	if left.BeginLine != right.BeginLine {
+		return left.BeginLine < right.BeginLine
+	}
+	if left.BeginColumn != right.BeginColumn {
+		return left.BeginColumn < right.BeginColumn
+	}
+	if left.EndLine != right.EndLine {
+		return left.EndLine < right.EndLine
+	}
+	return left.EndColumn < right.EndColumn
 }
 
 func coverageImpliedEnabled() bool {
