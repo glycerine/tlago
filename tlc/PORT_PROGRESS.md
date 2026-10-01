@@ -220,6 +220,7 @@
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - `CheckImpl.MakeStateSpace` must derive the root depth from `trace.getLevel(state.uid)` exactly like Java; do not fall back to the mutable state's cached level or an object-identity trace lookup for partial state-space extension.
 - `CheckImpl.CheckReachability` deliberately calls `Tool.IsValidTransition(Tool.GetNextStateSpec(), ...)` even if the next-state action is nil, matching Java's unconditional `tool.isValid(next, s0, s1)` path instead of silently accepting every transition.
+- The root `checkimplfile` command must recover `UniqueString` state from `-recover` before parsing/building the tool and must reset FP64 to index 0, mirroring Java `CheckImplFile.main` before `new FastTool(...)`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
 - Current immediate note: the file-backed implementation checker is now reachable from the CLI, but it has not been exercised against an external simulator trace loop yet. It parses extensionless trace files by exact filename through `CheckSanySourceWithOptions`, converts root definitions with the production bridge, temporarily installs trace definitions while calling `Tool.MakeState`, and restores the main tool definition table afterward.
 

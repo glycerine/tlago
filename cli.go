@@ -563,6 +563,13 @@ func runCheckImplFile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
+	if opts.FromCheckpoint != "" {
+		if err := tlcruntime.RecoverUniqueStrings(opts.FromCheckpoint); err != nil {
+			fmt.Fprintln(stderr, err)
+			return ExitToolFailure
+		}
+	}
+	tlcruntime.FP64Init()
 	spec, diags := LoadSanySpec(opts.MainFile, LoadOptions{})
 	if diags.HasErrors() {
 		writeDiagnostics(stderr, diags)

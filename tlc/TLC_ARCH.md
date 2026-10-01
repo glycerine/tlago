@@ -1364,7 +1364,10 @@ trace definitions for helper-definition lookup, calls `Tool.MakeState`, then
 restores the main tool definition table. The command option parser mirrors
 Java's `CheckImplFile.main` surface: `-config`, `-deadlock`, `-recover`,
 `-workers`, `-depth`, `-trace`, `-coverage`, and the root module; the root CLI
-exposes it as `tlago checkimplfile`.
+exposes it as `tlago checkimplfile`. On recovery runs, the CLI restores the
+`UniqueString` checkpoint before parsing/building the tool and resets FP64 to
+polynomial index 0 before construction, matching Java's `CheckImplFile.main`
+ordering before `new FastTool(...)`.
 
 ## DFID Architecture
 
