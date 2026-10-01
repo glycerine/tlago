@@ -26,7 +26,7 @@ func (p PartialBoolean) String() string {
 	case PartialMaybe:
 		return "MAYBE"
 	default:
-		return "UNKNOWN"
+		panic("unsupported PartialBoolean")
 	}
 }
 
@@ -36,8 +36,10 @@ func (p PartialBoolean) IsDefinitely(value bool) bool {
 		return value
 	case PartialNo:
 		return !value
-	default:
+	case PartialMaybe:
 		return false
+	default:
+		panic("unsupported PartialBoolean")
 	}
 }
 
