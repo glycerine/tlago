@@ -189,6 +189,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 			index += 2
 		case arg == "-debugger":
 			opts.DebugPort = 4712
+			opts.DebugPortSet = true
 			opts.DebugSuspend = defaultTLCDebugSuspend()
 			opts.DebugHalt = defaultTLCDebugHalt()
 			index++

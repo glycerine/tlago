@@ -1819,6 +1819,22 @@ func NewTLCDebugger(tool *Tool) *TLCDebugger {
 	}
 }
 
+func (t *Tool) AttachDebugger(port int, suspend bool, halt bool) *Tool {
+	if t == nil {
+		return nil
+	}
+	t.DebugPort = port
+	t.DebugSuspend = suspend
+	t.DebugHalt = halt
+	if t.Debugger == nil {
+		t.Debugger = NewTLCDebugger(t)
+	} else {
+		t.Debugger.SetTool(t)
+	}
+	t.SetMode(ModeDebugger)
+	return t
+}
+
 func (d *TLCDebugger) SetTool(tool *Tool) *TLCDebugger {
 	if d == nil {
 		d = NewTLCDebugger(tool)

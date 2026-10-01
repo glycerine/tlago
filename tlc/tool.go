@@ -147,6 +147,10 @@ type Tool struct {
 	CounterExampleDef *OpDefNode
 	TraceDef          *OpDefNode
 	AliasSpec         SemanticNode
+	Debugger          *TLCDebugger
+	DebugPort         int
+	DebugSuspend      bool
+	DebugHalt         bool
 	Definitions       map[*SymbolNode]any
 	DefnsByName       map[*UniqueString]any
 	CallStack         *CallStack
@@ -1027,6 +1031,15 @@ func (t *Tool) NoDebug() *Tool {
 	if t != nil && t.NoDebugFunc != nil {
 		return t.NoDebugFunc(t)
 	}
+	if t != nil && t.Debugger != nil {
+		copied := *t
+		copied.Debugger = nil
+		copied.DebugPort = -1
+		if copied.Mode == ModeDebugger {
+			copied.Mode = ModeMC
+		}
+		return &copied
+	}
 	return t
 }
 
@@ -1038,5 +1051,5 @@ func (t *Tool) ParseDebuggerExpression(location SourceLocation, condition string
 }
 
 func (t *Tool) IsDebugger() bool {
-	return t != nil && t.IsDebuggerFunc != nil && t.IsDebuggerFunc(t)
+	return t != nil && ((t.IsDebuggerFunc != nil && t.IsDebuggerFunc(t)) || t.Debugger != nil)
 }

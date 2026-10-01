@@ -67,6 +67,7 @@ type Options struct {
 	TraceSpecOutputDir        string
 	ToolMode                  bool
 	DebugPort                 int
+	DebugPortSet              bool
 	DebugSuspend              bool
 	DebugHalt                 bool
 	UserOutput                *os.File
@@ -114,7 +115,7 @@ func NewTLC(opts Options) *TLC {
 	if opts.FPSetConfiguration == nil {
 		opts.FPSetConfiguration = NewFPSetConfiguration()
 	}
-	if opts.DebugPort == 0 {
+	if opts.DebugPort == 0 && !opts.DebugPortSet {
 		opts.DebugPort = -1
 	}
 	if opts.NoDeadlock {
@@ -171,6 +172,7 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		}
 		return &Result{ExitStatus: ExitStatusError, ErrorCode: ECGeneral}, newTLCError(ECGeneral, "TLC runner has no tool")
 	}
+	t.attachDebuggerIfRequested()
 	closeUserOutput := t.installUserOutput()
 
 	t.prepareRandomSeed()
@@ -243,6 +245,16 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		return result, err
 	}
 	return result, err
+}
+
+func (t *TLC) attachDebuggerIfRequested() {
+	if t == nil || t.Tool == nil {
+		return
+	}
+	if !t.DebugPortSet && t.DebugPort < 0 {
+		return
+	}
+	t.Tool.AttachDebugger(t.DebugPort, t.DebugSuspend, t.DebugHalt)
 }
 
 func (t *TLC) installUserOutput() func() error {
