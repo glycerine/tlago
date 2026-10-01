@@ -58,7 +58,7 @@ func TLCEvalChecked(value Value) (Value, error) {
 	if value == nil {
 		return ValUndef, nil
 	}
-	if tlcEvalCanConvertToSet(value) {
+	if canConvertToSetEnum(value) {
 		set, err := toSetEnumValue(value)
 		if err != nil {
 			return nil, err
@@ -73,7 +73,7 @@ func TLCEvalChecked(value Value) (Value, error) {
 	return value, nil
 }
 
-func tlcEvalCanConvertToSet(value Value) bool {
+func canConvertToSetEnum(value Value) bool {
 	switch value.(type) {
 	case *SetEnumValue, *SetPredValue, *IntervalValue, *SetCupValue, *SetCapValue, *SetDiffValue, *UnionValue, *SetOfTuplesValue, *SetOfRcdsValue, *SetOfFcnsValue, *SubsetValue, *KSubsetValue:
 		return true

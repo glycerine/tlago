@@ -156,9 +156,12 @@ func BagDiff(b1 Value, b2 Value) (Value, error) {
 }
 
 func BagUnion(set Value) (Value, error) {
+	if !canConvertToSetEnum(set) {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagUnion", "a finite enumerable set", ValuesPPR(set))
+	}
 	setEnum, err := toSetEnumValue(set)
 	if err != nil {
-		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagUnion", "a finite enumerable set", ValuesPPR(set))
+		return nil, err
 	}
 	setEnum.Normalize()
 	if setEnum.Elems.Len() == 0 {
@@ -281,9 +284,12 @@ func BagToSet(bag Value) (Value, error) {
 }
 
 func SetToBag(set Value) (Value, error) {
+	if !canConvertToSetEnum(set) {
+		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(set))
+	}
 	setEnum, err := toSetEnumValue(set)
 	if err != nil {
-		return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "BagToSet", "a function with a finite domain", ValuesPPR(set))
+		return nil, err
 	}
 	if !setEnum.IsNormalized() {
 		setEnum.Normalize()
