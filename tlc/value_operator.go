@@ -392,7 +392,7 @@ type PriorityEvaluatingValue struct {
 }
 
 func NewPriorityEvaluatingValue(primary *EvaluatingValue, secondary *EvaluatingValue) *PriorityEvaluatingValue {
-	out := &PriorityEvaluatingValue{EvaluatingValue: primary}
+	out := &PriorityEvaluatingValue{}
 	out.Add(primary)
 	out.Add(secondary)
 	return out
@@ -402,7 +402,7 @@ func (v *PriorityEvaluatingValue) Add(ev *EvaluatingValue) {
 	if ev == nil {
 		return
 	}
-	if v.OpDef != ev.OpDef || v.MinLevel != ev.MinLevel {
+	if v.EvaluatingValue != nil && (v.OpDef != ev.OpDef || v.MinLevel != ev.MinLevel) {
 		panic(newTLCError(ECGeneral, "priority evaluating values must refer to the same operator definition and level"))
 	}
 	v.Handles = append(v.Handles, ev)
@@ -415,6 +415,7 @@ func (v *PriorityEvaluatingValue) Add(ev *EvaluatingValue) {
 		}
 		v.Handles[j] = cur
 	}
+	v.EvaluatingValue = v.Handles[0]
 }
 
 func (v *PriorityEvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -464,6 +465,33 @@ func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Conte
 		pstate.SetCallable(callable)
 	}
 	return BoolTrue, nil
+}
+
+func WithEvaluatingOpDef(value any, opDef *OpDefNode) any {
+	if opDef == nil {
+		return value
+	}
+	switch v := value.(type) {
+	case *EvaluatingValue:
+		return v.withOpDef(opDef)
+	case *PriorityEvaluatingValue:
+		out := &PriorityEvaluatingValue{}
+		for _, handle := range v.Handles {
+			out.Add(handle.withOpDef(opDef))
+		}
+		return out
+	default:
+		return value
+	}
+}
+
+func (v *EvaluatingValue) withOpDef(opDef *OpDefNode) *EvaluatingValue {
+	if v == nil || opDef == nil {
+		return v
+	}
+	out := *v
+	out.OpDef = opDef
+	return &out
 }
 
 func EvalOperatorValue(op Value, args []Value, control int) (Value, error) {

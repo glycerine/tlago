@@ -716,6 +716,10 @@ func (t *Tool) GetLevelBoundAppl(expr *OpApplNode, c *Context) int {
 		if v.MinLevel > level {
 			level = v.MinLevel
 		}
+	case *PriorityEvaluatingValue:
+		if v.MinLevel > level {
+			level = v.MinLevel
+		}
 	case *MethodValue:
 		if v.MinLevel > level {
 			level = v.MinLevel

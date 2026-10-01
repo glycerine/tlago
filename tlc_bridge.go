@@ -369,6 +369,15 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	if value == nil {
 		return
 	}
+	if _, ok := value.(*tlc.EvaluatingValue); ok {
+		if opDef := b.convertDefinitionAs(name, def); opDef != nil {
+			value = tlc.WithEvaluatingOpDef(value, opDef)
+		}
+	} else if _, ok := value.(*tlc.PriorityEvaluatingValue); ok {
+		if opDef := b.convertDefinitionAs(name, def); opDef != nil {
+			value = tlc.WithEvaluatingOpDef(value, opDef)
+		}
+	}
 	b.define(b.symbol(name), value)
 }
 

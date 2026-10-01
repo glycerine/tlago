@@ -142,8 +142,11 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		}
 		return IOUtilsIODeserialize(path, compress)
 	})
-	t.defineStandardMethod("Serialize", 3, func(args []Value) (Value, error) { return IOUtilsSerialize(args[0], args[1], args[2]) })
-	t.defineStandardMethod("Deserialize", 2, func(args []Value) (Value, error) { return IOUtilsDeserialize(args[0], args[1]) })
+	t.defineStandardPriorityEvaluating("Serialize", 3,
+		standardEvaluatingHandler{priority: 25, eval: standardJsonTextSerialize},
+		standardEvaluatingHandler{priority: 50, eval: standardIOUtilsTextSerialize},
+	)
+	t.defineStandardEvaluatingWithPriority("Deserialize", 2, 0, 50, standardIOUtilsTextDeserialize)
 	t.defineStandardMethod("IOEnv", 0, func(args []Value) (Value, error) { return IOUtilsIOEnv(), nil })
 	t.defineStandardMethod("IOExec", 1, func(args []Value) (Value, error) { return IOUtilsIOExec(args[0]) })
 	t.defineStandardMethod("IOEnvExec", 2, func(args []Value) (Value, error) { return IOUtilsIOEnvExec(args[0], args[1]) })
@@ -352,6 +355,45 @@ func (t *Tool) defineStandardEvaluatingIdentity(name string, arity int, identity
 	t.defineStandardValue(name, value, aliases...)
 }
 
+type standardEvaluatingHandler struct {
+	priority int
+	eval     EvaluatingEvalFunc
+}
+
+func (t *Tool) defineStandardEvaluatingWithPriority(name string, arity int, minLevel int, priority int, eval EvaluatingEvalFunc, aliases ...string) {
+	t.defineStandardValue(name, newStandardEvaluatingValue(name, arity, minLevel, priority, eval), aliases...)
+}
+
+func (t *Tool) defineStandardPriorityEvaluating(name string, arity int, handlers ...standardEvaluatingHandler) {
+	opDef := standardSyntheticOpDef(name, arity, NewValueNode(ValUndef))
+	value := &PriorityEvaluatingValue{}
+	for _, handler := range handlers {
+		value.Add(newStandardEvaluatingValueForOpDef(name, arity, 0, handler.priority, opDef, handler.eval))
+	}
+	t.defineStandardValue(name, value)
+}
+
+func newStandardEvaluatingValue(name string, arity int, minLevel int, priority int, eval EvaluatingEvalFunc) *EvaluatingValue {
+	return newStandardEvaluatingValueForOpDef(name, arity, minLevel, priority, standardSyntheticOpDef(name, arity, NewValueNode(ValUndef)), eval)
+}
+
+func newStandardEvaluatingValueForOpDef(name string, arity int, minLevel int, priority int, opDef *OpDefNode, eval EvaluatingEvalFunc) *EvaluatingValue {
+	return NewEvaluatingValue(name, minLevel, priority, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+		if len(args) != arity {
+			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
+		}
+		return eval(tool, args, con, state, pstate, control, cm)
+	})
+}
+
+func standardSyntheticOpDef(name string, arity int, body SemanticNode) *OpDefNode {
+	params := make([]*SymbolNode, arity)
+	for i := range params {
+		params[i] = NewSymbolNode(name + "$arg")
+	}
+	return &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name), Params: params, Body: body}
+}
+
 func standardBinaryInt(name string, eval func(*IntValue, *IntValue) (*IntValue, error)) func([]Value) (Value, error) {
 	return func(args []Value) (Value, error) {
 		x, err := standardIntArg(name, args, 0)
@@ -388,6 +430,78 @@ func standardStringArg(name string, args []Value, index int) (*StringValue, erro
 		return nil, newTLCError(ECGeneral, "%s argument %d must be a string, got %s", name, index+1, args[index])
 	}
 	return value, nil
+}
+
+func standardJsonTextSerialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	options, err := tool.Eval(args[2], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	opts := asRecordValue(options)
+	if opts == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "ndJsonSerialize", "sequence", ValuesPPR(options))
+	}
+	if ioUtilsRecordString(opts, "format") != "NDJSON" {
+		return nil, nil
+	}
+	payload, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	if asTupleValue(payload) == nil {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Serialize", "sequence", ValuesPPR(payload))
+	}
+	dest, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, err
+	}
+	path, ok := dest.(*StringValue)
+	if !ok {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(dest))
+	}
+	return JsonTextSerialize(path, payload, options)
+}
+
+func standardIOUtilsTextSerialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	options, err := tool.Eval(args[2], con, state, pstate, control, cm)
+	if err != nil {
+		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error()), nil
+	}
+	opts := asRecordValue(options)
+	if opts == nil {
+		return ioUtilsResult(1, "", "Serialize error invalid parameters: options is not a record"), nil
+	}
+	if ioUtilsRecordString(opts, "format") != "TXT" {
+		return nil, nil
+	}
+	payload, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error()), nil
+	}
+	dest, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if err != nil {
+		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error()), nil
+	}
+	return ioUtilsSerializeTXT(payload, dest, opts), nil
+}
+
+func standardIOUtilsTextDeserialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	options, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if err != nil {
+		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
+	}
+	opts := asRecordValue(options)
+	if opts == nil {
+		return ioUtilsResult(1, "", "Deserialize error invalid parameters: options is not a record"), nil
+	}
+	if ioUtilsRecordString(opts, "format") != "TXT" {
+		return nil, nil
+	}
+	src, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
+	}
+	return IOUtilsDeserialize(src, options)
 }
 
 func standardTLCGet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
