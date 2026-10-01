@@ -747,7 +747,7 @@ func (v *FcnRcdValue) Compare(other Value) (int, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("attempted to compare the function %s with the value:\n%s", v, other)
+		return 0, v.unsupported("Attempted to compare the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other))
 	}
 	if err := v.normalizeFcn(); err != nil {
 		return 0, err
@@ -769,7 +769,7 @@ func (v *FcnRcdValue) compareOtherInterval(fcn *FcnRcdValue) (int, error) {
 		for i, dElem := range v.Domain {
 			iv, ok := dElem.(*IntValue)
 			if !ok {
-				return 0, v.unsupported("attempted to compare integer with non-integer\n%s", dElem)
+				return 0, v.unsupported("Attempted to compare integer with non-integer\n%s.", ValuesPPR(dElem))
 			}
 			intervalElement := int64(fcn.Intv.Low) + int64(i)
 			domainElement := int64(iv.Val)
@@ -825,7 +825,7 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 	for i, dElem := range fcn.Domain {
 		iv, ok := dElem.(*IntValue)
 		if !ok {
-			return 0, v.unsupported("attempted to compare integer with non-integer:\n%s", dElem)
+			return 0, v.unsupported("Attempted to compare integer with non-integer:\n%s.", ValuesPPR(dElem))
 		}
 		intervalElement := int64(v.Intv.Low) + int64(i)
 		domainElement := int64(iv.Val)
@@ -851,7 +851,7 @@ func (v *FcnRcdValue) Equal(other Value) (bool, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("attempted to check equality of the function %s with the value:\n%s", v, other)
+		return false, v.unsupported("Attempted to check equality of the function %s with the value:\n%s", ValuesPPR(v), ValuesPPR(other))
 	}
 	if err := v.normalizeFcn(); err != nil {
 		return false, err
@@ -879,7 +879,7 @@ func (v *FcnRcdValue) Equal(other Value) (bool, error) {
 		for i, dElem := range fcn.Domain {
 			iv, ok := dElem.(*IntValue)
 			if !ok {
-				return false, v.unsupported("attempted to compare an integer with non-integer:\n%s", dElem)
+				return false, v.unsupported("Attempted to compare an integer with non-integer:\n%s.", ValuesPPR(dElem))
 			}
 			if int64(iv.Val) != int64(v.Intv.Low)+int64(i) {
 				return false, nil
@@ -900,7 +900,7 @@ func (v *FcnRcdValue) Equal(other Value) (bool, error) {
 		for i, dElem := range v.Domain {
 			iv, ok := dElem.(*IntValue)
 			if !ok {
-				return false, v.unsupported("attempted to compare an integer with non-integer:\n%s", dElem)
+				return false, v.unsupported("Attempted to compare an integer with non-integer:\n%s.", ValuesPPR(dElem))
 			}
 			if int64(iv.Val) != int64(fcn.Intv.Low)+int64(i) {
 				return false, nil
@@ -930,7 +930,7 @@ func (v *FcnRcdValue) Equal(other Value) (bool, error) {
 }
 
 func (v *FcnRcdValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if the value:\n%s\nis an element of the function %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v))
 }
 
 func (v *FcnRcdValue) IsFinite() (bool, error) { return true, nil }
@@ -941,7 +941,7 @@ func (v *FcnRcdValue) Apply(arg Value) (Value, error) {
 		return nil, err
 	}
 	if result == nil {
-		return nil, v.unsupported("attempted to apply function:\n%s\nto argument %s, which is not in the domain of the function", v, arg)
+		return nil, v.unsupported("Attempted to apply function:\n%s\nto argument %s, which is not in the domain of the function.", ValuesPPR(v), ValuesPPR(arg))
 	}
 	return result, nil
 }
@@ -950,7 +950,7 @@ func (v *FcnRcdValue) Select(arg Value) (Value, error) {
 	if v.Intv != nil {
 		iv, ok := arg.(*IntValue)
 		if !ok {
-			return nil, v.unsupported("attempted to apply function with integer domain to the non-integer argument %s", arg)
+			return nil, v.unsupported("Attempted to apply function with integer domain to the non-integer argument %s", ValuesPPR(arg))
 		}
 		if iv.Val >= v.Intv.Low && iv.Val <= v.Intv.High {
 			offset := int64(iv.Val) - int64(v.Intv.Low)
