@@ -186,10 +186,13 @@ Port guidance:
   extendees are postcondition modules, invariant dependency modules, model
   constraint modules, action constraint modules, then view. Runtime string
   constants are bound in the same order Java's `processConstantDefns` visits
-  them: model constraints, action constraints, then postconditions. Runtime
-  invariant actions are appended after normal config processing, so the missing
-  `INIT`/`NEXT` checks only see the static model config just as Java's
-  `SpecProcessor` does.
+  them: model constraints, action constraints, postconditions, invariant
+  dependency modules if they declare constants, then view. The current Go
+  runtime invariant template form has no constant definitions of its own, but
+  view constants are still carried through `RuntimeView` like Java
+  `ParameterizedSpecObj.View.constDefs`. Runtime invariant actions are appended
+  after normal config processing, so the missing `INIT`/`NEXT` checks only see
+  the static model config just as Java's `SpecProcessor` does.
 - Java's `-dump class,...` loads an `IStateWriter` by reflection. Go keeps this
   concrete with `StateWriterFactory` functions registered by class name through
   `RegisterStateWriterClass`; built-in parity names cover Java's zero-argument

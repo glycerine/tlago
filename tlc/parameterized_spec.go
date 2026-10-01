@@ -34,7 +34,7 @@ func (p RuntimeParameters) ExtendeeModules() []string {
 }
 
 func (p RuntimeParameters) StringConstants() []RuntimeStringConstant {
-	constants := make([]RuntimeStringConstant, 0, len(p.Constraints)+len(p.ActionConstraints)+len(p.PostConditions))
+	constants := make([]RuntimeStringConstant, 0, len(p.Constraints)+len(p.ActionConstraints)+len(p.PostConditions)+1)
 	for _, constraint := range p.Constraints {
 		constants = appendRuntimeStringConstant(constants, constraint.ConstantName, constraint.FileName)
 	}
@@ -43,6 +43,9 @@ func (p RuntimeParameters) StringConstants() []RuntimeStringConstant {
 	}
 	for _, post := range p.PostConditions {
 		constants = appendRuntimeStringConstant(constants, post.ConstantName, post.FileName)
+	}
+	if p.View != nil {
+		constants = appendRuntimeStringConstant(constants, p.View.ConstantName, p.View.FileName)
 	}
 	return constants
 }

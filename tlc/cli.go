@@ -43,8 +43,10 @@ type RuntimePostCondition struct {
 }
 
 type RuntimeView struct {
-	Module   string
-	Operator string
+	Module       string
+	Operator     string
+	ConstantName string
+	FileName     string
 }
 
 type TLCCommandLineError struct {
