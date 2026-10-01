@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/debug"
+	"strconv"
 	"sync"
 )
 
@@ -42,9 +43,6 @@ func NewFPSetConfigurationWithRatio(ratio float64) *FPSetConfiguration {
 }
 
 func NewFPSetConfigurationWithRatioAndImplementation(ratio float64, implementation string) *FPSetConfiguration {
-	if implementation == "" {
-		implementation = GetFPSetImplementationDefault()
-	}
 	return &FPSetConfiguration{
 		FPBits:         1,
 		MemoryInBytes:  -1,
@@ -139,9 +137,6 @@ func (c *FPSetConfiguration) GetImplementation() string {
 }
 
 func (c *FPSetConfiguration) SetImplementation(implementation string) {
-	if implementation == "" {
-		implementation = GetFPSetImplementationDefault()
-	}
 	c.Implementation = implementation
 }
 
@@ -295,7 +290,52 @@ func NewFPSet(config *FPSetConfiguration) FPSet {
 	if config.AllowsNesting() {
 		return NewMultiFPSet(config)
 	}
-	switch config.GetImplementation() {
+	implementation := config.GetImplementation()
+	if !fpSetSupportsArchitecture(implementation) {
+		PrintWarning(ECTLCFeatureUnsupported, fmt.Sprintf(
+			"Selected fingerprint set (set of visited states) %s does not support current architecture %s. "+
+				"Reverting to default fingerprint set. "+
+				"Off-heap memory allocated via -XX:MaxDirectMemorySize flag cannot be used by default "+
+				"fingerprint set and is therefore wasted.",
+			implementation, fpSetArchitecture()))
+		return NewMSBDiskFPSet(config)
+	}
+	if set := loadFPSetImplementation(implementation, config); set != nil {
+		return set
+	}
+	PrintWarning(ECGeneral, "unsuccessfully trying to load custom FPSet class: "+implementation)
+	return nil
+}
+
+func fpSetSupportsArchitecture(implementation string) bool {
+	switch implementation {
+	case "tlc2.tool.fp.FPSet",
+		"tlc2.tool.fp.DiskFPSet",
+		"tlc2.tool.fp.HeapBasedDiskFPSet",
+		"tlc2.tool.fp.LSBDiskFPSet",
+		"tlc2.tool.fp.MSBDiskFPSet",
+		"tlc2.tool.fp.OffHeapDiskFPSet",
+		"tlc2.tool.fp.NonCheckpointableDiskFPSet",
+		"tlc2.tool.fp.MemFPSet",
+		"tlc2.tool.fp.MemFPSet1",
+		"tlc2.tool.fp.MemFPSet2",
+		"tlc2.tool.fp.MultiFPSet",
+		"tlc2.tool.fp.NoopFPSet":
+		return implementation != "tlc2.tool.fp.OffHeapDiskFPSet" || strconv.IntSize != 32
+	default:
+		return false
+	}
+}
+
+func fpSetArchitecture() string {
+	if strconv.IntSize == 32 {
+		return "BIT_32"
+	}
+	return "BIT_64"
+}
+
+func loadFPSetImplementation(implementation string, config *FPSetConfiguration) FPSet {
+	switch implementation {
 	case "tlc2.tool.fp.MemFPSet":
 		return NewMemFPSetWithConfig(config)
 	case "tlc2.tool.fp.MemFPSet1":
@@ -306,16 +346,14 @@ func NewFPSet(config *FPSetConfiguration) FPSet {
 		return NewNoopFPSet(config)
 	case "tlc2.tool.fp.LSBDiskFPSet":
 		return NewLSBDiskFPSet(config)
-	case "tlc2.tool.fp.MSBDiskFPSet", "":
+	case "tlc2.tool.fp.MSBDiskFPSet":
 		return NewMSBDiskFPSet(config)
-	case "tlc2.tool.fp.NonCheckpointableDiskFPSet":
-		return NewNonCheckpointableDiskFPSet(config)
 	case "tlc2.tool.fp.OffHeapDiskFPSet":
 		return NewOffHeapDiskFPSet(config)
-	default:
-		PrintWarning(ECGeneral, "unsuccessfully trying to load custom FPSet class: "+config.GetImplementation())
-		return nil
+	case "tlc2.tool.fp.MultiFPSet":
+		return NewMultiFPSet(config)
 	}
+	return nil
 }
 
 func fpSetInitialized(set FPSet) bool {

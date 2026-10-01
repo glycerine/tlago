@@ -596,6 +596,8 @@ func formatMessage(code int, params []string) string {
 		return "End of statistics (please note that for performance reasons large models\nare best checked with coverage and cost statistics disabled)."
 	case ECGeneral:
 		return strings.Join(params, "")
+	case ECTLCFeatureUnsupported:
+		return strings.Join(params, "")
 	case ECTLCFPCompleted:
 		if len(params) >= 1 {
 			return fmt.Sprintf("%s, work completed. Thank you!", params[0])

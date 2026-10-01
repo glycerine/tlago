@@ -46,7 +46,7 @@ func TestMultiFPSetConfigurationRejectsZeroFingerprintBudgetLikeJava(t *testing.
 	_ = NewMultiFPSetConfiguration(cfg)
 }
 
-func TestFPSetFactoryLoadFailuresReturnNilLikeJava(t *testing.T) {
+func TestFPSetFactoryKnownLoadFailuresReturnNilLikeJava(t *testing.T) {
 	ClearMessageRecorders()
 	recorder := &MemoryRecorder{}
 	AddMessageRecorder(recorder)
@@ -55,7 +55,12 @@ func TestFPSetFactoryLoadFailuresReturnNilLikeJava(t *testing.T) {
 		ClearMessageRecorders()
 	})
 
-	for _, implementation := range []string{"com.example.DoesNotExist", "tlc2.tool.fp.DiskFPSet", "tlc2.tool.fp.HeapBasedDiskFPSet"} {
+	for _, implementation := range []string{
+		"tlc2.tool.fp.FPSet",
+		"tlc2.tool.fp.DiskFPSet",
+		"tlc2.tool.fp.HeapBasedDiskFPSet",
+		"tlc2.tool.fp.NonCheckpointableDiskFPSet",
+	} {
 		cfg := NewFPSetConfiguration()
 		cfg.NoNesting = true
 		cfg.SetImplementation(implementation)
@@ -65,8 +70,8 @@ func TestFPSetFactoryLoadFailuresReturnNilLikeJava(t *testing.T) {
 	}
 
 	records := recorder.Records(ECGeneral)
-	if len(records) != 3 {
-		t.Fatalf("warning count = %d, want 3", len(records))
+	if len(records) != 4 {
+		t.Fatalf("warning count = %d, want 4", len(records))
 	}
 	for i, record := range records {
 		if record.Severity != SeverityWarning {
@@ -74,6 +79,39 @@ func TestFPSetFactoryLoadFailuresReturnNilLikeJava(t *testing.T) {
 		}
 		if len(record.Params) != 1 || !strings.Contains(record.Params[0], "unsuccessfully trying to load custom FPSet class: ") {
 			t.Fatalf("record %d params = %v, want Java load-failure warning", i, record.Params)
+		}
+	}
+}
+
+func TestFPSetFactoryUnsupportedImplementationFallsBackLikeJava(t *testing.T) {
+	ClearMessageRecorders()
+	recorder := &MemoryRecorder{}
+	AddMessageRecorder(recorder)
+	t.Cleanup(func() {
+		RemoveMessageRecorder(recorder)
+		ClearMessageRecorders()
+	})
+
+	for _, implementation := range []string{"com.example.DoesNotExist", ""} {
+		cfg := NewFPSetConfiguration()
+		cfg.NoNesting = true
+		cfg.SetImplementation(implementation)
+		if set := NewFPSet(cfg); reflect.TypeOf(set) != reflect.TypeOf(&MSBDiskFPSet{}) {
+			t.Fatalf("NewFPSet(%q) = %T, want MSBDiskFPSet fallback", implementation, set)
+		}
+	}
+
+	records := recorder.Records(ECTLCFeatureUnsupported)
+	if len(records) != 2 {
+		t.Fatalf("unsupported warning count = %d, want 2", len(records))
+	}
+	for i, record := range records {
+		if record.Severity != SeverityWarning {
+			t.Fatalf("record %d severity = %v, want warning", i, record.Severity)
+		}
+		if !strings.Contains(record.Text, "Selected fingerprint set (set of visited states)") ||
+			!strings.Contains(record.Text, "Reverting to default fingerprint set.") {
+			t.Fatalf("record %d text = %q, want Java unsupported-feature message", i, record.Text)
 		}
 	}
 }
