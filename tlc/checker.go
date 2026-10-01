@@ -636,7 +636,7 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	if statsErr := mc.PrintLivenessStatistics(); err == nil {
 		err = statsErr
 	}
-	return result, nil
+	return result, err
 }
 
 func (mc *ModelChecker) Checkpoint() error {
