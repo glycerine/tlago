@@ -151,6 +151,8 @@ type Tool struct {
 	DebugPort         int
 	DebugSuspend      bool
 	DebugHalt         bool
+	DebugFastTool     *Tool
+	DebugEvalMode     DebugEvalMode
 	Definitions       map[*SymbolNode]any
 	DefnsByName       map[*UniqueString]any
 	CallStack         *CallStack
@@ -1031,10 +1033,14 @@ func (t *Tool) NoDebug() *Tool {
 	if t != nil && t.NoDebugFunc != nil {
 		return t.NoDebugFunc(t)
 	}
+	if t != nil && t.DebugFastTool != nil {
+		return t.DebugFastTool
+	}
 	if t != nil && t.Debugger != nil {
 		copied := *t
 		copied.Debugger = nil
 		copied.DebugPort = -1
+		copied.DebugFastTool = nil
 		if copied.Mode == ModeDebugger {
 			copied.Mode = ModeMC
 		}

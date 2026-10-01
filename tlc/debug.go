@@ -1832,7 +1832,7 @@ func (t *Tool) AttachDebugger(port int, suspend bool, halt bool) *Tool {
 		t.Debugger.SetTool(t)
 	}
 	t.SetMode(ModeDebugger)
-	return t
+	return t.installDebugTool()
 }
 
 func (d *TLCDebugger) SetTool(tool *Tool) *TLCDebugger {
