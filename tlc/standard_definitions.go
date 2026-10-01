@@ -47,13 +47,6 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("Cardinality", 1, func(args []Value) (Value, error) { return Cardinality(args[0]) })
 
 	t.defineStandardMethod("Seq", 1, func(args []Value) (Value, error) { return Seq(args[0]), nil })
-	t.defineStandardMethod("BSeq", 2, func(args []Value) (Value, error) {
-		bound, err := standardIntArg("BSeq", args, 1)
-		if err != nil {
-			return nil, err
-		}
-		return BSeq(args[0], int(bound.Val)), nil
-	})
 	t.defineStandardMethod("Len", 1, func(args []Value) (Value, error) { return Len(args[0]) })
 	t.defineStandardMethod("Head", 1, func(args []Value) (Value, error) { return Head(args[0]) })
 	t.defineStandardMethod("Tail", 1, func(args []Value) (Value, error) { return Tail(args[0]) })
@@ -61,9 +54,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("Append", 2, func(args []Value) (Value, error) { return Append(args[0], args[1]) })
 	t.defineStandardMethod("Concat", 2, func(args []Value) (Value, error) { return Concat(args[0], args[1]) }, "\\o")
 	t.defineStandardMethod("SubSeq", 3, func(args []Value) (Value, error) { return SubSeq(args[0], args[1], args[2]) })
-	t.defineStandardMethod("SelectInSeq", 2, func(args []Value) (Value, error) { return SelectInSeq(args[0], args[1]) })
 	t.defineStandardMethod("SelectSeq", 2, func(args []Value) (Value, error) { return SelectSeq(args[0], args[1]) })
-	t.defineStandardMethod("Insert", 3, func(args []Value) (Value, error) { return Insert(args[0], args[1], args[2]) })
 
 	t.defineStandardMethod("EmptyBag", 0, func(args []Value) (Value, error) { return EmptyBag(), nil })
 	t.defineStandardMethod("IsABag", 1, func(args []Value) (Value, error) { return IsABag(args[0]) })

@@ -1886,11 +1886,13 @@ the same module membership/compare codes as Java.
 whether its first argument is a string or sequence and reports a first-argument
 `TLC_MODULE_ARGUMENT_ERROR` before checking `m` and `n`; only after that does it
 check natural-number arguments and domain membership. `Len`, `Head`, `Tail`,
-`Cons`, `Append`, `Concat`, `SelectInSeq`, `SelectSeq`, and `Insert` should use
+`Cons`, `Append`, `Concat`, and `SelectSeq` should use
 Java's sequence-specific `ONE_ARGUMENT_ERROR`, `APPLY_EMPTY_SEQ`,
 `EVALUATING`, `ARGUMENT_ERROR`, and `ARGUMENT_NOT_IN_DOMAIN` codes. The public
-Java `Remove` helper is explicitly marked not part of the standard interface and
-is not registered by the Go standard definitions.
+Java helpers `SelectInSeq`, `Insert`, and `Remove` are not exported by the
+frozen standard `Sequences.tla` interface and are not registered by the Go
+standard definitions. Java's internal sequence-set object can print as
+`BSeq(...)`, but `BSeq` is likewise not a standard operator name.
 
 `Bags` distinguishes wrong-shape values from malformed bags. Operators such as
 `BagCardinality`, `BagUnion`, `SqSubseteq`, `BagToSet`, and Java's odd
@@ -2047,11 +2049,11 @@ sequence `1..n` is routed back to the array writer even under `ToJsonObject`.
 This oddity is source-compatible with Java and must be preserved for
 round-tripping existing specs.
 
-`Sequences!Insert` is part of Java's live `Sequences` surface and performs an
-insertion-sort style scan from the right, calling the supplied binary predicate
-and also requiring the inserted value to compare less than the shifted element.
-The historical `Sequences!Remove` helper is commented out in Java and should
-not be registered unless upstream re-enables it.
+Java's `Sequences` class contains helper methods such as `SelectInSeq` and
+`Insert`, and its internal sequence-set object can print as `BSeq(...)`, but
+the frozen `Sequences.tla` module exports only the standard sequence operators.
+Do not register those helper names as Go standard definitions unless upstream
+adds them to the standard module interface.
 
 `TLCGet("diameter")` is mode-sensitive. In model checking it reports checker
 progress. In simulation Java reads the current `SimulationWorker` trace count,
