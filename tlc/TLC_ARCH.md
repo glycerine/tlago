@@ -472,6 +472,13 @@ normalized records from all states except the final back-to-state marker. The
 method name sounds narrower than the algorithm; keep the algorithm because it
 controls whether a liveness trace gets an explicit trace-view definition.
 
+The trace-expression spec writer is also intentionally strict like Java.
+Back-to-state targets and next-state variables are indexed directly, so malformed
+traces fail loudly instead of producing a best-effort TE spec. The
+`TLC_TRACE_EXPLORER_JSON_UNCOMMENTED` property removes comment prefixes from the
+JSON `ASSUME` block just as Java does for tests, and `indentString` uses Java
+split semantics by dropping trailing empty lines.
+
 ### `ModelConfig`
 
 `ModelConfig` parses `.cfg` files with the TLA+ token manager rather than a

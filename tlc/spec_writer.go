@@ -907,9 +907,7 @@ func SpecTraceExpressionBuildInitNextBuffers(cfgBuffer *strings.Builder, trace [
 		subActionsAndConstraint.WriteString(tlaDefinesCR)
 		subActionIndex++
 		if nextState.BackToState {
-			if idx := nextState.StateNumber - 1; idx >= 0 && idx < len(trace) {
-				nextState = trace[idx]
-			}
+			nextState = trace[nextState.StateNumber-1]
 		} else if nextState.Stuttering {
 			nextState = currentState
 		}
@@ -936,9 +934,6 @@ func SpecTraceExpressionBuildInitNextBuffers(cfgBuffer *strings.Builder, trace [
 			subActionsAndConstraint.WriteString(tlaCR)
 		}
 		for i := range currentState.Variables {
-			if i >= len(nextState.Variables) {
-				break
-			}
 			variable := nextState.Variables[i]
 			subActionsAndConstraint.WriteString(tlaIndent)
 			subActionsAndConstraint.WriteString(tlaIndentedConj)
@@ -1527,6 +1522,9 @@ func (w *SpecTraceExpressionWriter) AddInitNextTraceFunction(trace []*MCState, t
 		}
 	}
 	jsonComment := tlaIndent + tlaComment
+	if _, ok := tlcLookupSystemProperty("TLC_TRACE_EXPLORER_JSON_UNCOMMENTED"); ok {
+		jsonComment = ""
+	}
 	w.tlaBuffer.WriteString(tlaCR)
 	w.tlaBuffer.WriteString(tlaComment)
 	w.tlaBuffer.WriteString("Uncomment the ASSUME below to write the states of the error trace")
@@ -1615,7 +1613,11 @@ func (w *SpecTraceExpressionWriter) GetComment() string {
 
 func SpecTraceExpressionIndentString(text string, n int) string {
 	indent := strings.Repeat(tlaIndent, n)
-	return indent + strings.Join(strings.Split(text, tlaCR), tlaCR+indent)
+	lines := strings.Split(text, tlaCR)
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return indent + strings.Join(lines, tlaCR+indent)
 }
 
 func (w *SpecTraceExpressionWriter) WrapConfig(moduleFilename string) {
