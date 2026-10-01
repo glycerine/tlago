@@ -99,6 +99,9 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"VectorClocks": {
 		"CausalOrder",
 	},
+	"SVG": {
+		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -184,6 +187,9 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"VectorClocks": setOf(
 		"CausalOrder",
+	),
+	"SVG": setOf(
+		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",

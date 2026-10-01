@@ -2226,6 +2226,15 @@ Go mapping:
   with no remaining parents. The Go port keeps this phase decomposition and the
   same parent-removal behavior, but stores host logs and parent/child sets in
   explicit slices so iteration remains deterministic.
+- CommunityModules `SVG` has three self-contained native overrides and one
+  third-party graph-layout override. Go ports `SVGElemToString`,
+  `NodeOfRingNetwork`, and `PointOnLine` directly: attribute underscores become
+  dashes, attribute values are single-quoted, child elements are recursively
+  serialized, `<<`/`>>` in inner text are escaped, ring coordinates use Java's
+  polar conversion and integer truncation, and `PointOnLine` uses the Java
+  floating division/truncation formula. `NodesOfDirectedMultiGraph` remains on
+  the TLA fallback until the JGraphT/JUNG layout algorithms can be mirrored
+  faithfully.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action

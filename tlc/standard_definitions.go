@@ -198,6 +198,13 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("CausalOrder", 4, func(args []Value) (Value, error) {
 		return VectorClocksCausalOrder(args[0], args[1], args[2], args[3])
 	})
+	t.defineStandardMethod("SVGElemToString", 1, func(args []Value) (Value, error) { return SVGElemToString(args[0]) })
+	t.defineStandardMethod("NodeOfRingNetwork", 5, func(args []Value) (Value, error) {
+		return SVGNodeOfRingNetwork(args[0], args[1], args[2], args[3], args[4])
+	})
+	t.defineStandardMethod("PointOnLine", 3, func(args []Value) (Value, error) {
+		return SVGPointOnLine(args[0], args[1], args[2])
+	})
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)
