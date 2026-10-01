@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 )
@@ -388,9 +387,6 @@ func TLCTraceSerialize(value Value, absolutePath *StringValue) (Value, error) {
 	if absolutePath == nil {
 		return nil, newTLCError(ECGeneral, "_TLCTraceSerialize expected a string path")
 	}
-	if err := os.MkdirAll(filepath.Dir(absolutePath.RawString()), 0o755); err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
-	}
 	file, err := os.Create(absolutePath.RawString())
 	if err != nil {
 		return nil, err
@@ -399,7 +395,7 @@ func TLCTraceSerialize(value Value, absolutePath *StringValue) (Value, error) {
 
 	value.FingerPrint(0)
 	out := NewValueOutputStreamWithCompression(file, true)
-	if err := out.WriteExternal(value); err != nil {
+	if err := out.Write(value); err != nil {
 		_ = out.Close()
 		return nil, err
 	}
@@ -426,7 +422,7 @@ func TLCTraceDeserialize(absolutePath *StringValue) (Value, error) {
 		return nil, err
 	}
 	defer in.Close()
-	return in.ReadExternal()
+	return in.Read()
 }
 
 func TLCTraceState(state *TLCStateMut) Value {
