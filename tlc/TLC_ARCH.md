@@ -1508,10 +1508,13 @@ Trace reconstruction and aliasing:
   interface. Prefix/suffix trace aliases bind `TLCExt!Trace` through the
   standard operator's `OpDefNode` symbol so aliases using `Trace()` see the
   supplied prefix records.
-- Safety-error postcondition traces run alias evaluation over each trace entry
-  before wrapping the trace in `CounterExample`, matching Java's
-  `Worker.doPostCondition`. The `console` field is omitted only when the checker
-  was not already done at the moment the error was accepted.
+- Safety-error postcondition traces run Java's pairwise alias evaluation over
+  each trace entry before wrapping the trace in `CounterExample`, matching
+  `Worker.doPostCondition`'s `evalAlias(current, successor)` overload. Do not
+  bind `TLCExt!Trace` on this path; prefix/suffix trace aliases are for printed
+  traces and liveness/error-trace reconstruction paths that call the prefix
+  overload. The `console` field is omitted only when the checker was not already
+  done at the moment the error was accepted.
 - Java also calls `TLCTrace.printTrace(curState, succState)` for next-state
   safety errors and for continuation-mode invariant/action-property violations.
   Go mirrors this with `ModelChecker.printBehaviorTrace`, which prints

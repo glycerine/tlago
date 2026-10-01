@@ -21,6 +21,42 @@ func TestDoNextFailureMessagePreservesTLCErrorCodeParamsLikeJavaEvalException(t 
 	}
 }
 
+func TestModelCheckerPostConditionAliasUsesPairwiseJavaPath(t *testing.T) {
+	initTLCCheckerTest(t)
+	cur := checkerTestState(0)
+	succ := checkerTestState(1).SetPredecessor(cur)
+
+	pairCalls := 0
+	ceCalls := 0
+	tool := NewTool()
+	tool.InitStates = []*TLCStateMut{cur}
+	tool.CheckPostConditionCEFunc = func(tl *Tool, value Value) int {
+		ceCalls++
+		return NoError
+	}
+	tool.EvalAliasInfoFunc = func(tl *Tool, current *TLCStateInfo, successor *TLCStateMut, prefix func() []*TLCStateInfo) (*TLCStateInfo, error) {
+		t.Fatalf("postcondition alias used prefix-aware trace path; Java Worker.doPostCondition calls evalAlias(current, successor)")
+		return current, nil
+	}
+	tool.EvalAliasInfoPairFunc = func(tl *Tool, current *TLCStateInfo, successor *TLCStateMut) (*TLCStateInfo, error) {
+		pairCalls++
+		if current == nil || successor == nil {
+			t.Fatalf("pairwise alias call %d had current=%v successor=%v", pairCalls, current, successor)
+		}
+		return current, nil
+	}
+
+	mc := NewModelChecker(tool, t.TempDir(), true)
+	mc.checkPostConditionWithErrorTrace(cur, succ, true)
+
+	if ceCalls != 1 {
+		t.Fatalf("postcondition counterexample calls = %d, want 1", ceCalls)
+	}
+	if pairCalls != 2 {
+		t.Fatalf("pairwise alias calls = %d, want one per trace state", pairCalls)
+	}
+}
+
 func TestModelCheckerDoInitDeduplicatesAndSkipsDuplicateInvariantChecks(t *testing.T) {
 	initTLCCheckerTest(t)
 	state := checkerTestState(1)

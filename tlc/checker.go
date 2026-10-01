@@ -1810,7 +1810,7 @@ func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, 
 		mc.Tool.CheckPostCondition()
 		return
 	}
-	trace = mc.aliasErrorTrace(trace)
+	trace = aliasTraceWithToolPairs(mc.Tool, trace)
 	mc.Tool.CheckPostConditionWithCounterExample(NewCounterExample(trace, UnknownAction, 0, isConsole))
 }
 
@@ -1990,6 +1990,24 @@ func aliasTraceWithTool(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo {
 		alias, err := tool.EvalAliasInfo(current, successor, func() []*TLCStateInfo {
 			return append([]*TLCStateInfo(nil), aliased[:i]...)
 		})
+		if err == nil && alias != nil {
+			aliased[i] = alias
+		}
+	}
+	return aliased
+}
+
+func aliasTraceWithToolPairs(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo {
+	if tool == nil || len(trace) == 0 {
+		return trace
+	}
+	aliased := append([]*TLCStateInfo(nil), trace...)
+	for i, current := range aliased {
+		successor := current.OriginalState()
+		if i+1 < len(aliased) {
+			successor = aliased[i+1].OriginalState()
+		}
+		alias, err := tool.EvalAliasInfoPair(current, successor)
 		if err == nil && alias != nil {
 			aliased[i] = alias
 		}
