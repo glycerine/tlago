@@ -717,7 +717,7 @@ func (v *SetOfFcnsValue) Size() (int, error) {
 	for i := 0; i < domainSize; i++ {
 		size *= int64(rangeSize)
 		if size < -2147483648 || size > 2147483647 {
-			return 0, v.unsupported("overflow when computing the number of elements in:\n%s", v)
+			return 0, v.unsupported("Overflow when computing the number of elements in:\n%s", ValuesPPR(v))
 		}
 	}
 	return int(size), nil

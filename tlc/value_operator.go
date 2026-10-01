@@ -513,7 +513,7 @@ func EvalOperatorValue(op Value, args []Value, control int) (Value, error) {
 	case *CallableValue:
 		return v.Eval(args, control)
 	default:
-		return nil, newTLCError(ECGeneral, "attempted to apply non-operator value %s", op)
+		return nil, newTLCError(ECGeneral, "Attempted to apply non-operator value %s.", op)
 	}
 }
 

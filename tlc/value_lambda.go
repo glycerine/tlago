@@ -57,7 +57,7 @@ func (p *FcnParams) Size() (int, error) {
 		for j := 0; j < repeat; j++ {
 			size *= int64(domainSize)
 			if size < -2147483648 || size > 2147483647 {
-				return 0, newTLCError(ECGeneral, "overflow when computing the number of elements in:\n%s", p)
+				return 0, newTLCErrorCode(ECTLCModuleOverflow, "the number of elements in:\n"+p.String())
 			}
 		}
 	}
@@ -71,7 +71,7 @@ func (p *FcnParams) Elements() ValueEnumeration {
 	if p.ArgLen == 1 {
 		enum, ok := asEnumerable(p.Domains[0])
 		if !ok {
-			return newErrorEnumeration(newTLCError(ECGeneral, "the domains of formal parameters must be enumerable"))
+			return newErrorEnumeration(newTLCError(ECGeneral, "The domains of formal parameters must be enumerable."))
 		}
 		return enum.Elements()
 	}
@@ -118,7 +118,7 @@ func newFcnParamsEnumeration(params *FcnParams) *fcnParamsEnumeration {
 	for i, domain := range params.Domains {
 		enumDomain, ok := asEnumerable(domain)
 		if !ok {
-			out.err = newTLCError(ECGeneral, "the domains of the parameters must be enumerable")
+			out.err = newTLCError(ECGeneral, "The domains of the parameters must be enumerable.")
 			out.done = true
 			return out
 		}
