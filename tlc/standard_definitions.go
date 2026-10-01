@@ -271,7 +271,7 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardEvaluating("TLCDefer", 1, standardTLCDefer)
 	t.defineStandardMethod("TLCNoOp", 1, func(args []Value) (Value, error) { return TLCExtTLCNoOp(args[0]), nil })
 	t.defineStandardMethod("TLCModelValue", 1, func(args []Value) (Value, error) { return TLCExtTLCModelValue(args[0]) })
-	t.defineStandardEvaluating("TLCCache", 2, standardTLCCache)
+	t.defineStandardEvaluatingIdentity("TLCCache", 2, 0, standardTLCCache)
 	t.defineStandardMethod("TLCFP", 1, func(args []Value) (Value, error) { return TLCExtTLCFP(args[0]), nil })
 	t.defineStandardEvaluating("TLCEvalDefinition", 1, standardTLCEvalDefinition)
 	t.defineStandardMethod("TLCGetOrDefault", 2, func(args []Value) (Value, error) { return TLCGetOrDefault(args[0], args[1]) })
@@ -326,6 +326,24 @@ func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingE
 func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minLevel int, eval EvaluatingEvalFunc, aliases ...string) {
 	opDef := &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name)}
 	value := NewEvaluatingValue(name, minLevel, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+		if len(args) != arity {
+			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
+		}
+		return eval(tool, args, con, state, pstate, control, cm)
+	})
+	t.defineStandardValue(name, value, aliases...)
+}
+
+func (t *Tool) defineStandardEvaluatingIdentity(name string, arity int, identityArg int, eval EvaluatingEvalFunc, aliases ...string) {
+	params := make([]*SymbolNode, arity)
+	for i := range params {
+		params[i] = NewSymbolNode(name + "$arg")
+	}
+	opDef := &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name), Params: params}
+	if identityArg >= 0 && identityArg < len(params) {
+		opDef.Body = NewOpApplNode(params[identityArg])
+	}
+	value := NewEvaluatingValue(name, 0, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}
@@ -557,7 +575,7 @@ func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 		}
 		return state.SetCached(cacheKey, value), nil
 	}
-	return tool.Eval(expr, con, state, pstate, control, cm)
+	return nil, nil
 }
 
 func standardTLCCacheKey(expr SemanticNode, closure SemanticNode, key Value) int {
