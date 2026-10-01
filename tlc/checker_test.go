@@ -179,12 +179,17 @@ func TestModelCheckerCleanupPreservesFailureArtifactsLikeJava(t *testing.T) {
 	if err := os.WriteFile(failedArtifact, []byte("keep me"), 0o644); err != nil {
 		t.Fatalf("WriteFile failed artifact: %v", err)
 	}
+	failedFPSet := &recordingFPSet{NoopFPSet: NewNoopFPSet(nil)}
 	failed := &ModelChecker{
 		AbstractChecker: &AbstractChecker{Metadir: failedMetadir},
 		CleanupEnabled:  true,
+		FPSet:           failedFPSet,
 	}
 	if err := failed.Cleanup(false, true); err != nil {
 		t.Fatalf("failure Cleanup returned error: %v", err)
+	}
+	if !failedFPSet.closed {
+		t.Fatalf("failure cleanup did not close FPSet; Java closes resources before preserving artifacts")
 	}
 	if _, err := os.Stat(failedArtifact); err != nil {
 		t.Fatalf("failure cleanup removed artifact; Java non-recursive delete preserves it: %v", err)
@@ -205,6 +210,15 @@ func TestModelCheckerCleanupPreservesFailureArtifactsLikeJava(t *testing.T) {
 	if _, err := os.Stat(successMetadir); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("success cleanup metadir exists/error = %v, want deleted like Java recursive delete", err)
 	}
+}
+
+type recordingFPSet struct {
+	*NoopFPSet
+	closed bool
+}
+
+func (s *recordingFPSet) Close() {
+	s.closed = true
 }
 
 func initTLCCheckerTest(t *testing.T) {

@@ -799,6 +799,9 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 		}
 	}
 	if cleanup && !vetoCleanup {
+		// Java's FileUtil.deleteDir(path, success) is deliberately recursive only
+		// on success. Keep failure artifacts for inspection/recovery, but close
+		// every owned resource above so the failure path does not leak handles.
 		deleteDirLikeJava(mc.Metadir, success)
 	}
 	return err
