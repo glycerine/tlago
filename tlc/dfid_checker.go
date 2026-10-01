@@ -129,6 +129,7 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		result, err = mc.RunTLC(level)
 		mc.Done = false
 		if result != NoError || err != nil {
+			mc.PrintSummary(false)
 			return result, err
 		}
 		worker := mc.dfidWorkerAt(0)
