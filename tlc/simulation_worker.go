@@ -14,6 +14,7 @@ type SimulationWorkerError struct {
 	Params     []string
 	StateTrace *StateVec
 	Err        error
+	Tool       *Tool
 }
 
 func (e *SimulationWorkerError) Error() string {
@@ -42,7 +43,33 @@ func (e *SimulationWorkerError) GetCounterExample() *CounterExample {
 	if errors.As(e.Err, &liveException) && liveException.CounterExample != nil {
 		return liveException.CounterExample
 	}
-	return NewCounterExampleFromStateVec(e.StateTrace)
+	return NewCounterExampleFromTrace(e.TraceInfo())
+}
+
+func (e *SimulationWorkerError) TraceInfo() []*TLCStateInfo {
+	if e == nil || e.StateTrace == nil || e.StateTrace.Size() == 0 {
+		return nil
+	}
+	trace := make([]*TLCStateInfo, 0, e.StateTrace.Size())
+	for i := 0; i < e.StateTrace.Size(); i++ {
+		state := e.StateTrace.At(i)
+		successor := state
+		if i+1 < e.StateTrace.Size() {
+			successor = e.StateTrace.At(i + 1)
+		}
+		action := UnknownAction
+		if state != nil {
+			action = state.GetAction()
+		}
+		info := NewTLCStateInfo(state, action)
+		if e.Tool != nil {
+			if alias, err := e.Tool.EvalAliasInfoPair(info, successor); err == nil && alias != nil {
+				info = alias
+			}
+		}
+		trace = append(trace, info)
+	}
+	return trace
 }
 
 type SimulationWorkerResult struct {
@@ -411,6 +438,7 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 				Code:       NoError,
 				StateTrace: w.GetTrace(w.CurState),
 				Err:        recoveredAsError(recovered),
+				Tool:       w.Tool,
 			}
 			w.ResultQueue <- SimulationWorkerFailed(w.ID, workerErr)
 			keepRunning = false
@@ -421,6 +449,7 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	err := w.SimulateRandomTrace()
 	w.TraceCnt++
 	if err != nil {
+		w.attachToolToError(err)
 		w.ResultQueue <- SimulationWorkerFailed(w.ID, err)
 	}
 	if w.TraceCnt >= w.MaxTraceNum || w.Stopped.Load() {
@@ -428,6 +457,12 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 		return false
 	}
 	return true
+}
+
+func (w *SimulationWorker) attachToolToError(err *SimulationWorkerError) {
+	if w != nil && err != nil && err.Tool == nil {
+		err.Tool = w.Tool
+	}
 }
 
 func recoveredAsError(recovered any) error {
