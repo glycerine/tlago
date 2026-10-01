@@ -618,6 +618,15 @@ func (mc *DFIDModelChecker) DoPeriodicWork() (int, error) {
 	if mc == nil {
 		return NoError, nil
 	}
+	if mc.FPSet != nil {
+		mc.FPSet.mu.Lock()
+		defer mc.FPSet.mu.Unlock()
+		return mc.doPeriodicWorkLocked()
+	}
+	return mc.doPeriodicWorkLocked()
+}
+
+func (mc *DFIDModelChecker) doPeriodicWorkLocked() (int, error) {
 	if mc.CheckLiveness && mc.LiveCheck != nil {
 		result, err := mc.LiveCheck.Check(mc.Tool, false)
 		if err != nil || result != NoError {
@@ -625,7 +634,7 @@ func (mc *DFIDModelChecker) DoPeriodicWork() (int, error) {
 		}
 	}
 	if DoCheckPoint() {
-		if err := mc.Checkpoint(); err != nil {
+		if err := mc.checkpointLocked(); err != nil {
 			return ECSystemCheckpointRecoveryCorrupt, err
 		}
 	}
@@ -762,9 +771,17 @@ func (mc *DFIDModelChecker) Checkpoint() error {
 	if mc == nil {
 		return nil
 	}
+	if mc.FPSet != nil {
+		mc.FPSet.mu.Lock()
+		defer mc.FPSet.mu.Unlock()
+	}
+	return mc.checkpointLocked()
+}
+
+func (mc *DFIDModelChecker) checkpointLocked() error {
 	PrintMessage(ECTLCCheckpointStart, mc.Metadir)
 	if mc.FPSet != nil {
-		if err := mc.FPSet.BeginChkpt(); err != nil {
+		if err := mc.FPSet.beginChkptLocked(); err != nil {
 			return err
 		}
 	}

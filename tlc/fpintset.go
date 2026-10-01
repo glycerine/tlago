@@ -406,6 +406,16 @@ func (s *MultiFPIntSet) BeginChkpt() error {
 }
 
 func (s *MemFPIntSet) BeginChkptFile(fname string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.beginChkptFileLocked(fname)
+}
+
+func (s *MemFPIntSet) beginChkptLocked() error {
+	return s.beginChkptFileLocked(s.filename)
+}
+
+func (s *MemFPIntSet) beginChkptFileLocked(fname string) error {
 	path := s.chkptName(fname, "tmp")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
@@ -415,8 +425,6 @@ func (s *MemFPIntSet) BeginChkptFile(fname string) error {
 		return err
 	}
 	out := NewValueOutputStream(file)
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	for _, bucket := range s.table {
 		for _, word := range bucket {
 			if err := out.WriteInt(word); err != nil {
