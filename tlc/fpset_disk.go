@@ -605,9 +605,6 @@ func (s *DiskFPSet) ForceFlush()              { s.forceFlush = true }
 func (s *DiskFPSet) GetLockCnt() int          { return s.lockCnt }
 func (s *DiskFPSet) GetReaderWriterCnt() int  { return len(s.braf) + len(s.brafPool) }
 func (s *DiskFPSet) GetLoadFactor() float64 {
-	if s.maxTblCnt == 0 {
-		return 0
-	}
 	return float64(s.tblCnt) / float64(s.maxTblCnt)
 }
 
