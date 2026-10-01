@@ -99,9 +99,14 @@ func (t *Tool) GetInitStatesFromActionList(acts *ActionItemList, ps *TLCStateMut
 	}
 	if ps.AllAssigned() {
 		for !acts.IsEmpty() {
-			bval, err := t.evalBool(acts.CarPred(), acts.CarContext(), ps, EmptyState, EvalInit, acts.CM, "initial states")
+			pred := acts.CarPred()
+			value, err := t.Eval(pred, acts.CarContext(), ps, EmptyState, EvalInit, acts.CM)
 			if err != nil {
 				return err
+			}
+			bval, ok := value.(*BoolValue)
+			if !ok {
+				return newTLCErrorCode(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(pred))
 			}
 			if !bval.Val {
 				if CoverageActionEnabled() {
@@ -522,9 +527,13 @@ func (t *Tool) getNextStatesAllAssigned(action *Action, acts *ActionItemList, s0
 		cm2 := acts.CM
 		switch {
 		case kind > ActionItemConjunct || kind == ActionItemPred:
-			bval, err := t.evalBool(pred, c, s0, s1, EvalClear, cm2, "next states")
+			value, err := t.Eval(pred, c, s0, s1, EvalClear, cm2)
 			if err != nil {
 				return s1, err
+			}
+			bval, ok := value.(*BoolValue)
+			if !ok {
+				return s1, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
 			}
 			if !bval.Val {
 				return nss.AddUnsatisfiedNextState(s0, action, s1, pred, c), nil
@@ -545,9 +554,13 @@ func (t *Tool) getNextStatesAllAssigned(action *Action, acts *ActionItemList, s0
 				return s1, err
 			}
 		default:
-			bval, err := t.evalBool(pred, c, s0, s1, EvalClear, cm2, "next states")
+			value, err := t.Eval(pred, c, s0, s1, EvalClear, cm2)
 			if err != nil {
 				return s1, err
+			}
+			bval, ok := value.(*BoolValue)
+			if !ok {
+				return s1, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
 			}
 			if !bval.Val {
 				return nss.AddUnsatisfiedNextState(s0, action, s1, pred, c), nil
