@@ -1000,20 +1000,45 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 			return res, err
 		}
 		eq, err := val0.Equal(val1)
-		if err != nil || !eq {
+		if err != nil {
 			return s1, err
+		}
+		if !eq {
+			PrintWarning(ECTLCUnchangedVariableChanged, varName.String(), SemanticString(expr))
+			return s1, nil
 		}
 		return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
 	}
-	if appl, ok := expr.(*OpApplNode); ok && GetOpCode(appl.Operator.Name) == OpcodeTup {
-		acts1 := acts
-		for i := len(appl.Args) - 1; i > 0; i-- {
-			acts1 = acts1.Cons(appl.Args[i], c, cm, ActionItemUnchanged)
+	if appl, ok := expr.(*OpApplNode); ok {
+		opName := appl.Operator.Name
+		opcode := GetOpCode(opName)
+		if opcode == OpcodeTup {
+			nestedCM := cm
+			if CoverageEnabled() {
+				nestedCM = cm.Get(appl)
+			}
+			acts1 := acts
+			for i := len(appl.Args) - 1; i > 0; i-- {
+				acts1 = acts1.Cons(appl.Args[i], c, nestedCM, ActionItemUnchanged)
+			}
+			if len(appl.Args) == 0 {
+				return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
+			}
+			return t.ProcessUnchanged(action, appl.Args[0], acts1, c, s0, s1, nss, nestedCM)
 		}
-		if len(appl.Args) == 0 {
-			return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
+		if opcode == 0 && len(appl.Args) == 0 {
+			val := t.Lookup(appl.Operator, c, EmptyState, false)
+			switch v := val.(type) {
+			case *OpDefNode:
+				return t.ProcessUnchanged(action, v.Body, acts, c, s0, s1, nss, cm)
+			case *LazyValue:
+				return t.ProcessUnchanged(action, v.Expr, acts, v.Con, s0, s1, nss, cm)
+			case nil:
+				return s1, newTLCError(ECGeneral, "undefined identifier %s in UNCHANGED expression %s", opName, SemanticString(expr))
+			default:
+				return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
+			}
 		}
-		return t.ProcessUnchanged(action, appl.Args[0], acts1, c, s0, s1, nss, cm)
 	}
 	v0, err := t.Eval(expr, c, s0, EmptyState, EvalClear, cm)
 	if err != nil {

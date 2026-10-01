@@ -392,6 +392,9 @@ func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, a
 func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (state *TLCStateMut, err error) {
 	done := t.callStackEnter(expr)
 	defer func() { done(err) }()
+	if CoverageEnabled() {
+		cm = cm.Get(expr)
+	}
 	if varNode := t.GetVar(expr, c, true); varNode != nil {
 		varName := varNode.Name
 		v0, err := t.Eval(expr, c, s0, s1, EvalEnabled, cm)
@@ -404,20 +407,41 @@ func (t *Tool) EnabledUnchanged(expr SemanticNode, acts *ActionItemList, c *Cont
 			return t.EnabledFromActionList(acts, s0, s1, cm)
 		}
 		eq, err := v1.Equal(v0)
-		if err != nil || !eq {
+		if err != nil {
 			return nil, err
+		}
+		if !eq {
+			PrintWarning(ECTLCUnchangedVariableChanged, varName.String(), SemanticString(expr))
+			return nil, nil
 		}
 		return t.EnabledFromActionList(acts, s0, s1, cm)
 	}
-	if appl, ok := expr.(*OpApplNode); ok && GetOpCode(appl.Operator.Name) == OpcodeTup {
-		acts1 := acts
-		for i := len(appl.Args) - 1; i > 0; i-- {
-			acts1 = acts1.Cons(appl.Args[i], c, cm, ActionItemUnchanged)
+	if appl, ok := expr.(*OpApplNode); ok {
+		opName := appl.Operator.Name
+		opcode := GetOpCode(opName)
+		if opcode == OpcodeTup {
+			acts1 := acts
+			for i := 1; i < len(appl.Args); i++ {
+				acts1 = acts1.Cons(appl.Args[i], c, cm, ActionItemUnchanged)
+			}
+			if len(appl.Args) == 0 {
+				return t.EnabledFromActionList(acts, s0, s1, cm)
+			}
+			return t.EnabledUnchanged(appl.Args[0], acts1, c, s0, s1, cm)
 		}
-		if len(appl.Args) == 0 {
-			return t.EnabledFromActionList(acts, s0, s1, cm)
+		if opcode == 0 && len(appl.Args) == 0 {
+			val := t.Lookup(appl.Operator, c, EmptyState, false)
+			switch v := val.(type) {
+			case *LazyValue:
+				return t.EnabledUnchanged(v.Expr, acts, v.Con, s0, s1, cm)
+			case *OpDefNode:
+				return t.EnabledUnchanged(v.Body, acts, c, s0, s1, cm)
+			case nil:
+				return nil, newTLCError(ECGeneral, "undefined identifier %s in ENABLED UNCHANGED expression %s", opName, SemanticString(expr))
+			default:
+				return t.EnabledFromActionList(acts, s0, s1, cm)
+			}
 		}
-		return t.EnabledUnchanged(appl.Args[0], acts1, c, s0, s1, cm)
 	}
 	v0, err := t.Eval(expr, c, s0, EmptyState, EvalEnabled, cm)
 	if err != nil {

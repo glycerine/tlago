@@ -10,15 +10,17 @@ type toolEvalArgs struct {
 
 func parseEvalArgs(args ...any) (*Context, *TLCStateMut, *TLCStateMut, int, CostModel) {
 	parsed := toolEvalArgs{con: EmptyContext, s0: EmptyState, s1: EmptyState, control: EvalClear}
-	if parsed.s0 == nil {
-		parsed.s0 = NewEmptyState()
-	}
-	if parsed.s1 == nil {
-		parsed.s1 = NewEmptyState()
-	}
+	stateArgs := 0
 	for _, arg := range args {
 		switch v := arg.(type) {
 		case nil:
+			if stateArgs == 0 {
+				parsed.s0 = nil
+				stateArgs++
+			} else if stateArgs == 1 {
+				parsed.s1 = nil
+				stateArgs++
+			}
 		case *Context:
 			if v == nil {
 				parsed.con = EmptyContext
@@ -26,10 +28,12 @@ func parseEvalArgs(args ...any) (*Context, *TLCStateMut, *TLCStateMut, int, Cost
 				parsed.con = v
 			}
 		case *TLCStateMut:
-			if parsed.s0 == EmptyState {
+			if stateArgs == 0 {
 				parsed.s0 = v
-			} else {
+				stateArgs++
+			} else if stateArgs == 1 {
 				parsed.s1 = v
+				stateArgs++
 			}
 		case int:
 			parsed.control = v
