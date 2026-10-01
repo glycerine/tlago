@@ -159,15 +159,27 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 					opcode = GetOpCode(typed.Name)
 				}
 				if opcode == 0 && typed != nil && typed.Body != nil && len(typed.Params) == len(args) {
-					con1 := con
-					for i, param := range typed.Params {
-						if param != nil {
-							con1 = con1.Cons(param, tool.GetVal(args[i], con, false, DoNotRecordCostModel))
-						}
+					expand := true
+					recursive := false
+					if typed.GetInRecursive() {
+						recursive = true
+						expand = tool.GetLevelBound(expr, con) > TLCLevelAction
 					}
-					live, err := ASTToLive(tool, typed.Body, con1)
-					if err == nil && live.GetLevel() > LiveLevelAction {
-						return live, nil
+					if expand {
+						con1 := con
+						for i, param := range typed.Params {
+							if param != nil {
+								con1 = con1.Cons(param, tool.GetVal(args[i], con, false, DoNotRecordCostModel))
+							}
+						}
+						live, err := ASTToLive(tool, typed.Body, con1)
+						if err != nil {
+							if recursive {
+								return nil, err
+							}
+						} else if live.GetLevel() > LiveLevelAction {
+							return live, nil
+						}
 					}
 				}
 			case *BoolValue:
