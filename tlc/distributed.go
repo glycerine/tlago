@@ -70,6 +70,7 @@ type DistributedFPSetManager struct {
 	Mask               uint64
 	StatesSeen         atomic.Uint64
 	Description        string
+	ExpectedNumServers int
 	checkpointFilename string
 }
 
@@ -77,6 +78,21 @@ func NewDistributedFPSetManager(sets ...FPSet) *DistributedFPSetManager {
 	out := &DistributedFPSetManager{Sets: append([]FPSet(nil), sets...), Mask: math.MaxInt64}
 	out.normalize()
 	return out
+}
+
+func NewDynamicDistributedFPSetManager(expectedNumOfServers int) *DistributedFPSetManager {
+	if expectedNumOfServers <= 0 {
+		panic("expected number of FPSet servers must be positive")
+	}
+	manager := NewDistributedFPSetManager()
+	manager.ExpectedNumServers = expectedNumOfServers
+	log := 0
+	for expectedNumOfServers > 0 {
+		expectedNumOfServers /= 2
+		log++
+	}
+	manager.Mask = (uint64(1) << log) - 1
+	return manager
 }
 
 func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
@@ -154,9 +170,12 @@ func (m *DistributedFPSetManager) NumOfAliveServers() int {
 	return len(m.distinctFPSets())
 }
 
-func (m *DistributedFPSetManager) RegisterFPSet(set FPSet, hostname ...string) {
+func (m *DistributedFPSetManager) RegisterFPSet(set FPSet, hostname ...string) error {
 	if m == nil || set == nil {
-		return
+		return nil
+	}
+	if m.ExpectedNumServers > 0 && len(m.Sets) >= m.ExpectedNumServers {
+		return fmt.Errorf("Limit for FPset servers reached (%d). Cannot handle additional servers", m.ExpectedNumServers)
 	}
 	m.Sets = append(m.Sets, set)
 	if len(hostname) > 0 && hostname[0] != "" {
@@ -167,6 +186,7 @@ func (m *DistributedFPSetManager) RegisterFPSet(set FPSet, hostname ...string) {
 		}
 	}
 	m.normalize()
+	return nil
 }
 
 func (m *DistributedFPSetManager) GetMask() uint64 {

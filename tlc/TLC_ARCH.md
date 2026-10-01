@@ -2776,6 +2776,12 @@ Port guidance:
 - The Go port should keep `TLCServer`, `DistributedWorker`,
   `DistributedFPSetManager`, and `NextStateResult` concrete. Transport can wrap
   these structs later.
+- Java's `DynamicFPSetManager` is represented as dynamic fields on the same
+  concrete Go manager. It rejects registrations beyond the expected server
+  count and computes the low-bit mask with Java's loop
+  `while expected > 0 { expected /= 2; log++ }`, yielding `(1<<log)-1`.
+  Preserve that mask calculation even when it looks different from a direct
+  power-of-two helper.
 - Distributed fingerprint checkpointing is filename-paired. Java
   `FPSetManager.Checkpoint.run` calls `beginChkpt(filename)` and
   `commitChkpt(filename)` on the same remote FP set; the later manager-level
