@@ -81,15 +81,16 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 	if NumWorkers() != 1 {
 		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support multiple workers. Please run TLC with a single worker.")
 	}
-	if mc.CheckLiveness {
-		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support checking liveness properties. Please check liveness properties in Breadth-First-Search mode.")
-	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(mc.Tool)
 	}
 	recovered, err := mc.Recover()
 	if err != nil {
 		return ECSystemCheckpointRecoveryCorrupt, err
+	}
+	if mc.CheckLiveness && mc.LiveCheck != nil && mc.LiveCheck.NumChecker() == 0 {
+		PrintError(ECTLCLiveFormulaTautology)
+		return ECTLCLiveFormulaTautology, nil
 	}
 	if result := mc.Tool.CheckAssumptions(); result != NoError {
 		return result, nil
@@ -141,8 +142,7 @@ func (mc *DFIDModelChecker) ModelCheck() (int, error) {
 		terminated = terminated || !moreLevel
 	}
 	result = NoError
-	ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
-	mc.PrintSummary(result == NoError)
+	mc.PrintSummary(true)
 	return result, nil
 }
 
@@ -247,6 +247,14 @@ func (mc *DFIDModelChecker) finishTerminatedDFID() (int, error) {
 	}
 	result := NoError
 	if mc.ErrState == nil {
+		if mc.CheckLiveness && mc.LiveCheck != nil {
+			PrintMessage(ECTLCProgressStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
+			result, err := mc.LiveCheck.FinalCheck(mc.Tool)
+			if err != nil || result != NoError {
+				mc.PrintSummary(false)
+				return result, err
+			}
+		}
 		ReportSuccessCountsDistance(mc.FPSet.Size(), mc.FPSet.CheckFPs(), mc.StatesGenerated)
 		mc.PrintSummary(true)
 		return NoError, nil
