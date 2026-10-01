@@ -372,7 +372,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 		mc.StatesGenerated += int64(size)
 		deadlocked = deadlocked && size == 0
 		for i := 0; i < size; i++ {
-			succ := nextStates.At(i).SetPredecessor(cur).SetAction(action)
+			succ := nextStates.At(i)
 			if !tool.IsGoodState(succ) {
 				if mc.SetErrState(cur, succ, false, ECTLCStateNotCompletelySpecifiedNext) {
 					mc.printTrace(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(tool, action, succ), cur, succ)
@@ -401,7 +401,7 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 					if status == FPIntStatusNew {
 						writeStatus = StateVisitUnseen
 					}
-					if err := mc.AllStateWriter.WriteTransition(cur, succ, writeStatus, action); err != nil {
+					if err := mc.AllStateWriter.WriteTransition(cur, succ, writeStatus, nil); err != nil {
 						return allSuccNonLeaf, ECGeneral, err
 					}
 				}
@@ -475,6 +475,11 @@ func (mc *DFIDModelChecker) doNextIntoWithTool(tool *Tool, cur *TLCStateMut, cfp
 	}
 	if liveNextStates != nil {
 		liveNextStates.PutFP(cfp, cur)
+		if mc.AllStateWriter != nil {
+			if err := mc.AllStateWriter.WriteTransitionVisual(cur, cur, StateVisitUnseen, nil, StateVisualizationStuttering); err != nil {
+				return allSuccNonLeaf, ECGeneral, err
+			}
+		}
 		if mc.LiveCheck != nil {
 			if err := mc.LiveCheck.AddNextState(tool, cur, cfp, liveNextStates); err != nil {
 				return allSuccNonLeaf, mc.dfidNextFailed(cur, nil, err), err

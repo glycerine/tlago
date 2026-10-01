@@ -59,6 +59,8 @@
 - Already audited recently; do not unbind failed `ENABLED` enumeration assignments between candidates: Java mutates the candidate successor state in place while enumerating `x' \in S`/`x' \subseteq S`.
 - Already audited recently; do not count vector-path action coverage in individual checker callers: Java increments `action.cm` inside `Tool.getNextStates(action, state)` after generation.
 - Already audited recently; do not route direct `ModelChecker.DoNext` through the worker successor helper: Java's direct checker path checks model/action constraints before any eager predecessor/action attachment.
+- Already audited recently; do not restamp DFID successors or action-label DFID state-writer edges in the depth loop: Java consumes the `StateVec` successor as returned by `Tool.getNextStates`, writes `allStateWriter.writeState(curState, succState, status)` without an action, and writes a stuttering self-edge before adding leaf states to liveness.
+- Pending parity audit: Java `TLCStateMut.copy()` copies level/values but not predecessor/action, while Go's unified `TLCStateMut.Copy()` currently preserves predecessor/action metadata. Check this carefully before changing because Go collapsed Java's state hierarchy and trace code may rely on the metadata-preserving behavior.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -185,6 +187,7 @@
   - Direct `ModelChecker.DoNext` now delegates to the Java-shaped direct/replay path instead of the worker functor successor helper, preserving the distinct constraint ordering.
   - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
+  - DFID next-state processing now relies on `Tool.GetNextStates`/`StateVec` stamping like Java, writes depth-first all-state transitions without an action label, and emits Java's leaf stuttering edge before liveness graph insertion.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
