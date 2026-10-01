@@ -608,7 +608,12 @@ func (s *Simulator) printInitialStateException(state *TLCStateMut, err error) in
 	if state != nil {
 		code = PrintError(ECTLCInitialState, message, state.String())
 	} else {
-		code = PrintError(ECGeneral, message)
+		params := generalErrorParams("", err)
+		if params == nil {
+			code = PrintError(ECGeneral)
+		} else {
+			code = PrintError(ECGeneral, params...)
+		}
 	}
 	s.PrintSummary()
 	return code
