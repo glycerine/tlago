@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -309,8 +310,13 @@ func (q *MemStateQueue) CommitChkpt() error {
 	}
 	oldName := filepath.Join(q.diskdir, "queue.chkpt")
 	newName := filepath.Join(q.diskdir, "queue.tmp")
-	_ = os.Remove(oldName)
-	return os.Rename(newName, oldName)
+	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
+	}
+	if err := os.Rename(newName, oldName); err != nil {
+		return fmt.Errorf("MemStateQueue.commitChkpt: cannot delete %s", oldName)
+	}
+	return nil
 }
 
 func (q *MemStateQueue) Recover() error {

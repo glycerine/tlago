@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -78,6 +79,18 @@ func TestMemStateQueueSEnqueueVecSkipsNilStatesLikeJavaStateVecPath(t *testing.T
 	}
 	if got := q.Dequeue(); got != second {
 		t.Fatalf("second dequeue = %p, want second state %p", got, second)
+	}
+}
+
+func TestMemStateQueueCommitCheckpointErrorUsesJavaText(t *testing.T) {
+	q := NewMemStateQueue(t.TempDir())
+	err := q.CommitChkpt()
+	if err == nil {
+		t.Fatalf("CommitChkpt returned nil, want Java-shaped missing tmp rename error")
+	}
+	want := "MemStateQueue.commitChkpt: cannot delete " + filepath.Join(q.diskdir, "queue.chkpt")
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("CommitChkpt error = %q, want to contain %q", err.Error(), want)
 	}
 }
 
