@@ -636,8 +636,8 @@ func ParseMCState(input string) *MCState {
 		lineEnd += idx + 1
 	}
 	label := input[idx+1 : lineEnd]
-	stuttering := strings.HasPrefix(strings.TrimSpace(label), tlaStuttering)
-	backToState := strings.HasPrefix(strings.TrimSpace(label), tlaBackToState)
+	stuttering := strings.HasPrefix(label, " "+tlaStuttering)
+	backToState := strings.HasPrefix(label, " "+tlaBackToState)
 	var vars []*MCVariable
 	name := ""
 	location := ""
@@ -645,14 +645,15 @@ func ParseMCState(input string) *MCState {
 		if lineEnd+1 <= len(input) {
 			vars = parseMCVariables(input[lineEnd+1:])
 		}
-		trimmed := strings.TrimSpace(label)
-		if strings.HasPrefix(trimmed, "<") && strings.HasSuffix(trimmed, ">") {
-			trimmed = strings.TrimSuffix(strings.TrimPrefix(trimmed, "<"), ">")
-			if lineIdx := strings.Index(trimmed, "line "); lineIdx >= 0 {
-				name = strings.TrimSpace(trimmed[:lineIdx])
-				location = strings.TrimSpace(trimmed[lineIdx:])
+		if len(label) > 2 {
+			sublabel := label[2 : len(label)-1]
+			if lineIdx := strings.Index(sublabel, "line "); lineIdx >= 0 {
+				if lineIdx > 0 {
+					name = sublabel[:lineIdx-1]
+				}
+				location = sublabel[lineIdx:]
 			} else {
-				name = trimmed
+				name = sublabel
 			}
 		}
 	}
