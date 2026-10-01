@@ -75,7 +75,7 @@
 - Already audited recently; do not pass a debug/call-stack tool into final liveness checking. Java calls `liveCheck.finalCheck(tool.noDebug())`; Go now mirrors that final-check call just like periodic liveness calls.
 - Already audited recently; do not reject liveness in DFID mode. Java DFID performs the tautology check, periodic liveness checks, and a final `liveCheck.finalCheck(tool)` after depth search terminates; Go now follows that instead of returning an unsupported-mode error.
 - Already audited recently; do not return from a failed DFID depth run without printing the DFID summary. Java's depth-search loop is inside a `finally` that prints summary on `runTLC` errors.
-- Already audited recently; do not stop DFID init on invariant/implied-init violations when continuation mode is enabled. Java prints the violation and keeps checking without recording `errState` in the continuation branch.
+- Already audited recently; do not make DFID init continuation friendlier than Java. Initial invariants honor continuation mode, but implied-init violations always return `TLC_PROPERTY_VIOLATED_INITIAL`.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.

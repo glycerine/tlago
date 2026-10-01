@@ -643,9 +643,6 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 					alias = tool.EvalAlias(state, state)
 				}
 				PrintError(ECTLCPropertyViolatedInitial, nameAt(tool.GetImpliedInitNames(), k), alias.String())
-				if continuationEnabled() {
-					continue
-				}
 				mc.SetErrState(state, nil, false, ECTLCPropertyViolatedInitial)
 				return ECTLCPropertyViolatedInitial, nil
 			}
