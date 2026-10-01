@@ -385,7 +385,6 @@ func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, a
 		if err != nil || s2 != nil {
 			return s2, err
 		}
-		s1.Unbind(varName)
 	}
 	return nil, enum.Err()
 }
