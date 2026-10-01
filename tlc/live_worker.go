@@ -8,7 +8,11 @@ import (
 
 const liveWorkerSCCMarker = int64(-42)
 
-var liveWorkerStackMu sync.Mutex
+var (
+	liveWorkerStackMu sync.Mutex
+	liveWorkerStatsMu sync.Mutex
+	liveWorkerStats   = NewBucketStatistics("Histogram SCC sizes")
+)
 
 type LiveWorker struct {
 	Tool       *Tool
@@ -305,6 +309,7 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *liveIntSta
 	if int64(com.Size()) > comStackSize/5 {
 		return false, fmt.Errorf("liveness component table larger than source stack")
 	}
+	liveWorkerAddSCCSample(com.Size())
 
 	slen := len(w.Solution.CheckState)
 	alen := len(w.Solution.CheckAction)
@@ -402,6 +407,18 @@ func (w *LiveWorker) checkComponent(state uint64, tidx int, comStack *liveIntSta
 		w.Tool.CheckPostConditionWithCounterExample(counterExample)
 	}
 	return false, nil
+}
+
+func liveWorkerAddSCCSample(size int) {
+	liveWorkerStatsMu.Lock()
+	defer liveWorkerStatsMu.Unlock()
+	liveWorkerStats.AddSample(size)
+}
+
+func liveWorkerStatsSnapshot() (string, int64) {
+	liveWorkerStatsMu.Lock()
+	defer liveWorkerStatsMu.Unlock()
+	return liveWorkerStats.String(), liveWorkerStats.Observations()
 }
 
 func (w *LiveWorker) isStuttering(state uint64, tidx int, loc int64) (bool, error) {

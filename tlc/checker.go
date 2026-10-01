@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -602,6 +603,9 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	result, err = mc.RunTLC(0)
 	if err != nil || result != NoError {
 		mc.PrintSummary(false)
+		if statsErr := mc.PrintLivenessStatistics(); err == nil {
+			err = statsErr
+		}
 		return result, err
 	}
 	if mc.ErrState == nil {
@@ -615,6 +619,9 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 			result, err = mc.LiveCheck.FinalCheck(mc.Tool.NoDebug())
 			if err != nil || result != NoError {
 				mc.PrintSummary(false)
+				if statsErr := mc.PrintLivenessStatistics(); err == nil {
+					err = statsErr
+				}
 				return result, err
 			}
 		}
@@ -626,6 +633,9 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		result = mc.replayNextErrorCallStack()
 	}
 	mc.PrintSummary(result == NoError)
+	if statsErr := mc.PrintLivenessStatistics(); err == nil {
+		err = statsErr
+	}
 	return result, nil
 }
 
@@ -898,6 +908,36 @@ func (mc *ModelChecker) PrintSummary(success bool) {
 	if success {
 		mc.PrintOutDegreeSummary()
 	}
+}
+
+func (mc *ModelChecker) PrintLivenessStatistics() error {
+	if mc == nil || !mc.CheckLiveness || mc.LiveCheck == nil || !livenessStatsEnabled() {
+		return nil
+	}
+	runtime.GC()
+	inDegree, err := mc.LiveCheck.CalculateInDegreeDiskGraphs(NewBucketStatistics("Histogram vertex in-degree"))
+	if err != nil {
+		return err
+	}
+	printLivenessStatistics(inDegree, mc.LiveCheck.GetOutDegreeStatistics())
+	return nil
+}
+
+func livenessStatsEnabled() bool {
+	value, ok := tlcLookupSystemProperty("tlc2.tool.liveness.statistics")
+	return ok && javaBooleanProperty(value)
+}
+
+func printLivenessStatistics(inDegree *BucketStatistics, outDegree *BucketStatistics) {
+	fmt.Println(outDegree)
+	fmt.Println(inDegree)
+	stats, observations := liveWorkerStatsSnapshot()
+	fmt.Println(stats)
+	plural := ""
+	if observations > 1 {
+		plural = "s"
+	}
+	fmt.Println(fmt.Sprintf("%d SCC%s found during liveness checking.", observations, plural))
 }
 
 func (mc *ModelChecker) PrintInitGenerated() {

@@ -36,6 +36,7 @@
 - Already audited recently; do not loop on disk state/byte queue checkpoint commit semantics unless touched: committed pool-file deletion and checkpoint rename failures now report Java-style errors instead of silently tolerating missing files in the committed range.
 - Already audited recently; do not reintroduce a second production SCC algorithm in `LiveCheck`: `LiveCheck` now always uses Java's disk-graph/`LiveWorker` SCC path, creating a temporary metadir if a caller omits one. `LiveCheck1` remains separate because Java has that legacy checker too.
 - Already audited recently; do not flatten `LiveCheck.check0` back to a sequential loop: it now mirrors Java's queue-of-checkers worker orchestration, waits for all liveness workers, and lets liveness violations outrank worker errors.
+- Already audited recently; do not route optional liveness statistics through structured TLC messages. Java prints `tlc2.tool.liveness.statistics` output directly to `ToolIO.out` after the final checker summary and before cleanup; Go mirrors that with stdout, including out-degree, in-degree, SCC-size buckets, and the SCC count line.
 - Already audited recently; do not simplify action-composition intermediate collection: when `tlc2.tool.impl.Tool.cdot=true` is enabled, intermediate states must be collected through Java `StateVec.addElement(predecessor, action, state)` semantics, including predecessor/action attachment.
 - Already audited recently; do not loosen disk graph checkpoint commit errors: `DiskGraph.commitChkpt` now reports Java-style delete/rename failures.
 - Already audited recently; do not replace `IntQueue` with a compacting Go slice queue: it now mirrors Java `MemIntQueue`'s circular buffer, growth rule, physical-index `popInt`, ring-ordered checkpointing, Java null-filename convention, and historical checkpoint error text.
@@ -218,6 +219,7 @@
   - State copy semantics now follow Java's selected state implementation: ordinary MC/DFID copies drop predecessor/action metadata, while simulation/debug/executor copies preserve it like `TLCStateMutExt`.
   - Continuation-mode invariant and implied-action checks now stop scanning after Java's first printed violation for a successor instead of printing all failed properties on that successor.
   - Next-state `CASE` coverage now charges guard and branch evaluation to the Java-matching arm-local cost model.
+  - Optional liveness statistics now mirror Java's `tlc2.tool.liveness.statistics` path by recording SCC component sizes, calculating final in-degree/out-degree disk-graph bucket statistics, and printing the raw stats to stdout after the checker summary.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
@@ -229,7 +231,6 @@
   - State queue interaction with fingerprint set and trace file at full Java fidelity.
 - Complete liveness checker parity:
   - final disk-backed SCC/cycle checking flow, accepting-component error reporting, lasso reconstruction, violated-property attribution, and any remaining DOT formatting differences.
-  - optional `LIVENESS_STATS` raw statistics printing still needs an output-channel decision; graph collection/recomputation helpers are now present.
 - Complete FPSet/DiskFPSet parity:
   - fine-grained striped locking and block IO concurrency, disk flushing, checkpoint/recovery edge cases, management/MX statistics.
   - distributed FP set manager/proxy behavior.
