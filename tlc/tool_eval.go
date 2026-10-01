@@ -532,18 +532,14 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	}
 }
 
-func (t *Tool) GetVal(expr SemanticNode, c *Context, lazy bool, cm CostModel) any {
-	if lazy {
-		return NewLazyValue(expr, c, true, cm)
+func (t *Tool) GetVal(expr SemanticNode, c *Context, cachable bool, cm CostModel) any {
+	if opArg, ok := expr.(*OpArgNode); ok {
+		return t.Lookup(opArg.Op, c, nil, false)
 	}
-	val, err := t.Eval(expr, c, EmptyState, EmptyState, EvalClear, cm)
-	if err != nil {
-		return ValUndef
-	}
-	return val
+	return NewLazyValue(expr, c, cachable, cm)
 }
 
-func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, lazy bool, cm CostModel) (*Context, error) {
+func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, cachable bool, cm CostModel) (*Context, error) {
 	if opDef == nil {
 		return c, newTLCError(ECGeneral, "attempted to apply nil operator definition")
 	}
@@ -555,15 +551,7 @@ func (t *Tool) GetOpContext(opDef *OpDefNode, args []SemanticNode, c *Context, l
 		c1 = EmptyContext
 	}
 	for i, param := range opDef.Params {
-		if lazy {
-			c1 = c1.Cons(param, NewLazyValue(args[i], c, true, cm))
-			continue
-		}
-		val, err := t.Eval(args[i], c, EmptyState, EmptyState, EvalClear, cm)
-		if err != nil {
-			return c1, err
-		}
-		c1 = c1.Cons(param, val)
+		c1 = c1.Cons(param, t.GetVal(args[i], c, cachable, cm))
 	}
 	return c1, nil
 }
