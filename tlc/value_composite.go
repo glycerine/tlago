@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"math"
-	"sort"
 	"strings"
 )
 
@@ -135,34 +134,43 @@ func (v *ValueVec) Search(val Value, sorted bool) bool {
 }
 
 func (v *ValueVec) Sort(noDup bool) error {
-	var sortErr error
-	sort.SliceStable(v.data, func(i, j int) bool {
-		if sortErr != nil {
-			return false
-		}
-		cmp, err := v.data[i].Compare(v.data[j])
-		if err != nil {
-			sortErr = err
-			return false
-		}
-		return cmp < 0
-	})
-	if sortErr != nil {
-		return sortErr
+	newCount := 0
+	if len(v.data) != 0 {
+		newCount = 1
 	}
-	if noDup && len(v.data) > 1 {
-		out := v.data[:1]
-		for _, elem := range v.data[1:] {
-			eq, err := elem.Equal(out[len(out)-1])
+	for i := 1; i < len(v.data); i++ {
+		elem := v.data[i]
+		cmp := 0
+		idx := 0
+		low, high := 0, newCount
+		for low < high {
+			idx = (low + high) >> 1
+			var err error
+			cmp, err = elem.Compare(v.data[idx])
 			if err != nil {
 				return err
 			}
-			if !eq {
-				out = append(out, elem)
+			if cmp == 0 {
+				break
+			}
+			if cmp < 0 {
+				high = idx
+			} else {
+				low = idx + 1
 			}
 		}
-		v.data = out
+		if cmp != 0 || !noDup {
+			if cmp >= 0 {
+				idx++
+			}
+			for j := newCount; j > idx; j-- {
+				v.data[j] = v.data[j-1]
+			}
+			v.data[idx] = elem
+			newCount++
+		}
 	}
+	v.data = v.data[:newCount]
 	return nil
 }
 

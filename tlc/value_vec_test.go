@@ -44,6 +44,22 @@ func TestValueVecAddSortedUniqueKeepsJavaInsertionBehavior(t *testing.T) {
 	}
 }
 
+func TestValueVecSortNoDupUsesCompareLikeJava(t *testing.T) {
+	first := compareEqualButNotEqualValue("first")
+	second := compareEqualButNotEqualValue("second")
+	vec := NewValueVecFrom([]Value{first, second})
+
+	if err := vec.Sort(true); err != nil {
+		t.Fatalf("Sort(true): %v", err)
+	}
+	if got := vec.Len(); got != 1 {
+		t.Fatalf("Len = %d, want duplicate removed by Compare", got)
+	}
+	if got := vec.At(0); got != first {
+		t.Fatalf("At(0) = %v, want first compare-equal value preserved", got)
+	}
+}
+
 func TestValueVecGrowthHonorsJavaSetBound(t *testing.T) {
 	oldBound := Globals.SetBound
 	Globals.SetBound = 2
@@ -62,3 +78,27 @@ func TestValueVecGrowthHonorsJavaSetBound(t *testing.T) {
 	}()
 	vec.Add(NewIntValue(2))
 }
+
+type compareEqualButNotEqualValue string
+
+func (v compareEqualButNotEqualValue) Kind() ValueKind              { return UserValueKind }
+func (v compareEqualButNotEqualValue) KindString() string           { return "test value" }
+func (v compareEqualButNotEqualValue) Compare(Value) (int, error)   { return 0, nil }
+func (v compareEqualButNotEqualValue) Equal(Value) (bool, error)    { return false, nil }
+func (v compareEqualButNotEqualValue) Member(Value) (bool, error)   { return false, nil }
+func (v compareEqualButNotEqualValue) IsFinite() (bool, error)      { return true, nil }
+func (v compareEqualButNotEqualValue) Size() (int, error)           { return 1, nil }
+func (v compareEqualButNotEqualValue) Normalize() Value             { return v }
+func (v compareEqualButNotEqualValue) DeepNormalize()               {}
+func (v compareEqualButNotEqualValue) IsNormalized() bool           { return true }
+func (v compareEqualButNotEqualValue) IsDefined() bool              { return true }
+func (v compareEqualButNotEqualValue) DeepCopy() Value              { return v }
+func (v compareEqualButNotEqualValue) FingerPrint(fp uint64) uint64 { return fp }
+func (v compareEqualButNotEqualValue) Permute(*MVPerm) Value        { return v }
+func (v compareEqualButNotEqualValue) TakeExcept(ValueExcept) (Value, error) {
+	return v, nil
+}
+func (v compareEqualButNotEqualValue) TakeExcepts([]ValueExcept) (Value, error) {
+	return v, nil
+}
+func (v compareEqualButNotEqualValue) String() string { return string(v) }
