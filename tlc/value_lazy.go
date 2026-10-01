@@ -328,11 +328,11 @@ func (v *SetPredValue) Member(elem Value) (bool, error) {
 	}
 	res, err := v.Tool.Eval(v.Pred, ctx, v.State, v.PState, v.Control, v.CM)
 	if err != nil {
-		return false, v.unsupported("cannot decide if element:\n%s\nis element of:\n%s\nand satisfies the predicate %s", elem, v.InVal, v.Pred)
+		return false, v.unsupported("Cannot decide if element:\n%s\n is element of:\n%s\nand satisfies the predicate %s", ValuesPPR(elem), ValuesPPR(v.InVal), v.Pred)
 	}
 	boolValue, ok := res.(*BoolValue)
 	if !ok {
-		return false, v.unsupported("the evaluation of predicate %s yielded non-Boolean value", v.Pred)
+		return false, v.unsupported("The evaluation of predicate %s yielded non-Boolean value.", v.Pred)
 	}
 	return boolValue.Val, nil
 }
@@ -343,7 +343,7 @@ func (v *SetPredValue) IsFinite() (bool, error) {
 		return false, err
 	}
 	if !finite {
-		return false, v.unsupported("attempted to check if expression of form {x \\in S : p(x)} is a finite set, but cannot check if S:\n%s\nis finite", v.InVal)
+		return false, v.unsupported("Attempted to check if expression of form {x \\in S : p(x)} is a finite set, but cannot check if S:\n%s\nis finite.", ValuesPPR(v.InVal))
 	}
 	return true, nil
 }
@@ -423,7 +423,7 @@ func (v *SetPredValue) Elements() ValueEnumeration {
 	}
 	enum, ok := asEnumerable(v.InVal)
 	if !ok {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate { x \\in S : p(x) } when S:\n%s\nis not enumerable", v.InVal))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate { x \\in S : p(x) } when S:\n%s\nis not enumerable", ValuesPPR(v.InVal)))
 	}
 	return &setPredEnumeration{set: v, enum: enum.Elements()}
 }
@@ -439,7 +439,7 @@ func (v *SetPredValue) bind(elem Value) (*Context, error) {
 	case []*SymbolNode:
 		tuple := asTupleValue(elem)
 		if tuple == nil || len(tuple.Elems) != len(vars) {
-			return nil, v.unsupported("attempted to check if the value:\n%s\nis an element of a set of %d-tuples", elem, len(vars))
+			return nil, v.unsupported("Attempted to check if the value:\n%s\nis an element of a set of %d-tuples.", ValuesPPR(elem), len(vars))
 		}
 		for i, variable := range vars {
 			ctx = ctx.Cons(variable, tuple.Elems[i])
@@ -504,7 +504,7 @@ func (e *setPredEnumeration) NextElement() Value {
 		}
 		boolValue, ok := res.(*BoolValue)
 		if !ok {
-			e.err = e.set.unsupported("evaluating predicate %s yielded non-Boolean value", e.set.Pred)
+			e.err = e.set.unsupported("Evaluating predicate %s yielded non-Boolean value.", e.set.Pred)
 			return nil
 		}
 		if boolValue.Val {
