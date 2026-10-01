@@ -269,7 +269,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 
 func (b *tlcBridge) installVariables() {
 	vars := moduleVariables(b.spec.Root)
-	tlc.SetStateVariables(vars)
+	tlc.SetStateVariablesWithLocations(vars, moduleVariableLocations(b.spec.Root))
 	if b.processor != nil {
 		b.processor.SetVariables(vars)
 	}

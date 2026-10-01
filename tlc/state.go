@@ -14,6 +14,7 @@ const (
 
 type StateVariable struct {
 	Name          *UniqueString
+	Location      SourceLocation
 	CountDistinct *CountDistinct
 }
 
@@ -26,12 +27,16 @@ var (
 )
 
 func SetStateVariables(names []string) {
+	SetStateVariablesWithLocations(names, nil)
+}
+
+func SetStateVariablesWithLocations(names []string, locations map[string]SourceLocation) {
 	stateVariables = make([]StateVariable, len(names))
 	SetUniqueStringVariableCount(len(names))
 	for i, name := range names {
 		us := UniqueStringOf(name)
 		us.SetLoc(i)
-		stateVariables[i] = StateVariable{Name: us}
+		stateVariables[i] = StateVariable{Name: us, Location: locations[name]}
 	}
 	EmptyState = NewEmptyState()
 }

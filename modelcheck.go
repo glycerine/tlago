@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 type State map[string]int
@@ -966,6 +968,44 @@ func moduleVariables(mod *Module) []string {
 	}
 	sort.Strings(vars)
 	return vars
+}
+
+func moduleVariableLocations(mod *Module) map[string]tlc.SourceLocation {
+	locations := map[string]tlc.SourceLocation{}
+	if mod == nil {
+		return locations
+	}
+	for _, decl := range mod.Declarations {
+		if decl.Kind != VariableDecl {
+			continue
+		}
+		for _, name := range decl.Names {
+			pos := decl.NamePositions[name]
+			if pos.Line == 0 {
+				pos = decl.Pos
+			}
+			locations[name] = tlaPositionToTLCSourceLocation(mod, pos)
+		}
+	}
+	return locations
+}
+
+func tlaPositionToTLCSourceLocation(mod *Module, pos Position) tlc.SourceLocation {
+	source := ""
+	if mod != nil {
+		source = mod.Name
+	}
+	if pos.File != "" {
+		source = pos.File
+	}
+	endLine, endColumn := pos.EndLine, pos.EndColumn
+	if endLine == 0 {
+		endLine = pos.Line
+	}
+	if endColumn == 0 {
+		endColumn = pos.Column
+	}
+	return tlc.NewSourceLocation(source, pos.Line, pos.Column, endLine, endColumn)
 }
 
 func initialStates(expr Expr, vars []string, constants State) ([]State, error) {

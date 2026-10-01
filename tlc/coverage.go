@@ -341,7 +341,7 @@ func reportCoverage(tool *Tool) {
 		}
 		count := variable.CountDistinct.Count()
 		if count >= 0 {
-			PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.Name.String(), fmt.Sprint(count))
+			PrintMessage(ECTLCCoverageVar, variable.Name.String(), variable.Location.String(), fmt.Sprint(count))
 		}
 	}
 	for _, action := range tool.GetInitStateSpec() {
