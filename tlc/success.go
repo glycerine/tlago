@@ -7,7 +7,8 @@ import (
 )
 
 func CalculateOptimisticProbability(numDistinct uint64, numGenerated int64) float64 {
-	return float64(numDistinct) * ((float64(numGenerated) - float64(numDistinct)) / math.Pow(2, 64))
+	distinct := int64(numDistinct)
+	return float64(distinct) * (float64(numGenerated-distinct) / math.Pow(2, 64))
 }
 
 func ReportSuccess(fpSet FPSet, numGenerated int64) {
