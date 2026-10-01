@@ -147,6 +147,13 @@ func (a *Assignment) GetLabel() string {
 	return a.Label
 }
 
+func (a *Assignment) GetParams() []string {
+	if a == nil {
+		return nil
+	}
+	return a.Params
+}
+
 func (a *Assignment) GetLocalLabel() string {
 	label := a.GetLabel()
 	idx := strings.LastIndex(label, "!")
@@ -173,6 +180,13 @@ func (a *Assignment) SetRight(right string) {
 
 func (a *Assignment) SetFormula(string) {
 	panic("Not implemented yet")
+}
+
+func (a *Assignment) String() string {
+	if a == nil {
+		return ""
+	}
+	return a.GetFormula()
 }
 
 func (a *Assignment) GetFormattedRight() string {
@@ -592,6 +606,13 @@ func (v *MCVariable) SetTraceExpression(expr string) {
 	}
 }
 
+func (v *MCVariable) GetTraceExpression() string {
+	if v == nil {
+		return ""
+	}
+	return v.TraceExpression
+}
+
 type MCState struct {
 	Variables   []*MCVariable
 	Name        string
@@ -612,7 +633,7 @@ func NewMCStateMarker(other *MCState, stuttering bool, backToState bool) *MCStat
 		return &MCState{Stuttering: stuttering, BackToState: backToState}
 	}
 	return &MCState{
-		Variables:   append([]*MCVariable(nil), other.Variables...),
+		Variables:   other.Variables,
 		Name:        other.Name,
 		Label:       other.Label,
 		Location:    other.Location,
@@ -678,6 +699,56 @@ func ParseMCState(input string) *MCState {
 		}
 	}
 	return NewMCState(vars, name, label, location, stuttering, backToState, stateNumber)
+}
+
+func (s *MCState) GetVariables() []*MCVariable {
+	if s == nil {
+		return nil
+	}
+	return s.Variables
+}
+
+func (s *MCState) GetLabel() string {
+	if s == nil {
+		return ""
+	}
+	return s.Label
+}
+
+func (s *MCState) GetName() string {
+	if s == nil {
+		return ""
+	}
+	return s.Name
+}
+
+func (s *MCState) IsStuttering() bool {
+	return s != nil && s.Stuttering
+}
+
+func (s *MCState) IsBackToState() bool {
+	return s != nil && s.BackToState
+}
+
+func (s *MCState) GetStateNumber() int {
+	if s == nil {
+		return 0
+	}
+	return s.StateNumber
+}
+
+func (s *MCState) GetLocation() string {
+	if s == nil {
+		return ""
+	}
+	return s.Location
+}
+
+func (s *MCState) GetRecord() Value {
+	if s == nil {
+		return nil
+	}
+	return s.Record
 }
 
 func (s *MCState) AsRecord(includeHeader bool) string {
@@ -815,6 +886,27 @@ func NewMCError(message ...string) *MCError {
 
 func NewMCErrorWithCause(cause *MCError, message string) *MCError {
 	return &MCError{Cause: cause, Message: message}
+}
+
+func (e *MCError) GetStates() []*MCState {
+	if e == nil {
+		return nil
+	}
+	return e.States
+}
+
+func (e *MCError) GetMessage() string {
+	if e == nil {
+		return ""
+	}
+	return e.Message
+}
+
+func (e *MCError) GetCause() *MCError {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
 }
 
 func (e *MCError) AddState(state *MCState) {
