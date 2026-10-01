@@ -137,6 +137,9 @@ func functionsFunctionAccess(value Value) (Value, func(Value) (Value, error), bo
 		return v.Domain(), v.Apply, true, nil
 	case *RecordValue:
 		return v.DomainValue(), v.Apply, true, nil
+	case *CounterExample:
+		record := asRecordValue(v)
+		return record.DomainValue(), record.Apply, true, nil
 	default:
 		return nil, nil, false, nil
 	}

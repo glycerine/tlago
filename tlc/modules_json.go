@@ -169,6 +169,8 @@ func jsonWriteValue(b *bytes.Buffer, value Value) error {
 	switch v := value.(type) {
 	case *RecordValue:
 		return jsonWriteRecord(b, v)
+	case *CounterExample:
+		return jsonWriteRecord(b, asRecordValue(v))
 	case *TupleValue:
 		return jsonWriteTuple(b, v)
 	case *StringValue:
@@ -208,6 +210,8 @@ func jsonWriteObject(b *bytes.Buffer, value Value) error {
 	switch v := value.(type) {
 	case *RecordValue:
 		return jsonWriteRecord(b, v)
+	case *CounterExample:
+		return jsonWriteRecord(b, asRecordValue(v))
 	case *TupleValue:
 		b.WriteByte('{')
 		for i, elem := range v.Elems {

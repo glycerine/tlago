@@ -1120,6 +1120,19 @@ func (t *Tool) applyEvaluatedFunction(expr *OpApplNode, fval Value, c *Context, 
 			return nil, err
 		}
 		return f.Apply(argVal)
+	case *CounterExample:
+		record := asRecordValue(f)
+		if record == nil {
+			return nil, newTLCError(ECGeneral, "A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr))
+		}
+		if rejectTupleRecordMultiArg && len(args) != 2 {
+			return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form f[e1, ... , eN]\nwith f a tuple or record and N > 1.\n%s", SemanticString(expr))
+		}
+		argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return record.Apply(argVal)
 	default:
 		return nil, newTLCError(ECGeneral, "A non-function (%s) was applied as a function.\n%s", valueKindString(fval), SemanticString(expr))
 	}
@@ -1453,6 +1466,12 @@ func selectPath(root Value, path []Value) (Value, error) {
 				return nil, err
 			}
 			cur = next
+		case *CounterExample:
+			next, err := selectRecordValue(asRecordValue(v), step)
+			if err != nil {
+				return nil, err
+			}
+			cur = next
 		case *FcnRcdValue:
 			next, err := v.Select(step)
 			if err != nil {
@@ -1506,6 +1525,12 @@ func domainValue(expr SemanticNode, value Value) (Value, error) {
 		return v.Domain(), nil
 	case *RecordValue:
 		return v.DomainValue(), nil
+	case *CounterExample:
+		record := asRecordValue(v)
+		if record == nil {
+			return nil, newTLCError(ECGeneral, "Attempted to apply the operator DOMAIN to a non-function\n(%s)\n%s", valueKindString(value), SemanticString(expr))
+		}
+		return record.DomainValue(), nil
 	case *FcnRcdValue:
 		return v.DomainValue(), nil
 	case *FcnLambdaValue:

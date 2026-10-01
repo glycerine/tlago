@@ -234,6 +234,14 @@ func vectorClockSelect(container Value, arg Value) (Value, error) {
 		if value != nil {
 			return value, nil
 		}
+	case *CounterExample:
+		value, err := asRecordValue(v).Select(arg)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil {
+			return value, nil
+		}
 	}
 	return nil, newTLCError(ECGeneral, "cannot select %s from vector clock %s", arg, container)
 }

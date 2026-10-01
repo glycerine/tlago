@@ -1128,7 +1128,7 @@ func debugValueToVariable(variable *DebugTLCVariable, value Value, rnd *rand.Ran
 
 func debugValueMayHaveNested(value Value) bool {
 	switch value.(type) {
-	case *FcnRcdValue, *RecordValue, *TupleValue:
+	case *FcnRcdValue, *RecordValue, *CounterExample, *TupleValue:
 		return true
 	default:
 		_, ok := value.(Enumerable)
@@ -1354,6 +1354,8 @@ func debugValueNested(value Value, prototype *DebugTLCVariable, rnd *rand.Rand) 
 		return debugTupleVariables(v, prototype, rnd)
 	case *RecordValue:
 		return debugRecordVariables(v, prototype, rnd)
+	case *CounterExample:
+		return debugRecordVariables(asRecordValue(v), prototype, rnd)
 	case *FcnRcdValue:
 		return debugFunctionVariables(v, prototype, rnd)
 	case *SetEnumValue:

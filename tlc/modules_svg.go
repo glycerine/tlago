@@ -93,6 +93,8 @@ func svgChildren(value Value) ([]Value, error) {
 		return v.Elems, nil
 	case *RecordValue:
 		return v.Values, nil
+	case *CounterExample:
+		return asRecordValue(v).Values, nil
 	case *FcnRcdValue:
 		return v.Values, nil
 	case *FcnLambdaValue:

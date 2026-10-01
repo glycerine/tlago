@@ -262,6 +262,11 @@ func asTupleValue(value Value) *TupleValue {
 		return v.ToTuple()
 	case *RecordValue:
 		return v.ToTuple()
+	case *CounterExample:
+		if v == nil || v.RecordValue == nil {
+			return EmptyRecord.ToTuple()
+		}
+		return v.RecordValue.ToTuple()
 	default:
 		return nil
 	}

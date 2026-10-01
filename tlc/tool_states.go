@@ -935,7 +935,7 @@ func (t *Tool) applyPredicateFunction(where string, expr *OpApplNode, fval Value
 		if f.FcnRcd != nil {
 			fval = f.FcnRcd
 		}
-	case *FcnRcdValue, *TupleValue, *RecordValue:
+	case *FcnRcdValue, *TupleValue, *RecordValue, *CounterExample:
 	default:
 		return nil, newTLCError(ECGeneral, "In computing %s, a non-function (%s) was applied as a function.\n%s", where, fval.KindString(), SemanticString(expr))
 	}

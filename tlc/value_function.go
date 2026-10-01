@@ -1354,6 +1354,11 @@ func asRecordValue(value Value) *RecordValue {
 	switch v := value.(type) {
 	case *RecordValue:
 		return v
+	case *CounterExample:
+		if v == nil || v.RecordValue == nil {
+			return EmptyRecord
+		}
+		return v.RecordValue
 	case *FcnRcdValue:
 		return v.ToRecord()
 	case *FcnLambdaValue:
@@ -1378,6 +1383,11 @@ func asFcnRcdValue(value Value) *FcnRcdValue {
 		return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems)
 	case *RecordValue:
 		return v.ToFcnRcd()
+	case *CounterExample:
+		if v == nil || v.RecordValue == nil {
+			return EmptyRecord.ToFcnRcd()
+		}
+		return v.RecordValue.ToFcnRcd()
 	default:
 		return nil
 	}
