@@ -509,6 +509,7 @@ func jsonTokenToTLC(dec *json.Decoder, tok json.Token) (Value, error) {
 		case '{':
 			names := make([]*UniqueString, 0)
 			values := make([]Value, 0)
+			indices := make(map[string]int)
 			for dec.More() {
 				keyTok, err := dec.Token()
 				if err != nil {
@@ -522,8 +523,13 @@ func jsonTokenToTLC(dec *json.Decoder, tok json.Token) (Value, error) {
 				if err != nil {
 					return nil, err
 				}
-				names = append(names, UniqueStringOf(key))
-				values = append(values, value)
+				if idx, ok := indices[key]; ok {
+					values[idx] = value
+				} else {
+					indices[key] = len(names)
+					names = append(names, UniqueStringOf(key))
+					values = append(values, value)
+				}
 			}
 			if err := expectJSONDelim(dec, '}'); err != nil {
 				return nil, err
