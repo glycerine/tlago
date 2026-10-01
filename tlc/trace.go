@@ -348,7 +348,11 @@ func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {
 	if t == nil || pos < 0 {
 		return nil
 	}
-	if trace, recovered, err := t.getTraceAtFromDisk(pos, included); err == nil && recovered {
+	trace, recovered, err := t.getTraceAtFromDisk(pos, included)
+	if err != nil {
+		panic(err)
+	}
+	if recovered {
 		return trace
 	}
 	t.mu.Lock()
@@ -439,8 +443,11 @@ func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TL
 	if sinfo == nil {
 		fp := fps[len(fps)-1]
 		info, err := t.Tool.GetState(fp)
-		if err != nil || info == nil {
+		if err != nil {
 			return nil, err
+		}
+		if info == nil {
+			return nil, newTLCError(ECTLCFailedToRecoverInit, "initial state fingerprint %d could not be regenerated", fp)
 		}
 		info.FP = &fp
 		sinfo = info
@@ -449,8 +456,11 @@ func (t *TLCTrace) recoverTraceFromFPs(sinfo *TLCStateInfo, fps []uint64) ([]*TL
 	for i := len(fps) - 2; i >= 0; i-- {
 		fp := fps[i]
 		info, err := t.Tool.GetState(fp, sinfo)
-		if err != nil || info == nil {
+		if err != nil {
 			return nil, err
+		}
+		if info == nil {
+			return nil, newTLCError(ECTLCFailedToRecoverNext, "successor fingerprint %d could not be regenerated", fp)
 		}
 		info.FP = &fp
 		out = append(out, info)

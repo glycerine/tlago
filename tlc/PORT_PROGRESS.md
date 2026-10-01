@@ -329,8 +329,9 @@
   - `ErrorTraceMessageRecorder` now mirrors Java's back-to-state trace-finished ordering.
   - Worker successor processing now follows Java `Worker.addElement` ordering around incomplete-state checks, predecessor/action attachment, model constraints, seen-state writes, invariant checks, implied-action checks, and queueing.
   - Worker stop-worthy successor failures now return through the wrapped invariant-violation error path like Java `Worker.addElement`, rather than using a graceful functor halt that could skip Java's error unwrapping semantics.
-  - `TLCTrace.GetTraceAt` now follows Java's disk-fingerprint reconstruction algorithm for CheckImpl uncovered traces when the trace has a `Tool`, including RNG reset around `Tool.GetState` replay.
-  - `Tool.GetState` reconstruction no longer consults a Go-only known-state cache; initial and successor recovery now force the same Java regeneration path through init and action evaluation.
+- `TLCTrace.GetTraceAt` now follows Java's disk-fingerprint reconstruction algorithm for CheckImpl uncovered traces when the trace has a `Tool`, including RNG reset around `Tool.GetState` replay.
+- Disk-backed trace reconstruction errors are fatal to `GetTraceAt` like Java's trace recovery path; they no longer silently fall back to the Go in-memory trace mirror. Nil regenerated states are reported with Java's init-vs-successor recovery error split.
+- `Tool.GetState` reconstruction no longer consults a Go-only known-state cache; initial and successor recovery now force the same Java regeneration path through init and action evaluation.
   - Disk-backed and multi fingerprint sets now rebuild from the trace enumerator during checkpoint recovery, matching Java's `recover(TLCTrace)` path and avoiding dependency on Go-only trace mirror records.
   - Worker deadlock handling now mirrors Java's trailing loop order by recording the deadlock, then still adding the current state to liveness and sampling out-degree before returning.
   - Call-stack replay `doNextWithTool` now keeps Java `ModelChecker.doNext` ordering by checking model/action constraints before any explicit predecessor/action attachment in that replay path.
