@@ -146,6 +146,10 @@ const (
 	ECTLCConfigMissingInit                               = 2231
 	ECTLCConfigMissingNext                               = 2232
 	ECTLCConfigIDMustNotBeConstant                       = 2233
+	ECTLCCantHandleSubscript                             = 2238
+	ECTLCCantHandleConjunct                              = 2239
+	ECTLCCantHandleTooManyNextStateRels                  = 2240
+	ECTLCConfigPropertyNotCorrectlyDefined               = 2241
 	ECTLCLiveFormulaTautology                            = 2253
 	ECTLCConfigNoSpecButProperty                         = 2257
 	ECTLCConfigNoFairnessButLiveProperty                 = 2259
@@ -156,6 +160,9 @@ const (
 	ECTLCComputingInitProgress                           = 2269
 	ECSystemErrorCleaningPool                            = 2270
 	ECTLCModeMCDFS                                       = 2271
+	ECTLCConfigPropertyActionLevel                       = 2272
+	ECTLCConfigPropertyActionLevelSquareASubV            = 2273
+	ECTLCConfigPropertyActionLevelAngleASubV             = 2274
 	ECTLCFeatureUnsupportedLivenessSymmetry              = 2279
 	ECTLCTraceTooLong                                    = 2282
 	ECTLCModuleOneArgumentError                          = 2283
@@ -725,6 +732,34 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])
 		}
+	case ECTLCCantHandleSubscript:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC cannot handle subscript %s", params[0])
+		}
+	case ECTLCCantHandleConjunct:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC cannot handle this conjunct of the spec:\n%s", params[0])
+		}
+	case ECTLCCantHandleTooManyNextStateRels:
+		return "The specification contains more than one conjunct of the form [][Next]_v,\nbut TLC can handle only specifications with one next-state relation."
+	case ECTLCConfigPropertyActionLevelSquareASubV:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The formula %s at %s is an action-level formula (i.e., it contains no temporal operators). Only temporal-level (or state-level) formulas are allowed under PROPERTY or PROPERTIES. To check that action %s holds in *every* step of the behavior, define a temporal property by applying the \"always\" temporal operator ([]) to the formula at %s (compare page 90 of Specifying Systems at https://lamport.azurewebsites.net/tla/book.html).", params[0], params[1], params[0], params[1])
+		}
+	case ECTLCConfigPropertyActionLevelAngleASubV:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The formula %s at %s is an action-level formula (i.e., it contains no temporal operators). Only temporal-level (or state-level) formulas are allowed under PROPERTY or PROPERTIES. To check that infinitely many %s steps occur, define a temporal property by applying the \"always eventually\" temporal operator combination ([]<>) to the formula at %s (compare page 91 of Specifying Systems at https://lamport.azurewebsites.net/tla/book.html).", params[0], params[1], params[0], params[1])
+		}
+	case ECTLCConfigPropertyActionLevel:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The formula %s at %s is an action-level formula (i.e., it contains no temporal operators). Only temporal-level (or state-level) formulas are allowed under PROPERTY or PROPERTIES. To check that action %s holds in *every* step of the behavior, define a temporal property: Let A be the formula at %s; rewrite A as [][A]_v, where v is a state function (typically the tuple of variables) (compare page 90 of Specifying Systems at https://lamport.azurewebsites.net/tla/book.html).", params[0], params[1], params[0], params[1])
+		}
+	case ECTLCConfigPropertyNotCorrectlyDefined:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The property %s is not correctly defined.", params[0])
+		}
+	case ECTLCSpecificationFeaturesTemporalQuantifier:
+		return "TLC does not support temporal existential, nor universal, quantification over state variables."
 	case ECTLCValueAssertFailed:
 		if len(params) >= 1 {
 			return fmt.Sprintf("The first argument of Assert evaluated to FALSE; the second argument was:\n%s", params[0])
@@ -956,7 +991,14 @@ func ExitStatusForErrorCode(code int) int {
 		ECTLCConfigIDHasValue,
 		ECTLCConfigMissingInit,
 		ECTLCConfigMissingNext,
-		ECTLCConfigIDMustNotBeConstant:
+		ECTLCConfigIDMustNotBeConstant,
+		ECTLCCantHandleSubscript,
+		ECTLCCantHandleConjunct,
+		ECTLCCantHandleTooManyNextStateRels,
+		ECTLCConfigPropertyNotCorrectlyDefined,
+		ECTLCConfigPropertyActionLevel,
+		ECTLCConfigPropertyActionLevelSquareASubV,
+		ECTLCConfigPropertyActionLevelAngleASubV:
 		return ExitStatusErrorConfigParse
 	case ECTLCParsingFailed2,
 		ECTLCParsingFailed:

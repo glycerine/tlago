@@ -961,7 +961,9 @@ func (p *SpecProcessor) processConfigSpec(tool *Tool, pred SemanticNode, c *Cont
 		action := NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred))
 		p.Temporals = append(p.Temporals, action)
 		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
+		return
 	}
+	p.addConfigError(ECTLCCantHandleConjunct, SemanticString(pred))
 }
 
 func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *Context, subs *List, stack []SemanticNode) bool {
@@ -1001,8 +1003,8 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 		}
 	}
 
-	if def, ok := val.(*OpDefNode); ok && def != nil && def.Body != nil && def.Arity() == len(args) && subs.IsEmpty() {
-		if c1, err := tool.GetOpContext(def, args, c, true, DoNotRecordCostModel); err == nil {
+	if def, ok := val.(*OpDefNode); ok && def != nil && def.Body != nil && !def.GetInRecursive() && def.Arity() == len(args) && subs.IsEmpty() {
+		if c1, err := tool.GetOpContext(def, args, c, false, DoNotRecordCostModel); err == nil {
 			p.processConfigSpec(tool, def.Body, c1, subs, stack)
 			return true
 		}
@@ -1014,6 +1016,7 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 	}
 	switch opcode {
 	case OpcodeTE, OpcodeTF:
+		p.addConfigError(ECTLCSpecificationFeaturesTemporalQuantifier)
 		return true
 	case OpcodeCL, OpcodeLand:
 		for _, arg := range args {
@@ -1025,9 +1028,15 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 			return true
 		}
 		boxArg, _ := args[0].(*OpApplNode)
+		if boxArg != nil && tool.GetLevelBound(boxArg, c) <= TLCLevelState {
+			p.addConfigError(ECTLCLiveCannotHandleFormula, SemanticString(boxArg))
+			return true
+		}
 		if boxArg != nil && boxArg.Operator != nil && GetOpCode(boxArg.Operator.Name) == OpcodeSA && len(boxArg.Args) > 0 {
 			if p.NextPred == nil {
 				p.NextPred = NewAction(SpecsAddSubsts(boxArg.Args[0], subs), c, SemanticString(boxArg.Args[0]))
+			} else {
+				p.addConfigError(ECTLCCantHandleTooManyNextStateRels)
 			}
 			return true
 		}
@@ -1081,11 +1090,28 @@ func (p *SpecProcessor) processConfigProperty(tool *Tool, name string, configNam
 		p.ImpliedInits = append(p.ImpliedInits, NewAction(SpecsAddSubsts(pred, subs), c, configName))
 		p.ImpliedInitNames = append(p.ImpliedInitNames, name)
 	case TLCLevelAction:
-		p.ImpliedActions = append(p.ImpliedActions, NewAction(SpecsAddSubsts(pred, subs), c, configName))
-		p.ImpliedActNames = append(p.ImpliedActNames, name)
+		switch appl := pred.(type) {
+		case *OpApplNode:
+			opcode := 0
+			if appl != nil && appl.Operator != nil && appl.Operator.Name != nil {
+				opcode = GetOpCode(appl.Operator.Name)
+			}
+			switch opcode {
+			case OpcodeSA:
+				p.addConfigError(ECTLCConfigPropertyActionLevelSquareASubV, name, semanticNodeLocationString(pred))
+			case OpcodeAA:
+				p.addConfigError(ECTLCConfigPropertyActionLevelAngleASubV, name, semanticNodeLocationString(pred))
+			default:
+				p.addConfigError(ECTLCConfigPropertyActionLevel, name, semanticNodeLocationString(pred))
+			}
+		default:
+			p.addConfigError(ECTLCConfigPropertyActionLevel, name, semanticNodeLocationString(pred))
+		}
 	case TLCLevelTemporal:
 		p.ImpliedTemporals = append(p.ImpliedTemporals, NewAction(SpecsAddSubsts(pred, subs), c, configName))
 		p.ImpliedTempNames = append(p.ImpliedTempNames, name)
+	default:
+		p.addConfigError(ECTLCConfigPropertyNotCorrectlyDefined, name)
 	}
 }
 
@@ -1125,8 +1151,8 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 			return true
 		}
 	}
-	if def, ok := val.(*OpDefNode); ok && def != nil && def.Body != nil && def.Arity() == len(args) && subs.IsEmpty() {
-		if c1, err := tool.GetOpContext(def, args, c, true, DoNotRecordCostModel); err == nil {
+	if def, ok := val.(*OpDefNode); ok && def != nil && def.Body != nil && !def.GetInRecursive() && def.Arity() == len(args) && subs.IsEmpty() {
+		if c1, err := tool.GetOpContext(def, args, c, false, DoNotRecordCostModel); err == nil {
 			opName := name
 			if opNode.Name != nil {
 				opName = opNode.Name.String()
@@ -1142,9 +1168,13 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 	switch opcode {
 	case OpcodeBF:
 		if len(args) > 0 {
-			if ctxts, err := tool.Contexts(pred, c, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel); err == nil && ctxts != nil && ctxts.Err() == nil && !ctxts.IsDone() {
-				for c1 := ctxts.NextElement(); c1 != nil; c1 = ctxts.NextElement() {
-					p.processConfigProperty(tool, SemanticString(args[0]), configName, args[0], c1, subs)
+			if ctxts, err := tool.Contexts(pred, c, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel); err == nil && ctxts != nil && ctxts.Err() == nil {
+				if ctxts.IsDone() {
+					p.addConfigError(ECTLCLiveFormulaTautology)
+				} else {
+					for c1 := ctxts.NextElement(); c1 != nil; c1 = ctxts.NextElement() {
+						p.processConfigProperty(tool, SemanticString(args[0]), configName, args[0], c1, subs)
+					}
 				}
 				return true
 			}
@@ -1169,6 +1199,9 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 			return true
 		}
 		if tool.GetLevelBound(boxArg, c) < TLCLevelAction {
+			if boxAppl, ok := boxArg.(*OpApplNode); ok && boxAppl.Operator != nil && len(boxAppl.Args) == 0 && boxAppl.Operator.Name != nil {
+				name = boxAppl.Operator.Name.String()
+			}
 			p.Invariants = append(p.Invariants, NewAction(SpecsAddSubsts(boxArg, subs), c, configName))
 			p.InvariantNames = append(p.InvariantNames, name)
 			return true
@@ -1321,6 +1354,13 @@ func opNodeName(node *SymbolNode) string {
 		return "<unknown>"
 	}
 	return node.Name.String()
+}
+
+func semanticNodeLocationString(node SemanticNode) string {
+	if loc, ok := semanticNodeSourceLocation(node); ok {
+		return loc.String()
+	}
+	return NullSourceLocation.String()
 }
 
 func (p *SpecProcessor) constraintNodesFromConfigNames(names []string, kind string, noArgCode int, undefinedCode int, valueCode int) []SemanticNode {
