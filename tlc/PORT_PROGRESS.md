@@ -57,6 +57,7 @@
 - Already audited recently; do not reintroduce simulator-wide random successor collection: Java standard simulation randomly selects an action first and then a successor from that action's generated states.
 - Already audited recently; do not short-circuit `CheckImpl.checkTrace` on `false` results from state/reachability checks: Java calls those methods for reporting side effects and only thrown exceptions stop the loop.
 - Already audited recently; do not unbind failed `ENABLED` enumeration assignments between candidates: Java mutates the candidate successor state in place while enumerating `x' \in S`/`x' \subseteq S`.
+- Already audited recently; do not count vector-path action coverage in individual checker callers: Java increments `action.cm` inside `Tool.getNextStates(action, state)` after generation.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -179,6 +180,7 @@
   - Removed unused simulator helper paths that collected all successors globally or post-processed a generated `StateVec`, because both encoded non-Java successor-selection algorithms.
   - `CheckImpl.CheckTrace` now ignores `false` results from `CheckState`/`CheckReachability` like Java and keeps consuming the externally supplied trace unless an error is raised.
   - `ENABLED` enumeration now preserves Java's in-place mutation behavior for failed primed-variable candidates instead of cleaning the binding after each failed candidate.
+  - Vector-producing `Tool.GetNextStates` now owns Java's action coverage increment and probabilistic multi-successor warning; BFS/DFID no longer duplicate that accounting at call sites.
   - Constrained successor output now mirrors Java `Worker.addElement` by writing only failed state/action constraints, with no extra generic not-in-model transition.
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.

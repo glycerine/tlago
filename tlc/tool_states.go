@@ -1,5 +1,10 @@
 package tlc
 
+import (
+	"fmt"
+	"os"
+)
+
 const (
 	actionCompositionProperty           = "tlc2.tool.impl.Tool.cdot"
 	actionCompositionUnsupportedMessage = "The current version of TLC does not support action composition.  An incomplete implementation can be enabled via the tlc2.tool.impl.Tool.cdot=true java property."
@@ -395,6 +400,12 @@ func (t *Tool) GetNextStatesImpl(action *Action, state *TLCStateMut) (*StateVec,
 	functor.HasStatesFunc = nss.HasStates
 	s1 := NewEmptyState().SetPredecessor(state).SetAction(action)
 	_, err := t.GetNextStatesForPredicate(action, action.Pred, EmptyActionItemList, action.Con, state, s1, functor, action.CM)
+	if err == nil && action != nil && CoverageActionEnabled() {
+		action.CM.IncInvocations(int64(nss.Size()))
+	}
+	if err == nil && toolProbabilisticEnabled() && nss.Size() > 1 {
+		fmt.Fprintln(os.Stderr, "Simulator generated more than one next state")
+	}
 	return nss, err
 }
 

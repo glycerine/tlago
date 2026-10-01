@@ -1327,9 +1327,6 @@ func (mc *ModelChecker) DoNext(curState *TLCStateMut) (bool, error) {
 		if nextStates != nil {
 			size = nextStates.Size()
 		}
-		if action != nil && CoverageEnabled() {
-			action.CM.IncInvocations(int64(size))
-		}
 		mc.NextStatesGenerated += int64(size)
 		deadLocked = deadLocked && size == 0
 		for i := 0; i < size; i++ {
