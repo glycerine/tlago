@@ -299,24 +299,25 @@ func (v *TupleValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
+	out := make([]Value, len(v.Elems))
 	arc, ok := ex.Path[ex.Index].(*IntValue)
 	if !ok {
-		PrintWarning(ECTLCWrongTupleFieldName, ex.Path[ex.Index].String())
-		return v, nil
+		PrintWarning(ECTLCWrongTupleFieldName, valueString(ex.Path[ex.Index]))
+		return ex.Value, nil
 	}
 	idx := int(arc.Val) - 1
-	if idx < 0 || idx >= len(v.Elems) {
-		return v, nil
+	// Java allocates the replacement tuple before checking bounds and returns it
+	// even when the integer field is out of range, leaving the slots unfilled.
+	if 0 <= idx && idx < len(v.Elems) {
+		copy(out, v.Elems)
+		next := ex
+		next.Index++
+		val, err := v.Elems[idx].TakeExcept(next)
+		if err != nil {
+			return nil, err
+		}
+		out[idx] = val
 	}
-	out := make([]Value, len(v.Elems))
-	copy(out, v.Elems)
-	next := ex
-	next.Index++
-	val, err := v.Elems[idx].TakeExcept(next)
-	if err != nil {
-		return nil, err
-	}
-	out[idx] = val
 	return &TupleValue{Elems: out}, nil
 }
 
