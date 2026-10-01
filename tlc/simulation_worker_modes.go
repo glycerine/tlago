@@ -244,9 +244,10 @@ func (w *SimulationWorker) UpdateRLDisabledAction(index int, actions []*Action, 
 	if w.Mode == SimulationWorkerRLAction {
 		prev := curState.Predecessor()
 		reward, err := w.GetRLReward(prev, action, curState)
-		if err == nil {
-			w.rlActionQ(action).Set(w.RLHash(curState), w.RLAlpha*reward)
+		if err != nil {
+			panic(err)
 		}
+		w.rlActionQ(action).Set(w.RLHash(curState), w.RLAlpha*reward)
 	}
 	if !w.RLEnabledOnly {
 		w.rlActionQ(action).Set(w.RLHash(curState), -math.MaxFloat64)
@@ -264,7 +265,10 @@ func (w *SimulationWorker) FilterEnabledRLActions(actions []*Action, curState *T
 			nextStates, err = w.Tool.GetNextStates(action, curState)
 		}()
 		if err != nil {
-			return nil, &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(curState), Err: err}
+			if workerErr, ok := err.(*SimulationWorkerError); ok {
+				return nil, workerErr
+			}
+			panic(err)
 		}
 		if nextStates != nil && !nextStates.IsEmpty() {
 			enabled = append(enabled, action)
@@ -289,7 +293,7 @@ func (w *SimulationWorker) PostRLTrace(finalState *TLCStateMut) *SimulationWorke
 		qi := w.rlActionQ(action).Get(fp)
 		reward, err := w.GetRLReward(prev, action, s)
 		if err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(s), Err: err}
+			panic(err)
 		}
 		q := ((1 - w.RLAlpha) * qi) + (w.RLAlpha * (reward + (w.RLGamma * maxQ)))
 		w.rlActionQ(action).Set(fp, q)
