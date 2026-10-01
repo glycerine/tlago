@@ -262,9 +262,9 @@ func (v *ModelValue) Compare(other Value) (int, error) {
 		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
 			return v.Val.Compare(o.Val), nil
 		}
-		return 0, v.unsupported("attempted to compare the differently-typed model values %s and %s", v, o)
+		return 0, v.unsupported("Attempted to compare the differently-typed model values %s and %s", v, o)
 	}
-	return 0, v.unsupported("attempted to compare the typed model value %s and non-model value\n%s", v, other)
+	return 0, v.unsupported("Attempted to compare the typed model value %s and non-model value\n%s", v, other)
 }
 
 func (v *ModelValue) Equal(other Value) (bool, error) {
@@ -276,42 +276,42 @@ func (v *ModelValue) Equal(other Value) (bool, error) {
 		if o.Type == v.Type || o.Type == typedModelValueUntypedCodeUnit {
 			return o.Val == v.Val || o.Val.Equal(v.Val), nil
 		}
-		return false, v.unsupported("attempted to check equality of the differently-typed model values %s and %s", v, o)
+		return false, v.unsupported("Attempted to check equality of the differently-typed model values %s and %s", v, o)
 	}
-	return false, v.unsupported("attempted to check equality of typed model value %s and non-model value\n%s", v, other)
+	return false, v.unsupported("Attempted to check equality of typed model value %s and non-model value\n%s", v, other)
 }
 
 func (v *ModelValue) modelValueCompareTo(other Value) (int, error) {
 	if v.Type != typedModelValueUntypedCodeUnit {
-		return 0, v.unsupported("attempted to compare the typed model value %s and the non-model value\n%s", v, other)
+		return 0, v.unsupported("Attempted to compare the typed model value %s and the non-model value\n%s", v, other)
 	}
 	return 1, nil
 }
 
 func (v *ModelValue) modelValueEquals(other Value) (bool, error) {
 	if v.Type != typedModelValueUntypedCodeUnit {
-		return false, v.unsupported("attempted to check equality of the typed model value %s and the non-model value\n%s", v, other)
+		return false, v.unsupported("Attempted to check equality of the typed model value %s and the non-model value\n%s", v, other)
 	}
 	return false, nil
 }
 
 func (v *ModelValue) modelValueMember(other Value) (bool, error) {
 	if v.Type != typedModelValueUntypedCodeUnit {
-		return false, v.unsupported("attempted to check if the typed model value %s is an element of\n%s", v, other)
+		return false, v.unsupported("Attempted to check if the typed model value %s is an element of\n%s", v, other)
 	}
 	return false, nil
 }
 
 func (v *ModelValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if the value:\n%s\nis an element of the model value %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the model value %s", elem, v)
 }
 
 func (v *ModelValue) IsFinite() (bool, error) {
-	return false, v.unsupported("attempted to check if the model value %s is a finite set", v)
+	return false, v.unsupported("Attempted to check if the model value %s is a finite set.", v)
 }
 
 func (v *ModelValue) Size() (int, error) {
-	return 0, v.unsupported("attempted to compute the number of elements in the model value %s", v)
+	return 0, v.unsupported("Attempted to compute the number of elements in the model value %s.", v)
 }
 
 func (v *ModelValue) Normalize() Value   { return v }
@@ -333,14 +333,14 @@ func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 
 func (v *ModelValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the model value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the model value %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *ModelValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the model value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the model value %s.", v)
 	}
 	return v, nil
 }
