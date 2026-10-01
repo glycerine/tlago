@@ -1673,31 +1673,91 @@ func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNo
 		restorePrior()
 		priorBound = append(priorBound, bound.Name)
 	}
+	groups := b.boundGroups(e.Bounds, boundExprs)
 	if e.Predicate != nil {
-		if !setComprehensionElementIsBound(e) {
-			b.diags = append(b.diags, errorAt(e.Pos, "E7013", "set comprehension with mapped element and predicate is not yet supported by the TLC bridge"))
-		}
 		restore := b.pushConvertBoundNames(priorBound...)
 		predicate := b.convertExpr(e.Predicate)
 		restore()
-		node := tlc.NewBuiltinOpApplNode(tlc.OpSSO, predicate)
-		for i, bound := range e.Bounds {
-			node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, []*tlc.SymbolNode{b.symbol(bound.Name)})
-			node.BdedQuantBounds = append(node.BdedQuantBounds, boundExprs[i])
-			node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
+		filtered := tlc.NewBuiltinOpApplNode(tlc.OpSSO, predicate)
+		filterSymbols, filterTuple := b.appendFilteredComprehensionBounds(filtered, groups, e.Pos)
+		if setComprehensionElementIsBound(e) {
+			return filtered
 		}
+		bodyRestore := b.pushConvertBoundNames(priorBound...)
+		body := b.convertExpr(e.Element)
+		bodyRestore()
+		node := tlc.NewBuiltinOpApplNode(tlc.OpSOA, body)
+		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, filterSymbols)
+		node.BdedQuantBounds = append(node.BdedQuantBounds, filtered)
+		node.BdedQuantATuple = append(node.BdedQuantATuple, filterTuple)
 		return node
 	}
 	restore := b.pushConvertBoundNames(priorBound...)
 	body := b.convertExpr(e.Element)
 	restore()
 	node := tlc.NewBuiltinOpApplNode(tlc.OpSOA, body)
-	for i, bound := range e.Bounds {
-		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, []*tlc.SymbolNode{b.symbol(bound.Name)})
-		node.BdedQuantBounds = append(node.BdedQuantBounds, boundExprs[i])
-		node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
-	}
+	b.appendBoundGroups(node, groups)
 	return node
+}
+
+type tlcBoundGroup struct {
+	symbols []*tlc.SymbolNode
+	bound   tlc.SemanticNode
+	tuple   bool
+}
+
+func (b *tlcBridge) boundGroups(bounds []BoundVar, boundExprs []tlc.SemanticNode) []tlcBoundGroup {
+	groups := make([]tlcBoundGroup, 0, len(bounds))
+	for i := 0; i < len(bounds); i++ {
+		boundExpr := tlc.SemanticNode(nil)
+		if i < len(boundExprs) {
+			boundExpr = boundExprs[i]
+		}
+		if !bounds[i].TupleBound {
+			groups = append(groups, tlcBoundGroup{
+				symbols: []*tlc.SymbolNode{b.symbol(bounds[i].Name)},
+				bound:   boundExpr,
+			})
+			continue
+		}
+		group := tlcBoundGroup{bound: boundExpr, tuple: true}
+		for i < len(bounds) && bounds[i].TupleBound {
+			group.symbols = append(group.symbols, b.symbol(bounds[i].Name))
+			i++
+		}
+		i--
+		groups = append(groups, group)
+	}
+	return groups
+}
+
+func (b *tlcBridge) appendBoundGroups(node *tlc.OpApplNode, groups []tlcBoundGroup) {
+	for _, group := range groups {
+		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, group.symbols)
+		node.BdedQuantBounds = append(node.BdedQuantBounds, group.bound)
+		node.BdedQuantATuple = append(node.BdedQuantATuple, group.tuple)
+	}
+}
+
+func (b *tlcBridge) appendFilteredComprehensionBounds(node *tlc.OpApplNode, groups []tlcBoundGroup, pos Position) ([]*tlc.SymbolNode, bool) {
+	if len(groups) == 1 {
+		b.appendBoundGroups(node, groups)
+		return groups[0].symbols, groups[0].tuple
+	}
+	allSymbols := make([]*tlc.SymbolNode, 0)
+	productArgs := make([]tlc.SemanticNode, 0, len(groups))
+	for _, group := range groups {
+		if group.tuple {
+			b.diags = append(b.diags, errorAt(pos, "E7013", "filtered set comprehension with multiple tuple-bound domains is not yet supported by the TLC bridge"))
+		}
+		allSymbols = append(allSymbols, group.symbols...)
+		productArgs = append(productArgs, group.bound)
+	}
+	product := b.withPositionLocation(pos, tlc.NewBuiltinOpApplNode(tlc.OpCP, productArgs...))
+	node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, allSymbols)
+	node.BdedQuantBounds = append(node.BdedQuantBounds, product)
+	node.BdedQuantATuple = append(node.BdedQuantATuple, true)
+	return allSymbols, true
 }
 
 func (b *tlcBridge) convertFunctionArgs(args []Expr) tlc.SemanticNode {
