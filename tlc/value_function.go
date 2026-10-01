@@ -401,7 +401,7 @@ func (v *RecordValue) Compare(other Value) (int, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("attempted to compare record:\n%s\nwith non-record\n%s", v, other)
+		return 0, v.unsupported("Attempted to compare record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other))
 	}
 	if err := v.normalizeRecord(); err != nil {
 		return 0, err
@@ -432,7 +432,7 @@ func (v *RecordValue) Equal(other Value) (bool, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("attempted to check equality of record:\n%s\nwith non-record\n%s", v, other)
+		return false, v.unsupported("Attempted to check equality of record:\n%s\nwith non-record\n%s", ValuesPPR(v), ValuesPPR(other))
 	}
 	if err := v.normalizeRecord(); err != nil {
 		return false, err
@@ -458,7 +458,7 @@ func (v *RecordValue) Equal(other Value) (bool, error) {
 }
 
 func (v *RecordValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if element:\n%s\nis in the record:\n%s", elem, v)
+	return false, v.unsupported("Attempted to check if element:\n%s\nis in the record:\n%s", ValuesPPR(elem), ValuesPPR(v))
 }
 
 func (v *RecordValue) IsFinite() (bool, error) { return true, nil }
@@ -488,7 +488,7 @@ func (v *RecordValue) TakeExcept(ex ValueExcept) (Value, error) {
 			}
 			return &RecordValue{Names: newNames, Values: newValues, IsNorm: v.IsNorm}, nil
 		}
-		PrintWarning(ECTLCWrongRecordFieldName, arcVal.String())
+		PrintWarning(ECTLCWrongRecordFieldName, ValuesPPR(arcVal))
 	}
 	return ex.Value, nil
 }
@@ -579,9 +579,9 @@ func (v *RecordValue) Apply(arg Value) (Value, error) {
 	}
 	if out == nil {
 		if sv, ok := arg.(*StringValue); ok {
-			return nil, v.unsupported("attempted to access nonexistent field '%s' of record\n%s", sv.Val, v)
+			return nil, v.unsupported("Attempted to access nonexistent field '%s' of record\n%s", sv.Val, ValuesPPR(v))
 		}
-		return nil, v.unsupported("attempted to access record by a non-string argument: %s", arg)
+		return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
 	}
 	return out, nil
 }
@@ -589,7 +589,7 @@ func (v *RecordValue) Apply(arg Value) (Value, error) {
 func (v *RecordValue) Select(arg Value) (Value, error) {
 	sv, ok := arg.(*StringValue)
 	if !ok {
-		return nil, v.unsupported("attempted to access record by a non-string argument: %s", arg)
+		return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
 	}
 	for i, name := range v.Names {
 		if sv.Val.Equal(name) {

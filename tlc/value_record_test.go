@@ -47,7 +47,7 @@ func TestRecordValueApplyReportsMissingAndNonStringFields(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Apply missing field returned nil error")
 	}
-	if msg := err.Error(); !strings.Contains(msg, "attempted to access nonexistent field 'b' of record") ||
+	if msg := err.Error(); !strings.Contains(msg, "Attempted to access nonexistent field 'b' of record") ||
 		!strings.Contains(msg, `[a |-> "aVal"]`) {
 		t.Fatalf("missing field error = %q", msg)
 	}
@@ -56,7 +56,7 @@ func TestRecordValueApplyReportsMissingAndNonStringFields(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Apply non-string field returned nil error")
 	}
-	if msg := err.Error(); !strings.Contains(msg, "attempted to access record by a non-string argument: 0") {
+	if msg := err.Error(); !strings.Contains(msg, "Attempted to access record by a non-string argument: 0") {
 		t.Fatalf("non-string field error = %q", msg)
 	}
 }
