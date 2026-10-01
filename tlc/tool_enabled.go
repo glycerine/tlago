@@ -205,10 +205,26 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 		return t.EnabledImpl(args[0], acts, c, s0, s1, cm)
 	case OpcodeCdot:
 		return t.enabledActionComposition(args, acts, c, s0, s1, cm)
-	case OpcodeTE, OpcodeTF, OpcodeSF, OpcodeWF, OpcodeBox, OpcodeDiamond, OpcodeLeadsto, OpcodeArrow:
-		return nil, newTLCError(ECGeneral, "encountered temporal formula while computing ENABLED: %s", SemanticString(pred))
-	case OpcodeUC, OpcodeUE, OpcodeUF:
-		return nil, newTLCError(ECGeneral, "encountered unbounded quantifier while computing ENABLED: %s", SemanticString(pred))
+	case OpcodeTE, OpcodeTF:
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered temporal quantifier.\n%s", SemanticString(pred))
+	case OpcodeUC:
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered unbounded CHOOSE. Make sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(pred))
+	case OpcodeUE:
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered unbounded quantifier. Make sure that the expression is of form \\E x \\in S: P(x).\n%s", SemanticString(pred))
+	case OpcodeUF:
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered unbounded quantifier. Make sure that the expression is of form \\A x \\in S: P(x).\n%s", SemanticString(pred))
+	case OpcodeSF:
+		return nil, newTLCErrorCode(ECTLCEnabledWrongFormula, "SF", SemanticString(pred))
+	case OpcodeWF:
+		return nil, newTLCErrorCode(ECTLCEnabledWrongFormula, "WF", SemanticString(pred))
+	case OpcodeBox:
+		return nil, newTLCErrorCode(ECTLCEnabledWrongFormula, "[]", SemanticString(pred))
+	case OpcodeDiamond:
+		return nil, newTLCErrorCode(ECTLCEnabledWrongFormula, "<>", SemanticString(pred))
+	case OpcodeLeadsto:
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered a temporal formula (a ~> b).\n%s", SemanticString(pred))
+	case OpcodeArrow:
+		return nil, newTLCError(ECGeneral, "In computing ENABLED, TLC encountered a temporal formula (a -+-> formula).\n%s", SemanticString(pred))
 	default:
 		bval, err := t.Eval(pred, c, s0, s1, EvalEnabled, cm)
 		if err != nil {

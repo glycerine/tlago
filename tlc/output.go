@@ -159,6 +159,7 @@ const (
 	ECTLCConfigNoSpecButProperty                         = 2257
 	ECTLCLiveFormulaAndFairnessTautology                 = 2258
 	ECTLCConfigNoFairnessButLiveProperty                 = 2259
+	ECTLCEnabledWrongFormula                             = 2260
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
 	ECTLCCheckingTemporalPropsEnd                        = 2267
@@ -896,6 +897,10 @@ func formatMessage(code int, params []string) string {
 	case ECTLCConfigNoFairnessButLiveProperty:
 		if len(params) >= 2 {
 			return fmt.Sprintf("The stuttering counterexample above may be caused by the absence of a fairness constraint in the behavior specification %s defined at %s. To rule out such counterexamples, conjoin a suitable fairness constraint to %s (compare Chapter 8, page 87ff of Specifying Systems at https://lamport.azurewebsites.net/tla/book.html).", params[0], params[1], params[0])
+		}
+	case ECTLCEnabledWrongFormula:
+		if len(params) >= 2 {
+			return fmt.Sprintf("In computing ENABLED, TLC encountered a temporal formula (%s).\n%s", params[0], params[1])
 		}
 	}
 	if len(params) == 0 {
