@@ -753,7 +753,6 @@ func (mc *ModelChecker) Recover() (bool, error) {
 }
 
 func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
-	_ = success
 	if mc == nil {
 		return nil
 	}

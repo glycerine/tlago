@@ -310,7 +310,6 @@ func (mc *DFIDModelChecker) PrintSummary(success bool) {
 }
 
 func (mc *DFIDModelChecker) Cleanup(success bool, cleanup bool) error {
-	_ = success
 	if mc == nil {
 		return nil
 	}
