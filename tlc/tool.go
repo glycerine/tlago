@@ -2,8 +2,11 @@ package tlc
 
 import (
 	"fmt"
+	"os"
 	"sync/atomic"
 )
+
+const toolStateMutExtProperty = "tlc2.tool.impl.Tool.TLCStateMutExt"
 
 type ToolMode int
 
@@ -244,6 +247,12 @@ func (t *Tool) SetMode(mode ToolMode) *Tool {
 }
 
 func (t *Tool) usesExtendedStateMetadata() bool {
+	if value, ok := tlcLookupSystemProperty(toolStateMutExtProperty); ok && javaBooleanProperty(value) {
+		return true
+	}
+	if javaBooleanProperty(os.Getenv("TLAGO_TLC_STATE_MUT_EXT")) {
+		return true
+	}
 	switch t.GetMode() {
 	case ModeSimulation, ModeDebugger, ModeExecutor:
 		return true

@@ -222,6 +222,7 @@
 - `CheckImpl.CheckReachability` deliberately calls `Tool.IsValidTransition(Tool.GetNextStateSpec(), ...)` even if the next-state action is nil, matching Java's unconditional `tool.isValid(next, s0, s1)` path instead of silently accepting every transition.
 - The root `checkimplfile` command must recover `UniqueString` state from `-recover` before parsing/building the tool and must reset FP64 to index 0, mirroring Java `CheckImplFile.main` before `new FastTool(...)`.
 - Ordinary `TLCStateMut.SetPredecessor`/`SetAction` must behave like Java's non-extended `TLCStateMut`: predecessor/action metadata is only preserved when the active tool mode selects the extended state class. Trace and distributed helper paths may attach private metadata explicitly when they are reconstructing or transporting trace records.
+- Extended state metadata can also be forced with Java's `tlc2.tool.impl.Tool.TLCStateMutExt=true` property, matching `Tool.TLCSTATEMUTEXT_KEY`; `TLAGO_TLC_STATE_MUT_EXT=true` is the Go environment alias.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
 - Current immediate note: the file-backed implementation checker is now reachable from the CLI, but it has not been exercised against an external simulator trace loop yet. It parses extensionless trace files by exact filename through `CheckSanySourceWithOptions`, converts root definitions with the production bridge, temporarily installs trace definitions while calling `Tool.MakeState`, and restores the main tool definition table afterward.
 
