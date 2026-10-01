@@ -1637,11 +1637,7 @@ func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
 	body := b.convertExpr(e.Body)
 	restore()
 	node := tlc.NewBuiltinOpApplNode(tlc.OpFC, body)
-	for i, bound := range e.Bounds {
-		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, []*tlc.SymbolNode{b.symbol(bound.Name)})
-		node.BdedQuantBounds = append(node.BdedQuantBounds, boundExprs[i])
-		node.BdedQuantATuple = append(node.BdedQuantATuple, bound.TupleBound)
-	}
+	b.appendBoundGroups(node, b.boundGroups(e.Bounds, boundExprs))
 	return node
 }
 
