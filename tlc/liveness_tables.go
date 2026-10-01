@@ -25,9 +25,6 @@ type NodePtrTable struct {
 }
 
 func NewNodePtrTable(size int) *NodePtrTable {
-	if size <= 0 {
-		size = 1
-	}
 	t := &NodePtrTable{
 		length: size,
 		thresh: int(float64(size) * 0.75),
@@ -146,9 +143,6 @@ type NodeTable struct {
 }
 
 func NewNodeTable(size int, isBT bool) *NodeTable {
-	if size <= 0 {
-		size = 1
-	}
 	return &NodeTable{
 		length: size,
 		thresh: size / 2,
@@ -262,19 +256,17 @@ func (t *NodeTable) GetBTNodes(k uint64) []*BTGraphNode {
 }
 
 func (t *NodeTable) GetBTNodesWithHint(k uint64, hintLoc int) []*BTGraphNode {
-	if hintLoc >= 0 && hintLoc < len(t.elems) {
-		switch e := t.elems[hintLoc].(type) {
-		case *BTGraphNode:
-			if e.StateFP == k {
-				if e.IsDummy() {
-					return nil
-				}
-				return []*BTGraphNode{e}
+	switch e := t.elems[hintLoc].(type) {
+	case *BTGraphNode:
+		if e.StateFP == k {
+			if e.IsDummy() {
+				return nil
 			}
-		case []*BTGraphNode:
-			if len(e) > 0 && e[0].StateFP == k {
-				return e
-			}
+			return []*BTGraphNode{e}
+		}
+	case []*BTGraphNode:
+		if len(e) > 0 && e[0].StateFP == k {
+			return e
 		}
 	}
 	return t.GetBTNodes(k)
@@ -418,9 +410,6 @@ func NewReverseTableauNodePtrTable(size int) *TableauNodePtrTable {
 }
 
 func newTableauNodePtrTable(size int, reverse bool) *TableauNodePtrTable {
-	if size <= 0 {
-		size = 1
-	}
 	return &TableauNodePtrTable{
 		length:  size,
 		thresh:  int(float64(size) * 0.75),
@@ -781,24 +770,17 @@ func TableauGetPtr(ptr int64) int64 {
 }
 
 func TableauIsSeen(node []int32) bool {
-	return len(node) > 3 && node[3] < 0
+	return node[3] < 0
 }
 
 func TableauSetSeen(node []int32) {
-	if len(node) > 3 {
-		node[3] = int32(uint32(node[3]) | 0x80000000)
-	}
+	node[3] = int32(uint32(node[3]) | 0x80000000)
 }
 
 func TableauGetParent(node []int32) int {
-	if len(node) <= 4 {
-		return TableauNoParent
-	}
 	return int(node[4])
 }
 
 func TableauSetParent(node []int32, loc int) {
-	if len(node) > 4 {
-		node[4] = int32(loc)
-	}
+	node[4] = int32(loc)
 }
