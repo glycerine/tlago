@@ -30,8 +30,8 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"Int", "Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..", "-.",
 	},
 	"Sequences": {
-		"Seq", "BSeq", "Len", "Head", "Tail", "Cons", "Append", "Concat", "\\o",
-		"SubSeq", "SelectInSeq", "SelectSeq", "Insert",
+		"Seq", "Len", "Head", "Tail", "Cons", "Append", "Concat", "\\o",
+		"SubSeq", "SelectSeq",
 	},
 	"FiniteSets": {
 		"IsFiniteSet", "Cardinality",
@@ -53,7 +53,7 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
 	},
 	"Randomization": {
-		"RandomSubset", "RandomSetOfSubsets", "RandomSubsetSet",
+		"RandomSubset", "RandomSetOfSubsets",
 	},
 	"Json": {
 		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
@@ -106,7 +106,7 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 		"SortSeq", "RandomElement", "Any", "ToString", "TLCEval",
 	),
 	"Randomization": setOf(
-		"RandomSubset", "RandomSetOfSubsets", "RandomSubsetSet",
+		"RandomSubset", "RandomSetOfSubsets",
 	),
 	"Json": setOf(
 		"ToJson", "ToJsonArray", "ToJsonObject", "JsonSerialize", "JsonDeserialize",
