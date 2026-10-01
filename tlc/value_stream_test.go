@@ -204,7 +204,7 @@ func TestValueInputStreamBlindReadRecordValue(t *testing.T) {
 	}
 }
 
-func TestValueStreamsWriteReducibleSetValuesAsJavaSetEnums(t *testing.T) {
+func TestValueStreamsWriteMaterializedReducibleSetValuesAsJavaSetEnums(t *testing.T) {
 	one := NewIntValue(1)
 	two := NewIntValue(2)
 	s1 := NewSetEnumValue([]Value{one}, true)
@@ -228,6 +228,7 @@ func TestValueStreamsWriteReducibleSetValuesAsJavaSetEnums(t *testing.T) {
 	values = append(values, rcds)
 
 	for _, value := range values {
+		value.FingerPrint(0)
 		expected, err := toSetEnumValue(value)
 		if err != nil {
 			t.Fatalf("%T toSetEnumValue returned error: %v", value, err)

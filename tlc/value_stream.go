@@ -275,11 +275,10 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 		}
 		return nil
 	case *FcnLambdaValue:
-		fcn, err := v.materializeFcnRcd()
-		if err != nil {
-			return err
+		if v.FcnRcd == nil {
+			return fmt.Errorf("cannot pickle unmaterialized finite function lambda")
 		}
-		return s.writeValue(fcn, external)
+		return s.writeValue(v.FcnRcd, external)
 	case *RecordValue:
 		if idx := s.Put(v); idx >= 0 {
 			return s.writeDummy(idx)
@@ -317,59 +316,50 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 		}
 		return nil
 	case *SetOfTuplesValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.TupleSet == nil || v.TupleSetDummy {
+			return fmt.Errorf("cannot pickle unmaterialized set of tuples")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.TupleSet, external)
 	case *SetOfRcdsValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.RcdSet == nil || v.RcdSetDummy {
+			return fmt.Errorf("cannot pickle unmaterialized set of records")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.RcdSet, external)
 	case *SetOfFcnsValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.FcnSet == nil || v.FcnSetDummy {
+			return fmt.Errorf("cannot pickle unmaterialized set of functions")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.FcnSet, external)
 	case *SubsetValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.PSet == nil || v.PSetDummy {
+			return fmt.Errorf("cannot pickle unmaterialized subset value")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.PSet, external)
 	case *KSubsetValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.PSet == nil || v.PSetDummy {
+			return fmt.Errorf("cannot pickle unmaterialized k-subset value")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.PSet, external)
 	case *SetCupValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.CupSet == nil {
+			return fmt.Errorf("cannot pickle unmaterialized set union")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.CupSet, external)
 	case *SetCapValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.CapSet == nil {
+			return fmt.Errorf("cannot pickle unmaterialized set intersection")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.CapSet, external)
 	case *SetDiffValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.DiffSet == nil {
+			return fmt.Errorf("cannot pickle unmaterialized set difference")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.DiffSet, external)
 	case *UnionValue:
-		set, err := v.convertAndCache()
-		if err != nil {
-			return err
+		if v.RealSet == nil {
+			return fmt.Errorf("cannot pickle unmaterialized union value")
 		}
-		return s.writeValue(set, external)
+		return s.writeValue(v.RealSet, external)
 	case *SetPredValue:
 		return s.writeValue(v.InVal, external)
 	default:
