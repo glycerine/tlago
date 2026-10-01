@@ -218,12 +218,9 @@ func (v *TupleValue) Kind() ValueKind    { return TupleValueKind }
 func (v *TupleValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *TupleValue) Compare(other Value) (int, error) {
-	o, ok := other.(*TupleValue)
-	if !ok {
-		if mv, ok := other.(*ModelValue); ok {
-			return mv.modelValueCompareTo(v)
-		}
-		return 0, v.unsupported("attempted to compare tuple %s with non-tuple %s", v, other)
+	o := asTupleValue(other)
+	if o == nil {
+		return asFcnRcdValue(v).Compare(other)
 	}
 	if len(v.Elems) != len(o.Elems) {
 		return len(v.Elems) - len(o.Elems), nil
@@ -238,12 +235,9 @@ func (v *TupleValue) Compare(other Value) (int, error) {
 }
 
 func (v *TupleValue) Equal(other Value) (bool, error) {
-	o, ok := other.(*TupleValue)
-	if !ok {
-		if mv, ok := other.(*ModelValue); ok {
-			return mv.modelValueEquals(v)
-		}
-		return false, v.unsupported("attempted to compare equality of tuple %s with non-tuple %s", v, other)
+	o := asTupleValue(other)
+	if o == nil {
+		return asFcnRcdValue(v).Equal(other)
 	}
 	if len(v.Elems) != len(o.Elems) {
 		return false, nil
