@@ -582,7 +582,6 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		}
 		if result != NoError {
 			mc.checkPostConditionAfterInitFailure()
-			mc.PrintSummary(false)
 			return result, nil
 		}
 		mc.PrintInitGenerated()
@@ -590,8 +589,11 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	if len(mc.Tool.GetActions()) == 0 {
 		if !mc.StateQueue.IsEmpty() {
 			PrintError(ECTLCStatesAndNoNextAction)
-			mc.PrintSummary(false)
-			return ECTLCStatesAndNoNextAction, nil
+			result = ECTLCStatesAndNoNextAction
+			if cleanupErr := mc.Cleanup(true, mc.CleanupEnabled); cleanupErr != nil {
+				err = cleanupErr
+			}
+			return result, err
 		}
 		ReportSuccess(mc.FPSet, mc.GetStatesGenerated())
 		mc.PrintSummary(true)

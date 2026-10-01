@@ -1261,11 +1261,13 @@ Port guidance:
   retention even when `-cleanup` was requested; Go mirrors it with the same key
   plus `TLAGO_MODEL_CHECKER_VETO_CLEANUP`.
 - Cleanup has one deliberately load-bearing Java quirk: `FileUtil.deleteDir`
-  receives the checker success flag as its `recurse` argument. Failed runs
-  close checker resources but only attempt a non-recursive metadir delete, so a
-  non-empty metadir with trace/checkpoint artifacts is preserved for debugging.
-  Successful runs may recursively remove the metadir. Do not copy Java's likely
-  early-return cleanup leak, but do preserve this failure-artifact retention.
+  receives the checker cleanup `success` argument as its `recurse` argument.
+  When cleanup is called with `success=false`, Go must close checker resources
+  but only attempt a non-recursive metadir delete, so a non-empty metadir with
+  trace/checkpoint artifacts is preserved for debugging. When cleanup is called
+  with `success=true`, Go may recursively remove the metadir. Do not copy
+  Java's likely early-return cleanup leak, but do preserve this artifact
+  retention rule.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
