@@ -3,8 +3,8 @@ package tlc
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -57,8 +57,7 @@ func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succSta
 		if curState != nil {
 			level = curState.Level()
 		}
-		fmt.Fprintf(os.Stdout, "Extend behavior of length %d with a %q step [%s]? (Yes/no/explored/states/diff):\n", level, actionName(action), action)
-		_ = os.Stdout.Sync()
+		PrintMessage(ECTLCModuleOverrideStdout, "Extend behavior of length "+strconv.Itoa(level)+" with a \""+actionName(action)+"\" step ["+action.String()+"]? (Yes/no/explored/states/diff):")
 		nextLine, err := reader.ReadString('\n')
 		if err != nil && nextLine == "" {
 			return nil, err
@@ -73,19 +72,19 @@ func TLCExtPickSuccessor(tool *Tool, guard Value, curState *TLCStateMut, succSta
 			if curState != nil {
 				curText = strings.TrimSpace(curState.String())
 			}
-			fmt.Fprintf(os.Stdout, "%s\n~>\n%s\n", curText, strings.TrimSpace(succState.String()))
+			PrintMessage(ECTLCModuleOverrideStdout, curText+"\n~>\n"+strings.TrimSpace(succState.String()))
 		case 'd':
 			if curState != nil {
-				fmt.Fprint(os.Stdout, succState.StringForVariables(curState))
+				PrintMessage(ECTLCModuleOverrideStdout, succState.StringForVariables(curState))
 			} else {
-				fmt.Fprint(os.Stdout, succState.String())
+				PrintMessage(ECTLCModuleOverrideStdout, succState.String())
 			}
 		case 'e':
 			if checker := MainChecker(); checker != nil && checker.FPSet != nil {
 				checker.FPSet.Put(succState.FingerPrint())
 				return BoolTrue, nil
 			}
-			fmt.Fprintln(os.Stdout, "Marking a state explored is unsupported by the current TLC mode. Is TLC running in simulation mode?")
+			PrintMessage(ECTLCModuleOverrideStdout, "Marking a state explored is unsupported by the current TLC mode. Is TLC running in simulation mode?")
 		case 'n':
 			return BoolFalse, nil
 		}

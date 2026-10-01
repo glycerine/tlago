@@ -949,6 +949,8 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("TLC encountered a temporal formula (%s) when evaluating a predicate or action.\n%s", params[0], params[1])
 		}
+	case ECTLCModuleOverrideStdout:
+		return strings.Join(params, "")
 	}
 	if len(params) == 0 {
 		return fmt.Sprintf("%d", code)

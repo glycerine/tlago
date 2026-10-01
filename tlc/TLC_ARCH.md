@@ -2067,7 +2067,9 @@ checks action constraints before it filters old states. When the guard is
 extended successor state or regenerates next states to find the first matching
 action, then reads `stdin` commands: yes/blank accepts, `n` rejects, `s` prints
 both states, `d` prints the state diff, and `e` marks the successor explored in
-BFS mode.
+BFS mode. All prompt/status text goes through `MP.printMessage` with
+`TLC_MODULE_OVERRIDE_STDOUT`, so the Go port must use `PrintMessage` for this
+interactive output rather than writing directly to stdout.
 
 Preserve Java override annotations when registering standard operators.
 `TLC!TLCEval` is an evaluating override because it receives the unevaluated
