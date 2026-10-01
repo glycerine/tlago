@@ -791,18 +791,6 @@ func (c *LiveChecker) CheckSccs(tool *Tool, finalCheck bool, liveCheck *LiveChec
 				return true, nil
 			}
 		}
-		if !finalCheck {
-			if c.TableauDiskGraph != nil {
-				if err := c.TableauDiskGraph.MakeNodePtrTbl(); err != nil {
-					return false, err
-				}
-			}
-			if c.DiskGraph != nil {
-				if err := c.DiskGraph.MakeNodePtrTbl(); err != nil {
-					return false, err
-				}
-			}
-		}
 		c.recordGraphSize()
 		return false, nil
 	}
