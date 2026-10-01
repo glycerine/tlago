@@ -416,6 +416,21 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 
 func formatMessage(code int, params []string) string {
 	switch code {
+	case ECSystemStackOverflow:
+		return "This was a Java StackOverflowError. It was probably the result\n" +
+			"of an incorrect recursive function definition that caused TLC to enter\n" +
+			"an infinite loop when trying to compute the function or its application\n" +
+			"to an element in its putative domain."
+	case ECSystemOutOfMemory:
+		return "Java ran out of memory.  Running Java with a larger memory allocation\n" +
+			"pool (heap) may fix this.  But it won't help if some state has an enormous\n" +
+			"number of successor states, or if TLC must compute the value of a huge set."
+	case ECSystemOutOfMemoryLiveness:
+		return "Java ran out of memory during liveness checking.  Running Java with a larger memory\n" +
+			"allocation pool (heap) may fix this.  But it won't help if paths in the liveness graph\n" +
+			"have an enormous number of states."
+	case ECSystemOutOfMemoryTooManyInit:
+		return "Out Of Memory. There are probably too many initial states."
 	case ECTLCStarting:
 		return fmt.Sprintf("Starting... (%s)", messageNow())
 	case ECTLCFinished:
@@ -673,6 +688,20 @@ func formatMessage(code int, params []string) string {
 		return "Deadlock reached."
 	case ECTLCStatesAndNoNextAction:
 		return "No next state actions defined to generate successor states from."
+	case ECTLCFailedToRecoverNext:
+		return "Failed to recover the next state from its fingerprint."
+	case ECTLCFailedToRecoverInit:
+		return "Failed to recover the initial state from its fingerprint."
+	case ECTLCBug:
+		if len(params) >= 1 {
+			return fmt.Sprintf("This is probably a TLC bug(%s).", params[0])
+		}
+		return "This is probably a TLC bug(%1%)."
+	case ECTLCFingerprintException:
+		if len(params) >= 2 {
+			return fmt.Sprintf("TLC was unable to fingerprint.\n\nFingerprint Stack Trace:\n%s\nReason:\n%s", params[0], params[1])
+		}
+		return "TLC was unable to fingerprint.\n\nFingerprint Stack Trace:\n\nReason:\n"
 	case ECTLCNoStatesSatisfyingInit:
 		return "There is no state satisfying the initial state predicate."
 	case ECTLCNoStatesSatisfyingInitAndConstraint:
@@ -753,6 +782,21 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 3 {
 			return fmt.Sprintf("Evaluating an expression of the form %s when s is not a %s:\n%s", params[0], params[1], params[2])
 		}
+	case ECTLCLiveBEGraphFailedToConstruct:
+		return "BEGraph.GetPath: Failed to construct a path."
+	case ECTLCLiveImplied:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Implied-temporal checking--satisfiability problem has %s branches.", params[0])
+		}
+	case ECTLCLiveCannotHandleFormula:
+		if len(params) > 1 {
+			return fmt.Sprintf("TLC cannot handle the temporal formula %s:\n%s", params[0], params[1])
+		}
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC cannot handle the temporal formula %s", params[0])
+		}
+	case ECTLCLiveWrongFormulaFormat:
+		return "Temporal formulas containing actions must be of forms <>[]A or []<>A."
 	case ECTLCCheckingTemporalProps:
 		if len(params) >= 3 {
 			return fmt.Sprintf("Checking %stemporal properties for the %s state space with %s total distinct states at (%s)", params[2], params[0], params[1], messageNow())
