@@ -11,6 +11,7 @@
 - Runner FP-set configuration must be wired into the checker, not just printed in the startup banner. Java passes `FPSetConfiguration` into `ModelChecker`; Go runner now constructs the configured FP set unless a caller injected an explicit `FPSet`.
 - Runner FP index must initialize the global fingerprint polynomial before checking/simulation, like Java `FP64.Init(fpIndex)`, not merely appear in the startup banner. See `TestTLCRunnerAppliesFPIndexLikeJava`.
 - Runner process failures must pass through a top-level Java `TLC.process()`-style catch before the finished banner. Checker/simulator panics should become TLC result codes/messages instead of bypassing `TLC_FINISHED`.
+- Simulation startup banner scheduler text follows Java's runtime map: only plain RL prints `RL`; the action-Q scheduler still prints `Random` even though the worker mode is `RLAction`.
 - BFS `_PERIODIC` evaluation exceptions follow Java `ModelChecker.doPeriodicWork`/outer-catch behavior: report `GENERAL` and stop. A clean boolean `FALSE` remains `TLC_ASSUMPTION_FALSE`; do not reuse initial-assumption evaluation codes for this path.
 - Checker statistics records must use the checker instance `startTime`, not the global TLC runner start time, matching Java `AbstractChecker.getStatistics`.
 - Simulator trace bounds are Java-exact: only `traceDepth == -1` becomes unbounded, and an explicit `-simulate num=0` is not rewritten to `Long.MAX_VALUE`. The worker still checks the trace limit after incrementing its trace counter, as Java does.

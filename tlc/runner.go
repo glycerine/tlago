@@ -502,8 +502,6 @@ func (t *TLC) simulationScheduleName() string {
 	switch t.SimulationSchedule {
 	case SimulationScheduleRL:
 		return "RL"
-	case SimulationScheduleRLAction:
-		return "RLAction"
 	default:
 		return "Random"
 	}
