@@ -1264,13 +1264,20 @@ func (c *LiveChecker) Close() error {
 	if c == nil {
 		return nil
 	}
-	if c.TableauDiskGraph != nil {
-		return c.TableauDiskGraph.Close()
+	var err error
+	if !modelCheckerVetoCleanup() {
+		if c.TableauDiskGraph != nil {
+			err = c.TableauDiskGraph.Close()
+		} else if c.DiskGraph != nil {
+			err = c.DiskGraph.Close()
+		}
 	}
-	if c.DiskGraph != nil {
-		return c.DiskGraph.Close()
+	if c.Writer != nil {
+		if closeErr := c.Writer.Close(); err == nil {
+			err = closeErr
+		}
 	}
-	return nil
+	return err
 }
 
 func (c *LiveChecker) BeginChkpt() error {
