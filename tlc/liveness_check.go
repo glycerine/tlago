@@ -1205,8 +1205,12 @@ func (lc *LiveCheck) CheckTrace(tool *Tool, trace func() *StateVec) error {
 	if err := lc.AddNextState(tool, last, last.FingerPrint(), NewSetOfStates(0)); err != nil {
 		return err
 	}
-	if _, err := lc.FinalCheck(tool); err != nil {
+	result, err := lc.check0(tool, true)
+	if err != nil {
 		return err
+	}
+	if result != NoError {
+		return NewLiveException(result)
 	}
 	return lc.Reset()
 }
