@@ -1271,7 +1271,9 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if body == nil {
 		return nil
 	}
-	return tlc.NewOpDefNodeForSymbol(sym, params, body)
+	opDef := tlc.NewOpDefNodeForSymbol(sym, params, body)
+	b.withPositionLocation(def.SourcePosition(), opDef)
+	return opDef
 }
 
 func (b *tlcBridge) pushConvertBoundNames(names ...string) func() {
@@ -1326,84 +1328,146 @@ func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
 }
 
 func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
-	switch e := expr.(type) {
-	case nil:
+	if expr == nil {
 		return nil
+	}
+	var node tlc.SemanticNode
+	switch e := expr.(type) {
 	case *IdentExpr:
-		return tlc.NewOpApplNode(b.exprSymbol(e.Name))
+		node = tlc.NewOpApplNode(b.exprSymbol(e.Name))
 	case *LiteralExpr:
-		return b.convertLiteral(e)
+		node = b.convertLiteral(e)
 	case *UnaryExpr:
-		return b.unaryNode(e)
+		node = b.unaryNode(e)
 	case *BinaryExpr:
-		return b.binaryNode(e)
+		node = b.binaryNode(e)
 	case *CallExpr:
-		return b.callNode(e)
+		node = b.callNode(e)
 	case *IfExpr:
-		return tlc.NewBuiltinOpApplNode(tlc.OpITE, b.convertExpr(e.Cond), b.convertExpr(e.Then), b.convertExpr(e.Else))
+		node = tlc.NewBuiltinOpApplNode(tlc.OpITE, b.convertExpr(e.Cond), b.convertExpr(e.Then), b.convertExpr(e.Else))
 	case *LetExpr:
-		return b.letNode(e)
+		node = b.letNode(e)
 	case *QuantifierExpr:
-		return b.quantifierNode(e)
+		node = b.quantifierNode(e)
 	case *CaseExpr:
-		return b.caseNode(e)
+		node = b.caseNode(e)
 	case *ChooseExpr:
-		return b.chooseNode(e)
+		node = b.chooseNode(e)
 	case *TupleExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Elems))
 		for _, elem := range e.Elems {
 			args = append(args, b.convertExpr(elem))
 		}
-		return tlc.NewBuiltinOpApplNode(tlc.OpTup, args...)
+		node = tlc.NewBuiltinOpApplNode(tlc.OpTup, args...)
 	case *SetExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Elems))
 		for _, elem := range e.Elems {
 			args = append(args, b.convertExpr(elem))
 		}
-		return tlc.NewBuiltinOpApplNode(tlc.OpSE, args...)
+		node = tlc.NewBuiltinOpApplNode(tlc.OpSE, args...)
 	case *RecordExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Fields))
 		for _, field := range e.Fields {
-			args = append(args, tlc.NewBuiltinOpApplNode(tlc.OpPair, tlc.NewStringNode(field.Name), b.convertExpr(field.Value)))
+			fieldPos := field.Source
+			if positionIsZero(fieldPos) {
+				fieldPos = field.Pos
+			}
+			name := b.withPositionLocation(fieldPos, tlc.NewStringNode(field.Name))
+			pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, name, b.convertExpr(field.Value))
+			args = append(args, b.withPositionLocation(fieldPos, pair))
 		}
-		return tlc.NewBuiltinOpApplNode(tlc.OpRC, args...)
+		node = tlc.NewBuiltinOpApplNode(tlc.OpRC, args...)
 	case *RecordComponentExpr:
-		return tlc.NewBuiltinOpApplNode(tlc.OpRS, b.convertExpr(e.Record), tlc.NewStringNode(e.Field))
+		field := b.withPositionLocation(e.FieldPos, tlc.NewStringNode(e.Field))
+		node = tlc.NewBuiltinOpApplNode(tlc.OpRS, b.convertExpr(e.Record), field)
 	case *RecordSetExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Fields))
 		for _, field := range e.Fields {
-			args = append(args, tlc.NewBuiltinOpApplNode(tlc.OpPair, tlc.NewStringNode(field.Name), b.convertExpr(field.Set)))
+			fieldPos := field.Source
+			if positionIsZero(fieldPos) {
+				fieldPos = field.Pos
+			}
+			name := b.withPositionLocation(fieldPos, tlc.NewStringNode(field.Name))
+			pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, name, b.convertExpr(field.Set))
+			args = append(args, b.withPositionLocation(fieldPos, pair))
 		}
-		return tlc.NewBuiltinOpApplNode(tlc.OpSOR, args...)
+		node = tlc.NewBuiltinOpApplNode(tlc.OpSOR, args...)
 	case *FunctionExpr:
-		return b.functionNode(e)
+		node = b.functionNode(e)
 	case *FunctionAppExpr:
 		arg := b.convertFunctionArgs(e.Args)
-		return tlc.NewBuiltinOpApplNode(tlc.OpFA, b.convertExpr(e.Function), arg)
+		node = tlc.NewBuiltinOpApplNode(tlc.OpFA, b.convertExpr(e.Function), arg)
 	case *ExceptExpr:
-		return b.exceptNode(e)
+		node = b.exceptNode(e)
 	case *LabelExpr:
-		return tlc.NewLabelNode(b.convertExpr(e.Body))
+		node = tlc.NewLabelNode(b.convertExpr(e.Body))
 	case *ActionExpr:
 		op := tlc.OpSA
 		if e.Kind == "angle" {
 			op = tlc.OpAA
 		}
-		return tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
+		node = tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
 	case *FairnessExpr:
 		op := tlc.OpWF
 		if e.Kind == "SF" {
 			op = tlc.OpSF
 		}
-		return tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
+		node = tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
 	case *FunctionSetExpr:
-		return tlc.NewBuiltinOpApplNode(tlc.OpSOF, b.convertExpr(e.Domain), b.convertExpr(e.Range))
+		node = tlc.NewBuiltinOpApplNode(tlc.OpSOF, b.convertExpr(e.Domain), b.convertExpr(e.Range))
 	case *SetComprehensionExpr:
-		return b.setComprehensionNode(e)
+		node = b.setComprehensionNode(e)
 	default:
 		b.diags = append(b.diags, errorAt(expr.Position(), "E7009", "unsupported expression %T in TLC bridge", expr))
-		return tlc.NewValueNode(tlc.ValUndef)
+		node = tlc.NewValueNode(tlc.ValUndef)
 	}
+	return b.withExprLocation(expr, node)
+}
+
+func (b *tlcBridge) withExprLocation(expr Expr, node tlc.SemanticNode) tlc.SemanticNode {
+	if expr == nil {
+		return node
+	}
+	return b.withPositionLocation(expr.Position(), node)
+}
+
+func (b *tlcBridge) withPositionLocation(pos Position, node tlc.SemanticNode) tlc.SemanticNode {
+	if node == nil || positionIsZero(pos) {
+		return node
+	}
+	location := b.sourceLocationForPosition(pos)
+	if location.IsNull() {
+		return node
+	}
+	if setter, ok := node.(interface{ SetSourceLocation(tlc.SourceLocation) }); ok {
+		setter.SetSourceLocation(location)
+	}
+	return node
+}
+
+func (b *tlcBridge) sourceLocationForPosition(pos Position) tlc.SourceLocation {
+	if positionIsZero(pos) {
+		return tlc.NullSourceLocation
+	}
+	source := pos.File
+	if source == "" {
+		source = b.convertingModule
+	}
+	if source == "" {
+		source = b.rootModuleName
+	}
+	endLine, endColumn := pos.EndLine, pos.EndColumn
+	if endLine == 0 {
+		endLine = pos.Line
+	}
+	if endColumn == 0 {
+		endColumn = pos.Column
+	}
+	return tlc.NewSourceLocation(source, pos.Line, pos.Column, endLine, endColumn)
+}
+
+func positionIsZero(pos Position) bool {
+	return pos.Line == 0 && pos.Column == 0 && pos.File == "" && pos.EndLine == 0 && pos.EndColumn == 0
 }
 
 func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
@@ -1527,10 +1591,12 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 func (b *tlcBridge) caseNode(e *CaseExpr) tlc.SemanticNode {
 	args := make([]tlc.SemanticNode, 0, len(e.Arms)+1)
 	for _, arm := range e.Arms {
-		args = append(args, tlc.NewBuiltinOpApplNode(tlc.OpPair, b.convertExpr(arm.Test), b.convertExpr(arm.Value)))
+		pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, b.convertExpr(arm.Test), b.convertExpr(arm.Value))
+		args = append(args, b.withPositionLocation(arm.Pos, pair))
 	}
 	if e.Other != nil {
-		args = append(args, tlc.NewBuiltinOpApplNode(tlc.OpPair, nil, b.convertExpr(e.Other)))
+		pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, nil, b.convertExpr(e.Other))
+		args = append(args, b.withPositionLocation(e.OtherPos, pair))
 	}
 	return tlc.NewBuiltinOpApplNode(tlc.OpCase, args...)
 }
@@ -1585,14 +1651,15 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 		pathElems := make([]tlc.SemanticNode, 0)
 		for _, component := range spec.Components {
 			if component.Field != "" {
-				pathElems = append(pathElems, tlc.NewStringNode(component.Field))
+				pathElems = append(pathElems, b.withPositionLocation(component.FieldPos, tlc.NewStringNode(component.Field)))
 			}
 			for _, index := range component.Indices {
 				pathElems = append(pathElems, b.convertExpr(index))
 			}
 		}
-		path := tlc.NewBuiltinOpApplNode(tlc.OpTup, pathElems...)
-		args = append(args, tlc.NewBuiltinOpApplNode(tlc.OpPair, path, b.convertExpr(spec.Value)))
+		path := b.withPositionLocation(spec.Pos, tlc.NewBuiltinOpApplNode(tlc.OpTup, pathElems...))
+		pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, path, b.convertExpr(spec.Value))
+		args = append(args, b.withPositionLocation(spec.Pos, pair))
 	}
 	return tlc.NewBuiltinOpApplNode(tlc.OpExc, args...)
 }

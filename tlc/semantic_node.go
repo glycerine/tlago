@@ -43,6 +43,7 @@ type SemanticNodeBase struct {
 	Image         string
 	LevelValue    int
 	LevelParamSet []*SymbolNode
+	Location      SourceLocation
 }
 
 var nextSemanticNodeUID atomic.Int32
@@ -102,6 +103,23 @@ func (n *SemanticNodeBase) String() string {
 		return "<semantic node>"
 	}
 	return n.Image
+}
+
+func (n *SemanticNodeBase) SourceLocation() SourceLocation {
+	if n == nil {
+		return NullSourceLocation
+	}
+	return n.Location
+}
+
+func (n *SemanticNodeBase) GetSourceLocation() SourceLocation {
+	return n.SourceLocation()
+}
+
+func (n *SemanticNodeBase) SetSourceLocation(location SourceLocation) {
+	if n != nil {
+		n.Location = location
+	}
 }
 
 func (n *SemanticNodeBase) GetLevel() int {
