@@ -703,7 +703,7 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 			midPage--
 		}
 		if midPage <= loPage || midPage >= hiPage {
-			midPage = loPage + ((hiPage - loPage) / 2)
+			return false, newTLCErrorCode(ECSystemIndexError)
 		}
 		v := s.index[midPage]
 		if fp < v {
