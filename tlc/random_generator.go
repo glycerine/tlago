@@ -212,10 +212,9 @@ var randomEnumerableValues = struct {
 }
 
 type randomEnumerableThreadState struct {
-	rng           *JavaRandom
-	currentState  *TLCStateMut
-	stateRNG      *JavaRandom
-	stateRNGState *TLCStateMut
+	rng          *JavaRandom
+	currentState *TLCStateMut
+	rngState     *TLCStateMut
 }
 
 func RandomEnumerableSeed() int64 {
@@ -251,8 +250,7 @@ func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
 	state := randomEnumerableThreadStateForLocked(gid)
 	old := state.rng
 	state.rng = rng
-	state.stateRNG = nil
-	state.stateRNGState = nil
+	state.rngState = nil
 	return old
 }
 
@@ -276,16 +274,13 @@ func RandomEnumerableGenerator() *JavaRandom {
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
 	threadState := randomEnumerableThreadStateForLocked(currentGoroutineID())
-	if modelChecking && threadState.currentState != nil {
-		if threadState.stateRNG == nil || threadState.stateRNGState != threadState.currentState {
-			seed := int64(threadState.currentState.FingerPrint()) ^ randomEnumerableValues.seed
-			threadState.stateRNG = NewJavaRandom(seed)
-			threadState.stateRNGState = threadState.currentState
-		}
-		return threadState.stateRNG
-	}
 	if threadState.rng == nil {
 		threadState.rng = NewJavaRandom(randomEnumerableValues.seed)
+	}
+	if modelChecking && threadState.currentState != nil && threadState.rngState != threadState.currentState {
+		seed := int64(threadState.currentState.FingerPrint()) ^ randomEnumerableValues.seed
+		threadState.rng.SetSeed(seed)
+		threadState.rngState = threadState.currentState
 	}
 	return threadState.rng
 }
