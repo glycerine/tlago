@@ -222,6 +222,9 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 }
 
 func (t *TLC) applyGlobals() {
+	if t.FPIndex >= 0 && t.FPIndex < len(FP64Polys) {
+		FP64InitIndex(t.FPIndex)
+	}
 	Globals.Lock()
 	Globals.NumWorkers = t.Workers
 	Globals.StartTime = t.StartTime
