@@ -549,6 +549,9 @@ func (v *SetEnumValue) ToTupleValue() *TupleValue {
 }
 
 func (v *SetEnumValue) Elements() ValueEnumeration {
+	if _, err := v.normalizeSet(); err != nil {
+		return newErrorEnumeration(err)
+	}
 	return &sliceValueEnumeration{values: v.Elems.ToArray()}
 }
 
