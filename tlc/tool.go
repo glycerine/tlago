@@ -853,7 +853,7 @@ func (t *Tool) GetViewSpec() SemanticNode {
 }
 
 func (t *Tool) HasAlias() bool {
-	return t != nil && t.AliasSpec != nil
+	return t != nil && t.ModelConfig != nil && t.ModelConfig.GetAlias() != ""
 }
 
 func (t *Tool) GetAliasSpec() SemanticNode {

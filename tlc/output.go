@@ -151,6 +151,7 @@ const (
 	ECTLCCantHandleTooManyNextStateRels                  = 2240
 	ECTLCConfigPropertyNotCorrectlyDefined               = 2241
 	ECTLCLiveFormulaTautology                            = 2253
+	ECTLCLiveFormulaStateLevel                           = 2255
 	ECTLCConfigNoSpecButProperty                         = 2257
 	ECTLCConfigNoFairnessButLiveProperty                 = 2259
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
@@ -760,6 +761,10 @@ func formatMessage(code int, params []string) string {
 		}
 	case ECTLCSpecificationFeaturesTemporalQuantifier:
 		return "TLC does not support temporal existential, nor universal, quantification over state variables."
+	case ECTLCLiveFormulaStateLevel:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The formula %s is a state-level formula, but it was used as a PROPERTY (or PROPERTIES), where a temporal formula is typically expected. State-level formulas used as PROPERTY or PROPERTIES are only checked in the initial state. To verify that the formula %s holds in all states of every behavior, use INVARIANT %s instead. Alternatively, applying the \"always\" temporal operator ([]) to the state-level formula %s changes it into a temporal formula, asserting that %s holds in all states of every behavior. See https://explain.tlapl.us/invariants-and-properties for additional details.", params[0], params[0], params[0], params[0], params[0])
+		}
 	case ECTLCValueAssertFailed:
 		if len(params) >= 1 {
 			return fmt.Sprintf("The first argument of Assert evaluated to FALSE; the second argument was:\n%s", params[0])

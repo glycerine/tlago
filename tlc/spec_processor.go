@@ -711,6 +711,9 @@ func (p *SpecProcessor) processConfigProperties() {
 		if !ok {
 			continue
 		}
+		if def.GetLevel() == TLCLevelState {
+			PrintWarning(ECTLCLiveFormulaStateLevel, name)
+		}
 		p.processConfigProperty(tool, name, name, def.Body, EmptyContext, EmptyList)
 	}
 }
