@@ -218,7 +218,7 @@ func (c *CheckImpl) CheckTrace() error {
 	if c.CurState == nil {
 		return nil
 	}
-	if ok, err := c.CheckState(c.CurState); err != nil || !ok {
+	if _, err := c.CheckState(c.CurState); err != nil {
 		return err
 	}
 	for {
@@ -226,10 +226,10 @@ func (c *CheckImpl) CheckTrace() error {
 		if state == nil {
 			return nil
 		}
-		if ok, err := c.CheckState(state); err != nil || !ok {
+		if _, err := c.CheckState(state); err != nil {
 			return err
 		}
-		if ok, err := c.CheckReachability(c.CurState, state); err != nil || !ok {
+		if _, err := c.CheckReachability(c.CurState, state); err != nil {
 			return err
 		}
 		c.CurState = state
