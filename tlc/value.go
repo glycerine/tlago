@@ -151,7 +151,7 @@ func (v *BoolValue) Compare(other Value) (int, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("attempted to compare boolean %s with non-boolean %s", v, other)
+		return 0, v.unsupported("Attempted to compare boolean %s with non-boolean:\n%s", v, other)
 	}
 	x, y := 0, 0
 	if v.Val {
@@ -169,21 +169,21 @@ func (v *BoolValue) Equal(other Value) (bool, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("attempted to compare equality of boolean %s with non-boolean %s", v, other)
+		return false, v.unsupported("Attempted to compare equality of boolean %s with non-boolean:\n%s", v, other)
 	}
 	return v.Val == o.Val, nil
 }
 
 func (v *BoolValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if %s is an element of the boolean %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the boolean %s", elem, v)
 }
 
 func (v *BoolValue) IsFinite() (bool, error) {
-	return false, v.unsupported("attempted to check if the boolean %s is a finite set", v)
+	return false, v.unsupported("Attempted to check if the boolean %s is a finite set.", v)
 }
 
 func (v *BoolValue) Size() (int, error) {
-	return 0, v.unsupported("attempted to compute the number of elements in the boolean %s", v)
+	return 0, v.unsupported("Attempted to compute the number of elements in the boolean %s.", v)
 }
 
 func (v *BoolValue) Normalize() Value      { return v }
@@ -203,14 +203,14 @@ func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 
 func (v *BoolValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the boolean %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the boolean %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *BoolValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the boolean %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the boolean %s.", v)
 	}
 	return v, nil
 }
@@ -271,7 +271,7 @@ func (v *IntValue) Compare(other Value) (int, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("attempted to compare integer %s with non-integer %s", v, other)
+		return 0, v.unsupported("Attempted to compare integer %s with non-integer:\n%s", v, other)
 	}
 	if v.Val < o.Val {
 		return -1, nil
@@ -288,21 +288,21 @@ func (v *IntValue) Equal(other Value) (bool, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("attempted to check equality of integer %s with non-integer %s", v, other)
+		return false, v.unsupported("Attempted to check equality of integer %s with non-integer:\n%s", v, other)
 	}
 	return v.Val == o.Val, nil
 }
 
 func (v *IntValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if %s is an element of the integer %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the integer %s", elem, v)
 }
 
 func (v *IntValue) IsFinite() (bool, error) {
-	return false, v.unsupported("attempted to check if the integer %s is a finite set", v)
+	return false, v.unsupported("Attempted to check if the integer %s is a finite set.", v)
 }
 
 func (v *IntValue) Size() (int, error) {
-	return 0, v.unsupported("attempted to compute the number of elements in the integer %s", v)
+	return 0, v.unsupported("Attempted to compute the number of elements in the integer %s.", v)
 }
 
 func (v *IntValue) Normalize() Value      { return v }
@@ -318,14 +318,14 @@ func (v *IntValue) FingerPrint(fp uint64) uint64 {
 
 func (v *IntValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the integer %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the integer %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *IntValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the integer %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the integer %s.", v)
 	}
 	return v, nil
 }
@@ -364,7 +364,7 @@ func (v *StringValue) Compare(other Value) (int, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
-		return 0, v.unsupported("attempted to compare string %s with non-string %s", v, other)
+		return 0, v.unsupported("Attempted to compare string %s with non-string:\n%s", v, other)
 	}
 	return v.Val.Compare(o.Val), nil
 }
@@ -375,21 +375,21 @@ func (v *StringValue) Equal(other Value) (bool, error) {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
-		return false, v.unsupported("attempted to check equality of string %s with non-string %s", v, other)
+		return false, v.unsupported("Attempted to check equality of string %s with non-string:\n%s", v, other)
 	}
 	return v.Val.Equal(o.Val), nil
 }
 
 func (v *StringValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if %s is an element of the string %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the string %s", elem, v)
 }
 
 func (v *StringValue) IsFinite() (bool, error) {
-	return false, v.unsupported("attempted to check if the string %s is a finite set", v)
+	return false, v.unsupported("Attempted to check if the string %s is a finite set.", v)
 }
 
 func (v *StringValue) Size() (int, error) {
-	return 0, v.unsupported("attempted to compute the number of elements in the string %s", v)
+	return 0, v.unsupported("Attempted to compute the number of elements in the string %s.", v)
 }
 
 func (v *StringValue) Normalize() Value      { return v }
@@ -407,14 +407,14 @@ func (v *StringValue) FingerPrint(fp uint64) uint64 {
 
 func (v *StringValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the string %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the string %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *StringValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the string %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the string %s.", v)
 	}
 	return v, nil
 }
