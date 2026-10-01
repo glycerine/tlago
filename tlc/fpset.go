@@ -255,16 +255,15 @@ func NewFPSet(config *FPSetConfiguration) FPSet {
 		return NewNoopFPSet(config)
 	case "tlc2.tool.fp.LSBDiskFPSet":
 		return NewLSBDiskFPSet(config)
-	case "tlc2.tool.fp.HeapBasedDiskFPSet":
-		return NewHeapBasedDiskFPSet(config)
-	case "tlc2.tool.fp.DiskFPSet", "tlc2.tool.fp.MSBDiskFPSet", "":
+	case "tlc2.tool.fp.MSBDiskFPSet", "":
 		return NewMSBDiskFPSet(config)
 	case "tlc2.tool.fp.NonCheckpointableDiskFPSet":
 		return NewNonCheckpointableDiskFPSet(config)
 	case "tlc2.tool.fp.OffHeapDiskFPSet":
 		return NewOffHeapDiskFPSet(config)
 	default:
-		return NewMSBDiskFPSet(config)
+		PrintWarning(ECGeneral, "unsuccessfully trying to load custom FPSet class: "+config.GetImplementation())
+		return nil
 	}
 }
 

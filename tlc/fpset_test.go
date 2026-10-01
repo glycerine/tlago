@@ -34,6 +34,38 @@ func TestFPSetConfigurationFactoryBehaviors(t *testing.T) {
 	}
 }
 
+func TestFPSetFactoryLoadFailuresReturnNilLikeJava(t *testing.T) {
+	ClearMessageRecorders()
+	recorder := &MemoryRecorder{}
+	AddMessageRecorder(recorder)
+	t.Cleanup(func() {
+		RemoveMessageRecorder(recorder)
+		ClearMessageRecorders()
+	})
+
+	for _, implementation := range []string{"com.example.DoesNotExist", "tlc2.tool.fp.DiskFPSet", "tlc2.tool.fp.HeapBasedDiskFPSet"} {
+		cfg := NewFPSetConfiguration()
+		cfg.NoNesting = true
+		cfg.SetImplementation(implementation)
+		if set := NewFPSet(cfg); set != nil {
+			t.Fatalf("NewFPSet(%q) = %T, want nil like Java reflection failure", implementation, set)
+		}
+	}
+
+	records := recorder.Records(ECGeneral)
+	if len(records) != 3 {
+		t.Fatalf("warning count = %d, want 3", len(records))
+	}
+	for i, record := range records {
+		if record.Severity != SeverityWarning {
+			t.Fatalf("record %d severity = %v, want warning", i, record.Severity)
+		}
+		if len(record.Params) != 1 || !strings.Contains(record.Params[0], "unsuccessfully trying to load custom FPSet class: ") {
+			t.Fatalf("record %d params = %v, want Java load-failure warning", i, record.Params)
+		}
+	}
+}
+
 func TestDiskFPSetLockCountMirrorsJavaDefaultAndOverride(t *testing.T) {
 	oldWorkers := NumWorkers()
 	SetNumWorkers(1)
