@@ -664,8 +664,10 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 			s.PrintSummary()
 			return
 		}
+		classified := false
 		var eval *EvalException
 		if errors.As(err.Err, &eval) && eval != nil {
+			classified = true
 			if err.Code == NoError {
 				err.Code = eval.ErrorCode
 			}
@@ -674,14 +676,21 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 			}
 		}
 		var tlcErr *TLCError
-		if errors.As(err.Err, &tlcErr) && tlcErr != nil && err.Code == NoError {
-			err.Code = tlcErr.Code
+		if errors.As(err.Err, &tlcErr) && tlcErr != nil {
+			classified = true
+			if err.Code == NoError {
+				err.Code = tlcErr.Code
+			}
 		}
 		if err.Code == NoError {
 			err.Code = ECGeneral
 		}
 		if len(err.Params) == 0 {
-			err.Params = []string{err.Err.Error()}
+			if !classified && err.Code == ECGeneral {
+				err.Params = generalErrorParams("", err.Err)
+			} else {
+				err.Params = []string{err.Err.Error()}
+			}
 		}
 		s.printBehavior(err.Code, err.Params, err.StateTrace)
 		return
