@@ -619,12 +619,15 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 				return ECTLCInvariantEvaluationFailed, err
 			}
 			if !valid {
-				mc.SetErrState(state, nil, false, ECTLCInvariantViolatedInitial)
 				alias := state
 				if tool != nil {
 					alias = tool.EvalAlias(state, state)
 				}
 				PrintError(ECTLCInvariantViolatedInitial, nameAt(tool.GetInvNames(), k), alias.String())
+				if continuationEnabled() {
+					continue
+				}
+				mc.SetErrState(state, nil, false, ECTLCInvariantViolatedInitial)
 				return ECTLCInvariantViolatedInitial, nil
 			}
 		}
@@ -635,12 +638,15 @@ func (mc *DFIDModelChecker) doInitWithTool(tool *Tool) (int, error) {
 				return ECTLCPropertyViolatedInitial, err
 			}
 			if !valid {
-				mc.SetErrState(state, nil, false, ECTLCPropertyViolatedInitial)
 				alias := state
 				if tool != nil {
 					alias = tool.EvalAlias(state, state)
 				}
 				PrintError(ECTLCPropertyViolatedInitial, nameAt(tool.GetImpliedInitNames(), k), alias.String())
+				if continuationEnabled() {
+					continue
+				}
+				mc.SetErrState(state, nil, false, ECTLCPropertyViolatedInitial)
 				return ECTLCPropertyViolatedInitial, nil
 			}
 		}
