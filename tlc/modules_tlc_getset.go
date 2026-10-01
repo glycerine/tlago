@@ -131,7 +131,7 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 			return exactIntValueFromInt64(checker.GetStateQueueSize())
 		}
 	case tlcGetDuration:
-		return exactIntValueFromDurationSince(TLCStartTime())
+		return javaDurationIntValueSince(TLCStartTime()), nil
 	case tlcGetStats:
 		if checker != nil {
 			return checker.GetStatistics(), nil
@@ -650,11 +650,11 @@ func intValueFromInt64(value int64) *IntValue {
 	return NewIntValue(int32(value))
 }
 
-func exactIntValueFromDurationSince(start time.Time) (*IntValue, error) {
+func javaDurationIntValueSince(start time.Time) *IntValue {
 	if start.IsZero() {
-		return IntZero, nil
+		return IntZero
 	}
-	return exactIntValueFromInt64(int64(time.Since(start).Seconds()))
+	return NewIntValue(int32(int64(time.Since(start).Seconds())))
 }
 
 func exactIntValueFromUint64(value uint64) (*IntValue, error) {
