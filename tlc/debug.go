@@ -515,6 +515,90 @@ func (f *TLCStateStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVariable 
 	return out
 }
 
+func (f *TLCStateStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFrame {
+	if f == nil || f.Tool == nil {
+		return nil
+	}
+	if simulator := CurrentSimulator(); simulator != nil {
+		trace := simulator.GetUncompressedTrace(f.GetS())
+		if trace == nil || trace.Size() == 0 {
+			return nil
+		}
+		successor := f.GetS()
+		width := len(strconv.Itoa(trace.Size()))
+		frames := make([]*TLCSyntheticStateStackFrame, 0, trace.Size())
+		for i := trace.Size() - 1; i >= 0; i-- {
+			state := trace.At(i)
+			frames = append(frames, NewTLCSyntheticStateStackFrame(f.Tool, NewTLCStateInfo(state), successor, width))
+			successor = state
+		}
+		return frames
+	}
+
+	state := f.GetS()
+	if state == nil {
+		return nil
+	}
+	if state.IsInitial() {
+		if state.AllAssigned() {
+			return []*TLCSyntheticStateStackFrame{
+				NewTLCSyntheticStateStackFrame(f.Tool, NewTLCStateInfo(state), state, 1),
+			}
+		}
+		return nil
+	}
+
+	suffix := make([]*TLCStateInfo, 0)
+	if f.AddT() {
+		suffix = append(suffix, NewTLCStateInfo(state))
+	}
+	last := state
+	for s := state.Predecessor(); s != nil; s = s.Predecessor() {
+		if s.IsInitial() {
+			suffix = append(suffix, NewTLCStateInfo(s))
+			return syntheticTraceFramesFromNewestFirst(f.Tool, suffix, f.GetS())
+		}
+		suffix = append(suffix, NewTLCStateInfo(s))
+		last = s
+	}
+
+	fullTrace := make([]*TLCStateInfo, 0, len(suffix))
+	if checker := MainChecker(); checker != nil {
+		fullTrace = append(fullTrace, checker.GetTraceInfo(last)...)
+	}
+	for i := len(suffix) - 1; i >= 0; i-- {
+		fullTrace = append(fullTrace, suffix[i])
+	}
+	return syntheticTraceFramesFromChronological(f.Tool, fullTrace, f.GetS())
+}
+
+func syntheticTraceFramesFromNewestFirst(tool *Tool, trace []*TLCStateInfo, successor *TLCStateMut) []*TLCSyntheticStateStackFrame {
+	if len(trace) == 0 {
+		return nil
+	}
+	width := len(strconv.Itoa(len(trace)))
+	frames := make([]*TLCSyntheticStateStackFrame, 0, len(trace))
+	for _, info := range trace {
+		frames = append(frames, NewTLCSyntheticStateStackFrame(tool, info, successor, width))
+		successor = stateInfoState(info)
+	}
+	return frames
+}
+
+func syntheticTraceFramesFromChronological(tool *Tool, trace []*TLCStateInfo, successor *TLCStateMut) []*TLCSyntheticStateStackFrame {
+	if len(trace) == 0 {
+		return nil
+	}
+	width := len(strconv.Itoa(len(trace)))
+	frames := make([]*TLCSyntheticStateStackFrame, 0, len(trace))
+	for i := len(trace) - 1; i >= 0; i-- {
+		info := trace[i]
+		frames = append(frames, NewTLCSyntheticStateStackFrame(tool, info, successor, width))
+		successor = stateInfoState(info)
+	}
+	return frames
+}
+
 type TLCActionStackFrame struct {
 	TLCStateStackFrame
 	Action *Action
@@ -929,6 +1013,16 @@ var (
 	TLCCapabilitiesStepBack   = TLCCapabilities{SupportsStepBack: true}
 	TLCCapabilitiesNoStepBack = TLCCapabilities{SupportsStepBack: false}
 )
+
+type TLCStackTraceArguments struct {
+	StartFrame *int
+	Levels     *int
+}
+
+type TLCStackTraceResponse struct {
+	StackFrames []*TLCStackFrame
+	TotalFrames int
+}
 
 type GotoStateArgument struct {
 	VariablesReference int
@@ -1796,6 +1890,24 @@ func (f *TLCDebuggerFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVari
 	}
 }
 
+func (f *TLCDebuggerFrame) stateTraceFrame() *TLCStateStackFrame {
+	if f == nil {
+		return nil
+	}
+	switch {
+	case f.Next != nil:
+		return &f.Next.TLCStateStackFrame
+	case f.Action != nil:
+		return &f.Action.TLCStateStackFrame
+	case f.Synthetic != nil:
+		return &f.Synthetic.TLCStateStackFrame
+	case f.State != nil:
+		return f.State
+	default:
+		return nil
+	}
+}
+
 func (f *TLCDebuggerFrame) Handle(debugger *TLCDebugger) bool {
 	if f == nil {
 		return false
@@ -2035,7 +2147,9 @@ func (d *TLCDebugger) DisconnectCommand() *TLCDebugger {
 	d.HaltInv = false
 	d.HaltSpec = nil
 	d.HaltUnsat = nil
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2072,6 +2186,52 @@ func (d *TLCDebugger) popDebuggerFrame() *TLCDebuggerFrame {
 	return frame
 }
 
+func (d *TLCDebugger) stackFramesLocked() []*TLCStackFrame {
+	if d == nil || len(d.Stack) == 0 {
+		return nil
+	}
+	out := make([]*TLCStackFrame, 0, len(d.Stack))
+	for i := len(d.Stack) - 1; i >= 0; i-- {
+		if frame := d.Stack[i]; frame != nil && frame.Base != nil {
+			out = append(out, frame.Base)
+		}
+	}
+	return out
+}
+
+func (d *TLCDebugger) ensureSyntheticTraceFramesLocked() {
+	if d == nil || len(d.Stack) == 0 {
+		return
+	}
+	if first := d.Stack[0]; first != nil && first.Synthetic != nil {
+		return
+	}
+	top := d.TopFrame()
+	stateFrame := top.stateTraceFrame()
+	if stateFrame == nil {
+		return
+	}
+	traceFrames := stateFrame.GetTraceAsStackFrames()
+	if len(traceFrames) == 0 {
+		return
+	}
+	prefix := make([]*TLCDebuggerFrame, 0, len(traceFrames)+len(d.Stack))
+	for i := len(traceFrames) - 1; i >= 0; i-- {
+		prefix = append(prefix, NewDebuggerSyntheticFrame(traceFrames[i]))
+	}
+	d.Stack = append(prefix, d.Stack...)
+}
+
+func (d *TLCDebugger) clearSyntheticTraceFramesLocked() {
+	if d == nil {
+		return
+	}
+	for len(d.Stack) > 0 && d.Stack[0] != nil && d.Stack[0].Synthetic != nil {
+		d.Stack[0] = nil
+		d.Stack = d.Stack[1:]
+	}
+}
+
 func (d *TLCDebugger) matchesBreakpointFrameLocked(frame *TLCStackFrame) bool {
 	if d == nil || frame == nil || d.Breakpoints == nil {
 		return false
@@ -2104,16 +2264,47 @@ func (d *TLCDebugger) matchesBreakpointFrameLocked(frame *TLCStackFrame) bool {
 }
 
 func (d *TLCDebugger) StackFrames() []*TLCStackFrame {
-	if d == nil || len(d.Stack) == 0 {
+	if d == nil {
 		return nil
 	}
-	out := make([]*TLCStackFrame, 0, len(d.Stack))
-	for i := len(d.Stack) - 1; i >= 0; i-- {
-		if frame := d.Stack[i]; frame != nil && frame.Base != nil {
-			out = append(out, frame.Base)
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.stackFramesLocked()
+}
+
+func (d *TLCDebugger) StackTrace(args TLCStackTraceArguments) TLCStackTraceResponse {
+	response := TLCStackTraceResponse{StackFrames: []*TLCStackFrame{}}
+	if d == nil {
+		return response
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !d.ExecutionIsHalted {
+		return response
+	}
+	d.ensureSyntheticTraceFramesLocked()
+	frames := d.stackFramesLocked()
+	if len(frames) == 0 {
+		return response
+	}
+	from := 0
+	if args.StartFrame != nil {
+		requested := *args.StartFrame
+		if requested < 0 || requested > len(frames)-1 {
+			return response
+		}
+		from = requested
+	}
+	to := len(frames)
+	if args.Levels != nil {
+		requested := *args.Levels
+		if requested > 0 && from+requested < to {
+			to = from + requested
 		}
 	}
-	return out
+	response.StackFrames = append(response.StackFrames, frames[from:to]...)
+	response.TotalFrames = len(frames)
+	return response
 }
 
 func (d *TLCDebugger) Scopes(frameID int) []TLCScope {
@@ -2181,12 +2372,16 @@ func (d *TLCDebugger) ContinueCommand() *TLCDebugger {
 	defer d.mu.Unlock()
 	if top := d.TopFrame(); top != nil && top.Handle(d) {
 		d.Granularity = DebugGranularityFormula
+		d.ExecutionIsHalted = false
 		d.Paused = false
+		d.clearSyntheticTraceFramesLocked()
 		return d
 	}
 	d.SourceFrame = nil
 	d.Step = DebugStepCommandContinue
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2201,12 +2396,16 @@ func (d *TLCDebugger) StepOverCommand() *TLCDebugger {
 			_, _ = top.Next.StepOverSelect()
 		}
 		d.Granularity = DebugGranularityFormula
+		d.ExecutionIsHalted = false
 		d.Paused = false
+		d.clearSyntheticTraceFramesLocked()
 		return d
 	}
 	d.SourceFrame = d.topBaseFrame()
 	d.Step = DebugStepCommandOver
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2221,11 +2420,15 @@ func (d *TLCDebugger) StepInCommand() *TLCDebugger {
 			_, _ = top.Next.StepInSelect()
 		}
 		d.Granularity = DebugGranularityFormula
+		d.ExecutionIsHalted = false
 		d.Paused = false
+		d.clearSyntheticTraceFramesLocked()
 		return d
 	}
 	d.Step = DebugStepCommandIn
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2241,7 +2444,9 @@ func (d *TLCDebugger) StepOutCommand() *TLCDebugger {
 				_, _ = top.Next.StepOutSelect()
 			}
 			d.Granularity = DebugGranularityFormula
+			d.ExecutionIsHalted = false
 			d.Paused = false
+			d.clearSyntheticTraceFramesLocked()
 			return d
 		}
 		if top.Base != nil {
@@ -2249,7 +2454,9 @@ func (d *TLCDebugger) StepOutCommand() *TLCDebugger {
 		}
 		d.Step = DebugStepCommandOut
 	}
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2271,11 +2478,15 @@ func (d *TLCDebugger) StepBackCommand() *TLCDebugger {
 	defer d.mu.Unlock()
 	if top := d.TopFrame(); top != nil && top.Handle(d) {
 		d.Granularity = DebugGranularityFormula
+		d.ExecutionIsHalted = false
 		d.Paused = false
+		d.clearSyntheticTraceFramesLocked()
 		return d
 	}
 	d.Step = DebugStepCommandReset
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2287,11 +2498,15 @@ func (d *TLCDebugger) ReverseContinueCommand() *TLCDebugger {
 	defer d.mu.Unlock()
 	if top := d.TopFrame(); top != nil && top.Handle(d) {
 		d.Granularity = DebugGranularityFormula
+		d.ExecutionIsHalted = false
 		d.Paused = false
+		d.clearSyntheticTraceFramesLocked()
 		return d
 	}
 	d.Step = DebugStepCommandResetStart
+	d.ExecutionIsHalted = false
 	d.Paused = false
+	d.clearSyntheticTraceFramesLocked()
 	return d
 }
 
@@ -2308,7 +2523,9 @@ func (d *TLCDebugger) GotoStateCommand(ref int) *TLCDebugger {
 			_, _ = top.Init.SelectStateByReference(ref)
 		}
 		d.Granularity = DebugGranularityFormula
+		d.ExecutionIsHalted = false
 		d.Paused = false
+		d.clearSyntheticTraceFramesLocked()
 	}
 	return d
 }

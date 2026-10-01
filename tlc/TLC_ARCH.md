@@ -2553,7 +2553,17 @@ Important Java classes:
   state-frame methods to override themselves.
 - `TLCSyntheticStateStackFrame`: a manually inserted marker frame for trace
   display. It is still a state frame, but it also stores the successor used when
-  evaluating expressions against a trace edge.
+  evaluating expressions against a trace edge. Java creates these frames lazily
+  in `TLCDebugger.stackTrace`, not when the worker halts, so BFS can still evict
+  ordinary states if the front-end never asks for a call stack. Go mirrors this
+  with `TLCStateStackFrame.GetTraceAsStackFrames` and `TLCDebugger.StackTrace`:
+  stack traces are empty unless execution is halted, the first stack-trace
+  request reconstructs synthetic frames from simulator traces, predecessor
+  links, or `ModelChecker.GetTraceInfo`, and resume/step/goto/disconnect
+  commands remove the synthetic frames again. Because Go stores the stack with
+  the top at the end rather than Java's `LinkedList.push` head, synthetic trace
+  frames are prepended internally in reverse order so the observable response
+  remains Java top-to-bottom order.
 - `TLCInitStatesStackFrame` and `TLCNextStatesStackFrame`: Java debugger frames
   that expose generated initial or successor states. Both keep a
   variable-reference-to-state map because DAP variable references are integers
@@ -2616,6 +2626,10 @@ Important Java classes:
   converted LET operator bodies, mirroring Java's stub/substitution strategy.
 - `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
   useful in Go as plain structs even before a debug-adapter server exists.
+  `TLCStackTraceArguments`/`TLCStackTraceResponse` likewise model the Java
+  request surface without importing DAP transport types; `startFrame` outside
+  the active frame range returns an empty response, and positive `levels`
+  restricts the returned slice exactly like Java's `StackTraceArguments`.
 
 Debugger variable details:
 
