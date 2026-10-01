@@ -299,6 +299,7 @@ type DistributedWorker struct {
 	Tool                  *Tool
 	FPSetManager          *DistributedFPSetManager
 	Cache                 *SimpleCache
+	CheckDeadlock         bool
 	URI                   string
 	Computing             atomic.Bool
 	LastInvocation        time.Time
@@ -856,13 +857,6 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error
 		f.err = newTLCError(ECGeneral, "distributed init functor has no tool")
 		return ECGeneral, f.err
 	}
-	if !f.tool.IsGoodState(curState) {
-		PrintError(ECTLCInitialState, "current state is not a legal state", curState.String())
-		f.errState = curState
-		f.returnValue = ECTLCInitialState
-		_ = f.server.SetErrState(curState, nil, true, f.returnValue)
-		return f.returnValue, errInvariantViolated
-	}
 	inModel, err := f.tool.IsInModel(curState)
 	if err != nil {
 		f.errState = curState
@@ -891,42 +885,14 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error
 			}
 		}
 	}
-	if !seen {
-		for i, invariant := range f.tool.GetInvariants() {
-			valid, err := f.tool.IsValidState(invariant, curState)
-			if err != nil {
+	if !inModel || !seen {
+		if err := distributedCheckState(f.tool, nil, curState); err != nil {
+			if f.server.SetErrState(curState, nil, true, ECGeneral) {
 				f.errState = curState
 				f.err = err
-				_ = f.server.SetErrState(curState, nil, true, ECGeneral)
-				return f.returnValue, err
+				f.returnValue = ECGeneral
 			}
-			if !valid {
-				alias := f.tool.EvalAlias(curState, curState)
-				PrintError(ECTLCInvariantViolatedInitial, nameAt(f.tool.GetInvNames(), i), alias.String())
-				if !continuationEnabled() {
-					f.errState = curState
-					f.returnValue = ECTLCInvariantViolatedInitial
-					_ = f.server.SetErrState(curState, nil, true, f.returnValue)
-					return f.returnValue, errInvariantViolated
-				}
-			}
-		}
-		for i, implied := range f.tool.GetImpliedInits() {
-			valid, err := f.tool.IsValidState(implied, curState)
-			if err != nil {
-				f.errState = curState
-				f.err = err
-				_ = f.server.SetErrState(curState, nil, true, ECGeneral)
-				return f.returnValue, err
-			}
-			if !valid {
-				alias := f.tool.EvalAlias(curState, curState)
-				PrintError(ECTLCPropertyViolatedInitial, nameAt(f.tool.GetImpliedInitNames(), i), alias.String())
-				f.errState = curState
-				f.returnValue = ECTLCPropertyViolatedInitial
-				_ = f.server.SetErrState(curState, nil, true, f.returnValue)
-				return f.returnValue, errInvariantViolated
-			}
+			return f.returnValue, nil
 		}
 	}
 	return f.returnValue, nil
@@ -1580,11 +1546,16 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 	if fpSetManager == nil {
 		fpSetManager = NewDistributedFPSetManager()
 	}
+	checkDeadlock := true
+	if tool != nil && tool.GetModelConfig() != nil {
+		checkDeadlock = tool.GetModelConfig().GetCheckDeadlock()
+	}
 	return &DistributedWorker{
 		ID:              id,
 		Tool:            tool,
 		FPSetManager:    fpSetManager,
 		Cache:           NewSimpleCache(),
+		CheckDeadlock:   checkDeadlock,
 		NetworkOverhead: math.MaxFloat64,
 	}
 }
@@ -1685,6 +1656,10 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 		state1 = state
 		nextStates, err := w.computeNextStates(state)
 		if err != nil {
+			var workerErr *WorkerException
+			if errors.As(err, &workerErr) {
+				return nil, workerErr
+			}
 			return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
 		}
 		statesComputed += int64(nextStates.Size())
@@ -1738,6 +1713,10 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 			state1 = predecessors[i].At(index)
 			state2 = successors[i].At(index)
 			if err := w.CheckState(state1, state2); err != nil {
+				var workerErr *WorkerException
+				if errors.As(err, &workerErr) {
+					return nil, workerErr
+				}
 				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
 			}
 			inModel, err := w.IsInModel(state2)
@@ -1773,17 +1752,66 @@ func (w *DistributedWorker) computeNextStates(state *TLCStateMut) (*StateVec, er
 		return out, nil
 	})
 	_, err := w.Tool.GetNextStatesWithFunctor(functor, state)
-	return out, err
+	if err != nil {
+		return out, err
+	}
+	if out.Size() == 0 && w.CheckDeadlock {
+		return out, NewWorkerException("Error: deadlock reached.", state, nil, false)
+	}
+	for i := 0; i < out.Size(); i++ {
+		succState := out.At(i)
+		if !w.Tool.IsGoodState(succState) {
+			return out, NewWorkerException("Error: Successor state is not completely specified by the next-state action.", state, succState, false)
+		}
+	}
+	return out, nil
 }
 
 func (w *DistributedWorker) CheckState(predecessor *TLCStateMut, successor *TLCStateMut) error {
 	if w != nil && w.CheckStateFunc != nil {
 		return w.CheckStateFunc(predecessor, successor)
 	}
-	if w == nil || w.Tool == nil || successor == nil || w.Tool.IsGoodState(successor) {
+	if w == nil {
 		return nil
 	}
-	return newTLCError(ECTLCStateNotCompletelySpecifiedNext, "%s", successor)
+	return distributedCheckState(w.Tool, predecessor, successor)
+}
+
+func distributedCheckState(tool *Tool, predecessor *TLCStateMut, successor *TLCStateMut) error {
+	if tool == nil || successor == nil {
+		return nil
+	}
+	for i, invariant := range tool.GetInvariants() {
+		valid, err := tool.IsValidState(invariant, successor)
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return NewWorkerException(fmt.Sprintf("Error: Invariant %s is violated.", nameAt(tool.GetInvNames(), i)), predecessor, successor, false)
+		}
+	}
+	if predecessor == nil {
+		for i, implied := range tool.GetImpliedInits() {
+			valid, err := tool.IsValidState(implied, successor)
+			if err != nil {
+				return err
+			}
+			if !valid {
+				return NewWorkerException(fmt.Sprintf("Error: Implied-init %s is violated.", nameAt(tool.GetImpliedInitNames(), i)), predecessor, successor, false)
+			}
+		}
+		return nil
+	}
+	for i, implied := range tool.GetImpliedActions() {
+		valid, err := tool.IsValidTransition(implied, predecessor, successor)
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return NewWorkerException(fmt.Sprintf("Error: Implied-action %s is violated.", nameAt(tool.GetImpliedActNames(), i)), predecessor, successor, false)
+		}
+	}
+	return nil
 }
 
 func (w *DistributedWorker) IsInModel(state *TLCStateMut) (bool, error) {
