@@ -195,12 +195,10 @@ func randomProductForValue(value Value) (*randomProductValue, bool, error) {
 		if err != nil {
 			return nil, true, err
 		}
-		names := make([]*UniqueString, len(v.Names))
-		copy(names, v.Names)
 		return &randomProductValue{
 			constituents: constituents,
 			makeValue: func(values []Value) Value {
-				return NewRecordValue(names, values, true)
+				return NewRecordValue(v.Names, values, false)
 			},
 		}, true, nil
 	case *SetOfTuplesValue:

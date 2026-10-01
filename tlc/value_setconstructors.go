@@ -64,7 +64,7 @@ func (v *SetOfTuplesValue) Member(elem Value) (bool, error) {
 			}
 			for _, d := range fcn.Domain {
 				if _, ok := d.(*IntValue); !ok {
-					return false, v.unsupported("attempted to check if non-tuple\n%s\nis in the set of tuples:\n%s", elem, v)
+					return false, v.unsupported("Attempted to check if non-tuple\n%s\nis in the set of tuples:\n%s", ValuesPPR(elem), ValuesPPR(v))
 				}
 			}
 			return false, nil
@@ -72,7 +72,7 @@ func (v *SetOfTuplesValue) Member(elem Value) (bool, error) {
 		if mv, ok := elem.(*ModelValue); ok {
 			return mv.modelValueMember(v)
 		}
-		return false, v.unsupported("attempted to check if non-tuple\n%s\nis in the set of tuples:\n%s", elem, v)
+		return false, v.unsupported("Attempted to check if non-tuple\n%s\nis in the set of tuples:\n%s", ValuesPPR(elem), ValuesPPR(v))
 	}
 	if len(tv.Elems) != len(v.Sets) {
 		return false, nil
@@ -178,11 +178,17 @@ func (v *SetOfTuplesValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *SetOfTuplesValue) TakeExcept(ex ValueExcept) (Value, error) {
-	return takeExceptOnSet(v, ex)
+	if ex.Index < len(ex.Path) {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the set of tuples:\n%s", ValuesPPR(v))
+	}
+	return ex.Value, nil
 }
 
 func (v *SetOfTuplesValue) TakeExcepts(exs []ValueExcept) (Value, error) {
-	return takeExceptsOnSet(v, exs)
+	if len(exs) != 0 {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the set of tuples:\n%s", ValuesPPR(v))
+	}
+	return v, nil
 }
 
 func (v *SetOfTuplesValue) ToSetEnum() (*SetEnumValue, error) {
@@ -226,7 +232,7 @@ func (v *SetOfTuplesValue) Elements() ValueEnumeration {
 	return newProductEnumeration(v.Sets, func(elems []Value) Value {
 		return NewTupleValue(elems)
 	}, func(i int, set Value) error {
-		return v.unsupported("attempted to enumerate a set of the form s1 \\X s2 ... \\X sn, but cannot enumerate s%d:\n%s", i, set)
+		return v.unsupported("Attempted to enumerate a set of the form s1 \\X s2 ... \\X sn,\nbut can't enumerate s%d:\n%s", i, ValuesPPR(set))
 	})
 }
 
@@ -315,7 +321,7 @@ func (v *SetOfRcdsValue) Member(elem Value) (bool, error) {
 		if mv, ok := elem.(*ModelValue); ok {
 			return mv.modelValueMember(v)
 		}
-		return false, v.unsupported("attempted to check if non-record\n%s\nis in the set of records:\n%s", elem, v)
+		return false, v.unsupported("Attempted to check if non-record\n%s\nis in the set of records:\n%s", elem, ValuesPPR(v))
 	}
 	if err := rcd.normalizeRecord(); err != nil {
 		return false, err
@@ -427,11 +433,17 @@ func (v *SetOfRcdsValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *SetOfRcdsValue) TakeExcept(ex ValueExcept) (Value, error) {
-	return takeExceptOnSet(v, ex)
+	if ex.Index < len(ex.Path) {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of records:\n%s", ValuesPPR(v))
+	}
+	return ex.Value, nil
 }
 
 func (v *SetOfRcdsValue) TakeExcepts(exs []ValueExcept) (Value, error) {
-	return takeExceptsOnSet(v, exs)
+	if len(exs) != 0 {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of records:\n%s", ValuesPPR(v))
+	}
+	return v, nil
 }
 
 func (v *SetOfRcdsValue) ToSetEnum() (*SetEnumValue, error) {
@@ -475,7 +487,7 @@ func (v *SetOfRcdsValue) Elements() ValueEnumeration {
 	return newProductEnumeration(v.Values, func(fields []Value) Value {
 		return &RecordValue{Names: v.Names, Values: fields, IsNorm: true}
 	}, func(i int, value Value) error {
-		return v.unsupported("attempted to enumerate a set of the form [l1 : v1, ..., ln : vn], but cannot enumerate the value of the `%s' field:\n%s", v.Names[i], value)
+		return v.unsupported("Attempted to enumerate a set of the form [l1 : v1, ..., ln : vn],\nbut can't enumerate the value of the `%s' field:\n%s", v.Names[i], ValuesPPR(value))
 	})
 }
 
@@ -503,7 +515,7 @@ func (v *SetOfRcdsValue) sortByNames() error {
 	for i := 1; i < len(v.Names); i++ {
 		cmp := v.Names[0].Compare(v.Names[i])
 		if cmp == 0 {
-			return v.unsupported("field name %s occurs multiple times in set of records", v.Names[0])
+			return v.unsupported("Field name %s occurs multiple times in set of records.", v.Names[0])
 		}
 		if cmp > 0 {
 			v.Names[0], v.Names[i] = v.Names[i], v.Names[0]
@@ -525,7 +537,7 @@ func (v *SetOfRcdsValue) sortByNames() error {
 			j--
 		}
 		if cmp == 0 {
-			return v.unsupported("field name %s occurs multiple times in set of records", v.Names[i])
+			return v.unsupported("Field name %s occurs multiple times in set of records.", v.Names[i])
 		}
 		v.Names[j] = st
 		v.Values[j] = val
@@ -599,7 +611,7 @@ func (v *SetOfFcnsValue) Member(elem Value) (bool, error) {
 		if mv, ok := elem.(*ModelValue); ok {
 			return mv.modelValueMember(v)
 		}
-		return false, v.unsupported("attempted to check if \n%s\nwhich is not a TLC function value, is in the set of functions:\n%s", elem, v)
+		return false, v.unsupported("Attempted to check if \n%s\nwhich is not a TLC function value, is in the set of functions:\n%s", elem, ValuesPPR(v))
 	}
 	if fcn.Intv == nil {
 		if err := fcn.normalizeFcn(); err != nil {
@@ -757,11 +769,17 @@ func (v *SetOfFcnsValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *SetOfFcnsValue) TakeExcept(ex ValueExcept) (Value, error) {
-	return takeExceptOnSet(v, ex)
+	if ex.Index < len(ex.Path) {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of functions:\n%s", ValuesPPR(v))
+	}
+	return ex.Value, nil
 }
 
 func (v *SetOfFcnsValue) TakeExcepts(exs []ValueExcept) (Value, error) {
-	return takeExceptsOnSet(v, exs)
+	if len(exs) != 0 {
+		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of functions:\n%s", ValuesPPR(v))
+	}
+	return v, nil
 }
 
 func (v *SetOfFcnsValue) ToSetEnum() (*SetEnumValue, error) {
@@ -807,7 +825,7 @@ func (v *SetOfFcnsValue) Elements() ValueEnumeration {
 	}
 	domSet, err := toSetEnumValue(v.Domain)
 	if err != nil {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate a set of the form [D -> R], but the domain D:\n%s\ncannot be enumerated", v.Domain))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the domain D:\n%s\ncannot be enumerated.", ValuesPPR(v.Domain)))
 	}
 	if _, err := domSet.normalizeSet(); err != nil {
 		return newErrorEnumeration(err)
@@ -823,7 +841,7 @@ func (v *SetOfFcnsValue) intervalDomainElements(intv *IntervalValue) ValueEnumer
 	}
 	rangeEnum, ok := asEnumerable(v.Range)
 	if size > 0 && !ok {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate a set of the form [D -> R], but the range R:\n%s\ncannot be enumerated", v.Range))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range)))
 	}
 	sets := make([]Value, size)
 	for i := range sets {
@@ -836,14 +854,14 @@ func (v *SetOfFcnsValue) intervalDomainElements(intv *IntervalValue) ValueEnumer
 	return newProductEnumeration(sets, func(elems []Value) Value {
 		return NewFcnRcdIntervalValue(intv, elems)
 	}, func(i int, value Value) error {
-		return v.unsupported("attempted to enumerate a set of the form [D -> R], but the range R:\n%s\ncannot be enumerated", v.Range)
+		return v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range))
 	})
 }
 
 func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 	rangeEnum, ok := asEnumerable(v.Range)
 	if len(dom) > 0 && !ok {
-		return newErrorEnumeration(v.unsupported("attempted to enumerate a set of the form [D -> R], but the range R:\n%s\ncannot be enumerated", v.Range))
+		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range)))
 	}
 	if len(dom) == 0 {
 		return &singleValueEnumeration{value: NewFcnRcdValue(dom, []Value{}, true)}
@@ -856,7 +874,7 @@ func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 	return newProductEnumeration(sets, func(elems []Value) Value {
 		return NewFcnRcdValue(dom, elems, true)
 	}, func(i int, value Value) error {
-		return v.unsupported("attempted to enumerate a set of the form [D -> R], but the range R:\n%s\ncannot be enumerated", v.Range)
+		return v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range))
 	})
 }
 
