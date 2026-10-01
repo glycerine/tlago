@@ -377,6 +377,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if err != nil {
 				return opts, err
 			}
+			opts.DFIDMode = true
 			opts.DFIDDepth = value
 			Globals.DFIDMax = value
 			index += 2

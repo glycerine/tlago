@@ -49,6 +49,7 @@ type Options struct {
 	TraceActions              string
 	Probabilistic             bool
 	SimulationSchedule        SimulationSchedule
+	DFIDMode                  bool
 	DFIDDepth                 int
 	CheckpointDurationMillis  int64
 	StateWriter               *StateWriter
@@ -115,6 +116,9 @@ func NewTLC(opts Options) *TLC {
 	}
 	if opts.FPSetConfiguration == nil {
 		opts.FPSetConfiguration = NewFPSetConfiguration()
+	}
+	if opts.DFIDDepth > 0 {
+		opts.DFIDMode = true
 	}
 	if opts.DebugPort == 0 && !opts.DebugPortSet {
 		opts.DebugPort = -1
@@ -332,7 +336,7 @@ func (t *TLC) applyGlobals() {
 	if t.CheckpointDurationMillis > 0 {
 		Globals.CheckpointDurationMillis = t.CheckpointDurationMillis
 	}
-	if t.DFIDDepth > 0 {
+	if t.DFIDMode {
 		Globals.DFIDMax = t.DFIDDepth
 	}
 	Globals.Unlock()
@@ -349,7 +353,7 @@ func (t *TLC) prepareRandomSeed() {
 }
 
 func (t *TLC) processModelChecking() (*Result, error) {
-	if t.DFIDDepth > 0 {
+	if t.DFIDMode {
 		PrintMessage(ECTLCModeMCDFS, t.modelCheckingRuntimeParams()...)
 		opts := make([]DFIDModelCheckerOption, 0, 2)
 		if t.FromCheckpoint != "" {

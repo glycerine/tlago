@@ -141,19 +141,18 @@ func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
 		mc.PrintSummary(true)
 		return NoError, nil
 	}
-	max := Globals.DFIDMax
-	if max < 0 {
-		max = int(^uint(0) >> 1)
-	}
+	result = ECGeneral
 	terminated := false
-	for level := 2; level <= max; level++ {
+	for level := 2; level <= Globals.DFIDMax; level++ {
 		if terminated {
 			return mc.finishTerminatedDFID()
 		}
 		PrintMessage(ECTLCProgressStartStatsDFID, fmtInt(level), fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 		FPIntSetIncLevel()
 		result, err = mc.RunTLC(level)
+		mc.mu.Lock()
 		mc.Done = false
+		mc.mu.Unlock()
 		if result != NoError || err != nil {
 			mc.PrintSummary(false)
 			return result, err
@@ -168,8 +167,7 @@ func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
 		}
 		terminated = terminated || !moreLevel
 	}
-	result = NoError
-	mc.PrintSummary(true)
+	mc.PrintSummary(result == NoError)
 	return result, nil
 }
 
