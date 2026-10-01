@@ -100,7 +100,7 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 			}
 			return t.EnabledImpl(v.Body, acts, c1, s0, s1, cm)
 		case *LazyValue:
-			return t.EnabledImpl(v.Expr, acts, v.Con, s0, s1, cm)
+			return t.EnabledImpl(v.Expr, acts, v.Con, s0, s1, v.CM)
 		case Value:
 			if isOperatorValue(v) {
 				bval, err := EvalOperatorValueWithTool(v, t, args, c, s0, s1, EvalEnabled, cm)
