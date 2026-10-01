@@ -519,6 +519,12 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		if workerErr != nil {
 			return workerErr
 		}
+		if len(actions) == 0 {
+			if w.CheckDeadlock {
+				return &SimulationWorkerError{Code: ECTLCDeadlockReached, StateTrace: w.GetTrace(w.CurState)}
+			}
+			break
+		}
 		index := w.GetNextActionIndex(actions, w.CurState)
 		step := w.Rand.NextPrime()
 		for i := 0; i < len(actions); i++ {
