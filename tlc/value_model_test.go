@@ -78,11 +78,11 @@ func TestModelValueTypedEqualityAndOrdering(t *testing.T) {
 	if eq, err := untyped.Equal(a); err != nil || eq {
 		t.Fatalf("untyped Equal typed = %v/%v, want false/nil", eq, err)
 	}
-	if cmp, err := a.Compare(untyped); err != nil || cmp <= 0 {
-		t.Fatalf("typed Compare untyped = %d/%v, want positive/nil", cmp, err)
+	if cmp, err := a.Compare(untyped); err != nil || cmp >= 0 {
+		t.Fatalf("typed Compare later untyped = %d/%v, want negative/nil", cmp, err)
 	}
-	if cmp, err := untyped.Compare(a); err != nil || cmp >= 0 {
-		t.Fatalf("untyped Compare typed = %d/%v, want negative/nil", cmp, err)
+	if cmp, err := untyped.Compare(a); err != nil || cmp <= 0 {
+		t.Fatalf("later untyped Compare typed = %d/%v, want positive/nil", cmp, err)
 	}
 }
 
