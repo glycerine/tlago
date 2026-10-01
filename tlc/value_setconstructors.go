@@ -4,14 +4,13 @@ import "strings"
 
 type SetOfTuplesValue struct {
 	BaseValue
-	Sets     []Value
-	TupleSet *SetEnumValue
+	Sets          []Value
+	TupleSet      *SetEnumValue
+	TupleSetDummy bool
 }
 
 func NewSetOfTuplesValue(sets []Value) *SetOfTuplesValue {
-	out := make([]Value, len(sets))
-	copy(out, sets)
-	return &SetOfTuplesValue{Sets: out}
+	return &SetOfTuplesValue{Sets: sets}
 }
 
 func (v *SetOfTuplesValue) Kind() ValueKind    { return SetOfTuplesValueKind }
@@ -118,7 +117,7 @@ func (v *SetOfTuplesValue) Size() (int, error) {
 }
 
 func (v *SetOfTuplesValue) IsNormalized() bool {
-	if v.TupleSet != nil {
+	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet.IsNormalized()
 	}
 	for _, set := range v.Sets {
@@ -130,7 +129,7 @@ func (v *SetOfTuplesValue) IsNormalized() bool {
 }
 
 func (v *SetOfTuplesValue) Normalize() Value {
-	if v.TupleSet != nil {
+	if v.TupleSet != nil && !v.TupleSetDummy {
 		v.TupleSet.Normalize()
 	} else {
 		for _, set := range v.Sets {
@@ -144,7 +143,9 @@ func (v *SetOfTuplesValue) DeepNormalize() {
 	for _, set := range v.Sets {
 		set.DeepNormalize()
 	}
-	if v.TupleSet != nil {
+	if v.TupleSet == nil {
+		v.TupleSetDummy = true
+	} else if !v.TupleSetDummy {
 		v.TupleSet.DeepNormalize()
 	}
 }
@@ -185,25 +186,34 @@ func (v *SetOfTuplesValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetOfTuplesValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.TupleSet != nil {
+	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet, nil
 	}
 	return setEnumFromEnumeration(v.Elements(), v.IsNormalized())
 }
 
 func (v *SetOfTuplesValue) convertAndCache() (*SetEnumValue, error) {
-	if v.TupleSet == nil {
+	if v.TupleSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.TupleSet = set
+		v.TupleSetDummy = false
+	} else if v.TupleSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.TupleSet = set
+		v.TupleSetDummy = false
 	}
 	return v.TupleSet, nil
 }
 
 func (v *SetOfTuplesValue) Elements() ValueEnumeration {
-	if v.TupleSet != nil {
+	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet.Elements()
 	}
 	empty, err := IsEmptyValue(v)
@@ -238,17 +248,14 @@ func (v *SetOfTuplesValue) String() string {
 
 type SetOfRcdsValue struct {
 	BaseValue
-	Names  []*UniqueString
-	Values []Value
-	RcdSet *SetEnumValue
+	Names       []*UniqueString
+	Values      []Value
+	RcdSet      *SetEnumValue
+	RcdSetDummy bool
 }
 
 func NewSetOfRcdsValue(names []*UniqueString, values []Value, isNorm bool) (*SetOfRcdsValue, error) {
-	outNames := make([]*UniqueString, len(names))
-	outValues := make([]Value, len(values))
-	copy(outNames, names)
-	copy(outValues, values)
-	out := &SetOfRcdsValue{Names: outNames, Values: outValues}
+	out := &SetOfRcdsValue{Names: names, Values: values}
 	if !isNorm {
 		if err := out.sortByNames(); err != nil {
 			return nil, err
@@ -359,7 +366,7 @@ func (v *SetOfRcdsValue) Size() (int, error) {
 }
 
 func (v *SetOfRcdsValue) IsNormalized() bool {
-	if v.RcdSet != nil {
+	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet.IsNormalized()
 	}
 	for _, value := range v.Values {
@@ -371,7 +378,7 @@ func (v *SetOfRcdsValue) IsNormalized() bool {
 }
 
 func (v *SetOfRcdsValue) Normalize() Value {
-	if v.RcdSet != nil {
+	if v.RcdSet != nil && !v.RcdSetDummy {
 		v.RcdSet.Normalize()
 	} else {
 		for _, value := range v.Values {
@@ -385,7 +392,9 @@ func (v *SetOfRcdsValue) DeepNormalize() {
 	for _, value := range v.Values {
 		value.DeepNormalize()
 	}
-	if v.RcdSet != nil {
+	if v.RcdSet == nil {
+		v.RcdSetDummy = true
+	} else if !v.RcdSetDummy {
 		v.RcdSet.DeepNormalize()
 	}
 }
@@ -426,25 +435,34 @@ func (v *SetOfRcdsValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetOfRcdsValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.RcdSet != nil {
+	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet, nil
 	}
 	return setEnumFromEnumeration(v.Elements(), v.IsNormalized())
 }
 
 func (v *SetOfRcdsValue) convertAndCache() (*SetEnumValue, error) {
-	if v.RcdSet == nil {
+	if v.RcdSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.RcdSet = set
+		v.RcdSetDummy = false
+	} else if v.RcdSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.RcdSet = set
+		v.RcdSetDummy = false
 	}
 	return v.RcdSet, nil
 }
 
 func (v *SetOfRcdsValue) Elements() ValueEnumeration {
-	if v.RcdSet != nil {
+	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet.Elements()
 	}
 	empty, err := IsEmptyValue(v)
@@ -517,9 +535,10 @@ func (v *SetOfRcdsValue) sortByNames() error {
 
 type SetOfFcnsValue struct {
 	BaseValue
-	Domain Value
-	Range  Value
-	FcnSet *SetEnumValue
+	Domain      Value
+	Range       Value
+	FcnSet      *SetEnumValue
+	FcnSetDummy bool
 }
 
 func NewSetOfFcnsValue(domain, rangeValue Value) *SetOfFcnsValue {
@@ -689,14 +708,14 @@ func (v *SetOfFcnsValue) Size() (int, error) {
 }
 
 func (v *SetOfFcnsValue) IsNormalized() bool {
-	if v.FcnSet != nil {
+	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet.IsNormalized()
 	}
 	return v.Domain.IsNormalized() && v.Range.IsNormalized()
 }
 
 func (v *SetOfFcnsValue) Normalize() Value {
-	if v.FcnSet != nil {
+	if v.FcnSet != nil && !v.FcnSetDummy {
 		v.FcnSet.Normalize()
 	} else {
 		v.Domain.Normalize()
@@ -708,7 +727,9 @@ func (v *SetOfFcnsValue) Normalize() Value {
 func (v *SetOfFcnsValue) DeepNormalize() {
 	v.Domain.DeepNormalize()
 	v.Range.DeepNormalize()
-	if v.FcnSet != nil {
+	if v.FcnSet == nil {
+		v.FcnSetDummy = true
+	} else if !v.FcnSetDummy {
 		v.FcnSet.DeepNormalize()
 	}
 }
@@ -744,25 +765,34 @@ func (v *SetOfFcnsValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetOfFcnsValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.FcnSet != nil {
+	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet, nil
 	}
 	return setEnumFromEnumeration(v.Elements(), v.IsNormalized())
 }
 
 func (v *SetOfFcnsValue) convertAndCache() (*SetEnumValue, error) {
-	if v.FcnSet == nil {
+	if v.FcnSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.FcnSet = set
+		v.FcnSetDummy = false
+	} else if v.FcnSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.FcnSet = set
+		v.FcnSetDummy = false
 	}
 	return v.FcnSet, nil
 }
 
 func (v *SetOfFcnsValue) Elements() ValueEnumeration {
-	if v.FcnSet != nil {
+	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet.Elements()
 	}
 	empty, err := IsEmptyValue(v)
@@ -843,8 +873,9 @@ func (v *SetOfFcnsValue) String() string {
 
 type SubsetValue struct {
 	BaseValue
-	Set  Value
-	PSet *SetEnumValue
+	Set       Value
+	PSet      *SetEnumValue
+	PSetDummy bool
 }
 
 func NewSubsetValue(set Value) *SubsetValue {
@@ -913,21 +944,23 @@ func (v *SubsetValue) Size() (int, error) {
 }
 
 func (v *SubsetValue) IsNormalized() bool {
-	return v.PSet != nil && v.PSet.IsNormalized()
+	return v.PSet != nil && !v.PSetDummy && v.PSet.IsNormalized()
 }
 
 func (v *SubsetValue) Normalize() Value {
-	if v.PSet == nil {
-		v.Set.Normalize()
-	} else {
+	if v.PSet != nil && !v.PSetDummy {
 		v.PSet.Normalize()
+	} else {
+		v.Set.Normalize()
 	}
 	return v
 }
 
 func (v *SubsetValue) DeepNormalize() {
 	v.Set.DeepNormalize()
-	if v.PSet != nil {
+	if v.PSet == nil {
+		v.PSetDummy = true
+	} else if !v.PSetDummy {
 		v.PSet.DeepNormalize()
 	}
 }
@@ -963,25 +996,34 @@ func (v *SubsetValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SubsetValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.PSet != nil {
+	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet, nil
 	}
 	return setEnumFromEnumeration(v.Elements(), true)
 }
 
 func (v *SubsetValue) convertAndCache() (*SetEnumValue, error) {
-	if v.PSet == nil {
+	if v.PSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.PSet = set
+		v.PSetDummy = false
+	} else if v.PSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.PSet = set
+		v.PSetDummy = false
 	}
 	return v.PSet, nil
 }
 
 func (v *SubsetValue) Elements() ValueEnumeration {
-	if v.PSet != nil {
+	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet.Elements()
 	}
 	set, err := toSetEnumValue(v.Set)

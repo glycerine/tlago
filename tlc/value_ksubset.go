@@ -8,9 +8,10 @@ import (
 
 type KSubsetValue struct {
 	BaseValue
-	K    int
-	Set  Value
-	PSet *SetEnumValue
+	K         int
+	Set       Value
+	PSet      *SetEnumValue
+	PSetDummy bool
 }
 
 func NewKSubsetValue(k int, set Value) *KSubsetValue {
@@ -159,21 +160,23 @@ func (v *KSubsetValue) Size() (int, error) {
 }
 
 func (v *KSubsetValue) IsNormalized() bool {
-	return v.PSet != nil && v.PSet.IsNormalized()
+	return v.PSet != nil && !v.PSetDummy && v.PSet.IsNormalized()
 }
 
 func (v *KSubsetValue) Normalize() Value {
-	if v.PSet == nil {
-		v.Set.Normalize()
-	} else {
+	if v.PSet != nil && !v.PSetDummy {
 		v.PSet.Normalize()
+	} else {
+		v.Set.Normalize()
 	}
 	return v
 }
 
 func (v *KSubsetValue) DeepNormalize() {
 	v.Set.DeepNormalize()
-	if v.PSet != nil {
+	if v.PSet == nil {
+		v.PSetDummy = true
+	} else if !v.PSetDummy {
 		v.PSet.DeepNormalize()
 	}
 }
@@ -209,19 +212,28 @@ func (v *KSubsetValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *KSubsetValue) ToSetEnum() (*SetEnumValue, error) {
-	if v.PSet != nil {
+	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet, nil
 	}
 	return setEnumFromEnumeration(v.Elements(), true)
 }
 
 func (v *KSubsetValue) convertAndCache() (*SetEnumValue, error) {
-	if v.PSet == nil {
+	if v.PSetDummy {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			return nil, err
+		}
+		set.DeepNormalize()
+		v.PSet = set
+		v.PSetDummy = false
+	} else if v.PSet == nil {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			return nil, err
 		}
 		v.PSet = set
+		v.PSetDummy = false
 	}
 	return v.PSet, nil
 }
