@@ -85,7 +85,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 		case arg == "-simulate" || arg == "-generate":
 			if arg == "-generate" {
 				opts.Probabilistic = true
-				tlcSetSystemProperty(toolProbabilisticProperty, "true")
+				tlcSetStartupSystemProperty(toolProbabilisticProperty, "true")
 			}
 			opts.Mode = RunModeSimulate
 			index++
@@ -163,7 +163,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if err != nil {
 				return opts, err
 			}
-			tlcSetSystemProperty(name, value)
+			tlcSetStartupSystemProperty(name, value)
 			index++
 		case arg == "-inv":
 			if index+1 >= len(args) {

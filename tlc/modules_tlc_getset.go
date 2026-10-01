@@ -577,6 +577,14 @@ func tlcSetSystemProperty(name string, value string) {
 	tlcSystemProperties.Lock()
 	defer tlcSystemProperties.Unlock()
 	tlcSystemProperties.values[name] = value
+}
+
+func tlcSetStartupSystemProperty(name string, value string) {
+	tlcSetSystemProperty(name, value)
+	tlcApplyStartupSystemProperty(name, value)
+}
+
+func tlcApplyStartupSystemProperty(name string, value string) {
 	if name == actionCompositionProperty {
 		Globals.Cdot = javaBooleanProperty(value)
 	}
@@ -623,9 +631,6 @@ func javaIntProperty(value string) (int, bool) {
 }
 
 func toolProbabilisticEnabled() bool {
-	if value, ok := tlcLookupSystemProperty(toolProbabilisticProperty); ok {
-		return javaBooleanProperty(value)
-	}
 	return Globals.Probabilistic
 }
 

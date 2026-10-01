@@ -62,6 +62,7 @@ var Globals = struct {
 	DFIDMax:                    -1,
 	Expand:                     true,
 	Warn:                       true,
+	Probabilistic:              initialBooleanProperty("tlc2.tool.impl.Tool.probabilistic"),
 	CheckpointDurationMillis:   initialCheckpointDurationMillis(),
 	MetaDir:                    "",
 	LastCheckpoint:             time.Now(),
@@ -282,6 +283,11 @@ func initialCheckpointDurationMillis() int64 {
 		return int64(millis)
 	}
 	return DefaultCheckpointDurationMillis
+}
+
+func initialBooleanProperty(name string) bool {
+	value := os.Getenv(name)
+	return javaBooleanProperty(value)
 }
 
 func initialIntProperty(name string) (int, bool) {
