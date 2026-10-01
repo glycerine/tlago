@@ -268,6 +268,23 @@ func TestValueStreamsWriteMaterializedFcnLambdaAsJavaFcnRcd(t *testing.T) {
 	}
 }
 
+func TestValueStreamsWriteCounterExampleAsJavaRecord(t *testing.T) {
+	counterExample := NewEmptyCounterExample()
+
+	var buf bytes.Buffer
+	out := NewValueOutputStream(&buf)
+	if err := out.Write(counterExample); err != nil {
+		t.Fatalf("Write CounterExample returned error: %v", err)
+	}
+	got, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).Read()
+	if err != nil {
+		t.Fatalf("Read CounterExample returned error: %v", err)
+	}
+	if !mustValueEqual(got, counterExample.RecordValue) {
+		t.Fatalf("CounterExample roundtrip = %v, want %v", got, counterExample.RecordValue)
+	}
+}
+
 func writeExternalUniqueString(t *testing.T, out *ValueOutputStream, value string) {
 	t.Helper()
 	if err := out.WriteInt(-1); err != nil {

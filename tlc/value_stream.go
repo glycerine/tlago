@@ -315,6 +315,11 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 			}
 		}
 		return nil
+	case *CounterExample:
+		if v.RecordValue == nil {
+			return s.writeValue(EmptyRecord, external)
+		}
+		return s.writeValue(v.RecordValue, external)
 	case *SetOfTuplesValue:
 		if v.TupleSet == nil || v.TupleSetDummy {
 			return fmt.Errorf("cannot pickle unmaterialized set of tuples")
