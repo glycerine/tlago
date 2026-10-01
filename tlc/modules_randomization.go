@@ -11,6 +11,9 @@ func RandomSubset(k Value, set Value) (Value, error) {
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RandomSubset", "nonnegative integer", ValuesPPR(k))
 	}
+	if count.Val < 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RandomSubset", "nonnegative integer", ValuesPPR(k))
+	}
 	return randomSubsetOfEnumerable(int(count.Val), set)
 }
 
