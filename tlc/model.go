@@ -553,11 +553,22 @@ func (v *MCVariable) ValueAsStringReIndentedAs(indent string) string {
 	if v == nil {
 		return ""
 	}
-	lines := regexp.MustCompile(`\r\n|\r|\n`).Split(v.ValueAsString, -1)
+	lines := javaSplitLines(v.ValueAsString)
 	for i, line := range lines {
 		lines[i] = indent + line
 	}
 	return strings.Join(lines, "\n")
+}
+
+func javaSplitLines(text string) []string {
+	lines := regexp.MustCompile(`\r\n|\r|\n`).Split(text, -1)
+	if text == "" {
+		return lines
+	}
+	for len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
 }
 
 func (v *MCVariable) IsTraceExplorerExpression() bool {
