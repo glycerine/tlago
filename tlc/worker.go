@@ -318,8 +318,10 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 	if w.Checker == nil {
 		return nil, newTLCError(ECGeneral, "worker has no model checker")
 	}
+	// Java Worker.addElement throws INextStateFunctor.InvariantViolatedException
+	// after doNextSetErr records stop-worthy successor failures.
 	if w.Halted {
-		return w, nil
+		return nil, newWorkerNextStateError(errInvariantViolated, succState)
 	}
 	if action != nil && CoverageActionEnabled() {
 		action.CM.IncInvocations()
@@ -333,7 +335,7 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 		return nil, newWorkerNextStateError(err, succState)
 	}
 	if stop {
-		return w, nil
+		return nil, newWorkerNextStateError(errInvariantViolated, succState)
 	}
 	if queued && succState != nil {
 		if succState.Level() > w.MaxLevel {
