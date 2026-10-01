@@ -111,17 +111,36 @@ func (s *CallStack) String() string {
 	var prev SemanticNode
 	depth := 0
 	for _, node := range s.stack {
-		if node == prev {
+		if semanticNodeSame(node, prev) {
 			continue
 		}
 		prev = node
 		b.WriteString(strconv.Itoa(depth))
 		b.WriteString(". ")
-		b.WriteString(SemanticString(node))
+		b.WriteString(callStackLocationString(node))
 		b.WriteString("\n")
 		depth++
 	}
 	b.WriteString("\n")
+	return b.String()
+}
+
+func callStackLocationString(node SemanticNode) string {
+	loc, ok := semanticNodeSourceLocation(node)
+	if !ok {
+		loc = NullSourceLocation
+	}
+	var b strings.Builder
+	b.WriteString("Line ")
+	b.WriteString(strconv.Itoa(loc.BeginLine))
+	b.WriteString(", column ")
+	b.WriteString(strconv.Itoa(loc.BeginColumn))
+	b.WriteString(" to line ")
+	b.WriteString(strconv.Itoa(loc.EndLine))
+	b.WriteString(", column ")
+	b.WriteString(strconv.Itoa(loc.EndColumn))
+	b.WriteString(" in ")
+	b.WriteString(loc.Source)
 	return b.String()
 }
 
