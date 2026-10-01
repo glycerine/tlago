@@ -28,3 +28,29 @@ func TestSimulatorPrintBehaviorAliasUsesPairwiseJavaPath(t *testing.T) {
 		t.Fatalf("pairwise alias calls = %d, want one per trace state", pairCalls)
 	}
 }
+
+func TestSimulatorConfigArilKeepsJavaConstructorValue(t *testing.T) {
+	oldWorkers := NumWorkers()
+	SetNumWorkers(1)
+	t.Cleanup(func() {
+		SetNumWorkers(oldWorkers)
+		SetSimulator(nil)
+		SetTLCStateTool(nil)
+	})
+
+	sim := NewSimulator(NewTool(), true, 1, 1, 17, WithSimulatorAril(5))
+	if sim.Aril != 5 {
+		t.Fatalf("runtime aril = %d, want 5", sim.Aril)
+	}
+	config, ok := sim.GetConfig().(*RecordValue)
+	if !ok {
+		t.Fatalf("config = %T, want *RecordValue", sim.GetConfig())
+	}
+	aril, err := config.Apply(NewStringValueFromUnique(tlcGetAril))
+	if err != nil {
+		t.Fatalf("config aril lookup returned error: %v", err)
+	}
+	if got, want := aril.String(), `"0"`; got != want {
+		t.Fatalf("config aril = %s, want %s like Java's eager constructor record", got, want)
+	}
+}

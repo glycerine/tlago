@@ -126,7 +126,11 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	if simulator.Aril > 0 {
 		simulator.Rand.SetSeedWithAril(simulator.Seed, simulator.Aril)
 	}
-	simulator.Aril = simulator.Rand.Aril()
+	runtimeAril := simulator.Rand.Aril()
+	// Java eagerly creates the TLCGet("config") record in the constructor while
+	// Simulator.aril is still its field-initializer value. Later statistics use
+	// the RNG aril, so keep the cached config and runtime field distinct.
+	simulator.Aril = 0
 	workerCount := NumWorkers()
 	if workerCount < 1 {
 		workerCount = 1
@@ -135,6 +139,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		simulator.Workers = append(simulator.Workers, simulator.newSimulationWorker(i))
 	}
 	simulator.Config = simulator.createConfig()
+	simulator.Aril = runtimeAril
 	scheduleStopAfterFromJavaProperty(simulator.Stop)
 	SetSimulator(simulator)
 	return simulator
