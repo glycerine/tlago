@@ -98,6 +98,7 @@ type Definition struct {
 	FactKeyword     string
 	Pos             Position
 	Source          Position
+	LHSPos          Position
 }
 
 func (d Definition) SourcePosition() Position {
@@ -105,6 +106,13 @@ func (d Definition) SourcePosition() Position {
 		return d.Source
 	}
 	return d.Pos
+}
+
+func (d Definition) DeclarationPosition() Position {
+	if d.LHSPos.Line > 0 || d.LHSPos.Column > 0 || d.LHSPos.File != "" {
+		return d.LHSPos
+	}
+	return d.SourcePosition()
 }
 
 type NamedExpr struct {

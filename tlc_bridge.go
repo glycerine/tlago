@@ -1273,6 +1273,9 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	}
 	opDef := tlc.NewOpDefNodeForSymbol(sym, params, body)
 	b.withPositionLocation(def.SourcePosition(), opDef)
+	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
+		opDef.SetDeclarationLocation(declaration)
+	}
 	return opDef
 }
 

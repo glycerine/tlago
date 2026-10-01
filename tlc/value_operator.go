@@ -6,11 +6,12 @@ import (
 
 type OpDefNode struct {
 	SemanticNodeBase
-	Symbol      *SymbolNode
-	Name        *UniqueString
-	Params      []*SymbolNode
-	Body        SemanticNode
-	InRecursive bool
+	Symbol              *SymbolNode
+	Name                *UniqueString
+	Params              []*SymbolNode
+	Body                SemanticNode
+	DeclarationLocation SourceLocation
+	InRecursive         bool
 }
 
 func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNode {
@@ -53,6 +54,19 @@ func (n *OpDefNode) SetInRecursive(value bool) {
 
 func (n *OpDefNode) GetInRecursive() bool {
 	return n != nil && n.InRecursive
+}
+
+func (n *OpDefNode) SetDeclarationLocation(location SourceLocation) {
+	if n != nil {
+		n.DeclarationLocation = location
+	}
+}
+
+func (n *OpDefNode) GetDeclarationLocation() SourceLocation {
+	if n == nil {
+		return NullSourceLocation
+	}
+	return n.DeclarationLocation
 }
 
 func (n *OpDefNode) String() string {

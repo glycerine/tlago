@@ -551,6 +551,11 @@ Correctness notes:
 - Action names in error traces and coverage depend on this decomposition.
 - Bounded existential action splitting is observable through trace action names.
 - Some specs have unnamed actions directly inside `Spec == Init /\ [][...]_vars`.
+- Java distinguishes an action declaration from its definition: declaration is
+  the left-hand-side `IdentLHS` tree-node location of the operator definition,
+  while definition is the predicate/body source location. Coverage roots use the
+  declaration; debugger, trace, DOT, and counterexample display use the
+  definition through `Action.getLocation`/`getDefinition`.
 
 Performance notes:
 
@@ -1488,10 +1493,10 @@ Trace reconstruction and aliasing:
 - Action locations render all non-nil bound formal parameters with ordinary
   string conversion, matching Java `Action.getLocation`. Counterexample action
   records still use `Action.getParameters`, which includes only parameter
-  bindings that are TLC `Value`s. The location portion should use the semantic
-  node's Java-shaped source location string (`line b, col c to line e, col d of
-  module M`) when bridged, and fall back to the semantic image only for nodes
-  whose location has not reached TLC yet.
+  bindings that are TLC `Value`s. The location portion uses the action
+  predicate/body source range, not the operator declaration range. The
+  declaration range is retained separately on `OpDefNode` for coverage, matching
+  Java `Action.getDeclaration`.
 - Base `TLCStateInfo.getStateNumber()` returns the stored trace ordinal.
   Java's `AliasTLCStateInfo` overrides it to return `originalState.getLevel()`;
   the Go alias path keeps the retained original state and follows that override.

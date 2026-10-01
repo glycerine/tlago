@@ -355,6 +355,9 @@ func (a *Action) GetDeclarationLocation() SourceLocation {
 	if a == nil || a.OpDef == nil {
 		return NullSourceLocation
 	}
+	if loc := a.OpDef.GetDeclarationLocation(); !loc.IsNull() {
+		return loc
+	}
 	return semanticNodeLocation(a.OpDef)
 }
 

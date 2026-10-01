@@ -1000,6 +1000,7 @@ func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 		return def, nil
 	}
 	lhs := heirs[0]
+	def.LHSPos = sanyNodePosition(lhs)
 	switch lhs.Kind.JavaName() {
 	case "N_IdentLHS":
 		lhsHeirs := lhs.GetHeirs()
@@ -1125,6 +1126,7 @@ func sanyNamedBodyDefinition(node *SanySyntaxNode) (Definition, bool, Diagnostic
 			AssumeProveBody: assumeProveBody,
 			Pos:             sanyNodePosition(heirs[i]),
 			Source:          sanyNodePosition(node),
+			LHSPos:          sanyNodePosition(heirs[i]),
 			PreComments:     sanyLeadingPreComments(node),
 		}, true, diags
 	}
@@ -1148,6 +1150,7 @@ func sanyFunctionDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
 	if id := firstSanyIdentifier(node); id != nil {
 		def.Name = id.Image
 		def.Pos = sanyNodePosition(id)
+		def.LHSPos = sanyNodePosition(node)
 	}
 	fcn := &FunctionExpr{Pos: sanyNodePosition(node)}
 	var diags Diagnostics
