@@ -250,7 +250,7 @@ func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval ti
 	if s.Tool != nil && s.Tool.Periodic != nil {
 		value, err := s.Tool.NoDebug().Eval(s.Tool.Periodic)
 		if err != nil {
-			PrintError(ECTLCAssumptionEvaluationError, err.Error())
+			PrintError(ECTLCReporterDied, err.Error())
 			return false
 		}
 		if boolValue, ok := value.(*BoolValue); ok && !boolValue.Val {
