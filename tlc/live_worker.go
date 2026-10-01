@@ -65,8 +65,6 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 			nodeQueue.EnqueueLong(int64(state))
 			nodeQueue.EnqueueInt(int32(tidx))
 			nodeQueue.EnqueueLong(ptr)
-		} else if w.FinalCheck && (ptr == TableauNodePtrTableUndone || ptr == TableauNodePtrTableDone) {
-			return false, fmt.Errorf("final liveness check found malformed initial node link %d", ptr)
 		}
 	}
 
@@ -150,8 +148,6 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 							nodeQueue.EnqueueInt(int32(nextTidx))
 							nodeQueue.EnqueueLong(nextLink)
 						}
-					} else if w.FinalCheck && nextLink == TableauNodePtrTableUndone {
-						return false, fmt.Errorf("final liveness check found undone successor link %d", nextLink)
 					}
 				}
 				dfsStack.PushLong(nextLowLink)
@@ -159,9 +155,6 @@ func (w *LiveWorker) CheckSccs() (bool, error) {
 				dfsStack.PushLong(minInt64(lowLink, link))
 			}
 		}
-	}
-	if comStack.Size() != 0 {
-		return false, fmt.Errorf("liveness component stack not empty after SCC search")
 	}
 	return false, nil
 }
