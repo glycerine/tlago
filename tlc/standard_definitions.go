@@ -231,12 +231,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("FoldRightDomain", 3, func(args []Value) (Value, error) {
 		return SequencesExtFoldRightDomain(args[0], args[1], args[2])
 	})
-	t.defineStandardMethod("ReplaceFirstSubSeq", 3, func(args []Value) (Value, error) {
-		return SequencesExtReplaceFirstSubSeq(args[0], args[1], args[2])
-	})
-	t.defineStandardMethod("ReplaceAllSubSeqs", 3, func(args []Value) (Value, error) {
-		return SequencesExtReplaceAllSubSeqs(args[0], args[1], args[2])
-	})
+	t.defineStandardEvaluating("ReplaceFirstSubSeq", 3, standardSequencesExtReplaceFirstSubSeq)
+	t.defineStandardEvaluating("ReplaceAllSubSeqs", 3, standardSequencesExtReplaceAllSubSeqs)
 	t.defineStandardMethod("IsPrefix", 2, func(args []Value) (Value, error) {
 		return SequencesExtIsPrefix(args[0], args[1])
 	})
@@ -502,6 +498,47 @@ func standardIOUtilsTextDeserialize(tool *Tool, args []SemanticNode, con *Contex
 		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
 	}
 	return IOUtilsDeserialize(src, options)
+}
+
+func standardSequencesExtReplaceFirstSubSeq(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	replacement, subseq, target, ok, err := standardSequencesExtReplaceArgs(tool, args, con, state, pstate, control, cm)
+	if err != nil || !ok {
+		return nil, err
+	}
+	return SequencesExtReplaceFirstSubSeq(replacement, subseq, target)
+}
+
+func standardSequencesExtReplaceAllSubSeqs(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	replacement, subseq, target, ok, err := standardSequencesExtReplaceArgs(tool, args, con, state, pstate, control, cm)
+	if err != nil || !ok {
+		return nil, err
+	}
+	return SequencesExtReplaceAllSubSeqs(replacement, subseq, target)
+}
+
+func standardSequencesExtReplaceArgs(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, Value, Value, bool, error) {
+	replacement, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+	subseq, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+	target, err := tool.Eval(args[2], con, state, pstate, control, cm)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+	if _, ok := replacement.(*StringValue); !ok {
+		return replacement, subseq, target, false, nil
+	}
+	if _, ok := subseq.(*StringValue); !ok {
+		return replacement, subseq, target, false, nil
+	}
+	if _, ok := target.(*StringValue); !ok {
+		return replacement, subseq, target, false, nil
+	}
+	return replacement, subseq, target, true, nil
 }
 
 func standardTLCGet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
