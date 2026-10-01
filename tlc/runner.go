@@ -38,6 +38,7 @@ type Options struct {
 	Deadlock                  bool
 	NoDeadlock                bool
 	Cleanup                   bool
+	CleanupPrecleanDone       bool
 	NoSeed                    bool
 	Seed                      int64
 	Aril                      int64
@@ -169,7 +170,7 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 
 	t.prepareRandomSeed()
 	t.applyGlobals()
-	if t.Cleanup && t.FromCheckpoint == "" {
+	if t.Cleanup && !t.CleanupPrecleanDone && t.FromCheckpoint == "" {
 		deleteDirLikeJava(t.MetaDir, true)
 	}
 	recorder := &MemoryRecorder{}

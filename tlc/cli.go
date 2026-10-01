@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -66,6 +67,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 	forceGenerateTESpec := false
 	teSpecMonolith := true
 	teSpecOut := ""
+	metaDirRoot := ""
 
 	tlcSuppressedCodes := NewInsMap[int, bool]()
 	tlcMessagesAsErrors := NewInsMap[int, bool]()
@@ -337,8 +339,8 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if index+1 >= len(args) {
 				return opts, tlcCommandLineError("Error: need to specify the metadata directory.")
 			}
-			opts.MetaDir = cleanPathWithSeparator(args[index+1])
-			Globals.MetaDir = opts.MetaDir
+			metaDirRoot = cleanPathWithSeparator(args[index+1])
+			Globals.MetaDir = metaDirRoot
 			index += 2
 		case arg == "-userFile":
 			if index+1 >= len(args) {
@@ -431,9 +433,21 @@ func ParseTLCOptions(args []string) (Options, error) {
 	if opts.ConfigFile == "" {
 		opts.ConfigFile = opts.SpecFile
 	}
-	if opts.MetaDir == "" {
-		opts.MetaDir = "states"
+	opts.StartTime = time.Now()
+	if opts.Cleanup && opts.FromCheckpoint == "" {
+		deleteDirLikeJava(MetaRoot, true)
+		opts.CleanupPrecleanDone = true
 	}
+	specDir := ""
+	if filepath.IsAbs(opts.SpecFile) {
+		specDir = filepath.Dir(opts.SpecFile)
+	}
+	metadir, err := makeTLCMetaDir(opts.StartTime, specDir, metaDirRoot, opts.FromCheckpoint)
+	if err != nil {
+		return opts, tlcCommandLineError(fmt.Sprintf("Error: Could not create metadata directory: %v", err))
+	}
+	opts.MetaDir = metadir
+	Globals.MetaDir = opts.MetaDir
 	if dump.File != "" {
 		writer, err := dump.newStateWriter(opts.MetaDir)
 		if err != nil {
@@ -454,7 +468,6 @@ func ParseTLCOptions(args []string) (Options, error) {
 	opts.GenerateTraceSpecBinary = generateTESpecBinaryTrace
 	opts.GenerateTraceSpecMonolith = teSpecMonolith
 	opts.TraceSpecOutputDir = teSpecOut
-	opts.StartTime = time.Now()
 	return opts, nil
 }
 
@@ -736,6 +749,43 @@ func cleanPathWithSeparator(path string) string {
 		return clean + string(filepath.Separator)
 	}
 	return clean + string(filepath.Separator)
+}
+
+func makeTLCMetaDir(date time.Time, specDir string, metaDirRoot string, fromCheckpoint string) (string, error) {
+	if fromCheckpoint != "" {
+		return fromCheckpoint, nil
+	}
+	root := metaDirRoot
+	if root == "" {
+		root = filepath.Join(specDir, MetaRoot)
+	}
+	name := date.Format(tlcMetaDirDateLayout())
+	path := filepath.Join(root, name)
+	if err := createExclusiveDirectory(path); err == nil {
+		return path, nil
+	} else if !os.IsExist(err) {
+		return "", err
+	}
+	parent := filepath.Dir(path)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return "", err
+	}
+	return os.MkdirTemp(parent, filepath.Base(path))
+}
+
+func tlcMetaDirDateLayout() string {
+	if value, ok := tlcLookupSystemProperty("util.FileUtil.milliseconds"); ok && !javaBooleanProperty(value) {
+		return "06-01-02-15-04-05"
+	}
+	return "06-01-02-15-04-05.000"
+}
+
+func createExclusiveDirectory(path string) error {
+	parent := filepath.Dir(path)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return err
+	}
+	return os.Mkdir(path, 0o755)
 }
 
 func IsTraceExplorationSpecFile(file string) bool {
