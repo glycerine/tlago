@@ -195,6 +195,18 @@ func TestModelCheckerCleanupPreservesFailureArtifactsLikeJava(t *testing.T) {
 		t.Fatalf("failure cleanup removed artifact; Java non-recursive delete preserves it: %v", err)
 	}
 
+	emptyFailureMetadir := t.TempDir()
+	emptyFailure := &ModelChecker{
+		AbstractChecker: &AbstractChecker{Metadir: emptyFailureMetadir},
+		CleanupEnabled:  true,
+	}
+	if err := emptyFailure.Cleanup(false, true); err != nil {
+		t.Fatalf("empty failure Cleanup returned error: %v", err)
+	}
+	if _, err := os.Stat(emptyFailureMetadir); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("empty failure cleanup metadir exists/error = %v, want non-recursive delete like Java", err)
+	}
+
 	successMetadir := t.TempDir()
 	successArtifact := filepath.Join(successMetadir, "trace.chkpt")
 	if err := os.WriteFile(successArtifact, []byte("remove me"), 0o644); err != nil {

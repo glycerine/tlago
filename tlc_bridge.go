@@ -102,6 +102,14 @@ var bridgeStandardModuleMembers = map[string][]string{
 	"SVG": {
 		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
 	},
+	"SequencesExt": {
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix",
+		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
+		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
+		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
+		"SelectLastInSubSeq", "RemoveFirst", "RemoveFirstMatch",
+		"Suffixes", "AllSubSeqs",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -190,6 +198,14 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	),
 	"SVG": setOf(
 		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
+	),
+	"SequencesExt": setOf(
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix",
+		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
+		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
+		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
+		"SelectLastInSubSeq", "RemoveFirst", "RemoveFirstMatch",
+		"Suffixes", "AllSubSeqs",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",

@@ -205,6 +205,60 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("PointOnLine", 3, func(args []Value) (Value, error) {
 		return SVGPointOnLine(args[0], args[1], args[2])
 	})
+	t.defineStandardMethod("SetToSeq", 1, func(args []Value) (Value, error) { return SequencesExtSetToSeq(args[0]) })
+	t.defineStandardMethod("SetToSeqs", 1, func(args []Value) (Value, error) { return SequencesExtSetToSeqs(args[0]) })
+	t.defineStandardMethod("Contains", 2, func(args []Value) (Value, error) {
+		return SequencesExtContains(args[0], args[1])
+	})
+	t.defineStandardMethod("LongestCommonPrefix", 1, func(args []Value) (Value, error) {
+		return SequencesExtLongestCommonPrefix(args[0])
+	})
+	t.defineStandardMethod("FoldSeq", 3, func(args []Value) (Value, error) {
+		return SequencesExtFoldSeq(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("FoldLeft", 3, func(args []Value) (Value, error) {
+		return SequencesExtFoldLeft(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("FoldRight", 3, func(args []Value) (Value, error) {
+		return SequencesExtFoldRight(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("FoldLeftDomain", 3, func(args []Value) (Value, error) {
+		return SequencesExtFoldLeftDomain(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("FoldRightDomain", 3, func(args []Value) (Value, error) {
+		return SequencesExtFoldRightDomain(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("ReplaceFirstSubSeq", 3, func(args []Value) (Value, error) {
+		return SequencesExtReplaceFirstSubSeq(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("ReplaceAllSubSeqs", 3, func(args []Value) (Value, error) {
+		return SequencesExtReplaceAllSubSeqs(args[0], args[1], args[2])
+	})
+	t.defineStandardMethod("IsPrefix", 2, func(args []Value) (Value, error) {
+		return SequencesExtIsPrefix(args[0], args[1])
+	})
+	t.defineStandardMethod("SelectInSeq", 2, func(args []Value) (Value, error) {
+		return SequencesExtSelectInSeq(args[0], args[1])
+	})
+	t.defineStandardMethod("SelectInSubSeq", 4, func(args []Value) (Value, error) {
+		return SequencesExtSelectInSubSeq(args[0], args[1], args[2], args[3])
+	})
+	t.defineStandardMethod("SelectLastInSeq", 2, func(args []Value) (Value, error) {
+		return SequencesExtSelectLastInSeq(args[0], args[1])
+	})
+	t.defineStandardMethod("SelectLastInSubSeq", 4, func(args []Value) (Value, error) {
+		return SequencesExtSelectLastInSubSeq(args[0], args[1], args[2], args[3])
+	})
+	t.defineStandardMethod("RemoveFirst", 2, func(args []Value) (Value, error) {
+		return SequencesExtRemoveFirst(args[0], args[1])
+	})
+	t.defineStandardMethod("RemoveFirstMatch", 2, func(args []Value) (Value, error) {
+		return SequencesExtRemoveFirstMatch(args[0], args[1])
+	})
+	t.defineStandardMethod("Suffixes", 1, func(args []Value) (Value, error) { return SequencesExtSuffixes(args[0]) })
+	t.defineStandardMethod("AllSubSeqs", 1, func(args []Value) (Value, error) {
+		return SequencesExtAllSubSeqs(args[0])
+	})
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)

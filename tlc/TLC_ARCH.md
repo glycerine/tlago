@@ -1273,7 +1273,9 @@ Port guidance:
   trace/checkpoint artifacts is preserved for debugging. When cleanup is called
   with `success=true`, Go may recursively remove the metadir. Do not copy
   Java's likely early-return cleanup leak, but do preserve this artifact
-  retention rule.
+  retention rule. The unit test `TestModelCheckerCleanupPreservesFailureArtifactsLikeJava`
+  is intentionally small and high-signal because this behavior is easy to
+  "simplify" incorrectly.
 - Preserve when traces are written relative to checks.
 - Preserve generated-state counters versus distinct-state counters.
 - Preserve final liveness check behavior even when no safety error occurs.
@@ -2235,6 +2237,16 @@ Go mapping:
   floating division/truncation formula. `NodesOfDirectedMultiGraph` remains on
   the TLA fallback until the JGraphT/JUNG layout algorithms can be mirrored
   faithfully.
+- CommunityModules `SequencesExt` mixes ordinary Java
+  `@TLAPlusOperator` overrides with two string-only `@Evaluation` shortcuts.
+  Go ports the native set/sequence conversion, longest-common-prefix, fold,
+  search, remove, suffix, and all-subsequence helpers directly. Java returns
+  `null` from `ReplaceFirstSubSeq`/`ReplaceAllSubSeqs` for non-string values so
+  the pure TLA definition handles tuples; until the Go evaluator grows that
+  exact `@Evaluation` fallback path, the Go helper must preserve equivalent
+  tuple behavior itself. Keep the Java quirks: `SelectInSubSeq` and
+  `SelectLastInSubSeq` return indices in the original sequence range, and
+  `SelectInSeq` reports the non-boolean predicate position as `"third"`.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action
