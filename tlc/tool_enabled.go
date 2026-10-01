@@ -213,7 +213,7 @@ func (t *Tool) EnabledAppl(pred *OpApplNode, acts *ActionItemList, c *Context, s
 func (t *Tool) enabledContinueIfBool(pred SemanticNode, value Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "in computing ENABLED, expected boolean but found %s in %s", value, SemanticString(pred))
+		return nil, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "ENABLED", "boolean", value.String(), SemanticString(pred))
 	}
 	if bval.Val {
 		return t.EnabledFromActionList(acts, s0, s1, cm)

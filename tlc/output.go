@@ -151,6 +151,9 @@ const (
 	ECTLCCantHandleConjunct                              = 2239
 	ECTLCCantHandleTooManyNextStateRels                  = 2240
 	ECTLCConfigPropertyNotCorrectlyDefined               = 2241
+	ECTLCExpectedExpression                              = 2246
+	ECTLCExpectedExpressionInComputing                   = 2247
+	ECTLCExpectedExpressionInComputing2                  = 2248
 	ECTLCLiveFormulaTautology                            = 2253
 	ECTLCLiveFormulaStateLevel                           = 2255
 	ECTLCConfigNoSpecButProperty                         = 2257
@@ -865,6 +868,18 @@ func formatMessage(code int, params []string) string {
 	case ECTLCExpectedValue:
 		if len(params) >= 2 {
 			return fmt.Sprintf("TLC expected a %s value, but did not find one. %s", params[0], params[1])
+		}
+	case ECTLCExpectedExpression:
+		if len(params) >= 2 {
+			return fmt.Sprintf("TLC expected a %s expression, but did not find one.\n%s", params[0], params[1])
+		}
+	case ECTLCExpectedExpressionInComputing:
+		if len(params) >= 4 {
+			return fmt.Sprintf("In computing %s, TLC expected a %s expression,\nbut instead found %s.\n%s", params[0], params[1], params[2], params[3])
+		}
+	case ECTLCExpectedExpressionInComputing2:
+		if len(params) >= 3 {
+			return fmt.Sprintf("In computing %s, TLC expected a %s expression,\nbut didn't find one.\n%s", params[0], params[1], params[2])
 		}
 	case ECTLCCheckingTemporalProps:
 		if len(params) >= 3 {

@@ -259,7 +259,7 @@ func (t *Tool) GetInitStatesAppl(init *OpApplNode, acts *ActionItemList, c *Cont
 func (t *Tool) continueInitIfBool(init SemanticNode, value Value, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return newTLCError(ECGeneral, "in computing initial states, expected boolean but found %s in %s", value, SemanticString(init))
+		return newTLCErrorCode(ECTLCExpectedExpressionInComputing, "initial states", "boolean", value.String(), SemanticString(init))
 	}
 	if bval.Val {
 		return t.GetInitStatesFromActionList(acts, ps, states, cm)
@@ -722,7 +722,7 @@ func (t *Tool) initFcnApply(init *OpApplNode, acts *ActionItemList, c *Context, 
 func (t *Tool) continueNextIfBool(action *Action, pred SemanticNode, value Value, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return s1, newTLCError(ECGeneral, "in computing next states, expected boolean but found %s in %s", value, SemanticString(pred))
+		return s1, newTLCErrorCode(ECTLCExpectedExpressionInComputing, "next states", "boolean", value.String(), SemanticString(pred))
 	}
 	if bval.Val {
 		return t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)

@@ -21,6 +21,7 @@
 - Spec/property liveness warning parity: temporal actions reached through `SPECIFICATION` decomposition are tagged when they originate from a configured `PROPERTY`, enabling Java's `TLC_LIVE_FORMULA_AND_FAIRNESS_TAUTOLOGY` warning for the simple `S /\ L => L` tautology shape. Locations still fall back to body text when parser source spans are unavailable.
 - SpecProcessor lifecycle parity: `NewSpecProcessor` no longer runs config processing before the parser bridge has populated variables/definitions. Config processing now happens in the Java-shaped `ApplyToTool` phase, avoiding duplicate warning side effects and premature empty-definition classification.
 - Tool predicate validation now reports Java's `TLC_EXPECTED_VALUE` text for non-boolean predicate results. Assumption and postcondition checks still wrap that inner message with their Java evaluation-error codes.
+- Direct init/next/ENABLED predicate continuations now report Java's `TLC_EXPECTED_EXPRESSION_IN_COMPUTING` diagnostics for non-boolean results. The shared `evalBool` helper still intentionally needs a separate context-specific pass because Java uses different hand-written diagnostics for IF/CASE guards and a few all-assigned action-list paths.
 - No-code audit note: next-state `CASE` under probabilistic evaluation intentionally fails with the same explicit Java message; do not treat the Go `not implemented for CASE yet` string as an unported feature. Stuttering counterexample warning messages and the no-SPEC/no-fairness split were rechecked and already match Java's liveness warning path.
 - No-code audit note: Java `AbstractChecker.runTLC` worker-error precedence was rechecked. Normal worker next-state/evaluation/liveness failures are recorded through the checker error state and return the stored code unless call-stack replay is requested. Go matches that path; its extra join-error return remains a Go-library guard for structural misuse before an error code can be recorded.
 - No-code audit note: `TLCGet("all")` and `TLCGet("all:named")` preserve Java's worker-0 iteration quirk for local register aggregation. Do not "fix" this to a union over all workers without intentionally diverging from Java.
@@ -377,6 +378,7 @@
   - SPEC/PROPERTY liveness-origin tagging now drives Java's fairness-tautology warning.
   - `NewSpecProcessor` was made snapshot-only; `ApplyToTool` owns config processing like the Java construction phase.
   - Predicate validation diagnostics now use Java's `TLC_EXPECTED_VALUE`, and the probabilistic-CASE/stuttering-warning paths were re-audited with no code change needed.
+  - Direct init/next/ENABLED predicate continuations now use Java's `TLC_EXPECTED_EXPRESSION_IN_COMPUTING` code and message text for non-boolean results; guard-specific `evalBool` diagnostics remain a separate mechanical pass.
   - Worker result precedence and worker-local register aggregation were re-audited with no code changes needed.
 - Last verified command:
   - `go test ./...`
