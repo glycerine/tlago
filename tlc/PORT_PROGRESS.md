@@ -231,16 +231,13 @@
 
 ## Current Position
 
-- Latest committed chunks before the `CheckImpl` parity checkpoint:
-  - `6773c66 Wire liveness DOT writer paths`
-  - `7af6643 Port in-memory LiveCheck1 core`
-  - `e7a0e89 Use LiveCheck1 for simulation liveness`
-  - `1570bae Mirror exploration halt command`
-- Current checkpoint:
-  - `CheckImpl`, `CheckImplFile`, worker trace checkpoint commit behavior, core TLC reporting/coverage message formatting, runner startup/finish banners, standard module override surface audit, `TLCSet("pause")`, management dirty disk-FP statistics, `StateVec` growth semantics, distributed master trace writes, distributed block selector properties, distributed worker registration, distributed server lifecycle, distributed reporting messages, internal value/UniqueString checkpoint serialization, and context enumeration arity have just been tightened against Java.
+- Latest audit focus:
+  - `Tool.enabled`, `Tool.getNextStates`, `Tool.processUnchanged`, and `Tool.evalAppl` have just been re-audited against Java control flow.
+  - Deferred value objects now preserve or deliberately drop cost models according to the Java constructors for `LazyValue`, `FcnLambdaValue`, `OpLambdaValue`, and `SetPredValue`.
+  - DFID no longer rejects liveness outright; it follows Java's tautology, periodic-check, final-check, and depth-error-summary behavior.
 - Last verified command:
-  - `go test ./tlc`
+  - `go test ./...`
 - Immediate next steps:
-  1. Continue breadth-first audit into remaining checkpoint/distributed/debugger surfaces and any disk-backed liveness final-SCC details.
-  2. Then continue into remaining model-checker/worker parity gaps discovered from the Java source.
+  1. Continue breadth-first audit from the Java `Tool`/value layer into remaining checker, liveness, simulator, and module-function parity gaps.
+  2. Re-check model-checker/DFID cleanup, final reporting, and error-precedence paths against Java's `finally` blocks.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
