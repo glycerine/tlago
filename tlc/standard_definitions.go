@@ -205,6 +205,9 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 	t.defineStandardMethod("NodeOfRingNetwork", 5, func(args []Value) (Value, error) {
 		return SVGNodeOfRingNetwork(args[0], args[1], args[2], args[3], args[4])
 	})
+	t.defineStandardMethod("NodesOfDirectedMultiGraph", 3, func(args []Value) (Value, error) {
+		return SVGNodesOfDirectedMultiGraph(args[0], args[1], args[2])
+	})
 	t.defineStandardMethod("PointOnLine", 3, func(args []Value) (Value, error) {
 		return SVGPointOnLine(args[0], args[1], args[2])
 	})

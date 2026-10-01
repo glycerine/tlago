@@ -104,7 +104,7 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"CausalOrder",
 	},
 	"SVG": {
-		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
+		"SVGElemToString", "NodeOfRingNetwork", "NodesOfDirectedMultiGraph", "PointOnLine",
 	},
 	"SequencesExt": {
 		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix", "Cons",
@@ -204,7 +204,7 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 		"CausalOrder",
 	),
 	"SVG": setOf(
-		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
+		"SVGElemToString", "NodeOfRingNetwork", "NodesOfDirectedMultiGraph", "PointOnLine",
 	),
 	"SequencesExt": setOf(
 		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix", "Cons",
