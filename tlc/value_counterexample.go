@@ -44,7 +44,10 @@ func NewCounterExample(trace []*TLCStateInfo, action *Action, loopOrdinal int, i
 		}
 		stateNodes = append(stateNodes, node)
 	}
-	if loopOrdinal > 0 && loopIdx >= 0 && loopIdx < len(stateNodes) && len(stateNodes) != 0 {
+	if loopOrdinal > 0 {
+		if loopIdx < 0 || loopIdx >= len(stateNodes) {
+			panic(newTLCError(ECGeneral, "counterexample loop ordinal %d outside trace length %d", loopOrdinal, len(stateNodes)))
+		}
 		edge := NewTupleValue([]Value{stateNodes[len(stateNodes)-1], action.ToRecordValue(), stateNodes[loopIdx]})
 		actionEdges = append(actionEdges, edge)
 	}

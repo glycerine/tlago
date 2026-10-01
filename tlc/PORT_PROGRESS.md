@@ -676,6 +676,8 @@
 - Liveness lasso formula evaluation now mirrors Java's per-node dispatch: Boolean junctions and negations recurse through `EvalOnLasso`, state predicates evaluate with `EmptyState` as successor like `LNState.evalOnLasso`, and action predicates evaluate against current plus next lasso state like `LNAction`.
 - Error-time postcondition counterexample aliasing now uses Java `Worker.doPostCondition`'s pairwise alias overload instead of the prefix-aware printed-trace alias path. This keeps `TLCExt!Trace` unavailable to safety postcondition aliases, matching Java's overload split.
 - Simulator behavior-trace aliasing now follows Java `Simulator.printBehavior`: states are aliased pairwise with their successor and do not receive a `TLCExt!Trace` prefix binding. Checker `TLCTrace.printTrace` remains the prefix-aware printed-trace path.
+- No-code audit note: liveness aliasing overloads were rechecked after the checker/simulator alias split. `LiveWorker` keeps Java's prefix-aware alias calls while reconstructing SCC lassos, and safety-like liveness plus legacy `LiveCheck1` keep Java's pairwise alias calls for finite-prefix counterexamples.
+- `CounterExample` lasso construction now fails loudly for positive loop ordinals outside the trace, matching Java's direct `states.get(loopIdx)` failure shape instead of silently omitting the closing edge.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./tlc`
 - Immediate next steps:
