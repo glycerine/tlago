@@ -792,9 +792,9 @@ func (t *Tool) nextActionComposition(action *Action, args []SemanticNode, acts *
 		return s1, newTLCError(ECGeneral, "malformed action composition")
 	}
 	tState := s0.CopyWith(s1)
-	intermediate, res, err := t.actionCompositionIntermediateStates(action, args[0], acts, c, s0, tState, cm)
+	intermediate, _, err := t.actionCompositionIntermediateStates(action, args[0], acts, c, s0, tState, cm)
 	if err != nil {
-		return res, err
+		return s1, err
 	}
 	nss.IncrementStatesGenerated(int64(intermediate.Size()))
 	for i := 0; i < intermediate.Size(); i++ {
@@ -811,10 +811,10 @@ func (t *Tool) nextActionComposition(action *Action, args []SemanticNode, acts *
 			ShouldHaltFunc: nss.ShouldHalt,
 		}
 		if _, err := t.GetNextStatesForPredicate(action, args[1], acts, c, mid, u, wrapper, cm); err != nil {
-			return res, err
+			return s1, err
 		}
 	}
-	return res, nil
+	return s1, nil
 }
 
 func (t *Tool) nextFcnApply(action *Action, pred *OpApplNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
