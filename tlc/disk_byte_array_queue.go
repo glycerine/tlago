@@ -108,14 +108,13 @@ func (q *DiskByteArrayQueue) SEnqueueVec(states *StateVec) {
 	if states == nil || states.Size() == 0 {
 		return
 	}
-	raw := make([][]byte, 0, states.Size())
+	raw := make([][]byte, states.Size())
+	n := states.Size()
 	for i := 0; i < states.Size(); i++ {
 		if state := states.At(i); state != nil {
-			raw = append(raw, mustStateToBytes(state))
+			raw[n-1] = mustStateToBytes(state)
+			n--
 		}
-	}
-	for i, j := 0, len(raw)-1; i < j; i, j = i+1, j-1 {
-		raw[i], raw[j] = raw[j], raw[i]
 	}
 	q.mu.Lock()
 	defer q.mu.Unlock()

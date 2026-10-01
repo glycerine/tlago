@@ -81,6 +81,46 @@ func TestMemStateQueueSEnqueueVecSkipsNilStatesLikeJavaStateVecPath(t *testing.T
 	}
 }
 
+func TestDiskByteArrayQueueSEnqueueVecUsesJavaRawSlotLayout(t *testing.T) {
+	initTLCCheckerTest(t)
+	q := &DiskByteArrayQueue{
+		deqBuf:   make([][]byte, 4),
+		enqBuf:   make([][]byte, 4),
+		deqIndex: 4,
+	}
+	q.cond = sync.NewCond(&q.mu)
+
+	first := checkerTestState(1)
+	second := checkerTestState(2)
+	first.UID = 1
+	second.UID = 2
+	q.SEnqueueVec(NewStateVecFrom([]*TLCStateMut{first, nil, second}))
+
+	if q.len != 3 || q.enqIndex != 3 {
+		t.Fatalf("raw queue len/enqIndex = %d/%d, want 3/3", q.len, q.enqIndex)
+	}
+	if q.enqBuf[0] != nil {
+		t.Fatalf("raw slot 0 = %v, want Java nil hole for skipped StateVec element", q.enqBuf[0])
+	}
+	if got := stateTestXValue(mustBytesToState(q.enqBuf[1])); got != 2 {
+		t.Fatalf("raw slot 1 decoded x = %d, want second StateVec state", got)
+	}
+	if got := stateTestXValue(mustBytesToState(q.enqBuf[2])); got != 1 {
+		t.Fatalf("raw slot 2 decoded x = %d, want first StateVec state", got)
+	}
+}
+
+func stateTestXValue(state *TLCStateMut) int32 {
+	if state == nil {
+		return 0
+	}
+	value, _ := state.Lookup(UniqueStringOf("x")).(*IntValue)
+	if value == nil {
+		return 0
+	}
+	return value.Val
+}
+
 func TestDiskQueueDeleteUsesJavaNonRecursiveDirectoryDelete(t *testing.T) {
 	deleteStateQueue := func(dir string) error {
 		q := &DiskStateQueue{diskdir: dir}
