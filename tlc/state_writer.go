@@ -118,6 +118,7 @@ type DotStateWriterOptions struct {
 	Constrained  bool
 	Stuttering   bool
 	Strict       bool
+	StrictPrefix bool
 }
 
 func NewDotStateWriter(fname string, opts DotStateWriterOptions) (*StateWriter, error) {
@@ -136,6 +137,8 @@ func NewDotStateWriter(fname string, opts DotStateWriterOptions) (*StateWriter, 
 	w.colorGen = 1
 	if opts.Strict {
 		w.strict = make(map[uint64]struct{})
+	}
+	if opts.Strict || opts.StrictPrefix {
 		_, _ = w.writer.WriteString("strict ")
 	}
 	_, _ = w.writer.WriteString("digraph DiskGraph {\n")

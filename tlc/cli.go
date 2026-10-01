@@ -720,6 +720,7 @@ func (d tlcDumpOption) newStateWriter(metadir string) (*StateWriter, error) {
 			Constrained:  d.Constrained,
 			Stuttering:   d.Stuttering,
 			Strict:       d.Strict,
+			StrictPrefix: true,
 		})
 	}
 	return NewStateDumpWriter(file)

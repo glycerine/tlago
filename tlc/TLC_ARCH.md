@@ -202,6 +202,11 @@ Port guidance:
   `Visualization.STUTTERING` hint; an ordinary self-loop is still an ordinary
   edge. Keep those decisions on the concrete `StateWriter` rather than adding
   writer interfaces.
+- Java's CLI DOT writer constructor always writes a `strict ` graph header
+  prefix, even when the parsed `strict` sub-option is false; the sub-option only
+  controls the in-memory duplicate-edge suppression set. Go models this with a
+  separate `StrictPrefix` option for the CLI path. The zero-argument custom
+  `DotStateWriter` and liveness DOT writer use Java's prefix-free constructors.
 - DOT transition colors are assigned by action name, but transition labels use
   `Action.getInvocationSignature()`, so parameterized action instances print
   their concrete values on edges.
