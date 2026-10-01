@@ -638,6 +638,7 @@
 - Disk graph cache and node loading were rechecked against Java `AbstractDiskGraph`: cache indexing uses the Java low-16-bit `(stateFP + tidx)` shape, cache replacement only fills empty slots, pointer-table rebuild preserves current file position, and disk node reads restore the node file pointer after reading. The negative-file-pointer guard now uses Java's diagnostic text.
 - `LiveCheck.check0` now restores every checker disk graph's node-pointer table after a successful non-final liveness check, matching Java's post-worker `makeNodePtrTbl()` loop. This is load-bearing because SCC search overwrites pointer-table file locations with Tarjan link numbers, and later model-checking insertions still need `getPtr`/duplicate checks to see real disk pointers.
 - Simulation-mode `LiveCheck.CheckTrace` now calls Java's direct `check0(tool, true)` path instead of routing through `FinalCheck`, so trace liveness checking is not skipped by the `lnCheck == "off"` final-check gate. Clean traces still reset the liveness graphs afterward; violations/errors leave before reset like Java.
+- NoOp liveness statistics now mirror Java `NoOpLiveCheck`: `GetOutDegreeStatistics` returns nil/null, while in-degree and out-degree calculation helpers return the checker-owned dummy bucket statistics rather than the caller-supplied accumulator.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:

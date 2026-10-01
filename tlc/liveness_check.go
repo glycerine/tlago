@@ -1436,7 +1436,10 @@ func (lc *LiveCheck) FlushWritesToDiskFiles() error {
 }
 
 func (lc *LiveCheck) GetOutDegreeStatistics() any {
-	if lc == nil || lc.OutDegreeStats == nil {
+	if lc == nil || lc.NoOp {
+		return nil
+	}
+	if lc.OutDegreeStats == nil {
 		return NewDummyBucketStatistics()
 	}
 	return lc.OutDegreeStats
@@ -1446,8 +1449,11 @@ func (lc *LiveCheck) CalculateInDegreeDiskGraphs(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex in-degree")
 	}
-	if lc == nil || lc.NoOp {
+	if lc == nil {
 		return stats, nil
+	}
+	if lc.NoOp {
+		return lc.OutDegreeStats, nil
 	}
 	for _, checker := range lc.Checkers {
 		var err error
@@ -1467,8 +1473,11 @@ func (lc *LiveCheck) CalculateOutDegreeDiskGraphs(stats any) (any, error) {
 	if stats == nil {
 		stats = NewBucketStatistics("Histogram vertex out-degree")
 	}
-	if lc == nil || lc.NoOp {
+	if lc == nil {
 		return stats, nil
+	}
+	if lc.NoOp {
+		return lc.OutDegreeStats, nil
 	}
 	for _, checker := range lc.Checkers {
 		var err error
