@@ -248,6 +248,48 @@ func (s *OffHeapDiskFPSet) RecoverFP(fp uint64) error {
 	}
 }
 
+func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.tblCnt <= 0 {
+		return uint64(1<<63 - 1)
+	}
+	s.prepareOffHeapTableLocked()
+	numThreads := NumWorkers()
+	if numThreads < 1 {
+		numThreads = 1
+	}
+	partitionLen := s.array.Size() / int64(numThreads)
+	distance := int64(1<<63 - 1)
+	for id := 0; id < numThreads; id++ {
+		isLast := id == numThreads-1
+		start := int64(id) * partitionLen
+		end := start + partitionLen
+		if isLast {
+			end = s.array.Size() - 1
+		}
+		end++
+		canWrap := !isLast || id == 0
+		itr := newOffHeapIterator(s.array, s.tblCnt, start, s.indexer, canWrap)
+		x, ok := itr.next()
+		if !ok {
+			continue
+		}
+		for {
+			y, ok := itr.nextUntil(end)
+			if !ok {
+				break
+			}
+			d := y - x
+			if d < distance {
+				distance = d
+			}
+			x = y
+		}
+	}
+	return uint64(distance)
+}
+
 func (s *OffHeapDiskFPSet) Sizeof() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -309,6 +351,36 @@ func (s *OffHeapDiskFPSet) memInsert0(fp0 uint64, start int) (seen bool, inserte
 		}
 	}
 	return false, false
+}
+
+func (s *OffHeapDiskFPSet) prepareOffHeapTableLocked() {
+	if s == nil || s.array == nil || s.array.Size() == 0 {
+		return
+	}
+	LongArraysSortRange(s.array, 0, s.array.Size()-1+int64(s.probeLimit), s.offHeapLongComparator)
+}
+
+func (s *OffHeapDiskFPSet) offHeapLongComparator(fpA int64, posA int64, fpB int64, posB int64) int {
+	if fpA <= 0 || fpB <= 0 {
+		return 0
+	}
+	wrappedA := s.indexer.GetIdx(uint64(fpA)) > posA
+	wrappedB := s.indexer.GetIdx(uint64(fpB)) > posB
+	if wrappedA == wrappedB && posA > posB {
+		if fpA < fpB {
+			return -1
+		}
+		return 1
+	}
+	if wrappedA != wrappedB {
+		if posA < posB && fpA < fpB {
+			return -1
+		}
+		if posA > posB && fpA > fpB {
+			return -1
+		}
+	}
+	return 0
 }
 
 func (s *OffHeapDiskFPSet) IncWorkers(num int) {
@@ -488,4 +560,55 @@ func (s *OffHeapDiskFPSet) calculateOffHeapIndexLen(buffLen int64) int {
 		indexLen--
 	}
 	return indexLen
+}
+
+type offHeapIterator struct {
+	elements     int64
+	array        *LongArray
+	indexer      *OffHeapIndexer
+	canWrap      bool
+	pos          int64
+	elementsRead int64
+}
+
+func newOffHeapIterator(array *LongArray, elements int64, start int64, indexer *OffHeapIndexer, canWrap bool) *offHeapIterator {
+	return &offHeapIterator{array: array, elements: elements, pos: start, indexer: indexer, canWrap: canWrap}
+}
+
+func (i *offHeapIterator) next() (int64, bool) {
+	return i.next0(1<<63 - 1)
+}
+
+func (i *offHeapIterator) nextUntil(maxPos int64) (int64, bool) {
+	if i.pos >= maxPos {
+		return 0, false
+	}
+	return i.next0(maxPos)
+}
+
+func (i *offHeapIterator) next0(maxPos int64) (int64, bool) {
+	if i == nil || i.array == nil || i.array.Size() == 0 {
+		return 0, false
+	}
+	for i.hasNext() && i.pos < maxPos {
+		position := i.pos % i.array.Size()
+		elem := i.array.Get(position)
+		if elem <= 0 {
+			i.pos++
+			continue
+		}
+		baseIdx := i.indexer.GetIdx(uint64(elem))
+		if baseIdx > i.pos {
+			i.pos++
+			continue
+		}
+		i.pos++
+		i.elementsRead++
+		return elem, true
+	}
+	return 0, false
+}
+
+func (i *offHeapIterator) hasNext() bool {
+	return i != nil && i.elementsRead < i.elements
 }
