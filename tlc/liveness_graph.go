@@ -865,7 +865,6 @@ func (n *GraphNode) GetTNode(tableau *TBGraph) *TBGraphNode {
 }
 
 func (n *GraphNode) Write(out *ValueOutputStream) error {
-	n.Realign()
 	if err := out.WriteNat(int32(len(n.Nodes))); err != nil {
 		return err
 	}
