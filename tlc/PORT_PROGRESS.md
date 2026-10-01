@@ -18,6 +18,7 @@
 - SpecProcessor config decomposition has been re-audited against Java `processConfigSpec`/`processConfigProps`: parameterized inlining uses non-lazy `getOpContext`, recursive operator defs are skipped, temporal quantifiers and duplicate next-state relations are config errors, empty universal-property enumerators report `TLC_LIVE_FORMULA_TAUTOLOGY`, and action-level `PROPERTY` formulas report Java's specialized property errors instead of becoming implied actions. The remaining source-location gap is structural: most Go semantic nodes still do not carry parser locations, so those property diagnostics fall back to `Unknown location` until the parser bridge carries locations through.
 - Config/API parity note: Java `Spec.hasAlias()` is based on whether the config names an alias, not whether alias resolution has already produced a semantic node. Go `Tool.HasAlias()` now follows that name-based rule. Config `PROPERTY` entries that name state-level formulas also emit Java's `TLC_LIVE_FORMULA_STATE_LEVEL` warning before being checked as initial-state properties.
 - Invariant config warnings now mirror Java's constant-level branch: a constant `TRUE` invariant is accepted with `TLC_INVARIANT_CONSTANT_LEVEL`, while non-state invariants use the Java `TLC_INVARIANT_VIOLATED_LEVEL` text including the optional level-parameter warning.
+- Spec/property liveness warning parity: temporal actions reached through `SPECIFICATION` decomposition are tagged when they originate from a configured `PROPERTY`, enabling Java's `TLC_LIVE_FORMULA_AND_FAIRNESS_TAUTOLOGY` warning for the simple `S /\ L => L` tautology shape. Locations still fall back to body text when parser source spans are unavailable.
 - Runner FP-set configuration must be wired into the checker, not just printed in the startup banner. Java passes `FPSetConfiguration` into `ModelChecker`; Go runner now constructs the configured FP set unless a caller injected an explicit `FPSet`.
 - Runner FP index must initialize the global fingerprint polynomial before checking/simulation, like Java `FP64.Init(fpIndex)`, not merely appear in the startup banner. See `TestTLCRunnerAppliesFPIndexLikeJava`.
 - Runner process failures must pass through a top-level Java `TLC.process()`-style catch before the finished banner. Checker/simulator panics should become TLC result codes/messages instead of bypassing `TLC_FINISHED`.
@@ -368,6 +369,7 @@
   - `SpecProcessor` config decomposition was re-audited against Java `processConfigSpec`/`processConfigProps`; Go now rejects the same duplicate next/action-level property/temporal-quantifier/tautology cases in this pass.
   - Config API parity was tightened for `Tool.HasAlias()` and state-level `PROPERTY` warnings.
   - Invariant config warning/error output now covers Java's constant-level and non-state predicate diagnostics.
+  - SPEC/PROPERTY liveness-origin tagging now drives Java's fairness-tautology warning.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:

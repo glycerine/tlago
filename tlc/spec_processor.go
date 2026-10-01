@@ -8,6 +8,7 @@ import (
 )
 
 const specProcessorVetoedProperty = "tlc2.tool.impl.SpecProcessor.vetoed"
+const specProcessorPropertyAuxKey = "tlc.specProcessor.property"
 
 type Defns struct {
 	defnIdx int
@@ -318,6 +319,7 @@ func (p *SpecProcessor) ProcessConfig() {
 	p.processConfigProperties()
 	p.processConfigPostConditions()
 	p.processMissingInitNextConfig()
+	p.processSpecPropertyTautologyWarning()
 	p.ModelConstraints = p.constraintNodesFromConfigNames(p.Config.GetConstraints(), "constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
 	p.ActionConstraints = p.constraintNodesFromConfigNames(p.Config.GetActionConstraints(), "action constraint", ECTLCConfigIDRequiresNoArg, ECTLCConfigSpecifiedNotDefined, ECTLCConfigIDHasValue)
 	p.RLReward = p.optionalOpBodyFromConfigName(p.Config.GetRLReward(), "rlreward", p.preConstantDefinitions())
@@ -909,6 +911,53 @@ func printSymmetrySetTooSmallWarning(offenders []string) {
 	PrintWarning(ECTLCSymmetrySetTooSmall, plurality, strings.Join(offenders, ", and "), toHave, antiPlurality)
 }
 
+func (p *SpecProcessor) attachSpecPropertyOrigin(action *Action, stack []SemanticNode) {
+	if p == nil || p.Config == nil || action == nil || len(stack) == 0 {
+		return
+	}
+	properties := p.Config.GetProperties()
+	if len(properties) == 0 {
+		return
+	}
+	for _, node := range stack {
+		name := SemanticString(node)
+		for _, property := range properties {
+			if name == property {
+				action.GetAuxiliary()[specProcessorPropertyAuxKey] = node
+				return
+			}
+		}
+	}
+}
+
+func (p *SpecProcessor) processSpecPropertyTautologyWarning() {
+	if p == nil || p.Config == nil || p.SpecificationName == "" || len(p.Config.GetProperties()) != 1 || len(p.Temporals) == 0 {
+		return
+	}
+	for _, action := range p.Temporals {
+		if action == nil || action.Auxiliary == nil || action.Auxiliary[specProcessorPropertyAuxKey] == nil {
+			return
+		}
+	}
+	liveName := p.Config.GetProperties()[0]
+	PrintWarning(ECTLCLiveFormulaAndFairnessTautology, liveName, p.opDefLocationString(liveName), p.SpecificationName, p.opDefLocationString(p.SpecificationName))
+}
+
+func (p *SpecProcessor) opDefLocationString(name string) string {
+	if op, ok := p.defn(name).(*OpDefNode); ok && op != nil {
+		if loc := semanticNodeLocationString(op); loc != NullSourceLocation.String() {
+			return loc
+		}
+		if op.Body != nil {
+			if loc := semanticNodeLocationString(op.Body); loc != NullSourceLocation.String() {
+				return loc
+			}
+			return SemanticString(op.Body)
+		}
+	}
+	return name
+}
+
 func (p *SpecProcessor) processMissingInitNextConfig() {
 	if p == nil {
 		return
@@ -966,6 +1015,7 @@ func (p *SpecProcessor) processConfigSpec(tool *Tool, pred SemanticNode, c *Cont
 	}
 	if level == TLCLevelTemporal {
 		action := NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred))
+		p.attachSpecPropertyOrigin(action, stack)
 		p.Temporals = append(p.Temporals, action)
 		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
 		return
