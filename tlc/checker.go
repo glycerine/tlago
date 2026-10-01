@@ -787,34 +787,20 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 		}
 	}
 	if cleanup && !vetoCleanup {
-		if mc.StateQueue != nil {
-			if deleteErr := mc.StateQueue.Delete(); deleteErr != nil && err == nil {
-				err = deleteErr
-			}
-		}
-		if mc.ConcurrentTrace != nil {
-			if deleteErr := mc.ConcurrentTrace.Delete(); deleteErr != nil && err == nil {
-				err = deleteErr
-			}
-		} else if mc.Trace != nil {
-			if deleteErr := mc.Trace.Delete(); deleteErr != nil && err == nil {
-				err = deleteErr
-			}
-			for _, worker := range mc.Workers {
-				if worker != nil {
-					if deleteErr := worker.DeleteTrace(); deleteErr != nil && err == nil {
-						err = deleteErr
-					}
-				}
-			}
-		}
-		if mc.Metadir != "" {
-			if deleteErr := os.RemoveAll(mc.Metadir); deleteErr != nil && err == nil {
-				err = deleteErr
-			}
-		}
+		deleteDirLikeJava(mc.Metadir, success)
 	}
 	return err
+}
+
+func deleteDirLikeJava(path string, recurse bool) {
+	if path == "" {
+		return
+	}
+	if recurse {
+		_ = os.RemoveAll(path)
+		return
+	}
+	_ = os.Remove(path)
 }
 
 func modelCheckerVetoCleanup() bool {

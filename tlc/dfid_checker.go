@@ -322,9 +322,6 @@ func (mc *DFIDModelChecker) Cleanup(success bool, cleanup bool) error {
 	var err error
 	if mc.FPSet != nil {
 		mc.FPSet.Close()
-		if exitErr := mc.FPSet.Exit(cleanup); exitErr != nil && err == nil {
-			err = exitErr
-		}
 	}
 	if mc.CheckLiveness && mc.LiveCheck != nil {
 		if closeErr := mc.LiveCheck.Close(); closeErr != nil && err == nil {
@@ -335,6 +332,9 @@ func (mc *DFIDModelChecker) Cleanup(success bool, cleanup bool) error {
 		if closeErr := mc.AllStateWriter.Close(); closeErr != nil && err == nil {
 			err = closeErr
 		}
+	}
+	if cleanup {
+		deleteDirLikeJava(mc.Metadir, success)
 	}
 	return err
 }
