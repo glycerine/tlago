@@ -327,11 +327,11 @@ func (q *DiskStateQueue) Recover() error {
 		return err
 	}
 	defer in.Close()
-	length, err := in.ReadLongNat()
+	length32, err := in.ReadInt()
 	if err != nil {
 		return err
 	}
-	q.len = length
+	q.len = int64(length32)
 	values := []*int{&q.loPool, &q.hiPool, &q.enqIndex, &q.deqIndex}
 	for _, ptr := range values {
 		value, err := in.ReadInt()
