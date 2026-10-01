@@ -640,7 +640,7 @@ func (r *ByteArrayPoolReader) DoWork(deqBuf [][]byte, file string) ([][]byte, er
 		r.cond.Signal()
 		return deqBuf, nil
 	}
-	if err := readByteArrayPoolFile(file, deqBuf); err != nil {
+	if err := readByteArrayPoolFile(r.poolFile, deqBuf); err != nil {
 		return nil, err
 	}
 	return deqBuf, nil
@@ -820,9 +820,9 @@ func readByteArrayPoolFile(name string, entries [][]byte) error {
 }
 
 func writeByteArrayEntries(out *ValueOutputStream, entries [][]byte) error {
-	for _, entry := range entries {
+	for i, entry := range entries {
 		if entry == nil {
-			entry = []byte{}
+			return fmt.Errorf("byte-array queue write encountered nil entry at slot %d", i)
 		}
 		if err := out.WriteInt(int32(len(entry))); err != nil {
 			return err
