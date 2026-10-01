@@ -75,6 +75,18 @@ func NewLNDisj(nodes ...*LiveExprNode) *LiveExprNode {
 	return out
 }
 
+func newLNConjRaw(nodes ...*LiveExprNode) *LiveExprNode {
+	out := &LiveExprNode{Kind: LiveExprConj, Bodies: append([]*LiveExprNode(nil), nodes...)}
+	out.recomputeJunctionInfo()
+	return out
+}
+
+func newLNDisjRaw(nodes ...*LiveExprNode) *LiveExprNode {
+	out := &LiveExprNode{Kind: LiveExprDisj, Bodies: append([]*LiveExprNode(nil), nodes...)}
+	out.recomputeJunctionInfo()
+	return out
+}
+
 func NewLNAll(body *LiveExprNode) *LiveExprNode {
 	return &LiveExprNode{Kind: LiveExprAll, Body: body, Positive: livePositive(body), LevelValue: LiveLevelTemporal, HasAct: liveContainsAction(body)}
 }
@@ -550,7 +562,7 @@ func (n *LiveExprNode) MakeBinary() *LiveExprNode {
 		mid := n.Count() / 2
 		left := NewLNConj(n.Bodies[:mid]...)
 		right := NewLNConj(n.Bodies[mid:]...)
-		return NewLNConj(left.MakeBinary(), right.MakeBinary())
+		return newLNConjRaw(left.MakeBinary(), right.MakeBinary())
 	case LiveExprDisj:
 		if n.Count() == 0 {
 			return n
@@ -561,7 +573,7 @@ func (n *LiveExprNode) MakeBinary() *LiveExprNode {
 		mid := n.Count() / 2
 		left := NewLNDisj(n.Bodies[:mid]...)
 		right := NewLNDisj(n.Bodies[mid:]...)
-		return NewLNDisj(left.MakeBinary(), right.MakeBinary())
+		return newLNDisjRaw(left.MakeBinary(), right.MakeBinary())
 	case LiveExprNeg:
 		return NewLNNeg(n.Body.MakeBinary())
 	case LiveExprAll:
@@ -659,8 +671,14 @@ func (n *LiveExprNode) Equal(other *LiveExprNode) bool {
 	if n == nil || other == nil {
 		return n == other
 	}
-	if n.Kind != other.Kind || n.Bool != other.Bool || n.Label != other.Label || n.Tag != other.Tag {
+	if n.Kind != other.Kind {
 		return false
+	}
+	switch n.Kind {
+	case LiveExprBool:
+		return n.Bool == other.Bool
+	case LiveExprState, LiveExprAction:
+		return n.Tag == other.Tag
 	}
 	if !n.Body.Equal(other.Body) {
 		return false
