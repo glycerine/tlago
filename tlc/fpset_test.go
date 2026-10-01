@@ -34,6 +34,18 @@ func TestFPSetConfigurationFactoryBehaviors(t *testing.T) {
 	}
 }
 
+func TestMultiFPSetConfigurationRejectsZeroFingerprintBudgetLikeJava(t *testing.T) {
+	cfg := NewFPSetConfiguration()
+	cfg.SetMemory(64)
+	cfg.SetFPBits(21)
+	defer func() {
+		if recovered := recover(); recovered != "Given fpSetConfig results in zero or negative fp count." {
+			t.Fatalf("panic = %v, want Java zero-fp-count message", recovered)
+		}
+	}()
+	_ = NewMultiFPSetConfiguration(cfg)
+}
+
 func TestFPSetFactoryLoadFailuresReturnNilLikeJava(t *testing.T) {
 	ClearMessageRecorders()
 	recorder := &MemoryRecorder{}

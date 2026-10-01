@@ -152,6 +152,9 @@ func NewMultiFPSetConfiguration(config *FPSetConfiguration) *FPSetConfiguration 
 	child := *config
 	child.NoNesting = true
 	child.MemoryDivisor = int64(config.GetMultiFPSetCnt())
+	if child.GetMemoryInFingerprintCnt() <= 0 {
+		panic("Given fpSetConfig results in zero or negative fp count.")
+	}
 	return &child
 }
 
@@ -1219,9 +1222,9 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 	if bits <= 0 || bits > multiFPSetMaxFPBits {
 		panic("Illegal number of FPSets found.")
 	}
+	childConfig := NewMultiFPSetConfiguration(config)
 	count := 1 << bits
 	sets := make([]FPSet, count)
-	childConfig := NewMultiFPSetConfiguration(config)
 	for i := range sets {
 		sets[i] = NewFPSet(childConfig)
 	}
