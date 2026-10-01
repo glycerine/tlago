@@ -686,6 +686,18 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("Evaluating invariant %s failed.", params[0])
 		}
+	case ECTLCInvariantViolatedLevel:
+		if len(params) >= 1 {
+			msg := fmt.Sprintf("The invariant %s is not a state predicate (one with no primes or temporal operators).", params[0])
+			if len(params) > 1 {
+				msg += "\nNote that a bug can cause TLC to incorrectly report this error.\nIf you believe your TLA+ or PlusCal specification to be correct,\nplease check if this bug described in LevelNode.java starting at line 590ff affects you."
+			}
+			return msg
+		}
+	case ECTLCInvariantConstantLevel:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The invariant %s is a constant-level formula (i.e., it contains no variables, primes, or temporal operators) and evaluates to %s. To assert constant-level formulas in your spec, use ASSUME ConstInv. If you optionally want to give the assumption a name, write ASSUME YourAssumption == ConstInv instead. See https://explain.tlapl.us/assumptions-and-invariants for additional details.", params[0], params[1])
+		}
 	case ECTLCActionPropertyViolatedBehavior:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Action property %s is violated.", params[0])

@@ -684,6 +684,10 @@ func (p *SpecProcessor) processConfigInvariants() {
 		return
 	}
 	for _, name := range p.Config.GetInvariants() {
+		if value, ok := p.defn(name).(*BoolValue); ok && value.Val {
+			PrintWarning(ECTLCInvariantConstantLevel, name, value.String())
+			continue
+		}
 		def, ok := p.configPredicateOpDef(name, "invariant", p.Defns)
 		if !ok {
 			continue
