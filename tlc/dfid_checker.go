@@ -57,12 +57,18 @@ func NewDFIDModelChecker(tool *Tool, metadir string, deadlock bool, opts ...DFID
 	if tool != nil {
 		rootName = tool.GetRootName()
 	}
+	checkDeadlock := deadlock
+	if tool != nil {
+		if config := tool.GetModelConfig(); config != nil {
+			checkDeadlock = deadlock && config.GetCheckDeadlock()
+		}
+	}
 	checkLiveness := false
 	if tool != nil {
 		checkLiveness = !tool.LivenessIsTrue()
 	}
 	mc := &DFIDModelChecker{
-		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), deadlock, "", time.Now()),
+		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		FPSet:           NewMemFPIntSet().Init(NumWorkers(), metadir, rootName),
 		CleanupEnabled:  true,
 	}
