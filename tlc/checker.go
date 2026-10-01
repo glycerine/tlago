@@ -1296,10 +1296,6 @@ func (mc *ModelChecker) UpdateRuntimeRatio(delta time.Duration) {
 		absLivenessRuntime = 0
 	}
 	denominator := float64(totalRuntime + ProgressInterval() + delta)
-	if denominator <= 0 {
-		mc.RuntimeRatio = 0
-		return
-	}
 	mc.RuntimeRatio = (float64(delta) + absLivenessRuntime) / denominator
 }
 
