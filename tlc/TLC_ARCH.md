@@ -1070,9 +1070,11 @@ Checkpointing:
 - `recover`: load checkpoint or rebuild from trace.
 - `recoverFP`: insert a recovered fingerprint and assert it was absent.
 - `DiskFPSet` no-argument checkpoint methods are silent no-ops because Java
-  rebuilds disk-backed fingerprints from the trace. `NonCheckpointableDiskFPSet`
-  only warns on the named overloads used by nesting/distributed surfaces; the
-  warning says checkpointing is not implemented for the concrete Java class name.
+  rebuilds disk-backed fingerprints from the trace. `MultiFPSet`'s no-argument
+  checkpoint methods forward to child no-argument methods, so they stay silent
+  for disk-backed children. `NonCheckpointableDiskFPSet` only warns on the named
+  overloads used by nesting/distributed surfaces; the warning says checkpointing
+  is not implemented for the concrete Java class name.
 
 Port guidance:
 

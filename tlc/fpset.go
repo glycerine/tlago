@@ -1271,7 +1271,12 @@ func (s *MultiFPSet) CheckInvariant(expectFPs ...uint64) bool {
 }
 
 func (s *MultiFPSet) BeginChkpt() error {
-	return s.BeginChkptFile(s.filename)
+	for _, set := range s.Sets {
+		if err := set.BeginChkpt(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *MultiFPSet) BeginChkptFile(fname string) error {
@@ -1284,7 +1289,12 @@ func (s *MultiFPSet) BeginChkptFile(fname string) error {
 }
 
 func (s *MultiFPSet) CommitChkpt() error {
-	return s.CommitChkptFile(s.filename)
+	for _, set := range s.Sets {
+		if err := set.CommitChkpt(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *MultiFPSet) CommitChkptFile(fname string) error {

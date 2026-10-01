@@ -97,18 +97,29 @@ func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
 	if err := base.CommitChkptFile("base"); err != nil {
 		t.Fatalf("CommitChkptFile returned error: %v", err)
 	}
-	offHeap := &OffHeapDiskFPSet{}
+	offHeap := &OffHeapDiskFPSet{NonCheckpointableDiskFPSet: &NonCheckpointableDiskFPSet{DiskFPSet: &DiskFPSet{}}}
 	if err := offHeap.RecoverFile("offheap"); err != nil {
 		t.Fatalf("RecoverFile returned error: %v", err)
 	}
+	multi := &MultiFPSet{Sets: []FPSet{offHeap}}
+	if err := multi.BeginChkpt(); err != nil {
+		t.Fatalf("MultiFPSet BeginChkpt returned error: %v", err)
+	}
+	if err := multi.CommitChkpt(); err != nil {
+		t.Fatalf("MultiFPSet CommitChkpt returned error: %v", err)
+	}
+	if err := multi.BeginChkptFile("multi"); err != nil {
+		t.Fatalf("MultiFPSet BeginChkptFile returned error: %v", err)
+	}
 
 	records := recorder.Records(ECGeneral)
-	if len(records) != 3 {
-		t.Fatalf("warning count = %d, want 3", len(records))
+	if len(records) != 4 {
+		t.Fatalf("warning count = %d, want 4", len(records))
 	}
 	want := []string{
 		"Checkpointing is not implemented for tlc2.tool.fp.NonCheckpointableDiskFPSet",
 		"Checkpointing is not implemented for tlc2.tool.fp.NonCheckpointableDiskFPSet",
+		"Checkpointing is not implemented for tlc2.tool.fp.OffHeapDiskFPSet",
 		"Checkpointing is not implemented for tlc2.tool.fp.OffHeapDiskFPSet",
 	}
 	for i, record := range records {
