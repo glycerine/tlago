@@ -209,9 +209,7 @@ type TupleValue struct {
 var EmptyTuple = &TupleValue{Elems: []Value{}}
 
 func NewTupleValue(elems []Value) *TupleValue {
-	out := make([]Value, len(elems))
-	copy(out, elems)
-	return &TupleValue{Elems: out}
+	return &TupleValue{Elems: elems}
 }
 
 func (v *TupleValue) Kind() ValueKind    { return TupleValueKind }

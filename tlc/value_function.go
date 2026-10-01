@@ -376,11 +376,7 @@ type RecordValue struct {
 var EmptyRecord = &RecordValue{Names: []*UniqueString{}, Values: []Value{}, IsNorm: true}
 
 func NewRecordValue(names []*UniqueString, values []Value, isNorm bool) *RecordValue {
-	outNames := make([]*UniqueString, len(names))
-	outValues := make([]Value, len(values))
-	copy(outNames, names)
-	copy(outValues, values)
-	return &RecordValue{Names: outNames, Values: outValues, IsNorm: isNorm}
+	return &RecordValue{Names: names, Values: values, IsNorm: isNorm}
 }
 
 func NewRecordValueFromInsMap(values *InsMap[*UniqueString, Value]) *RecordValue {
@@ -732,17 +728,11 @@ type FcnRcdValue struct {
 var EmptyFcn = &FcnRcdValue{Domain: []Value{}, Values: []Value{}, IsNorm: true}
 
 func NewFcnRcdValue(domain []Value, values []Value, isNorm bool) *FcnRcdValue {
-	outDomain := make([]Value, len(domain))
-	outValues := make([]Value, len(values))
-	copy(outDomain, domain)
-	copy(outValues, values)
-	return &FcnRcdValue{Domain: outDomain, Values: outValues, IsNorm: isNorm}
+	return &FcnRcdValue{Domain: domain, Values: values, IsNorm: isNorm}
 }
 
 func NewFcnRcdIntervalValue(intv *IntervalValue, values []Value) *FcnRcdValue {
-	outValues := make([]Value, len(values))
-	copy(outValues, values)
-	return &FcnRcdValue{Intv: intv, Values: outValues, IsNorm: true}
+	return &FcnRcdValue{Intv: intv, Values: values, IsNorm: true}
 }
 
 func (v *FcnRcdValue) Kind() ValueKind    { return FcnRcdValueKind }
@@ -1151,7 +1141,7 @@ func (v *FcnRcdValue) normalizeFcn() error {
 			return err
 		}
 		if cmp == 0 {
-			return v.unsupported("the value\n%s\noccurs multiple times in the function domain", v.Domain[i])
+			return v.unsupported("The value\n%s\noccurs multiple times in the function domain.", v.Domain[i])
 		}
 		if cmp > 0 {
 			v.Domain[0], v.Domain[i] = v.Domain[i], v.Domain[0]
@@ -1177,7 +1167,7 @@ func (v *FcnRcdValue) normalizeFcn() error {
 			j--
 		}
 		if cmp == 0 {
-			return v.unsupported("the value\n%s\noccurs multiple times in the function domain", v.Domain[i])
+			return v.unsupported("The value\n%s\noccurs multiple times in the function domain.", v.Domain[i])
 		}
 		v.Domain[j] = d
 		v.Values[j] = val
