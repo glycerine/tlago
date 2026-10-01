@@ -847,27 +847,33 @@ func (t *Tool) nextCase(action *Action, pred *OpApplNode, acts *ActionItemList, 
 		return s1, newTLCError(ECGeneral, "Probabilistic evaluation of next-state relation not implemented for CASE yet.")
 	}
 	var other SemanticNode
+	otherCM := cm
 	for _, arg := range pred.Args {
+		armCM := cm
+		if CoverageEnabled() {
+			armCM = cm.Get(arg)
+		}
 		pair, ok := arg.(*OpApplNode)
 		if !ok || len(pair.Args) < 2 {
 			return s1, newTLCError(ECGeneral, "malformed CASE in next-state predicate")
 		}
 		if pair.Args[0] == nil {
 			other = pair.Args[1]
+			otherCM = armCM
 			continue
 		}
-		bval, err := t.evalBool(pair.Args[0], c, s0, s1, EvalClear, cm, "next CASE")
+		bval, err := t.evalBool(pair.Args[0], c, s0, s1, EvalClear, armCM, "next CASE")
 		if err != nil {
 			return s1, err
 		}
 		if bval.Val {
-			return t.GetNextStatesForPredicate(action, pair.Args[1], acts, c, s0, s1, nss, cm)
+			return t.GetNextStatesForPredicate(action, pair.Args[1], acts, c, s0, s1, nss, armCM)
 		}
 	}
 	if other == nil {
 		return s1, newTLCError(ECGeneral, "CASE has no true condition in next-state predicate: %s", SemanticString(pred))
 	}
-	return t.GetNextStatesForPredicate(action, other, acts, c, s0, s1, nss, cm)
+	return t.GetNextStatesForPredicate(action, other, acts, c, s0, s1, nss, otherCM)
 }
 
 func (t *Tool) nextEquality(action *Action, pred SemanticNode, left SemanticNode, right SemanticNode, acts *ActionItemList, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {
