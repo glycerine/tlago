@@ -2035,9 +2035,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 	}
 	inModel, err := f.tool.IsInModel(curState)
 	if err != nil {
-		f.errState = curState
-		f.err = err
-		return f.returnValue, err
+		return f.handleInitError(curState, err)
 	}
 	seen := false
 	if inModel {
@@ -2048,29 +2046,21 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 				f.tool.RememberState(curState)
 			}
 			if err := f.mc.AllStateWriter.WriteInitState(curState); err != nil {
-				f.errState = curState
-				f.err = err
-				return f.returnValue, err
+				return f.handleInitError(curState, err)
 			}
 			if worker := f.mc.workerAt(0); worker != nil {
 				if err := worker.WriteInitState(curState, fp); err != nil {
-					f.errState = curState
-					f.err = err
-					return f.returnValue, err
+					return f.handleInitError(curState, err)
 				}
 			} else if f.mc.Trace != nil {
 				if err := f.mc.Trace.WriteInitState(curState, fp); err != nil {
-					f.errState = curState
-					f.err = err
-					return f.returnValue, err
+					return f.handleInitError(curState, err)
 				}
 			}
 			f.mc.StateQueue.Enqueue(curState)
 			if f.mc.CheckLiveness && f.mc.LiveCheck != nil {
 				if err := f.mc.LiveCheck.AddInitState(f.tool.NoDebug(), curState, fp); err != nil {
-					f.errState = curState
-					f.err = err
-					return f.returnValue, err
+					return f.handleInitError(curState, err)
 				}
 			}
 		}
@@ -2079,9 +2069,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		for i, invariant := range f.tool.GetInvariants() {
 			valid, err := f.tool.IsValidState(invariant, curState)
 			if err != nil {
-				f.errState = curState
-				f.err = err
-				return f.returnValue, err
+				return f.handleInitError(curState, err)
 			}
 			if !valid {
 				alias := curState
@@ -2099,9 +2087,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		for i, implied := range f.tool.GetImpliedInits() {
 			valid, err := f.tool.IsValidState(implied, curState)
 			if err != nil {
-				f.errState = curState
-				f.err = err
-				return f.returnValue, err
+				return f.handleInitError(curState, err)
 			}
 			if !valid {
 				alias := curState
@@ -2116,6 +2102,35 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		}
 	}
 	return f.returnValue, nil
+}
+
+func (f *doInitFunctor) handleInitError(curState *TLCStateMut, err error) (any, error) {
+	f.errState = curState
+	f.err = err
+	if isJavaAbortingInitError(err) {
+		return f.returnValue, err
+	}
+	return f.returnValue, nil
+}
+
+func isJavaAbortingInitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	// Java DoInitFunctor immediately rethrows only invariant, Assert, and eval
+	// failures. Other throwables are recorded and surfaced after getInitStates.
+	if errors.Is(err, errInvariantViolated) {
+		return true
+	}
+	var eval *EvalException
+	if errors.As(err, &eval) && eval != nil {
+		return true
+	}
+	var tlcErr *TLCError
+	if errors.As(err, &tlcErr) && tlcErr != nil {
+		return true
+	}
+	return false
 }
 
 func isPowerOfTwo(n int64) bool {
