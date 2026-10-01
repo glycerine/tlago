@@ -561,16 +561,33 @@ func (s *MemFPSet) rehash() {
 		if len(bucket) == 0 {
 			continue
 		}
-		var left, right []uint64
+		cnt0, cnt1 := 0, 0
 		for _, fp := range bucket {
 			if fp&oneBitMask == 0 {
-				left = append(left, fp)
+				cnt0++
 			} else {
-				right = append(right, fp)
+				cnt1++
 			}
 		}
-		newTable[i] = left
-		newTable[i+oldCapacity] = right
+		if cnt0 == 0 {
+			newTable[i+oldCapacity] = bucket
+		} else if cnt1 == 0 {
+			newTable[i] = bucket
+		} else {
+			left := make([]uint64, cnt0)
+			right := make([]uint64, cnt1)
+			for _, fp := range bucket {
+				if fp&oneBitMask == 0 {
+					cnt0--
+					left[cnt0] = fp
+				} else {
+					cnt1--
+					right[cnt1] = fp
+				}
+			}
+			newTable[i] = left
+			newTable[i+oldCapacity] = right
+		}
 	}
 
 	s.threshold *= 2

@@ -446,6 +446,43 @@ func TestMemFPSetRehashPreservesFingerprints(t *testing.T) {
 	}
 }
 
+func TestMemFPSetRehashMirrorsJavaBucketSplitOrder(t *testing.T) {
+	set := &MemFPSet{
+		table:     make([][]uint64, 4),
+		threshold: 80,
+		mask:      3,
+	}
+	set.table[0] = []uint64{0, 4, 8, 12}
+	set.count = uint64(len(set.table[0]))
+	set.rehash()
+
+	if got, want := set.table[0], []uint64{8, 0}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("left split bucket = %v, want Java reverse-copy order %v", got, want)
+	}
+	if got, want := set.table[4], []uint64{12, 4}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("right split bucket = %v, want Java reverse-copy order %v", got, want)
+	}
+}
+
+func TestMemFPSetRehashReusesOneSidedBucketsLikeJava(t *testing.T) {
+	set := &MemFPSet{
+		table:     make([][]uint64, 4),
+		threshold: 80,
+		mask:      3,
+	}
+	original := []uint64{0, 8, 16}
+	set.table[0] = original
+	set.count = uint64(len(original))
+	set.rehash()
+
+	if len(set.table[0]) == 0 || &set.table[0][0] != &original[0] {
+		t.Fatalf("one-sided bucket was copied; Java reuses the original bucket slice")
+	}
+	if set.table[4] != nil {
+		t.Fatalf("empty split bucket = %v, want nil like Java", set.table[4])
+	}
+}
+
 func TestMemFPSetCheckFPsMatchesJavaDistanceBehavior(t *testing.T) {
 	empty := NewMemFPSet()
 	if got := empty.CheckFPs(); got != uint64(math.MaxInt64) {
