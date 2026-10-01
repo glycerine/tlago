@@ -503,13 +503,13 @@ func (mc *ModelChecker) Resume() {
 
 func (mc *ModelChecker) GetProgress() int64 {
 	if mc == nil {
-		return 0
+		return -1
 	}
 	if mc.ConcurrentTrace != nil {
 		return int64(mc.ConcurrentTrace.GetLevelForReporting())
 	}
 	if mc.Trace == nil {
-		return 0
+		return -1
 	}
 	return int64(mc.Trace.GetLevelForReporting())
 }

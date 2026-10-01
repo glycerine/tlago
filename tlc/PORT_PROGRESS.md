@@ -478,6 +478,7 @@
   - DFID `MemFPIntSet.CheckFPs` now uses Java's signed low-int reconstruction for reported collision distances.
   - Distributed FP-set manager indexing now follows Java's least-significant-bit partitioning, distributed worker holder sorting uses signed Java `long` ordering, and distributed states-seen accounting includes Java's initial-state offset.
   - Distributed success reporting now uses Java `TLCServer.modelCheck`'s direct actual-distance path, with `fpSetManager.size()`, `fpSetManager.checkFPs()`, and `fpSetManager.getStatesSeen()`, instead of the local `ModelChecker.reportSuccess(FPSet, generated)` optimistic shortcut.
+  - Model-checker management/statistics progress now preserves Java's `-1` unknown-progress sentinel when no trace can report a level, instead of reporting diameter `0`.
   - Symmetry setup was re-audited against Java `Tool.getSymmetryPerms`; malformed non-function symmetry values now fail before the too-small symmetry-set warning logic, matching Java's validation order.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
