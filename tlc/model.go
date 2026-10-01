@@ -12,7 +12,6 @@ const (
 	assignmentIsMV        = " [ model value ] "
 	assignmentSymmetry    = " <symmetrical> "
 	tlaAnd                = "/\\"
-	tlaEq                 = "="
 	tlaRecordArrow        = " |-> "
 	tlaCR                 = "\n"
 	tlaComma              = ","
@@ -757,20 +756,22 @@ func parseMCVariables(input string) []*MCVariable {
 	var out []*MCVariable
 	var current []string
 	flush := func() {
-		if len(current) == 2 {
-			out = append(out, NewMCVariable(strings.TrimSpace(current[0]), strings.TrimSpace(current[1])))
+		if len(current) >= 2 {
+			out = append(out, NewMCVariable(current[0], current[1]))
 		}
 	}
 	for _, line := range lines {
 		if idx := strings.Index(line, tlaAnd); idx >= 0 {
 			flush()
-			current = strings.SplitN(line[idx+len(tlaAnd):], tlaEq, 2)
+			current = strings.Split(line[idx+len(tlaAnd)+1:], tlaEqSp)
 			continue
 		}
 		if current != nil {
-			current[1] += "\n" + line
+			if len(current) >= 2 {
+				current[1] += "\n" + line
+			}
 		} else {
-			current = strings.SplitN(line, tlaEq, 2)
+			current = strings.Split(line, tlaEqSp)
 		}
 	}
 	flush()
