@@ -771,9 +771,6 @@ func (w *LiveWorker) bfsPostFix(state uint64, tidx int, nodeTbl *TableauNodePtrT
 			tloc = TableauNextLoc(nodes, tloc)
 		}
 		TableauSetParent(nodes, ploc)
-		if queue.Size() == 0 {
-			return nil, fmt.Errorf("liveness BFS postfix could not close cycle")
-		}
 		curState = uint64(queue.DequeueLong())
 		ploc = int(queue.DequeueInt())
 		curLoc = nodeTbl.GetNodesLoc(curState)

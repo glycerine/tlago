@@ -639,9 +639,10 @@
 - `LiveCheck.check0` now restores every checker disk graph's node-pointer table after a successful non-final liveness check, matching Java's post-worker `makeNodePtrTbl()` loop; the older per-checker duplicate restore was removed. This is load-bearing because SCC search overwrites pointer-table file locations with Tarjan link numbers, and later model-checking insertions still need `getPtr`/duplicate checks to see real disk pointers.
 - Simulation-mode `LiveCheck.CheckTrace` now calls Java's direct `check0(tool, true)` path instead of routing through `FinalCheck`, so trace liveness checking is not skipped by the `lnCheck == "off"` final-check gate. Clean traces still reset the liveness graphs afterward; violations/errors leave before reset like Java.
 - NoOp liveness statistics now mirror Java `NoOpLiveCheck`: `GetOutDegreeStatistics` returns nil/null, while in-degree and out-degree calculation helpers return the checker-owned dummy bucket statistics rather than the caller-supplied accumulator.
+- `LiveWorker` postfix/lasso reconstruction was re-audited against Java. Go keeps Java's DFS count-down over AE-state/AE-action/promises, per-tableau seen bits, BFS parent-location backtracking, self-loop skipping, and EA-action filtering before closing the cycle. The Go-only empty-queue precheck in BFS postfix was removed so impossible queue exhaustion fails through `IntQueue.Dequeue*` like Java `MemIntQueue`.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:
-  1. Continue breadth-first audit of local checker/liveness/value/module surfaces; avoid rechecking the simulator result loop, probabilistic next-state `CASE`, and distributed worker/server accounting unless touched.
+  1. Continue breadth-first audit of local checker/liveness/value/module surfaces; avoid rechecking the liveness SCC/postfix/counterexample path, simulator result loop, probabilistic next-state `CASE`, and distributed worker/server accounting unless touched.
   2. Continue checker error-precedence and trace reconstruction audit outside the recently covered cleanup/no-action/DFID/simulator/init-exception paths.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
