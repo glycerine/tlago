@@ -1913,7 +1913,10 @@ second-argument subset size, third-argument finite set, requested number of
 subsets against `2^Cardinality(S)`, then subset size against `0..Cardinality(S)`.
 `RandomSubsetSet` reports under the Java operator name
 `RandomSubsetSetProbability`, including for probability parsing and the
-requested-subsets bound.
+requested-subsets bound. The requested-subsets bound uses Java's
+`31 - Integer.numberOfLeadingZeros(numberOfPicks) + 1 > Cardinality(S)` guard
+and Java `int` left-shift overflow semantics, not a floating-point `2^n`
+shortcut.
 
 `TLCGetSet` uses `TLC_MODULE_TLCGET_UNDEFINED` for missing numeric and string
 registers. Invalid `TLCGet` arguments report `TLC_MODULE_ONE_ARGUMENT_ERROR`;
@@ -2008,6 +2011,12 @@ implemented as a Fisher-Yates shuffle; the random-value consumption is
 observable for seeded runs and aril replay. Java does not reject a negative
 integer `k` for `RandomSubset`; it simply yields the empty set because the
 enumerator has no next element.
+
+`RandomSetOfSubsets` and `RandomSubsetSetProbability` construct a
+`SubsetValue` over the input enumerable and use `CoinTossingSubsetEnumerator`.
+That path normalizes the base set before tossing one coin per base element,
+then accumulates generated subsets in a hash set so duplicates are dropped
+during generation rather than by sorting a `ValueVec` afterward.
 
 `TLC!RandomElement` also uses `RandomEnumerableValues.get().nextDouble()` for
 intervals and finite enumerated sets. The Go port must use the shared

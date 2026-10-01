@@ -3,15 +3,13 @@ package tlc
 import (
 	"math"
 	"math/big"
+	"math/bits"
 	"strconv"
 )
 
 func RandomSubset(k Value, set Value) (Value, error) {
 	count, ok := k.(*IntValue)
 	if !ok {
-		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RandomSubset", "nonnegative integer", ValuesPPR(k))
-	}
-	if count.Val < 0 {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "RandomSubset", "nonnegative integer", ValuesPPR(k))
 	}
 	return randomSubsetOfEnumerable(int(count.Val), set)
@@ -399,8 +397,11 @@ func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) 
 	if err != nil {
 		return nil, err
 	}
+	if _, err := set.normalizeSet(); err != nil {
+		return nil, err
+	}
 	base := set.Elems.ToArray()
-	subsets := NewValueVec(k)
+	sets := newValueHashSet(int(float64(k) * probability))
 	rng := RandomEnumerableGenerator()
 	for i := 0; i < k; i++ {
 		subset := NewValueVec(0)
@@ -409,12 +410,37 @@ func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) 
 				subset.Add(elem)
 			}
 		}
-		value := NewSetEnumValueVec(subset, false)
-		if !subsets.Contains(value) {
-			subsets.Add(value)
+		sets.add(NewSetEnumValueVec(subset, false))
+	}
+	return NewSetEnumValueVec(sets.values, false), nil
+}
+
+type valueHashSet struct {
+	buckets map[int32][]Value
+	values  *ValueVec
+}
+
+func newValueHashSet(estimated int) *valueHashSet {
+	if estimated < 0 {
+		estimated = 0
+	}
+	return &valueHashSet{
+		buckets: make(map[int32][]Value, estimated),
+		values:  NewValueVec(estimated),
+	}
+}
+
+func (s *valueHashSet) add(value Value) bool {
+	hash := ValueJavaHashCode(value)
+	for _, existing := range s.buckets[hash] {
+		eq, err := value.Equal(existing)
+		if err == nil && eq {
+			return false
 		}
 	}
-	return NewSetEnumValueVec(subsets, false), nil
+	s.buckets[hash] = append(s.buckets[hash], value)
+	s.values.Add(value)
+	return true
 }
 
 func randomizationFiniteSetSize(position string, operator string, expected string, value Value) (int, error) {
@@ -437,11 +463,7 @@ func randomizationFiniteSetSize(position string, operator string, expected strin
 }
 
 func checkRandomSubsetPickCount(operator string, picks int, size int) error {
-	if size >= 31 {
-		return nil
-	}
-	max := int(math.Pow(2, float64(size)))
-	if picks > max {
+	if 31-bits.LeadingZeros32(uint32(picks))+1 > size && picks > int(javaIntOneLeftShift(size)) {
 		expected := "nonnegative integer that is smaller than the subset's size of 2^" + strconv.Itoa(size)
 		return newTLCErrorCode(ECTLCModuleArgumentError, "first", operator, expected, strconv.Itoa(picks))
 	}
