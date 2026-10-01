@@ -185,6 +185,39 @@ func TestOffHeapDiskFPSetContainsDoesNotCountMemoryHitsLikeJava(t *testing.T) {
 	}
 }
 
+func TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava(t *testing.T) {
+	ClearMessageRecorders()
+	recorder := &MemoryRecorder{}
+	AddMessageRecorder(recorder)
+	t.Cleanup(func() {
+		RemoveMessageRecorder(recorder)
+		ClearMessageRecorders()
+	})
+
+	cfg := NewFPSetConfiguration()
+	cfg.SetMemory(64)
+	set := NewOffHeapDiskFPSet(cfg)
+	set.Init(1, t.TempDir(), "offheap-duplicate-merge")
+	defer set.Close()
+
+	if err := set.mergeOffHeapValues([]uint64{42}); err != nil {
+		t.Fatalf("initial merge returned error: %v", err)
+	}
+	if err := set.mergeOffHeapValues([]uint64{42}); err != nil {
+		t.Fatalf("duplicate merge returned error: %v", err)
+	}
+	records := recorder.Records(ECTLCFPValueAlreadyOnDisk)
+	if len(records) != 1 {
+		t.Fatalf("warning count = %d, want 1", len(records))
+	}
+	if records[0].Severity != SeverityWarning {
+		t.Fatalf("severity = %v, want warning", records[0].Severity)
+	}
+	if got := records[0].Text; got != "DiskFPSet.mergeNewEntries: 42 is already on disk.\n" {
+		t.Fatalf("message = %q", got)
+	}
+}
+
 func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
 	ClearMessageRecorders()
 	recorder := &MemoryRecorder{}

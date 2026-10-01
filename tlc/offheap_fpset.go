@@ -299,6 +299,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 			}
 			j++
 		default:
+			PrintWarning(ECTLCFPValueAlreadyOnDisk, fmt.Sprint(oldValues[i]))
 			if err := writeFP(oldValues[i]); err != nil {
 				_ = tmp.Close()
 				return err
