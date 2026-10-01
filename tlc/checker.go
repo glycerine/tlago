@@ -1442,6 +1442,7 @@ func (mc *ModelChecker) replayNextErrorCallStack() int {
 	replayWorker := NewWorker(4223)
 	replayWorker.Checker = mc
 	replayWorker.Tool = mc.Tool
+	replayWorker.DisableTraceMirror = true
 	rootName := "Spec"
 	if mc.Tool.GetRootName() != "" {
 		rootName = mc.Tool.GetRootName()

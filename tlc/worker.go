@@ -28,6 +28,7 @@ type Worker struct {
 	traceRAF              *BufferedRandomAccessFile
 	lastPtr               int64
 	traceErr              error
+	DisableTraceMirror    bool
 }
 
 type workerNextStateError struct {
@@ -526,7 +527,7 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 	w.lastPtr = ptr
 	initialState.WorkerID = int16(w.ID)
 	initialState.UID = ptr
-	if w.Checker != nil && w.Checker.Trace != nil {
+	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
 		w.Checker.Trace.MirrorInitStateForWorker(w.ID, initialState, fp, ptr)
 	}
 	return nil
@@ -573,14 +574,14 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	succState.SetPredecessor(curState)
 	succState.SetAction(action)
 	w.UnseenSuccessorStates++
-	if w.Checker != nil && w.Checker.Trace != nil {
+	if !w.DisableTraceMirror && w.Checker != nil && w.Checker.Trace != nil {
 		w.Checker.Trace.MirrorNextStateForWorker(w.ID, curState, succFP, succState, action, ptr)
 	}
 	return nil
 }
 
 func (w *Worker) traceRecordsFallback() []TraceRecord {
-	if w == nil || w.Checker == nil || w.Checker.Trace == nil {
+	if w == nil || w.DisableTraceMirror || w.Checker == nil || w.Checker.Trace == nil {
 		return nil
 	}
 	return w.Checker.Trace.records

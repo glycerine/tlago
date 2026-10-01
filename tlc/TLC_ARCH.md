@@ -1350,6 +1350,12 @@ Port guidance:
   `WrappingRuntimeException` carrying `succ`. Go mirrors this with the concrete
   `workerNextStateError` struct so outer worker error handling can pass the
   partially generated successor to `doNextFailed` without adding an interface.
+- Call-stack replay uses a synthetic worker id `4223` like Java, but that
+  worker is deliberately not registered with the shared trace. Java's comment
+  says replay must not rewrite the trace file while reconstructing states for
+  diagnostics. Go preserves this with a concrete `Worker.DisableTraceMirror`
+  flag: replay may use its own worker trace context, but it must not append to
+  `ModelChecker.Trace` through the normal worker mirror hook.
 - Preserve Java's error-time postcondition behavior: init failures with an
   `errState` call `checkPostConditionWithCounterExample(new CounterExample(errState))`,
   and worker `doNextSetErr` paths build a safety counterexample, evaluate aliases
