@@ -38,7 +38,7 @@ func (t *Tool) EvalRewardImpl(s1 *TLCStateMut, s2 *TLCStateMut, fallback float64
 	}
 	intValue, ok := value.(*IntValue)
 	if !ok {
-		return fallback, newTLCError(ECGeneral, "expected integer reward, got %s", value.KindString())
+		return fallback, newTLCErrorCode(ECTLCExpectedValue, "integer", SemanticString(t.RLReward))
 	}
 	return float64(intValue.Val), nil
 }
