@@ -43,6 +43,7 @@ type Options struct {
 	Aril                      int64
 	TraceDepth                int
 	TraceNum                  int64
+	TraceNumSet               bool
 	TraceFile                 string
 	TraceActions              string
 	Probabilistic             bool
@@ -102,7 +103,7 @@ func NewTLC(opts Options) *TLC {
 	if opts.TraceDepth == 0 {
 		opts.TraceDepth = 100
 	}
-	if opts.TraceNum == 0 {
+	if opts.TraceNum == 0 && !opts.TraceNumSet {
 		opts.TraceNum = math.MaxInt64
 	}
 	if opts.Workers <= 0 {

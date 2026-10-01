@@ -332,9 +332,6 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 	if results == nil {
 		results = make(chan SimulationWorkerResult, 1)
 	}
-	if maxTraceNum <= 0 {
-		maxTraceNum = math.MaxInt64
-	}
 	return &SimulationWorker{
 		ID:             id,
 		Tool:           tool,

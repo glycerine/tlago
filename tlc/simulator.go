@@ -89,11 +89,8 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		tool.SetMode(ModeSimulation)
 	}
 	SetTLCStateTool(tool)
-	if traceDepth < 0 {
+	if traceDepth == -1 {
 		traceDepth = int(^uint(0) >> 1)
-	}
-	if traceNum <= 0 {
-		traceNum = int64(^uint64(0) >> 1)
 	}
 	checkDeadlock := deadlock
 	if tool != nil && tool.GetModelConfig() != nil {

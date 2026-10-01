@@ -90,6 +90,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 							return opts, tlcCommandLineError("Error: An integer for simulation trace count required. But encountered " + simArg)
 						}
 						opts.TraceNum = traceNum
+						opts.TraceNumSet = true
 					case strings.HasPrefix(simArg, "file="):
 						opts.TraceFile = strings.TrimPrefix(simArg, "file=")
 					case simArg == "stats=basic":
