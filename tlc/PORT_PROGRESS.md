@@ -494,9 +494,12 @@
   - Expression fallback diagnostics now use Java text for non-enumerable `\subseteq` left operands and the final TLC-bug evaluator fallback.
   - Distributed FP-set manager indexing, states-seen accounting, and distributed worker sorted holder order were re-audited against Java `FPSetManager`/`TLCWorker`; Go now uses Java's low-bit server partition, initial-state accounting offset, and signed-`long` sort order instead of local `MultiFPSet` high-bit partitioning and unsigned sorting.
   - Worker result precedence and worker-local register aggregation were re-audited with no code changes needed.
+  - Small support classes were re-audited with no code changes needed: `Specs`, config/stateful/worker exceptions, `WorkerValue`, `FingerprintException`, `TLARegistry`, `PartialBoolean`, `Context`, and `List` still match the Java-visible behavior currently modeled by Go. `CallStack.toString` remains a structural source-location gap because Go semantic nodes do not yet carry Java `TreeNode` locations uniformly.
+  - Runtime parameterized-spec handling was rechecked against Java `ParameterizedSpecObj`. Go keeps this in the parser bridge rather than a SANY `SpecObj` subclass: runtime constants are installed before runtime actions, postconditions append to config postconditions, runtime extendee modules are loaded through the CLI bridge, and configured `VIEW` wins over runtime view.
+  - Distributed and management shells were re-audited at their supported surface. Go intentionally omits Java RMI/JMX transport mechanics, but preserves `NextStateResult` accounting, FP-set manager sharding/checkpoint hooks, and model-checker/server MX counter semantics where those concepts exist.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:
-  1. Continue breadth-first audit of local checker/liveness/value/module surfaces before moving to distributed/debugger/management surfaces.
+  1. Continue breadth-first audit of local checker/liveness/value/module surfaces; treat distributed/debugger/management as shell surfaces until core local TLC behavior is fully faithful.
   2. Continue checker error-precedence and trace reconstruction audit outside the recently covered cleanup/no-action/DFID/simulator/init-exception paths.
   3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
