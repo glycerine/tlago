@@ -353,15 +353,18 @@ func (s *MemFPIntSet) CheckFPs() uint64 {
 	dis := uint64(1<<63 - 1)
 	for i, bucket := range s.table {
 		for j := 0; j < len(bucket); j += 3 {
-			x := joinFingerprint(bucket[j], bucket[j+1])
+			x := joinFingerprintForMemFPIntSetCheckFPs(bucket[j], bucket[j+1])
 			for k := j + 3; k < len(bucket); k += 3 {
-				y := joinFingerprint(bucket[k], bucket[k+1])
-				dis = minUint64(dis, absDiffUint64(x, y))
+				y := joinFingerprintForMemFPIntSetCheckFPs(bucket[k], bucket[k+1])
+				dis = minUint64(dis, javaSignedAbsDiffAsUint64(x, y))
 			}
 			for _, otherBucket := range s.table[i+1:] {
 				for k := 0; k < len(otherBucket); k += 3 {
-					y := joinFingerprint(otherBucket[k], otherBucket[k+1])
-					dis = minUint64(dis, absDiffUint64(x, y))
+					y := joinFingerprintForMemFPIntSetCheckFPs(otherBucket[k], otherBucket[k+1])
+					dis1 := javaSignedDiffAsInt64(x, y)
+					if dis1 >= 0 {
+						dis = minUint64(dis, uint64(dis1))
+					}
 				}
 			}
 		}
@@ -622,4 +625,23 @@ func splitFingerprint(fp uint64) (int32, int32) {
 
 func joinFingerprint(hi int32, lo int32) uint64 {
 	return (uint64(uint32(hi)) << 32) | uint64(uint32(lo))
+}
+
+func joinFingerprintForMemFPIntSetCheckFPs(hi int32, lo int32) int64 {
+	return (int64(hi) << 32) | int64(lo)
+}
+
+func javaSignedDiffAsInt64(x int64, y int64) int64 {
+	if x > y {
+		return x - y
+	}
+	return y - x
+}
+
+func javaSignedAbsDiffAsUint64(x int64, y int64) uint64 {
+	dis := javaSignedDiffAsInt64(x, y)
+	if dis < 0 {
+		dis = -dis
+	}
+	return uint64(dis)
 }

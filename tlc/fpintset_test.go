@@ -22,3 +22,14 @@ func TestFPIntSetStatusLevelUsesJavaUnsignedShift(t *testing.T) {
 		t.Fatalf("IsLeaf(%d) = false, want true at Java unsigned-shift level", status)
 	}
 }
+
+func TestMemFPIntSetCheckFPsUsesJavaSignedLowBits(t *testing.T) {
+	set := &MemFPIntSet{table: make([][]int32, 1)}
+	set.table[0] = []int32{
+		1, -1, 0,
+		0, 0, 0,
+	}
+	if got := set.CheckFPs(); got != 1 {
+		t.Fatalf("CheckFPs = %d, want Java signed-low-bit distance 1", got)
+	}
+}
