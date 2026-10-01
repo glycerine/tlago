@@ -302,15 +302,6 @@ func withStateQueueMonitor(queue StateQueue, fn func() error) error {
 func TLCGetOrDefault(vidx Value, defVal Value) (Value, error) {
 	switch idx := vidx.(type) {
 	case *IntValue:
-		if idx.Val < 0 {
-			if _, ok := CurrentWorkerID(); ok {
-				return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCGetOrDefault", "nonnegative integer", ValuesPPR(vidx))
-			}
-			if MainChecker() != nil || CurrentSimulator() != nil {
-				return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "TLCGetOrDefault", "nonnegative integer", ValuesPPR(vidx))
-			}
-			return defVal, nil
-		}
 		workerID := 0
 		if checker := MainChecker(); checker != nil {
 			if id, ok := CurrentWorkerID(); ok {
