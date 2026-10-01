@@ -22,27 +22,27 @@ func (v *UndefValue) Equal(other Value) (bool, error) {
 }
 
 func (v *UndefValue) Member(elem Value) (bool, error) {
-	return false, v.unsupported("attempted to check if the value:\n%s\nis an element %s", elem, v)
+	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element %s", elem, v)
 }
 
 func (v *UndefValue) IsFinite() (bool, error) {
-	return false, v.unsupported("attempted to check if the value %s is a finite set", v)
+	return false, v.unsupported("Attempted to check if the value %s is a finite set.", v)
 }
 
 func (v *UndefValue) Size() (int, error) {
-	return 0, v.unsupported("attempted to compute the number of elements in the value %s", v)
+	return 0, v.unsupported("Attempted to compute the number of elements in the value %s.", v)
 }
 
 func (v *UndefValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the value %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *UndefValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT construct to the value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT construct to the value %s.", v)
 	}
 	return v, nil
 }
@@ -111,7 +111,7 @@ func (v *UserValue) Compare(other Value) (int, error) {
 	if _, ok := other.(*ModelValue); ok {
 		return 1, nil
 	}
-	return 0, v.unsupported("attempted to compare overridden value %s with non-overridden value:\n%s", v, other)
+	return 0, v.unsupported("Attempted to compare overridden value %s with non-overridden value:\n%s", v, other)
 }
 
 func (v *UserValue) Equal(other Value) (bool, error) {
@@ -128,19 +128,19 @@ func (v *UserValue) IsFinite() (bool, error) {
 }
 
 func (v *UserValue) Size() (int, error) {
-	return 0, v.unsupported("attempted to compute the number of elements in the overridden value %s", v)
+	return 0, v.unsupported("Attempted to compute the number of elements in the overridden value %s.", v)
 }
 
 func (v *UserValue) TakeExcept(ex ValueExcept) (Value, error) {
 	if ex.Index < len(ex.Path) {
-		return nil, v.unsupported("attempted to apply EXCEPT to the overridden value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT to the overridden value %s.", v)
 	}
 	return ex.Value, nil
 }
 
 func (v *UserValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	if len(exs) != 0 {
-		return nil, v.unsupported("attempted to apply EXCEPT to the overridden value %s", v)
+		return nil, v.unsupported("Attempted to apply EXCEPT to the overridden value %s.", v)
 	}
 	return v, nil
 }
