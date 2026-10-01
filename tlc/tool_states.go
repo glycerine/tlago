@@ -893,9 +893,11 @@ func (t *Tool) nextEquality(action *Action, pred SemanticNode, left SemanticNode
 	}
 	lval := s1.Lookup(varNode.Name)
 	if lval == nil {
-		s1.Bind(varNode.Name, rval)
-		res, err := t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
-		s1.Unbind(varNode.Name)
+		resState := s1.Bind(varNode.Name, rval)
+		res, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
+		if res != nil {
+			res.Unbind(varNode.Name)
+		}
 		return res, err
 	}
 	eq, err := lval.Equal(rval)
@@ -957,9 +959,11 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 			return res, err
 		}
 		for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
-			res.Bind(varName, elem)
-			next, err := t.GetNextStatesFromActionList(action, acts, s0, res, nss, cm)
-			res.Unbind(varName)
+			resState := res.Bind(varName, elem)
+			next, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
+			if next != nil {
+				next.Unbind(varName)
+			}
 			if err != nil {
 				return res, err
 			}
@@ -974,9 +978,11 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 	}
 	enum := enumerable.Elements()
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
-		res.Bind(varName, elem)
-		next, err := t.GetNextStatesFromActionList(action, acts, s0, res, nss, cm)
-		res.Unbind(varName)
+		resState := res.Bind(varName, elem)
+		next, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
+		if next != nil {
+			next.Unbind(varName)
+		}
 		if err != nil {
 			return res, err
 		}
@@ -996,9 +1002,11 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 		val0 := s0.Lookup(varName)
 		val1 := s1.Lookup(varName)
 		if val1 == nil {
-			s1.Bind(varName, val0)
-			res, err := t.GetNextStatesFromActionList(action, acts, s0, s1, nss, cm)
-			s1.Unbind(varName)
+			resState := s1.Bind(varName, val0)
+			res, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
+			if res != nil {
+				res.Unbind(varName)
+			}
 			return res, err
 		}
 		eq, err := val0.Equal(val1)
