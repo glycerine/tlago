@@ -496,7 +496,7 @@ func stripTLCModelCheckFlag(args []string) ([]string, bool) {
 }
 
 func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
-	tlcArgs, loadOpts, err := extractTLCLoadOptions(args)
+	tlcArgs, loadOpts, diagOpts, err := extractTLCLoadOptions(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
@@ -508,11 +508,13 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 	}
 	loadOpts.ExtraModules = appendModuleNames(loadOpts.ExtraModules, tlcRuntimeParameterModules(opts.RuntimeParams)...)
 	spec, diags := LoadSanySpec(opts.SpecFile, loadOpts)
+	diags = diagOpts.apply(diags)
 	if diags.HasErrors() {
 		writeDiagnostics(stderr, diags)
 		return ExitSyntaxFailure
 	}
 	sem := CheckSpec(spec)
+	sem = diagOpts.apply(sem)
 	if sem.HasErrors() {
 		writeDiagnostics(stderr, sem)
 		return ExitSemanticFailure
@@ -523,6 +525,7 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 		return ExitSyntaxFailure
 	}
 	tool, toolDiags := BuildTLCTool(spec, cfg, opts.RuntimeParams)
+	toolDiags = diagOpts.apply(toolDiags)
 	if toolDiags.HasErrors() {
 		writeDiagnostics(stderr, toolDiags)
 		return ExitSemanticFailure
@@ -555,20 +558,78 @@ func tlcRuntimeParameterModules(params tlcruntime.RuntimeParameters) []string {
 	return params.ExtendeeModules()
 }
 
-func extractTLCLoadOptions(args []string) ([]string, LoadOptions, error) {
+func extractTLCLoadOptions(args []string) ([]string, LoadOptions, diagnosticCLIOptions, error) {
 	loadOpts := LoadOptions{}
+	diagOpts := diagnosticCLIOptions{}
 	tlcArgs := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		if ok, next, err := consumeLoadCLIOption(args, i, &loadOpts); ok || err != nil {
 			if err != nil {
-				return nil, loadOpts, err
+				return nil, loadOpts, diagOpts, err
 			}
 			i = next
 			continue
 		}
+		switch args[i] {
+		case "-suppressMessages":
+			tlcArgs = append(tlcArgs, args[i])
+			i++
+			if i >= len(args) {
+				return nil, loadOpts, diagOpts, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
+			}
+			tlcArgs = append(tlcArgs, args[i])
+			if err := addKnownSANYDiagnosticCodes(&diagOpts.suppressed, args[i], true); err != nil {
+				return nil, loadOpts, diagOpts, err
+			}
+			continue
+		case "-messagesAsErrors":
+			tlcArgs = append(tlcArgs, args[i])
+			i++
+			if i >= len(args) {
+				return nil, loadOpts, diagOpts, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
+			}
+			tlcArgs = append(tlcArgs, args[i])
+			if err := addKnownSANYDiagnosticCodes(&diagOpts.elevated, args[i], false); err != nil {
+				return nil, loadOpts, diagOpts, err
+			}
+			continue
+		}
 		tlcArgs = append(tlcArgs, args[i])
 	}
-	return tlcArgs, loadOpts, nil
+	if err := validateKnownSANYDiagnosticOverlap(diagOpts); err != nil {
+		return nil, loadOpts, diagOpts, err
+	}
+	return tlcArgs, loadOpts, diagOpts, nil
+}
+
+func addKnownSANYDiagnosticCodes(dst *map[string]bool, text string, suppress bool) error {
+	for _, part := range strings.Split(text, ",") {
+		code := normalizeDiagnosticCode(part)
+		if code == "" {
+			return fmt.Errorf("empty diagnostic code in %q", text)
+		}
+		normalized, info, ok := lookupDiagnosticCode(code)
+		if !ok {
+			continue
+		}
+		if suppress && info.Severity != SeverityWarning {
+			return fmt.Errorf("message code %s cannot be suppressed", normalized)
+		}
+		if *dst == nil {
+			*dst = map[string]bool{}
+		}
+		(*dst)[normalized] = true
+	}
+	return nil
+}
+
+func validateKnownSANYDiagnosticOverlap(opts diagnosticCLIOptions) error {
+	for code := range opts.suppressed {
+		if diagnosticCodeSetContains(opts.elevated, code) {
+			return fmt.Errorf("message code %s cannot be configured in both -suppressMessages and -messagesAsErrors", code)
+		}
+	}
+	return nil
 }
 
 func formatState(st State) string {
