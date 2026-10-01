@@ -1881,9 +1881,9 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 	}
 	ec, params, keepCallStack := doNextFailureMessage(err)
 	if mc.SetErrState(curState, succState, keepCallStack, ec) {
-		if len(params) > 0 {
+		if params != nil && len(params) > 0 {
 			PrintError(ec, params...)
-		} else {
+		} else if params != nil {
 			PrintError(ec)
 		}
 		mc.printBehaviorTrace(curState, succState)
@@ -1903,20 +1903,27 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 		ec = eval.GetErrorCode()
 		if eval.HasParameters() {
 			params = eval.GetParameters()
+		} else if ec == ECGeneral {
+			params = generalErrorParams("", err)
 		}
 		return ec, params, keepCallStack
 	}
 
 	var tlcErr *TLCError
 	if errors.As(err, &tlcErr) && tlcErr != nil {
-		ec = tlcErr.Code
-		if ec == ECSystemStackOverflow || ec == ECSystemOutOfMemory || ec == ECTLCBug {
-			keepCallStack = false
+		if tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory || tlcErr.Code == ECTLCBug {
+			return tlcErr.Code, params, false
 		}
-		return ec, params, keepCallStack
 	}
 
-	return ec, params, keepCallStack
+	return ECGeneral, generalErrorParams("", err), keepCallStack
+}
+
+func generalErrorParams(cause string, err error) []string {
+	if err == nil || err.Error() == "" {
+		return nil
+	}
+	return []string{javaGeneralErrorMessage(cause, err)}
 }
 
 type doInitFunctor struct {
