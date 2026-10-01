@@ -10,6 +10,7 @@
 - Disk queue delete rule: `DiskStateQueue.delete()` and `DiskByteArrayQueue.delete()` call Java `File.delete()` on the queue directory and ignore the result. Preserve that non-recursive queue-local cleanup; `ModelChecker.cleanup` owns recursive metadir removal on successful runs. See `TestDiskQueueDeleteUsesJavaNonRecursiveDirectoryDelete`.
 - FP-set cleanup delegation: `MultiFPSet.exit(cleanup)` must delegate the exact cleanup flag to every child FP set and must not add its own Go-only metadir removal. Java's base `FPSet.exit` only signals distributed shutdown/notify; concrete child FP sets own deletion. See `TestMultiFPSetExitDelegatesCleanupLikeJava`.
 - FP-set checkpoint errors: disk and memory FP-set commit paths must keep Java's class-specific `*.commitChkpt: cannot delete ...` text. `DiskFPSet.commitChkpt(String)` directly renames tmp to chkpt; do not pre-delete the old disk checkpoint there. See `TestFPSetCommitCheckpointErrorsUseJavaClassNames`.
+- Off-heap FP-set counters: Java `OffHeapDiskFPSet.contains` does not increment `memHitCnt` for primary-memory hits, and duplicate `put` before an on-disk index exists is detected through `memInsert0` without incrementing the counter. See `TestOffHeapDiskFPSetContainsDoesNotCountMemoryHitsLikeJava`.
 - MemFPSet2 collision diagnostics: preserve Java's `checkFPs` cross-bucket loop quirk that tests a later bucket for non-nil but iterates the current bucket's bytes with the later bucket's low bits. This affects reported collision probability; see `TestMemFPSet2CheckFPsPreservesJavaCrossBucketQuirk`.
 - DFID FP-int status decoding: Java uses unsigned `>>> SBits` for `getLevel` and `isLeaf`; Go must cast through `uint32` before shifting high-bit statuses. See `TestFPIntSetStatusLevelUsesJavaUnsignedShift`.
 - DFID `MemFPIntSet.checkFPs` reconstructs diagnostic longs with Java's signed low-int OR, not the normal unsigned-low fingerprint join used by lookup/status code. See `TestMemFPIntSetCheckFPsUsesJavaSignedLowBits`.
@@ -260,6 +261,7 @@
   - Optional liveness statistics now mirror Java's `tlc2.tool.liveness.statistics` path by recording SCC component sizes, calculating final in-degree/out-degree disk-graph bucket statistics, and printing the raw stats to stdout after the checker summary.
   - `MultiFPSet.Exit` now mirrors Java's child-delegating cleanup shape instead of removing the metadir directly from the aggregate wrapper.
   - Disk and memory FP-set checkpoint commit errors now use the Java concrete-class message text, and disk FP-set commit follows Java's direct tmp-to-checkpoint rename.
+  - Off-heap disk FP-set memory-hit statistics now preserve Java's narrower counter increments for `contains` and pre-index duplicate `put`.
   - `MemFPSet2.CheckFPs` now preserves Java's current-bucket cross-bucket diagnostic quirk.
   - DFID `FPIntSet` status level decoding now uses Java unsigned-shift semantics for high-bit statuses.
   - DFID `MemFPIntSet.CheckFPs` now uses Java's signed low-int reconstruction for reported collision distances.

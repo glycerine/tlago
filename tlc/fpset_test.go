@@ -84,6 +84,33 @@ func TestDiskFPSetReaderSelectionUsesCurrentWorkerIDLikeIdThread(t *testing.T) {
 	}
 }
 
+func TestOffHeapDiskFPSetContainsDoesNotCountMemoryHitsLikeJava(t *testing.T) {
+	cfg := NewFPSetConfiguration()
+	cfg.SetMemory(64)
+	set := NewOffHeapDiskFPSet(cfg)
+	set.Init(1, t.TempDir(), "offheap-counters")
+	defer set.Close()
+
+	if seen := set.Put(42); seen {
+		t.Fatalf("first Put returned seen")
+	}
+	if got := set.GetMemHitCnt(); got != 0 {
+		t.Fatalf("mem hit count after fresh put = %d, want 0", got)
+	}
+	if !set.Contains(42) {
+		t.Fatalf("Contains missed in-memory fingerprint")
+	}
+	if got := set.GetMemHitCnt(); got != 0 {
+		t.Fatalf("offheap Contains mem hit count = %d, want 0 like Java OffHeapDiskFPSet.contains", got)
+	}
+	if !set.Put(42) {
+		t.Fatalf("second Put did not report existing fingerprint")
+	}
+	if got := set.GetMemHitCnt(); got != 0 {
+		t.Fatalf("offheap pre-index duplicate Put mem hit count = %d, want 0 like Java memInsert0 path", got)
+	}
+}
+
 func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
 	ClearMessageRecorders()
 	recorder := &MemoryRecorder{}

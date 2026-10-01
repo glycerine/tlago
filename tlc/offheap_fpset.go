@@ -69,7 +69,6 @@ func (s *OffHeapDiskFPSet) Contains(fp uint64) bool {
 	defer s.mu.Unlock()
 	fp0 := fp & diskFPSetFlushedMask
 	if s.memLookup(fp0) {
-		s.memHitCnt++
 		return true
 	}
 	hit, err := s.diskLookup(fp0)
