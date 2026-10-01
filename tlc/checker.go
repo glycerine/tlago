@@ -1611,7 +1611,7 @@ func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCS
 			if continuationEnabled() {
 				PrintError(ECTLCInvariantViolatedBehavior, nameAt(names, i))
 				mc.printBehaviorTrace(curState, succState)
-				continue
+				return false, nil
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCInvariantViolatedBehavior, nameAt(names, i)), nil
 		}
@@ -1635,7 +1635,7 @@ func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStat
 			if continuationEnabled() {
 				PrintError(ECTLCActionPropertyViolatedBehavior, nameAt(names, i))
 				mc.printBehaviorTrace(curState, succState)
-				continue
+				return false, nil
 			}
 			return mc.doNextSetErr(curState, succState, false, ECTLCActionPropertyViolatedBehavior, nameAt(names, i)), nil
 		}

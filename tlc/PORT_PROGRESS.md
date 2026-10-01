@@ -61,6 +61,7 @@
 - Already audited recently; do not route direct `ModelChecker.DoNext` through the worker successor helper: Java's direct checker path checks model/action constraints before any eager predecessor/action attachment.
 - Already audited recently; do not restamp DFID successors or action-label DFID state-writer edges in the depth loop: Java consumes the `StateVec` successor as returned by `Tool.getNextStates`, writes `allStateWriter.writeState(curState, succState, status)` without an action, and writes a stuttering self-edge before adding leaf states to liveness.
 - Already audited recently; do not make `TLCStateMut.Copy` preserve predecessor/action in ordinary MC/DFID mode. Java ordinary `TLCStateMut.copy/deepCopy` drops predecessor/action, while simulation/debug/executor uses `TLCStateMutExt` and preserves that metadata; Go mirrors this with the `ToolMode`-driven state metadata switch in `SetTLCStateTool`.
+- Already audited recently; do not print every violated invariant/action property in continuation mode for one successor. Java prints the first violation it encounters for that successor and returns to the caller; the successor may still continue through the surrounding model-checking flow.
 - `CheckImplFile` deliberately keeps trace parsing behind `LoadTraceFunc` for now: the production SANY-to-TLC bridge is in the root `tlago` package and already imports `tlc`, so `tlc` cannot import it without a circular dependency. Do not add a second parser here; wire the loader from the command/front-end layer or move the bridge mechanically if we later choose that architecture.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
 - Commit after each coherent chunk. Keep commit messages short and do not add authorship boilerplate.
@@ -189,6 +190,7 @@
   - DFID depth runs now use a Java-shaped `RunTLC` worker/periodic loop instead of a synchronous worker call with after-the-fact checkpointing.
   - DFID next-state processing now relies on `Tool.GetNextStates`/`StateVec` stamping like Java, writes depth-first all-state transitions without an action label, and emits Java's leaf stuttering edge before liveness graph insertion.
   - State copy semantics now follow Java's selected state implementation: ordinary MC/DFID copies drop predecessor/action metadata, while simulation/debug/executor copies preserve it like `TLCStateMutExt`.
+  - Continuation-mode invariant and implied-action checks now stop scanning after Java's first printed violation for a successor instead of printing all failed properties on that successor.
 - Added and kept green many fast Go tests for utility behavior and already-ported pieces.
 
 ## Left To Do
