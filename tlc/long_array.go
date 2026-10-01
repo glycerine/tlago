@@ -12,9 +12,6 @@ type LongArray struct {
 }
 
 func NewLongArray(positions int64) *LongArray {
-	if positions < 0 {
-		positions = 0
-	}
 	return &LongArray{data: make([]uint64, positions)}
 }
 
@@ -183,6 +180,7 @@ func LongArraysSortRange(array *LongArray, left int64, right int64, cmp LongComp
 		for cmp(ai, lo, array.Get(j%size), j%size) <= -1 {
 			array.Set((j+1)%size, array.Get(j%size))
 			if j == left {
+				j--
 				break
 			}
 			j--
