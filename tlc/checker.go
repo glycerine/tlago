@@ -463,6 +463,32 @@ func (mc *ModelChecker) Stop() {
 	}
 }
 
+func (mc *ModelChecker) GetTraceInfo(state *TLCStateMut) []*TLCStateInfo {
+	if mc == nil || state == nil {
+		return nil
+	}
+	if mc.ConcurrentTrace != nil {
+		return mc.ConcurrentTrace.GetTraceFromState(state)
+	}
+	if mc.Trace != nil {
+		return mc.Trace.GetTrace(state)
+	}
+	return nil
+}
+
+func (mc *ModelChecker) GetTraceInfoBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
+	if mc == nil || to == nil {
+		return nil
+	}
+	if mc.ConcurrentTrace != nil {
+		return mc.ConcurrentTrace.GetTraceBetweenStates(from, to)
+	}
+	if mc.Trace != nil {
+		return mc.Trace.GetTraceBetween(from, to)
+	}
+	return nil
+}
+
 func (mc *ModelChecker) Suspend() {
 	if mc != nil && mc.StateQueue != nil {
 		mc.StateQueue.SuspendAll()

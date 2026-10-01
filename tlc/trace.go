@@ -322,23 +322,23 @@ func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCSta
 	if to == nil {
 		return nil
 	}
-	if from == nil || from.Equal(to) {
+	if to.IsInitial() || (from != nil && from.Equal(to)) {
+		return []*TLCStateInfo{NewTLCStateInfo(to)}
+	}
+	if from == nil {
 		return t.GetTrace(to)
 	}
-	var reversed []*TLCStateInfo
-	for cur := to; cur != nil; cur = cur.Predecessor() {
-		info := NewTLCStateInfo(cur)
-		fp := cur.FingerPrint()
-		info.FP = &fp
-		reversed = append(reversed, info)
-		if cur.Equal(from) {
-			break
+	trace := t.GetTrace(to)
+	if len(trace) == 0 {
+		return trace
+	}
+	trace = trace[:len(trace)-1]
+	for i, info := range trace {
+		if info != nil && info.State != nil && info.State.Equal(from) {
+			return trace[i:]
 		}
 	}
-	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
-		reversed[i], reversed[j] = reversed[j], reversed[i]
-	}
-	return reversed
+	return trace
 }
 
 func (t *TLCTrace) GetTraceAt(pos int64, included bool) []*TLCStateInfo {

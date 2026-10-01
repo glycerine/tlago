@@ -79,7 +79,10 @@ func TestTLCTraceAndToolRegenerateBehaviorPath(t *testing.T) {
 		t.Fatalf("trace states = [%d, %d], want [0, 1]", checkerStateX(trace[0].State), checkerStateX(trace[1].State))
 	}
 	between := mc.Trace.GetTraceBetween(initState, succState)
-	if len(between) != 2 {
-		t.Fatalf("between trace length = %d, want 2", len(between))
+	if len(between) != 1 {
+		t.Fatalf("between trace length = %d, want 1", len(between))
+	}
+	if checkerStateX(between[0].State) != 0 {
+		t.Fatalf("between trace state = %d, want 0", checkerStateX(between[0].State))
 	}
 }
