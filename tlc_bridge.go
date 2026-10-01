@@ -34,7 +34,7 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"Int", "Nat", "+", "-", "*", "^", "<", ">", "\\leq", "\\geq", "%", "\\div", "..", "-.",
 	},
 	"Sequences": {
-		"Seq", "Len", "Head", "Tail", "Cons", "Append", "Concat", "\\o",
+		"Seq", "Len", "Head", "Tail", "Append", "Concat", "\\o",
 		"SubSeq", "SelectSeq",
 	},
 	"FiniteSets": {
@@ -107,7 +107,7 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
 	},
 	"SequencesExt": {
-		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix",
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix", "Cons",
 		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
 		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
 		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
@@ -207,7 +207,7 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 		"SVGElemToString", "NodeOfRingNetwork", "PointOnLine",
 	),
 	"SequencesExt": setOf(
-		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix",
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix", "Cons",
 		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
 		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
 		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
