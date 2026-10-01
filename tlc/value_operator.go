@@ -23,6 +23,7 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 	if symbol == nil {
 		symbol = NewSymbolNode("")
 	}
+	symbol.MarkUserDefinedOp()
 	name := symbol.Name
 	image := ""
 	if name != nil {

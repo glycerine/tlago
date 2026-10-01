@@ -308,7 +308,7 @@ func (b *tlcBridge) installVariables() {
 		b.processor.SetVariables(vars)
 	}
 	for _, name := range vars {
-		b.symbol(name)
+		b.symbol(name).MarkVariableDecl()
 	}
 }
 

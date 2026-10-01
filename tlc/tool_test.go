@@ -166,3 +166,24 @@ func TestSetTLCStateToolInstallsToolSymmetryPermutations(t *testing.T) {
 		t.Fatalf("tool-installed symmetry did not affect state fingerprints")
 	}
 }
+
+func TestToolLookupDoesNotReadStateForUserDefinedOperatorNameClash(t *testing.T) {
+	UniqueStringInitialize()
+	SetStateVariables([]string{"Clash"})
+	tool := NewTool()
+	opSym := NewSymbolNode("Clash")
+	opDef := NewOpDefNodeForSymbol(opSym, nil, NewValueNode(NewIntValue(2)))
+	tool.Define(opSym, opDef)
+
+	state := NewEmptyState()
+	state.Bind(UniqueStringOf("Clash"), IntOne)
+
+	if got := tool.Lookup(opSym, EmptyContext, state, false); got != opDef {
+		t.Fatalf("operator lookup = %T %[1]v, want OpDefNode despite state variable with same name", got)
+	}
+
+	varSym := NewVariableSymbolNode("Clash")
+	if got := tool.Lookup(varSym, EmptyContext, state, false); got != IntOne {
+		t.Fatalf("variable lookup = %v, want state value", got)
+	}
+}

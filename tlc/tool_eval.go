@@ -84,15 +84,23 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		return muxToolObject(sym.Data, state)
 	}
 	if sym.Name != nil {
+		if t != nil {
+			if val := t.Definitions[sym]; val != nil {
+				return muxToolObject(val, state)
+			}
+			if sym.IsUserDefinedOp() {
+				if val := t.DefnsByName[sym.Name]; val != nil {
+					return muxToolObject(val, state)
+				}
+				return nil
+			}
+		}
 		if state != nil {
 			if val := state.Lookup(sym.Name); val != nil {
 				return val
 			}
 		}
 		if t != nil {
-			if val := t.Definitions[sym]; val != nil {
-				return muxToolObject(val, state)
-			}
 			if val := t.DefnsByName[sym.Name]; val != nil {
 				return muxToolObject(val, state)
 			}

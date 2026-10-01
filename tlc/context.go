@@ -5,13 +5,42 @@ import (
 	"strings"
 )
 
+type SymbolKind int
+
+const (
+	SymbolUnknown SymbolKind = iota
+	SymbolVariableDecl
+	SymbolUserDefinedOp
+)
+
 type SymbolNode struct {
 	Name *UniqueString
 	Data any
+	Kind SymbolKind
 }
 
 func NewSymbolNode(name string) *SymbolNode {
 	return &SymbolNode{Name: UniqueStringOf(name)}
+}
+
+func NewVariableSymbolNode(name string) *SymbolNode {
+	return &SymbolNode{Name: UniqueStringOf(name), Kind: SymbolVariableDecl}
+}
+
+func (s *SymbolNode) MarkVariableDecl() {
+	if s != nil {
+		s.Kind = SymbolVariableDecl
+	}
+}
+
+func (s *SymbolNode) MarkUserDefinedOp() {
+	if s != nil {
+		s.Kind = SymbolUserDefinedOp
+	}
+}
+
+func (s *SymbolNode) IsUserDefinedOp() bool {
+	return s != nil && s.Kind == SymbolUserDefinedOp
 }
 
 func (s *SymbolNode) String() string {
