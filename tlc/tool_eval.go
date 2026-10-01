@@ -465,7 +465,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return subsetEq(arg1, arg2)
+		return subsetEq(expr, arg1, arg2)
 	case OpcodeIn, OpcodeNotin:
 		arg1, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
@@ -524,7 +524,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	case OpcodeDiamond:
 		return nil, newTLCErrorCode(ECTLCEncounteredFormulaInPredicate, "<>A", SemanticString(expr))
 	default:
-		return nil, newTLCError(ECGeneral, "TLC BUG: could not evaluate expression %s", SemanticString(expr))
+		return nil, newTLCError(ECGeneral, "TLC BUG: could not evaluate this expression.\n%s", SemanticString(expr))
 	}
 }
 
@@ -1492,10 +1492,10 @@ func domainValue(expr SemanticNode, value Value) (Value, error) {
 	}
 }
 
-func subsetEq(left Value, right Value) (*BoolValue, error) {
+func subsetEq(expr SemanticNode, left Value, right Value) (*BoolValue, error) {
 	enum, ok := asEnumerable(left)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "left side of \\subseteq is not enumerable: %s", left)
+		return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form S \\subseteq T, but S was not enumerable.\n%s", SemanticString(expr))
 	}
 	e := enum.Elements()
 	for elem := e.NextElement(); elem != nil; elem = e.NextElement() {
