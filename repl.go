@@ -43,7 +43,7 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 		return "", nil, err
 	}
 
-	extends := []string{"Reals", "Sequences", "Bags", "FiniteSets", "TLC", "Randomization"}
+	extends := []string{"Naturals", "Reals", "Sequences", "Bags", "FiniteSets", "TLC"}
 	libraryPaths := append([]string(nil), opts.LibraryPaths...)
 	if opts.SpecFile != "" {
 		specModule := strings.TrimSuffix(filepath.Base(opts.SpecFile), filepath.Ext(opts.SpecFile))
@@ -59,7 +59,7 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 	cfgPath := filepath.Join(tempDir, replSpecName+".cfg")
 	specSource := strings.Join([]string{
 		"---- MODULE " + replSpecName + " ----",
-		"EXTENDS " + strings.Join(extends, ","),
+		"EXTENDS " + strings.Join(extends, ", "),
 		"VARIABLE replvar",
 		"replinit == replvar = 0",
 		"replnext == replvar' = 0",
