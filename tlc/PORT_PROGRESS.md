@@ -703,6 +703,7 @@
 - No-code audit note: liveness aliasing overloads were rechecked after the checker/simulator alias split. `LiveWorker` keeps Java's prefix-aware alias calls while reconstructing SCC lassos, and safety-like liveness plus legacy `LiveCheck1` keep Java's pairwise alias calls for finite-prefix counterexamples.
 - `CounterExample` lasso construction now fails loudly for positive loop ordinals outside the trace, matching Java's direct `states.get(loopIdx)` failure shape instead of silently omitting the closing edge.
 - No-code audit note: the remaining generic `evalBool` callers were rechecked against Java's init/next/ENABLED equality, membership, and subset fallback branches. They are still the Java raw-cast whole-predicate paths: if no assignable variable is found, evaluate the original predicate and continue only when it is boolean true. `CounterExample` set construction was also rechecked: unnormalized `SetEnumValue` preserves insertion order until Java-style normalization is explicitly requested, so `ToTrace()` reconstructs by state ordinal rather than relying on set iteration order.
+- Special value permutation now follows Java `Value.permute`: `UserValue` and `UndefValue` do not silently return themselves under model-value permutation, and instead fail through the same base unsupported-value path used by fingerprinting.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:

@@ -53,7 +53,7 @@ func (v *UndefValue) DeepNormalize()               {}
 func (v *UndefValue) IsDefined() bool              { return false }
 func (v *UndefValue) DeepCopy() Value              { return v }
 func (v *UndefValue) FingerPrint(fp uint64) uint64 { return unsupportedValueFingerprint(v) }
-func (v *UndefValue) Permute(*MVPerm) Value        { return v }
+func (v *UndefValue) Permute(*MVPerm) Value        { return unsupportedValuePermutation(v) }
 func (v *UndefValue) String() string               { return "UNDEF" }
 
 type UserObj interface {
@@ -151,11 +151,16 @@ func (v *UserValue) DeepNormalize()               {}
 func (v *UserValue) IsDefined() bool              { return true }
 func (v *UserValue) DeepCopy() Value              { return v }
 func (v *UserValue) FingerPrint(fp uint64) uint64 { return unsupportedValueFingerprint(v) }
-func (v *UserValue) Permute(*MVPerm) Value        { return v }
+func (v *UserValue) Permute(*MVPerm) Value        { return unsupportedValuePermutation(v) }
 func (v *UserValue) String() string               { return v.UserObj.String() }
 
 func unsupportedValueFingerprint(value Value) uint64 {
 	panic(newTLCError(ECGeneral, "TLC has found a state in which the value of a variable contains %s", ValuesPPR(value)))
+}
+
+func unsupportedValuePermutation(value Value) Value {
+	unsupportedValueFingerprint(value)
+	return value
 }
 
 type AnySet struct{}
