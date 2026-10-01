@@ -164,6 +164,7 @@
   - TLC state and trace checkpoint value IO now use an internal Java-shaped value serializer (`Write`/`Read`) that preserves UniqueString tokens and record normalization, while `WriteExternal`/`ReadExternal` remain the cross-process/intern-table-safe serializer.
   - Bounded-quantifier context enumeration now mirrors Java's `Tool.contexts` arity expansion for non-tuple formal lists, so `\E x, y \in S` gets independent enumerators for `x` and `y` instead of binding only the first formal.
   - `SimpleCache.GetHitRatioAsString` now mirrors Java's grouped three-decimal `DecimalFormat` output instead of plain Go float text.
+  - `TLC!RandomElement` now indexes finite enumerated sets after the Java `SetEnumValue.size()` normalization step, so seeded random selection uses Java's element order.
   - Randomization subset generation now preserves Java's `RandomSubset` enumerator behavior, Java-shaped `RandomSetOfSubsets`/`RandomSubsetSetProbability` bounds, and hash-set duplicate suppression for generated subsets.
   - `SetOfLong.CheckFPs` now mirrors Java's diagnostic side effect by compacting and sorting the backing table prefix while computing fingerprint distance.
   - `Vect.Elements` now returns a live Java-style enumerator rather than a snapshot, and `Vect.Concat` uses Java's default-capacity destination construction.
