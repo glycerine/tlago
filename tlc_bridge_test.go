@@ -35,3 +35,27 @@ Next == x' = x
 		}
 	}
 }
+
+func TestCombinatoricsStandardModuleUsesNativeOverrides(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "CombinatoricsBridge.tla")
+	writeFile(t, root, `---- MODULE CombinatoricsBridge ----
+EXTENDS Combinatorics
+C == choose(6, 2) + factorial[3]
+====`)
+
+	spec, diags := LoadSanySpec(root, LoadOptions{LibraryPaths: []string{
+		filepath.Join("test_vectors", "CommunityModules", "modules"),
+	}})
+	requireNoErrors(t, diags)
+	requireNoErrors(t, CheckSpec(spec))
+
+	tool, toolDiags := BuildTLCTool(spec, tlc.NewModelConfig("CombinatoricsBridge"), tlc.RuntimeParameters{})
+	requireNoErrors(t, toolDiags)
+
+	for _, name := range []string{"choose", "factorial"} {
+		if _, ok := tool.DefnsByName[tlc.UniqueStringOf(name)].(*tlc.MethodValue); !ok {
+			t.Fatalf("%s = %T, want native MethodValue", name, tool.DefnsByName[tlc.UniqueStringOf(name)])
+		}
+	}
+}

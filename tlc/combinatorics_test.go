@@ -91,3 +91,26 @@ func TestCombinatoricsBigSumChooseAndPascalExtension(t *testing.T) {
 		}
 	}
 }
+
+func TestCombinatoricsCommunityModuleOverrides(t *testing.T) {
+	fact, err := CombinatoricsFactorial(NewIntValue(5))
+	if err != nil || fact.(*IntValue).Val != 120 {
+		t.Fatalf("factorial(5) = %v/%v, want 120/nil", fact, err)
+	}
+	choose, err := CombinatoricsChoose(NewIntValue(6), NewIntValue(2))
+	if err != nil || choose.(*IntValue).Val != 15 {
+		t.Fatalf("choose(6,2) = %v/%v, want 15/nil", choose, err)
+	}
+	if value, err := CombinatoricsFactorial(IntNegOne); err == nil {
+		t.Fatalf("factorial(-1) = %v/nil, want argument error", value)
+	}
+	if value, err := CombinatoricsChoose(NewStringValue("n"), IntOne); err == nil {
+		t.Fatalf("choose(\"n\",1) = %v/nil, want argument error", value)
+	}
+	if value, err := CombinatoricsFactorial(NewIntValue(13)); err == nil {
+		t.Fatalf("factorial(13) = %v/nil, want int32 overflow error", value)
+	}
+	if value, err := CombinatoricsChoose(NewIntValue(50), NewIntValue(10)); err == nil {
+		t.Fatalf("choose(50,10) = %v/nil, want int32 overflow error", value)
+	}
+}

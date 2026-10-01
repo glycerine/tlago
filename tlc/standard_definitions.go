@@ -152,6 +152,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		return IOUtilsIOEnvExecTemplate(args[0], args[1], args[2])
 	})
 	t.defineStandardMethod("atoi", 1, func(args []Value) (Value, error) { return IOUtilsAtoi(args[0]) })
+	t.defineStandardMethod("factorial", 1, func(args []Value) (Value, error) { return CombinatoricsFactorial(args[0]) })
+	t.defineStandardMethod("choose", 2, func(args []Value) (Value, error) { return CombinatoricsChoose(args[0], args[1]) })
 
 	t.defineStandardEvaluating("AssertError", 2, standardAssertError)
 	t.defineStandardEvaluatingWithMinLevel("PickSuccessor", 1, TLCLevelAction, standardPickSuccessor)

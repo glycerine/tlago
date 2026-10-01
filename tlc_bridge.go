@@ -69,6 +69,9 @@ var bridgeStandardModuleMembers = map[string][]string{
 		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
 		"IOEnvExec", "IOExecTemplate", "IOEnvExecTemplate", "IOEnv", "atoi",
 	},
+	"Combinatorics": {
+		"factorial", "choose",
+	},
 	"TLCExt": {
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
@@ -121,6 +124,9 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	"IOUtils": setOf(
 		"IOSerialize", "IODeserialize", "Serialize", "Deserialize", "IOExec",
 		"IOEnvExec", "IOExecTemplate", "IOEnvExecTemplate", "IOEnv", "atoi",
+	),
+	"Combinatorics": setOf(
+		"factorial", "choose",
 	),
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",

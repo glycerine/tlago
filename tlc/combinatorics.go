@@ -136,6 +136,46 @@ func BigChoose(n int, m int) *big.Int {
 	return binomial
 }
 
+func CombinatoricsFactorial(n Value) (Value, error) {
+	iv, ok := n.(*IntValue)
+	if !ok || iv.Val < 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "factorial", "natural number", ValuesPPR(n))
+	}
+	result := Fact(int(iv.Val))
+	out, ok := bigIntToExactInt32(result)
+	if !ok {
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, n.String())
+	}
+	return NewIntValue(out), nil
+}
+
+func CombinatoricsChoose(n Value, k Value) (Value, error) {
+	nv, ok := n.(*IntValue)
+	if !ok || nv.Val < 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "choose", "natural number", ValuesPPR(n))
+	}
+	kv, ok := k.(*IntValue)
+	if !ok || kv.Val < 0 {
+		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "choose", "natural number", ValuesPPR(k))
+	}
+	result := Choose(int(nv.Val), int(kv.Val))
+	if int64(int32(result)) != result {
+		return nil, newTLCErrorCode(ECTLCModuleOverflow, n.String()+"choose"+k.String())
+	}
+	return NewIntValue(int32(result)), nil
+}
+
+func bigIntToExactInt32(value *big.Int) (int32, bool) {
+	if value == nil || !value.IsInt64() {
+		return 0, false
+	}
+	out := value.Int64()
+	if int64(int32(out)) != out {
+		return 0, false
+	}
+	return int32(out), true
+}
+
 func SlowBigChoose(n int, m int) *big.Int {
 	num := Fact(n)
 	denom := Fact(n - m)

@@ -2175,6 +2175,13 @@ Go mapping:
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw
   `DataOutputStream`/random-access graph files remain uncompressed like Java.
+- CommunityModules `Combinatorics` contributes native `factorial` and `choose`
+  operator overrides in `tlc2.overrides.Combinatorics`. Those are distinct from
+  the lower-level `tlc2.util.Combinatorics` table/mixed-radix helpers. The Go
+  port keeps the utility helpers in `combinatorics.go`, registers the two
+  module operators as native standard definitions, and has the root bridge skip
+  the recursive TLA definitions from `Combinatorics.tla` when the frozen
+  CommunityModules library is loaded.
 - `_POSSIBLE` is also a config-driven model transformation in Java
   `SpecProcessor`. Each configured predicate is wrapped in `_Possible!_Track`
   and installed as a model constraint for state-level predicates or an action
