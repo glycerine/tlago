@@ -1129,6 +1129,10 @@ func (mc *ModelChecker) waitForWorkersWithPeriodicWork(maxDepth int) (int, error
 	}()
 	select {
 	case err := <-done:
+		result, periodicErr := mc.DoPeriodicWork()
+		if periodicErr != nil || result != NoError {
+			return result, periodicErr
+		}
 		return NoError, err
 	case <-time.After(3 * time.Second):
 	}

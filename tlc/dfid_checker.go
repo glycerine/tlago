@@ -184,6 +184,10 @@ func (mc *DFIDModelChecker) RunTLC(depth int) (int, error) {
 	}()
 	select {
 	case <-done:
+		result, err := mc.DoPeriodicWork()
+		if err != nil || result != NoError {
+			return result, err
+		}
 		return mc.dfidWorkerResult(worker)
 	case <-time.After(3 * time.Second):
 	}
