@@ -168,19 +168,23 @@ func NewMemStateQueue(metaDir ...string) *MemStateQueue {
 
 func (q *MemStateQueue) Enqueue(state *TLCStateMut) {
 	q.enqueueInner(state)
+	q.len++
 }
 
 func (q *MemStateQueue) Dequeue() *TLCStateMut {
 	if q.IsEmpty() {
 		return nil
 	}
-	return q.dequeueInner()
+	state := q.dequeueInner()
+	q.len--
+	return state
 }
 
 func (q *MemStateQueue) SEnqueue(state *TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.enqueueInner(state)
+	q.len++
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -191,6 +195,7 @@ func (q *MemStateQueue) SEnqueueAll(states []*TLCStateMut) {
 	defer q.mu.Unlock()
 	for _, state := range states {
 		q.enqueueInner(state)
+		q.len++
 	}
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
@@ -206,6 +211,7 @@ func (q *MemStateQueue) SEnqueueVec(states *StateVec) {
 	for i := 0; i < states.Size(); i++ {
 		if state := states.At(i); state != nil {
 			q.enqueueInner(state)
+			q.len++
 		}
 	}
 	if q.numWaiting.Load() > 0 && !q.stop {
@@ -217,7 +223,9 @@ func (q *MemStateQueue) SDequeue() *TLCStateMut {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.isAvailLocked() {
-		return q.dequeueInner()
+		state := q.dequeueInner()
+		q.len--
+		return state
 	}
 	return nil
 }
@@ -246,6 +254,7 @@ func (q *MemStateQueue) SDequeueMany(cnt int) []*TLCStateMut {
 	out := make([]*TLCStateMut, 0, cnt)
 	for len(out) < cnt && q.len > 0 {
 		out = append(out, q.dequeueInner())
+		q.len--
 	}
 	return out
 }
@@ -466,14 +475,12 @@ func (q *MemStateQueue) enqueueInner(state *TLCStateMut) {
 	}
 	last := (q.start + int(q.len)) % len(q.states)
 	q.states[last] = state
-	q.len++
 }
 
 func (q *MemStateQueue) dequeueInner() *TLCStateMut {
 	state := q.states[q.start]
 	q.states[q.start] = nil
 	q.start = (q.start + 1) % len(q.states)
-	q.len--
 	return state
 }
 
@@ -512,19 +519,23 @@ func NewStateDeque() *StateDeque {
 
 func (q *StateDeque) Enqueue(state *TLCStateMut) {
 	q.enqueueInner(state)
+	q.len++
 }
 
 func (q *StateDeque) Dequeue() *TLCStateMut {
 	if q.IsEmpty() {
 		return nil
 	}
-	return q.dequeueInner()
+	state := q.dequeueInner()
+	q.len--
+	return state
 }
 
 func (q *StateDeque) SEnqueue(state *TLCStateMut) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.enqueueInner(state)
+	q.len++
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
 	}
@@ -535,6 +546,7 @@ func (q *StateDeque) SEnqueueAll(states []*TLCStateMut) {
 	defer q.mu.Unlock()
 	for _, state := range states {
 		q.enqueueInner(state)
+		q.len++
 	}
 	if q.numWaiting.Load() > 0 && !q.stop {
 		q.cond.Broadcast()
@@ -550,6 +562,7 @@ func (q *StateDeque) SEnqueueVec(states *StateVec) {
 	for i := 0; i < states.Size(); i++ {
 		if state := states.At(i); state != nil {
 			q.enqueueInner(state)
+			q.len++
 		}
 	}
 	if q.numWaiting.Load() > 0 && !q.stop {
@@ -570,7 +583,9 @@ func (q *StateDeque) SDequeue() *TLCStateMut {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.isAvailLocked() {
-		return q.dequeueInner()
+		state := q.dequeueInner()
+		q.len--
+		return state
 	}
 	return nil
 }
@@ -590,6 +605,7 @@ func (q *StateDeque) SDequeueMany(cnt int) []*TLCStateMut {
 	out := make([]*TLCStateMut, 0, cnt)
 	for len(out) < cnt && q.len > 0 {
 		out = append(out, q.dequeueInner())
+		q.len--
 	}
 	return out
 }
@@ -724,14 +740,12 @@ func (q *StateDeque) enqueueInner(state *TLCStateMut) {
 	}
 	q.start = (q.start - 1 + len(q.states)) % len(q.states)
 	q.states[q.start] = state
-	q.len++
 }
 
 func (q *StateDeque) dequeueInner() *TLCStateMut {
 	state := q.states[q.start]
 	q.states[q.start] = nil
 	q.start = (q.start + 1) % len(q.states)
-	q.len--
 	return state
 }
 
