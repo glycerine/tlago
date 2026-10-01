@@ -1246,10 +1246,10 @@ func (mc *ModelChecker) DoPeriodicWork() (int, error) {
 		}
 	}
 	if createCheckpoint {
+		resume = false
 		if err := mc.Checkpoint(); err != nil {
 			return ECSystemCheckpointRecoveryCorrupt, err
 		}
-		resume = false
 	}
 	return NoError, nil
 }
