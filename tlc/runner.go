@@ -167,6 +167,9 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 
 	t.prepareRandomSeed()
 	t.applyGlobals()
+	if t.Cleanup && t.FromCheckpoint == "" {
+		deleteDirLikeJava(t.MetaDir, true)
+	}
 	recorder := &MemoryRecorder{}
 	AddMessageRecorder(recorder)
 	defer RemoveMessageRecorder(recorder)
@@ -254,7 +257,6 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		if t.LiveCheck != nil {
 			opts = append(opts, WithDFIDLiveCheck(t.LiveCheck))
 		}
-		opts = append(opts, WithDFIDCleanup(t.Cleanup))
 		checker := NewDFIDModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 		code, err := checker.ModelCheck()
 		result := &Result{
@@ -286,7 +288,6 @@ func (t *TLC) processModelChecking() (*Result, error) {
 	if t.FromCheckpoint != "" {
 		opts = append(opts, WithModelCheckerFromCheckpoint(t.FromCheckpoint))
 	}
-	opts = append(opts, WithModelCheckerCleanup(t.Cleanup))
 	checker := NewModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
 	checker.TimeBound = t.StopAfter > 0
 	cancelStopAfter := t.scheduleStopAfter(checker.Stop)
