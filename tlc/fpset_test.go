@@ -81,6 +81,46 @@ func TestDiskFPSetReaderSelectionUsesCurrentWorkerIDLikeIdThread(t *testing.T) {
 	}
 }
 
+func TestNonCheckpointableDiskFPSetNamedCheckpointWarnings(t *testing.T) {
+	ClearMessageRecorders()
+	recorder := &MemoryRecorder{}
+	AddMessageRecorder(recorder)
+	t.Cleanup(func() {
+		RemoveMessageRecorder(recorder)
+		ClearMessageRecorders()
+	})
+
+	base := &NonCheckpointableDiskFPSet{}
+	if err := base.BeginChkptFile("base"); err != nil {
+		t.Fatalf("BeginChkptFile returned error: %v", err)
+	}
+	if err := base.CommitChkptFile("base"); err != nil {
+		t.Fatalf("CommitChkptFile returned error: %v", err)
+	}
+	offHeap := &OffHeapDiskFPSet{}
+	if err := offHeap.RecoverFile("offheap"); err != nil {
+		t.Fatalf("RecoverFile returned error: %v", err)
+	}
+
+	records := recorder.Records(ECGeneral)
+	if len(records) != 3 {
+		t.Fatalf("warning count = %d, want 3", len(records))
+	}
+	want := []string{
+		"Checkpointing is not implemented for tlc2.tool.fp.NonCheckpointableDiskFPSet",
+		"Checkpointing is not implemented for tlc2.tool.fp.NonCheckpointableDiskFPSet",
+		"Checkpointing is not implemented for tlc2.tool.fp.OffHeapDiskFPSet",
+	}
+	for i, record := range records {
+		if record.Severity != SeverityWarning {
+			t.Fatalf("record %d severity = %v, want warning", i, record.Severity)
+		}
+		if len(record.Params) != 1 || record.Params[0] != want[i] {
+			t.Fatalf("record %d params = %v, want %q", i, record.Params, want[i])
+		}
+	}
+}
+
 func TestMemFPSetPutContainsAndSize(t *testing.T) {
 	set := NewMemFPSet()
 	if set.Size() != 0 {

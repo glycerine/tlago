@@ -270,6 +270,21 @@ func (s *NonCheckpointableDiskFPSet) Init(numThreads int, metadir string, filena
 	return s
 }
 
+func (s *NonCheckpointableDiskFPSet) BeginChkptFile(fname string) error {
+	printNonCheckpointableFPSetWarning("tlc2.tool.fp.NonCheckpointableDiskFPSet")
+	return nil
+}
+
+func (s *NonCheckpointableDiskFPSet) CommitChkptFile(fname string) error {
+	printNonCheckpointableFPSetWarning("tlc2.tool.fp.NonCheckpointableDiskFPSet")
+	return nil
+}
+
+func (s *NonCheckpointableDiskFPSet) RecoverFile(fname string) error {
+	printNonCheckpointableFPSetWarning("tlc2.tool.fp.NonCheckpointableDiskFPSet")
+	return nil
+}
+
 func (s *OffHeapDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	s.numThreads = numThreads
@@ -277,6 +292,25 @@ func (s *OffHeapDiskFPSet) Init(numThreads int, metadir string, filename string)
 		panic(err)
 	}
 	return s
+}
+
+func (s *OffHeapDiskFPSet) BeginChkptFile(fname string) error {
+	printNonCheckpointableFPSetWarning("tlc2.tool.fp.OffHeapDiskFPSet")
+	return nil
+}
+
+func (s *OffHeapDiskFPSet) CommitChkptFile(fname string) error {
+	printNonCheckpointableFPSetWarning("tlc2.tool.fp.OffHeapDiskFPSet")
+	return nil
+}
+
+func (s *OffHeapDiskFPSet) RecoverFile(fname string) error {
+	printNonCheckpointableFPSetWarning("tlc2.tool.fp.OffHeapDiskFPSet")
+	return nil
+}
+
+func printNonCheckpointableFPSetWarning(className string) {
+	PrintWarning(ECGeneral, "Checkpointing is not implemented for "+className)
 }
 
 func (s *DiskFPSet) Size() uint64 {
