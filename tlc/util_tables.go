@@ -612,16 +612,6 @@ func (v *Vect[E]) RemoveElementAt(index int) {
 }
 
 func (v *Vect[E]) RemoveAll(cnt int) {
-	if cnt < 0 {
-		cnt = 0
-	}
-	if cnt > len(v.data) {
-		cnt = len(v.data)
-	}
-	var zero E
-	for i := cnt; i < len(v.data); i++ {
-		v.data[i] = zero
-	}
 	v.data = v.data[:cnt]
 }
 

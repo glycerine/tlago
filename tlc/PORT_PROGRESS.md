@@ -218,6 +218,7 @@
 - Randomization keeps Java's `RandomSubsetSet` helper available internally with `RandomSubsetSetProbability` diagnostics, but it is not registered as a standard operator or bridge export because frozen `Randomization.tla` does not define it.
 - Base `Sequences.tla` does not define `Cons`; `Cons` belongs to `SequencesExt.tla`. The bridge standard-module members should therefore bind `SequencesExt!Cons` but not synthesize `Sequences!Cons`.
 - Parser-backed liveness coverage already exists in top-level `tlc_liveness_parser_test.go`; it parses tiny TLA+ specs, builds a TLC tool, and drives `tlc.ParseLiveness`.
+- Utility audit note: Java `MemObjectStack.beginChkpt` appears to checkpoint every other element because of an inner `i++`, which would corrupt multi-entry checkpoints; that class is used by legacy in-memory liveness helpers whose checkpoint methods are no-ops. Go keeps the working round-trip instead of importing that inactive corruption bug.
 - `CheckImpl.MakeStateSpace` must derive the root depth from `trace.getLevel(state.uid)` exactly like Java; do not fall back to the mutable state's cached level or an object-identity trace lookup for partial state-space extension.
 - `CheckImpl.CheckReachability` deliberately calls `Tool.IsValidTransition(Tool.GetNextStateSpec(), ...)` even if the next-state action is nil, matching Java's unconditional `tool.isValid(next, s0, s1)` path instead of silently accepting every transition.
 - The root `checkimplfile` command must recover `UniqueString` state from `-recover` before parsing/building the tool and must reset FP64 to index 0, mirroring Java `CheckImplFile.main` before `new FastTool(...)`.
@@ -314,7 +315,7 @@
   - `TLC!RandomElement` now indexes finite enumerated sets after the Java `SetEnumValue.size()` normalization step, so seeded random selection uses Java's element order.
   - Randomization subset generation now preserves Java's `RandomSubset` enumerator behavior, Java-shaped `RandomSetOfSubsets`/`RandomSubsetSetProbability` bounds, and hash-set duplicate suppression for generated subsets.
   - `SetOfLong.CheckFPs` now mirrors Java's diagnostic side effect by compacting and sorting the backing table prefix while computing fingerprint distance.
-  - `Vect.Elements` now returns a live Java-style enumerator rather than a snapshot, and `Vect.Concat` uses Java's default-capacity destination construction.
+  - `Vect.Elements` now returns a live Java-style enumerator rather than a snapshot, `Vect.Concat` uses Java's default-capacity destination construction, and `Vect.RemoveAll(cnt)` sets the visible count directly without clamping or clearing backing elements.
   - `MemObjectStack.CommitChkpt` now mirrors Java's direct temporary-to-checkpoint rename instead of deleting the old checkpoint first.
   - `DotStateWriter` transition attributes now mirror Java by emitting the label/color/fontcolor block for every action-bearing edge, even when labels/colorization are disabled, and by omitting it on actionless edges.
   - Bucket/statistics utilities now mirror Java's visible statistics string formatting quirk and CountDistinct HyperLogLog's Java integer-shift and `(int)` narrowing behavior.
