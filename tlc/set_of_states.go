@@ -98,14 +98,13 @@ func (s *SetOfStates) Size() int {
 }
 
 func (s *SetOfStates) Next() *TLCStateMut {
-	for s.iteratorIndex < len(s.states) {
+	for {
 		state := s.states[s.iteratorIndex]
 		s.iteratorIndex++
 		if state != nil {
 			return state
 		}
 	}
-	return nil
 }
 
 func (s *SetOfStates) ResetNext() {

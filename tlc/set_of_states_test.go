@@ -56,6 +56,11 @@ func TestSetOfStatesIteratesAllStatesAndResets(t *testing.T) {
 	}
 }
 
+func TestSetOfStatesNextOverrunPanicsLikeJava(t *testing.T) {
+	set := NewSetOfStates(0)
+	expectPanic(t, func() { set.Next() })
+}
+
 func TestSetOfStatesDuplicatesUseStateEqualityAfterFingerprintCollision(t *testing.T) {
 	initTLCCheckerTest(t)
 	set := NewSetOfStates(16)
