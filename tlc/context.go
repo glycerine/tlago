@@ -43,6 +43,10 @@ func (s *SymbolNode) IsUserDefinedOp() bool {
 	return s != nil && s.Kind == SymbolUserDefinedOp
 }
 
+func (s *SymbolNode) IsVariableDecl() bool {
+	return s != nil && s.Kind == SymbolVariableDecl
+}
+
 func (s *SymbolNode) String() string {
 	if s == nil || s.Name == nil {
 		return ""

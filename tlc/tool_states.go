@@ -1165,7 +1165,7 @@ func (t *Tool) GetVar(expr SemanticNode, c *Context, cutoff bool) *SymbolNode {
 		if GetOpCode(expr.Operator.Name) != 0 {
 			return nil
 		}
-		isVarDecl := expr.Operator.Name.VarLoc() >= 0
+		isVarDecl := expr.Operator.IsVariableDecl()
 		val := t.LookupWithCutoff(expr.Operator, c, cutoff && isVarDecl, EmptyState, false)
 		switch v := val.(type) {
 		case *LazyValue:
@@ -1214,7 +1214,7 @@ func (t *Tool) GetPrimedVar(expr SemanticNode, c *Context, cutoff bool) *SymbolN
 		if len(expr.Args) != 0 {
 			return nil
 		}
-		isVarDecl := expr.Operator.Name.VarLoc() >= 0
+		isVarDecl := expr.Operator.IsVariableDecl()
 		val := t.LookupWithCutoff(expr.Operator, c, cutoff && isVarDecl, EmptyState, false)
 		switch v := val.(type) {
 		case *LazyValue:

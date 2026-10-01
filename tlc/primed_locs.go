@@ -75,7 +75,7 @@ func (t *Tool) collectPrimedLocsAppl(pred *OpApplNode, c *Context, tbl *Semantic
 	case OpcodeEq, OpcodeIn:
 		if len(args) > 0 {
 			varNode := t.GetPrimedVar(args[0], c, false)
-			if varNode != nil && varNode.Name != nil && varNode.Name.VarLoc() != -1 {
+			if varNode != nil && varNode.IsVariableDecl() && varNode.Name != nil && varNode.Name.VarLoc() != -1 {
 				tbl.Put(pred, 0)
 			}
 		}
@@ -128,7 +128,7 @@ func (t *Tool) collectUnchangedLocs(expr SemanticNode, c *Context, tbl *Semantic
 	opNode := expr1.Operator
 	opName := opNode.Name
 	opcode := GetOpCode(opName)
-	if opName.VarLoc() >= 0 {
+	if opNode.IsVariableDecl() && opName.VarLoc() >= 0 {
 		tbl.Put(expr, 0)
 		return
 	}
