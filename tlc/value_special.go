@@ -68,6 +68,30 @@ type UserObjWithIsEmpty interface {
 	IsEmpty() (bool, error)
 }
 
+func nonEnumerableErrorMsg(value Value, expr SemanticNode) string {
+	switch v := value.(type) {
+	case *UserValue:
+		if msg := userObjNonEnumerableErrorMsg(v.UserObj, expr); msg != "" {
+			return msg
+		}
+	}
+	return "TLC encountered a non-enumerable quantifier bound\n" +
+		ValuesPPR(value) + ".\n" + SemanticString(expr)
+}
+
+func userObjNonEnumerableErrorMsg(obj UserObj, expr SemanticNode) string {
+	switch o := obj.(type) {
+	case naturalsObj:
+		return naturalsNonEnumerableErrorMsg(expr)
+	case integersObj:
+		return integersNonEnumerableErrorMsg(expr)
+	case *sequencesObj:
+		return o.nonEnumerableErrorMsg(expr)
+	default:
+		return ""
+	}
+}
+
 type UserValue struct {
 	BaseValue
 	UserObj UserObj

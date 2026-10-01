@@ -160,6 +160,14 @@ func (naturalsObj) IsFinite() (bool, error) { return false, nil }
 func (naturalsObj) IsEmpty() (bool, error)  { return false, nil }
 func (naturalsObj) String() string          { return "Nat" }
 
+func naturalsNonEnumerableErrorMsg(expr SemanticNode) string {
+	return "TLC encountered the non-enumerable quantifier bound\n" +
+		ValuesPPR(NatValue) + "\n" + SemanticString(expr) + "\n" +
+		"The set Nat contains infinitely many elements. As a result, TLC cannot evaluate expressions that\n" +
+		"universally (\\A) or existentially (\\E) quantify over " + ValuesPPR(NatValue) + ", because this would require checking an\n" +
+		"infinite number of cases. Note that TLC handles set membership like T \\subseteq Nat for any finite set T."
+}
+
 type integersObj struct{}
 
 func (integersObj) Compare(val Value) (int, error) {
@@ -190,3 +198,11 @@ func (integersObj) Member(val Value) (bool, error) {
 func (integersObj) IsFinite() (bool, error) { return false, nil }
 func (integersObj) IsEmpty() (bool, error)  { return false, nil }
 func (integersObj) String() string          { return "Int" }
+
+func integersNonEnumerableErrorMsg(expr SemanticNode) string {
+	return "TLC encountered the non-enumerable quantifier bound\n" +
+		ValuesPPR(IntValueSet) + "\n" + SemanticString(expr) + "\n" +
+		"The set Int contains infinitely many elements. As a result, TLC cannot evaluate expressions that\n" +
+		"universally (\\A) or existentially (\\E) quantify over " + ValuesPPR(IntValueSet) + ", because this would require checking an\n" +
+		"infinite number of cases. Note that TLC handles set membership like T \\subseteq Int for any finite set T."
+}

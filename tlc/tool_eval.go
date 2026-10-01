@@ -752,7 +752,7 @@ func (t *Tool) contexts(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCSt
 		}
 		enumerable, ok := asEnumerable(val)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "bounded quantifier domain is not enumerable: %s", val)
+			return nil, newTLCError(ECGeneral, "%s", nonEnumerableErrorMsg(val, bound))
 		}
 		if i < len(expr.BdedQuantATuple) && expr.BdedQuantATuple[i] {
 			if i >= len(expr.BdedQuantSymbolLists) || len(expr.BdedQuantSymbolLists[i]) == 0 {
