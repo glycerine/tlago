@@ -3,10 +3,15 @@ package tlc
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
 const livenessTableauExportPathProperty = "tlc2.tool.liveness.Liveness.tableauExportPath"
+
+func livenessFPString(fp uint64) string {
+	return strconv.FormatInt(int64(fp), 10)
+}
 
 type TBTriple struct {
 	A *LiveExprNode
@@ -899,7 +904,7 @@ func (n *GraphNode) String() string {
 
 func (n *GraphNode) StringWithActionLength(alen int) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("<%d,%d> --> ", n.StateFP, n.TIndex))
+	b.WriteString(fmt.Sprintf("<%s,%d> --> ", livenessFPString(n.StateFP), n.TIndex))
 	for i := 0; i < n.SuccSize(); i++ {
 		b.WriteByte('[')
 		for j := 0; j < alen; j++ {
@@ -909,7 +914,7 @@ func (n *GraphNode) StringWithActionLength(alen int) string {
 				b.WriteByte('f')
 			}
 		}
-		b.WriteString(fmt.Sprintf("] <%d,%d>, ", n.GetStateFP(i), n.GetTIndex(i)))
+		b.WriteString(fmt.Sprintf("] <%s,%d>, ", livenessFPString(n.GetStateFP(i)), n.GetTIndex(i)))
 	}
 	out := b.String()
 	if strings.HasSuffix(out, ", ") {
@@ -919,7 +924,7 @@ func (n *GraphNode) StringWithActionLength(alen int) string {
 }
 
 func (n *GraphNode) ToDotViz(isInitState bool, hasTableau bool, slen int, alen int, oos *OrderOfSolution, labels map[uint64]string) string {
-	id := fmt.Sprint(n.StateFP)
+	id := livenessFPString(n.StateFP)
 	if hasTableau {
 		id += fmt.Sprintf(".%d", n.TIndex)
 	}
@@ -927,7 +932,7 @@ func (n *GraphNode) ToDotViz(isInitState bool, hasTableau bool, slen int, alen i
 	if labels != nil {
 		labelPrefix = labels[n.StateFP]
 	}
-	fpLabel := fmt.Sprint(n.StateFP)
+	fpLabel := livenessFPString(n.StateFP)
 	if len(fpLabel) > 6 {
 		fpLabel = fpLabel[:6]
 	}
@@ -965,7 +970,7 @@ func (n *GraphNode) ToDotViz(isInitState bool, hasTableau bool, slen int, alen i
 	for i := 0; i < n.SuccSize(); i++ {
 		stateFP := n.GetStateFP(i)
 		tidx := n.GetTIndex(i)
-		target := fmt.Sprint(stateFP)
+		target := livenessFPString(stateFP)
 		if hasTableau {
 			target += fmt.Sprintf(".%d", tidx)
 		}
@@ -1107,7 +1112,7 @@ func (n *BTGraphNode) NodeInfo() string {
 	if n == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("<%d,%d>", n.StateFP, n.GetIndex())
+	return fmt.Sprintf("<%s,%d>", livenessFPString(n.StateFP), n.GetIndex())
 }
 
 type BEGraph struct {
@@ -1275,9 +1280,9 @@ func beGraphNodesEqual(left *BEGraphNode, right *BEGraphNode) bool {
 
 func (n *BEGraphNode) NodeInfo() string {
 	if n != nil && n.Tableau {
-		return fmt.Sprintf("<%d,%d>", n.StateFP, n.GetIndex())
+		return fmt.Sprintf("<%s,%d>", livenessFPString(n.StateFP), n.GetIndex())
 	}
-	return fmt.Sprint(n.StateFP)
+	return livenessFPString(n.StateFP)
 }
 
 func (n *BEGraphNode) SetParent(parent *BEGraphNode) {
@@ -1305,16 +1310,16 @@ func (n *BEGraphNode) writeString(b *strings.Builder, unseen bool) {
 		return
 	}
 	n.FlipVisited()
-	b.WriteString(fmt.Sprintf("%d --> ", n.StateFP))
+	b.WriteString(fmt.Sprintf("%s --> ", livenessFPString(n.StateFP)))
 	if len(n.Nexts) != 0 && n.Nexts[0] != nil {
-		b.WriteString(fmt.Sprint(n.Nexts[0].StateFP))
+		b.WriteString(livenessFPString(n.Nexts[0].StateFP))
 	}
 	for i := 1; i < len(n.Nexts); i++ {
 		if n.Nexts[i] == nil {
 			continue
 		}
 		b.WriteString(", ")
-		b.WriteString(fmt.Sprint(n.Nexts[i].StateFP))
+		b.WriteString(livenessFPString(n.Nexts[i].StateFP))
 	}
 	b.WriteByte('\n')
 	for _, next := range n.Nexts {

@@ -227,9 +227,9 @@ func (g *TableauDiskGraph) String() string {
 	}
 	var b strings.Builder
 	_ = g.eachTableauGraphNode(func(node *GraphNode) error {
-		b.WriteString(fmt.Sprintf("<%d,%d> -> ", node.StateFP, node.TIndex))
+		b.WriteString(fmt.Sprintf("<%s,%d> -> ", livenessFPString(node.StateFP), node.TIndex))
 		for i := 0; i < node.SuccSize(); i++ {
-			b.WriteString(fmt.Sprintf("<%d,%d> ", node.GetStateFP(i), node.GetTIndex(i)))
+			b.WriteString(fmt.Sprintf("<%s,%d> ", livenessFPString(node.GetStateFP(i)), node.GetTIndex(i)))
 		}
 		b.WriteByte('\n')
 		return nil

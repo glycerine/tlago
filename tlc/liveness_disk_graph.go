@@ -416,9 +416,9 @@ func (g *DiskGraph) String() string {
 	}
 	var b strings.Builder
 	_ = g.eachGraphNode(func(node *GraphNode) error {
-		b.WriteString(fmt.Sprintf("%d -> ", node.StateFP))
+		b.WriteString(fmt.Sprintf("%s -> ", livenessFPString(node.StateFP)))
 		for i := 0; i < node.SuccSize(); i++ {
-			b.WriteString(fmt.Sprintf("%d ", node.GetStateFP(i)))
+			b.WriteString(fmt.Sprintf("%s ", livenessFPString(node.GetStateFP(i))))
 		}
 		b.WriteByte('\n')
 		return nil
