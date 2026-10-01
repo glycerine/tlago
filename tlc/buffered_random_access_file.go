@@ -268,8 +268,11 @@ func (f *BufferedRandomAccessFile) ReadFull(p []byte) error {
 
 func (f *BufferedRandomAccessFile) ReadSignedByte() (int, error) {
 	value, err := f.ReadByteValue()
-	if err != nil || value < 0 {
+	if err != nil {
 		return value, err
+	}
+	if value < 0 {
+		return value, io.EOF
 	}
 	if value >= 128 {
 		value -= 256

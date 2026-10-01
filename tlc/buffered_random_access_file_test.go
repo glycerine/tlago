@@ -93,3 +93,20 @@ func TestBufferedRandomAccessFileSetLengthConstrainsPointer(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestBufferedRandomAccessFileShortNatEOFMatchesJavaReadByte(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "braf.bin")
+	raf, err := NewBufferedRandomAccessFile(path, "rw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := raf.ReadByteValue(); err != nil || got != -1 {
+		t.Fatalf("ReadByteValue at EOF = %d/%v, want -1/nil", got, err)
+	}
+	if _, err := raf.ReadShortNat(); !errors.Is(err, io.EOF) {
+		t.Fatalf("ReadShortNat at EOF error = %v, want EOF like Java readByte", err)
+	}
+	if err := raf.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
