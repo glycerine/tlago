@@ -410,7 +410,7 @@ func (v *SetEnumValue) Kind() ValueKind    { return SetEnumValueKind }
 func (v *SetEnumValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *SetEnumValue) Compare(other Value) (int, error) {
-	o, ok := other.(*SetEnumValue)
+	o, ok := setEnumForComparison(other)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
@@ -436,7 +436,7 @@ func (v *SetEnumValue) Compare(other Value) (int, error) {
 }
 
 func (v *SetEnumValue) Equal(other Value) (bool, error) {
-	o, ok := other.(*SetEnumValue)
+	o, ok := setEnumForComparison(other)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
@@ -459,6 +459,14 @@ func (v *SetEnumValue) Equal(other Value) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func setEnumForComparison(value Value) (*SetEnumValue, bool) {
+	set, err := toSetEnumValue(value)
+	if err != nil {
+		return nil, false
+	}
+	return set, true
 }
 
 func (v *SetEnumValue) Member(elem Value) (bool, error) {

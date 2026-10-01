@@ -16,6 +16,27 @@ func TestSetEnumElementsNormalizeLikeJavaEnumerator(t *testing.T) {
 	}
 }
 
+func TestSetEnumCompareAndEqualConvertOtherValueToSetEnumLikeJava(t *testing.T) {
+	set := NewSetEnumValue([]Value{IntOne, NewIntValue(2)}, false)
+	interval := NewIntervalValue(1, 2)
+
+	cmp, err := set.Compare(interval)
+	if err != nil {
+		t.Fatalf("Compare interval: %v", err)
+	}
+	if cmp != 0 {
+		t.Fatalf("Compare interval = %d, want 0", cmp)
+	}
+
+	eq, err := set.Equal(interval)
+	if err != nil {
+		t.Fatalf("Equal interval: %v", err)
+	}
+	if !eq {
+		t.Fatalf("Equal interval = false, want true")
+	}
+}
+
 func collectEnumerationStrings(t *testing.T, enum ValueEnumeration) []string {
 	t.Helper()
 	var out []string

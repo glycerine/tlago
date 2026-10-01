@@ -221,6 +221,7 @@
 - Utility audit note: Java `MemObjectStack.beginChkpt` appears to checkpoint every other element because of an inner `i++`, which would corrupt multi-entry checkpoints; that class is used by legacy in-memory liveness helpers whose checkpoint methods are no-ops. Go keeps the working round-trip instead of importing that inactive corruption bug.
 - Value utility audit note: Java `ValueVec.addElementAt` is a direct pre-sized slot fill plus count increment, not an insertion helper; sorted insertion belongs to `addElement1`, and `sort(noDup)` uses insertion over the sorted prefix with duplicate removal based on `compareTo == 0`. Go mirrors those splits and also enforces Java's `TLCGlobals.setBound` growth guard.
 - `SetEnumValue.elements()` must normalize in the enumerator construction path like Java, so enumeration itself sorts and removes duplicates for unnormalized sets.
+- `SetEnumValue.compareTo`/`equals` must first convert the other value through Java's `Value.toSetEnum()` path; intervals and reducible set expressions compare as enumerated sets rather than failing as non-sets.
 - `CheckImpl.MakeStateSpace` must derive the root depth from `trace.getLevel(state.uid)` exactly like Java; do not fall back to the mutable state's cached level or an object-identity trace lookup for partial state-space extension.
 - `CheckImpl.CheckReachability` deliberately calls `Tool.IsValidTransition(Tool.GetNextStateSpec(), ...)` even if the next-state action is nil, matching Java's unconditional `tool.isValid(next, s0, s1)` path instead of silently accepting every transition.
 - The root `checkimplfile` command must recover `UniqueString` state from `-recover` before parsing/building the tool and must reset FP64 to index 0, mirroring Java `CheckImplFile.main` before `new FastTool(...)`.
@@ -317,7 +318,7 @@
   - `TLC!RandomElement` now indexes finite enumerated sets after the Java `SetEnumValue.size()` normalization step, so seeded random selection uses Java's element order.
   - Randomization subset generation now preserves Java's `RandomSubset` enumerator behavior, Java-shaped `RandomSetOfSubsets`/`RandomSubsetSetProbability` bounds, and hash-set duplicate suppression for generated subsets.
   - `ValueVec` now mirrors Java's split between direct pre-sized `addElementAt`, sorted-unique `addElement1`, insertion-style `sort(noDup)`, and the `setBound` growth guard.
-  - `SetEnumValue.Elements` now normalizes before enumeration, matching Java's `SetEnumValue.Enumerator` constructor.
+  - `SetEnumValue.Elements` now normalizes before enumeration, matching Java's `SetEnumValue.Enumerator` constructor; `Compare`/`Equal` now use Java's `toSetEnum` conversion path for intervals and reducible set values.
   - `SetOfLong.CheckFPs` now mirrors Java's diagnostic side effect by compacting and sorting the backing table prefix while computing fingerprint distance.
   - `Vect.Elements` now returns a live Java-style enumerator rather than a snapshot, `Vect.Concat` uses Java's default-capacity destination construction, and `Vect.RemoveAll(cnt)` sets the visible count directly without clamping or clearing backing elements.
   - `MemObjectStack.CommitChkpt` now mirrors Java's direct temporary-to-checkpoint rename instead of deleting the old checkpoint first.
