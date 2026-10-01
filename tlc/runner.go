@@ -272,6 +272,8 @@ func (t *TLC) processModelChecking() (*Result, error) {
 	opts := make([]ModelCheckerOption, 0, 5)
 	if t.FPSet != nil {
 		opts = append(opts, WithModelCheckerFPSet(t.FPSet))
+	} else if t.FPSetConfiguration != nil {
+		opts = append(opts, WithModelCheckerFPSet(NewFPSet(t.FPSetConfiguration)))
 	}
 	if t.StateQueue != nil {
 		opts = append(opts, WithModelCheckerStateQueue(t.StateQueue))
