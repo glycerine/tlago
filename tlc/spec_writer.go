@@ -817,9 +817,6 @@ func SpecTraceExpressionBuildInitNextBuffers(cfgBuffer *strings.Builder, trace [
 		initAndNext.WriteString(tlaCR)
 	}
 	for _, info := range expressionData {
-		if info == nil {
-			continue
-		}
 		initAndNext.WriteString(tlaIndentedConj)
 		initAndNext.WriteString(info.VariableName)
 		initAndNext.WriteString(tlaEqSp)
@@ -953,9 +950,6 @@ func SpecTraceExpressionBuildInitNextBuffers(cfgBuffer *strings.Builder, trace [
 			subActionsAndConstraint.WriteString(tlaCR)
 		}
 		for _, info := range expressionData {
-			if info == nil {
-				continue
-			}
 			subActionsAndConstraint.WriteString(tlaIndent)
 			subActionsAndConstraint.WriteString(tlaIndentedConj)
 			subActionsAndConstraint.WriteString(info.VariableName)
@@ -1222,16 +1216,11 @@ func (w *SpecTraceExpressionWriter) AddVariablesAndDefinitions(data []*TraceExpr
 	}
 	var variableDecls strings.Builder
 	var definitions strings.Builder
-	wroteVar := 0
 	for i, info := range data {
-		if info == nil {
-			continue
-		}
-		if wroteVar > 0 {
+		variableDecls.WriteString(info.VariableName)
+		if i != len(data)-1 {
 			variableDecls.WriteString(tlaComma)
 		}
-		wroteVar++
-		variableDecls.WriteString(info.VariableName)
 		if addDefinitions {
 			definitions.WriteString(tlaComment)
 			definitions.WriteString("TRACE EXPLORER identifier definition ")
@@ -1246,9 +1235,6 @@ func (w *SpecTraceExpressionWriter) AddVariablesAndDefinitions(data []*TraceExpr
 			definitions.WriteString(specWriterClosingSep())
 			definitions.WriteString(tlaCR)
 		}
-	}
-	if wroteVar == 0 {
-		return
 	}
 	w.tlaBuffer.WriteString(tlaComment)
 	w.tlaBuffer.WriteString("TRACE EXPLORER variable declaration ")
@@ -1384,9 +1370,6 @@ func (w *SpecTraceExpressionWriter) AddInfoComments(data []*TraceExpressionInfor
 		return
 	}
 	for _, info := range data {
-		if info == nil {
-			continue
-		}
 		w.tlaBuffer.WriteString(tlaComment)
 		w.tlaBuffer.WriteString(tlaColon)
 		w.tlaBuffer.WriteString(fmt.Sprint(info.Level))
