@@ -1966,7 +1966,14 @@ func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
 }
 
 func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {
-	if mc == nil || mc.Tool == nil || len(trace) == 0 {
+	if mc == nil {
+		return trace
+	}
+	return aliasTraceWithTool(mc.Tool, trace)
+}
+
+func aliasTraceWithTool(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo {
+	if tool == nil || len(trace) == 0 {
 		return trace
 	}
 	aliased := append([]*TLCStateInfo(nil), trace...)
@@ -1975,7 +1982,7 @@ func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {
 		if i+1 < len(aliased) {
 			successor = aliased[i+1].OriginalState()
 		}
-		alias, err := mc.Tool.EvalAliasInfo(current, successor, func() []*TLCStateInfo {
+		alias, err := tool.EvalAliasInfo(current, successor, func() []*TLCStateInfo {
 			return append([]*TLCStateInfo(nil), aliased[:i]...)
 		})
 		if err == nil && alias != nil {

@@ -1222,6 +1222,11 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 		if err == nil {
 			return res, true
 		}
+		var workerErr *WorkerException
+		if errors.As(err, &workerErr) {
+			t.handleRunError(workerErr, stateQueue)
+			return nil, false
+		}
 		if isRecoverableDistributedError(err) && len(t.States) > 1 {
 			if stateQueue != nil {
 				stateQueue.SEnqueueAll(t.States)
@@ -1275,8 +1280,19 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 	t.Server.LastError = err
 	var workerErr *WorkerException
 	if errors.As(err, &workerErr) {
-		if t.Server.SetErrState(workerErr.State1, workerErr.State2, workerErr.KeepCallStack, ECGeneral) && stateQueue != nil {
-			stateQueue.FinishAll()
+		if t.Server.SetErrState(workerErr.State1, nil, true, ECGeneral) {
+			if workerErr.State1 != nil {
+				if t.Server.Trace != nil {
+					t.Server.Trace.PrintTrace(workerErr.State1, workerErr.State2)
+				} else {
+					PrintError(ECGeneral, generalErrorParams("", err)...)
+				}
+			} else {
+				PrintError(ECGeneral, generalErrorParams("", err)...)
+			}
+			if stateQueue != nil {
+				stateQueue.FinishAll()
+			}
 		}
 		return
 	}

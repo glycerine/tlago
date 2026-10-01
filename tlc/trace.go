@@ -328,6 +328,94 @@ func (t *TLCTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
 	return reversed
 }
 
+func (t *TLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCStateMut) {
+	trace := t.errorTraceInfo(curState, succState)
+	if len(trace) == 0 {
+		return
+	}
+	PrintError(ECTLCBehaviorUpToThisPoint)
+	trace = aliasTraceWithTool(t.Tool, trace)
+	for i, info := range trace {
+		previous := javaTracePrintPredecessor(trace, i, curState, succState)
+		PrintInvariantViolationStateTraceState(info, previous, i+1, i == len(trace)-1)
+	}
+}
+
+func (t *TLCTrace) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
+	if curState == nil {
+		if succState == nil {
+			return nil
+		}
+		trace := trimTraceState(t.GetTrace(succState), succState)
+		return append(trace, t.stateInfoForTransition(succState, nil))
+	}
+	if succState == nil {
+		if curState.IsInitial() {
+			return []*TLCStateInfo{t.stateInfoForState(curState, nil)}
+		}
+		trace := trimTraceState(t.GetTrace(curState), curState)
+		return append(trace, t.stateInfoForState(curState, lastTraceState(trace)))
+	}
+	if succState.AllAssigned() && succState.WorkerID == TLCStateInitWorkerID {
+		if curState.IsInitial() {
+			return []*TLCStateInfo{
+				t.stateInfoForState(curState, nil),
+				t.stateInfoForTransition(succState, curState),
+			}
+		}
+		trace := trimTraceState(t.GetTrace(curState), curState)
+		trace = append(trace, t.stateInfoForState(curState, lastTraceState(trace)))
+		return append(trace, t.stateInfoForTransition(succState, curState))
+	}
+	trace := trimTraceState(t.GetTrace(succState), succState)
+	return append(trace, t.stateInfoForTransition(succState, curState))
+}
+
+func (t *TLCTrace) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
+	if state == nil {
+		return nil
+	}
+	if t != nil && t.Tool != nil {
+		var (
+			info *TLCStateInfo
+			err  error
+		)
+		fp := state.FingerPrint()
+		if predecessor == nil {
+			info, err = t.Tool.GetState(fp)
+		} else {
+			info, err = t.Tool.GetState(fp, predecessor)
+		}
+		if err == nil && info != nil && info.State != nil {
+			info.State.WorkerID = state.WorkerID
+			info.State.UID = state.UID
+			return info
+		}
+	}
+	info := NewTLCStateInfo(state)
+	fp := state.FingerPrint()
+	info.FP = &fp
+	return info
+}
+
+func (t *TLCTrace) stateInfoForTransition(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
+	if state == nil {
+		return nil
+	}
+	if t != nil && t.Tool != nil && predecessor != nil {
+		info, err := t.Tool.GetStateForTransition(state, predecessor)
+		if err == nil && info != nil && info.State != nil {
+			info.State.WorkerID = state.WorkerID
+			info.State.UID = state.UID
+			return info
+		}
+	}
+	info := NewTLCStateInfo(state)
+	fp := state.FingerPrint()
+	info.FP = &fp
+	return info
+}
+
 func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
 	if to == nil {
 		return nil
