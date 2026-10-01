@@ -557,7 +557,9 @@ type OrderOfSolution struct {
 }
 
 func NewOrderOfSolution(tableau *TBGraph, promises []*LiveExprNode) *OrderOfSolution {
-	out := &OrderOfSolution{Tableau: tableau, Promises: append([]*LiveExprNode(nil), promises...)}
+	promiseCopy := make([]*LiveExprNode, len(promises))
+	copy(promiseCopy, promises)
+	out := &OrderOfSolution{Tableau: tableau, Promises: promiseCopy}
 	for _, promise := range promises {
 		if containsBoxOperator(promise.Body) {
 			out.ContainsBoxInPromise = true
