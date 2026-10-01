@@ -68,6 +68,7 @@
 - No-code audit note: `TLCGet("all")` and `TLCGet("all:named")` preserve Java's worker-0 iteration quirk for local register aggregation. Do not "fix" this to a union over all workers without intentionally diverging from Java.
 - Runner FP-set configuration must be wired into the checker, not just printed in the startup banner. Java passes `FPSetConfiguration` into `ModelChecker`; Go runner now constructs the configured FP set unless a caller injected an explicit `FPSet`.
 - Runner FP index must initialize the global fingerprint polynomial before checking/simulation, like Java `FP64.Init(fpIndex)`, not merely appear in the startup banner. See `TestTLCRunnerAppliesFPIndexLikeJava`.
+- Java `tlc2.TLC.stopAfter` is an `AbstractChecker`/`Simulator` construction concern, not just a runner option. Go direct construction now schedules the property timer for BFS model checking and simulation; `TimeBound` stays true for any numeric value except `-1`, matching Java `isTimeBound`. The Go-only `TLAGO_STOP_AFTER` and explicit `Options.StopAfter` still remain runner-owned.
 - Runner process failures must pass through a top-level Java `TLC.process()`-style catch before the finished banner. Checker/simulator panics should become TLC result codes/messages instead of bypassing `TLC_FINISHED`.
 - Periodic checkpointing owns queue resume exactly like Java `ModelChecker.checkpoint`: `DoPeriodicWork` must not defer-resume workers if checkpoint setup fails before the Java resume point. The outer error path finishes the suspended queue instead.
 - Simulation startup banner scheduler text follows Java's runtime map: only plain RL prints `RL`; the action-Q scheduler still prints `Random` even though the worker mode is `RLAction`.
@@ -528,6 +529,7 @@
   - `Sx`/`SimpUtil` were re-audited against Java `tlc2.util.Sx` and `SimpUtil`. Go now includes the Java Cartesian-product translation entry (`$CartesianProd -> cross2`) in addition to the existing atom interning/list-builder behavior.
   - Runtime parameterized-spec handling was rechecked against Java `ParameterizedSpecObj`. Go keeps this in the parser bridge rather than a SANY `SpecObj` subclass: runtime constants are installed before runtime actions, postconditions append to config postconditions, runtime extendee modules are loaded through the CLI bridge, and configured `VIEW` wins over runtime view.
   - Distributed and management shells were re-audited at their supported surface. Go intentionally omits Java RMI/JMX transport mechanics, but preserves `NextStateResult` accounting, FP-set manager sharding/checkpoint hooks, and model-checker/server MX counter semantics where those concepts exist.
+  - Java-property stop-after handling now lives at direct checker/simulator construction like Java `AbstractChecker.scheduleTermination` and `Simulator`, while the Go-only stop-after environment/option path remains runner-owned.
 - Last verified command:
   - `go test ./...`
 - Immediate next steps:

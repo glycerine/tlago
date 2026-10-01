@@ -392,7 +392,9 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		opts = append(opts, WithModelCheckerFromCheckpoint(t.FromCheckpoint))
 	}
 	checker := NewModelChecker(t.Tool, t.MetaDir, t.Deadlock, opts...)
-	checker.TimeBound = t.StopAfter > 0
+	if t.StopAfter > 0 {
+		checker.TimeBound = true
+	}
 	cancelStopAfter := t.scheduleStopAfter(checker.Stop)
 	defer cancelStopAfter()
 	code, err := checker.ModelCheck()
@@ -418,18 +420,36 @@ func (t *TLC) scheduleStopAfter(stop func()) func() {
 }
 
 func stopAfterDurationFromEnv() time.Duration {
-	if value, ok := tlcLookupSystemProperty(tlcStopAfterProperty); ok {
-		if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds > 0 {
-			return time.Duration(seconds) * time.Second
-		}
-		return 0
-	}
 	if value := os.Getenv("TLAGO_STOP_AFTER"); value != "" {
 		if seconds, err := strconv.ParseInt(value, 10, 64); err == nil && seconds > 0 {
 			return time.Duration(seconds) * time.Second
 		}
 	}
 	return 0
+}
+
+func stopAfterFromJavaProperty() (time.Duration, bool) {
+	value, ok := tlcLookupSystemProperty(tlcStopAfterProperty)
+	if !ok {
+		return 0, false
+	}
+	seconds, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	timeBound := seconds != -1
+	if seconds <= 0 {
+		return 0, timeBound
+	}
+	return time.Duration(seconds) * time.Second, timeBound
+}
+
+func scheduleStopAfterFromJavaProperty(stop func()) bool {
+	duration, timeBound := stopAfterFromJavaProperty()
+	if duration > 0 && stop != nil {
+		time.AfterFunc(duration, stop)
+	}
+	return timeBound
 }
 
 func defaultTLCDebugSuspend() bool {

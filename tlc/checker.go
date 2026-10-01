@@ -416,6 +416,9 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	}
 	mc.initWorkers()
+	if scheduleStopAfterFromJavaProperty(mc.Stop) {
+		mc.TimeBound = true
+	}
 	SetMainChecker(mc)
 	return mc
 }

@@ -129,6 +129,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		simulator.Workers = append(simulator.Workers, simulator.newSimulationWorker(i))
 	}
 	simulator.Config = simulator.createConfig()
+	scheduleStopAfterFromJavaProperty(simulator.Stop)
 	SetSimulator(simulator)
 	return simulator
 }
