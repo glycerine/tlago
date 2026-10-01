@@ -91,13 +91,16 @@ func (t *ConcurrentTLCTrace) GetTraceFromState(state *TLCStateMut) []*TLCStateIn
 	if state == nil {
 		return nil
 	}
+	if state.IsInitial() {
+		return []*TLCStateInfo{NewTLCStateInfo(state)}
+	}
 	if trace, err := t.recoverTrace(state, nil); err == nil && len(trace) > 0 {
 		return trace
 	}
 	if t == nil || t.TLCTrace == nil {
-		return traceFromState(state)
+		return trimTraceState(traceFromState(state), state)
 	}
-	return t.TLCTrace.GetTrace(state)
+	return trimTraceState(t.TLCTrace.GetTrace(state), state)
 }
 
 func (t *ConcurrentTLCTrace) GetTraceBetweenStates(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {
