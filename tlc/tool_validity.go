@@ -128,7 +128,7 @@ func (t *Tool) evalPredicateValue(expr SemanticNode, ctxt *Context, s0 *TLCState
 	}
 	bval, ok := value.(*BoolValue)
 	if !ok {
-		return false, newTLCError(ECGeneral, "expected boolean while evaluating %s, got %s", where, value.KindString())
+		return false, newTLCErrorCode(ECTLCExpectedValue, "boolean", SemanticString(expr))
 	}
 	return bval.Val, nil
 }

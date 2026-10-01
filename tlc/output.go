@@ -134,6 +134,7 @@ const (
 	ECTLCLiveImplied                                     = 2212
 	ECTLCLiveCannotHandleFormula                         = 2213
 	ECTLCLiveWrongFormulaFormat                          = 2214
+	ECTLCExpectedValue                                   = 2215
 	ECTLCCounterExample                                  = 2264
 	ECTLCStatePrint1                                     = 2216
 	ECTLCStatePrint2                                     = 2217
@@ -861,6 +862,10 @@ func formatMessage(code int, params []string) string {
 		}
 	case ECTLCLiveWrongFormulaFormat:
 		return "Temporal formulas containing actions must be of forms <>[]A or []<>A."
+	case ECTLCExpectedValue:
+		if len(params) >= 2 {
+			return fmt.Sprintf("TLC expected a %s value, but did not find one. %s", params[0], params[1])
+		}
 	case ECTLCCheckingTemporalProps:
 		if len(params) >= 3 {
 			return fmt.Sprintf("Checking %stemporal properties for the %s state space with %s total distinct states at (%s)", params[2], params[0], params[1], messageNow())
