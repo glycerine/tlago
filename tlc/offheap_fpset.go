@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
+	"time"
 )
 
 const (
@@ -14,6 +16,93 @@ const (
 	offHeapProbeLimitProperty = "tlc2.tool.fp.OffHeapDiskFPSet.probeLimit"
 	offHeapFound              = -1
 )
+
+type offHeapSynchronizer struct {
+	mu              sync.Mutex
+	cond            *sync.Cond
+	sets            *InsMap[*OffHeapDiskFPSet, struct{}]
+	flusherChosen   bool
+	parties         int
+	waiting         int
+	generation      uint64
+	lastEvictionErr error
+}
+
+var offHeapGlobalSync = newOffHeapSynchronizer()
+
+func newOffHeapSynchronizer() *offHeapSynchronizer {
+	s := &offHeapSynchronizer{
+		sets:    NewInsMap[*OffHeapDiskFPSet, struct{}](),
+		parties: 1,
+	}
+	s.cond = sync.NewCond(&s.mu)
+	return s
+}
+
+func (s *offHeapSynchronizer) add(set *OffHeapDiskFPSet) {
+	if set == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sets.Set(set, struct{}{})
+}
+
+func (s *offHeapSynchronizer) remove(set *OffHeapDiskFPSet) {
+	if set == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sets.Delkey(set)
+}
+
+func (s *offHeapSynchronizer) incWorkers(numWorkers int) {
+	if numWorkers <= 0 {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.parties < numWorkers {
+		s.parties = numWorkers
+	}
+}
+
+func (s *offHeapSynchronizer) evict() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.flusherChosen {
+		s.flusherChosen = true
+	}
+}
+
+func (s *offHeapSynchronizer) awaitIfPending() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.flusherChosen {
+		return nil
+	}
+	generation := s.generation
+	s.waiting++
+	if s.waiting >= s.parties {
+		var firstErr error
+		for set := range s.sets.All() {
+			if err := set.evict(); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+		s.lastEvictionErr = firstErr
+		s.waiting = 0
+		s.generation++
+		s.flusherChosen = false
+		s.cond.Broadcast()
+		return firstErr
+	}
+	for generation == s.generation && s.flusherChosen {
+		s.cond.Wait()
+	}
+	return s.lastEvictionErr
+}
 
 func offHeapDiskFPSetProbeLimit() int {
 	if value, ok := tlcLookupSystemProperty(offHeapProbeLimitProperty); ok {
@@ -25,46 +114,50 @@ func offHeapDiskFPSetProbeLimit() int {
 }
 
 func (s *OffHeapDiskFPSet) Put(fp uint64) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fp0 := fp & diskFPSetFlushedMask
 	for {
+		if err := offHeapGlobalSync.awaitIfPending(); err != nil {
+			panic(err)
+		}
+		s.mu.Lock()
 		start := 0
 		if s.index != nil {
 			if found := s.memLookup0(fp0); found == offHeapFound {
 				s.memHitCnt++
+				s.mu.Unlock()
 				return true
 			} else {
 				start = found
 			}
 			hit, err := s.diskLookup(fp0)
 			if err != nil {
+				s.mu.Unlock()
 				panic(err)
 			}
 			if hit {
 				s.diskHitCnt++
+				s.mu.Unlock()
 				return true
 			}
 		}
 		seen, inserted := s.memInsert0(fp0, start)
 		if seen {
+			s.mu.Unlock()
 			return true
 		}
 		if inserted {
-			if s.needsDiskFlush() {
-				if err := s.evictLocked(); err != nil {
-					panic(err)
-				}
-			}
+			s.mu.Unlock()
 			return false
 		}
-		if err := s.evictLocked(); err != nil {
-			panic(err)
-		}
+		s.mu.Unlock()
+		offHeapGlobalSync.evict()
 	}
 }
 
 func (s *OffHeapDiskFPSet) Contains(fp uint64) bool {
+	if err := offHeapGlobalSync.awaitIfPending(); err != nil {
+		panic(err)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	fp0 := fp & diskFPSetFlushedMask
@@ -126,16 +219,39 @@ func (s *OffHeapDiskFPSet) RecoverTrace(trace *TLCTrace) error {
 }
 
 func (s *OffHeapDiskFPSet) RecoverFP(fp uint64) error {
-	if s.Put(fp) {
-		return fmt.Errorf("fingerprint %d already in set during recovery", fp)
+	fp0 := fp & diskFPSetFlushedMask
+	for {
+		if err := offHeapGlobalSync.awaitIfPending(); err != nil {
+			return err
+		}
+		s.mu.Lock()
+		seen, inserted := s.memInsert0(fp0, 0)
+		if seen {
+			s.mu.Unlock()
+			if diskFPSetError2Warning() {
+				PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
+				return nil
+			}
+			return newTLCErrorCode(ECSystemCheckpointRecoveryCorrupt, "")
+		}
+		if inserted {
+			if s.needsDiskFlush() {
+				err := s.evictLocked()
+				s.mu.Unlock()
+				return err
+			}
+			s.mu.Unlock()
+			return nil
+		}
+		s.mu.Unlock()
+		offHeapGlobalSync.evict()
 	}
-	return nil
 }
 
 func (s *OffHeapDiskFPSet) Sizeof() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return uint64(44) + uint64(s.maxTblCnt*fpSetLongSize) + uint64(len(s.index))*8
+	return uint64(44) + uint64(s.maxTblCnt*fpSetLongSize) + uint64(len(s.index))*4
 }
 
 func (s *OffHeapDiskFPSet) GetTblCapacity() int64     { return s.maxTblCnt }
@@ -144,9 +260,7 @@ func (s *OffHeapDiskFPSet) GetOverallCapacity() int64 { return s.array.Size() }
 func (s *OffHeapDiskFPSet) GetBucketCapacity() int64  { return int64(s.probeLimit) }
 
 func (s *OffHeapDiskFPSet) ForceFlush() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.forceFlush = true
+	offHeapGlobalSync.evict()
 }
 
 func (s *OffHeapDiskFPSet) needsDiskFlush() bool {
@@ -197,12 +311,36 @@ func (s *OffHeapDiskFPSet) memInsert0(fp0 uint64, start int) (seen bool, inserte
 	return false, false
 }
 
+func (s *OffHeapDiskFPSet) IncWorkers(num int) {
+	offHeapGlobalSync.incWorkers(num)
+}
+
+func (s *OffHeapDiskFPSet) Close() {
+	offHeapGlobalSync.remove(s)
+	if s != nil && s.DiskFPSet != nil {
+		s.DiskFPSet.Close()
+	}
+}
+
+func (s *OffHeapDiskFPSet) evict() error {
+	if s == nil {
+		return nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.evictLocked()
+}
+
 func (s *OffHeapDiskFPSet) evictLocked() error {
+	s.growDiskMark++
+	start := time.Now()
+	defer func() {
+		s.flushTime += int64(time.Since(start) / time.Millisecond)
+	}()
 	if s.tblCnt == 0 {
 		s.forceFlush = false
 		return nil
 	}
-	s.growDiskMark++
 	values := s.unflushedValuesLocked()
 	if len(values) == 0 {
 		s.tblCnt = 0

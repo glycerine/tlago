@@ -126,12 +126,14 @@ func NewOffHeapDiskFPSet(config *FPSetConfiguration) *OffHeapDiskFPSet {
 	base.DiskFPSet.tbl = nil
 	base.DiskFPSet.capacity = 0
 	base.DiskFPSet.mask = 0
-	return &OffHeapDiskFPSet{
+	set := &OffHeapDiskFPSet{
 		NonCheckpointableDiskFPSet: base,
 		array:                      NewLongArray(positions),
 		indexer:                    NewOffHeapIndexer(positions, config.GetFPBits()),
 		probeLimit:                 offHeapDiskFPSetProbeLimit(),
 	}
+	offHeapGlobalSync.add(set)
+	return set
 }
 
 func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) *DiskFPSet {
@@ -288,6 +290,7 @@ func (s *NonCheckpointableDiskFPSet) RecoverFile(fname string) error {
 func (s *OffHeapDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.DiskFPSet.Init(numThreads, metadir, filename)
 	s.numThreads = numThreads
+	offHeapGlobalSync.add(s)
 	if err := s.array.ZeroMemory(numThreads); err != nil {
 		panic(err)
 	}
