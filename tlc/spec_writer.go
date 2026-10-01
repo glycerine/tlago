@@ -1697,12 +1697,12 @@ func (w *TraceExpressionExplorerSpecWriter) declareExpressionVariables() {
 	}
 	w.tlaBuffer.WriteString("VARIABLES ")
 	first := true
-	for variable := range w.VariableExpressionMap.All() {
+	for _, entry := range w.sortedVariableExpressionEntries() {
 		if !first {
 			w.tlaBuffer.WriteString(", ")
 		}
 		first = false
-		w.tlaBuffer.WriteString(variable)
+		w.tlaBuffer.WriteString(entry.variable)
 	}
 	w.tlaBuffer.WriteString(tlaCR)
 	w.tlaBuffer.WriteString(tlaCR)
@@ -1733,18 +1733,37 @@ func (w *TraceExpressionExplorerSpecWriter) addExpressionsToBuffer(buffer *strin
 	if w == nil || buffer == nil {
 		return
 	}
-	for variable, expression := range w.VariableExpressionMap.All() {
+	for _, entry := range w.sortedVariableExpressionEntries() {
 		buffer.WriteString(tlaIndentedConj)
-		buffer.WriteString(variable)
+		buffer.WriteString(entry.variable)
 		if primed {
 			buffer.WriteString(tlaPrime)
 		}
 		buffer.WriteString(tlaEqSp)
 		buffer.WriteString(tlaLParen)
-		buffer.WriteString(expression)
+		buffer.WriteString(entry.expression)
 		buffer.WriteString(tlaRParen)
 		buffer.WriteString(tlaCR)
 	}
+}
+
+type traceExpressionEntry struct {
+	variable   string
+	expression string
+}
+
+func (w *TraceExpressionExplorerSpecWriter) sortedVariableExpressionEntries() []traceExpressionEntry {
+	if w == nil || w.VariableExpressionMap == nil {
+		return nil
+	}
+	entries := make([]traceExpressionEntry, 0, w.VariableExpressionMap.Len())
+	for variable, expression := range w.VariableExpressionMap.All() {
+		entries = append(entries, traceExpressionEntry{variable: variable, expression: expression})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].variable < entries[j].variable
+	})
+	return entries
 }
 
 type TraceExplorationSpec struct {

@@ -477,7 +477,10 @@ Back-to-state targets and next-state variables are indexed directly, so malforme
 traces fail loudly instead of producing a best-effort TE spec. The
 `TLC_TRACE_EXPLORER_JSON_UNCOMMENTED` property removes comment prefixes from the
 JSON `ASSUME` block just as Java does for tests, and `indentString` uses Java
-split semantics by dropping trailing empty lines.
+split semantics by dropping trailing empty lines. The concrete
+`TraceExpressionExplorerSpecWriter` stores expressions in Java `TreeMap` order,
+so generated declarations and conjuncts use lexicographic variable-name order
+rather than insertion order.
 
 ### `ModelConfig`
 
