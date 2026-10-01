@@ -587,11 +587,17 @@ func (mc *ModelChecker) CheckAssumptions() int {
 
 func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	result = NoError
+	cleanupSuccessOverride := false
+	hasCleanupSuccessOverride := false
 	defer func() {
 		if mc == nil {
 			return
 		}
-		if cleanupErr := mc.Cleanup(result == NoError, mc.CleanupEnabled); err == nil {
+		cleanupSuccess := result == NoError
+		if hasCleanupSuccessOverride {
+			cleanupSuccess = cleanupSuccessOverride
+		}
+		if cleanupErr := mc.Cleanup(cleanupSuccess, mc.CleanupEnabled); err == nil {
 			err = cleanupErr
 		}
 		if result == NoError && mc.ErrorCode != NoError {
@@ -636,9 +642,8 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		if !mc.StateQueue.IsEmpty() {
 			PrintError(ECTLCStatesAndNoNextAction)
 			result = ECTLCStatesAndNoNextAction
-			if cleanupErr := mc.Cleanup(true, mc.CleanupEnabled); cleanupErr != nil {
-				err = cleanupErr
-			}
+			cleanupSuccessOverride = true
+			hasCleanupSuccessOverride = true
 			return result, err
 		}
 		ReportSuccess(mc.FPSet, mc.GetStatesGenerated())

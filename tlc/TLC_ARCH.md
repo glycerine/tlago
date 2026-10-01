@@ -1247,6 +1247,10 @@ High-level flow in `modelCheckImpl`:
 3. If no actions exist:
    - success when queue is empty,
    - otherwise error for states with no next action.
+   - Java calls `cleanup(true)` in both no-action cases, even when the queue is
+     non-empty and the result is `TLC_STATES_AND_NO_NEXT_ACTION`; Go preserves
+     that single success-cleanup call instead of using the returned error code
+     to keep artifacts.
 4. Run worker exploration with `runTLC`, which starts all pre-created workers,
    periodically performs coordinator work while they run, and joins them after
    the shared queue reaches completion or an error.
