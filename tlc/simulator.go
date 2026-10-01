@@ -565,17 +565,21 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 	for i := 0; i < all.Size(); i++ {
 		state := all.At(i)
 		if !s.Tool.IsGoodState(state) {
+			PrintError(ECTLCStateNotCompletelySpecifiedInitial, state.String())
 			return nil, ECTLCStateNotCompletelySpecifiedInitial, nil
 		}
-		if result, err := s.checkInvariants(state, true); result != NoError || err != nil {
+		for j, invariant := range s.Tool.GetInvariants() {
+			valid, err := s.Tool.IsValidState(invariant, state)
 			if err != nil {
 				code := s.printInitialStateException(state, err)
 				return nil, code, err
 			}
-			if result == ECTLCInvariantViolatedInitial {
+			if !valid {
+				alias := s.Tool.EvalAlias(state, state)
+				result := PrintError(ECTLCInvariantViolatedInitial, nameAt(s.Tool.GetInvNames(), j), alias.String())
 				s.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(state))
+				return nil, result, nil
 			}
-			return nil, result, err
 		}
 		inModel, err := s.Tool.IsInModel(state)
 		if err != nil {

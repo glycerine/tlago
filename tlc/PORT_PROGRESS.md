@@ -51,7 +51,7 @@
 - Already audited recently; do not add Go-wrapped causes or Go method names to checkpoint delete/rename errors in trace, liveness disk graph, queue, object stack/queue, memory FP set, or DFID FP-int set commit paths; they now use the Java `*.commitChkpt: cannot delete ...` strings.
 - Already audited recently; do not decode simulator packed Welford statistics with signed shifts: Java uses `>>> 32` for M2 and an unsigned low-32-bit mask for progress/statistics reporting.
 - Already audited recently; do not skip simulator init progress messages: simulation now emits Java's computed-init progress and `TLC_INIT_GENERATED1` messages before normalizing/starting workers.
-- Already audited recently; do not bubble simulator initial-state exceptions straight to the runner: Java prints `TLC_INITIAL_STATE` (or `GENERAL` before a current state exists), prints the simulator summary, and returns that printed code.
+- Already audited recently; do not bubble simulator initial-state errors straight to the runner: Java prints incomplete-state, named invariant, or `TLC_INITIAL_STATE`/`GENERAL` diagnostics from the init loop, prints the simulator summary for exceptions, and returns that printed code.
 - Already audited recently; do not deep-copy or worker-stamp simulation states on selection/generation: Java uses the selected initial state directly and only attaches predecessor/action metadata to generated successors.
 - Already audited recently; do not regenerate standard simulation successors through an intermediate `StateVec`: Java streams successors by passing the `SimulationWorker` as `INextStateFunctor` into `Tool.getNextStates`.
 - Already audited recently; do not reintroduce simulator-wide random successor collection: Java standard simulation randomly selects an action first and then a successor from that action's generated states.
@@ -196,7 +196,7 @@
   - Central `TLCTrace` checkpoint commit errors now mirror the same Java `Trace.commitChkpt: cannot delete ...` contract.
   - Checkpoint commit delete/rename errors across the core queue/object/FP/liveness disk graph paths now use Java's lowercase `commitChkpt` class strings instead of Go method names or wrapped filesystem causes.
   - Simulator packed Welford trace-length statistics now mirror Java's unsigned high/low 32-bit extraction for update and progress reporting.
-  - Simulator initial-state reporting now emits Java's computed-init progress and final init-generated messages before simulation workers start.
+  - Simulator initial-state reporting now emits Java's computed-init progress, incomplete-state/invariant diagnostics, and final init-generated messages before simulation workers start.
   - Simulator initial-state exceptions now print Java-shaped `TLC_INITIAL_STATE`/`GENERAL` diagnostics plus the simulator summary before returning.
   - Simulation workers now use initial and successor state objects like Java, without Go-only deep copies or worker-id stamping.
   - Standard simulation successor generation now streams through the worker `NextStateFunctor` and `Tool.GetNextStatesForPredicate`, matching Java's `tool.getNextStates(this, curState, action)` path instead of collecting a separate `StateVec` first.
