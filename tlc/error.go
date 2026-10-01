@@ -25,6 +25,10 @@ func newTLCErrorCode(code int, params ...string) *TLCError {
 	return &TLCError{Code: code, Msg: formatMessage(code, params)}
 }
 
+func javaMethodOverrideError(signature string, message string) *TLCError {
+	return newTLCErrorCode(ECTLCModuleValueJavaMethodOverride, signature, message)
+}
+
 type ConfigError struct {
 	Code   int
 	Params []string

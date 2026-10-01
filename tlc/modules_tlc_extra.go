@@ -1,5 +1,7 @@
 package tlc
 
+const javaTLCRandomElementSignature = "public static tlc2.value.impl.Value tlc2.module.TLC.RandomElement(tlc2.value.impl.Value)"
+
 func SortSeq(seq Value, cmp Value) (Value, error) {
 	tuple := asTupleValue(seq)
 	if tuple == nil {
@@ -104,7 +106,7 @@ func RandomElement(value Value) (Value, error) {
 			return nil, err
 		}
 		if size == 0 {
-			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty interval %s", v)
+			return nil, javaMethodOverrideError(javaTLCRandomElementSignature, "Attempted to retrieve out-of-bounds element from the interval value "+ValuesPPR(v)+".")
 		}
 		index := int(RandomEnumerableGenerator().NextDouble() * float64(size))
 		return NewIntValue(v.Low + int32(index)), nil
@@ -117,7 +119,7 @@ func RandomElement(value Value) (Value, error) {
 			return nil, err
 		}
 		if set.Elems.Len() == 0 {
-			return nil, newTLCError(ECGeneral, "RandomElement cannot choose from empty set %s", value)
+			return nil, javaMethodOverrideError(javaTLCRandomElementSignature, "Index 0 out of bounds for length 0")
 		}
 		index := int(RandomEnumerableGenerator().NextDouble() * float64(set.Elems.Len()))
 		return set.Elems.At(index), nil

@@ -318,7 +318,3 @@ func requireBag(position string, operator string, value Value) (*FcnRcdValue, er
 	}
 	return fcn, nil
 }
-
-func javaMethodOverrideError(signature string, message string) *TLCError {
-	return newTLCErrorCode(ECTLCModuleValueJavaMethodOverride, signature, message)
-}
