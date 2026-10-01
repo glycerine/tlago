@@ -22,6 +22,8 @@ func NewTLAPlusExecutor(tool *Tool, defns ...*Defns) (*TLAPlusExecutor, error) {
 	if tool == nil {
 		return nil, newTLCError(ECGeneral, "TLAPlusExecutor requires a tool")
 	}
+	tool.SetMode(ModeExecutor)
+	SetTLCStateTool(tool)
 	vec := NewStateVec(0)
 	err := tool.GetInitStates(NewStateFunctor(func(state *TLCStateMut) (any, error) {
 		vec.Add(state)
