@@ -1476,7 +1476,7 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		return tlc.NewValueNode(tlc.NewBoolValue(strings.EqualFold(e.Value, "TRUE")))
 	case "number":
 		if strings.Contains(e.Value, ".") {
-			b.diags = append(b.diags, errorAt(e.Pos, "E7010", "decimal literal %s is not yet supported by the TLC bridge", e.Value))
+			b.diags = append(b.diags, errorAt(e.Pos, "E7010", "TLC can't handle real numbers.\n%s", e.Value))
 			return tlc.NewValueNode(tlc.ValUndef)
 		}
 		value, err := strconv.ParseInt(e.Value, 10, 32)
