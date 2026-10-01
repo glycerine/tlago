@@ -90,3 +90,38 @@ C == B!shiftR(8, 1) + B!Not(5) + (6 & 3)
 		t.Fatalf("B!And = %T, want no alias for LOCAL helper", got)
 	}
 }
+
+func TestRuntimePostConditionCanTargetQualifiedLocalStandardDefinition(t *testing.T) {
+	dir := t.TempDir()
+	root := filepath.Join(dir, "TracePostBridge.tla")
+	writeFile(t, root, `---- MODULE TracePostBridge ----
+VARIABLE x
+Init == x = 0
+Next == x' = x
+====`)
+
+	params := tlc.RuntimeParameters{
+		PostConditions: []tlc.RuntimePostCondition{{
+			Module:       "_TLCTrace",
+			Operator:     "_TLCTraceSilent",
+			ConstantName: "_TLCTraceFile",
+			FileName:     "trace.bin",
+		}},
+	}
+	spec, diags := LoadSanySpec(root, LoadOptions{ExtraModules: params.ExtendeeModules()})
+	requireNoErrors(t, diags)
+	requireNoErrors(t, CheckSpec(spec))
+
+	tool, toolDiags := BuildTLCTool(spec, tlc.NewModelConfig("TracePostBridge"), params)
+	requireNoErrors(t, toolDiags)
+
+	if _, ok := tool.DefnsByName[tlc.UniqueStringOf("_TLCTrace!_TLCTraceSilent")].(*tlc.OpDefNode); !ok {
+		t.Fatalf("_TLCTrace!_TLCTraceSilent = %T, want qualified LOCAL OpDefNode", tool.DefnsByName[tlc.UniqueStringOf("_TLCTrace!_TLCTraceSilent")])
+	}
+	if got := tool.DefnsByName[tlc.UniqueStringOf("_TLCTraceSilent")]; got != nil {
+		t.Fatalf("_TLCTraceSilent = %T, want LOCAL helper not exported unqualified", got)
+	}
+	if postConditions := tool.GetPostConditionSpecs(); len(postConditions) != 1 {
+		t.Fatalf("postconditions = %d, want 1 runtime postcondition", len(postConditions))
+	}
+}
