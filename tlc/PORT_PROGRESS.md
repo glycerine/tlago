@@ -330,6 +330,7 @@
   - Simulator and `SimulationWorker` were re-audited against Java standard/RL worker loops. Recent fixes covered Java-shaped outer exception boundaries, explicit `num=0`, negative depth handling, aril config text, RNG draws before deadlock, reporter error severity, progress completion ordering, action-flow hash corner cases, and RL reward/filter error escape.
   - Runner/CLI wiring was re-audited for cleanup, FP index, seed/aril, startup banners, `CHECK_DEADLOCK`, and Java system-property behavior. Recent fixes covered DFID honoring config deadlock and the action-Q scheduler banner text.
   - Coverage reporting was re-audited against Java `CostModelCreator.report`: next-action report ordering now uses source locations, constraints are created/reported before implied properties, and the remaining larger gap is the 2026 call-tree reconstruction visitor.
+  - Checker coverage summary gating mirrors Java `AbstractChecker.reportCoverage`: BFS/DFID summaries and periodic coverage skip coverage reporting when the spec has no next actions. Simulator coverage is intentionally separate because Java `Simulator.reportCoverage` uses its own coverage-enabled-only gate.
   - `TLCGetSet`, `CheckImpl`, and liveness construction were re-audited. Recent fixes covered `TLCGet("spec").variables` location records, `CheckImpl` FP-set construction, and `tlc2.tool.liveness.ILiveCheck.testing` selecting the AddAndCheck checker path.
 - Last verified command:
   - `go test ./tlc`

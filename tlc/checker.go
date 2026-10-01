@@ -907,7 +907,7 @@ func (mc *ModelChecker) PrintSummary(success bool) {
 	if mc == nil {
 		return
 	}
-	if CoverageAnyEnabled() {
+	if checkerCoverageEnabled(mc.Tool) {
 		ReportCoverage(mc.Tool, mc.StartTime)
 	}
 	if toolMode() {
@@ -1174,10 +1174,14 @@ func periodicCoverageCountdown(interval time.Duration) int {
 }
 
 func (mc *ModelChecker) reportPeriodicCoverage() {
-	if mc == nil || mc.Tool == nil || !CoverageAnyEnabled() || len(mc.Tool.GetActions()) == 0 {
+	if mc == nil || !checkerCoverageEnabled(mc.Tool) {
 		return
 	}
 	reportCoverage(mc.Tool)
+}
+
+func checkerCoverageEnabled(tool *Tool) bool {
+	return tool != nil && CoverageAnyEnabled() && len(tool.GetActions()) > 0
 }
 
 func (mc *ModelChecker) joinWorkers() error {

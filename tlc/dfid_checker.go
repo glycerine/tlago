@@ -268,7 +268,7 @@ func (mc *DFIDModelChecker) runTLCContinueDoing(count int, depth int) {
 	_ = depth
 	PrintMessage(ECTLCProgressStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 	if count == 0 {
-		if mc != nil && mc.Tool != nil && CoverageAnyEnabled() && len(mc.Tool.GetActions()) > 0 {
+		if mc != nil && checkerCoverageEnabled(mc.Tool) {
 			reportCoverage(mc.Tool)
 		}
 	}
@@ -308,7 +308,7 @@ func (mc *DFIDModelChecker) PrintSummary(success bool) {
 	if mc == nil {
 		return
 	}
-	if CoverageAnyEnabled() {
+	if checkerCoverageEnabled(mc.Tool) {
 		ReportCoverage(mc.Tool, mc.StartTime)
 	}
 	fpSize := uint64(0)
