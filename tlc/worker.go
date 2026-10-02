@@ -749,16 +749,19 @@ func (w *Worker) Elements() (*WorkerTraceEnumerator, error) {
 	if w.traceFileBase == "" {
 		return &WorkerTraceEnumerator{}, nil
 	}
+	length := int64(0)
+	if w.traceRAF != nil {
+		filePtr, err := w.traceRAF.GetFilePointer()
+		if err != nil {
+			return nil, err
+		}
+		length = filePtr
+	}
 	raf, err := NewBufferedRandomAccessFile(w.traceFileBase+tlcTraceExt, "r")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &WorkerTraceEnumerator{}, nil
 		}
-		return nil, err
-	}
-	length, err := raf.Length()
-	if err != nil {
-		_ = raf.Close()
 		return nil, err
 	}
 	return &WorkerTraceEnumerator{length: length, raf: raf}, nil
