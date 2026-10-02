@@ -90,6 +90,20 @@ func ModelValueAtIndex(index int) *ModelValue {
 	return modelValues.mvs[index]
 }
 
+// Stream reads index the already-initialized Java ModelValue.mvs table. They
+// must not create that table or translate null/bounds failures into I/O errors.
+func modelValueFromStream(index int) *ModelValue {
+	modelValues.Lock()
+	defer modelValues.Unlock()
+	if modelValues.mvs == nil {
+		panic(NewNullPointerException())
+	}
+	if index < 0 || index >= len(modelValues.mvs) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(modelValues.mvs)))
+	}
+	return modelValues.mvs[index]
+}
+
 type MVPerm struct {
 	elems  []*ModelValue
 	domain []*ModelValue

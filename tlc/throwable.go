@@ -30,6 +30,14 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.ServerException"
 	case *EOFException:
 		return "java.io.EOFException"
+	case *WrongInvocationException:
+		return "util.WrongInvocationException"
+	case *ArrayIndexOutOfBoundsException:
+		return "java.lang.ArrayIndexOutOfBoundsException"
+	case *NegativeArraySizeException:
+		return "java.lang.NegativeArraySizeException"
+	case *ClassCastException:
+		return "java.lang.ClassCastException"
 	case *OutOfMemoryError:
 		return "java.lang.OutOfMemoryError"
 	case *NullPointerException:

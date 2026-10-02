@@ -11,7 +11,7 @@ import (
 type ValueOutputStream struct {
 	out            io.Writer
 	closer         io.Closer
-	handles        map[uintptr]int
+	handles        map[any]int
 	disableHandles bool
 }
 
@@ -61,7 +61,7 @@ func NewValueOutputStreamWithCompression(out io.Writer, compress bool) *ValueOut
 		writer = gzipWriter
 		closer = closeInOrder(gzipWriter, closer)
 	}
-	return &ValueOutputStream{out: writer, closer: closer, handles: make(map[uintptr]int)}
+	return &ValueOutputStream{out: writer, closer: closer, handles: make(map[any]int)}
 }
 
 func NewValueOutputStreamWithGlobalCompression(out io.Writer) *ValueOutputStream {
@@ -92,10 +92,8 @@ func (s *ValueOutputStream) WriteBool(value bool) error {
 	return s.WriteByte(0)
 }
 
+// Precondition: value is non-negative, as in Java's compact natural encoders.
 func (s *ValueOutputStream) WriteShortNat(value int16) error {
-	if value < 0 {
-		return fmt.Errorf("short nat cannot be negative: %d", value)
-	}
 	if value > 0x7f {
 		return s.WriteShort(-value)
 	}
@@ -103,9 +101,6 @@ func (s *ValueOutputStream) WriteShortNat(value int16) error {
 }
 
 func (s *ValueOutputStream) WriteNat(value int32) error {
-	if value < 0 {
-		return fmt.Errorf("nat cannot be negative: %d", value)
-	}
 	if value > 0x7fff {
 		return s.WriteInt(-value)
 	}
@@ -113,9 +108,6 @@ func (s *ValueOutputStream) WriteNat(value int32) error {
 }
 
 func (s *ValueOutputStream) WriteLongNat(value int64) error {
-	if value < 0 {
-		return fmt.Errorf("long nat cannot be negative: %d", value)
-	}
 	if value <= 0x7fffffff {
 		return s.WriteInt(int32(value))
 	}
@@ -137,28 +129,41 @@ func (s *ValueOutputStream) Put(value any) int {
 	if s.disableHandles {
 		return -1
 	}
-	key := pointerKey(value)
-	if key == 0 {
-		return -1
+	if value != nil {
+		rv := reflect.ValueOf(value)
+		if rv.Kind() != reflect.Pointer {
+			// Go objects passed to Java's reference-identity API are pointers.
+			return -1
+		}
+		if rv.IsNil() {
+			value = nil
+		}
 	}
-	if idx, ok := s.handles[key]; ok {
+	if idx, ok := s.handles[value]; ok {
 		return idx
 	}
-	s.handles[key] = len(s.handles)
+	// Keep the object itself alive for the entire stream, like Java's Object[].
+	// A uintptr key alone would let GC reclaim it and reuse its address.
+	s.handles[value] = len(s.handles)
 	return -1
 }
 
 func (s *ValueOutputStream) Write(value Value) error {
-	return s.writeValue(value, false)
+	return s.writeValue(value)
 }
 
+// External reads discard the saved intern-table metadata; Java has one write
+// format for both local checkpoints and values sent to another process.
 func (s *ValueOutputStream) WriteExternal(value Value) error {
-	return s.writeValue(value, true)
+	return s.Write(value)
 }
 
-func (s *ValueOutputStream) writeValue(value Value, external bool) error {
+func (s *ValueOutputStream) writeValue(value Value) error {
 	if value == nil {
-		return fmt.Errorf("cannot pickle nil TLC value")
+		panic(NewNullPointerException())
+	}
+	if rv := reflect.ValueOf(value); rv.Kind() == reflect.Pointer && rv.IsNil() {
+		panic(NewNullPointerException())
 	}
 	switch v := value.(type) {
 	case *BoolValue:
@@ -178,9 +183,6 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 		if err := s.WriteByte(byte(StringValueKind)); err != nil {
 			return err
 		}
-		if external {
-			return s.WriteExternalUniqueString(v.Val)
-		}
 		return s.WriteUniqueString(v.Val)
 	case *ModelValue:
 		if err := s.WriteByte(byte(ModelValueKind)); err != nil {
@@ -198,7 +200,7 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 			return err
 		}
 		for _, elem := range v.Elems {
-			if err := s.writeValue(elem, external); err != nil {
+			if err := s.writeValue(elem); err != nil {
 				return err
 			}
 		}
@@ -210,15 +212,19 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 		if err := s.WriteByte(byte(SetEnumValueKind)); err != nil {
 			return err
 		}
-		length := int32(v.Elems.Len())
+		if v.Elems == nil {
+			panic(NewNullPointerException())
+		}
+		count := v.Elems.Len()
+		length := int32(count)
 		if !v.IsNorm {
 			length = -length
 		}
 		if err := s.WriteInt(length); err != nil {
 			return err
 		}
-		for i := 0; i < v.Elems.Len(); i++ {
-			if err := s.writeValue(v.Elems.At(i), external); err != nil {
+		for i := 0; i < count; i++ {
+			if err := s.writeValue(v.Elems.At(i)); err != nil {
 				return err
 			}
 		}
@@ -252,7 +258,7 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 				return err
 			}
 			for _, value := range v.Values {
-				if err := s.writeValue(value, external); err != nil {
+				if err := s.writeValue(value); err != nil {
 					return err
 				}
 			}
@@ -265,20 +271,17 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 		if err := s.WriteByte(info); err != nil {
 			return err
 		}
-		for i, dval := range v.Domain {
-			if err := s.writeValue(dval, external); err != nil {
+		for i := range v.Values {
+			if err := s.writeValue(v.Domain[i]); err != nil {
 				return err
 			}
-			if err := s.writeValue(v.Values[i], external); err != nil {
+			if err := s.writeValue(v.Values[i]); err != nil {
 				return err
 			}
 		}
 		return nil
 	case *FcnLambdaValue:
-		if v.FcnRcd == nil {
-			return fmt.Errorf("cannot pickle unmaterialized finite function lambda")
-		}
-		return s.writeValue(v.FcnRcd, external)
+		return s.writeValue(v.FcnRcd)
 	case *RecordValue:
 		if idx := s.Put(v); idx >= 0 {
 			return s.writeDummy(idx)
@@ -302,73 +305,39 @@ func (s *ValueOutputStream) writeValue(value Value, external bool) error {
 				if err := s.WriteByte(byte(StringValueKind)); err != nil {
 					return err
 				}
-				if external {
-					if err := s.WriteExternalUniqueString(name); err != nil {
-						return err
-					}
-				} else if err := s.WriteUniqueString(name); err != nil {
+				if err := s.WriteUniqueString(name); err != nil {
 					return err
 				}
 			}
-			if err := s.writeValue(v.Values[i], external); err != nil {
+			if err := s.writeValue(v.Values[i]); err != nil {
 				return err
 			}
 		}
 		return nil
 	case *CounterExample:
-		if v.RecordValue == nil {
-			return s.writeValue(EmptyRecord, external)
-		}
-		return s.writeValue(v.RecordValue, external)
+		return s.writeValue(v.RecordValue)
 	case *SetOfTuplesValue:
-		if v.TupleSet == nil || v.TupleSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized set of tuples")
-		}
-		return s.writeValue(v.TupleSet, external)
+		return s.writeValue(cachedSetForWrite(v.TupleSet, v.TupleSetDummy))
 	case *SetOfRcdsValue:
-		if v.RcdSet == nil || v.RcdSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized set of records")
-		}
-		return s.writeValue(v.RcdSet, external)
+		return s.writeValue(cachedSetForWrite(v.RcdSet, v.RcdSetDummy))
 	case *SetOfFcnsValue:
-		if v.FcnSet == nil || v.FcnSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized set of functions")
-		}
-		return s.writeValue(v.FcnSet, external)
+		return s.writeValue(cachedSetForWrite(v.FcnSet, v.FcnSetDummy))
 	case *SubsetValue:
-		if v.PSet == nil || v.PSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized subset value")
-		}
-		return s.writeValue(v.PSet, external)
+		return s.writeValue(cachedSetForWrite(v.PSet, v.PSetDummy))
 	case *KSubsetValue:
-		if v.PSet == nil || v.PSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized k-subset value")
-		}
-		return s.writeValue(v.PSet, external)
+		return s.writeValue(cachedSetForWrite(v.PSet, v.PSetDummy))
 	case *SetCupValue:
-		if v.CupSet == nil || v.CupSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized set union")
-		}
-		return s.writeValue(v.CupSet, external)
+		return s.writeValue(cachedSetForWrite(v.CupSet, v.CupSetDummy))
 	case *SetCapValue:
-		if v.CapSet == nil || v.CapSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized set intersection")
-		}
-		return s.writeValue(v.CapSet, external)
+		return s.writeValue(cachedSetForWrite(v.CapSet, v.CapSetDummy))
 	case *SetDiffValue:
-		if v.DiffSet == nil || v.DiffSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized set difference")
-		}
-		return s.writeValue(v.DiffSet, external)
+		return s.writeValue(cachedSetForWrite(v.DiffSet, v.DiffSetDummy))
 	case *UnionValue:
-		if v.RealSet == nil || v.RealSetDummy {
-			return fmt.Errorf("cannot pickle unmaterialized union value")
-		}
-		return s.writeValue(v.RealSet, external)
+		return s.writeValue(cachedSetForWrite(v.RealSet, v.RealSetDummy))
 	case *SetPredValue:
-		return s.writeValue(v.InVal, external)
+		return s.writeValue(v.InVal)
 	default:
-		return fmt.Errorf("cannot pickle value of kind %s", value.KindString())
+		return NewWrongInvocationException("ValueOutputStream: Can not pickle the value\n" + ValuesPPR(value))
 	}
 }
 
@@ -380,43 +349,71 @@ func (s *ValueOutputStream) writeDummy(index int) error {
 }
 
 func (s *ValueOutputStream) WriteUniqueString(value *UniqueString) error {
-	if value == nil {
-		value = UniqueStringOf("")
-	}
 	return writeJavaUniqueString(s, value)
 }
 
 func (s *ValueOutputStream) WriteExternalUniqueString(value *UniqueString) error {
-	return writeExternalJavaUniqueString(s, value)
+	return s.WriteUniqueString(value)
 }
 
-func pointerKey(value any) uintptr {
-	if value == nil {
-		return 0
-	}
-	rv := reflect.ValueOf(value)
-	if rv.Kind() != reflect.Pointer || rv.IsNil() {
-		return 0
-	}
-	return rv.Pointer()
-}
+// Java's DummyEnum has a null ValueVec. It is distinct from EmptySet and can
+// enter the handle table before its first write fails while reading elems.size().
+var dummySetEnumForStream = &SetEnumValue{IsNorm: true}
 
-func valuePointerKey(value Value) uintptr {
-	return pointerKey(value)
+func cachedSetForWrite(set *SetEnumValue, dummy bool) *SetEnumValue {
+	if dummy {
+		return dummySetEnumForStream
+	}
+	return set
 }
 
 type ValueInputStream struct {
-	in      io.Reader
-	closer  io.Closer
-	handles []any
+	in             io.Reader
+	closer         io.Closer
+	handles        []any
+	handleIndex    int
+	disableHandles bool
 }
 
 func NewValueInputStream(in io.Reader) *ValueInputStream {
-	stream := &ValueInputStream{in: in}
+	stream := &ValueInputStream{in: in, handles: make([]any, 16)}
 	if closer, ok := in.(io.Closer); ok {
 		stream.closer = closer
 	}
 	return stream
+}
+
+// NewValueInputStreamWithoutHandles mirrors the queue byte stream's no-op
+// assign and getIndex=-1 behavior; reference records are unsupported.
+func NewValueInputStreamWithoutHandles(in io.Reader) *ValueInputStream {
+	stream := &ValueInputStream{in: in, disableHandles: true}
+	if closer, ok := in.(io.Closer); ok {
+		stream.closer = closer
+	}
+	return stream
+}
+
+// NewByteValueInputStream retains the byte queue's array-index failures rather
+// than turning a truncated in-memory state into a checked EOFException.
+func NewByteValueInputStream(raw []byte) *ValueInputStream {
+	return NewValueInputStreamWithoutHandles(&byteValueInputReader{bytes: raw})
+}
+
+type byteValueInputReader struct {
+	bytes []byte
+	index int
+}
+
+func (r *byteValueInputReader) Read(dst []byte) (int, error) {
+	for i := range dst {
+		index := r.index
+		r.index++
+		if index >= len(r.bytes) {
+			panic(NewArrayIndexOutOfBoundsException(index, len(r.bytes)))
+		}
+		dst[i] = r.bytes[index]
+	}
+	return len(dst), nil
 }
 
 func NewValueInputStreamWithCompression(in io.Reader, compressed bool) (*ValueInputStream, error) {
@@ -433,7 +430,7 @@ func NewValueInputStreamWithCompression(in io.Reader, compressed bool) (*ValueIn
 		reader = gzipReader
 		closer = closeInOrder(gzipReader, closer)
 	}
-	return &ValueInputStream{in: reader, closer: closer}, nil
+	return &ValueInputStream{in: reader, closer: closer, handles: make([]any, 16)}, nil
 }
 
 func NewValueInputStreamWithGlobalCompression(in io.Reader) (*ValueInputStream, error) {
@@ -443,25 +440,37 @@ func NewValueInputStreamWithGlobalCompression(in io.Reader) (*ValueInputStream, 
 func (s *ValueInputStream) ReadShort() (int16, error) {
 	var value int16
 	err := binary.Read(s.in, binary.BigEndian, &value)
-	return value, err
+	return value, valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadInt() (int32, error) {
 	var value int32
 	err := binary.Read(s.in, binary.BigEndian, &value)
-	return value, err
+	return value, valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadLong() (int64, error) {
 	var value int64
 	err := binary.Read(s.in, binary.BigEndian, &value)
-	return value, err
+	return value, valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadByte() (byte, error) {
 	var buf [1]byte
 	_, err := io.ReadFull(s.in, buf[:])
-	return buf[0], err
+	return buf[0], valueStreamReadError(err)
+}
+
+func valueStreamReadError(err error) error {
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		return NewEOFException()
+	}
+	return err
+}
+
+func (s *ValueInputStream) ReadFully(dst []byte) error {
+	_, err := io.ReadFull(s.in, dst)
+	return valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadBool() (bool, error) {
@@ -562,9 +571,9 @@ func (s *ValueInputStream) readKind(kind ValueKind, external bool) (Value, error
 		if err != nil {
 			return nil, err
 		}
-		value := ModelValueAtIndex(int(index))
+		value := modelValueFromStream(int(index))
 		if value == nil {
-			return nil, fmt.Errorf("model value index %d is not defined", index)
+			return nil, nil
 		}
 		return value, nil
 	case TupleValueKind:
@@ -586,17 +595,24 @@ func (s *ValueInputStream) readKind(kind ValueKind, external bool) (Value, error
 	case RecordValueKind:
 		return s.readRecordValue(external)
 	case DummyValueKind:
+		if s.disableHandles {
+			return nil, NewWrongInvocationException(fmt.Sprintf("ValueInputStream: Can not unpickle a value of kind %d", int8(kind)))
+		}
 		idx, err := s.ReadNat()
 		if err != nil {
 			return nil, err
 		}
 		value := s.valueAt(int(idx))
-		if typed, ok := value.(Value); ok {
-			return typed, nil
+		if value == nil {
+			return nil, nil
 		}
-		return nil, fmt.Errorf("dummy value index %d does not reference a Value", idx)
+		typed, ok := value.(Value)
+		if !ok {
+			panic(valueStreamClassCast(value, "tlc2.value.IValue"))
+		}
+		return typed, nil
 	default:
-		return nil, fmt.Errorf("ValueInputStream: Can not unpickle a value of kind %d", kind)
+		return nil, NewWrongInvocationException(fmt.Sprintf("ValueInputStream: Can not unpickle a value of kind %d", int8(kind)))
 	}
 }
 
@@ -606,7 +622,7 @@ func (s *ValueInputStream) readTupleValue(external bool) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	elems := make([]Value, int(length))
+	elems := make([]Value, valueStreamArrayLength(length))
 	for i := range elems {
 		value, err := s.readValue(external)
 		if err != nil {
@@ -630,7 +646,7 @@ func (s *ValueInputStream) readSetEnumValue(external bool) (Value, error) {
 		length = -length
 		isNorm = false
 	}
-	elems := make([]Value, int(length))
+	elems := make([]Value, valueStreamArrayLength(length))
 	for i := range elems {
 		value, err := s.readValue(external)
 		if err != nil {
@@ -653,7 +669,7 @@ func (s *ValueInputStream) readFcnRcdValue(external bool) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	values := make([]Value, int(length))
+	values := make([]Value, valueStreamArrayLength(length))
 	var value Value
 	if info == 0 {
 		low, err := s.ReadInt()
@@ -672,7 +688,7 @@ func (s *ValueInputStream) readFcnRcdValue(external bool) (Value, error) {
 		}
 		value = NewFcnRcdIntervalValue(NewIntervalValue(low, high), values)
 	} else {
-		domain := make([]Value, int(length))
+		domain := make([]Value, valueStreamArrayLength(length))
 		for i := range domain {
 			domain[i], err = s.readValue(external)
 			if err != nil {
@@ -716,8 +732,8 @@ func (s *ValueInputStream) readRecordValue(external bool) (Value, error) {
 		length = -length
 		isNorm = false
 	}
-	names := make([]*UniqueString, int(length))
-	values := make([]Value, int(length))
+	names := make([]*UniqueString, valueStreamArrayLength(length))
+	values := make([]Value, valueStreamArrayLength(length))
 	for i := range names {
 		kind, err := s.ReadByte()
 		if err != nil {
@@ -728,11 +744,7 @@ func (s *ValueInputStream) readRecordValue(external bool) (Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			name, ok := s.valueAt(int(idx)).(*UniqueString)
-			if !ok {
-				return nil, fmt.Errorf("dummy string index %d does not reference a UniqueString", idx)
-			}
-			names[i] = name
+			names[i] = s.GetValue(int(idx))
 		} else {
 			stringIndex := s.GetIndex()
 			var name *UniqueString
@@ -763,21 +775,80 @@ func (s *ValueInputStream) readExternalUniqueString() (*UniqueString, error) {
 }
 
 func (s *ValueInputStream) GetIndex() int {
-	index := len(s.handles)
-	s.handles = append(s.handles, nil)
+	if s.disableHandles {
+		return -1
+	}
+	index := s.handleIndex
+	if index >= len(s.handles) {
+		values := make([]any, index*2)
+		copy(values, s.handles[:index])
+		s.handles = values
+	}
+	s.handleIndex++
 	return index
 }
 
 func (s *ValueInputStream) Assign(value any, index int) {
-	for index >= len(s.handles) {
-		s.handles = append(s.handles, nil)
+	if s.disableHandles {
+		return
+	}
+	if index < 0 || index >= len(s.handles) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(s.handles)))
+	}
+	if value != nil {
+		if rv := reflect.ValueOf(value); rv.Kind() == reflect.Pointer && rv.IsNil() {
+			value = nil
+		}
 	}
 	s.handles[index] = value
 }
 
-func (s *ValueInputStream) valueAt(index int) any {
-	if index < 0 || index >= len(s.handles) {
+// GetValue is the UniqueString cast exposed by Java's IValueInputStream.
+func (s *ValueInputStream) GetValue(index int) *UniqueString {
+	value := s.valueAt(index)
+	if value == nil {
 		return nil
 	}
+	str, ok := value.(*UniqueString)
+	if !ok {
+		panic(valueStreamClassCast(value, "util.UniqueString"))
+	}
+	return str
+}
+
+func (s *ValueInputStream) valueAt(index int) any {
+	if s.disableHandles {
+		panic(NewWrongInvocationException("Not supported"))
+	}
+	if index < 0 || index >= len(s.handles) {
+		panic(NewArrayIndexOutOfBoundsException(index, len(s.handles)))
+	}
 	return s.handles[index]
+}
+
+func valueStreamArrayLength(length int32) int {
+	if length < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(length)))
+	}
+	return int(length)
+}
+
+func valueStreamClassCast(value any, target string) *ClassCastException {
+	var class string
+	switch value.(type) {
+	case *UniqueString:
+		class = "util.UniqueString"
+	case *BoolValue, *IntValue, *StringValue, *ModelValue, *TupleValue, *RecordValue,
+		*SetEnumValue, *IntervalValue, *FcnRcdValue, *FcnLambdaValue, *CounterExample,
+		*SetOfTuplesValue, *SetOfRcdsValue, *SetOfFcnsValue, *SubsetValue, *KSubsetValue,
+		*SetCupValue, *SetCapValue, *SetDiffValue, *UnionValue, *SetPredValue, *LazyValue,
+		*LazySupplierValue, *OpLambdaValue, *OpRcdValue, *MethodValue, *EvaluatingValue,
+		*PriorityEvaluatingValue, *CallableValue, *UndefValue, *UserValue:
+		class = "tlc2.value.impl." + reflect.TypeOf(value).Elem().Name()
+	default:
+		// Objects not represented by this port retain their Go type name.
+		class = fmt.Sprintf("%T", value)
+	}
+	return NewClassCastException("class " + class + " cannot be cast to class " + target +
+		" (" + class + " and " + target + " are in unnamed module of loader 'app')")
 }

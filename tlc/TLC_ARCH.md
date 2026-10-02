@@ -1093,12 +1093,33 @@ Value stream details:
   `UniqueString` names. `BoolValue`, `IntValue`, `IntervalValue`, and
   `ModelValue` always write themselves directly.
 - `ModelValue` serializes as kind `MODELVALUE` followed by the short index into
-  the global `ModelValue.mvs` table. The Go port mirrors this with
-  `ModelValueAtIndex`.
+  the already-initialized global `ModelValue.mvs` table. The stream reader does
+  not build that table on demand; a null table or invalid index retains Java's
+  runtime failure rather than becoming an I/O error.
 - Compound lengths follow Java's encodings: tuples and function records use
   compact naturals, set enumerations and records use signed lengths to preserve
   normalizedness, and function records write an interval-domain marker byte
   before either interval bounds plus values or explicit domain/value pairs.
+
+- Output handles retain the actual objects for the stream lifetime, as Java's
+  `Object[]` does, and preserve reference identity including null. Go pointer
+  addresses alone are insufficient because reclaimed addresses can be reused.
+  Input handles reserve sequential indices in a table starting at capacity 16;
+  assignment/lookup use the allocated bounds and null entries remain null.
+- Java uses the same write format for checkpoints and external values.
+  `WriteExternal` is a Go convenience alias; external reads discard saved
+  UniqueString token/location metadata, re-intern the text, and leave records
+  unnormalized. Compact natural writes preserve Java's comment-only
+  non-negative precondition without adding validation branches.
+- Cached lazy-value writes do not materialize values. Null caches throw NPE,
+  while a dummy set cache writes its shared sentinel handle and kind byte before
+  failing on its null ValueVec. Unsupported values/kinds use Java's
+  WrongInvocationException, and unknown kind bytes print as signed Java bytes.
+- File-stream truncation produces a null-message EOFException, with Go
+  `errors.Is(err, io.EOF)` compatibility for recovery loops. Invalid array sizes,
+  indices, and handle casts retain runtime exception types. Queue byte input
+  uses no handles (`getIndex=-1`, assignment is a no-op), rejects reference
+  records, and throws array-bounds failures on truncated state bytes.
 
 Correctness notes:
 

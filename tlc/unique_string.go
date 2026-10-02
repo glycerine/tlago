@@ -286,6 +286,9 @@ func writeJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
 }
 
 func writeJavaUniqueStringWithVarCount(out *ValueOutputStream, us *UniqueString, varCount int) error {
+	if us == nil {
+		panic(NewNullPointerException())
+	}
 	if err := out.WriteInt(int32(us.tok)); err != nil {
 		return err
 	}
@@ -294,24 +297,6 @@ func writeJavaUniqueStringWithVarCount(out *ValueOutputStream, us *UniqueString,
 		loc = us.loc
 	}
 	if err := out.WriteInt(int32(loc)); err != nil {
-		return err
-	}
-	bytes := javaLegacyStringBytes(us.s)
-	if err := out.WriteInt(int32(len(bytes))); err != nil {
-		return err
-	}
-	_, err := out.WriteRaw(bytes)
-	return err
-}
-
-func writeExternalJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
-	if us == nil {
-		us = UniqueStringOf("")
-	}
-	if err := out.WriteInt(-1); err != nil {
-		return err
-	}
-	if err := out.WriteInt(-1); err != nil {
 		return err
 	}
 	bytes := javaLegacyStringBytes(us.s)
@@ -335,11 +320,8 @@ func readJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
 	if err != nil {
 		return nil, err
 	}
-	if length < 0 {
-		return nil, newTLCError(ECGeneral, "negative unique string length %d", length)
-	}
-	bytes := make([]byte, int(length))
-	if _, err := io.ReadFull(in.in, bytes); err != nil {
+	bytes := make([]byte, valueStreamArrayLength(length))
+	if err := in.ReadFully(bytes); err != nil {
 		return nil, err
 	}
 	return &UniqueString{s: javaLegacyStringFromBytes(bytes), tok: int(tok), loc: int(loc)}, nil
@@ -356,11 +338,8 @@ func readExternalJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
 	if err != nil {
 		return nil, err
 	}
-	if length < 0 {
-		return nil, newTLCError(ECGeneral, "negative unique string length %d", length)
-	}
-	bytes := make([]byte, int(length))
-	if _, err := io.ReadFull(in.in, bytes); err != nil {
+	bytes := make([]byte, valueStreamArrayLength(length))
+	if err := in.ReadFully(bytes); err != nil {
 		return nil, err
 	}
 	return UniqueStringOf(javaLegacyStringFromBytes(bytes)), nil

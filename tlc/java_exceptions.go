@@ -1,12 +1,14 @@
 package tlc
 
 import (
+	"fmt"
+	"io"
 	"runtime"
 	"strings"
 )
 
 // The concrete Java exception families below preserve the types inspected by
-// TLC's distributed catches. They model exception transport without adding RPC.
+// TLC's catches and stream boundaries. They carry Java types without adding RPC.
 type javaExceptionBase struct {
 	throwableTrace
 	Message *string
@@ -42,6 +44,42 @@ func NewEOFException(message ...string) *EOFException {
 }
 
 func (e *EOFException) Error() string { return javaThrowableMessage(e) }
+
+// Go recovery loops use errors.Is(io.EOF) for Java's catch(EOFException).
+func (e *EOFException) Is(target error) bool { return target == io.EOF }
+
+type WrongInvocationException struct{ javaExceptionBase }
+
+func NewWrongInvocationException(message string) *WrongInvocationException {
+	return &WrongInvocationException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}
+}
+
+func (e *WrongInvocationException) Error() string { return javaThrowableMessage(e) }
+
+type ArrayIndexOutOfBoundsException struct{ javaExceptionBase }
+
+func NewArrayIndexOutOfBoundsException(index, length int) *ArrayIndexOutOfBoundsException {
+	message := fmt.Sprintf("Index %d out of bounds for length %d", index, length)
+	return &ArrayIndexOutOfBoundsException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}
+}
+
+func (e *ArrayIndexOutOfBoundsException) Error() string { return javaThrowableMessage(e) }
+
+type NegativeArraySizeException struct{ javaExceptionBase }
+
+func NewNegativeArraySizeException(message ...string) *NegativeArraySizeException {
+	return &NegativeArraySizeException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+
+func (e *NegativeArraySizeException) Error() string { return javaThrowableMessage(e) }
+
+type ClassCastException struct{ javaExceptionBase }
+
+func NewClassCastException(message ...string) *ClassCastException {
+	return &ClassCastException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+
+func (e *ClassCastException) Error() string { return javaThrowableMessage(e) }
 
 type OutOfMemoryError struct{ javaExceptionBase }
 

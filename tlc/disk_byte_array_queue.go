@@ -787,7 +787,7 @@ func mustStateToBytes(state *TLCStateMut) []byte {
 
 func mustBytesToState(raw []byte) *TLCStateMut {
 	state := NewEmptyState()
-	if err := state.Read(NewValueInputStream(bytes.NewReader(raw))); err != nil {
+	if err := state.Read(NewByteValueInputStream(raw)); err != nil {
 		panic(err)
 	}
 	return state
