@@ -190,7 +190,7 @@ func (e *fcnParamsEnumeration) NextElement() Value {
 		if err := e.enums[i].Err(); err != nil {
 			e.err = err
 			e.done = true
-			break
+			return nil
 		}
 		if e.currentElems[i] != nil {
 			break
@@ -204,7 +204,7 @@ func (e *fcnParamsEnumeration) NextElement() Value {
 		if err := e.enums[i].Err(); err != nil {
 			e.err = err
 			e.done = true
-			break
+			return nil
 		}
 	}
 	return NewTupleValue(elems)
@@ -545,32 +545,21 @@ func (v *FcnLambdaValue) bindEnumeratedArgument(arg Value) (*Context, error) {
 	}
 	if v.Params.Length() == 1 {
 		if v.Params.IsTuples[0] {
-			tuple := asTupleValue(arg)
-			if tuple == nil {
-				return nil, v.unsupported("In applying the function\n%s,\nthe first argument is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
-			}
+			tuple := arg.(*TupleValue)
 			for i, id := range v.Params.Formals[0] {
 				ctx = ctx.Cons(id, tuple.Elems[i])
 			}
 			return ctx, nil
 		}
-		if len(v.Params.Formals[0]) != 0 {
-			ctx = ctx.Cons(v.Params.Formals[0][0], arg)
-		}
+		ctx = ctx.Cons(v.Params.Formals[0][0], arg)
 		return ctx, nil
 	}
-	argTuple := asTupleValue(arg)
-	if argTuple == nil {
-		return nil, v.unsupported("In applying the function\n%s,\nthe argument list is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), ValuesPPR(arg))
-	}
+	argTuple := arg.(*TupleValue)
 	argn := 0
 	for i, ids := range v.Params.Formals {
 		if v.Params.IsTuples[i] {
-			tv := asTupleValue(argTuple.Elems[argn])
+			tv := argTuple.Elems[argn].(*TupleValue)
 			argn++
-			if tv == nil {
-				return nil, v.unsupported("In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich does not match its formal parameter.\n", ValuesPPR(v), argn, ValuesPPR(argTuple.Elems[argn-1]))
-			}
 			for j, id := range ids {
 				ctx = ctx.Cons(id, tv.Elems[j])
 			}
@@ -751,7 +740,8 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 			}
 			elems[i] = elem
 		}
-		return NewTupleValue(elems)
+		v.CM.incValueSecondary(int64(len(elems)))
+		return NewTupleValue(elems, v.CM)
 	}
 	set, err := toSetEnumValue(domain)
 	if err != nil {
@@ -771,15 +761,27 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 		}
 		elems[i] = elem
 	}
-	return NewTupleValue(elems)
+	// Java's explicit-domain branch increments even when coverage is disabled.
+	v.CM.IncSecondary(int64(len(elems)))
+	return NewTupleValue(elems, v.CM)
 }
 
 func (v *FcnLambdaValue) ToRecord() *RecordValue {
 	fcn, err := v.materializeFcnRcd()
-	if err != nil || fcn == nil {
+	if err != nil || fcn == nil || fcn.Domain == nil {
 		return nil
 	}
-	return fcn.ToRecord()
+	_ = fcn.normalizeFcn()
+	names := make([]*UniqueString, len(fcn.Domain))
+	for i, elem := range fcn.Domain {
+		str, ok := elem.(*StringValue)
+		if !ok {
+			return nil
+		}
+		names[i] = str.Val
+	}
+	v.CM.incValueSecondary(int64(len(names)))
+	return NewRecordValue(names, fcn.Values, fcn.IsNorm, v.CM)
 }
 
 func (v *FcnLambdaValue) ToFcnRcd() *FcnRcdValue {
@@ -807,9 +809,6 @@ func (v *FcnLambdaValue) materializeFcnRcd() (*FcnRcdValue, error) {
 	idx := 0
 	enum := v.Params.Elements()
 	for arg := enum.NextElement(); arg != nil; arg = enum.NextElement() {
-		if idx >= size {
-			return nil, v.unsupported("function parameter enumeration exceeded declared size for %s", v.Params)
-		}
 		domain[idx] = arg
 		ctx, err := v.bindEnumeratedArgument(arg)
 		if err != nil {
@@ -824,17 +823,16 @@ func (v *FcnLambdaValue) materializeFcnRcd() (*FcnRcdValue, error) {
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	values = values[:idx]
-	domain = domain[:idx]
 	if v.Params.Length() == 1 {
 		if intv, ok := v.Params.Domains[0].(*IntervalValue); ok {
-			v.FcnRcd = NewFcnRcdIntervalValue(intv, values)
+			v.FcnRcd = NewFcnRcdIntervalValue(intv, values, v.CM)
 		} else {
-			v.FcnRcd = NewFcnRcdValue(domain, values, false)
+			v.FcnRcd = NewFcnRcdValue(domain, values, false, v.CM)
 		}
 	} else {
-		v.FcnRcd = NewFcnRcdValue(domain, values, false)
+		v.FcnRcd = NewFcnRcdValue(domain, values, false, v.CM)
 	}
+	v.CM.incValueSecondary(int64(size))
 	if len(v.Excepts) != 0 {
 		taken, err := v.FcnRcd.TakeExcepts(copyValueExcepts(v.Excepts))
 		if err != nil {

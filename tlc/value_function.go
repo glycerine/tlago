@@ -375,8 +375,8 @@ type RecordValue struct {
 
 var EmptyRecord = &RecordValue{Names: []*UniqueString{}, Values: []Value{}, IsNorm: true}
 
-func NewRecordValue(names []*UniqueString, values []Value, isNorm bool) *RecordValue {
-	return &RecordValue{Names: names, Values: values, IsNorm: isNorm}
+func NewRecordValue(names []*UniqueString, values []Value, isNorm bool, cms ...CostModel) *RecordValue {
+	return &RecordValue{BaseValue: newBaseValue(cms...), Names: names, Values: values, IsNorm: isNorm}
 }
 
 func NewRecordValueFromInsMap(values *InsMap[*UniqueString, Value]) *RecordValue {
@@ -509,9 +509,10 @@ func (v *RecordValue) ToFcnRcd() *FcnRcdValue {
 	_ = v.normalizeRecord()
 	domain := make([]Value, len(v.Names))
 	for i, name := range v.Names {
-		domain[i] = NewStringValueFromUnique(name)
+		domain[i] = NewStringValueFromUnique(name, v.CM)
 	}
-	return &FcnRcdValue{Domain: domain, Values: v.Values, IsNorm: v.IsNorm}
+	v.CM.incValueSecondary(int64(len(domain)))
+	return NewFcnRcdValue(domain, v.Values, v.IsNorm, v.CM)
 }
 
 func (v *RecordValue) ToTuple() *TupleValue {
@@ -730,12 +731,12 @@ type FcnRcdValue struct {
 
 var EmptyFcn = &FcnRcdValue{Domain: []Value{}, Values: []Value{}, IsNorm: true}
 
-func NewFcnRcdValue(domain []Value, values []Value, isNorm bool) *FcnRcdValue {
-	return &FcnRcdValue{Domain: domain, Values: values, IsNorm: isNorm}
+func NewFcnRcdValue(domain []Value, values []Value, isNorm bool, cms ...CostModel) *FcnRcdValue {
+	return &FcnRcdValue{BaseValue: newBaseValue(cms...), Domain: domain, Values: values, IsNorm: isNorm}
 }
 
-func NewFcnRcdIntervalValue(intv *IntervalValue, values []Value) *FcnRcdValue {
-	return &FcnRcdValue{Intv: intv, Values: values, IsNorm: true}
+func NewFcnRcdIntervalValue(intv *IntervalValue, values []Value, cms ...CostModel) *FcnRcdValue {
+	return &FcnRcdValue{BaseValue: newBaseValue(cms...), Intv: intv, Values: values, IsNorm: true}
 }
 
 func (v *FcnRcdValue) Kind() ValueKind    { return FcnRcdValueKind }
@@ -1110,7 +1111,8 @@ func (v *FcnRcdValue) ToTuple() *TupleValue {
 		}
 		elems[idx-1] = v.Values[i]
 	}
-	return NewTupleValue(elems)
+	v.CM.incValueSecondary(int64(len(elems)))
+	return NewTupleValue(elems, v.CM)
 }
 
 func (v *FcnRcdValue) ToRecord() *RecordValue {
@@ -1126,7 +1128,8 @@ func (v *FcnRcdValue) ToRecord() *RecordValue {
 		}
 		names[i] = s.Val
 	}
-	return &RecordValue{Names: names, Values: v.Values, IsNorm: v.IsNorm}
+	v.CM.incValueSecondary(int64(len(v.Values)))
+	return NewRecordValue(names, v.Values, v.IsNorm, v.CM)
 }
 
 func (v *FcnRcdValue) Normalize() Value {
@@ -1380,7 +1383,7 @@ func asFcnRcdValue(value Value) *FcnRcdValue {
 	case *FcnLambdaValue:
 		return v.ToFcnRcd()
 	case *TupleValue:
-		return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems)
+		return v.ToFcnRcd()
 	case *RecordValue:
 		return v.ToFcnRcd()
 	case *CounterExample:

@@ -113,6 +113,17 @@ func IsEmptyValue(value Value) (bool, error) {
 }
 
 func toSetEnumValue(value Value) (*SetEnumValue, error) {
+	set, err := tryToSetEnumValue(value)
+	if err != nil {
+		return nil, err
+	}
+	if set == nil {
+		return nil, newTLCError(ECGeneral, "value %s cannot be converted to an enumerated set", value)
+	}
+	return set, nil
+}
+
+func tryToSetEnumValue(value Value) (*SetEnumValue, error) {
 	switch v := value.(type) {
 	case *SetEnumValue:
 		return v, nil
@@ -139,7 +150,7 @@ func toSetEnumValue(value Value) (*SetEnumValue, error) {
 	case *KSubsetValue:
 		return v.ToSetEnum()
 	default:
-		return nil, newTLCError(ECGeneral, "value %s cannot be converted to an enumerated set", value)
+		return nil, nil
 	}
 }
 
@@ -179,6 +190,7 @@ func shouldExpandProduct(values []Value) bool {
 }
 
 type productEnumeration struct {
+	cm           CostModel
 	enums        []ValueEnumeration
 	currentElems []Value
 	done         bool
@@ -186,11 +198,14 @@ type productEnumeration struct {
 	makeValue    func([]Value) Value
 }
 
-func newProductEnumeration(sets []Value, makeValue func([]Value) Value, errf func(int, Value) error) ValueEnumeration {
+func newProductEnumeration(sets []Value, makeValue func([]Value) Value, errf func(int, Value) error, cms ...CostModel) ValueEnumeration {
 	out := &productEnumeration{
 		enums:        make([]ValueEnumeration, len(sets)),
 		currentElems: make([]Value, len(sets)),
 		makeValue:    makeValue,
+	}
+	if len(cms) > 0 {
+		out.cm = cms[0]
 	}
 	for i, set := range sets {
 		enum, ok := asEnumerable(set)
@@ -239,13 +254,14 @@ func (e *productEnumeration) NextElement() Value {
 		return nil
 	}
 	elems := make([]Value, len(e.currentElems))
+	e.cm.incValueSecondary(int64(len(elems)))
 	copy(elems, e.currentElems)
 	for i := len(e.currentElems) - 1; i >= 0; i-- {
 		e.currentElems[i] = e.enums[i].NextElement()
 		if err := e.enums[i].Err(); err != nil {
 			e.err = err
 			e.done = true
-			break
+			return nil
 		}
 		if e.currentElems[i] != nil {
 			break
@@ -259,7 +275,7 @@ func (e *productEnumeration) NextElement() Value {
 		if err := e.enums[i].Err(); err != nil {
 			e.err = err
 			e.done = true
-			break
+			return nil
 		}
 	}
 	return e.makeValue(elems)

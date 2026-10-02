@@ -9,8 +9,8 @@ type SetOfTuplesValue struct {
 	TupleSetDummy bool
 }
 
-func NewSetOfTuplesValue(sets []Value) *SetOfTuplesValue {
-	return &SetOfTuplesValue{Sets: sets}
+func NewSetOfTuplesValue(sets []Value, cms ...CostModel) *SetOfTuplesValue {
+	return &SetOfTuplesValue{BaseValue: newBaseValue(cms...), Sets: sets}
 }
 
 func (v *SetOfTuplesValue) Kind() ValueKind    { return SetOfTuplesValueKind }
@@ -197,7 +197,7 @@ func (v *SetOfTuplesValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), v.IsNormalized())
+	return setEnumFromEnumeration(v.Elements(), v.IsNormalized(), v.CM)
 }
 
 func (v *SetOfTuplesValue) convertAndCache() (*SetEnumValue, error) {
@@ -232,10 +232,10 @@ func (v *SetOfTuplesValue) Elements() ValueEnumeration {
 		return EmptySet.Elements()
 	}
 	return newProductEnumeration(v.Sets, func(elems []Value) Value {
-		return NewTupleValue(elems)
+		return NewTupleValue(elems, v.CM)
 	}, func(i int, set Value) error {
 		return v.unsupported("Attempted to enumerate a set of the form s1 \\X s2 ... \\X sn,\nbut can't enumerate s%d:\n%s", i, ValuesPPR(set))
-	})
+	}, v.CM)
 }
 
 func (v *SetOfTuplesValue) String() string {
@@ -262,8 +262,8 @@ type SetOfRcdsValue struct {
 	RcdSetDummy bool
 }
 
-func NewSetOfRcdsValue(names []*UniqueString, values []Value, isNorm bool) (*SetOfRcdsValue, error) {
-	out := &SetOfRcdsValue{Names: names, Values: values}
+func NewSetOfRcdsValue(names []*UniqueString, values []Value, isNorm bool, cms ...CostModel) (*SetOfRcdsValue, error) {
+	out := &SetOfRcdsValue{BaseValue: newBaseValue(cms...), Names: names, Values: values}
 	if !isNorm {
 		if err := out.sortByNames(); err != nil {
 			return nil, err
@@ -454,7 +454,7 @@ func (v *SetOfRcdsValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), v.IsNormalized())
+	return setEnumFromEnumeration(v.Elements(), v.IsNormalized(), v.CM)
 }
 
 func (v *SetOfRcdsValue) convertAndCache() (*SetEnumValue, error) {
@@ -489,10 +489,10 @@ func (v *SetOfRcdsValue) Elements() ValueEnumeration {
 		return EmptySet.Elements()
 	}
 	return newProductEnumeration(v.Values, func(fields []Value) Value {
-		return &RecordValue{Names: v.Names, Values: fields, IsNorm: true}
+		return NewRecordValue(v.Names, fields, true, v.CM)
 	}, func(i int, value Value) error {
 		return v.unsupported("Attempted to enumerate a set of the form [l1 : v1, ..., ln : vn],\nbut can't enumerate the value of the `%s' field:\n%s", v.Names[i], ValuesPPR(value))
-	})
+	}, v.CM)
 }
 
 func (v *SetOfRcdsValue) String() string {
@@ -557,8 +557,8 @@ type SetOfFcnsValue struct {
 	FcnSetDummy bool
 }
 
-func NewSetOfFcnsValue(domain, rangeValue Value) *SetOfFcnsValue {
-	return &SetOfFcnsValue{Domain: domain, Range: rangeValue}
+func NewSetOfFcnsValue(domain, rangeValue Value, cms ...CostModel) *SetOfFcnsValue {
+	return &SetOfFcnsValue{BaseValue: newBaseValue(cms...), Domain: domain, Range: rangeValue}
 }
 
 func (v *SetOfFcnsValue) Kind() ValueKind    { return SetOfFcnsValueKind }
@@ -790,7 +790,7 @@ func (v *SetOfFcnsValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), v.IsNormalized())
+	return setEnumFromEnumeration(v.Elements(), v.IsNormalized(), v.CM)
 }
 
 func (v *SetOfFcnsValue) convertAndCache() (*SetEnumValue, error) {
@@ -852,14 +852,14 @@ func (v *SetOfFcnsValue) intervalDomainElements(intv *IntervalValue) ValueEnumer
 		sets[i] = v.Range
 	}
 	if size == 0 {
-		return &singleValueEnumeration{value: NewFcnRcdIntervalValue(intv, []Value{})}
+		return &singleValueEnumeration{value: NewFcnRcdIntervalValue(intv, []Value{}, v.CM), cm: v.CM, secondary: 1}
 	}
 	_ = rangeEnum
 	return newProductEnumeration(sets, func(elems []Value) Value {
-		return NewFcnRcdIntervalValue(intv, elems)
+		return NewFcnRcdIntervalValue(intv, elems, v.CM)
 	}, func(i int, value Value) error {
 		return v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range))
-	})
+	}, v.CM)
 }
 
 func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
@@ -868,7 +868,7 @@ func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range)))
 	}
 	if len(dom) == 0 {
-		return &singleValueEnumeration{value: NewFcnRcdValue(dom, []Value{}, true)}
+		return &singleValueEnumeration{value: NewFcnRcdValue(dom, []Value{}, true, v.CM), cm: v.CM, secondary: 1}
 	}
 	_ = rangeEnum
 	sets := make([]Value, len(dom))
@@ -876,10 +876,10 @@ func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 		sets[i] = v.Range
 	}
 	return newProductEnumeration(sets, func(elems []Value) Value {
-		return NewFcnRcdValue(dom, elems, true)
+		return NewFcnRcdValue(dom, elems, true, v.CM)
 	}, func(i int, value Value) error {
 		return v.unsupported("Attempted to enumerate a set of the form [D -> R],but the range R:\n%s\ncannot be enumerated.", ValuesPPR(v.Range))
-	})
+	}, v.CM)
 }
 
 func (v *SetOfFcnsValue) String() string {
@@ -900,8 +900,8 @@ type SubsetValue struct {
 	PSetDummy bool
 }
 
-func NewSubsetValue(set Value) *SubsetValue {
-	return &SubsetValue{Set: set}
+func NewSubsetValue(set Value, cms ...CostModel) *SubsetValue {
+	return &SubsetValue{BaseValue: newBaseValue(cms...), Set: set}
 }
 
 func (v *SubsetValue) Kind() ValueKind    { return SubsetValueKind }
@@ -1038,7 +1038,20 @@ func (v *SubsetValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), true)
+	size, err := v.Size()
+	if err != nil {
+		return nil, err
+	}
+	values := NewValueVec(size)
+	enum := v.Elements()
+	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+		values.Add(elem)
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	v.CM.incValueSecondary(int64(values.Len()))
+	return NewSetEnumValueVec(values, true, v.CM), nil
 }
 
 func (v *SubsetValue) convertAndCache() (*SetEnumValue, error) {
@@ -1065,14 +1078,24 @@ func (v *SubsetValue) Elements() ValueEnumeration {
 	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet.Elements()
 	}
-	set, err := toSetEnumValue(v.Set)
+	size, err := v.Set.Size()
 	if err != nil {
 		return newErrorEnumeration(err)
+	}
+	if size == 0 {
+		return &singleValueEnumeration{value: NewSetEnumValue(nil, true, v.CM)}
+	}
+	set, err := tryToSetEnumValue(v.Set)
+	if err != nil {
+		return newErrorEnumeration(err)
+	}
+	if set == nil {
+		return newErrorEnumeration(v.unsupported("Attempted to compute the value of an expression of form\nSUBSET S, but S is a non-enumerable value:\n%s", ValuesPPR(v.Set)))
 	}
 	if _, err := set.normalizeSet(); err != nil {
 		return newErrorEnumeration(err)
 	}
-	return &subsetEnumeration{elems: set.Elems}
+	return &subsetEnumeration{elems: set.Elems, cm: v.CM}
 }
 
 func (v *SubsetValue) String() string {
@@ -1087,8 +1110,10 @@ func (v *SubsetValue) String() string {
 }
 
 type singleValueEnumeration struct {
-	value Value
-	done  bool
+	value     Value
+	done      bool
+	cm        CostModel
+	secondary int64
 }
 
 func (e *singleValueEnumeration) Reset() {
@@ -1100,12 +1125,14 @@ func (e *singleValueEnumeration) NextElement() Value {
 		return nil
 	}
 	e.done = true
+	e.cm.incValueSecondary(e.secondary)
 	return e.value
 }
 
 func (e *singleValueEnumeration) Err() error { return nil }
 
 type subsetEnumeration struct {
+	cm    CostModel
 	elems *ValueVec
 	k     int
 	cur   *kSubsetEnumeration
@@ -1117,7 +1144,7 @@ func (e *subsetEnumeration) Reset() {
 	e.done = false
 	e.err = nil
 	e.k = 0
-	e.cur = newKSubsetEnumeration(e.elems, e.k)
+	e.cur = newKSubsetEnumeration(e.elems, e.k, e.cm)
 }
 
 func (e *subsetEnumeration) NextElement() Value {
@@ -1137,7 +1164,7 @@ func (e *subsetEnumeration) NextElement() Value {
 			e.done = true
 			return nil
 		}
-		e.cur = newKSubsetEnumeration(e.elems, e.k)
+		e.cur = newKSubsetEnumeration(e.elems, e.k, e.cm)
 	}
 	return nil
 }

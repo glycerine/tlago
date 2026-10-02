@@ -396,7 +396,7 @@ func (t *Tool) enabledSubsetEq(pred SemanticNode, left SemanticNode, right Seman
 	if err != nil {
 		return nil, err
 	}
-	return t.enabledEnumerateAssignment(varNode.Name, NewSubsetValue(rset), pred, acts, s0, s1, cm)
+	return t.enabledEnumerateAssignment(varNode.Name, NewSubsetValue(rset, cm), pred, acts, s0, s1, cm)
 }
 
 func (t *Tool) enabledEnumerateAssignment(varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, cm CostModel) (*TLCStateMut, error) {

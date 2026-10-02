@@ -307,7 +307,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSetOfTuplesValue(values), nil
+		return NewSetOfTuplesValue(values, cm), nil
 	case OpcodeCL:
 		for _, arg := range args {
 			value, err := t.Eval(arg, c, s0, s1, control, cm)
@@ -380,7 +380,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSetOfFcnsValue(lhs, rhs), nil
+		return NewSetOfFcnsValue(lhs, rhs, cm), nil
 	case OpcodeSSO:
 		return t.evalSubsetOf(expr, c, s0, s1, control, cm)
 	case OpcodeTup:
@@ -388,7 +388,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewTupleValue(values), nil
+		return NewTupleValue(values, cm), nil
 	case OpcodeUC:
 		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded CHOOSE.\nMake sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(expr))
 	case OpcodeUE:
@@ -410,7 +410,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSubsetValue(arg), nil
+		return NewSubsetValue(arg, cm), nil
 	case OpcodeUnion:
 		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
@@ -1314,7 +1314,7 @@ func (t *Tool) evalRecordConstructor(expr *OpApplNode, c *Context, s0 *TLCStateM
 		names[i] = name
 		values[i] = value
 	}
-	return NewRecordValue(names, values, false), nil
+	return NewRecordValue(names, values, false, cm), nil
 }
 
 func (t *Tool) evalRecordSelect(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1390,7 +1390,7 @@ func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 		names[i] = name
 		values[i] = value
 	}
-	return NewSetOfRcdsValue(names, values, false)
+	return NewSetOfRcdsValue(names, values, false, cm)
 }
 
 func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {

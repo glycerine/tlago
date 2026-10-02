@@ -966,6 +966,20 @@ Important concrete values:
   intervals count returned elements, filters count examined candidates, and
   materialization additionally counts produced elements. `UNION` uses the
   concrete optimization helper and inherits its input set's cost model.
+- Product enumeration counts generated fields before advancing and attaches
+  the original model to each tuple, record, or function. A function set with
+  an empty domain counts its sole empty function once. Normalized powerset
+  and k-subset enumeration attaches models without counting generated fields;
+  materialization validates the full cardinality first and counts the final
+  set's elements. Empty powerset bases produce the empty subset before trying
+  set conversion. A null conversion result must remain distinct from a
+  materialization failure.
+- Java conversion accounting has asymmetric branches: interval-domain
+  `FcnRcdValue.toTuple` constructs a tuple without the model or an increment,
+  while explicit-domain `FcnLambdaValue.toTuple` increments even with global
+  coverage disabled. Lazy-function materialization uses raw tuple casts and
+  fixed declared-size arrays, installs the cached function with its model,
+  then increments the materialization count before applying EXCEPT updates.
 - `FcnRcdValue`: explicit finite function, optimized for interval domains.
   Java's `tlc2.value.impl.FcnRcdValue.threshold` controls when normalized
   finite function records switch from linear lookup to binary search; Go keeps

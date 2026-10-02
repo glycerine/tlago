@@ -398,7 +398,7 @@ func (t *Tool) initSubsetEq(init SemanticNode, left SemanticNode, right Semantic
 	if err != nil {
 		return err
 	}
-	return t.enumerateInitAssignment(varNode.Name, NewSubsetValue(rset), init, acts, ps, states, cm)
+	return t.enumerateInitAssignment(varNode.Name, NewSubsetValue(rset, cm), init, acts, ps, states, cm)
 }
 
 func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, ps *TLCStateMut, states *StateFunctor, cm CostModel) error {
@@ -1044,7 +1044,7 @@ func (t *Tool) nextSubsetEq(action *Action, pred SemanticNode, left SemanticNode
 	if err != nil {
 		return s1, err
 	}
-	return t.enumerateNextAssignment(action, varNode.Name, NewSubsetValue(rset), pred, acts, s0, s1, nss, cm)
+	return t.enumerateNextAssignment(action, varNode.Name, NewSubsetValue(rset, cm), pred, acts, s0, s1, nss, cm)
 }
 
 func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, domain Value, pred SemanticNode, acts *ActionItemList, s0 *TLCStateMut, s1 *TLCStateMut, nss *NextStateFunctor, cm CostModel) (*TLCStateMut, error) {

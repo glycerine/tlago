@@ -14,8 +14,8 @@ type KSubsetValue struct {
 	PSetDummy bool
 }
 
-func NewKSubsetValue(k int, set Value) *KSubsetValue {
-	return &KSubsetValue{K: k, Set: set}
+func NewKSubsetValue(k int, set Value, cms ...CostModel) *KSubsetValue {
+	return &KSubsetValue{BaseValue: newBaseValue(cms...), K: k, Set: set}
 }
 
 func (v *KSubsetValue) Kind() ValueKind    { return SubsetValueKind }
@@ -275,7 +275,20 @@ func (v *KSubsetValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), true)
+	size, err := v.Size()
+	if err != nil {
+		return nil, err
+	}
+	values := NewValueVec(size)
+	enum := v.Elements()
+	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
+		values.Add(elem)
+	}
+	if err := enum.Err(); err != nil {
+		return nil, err
+	}
+	v.CM.incValueSecondary(int64(values.Len()))
+	return NewSetEnumValueVec(values, true, v.CM), nil
 }
 
 func (v *KSubsetValue) convertAndCache() (*SetEnumValue, error) {
@@ -307,7 +320,7 @@ func (v *KSubsetValue) Elements() ValueEnumeration {
 		return EmptySet.Elements()
 	}
 	if v.K == 0 {
-		return &singleValueEnumeration{value: EmptySet}
+		return &singleValueEnumeration{value: NewSetEnumValue(nil, true, v.CM)}
 	}
 	set, err := toSetEnumValue(v.Set)
 	if err != nil {
@@ -316,7 +329,7 @@ func (v *KSubsetValue) Elements() ValueEnumeration {
 	if _, err := set.normalizeSet(); err != nil {
 		return newErrorEnumeration(err)
 	}
-	return newKSubsetEnumeration(set.Elems, v.K)
+	return newKSubsetEnumeration(set.Elems, v.K, v.CM)
 }
 
 func (v *KSubsetValue) String() string {
@@ -383,6 +396,7 @@ func (v *KSubsetValue) hasNoElements() (bool, error) {
 }
 
 type kSubsetEnumeration struct {
+	cm      CostModel
 	elems   *ValueVec
 	k       int
 	indices []int
@@ -390,8 +404,11 @@ type kSubsetEnumeration struct {
 	err     error
 }
 
-func newKSubsetEnumeration(elems *ValueVec, k int) *kSubsetEnumeration {
+func newKSubsetEnumeration(elems *ValueVec, k int, cms ...CostModel) *kSubsetEnumeration {
 	out := &kSubsetEnumeration{elems: elems, k: k}
+	if len(cms) > 0 {
+		out.cm = cms[0]
+	}
 	out.Reset()
 	return out
 }
@@ -418,7 +435,7 @@ func (e *kSubsetEnumeration) NextElement() Value {
 		vals.Add(e.elems.At(idx))
 	}
 	e.advance()
-	return NewSetEnumValueVec(vals, true)
+	return NewSetEnumValueVec(vals, true, e.cm)
 }
 
 func (e *kSubsetEnumeration) Err() error { return e.err }

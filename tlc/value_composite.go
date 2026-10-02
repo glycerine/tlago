@@ -206,8 +206,8 @@ type TupleValue struct {
 
 var EmptyTuple = &TupleValue{Elems: []Value{}}
 
-func NewTupleValue(elems []Value) *TupleValue {
-	return &TupleValue{Elems: elems}
+func NewTupleValue(elems []Value, cms ...CostModel) *TupleValue {
+	return &TupleValue{BaseValue: newBaseValue(cms...), Elems: elems}
 }
 
 func (v *TupleValue) Kind() ValueKind    { return TupleValueKind }
@@ -329,6 +329,11 @@ func (v *TupleValue) Select(arg Value) (Value, error) {
 
 func (v *TupleValue) Domain() Value {
 	return NewIntervalValue(1, int32(len(v.Elems)))
+}
+
+func (v *TupleValue) ToFcnRcd() *FcnRcdValue {
+	v.CM.incValueSecondary(int64(len(v.Elems)))
+	return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems, v.CM)
 }
 
 func (v *TupleValue) TakeExcept(ex ValueExcept) (Value, error) {

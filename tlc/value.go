@@ -378,12 +378,12 @@ type StringValue struct {
 	Val *UniqueString
 }
 
-func NewStringValue(s string) *StringValue {
-	return &StringValue{Val: UniqueStringOf(s)}
+func NewStringValue(s string, cms ...CostModel) *StringValue {
+	return &StringValue{BaseValue: newBaseValue(cms...), Val: UniqueStringOf(s)}
 }
 
-func NewStringValueFromUnique(s *UniqueString) *StringValue {
-	return &StringValue{Val: s}
+func NewStringValueFromUnique(s *UniqueString, cms ...CostModel) *StringValue {
+	return &StringValue{BaseValue: newBaseValue(cms...), Val: s}
 }
 
 func (v *StringValue) Kind() ValueKind    { return StringValueKind }
