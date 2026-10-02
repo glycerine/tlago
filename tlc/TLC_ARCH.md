@@ -2922,6 +2922,27 @@ Core Java flow:
    `work.isInModel`, and `work.isInActions`. Passing states inherit the
    predecessor UID and are returned in `NextStateResult`.
 
+Local failure contracts retain Java's exception structure:
+
+- The worker preserves direct WorkerExceptions and translates direct
+  OutOfMemoryError/RejectedExecutionException failures to RemoteExceptions.
+  Other failures retain predecessor/successor metadata in WorkerException.
+- The local smart proxy supplies Java RMI's ServerException envelope for a
+  worker-thrown RemoteException. This represents the observable error contract
+  before actual Go networking is introduced.
+- Server recoverability checks a direct EOF cause with a null detail message,
+  or a direct remote cause with an OutOfMemoryError cause. It does not search
+  arbitrary cause chains. Recoverable multi-state blocks print the reduction
+  message, requeue the block, and halve the selection limit in Java order.
+- Other remote failures and direct null-pointer failures deregister the worker;
+  null-pointer diagnostics include the stack. Other exceptions reach the
+  server's outer model-error catch and keep their error-state metadata.
+- RemoteException's detail field supplies its cause and nested message text.
+  Concrete EOF, memory, rejection, and null-pointer classes preserve null
+  versus empty messages and saved Go stack frames. Timing uses differences of
+  epoch millisecond readings; empty-block network-overhead division retains
+  Java's floating-point result.
+
 Important Java data structures:
 
 - `NextStateResult`: carries `TLCStateVec[] nextStates`,

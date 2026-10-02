@@ -24,6 +24,18 @@ func javaString(value string) *string { return &value }
 
 func javaThrowableClassName(err error) string {
 	switch failure := err.(type) {
+	case *RemoteException:
+		return "java.rmi.RemoteException"
+	case *ServerException:
+		return "java.rmi.ServerException"
+	case *EOFException:
+		return "java.io.EOFException"
+	case *OutOfMemoryError:
+		return "java.lang.OutOfMemoryError"
+	case *NullPointerException:
+		return "java.lang.NullPointerException"
+	case *RejectedExecutionException:
+		return "java.util.concurrent.RejectedExecutionException"
 	case *SimulationWorkerError:
 		return "tlc2.tool.SimulationWorker$SimulationWorkerError"
 	case *FingerprintException:

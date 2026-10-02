@@ -1322,29 +1322,44 @@ func (t *TLCServerThread) Run() {
 }
 
 func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult, bool) {
-	for {
-		res, err := t.Worker.GetNextStates(t.States)
-		if err == nil {
-			return res, true
-		}
-		if workerErr, ok := err.(*WorkerException); ok && workerErr != nil {
-			t.handleRunError(workerErr, stateQueue)
-			return nil, false
-		}
+	res, err := invokeDistributedWorker(t.Worker, t.States)
+	if err == nil {
+		return res, true
+	}
+	if javaRemoteException(err) != nil {
 		if isRecoverableDistributedError(err) && len(t.States) > 1 {
+			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.States)/2))
 			if stateQueue != nil {
 				stateQueue.SEnqueueAll(t.States)
 			}
 			if t.Selector != nil {
 				t.Selector.SetMaxTXSize(len(t.States) / 2)
 			}
-			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.States)/2))
 			return nil, true
 		}
 		PrintMessage(ECTLCDistributedWorkerLost, t.GetURI())
 		t.HandleRemoteWorkerLost(stateQueue)
 		return nil, false
 	}
+	if isJavaNullPointerException(err) {
+		PrintMessage(ECTLCDistributedWorkerLost, "\n"+javaThrowableStackTrace(err))
+		t.HandleRemoteWorkerLost(stateQueue)
+		return nil, false
+	}
+	// Other exceptions escape Java's inner remote/NPE catches into the
+	// server thread's outer Throwable catch, including WorkerException.
+	t.handleRunError(err, stateQueue)
+	return nil, false
+}
+
+func invokeDistributedWorker(worker *DistributedWorkerSmartProxy, states []*TLCStateMut) (result *NextStateResult, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			result = nil
+			err = panicValueAsError(failure)
+		}
+	}()
+	return worker.GetNextStates(states)
 }
 
 func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*StateVec, newFps []*LongVec) {
@@ -1511,31 +1526,21 @@ func (t *TLCTimerTask) SetLastInvocation(when time.Time) {
 	t.LastInvocation.Store(when.UnixMilli())
 }
 
-type DistributedRecoverableError struct {
-	Err error
-}
-
-func NewDistributedRecoverableError(err error) *DistributedRecoverableError {
-	return &DistributedRecoverableError{Err: err}
-}
-
-func (e *DistributedRecoverableError) Error() string {
-	if e == nil || e.Err == nil {
-		return "recoverable distributed worker error"
-	}
-	return e.Err.Error()
-}
-
-func (e *DistributedRecoverableError) Unwrap() error {
-	if e == nil {
-		return nil
-	}
-	return e.Err
-}
-
+// Java TLCServerThread.isRecoverable inspects exactly one cause, then the
+// direct cause of a nested RemoteException. It does not search a cause chain.
 func isRecoverableDistributedError(err error) bool {
-	recoverable, ok := err.(*DistributedRecoverableError)
-	return ok && recoverable != nil
+	remote := javaRemoteException(err)
+	if remote == nil {
+		return false
+	}
+	cause := remote.GetCause()
+	if eof, ok := cause.(*EOFException); ok && eof != nil && eof.GetMessage() == nil {
+		return true
+	}
+	if nested := javaRemoteException(cause); nested != nil {
+		return isJavaOutOfMemoryError(nested.GetCause())
+	}
+	return false
 }
 
 type BlockSelectorMode int
@@ -1760,22 +1765,23 @@ func NewDistributedWorkerSmartProxy(worker *DistributedWorker) *DistributedWorke
 
 func (p *DistributedWorkerSmartProxy) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
 	if p == nil || p.Worker == nil {
-		return nil, newTLCError(ECGeneral, "distributed worker proxy has no worker")
+		return nil, NewNullPointerException()
 	}
-	start := time.Now()
+	start := time.Now().UnixMilli()
 	nextStates, err := p.Worker.GetNextStates(states)
 	if err != nil {
+		// The local proxy preserves UnicastServerRef's client-visible envelope
+		// for a RemoteException thrown at the worker, without requiring RPC.
+		if javaRemoteException(err) != nil {
+			err = NewServerException(javaString("RemoteException occurred in server thread"), err)
+		}
 		return nil, err
 	}
-	roundTripTime := time.Since(start).Milliseconds() + 1
+	roundTripTime := time.Now().UnixMilli() - start + 1
 	computationTime := sanitizeDistributedComputationTime(nextStates.GetComputationTime())
 	networkTime := math.Max(float64(roundTripTime-computationTime), 0.00001)
 	percentageNetworkOverhead := networkTime / float64(roundTripTime)
-	stateCount := len(states)
-	if stateCount <= 0 {
-		stateCount = 1
-	}
-	p.NetworkOverhead = percentageNetworkOverhead / float64(stateCount)
+	p.NetworkOverhead = percentageNetworkOverhead / float64(len(states))
 	p.Worker.NetworkOverhead = p.NetworkOverhead
 	return nextStates, nil
 }
@@ -1821,7 +1827,7 @@ func sanitizeDistributedComputationTime(computationTime int64) int64 {
 
 func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextStateResult, err error) {
 	if w == nil {
-		return nil, newTLCError(ECGeneral, "distributed worker is nil")
+		return nil, NewNullPointerException()
 	}
 	w.Computing.Store(true)
 	w.LastInvocation = time.Now()
@@ -1835,6 +1841,14 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		}
 		if err != nil {
 			if failure, ok := err.(*WorkerException); ok && failure != nil {
+				return
+			}
+			if isJavaOutOfMemoryError(err) {
+				err = NewRemoteException(javaString("OutOfMemoryError occurred at worker: "+w.URI), err)
+				return
+			}
+			if failure, ok := err.(*RejectedExecutionException); ok && failure != nil {
+				err = NewRemoteException(javaString("Executor rejected task at worker: "+w.URI), err)
 				return
 			}
 			err = newWorkerExceptionFromThrowable(err, state1, state2, true)
@@ -1918,7 +1932,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		}
 	}
 
-	elapsed := time.Since(w.LastInvocation).Milliseconds()
+	elapsed := time.Now().UnixMilli() - w.LastInvocation.UnixMilli()
 	return NewNextStateResult(newStates, newFingerprints, elapsed, statesComputed), nil
 }
 

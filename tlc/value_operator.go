@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 )
 
@@ -435,8 +434,8 @@ func adaptJavaMethodFailure(signature string, cause error, preserveEval bool) er
 		if isValueEvalException(cause) {
 			return cause
 		}
-		if failure, ok := cause.(runtime.Error); ok && strings.Contains(failure.Error(), "invalid memory address or nil pointer dereference") {
-			return NewEvalException(ECTLCModuleValueJavaMethodOverride, signature, failure.Error())
+		if isJavaNullPointerException(cause) {
+			return NewEvalExceptionNullable(ECTLCModuleValueJavaMethodOverride, javaString(signature), javaThrowableDetailMessage(cause))
 		}
 	}
 	message := javaThrowableDetailMessage(cause)
