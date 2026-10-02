@@ -21,9 +21,10 @@ Current TLC method:
 - Use `InsMap` or explicit slices/sorting for any iterated map with observable
   order.
 - Keep `tlc/PORT_PROGRESS.md` current after every no-code audit or code fix.
-- Do not port the Java `test/tlc2` suite until the Java architecture is
-  coherently mirrored in Go.
-- Do not write regression or unit tests yet; run existing checks as needed.
+- Implement each Java feature accurately in Go first. Once that feature is
+  ported, port its Java tests too when they exist. This is the user's latest
+  instruction and supersedes the earlier instruction to defer all new tests.
+- Keep the existing Go suite green as the port advances.
 - Do not restart the long SANY XML or ApalacheIR corpus sweeps unless the user
   explicitly asks.
 

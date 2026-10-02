@@ -485,9 +485,11 @@ type DistributedWorker struct {
 	Cache                 *SimpleCache
 	CheckDeadlock         bool
 	URI                   string
+	Runtime               *DistributedWorkerRuntime
+	unexported            atomic.Bool
 	Computing             atomic.Bool
-	LastInvocation        time.Time
-	OverallStatesComputed int64
+	LastInvocation        atomic.Int64
+	OverallStatesComputed atomic.Int64
 	CheckStateFunc        func(predecessor *TLCStateMut, successor *TLCStateMut) error
 	IsInModelFunc         func(state *TLCStateMut) (bool, error)
 	IsInActionsFunc       func(predecessor *TLCStateMut, successor *TLCStateMut) (bool, error)
@@ -753,7 +755,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		thread.Join()
 		cacheRatio := "n/a"
 		if thread.GetCacheRateRatio() >= 0 {
-			cacheRatio = fmt.Sprintf("%.2f", thread.GetCacheRateRatio())
+			cacheRatio = groupDecimalIntegerPart(fmt.Sprintf("%.2f", thread.GetCacheRateRatio()))
 		}
 		PrintMessage(ECTLCDistributedWorkerStats,
 			thread.GetURI(),
@@ -761,12 +763,23 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 			fmtInt(thread.GetReceivedStates()),
 			cacheRatio,
 		)
-		func() {
+		exitErr := func() error {
 			defer s.removeServerThreadOnly(thread)
-			if thread.Worker != nil {
-				_ = thread.Worker.Exit()
+			if err := thread.Worker.Exit(); err != nil {
+				switch err.(type) {
+				case *NoSuchObjectException, *ConnectException, *ServerException:
+					PrintWarning(ECGeneral, "Ignoring attempt to exit dead worker")
+				default:
+					return err
+				}
 			}
+			return nil
 		}()
+		if exitErr != nil {
+			s.LastError = exitErr
+			_ = s.Close(false)
+			return ECGeneral, exitErr
+		}
 	}
 	s.FinalNumberOfDistinctStates = int64(s.fpSetSize())
 	statesGenerated := s.GetStatesGenerated()
@@ -932,6 +945,9 @@ func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 	thread := NewTLCServerThread(worker, distributedWorkerURI(worker), s, s.BlockSelector)
 	thread.Start()
 	PrintMessage(ECTLCDistributedWorkerRegistered, thread.GetURI())
+	if worker.Runtime != nil {
+		worker.Runtime.StartKeepAlive(s)
+	}
 }
 
 func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
@@ -1547,7 +1563,15 @@ func (t *TLCServerThread) readCacheRateRatio() {
 	if t == nil || t.Worker == nil {
 		return
 	}
-	t.CacheRateHitRatio = t.Worker.GetCacheRateRatio()
+	ratio, err := t.Worker.GetCacheRateRatio()
+	if err != nil {
+		if javaRemoteException(err) == nil {
+			panic(err)
+		}
+		PrintWarning(ECGeneral, "Failed to read remote worker cache statistic (Expect to see a negative chache hit rate. Does not invalidate model checking results)")
+		return
+	}
+	t.CacheRateHitRatio = ratio
 }
 
 func (t *TLCServerThread) cancelKeepAlive() {
@@ -1571,7 +1595,11 @@ func (t *TLCTimerTask) Run() {
 	now := time.Now().UnixMilli()
 	last := t.LastInvocation.Load()
 	if last == 0 || now-last > int64(time.Minute/time.Millisecond) {
-		if t.Thread.Worker == nil || !t.Thread.Worker.IsAlive() {
+		alive, err := t.Thread.Worker.IsAlive()
+		if err != nil && javaRemoteException(err) == nil {
+			panic(err)
+		}
+		if err != nil || !alive {
 			queue := StateQueue(nil)
 			if t.Thread.Server != nil {
 				queue = t.Thread.Server.StateQueue
@@ -1796,7 +1824,7 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 	if tool != nil && tool.GetModelConfig() != nil {
 		checkDeadlock = tool.GetModelConfig().GetCheckDeadlock()
 	}
-	return &DistributedWorker{
+	worker := &DistributedWorker{
 		ID:              id,
 		Tool:            tool,
 		FPSetManager:    fpSetManager,
@@ -1804,6 +1832,8 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 		CheckDeadlock:   checkDeadlock,
 		NetworkOverhead: math.MaxFloat64,
 	}
+	NewDistributedWorkerRuntime(worker)
+	return worker
 }
 
 func distributedWorkerURI(worker *DistributedWorker) string {
@@ -1826,25 +1856,48 @@ func NewDistributedWorkerSmartProxy(worker *DistributedWorker) *DistributedWorke
 }
 
 func (p *DistributedWorkerSmartProxy) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
-	if p == nil || p.Worker == nil {
-		return nil, NewNullPointerException()
-	}
-	start := time.Now().UnixMilli()
-	nextStates, err := p.Worker.GetNextStates(states)
-	if err != nil {
-		// The local proxy preserves UnicastServerRef's client-visible envelope
-		// for a RemoteException thrown at the worker, without requiring RPC.
-		if javaRemoteException(err) != nil {
-			err = NewServerException(javaString("RemoteException occurred in server thread"), err)
+	return p.measureNextStates(states, func() (*NextStateResult, error) {
+		if p == nil || p.Worker == nil {
+			return nil, NewNullPointerException()
 		}
+		if err := p.Worker.remoteEndpointError(); err != nil {
+			return nil, err
+		}
+		nextStates, err := p.Worker.GetNextStates(states)
+		if err != nil {
+			// The local proxy preserves UnicastServerRef's client-visible envelope
+			// for a RemoteException thrown at the worker, without requiring RPC.
+			if javaRemoteException(err) != nil {
+				err = NewServerException(javaString("RemoteException occurred in server thread"), err)
+			}
+			return nil, err
+		}
+		return nextStates, nil
+	})
+}
+
+// This is the smart proxy's call decorator; the endpoint supplies computation
+// and transport errors while the proxy measures the complete invocation.
+func (p *DistributedWorkerSmartProxy) measureNextStates(states []*TLCStateMut, call func() (*NextStateResult, error)) (*NextStateResult, error) {
+	start := time.Now().UnixMilli()
+	nextStates, err := call()
+	if err != nil {
 		return nil, err
 	}
 	roundTripTime := time.Now().UnixMilli() - start + 1
+	if nextStates == nil {
+		panic(NewNullPointerException())
+	}
 	computationTime := sanitizeDistributedComputationTime(nextStates.GetComputationTime())
 	networkTime := math.Max(float64(roundTripTime-computationTime), 0.00001)
 	percentageNetworkOverhead := networkTime / float64(roundTripTime)
+	if states == nil {
+		panic(NewNullPointerException())
+	}
 	p.NetworkOverhead = percentageNetworkOverhead / float64(len(states))
-	p.Worker.NetworkOverhead = p.NetworkOverhead
+	if p.Worker != nil {
+		p.Worker.NetworkOverhead = p.NetworkOverhead
+	}
 	return nextStates, nil
 }
 
@@ -1856,25 +1909,47 @@ func (p *DistributedWorkerSmartProxy) GetNetworkOverhead() float64 {
 }
 
 func (p *DistributedWorkerSmartProxy) Exit() error {
-	return nil
-}
-
-func (p *DistributedWorkerSmartProxy) GetURI() string {
-	if p == nil || p.Worker == nil {
-		return ""
+	if p == nil {
+		return NewNullPointerException()
 	}
-	return p.Worker.URI
-}
-
-func (p *DistributedWorkerSmartProxy) IsAlive() bool {
-	return p != nil && p.Worker != nil && p.Worker.IsAlive()
-}
-
-func (p *DistributedWorkerSmartProxy) GetCacheRateRatio() float64 {
-	if p == nil || p.Worker == nil {
-		return 0
+	if err := p.Worker.remoteEndpointError(); err != nil {
+		return err
 	}
-	return p.Worker.GetCacheRateRatio()
+	err := p.Worker.Exit()
+	if javaRemoteException(err) != nil {
+		return NewServerException(javaString("RemoteException occurred in server thread"), err)
+	}
+	return err
+}
+
+func (p *DistributedWorkerSmartProxy) GetURI() (string, error) {
+	if p == nil {
+		return "", NewNullPointerException()
+	}
+	if err := p.Worker.remoteEndpointError(); err != nil {
+		return "", err
+	}
+	return p.Worker.URI, nil
+}
+
+func (p *DistributedWorkerSmartProxy) IsAlive() (bool, error) {
+	if p == nil {
+		return false, NewNullPointerException()
+	}
+	if err := p.Worker.remoteEndpointError(); err != nil {
+		return false, err
+	}
+	return p.Worker.IsAlive(), nil
+}
+
+func (p *DistributedWorkerSmartProxy) GetCacheRateRatio() (float64, error) {
+	if p == nil {
+		return 0, NewNullPointerException()
+	}
+	if err := p.Worker.remoteEndpointError(); err != nil {
+		return 0, err
+	}
+	return p.Worker.GetCacheRateRatio(), nil
 }
 
 func sanitizeDistributedComputationTime(computationTime int64) int64 {
@@ -1894,7 +1969,8 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 	w.nextStatesMu.Lock()
 	defer w.nextStatesMu.Unlock()
 	w.Computing.Store(true)
-	w.LastInvocation = time.Now()
+	start := time.Now().UnixMilli()
+	w.LastInvocation.Store(start)
 	var statesComputed int64
 	var state1, state2 *TLCStateMut
 	defer w.Computing.Store(false)
@@ -1919,6 +1995,9 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		}
 	}()
 
+	if states == nil {
+		panic(NewNullPointerException())
+	}
 	holdersByFP := make(map[uint64]distributedStateHolder, len(states))
 	orderedFPs := make([]uint64, 0, len(states))
 	for _, state := range states {
@@ -1941,7 +2020,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 			orderedFPs = append(orderedFPs, fp)
 		}
 	}
-	w.OverallStatesComputed += statesComputed
+	w.OverallStatesComputed.Add(statesComputed)
 
 	sort.Slice(orderedFPs, func(i, j int) bool { return int64(orderedFPs[i]) < int64(orderedFPs[j]) })
 	serverCount := w.FPSetManager.NumOfServers()
@@ -1996,7 +2075,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		}
 	}
 
-	elapsed := time.Now().UnixMilli() - w.LastInvocation.UnixMilli()
+	elapsed := time.Now().UnixMilli() - start
 	return NewNextStateResult(newStates, newFingerprints, elapsed, statesComputed), nil
 }
 

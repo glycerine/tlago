@@ -8,7 +8,7 @@ and the best next steps for continuing the Go port of Java TLC.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.
-- Java tests to port later: `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
+- Java tests to port after their features: `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
 - Active work area: `tlc/`, package `github.com/glycerine/tlago/tlc`.
 - Current branch had a clean worktree when this handoff was written.
 - Last verified command before handoff:
@@ -24,9 +24,9 @@ and the best next steps for continuing the Go port of Java TLC.
 ## Active Goal
 
 Continue the mechanical, breadth-first port of the Java TLC model checker to Go.
-The user explicitly asked for an experiment: mirror the Java architecture and
-algorithms first, then port the Java TLC test suite only after the full
-architecture is faithfully represented.
+Mirror each Java feature and algorithm first, then port the Java tests for
+that feature when they exist. The user updated the test-porting instruction
+to this feature-by-feature sequence.
 
 Do not switch back to the older SANY XML or ApalacheIR corpus sweeps unless the
 user explicitly asks. Those are valuable, but they are paused. The current goal
@@ -43,9 +43,9 @@ is TLC.
   only for lookup-only sets that are never ranged over in observable code.
 - Preserve Java behavior, including load-bearing quirks. Do not "clean up"
   oddities unless the user explicitly chooses a deliberate divergence.
-- The user's latest instruction is to port accurately without writing
-  regression or unit tests yet. Do not add tests or start translating the
-  Java TLC test suite. Existing tests may still be run to check the port.
+- Implement each Java feature accurately in Go first. Once that feature is
+  ported, port its Java tests too when they exist. This is the user's latest
+  instruction and supersedes the earlier instruction to defer all new tests.
 - Existing fast tests may be run frequently. Use:
   `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./tlc`
   and, before commits, usually `go test ./...` with the same env.

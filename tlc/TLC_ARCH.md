@@ -2981,8 +2981,32 @@ then removes that registration quietly; lost-worker removal emits the
 idempotent deregistration diagnostic. Sent/received counters wrap as Java ints,
 and result/statistics/timestamp/delta processing remains in the inner remote/NPE
 catch. Null results/first partitions take the lost-worker path; an empty
-partition array takes the outer model-error path. Worker export/exit/completion transport
-and URI ASCII/NFC metadata remain pending local contracts.
+partition array takes the outer model-error path.
+
+`DistributedWorkerRuntime` represents the static executor, keepalive timer,
+ordered worker group, and completion latch of a Java worker JVM. A new Go
+worker has its own runtime; construct a shared runtime with all its workers
+before registering a group. Local registration starts the runtime timer after
+starting the server thread. Exit prints completion, shuts down the executor,
+cancels the shared timer, forcibly unexports that worker, then decrements the
+latch. It does not acquire the computation lock or wait for accepted tasks.
+Repeated direct exits print again and fail at unexport without decrementing;
+proxy calls to an unexported endpoint fail with a direct NoSuchObjectException.
+Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectException
+and does not recreate the executor or latch. AwaitTermination waits for the
+latch, then sleeps ten seconds before returning.
+
+Local worker keepalive preserves the ten-second initial delay, sixty-second
+period, most-recent invocation, computing-worker exemption, Java int timeout
+overflow, server-done diagnostic, and ordered exits. Timer failures terminate
+the timer goroutine. Server keepalive and final cache reads preserve their
+RemoteException catches; final exit ignores only the three Java dead-worker
+exception families, warns, and removes the registration in finally order.
+URI construction/ASCII/NFC metadata, worker resolver/startup/registry transport,
+and FP-manager executor-callable integration/failover remain pending. The
+concrete runtime executor already rejects submissions after shutdown while
+allowing accepted tasks to finish; FP-manager calls still use their existing
+synchronous path until the callable feature is ported together with its tests.
 
 Local failure contracts retain Java's exception structure:
 
@@ -3021,7 +3045,8 @@ Port guidance:
 - Do not port RMI mechanically as networking first.
 - Preserve semantics in local concrete abstractions first.
 - Later choose Go RPC/gRPC only after single-process behavior is conformant.
-- Tests under `tlc2/tool/distributed` should remain late-stage tests.
+- Port a feature's Java tests after implementing that feature in Go. Keep
+  transport-dependent tests with the transport feature they exercise.
 - The Go port should keep `TLCServer`, `DistributedWorker`,
   `DistributedFPSetManager`, and `NextStateResult` concrete. Transport can wrap
   these structs later.

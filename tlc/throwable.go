@@ -28,6 +28,10 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.RemoteException"
 	case *ServerException:
 		return "java.rmi.ServerException"
+	case *NoSuchObjectException:
+		return "java.rmi.NoSuchObjectException"
+	case *ConnectException:
+		return "java.rmi.ConnectException"
 	case *EOFException:
 		return "java.io.EOFException"
 	case *WrongInvocationException:

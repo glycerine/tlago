@@ -159,11 +159,35 @@ func NewServerException(message *string, cause error) *ServerException {
 
 func (e *ServerException) Error() string { return javaThrowableMessage(e) }
 
+type NoSuchObjectException struct{ *RemoteException }
+
+func NewNoSuchObjectException(message string) *NoSuchObjectException {
+	return &NoSuchObjectException{RemoteException: NewRemoteException(javaString(message), nil)}
+}
+
+func (e *NoSuchObjectException) Error() string { return javaThrowableMessage(e) }
+
+type ConnectException struct{ *RemoteException }
+
+func NewConnectException(message string, cause error) *ConnectException {
+	return &ConnectException{RemoteException: NewRemoteException(javaString(message), cause)}
+}
+
+func (e *ConnectException) Error() string { return javaThrowableMessage(e) }
+
 func javaRemoteException(err error) *RemoteException {
 	switch failure := err.(type) {
 	case *RemoteException:
 		return failure
 	case *ServerException:
+		if failure != nil {
+			return failure.RemoteException
+		}
+	case *NoSuchObjectException:
+		if failure != nil {
+			return failure.RemoteException
+		}
+	case *ConnectException:
 		if failure != nil {
 			return failure.RemoteException
 		}
