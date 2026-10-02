@@ -68,6 +68,20 @@ func (e *MessagingException) SetNextException(next error) bool {
 
 type SendFailedException struct{ *MessagingException }
 
+type MailParseException struct{ *MessagingException }
+
+func NewMailParseException(message string) *MailParseException {
+	return &MailParseException{NewMessagingException(javaString(message), nil)}
+}
+func (e *MailParseException) Error() string { return javaThrowableMessage(e) }
+
+type UnsupportedEncodingException struct{ *IOException }
+
+func NewUnsupportedEncodingException(message string) *UnsupportedEncodingException {
+	return &UnsupportedEncodingException{NewIOException(message)}
+}
+func (e *UnsupportedEncodingException) Error() string { return javaThrowableMessage(e) }
+
 func NewSendFailedException(message *string, next error) *SendFailedException {
 	return &SendFailedException{NewMessagingException(message, next)}
 }
@@ -93,6 +107,8 @@ func javaMessagingException(err error) *MessagingException {
 	case *SendFailedException:
 		return e.MessagingException
 	case *MailAddressException:
+		return e.MessagingException
+	case *MailParseException:
 		return e.MessagingException
 	}
 	return nil

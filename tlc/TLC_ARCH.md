@@ -3196,8 +3196,10 @@ The native MailInternetAddress parser/constructor now mirrors bundled JavaMail
 1.6.8. List parsing and detailed validation remain separate, with strict/lenient
 header parsing, groups, route addresses, comments, quotes, literals and source
 recovery quirks. Errors retain message/ref/position in UTF-16 units, and raw
-EncodedPersonal stays separate from the still-pending lazy RFC2047 decoding and
-formatting methods. InternetAddress and MimeUtility properties have separate
+EncodedPersonal stays separate from lazy RFC2047-decoded Personal. Raw-personal
+construction bypasses parsing, and setters retain source partial mutation on
+encoding failure. String/Unicode and array formatting retain source quoting,
+nullable empty lists, CRLF segments, column overflow and Unicode byte counting. InternetAddress and MimeUtility properties have separate
 lazy class lifetimes; folding/unfolding and bogus-header case comparisons preserve
 Java behavior, including UTF-16 columns, safe continuations and dotted/dotless I.
 Source parser/check/unquote bytecode matches the bundled jar after
@@ -3208,10 +3210,27 @@ JUnit tests and exact test_vectors/javamail/addrlist and folddata corpora pass
 plus enabled-mail production server/worker integration with two fake deliveries
 also pass. This dependency
 port retains upstream EPL-2.0 headers and tlc/licenses/javamail-LICENSE.md.
-Remaining mail work includes RFC2047 personal-name/address formatting,
-address-array formatting/InternetAddressFoldTest, MimeUtility encoding and its
-upstream tests, Session/MIME/SMTP, JNDI DNS and complete ToolIO/MP/SANY routing;
-wider JVM/charset/locale providers remain separate.
+MailMIMECodec now ports RFC2047 text/word B/Q encoding/decoding and quoting,
+including ASCII early returns, surrogate-aware recursive splitting, strict and
+lenient whitespace/inner-word behavior, source malformed payload diagnostics and
+separate charset/default caches. DefaultMailMIMECodec exposes the process JDK
+charset boundary; providers are configured before use. Native UTF-8, ASCII,
+Latin-1, UTF-16 and GB18030 adapters preserve source replacement and mapping
+behavior. Other known codecs remain explicit provider boundaries; complete JVM
+inventories, legacy codecs and custom charset-map loading still need porting.
+The GB18030 adapter carries OpenJDK GPLv2/Classpath notices under licenses/ and
+preserves default 2022/optional 2000 tables, private-use reverse mappings and
+malformed widths. All 253,696 complete BMP/byte-table observations match the
+installed JDK; 59,428 bundled-JavaMail word/address observations also match under
+-race. Seven MIME source methods match bundled bytecode after layout normalization.
+The translated InternetAddressFoldTest adds nine exact addrfolddata cases, and
+MimeUtilityTest adds its surrogate-pair and Chinese-alias word tests, after their
+features. All 254 translated mail cases pass; enabled-mail production integration
+with two fake deliveries and the offline suite also pass.
+Remaining mail work includes MIME content-transfer selection/DataSource/DataHandler
+and the three remaining MimeUtilityTest methods, remaining address-object/local
+address/Session methods, Session/MIME/SMTP, JNDI DNS and complete ToolIO/MP/SANY
+routing; wider JVM/charset/locale providers remain separate.
 
 TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer
 entry points. It starts named FP-server and worker threads in source order,

@@ -14,8 +14,8 @@ import (
 const ResultMailAddressProperty = "result.mail.address"
 
 // MailInternetAddress retains InternetAddress's parsed mailbox and separate
-// personal/encoded-personal fields. Parsing stores EncodedPersonal; lazy RFC2047
-// personal-name decoding and MIME formatting belong to the MIME provider port.
+// personal/encoded-personal fields. Parsing stores EncodedPersonal; personal-name
+// access lazily decodes it using the ported RFC2047 MIME word methods.
 type MailInternetAddress struct {
 	Address         string
 	Personal        *string

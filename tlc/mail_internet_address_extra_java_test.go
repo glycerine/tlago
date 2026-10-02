@@ -21,29 +21,32 @@ package tlc
 
 import "testing"
 
-// These source tests use the raw-address/personal constructor, which does not
-// parse the address. For its ASCII personal name, the equivalent raw fields
-// bypass parsing here too; RFC2047 personal-name encoding remains a follow-up.
-func javaMailExtraAddress(address string) *MailInternetAddress {
-	return &MailInternetAddress{Address: address, Personal: javaString("test"), EncodedPersonal: javaString("test")}
+// The source uses the raw-address/personal constructor, which must not parse.
+func javaMailExtraAddress(t *testing.T, address string) *MailInternetAddress {
+	t.Helper()
+	a, err := NewMailInternetAddressPersonal(address, javaString("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return a
 }
 
 func TestJavaMailNewlineInDomainLiteral(t *testing.T) {
-	err := javaMailExtraAddress("test@[\r\nfoo]").Validate()
+	err := javaMailExtraAddress(t, "test@[\r\nfoo]").Validate()
 	if _, ok := err.(*MailAddressException); !ok {
 		t.Fatalf("expected AddressException, got %v", err)
 	}
 }
 
 func TestJavaMailNewlineInLocal(t *testing.T) {
-	err := javaMailExtraAddress("\"test\r\nfoo\"@example.com").Validate()
+	err := javaMailExtraAddress(t, "\"test\r\nfoo\"@example.com").Validate()
 	if _, ok := err.(*MailAddressException); !ok {
 		t.Fatalf("expected AddressException, got %v", err)
 	}
 }
 
 func TestJavaMailNewlineInLocalWithWhitespace(t *testing.T) {
-	if err := javaMailExtraAddress("\"test\r\n foo\"@example.com").Validate(); err != nil {
+	if err := javaMailExtraAddress(t, "\"test\r\n foo\"@example.com").Validate(); err != nil {
 		t.Fatal(err)
 	}
 }

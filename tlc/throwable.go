@@ -32,6 +32,10 @@ func javaThrowableClassName(err error) string {
 		return "javax.mail.SendFailedException"
 	case *MailAddressException:
 		return "javax.mail.internet.AddressException"
+	case *MailParseException:
+		return "javax.mail.internet.ParseException"
+	case *UnsupportedEncodingException:
+		return "java.io.UnsupportedEncodingException"
 	case *NumberFormatException:
 		return "java.lang.NumberFormatException"
 	case *StackOverflowError:
