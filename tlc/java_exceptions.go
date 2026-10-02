@@ -137,6 +137,14 @@ func NewIndexOutOfBoundsException(index, length int) *IndexOutOfBoundsException 
 
 func (e *IndexOutOfBoundsException) Error() string { return javaThrowableMessage(e) }
 
+type StringIndexOutOfBoundsException struct{ *IndexOutOfBoundsException }
+
+func NewStringIndexOutOfBoundsException(index, length int) *StringIndexOutOfBoundsException {
+	return &StringIndexOutOfBoundsException{IndexOutOfBoundsException: NewIndexOutOfBoundsException(index, length)}
+}
+
+func (e *StringIndexOutOfBoundsException) Error() string { return javaThrowableMessage(e) }
+
 type NegativeArraySizeException struct{ javaExceptionBase }
 
 func NewNegativeArraySizeException(message ...string) *NegativeArraySizeException {

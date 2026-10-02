@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"os"
+	"sync"
 	"sync/atomic"
 )
 
@@ -194,7 +195,29 @@ type Tool struct {
 
 var nextToolID atomic.Int64
 
+var toolStaticProperties struct {
+	sync.Once
+	probabilistic bool
+}
+
+// InitializeToolProperties represents Tool's class initialization, after
+// command/package properties are installed and before config/tool loading.
+func InitializeToolProperties() {
+	toolStaticProperties.Do(func() {
+		toolStaticProperties.probabilistic = Globals.Probabilistic
+		if value, ok := tlcLookupSystemProperty(toolProbabilisticProperty); ok {
+			toolStaticProperties.probabilistic = javaBooleanProperty(value)
+		}
+	})
+}
+
+func ToolIsProbabilistic() bool {
+	InitializeToolProperties()
+	return toolStaticProperties.probabilistic
+}
+
 func NewTool() *Tool {
+	InitializeToolProperties()
 	tool := &Tool{
 		ID:          nextToolID.Add(1),
 		Mode:        ModeMC,
@@ -275,7 +298,7 @@ func (t *Tool) GetActions() []*Action {
 	if err := t.ensureActionsPrepared(); err != nil {
 		panic(err)
 	}
-	return append([]*Action(nil), t.Actions...)
+	return t.Actions
 }
 
 func (t *Tool) SetActions(actions []*Action) {

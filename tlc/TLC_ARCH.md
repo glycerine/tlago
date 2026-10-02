@@ -3006,8 +3006,27 @@ create normalized parents yet fail the original final path. Checked creation
 failures become source code 2163 without an I/O cause. The regular TLC command
 uses the same directory-creation algorithm with its existing error-return API.
 All three upstream FileUtilTest cases are translated after implementation.
-Application option parsing/create, packaged-model properties and early recovery
-wiring remain pending alongside registry/export/RPC and the command lifecycle.
+The root `CreateTLCApp` now performs the source option loop and startup branches.
+Options preserve nullable names, raw path separators, Java numeric syntax and
+source diagnostics/continuation quirks, including checkpoint int overflow.
+Normal startup recovers the interner before FP64 and config/tool creation.
+Packaged startup uses `ModelInJar` resource presence, config copying and generated
+properties through the same classpath adapter; it ignores explicit config,
+skips interner recovery, forces tool mode and disables checkpoints. Its FP
+configuration was captured before these late properties. Properties loading
+uses Java Latin-1, logical continuations, Unicode/other escapes and partial
+checked-I/O results. Late properties leave already-loaded globals intact.
+The probabilistic Tool property freezes on first class initialization. Actions
+retain their backing slice, so applications observe in-place mutation as Java
+arrays do, while replacement leaves the captured array intact.
+
+Value fingerprints extend each kind tag with a byte, matching Java overload
+selection; lengths, numeric indices and model-value tokens extend with ints.
+Actual-source comparisons cover all polynomials and the recovered initial state.
+Registry/export/RPC and full distributed command/error/exit wiring remain
+pending. Go library loading currently returns config failures to its caller;
+Java ModelConfig's process exits need the source command lifecycle adapter.
+Broader JVM class-loader/provider/default-resolver initialization is separate.
 
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration

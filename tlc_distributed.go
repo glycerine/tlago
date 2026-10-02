@@ -63,16 +63,12 @@ func LoadTLCApp(specFile, configFile string, deadlock bool, resolver tlc.Filenam
 func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
 	lastSeparator := strings.LastIndexByte(specFile, os.PathSeparator)
 	specDir, rootFile := specFile[:lastSeparator+1], specFile[lastSeparator+1:]
+	tlc.InitializeToolProperties()
 	if resolver == nil {
-		standard, err := fs.Sub(embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+		classpath, err := tlcApplicationClasspath(nil)
 		if err != nil {
 			return nil, nil, err
 		}
-		// Include the process classpath and standard resources shipped with
-		// the tool. Filesystem/user/library search stays in the
-		// source resolver rather than being recreated in the parser.
-		classpath := tlc.DefaultFilenameClasspath()
-		classpath = append(classpath, tlc.FilenameClasspathEntry{Files: standard, Prefix: tlc.StandardModulesClasspath})
 		resolver = tlc.NewSimpleFilenameToStream(nil, tlc.FilenameResolverOptions{Classpath: classpath})
 	}
 	configName := tlc.ModelConfigPath(configFile)
@@ -121,4 +117,76 @@ func LoadTLCAppWithMetadata(specFile, configFile string, deadlock bool, fromChec
 		return nil, diags, err
 	}
 	return tlc.NewTLCAppWithMetadata(tool, deadlock, fromCheckpoint, fpSetConfig), diags, err
+}
+
+func tlcApplicationClasspath(entries []tlc.FilenameClasspathEntry) ([]tlc.FilenameClasspathEntry, error) {
+	if entries == nil {
+		entries = tlc.DefaultFilenameClasspath()
+	}
+	standard, err := fs.Sub(embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
+	if err != nil {
+		return nil, err
+	}
+	classpath := append([]tlc.FilenameClasspathEntry{}, entries...)
+	return append(classpath, tlc.FilenameClasspathEntry{Files: standard, Prefix: tlc.StandardModulesClasspath}), nil
+}
+
+// CreateTLCApp ports Java TLCApp.create. Optional classpath roots supply Go's
+// directory/archive/bundled resource adapter for the process class loader.
+// Option errors retain Java's printed diagnostics and null application result.
+func CreateTLCApp(args []string, runtime tlc.RuntimeParameters, classpath ...[]tlc.FilenameClasspathEntry) (*tlc.TLCApp, Diagnostics, error) {
+	opts := tlc.ParseTLCAppOptions(args)
+	if opts == nil {
+		return nil, nil, nil
+	}
+	var configured []tlc.FilenameClasspathEntry
+	if len(classpath) > 0 {
+		configured = classpath[0]
+	}
+	if opts.SpecFile == nil {
+		entries, err := tlcApplicationClasspath(configured)
+		if err != nil {
+			return nil, nil, err
+		}
+		model := tlc.NewModelInJar(entries)
+		if !model.HasModel() {
+			tlc.PrintTLCAppUsageError("Error: Missing input TLA+ module.")
+			return nil, nil, nil
+		}
+		model.LoadProperties()
+		tlc.Globals.Tool = true
+		tlc.Globals.CheckpointDurationMillis = 0
+		tlc.FP64InitIndex(opts.FPIndex)
+		// This source branch ignores -config and skips early intern recovery,
+		// but retains fromChkpt in the full constructor's metadata setup.
+		app, diags, err := LoadTLCAppWithMetadata(tlc.ModelCheckFileBasename, tlc.ModelCheckFileBasename, opts.CheckDeadlock, opts.FromCheckpoint, opts.FPSetConfiguration, model.Resolver(), runtime)
+		if app != nil {
+			app.Tool.DistributedFiles.Classpath = entries
+		}
+		return app, diags, err
+	}
+	if opts.ConfigFile == nil {
+		opts.ConfigFile = opts.SpecFile
+	}
+	if opts.FromCheckpoint != nil {
+		if err := tlc.RecoverUniqueStrings(*opts.FromCheckpoint); err != nil {
+			return nil, nil, err
+		}
+	}
+	tlc.FP64InitIndex(opts.FPIndex)
+	var resolver tlc.FilenameToStream
+	var entries []tlc.FilenameClasspathEntry
+	if len(classpath) > 0 {
+		var err error
+		entries, err = tlcApplicationClasspath(configured)
+		if err != nil {
+			return nil, nil, err
+		}
+		resolver = tlc.NewSimpleFilenameToStream(nil, tlc.FilenameResolverOptions{Classpath: entries})
+	}
+	app, diags, err := LoadTLCAppWithMetadata(*opts.SpecFile, *opts.ConfigFile, opts.CheckDeadlock, opts.FromCheckpoint, opts.FPSetConfiguration, resolver, runtime)
+	if app != nil && entries != nil {
+		app.Tool.DistributedFiles.Classpath = entries
+	}
+	return app, diags, err
 }

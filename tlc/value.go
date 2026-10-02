@@ -264,7 +264,7 @@ func (v *BoolValue) Permute(*MVPerm) Value { return v }
 
 func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
-	fp = FP64ExtendInt(fp, int32(BoolValueKind))
+	fp = FP64ExtendByte(fp, byte(BoolValueKind))
 	if v.Val {
 		return FP64ExtendUTF16(fp, []uint16{'t'})
 	}
@@ -401,7 +401,7 @@ func (v *IntValue) Permute(*MVPerm) Value { return v }
 
 func (v *IntValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
-	return FP64ExtendInt(FP64ExtendInt(fp, int32(IntValueKind)), v.Val)
+	return FP64ExtendInt(FP64ExtendByte(fp, byte(IntValueKind)), v.Val)
 }
 
 func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
@@ -505,7 +505,7 @@ func (v *StringValue) Permute(*MVPerm) Value { return v }
 
 func (v *StringValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
-	fp = FP64ExtendInt(fp, int32(StringValueKind))
+	fp = FP64ExtendByte(fp, byte(StringValueKind))
 	fp = FP64ExtendInt(fp, int32(v.Val.Length()))
 	return FP64ExtendString(fp, v.Val.String())
 }

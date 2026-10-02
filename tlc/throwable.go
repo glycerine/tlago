@@ -48,6 +48,8 @@ func javaThrowableClassName(err error) string {
 		return "java.nio.file.InvalidPathException"
 	case *IndexOutOfBoundsException:
 		return "java.lang.IndexOutOfBoundsException"
+	case *StringIndexOutOfBoundsException:
+		return "java.lang.StringIndexOutOfBoundsException"
 	case *IllegalArgumentException:
 		return "java.lang.IllegalArgumentException"
 	case *URISyntaxException:

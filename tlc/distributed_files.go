@@ -120,6 +120,7 @@ type DistributedServerFiles struct {
 	ModelResources fs.FS
 	Resources      fs.FS
 	ResourcePrefix string
+	Classpath      []FilenameClasspathEntry // Non-null supplies the complete class-loader roots.
 	resolverMu     sync.Mutex
 	resolver       *SimpleFilenameToStream
 }
@@ -152,6 +153,9 @@ func (s *DistributedServerFiles) resolve(name string) string {
 }
 
 func (s *DistributedServerFiles) filenameClasspath() []FilenameClasspathEntry {
+	if s.Classpath != nil {
+		return append([]FilenameClasspathEntry{}, s.Classpath...)
+	}
 	entries := []FilenameClasspathEntry{}
 	if s.ModelResources != nil {
 		entries = append(entries, FilenameClasspathEntry{Files: s.ModelResources})

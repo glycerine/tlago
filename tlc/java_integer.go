@@ -2,6 +2,37 @@ package tlc
 
 import "unicode"
 
+// Integer.parseInt with the default decimal radix differs from decode: a
+// leading zero is decimal, and hexadecimal/octal prefixes are not recognized.
+func javaParseDecimalInt(value string) (int32, bool) {
+	if value == "" {
+		return 0, false
+	}
+	negative := value[0] == '-'
+	if negative || value[0] == '+' {
+		value = value[1:]
+	}
+	if value == "" {
+		return 0, false
+	}
+	limit := int64(1<<31 - 1)
+	if negative {
+		limit++
+	}
+	var result int64
+	for _, char := range value {
+		digit := javaIntegerDigit(char)
+		if digit < 0 || digit > 9 || result > (limit-int64(digit))/10 {
+			return 0, false
+		}
+		result = result*10 + int64(digit)
+	}
+	if negative {
+		result = -result
+	}
+	return int32(result), true
+}
+
 // Integer.getInteger uses Integer.decode: signs precede a hex/octal prefix,
 // whitespace is invalid, and the result must fit a signed Java int.
 func javaDecodeIntProperty(value string) (int, bool) {

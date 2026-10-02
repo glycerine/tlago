@@ -631,7 +631,7 @@ func javaIntProperty(value string) (int, bool) {
 }
 
 func toolProbabilisticEnabled() bool {
-	return Globals.Probabilistic
+	return ToolIsProbabilistic()
 }
 
 func intValueFromDurationSince(start time.Time) *IntValue {

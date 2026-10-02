@@ -67,7 +67,7 @@ func (c *FPSetConfiguration) GetFPBits() int {
 
 func (c *FPSetConfiguration) SetFPBits(fpBits int) {
 	if !IsValidFPBits(fpBits) {
-		panic("illegal number of FPSets")
+		panic(NewTLCRuntimeException(ECGeneral))
 	}
 	c.FPBits = fpBits
 }
@@ -109,8 +109,8 @@ func (c *FPSetConfiguration) GetMultiFPSetCnt() int {
 }
 
 func (c *FPSetConfiguration) SetRatio(ratio float64) {
-	if ratio < 0 || ratio > 1 {
-		panic("FPSet ratio out of range")
+	if !(ratio >= 0 && ratio <= 1) {
+		panic(NewTLCRuntimeException(ECGeneral))
 	}
 	c.Ratio = ratio
 }
@@ -124,7 +124,7 @@ func (c *FPSetConfiguration) GetRatio() float64 {
 
 func (c *FPSetConfiguration) SetMemory(memory int64) {
 	if memory < 0 {
-		panic("FPSet memory cannot be negative")
+		panic(NewTLCRuntimeException(ECGeneral))
 	}
 	c.MemoryInBytes = memory
 }

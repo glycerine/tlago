@@ -5,7 +5,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -905,16 +904,6 @@ func simulatorPropertyFloat(name string, alias string, fallback float64) float64
 		}
 	}
 	return fallback
-}
-
-func parseJavaDoubleProperty(value string) (float64, error) {
-	if value != "" {
-		switch value[len(value)-1] {
-		case 'd', 'D', 'f', 'F':
-			value = value[:len(value)-1]
-		}
-	}
-	return strconv.ParseFloat(value, 64)
 }
 
 func (s *Simulator) checkInvariants(state *TLCStateMut, initial bool) (int, error) {

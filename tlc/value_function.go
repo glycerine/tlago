@@ -352,7 +352,7 @@ func (v *ModelValue) Permute(perm *MVPerm) Value {
 
 func (v *ModelValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
-	return v.Val.FingerPrint(FP64ExtendInt(fp, int32(ModelValueKind)))
+	return v.Val.FingerPrint(FP64ExtendByte(fp, byte(ModelValueKind)))
 }
 
 func (v *ModelValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
@@ -739,10 +739,10 @@ func (v *RecordValue) FingerPrint(fp uint64) uint64 {
 	if err := v.normalizeRecord(); err != nil {
 		panic(err)
 	}
-	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
+	fp = FP64ExtendByte(fp, byte(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Names)))
 	for i, name := range v.Names {
-		fp = FP64ExtendInt(fp, int32(StringValueKind))
+		fp = FP64ExtendByte(fp, byte(StringValueKind))
 		fp = FP64ExtendInt(fp, int32(name.Length()))
 		fp = FP64ExtendString(fp, name.String())
 		fp = v.Values[i].FingerPrint(fp)
@@ -1316,7 +1316,7 @@ func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
 	if err := v.normalizeFcn(); err != nil {
 		panic(err)
 	}
-	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
+	fp = FP64ExtendByte(fp, byte(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Values)))
 	if v.Intv == nil {
 		for i := range v.Values {
@@ -1326,7 +1326,7 @@ func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
 		return fp
 	}
 	for i := range v.Values {
-		fp = FP64ExtendInt(fp, int32(IntValueKind))
+		fp = FP64ExtendByte(fp, byte(IntValueKind))
 		fp = FP64ExtendInt(fp, v.Intv.Low+int32(i))
 		fp = v.Values[i].FingerPrint(fp)
 	}

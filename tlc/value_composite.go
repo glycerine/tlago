@@ -311,10 +311,10 @@ func (v *TupleValue) Permute(perm *MVPerm) Value {
 
 func (v *TupleValue) FingerPrint(fp uint64) uint64 {
 	defer catchValueFailure(v, nil)
-	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
+	fp = FP64ExtendByte(fp, byte(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Elems)))
 	for i, elem := range v.Elems {
-		fp = FP64ExtendInt(fp, int32(IntValueKind))
+		fp = FP64ExtendByte(fp, byte(IntValueKind))
 		fp = FP64ExtendInt(fp, int32(i+1))
 		fp = elem.FingerPrint(fp)
 	}
@@ -573,7 +573,7 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 	if _, err := v.normalizeSet(); err != nil {
 		panic(err)
 	}
-	fp = FP64ExtendInt(fp, int32(SetEnumValueKind))
+	fp = FP64ExtendByte(fp, byte(SetEnumValueKind))
 	fp = FP64ExtendInt(fp, int32(v.Elems.Len()))
 	for i := 0; i < v.Elems.Len(); i++ {
 		fp = v.Elems.At(i).FingerPrint(fp)
@@ -737,10 +737,10 @@ func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 	if err != nil {
 		panic(err)
 	}
-	fp = FP64ExtendInt(fp, int32(SetEnumValueKind))
+	fp = FP64ExtendByte(fp, byte(SetEnumValueKind))
 	fp = FP64ExtendInt(fp, int32(sz))
 	for i := 0; i < sz; i++ {
-		fp = FP64ExtendInt(fp, int32(IntValueKind))
+		fp = FP64ExtendByte(fp, byte(IntValueKind))
 		fp = FP64ExtendInt(fp, v.Low+int32(i))
 	}
 	return fp
