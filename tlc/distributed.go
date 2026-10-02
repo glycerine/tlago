@@ -1289,7 +1289,7 @@ func (t *TLCServerThread) Run() {
 		if t.Selector == nil {
 			t.Selector = NewBlockSelectorFromProperties(t.Server)
 		}
-		t.States = t.Selector.GetBlocks(stateQueue, t.underlyingWorker())
+		t.States = t.Selector.GetBlocks(stateQueue, t.Worker)
 		if t.States == nil {
 			t.Server.SetDone()
 			if stateQueue != nil {
@@ -1479,13 +1479,6 @@ func (t *TLCServerThread) cancelKeepAlive() {
 	}
 }
 
-func (t *TLCServerThread) underlyingWorker() *DistributedWorker {
-	if t == nil || t.Worker == nil {
-		return nil
-	}
-	return t.Worker.Worker
-}
-
 type TLCTimerTask struct {
 	Thread         *TLCServerThread
 	LastInvocation atomic.Int64
@@ -1638,7 +1631,7 @@ func distributedIntProperty(name string) (int, bool) {
 	return javaIntProperty(value)
 }
 
-func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWorker) []*TLCStateMut {
+func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWorkerSmartProxy) []*TLCStateMut {
 	if b == nil || stateQueue == nil {
 		return nil
 	}
@@ -1674,7 +1667,7 @@ func (b *BlockSelector) GetAverageBlockCnt() int64 {
 	return b.AverageBlockCnt
 }
 
-func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorker) int64 {
+func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorkerSmartProxy) int64 {
 	if b == nil {
 		return 1
 	}
@@ -1682,28 +1675,20 @@ func (b *BlockSelector) getBlockSize(size int64, worker *DistributedWorker) int6
 	case BlockSelectorStatic:
 		return int64(b.StaticBlockSize)
 	case BlockSelectorStatistical:
-		if worker != nil && worker.NetworkOverhead != 0 {
+		if worker != nil {
 			limit := b.NetworkOverheadLimit
 			if limit == 0 {
 				limit = blockSelectorDefaultNetworkOverheadLimit
 			}
-			maximum := b.Maximum
-			if maximum <= 0 {
-				maximum = blockSelectorDefaultMaximum
-			}
-			blockSize := math.Abs(math.Ceil(float64(size) * (worker.NetworkOverhead / limit)))
-			blockSize = math.Min(math.Max(blockSize, 1), float64(maximum))
+			blockSize := math.Abs(math.Ceil(float64(size) * (worker.GetNetworkOverhead() / limit)))
+			blockSize = math.Min(math.Max(blockSize, 1), float64(b.Maximum))
 			return int64(blockSize)
 		}
 		fallthrough
 	case BlockSelectorLimiting:
 		blockSize := b.proportionalBlockSize(size)
-		maximum := b.Maximum
-		if maximum <= 0 {
-			maximum = blockSelectorDefaultMaximum
-		}
-		if blockSize > int64(maximum) {
-			return int64(maximum)
+		if blockSize > int64(b.Maximum) {
+			return int64(b.Maximum)
 		}
 		return blockSize
 	default:
