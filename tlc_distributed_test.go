@@ -37,6 +37,9 @@ func TestDistributedDoInitFunctorEvalException(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The Java Ant harness forks per test. Give this translated test its own
+	// naming namespace; early-done modelCheck deliberately retains its registry.
+	server.ConfigurePublication(tlc.NewTLCRegistryNamespace().Publication())
 	recorder := &tlc.MemoryRecorder{}
 	tlc.AddMessageRecorder(recorder)
 	t.Cleanup(func() { tlc.RemoveMessageRecorder(recorder) })

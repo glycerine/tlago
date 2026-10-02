@@ -106,7 +106,7 @@ func isJavaIOException(err error) bool {
 		return true
 	}
 	switch err.(type) {
-	case *IOException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite
@@ -364,6 +364,14 @@ func javaRemoteException(err error) *RemoteException {
 			return failure.RemoteException
 		}
 	case *UnmarshalException:
+		if failure != nil {
+			return failure.RemoteException
+		}
+	case *ExportException:
+		if failure != nil {
+			return failure.RemoteException
+		}
+	case *AccessException:
 		if failure != nil {
 			return failure.RemoteException
 		}

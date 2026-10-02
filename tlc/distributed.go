@@ -83,6 +83,8 @@ type DistributedWorker struct {
 }
 
 type TLCServer struct {
+	publication                 TLCServerPublication
+	unexported                  atomic.Bool
 	checkDeadlock               *bool
 	internMu                    sync.Mutex
 	InternTable                 *InternTable
@@ -335,6 +337,28 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		PrintMessage(ECTLCCheckpointRecoverEnd, fmtUint64(s.fpSetSize()), fmtInt64(s.StateQueue.Size()))
 		recovered = true
 	}
+	publication := s.publicationBoundaries()
+	hostname, err := invokeRegistryBoundary(publication.LocalHostName)
+	if err != nil {
+		return ECGeneral, err
+	}
+	registry, err := invokeRegistryBoundary(func() (*TLCServerRegistry, error) {
+		return publication.CreateRegistry(TLCServerPort())
+	})
+	if err != nil {
+		return ECGeneral, err
+	}
+	if registry == nil {
+		return ECGeneral, NewNullPointerException()
+	}
+	if err := invokeRegistryOperation(func() error {
+		if registry.Rebind == nil {
+			return NewNullPointerException()
+		}
+		return registry.Rebind(TLCServerName, s)
+	}); err != nil {
+		return ECGeneral, err
+	}
 	s.WaitForFPSetManager()
 	result := NoError
 	if !recovered {
@@ -355,7 +379,15 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		}
 		return result, nil
 	}
-	PrintMessage(ECTLCDistributedServerRunning, distributedServerHost())
+	if err := invokeRegistryOperation(func() error {
+		if registry.Rebind == nil {
+			return NewNullPointerException()
+		}
+		return registry.Rebind(TLCServerWorkerName, s)
+	}); err != nil {
+		return ECGeneral, err
+	}
+	PrintMessage(ECTLCDistributedServerRunning, hostname)
 	if err := s.waitForDistributedCompletion(); err != nil {
 		return ECGeneral, err
 	}
@@ -419,7 +451,25 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 	}
 	s.PrintSummary(level, statesGenerated, statesLeft, uint64(TLCServerFinalNumberOfDistinctStates()), s.HasNoErrors())
 	PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+	if publication.Flush != nil {
+		if err := invokeRegistryOperation(func() error { publication.Flush(); return nil }); err != nil {
+			return ECGeneral, err
+		}
+	}
 	if err := s.Close(s.HasNoErrors()); err != nil {
+		return ECGeneral, err
+	}
+	for _, name := range []string{TLCServerWorkerName, TLCServerName} {
+		if err := invokeRegistryOperation(func() error {
+			if registry.Unbind == nil {
+				return NewNullPointerException()
+			}
+			return registry.Unbind(name)
+		}); err != nil {
+			return ECGeneral, err
+		}
+	}
+	if _, err := invokeRegistryBoundary(func() (bool, error) { return publication.Unexport(s, false) }); err != nil {
 		return ECGeneral, err
 	}
 	if s.HasNoErrors() {

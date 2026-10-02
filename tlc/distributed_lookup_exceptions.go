@@ -50,3 +50,24 @@ func NewNoRouteToHostException(message ...string) *NoRouteToHostException {
 	return &NoRouteToHostException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
 func (e *NoRouteToHostException) Error() string { return javaThrowableMessage(e) }
+
+type NetBindException struct{ javaExceptionBase }
+
+func NewNetBindException(message ...string) *NetBindException {
+	return &NetBindException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *NetBindException) Error() string { return javaThrowableMessage(e) }
+
+type ExportException struct{ *RemoteException }
+
+func NewExportException(message string, cause error) *ExportException {
+	return &ExportException{NewRemoteException(javaString(message), cause)}
+}
+func (e *ExportException) Error() string { return javaThrowableMessage(e) }
+
+type AccessException struct{ *RemoteException }
+
+func NewAccessException(message string, cause error) *AccessException {
+	return &AccessException{NewRemoteException(javaString(message), cause)}
+}
+func (e *AccessException) Error() string { return javaThrowableMessage(e) }

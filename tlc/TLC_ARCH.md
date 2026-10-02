@@ -3068,9 +3068,26 @@ capture. Unexpected exit failures escape without extra close calls; only the
 source remote exception families are ignored. Final distinct-state results are
 shared across instances, success uses that snapshot, and failure completion
 switches the application to CallStackTool. Reported worker violations return
-normally; close failures escape even after a violation. Registry publication,
-export/RPC, flush/output integration and the complete command/exit lifecycle
-remain pending. Full DistributedTLCTestCase transport tests follow those
+normally; close failures escape even after a violation. Registry publication and
+removal now follow modelCheck through concrete naming/export/flush boundaries.
+The primary binding is published before FP readiness and initialization, while
+the worker binding appears only after successful init/recovery. Early-done init
+retains the primary binding. Completion flushes after FINISHED, closes, removes
+worker then primary bindings and unexports with force=false, ignoring its boolean
+result. Exceptional paths stop at the source phase without extra cleanup; the
+registry itself is never unexported by this method.
+
+RunWorkerShutdownHook skips empty registrations, performs one registry guard at
+the current mutable port and preserves source checked catches before direct
+worker exits. It retains registrations and propagates unchecked failures.
+TLCRegistryNamespace supplies local identity/binding lifetime, lazy registry
+references and JDK duplicate fixed-ObjID behavior, including cached port-zero
+endpoints. It has no wire listener, serialization, socket occupancy detection or
+actual OS ephemeral-port assignment. Separate namespaces isolate names only;
+FP64/interner class globals still need process/runtime isolation. The translated
+init test uses its own naming namespace like the source per-test JVM fork.
+Actual constructor autoexport, active remote calls, MP console flush and the
+complete command/exit lifecycle remain pending. Full DistributedTLCTestCase transport tests follow those
 features (the Java harness currently disables them for OffHeapDiskFPSet).
 
 Distributed discovery now has source worker and FP-server lookup loops with

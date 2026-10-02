@@ -38,6 +38,10 @@ func javaThrowableClassName(err error) string {
 		return "tlc2.tool.distributed.fp.FPSetManagerException"
 	case *UnmarshalException:
 		return "java.rmi.UnmarshalException"
+	case *ExportException:
+		return "java.rmi.server.ExportException"
+	case *AccessException:
+		return "java.rmi.AccessException"
 	case *IOException:
 		return "java.io.IOException"
 	case *FileNotFoundException:
@@ -76,6 +80,8 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.NullPointerException"
 	case *NetConnectException:
 		return "java.net.ConnectException"
+	case *NetBindException:
+		return "java.net.BindException"
 	case *NotBoundException:
 		return "java.rmi.NotBoundException"
 	case *MalformedURLException:
