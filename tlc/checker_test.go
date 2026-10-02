@@ -19,6 +19,18 @@ func TestDoNextFailureMessagePreservesTLCErrorCodeParamsLikeJavaEvalException(t 
 	if !keep {
 		t.Fatalf("keepCallStack = false, want true for Java EvalException-shaped errors")
 	}
+
+	noParamErr := newTLCErrorCode(ECTLCModuleDivisionByZero)
+	code, params, keep = doNextFailureMessage(noParamErr)
+	if code != ECTLCModuleDivisionByZero {
+		t.Fatalf("parameterless code = %d, want %d", code, ECTLCModuleDivisionByZero)
+	}
+	if params == nil || len(params) != 0 {
+		t.Fatalf("parameterless params = %#v, want empty non-nil params so PrintError(code) is emitted", params)
+	}
+	if !keep {
+		t.Fatalf("parameterless keepCallStack = false, want true for Java EvalException-shaped errors")
+	}
 }
 
 func TestModelCheckerPostConditionAliasUsesPairwiseJavaPath(t *testing.T) {

@@ -2100,6 +2100,8 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 			params = eval.GetParameters()
 		} else if ec == ECGeneral {
 			params = generalErrorParams("", err)
+		} else {
+			params = []string{}
 		}
 		return ec, params, keepCallStack
 	}
@@ -2110,7 +2112,10 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 		if tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory || tlcErr.Code == ECTLCBug {
 			keepCallStack = false
 		}
-		if tlcErr.Code != ECGeneral && tlcErr.Params != nil {
+		if tlcErr.Code != ECGeneral {
+			if tlcErr.Params == nil {
+				return tlcErr.Code, []string{}, keepCallStack
+			}
 			return tlcErr.Code, tlcErr.Params, keepCallStack
 		}
 	}
