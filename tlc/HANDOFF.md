@@ -38,8 +38,15 @@ CommandMap eager initialization/get/set/reset/security and the bundled handler
 loadClass/newInstance algorithm are now implemented, with reentrant class and
 instance synchronization, permanent initialization failures and lazy resources.
 Read the latest progress entry for verification and the explicit JVM boundaries.
-Continue with native ActivationDataFlavor/AWT dependencies and bundled handlers,
-then object DataHandler factory/cache/buffered-pipe paths and its existing test.
+ActivationDataFlavor's own constructors/getters/equality/normalization and its
+inherited AWT metadata/comparison paths now have native ports. Preserve its
+shadowed fields: inherited metadata/hash/overloads often see null base fields.
+AWT MIME parsing uses a separate grammar and Hashtable enumeration; its error
+and partial-mutation quirks must not be replaced by the Activation parser.
+All four existing ActivationDataFlavorTest methods are translated and pass.
+Continue with bundled concrete handlers, then object DataHandler factory/cache/
+buffered-pipe paths and its existing test. Remaining AWT work includes full class
+loading/initialization, text selection/readers, object and MIME externalization.
 Full JVM class inventory/linking/loader isolation, stack/cast diagnostics and
 native thread/URL/locale/charset providers remain required.
 

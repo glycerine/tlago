@@ -3331,14 +3331,41 @@ only for null, directly calls loadClass/newInstance and checks the handler carri
 only ClassNotFoundException/IllegalAccessException/InstantiationException are
 swallowed. Current trunk's ProviderLocator must not replace the bundled call.
 Class/resource/handler operation callbacks represent JVM boundaries; no unported
-bundled class is falsely treated as absent. DataFlavor objects remain opaque.
+bundled class is falsely treated as absent. Handler flavor values can now carry
+the native MailDataFlavor metadata/comparison port.
 Twelve source methods match bundled bytecode. Ten cold init/reentry/failure,
 four concurrent init (sixteen waiters each), 32 setter/security/overload, 672
 handler creation and 30 lazy enumeration reference sequences pass under native
 -race, as do the prior registry/discovery comparisons and translated mail tests.
 The full offline working-tree suite passes. No CommandMap test class exists upstream;
-the existing Mailcap tests remain unchanged. Next are native ActivationDataFlavor/
-AWT dependencies and bundled handlers, then object DataHandler factory/cache/pipes.
+the existing Mailcap tests remain unchanged.
+ActivationDataFlavor now ports all its own constructors, shadowed MIME/class/name
+fields, getters/setter, typed equality and protected normalization methods.
+Its inherited DataFlavor overloads retain base-field reads, null errors, wildcard
+matching, text charset/document comparisons, hashing, cloning and class/text
+predicates. In particular, an Activation flavor's inherited hash is zero and its
+inherited primary/subtype are null. Ordinary MIME/Class constructors supply the
+metadata needed by the original upstream equality test. Class identity remains
+distinct from its name; arbitrary class loading/hierarchies use explicit providers.
+AWT MimeType/MimeTypeParameterList have their own UTF-16 parser, English base-type
+casing, default-locale parameter names, clone/hash/equality and Hashtable order.
+Malformed names/trailing whitespace preserve StringIndexOutOfBoundsException;
+parsing retains partial state on failure. Public keys enumeration remains live
+without fail-fast checks; parameter equality uses a structural-change iterator.
+Canonical charset metadata embeds 927 normalized names/aliases for 173 standard
+OpenJDK 21.0.12.1 charsets (17,518 bytes, SHA-256
+91097096ee47ef0205353cf2d0394a92e3f50b02b0b794eef042cf4e0b24f394).
+This inventory supplies names, independently of the still-required conversion codecs.
+AWT MIME sources match all 39 JDK bytecode methods; DataFlavor source matches all
+50. Nine Activation flavor methods match bundled bytecode directly; two have
+reviewed legacy class-literal cache and StringBuffer/StringBuilder compiler shapes.
+Temporary Java/native -race probes pass 5,894 flavor comparisons and 17,364 direct
+AWT parser/mutation/enumeration comparisons. After implementation, translated
+the four original ActivationDataFlavorTest methods; original Java bodies,
+translated mail -race tests and full offline working-tree checks pass.
+Next are bundled handlers, then object DataHandler factory/cache/pipes. Full
+AWT class-loading/initialization, desktop text selection/readers, MIME/Object
+externalization and startup/provider default charset lifetime remain required.
 Full JVM cast/automatic exception wording, native class inventory, Beans and object
 serialization remain required providers/ports alongside wider mail runtime work.
 Remaining mail work includes Geronimo object/URL/pipe/content-handler/factory/

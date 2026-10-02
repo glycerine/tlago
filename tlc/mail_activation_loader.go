@@ -21,9 +21,19 @@
 // directly, with no ProviderLocator and no fallback after loading fails.
 package tlc
 
+import "sync/atomic"
+
 // These carriers represent JVM class identity, loadClass/newInstance and resource
 // enumeration separately. In particular, enumerations remain lazy across opens.
-type MailActivationClass struct{ NewInstance func() (any, error) }
+type MailActivationClass struct {
+	NewInstance          func() (any, error)
+	Name                 string
+	Parents              []*MailActivationClass
+	Primitive            bool
+	IsAssignableFromFunc func(*MailActivationClass) bool
+	HashCodeFunc         func() int32
+	identityHash         atomic.Int32
+}
 type MailActivationResource struct {
 	Location   string
 	OpenStream func() (*MailInputStream, error)

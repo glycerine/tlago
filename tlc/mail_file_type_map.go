@@ -54,6 +54,10 @@ type MailActivationEnvironment struct {
 	ContextClassLoader  func() (*MailActivationClassLoader, error)
 	DefiningClassLoader func() (*MailActivationClassLoader, error)
 	ThreadName          func() string
+	FlavorClass         func(*string) (*MailActivationClass, error)
+	CanonicalCharset    func(*string) *string
+	EncodingSupported   func(*string) bool
+	DefaultCharset      func() string
 }
 
 var DefaultMailActivationEnvironment MailActivationEnvironment
