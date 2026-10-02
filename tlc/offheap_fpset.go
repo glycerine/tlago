@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -123,7 +124,7 @@ func (s *OffHeapDiskFPSet) Put(fp uint64) bool {
 		start := 0
 		if s.index != nil {
 			if found := s.memLookup0(fp0); found == offHeapFound {
-				s.memHitCnt++
+				atomic.AddUint64(&s.memHitCnt, 1)
 				s.mu.Unlock()
 				return true
 			} else {
@@ -135,7 +136,7 @@ func (s *OffHeapDiskFPSet) Put(fp uint64) bool {
 				panic(err)
 			}
 			if hit {
-				s.diskHitCnt++
+				atomic.AddUint64(&s.diskHitCnt, 1)
 				s.mu.Unlock()
 				return true
 			}
@@ -169,7 +170,7 @@ func (s *OffHeapDiskFPSet) Contains(fp uint64) bool {
 		panic(err)
 	}
 	if hit {
-		s.diskHitCnt++
+		atomic.AddUint64(&s.diskHitCnt, 1)
 	}
 	return hit
 }
@@ -306,7 +307,7 @@ func (s *OffHeapDiskFPSet) ForceFlush() {
 }
 
 func (s *OffHeapDiskFPSet) needsDiskFlush() bool {
-	return s.tblCnt >= s.maxTblCnt || s.forceFlush
+	return s.tblCnt >= s.maxTblCnt || s.forceFlush.Load()
 }
 
 func (s *OffHeapDiskFPSet) memLookup(fp0 uint64) bool {
@@ -410,13 +411,13 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 		s.flushTime += int64(time.Since(start) / time.Millisecond)
 	}()
 	if s.tblCnt == 0 {
-		s.forceFlush = false
+		s.forceFlush.Store(false)
 		return nil
 	}
 	values := s.unflushedValuesLocked()
 	if len(values) == 0 {
 		s.tblCnt = 0
-		s.forceFlush = false
+		s.forceFlush.Store(false)
 		return nil
 	}
 	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
@@ -428,7 +429,7 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 	}
 	s.tblCnt = 0
 	s.tblLoad = 0
-	s.forceFlush = false
+	s.forceFlush.Store(false)
 	return nil
 }
 
@@ -477,7 +478,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 		if _, err := tmp.Write(buf[:]); err != nil {
 			return err
 		}
-		s.diskWriteCnt++
+		atomic.AddUint64(&s.diskWriteCnt, 1)
 		if written%diskFPSetNumEntriesPerPage == 0 && currIndex < len(newIndex) {
 			newIndex[currIndex] = fp
 			currIndex++

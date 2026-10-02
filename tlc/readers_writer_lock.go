@@ -129,3 +129,27 @@ func (s *Striped) AcquireAllLocks() {
 		s.locks[i].Lock()
 	}
 }
+
+func (s *Striped) AcquireAllLocksExcept(skip int) {
+	if s == nil {
+		return
+	}
+	for i := 0; i < s.Size(); i++ {
+		if i == skip {
+			continue
+		}
+		s.locks[i].Lock()
+	}
+}
+
+func (s *Striped) ReleaseAllLocksExcept(skip int) {
+	if s == nil {
+		return
+	}
+	for i := s.Size() - 1; i >= 0; i-- {
+		if i == skip {
+			continue
+		}
+		s.locks[i].Unlock()
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,7 +34,8 @@ const (
 )
 
 type DiskFPSet struct {
-	mu sync.Mutex
+	mu     sync.Mutex
+	poolMu sync.Mutex
 
 	config *FPSetConfiguration
 
@@ -49,7 +51,8 @@ type DiskFPSet struct {
 	index          []uint64
 	checkPointMark int
 	growDiskMark   int
-	forceFlush     bool
+	forceFlush     atomic.Bool
+	flusherChosen  atomic.Bool
 	flushTime      int64
 
 	tbl          [][]uint64
@@ -318,14 +321,14 @@ func printNonCheckpointableFPSetWarning(className string) {
 }
 
 func (s *DiskFPSet) Size() uint64 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	return uint64(s.tblCnt + s.fileCnt)
 }
 
 func (s *DiskFPSet) Sizeof() uint64 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	size := uint64(44)
 	size += 16 + uint64(len(s.tbl))*diskFPSetJavaRefSize
 	for _, bucket := range s.tbl {
@@ -338,45 +341,65 @@ func (s *DiskFPSet) Sizeof() uint64 {
 }
 
 func (s *DiskFPSet) Put(fp uint64) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fp0 := s.checkValid(fp) & diskFPSetFlushedMask
+	lockIndex := s.getLockIndex(fp0)
+	lock := s.rwLock.GetAt(lockIndex)
+
+	lock.RLock()
 	if s.memLookup(fp0) {
-		s.memHitCnt++
+		lock.RUnlock()
+		atomic.AddUint64(&s.memHitCnt, 1)
 		return true
 	}
 	hit, err := s.diskLookup(fp0)
 	if err != nil {
+		lock.RUnlock()
 		panic(err)
 	}
 	if hit {
-		s.diskHitCnt++
+		lock.RUnlock()
+		atomic.AddUint64(&s.diskHitCnt, 1)
 		return true
 	}
+	lock.RUnlock()
+
+	lock.Lock()
+	defer lock.Unlock()
 	if s.memInsert(fp0) {
-		s.memHitCnt++
+		atomic.AddUint64(&s.memHitCnt, 1)
 		return true
 	}
-	if s.needsDiskFlush() {
+	if s.needsDiskFlush() && s.flusherChosen.CompareAndSwap(false, true) {
+		s.mu.Lock()
 		s.growDiskMark++
-		start := time.Now()
 		insertions := s.tblCnt
+		s.mu.Unlock()
+		start := time.Now()
+		s.rwLock.AcquireAllLocksExcept(lockIndex)
 		if err := s.flushTable(); err != nil {
+			s.rwLock.ReleaseAllLocksExcept(lockIndex)
+			s.flusherChosen.Store(false)
 			panic(err)
 		}
-		s.forceFlush = false
+		s.rwLock.ReleaseAllLocksExcept(lockIndex)
+		s.forceFlush.Store(false)
+		s.flusherChosen.Store(false)
 		_ = insertions
+		s.mu.Lock()
 		s.flushTime += int64(time.Since(start) / time.Millisecond)
+		s.mu.Unlock()
 	}
 	return false
 }
 
 func (s *DiskFPSet) Contains(fp uint64) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fp0 := s.checkValid(fp) & diskFPSetFlushedMask
+	lockIndex := s.getLockIndex(fp0)
+	lock := s.rwLock.GetAt(lockIndex)
+	lock.RLock()
+	defer lock.RUnlock()
 	if s.memLookup(fp0) {
-		s.memHitCnt++
+		atomic.AddUint64(&s.memHitCnt, 1)
 		return true
 	}
 	hit, err := s.diskLookup(fp0)
@@ -384,7 +407,7 @@ func (s *DiskFPSet) Contains(fp uint64) bool {
 		panic(err)
 	}
 	if hit {
-		s.diskHitCnt++
+		atomic.AddUint64(&s.diskHitCnt, 1)
 	}
 	return hit
 }
@@ -419,8 +442,8 @@ func (s *DiskFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 }
 
 func (s *DiskFPSet) Close() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	_ = s.closeBRAFReaders()
 }
 
@@ -470,8 +493,12 @@ func (s *DiskFPSet) BeginChkptFile(fname string) error {
 	if !s.checkpoint {
 		return nil
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.flusherChosen.Store(true)
+	s.acquireTblWriteLock()
+	defer func() {
+		s.releaseTblWriteLock()
+		s.flusherChosen.Store(false)
+	}()
 	if err := s.flushTable(); err != nil {
 		return err
 	}
@@ -502,8 +529,8 @@ func (s *DiskFPSet) RecoverFile(fname string) error {
 	if !s.checkpoint {
 		return nil
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	return s.recoverFileLocked(s.chkptName(fname, "chkpt"))
 }
 
@@ -523,9 +550,9 @@ func (s *DiskFPSet) RecoverTrace(trace *TLCTrace) error {
 }
 
 func (s *DiskFPSet) RecoverFP(fp uint64) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fp0 := fp & diskFPSetFlushedMask
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	if s.memInsert(fp0) {
 		if diskFPSetError2Warning() {
 			PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
@@ -540,8 +567,8 @@ func (s *DiskFPSet) RecoverFP(fp uint64) error {
 }
 
 func (s *DiskFPSet) CheckFPs() uint64 {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	if err := s.flushTable(); err != nil {
 		return 0
 	}
@@ -559,8 +586,8 @@ func (s *DiskFPSet) CheckFPs() uint64 {
 }
 
 func (s *DiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.acquireTblWriteLock()
+	defer s.releaseTblWriteLock()
 	if err := s.flushTable(); err != nil {
 		return false
 	}
@@ -596,16 +623,16 @@ func (s *DiskFPSet) GetTblLoad() int64        { return s.tblLoad }
 func (s *DiskFPSet) GetTblCnt() int64         { return s.tblCnt }
 func (s *DiskFPSet) GetMaxTblCnt() int64      { return s.maxTblCnt }
 func (s *DiskFPSet) GetFileCnt() int64        { return s.fileCnt }
-func (s *DiskFPSet) GetDiskLookupCnt() uint64 { return s.diskLookupCnt }
-func (s *DiskFPSet) GetMemHitCnt() uint64     { return s.memHitCnt }
-func (s *DiskFPSet) GetDiskHitCnt() uint64    { return s.diskHitCnt }
-func (s *DiskFPSet) GetDiskWriteCnt() uint64  { return s.diskWriteCnt }
-func (s *DiskFPSet) GetDiskSeekCnt() uint64   { return s.diskSeekCnt }
-func (s *DiskFPSet) GetDiskSeekCache() uint64 { return s.diskSeekCache }
+func (s *DiskFPSet) GetDiskLookupCnt() uint64 { return atomic.LoadUint64(&s.diskLookupCnt) }
+func (s *DiskFPSet) GetMemHitCnt() uint64     { return atomic.LoadUint64(&s.memHitCnt) }
+func (s *DiskFPSet) GetDiskHitCnt() uint64    { return atomic.LoadUint64(&s.diskHitCnt) }
+func (s *DiskFPSet) GetDiskWriteCnt() uint64  { return atomic.LoadUint64(&s.diskWriteCnt) }
+func (s *DiskFPSet) GetDiskSeekCnt() uint64   { return atomic.LoadUint64(&s.diskSeekCnt) }
+func (s *DiskFPSet) GetDiskSeekCache() uint64 { return atomic.LoadUint64(&s.diskSeekCache) }
 func (s *DiskFPSet) GetGrowDiskMark() int     { return s.growDiskMark }
 func (s *DiskFPSet) GetCheckPointMark() int   { return s.checkPointMark }
 func (s *DiskFPSet) GetFlushTime() int64      { return s.flushTime }
-func (s *DiskFPSet) ForceFlush()              { s.forceFlush = true }
+func (s *DiskFPSet) ForceFlush()              { s.forceFlush.Store(true) }
 func (s *DiskFPSet) GetLockCnt() int          { return s.lockCnt }
 func (s *DiskFPSet) GetReaderWriterCnt() int  { return len(s.braf) + len(s.brafPool) }
 func (s *DiskFPSet) GetLoadFactor() float64 {
@@ -617,7 +644,10 @@ func (s *DiskFPSet) checkValid(fp uint64) uint64 {
 }
 
 func (s *DiskFPSet) needsDiskFlush() bool {
-	return s.tblCnt >= s.maxTblCnt || s.forceFlush
+	s.mu.Lock()
+	tblCnt := s.tblCnt
+	s.mu.Unlock()
+	return tblCnt >= s.maxTblCnt || s.forceFlush.Load()
 }
 
 func (s *DiskFPSet) memLookup(fp uint64) bool {
@@ -640,9 +670,11 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 		bucket = make([]uint64, diskFPSetInitialBucketCap)
 		bucket[0] = fp
 		s.tbl[idx] = bucket
+		s.mu.Lock()
 		s.bucketsCap += diskFPSetInitialBucketCap
 		s.tblLoad++
 		s.tblCnt++
+		s.mu.Unlock()
 		return false
 	}
 	bucketLen := len(bucket)
@@ -663,7 +695,9 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 			bucket = make([]uint64, bucketLen+diskFPSetBucketSizeIncrement)
 			copy(bucket, old)
 			s.tbl[idx] = bucket
+			s.mu.Lock()
 			s.bucketsCap += diskFPSetBucketSizeIncrement
+			s.mu.Unlock()
 		}
 		bucket[j] = fp
 	} else {
@@ -672,7 +706,9 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 		}
 		bucket[reusable] = fp
 	}
+	s.mu.Lock()
 	s.tblCnt++
+	s.mu.Unlock()
 	return false
 }
 
@@ -683,11 +719,35 @@ func (s *DiskFPSet) getIndex(fp uint64) int {
 	return int(fp & s.mask)
 }
 
+func (s *DiskFPSet) getLockIndex(fp uint64) int {
+	if s == nil || s.rwLock == nil || s.lockCnt <= 1 {
+		return 0
+	}
+	if s.mode == diskFPSetModeMSB {
+		return int((uint64(uint32(fp>>32)) & uint64(s.lockMask)) >> uint(s.moveBy))
+	}
+	return int(fp & uint64(s.lockMask))
+}
+
+func (s *DiskFPSet) acquireTblWriteLock() {
+	if s == nil || s.rwLock == nil {
+		return
+	}
+	s.rwLock.AcquireAllLocks()
+}
+
+func (s *DiskFPSet) releaseTblWriteLock() {
+	if s == nil || s.rwLock == nil {
+		return
+	}
+	s.rwLock.ReleaseAllLocks()
+}
+
 func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 	if s.index == nil || len(s.index) == 0 {
 		return false, nil
 	}
-	s.diskLookupCnt++
+	atomic.AddUint64(&s.diskLookupCnt, 1)
 	indexLength := len(s.index)
 	loPage, hiPage := 0, indexLength-1
 	loVal, hiVal := s.index[loPage], s.index[hiPage]
@@ -768,9 +828,9 @@ func (s *DiskFPSet) readDiskFP(entry int64) (uint64, error) {
 		return 0, err
 	}
 	if seeked {
-		s.diskSeekCnt++
+		atomic.AddUint64(&s.diskSeekCnt, 1)
 	} else {
-		s.diskSeekCache++
+		atomic.AddUint64(&s.diskSeekCache, 1)
 	}
 	value, err := raf.ReadLong()
 	if err != nil {
@@ -794,10 +854,12 @@ func (s *DiskFPSet) flushTable() error {
 	if err := s.mergeNewEntries(); err != nil {
 		return err
 	}
+	s.mu.Lock()
 	s.tblCnt = 0
 	s.bucketsCap = 0
 	s.tblLoad = 0
 	s.lsbBuff = nil
+	s.mu.Unlock()
 	return nil
 }
 
@@ -871,7 +933,7 @@ func (s *DiskFPSet) mergeNewEntries() error {
 		if _, err := tmp.Write(buf[:]); err != nil {
 			return err
 		}
-		s.diskWriteCnt++
+		atomic.AddUint64(&s.diskWriteCnt, 1)
 		if counter == 0 {
 			if currIndex >= len(newIndex)-1 {
 				_ = tmp.Close()
@@ -1050,6 +1112,8 @@ func (s *DiskFPSet) reopenBRAFReaders() error {
 }
 
 func (s *DiskFPSet) openDiskReader() (*BufferedRandomAccessFile, bool, error) {
+	s.poolMu.Lock()
+	defer s.poolMu.Unlock()
 	id := CurrentThreadIDOr(len(s.braf))
 	if id >= 0 && id < len(s.braf) && s.braf[id] != nil {
 		return s.braf[id], false, nil
@@ -1069,6 +1133,8 @@ func (s *DiskFPSet) poolClose(raf *BufferedRandomAccessFile) {
 	if raf == nil {
 		return
 	}
+	s.poolMu.Lock()
+	defer s.poolMu.Unlock()
 	if len(s.brafPool) > 0 && s.poolIndex > 0 {
 		s.poolIndex--
 		s.brafPool[s.poolIndex] = raf
