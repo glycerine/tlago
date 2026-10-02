@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -211,11 +210,6 @@ func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
 		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
 	}
 	filePath := path.RawString()
-	if fileOptions.flag&os.O_CREATE != 0 {
-		if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil && filepath.Dir(filePath) != "." {
-			return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
-		}
-	}
 	file, err := os.OpenFile(filePath, fileOptions.flag, 0o644)
 	if err != nil {
 		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
