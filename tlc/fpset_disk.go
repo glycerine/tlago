@@ -16,6 +16,7 @@ import (
 const (
 	diskFPSetMarkFlushed           = uint64(0x8000000000000000)
 	diskFPSetFlushedMask           = uint64(0x7fffffffffffffff)
+	diskFPSetJavaRefSize           = 4
 	diskFPSetLogMaxLoad            = 4
 	diskFPSetInitialBucketCap      = 1 << diskFPSetLogMaxLoad
 	diskFPSetNumEntriesPerPage     = 8192 / fpSetLongSize
@@ -326,13 +327,13 @@ func (s *DiskFPSet) Sizeof() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	size := uint64(44)
-	size += 16 + uint64(len(s.tbl))*8
+	size += 16 + uint64(len(s.tbl))*diskFPSetJavaRefSize
 	for _, bucket := range s.tbl {
 		if bucket != nil {
 			size += 16 + uint64(len(bucket))*fpSetLongSize
 		}
 	}
-	size += uint64(len(s.index)) * 8
+	size += uint64(len(s.index)) * diskFPSetJavaRefSize
 	return size
 }
 

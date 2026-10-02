@@ -287,6 +287,18 @@ func TestDiskFPSetRecoverDuplicateUsesJavaCheckpointCorruptError(t *testing.T) {
 	}
 }
 
+func TestDiskFPSetSizeofUsesJavaReferenceAccounting(t *testing.T) {
+	set := &DiskFPSet{
+		tbl:   make([][]uint64, 3),
+		index: make([]uint64, 2),
+	}
+	set.tbl[1] = make([]uint64, 4)
+	want := uint64(44 + 16 + 3*4 + 16 + 4*fpSetLongSize + 2*4)
+	if got := set.Sizeof(); got != want {
+		t.Fatalf("Sizeof = %d, want Java approximate accounting %d", got, want)
+	}
+}
+
 func TestMemoryFPSetRecoverDuplicateUsesJavaFPNotInSetError(t *testing.T) {
 	cases := []struct {
 		name string
