@@ -6,8 +6,11 @@ import (
 )
 
 func TestRecordValueDeepCopyIndependentOfSourceNormalization(t *testing.T) {
-	a := UniqueStringOf("a")
-	b := UniqueStringOf("b")
+	// Java RecordValueTest.testDeepCopy uses an isolated InternTable(2),
+	// giving a/b tokens 1/2 regardless of previous tests' global strings.
+	strings := NewInternTable(2)
+	a := strings.Put("a")
+	b := strings.Put("b")
 	aVal := NewStringValue("aVal")
 	bVal := NewStringValue("bVal")
 

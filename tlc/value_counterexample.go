@@ -17,6 +17,24 @@ var (
 	locationModule        = UniqueStringOf("module")
 )
 
+// Refresh Java's class-static names when a fresh worker interning context is
+// installed. Their tokens must come from the source rather than the discarded
+// Go package-initialization context.
+func initCounterExampleUniqueStrings() {
+	counterExampleStates = UniqueStringOf("state")
+	counterExampleActions = UniqueStringOf("action")
+	counterExampleConsole = UniqueStringOf("console")
+	actionRecordName = UniqueStringOf("name")
+	actionRecordLocation = UniqueStringOf("location")
+	actionRecordContext = UniqueStringOf("context")
+	actionRecordParams = UniqueStringOf("parameters")
+	locationBeginLine = UniqueStringOf("beginLine")
+	locationBeginColumn = UniqueStringOf("beginColumn")
+	locationEndLine = UniqueStringOf("endLine")
+	locationEndColumn = UniqueStringOf("endColumn")
+	locationModule = UniqueStringOf("module")
+}
+
 type CounterExample struct {
 	*RecordValue
 }

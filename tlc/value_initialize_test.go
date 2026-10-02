@@ -84,8 +84,10 @@ func TestInitializeValueNormalizesUnionAndSubset(t *testing.T) {
 }
 
 func TestInitializeValueNormalizesCompositeChildren(t *testing.T) {
-	a := UniqueStringOf("a")
-	b := UniqueStringOf("b")
+	// Java InitializeValueTest.record uses an isolated InternTable(2).
+	strings := NewInternTable(2)
+	a := strings.Put("a")
+	b := strings.Put("b")
 	aVal := unnormalizedIntSet()
 	bVal := unnormalizedIntSet()
 	record := NewRecordValue([]*UniqueString{b, a}, []Value{bVal, aVal}, false)

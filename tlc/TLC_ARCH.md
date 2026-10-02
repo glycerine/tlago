@@ -3030,10 +3030,43 @@ the directory/Integer.MAX_VALUE checks, single-read zero-filled buffer, and
 nested RuntimeException wrapping with FileNotFoundException/IOException causes.
 `LoadDistributedWorkerTool` parses configuration first and routes all module
 loads through the worker resolver using the existing parser, semantic checker,
-and TLC bridge. This is the loading portion of bootstrap: network invocation,
-remote UniqueString setup, and group launch remain separate pending work.
+and TLC bridge. It now installs a fresh worker interning context before any
+configuration or semantic values are created. Network invocation, FP64 startup,
+registry discovery, and group launch remain separate pending work.
 The general FilenameToStream/TLAFile API and Java archive/classpath discovery
 beyond bundled module assets are not claimed complete by this slice.
+
+`InternTable` is a concrete linear-probing table with Java String hash codes,
+half-capacity growth thresholds, `2 * length + 1` growth, and signed int token
+increments. `Put` grows even before a cache hit. With an `InternSource`, absent
+strings retain the returned token/location and leave the local token counter
+unchanged; exceptions become the cause-free `Failed to intern ...` runtime
+assertion, while Java Error carriers escape. A null response increments count
+without occupying a slot, preserving the source quirk.
+
+Interning is serialized per logical JVM/table. Individual array accesses have
+a separate Go lock, so `Get`, `Find`, `ToMap`, and checkpoint scans retain Java's
+live slot iteration and do not wait across an in-flight remote create. `ToMap`
+uses InsMap to make the resulting map iteration deterministic. Checkpoints
+write the token counter followed by occupied slots in their current table order,
+using Java's legacy UniqueString byte encoding. Recovery updates the counter
+and inserts into the existing table, including duplicate strings/tokens and
+growth, rather than replacing or deduplicating it. Incomplete records preserve
+the nullable checkpoint-corruption assertion; a truncated header remains EOF.
+
+The local worker interning source captures the master's table and copies raw
+UniqueString fields to model Java serialization between JVMs. The worker then
+recreates Go's cached built-in and counterexample/action/location names after
+source installation. This avoids using package-initialization tokens or
+sharing mutable locations with the master. Construct one worker Tool per fresh
+interning context and share it among that JVM's worker threads; context reset
+belongs to bootstrap before concurrent checking.
+
+Server checkpoint ordering now includes the interner: queue/trace/FP begin,
+queue resume, interner begin, queue/trace/interner commit, then FP commit. Errors
+before queue resume leave the queue suspended like Java; completion messages
+retain the source's recorder arguments. TLCApp restores interning before tool
+construction, separately from TLCServer's trace/queue/FP recovery method.
 
 Worker construction now retains Java's immutable raw URI metadata in the form
 `rmi://hostname:port/threadId`. `DistributedWorkerAddress` supplies the address

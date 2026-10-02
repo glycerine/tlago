@@ -1,13 +1,13 @@
 package tlc
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"unicode/utf16"
 )
 
@@ -17,46 +17,18 @@ type UniqueString struct {
 	loc int
 }
 
-type uniqueStringTable struct {
-	mu       sync.Mutex
-	byString map[string]*UniqueString
-	byToken  map[int]*UniqueString
-	tokenCnt int
-	varCount int
-}
-
-var internTable = &uniqueStringTable{
-	byString: make(map[string]*UniqueString),
-	byToken:  make(map[int]*UniqueString),
-}
+var internTable = NewInternTable(1024)
 
 func UniqueStringInitialize() {
-	internTable.mu.Lock()
-	internTable.byString = make(map[string]*UniqueString)
-	internTable.byToken = make(map[int]*UniqueString)
-	internTable.tokenCnt = 0
-	internTable.varCount = 0
-	internTable.mu.Unlock()
-	initBuiltInOPs()
+	UniqueStringInitializeWithSource(nil)
 }
 
 func UniqueStringOf(s string) *UniqueString {
-	internTable.mu.Lock()
-	defer internTable.mu.Unlock()
-	if us := internTable.byString[s]; us != nil {
-		return us
-	}
-	internTable.tokenCnt++
-	us := &UniqueString{s: s, tok: internTable.tokenCnt, loc: -1}
-	internTable.byString[s] = us
-	internTable.byToken[us.tok] = us
-	return us
+	return internTable.Put(s)
 }
 
 func UniqueStringByToken(tok int) *UniqueString {
-	internTable.mu.Lock()
-	defer internTable.mu.Unlock()
-	return internTable.byToken[tok]
+	return internTable.Get(tok)
 }
 
 func SetUniqueStringVariableCount(n int) {
@@ -68,7 +40,7 @@ func SetUniqueStringVariableCount(n int) {
 func ResetUniqueStringLocations() {
 	internTable.mu.Lock()
 	defer internTable.mu.Unlock()
-	for _, us := range internTable.byString {
+	for _, us := range internTable.table {
 		if us != nil {
 			us.loc = -1
 		}
@@ -153,7 +125,7 @@ func (u *UniqueString) Compare(other *UniqueString) int {
 	if other == nil {
 		return u.tok
 	}
-	return u.tok - other.tok
+	return int(int32(u.tok) - int32(other.tok))
 }
 
 func (u *UniqueString) Equal(other *UniqueString) bool {
@@ -193,28 +165,32 @@ func RecoverUniqueStrings(metadir string) error {
 	return internTable.Recover(metadir)
 }
 
-func (t *uniqueStringTable) BeginChkpt(metadir string) error {
-	if t == nil || metadir == "" {
-		return nil
+func (t *InternTable) BeginChkpt(metadir string) error {
+	return t.beginChkptWithVarCount(metadir, UniqueStringVariableCount())
+}
+
+func (t *InternTable) beginChkptWithVarCount(metadir string, varCount int) error {
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	path := uniqueStringChkptName(metadir, "tmp")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
 	file, err := os.Create(path)
 	if err != nil {
-		return err
+		return distributedFileOpenException(path, err)
 	}
 	out := NewValueOutputStream(file)
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if err := out.WriteInt(int32(t.tokenCnt)); err != nil {
+	t.dataMu.RLock()
+	tokenCnt := t.tokenCnt
+	t.dataMu.RUnlock()
+	if err := out.WriteInt(tokenCnt); err != nil {
 		_ = out.Close()
 		return err
 	}
-	varCount := t.varCount
-	for tok := 1; tok <= t.tokenCnt; tok++ {
-		us := t.byToken[tok]
+	for i := 0; ; i++ {
+		us, present := t.slotAt(i)
+		if !present {
+			break
+		}
 		if us == nil {
 			continue
 		}
@@ -226,58 +202,65 @@ func (t *uniqueStringTable) BeginChkpt(metadir string) error {
 	return out.Close()
 }
 
-func (t *uniqueStringTable) CommitChkpt(metadir string) error {
-	if t == nil || metadir == "" {
-		return nil
+func (t *InternTable) CommitChkpt(metadir string) error {
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	oldChkpt := uniqueStringChkptName(metadir, "chkpt")
 	newChkpt := uniqueStringChkptName(metadir, "tmp")
 	if err := os.Remove(oldChkpt); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("InternTable.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("InternTable.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("InternTable.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException(fmt.Sprintf("InternTable.commitChkpt: cannot delete %s", oldChkpt))
 	}
 	return nil
 }
 
-func (t *uniqueStringTable) Recover(metadir string) error {
-	if t == nil || metadir == "" {
-		return nil
+func (t *InternTable) Recover(metadir string) error {
+	if t == nil {
+		panic(NewNullPointerException())
 	}
 	file, err := os.Open(uniqueStringChkptName(metadir, "chkpt"))
 	if err != nil {
-		return err
+		return distributedFileOpenException(uniqueStringChkptName(metadir, "chkpt"), err)
 	}
-	in := NewValueInputStream(file)
+	reader := bufio.NewReader(file)
+	in := NewValueInputStream(reader)
+	defer file.Close()
 	tokenCnt, err := in.ReadInt()
 	if err != nil {
 		_ = in.Close()
 		return err
 	}
-	byString := make(map[string]*UniqueString)
-	byToken := make(map[int]*UniqueString)
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.dataMu.Lock()
+	t.tokenCnt = tokenCnt
+	t.dataMu.Unlock()
 	for {
+		if _, err := reader.Peek(1); err == io.EOF {
+			break
+		} else if err != nil {
+			return err
+		}
 		us, err := readJavaUniqueString(in)
 		if errors.Is(err, io.EOF) {
-			break
+			failure := newTLCErrorCodeNullable(ECSystemCheckpointRecoveryCorrupt, javaThrowableDetailMessage(err))
+			failure.Runtime = true
+			panic(failure)
 		}
 		if err != nil {
 			_ = in.Close()
 			return err
 		}
-		byString[us.s] = us
-		byToken[us.tok] = us
+		func() {
+			t.dataMu.Lock()
+			defer t.dataMu.Unlock()
+			t.putValue(us)
+		}()
 	}
-	if err := in.Close(); err != nil {
-		return err
-	}
-	t.mu.Lock()
-	t.byString = byString
-	t.byToken = byToken
-	t.tokenCnt = int(tokenCnt)
-	t.mu.Unlock()
-	return nil
+	return file.Close()
 }
 
 func writeJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
@@ -363,5 +346,19 @@ func javaLegacyStringFromBytes(bytes []byte) string {
 }
 
 func uniqueStringChkptName(metadir string, ext string) string {
-	return filepath.Join(metadir, "vars."+ext)
+	// Java concatenates the separator even for an empty directory, and File
+	// collapses repeated separators without resolving . or .. components.
+	sep := string(filepath.Separator)
+	path := metadir + sep + "vars." + ext
+	prefix := ""
+	if filepath.Separator == '\\' {
+		path = strings.ReplaceAll(path, "/", sep)
+		if strings.HasPrefix(path, sep+sep) {
+			prefix, path = sep, path[1:]
+		}
+	}
+	for strings.Contains(path, sep+sep) {
+		path = strings.ReplaceAll(path, sep+sep, sep)
+	}
+	return prefix + path
 }

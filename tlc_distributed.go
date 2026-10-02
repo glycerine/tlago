@@ -8,13 +8,15 @@ import (
 )
 
 // LoadDistributedWorkerTool performs the file-loading portion of TLCWorker's
-// TLCApp construction using the production parser and TLC bridge. Registry,
-// intern-source setup, and worker-group launch belong to the remaining startup
-// port, before this function is called.
+// TLCApp construction using the production parser and TLC bridge. It installs
+// a fresh worker interning context before configuration or semantic values are
+// created. Registry/FP64 initialization and worker-group launch remain in the
+// startup port. Construct one Tool per worker JVM, shared by that JVM's threads.
 func LoadDistributedWorkerTool(server *tlc.TLCServer, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters) (*tlc.Tool, Diagnostics, error) {
 	if server == nil {
 		panic(tlc.NewNullPointerException())
 	}
+	tlc.UniqueStringInitializeWithSource(tlc.NewLocalWorkerInternSource(server))
 	if resolver == nil {
 		resolver = tlc.NewRMIFilenameToStreamResolver()
 	}

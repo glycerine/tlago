@@ -83,6 +83,8 @@ type DistributedWorker struct {
 }
 
 type TLCServer struct {
+	internMu                    sync.Mutex
+	InternTable                 *InternTable
 	Files                       *DistributedServerFiles
 	FPSetManager                *DistributedFPSetManager
 	StateQueue                  StateQueue
@@ -121,6 +123,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		trace = NewTLCTrace(metadir, fileName)
 	}
 	server := &TLCServer{
+		InternTable:                 internTable,
 		FPSetManager:                manager,
 		StateQueue:                  queue,
 		Trace:                       trace,
@@ -137,6 +140,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
 	if s != nil {
 		s.Tool = tool
+		s.serverInternTable()
 		if s.Trace != nil {
 			s.Trace.SetTool(tool)
 		}
@@ -155,24 +159,24 @@ func (s *TLCServer) Checkpoint() error {
 	if !s.StateQueue.SuspendAll() {
 		return nil
 	}
-	PrintMessage(ECTLCCheckpointStart, s.Metadir)
+	PrintMessage(ECTLCCheckpointStart, "-- Checkpointing of run "+s.Metadir+" compl")
 	if err := s.StateQueue.BeginChkpt(); err != nil {
-		s.StateQueue.ResumeAll()
 		return err
 	}
 	if s.Trace != nil {
 		if err := s.Trace.BeginChkpt(); err != nil {
-			s.StateQueue.ResumeAll()
 			return err
 		}
 	}
 	if s.FPSetManager != nil {
 		if err := s.FPSetManager.Checkpoint(s.FileName); err != nil {
-			s.StateQueue.ResumeAll()
 			return err
 		}
 	}
 	s.StateQueue.ResumeAll()
+	if err := s.serverInternTable().beginChkptWithVarCount(s.Metadir, s.serverInternTable().varCount); err != nil {
+		return err
+	}
 	if err := s.StateQueue.CommitChkpt(); err != nil {
 		return err
 	}
@@ -181,12 +185,15 @@ func (s *TLCServer) Checkpoint() error {
 			return err
 		}
 	}
+	if err := s.serverInternTable().CommitChkpt(s.Metadir); err != nil {
+		return err
+	}
 	if s.FPSetManager != nil {
 		if err := s.FPSetManager.CommitCheckpoint(); err != nil {
 			return err
 		}
 	}
-	PrintMessage(ECTLCCheckpointEnd)
+	PrintMessage(ECTLCCheckpointEnd, "eted.")
 	return nil
 }
 
