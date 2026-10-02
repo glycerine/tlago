@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"math"
 	"strings"
 )
@@ -21,7 +22,7 @@ type ValueVec struct {
 
 func NewValueVec(capacity int) *ValueVec {
 	if capacity < 0 {
-		capacity = 0
+		panic(fmt.Errorf("%d", capacity))
 	}
 	return &ValueVec{data: make([]Value, 0, capacity)}
 }

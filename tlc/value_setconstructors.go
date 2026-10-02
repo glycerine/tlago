@@ -1162,7 +1162,7 @@ func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
 		return newErrorEnumeration(err)
 	}
 	if size == 0 {
-		return &singleValueEnumeration{value: NewSetEnumValue(nil, true, v.CM)}
+		return &emptySubsetEnumeration{owner: v}
 	}
 	set, err := tryToSetEnumValue(v.Set)
 	if err != nil {

@@ -1034,6 +1034,18 @@ Important concrete values:
 - `SetOfFcnsValue`, `SetOfRcdsValue`, `SetOfTuplesValue`: lazy enumerable set
   spaces.
 - `SubsetValue` and `KSubsetValue`: lazy subset enumeration and unranking.
+  Go's `SubsetUnrank` keeps strict predecessor lookups in a sorted cutoff
+  vector, including replacement of duplicate binomial keys, and retains Java's
+  Pascal-table indices and exact long conversion. The integer random-subset
+  overload is `GetRandomSetOfSubsetsUpTo`; it uses decimal scale 32/HALF_DOWN
+  allocation and Java's signed-long stride/offset behavior, including zero-
+  modulus failures and random draws after the output bound has been reached.
+  Fixed-cardinality `KElementEnumeration` requires counts to fit an int, while
+  `NumberOfKElements` requires a long. Normalized powerset traversal retains
+  its separate combinations iterator. Lexicographic bitset traversal replaces
+  the outer base with its enumerated set before normalization and counts the
+  sizes of emitted subsets for coverage. Empty traversal returns a fresh set
+  after each reset. These inherited helpers also operate on Go k-subsets.
   `KSubsetValue` keeps Java's special comparison/equality shortcuts against
   ordinary `SUBSET S`: finite cardinalities are compared without materializing
   powersets, and `kSubset(0, S)` equals `SUBSET {}` independent of `S`.

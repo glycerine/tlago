@@ -342,17 +342,7 @@ func (v *KSubsetValue) Elements() ValueEnumeration {
 	if empty {
 		return EmptySet.Elements()
 	}
-	if v.K == 0 {
-		return &singleValueEnumeration{value: NewSetEnumValue(nil, true, v.CM)}
-	}
-	set, err := toSetEnumValue(v.Set)
-	if err != nil {
-		return newErrorEnumeration(err)
-	}
-	if _, err := set.normalizeSet(); err != nil {
-		return newErrorEnumeration(err)
-	}
-	return newKSubsetEnumeration(set.Elems, v.K, v.CM)
+	return v.KElements(v.K)
 }
 
 func (v *KSubsetValue) String() string {

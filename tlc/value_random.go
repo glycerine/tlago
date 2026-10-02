@@ -162,13 +162,11 @@ type coinTossingSubsetEnumeration struct {
 }
 
 func newCoinTossingSubsetEnumeration(base Value, cm CostModel, k int, probability float64) (*coinTossingSubsetEnumeration, error) {
-	set, err := toSetEnumValue(base)
+	set, err := tryToSetEnumValue(base)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := set.normalizeSet(); err != nil {
-		return nil, err
-	}
+	set.Normalize()
 	return &coinTossingSubsetEnumeration{elems: set.Elems, cm: cm, probability: probability, k: k}, nil
 }
 

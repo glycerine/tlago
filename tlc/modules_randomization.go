@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"math/big"
 	"math/bits"
 	"strconv"
@@ -99,7 +100,7 @@ func randomSubsetOfEnumerable(k int, value Value) (Value, error) {
 
 func randomSubsetNegativeSizeError(k int) error {
 	const signature = "public static tlc2.value.impl.Value tlc2.module.Randomization.RandomSubset(tlc2.value.impl.Value,tlc2.value.impl.Value)"
-	return javaMethodOverrideError(signature, strconv.Itoa(k))
+	return javaMethodOverrideRuntimeError(signature, strconv.Itoa(k))
 }
 
 func collectRandomSubset(elements ValueEnumeration, k int, cm CostModel) (*SetEnumValue, error) {
@@ -308,26 +309,11 @@ func primeFactors(n int) []int {
 }
 
 func randomSetOfSubsets(k int, probability float64, value Value) (Value, error) {
-	set, err := toSetEnumValue(value)
+	set, err := NewSubsetValue(value).GetRandomSetOfSubsets(k, probability)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := set.normalizeSet(); err != nil {
-		return nil, err
-	}
-	base := set.Elems.ToArray()
-	sets := newValueHashSet(int(float64(k) * probability))
-	rng := RandomEnumerableGenerator()
-	for i := 0; i < k; i++ {
-		subset := NewValueVec(0)
-		for _, elem := range base {
-			if rng.NextDouble() < probability {
-				subset.Add(elem)
-			}
-		}
-		sets.add(NewSetEnumValueVec(subset, false))
-	}
-	return NewSetEnumValueVec(sets.values, false), nil
+	return set, nil
 }
 
 type valueHashSet struct {
@@ -337,7 +323,7 @@ type valueHashSet struct {
 
 func newValueHashSet(estimated int) *valueHashSet {
 	if estimated < 0 {
-		estimated = 0
+		panic(fmt.Errorf("Illegal initial capacity: %d", estimated))
 	}
 	return &valueHashSet{
 		buckets: make(map[int32][]Value, estimated),
@@ -349,7 +335,10 @@ func (s *valueHashSet) add(value Value) bool {
 	hash := ValueJavaHashCode(value)
 	for _, existing := range s.buckets[hash] {
 		eq, err := value.Equal(existing)
-		if err == nil && eq {
+		if err != nil {
+			panic(err)
+		}
+		if eq {
 			return false
 		}
 	}
