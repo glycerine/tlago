@@ -66,10 +66,10 @@ func (r *NextStateResult) GetNextStates() []*StateVec {
 type DistributedWorker struct {
 	nextStatesMu          sync.Mutex
 	ID                    int
-	Tool                  *Tool
+	App                   *TLCApp
+	unsorted              bool
 	FPSetManager          *DistributedFPSetManager
 	Cache                 *SimpleCache
-	CheckDeadlock         bool
 	uri                   *distributedWorkerURIValue
 	Runtime               *DistributedWorkerRuntime
 	unexported            atomic.Bool
@@ -91,6 +91,7 @@ type TLCServer struct {
 	StateQueue                  StateQueue
 	Trace                       *TLCTrace
 	Tool                        *Tool
+	app                         *TLCApp
 	Metadir                     string
 	FileName                    string
 	ConfigName                  string
@@ -141,6 +142,10 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
 	if s != nil {
 		s.Tool = tool
+		s.app = nil
+		if tool != nil {
+			s.app = NewTLCApp(tool, s.GetCheckDeadlock())
+		}
 		s.serverInternTable()
 		if s.Trace != nil {
 			s.Trace.SetTool(tool)
@@ -153,8 +158,18 @@ func (s *TLCServer) HasNoErrors() bool {
 	return s != nil && s.ErrState == nil && s.LastError == nil
 }
 
+func (s *TLCServer) application() *TLCApp {
+	if s.app == nil || s.app.Tool != s.Tool {
+		s.app = NewTLCApp(s.Tool, s.GetCheckDeadlock())
+	}
+	return s.app
+}
+
 func (s *TLCServer) SetCheckDeadlock(check bool) *TLCServer {
 	s.checkDeadlock = &check
+	if s.app != nil {
+		s.app.checkDeadlock = check
+	}
 	return s
 }
 
@@ -285,13 +300,13 @@ func (s *TLCServer) DoInit(tool ...*Tool) (int, error) {
 		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server is nil")
 	}
 	if len(tool) > 0 {
-		s.Tool = tool[0]
+		s.SetTool(tool[0])
 	}
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
 	}
-	functor := &distributedDoInitFunctor{server: s, tool: s.Tool, returnValue: NoError}
-	err := s.Tool.GetInitStates(NewStateFunctor(functor.AddElement))
+	functor := &distributedDoInitFunctor{server: s, app: s.application(), returnValue: NoError}
+	err := functor.app.GetInitStates(NewStateFunctor(functor.AddElement))
 	if err == errInvariantViolated {
 		s.ErrState = functor.errState
 		return functor.returnValue, nil
@@ -320,7 +335,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 	}
 	startTime := time.Now()
 	if len(tool) > 0 {
-		s.Tool = tool[0]
+		s.SetTool(tool[0])
 	}
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
@@ -349,7 +364,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 	}
 	s.PrintInitGenerated()
 	PrintMessage(ECTLCDistributedServerRunning, distributedServerHost())
-	if len(s.Tool.GetActions()) == 0 {
+	if len(s.application().Actions) == 0 {
 		if s.StateQueue != nil && !s.StateQueue.IsEmpty() {
 			PrintError(ECTLCStatesAndNoNextAction)
 			s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), false)
@@ -665,7 +680,7 @@ func (s *TLCServer) SetErrState(curState *TLCStateMut, succState *TLCStateMut, k
 
 type distributedDoInitFunctor struct {
 	server      *TLCServer
-	tool        *Tool
+	app         *TLCApp
 	errState    *TLCStateMut
 	err         error
 	returnValue int
@@ -685,11 +700,11 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error
 		}
 		return f.returnValue, nil
 	}
-	if f.tool == nil {
+	if f.app == nil {
 		f.err = newTLCError(ECGeneral, "distributed init functor has no tool")
 		return ECGeneral, f.err
 	}
-	inModel, err := f.tool.IsInModel(curState)
+	inModel, err := f.app.IsInModel(curState)
 	if err != nil {
 		f.errState = curState
 		f.err = err
@@ -717,7 +732,7 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error
 		}
 	}
 	if !inModel || !seen {
-		if err := distributedCheckState(f.tool, nil, curState); err != nil {
+		if err := f.app.CheckState(nil, curState); err != nil {
 			if f.server.SetErrState(curState, nil, true, ECGeneral) {
 				f.errState = curState
 				f.err = err
@@ -1447,20 +1462,26 @@ func (b *BlockSelector) setAverageBlockCnt(blockCnt int64) {
 }
 
 func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager, address ...DistributedWorkerAddress) *DistributedWorker {
+	distributedWorkerSetMode.Do(func() {
+		distributedWorkerSetMode.unsorted = distributedBooleanProperty("tlc2.tool.distributed.TLCWorker.unsorted")
+	})
 	if fpSetManager == nil {
 		fpSetManager = NewDistributedFPSetManager()
 	}
-	checkDeadlock := true
+	var app *TLCApp
+	if tool != nil {
+		app = NewTLCApp(tool, true)
+	}
 	endpoint := DistributedWorkerAddress{Hostname: distributedServerHost()}
 	if len(address) > 0 {
 		endpoint = address[0]
 	}
 	worker := &DistributedWorker{
 		ID:              id,
-		Tool:            tool,
+		App:             app,
+		unsorted:        distributedWorkerSetMode.unsorted,
 		FPSetManager:    fpSetManager,
 		Cache:           NewSimpleCache(),
-		CheckDeadlock:   checkDeadlock,
 		NetworkOverhead: math.MaxFloat64,
 		uri:             newDistributedWorkerURI(endpoint, id),
 	}
@@ -1640,6 +1661,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 	}
 	holdersByFP := make(map[uint64]distributedStateHolder, len(states))
 	orderedFPs := make([]uint64, 0, len(states))
+	identityHolders := NewInsMap[*distributedStateHolder, bool]()
 	for _, state := range states {
 		state1 = state
 		nextStates, err := w.computeNextStates(state)
@@ -1650,7 +1672,17 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		for i := 0; i < nextStates.Size(); i++ {
 			successor := nextStates.At(i)
 			fp := successor.FingerPrint()
-			if w.Cache != nil && w.Cache.Hit(fp) {
+			if w.Cache == nil {
+				panic(NewNullPointerException())
+			}
+			if w.Cache.Hit(fp) {
+				continue
+			}
+			if w.unsorted {
+				// Holder inherits Object.equals/hashCode. Distinct holder objects
+				// remain distinct even when their fingerprints match. InsMap gives
+				// deterministic iteration in place of Java's VM-dependent HashSet.
+				identityHolders.Set(&distributedStateHolder{Fingerprint: fp, Successor: successor, Predecessor: state1}, true)
 				continue
 			}
 			if _, ok := holdersByFP[fp]; ok {
@@ -1663,6 +1695,16 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 	w.OverallStatesComputed.Add(statesComputed)
 
 	sort.Slice(orderedFPs, func(i, j int) bool { return int64(orderedFPs[i]) < int64(orderedFPs[j]) })
+	holders := make([]distributedStateHolder, 0, len(orderedFPs))
+	if w.unsorted {
+		for holder := range identityHolders.All() {
+			holders = append(holders, *holder)
+		}
+	} else {
+		for _, fp := range orderedFPs {
+			holders = append(holders, holdersByFP[fp])
+		}
+	}
 	serverCount := w.FPSetManager.NumOfServers()
 	predecessors := make([]*StateVec, serverCount)
 	successors := make([]*StateVec, serverCount)
@@ -1672,8 +1714,15 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		successors[i] = NewStateVec(0)
 		fingerprints[i] = NewLongVec()
 	}
-	for _, fp := range orderedFPs {
-		holder := holdersByFP[fp]
+	last := int64(math.MinInt64)
+	for _, holder := range holders {
+		fp := holder.Fingerprint
+		if int64(fp) <= last {
+			failure := newTLCErrorCode(ECGeneral)
+			failure.Runtime = true
+			panic(failure)
+		}
+		last = int64(fp)
 		fpIndex := w.FPSetManager.GetFPSetIndex(fp)
 		predecessors[fpIndex].Add(holder.Predecessor)
 		successors[fpIndex].Add(holder.Successor)
@@ -1706,6 +1755,9 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 			if err != nil {
 				return nil, err
 			}
+			if !inModel {
+				continue
+			}
 			inActions, err := w.IsInActions(state1, state2)
 			if err != nil {
 				return nil, err
@@ -1723,98 +1775,40 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 }
 
 func (w *DistributedWorker) computeNextStates(state *TLCStateMut) (*StateVec, error) {
-	out := NewStateVec(0)
-	if w == nil || w.Tool == nil {
-		return out, nil
+	if w == nil || w.App == nil {
+		panic(NewNullPointerException())
 	}
-	functor := NewNextStateFunctor(func(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {
-		if succState != nil {
-			succState.attachTraceMetadata(curState, action)
-			out.Add(succState)
-		}
-		return out, nil
-	})
-	_, err := w.Tool.GetNextStatesWithFunctor(functor, state)
-	if err != nil {
-		return out, err
-	}
-	if out.Size() == 0 && w.CheckDeadlock {
-		return out, NewWorkerException("Error: deadlock reached.", state, nil, false)
-	}
-	for i := 0; i < out.Size(); i++ {
-		succState := out.At(i)
-		if !w.Tool.IsGoodState(succState) {
-			return out, NewWorkerException("Error: Successor state is not completely specified by the next-state action.", state, succState, false)
-		}
-	}
-	return out, nil
+	return w.App.GetNextStates(state)
 }
 
 func (w *DistributedWorker) CheckState(predecessor *TLCStateMut, successor *TLCStateMut) error {
 	if w != nil && w.CheckStateFunc != nil {
 		return w.CheckStateFunc(predecessor, successor)
 	}
-	if w == nil {
-		return nil
+	if w == nil || w.App == nil {
+		panic(NewNullPointerException())
 	}
-	return distributedCheckState(w.Tool, predecessor, successor)
-}
-
-func distributedCheckState(tool *Tool, predecessor *TLCStateMut, successor *TLCStateMut) error {
-	if tool == nil || successor == nil {
-		return nil
-	}
-	for i, invariant := range tool.GetInvariants() {
-		valid, err := tool.IsValidState(invariant, successor)
-		if err != nil {
-			return err
-		}
-		if !valid {
-			return NewWorkerException(fmt.Sprintf("Error: Invariant %s is violated.", nameAt(tool.GetInvNames(), i)), predecessor, successor, false)
-		}
-	}
-	if predecessor == nil {
-		for i, implied := range tool.GetImpliedInits() {
-			valid, err := tool.IsValidState(implied, successor)
-			if err != nil {
-				return err
-			}
-			if !valid {
-				return NewWorkerException(fmt.Sprintf("Error: Implied-init %s is violated.", nameAt(tool.GetImpliedInitNames(), i)), predecessor, successor, false)
-			}
-		}
-		return nil
-	}
-	for i, implied := range tool.GetImpliedActions() {
-		valid, err := tool.IsValidTransition(implied, predecessor, successor)
-		if err != nil {
-			return err
-		}
-		if !valid {
-			return NewWorkerException(fmt.Sprintf("Error: Implied-action %s is violated.", nameAt(tool.GetImpliedActNames(), i)), predecessor, successor, false)
-		}
-	}
-	return nil
+	return w.App.CheckState(predecessor, successor)
 }
 
 func (w *DistributedWorker) IsInModel(state *TLCStateMut) (bool, error) {
 	if w != nil && w.IsInModelFunc != nil {
 		return w.IsInModelFunc(state)
 	}
-	if w == nil || w.Tool == nil {
-		return true, nil
+	if w == nil || w.App == nil {
+		panic(NewNullPointerException())
 	}
-	return w.Tool.IsInModel(state)
+	return w.App.IsInModel(state)
 }
 
 func (w *DistributedWorker) IsInActions(predecessor *TLCStateMut, successor *TLCStateMut) (bool, error) {
 	if w != nil && w.IsInActionsFunc != nil {
 		return w.IsInActionsFunc(predecessor, successor)
 	}
-	if w == nil || w.Tool == nil {
-		return true, nil
+	if w == nil || w.App == nil {
+		panic(NewNullPointerException())
 	}
-	return w.Tool.IsInActions(predecessor, successor)
+	return w.App.IsInActions(predecessor, successor)
 }
 
 func (w *DistributedWorker) IsAlive() bool {
@@ -1836,6 +1830,11 @@ type distributedStateHolder struct {
 	Fingerprint uint64
 	Successor   *TLCStateMut
 	Predecessor *TLCStateMut
+}
+
+var distributedWorkerSetMode struct {
+	sync.Once
+	unsorted bool
 }
 
 func newAllTrueBitVector(size int) *BitVector {

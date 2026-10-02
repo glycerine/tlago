@@ -36,9 +36,13 @@ func NewDistributedWorkerGroup(count int, server *TLCServer, tool *Tool, address
 	r := NewDistributedWorkerRuntime(make([]*DistributedWorker, count)...)
 	r.launchKeepAlive = true
 	group := &DistributedWorkerGroup{Runtime: r, server: server, runnables: make([]*DistributedWorkerRunnable, count)}
-	manager, deadlock := server.GetFPSetManager(), server.GetCheckDeadlock()
+	manager := server.GetFPSetManager()
+	var app *TLCApp
+	if tool != nil {
+		app = NewTLCApp(tool, server.GetCheckDeadlock())
+	}
 	for i := range group.runnables {
-		group.runnables[i] = &DistributedWorkerRunnable{threadID: i, server: server, tool: tool, manager: manager, deadlock: deadlock, runtime: r, done: make(chan struct{})}
+		group.runnables[i] = &DistributedWorkerRunnable{threadID: i, server: server, app: app, manager: manager, runtime: r, done: make(chan struct{})}
 		if len(address) > 0 {
 			endpoint := address[0]
 			group.runnables[i].address = &endpoint
@@ -89,9 +93,8 @@ func (g *DistributedWorkerGroup) Workers() []*DistributedWorker {
 type DistributedWorkerRunnable struct {
 	threadID     int
 	server       *TLCServer
-	tool         *Tool
+	app          *TLCApp
 	manager      *DistributedFPSetManager
-	deadlock     bool
 	runtime      *DistributedWorkerRuntime
 	address      *DistributedWorkerAddress
 	worker       atomic.Pointer[DistributedWorker]
@@ -130,8 +133,8 @@ func (r *DistributedWorkerRunnable) Run() (err error) {
 		}
 		endpoint.Hostname = host
 	}
-	worker := NewDistributedWorker(r.threadID, r.tool, r.manager, endpoint)
-	worker.CheckDeadlock = r.deadlock
+	worker := NewDistributedWorker(r.threadID, nil, r.manager, endpoint)
+	worker.App = r.app
 	worker.Runtime = r.runtime
 	r.worker.Store(worker)
 	r.server.RegisterWorker(worker)

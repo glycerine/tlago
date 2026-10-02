@@ -2952,16 +2952,34 @@ Core Java flow:
 5. Each successor fingerprint is checked against a worker-local `SimpleCache`.
    Cache hits are not sent to the FP-set manager, but the server later adds the
    skipped count through `addStatesGeneratedDelta`.
-6. Remaining `(fp, successor, predecessor)` triples are sorted by fingerprint in
-   a `TreeSet<Holder>`. Equality is fingerprint-only; two states with the same
-   fingerprint collapse at this stage just as Java's `Holder.compareTo` does.
-7. Sorted holders are partitioned by `fpSetManager.getFPSetIndex(fp)` into
-   parallel vectors of predecessors, successors, and fingerprints.
+6. By default, remaining `(fp, successor, predecessor)` triples are sorted by
+   signed fingerprint in a `TreeSet<Holder>`. Its comparison is fingerprint-only;
+   two states with the same fingerprint collapse, retaining the first holder.
+   The static `TLCWorker.unsorted` property instead uses holder allocation
+   identity. Go retains deterministic insertion order for that mode.
+7. Holders must pass Java's strict `last < fp` assertion, starting with
+   `Long.MIN_VALUE`, before partitioning by `fpSetManager.getFPSetIndex(fp)` into
+   parallel vectors of predecessors, successors, and fingerprints. This rejects
+   a `Long.MIN_VALUE` fingerprint even in sorted mode; the source unsorted mode
+   can also fail on its traversal order or duplicate fingerprints.
 8. `fpSetManager.containsBlock` returns bit vectors whose set bits identify
    fingerprints not yet present.
 9. Only those unseen states are checked with `work.checkState`,
-   `work.isInModel`, and `work.isInActions`. Passing states inherit the
-   predecessor UID and are returned in `NextStateResult`.
+   `work.isInModel`, and, only if the model constraint passes, `work.isInActions`.
+   Passing states inherit the predecessor UID and return in `NextStateResult`.
+
+The concrete `TLCApp` runtime captures implied-init, invariant, implied-action,
+and next-action arrays at construction, retaining their identity even if the
+tool later replaces its arrays. Worker-group members share one application.
+Successor generation calls the vector overload separately for each captured
+action. `StateVec.addElements` chooses the larger vector as receiver, so a
+later action producing more states can move its successors before earlier
+ones. Deadlock and complete-assignment checks follow that combined order,
+before worker fingerprinting. Property checks use captured action arrays and
+the current tool's name arrays; state/alias reconstruction and call-stack
+replacement delegate to the application tool. Server initialization uses the
+same snapshot runtime. Application CLI/create/metadata/recovery/module-file
+construction is still pending alongside the transport lifecycle.
 
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration
