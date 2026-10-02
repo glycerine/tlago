@@ -1,5 +1,7 @@
 package tlc
 
+import "fmt"
+
 type toolEvalArgs struct {
 	con     *Context
 	s0      *TLCStateMut
@@ -1173,18 +1175,86 @@ func (t *Tool) evalFunctionApplicationArgument(expr *OpApplNode, c *Context, s0 
 }
 
 func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (*Context, error) {
+	fcon := fcn.Con
+	plen := fcn.Params.Length()
+	formals := fcn.Params.Formals
+	domains := fcn.Params.Domains
+	isTuples := fcn.Params.IsTuples
 	argVal, err := t.evalFunctionApplicationArgument(expr, c, s0, s1, control, cm)
 	if err != nil {
 		return nil, err
 	}
-	ctx, ok, err := fcn.bindArgument(argVal)
-	if err != nil {
-		return nil, err
+	if plen == 1 {
+		member, err := domains[0].Member(argVal)
+		if err != nil {
+			return nil, err
+		}
+		if !member {
+			return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe first argument is:\n%swhich is not in its domain.\n%s", ValuesPPR(fcn), ValuesPPR(argVal), SemanticString(expr.Args[0]))
+		}
+		if isTuples[0] {
+			ids := formals[0]
+			tuple := asTupleValue(argVal)
+			matches := tuple != nil
+			if matches {
+				size, err := argVal.Size()
+				if err != nil {
+					return nil, err
+				}
+				matches = size == len(ids)
+			}
+			if !matches {
+				// Java intentionally prints the Tool object's identity here.
+				identity := fmt.Sprintf("%T@%p", t, t)
+				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument is:\n%swhich does not match its formal parameter.\n%s", ValuesPPRString(identity), ValuesPPR(argVal), SemanticString(expr.Args[0]))
+			}
+			for i, id := range ids {
+				fcon = fcon.Cons(id, tuple.Elems[i])
+			}
+		} else {
+			fcon = fcon.Cons(formals[0][0], argVal)
+		}
+		return fcon, nil
 	}
-	if !ok {
-		return nil, newTLCError(ECGeneral, "in applying the function\n%s,\nthe argument is:\n%s\nwhich is not in its domain", fcn, argVal)
+	tuple := asTupleValue(argVal)
+	if tuple == nil {
+		return nil, newTLCError(ECGeneral, "Attempted to apply a function to an argument not in its domain.\n%s", SemanticString(expr.Args[0]))
 	}
-	return ctx, nil
+	argn := 0
+	elems := tuple.Elems
+	for i, ids := range formals {
+		domain := domains[i]
+		if isTuples[i] {
+			member, err := domain.Member(elems[argn])
+			if err != nil {
+				return nil, err
+			}
+			if !member {
+				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0]))
+			}
+			inner := asTupleValue(elems[argn])
+			argn++
+			if inner == nil || len(inner.Elems) != len(ids) {
+				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument number %d is:\n%swhich does not match its formal parameter.\n%s", ValuesPPR(fcn), argn, ValuesPPR(elems[argn-1]), SemanticString(expr.Args[0]))
+			}
+			for j, id := range ids {
+				fcon = fcon.Cons(id, inner.Elems[j])
+			}
+		} else {
+			for _, id := range ids {
+				member, err := domain.Member(elems[argn])
+				if err != nil {
+					return nil, err
+				}
+				if !member {
+					return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument number %d is:\n%s\nwhich is not in its domain.\n%s", ValuesPPR(fcn), argn+1, ValuesPPR(elems[argn]), SemanticString(expr.Args[0]))
+				}
+				fcon = fcon.Cons(id, elems[argn])
+				argn++
+			}
+		}
+	}
+	return fcon, nil
 }
 
 func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {

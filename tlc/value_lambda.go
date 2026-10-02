@@ -868,11 +868,25 @@ func (v *FcnLambdaValue) Permute(perm *MVPerm) Value {
 
 func (v *FcnLambdaValue) String() string {
 	if Globals.Expand || v.Params == nil {
-		if fcn, err := v.materializeFcnRcd(); err == nil && fcn != nil {
-			return fcn.String()
+		if value, ok := v.expandedString(); ok {
+			return value
 		}
 	}
 	return "[" + v.Params.String() + " |-> <expression " + toContextString(v.Body) + ">]"
+}
+
+func (v *FcnLambdaValue) expandedString() (value string, ok bool) {
+	// Java catches Throwable around both expansion and function-record printing.
+	defer func() {
+		if recover() != nil {
+			value, ok = "", false
+		}
+	}()
+	fcn, err := v.materializeFcnRcd()
+	if err != nil || fcn == nil {
+		return "", false
+	}
+	return fcn.String(), true
 }
 
 func (ex ValueExcept) Current() Value {

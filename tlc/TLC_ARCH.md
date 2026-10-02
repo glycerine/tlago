@@ -662,6 +662,13 @@ Port guidance:
   `getFcnContext` and recurses into the lambda body under that argument-bound
   context. This preserves symbolic state generation for predicates hidden
   behind function application.
+- `getFcnContext` has its own binding and diagnostics algorithm; it must not
+  delegate to `FcnLambdaValue` selection/application helpers. Java checks each
+  parameter domain before converting tuple arguments, reports the relevant
+  argument number and function-expression source, ignores excess arguments,
+  and directly indexes short argument lists. Its single tuple-mismatch error
+  prints the tool's object identity. Lazy-function formatting must swallow
+  expansion failures so diagnostic printing can fall back to symbolic text.
 - In `evalApplImpl`, if a looked-up `LazyValue` is forced with `s1 == null`,
   Java evaluates the lazy expression directly with the lazy value's saved
   context and cost model. The cached path is reserved for the `s1 != null`
