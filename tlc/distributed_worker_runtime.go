@@ -11,11 +11,13 @@ import (
 // one Java worker JVM. Separate runtimes allow several such processes to be
 // represented in one Go program. Construct the group before registering it.
 type DistributedWorkerRuntime struct {
-	workers     []*DistributedWorker
-	executor    DistributedExecutor
-	latch       distributedWorkerLatch
-	keepAliveMu sync.Mutex
-	keepAlive   *distributedWorkerKeepAlive
+	launchKeepAlive bool
+	runnables       []*DistributedWorkerRunnable
+	workers         []*DistributedWorker
+	executor        DistributedExecutor
+	latch           distributedWorkerLatch
+	keepAliveMu     sync.Mutex
+	keepAlive       *distributedWorkerKeepAlive
 }
 
 func NewDistributedWorkerRuntime(workers ...*DistributedWorker) *DistributedWorkerRuntime {
@@ -46,7 +48,7 @@ func (r *DistributedWorkerRuntime) StartKeepAlive(server *TLCServer) {
 	if configured, ok := distributedIntProperty("tlc2.tool.distributed.TLCTimerTask.timeout"); ok {
 		timeout = configured
 	}
-	task := &distributedWorkerKeepAlive{workers: append([]*DistributedWorker(nil), r.workers...), server: server, done: make(chan struct{}), timeout: int64(int32(timeout) * 1000)}
+	task := &distributedWorkerKeepAlive{workers: append([]*DistributedWorker(nil), r.workers...), runnables: append([]*DistributedWorkerRunnable(nil), r.runnables...), server: server, done: make(chan struct{}), timeout: int64(int32(timeout) * 1000)}
 	r.keepAlive = task
 	go task.runTimer()
 }
@@ -72,6 +74,12 @@ func (r *DistributedWorkerRuntime) Shutdown() error {
 	_ = r.cancelKeepAlive(false)
 	r.keepAliveMu.Lock()
 	workers := append([]*DistributedWorker(nil), r.workers...)
+	if r.runnables != nil {
+		workers = make([]*DistributedWorker, len(r.runnables))
+		for i, runnable := range r.runnables {
+			workers[i] = runnable.GetTLCWorker()
+		}
+	}
 	r.keepAliveMu.Unlock()
 	for _, worker := range workers {
 		if worker == nil {
@@ -85,6 +93,7 @@ func (r *DistributedWorkerRuntime) Shutdown() error {
 	}
 	r.keepAliveMu.Lock()
 	r.workers = []*DistributedWorker{}
+	r.runnables = []*DistributedWorkerRunnable{}
 	r.keepAliveMu.Unlock()
 	// Java neither recreates the executor nor resets the completion latch.
 	return nil
@@ -151,6 +160,7 @@ func (e *DistributedExecutor) IsShutdown() bool {
 }
 
 type distributedWorkerKeepAlive struct {
+	runnables  []*DistributedWorkerRunnable
 	workers    []*DistributedWorker
 	server     *TLCServer
 	done       chan struct{}
@@ -184,7 +194,12 @@ func (t *distributedWorkerKeepAlive) runTimer() {
 
 func (t *distributedWorkerKeepAlive) run() bool {
 	var latest int64
-	for _, worker := range t.workers {
+	count := len(t.workers)
+	if t.runnables != nil {
+		count = len(t.runnables)
+	}
+	for i := 0; i < count; i++ {
+		worker := t.workerAt(i)
 		if worker == nil {
 			panic(NewNullPointerException())
 		}
@@ -203,7 +218,8 @@ func (t *distributedWorkerKeepAlive) run() bool {
 		return true
 	}
 	PrintError(ECTLCDistributedServerFinished)
-	for _, worker := range t.workers {
+	for i := 0; i < count; i++ {
+		worker := t.workerAt(i)
 		if err := worker.Exit(); err != nil {
 			if _, missing := err.(*NoSuchObjectException); !missing {
 				// An uncaught runtime failure terminates Java's timer thread.
@@ -214,6 +230,13 @@ func (t *distributedWorkerKeepAlive) run() bool {
 	}
 	t.cancel()
 	return false
+}
+
+func (t *distributedWorkerKeepAlive) workerAt(index int) *DistributedWorker {
+	if t.runnables != nil {
+		return t.runnables[index].GetTLCWorker()
+	}
+	return t.workers[index]
 }
 
 func (w *DistributedWorker) Exit() (err error) {

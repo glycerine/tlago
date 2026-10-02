@@ -53,6 +53,14 @@ type IOException struct{ javaExceptionBase }
 
 type FileNotFoundException struct{ *IOException }
 
+type UnknownHostException struct{ *IOException }
+
+func NewUnknownHostException(message string) *UnknownHostException {
+	return &UnknownHostException{IOException: NewIOException(message)}
+}
+
+func (e *UnknownHostException) Error() string { return javaThrowableMessage(e) }
+
 func NewFileNotFoundException(message string) *FileNotFoundException {
 	return &FileNotFoundException{IOException: NewIOException(message)}
 }
@@ -90,7 +98,7 @@ func isJavaIOException(err error) bool {
 		return true
 	}
 	switch err.(type) {
-	case *IOException, *FileNotFoundException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *FileNotFoundException, *UnknownHostException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite

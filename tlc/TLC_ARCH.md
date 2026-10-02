@@ -2985,9 +2985,12 @@ partition array takes the outer model-error path.
 
 `DistributedWorkerRuntime` represents the static executor, keepalive timer,
 ordered worker group, and completion latch of a Java worker JVM. A new Go
-worker has its own runtime; construct a shared runtime with all its workers
-before registering a group. Local registration starts the runtime timer after
-starting the server thread. Exit prints completion, shuts down the executor,
+worker has its own runtime; `DistributedWorkerGroup` instead assembles one
+shared runtime and publishes each runnable's worker before registration. The
+group starts all registration goroutines, then schedules the timer and prints
+readiness without waiting for registration. Standalone local registration still
+starts its convenience timer after starting the server thread. Exit prints
+completion, shuts down the executor,
 cancels the shared timer, forcibly unexports that worker, then decrements the
 latch. It does not acquire the computation lock or wait for accepted tasks.
 Repeated direct exits print again and fail at unexport without decrementing;
@@ -3002,8 +3005,10 @@ overflow, server-done diagnostic, and ordered exits. Timer failures terminate
 the timer goroutine. Server keepalive and final cache reads preserve their
 RemoteException catches; final exit ignores only the three Java dead-worker
 exception families, warns, and removes the registration in finally order.
-Worker startup/registry transport remains pending. Worker fingerprint
-lookups and server block inserts now use
+Keepalive and shutdown read the original registration runnables dynamically,
+so workers created after timer scheduling are visible; an uninitialized worker
+still causes Java's timer NPE. Registry transport remains pending. Worker
+fingerprint lookups and server block inserts now use
 their respective shared executors; accepted tasks finish after shutdown,
 while new submissions are rejected. The worker preserves the rejection's
 RemoteException and the proxy's ServerException envelope.
@@ -3031,8 +3036,21 @@ nested RuntimeException wrapping with FileNotFoundException/IOException causes.
 `LoadDistributedWorkerTool` parses configuration first and routes all module
 loads through the worker resolver using the existing parser, semantic checker,
 and TLC bridge. It now installs a fresh worker interning context before any
-configuration or semantic values are created. Network invocation, FP64 startup,
-registry discovery, and group launch remain separate pending work.
+configuration or semantic values are created, with FP64 initialization from
+the server polynomial before installing that source.
+`StartDistributedWorkerGroup` then creates the shared local group and starts
+asynchronous registration. The server exposes the TLCApp command-line deadlock
+flag (default true), constant preprocess flag and current FP64 polynomial;
+ModelConfig CHECK_DEADLOCK does not supply the distributed application flag.
+Java Integer.getInteger decoding now governs distributed integer properties,
+including signs, hex/octal prefixes, signed-int bounds, BMP digits and invalid
+value fallback. FP64 random initialization uses Java Random, indexed
+initialization preserves typed bounds failures, and the unrolled integer
+extension has a separate source-loop implementation. The missing hex digit in
+polynomial 65 is corrected; all 131 constants and 655 source-Java integer/long
+extension pairs match. The upstream FP64Test is ported after implementation.
+Network invocation, registry discovery/retry, endpoint export and full command
+startup/error/shutdown wiring remain pending.
 The general FilenameToStream/TLAFile API and Java archive/classpath discovery
 beyond bundled module assets are not claimed complete by this slice.
 
@@ -3088,8 +3106,17 @@ difference while retaining genuine input CGJs. Java TLC has no dedicated URI
 test; 232 fixtures captured from the installed OpenJDK 21.0.12.1 verify worker
 URI construction, host/null classification, syntax failures and ASCII output.
 An integration check covers the executor-rejection message and proxy envelope.
-Endpoint allocation, reflection/VM diagnostics and canonical-host discovery
-belong to the still-pending worker startup/export transport feature.
+Worker-group construction now performs the local canonical-host lookup:
+resolve the machine name, prefer IPv4 by default (or the configured IPv6/system
+policy), then verify the reverse name against a forward lookup. Failed
+canonicalization returns the numeric address, with Java's uncompressed IPv6
+spelling. Successful local-host addresses have a five-second monotonic cache;
+each cached address retains its canonical name. Initial lookup failure keeps
+the nested UnknownHostException cause and the runnable's RuntimeException
+wrapper. Go supplies native DNS/hosts resolution; JVM resolver providers,
+jdk.net.hosts.file, general DNS TTL caches, scoped-address metadata and VM
+security hooks are not represented. Endpoint allocation and reflection/VM
+diagnostics remain with the pending startup/export transport feature.
 
 FP-manager registrations retain Java FPSets wrapper identity, cached hostname,
 and availability. Reassignment shares wrappers across partitions while keeping

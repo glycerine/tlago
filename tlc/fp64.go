@@ -2,8 +2,6 @@ package tlc
 
 import (
 	"io"
-	"math/rand"
-	"time"
 	"unicode/utf16"
 )
 
@@ -79,7 +77,7 @@ var FP64Polys = []uint64{
 	0x9a83246f342061bb,
 	0xb71482842297ab05,
 	0xf2407eeb997592bd,
-	0xb7b43d4b5c4bcc,
+	0xb7b43d4b5c4c4bcc,
 	0xb339a2568221ffe7,
 	0xdb4b6b379446ef9e,
 	0xe43c205bb5c0b2b6,
@@ -161,8 +159,7 @@ func FP64IrredPoly() uint64 {
 }
 
 func FP64InitRandom() {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	FP64InitIndex(r.Intn(len(FP64Polys)))
+	FP64InitIndex(int(NewJavaRandomDefault().NextIntN(int32(len(FP64Polys)))))
 }
 
 func FP64Init() {
@@ -170,6 +167,10 @@ func FP64Init() {
 }
 
 func FP64InitIndex(n int) {
+	n = int(int32(n))
+	if n < 0 || n >= len(FP64Polys) {
+		panic(NewArrayIndexOutOfBoundsException(n, len(FP64Polys)))
+	}
 	FP64InitPoly(FP64Polys[n])
 }
 
@@ -253,6 +254,17 @@ func FP64ExtendByte(fp uint64, b byte) uint64 {
 }
 
 func FP64ExtendInt(fp uint64, x int32) uint64 {
+	u := uint32(x)
+	fp = FP64ExtendByte(fp, byte(u))
+	u >>= 8
+	fp = FP64ExtendByte(fp, byte(u))
+	u >>= 8
+	fp = FP64ExtendByte(fp, byte(u))
+	u >>= 8
+	return FP64ExtendByte(fp, byte(u))
+}
+
+func FP64ExtendLoop(fp uint64, x int32) uint64 {
 	u := uint32(x)
 	for i := 0; i < 4; i++ {
 		fp = FP64ExtendByte(fp, byte(u&0xff))

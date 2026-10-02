@@ -42,6 +42,8 @@ func javaThrowableClassName(err error) string {
 		return "java.io.IOException"
 	case *FileNotFoundException:
 		return "java.io.FileNotFoundException"
+	case *UnknownHostException:
+		return "java.net.UnknownHostException"
 	case *IndexOutOfBoundsException:
 		return "java.lang.IndexOutOfBoundsException"
 	case *IllegalArgumentException:

@@ -83,6 +83,7 @@ type DistributedWorker struct {
 }
 
 type TLCServer struct {
+	checkDeadlock               *bool
 	internMu                    sync.Mutex
 	InternTable                 *InternTable
 	Files                       *DistributedServerFiles
@@ -150,6 +151,37 @@ func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
 
 func (s *TLCServer) HasNoErrors() bool {
 	return s != nil && s.ErrState == nil && s.LastError == nil
+}
+
+func (s *TLCServer) SetCheckDeadlock(check bool) *TLCServer {
+	s.checkDeadlock = &check
+	return s
+}
+
+func (s *TLCServer) GetCheckDeadlock() bool {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	if s.checkDeadlock != nil {
+		return *s.checkDeadlock
+	}
+	// TLCApp uses the command-line flag, independently of CHECK_DEADLOCK in
+	// ModelConfig. Its command-line default is true.
+	return true
+}
+
+func (s *TLCServer) GetPreprocess() bool {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	return true // TLCApp's final preprocess field.
+}
+
+func (s *TLCServer) GetIrredPolyForFP() uint64 {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	return FP64IrredPoly()
 }
 
 func (s *TLCServer) Checkpoint() error {
@@ -543,7 +575,7 @@ func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 	thread := NewTLCServerThread(worker, distributedWorkerURI(worker), s, s.BlockSelector)
 	thread.Start()
 	PrintMessage(ECTLCDistributedWorkerRegistered, thread.GetURI())
-	if worker.Runtime != nil {
+	if worker.Runtime != nil && !worker.Runtime.launchKeepAlive {
 		worker.Runtime.StartKeepAlive(s)
 	}
 }
@@ -1324,7 +1356,7 @@ func distributedIntProperty(name string) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	return javaIntProperty(value)
+	return javaDecodeIntProperty(value)
 }
 
 func (b *BlockSelector) GetBlocks(stateQueue StateQueue, worker *DistributedWorkerSmartProxy) []*TLCStateMut {
@@ -1419,9 +1451,6 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 		fpSetManager = NewDistributedFPSetManager()
 	}
 	checkDeadlock := true
-	if tool != nil && tool.GetModelConfig() != nil {
-		checkDeadlock = tool.GetModelConfig().GetCheckDeadlock()
-	}
 	endpoint := DistributedWorkerAddress{Hostname: distributedServerHost()}
 	if len(address) > 0 {
 		endpoint = address[0]
