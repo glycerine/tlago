@@ -17,7 +17,8 @@ func NewSetCupValue(set1, set2 Value, cms ...CostModel) *SetCupValue {
 func (v *SetCupValue) Kind() ValueKind    { return SetCupValueKind }
 func (v *SetCupValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetCupValue) Compare(other Value) (int, error) {
+func (v *SetCupValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -25,7 +26,8 @@ func (v *SetCupValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetCupValue) Equal(other Value) (bool, error) {
+func (v *SetCupValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return false, err
@@ -33,7 +35,8 @@ func (v *SetCupValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetCupValue) Member(elem Value) (bool, error) {
+func (v *SetCupValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	ok, err := v.Set1.Member(elem)
 	if err != nil || ok {
 		return ok, err
@@ -41,7 +44,8 @@ func (v *SetCupValue) Member(elem Value) (bool, error) {
 	return v.Set2.Member(elem)
 }
 
-func (v *SetCupValue) IsFinite() (bool, error) {
+func (v *SetCupValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	f1, err := v.Set1.IsFinite()
 	if err != nil || !f1 {
 		return f1, err
@@ -49,7 +53,8 @@ func (v *SetCupValue) IsFinite() (bool, error) {
 	return v.Set2.IsFinite()
 }
 
-func (v *SetCupValue) Size() (int, error) {
+func (v *SetCupValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -58,10 +63,12 @@ func (v *SetCupValue) Size() (int, error) {
 }
 
 func (v *SetCupValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	return v.CupSet != nil && !v.CupSetDummy && v.CupSet.IsNormalized()
 }
 
 func (v *SetCupValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.CupSet != nil && !v.CupSetDummy {
 		v.CupSet.Normalize()
 	}
@@ -69,6 +76,7 @@ func (v *SetCupValue) Normalize() Value {
 }
 
 func (v *SetCupValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Set1.DeepNormalize()
 	v.Set2.DeepNormalize()
 	if v.CupSet == nil {
@@ -79,32 +87,37 @@ func (v *SetCupValue) DeepNormalize() {
 }
 
 func (v *SetCupValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	return v.Set1.IsDefined() && v.Set2.IsDefined()
 }
 
 func (v *SetCupValue) DeepCopy() Value { return v }
 
 func (v *SetCupValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SetCupValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetCupValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetCupValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetCupValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetCupValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
 
@@ -136,7 +149,9 @@ func (v *SetCupValue) convertAndCache() (*SetEnumValue, error) {
 	return v.CupSet, nil
 }
 
-func (v *SetCupValue) Elements() ValueEnumeration {
+func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.CupSet != nil && !v.CupSetDummy {
 		return v.CupSet.Elements()
 	}
@@ -149,9 +164,10 @@ func (v *SetCupValue) Elements() ValueEnumeration {
 }
 
 func (v *SetCupValue) String() string {
+	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+		if text, ok := tryExpandedSetString(v.ToSetEnum); ok {
+			return text
 		}
 	}
 	return v.Set1.String() + " \\cup " + v.Set2.String()
@@ -199,7 +215,8 @@ func NewSetCapValue(set1, set2 Value) *SetCapValue {
 func (v *SetCapValue) Kind() ValueKind    { return SetCapValueKind }
 func (v *SetCapValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetCapValue) Compare(other Value) (int, error) {
+func (v *SetCapValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -207,7 +224,8 @@ func (v *SetCapValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetCapValue) Equal(other Value) (bool, error) {
+func (v *SetCapValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return false, err
@@ -215,7 +233,8 @@ func (v *SetCapValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetCapValue) Member(elem Value) (bool, error) {
+func (v *SetCapValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	ok, err := v.Set1.Member(elem)
 	if err != nil || !ok {
 		return ok, err
@@ -223,7 +242,8 @@ func (v *SetCapValue) Member(elem Value) (bool, error) {
 	return v.Set2.Member(elem)
 }
 
-func (v *SetCapValue) IsFinite() (bool, error) {
+func (v *SetCapValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	f1, err := v.Set1.IsFinite()
 	if err != nil {
 		return false, err
@@ -238,7 +258,8 @@ func (v *SetCapValue) IsFinite() (bool, error) {
 	return true, nil
 }
 
-func (v *SetCapValue) Size() (int, error) {
+func (v *SetCapValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -247,6 +268,7 @@ func (v *SetCapValue) Size() (int, error) {
 }
 
 func (v *SetCapValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	if v.CapSet == nil || v.CapSetDummy {
 		return v.Set1.IsNormalized() && v.Set2.IsNormalized()
 	}
@@ -254,6 +276,7 @@ func (v *SetCapValue) IsNormalized() bool {
 }
 
 func (v *SetCapValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.CapSet == nil || v.CapSetDummy {
 		v.Set1.Normalize()
 		v.Set2.Normalize()
@@ -264,6 +287,7 @@ func (v *SetCapValue) Normalize() Value {
 }
 
 func (v *SetCapValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Set1.DeepNormalize()
 	v.Set2.DeepNormalize()
 	if v.CapSet == nil {
@@ -274,32 +298,37 @@ func (v *SetCapValue) DeepNormalize() {
 }
 
 func (v *SetCapValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	return v.Set1.IsDefined() && v.Set2.IsDefined()
 }
 
 func (v *SetCapValue) DeepCopy() Value { return v }
 
 func (v *SetCapValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SetCapValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetCapValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetCapValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetCapValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetCapValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
 
@@ -308,7 +337,7 @@ func (v *SetCapValue) ToSetEnum() (*SetEnumValue, error) {
 		return v.CapSet, nil
 	}
 	enum := v.Elements()
-	return setEnumFromEnumeration(enum, v.IsNormalized(), v.CM)
+	return setEnumFromEnumerationWithNormalization(enum, v.IsNormalized, v.CM)
 }
 
 func (v *SetCapValue) convertAndCache() (*SetEnumValue, error) {
@@ -331,7 +360,9 @@ func (v *SetCapValue) convertAndCache() (*SetEnumValue, error) {
 	return v.CapSet, nil
 }
 
-func (v *SetCapValue) Elements() ValueEnumeration {
+func (v *SetCapValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.CapSet != nil && !v.CapSetDummy {
 		return v.CapSet.Elements()
 	}
@@ -345,9 +376,10 @@ func (v *SetCapValue) Elements() ValueEnumeration {
 }
 
 func (v *SetCapValue) String() string {
+	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+		if text, ok := tryExpandedSetString(v.ToSetEnum); ok {
+			return text
 		}
 	}
 	return v.Set1.String() + " \\cap " + v.Set2.String()
@@ -368,7 +400,8 @@ func NewSetDiffValue(set1, set2 Value) *SetDiffValue {
 func (v *SetDiffValue) Kind() ValueKind    { return SetDiffValueKind }
 func (v *SetDiffValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetDiffValue) Compare(other Value) (int, error) {
+func (v *SetDiffValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -376,7 +409,8 @@ func (v *SetDiffValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetDiffValue) Equal(other Value) (bool, error) {
+func (v *SetDiffValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return false, err
@@ -384,7 +418,8 @@ func (v *SetDiffValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetDiffValue) Member(elem Value) (bool, error) {
+func (v *SetDiffValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	ok, err := v.Set1.Member(elem)
 	if err != nil || !ok {
 		return ok, err
@@ -396,7 +431,8 @@ func (v *SetDiffValue) Member(elem Value) (bool, error) {
 	return !inSecond, nil
 }
 
-func (v *SetDiffValue) IsFinite() (bool, error) {
+func (v *SetDiffValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	f1, err := v.Set1.IsFinite()
 	if err != nil {
 		return false, err
@@ -414,7 +450,8 @@ func (v *SetDiffValue) IsFinite() (bool, error) {
 	return false, nil
 }
 
-func (v *SetDiffValue) Size() (int, error) {
+func (v *SetDiffValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -423,6 +460,7 @@ func (v *SetDiffValue) Size() (int, error) {
 }
 
 func (v *SetDiffValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	if v.DiffSet == nil || v.DiffSetDummy {
 		return v.Set1.IsNormalized()
 	}
@@ -430,6 +468,7 @@ func (v *SetDiffValue) IsNormalized() bool {
 }
 
 func (v *SetDiffValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.DiffSet == nil || v.DiffSetDummy {
 		v.Set1.Normalize()
 		v.Set2.Normalize()
@@ -440,6 +479,7 @@ func (v *SetDiffValue) Normalize() Value {
 }
 
 func (v *SetDiffValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Set1.DeepNormalize()
 	v.Set2.DeepNormalize()
 	if v.DiffSet == nil {
@@ -450,32 +490,37 @@ func (v *SetDiffValue) DeepNormalize() {
 }
 
 func (v *SetDiffValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	return v.Set1.IsDefined() && v.Set2.IsDefined()
 }
 
 func (v *SetDiffValue) DeepCopy() Value { return v }
 
 func (v *SetDiffValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SetDiffValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetDiffValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetDiffValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetDiffValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetDiffValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
 
@@ -484,7 +529,7 @@ func (v *SetDiffValue) ToSetEnum() (*SetEnumValue, error) {
 		return v.DiffSet, nil
 	}
 	enum := v.Elements()
-	return setEnumFromEnumeration(enum, v.Set1.IsNormalized(), v.CM)
+	return setEnumFromEnumerationWithNormalization(enum, v.Set1.IsNormalized, v.CM)
 }
 
 func (v *SetDiffValue) convertAndCache() (*SetEnumValue, error) {
@@ -507,7 +552,9 @@ func (v *SetDiffValue) convertAndCache() (*SetEnumValue, error) {
 	return v.DiffSet, nil
 }
 
-func (v *SetDiffValue) Elements() ValueEnumeration {
+func (v *SetDiffValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.DiffSet != nil && !v.DiffSetDummy {
 		return v.DiffSet.Elements()
 	}
@@ -519,9 +566,10 @@ func (v *SetDiffValue) Elements() ValueEnumeration {
 }
 
 func (v *SetDiffValue) String() string {
+	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+		if text, ok := tryExpandedSetString(v.ToSetEnum); ok {
+			return text
 		}
 	}
 	return v.Set1.String() + " \\ " + v.Set2.String()
@@ -573,7 +621,8 @@ func Union(set Value) (Value, error) {
 func (v *UnionValue) Kind() ValueKind    { return UnionValueKind }
 func (v *UnionValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *UnionValue) Compare(other Value) (int, error) {
+func (v *UnionValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -581,7 +630,8 @@ func (v *UnionValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *UnionValue) Equal(other Value) (bool, error) {
+func (v *UnionValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return false, err
@@ -589,7 +639,8 @@ func (v *UnionValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *UnionValue) Member(elem Value) (bool, error) {
+func (v *UnionValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
 		return false, v.unsupported("Attempted to check if:\n %s\nis an element of the non-enumerable set\n%s", elem, v)
@@ -607,7 +658,8 @@ func (v *UnionValue) Member(elem Value) (bool, error) {
 	}
 }
 
-func (v *UnionValue) IsFinite() (bool, error) {
+func (v *UnionValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	enum, ok := asEnumerable(v.Set)
 	if !ok {
 		return false, v.unsupported("Attempted to check if the nonenumerable set:\n%s\nis a finite set.", v)
@@ -625,7 +677,8 @@ func (v *UnionValue) IsFinite() (bool, error) {
 	}
 }
 
-func (v *UnionValue) Size() (int, error) {
+func (v *UnionValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -634,10 +687,12 @@ func (v *UnionValue) Size() (int, error) {
 }
 
 func (v *UnionValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	return v.RealSet != nil && !v.RealSetDummy && v.RealSet.IsNormalized()
 }
 
 func (v *UnionValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.RealSet != nil && !v.RealSetDummy {
 		v.RealSet.Normalize()
 	}
@@ -645,6 +700,7 @@ func (v *UnionValue) Normalize() Value {
 }
 
 func (v *UnionValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Set.DeepNormalize()
 	if v.RealSet == nil {
 		v.RealSetDummy = true
@@ -653,33 +709,40 @@ func (v *UnionValue) DeepNormalize() {
 	}
 }
 
-func (v *UnionValue) IsDefined() bool { return v.Set.IsDefined() }
+func (v *UnionValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
+	return v.Set.IsDefined()
+}
 func (v *UnionValue) DeepCopy() Value { return v }
 
 func (v *UnionValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *UnionValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *UnionValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *UnionValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set:\n%s", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *UnionValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *UnionValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set:\n %s.", v)
 	}
@@ -714,7 +777,9 @@ func (v *UnionValue) convertAndCache() (*SetEnumValue, error) {
 	return v.RealSet, nil
 }
 
-func (v *UnionValue) Elements() ValueEnumeration {
+func (v *UnionValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.RealSet != nil && !v.RealSetDummy {
 		return v.RealSet.Elements()
 	}
@@ -726,10 +791,13 @@ func (v *UnionValue) Elements() ValueEnumeration {
 }
 
 func (v *UnionValue) String() string {
+	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+		set, err := v.ToSetEnum()
+		if err != nil {
+			panic(err)
 		}
+		return set.String()
 	}
 	return "UNION(" + v.Set.String() + ")"
 }
@@ -836,6 +904,7 @@ func (e *unionEnumeration) advanceElementSet() {
 		return
 	}
 	e.elemSetEnum = enum.Elements()
+	e.err = e.elemSetEnum.Err()
 }
 
 type errorEnumeration struct {
@@ -856,6 +925,10 @@ func asEnumerable(value Value) (Enumerable, bool) {
 }
 
 func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool, cms ...CostModel) (*SetEnumValue, error) {
+	return setEnumFromEnumerationWithNormalization(enum, func() bool { return isNorm }, cms...)
+}
+
+func setEnumFromEnumerationWithNormalization(enum ValueEnumeration, isNorm func() bool, cms ...CostModel) (*SetEnumValue, error) {
 	vals := NewValueVec(0)
 	for {
 		elem := enum.NextElement()
@@ -866,7 +939,7 @@ func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool, cms ...CostModel
 			if len(cms) > 0 {
 				cms[0].incValueSecondary(int64(vals.Len()))
 			}
-			return NewSetEnumValueVec(vals, isNorm, cms...), nil
+			return NewSetEnumValueVec(vals, isNorm(), cms...), nil
 		}
 		vals.Add(elem)
 	}

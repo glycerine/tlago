@@ -181,13 +181,87 @@ func shouldExpandProduct(values []Value) bool {
 			return false
 		}
 		if next == 0 {
-			return true
+			return 0 < Globals.EnumBound
 		}
 		if size <= math.MaxInt32 {
 			size *= int64(next)
 		}
 	}
 	return size < int64(Globals.EnumBound)
+}
+
+// Java's lazy product printers swallow failures while deciding whether to
+// expand and while materializing, but print the resulting set outside that catch.
+func tryExpandedSet(build func() (*SetEnumValue, error)) (set *SetEnumValue) {
+	defer func() {
+		if recover() != nil {
+			set = nil
+		}
+	}()
+	set, err := build()
+	if err != nil {
+		return nil
+	}
+	return set
+}
+
+// Cup, cap, and difference also swallow failures while printing the expanded set.
+func tryExpandedSetString(build func() (*SetEnumValue, error)) (text string, ok bool) {
+	defer func() {
+		if recover() != nil {
+			text, ok = "", false
+		}
+	}()
+	set, err := build()
+	if err != nil {
+		return "", false
+	}
+	return set.String(), true
+}
+
+func tryValueSizeBelow(value Value, bound int) (below bool) {
+	defer func() {
+		if recover() != nil {
+			below = false
+		}
+	}()
+	size, err := value.Size()
+	return err == nil && size < bound
+}
+
+func shouldExpandFcnSet(domain, rangeValue Value) bool {
+	if !Globals.Expand {
+		return false
+	}
+	empty, err := IsEmptyValue(domain)
+	if err != nil {
+		return false
+	}
+	size := int64(1)
+	if !empty {
+		domainSize, err := domain.Size()
+		if err != nil {
+			return false
+		}
+		rangeSize, err := rangeValue.Size()
+		if err != nil {
+			return false
+		}
+		for i := 0; i < domainSize && size <= math.MaxInt32; i++ {
+			size *= int64(rangeSize)
+		}
+	}
+	return size < int64(Globals.EnumBound)
+}
+
+// Only failures already present when elements() returns belong to its Java
+// catch boundary. Failures from later nextElement/reset calls stay unwrapped.
+func wrapInitialEnumerationFailure(value Value, enumeration *ValueEnumeration) {
+	if *enumeration != nil {
+		if err := (*enumeration).Err(); err != nil {
+			*enumeration = newErrorEnumeration(wrapValueFailure(value, err))
+		}
+	}
 }
 
 type productEnumeration struct {

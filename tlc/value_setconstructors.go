@@ -16,7 +16,8 @@ func NewSetOfTuplesValue(sets []Value, cms ...CostModel) *SetOfTuplesValue {
 func (v *SetOfTuplesValue) Kind() ValueKind    { return SetOfTuplesValueKind }
 func (v *SetOfTuplesValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetOfTuplesValue) Compare(other Value) (int, error) {
+func (v *SetOfTuplesValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -24,7 +25,8 @@ func (v *SetOfTuplesValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetOfTuplesValue) Equal(other Value) (bool, error) {
+func (v *SetOfTuplesValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*SetOfTuplesValue); ok {
 		empty, err := IsEmptyValue(v)
 		if err != nil || empty {
@@ -55,7 +57,8 @@ func (v *SetOfTuplesValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetOfTuplesValue) Member(elem Value) (bool, error) {
+func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	tv, ok := elem.(*TupleValue)
 	if !ok {
 		if fcn, ok := elem.(*FcnRcdValue); ok {
@@ -86,7 +89,8 @@ func (v *SetOfTuplesValue) Member(elem Value) (bool, error) {
 	return true, nil
 }
 
-func (v *SetOfTuplesValue) IsFinite() (bool, error) {
+func (v *SetOfTuplesValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	allFinite := true
 	for _, set := range v.Sets {
 		finite, err := set.IsFinite()
@@ -108,7 +112,8 @@ func (v *SetOfTuplesValue) IsFinite() (bool, error) {
 	return allFinite, nil
 }
 
-func (v *SetOfTuplesValue) Size() (int, error) {
+func (v *SetOfTuplesValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	empty, err := IsEmptyValue(v)
 	if err != nil || empty {
 		return 0, err
@@ -119,6 +124,7 @@ func (v *SetOfTuplesValue) Size() (int, error) {
 }
 
 func (v *SetOfTuplesValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet.IsNormalized()
 	}
@@ -131,6 +137,7 @@ func (v *SetOfTuplesValue) IsNormalized() bool {
 }
 
 func (v *SetOfTuplesValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		v.TupleSet.Normalize()
 	} else {
@@ -142,6 +149,7 @@ func (v *SetOfTuplesValue) Normalize() Value {
 }
 
 func (v *SetOfTuplesValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	for _, set := range v.Sets {
 		set.DeepNormalize()
 	}
@@ -153,6 +161,7 @@ func (v *SetOfTuplesValue) DeepNormalize() {
 }
 
 func (v *SetOfTuplesValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	for _, set := range v.Sets {
 		if !set.IsDefined() {
 			return false
@@ -164,29 +173,33 @@ func (v *SetOfTuplesValue) IsDefined() bool {
 func (v *SetOfTuplesValue) DeepCopy() Value { return v }
 
 func (v *SetOfTuplesValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SetOfTuplesValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetOfTuplesValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetOfTuplesValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the set of tuples:\n%s", ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetOfTuplesValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetOfTuplesValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT construct to the set of tuples:\n%s", ValuesPPR(v))
 	}
@@ -197,7 +210,7 @@ func (v *SetOfTuplesValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), v.IsNormalized(), v.CM)
+	return setEnumFromEnumerationWithNormalization(v.Elements(), v.IsNormalized, v.CM)
 }
 
 func (v *SetOfTuplesValue) convertAndCache() (*SetEnumValue, error) {
@@ -220,7 +233,9 @@ func (v *SetOfTuplesValue) convertAndCache() (*SetEnumValue, error) {
 	return v.TupleSet, nil
 }
 
-func (v *SetOfTuplesValue) Elements() ValueEnumeration {
+func (v *SetOfTuplesValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.TupleSet != nil && !v.TupleSetDummy {
 		return v.TupleSet.Elements()
 	}
@@ -239,10 +254,14 @@ func (v *SetOfTuplesValue) Elements() ValueEnumeration {
 }
 
 func (v *SetOfTuplesValue) String() string {
-	if shouldExpandProduct(v.Sets) {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+	defer catchValueFailure(v, nil)
+	if set := tryExpandedSet(func() (*SetEnumValue, error) {
+		if shouldExpandProduct(v.Sets) {
+			return v.ToSetEnum()
 		}
+		return nil, nil
+	}); set != nil {
+		return set.String()
 	}
 	parts := make([]string, len(v.Sets))
 	for i, set := range v.Sets {
@@ -275,7 +294,8 @@ func NewSetOfRcdsValue(names []*UniqueString, values []Value, isNorm bool, cms .
 func (v *SetOfRcdsValue) Kind() ValueKind    { return SetOfRcdsValueKind }
 func (v *SetOfRcdsValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetOfRcdsValue) Compare(other Value) (int, error) {
+func (v *SetOfRcdsValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -283,7 +303,8 @@ func (v *SetOfRcdsValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetOfRcdsValue) Equal(other Value) (bool, error) {
+func (v *SetOfRcdsValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*SetOfRcdsValue); ok {
 		empty, err := IsEmptyValue(v)
 		if err != nil || empty {
@@ -317,7 +338,8 @@ func (v *SetOfRcdsValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetOfRcdsValue) Member(elem Value) (bool, error) {
+func (v *SetOfRcdsValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	rcd := asRecordValue(elem)
 	if rcd == nil {
 		if mv, ok := elem.(*ModelValue); ok {
@@ -343,7 +365,8 @@ func (v *SetOfRcdsValue) Member(elem Value) (bool, error) {
 	return true, nil
 }
 
-func (v *SetOfRcdsValue) IsFinite() (bool, error) {
+func (v *SetOfRcdsValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	allFinite := true
 	for _, value := range v.Values {
 		finite, err := value.IsFinite()
@@ -365,7 +388,8 @@ func (v *SetOfRcdsValue) IsFinite() (bool, error) {
 	return allFinite, nil
 }
 
-func (v *SetOfRcdsValue) Size() (int, error) {
+func (v *SetOfRcdsValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	empty, err := IsEmptyValue(v)
 	if err != nil || empty {
 		return 0, err
@@ -376,6 +400,7 @@ func (v *SetOfRcdsValue) Size() (int, error) {
 }
 
 func (v *SetOfRcdsValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet.IsNormalized()
 	}
@@ -388,6 +413,7 @@ func (v *SetOfRcdsValue) IsNormalized() bool {
 }
 
 func (v *SetOfRcdsValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		v.RcdSet.Normalize()
 	} else {
@@ -399,6 +425,7 @@ func (v *SetOfRcdsValue) Normalize() Value {
 }
 
 func (v *SetOfRcdsValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	for _, value := range v.Values {
 		value.DeepNormalize()
 	}
@@ -410,6 +437,7 @@ func (v *SetOfRcdsValue) DeepNormalize() {
 }
 
 func (v *SetOfRcdsValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	for _, value := range v.Values {
 		if !value.IsDefined() {
 			return false
@@ -421,29 +449,33 @@ func (v *SetOfRcdsValue) IsDefined() bool {
 func (v *SetOfRcdsValue) DeepCopy() Value { return v }
 
 func (v *SetOfRcdsValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SetOfRcdsValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetOfRcdsValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetOfRcdsValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of records:\n%s", ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetOfRcdsValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetOfRcdsValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of records:\n%s", ValuesPPR(v))
 	}
@@ -454,7 +486,7 @@ func (v *SetOfRcdsValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), v.IsNormalized(), v.CM)
+	return setEnumFromEnumerationWithNormalization(v.Elements(), v.IsNormalized, v.CM)
 }
 
 func (v *SetOfRcdsValue) convertAndCache() (*SetEnumValue, error) {
@@ -477,7 +509,9 @@ func (v *SetOfRcdsValue) convertAndCache() (*SetEnumValue, error) {
 	return v.RcdSet, nil
 }
 
-func (v *SetOfRcdsValue) Elements() ValueEnumeration {
+func (v *SetOfRcdsValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.RcdSet != nil && !v.RcdSetDummy {
 		return v.RcdSet.Elements()
 	}
@@ -496,10 +530,14 @@ func (v *SetOfRcdsValue) Elements() ValueEnumeration {
 }
 
 func (v *SetOfRcdsValue) String() string {
-	if shouldExpandProduct(v.Values) {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+	defer catchValueFailure(v, nil)
+	if set := tryExpandedSet(func() (*SetEnumValue, error) {
+		if shouldExpandProduct(v.Values) {
+			return v.ToSetEnum()
 		}
+		return nil, nil
+	}); set != nil {
+		return set.String()
 	}
 	var b strings.Builder
 	b.WriteString("[")
@@ -564,7 +602,8 @@ func NewSetOfFcnsValue(domain, rangeValue Value, cms ...CostModel) *SetOfFcnsVal
 func (v *SetOfFcnsValue) Kind() ValueKind    { return SetOfFcnsValueKind }
 func (v *SetOfFcnsValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetOfFcnsValue) Compare(other Value) (int, error) {
+func (v *SetOfFcnsValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.convertAndCache()
 	if err != nil {
 		return 0, err
@@ -572,7 +611,8 @@ func (v *SetOfFcnsValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetOfFcnsValue) Equal(other Value) (bool, error) {
+func (v *SetOfFcnsValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*SetOfFcnsValue); ok {
 		unit1, err := IsEmptyValue(v.Domain)
 		if err != nil {
@@ -609,7 +649,8 @@ func (v *SetOfFcnsValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetOfFcnsValue) Member(elem Value) (bool, error) {
+func (v *SetOfFcnsValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	fcn := asFcnRcdValue(elem)
 	if fcn == nil {
 		if mv, ok := elem.(*ModelValue); ok {
@@ -647,7 +688,8 @@ func (v *SetOfFcnsValue) Member(elem Value) (bool, error) {
 	return true, nil
 }
 
-func (v *SetOfFcnsValue) IsFinite() (bool, error) {
+func (v *SetOfFcnsValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	finiteDomain, err := v.Domain.IsFinite()
 	if err != nil {
 		return false, err
@@ -687,7 +729,8 @@ func (v *SetOfFcnsValue) IsFinite() (bool, error) {
 	return false, nil
 }
 
-func (v *SetOfFcnsValue) Size() (int, error) {
+func (v *SetOfFcnsValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	domainEmpty, err := IsEmptyValue(v.Domain)
 	if err != nil {
 		return 0, err
@@ -724,6 +767,7 @@ func (v *SetOfFcnsValue) Size() (int, error) {
 }
 
 func (v *SetOfFcnsValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet.IsNormalized()
 	}
@@ -731,6 +775,7 @@ func (v *SetOfFcnsValue) IsNormalized() bool {
 }
 
 func (v *SetOfFcnsValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		v.FcnSet.Normalize()
 	} else {
@@ -741,6 +786,7 @@ func (v *SetOfFcnsValue) Normalize() Value {
 }
 
 func (v *SetOfFcnsValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Domain.DeepNormalize()
 	v.Range.DeepNormalize()
 	if v.FcnSet == nil {
@@ -751,35 +797,40 @@ func (v *SetOfFcnsValue) DeepNormalize() {
 }
 
 func (v *SetOfFcnsValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	return v.Domain.IsDefined() && v.Range.IsDefined()
 }
 
 func (v *SetOfFcnsValue) DeepCopy() Value { return v }
 
 func (v *SetOfFcnsValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SetOfFcnsValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetOfFcnsValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetOfFcnsValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of functions:\n%s", ValuesPPR(v))
 	}
 	return ex.Value, nil
 }
 
-func (v *SetOfFcnsValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetOfFcnsValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, newTLCError(ECGeneral, "Attempted to apply EXCEPT to the set of functions:\n%s", ValuesPPR(v))
 	}
@@ -790,7 +841,7 @@ func (v *SetOfFcnsValue) ToSetEnum() (*SetEnumValue, error) {
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet, nil
 	}
-	return setEnumFromEnumeration(v.Elements(), v.IsNormalized(), v.CM)
+	return setEnumFromEnumerationWithNormalization(v.Elements(), v.IsNormalized, v.CM)
 }
 
 func (v *SetOfFcnsValue) convertAndCache() (*SetEnumValue, error) {
@@ -813,7 +864,9 @@ func (v *SetOfFcnsValue) convertAndCache() (*SetEnumValue, error) {
 	return v.FcnSet, nil
 }
 
-func (v *SetOfFcnsValue) Elements() ValueEnumeration {
+func (v *SetOfFcnsValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.FcnSet != nil && !v.FcnSetDummy {
 		return v.FcnSet.Elements()
 	}
@@ -883,12 +936,14 @@ func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 }
 
 func (v *SetOfFcnsValue) String() string {
-	if Globals.Expand {
-		if size, err := v.Size(); err == nil && size < Globals.EnumBound {
-			if set, err := v.ToSetEnum(); err == nil {
-				return set.String()
-			}
+	defer catchValueFailure(v, nil)
+	if set := tryExpandedSet(func() (*SetEnumValue, error) {
+		if shouldExpandFcnSet(v.Domain, v.Range) {
+			return v.ToSetEnum()
 		}
+		return nil, nil
+	}); set != nil {
+		return set.String()
 	}
 	return "[" + v.Domain.String() + " -> " + v.Range.String() + "]"
 }
@@ -907,7 +962,8 @@ func NewSubsetValue(set Value, cms ...CostModel) *SubsetValue {
 func (v *SubsetValue) Kind() ValueKind    { return SubsetValueKind }
 func (v *SubsetValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SubsetValue) Compare(other Value) (int, error) {
+func (v *SubsetValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if kSubset, ok := other.(*KSubsetValue); ok {
 		cmp, err := kSubset.Compare(v)
 		if err != nil {
@@ -932,7 +988,8 @@ func (v *SubsetValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SubsetValue) Equal(other Value) (bool, error) {
+func (v *SubsetValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if kSubset, ok := other.(*KSubsetValue); ok {
 		return kSubset.Equal(v)
 	}
@@ -946,7 +1003,8 @@ func (v *SubsetValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SubsetValue) Member(elem Value) (bool, error) {
+func (v *SubsetValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	enum, ok := asEnumerable(elem)
 	if !ok {
 		return false, v.unsupported("Attempted to check if the non-enumerable value\n%s\nis element of\n%s", ValuesPPR(elem), ValuesPPR(v))
@@ -967,11 +1025,13 @@ func (v *SubsetValue) Member(elem Value) (bool, error) {
 	}
 }
 
-func (v *SubsetValue) IsFinite() (bool, error) {
+func (v *SubsetValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return v.Set.IsFinite()
 }
 
-func (v *SubsetValue) Size() (int, error) {
+func (v *SubsetValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	size, err := v.Set.Size()
 	if err != nil {
 		return 0, err
@@ -983,10 +1043,12 @@ func (v *SubsetValue) Size() (int, error) {
 }
 
 func (v *SubsetValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	return v.PSet != nil && !v.PSetDummy && v.PSet.IsNormalized()
 }
 
 func (v *SubsetValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.PSet != nil && !v.PSetDummy {
 		v.PSet.Normalize()
 	} else {
@@ -996,6 +1058,7 @@ func (v *SubsetValue) Normalize() Value {
 }
 
 func (v *SubsetValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Set.DeepNormalize()
 	if v.PSet == nil {
 		v.PSetDummy = true
@@ -1005,32 +1068,37 @@ func (v *SubsetValue) DeepNormalize() {
 }
 
 func (v *SubsetValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	return v.Set.IsDefined()
 }
 
 func (v *SubsetValue) DeepCopy() Value { return v }
 
 func (v *SubsetValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *SubsetValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SubsetValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SubsetValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SubsetValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SubsetValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
 
@@ -1074,7 +1142,9 @@ func (v *SubsetValue) convertAndCache() (*SetEnumValue, error) {
 	return v.PSet, nil
 }
 
-func (v *SubsetValue) Elements() ValueEnumeration {
+func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
+	defer catchValueFailure(v, nil)
+	defer wrapInitialEnumerationFailure(v, &enumeration)
 	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet.Elements()
 	}
@@ -1099,12 +1169,16 @@ func (v *SubsetValue) Elements() ValueEnumeration {
 }
 
 func (v *SubsetValue) String() string {
-	if Globals.Expand {
-		if size, err := v.Set.Size(); err == nil && size < 7 {
-			if set, err := v.ToSetEnum(); err == nil {
-				return set.String()
-			}
+	defer catchValueFailure(v, nil)
+	if Globals.Expand && tryValueSizeBelow(v.Set, 7) {
+		set, err := v.ToSetEnum()
+		if err != nil {
+			panic(err)
 		}
+		return set.String()
+	}
+	if _, ok := v.Set.(*IntervalValue); ok {
+		return "SUBSET (" + v.Set.String() + ")"
 	}
 	return "SUBSET " + v.Set.String()
 }
