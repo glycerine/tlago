@@ -2056,10 +2056,11 @@ func aliasTraceWithToolPairs(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo 
 
 func (mc *ModelChecker) doNextEvalFailed(curState *TLCStateMut, succState *TLCStateMut, ec int, param string, err error) error {
 	if mc.SetErrState(curState, succState, true, ec) {
+		msg := javaThrowableMessage(err)
 		if param == "" {
-			PrintError(ec, err.Error())
+			PrintError(ec, msg)
 		} else {
-			PrintError(ec, param, err.Error())
+			PrintError(ec, param, msg)
 		}
 		mc.printBehaviorTrace(curState, succState)
 		if mc.StateQueue != nil {
@@ -2122,6 +2123,16 @@ func generalErrorParams(cause string, err error) []string {
 		return nil
 	}
 	return []string{javaGeneralErrorMessage(cause, err)}
+}
+
+func javaThrowableMessage(err error) string {
+	if err == nil {
+		return "<nil>"
+	}
+	if err.Error() != "" {
+		return err.Error()
+	}
+	return fmt.Sprintf("%T", err)
 }
 
 type doInitFunctor struct {
