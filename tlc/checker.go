@@ -652,6 +652,7 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	}
 	result, err = mc.RunTLC(javaIntegerMaxValue)
 	if err != nil || result != NoError {
+		result = resultOrGeneralForError(result, err)
 		mc.PrintSummary(false)
 		if statsErr := mc.PrintLivenessStatistics(); err == nil {
 			err = statsErr
@@ -668,6 +669,7 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 			)
 			result, err = mc.LiveCheck.FinalCheck(mc.Tool.NoDebug())
 			if err != nil || result != NoError {
+				result = resultOrGeneralForError(result, err)
 				mc.PrintSummary(false)
 				if statsErr := mc.PrintLivenessStatistics(); err == nil {
 					err = statsErr
@@ -687,6 +689,13 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		err = statsErr
 	}
 	return result, err
+}
+
+func resultOrGeneralForError(result int, err error) int {
+	if err != nil && result == NoError {
+		return ECGeneral
+	}
+	return result
 }
 
 func (mc *ModelChecker) Checkpoint() error {

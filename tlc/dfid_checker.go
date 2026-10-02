@@ -157,6 +157,7 @@ func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
 		mc.Done = false
 		mc.mu.Unlock()
 		if result != NoError || err != nil {
+			result = resultOrGeneralForError(result, err)
 			mc.PrintSummary(false)
 			return result, err
 		}
@@ -289,6 +290,7 @@ func (mc *DFIDModelChecker) finishTerminatedDFID() (int, error) {
 			PrintMessage(ECTLCProgressStatsDFID, fmtInt64(mc.StatesGenerated), fmtUint64(mc.FPSet.Size()))
 			result, err := mc.LiveCheck.FinalCheck(mc.Tool)
 			if err != nil || result != NoError {
+				result = resultOrGeneralForError(result, err)
 				mc.PrintSummary(false)
 				return result, err
 			}
