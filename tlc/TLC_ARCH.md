@@ -3080,9 +3080,44 @@ int backoff counter wraps, producing zero sleeps after its negative/zero phase.
 The root worker startup adapter joins this discovery to production tool/group
 loading. Typed checked-exception carriers preserve the distinct net/RMI families.
 Actual source loop bodies match deterministic boundary comparisons; wire
-registry/export/RPC, FP-server main and command lifecycle
-remain pending. No dedicated upstream lookup tests exist; the complete upstream
+registry/export/RPC and full command lifecycle remain pending. No dedicated upstream lookup tests exist; the complete upstream
 distributed harness follows the missing transport features.
+
+DistributedFPSet.main now has a concrete native RunDistributedFPServer boundary.
+It preserves ToolIO/System stream separation, argument early returns, two clock
+reads, raw temporary metadata path, ratio-one configuration/two nested FPSets,
+factory initialization and class diagnostics, hostname timing, registration
+rejection/unexport and skipped flush. Other Throwables record GENERAL before
+the failure line and final flush. Registration, lookup, hostname, clock and
+Object.wait can supply native provider boundaries; normal registration uses
+the actual local server. MP console rendering and remote wire calls remain
+separate from this recorder/stream implementation.
+
+The report loop owns the FPSet monitor, reports signed long size and waits five
+minutes. Shutdown sets the static running flag without waking it; another main
+invocation does not reset that flag. Base FPSet.exit sets it before synchronized
+notify, which wakes one waiter. Concrete sets carry their inherited wait state;
+memory sets reuse the same reentrant monitor as their synchronized operations.
+MultiFPSet init initializes children concurrently, ignores returned replacement
+objects and wraps checked I/O. Worker RuntimeExceptions retain the ForkJoin
+cause-copy behavior; general JVM pool scheduling/provider details remain
+separate. Disk init retains lexical paths, explicit prefix mkdirs and coded
+file-open failures. File.mkdirs tries the original spelling before canonical
+parent creation, so missing components before .. can still fail at file open.
+All sixteen upstream MultiFPSetTest methods are translated after implementation,
+including identity partitioning, sign-bit collisions and the OffHeap guard.
+Twenty actual-source command observations and race checks pass; parallel error
+ordering/selected child is allowed to vary. Multi/Noop statesSeen uses atomic
+loads/stores for snapshots while retaining the source separate read/modify/write.
+
+A two-FP-server native integration loads the real parser/tool, registers both
+sets, checks five distinct states and wakes both report waits on close under
+-race. This harness loads worker classes before evaluation and registers after
+init. Arbitrary concurrent native worker loading/server evaluation still races
+shared FP64/interner globals; Java isolates those globals by JVM process. The
+source raw init enqueue also assumes its startup phase. Process/runtime class
+isolation, transport, concrete FP process exit/completion messages and full
+worker/server/combined command lifecycle remain unfinished.
 
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration

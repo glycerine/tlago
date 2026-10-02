@@ -39,7 +39,9 @@ func TestMultiFPSetConfigurationRejectsZeroFingerprintBudgetLikeJava(t *testing.
 	cfg.SetMemory(64)
 	cfg.SetFPBits(21)
 	defer func() {
-		if recovered := recover(); recovered != "Given fpSetConfig results in zero or negative fp count." {
+		recovered := recover()
+		failure, ok := recovered.(*IllegalArgumentException)
+		if !ok || failure == nil || failure.GetMessage() == nil || *failure.GetMessage() != "Given fpSetConfig results in zero or negative fp count." {
 			t.Fatalf("panic = %v, want Java zero-fp-count message", recovered)
 		}
 	}()

@@ -12,6 +12,7 @@ import (
 
 type distributedLocalHost struct {
 	address   net.IP
+	hostName  string
 	expires   time.Time
 	canonical atomic.Pointer[string]
 }
@@ -25,7 +26,7 @@ var distributedHostPolicy struct {
 // The native lookups use Go's OS resolver. InetAddress's local-host cache,
 // address preference and canonical reverse/forward verification are retained;
 // general JVM resolver providers and security-manager hooks are not represented.
-func distributedCanonicalLocalHost() (string, error) {
+func distributedGetLocalHost() (*distributedLocalHost, error) {
 	distributedHostPolicy.Do(func() {
 		ipv4, _ := tlcLookupSystemProperty("java.net.preferIPv4Stack")
 		distributedHostPolicy.ipv4Only = ipv4 == "true"
@@ -37,7 +38,7 @@ func distributedCanonicalLocalHost() (string, error) {
 	if local == nil || time.Now().After(local.expires) {
 		host, err := os.Hostname()
 		if err != nil {
-			return "", NewUnknownHostException(err.Error())
+			return nil, NewUnknownHostException(err.Error())
 		}
 		var address net.IP
 		if host == "localhost" {
@@ -76,12 +77,29 @@ func distributedCanonicalLocalHost() (string, error) {
 				cause := NewUnknownHostException(message)
 				failure := NewUnknownHostException(host + ": " + message)
 				failure.Cause = cause
-				return "", failure
+				return nil, failure
 			}
 		}
-		local = &distributedLocalHost{address: address, expires: time.Now().Add(5 * time.Second)}
+		local = &distributedLocalHost{address: address, hostName: host, expires: time.Now().Add(5 * time.Second)}
 		distributedCachedLocalHost.Store(local)
 	}
+	return local, nil
+}
+
+func distributedLocalHostName() (string, error) {
+	local, err := distributedGetLocalHost()
+	if err != nil {
+		return "", err
+	}
+	return local.hostName, nil
+}
+
+func distributedCanonicalLocalHost() (string, error) {
+	local, err := distributedGetLocalHost()
+	if err != nil {
+		return "", err
+	}
+
 	if canonical := local.canonical.Load(); canonical != nil {
 		return *canonical, nil
 	}

@@ -34,6 +34,7 @@ const (
 )
 
 type DiskFPSet struct {
+	fpSetLifecycle
 	mu     sync.Mutex
 	poolMu sync.Mutex
 
@@ -214,9 +215,11 @@ func diskFPSetLockCount() int {
 func diskFPSetMetadir(metadir string) string {
 	if prefix, ok := tlcLookupSystemProperty(DiskFPSetMetadirPrefixProperty); ok {
 		if filepath.IsAbs(metadir) {
-			metadir = filepath.Base(metadir)
+			metadir = distributedJavaFileName(metadir)
 		}
-		return filepath.Join(prefix, metadir)
+		folder := prefix + string(os.PathSeparator) + metadir
+		filenameFileMkdirs(folder)
+		return folder
 	}
 	return metadir
 }
@@ -239,21 +242,30 @@ func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet 
 	if s.metadir == "" {
 		s.metadir = filepath.Join(os.TempDir(), "DiskFPSet")
 	}
-	_ = os.MkdirAll(s.metadir, 0o755)
-	base := filepath.Join(s.metadir, filename)
+	base := s.metadir + string(os.PathSeparator) + filename
 	if filename == "" {
 		base = filepath.Join(s.metadir, "fpset")
 	}
 	s.tmpFilename = base + ".tmp"
 	s.fpFilename = base + ".fp"
-	_ = os.WriteFile(s.fpFilename, nil, 0o644)
+	if err := os.WriteFile(s.fpFilename, nil, 0o644); err != nil {
+		panic(diskFPSetInitIOException(s.fpFilename, err))
+	}
 	if err := s.openBRAFReaders(numThreads, diskFPSetBRAFPoolSize); err != nil {
-		panic(err)
+		panic(diskFPSetInitIOException(s.fpFilename, err))
 	}
 	s.fileCnt = 0
 	s.index = nil
 	s.clearTable()
 	return s
+}
+
+func diskFPSetInitIOException(filename string, failure error) error {
+	message := javaThrowableDetailMessage(failure)
+	if _, native := failure.(*os.PathError); native {
+		message = javaThrowableDetailMessage(distributedFileOpenException(filename, failure))
+	}
+	return NewIOException(GetMessageNullable(ECSystemUnableToOpenFile, javaString(filename), message))
 }
 
 func (s *HeapBasedDiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
@@ -474,6 +486,7 @@ func (s *DiskFPSet) IncWorkers(num int) {
 }
 
 func (s *DiskFPSet) Exit(cleanup bool) error {
+	fpSetBaseExit(s)
 	s.Close()
 	if cleanup && s.metadir != "" {
 		return os.RemoveAll(s.metadir)

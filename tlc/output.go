@@ -563,6 +563,8 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 
 func formatMessage(code int, params []string) string {
 	switch code {
+	case ECSystemUnableToOpenFile:
+		return "Unable to open " + messageParam(params, 0) + ".\n" + messageParam(params, 1)
 	case ECSystemStackOverflow:
 		return "This was a Java StackOverflowError. It was probably the result\n" +
 			"of an incorrect recursive function definition that caused TLC to enter\n" +

@@ -11,6 +11,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -148,7 +149,7 @@ func NewMultiFPSetConfiguration(config *FPSetConfiguration) *FPSetConfiguration 
 	child.NoNesting = true
 	child.MemoryDivisor = int64(config.GetMultiFPSetCnt())
 	if child.GetMemoryInFingerprintCnt() <= 0 {
-		panic("Given fpSetConfig results in zero or negative fp count.")
+		panic(NewIllegalArgumentException("Given fpSetConfig results in zero or negative fp count."))
 	}
 	return &child
 }
@@ -388,7 +389,8 @@ func fpSetInitialized(set FPSet) bool {
 }
 
 type MemFPSet struct {
-	mu         sync.Mutex
+	fpSetLifecycle
+	mu         distributedServerMonitor
 	metadir    string
 	filename   string
 	table      [][]uint64
@@ -528,6 +530,7 @@ func (s *MemFPSet) AddThread() error {
 func (s *MemFPSet) IncWorkers(num int) {}
 
 func (s *MemFPSet) Exit(cleanup bool) error {
+	fpSetBaseExit(s)
 	if cleanup && s.metadir != "" {
 		return os.RemoveAll(s.metadir)
 	}
@@ -748,7 +751,8 @@ func javaLongMinBits(a uint64, b uint64) uint64 {
 }
 
 type NoopFPSet struct {
-	statesSeen uint64
+	fpSetLifecycle
+	statesSeen atomic.Uint64
 	config     *FPSetConfiguration
 }
 
@@ -779,7 +783,7 @@ func (s *NoopFPSet) RecoverFP(fp uint64) error               { return nil }
 func (s *NoopFPSet) Close()                                  {}
 func (s *NoopFPSet) AddThread() error                        { return nil }
 func (s *NoopFPSet) IncWorkers(num int)                      {}
-func (s *NoopFPSet) Exit(cleanup bool) error                 { return nil }
+func (s *NoopFPSet) Exit(cleanup bool) error                 { fpSetBaseExit(s); return nil }
 func (s *NoopFPSet) CheckInvariant(expectFPs ...uint64) bool { return true }
 func (s *NoopFPSet) UnexportObject(force bool)               {}
 
@@ -798,7 +802,9 @@ func (s *NoopFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
 		return NewBitVector(0)
 	}
-	s.statesSeen += uint64(fpv.Size())
+	// Keep FPSet's separate load/modify/store (including lost updates),
+	// with atomic snapshots instead of an unsynchronized Go memory access.
+	s.statesSeen.Store(s.statesSeen.Load() + uint64(fpv.Size()))
 	bv := NewBitVector(fpv.Size())
 	for i := 0; i < fpv.Size(); i++ {
 		bv.Set(i)
@@ -807,7 +813,7 @@ func (s *NoopFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 }
 
 func (s *NoopFPSet) GetStatesSeen() uint64 {
-	return s.statesSeen
+	return s.statesSeen.Load()
 }
 
 func (s *NoopFPSet) GetConfiguration() *FPSetConfiguration {
@@ -818,7 +824,8 @@ func (s *NoopFPSet) GetConfiguration() *FPSetConfiguration {
 }
 
 type MemFPSet1 struct {
-	mu         sync.Mutex
+	fpSetLifecycle
+	mu         distributedServerMonitor
 	metadir    string
 	filename   string
 	set        *SetOfLong
@@ -919,6 +926,7 @@ func (s *MemFPSet1) AddThread() error {
 func (s *MemFPSet1) IncWorkers(num int) {}
 
 func (s *MemFPSet1) Exit(cleanup bool) error {
+	fpSetBaseExit(s)
 	if cleanup && s.metadir != "" {
 		return os.RemoveAll(s.metadir)
 	}
@@ -1013,7 +1021,8 @@ func (s *MemFPSet1) chkptName(fname string, ext string) string {
 const memFPSet2LogSpineSize = 24
 
 type MemFPSet2 struct {
-	mu         sync.Mutex
+	fpSetLifecycle
+	mu         distributedServerMonitor
 	metadir    string
 	filename   string
 	table      [][]byte
@@ -1143,6 +1152,7 @@ func (s *MemFPSet2) AddThread() error {
 func (s *MemFPSet2) IncWorkers(num int) {}
 
 func (s *MemFPSet2) Exit(cleanup bool) error {
+	fpSetBaseExit(s)
 	if cleanup && s.metadir != "" {
 		return os.RemoveAll(s.metadir)
 	}
@@ -1294,12 +1304,13 @@ func memFPSet2Fingerprint(low uint64, b1 byte, b2 byte, b3 byte, b4 byte, b5 byt
 }
 
 type MultiFPSet struct {
+	fpSetLifecycle
 	Sets       []FPSet
 	FPBits     int
 	Shift      uint
 	metadir    string
 	filename   string
-	statesSeen uint64
+	statesSeen atomic.Uint64
 	config     *FPSetConfiguration
 }
 
@@ -1309,7 +1320,9 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 	}
 	bits := config.GetFPBits()
 	if bits <= 0 || bits > multiFPSetMaxFPBits {
-		panic("Illegal number of FPSets found.")
+		failure := newTLCError(ECGeneral, "Illegal number of FPSets found.")
+		failure.Runtime = true
+		panic(failure)
 	}
 	childConfig := NewMultiFPSetConfiguration(config)
 	count := 1 << bits
@@ -1328,8 +1341,53 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 func (s *MultiFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.metadir = metadir
 	s.filename = filename
-	for i, set := range s.Sets {
-		s.Sets[i] = set.Init(numThreads, metadir, fmt.Sprintf("%s_%d", filename, i))
+	// IntStream.parallel initializes distinct children independently. The
+	// callback ignores init's return value and wraps its checked IOException.
+	var pending sync.WaitGroup
+	var failureMu sync.Mutex
+	var failure error
+	initialize := func(i int, worker bool) {
+		defer pending.Done()
+		err := func() (err error) {
+			defer func() {
+				if failure := recover(); failure != nil {
+					err = panicValueAsError(failure)
+				}
+			}()
+			if s.Sets[i] == nil {
+				panic(NewNullPointerException())
+			}
+			s.Sets[i].Init(numThreads, metadir, fmt.Sprintf("%s_%d", filename, i))
+			return nil
+		}()
+		if isJavaIOException(err) {
+			err = NewRuntimeExceptionFromCause(err)
+		}
+		if worker {
+			// ForkJoinTask copies RuntimeException(Throwable) when its
+			// exception originated on another thread.
+			if runtimeFailure, ok := err.(*RuntimeException); ok && runtimeFailure != nil {
+				err = NewRuntimeExceptionFromCause(runtimeFailure)
+			}
+		}
+		if err != nil {
+			failureMu.Lock()
+			if failure == nil {
+				failure = err
+			}
+			failureMu.Unlock()
+		}
+	}
+	pending.Add(len(s.Sets))
+	for i := 0; i < len(s.Sets)-1; i++ {
+		go initialize(i, true)
+	}
+	if len(s.Sets) != 0 {
+		initialize(len(s.Sets)-1, false)
+	}
+	pending.Wait()
+	if failure != nil {
+		panic(failure)
 	}
 	return s
 }
@@ -1380,7 +1438,8 @@ func (s *MultiFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 	if fpv == nil {
 		return NewBitVector(0)
 	}
-	s.statesSeen += uint64(fpv.Size())
+	// Java's inherited FPSet counter is a separate read/modify/write.
+	s.statesSeen.Store(s.statesSeen.Load() + uint64(fpv.Size()))
 	bv := NewBitVector(fpv.Size())
 	for i := 0; i < fpv.Size(); i++ {
 		if !s.Contains(uint64(fpv.ElementAt(i))) {
@@ -1391,7 +1450,7 @@ func (s *MultiFPSet) ContainsBlock(fpv *LongVec) *BitVector {
 }
 
 func (s *MultiFPSet) GetStatesSeen() uint64 {
-	total := s.statesSeen
+	total := s.statesSeen.Load()
 	for _, set := range s.Sets {
 		total += set.GetStatesSeen()
 	}
@@ -1515,6 +1574,7 @@ func (s *MultiFPSet) IncWorkers(num int) {
 }
 
 func (s *MultiFPSet) Exit(cleanup bool) error {
+	fpSetBaseExit(s)
 	for _, set := range s.Sets {
 		if err := set.Exit(cleanup); err != nil {
 			return err
@@ -1528,3 +1588,9 @@ func (s *MultiFPSet) UnexportObject(force bool) {
 		set.UnexportObject(force)
 	}
 }
+
+func (s *MemFPSet) fpSetMonitor() *distributedServerMonitor { return &s.mu }
+
+func (s *MemFPSet1) fpSetMonitor() *distributedServerMonitor { return &s.mu }
+
+func (s *MemFPSet2) fpSetMonitor() *distributedServerMonitor { return &s.mu }

@@ -100,3 +100,39 @@ func metadataCreateParents(path string) error {
 	}
 	return os.MkdirAll(filepath.Clean(path), 0o755)
 }
+
+// filenameFileMkdirs follows java.io.File.mkdirs: try the original spelling,
+// then create the canonical parent/path. Canonicalization resolves an existing
+// ancestor's symlinks before reducing the unresolved dot components.
+func filenameFileMkdirs(path string) bool {
+	path = filenameNormalizeFile(path)
+	if _, err := os.Stat(path); err == nil {
+		return false
+	}
+	if err := os.Mkdir(path, 0o755); err == nil {
+		return true
+	}
+	absolute, err := metadataAbsolutePath(path)
+	if err != nil {
+		return false
+	}
+	ancestor := absolute
+	var suffix []string
+	for {
+		if canonical, err := filepath.EvalSymlinks(ancestor); err == nil {
+			for i := len(suffix) - 1; i >= 0; i-- {
+				canonical = filepath.Join(canonical, suffix[i])
+			}
+			if err := os.MkdirAll(filepath.Dir(canonical), 0o755); err != nil {
+				return false
+			}
+			return os.Mkdir(canonical, 0o755) == nil
+		}
+		parent := metadataParentPath(ancestor)
+		if parent == ancestor || parent == "" {
+			return false
+		}
+		suffix = append(suffix, distributedJavaFileName(ancestor))
+		ancestor = parent
+	}
+}
