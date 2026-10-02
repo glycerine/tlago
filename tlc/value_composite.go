@@ -108,17 +108,17 @@ func (v *ValueVec) IndexOf(val Value) int {
 	return -1
 }
 
-func (v *ValueVec) Search(val Value, sorted bool) bool {
+func (v *ValueVec) Search(val Value, sorted bool) (bool, error) {
 	if sorted {
 		low, high := 0, len(v.data)
 		for low < high {
 			mid := (low + high) >> 1
 			cmp, err := val.Compare(v.data[mid])
 			if err != nil {
-				return false
+				return false, err
 			}
 			if cmp == 0 {
-				return true
+				return true, nil
 			}
 			if cmp < 0 {
 				high = mid
@@ -126,9 +126,18 @@ func (v *ValueVec) Search(val Value, sorted bool) bool {
 				low = mid + 1
 			}
 		}
-		return false
+		return false, nil
 	}
-	return v.Contains(val)
+	for i := 0; i < len(v.data); i++ {
+		equal, err := v.data[i].Equal(val)
+		if err != nil {
+			return false, err
+		}
+		if equal {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (v *ValueVec) Sort(noDup bool) error {
@@ -465,7 +474,7 @@ func setEnumForComparison(value Value) (*SetEnumValue, bool) {
 }
 
 func (v *SetEnumValue) Member(elem Value) (bool, error) {
-	return v.Elems.Search(elem, v.IsNorm), nil
+	return v.Elems.Search(elem, v.IsNorm)
 }
 
 func (v *SetEnumValue) IsFinite() (bool, error) { return true, nil }
