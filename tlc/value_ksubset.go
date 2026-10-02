@@ -346,28 +346,32 @@ func (v *KSubsetValue) Elements() ValueEnumeration {
 }
 
 func (v *KSubsetValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *KSubsetValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	if Globals.Expand && tryValueSizeBelow(v, 64) {
+	if Globals.Expand && tryValueSizeBelow(v, 64, swallow) {
 		size, err := v.Size()
 		if err != nil {
 			panic(err)
 		}
 		if size == 0 {
-			return "{}"
+			sb.WriteString("{}")
+			return sb
 		}
 		set, err := v.ToSetEnum()
 		if err != nil {
 			panic(err)
 		}
-		return set.String()
+		return appendValueString(set, sb, offset, swallow)
 	}
-	var b strings.Builder
-	b.WriteString("{s \\in SUBSET (")
-	b.WriteString(v.Set.String())
-	b.WriteString(") : Cardinality(s) = ")
-	b.WriteString(NewIntValue(int32(v.K)).String())
-	b.WriteString("}")
-	return b.String()
+	sb.WriteString("{s \\in SUBSET (")
+	appendValueString(v.Set, sb, offset, swallow)
+	sb.WriteString(") : Cardinality(s) = ")
+	sb.WriteString(fmt.Sprint(int32(v.K)))
+	sb.WriteString("}")
+	return sb
 }
 
 func (v *KSubsetValue) count() (*big.Int, error) {

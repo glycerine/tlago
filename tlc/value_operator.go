@@ -191,8 +191,13 @@ func (b *operatorValueBase) TakeExcepts(exs []ValueExcept) (resultValue Value, e
 }
 
 func (b *operatorValueBase) String() string {
+	return ValueToString(b.receiver(), "", true)
+}
+
+func (b *operatorValueBase) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(b.receiver(), nil)
-	return b.Label
+	sb.WriteString(b.Label)
+	return sb
 }
 
 func (b *operatorValueBase) diagnosticString() string {
@@ -263,8 +268,13 @@ func NewOpLambdaValueFrom(other *OpLambdaValue, tool *Tool) *OpLambdaValue {
 func (v *OpLambdaValue) DeepCopy() Value { return v }
 
 func (v *OpLambdaValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *OpLambdaValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	return "<Operator " + v.OpDef.Name.String() + ">"
+	sb.WriteString("<Operator " + v.OpDef.Name.String() + ">")
+	return sb
 }
 func (v *OpLambdaValue) Permute(perm *MVPerm) Value {
 	return v.operatorValueBase.Permute(perm)
@@ -367,23 +377,26 @@ func (v *OpRcdValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *OpRcdValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *OpRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	var b strings.Builder
-	b.WriteString("{ ")
+	sb.WriteString("{ ")
 	for i, value := range v.Values {
 		if i > 0 {
-			b.WriteString(", ")
+			sb.WriteString(", ")
 		}
-		b.WriteString("<")
+		sb.WriteString("<")
 		for _, arg := range v.Domain[i] {
-			b.WriteString(arg.String())
-			b.WriteString(", ")
+			sb = appendValueString(arg, sb, offset, swallow)
+			sb.WriteString(", ")
 		}
-		b.WriteString(value.String())
-		b.WriteString(">")
+		sb = appendValueString(value, sb, offset, swallow)
+		sb.WriteString(">")
 	}
-	b.WriteString("}")
-	return b.String()
+	sb.WriteString("}")
+	return sb
 }
 
 type MethodValue struct {

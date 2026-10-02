@@ -976,6 +976,26 @@ Common operations:
 - `ToString`
 - binary serialization/deserialization.
 
+Java value printing has two layers. `Value.toStringImpl` creates a buffer,
+invokes the concrete printer, appends a delimiter, and catches sourced runtime
+failures. Nested values call the concrete buffer overload with the same offset
+and checked/unchecked flag. Go represents this with `ValueToString` and concrete
+`ToString(*strings.Builder, int, bool)` methods; `StringWithDelimiter` and
+`StringUnchecked` expose the Java string overloads without expanding the required
+`Value` interface for foreign Go implementations.
+
+Lazy printers preserve Java's individual `catch(Throwable)` regions. Cup, cap,
+difference, and predicate-set expansion catch both materialization and printing;
+product printers catch materialization and print the resulting set outside that
+catch. Subset printers catch the size decision only, while `UNION` propagates
+expansion failures. Unchecked calls rethrow instead of taking symbolic fallback.
+All these paths share the original buffer and retain partial output after a
+caught failure. Function lambdas always swallow expansion/printing failures and
+request checked printing of a materialized function, including from unchecked
+callers. Predicate-set symbolic domains and function-parameter domains invoke
+standalone checked public string conversion. `TLC!Print`, `PrintT`, and `ToString`
+use unchecked conversion; file `PrintT` appends its newline before pretty printing.
+
 Important concrete values:
 
 - `BoolValue`: singleton true/false.

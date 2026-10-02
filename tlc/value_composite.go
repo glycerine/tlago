@@ -398,12 +398,20 @@ func (v *TupleValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err erro
 }
 
 func (v *TupleValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *TupleValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	parts := make([]string, len(v.Elems))
+	sb.WriteString("<<")
 	for i, elem := range v.Elems {
-		parts[i] = elem.String()
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb = appendValueString(elem, sb, offset, swallow)
 	}
-	return "<<" + strings.Join(parts, ", ") + ">>"
+	sb.WriteString(">>")
+	return sb
 }
 
 type SetEnumValue struct {
@@ -605,11 +613,26 @@ func (v *SetEnumValue) Elements() ValueEnumeration {
 }
 
 func (v *SetEnumValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetEnumValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	if _, err := v.normalizeSet(); err != nil {
-		panic(err)
+	if !v.IsNormalized() {
+		if _, err := v.normalizeSet(); err != nil {
+			panic(err)
+		}
 	}
-	return v.Elems.String()
+	length := v.Elems.Len()
+	sb.WriteString("{")
+	for i := 0; i < length; i++ {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		appendValueString(v.Elems.At(i), sb, offset, swallow)
+	}
+	sb.WriteString("}")
+	return sb
 }
 
 type IntervalValue struct {
@@ -772,11 +795,17 @@ func (v *IntervalValue) Elements() ValueEnumeration {
 }
 
 func (v *IntervalValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *IntervalValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if v.Low <= v.High {
-		return NewIntValue(v.Low).String() + ".." + NewIntValue(v.High).String()
+		sb.WriteString(fmt.Sprintf("%d..%d", v.Low, v.High))
+	} else {
+		sb.WriteString("{}")
 	}
-	return "{}"
+	return sb
 }
 
 type intervalValueEnumeration struct {

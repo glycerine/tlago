@@ -79,20 +79,20 @@ func (p *FcnParams) Elements() ValueEnumeration {
 }
 
 func (p *FcnParams) String() string {
-	if p == nil || len(p.Domains) == 0 {
+	if len(p.Domains) == 0 {
 		return ""
 	}
 	parts := make([]string, len(p.Domains))
 	for i, domain := range p.Domains {
 		ids := p.Formals[i]
 		var lhs string
-		if i < len(p.IsTuples) && p.IsTuples[i] {
+		if p.IsTuples[i] {
 			names := make([]string, len(ids))
 			for j, id := range ids {
 				names[j] = id.String()
 			}
 			lhs = "<<" + strings.Join(names, ", ") + ">>"
-		} else if len(ids) != 0 {
+		} else {
 			lhs = ids[0].String()
 		}
 		parts[i] = lhs + " \\in " + domain.String()
@@ -892,27 +892,30 @@ func (v *FcnLambdaValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *FcnLambdaValue) String() string {
-	defer catchValueFailure(v, nil)
-	if Globals.Expand || v.Params == nil {
-		if value, ok := v.expandedString(); ok {
-			return value
-		}
-	}
-	return "[" + v.Params.String() + " |-> <expression " + toContextString(v.Body) + ">]"
+	return ValueToString(v, "", true)
 }
 
-func (v *FcnLambdaValue) expandedString() (value string, ok bool) {
-	// Java catches Throwable around both expansion and function-record printing.
-	defer func() {
-		if recover() != nil {
-			value, ok = "", false
+func (v *FcnLambdaValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	defer catchValueFailure(v, nil)
+	if Globals.Expand || v.Params == nil {
+		var expanded *strings.Builder
+		if tryValueString(true, func() {
+			fcn, err := v.materializeFcnRcd()
+			if err != nil {
+				panic(err)
+			}
+			if fcn == nil {
+				panic(NewNullPointerException())
+			}
+			// Java always requests checked printing here, even for unchecked callers.
+			expanded = appendValueString(fcn, sb, offset, true)
+		}) {
+			return expanded
 		}
-	}()
-	fcn, err := v.materializeFcnRcd()
-	if err != nil || fcn == nil {
-		return "", false
 	}
-	return fcn.String(), true
+	sb.WriteString("[" + v.Params.String())
+	sb.WriteString(" |-> <expression " + toContextString(v.Body) + ">]")
+	return sb
 }
 
 func (ex ValueExcept) Current() Value {

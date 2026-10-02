@@ -254,23 +254,32 @@ func (v *SetOfTuplesValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *SetOfTuplesValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetOfTuplesValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	if set := tryExpandedSet(func() (*SetEnumValue, error) {
+	if set := tryExpandedSet(swallow, func() (*SetEnumValue, error) {
 		if shouldExpandProduct(v.Sets) {
 			return v.ToSetEnum()
 		}
 		return nil, nil
 	}); set != nil {
-		return set.String()
+		return appendValueString(set, sb, offset, swallow)
 	}
-	parts := make([]string, len(v.Sets))
+	if len(v.Sets) > 0 {
+		sb.WriteString("(")
+	}
 	for i, set := range v.Sets {
-		parts[i] = set.String()
+		if i > 0 {
+			sb.WriteString(" \\X ")
+		}
+		appendValueString(set, sb, offset, swallow)
 	}
-	if len(parts) == 0 {
-		return ""
+	if len(v.Sets) > 0 {
+		sb.WriteString(")")
 	}
-	return "(" + strings.Join(parts, " \\X ") + ")"
+	return sb
 }
 
 type SetOfRcdsValue struct {
@@ -530,27 +539,29 @@ func (v *SetOfRcdsValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *SetOfRcdsValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetOfRcdsValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	if set := tryExpandedSet(func() (*SetEnumValue, error) {
+	if set := tryExpandedSet(swallow, func() (*SetEnumValue, error) {
 		if shouldExpandProduct(v.Values) {
 			return v.ToSetEnum()
 		}
 		return nil, nil
 	}); set != nil {
-		return set.String()
+		return appendValueString(set, sb, offset, swallow)
 	}
-	var b strings.Builder
-	b.WriteString("[")
-	for i := range v.Names {
+	sb.WriteString("[")
+	for i, name := range v.Names {
 		if i > 0 {
-			b.WriteString(", ")
+			sb.WriteString(", ")
 		}
-		b.WriteString(v.Names[i].String())
-		b.WriteString(": ")
-		b.WriteString(v.Values[i].String())
+		sb.WriteString(name.String() + ": ")
+		appendValueString(v.Values[i], sb, offset, swallow)
 	}
-	b.WriteString("]")
-	return b.String()
+	sb.WriteString("]")
+	return sb
 }
 
 func (v *SetOfRcdsValue) sortByNames() error {
@@ -939,16 +950,25 @@ func (v *SetOfFcnsValue) domainElements(dom []Value) ValueEnumeration {
 }
 
 func (v *SetOfFcnsValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetOfFcnsValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	if set := tryExpandedSet(func() (*SetEnumValue, error) {
+	if set := tryExpandedSet(swallow, func() (*SetEnumValue, error) {
 		if shouldExpandFcnSet(v.Domain, v.Range) {
 			return v.ToSetEnum()
 		}
 		return nil, nil
 	}); set != nil {
-		return set.String()
+		return appendValueString(set, sb, offset, swallow)
 	}
-	return "[" + v.Domain.String() + " -> " + v.Range.String() + "]"
+	sb.WriteString("[")
+	appendValueString(v.Domain, sb, offset, swallow)
+	sb.WriteString(" -> ")
+	appendValueString(v.Range, sb, offset, swallow)
+	sb.WriteString("]")
+	return sb
 }
 
 type SubsetValue struct {
@@ -1178,18 +1198,27 @@ func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *SubsetValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SubsetValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	if Globals.Expand && tryValueSizeBelow(v.Set, 7) {
+	if Globals.Expand && tryValueSizeBelow(v.Set, 7, swallow) {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			panic(err)
 		}
-		return set.String()
+		return appendValueString(set, sb, offset, swallow)
 	}
+	sb.WriteString("SUBSET ")
 	if _, ok := v.Set.(*IntervalValue); ok {
-		return "SUBSET (" + v.Set.String() + ")"
+		sb.WriteString("(")
+		sb = appendValueString(v.Set, sb, offset, swallow)
+		sb.WriteString(")")
+	} else {
+		sb = appendValueString(v.Set, sb, offset, swallow)
 	}
-	return "SUBSET " + v.Set.String()
+	return sb
 }
 
 type singleValueEnumeration struct {

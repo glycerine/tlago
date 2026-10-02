@@ -366,8 +366,13 @@ func (v *ModelValue) SetData(obj any) any {
 }
 
 func (v *ModelValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *ModelValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	return v.Val.String()
+	sb.WriteString(v.Val.String())
+	return sb
 }
 
 func (v *ModelValue) sameModelValue(other *ModelValue) bool {
@@ -749,19 +754,21 @@ func (v *RecordValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *RecordValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *RecordValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	var b strings.Builder
-	b.WriteString("[")
-	for i := range v.Names {
+	sb.WriteString("[")
+	for i, name := range v.Names {
 		if i > 0 {
-			b.WriteString(", ")
+			sb.WriteString(", ")
 		}
-		b.WriteString(v.Names[i].String())
-		b.WriteString(recordArrow)
-		b.WriteString(v.Values[i].String())
+		sb.WriteString(name.String() + recordArrow)
+		sb = appendValueString(v.Values[i], sb, offset, swallow)
 	}
-	b.WriteString("]")
-	return b.String()
+	sb.WriteString("]")
+	return sb
 }
 
 type FcnRcdValue struct {
@@ -1345,44 +1352,46 @@ func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *FcnRcdValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *FcnRcdValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if len(v.Values) == 0 {
-		return "<<>>"
-	}
-	if v.isRecordLike() {
-		var b strings.Builder
-		b.WriteString("[")
-		for i := range v.Values {
-			if i > 0 {
-				b.WriteString(", ")
-			}
-			b.WriteString(v.Domain[i].(*StringValue).Val.String())
-			b.WriteString(recordArrow)
-			b.WriteString(v.Values[i].String())
-		}
-		b.WriteString("]")
-		return b.String()
-	}
-	if v.isTupleLike() {
-		parts := make([]string, len(v.Values))
+		sb.WriteString("<<>>")
+	} else if v.isRecordLike() {
+		sb.WriteString("[")
 		for i, value := range v.Values {
-			parts[i] = value.String()
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(v.Domain[i].(*StringValue).Val.String() + recordArrow)
+			sb = appendValueString(value, sb, offset, swallow)
 		}
-		return "<<" + strings.Join(parts, ", ") + ">>"
-	}
-	domain := v.DomainAsValues()
-	var b strings.Builder
-	b.WriteString("(")
-	for i := range v.Values {
-		if i > 0 {
-			b.WriteString(" @@ ")
+		sb.WriteString("]")
+	} else if v.isTupleLike() {
+		sb.WriteString("<<")
+		for i, value := range v.Values {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb = appendValueString(value, sb, offset, swallow)
 		}
-		b.WriteString(domain[i].String())
-		b.WriteString(" :> ")
-		b.WriteString(v.Values[i].String())
+		sb.WriteString(">>")
+	} else {
+		domain := v.DomainAsValues()
+		sb.WriteString("(")
+		for i, value := range v.Values {
+			if i > 0 {
+				sb.WriteString(" @@ ")
+			}
+			sb = appendValueString(domain[i], sb, offset, swallow)
+			sb.WriteString(" :> ")
+			sb = appendValueString(value, sb, offset, swallow)
+		}
+		sb.WriteString(")")
 	}
-	b.WriteString(")")
-	return b.String()
+	return sb
 }
 
 func (v *FcnRcdValue) isRecordLike() bool {

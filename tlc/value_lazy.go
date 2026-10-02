@@ -220,11 +220,16 @@ func (v *LazyValue) Eval(tool *Tool, state *TLCStateMut, pstate *TLCStateMut) (V
 }
 
 func (v *LazyValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *LazyValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if v.Val == nil || v.Val == ValUndef {
-		return "<LAZY " + toContextString(v.Expr) + ">"
+		sb.WriteString("<LAZY " + toContextString(v.Expr) + ">")
+		return sb
 	}
-	return v.Val.String()
+	return appendValueString(v.Val, sb, offset, swallow)
 }
 
 type LazySupplierValue struct {
@@ -566,37 +571,38 @@ func (v *SetPredValue) bind(elem Value) (*Context, error) {
 }
 
 func (v *SetPredValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetPredValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if expanded, ok := v.expandedString(); ok {
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
 			return expanded
 		}
 	}
-	var names []string
+	sb.WriteString("{")
 	switch vars := v.Vars.(type) {
 	case *SymbolNode:
-		names = []string{vars.String()}
+		sb.WriteString(vars.String())
 	case []*SymbolNode:
-		names = make([]string, len(vars))
 		for i, variable := range vars {
-			names[i] = variable.String()
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(variable.String())
 		}
-	}
-	return "{" + strings.Join(names, ", ") + " \\in " + v.InVal.String() + " : <expression " + toContextString(v.Pred) + "> }"
-}
-
-func (v *SetPredValue) expandedString() (value string, ok bool) {
-	// Java's checked toString swallows Throwable only around expansion.
-	defer func() {
-		if recover() != nil {
-			value, ok = "", false
+	default:
+		if v.Vars == nil {
+			panic(NewNullPointerException())
 		}
-	}()
-	set, err := v.ToSetEnum()
-	if err != nil {
-		return "", false
+		// Java casts every non-scalar vars object to FormalParamNode[].
+		_ = v.Vars.([]*SymbolNode)
 	}
-	return set.String(), true
+	// Java concatenates inVal here, entering its public checked string path.
+	sb.WriteString(" \\in " + v.InVal.String() + " : <expression ")
+	sb.WriteString(toContextString(v.Pred) + "> }")
+	return sb
 }
 
 type setPredEnumeration struct {

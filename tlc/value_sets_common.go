@@ -1,6 +1,9 @@
 package tlc
 
-import "math"
+import (
+	"math"
+	"strings"
+)
 
 func IsEmptyValue(value Value) (resultBool bool, err error) {
 	defer catchValueFailure(value, &err)
@@ -178,7 +181,7 @@ func shouldExpandProduct(values []Value) bool {
 	for _, value := range values {
 		next, err := value.Size()
 		if err != nil {
-			return false
+			panic(err)
 		}
 		if next == 0 {
 			return 0 < Globals.EnumBound
@@ -190,43 +193,42 @@ func shouldExpandProduct(values []Value) bool {
 	return size < int64(Globals.EnumBound)
 }
 
-// Java's lazy product printers swallow failures while deciding whether to
-// expand and while materializing, but print the resulting set outside that catch.
-func tryExpandedSet(build func() (*SetEnumValue, error)) (set *SetEnumValue) {
-	defer func() {
-		if recover() != nil {
-			set = nil
+// Java's product printers catch failures during the expansion decision and
+// materialization. Printing the resulting set remains outside that catch.
+func tryExpandedSet(swallow bool, build func() (*SetEnumValue, error)) (set *SetEnumValue) {
+	tryValueString(swallow, func() {
+		converted, err := build()
+		if err != nil {
+			panic(err)
 		}
-	}()
-	set, err := build()
-	if err != nil {
-		return nil
-	}
+		set = converted
+	})
 	return set
 }
 
-// Cup, cap, and difference also swallow failures while printing the expanded set.
-func tryExpandedSetString(build func() (*SetEnumValue, error)) (text string, ok bool) {
-	defer func() {
-		if recover() != nil {
-			text, ok = "", false
+// Cup, cap, difference, and predicate sets include expanded printing in their
+// catch. A failed printer leaves its partial text in the same caller buffer.
+func tryExpandedSetString(sb *strings.Builder, offset int, swallow bool, build func() (*SetEnumValue, error)) (*strings.Builder, bool) {
+	var expanded *strings.Builder
+	ok := tryValueString(swallow, func() {
+		set, err := build()
+		if err != nil {
+			panic(err)
 		}
-	}()
-	set, err := build()
-	if err != nil {
-		return "", false
-	}
-	return set.String(), true
+		expanded = appendValueString(set, sb, offset, swallow)
+	})
+	return expanded, ok
 }
 
-func tryValueSizeBelow(value Value, bound int) (below bool) {
-	defer func() {
-		if recover() != nil {
-			below = false
+func tryValueSizeBelow(value Value, bound int, swallow bool) (below bool) {
+	tryValueString(swallow, func() {
+		size, err := value.Size()
+		if err != nil {
+			panic(err)
 		}
-	}()
-	size, err := value.Size()
-	return err == nil && size < bound
+		below = size < bound
+	})
+	return below
 }
 
 func shouldExpandFcnSet(domain, rangeValue Value) bool {
@@ -235,17 +237,17 @@ func shouldExpandFcnSet(domain, rangeValue Value) bool {
 	}
 	empty, err := IsEmptyValue(domain)
 	if err != nil {
-		return false
+		panic(err)
 	}
 	size := int64(1)
 	if !empty {
 		domainSize, err := domain.Size()
 		if err != nil {
-			return false
+			panic(err)
 		}
 		rangeSize, err := rangeValue.Size()
 		if err != nil {
-			return false
+			panic(err)
 		}
 		for i := 0; i < domainSize && size <= math.MaxInt32; i++ {
 			size *= int64(rangeSize)

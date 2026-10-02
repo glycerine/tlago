@@ -288,11 +288,17 @@ func (v *BoolValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error
 }
 
 func (v *BoolValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *BoolValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if v.Val {
-		return "TRUE"
+		sb.WriteString("TRUE")
+	} else {
+		sb.WriteString("FALSE")
 	}
-	return "FALSE"
+	return sb
 }
 
 type IntValue struct {
@@ -415,8 +421,13 @@ func (v *IntValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error)
 }
 
 func (v *IntValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *IntValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	return strconv.FormatInt(int64(v.Val), 10)
+	sb.WriteString(strconv.FormatInt(int64(v.Val), 10))
+	return sb
 }
 
 func NarrowToIntValue(value int64) Value {
@@ -516,8 +527,13 @@ func (v *StringValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err err
 }
 
 func (v *StringValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *StringValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	return `"` + tlaStringPrintVersion(v.Val.String()) + `"`
+	sb.WriteString(`"` + tlaStringPrintVersion(v.Val.String()) + `"`)
+	return sb
 }
 
 func (v *StringValue) UnquotedString() string {

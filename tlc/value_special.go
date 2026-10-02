@@ -1,5 +1,7 @@
 package tlc
 
+import "strings"
+
 type UndefValue struct {
 	BaseValue
 }
@@ -62,8 +64,13 @@ func (v *UndefValue) DeepCopy() Value              { return v }
 func (v *UndefValue) FingerPrint(fp uint64) uint64 { return unsupportedValueFingerprint(v) }
 func (v *UndefValue) Permute(*MVPerm) Value        { return unsupportedValuePermutation(v) }
 func (v *UndefValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *UndefValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	return "UNDEF"
+	sb.WriteString("UNDEF")
+	return sb
 }
 
 type UserObj interface {
@@ -170,8 +177,16 @@ func (v *UserValue) DeepCopy() Value              { return v }
 func (v *UserValue) FingerPrint(fp uint64) uint64 { return unsupportedValueFingerprint(v) }
 func (v *UserValue) Permute(*MVPerm) Value        { return unsupportedValuePermutation(v) }
 func (v *UserValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *UserValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
-	return v.UserObj.String()
+	if printer, ok := v.UserObj.(ValueStringPrinter); ok {
+		return printer.ToString(sb, offset, swallow)
+	}
+	sb.WriteString(v.UserObj.String())
+	return sb
 }
 
 func unsupportedValueFingerprint(value Value) uint64 {

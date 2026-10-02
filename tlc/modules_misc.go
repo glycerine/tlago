@@ -41,7 +41,7 @@ func TLCPrint(v1, v2 Value) Value {
 	v2c := v2.DeepCopy()
 	v1c.DeepNormalize()
 	v2c.DeepNormalize()
-	if _, err := fmt.Fprintf(TLCOutput, "%s  %s\n", ValuesPPR(v1c), ValuesPPR(v2c)); err != nil {
+	if _, err := fmt.Fprintf(TLCOutput, "%s  %s\n", ValuesPPRString(ValueToStringUnchecked(v1c)), ValuesPPRString(ValueToStringUnchecked(v2c))); err != nil {
 		PrintError(ECGeneral, javaGeneralErrorMessage("", err))
 	}
 	return v2
@@ -52,9 +52,9 @@ func TLCPrintT(v Value) Value {
 	vc.DeepNormalize()
 	var err error
 	if TLCOutputToUserFile {
-		_, err = fmt.Fprint(TLCOutput, ValuesPPR(vc))
+		_, err = fmt.Fprint(TLCOutput, ValuesPPRString(ValueToStringUnchecked(vc, "\n")))
 	} else {
-		_, err = fmt.Fprintln(TLCOutput, ValuesPPR(vc))
+		_, err = fmt.Fprintln(TLCOutput, ValuesPPRString(ValueToStringUnchecked(vc)))
 	}
 	if err != nil {
 		PrintError(ECGeneral, javaGeneralErrorMessage("", err))
@@ -63,7 +63,7 @@ func TLCPrintT(v Value) Value {
 }
 
 func TLCToString(v Value) Value {
-	return NewStringValue(v.String())
+	return NewStringValue(ValueToStringUnchecked(v))
 }
 
 func TLCAssert(condition Value, message Value) (Value, error) {

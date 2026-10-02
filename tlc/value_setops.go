@@ -164,13 +164,19 @@ func (v *SetCupValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *SetCupValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetCupValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if text, ok := tryExpandedSetString(v.ToSetEnum); ok {
-			return text
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
+			return expanded
 		}
 	}
-	return v.Set1.String() + " \\cup " + v.Set2.String()
+	sb = appendValueString(v.Set1, sb, offset, swallow)
+	sb.WriteString(" \\cup ")
+	return appendValueString(v.Set2, sb, offset, swallow)
 }
 
 type setCupEnumeration struct {
@@ -376,13 +382,19 @@ func (v *SetCapValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *SetCapValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetCapValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if text, ok := tryExpandedSetString(v.ToSetEnum); ok {
-			return text
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
+			return expanded
 		}
 	}
-	return v.Set1.String() + " \\cap " + v.Set2.String()
+	sb = appendValueString(v.Set1, sb, offset, swallow)
+	sb.WriteString(" \\cap ")
+	return appendValueString(v.Set2, sb, offset, swallow)
 }
 
 type SetDiffValue struct {
@@ -566,13 +578,19 @@ func (v *SetDiffValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *SetDiffValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *SetDiffValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if text, ok := tryExpandedSetString(v.ToSetEnum); ok {
-			return text
+		if expanded, ok := tryExpandedSetString(sb, offset, swallow, v.ToSetEnum); ok {
+			return expanded
 		}
 	}
-	return v.Set1.String() + " \\ " + v.Set2.String()
+	sb = appendValueString(v.Set1, sb, offset, swallow)
+	sb.WriteString(" \\ ")
+	return appendValueString(v.Set2, sb, offset, swallow)
 }
 
 type UnionValue struct {
@@ -791,15 +809,22 @@ func (v *UnionValue) Elements() (enumeration ValueEnumeration) {
 }
 
 func (v *UnionValue) String() string {
+	return ValueToString(v, "", true)
+}
+
+func (v *UnionValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if Globals.Expand {
 		set, err := v.ToSetEnum()
 		if err != nil {
 			panic(err)
 		}
-		return set.String()
+		return appendValueString(set, sb, offset, swallow)
 	}
-	return "UNION(" + v.Set.String() + ")"
+	sb.WriteString("UNION(")
+	sb = appendValueString(v.Set, sb, offset, swallow)
+	sb.WriteString(")")
+	return sb
 }
 
 type setFilterEnumeration struct {
