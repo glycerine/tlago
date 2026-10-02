@@ -413,9 +413,13 @@ func NewSetEnumValueVec(values *ValueVec, isNorm bool, cms ...CostModel) *SetEnu
 func (v *SetEnumValue) Kind() ValueKind    { return SetEnumValueKind }
 func (v *SetEnumValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *SetEnumValue) Compare(other Value) (int, error) {
-	o, ok := setEnumForComparison(other)
-	if !ok {
+func (v *SetEnumValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
+	o, err := tryToSetEnumValue(other)
+	if err != nil {
+		return 0, err
+	}
+	if o == nil {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueCompareTo(v)
 		}
@@ -439,9 +443,13 @@ func (v *SetEnumValue) Compare(other Value) (int, error) {
 	return 0, nil
 }
 
-func (v *SetEnumValue) Equal(other Value) (bool, error) {
-	o, ok := setEnumForComparison(other)
-	if !ok {
+func (v *SetEnumValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
+	o, err := tryToSetEnumValue(other)
+	if err != nil {
+		return false, err
+	}
+	if o == nil {
 		if mv, ok := other.(*ModelValue); ok {
 			return mv.modelValueEquals(v)
 		}
@@ -465,21 +473,15 @@ func (v *SetEnumValue) Equal(other Value) (bool, error) {
 	return true, nil
 }
 
-func setEnumForComparison(value Value) (*SetEnumValue, bool) {
-	set, err := toSetEnumValue(value)
-	if err != nil {
-		return nil, false
-	}
-	return set, true
-}
-
-func (v *SetEnumValue) Member(elem Value) (bool, error) {
+func (v *SetEnumValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return v.Elems.Search(elem, v.IsNorm)
 }
 
 func (v *SetEnumValue) IsFinite() (bool, error) { return true, nil }
 
-func (v *SetEnumValue) Size() (int, error) {
+func (v *SetEnumValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if _, err := v.normalizeSet(); err != nil {
 		return 0, err
 	}
@@ -487,9 +489,16 @@ func (v *SetEnumValue) Size() (int, error) {
 }
 
 func (v *SetEnumValue) IsNormalized() bool { return v.IsNorm }
-func (v *SetEnumValue) Normalize() Value   { normalized, _ := v.normalizeSet(); return normalized }
+func (v *SetEnumValue) Normalize() Value {
+	normalized, err := v.normalizeSet()
+	if err != nil {
+		panic(err)
+	}
+	return normalized
+}
 
-func (v *SetEnumValue) normalizeSet() (Value, error) {
+func (v *SetEnumValue) normalizeSet() (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if !v.IsNorm {
 		if err := v.Elems.Sort(true); err != nil {
 			return nil, err
@@ -500,13 +509,17 @@ func (v *SetEnumValue) normalizeSet() (Value, error) {
 }
 
 func (v *SetEnumValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	for i := 0; i < v.Elems.Len(); i++ {
 		v.Elems.At(i).DeepNormalize()
 	}
-	_, _ = v.normalizeSet()
+	if _, err := v.normalizeSet(); err != nil {
+		panic(err)
+	}
 }
 
 func (v *SetEnumValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	for i := 0; i < v.Elems.Len(); i++ {
 		if !v.Elems.At(i).IsDefined() {
 			return false
@@ -518,6 +531,7 @@ func (v *SetEnumValue) IsDefined() bool {
 func (v *SetEnumValue) DeepCopy() Value { return v }
 
 func (v *SetEnumValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	out := make([]Value, v.Elems.Len())
 	changed := false
 	for i := range out {
@@ -532,7 +546,10 @@ func (v *SetEnumValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
-	_, _ = v.normalizeSet()
+	defer catchValueFailure(v, nil)
+	if _, err := v.normalizeSet(); err != nil {
+		panic(err)
+	}
 	fp = FP64ExtendInt(fp, int32(SetEnumValueKind))
 	fp = FP64ExtendInt(fp, int32(v.Elems.Len()))
 	for i := 0; i < v.Elems.Len(); i++ {
@@ -541,14 +558,16 @@ func (v *SetEnumValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *SetEnumValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetEnumValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT to the set %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *SetEnumValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetEnumValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT to the set %s.", v)
 	}
@@ -556,19 +575,25 @@ func (v *SetEnumValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *SetEnumValue) ToTupleValue() *TupleValue {
-	_, _ = v.normalizeSet()
+	if _, err := v.normalizeSet(); err != nil {
+		panic(err)
+	}
 	return NewTupleValue(v.Elems.ToArray())
 }
 
 func (v *SetEnumValue) Elements() ValueEnumeration {
+	defer catchValueFailure(v, nil)
 	if _, err := v.normalizeSet(); err != nil {
-		return newErrorEnumeration(err)
+		return newErrorEnumeration(wrapValueFailure(v, err))
 	}
 	return &sliceValueEnumeration{values: v.Elems.ToArray(), cm: v.CM}
 }
 
 func (v *SetEnumValue) String() string {
-	_, _ = v.normalizeSet()
+	defer catchValueFailure(v, nil)
+	if _, err := v.normalizeSet(); err != nil {
+		panic(err)
+	}
 	return v.Elems.String()
 }
 
@@ -585,7 +610,8 @@ func NewIntervalValue(low, high int32) *IntervalValue {
 func (v *IntervalValue) Kind() ValueKind    { return IntervalValueKind }
 func (v *IntervalValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *IntervalValue) Compare(other Value) (int, error) {
+func (v *IntervalValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*IntervalValue); ok {
 		sz, err := v.Size()
 		if err != nil {
@@ -612,7 +638,8 @@ func (v *IntervalValue) Compare(other Value) (int, error) {
 	return v.ToSetEnum().Compare(other)
 }
 
-func (v *IntervalValue) Equal(other Value) (bool, error) {
+func (v *IntervalValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*IntervalValue); ok {
 		sz, err := v.Size()
 		if err != nil {
@@ -630,7 +657,8 @@ func (v *IntervalValue) Equal(other Value) (bool, error) {
 	return v.ToSetEnum().Equal(other)
 }
 
-func (v *IntervalValue) Member(elem Value) (bool, error) {
+func (v *IntervalValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	i, ok := elem.(*IntValue)
 	if !ok {
 		if v.Low <= v.High {
@@ -646,7 +674,8 @@ func (v *IntervalValue) Member(elem Value) (bool, error) {
 
 func (v *IntervalValue) IsFinite() (bool, error) { return true, nil }
 
-func (v *IntervalValue) Size() (int, error) {
+func (v *IntervalValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if v.High < v.Low {
 		return 0, nil
 	}
@@ -665,6 +694,7 @@ func (v *IntervalValue) DeepCopy() Value       { return v }
 func (v *IntervalValue) Permute(*MVPerm) Value { return v }
 
 func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	sz, err := v.Size()
 	if err != nil {
 		panic(err)
@@ -678,14 +708,16 @@ func (v *IntervalValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *IntervalValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *IntervalValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the interval value %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *IntervalValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *IntervalValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the interval value %s.", v)
 	}
@@ -718,12 +750,14 @@ func (v *IntervalValue) AsValues() []Value {
 }
 
 func (v *IntervalValue) Elements() ValueEnumeration {
+	defer catchValueFailure(v, nil)
 	enum := newIntervalValueEnumeration(v.Low, v.High)
 	enum.cm = v.CM
 	return enum
 }
 
 func (v *IntervalValue) String() string {
+	defer catchValueFailure(v, nil)
 	if v.Low <= v.High {
 		return NewIntValue(v.Low).String() + ".." + NewIntValue(v.High).String()
 	}

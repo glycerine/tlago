@@ -2,7 +2,8 @@ package tlc
 
 import "math"
 
-func IsEmptyValue(value Value) (bool, error) {
+func IsEmptyValue(value Value) (resultBool bool, err error) {
+	defer catchValueFailure(value, &err)
 	switch v := value.(type) {
 	case *SetEnumValue:
 		return v.Elems.Len() == 0, nil

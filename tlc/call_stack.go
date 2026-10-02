@@ -161,7 +161,6 @@ func callStackLocationString(node SemanticNode) string {
 
 type FingerprintException struct {
 	Value Value
-	Node  SemanticNode
 	Next  *FingerprintException
 	Cause error
 }
@@ -177,14 +176,14 @@ func NewFingerprintException(value Value, cause error) *FingerprintException {
 	if value == nil || cause == nil {
 		return nil
 	}
-	return &FingerprintException{Value: value, Node: valueSource(value), Cause: cause}
+	return &FingerprintException{Value: value, Cause: cause}
 }
 
 func (e *FingerprintException) PrependNewHead(value Value) *FingerprintException {
 	if value == nil {
 		return nil
 	}
-	return &FingerprintException{Value: value, Node: valueSource(value), Next: e}
+	return &FingerprintException{Value: value, Next: e}
 }
 
 func (e *FingerprintException) Error() string {
@@ -238,7 +237,7 @@ func (e *FingerprintException) getTraceImpl(traceIndexLabel int, last SemanticNo
 	if e == nil {
 		return ""
 	}
-	node := e.Node
+	node := e.traceNode()
 	if node == nil || semanticNodeSame(node, last) {
 		if e.Next == nil {
 			return ""
@@ -252,12 +251,14 @@ func (e *FingerprintException) getTraceImpl(traceIndexLabel int, last SemanticNo
 	return e.Next.getTraceImpl(traceIndexLabel+1, node) + description
 }
 
+func (e *FingerprintException) traceNode() SemanticNode {
+	return valueSource(e.Value)
+}
+
 func (e *FingerprintException) AsTrace() []SemanticNode {
 	var out []SemanticNode
-	for ptr := e; ptr != nil; ptr = ptr.Next {
-		if ptr.Node != nil {
-			out = append(out, ptr.Node)
-		}
+	for ptr := e; ptr != nil && ptr.Value != nil; ptr = ptr.Next {
+		out = append(out, ptr.traceNode())
 	}
 	return out
 }

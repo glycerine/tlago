@@ -1711,19 +1711,27 @@ func subsetEq(expr SemanticNode, left Value, right Value) (*BoolValue, error) {
 	return enumerableSubsetEq(enum, left, right)
 }
 
-func enumerableSubsetEq(enum Enumerable, left Value, right Value) (*BoolValue, error) {
+func enumerableSubsetEq(enum Enumerable, left Value, right Value) (resultBool *BoolValue, err error) {
 	if interval, ok := left.(*IntervalValue); ok {
+		defer catchValueFailure(interval, &err)
 		if other, ok := right.(*IntervalValue); ok && other.Low <= interval.Low && other.High >= interval.High {
 			return BoolTrue, nil
 		}
+		return defaultEnumerableSubsetEq(enum, left, right)
 	}
 	if subset, ok := left.(*SubsetValue); ok {
+		defer catchValueFailure(subset, &err)
 		if other, ok := right.(*SubsetValue); ok {
 			if setEnum, ok := asEnumerable(subset.Set); ok {
 				return enumerableSubsetEq(setEnum, subset.Set, other.Set)
 			}
 		}
 	}
+	return defaultEnumerableSubsetEq(enum, left, right)
+}
+
+func defaultEnumerableSubsetEq(enum Enumerable, left Value, right Value) (resultBool *BoolValue, err error) {
+	defer catchValueFailure(left, &err)
 	e := enum.Elements()
 	for elem := e.NextElement(); elem != nil; elem = e.NextElement() {
 		member, err := right.Member(elem)

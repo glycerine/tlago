@@ -1,6 +1,7 @@
 package tlc
 
-func (v *SetEnumValue) Diff(other Value) (Value, error) {
+func (v *SetEnumValue) Diff(other Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	size := v.Elems.Len()
 	values := NewValueVec(0)
 	for i := 0; i < size; i++ {
@@ -16,7 +17,8 @@ func (v *SetEnumValue) Diff(other Value) (Value, error) {
 	return NewSetEnumValueVec(values, v.IsNormalized(), v.CM), nil
 }
 
-func (v *SetEnumValue) Cap(other Value) (Value, error) {
+func (v *SetEnumValue) Cap(other Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	size := v.Elems.Len()
 	values := NewValueVec(0)
 	for i := 0; i < size; i++ {
@@ -32,7 +34,8 @@ func (v *SetEnumValue) Cap(other Value) (Value, error) {
 	return NewSetEnumValueVec(values, v.IsNormalized(), v.CM), nil
 }
 
-func (v *SetEnumValue) Cup(other Value) (Value, error) {
+func (v *SetEnumValue) Cup(other Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	size := v.Elems.Len()
 	if size == 0 {
 		return other, nil
@@ -61,7 +64,8 @@ func (v *SetEnumValue) Cup(other Value) (Value, error) {
 	return NewSetEnumValueVec(values, false), nil
 }
 
-func (v *IntervalValue) Diff(other Value) (Value, error) {
+func (v *IntervalValue) Diff(other Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	size, err := v.Size()
 	if err != nil {
 		return nil, err
@@ -80,7 +84,8 @@ func (v *IntervalValue) Diff(other Value) (Value, error) {
 	return NewSetEnumValueVec(values, true, v.CM), nil
 }
 
-func (v *IntervalValue) Cap(other Value) (Value, error) {
+func (v *IntervalValue) Cap(other Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	size, err := v.Size()
 	if err != nil {
 		return nil, err
@@ -99,7 +104,8 @@ func (v *IntervalValue) Cap(other Value) (Value, error) {
 	return NewSetEnumValueVec(values, true, v.CM), nil
 }
 
-func (v *IntervalValue) Cup(other Value) (Value, error) {
+func (v *IntervalValue) Cup(other Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	size, err := v.Size()
 	if err != nil {
 		return nil, err

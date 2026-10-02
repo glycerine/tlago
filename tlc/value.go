@@ -100,11 +100,38 @@ func InitializeValue(value Value) Value {
 }
 
 func ValueJavaHashCode(value Value) int32 {
+	defer catchValueFailure(value, nil)
 	if value == nil {
 		return 0
 	}
 	fp := value.FingerPrint(FP64New())
 	return int32(uint32(fp>>32) ^ uint32(fp))
+}
+
+// catchValueFailure is deferred at Java's RuntimeException/OutOfMemoryError
+// catch boundaries. Returned errors represent Java throws in Go; pointer-only
+// and fingerprint APIs retain panics. An unsourced value leaves failures intact.
+func catchValueFailure(value Value, err *error) {
+	if failure := recover(); failure != nil {
+		if valueSource(value) != nil {
+			cause, ok := failure.(error)
+			if !ok {
+				cause = fmt.Errorf("%v", failure)
+			}
+			panic(NewFingerprintExceptionHead(value, cause))
+		}
+		panic(failure)
+	}
+	if err != nil {
+		*err = wrapValueFailure(value, *err)
+	}
+}
+
+func wrapValueFailure(value Value, err error) error {
+	if err != nil && valueSource(value) != nil {
+		return NewFingerprintExceptionHead(value, err)
+	}
+	return err
 }
 
 type ValueExcept struct {
@@ -177,7 +204,8 @@ func NewBoolValue(v bool) *BoolValue {
 func (v *BoolValue) Kind() ValueKind    { return BoolValueKind }
 func (v *BoolValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *BoolValue) Compare(other Value) (int, error) {
+func (v *BoolValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	o, ok := other.(*BoolValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -195,7 +223,8 @@ func (v *BoolValue) Compare(other Value) (int, error) {
 	return x - y, nil
 }
 
-func (v *BoolValue) Equal(other Value) (bool, error) {
+func (v *BoolValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	o, ok := other.(*BoolValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -206,15 +235,18 @@ func (v *BoolValue) Equal(other Value) (bool, error) {
 	return v.Val == o.Val, nil
 }
 
-func (v *BoolValue) Member(elem Value) (bool, error) {
+func (v *BoolValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the boolean %s", elem, v)
 }
 
-func (v *BoolValue) IsFinite() (bool, error) {
+func (v *BoolValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the boolean %s is a finite set.", v)
 }
 
-func (v *BoolValue) Size() (int, error) {
+func (v *BoolValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	return 0, v.unsupported("Attempted to compute the number of elements in the boolean %s.", v)
 }
 
@@ -226,6 +258,7 @@ func (v *BoolValue) DeepCopy() Value       { return v }
 func (v *BoolValue) Permute(*MVPerm) Value { return v }
 
 func (v *BoolValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	fp = FP64ExtendInt(fp, int32(BoolValueKind))
 	if v.Val {
 		return FP64ExtendUTF16(fp, []uint16{'t'})
@@ -233,14 +266,16 @@ func (v *BoolValue) FingerPrint(fp uint64) uint64 {
 	return FP64ExtendUTF16(fp, []uint16{'f'})
 }
 
-func (v *BoolValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *BoolValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the boolean %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *BoolValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *BoolValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the boolean %s.", v)
 	}
@@ -248,6 +283,7 @@ func (v *BoolValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *BoolValue) String() string {
+	defer catchValueFailure(v, nil)
 	if v.Val {
 		return "TRUE"
 	}
@@ -295,9 +331,13 @@ func SumIntValues(a, b *IntValue) *IntValue {
 
 func (v *IntValue) Kind() ValueKind    { return IntValueKind }
 func (v *IntValue) KindString() string { return v.KindStringFor(v.Kind()) }
-func (v *IntValue) NBits() int         { return IntValueNBits(v.Val) }
+func (v *IntValue) NBits() int {
+	defer catchValueFailure(v, nil)
+	return IntValueNBits(v.Val)
+}
 
-func (v *IntValue) Compare(other Value) (int, error) {
+func (v *IntValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	o, ok := other.(*IntValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -314,7 +354,8 @@ func (v *IntValue) Compare(other Value) (int, error) {
 	return 0, nil
 }
 
-func (v *IntValue) Equal(other Value) (bool, error) {
+func (v *IntValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	o, ok := other.(*IntValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -325,15 +366,18 @@ func (v *IntValue) Equal(other Value) (bool, error) {
 	return v.Val == o.Val, nil
 }
 
-func (v *IntValue) Member(elem Value) (bool, error) {
+func (v *IntValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the integer %s", elem, v)
 }
 
-func (v *IntValue) IsFinite() (bool, error) {
+func (v *IntValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the integer %s is a finite set.", v)
 }
 
-func (v *IntValue) Size() (int, error) {
+func (v *IntValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	return 0, v.unsupported("Attempted to compute the number of elements in the integer %s.", v)
 }
 
@@ -345,17 +389,20 @@ func (v *IntValue) DeepCopy() Value       { return v }
 func (v *IntValue) Permute(*MVPerm) Value { return v }
 
 func (v *IntValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	return FP64ExtendInt(FP64ExtendInt(fp, int32(IntValueKind)), v.Val)
 }
 
-func (v *IntValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *IntValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the integer %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *IntValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *IntValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the integer %s.", v)
 	}
@@ -363,6 +410,7 @@ func (v *IntValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *IntValue) String() string {
+	defer catchValueFailure(v, nil)
 	return strconv.FormatInt(int64(v.Val), 10)
 }
 
@@ -388,9 +436,13 @@ func NewStringValueFromUnique(s *UniqueString, cms ...CostModel) *StringValue {
 
 func (v *StringValue) Kind() ValueKind    { return StringValueKind }
 func (v *StringValue) KindString() string { return v.KindStringFor(v.Kind()) }
-func (v *StringValue) Length() int        { return v.Val.Length() }
+func (v *StringValue) Length() int {
+	defer catchValueFailure(v, nil)
+	return v.Val.Length()
+}
 
-func (v *StringValue) Compare(other Value) (int, error) {
+func (v *StringValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	o, ok := other.(*StringValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -401,7 +453,8 @@ func (v *StringValue) Compare(other Value) (int, error) {
 	return v.Val.Compare(o.Val), nil
 }
 
-func (v *StringValue) Equal(other Value) (bool, error) {
+func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	o, ok := other.(*StringValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -412,15 +465,18 @@ func (v *StringValue) Equal(other Value) (bool, error) {
 	return v.Val.Equal(o.Val), nil
 }
 
-func (v *StringValue) Member(elem Value) (bool, error) {
+func (v *StringValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the string %s", elem, v)
 }
 
-func (v *StringValue) IsFinite() (bool, error) {
+func (v *StringValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the string %s is a finite set.", v)
 }
 
-func (v *StringValue) Size() (int, error) {
+func (v *StringValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	return 0, v.unsupported("Attempted to compute the number of elements in the string %s.", v)
 }
 
@@ -432,19 +488,22 @@ func (v *StringValue) DeepCopy() Value       { return v }
 func (v *StringValue) Permute(*MVPerm) Value { return v }
 
 func (v *StringValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	fp = FP64ExtendInt(fp, int32(StringValueKind))
 	fp = FP64ExtendInt(fp, int32(v.Val.Length()))
 	return FP64ExtendString(fp, v.Val.String())
 }
 
-func (v *StringValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *StringValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the string %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *StringValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *StringValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the string %s.", v)
 	}
@@ -452,6 +511,7 @@ func (v *StringValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *StringValue) String() string {
+	defer catchValueFailure(v, nil)
 	return `"` + tlaStringPrintVersion(v.Val.String()) + `"`
 }
 

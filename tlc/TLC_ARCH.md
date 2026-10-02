@@ -642,7 +642,12 @@ Important implementation patterns:
   later lambda/predicate copy constructors deliberately drop the source.
 - `CallStackTool` freezes only for TLC runtime, evaluation, and fingerprint
   exceptions; unrelated errors unwind and pop normally. Value-side exception
-  wrapping remains a separate porting concern from source attachment.
+  wrapping remains a separate porting concern from source attachment. Primitive
+  and explicit-set boundaries are ported; other composite/lazy boundaries remain
+  to audit. Returned errors and panics both preserve the value chain.
+- Fingerprint exception traces read each value's current source at trace time;
+  sources are not snapshots taken when an exception head is created. Null
+  source entries remain present in `asTrace` like Java.
 - `FingerprintException.getTrace` is intentionally recursive: Java assigns
   labels while walking the linked exception head, then prints the recursive tail
   before the current frame. Preserve that order because the formatted trace is
