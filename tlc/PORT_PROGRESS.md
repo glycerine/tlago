@@ -729,6 +729,7 @@
 - `TLC!RandomElement` now preserves Java's default `SetEnumValue.randomElement()` behavior by drawing from the current backing `ValueVec` without normalizing first. This keeps Java's raw order/duplicate weighting for unnormalized enumerated sets and for values materialized by `toSetEnum()`.
 - Tool state-generation diagnostics now preserve Java's exact central `Tool` text for malformed next-state relations, malformed init-state relations, and `MakeState` uniqueness/completeness failures, including capitalization and newline-vs-inline predicate formatting.
 - `ModelConfig.getConstantsAsList` now derives from the raw token stream like Java instead of rebuilding compact semantic strings. This preserves Java's token spacing for parameterized constants and trace-exploration spec generation while leaving parsed constant values unchanged.
+- `ModelConfig` config-file diagnostics now use Java `MP` message text for `CFG_*` errors. The parser also preserves Java's branch order for `CHECK_DEADLOCK` by validating the token before reporting a duplicate keyword, rejects empty parameterized constant argument lists with `CFG_GENERAL`, and reports set-closing-brace errors on the offending token line instead of the opening brace line.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:

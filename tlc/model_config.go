@@ -71,15 +71,17 @@ func (e *ConfigFileError) Error() string {
 	}
 	switch e.Code {
 	case ECCFGMissingID:
-		return fmt.Sprintf("config line %s: missing identifier after %s", e.param(0), e.param(1))
+		return fmt.Sprintf("TLC found an error in the configuration file at line %s\nThe keyword %s was not followed by an identifier.", e.param(0), e.param(1))
 	case ECCFGTwiceKeyword:
-		return fmt.Sprintf("config line %s: keyword %s occurs more than once", e.param(0), e.param(1))
+		return fmt.Sprintf("TLC found an error in the configuration file at line %s\nThe keyword %s appeared twice.", e.param(0), e.param(1))
 	case ECCFGExpectID:
-		return fmt.Sprintf("config line %s: expected identifier after %s", e.param(0), e.param(1))
+		return fmt.Sprintf("TLC found an error in the configuration file at line %s\nExpected an identifier after %s.", e.param(0), e.param(1))
+	case ECCFGGeneral:
+		return fmt.Sprintf("TLC found an error in the configuration file at line %s\n", e.param(0))
 	case ECCFGExpectedSymbol:
-		return fmt.Sprintf("config line %s: expected %s", e.param(0), e.param(1))
+		return fmt.Sprintf("TLC found an error in the configuration file at line %s\nIt was expecting %s, but did not find it.", e.param(0), e.param(1))
 	case ECCFGErrorReadingFile:
-		return fmt.Sprintf("cannot read config file %s: %s", e.param(0), e.param(1))
+		return fmt.Sprintf("TLC encountered the following error when trying to read the configuration file %s:\n%s", e.param(0), e.param(1))
 	default:
 		if len(e.Params) != 0 {
 			return fmt.Sprintf("config error %d: %s", e.Code, strings.Join(e.Params, ", "))
@@ -470,17 +472,19 @@ func (p *modelConfigParser) parseCheckDeadlock(keyword modelConfigToken) error {
 	if tok.kind == configTokenEOF {
 		return newConfigFileError(ECCFGMissingID, keyword.line, keyword.image)
 	}
-	if p.cfg.deadlockSet {
-		return newConfigFileError(ECCFGTwiceKeyword, keyword.line, keyword.image)
-	}
+	parsed := false
 	switch tok.image {
 	case "TRUE":
-		p.cfg.checkDeadlock = true
+		parsed = true
 	case "FALSE":
-		p.cfg.checkDeadlock = false
+		parsed = false
 	default:
 		return newConfigFileError(ECCFGExpectedSymbol, tok.line, "TRUE or FALSE")
 	}
+	if p.cfg.deadlockSet {
+		return newConfigFileError(ECCFGTwiceKeyword, keyword.line, keyword.image)
+	}
+	p.cfg.checkDeadlock = parsed
 	p.cfg.deadlockSet = true
 	return nil
 }
@@ -513,7 +517,7 @@ func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
 
 		args := []Value(nil)
 		if next.image == "(" {
-			parsedArgs, afterArgs, err := p.parseConstantArgsRaw(next.line, &raw)
+			parsedArgs, afterArgs, err := p.parseConstantArgsRaw(keyword.line, &raw)
 			if err != nil {
 				return err
 			}
@@ -601,7 +605,7 @@ func (p *modelConfigParser) parseConstantArgsRaw(line int, raw *strings.Builder)
 		appendConfigRawToken(raw, tok)
 	}
 	if tok.image == ")" {
-		return nil, p.nextRaw(raw), nil
+		return nil, modelConfigToken{}, newConfigFileError(ECCFGGeneral, line)
 	}
 	args := []Value{}
 	for {
@@ -671,7 +675,7 @@ func (p *modelConfigParser) parseSetValueRaw(line int, raw *strings.Builder) (Va
 		}
 	}
 	if tok.image != "}" {
-		return nil, newConfigFileError(ECCFGExpectedSymbol, line, "}")
+		return nil, newConfigFileError(ECCFGExpectedSymbol, tok.line, "}")
 	}
 	return NewSetEnumValueVec(values, false), nil
 }
