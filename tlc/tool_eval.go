@@ -159,7 +159,7 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 	case *NumeralNode:
 		return expr.Value, nil
 	case *DecimalNode:
-		return expr.Value, nil
+		return nil, newTLCErrorCode(ECTLCCantHandleRealNumbers, SemanticString(expr))
 	case *StringNode:
 		return expr.Value, nil
 	case *AtNode:
