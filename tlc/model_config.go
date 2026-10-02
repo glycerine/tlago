@@ -3,7 +3,6 @@ package tlc
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -217,8 +216,7 @@ func ParseModelConfigFile(configFile string) (*ModelConfig, error) {
 	}
 	source := string(data)
 	if strings.HasSuffix(path, ".tla") {
-		name := strings.TrimSuffix(filepath.Base(path), ".tla")
-		source = ExtractMonolithConfigSource(source, name)
+		source = ExtractMonolithConfigSource(source, strings.ReplaceAll(path, ".tla", ""))
 	}
 	return ParseModelConfigSource(path, source)
 }

@@ -242,8 +242,8 @@ func TestModelConfigExtractsMonolithConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseModelConfigFile returned error: %v", err)
 	}
-	if cfg.GetSpec() != "Spec" {
-		t.Fatalf("full-path monolith config SPECIFICATION = %q, want Spec", cfg.GetSpec())
+	if cfg.GetSpec() != "" {
+		t.Fatalf("full-path monolith config SPECIFICATION = %q, want empty like Java full-path configName lookup", cfg.GetSpec())
 	}
 	cfg, err = ParseModelConfigSource("Scratch.tla", ExtractMonolithConfigSource(source, "Scratch"))
 	if err != nil {
