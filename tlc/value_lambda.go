@@ -276,6 +276,7 @@ func (v *FcnLambdaValue) Kind() ValueKind    { return FcnLambdaValueKind }
 func (v *FcnLambdaValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
 func (v *FcnLambdaValue) MakeRecursive(fname *SymbolNode) {
+	defer catchValueFailure(v, nil)
 	if v.Con == nil {
 		v.Con = EmptyContext
 	}
@@ -283,7 +284,8 @@ func (v *FcnLambdaValue) MakeRecursive(fname *SymbolNode) {
 	v.Control = EvalSetKeepLazy(v.Control)
 }
 
-func (v *FcnLambdaValue) Compare(other Value) (int, error) {
+func (v *FcnLambdaValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	fcn, err := v.materializeFcnRcd()
 	if err != nil {
 		return 0, err
@@ -291,7 +293,8 @@ func (v *FcnLambdaValue) Compare(other Value) (int, error) {
 	return fcn.Compare(other)
 }
 
-func (v *FcnLambdaValue) Equal(other Value) (bool, error) {
+func (v *FcnLambdaValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	fcn, err := v.materializeFcnRcd()
 	if err != nil {
 		return false, err
@@ -299,11 +302,13 @@ func (v *FcnLambdaValue) Equal(other Value) (bool, error) {
 	return fcn.Equal(other)
 }
 
-func (v *FcnLambdaValue) Member(elem Value) (bool, error) {
+func (v *FcnLambdaValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v))
 }
 
-func (v *FcnLambdaValue) IsFinite() (bool, error) {
+func (v *FcnLambdaValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the function:\n%s\nis a finite set.", ValuesPPR(v))
 }
 
@@ -311,7 +316,8 @@ func (v *FcnLambdaValue) Apply(arg Value) (Value, error) {
 	return v.ApplyWithControl(arg, EvalClear)
 }
 
-func (v *FcnLambdaValue) ApplyWithControl(arg Value, control int) (Value, error) {
+func (v *FcnLambdaValue) ApplyWithControl(arg Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd.Apply(arg)
 	}
@@ -428,7 +434,8 @@ func (v *FcnLambdaValue) bindArgumentForApply(arg Value) (*Context, bool, error)
 	return ctx, false, nil
 }
 
-func (v *FcnLambdaValue) Select(arg Value) (Value, error) {
+func (v *FcnLambdaValue) Select(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd.Select(arg)
 	}
@@ -610,7 +617,8 @@ func takeMatchedExcepts(value Value, matches []ValueExcept) (Value, error) {
 	return value.TakeExcepts(matches)
 }
 
-func (v *FcnLambdaValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *FcnLambdaValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
@@ -622,7 +630,8 @@ func (v *FcnLambdaValue) TakeExcept(ex ValueExcept) (Value, error) {
 	return fcn, nil
 }
 
-func (v *FcnLambdaValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *FcnLambdaValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd.TakeExcepts(exs)
 	}
@@ -645,7 +654,8 @@ func (v *FcnLambdaValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 	return fcn, nil
 }
 
-func (v *FcnLambdaValue) GetDomain() (Value, error) {
+func (v *FcnLambdaValue) GetDomain() (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd.DomainValue(), nil
 	}
@@ -668,7 +678,8 @@ func (v *FcnLambdaValue) GetDomain() (Value, error) {
 	return NewSetOfTuplesValue(sets), nil
 }
 
-func (v *FcnLambdaValue) Size() (int, error) {
+func (v *FcnLambdaValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd.Size()
 	}
@@ -681,6 +692,7 @@ func (v *FcnLambdaValue) Size() (int, error) {
 func (v *FcnLambdaValue) IsDefined() bool { return true }
 
 func (v *FcnLambdaValue) DeepCopy() Value {
+	defer catchValueFailure(v, nil)
 	fcn := NewFcnLambdaValueFrom(v, v.Tool)
 	if v.FcnRcd != nil {
 		if copied, ok := v.FcnRcd.DeepCopy().(*FcnRcdValue); ok {
@@ -691,10 +703,12 @@ func (v *FcnLambdaValue) DeepCopy() Value {
 }
 
 func (v *FcnLambdaValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	return v.FcnRcd != nil && v.FcnRcd.IsNormalized()
 }
 
 func (v *FcnLambdaValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.FcnRcd != nil {
 		v.FcnRcd.Normalize()
 	}
@@ -702,6 +716,7 @@ func (v *FcnLambdaValue) Normalize() Value {
 }
 
 func (v *FcnLambdaValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	if v.FcnRcd != nil {
 		v.FcnRcd.DeepNormalize()
 		return
@@ -802,7 +817,8 @@ func (v *FcnLambdaValue) ToFcnRcd() *FcnRcdValue {
 	return fcn
 }
 
-func (v *FcnLambdaValue) materializeFcnRcd() (*FcnRcdValue, error) {
+func (v *FcnLambdaValue) materializeFcnRcd() (resultFcn *FcnRcdValue, err error) {
+	defer catchValueFailure(v, &err)
 	if v.FcnRcd != nil {
 		return v.FcnRcd, nil
 	}
@@ -858,6 +874,7 @@ func (v *FcnLambdaValue) materializeFcnRcd() (*FcnRcdValue, error) {
 }
 
 func (v *FcnLambdaValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	fcn, err := v.materializeFcnRcd()
 	if err != nil {
 		panic(err)
@@ -866,6 +883,7 @@ func (v *FcnLambdaValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *FcnLambdaValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	fcn, err := v.materializeFcnRcd()
 	if err != nil {
 		panic(err)
@@ -874,6 +892,7 @@ func (v *FcnLambdaValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *FcnLambdaValue) String() string {
+	defer catchValueFailure(v, nil)
 	if Globals.Expand || v.Params == nil {
 		if value, ok := v.expandedString(); ok {
 			return value

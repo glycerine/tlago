@@ -98,7 +98,8 @@ func (v *LazyValue) ready(message string) (Value, error) {
 	return v.Val, nil
 }
 
-func (v *LazyValue) Compare(other Value) (int, error) {
+func (v *LazyValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to compare lazy values.")
 	if err != nil {
 		return 0, err
@@ -106,7 +107,8 @@ func (v *LazyValue) Compare(other Value) (int, error) {
 	return val.Compare(other)
 }
 
-func (v *LazyValue) Equal(other Value) (bool, error) {
+func (v *LazyValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to check equality of lazy values.")
 	if err != nil {
 		return false, err
@@ -114,7 +116,8 @@ func (v *LazyValue) Equal(other Value) (bool, error) {
 	return val.Equal(other)
 }
 
-func (v *LazyValue) Member(elem Value) (bool, error) {
+func (v *LazyValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to check set membership of lazy values.")
 	if err != nil {
 		return false, err
@@ -122,7 +125,8 @@ func (v *LazyValue) Member(elem Value) (bool, error) {
 	return val.Member(elem)
 }
 
-func (v *LazyValue) IsFinite() (bool, error) {
+func (v *LazyValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to check if a lazy value is a finite set.")
 	if err != nil {
 		return false, err
@@ -130,7 +134,8 @@ func (v *LazyValue) IsFinite() (bool, error) {
 	return val.IsFinite()
 }
 
-func (v *LazyValue) Size() (int, error) {
+func (v *LazyValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to compute size of lazy value.")
 	if err != nil {
 		return 0, err
@@ -139,6 +144,7 @@ func (v *LazyValue) Size() (int, error) {
 }
 
 func (v *LazyValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	val, err := v.ready("Error(TLC): Attempted to normalize lazy value.")
 	if err != nil {
 		panic(err)
@@ -147,13 +153,10 @@ func (v *LazyValue) Normalize() Value {
 	return v
 }
 
-func (v *LazyValue) DeepNormalize() {
-	if v.Val != nil && v.Val != ValUndef {
-		v.Val.DeepNormalize()
-	}
-}
+func (v *LazyValue) DeepNormalize() {}
 
 func (v *LazyValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	val, err := v.ready("Error(TLC): Attempted to normalize lazy value.")
 	if err != nil {
 		panic(err)
@@ -164,6 +167,7 @@ func (v *LazyValue) IsNormalized() bool {
 func (v *LazyValue) IsDefined() bool { return true }
 
 func (v *LazyValue) DeepCopy() Value {
+	defer catchValueFailure(v, nil)
 	if v.Val == nil || v.Val == ValUndef {
 		return v
 	}
@@ -171,6 +175,7 @@ func (v *LazyValue) DeepCopy() Value {
 }
 
 func (v *LazyValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	val, err := v.ready("Error(TLC): Attempted to fingerprint a lazy value.")
 	if err != nil {
 		panic(err)
@@ -179,6 +184,7 @@ func (v *LazyValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *LazyValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	val, err := v.ready("Error(TLC): Attempted to apply permutation to lazy value.")
 	if err != nil {
 		panic(err)
@@ -186,7 +192,8 @@ func (v *LazyValue) Permute(perm *MVPerm) Value {
 	return val.Permute(perm)
 }
 
-func (v *LazyValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *LazyValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to apply EXCEPT construct to lazy value.")
 	if err != nil {
 		return nil, err
@@ -194,7 +201,8 @@ func (v *LazyValue) TakeExcept(ex ValueExcept) (Value, error) {
 	return val.TakeExcept(ex)
 }
 
-func (v *LazyValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *LazyValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	val, err := v.ready("Error(TLC): Attempted to apply EXCEPT construct to lazy value.")
 	if err != nil {
 		return nil, err
@@ -203,7 +211,7 @@ func (v *LazyValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *LazyValue) Eval(tool *Tool, state *TLCStateMut, pstate *TLCStateMut) (Value, error) {
-	value, err := tool.Eval(v.Expr, v.Con, state, pstate, EvalClear)
+	value, err := tool.Eval(v.Expr, v.Con, state, pstate, EvalClear, v.CM)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +220,7 @@ func (v *LazyValue) Eval(tool *Tool, state *TLCStateMut, pstate *TLCStateMut) (V
 }
 
 func (v *LazyValue) String() string {
+	defer catchValueFailure(v, nil)
 	if v.Val == nil || v.Val == ValUndef {
 		return "<LAZY " + toContextString(v.Expr) + ">"
 	}
@@ -346,7 +355,8 @@ func (v *SetPredValue) materialize() (*SetEnumValue, error) {
 	return set, nil
 }
 
-func (v *SetPredValue) Compare(other Value) (int, error) {
+func (v *SetPredValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.materialize()
 	if err != nil {
 		return 0, err
@@ -354,7 +364,8 @@ func (v *SetPredValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *SetPredValue) Equal(other Value) (bool, error) {
+func (v *SetPredValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.materialize()
 	if err != nil {
 		return false, err
@@ -362,10 +373,29 @@ func (v *SetPredValue) Equal(other Value) (bool, error) {
 	return set.Equal(other)
 }
 
-func (v *SetPredValue) Member(elem Value) (bool, error) {
+func (v *SetPredValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Converted {
 		return v.InVal.Member(elem)
 	}
+	return v.memberUnconverted(elem)
+}
+
+func (v *SetPredValue) memberUnconverted(elem Value) (resultBool bool, err error) {
+	// Java's inner catch only rewrites EvalException, including failures in
+	// domain membership or tuple binding; FingerprintException stays intact.
+	defer func() {
+		if failure := recover(); failure != nil {
+			if thrown, ok := failure.(error); ok && isSetPredEvalException(thrown) {
+				err = v.membershipUndecidable(elem)
+			} else {
+				panic(failure)
+			}
+		}
+		if isSetPredEvalException(err) {
+			err = v.membershipUndecidable(elem)
+		}
+	}()
 	in, err := v.InVal.Member(elem)
 	if err != nil || !in {
 		return false, err
@@ -374,9 +404,10 @@ func (v *SetPredValue) Member(elem Value) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	res, err := v.Tool.Eval(v.Pred, ctx, v.State, v.PState, v.Control, v.CM)
+	// Unlike enumeration, Java member() uses the overload without a cost model.
+	res, err := v.Tool.Eval(v.Pred, ctx, v.State, v.PState, v.Control)
 	if err != nil {
-		return false, v.unsupported("Cannot decide if element:\n%s\n is element of:\n%s\nand satisfies the predicate %s", ValuesPPR(elem), ValuesPPR(v.InVal), v.Pred)
+		return false, err
 	}
 	boolValue, ok := res.(*BoolValue)
 	if !ok {
@@ -385,7 +416,24 @@ func (v *SetPredValue) Member(elem Value) (bool, error) {
 	return boolValue.Val, nil
 }
 
-func (v *SetPredValue) IsFinite() (bool, error) {
+func isSetPredEvalException(err error) bool {
+	switch failure := err.(type) {
+	case *EvalException:
+		return failure != nil
+	case *TLCError:
+		// Native module errors use this existing Go EvalException carrier.
+		return failure != nil && (failure.Params != nil || failure.Code != ECGeneral)
+	default:
+		return false
+	}
+}
+
+func (v *SetPredValue) membershipUndecidable(elem Value) error {
+	return v.unsupported("Cannot decide if element:\n%s\n is element of:\n%s\nand satisfies the predicate %s", ValuesPPR(elem), ValuesPPR(v.InVal), v.Pred)
+}
+
+func (v *SetPredValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	finite, err := v.InVal.IsFinite()
 	if err != nil {
 		return false, err
@@ -396,7 +444,8 @@ func (v *SetPredValue) IsFinite() (bool, error) {
 	return true, nil
 }
 
-func (v *SetPredValue) Size() (int, error) {
+func (v *SetPredValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	set, err := v.materialize()
 	if err != nil {
 		return 0, err
@@ -405,19 +454,25 @@ func (v *SetPredValue) Size() (int, error) {
 }
 
 func (v *SetPredValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	v.InVal.Normalize()
 	return v
 }
 
 func (v *SetPredValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.InVal.DeepNormalize()
 }
 
-func (v *SetPredValue) IsNormalized() bool { return v.InVal.IsNormalized() }
-func (v *SetPredValue) IsDefined() bool    { return true }
-func (v *SetPredValue) DeepCopy() Value    { return v }
+func (v *SetPredValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
+	return v.InVal.IsNormalized()
+}
+func (v *SetPredValue) IsDefined() bool { return true }
+func (v *SetPredValue) DeepCopy() Value { return v }
 
 func (v *SetPredValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.materialize()
 	if err != nil {
 		panic(err)
@@ -426,18 +481,21 @@ func (v *SetPredValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *SetPredValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.materialize()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *SetPredValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *SetPredValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *SetPredValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *SetPredValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
 
@@ -465,16 +523,24 @@ func (v *SetPredValue) ToSetEnum() (*SetEnumValue, error) {
 }
 
 func (v *SetPredValue) Elements() ValueEnumeration {
+	defer catchValueFailure(v, nil)
 	if v.Converted {
-		if set, ok := v.InVal.(*SetEnumValue); ok {
-			return set.Elements()
+		set := v.InVal.(*SetEnumValue)
+		enum := set.Elements()
+		if err := enum.Err(); err != nil {
+			return newErrorEnumeration(wrapValueFailure(v, err))
 		}
+		return enum
 	}
 	enum, ok := asEnumerable(v.InVal)
 	if !ok {
-		return newErrorEnumeration(v.unsupported("Attempted to enumerate { x \\in S : p(x) } when S:\n%s\nis not enumerable", ValuesPPR(v.InVal)))
+		return newErrorEnumeration(wrapValueFailure(v, v.unsupported("Attempted to enumerate { x \\in S : p(x) } when S:\n%s\nis not enumerable", ValuesPPR(v.InVal))))
 	}
-	return &setPredEnumeration{set: v, enum: enum.Elements()}
+	elements := enum.Elements()
+	if err := elements.Err(); err != nil {
+		return newErrorEnumeration(wrapValueFailure(v, err))
+	}
+	return &setPredEnumeration{set: v, enum: elements}
 }
 
 func (v *SetPredValue) bind(elem Value) (*Context, error) {
@@ -500,9 +566,10 @@ func (v *SetPredValue) bind(elem Value) (*Context, error) {
 }
 
 func (v *SetPredValue) String() string {
+	defer catchValueFailure(v, nil)
 	if Globals.Expand {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+		if expanded, ok := v.expandedString(); ok {
+			return expanded
 		}
 	}
 	var names []string
@@ -516,6 +583,20 @@ func (v *SetPredValue) String() string {
 		}
 	}
 	return "{" + strings.Join(names, ", ") + " \\in " + v.InVal.String() + " : <expression " + toContextString(v.Pred) + "> }"
+}
+
+func (v *SetPredValue) expandedString() (value string, ok bool) {
+	// Java's checked toString swallows Throwable only around expansion.
+	defer func() {
+		if recover() != nil {
+			value, ok = "", false
+		}
+	}()
+	set, err := v.ToSetEnum()
+	if err != nil {
+		return "", false
+	}
+	return set.String(), true
 }
 
 type setPredEnumeration struct {

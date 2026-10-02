@@ -643,9 +643,16 @@ Important implementation patterns:
 - `CallStackTool` freezes only for TLC runtime, evaluation, and fingerprint
   exceptions; unrelated errors unwind and pop normally. Value-side exception
   wrapping remains a separate porting concern from source attachment. Primitive,
-  explicit-set, tuple, record, and finite-function boundaries are ported; remaining
-  lazy/set-constructor/operator boundaries still need audit. Returned errors and
+  explicit-set, tuple, record, finite-function, and lazy-value boundaries are ported;
+  set-constructor/operator/model/special boundaries still need audit. Returned errors and
   panics both preserve the value chain.
+- Set-predicate membership has a separate inner EvalException-only rewrite;
+  domain, binding, and predicate evaluation are inside that catch, and ordinary
+  runtime/fingerprint failures pass to its outer source wrapper. Membership uses
+  the no-cost-model evaluation overload; enumeration retains its model.
+  Checked predicate printing catches expansion failures before symbolic fallback.
+  Lazy deep normalization is Java's inherited no-op, and direct lazy evaluation
+  uses the stored cost model.
 - Fingerprint exception traces read each value's current source at trace time;
   sources are not snapshots taken when an exception head is created. Null
   source entries remain present in `asTrace` like Java.
