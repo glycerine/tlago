@@ -13,6 +13,15 @@ var possibleCountsKey = UniqueStringOf("s:_possible")
 var tlcExtActionField = UniqueStringOf("_action")
 var pickSuccessorMu sync.Mutex
 var tlcExtFingerprintMu sync.Mutex
+var tlcExtCacheStore = struct {
+	sync.Mutex
+	values map[tlcExtCacheKey]*TLCExtCache
+}{values: make(map[tlcExtCacheKey]*TLCExtCache)}
+
+type tlcExtCacheKey struct {
+	toolID int64
+	nodeID int32
+}
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
 	if expected == nil {
@@ -286,6 +295,26 @@ type tlcExtCacheEntry struct {
 
 func NewTLCExtCache() *TLCExtCache {
 	return &TLCExtCache{}
+}
+
+func tlcExtCacheForTool(tool *Tool, expr SemanticNode) *TLCExtCache {
+	toolID := int64(0)
+	if tool != nil {
+		toolID = tool.ID
+	}
+	nodeID := SemanticJavaHashCode(expr)
+	if node, ok := expr.(interface{ GetUID() int32 }); ok {
+		nodeID = node.GetUID()
+	}
+	key := tlcExtCacheKey{toolID: toolID, nodeID: nodeID}
+	tlcExtCacheStore.Lock()
+	defer tlcExtCacheStore.Unlock()
+	cache := tlcExtCacheStore.values[key]
+	if cache == nil {
+		cache = NewTLCExtCache()
+		tlcExtCacheStore.values[key] = cache
+	}
+	return cache
 }
 
 func (c *TLCExtCache) Eval(key Value, compute func() (Value, error)) (Value, error) {
