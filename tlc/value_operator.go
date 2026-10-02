@@ -212,7 +212,8 @@ func (v *OpLambdaValue) Permute(perm *MVPerm) Value {
 	return v.operatorValueBase.Permute(perm)
 }
 
-func (v *OpLambdaValue) Eval(args []Value, control int) (Value, error) {
+func (v *OpLambdaValue) Eval(args []Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if v.OpDef == nil {
 		return nil, newTLCError(ECGeneral, "Attempted to apply a nil operator.")
 	}
@@ -232,7 +233,7 @@ func (v *OpLambdaValue) Eval(args []Value, control int) (Value, error) {
 	if EvalIsEnabled(v.Control) {
 		control = EvalSetEnabled(control)
 	}
-	return v.Tool.Eval(v.OpDef.Body, ctx, v.State, v.PState, control, v.CM)
+	return v.Tool.Eval(v.OpDef.Body, ctx, v.State, v.PState, control, DoNotRecordCostModel)
 }
 
 type OpRcdValue struct {
@@ -256,16 +257,15 @@ func NewOpRcdValueFrom(domain [][]Value, values []Value) *OpRcdValue {
 }
 
 func (v *OpRcdValue) AddLine(values []Value) {
-	if len(values) < 2 {
-		return
-	}
+	defer catchValueFailure(v, nil)
 	args := make([]Value, len(values)-2)
 	copy(args, values[1:len(values)-1])
 	v.Domain = append(v.Domain, args)
 	v.Values = append(v.Values, values[len(values)-1])
 }
 
-func (v *OpRcdValue) Eval(args []Value, control int) (Value, error) {
+func (v *OpRcdValue) Eval(args []Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	_ = control
 	for i, vals := range v.Domain {
 		if len(args) != len(vals) {
@@ -290,6 +290,7 @@ func (v *OpRcdValue) Eval(args []Value, control int) (Value, error) {
 }
 
 func (v *OpRcdValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	for _, value := range v.Values {
 		if !value.IsDefined() {
 			return false
@@ -298,23 +299,13 @@ func (v *OpRcdValue) IsDefined() bool {
 	return true
 }
 
-func (v *OpRcdValue) DeepNormalize() {
-	for i := range v.Domain {
-		for _, arg := range v.Domain[i] {
-			arg.DeepNormalize()
-		}
-	}
-	for _, value := range v.Values {
-		value.DeepNormalize()
-	}
-}
-
 func (v *OpRcdValue) DeepCopy() Value { return v }
 func (v *OpRcdValue) Permute(perm *MVPerm) Value {
 	return v.operatorValueBase.Permute(perm)
 }
 
 func (v *OpRcdValue) String() string {
+	defer catchValueFailure(v, nil)
 	var b strings.Builder
 	b.WriteString("{ ")
 	for i, value := range v.Values {
