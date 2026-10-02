@@ -3227,6 +3227,26 @@ The translated InternetAddressFoldTest adds nine exact addrfolddata cases, and
 MimeUtilityTest adds its surrogate-pair and Chinese-alias word tests, after their
 features. All 254 translated mail cases pass; enabled-mail production integration
 with two fake deliveries and the offline suite also pass.
+HeaderTokenizer, ContentType and ParameterList now provide the native MIME header
+dependencies. They retain UTF-16 token positions, nested comments, peek/next state,
+strict/lenient and Windows/Apple parsing, RFC2231 single/split encoded values,
+orphan segments, failure consistency, literals and source splitting/folding.
+ParameterList freezes its own seven property flags independently of MimeUtility.
+The main list uses InsMap insertion order; auxiliary maps/sets retain OpenJDK
+bucket and collision-tree traversal, including resize/deletion and clear capacity.
+NamesEnumeration supplies the live fail-fast Java iterator; GetNames is the Go
+snapshot convenience. ISO-2022-JP decoding now retains OpenJDK escape/shift states,
+malformed widths and JIS0208 mappings through exact deltas against pinned x/text;
+encoding and other Japanese variants remain provider boundaries. The HashMap
+ordering and ISO decoder files retain their OpenJDK GPLv2/Classpath notices.
+After implementation, translated HeaderTokenizerTest, ContentTypeTest and five
+ParameterList suites pass the original assertions with exact tokenlist/paramdata/
+paramdatanostrict fixtures in test_vectors/javamail/. Fresh suite processes mirror
+Java's isolated class loaders. NonAsciiFileNames awaits MimeBodyPart rather than
+substituting another feature. All 339 translated mail assertion cases pass under
+-race; temporary comparisons against actual Java pass 63,156 parser/serialization,
+1,400 collision and 600 enumeration observations, plus 46,816 ISO decoder inputs.
+All 65,536 JIS0208 mapping entries were audited; the full offline Go suite passes.
 Remaining mail work includes MIME content-transfer selection/DataSource/DataHandler
 and the three remaining MimeUtilityTest methods, remaining address-object/local
 address/Session methods, Session/MIME/SMTP, JNDI DNS and complete ToolIO/MP/SANY

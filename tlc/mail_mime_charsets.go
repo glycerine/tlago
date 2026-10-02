@@ -48,7 +48,7 @@ func mailCharsetName(value string) string {
 		return "gb18030"
 	case "sjis":
 		return "Shift_JIS"
-	case "jis", "iso2022jp":
+	case "iso-2022-jp", "jis", "iso2022jp", "csjisencoding", "jis_encoding", "csiso2022jp":
 		return "ISO-2022-JP"
 	case "eucjis", "euc_jp":
 		return "EUC-JP"
@@ -162,6 +162,8 @@ func encodeMailCharset(value, charset string) ([]byte, error) {
 func decodeMailCharset(data []byte, charset string) (string, error) {
 	name := mailCharsetName(charset)
 	switch name {
+	case "ISO-2022-JP":
+		return decodeMailISO2022JP(data), nil
 	case "utf-8":
 		return decodeMailUTF8(data), nil
 	case "gb18030":

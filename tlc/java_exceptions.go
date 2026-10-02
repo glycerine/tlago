@@ -114,6 +114,20 @@ func isJavaIOException(err error) bool {
 
 type WrongInvocationException struct{ javaExceptionBase }
 
+type NoSuchElementException struct{ javaExceptionBase }
+
+func NewNoSuchElementException() *NoSuchElementException {
+	return &NoSuchElementException{javaExceptionBase: newJavaExceptionBase(nil, nil)}
+}
+func (e *NoSuchElementException) Error() string { return javaThrowableMessage(e) }
+
+type ConcurrentModificationException struct{ javaExceptionBase }
+
+func NewConcurrentModificationException() *ConcurrentModificationException {
+	return &ConcurrentModificationException{javaExceptionBase: newJavaExceptionBase(nil, nil)}
+}
+func (e *ConcurrentModificationException) Error() string { return javaThrowableMessage(e) }
+
 func NewWrongInvocationException(message string) *WrongInvocationException {
 	return &WrongInvocationException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}
 }

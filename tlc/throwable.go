@@ -38,6 +38,10 @@ func javaThrowableClassName(err error) string {
 		return "java.io.UnsupportedEncodingException"
 	case *NumberFormatException:
 		return "java.lang.NumberFormatException"
+	case *NoSuchElementException:
+		return "java.util.NoSuchElementException"
+	case *ConcurrentModificationException:
+		return "java.util.ConcurrentModificationException"
 	case *StackOverflowError:
 		return "java.lang.StackOverflowError"
 	case *RuntimeException:
