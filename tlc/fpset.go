@@ -599,20 +599,23 @@ func (s *MemFPSet) CheckFPs() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	dis := uint64(1<<63 - 1)
+	dis := int64(1<<63 - 1)
 	for i, bucket := range s.table {
 		for j, x := range bucket {
 			for k := j + 1; k < len(bucket); k++ {
-				dis = minUint64(dis, absDiffUint64(x, bucket[k]))
+				dis = javaLongMin(dis, javaLongAbs(javaLongSub(int64(x), int64(bucket[k]))))
 			}
 			for _, otherBucket := range s.table[i+1:] {
 				for _, y := range otherBucket {
-					dis = minUint64(dis, absDiffUint64(x, y))
+					dis1 := javaLongDistanceIfNonnegative(int64(x), int64(y))
+					if dis1 >= 0 {
+						dis = javaLongMin(dis, dis1)
+					}
 				}
 			}
 		}
 	}
-	return dis
+	return uint64(dis)
 }
 
 func (s *MemFPSet) BeginChkpt() error {
@@ -712,11 +715,36 @@ func minUint64(a, b uint64) uint64 {
 	return b
 }
 
-func absDiffUint64(a, b uint64) uint64 {
-	if a >= b {
-		return a - b
+func javaLongSub(a int64, b int64) int64 {
+	return int64(uint64(a) - uint64(b))
+}
+
+func javaLongAbs(v int64) int64 {
+	if v >= 0 {
+		return v
 	}
-	return b - a
+	return int64(uint64(0) - uint64(v))
+}
+
+func javaLongMin(a int64, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func javaLongDistanceIfNonnegative(a int64, b int64) int64 {
+	if a > b {
+		return javaLongSub(a, b)
+	}
+	return javaLongSub(b, a)
+}
+
+func javaLongMinBits(a uint64, b uint64) uint64 {
+	if int64(a) < int64(b) {
+		return a
+	}
+	return b
 }
 
 type NoopFPSet struct {
@@ -1128,7 +1156,7 @@ func (s *MemFPSet2) CheckInvariant(expectFPs ...uint64) bool {
 func (s *MemFPSet2) CheckFPs() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	dis := uint64(1<<63 - 1)
+	dis := int64(1<<63 - 1)
 	for i, bucket := range s.table {
 		low := uint64(i) & 0xffffff
 		j := 0
@@ -1137,7 +1165,10 @@ func (s *MemFPSet2) CheckFPs() uint64 {
 			j += 5
 			for k := j; k < len(bucket); k += 5 {
 				fp1 := memFPSet2Fingerprint(low, bucket[k], bucket[k+1], bucket[k+2], bucket[k+3], bucket[k+4])
-				dis = minUint64(dis, absDiffUint64(fp, fp1))
+				dis1 := javaLongDistanceIfNonnegative(int64(fp), int64(fp1))
+				if dis1 >= 0 {
+					dis = javaLongMin(dis, dis1)
+				}
 			}
 			for k := i + 1; k < len(s.table); k++ {
 				bucket1 := s.table[k]
@@ -1149,12 +1180,15 @@ func (s *MemFPSet2) CheckFPs() uint64 {
 				// bucket here, not bucket1. Preserve that diagnostic quirk.
 				for k1 := 0; k1 < len(bucket); k1 += 5 {
 					fp1 := memFPSet2Fingerprint(low1, bucket[k1], bucket[k1+1], bucket[k1+2], bucket[k1+3], bucket[k1+4])
-					dis = minUint64(dis, absDiffUint64(fp, fp1))
+					dis1 := javaLongDistanceIfNonnegative(int64(fp), int64(fp1))
+					if dis1 >= 0 {
+						dis = javaLongMin(dis, dis1)
+					}
 				}
 			}
 		}
 	}
-	return dis
+	return uint64(dis)
 }
 
 func (s *MemFPSet2) BeginChkpt() error {
@@ -1374,7 +1408,7 @@ func (s *MultiFPSet) GetConfiguration() *FPSetConfiguration {
 func (s *MultiFPSet) CheckFPs() uint64 {
 	dis := uint64(1<<63 - 1)
 	for _, set := range s.Sets {
-		dis = minUint64(dis, set.CheckFPs())
+		dis = javaLongMinBits(dis, set.CheckFPs())
 	}
 	return dis
 }

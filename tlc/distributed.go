@@ -310,13 +310,13 @@ func (m *DistributedFPSetManager) CheckFPs() uint64 {
 	if m == nil || len(m.Sets) == 0 {
 		return 0
 	}
-	actualDistance := uint64(math.MaxUint64)
+	actualDistance := uint64(math.MaxInt64)
 	checked := false
 	for _, set := range m.Sets {
 		if set == nil {
 			continue
 		}
-		actualDistance = minUint64(actualDistance, set.CheckFPs())
+		actualDistance = javaLongMinBits(actualDistance, set.CheckFPs())
 		checked = true
 	}
 	if !checked {

@@ -526,6 +526,14 @@ func TestMemFPSetCheckFPsMatchesJavaDistanceBehavior(t *testing.T) {
 	if got := set.CheckFPs(); got != 3 {
 		t.Fatalf("CheckFPs = %d, want nearest distance 3", got)
 	}
+
+	overflow := NewMemFPSet()
+	for _, value := range []uint64{0, 1 << 63} {
+		overflow.Put(value)
+	}
+	if got := overflow.CheckFPs(); got != 1<<63 {
+		t.Fatalf("overflow CheckFPs = %d, want Java Math.abs(Long.MIN_VALUE) bit pattern", got)
+	}
 }
 
 func TestMemFPSet2CheckFPsPreservesJavaCrossBucketQuirk(t *testing.T) {
