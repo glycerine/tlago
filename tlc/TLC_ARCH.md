@@ -2963,6 +2963,27 @@ Core Java flow:
    `work.isInModel`, and `work.isInActions`. Passing states inherit the
    predecessor UID and are returned in `NextStateResult`.
 
+Worker registration is keyed by server-thread identity, not URI or worker
+identity. Java can register the same worker more than once; each registration
+has its own assigned block, statistics, keepalive, and removal. Go keeps one
+protected `InsMap[*TLCServerThread, *DistributedWorker]`, snapshots thread keys
+for iteration, and removes only the chosen thread. The URI remains display
+metadata. Worker counts and block selectors use the number of registrations;
+new-state counts sum queue size and each registered thread's entire assigned
+block, including remote calls waiting at a worker's synchronized computation.
+
+Registration and new-state counting preserve Java's monitor serialization.
+Per-worker successor computation is serialized as well. Thread worklist
+references use atomic publication for timer/progress readers, preserving null
+versus empty arrays. Keepalive begins during construction before `Start`.
+Graceful completion joins each thread, prints statistics, exits the worker,
+then removes that registration quietly; lost-worker removal emits the
+idempotent deregistration diagnostic. Sent/received counters wrap as Java ints,
+and result/statistics/timestamp/delta processing remains in the inner remote/NPE
+catch. Null results/first partitions take the lost-worker path; an empty
+partition array takes the outer model-error path. Worker export/exit/completion transport
+and URI ASCII/NFC metadata remain pending local contracts.
+
 Local failure contracts retain Java's exception structure:
 
 - The worker preserves direct WorkerExceptions and translates direct

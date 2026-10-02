@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -477,6 +478,7 @@ func (m *DistributedFPSetManager) singleSetContainsBlock(fingerprints []*LongVec
 }
 
 type DistributedWorker struct {
+	nextStatesMu          sync.Mutex
 	ID                    int
 	Tool                  *Tool
 	FPSetManager          *DistributedFPSetManager
@@ -511,8 +513,9 @@ type TLCServer struct {
 	DistinctStatesPerMinute     int64
 	AverageBlockCnt             int64
 	NumberOfInitialStates       int64
-	Workers                     *InsMap[string, *DistributedWorker]
-	ServerThreads               *InsMap[string, *TLCServerThread]
+	registrationMu              sync.Mutex
+	threadsMu                   sync.Mutex
+	threadsToWorkers            *InsMap[*TLCServerThread, *DistributedWorker]
 	BlockSelector               *BlockSelector
 	FinalNumberOfDistinctStates int64
 }
@@ -534,8 +537,7 @@ func NewTLCServer(fileName string, configName string, metadir string, manager *D
 		Metadir:                     metadir,
 		FileName:                    fileName,
 		ConfigName:                  configName,
-		Workers:                     NewInsMap[string, *DistributedWorker](),
-		ServerThreads:               NewInsMap[string, *TLCServerThread](),
+		threadsToWorkers:            NewInsMap[*TLCServerThread, *DistributedWorker](),
 		FinalNumberOfDistinctStates: -1,
 	}
 	server.BlockSelector = NewBlockSelectorFromProperties(server)
@@ -738,20 +740,17 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		_ = s.Close(false)
 		return ECGeneral, err
 	}
-	for _, thread := range s.ServerThreads.All() {
+	for _, thread := range s.GetServerThreads() {
 		if thread != nil {
 			thread.Start()
 		}
 	}
 	s.waitForDistributedCompletion(startTime)
-	for _, thread := range s.ServerThreads.All() {
+	for _, thread := range s.GetServerThreads() {
 		if thread == nil {
 			continue
 		}
 		thread.Join()
-		if thread.Worker != nil {
-			_ = thread.Worker.Exit()
-		}
 		cacheRatio := "n/a"
 		if thread.GetCacheRateRatio() >= 0 {
 			cacheRatio = fmt.Sprintf("%.2f", thread.GetCacheRateRatio())
@@ -762,6 +761,12 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 			fmtInt(thread.GetReceivedStates()),
 			cacheRatio,
 		)
+		func() {
+			defer s.removeServerThreadOnly(thread)
+			if thread.Worker != nil {
+				_ = thread.Worker.Exit()
+			}
+		}()
 	}
 	s.FinalNumberOfDistinctStates = int64(s.fpSetSize())
 	statesGenerated := s.GetStatesGenerated()
@@ -912,72 +917,78 @@ func distributedServerHost() string {
 }
 
 func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
-	key := s.registerWorkerOnly(worker)
-	if key == "" {
+	if s == nil {
 		return
 	}
-	if s.ServerThreads != nil && s.ServerThreads.Get(key) != nil {
-		return
-	}
-	thread := NewTLCServerThread(worker, key, s, s.BlockSelector)
-	thread.Start()
-	PrintMessage(ECTLCDistributedWorkerRegistered, key)
-}
-
-func (s *TLCServer) registerWorkerOnly(worker *DistributedWorker) string {
-	if s == nil || worker == nil {
-		return ""
-	}
-	if s.Workers == nil {
-		s.Workers = NewInsMap[string, *DistributedWorker]()
-	}
+	// Java serializes registration, including its wakeup, start and diagnostic.
+	s.registrationMu.Lock()
+	defer s.registrationMu.Unlock()
 	if s.StateQueue != nil {
 		s.StateQueue.ResumeAllStuck()
 	}
-	key := distributedWorkerKey(worker)
-	s.Workers.Set(key, worker)
-	return key
+	if worker == nil {
+		panic(NewNullPointerException())
+	}
+	thread := NewTLCServerThread(worker, distributedWorkerURI(worker), s, s.BlockSelector)
+	thread.Start()
+	PrintMessage(ECTLCDistributedWorkerRegistered, thread.GetURI())
 }
 
 func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
 	if s == nil || thread == nil {
 		return
 	}
-	if s.ServerThreads == nil {
-		s.ServerThreads = NewInsMap[string, *TLCServerThread]()
+	if thread.Worker == nil || thread.Worker.Worker == nil {
+		panic(NewNullPointerException())
 	}
-	if thread.Worker != nil && thread.Worker.Worker != nil {
-		s.registerWorkerOnly(thread.Worker.Worker)
+	s.threadsMu.Lock()
+	defer s.threadsMu.Unlock()
+	if s.threadsToWorkers == nil {
+		s.threadsToWorkers = NewInsMap[*TLCServerThread, *DistributedWorker]()
 	}
-	s.ServerThreads.Set(thread.GetURI(), thread)
+	// URI is display metadata. Even the same remote worker can be registered
+	// more than once; Java's map keys are the distinct server-thread objects.
+	s.threadsToWorkers.Set(thread, thread.Worker.Worker)
 }
 
-func (s *TLCServer) RemoveTLCServerThread(thread *TLCServerThread) *TLCServerThread {
+func (s *TLCServer) removeServerThreadOnly(thread *TLCServerThread) *DistributedWorker {
 	if s == nil || thread == nil {
 		return nil
 	}
-	if thread.Worker != nil && thread.Worker.Worker != nil {
-		s.RemoveWorker(thread.Worker.Worker)
-	}
-	if s.ServerThreads == nil {
+	s.threadsMu.Lock()
+	defer s.threadsMu.Unlock()
+	if s.threadsToWorkers == nil {
 		return nil
 	}
-	removed := s.ServerThreads.Get(thread.GetURI())
-	s.ServerThreads.Delkey(thread.GetURI())
-	if removed != nil {
-		PrintMessage(ECTLCDistributedWorkerDeregistered, thread.GetURI())
-	}
-	return removed
+	worker := s.threadsToWorkers.Get(thread)
+	s.threadsToWorkers.Delkey(thread)
+	return worker
 }
 
-func (s *TLCServer) RemoveWorker(worker *DistributedWorker) *DistributedWorker {
-	if s == nil || s.Workers == nil || worker == nil {
+func (s *TLCServer) RemoveTLCServerThread(thread *TLCServerThread) *DistributedWorker {
+	worker := s.removeServerThreadOnly(thread)
+	if worker != nil {
+		PrintMessage(ECTLCDistributedWorkerDeregistered, thread.GetURI())
+	}
+	return worker
+}
+
+// GetServerThreads snapshots Java's concurrent registry in Go insertion order.
+// The lock does not cover joins, remote calls, queue waits, or diagnostics.
+func (s *TLCServer) GetServerThreads() []*TLCServerThread {
+	if s == nil {
 		return nil
 	}
-	key := distributedWorkerKey(worker)
-	removed := s.Workers.Get(key)
-	s.Workers.Delkey(key)
-	return removed
+	s.threadsMu.Lock()
+	defer s.threadsMu.Unlock()
+	if s.threadsToWorkers == nil {
+		return nil
+	}
+	threads := make([]*TLCServerThread, 0, s.threadsToWorkers.Len())
+	for thread := range s.threadsToWorkers.All() {
+		threads = append(threads, thread)
+	}
+	return threads
 }
 
 func (s *TLCServer) SetDone() {
@@ -1108,16 +1119,14 @@ func (s *TLCServer) GetNewStates() int64 {
 	if s == nil {
 		return 0
 	}
+	s.registrationMu.Lock()
+	defer s.registrationMu.Unlock()
 	var size int64
 	if s.StateQueue != nil {
-		size += s.StateQueue.Size()
+		size = s.StateQueue.Size()
 	}
-	if s.Workers != nil {
-		for _, worker := range s.Workers.All() {
-			if worker != nil && worker.IsComputing() {
-				size++
-			}
-		}
+	for _, thread := range s.GetServerThreads() {
+		size += int64(thread.GetCurrentSize())
 	}
 	return size
 }
@@ -1147,10 +1156,15 @@ func (s *TLCServer) GetAverageBlockCnt() int64 {
 }
 
 func (s *TLCServer) GetWorkerCount() int {
-	if s == nil || s.Workers == nil {
+	if s == nil {
 		return 0
 	}
-	return s.Workers.Len()
+	s.threadsMu.Lock()
+	defer s.threadsMu.Unlock()
+	if s.threadsToWorkers == nil {
+		return 0
+	}
+	return s.threadsToWorkers.Len()
 }
 
 func (s *TLCServer) GetFPSetManager() *DistributedFPSetManager {
@@ -1176,13 +1190,17 @@ func (s *TLCServer) GetConfigFileName() string {
 
 var tlcServerThreadCount atomic.Int64
 
+type distributedStateBlock struct {
+	states []*TLCStateMut
+}
+
 type TLCServerThread struct {
 	ID                int
 	ReceivedStates    int
 	SentStates        int
 	CacheRateHitRatio float64
 	Selector          *BlockSelector
-	States            []*TLCStateMut
+	states            atomic.Pointer[distributedStateBlock]
 	TimerTask         *TLCTimerTask
 	Worker            *DistributedWorkerSmartProxy
 	Server            *TLCServer
@@ -1196,7 +1214,7 @@ type TLCServerThread struct {
 
 func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer, selector *BlockSelector) *TLCServerThread {
 	if uri == "" && worker != nil {
-		uri = distributedWorkerKey(worker)
+		uri = distributedWorkerURI(worker)
 	}
 	if selector == nil && server != nil {
 		selector = server.BlockSelector
@@ -1208,15 +1226,17 @@ func NewTLCServerThread(worker *DistributedWorker, uri string, server *TLCServer
 		ID:                int(tlcServerThreadCount.Add(1) - 1),
 		CacheRateHitRatio: -1,
 		Selector:          selector,
-		States:            []*TLCStateMut{},
 		Worker:            NewDistributedWorkerSmartProxy(worker),
 		Server:            server,
 		URI:               uri,
 		keepAliveDone:     make(chan struct{}),
 		runDone:           make(chan struct{}),
 	}
+	thread.setStates([]*TLCStateMut{})
 	thread.cleanupGlobals.Store(true)
 	thread.TimerTask = &TLCTimerTask{Thread: thread}
+	// Java schedules keepalive during construction, before Thread.start().
+	thread.startKeepAlive()
 	if server != nil {
 		server.RegisterTLCServerThread(thread)
 	}
@@ -1234,7 +1254,6 @@ func (t *TLCServerThread) Start() {
 	if t == nil || !t.started.CompareAndSwap(false, true) {
 		return
 	}
-	t.startKeepAlive()
 	go func() {
 		defer close(t.runDone)
 		t.Run()
@@ -1279,7 +1298,7 @@ func (t *TLCServerThread) Run() {
 		}
 		t.readCacheRateRatio()
 		t.cancelKeepAlive()
-		t.States = []*TLCStateMut{}
+		t.setStates([]*TLCStateMut{})
 	}()
 	for {
 		if t.Selector == nil {
@@ -1288,18 +1307,18 @@ func (t *TLCServerThread) Run() {
 		if t.Selector == nil {
 			t.Selector = NewBlockSelectorFromProperties(t.Server)
 		}
-		t.States = t.Selector.GetBlocks(stateQueue, t.Worker)
-		if t.States == nil {
+		t.setStates(t.Selector.GetBlocks(stateQueue, t.Worker))
+		if t.currentStates() == nil {
 			t.Server.SetDone()
 			if stateQueue != nil {
 				stateQueue.FinishAll()
 			}
 			return
 		}
-		if len(t.States) == 0 {
+		if len(t.currentStates()) == 0 {
 			continue
 		}
-		t.SentStates += len(t.States)
+		t.SentStates = int(int32(t.SentStates) + int32(len(t.currentStates())))
 
 		res, ok := t.computeBlock(stateQueue)
 		if !ok {
@@ -1310,30 +1329,57 @@ func (t *TLCServerThread) Run() {
 		}
 		newStates := res.GetNextStates()
 		newFps := res.GetNextFingerprints()
-		if len(newStates) > 0 && newStates[0] != nil {
-			t.ReceivedStates += newStates[0].Size()
-		}
-		if t.TimerTask != nil {
-			t.TimerTask.SetLastInvocation(time.Now())
-		}
-		t.Server.AddStatesGeneratedDelta(res.GetStatesComputedDelta())
 		t.publishBlock(stateQueue, newStates, newFps)
 	}
 }
 
+// Java's inner remote/NPE catch includes result dereferences, statistics,
+// the keepalive timestamp and generated-state delta, before publishing the block.
+func (t *TLCServerThread) computeBlockAttempt() (res *NextStateResult, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			res = nil
+			err = panicValueAsError(failure)
+		}
+	}()
+	res, err = invokeDistributedWorker(t.Worker, t.currentStates())
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		panic(NewNullPointerException())
+	}
+	newStates := res.GetNextStates()
+	if newStates == nil {
+		panic(NewNullPointerException())
+	}
+	if len(newStates) == 0 {
+		panic(NewArrayIndexOutOfBoundsException(0, 0))
+	}
+	if newStates[0] == nil {
+		panic(NewNullPointerException())
+	}
+	t.ReceivedStates = int(int32(t.ReceivedStates) + int32(newStates[0].Size()))
+	if t.TimerTask != nil {
+		t.TimerTask.SetLastInvocation(time.Now())
+	}
+	t.Server.AddStatesGeneratedDelta(res.GetStatesComputedDelta())
+	return res, nil
+}
+
 func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult, bool) {
-	res, err := invokeDistributedWorker(t.Worker, t.States)
+	res, err := t.computeBlockAttempt()
 	if err == nil {
 		return res, true
 	}
 	if javaRemoteException(err) != nil {
-		if isRecoverableDistributedError(err) && len(t.States) > 1 {
-			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.States)/2))
+		if isRecoverableDistributedError(err) && len(t.currentStates()) > 1 {
+			PrintMessage(ECTLCDistributedExceedBlocksize, fmtInt(len(t.currentStates())/2))
 			if stateQueue != nil {
-				stateQueue.SEnqueueAll(t.States)
+				stateQueue.SEnqueueAll(t.currentStates())
 			}
 			if t.Selector != nil {
-				t.Selector.SetMaxTXSize(len(t.States) / 2)
+				t.Selector.SetMaxTXSize(len(t.currentStates()) / 2)
 			}
 			return nil, true
 		}
@@ -1437,20 +1483,36 @@ func (t *TLCServerThread) HandleRemoteWorkerLost(stateQueue StateQueue) {
 		t.Server.RemoveTLCServerThread(t)
 	}
 	if stateQueue != nil {
-		stateQueue.SEnqueueAll(t.States)
+		stateQueue.SEnqueueAll(t.currentStates())
 	}
-	t.States = []*TLCStateMut{}
+	t.setStates([]*TLCStateMut{})
 	if stateQueue != nil {
 		stateQueue.ResumeAllStuck()
 	}
 	DecNumWorkers()
 }
 
+func (t *TLCServerThread) setStates(states []*TLCStateMut) {
+	t.states.Store(&distributedStateBlock{states: states})
+}
+
+func (t *TLCServerThread) currentStates() []*TLCStateMut {
+	block := t.states.Load()
+	if block == nil {
+		return nil
+	}
+	return block.states
+}
+
 func (t *TLCServerThread) GetCurrentSize() int {
 	if t == nil {
 		return 0
 	}
-	return len(t.States)
+	states := t.currentStates()
+	if states == nil {
+		panic(NewNullPointerException())
+	}
+	return len(states)
 }
 
 func (t *TLCServerThread) GetURI() string {
@@ -1744,7 +1806,7 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 	}
 }
 
-func distributedWorkerKey(worker *DistributedWorker) string {
+func distributedWorkerURI(worker *DistributedWorker) string {
 	if worker == nil {
 		return ""
 	}
@@ -1829,6 +1891,8 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 	if w == nil {
 		return nil, NewNullPointerException()
 	}
+	w.nextStatesMu.Lock()
+	defer w.nextStatesMu.Unlock()
 	w.Computing.Store(true)
 	w.LastInvocation = time.Now()
 	var statesComputed int64
