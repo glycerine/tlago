@@ -517,7 +517,8 @@ func recordMessageParameters(code int, severity Severity, params []string, nulla
 	suppressed, asError, warn := messageControlFor(code)
 	visible := !suppressed
 	if severity == SeverityWarning {
-		if initialBooleanProperty("tlc2.output.MP.warning2error") || asError {
+		warningToError, _ := tlcLookupSystemProperty("tlc2.output.MP.warning2error")
+		if javaBooleanProperty(warningToError) || asError {
 			if nullableParams != nil {
 				failure := newTLCErrorCodeNullable(code, nullableParams...)
 				failure.Runtime = true

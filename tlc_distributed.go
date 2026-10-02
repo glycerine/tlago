@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -47,6 +48,23 @@ func StartDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc
 	group := tlc.NewDistributedWorkerGroup(count, server, tool, address...)
 	group.Start()
 	return group, diags, nil
+}
+
+// StartDistributedWorkerGroupWithLookup connects the source discovery loop to
+// the existing production config/parser/tool bootstrap. lookup supplies the
+// Naming.lookup boundary; registry/RPC transport and command main are separate.
+func StartDistributedWorkerGroupWithLookup(serverName string, count int, lookup tlc.TLCServerLookup, sleep tlc.DistributedLookupSleep, output io.Writer, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
+	count = int(int32(count))
+	if count < 0 {
+		// Java constructs CountDownLatch before entering the lookup try/catch.
+		panic(tlc.NewIllegalArgumentException("count < 0"))
+	}
+	server, err := tlc.LookupTLCWorkerServer(serverName, lookup, sleep, output)
+	if err != nil {
+		var diags Diagnostics
+		return nil, diags, err
+	}
+	return StartDistributedWorkerGroup(server, count, resolver, runtime, address...)
 }
 
 // LoadTLCApp implements the resolver-taking TLCApp constructor. Config parsing

@@ -450,9 +450,9 @@ func (s *TLCServer) PrintInitGenerated() {
 
 func (s *TLCServer) PrintSummary(level int, statesGenerated int64, statesLeftInQueue int64, distinctStates uint64, success bool) {
 	if toolMode() {
-		PrintMessage(ECTLCProgressStats, fmtInt(level), fmtInt64(statesGenerated), fmtUint64(distinctStates), fmtInt64(statesLeftInQueue), "0", "0")
+		PrintMessage(ECTLCProgressStats, fmtInt(level), groupDecimalIntegerPart(fmtInt64(statesGenerated)), groupDecimalIntegerPart(fmtInt64(int64(distinctStates))), groupDecimalIntegerPart(fmtInt64(statesLeftInQueue)), "0", "0")
 	}
-	PrintMessage(ECTLCStats, fmtInt64(statesGenerated), fmtUint64(distinctStates), fmtInt64(statesLeftInQueue))
+	PrintMessage(ECTLCStats, fmtInt64(statesGenerated), fmtInt64(int64(distinctStates)), fmtInt64(statesLeftInQueue))
 	if success {
 		PrintMessage(ECTLCSearchDepth, fmtInt(level))
 	}

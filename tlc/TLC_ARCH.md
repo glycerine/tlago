@@ -3073,6 +3073,17 @@ export/RPC, flush/output integration and the complete command/exit lifecycle
 remain pending. Full DistributedTLCTestCase transport tests follow those
 features (the Java harness currently disables them for OffHeapDiskFPSet).
 
+Distributed discovery now has source worker and FP-server lookup loops with
+explicit Naming.lookup and Thread.sleep adapters. Only direct RMI connect
+failures with a net-connect cause and missing bindings retry. The source signed
+int backoff counter wraps, producing zero sleeps after its negative/zero phase.
+The root worker startup adapter joins this discovery to production tool/group
+loading. Typed checked-exception carriers preserve the distinct net/RMI families.
+Actual source loop bodies match deterministic boundary comparisons; wire
+registry/export/RPC, keepalive relookup, FP-server main and command lifecycle
+remain pending. No dedicated upstream lookup tests exist; the complete upstream
+distributed harness follows the missing transport features.
+
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration
 has its own assigned block, statistics, keepalive, and removal. Go keeps one

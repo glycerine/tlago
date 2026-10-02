@@ -74,6 +74,20 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.OutOfMemoryError"
 	case *NullPointerException:
 		return "java.lang.NullPointerException"
+	case *NetConnectException:
+		return "java.net.ConnectException"
+	case *NotBoundException:
+		return "java.rmi.NotBoundException"
+	case *MalformedURLException:
+		return "java.net.MalformedURLException"
+	case *InterruptedException:
+		return "java.lang.InterruptedException"
+	case *RMIUnknownHostException:
+		return "java.rmi.UnknownHostException"
+	case *ConnectIOException:
+		return "java.rmi.ConnectIOException"
+	case *NoRouteToHostException:
+		return "java.net.NoRouteToHostException"
 	case *RejectedExecutionException:
 		return "java.util.concurrent.RejectedExecutionException"
 	case *SimulationWorkerError:
