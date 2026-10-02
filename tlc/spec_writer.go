@@ -111,6 +111,18 @@ const (
 
 var specWriterCounter atomic.Int64
 
+var SpecWriterIDMatcher = regexp.MustCompile("(" +
+	tlaSchemeSpec + "|" +
+	tlaSchemeInit + "|" +
+	tlaSchemeNext + "|" +
+	tlaSchemeConstant + "|" +
+	tlaSchemeSymmetry + "|" +
+	tlaSchemeDefOverride + "|" +
+	tlaSchemeConstraint + "|" +
+	tlaSchemeActionConst + "|" +
+	tlaSchemeInvariant + "|" +
+	tlaSchemeProperty + ")_[0-9]{17,}")
+
 func init() {
 	specWriterCounter.Store(1)
 }
@@ -201,6 +213,16 @@ func SpecWriterExtendingModuleContent(moduleFilename string, extendedModuleNames
 		b.WriteString(tlaCR)
 	}
 	return b.String()
+}
+
+func SpecWriterCreateFalseInit(varName string) [][]string {
+	identifier := SpecWriterValidIdentifier(tlaSchemeInit)
+	return [][]string{{identifier, identifier + tlaDefinesCR + "FALSE/\\" + varName + tlaEqSp + "0"}}
+}
+
+func SpecWriterCreateFalseNext(varName string) [][]string {
+	identifier := SpecWriterValidIdentifier(tlaSchemeNext)
+	return [][]string{{identifier, identifier + tlaDefinesCR + "FALSE/\\" + varName + tlaPrime + tlaEqSp + varName}}
 }
 
 func SpecWriterCreateListContent(formulas []*Formula, labelingScheme string) [][]string {
