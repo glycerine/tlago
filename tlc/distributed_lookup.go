@@ -17,7 +17,16 @@ type DistributedLookupSleep func(time.Duration) error
 
 // LookupTLCWorkerServer ports TLCWorker.main's pre-bootstrap lookup loop.
 func LookupTLCWorkerServer(serverName string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (*TLCServer, error) {
-	return lookupDistributedServer(serverName, TLCServerWorkerName, lookup, sleep, output)
+	server, _, err := DiscoverTLCWorkerServer(serverName, lookup, sleep, output)
+	return server, err
+}
+
+// DiscoverTLCWorkerServer also retains the URL local used later by main's
+// keepalive task, even if Port changes while discovery/bootstrap is running.
+func DiscoverTLCWorkerServer(serverName string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (*TLCServer, string, error) {
+	url := "//" + serverName + ":" + fmtInt(TLCServerPort()) + "/" + TLCServerWorkerName
+	server, err := lookupDistributedServerURL(serverName, url, lookup, sleep, output)
+	return server, url, err
 }
 
 // LookupDistributedFPServer ports DistributedFPSet.lookupTLCServer.
@@ -27,6 +36,10 @@ func LookupDistributedFPServer(serverName string, lookup TLCServerLookup, sleep 
 
 func lookupDistributedServer(serverName, binding string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (*TLCServer, error) {
 	url := "//" + serverName + ":" + fmtInt(TLCServerPort()) + "/" + binding
+	return lookupDistributedServerURL(serverName, url, lookup, sleep, output)
+}
+
+func lookupDistributedServerURL(serverName, url string, lookup TLCServerLookup, sleep DistributedLookupSleep, output io.Writer) (*TLCServer, error) {
 	if sleep == nil {
 		sleep = func(duration time.Duration) error { time.Sleep(duration); return nil }
 	}

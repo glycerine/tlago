@@ -37,6 +37,10 @@ func LoadDistributedWorkerTool(server *tlc.TLCServer, resolver *tlc.RMIFilenameT
 // Configuration and Tool construction complete before registration threads
 // start; those threads then register asynchronously with the supplied server.
 func StartDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
+	return startDistributedWorkerGroup(server, count, resolver, runtime, "", nil, address...)
+}
+
+func startDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc.RMIFilenameToStreamResolver, runtime tlc.RuntimeParameters, serverURL string, lookup tlc.TLCServerLookup, address ...tlc.DistributedWorkerAddress) (*tlc.DistributedWorkerGroup, Diagnostics, error) {
 	count = int(int32(count))
 	if count < 0 {
 		panic(tlc.NewIllegalArgumentException("count < 0"))
@@ -46,6 +50,9 @@ func StartDistributedWorkerGroup(server *tlc.TLCServer, count int, resolver *tlc
 		return nil, diags, err
 	}
 	group := tlc.NewDistributedWorkerGroup(count, server, tool, address...)
+	if lookup != nil {
+		group.Runtime.ConfigureKeepAliveLookup(serverURL, tlc.NewTLCServerStatusLookup(lookup), nil)
+	}
 	group.Start()
 	return group, diags, nil
 }
@@ -59,12 +66,12 @@ func StartDistributedWorkerGroupWithLookup(serverName string, count int, lookup 
 		// Java constructs CountDownLatch before entering the lookup try/catch.
 		panic(tlc.NewIllegalArgumentException("count < 0"))
 	}
-	server, err := tlc.LookupTLCWorkerServer(serverName, lookup, sleep, output)
+	server, url, err := tlc.DiscoverTLCWorkerServer(serverName, lookup, sleep, output)
 	if err != nil {
 		var diags Diagnostics
 		return nil, diags, err
 	}
-	return StartDistributedWorkerGroup(server, count, resolver, runtime, address...)
+	return startDistributedWorkerGroup(server, count, resolver, runtime, url, lookup, address...)
 }
 
 // LoadTLCApp implements the resolver-taking TLCApp constructor. Config parsing

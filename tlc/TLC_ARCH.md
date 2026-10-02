@@ -3080,7 +3080,7 @@ int backoff counter wraps, producing zero sleeps after its negative/zero phase.
 The root worker startup adapter joins this discovery to production tool/group
 loading. Typed checked-exception carriers preserve the distinct net/RMI families.
 Actual source loop bodies match deterministic boundary comparisons; wire
-registry/export/RPC, keepalive relookup, FP-server main and command lifecycle
+registry/export/RPC, FP-server main and command lifecycle
 remain pending. No dedicated upstream lookup tests exist; the complete upstream
 distributed harness follows the missing transport features.
 
@@ -3120,15 +3120,32 @@ Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectExceptio
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
-Local worker keepalive preserves the ten-second initial delay, sixty-second
-period, most-recent invocation, computing-worker exemption, Java int timeout
-overflow, server-done diagnostic, and ordered exits. Timer failures terminate
-the timer goroutine. Server keepalive and final cache reads preserve their
-RemoteException catches; final exit ignores only the three Java dead-worker
-exception families, warns, and removes the registration in finally order.
-Keepalive and shutdown read the original registration runnables dynamically,
-so workers created after timer scheduling are visible; an uninitialized worker
-still causes Java's timer NPE. Registry transport remains pending. Worker
+Worker keepalive captures the registry URL from startup and performs a fresh
+lookup followed by isDone after inactivity. Local groups supply a direct-server
+adapter; discovery groups retain the original Naming.lookup boundary. Timeout
+freezes at first task initialization, with Java int multiplication overflow.
+Computing workers or recent/future invocation timestamps suppress lookup; zero
+invocation forces it. The task retains its original runnable array and reads
+workers dynamically, so later worker publication remains visible and a missing
+worker causes the source NPE. RunKeepAliveOnce represents Java's public run.
+
+RemoteException and NotBoundException print the source nullable error detail,
+then exit workers in order. A finished server prints its completion diagnostic
+before the same exit loop. Malformed URLs and NoSuchObjectException from worker
+exit reach an explicit FINEST logging boundary. Unexpected failures escape;
+task cancellation follows the exit loop, while each worker exit still cancels
+the shared timer earlier. Timer scheduling preserves the ten-second initial
+delay and sixty-second period measured from the preceding actual start;
+uncaught failures terminate its goroutine. JVM wall-clock changes and complete
+uncaught-thread/logging-provider integration remain separate. Twenty-seven
+actual-source task/worker comparisons and native race probes match the activity,
+lookup/query, property, error, cancellation and export observations. No dedicated
+upstream timer tests exist; complete distributed tests await transport.
+
+Server keepalive and final cache reads preserve their RemoteException catches;
+final exit ignores only the three Java dead-worker exception families, warns,
+and removes the registration in finally order. Actual registry/export/RPC
+transport remains pending. Worker
 fingerprint lookups and server block inserts now use
 their respective shared executors; accepted tasks finish after shutdown,
 while new submissions are rejected. The worker preserves the rejection's

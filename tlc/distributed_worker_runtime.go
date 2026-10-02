@@ -18,6 +18,9 @@ type DistributedWorkerRuntime struct {
 	latch           distributedWorkerLatch
 	keepAliveMu     sync.Mutex
 	keepAlive       *distributedWorkerKeepAlive
+	keepAliveURL    string
+	statusLookup    TLCServerStatusLookup
+	keepAliveLog    func(string, error)
 }
 
 func NewDistributedWorkerRuntime(workers ...*DistributedWorker) *DistributedWorkerRuntime {
@@ -35,20 +38,26 @@ func NewDistributedWorkerRuntime(workers ...*DistributedWorker) *DistributedWork
 	return r
 }
 
-// StartKeepAlive supplies the local equivalent of main's server lookup. The
-// transport's registry/lookup failures are intentionally left to the later
-// transport port; activity, done checks, timer order and exits are represented.
+// StartKeepAlive captures the configured Naming.lookup/isDone boundary. Local
+// groups retain a direct-server adapter; discovery groups configure relookup.
 func (r *DistributedWorkerRuntime) StartKeepAlive(server *TLCServer) {
 	r.keepAliveMu.Lock()
 	defer r.keepAliveMu.Unlock()
 	if r.keepAlive != nil {
 		return
 	}
-	timeout := 60
-	if configured, ok := distributedIntProperty("tlc2.tool.distributed.TLCTimerTask.timeout"); ok {
-		timeout = configured
+	lookup := r.statusLookup
+	if lookup == nil {
+		lookup = func(string) (bool, error) {
+			if server == nil {
+				return false, NewNullPointerException()
+			}
+			return server.IsDone(), nil
+		}
 	}
-	task := &distributedWorkerKeepAlive{workers: append([]*DistributedWorker(nil), r.workers...), runnables: append([]*DistributedWorkerRunnable(nil), r.runnables...), server: server, done: make(chan struct{}), timeout: int64(int32(timeout) * 1000)}
+	// The Java constructor retains its supplied runnable array. Shutdown's
+	// replacement of the runtime array leaves this task holding the old one.
+	task := &distributedWorkerKeepAlive{workers: r.workers, runnables: r.runnables, lookup: lookup, serverURL: r.keepAliveURL, logFinest: r.keepAliveLog, done: make(chan struct{}), timeout: int64(DistributedWorkerKeepAliveTimeoutMillis())}
 	r.keepAlive = task
 	go task.runTimer()
 }
@@ -162,7 +171,9 @@ func (e *DistributedExecutor) IsShutdown() bool {
 type distributedWorkerKeepAlive struct {
 	runnables  []*DistributedWorkerRunnable
 	workers    []*DistributedWorker
-	server     *TLCServer
+	lookup     TLCServerStatusLookup
+	serverURL  string
+	logFinest  func(string, error)
 	done       chan struct{}
 	cancelOnce sync.Once
 	timeout    int64
@@ -182,17 +193,30 @@ func (t *distributedWorkerKeepAlive) runTimer() {
 	for {
 		select {
 		case <-timer.C:
-			if !t.run() {
-				return
+			started := time.Now()
+			if err := t.run(); err != nil {
+				panic(err)
 			}
-			timer.Reset(60 * time.Second)
+			select {
+			case <-t.done:
+				return
+			default:
+			}
+			// Timer.schedule uses the preceding actual execution start for
+			// fixed-delay rescheduling; a long task can make the next run due.
+			timer.Reset(time.Until(started.Add(60 * time.Second)))
 		case <-t.done:
 			return
 		}
 	}
 }
 
-func (t *distributedWorkerKeepAlive) run() bool {
+func (t *distributedWorkerKeepAlive) run() (err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = panicValueAsError(failure)
+		}
+	}()
 	var latest int64
 	count := len(t.workers)
 	if t.runnables != nil {
@@ -204,32 +228,59 @@ func (t *distributedWorkerKeepAlive) run() bool {
 			panic(NewNullPointerException())
 		}
 		if worker.IsComputing() {
-			return true
+			return nil
 		}
 		latest = max(latest, worker.LastInvocation.Load())
 	}
 	if latest != 0 && time.Now().UnixMilli()-latest <= t.timeout {
-		return true
+		return nil
 	}
-	if t.server == nil {
-		panic(NewNullPointerException())
+	done, err := invokeTLCServerStatusLookup(t.lookup, t.serverURL)
+	if err == nil && done {
+		// This invocation is inside the source try: an exception from
+		// exitWorker can itself reach that try's typed catches.
+		err = t.exitWorker(nil, count)
 	}
-	if !t.server.IsDone() {
-		return true
+	if err == nil {
+		return nil
 	}
-	PrintError(ECTLCDistributedServerFinished)
+	if failure, malformed := err.(*MalformedURLException); malformed && failure != nil {
+		t.logFailure(err)
+		return nil
+	}
+	if javaRemoteException(err) != nil {
+		return t.exitWorker(err, count)
+	}
+	if failure, notBound := err.(*NotBoundException); notBound && failure != nil {
+		return t.exitWorker(err, count)
+	}
+	return err
+}
+
+func (t *distributedWorkerKeepAlive) exitWorker(failure error, count int) error {
+	if failure == nil {
+		PrintError(ECTLCDistributedServerFinished)
+	} else {
+		PrintErrorNullable(ECTLCDistributedServerNotRunning, javaThrowableDetailMessage(failure))
+	}
 	for i := 0; i < count; i++ {
 		worker := t.workerAt(i)
 		if err := worker.Exit(); err != nil {
-			if _, missing := err.(*NoSuchObjectException); !missing {
-				// An uncaught runtime failure terminates Java's timer thread.
-				fmt.Fprint(os.Stderr, javaThrowableStackTrace(err))
-				return false
+			if missing, ok := err.(*NoSuchObjectException); ok && missing != nil {
+				t.logFailure(err)
+			} else {
+				return err
 			}
 		}
 	}
 	t.cancel()
-	return false
+	return nil
+}
+
+func (t *distributedWorkerKeepAlive) logFailure(err error) {
+	if t.logFinest != nil {
+		t.logFinest("Failed to exit worker", err)
+	}
 }
 
 func (t *distributedWorkerKeepAlive) workerAt(index int) *DistributedWorker {
