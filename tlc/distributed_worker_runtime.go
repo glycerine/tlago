@@ -183,8 +183,9 @@ func (l *distributedWorkerLatch) countDown() {
 // Shutdown rejects new submissions, but allows already accepted tasks to
 // finish. Exit does not wait for these tasks or an active worker invocation.
 type DistributedExecutor struct {
-	mu       sync.Mutex
-	shutdown bool
+	mu            sync.Mutex
+	shutdown      bool
+	interruptions chan struct{}
 }
 
 func NewDistributedExecutor() *DistributedExecutor { return &DistributedExecutor{} }
@@ -202,6 +203,32 @@ func (e *DistributedExecutor) Shutdown() {
 	e.mu.Lock()
 	e.shutdown = true
 	e.mu.Unlock()
+}
+
+// Interruptions is the native boundary for the interrupt sent to active
+// cached-pool tasks by shutdownNow. Task/RPC adapters must observe this signal;
+// ordinary Java computation can ignore interruption, and is not forcibly killed.
+func (e *DistributedExecutor) Interruptions() <-chan struct{} {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.interruptions == nil {
+		e.interruptions = make(chan struct{})
+	}
+	return e.interruptions
+}
+
+func (e *DistributedExecutor) ShutdownNow() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.shutdown = true
+	if e.interruptions == nil {
+		e.interruptions = make(chan struct{})
+	}
+	select {
+	case <-e.interruptions:
+	default:
+		close(e.interruptions)
+	}
 }
 
 func (e *DistributedExecutor) IsShutdown() bool {

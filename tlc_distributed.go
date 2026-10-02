@@ -243,3 +243,26 @@ func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, 
 	err := process.Run(args, env)
 	return diags, err
 }
+
+// RunDistributedServer connects TLCServer.main to production application
+// creation. CreateMail supplies the MailSender constructor/output boundary;
+// mail and OS hook providers are independent of the command's source lifecycle.
+func RunDistributedServer(process *tlc.DistributedServerProcess, args []string, env tlc.DistributedServerEnvironment, runtime tlc.RuntimeParameters, classpath ...[]tlc.FilenameClasspathEntry) (Diagnostics, error) {
+	var diags Diagnostics
+	if env.CreateApp == nil {
+		env.CreateApp = func(args []string) (*tlc.TLCApp, error) {
+			app, loaded, err := CreateTLCApp(args, runtime, classpath...)
+			diags = append(diags, loaded...)
+			if err == nil && loaded.HasErrors() {
+				params := make([]string, 0, len(loaded))
+				for _, diagnostic := range loaded.Errors() {
+					params = append(params, diagnostic.Message)
+				}
+				err = tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed, params...)
+			}
+			return app, err
+		}
+	}
+	err := process.Run(args, env)
+	return diags, err
+}

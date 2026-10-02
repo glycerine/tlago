@@ -24,6 +24,8 @@ func javaString(value string) *string { return &value }
 
 func javaThrowableClassName(err error) string {
 	switch failure := err.(type) {
+	case *StackOverflowError:
+		return "java.lang.StackOverflowError"
 	case *RuntimeException:
 		return "java.lang.RuntimeException"
 	case *RemoteException:

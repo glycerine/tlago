@@ -225,6 +225,14 @@ func NewExecutionException(cause error) *ExecutionException {
 
 func (e *ExecutionException) Error() string { return javaThrowableMessage(e) }
 
+type StackOverflowError struct{ javaExceptionBase }
+
+func NewStackOverflowError(message ...string) *StackOverflowError {
+	return &StackOverflowError{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+
+func (e *StackOverflowError) Error() string { return javaThrowableMessage(e) }
+
 type OutOfMemoryError struct{ javaExceptionBase }
 
 func NewOutOfMemoryError(message ...string) *OutOfMemoryError {

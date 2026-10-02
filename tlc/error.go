@@ -91,6 +91,9 @@ func javaRuntimeFailureMessage(err *TLCError) (int, []string) {
 // Numeric codes on actual EvalExceptions or TLCRuntimeExceptions do not give
 // those exceptions the type of a StackOverflowError or OutOfMemoryError.
 func javaSystemFailureCode(err error) int {
+	if failure, ok := err.(*StackOverflowError); ok && failure != nil {
+		return ECSystemStackOverflow
+	}
 	if failure, ok := err.(*OutOfMemoryError); ok && failure != nil {
 		return ECSystemOutOfMemory
 	}

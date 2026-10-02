@@ -3172,6 +3172,24 @@ Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectExceptio
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
+TLCServer.main now runs through DistributedServerProcess and the root
+RunDistributedServer application bridge. It preserves version/mail/parser
+ordering, evaluated label fallbacks, frozen constructor selection, management
+and worker-hook registration before checking, and source GC/error/close handling.
+Its finally block retains the nil-server dereference and exact forced-shutdown,
+unregister, module collection, result delivery and exit ordering. Exception
+precedence follows Java, including Error escaping the close Exception catch.
+The executor exposes a native interruption signal for shutdownNow task/RPC
+adapters, with ordinary shutdown leaving accepted work uninterrupted.
+CreateMail is a required constructor boundary owning properties/address/log
+capture; delivery is delegated and disabled mail returns true. OS hooks are
+retained callbacks unless the provided installer registers them. Real MailSender,
+process hooks, JMX/JDK interruption providers, wire RPC, config-read process exit
+and the combined worker/FP command remain pending. Actual-source main comparisons
+and production server/worker/local-naming integration pass under the race
+detector. The full upstream transport harness remains explicitly skipped; no
+dedicated main tests exist.
+
 TLCWorker.main now runs through a concrete DistributedWorkerProcess and the
 root RunDistributedWorker parser bridge. It preserves the argument/error/flush
 contract and allocates the volatile completion latch before entering the lookup

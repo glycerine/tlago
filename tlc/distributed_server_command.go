@@ -1,0 +1,268 @@
+package tlc
+
+import (
+	"os"
+	"runtime"
+)
+
+const DistributedModelNameProperty = "modelName"
+const DistributedSpecNameProperty = "specName"
+
+// DistributedServerMail supplies MailSender's result boundary. Its constructor
+// is responsible for ModelInJar properties, address parsing and output capture.
+// A nil Deliver represents the source disabled-mail case. SMTP/MIME delivery
+// and output capture are separate from the server command lifecycle.
+type DistributedServerMail struct {
+	ModelName string
+	SpecName  string
+	Deliver   func([]*TLAFile) (bool, error)
+}
+
+func (m *DistributedServerMail) Send(files []*TLAFile) (bool, error) {
+	if m == nil {
+		return false, NewNullPointerException()
+	}
+	if m.Deliver == nil {
+		return true, nil
+	}
+	return m.Deliver(files)
+}
+
+// DistributedServerEnvironment supplies TLCServer.main's process boundaries.
+// CreateMail must construct the MailSender boundary before application loading.
+// The defaults use the concrete native server/checker and local management bean;
+// wire export, mail delivery and OS shutdown hooks require their own adapters.
+type DistributedServerEnvironment struct {
+	CreateMail          func() (*DistributedServerMail, error)
+	CreateApp           func([]string) (*TLCApp, error)
+	Property            func(string, string) string
+	CreateServer        func(*TLCApp, int) (*TLCServer, error)
+	CreateMBean         func(*TLCServer) (*TLCStandardMBean, error)
+	InstallShutdownHook func(func() error) error
+	ModelCheck          func(*TLCServer) error
+	GC                  func()
+	Close               func(*TLCServer, bool) error
+	ShutdownNow         func(*TLCServer) error
+	Unregister          func(*TLCStandardMBean) (bool, error)
+	ModuleFiles         func(*TLCApp) ([]*TLAFile, error)
+	Exit                func(int)
+}
+
+// DistributedServerProcess retains main's locals for native callers and the
+// worker hook callbacks registered during its successful construction. A hook
+// captures that invocation's server, even if Run is called again later.
+type DistributedServerProcess struct {
+	App           *TLCApp
+	Mail          *DistributedServerMail
+	Server        *TLCServer
+	MBean         *TLCStandardMBean
+	ShutdownHooks []func() error
+}
+
+func NewDistributedServerProcess() *DistributedServerProcess {
+	InitializeTLCServerProperties()
+	return &DistributedServerProcess{}
+}
+
+// Run preserves main's try/catch/finally, including the source nil-server
+// dereference in finally. A returned error escapes the Java main; reported
+// startup/model errors themselves do not create a command exit status.
+func (p *DistributedServerProcess) Run(args []string, env DistributedServerEnvironment) (err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = panicValueAsError(failure)
+		}
+	}()
+	if p == nil {
+		return NewNullPointerException()
+	}
+	InitializeTLCServerProperties()
+	PrintMessage(ECTLCVersion, "TLC Server "+TLCVersion())
+	p.MBean = NewNullTLCStandardMBean()
+	p.App, p.Mail, p.Server = nil, nil, nil
+	env = distributedServerEnvironment(env)
+	pending := invokeDistributedServerOperation(func() error {
+		if failure := p.start(args, env); failure != nil {
+			env.GC()
+			printDistributedServerFailure(failure)
+			if p.Server != nil {
+				closeErr := invokeDistributedServerOperation(func() error { return env.Close(p.Server, false) })
+				if closeErr != nil {
+					// Source catches Exception here, but Error still escapes through finally.
+					if javaSystemFailureCode(closeErr) != NoError {
+						return closeErr
+					}
+					PrintError(ECGeneral, javaGeneralErrorMessage("", closeErr))
+				}
+			}
+		}
+		return nil
+	})
+	if finalErr := invokeDistributedServerOperation(func() error { return p.finish(env) }); finalErr != nil {
+		return finalErr
+	}
+	return pending
+}
+func distributedServerEnvironment(env DistributedServerEnvironment) DistributedServerEnvironment {
+	if env.Property == nil {
+		env.Property = func(key, fallback string) string {
+			if value, ok := tlcLookupSystemProperty(key); ok {
+				return value
+			}
+			return fallback
+		}
+	}
+	if env.CreateServer == nil {
+		env.CreateServer = func(app *TLCApp, count int) (*TLCServer, error) {
+			if count > 0 {
+				return NewDistributedFPSetTLCServer(app, count)
+			}
+			return NewTLCServerFromApp(app)
+		}
+	}
+	if env.CreateMBean == nil {
+		env.CreateMBean = func(server *TLCServer) (*TLCStandardMBean, error) {
+			return NewTLCServerMXWrapper(server).TLCStandardMBean, nil
+		}
+	}
+	if env.ModelCheck == nil {
+		env.ModelCheck = func(server *TLCServer) error { _, err := server.ModelCheck(); return err }
+	}
+	if env.GC == nil {
+		env.GC = runtime.GC
+	}
+	if env.Close == nil {
+		env.Close = func(server *TLCServer, clean bool) error { return server.Close(clean) }
+	}
+	if env.ShutdownNow == nil {
+		env.ShutdownNow = func(server *TLCServer) error { server.executor.ShutdownNow(); return nil }
+	}
+	if env.Unregister == nil {
+		env.Unregister = func(bean *TLCStandardMBean) (bool, error) {
+			if bean == nil {
+				return false, NewNullPointerException()
+			}
+			return bean.Unregister(), nil
+		}
+	}
+	if env.ModuleFiles == nil {
+		env.ModuleFiles = func(app *TLCApp) ([]*TLAFile, error) { return app.GetModuleFiles(), nil }
+	}
+	if env.Exit == nil {
+		env.Exit = os.Exit
+	}
+	return env
+}
+func (p *DistributedServerProcess) start(args []string, env DistributedServerEnvironment) (err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = panicValueAsError(failure)
+		}
+	}()
+	SetNumWorkers(0)
+	if env.CreateMail == nil {
+		return NewNullPointerException()
+	}
+	mail, err := env.CreateMail()
+	if err != nil {
+		return err
+	}
+	p.Mail = mail
+	if env.CreateApp == nil {
+		return NewNullPointerException()
+	}
+	app, err := env.CreateApp(args)
+	if err != nil {
+		return err
+	}
+	p.App = app
+	// getFileName is evaluated as the fallback argument even with a configured
+	// property. A null application therefore fails before property lookup.
+	if app == nil {
+		return NewNullPointerException()
+	}
+	modelName := env.Property(DistributedModelNameProperty, app.GetFileName())
+	if mail == nil {
+		return NewNullPointerException()
+	}
+	mail.ModelName = modelName
+	mail.SpecName = env.Property(DistributedSpecNameProperty, app.GetFileName())
+	count := TLCServerExpectedFPSetCount()
+	if count <= 0 {
+		count = 0 // Source selects the ordinary constructor with no count arg.
+	}
+	server, err := env.CreateServer(app, count)
+	if err != nil {
+		return err
+	}
+	p.Server = server
+	bean, err := env.CreateMBean(server)
+	if err != nil {
+		return err
+	}
+	p.MBean = bean
+	if server != nil {
+		hook := func() error { return server.RunWorkerShutdownHook() }
+		if env.InstallShutdownHook != nil {
+			if err := env.InstallShutdownHook(hook); err != nil {
+				return err
+			}
+		}
+		p.ShutdownHooks = append(p.ShutdownHooks, hook)
+		return env.ModelCheck(server)
+	}
+	return nil
+}
+func (p *DistributedServerProcess) finish(env DistributedServerEnvironment) error {
+	// Deliberately preserve Java's server.es dereference, even after a startup
+	// failure. This failure supersedes a Throwable pending in the catch region.
+	if p.Server == nil {
+		return NewNullPointerException()
+	}
+	if !p.Server.executor.IsShutdown() {
+		if err := env.ShutdownNow(p.Server); err != nil {
+			return err
+		}
+	}
+	if _, err := env.Unregister(p.MBean); err != nil {
+		return err
+	}
+	if p.Mail != nil {
+		files := []*TLAFile{}
+		if p.App != nil {
+			var err error
+			files, err = env.ModuleFiles(p.App)
+			if err != nil {
+				return err
+			}
+		}
+		sent, err := p.Mail.Send(files)
+		if err != nil {
+			return err
+		}
+		if !sent {
+			PrintMessage(ECGeneral, "Sending result mail failed.")
+			env.Exit(1)
+		}
+	}
+	return nil
+}
+func printDistributedServerFailure(err error) {
+	if javaSystemFailureCode(err) == ECSystemStackOverflow {
+		PrintErrorNullable(ECSystemStackOverflow, javaThrowableDetailMessage(err))
+		return
+	}
+	if isJavaOutOfMemoryError(err) {
+		PrintErrorNullable(ECSystemOutOfMemory, javaThrowableDetailMessage(err))
+		return
+	}
+	PrintError(ECGeneral, javaGeneralErrorMessage("", err))
+}
+func invokeDistributedServerOperation(call func() error) (err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = panicValueAsError(failure)
+		}
+	}()
+	return call()
+}
