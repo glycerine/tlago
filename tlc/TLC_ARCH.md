@@ -667,7 +667,8 @@ Port guidance:
   parameter domain before converting tuple arguments, reports the relevant
   argument number and function-expression source, ignores excess arguments,
   and directly indexes short argument lists. Its single tuple-mismatch error
-  prints the tool's object identity. Lazy-function formatting must swallow
+  prints `this.toString()`: object identity for ordinary tools, and the
+  overridden stack string for `CallStackTool`. Lazy-function formatting must swallow
   expansion failures so diagnostic printing can fall back to symbolic text.
 - In `evalApplImpl`, if a looked-up `LazyValue` is forced with `s1 == null`,
   Java evaluates the lazy expression directly with the lazy value's saved
@@ -980,6 +981,12 @@ Important concrete values:
   coverage disabled. Lazy-function materialization uses raw tuple casts and
   fixed declared-size arrays, installs the cached function with its model,
   then increments the materialization count before applying EXCEPT updates.
+- Pointer-returning function conversions preserve Java exceptions using typed
+  TLC error panics when a Go error return is unavailable. Normalization, size,
+  selection, and materialization failures must not become null conversion
+  results. `Tool.Eval`/`EvalAppl` turn those typed panics into returned errors;
+  other runtime panics propagate. Eager construction fails when materialization
+  fails instead of falling back to a lazy function.
 - `FcnRcdValue`: explicit finite function, optimized for interval domains.
   Java's `tlc2.value.impl.FcnRcdValue.threshold` controls when normalized
   finite function records switch from linear lookup to binary search; Go keeps

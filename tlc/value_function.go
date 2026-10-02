@@ -506,7 +506,9 @@ func (v *RecordValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *RecordValue) ToFcnRcd() *FcnRcdValue {
-	_ = v.normalizeRecord()
+	if err := v.normalizeRecord(); err != nil {
+		panic(err)
+	}
 	domain := make([]Value, len(v.Names))
 	for i, name := range v.Names {
 		domain[i] = NewStringValueFromUnique(name, v.CM)
@@ -1094,8 +1096,14 @@ func (v *FcnRcdValue) NonNormalizedSize() int { return len(v.Values) }
 
 func (v *FcnRcdValue) ToTuple() *TupleValue {
 	if v.Intv != nil {
-		if v.Intv.Low != 1 && mustIntervalSize(v.Intv) != 0 {
-			return nil
+		if v.Intv.Low != 1 {
+			size, err := v.Intv.Size()
+			if err != nil {
+				panic(err)
+			}
+			if size != 0 {
+				return nil
+			}
 		}
 		return NewTupleValue(v.Values)
 	}
@@ -1119,7 +1127,9 @@ func (v *FcnRcdValue) ToRecord() *RecordValue {
 	if v.Domain == nil {
 		return nil
 	}
-	_ = v.normalizeFcn()
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	names := make([]*UniqueString, len(v.Domain))
 	for i, d := range v.Domain {
 		s, ok := d.(*StringValue)

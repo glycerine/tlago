@@ -384,6 +384,15 @@ func (t *Tool) GetNextStatesForAction(functor *NextStateFunctor, state *TLCState
 func (t *Tool) Eval(expr SemanticNode, args ...any) (value Value, err error) {
 	done := t.callStackEnter(expr)
 	defer func() {
+		if failure := recover(); failure != nil {
+			switch failure := failure.(type) {
+			case *TLCError, *EvalException, *FingerprintException:
+				value, err = nil, failure.(error)
+			default:
+				done(nil)
+				panic(failure)
+			}
+		}
 		if err == nil {
 			value = t.callStackToolValue(value)
 		}

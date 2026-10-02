@@ -227,6 +227,15 @@ func (t *Tool) evalImplOpArgKind(expr *OpArgNode, c *Context, s0 *TLCStateMut, s
 func (t *Tool) EvalAppl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
 	done := t.callStackEnter(expr)
 	defer func() {
+		if failure := recover(); failure != nil {
+			switch failure := failure.(type) {
+			case *TLCError, *EvalException, *FingerprintException:
+				value, err = nil, failure.(error)
+			default:
+				done(nil)
+				panic(failure)
+			}
+		}
 		if err == nil {
 			value = t.callStackToolValue(value)
 		}
@@ -1206,6 +1215,9 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 			if !matches {
 				// Java intentionally prints the Tool object's identity here.
 				identity := fmt.Sprintf("%T@%p", t, t)
+				if t.CallStack != nil {
+					identity = t.CallStack.String()
+				}
 				return nil, newTLCError(ECGeneral, "In applying the function\n%s,\nthe argument is:\n%swhich does not match its formal parameter.\n%s", ValuesPPRString(identity), ValuesPPR(argVal), SemanticString(expr.Args[0]))
 			}
 			for i, id := range ids {
@@ -1275,9 +1287,7 @@ func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *
 		isFcnRcd = false
 	}
 	if isFcnRcd && !EvalIsKeepLazy(control) {
-		if fcn := fval.ToFcnRcd(); fcn != nil {
-			return fcn, nil
-		}
+		return fval.materializeFcnRcd()
 	}
 	return fval, nil
 }

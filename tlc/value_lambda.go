@@ -727,7 +727,7 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 	if intv, ok := domain.(*IntervalValue); ok {
 		size, err := intv.Size()
 		if err != nil {
-			return nil
+			panic(err)
 		}
 		if intv.Low != 1 && size != 0 {
 			return nil
@@ -735,19 +735,24 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 		elems := make([]Value, size)
 		for i := 0; i < size; i++ {
 			elem, err := v.Select(NewIntValue(int32(i + 1)))
-			if err != nil || elem == nil {
-				return nil
+			if err != nil {
+				panic(err)
 			}
 			elems[i] = elem
 		}
 		v.CM.incValueSecondary(int64(len(elems)))
 		return NewTupleValue(elems, v.CM)
 	}
-	set, err := toSetEnumValue(domain)
+	set, err := tryToSetEnumValue(domain)
 	if err != nil {
-		return nil
+		panic(err)
 	}
-	set.Normalize()
+	if set == nil {
+		panic(v.unsupported("To convert a function of form [x \\in S |-> f(x)] to a tuple, the set S must be enumerable."))
+	}
+	if _, err := set.normalizeSet(); err != nil {
+		panic(err)
+	}
 	elems := make([]Value, set.Elems.Len())
 	for i := 0; i < set.Elems.Len(); i++ {
 		arg := set.Elems.At(i)
@@ -756,8 +761,8 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 			return nil
 		}
 		elem, err := v.Select(arg)
-		if err != nil || elem == nil {
-			return nil
+		if err != nil {
+			panic(err)
 		}
 		elems[i] = elem
 	}
@@ -768,10 +773,15 @@ func (v *FcnLambdaValue) ToTuple() *TupleValue {
 
 func (v *FcnLambdaValue) ToRecord() *RecordValue {
 	fcn, err := v.materializeFcnRcd()
-	if err != nil || fcn == nil || fcn.Domain == nil {
+	if err != nil {
+		panic(err)
+	}
+	if fcn == nil || fcn.Domain == nil {
 		return nil
 	}
-	_ = fcn.normalizeFcn()
+	if err := fcn.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	names := make([]*UniqueString, len(fcn.Domain))
 	for i, elem := range fcn.Domain {
 		str, ok := elem.(*StringValue)
@@ -787,7 +797,7 @@ func (v *FcnLambdaValue) ToRecord() *RecordValue {
 func (v *FcnLambdaValue) ToFcnRcd() *FcnRcdValue {
 	fcn, err := v.materializeFcnRcd()
 	if err != nil {
-		return nil
+		panic(err)
 	}
 	return fcn
 }
@@ -858,7 +868,7 @@ func (v *FcnLambdaValue) FingerPrint(fp uint64) uint64 {
 func (v *FcnLambdaValue) Permute(perm *MVPerm) Value {
 	fcn, err := v.materializeFcnRcd()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return fcn.Permute(perm)
 }
