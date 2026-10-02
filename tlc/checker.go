@@ -774,7 +774,7 @@ func (mc *ModelChecker) Recover() (bool, error) {
 	}
 	if mc.FPSet != nil {
 		mc.FPSet.Init(NumWorkers(), mc.FromCheckpoint, mc.Tool.GetRootName())
-		if err := mc.FPSet.RecoverTrace(mc.Trace); err != nil {
+		if err := recoverFPSetFromCheckerTrace(mc.FPSet, mc.Trace, mc.ConcurrentTrace); err != nil {
 			return false, err
 		}
 	}
@@ -800,6 +800,30 @@ func (mc *ModelChecker) Recover() (bool, error) {
 	PrintMessage(ECTLCCheckpointRecoverEnd, fmt.Sprint(fpSize), fmt.Sprint(queueSize))
 	mc.NumberOfInitialStates = int64(fpSize)
 	return true, nil
+}
+
+func recoverFPSetFromCheckerTrace(fpSet FPSet, trace *TLCTrace, concurrentTrace *ConcurrentTLCTrace) error {
+	if fpSet == nil {
+		return nil
+	}
+	if concurrentTrace == nil {
+		return fpSet.RecoverTrace(trace)
+	}
+	elements, err := concurrentTrace.Elements()
+	if err != nil {
+		return err
+	}
+	defer elements.Close()
+	for pos := elements.NextPos(); pos != -1; pos = elements.NextPos() {
+		fp, err := elements.NextFP()
+		if err != nil {
+			return err
+		}
+		if err := fpSet.RecoverFP(fp); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
