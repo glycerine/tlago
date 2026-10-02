@@ -23,6 +23,9 @@ const (
 	ECWrongCommandlineParamsSimulator = 1101
 	ECWrongCommandlineParamsTLC       = 1102
 
+	ECTLCPPParsingValue   = 2000
+	ECTLCPPFormatingValue = 2001
+
 	ECTLCMetadirExists                                   = 2100
 	ECTLCMetadirCanNotBeCreated                          = 2101
 	ECTLCInitialState                                    = 2102
@@ -142,17 +145,31 @@ const (
 	ECTLCStatePrint2                                     = 2217
 	ECTLCStatePrint3                                     = 2218
 	ECTLCSanyEnd                                         = 2219
+	ECTLCSanyStart                                       = 2220
 	ECTLCConfigNotBothSpecAndInit                        = 2227
+	ECTLCConfigValueNotAssignedToConstantParam           = 2222
+	ECTLCConfigRHSIDAppearedAfterLHSID                   = 2223
+	ECTLCConfigWrongSubstitution                         = 2224
+	ECTLCConfigWrongSubstitutionNumberOfArgs             = 2225
+	ECTLCConfigIDDoesNotAppearInSpec                     = 2226
 	ECTLCConfigIDRequiresNoArg                           = 2228
 	ECTLCConfigSpecifiedNotDefined                       = 2229
 	ECTLCConfigIDHasValue                                = 2230
 	ECTLCConfigMissingInit                               = 2231
 	ECTLCConfigMissingNext                               = 2232
 	ECTLCConfigIDMustNotBeConstant                       = 2233
+	ECTLCConfigOpNoArgs                                  = 2234
+	ECTLCConfigOpNotInSpec                               = 2235
+	ECTLCConfigOpIsEqual                                 = 2236
+	ECTLCConfigSpecIsTrivial                             = 2237
 	ECTLCCantHandleSubscript                             = 2238
 	ECTLCCantHandleConjunct                              = 2239
 	ECTLCCantHandleTooManyNextStateRels                  = 2240
 	ECTLCConfigPropertyNotCorrectlyDefined               = 2241
+	ECTLCConfigOpArityInconsistent                       = 2242
+	ECTLCConfigNoStateType                               = 2243
+	ECTLCCantHandleRealNumbers                           = 2244
+	ECTLCNoModules                                       = 2245
 	ECTLCExpectedExpression                              = 2246
 	ECTLCExpectedExpressionInComputing                   = 2247
 	ECTLCExpectedExpressionInComputing2                  = 2248
@@ -161,14 +178,17 @@ const (
 	ECTLCLiveCannotEvalFormula                           = 2251
 	ECTLCLiveEncounteredNonboolPredicate                 = 2252
 	ECTLCLiveFormulaTautology                            = 2253
+	ECSystemFingerprintOverflowError                     = 2254
 	ECTLCLiveFormulaStateLevel                           = 2255
 	ECTLCConfigNoSpecButProperty                         = 2257
 	ECTLCLiveFormulaAndFairnessTautology                 = 2258
 	ECTLCConfigNoFairnessButLiveProperty                 = 2259
 	ECTLCEnabledWrongFormula                             = 2260
 	ECTLCEncounteredFormulaInPredicate                   = 2261
+	ECTLCVersion                                         = 2262
 	ECTLCNoStatesSatisfyingInitAndConstraint             = 2256
 	ECTLCModuleArgumentErrorAn                           = 2266
+	ECTLCIntegerTooBig                                   = 2265
 	ECTLCCheckingTemporalPropsEnd                        = 2267
 	ECTLCStateGraphOutdegree                             = 2268
 	ECTLCComputingInitProgress                           = 2269
@@ -178,12 +198,15 @@ const (
 	ECTLCConfigPropertyActionLevelSquareASubV            = 2273
 	ECTLCConfigPropertyActionLevelAngleASubV             = 2274
 	ECTLCFeatureUnsupportedLivenessSymmetry              = 2279
+	ECTLCConfigUndefinedOrNoOperator                     = 2280
+	ECTLCConfigSubstitutionNonConstant                   = 2281
 	ECTLCTraceTooLong                                    = 2282
 	ECTLCModuleOneArgumentError                          = 2283
 	ECTLCFeatureLivenessConstraints                      = 2284
 	ECTLCSymmetrySetTooSmall                             = 2300
 	ECTLCSpecificationFeaturesTemporalQuantifier         = 2301
 	ECTLCModuleValueJavaMethodOverrideMismatch           = 2400
+	ECTLCEnvironmentJVMGC                                = 2401
 	ECTLCModuleValueJavaMethodOverrideModuleMismatch     = 2402
 	ECTLCModuleValueJavaMethodOverrideIdentifierMismatch = 2403
 	ECTLCPostconditionFalse                              = 2404
@@ -199,7 +222,29 @@ const (
 	ECTLCCoverageConstraint                              = 2778
 	ECTLCCoverageVar                                     = 2779
 	ECTLCPossibleUnwitnessed                             = 2780
+	ECCheckFailedToCheck                                 = 3000
+	ECCheckCouldNotReadTrace                             = 3001
 	ECTLCParsingFailed                                   = 3002
+
+	ECCheckParamExpectConfigFilename   = 3100
+	ECCheckParamUsage                  = 3101
+	ECCheckParamMissingTLAModule       = 3102
+	ECCheckParamNeedToSpecifyConfigDir = 3103
+	ECCheckParamWorkerNumberRequired   = 3104
+	ECCheckParamWorkerNumberTooSmall   = 3105
+	ECCheckParamWorkerNumberRequired2  = 3106
+	ECCheckParamDepthRequired          = 3107
+	ECCheckParamDepthRequired2         = 3108
+	ECCheckParamTraceRequired          = 3109
+	ECCheckParamCovreageRequired       = 3110
+	ECCheckParamCovreageRequired2      = 3111
+	ECCheckParamCovreageTooSmall       = 3112
+	ECCheckParamUnrecognized           = 3113
+	ECCheckParamTooManyInputFiles      = 3114
+
+	ECSanyParserCheck1 = 4000
+	ECSanyParserCheck2 = 4001
+	ECSanyParserCheck3 = 4002
 
 	ECCFGErrorReadingFile = 5001
 	ECCFGGeneral          = 5002
@@ -460,6 +505,28 @@ func formatMessage(code int, params []string) string {
 			"have an enormous number of states."
 	case ECSystemOutOfMemoryTooManyInit:
 		return "Out Of Memory. There are probably too many initial states."
+	case ECSystemFingerprintOverflowError:
+		return "The requested fingerprint set size is too large, which could result in precision or overflow errors. To resolve this, either increase the fingerprint size to the next power of two (ensuring safe bit-shifting) or adjust the fpbits parameter to a higher value."
+	case ECWrongCommandlineParamsTLC:
+		if len(params) >= 1 {
+			return fmt.Sprintf("%s\nUsage: java tlc2.TLC [-help] [-option] inputfile", params[0])
+		}
+	case ECWrongCommandlineParamsSimulator:
+		if len(params) >= 1 {
+			return fmt.Sprintf("%s\nUsage: java tlc2.Simulator [-help] [-option] inputfile", params[0])
+		}
+	case ECTLCVersion:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC2 %s", params[0])
+		}
+	case ECTLCPPFormatingValue:
+		if len(params) >= 2 {
+			return fmt.Sprintf("error while formating %s\n%s", params[0], params[1])
+		}
+	case ECTLCPPParsingValue:
+		if len(params) >= 2 {
+			return fmt.Sprintf("error while parsing %s\n%s", params[0], params[1])
+		}
 	case ECTLCStarting:
 		return fmt.Sprintf("Starting... (%s)", messageNow())
 	case ECTLCFinished:
@@ -652,6 +719,34 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("Waiting for %s FPSet server(s) to register (%s)", params[0], messageNow())
 		}
+	case ECTLCConfigValueNotAssignedToConstantParam:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The constant parameter %s is not assigned a value by the configuration file.", params[0])
+		}
+	case ECTLCConfigRHSIDAppearedAfterLHSID:
+		if len(params) >= 1 {
+			return fmt.Sprintf("In the configuration file, the identifier %s appears\non the right-hand side of a <- after already appearing on the\nleft-hand side of one.", params[0])
+		}
+	case ECTLCConfigWrongSubstitution:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The configuration file substitutes for %s with the undefined identifier %s.", params[0], params[1])
+		}
+	case ECTLCConfigUndefinedOrNoOperator:
+		if len(params) >= 2 {
+			return fmt.Sprintf("In evaluation, the identifier %s is either undefined or not an operator.\n%s", params[0], params[1])
+		}
+	case ECTLCConfigSubstitutionNonConstant:
+		if len(params) >= 3 {
+			return fmt.Sprintf("The configuration file substitutes constant %s with non-constant %s%s", params[0], params[1], params[2])
+		}
+	case ECTLCConfigWrongSubstitutionNumberOfArgs:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The configuration file substitutes for %s with %s of different number of arguments.", params[0], params[1])
+		}
+	case ECTLCConfigIDDoesNotAppearInSpec:
+		if len(params) >= 1 {
+			return fmt.Sprintf("In the configuration file, the identifier %s does not appear in the specification.", params[0])
+		}
 	case ECTLCConfigNotBothSpecAndInit:
 		return "The configuration file cannot specify both INIT/NEXT and SPECIFICATION fields."
 	case ECTLCConfigIDRequiresNoArg:
@@ -681,6 +776,34 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("%s\nWhile working on the initial state:\n%s", params[0], params[1])
 		}
+	case ECTLCNestedExpression:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The error occurred when TLC was evaluating the nested\nexpressions at the following positions:\n%s", params[0])
+		}
+	case ECTLCAssumptionFalse:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Assumption %s is false.", params[0])
+		}
+	case ECTLCPostconditionFalse:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Postcondition %s at %s is false.", params[0], params[1])
+		}
+	case ECTLCPossibleUnwitnessed:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The _POSSIBLE predicate %s at %s was never witnessed.\nOthers may be unwitnessed too; only witnessed predicates appear with a\nnon-zero count in the record printed above.\nSee https://explain.tlapl.us/possible-conditions for additional details.", params[0], params[1])
+		}
+	case ECTLCPostconditionEvaluationError:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Evaluating postcondition %s at %s failed.\n%s", params[0], params[1], params[2])
+		}
+	case ECTLCSanyStart:
+		return "Starting SANY..."
+	case ECTLCSanyEnd:
+		return "SANY finished."
+	case ECTLCAssumptionEvaluationError:
+		if len(params) >= 2 {
+			return fmt.Sprintf("Evaluating assumption %s failed.\n%s", params[0], params[1])
+		}
 	case ECTLCStateNotCompletelySpecifiedInitial:
 		if len(params) >= 1 {
 			return fmt.Sprintf("State is not completely specified by the initial predicate:\n%s", params[0])
@@ -701,6 +824,10 @@ func formatMessage(code int, params []string) string {
 			return fmt.Sprintf("Successor state is not completely specified by the next-state action. The following variable%s not defined: %s.\n", params[0], params[1])
 		}
 		return "Successor state is not completely specified by the next-state action.\n"
+	case ECTLCStateNotCompletelySpecifiedLive:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The action formula A appearing in a WF_v(A) or SF_v(A) operator does not specify the primed value of the variable %s occurring in the state formula v.\n", params[0])
+		}
 	case ECTLCInvariantViolatedBehavior:
 		if len(params) >= 1 {
 			return fmt.Sprintf("Invariant %s is violated.", params[0])
@@ -765,14 +892,124 @@ func formatMessage(code int, params []string) string {
 		return "Progress report thread died."
 	case ECTLCAAAAAAA:
 		return "AAAAAA"
+	case ECTLCRegistryInitError:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLA+ Registry initialization error. The name %s is already in use.", params[0])
+		}
+	case ECCheckFailedToCheck:
+		return "TLC failed in checking traces."
+	case ECCheckParamUsage:
+		return "Usage: java tlc2.tool.CheckImplFile [-option] inputfile"
+	case ECCheckParamMissingTLAModule:
+		return "Missing input TLA+ module."
+	case ECCheckParamExpectConfigFilename:
+		return "Expect a file name for -config option."
+	case ECCheckParamNeedToSpecifyConfigDir:
+		return "need to specify the metadata directory for recovery."
+	case ECCheckParamWorkerNumberRequired:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Worker number required. But encountered %s", params[0])
+		}
+	case ECCheckParamWorkerNumberTooSmall:
+		return "At least one worker is required."
+	case ECCheckParamWorkerNumberRequired2:
+		return "Expect an integer for -workers option."
+	case ECCheckParamDepthRequired:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Depth must be an integer. But encountered %s", params[0])
+		}
+	case ECCheckParamDepthRequired2:
+		return "Expect an integer for -depth option."
+	case ECCheckParamTraceRequired:
+		return "Expect a filename for -trace option."
+	case ECCheckParamCovreageRequired:
+		if len(params) >= 1 {
+			return fmt.Sprintf("An integer for coverage report interval required. But encountered %s", params[0])
+		}
+	case ECCheckParamCovreageRequired2:
+		return "Coverage report interval required."
+	case ECCheckParamCovreageTooSmall:
+		return "Expect a nonnegative integer for -coverage option."
+	case ECCheckParamUnrecognized:
+		if len(params) == 1 {
+			return fmt.Sprintf("Unrecognized option: %s", params[0])
+		}
+		if len(params) >= 2 {
+			return fmt.Sprintf("Unrecognized option in file %s: %s", params[1], params[0])
+		}
+	case ECCheckParamTooManyInputFiles:
+		if len(params) >= 2 {
+			return fmt.Sprintf("More than one input files: %s and %s", params[0], params[1])
+		}
+	case ECCheckCouldNotReadTrace:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC could not read in the trace. %s", params[0])
+		}
+	case ECTLCParsingFailed:
+		return "Parsing or semantic analysis failed."
+	case ECTLCParsingFailed2:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Parsing or semantic analysis failed.%s", params[0])
+		}
 	case ECTLCStatePrint1:
 		if len(params) >= 2 {
 			return fmt.Sprintf("%s:\n%s", params[0], params[1])
+		}
+	case ECTLCParameterMustBePostfix:
+		return "Parameter must be a postfix operator"
+	case ECTLCCouldNotDetermineSubscript:
+		return "TLC could not determine if the subscript of the next-state relation contains\nall state variables. Proceed with fingers crossed."
+	case ECTLCSubscriptContainNoStateVar:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The subscript of the next-state relation specified by the specification\ndoes not seem to contain the state variable %s", params[0])
+		}
+	case ECTLCWrongTupleFieldName:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Tuple field name %s is not an integer.", params[0])
+		}
+	case ECTLCWrongRecordFieldName:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Record field name %s is not a string.", params[0])
+		}
+	case ECTLCUnchangedVariableChanged:
+		if len(params) >= 2 {
+			return fmt.Sprintf("The variable %s was changed while it is specified as UNCHANGED at\n%s", params[0], params[1])
+		}
+	case ECTLCExceptAppliedToUnknownField:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The EXCEPT was applied to non-existing fields of the value at\n%s", params[0])
 		}
 	case ECTLCConfigIDMustNotBeConstant:
 		if len(params) >= 2 {
 			return fmt.Sprintf("The %s %s cannot be a constant.", params[0], params[1])
 		}
+	case ECTLCConfigOpNoArgs:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The operator %s cannot take any argument.", params[0])
+		}
+	case ECTLCConfigOpNotInSpec:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The operator %s is not defined in the spec.", params[0])
+		}
+	case ECTLCConfigOpIsEqual:
+		if len(params) >= 3 {
+			return fmt.Sprintf("The operator %s, which equals %s,\ncannot be used as a %s", params[0], params[1], params[2])
+		}
+	case ECTLCConfigSpecIsTrivial:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The spec is trivially false because %s is false.", params[0])
+		}
+	case ECSanyParserCheck1:
+		return "TLA+ Parser sanity check."
+	case ECSanyParserCheck2:
+		return "TLA+ Parser check: Assertion error in epa()."
+	case ECSanyParserCheck3:
+		return "TLA+ Parser check: Assertion error in SBracketCases()."
+	case ECTLCArgumentMismatch:
+		if len(params) >= 1 {
+			return fmt.Sprintf("Argument mismatch in operator application.%s", params[0])
+		}
+		return "Argument mismatch in operator application.%1"
 	case ECTLCCantHandleSubscript:
 		if len(params) >= 1 {
 			return fmt.Sprintf("TLC cannot handle subscript %s", params[0])
@@ -798,6 +1035,24 @@ func formatMessage(code int, params []string) string {
 	case ECTLCConfigPropertyNotCorrectlyDefined:
 		if len(params) >= 1 {
 			return fmt.Sprintf("The property %s is not correctly defined.", params[0])
+		}
+	case ECTLCConfigOpArityInconsistent:
+		if len(params) >= 1 {
+			return fmt.Sprintf("The arity of the operator %s is inconsistent in the configuration file.", params[0])
+		}
+	case ECTLCConfigNoStateType:
+		return "The configuration file did not specify types for state variables."
+	case ECTLCCantHandleRealNumbers:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC can't handle real numbers.\n%s", params[0])
+		}
+	case ECTLCIntegerTooBig:
+		if len(params) >= 1 {
+			return fmt.Sprintf("TLC can't handle a number this big.\n%s", params[0])
+		}
+	case ECTLCNoModules:
+		if len(params) >= 1 {
+			return fmt.Sprintf("In the configuration file, the module name %s is not a module in the specification.", params[0])
 		}
 	case ECTLCSpecificationFeaturesTemporalQuantifier:
 		return "TLC does not support temporal existential, nor universal, quantification over state variables."
@@ -949,6 +1204,8 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("TLC encountered a temporal formula (%s) when evaluating a predicate or action.\n%s", params[0], params[1])
 		}
+	case ECTLCEnvironmentJVMGC:
+		return "Please run the Java VM, which executes TLC with a throughput optimized garbage collector, by passing the \"-XX:+UseParallelGC\" property."
 	case ECTLCModuleOverrideStdout:
 		return strings.Join(params, "")
 	}
@@ -1081,6 +1338,13 @@ func ExitStatusForErrorCode(code int) int {
 		ECCFGTwiceKeyword,
 		ECCFGExpectID,
 		ECCFGExpectedSymbol,
+		ECTLCConfigValueNotAssignedToConstantParam,
+		ECTLCConfigRHSIDAppearedAfterLHSID,
+		ECTLCConfigWrongSubstitution,
+		ECTLCConfigWrongSubstitutionNumberOfArgs,
+		ECTLCConfigUndefinedOrNoOperator,
+		ECTLCConfigSubstitutionNonConstant,
+		ECTLCConfigIDDoesNotAppearInSpec,
 		ECTLCConfigNotBothSpecAndInit,
 		ECTLCConfigIDRequiresNoArg,
 		ECTLCConfigSpecifiedNotDefined,
@@ -1088,13 +1352,21 @@ func ExitStatusForErrorCode(code int) int {
 		ECTLCConfigMissingInit,
 		ECTLCConfigMissingNext,
 		ECTLCConfigIDMustNotBeConstant,
+		ECTLCConfigOpNoArgs,
+		ECTLCConfigOpNotInSpec,
+		ECTLCConfigOpIsEqual,
+		ECTLCConfigSpecIsTrivial,
 		ECTLCCantHandleSubscript,
 		ECTLCCantHandleConjunct,
 		ECTLCCantHandleTooManyNextStateRels,
 		ECTLCConfigPropertyNotCorrectlyDefined,
 		ECTLCConfigPropertyActionLevel,
 		ECTLCConfigPropertyActionLevelSquareASubV,
-		ECTLCConfigPropertyActionLevelAngleASubV:
+		ECTLCConfigPropertyActionLevelAngleASubV,
+		ECTLCConfigOpArityInconsistent,
+		ECTLCConfigNoStateType,
+		ECTLCCantHandleRealNumbers,
+		ECTLCNoModules:
 		return ExitStatusErrorConfigParse
 	case ECTLCParsingFailed2,
 		ECTLCParsingFailed:
