@@ -991,6 +991,9 @@ func (t *TLCTrace) Delete() error {
 }
 
 func (t *TLCTrace) chkptName(ext string) string {
+	if t.rawPaths {
+		return t.diskdir + string(os.PathSeparator) + t.rootName + ".st." + ext
+	}
 	rootName := t.rootName
 	if rootName == "" {
 		rootName = "Spec"

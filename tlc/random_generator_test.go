@@ -20,6 +20,9 @@ func TestRandomEnumerableModelCheckingUsesSingleJavaStyleRNG(t *testing.T) {
 	SetSimulator(nil)
 
 	state := NewEmptyState()
+	for _, variable := range StateVariables() {
+		state.Bind(variable.Name, IntZero)
+	}
 	fpSeed := int64(state.FingerPrint()) ^ seed
 	expected := NewJavaRandom(seed)
 	_ = expected.NextDouble()

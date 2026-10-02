@@ -69,12 +69,12 @@ func TestOutputMessageControlMirrorsJavaRecorderSemantics(t *testing.T) {
 	if recovered == nil {
 		t.Fatalf("PrintWarning with messages-as-errors did not panic")
 	}
-	evalErr, ok := recovered.(*EvalException)
-	if !ok || evalErr.GetErrorCode() != ECGeneral {
-		t.Fatalf("PrintWarning panic = %T %[1]v, want *EvalException code %d", recovered, ECGeneral)
+	runtimeErr, ok := recovered.(*TLCError)
+	if !ok || !runtimeErr.Runtime || runtimeErr.Code != ECGeneral {
+		t.Fatalf("PrintWarning panic = %T %[1]v, want *TLCError runtime code %d", recovered, ECGeneral)
 	}
 	after := len(recorder.Records(ECGeneral))
-	if after != before {
-		t.Fatalf("messages-as-errors recorded warning before abort = %d, want unchanged %d like Java Assert.fail path", after, before)
+	if after != before+1 {
+		t.Fatalf("messages-as-errors recorded warning before abort = %d, want %d from Java Assert.fail MP.getMessage", after, before+1)
 	}
 }

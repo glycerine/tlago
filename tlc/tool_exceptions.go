@@ -9,7 +9,7 @@ type ConfigFileException struct {
 }
 
 func NewConfigFileException(errorCode int, parameters []string, cause ...error) *ConfigFileException {
-	ex := &ConfigFileException{throwableTrace: captureThrowableTrace(), ErrorCode: errorCode, Parameters: copyMessageParameters(parameters), detailMessage: javaString(formatMessage(errorCode, parameters))}
+	ex := &ConfigFileException{throwableTrace: captureThrowableTrace(), ErrorCode: errorCode, Parameters: copyMessageParameters(parameters), detailMessage: javaString(GetMessage(errorCode, parameters...))}
 	if len(cause) > 0 {
 		ex.Cause = cause[0]
 	}
@@ -43,7 +43,7 @@ func NewEvalException(errorCode int, parameters ...string) *EvalException {
 		copied = copyMessageParameters(parameters)
 	}
 	return &EvalException{
-		StatefulRuntimeException: NewStatefulRuntimeException(formatMessage(errorCode, copied)),
+		StatefulRuntimeException: NewStatefulRuntimeException(GetMessage(errorCode, copied...)),
 		ErrorCode:                errorCode,
 		Parameters:               copied,
 	}
@@ -52,7 +52,7 @@ func NewEvalException(errorCode int, parameters ...string) *EvalException {
 func NewEvalExceptionNullable(errorCode int, parameters ...*string) *EvalException {
 	copied := copyNullableMessageParameters(parameters)
 	return &EvalException{
-		StatefulRuntimeException: NewStatefulRuntimeException(formatNullableMessage(errorCode, copied)),
+		StatefulRuntimeException: NewStatefulRuntimeException(GetMessageNullable(errorCode, copied...)),
 		ErrorCode:                errorCode,
 		Parameters:               messageParameterStrings(copied),
 		NullableParameters:       copied,

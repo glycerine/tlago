@@ -107,7 +107,6 @@ type TLCServer struct {
 	StatesPerMinute             int64
 	DistinctStatesPerMinute     int64
 	AverageBlockCnt             int64
-	NumberOfInitialStates       int64
 	registrationMu              sync.Mutex
 	threadsMu                   sync.Mutex
 	threadsToWorkers            *InsMap[*TLCServerThread, *DistributedWorker]
@@ -158,11 +157,11 @@ func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
 }
 
 func (s *TLCServer) HasNoErrors() bool {
-	return s != nil && s.ErrState == nil && s.LastError == nil
+	return s != nil && s.ErrState == nil
 }
 
 func (s *TLCServer) application() *TLCApp {
-	if s.app == nil || s.app.Tool != s.Tool {
+	if s.app == nil {
 		s.app = NewTLCApp(s.Tool, s.GetCheckDeadlock())
 	}
 	return s.app
@@ -299,28 +298,14 @@ func (s *TLCServer) DoInit(tool ...*Tool) (int, error) {
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
 	}
-	functor := &distributedDoInitFunctor{server: s, app: s.application(), returnValue: NoError}
-	err := functor.app.GetInitStates(NewStateFunctor(functor.AddElement))
-	if err == errInvariantViolated {
-		s.ErrState = functor.errState
-		return functor.returnValue, nil
-	}
-	if err != nil {
-		if functor.errState != nil {
-			s.ErrState = functor.errState
-		}
-		if functor.returnValue != NoError {
-			return functor.returnValue, err
-		}
+	functor := &distributedDoInitFunctor{server: s, app: s.application()}
+	if err := functor.app.GetInitStates(NewStateFunctor(functor.AddElement)); err != nil {
 		return ECGeneral, err
 	}
-	if functor.errState != nil {
-		s.ErrState = functor.errState
-		if functor.err != nil {
-			return functor.returnValue, functor.err
-		}
+	if functor.err != nil {
+		return ECGeneral, functor.err
 	}
-	return functor.returnValue, nil
+	return NoError, nil
 }
 
 func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
@@ -334,30 +319,36 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
 	}
-	s.WaitForFPSetManager()
-	PrintMessage(ECTLCComputingInit)
-	result, err := s.DoInit()
-	if err != nil {
-		if result == NoError {
-			result = ECGeneral
+	app := s.application()
+	recovered := false
+	if app.CanRecover() {
+		PrintMessage(ECTLCCheckpointRecoverStart, s.Metadir)
+		if err := s.Recover(); err != nil {
+			return ECGeneral, err // Recovery is outside the init catch(Throwable).
 		}
-		s.PrintSummary(1, 0, s.GetNewStates(), s.fpSetSize(), false)
-		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
-		s.executor.Shutdown()
-		_ = s.Close(false)
-		return result, err
+		PrintMessage(ECTLCCheckpointRecoverEnd, fmtUint64(s.fpSetSize()), fmtInt64(s.StateQueue.Size()))
+		recovered = true
 	}
-	if result != NoError || !s.HasNoErrors() {
-		if result == NoError {
-			result = ECGeneral
+	s.WaitForFPSetManager()
+	result := NoError
+	if !recovered {
+		PrintMessage(ECTLCComputingInit)
+		if err := s.runDistributedInit(); err != nil {
+			s.SetDone()
+			result = s.reportDistributedInitFailure(app, err)
+		} else {
+			PrintMessage(ECTLCInitGenerated1, fmtInt64(s.StateQueue.Size()), "(s)")
 		}
-		s.PrintSummary(1, 0, s.GetNewStates(), s.fpSetSize(), false)
+	}
+	if s.IsDone() {
+		s.PrintSummary(1, 0, s.StateQueue.Size(), s.fpSetSize(), false)
 		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
 		s.executor.Shutdown()
-		_ = s.Close(false)
+		if err := s.Close(false); err != nil {
+			return ECGeneral, err
+		}
 		return result, nil
 	}
-	s.PrintInitGenerated()
 	PrintMessage(ECTLCDistributedServerRunning, distributedServerHost())
 	if len(s.application().Actions) == 0 {
 		if s.StateQueue != nil && !s.StateQueue.IsEmpty() {
@@ -674,69 +665,51 @@ func (s *TLCServer) SetErrState(curState *TLCStateMut, succState *TLCStateMut, k
 }
 
 type distributedDoInitFunctor struct {
-	server      *TLCServer
-	app         *TLCApp
-	errState    *TLCStateMut
-	err         error
-	returnValue int
+	server *TLCServer
+	app    *TLCApp
+	err    error
 }
 
-func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
-	if f == nil || f.server == nil {
-		return nil, newTLCError(ECGeneral, "distributed init functor has no server")
-	}
-	if isPowerOfTwo(f.server.NumberOfInitialStates) && f.server.NumberOfInitialStates > 1 {
-		PrintMessage(ECTLCComputingInitProgress, fmt.Sprintf("%d", f.server.NumberOfInitialStates))
-	}
-	f.server.NumberOfInitialStates++
-	if f.errState != nil {
-		if f.returnValue == NoError {
-			f.returnValue = ECTLCInitialState
+func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (result any, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = panicValueAsError(failure)
 		}
-		return f.returnValue, nil
-	}
-	if f.app == nil {
-		f.err = newTLCError(ECGeneral, "distributed init functor has no tool")
-		return ECGeneral, f.err
+		if err != nil {
+			if javaSystemFailureCode(err) != NoError {
+				panic(err) // DoInitFunctor catches Exception, not Error.
+			}
+			if f.server.SetErrState(curState, nil, true, ECGeneral) {
+				f.err = err
+			}
+			err = nil
+		}
+		result = curState
+	}()
+	if f.err != nil {
+		return curState, nil
 	}
 	inModel, err := f.app.IsInModel(curState)
 	if err != nil {
-		f.errState = curState
-		f.err = err
-		_ = f.server.SetErrState(curState, nil, true, ECGeneral)
-		return f.returnValue, err
+		return curState, err
 	}
 	seen := false
 	if inModel {
 		fp := curState.FingerPrint()
-		if f.server.FPSetManager != nil {
-			seen = f.server.FPSetManager.Put(fp)
-		}
+		seen = f.server.FPSetManager.Put(fp)
 		if !seen {
-			if f.server.Trace != nil {
-				if _, err := f.server.Trace.WriteState(nil, fp, curState, curState.GetAction()); err != nil {
-					f.errState = curState
-					f.err = err
-					_ = f.server.SetErrState(curState, nil, true, ECGeneral)
-					return f.returnValue, err
-				}
+			if _, err := f.server.Trace.WriteState(nil, fp, curState, nil); err != nil {
+				return curState, err
 			}
-			if f.server.StateQueue != nil {
-				f.server.StateQueue.SEnqueue(curState)
-			}
+			f.server.StateQueue.Enqueue(curState)
 		}
 	}
 	if !inModel || !seen {
 		if err := f.app.CheckState(nil, curState); err != nil {
-			if f.server.SetErrState(curState, nil, true, ECGeneral) {
-				f.errState = curState
-				f.err = err
-				f.returnValue = ECGeneral
-			}
-			return f.returnValue, nil
+			return curState, err
 		}
 	}
-	return f.returnValue, nil
+	return curState, nil
 }
 
 func distributedVetoCleanup() bool {

@@ -2624,8 +2624,13 @@ Port guidance:
   that need recorder parity while still knowing whether a diagnostic was
   user-visible. Java `printError` does not consult suppression, while
   `printMessage`, `printWarning`, `printTLCBug`, and state printing do.
-- `-messagesAsErrors` is a warning path: Java `printWarning` aborts through
-  `Assert.fail` before recording the warning.
+- `MP.getMessage` notifies recorders before formatting without printing. Go
+  marks these events `Message.FormattingOnly`; coded exception constructors
+  preserve them too.
+- `-messagesAsErrors` and the dynamic `tlc2.output.MP.warning2error` property
+  abort `printWarning` through `Assert.fail`. Its `TLCRuntimeException`
+  construction records an `MP.getMessage` event before throwing; it never
+  reaches the ordinary warning event.
 - Keep human text close to Java but assert primarily through codes and
   structured parameters like Java tests do.
 - State string formatting is semantic output. Treat it as part of compatibility.

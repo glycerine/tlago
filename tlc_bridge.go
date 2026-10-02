@@ -1463,6 +1463,11 @@ func (b *tlcBridge) sourceLocationForPosition(pos Position) tlc.SourceLocation {
 		return tlc.NullSourceLocation
 	}
 	source := pos.File
+	if source != "" {
+		// Parser positions retain physical filenames. Java semantic Location
+		// uses the parse module's name in TLC diagnostics and call stacks.
+		source = strings.TrimSuffix(filepath.Base(source), filepath.Ext(source))
+	}
 	if source == "" {
 		source = b.convertingModule
 	}

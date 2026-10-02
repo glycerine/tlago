@@ -351,9 +351,10 @@ func (s *TLCStateMut) FingerPrint() uint64 {
 	fp := FP64New()
 	if stateTool != nil && stateTool.ViewSpec != nil {
 		for _, value := range s.values {
-			if value != nil {
-				value.DeepNormalize()
+			if value == nil {
+				panic(NewNullPointerException())
 			}
+			value.DeepNormalize()
 		}
 		state := s
 		if len(values) != 0 && len(s.values) != 0 && &values[0] != &s.values[0] {
@@ -364,14 +365,23 @@ func (s *TLCStateMut) FingerPrint() uint64 {
 		if err != nil {
 			panic(err)
 		}
-		if value != nil {
-			return value.FingerPrint(fp)
+		if value == nil {
+			panic(NewNullPointerException())
 		}
-		return fp
+		return value.FingerPrint(fp)
 	}
 	for _, value := range values {
-		if value != nil {
-			fp = value.FingerPrint(fp)
+		if value == nil {
+			panic(NewNullPointerException())
+		}
+		fp = value.FingerPrint(fp)
+	}
+	if len(values) > 0 && &values[0] != &s.values[0] {
+		for _, value := range s.values {
+			if value == nil {
+				panic(NewNullPointerException())
+			}
+			value.DeepNormalize()
 		}
 	}
 	return fp
@@ -393,7 +403,7 @@ nextPerm:
 			if s.values[j] != nil {
 				vals[j] = s.values[j].Permute(perm)
 			} else {
-				vals[j] = nil
+				panic(NewNullPointerException())
 			}
 			if cmp == 0 {
 				var err error

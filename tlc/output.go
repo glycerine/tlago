@@ -290,6 +290,9 @@ type Message struct {
 	NullableParams []*string
 	Text           string
 	Suppressed     bool
+	// FormattingOnly identifies MP.getMessage events, which reach recorders
+	// without printing a diagnostic.
+	FormattingOnly bool
 	State          *TLCStateMut
 	StateInfo      *TLCStateInfo
 	StateNumber    int
@@ -488,15 +491,39 @@ func recordMessage(code int, severity Severity, params ...string) {
 	recordMessageParameters(code, severity, params, nil)
 }
 
+// GetMessage mirrors Java MP.getMessage, including its recorder notification.
+func GetMessage(code int, params ...string) string {
+	return getMessageParameters(code, params, nil)
+}
+
+func GetMessageNullable(code int, params ...*string) string {
+	return getMessageParameters(code, messageParameterStrings(params), params)
+}
+
+func getMessageParameters(code int, params []string, nullableParams []*string) string {
+	copied := copyMessageParameters(params)
+	nullableCopied := copyNullableMessageParameters(nullableParams)
+	// Java notifies the recorder before formatting, including when formatting
+	// subsequently throws (for example, while substituting a null parameter).
+	defaultRecorder.Record(Message{Code: code, Severity: SeverityNone,
+		Params: copied, NullableParams: nullableCopied, FormattingOnly: true})
+	if nullableCopied != nil {
+		return formatNullableMessage(code, nullableCopied)
+	}
+	return formatMessage(code, copied)
+}
+
 func recordMessageParameters(code int, severity Severity, params []string, nullableParams []*string) {
 	suppressed, asError, warn := messageControlFor(code)
 	visible := !suppressed
 	if severity == SeverityWarning {
-		if asError {
+		if initialBooleanProperty("tlc2.output.MP.warning2error") || asError {
 			if nullableParams != nil {
-				panic(NewEvalExceptionNullable(code, nullableParams...))
+				failure := newTLCErrorCodeNullable(code, nullableParams...)
+				failure.Runtime = true
+				panic(failure)
 			}
-			panic(NewEvalException(code, params...))
+			panic(NewTLCRuntimeException(code, params...))
 		}
 		visible = warn && !suppressed
 	} else if severity == SeverityError {

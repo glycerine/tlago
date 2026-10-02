@@ -328,7 +328,13 @@ func (t *Tool) defineStandardEvaluating(name string, arity int, eval EvaluatingE
 
 func (t *Tool) defineStandardEvaluatingWithMinLevel(name string, arity int, minLevel int, eval EvaluatingEvalFunc, aliases ...string) {
 	opDef := &OpDefNode{Name: UniqueStringOf(name), Symbol: NewSymbolNode(name)}
-	value := NewEvaluatingValue(name, minLevel, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	method := name
+	if name == "TLCGet" {
+		// EvaluatingValue's catch(Throwable) reports Method.toString(), including
+		// the source override's declaring class and complete parameter types.
+		method = "public static tlc2.value.impl.Value tlc2.module.TLCGetSet.TLCGetEval(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
+	}
+	value := NewEvaluatingValue(method, minLevel, 100, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}

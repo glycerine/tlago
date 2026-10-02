@@ -30,7 +30,7 @@ func newTLCError(code int, format string, args ...any) *TLCError {
 
 func newTLCErrorCode(code int, params ...string) *TLCError {
 	copied := copyMessageParameters(params)
-	return &TLCError{throwableTrace: captureThrowableTrace(), Code: code, Msg: formatMessage(code, copied), Params: copied}
+	return &TLCError{throwableTrace: captureThrowableTrace(), Code: code, Msg: GetMessage(code, copied...), Params: copied}
 }
 
 // NewTLCRuntimeException constructs the coded failure used by Java Assert.
@@ -149,7 +149,7 @@ func newTLCErrorCodeNullable(code int, params ...*string) *TLCError {
 	return &TLCError{
 		throwableTrace: captureThrowableTrace(),
 		Code:           code,
-		Msg:            formatNullableMessage(code, copied),
+		Msg:            GetMessageNullable(code, copied...),
 		Params:         messageParameterStrings(copied),
 		NullableParams: copied,
 	}
