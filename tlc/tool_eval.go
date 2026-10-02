@@ -1384,10 +1384,40 @@ func (t *Tool) evalSetOp(opcode int, left SemanticNode, right SemanticNode, c *C
 	}
 	switch opcode {
 	case OpcodeSetdiff:
+		switch left := arg1.(type) {
+		case *IntervalValue:
+			return left.Diff(arg2)
+		case *SetEnumValue:
+			return left.Diff(arg2)
+		}
 		return NewSetDiffValue(arg1, arg2), nil
 	case OpcodeCap:
+		switch left := arg1.(type) {
+		case *IntervalValue:
+			return left.Cap(arg2)
+		case *SetEnumValue:
+			return left.Cap(arg2)
+		}
+		switch right := arg2.(type) {
+		case *IntervalValue:
+			return right.Cap(arg1)
+		case *SetEnumValue:
+			return right.Cap(arg1)
+		}
 		return NewSetCapValue(arg1, arg2), nil
 	case OpcodeCup:
+		switch left := arg1.(type) {
+		case *IntervalValue:
+			return left.Cup(arg2)
+		case *SetEnumValue:
+			return left.Cup(arg2)
+		}
+		switch right := arg2.(type) {
+		case *IntervalValue:
+			return right.Cup(arg1)
+		case *SetEnumValue:
+			return right.Cup(arg1)
+		}
 		return NewSetCupValue(arg1, arg2), nil
 	default:
 		return nil, newTLCError(ECGeneral, "unknown set operator opcode %d", opcode)

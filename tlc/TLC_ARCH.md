@@ -946,6 +946,13 @@ Important concrete values:
 - `SetEnumValue`: explicit finite set with normalization and duplicate
   handling.
 - `IntervalValue`: finite integer interval without materializing all elements.
+- Java's `Reducible` set operations live on concrete `IntervalValue` and
+  `SetEnumValue` methods in Go. Difference reduces only its left operand;
+  intersection and union prefer the left reducible operand, then the right.
+  These methods use membership checks instead of enumerating the other side.
+  Explicit-set results preserve raw left order and duplicates; union normalizes
+  its reducible right operand by enumerating it and leaves the result
+  unnormalized. Empty reducible unions return the other operand directly.
 - `FcnRcdValue`: explicit finite function, optimized for interval domains.
   Java's `tlc2.value.impl.FcnRcdValue.threshold` controls when normalized
   finite function records switch from linear lookup to binary search; Go keeps
