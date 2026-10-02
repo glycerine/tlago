@@ -3134,7 +3134,7 @@ init. Arbitrary concurrent native worker loading/server evaluation still races
 shared FP64/interner globals; Java isolates those globals by JVM process. The
 source raw init enqueue also assumes its startup phase. Process/runtime class
 isolation, transport, concrete FP process exit/completion messages and full
-worker/server/combined command lifecycle remain unfinished.
+standalone distributed command/process integration remains unfinished.
 
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration
@@ -3172,6 +3172,20 @@ Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectExceptio
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
+TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer
+entry points. It starts named FP-server and worker threads in source order,
+passing the same argument array, without a readiness barrier or joins. Start
+failures escape the launcher and leave any earlier started thread intact;
+command-body failures reach an uncaught-handler boundary on their own threads.
+A missing native worker process is created lazily there, and the root wrapper
+uses the production parser. Go goroutines supply asynchronous execution;
+standalone non-daemon process lifetime, OS hooks and full JVM default-handler
+behavior require process providers. Ten source launcher comparisons and a
+combined server/FP/worker/local-naming integration pass under -race. That
+integration defers worker bootstrap until after initialization; arbitrary
+simultaneous bootstrap/evaluation still lacks FP64/UniqueString runtime isolation.
+No dedicated upstream launcher tests exist.
+
 TLCServer.main now runs through DistributedServerProcess and the root
 RunDistributedServer application bridge. It preserves version/mail/parser
 ordering, evaluated label fallbacks, frozen constructor selection, management
@@ -3185,7 +3199,7 @@ CreateMail is a required constructor boundary owning properties/address/log
 capture; delivery is delegated and disabled mail returns true. OS hooks are
 retained callbacks unless the provided installer registers them. Real MailSender,
 process hooks, JMX/JDK interruption providers, wire RPC, config-read process exit
-and the combined worker/FP command remain pending. Actual-source main comparisons
+remain pending. Actual-source main comparisons
 and production server/worker/local-naming integration pass under the race
 detector. The full upstream transport harness remains explicitly skipped; no
 dedicated main tests exist.
@@ -3204,7 +3218,7 @@ interruptible wait/sleep boundaries with the ten-second disposal delay.
 Application config syntax failures preserve ConfigFileException. Actual-source
 command comparisons and production parser/local naming/two-worker integration
 pass under the race detector. Wire invocation, MP/SANY console routing,
-config-read process exit, server/combined command/mail wiring and simultaneous
+config-read process exit, standalone process/mail wiring and simultaneous
 FP64/interner class-global isolation remain separate pending work. No dedicated
 upstream main/shutdown/await tests exist; transport-dependent tests remain with
 the full transport feature.

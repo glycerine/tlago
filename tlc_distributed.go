@@ -266,3 +266,20 @@ func RunDistributedServer(process *tlc.DistributedServerProcess, args []string, 
 	err := process.Run(args, env)
 	return diags, err
 }
+
+// RunDistributedWorkerAndFPServer launches both distributed commands in the
+// source order. Application diagnostics become the worker command's reported
+// error as in RunDistributedWorker; completion and uncaught failures occur on
+// the child threads, independently of this launcher's return.
+func RunDistributedWorkerAndFPServer(process *tlc.DistributedWorkerProcess, args []string, env tlc.DistributedWorkerAndFPServerEnvironment, runtime tlc.RuntimeParameters) error {
+	if env.WorkerMain == nil {
+		env.WorkerMain = func(args []string) error {
+			if process == nil {
+				process = tlc.NewDistributedWorkerProcess()
+			}
+			_, err := RunDistributedWorker(process, args, env.Worker, runtime)
+			return err
+		}
+	}
+	return tlc.RunDistributedWorkerAndFPServer(process, args, env)
+}
