@@ -125,11 +125,11 @@ func ioUtilsBuildEnv() Value {
 func IOUtilsAtoi(value Value) (Value, error) {
 	str, ok := value.(*StringValue)
 	if !ok {
-		return nil, newTLCError(ECGeneral, "atoi expected a string, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
 	}
 	i, err := strconv.ParseInt(str.RawString(), 10, 32)
 	if err != nil {
-		return nil, newTLCError(ECGeneral, "atoi expected a string containing an integer, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
 	}
 	return NewIntValue(int32(i)), nil
 }
@@ -147,7 +147,7 @@ func IOUtilsIOEnvExec(env Value, command Value) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	envMap, err := ioUtilsEnvRecord(env)
+	envMap, err := ioUtilsEnvRecord("IOEnvExec", env)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func IOUtilsIOEnvExecTemplate(env Value, commandTemplate Value, parameters Value
 	if err != nil {
 		return nil, err
 	}
-	envMap, err := ioUtilsEnvRecord(env)
+	envMap, err := ioUtilsEnvRecord("IOEnvExecTemplate", env)
 	if err != nil {
 		return nil, err
 	}
@@ -315,23 +315,23 @@ func ioUtilsRecordRequiredString(record *RecordValue, key string) (string, error
 func ioUtilsTupleStrings(name string, value Value) ([]string, error) {
 	tuple := asTupleValue(value)
 	if tuple == nil {
-		return nil, newTLCError(ECGeneral, "%s expected a sequence, got %s", name, value)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, name, "sequence", ValuesPPR(value))
 	}
 	out := make([]string, 0, len(tuple.Elems))
 	for _, elem := range tuple.Elems {
 		str, ok := elem.(*StringValue)
 		if !ok {
-			return nil, newTLCError(ECGeneral, "%s expected a sequence of strings, got %s", name, elem)
+			return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "IOExec", "sequence", ValuesPPR(elem))
 		}
 		out = append(out, str.RawString())
 	}
 	return out, nil
 }
 
-func ioUtilsEnvRecord(value Value) (map[string]string, error) {
+func ioUtilsEnvRecord(name string, value Value) (map[string]string, error) {
 	record := asRecordValue(value)
 	if record == nil {
-		return nil, newTLCError(ECGeneral, "IOEnvExec expected a record, got %s", value)
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, name, "record", ValuesPPR(value))
 	}
 	env := make(map[string]string, len(record.Names))
 	for i, name := range record.Names {
