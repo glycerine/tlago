@@ -1727,6 +1727,10 @@ func enumerableSubsetEq(enum Enumerable, left Value, right Value) (resultBool *B
 			}
 		}
 	}
+	if _, ok := left.(*KSubsetValue); ok {
+		// KSubsetValue inherits SubsetValue's catch but takes its naive fallback.
+		defer catchValueFailure(left, &err)
+	}
 	return defaultEnumerableSubsetEq(enum, left, right)
 }
 

@@ -880,8 +880,11 @@ func (v *SetOfFcnsValue) Elements() (enumeration ValueEnumeration) {
 	if intv, ok := v.Domain.(*IntervalValue); ok {
 		return v.intervalDomainElements(intv)
 	}
-	domSet, err := toSetEnumValue(v.Domain)
+	domSet, err := tryToSetEnumValue(v.Domain)
 	if err != nil {
+		return newErrorEnumeration(err)
+	}
+	if domSet == nil {
 		return newErrorEnumeration(v.unsupported("Attempted to enumerate a set of the form [D -> R],but the domain D:\n%s\ncannot be enumerated.", ValuesPPR(v.Domain)))
 	}
 	if _, err := domSet.normalizeSet(); err != nil {
@@ -1003,11 +1006,17 @@ func (v *SubsetValue) Equal(other Value) (resultBool bool, err error) {
 	return set.Equal(other)
 }
 
-func (v *SubsetValue) Member(elem Value) (resultBool bool, err error) {
-	defer catchValueFailure(v, &err)
+func (v *SubsetValue) Member(elem Value) (bool, error) {
+	return subsetValueMember(v, v.Set, elem)
+}
+
+// This is SubsetValue.member's catch boundary, also used by k-subsets after
+// their uncaught cardinality checks, preserving the actual receiver's source.
+func subsetValueMember(owner Value, set Value, elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(owner, &err)
 	enum, ok := asEnumerable(elem)
 	if !ok {
-		return false, v.unsupported("Attempted to check if the non-enumerable value\n%s\nis element of\n%s", ValuesPPR(elem), ValuesPPR(v))
+		return false, newTLCError(ECGeneral, "Attempted to check if the non-enumerable value\n%s\nis element of\n%s", ValuesPPR(elem), ValuesPPR(owner))
 	}
 	e := enum.Elements()
 	for {
@@ -1018,7 +1027,7 @@ func (v *SubsetValue) Member(elem Value) (resultBool bool, err error) {
 			}
 			return true, nil
 		}
-		ok, err := v.Set.Member(value)
+		ok, err := set.Member(value)
 		if err != nil || !ok {
 			return ok, err
 		}

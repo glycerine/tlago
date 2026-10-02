@@ -251,7 +251,8 @@ func setModelValuesLocked() {
 func (v *ModelValue) Kind() ValueKind    { return ModelValueKind }
 func (v *ModelValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *ModelValue) Compare(other Value) (int, error) {
+func (v *ModelValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Type == typedModelValueUntypedCodeUnit {
 		if o, ok := other.(*ModelValue); ok {
 			return v.Val.Compare(o.Val), nil
@@ -267,7 +268,8 @@ func (v *ModelValue) Compare(other Value) (int, error) {
 	return 0, v.unsupported("Attempted to compare the typed model value %s and non-model value\n%s", v, other)
 }
 
-func (v *ModelValue) Equal(other Value) (bool, error) {
+func (v *ModelValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Type == typedModelValueUntypedCodeUnit {
 		o, ok := other.(*ModelValue)
 		return ok && v.Val.Equal(o.Val), nil
@@ -281,36 +283,42 @@ func (v *ModelValue) Equal(other Value) (bool, error) {
 	return false, v.unsupported("Attempted to check equality of typed model value %s and non-model value\n%s", v, other)
 }
 
-func (v *ModelValue) modelValueCompareTo(other Value) (int, error) {
+func (v *ModelValue) modelValueCompareTo(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Type != typedModelValueUntypedCodeUnit {
 		return 0, v.unsupported("Attempted to compare the typed model value %s and the non-model value\n%s", v, other)
 	}
 	return 1, nil
 }
 
-func (v *ModelValue) modelValueEquals(other Value) (bool, error) {
+func (v *ModelValue) modelValueEquals(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Type != typedModelValueUntypedCodeUnit {
 		return false, v.unsupported("Attempted to check equality of the typed model value %s and the non-model value\n%s", v, other)
 	}
 	return false, nil
 }
 
-func (v *ModelValue) modelValueMember(other Value) (bool, error) {
+func (v *ModelValue) modelValueMember(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Type != typedModelValueUntypedCodeUnit {
 		return false, v.unsupported("Attempted to check if the typed model value %s is an element of\n%s", v, other)
 	}
 	return false, nil
 }
 
-func (v *ModelValue) Member(elem Value) (bool, error) {
+func (v *ModelValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the model value %s", elem, v)
 }
 
-func (v *ModelValue) IsFinite() (bool, error) {
+func (v *ModelValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the model value %s is a finite set.", v)
 }
 
-func (v *ModelValue) Size() (int, error) {
+func (v *ModelValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	return 0, v.unsupported("Attempted to compute the number of elements in the model value %s.", v)
 }
 
@@ -321,6 +329,7 @@ func (v *ModelValue) IsDefined() bool    { return true }
 func (v *ModelValue) DeepCopy() Value    { return v }
 
 func (v *ModelValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	if res := perm.Get(v); res != nil {
 		return res
 	}
@@ -328,17 +337,20 @@ func (v *ModelValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *ModelValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	return v.Val.FingerPrint(FP64ExtendInt(fp, int32(ModelValueKind)))
 }
 
-func (v *ModelValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *ModelValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the model value %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *ModelValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *ModelValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the model value %s.", v)
 	}
@@ -353,7 +365,10 @@ func (v *ModelValue) SetData(obj any) any {
 	return obj
 }
 
-func (v *ModelValue) String() string { return v.Val.String() }
+func (v *ModelValue) String() string {
+	defer catchValueFailure(v, nil)
+	return v.Val.String()
+}
 
 func (v *ModelValue) sameModelValue(other *ModelValue) bool {
 	if v == nil || other == nil {

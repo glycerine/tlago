@@ -9,38 +9,45 @@ var ValUndef = &UndefValue{}
 func (v *UndefValue) Kind() ValueKind    { return UndefValueKind }
 func (v *UndefValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *UndefValue) Compare(other Value) (int, error) {
+func (v *UndefValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if _, ok := other.(*UndefValue); ok {
 		return 0, nil
 	}
 	return 1, nil
 }
 
-func (v *UndefValue) Equal(other Value) (bool, error) {
+func (v *UndefValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	_, ok := other.(*UndefValue)
 	return ok, nil
 }
 
-func (v *UndefValue) Member(elem Value) (bool, error) {
+func (v *UndefValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element %s", elem, v)
 }
 
-func (v *UndefValue) IsFinite() (bool, error) {
+func (v *UndefValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value %s is a finite set.", v)
 }
 
-func (v *UndefValue) Size() (int, error) {
+func (v *UndefValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	return 0, v.unsupported("Attempted to compute the number of elements in the value %s.", v)
 }
 
-func (v *UndefValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *UndefValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the value %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *UndefValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *UndefValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT construct to the value %s.", v)
 	}
@@ -54,7 +61,10 @@ func (v *UndefValue) IsDefined() bool              { return false }
 func (v *UndefValue) DeepCopy() Value              { return v }
 func (v *UndefValue) FingerPrint(fp uint64) uint64 { return unsupportedValueFingerprint(v) }
 func (v *UndefValue) Permute(*MVPerm) Value        { return unsupportedValuePermutation(v) }
-func (v *UndefValue) String() string               { return "UNDEF" }
+func (v *UndefValue) String() string {
+	defer catchValueFailure(v, nil)
+	return "UNDEF"
+}
 
 type UserObj interface {
 	Compare(Value) (int, error)
@@ -104,7 +114,8 @@ func NewUserValue(obj UserObj) *UserValue {
 func (v *UserValue) Kind() ValueKind    { return UserValueKind }
 func (v *UserValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *UserValue) Compare(other Value) (int, error) {
+func (v *UserValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if _, ok := other.(*UserValue); ok {
 		return v.UserObj.Compare(other)
 	}
@@ -114,31 +125,37 @@ func (v *UserValue) Compare(other Value) (int, error) {
 	return 0, v.unsupported("Attempted to compare overridden value %s with non-overridden value:\n%s", v, other)
 }
 
-func (v *UserValue) Equal(other Value) (bool, error) {
+func (v *UserValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	cmp, err := v.Compare(other)
 	return cmp == 0, err
 }
 
-func (v *UserValue) Member(elem Value) (bool, error) {
+func (v *UserValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return v.UserObj.Member(elem)
 }
 
-func (v *UserValue) IsFinite() (bool, error) {
+func (v *UserValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return v.UserObj.IsFinite()
 }
 
-func (v *UserValue) Size() (int, error) {
+func (v *UserValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	return 0, v.unsupported("Attempted to compute the number of elements in the overridden value %s.", v)
 }
 
-func (v *UserValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *UserValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		return nil, v.unsupported("Attempted to apply EXCEPT to the overridden value %s.", v)
 	}
 	return ex.Value, nil
 }
 
-func (v *UserValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *UserValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if len(exs) != 0 {
 		return nil, v.unsupported("Attempted to apply EXCEPT to the overridden value %s.", v)
 	}
@@ -152,15 +169,19 @@ func (v *UserValue) IsDefined() bool              { return true }
 func (v *UserValue) DeepCopy() Value              { return v }
 func (v *UserValue) FingerPrint(fp uint64) uint64 { return unsupportedValueFingerprint(v) }
 func (v *UserValue) Permute(*MVPerm) Value        { return unsupportedValuePermutation(v) }
-func (v *UserValue) String() string               { return v.UserObj.String() }
+func (v *UserValue) String() string {
+	defer catchValueFailure(v, nil)
+	return v.UserObj.String()
+}
 
 func unsupportedValueFingerprint(value Value) uint64 {
+	defer catchValueFailure(value, nil)
 	panic(newTLCError(ECGeneral, "TLC has found a state in which the value of a variable contains %s", ValuesPPR(value)))
 }
 
 func unsupportedValuePermutation(value Value) Value {
-	unsupportedValueFingerprint(value)
-	return value
+	defer catchValueFailure(value, nil)
+	panic(newTLCError(ECGeneral, "TLC has found a state in which the value of a variable contains %s", ValuesPPR(value)))
 }
 
 type AnySet struct{}

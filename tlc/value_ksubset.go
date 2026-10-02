@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"strings"
@@ -21,7 +22,8 @@ func NewKSubsetValue(k int, set Value, cms ...CostModel) *KSubsetValue {
 func (v *KSubsetValue) Kind() ValueKind    { return SubsetValueKind }
 func (v *KSubsetValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *KSubsetValue) Compare(other Value) (int, error) {
+func (v *KSubsetValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*KSubsetValue); ok {
 		vEmpty, err := v.hasNoElements()
 		if err != nil {
@@ -50,21 +52,23 @@ func (v *KSubsetValue) Compare(other Value) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		oFinite, err := o.Set.IsFinite()
-		if err != nil {
-			return 0, err
-		}
-		if vFinite && oFinite {
-			vCount, err := v.count()
+		if vFinite {
+			oFinite, err := o.Set.IsFinite()
 			if err != nil {
 				return 0, err
 			}
-			oCount, err := o.count()
-			if err != nil {
-				return 0, err
-			}
-			if cmp := vCount.Cmp(oCount); cmp != 0 {
-				return cmp, nil
+			if oFinite {
+				vCount, err := v.count()
+				if err != nil {
+					return 0, err
+				}
+				oCount, err := o.count()
+				if err != nil {
+					return 0, err
+				}
+				if cmp := vCount.Cmp(oCount); cmp != 0 {
+					return cmp, nil
+				}
 			}
 		}
 		setEqual, err := v.Set.Equal(o.Set)
@@ -72,7 +76,10 @@ func (v *KSubsetValue) Compare(other Value) (int, error) {
 			return 0, err
 		}
 		if setEqual {
-			return v.K - o.K, nil
+			if v.K < o.K {
+				return -1, nil
+			}
+			return 1, nil
 		}
 	} else if o, ok := other.(*SubsetValue); ok {
 		empty, err := v.hasNoElements()
@@ -106,7 +113,8 @@ func (v *KSubsetValue) Compare(other Value) (int, error) {
 	return set.Compare(other)
 }
 
-func (v *KSubsetValue) Equal(other Value) (bool, error) {
+func (v *KSubsetValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if o, ok := other.(*KSubsetValue); ok {
 		vEmpty, err := v.hasNoElements()
 		if err != nil {
@@ -165,11 +173,14 @@ func (v *KSubsetValue) compareSubsetCardinality(other *SubsetValue) (*int, error
 	if err != nil {
 		return nil, err
 	}
+	if !vFinite {
+		return nil, nil
+	}
 	otherFinite, err := other.Set.IsFinite()
 	if err != nil {
 		return nil, err
 	}
-	if !vFinite || !otherFinite {
+	if !otherFinite {
 		return nil, nil
 	}
 	count, err := v.count()
@@ -197,10 +208,11 @@ func (v *KSubsetValue) Member(elem Value) (bool, error) {
 	if elemSize != v.K {
 		return false, nil
 	}
-	return NewSubsetValue(v.Set).Member(elem)
+	return subsetValueMember(v, v.Set, elem)
 }
 
-func (v *KSubsetValue) IsFinite() (bool, error) {
+func (v *KSubsetValue) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	if v.K <= 0 {
 		return true, nil
 	}
@@ -213,17 +225,22 @@ func (v *KSubsetValue) Size() (int, error) {
 		return 0, err
 	}
 	if !count.IsInt64() || count.Int64() > math.MaxInt32 {
-		baseSize, _ := v.Set.Size()
-		return 0, v.unsupported("k=%d and n=%d", v.K, baseSize)
+		baseSize, err := v.Set.Size()
+		if err != nil {
+			return 0, err
+		}
+		return 0, fmt.Errorf("k=%d and n=%d", v.K, baseSize)
 	}
 	return int(count.Int64()), nil
 }
 
 func (v *KSubsetValue) IsNormalized() bool {
+	defer catchValueFailure(v, nil)
 	return v.PSet != nil && !v.PSetDummy && v.PSet.IsNormalized()
 }
 
 func (v *KSubsetValue) Normalize() Value {
+	defer catchValueFailure(v, nil)
 	if v.PSet != nil && !v.PSetDummy {
 		v.PSet.Normalize()
 	} else {
@@ -233,6 +250,7 @@ func (v *KSubsetValue) Normalize() Value {
 }
 
 func (v *KSubsetValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	v.Set.DeepNormalize()
 	if v.PSet == nil {
 		v.PSetDummy = true
@@ -242,32 +260,37 @@ func (v *KSubsetValue) DeepNormalize() {
 }
 
 func (v *KSubsetValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	return v.Set.IsDefined()
 }
 
 func (v *KSubsetValue) DeepCopy() Value { return v }
 
 func (v *KSubsetValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return fp
+		panic(err)
 	}
 	return set.FingerPrint(fp)
 }
 
 func (v *KSubsetValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	set, err := v.convertAndCache()
 	if err != nil {
-		return v
+		panic(err)
 	}
 	return set.Permute(perm)
 }
 
-func (v *KSubsetValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *KSubsetValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptOnSet(v, ex)
 }
 
-func (v *KSubsetValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *KSubsetValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	return takeExceptsOnSet(v, exs)
 }
 
@@ -333,19 +356,20 @@ func (v *KSubsetValue) Elements() ValueEnumeration {
 }
 
 func (v *KSubsetValue) String() string {
-	empty, err := v.hasNoElements()
-	if err == nil && empty {
-		return "{}"
-	}
-	expand := Globals.Expand
-	if expand {
+	defer catchValueFailure(v, nil)
+	if Globals.Expand && tryValueSizeBelow(v, 64) {
 		size, err := v.Size()
-		expand = err == nil && size < 64
-	}
-	if expand {
-		if set, err := v.ToSetEnum(); err == nil {
-			return set.String()
+		if err != nil {
+			panic(err)
 		}
+		if size == 0 {
+			return "{}"
+		}
+		set, err := v.ToSetEnum()
+		if err != nil {
+			panic(err)
+		}
+		return set.String()
 	}
 	var b strings.Builder
 	b.WriteString("{s \\in SUBSET (")
