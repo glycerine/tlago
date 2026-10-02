@@ -1557,6 +1557,22 @@ func subsetEq(expr SemanticNode, left Value, right Value) (*BoolValue, error) {
 	if !ok {
 		return nil, newTLCError(ECGeneral, "Attempted to evaluate an expression of form S \\subseteq T, but S was not enumerable.\n%s", SemanticString(expr))
 	}
+	return enumerableSubsetEq(enum, left, right)
+}
+
+func enumerableSubsetEq(enum Enumerable, left Value, right Value) (*BoolValue, error) {
+	if interval, ok := left.(*IntervalValue); ok {
+		if other, ok := right.(*IntervalValue); ok && other.Low <= interval.Low && other.High >= interval.High {
+			return BoolTrue, nil
+		}
+	}
+	if subset, ok := left.(*SubsetValue); ok {
+		if other, ok := right.(*SubsetValue); ok {
+			if setEnum, ok := asEnumerable(subset.Set); ok {
+				return enumerableSubsetEq(setEnum, subset.Set, other.Set)
+			}
+		}
+	}
 	e := enum.Elements()
 	for elem := e.NextElement(); elem != nil; elem = e.NextElement() {
 		member, err := right.Member(elem)
