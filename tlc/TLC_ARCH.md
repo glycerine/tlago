@@ -1473,6 +1473,17 @@ Port guidance:
   `WrappingRuntimeException` carrying `succ`. Go mirrors this with the concrete
   `workerNextStateError` struct so outer worker error handling can pass the
   partially generated successor to `doNextFailed` without adding an interface.
+- Java exception catches and `instanceof` classify the thrown object itself;
+  they do not inspect its cause chain. Go checker/call-stack/simulator/liveness
+  consumers use direct concrete type checks and explicitly handle the embedded
+  `LiveCounterExampleException` subclass. Fingerprint causes remain accessible
+  for dedicated root-cause diagnostics. A standalone stateful exception does
+  not enter the worker's EvalException/TLCRuntimeException liveness replay catch.
+- `TLC.process` and the simulator report EvalExceptions through GENERAL; only
+  direct TLCRuntimeExceptions preserve their code and parameters there.
+  Simulator exceptions overwrite an earlier worker code and stop simulation.
+  `TLCError.Runtime` marks explicit Java runtime carriers; existing native
+  evaluation carriers and direct system-error carriers remain distinguished.
 - Call-stack replay uses a synthetic worker id `4223` like Java, but that
   worker is deliberately not registered with the shared trace. Java's comment
   says replay must not rewrite the trace file while reconstructing states for

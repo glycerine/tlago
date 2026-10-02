@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -67,6 +66,20 @@ func (e *LiveCounterExampleException) Error() string {
 		return e.LiveException.Msg
 	}
 	return "temporal property violated"
+}
+
+// Go embedding does not implement Java's instanceof inheritance. Match both
+// concrete classes without traversing the exception's cause chain.
+func javaLiveException(err error) *LiveException {
+	switch failure := err.(type) {
+	case *LiveCounterExampleException:
+		if failure != nil {
+			return failure.LiveException
+		}
+	case *LiveException:
+		return failure
+	}
+	return nil
 }
 
 type LivenessStateWriter struct {
@@ -1111,27 +1124,15 @@ func printLivenessWorkerFailure(err error) int {
 		PrintError(ECGeneral)
 		return ECGeneral
 	}
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil {
-		switch tlcErr.Code {
-		case ECSystemOutOfMemory, ECSystemOutOfMemoryLiveness:
-			PrintError(ECSystemOutOfMemoryLiveness)
-			return ECSystemOutOfMemoryLiveness
-		case ECSystemStackOverflow:
-			PrintError(ECSystemStackOverflow)
-			return ECSystemStackOverflow
-		}
-	}
-	var evalErr *EvalException
-	if errors.As(err, &evalErr) && evalErr != nil {
-		switch evalErr.GetErrorCode() {
-		case ECSystemOutOfMemory, ECSystemOutOfMemoryLiveness:
-			PrintError(ECSystemOutOfMemoryLiveness)
-			return ECSystemOutOfMemoryLiveness
-		case ECSystemStackOverflow:
-			PrintError(ECSystemStackOverflow)
-			return ECSystemStackOverflow
-		}
+	// firstErr is already the worker failure, corresponding to the single
+	// ExecutionException.getCause() in Java LiveCheck.check0.
+	switch javaSystemFailureCode(err) {
+	case ECSystemOutOfMemory, ECSystemOutOfMemoryLiveness:
+		PrintError(ECSystemOutOfMemoryLiveness)
+		return ECSystemOutOfMemoryLiveness
+	case ECSystemStackOverflow:
+		PrintError(ECSystemStackOverflow)
+		return ECSystemStackOverflow
 	}
 	PrintError(ECGeneral, generalErrorParams("", err)...)
 	return ECGeneral

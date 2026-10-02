@@ -302,24 +302,14 @@ func panicValueAsError(value any) error {
 }
 
 func tlcProcessFailureMessage(err error) (int, []string) {
-	var eval *EvalException
-	if errors.As(err, &eval) && eval != nil {
-		code := eval.GetErrorCode()
-		if eval.HasParameters() {
-			return code, eval.GetParameters()
-		}
-		if code == ECGeneral {
-			return code, generalErrorParams("", err)
-		}
+	if code := javaSystemFailureCode(err); code == ECSystemStackOverflow || code == ECSystemOutOfMemory {
 		return code, nil
 	}
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil {
-		switch tlcErr.Code {
-		case ECSystemStackOverflow, ECSystemOutOfMemory, ECTLCBug:
-			return tlcErr.Code, nil
-		}
+	if failure := javaRuntimeException(err); failure != nil {
+		return javaRuntimeFailureMessage(failure)
 	}
+	// TLC.process does not have an EvalException catch; it reports other
+	// RuntimeExceptions (including fingerprint failures) through GENERAL.
 	return ECGeneral, generalErrorParams("", err)
 }
 

@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -675,42 +674,16 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 		return
 	}
 	if err.Err != nil {
-		var liveCounterExample *LiveCounterExampleException
-		if errors.As(err.Err, &liveCounterExample) && liveCounterExample != nil && liveCounterExample.LiveException != nil {
-			err.Code = liveCounterExample.LiveException.ErrorCode
-			s.PrintSummary()
-			return
-		}
-		var live *LiveException
-		if errors.As(err.Err, &live) && live != nil {
+		if live := javaLiveException(err.Err); live != nil {
 			err.Code = live.ErrorCode
 			s.PrintSummary()
 			return
 		}
-		classified := false
-		var eval *EvalException
-		if errors.As(err.Err, &eval) && eval != nil {
+		if failure := javaRuntimeException(err.Err); failure != nil {
+			err.Code, err.Params = javaRuntimeFailureMessage(failure)
+		} else {
 			err.Code = ECGeneral
 			err.Params = generalErrorParams("", err.Err)
-			s.printBehavior(err.Code, err.Params, err.StateTrace)
-			return
-		}
-		var tlcErr *TLCError
-		if errors.As(err.Err, &tlcErr) && tlcErr != nil {
-			classified = true
-			if err.Code == NoError {
-				err.Code = tlcErr.Code
-			}
-		}
-		if err.Code == NoError {
-			err.Code = ECGeneral
-		}
-		if len(err.Params) == 0 {
-			if !classified && err.Code == ECGeneral {
-				err.Params = generalErrorParams("", err.Err)
-			} else {
-				err.Params = []string{err.Err.Error()}
-			}
 		}
 		s.printBehavior(err.Code, err.Params, err.StateTrace)
 		return
@@ -776,10 +749,11 @@ func (s *Simulator) simulationErrorStops(err *SimulationWorkerError) bool {
 		return false
 	}
 	if err.Err != nil {
-		var live *LiveException
-		if errors.As(err.Err, &live) && live != nil {
+		if live := javaLiveException(err.Err); live != nil {
 			err.Code = live.ErrorCode
-		} else if err.Code == NoError {
+		} else if failure := javaRuntimeException(err.Err); failure != nil {
+			err.Code = failure.Code
+		} else {
 			err.Code = ECGeneral
 		}
 		return true

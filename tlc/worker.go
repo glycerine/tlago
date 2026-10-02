@@ -236,7 +236,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	if w.Checker.CheckLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
-			if errors.Is(err, errInvariantViolated) {
+			if err == errInvariantViolated {
 				if w.Checker.StateQueue != nil {
 					w.Checker.StateQueue.FinishAll()
 				}
@@ -293,19 +293,16 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 }
 
 func livenessErrorNeedsCallStackReplay(err error) bool {
-	if err == nil {
+	// Java catches EvalException and TLCRuntimeException at this boundary.
+	// A cause of either type does not make its enclosing exception eligible.
+	switch failure := err.(type) {
+	case *EvalException:
+		return failure != nil
+	case *TLCError:
+		return failure != nil && javaSystemFailureCode(err) == NoError
+	default:
 		return false
 	}
-	var eval *EvalException
-	if errors.As(err, &eval) {
-		return true
-	}
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) {
-		return true
-	}
-	var stateful *StatefulRuntimeException
-	return errors.As(err, &stateful)
 }
 
 func (w *Worker) claimLivenessErrorStackPrinter() bool {

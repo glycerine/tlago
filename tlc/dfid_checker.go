@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"fmt"
 	"time"
 )
@@ -559,13 +558,8 @@ func (mc *DFIDModelChecker) dfidNextFailed(curState *TLCStateMut, succState *TLC
 }
 
 func dfidNextFailureMessage(err error) (int, []string, bool) {
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil && (tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory) {
-		return tlcErr.Code, nil, false
-	}
-	var evalErr *EvalException
-	if errors.As(err, &evalErr) && evalErr != nil && (evalErr.GetErrorCode() == ECSystemStackOverflow || evalErr.GetErrorCode() == ECSystemOutOfMemory) {
-		return evalErr.GetErrorCode(), nil, false
+	if code := javaSystemFailureCode(err); code == ECSystemStackOverflow || code == ECSystemOutOfMemory {
+		return code, nil, false
 	}
 	return ECGeneral, []string{javaGeneralErrorMessage("computing the set of next states", err)}, true
 }

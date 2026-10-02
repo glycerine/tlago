@@ -56,3 +56,35 @@ func (e *ConfigError) Error() string {
 	}
 	return formatMessage(e.Code, e.Params)
 }
+
+// javaRuntimeException tests the thrown exception itself. TLCError also carries
+// legacy EvalExceptions, which must not enter Java's TLCRuntimeException catch.
+func javaRuntimeException(err error) *TLCError {
+	if failure, ok := err.(*TLCError); ok && failure != nil && !isValueEvalException(failure) {
+		return failure
+	}
+	return nil
+}
+
+func javaRuntimeFailureMessage(err *TLCError) (int, []string) {
+	if err.Params != nil {
+		return err.Code, err.Params
+	}
+	if err.Code == ECGeneral {
+		return err.Code, generalErrorParams("", err)
+	}
+	return err.Code, []string{err.Error()}
+}
+
+// Go's existing system-failure carriers represent Java Error subclasses.
+// Numeric codes on actual EvalExceptions or TLCRuntimeExceptions do not give
+// those exceptions the type of a StackOverflowError or OutOfMemoryError.
+func javaSystemFailureCode(err error) int {
+	if failure, ok := err.(*TLCError); ok && failure != nil && !failure.Runtime && failure.Params == nil {
+		switch failure.Code {
+		case ECSystemStackOverflow, ECSystemOutOfMemory, ECSystemOutOfMemoryLiveness, ECTLCBug:
+			return failure.Code
+		}
+	}
+	return NoError
+}

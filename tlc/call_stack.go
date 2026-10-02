@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 )
@@ -42,13 +41,13 @@ func (t *Tool) callStackEnter(expr SemanticNode) func(error) {
 	t.CallStack.Push(expr)
 	return func(err error) {
 		if err != nil {
-			var fpErr *FingerprintException
-			if errors.As(err, &fpErr) {
-				t.CallStack.Freeze(fpErr)
-			} else {
-				var runtimeErr *TLCError
-				var evalErr *EvalException
-				if errors.As(err, &runtimeErr) || errors.As(err, &evalErr) {
+			switch failure := err.(type) {
+			case *FingerprintException:
+				t.CallStack.Freeze(failure)
+			case *EvalException:
+				t.CallStack.Freeze()
+			case *TLCError:
+				if javaSystemFailureCode(failure) == NoError {
 					t.CallStack.Freeze()
 				}
 			}

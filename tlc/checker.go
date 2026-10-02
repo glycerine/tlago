@@ -1376,7 +1376,7 @@ func (mc *ModelChecker) doInitWithTool(tool *Tool, ignoreCancel bool) (int, erro
 	}
 	functor := &doInitFunctor{mc: mc, tool: tool, forceChecks: ignoreCancel, returnValue: NoError}
 	err := tool.GetInitStates(NewStateFunctor(functor.AddElement))
-	if errors.Is(err, errInvariantViolated) {
+	if err == errInvariantViolated {
 		mc.ErrState = functor.errState
 		return functor.returnValue, nil
 	}
@@ -1424,9 +1424,8 @@ func (mc *ModelChecker) reportInitException(result int, err error) int {
 }
 
 func initExceptionCode(err error) int {
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil {
-		return tlcErr.Code
+	if failure := javaRuntimeException(err); failure != nil {
+		return failure.Code
 	}
 	return ECGeneral
 }
@@ -1441,8 +1440,7 @@ func (mc *ModelChecker) replayInitErrorCallStack(fallback int) int {
 	callStackTool := NewCallStackTool(mc.Tool)
 	mc.NumberOfInitialStates = 0
 	if _, err := mc.doInitWithTool(callStackTool, true); err != nil {
-		var fpErr *FingerprintException
-		if errors.As(err, &fpErr) && fpErr != nil {
+		if fpErr, ok := err.(*FingerprintException); ok && fpErr != nil {
 			trace := fpErr.GetTrace()
 			if callStackTool.HasCallStack() {
 				trace = callStackTool.CallStackString()
@@ -1483,8 +1481,7 @@ func (mc *ModelChecker) replayNextErrorCallStack() int {
 	}
 	replayWorker.SetTraceContext(mc.Metadir, rootName)
 	if _, err := mc.doNextWithTool(callStackTool, mc.PredErrState, liveNextStates, replayWorker); err != nil {
-		var fpErr *FingerprintException
-		if errors.As(err, &fpErr) && fpErr != nil {
+		if fpErr, ok := err.(*FingerprintException); ok && fpErr != nil {
 			trace := fpErr.GetTrace()
 			if callStackTool.HasCallStack() {
 				trace = callStackTool.CallStackString()
@@ -1496,10 +1493,12 @@ func (mc *ModelChecker) replayNextErrorCallStack() int {
 			PrintError(ECTLCFingerprintException, trace, rootMessage)
 			return ECTLCFingerprintException
 		}
-		var eval *EvalException
-		if errors.As(err, &eval) && eval != nil {
+		if isValueEvalException(err) && javaSystemFailureCode(err) == NoError {
 			PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
-			return eval.GetErrorCode()
+			if eval, ok := err.(*EvalException); ok {
+				return eval.GetErrorCode()
+			}
+			return err.(*TLCError).Code
 		}
 		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
 		return ECTLCNestedExpression
@@ -2119,8 +2118,7 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 	params := []string{err.Error()}
 	keepCallStack := true
 
-	var eval *EvalException
-	if errors.As(err, &eval) && eval != nil {
+	if eval, ok := err.(*EvalException); ok && eval != nil {
 		ec = eval.GetErrorCode()
 		if eval.HasParameters() {
 			params = eval.GetParameters()
@@ -2132,13 +2130,12 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 		return ec, params, keepCallStack
 	}
 
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil {
+	if tlcErr, ok := err.(*TLCError); ok && tlcErr != nil {
 		if tlcErr.Runtime {
 			return ECGeneral, generalErrorParams("", err), true
 		}
 		keepCallStack = true
-		if tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory || tlcErr.Code == ECTLCBug {
+		if code := javaSystemFailureCode(err); code == ECSystemStackOverflow || code == ECSystemOutOfMemory || code == ECTLCBug {
 			keepCallStack = false
 		}
 		if tlcErr.Code != ECGeneral {
@@ -2273,23 +2270,19 @@ func (f *doInitFunctor) handleInitError(curState *TLCStateMut, err error) (any, 
 }
 
 func isJavaAbortingInitError(err error) bool {
-	if err == nil {
-		return false
-	}
 	// Java DoInitFunctor immediately rethrows only invariant, Assert, and eval
 	// failures. Other throwables are recorded and surfaced after getInitStates.
-	if errors.Is(err, errInvariantViolated) {
+	if err == errInvariantViolated {
 		return true
 	}
-	var eval *EvalException
-	if errors.As(err, &eval) && eval != nil {
-		return true
+	switch failure := err.(type) {
+	case *EvalException:
+		return failure != nil
+	case *TLCError:
+		return failure != nil && javaSystemFailureCode(err) == NoError
+	default:
+		return false
 	}
-	var tlcErr *TLCError
-	if errors.As(err, &tlcErr) && tlcErr != nil {
-		return true
-	}
-	return false
 }
 
 func isPowerOfTwo(n int64) bool {
