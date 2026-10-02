@@ -1066,7 +1066,13 @@ func (t *Tool) evalExcept(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLC
 		if !ok {
 			return nil, newTLCError(ECGeneral, "malformed EXCEPT path")
 		}
-		lhs, err := t.evalArgs(pathNode.Args, c, s0, s1, control, cm)
+		pairCM := cm
+		pathCM := cm
+		if CoverageEnabled() {
+			pairCM = cm.Get(pair)
+			pathCM = pairCM.Get(pathNode)
+		}
+		lhs, err := t.evalArgs(pathNode.Args, c, s0, s1, control, pathCM)
 		if err != nil {
 			return nil, err
 		}
@@ -1075,10 +1081,11 @@ func (t *Tool) evalExcept(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLC
 			return nil, err
 		}
 		if atVal == nil {
+			PrintWarning(ECTLCExceptAppliedToUnknownField, SemanticString(expr.Args[0]))
 			continue
 		}
 		atSym := NewSymbolNode("@")
-		rhs, err := t.Eval(pair.Args[1], c.Cons(atSym, atVal), s0, s1, control, cm)
+		rhs, err := t.Eval(pair.Args[1], c.Cons(atSym, atVal), s0, s1, control, pairCM)
 		if err != nil {
 			return nil, err
 		}
@@ -1218,7 +1225,11 @@ func (t *Tool) evalRecordConstructor(expr *OpApplNode, c *Context, s0 *TLCStateM
 		if err != nil {
 			return nil, err
 		}
-		value, err := t.Eval(pair.Args[1], c, s0, s1, control, cm)
+		pairCM := cm
+		if CoverageEnabled() {
+			pairCM = cm.Get(pair)
+		}
+		value, err := t.Eval(pair.Args[1], c, s0, s1, control, pairCM)
 		if err != nil {
 			return nil, err
 		}
@@ -1290,7 +1301,11 @@ func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 		if err != nil {
 			return nil, err
 		}
-		value, err := t.Eval(pair.Args[1], c, s0, s1, control, cm)
+		pairCM := cm
+		if CoverageEnabled() {
+			pairCM = cm.Get(pair)
+		}
+		value, err := t.Eval(pair.Args[1], c, s0, s1, control, pairCM)
 		if err != nil {
 			return nil, err
 		}
