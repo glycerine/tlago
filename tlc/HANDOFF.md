@@ -43,9 +43,9 @@ is TLC.
   only for lookup-only sets that are never ranged over in observable code.
 - Preserve Java behavior, including load-bearing quirks. Do not "clean up"
   oddities unless the user explicitly chooses a deliberate divergence.
-- Small Go tests are allowed for utility packages and for documenting a
-  concrete Java-parity edge. Do not start translating the Java TLC test suite
-  yet.
+- The user's latest instruction is to port accurately without writing
+  regression or unit tests yet. Do not add tests or start translating the
+  Java TLC test suite. Existing tests may still be run to check the port.
 - Existing fast tests may be run frequently. Use:
   `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./tlc`
   and, before commits, usually `go test ./...` with the same env.

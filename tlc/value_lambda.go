@@ -222,7 +222,6 @@ type FcnLambdaValue struct {
 	State   *TLCStateMut
 	PState  *TLCStateMut
 	Control int
-	CM      CostModel
 	FcnRcd  *FcnRcdValue
 }
 
@@ -235,14 +234,14 @@ func NewFcnLambdaValue(params *FcnParams, body SemanticNode, tool *Tool, con *Co
 		cm = cms[0]
 	}
 	return &FcnLambdaValue{
-		Params:  params,
-		Body:    body,
-		Tool:    tool,
-		Con:     con,
-		State:   copyTLCStateForLambda(state),
-		PState:  copyTLCStateForLambda(pstate),
-		Control: control,
-		CM:      cm,
+		BaseValue: newBaseValue(cm),
+		Params:    params,
+		Body:      body,
+		Tool:      tool,
+		Con:       con,
+		State:     copyTLCStateForLambda(state),
+		PState:    copyTLCStateForLambda(pstate),
+		Control:   control,
 	}
 }
 

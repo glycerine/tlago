@@ -385,15 +385,15 @@ type SetEnumValue struct {
 
 var EmptySet = &SetEnumValue{Elems: NewValueVec(0), IsNorm: true}
 
-func NewSetEnumValue(values []Value, isNorm bool) *SetEnumValue {
-	return &SetEnumValue{Elems: NewValueVecFrom(values), IsNorm: isNorm}
+func NewSetEnumValue(values []Value, isNorm bool, cms ...CostModel) *SetEnumValue {
+	return &SetEnumValue{BaseValue: newBaseValue(cms...), Elems: NewValueVecFrom(values), IsNorm: isNorm}
 }
 
-func NewSetEnumValueVec(values *ValueVec, isNorm bool) *SetEnumValue {
+func NewSetEnumValueVec(values *ValueVec, isNorm bool, cms ...CostModel) *SetEnumValue {
 	if values == nil {
 		values = NewValueVec(0)
 	}
-	return &SetEnumValue{Elems: values, IsNorm: isNorm}
+	return &SetEnumValue{BaseValue: newBaseValue(cms...), Elems: values, IsNorm: isNorm}
 }
 
 func (v *SetEnumValue) Kind() ValueKind    { return SetEnumValueKind }
@@ -550,7 +550,7 @@ func (v *SetEnumValue) Elements() ValueEnumeration {
 	if _, err := v.normalizeSet(); err != nil {
 		return newErrorEnumeration(err)
 	}
-	return &sliceValueEnumeration{values: v.Elems.ToArray()}
+	return &sliceValueEnumeration{values: v.Elems.ToArray(), cm: v.CM}
 }
 
 func (v *SetEnumValue) String() string {
@@ -687,7 +687,8 @@ func (v *IntervalValue) ToSetEnum() *SetEnumValue {
 	for i := 0; i < sz; i++ {
 		values[i] = NewIntValue(v.Low + int32(i))
 	}
-	return NewSetEnumValue(values, true)
+	v.CM.incValueSecondary(int64(sz))
+	return NewSetEnumValue(values, true, v.CM)
 }
 
 func (v *IntervalValue) AsValues() []Value {
@@ -703,7 +704,9 @@ func (v *IntervalValue) AsValues() []Value {
 }
 
 func (v *IntervalValue) Elements() ValueEnumeration {
-	return newIntervalValueEnumeration(v.Low, v.High)
+	enum := newIntervalValueEnumeration(v.Low, v.High)
+	enum.cm = v.CM
+	return enum
 }
 
 func (v *IntervalValue) String() string {
@@ -714,6 +717,7 @@ func (v *IntervalValue) String() string {
 }
 
 type intervalValueEnumeration struct {
+	cm    CostModel
 	low   int32
 	high  int32
 	index int32
@@ -735,6 +739,7 @@ func (e *intervalValueEnumeration) NextElement() Value {
 	if e.done {
 		return nil
 	}
+	e.cm.incValueSecondary()
 	current := e.index
 	if current == e.high {
 		e.done = true
@@ -749,6 +754,7 @@ func (e *intervalValueEnumeration) Err() error {
 }
 
 type sliceValueEnumeration struct {
+	cm     CostModel
 	values []Value
 	index  int
 }
@@ -758,6 +764,7 @@ func (e *sliceValueEnumeration) Reset() {
 }
 
 func (e *sliceValueEnumeration) NextElement() Value {
+	e.cm.incValueSecondary()
 	if e.index >= len(e.values) {
 		return nil
 	}

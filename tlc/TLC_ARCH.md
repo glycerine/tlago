@@ -960,6 +960,12 @@ Important concrete values:
   Explicit-set results preserve raw left order and duplicates; union normalizes
   its reducible right operand by enumerating it and leaves the result
   unnormalized. Empty reducible unions return the other operand directly.
+- `BaseValue.CM` mirrors Java's shared `Value.cm`. Evaluating/lambda/predicate
+  values use that same field. Primitive and lazy set iterators preserve Java's
+  secondary-count boundaries: explicit sets count calls after exhaustion,
+  intervals count returned elements, filters count examined candidates, and
+  materialization additionally counts produced elements. `UNION` uses the
+  concrete optimization helper and inherits its input set's cost model.
 - `FcnRcdValue`: explicit finite function, optimized for interval domains.
   Java's `tlc2.value.impl.FcnRcdValue.threshold` controls when normalized
   finite function records switch from linear lookup to binary search; Go keeps

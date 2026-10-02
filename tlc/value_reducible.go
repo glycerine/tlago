@@ -13,7 +13,7 @@ func (v *SetEnumValue) Diff(other Value) (Value, error) {
 			values.Add(elem)
 		}
 	}
-	return NewSetEnumValueVec(values, v.IsNormalized()), nil
+	return NewSetEnumValueVec(values, v.IsNormalized(), v.CM), nil
 }
 
 func (v *SetEnumValue) Cap(other Value) (Value, error) {
@@ -29,7 +29,7 @@ func (v *SetEnumValue) Cap(other Value) (Value, error) {
 			values.Add(elem)
 		}
 	}
-	return NewSetEnumValueVec(values, v.IsNormalized()), nil
+	return NewSetEnumValueVec(values, v.IsNormalized(), v.CM), nil
 }
 
 func (v *SetEnumValue) Cup(other Value) (Value, error) {
@@ -38,7 +38,7 @@ func (v *SetEnumValue) Cup(other Value) (Value, error) {
 		return other, nil
 	}
 	if !isReducibleValue(other) {
-		return NewSetCupValue(v, other), nil
+		return NewSetCupValue(v, other, v.CM), nil
 	}
 	values := NewValueVec(0)
 	for i := 0; i < size; i++ {
@@ -77,7 +77,7 @@ func (v *IntervalValue) Diff(other Value) (Value, error) {
 			values.Add(elem)
 		}
 	}
-	return NewSetEnumValueVec(values, true), nil
+	return NewSetEnumValueVec(values, true, v.CM), nil
 }
 
 func (v *IntervalValue) Cap(other Value) (Value, error) {
@@ -96,7 +96,7 @@ func (v *IntervalValue) Cap(other Value) (Value, error) {
 			values.Add(elem)
 		}
 	}
-	return NewSetEnumValueVec(values, true), nil
+	return NewSetEnumValueVec(values, true, v.CM), nil
 }
 
 func (v *IntervalValue) Cup(other Value) (Value, error) {
@@ -108,7 +108,7 @@ func (v *IntervalValue) Cup(other Value) (Value, error) {
 		return other, nil
 	}
 	if !isReducibleValue(other) {
-		return NewSetCupValue(v, other), nil
+		return NewSetCupValue(v, other, v.CM), nil
 	}
 	values := NewValueVec(0)
 	for i := 0; i < size; i++ {
@@ -128,5 +128,5 @@ func (v *IntervalValue) Cup(other Value) (Value, error) {
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	return NewSetEnumValueVec(values, false), nil
+	return NewSetEnumValueVec(values, false, v.CM), nil
 }

@@ -8,7 +8,6 @@ type LazyValue struct {
 	BaseValue
 	Expr       SemanticNode
 	Con        *Context
-	CM         CostModel
 	Val        Value
 	ToolID     int64
 	State      *TLCStateMut
@@ -28,7 +27,7 @@ func NewLazyValue(expr SemanticNode, con *Context, cacheable bool, cms ...CostMo
 	if CoverageEnabled() {
 		cm = cm.Get(expr)
 	}
-	out := &LazyValue{Expr: expr, Con: con, CM: cm}
+	out := &LazyValue{BaseValue: newBaseValue(cm), Expr: expr, Con: con}
 	if lazyValueOff() || !cacheable {
 		out.Val = ValUndef
 	}
@@ -301,7 +300,6 @@ type SetPredValue struct {
 	State     *TLCStateMut
 	PState    *TLCStateMut
 	Control   int
-	CM        CostModel
 }
 
 func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *SetPredValue {
@@ -313,15 +311,15 @@ func NewSetPredValue(vars any, inVal Value, pred SemanticNode, tool *Tool, con *
 		cm = cms[0]
 	}
 	return &SetPredValue{
-		Vars:    vars,
-		InVal:   inVal,
-		Pred:    pred,
-		Tool:    tool,
-		Con:     con,
-		State:   copyTLCStateForLambda(state),
-		PState:  copyTLCStateForLambda(pstate),
-		Control: control,
-		CM:      cm,
+		BaseValue: newBaseValue(cm),
+		Vars:      vars,
+		InVal:     inVal,
+		Pred:      pred,
+		Tool:      tool,
+		Con:       con,
+		State:     copyTLCStateForLambda(state),
+		PState:    copyTLCStateForLambda(pstate),
+		Control:   control,
 	}
 }
 
@@ -459,7 +457,8 @@ func (v *SetPredValue) ToSetEnum() (*SetEnumValue, error) {
 			if err := enum.Err(); err != nil {
 				return nil, err
 			}
-			return NewSetEnumValueVec(values, v.IsNormalized()), nil
+			v.CM.incValueSecondary(int64(values.Len()))
+			return NewSetEnumValueVec(values, v.IsNormalized(), v.CM), nil
 		}
 		values.Add(elem)
 	}
@@ -542,6 +541,7 @@ func (e *setPredEnumeration) NextElement() Value {
 			e.err = e.enum.Err()
 			return nil
 		}
+		e.set.CM.incValueSecondary()
 		ctx, err := e.set.bind(elem)
 		if err != nil {
 			e.err = err

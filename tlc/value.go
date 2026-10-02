@@ -87,6 +87,7 @@ type Value interface {
 	Permute(*MVPerm) Value
 	TakeExcept(ValueExcept) (Value, error)
 	TakeExcepts([]ValueExcept) (Value, error)
+	GetCostModel() CostModel
 }
 
 func InitializeValue(value Value) Value {
@@ -114,7 +115,19 @@ type ValueExcept struct {
 
 type BaseValue struct {
 	source SemanticNode
+	CM     CostModel
 }
+
+func newBaseValue(cms ...CostModel) BaseValue {
+	if len(cms) > 0 {
+		return BaseValue{CM: cms[0]}
+	}
+	return BaseValue{}
+}
+
+func (v BaseValue) GetCostModel() CostModel { return v.CM }
+
+func (v *BaseValue) SetCostModel(cm CostModel) { v.CM = cm }
 
 func (BaseValue) KindStringFor(kind ValueKind) string {
 	if int(kind) >= 0 && int(kind) < len(valueKindImage) {

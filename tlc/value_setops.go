@@ -10,8 +10,8 @@ type SetCupValue struct {
 	CupSetDummy bool
 }
 
-func NewSetCupValue(set1, set2 Value) *SetCupValue {
-	return &SetCupValue{Set1: set1, Set2: set2}
+func NewSetCupValue(set1, set2 Value, cms ...CostModel) *SetCupValue {
+	return &SetCupValue{BaseValue: newBaseValue(cms...), Set1: set1, Set2: set2}
 }
 
 func (v *SetCupValue) Kind() ValueKind    { return SetCupValueKind }
@@ -113,7 +113,7 @@ func (v *SetCupValue) ToSetEnum() (*SetEnumValue, error) {
 		return v.CupSet, nil
 	}
 	enum := v.Elements()
-	return setEnumFromEnumeration(enum, false)
+	return setEnumFromEnumeration(enum, false, v.CM)
 }
 
 func (v *SetCupValue) convertAndCache() (*SetEnumValue, error) {
@@ -145,7 +145,7 @@ func (v *SetCupValue) Elements() ValueEnumeration {
 	if !ok1 || !ok2 {
 		return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\cup T when S:\n%s\nand T:\n%s\nare not both enumerable", v.Set1, v.Set2))
 	}
-	return &setCupEnumeration{enum1: enum1.Elements(), enum2: enum2.Elements()}
+	return &setCupEnumeration{enum1: enum1.Elements(), enum2: enum2.Elements(), cm: v.CM}
 }
 
 func (v *SetCupValue) String() string {
@@ -158,6 +158,7 @@ func (v *SetCupValue) String() string {
 }
 
 type setCupEnumeration struct {
+	cm    CostModel
 	enum1 ValueEnumeration
 	enum2 ValueEnumeration
 }
@@ -168,6 +169,7 @@ func (e *setCupEnumeration) Reset() {
 }
 
 func (e *setCupEnumeration) NextElement() Value {
+	e.cm.incValueSecondary()
 	elem := e.enum1.NextElement()
 	if elem != nil {
 		return elem
@@ -306,7 +308,7 @@ func (v *SetCapValue) ToSetEnum() (*SetEnumValue, error) {
 		return v.CapSet, nil
 	}
 	enum := v.Elements()
-	return setEnumFromEnumeration(enum, v.IsNormalized())
+	return setEnumFromEnumeration(enum, v.IsNormalized(), v.CM)
 }
 
 func (v *SetCapValue) convertAndCache() (*SetEnumValue, error) {
@@ -334,10 +336,10 @@ func (v *SetCapValue) Elements() ValueEnumeration {
 		return v.CapSet.Elements()
 	}
 	if enum1, ok := asEnumerable(v.Set1); ok {
-		return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: true}
+		return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: true, cm: v.CM}
 	}
 	if enum2, ok := asEnumerable(v.Set2); ok {
-		return &setFilterEnumeration{enum: enum2.Elements(), predicate: v.Set1, includeWhenMember: true}
+		return &setFilterEnumeration{enum: enum2.Elements(), predicate: v.Set1, includeWhenMember: true, cm: v.CM}
 	}
 	return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\cap T when neither S:\n%s\nnor T:\n%s\nis enumerable", v.Set1, v.Set2))
 }
@@ -482,7 +484,7 @@ func (v *SetDiffValue) ToSetEnum() (*SetEnumValue, error) {
 		return v.DiffSet, nil
 	}
 	enum := v.Elements()
-	return setEnumFromEnumeration(enum, v.Set1.IsNormalized())
+	return setEnumFromEnumeration(enum, v.Set1.IsNormalized(), v.CM)
 }
 
 func (v *SetDiffValue) convertAndCache() (*SetEnumValue, error) {
@@ -513,7 +515,7 @@ func (v *SetDiffValue) Elements() ValueEnumeration {
 	if !ok {
 		return newErrorEnumeration(v.unsupported("Attempted to enumerate S \\ T when S:\n%s\nis not enumerable.", v.Set1))
 	}
-	return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: false}
+	return &setFilterEnumeration{enum: enum1.Elements(), predicate: v.Set2, includeWhenMember: false, cm: v.CM}
 }
 
 func (v *SetDiffValue) String() string {
@@ -532,11 +534,11 @@ type UnionValue struct {
 	RealSetDummy bool
 }
 
-func NewUnionValue(set Value) *UnionValue {
-	return &UnionValue{Set: set}
+func NewUnionValue(set Value, cms ...CostModel) *UnionValue {
+	return &UnionValue{BaseValue: newBaseValue(cms...), Set: set}
 }
 
-func Union(set Value) Value {
+func Union(set Value) (Value, error) {
 	setEnum, ok := set.(*SetEnumValue)
 	if ok {
 		canCombine := true
@@ -548,21 +550,24 @@ func Union(set Value) Value {
 		}
 		if canCombine {
 			resElems := NewValueVec(0)
-			result := NewSetEnumValueVec(resElems, false)
+			result := NewSetEnumValueVec(resElems, false, set.GetCostModel())
 			for i := 0; i < setEnum.Elems.Len(); i++ {
 				inner := setEnum.Elems.At(i).(*SetEnumValue)
 				for j := 0; j < inner.Elems.Len(); j++ {
 					elem := inner.Elems.At(j)
 					member, err := result.Member(elem)
-					if err == nil && !member {
+					if err != nil {
+						return nil, err
+					}
+					if !member {
 						resElems.Add(elem)
 					}
 				}
 			}
-			return result
+			return result, nil
 		}
 	}
-	return NewUnionValue(set)
+	return NewUnionValue(set, set.GetCostModel()), nil
 }
 
 func (v *UnionValue) Kind() ValueKind    { return UnionValueKind }
@@ -686,7 +691,7 @@ func (v *UnionValue) ToSetEnum() (*SetEnumValue, error) {
 		return v.RealSet, nil
 	}
 	enum := v.Elements()
-	return setEnumFromEnumeration(enum, false)
+	return setEnumFromEnumeration(enum, false, v.CM)
 }
 
 func (v *UnionValue) convertAndCache() (*SetEnumValue, error) {
@@ -730,6 +735,7 @@ func (v *UnionValue) String() string {
 }
 
 type setFilterEnumeration struct {
+	cm                CostModel
 	enum              ValueEnumeration
 	predicate         Value
 	includeWhenMember bool
@@ -750,6 +756,7 @@ func (e *setFilterEnumeration) NextElement() Value {
 		if elem == nil {
 			return nil
 		}
+		e.cm.incValueSecondary()
 		member, err := e.predicate.Member(elem)
 		if err != nil {
 			e.err = err
@@ -792,11 +799,8 @@ func (e *unionEnumeration) NextElement() Value {
 	if e.err != nil || e.elemSet == nil {
 		return nil
 	}
-	for {
-		val := e.elemSetEnum.NextElement()
-		if val != nil {
-			return val
-		}
+	val := e.elemSetEnum.NextElement()
+	if val == nil {
 		if err := e.elemSetEnum.Err(); err != nil {
 			e.err = err
 			return nil
@@ -805,7 +809,13 @@ func (e *unionEnumeration) NextElement() Value {
 		if e.err != nil || e.elemSet == nil {
 			return nil
 		}
+		val = e.NextElement()
+		if e.err != nil {
+			return nil
+		}
 	}
+	e.owner.CM.incValueSecondary()
+	return val
 }
 
 func (e *unionEnumeration) Err() error {
@@ -845,7 +855,7 @@ func asEnumerable(value Value) (Enumerable, bool) {
 	return enum, ok
 }
 
-func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool) (*SetEnumValue, error) {
+func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool, cms ...CostModel) (*SetEnumValue, error) {
 	vals := NewValueVec(0)
 	for {
 		elem := enum.NextElement()
@@ -853,7 +863,10 @@ func setEnumFromEnumeration(enum ValueEnumeration, isNorm bool) (*SetEnumValue, 
 			if err := enum.Err(); err != nil {
 				return nil, err
 			}
-			return NewSetEnumValueVec(vals, isNorm), nil
+			if len(cms) > 0 {
+				cms[0].incValueSecondary(int64(vals.Len()))
+			}
+			return NewSetEnumValueVec(vals, isNorm, cms...), nil
 		}
 		vals.Add(elem)
 	}

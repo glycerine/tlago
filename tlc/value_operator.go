@@ -176,7 +176,6 @@ type OpLambdaValue struct {
 	State   *TLCStateMut
 	PState  *TLCStateMut
 	Control int
-	CM      CostModel
 }
 
 func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cms ...CostModel) *OpLambdaValue {
@@ -188,14 +187,13 @@ func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStat
 		cm = cms[0]
 	}
 	return &OpLambdaValue{
-		operatorValueBase: operatorValueBase{KindValue: OpLambdaValueKind, Label: "<Operator " + opDef.String() + ">", NormalizeMessage: "Should not normalize an operator."},
+		operatorValueBase: operatorValueBase{BaseValue: newBaseValue(cm), KindValue: OpLambdaValueKind, Label: "<Operator " + opDef.String() + ">", NormalizeMessage: "Should not normalize an operator."},
 		OpDef:             opDef,
 		Tool:              tool,
 		Con:               con,
 		State:             state,
 		PState:            pstate,
 		Control:           control,
-		CM:                cm,
 	}
 }
 

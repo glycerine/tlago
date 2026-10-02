@@ -82,6 +82,7 @@ func TestValueVecGrowthHonorsJavaSetBound(t *testing.T) {
 type compareEqualButNotEqualValue string
 
 func (v compareEqualButNotEqualValue) Kind() ValueKind              { return UserValueKind }
+func (v compareEqualButNotEqualValue) GetCostModel() CostModel      { return DoNotRecordCostModel }
 func (v compareEqualButNotEqualValue) KindString() string           { return "test value" }
 func (v compareEqualButNotEqualValue) Compare(Value) (int, error)   { return 0, nil }
 func (v compareEqualButNotEqualValue) Equal(Value) (bool, error)    { return false, nil }

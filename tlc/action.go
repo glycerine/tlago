@@ -94,6 +94,12 @@ func (m CostModel) IncSecondary(values ...int64) CostModel {
 	return m
 }
 
+func (m CostModel) incValueSecondary(values ...int64) {
+	if m.node != nil && CoverageEnabled() {
+		m.IncSecondary(values...)
+	}
+}
+
 func (m CostModel) GetPrimary() int64 {
 	if m.node == nil {
 		return -1

@@ -23,6 +23,7 @@ Current TLC method:
 - Keep `tlc/PORT_PROGRESS.md` current after every no-code audit or code fix.
 - Do not port the Java `test/tlc2` suite until the Java architecture is
   coherently mirrored in Go.
+- Do not write regression or unit tests yet; run existing checks as needed.
 - Do not restart the long SANY XML or ApalacheIR corpus sweeps unless the user
   explicitly asks.
 

@@ -366,7 +366,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSetEnumValue(values, false), nil
+		return NewSetEnumValue(values, false, cm), nil
 	case OpcodeSOA:
 		return t.evalSetOfAll(expr, c, s0, s1, control, cm)
 	case OpcodeSOR:
@@ -416,7 +416,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewUnionValue(arg), nil
+		return Union(arg)
 	case OpcodeDomain:
 		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
@@ -1364,7 +1364,7 @@ func (t *Tool) evalSetOfAll(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	return NewSetEnumValueVec(values, false), nil
+	return NewSetEnumValueVec(values, false, cm), nil
 }
 
 func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1424,7 +1424,7 @@ func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err := e.Err(); err != nil {
 			return nil, err
 		}
-		return NewSetEnumValueVec(values, inVal.IsNormalized()), nil
+		return NewSetEnumValueVec(values, inVal.IsNormalized(), cm), nil
 	}
 	if isTuple {
 		return NewSetPredValue(bvars, inVal, expr.Args[0], t, c, s0, s1, control, cm), nil
@@ -1496,7 +1496,7 @@ func (t *Tool) evalSetOp(opcode int, left SemanticNode, right SemanticNode, c *C
 		case *SetEnumValue:
 			return right.Cup(arg1)
 		}
-		return NewSetCupValue(arg1, arg2), nil
+		return NewSetCupValue(arg1, arg2, cm), nil
 	default:
 		return nil, newTLCError(ECGeneral, "unknown set operator opcode %d", opcode)
 	}
