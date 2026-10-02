@@ -355,6 +355,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	if p == nil || tool == nil {
 		return
 	}
+	p.ToolID = tool.ID
 	tool.SpecProcessor = p
 	names := make([]string, len(p.Variables))
 	for i, variable := range p.Variables {
@@ -1650,7 +1651,7 @@ func (p *SpecProcessor) constraintNodesFromConfigNames(names []string, kind stri
 			} else if def.Arity() != 0 {
 				p.addConfigError(noArgCode, kind, name)
 			} else if def.Body != nil {
-				setSemanticToolObject(def.Body, def)
+				SetSemanticToolObjectForToolID(p.ToolID, def.Body, def)
 				nodes = append(nodes, def.Body)
 			}
 		case *BoolValue:

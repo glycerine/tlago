@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"sync/atomic"
 )
 
@@ -47,6 +48,15 @@ type SemanticNodeBase struct {
 }
 
 var nextSemanticNodeUID atomic.Int32
+var semanticToolObjects = struct {
+	sync.RWMutex
+	values map[semanticToolObjectKey]any
+}{values: make(map[semanticToolObjectKey]any)}
+
+type semanticToolObjectKey struct {
+	toolID int64
+	nodeID int32
+}
 
 func newSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
 	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), Image: image}
@@ -571,6 +581,58 @@ func SemanticToolObject(node SemanticNode) any {
 	default:
 		return nil
 	}
+}
+
+func SemanticToolObjectForTool(tool *Tool, node SemanticNode) any {
+	toolID := int64(0)
+	if tool != nil {
+		toolID = tool.ID
+	}
+	return SemanticToolObjectForToolID(toolID, node)
+}
+
+func SemanticToolObjectForToolID(toolID int64, node SemanticNode) any {
+	key, ok := semanticToolObjectKeyForNode(toolID, node)
+	if !ok {
+		return nil
+	}
+	semanticToolObjects.RLock()
+	value := semanticToolObjects.values[key]
+	semanticToolObjects.RUnlock()
+	return value
+}
+
+func SetSemanticToolObjectForTool(tool *Tool, node SemanticNode, value any) {
+	toolID := int64(0)
+	if tool != nil {
+		toolID = tool.ID
+	}
+	SetSemanticToolObjectForToolID(toolID, node, value)
+}
+
+func SetSemanticToolObjectForToolID(toolID int64, node SemanticNode, value any) {
+	key, ok := semanticToolObjectKeyForNode(toolID, node)
+	if !ok {
+		return
+	}
+	semanticToolObjects.Lock()
+	if value == nil {
+		delete(semanticToolObjects.values, key)
+	} else {
+		semanticToolObjects.values[key] = value
+	}
+	semanticToolObjects.Unlock()
+}
+
+func semanticToolObjectKeyForNode(toolID int64, node SemanticNode) (semanticToolObjectKey, bool) {
+	if node == nil {
+		return semanticToolObjectKey{}, false
+	}
+	nodeID := SemanticJavaHashCode(node)
+	if withUID, ok := node.(interface{ GetUID() int32 }); ok {
+		nodeID = withUID.GetUID()
+	}
+	return semanticToolObjectKey{toolID: toolID, nodeID: nodeID}, true
 }
 
 func SemanticString(node SemanticNode) string {

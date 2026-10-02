@@ -384,8 +384,8 @@ func reportCoverage(tool *Tool) {
 			invariant.CM.Report()
 		}
 	}
-	reportConstraintCoverage(tool.GetActionConstraints())
-	reportConstraintCoverage(tool.GetModelConstraints())
+	reportConstraintCoverage(tool, tool.GetActionConstraints())
+	reportConstraintCoverage(tool, tool.GetModelConstraints())
 	if coverageImpliedEnabled() {
 		for _, impliedInit := range tool.GetImpliedInits() {
 			if impliedInit != nil {
@@ -446,9 +446,9 @@ func coverageImpliedEnabled() bool {
 	return true
 }
 
-func reportConstraintCoverage(nodes []SemanticNode) {
+func reportConstraintCoverage(tool *Tool, nodes []SemanticNode) {
 	for _, node := range nodes {
-		if action, ok := SemanticToolObject(node).(*Action); ok && action != nil {
+		if action, ok := SemanticToolObjectForTool(tool, node).(*Action); ok && action != nil {
 			action.CM.Report()
 		}
 	}
@@ -495,10 +495,15 @@ func (c *coverageCreator) assignConstraintCostModel(expr SemanticNode) {
 	if expr == nil {
 		return
 	}
-	action, _ := SemanticToolObject(expr).(*Action)
+	existing := SemanticToolObjectForTool(c.tool, expr)
+	action, _ := existing.(*Action)
 	if action == nil {
-		action = NewAction(expr, EmptyContext, SemanticString(expr))
-		setSemanticToolObject(expr, action)
+		if opDef, ok := existing.(*OpDefNode); ok && opDef != nil {
+			action = NewActionFromOpDef(expr, EmptyContext, opDef, false, false)
+		} else {
+			action = NewAction(expr, EmptyContext, SemanticString(expr))
+		}
+		SetSemanticToolObjectForTool(c.tool, expr, action)
 	}
 	action.CM = c.createForAction(action, CoverageRelationConstraint)
 }

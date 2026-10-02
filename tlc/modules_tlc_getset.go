@@ -366,8 +366,8 @@ func tlcSpecRecord(tool *Tool) Value {
 		propertyActionSetValue(tool.GetImpliedInits()),
 		propertyActionSetValue(tool.GetImpliedTemporals()),
 		stateVariablesSetValue(),
-		semanticNodeSetValue(tool.GetActionConstraints()),
-		semanticNodeSetValue(tool.GetModelConstraints()),
+		semanticNodeSetValue(tool, tool.GetActionConstraints()),
+		semanticNodeSetValue(tool, tool.GetModelConstraints()),
 		propertyActionSetValue(tool.GetImpliedActions()),
 	}
 	return NewRecordValue(names, values, false)
@@ -504,19 +504,19 @@ func stateVariablesSetValue() Value {
 	return NewSetEnumValue(values, false)
 }
 
-func semanticNodeSetValue(nodes []SemanticNode) Value {
+func semanticNodeSetValue(tool *Tool, nodes []SemanticNode) Value {
 	if len(nodes) == 0 {
 		return EmptySet
 	}
 	values := make([]Value, 0, len(nodes))
 	for _, node := range nodes {
-		values = append(values, constraintRecordValue(node))
+		values = append(values, constraintRecordValue(tool, node))
 	}
 	return NewSetEnumValue(values, false)
 }
 
-func constraintRecordValue(node SemanticNode) Value {
-	switch value := SemanticToolObject(node).(type) {
+func constraintRecordValue(tool *Tool, node SemanticNode) Value {
+	switch value := SemanticToolObjectForTool(tool, node).(type) {
 	case *OpDefNode:
 		return opDefRecordValue(value)
 	case *Action:
