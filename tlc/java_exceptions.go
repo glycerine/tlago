@@ -289,8 +289,8 @@ func (e *ArithmeticException) Error() string { return javaThrowableMessage(e) }
 
 type UnsupportedOperationException struct{ javaExceptionBase }
 
-func NewUnsupportedOperationException(message string) *UnsupportedOperationException {
-	return &UnsupportedOperationException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}
+func NewUnsupportedOperationException(message ...string) *UnsupportedOperationException {
+	return &UnsupportedOperationException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
 
 func (e *UnsupportedOperationException) Error() string { return javaThrowableMessage(e) }

@@ -30,6 +30,8 @@
 // Sources: OpenJDK jdk21u java.io.BufferedReader, sun.nio.cs.StreamDecoder/UTF_8.
 package tlc
 
+import "fmt"
+
 // mailDecodeReaderCharacter returns one decoded code point and its byte width.
 // Width zero means that the decoder needs more input before end-of-input.
 func mailDecodeReaderCharacter(b []byte, charset string, eof bool) (uint32, int) {
@@ -103,7 +105,14 @@ func (d *mailJDKStreamDecoder) readBytes() (n int, err error) {
 	if n == 0 {
 		return 0, NewIOException("Underlying input stream returned zero bytes")
 	}
-	d.limit = left + n
+	position := int32(left) + int32(n)
+	if position < 0 {
+		return 0, NewIllegalArgumentException(fmt.Sprintf("newPosition < 0: (%d < 0)", position))
+	}
+	if position > int32(len(d.bytes)) {
+		return 0, NewIllegalArgumentException(fmt.Sprintf("newPosition > limit: (%d > %d)", position, len(d.bytes)))
+	}
+	d.limit = int(position)
 	return d.limit, nil
 }
 
@@ -140,7 +149,7 @@ func (d *mailJDKStreamDecoder) readChars(out []uint16) (int, error) {
 			break
 		}
 		if used > 0 {
-			ready, e := d.input.AvailableJava()
+			ready, e := mailInvoke(func() (int32, error) { return d.input.AvailableJava() })
 			if e != nil {
 				if !isJavaIOException(e) {
 					return 0, e

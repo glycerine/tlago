@@ -23,6 +23,7 @@ package tlc
 import (
 	"bytes"
 	"embed"
+	"io"
 	"io/fs"
 	"os"
 	"strings"
@@ -58,6 +59,9 @@ type MailActivationEnvironment struct {
 	CanonicalCharset    func(*string) *string
 	EncodingSupported   func(*string) bool
 	DefaultCharset      func() string
+	ReadText            func(*MailInputStream) (*string, error)
+	TextWriter          func(io.Writer) (*MailTextWriter, error)
+	ObjectString        func(any) *string
 }
 
 var DefaultMailActivationEnvironment MailActivationEnvironment

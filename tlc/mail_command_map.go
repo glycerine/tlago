@@ -26,9 +26,8 @@ import (
 	"sync/atomic"
 )
 
-// DataFlavor objects remain opaque JVM/AWT objects at this boundary. These
-// callbacks carry all four DataContentHandler operations; native flavor classes
-// and concrete bundled handler algorithms are separate required ports.
+// These callbacks carry all four DataContentHandler operations. Flavor values
+// may carry native MailDataFlavor objects or foreign JVM/AWT provider objects.
 type MailDataContentHandler struct {
 	TransferDataFlavorsFunc func() []any
 	TransferDataFunc        func(any, *MailDataSource) (any, error)

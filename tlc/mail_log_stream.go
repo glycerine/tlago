@@ -28,6 +28,15 @@ func NewMailLogPrintStream(file io.WriteCloser, echo io.Writer) *MailLogPrintStr
 	return &MailLogPrintStream{file: file, echo: echo}
 }
 
+// The native log PrintStream uses UTF-8, including when OutputStreamWriter
+// inherits this stream's charset instead of the process default charset.
+func (s *MailLogPrintStream) MailPrintStreamCharset() string {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	return "UTF-8"
+}
+
 func (s *MailLogPrintStream) Write(data []byte) (int, error) {
 	if s == nil {
 		panic(NewNullPointerException())

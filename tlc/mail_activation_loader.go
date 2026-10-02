@@ -74,8 +74,11 @@ func mailActivationDefaultLoader(e MailActivationEnvironment) *MailActivationCla
 			if name == nil {
 				return nil, NewNullPointerException()
 			}
-			// Never claim the known, bundled-but-unported handler classes are
-			// absent. Native concrete handlers/class inventory are required next.
+			if class := mailNativeContentHandlerClass(*name); class != nil {
+				return class, nil
+			}
+			// Other known bundled classes still need their native ports or the
+			// full class-loader provider; do not fabricate class-not-found.
 			return nil, NewUnsupportedOperationException("JVM ClassLoader provider required for " + *name)
 		},
 	}

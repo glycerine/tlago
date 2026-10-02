@@ -44,8 +44,14 @@ shadowed fields: inherited metadata/hash/overloads often see null base fields.
 AWT MIME parsing uses a separate grammar and Hashtable enumeration; its error
 and partial-mutation quirks must not be replaced by the Activation parser.
 All four existing ActivationDataFlavorTest methods are translated and pass.
-Continue with bundled concrete handlers, then object DataHandler factory/cache/
-buffered-pipe paths and its existing test. Remaining AWT work includes full class
+Bundled plain/HTML/XML text handlers now have native class lookup, flavor arrays,
+transfer/content/write methods and their nine existing Java assertions translated.
+Preserve default charset use, ignored MIME charset parameters, stream no-close,
+pending high surrogates through flush and failed encoder-buffer state. The modern
+Geronimo javamail handler body differs from this bundled activation handler.
+Continue with image and multipart handlers and their ImageIO/AWT/MIME dependencies,
+then object DataHandler factory/cache/buffered-pipe paths and its existing test.
+Remaining AWT work includes full class
 loading/initialization, text selection/readers, object and MIME externalization.
 Full JVM class inventory/linking/loader isolation, stack/cast diagnostics and
 native thread/URL/locale/charset providers remain required.

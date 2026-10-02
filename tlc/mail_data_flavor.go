@@ -73,6 +73,9 @@ func MailBuiltinFlavorClass(name string) *MailActivationClass {
 	case "java.util.List":
 		return mailFlavorListClass
 	}
+	if class := mailNativeContentHandlerClass(name); class != nil {
+		return class
+	}
 	return nil
 }
 func mailFlavorLoadClass(name *string) (*MailActivationClass, error) {

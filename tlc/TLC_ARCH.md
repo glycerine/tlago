@@ -3363,7 +3363,33 @@ Temporary Java/native -race probes pass 5,894 flavor comparisons and 17,364 dire
 AWT parser/mutation/enumeration comparisons. After implementation, translated
 the four original ActivationDataFlavorTest methods; original Java bodies,
 translated mail -race tests and full offline working-tree checks pass.
-Next are bundled handlers, then object DataHandler factory/cache/pipes. Full
+Bundled AbstractTextHandler and TextPlain/Html/XmlHandler now provide native
+flavor arrays, typed-flavor transfer, default-reader content and object/string
+writeTo methods. Arrays are fresh but their contained flavor retains identity.
+A mismatched flavor returns null before consulting the DataSource. MIME charset
+parameters are ignored; null objects return before writer construction and an
+object's nullable toString runs before validating the output stream. Streams
+remain open. Native default class lookup now loads these three concrete handlers
+with stable class identities and fresh instances; other classes remain explicit
+providers. Arbitrary object toString, legacy readers/writers and default charset
+lifetime have operation callbacks rather than guessed representations.
+The JDK writer operations retain the 512-byte initial buffer, growth up to 8192,
+UTF-8/ASCII/Latin-1 replacement, pending high surrogates through flush, flipped
+buffer state on write failure and reentrant synchronization. Latin-1 array-loop
+overflow precedes trailing-surrogate parsing, unlike UTF-8/ASCII. OutputStreamWriter
+inherits PrintStream charset; the native UTF-8 log stream supplies that metadata.
+The shared decoder now keeps typed ByteBuffer position errors for oversized read
+counts and catches IOException from available whether returned or thrown.
+Eight reconstructed handler methods match bundled bytecode; all 24 StreamEncoder
+and 15 OutputStreamWriter source methods match the installed JDK. Temporary
+Java/native -race comparisons pass 6,858 text read/write/transfer/metadata cases,
+default CommandMap creation/read/write for all three MIME types and PrintStream
+charset/checked-I/O comparisons. After implementation, translated nine existing
+Geronimo AbstractHandler/TextPlain/Html/XmlTest assertions; original Java bodies
+pass through namespace-only bridges to the bundled classes. Translated mail -race
+tests and the full offline working-tree suite pass. No new persistent vectors.
+Next are image/multipart handlers and ImageIO/AWT/MIME dependencies, then object
+DataHandler factory/cache/pipes. Full
 AWT class-loading/initialization, desktop text selection/readers, MIME/Object
 externalization and startup/provider default charset lifetime remain required.
 Full JVM cast/automatic exception wording, native class inventory, Beans and object
