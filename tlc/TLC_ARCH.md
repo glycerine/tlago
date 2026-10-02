@@ -3296,9 +3296,29 @@ counter comparisons match under native -race. Existing 63,156 parser cases and
 1,800 contextual-name cases also pass. After implementation, all seven original
 MimeTypeTest and eleven MimeTypeParameterListTest methods are translated and
 pass alongside unchanged Java test bodies. Full offline working-tree checks pass.
-Next is MailcapCommandMap/CommandMap, followed by content handlers and the object
-DataHandler's factory/cache/pipe paths. Its bundled class-loader call differs from
-current Geronimo trunk's ProviderLocator call; preserve the bundled behavior.
+MailcapCommandMap registry instances now preserve the bundled UTF-16 parser,
+native raw entries, later overrides, wildcard/fallback lookup quirks and exact
+HashMap command/MIME order. OpenJDK copy-constructor/putAll pre-sizing precedes
+source entry traversal; a wildcard-only fallback retains its source NPE, and
+all-command wildcard queries retain duplicate lists. Only single-command lookup
+strips parameters, and a selected map without a requested verb stops lookup.
+Discovery preserves resource names/order, caught failure families, partial entries,
+finally-close replacement and supplied-stream ownership. Filename Reader parsing
+propagates I/O failures and supports null-path constructor ordering. Native default
+classpath discovery includes the byte-identical bundled META-INF/mailcap; explicit
+resource/classpath providers supply their own full inventory. CommandInfo metadata
+is ported; its Beans/Externalizable object creation is pending. All five existing
+MailcapCommandMapTest methods are translated after these registry features, with
+upstream disabled assertions retained. Original Java bodies, 7,382 actual-jar
+registry comparisons and 1,125 discovery/constructor/failure event comparisons
+pass, alongside translated mail -race tests and the full offline working-tree suite.
+Next is CommandMap superclass eager initialization/default get/set/reset/security,
+then bundled class-loader capture/enumeration/lifetime/reentrant monitor behavior
+and content-handler class lookup/newInstance, native handlers and the object
+DataHandler's factory/cache/buffered-pipe paths. JVM class initialization failure
+and reentry remain explicit boundaries for this registry-instance slice. The
+bundled loader calls ClassLoader.loadClass directly; current Geronimo trunk's
+ProviderLocator expression must not replace that behavior.
 Remaining mail work includes Geronimo object/URL/pipe/content-handler/factory/
 command-map/AWT paths and its DataHandlerTest.testObjectInputStream, remaining
 address-object/local-address/Session methods, MIME body parts/NonAsciiFileNames,

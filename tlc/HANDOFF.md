@@ -32,6 +32,14 @@ Do not switch back to the older SANY XML or ApalacheIR corpus sweeps unless the
 user explicitly asks. Those are valuable, but they are paused. The current goal
 is TLC.
 
+Latest mail dependency progress: Activation MIME parsing/casing and Mailcap
+registry-instance parsing/discovery/lookup are implemented, with their existing
+Java tests translated afterward. Read the latest progress entry for verification.
+Continue with CommandMap superclass eager initialization/default get/set/reset,
+then bundled class-loader content-handler creation, native handlers and the object
+DataHandler factory/cache/buffered-pipe paths. The registry slice does not yet
+provide superclass class-initialization/reentry or JVM context-loader lifetime.
+
 ## Operating Rules
 
 - Keep implementation mostly in package `tlc`; avoid splitting into subpackages

@@ -23,7 +23,8 @@
  * questions.
  */
 // Go port of the OpenJDK 21 HashMap bucket/tree ordering used by JavaMail's
-// RFC2231 auxiliary HashMap/HashSet. Keys are always non-null Java strings.
+// RFC2231 auxiliary HashMap/HashSet and Activation metadata maps. Keys are
+// always non-null Java strings.
 // Source: https://github.com/openjdk/jdk21u/blob/master/src/java.base/share/classes/java/util/HashMap.java
 package tlc
 
@@ -597,5 +598,38 @@ func mailParameterBalanceDeletion(root, x *mailParameterHashNode) *mailParameter
 				}
 			}
 		}
+	}
+}
+
+// HashMap(Map) and putAll pre-size from the source map's size before visiting
+// its entries. Reusing ordinary insertion alone changes observable bucket order.
+func copyMailParameterHashTable[V any](source *mailParameterHashTable[V]) *mailParameterHashTable[V] {
+	result := newMailParameterHashTable[V]()
+	result.putAll(source)
+	return result
+}
+func (m *mailParameterHashTable[V]) putAll(source *mailParameterHashTable[V]) {
+	if source == nil {
+		panic(NewNullPointerException())
+	}
+	size := source.items.Len()
+	if size == 0 {
+		return
+	}
+	if len(m.order.table) == 0 {
+		// OpenJDK 21 uses ceil(size / (double)loadFactor), then tableSizeFor.
+		required := (int64(size)*4 + 2) / 3
+		capacity := 1
+		for int64(capacity) < required && capacity < 1<<30 {
+			capacity <<= 1
+		}
+		m.order.table = make([]*mailParameterHashNode, capacity)
+	} else {
+		for size > len(m.order.table)*3/4 && len(m.order.table) < 1<<30 {
+			m.order.resize()
+		}
+	}
+	for _, name := range source.names() {
+		m.set(name, source.items.Get(name))
 	}
 }

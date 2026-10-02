@@ -22,7 +22,8 @@ package tlc
 
 import (
 	"bytes"
-	_ "embed"
+	"embed"
+	"io/fs"
 	"os"
 	"strings"
 	"sync"
@@ -31,6 +32,12 @@ import (
 
 //go:embed resources/activation/mimetypes.default
 var mailActivationDefaultMIMETypes []byte
+
+// The native module carries the bundled Activation jar's mailcap resource.
+// Explicit Classpath/Resources providers supply their own complete inventory.
+//
+//go:embed resources/activation/META-INF/mailcap
+var mailActivationClasspath embed.FS
 
 // Resource and default-reader callbacks represent the JVM class-loader and
 // InputStreamReader providers. Resource names retain their source leading slash.
@@ -50,7 +57,11 @@ var DefaultMailActivationEnvironment MailActivationEnvironment
 
 func mailActivationEnvironment(e MailActivationEnvironment) MailActivationEnvironment {
 	if e.Classpath == nil {
-		e.Classpath = filenameDefaultClasspath()
+		files, err := fs.Sub(mailActivationClasspath, "resources/activation")
+		if err != nil {
+			panic(err)
+		}
+		e.Classpath = append(filenameDefaultClasspath(), FilenameClasspathEntry{Files: files, Location: "bundled Geronimo Activation"})
 	}
 	if e.Property == nil {
 		e.Property = func(name string) *string {
