@@ -46,3 +46,31 @@ func TestSemanticNodeLongTableKeysEnumeratorIsLiveLikeJava(t *testing.T) {
 		t.Fatalf("live SemanticNodeLongTable keys returned unexpected second node %v", got)
 	}
 }
+
+func TestLongObjTableNilElementIsJavaNullSentinel(t *testing.T) {
+	table := NewLongObjTable[*BEGraphNode](5)
+	loc := table.Put(11, nil)
+	if table.Size() != 1 {
+		t.Fatalf("after nil put size = %d, want Java count 1", table.Size())
+	}
+	if got, ok := table.Get(11); ok || got != nil {
+		t.Fatalf("nil element lookup = %v/%v, want Java null miss", got, ok)
+	}
+
+	node := NewBEGraphNode(11)
+	loc2 := table.Put(11, node)
+	if loc2 != loc {
+		t.Fatalf("non-nil replacement location = %d, want original nil slot %d", loc2, loc)
+	}
+	if table.Size() != 2 {
+		t.Fatalf("after replacing null-sentinel slot size = %d, want Java count 2", table.Size())
+	}
+	if got, ok := table.Get(11); !ok || got != node {
+		t.Fatalf("non-nil lookup = %v/%v, want original node", got, ok)
+	}
+
+	table.Put(22, NewBEGraphNode(22))
+	if table.Size() != 2 {
+		t.Fatalf("after grow size = %d, want nil sentinel dropped during Java rehash", table.Size())
+	}
+}

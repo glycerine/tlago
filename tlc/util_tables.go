@@ -440,7 +440,7 @@ func (t *LongObjTable[V]) Put(key int64, elem V) int {
 	}
 	loc := t.location(key)
 	for {
-		if !t.used[loc] {
+		if !t.used[loc] || !longObjTableElemPresent(t.elems[loc]) {
 			t.keys[loc] = key
 			t.elems[loc] = elem
 			t.used[loc] = true
@@ -462,7 +462,7 @@ func (t *LongObjTable[V]) Get(key int64) (V, bool) {
 	}
 	loc := t.location(key)
 	for {
-		if !t.used[loc] {
+		if !t.used[loc] || !longObjTableElemPresent(t.elems[loc]) {
 			return zero, false
 		}
 		if t.keys[loc] == key {
@@ -483,7 +483,7 @@ func (t *LongObjTable[V]) grow() {
 	t.elems = make([]V, t.length)
 	t.used = make([]bool, t.length)
 	for i := 0; i < len(oldKeys); i++ {
-		if oldUsed[i] {
+		if oldUsed[i] && longObjTableElemPresent(oldElems[i]) {
 			t.Put(oldKeys[i], oldElems[i])
 		}
 	}
@@ -491,6 +491,19 @@ func (t *LongObjTable[V]) grow() {
 
 func (t *LongObjTable[V]) location(key int64) int {
 	return int(uint32(key)&0x7fffffff) % t.length
+}
+
+func longObjTableElemPresent[V any](elem V) bool {
+	value := reflect.ValueOf(elem)
+	if !value.IsValid() {
+		return false
+	}
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return !value.IsNil()
+	default:
+		return true
+	}
 }
 
 type Vect[E any] struct {
