@@ -46,11 +46,26 @@ func (t *Tool) callStackEnter(expr SemanticNode) func(error) {
 			if errors.As(err, &fpErr) {
 				t.CallStack.Freeze(fpErr)
 			} else {
-				t.CallStack.Freeze()
+				var runtimeErr *TLCError
+				var evalErr *EvalException
+				if errors.As(err, &runtimeErr) || errors.As(err, &evalErr) {
+					t.CallStack.Freeze()
+				}
 			}
 		}
 		t.CallStack.Pop()
 	}
+}
+
+// setValueSource mirrors Tool.setSource: FastTool and DebugTool do nothing,
+// while CallStackTool replaces the source even if a value already has one.
+func (t *Tool) setValueSource(expr SemanticNode, value Value) Value {
+	if t != nil && t.CallStack != nil && value != nil {
+		if assignable, ok := value.(sourceAssignableValue); ok {
+			assignable.SetSource(expr)
+		}
+	}
+	return value
 }
 
 func (t *Tool) callStackToolValue(value Value) Value {

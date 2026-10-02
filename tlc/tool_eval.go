@@ -216,7 +216,7 @@ func (t *Tool) evalImplOpArgKind(expr *OpArgNode, c *Context, s0 *TLCStateMut, s
 	val := t.Lookup(expr.Op, c, s0, false)
 	switch v := val.(type) {
 	case *OpDefNode:
-		return NewOpLambdaValue(v, t, c, s0, s1, control, cm), nil
+		return t.setValueSource(expr, NewOpLambdaValue(v, t, c, s0, s1, control, cm)), nil
 	case Value:
 		return v, nil
 	default:
@@ -316,7 +316,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSetOfTuplesValue(values, cm), nil
+		return t.setValueSource(expr, NewSetOfTuplesValue(values, cm)), nil
 	case OpcodeCL:
 		for _, arg := range args {
 			value, err := t.Eval(arg, c, s0, s1, control, cm)
@@ -375,7 +375,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSetEnumValue(values, false, cm), nil
+		return t.setValueSource(expr, NewSetEnumValue(values, false, cm)), nil
 	case OpcodeSOA:
 		return t.evalSetOfAll(expr, c, s0, s1, control, cm)
 	case OpcodeSOR:
@@ -389,7 +389,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSetOfFcnsValue(lhs, rhs, cm), nil
+		return t.setValueSource(expr, NewSetOfFcnsValue(lhs, rhs, cm)), nil
 	case OpcodeSSO:
 		return t.evalSubsetOf(expr, c, s0, s1, control, cm)
 	case OpcodeTup:
@@ -397,7 +397,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewTupleValue(values, cm), nil
+		return t.setValueSource(expr, NewTupleValue(values, cm)), nil
 	case OpcodeUC:
 		return nil, newTLCError(ECGeneral, "TLC attempted to evaluate an unbounded CHOOSE.\nMake sure that the expression is of form CHOOSE x \\in S: P(x).\n%s", SemanticString(expr))
 	case OpcodeUE:
@@ -419,19 +419,27 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err != nil {
 			return nil, err
 		}
-		return NewSubsetValue(arg, cm), nil
+		return t.setValueSource(expr, NewSubsetValue(arg, cm)), nil
 	case OpcodeUnion:
 		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
 		}
-		return Union(arg)
+		value, err := Union(arg)
+		if err != nil {
+			return nil, err
+		}
+		return t.setValueSource(expr, value), nil
 	case OpcodeDomain:
 		arg, err := t.Eval(args[0], c, s0, s1, control, cm)
 		if err != nil {
 			return nil, err
 		}
-		return domainValue(expr, arg)
+		value, err := domainValue(expr, arg)
+		if err != nil {
+			return nil, err
+		}
+		return t.setValueSource(expr, value), nil
 	case OpcodeEnabled:
 		sfun := NewFunctionalState()
 		enabled, err := t.Enabled(args[0], BranchContext(c), s0, sfun)
@@ -510,7 +518,11 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		}
 		return NewBoolValue(member), nil
 	case OpcodeSetdiff, OpcodeCap, OpcodeCup:
-		return t.evalSetOp(opcode, args[0], args[1], c, s0, s1, control, cm)
+		value, err := t.evalSetOp(opcode, args[0], args[1], c, s0, s1, control, cm)
+		if err != nil {
+			return nil, err
+		}
+		return t.setValueSource(expr, value), nil
 	case OpcodeNop:
 		return t.Eval(args[0], c, s0, s1, control, cm)
 	case OpcodePrime:
@@ -1213,7 +1225,7 @@ func (t *Tool) getFcnContext(fcn *FcnLambdaValue, expr *OpApplNode, c *Context, 
 				matches = size == len(ids)
 			}
 			if !matches {
-				// Java intentionally prints the Tool object's identity here.
+				// Java intentionally prints this.toString(), including subclass overrides.
 				identity := fmt.Sprintf("%T@%p", t, t)
 				if t.CallStack != nil {
 					identity = t.CallStack.String()
@@ -1282,6 +1294,7 @@ func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *
 	}
 	params := NewFcnParams(expr.BdedQuantSymbolLists, expr.BdedQuantATuple, dvals)
 	fval := NewFcnLambdaValue(params, expr.Args[0], t, c, s0, s1, control, cm)
+	t.setValueSource(expr, fval)
 	if opcode == OpcodeRFS && len(expr.UnbdedQuantSymbols) > 0 {
 		fval.MakeRecursive(expr.UnbdedQuantSymbols[0])
 		isFcnRcd = false
@@ -1324,7 +1337,7 @@ func (t *Tool) evalRecordConstructor(expr *OpApplNode, c *Context, s0 *TLCStateM
 		names[i] = name
 		values[i] = value
 	}
-	return NewRecordValue(names, values, false, cm), nil
+	return t.setValueSource(expr, NewRecordValue(names, values, false, cm)), nil
 }
 
 func (t *Tool) evalRecordSelect(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1374,7 +1387,7 @@ func (t *Tool) evalSetOfAll(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	if err := enum.Err(); err != nil {
 		return nil, err
 	}
-	return NewSetEnumValueVec(values, false, cm), nil
+	return t.setValueSource(expr, NewSetEnumValueVec(values, false, cm)), nil
 }
 
 func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1400,7 +1413,11 @@ func (t *Tool) evalSetOfRecords(expr *OpApplNode, c *Context, s0 *TLCStateMut, s
 		names[i] = name
 		values[i] = value
 	}
-	return NewSetOfRcdsValue(names, values, false, cm)
+	value, err := NewSetOfRcdsValue(names, values, false, cm)
+	if err != nil {
+		return nil, err
+	}
+	return t.setValueSource(expr, value), nil
 }
 
 func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -1434,12 +1451,12 @@ func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		if err := e.Err(); err != nil {
 			return nil, err
 		}
-		return NewSetEnumValueVec(values, inVal.IsNormalized(), cm), nil
+		return t.setValueSource(expr, NewSetEnumValueVec(values, inVal.IsNormalized(), cm)), nil
 	}
 	if isTuple {
-		return NewSetPredValue(bvars, inVal, expr.Args[0], t, c, s0, s1, control, cm), nil
+		return t.setValueSource(expr, NewSetPredValue(bvars, inVal, expr.Args[0], t, c, s0, s1, control, cm)), nil
 	}
-	return NewSetPredValue(bvars[0], inVal, expr.Args[0], t, c, s0, s1, control, cm), nil
+	return t.setValueSource(expr, NewSetPredValue(bvars[0], inVal, expr.Args[0], t, c, s0, s1, control, cm)), nil
 }
 
 func (t *Tool) evalEq(left SemanticNode, right SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel, negate bool) (Value, error) {

@@ -634,8 +634,15 @@ Important implementation patterns:
   higher-level local definitions conservatively.
   Recursive functions use the same `name -> 1` sentinel for the recursive
   function body.
-- `setSource` associates semantic nodes with values for better fingerprint
-  exception diagnostics.
+- `setSource` associates semantic nodes with values for fingerprint exception
+  diagnostics only in `CallStackTool`; `FastTool` and `DebugTool` leave values
+  untouched. Attachment overwrites earlier sources and occurs at Java's explicit
+  constructor, set-operation, `DOMAIN`/`UNION`, operator-argument, and subset
+  assignment sites. Lambda source attachment precedes materialization. Replay's
+  later lambda/predicate copy constructors deliberately drop the source.
+- `CallStackTool` freezes only for TLC runtime, evaluation, and fingerprint
+  exceptions; unrelated errors unwind and pop normally. Value-side exception
+  wrapping remains a separate porting concern from source attachment.
 - `FingerprintException.getTrace` is intentionally recursive: Java assigns
   labels while walking the linked exception head, then prints the recursive tail
   before the current frame. Preserve that order because the formatted trace is
