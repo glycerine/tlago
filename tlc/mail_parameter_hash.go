@@ -30,6 +30,8 @@ package tlc
 
 type mailParameterHashNode struct {
 	name                            string
+	objectKey                       mailObjectHashKey
+	objectValue                     any
 	hash                            int32
 	next, prev, parent, left, right *mailParameterHashNode
 	red, tree                       bool

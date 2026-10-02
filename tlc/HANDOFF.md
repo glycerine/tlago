@@ -55,12 +55,23 @@ fresh-reader/writer validation. Preserve the missing reader input and plain
 OutputStream writer output, including TIFF's distinct rejection. Keep the
 RenderedImage-before-BufferedImage branch order, unknown-type trailing space,
 provider prefetch/checked-I/O deregistration/null result and no stream/graphics
-close/dispose. Full compatible-stream initialization, SPI registry graph/class
-replacement/thread-group discovery, AWT rasterization and image codecs are still
-required; native carriers expose explicit operation providers for these paths.
-Continue these dependencies and multipart handlers/MIME dependencies, then object
-DataHandler factory/cache/buffered-pipe paths and its existing test. Read the latest
-progress entry for bytecode and actual-Java comparison verification.
+close/dispose. ImageIO now has the native ordering graph and object-key hash-map
+operations, wired into standard reader/writer enumeration in source registration
+order. Preserve copied in-degrees with live out-edges, cycle/blocked-node omission,
+node disposal, old-node iteration after clear, hash/comparable tie ordering,
+partial mutation on virtual-key failures, captured table references across
+reentrant key callbacks and movable=false iterator tree removal.
+Continue with full ServiceRegistry/SubRegistry registration/class replacement,
+category/overload checks, callback catch/partial mutation, access-context clear,
+reentrant monitors and unordered iterators, then IIORegistry/ServiceLoader/AppContext
+lifetime. ImageIO captures its registry at class initialization. Official upstream
+OrderingTest, DeregisterOrderedSpiTest, RegisterPluginTwiceTest, DeregisterAllSpiTest,
+ServiceRegistryRestriction and ServiceRegistrySyncTest are identified for porting
+after their public registry/SPI feature implementations. VM identity hashes/class/
+comparable discovery, compatible-stream initialization, full SPI metadata,
+AWT rasterization and image codecs remain required. Continue multipart/MIME
+and DataHandler object/factory/cache/buffered-pipe dependencies after these slices.
+Read the latest progress entry for bytecode and Java/native verification.
 Remaining AWT work includes full class
 loading/initialization, text selection/readers, object and MIME externalization.
 Full JVM class inventory/linking/loader isolation, stack/cast diagnostics and

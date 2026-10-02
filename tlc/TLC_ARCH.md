@@ -3420,8 +3420,44 @@ callbacks verify the handler calls; full pixel behavior remains pending. No
 upstream Geronimo image-handler tests exist in the inspected tree; no persistent
 tests or vectors were invented. Translated mail -race tests and the full offline
 working-tree suite pass.
-Next are the remaining ImageIO/AWT/native codec dependencies and multipart
-handlers/MIME dependencies, then object DataHandler factory/cache/pipes. Full
+PartiallyOrderedSet, DigraphNode and PartialOrderIterator now have native ports,
+used by default standard reader/writer enumeration. Hardwired provider order is
+GIF/BMP/WBMP/TIFF/PNG/JPEG; each provider carries its stable leaf class and SPI
+hierarchy metadata. Hash-map bucket order supplies unconstrained provider order;
+ordering reverses a direct preference before adding its opposite. Symmetric unset
+short-circuits, and removal updates incoming/outgoing neighbors from arrays.
+The iterator copies signed in-degrees and its zero queue, then reads live out-edges
+on next. Cycles and their blocked successors remain unreturned. Clear retains
+old nodes held by iterators; new out-edges to nodes absent from the scratch map
+retain the source NullPointerException rather than being silently skipped.
+Object-key HashMap operations preserve query-side virtual hash/equals/compare,
+null keys/values, hash spreading, class-name/VM-identity tree tie breaks, collision
+list/tree roots, split/untreeification replacement nodes, resize thresholds,
+signed size/modCount and fail-fast iterators. Reentrant virtual-key callbacks
+retain the table reference captured before clear/grow/remove. Iterator tree removal retains the
+source movable=false path. Existing string-map rotations/balancing are reused;
+its original string ordering remains unchanged. Verified Comparable<Self> and
+VM class/identity metadata come from native carriers or explicit providers;
+full reflection discovery and wider VM runtime isolation remain required.
+All 24 graph and 30 supporting HashMap source methods match installed JDK bytecode
+using their explicitly compiled class paths. Temporary actual-JDK/native -race
+comparisons pass 21,315 map operations, 14,790 virtual-key exception/partial-table
+observations, 21,870 reentrant-key clear/grow/remove observations and 8,935 graph
+operations. These compare virtual calls, table size/
+capacity/modCount/tree order, in-degrees/out-edge order and iterator mutation,
+with actual Java identity hashes supplied to the native metadata boundary.
+Prior 14,777 default image and 617 custom-SPI cases plus default CommandMap
+integration still match. Existing translated mail -race and full offline
+working-tree checks pass; no persistent tests or vectors were invented.
+Next: public ServiceRegistry/SubRegistry category/registration/class replacement,
+all-category overloads, callback catches/partial mutation, access-context clear,
+reentrant monitors and unordered iterators, then ServiceLoader/IIORegistry
+AppContext lifetime and ImageIO's captured class-initialization registry. Port
+identified OpenJDK OrderingTest/DeregisterOrderedSpiTest/RegisterPluginTwiceTest/
+DeregisterAllSpiTest/ServiceRegistryRestriction/ServiceRegistrySyncTest after their
+public operations and SPI metadata exist. Complete stream/transcoder SPI metadata,
+compatible-stream initialization, native image codecs/AWT and multipart/MIME
+dependencies remain next, then object DataHandler factory/cache/pipes. Full
 AWT class-loading/initialization, desktop text selection/readers, MIME/Object
 externalization and startup/provider default charset lifetime remain required.
 Full JVM cast/automatic exception wording, native class inventory, Beans and object

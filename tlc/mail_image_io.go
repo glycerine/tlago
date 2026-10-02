@@ -25,25 +25,40 @@
  * questions.
  */
 // OpenJDK ImageIO MIME filtering/factory iterators and the AWT operations used
-// by Geronimo image handlers. Full SPI graphs, desktop rasterization, initialized
+// by Geronimo image handlers. Full registry lifecycle, desktop rasterization, initialized
 // readers/writers and codec implementations remain separate required ports.
 package tlc
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 type MailImageIOEnvironment struct {
 	ProviderSPIs     func(readers, ordered bool) (*MailImageSPIIterator, error)
 	Deregister       func(*MailImageSPI, bool) (bool, error)
 	NewBufferedImage func(int32, int32, int32) (*MailBufferedImage, error)
 	ObjectClassName  func(any) string
+	// The opaque object is a native DigraphNode. VM identity hashes must remain
+	// stable for its lifetime; this hook is configured before registry use.
+	GraphNodeIdentityHash func(any) int32
 }
 
 var DefaultMailImageIOEnvironment MailImageIOEnvironment
 
 type MailImageSPI struct {
-	MIMETypesFunc    func() ([]*string, error)
-	CreateReaderFunc func() (*MailImageReader, error)
-	CreateWriterFunc func() (*MailImageWriter, error)
+	// Leaf class and virtual object/comparable operations are registry metadata.
+	// ComparableClass denotes a verified Comparable<Self> declaration.
+	Class                *MailActivationClass
+	HashCodeFunc         func() int32
+	IdentityHashCodeFunc func() int32
+	EqualsFunc           func(any) bool
+	ComparableClass      *MailActivationClass
+	CompareToFunc        func(any) int32
+	identityHash         atomic.Int32
+	MIMETypesFunc        func() ([]*string, error)
+	CreateReaderFunc     func() (*MailImageReader, error)
+	CreateWriterFunc     func() (*MailImageWriter, error)
 }
 type MailImageSPIIterator struct {
 	HasNextFunc func() (bool, error)
@@ -364,27 +379,28 @@ func (i *MailImageWriterIterator) Next() (*MailImageWriter, error) {
 // providers within a category, so provider order does not select among codecs.
 var mailStandardImageRegistry = struct {
 	sync.Mutex
-	readers, writers []*MailImageSPI
+	readers, writers mailImagePartiallyOrderedSet
+	initialized      bool
 }{}
 
 func mailInitStandardImageRegistry() {
-	if mailStandardImageRegistry.readers != nil {
+	if mailStandardImageRegistry.initialized {
 		return
 	}
-	for _, kind := range []struct{ mime, input, output string }{
-		{"image/jpeg", "Input not set", "Output has not been set!"},
+	for index, kind := range []struct{ mime, input, output string }{
 		{"image/gif", "Input not set!", "output == null!"},
-		{"image/png", "Input source not set!", "output == null!"},
 		{"image/bmp", "Input has not been set.", "Output has not been set."},
 		{"image/vnd.wap.wbmp", "Input has not been set.", "Output has not been set."},
 		{"image/tiff", "Input not set!", "output == null!"},
+		{"image/png", "Input source not set!", "output == null!"},
+		{"image/jpeg", "Input not set", "Output has not been set!"},
 	} {
 		names := []*string{javaString(kind.mime)}
 		if kind.mime == "image/png" {
 			names = append(names, javaString("image/x-png"))
 		}
 		metadata := func() ([]*string, error) { return append([]*string{}, names...), nil }
-		reader := &MailImageSPI{MIMETypesFunc: metadata, CreateReaderFunc: func() (*MailImageReader, error) {
+		reader := &MailImageSPI{Class: mailStandardImageReaderClasses[index], MIMETypesFunc: metadata, CreateReaderFunc: func() (*MailImageReader, error) {
 			return &MailImageReader{ReadFunc: func(index int32) (*MailBufferedImage, error) {
 				if index != 0 {
 					return nil, NewUnsupportedOperationException("Full ImageReader index validation provider required")
@@ -392,7 +408,7 @@ func mailInitStandardImageRegistry() {
 				return nil, NewIllegalStateException(kind.input)
 			}}, nil
 		}}
-		writer := &MailImageSPI{MIMETypesFunc: metadata, CreateWriterFunc: func() (*MailImageWriter, error) {
+		writer := &MailImageSPI{Class: mailStandardImageWriterClasses[index], MIMETypesFunc: metadata, CreateWriterFunc: func() (*MailImageWriter, error) {
 			w := &MailImageWriter{}
 			w.SetOutputFunc = func(value any) error {
 				if !mailHandlerNull(value) {
@@ -416,19 +432,21 @@ func mailInitStandardImageRegistry() {
 			}
 			return w, nil
 		}}
-		mailStandardImageRegistry.readers = append(mailStandardImageRegistry.readers, reader)
-		mailStandardImageRegistry.writers = append(mailStandardImageRegistry.writers, writer)
+		mailStandardImageRegistry.readers.add(reader)
+		mailStandardImageRegistry.writers.add(writer)
 	}
+	mailStandardImageRegistry.initialized = true
 }
 func mailStandardImageSPIs(readers bool) *MailImageSPIIterator {
 	mailStandardImageRegistry.Lock()
 	defer mailStandardImageRegistry.Unlock()
 	mailInitStandardImageRegistry()
-	providers := mailStandardImageRegistry.writers
+	providers := &mailStandardImageRegistry.writers
 	if readers {
-		providers = mailStandardImageRegistry.readers
+		providers = &mailStandardImageRegistry.readers
 	}
-	return mailImageSPIList(append([]*MailImageSPI{}, providers...))
+	iter := providers.iterator()
+	return &MailImageSPIIterator{HasNextFunc: func() (bool, error) { return iter.hasNext(), nil }, NextFunc: func() (*MailImageSPI, error) { return iter.next(), nil }}
 }
 func mailStandardDeregisterImageSPI(p *MailImageSPI, readers bool) {
 	mailStandardImageRegistry.Lock()
@@ -437,12 +455,7 @@ func mailStandardDeregisterImageSPI(p *MailImageSPI, readers bool) {
 	if readers {
 		providers = &mailStandardImageRegistry.readers
 	}
-	for i, v := range *providers {
-		if v == p {
-			*providers = append((*providers)[:i], (*providers)[i+1:]...)
-			return
-		}
-	}
+	providers.remove(p)
 }
 
 // Stream and AWT carriers retain JVM type distinctions; Go image.Image or
