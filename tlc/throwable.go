@@ -24,6 +24,8 @@ func javaString(value string) *string { return &value }
 
 func javaThrowableClassName(err error) string {
 	switch failure := err.(type) {
+	case *RuntimeException:
+		return "java.lang.RuntimeException"
 	case *RemoteException:
 		return "java.rmi.RemoteException"
 	case *ServerException:
@@ -38,6 +40,8 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.UnmarshalException"
 	case *IOException:
 		return "java.io.IOException"
+	case *FileNotFoundException:
+		return "java.io.FileNotFoundException"
 	case *IndexOutOfBoundsException:
 		return "java.lang.IndexOutOfBoundsException"
 	case *IllegalArgumentException:

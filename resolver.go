@@ -3,12 +3,15 @@ package tlago
 import (
 	"embed"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 //go:embed test_vectors/java-sany/StandardModules/*.tla
 var embeddedJavaStandardModules embed.FS
 
 type LoadOptions struct {
+	DistributedResolver  *tlc.RMIFilenameToStreamResolver
 	LibraryPaths         []string
 	PreferLibraryModules bool
 	ExtraModules         []string

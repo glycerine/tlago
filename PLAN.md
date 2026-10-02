@@ -17,6 +17,9 @@ Current TLC method:
 - Continue breadth-first mechanical parity against Java TLC in
   `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.
 - Keep the Go implementation mostly in package `tlc`.
+- Store persistent TLC fixtures in `tlc/test_vectors/`. Do not name a fixture
+  directory `testdata/`; the user reserves that name for ephemeral Go fuzzer
+  storage and cleanup.
 - Prefer concrete structs over interfaces.
 - Use `InsMap` or explicit slices/sorting for any iterated map with observable
   order.

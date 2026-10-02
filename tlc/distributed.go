@@ -83,6 +83,7 @@ type DistributedWorker struct {
 }
 
 type TLCServer struct {
+	Files                       *DistributedServerFiles
 	FPSetManager                *DistributedFPSetManager
 	StateQueue                  StateQueue
 	Trace                       *TLCTrace

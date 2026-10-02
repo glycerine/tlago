@@ -169,6 +169,9 @@ slightly less idiomatic when that makes source-of-truth comparison simpler.
 - Do not use Go interfaces just because Java used interfaces.
 - Do not use randomized Go map iteration in any user-visible or semantic path.
 - Do not rely on external repo locations for frozen test data.
+- Store persistent fixtures in `tlc/test_vectors/`, never `tlc/testdata/`.
+  The user reserves `testdata/` for ephemeral Go fuzzer storage and cleanup;
+  keep this naming rule when porting any further Java test vectors.
 
 ## Completion Definition For This Phase
 

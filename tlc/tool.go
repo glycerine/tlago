@@ -144,6 +144,7 @@ type Tool struct {
 	ModelConfig       *ModelConfig
 	SpecProcessor     *SpecProcessor
 	ModuleFiles       []string
+	DistributedFiles  *DistributedServerFiles
 	CounterExampleDef *OpDefNode
 	TraceDef          *OpDefNode
 	AliasSpec         SemanticNode

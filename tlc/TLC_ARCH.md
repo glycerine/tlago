@@ -3002,11 +3002,38 @@ overflow, server-done diagnostic, and ordered exits. Timer failures terminate
 the timer goroutine. Server keepalive and final cache reads preserve their
 RemoteException catches; final exit ignores only the three Java dead-worker
 exception families, warns, and removes the registration in finally order.
-Worker resolver/startup/registry transport remains pending. Worker fingerprint
+Worker startup/registry transport remains pending. Worker fingerprint
 lookups and server block inserts now use
 their respective shared executors; accepted tasks finish after shutdown,
 while new submissions are rejected. The worker preserves the rejection's
 RemoteException and the proxy's ServerException envelope.
+
+`RMIFilenameToStreamResolver` now fetches through the `GetFile` contract into a
+private temporary directory, caches paths by basename, and fetches again only
+when the cached file disappears. Java ignores constructor library paths and
+the `isModule` flag here; remote failures print a stack trace and still create
+an empty file. Null returned bytes throw after creating the file and before
+caching it. `GetFullPath` retains the source's comparison against each key's
+UTF-16 length, with deterministic insertion order in place of HashMap order.
+File deletion follows Java's process-exit lifetime, rather than worker exit.
+The command wrapper calls `CleanupDistributedFiles`; library hosts call that
+hook on process shutdown themselves.
+
+`TLCServer.GetFile` strips the request to its basename and performs the
+filename-only InJar/SimpleFilenameToStream search: packaged `/model/` assets,
+user/spec directory, explicit library directories, then embedded standard-module
+assets supplied by the parser bridge. The superclass's one-argument resolve
+invokes the virtual two-argument method, retaining InJar's packaged-model
+precedence. Failed InJar copies fall back to Simple; failed Simple copies
+return the attempted file. Server reads keep
+the directory/Integer.MAX_VALUE checks, single-read zero-filled buffer, and
+nested RuntimeException wrapping with FileNotFoundException/IOException causes.
+`LoadDistributedWorkerTool` parses configuration first and routes all module
+loads through the worker resolver using the existing parser, semantic checker,
+and TLC bridge. This is the loading portion of bootstrap: network invocation,
+remote UniqueString setup, and group launch remain separate pending work.
+The general FilenameToStream/TLAFile API and Java archive/classpath discovery
+beyond bundled module assets are not claimed complete by this slice.
 
 Worker construction now retains Java's immutable raw URI metadata in the form
 `rmi://hostname:port/threadId`. `DistributedWorkerAddress` supplies the address
@@ -3233,7 +3260,9 @@ The Java tests rely heavily on `test-model`. For Go:
 
 - Freeze required `.tla` and `.cfg` fixtures under `tlago/tlc/test_vectors/`
   or another self-contained path before enabling translated tests.
-- Do not use a directory named `testdata/`.
+- Do not use a directory named `testdata/` for persistent fixtures. The user
+  reserves that name for ephemeral Go fuzzer storage and cleanup. Persist
+  vectors in `test_vectors/` instead, including generated Java oracle data.
 - Keep path conventions compatible with module names.
 - Prefer generated golden recorder-event JSON only if direct translated tests
   would be too expensive; otherwise port assertions directly.

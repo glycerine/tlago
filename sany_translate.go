@@ -28,14 +28,14 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 	}
 	loader.registerModuleRecursive(mod)
 	if diags.HasErrors() {
-		spec := &Spec{Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
+		spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
 		return spec, diags
 	}
 	if mod != nil {
 		loader.loadDependencies(mod)
 		diags = append(diags, loader.diags...)
 	}
-	spec := &Spec{Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
+	spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
 	if diags.HasErrors() {
 		spec.Diags = diags
 		return spec, diags
@@ -79,6 +79,9 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 	if filepath.Ext(rootPath) == "" {
 		rootPath += ".tla"
 	}
+	if opts.DistributedResolver != nil {
+		rootPath = opts.DistributedResolver.Resolve(rootPath, true)
+	}
 	if abs, err := filepath.Abs(rootPath); err == nil {
 		rootPath = abs
 	}
@@ -88,7 +91,7 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 		rootMod.Extends = appendModuleNames(rootMod.Extends, l.opts.ExtraModules...)
 		l.loadDependencies(rootMod)
 	}
-	return &Spec{Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), Diags: l.diags}, l.diags
+	return &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), Diags: l.diags}, l.diags
 }
 
 func appendModuleNames(names []string, extra ...string) []string {
@@ -132,6 +135,10 @@ func (l *sanyLoader) loadDependencies(mod *Module) {
 func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 	if mod := l.modules[name]; mod != nil {
 		return mod
+	}
+	if l.opts.DistributedResolver != nil {
+		path := l.opts.DistributedResolver.Resolve(name+".tla", true)
+		return l.loadPath(path, false)
 	}
 	if l.opts.PreferLibraryModules {
 		if mod := l.loadLibraryModule(name); mod != nil {

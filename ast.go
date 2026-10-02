@@ -1,6 +1,7 @@
 package tlago
 
 type Spec struct {
+	LibraryPaths  []string
 	Root          *Module
 	Modules       map[string]*Module
 	SemanticOrder []string

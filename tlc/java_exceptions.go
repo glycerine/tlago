@@ -51,6 +51,34 @@ func (e *EOFException) Is(target error) bool { return target == io.EOF }
 
 type IOException struct{ javaExceptionBase }
 
+type FileNotFoundException struct{ *IOException }
+
+func NewFileNotFoundException(message string) *FileNotFoundException {
+	return &FileNotFoundException{IOException: NewIOException(message)}
+}
+
+func (e *FileNotFoundException) Error() string { return javaThrowableMessage(e) }
+
+type RuntimeException struct{ javaExceptionBase }
+
+func NewRuntimeException(message ...string) *RuntimeException {
+	return &RuntimeException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+
+func NewRuntimeExceptionWithCause(message *string, cause error) *RuntimeException {
+	return &RuntimeException{javaExceptionBase: newJavaExceptionBase(message, cause)}
+}
+
+func NewRuntimeExceptionFromCause(cause error) *RuntimeException {
+	var message *string
+	if cause != nil {
+		message = javaString(javaThrowableString(cause))
+	}
+	return NewRuntimeExceptionWithCause(message, cause)
+}
+
+func (e *RuntimeException) Error() string { return javaThrowableMessage(e) }
+
 func NewIOException(message ...string) *IOException {
 	return &IOException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
@@ -62,7 +90,7 @@ func isJavaIOException(err error) bool {
 		return true
 	}
 	switch err.(type) {
-	case *IOException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *FileNotFoundException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite

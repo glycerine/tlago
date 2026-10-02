@@ -22,7 +22,7 @@ func TestDistributedWorkerURIMatchesJava(t *testing.T) {
 		Index    int     `json:"index"`
 		Reason   string  `json:"reason"`
 	}
-	data, err := os.ReadFile("testdata/worker_uri_java21.json")
+	data, err := os.ReadFile("test_vectors/worker_uri_java21.json")
 	if err != nil {
 		t.Fatal(err)
 	}
