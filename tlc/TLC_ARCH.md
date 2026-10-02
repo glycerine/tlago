@@ -3185,11 +3185,33 @@ PrintStream trouble/close behavior and default UTF-8 surrogate encoding. Body
 extraction follows Scanner(File)'s strict decoder, 1024-unit buffer lifetime,
 Java whitespace/line separators and delimiter filtering, including discarded
 characters from a malformed read. Disabled mail is functional by default.
-JavaMail address parsing, Session/MIME/SMTP and native JNDI DNS remain explicit
-provider boundaries; complete ToolIO/MP/SANY stream routing and broader
-charset/locale/JVM providers still need implementation. Actual-source report,
+JavaMail address parsing now defaults to the dependency grammar port described
+below; Session/MIME/SMTP and native JNDI DNS remain explicit provider boundaries;
+complete ToolIO/MP/SANY stream routing and broader charset/locale/JVM providers
+still need implementation. Actual-source report,
 stream and exception-chain probes and production disabled-mail server/worker
 integration pass under -race. Delivery probes use a fake transport.
+
+The native MailInternetAddress parser/constructor now mirrors bundled JavaMail
+1.6.8. List parsing and detailed validation remain separate, with strict/lenient
+header parsing, groups, route addresses, comments, quotes, literals and source
+recovery quirks. Errors retain message/ref/position in UTF-16 units, and raw
+EncodedPersonal stays separate from the still-pending lazy RFC2047 decoding and
+formatting methods. InternetAddress and MimeUtility properties have separate
+lazy class lifetimes; folding/unfolding and bogus-header case comparisons preserve
+Java behavior, including UTF-16 columns, safe continuations and dotted/dotless I.
+Source parser/check/unquote bytecode matches the bundled jar after
+compiler-layout normalization. The translated upstream
+JUnit tests and exact test_vectors/javamail/addrlist and folddata corpora pass
+192 address cases, 48 folding cases and three extra validation cases under -race;
+13,552 address/unfold and 19,935 folding observations against the bundled jar,
+plus enabled-mail production server/worker integration with two fake deliveries
+also pass. This dependency
+port retains upstream EPL-2.0 headers and tlc/licenses/javamail-LICENSE.md.
+Remaining mail work includes RFC2047 personal-name/address formatting,
+address-array formatting/InternetAddressFoldTest, MimeUtility encoding and its
+upstream tests, Session/MIME/SMTP, JNDI DNS and complete ToolIO/MP/SANY routing;
+wider JVM/charset/locale providers remain separate.
 
 TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer
 entry points. It starts named FP-server and worker threads in source order,

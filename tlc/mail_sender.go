@@ -13,12 +13,13 @@ import (
 
 const ResultMailAddressProperty = "result.mail.address"
 
-// MailInternetAddress is the address object passed to the JavaMail boundary.
-// Its parser/constructor must implement InternetAddress's own grammar, which
-// differs from net/mail; those providers are explicit rather than substituted.
+// MailInternetAddress retains InternetAddress's parsed mailbox and separate
+// personal/encoded-personal fields. Parsing stores EncodedPersonal; lazy RFC2047
+// personal-name decoding and MIME formatting belong to the MIME provider port.
 type MailInternetAddress struct {
-	Address  string
-	Personal *string
+	Address         string
+	Personal        *string
+	EncodedPersonal *string
 }
 
 type MailFileList struct{ Files []*TLAFile }
@@ -35,8 +36,8 @@ type MailMXRecord struct {
 }
 
 // MailSenderEnvironment supplies native JavaMail/JNDI/process boundaries.
-// ParseAddresses, NewAddress and Transmit require JavaMail providers when mail
-// is enabled. Transmit owns Session/MIME/attachment/SMTP construction, using
+// ParseAddresses and NewAddress default to the JavaMail 1.6.8 grammar port.
+// Transmit owns Session/MIME/attachment/SMTP construction, using
 // the same live system properties exposed here. LookupMX supplies the raw MX
 // attribute: nil means no attribute, whereas a nonnil empty attribute has no
 // hosts. InstallOut/Err assign ToolIO streams in source construction order.
@@ -80,9 +81,6 @@ func NewMailSender(env MailSenderEnvironment, mainFile ...*string) (sender *Mail
 	m := &MailSender{modelName: javaString("unknown model"), specName: javaString("unknown spec"), env: env}
 	env.LoadProperties()
 	if mailto, ok := env.GetProperty(ResultMailAddressProperty); ok {
-		if env.ParseAddresses == nil || env.NewAddress == nil {
-			return nil, NewUnsupportedOperationException("JavaMail address provider is not configured")
-		}
 		m.toAddresses, err = env.ParseAddresses(mailto)
 		if err != nil {
 			return nil, err
@@ -136,6 +134,12 @@ func NewMailSender(env MailSenderEnvironment, mainFile ...*string) (sender *Mail
 }
 
 func mailSenderEnvironment(env MailSenderEnvironment) MailSenderEnvironment {
+	if env.ParseAddresses == nil {
+		env.ParseAddresses = func(value string) ([]*MailInternetAddress, error) { return ParseMailInternetAddresses(value) }
+	}
+	if env.NewAddress == nil {
+		env.NewAddress = func(value string) (*MailInternetAddress, error) { return NewMailInternetAddress(value) }
+	}
 	if env.LoadProperties == nil {
 		env.LoadProperties = func() { NewModelInJar().LoadProperties() }
 	}
