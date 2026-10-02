@@ -32,6 +32,22 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.NoSuchObjectException"
 	case *ConnectException:
 		return "java.rmi.ConnectException"
+	case *FPSetManagerException:
+		return "tlc2.tool.distributed.fp.FPSetManagerException"
+	case *UnmarshalException:
+		return "java.rmi.UnmarshalException"
+	case *IOException:
+		return "java.io.IOException"
+	case *IndexOutOfBoundsException:
+		return "java.lang.IndexOutOfBoundsException"
+	case *IllegalArgumentException:
+		return "java.lang.IllegalArgumentException"
+	case *ArithmeticException:
+		return "java.lang.ArithmeticException"
+	case *UnsupportedOperationException:
+		return "java.lang.UnsupportedOperationException"
+	case *ExecutionException:
+		return "java.util.concurrent.ExecutionException"
 	case *EOFException:
 		return "java.io.EOFException"
 	case *WrongInvocationException:

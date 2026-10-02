@@ -3002,11 +3002,38 @@ overflow, server-done diagnostic, and ordered exits. Timer failures terminate
 the timer goroutine. Server keepalive and final cache reads preserve their
 RemoteException catches; final exit ignores only the three Java dead-worker
 exception families, warns, and removes the registration in finally order.
-URI construction/ASCII/NFC metadata, worker resolver/startup/registry transport,
-and FP-manager executor-callable integration/failover remain pending. The
-concrete runtime executor already rejects submissions after shutdown while
-allowing accepted tasks to finish; FP-manager calls still use their existing
-synchronous path until the callable feature is ported together with its tests.
+URI construction/ASCII/NFC metadata and worker resolver/startup/registry
+transport remain pending. Worker fingerprint lookups and server block inserts now use
+their respective shared executors; accepted tasks finish after shutdown,
+while new submissions are rejected. The worker preserves the rejection's
+RemoteException and the proxy's ServerException envelope.
+
+FP-manager registrations retain Java FPSets wrapper identity, cached hostname,
+and availability. Reassignment shares wrappers across partitions while keeping
+the original partition count. It marks the selected wrapper unavailable,
+chooses the next available successor, and retains Java's non-wrapping
+`for (j=index; j<next; j++)` replacement loop even when the successor index
+wrapped to the start. Exhaustion caches managerIsBroken. Scalar and block calls
+catch Exception, reassign and retry; Java Errors escape. Exhausted block calls
+use Java's BitVector(size,true), including its closed-range initialization
+quirk. Statistics failures reassign without retrying that slot, and size/seen
+totals count every partition, including shared wrappers. Close and checkpoint
+coalesce adjacent wrappers and trailing copies of the first wrapper, rather
+than globally deduplicating underlying FPSet objects.
+
+Concurrent block calls submit one callable per partition and collect results
+by their saved index, regardless of completion order. Submission retries retain
+the three-retry bound, Java random one-to-five-second delay and shutdown check.
+ExecutionException is logged and leaves a null result slot; checkFPs and
+checkInvariant also use concurrent completion collection, with Java's signed
+minimum and early false return. NonDistributedFPSetManager bypasses executors
+and preserves its IOException fallback contracts. Empty distributed managers
+now report zero servers and indexing throws ArithmeticException.
+
+All nineteen DynamicFPSetManagerTest cases and five FPSetManagerTest cases have
+been ported after the feature implementation, including FaultyFPSet's scalar
+and block virtual dispatch. The nested factory tests retain the production
+factory and two high-bit subpartitions with a bounded Go memory budget.
 
 Local failure contracts retain Java's exception structure:
 
@@ -3065,9 +3092,11 @@ Port guidance:
   `FPSetManager.Checkpoint.run` calls `beginChkpt(filename)` and
   `commitChkpt(filename)` on the same remote FP set; the later manager-level
   `commitChkpt()` is a no-op for the distributed manager. The Go concrete
-  `DistributedFPSetManager` records the active checkpoint filename so
-  `Checkpoint(filename)` and `CommitCheckpoint()` commit the same file-named
-  checkpoint.
+  `DistributedFPSetManager` performs the begin/commit pair immediately within
+  `Checkpoint(filename)`; its later `CommitCheckpoint()` is a no-op. Java calls
+  checkpoint Thread.run directly, so that work remains sequential. Distributed
+  checkpoint/recovery I/O failures print the cached hostname diagnostic and
+  continue; local checkpoint/recovery returns errors to the caller.
 - Any worker/server map that is iterated for progress output must use `InsMap`.
   Fingerprint holder de-duplication may use a Go map only if iteration is over a
   separately maintained sorted fingerprint slice.

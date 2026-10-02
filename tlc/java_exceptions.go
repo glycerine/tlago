@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"strings"
 )
@@ -48,6 +49,25 @@ func (e *EOFException) Error() string { return javaThrowableMessage(e) }
 // Go recovery loops use errors.Is(io.EOF) for Java's catch(EOFException).
 func (e *EOFException) Is(target error) bool { return target == io.EOF }
 
+type IOException struct{ javaExceptionBase }
+
+func NewIOException(message ...string) *IOException {
+	return &IOException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+
+func (e *IOException) Error() string { return javaThrowableMessage(e) }
+
+func isJavaIOException(err error) bool {
+	if javaRemoteException(err) != nil {
+		return true
+	}
+	switch err.(type) {
+	case *IOException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+		return true
+	}
+	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite
+}
+
 type WrongInvocationException struct{ javaExceptionBase }
 
 func NewWrongInvocationException(message string) *WrongInvocationException {
@@ -65,6 +85,14 @@ func NewArrayIndexOutOfBoundsException(index, length int) *ArrayIndexOutOfBounds
 
 func (e *ArrayIndexOutOfBoundsException) Error() string { return javaThrowableMessage(e) }
 
+type IndexOutOfBoundsException struct{ javaExceptionBase }
+
+func NewIndexOutOfBoundsException(index, length int) *IndexOutOfBoundsException {
+	return &IndexOutOfBoundsException{javaExceptionBase: newJavaExceptionBase(javaString(fmt.Sprintf("Index %d out of bounds for length %d", index, length)), nil)}
+}
+
+func (e *IndexOutOfBoundsException) Error() string { return javaThrowableMessage(e) }
+
 type NegativeArraySizeException struct{ javaExceptionBase }
 
 func NewNegativeArraySizeException(message ...string) *NegativeArraySizeException {
@@ -80,6 +108,42 @@ func NewClassCastException(message ...string) *ClassCastException {
 }
 
 func (e *ClassCastException) Error() string { return javaThrowableMessage(e) }
+
+type IllegalArgumentException struct{ javaExceptionBase }
+
+func NewIllegalArgumentException(message ...string) *IllegalArgumentException {
+	return &IllegalArgumentException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+
+func (e *IllegalArgumentException) Error() string { return javaThrowableMessage(e) }
+
+type ArithmeticException struct{ javaExceptionBase }
+
+func NewArithmeticException(message string) *ArithmeticException {
+	return &ArithmeticException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}
+}
+
+func (e *ArithmeticException) Error() string { return javaThrowableMessage(e) }
+
+type UnsupportedOperationException struct{ javaExceptionBase }
+
+func NewUnsupportedOperationException(message string) *UnsupportedOperationException {
+	return &UnsupportedOperationException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}
+}
+
+func (e *UnsupportedOperationException) Error() string { return javaThrowableMessage(e) }
+
+type ExecutionException struct{ javaExceptionBase }
+
+func NewExecutionException(cause error) *ExecutionException {
+	var message *string
+	if cause != nil {
+		message = javaString(javaThrowableString(cause))
+	}
+	return &ExecutionException{javaExceptionBase: newJavaExceptionBase(message, cause)}
+}
+
+func (e *ExecutionException) Error() string { return javaThrowableMessage(e) }
 
 type OutOfMemoryError struct{ javaExceptionBase }
 
@@ -175,6 +239,22 @@ func NewConnectException(message string, cause error) *ConnectException {
 
 func (e *ConnectException) Error() string { return javaThrowableMessage(e) }
 
+type UnmarshalException struct{ *RemoteException }
+
+func NewUnmarshalException(message string, cause error) *UnmarshalException {
+	return &UnmarshalException{RemoteException: NewRemoteException(javaString(message), cause)}
+}
+
+func (e *UnmarshalException) Error() string { return javaThrowableMessage(e) }
+
+type FPSetManagerException struct{ *RemoteException }
+
+func NewFPSetManagerException(message string) *FPSetManagerException {
+	return &FPSetManagerException{RemoteException: NewRemoteException(javaString(message), nil)}
+}
+
+func (e *FPSetManagerException) Error() string { return javaThrowableMessage(e) }
+
 func javaRemoteException(err error) *RemoteException {
 	switch failure := err.(type) {
 	case *RemoteException:
@@ -188,6 +268,14 @@ func javaRemoteException(err error) *RemoteException {
 			return failure.RemoteException
 		}
 	case *ConnectException:
+		if failure != nil {
+			return failure.RemoteException
+		}
+	case *FPSetManagerException:
+		if failure != nil {
+			return failure.RemoteException
+		}
+	case *UnmarshalException:
 		if failure != nil {
 			return failure.RemoteException
 		}

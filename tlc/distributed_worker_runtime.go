@@ -13,7 +13,7 @@ import (
 // represented in one Go program. Construct the group before registering it.
 type DistributedWorkerRuntime struct {
 	workers     []*DistributedWorker
-	executor    distributedWorkerExecutor
+	executor    DistributedExecutor
 	latch       distributedWorkerLatch
 	keepAliveMu sync.Mutex
 	keepAlive   *distributedWorkerKeepAlive
@@ -123,12 +123,14 @@ func (l *distributedWorkerLatch) countDown() {
 
 // Shutdown rejects new submissions, but allows already accepted tasks to
 // finish. Exit does not wait for these tasks or an active worker invocation.
-type distributedWorkerExecutor struct {
+type DistributedExecutor struct {
 	mu       sync.Mutex
 	shutdown bool
 }
 
-func (e *distributedWorkerExecutor) submit(task func()) {
+func NewDistributedExecutor() *DistributedExecutor { return &DistributedExecutor{} }
+
+func (e *DistributedExecutor) submit(task func()) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.shutdown {
@@ -137,10 +139,16 @@ func (e *distributedWorkerExecutor) submit(task func()) {
 	go task()
 }
 
-func (e *distributedWorkerExecutor) stop() {
+func (e *DistributedExecutor) Shutdown() {
 	e.mu.Lock()
 	e.shutdown = true
 	e.mu.Unlock()
+}
+
+func (e *DistributedExecutor) IsShutdown() bool {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.shutdown
 }
 
 type distributedWorkerKeepAlive struct {
@@ -230,7 +238,7 @@ func (w *DistributedWorker) Exit() (err error) {
 	if w.Runtime == nil {
 		return NewNullPointerException()
 	}
-	w.Runtime.executor.stop()
+	w.Runtime.executor.Shutdown()
 	if err := w.Runtime.cancelKeepAlive(true); err != nil {
 		return err
 	}

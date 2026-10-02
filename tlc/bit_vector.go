@@ -22,7 +22,7 @@ func NewBitVector(initCapacity int) *BitVector {
 
 func NewBitVectorWithValue(initCapacity int, initValue bool) *BitVector {
 	bv := NewBitVector(initCapacity)
-	if initValue && len(bv.word) > 0 {
+	if initValue {
 		bv.SetRange(0, len(bv.word))
 	}
 	return bv

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"reflect"
 	"sort"
 	"strconv"
 	"sync"
@@ -65,418 +64,6 @@ func (r *NextStateResult) GetNextStates() []*StateVec {
 	return r.NextStates
 }
 
-type DistributedFPSetManager struct {
-	Sets               []FPSet
-	Mask               uint64
-	StatesSeen         atomic.Uint64
-	Description        string
-	ExpectedNumServers int
-	NonDistributed     bool
-	Trace              *TLCTrace
-	checkpointFilename string
-}
-
-func NewDistributedFPSetManager(sets ...FPSet) *DistributedFPSetManager {
-	out := &DistributedFPSetManager{Sets: append([]FPSet(nil), sets...), Mask: math.MaxInt64}
-	out.normalize()
-	return out
-}
-
-func NewDynamicDistributedFPSetManager(expectedNumOfServers int) *DistributedFPSetManager {
-	if expectedNumOfServers <= 0 {
-		panic("expected number of FPSet servers must be positive")
-	}
-	manager := NewDistributedFPSetManager()
-	manager.ExpectedNumServers = expectedNumOfServers
-	log := 0
-	for expectedNumOfServers > 0 {
-		expectedNumOfServers /= 2
-		log++
-	}
-	manager.Mask = (uint64(1) << log) - 1
-	return manager
-}
-
-func NewDistributedFPSetManagerFromFPSet(set FPSet) *DistributedFPSetManager {
-	if multi, ok := set.(*MultiFPSet); ok && multi != nil {
-		return &DistributedFPSetManager{
-			Sets: append([]FPSet(nil), multi.Sets...),
-			Mask: math.MaxInt64,
-		}
-	}
-	return NewDistributedFPSetManager(set)
-}
-
-func NewNonDistributedFPSetManager(set FPSet, hostname string, trace *TLCTrace) *DistributedFPSetManager {
-	return &DistributedFPSetManager{
-		Sets:           []FPSet{set},
-		Mask:           math.MaxInt64,
-		Description:    hostname,
-		NonDistributed: true,
-		Trace:          trace,
-	}
-}
-
-func (m *DistributedFPSetManager) normalize() {
-	if m == nil {
-		return
-	}
-	if m.Mask == 0 {
-		m.Mask = math.MaxInt64
-	}
-}
-
-type distributedFPSetIdentity struct {
-	typ reflect.Type
-	ptr uintptr
-}
-
-func fpSetIdentity(set FPSet) (distributedFPSetIdentity, bool) {
-	if set == nil {
-		return distributedFPSetIdentity{}, false
-	}
-	value := reflect.ValueOf(set)
-	switch value.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Pointer, reflect.Slice, reflect.UnsafePointer:
-		if value.IsNil() {
-			return distributedFPSetIdentity{}, false
-		}
-		return distributedFPSetIdentity{typ: value.Type(), ptr: value.Pointer()}, true
-	default:
-		return distributedFPSetIdentity{}, false
-	}
-}
-
-func (m *DistributedFPSetManager) distinctFPSets() []FPSet {
-	if m == nil {
-		return nil
-	}
-	sets := make([]FPSet, 0, len(m.Sets))
-	seen := make(map[distributedFPSetIdentity]struct{}, len(m.Sets))
-	for _, set := range m.Sets {
-		if set == nil {
-			continue
-		}
-		if key, ok := fpSetIdentity(set); ok {
-			if _, exists := seen[key]; exists {
-				continue
-			}
-			seen[key] = struct{}{}
-		}
-		sets = append(sets, set)
-	}
-	return sets
-}
-
-func (m *DistributedFPSetManager) NumOfServers() int {
-	if m == nil || len(m.Sets) == 0 {
-		return 1
-	}
-	return len(m.Sets)
-}
-
-func (m *DistributedFPSetManager) NumOfAliveServers() int {
-	if m == nil {
-		return 0
-	}
-	return len(m.distinctFPSets())
-}
-
-func (m *DistributedFPSetManager) RegisterFPSet(set FPSet, hostname ...string) error {
-	if m == nil || set == nil {
-		return nil
-	}
-	if m.ExpectedNumServers > 0 && len(m.Sets) >= m.ExpectedNumServers {
-		return fmt.Errorf("Limit for FPset servers reached (%d). Cannot handle additional servers", m.ExpectedNumServers)
-	}
-	m.Sets = append(m.Sets, set)
-	if len(hostname) > 0 && hostname[0] != "" {
-		if m.Description == "" {
-			m.Description = hostname[0]
-		} else {
-			m.Description += "," + hostname[0]
-		}
-	}
-	m.normalize()
-	return nil
-}
-
-func (m *DistributedFPSetManager) GetMask() uint64 {
-	if m == nil {
-		return uint64(math.MaxInt64)
-	}
-	m.normalize()
-	return m.Mask
-}
-
-func (m *DistributedFPSetManager) GetHostName() string {
-	if m != nil && m.NonDistributed && m.Description != "" {
-		return m.Description
-	}
-	return distributedServerHost()
-}
-
-func (m *DistributedFPSetManager) GetFPSetIndex(fp uint64) int {
-	if m == nil || len(m.Sets) <= 1 {
-		return 0
-	}
-	mask := m.Mask
-	if mask == 0 {
-		mask = math.MaxInt64
-	}
-	return int((fp & mask) % uint64(len(m.Sets)))
-}
-
-func (m *DistributedFPSetManager) ContainsBlock(fingerprints []*LongVec) []*BitVector {
-	if m != nil && m.NonDistributed {
-		return m.singleSetContainsBlock(fingerprints)
-	}
-	out := make([]*BitVector, len(fingerprints))
-	for i, fpv := range fingerprints {
-		size := 0
-		if fpv != nil {
-			size = fpv.Size()
-		}
-		if m == nil || i >= len(m.Sets) || m.Sets[i] == nil {
-			out[i] = newAllTrueBitVector(size)
-			m.addStatesSeen(uint64(size))
-			continue
-		}
-		out[i] = m.Sets[i].ContainsBlock(fpv)
-	}
-	return out
-}
-
-func (m *DistributedFPSetManager) Put(fp uint64) bool {
-	if m == nil || len(m.Sets) == 0 {
-		m.addStatesSeen(1)
-		return false
-	}
-	index := m.GetFPSetIndex(fp)
-	if index < 0 || index >= len(m.Sets) || m.Sets[index] == nil {
-		m.addStatesSeen(1)
-		return false
-	}
-	return m.Sets[index].Put(fp)
-}
-
-func (m *DistributedFPSetManager) Contains(fp uint64) bool {
-	if m == nil || len(m.Sets) == 0 {
-		m.addStatesSeen(1)
-		return false
-	}
-	index := m.GetFPSetIndex(fp)
-	if index < 0 || index >= len(m.Sets) || m.Sets[index] == nil {
-		m.addStatesSeen(1)
-		return false
-	}
-	return m.Sets[index].Contains(fp)
-}
-
-func (m *DistributedFPSetManager) PutBlock(fingerprints []*LongVec) []*BitVector {
-	if m != nil && m.NonDistributed {
-		return m.singleSetPutBlock(fingerprints)
-	}
-	out := make([]*BitVector, len(fingerprints))
-	for i, fpv := range fingerprints {
-		size := 0
-		if fpv != nil {
-			size = fpv.Size()
-		}
-		if m == nil || i >= len(m.Sets) || m.Sets[i] == nil {
-			out[i] = newAllTrueBitVector(size)
-			m.addStatesSeen(uint64(size))
-			continue
-		}
-		out[i] = m.Sets[i].PutBlock(fpv)
-	}
-	return out
-}
-
-func (m *DistributedFPSetManager) Size() uint64 {
-	if m == nil {
-		return 0
-	}
-	var size uint64
-	for _, set := range m.Sets {
-		if set != nil {
-			size += set.Size()
-		}
-	}
-	return size
-}
-
-func (m *DistributedFPSetManager) CheckFPs() uint64 {
-	if m == nil || len(m.Sets) == 0 {
-		return 0
-	}
-	actualDistance := uint64(math.MaxInt64)
-	checked := false
-	for _, set := range m.Sets {
-		if set == nil {
-			continue
-		}
-		actualDistance = javaLongMinBits(actualDistance, set.CheckFPs())
-		checked = true
-	}
-	if !checked {
-		return 0
-	}
-	return actualDistance
-}
-
-func (m *DistributedFPSetManager) CheckInvariant(expectFPs ...uint64) bool {
-	if m == nil {
-		return true
-	}
-	for _, set := range m.Sets {
-		if set != nil && !set.CheckInvariant(expectFPs...) {
-			return false
-		}
-	}
-	return true
-}
-
-func (m *DistributedFPSetManager) GetStatesSeen() uint64 {
-	if m == nil {
-		return 0
-	}
-	if m.NonDistributed {
-		if len(m.Sets) == 0 || m.Sets[0] == nil {
-			return 0
-		}
-		return m.Sets[0].Size()
-	}
-	total := uint64(1) + m.StatesSeen.Load()
-	for _, set := range m.Sets {
-		if set != nil {
-			total += set.GetStatesSeen()
-		}
-	}
-	return total
-}
-
-func (m *DistributedFPSetManager) Close(cleanup bool) error {
-	if m == nil {
-		return nil
-	}
-	if m.NonDistributed {
-		if len(m.Sets) == 0 || m.Sets[0] == nil {
-			return nil
-		}
-		m.Sets[0].Close()
-		return m.Sets[0].Exit(cleanup)
-	}
-	for _, set := range m.distinctFPSets() {
-		if err := set.Exit(cleanup); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *DistributedFPSetManager) Checkpoint(filename string) error {
-	if m == nil {
-		return nil
-	}
-	if m.NonDistributed {
-		if len(m.Sets) == 0 || m.Sets[0] == nil {
-			return nil
-		}
-		return m.Sets[0].BeginChkpt()
-	}
-	m.checkpointFilename = ""
-	for _, set := range m.distinctFPSets() {
-		if filename != "" {
-			if err := set.BeginChkptFile(filename); err != nil {
-				return err
-			}
-			if err := set.CommitChkptFile(filename); err != nil {
-				return err
-			}
-		} else {
-			if err := set.BeginChkpt(); err != nil {
-				return err
-			}
-			if err := set.CommitChkpt(); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func (m *DistributedFPSetManager) CommitCheckpoint() error {
-	if m != nil && m.NonDistributed {
-		if len(m.Sets) == 0 || m.Sets[0] == nil {
-			return nil
-		}
-		return m.Sets[0].CommitChkpt()
-	}
-	if m != nil {
-		m.checkpointFilename = ""
-	}
-	return nil
-}
-
-func (m *DistributedFPSetManager) Recover(filename string) error {
-	if m == nil {
-		return nil
-	}
-	if m.NonDistributed {
-		if len(m.Sets) == 0 || m.Sets[0] == nil {
-			return nil
-		}
-		return m.Sets[0].RecoverTrace(m.Trace)
-	}
-	for _, set := range m.distinctFPSets() {
-		if err := set.RecoverFile(filename); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *DistributedFPSetManager) addStatesSeen(delta uint64) {
-	if m != nil && delta != 0 {
-		m.StatesSeen.Add(delta)
-	}
-}
-
-func (m *DistributedFPSetManager) singleSetPutBlock(fingerprints []*LongVec) []*BitVector {
-	out := make([]*BitVector, len(fingerprints))
-	for i, fpv := range fingerprints {
-		size := 0
-		if fpv != nil {
-			size = fpv.Size()
-		}
-		if m == nil || len(m.Sets) == 0 || m.Sets[0] == nil {
-			out[i] = newAllTrueBitVector(size)
-			m.addStatesSeen(uint64(size))
-			continue
-		}
-		out[i] = m.Sets[0].PutBlock(fpv)
-	}
-	return out
-}
-
-func (m *DistributedFPSetManager) singleSetContainsBlock(fingerprints []*LongVec) []*BitVector {
-	out := make([]*BitVector, len(fingerprints))
-	for i, fpv := range fingerprints {
-		size := 0
-		if fpv != nil {
-			size = fpv.Size()
-		}
-		if m == nil || len(m.Sets) == 0 || m.Sets[0] == nil {
-			out[i] = newAllTrueBitVector(size)
-			m.addStatesSeen(uint64(size))
-			continue
-		}
-		out[i] = m.Sets[0].ContainsBlock(fpv)
-	}
-	return out
-}
-
 type DistributedWorker struct {
 	nextStatesMu          sync.Mutex
 	ID                    int
@@ -518,6 +105,7 @@ type TLCServer struct {
 	registrationMu              sync.Mutex
 	threadsMu                   sync.Mutex
 	threadsToWorkers            *InsMap[*TLCServerThread, *DistributedWorker]
+	executor                    DistributedExecutor
 	BlockSelector               *BlockSelector
 	FinalNumberOfDistinctStates int64
 }
@@ -706,6 +294,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		}
 		s.PrintSummary(1, 0, s.GetNewStates(), s.fpSetSize(), false)
 		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+		s.executor.Shutdown()
 		_ = s.Close(false)
 		return result, err
 	}
@@ -715,6 +304,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		}
 		s.PrintSummary(1, 0, s.GetNewStates(), s.fpSetSize(), false)
 		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
+		s.executor.Shutdown()
 		_ = s.Close(false)
 		return result, nil
 	}
@@ -781,6 +371,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 			return ECGeneral, exitErr
 		}
 	}
+	s.executor.Shutdown()
 	s.FinalNumberOfDistinctStates = int64(s.fpSetSize())
 	statesGenerated := s.GetStatesGenerated()
 	statesLeft := s.GetNewStates()
@@ -1428,7 +1019,7 @@ func (t *TLCServerThread) publishBlock(stateQueue StateQueue, newStates []*State
 	if t == nil || t.Server == nil || t.Server.FPSetManager == nil {
 		return
 	}
-	visited := t.Server.FPSetManager.PutBlock(newFps)
+	visited := t.Server.FPSetManager.PutBlock(newFps, &t.Server.executor)
 	for i, vector := range visited {
 		if i >= len(newStates) || i >= len(newFps) || newStates[i] == nil || newFps[i] == nil {
 			continue
@@ -2040,7 +1631,10 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 		fingerprints[fpIndex].AddElement(int64(fp))
 	}
 
-	visited := w.FPSetManager.ContainsBlock(fingerprints)
+	if w.Runtime == nil {
+		panic(NewNullPointerException())
+	}
+	visited := w.FPSetManager.ContainsBlock(fingerprints, &w.Runtime.executor)
 	newStates := make([]*StateVec, serverCount)
 	newFingerprints := make([]*LongVec, serverCount)
 	for i := 0; i < serverCount; i++ {
