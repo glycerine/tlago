@@ -899,11 +899,11 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 	if err != nil {
 		return nil, err
 	}
-	inVal = inVal.Normalize()
 	enumerable, ok := asEnumerable(inVal)
 	if !ok {
 		return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of\nform CHOOSE x \\in S: P, but S was not enumerable.\n%s", SemanticString(expr))
 	}
+	inVal = inVal.Normalize()
 	pred := expr.Args[0]
 	bvars := expr.BdedQuantSymbolLists[0]
 	isTuple := len(expr.BdedQuantATuple) > 0 && expr.BdedQuantATuple[0]
@@ -912,9 +912,17 @@ func (t *Tool) evalBoundedChoose(expr *OpApplNode, c *Context, s0 *TLCStateMut, 
 		return nil, err
 	}
 	for val := enum.NextElement(); val != nil; val = enum.NextElement() {
-		c1, err := bindBoundedValue(c, bvars, isTuple, val)
-		if err != nil {
-			return nil, err
+		c1 := c
+		if isTuple {
+			tuple := asTupleValue(val)
+			if tuple == nil || len(tuple.Elems) != len(bvars) {
+				return nil, newTLCError(ECGeneral, "Attempted to compute the value of an expression of form\nCHOOSE <<x1, ... , xN>> \\in S: P, but S was not a set\nof N-tuples.\n%s", SemanticString(expr))
+			}
+			for i, variable := range bvars {
+				c1 = c1.Cons(variable, tuple.Elems[i])
+			}
+		} else {
+			c1 = c1.Cons(bvars[0], val)
 		}
 		value, err := t.Eval(pred, c1, s0, s1, control, cm)
 		if err != nil {

@@ -2,6 +2,59 @@ package tlc
 
 import "testing"
 
+func TestToolBoundedChooseConvertsTupleFunctionsAndReturnsOriginalElement(t *testing.T) {
+	x, y := NewSymbolNode("x"), NewSymbolNode("y")
+	for _, element := range []Value{
+		NewFcnRcdIntervalValue(NewIntervalValue(1, 2), []Value{NewIntValue(7), NewIntValue(8)}),
+		NewFcnRcdValue([]Value{NewIntValue(2), NewIntValue(1)}, []Value{NewIntValue(8), NewIntValue(7)}, false),
+	} {
+		predicate := NewBuiltinOpApplNode(OpEq,
+			NewBuiltinOpApplNode(OpTup, NewOpApplNode(x), NewOpApplNode(y)),
+			NewTupleValue([]Value{NewIntValue(7), NewIntValue(8)}))
+		expr := NewBuiltinOpApplNode(OpBC, predicate)
+		expr.BdedQuantSymbolLists = [][]*SymbolNode{{x, y}}
+		expr.BdedQuantBounds = []SemanticNode{NewSetEnumValue([]Value{element}, true)}
+		expr.BdedQuantATuple = []bool{true}
+		result, err := NewTool().Eval(expr)
+		if err != nil || result != element {
+			t.Fatalf("CHOOSE returned %T, %v; want original function element", result, err)
+		}
+	}
+}
+
+func TestToolBoundedChooseChecksEnumerabilityBeforeNormalization(t *testing.T) {
+	expr := NewBuiltinOpApplNode(OpBC, BoolTrue)
+	expr.Image = "CHOOSE x \\in Operator: TRUE"
+	expr.BdedQuantSymbolLists = [][]*SymbolNode{{NewSymbolNode("x")}}
+	expr.BdedQuantBounds = []SemanticNode{NewOpRcdValue()}
+	expr.BdedQuantATuple = []bool{false}
+	defer func() {
+		if err := recover(); err != nil {
+			t.Fatalf("CHOOSE normalized a non-enumerable operator: %v", err)
+		}
+	}()
+	_, err := NewTool().Eval(expr)
+	want := "Attempted to compute the value of an expression of\nform CHOOSE x \\in S: P, but S was not enumerable.\n" + expr.Image
+	if err == nil || err.Error() != want {
+		t.Fatalf("CHOOSE error = %v, want %q", err, want)
+	}
+}
+
+func TestToolBoundedChooseTupleMismatchDiagnostic(t *testing.T) {
+	for _, element := range []Value{NewIntValue(7), NewTupleValue([]Value{NewIntValue(7)})} {
+		expr := NewBuiltinOpApplNode(OpBC, BoolTrue)
+		expr.Image = "CHOOSE <<x, y>> \\in S: TRUE"
+		expr.BdedQuantSymbolLists = [][]*SymbolNode{{NewSymbolNode("x"), NewSymbolNode("y")}}
+		expr.BdedQuantBounds = []SemanticNode{NewSetEnumValue([]Value{element}, true)}
+		expr.BdedQuantATuple = []bool{true}
+		_, err := NewTool().Eval(expr)
+		want := "Attempted to compute the value of an expression of form\nCHOOSE <<x1, ... , xN>> \\in S: P, but S was not a set\nof N-tuples.\n" + expr.Image
+		if err == nil || err.Error() != want {
+			t.Fatalf("CHOOSE error = %v, want %q", err, want)
+		}
+	}
+}
+
 func TestToolExceptWarnsForMissingFieldsWithoutEvaluatingReplacement(t *testing.T) {
 	ClearMessageRecorders()
 	t.Cleanup(ClearMessageRecorders)
