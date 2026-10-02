@@ -691,13 +691,10 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 		classified := false
 		var eval *EvalException
 		if errors.As(err.Err, &eval) && eval != nil {
-			classified = true
-			if err.Code == NoError {
-				err.Code = eval.ErrorCode
-			}
-			if len(err.Params) == 0 {
-				err.Params = eval.GetParameters()
-			}
+			err.Code = ECGeneral
+			err.Params = generalErrorParams("", err.Err)
+			s.printBehavior(err.Code, err.Params, err.StateTrace)
+			return
 		}
 		var tlcErr *TLCError
 		if errors.As(err.Err, &tlcErr) && tlcErr != nil {
