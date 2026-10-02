@@ -138,9 +138,6 @@ func RandomElement(value Value) (Value, error) {
 		if err != nil {
 			return nil, newTLCErrorCode(ECTLCModuleApplyingToWrongValue, "RandomElement", "a finite set", ValuesPPR(value))
 		}
-		if _, err := set.normalizeSet(); err != nil {
-			return nil, err
-		}
 		if set.Elems.Len() == 0 {
 			return nil, javaMethodOverrideError(javaTLCRandomElementSignature, "Index 0 out of bounds for length 0")
 		}
