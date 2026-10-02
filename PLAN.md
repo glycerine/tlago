@@ -6,6 +6,26 @@ default architecture is one central Go library, `package tlago`, with tiny
 command wrappers. When placement is unclear, put code in the central package to
 avoid circular imports while the port is still converging.
 
+## Current Active Work
+
+The active goal at the time of handoff is the Go TLC model checker port under
+`tlc/`, not the older SANY XML or ApalacheIR corpus sweeps. Read
+`tlc/HANDOFF.md` first, then `tlc/PORT_PROGRESS.md`, before resuming work.
+
+Current TLC method:
+
+- Continue breadth-first mechanical parity against Java TLC in
+  `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.
+- Keep the Go implementation mostly in package `tlc`.
+- Prefer concrete structs over interfaces.
+- Use `InsMap` or explicit slices/sorting for any iterated map with observable
+  order.
+- Keep `tlc/PORT_PROGRESS.md` current after every no-code audit or code fix.
+- Do not port the Java `test/tlc2` suite until the Java architecture is
+  coherently mirrored in Go.
+- Do not restart the long SANY XML or ApalacheIR corpus sweeps unless the user
+  explicitly asks.
+
 ## Java Survey
 
 The Java source of interest is under `tlaplus/tlatools/org.lamport.tlatools/src`.
@@ -929,16 +949,15 @@ checker usable through the production SANY parser path:
 
 ## Next Slice
 
-- Drive direct SANY XML parity first: run the gated corpus harness over
-  `test_vectors/tla-plus-bench/specs/` and
-  `test_vectors/Examples/specifications/`, then fix mismatches until Go and
-  Java SANY have identical canonical XML for both target trees.
-- Sweep Java semantic/error corpus cases that are expected to fail and align
-  diagnostics for duplicate names, arity, level errors, module errors, and
-  unsupported constructs.
-- Broaden PlusCal algorithm checksum validation beyond the currently recognized
-  corpus algorithm shape.
-- Improve semantic checking toward Java parity: broader level checking, proof
-  obligation metadata, and richer INSTANCE/module visibility rules.
-- Broaden model checking: richer finite values, model-value variables,
-  liveness/fairness behavior, and clearer counterexample diagnostics.
+- For the active TLC goal, continue from `tlc/HANDOFF.md`:
+  1. Read the top and tail of `tlc/PORT_PROGRESS.md`.
+  2. Pick a Java TLC class or cluster not marked recently audited.
+  3. Compare Java control flow, mutation order, error precedence, and special
+     cases to the Go files with the same responsibility.
+  4. Patch real behavioral gaps only.
+  5. Update `tlc/PORT_PROGRESS.md`.
+  6. Run `go test ./tlc`, then usually `go test ./...`, and commit.
+- The older SANY next slice remains paused until requested: direct SANY XML
+  parity over `test_vectors/tla-plus-bench/specs/` and
+  `test_vectors/Examples/specifications/`, Java semantic/error corpus
+  diagnostics, PlusCal checksum validation, and ApalacheIR parity.

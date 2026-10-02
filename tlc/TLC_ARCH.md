@@ -11,6 +11,11 @@ code may use Go idioms for memory, errors, goroutines, and concrete structs, but
 semantic boundaries, evaluation order, fingerprinting, state normalization,
 queue behavior, and error precedence must match Java TLC.
 
+Current handoff and next-step status live in `HANDOFF.md` and
+`PORT_PROGRESS.md`. This architecture document explains the source-of-truth
+design and original porting order; use the handoff/progress files to decide
+where to resume.
+
 ## Source Inventory
 
 As of this survey, Java TLC contains:

@@ -3,6 +3,7 @@
 ## Notes To Future Us
 
 - Do not re-run the old TLA+ XML or Apalache corpus sweeps unless explicitly asked. The active goal is the Go TLC model checker under `tlc/`.
+- Handoff for the upgraded Codex/model is in `tlc/HANDOFF.md`. Read that file, then the top and tail of this file, before resuming the TLC port.
 - The source of truth is Java TLC under `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2` and, later, its tests under `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
 - The current experiment is breadth-first mechanical porting first. Do not start porting the Java TLC test suite yet. Existing fast Go tests may be run; small utility tests are acceptable.
 - Keep the Go code mostly in package `tlc`, prefer concrete structs over interfaces, and use `InsMap` whenever deterministic iteration matters.
@@ -756,6 +757,7 @@
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:
-  1. Continue breadth-first audit of local checker/liveness/value/module surfaces; avoid rechecking the liveness SCC/postfix/counterexample path, `CheckImplFile`, model presentation helpers, pretty-printer helpers, standard `Bags` registration, `Any`/`STRING`, simulator result loop, probabilistic next-state `CASE`, and distributed worker/server accounting unless touched.
-  2. Continue checker error-precedence and trace reconstruction audit outside the recently covered cleanup/no-action/DFID/simulator/init-exception paths.
-  3. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
+  1. Start the next session by reading `tlc/HANDOFF.md`, then this file's top notes and tail.
+  2. Continue breadth-first audit of local checker/liveness/value/module surfaces; avoid rechecking the liveness SCC/postfix/counterexample path, `CheckImplFile`, model presentation helpers, pretty-printer helpers, standard `Bags` registration, `Any`/`STRING`, simulator result loop, probabilistic next-state `CASE`, and distributed worker/server accounting unless touched.
+  3. Continue checker error-precedence and trace reconstruction audit outside the recently covered cleanup/no-action/DFID/simulator/init-exception paths.
+  4. Keep `PORT_PROGRESS.md` current before each coherent TLC commit.
