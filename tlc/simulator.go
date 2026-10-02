@@ -614,13 +614,7 @@ func (s *Simulator) initialStates() (*StateVec, int, error) {
 }
 
 func (s *Simulator) printInitialStateException(state *TLCStateMut, err error) int {
-	message := ""
-	if err != nil {
-		message = err.Error()
-	}
-	if message == "" {
-		message = fmt.Sprintf("%T", err)
-	}
+	message := javaThrowableMessage(err)
 	code := ECGeneral
 	if state != nil {
 		code = PrintError(ECTLCInitialState, message, state.String())
@@ -681,17 +675,26 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 		}
 		if failure := javaRuntimeException(err.Err); failure != nil {
 			err.Code, err.Params = javaRuntimeFailureMessage(failure)
+			printJavaRuntimeException(failure)
 		} else {
 			err.Code = ECGeneral
 			err.Params = generalErrorParams("", err.Err)
+			PrintError(err.Code, err.Params...)
 		}
-		s.printBehavior(err.Code, err.Params, err.StateTrace)
+		s.printBehaviorTrace(err.StateTrace)
+		s.PrintSummary()
 		return
 	}
 	if err.Code == NoError {
 		err.Code = ECGeneral
 	}
-	s.printBehavior(err.Code, err.Params, err.StateTrace)
+	if err.NullableParams != nil {
+		PrintErrorNullable(err.Code, err.NullableParams...)
+		s.printBehaviorTrace(err.StateTrace)
+		s.PrintSummary()
+	} else {
+		s.printBehavior(err.Code, err.Params, err.StateTrace)
+	}
 }
 
 func (s *Simulator) printBehavior(errorCode int, params []string, stateTrace *StateVec) {

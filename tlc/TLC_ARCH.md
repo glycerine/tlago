@@ -1485,6 +1485,22 @@ Port guidance:
   TLC exceptions. Distributed worker catch coverage includes fingerprinting
   and state routing, preserving Java's current predecessor/successor fields
   and resetting the computing flag even when a Go operation panics.
+- Throwable detail messages are represented separately from Go `Error()` by
+  `GetMessage() *string`: null messages and empty strings have different
+  diagnostic behavior. Constructors capture Go runtime frames for Java-style
+  stack rendering, including actual causes and common-frame elision. A
+  fingerprint exception's `next` field is a semantic trace link, not the
+  Throwable cause printed by `printStackTrace`.
+- Nullable parameter arrays survive in exception carriers and
+  `Message.NullableParams`. `PrintErrorNullable` preserves recorder metadata
+  and Java MP's stop-at-first-null placeholder substitution. Native MethodValue
+  alone substitutes a stack trace for a null detail message; evaluating and
+  callable overrides keep the null array entry. GENERAL stack suffix control
+  uses Java MP's historical `noDebug` startup property independently of `-debug`.
+- Simulation invariant/action evaluation catches construct a dedicated worker
+  error without setting its fatal exception field. Its property name and caught
+  nullable detail message print with the evaluation-failed code, and the
+  simulator's non-continuable-error policy stops the run.
 - `TLC.process` and the simulator report EvalExceptions through GENERAL; only
   direct TLCRuntimeExceptions preserve their code and parameters there.
   Simulator exceptions overwrite an earlier worker code and stop simulation.

@@ -1837,7 +1837,7 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 			if failure, ok := err.(*WorkerException); ok && failure != nil {
 				return
 			}
-			err = NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
+			err = newWorkerExceptionFromThrowable(err, state1, state2, true)
 		}
 	}()
 

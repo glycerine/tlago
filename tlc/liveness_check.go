@@ -11,35 +11,35 @@ const javaLivenessPackageName = "tlc2.tool.liveness"
 const liveCheckDebugProperty = "tlc2.tool.liveness.LiveCheck.debug"
 
 type LiveException struct {
+	throwableTrace
 	ErrorCode      int
+	hasMessage     bool
 	Msg            string
 	CounterExample *CounterExample
 	Err            error
 }
 
 func NewLiveException(errorCode int, msg ...string) *LiveException {
-	ex := &LiveException{ErrorCode: errorCode}
+	ex := &LiveException{throwableTrace: captureThrowableTrace(), ErrorCode: errorCode}
 	if len(msg) > 0 {
 		ex.Msg = msg[0]
+		ex.hasMessage = true
 	}
 	return ex
 }
 
 func NewLiveExceptionWithCounterExample(errorCode int, msg string, counterExample *CounterExample) *LiveException {
-	return &LiveException{ErrorCode: errorCode, Msg: msg, CounterExample: counterExample}
+	return &LiveException{throwableTrace: captureThrowableTrace(), ErrorCode: errorCode, Msg: msg, hasMessage: true, CounterExample: counterExample}
 }
 
 func (e *LiveException) Error() string {
 	if e == nil {
 		return ""
 	}
-	if e.Msg != "" {
-		return e.Msg
+	if message := e.GetMessage(); message != nil {
+		return *message
 	}
-	if e.Err != nil {
-		return e.Err.Error()
-	}
-	return fmt.Sprintf("liveness error %d", e.ErrorCode)
+	return javaThrowableClassName(e)
 }
 
 func (e *LiveException) Unwrap() error {
@@ -62,10 +62,13 @@ func NewLiveCounterExampleException(errorCode int, msg string, counterExample *C
 }
 
 func (e *LiveCounterExampleException) Error() string {
-	if e != nil && e.LiveException != nil && e.LiveException.Msg != "" {
-		return e.LiveException.Msg
+	if e == nil {
+		return ""
 	}
-	return "temporal property violated"
+	if message := e.GetMessage(); message != nil {
+		return *message
+	}
+	return javaThrowableClassName(e)
 }
 
 // Go embedding does not implement Java's instanceof inheritance. Match both
@@ -1508,6 +1511,16 @@ func (lc *LiveCheck) Reset() error {
 			}
 			checker.Reset()
 		}
+	}
+	return nil
+}
+
+func (e *LiveException) GetMessage() *string {
+	if e == nil {
+		return nil
+	}
+	if e.hasMessage || e.Msg != "" {
+		return javaString(e.Msg)
 	}
 	return nil
 }

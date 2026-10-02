@@ -9,11 +9,12 @@ import (
 )
 
 type SimulationWorkerError struct {
-	Code       int
-	Params     []string
-	StateTrace *StateVec
-	Err        error
-	Tool       *Tool
+	Code           int
+	Params         []string
+	NullableParams []*string
+	StateTrace     *StateVec
+	Err            error
+	Tool           *Tool
 }
 
 func (e *SimulationWorkerError) Error() string {
@@ -647,7 +648,7 @@ func (w *SimulationWorker) CheckInvariants(state *TLCStateMut) *SimulationWorker
 	for i, invariant := range w.Tool.GetInvariants() {
 		valid, err := w.Tool.IsValidState(invariant, state)
 		if err != nil {
-			return &SimulationWorkerError{Code: ECTLCInvariantEvaluationFailed, Params: []string{nameAt(names, i), err.Error()}, StateTrace: w.GetTrace(state), Err: err}
+			return newSimulationWorkerErrorNullable(ECTLCInvariantEvaluationFailed, []*string{javaString(nameAt(names, i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
 		}
 		if !valid {
 			return &SimulationWorkerError{Code: ECTLCInvariantViolatedBehavior, Params: []string{nameAt(names, i)}, StateTrace: w.GetTrace(state)}
@@ -661,7 +662,7 @@ func (w *SimulationWorker) CheckImpliedActions(state *TLCStateMut) *SimulationWo
 	for i, action := range w.Tool.GetImpliedActions() {
 		valid, err := w.Tool.IsValidTransition(action, w.CurState, state)
 		if err != nil {
-			return &SimulationWorkerError{Code: ECTLCActionPropertyEvaluationFailed, Params: []string{nameAt(names, i), err.Error()}, StateTrace: w.GetTrace(state), Err: err}
+			return newSimulationWorkerErrorNullable(ECTLCActionPropertyEvaluationFailed, []*string{javaString(nameAt(names, i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
 		}
 		if !valid {
 			return &SimulationWorkerError{Code: ECTLCActionPropertyViolatedBehavior, Params: []string{nameAt(names, i)}, StateTrace: w.GetTrace(state)}
@@ -796,4 +797,19 @@ func actionIDFromStateAction(stats *SimulationWorkerStatistics, action *Action) 
 		return -1
 	}
 	return id
+}
+
+func newSimulationWorkerErrorNullable(code int, params []*string, trace *StateVec) *SimulationWorkerError {
+	copied := copyNullableMessageParameters(params)
+	return &SimulationWorkerError{Code: code, Params: messageParameterStrings(copied), NullableParams: copied, StateTrace: trace}
+}
+
+func (e *SimulationWorkerError) GetMessage() *string {
+	if e == nil {
+		return nil
+	}
+	if e.NullableParams != nil {
+		return javaString(formatNullableMessage(e.Code, e.NullableParams))
+	}
+	return javaString(formatMessage(e.Code, e.Params))
 }

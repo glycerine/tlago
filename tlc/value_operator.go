@@ -3,7 +3,6 @@ package tlc
 import (
 	"fmt"
 	"runtime"
-	"runtime/debug"
 	"strings"
 )
 
@@ -440,16 +439,13 @@ func adaptJavaMethodFailure(signature string, cause error, preserveEval bool) er
 			return NewEvalException(ECTLCModuleValueJavaMethodOverride, signature, failure.Error())
 		}
 	}
-	message := cause.Error()
-	if failure, ok := cause.(*FingerprintException); ok {
-		// Java FingerprintException has a null detail message. MethodValue uses
-		// the throwable's stack trace as a fallback; other overrides keep null.
-		message = "null"
-		if preserveEval {
-			message = fmt.Sprintf("%T\n%sCaused by: %v", failure, debug.Stack(), failure.GetRootCause())
-		}
+	message := javaThrowableDetailMessage(cause)
+	if preserveEval && message == nil {
+		message = javaString(javaThrowableStackTrace(cause))
 	}
-	return javaMethodOverrideRuntimeError(signature, message)
+	failure := newTLCErrorCodeNullable(ECTLCModuleValueJavaMethodOverride, javaString(signature), message)
+	failure.Runtime = true
+	return failure
 }
 
 func (v *MethodValue) DeepCopy() Value { return v }

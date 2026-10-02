@@ -1408,9 +1408,9 @@ func (mc *ModelChecker) reportInitException(result int, err error) int {
 	if result == NoError {
 		result = initExceptionCode(err)
 	}
-	message := err.Error()
-	if message == "" {
-		message = fmt.Sprintf("%T", err)
+	message := javaThrowableMessage(err)
+	if javaSystemFailureCode(err) == ECSystemStackOverflow {
+		message = formatMessage(ECSystemStackOverflow, nil)
 	}
 	if mc != nil && mc.ErrState != nil {
 		PrintError(ECTLCInitialState, message, mc.ErrState.String())
@@ -1445,11 +1445,7 @@ func (mc *ModelChecker) replayInitErrorCallStack(fallback int) int {
 			if callStackTool.HasCallStack() {
 				trace = callStackTool.CallStackString()
 			}
-			rootMessage := ""
-			if root := fpErr.GetRootCause(); root != nil {
-				rootMessage = root.Error()
-			}
-			PrintError(ECTLCFingerprintException, trace, rootMessage)
+			PrintErrorNullable(ECTLCFingerprintException, javaString(trace), javaThrowableDetailMessage(fpErr.GetRootCause()))
 			return ECTLCFingerprintException
 		}
 		PrintError(ECTLCNestedExpression, callStackTool.CallStackString())
@@ -1486,11 +1482,7 @@ func (mc *ModelChecker) replayNextErrorCallStack() int {
 			if callStackTool.HasCallStack() {
 				trace = callStackTool.CallStackString()
 			}
-			rootMessage := ""
-			if root := fpErr.GetRootCause(); root != nil {
-				rootMessage = root.Error()
-			}
-			PrintError(ECTLCFingerprintException, trace, rootMessage)
+			PrintErrorNullable(ECTLCFingerprintException, javaString(trace), javaThrowableDetailMessage(fpErr.GetRootCause()))
 			return ECTLCFingerprintException
 		}
 		if isValueEvalException(err) && javaSystemFailureCode(err) == NoError {
@@ -2096,10 +2088,14 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 	defer mc.nextErrorMu.Unlock()
 	ec, params, keepCallStack := doNextFailureMessage(err)
 	if mc.SetErrState(curState, succState, keepCallStack, ec) {
-		if params != nil && len(params) > 0 {
-			PrintError(ec, params...)
-		} else if params != nil {
-			PrintError(ec)
+		if params != nil {
+			if eval, ok := err.(*EvalException); ok && eval.NullableParameters != nil {
+				PrintErrorNullable(ec, eval.NullableParameters...)
+			} else if failure, ok := err.(*TLCError); ok && !failure.Runtime && failure.NullableParams != nil {
+				PrintErrorNullable(ec, failure.NullableParams...)
+			} else {
+				PrintError(ec, params...)
+			}
 		}
 		mc.printBehaviorTrace(curState, succState)
 		if mc.StateQueue != nil {
@@ -2110,8 +2106,7 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 
 func doNextFailureMessage(err error) (int, []string, bool) {
 	// Java tests the thrown exception itself, not its nested causes.
-	if _, ok := err.(*FingerprintException); ok {
-		// Its null detail message suppresses the GENERAL error print in Java.
+	if javaThrowableDetailMessage(err) == nil && javaSystemFailureCode(err) == NoError {
 		return ECGeneral, nil, true
 	}
 	ec := ECGeneral
@@ -2150,20 +2145,17 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 }
 
 func generalErrorParams(cause string, err error) []string {
-	if err == nil || err.Error() == "" {
+	if err == nil {
 		return nil
 	}
 	return []string{javaGeneralErrorMessage(cause, err)}
 }
 
 func javaThrowableMessage(err error) string {
-	if err == nil {
-		return "<nil>"
+	if message := javaThrowableDetailMessage(err); message != nil {
+		return *message
 	}
-	if err.Error() != "" {
-		return err.Error()
-	}
-	return fmt.Sprintf("%T", err)
+	return javaThrowableString(err)
 }
 
 type doInitFunctor struct {

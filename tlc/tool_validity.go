@@ -83,7 +83,7 @@ func (t *Tool) CheckAssumptionsImpl() int {
 		}
 		ok, err := t.IsValidExpr(assumption, EmptyContext)
 		if err != nil {
-			return PrintError(ECTLCAssumptionEvaluationError, SemanticString(assumption), err.Error())
+			return PrintErrorNullable(ECTLCAssumptionEvaluationError, javaString(SemanticString(assumption)), javaThrowableDetailMessage(err))
 		}
 		if !ok {
 			return PrintError(ECTLCAssumptionFalse, SemanticString(assumption))
@@ -99,7 +99,7 @@ func (t *Tool) CheckPostConditionImpl(ctxt *Context) int {
 	for _, post := range t.GetPostConditionSpecs() {
 		ok, err := t.evalPredicateValue(post.Pred, ctxt, EmptyState, EmptyState, EvalConst, post.GetName())
 		if err != nil {
-			return PrintError(ECTLCPostconditionEvaluationError, post.GetName(), postConditionPredicateString(post), err.Error())
+			return PrintErrorNullable(ECTLCPostconditionEvaluationError, javaString(post.GetName()), javaString(postConditionPredicateString(post)), javaThrowableDetailMessage(err))
 		}
 		if !ok {
 			if post.IsPossible() {

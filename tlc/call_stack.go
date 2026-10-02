@@ -159,6 +159,7 @@ func callStackLocationString(node SemanticNode) string {
 }
 
 type FingerprintException struct {
+	throwableTrace
 	Value Value
 	Next  *FingerprintException
 	Cause error
@@ -175,14 +176,14 @@ func NewFingerprintException(value Value, cause error) *FingerprintException {
 	if value == nil || cause == nil {
 		return nil
 	}
-	return &FingerprintException{Value: value, Cause: cause}
+	return &FingerprintException{throwableTrace: captureThrowableTrace(), Value: value, Cause: cause}
 }
 
 func (e *FingerprintException) PrependNewHead(value Value) *FingerprintException {
 	if value == nil {
 		return nil
 	}
-	return &FingerprintException{Value: value, Next: e}
+	return &FingerprintException{throwableTrace: captureThrowableTrace(), Value: value, Next: e}
 }
 
 func (e *FingerprintException) Error() string {
@@ -275,3 +276,6 @@ func valueSource(value Value) SemanticNode {
 	}
 	return nil
 }
+
+// The Java constructor calls initCause without setting a detail message.
+func (e *FingerprintException) GetMessage() *string { return nil }

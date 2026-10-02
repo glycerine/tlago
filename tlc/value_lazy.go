@@ -422,7 +422,7 @@ func isValueEvalException(err error) bool {
 		return failure != nil
 	case *TLCError:
 		// Native module errors use this existing Go EvalException carrier.
-		return failure != nil && !failure.Runtime && (failure.Params != nil || failure.Code != ECGeneral)
+		return failure != nil && !failure.Runtime && javaSystemFailureCode(failure) == NoError && (failure.Params != nil || failure.Code != ECGeneral)
 	default:
 		return false
 	}

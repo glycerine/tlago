@@ -1,13 +1,15 @@
 package tlc
 
 type ConfigFileException struct {
-	ErrorCode  int
-	Parameters []string
-	Cause      error
+	throwableTrace
+	detailMessage *string
+	ErrorCode     int
+	Parameters    []string
+	Cause         error
 }
 
 func NewConfigFileException(errorCode int, parameters []string, cause ...error) *ConfigFileException {
-	ex := &ConfigFileException{ErrorCode: errorCode, Parameters: append([]string(nil), parameters...)}
+	ex := &ConfigFileException{throwableTrace: captureThrowableTrace(), ErrorCode: errorCode, Parameters: copyMessageParameters(parameters), detailMessage: javaString(formatMessage(errorCode, parameters))}
 	if len(cause) > 0 {
 		ex.Cause = cause[0]
 	}
@@ -18,7 +20,7 @@ func (e *ConfigFileException) Error() string {
 	if e == nil {
 		return ""
 	}
-	return formatMessage(e.ErrorCode, e.Parameters)
+	return *e.GetMessage()
 }
 
 func (e *ConfigFileException) Unwrap() error {
@@ -30,19 +32,30 @@ func (e *ConfigFileException) Unwrap() error {
 
 type EvalException struct {
 	*StatefulRuntimeException
-	ErrorCode  int
-	Parameters []string
+	ErrorCode          int
+	Parameters         []string
+	NullableParameters []*string
 }
 
 func NewEvalException(errorCode int, parameters ...string) *EvalException {
 	var copied []string
 	if parameters != nil {
-		copied = append([]string(nil), parameters...)
+		copied = copyMessageParameters(parameters)
 	}
 	return &EvalException{
 		StatefulRuntimeException: NewStatefulRuntimeException(formatMessage(errorCode, copied)),
 		ErrorCode:                errorCode,
 		Parameters:               copied,
+	}
+}
+
+func NewEvalExceptionNullable(errorCode int, parameters ...*string) *EvalException {
+	copied := copyNullableMessageParameters(parameters)
+	return &EvalException{
+		StatefulRuntimeException: NewStatefulRuntimeException(formatNullableMessage(errorCode, copied)),
+		ErrorCode:                errorCode,
+		Parameters:               messageParameterStrings(copied),
+		NullableParameters:       copied,
 	}
 }
 
@@ -57,7 +70,7 @@ func (e *EvalException) GetParameters() []string {
 	if e == nil {
 		return nil
 	}
-	return append([]string(nil), e.Parameters...)
+	return copyMessageParameters(e.Parameters)
 }
 
 func (e *EvalException) HasParameters() bool {
@@ -65,15 +78,17 @@ func (e *EvalException) HasParameters() bool {
 }
 
 type WorkerException struct {
+	throwableTrace
 	Msg           string
 	Cause         error
 	State1        *TLCStateMut
 	State2        *TLCStateMut
 	KeepCallStack bool
+	messageNull   bool
 }
 
 func NewWorkerException(msg string, states ...any) *WorkerException {
-	ex := &WorkerException{Msg: msg}
+	ex := &WorkerException{throwableTrace: captureThrowableTrace(), Msg: msg}
 	if len(states) > 0 {
 		if s, ok := states[0].(*TLCStateMut); ok {
 			ex.State1 = s
@@ -93,20 +108,17 @@ func NewWorkerException(msg string, states ...any) *WorkerException {
 }
 
 func NewWorkerExceptionWithCause(msg string, cause error, state1 *TLCStateMut, state2 *TLCStateMut, keep bool) *WorkerException {
-	return &WorkerException{Msg: msg, Cause: cause, State1: state1, State2: state2, KeepCallStack: keep}
+	return &WorkerException{throwableTrace: captureThrowableTrace(), Msg: msg, Cause: cause, State1: state1, State2: state2, KeepCallStack: keep}
 }
 
 func (e *WorkerException) Error() string {
 	if e == nil {
 		return ""
 	}
-	if e.Msg != "" {
-		return e.Msg
+	if message := e.GetMessage(); message != nil {
+		return *message
 	}
-	if e.Cause != nil {
-		return e.Cause.Error()
-	}
-	return "worker exception"
+	return javaThrowableClassName(e)
 }
 
 func (e *WorkerException) Unwrap() error {
@@ -117,6 +129,7 @@ func (e *WorkerException) Unwrap() error {
 }
 
 type StatefulRuntimeException struct {
+	throwableTrace
 	Msg      string
 	Cause    error
 	known    bool
@@ -125,7 +138,7 @@ type StatefulRuntimeException struct {
 }
 
 func NewStatefulRuntimeException(args ...any) *StatefulRuntimeException {
-	ex := &StatefulRuntimeException{}
+	ex := &StatefulRuntimeException{throwableTrace: captureThrowableTrace()}
 	for _, arg := range args {
 		switch v := arg.(type) {
 		case string:
@@ -143,13 +156,10 @@ func (e *StatefulRuntimeException) Error() string {
 	if e == nil {
 		return ""
 	}
-	if e.hasMsg {
-		return e.Msg
+	if message := e.GetMessage(); message != nil {
+		return *message
 	}
-	if e.Cause != nil {
-		return e.Cause.Error()
-	}
-	return "stateful runtime exception"
+	return javaThrowableClassName(e)
 }
 
 func (e *StatefulRuntimeException) Unwrap() error {
@@ -170,4 +180,49 @@ func (e *StatefulRuntimeException) SetKnown() bool {
 
 func (e *StatefulRuntimeException) IsKnown() bool {
 	return e != nil && e.known
+}
+
+func (e *ConfigFileException) GetMessage() *string {
+	if e == nil {
+		return nil
+	}
+	if e.detailMessage != nil {
+		return javaString(*e.detailMessage)
+	}
+	return javaString(formatMessage(e.ErrorCode, e.Parameters))
+}
+
+func (e *WorkerException) GetMessage() *string {
+	if e == nil || e.messageNull {
+		return nil
+	}
+	return javaString(e.Msg)
+}
+
+func newWorkerExceptionFromThrowable(cause error, state1 *TLCStateMut, state2 *TLCStateMut, keep bool) *WorkerException {
+	message := javaThrowableDetailMessage(cause)
+	ex := NewWorkerExceptionWithCause("", cause, state1, state2, keep)
+	if message == nil {
+		ex.messageNull = true
+	} else {
+		ex.Msg = *message
+	}
+	return ex
+}
+
+func (e *StatefulRuntimeException) GetMessage() *string {
+	if e == nil {
+		return nil
+	}
+	if e.hasMsg || e.Msg != "" {
+		return javaString(e.Msg)
+	}
+	return nil
+}
+
+func (e *EvalException) GetNullableParameters() []*string {
+	if e == nil {
+		return nil
+	}
+	return copyNullableMessageParameters(e.NullableParameters)
 }

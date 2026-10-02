@@ -576,9 +576,19 @@ func javaGeneralErrorMessage(cause string, err error) string {
 		msg += "\nThe exception was a <nil>\n"
 		return msg
 	}
-	msg += fmt.Sprintf("\nThe exception was a %T\n", err)
-	if err.Error() != "" {
-		msg += ": " + err.Error()
+	name := javaThrowableClassName(err)
+	if javaRuntimeException(err) != nil {
+		name = "java.lang.RuntimeException"
+	}
+	msg += "\nThe exception was a " + name + "\n"
+	message := javaThrowableDetailMessage(err)
+	if message != nil {
+		msg += ": " + *message
+	}
+	// Java MP's historical noDebug property enables this general-error stack
+	// suffix independently of TLCGlobals.debug. Null messages always include it.
+	if message == nil || mpGeneralDebug {
+		msg += javaThrowableStackTrace(err)
 	}
 	return msg
 }
@@ -735,15 +745,8 @@ func (mc *DFIDModelChecker) reportInitException(result int, err error) int {
 	if result == NoError {
 		result = initExceptionCode(err)
 	}
-	message := ""
-	if err != nil {
-		message = err.Error()
-	}
-	if message == "" {
-		message = fmt.Sprintf("%T", err)
-	}
 	if mc.ErrState != nil {
-		PrintError(ECTLCInitialState, message, mc.ErrState.String())
+		PrintErrorNullable(ECTLCInitialState, javaThrowableDetailMessage(err), javaString(mc.ErrState.String()))
 	} else {
 		PrintError(ECGeneral, javaGeneralErrorMessage("computing initial states", err))
 	}

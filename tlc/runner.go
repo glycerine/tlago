@@ -203,7 +203,11 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 			if recovered := recover(); recovered != nil {
 				err = panicValueAsError(recovered)
 				code, params := tlcProcessFailureMessage(err)
-				PrintError(code, params...)
+				if failure := javaRuntimeException(err); failure != nil {
+					printJavaRuntimeException(failure)
+				} else {
+					PrintError(code, params...)
+				}
 				result = &Result{ErrorCode: code}
 			}
 		}()

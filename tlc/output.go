@@ -278,15 +278,21 @@ const (
 	SeverityState
 )
 
+const mpGeneralDebugProperty = "tlc2.output.MP.noDebug"
+
+var mpGeneralDebug = initialBooleanProperty(mpGeneralDebugProperty)
+
 type Message struct {
-	Code        int
-	Severity    Severity
-	Params      []string
-	Text        string
-	Suppressed  bool
-	State       *TLCStateMut
-	StateInfo   *TLCStateInfo
-	StateNumber int
+	Code     int
+	Severity Severity
+	Params   []string
+	// NullableParams preserves Java null entries for exception diagnostics.
+	NullableParams []*string
+	Text           string
+	Suppressed     bool
+	State          *TLCStateMut
+	StateInfo      *TLCStateInfo
+	StateNumber    int
 }
 
 type MessageRecorder interface {
@@ -431,6 +437,32 @@ func PrintError(code int, params ...string) int {
 	return code
 }
 
+// PrintErrorNullable preserves null parameters in recorder events. Java MP
+// stops all placeholder substitution at the first null entry.
+func PrintErrorNullable(code int, params ...*string) int {
+	recordMessageParameters(code, SeverityError, messageParameterStrings(params), params)
+	return code
+}
+
+func formatNullableMessage(code int, params []*string) string {
+	placeholders := make([]string, len(params))
+	for i := range placeholders {
+		placeholders[i] = fmt.Sprintf("%%%d%%", i+1)
+	}
+	text := formatMessage(code, placeholders)
+	for i, param := range params {
+		if param == nil {
+			break
+		}
+		// Java replaces parameters sequentially, including placeholders that
+		// a preceding parameter introduced into the text.
+		for strings.Contains(text, placeholders[i]) {
+			text = strings.Replace(text, placeholders[i], *param, 1)
+		}
+	}
+	return text
+}
+
 func PrintTLCBug(code int, params ...string) int {
 	recordMessage(code, SeverityTLCBug, params...)
 	return code
@@ -453,23 +485,36 @@ func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber i
 }
 
 func recordMessage(code int, severity Severity, params ...string) {
+	recordMessageParameters(code, severity, params, nil)
+}
+
+func recordMessageParameters(code int, severity Severity, params []string, nullableParams []*string) {
 	suppressed, asError, warn := messageControlFor(code)
 	visible := !suppressed
 	if severity == SeverityWarning {
 		if asError {
+			if nullableParams != nil {
+				panic(NewEvalExceptionNullable(code, nullableParams...))
+			}
 			panic(NewEvalException(code, params...))
 		}
 		visible = warn && !suppressed
 	} else if severity == SeverityError {
 		visible = true
 	}
-	copied := append([]string(nil), params...)
+	copied := copyMessageParameters(params)
+	nullableCopied := copyNullableMessageParameters(nullableParams)
+	text := formatMessage(code, copied)
+	if nullableCopied != nil {
+		text = formatNullableMessage(code, nullableCopied)
+	}
 	defaultRecorder.Record(Message{
-		Code:       code,
-		Severity:   severity,
-		Params:     copied,
-		Text:       formatMessage(code, copied),
-		Suppressed: !visible,
+		Code:           code,
+		Severity:       severity,
+		Params:         copied,
+		NullableParams: nullableCopied,
+		Text:           text,
+		Suppressed:     !visible,
 	})
 }
 

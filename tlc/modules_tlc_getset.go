@@ -582,6 +582,9 @@ func tlcSetStartupSystemProperty(name string, value string) {
 }
 
 func tlcApplyStartupSystemProperty(name string, value string) {
+	if name == mpGeneralDebugProperty {
+		mpGeneralDebug = javaBooleanProperty(value)
+	}
 	if name == actionCompositionProperty {
 		Globals.Cdot = javaBooleanProperty(value)
 	}

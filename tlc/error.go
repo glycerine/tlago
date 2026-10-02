@@ -3,9 +3,11 @@ package tlc
 import "fmt"
 
 type TLCError struct {
-	Code   int
-	Msg    string
-	Params []string
+	throwableTrace
+	Code           int
+	Msg            string
+	Params         []string
+	NullableParams []*string
 	// Runtime distinguishes Java TLCRuntimeException from the legacy native
 	// EvalException carriers represented by this same Go type.
 	Runtime bool
@@ -23,12 +25,12 @@ func (e *TLCError) Error() string {
 }
 
 func newTLCError(code int, format string, args ...any) *TLCError {
-	return &TLCError{Code: code, Msg: fmt.Sprintf(format, args...)}
+	return &TLCError{throwableTrace: captureThrowableTrace(), Code: code, Msg: fmt.Sprintf(format, args...)}
 }
 
 func newTLCErrorCode(code int, params ...string) *TLCError {
-	copied := append([]string(nil), params...)
-	return &TLCError{Code: code, Msg: formatMessage(code, copied), Params: copied}
+	copied := copyMessageParameters(params)
+	return &TLCError{throwableTrace: captureThrowableTrace(), Code: code, Msg: formatMessage(code, copied), Params: copied}
 }
 
 func javaMethodOverrideError(signature string, message string) *TLCError {
@@ -42,13 +44,14 @@ func javaMethodOverrideRuntimeError(signature string, message string) *TLCError 
 }
 
 type ConfigError struct {
+	throwableTrace
 	Code   int
 	Params []string
 }
 
 func NewConfigError(code int, params ...string) *ConfigError {
-	copied := append([]string(nil), params...)
-	return &ConfigError{Code: code, Params: copied}
+	copied := copyMessageParameters(params)
+	return &ConfigError{throwableTrace: captureThrowableTrace(), Code: code, Params: copied}
 }
 
 func (e *ConfigError) Error() string {
@@ -61,7 +64,7 @@ func (e *ConfigError) Error() string {
 // javaRuntimeException tests the thrown exception itself. TLCError also carries
 // legacy EvalExceptions, which must not enter Java's TLCRuntimeException catch.
 func javaRuntimeException(err error) *TLCError {
-	if failure, ok := err.(*TLCError); ok && failure != nil && !isValueEvalException(failure) {
+	if failure, ok := err.(*TLCError); ok && failure != nil && javaSystemFailureCode(failure) == NoError && !isValueEvalException(failure) {
 		return failure
 	}
 	return nil
@@ -112,4 +115,45 @@ func isJavaEvalOrRuntimeException(err error) bool {
 	default:
 		return false
 	}
+}
+
+func (e *TLCError) GetMessage() *string {
+	if e == nil {
+		return nil
+	}
+	if javaSystemFailureCode(e) != NoError && e.Msg == "" {
+		return nil
+	}
+	return javaString(e.Msg)
+}
+
+func (e *ConfigError) GetMessage() *string {
+	if e == nil {
+		return nil
+	}
+	return javaString(formatMessage(e.Code, e.Params))
+}
+
+func newTLCErrorCodeNullable(code int, params ...*string) *TLCError {
+	copied := copyNullableMessageParameters(params)
+	return &TLCError{
+		throwableTrace: captureThrowableTrace(),
+		Code:           code,
+		Msg:            formatNullableMessage(code, copied),
+		Params:         messageParameterStrings(copied),
+		NullableParams: copied,
+	}
+}
+
+func printJavaRuntimeException(err *TLCError) int {
+	if err.NullableParams != nil {
+		return PrintErrorNullable(err.Code, err.NullableParams...)
+	}
+	if err.Params != nil {
+		return PrintError(err.Code, err.Params...)
+	}
+	if err.Code == ECGeneral {
+		return PrintError(err.Code, generalErrorParams("", err)...)
+	}
+	return PrintErrorNullable(err.Code, err.GetMessage())
 }
