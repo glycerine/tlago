@@ -11,7 +11,7 @@ import (
 var embeddedJavaStandardModules embed.FS
 
 type LoadOptions struct {
-	DistributedResolver  *tlc.RMIFilenameToStreamResolver
+	FilenameResolver     tlc.FilenameToStream
 	LibraryPaths         []string
 	PreferLibraryModules bool
 	ExtraModules         []string

@@ -33,6 +33,13 @@ func newTLCErrorCode(code int, params ...string) *TLCError {
 	return &TLCError{throwableTrace: captureThrowableTrace(), Code: code, Msg: formatMessage(code, copied), Params: copied}
 }
 
+// NewTLCRuntimeException constructs the coded failure used by Java Assert.
+func NewTLCRuntimeException(code int, params ...string) *TLCError {
+	failure := newTLCErrorCode(code, params...)
+	failure.Runtime = true
+	return failure
+}
+
 func javaMethodOverrideError(signature string, message string) *TLCError {
 	return newTLCErrorCode(ECTLCModuleValueJavaMethodOverride, signature, message)
 }

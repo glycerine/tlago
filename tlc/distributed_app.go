@@ -1,6 +1,9 @@
 package tlc
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // TLCApp is the runtime portion of Java's distributed application. The root
 // loader builds its Tool through the production parser before this snapshot.
@@ -11,18 +14,68 @@ type TLCApp struct {
 	ImpliedInits   []*Action
 	ImpliedActions []*Action
 	checkDeadlock  bool
+	config         string
+	fromCheckpoint *string
+	metadir        string
+	fpSetConfig    *FPSetConfiguration
 }
 
 func NewTLCApp(tool *Tool, deadlock bool) *TLCApp {
 	if tool == nil {
 		panic(NewNullPointerException())
 	}
-	app := &TLCApp{Tool: tool, checkDeadlock: deadlock}
+	app := &TLCApp{Tool: tool, checkDeadlock: deadlock, config: tool.GetConfigFile()}
 	app.ImpliedInits = tool.GetImpliedInits()
 	app.Invariants = tool.GetInvariants()
 	app.ImpliedActions = tool.GetImpliedActions()
 	app.Actions = tool.GetActions()
 	return app
+}
+
+// NewTLCAppWithMetadata captures the loaded tool's runtime arrays, then finishes
+// Java's full constructor with metadata setup. Recovery is performed by create
+// before loading, not by this constructor.
+func NewTLCAppWithMetadata(tool *Tool, deadlock bool, fromCheckpoint *string, fpSetConfig *FPSetConfiguration) *TLCApp {
+	app := NewTLCApp(tool, deadlock)
+	app.fromCheckpoint = copyJavaMessage(fromCheckpoint)
+	app.metadir = MakeMetaDir(time.Now(), tool.GetSpecDir(), fromCheckpoint)
+	app.fpSetConfig = fpSetConfig
+	return app
+}
+
+func (a *TLCApp) GetFileName() string { return a.requireTool().GetRootFile() }
+func (a *TLCApp) GetSpecDir() string  { return a.requireTool().GetSpecDir() }
+func (a *TLCApp) GetConfigName() string {
+	if a == nil {
+		panic(NewNullPointerException())
+	}
+	return a.config
+}
+func (a *TLCApp) GetMetadir() string {
+	if a == nil {
+		panic(NewNullPointerException())
+	}
+	return a.metadir
+}
+func (a *TLCApp) CanRecover() bool {
+	if a == nil {
+		panic(NewNullPointerException())
+	}
+	return a.fromCheckpoint != nil
+}
+func (a *TLCApp) GetFPSetConfiguration() *FPSetConfiguration {
+	if a == nil {
+		panic(NewNullPointerException())
+	}
+	return a.fpSetConfig
+}
+func (a *TLCApp) GetModuleFiles() []*TLAFile {
+	tool := a.requireTool()
+	var options []FilenameResolverOptions
+	if tool.DistributedFiles != nil {
+		options = append(options, FilenameResolverOptions{Classpath: tool.DistributedFiles.filenameClasspath()})
+	}
+	return tool.GetModuleFiles(NewInJarFilenameToStream("/model/", options...))
 }
 
 func (a *TLCApp) GetCheckDeadlock() bool {

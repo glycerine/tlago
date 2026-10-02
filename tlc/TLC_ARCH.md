@@ -2978,8 +2978,36 @@ ones. Deadlock and complete-assignment checks follow that combined order,
 before worker fingerprinting. Property checks use captured action arrays and
 the current tool's name arrays; state/alias reconstruction and call-stack
 replacement delegate to the application tool. Server initialization uses the
-same snapshot runtime. Application CLI/create/metadata/recovery/module-file
-construction is still pending alongside the transport lifecycle.
+same snapshot runtime.
+
+The root `LoadTLCApp` constructor performs config parsing, SANY and semantic
+checking, then tool construction through the production bridge. Both local and
+remote loading use `LoadOptions.FilenameResolver`. It retains the constructor's
+raw root/config names and lexical spec directory, with the source post-SANY
+module-table lookup (direct constructors retaining a `.tla` suffix fail).
+The parser records logical module filenames separately from physical temporary
+paths; `Tool.GetModuleFiles` resolves them with `isModule=false`. The application
+creates a fresh InJar resolver for enumeration, using bundled standard/model
+resources and the process classpath. Enumeration is deterministic parse order
+in place of Java's Hashtable traversal. Constructor flags and FP configuration
+retain their source identity; basic applications leave metadata/FP configuration
+unset, while `LoadTLCAppWithMetadata` completes metadata setup after tool loading.
+The full constructor marks recovery from any non-null checkpoint path, including
+an empty one, but does not itself read the intern table: Java's `create` does
+that before constructing the tool.
+
+`FileUtil.makeMetaDir` now has the concrete `MakeMetaDir` port: verbatim
+checkpoint return, global metadata-root override, spec-directory `states`
+fallback, local-time timestamp formatting and the milliseconds property.
+Exclusive creation creates parents first, then atomically creates the requested
+directory; a collision returns an absolute temporary sibling. Lexical dot
+segments are retained, including the NIO parent-creation fallback that can
+create normalized parents yet fail the original final path. Checked creation
+failures become source code 2163 without an I/O cause. The regular TLC command
+uses the same directory-creation algorithm with its existing error-return API.
+All three upstream FileUtilTest cases are translated after implementation.
+Application option parsing/create, packaged-model properties and early recovery
+wiring remain pending alongside registry/export/RPC and the command lifecycle.
 
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration

@@ -73,6 +73,9 @@ func NewSimpleFilenameToStream(libraryPaths []string, options ...FilenameResolve
 	return resolver
 }
 
+// DefaultFilenameClasspath snapshots the process classpath in source order.
+func DefaultFilenameClasspath() []FilenameClasspathEntry { return filenameDefaultClasspath() }
+
 func filenameDefaultClasspath() []FilenameClasspathEntry {
 	paths, ok := tlcLookupSystemProperty("java.class.path")
 	if !ok {

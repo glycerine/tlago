@@ -5,6 +5,7 @@ type Spec struct {
 	Root          *Module
 	Modules       map[string]*Module
 	SemanticOrder []string
+	ModuleFiles   []string // Logical filenames supplied to the filename resolver.
 	Diags         Diagnostics
 }
 

@@ -185,6 +185,10 @@ func filenameCheckPath(path string) {
 	}
 }
 
+// ModuleFilename applies FileUtil.createNamedInputStream's logical filename
+// normalization before resolution and parse-unit metadata are recorded.
+func ModuleFilename(name string) string { return filenameNormalizeModule(name, true) }
+
 func filenameNormalizeModule(name string, isModule bool) string {
 	if n := strings.IndexByte(name, '\n'); n >= 0 {
 		fmt.Fprintf(os.Stdout, "*** Warning: module name '%s' contained NEWLINE; Only the part before NEWLINE is considered.\n", name)

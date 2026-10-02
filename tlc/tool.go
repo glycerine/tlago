@@ -777,11 +777,18 @@ func (t *Tool) GetSpecProcessor() *SpecProcessor {
 	return t.SpecProcessor
 }
 
-func (t *Tool) GetModuleFiles() []string {
+func (t *Tool) GetModuleFiles(resolver FilenameToStream) []*TLAFile {
 	if t == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
-	return append([]string(nil), t.ModuleFiles...)
+	files := make([]*TLAFile, 0, len(t.ModuleFiles))
+	for _, filename := range t.ModuleFiles {
+		if resolver == nil {
+			panic(NewNullPointerException())
+		}
+		files = append(files, resolver.Resolve(filename, false))
+	}
+	return files
 }
 
 func (t *Tool) GetSpecDir() string {

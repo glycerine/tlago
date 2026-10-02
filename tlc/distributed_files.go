@@ -143,22 +143,26 @@ func (s *DistributedServerFiles) resolve(name string) string {
 	s.resolverMu.Lock()
 	defer s.resolverMu.Unlock()
 	if s.resolver == nil {
-		options := FilenameResolverOptions{UserDirectory: &s.UserDirectory, Classpath: []FilenameClasspathEntry{}}
-		if s.ModelResources != nil {
-			options.Classpath = append(options.Classpath, FilenameClasspathEntry{Files: s.ModelResources})
-		}
-		if s.Resources != nil {
-			if resources, err := fs.Sub(s.Resources, strings.Trim(s.ResourcePrefix, "/")); s.ResourcePrefix != "" && err == nil {
-				options.Classpath = append(options.Classpath, FilenameClasspathEntry{Files: resources, Prefix: StandardModulesClasspath, Location: "embedded:/" + s.ResourcePrefix})
-			}
-			options.Classpath = append(options.Classpath, FilenameClasspathEntry{Files: s.Resources})
-		}
-		options.Classpath = append(options.Classpath, filenameDefaultClasspath()...)
+		options := FilenameResolverOptions{UserDirectory: &s.UserDirectory, Classpath: s.filenameClasspath()}
 		s.resolver = NewSimpleFilenameToStream(s.LibraryPaths, options)
 		prefix := "/model/"
 		s.resolver.modelPrefix = &prefix
 	}
 	return s.resolver.Resolve(name, false).GetPath()
+}
+
+func (s *DistributedServerFiles) filenameClasspath() []FilenameClasspathEntry {
+	entries := []FilenameClasspathEntry{}
+	if s.ModelResources != nil {
+		entries = append(entries, FilenameClasspathEntry{Files: s.ModelResources})
+	}
+	if s.Resources != nil {
+		if resources, err := fs.Sub(s.Resources, strings.Trim(s.ResourcePrefix, "/")); s.ResourcePrefix != "" && err == nil {
+			entries = append(entries, FilenameClasspathEntry{Files: resources, Prefix: StandardModulesClasspath, Location: "embedded:/" + s.ResourcePrefix})
+		}
+		entries = append(entries, FilenameClasspathEntry{Files: s.Resources})
+	}
+	return append(entries, filenameDefaultClasspath()...)
 }
 
 func (s *TLCServer) GetFile(file string) ([]byte, error) {

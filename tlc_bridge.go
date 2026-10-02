@@ -290,6 +290,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.tool.DistributedFiles = tlc.NewDistributedServerFiles(filepath.Dir(spec.Root.SourcePath), spec.LibraryPaths, embeddedJavaStandardModules, "test_vectors/java-sany/StandardModules")
 	bridge.tool.SpecDir = ""
 	bridge.tool.ConfigFile = spec.Root.Name
+	bridge.tool.ModuleFiles = append([]string(nil), spec.ModuleFiles...)
 	bridge.tool.ParseDebuggerExpressionFunc = bridge.parseDebuggerExpression
 	bridge.installVariables()
 	bridge.installDefinitions()

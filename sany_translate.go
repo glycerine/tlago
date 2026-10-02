@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 func CheckSanySource(file, source string) (*Spec, Diagnostics) {
@@ -20,6 +22,7 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 		rootDir: ".",
 	}
 	if file != "" {
+		loader.moduleFiles = append(loader.moduleFiles, file)
 		rootPath := file
 		if abs, err := filepath.Abs(rootPath); err == nil {
 			rootPath = abs
@@ -28,14 +31,14 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 	}
 	loader.registerModuleRecursive(mod)
 	if diags.HasErrors() {
-		spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
+		spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
 		return spec, diags
 	}
 	if mod != nil {
 		loader.loadDependencies(mod)
 		diags = append(diags, loader.diags...)
 	}
-	spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), Diags: diags}
+	spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
 	if diags.HasErrors() {
 		spec.Diags = diags
 		return spec, diags
@@ -65,6 +68,7 @@ type sanyLoader struct {
 	loading       map[string]bool
 	loaded        map[string]bool
 	semanticOrder []string
+	moduleFiles   []string
 	rootDir       string
 }
 
@@ -76,22 +80,25 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 		loaded:  map[string]bool{},
 	}
 	rootPath := root
-	if filepath.Ext(rootPath) == "" {
+	if opts.FilenameResolver != nil {
+		rootPath = tlc.ModuleFilename(rootPath)
+	} else if filepath.Ext(rootPath) == "" {
 		rootPath += ".tla"
 	}
-	if opts.DistributedResolver != nil {
-		rootPath = opts.DistributedResolver.Resolve(rootPath, true).GetPath()
+	rootFilename := rootPath
+	if opts.FilenameResolver != nil {
+		rootPath = opts.FilenameResolver.Resolve(rootPath, true).GetPath()
 	}
 	if abs, err := filepath.Abs(rootPath); err == nil {
 		rootPath = abs
 	}
 	l.rootDir = filepath.Dir(rootPath)
-	rootMod := l.loadPath(rootPath, false)
+	rootMod := l.loadPath(rootPath, false, rootFilename)
 	if rootMod != nil {
 		rootMod.Extends = appendModuleNames(rootMod.Extends, l.opts.ExtraModules...)
 		l.loadDependencies(rootMod)
 	}
-	return &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), Diags: l.diags}, l.diags
+	return &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}, l.diags
 }
 
 func appendModuleNames(names []string, extra ...string) []string {
@@ -136,9 +143,9 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 	if mod := l.modules[name]; mod != nil {
 		return mod
 	}
-	if l.opts.DistributedResolver != nil {
-		path := l.opts.DistributedResolver.Resolve(name+".tla", true).GetPath()
-		return l.loadPath(path, false)
+	if l.opts.FilenameResolver != nil {
+		file := l.opts.FilenameResolver.Resolve(name+".tla", true)
+		return l.loadPath(file.GetPath(), file.IsLibraryModule(), name+".tla")
 	}
 	if l.opts.PreferLibraryModules {
 		if mod := l.loadLibraryModule(name); mod != nil {
@@ -146,6 +153,7 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 		}
 	}
 	if src, ok := standardModules[name]; ok {
+		l.moduleFiles = append(l.moduleFiles, name+".tla")
 		mod, diags := ParseSanyModuleSource(name+".tla", src)
 		l.diags = append(l.diags, diags...)
 		if mod.Name != "" {
@@ -171,7 +179,7 @@ func (l *sanyLoader) loadLibraryModule(name string) *Module {
 	for i, dir := range append([]string{l.rootDir}, l.opts.LibraryPaths...) {
 		path := filepath.Join(dir, name+".tla")
 		if _, err := os.Stat(path); err == nil {
-			mod := l.loadPath(path, false)
+			mod := l.loadPath(path, false, name+".tla")
 			if i > 0 {
 				setModuleLibraryRecursive(mod, true)
 			}
@@ -181,18 +189,24 @@ func (l *sanyLoader) loadLibraryModule(name string) *Module {
 	return nil
 }
 
-func (l *sanyLoader) loadPath(path string, standard bool) *Module {
+func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string) *Module {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		l.diags = append(l.diags, errorAt(Position{File: path, Line: 1, Column: 1}, "E1202", "cannot read %s: %v", path, err))
 		return nil
 	}
+	l.moduleFiles = append(l.moduleFiles, logicalFilename)
 	mods, diags := parseSanyModuleSources(path, string(data))
 	l.diags = append(l.diags, diags...)
 	if len(mods) == 0 {
 		return &Module{SourcePath: path, Source: string(data)}
 	}
 	mod := mods[0]
+	if standard {
+		for _, loaded := range mods {
+			setModuleLibraryRecursive(loaded, true)
+		}
+	}
 	if mod.Name == "" {
 		return mod
 	}

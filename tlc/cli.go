@@ -878,22 +878,7 @@ func makeTLCMetaDir(date time.Time, specDir string, metaDirRoot string, fromChec
 	if fromCheckpoint != "" {
 		return fromCheckpoint, nil
 	}
-	root := metaDirRoot
-	if root == "" {
-		root = filepath.Join(specDir, MetaRoot)
-	}
-	name := date.Format(tlcMetaDirDateLayout())
-	path := filepath.Join(root, name)
-	if err := createExclusiveDirectory(path); err == nil {
-		return path, nil
-	} else if !os.IsExist(err) {
-		return "", err
-	}
-	parent := filepath.Dir(path)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
-		return "", err
-	}
-	return os.MkdirTemp(parent, filepath.Base(path))
+	return CreateExclusiveDirectoryWithApproximateName(tlcMetaDirPath(date, specDir, metaDirRoot))
 }
 
 func tlcMetaDirDateLayout() string {
@@ -901,14 +886,6 @@ func tlcMetaDirDateLayout() string {
 		return "06-01-02-15-04-05"
 	}
 	return "06-01-02-15-04-05.000"
-}
-
-func createExclusiveDirectory(path string) error {
-	parent := filepath.Dir(path)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
-		return err
-	}
-	return os.Mkdir(path, 0o755)
 }
 
 func IsTraceExplorationSpecFile(file string) bool {
