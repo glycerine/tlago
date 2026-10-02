@@ -5,7 +5,6 @@ import (
 	"math"
 	"os"
 	"sort"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -71,7 +70,7 @@ type DistributedWorker struct {
 	FPSetManager          *DistributedFPSetManager
 	Cache                 *SimpleCache
 	CheckDeadlock         bool
-	URI                   string
+	uri                   *distributedWorkerURIValue
 	Runtime               *DistributedWorkerRuntime
 	unexported            atomic.Bool
 	Computing             atomic.Bool
@@ -1407,13 +1406,17 @@ func (b *BlockSelector) setAverageBlockCnt(blockCnt int64) {
 	}
 }
 
-func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager) *DistributedWorker {
+func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager, address ...DistributedWorkerAddress) *DistributedWorker {
 	if fpSetManager == nil {
 		fpSetManager = NewDistributedFPSetManager()
 	}
 	checkDeadlock := true
 	if tool != nil && tool.GetModelConfig() != nil {
 		checkDeadlock = tool.GetModelConfig().GetCheckDeadlock()
+	}
+	endpoint := DistributedWorkerAddress{Hostname: distributedServerHost()}
+	if len(address) > 0 {
+		endpoint = address[0]
 	}
 	worker := &DistributedWorker{
 		ID:              id,
@@ -1422,19 +1425,28 @@ func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetMana
 		Cache:           NewSimpleCache(),
 		CheckDeadlock:   checkDeadlock,
 		NetworkOverhead: math.MaxFloat64,
+		uri:             newDistributedWorkerURI(endpoint, id),
 	}
 	NewDistributedWorkerRuntime(worker)
 	return worker
 }
 
 func distributedWorkerURI(worker *DistributedWorker) string {
-	if worker == nil {
-		return ""
+	return worker.GetURI()
+}
+
+func (w *DistributedWorker) GetURI() string {
+	if w == nil || w.uri == nil {
+		panic(NewNullPointerException())
 	}
-	if worker.URI != "" {
-		return worker.URI
+	return w.uri.raw
+}
+
+func (w *DistributedWorker) GetASCIIURI() string {
+	if w == nil || w.uri == nil {
+		panic(NewNullPointerException())
 	}
-	return strconv.Itoa(worker.ID)
+	return w.uri.asciiString()
 }
 
 type DistributedWorkerSmartProxy struct {
@@ -1520,7 +1532,7 @@ func (p *DistributedWorkerSmartProxy) GetURI() (string, error) {
 	if err := p.Worker.remoteEndpointError(); err != nil {
 		return "", err
 	}
-	return p.Worker.URI, nil
+	return p.Worker.GetURI(), nil
 }
 
 func (p *DistributedWorkerSmartProxy) IsAlive() (bool, error) {
@@ -1575,11 +1587,11 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextSt
 				return
 			}
 			if isJavaOutOfMemoryError(err) {
-				err = NewRemoteException(javaString("OutOfMemoryError occurred at worker: "+w.URI), err)
+				err = NewRemoteException(javaString("OutOfMemoryError occurred at worker: "+w.GetASCIIURI()), err)
 				return
 			}
 			if failure, ok := err.(*RejectedExecutionException); ok && failure != nil {
-				err = NewRemoteException(javaString("Executor rejected task at worker: "+w.URI), err)
+				err = NewRemoteException(javaString("Executor rejected task at worker: "+w.GetASCIIURI()), err)
 				return
 			}
 			err = newWorkerExceptionFromThrowable(err, state1, state2, true)

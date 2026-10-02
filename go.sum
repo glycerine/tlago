@@ -1,2 +1,4 @@
 github.com/glycerine/rbtree v0.2.2 h1:Xp8mUtk2+7Tzcp+as08yFS1/MBm/MeZqE5cFvEUT27k=
 github.com/glycerine/rbtree v0.2.2/go.mod h1:skpUtSrm1HHyLo+HayukOvAmXtE/F6tsVW0uCpaBGWE=
+golang.org/x/text v0.28.0 h1:rhazDwis8INMIwQ4tpjLDzUhx6RlXqZNPEM0huQojng=
+golang.org/x/text v0.28.0/go.mod h1:U8nCwOR8jO/marOQ0QbDiOngZVEBB7MAiitBuMjXiNU=

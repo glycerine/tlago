@@ -3002,11 +3002,34 @@ overflow, server-done diagnostic, and ordered exits. Timer failures terminate
 the timer goroutine. Server keepalive and final cache reads preserve their
 RemoteException catches; final exit ignores only the three Java dead-worker
 exception families, warns, and removes the registration in finally order.
-URI construction/ASCII/NFC metadata and worker resolver/startup/registry
-transport remain pending. Worker fingerprint lookups and server block inserts now use
+Worker resolver/startup/registry transport remains pending. Worker fingerprint
+lookups and server block inserts now use
 their respective shared executors; accepted tasks finish after shutdown,
 while new submissions are rejected. The worker preserves the rejection's
 RemoteException and the proxy's ServerException envelope.
+
+Worker construction now retains Java's immutable raw URI metadata in the form
+`rmi://hostname:port/threadId`. `DistributedWorkerAddress` supplies the address
+of a future exported endpoint; local construction uses the machine hostname
+and port zero, Java getPort's fallback. The raw URI is used for registration,
+statistics and getURI; worker failures use toASCIIString. Host classification
+follows Java's server/registry authority distinction rather than Go net/url,
+including null hosts for Unicode or underscore registry names, bracketed IPv6
+hosts, scope IDs, and Java IPv4/hostname rules. URI validation preserves the
+component masks, escaped-pair checks, UTF-16 failure indices and the
+IllegalArgumentException -> URISyntaxException message/cause boundary.
+
+ASCII conversion normalizes to NFC, encodes non-ASCII UTF-8 bytes with uppercase
+percent escapes, and preserves existing ASCII spelling/escapes. Unicode tables
+come from the cached golang.org/x/text v0.28.0 dependency. Since its normalizer
+inserts stream-safe CGJs into long combining sequences and Java does not, a
+canonical decomposition/order/composition fallback removes that behavioral
+difference while retaining genuine input CGJs. Java TLC has no dedicated URI
+test; 232 fixtures captured from the installed OpenJDK 21.0.12.1 verify worker
+URI construction, host/null classification, syntax failures and ASCII output.
+An integration check covers the executor-rejection message and proxy envelope.
+Endpoint allocation, reflection/VM diagnostics and canonical-host discovery
+belong to the still-pending worker startup/export transport feature.
 
 FP-manager registrations retain Java FPSets wrapper identity, cached hostname,
 and availability. Reassignment shares wrappers across partitions while keeping

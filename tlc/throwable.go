@@ -42,6 +42,8 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.IndexOutOfBoundsException"
 	case *IllegalArgumentException:
 		return "java.lang.IllegalArgumentException"
+	case *URISyntaxException:
+		return "java.net.URISyntaxException"
 	case *ArithmeticException:
 		return "java.lang.ArithmeticException"
 	case *UnsupportedOperationException:

@@ -115,7 +115,35 @@ func NewIllegalArgumentException(message ...string) *IllegalArgumentException {
 	return &IllegalArgumentException{javaExceptionBase: newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
 
+func NewIllegalArgumentExceptionWithCause(message *string, cause error) *IllegalArgumentException {
+	return &IllegalArgumentException{javaExceptionBase: newJavaExceptionBase(message, cause)}
+}
+
 func (e *IllegalArgumentException) Error() string { return javaThrowableMessage(e) }
+
+type URISyntaxException struct {
+	javaExceptionBase
+	input  string
+	reason string
+	index  int
+}
+
+func NewURISyntaxException(input, reason string, index int) *URISyntaxException {
+	if index < -1 {
+		panic(NewIllegalArgumentException())
+	}
+	message := reason
+	if index >= 0 {
+		message += fmt.Sprintf(" at index %d", index)
+	}
+	message += ": " + input
+	return &URISyntaxException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil), input: input, reason: reason, index: index}
+}
+
+func (e *URISyntaxException) GetInput() string  { return e.input }
+func (e *URISyntaxException) GetReason() string { return e.reason }
+func (e *URISyntaxException) GetIndex() int     { return e.index }
+func (e *URISyntaxException) Error() string     { return javaThrowableMessage(e) }
 
 type ArithmeticException struct{ javaExceptionBase }
 

@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -227,8 +226,11 @@ func (w *DistributedWorker) Exit() (err error) {
 		}
 	}()
 	host := "null"
-	if uri, parseErr := url.Parse(w.URI); parseErr == nil && uri.Hostname() != "" {
-		host = uri.Hostname()
+	if w.uri == nil {
+		return NewNullPointerException()
+	}
+	if w.uri.host != nil {
+		host = *w.uri.host
 	}
 	if w.Cache == nil {
 		return NewNullPointerException()

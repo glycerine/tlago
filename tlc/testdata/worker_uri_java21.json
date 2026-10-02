@@ -1,0 +1,1711 @@
+[
+  {
+    "hostname": "localhost",
+    "port": 0,
+    "threadID": 7,
+    "host": "localhost",
+    "ascii": "rmi://localhost:0/7"
+  },
+  {
+    "hostname": "LOCALHOST",
+    "port": 0,
+    "threadID": 7,
+    "host": "LOCALHOST",
+    "ascii": "rmi://LOCALHOST:0/7"
+  },
+  {
+    "hostname": "foo.bar.",
+    "port": 0,
+    "threadID": 7,
+    "host": "foo.bar.",
+    "ascii": "rmi://foo.bar.:0/7"
+  },
+  {
+    "hostname": "foo_bar",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://foo_bar:0/7"
+  },
+  {
+    "hostname": "_foo",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://_foo:0/7"
+  },
+  {
+    "hostname": "-foo",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://-foo:0/7"
+  },
+  {
+    "hostname": "foo-",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://foo-:0/7"
+  },
+  {
+    "hostname": "foo..bar",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://foo..bar:0/7"
+  },
+  {
+    "hostname": "foo.9",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://foo.9:0/7"
+  },
+  {
+    "hostname": "9.foo",
+    "port": 0,
+    "threadID": 7,
+    "host": "9.foo",
+    "ascii": "rmi://9.foo:0/7"
+  },
+  {
+    "hostname": "123",
+    "port": 0,
+    "threadID": 7,
+    "host": "123",
+    "ascii": "rmi://123:0/7"
+  },
+  {
+    "hostname": "123.456",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://123.456:0/7"
+  },
+  {
+    "hostname": "127.0.0.1",
+    "port": 0,
+    "threadID": 7,
+    "host": "127.0.0.1",
+    "ascii": "rmi://127.0.0.1:0/7"
+  },
+  {
+    "hostname": "127.000.001.002",
+    "port": 0,
+    "threadID": 7,
+    "host": "127.000.001.002",
+    "ascii": "rmi://127.000.001.002:0/7"
+  },
+  {
+    "hostname": "999.1.1.1",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://999.1.1.1:0/7"
+  },
+  {
+    "hostname": "000000000000001.2.3.4",
+    "port": 0,
+    "threadID": 7,
+    "host": "000000000000001.2.3.4",
+    "ascii": "rmi://000000000000001.2.3.4:0/7"
+  },
+  {
+    "hostname": "localhost:",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://localhost::0/7"
+  },
+  {
+    "hostname": "localhost:bad",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://localhost:bad:0/7"
+  },
+  {
+    "hostname": "localhost:2147483648",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://localhost:2147483648:0/7"
+  },
+  {
+    "hostname": "user:pass@localhost",
+    "port": 0,
+    "threadID": 7,
+    "host": "localhost",
+    "ascii": "rmi://user:pass@localhost:0/7"
+  },
+  {
+    "hostname": "us\u00e9r@localhost",
+    "port": 0,
+    "threadID": 7,
+    "host": "localhost",
+    "ascii": "rmi://us%C3%A9r@localhost:0/7"
+  },
+  {
+    "hostname": "user%20name@host",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://user%20name@host:0/7"
+  },
+  {
+    "hostname": "user@@host",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://user@@host:0/7"
+  },
+  {
+    "hostname": "e\u0301",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://%C3%A9:0/7"
+  },
+  {
+    "hostname": "b\u00fccher.example",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://b%C3%BCcher.example:0/7"
+  },
+  {
+    "hostname": "\u6f22\u5b57",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://%E6%BC%A2%E5%AD%97:0/7"
+  },
+  {
+    "hostname": "\ud83d\ude00",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://%F0%9F%98%80:0/7"
+  },
+  {
+    "hostname": "user@e\u0301",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://user@%C3%A9:0/7"
+  },
+  {
+    "hostname": "host/path/\u00e9",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/path/%C3%A9:0/7"
+  },
+  {
+    "hostname": "host/path/e\u0301",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/path/%C3%A9:0/7"
+  },
+  {
+    "hostname": "host/\u212b",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%C3%85:0/7"
+  },
+  {
+    "hostname": "host/\u1100\u1161",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%EA%B0%80:0/7"
+  },
+  {
+    "hostname": "host?\u00e9",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host?%C3%A9:0/7"
+  },
+  {
+    "hostname": "host#\u00e9",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host#%C3%A9:0/7"
+  },
+  {
+    "hostname": "host?e\u0301#x",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host?%C3%A9#x:0/7"
+  },
+  {
+    "hostname": "host/%C3%A9",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%C3%A9:0/7"
+  },
+  {
+    "hostname": "host/%bad",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%bad:0/7"
+  },
+  {
+    "hostname": "host/%x",
+    "port": 0,
+    "threadID": 7,
+    "error": "Malformed escape pair at index 11: rmi://host/%x:0/7",
+    "index": 11,
+    "reason": "Malformed escape pair"
+  },
+  {
+    "hostname": "host/[]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/[]:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/{}",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/{}:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host?[]",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host?[]:0/7"
+  },
+  {
+    "hostname": "host#[]",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host#[]:0/7"
+  },
+  {
+    "hostname": "host##fragment",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in fragment at index 11: rmi://host##fragment:0/7",
+    "index": 11,
+    "reason": "Illegal character in fragment"
+  },
+  {
+    "hostname": "",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://:0/7"
+  },
+  {
+    "hostname": "/",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi:///:0/7"
+  },
+  {
+    "hostname": "//",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi:////:0/7"
+  },
+  {
+    "hostname": "?",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://?:0/7"
+  },
+  {
+    "hostname": "#",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://#:0/7"
+  },
+  {
+    "hostname": "[::1]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[::1]",
+    "ascii": "rmi://[::1]:0/7"
+  },
+  {
+    "hostname": "[::]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[::]",
+    "ascii": "rmi://[::]:0/7"
+  },
+  {
+    "hostname": "[fe80::1%eth0]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[fe80::1%eth0]",
+    "ascii": "rmi://[fe80::1%eth0]:0/7"
+  },
+  {
+    "hostname": "[fe80::1%25eth0]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[fe80::1%25eth0]",
+    "ascii": "rmi://[fe80::1%25eth0]:0/7"
+  },
+  {
+    "hostname": "[fe80::1%]",
+    "port": 0,
+    "threadID": 7,
+    "error": "scope id expected: rmi://[fe80::1%]:0/7",
+    "index": -1,
+    "reason": "scope id expected"
+  },
+  {
+    "hostname": "[fe80::1%eth-0]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in scope id at index 18: rmi://[fe80::1%eth-0]:0/7",
+    "index": 18,
+    "reason": "Illegal character in scope id"
+  },
+  {
+    "hostname": "[fe80::1%eth_0]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[fe80::1%eth_0]",
+    "ascii": "rmi://[fe80::1%eth_0]:0/7"
+  },
+  {
+    "hostname": "[::ffff:192.168.1.1]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[::ffff:192.168.1.1]",
+    "ascii": "rmi://[::ffff:192.168.1.1]:0/7"
+  },
+  {
+    "hostname": "[::ffff:192.168.001.001]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[::ffff:192.168.001.001]",
+    "ascii": "rmi://[::ffff:192.168.001.001]:0/7"
+  },
+  {
+    "hostname": "[::ffff:256.1.1.1]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Malformed IPv4 address at index 14: rmi://[::ffff:256.1.1.1]:0/7",
+    "index": 14,
+    "reason": "Malformed IPv4 address"
+  },
+  {
+    "hostname": "[::ffff:1.2.3]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Malformed IPv4 address at index 19: rmi://[::ffff:1.2.3]:0/7",
+    "index": 19,
+    "reason": "Malformed IPv4 address"
+  },
+  {
+    "hostname": "[1:2:3:4:5:6:7:8]",
+    "port": 0,
+    "threadID": 7,
+    "host": "[1:2:3:4:5:6:7:8]",
+    "ascii": "rmi://[1:2:3:4:5:6:7:8]:0/7"
+  },
+  {
+    "hostname": "[1:2:3:4:5:6:7:8:9]",
+    "port": 0,
+    "threadID": 7,
+    "error": "IPv6 address too long at index 7: rmi://[1:2:3:4:5:6:7:8:9]:0/7",
+    "index": 7,
+    "reason": "IPv6 address too long"
+  },
+  {
+    "hostname": "[1:2:3]",
+    "port": 0,
+    "threadID": 7,
+    "error": "IPv6 address too short at index 7: rmi://[1:2:3]:0/7",
+    "index": 7,
+    "reason": "IPv6 address too short"
+  },
+  {
+    "hostname": "[1:2:3:4:5:6:7::8]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Malformed IPv6 address at index 7: rmi://[1:2:3:4:5:6:7::8]:0/7",
+    "index": 7,
+    "reason": "Malformed IPv6 address"
+  },
+  {
+    "hostname": "[12345::1]",
+    "port": 0,
+    "threadID": 7,
+    "error": "IPv6 hexadecimal digit sequence too long at index 7: rmi://[12345::1]:0/7",
+    "index": 7,
+    "reason": "IPv6 hexadecimal digit sequence too long"
+  },
+  {
+    "hostname": "[GGGG::1]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Malformed IPv6 address at index 7: rmi://[GGGG::1]:0/7",
+    "index": 7,
+    "reason": "Malformed IPv6 address"
+  },
+  {
+    "hostname": "[:::1]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Expected hex digits or IPv4 address at index 9: rmi://[:::1]:0/7",
+    "index": 9,
+    "reason": "Expected hex digits or IPv4 address"
+  },
+  {
+    "hostname": "[1:::2]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Expected hex digits or IPv4 address at index 10: rmi://[1:::2]:0/7",
+    "index": 10,
+    "reason": "Expected hex digits or IPv4 address"
+  },
+  {
+    "hostname": "[1:]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Expected digits for an IPv6 address at index 9: rmi://[1:]:0/7",
+    "index": 9,
+    "reason": "Expected digits for an IPv6 address"
+  },
+  {
+    "hostname": "[]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Expected closing bracket for IPv6 address at index 7: rmi://[]:0/7",
+    "index": 7,
+    "reason": "Expected closing bracket for IPv6 address"
+  },
+  {
+    "hostname": "[::1",
+    "port": 0,
+    "threadID": 7,
+    "error": "Expected closing bracket for IPv6 address at index 12: rmi://[::1:0/7",
+    "index": 12,
+    "reason": "Expected closing bracket for IPv6 address"
+  },
+  {
+    "hostname": "x[::1]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in hostname at index 7: rmi://x[::1]:0/7",
+    "index": 7,
+    "reason": "Illegal character in hostname"
+  },
+  {
+    "hostname": "[::1]x",
+    "port": 0,
+    "threadID": 7,
+    "error": "Expected port number at index 11: rmi://[::1]x:0/7",
+    "index": 11,
+    "reason": "Expected port number"
+  },
+  {
+    "hostname": "][::1]",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in hostname at index 6: rmi://][::1]:0/7",
+    "index": 6,
+    "reason": "Illegal character in hostname"
+  },
+  {
+    "hostname": "ho\u0000st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0000st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0001st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0001st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0002st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0002st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0003st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0003st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0004st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0004st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0005st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0005st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0006st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0006st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0007st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0007st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\bst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\bst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\tst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\tst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\nst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\nst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u000bst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u000bst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\fst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\fst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\rst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\rst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u000est",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u000est:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u000fst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u000fst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0010st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0010st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0011st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0011st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0012st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0012st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0013st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0013st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0014st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0014st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0015st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0015st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0016st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0016st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0017st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0017st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0018st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0018st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0019st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0019st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u001ast",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u001ast:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u001bst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u001bst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u001cst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u001cst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u001dst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u001dst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u001est",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u001est:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u001fst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u001fst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho!st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho!st:0/7"
+  },
+  {
+    "hostname": "ho\"st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\"st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho#st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho",
+    "ascii": "rmi://ho#st:0/7"
+  },
+  {
+    "hostname": "ho$st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho$st:0/7"
+  },
+  {
+    "hostname": "ho%st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Malformed escape pair at index 8: rmi://ho%st:0/7",
+    "index": 8,
+    "reason": "Malformed escape pair"
+  },
+  {
+    "hostname": "ho&st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho&st:0/7"
+  },
+  {
+    "hostname": "ho'st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho'st:0/7"
+  },
+  {
+    "hostname": "ho(st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho(st:0/7"
+  },
+  {
+    "hostname": "ho)st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho)st:0/7"
+  },
+  {
+    "hostname": "ho*st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho*st:0/7"
+  },
+  {
+    "hostname": "ho+st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho+st:0/7"
+  },
+  {
+    "hostname": "ho,st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho,st:0/7"
+  },
+  {
+    "hostname": "ho-st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho-st",
+    "ascii": "rmi://ho-st:0/7"
+  },
+  {
+    "hostname": "ho.st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho.st",
+    "ascii": "rmi://ho.st:0/7"
+  },
+  {
+    "hostname": "ho/st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho",
+    "ascii": "rmi://ho/st:0/7"
+  },
+  {
+    "hostname": "ho0st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho0st",
+    "ascii": "rmi://ho0st:0/7"
+  },
+  {
+    "hostname": "ho1st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho1st",
+    "ascii": "rmi://ho1st:0/7"
+  },
+  {
+    "hostname": "ho2st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho2st",
+    "ascii": "rmi://ho2st:0/7"
+  },
+  {
+    "hostname": "ho3st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho3st",
+    "ascii": "rmi://ho3st:0/7"
+  },
+  {
+    "hostname": "ho4st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho4st",
+    "ascii": "rmi://ho4st:0/7"
+  },
+  {
+    "hostname": "ho5st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho5st",
+    "ascii": "rmi://ho5st:0/7"
+  },
+  {
+    "hostname": "ho6st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho6st",
+    "ascii": "rmi://ho6st:0/7"
+  },
+  {
+    "hostname": "ho7st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho7st",
+    "ascii": "rmi://ho7st:0/7"
+  },
+  {
+    "hostname": "ho8st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho8st",
+    "ascii": "rmi://ho8st:0/7"
+  },
+  {
+    "hostname": "ho9st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho9st",
+    "ascii": "rmi://ho9st:0/7"
+  },
+  {
+    "hostname": "ho:st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho:st:0/7"
+  },
+  {
+    "hostname": "ho;st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho;st:0/7"
+  },
+  {
+    "hostname": "ho<st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho<st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho=st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho=st:0/7"
+  },
+  {
+    "hostname": "ho>st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho>st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho?st",
+    "port": 0,
+    "threadID": 7,
+    "host": "ho",
+    "ascii": "rmi://ho?st:0/7"
+  },
+  {
+    "hostname": "ho@st",
+    "port": 0,
+    "threadID": 7,
+    "host": "st",
+    "ascii": "rmi://ho@st:0/7"
+  },
+  {
+    "hostname": "hoAst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoAst",
+    "ascii": "rmi://hoAst:0/7"
+  },
+  {
+    "hostname": "hoBst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoBst",
+    "ascii": "rmi://hoBst:0/7"
+  },
+  {
+    "hostname": "hoCst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoCst",
+    "ascii": "rmi://hoCst:0/7"
+  },
+  {
+    "hostname": "hoDst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoDst",
+    "ascii": "rmi://hoDst:0/7"
+  },
+  {
+    "hostname": "hoEst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoEst",
+    "ascii": "rmi://hoEst:0/7"
+  },
+  {
+    "hostname": "hoFst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoFst",
+    "ascii": "rmi://hoFst:0/7"
+  },
+  {
+    "hostname": "hoGst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoGst",
+    "ascii": "rmi://hoGst:0/7"
+  },
+  {
+    "hostname": "hoHst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoHst",
+    "ascii": "rmi://hoHst:0/7"
+  },
+  {
+    "hostname": "hoIst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoIst",
+    "ascii": "rmi://hoIst:0/7"
+  },
+  {
+    "hostname": "hoJst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoJst",
+    "ascii": "rmi://hoJst:0/7"
+  },
+  {
+    "hostname": "hoKst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoKst",
+    "ascii": "rmi://hoKst:0/7"
+  },
+  {
+    "hostname": "hoLst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoLst",
+    "ascii": "rmi://hoLst:0/7"
+  },
+  {
+    "hostname": "hoMst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoMst",
+    "ascii": "rmi://hoMst:0/7"
+  },
+  {
+    "hostname": "hoNst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoNst",
+    "ascii": "rmi://hoNst:0/7"
+  },
+  {
+    "hostname": "hoOst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoOst",
+    "ascii": "rmi://hoOst:0/7"
+  },
+  {
+    "hostname": "hoPst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoPst",
+    "ascii": "rmi://hoPst:0/7"
+  },
+  {
+    "hostname": "hoQst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoQst",
+    "ascii": "rmi://hoQst:0/7"
+  },
+  {
+    "hostname": "hoRst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoRst",
+    "ascii": "rmi://hoRst:0/7"
+  },
+  {
+    "hostname": "hoSst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoSst",
+    "ascii": "rmi://hoSst:0/7"
+  },
+  {
+    "hostname": "hoTst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoTst",
+    "ascii": "rmi://hoTst:0/7"
+  },
+  {
+    "hostname": "hoUst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoUst",
+    "ascii": "rmi://hoUst:0/7"
+  },
+  {
+    "hostname": "hoVst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoVst",
+    "ascii": "rmi://hoVst:0/7"
+  },
+  {
+    "hostname": "hoWst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoWst",
+    "ascii": "rmi://hoWst:0/7"
+  },
+  {
+    "hostname": "hoXst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoXst",
+    "ascii": "rmi://hoXst:0/7"
+  },
+  {
+    "hostname": "hoYst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoYst",
+    "ascii": "rmi://hoYst:0/7"
+  },
+  {
+    "hostname": "hoZst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoZst",
+    "ascii": "rmi://hoZst:0/7"
+  },
+  {
+    "hostname": "ho[st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in hostname at index 8: rmi://ho[st:0/7",
+    "index": 8,
+    "reason": "Illegal character in hostname"
+  },
+  {
+    "hostname": "ho\\st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\\st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho]st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in hostname at index 8: rmi://ho]st:0/7",
+    "index": 8,
+    "reason": "Illegal character in hostname"
+  },
+  {
+    "hostname": "ho^st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho^st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho_st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho_st:0/7"
+  },
+  {
+    "hostname": "ho`st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho`st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "hoast",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoast",
+    "ascii": "rmi://hoast:0/7"
+  },
+  {
+    "hostname": "hobst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hobst",
+    "ascii": "rmi://hobst:0/7"
+  },
+  {
+    "hostname": "hocst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hocst",
+    "ascii": "rmi://hocst:0/7"
+  },
+  {
+    "hostname": "hodst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hodst",
+    "ascii": "rmi://hodst:0/7"
+  },
+  {
+    "hostname": "hoest",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoest",
+    "ascii": "rmi://hoest:0/7"
+  },
+  {
+    "hostname": "hofst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hofst",
+    "ascii": "rmi://hofst:0/7"
+  },
+  {
+    "hostname": "hogst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hogst",
+    "ascii": "rmi://hogst:0/7"
+  },
+  {
+    "hostname": "hohst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hohst",
+    "ascii": "rmi://hohst:0/7"
+  },
+  {
+    "hostname": "hoist",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoist",
+    "ascii": "rmi://hoist:0/7"
+  },
+  {
+    "hostname": "hojst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hojst",
+    "ascii": "rmi://hojst:0/7"
+  },
+  {
+    "hostname": "hokst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hokst",
+    "ascii": "rmi://hokst:0/7"
+  },
+  {
+    "hostname": "holst",
+    "port": 0,
+    "threadID": 7,
+    "host": "holst",
+    "ascii": "rmi://holst:0/7"
+  },
+  {
+    "hostname": "homst",
+    "port": 0,
+    "threadID": 7,
+    "host": "homst",
+    "ascii": "rmi://homst:0/7"
+  },
+  {
+    "hostname": "honst",
+    "port": 0,
+    "threadID": 7,
+    "host": "honst",
+    "ascii": "rmi://honst:0/7"
+  },
+  {
+    "hostname": "hoost",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoost",
+    "ascii": "rmi://hoost:0/7"
+  },
+  {
+    "hostname": "hopst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hopst",
+    "ascii": "rmi://hopst:0/7"
+  },
+  {
+    "hostname": "hoqst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoqst",
+    "ascii": "rmi://hoqst:0/7"
+  },
+  {
+    "hostname": "horst",
+    "port": 0,
+    "threadID": 7,
+    "host": "horst",
+    "ascii": "rmi://horst:0/7"
+  },
+  {
+    "hostname": "hosst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hosst",
+    "ascii": "rmi://hosst:0/7"
+  },
+  {
+    "hostname": "hotst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hotst",
+    "ascii": "rmi://hotst:0/7"
+  },
+  {
+    "hostname": "houst",
+    "port": 0,
+    "threadID": 7,
+    "host": "houst",
+    "ascii": "rmi://houst:0/7"
+  },
+  {
+    "hostname": "hovst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hovst",
+    "ascii": "rmi://hovst:0/7"
+  },
+  {
+    "hostname": "howst",
+    "port": 0,
+    "threadID": 7,
+    "host": "howst",
+    "ascii": "rmi://howst:0/7"
+  },
+  {
+    "hostname": "hoxst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoxst",
+    "ascii": "rmi://hoxst:0/7"
+  },
+  {
+    "hostname": "hoyst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hoyst",
+    "ascii": "rmi://hoyst:0/7"
+  },
+  {
+    "hostname": "hozst",
+    "port": 0,
+    "threadID": 7,
+    "host": "hozst",
+    "ascii": "rmi://hozst:0/7"
+  },
+  {
+    "hostname": "ho{st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho{st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho|st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho|st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho}st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho}st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho~st",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho~st:0/7"
+  },
+  {
+    "hostname": "ho\u007fst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u007fst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0080st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0080st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u0085st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u0085st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u00a0st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u00a0st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u1680st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u1680st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u2007st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u2007st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u200bst",
+    "port": 0,
+    "threadID": 7,
+    "host": null,
+    "ascii": "rmi://ho%E2%80%8Bst:0/7"
+  },
+  {
+    "hostname": "ho\u2028st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u2028st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u2029st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u2029st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u202fst",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u202fst:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "ho\u3000st",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in authority at index 8: rmi://ho\u3000st:0/7",
+    "index": 8,
+    "reason": "Illegal character in authority"
+  },
+  {
+    "hostname": "host/\u0080",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u0080:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u0085",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u0085:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u00a0",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u00a0:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u1680",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u1680:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u2007",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u2007:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u200b",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%E2%80%8B:0/7"
+  },
+  {
+    "hostname": "host/\u2028",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u2028:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u2029",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u2029:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u202f",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u202f:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\u3000",
+    "port": 0,
+    "threadID": 7,
+    "error": "Illegal character in path at index 11: rmi://host/\u3000:0/7",
+    "index": 11,
+    "reason": "Illegal character in path"
+  },
+  {
+    "hostname": "host/\ud83d\ude00",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%F0%9F%98%80:0/7"
+  },
+  {
+    "hostname": "localhost",
+    "port": 10997,
+    "threadID": 0,
+    "host": "localhost",
+    "ascii": "rmi://localhost:10997/0"
+  },
+  {
+    "hostname": "localhost",
+    "port": -1,
+    "threadID": 1,
+    "host": null,
+    "ascii": "rmi://localhost:-1/1"
+  },
+  {
+    "hostname": "localhost",
+    "port": 2147483647,
+    "threadID": -1,
+    "host": "localhost",
+    "ascii": "rmi://localhost:2147483647/-1"
+  },
+  {
+    "hostname": "host/A\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0300",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%C3%80%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95:0/7"
+  },
+  {
+    "hostname": "host/a\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%C3%A1%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81:0/7"
+  },
+  {
+    "hostname": "host/\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301\u0301",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81%CC%81:0/7"
+  },
+  {
+    "hostname": "host/A\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u0315\u034f\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300\u0300",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/A%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CD%8F%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80:0/7"
+  },
+  {
+    "hostname": "host/A\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315\u0300\u0315",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%C3%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%80%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95%CC%95:0/7"
+  },
+  {
+    "hostname": "host/\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8\u1100\u1161\u11a8",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81%EA%B0%81:0/7"
+  },
+  {
+    "hostname": "host/\u1100\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161\u1161",
+    "port": 0,
+    "threadID": 7,
+    "host": "host",
+    "ascii": "rmi://host/%EA%B0%80%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1%E1%85%A1:0/7"
+  }
+]
