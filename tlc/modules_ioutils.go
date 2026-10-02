@@ -349,7 +349,7 @@ func ioUtilsValueString(value Value) string {
 
 func ioUtilsRunProcess(env map[string]string, argv []string) (Value, error) {
 	if len(argv) == 0 {
-		return ioUtilsResult(1, "", "empty command"), nil
+		return nil, newTLCError(ECGeneral, "java.lang.ArrayIndexOutOfBoundsException: Index 0 out of bounds for length 0")
 	}
 	cmd := exec.Command(argv[0], argv[1:]...)
 	if env != nil {
@@ -373,7 +373,7 @@ func ioUtilsRunProcess(env map[string]string, argv []string) (Value, error) {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exit = int32(exitErr.ExitCode())
 		} else {
-			return ioUtilsResult(1, stdout.String(), err.Error()), nil
+			return nil, err
 		}
 	}
 	return ioUtilsResult(exit, stdout.String(), stderr.String()), nil
