@@ -3,6 +3,7 @@ package tlc
 import "sync"
 
 var standardTLCEvalMu sync.RWMutex
+var standardTLCEvalCache = make(map[tlcExtCacheKey]Value)
 
 func (t *Tool) InstallStandardDefinitions() *Tool {
 	if t == nil {
@@ -567,7 +568,7 @@ func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCSt
 
 func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm CostModel) (Value, error) {
 	standardTLCEvalMu.RLock()
-	if value, ok := semanticCachedTLCEvalValue(expr, state); ok {
+	if value, ok := semanticCachedTLCEvalValue(tool, expr); ok {
 		standardTLCEvalMu.RUnlock()
 		return value, nil
 	}
@@ -575,7 +576,7 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 
 	standardTLCEvalMu.Lock()
 	defer standardTLCEvalMu.Unlock()
-	if value, ok := semanticCachedTLCEvalValue(expr, state); ok {
+	if value, ok := semanticCachedTLCEvalValue(tool, expr); ok {
 		return value, nil
 	}
 	demuxed, err := DemuxWorkerValue(func() (Value, error) {
@@ -593,29 +594,41 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 	if err != nil {
 		return nil, err
 	}
-	setSemanticToolObject(expr, value)
+	setSemanticTLCEvalValue(tool, expr, value)
 	return value, nil
 }
 
-func semanticCachedTLCEvalValue(node SemanticNode, state *TLCStateMut) (Value, bool) {
-	switch node.(type) {
-	case nil, Value, *ValueNode, *NumeralNode, *DecimalNode, *StringNode:
+func semanticCachedTLCEvalValue(tool *Tool, node SemanticNode) (Value, bool) {
+	key, ok := standardTLCEvalCacheKey(tool, node)
+	if !ok {
 		return nil, false
 	}
-	if getter, ok := node.(interface{ GetToolObject() any }); ok {
-		switch value := getter.GetToolObject().(type) {
-		case Value:
-			return value, value != nil
-		case *WorkerValue:
-			workerID, ok := CurrentWorkerID()
-			if !ok {
-				workerID = workerIDFromState(state)
-			}
-			muxed := MuxWorkerValue(value, workerID)
-			return muxed, muxed != nil
-		}
+	value := standardTLCEvalCache[key]
+	return value, value != nil
+}
+
+func setSemanticTLCEvalValue(tool *Tool, node SemanticNode, value Value) {
+	key, ok := standardTLCEvalCacheKey(tool, node)
+	if !ok {
+		return
 	}
-	return nil, false
+	standardTLCEvalCache[key] = value
+}
+
+func standardTLCEvalCacheKey(tool *Tool, node SemanticNode) (tlcExtCacheKey, bool) {
+	switch node.(type) {
+	case nil, Value, *ValueNode, *NumeralNode, *DecimalNode, *StringNode:
+		return tlcExtCacheKey{}, false
+	}
+	toolID := int64(0)
+	if tool != nil {
+		toolID = tool.ID
+	}
+	nodeID := SemanticJavaHashCode(node)
+	if withUID, ok := node.(interface{ GetUID() int32 }); ok {
+		nodeID = withUID.GetUID()
+	}
+	return tlcExtCacheKey{toolID: toolID, nodeID: nodeID}, true
 }
 
 func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
