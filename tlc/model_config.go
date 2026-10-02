@@ -149,7 +149,6 @@ type ModelConfig struct {
 	overridesReverse  *InsMap[string, string]
 	modOverrides      *InsMap[string, *InsMap[string, string]]
 	rawConstants      []string
-	constantsAsList   [][]string
 	constraints       []string
 	actionConstraints []string
 	invariants        []string
@@ -271,12 +270,13 @@ func (m *ModelConfig) GetRawConstants() []string {
 }
 
 func (m *ModelConfig) GetConstantsAsList() [][]string {
-	if len(m.constantsAsList) == 0 {
+	constants := constantsAsListFromRaw(m.rawConstants)
+	if len(constants) == 0 {
 		return nil
 	}
-	out := make([][]string, len(m.constantsAsList))
-	for i := range m.constantsAsList {
-		out[i] = append([]string(nil), m.constantsAsList[i]...)
+	out := make([][]string, len(constants))
+	for i := range constants {
+		out[i] = append([]string(nil), constants[i]...)
 	}
 	return out
 }
@@ -486,7 +486,8 @@ func (p *modelConfigParser) parseCheckDeadlock(keyword modelConfigToken) error {
 }
 
 func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
-	rawLines := []string{}
+	var raw strings.Builder
+	raw.WriteString(keyword.image)
 	for {
 		tok := p.next()
 		if tok.kind == configTokenEOF {
@@ -497,20 +498,22 @@ func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
 			break
 		}
 
+		raw.WriteByte('\n')
+		appendConfigRawToken(&raw, tok)
 		name := tok.image
-		next := p.next()
+		next := p.nextRaw(&raw)
 		for next.image == "!" {
-			part := p.next()
+			part := p.nextRaw(&raw)
 			if part.kind == configTokenEOF {
 				return newConfigFileError(ECCFGExpectID, part.line, "!")
 			}
 			name += "!" + part.image
-			next = p.next()
+			next = p.nextRaw(&raw)
 		}
 
 		args := []Value(nil)
 		if next.image == "(" {
-			parsedArgs, afterArgs, err := p.parseConstantArgs(next.line)
+			parsedArgs, afterArgs, err := p.parseConstantArgsRaw(next.line, &raw)
 			if err != nil {
 				return err
 			}
@@ -518,20 +521,19 @@ func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
 			next = afterArgs
 		}
 
-		lhs := formatConfigConstantLHS(name, args)
 		line := ConfigConstant{Name: name, Args: args}
 		if next.image == "<-" {
-			target := p.next()
+			target := p.nextRaw(&raw)
 			if target.image == "[" {
-				modName := p.next()
+				modName := p.nextRaw(&raw)
 				if modName.kind == configTokenEOF {
 					return newConfigFileError(ECCFGExpectID, target.line, "<-[")
 				}
-				close := p.next()
+				close := p.nextRaw(&raw)
 				if close.image != "]" {
 					return newConfigFileError(ECCFGExpectedSymbol, close.line, "]")
 				}
-				replacement := p.next()
+				replacement := p.nextRaw(&raw)
 				if replacement.kind == configTokenEOF {
 					return newConfigFileError(ECCFGExpectID, replacement.line, "<-[mod]")
 				}
@@ -541,16 +543,12 @@ func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
 					p.cfg.modOverrides.Set(modName.image, defs)
 				}
 				defs.Set(name, replacement.image)
-				rawLines = append(rawLines, lhs+" <- ["+modName.image+"] "+replacement.image)
 			} else {
 				if target.kind == configTokenEOF {
 					return newConfigFileError(ECCFGExpectID, target.line, "<-")
 				}
 				p.cfg.overrides.Set(name, target.image)
 				p.cfg.overridesReverse.Set(target.image, name)
-				entry := lhs + " <- " + target.image
-				p.cfg.constantsAsList = append(p.cfg.constantsAsList, []string{entry})
-				rawLines = append(rawLines, entry)
 			}
 			continue
 		}
@@ -558,18 +556,18 @@ func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
 		if next.image != "=" {
 			return newConfigFileError(ECCFGExpectedSymbol, next.line, "= or <-")
 		}
-		valueToken := p.next()
+		valueToken := p.nextRaw(&raw)
 		if valueToken.image == "[" {
-			modName := p.next()
+			modName := p.nextRaw(&raw)
 			if modName.kind == configTokenEOF {
 				return newConfigFileError(ECCFGExpectID, valueToken.line, "=[")
 			}
-			close := p.next()
+			close := p.nextRaw(&raw)
 			if close.image != "]" {
 				return newConfigFileError(ECCFGExpectedSymbol, close.line, "]")
 			}
-			valueToken = p.next()
-			value, err := p.parseValue(valueToken)
+			valueToken = p.nextRaw(&raw)
+			value, err := p.parseValueRaw(valueToken, &raw)
 			if err != nil {
 				return err
 			}
@@ -580,52 +578,55 @@ func (p *modelConfigParser) parseConstants(keyword modelConfigToken) error {
 				p.cfg.modConstants.Set(modName.image, constants)
 			}
 			constants.Add(line)
-			rawLines = append(rawLines, lhs+" = ["+modName.image+"] "+value.String())
 			continue
 		}
-		value, err := p.parseValue(valueToken)
+		value, err := p.parseValueRaw(valueToken, &raw)
 		if err != nil {
 			return err
 		}
 		line.Value = value
 		p.cfg.constants.Add(line)
-		entry := []string{lhs, value.String()}
-		p.cfg.constantsAsList = append(p.cfg.constantsAsList, entry)
-		rawLines = append(rawLines, lhs+" = "+value.String())
 	}
-	if len(rawLines) == 0 {
-		p.cfg.rawConstants = append(p.cfg.rawConstants, keyword.image)
-		return nil
-	}
-	p.cfg.rawConstants = append(p.cfg.rawConstants, keyword.image+"\n"+strings.Join(rawLines, "\n"))
+	p.cfg.rawConstants = append(p.cfg.rawConstants, raw.String())
 	return nil
 }
 
 func (p *modelConfigParser) parseConstantArgs(line int) ([]Value, modelConfigToken, error) {
+	return p.parseConstantArgsRaw(line, nil)
+}
+
+func (p *modelConfigParser) parseConstantArgsRaw(line int, raw *strings.Builder) ([]Value, modelConfigToken, error) {
 	tok := p.next()
+	if raw != nil {
+		appendConfigRawToken(raw, tok)
+	}
 	if tok.image == ")" {
-		return nil, p.next(), nil
+		return nil, p.nextRaw(raw), nil
 	}
 	args := []Value{}
 	for {
-		arg, err := p.parseValue(tok)
+		arg, err := p.parseValueRaw(tok, raw)
 		if err != nil {
 			return nil, modelConfigToken{}, err
 		}
 		args = append(args, arg)
-		tok = p.next()
+		tok = p.nextRaw(raw)
 		if tok.image != "," {
 			break
 		}
-		tok = p.next()
+		tok = p.nextRaw(raw)
 	}
 	if tok.image != ")" {
 		return nil, modelConfigToken{}, newConfigFileError(ECCFGGeneral, line)
 	}
-	return args, p.next(), nil
+	return args, p.nextRaw(raw), nil
 }
 
 func (p *modelConfigParser) parseValue(tok modelConfigToken) (Value, error) {
+	return p.parseValueRaw(tok, nil)
+}
+
+func (p *modelConfigParser) parseValueRaw(tok modelConfigToken, raw *strings.Builder) (Value, error) {
 	switch {
 	case tok.kind == configTokenNumber:
 		val, err := strconv.ParseInt(tok.image, 10, 32)
@@ -640,7 +641,7 @@ func (p *modelConfigParser) parseValue(tok modelConfigToken) (Value, error) {
 	case tok.image == "FALSE":
 		return BoolFalse, nil
 	case tok.image == "{":
-		return p.parseSetValue(tok.line)
+		return p.parseSetValueRaw(tok.line, raw)
 	case tok.kind != configTokenEOF:
 		return MakeModelValue(tok.image), nil
 	default:
@@ -649,20 +650,24 @@ func (p *modelConfigParser) parseValue(tok modelConfigToken) (Value, error) {
 }
 
 func (p *modelConfigParser) parseSetValue(line int) (Value, error) {
+	return p.parseSetValueRaw(line, nil)
+}
+
+func (p *modelConfigParser) parseSetValueRaw(line int, raw *strings.Builder) (Value, error) {
 	values := NewValueVec(0)
-	tok := p.next()
+	tok := p.nextRaw(raw)
 	if tok.image != "}" {
 		for {
-			value, err := p.parseValue(tok)
+			value, err := p.parseValueRaw(tok, raw)
 			if err != nil {
 				return nil, err
 			}
 			values.Add(value)
-			tok = p.next()
+			tok = p.nextRaw(raw)
 			if tok.image != "," {
 				break
 			}
-			tok = p.next()
+			tok = p.nextRaw(raw)
 		}
 	}
 	if tok.image != "}" {
@@ -680,6 +685,14 @@ func (p *modelConfigParser) next() modelConfigToken {
 	return p.lex.next()
 }
 
+func (p *modelConfigParser) nextRaw(raw *strings.Builder) modelConfigToken {
+	tok := p.next()
+	if raw != nil {
+		appendConfigRawToken(raw, tok)
+	}
+	return tok
+}
+
 func (p *modelConfigParser) push(tok modelConfigToken) {
 	p.pushed = &tok
 }
@@ -689,22 +702,26 @@ func isConfigKeyword(image string) bool {
 	return ok
 }
 
-func formatConfigConstantLHS(name string, args []Value) string {
-	if len(args) == 0 {
-		return name
+func appendConfigRawToken(raw *strings.Builder, tok modelConfigToken) {
+	if raw == nil || tok.kind == configTokenEOF {
+		return
 	}
-	parts := make([]string, len(args))
-	for i, arg := range args {
-		parts[i] = compactConfigValueString(arg)
-	}
-	return name + "(" + strings.Join(parts, ",") + ")"
+	raw.WriteString(tok.image)
+	raw.WriteByte(' ')
 }
 
-func compactConfigValueString(value Value) string {
-	if value == nil {
-		return ""
+func constantsAsListFromRaw(rawConstants []string) [][]string {
+	var out [][]string
+	for _, raw := range rawConstants {
+		for _, line := range strings.Split(raw, "\n") {
+			line = strings.TrimSpace(line)
+			if line == ConfigKeywordConstant || line == ConfigKeywordConstants {
+				continue
+			}
+			out = append(out, strings.Split(line, " = "))
+		}
 	}
-	return strings.ReplaceAll(value.String(), ", ", ",")
+	return out
 }
 
 func reduceConfigString(image string) string {

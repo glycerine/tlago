@@ -145,7 +145,7 @@ CONSTANTS
 		t.Fatalf("raw constants must preserve the two CONSTANT sections: %#v", raw)
 	}
 	asList := cfg.GetConstantsAsList()
-	requireNestedStrings(t, asList, [][]string{{"Op(1,\"x\",{A,B})", "Result"}, {"Other", "TRUE"}})
+	requireNestedStrings(t, asList, [][]string{{`Op ( 1 , "x" , { A , B } )`, "Result"}, {"Other", "TRUE"}})
 }
 
 func TestModelConfigFinalizesModelValuesInParseOrder(t *testing.T) {

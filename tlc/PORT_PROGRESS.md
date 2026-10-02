@@ -728,6 +728,7 @@
 - `TLCExt!TLCDefer` now fails at the Java override boundary when either target state is nil instead of silently skipping it. Java calls `s.setCallable(...)` for both `s0` and `s1` inside a broad catch and reports `TLC_MODULE_VALUE_JAVA_METHOD_OVERRIDE`; Go now returns the same error family via `javaMethodOverrideError`.
 - `TLC!RandomElement` now preserves Java's default `SetEnumValue.randomElement()` behavior by drawing from the current backing `ValueVec` without normalizing first. This keeps Java's raw order/duplicate weighting for unnormalized enumerated sets and for values materialized by `toSetEnum()`.
 - Tool state-generation diagnostics now preserve Java's exact central `Tool` text for malformed next-state relations, malformed init-state relations, and `MakeState` uniqueness/completeness failures, including capitalization and newline-vs-inline predicate formatting.
+- `ModelConfig.getConstantsAsList` now derives from the raw token stream like Java instead of rebuilding compact semantic strings. This preserves Java's token spacing for parameterized constants and trace-exploration spec generation while leaving parsed constant values unchanged.
 - Last verified command:
   - `env GOCACHE=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gocache GOTMPDIR=/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago/.codex-gotmp go test ./...`
 - Immediate next steps:
