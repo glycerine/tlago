@@ -107,7 +107,8 @@ type TLCServer struct {
 	StatesPerMinute             int64
 	DistinctStatesPerMinute     int64
 	AverageBlockCnt             int64
-	registrationMu              sync.Mutex
+	monitor                     distributedServerMonitor
+	completionWaiter            chan struct{}
 	threadsMu                   sync.Mutex
 	threadsToWorkers            *InsMap[*TLCServerThread, *DistributedWorker]
 	executor                    DistributedExecutor
@@ -157,7 +158,12 @@ func (s *TLCServer) SetTool(tool *Tool) *TLCServer {
 }
 
 func (s *TLCServer) HasNoErrors() bool {
-	return s != nil && s.ErrState == nil
+	if s == nil {
+		return false
+	}
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
+	return s.ErrState == nil
 }
 
 func (s *TLCServer) application() *TLCApp {
@@ -350,34 +356,12 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 		return result, nil
 	}
 	PrintMessage(ECTLCDistributedServerRunning, distributedServerHost())
-	if len(s.application().Actions) == 0 {
-		if s.StateQueue != nil && !s.StateQueue.IsEmpty() {
-			PrintError(ECTLCStatesAndNoNextAction)
-			s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), false)
-			_ = s.Close(false)
-			return ECTLCStatesAndNoNextAction, nil
-		}
-		s.ReportSuccess()
-		s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), true)
-		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
-		_ = s.Close(true)
-		return NoError, nil
-	}
-	if s.GetWorkerCount() == 0 {
-		err := newTLCError(ECGeneral, "distributed TLC server has no registered workers")
-		s.LastError = err
-		s.SetDone()
-		s.PrintSummary(1, s.GetStatesGenerated(), s.GetNewStates(), s.fpSetSize(), false)
-		PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
-		_ = s.Close(false)
+	if err := s.waitForDistributedCompletion(); err != nil {
 		return ECGeneral, err
 	}
-	for _, thread := range s.GetServerThreads() {
-		if thread != nil {
-			thread.Start()
-		}
+	if s.HasNoErrors() && !s.StateQueue.IsEmpty() {
+		return ECGeneral, NewTLCRuntimeException(ECGeneral)
 	}
-	s.waitForDistributedCompletion(startTime)
 	for _, thread := range s.GetServerThreads() {
 		if thread == nil {
 			continue
@@ -406,102 +390,45 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 			return nil
 		}()
 		if exitErr != nil {
-			s.LastError = exitErr
-			_ = s.Close(false)
 			return ECGeneral, exitErr
 		}
 	}
 	s.executor.Shutdown()
 	s.FinalNumberOfDistinctStates = int64(s.fpSetSize())
+	tlcServerFinalDistinctStates.Store(s.FinalNumberOfDistinctStates)
 	statesGenerated := s.GetStatesGenerated()
 	statesLeft := s.GetNewStates()
 	level := 1
 	if s.Trace != nil {
 		level = s.Trace.GetLevelForReporting()
 	}
+	s.monitor.Lock()
 	s.StatesPerMinute = 0
 	s.DistinctStatesPerMinute = 0
+	s.monitor.Unlock()
 	if s.HasNoErrors() {
-		s.ReportSuccess()
+		actualDistance := s.FPSetManager.CheckFPs()
+		statesSeen := s.FPSetManager.GetStatesSeen()
+		ReportSuccessCountsDistance(uint64(TLCServerFinalNumberOfDistinctStates()), actualDistance, int64(statesSeen))
 	} else if s.KeepCallStack {
-		// The concrete call-stack replay is handled by Tool/CallStackTool in the
-		// local checker. Distributed TLC records the intent here for callers.
-		s.KeepCallStack = true
+		app.SetCallStack()
+		s.Tool = app.Tool
+		if s.Trace != nil {
+			s.Trace.SetTool(app.Tool)
+		}
 	}
-	s.PrintSummary(level, statesGenerated, statesLeft, s.fpSetSize(), s.HasNoErrors())
+	s.PrintSummary(level, statesGenerated, statesLeft, uint64(TLCServerFinalNumberOfDistinctStates()), s.HasNoErrors())
 	PrintMessage(ECTLCFinished, humanReadableTLCRuntime(time.Since(startTime)))
-	if err := s.Close(s.HasNoErrors()); err != nil && s.HasNoErrors() {
+	if err := s.Close(s.HasNoErrors()); err != nil {
 		return ECGeneral, err
 	}
 	if s.HasNoErrors() {
 		return NoError, nil
 	}
 	if s.ErrorCode != NoError {
-		return s.ErrorCode, s.LastError
+		return s.ErrorCode, nil // Java reports worker failures and returns normally.
 	}
-	return ECGeneral, s.LastError
-}
-
-func (s *TLCServer) waitForDistributedCompletion(startTime time.Time) {
-	progress := ProgressInterval()
-	if progress <= 0 {
-		progress = time.Duration(DefaultProgressIntervalMillis) * time.Millisecond
-	}
-	ticker := time.NewTicker(progress)
-	defer ticker.Stop()
-	oldGenerated := int64(0)
-	oldDistinct := uint64(0)
-	for !s.IsDone() {
-		<-ticker.C
-		if DoCheckPoint() {
-			if err := s.Checkpoint(); err != nil {
-				s.LastError = err
-				s.SetErrState(nil, nil, true, ECGeneral)
-				return
-			}
-		}
-		if s.IsDone() {
-			return
-		}
-		s.PrintProgressStats(startTime, &oldGenerated, &oldDistinct)
-	}
-}
-
-func (s *TLCServer) PrintProgressStats(startTime time.Time, oldGenerated *int64, oldDistinct *uint64) {
-	if s == nil {
-		return
-	}
-	generated := s.GetStatesGenerated()
-	distinct := s.fpSetSize()
-	factor := ProgressInterval().Minutes()
-	if factor <= 0 {
-		factor = 1
-	}
-	if oldGenerated != nil {
-		s.StatesPerMinute = int64(float64(generated-*oldGenerated) / factor)
-		*oldGenerated = generated
-	}
-	if oldDistinct != nil {
-		var distinctDelta uint64
-		if distinct >= *oldDistinct {
-			distinctDelta = distinct - *oldDistinct
-		}
-		s.DistinctStatesPerMinute = int64(float64(distinctDelta) / factor)
-		*oldDistinct = distinct
-	}
-	level := 1
-	if s.Trace != nil {
-		level = s.Trace.GetLevelForReporting()
-	}
-	PrintMessage(ECTLCProgressStats,
-		fmtInt(level),
-		fmtInt64(generated),
-		fmtUint64(distinct),
-		fmtInt64(s.GetNewStates()),
-		fmtInt64(s.StatesPerMinute),
-		fmtInt64(s.DistinctStatesPerMinute),
-	)
-	_ = startTime
+	return ECGeneral, nil
 }
 
 func (s *TLCServer) PrintInitGenerated() {
@@ -565,8 +492,8 @@ func (s *TLCServer) RegisterWorker(worker *DistributedWorker) {
 		return
 	}
 	// Java serializes registration, including its wakeup, start and diagnostic.
-	s.registrationMu.Lock()
-	defer s.registrationMu.Unlock()
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
 	if s.StateQueue != nil {
 		s.StateQueue.ResumeAllStuck()
 	}
@@ -588,6 +515,8 @@ func (s *TLCServer) RegisterTLCServerThread(thread *TLCServerThread) {
 	if thread.Worker == nil || thread.Worker.Worker == nil {
 		panic(NewNullPointerException())
 	}
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
 	s.threadsMu.Lock()
 	defer s.threadsMu.Unlock()
 	if s.threadsToWorkers == nil {
@@ -626,6 +555,8 @@ func (s *TLCServer) GetServerThreads() []*TLCServerThread {
 	if s == nil {
 		return nil
 	}
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
 	s.threadsMu.Lock()
 	defer s.threadsMu.Unlock()
 	if s.threadsToWorkers == nil {
@@ -648,9 +579,12 @@ func (s *TLCServer) SetErrState(curState *TLCStateMut, succState *TLCStateMut, k
 	if s == nil {
 		return false
 	}
-	if !s.Done.CompareAndSwap(false, true) {
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
+	if s.Done.Load() {
 		return false
 	}
+	s.Done.Store(true)
 	s.PredErrState = curState
 	if succState == nil {
 		s.ErrState = curState
@@ -746,8 +680,12 @@ func (s *TLCServer) GetNewStates() int64 {
 	if s == nil {
 		return 0
 	}
-	s.registrationMu.Lock()
-	defer s.registrationMu.Unlock()
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
+	return s.getNewStatesLocked()
+}
+
+func (s *TLCServer) getNewStatesLocked() int64 {
 	var size int64
 	if s.StateQueue != nil {
 		size = s.StateQueue.Size()
@@ -762,6 +700,8 @@ func (s *TLCServer) GetStatesGeneratedPerMinute() int64 {
 	if s == nil {
 		return 0
 	}
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
 	return s.StatesPerMinute
 }
 
@@ -769,6 +709,8 @@ func (s *TLCServer) GetDistinctStatesGeneratedPerMinute() int64 {
 	if s == nil {
 		return 0
 	}
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
 	return s.DistinctStatesPerMinute
 }
 
@@ -939,7 +881,10 @@ func (t *TLCServerThread) Run() {
 		}
 		t.setStates(t.Selector.GetBlocks(stateQueue, t.Worker))
 		if t.currentStates() == nil {
+			t.Server.monitor.Lock()
 			t.Server.SetDone()
+			t.Server.notifyCompletionLocked()
+			t.Server.monitor.Unlock()
 			if stateQueue != nil {
 				stateQueue.FinishAll()
 			}
@@ -1072,12 +1017,12 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 	if t == nil || t.Server == nil {
 		return
 	}
-	t.Server.LastError = err
 	var state1, state2 *TLCStateMut
 	if failure, ok := err.(*WorkerException); ok && failure != nil {
 		state1, state2 = failure.State1, failure.State2
 	}
 	if t.Server.SetErrState(state1, nil, true, ECGeneral) {
+		t.Server.LastError = err
 		if state1 != nil && t.Server.Trace != nil {
 			func() {
 				defer func() {
@@ -1098,6 +1043,9 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 		if stateQueue != nil {
 			stateQueue.FinishAll()
 		}
+		t.Server.monitor.Lock()
+		t.Server.notifyCompletionLocked()
+		t.Server.monitor.Unlock()
 	}
 }
 

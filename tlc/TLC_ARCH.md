@@ -3051,8 +3051,27 @@ The port/report/expected-count/veto properties freeze at first server class
 initialization, while explicit port assignment remains mutable. Close follows
 trace, FP manager, then recursive metadata cleanup unless vetoed. Actual-source
 constructor/registration/cleanup comparisons pass, including mismatched counts.
-The remaining registry/recovery/init-error/report-wait/command lifecycle needs
-its own port and upstream server harness tests after those features are present.
+Recovery and initialization failure reporting/replay now follow modelCheck,
+including recovery outside the init catch, deferred callback Exceptions, escaped
+Errors, the already-done replay quirk and early-done cleanup. The upstream
+DistributedDoInitFunctorEvalExceptionTest runs through the production Go parser,
+application and server; its fixture lives in test_vectors/.
+
+The normal completion path now waits for later worker registration instead of
+rejecting an empty worker map or inventing a no-action exit. It uses the source
+static REPORT_INTERVAL with monitor notifications, including the unconditional
+first wait, zero/negative timeout behavior, checkpoint-before-done ordering and
+progress baselines updated after waiting. Server synchronization is reentrant
+for recorder callbacks; wait releases and restores the complete acquisition
+depth. Worker joins/statistics/exits precede executor shutdown and result
+capture. Unexpected exit failures escape without extra close calls; only the
+source remote exception families are ignored. Final distinct-state results are
+shared across instances, success uses that snapshot, and failure completion
+switches the application to CallStackTool. Reported worker violations return
+normally; close failures escape even after a violation. Registry publication,
+export/RPC, flush/output integration and the complete command/exit lifecycle
+remain pending. Full DistributedTLCTestCase transport tests follow those
+features (the Java harness currently disables them for OffHeapDiskFPSet).
 
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration

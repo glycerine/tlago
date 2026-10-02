@@ -166,6 +166,8 @@ func (s *TLCServer) RegisterFPSet(set FPSet, hostname string) error {
 	if s == nil {
 		panic(NewNullPointerException())
 	}
+	s.monitor.Lock()
+	defer s.monitor.Unlock()
 	registration := s.fpRegistration
 	if registration == nil {
 		return s.FPSetManager.RegisterFPSet(set, hostname)
