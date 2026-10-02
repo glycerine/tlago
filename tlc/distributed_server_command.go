@@ -90,7 +90,7 @@ func (p *DistributedServerProcess) Run(args []string, env DistributedServerEnvir
 				closeErr := invokeDistributedServerOperation(func() error { return env.Close(p.Server, false) })
 				if closeErr != nil {
 					// Source catches Exception here, but Error still escapes through finally.
-					if javaSystemFailureCode(closeErr) != NoError {
+					if isJavaError(closeErr) {
 						return closeErr
 					}
 					PrintError(ECGeneral, javaGeneralErrorMessage("", closeErr))

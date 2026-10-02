@@ -121,6 +121,26 @@ func NewNoSuchElementException() *NoSuchElementException {
 }
 func (e *NoSuchElementException) Error() string { return javaThrowableMessage(e) }
 
+type JavaError struct{ javaExceptionBase }
+
+func NewJavaError(message ...string) *JavaError {
+	return &JavaError{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *JavaError) Error() string { return javaThrowableMessage(e) }
+
+// Java catch(Exception) excludes Error even when it has no TLC system code.
+func isJavaError(err error) bool {
+	_, generic := err.(*JavaError)
+	return generic || javaSystemFailureCode(err) != NoError
+}
+
+type SecurityException struct{ javaExceptionBase }
+
+func NewSecurityException(message ...string) *SecurityException {
+	return &SecurityException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *SecurityException) Error() string { return javaThrowableMessage(e) }
+
 type ConcurrentModificationException struct{ javaExceptionBase }
 
 func NewConcurrentModificationException() *ConcurrentModificationException {

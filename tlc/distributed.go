@@ -660,7 +660,7 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (result any
 			err = panicValueAsError(failure)
 		}
 		if err != nil {
-			if javaSystemFailureCode(err) != NoError {
+			if isJavaError(err) {
 				panic(err) // DoInitFunctor catches Exception, not Error.
 			}
 			if f.server.SetErrState(curState, nil, true, ECGeneral) {
@@ -1079,7 +1079,7 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 					if recovered := recover(); recovered != nil {
 						failure := panicValueAsError(recovered)
 						// Java catches Exception around trace printing, not Error.
-						if javaSystemFailureCode(failure) != NoError {
+						if isJavaError(failure) {
 							panic(recovered)
 						}
 						PrintError(ECGeneral, generalErrorParams("", failure)...)

@@ -40,6 +40,10 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.NumberFormatException"
 	case *NoSuchElementException:
 		return "java.util.NoSuchElementException"
+	case *JavaError:
+		return "java.lang.Error"
+	case *SecurityException:
+		return "java.lang.SecurityException"
 	case *ConcurrentModificationException:
 		return "java.util.ConcurrentModificationException"
 	case *StackOverflowError:

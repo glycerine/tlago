@@ -91,7 +91,8 @@ The Go TLC port is broad and no longer skeletal. It contains concrete ports for:
   and management/MX-style wrappers.
 
 The code is not declared done. The immediate purpose is still Java-parity audit
-and breadth-first correction, not test-suite porting.
+and breadth-first correction. Port each feature's existing Java tests after its
+implementation, following the user's updated sequence.
 
 ## Recently Audited Areas To Avoid Repeating
 
@@ -161,7 +162,8 @@ slightly less idiomatic when that makes source-of-truth comparison simpler.
 
 ## Things Not To Do Yet
 
-- Do not port the Java TLC test suite yet.
+- Do not invent new unit/regression tests. Translate existing Java tests after
+  their corresponding features are implemented.
 - Do not resume long SANY XML or Apalache sweeps without explicit instruction.
 - Do not introduce compatibility shims or a second parser.
 - Do not replace Java quirks with nicer Go behavior unless the user explicitly
@@ -177,5 +179,6 @@ slightly less idiomatic when that makes source-of-truth comparison simpler.
 
 This phase is complete when the Go code has a coherent, faithful mirror of the
 Java TLC architecture and behavior surfaces, with `PORT_PROGRESS.md` indicating
-no major unaudited core areas remain. Only then should the next phase begin:
-translate the Java `test/tlc2` suite into Go tests under `tlc/`.
+no major unaudited core areas remain. Translate existing Java tests
+feature by feature during this phase, after their implementations are ported,
+as the user requested; do not defer all tests until the entire port is complete.

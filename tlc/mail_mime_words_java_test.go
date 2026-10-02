@@ -14,8 +14,7 @@
  * SPDX-License-Identifier: EPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
  */
 
-// Port of JavaMail 1.6.8 MimeUtilityTest encoded-word tests, after their features.
-// DataSource/DataHandler getEncoding tests await those separate features.
+// Port of all JavaMail 1.6.8 MimeUtilityTest assertions, after their features.
 // Source: https://github.com/eclipse-ee4j/mail/blob/1.6.8/mail/src/test/java/javax/mail/internet/MimeUtilityTest.java
 
 package tlc

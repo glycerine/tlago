@@ -202,7 +202,7 @@ func tryFPSetCall[T any](call func() T) (value T, err error) {
 	defer func() {
 		if failure := recover(); failure != nil {
 			err = panicValueAsError(failure)
-			if javaSystemFailureCode(err) != NoError {
+			if isJavaError(err) {
 				panic(failure)
 			}
 		}

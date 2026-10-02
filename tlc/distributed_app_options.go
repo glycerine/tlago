@@ -173,7 +173,7 @@ func ParseTLCAppOptions(args []string) *TLCAppOptions {
 func setTLCAppFPMemory(config *FPSetConfiguration, value float64) (valid bool) {
 	defer func() {
 		if failure := recover(); failure != nil {
-			if javaSystemFailureCode(panicValueAsError(failure)) != NoError {
+			if isJavaError(panicValueAsError(failure)) {
 				panic(failure)
 			}
 			valid = false // The source catches Exception around both setters.

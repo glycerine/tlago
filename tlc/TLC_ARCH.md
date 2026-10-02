@@ -3247,10 +3247,45 @@ substituting another feature. All 339 translated mail assertion cases pass under
 -race; temporary comparisons against actual Java pass 63,156 parser/serialization,
 1,400 collision and 600 enumeration observations, plus 46,816 ISO decoder inputs.
 All 65,536 JIS0208 mapping entries were audited; the full offline Go suite passes.
-Remaining mail work includes MIME content-transfer selection/DataSource/DataHandler
-and the three remaining MimeUtilityTest methods, remaining address-object/local
-address/Session methods, Session/MIME/SMTP, JNDI DNS and complete ToolIO/MP/SANY
-routing; wider JVM/charset/locale providers remain separate.
+MimeUtility Content-Transfer-Encoding selection now scans native DataSources and
+DataHandler writeTo streams with source ASCII counts, long lines, EOL checks,
+per-read CR reset, max overshoot, EncodingAware precedence, charset compatibility
+cache and Exception/IOException/Error/close boundaries. ByteArrayDataSource keeps
+shared storage, Reader buffer growth/trim/no-close, and String charset selection.
+Shared byte streams retain mark/reset, child ranges, signed-int edge arithmetic
+and no-op close; the Go reader adapter supplies Java EOF/error ordering and
+available counts for native regular files and byte streams. File streams close
+idempotently and retain typed IOException/Stream Closed errors.
+The bundled Activation library is Apache Geronimo 1.1. Native DataHandler ports
+its eager DataSource metadata and 1024-byte writeTo/close path. FileDataSource and
+FileTypeMap/MimetypesFileTypeMap keep constructor/resource/property precedence,
+exact embedded defaults, raw case-sensitive extension keys, comment/tokenizer
+quirks, source catches and default-map lifetime, including a synchronized getter
+and independently published setter. Class-loader, default-reader,
+security and other JVM providers have explicit callbacks; native Activation
+default readers port OpenJDK StreamDecoder and BufferedReader.readLine with
+separate 8192-byte/8192-UTF-16-unit buffers, UTF-8/ASCII/Latin-1 replacement,
+available-driven read-ahead, unpublished failed fills, CR/LF and zero-read rules.
+The filename map constructor retains close-once reader state on close failure.
+Inherited ByteArrayInputStream behavior is also kept in its own OpenJDK file.
+OpenJDK GPLv2/Classpath and ASF notices/licenses accompany their separate code.
+Generic JavaError now escapes the existing catch(Exception) boundaries in
+distributed options, FP calls, init/trace and server cleanup; two actual-source
+main cleanup comparisons match with fake delivery. Four MimeUtility and 20
+Geronimo methods match bundled bytecode after compiler-layout normalization.
+After these features, all five upstream MimeUtilityTest methods and both
+MimetypesFileTypeMapTest methods are translated; all 344 mail assertion cases
+pass -race. Temporary actual-jar comparisons pass 15,400 encoding/type-map/byte
+source/shared-stream and 6,192 resource-reader observations. Sixteen source
+reader-close comparisons and native file availability/close/error/truncation
+checks also pass. The full offline Go suite passes in the working tree.
+Remaining mail work includes Geronimo object/URL/pipe/content-handler/factory/
+command-map/AWT paths and its DataHandlerTest.testObjectInputStream, remaining
+address-object/local-address/Session methods, MIME body parts/NonAsciiFileNames,
+Session/SMTP, JNDI DNS and complete ToolIO/MP/SANY routing. Full JVM default-reader/
+charset/property/security/resource/locale providers, nonregular file/archive
+availability, startup-frozen default charset and legacy charset converters
+remain required; no approximation is substituted for the explicit boundaries.
 
 TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer
 entry points. It starts named FP-server and worker threads in source order,
@@ -3857,8 +3892,8 @@ Port implementation in this dependency order:
 23. Debugger support.
 24. Distributed support.
 
-Only after this implementation pass should the Java `tlc2` test suite be
-translated into Go tests, as requested.
+After each feature is implemented, translate its existing Java tests into Go,
+following the user's updated feature-by-feature sequence.
 
 ## Compatibility Definition
 
