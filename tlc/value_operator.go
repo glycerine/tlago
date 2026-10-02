@@ -2,6 +2,8 @@ package tlc
 
 import (
 	"fmt"
+	"runtime"
+	"runtime/debug"
 	"strings"
 )
 
@@ -404,11 +406,50 @@ func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodVal
 	return out
 }
 
-func (v *MethodValue) Eval(args []Value, control int) (Value, error) {
-	if v.EvalFunc == nil {
-		return nil, v.unsupported("Attempted to apply Java method %s without an implementation.", v.Name)
-	}
+func (v *MethodValue) Eval(args []Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
+	defer catchJavaMethodFailure(v.Name, &resultValue, &err, true)
 	return v.EvalFunc(args, control)
+}
+
+// MethodValue preserves direct EvalExceptions; unevaluated and callable
+// overrides use Assert.fail for every failure in their Java catch(Throwable).
+// The defer belongs inside CallableValue's argument evaluation boundary.
+func catchJavaMethodFailure(signature string, result *Value, err *error, preserveEval bool) {
+	if failure := recover(); failure != nil {
+		cause, ok := failure.(error)
+		if !ok {
+			cause = fmt.Errorf("%v", failure)
+		}
+		*result = nil
+		*err = adaptJavaMethodFailure(signature, cause, preserveEval)
+		return
+	}
+	if *err != nil {
+		*result = nil
+		*err = adaptJavaMethodFailure(signature, *err, preserveEval)
+	}
+}
+
+func adaptJavaMethodFailure(signature string, cause error, preserveEval bool) error {
+	if preserveEval {
+		if isValueEvalException(cause) {
+			return cause
+		}
+		if failure, ok := cause.(runtime.Error); ok && strings.Contains(failure.Error(), "invalid memory address or nil pointer dereference") {
+			return NewEvalException(ECTLCModuleValueJavaMethodOverride, signature, failure.Error())
+		}
+	}
+	message := cause.Error()
+	if failure, ok := cause.(*FingerprintException); ok {
+		// Java FingerprintException has a null detail message. MethodValue uses
+		// the throwable's stack trace as a fallback; other overrides keep null.
+		message = "null"
+		if preserveEval {
+			message = fmt.Sprintf("%T\n%sCaused by: %v", failure, debug.Stack(), failure.GetRootCause())
+		}
+	}
+	return javaMethodOverrideRuntimeError(signature, message)
 }
 
 func (v *MethodValue) DeepCopy() Value { return v }
@@ -426,6 +467,14 @@ type EvaluatingValue struct {
 }
 
 func NewEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNode, eval EvaluatingEvalFunc) *EvaluatingValue {
+	if GetOpCode(opDef.Name) != 0 {
+		panic(javaMethodOverrideRuntimeError(name, "@Evaluation fallback to pure TLA+ definition only works for user-defined operators."))
+	}
+	return newEvaluatingValue(name, minLevel, priority, opDef, eval)
+}
+
+// CallableValue uses Java's protected constructor, which skips the pure-fallback guard.
+func newEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNode, eval EvaluatingEvalFunc) *EvaluatingValue {
 	out := &EvaluatingValue{
 		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">", NormalizeMessage: "It is a TLC bug: Attempted to normalize an operator."},
 		Name:              name,
@@ -438,21 +487,18 @@ func NewEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNod
 	return out
 }
 
-func (v *EvaluatingValue) Eval(args []Value, control int) (Value, error) {
-	return nil, v.unsupported("It is a TLC bug: should use the unevaluated-argument eval method for %s", v)
+func (v *EvaluatingValue) Eval(args []Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v.receiver(), &err)
+	return nil, fmt.Errorf("It is a TLC bug: Should use the other eval method.")
 }
 
-func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	if v.EvalFunc != nil {
-		value, err := v.EvalFunc(tool, args, con, state, pstate, control, cm)
-		if err != nil || value != nil {
-			return value, err
-		}
+func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (resultValue Value, err error) {
+	defer catchJavaMethodFailure(v.Name, &resultValue, &err, false)
+	value, err := v.EvalFunc(tool, args, con, state, pstate, control, cm)
+	if err != nil || value != nil {
+		return value, err
 	}
-	if tool != nil && v.OpDef != nil {
-		return tool.EvalPure(v.OpDef, args, con, state, pstate, control, cm)
-	}
-	return ValUndef, nil
+	return tool.EvalPure(v.OpDef, args, con, state, pstate, control, cm)
 }
 
 func (v *EvaluatingValue) DeepCopy() Value { return v.receiver() }
@@ -500,19 +546,15 @@ func (v *PriorityEvaluatingValue) Add(ev *EvaluatingValue) {
 	}
 }
 
-func (v *PriorityEvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+func (v *PriorityEvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (resultValue Value, err error) {
+	defer catchJavaMethodFailure(v.Name, &resultValue, &err, false)
 	for _, ev := range v.Handles {
-		if ev.EvalFunc != nil {
-			value, err := ev.EvalFunc(tool, args, con, state, pstate, control, cm)
-			if err != nil || value != nil {
-				return value, err
-			}
+		value, err := ev.EvalFunc(tool, args, con, state, pstate, control, cm)
+		if err != nil || value != nil {
+			return value, err
 		}
 	}
-	if tool != nil && v.OpDef != nil {
-		return tool.Eval(v.OpDef.Body, con, state, pstate, control, cm)
-	}
-	return ValUndef, nil
+	return tool.Eval(v.OpDef.Body, con, state, pstate, control, cm)
 }
 
 type CallableValue struct {
@@ -522,14 +564,14 @@ type CallableValue struct {
 
 func NewCallableValue(name string, minLevel int, opDef *OpDefNode, callable CallableEvalFunc) *CallableValue {
 	out := &CallableValue{
-		EvaluatingValue: NewEvaluatingValue(name, minLevel, 100, opDef, nil),
+		EvaluatingValue: newEvaluatingValue(name, minLevel, 100, opDef, nil),
 		CallableFunc:    callable,
 	}
 	out.owner = out
 	return out
 }
 
-func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (resultValue Value, err error) {
 	argVals := make([]Value, len(args))
 	for i, arg := range args {
 		value, err := tool.Eval(arg, con, state, pstate, control, cm)
@@ -538,15 +580,13 @@ func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Conte
 		}
 		argVals[i] = value
 	}
-	if v.CallableFunc == nil {
-		return nil, v.unsupported("Attempted to apply callable Java method %s without an implementation.", v.Name)
-	}
+	defer catchJavaMethodFailure(v.Name, &resultValue, &err, false)
 	callable, err := v.CallableFunc(argVals)
 	if err != nil {
 		return nil, err
 	}
 	if pstate == nil {
-		return nil, javaMethodOverrideError(v.Name, "null")
+		return nil, fmt.Errorf("null")
 	}
 	pstate.SetCallable(callable)
 	return BoolTrue, nil

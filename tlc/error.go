@@ -6,6 +6,9 @@ type TLCError struct {
 	Code   int
 	Msg    string
 	Params []string
+	// Runtime distinguishes Java TLCRuntimeException from the legacy native
+	// EvalException carriers represented by this same Go type.
+	Runtime bool
 }
 
 func (e *TLCError) Error() string {
@@ -29,6 +32,12 @@ func newTLCErrorCode(code int, params ...string) *TLCError {
 
 func javaMethodOverrideError(signature string, message string) *TLCError {
 	return newTLCErrorCode(ECTLCModuleValueJavaMethodOverride, signature, message)
+}
+
+func javaMethodOverrideRuntimeError(signature string, message string) *TLCError {
+	err := javaMethodOverrideError(signature, message)
+	err.Runtime = true
+	return err
 }
 
 type ConfigError struct {

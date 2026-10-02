@@ -643,9 +643,10 @@ Important implementation patterns:
 - `CallStackTool` freezes only for TLC runtime, evaluation, and fingerprint
   exceptions; unrelated errors unwind and pop normally. Value-side exception
   wrapping remains a separate porting concern from source attachment. Primitive,
-  explicit-set, tuple, record, finite-function, and lazy-value boundaries are ported;
-  set-constructor/operator/model/special boundaries still need audit. Returned errors and
-  panics both preserve the value chain.
+  explicit-set, tuple, record, finite-function, lazy-value, set-constructor,
+  set-operation, model/special, and operator boundaries are ported. Returned
+  errors and panics both preserve the concrete receiver in the value chain.
+  Detailed checked/unchecked nested string APIs still need audit.
 - Set-predicate membership has a separate inner EvalException-only rewrite;
   domain, binding, and predicate evaluation are inside that catch, and ordinary
   runtime/fingerprint failures pass to its outer source wrapper. Membership uses
@@ -653,6 +654,17 @@ Important implementation patterns:
   Checked predicate printing catches expansion failures before symbolic fallback.
   Lazy deep normalization is Java's inherited no-op, and direct lazy evaluation
   uses the stored cost model.
+- Shared operator methods retain the concrete receiver for diagnostics, source
+  wrapping, and copying. Priority evaluating wrappers own their source/model
+  and retain primary method metadata while their handle list is stably sorted.
+  Method/evaluating initialization skips unsupported fingerprinting.
+- MethodValue invocation preserves direct evaluation exceptions and wraps other
+  failures at the Java method boundary before its outer source-aware catch.
+  Evaluating/priority wrappers rewrite invocation and pure-fallback failures
+  through a broad catch with no outer source wrapper; callable wrappers put
+  argument evaluation outside their broad invocation/state-assignment catch.
+  TLCError.Runtime distinguishes those runtime override failures from legacy
+  native EvalException carriers, so predicate membership does not rewrite them.
 - Fingerprint exception traces read each value's current source at trace time;
   sources are not snapshots taken when an exception head is created. Null
   source entries remain present in `asTrace` like Java.

@@ -2110,6 +2110,11 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 }
 
 func doNextFailureMessage(err error) (int, []string, bool) {
+	// Java tests the thrown exception itself, not its nested causes.
+	if _, ok := err.(*FingerprintException); ok {
+		// Its null detail message suppresses the GENERAL error print in Java.
+		return ECGeneral, nil, true
+	}
 	ec := ECGeneral
 	params := []string{err.Error()}
 	keepCallStack := true
@@ -2129,6 +2134,9 @@ func doNextFailureMessage(err error) (int, []string, bool) {
 
 	var tlcErr *TLCError
 	if errors.As(err, &tlcErr) && tlcErr != nil {
+		if tlcErr.Runtime {
+			return ECGeneral, generalErrorParams("", err), true
+		}
 		keepCallStack = true
 		if tlcErr.Code == ECSystemStackOverflow || tlcErr.Code == ECSystemOutOfMemory || tlcErr.Code == ECTLCBug {
 			keepCallStack = false

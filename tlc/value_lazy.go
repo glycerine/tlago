@@ -386,13 +386,13 @@ func (v *SetPredValue) memberUnconverted(elem Value) (resultBool bool, err error
 	// domain membership or tuple binding; FingerprintException stays intact.
 	defer func() {
 		if failure := recover(); failure != nil {
-			if thrown, ok := failure.(error); ok && isSetPredEvalException(thrown) {
+			if thrown, ok := failure.(error); ok && isValueEvalException(thrown) {
 				err = v.membershipUndecidable(elem)
 			} else {
 				panic(failure)
 			}
 		}
-		if isSetPredEvalException(err) {
+		if isValueEvalException(err) {
 			err = v.membershipUndecidable(elem)
 		}
 	}()
@@ -416,13 +416,13 @@ func (v *SetPredValue) memberUnconverted(elem Value) (resultBool bool, err error
 	return boolValue.Val, nil
 }
 
-func isSetPredEvalException(err error) bool {
+func isValueEvalException(err error) bool {
 	switch failure := err.(type) {
 	case *EvalException:
 		return failure != nil
 	case *TLCError:
 		// Native module errors use this existing Go EvalException carrier.
-		return failure != nil && (failure.Params != nil || failure.Code != ECGeneral)
+		return failure != nil && !failure.Runtime && (failure.Params != nil || failure.Code != ECGeneral)
 	default:
 		return false
 	}
