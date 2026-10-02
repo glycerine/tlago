@@ -51,10 +51,10 @@ func EncodeMailWord(value string, charset, encoding *string) (string, error) {
 func DecodeMailText(value string) (string, error) { return DefaultMailMIMECodec.DecodeText(value) }
 func DecodeMailWord(value string) (string, error) { return DefaultMailMIMECodec.DecodeWord(value) }
 
-// Java's Locale.ENGLISH lowercasing expands dotted capital I. Charset alias
-// keys are ASCII, so retaining that expansion prevents false alias matches.
+// Locale.ENGLISH lowercasing keeps dotted-I expansion and the JDK word-boundary
+// rule for final sigma. Activation separately supports a default-locale provider.
 func mailCharsetLower(value string) string {
-	return strings.ToLower(strings.ReplaceAll(value, "\u0130", "i\u0307"))
+	return mailJDKEnglishLower(value)
 }
 
 // QuoteMailWord is MimeUtility.quote; unlike phrase quoting it escapes CR/LF

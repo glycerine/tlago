@@ -3279,6 +3279,26 @@ pass -race. Temporary actual-jar comparisons pass 15,400 encoding/type-map/byte
 source/shared-stream and 6,192 resource-reader observations. Sixteen source
 reader-close comparisons and native file availability/close/error/truncation
 checks also pass. The full offline Go suite passes in the working tree.
+Activation MimeType/MimeTypeParameterList now retain their own grammar and
+case-sensitive base-type matching, including empty tokens, UTF-16 diagnostics,
+quoted escapes, partial/retained parameter state, nullable values and Java
+HashMap order/live enumeration. readExternal preserves readUTF/parse catches and
+nullable IOException messages; writeExternal retains writeUTF/flush ordering.
+Full JVM object serialization and default-locale providers have explicit native
+callbacks. English lowercasing uses a separate OpenJDK ConditionalSpecialCasing/
+RuleBasedBreakIterator adapter with exact forward/backward/following/boundary
+state, BMP/supplementary lookup and byte-identical 21.0.12.1 word-rule data.
+The existing JavaMail English lowercaser uses the same contextual sigma/dotted-I
+rules. Signed-int modification counters retain source wraparound in both paths.
+All simple lower mappings and Lu/Ll/Lt categories were compared for all 1,114,112
+code points; 279,474 actual-jar/parser/case comparisons, 48 external I/O and 12
+counter comparisons match under native -race. Existing 63,156 parser cases and
+1,800 contextual-name cases also pass. After implementation, all seven original
+MimeTypeTest and eleven MimeTypeParameterListTest methods are translated and
+pass alongside unchanged Java test bodies. Full offline working-tree checks pass.
+Next is MailcapCommandMap/CommandMap, followed by content handlers and the object
+DataHandler's factory/cache/pipe paths. Its bundled class-loader call differs from
+current Geronimo trunk's ProviderLocator call; preserve the bundled behavior.
 Remaining mail work includes Geronimo object/URL/pipe/content-handler/factory/
 command-map/AWT paths and its DataHandlerTest.testObjectInputStream, remaining
 address-object/local-address/Session methods, MIME body parts/NonAsciiFileNames,

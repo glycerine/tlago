@@ -32,6 +32,8 @@ func javaThrowableClassName(err error) string {
 		return "javax.mail.SendFailedException"
 	case *MailAddressException:
 		return "javax.mail.internet.AddressException"
+	case *MailMimeTypeParseException:
+		return "javax.activation.MimeTypeParseException"
 	case *MailParseException:
 		return "javax.mail.internet.ParseException"
 	case *UnsupportedEncodingException:

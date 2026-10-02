@@ -71,7 +71,7 @@ func (v mailParameterValue) value() *string {
 type mailParameterHashTable[V any] struct {
 	items   *InsMap[string, V]
 	order   mailParameterHashOrder
-	version int
+	version int32
 }
 
 func newMailParameterHashTable[V any]() *mailParameterHashTable[V] {
@@ -104,7 +104,7 @@ type MailParameterList struct {
 	segments   *mailParameterHashTable[mailParameterValue]
 	multiNames *mailParameterHashTable[bool]
 	lastName   *string
-	version    int
+	version    int32
 }
 
 func NewMailParameterList(value ...*string) (p *MailParameterList, err error) {
@@ -354,9 +354,10 @@ func (p *MailParameterList) removeParameter(name string) {
 // NamesEnumeration ports ParamEnum over LinkedHashMap's fail-fast iterator.
 // GetNames is the Go convenience snapshot for immediate enumeration consumers.
 type MailParameterNames struct {
-	owner          *MailParameterList
-	names          []string
-	index, version int
+	owner   *MailParameterList
+	names   []string
+	index   int
+	version int32
 }
 
 func (p *MailParameterList) NamesEnumeration() *MailParameterNames {

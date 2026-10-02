@@ -43,6 +43,7 @@ type MailActivationEnvironment struct {
 	OpenFile        func(string) (*MailInputStream, error)
 	ReadLines       func(*MailInputStream, func(string)) error
 	CheckSetFactory func() error
+	Lowercase       func(string) string
 }
 
 var DefaultMailActivationEnvironment MailActivationEnvironment
