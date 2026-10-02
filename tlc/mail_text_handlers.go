@@ -158,6 +158,10 @@ func mailNativeContentHandlerClass(name string) *MailActivationClass {
 		return mailTextHTMLHandlerClass
 	case mailTextXMLHandlerClass.Name:
 		return mailTextXMLHandlerClass
+	case mailImageGIFHandlerClass.Name:
+		return mailImageGIFHandlerClass
+	case mailImageJPEGHandlerClass.Name:
+		return mailImageJPEGHandlerClass
 	}
 	return nil
 }

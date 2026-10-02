@@ -40,6 +40,10 @@ func javaThrowableClassName(err error) string {
 		return "javax.mail.internet.ParseException"
 	case *UnsupportedEncodingException:
 		return "java.io.UnsupportedEncodingException"
+	case *MailUnsupportedDataTypeException:
+		return "javax.activation.UnsupportedDataTypeException"
+	case *IllegalStateException:
+		return "java.lang.IllegalStateException"
 	case *NumberFormatException:
 		return "java.lang.NumberFormatException"
 	case *NoSuchElementException:

@@ -106,7 +106,7 @@ func isJavaIOException(err error) bool {
 		return true
 	}
 	switch err.(type) {
-	case *IOException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *MailUnsupportedDataTypeException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite
@@ -254,6 +254,13 @@ func NewIllegalArgumentExceptionWithCause(message *string, cause error) *Illegal
 }
 
 func (e *IllegalArgumentException) Error() string { return javaThrowableMessage(e) }
+
+type IllegalStateException struct{ javaExceptionBase }
+
+func NewIllegalStateException(message ...string) *IllegalStateException {
+	return &IllegalStateException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *IllegalStateException) Error() string { return javaThrowableMessage(e) }
 
 type URISyntaxException struct {
 	javaExceptionBase

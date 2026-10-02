@@ -45,6 +45,7 @@ var mailFlavorCharArrayClass = &MailActivationClass{Name: "[C", Parents: []*Mail
 var mailFlavorByteArrayClass = &MailActivationClass{Name: "[B", Parents: []*MailActivationClass{mailFlavorObjectClass, mailFlavorSerializableClass}}
 var mailFlavorRemoteClass = &MailActivationClass{Name: "java.rmi.Remote"}
 var mailFlavorListClass = &MailActivationClass{Name: "java.util.List"}
+var mailFlavorImageClass = &MailActivationClass{Name: "java.awt.Image", Parents: []*MailActivationClass{mailFlavorObjectClass}}
 
 // This native inventory supplies only the classes required by flavor metadata.
 // Equal names in different provider loaders retain distinct pointer identities.
@@ -72,6 +73,8 @@ func MailBuiltinFlavorClass(name string) *MailActivationClass {
 		return mailFlavorRemoteClass
 	case "java.util.List":
 		return mailFlavorListClass
+	case "java.awt.Image":
+		return mailFlavorImageClass
 	}
 	if class := mailNativeContentHandlerClass(name); class != nil {
 		return class

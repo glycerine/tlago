@@ -3388,8 +3388,40 @@ charset/checked-I/O comparisons. After implementation, translated nine existing
 Geronimo AbstractHandler/TextPlain/Html/XmlTest assertions; original Java bodies
 pass through namespace-only bridges to the bundled classes. Translated mail -race
 tests and the full offline working-tree suite pass. No new persistent vectors.
-Next are image/multipart handlers and ImageIO/AWT/MIME dependencies, then object
-DataHandler factory/cache/pipes. Full
+Bundled AbstractImageHandler and ImageGif/JpegHandler now supply all handler
+algorithms, native class lookup/fresh instances and java.awt.Image flavor metadata.
+Preserve the bundled input omission: getContent uses the source type but never
+reads its stream or sets the reader input. Unknown MIME errors access the type
+twice and retain the trailing space in "Unknown image type ". writeTo selects the
+writer and sets its plain OutputStream before inspecting the object; standard
+providers reject that output, with TIFF's distinct diagnostic. RenderedImage is
+checked before BufferedImage, so actual buffered images take the first branch.
+An AWT Image supplies width then height, constructs TYPE_INT_ARGB, draws with null
+background/observer, ignores the draw result, writes its raster and flushes only
+after successful writing. No stream or graphics is closed/disposed.
+ImageIO MIME filtering retains reflective metadata-error suppression (including
+wrapped Error), exact case-insensitive matching and ordered provider prefetch.
+Reader/writer factory iterators catch checked IOException, deregister only that
+category, return null without trying another provider and preserve remove errors.
+A category error returns Collections.emptyIterator and its IllegalStateException
+on removal. The standard six provider families supply native MIME metadata and
+fresh null-input/null-output validation; compatible-stream initialization, full
+registry ordering/class replacement/thread-group discovery, initialized codec
+behavior and AWT rasterization remain required ports. Operation carriers expose
+these boundaries without substituting Go image codecs or guessed pixel data.
+Seven reconstructed bundled handler methods match instructions, branches and
+literal String constant bytes. Twenty-one ImageIO/ServiceRegistry iterator/
+ImageWriter/IIOImage source methods match installed JDK 21.0.12.1 bytecode.
+Temporary actual-Java/native -race comparisons pass 14,777 default metadata/
+content/transfer/write/iterator/removal cases, 617 ordered custom-SPI filtering/
+factory/read/write/deregistration/flush/error cases and default CommandMap image
+handler loading/instance/flavor/class identity integration. Native graphics/raster
+callbacks verify the handler calls; full pixel behavior remains pending. No
+upstream Geronimo image-handler tests exist in the inspected tree; no persistent
+tests or vectors were invented. Translated mail -race tests and the full offline
+working-tree suite pass.
+Next are the remaining ImageIO/AWT/native codec dependencies and multipart
+handlers/MIME dependencies, then object DataHandler factory/cache/pipes. Full
 AWT class-loading/initialization, desktop text selection/readers, MIME/Object
 externalization and startup/provider default charset lifetime remain required.
 Full JVM cast/automatic exception wording, native class inventory, Beans and object

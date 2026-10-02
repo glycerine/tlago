@@ -49,8 +49,18 @@ transfer/content/write methods and their nine existing Java assertions translate
 Preserve default charset use, ignored MIME charset parameters, stream no-close,
 pending high surrogates through flush and failed encoder-buffer state. The modern
 Geronimo javamail handler body differs from this bundled activation handler.
-Continue with image and multipart handlers and their ImageIO/AWT/MIME dependencies,
-then object DataHandler factory/cache/buffered-pipe paths and its existing test.
+Bundled image handlers now have native algorithms and default class lookup;
+ImageIO MIME filtering/factory iterators have native ports and exact standard
+fresh-reader/writer validation. Preserve the missing reader input and plain
+OutputStream writer output, including TIFF's distinct rejection. Keep the
+RenderedImage-before-BufferedImage branch order, unknown-type trailing space,
+provider prefetch/checked-I/O deregistration/null result and no stream/graphics
+close/dispose. Full compatible-stream initialization, SPI registry graph/class
+replacement/thread-group discovery, AWT rasterization and image codecs are still
+required; native carriers expose explicit operation providers for these paths.
+Continue these dependencies and multipart handlers/MIME dependencies, then object
+DataHandler factory/cache/buffered-pipe paths and its existing test. Read the latest
+progress entry for bytecode and actual-Java comparison verification.
 Remaining AWT work includes full class
 loading/initialization, text selection/readers, object and MIME externalization.
 Full JVM class inventory/linking/loader isolation, stack/cast diagnostics and
