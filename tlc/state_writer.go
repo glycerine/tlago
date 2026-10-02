@@ -321,9 +321,13 @@ func (w *StateWriter) Snapshot() error {
 	if err != nil {
 		return err
 	}
-	snapshot := strings.TrimSuffix(w.fname, ".dot") + "_snapshot.dot"
+	snapshot := dotWriterJavaReplace(w.fname, "_snapshot.dot")
 	data = append(data, []byte(w.dotClosingTrailer())...)
 	return os.WriteFile(snapshot, data, 0o644)
+}
+
+func dotWriterJavaReplace(fname string, replacement string) string {
+	return strings.ReplaceAll(fname, ".dot", replacement)
 }
 
 func (w *StateWriter) Close() error {

@@ -32,6 +32,16 @@ func TestCLIDotStateWriterUsesJavaStrictPrefixWithoutStrictFiltering(t *testing.
 	}
 }
 
+func TestDotWriterDerivedNamesUseJavaReplaceAll(t *testing.T) {
+	name := filepath.Join("dump.dot.dir", "states.dot")
+	if got, want := dotWriterJavaReplace(name, "_snapshot.dot"), filepath.Join("dump_snapshot.dot.dir", "states_snapshot.dot"); got != want {
+		t.Fatalf("snapshot name = %q, want Java String.replace result %q", got, want)
+	}
+	if got, want := dotWriterJavaReplace(name, "_liveness.dot"), filepath.Join("dump_liveness.dot.dir", "states_liveness.dot"); got != want {
+		t.Fatalf("liveness name = %q, want Java String.replace result %q", got, want)
+	}
+}
+
 func firstLine(text string) string {
 	if idx := strings.IndexByte(text, '\n'); idx >= 0 {
 		return text[:idx+1]

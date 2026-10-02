@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 )
@@ -82,7 +81,7 @@ func NewNoopLivenessStateWriter() *LivenessStateWriter {
 func NewDotLivenessStateWriter(stateWriter *StateWriter) (*LivenessStateWriter, error) {
 	fname := "DotStateWriter_liveness.dot"
 	if stateWriter != nil && stateWriter.GetDumpFileName() != "" {
-		fname = strings.Replace(stateWriter.GetDumpFileName(), ".dot", "_liveness.dot", 1)
+		fname = dotWriterJavaReplace(stateWriter.GetDumpFileName(), "_liveness.dot")
 	}
 	writer, err := NewDotStateWriter(fname, DotStateWriterOptions{})
 	if err != nil {
