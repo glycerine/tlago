@@ -54,3 +54,18 @@ func TestSimulatorConfigArilKeepsJavaConstructorValue(t *testing.T) {
 		t.Fatalf("config aril = %s, want %s like Java's eager constructor record", got, want)
 	}
 }
+
+func TestSimulatorRLFloatPropertiesAcceptJavaSuffixes(t *testing.T) {
+	for _, input := range []string{".3d", ".3D", ".3f", ".3F"} {
+		got, err := parseJavaDoubleProperty(input)
+		if err != nil {
+			t.Fatalf("parseJavaDoubleProperty(%q) returned error: %v", input, err)
+		}
+		if got != 0.3 {
+			t.Fatalf("parseJavaDoubleProperty(%q) = %v, want 0.3", input, got)
+		}
+	}
+	if got := simulatorPropertyFloat("missing", "missing", 1.25); got != 1.25 {
+		t.Fatalf("simulatorPropertyFloat fallback = %v, want 1.25", got)
+	}
+}

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -916,19 +915,29 @@ func simulatorPropertyBool(name string, aliases ...string) bool {
 
 func simulatorPropertyFloat(name string, alias string, fallback float64) float64 {
 	if value, ok := tlcLookupSystemProperty(name); ok {
-		if parsed, err := strconv.ParseFloat(strings.TrimSuffix(value, "d"), 64); err == nil {
+		if parsed, err := parseJavaDoubleProperty(value); err == nil {
 			return parsed
 		}
 		return fallback
 	}
 	for _, key := range []string{alias} {
 		if value, ok := os.LookupEnv(key); ok {
-			if parsed, err := strconv.ParseFloat(strings.TrimSuffix(value, "d"), 64); err == nil {
+			if parsed, err := parseJavaDoubleProperty(value); err == nil {
 				return parsed
 			}
 		}
 	}
 	return fallback
+}
+
+func parseJavaDoubleProperty(value string) (float64, error) {
+	if value != "" {
+		switch value[len(value)-1] {
+		case 'd', 'D', 'f', 'F':
+			value = value[:len(value)-1]
+		}
+	}
+	return strconv.ParseFloat(value, 64)
 }
 
 func (s *Simulator) checkInvariants(state *TLCStateMut, initial bool) (int, error) {
