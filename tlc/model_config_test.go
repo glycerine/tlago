@@ -3,6 +3,7 @@ package tlc
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -100,7 +101,36 @@ CONSTANTS
 	}
 	requireConfigConstant(t, cfg.GetConstants().At(0), "N", nil, "3")
 	requireConfigConstant(t, cfg.GetConstants().At(1), "Color", nil, "Red")
-	requireConfigConstant(t, cfg.GetConstants().At(2), "Mod!K", nil, `{"blue", TRUE, 5}`)
+	mixedConstant := cfg.GetConstants().At(2)
+	if mixedConstant.Name != "Mod!K" || len(mixedConstant.Args) != 0 {
+		t.Fatalf("mixed constant name/args = %q/%d, want Mod!K/0", mixedConstant.Name, len(mixedConstant.Args))
+	}
+	mixedSet, ok := mixedConstant.Value.(*SetEnumValue)
+	if !ok {
+		t.Fatalf("mixed constant value type = %T, want *SetEnumValue", mixedConstant.Value)
+	}
+	if mixedSet.IsNorm || mixedSet.Elems.Len() != 3 {
+		t.Fatalf("mixed set normalized/len = %t/%d, want false/3", mixedSet.IsNorm, mixedSet.Elems.Len())
+	}
+	for i, want := range []string{`"blue"`, "TRUE", "5"} {
+		if got := mixedSet.Elems.At(i).String(); got != want {
+			t.Fatalf("mixed set element %d = %q, want %q", i, got, want)
+		}
+	}
+	// Java accepts the raw config set, but printing normalizes it and fails
+	// when its different primitive types are compared.
+	func() {
+		defer func() {
+			failure, ok := recover().(*TLCError)
+			if !ok || failure == nil {
+				t.Fatal("printing the mixed set must panic with a TLC comparison error")
+			}
+			if failure.Code != ECGeneral || !strings.Contains(failure.Error(), "Attempted to compare") {
+				t.Fatalf("mixed set printing panic = %v, want an incomparable-values error", failure)
+			}
+		}()
+		_ = mixedSet.String()
+	}()
 
 	if got := cfg.GetOverrides().Get("Abs"); got != "Concrete" {
 		t.Fatalf("override Abs = %q, want Concrete", got)
