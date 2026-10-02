@@ -371,6 +371,7 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 		p.PreConstantSnap = p.Defns.Snapshot()
 	}
 	p.ProcessConstantDefinitions(tool)
+	p.ProcessConfigConstantsAndOverrides(tool)
 	p.ProcessConfig()
 	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
@@ -658,6 +659,200 @@ func specProcessorConstantVetoed(vetoes map[string]bool, names ...*UniqueString)
 		}
 	}
 	return false
+}
+
+func (p *SpecProcessor) ProcessConfigConstantsAndOverrides(tool *Tool) {
+	if p == nil || p.Config == nil || p.Defns == nil {
+		return
+	}
+	constants := configConstantsToDefns(p.Config.GetConstants(), p)
+	for name, value := range constants.All() {
+		p.putConfigDefinition(name, value, tool)
+	}
+	p.applyConfigModuleConstants(tool)
+	p.applyConfigOverrides(tool)
+	p.applyConfigModuleOverrides(tool)
+	p.Snapshot = p.Defns.Snapshot()
+}
+
+func configConstantsToDefns(constants *ConfigConstants, p *SpecProcessor) *InsMap[string, any] {
+	out := NewInsMap[string, any]()
+	if constants == nil {
+		return out
+	}
+	for _, line := range constants.All() {
+		if line.Name == "" {
+			continue
+		}
+		if len(line.Args) == 0 {
+			out.Set(line.Name, line.Value)
+			continue
+		}
+		existing, ok := out.Get2(line.Name)
+		var opVal *OpRcdValue
+		if !ok || existing == nil {
+			opVal = NewOpRcdValue()
+			out.Set(line.Name, opVal)
+		} else if cast, ok := existing.(*OpRcdValue); ok {
+			opVal = cast
+		} else {
+			if p != nil {
+				p.addConfigError(ECTLCConfigOpArityInconsistent, line.Name)
+			}
+			continue
+		}
+		if len(opVal.Domain) != 0 && len(opVal.Domain[0]) != len(line.Args) {
+			if p != nil {
+				p.addConfigError(ECTLCConfigOpArityInconsistent, line.Name)
+			}
+			continue
+		}
+		values := make([]Value, 0, len(line.Args)+2)
+		values = append(values, ValUndef)
+		values = append(values, line.Args...)
+		values = append(values, line.Value)
+		opVal.AddLine(values)
+	}
+	return out
+}
+
+func (p *SpecProcessor) applyConfigModuleConstants(tool *Tool) {
+	if p == nil || p.Config == nil || p.Config.GetModConstants() == nil {
+		return
+	}
+	for modName, constants := range p.Config.GetModConstants().All() {
+		if modName == "" {
+			continue
+		}
+		if !p.hasModuleDefinitions(modName) {
+			p.addConfigError(ECTLCNoModules, modName)
+			continue
+		}
+		values := configConstantsToDefns(constants, p)
+		for name, value := range values.All() {
+			p.putConfigDefinition(configQualifiedName(modName, name), value, tool)
+		}
+	}
+}
+
+func (p *SpecProcessor) applyConfigOverrides(tool *Tool) {
+	if p == nil || p.Config == nil || p.Config.GetOverrides() == nil {
+		return
+	}
+	for lhs, rhs := range p.Config.GetOverrides().All() {
+		if lhs == "" {
+			continue
+		}
+		if _, chained := p.Config.GetOverrides().Get2(rhs); chained {
+			p.addConfigError(ECTLCConfigRHSIDAppearedAfterLHSID, rhs)
+			continue
+		}
+		lhsVal := p.defn(lhs)
+		if lhsVal == nil {
+			p.addConfigError(ECTLCConfigIDDoesNotAppearInSpec, lhs)
+			continue
+		}
+		rhsVal := p.defn(rhs)
+		if rhsVal == nil {
+			p.addConfigError(ECTLCConfigWrongSubstitution, lhs, rhs)
+			continue
+		}
+		if lhsDef, ok := lhsVal.(*OpDefNode); ok && lhsDef != nil {
+			if rhsDef, ok := rhsVal.(*OpDefNode); ok && rhsDef != nil && lhsDef.Arity() != rhsDef.Arity() {
+				p.addConfigError(ECTLCConfigWrongSubstitutionNumberOfArgs, lhs, rhs)
+				continue
+			}
+			lhsDef.SetToolObject(rhsVal)
+		}
+		p.putConfigDefinition(lhs, rhsVal, tool)
+	}
+}
+
+func (p *SpecProcessor) applyConfigModuleOverrides(tool *Tool) {
+	if p == nil || p.Config == nil || p.Config.GetModOverrides() == nil {
+		return
+	}
+	for modName, overrides := range p.Config.GetModOverrides().All() {
+		if modName == "" {
+			continue
+		}
+		if !p.hasModuleDefinitions(modName) {
+			p.addConfigError(ECTLCNoModules, modName)
+			continue
+		}
+		for lhs, rhs := range overrides.All() {
+			if _, chained := overrides.Get2(rhs); chained {
+				p.addConfigError(ECTLCConfigRHSIDAppearedAfterLHSID, rhs)
+				continue
+			}
+			qualified := configQualifiedName(modName, lhs)
+			lhsVal := p.defn(qualified)
+			if lhsVal == nil {
+				p.addConfigError(ECTLCConfigIDDoesNotAppearInSpec, lhs)
+				continue
+			}
+			rhsVal := p.defn(rhs)
+			if rhsVal == nil {
+				p.addConfigError(ECTLCConfigWrongSubstitution, lhs, rhs)
+				continue
+			}
+			if lhsDef, ok := lhsVal.(*OpDefNode); ok && lhsDef != nil {
+				if rhsDef, ok := rhsVal.(*OpDefNode); ok && rhsDef != nil && lhsDef.Arity() != rhsDef.Arity() {
+					p.addConfigError(ECTLCConfigWrongSubstitutionNumberOfArgs, lhs, rhs)
+					continue
+				}
+				lhsDef.SetToolObject(rhsVal)
+			}
+			p.putConfigDefinition(qualified, rhsVal, tool)
+		}
+	}
+}
+
+func (p *SpecProcessor) putConfigDefinition(name string, value any, tool *Tool) {
+	if p == nil || p.Defns == nil || name == "" || value == nil {
+		return
+	}
+	old := p.defn(name)
+	p.Defns.Put(name, value)
+	if val, ok := value.(Value); ok {
+		if p.ConstantDefns == nil {
+			p.ConstantDefns = NewInsMap[string, Value]()
+		}
+		if muxed := MuxWorkerValue(val, 0); muxed != nil {
+			p.ConstantDefns.Set(name, muxed)
+		}
+	}
+	if tool == nil {
+		return
+	}
+	sym := NewSymbolNode(name)
+	if oldDef, ok := old.(*OpDefNode); ok && oldDef != nil && oldDef.Symbol != nil {
+		sym = oldDef.Symbol
+	}
+	tool.Define(sym, value)
+}
+
+func (p *SpecProcessor) hasModuleDefinitions(moduleName string) bool {
+	if p == nil || p.Defns == nil {
+		return false
+	}
+	if moduleName == p.RootFile {
+		return true
+	}
+	prefix := moduleName + "!"
+	for name := range p.Defns.All() {
+		if name != nil && strings.HasPrefix(name.String(), prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+func configQualifiedName(moduleName string, name string) string {
+	if moduleName == "" || strings.Contains(name, "!") {
+		return name
+	}
+	return moduleName + "!" + name
 }
 
 func (p *SpecProcessor) processSpecificationConfig() {
