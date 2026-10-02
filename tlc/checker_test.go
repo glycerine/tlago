@@ -4,8 +4,93 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
+	"sync/atomic"
 	"testing"
+	"time"
 )
+
+func TestModelCheckerSerializesWorkerErrorPostconditionsLikeJava(t *testing.T) {
+	for _, continuation := range []bool{false, true} {
+		t.Run(strconv.FormatBool(continuation), func(t *testing.T) {
+			initTLCCheckerTest(t)
+			Globals.Lock()
+			oldContinuation := Globals.Continuation
+			Globals.Continuation = continuation
+			Globals.Unlock()
+			t.Cleanup(func() {
+				Globals.Lock()
+				Globals.Continuation = oldContinuation
+				Globals.Unlock()
+			})
+
+			cur := checkerTestState(0)
+			tool := NewTool()
+			tool.InitStates = []*TLCStateMut{cur}
+			postconditions := make(chan *CounterExample, 2)
+			releaseFirst := make(chan struct{})
+			var calls atomic.Int32
+			var mc *ModelChecker
+			tool.CheckPostConditionCEFunc = func(tl *Tool, value Value) int {
+				call := calls.Add(1)
+				postconditions <- value.(*CounterExample)
+				if call == 1 {
+					<-releaseFirst
+				}
+				// Postconditions may query checker state through TLCGet/TLCSet.
+				// The reporting lock must therefore leave the state mutex available.
+				_ = mc.isModelCheckerDone()
+				return NoError
+			}
+			mc = NewModelChecker(tool, t.TempDir(), true)
+			t.Cleanup(func() { _ = mc.Cleanup(false, false) })
+			firstDone := make(chan struct{})
+			go func() {
+				defer close(firstDone)
+				mc.doNextSetErrWithPostCondition(cur, nil, false, ECTLCInvariantViolatedBehavior, "Inv")
+			}()
+			first := <-postconditions
+			secondStarted := make(chan struct{})
+			secondDone := make(chan struct{})
+			go func() {
+				defer close(secondDone)
+				close(secondStarted)
+				mc.doNextSetErrWithPostCondition(cur, nil, false, ECTLCActionPropertyViolatedBehavior, "Prop")
+			}()
+			<-secondStarted
+			var second *CounterExample
+			select {
+			case second = <-postconditions:
+				t.Error("second worker evaluated its postcondition before the first worker's error report finished")
+			case <-time.After(100 * time.Millisecond):
+			}
+			close(releaseFirst)
+			for _, done := range []chan struct{}{firstDone, secondDone} {
+				select {
+				case <-done:
+				case <-time.After(5 * time.Second):
+					t.Fatal("worker error report did not finish")
+				}
+			}
+			if second == nil {
+				second = <-postconditions
+			}
+			if console, err := first.Select(NewStringValueFromUnique(counterExampleConsole)); err != nil || console != nil {
+				t.Fatalf("first counterexample console = %v, %v; want omitted", console, err)
+			}
+			if console, err := second.Select(NewStringValueFromUnique(counterExampleConsole)); err != nil || console != BoolFalse {
+				t.Fatalf("second counterexample console = %v, %v; want FALSE", console, err)
+			}
+			wantCode := ECTLCInvariantViolatedBehavior
+			if continuation {
+				wantCode = ECTLCActionPropertyViolatedBehavior
+			}
+			if mc.ErrorCode != wantCode {
+				t.Fatalf("error code = %d, want %d", mc.ErrorCode, wantCode)
+			}
+		})
+	}
+}
 
 func TestDoNextFailureMessagePreservesTLCErrorCodeParamsLikeJavaEvalException(t *testing.T) {
 	err := newTLCErrorCode(ECTLCExpectedValue, "boolean", "x")

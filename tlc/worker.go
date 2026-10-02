@@ -131,6 +131,8 @@ func (w *Worker) Run() (err error) {
 		if recovered := recover(); recovered != nil {
 			err = newTLCError(ECGeneral, "%v", recovered)
 			if w.Checker != nil {
+				w.Checker.nextErrorMu.Lock()
+				defer w.Checker.nextErrorMu.Unlock()
 				if w.Checker.SetErrState(curState, nil, true, ECGeneral) {
 					PrintError(ECGeneral, fmt.Sprint(recovered))
 				}

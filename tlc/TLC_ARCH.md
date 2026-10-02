@@ -1069,10 +1069,10 @@ Porting guidance:
 Heap-backed disk fingerprint sets allocate Java-style striped read/write locks
 at construction. The default stripe count is
 `2^(floor(log2(NumWorkers)) + 8)`, with `tlc2.tool.fp.DiskFPSet.logLockCnt`
-or `TLAGO_DISK_FPSET_LOG_LOCK_CNT` overriding the exponent. The current Go
-disk FP implementation still protects the table with the coarse `DiskFPSet.mu`;
-fine-grained per-stripe `put`/`contains`/flush locking should be ported as a
-separate disk-FP concurrency chunk.
+or `TLAGO_DISK_FPSET_LOG_LOCK_CNT` overriding the exponent. Go `Put` and
+`Contains` use those stripes, while flushing acquires all stripes. Java's
+flusher recursively acquires its already-held write lock; Go skips that stripe
+during the all-stripe acquisition because its mutexes are not reentrant.
 Disk fingerprint reads mirror Java `IdThread.GetId(braf.length)`: a goroutine
 with a current worker id uses its corresponding fixed `BufferedRandomAccessFile`
 reader; calls outside worker scope fall back to the reader pool.
@@ -1321,6 +1321,14 @@ Port guidance:
 
 - Implement worker/error synchronization carefully. Only one worker should own
   the primary error trace unless continuation mode says otherwise.
+- Java holds the checker monitor across next-state error acceptance, trace
+  printing, and worker error-time postconditions, and across continuation-mode
+  violation printing. Go serializes those reports with `ModelChecker.nextErrorMu`
+  while using the existing state mutex for checker fields. The separate report
+  mutex lets ALIAS and postconditions query/control the checker without requiring
+  reentrant Go mutexes. The postcondition wrapper calls a lock-held error helper
+  and reads `Done` under the state mutex before deciding the counterexample's
+  `console` field.
 - Preserve Java's `AbstractChecker.runTLC` coordinator role: workers do state
   generation, while the checker thread periodically suspends the queue for
   liveness/checkpoint work and then resumes or finishes the workers.

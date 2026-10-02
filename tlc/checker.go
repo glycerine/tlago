@@ -281,6 +281,10 @@ func (c *AbstractChecker) workerAt(workerID int) *Worker {
 
 type ModelChecker struct {
 	*AbstractChecker
+	// Java holds the checker monitor throughout error reporting. Keep that
+	// serialization separate from mu so aliases and postconditions can query
+	// checker state without requiring Java's reentrant locking.
+	nextErrorMu             sync.Mutex
 	NumberOfInitialStates   int64
 	FPSet                   FPSet
 	StateQueue              StateQueue
@@ -1753,8 +1757,7 @@ func (mc *ModelChecker) doNextCheckInvariantsWithTool(tool *Tool, curState *TLCS
 		}
 		if !valid {
 			if continuationEnabled() {
-				PrintError(ECTLCInvariantViolatedBehavior, nameAt(names, i))
-				mc.printBehaviorTrace(curState, succState)
+				mc.printContinuationViolation(curState, succState, ECTLCInvariantViolatedBehavior, nameAt(names, i))
 				return false, nil
 			}
 			if withPostCondition {
@@ -1780,8 +1783,7 @@ func (mc *ModelChecker) doNextCheckImpliedWithTool(tool *Tool, curState *TLCStat
 		}
 		if !valid {
 			if continuationEnabled() {
-				PrintError(ECTLCActionPropertyViolatedBehavior, nameAt(names, i))
-				mc.printBehaviorTrace(curState, succState)
+				mc.printContinuationViolation(curState, succState, ECTLCActionPropertyViolatedBehavior, nameAt(names, i))
 				return false, nil
 			}
 			if withPostCondition {
@@ -1801,6 +1803,12 @@ func (mc *ModelChecker) doNextSetErr(curState *TLCStateMut, succState *TLCStateM
 }
 
 func (mc *ModelChecker) doNextSetErrParams(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
+	mc.nextErrorMu.Lock()
+	defer mc.nextErrorMu.Unlock()
+	return mc.doNextSetErrParamsLocked(curState, succState, keep, ec, params...)
+}
+
+func (mc *ModelChecker) doNextSetErrParamsLocked(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
 	if mc.SetErrState(curState, succState, keep, ec) {
 		if len(params) == 0 {
 			PrintError(ec)
@@ -1823,10 +1831,19 @@ func (mc *ModelChecker) doNextSetErrWithPostCondition(curState *TLCStateMut, suc
 }
 
 func (mc *ModelChecker) doNextSetErrParamsWithPostCondition(curState *TLCStateMut, succState *TLCStateMut, keep bool, ec int, params ...string) bool {
-	isConsole := !mc.Done
-	result := mc.doNextSetErrParams(curState, succState, keep, ec, params...)
+	mc.nextErrorMu.Lock()
+	defer mc.nextErrorMu.Unlock()
+	isConsole := !mc.isModelCheckerDone()
+	result := mc.doNextSetErrParamsLocked(curState, succState, keep, ec, params...)
 	mc.checkPostConditionWithErrorTrace(curState, succState, isConsole)
 	return result
+}
+
+func (mc *ModelChecker) printContinuationViolation(curState *TLCStateMut, succState *TLCStateMut, ec int, param string) {
+	mc.nextErrorMu.Lock()
+	defer mc.nextErrorMu.Unlock()
+	PrintError(ec, param)
+	mc.printBehaviorTrace(curState, succState)
 }
 
 func (mc *ModelChecker) checkPostConditionAfterInitFailure() {
@@ -2055,6 +2072,8 @@ func aliasTraceWithToolPairs(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo 
 }
 
 func (mc *ModelChecker) doNextEvalFailed(curState *TLCStateMut, succState *TLCStateMut, ec int, param string, err error) error {
+	mc.nextErrorMu.Lock()
+	defer mc.nextErrorMu.Unlock()
 	if mc.SetErrState(curState, succState, true, ec) {
 		msg := javaThrowableMessage(err)
 		if param == "" {
@@ -2074,6 +2093,8 @@ func (mc *ModelChecker) doNextFailed(curState *TLCStateMut, succState *TLCStateM
 	if err == nil {
 		return
 	}
+	mc.nextErrorMu.Lock()
+	defer mc.nextErrorMu.Unlock()
 	ec, params, keepCallStack := doNextFailureMessage(err)
 	if mc.SetErrState(curState, succState, keepCallStack, ec) {
 		if params != nil && len(params) > 0 {
