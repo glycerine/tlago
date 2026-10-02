@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -99,9 +100,19 @@ type CallableEvalFunc func(args []Value) (func() (any, error), error)
 
 type operatorValueBase struct {
 	BaseValue
+	owner            Value
 	KindValue        ValueKind
 	Label            string
 	NormalizeMessage string
+}
+
+// Shared Go methods represent Java's concrete methods and inherited defaults.
+// Keep their receiver identity, source, and dynamically dispatched printing.
+func (b *operatorValueBase) receiver() Value {
+	if b.owner != nil {
+		return b.owner
+	}
+	return b
 }
 
 func (b *operatorValueBase) Kind() ValueKind { return b.KindValue }
@@ -109,57 +120,97 @@ func (b *operatorValueBase) KindString() string {
 	return b.KindStringFor(b.KindValue)
 }
 
-func (b *operatorValueBase) Compare(other Value) (int, error) {
-	return 0, b.unsupported("Attempted to compare operator %s with value:\n%s", b, other)
+func (b *operatorValueBase) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	if b.KindValue == MethodValueKind {
+		return 0, b.unsupported("%s", b.methodComparisonMessage(other))
+	}
+	return 0, b.unsupported("Attempted to compare operator %s with value:\n%s", ValuesPPR(b.receiver()), ValuesPPRString(other.String()))
 }
 
-func (b *operatorValueBase) Equal(other Value) (bool, error) {
-	return false, b.unsupported("Attempted to check equality of operator %s with value:\n%s", b, other)
+func (b *operatorValueBase) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	if b.KindValue == MethodValueKind {
+		return false, b.unsupported("%s", b.methodComparisonMessage(other))
+	}
+	return false, b.unsupported("Attempted to check equality of operator %s with value:\n%s", ValuesPPR(b.receiver()), ValuesPPRString(other.String()))
 }
 
-func (b *operatorValueBase) Member(elem Value) (bool, error) {
-	return false, b.unsupported("Attempted to check if the value:\n%s\nis an element of operator %s", elem, b)
+func (b *operatorValueBase) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	if b.KindValue == MethodValueKind {
+		if elem != nil {
+			_ = elem.String()
+		}
+		return false, b.unsupported("%s\nis an element of operator %s", ValuesPPRString(elem.String()), b.receiver().String())
+	}
+	return false, b.unsupported("Attempted to check if the value:\n%s\nis an element of operator %s", ValuesPPRString(elem.String()), ValuesPPR(b.receiver()))
 }
 
-func (b *operatorValueBase) IsFinite() (bool, error) {
-	return false, b.unsupported("Attempted to check if the operator %s is a finite set.", b)
+func (b *operatorValueBase) IsFinite() (resultBool bool, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	return false, b.unsupported("Attempted to check if the operator %s is a finite set.", b.diagnosticString())
 }
 
-func (b *operatorValueBase) Size() (int, error) {
-	return 0, b.unsupported("Attempted to compute the number of elements in the operator %s.", b)
+func (b *operatorValueBase) Size() (resultInt int, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	return 0, b.unsupported("Attempted to compute the number of elements in the operator %s.", b.diagnosticString())
 }
 
 func (b *operatorValueBase) Normalize() Value {
-	panic(newTLCError(ECGeneral, "%s", b.normalizeMessage()))
+	defer catchValueFailure(b.receiver(), nil)
+	panic(fmt.Errorf("%s", b.normalizeMessage()))
 }
 
 func (b *operatorValueBase) DeepNormalize() {}
 
 func (b *operatorValueBase) IsNormalized() bool {
-	panic(newTLCError(ECGeneral, "%s", b.normalizeMessage()))
+	defer catchValueFailure(b.receiver(), nil)
+	panic(fmt.Errorf("%s", b.normalizeMessage()))
 }
 
 func (b *operatorValueBase) IsDefined() bool { return true }
-func (b *operatorValueBase) DeepCopy() Value { return b }
+func (b *operatorValueBase) DeepCopy() Value { return b.receiver() }
 
 func (b *operatorValueBase) FingerPrint(fp uint64) uint64 {
-	return unsupportedValueFingerprint(b)
+	return unsupportedValueFingerprint(b.receiver())
 }
 
 func (b *operatorValueBase) Permute(*MVPerm) Value {
-	unsupportedValueFingerprint(b)
-	return b
+	return unsupportedValuePermutation(b.receiver())
 }
 
-func (b *operatorValueBase) TakeExcept(ex ValueExcept) (Value, error) {
-	return nil, b.unsupported("Attempted to appy EXCEPT construct to the operator %s.", b)
+func (b *operatorValueBase) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	return nil, b.unsupported("Attempted to appy EXCEPT construct to the operator %s.", b.diagnosticString())
 }
 
-func (b *operatorValueBase) TakeExcepts(exs []ValueExcept) (Value, error) {
-	return nil, b.unsupported("Attempted to apply EXCEPT construct to the operator %s.", b)
+func (b *operatorValueBase) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(b.receiver(), &err)
+	return nil, b.unsupported("Attempted to apply EXCEPT construct to the operator %s.", b.diagnosticString())
 }
 
-func (b *operatorValueBase) String() string { return b.Label }
+func (b *operatorValueBase) String() string {
+	defer catchValueFailure(b.receiver(), nil)
+	return b.Label
+}
+
+func (b *operatorValueBase) diagnosticString() string {
+	if b.KindValue == MethodValueKind {
+		return b.receiver().String()
+	}
+	return ValuesPPR(b.receiver())
+}
+
+func (b *operatorValueBase) methodComparisonMessage(other Value) string {
+	// Preserve MethodValue/EvaluatingValue's Java precedence quirk: the entire
+	// concatenation is tested for null, so only obj.toString() becomes the error.
+	_ = b.receiver().String()
+	if other != nil {
+		_ = other.String()
+	}
+	return ValuesPPRString(other.String())
+}
 
 func (b *operatorValueBase) normalizeMessage() string {
 	if b.NormalizeMessage != "" {
@@ -186,7 +237,7 @@ func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStat
 	if len(cms) > 0 {
 		cm = cms[0]
 	}
-	return &OpLambdaValue{
+	out := &OpLambdaValue{
 		operatorValueBase: operatorValueBase{BaseValue: newBaseValue(cm), KindValue: OpLambdaValueKind, Label: "<Operator " + opDef.String() + ">", NormalizeMessage: "Should not normalize an operator."},
 		OpDef:             opDef,
 		Tool:              tool,
@@ -195,6 +246,8 @@ func NewOpLambdaValue(opDef *OpDefNode, tool *Tool, con *Context, state *TLCStat
 		PState:            pstate,
 		Control:           control,
 	}
+	out.owner = out
+	return out
 }
 
 func NewOpLambdaValueFrom(other *OpLambdaValue, tool *Tool) *OpLambdaValue {
@@ -208,6 +261,11 @@ func NewOpLambdaValueFrom(other *OpLambdaValue, tool *Tool) *OpLambdaValue {
 }
 
 func (v *OpLambdaValue) DeepCopy() Value { return v }
+
+func (v *OpLambdaValue) String() string {
+	defer catchValueFailure(v, nil)
+	return "<Operator " + v.OpDef.Name.String() + ">"
+}
 func (v *OpLambdaValue) Permute(perm *MVPerm) Value {
 	return v.operatorValueBase.Permute(perm)
 }
@@ -243,17 +301,21 @@ type OpRcdValue struct {
 }
 
 func NewOpRcdValue() *OpRcdValue {
-	return &OpRcdValue{
+	out := &OpRcdValue{
 		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>", NormalizeMessage: "Should not normalize an operator."},
 	}
+	out.owner = out
+	return out
 }
 
 func NewOpRcdValueFrom(domain [][]Value, values []Value) *OpRcdValue {
-	return &OpRcdValue{
+	out := &OpRcdValue{
 		operatorValueBase: operatorValueBase{KindValue: OpRcdValueKind, Label: "<Operator record>", NormalizeMessage: "Should not normalize an operator."},
 		Domain:            domain,
 		Values:            values,
 	}
+	out.owner = out
+	return out
 }
 
 func (v *OpRcdValue) AddLine(values []Value) {
@@ -332,12 +394,14 @@ type MethodValue struct {
 }
 
 func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodValue {
-	return &MethodValue{
+	out := &MethodValue{
 		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">", NormalizeMessage: "It is a TLC bug: Attempted to normalize an operator."},
 		Name:              name,
 		MinLevel:          minLevel,
 		EvalFunc:          eval,
 	}
+	out.owner = out
+	return out
 }
 
 func (v *MethodValue) Eval(args []Value, control int) (Value, error) {
@@ -362,7 +426,7 @@ type EvaluatingValue struct {
 }
 
 func NewEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNode, eval EvaluatingEvalFunc) *EvaluatingValue {
-	return &EvaluatingValue{
+	out := &EvaluatingValue{
 		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">", NormalizeMessage: "It is a TLC bug: Attempted to normalize an operator."},
 		Name:              name,
 		MinLevel:          minLevel,
@@ -370,6 +434,8 @@ func NewEvaluatingValue(name string, minLevel int, priority int, opDef *OpDefNod
 		OpDef:             opDef,
 		EvalFunc:          eval,
 	}
+	out.owner = out
+	return out
 }
 
 func (v *EvaluatingValue) Eval(args []Value, control int) (Value, error) {
@@ -389,7 +455,7 @@ func (v *EvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Con
 	return ValUndef, nil
 }
 
-func (v *EvaluatingValue) DeepCopy() Value { return v }
+func (v *EvaluatingValue) DeepCopy() Value { return v.receiver() }
 func (v *EvaluatingValue) Permute(perm *MVPerm) Value {
 	return v.operatorValueBase.Permute(perm)
 }
@@ -411,7 +477,16 @@ func (v *PriorityEvaluatingValue) Add(ev *EvaluatingValue) {
 		return
 	}
 	if v.EvaluatingValue != nil && (v.OpDef != ev.OpDef || v.MinLevel != ev.MinLevel) {
-		panic(newTLCError(ECGeneral, "priority evaluating values must refer to the same operator definition and level"))
+		panic(newTLCErrorCode(ECGeneral))
+	}
+	if v.EvaluatingValue == nil {
+		// Java constructs a new wrapper from the primary method and adds this
+		// wrapper itself as a handle. Sorting never changes its method metadata.
+		primary := *ev
+		primary.BaseValue = BaseValue{}
+		v.EvaluatingValue = &primary
+		v.owner = v
+		ev = v.EvaluatingValue
 	}
 	v.Handles = append(v.Handles, ev)
 	for i := 1; i < len(v.Handles); i++ {
@@ -423,7 +498,6 @@ func (v *PriorityEvaluatingValue) Add(ev *EvaluatingValue) {
 		}
 		v.Handles[j] = cur
 	}
-	v.EvaluatingValue = v.Handles[0]
 }
 
 func (v *PriorityEvaluatingValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -447,10 +521,12 @@ type CallableValue struct {
 }
 
 func NewCallableValue(name string, minLevel int, opDef *OpDefNode, callable CallableEvalFunc) *CallableValue {
-	return &CallableValue{
+	out := &CallableValue{
 		EvaluatingValue: NewEvaluatingValue(name, minLevel, 100, opDef, nil),
 		CallableFunc:    callable,
 	}
+	out.owner = out
+	return out
 }
 
 func (v *CallableValue) EvalWithTool(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -484,9 +560,14 @@ func WithEvaluatingOpDef(value any, opDef *OpDefNode) any {
 	case *EvaluatingValue:
 		return v.withOpDef(opDef)
 	case *PriorityEvaluatingValue:
-		out := &PriorityEvaluatingValue{}
+		out := &PriorityEvaluatingValue{EvaluatingValue: v.EvaluatingValue.withOpDef(opDef)}
+		out.owner = out
 		for _, handle := range v.Handles {
-			out.Add(handle.withOpDef(opDef))
+			if handle == v.EvaluatingValue {
+				out.Add(out.EvaluatingValue)
+			} else {
+				out.Add(handle.withOpDef(opDef))
+			}
 		}
 		return out
 	case *CallableValue:
@@ -502,6 +583,7 @@ func (v *EvaluatingValue) withOpDef(opDef *OpDefNode) *EvaluatingValue {
 	}
 	out := *v
 	out.OpDef = opDef
+	out.owner = &out
 	return &out
 }
 
@@ -511,6 +593,7 @@ func (v *CallableValue) withOpDef(opDef *OpDefNode) *CallableValue {
 	}
 	out := *v
 	out.EvaluatingValue = v.EvaluatingValue.withOpDef(opDef)
+	out.owner = &out
 	return &out
 }
 

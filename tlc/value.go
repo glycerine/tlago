@@ -95,6 +95,11 @@ func InitializeValue(value Value) Value {
 		return nil
 	}
 	value.DeepNormalize()
+	switch value.(type) {
+	case *MethodValue, *EvaluatingValue, *PriorityEvaluatingValue, *CallableValue:
+		// MethodValue/EvaluatingValue.initialize omit unsupported fingerprinting.
+		return value
+	}
 	value.FingerPrint(0)
 	return value
 }
