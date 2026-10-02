@@ -131,8 +131,56 @@ func (e *JavaError) Error() string { return javaThrowableMessage(e) }
 // Java catch(Exception) excludes Error even when it has no TLC system code.
 func isJavaError(err error) bool {
 	_, generic := err.(*JavaError)
+	switch err.(type) {
+	case *ExceptionInInitializerError, *NoClassDefFoundError:
+		return true
+	}
 	return generic || javaSystemFailureCode(err) != NoError
 }
+
+// Activation class initialization and Class.newInstance inspect these exact
+// checked/Error families; a throwable's cause does not change its catch type.
+type ExceptionInInitializerError struct{ javaExceptionBase }
+
+func NewExceptionInInitializerError(cause error) *ExceptionInInitializerError {
+	return &ExceptionInInitializerError{newJavaExceptionBase(nil, cause)}
+}
+func NewExceptionInInitializerErrorMessage(message *string) *ExceptionInInitializerError {
+	return &ExceptionInInitializerError{newJavaExceptionBase(message, nil)}
+}
+func (e *ExceptionInInitializerError) GetException() error { return e.Cause }
+func (e *ExceptionInInitializerError) Error() string       { return javaThrowableMessage(e) }
+
+type NoClassDefFoundError struct{ javaExceptionBase }
+
+func NewNoClassDefFoundError(message ...string) *NoClassDefFoundError {
+	return &NoClassDefFoundError{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *NoClassDefFoundError) Error() string { return javaThrowableMessage(e) }
+
+type ClassNotFoundException struct{ javaExceptionBase }
+
+func NewClassNotFoundException(message ...string) *ClassNotFoundException {
+	return &ClassNotFoundException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *ClassNotFoundException) Error() string               { return javaThrowableMessage(e) }
+func (e *ClassNotFoundException) mailClassNotFoundException() {}
+
+type IllegalAccessException struct{ javaExceptionBase }
+
+func NewIllegalAccessException(message ...string) *IllegalAccessException {
+	return &IllegalAccessException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *IllegalAccessException) Error() string               { return javaThrowableMessage(e) }
+func (e *IllegalAccessException) mailIllegalAccessException() {}
+
+type InstantiationException struct{ javaExceptionBase }
+
+func NewInstantiationException(message ...string) *InstantiationException {
+	return &InstantiationException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *InstantiationException) Error() string               { return javaThrowableMessage(e) }
+func (e *InstantiationException) mailInstantiationException() {}
 
 type SecurityException struct{ javaExceptionBase }
 

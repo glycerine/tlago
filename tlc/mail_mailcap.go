@@ -22,7 +22,6 @@ package tlc
 
 import (
 	"strings"
-	"sync"
 )
 
 // CommandInfo metadata is immutable. Bean instantiation and Externalizable
@@ -37,11 +36,12 @@ func (c *MailCommandInfo) GetCommandClass() *string { return c.class }
 
 type mailCommandTable = mailParameterHashTable[*MailCommandInfo]
 
-// This ports the registry instance; CommandMap superclass initialization and
-// class-loader content-handler creation are separate pending runtime features.
+// Registry and loader operations share the source reentrant instance monitor.
 type MailMailcapCommandMap struct {
-	mu                  sync.Mutex
+	mu                  distributedServerMonitor
 	environment         MailActivationEnvironment
+	commandMap          *MailCommandMap
+	lastResource        *MailActivationResource
 	mimeTypes           *mailParameterHashTable[string]
 	preferred, fallback map[string]*mailCommandTable
 	all                 map[string][]*MailCommandInfo
@@ -49,6 +49,10 @@ type MailMailcapCommandMap struct {
 }
 
 func NewMailMailcapCommandMap(env ...MailActivationEnvironment) *MailMailcapCommandMap {
+	initializeMailMailcapCommandMap()
+	return newMailMailcapCommandMap(env...)
+}
+func newMailMailcapCommandMap(env ...MailActivationEnvironment) *MailMailcapCommandMap {
 	e := DefaultMailActivationEnvironment
 	if len(env) > 0 {
 		e = env[0]
@@ -58,6 +62,18 @@ func NewMailMailcapCommandMap(env ...MailActivationEnvironment) *MailMailcapComm
 		environment: e, mimeTypes: newMailParameterHashTable[string](),
 		preferred: map[string]*mailCommandTable{}, fallback: map[string]*mailCommandTable{},
 		all: map[string][]*MailCommandInfo{}, native: map[string][]string{},
+	}
+	m.commandMap = &MailCommandMap{
+		PreferredFunc:     func(mime *string) []*MailCommandInfo { return m.GetPreferredCommands(mime) },
+		AllFunc:           func(mime *string) []*MailCommandInfo { return m.GetAllCommands(mime) },
+		CommandFunc:       func(mime, command *string) *MailCommandInfo { return m.GetCommand(mime, command) },
+		CreateHandlerFunc: func(mime *string) (*MailDataContentHandler, error) { return m.CreateDataContentHandler(mime) },
+		MIMETypesFunc:     m.GetMIMETypes,
+	}
+	// Captured before any resource parsing, outside the source catches.
+	contextLoader, captureError := e.ContextClassLoader()
+	if captureError != nil {
+		panic(captureError)
 	}
 	ignore := func(err error, security bool) {
 		if err == nil || isJavaIOException(err) {
@@ -79,17 +95,38 @@ func NewMailMailcapCommandMap(env ...MailActivationEnvironment) *MailMailcapComm
 	})
 	ignore(err, false)
 	_, err = mailInvoke(func() (bool, error) {
-		openers, err := e.Resources("META-INF/mailcap")
+		if contextLoader == nil {
+			return false, NewNullPointerException()
+		}
+		resources, err := contextLoader.GetResources("META-INF/mailcap")
 		if err != nil {
 			return false, err
 		}
-		for _, open := range openers {
-			_, err := mailInvoke(func() (bool, error) {
-				s, err := open()
+		if resources == nil {
+			return false, NewNullPointerException()
+		}
+		for {
+			more, err := resources.HasMoreElements()
+			if err != nil {
+				return false, err
+			}
+			if !more {
+				break
+			}
+			resource, err := resources.NextElement()
+			if err != nil {
+				return false, err
+			}
+			m.lastResource = resource
+			_, err = mailInvoke(func() (bool, error) {
+				if resource == nil {
+					return false, NewNullPointerException()
+				}
+				stream, err := resource.OpenStream()
 				if err != nil {
 					return false, err
 				}
-				return false, m.loadAndClose(s)
+				return false, m.loadAndClose(stream)
 			})
 			if err != nil && !isJavaIOException(err) {
 				return false, err
@@ -373,3 +410,6 @@ func (m *MailMailcapCommandMap) GetNativeCommands(mimeType *string) []string {
 	defer m.mu.Unlock()
 	return append([]string{}, m.native[m.lower(mimeType)]...)
 }
+
+// Stable carrier identity for the source CommandMap superclass reference.
+func (m *MailMailcapCommandMap) AsCommandMap() *MailCommandMap { return m.commandMap }

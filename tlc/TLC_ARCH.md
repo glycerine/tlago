@@ -3312,13 +3312,35 @@ MailcapCommandMapTest methods are translated after these registry features, with
 upstream disabled assertions retained. Original Java bodies, 7,382 actual-jar
 registry comparisons and 1,125 discovery/constructor/failure event comparisons
 pass, alongside translated mail -race tests and the full offline working-tree suite.
-Next is CommandMap superclass eager initialization/default get/set/reset/security,
-then bundled class-loader capture/enumeration/lifetime/reentrant monitor behavior
-and content-handler class lookup/newInstance, native handlers and the object
-DataHandler's factory/cache/buffered-pipe paths. JVM class initialization failure
-and reentry remain explicit boundaries for this registry-instance slice. The
-bundled loader calls ClassLoader.loadClass directly; current Geronimo trunk's
-ProviderLocator expression must not replace that behavior.
+CommandMap now initializes the eager default Mailcap instance, preserves default
+get/set/reset and security ordering, and delegates DataSource overloads unless a
+subclass provider overrides them. Its unsynchronized publication allows reentrant
+setters during construction. Separate superclass/subclass initialization states
+retain owner reentry, waiter blocking, Error/Exception distinctions, permanent
+failure and later NoClassDefFoundError causes. Getter-first failure may leave
+Mailcap initialized and usable; constructor-first failure poisons both classes.
+Native class initialization follows JLS 12.4.2; full JVM linking/assertion status,
+allocation failures, arbitrary loader isolation and stack/thread providers remain
+boundaries. Typed initializer/linkage/reflection exception families retain source
+identities and nullable causes/messages without TLC error-code fabrication.
+Mailcap captures its context loader before resource parsing, traverses enumerations
+lazily across opens and retains null-loader/catch behavior. Its instance monitor
+is reentrant through lookup and constructor/loader callbacks. Content-handler
+creation obtains a fresh context loader each time, uses defining-loader fallback
+only for null, directly calls loadClass/newInstance and checks the handler carrier;
+only ClassNotFoundException/IllegalAccessException/InstantiationException are
+swallowed. Current trunk's ProviderLocator must not replace the bundled call.
+Class/resource/handler operation callbacks represent JVM boundaries; no unported
+bundled class is falsely treated as absent. DataFlavor objects remain opaque.
+Twelve source methods match bundled bytecode. Ten cold init/reentry/failure,
+four concurrent init (sixteen waiters each), 32 setter/security/overload, 672
+handler creation and 30 lazy enumeration reference sequences pass under native
+-race, as do the prior registry/discovery comparisons and translated mail tests.
+The full offline working-tree suite passes. No CommandMap test class exists upstream;
+the existing Mailcap tests remain unchanged. Next are native ActivationDataFlavor/
+AWT dependencies and bundled handlers, then object DataHandler factory/cache/pipes.
+Full JVM cast/automatic exception wording, native class inventory, Beans and object
+serialization remain required providers/ports alongside wider mail runtime work.
 Remaining mail work includes Geronimo object/URL/pipe/content-handler/factory/
 command-map/AWT paths and its DataHandlerTest.testObjectInputStream, remaining
 address-object/local-address/Session methods, MIME body parts/NonAsciiFileNames,

@@ -43,14 +43,17 @@ var mailActivationClasspath embed.FS
 // InputStreamReader providers. Resource names retain their source leading slash.
 // Configure the process environment before first use of the default map.
 type MailActivationEnvironment struct {
-	Classpath       []FilenameClasspathEntry
-	DefaultResource func(string) (*MailInputStream, error)
-	Resources       func(string) ([]func() (*MailInputStream, error), error)
-	Property        func(string) *string
-	OpenFile        func(string) (*MailInputStream, error)
-	ReadLines       func(*MailInputStream, func(string)) error
-	CheckSetFactory func() error
-	Lowercase       func(string) string
+	Classpath           []FilenameClasspathEntry
+	DefaultResource     func(string) (*MailInputStream, error)
+	Resources           func(string) ([]func() (*MailInputStream, error), error)
+	Property            func(string) *string
+	OpenFile            func(string) (*MailInputStream, error)
+	ReadLines           func(*MailInputStream, func(string)) error
+	CheckSetFactory     func() error
+	Lowercase           func(string) string
+	ContextClassLoader  func() (*MailActivationClassLoader, error)
+	DefiningClassLoader func() (*MailActivationClassLoader, error)
+	ThreadName          func() string
 }
 
 var DefaultMailActivationEnvironment MailActivationEnvironment
@@ -126,6 +129,15 @@ func mailActivationEnvironment(e MailActivationEnvironment) MailActivationEnviro
 				return NewUnsupportedOperationException("JDK InputStreamReader provider required for Activation charset " + charset)
 			}
 			return mailReadActivationLines(s, name, consume)
+		}
+	}
+	if e.ContextClassLoader == nil || e.DefiningClassLoader == nil {
+		loader := mailActivationDefaultLoader(e)
+		if e.ContextClassLoader == nil {
+			e.ContextClassLoader = func() (*MailActivationClassLoader, error) { return loader, nil }
+		}
+		if e.DefiningClassLoader == nil {
+			e.DefiningClassLoader = func() (*MailActivationClassLoader, error) { return loader, nil }
 		}
 	}
 	return e

@@ -42,6 +42,16 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.NumberFormatException"
 	case *NoSuchElementException:
 		return "java.util.NoSuchElementException"
+	case *ExceptionInInitializerError:
+		return "java.lang.ExceptionInInitializerError"
+	case *NoClassDefFoundError:
+		return "java.lang.NoClassDefFoundError"
+	case *ClassNotFoundException:
+		return "java.lang.ClassNotFoundException"
+	case *IllegalAccessException:
+		return "java.lang.IllegalAccessException"
+	case *InstantiationException:
+		return "java.lang.InstantiationException"
 	case *JavaError:
 		return "java.lang.Error"
 	case *SecurityException:

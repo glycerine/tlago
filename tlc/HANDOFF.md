@@ -33,12 +33,15 @@ user explicitly asks. Those are valuable, but they are paused. The current goal
 is TLC.
 
 Latest mail dependency progress: Activation MIME parsing/casing and Mailcap
-registry-instance parsing/discovery/lookup are implemented, with their existing
-Java tests translated afterward. Read the latest progress entry for verification.
-Continue with CommandMap superclass eager initialization/default get/set/reset,
-then bundled class-loader content-handler creation, native handlers and the object
-DataHandler factory/cache/buffered-pipe paths. The registry slice does not yet
-provide superclass class-initialization/reentry or JVM context-loader lifetime.
+registry parsing/discovery/lookup have their existing Java tests translated.
+CommandMap eager initialization/get/set/reset/security and the bundled handler
+loadClass/newInstance algorithm are now implemented, with reentrant class and
+instance synchronization, permanent initialization failures and lazy resources.
+Read the latest progress entry for verification and the explicit JVM boundaries.
+Continue with native ActivationDataFlavor/AWT dependencies and bundled handlers,
+then object DataHandler factory/cache/buffered-pipe paths and its existing test.
+Full JVM class inventory/linking/loader isolation, stack/cast diagnostics and
+native thread/URL/locale/charset providers remain required.
 
 ## Operating Rules
 
