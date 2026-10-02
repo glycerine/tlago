@@ -1428,10 +1428,14 @@ func (b *BlockSelector) setAverageBlockCnt(blockCnt int64) {
 	}
 }
 
-func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager, address ...DistributedWorkerAddress) *DistributedWorker {
+func initializeDistributedWorkerProperties() {
 	distributedWorkerSetMode.Do(func() {
 		distributedWorkerSetMode.unsorted = distributedBooleanProperty("tlc2.tool.distributed.TLCWorker.unsorted")
 	})
+}
+
+func NewDistributedWorker(id int, tool *Tool, fpSetManager *DistributedFPSetManager, address ...DistributedWorkerAddress) *DistributedWorker {
+	initializeDistributedWorkerProperties()
 	if fpSetManager == nil {
 		fpSetManager = NewDistributedFPSetManager()
 	}

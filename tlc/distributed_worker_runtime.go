@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,7 +16,7 @@ type DistributedWorkerRuntime struct {
 	runnables       []*DistributedWorkerRunnable
 	workers         []*DistributedWorker
 	executor        DistributedExecutor
-	latch           distributedWorkerLatch
+	latch           atomic.Pointer[distributedWorkerLatch]
 	keepAliveMu     sync.Mutex
 	keepAlive       *distributedWorkerKeepAlive
 	keepAliveURL    string
@@ -25,11 +26,7 @@ type DistributedWorkerRuntime struct {
 
 func NewDistributedWorkerRuntime(workers ...*DistributedWorker) *DistributedWorkerRuntime {
 	r := &DistributedWorkerRuntime{workers: append([]*DistributedWorker(nil), workers...)}
-	r.latch.remaining = len(workers)
-	r.latch.done = make(chan struct{})
-	if len(workers) == 0 {
-		close(r.latch.done)
-	}
+	r.latch.Store(newDistributedWorkerLatch(len(workers)))
 	for _, worker := range workers {
 		if worker != nil {
 			worker.Runtime = r
@@ -46,6 +43,18 @@ func (r *DistributedWorkerRuntime) StartKeepAlive(server *TLCServer) {
 	if r.keepAlive != nil {
 		return
 	}
+	r.startKeepAliveLocked(server)
+}
+
+// main replaces the static timer without canceling a preceding invocation's
+// timer. Worker.exit still cancels the currently published static timer.
+func (r *DistributedWorkerRuntime) replaceKeepAlive(server *TLCServer) {
+	r.keepAliveMu.Lock()
+	defer r.keepAliveMu.Unlock()
+	r.startKeepAliveLocked(server)
+}
+
+func (r *DistributedWorkerRuntime) startKeepAliveLocked(server *TLCServer) {
 	lookup := r.statusLookup
 	if lookup == nil {
 		lookup = func(string) (bool, error) {
@@ -109,13 +118,32 @@ func (r *DistributedWorkerRuntime) Shutdown() error {
 }
 
 func (r *DistributedWorkerRuntime) AwaitTermination() error {
-	if r == nil || r.latch.done == nil {
+	return r.AwaitTerminationWithBoundary(nil, nil)
+}
+
+// DistributedWorkerWait is CountDownLatch.await's interruptible native boundary.
+// The channel closes only after the captured latch reaches zero.
+type DistributedWorkerWait func(<-chan struct{}) error
+
+func (r *DistributedWorkerRuntime) AwaitTerminationWithBoundary(wait DistributedWorkerWait, sleep DistributedLookupSleep) error {
+	if r == nil {
 		return NewNullPointerException()
 	}
-	<-r.latch.done
+	latch := r.latch.Load()
+	if latch == nil {
+		return NewNullPointerException()
+	}
+	if wait == nil {
+		wait = func(done <-chan struct{}) error { <-done; return nil }
+	}
+	if err := wait(latch.done); err != nil {
+		return err
+	}
+	if sleep == nil {
+		sleep = func(duration time.Duration) error { time.Sleep(duration); return nil }
+	}
 	// Wait for the master to disappear before a caller reconnects.
-	time.Sleep(10 * time.Second)
-	return nil
+	return sleep(10 * time.Second)
 }
 
 type distributedWorkerLatch struct {
@@ -124,7 +152,21 @@ type distributedWorkerLatch struct {
 	done      chan struct{}
 }
 
+func newDistributedWorkerLatch(count int) *distributedWorkerLatch {
+	if count < 0 {
+		panic(NewIllegalArgumentException("count < 0"))
+	}
+	latch := &distributedWorkerLatch{remaining: count, done: make(chan struct{})}
+	if count == 0 {
+		close(latch.done)
+	}
+	return latch
+}
+
 func (l *distributedWorkerLatch) countDown() {
+	if l == nil {
+		panic(NewNullPointerException())
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if l.done == nil {
@@ -321,7 +363,7 @@ func (w *DistributedWorker) Exit() (err error) {
 	if !w.unexported.CompareAndSwap(false, true) {
 		return NewNoSuchObjectException("object not exported")
 	}
-	w.Runtime.latch.countDown()
+	w.Runtime.latch.Load().countDown()
 	return nil
 }
 

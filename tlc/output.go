@@ -563,6 +563,21 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 
 func formatMessage(code int, params []string) string {
 	switch code {
+	case ECCFGErrorReadingFile:
+		return "TLC encountered the following error when trying to read the configuration file " + configMessageParam(params, 0) + ":\n" + configMessageParam(params, 1)
+	case ECCFGGeneral, ECCFGMissingID, ECCFGTwiceKeyword, ECCFGExpectID, ECCFGExpectedSymbol:
+		text := "TLC found an error in the configuration file at line " + configMessageParam(params, 0) + "\n"
+		switch code {
+		case ECCFGMissingID:
+			text += "The keyword " + configMessageParam(params, 1) + " was not followed by an identifier."
+		case ECCFGTwiceKeyword:
+			text += "The keyword " + configMessageParam(params, 1) + " appeared twice."
+		case ECCFGExpectID:
+			text += "Expected an identifier after " + configMessageParam(params, 1) + "."
+		case ECCFGExpectedSymbol:
+			text += "It was expecting " + configMessageParam(params, 1) + ", but did not find it."
+		}
+		return text
 	case ECSystemUnableToOpenFile:
 		return "Unable to open " + messageParam(params, 0) + ".\n" + messageParam(params, 1)
 	case ECSystemStackOverflow:
@@ -1449,4 +1464,12 @@ func ExitStatusForErrorCode(code int) int {
 	default:
 		return ExitStatusError
 	}
+}
+
+// MP retains an unsubstituted placeholder when its parameter is absent.
+func configMessageParam(params []string, index int) string {
+	if index >= len(params) {
+		return fmt.Sprintf("%%%d%%", index+1)
+	}
+	return params[index]
 }

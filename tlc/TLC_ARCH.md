@@ -3172,6 +3172,25 @@ Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectExceptio
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
+TLCWorker.main now runs through a concrete DistributedWorkerProcess and the
+root RunDistributedWorker parser bridge. It preserves the argument/error/flush
+contract and allocates the volatile completion latch before entering the lookup
+catch. Resolver, executor and interned strings survive repeated main calls;
+main replaces the current latch and, after starting registration threads,
+replaces the timer without canceling its predecessor. Old timer tasks retain
+their supplied runnable array, while worker exit uses the current timer/latch.
+Partial runnable publication and thread failures preserve their source order.
+Shutdown only clears resolver/runnable state after direct exits succeed, leaving
+executor/latch lifetime intact. AwaitTermination captures one latch and exposes
+interruptible wait/sleep boundaries with the ten-second disposal delay.
+Application config syntax failures preserve ConfigFileException. Actual-source
+command comparisons and production parser/local naming/two-worker integration
+pass under the race detector. Wire invocation, MP/SANY console routing,
+config-read process exit, server/combined command/mail wiring and simultaneous
+FP64/interner class-global isolation remain separate pending work. No dedicated
+upstream main/shutdown/await tests exist; transport-dependent tests remain with
+the full transport feature.
+
 Worker keepalive captures the registry URL from startup and performs a fresh
 lookup followed by isDone after inactivity. Local groups supply a direct-server
 adapter; discovery groups retain the original Naming.lookup boundary. Timeout

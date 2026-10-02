@@ -108,6 +108,11 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 	}
 	cfg, err := tlc.ParseModelConfigSource(configName, source)
 	if err != nil {
+		if failure, ok := err.(*tlc.ConfigFileError); ok {
+			// ModelConfig.parse throws ConfigFileException; the public config
+			// parser retains its separate native result carrier.
+			err = tlc.NewConfigFileException(failure.Code, failure.Params)
+		}
 		return nil, nil, err
 	}
 	spec, diags := LoadSanySpec(rootFile, LoadOptions{FilenameResolver: resolver})
@@ -214,4 +219,27 @@ func CreateTLCApp(args []string, runtime tlc.RuntimeParameters, classpath ...[]t
 		app.Tool.DistributedFiles.Classpath = entries
 	}
 	return app, diags, err
+}
+
+// RunDistributedWorker connects TLCWorker.main to the production Go parser and
+// TLCApp constructor. The supplied process retains the source static lifecycle
+// across calls. Environment adapters supply the registry/process boundaries.
+func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, env tlc.DistributedWorkerEnvironment, runtime tlc.RuntimeParameters) (Diagnostics, error) {
+	var diags Diagnostics
+	if env.LoadApp == nil {
+		env.LoadApp = func(server *tlc.TLCServer, resolver *tlc.RMIFilenameToStreamResolver) (*tlc.TLCApp, error) {
+			app, loaded, err := LoadTLCApp(server.GetSpecFileName(), server.GetConfigFileName(), server.GetCheckDeadlock(), resolver, runtime)
+			diags = append(diags, loaded...)
+			if err == nil && loaded.HasErrors() {
+				params := make([]string, 0, len(loaded))
+				for _, diagnostic := range loaded.Errors() {
+					params = append(params, diagnostic.Message)
+				}
+				err = tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed, params...)
+			}
+			return app, err
+		}
+	}
+	err := process.Run(args, env)
+	return diags, err
 }

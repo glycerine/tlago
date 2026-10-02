@@ -97,6 +97,8 @@ type DistributedWorkerRunnable struct {
 	manager      *DistributedFPSetManager
 	runtime      *DistributedWorkerRuntime
 	address      *DistributedWorkerAddress
+	localHost    func() (string, error)
+	register     func(*TLCServer, *DistributedWorker) error
 	worker       atomic.Pointer[DistributedWorker]
 	done         chan struct{}
 	completeOnce sync.Once
@@ -108,7 +110,12 @@ func (r *DistributedWorkerRunnable) ThreadName() string {
 	return fmt.Sprintf("%s%03d", TLCWorkerThreadNamePrefix, r.threadID)
 }
 
-func (r *DistributedWorkerRunnable) GetTLCWorker() *DistributedWorker { return r.worker.Load() }
+func (r *DistributedWorkerRunnable) GetTLCWorker() *DistributedWorker {
+	if r == nil {
+		panic(NewNullPointerException())
+	}
+	return r.worker.Load()
+}
 
 func (r *DistributedWorkerRunnable) Run() (err error) {
 	defer func() {
@@ -127,7 +134,11 @@ func (r *DistributedWorkerRunnable) Run() (err error) {
 	if r.address != nil {
 		endpoint = *r.address
 	} else {
-		host, err := distributedCanonicalLocalHost()
+		localHost := r.localHost
+		if localHost == nil {
+			localHost = distributedCanonicalLocalHost
+		}
+		host, err := localHost()
 		if err != nil {
 			return err
 		}
@@ -137,6 +148,9 @@ func (r *DistributedWorkerRunnable) Run() (err error) {
 	worker.App = r.app
 	worker.Runtime = r.runtime
 	r.worker.Store(worker)
+	if r.register != nil {
+		return r.register(r.server, worker)
+	}
 	r.server.RegisterWorker(worker)
 	return nil
 }
