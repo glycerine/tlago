@@ -1233,7 +1233,7 @@ func (mc *ModelChecker) reportPeriodicCoverage() {
 }
 
 func checkerCoverageEnabled(tool *Tool) bool {
-	return tool != nil && CoverageAnyEnabled() && len(tool.GetActions()) > 0
+	return tool != nil && CoverageEnabled() && len(tool.GetActions()) > 0
 }
 
 func (mc *ModelChecker) joinWorkers() error {

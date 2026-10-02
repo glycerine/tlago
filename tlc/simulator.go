@@ -186,7 +186,7 @@ func (s *Simulator) PrintSummary() {
 	if s == nil {
 		return
 	}
-	if CoverageAnyEnabled() {
+	if CoverageEnabled() {
 		ReportCoverage(s.Tool, s.StartTime)
 	}
 	if err := s.writeActionFlowGraph(); err != nil {
@@ -263,7 +263,7 @@ func (s *Simulator) reportSimulationProgress(coverageCountdown *int, interval ti
 		if *coverageCountdown > 1 {
 			(*coverageCountdown)--
 		} else {
-			if CoverageAnyEnabled() {
+			if CoverageEnabled() {
 				ReportCoverage(s.Tool, s.StartTime)
 			}
 			*coverageCountdown = periodicCoverageCountdown(interval)
