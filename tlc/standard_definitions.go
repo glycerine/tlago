@@ -700,7 +700,7 @@ func standardTLCDefer(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 		}
 		return nil, nil
 	}
-	return TLCExtTLCDefer([]*TLCStateMut{state, pstate}, callable), nil
+	return TLCExtTLCDefer([]*TLCStateMut{state, pstate}, callable)
 }
 
 func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

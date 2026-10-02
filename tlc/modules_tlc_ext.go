@@ -225,13 +225,14 @@ func traceInfoTupleValue(trace []*TLCStateInfo) Value {
 	return NewTupleValue(values)
 }
 
-func TLCExtTLCDefer(states []*TLCStateMut, callable func() (any, error)) Value {
+func TLCExtTLCDefer(states []*TLCStateMut, callable func() (any, error)) (Value, error) {
 	for _, state := range states {
-		if state != nil {
-			state.SetCallable(callable)
+		if state == nil {
+			return nil, javaMethodOverrideError("TLCDefer", "null")
 		}
+		state.SetCallable(callable)
 	}
-	return BoolTrue
+	return BoolTrue, nil
 }
 
 func TLCExtTLCNoOp(value Value) Value {
