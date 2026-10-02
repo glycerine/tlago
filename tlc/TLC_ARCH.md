@@ -3172,6 +3172,25 @@ Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectExceptio
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
+util.MailSender now has a concrete constructor/report port. It preserves early
+ModelInJar property loading, recipient/primary/alternate address ordering,
+output-before-error stream installation and partial failure side effects. Its
+caller list gains output and nonempty error logs, every recipient is attempted,
+and alternate-sender attempts reread the body and copy the current attachments.
+MX records use source raw-attribute parsing and stable priority order; missing
+and empty attributes differ. Live SMTP properties retain the localhost suffix
+quirk and sticky greylist markers, with source ten-/one-minute throttling and
+interruption handling. MailLogPrintStream echoes only println(String), retains
+PrintStream trouble/close behavior and default UTF-8 surrogate encoding. Body
+extraction follows Scanner(File)'s strict decoder, 1024-unit buffer lifetime,
+Java whitespace/line separators and delimiter filtering, including discarded
+characters from a malformed read. Disabled mail is functional by default.
+JavaMail address parsing, Session/MIME/SMTP and native JNDI DNS remain explicit
+provider boundaries; complete ToolIO/MP/SANY stream routing and broader
+charset/locale/JVM providers still need implementation. Actual-source report,
+stream and exception-chain probes and production disabled-mail server/worker
+integration pass under -race. Delivery probes use a fake transport.
+
 TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer
 entry points. It starts named FP-server and worker threads in source order,
 passing the same argument array, without a readiness barrier or joins. Start
@@ -3195,11 +3214,13 @@ unregister, module collection, result delivery and exit ordering. Exception
 precedence follows Java, including Error escaping the close Exception catch.
 The executor exposes a native interruption signal for shutdownNow task/RPC
 adapters, with ordinary shutdown leaving accepted work uninterrupted.
-CreateMail is a required constructor boundary owning properties/address/log
-capture; delivery is delegated and disabled mail returns true. OS hooks are
-retained callbacks unless the provided installer registers them. Real MailSender,
-process hooks, JMX/JDK interruption providers, wire RPC, config-read process exit
-remain pending. Actual-source main comparisons
+CreateMail can override the native MailSender constructor; ordinary disabled
+mail now uses the source constructor/report flow. The root bridge reads its
+packaged properties before application creation. Enabled mail requires the
+JavaMail/address/output providers described below. OS hooks are retained
+callbacks unless the provided installer registers them. Mail protocol providers,
+process hooks, JMX/JDK interruption providers, wire RPC and config-read process
+exit remain pending. Actual-source main comparisons
 and production server/worker/local-naming integration pass under the race
 detector. The full upstream transport harness remains explicitly skipped; no
 dedicated main tests exist.

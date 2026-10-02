@@ -24,6 +24,16 @@ func javaString(value string) *string { return &value }
 
 func javaThrowableClassName(err error) string {
 	switch failure := err.(type) {
+	case *NamingException:
+		return "javax.naming.NamingException"
+	case *MessagingException:
+		return "javax.mail.MessagingException"
+	case *SendFailedException:
+		return "javax.mail.SendFailedException"
+	case *MailAddressException:
+		return "javax.mail.internet.AddressException"
+	case *NumberFormatException:
+		return "java.lang.NumberFormatException"
 	case *StackOverflowError:
 		return "java.lang.StackOverflowError"
 	case *RuntimeException:
@@ -135,6 +145,34 @@ func javaThrowableClassName(err error) string {
 }
 
 func javaThrowableString(err error) string {
+	text := javaBasicThrowableString(err)
+	if mail := javaMessagingException(err); mail != nil {
+		text = func() string {
+			mail.mu.Lock()
+			defer mail.mu.Unlock()
+			for next := mail.nextException(); next != nil; {
+				text += ";\n  nested exception is:\n\t"
+				if nested := javaMessagingException(next); nested != nil {
+					text += javaBasicThrowableString(next)
+					next = nested.nextException()
+				} else {
+					text += javaThrowableString(next)
+					next = nil
+				}
+			}
+			return text
+		}()
+	}
+	if address, ok := err.(*MailAddressException); ok && address.Ref != nil {
+		text += " in string ``" + *address.Ref + "''"
+		if address.Position >= 0 {
+			text += fmt.Sprintf(" at position %d", address.Position)
+		}
+	}
+	return text
+}
+
+func javaBasicThrowableString(err error) string {
 	name := javaThrowableClassName(err)
 	if message := javaThrowableDetailMessage(err); message != nil {
 		return name + ": " + *message

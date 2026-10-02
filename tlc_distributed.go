@@ -245,10 +245,23 @@ func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, 
 }
 
 // RunDistributedServer connects TLCServer.main to production application
-// creation. CreateMail supplies the MailSender constructor/output boundary;
-// mail and OS hook providers are independent of the command's source lifecycle.
+// creation and packaged MailSender properties. CreateMail can override the
+// constructor; enabled mail requires its JavaMail/output boundary providers.
 func RunDistributedServer(process *tlc.DistributedServerProcess, args []string, env tlc.DistributedServerEnvironment, runtime tlc.RuntimeParameters, classpath ...[]tlc.FilenameClasspathEntry) (Diagnostics, error) {
 	var diags Diagnostics
+	if env.CreateMail == nil && env.MailEnvironment.LoadProperties == nil {
+		env.MailEnvironment.LoadProperties = func() {
+			var configured []tlc.FilenameClasspathEntry
+			if len(classpath) > 0 {
+				configured = classpath[0]
+			}
+			entries, err := tlcApplicationClasspath(configured)
+			if err != nil {
+				panic(err)
+			}
+			tlc.NewModelInJar(entries).LoadProperties()
+		}
+	}
 	if env.CreateApp == nil {
 		env.CreateApp = func(args []string) (*tlc.TLCApp, error) {
 			app, loaded, err := CreateTLCApp(args, runtime, classpath...)

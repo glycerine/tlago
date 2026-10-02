@@ -29,11 +29,12 @@ func (m *DistributedServerMail) Send(files []*TLAFile) (bool, error) {
 }
 
 // DistributedServerEnvironment supplies TLCServer.main's process boundaries.
-// CreateMail must construct the MailSender boundary before application loading.
+// CreateMail overrides the MailSender constructor before application loading.
 // The defaults use the concrete native server/checker and local management bean;
 // wire export, mail delivery and OS shutdown hooks require their own adapters.
 type DistributedServerEnvironment struct {
 	CreateMail          func() (*DistributedServerMail, error)
+	MailEnvironment     MailSenderEnvironment
 	CreateApp           func([]string) (*TLCApp, error)
 	Property            func(string, string) string
 	CreateServer        func(*TLCApp, int) (*TLCServer, error)
@@ -104,6 +105,15 @@ func (p *DistributedServerProcess) Run(args []string, env DistributedServerEnvir
 	return pending
 }
 func distributedServerEnvironment(env DistributedServerEnvironment) DistributedServerEnvironment {
+	if env.CreateMail == nil {
+		env.CreateMail = func() (*DistributedServerMail, error) {
+			sender, err := NewMailSender(env.MailEnvironment)
+			if err != nil {
+				return nil, err
+			}
+			return sender.DistributedServerMail(), nil
+		}
+	}
 	if env.Property == nil {
 		env.Property = func(key, fallback string) string {
 			if value, ok := tlcLookupSystemProperty(key); ok {
