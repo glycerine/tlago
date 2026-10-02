@@ -25,6 +25,7 @@ type DiskStateQueue struct {
 	stop          bool
 	suspend       stateQueueSuspendBarrier
 	diskdir       string
+	rawPaths      bool
 	deqBuf        []*TLCStateMut
 	enqBuf        []*TLCStateMut
 	deqIndex      int
@@ -43,9 +44,16 @@ func NewDiskStateQueue(metaDir string) *DiskStateQueue {
 	if metaDir == "" {
 		metaDir = filepath.Join(os.TempDir(), "DiskStateQueue")
 	}
+	return newDiskStateQueue(metaDir, false)
+}
+
+// The distributed source constructor retains FileUtil separator concatenation
+// and opens existing metadata, rather than host-side path/default conveniences.
+func newDiskStateQueue(metaDir string, rawPaths bool) *DiskStateQueue {
 	bufSize := diskStateQueueBufferSize()
 	q := &DiskStateQueue{
 		diskdir:  metaDir,
+		rawPaths: rawPaths,
 		deqBuf:   make([]*TLCStateMut, bufSize),
 		enqBuf:   make([]*TLCStateMut, bufSize),
 		deqIndex: bufSize,
@@ -255,10 +263,12 @@ func (q *DiskStateQueue) BeginChkpt() error {
 	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
-		return err
+	if !q.rawPaths {
+		if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
+			return err
+		}
 	}
-	file, err := os.Create(filepath.Join(q.diskdir, "queue.tmp"))
+	file, err := os.Create(q.queuePath("queue.tmp"))
 	if err != nil {
 		return err
 	}
@@ -303,8 +313,8 @@ func (q *DiskStateQueue) CommitChkpt() error {
 		}
 	}
 	q.lastLoPool = q.newLastLoPool
-	oldName := filepath.Join(q.diskdir, "queue.chkpt")
-	newName := filepath.Join(q.diskdir, "queue.tmp")
+	oldName := q.queuePath("queue.chkpt")
+	newName := q.queuePath("queue.tmp")
 	if err := os.Remove(oldName); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("DiskStateQueue.commitChkpt: cannot delete %s", oldName)
 	}
@@ -317,7 +327,7 @@ func (q *DiskStateQueue) CommitChkpt() error {
 func (q *DiskStateQueue) Recover() error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	file, err := os.Open(filepath.Join(q.diskdir, "queue.chkpt"))
+	file, err := os.Open(q.queuePath("queue.chkpt"))
 	if err != nil {
 		return err
 	}
@@ -458,8 +468,10 @@ func (q *DiskStateQueue) fillDequeueBuffer() error {
 }
 
 func (q *DiskStateQueue) spillEnqueueBuffer() error {
-	if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
-		return err
+	if !q.rawPaths {
+		if err := os.MkdirAll(q.diskdir, 0o755); err != nil {
+			return err
+		}
 	}
 	buf, err := q.writer.DoWork(q.enqBuf, q.poolName(q.hiPool))
 	if err != nil {
@@ -501,7 +513,14 @@ func (q *DiskStateQueue) needsWaiting() bool {
 }
 
 func (q *DiskStateQueue) poolName(pool int) string {
-	return filepath.Join(q.diskdir, fmt.Sprint(pool))
+	return q.queuePath(fmt.Sprint(pool))
+}
+
+func (q *DiskStateQueue) queuePath(name string) string {
+	if q.rawPaths {
+		return q.diskdir + string(os.PathSeparator) + name
+	}
+	return filepath.Join(q.diskdir, name)
 }
 
 func (q *DiskStateQueue) maybeCleanStatePools() {

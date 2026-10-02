@@ -17,6 +17,7 @@ type TLCApp struct {
 	config         string
 	fromCheckpoint *string
 	metadir        string
+	metadataSet    bool
 	fpSetConfig    *FPSetConfiguration
 }
 
@@ -39,6 +40,7 @@ func NewTLCAppWithMetadata(tool *Tool, deadlock bool, fromCheckpoint *string, fp
 	app := NewTLCApp(tool, deadlock)
 	app.fromCheckpoint = copyJavaMessage(fromCheckpoint)
 	app.metadir = MakeMetaDir(time.Now(), tool.GetSpecDir(), fromCheckpoint)
+	app.metadataSet = true
 	app.fpSetConfig = fpSetConfig
 	return app
 }

@@ -23,6 +23,7 @@ type TLCTrace struct {
 	level         int
 	previousLevel int
 	diskdir       string
+	rawPaths      bool
 	rootName      string
 	raf           *BufferedRandomAccessFile
 	lastPtr       int64
@@ -110,6 +111,9 @@ func (t *TLCTrace) ensureTraceRAFLocked() error {
 }
 
 func (t *TLCTrace) traceFileName() string {
+	if t.rawPaths {
+		return t.diskdir + string(os.PathSeparator) + t.rootName + tlcTraceExt
+	}
 	rootName := t.rootName
 	if rootName == "" {
 		rootName = "Spec"

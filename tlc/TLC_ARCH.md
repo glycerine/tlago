@@ -3028,6 +3028,27 @@ pending. Go library loading currently returns config failures to its caller;
 Java ModelConfig's process exits need the source command lifecycle adapter.
 Broader JVM class-loader/provider/default-resolver initialization is separate.
 
+`NewTLCServerFromApp` now represents the source application constructor. It
+retains the application, uses DiskStateQueue directly, opens its trace before
+factory FPSet initialization, and wraps that local set with a canonical-host
+non-distributed manager. Checkpoint names come from the metadata leaf substring,
+while the trace and FPSet root names come from the application. Queue/trace
+paths retain source separator concatenation and symlink/dot behavior. Missing
+recovery directories fail at trace open; basic apps retain null-metadata failure.
+
+`NewDistributedFPSetTLCServer` folds the subclass into the concrete server.
+Its manager is created during base construction with the static expected count;
+its readiness latch then takes the explicit constructor argument. Registration
+and countdown are synchronized, rejected registrations do not release the latch,
+and manager retrieval waits for it. The startup wait hook prints the expected
+count and also runs for a zero latch. ModelCheck invokes it before init generation.
+The port/report/expected-count/veto properties freeze at first server class
+initialization, while explicit port assignment remains mutable. Close follows
+trace, FP manager, then recursive metadata cleanup unless vetoed. Actual-source
+constructor/registration/cleanup comparisons pass, including mismatched counts.
+The remaining registry/recovery/init-error/report-wait/command lifecycle needs
+its own port and upstream server harness tests after those features are present.
+
 Worker registration is keyed by server-thread identity, not URI or worker
 identity. Java can register the same worker more than once; each registration
 has its own assigned block, statistics, keepalive, and removal. Go keeps one

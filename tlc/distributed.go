@@ -93,6 +93,8 @@ type TLCServer struct {
 	Tool                        *Tool
 	app                         *TLCApp
 	Metadir                     string
+	checkpointName              *string
+	fpRegistration              *distributedFPRegistration
 	FileName                    string
 	ConfigName                  string
 	Done                        atomic.Bool
@@ -115,6 +117,7 @@ type TLCServer struct {
 }
 
 func NewTLCServer(fileName string, configName string, metadir string, manager *DistributedFPSetManager, queue StateQueue, trace *TLCTrace) *TLCServer {
+	InitializeTLCServerProperties()
 	if manager == nil {
 		manager = NewDistributedFPSetManager()
 	}
@@ -216,7 +219,7 @@ func (s *TLCServer) Checkpoint() error {
 		}
 	}
 	if s.FPSetManager != nil {
-		if err := s.FPSetManager.Checkpoint(s.FileName); err != nil {
+		if err := s.FPSetManager.Checkpoint(s.checkpointFileName()); err != nil {
 			return err
 		}
 	}
@@ -259,7 +262,7 @@ func (s *TLCServer) Recover() error {
 		}
 	}
 	if s.FPSetManager != nil {
-		if err := s.FPSetManager.Recover(s.FileName); err != nil {
+		if err := s.FPSetManager.Recover(s.checkpointFileName()); err != nil {
 			return err
 		}
 	}
@@ -281,16 +284,7 @@ func (s *TLCServer) Close(cleanup bool) error {
 		}
 	}
 	if cleanup && !distributedVetoCleanup() {
-		if s.StateQueue != nil {
-			if err := s.StateQueue.Delete(); err != nil {
-				return err
-			}
-		}
-		if s.Trace != nil {
-			if err := s.Trace.Delete(); err != nil {
-				return err
-			}
-		}
+		deleteDirLikeJava(s.Metadir, true)
 	}
 	return nil
 }
@@ -340,6 +334,7 @@ func (s *TLCServer) ModelCheck(tool ...*Tool) (int, error) {
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "distributed TLC server has no tool")
 	}
+	s.WaitForFPSetManager()
 	PrintMessage(ECTLCComputingInit)
 	result, err := s.DoInit()
 	if err != nil {
@@ -745,10 +740,8 @@ func (f *distributedDoInitFunctor) AddElement(curState *TLCStateMut) (any, error
 }
 
 func distributedVetoCleanup() bool {
-	if value, ok := tlcLookupSystemProperty(tlcServerVetoCleanup); ok {
-		return javaBooleanProperty(value)
-	}
-	return false
+	InitializeTLCServerProperties()
+	return tlcServerProperties.vetoCleanup
 }
 
 func (s *TLCServer) IsRunning() bool {
@@ -831,6 +824,9 @@ func (s *TLCServer) GetWorkerCount() int {
 func (s *TLCServer) GetFPSetManager() *DistributedFPSetManager {
 	if s == nil {
 		return nil
+	}
+	if s.fpRegistration != nil {
+		<-s.fpRegistration.done
 	}
 	return s.FPSetManager
 }
