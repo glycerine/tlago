@@ -55,6 +55,14 @@ type FileNotFoundException struct{ *IOException }
 
 type UnknownHostException struct{ *IOException }
 
+type InvalidPathException struct{ *IllegalArgumentException }
+
+func NewInvalidPathException(path, reason string) *InvalidPathException {
+	return &InvalidPathException{IllegalArgumentException: NewIllegalArgumentException(reason + ": " + path)}
+}
+
+func (e *InvalidPathException) Error() string { return javaThrowableMessage(e) }
+
 func NewUnknownHostException(message string) *UnknownHostException {
 	return &UnknownHostException{IOException: NewIOException(message)}
 }

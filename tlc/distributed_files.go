@@ -24,7 +24,7 @@ type DistributedFileServer interface {
 // resolve isModule flag affect this particular Java resolver.
 type RMIFilenameToStreamResolver struct {
 	server    DistributedFileServer
-	fileCache *InsMap[string, string]
+	fileCache *InsMap[string, *TLAFile]
 	tmpDir    string
 }
 
@@ -35,15 +35,15 @@ func NewRMIFilenameToStreamResolver(libraryPaths ...[]string) *RMIFilenameToStre
 		panic(NewNullPointerException()) // newExclusiveTemporaryDirectory dereferences null.
 	}
 	registerDistributedDeleteOnExit(dir)
-	return &RMIFilenameToStreamResolver{fileCache: NewInsMap[string, string](), tmpDir: dir}
+	return &RMIFilenameToStreamResolver{fileCache: NewInsMap[string, *TLAFile](), tmpDir: dir}
 }
 
 func (r *RMIFilenameToStreamResolver) SetTLCServer(server DistributedFileServer) { r.server = server }
 
-func (r *RMIFilenameToStreamResolver) Resolve(filename string, isModule bool) string {
+func (r *RMIFilenameToStreamResolver) Resolve(filename string, isModule bool) *TLAFile {
 	name := distributedJavaFileName(filename)
 	file, found := r.fileCache.Get2(name)
-	if _, err := os.Stat(file); !found || err != nil {
+	if !found || !file.Exists() {
 		bs := r.fetch(name)
 		file = r.writeToNewTempFile(name, bs)
 		r.fileCache.Set(name, file)
@@ -72,12 +72,12 @@ func (r *RMIFilenameToStreamResolver) fetch(name string) (bs []byte) {
 	return data
 }
 
-func (r *RMIFilenameToStreamResolver) writeToNewTempFile(name string, bs []byte) string {
-	file := filepath.Join(r.tmpDir, name)
-	registerDistributedDeleteOnExit(file)
-	out, err := os.Create(file)
+func (r *RMIFilenameToStreamResolver) writeToNewTempFile(name string, bs []byte) *TLAFile {
+	file := NewTLAFile(filenamePathResolve(r.tmpDir, name), false, r)
+	registerDistributedDeleteOnExit(file.GetPath())
+	out, err := os.Create(file.GetPath())
 	if err != nil {
-		printDistributedFileException(distributedFileOpenException(file, err))
+		printDistributedFileException(distributedFileOpenException(file.GetPath(), err))
 		return file
 	}
 	defer func() {
@@ -120,6 +120,8 @@ type DistributedServerFiles struct {
 	ModelResources fs.FS
 	Resources      fs.FS
 	ResourcePrefix string
+	resolverMu     sync.Mutex
+	resolver       *SimpleFilenameToStream
 }
 
 func NewDistributedServerFiles(userDirectory string, libraryPaths []string, resources fs.FS, resourcePrefix string) *DistributedServerFiles {
@@ -127,76 +129,36 @@ func NewDistributedServerFiles(userDirectory string, libraryPaths []string, reso
 		userDirectory, _ = os.Getwd()
 	}
 	if libraryPaths == nil {
-		if paths := os.Getenv("TLA-Library"); paths != "" {
-			libraryPaths = filepath.SplitList(paths)
+		libraryPaths = []string{}
+		if paths, ok := tlcLookupSystemProperty(TLALibraryProperty); ok {
+			libraryPaths = filenameSplitPaths(paths)
 		}
 	}
-	return &DistributedServerFiles{UserDirectory: userDirectory, LibraryPaths: append([]string(nil), libraryPaths...), ModelResources: resources, Resources: resources, ResourcePrefix: resourcePrefix}
+	captured := make([]string, len(libraryPaths))
+	copy(captured, libraryPaths)
+	return &DistributedServerFiles{UserDirectory: userDirectory, LibraryPaths: captured, ModelResources: resources, Resources: resources, ResourcePrefix: resourcePrefix}
 }
 
 func (s *DistributedServerFiles) resolve(name string) string {
-	var tmpDir string
-	copyResource := func(data []byte) (string, error) {
-		if tmpDir == "" {
-			var err error
-			tmpDir, err = os.MkdirTemp("", "tlc-")
-			if err != nil {
-				printDistributedFileException(NewIOException(distributedIOMessage(err)))
-				panic(NewNullPointerException())
+	s.resolverMu.Lock()
+	defer s.resolverMu.Unlock()
+	if s.resolver == nil {
+		options := FilenameResolverOptions{UserDirectory: &s.UserDirectory, Classpath: []FilenameClasspathEntry{}}
+		if s.ModelResources != nil {
+			options.Classpath = append(options.Classpath, FilenameClasspathEntry{Files: s.ModelResources})
+		}
+		if s.Resources != nil {
+			if resources, err := fs.Sub(s.Resources, strings.Trim(s.ResourcePrefix, "/")); s.ResourcePrefix != "" && err == nil {
+				options.Classpath = append(options.Classpath, FilenameClasspathEntry{Files: resources, Prefix: StandardModulesClasspath, Location: "embedded:/" + s.ResourcePrefix})
 			}
+			options.Classpath = append(options.Classpath, FilenameClasspathEntry{Files: s.Resources})
 		}
-		// Simple/InJar schedule the copied file, not their temporary directory.
-		file := filepath.Join(tmpDir, name)
-		registerDistributedDeleteOnExit(file)
-		return file, os.WriteFile(file, data, 0666)
+		options.Classpath = append(options.Classpath, filenameDefaultClasspath()...)
+		s.resolver = NewSimpleFilenameToStream(s.LibraryPaths, options)
+		prefix := "/model/"
+		s.resolver.modelPrefix = &prefix
 	}
-	if s.ModelResources != nil {
-		// InJar tries the raw name before Simple strips a newline.
-		if data, err := fs.ReadFile(s.ModelResources, "model/"+name); err == nil {
-			file, err := copyResource(data)
-			if err == nil {
-				return file
-			}
-			// InJar's copy IOException prints and falls back to Simple.
-			printDistributedFileException(NewIOException(distributedIOMessage(err)))
-		}
-	}
-	if n := strings.IndexByte(name, '\n'); n >= 0 {
-		fmt.Fprintf(os.Stdout, "*** Warning: module name '%s' contained NEWLINE; Only the part before NEWLINE is considered.\n", name)
-		name = name[:n]
-	}
-	for _, dir := range append([]string{s.UserDirectory}, s.LibraryPaths...) {
-		path := filepath.Join(dir, name)
-		if filepath.IsAbs(name) {
-			path = name
-		}
-		if _, err := os.Stat(path); err == nil {
-			return path
-		}
-	}
-	if s.Resources != nil {
-		resource := strings.TrimSuffix(s.ResourcePrefix, "/") + "/" + name
-		if s.ResourcePrefix == "" {
-			resource = name
-		}
-		data, err := fs.ReadFile(s.Resources, resource)
-		if os.IsNotExist(err) && s.ResourcePrefix != "" {
-			// Java searches the bare classpath after StandardModules.
-			data, err = fs.ReadFile(s.Resources, name)
-		}
-		if err == nil {
-			file, err := copyResource(data)
-			if err != nil {
-				// Simple returns its file even when the copy failed.
-				printDistributedFileException(NewIOException(distributedIOMessage(err)))
-			}
-			return file
-		}
-		if !os.IsNotExist(err) {
-			panic(NewRuntimeExceptionFromCause(NewIOException(distributedIOMessage(err))))
-		}
-	}
-	return filepath.Join(s.UserDirectory, name)
+	return s.resolver.Resolve(name, false).GetPath()
 }
 
 func (s *TLCServer) GetFile(file string) ([]byte, error) {

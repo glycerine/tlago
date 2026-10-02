@@ -3051,8 +3051,48 @@ polynomial 65 is corrected; all 131 constants and 655 source-Java integer/long
 extension pairs match. The upstream FP64Test is ported after implementation.
 Network invocation, registry discovery/retry, endpoint export and full command
 startup/error/shutdown wiring remain pending.
-The general FilenameToStream/TLAFile API and Java archive/classpath discovery
-beyond bundled module assets are not claimed complete by this slice.
+`FilenameToStream` now carries the local/remote resolver contract. Both concrete
+resolvers return `TLAFile`, retaining existence-at-construction URI provenance,
+library flags and the resolver used for `.class` override lookup. Remote cached
+files keep their object identity and null original URI when constructed before
+writing, even after the file starts to exist. The production parser and config
+loader use `GetPath` at their OS file-reading boundaries.
+
+`SimpleFilenameToStream` snapshots the user/CWD and explicit or TLA-Library
+paths at construction, then searches standard-module and bare classpath roots.
+Explicit filesystem libraries remain non-standard; both classpath locations
+are standard. Module loading normalizes the .tla suffix and warns/truncates at
+newlines; non-module loading keeps the filename. Missing results retain the
+historical parent/child TLAFile behavior instead of returning null. File paths
+retain dot components and provenance URIs preserve Unicode and escape spaces.
+
+Go supplies ordered classpath directory/archive entries or mounted bundled
+fs.FS resources. The parser bridge supplies its frozen standard assets; default
+native classpath entries come from java.class.path/CLASSPATH or the CWD. Archive
+resources keep their jar:file: URI while copying to one per-resolver temporary
+directory. Filesystem resources retain their path. The descriptive search path
+keeps Java's nested separators. Generic JVM class-loader providers, manifest
+classpath expansion and module-loader VM hooks are not implemented by this
+native resource adapter.
+
+InJar behavior is folded into the same concrete resolver: raw packaged names
+are tried before extension/newline handling, copied modules remain non-library,
+and copy failure falls back to Simple. Simple copy errors print and return the
+attempted file; opening a discovered resource and outer close errors preserve
+the RuntimeException/IOException boundary. Copying uses Java's 1024-byte loop
+and registers files for process-exit deletion. Native stream closes are
+idempotent; resources are also closed on failure rather than leaking them.
+`DistributedServerFiles` now delegates to this resolver instead of duplicating
+its search/copy algorithm. Its temporary directory is retained across requests.
+
+All eight upstream SimpleFilenameToStreamTest cases are ported after the
+implementation, using existing frozen standard/community fixtures under
+`test_vectors/`. The Windows-specific case retains its source platform guard;
+verification here ran on Linux. Direct probes compiled the actual Java
+resolver/locator/TLAFile sources and matched user/library/missing/standard/
+community provenance, original Unicode/space URI spelling, path descriptions,
+uppercase suffix handling, override lookup and archive predicates. The real
+worker tool-loading/cache/failure/bootstrap probe also passes under -race.
 
 `InternTable` is a concrete linear-probing table with Java String hash codes,
 half-capacity growth thresholds, `2 * length + 1` growth, and signed int token

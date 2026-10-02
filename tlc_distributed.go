@@ -24,7 +24,7 @@ func LoadDistributedWorkerTool(server *tlc.TLCServer, resolver *tlc.RMIFilenameT
 	}
 	resolver.SetTLCServer(server)
 	configName := tlc.ModelConfigPath(server.GetConfigFileName())
-	configPath := resolver.Resolve(configName, false)
+	configPath := resolver.Resolve(configName, false).GetPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, nil, &tlc.ConfigFileError{Code: tlc.ECCFGErrorReadingFile, Params: []string{configName, err.Error()}}

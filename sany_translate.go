@@ -80,7 +80,7 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 		rootPath += ".tla"
 	}
 	if opts.DistributedResolver != nil {
-		rootPath = opts.DistributedResolver.Resolve(rootPath, true)
+		rootPath = opts.DistributedResolver.Resolve(rootPath, true).GetPath()
 	}
 	if abs, err := filepath.Abs(rootPath); err == nil {
 		rootPath = abs
@@ -137,7 +137,7 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 		return mod
 	}
 	if l.opts.DistributedResolver != nil {
-		path := l.opts.DistributedResolver.Resolve(name+".tla", true)
+		path := l.opts.DistributedResolver.Resolve(name+".tla", true).GetPath()
 		return l.loadPath(path, false)
 	}
 	if l.opts.PreferLibraryModules {
