@@ -135,3 +135,78 @@ func TestToolRecordConstructorsUseFieldPairCoverage(t *testing.T) {
 		}
 	}
 }
+
+func TestToolSubsetOfLazySetsDefersPredicateEvaluation(t *testing.T) {
+	initTLCCheckerTest(t)
+	recordSet, err := NewSetOfRcdsValue([]*UniqueString{UniqueStringOf("a")}, []Value{NewIntervalValue(1, 2)}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name      string
+		domain    Value
+		candidate Value
+	}{
+		{"powerset", NewSubsetValue(NewIntervalValue(1, 2)), NewSetEnumValue([]Value{NewIntValue(1)}, true)},
+		{"tuple product", NewSetOfTuplesValue([]Value{NewIntervalValue(1, 2)}), NewTupleValue([]Value{NewIntValue(1)})},
+		{"function set", NewSetOfFcnsValue(NewIntervalValue(1, 1), NewIntervalValue(1, 2)), NewTupleValue([]Value{NewIntValue(1)})},
+		{"record set", recordSet, NewRecordValue([]*UniqueString{UniqueStringOf("a")}, []Value{NewIntValue(1)}, true)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tool := NewTool()
+			bound := NewSymbolNode("element")
+			pred := NewBuiltinOpApplNode(OpEq, NewOpApplNode(bound), NewValueNode(tc.candidate))
+			expr := NewBuiltinOpApplNode(OpSSO, pred)
+			expr.BdedQuantSymbolLists = [][]*SymbolNode{{bound}}
+			expr.BdedQuantBounds = []SemanticNode{NewValueNode(tc.domain)}
+			expr.BdedQuantATuple = []bool{false}
+			predicateCalls := 0
+			tool.EvalFunc = func(tl *Tool, node SemanticNode, args ...any) (Value, error) {
+				if node == pred {
+					predicateCalls++
+				}
+				c, s0, s1, control, cm := parseEvalArgs(args...)
+				return tl.EvalImpl(node, c, s0, s1, control, cm)
+			}
+			result, err := tool.Eval(expr)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := result.(*SetPredValue); !ok || predicateCalls != 0 {
+				t.Fatalf("filter = %T with %d predicate calls; want lazy SetPredValue with no predicate calls", result, predicateCalls)
+			}
+			if member, err := result.Member(tc.candidate); err != nil || !member {
+				t.Fatalf("candidate membership = %v, %v; want true", member, err)
+			}
+			if predicateCalls != 1 {
+				t.Fatalf("predicate calls after membership = %d, want 1", predicateCalls)
+			}
+		})
+	}
+}
+
+func TestToolLazySubsetOfKeepsCapturedStateForMembership(t *testing.T) {
+	initTLCCheckerTest(t)
+	tool := NewTool()
+	bound := NewSymbolNode("subset")
+	pred := NewBuiltinOpApplNode(OpIn, NewOpApplNode(NewVariableSymbolNode("x")), NewOpApplNode(bound))
+	expr := NewBuiltinOpApplNode(OpSSO, pred)
+	expr.BdedQuantSymbolLists = [][]*SymbolNode{{bound}}
+	expr.BdedQuantBounds = []SemanticNode{NewValueNode(NewSubsetValue(NewIntervalValue(1, 2)))}
+	expr.BdedQuantATuple = []bool{false}
+	state := checkerTestState(1)
+	result, err := tool.Eval(expr, EmptyContext, state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := result.(*SetPredValue); !ok {
+		t.Fatalf("filter = %T, want lazy SetPredValue", result)
+	}
+	state.Bind(UniqueStringOf("x"), NewIntValue(2))
+	for _, value := range []int32{1, 2} {
+		candidate := NewSetEnumValue([]Value{NewIntValue(value)}, true)
+		if member, err := result.Member(candidate); err != nil || member != (value == 1) {
+			t.Fatalf("%v membership = %v, %v; want captured x=1", candidate, member, err)
+		}
+	}
+}

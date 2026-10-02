@@ -1188,7 +1188,7 @@ func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *
 			return nil, err
 		}
 		dvals[i] = value
-		isFcnRcd = isFcnRcd && isReducibleFunctionDomain(value)
+		isFcnRcd = isFcnRcd && isReducibleValue(value)
 	}
 	params := NewFcnParams(expr.BdedQuantSymbolLists, expr.BdedQuantATuple, dvals)
 	fval := NewFcnLambdaValue(params, expr.Args[0], t, c, s0, s1, control, cm)
@@ -1204,7 +1204,7 @@ func (t *Tool) evalFcnConstructor(expr *OpApplNode, opcode int, c *Context, s0 *
 	return fval, nil
 }
 
-func isReducibleFunctionDomain(value Value) bool {
+func isReducibleValue(value Value) bool {
 	switch value.(type) {
 	case *IntervalValue, *SetEnumValue:
 		return true
@@ -1322,7 +1322,8 @@ func (t *Tool) evalSubsetOf(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 	}
 	bvars := expr.BdedQuantSymbolLists[0]
 	isTuple := len(expr.BdedQuantATuple) > 0 && expr.BdedQuantATuple[0]
-	if enum, ok := asEnumerable(inVal); ok {
+	if isReducibleValue(inVal) {
+		enum, _ := asEnumerable(inVal)
 		values := NewValueVec(0)
 		e := enum.Elements()
 		for elem := e.NextElement(); elem != nil; elem = e.NextElement() {

@@ -969,7 +969,11 @@ Important concrete values:
   flags. A dummy cache means "deep-normalized but not materialized"; when later
   converted to `SetEnumValue`, the materialized set must be deep-normalized
   before the dummy flag is cleared.
-- `SetPredValue`: predicate-filtered set.
+- `SetPredValue`: predicate-filtered set. `Tool` eagerly evaluates
+  `{x \\in S : P(x)}` only when `S` is Java `Reducible`, represented by
+  `IntervalValue` and `SetEnumValue` in Go. Other values retain a lazy
+  `SetPredValue` even when they support enumeration; this avoids premature
+  predicate evaluation and materialization of powersets or product spaces.
 - `LazyValue` and `EvaluatingValue`: deferred evaluation.
 - `ModelValue`: named atoms with special comparison/permutation behavior.
 - `UserValue`: module-defined values such as unbounded standard sets.
