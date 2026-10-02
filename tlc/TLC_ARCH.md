@@ -2210,9 +2210,12 @@ are preserved until normal set comparison/fingerprinting forces
 normalization. Randomized enumeration (`elements(Ordering.RANDOMIZED)`) uses
 that same `SubsetEnumerator` path with `k = size`, so it must not be
 implemented as a Fisher-Yates shuffle; the random-value consumption is
-observable for seeded runs and aril replay. Java does not reject a negative
-integer `k` for `RandomSubset`; it simply yields the empty set because the
-enumerator has no next element.
+observable for seeded runs and aril replay. The LCG iterator is lazy, and reset
+clears its call count while retaining its current seed. Explicit-set and interval
+random iterators select directly without ordinary traversal counts. Nonempty
+zero-count iterators still initialize their seed and increment. Java's module
+argument checks accept negative integer counts, but `getRandomSubset` then fails
+allocating `ValueVec(k)` at the Java-method override boundary.
 
 `RandomSetOfSubsets` and `RandomSubsetSetProbability` construct a
 `SubsetValue` over the input enumerable and use `CoinTossingSubsetEnumerator`.
@@ -2312,8 +2315,15 @@ corresponding function, record, or tuple. When the product cardinality exceeds
 as the stride and `RandomEnumerableValues.nextLong()` as the offset.
 For `SUBSET S`, Java's `SubsetValue.elements(k)` draws random bit-mask indices
 when `|S| < 31` and `k <= 2^16`; otherwise it uses coin tossing over the
-normalized base elements. The Go randomization module follows those branches
-instead of enumerating the powerset first.
+normalized base elements. This direct `elements(k)` API differs from both
+`RandomSubset(k, SUBSET S)` and powerset randomized ordering, which first
+materialize the powerset to an explicit set. `KSubsetValue` randomized ordering
+uses an endless Algorithm S generator with a no-op reset and the default model.
+Random-subset results inherit the receiver's cost model; product subsets also
+count their result elements. Random tuple and record elements inherit the model,
+while random function elements deliberately use the default model. Product
+iterators initialize their random seed or offset before converting constituents
+and cache their mixed-radix weights, preserving Java's ordering and laziness.
 
 Override infrastructure:
 

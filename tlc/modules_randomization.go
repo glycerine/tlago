@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"math"
 	"math/big"
 	"math/bits"
 	"strconv"
@@ -66,7 +65,7 @@ func RandomSubsetSet(numberOfPicks Value, probabilityString Value, set Value) (V
 }
 
 func randomSubsetOfEnumerable(k int, value Value) (Value, error) {
-	enum, ok := asEnumerable(value)
+	_, ok := asEnumerable(value)
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSubset", "a finite set", ValuesPPR(value))
 	}
@@ -77,93 +76,74 @@ func randomSubsetOfEnumerable(k int, value Value) (Value, error) {
 	if !finite {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "RandomSubset", "a finite set", ValuesPPR(value))
 	}
-	if subset, ok := value.(*SubsetValue); ok {
-		return randomSubsetOfSubsetValue(k, subset)
-	}
 	if subset, handled, err := randomSubsetOfProductValue(k, value); handled {
 		return subset, err
 	}
-	values := NewValueVec(0)
-	elements := enum.Elements()
+	// Java's default getRandomSubset materializes first, then delegates to
+	// SetEnumValue. Only intervals and product sets override that default.
+	if _, ok := value.(*IntervalValue); !ok {
+		value, err = toSetEnumValue(value)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if k < 0 {
+		return nil, randomSubsetNegativeSizeError(k)
+	}
+	elements, err := randomValueEnumeration(value, k)
+	if err != nil {
+		return nil, err
+	}
+	return collectRandomSubset(elements, k, value.GetCostModel())
+}
+
+func randomSubsetNegativeSizeError(k int) error {
+	const signature = "public static tlc2.value.impl.Value tlc2.module.Randomization.RandomSubset(tlc2.value.impl.Value,tlc2.value.impl.Value)"
+	return javaMethodOverrideError(signature, strconv.Itoa(k))
+}
+
+func collectRandomSubset(elements ValueEnumeration, k int, cm CostModel) (*SetEnumValue, error) {
+	out := NewValueVec(k)
 	for elem := elements.NextElement(); elem != nil; elem = elements.NextElement() {
-		values.Add(elem)
+		out.Add(elem)
 	}
 	if err := elements.Err(); err != nil {
 		return nil, err
 	}
-	n := values.Len()
-	out := NewValueVec(k)
-	for _, index := range randomSubsetIndices(k, n) {
-		out.Add(values.At(index))
-	}
-	return NewSetEnumValueVec(out, false), nil
-}
-
-func randomSubsetOfSubsetValue(k int, value *SubsetValue) (Value, error) {
-	set, err := toSetEnumValue(value.Set)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := set.normalizeSet(); err != nil {
-		return nil, err
-	}
-	base := set.Elems
-	out := NewValueVec(k)
-	if base.Len() >= 31 || k > (1<<16) {
-		rng := RandomEnumerableGenerator()
-		for i := 0; i < k; i++ {
-			subset := NewValueVec(base.Len())
-			for j := 0; j < base.Len(); j++ {
-				if rng.NextDouble() < 0.5 {
-					subset.Add(base.At(j))
-				}
-			}
-			out.Add(NewSetEnumValueVec(subset, false))
-		}
-		return NewSetEnumValueVec(out, false), nil
-	}
-	for _, bits := range randomSubsetIndices(k, 1<<base.Len()) {
-		subset := NewValueVec(bitsOnesCount(bits))
-		for i := 0; bits > 0 && i < base.Len(); i++ {
-			if bits&0x1 > 0 {
-				subset.Add(base.At(i))
-			}
-			bits = int(uint(bits) >> 1)
-		}
-		out.Add(NewSetEnumValueVec(subset, false))
-	}
-	return NewSetEnumValueVec(out, false), nil
-}
-
-func bitsOnesCount(bits int) int {
-	count := 0
-	for bits > 0 {
-		count += bits & 1
-		bits = int(uint(bits) >> 1)
-	}
-	return count
+	return NewSetEnumValueVec(out, false, cm), nil
 }
 
 type randomProductValue struct {
 	constituents []*SetEnumValue
 	makeValue    func([]Value) Value
+	rescaleBy    []int
+	bigRescaleBy []*big.Int
 }
 
 func randomSubsetOfProductValue(k int, value Value) (Value, bool, error) {
-	product, handled, err := randomProductForValue(value)
-	if !handled || err != nil {
-		return nil, handled, err
+	switch value.(type) {
+	case *SetOfFcnsValue, *SetOfRcdsValue, *SetOfTuplesValue:
+	default:
+		return nil, false, nil
 	}
-	return product.randomSubset(k), true, nil
+	if k < 0 {
+		return nil, true, randomSubsetNegativeSizeError(k)
+	}
+	elements, err := newRandomProductEnumeration(value, k)
+	if err != nil {
+		return nil, true, err
+	}
+	set, err := collectRandomSubset(elements, k, value.GetCostModel())
+	if err != nil {
+		return nil, true, err
+	}
+	value.GetCostModel().incValueSecondary(int64(set.Elems.Len()))
+	return set, true, nil
 }
 
 func randomProductForValue(value Value) (*randomProductValue, bool, error) {
 	switch v := value.(type) {
 	case *SetOfFcnsValue:
-		empty, err := IsEmptyValue(v)
-		if err != nil || empty {
-			return randomEmptyProduct(empty), true, err
-		}
 		domSet, err := toSetEnumValue(v.Domain)
 		if err != nil {
 			return nil, true, err
@@ -187,10 +167,6 @@ func randomProductForValue(value Value) (*randomProductValue, bool, error) {
 			},
 		}, true, nil
 	case *SetOfRcdsValue:
-		empty, err := IsEmptyValue(v)
-		if err != nil || empty {
-			return randomEmptyProduct(empty), true, err
-		}
 		constituents, err := randomProductConstituents(v.Values)
 		if err != nil {
 			return nil, true, err
@@ -198,14 +174,10 @@ func randomProductForValue(value Value) (*randomProductValue, bool, error) {
 		return &randomProductValue{
 			constituents: constituents,
 			makeValue: func(values []Value) Value {
-				return NewRecordValue(v.Names, values, false)
+				return NewRecordValue(v.Names, values, false, v.CM)
 			},
 		}, true, nil
 	case *SetOfTuplesValue:
-		empty, err := IsEmptyValue(v)
-		if err != nil || empty {
-			return randomEmptyProduct(empty), true, err
-		}
 		constituents, err := randomProductConstituents(v.Sets)
 		if err != nil {
 			return nil, true, err
@@ -213,19 +185,12 @@ func randomProductForValue(value Value) (*randomProductValue, bool, error) {
 		return &randomProductValue{
 			constituents: constituents,
 			makeValue: func(values []Value) Value {
-				return NewTupleValue(values)
+				return NewTupleValue(values, v.CM)
 			},
 		}, true, nil
 	default:
 		return nil, false, nil
 	}
-}
-
-func randomEmptyProduct(empty bool) *randomProductValue {
-	if !empty {
-		return nil
-	}
-	return &randomProductValue{}
 }
 
 func randomProductConstituents(values []Value) ([]*SetEnumValue, error) {
@@ -235,78 +200,42 @@ func randomProductConstituents(values []Value) ([]*SetEnumValue, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, err := set.normalizeSet(); err != nil {
-			return nil, err
-		}
 		constituents[i] = set
 	}
 	return constituents, nil
 }
 
-func (p *randomProductValue) randomSubset(k int) Value {
-	if p == nil || p.makeValue == nil || k <= 0 {
-		return NewSetEnumValueVec(NewValueVec(0), false)
-	}
-	size := p.cardinality()
-	if size.Sign() <= 0 {
-		return NewSetEnumValueVec(NewValueVec(0), false)
-	}
-	out := NewValueVec(k)
-	if size.Cmp(big.NewInt(math.MaxInt32)) <= 0 {
-		n := int(size.Int64())
-		for _, index := range randomSubsetIndices(k, n) {
-			out.Add(p.elementAtInt(index))
+func (p *randomProductValue) initializeRadices(useBig bool) *big.Int {
+	if useBig {
+		p.bigRescaleBy = make([]*big.Int, len(p.constituents))
+		numElems := big.NewInt(1)
+		for i := len(p.constituents) - 1; i >= 0; i-- {
+			p.bigRescaleBy[i] = new(big.Int).Set(numElems)
+			numElems.Mul(numElems, big.NewInt(int64(p.constituents[i].Elems.Len())))
 		}
-	} else {
-		rng := RandomEnumerableGenerator()
-		a := rng.NextLong()
-		if a < 0 {
-			a = -a
-		}
-		offset := big.NewInt(a)
-		x := big.NewInt(math.MaxInt64 - 24)
-		for i := 0; i < k; i++ {
-			index := new(big.Int).Mul(x, big.NewInt(int64(i)))
-			index.Add(index, offset)
-			index.Mod(index, size)
-			out.Add(p.elementAtBig(index))
-		}
+		return numElems
 	}
-	return NewSetEnumValueVec(out, false)
-}
-
-func (p *randomProductValue) cardinality() *big.Int {
-	size := big.NewInt(1)
-	for _, set := range p.constituents {
-		size.Mul(size, big.NewInt(int64(set.Elems.Len())))
+	p.rescaleBy = make([]int, len(p.constituents))
+	numElems := int32(1)
+	for i := len(p.constituents) - 1; i >= 0; i-- {
+		p.rescaleBy[i] = int(numElems)
+		numElems *= int32(p.constituents[i].Elems.Len())
 	}
-	return size
+	return nil
 }
 
 func (p *randomProductValue) elementAtInt(index int) Value {
 	values := make([]Value, len(p.constituents))
-	rescaleBy := make([]int, len(p.constituents))
-	numElems := 1
-	for i := len(p.constituents) - 1; i >= 0; i-- {
-		rescaleBy[i] = numElems
-		numElems *= p.constituents[i].Elems.Len()
-	}
 	for i, set := range p.constituents {
-		values[i] = set.Elems.At((index / rescaleBy[i]) % set.Elems.Len())
+		values[i] = set.Elems.At((index / p.rescaleBy[i]) % set.Elems.Len())
 	}
 	return p.makeValue(values)
 }
 
 func (p *randomProductValue) elementAtBig(index *big.Int) Value {
 	values := make([]Value, len(p.constituents))
-	rescaleBy := make([]*big.Int, len(p.constituents))
-	numElems := big.NewInt(1)
-	for i := len(p.constituents) - 1; i >= 0; i-- {
-		rescaleBy[i] = new(big.Int).Set(numElems)
-		numElems.Mul(numElems, big.NewInt(int64(p.constituents[i].Elems.Len())))
-	}
 	for i, set := range p.constituents {
-		scaled := new(big.Int).Div(new(big.Int).Set(index), rescaleBy[i])
+		scaled := new(big.Int).Div(new(big.Int).Set(index), p.bigRescaleBy[i])
 		scaled.Mod(scaled, big.NewInt(int64(set.Elems.Len())))
 		values[i] = set.Elems.At(int(scaled.Int64()))
 	}
@@ -314,22 +243,10 @@ func (p *randomProductValue) elementAtBig(index *big.Int) Value {
 }
 
 func randomSubsetIndices(k int, n int) []int {
-	if k <= 0 || n <= 0 {
-		return nil
-	}
-	m, a := randomSubsetLCGParameters(n)
-	rng := RandomEnumerableGenerator()
-	index := int(rng.NextIntN(int32(n)))
-	c := rng.NextPrime()
-	indices := make([]int, 0, k)
-	for len(indices) < k {
-		for {
-			index = int((int64(a)*int64(index) + int64(c)) % int64(m))
-			if index < n {
-				break
-			}
-		}
-		indices = append(indices, index)
+	e := newRandomSubsetIndices(k, n)
+	indices := make([]int, 0)
+	for e.hasNext() {
+		indices = append(indices, e.nextIndex())
 	}
 	return indices
 }

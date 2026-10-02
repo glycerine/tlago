@@ -792,17 +792,21 @@ func (e *sliceValueEnumeration) Err() error {
 }
 
 func randomizedValueEnumeration(enumerable Enumerable) (ValueEnumeration, error) {
-	enum := enumerable.Elements()
-	values := make([]Value, 0)
-	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
-		values = append(values, elem)
+	value := enumerable.(Value)
+	if subset, ok := value.(*KSubsetValue); ok {
+		return newRandomKSubsetEnumeration(subset)
 	}
-	if err := enum.Err(); err != nil {
+	if _, ok := value.(*SubsetValue); ok {
+		// SubsetValue's ordering overload materializes, unlike elements(k).
+		set, err := toSetEnumValue(value)
+		if err != nil {
+			return nil, err
+		}
+		return randomizedValueEnumeration(set)
+	}
+	n, err := value.Size()
+	if err != nil {
 		return nil, err
 	}
-	randomized := make([]Value, len(values))
-	for i, idx := range randomSubsetIndices(len(values), len(values)) {
-		randomized[i] = values[idx]
-	}
-	return &sliceValueEnumeration{values: randomized}, nil
+	return randomValueEnumeration(value, n)
 }
