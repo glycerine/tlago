@@ -9,6 +9,7 @@ type TLCError struct {
 	// Runtime distinguishes Java TLCRuntimeException from the legacy native
 	// EvalException carriers represented by this same Go type.
 	Runtime bool
+	known   bool
 }
 
 func (e *TLCError) Error() string {
@@ -87,4 +88,28 @@ func javaSystemFailureCode(err error) int {
 		}
 	}
 	return NoError
+}
+
+func (e *TLCError) SetKnown() bool {
+	if e == nil {
+		return false
+	}
+	old := e.known
+	e.known = true
+	return old
+}
+
+func (e *TLCError) IsKnown() bool {
+	return e != nil && e.known
+}
+
+func isJavaEvalOrRuntimeException(err error) bool {
+	switch failure := err.(type) {
+	case *EvalException:
+		return failure != nil
+	case *TLCError:
+		return failure != nil && javaSystemFailureCode(err) == NoError
+	default:
+		return false
+	}
 }

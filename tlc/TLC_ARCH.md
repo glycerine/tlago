@@ -1479,6 +1479,12 @@ Port guidance:
   `LiveCounterExampleException` subclass. Fingerprint causes remain accessible
   for dedicated root-cause diagnostics. A standalone stateful exception does
   not enter the worker's EvalException/TLCRuntimeException liveness replay catch.
+- Debugger control exceptions and distributed worker exception reuse also
+  match only the directly thrown class. Debugger exception pushes set the
+  inherited known flag once; evaluation frames catch only evaluation/runtime
+  TLC exceptions. Distributed worker catch coverage includes fingerprinting
+  and state routing, preserving Java's current predecessor/successor fields
+  and resetting the computing flag even when a Go operation panics.
 - `TLC.process` and the simulator report EvalExceptions through GENERAL; only
   direct TLCRuntimeExceptions preserve their code and parameters there.
   Simulator exceptions overwrite an earlier worker code and stop simulation.

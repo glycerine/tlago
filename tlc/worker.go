@@ -210,8 +210,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	recordedOutcome := false
 	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
 	if err != nil {
-		var wrapped *workerNextStateError
-		if errors.As(err, &wrapped) {
+		if wrapped, ok := err.(*workerNextStateError); ok && wrapped != nil {
 			w.Checker.doNextFailed(curState, wrapped.State, wrapped.Err)
 			recordedOutcome = true
 		} else {
@@ -295,14 +294,7 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 func livenessErrorNeedsCallStackReplay(err error) bool {
 	// Java catches EvalException and TLCRuntimeException at this boundary.
 	// A cause of either type does not make its enclosing exception eligible.
-	switch failure := err.(type) {
-	case *EvalException:
-		return failure != nil
-	case *TLCError:
-		return failure != nil && javaSystemFailureCode(err) == NoError
-	default:
-		return false
-	}
+	return isJavaEvalOrRuntimeException(err)
 }
 
 func (w *Worker) claimLivenessErrorStackPrinter() bool {

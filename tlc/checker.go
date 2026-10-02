@@ -2275,14 +2275,7 @@ func isJavaAbortingInitError(err error) bool {
 	if err == errInvariantViolated {
 		return true
 	}
-	switch failure := err.(type) {
-	case *EvalException:
-		return failure != nil
-	case *TLCError:
-		return failure != nil && javaSystemFailureCode(err) == NoError
-	default:
-		return false
-	}
+	return isJavaEvalOrRuntimeException(err)
 }
 
 func isPowerOfTwo(n int64) bool {

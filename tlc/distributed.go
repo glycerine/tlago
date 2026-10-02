@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -662,7 +661,7 @@ func (s *TLCServer) DoInit(tool ...*Tool) (int, error) {
 	}
 	functor := &distributedDoInitFunctor{server: s, tool: s.Tool, returnValue: NoError}
 	err := s.Tool.GetInitStates(NewStateFunctor(functor.AddElement))
-	if errors.Is(err, errInvariantViolated) {
+	if err == errInvariantViolated {
 		s.ErrState = functor.errState
 		return functor.returnValue, nil
 	}
@@ -1276,7 +1275,7 @@ func (t *TLCServerThread) Run() {
 	stateQueue := t.Server.StateQueue
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			t.handleRunError(fmt.Errorf("panic in TLCServerThread: %v", recovered), stateQueue)
+			t.handleRunError(panicValueAsError(recovered), stateQueue)
 		}
 		t.readCacheRateRatio()
 		t.cancelKeepAlive()
@@ -1328,8 +1327,7 @@ func (t *TLCServerThread) computeBlock(stateQueue StateQueue) (*NextStateResult,
 		if err == nil {
 			return res, true
 		}
-		var workerErr *WorkerException
-		if errors.As(err, &workerErr) {
+		if workerErr, ok := err.(*WorkerException); ok && workerErr != nil {
 			t.handleRunError(workerErr, stateQueue)
 			return nil, false
 		}
@@ -1384,26 +1382,31 @@ func (t *TLCServerThread) handleRunError(err error, stateQueue StateQueue) {
 		return
 	}
 	t.Server.LastError = err
-	var workerErr *WorkerException
-	if errors.As(err, &workerErr) {
-		if t.Server.SetErrState(workerErr.State1, nil, true, ECGeneral) {
-			if workerErr.State1 != nil {
-				if t.Server.Trace != nil {
-					t.Server.Trace.PrintTrace(workerErr.State1, workerErr.State2)
-				} else {
-					PrintError(ECGeneral, generalErrorParams("", err)...)
-				}
-			} else {
-				PrintError(ECGeneral, generalErrorParams("", err)...)
-			}
-			if stateQueue != nil {
-				stateQueue.FinishAll()
-			}
-		}
-		return
+	var state1, state2 *TLCStateMut
+	if failure, ok := err.(*WorkerException); ok && failure != nil {
+		state1, state2 = failure.State1, failure.State2
 	}
-	if t.Server.SetErrState(nil, nil, true, ECGeneral) && stateQueue != nil {
-		stateQueue.FinishAll()
+	if t.Server.SetErrState(state1, nil, true, ECGeneral) {
+		if state1 != nil && t.Server.Trace != nil {
+			func() {
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						failure := panicValueAsError(recovered)
+						// Java catches Exception around trace printing, not Error.
+						if javaSystemFailureCode(failure) != NoError {
+							panic(recovered)
+						}
+						PrintError(ECGeneral, generalErrorParams("", failure)...)
+					}
+				}()
+				t.Server.Trace.PrintTrace(state1, state2)
+			}()
+		} else {
+			PrintError(ECGeneral, generalErrorParams("", err)...)
+		}
+		if stateQueue != nil {
+			stateQueue.FinishAll()
+		}
 	}
 }
 
@@ -1531,8 +1534,8 @@ func (e *DistributedRecoverableError) Unwrap() error {
 }
 
 func isRecoverableDistributedError(err error) bool {
-	var recoverable *DistributedRecoverableError
-	return errors.As(err, &recoverable)
+	recoverable, ok := err.(*DistributedRecoverableError)
+	return ok && recoverable != nil
 }
 
 type BlockSelectorMode int
@@ -1816,7 +1819,7 @@ func sanitizeDistributedComputationTime(computationTime int64) int64 {
 	return computationTime
 }
 
-func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResult, error) {
+func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (result *NextStateResult, err error) {
 	if w == nil {
 		return nil, newTLCError(ECGeneral, "distributed worker is nil")
 	}
@@ -1825,6 +1828,18 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 	var statesComputed int64
 	var state1, state2 *TLCStateMut
 	defer w.Computing.Store(false)
+	defer func() {
+		if failure := recover(); failure != nil {
+			result = nil
+			err = panicValueAsError(failure)
+		}
+		if err != nil {
+			if failure, ok := err.(*WorkerException); ok && failure != nil {
+				return
+			}
+			err = NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
+		}
+	}()
 
 	holdersByFP := make(map[uint64]distributedStateHolder, len(states))
 	orderedFPs := make([]uint64, 0, len(states))
@@ -1832,23 +1847,19 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 		state1 = state
 		nextStates, err := w.computeNextStates(state)
 		if err != nil {
-			var workerErr *WorkerException
-			if errors.As(err, &workerErr) {
-				return nil, workerErr
-			}
-			return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
+			return nil, err
 		}
 		statesComputed += int64(nextStates.Size())
 		for i := 0; i < nextStates.Size(); i++ {
-			state2 = nextStates.At(i)
-			fp := state2.FingerPrint()
+			successor := nextStates.At(i)
+			fp := successor.FingerPrint()
 			if w.Cache != nil && w.Cache.Hit(fp) {
 				continue
 			}
 			if _, ok := holdersByFP[fp]; ok {
 				continue
 			}
-			holdersByFP[fp] = distributedStateHolder{Fingerprint: fp, Successor: state2, Predecessor: state1}
+			holdersByFP[fp] = distributedStateHolder{Fingerprint: fp, Successor: successor, Predecessor: state1}
 			orderedFPs = append(orderedFPs, fp)
 		}
 	}
@@ -1889,19 +1900,15 @@ func (w *DistributedWorker) GetNextStates(states []*TLCStateMut) (*NextStateResu
 			state1 = predecessors[i].At(index)
 			state2 = successors[i].At(index)
 			if err := w.CheckState(state1, state2); err != nil {
-				var workerErr *WorkerException
-				if errors.As(err, &workerErr) {
-					return nil, workerErr
-				}
-				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
+				return nil, err
 			}
 			inModel, err := w.IsInModel(state2)
 			if err != nil {
-				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
+				return nil, err
 			}
 			inActions, err := w.IsInActions(state1, state2)
 			if err != nil {
-				return nil, NewWorkerExceptionWithCause(err.Error(), err, state1, state2, true)
+				return nil, err
 			}
 			if inModel && inActions {
 				state2.UID = state1.UID

@@ -2919,6 +2919,9 @@ func (d *TLCDebugger) PushExceptionFrame(tool *Tool, expr SemanticNode, c *Conte
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if !debugExceptionNotYetHandled(err) {
+		return d
+	}
 	frame := NewTLCStackFrame(d.topBaseFrame(), expr, c, tool, err)
 	return d.pushFrameAndMaybeHalt(d.HaltExp, NewDebuggerBaseFrame(frame))
 }
@@ -2929,6 +2932,9 @@ func (d *TLCDebugger) PushStateExceptionFrame(tool *Tool, expr SemanticNode, c *
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if !debugExceptionNotYetHandled(err) {
+		return d
+	}
 	frame := NewTLCStateStackFrame(d.topBaseFrame(), expr, c, tool, state, err)
 	return d.pushFrameAndMaybeHalt(d.HaltExp, NewDebuggerStateFrame(frame))
 }
@@ -2939,6 +2945,9 @@ func (d *TLCDebugger) PushActionExceptionFrame(tool *Tool, expr SemanticNode, c 
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if !debugExceptionNotYetHandled(err) {
+		return d
+	}
 	frame := NewTLCActionStackFrame(d.topBaseFrame(), expr, c, tool, predecessor, action, state, err)
 	return d.pushFrameAndMaybeHalt(d.HaltExp, NewDebuggerActionFrame(frame))
 }

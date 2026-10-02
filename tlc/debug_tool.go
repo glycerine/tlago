@@ -1,7 +1,5 @@
 package tlc
 
-import "errors"
-
 type DebugEvalMode int
 
 const (
@@ -121,7 +119,7 @@ func (t *Tool) debugConstLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMu
 	if t.Debugger != nil {
 		t.Debugger.PushFrame(t, expr, c)
 		defer func() {
-			if err != nil && !debugErrorKnown(err) {
+			if isJavaEvalOrRuntimeException(err) && !debugErrorKnown(err) {
 				t.Debugger.PushExceptionFrame(t, expr, c, err)
 				t.Debugger.PopExceptionFrame(t, expr, c, value, err)
 			}
@@ -135,7 +133,7 @@ func (t *Tool) debugStateLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMu
 	if t.Debugger != nil {
 		t.Debugger.PushStateFrame(t, expr, c, s0)
 		defer func() {
-			if err != nil && !debugErrorKnown(err) {
+			if isJavaEvalOrRuntimeException(err) && !debugErrorKnown(err) {
 				t.Debugger.PushStateExceptionFrame(t, expr, c, s0, err)
 				t.Debugger.PopExceptionFrame(t, expr, c, value, err)
 			}
@@ -150,7 +148,7 @@ func (t *Tool) debugActionLevelEval(expr SemanticNode, c *Context, s0 *TLCStateM
 	if t.Debugger != nil {
 		t.Debugger.PushActionFrame(t, expr, c, s0, action, s1)
 		defer func() {
-			if err != nil && !debugErrorKnown(err) {
+			if isJavaEvalOrRuntimeException(err) && !debugErrorKnown(err) {
 				t.Debugger.PushActionExceptionFrame(t, expr, c, s0, action, s1, err)
 				t.Debugger.PopExceptionFrame(t, expr, c, value, err)
 			}
@@ -252,8 +250,7 @@ func debugToolGetNextStatesForAction(t *Tool, functor *NextStateFunctor, state *
 		if debugResetTargets(err, action.GetOpDef()) {
 			continue
 		}
-		var abort *AbortEvalException
-		if errors.As(err, &abort) {
+		if abort, ok := err.(*AbortEvalException); ok && abort != nil {
 			return false, nil
 		}
 		if err != nil {
@@ -385,15 +382,22 @@ func actionFromDebugState(state *TLCStateMut) *Action {
 }
 
 func debugResetTargets(err error, expr SemanticNode) bool {
-	var reset *ResetEvalException
-	return errors.As(err, &reset) && reset.IsTarget(expr)
+	reset, ok := err.(*ResetEvalException)
+	return ok && reset != nil && reset.IsTarget(expr)
 }
 
 func debugErrorKnown(err error) bool {
-	var eval *EvalException
-	if errors.As(err, &eval) && eval.IsKnown() {
-		return true
+	// Both Java exception families inherit StatefulRuntimeException's flag.
+	// Match the thrown object, leaving known flags on nested causes alone.
+	if failure, ok := err.(interface{ IsKnown() bool }); ok {
+		return failure.IsKnown()
 	}
-	var stateful *StatefulRuntimeException
-	return errors.As(err, &stateful) && stateful.IsKnown()
+	return false
+}
+
+func debugExceptionNotYetHandled(err error) bool {
+	if failure, ok := err.(interface{ SetKnown() bool }); ok {
+		return !failure.SetKnown()
+	}
+	return true
 }
