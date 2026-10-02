@@ -395,7 +395,8 @@ func NewRecordValueFromInsMap(values *InsMap[*UniqueString, Value]) *RecordValue
 func (v *RecordValue) Kind() ValueKind    { return RecordValueKind }
 func (v *RecordValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *RecordValue) Compare(other Value) (int, error) {
+func (v *RecordValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	rcd := asRecordValue(other)
 	if rcd == nil {
 		if mv, ok := other.(*ModelValue); ok {
@@ -426,7 +427,8 @@ func (v *RecordValue) Compare(other Value) (int, error) {
 	return 0, nil
 }
 
-func (v *RecordValue) Equal(other Value) (bool, error) {
+func (v *RecordValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	rcd := asRecordValue(other)
 	if rcd == nil {
 		if mv, ok := other.(*ModelValue); ok {
@@ -457,13 +459,15 @@ func (v *RecordValue) Equal(other Value) (bool, error) {
 	return true, nil
 }
 
-func (v *RecordValue) Member(elem Value) (bool, error) {
+func (v *RecordValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if element:\n%s\nis in the record:\n%s", ValuesPPR(elem), ValuesPPR(v))
 }
 
 func (v *RecordValue) IsFinite() (bool, error) { return true, nil }
 
-func (v *RecordValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *RecordValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index < len(ex.Path) {
 		newValues := make([]Value, len(v.Values))
 		arcVal := ex.Path[ex.Index]
@@ -493,7 +497,8 @@ func (v *RecordValue) TakeExcept(ex ValueExcept) (Value, error) {
 	return ex.Value, nil
 }
 
-func (v *RecordValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *RecordValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	var cur Value = v
 	for _, ex := range exs {
 		next, err := cur.TakeExcept(ex)
@@ -573,9 +578,13 @@ func (v *RecordValue) StateString() string {
 	return b.String()
 }
 
-func (v *RecordValue) Size() (int, error) { return len(v.Names), nil }
+func (v *RecordValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
+	return len(v.Names), nil
+}
 
-func (v *RecordValue) Apply(arg Value) (Value, error) {
+func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	out, err := v.Select(arg)
 	if err != nil {
 		return nil, err
@@ -589,7 +598,8 @@ func (v *RecordValue) Apply(arg Value) (Value, error) {
 	return out, nil
 }
 
-func (v *RecordValue) Select(arg Value) (Value, error) {
+func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	sv, ok := arg.(*StringValue)
 	if !ok {
 		return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
@@ -603,6 +613,7 @@ func (v *RecordValue) Select(arg Value) (Value, error) {
 }
 
 func (v *RecordValue) DomainValue() Value {
+	defer catchValueFailure(v, nil)
 	values := make([]Value, len(v.Names))
 	for i, name := range v.Names {
 		values[i] = NewStringValueFromUnique(name)
@@ -611,11 +622,14 @@ func (v *RecordValue) DomainValue() Value {
 }
 
 func (v *RecordValue) Normalize() Value {
-	_ = v.normalizeRecord()
+	if err := v.normalizeRecord(); err != nil {
+		panic(err)
+	}
 	return v
 }
 
-func (v *RecordValue) normalizeRecord() error {
+func (v *RecordValue) normalizeRecord() (err error) {
+	defer catchValueFailure(v, &err)
 	if v.IsNorm {
 		return nil
 	}
@@ -654,13 +668,17 @@ func (v *RecordValue) normalizeRecord() error {
 }
 
 func (v *RecordValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	for _, value := range v.Values {
 		value.DeepNormalize()
 	}
-	_ = v.normalizeRecord()
+	if err := v.normalizeRecord(); err != nil {
+		panic(err)
+	}
 }
 
 func (v *RecordValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	for _, value := range v.Values {
 		if !value.IsDefined() {
 			return false
@@ -672,6 +690,7 @@ func (v *RecordValue) IsDefined() bool {
 func (v *RecordValue) IsNormalized() bool { return v.IsNorm }
 
 func (v *RecordValue) DeepCopy() Value {
+	defer catchValueFailure(v, nil)
 	values := make([]Value, len(v.Values))
 	for i, value := range v.Values {
 		values[i] = value.DeepCopy()
@@ -682,7 +701,10 @@ func (v *RecordValue) DeepCopy() Value {
 }
 
 func (v *RecordValue) FingerPrint(fp uint64) uint64 {
-	_ = v.normalizeRecord()
+	defer catchValueFailure(v, nil)
+	if err := v.normalizeRecord(); err != nil {
+		panic(err)
+	}
 	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Names)))
 	for i, name := range v.Names {
@@ -695,7 +717,10 @@ func (v *RecordValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *RecordValue) Permute(perm *MVPerm) Value {
-	_ = v.normalizeRecord()
+	defer catchValueFailure(v, nil)
+	if err := v.normalizeRecord(); err != nil {
+		panic(err)
+	}
 	values := make([]Value, len(v.Values))
 	changed := false
 	for i, value := range v.Values {
@@ -709,6 +734,7 @@ func (v *RecordValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *RecordValue) String() string {
+	defer catchValueFailure(v, nil)
 	var b strings.Builder
 	b.WriteString("[")
 	for i := range v.Names {
@@ -744,7 +770,8 @@ func NewFcnRcdIntervalValue(intv *IntervalValue, values []Value, cms ...CostMode
 func (v *FcnRcdValue) Kind() ValueKind    { return FcnRcdValueKind }
 func (v *FcnRcdValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *FcnRcdValue) Compare(other Value) (int, error) {
+func (v *FcnRcdValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	fcn := asFcnRcdValue(other)
 	if fcn == nil {
 		if mv, ok := other.(*ModelValue); ok {
@@ -848,7 +875,8 @@ func (v *FcnRcdValue) compareToInterval(fcn *FcnRcdValue) (int, error) {
 	return 0, nil
 }
 
-func (v *FcnRcdValue) Equal(other Value) (bool, error) {
+func (v *FcnRcdValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	fcn := asFcnRcdValue(other)
 	if fcn == nil {
 		if mv, ok := other.(*ModelValue); ok {
@@ -932,13 +960,15 @@ func (v *FcnRcdValue) Equal(other Value) (bool, error) {
 	return true, nil
 }
 
-func (v *FcnRcdValue) Member(elem Value) (bool, error) {
+func (v *FcnRcdValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check if the value:\n%s\nis an element of the function %s", ValuesPPR(elem), ValuesPPR(v))
 }
 
 func (v *FcnRcdValue) IsFinite() (bool, error) { return true, nil }
 
-func (v *FcnRcdValue) Apply(arg Value) (Value, error) {
+func (v *FcnRcdValue) Apply(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	result, err := v.Select(arg)
 	if err != nil {
 		return nil, err
@@ -949,7 +979,8 @@ func (v *FcnRcdValue) Apply(arg Value) (Value, error) {
 	return result, nil
 }
 
-func (v *FcnRcdValue) Select(arg Value) (Value, error) {
+func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if v.Intv != nil {
 		iv, ok := arg.(*IntValue)
 		if !ok {
@@ -1007,7 +1038,8 @@ func fcnRcdLinearSearchThreshold() int {
 	return defaultFcnRcdLinearSearchThreshold
 }
 
-func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
@@ -1058,7 +1090,8 @@ func (v *FcnRcdValue) TakeExcept(ex ValueExcept) (Value, error) {
 	return v, nil
 }
 
-func (v *FcnRcdValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *FcnRcdValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	var cur Value = v
 	for _, ex := range exs {
 		next, err := cur.TakeExcept(ex)
@@ -1071,10 +1104,13 @@ func (v *FcnRcdValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *FcnRcdValue) DomainValue() Value {
+	defer catchValueFailure(v, nil)
 	if v.Intv != nil {
 		return v.Intv
 	}
-	_ = v.normalizeFcn()
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	return NewSetEnumValue(v.Domain, true)
 }
 
@@ -1085,7 +1121,8 @@ func (v *FcnRcdValue) DomainAsValues() []Value {
 	return v.Domain
 }
 
-func (v *FcnRcdValue) Size() (int, error) {
+func (v *FcnRcdValue) Size() (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	if err := v.normalizeFcn(); err != nil {
 		return 0, err
 	}
@@ -1143,11 +1180,14 @@ func (v *FcnRcdValue) ToRecord() *RecordValue {
 }
 
 func (v *FcnRcdValue) Normalize() Value {
-	_ = v.normalizeFcn()
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	return v
 }
 
-func (v *FcnRcdValue) normalizeFcn() error {
+func (v *FcnRcdValue) normalizeFcn() (err error) {
+	defer catchValueFailure(v, &err)
 	if v.IsNorm {
 		return nil
 	}
@@ -1193,13 +1233,17 @@ func (v *FcnRcdValue) normalizeFcn() error {
 }
 
 func (v *FcnRcdValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	for _, value := range v.Values {
 		value.DeepNormalize()
 	}
-	_ = v.normalizeFcn()
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 }
 
 func (v *FcnRcdValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	if v.Intv == nil {
 		for _, value := range v.Domain {
 			if !value.IsDefined() {
@@ -1218,6 +1262,7 @@ func (v *FcnRcdValue) IsDefined() bool {
 func (v *FcnRcdValue) IsNormalized() bool { return v.IsNorm }
 
 func (v *FcnRcdValue) DeepCopy() Value {
+	defer catchValueFailure(v, nil)
 	values := make([]Value, len(v.Values))
 	for i, value := range v.Values {
 		values[i] = value.DeepCopy()
@@ -1231,7 +1276,10 @@ func (v *FcnRcdValue) DeepCopy() Value {
 }
 
 func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
-	_ = v.normalizeFcn()
+	defer catchValueFailure(v, nil)
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Values)))
 	if v.Intv == nil {
@@ -1250,7 +1298,10 @@ func (v *FcnRcdValue) FingerPrint(fp uint64) uint64 {
 }
 
 func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
-	_ = v.normalizeFcn()
+	defer catchValueFailure(v, nil)
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	values := make([]Value, len(v.Values))
 	vchanged := false
 	for i, value := range v.Values {
@@ -1279,6 +1330,7 @@ func (v *FcnRcdValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *FcnRcdValue) String() string {
+	defer catchValueFailure(v, nil)
 	if len(v.Values) == 0 {
 		return "<<>>"
 	}
@@ -1340,7 +1392,9 @@ func (v *FcnRcdValue) isTupleLike() bool {
 			return false
 		}
 	}
-	_ = v.normalizeFcn()
+	if err := v.normalizeFcn(); err != nil {
+		panic(err)
+	}
 	for i, dval := range v.Domain {
 		if dval.(*IntValue).Val != int32(i+1) {
 			return false
@@ -1407,6 +1461,9 @@ func asFcnRcdValue(value Value) *FcnRcdValue {
 }
 
 func mustIntervalSize(intv *IntervalValue) int {
-	size, _ := intv.Size()
+	size, err := intv.Size()
+	if err != nil {
+		panic(err)
+	}
 	return size
 }

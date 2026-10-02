@@ -222,7 +222,8 @@ func NewTupleValue(elems []Value, cms ...CostModel) *TupleValue {
 func (v *TupleValue) Kind() ValueKind    { return TupleValueKind }
 func (v *TupleValue) KindString() string { return v.KindStringFor(v.Kind()) }
 
-func (v *TupleValue) Compare(other Value) (int, error) {
+func (v *TupleValue) Compare(other Value) (resultInt int, err error) {
+	defer catchValueFailure(v, &err)
 	o := asTupleValue(other)
 	if o == nil {
 		return asFcnRcdValue(v).Compare(other)
@@ -239,7 +240,8 @@ func (v *TupleValue) Compare(other Value) (int, error) {
 	return 0, nil
 }
 
-func (v *TupleValue) Equal(other Value) (bool, error) {
+func (v *TupleValue) Equal(other Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	o := asTupleValue(other)
 	if o == nil {
 		return asFcnRcdValue(v).Equal(other)
@@ -256,7 +258,8 @@ func (v *TupleValue) Equal(other Value) (bool, error) {
 	return true, nil
 }
 
-func (v *TupleValue) Member(elem Value) (bool, error) {
+func (v *TupleValue) Member(elem Value) (resultBool bool, err error) {
+	defer catchValueFailure(v, &err)
 	return false, v.unsupported("Attempted to check set membership in a tuple value.")
 }
 
@@ -266,12 +269,14 @@ func (v *TupleValue) Normalize() Value        { return v }
 func (v *TupleValue) IsNormalized() bool      { return true }
 
 func (v *TupleValue) DeepNormalize() {
+	defer catchValueFailure(v, nil)
 	for _, elem := range v.Elems {
 		elem.DeepNormalize()
 	}
 }
 
 func (v *TupleValue) IsDefined() bool {
+	defer catchValueFailure(v, nil)
 	for _, elem := range v.Elems {
 		if !elem.IsDefined() {
 			return false
@@ -281,6 +286,7 @@ func (v *TupleValue) IsDefined() bool {
 }
 
 func (v *TupleValue) DeepCopy() Value {
+	defer catchValueFailure(v, nil)
 	out := make([]Value, len(v.Elems))
 	for i, elem := range v.Elems {
 		out[i] = elem.DeepCopy()
@@ -289,6 +295,7 @@ func (v *TupleValue) DeepCopy() Value {
 }
 
 func (v *TupleValue) Permute(perm *MVPerm) Value {
+	defer catchValueFailure(v, nil)
 	out := make([]Value, len(v.Elems))
 	changed := false
 	for i, elem := range v.Elems {
@@ -302,6 +309,7 @@ func (v *TupleValue) Permute(perm *MVPerm) Value {
 }
 
 func (v *TupleValue) FingerPrint(fp uint64) uint64 {
+	defer catchValueFailure(v, nil)
 	fp = FP64ExtendInt(fp, int32(FcnRcdValueKind))
 	fp = FP64ExtendInt(fp, int32(len(v.Elems)))
 	for i, elem := range v.Elems {
@@ -312,7 +320,8 @@ func (v *TupleValue) FingerPrint(fp uint64) uint64 {
 	return fp
 }
 
-func (v *TupleValue) Apply(arg Value) (Value, error) {
+func (v *TupleValue) Apply(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	i, ok := arg.(*IntValue)
 	if !ok {
 		return nil, v.unsupported("Attempted to access tuple at a non integral index: %s", arg)
@@ -324,7 +333,8 @@ func (v *TupleValue) Apply(arg Value) (Value, error) {
 	return v.Elems[idx-1], nil
 }
 
-func (v *TupleValue) Select(arg Value) (Value, error) {
+func (v *TupleValue) Select(arg Value) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	i, ok := arg.(*IntValue)
 	if !ok {
 		return nil, v.unsupported("Attempted to access tuple at a non integral index: %s", arg)
@@ -337,6 +347,7 @@ func (v *TupleValue) Select(arg Value) (Value, error) {
 }
 
 func (v *TupleValue) Domain() Value {
+	defer catchValueFailure(v, nil)
 	return NewIntervalValue(1, int32(len(v.Elems)))
 }
 
@@ -345,7 +356,8 @@ func (v *TupleValue) ToFcnRcd() *FcnRcdValue {
 	return NewFcnRcdIntervalValue(NewIntervalValue(1, int32(len(v.Elems))), v.Elems, v.CM)
 }
 
-func (v *TupleValue) TakeExcept(ex ValueExcept) (Value, error) {
+func (v *TupleValue) TakeExcept(ex ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	if ex.Index >= len(ex.Path) {
 		return ex.Value, nil
 	}
@@ -371,7 +383,8 @@ func (v *TupleValue) TakeExcept(ex ValueExcept) (Value, error) {
 	return &TupleValue{Elems: out}, nil
 }
 
-func (v *TupleValue) TakeExcepts(exs []ValueExcept) (Value, error) {
+func (v *TupleValue) TakeExcepts(exs []ValueExcept) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
 	var cur Value = v
 	for _, ex := range exs {
 		next, err := cur.TakeExcept(ex)
@@ -384,6 +397,7 @@ func (v *TupleValue) TakeExcepts(exs []ValueExcept) (Value, error) {
 }
 
 func (v *TupleValue) String() string {
+	defer catchValueFailure(v, nil)
 	parts := make([]string, len(v.Elems))
 	for i, elem := range v.Elems {
 		parts[i] = elem.String()

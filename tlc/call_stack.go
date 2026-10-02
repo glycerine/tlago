@@ -193,11 +193,11 @@ func (e *FingerprintException) Error() string {
 	if e.Cause != nil {
 		return e.Cause.Error()
 	}
-	if e.Value != nil {
-		return "fingerprint error at " + e.Value.String()
-	}
 	if e.Next != nil {
 		return e.Next.Error()
+	}
+	if e.Value != nil {
+		return "fingerprint error at " + e.Value.String()
 	}
 	return "fingerprint error"
 }
