@@ -1093,12 +1093,6 @@ func (e *TLCTraceEnumerator) Reset(pos int64) {
 
 func TLCTraceWriteBehavior(fileName string, state *TLCStateMut, stateTrace *StateVec) error {
 	_ = state
-	dir := filepath.Dir(fileName)
-	if dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
-		}
-	}
 	file, err := os.Create(fileName)
 	if err != nil {
 		return err
