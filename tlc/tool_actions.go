@@ -51,7 +51,7 @@ func (t *Tool) collectActions(next SemanticNode, con *Context, opDef *OpDefNode,
 	case *LabelNode:
 		return t.collectActions(node.Body, con, opDef, cm, actions)
 	default:
-		return newTLCError(ECGeneral, "the next state relation is not a boolean expression: %s", SemanticString(next))
+		return newTLCError(ECGeneral, "The next state relation is not a boolean expression.\n%s", SemanticString(next))
 	}
 }
 

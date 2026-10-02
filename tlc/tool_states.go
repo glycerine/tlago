@@ -40,11 +40,11 @@ func (t *Tool) MakeStateImpl(pred SemanticNode) (*TLCStateMut, error) {
 		return nil, err
 	}
 	if vec.Size() != 1 {
-		return nil, newTLCError(ECGeneral, "the predicate does not specify a unique state: %s", SemanticString(pred))
+		return nil, newTLCError(ECGeneral, "The predicate does not specify a unique state.%s", SemanticString(pred))
 	}
 	state := vec.At(0)
 	if !t.IsGoodState(state) {
-		return nil, newTLCError(ECGeneral, "the state specified by the predicate is not complete: %s", SemanticString(pred))
+		return nil, newTLCError(ECGeneral, "The state specified by the predicate is not complete.%s", SemanticString(pred))
 	}
 	return state, nil
 }
@@ -85,7 +85,7 @@ func (t *Tool) GetInitStatesForPredicate(init SemanticNode, acts *ActionItemList
 	case *LabelNode:
 		return t.GetInitStatesForPredicate(init.Body, acts, c, ps, states, cm)
 	default:
-		return newTLCError(ECGeneral, "the init state relation is not a boolean expression: %s", SemanticString(init))
+		return newTLCError(ECGeneral, "The init state relation is not a boolean expression.\n%s", SemanticString(init))
 	}
 }
 
@@ -483,7 +483,7 @@ func (t *Tool) GetNextStatesForPredicate(action *Action, pred SemanticNode, acts
 	case *LabelNode:
 		return t.GetNextStatesForPredicate(action, pred.Body, acts, c, s0, s1, nss, cm)
 	default:
-		return s1, newTLCError(ECGeneral, "the next-state relation is not a boolean expression: %s", SemanticString(pred))
+		return s1, newTLCError(ECGeneral, "The next state relation is not a boolean expression.\n%s", SemanticString(pred))
 	}
 }
 
