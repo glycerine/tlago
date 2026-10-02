@@ -835,7 +835,6 @@ type LiveCheck struct {
 	Checkers       []*LiveChecker
 	OutDegreeStats any
 	NoOp           bool
-	Forced         bool
 	AddAndCheck    bool
 	mu             sync.Mutex
 	errMu          sync.Mutex
@@ -985,10 +984,6 @@ func (lc *LiveCheck) Check(tool *Tool, forceCheck bool) (int, error) {
 	if lc == nil || lc.NoOp {
 		return NoError, nil
 	}
-	if lc.Forced {
-		forceCheck = true
-		lc.Forced = false
-	}
 	if !forceCheck && !DoLiveness() {
 		return NoError, nil
 	}
@@ -996,12 +991,6 @@ func (lc *LiveCheck) Check(tool *Tool, forceCheck bool) (int, error) {
 		return NoError, nil
 	}
 	return lc.check0(tool, false)
-}
-
-func (lc *LiveCheck) ForceCheck() {
-	if lc != nil {
-		lc.Forced = true
-	}
 }
 
 func (lc *LiveCheck) FinalCheck(tool *Tool) (int, error) {

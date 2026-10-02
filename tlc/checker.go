@@ -1351,9 +1351,6 @@ func (mc *ModelChecker) ForceLivenessCheck() {
 		return
 	}
 	mc.ForceLiveCheck = true
-	if mc.LiveCheck != nil {
-		mc.LiveCheck.ForceCheck()
-	}
 }
 
 func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {
