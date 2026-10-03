@@ -57,12 +57,25 @@ func debugToolNoDebug(t *Tool) *Tool {
 func debugToolEval(t *Tool, expr SemanticNode, args ...any) (Value, error) {
 	c, s0, s1, control, cm := parseEvalArgs(args...)
 	for {
-		value, err := t.debugEval(expr, c, s0, s1, control, cm)
+		value, err := debugEvalWithReset(t, expr, c, s0, s1, control, cm)
 		if debugResetTargets(err, expr) {
 			continue
 		}
 		return value, err
 	}
+}
+
+func debugEvalWithReset(t *Tool, expr SemanticNode, c *Context, s0, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			if reset, ok := recovered.(*ResetEvalException); ok {
+				err = reset
+			} else {
+				panic(recovered)
+			}
+		}
+	}()
+	return t.debugEval(expr, c, s0, s1, control, cm)
 }
 
 func (t *Tool) debugEval(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
@@ -117,7 +130,6 @@ func (t *Tool) debugEvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 
 
 func (t *Tool) debugConstLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
 	if t.Debugger != nil {
-		t.Debugger.PushFrame(t, expr, c)
 		defer func() {
 			if isJavaEvalOrRuntimeException(err) && !debugErrorKnown(err) {
 				t.Debugger.PushExceptionFrame(t, expr, c, err)
@@ -125,13 +137,13 @@ func (t *Tool) debugConstLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMu
 			}
 			t.Debugger.PopValueFrame(t, expr, c, value)
 		}()
+		t.Debugger.PushFrame(t, expr, c)
 	}
 	return t.EvalImpl(expr, c, s0, s1, control, cm)
 }
 
 func (t *Tool) debugStateLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
 	if t.Debugger != nil {
-		t.Debugger.PushStateFrame(t, expr, c, s0)
 		defer func() {
 			if isJavaEvalOrRuntimeException(err) && !debugErrorKnown(err) {
 				t.Debugger.PushStateExceptionFrame(t, expr, c, s0, err)
@@ -139,6 +151,7 @@ func (t *Tool) debugStateLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMu
 			}
 			t.Debugger.PopValueFrame(t, expr, c, value)
 		}()
+		t.Debugger.PushStateFrame(t, expr, c, s0)
 	}
 	return t.EvalImpl(expr, c, s0, s1, control, cm)
 }
@@ -146,7 +159,6 @@ func (t *Tool) debugStateLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMu
 func (t *Tool) debugActionLevelEval(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (value Value, err error) {
 	action := actionFromDebugState(s1)
 	if t.Debugger != nil {
-		t.Debugger.PushActionFrame(t, expr, c, s0, action, s1)
 		defer func() {
 			if isJavaEvalOrRuntimeException(err) && !debugErrorKnown(err) {
 				t.Debugger.PushActionExceptionFrame(t, expr, c, s0, action, s1, err)
@@ -154,6 +166,7 @@ func (t *Tool) debugActionLevelEval(expr SemanticNode, c *Context, s0 *TLCStateM
 			}
 			t.Debugger.PopValueFrame(t, expr, c, value)
 		}()
+		t.Debugger.PushActionFrame(t, expr, c, s0, action, s1)
 	}
 	return t.EvalImpl(expr, c, s0, s1, control, cm)
 }

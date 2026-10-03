@@ -434,7 +434,12 @@ module order and attach to shared source bodies. The evaluator's native name
 cache follows those bodies while `Defns` retains semantic INSTANCE entries.
 TLCExt's TLCGetAndSet is evaluated from its source TLA+ definition. The REPL
 reads its actual root operator, matching Java's ModuleNode lookup, without
-reconverting definitions into a second graph.
+reconverting definitions into a second graph. Root assumption collection copies
+extendees' complete vectors in EXTENDS order before local assumptions, sharing
+source expression identities across repeated paths and excluding INSTANCE.
+The source AXIOM keyword is retained for runtime assumption checks. Runtime
+string constants bind actual module declaration tool objects before per-module
+constant processing, including the JSON trace-file constant shown by the debugger.
 
 The root package owns the production Go SANY parser and semantic tree. The TLC
 runtime package must not import the root package, so the adapter lives in the
@@ -2957,9 +2962,21 @@ Important Java classes:
   commands update `Step`, `SourceFrame`, `Granularity`, and generated-state
   selection in the same place as Java's DAP handlers, while leaving the protocol
   transport itself for a later pass. Java initializes `step` to `In` so the
-  first ordinary pushed frame can halt; the Go port mirrors that with
-  `MaybeHaltExecution`, leaving `HaltExecution` for already-decided stops such
-  as exception, spec, unsatisfied, and violation breakpoints.
+  first ordinary pushed frame can halt; `nosuspend` instead selects Continue
+  and `nohalt` disables exception/invariant stops. The factory override preserves
+  a debugger installed before TLC starts. `MaybeHaltExecution` decides ordinary
+  stops; `HaltExecution` handles already-decided stops such as exception, spec,
+  unsatisfied and violation breakpoints. Go now uses a condition variable on
+  the debugger monitor: the worker publishes a stopped event, releases the
+  monitor while waiting and resumes on continue/step/disconnect notifications.
+  State-selection frames switch granularity around the halt. After resume,
+  synthetic trace frames are removed and reset commands unwind to the exact
+  target frame; frame cleanup covers push as well as evaluation. Stepping out
+  retains Java's Exit frame pause and subtle/normal presentation. Frame IDs
+  combine actual semantic UIDs with a random integer because repeated semantic
+  nodes may occupy multiple frames. Syntax-depth/owning-definition matching,
+  complete live test assertions and attaching DAP transport/capability events
+  still require source work.
 - `TLCDebugger` breakpoint ownership is concrete state on the debugger:
   `breakpoints` keyed by module/source, boolean exception and invariant halt
   flags, and two conditional `TLCSourceBreakpoint` values for the Java "after
@@ -3022,6 +3039,10 @@ Important Java classes:
 
 Debugger variable details:
 
+- Base-frame variable rendering runs in the source DebugEvalDebugger mode;
+  displaying lazy function values must not step recursively into the debugger.
+  Complete lazy context/watch/state-frame presentation still needs source
+  comparison with the full debugger tests.
 - Java's `Value.toTLCVariable` sets type to
   `<ValueClass>: <kind string>` and value to `toString()`.
 - `StringValue` replaces quoted `toString()` output with the unquoted display

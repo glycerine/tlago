@@ -735,16 +735,39 @@ func (b *tlcBridge) installAssumptions() {
 	if b.spec == nil || b.spec.Root == nil {
 		return
 	}
-	for _, assumption := range b.spec.Root.Assumptions {
-		if assumption.Expr == nil {
-			continue
+	// ModuleNode.copyAssumes copies each direct extendee's complete vector
+	// before this module's own assumptions. INSTANCE does not copy assumptions;
+	// repeated EXTENDS paths retain the same source expression identity.
+	converted := map[*NamedExpr]tlc.SemanticNode{}
+	var visit func(*Module)
+	visit = func(module *Module) {
+		if module == nil {
+			return
 		}
-		expr := b.convertExpr(assumption.Expr)
-		if expr != nil {
-			b.processor.Assumptions = append(b.processor.Assumptions, expr)
-			b.processor.AssumptionIsAxiom = append(b.processor.AssumptionIsAxiom, false)
+		for _, name := range module.Extends {
+			visit(b.spec.Modules[name])
+		}
+		for i := range module.Assumptions {
+			assumption := &module.Assumptions[i]
+			if assumption.Expr == nil {
+				continue
+			}
+			expr := converted[assumption]
+			if expr == nil {
+				previous := b.convertingModule
+				b.convertingModule = module.Name
+				expr = b.convertExpr(assumption.Expr)
+				b.convertingModule = previous
+				converted[assumption] = expr
+			}
+			if expr != nil {
+				isAxiom := assumption.Syntax != nil && len(assumption.Syntax.Heirs) > 0 && assumption.Syntax.Heirs[0].Image == "AXIOM"
+				b.processor.Assumptions = append(b.processor.Assumptions, expr)
+				b.processor.AssumptionIsAxiom = append(b.processor.AssumptionIsAxiom, isAxiom)
+			}
 		}
 	}
+	visit(b.spec.Root)
 }
 
 func (b *tlcBridge) installModelTargets() {
@@ -808,7 +831,18 @@ func (b *tlcBridge) defineRuntimeStringConstant(name string, value string) {
 	if name == "" {
 		return
 	}
-	b.defineName(name, tlc.NewStringValue(value))
+	constant := tlc.NewStringValue(value)
+	b.defineName(name, constant)
+	// processSpec installs runtime strings on their actual module declarations
+	// before processConstantDefns reads declaration tool objects.
+	for _, module := range b.processor.ModuleTbl.GetModuleNodes() {
+		for _, declaration := range module.GetConstantDecls() {
+			if declaration.GetName() == tlc.UniqueStringOf(name) {
+				declaration.Data = constant
+				b.define(declaration, constant)
+			}
+		}
+	}
 }
 
 func (b *tlcBridge) nodeForModuleDefinition(module string, operator string, slot string) tlc.SemanticNode {

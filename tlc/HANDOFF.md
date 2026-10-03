@@ -301,10 +301,33 @@ Finished, 2/1/0 statistics and one initial state; its two vectors are byte-ident
 under test_vectors/. The unchanged Java JUnit method passes too.
 Validation of this slice is recorded at the end of PORT_PROGRESS.md.
 
-Next: compare complete EchoDebuggerTest and EWD998ChanDebuggerTest with their
-actual debugger harness before translating their methods. FastTool module-map
-probes do not establish parity for live stepping, frames, breakpoints, watches
-or DAP assertions. The separate native-only preConstantSnapshot, processConstants
+Debugger workers now halt on the debugger monitor and resume on actual command
+notifications, releasing the monitor for stack/variable requests. Retain source
+factory override and suspend/nohalt defaults, exit-frame stops/presentation,
+state-selection granularity, virtual-frame cleanup and reset control flow.
+Variable rendering runs in DebugEvalDebugger mode to prevent recursive debugger
+entry while displaying lazy function constants. DAP frame IDs combine actual
+semantic UIDs with random IDs, preserving repeated-node frames. Root assumptions
+include direct extendees' inherited vectors in source order (including repeated
+paths), share source expression identities, exclude INSTANCE imports, and retain
+AXIOM flags. Runtime string constants are installed on their actual declarations
+before constant-map processing.
+Both complete unchanged EchoDebuggerTest and EWD998ChanDebuggerTest pass in
+separate original Java runs. The production Go Echo run matches its first nine
+source stops: all 29 frame locations/contexts, three groups and nine constants,
+then finishes with success under race instrumentation. This is a source probe,
+not a partial persistent translation of either complete test. After this core
+implementation, translated all 17 original TLCDebuggerTest pagination methods;
+unchanged Java originals and targeted Go race verification pass.
+
+Next: continue complete Echo/EWD998 debugger comparison, then translate their
+whole methods and inherited assertions. Source TLCStackFrame.matches compares
+syntax depth and owning operator-definition identity; Go still compares semantic
+level/node identity and must retain actual syntax metadata, not infer it from
+TLA+ effective levels. Also finish state-functor frame reuse, lazy context
+presentation without caching side effects, watch/hover evaluation and exact
+breakpoint verification/diagnostics before claiming full debugger parity.
+Attaching debugger protocol transport/capability events remain pending. The separate native-only preConstantSnapshot, processConstants
 semantic traversal and dynamic extendee path remain source work, as do ModuleNode
 top-level vectors, proofs/children/traversal and broader nested/parameterized
 instance metadata and export composition. Full TLC completion is not established.
