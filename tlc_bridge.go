@@ -3,6 +3,7 @@ package tlago
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,22 @@ type tlcBridge struct {
 	moduleDefinitionNames map[string]map[string]bool
 	convertingModule      string
 	convertBoundNames     map[string]int
+	definitionModules     map[*Definition]string
+	sourceDefinitions     map[*Definition]*tlc.OpDefNode
+	instanceDefinitions   map[string]*tlcBridgeInstance
+}
+
+type tlcBridgeInstance struct {
+	owner  *Module
+	inst   Instance
+	substs []tlc.Subst
+	params []*tlc.SymbolNode
+}
+
+type tlcBridgeInstanceTarget struct {
+	name  string
+	arity int
+	sym   *tlc.SymbolNode
 }
 
 var bridgeStandardModuleMembers = map[string][]string{
@@ -320,6 +337,7 @@ func (b *tlcBridge) installVariables() {
 }
 
 func (b *tlcBridge) installDefinitions() {
+	b.prepareInstanceDefinitions()
 	names := make([]string, 0, len(b.defs))
 	for name := range b.defs {
 		names = append(names, name)
@@ -339,6 +357,59 @@ func (b *tlcBridge) installDefinitions() {
 			continue
 		}
 		b.define(opDef.Symbol, opDef)
+	}
+}
+
+// Keep the instance's substitutions in the runtime graph. The older central
+// evaluator needs substituted AST copies; TLC instead binds the source symbols
+// through SubstInNode, as SANY does, and shares the substitutions among clones.
+func (b *tlcBridge) prepareInstanceDefinitions() {
+	if b.definitionModules != nil || b.spec == nil {
+		return
+	}
+	b.definitionModules = map[*Definition]string{}
+	b.sourceDefinitions = map[*Definition]*tlc.OpDefNode{}
+	b.instanceDefinitions = map[string]*tlcBridgeInstance{}
+	names := make([]string, 0, len(b.spec.Modules))
+	for name := range b.spec.Modules {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		mod := b.spec.Modules[name]
+		if mod == nil {
+			continue
+		}
+		for i := range mod.Definitions {
+			b.definitionModules[&mod.Definitions[i]] = name
+		}
+		for _, inst := range mod.Instances {
+			instancee := b.spec.Modules[inst.Module]
+			if instancee == nil {
+				continue
+			}
+			binding := &tlcBridgeInstance{owner: mod, inst: inst}
+			for i := range instancee.Definitions {
+				def := &instancee.Definitions[i]
+				if def.Local {
+					continue
+				}
+				key := inst.qualifier() + "!" + def.Name
+				keys := []string{mod.Name + "!" + key}
+				if mod == b.spec.Root || slices.Contains(b.spec.Root.Extends, mod.Name) && !inst.Local {
+					keys = append(keys, key)
+					if inst.exportsUnqualified() {
+						if existing := b.defs[def.Name]; existing == nil || existing.SourcePosition() == def.SourcePosition() {
+							keys = append(keys, def.Name)
+						}
+					}
+				}
+				for _, key := range keys {
+					b.defs[key] = def
+					b.instanceDefinitions[key] = binding
+				}
+			}
+		}
 	}
 }
 
@@ -526,16 +597,16 @@ func (b *tlcBridge) instanceOpDefinitions(inst Instance) []*tlc.OpDefNode {
 		return nil
 	}
 	out := make([]*tlc.OpDefNode, 0, len(mod.Definitions))
+	binding := &tlcBridgeInstance{owner: b.spec.Modules[b.convertingModule], inst: inst}
+	if binding.owner == nil {
+		binding.owner = b.spec.Root
+	}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
 		if def.Local {
 			continue
 		}
-		instDef := instantiatedDefinition(def, inst.Substitutions)
-		if instDef == nil {
-			continue
-		}
-		opDef := b.convertDefinitionAs(inst.qualifier()+"!"+instDef.Name, instDef)
+		opDef := b.convertInstanceDefinition(inst.qualifier()+"!"+def.Name, def, binding)
 		if opDef != nil {
 			out = append(out, opDef)
 		}
@@ -1272,13 +1343,23 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if def == nil {
 		return nil
 	}
+	b.prepareInstanceDefinitions()
+	if binding := b.instanceDefinitions[name]; binding != nil && b.defs[name] == def {
+		return b.convertInstanceDefinition(name, def, binding)
+	}
+	canonicalSource := name == b.definitionModules[def]+"!"+def.Name
+	if source := b.sourceDefinitions[def]; canonicalSource && source != nil {
+		return source
+	}
 	sym := b.symbol(name)
 	params := make([]*tlc.SymbolNode, len(def.Params))
 	for i, param := range def.Params {
 		params[i] = b.symbol(param)
 	}
 	prevModule := b.convertingModule
-	if module := moduleNameForSourcePosition(def.SourcePosition()); module != "" {
+	if module := b.definitionModules[def]; module != "" {
+		b.convertingModule = module
+	} else if module := moduleNameForSourcePosition(def.SourcePosition()); module != "" && (prevModule == "" || b.spec.Modules[prevModule] == nil || filepath.Base(b.spec.Modules[prevModule].SourcePath) != filepath.Base(def.SourcePosition().File)) {
 		b.convertingModule = module
 	}
 	restore := b.pushConvertBoundNames(def.Params...)
@@ -1303,7 +1384,133 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
 		opDef.SetDeclarationLocation(declaration)
 	}
+	if canonicalSource {
+		b.sourceDefinitions[def] = opDef
+	}
 	return opDef
+}
+
+func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, binding *tlcBridgeInstance) *tlc.OpDefNode {
+	inst := binding.inst
+	source := b.convertDefinitionAs(inst.Module+"!"+def.Name, def)
+	if source == nil {
+		return nil
+	}
+	b.define(source.Symbol, source)
+	params := make([]*tlc.SymbolNode, 0, len(inst.Params)+len(source.Params))
+	if binding.params == nil {
+		binding.params = make([]*tlc.SymbolNode, len(inst.Params))
+		for i, param := range inst.Params {
+			binding.params[i] = tlc.NewSymbolNode(param)
+		}
+	}
+	params = append(params, binding.params...)
+	params = append(params, source.Params...)
+	if binding.substs == nil {
+		previous := b.convertingModule
+		b.convertingModule = binding.owner.Name
+		priorParams := make([]*tlc.SymbolNode, len(inst.Params))
+		for i, name := range inst.Params {
+			priorParams[i] = b.symbols[name]
+			b.symbols[name] = binding.params[i]
+		}
+		restore := b.pushConvertBoundNames(inst.Params...)
+		var substs []tlc.Subst
+		explicit := inst.Substitutions
+		for _, target := range b.instanceTargets(b.spec.Modules[inst.Module], map[string]bool{}) {
+			expr := explicit[target.name]
+			if expr == nil {
+				expr = &IdentExpr{Name: target.name, Pos: inst.SourcePosition()}
+			}
+			var replacement tlc.SemanticNode
+			if target.arity > 0 {
+				if ident, ok := expr.(*IdentExpr); ok {
+					replacement = b.withExprLocation(expr, tlc.NewOpArgNode(b.exprSymbol(ident.Name)))
+				}
+			}
+			if replacement == nil {
+				replacement = b.convertExpr(expr)
+			}
+			substs = append(substs, tlc.Subst{Op: target.sym, Expr: replacement})
+		}
+		restore()
+		for i, name := range inst.Params {
+			if priorParams[i] == nil {
+				delete(b.symbols, name)
+			} else {
+				b.symbols[name] = priorParams[i]
+			}
+		}
+		b.convertingModule = previous
+		// Assign identities once, then reuse the Subst values in every clone.
+		binding.substs = tlc.NewSubstInNode(nil, substs...).Substs
+	}
+	body := source.Body
+	if len(binding.substs) > 0 {
+		body = b.withPositionLocation(inst.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
+	}
+	clone := tlc.NewOpDefNodeForSymbol(b.symbol(name), params, body)
+	b.withPositionLocation(inst.SourcePosition(), clone)
+	if !positionIsZero(inst.LHSPos) {
+		clone.SetDeclarationLocation(b.sourceLocationForPosition(inst.LHSPos))
+	}
+	return clone
+}
+
+func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlcBridgeInstanceTarget {
+	if mod == nil || visiting[mod.Name] || isEmbeddedStandardModule(mod) {
+		return nil
+	}
+	visiting[mod.Name] = true
+	defer delete(visiting, mod.Name)
+	var out []tlcBridgeInstanceTarget
+	for _, ext := range mod.Extends {
+		out = append(out, b.instanceTargets(b.spec.Modules[ext], visiting)...)
+	}
+	for _, decl := range mod.Declarations {
+		if decl.Kind != ConstantDecl && decl.Kind != VariableDecl {
+			continue
+		}
+		for _, name := range decl.Names {
+			sym := b.declarationSymbol(mod, name)
+			if decl.Kind == VariableDecl {
+				sym.MarkVariableDecl()
+			}
+			target := tlcBridgeInstanceTarget{name: name, arity: decl.Arities[name], sym: sym}
+			index := slices.IndexFunc(out, func(existing tlcBridgeInstanceTarget) bool { return existing.name == name })
+			if index >= 0 {
+				out[index] = target
+			} else {
+				out = append(out, target)
+			}
+		}
+	}
+	return out
+}
+
+func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode {
+	// EXTENDS shares declaration identity with the root. An INSTANCE retains
+	// the instancee's declaration and substitutes a binding for that symbol.
+	var extends func(*Module, map[string]bool) bool
+	extends = func(current *Module, visiting map[string]bool) bool {
+		if current == nil || visiting[current.Name] {
+			return false
+		}
+		if current == mod {
+			return true
+		}
+		visiting[current.Name] = true
+		for _, ext := range current.Extends {
+			if extends(b.spec.Modules[ext], visiting) {
+				return true
+			}
+		}
+		return false
+	}
+	if extends(b.spec.Root, map[string]bool{}) {
+		return b.symbol(name)
+	}
+	return b.symbol(mod.Name + "!" + name)
 }
 
 func (b *tlcBridge) pushConvertBoundNames(names ...string) func() {
@@ -1340,15 +1547,28 @@ func (b *tlcBridge) convertBound(name string) bool {
 
 func (b *tlcBridge) resolveExprName(name string) string {
 	name = tlcSymbolName(name)
-	if b == nil || name == "" || strings.Contains(name, "!") || b.convertBound(name) {
+	if b == nil || name == "" || b.convertBound(name) {
 		return name
 	}
 	module := b.convertingModule
 	if module == "" || module == b.rootModuleName {
 		return name
 	}
+	if b.instanceDefinitions[module+"!"+name] != nil {
+		return module + "!" + name
+	}
+	if strings.Contains(name, "!") {
+		return name
+	}
 	if b.moduleDefinitionNames[module][name] {
 		return module + "!" + name
+	}
+	if mod := b.spec.Modules[module]; mod != nil {
+		for _, target := range b.instanceTargets(mod, map[string]bool{}) {
+			if target.name == name {
+				return target.sym.Name.String()
+			}
+		}
 	}
 	return name
 }

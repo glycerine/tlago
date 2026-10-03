@@ -17,7 +17,7 @@ type Worker struct {
 	SetOfStates           *SetOfStates
 	SetOfStatesMultiplier int
 	OutDegree             *FixedSizedBucketStatistics
-	StatesGenerated       int64
+	statesGenerated       atomic.Int64
 	Checker               *ModelChecker
 	Tool                  *Tool
 	Halted                bool
@@ -216,7 +216,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	defer restoreCurrentState()
 	restoreRandomState := PushRandomEnumerableState(curState)
 	defer restoreRandomState()
-	preNext := w.StatesGenerated
+	preNext := w.GetStatesGenerated()
 	recordedOutcome := false
 	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
 	if err != nil {
@@ -239,7 +239,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	// iteration, records them through doNextFailed/doNextSetErr, and still
 	// executes the deadlock/liveness/out-degree tail before the next dequeue
 	// observes finishAll().
-	if w.Checker.CheckDeadlock && preNext == w.StatesGenerated {
+	if w.Checker.CheckDeadlock && preNext == w.GetStatesGenerated() {
 		w.Checker.doNextSetErrWithPostCondition(curState, nil, false, ECTLCDeadlockReached, "")
 		recordedOutcome = true
 	}
@@ -335,7 +335,7 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 	if action != nil && CoverageActionEnabled() {
 		action.CM.IncInvocations()
 	}
-	w.StatesGenerated++
+	w.statesGenerated.Add(1)
 	stop, queued, err := w.Checker.processSuccessorForWorker(w.ID, curState, succState, action, w.SetOfStates)
 	if stop || err != nil {
 		w.Halted = true
@@ -363,7 +363,7 @@ func (w *Worker) AddUnsatisfiedNextState(curState *TLCStateMut, action *Action, 
 
 func (w *Worker) IncrementStatesGenerated(count int64) {
 	if w != nil {
-		w.StatesGenerated += count
+		w.statesGenerated.Add(count)
 	}
 }
 
@@ -375,7 +375,7 @@ func (w *Worker) GetStatesGenerated() int64 {
 	if w == nil {
 		return 0
 	}
-	return w.StatesGenerated
+	return w.statesGenerated.Load()
 }
 
 const workerSetOfStatesInitialCapacity = 16

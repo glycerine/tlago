@@ -1677,7 +1677,7 @@ func (mc *ModelChecker) GetStatesGenerated() int64 {
 	total := mc.NumberOfInitialStates + mc.NextStatesGenerated
 	for _, worker := range mc.Workers {
 		if worker != nil {
-			total += worker.StatesGenerated
+			total += worker.GetStatesGenerated()
 		}
 	}
 	return total

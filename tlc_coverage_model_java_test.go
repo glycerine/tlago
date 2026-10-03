@@ -1,5 +1,6 @@
 /*******************************************************************************
- * Copyright (c) 2018 Microsoft Research. All rights reserved.
+ * Copyright (c) 2018-2021 Microsoft Research. All rights reserved.
+ * Copyright (c) 2026 NVIDIA Corporation. All rights reserved.
  *
  * The MIT License (MIT)
  *
@@ -647,4 +648,126 @@ func TestJavaJCoverage(t *testing.T) {
   |||line 10, col 7 to line 10, col 19 of module J: 4
   ||line 12, col 21 to line 12, col 21 of module J: 6
   line 13, col 12 to line 13, col 22 of module J: 6`)
+}
+
+func TestJavaKCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "K", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"1"}) {
+		t.Errorf("search depth=%v, want 1", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"2", "1", "0"}) {
+		t.Errorf("stats=%v, want 2/1/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+}
+
+func TestJavaLCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "L", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"1"}) {
+		t.Errorf("search depth=%v, want 1", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"2", "1", "0"}) {
+		t.Errorf("stats=%v, want 2/1/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+}
+
+func TestJavaMCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "M", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"1"}) {
+		t.Errorf("search depth=%v, want 1", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"37056", "192", "0"}) {
+		t.Errorf("stats=%v, want 37056/192/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Init line 16, col 1 to line 16, col 4 of module M>: 192:192
+  line 17, col 17 to line 17, col 39 of module M: 1:24
+  |line 17, col 18 to line 17, col 27 of module M: 1
+  |line 17, col 32 to line 17, col 38 of module M: 1
+  line 18, col 16 to line 18, col 31 of module M: 8:192
+  |line 18, col 17 to line 18, col 21 of module M: 8
+  |line 18, col 26 to line 18, col 30 of module M: 8
+  line 19, col 6 to line 19, col 19 of module M: 64
+  line 20, col 6 to line 20, col 21 of module M: 192
+<Next line 22, col 1 to line 22, col 4 of module M>: 0:36864
+  line 23, col 6 to line 23, col 40 of module M: 1536
+  |line 23, col 18 to line 23, col 40 of module M: 192:4608
+  ||line 23, col 19 to line 23, col 28 of module M: 192
+  ||line 23, col 33 to line 23, col 39 of module M: 192
+  line 24, col 6 to line 24, col 32 of module M: 12288
+  |line 24, col 17 to line 24, col 32 of module M: 1536:36864
+  ||line 24, col 18 to line 24, col 22 of module M: 1536
+  ||line 24, col 27 to line 24, col 31 of module M: 1536
+  line 25, col 6 to line 25, col 20 of module M: 36864
+  |line 25, col 16 to line 25, col 20 of module M: 12288
+  line 26, col 6 to line 26, col 22 of module M: 36864`)
+}
+
+func TestJavaOCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "O", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"4"}) {
+		t.Errorf("search depth=%v, want 4", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"4", "4", "0"}) {
+		t.Errorf("stats=%v, want 4/4/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Init line 24, col 1 to line 24, col 4 of module O>: 1:1
+  line 24, col 9 to line 24, col 13 of module O: 1
+<I!Step line 22, col 1 to line 22, col 1 of module O>: 3:3
+  line 22, col 31 to line 22, col 31 of module O: 7
+  line 10, col 15 to line 10, col 19 of module O: 3
+  |line 10, col 15 to line 10, col 15 of module O: 4
+  line 11, col 15 to line 11, col 24 of module O: 3
+<Inv line 28, col 1 to line 28, col 3 of module O>
+  line 28, col 8 to line 28, col 14 of module O: 4`)
 }

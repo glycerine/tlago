@@ -39,6 +39,7 @@ type Instance struct {
 	PreComments      []string
 	Pos              Position
 	Source           Position
+	LHSPos           Position
 }
 
 func (i Instance) SourcePosition() Position {

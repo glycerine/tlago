@@ -1661,6 +1661,9 @@ Important behavior:
 Worker maximum trace depth is Java's private volatile int. Go stores it in an
 atomic Int32 and exposes GetMaxLevel/SetLevel; ConcurrentTLCTrace reporting
 loads it through the getter while the worker writes successor trace records.
+The generated-state count has one worker writer and concurrent progress readers.
+Go stores it in a private atomic Int64, preserving increment and deadlock-check
+order, and the checker reads it through GetStatesGenerated.
 
 Worker loop:
 
@@ -2764,6 +2767,16 @@ instead of the `$FcnConstructor` used by bracketed `|->` expressions. Recursive
 definitions have a fresh self symbol in the body and the constructor's unbounded
 symbol list; the evaluator binds it to the function lambda and keeps evaluation
 lazy. Both specification constructors span the full function definition.
+
+INSTANCE clones in the TLC bridge retain their original definition bodies under
+SubstInNode wrappers. Each instance shares its Subst identities and replacement
+expressions across the cloned definitions; each Action coverage root owns its
+wrappers for those shared substitutions. Explicit and implicit substitutions bind
+the instancee declaration symbols through lazy values, while operator parameters
+use OpArgNode. Instance parameters have their own scoped symbols. EXTENDS retains
+root declaration identity. Definition conversion tracks actual module membership,
+including inner modules whose physical source file belongs to the outer module.
+The parser retains the instance definition LHS range for action declarations.
 
 Coverage expression labels come from semantic source locations. Standard-module
 exclusion follows Java's fixed set of nine source-module names, including its

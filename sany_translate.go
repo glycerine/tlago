@@ -670,6 +670,7 @@ func sanyModuleDefinition(node *SanySyntaxNode) (Instance, Diagnostics) {
 		if child.Kind.JavaName() != "N_IdentLHS" {
 			continue
 		}
+		inst.LHSPos = sanyNodePosition(child)
 		if id := firstSanyIdentifier(child); id != nil {
 			inst.Name = id.Image
 		}

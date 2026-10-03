@@ -51,8 +51,8 @@ func TestWorkerFunctorPathProcessesSuccessorsLikeModelChecker(t *testing.T) {
 	if stop {
 		t.Fatalf("Worker.DoNext stop = true, want false")
 	}
-	if worker.StatesGenerated != 2 {
-		t.Fatalf("worker states generated = %d, want 2", worker.StatesGenerated)
+	if worker.GetStatesGenerated() != 2 {
+		t.Fatalf("worker states generated = %d, want 2", worker.GetStatesGenerated())
 	}
 	if mc.NextStatesGenerated != 0 {
 		t.Fatalf("checker direct next states generated = %d, want 0 for worker path", mc.NextStatesGenerated)

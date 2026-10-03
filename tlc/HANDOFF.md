@@ -41,8 +41,13 @@ visits those definitions. GCoverageTest, HCoverageTest, ICoverageTest and
 JCoverageTest are now translated too. ENABLED retains its current cost model,
 unnamed SPECIFICATION actions retain Java's unnamed marker/location labels, and
 named function definitions preserve recursive/nonrecursive specification nodes,
-recursive self bindings and complete source ranges. Next compare KCoverageTest
-and remaining upstream coverage model cases. Original model bytes, including
+recursive self bindings and complete source ranges. KCoverageTest, LCoverageTest,
+MCoverageTest and OCoverageTest are now translated too. Instance definitions
+retain SubstInNode bindings, shared source bodies and Subst identities, distinct
+instancee declaration symbols and instance declaration ranges. O now reports
+separate next-state and invariant substitution counts. Worker generated-state
+reporting uses atomic access. Next compare the remaining Github314, Github377,
+Github649 and Implied coverage models. Original model bytes, including
 upstream whitespace, are intentionally retained in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
