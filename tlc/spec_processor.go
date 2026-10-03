@@ -928,6 +928,16 @@ func (p *SpecProcessor) applyConfigModuleOverrides(tool *Tool) {
 			}
 			qualified := configQualifiedName(modName, lhs)
 			lhsVal := p.defn(qualified)
+			// Native overrides replaced the table entry, but Java still visits
+			// the module's original OpDef and updates its shared body.
+			if p.RootDefinitions != nil {
+				for _, definition := range p.RootDefinitions.All() {
+					if definition.Symbol.Name == UniqueStringOf(qualified) {
+						lhsVal = definition
+						break
+					}
+				}
+			}
 			if lhsVal == nil {
 				p.addConfigError(ECTLCConfigIDDoesNotAppearInSpec, lhs)
 				continue
@@ -942,7 +952,9 @@ func (p *SpecProcessor) applyConfigModuleOverrides(tool *Tool) {
 					p.addConfigError(ECTLCConfigWrongSubstitutionNumberOfArgs, lhs, rhs)
 					continue
 				}
-				lhsDef.SetToolObject(rhsVal)
+				if body, ok := lhsDef.Body.(interface{ SetToolObject(any) }); ok {
+					body.SetToolObject(rhsVal)
+				}
 			}
 			p.putConfigDefinition(qualified, rhsVal, tool)
 		}

@@ -404,7 +404,6 @@ type ValueNode struct {
 
 func NewValueNode(value Value) *ValueNode {
 	base := newSemanticNodeBase(SemanticValueKind, semanticValueString(value))
-	base.ToolObject = value
 	return &ValueNode{
 		SemanticNodeBase: base,
 		Value:            value,

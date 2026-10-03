@@ -29,6 +29,7 @@ type tlcBridge struct {
 	sourceSymbols         map[*Definition]*tlc.SymbolNode
 	sourceDefinitions     map[*Definition]*tlc.OpDefNode
 	instanceDefinitions   map[string]*tlcBridgeInstance
+	nativeDefinitions     map[*tlc.UniqueString]any
 }
 
 type tlcBridgeInstance struct {
@@ -402,6 +403,12 @@ func (b *tlcBridge) installDefinitions() {
 	if mod := b.spec.Modules["Integers"]; mod != nil && moduleNameForSourcePosition(mod.Pos) == mod.Name {
 		b.tool.InstallIntegerDefinitions()
 	}
+	// Alias/source registration must not change which native implementation
+	// processModuleOverrides associates with a module's original definition.
+	b.nativeDefinitions = make(map[*tlc.UniqueString]any, len(b.tool.DefnsByName))
+	for name, value := range b.tool.DefnsByName {
+		b.nativeDefinitions[name] = value
+	}
 	b.prepareInstanceDefinitions()
 	names := make([]string, 0, len(b.defs))
 	for name := range b.defs {
@@ -532,22 +539,19 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	if i := strings.LastIndex(member, "!"); i >= 0 {
 		member = member[i+1:]
 	}
-	value := b.tool.DefnsByName[tlc.UniqueStringOf(module+"!"+member)]
+	value := b.nativeDefinitions[tlc.UniqueStringOf(module+"!"+member)]
 	if value == nil {
-		value = b.tool.DefnsByName[tlc.UniqueStringOf(member)]
+		value = b.nativeDefinitions[tlc.UniqueStringOf(member)]
 	}
 	if value == nil {
 		return
 	}
-	var opDef *tlc.OpDefNode
-	if _, ok := value.(*tlc.EvaluatingValue); ok {
-		if opDef = b.convertDefinitionAs(name, def); opDef != nil {
-			value = tlc.WithEvaluatingOpDef(value, opDef)
-		}
-	} else if _, ok := value.(*tlc.PriorityEvaluatingValue); ok {
-		if opDef = b.convertDefinitionAs(name, def); opDef != nil {
-			value = tlc.WithEvaluatingOpDef(value, opDef)
-		}
+	// Java stores native overrides on the source OpDef body. INSTANCE clones
+	// share that body, possibly underneath SubstIn wrappers.
+	opDef := b.convertSourceDefinitionAs(module+"!"+member, def)
+	if opDef != nil {
+		value = tlc.WithEvaluatingOpDef(value, opDef)
+		opDef.Body.(interface{ SetToolObject(any) }).SetToolObject(value)
 	}
 	b.rememberNativeStandardDefinition(module, member, name, opDef)
 	b.defineAlias(name, value)

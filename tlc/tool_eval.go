@@ -86,6 +86,21 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 		if value := SemanticToolObject(sym.Definition); value != nil {
 			return muxToolObject(value, state)
 		}
+		// SymbolNodeValueLookupProvider looks through INSTANCE substitution
+		// wrappers for the original definition body's native/config override.
+		body := sym.Definition.Body
+		for body != nil {
+			if node, ok := body.(interface{ GetToolObject() any }); ok {
+				if value := node.GetToolObject(); value != nil {
+					return value
+				}
+			}
+			subst, ok := body.(*SubstInNode)
+			if !ok {
+				break
+			}
+			body = subst.Body
+		}
 	}
 	if sym.Data != nil {
 		return muxToolObject(sym.Data, state)

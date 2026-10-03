@@ -200,17 +200,32 @@ The original test deliberately has no count assertions. FPIntSet statics are
 initialized for each translated-test runtime, matching Java's fresh classloader;
 retained levels had made the two DFID tests loop together. Both translated DFID
 checks and full normal/race suites pass.
-Next concrete trace-replay gap: unchanged DumpLoadTraceTest's
-testSafetyDumpLoadTraceJSON passes when invoked alone in its original source
-class (the custom isolated JUnit runner ignores method filtering). Go dumps the
-same seven-state DieHard safety trace, but -loadTrace json fails during init at
-TLC's unbounded CHOOSE placeholder, line 75, with exit 75. Compare native
-operator/body tool-object identities through the helper modules' LOCAL
-INSTANCE imports before translating the original dump/load methods. Ignored
-logs: .codex-gotmp/go-DieHard-load-json.log and
-.codex-gotmp/java-next-models/java-DumpLoadTraceTest-json-single.log.
-Body tool-object lookup through SubstIn, complete semantic module graphs and
-constant-processing snapshot/eligibility metadata remain broader source work.
+Native body lookup through SubstIn is now ported for represented operators.
+Native implementations are captured before alias/source registration, then
+attached to original definition bodies as Java processModuleOverrides does.
+INSTANCE clones reuse those bodies. Module-specific config overrides update
+the original shared body rather than just the definition table. Synthetic
+ValueNode intrinsic values remain separate from explicit body tool metadata;
+the existing operator-name clash assertion remains unchanged and passes.
+After implementation, translated DumpLoadTraceTest's four single-worker safety
+and bidirectional-liveness JSON/TLC methods. Each phase starts a fresh runtime,
+preserving fp 4, exact source flags, file existence/nonempty checks, Finished,
+exit and violation equality, trace ordinals and trimmed state equality. The
+harness now accepts exact source arguments and omits forced generation when
+noGenerateSpec applies; otherwise the binary dump was redirected to the
+generated trace-spec file. DieHard uses the existing original vectors; the two
+BidirectionalTransitions vectors are byte-identical. All four unchanged Java
+original methods, targeted normal/race and full normal/race suites pass.
+Production replay counts match Java 36/7/0 (safety) and 21/5/0 (liveness).
+Next: translate the original DumpLoadTraceTest auto-worker methods, retaining
+-workers auto and the source prefix comparison for differing worker counts.
+The unchanged safety JSON auto-worker method passes in Java; Go's preliminary
+auto-worker dump produced an eight-state trace and single-worker replay matched
+all eight states with safety exit. Also compare the remaining ALIAS/CodePlex/
+TESpec/Example1 dump/load methods before translation. Preserve upstream Ignore
+annotations for garbled EWD840 JSON and multi-worker ALIAS variable subsetting.
+Complete semantic module graphs and constant-processing snapshot/eligibility
+metadata remain broader source work.
 Trace-expression variants remain separate pending
 work. Record StateString's explicit empty/non-string _format handling and full
 Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest

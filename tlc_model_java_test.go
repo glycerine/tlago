@@ -65,6 +65,34 @@ func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, 
 
 func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
 	t.Helper()
+	return runJavaTLCModelTestWithArguments(t, name, root, func(meta, traceDirectory string) []string {
+		args := []string{"-metadir", meta, "-deadlock", "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
+		// Java's noGenerateSpec override omits -generateSpecTE entirely. Supplying
+		// both flags retains forced generation and adds an unwanted binary dump.
+		noGenerate := false
+		for _, arg := range extraArgs {
+			noGenerate = noGenerate || arg == "-noGenerateSpecTE"
+		}
+		if !noGenerate {
+			args = append(args, "-generateSpecTE")
+		}
+		if workers == 1 && debugger {
+			args = append(args, "-debugger", "nosuspend,port=4712,nohalt")
+		}
+		tlc.Globals.CoverageInterval = -1
+		if coverage {
+			args = append(args, "-coverage", "1")
+		}
+		if dump {
+			args = append(args, "-dump", "dot", filepath.Join(meta, root+".dot"))
+		}
+		args = append(args, extraArgs...)
+		return args
+	})
+}
+
+func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string) *tlc.Result {
+	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
@@ -98,18 +126,8 @@ func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump
 	tlc.SetFilenameUserDirectory(&directory)
 	meta := t.TempDir()
 	traceDirectory := t.TempDir()
-	args := []string{"-metadir", meta, "-deadlock", "-generateSpecTE", "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
-	if workers == 1 && debugger {
-		args = append(args, "-debugger", "nosuspend,port=4712,nohalt")
-	}
 	tlc.Globals.CoverageInterval = -1
-	if coverage {
-		args = append(args, "-coverage", "1")
-	}
-	if dump {
-		args = append(args, "-dump", "dot", filepath.Join(meta, root+".dot"))
-	}
-	args = append(args, extraArgs...)
+	args := arguments(meta, traceDirectory)
 	args = append(args, root)
 	opts, err := tlc.ParseTLCOptions(args)
 	if err != nil {
