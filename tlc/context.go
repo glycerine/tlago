@@ -18,12 +18,21 @@ const (
 type SymbolNode struct {
 	Name *UniqueString
 	Data any
+	// The evaluator's qualified lookup key can differ from SANY's declaration name.
+	DeclarationName *UniqueString
 	// SANY's operator symbol is the OpDefNode itself. Retain that semantic
 	// identity separately from evaluation overrides and context bindings.
 	Definition *OpDefNode
 	Kind       SymbolKind
 	Arity      int
 	Location   SourceLocation
+}
+
+func (s *SymbolNode) GetName() *UniqueString {
+	if s.DeclarationName != nil {
+		return s.DeclarationName
+	}
+	return s.Name
 }
 
 func NewSymbolNode(name string) *SymbolNode {

@@ -105,10 +105,6 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 	if toolDiags.HasErrors() {
 		return "", diags, nil
 	}
-	if fallbackDiags := installREPLRootDefinitions(tool, spec, cfg); fallbackDiags.HasErrors() {
-		diags = append(diags, fallbackDiags...)
-		return "", diags, nil
-	}
 	valueDef, ok := lookupREPLValueDefinition(tool)
 	if !ok || valueDef == nil {
 		return "", diags, fmt.Errorf("REPL value definition %s not found; root definitions: %s; available definitions: %s", replValueName, strings.Join(moduleDefinitionNamesForDebug(spec.Root), ", "), strings.Join(replDefinitionNames(tool), ", "))
@@ -125,39 +121,6 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 		return "", diags, err
 	}
 	return value.String(), diags, nil
-}
-
-func installREPLRootDefinitions(tool *tlc.Tool, spec *Spec, cfg *tlc.ModelConfig) Diagnostics {
-	if tool == nil || spec == nil || spec.Root == nil {
-		return nil
-	}
-	var defnStore *tlc.Defns
-	if tool.SpecProcessor != nil {
-		defnStore = tool.SpecProcessor.Defns
-	}
-	bridge := &tlcBridge{
-		tool:                  tool,
-		processor:             tool.SpecProcessor,
-		spec:                  spec,
-		cfg:                   cfg,
-		defs:                  tlcBridgeDefinitionsByName(spec),
-		defns:                 defnStore,
-		symbols:               map[string]*tlc.SymbolNode{},
-		rootModuleName:        spec.Root.Name,
-		moduleDefinitionNames: moduleDefinitionNameIndex(spec),
-		convertBoundNames:     map[string]int{},
-	}
-	for i := range spec.Root.Definitions {
-		def := &spec.Root.Definitions[i]
-		opDef := bridge.convertDefinitionAs(def.Name, def)
-		if opDef != nil {
-			bridge.define(opDef.Symbol, opDef)
-			if spec.Root.Name != "" {
-				bridge.defineName(spec.Root.Name+"!"+def.Name, opDef)
-			}
-		}
-	}
-	return bridge.diags
 }
 
 func moduleDefinitionNamesForDebug(mod *Module) []string {
@@ -192,6 +155,13 @@ func replDefinitionNames(tool *tlc.Tool) []string {
 func lookupREPLValueDefinition(tool *tlc.Tool) (*tlc.OpDefNode, bool) {
 	if tool == nil {
 		return nil, false
+	}
+	if processor := tool.GetSpecProcessor(); processor != nil && processor.GetRootModule() != nil {
+		for _, def := range processor.GetRootModule().GetOpDefs() {
+			if def.Name.String() == replValueName {
+				return def, true
+			}
+		}
 	}
 	for _, name := range []string{replValueName, replSpecName + "!" + replValueName} {
 		if valueDef, ok := tool.DefnsByName[tlc.UniqueStringOf(name)].(*tlc.OpDefNode); ok {

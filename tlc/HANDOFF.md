@@ -283,17 +283,35 @@ node-pointer-table primitive int counts atomically while retaining the existing
 solution monitor. Constant pre-evaluation now requires lookup to return an
 OpDefNode, matching Java and preserving native/value overrides rather than
 evaluating their TLA+ placeholder bodies. Full normal and race suites pass.
-Next: port SpecProcessor's per-module constant-processing eligibility and maps,
-using the retained source module identities. ModuleNode top-level vectors,
-proofs/children/traversal, broader nested/parameterized instance origin metadata
-and constant-processing snapshots remain broader source work; this represented
-graph slice does not establish their completion. Record StateString's explicit empty/non-string _format handling and full
-Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest
-is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
-composition and instantiation-aware constant-processing eligibility remain
-bridge parity work; the represented declaration-order slice does not establish
-their completion. Original model bytes, including upstream whitespace, are
-intentionally retained in test_vectors/.
+SpecProcessor now processes constants by actual module and declaration/operator
+identity, retaining WorkerValue storage and Java's instantiation eligibility,
+source origins, inner-module recursion and immediate node updates. Its global
+entry is replaced only when it still denotes the exact evaluated operator.
+Snapshot is captured after config overrides and before pre-evaluation; symmetry,
+_RL_REWARD and _PERIODIC use that unprocessed snapshot. Root registration retains
+transitive EXTENDS exports, source contexts retain original nodes rather than
+colliding named INSTANCE exports, and native overrides follow module order.
+TLCGetAndSet remains a TLA+ definition as in the source TLCExt module. Debugger
+constants use the module map, worker mux and retained compound instance names.
+The REPL reads the actual root operator instead of rebuilding a second graph.
+Across eight unchanged models, Java/Go comparisons match 24 constant records,
+941 operator-origin records and 941 unprocessed/current snapshot records.
+After implementation, translated Github361Test with its original two workers,
+Finished, 2/1/0 statistics and one initial state; its two vectors are byte-identical
+under test_vectors/. The unchanged Java JUnit method passes too.
+Validation of this slice is recorded at the end of PORT_PROGRESS.md.
+
+Next: compare complete EchoDebuggerTest and EWD998ChanDebuggerTest with their
+actual debugger harness before translating their methods. FastTool module-map
+probes do not establish parity for live stepping, frames, breakpoints, watches
+or DAP assertions. The separate native-only preConstantSnapshot, processConstants
+semantic traversal and dynamic extendee path remain source work, as do ModuleNode
+top-level vectors, proofs/children/traversal and broader nested/parameterized
+instance metadata and export composition. Full TLC completion is not established.
+Record StateString's explicit empty/non-string _format handling and full Java
+String.format semantics also remain source parity work. TLCGetNonDeterminismTest
+is ignored upstream by design; preserve that status when translating it.
+Original model bytes, including upstream whitespace, remain in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.

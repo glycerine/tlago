@@ -32,6 +32,38 @@ func (b *tlcBridge) builtinNode(op *tlc.UniqueString, args ...tlc.SemanticNode) 
 	return tlc.NewOpApplNode(b.builtinDefinition(op.String()).Symbol, args...)
 }
 
+// SpecProcessor.processModuleOverrides visits each module's actual OpDefs.
+// Inherited operators therefore receive the overriding module's methods too,
+// with the global unqualified entry following the same dependency order.
+func (b *tlcBridge) installModuleNativeOverrides() {
+	for _, module := range b.processor.ModuleTbl.GetModuleNodes() {
+		for _, def := range module.GetOpDefs() {
+			moduleName, name := module.Name.String(), def.Name.String()
+			native := bridgeNativeOverrideModuleMembers[moduleName][name]
+			if moduleName == "Integers" {
+				native = native || bridgeNativeOverrideModuleMembers["Naturals"][name]
+			}
+			if !native {
+				continue
+			}
+			value := b.nativeDefinitions[tlc.UniqueStringOf(module.Name.String()+"!"+def.Name.String())]
+			if value == nil {
+				value = b.nativeDefinitions[def.Name]
+			}
+			if value == nil || def.Body == nil {
+				continue
+			}
+			value = tlc.WithEvaluatingOpDef(value, def)
+			if body, ok := def.Body.(interface{ SetToolObject(any) }); ok {
+				body.SetToolObject(value)
+			}
+			b.defns.Put(def.Name, value)
+			b.tool.Define(def.Symbol, value)
+			b.tool.DefnsByName[def.Name] = value
+		}
+	}
+}
+
 // Retain the external dependency order and full represented semantic contexts.
 // Internal modules have graph identities too, but never become external table
 // entries merely because the loader indexes them by name.
@@ -103,6 +135,13 @@ func (b *tlcBridge) installModuleTable() {
 					declaration.MarkVariableDecl()
 				} else {
 					declaration.Kind = tlc.SymbolConstantDecl
+					for _, decl := range entry.module.Declarations {
+						if decl.Kind == ConstantDecl {
+							if arity, exists := decl.Arities[entry.name]; exists {
+								declaration.Arity = arity
+							}
+						}
+					}
 				}
 				position := entry.position
 				position.File = entry.module.Name
@@ -146,6 +185,26 @@ func (b *tlcBridge) installModuleTable() {
 			moduleImportsFromExpr(theorem.Expr, markInstance)
 		}
 	}
+	// Some hidden source definitions are converted while contexts are built.
+	for definition, node := range b.sourceDefinitions {
+		node.OriginallyDefinedInModule = nodes[b.spec.Modules[b.definitionModules[definition]]]
+		node.Local = definition.Local
+	}
+	for _, binding := range b.instanceDefinitions {
+		for definition, clone := range binding.defs {
+			source := b.sourceDefinitions[definition]
+			if source == nil {
+				continue
+			}
+			clone.SourceDefinition = source.GetSource()
+			clone.Local = binding.inst.Local
+			if binding.inst.Name == "" && source.OriginallyDefinedInModule != nil && source.OriginallyDefinedInModule.IsParameterFree() {
+				clone.OriginallyDefinedInModule = source.OriginallyDefinedInModule
+			} else {
+				clone.OriginallyDefinedInModule = nodes[binding.owner]
+			}
+		}
+	}
 	table.SetRootModule(nodes[b.spec.Root])
 	b.processor.RootModule = table.GetRootModule()
 	// Publish fully populated cached accessors before worker threads use them.
@@ -160,7 +219,17 @@ func (b *tlcBridge) installModuleTable() {
 }
 
 func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextEntry) *tlc.OpDefNode {
-	if entry.instance != nil && entry.instance.Local {
+	if entry.instance == nil && entry.module != nil {
+		// A source module's qualified lookup key can also be a named INSTANCE
+		// export in the root. Its context must still retain the original node.
+		for i := range entry.module.Definitions {
+			def := &entry.module.Definitions[i]
+			if def.Name == entry.name {
+				return b.convertSourceDefinitionAs(entry.module.Name+"!"+def.Name, def)
+			}
+		}
+	}
+	if entry.instance != nil && entry.instance.Name == "" && entry.instance.Local {
 		instancee := b.moduleNodes[b.spec.Modules[entry.instance.Module]]
 		if instancee != nil {
 			if source, ok := instancee.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(entry.instanceSourceName)}).(*tlc.OpDefNode); ok && source != nil && source.OriginallyDefinedInModule != nil && source.OriginallyDefinedInModule.IsParameterFree() {
@@ -195,6 +264,47 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 	}
 	if def := b.defs[key]; def != nil {
 		return b.convertDefinitionAs(key, def)
+	}
+	if entry.instance != nil && entry.instance.Name != "" {
+		// Native definitions inherited by an instancee are semantic OpDefs too,
+		// even when the runtime export index contains only their native values.
+		instancee := b.moduleNodes[b.spec.Modules[entry.instance.Module]]
+		if instancee != nil {
+			if source, ok := instancee.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(entry.instanceSourceName)}).(*tlc.OpDefNode); ok && source != nil {
+				cacheKey := entry.instanceOwner.Name + "!" + entry.name
+				if clone := b.localModuleDefinitions[cacheKey]; clone != nil {
+					return clone
+				}
+				var binding *tlcBridgeInstance
+				for _, candidate := range b.instanceDefinitions {
+					if candidate.owner == entry.instanceOwner && candidate.inst.SourcePosition() == entry.instance.SourcePosition() {
+						binding = candidate
+						break
+					}
+				}
+				if binding == nil {
+					binding = &tlcBridgeInstance{owner: entry.instanceOwner, inst: *entry.instance}
+				}
+				b.prepareInstanceBinding(binding)
+				params := append(append([]*tlc.SymbolNode(nil), binding.params...), source.Params...)
+				body := source.Body
+				if len(binding.substs) > 0 {
+					body = b.withPositionLocation(entry.instance.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
+				}
+				clone := tlc.NewOpDefNodeForSymbol(b.symbol(key), params, body)
+				clone.Name = tlc.UniqueStringOf(entry.name)
+				clone.Local = entry.instance.Local
+				clone.SourceDefinition = source.GetSource()
+				clone.OriginallyDefinedInModule = b.moduleNodes[entry.instanceOwner]
+				if len(binding.substs) > 0 {
+					clone.CompoundID = append([]*tlc.UniqueString{tlc.UniqueStringOf(entry.instance.Name)}, source.GetCompoundID()...)
+				}
+				b.withPositionLocation(entry.instance.SourcePosition(), clone)
+				b.define(clone.Symbol, clone)
+				b.localModuleDefinitions[cacheKey] = clone
+				return clone
+			}
+		}
 	}
 	if entry.module != nil {
 		for i := range entry.module.Definitions {

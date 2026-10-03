@@ -287,11 +287,47 @@ func (f *TLCStackFrame) constantVariables(rnd *rand.Rand) []*DebugTLCVariable {
 		return nil
 	}
 	constants := f.Tool.SpecProcessor.GetConstantDefns()
-	out := make([]*DebugTLCVariable, 0, constants.Len())
-	for name, value := range constants.All() {
-		out = append(out, f.debugVariableForValue(value, name, rnd))
+	var out []*DebugTLCVariable
+	for module, definitions := range constants.All() {
+		if constants.Len() == 1 {
+			for node, value := range definitions.All() {
+				out = append(out, f.debugVariableForValue(MuxWorkerValue(value, CurrentThreadIDOr(0)), constantDefinitionName(node), rnd))
+			}
+			continue
+		}
+		variable := &DebugTLCVariable{Name: module.Name.String(), Value: module.Name.String(), VariablesReference: debugVariableReference(rnd)}
+		for node := range definitions.All() {
+			if def, ok := node.(*OpDefNode); ok {
+				variable.Value = def.GetPathName().String()
+				break
+			}
+		}
+		out = append(out, variable)
+		var nested []*DebugTLCVariable
+		for node, value := range definitions.All() {
+			name := constantDefinitionName(node)
+			if def, ok := node.(*OpDefNode); ok {
+				name = def.GetLocalName().String()
+			}
+			nested = append(nested, f.debugVariableForValue(MuxWorkerValue(value, CurrentThreadIDOr(0)), name, rnd))
+		}
+		if f.NestedConstants == nil {
+			f.NestedConstants = NewInsMap[int, []*DebugTLCVariable]()
+		}
+		f.NestedConstants.Set(variable.VariablesReference, nested)
 	}
 	return out
+}
+
+func constantDefinitionName(node SemanticNode) string {
+	switch node := node.(type) {
+	case *OpDefNode:
+		return node.Name.String()
+	case *SymbolNode:
+		return node.GetName().String()
+	default:
+		return SemanticString(node)
+	}
 }
 
 func (f *TLCStackFrame) stackVariables(rnd *rand.Rand) []*DebugTLCVariable {

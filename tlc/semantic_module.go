@@ -99,7 +99,7 @@ func (c *SemanticContext) Duplicate(table *ExternalModuleTable) *SemanticContext
 		key := SemanticContextKey{Name: pair.key.Name}
 		switch node := pair.node.(type) {
 		case *SymbolNode:
-			key.Name = node.Name
+			key.Name = node.GetName()
 		case *OpDefNode:
 			key.Name = node.Name
 		case *ThmOrAssumpDefNode:

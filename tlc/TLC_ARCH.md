@@ -370,9 +370,11 @@ Tricky details:
   run. The Go bridge constructs `SpecProcessor` before all definitions and
   variables are installed, then runs it again while applying the processor to a
   `Tool`; accumulated init/property/temporal vectors would diverge from Java.
-  Refresh the pre-constant definition snapshot immediately before
-  `ProcessConstantDefinitions`, because Java uses that snapshot for
-  `_RL_REWARD` and `_PERIODIC` after ordinary constants have been evaluated.
+  Capture Java's `Snapshot` after config constants/overrides and before
+  `ProcessConstantDefinitions`. `getUnprocessedDefns`, symmetry, `_RL_REWARD`
+  and `_PERIODIC` use it after ordinary constants have been evaluated. The
+  separate native-only `preConstantSnapshot` used by semantic traversal and
+  dynamic extendees still needs its full source processing path.
 - Config keyword validation is keyword-specific. `INIT`, `NEXT`, `VIEW`,
   `POSTCONDITION`, `_POSSIBLE`, `_PERIODIC`, and `_RL_REWARD` require
   zero-arity operator definitions; `INVARIANT` and `PROPERTY` ignore literal
@@ -389,25 +391,32 @@ Tricky details:
   `TRUE` values, and treats non-zero-arity definitions, literal `FALSE`,
   non-boolean values, and unknown names as configuration errors before model
   checking begins.
-- After definitions and config substitutions are installed, Java
-  `SpecProcessor.processConstantDefns` walks zero-arity operator definitions
-  whose effective level is constant and pre-evaluates them into TLC `Value`s.
-  Evaluation failures are deliberately swallowed for constant-level operators
-  such as `Seq(S)` or failing `TLCGet` expressions so that the ordinary
-  model-checking path reports the real use-site error later. The Go port mirrors
-  this with `SpecProcessor.ProcessConstantDefinitions`: no new abstraction, just
-  the concrete processor using the concrete `Tool`, a flat `ConstantDefns`
-  cache, Java-style snapshots, and a veto list keyed by
+- After definitions and config substitutions are installed,
+  `SpecProcessor.ProcessConstantDefinitions` visits the actual external module
+  table in dependency order. It skips instantiated modules with parameters,
+  also checking each operator's originally defining module, then recurses into
+  inner modules without reapplying module eligibility. Constant declarations
+  read their own tool object and initialize explicit values. Operator
+  pre-evaluation requires lookup to return an operator definition, zero source
+  arity and constant effective level; vetoes use the resolved operator name.
+  Each result is immediately installed on that exact node. The global `Defns`
+  entry changes only if it still denotes that node; module-map keys use its
+  source origin when present. Evaluation failures for ordinary operators are
+  swallowed as Java's `Throwable` catch requires, leaving the use-site error
+  for checking. Declared operator substitutions retain their narrower exception
+  boundary and nonconstant/arity diagnostics. Vetoes use
   `tlc2.tool.impl.SpecProcessor.vetoed` or `TLAGO_SPEC_PROCESSOR_VETOED`.
 - Java routes each successfully evaluated zero-arity constant operator through
   `WorkerValue.demux`. The value is deep-normalized but not eagerly initialized
   for fingerprinting at spec-processing time. Mutable values with multiple
   workers are re-evaluated once per worker under the same
   `RandomEnumerableValues` seed and stored as a `WorkerValue`; immutable
-  primitives stay as plain values. The Go port keeps the same visible storage
-  shape in `Defns` and on the operator tool object, while the convenience
-  `ConstantDefns` cache stores worker zero's concrete value for callers that
-  require a `Value`.
+  primitives stay as plain values. The Go port retains that storage in `Defns`,
+  the operator tool object and `ConstantDefns`, whose shape is module identity
+  -> declaration/operator identity -> raw value or `WorkerValue`. Debugger
+  consumers mux for their current worker. One module's constants are flattened;
+  multiple modules have nested groups with source module names, retained
+  compound instance paths and local operator/declaration names.
 
 ### Go SANY to TLC Bridge
 
@@ -416,7 +425,16 @@ so trace postconditions and runtime constraints can resolve their operators.
 Actions created from definitions reuse the body converted in that definition's
 module scope; reconverting at the root loses bindings to LOCAL operators.
 The initial definition table includes TRUE, FALSE, the normalized BOOLEAN set
-{FALSE, TRUE}, and STRING before processing user definitions.
+{FALSE, TRUE}, and STRING before processing user definitions. Root registration
+uses the retained module's actual operator definitions, including transitive
+EXTENDS exports omitted by the central runtime index. Source contexts preserve
+original definitions even when a qualified runtime alias denotes a named
+INSTANCE. Native overrides visit each module's actual operators in source
+module order and attach to shared source bodies. The evaluator's native name
+cache follows those bodies while `Defns` retains semantic INSTANCE entries.
+TLCExt's TLCGetAndSet is evaluated from its source TLA+ definition. The REPL
+reads its actual root operator, matching Java's ModuleNode lookup, without
+reconverting definitions into a second graph.
 
 The root package owns the production Go SANY parser and semantic tree. The TLC
 runtime package must not import the root package, so the adapter lives in the

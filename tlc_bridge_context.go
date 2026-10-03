@@ -219,14 +219,18 @@ func (b *tlcBridge) variableDeclarations() []*tlc.SymbolNode {
 // Keep the original definitions, before config overrides replace Defns entries.
 func (b *tlcBridge) installRootDefinitions() {
 	b.processor.RootDefinitions = tlc.NewInsMap[string, *tlc.OpDefNode]()
-	for _, entry := range tlcBridgeContextEntries(b.spec, b.spec.Root, map[*Module]bool{}) {
-		if entry.kind != OperatorDecl || entry.initial {
-			continue
+	for _, node := range b.processor.RootModule.GetOpDefs() {
+		name := node.Name.String()
+		b.processor.RootDefinitions.Set(name, node)
+		// Root OpDefs include transitive EXTENDS exports, even when the
+		// central AST's runtime export index omitted an intermediate module.
+		if alias := b.symbols[name]; alias != nil && alias.Definition == nil {
+			alias.Definition = node
+			alias.MarkUserDefinedOp()
+			alias.Arity = node.Arity()
+			b.tool.Define(alias, node)
 		}
-		if def := b.defs[entry.name]; def != nil {
-			if node := b.convertDefinitionAs(entry.name, def); node != nil {
-				b.processor.RootDefinitions.Set(entry.name, node)
-			}
-		}
+		b.symbols[name] = node.Symbol
+		b.defineAlias(name, node)
 	}
 }

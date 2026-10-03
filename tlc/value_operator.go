@@ -16,6 +16,7 @@ type OpDefNode struct {
 	Local                     bool
 	OriginallyDefinedInModule *ModuleNode
 	SourceDefinition          *OpDefNode
+	CompoundID                []*UniqueString
 }
 
 func (n *OpDefNode) IsLocal() bool   { return n.Local }
@@ -28,6 +29,30 @@ func (n *OpDefNode) GetSource() *OpDefNode {
 		return n.SourceDefinition
 	}
 	return n
+}
+
+func (n *OpDefNode) GetCompoundID() []*UniqueString {
+	if n.CompoundID != nil {
+		return n.CompoundID
+	}
+	return []*UniqueString{n.Name}
+}
+
+func (n *OpDefNode) GetLocalName() *UniqueString {
+	if n.CompoundID != nil {
+		return n.CompoundID[len(n.CompoundID)-1]
+	}
+	return n.Name
+}
+
+func (n *OpDefNode) HasPath() bool { return len(n.CompoundID) > 1 }
+
+func (n *OpDefNode) GetPathName() *UniqueString {
+	var names []string
+	for _, part := range n.CompoundID[:max(0, len(n.CompoundID)-1)] {
+		names = append(names, part.String())
+	}
+	return UniqueStringOf(strings.Join(names, "!"))
 }
 
 func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNode {

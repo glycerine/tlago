@@ -231,7 +231,7 @@ type SpecProcessor struct {
 	VariablesNodes    []*SymbolNode
 	ProcessedDefs     *InsMap[string, struct{}]
 	UnprocessedDefns  *Defns
-	ConstantDefns     *InsMap[string, Value]
+	ConstantDefns     *InsMap[*ModuleNode, *InsMap[SemanticNode, any]]
 	Snapshot          *Defns
 	PreConstantSnap   *Defns
 	InitPred          []*Action
@@ -278,7 +278,7 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 		Config:           config,
 		ProcessedDefs:    NewInsMap[string, struct{}](),
 		UnprocessedDefns: NewDefns(),
-		ConstantDefns:    NewInsMap[string, Value](),
+		ConstantDefns:    NewInsMap[*ModuleNode, *InsMap[SemanticNode, any]](),
 	}
 	p.PreConstantSnap = p.Defns.Snapshot()
 	p.Snapshot = p.Defns.Snapshot()
@@ -396,6 +396,8 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 		p.PreConstantSnap = p.Defns.Snapshot()
 	}
 	p.ProcessConfigConstantsAndOverrides(tool)
+	// Java snapshots after processSpec installs overrides, before pre-evaluation.
+	p.Snapshot = p.Defns.Snapshot()
 	p.ProcessConstantDefinitions(tool)
 	p.ProcessConfig()
 	p.applyDefinitionsToTool(tool)
@@ -574,7 +576,7 @@ func (p *SpecProcessor) GetDefns() *Defns {
 	return p.Defns
 }
 
-func (p *SpecProcessor) GetConstantDefns() *InsMap[string, Value] {
+func (p *SpecProcessor) GetConstantDefns() *InsMap[*ModuleNode, *InsMap[SemanticNode, any]] {
 	if p == nil {
 		return nil
 	}
@@ -589,7 +591,7 @@ func (p *SpecProcessor) GetPostConditionSpecs() []*Action {
 }
 
 func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
-	if p == nil || p.Defns == nil {
+	if p == nil || p.Defns == nil || p.ModuleTbl == nil {
 		return
 	}
 	if tool == nil {
@@ -597,74 +599,61 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 	} else {
 		p.applyDefinitionsToTool(tool)
 	}
-	if p.ConstantDefns == nil {
-		p.ConstantDefns = NewInsMap[string, Value]()
-	}
-	p.processDeclaredConstantDefinitions(tool)
 	vetoes := specProcessorVetoedConstantOperators()
-	type update struct {
-		name          *UniqueString
-		def           *OpDefNode
-		value         any
-		constantValue Value
+	for _, module := range p.ModuleTbl.GetModuleNodes() {
+		if module.ProcessConstantDefns() {
+			p.processModuleConstantDefinitions(tool, module, vetoes)
+		}
 	}
-	updates := make([]update, 0)
-	for name, value := range p.Defns.All() {
-		opDef, ok := value.(*OpDefNode)
-		if !ok || opDef == nil || opDef.Arity() != 0 || opDef.Body == nil {
+}
+
+func (p *SpecProcessor) recordConstantDefinition(module *ModuleNode, node SemanticNode, value any) {
+	if p.ConstantDefns == nil {
+		p.ConstantDefns = NewInsMap[*ModuleNode, *InsMap[SemanticNode, any]]()
+	}
+	definitions := p.ConstantDefns.Get(module)
+	if definitions == nil {
+		definitions = NewInsMap[SemanticNode, any]()
+		p.ConstantDefns.Set(module, definitions)
+	}
+	definitions.Set(node, value)
+}
+
+func (p *SpecProcessor) processModuleConstantDefinitions(tool *Tool, module *ModuleNode, vetoes map[string]bool) {
+	p.processDeclaredConstantDefinitions(tool, module)
+	for _, original := range module.GetOpDefs() {
+		origin := original.GetOriginallyDefinedInModuleNode()
+		if origin != nil && !origin.ProcessConstantDefns() || original.Arity() != 0 {
 			continue
 		}
-		if specProcessorConstantVetoed(vetoes, name, opDef.Name) {
+		// Java pre-evaluates only when lookup still returns an OpDefNode.
+		// Native/body overrides and installed values keep their current binding.
+		opDef, ok := tool.Lookup(original.Symbol, EmptyContext, EmptyState, false).(*OpDefNode)
+		if !ok || opDef == nil || opDef.Body == nil || tool.GetLevelBound(opDef.Body, EmptyContext) != TLCLevelConstant {
 			continue
 		}
-		realDef := opDef
-		if opDef.Symbol != nil && tool != nil {
-			// Java pre-evaluates only when lookup still returns an OpDefNode.
-			// Native/body overrides and installed values must not be replaced
-			// with the value of their original TLA+ placeholder body.
-			lookedUp, ok := tool.Lookup(opDef.Symbol, EmptyContext, EmptyState, false).(*OpDefNode)
-			if !ok || lookedUp == nil {
-				continue
+		if specProcessorConstantVetoed(vetoes, opDef.Name) {
+			continue
+		}
+		value, err := evaluateConstantOperatorDefinition(tool, opDef)
+		if err != nil || value == nil {
+			continue // Java catches Throwable for ordinary constant definitions.
+		}
+		opDef.SetToolObject(value)
+		// Only replace the global entry when it still denotes this exact node.
+		// Hidden/imported definitions retain their values on the semantic node.
+		if p.Defns.Get(opDef.Name) == opDef {
+			p.Defns.Put(opDef.Name, value)
+			if opDef.HasSource() {
+				origin = opDef.GetSource().GetOriginallyDefinedInModuleNode()
 			}
-			realDef = lookedUp
-		}
-		if realDef == nil || realDef.Arity() != 0 || realDef.Body == nil {
-			continue
-		}
-		if specProcessorConstantVetoed(vetoes, name, realDef.Name) {
-			continue
-		}
-		if tool.GetLevelBound(realDef.Body, EmptyContext) != TLCLevelConstant {
-			continue
-		}
-		val, err := evaluateConstantOperatorDefinition(tool, realDef)
-		if err != nil || val == nil {
-			continue
-		}
-		constantValue := MuxWorkerValue(val, 0)
-		if constantValue == nil {
-			continue
-		}
-		updates = append(updates, update{name: name, def: realDef, value: val, constantValue: constantValue})
-	}
-	for _, update := range updates {
-		if update.name == nil || update.value == nil {
-			continue
-		}
-		if update.def != nil {
-			update.def.SetToolObject(update.value)
-		}
-		p.Defns.Put(update.name, update.value)
-		p.ConstantDefns.Set(update.name.String(), update.constantValue)
-		if tool != nil {
-			sym := &SymbolNode{Name: update.name}
-			if update.def != nil && update.def.Symbol != nil {
-				sym = update.def.Symbol
-			}
-			tool.Define(sym, update.value)
+			p.recordConstantDefinition(origin, opDef, value)
 		}
 	}
-	p.Snapshot = p.Defns.Snapshot()
+	// Java does not reapply processConstantDefns eligibility to inner modules.
+	for _, inner := range module.GetInnerModules() {
+		p.processModuleConstantDefinitions(tool, inner, vetoes)
+	}
 }
 
 func specProcessorVetoedConstantOperators() map[string]bool {
@@ -684,12 +673,12 @@ func specProcessorVetoedConstantOperators() map[string]bool {
 // Java processConstantDefns evaluates replacements of declared constants even
 // when the replacement is not constant-level. Only a failed evaluation of a
 // genuinely nonconstant operator is a configuration error.
-func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool) {
-	for _, declaration := range p.ConstantDeclarations {
-		value := tool.Lookup(declaration, EmptyContext, nil, false)
+func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool, module *ModuleNode) {
+	for _, declaration := range module.GetConstantDecls() {
+		value := declaration.Data
 		if constant, ok := value.(Value); ok {
 			InitializeValue(constant)
-			p.ConstantDefns.Set(declaration.Name.String(), constant)
+			p.recordConstantDefinition(module, declaration, constant)
 			continue
 		}
 		opDef, ok := value.(*OpDefNode)
@@ -697,7 +686,7 @@ func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool) {
 			continue
 		}
 		if opDef.Arity() != declaration.Arity {
-			panic(NewTLCRuntimeException(ECTLCConfigWrongSubstitutionNumberOfArgs, declaration.Name.String(), opDef.Name.String()))
+			panic(NewTLCRuntimeException(ECTLCConfigWrongSubstitutionNumberOfArgs, declaration.GetName().String(), opDef.Name.String()))
 		}
 		if opDef.Arity() != 0 {
 			continue
@@ -709,7 +698,7 @@ func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool) {
 				if !isValueEvalException(err) {
 					addendum = " - specifically: " + err.Error()
 				}
-				panic(NewTLCRuntimeException(ECTLCConfigSubstitutionNonConstant, declaration.Name.String(), opDef.Name.String(), addendum))
+				panic(NewTLCRuntimeException(ECTLCConfigSubstitutionNonConstant, declaration.GetName().String(), opDef.Name.String(), addendum))
 			}
 			continue
 		}
@@ -717,7 +706,7 @@ func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool) {
 		if property, _ := tlcLookupSystemProperty("tlc2.tool.impl.SpecProcessor.aggressiveConstantCaching"); javaBooleanProperty(property) {
 			declaration.Data = result
 		}
-		p.ConstantDefns.Set(opDef.Name.String(), MuxWorkerValue(result, 0))
+		p.recordConstantDefinition(module, opDef, result)
 	}
 }
 
@@ -977,14 +966,7 @@ func (p *SpecProcessor) putConfigDefinition(name string, value any, tool *Tool) 
 	}
 	old := p.defn(name)
 	p.Defns.Put(name, value)
-	if val, ok := value.(Value); ok {
-		if p.ConstantDefns == nil {
-			p.ConstantDefns = NewInsMap[string, Value]()
-		}
-		if muxed := MuxWorkerValue(val, 0); muxed != nil {
-			p.ConstantDefns.Set(name, muxed)
-		}
-	}
+
 	if tool == nil {
 		return
 	}
@@ -1005,6 +987,9 @@ func (p *SpecProcessor) putConfigDefinition(name string, value any, tool *Tool) 
 				break
 			}
 		}
+	}
+	if sym.Kind == SymbolConstantDecl {
+		sym.Data = value
 	}
 	tool.Define(sym, value)
 }
@@ -1689,6 +1674,12 @@ func (p *SpecProcessor) applyDefinitionsToTool(tool *Tool) {
 				tool.Definitions = make(map[*SymbolNode]any)
 			}
 			tool.Definitions[opDef.Symbol] = value
+			// Defns retains the semantic INSTANCE node. The evaluator's name
+			// cache exposes native lookup through that node's shared body.
+			switch native := tool.Lookup(opDef.Symbol, EmptyContext, nil, false).(type) {
+			case *MethodValue, *EvaluatingValue, *PriorityEvaluatingValue, *CallableValue:
+				tool.DefnsByName[name] = native
+			}
 		}
 	}
 }
@@ -1711,13 +1702,13 @@ func (p *SpecProcessor) defnFrom(defns *Defns, name string) any {
 }
 
 func (p *SpecProcessor) preConstantDefinitions() *Defns {
-	if p == nil || p.PreConstantSnap == nil {
+	if p == nil || p.Snapshot == nil {
 		if p == nil {
 			return nil
 		}
 		return p.Defns
 	}
-	return p.PreConstantSnap
+	return p.Snapshot
 }
 
 func (p *SpecProcessor) actionFromConfigName(name string, init bool, kind string) *Action {

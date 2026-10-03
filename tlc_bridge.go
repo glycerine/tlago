@@ -243,7 +243,7 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 	"TLCExt": setOf(
 		"AssertError", "PickSuccessor", "ToTrace", "CounterExample", "Trace",
 		"TLCDefer", "TLCNoOp", "TLCModelValue", "TLCCache", "TLCFP",
-		"TLCEvalDefinition", "TLCGetOrDefault", "TLCGetAndSet",
+		"TLCEvalDefinition", "TLCGetOrDefault",
 	),
 	"_Possible": setOf(
 		"_Counts",
@@ -321,6 +321,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installDefinitions()
 	bridge.installModuleTable()
 	bridge.installRootDefinitions()
+	bridge.installModuleNativeOverrides()
 	bridge.installRuntimeConstants()
 	bridge.installConfigConstants()
 	bridge.installInstanceAliases()
@@ -636,7 +637,13 @@ func (b *tlcBridge) installInstanceAliases() {
 	for _, inst := range b.spec.Root.Instances {
 		for _, binding := range b.standardInstanceBindings(inst) {
 			if binding.Symbol != nil {
-				b.define(binding.Symbol, binding.Value)
+				if binding.Symbol.Definition != nil {
+					// The semantic Defns entry remains the INSTANCE OpDef;
+					// native lookup follows its shared source body override.
+					b.tool.Define(binding.Symbol, binding.Value)
+				} else {
+					b.define(binding.Symbol, binding.Value)
+				}
 			}
 		}
 	}
@@ -1480,15 +1487,37 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 	if b.tool.Lookup(source.Symbol, nil, nil, false) == nil {
 		b.define(source.Symbol, source)
 	}
-	params := make([]*tlc.SymbolNode, 0, len(inst.Params)+len(source.Params))
+	b.prepareInstanceBinding(binding)
+	params := append(append([]*tlc.SymbolNode(nil), binding.params...), source.Params...)
+	body := source.Body
+	if len(binding.substs) > 0 {
+		body = b.withPositionLocation(inst.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
+	}
+	clone := tlc.NewOpDefNodeForSymbol(b.symbol(name), params, body)
+	clone.SourceDefinition = source.GetSource()
+	clone.Local = inst.Local
+	if inst.Name != "" && len(binding.substs) > 0 {
+		clone.CompoundID = append([]*tlc.UniqueString{tlc.UniqueStringOf(inst.Name)}, source.GetCompoundID()...)
+	}
+	b.withPositionLocation(inst.SourcePosition(), clone)
+	if !positionIsZero(inst.LHSPos) {
+		clone.SetDeclarationLocation(b.sourceLocationForPosition(inst.LHSPos))
+	}
+	if binding.defs == nil {
+		binding.defs = map[*Definition]*tlc.OpDefNode{}
+	}
+	binding.defs[def] = clone
+	return clone
+}
+
+func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
+	inst := binding.inst
 	if binding.params == nil {
 		binding.params = make([]*tlc.SymbolNode, len(inst.Params))
 		for i, param := range inst.Params {
 			binding.params[i] = tlc.NewSymbolNode(param)
 		}
 	}
-	params = append(params, binding.params...)
-	params = append(params, source.Params...)
 	if binding.substs == nil {
 		previous := b.convertingModule
 		b.convertingModule = binding.owner.Name
@@ -1528,20 +1557,6 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 		// Assign identities once, then reuse the Subst values in every clone.
 		binding.substs = tlc.NewSubstInNode(nil, substs...).Substs
 	}
-	body := source.Body
-	if len(binding.substs) > 0 {
-		body = b.withPositionLocation(inst.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
-	}
-	clone := tlc.NewOpDefNodeForSymbol(b.symbol(name), params, body)
-	b.withPositionLocation(inst.SourcePosition(), clone)
-	if !positionIsZero(inst.LHSPos) {
-		clone.SetDeclarationLocation(b.sourceLocationForPosition(inst.LHSPos))
-	}
-	if binding.defs == nil {
-		binding.defs = map[*Definition]*tlc.OpDefNode{}
-	}
-	binding.defs[def] = clone
-	return clone
 }
 
 func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlcBridgeInstanceTarget {
@@ -1595,9 +1610,13 @@ func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode 
 		return false
 	}
 	if extends(b.spec.Root, map[string]bool{}) {
-		return b.symbol(name)
+		symbol := b.symbol(name)
+		symbol.DeclarationName = tlc.UniqueStringOf(name)
+		return symbol
 	}
-	return b.symbol(mod.Name + "!" + name)
+	symbol := b.symbol(mod.Name + "!" + name)
+	symbol.DeclarationName = tlc.UniqueStringOf(name)
+	return symbol
 }
 
 func (b *tlcBridge) pushConvertBoundNames(names ...string) func() {
