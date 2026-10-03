@@ -2,6 +2,7 @@ package tlc
 
 import "testing"
 
+// Complete FormulaTest.testUnnamed and testNamed, in their original case order.
 func TestFormulaLeftAndRightHandSideMatchJava(t *testing.T) {
 	unnamed := NewFormula("TRUE")
 	if unnamed.IsNamed() {
@@ -30,6 +31,14 @@ func TestFormulaLeftAndRightHandSideMatchJava(t *testing.T) {
 	}
 	if got := named.GetRightHandSide(); got != "TRUE" {
 		t.Fatalf("named RHS = %q, want TRUE", got)
+	}
+
+	named = NewFormula("foo == LET bar == TRUE IN bar")
+	if got := named.GetLeftHandSide(); got != "foo" {
+		t.Fatalf("named LET LHS = %q, want foo", got)
+	}
+	if got := named.GetRightHandSide(); got != "LET bar == TRUE IN bar" {
+		t.Fatalf("named LET RHS = %q, want LET bar == TRUE IN bar", got)
 	}
 
 	named = NewFormula("bar == " + body)

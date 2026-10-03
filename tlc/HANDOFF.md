@@ -694,14 +694,26 @@ more permissive resolver. Original JsonTest remains whole and passes. Full
 normal checks passed after the encoder correction (312.380s root); final normal
 checks after the native symlink-limit correction passed (309.577s root),
 core-json-files-baseline-normal.log; retire handle 42423. Final TLC race checks passed (3.555s),
-core-json-files-baseline-tlc-race.log; retire handle 96625. The full workspace race run at handle 83512,
-core-json-files-full-race-final.log, covers the ordinary-writer/encoder snapshot
-before only the native symlink-limit correction. Reuse confirmed live handles.
+core-json-files-baseline-tlc-race.log; retire handle 96625. The full workspace race run covering the ordinary-writer/encoder snapshot
+passed (2525.182s root), core-json-files-full-race-final.log; retire handle 83512.
+That binary predates only the native symlink-limit correction, covered by the
+final full normal and TLC race checks plus fifteen actual-source race observations.
 JSON readers/Gson leniency and other native providers remain source work;
 read the progress tail for final verification status.
 
-Current user direction: finish and commit the pending JSON work and all current
-documentation, then prioritize mechanically porting original correctness tests.
+The requested clean baseline is committed as d68a83b, with full normal and TLC
+race checks green. The first correctness-test slice completes ContextTest (ten
+methods), InitializeValueTest (all ten original methods with shared vectors),
+and FormulaTest (both methods, restoring the omitted nested-LET case).
+Unchanged Java JUnit passes all 22 methods; complete Go translations and TLC
+race checks pass (3.581s). TODO_TEST_PORT.md marks all three "Port complete";
+235/1269 logical methods and 103/626 classes are mapped. Full workspace normal
+checks for this test slice passed (312.442s root, 1.084s SANY, 0.930s TLC),
+correctness-java/initialize-context-formula-full-normal.log; retire handle 17599.
+Next correctness slices: original queue, value/enumeration and module
+methods, reconciling all original inputs/assertions, then model regressions.
+
+Current user direction: prioritize mechanically porting original correctness tests.
 Use TODO_TEST_PORT.md for the inventory and update completed entries to
 "Port complete". Temporarily skip debugger/scoped identifiers, checkpoint/recovery
 models, distributed TLC, JPF verification, and benchmarks/supporting fixtures.

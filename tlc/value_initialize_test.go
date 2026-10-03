@@ -1,125 +1,213 @@
+/*******************************************************************************
+ * Copyright (c) 2019 Microsoft Research. All rights reserved.
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+ * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Contributors:
+ *   Markus Alexander Kuppe - initial API and implementation
+ ******************************************************************************/
+// Complete translation of all ten original InitializeValueTest methods.
+// Preserve shared ValueVec instances, original inputs, and assertion order.
 package tlc
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
-func unnormalizedIntSet() *SetEnumValue {
-	return NewSetEnumValue([]Value{
-		NewIntValue(42),
-		NewIntValue(23),
-		NewIntValue(4711),
-		IntOne,
-	}, false)
-}
-
-func requireNormalized(t *testing.T, label string, value Value) {
+func javaInitializeValueSetup(t *testing.T) {
 	t.Helper()
-	if !value.IsNormalized() {
-		t.Fatalf("%s is not normalized", label)
-	}
+	previous := FP64IrredPoly()
+	FP64Init()
+	t.Cleanup(func() { FP64InitPoly(previous) })
 }
 
-func requireNotNormalized(t *testing.T, label string, value Value) {
+func requireJavaInitialization(t *testing.T, value Value, expected bool) {
 	t.Helper()
-	if value.IsNormalized() {
-		t.Fatalf("%s is already normalized", label)
+	if got := value.IsNormalized(); got != expected {
+		t.Fatalf("%T.isNormalized = %v, want %v", value, got, expected)
 	}
 }
 
-func TestInitializeValueNormalizesLazySetOperations(t *testing.T) {
-	for _, tc := range []struct {
-		name  string
-		value Value
-		left  *SetEnumValue
-		right *SetEnumValue
-	}{
-		{"cap", NewSetCapValue(unnormalizedIntSet(), unnormalizedIntSet()), nil, nil},
-		{"cup", NewSetCupValue(unnormalizedIntSet(), unnormalizedIntSet()), nil, nil},
-		{"diff", NewSetDiffValue(unnormalizedIntSet(), unnormalizedIntSet()), nil, nil},
-	} {
-		switch value := tc.value.(type) {
-		case *SetCapValue:
-			tc.left, tc.right = value.Set1.(*SetEnumValue), value.Set2.(*SetEnumValue)
-		case *SetCupValue:
-			tc.left, tc.right = value.Set1.(*SetEnumValue), value.Set2.(*SetEnumValue)
-		case *SetDiffValue:
-			tc.left, tc.right = value.Set1.(*SetEnumValue), value.Set2.(*SetEnumValue)
-		}
-		requireNotNormalized(t, tc.name, tc.value)
-		requireNotNormalized(t, tc.name+" left", tc.left)
-		requireNotNormalized(t, tc.name+" right", tc.right)
+func javaInitializeValueVec() *ValueVec {
+	vec := NewValueVec(10)
+	vec.Add(NewIntValue(42))
+	vec.Add(NewIntValue(23))
+	vec.Add(NewIntValue(4711))
+	vec.Add(NewIntValue(1))
+	return vec
+}
 
-		InitializeValue(tc.value)
+func TestJavaInitializeValueUnion(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := NewValueVec(10)
+	vec.Add(NewSetEnumValue([]Value{NewIntValue(42)}, false))
+	vec.Add(NewSetEnumValue([]Value{NewIntValue(23)}, false))
+	vec.Add(NewSetEnumValue([]Value{NewIntValue(4711)}, false))
+	vec.Add(NewSetEnumValue([]Value{NewIntValue(1)}, false))
+	uv := NewUnionValue(NewSetEnumValueVec(vec, false))
+	requireJavaInitialization(t, uv, false)
+	requireJavaInitialization(t, uv.Set, false)
+	InitializeValue(uv)
+	requireJavaInitialization(t, uv.Set, true)
+	requireJavaInitialization(t, uv, true)
+}
 
-		requireNormalized(t, tc.name, tc.value)
-		requireNormalized(t, tc.name+" left", tc.left)
-		requireNormalized(t, tc.name+" right", tc.right)
+func TestJavaInitializeValueSetCap(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := javaInitializeValueVec()
+	scv := NewSetCapValue(NewSetEnumValueVec(vec, false), NewSetEnumValueVec(vec, false))
+	requireJavaInitialization(t, scv, false)
+	requireJavaInitialization(t, scv.Set1, false)
+	requireJavaInitialization(t, scv.Set2, false)
+	InitializeValue(scv)
+	requireJavaInitialization(t, scv.Set1, true)
+	requireJavaInitialization(t, scv.Set2, true)
+	requireJavaInitialization(t, scv, true)
+}
+
+func TestJavaInitializeValueSetCup(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := javaInitializeValueVec()
+	scv := NewSetCupValue(NewSetEnumValueVec(vec, false), NewSetEnumValueVec(vec, false))
+	requireJavaInitialization(t, scv, false)
+	requireJavaInitialization(t, scv.Set1, false)
+	requireJavaInitialization(t, scv.Set2, false)
+	InitializeValue(scv)
+	requireJavaInitialization(t, scv.Set1, true)
+	requireJavaInitialization(t, scv.Set2, true)
+	requireJavaInitialization(t, scv, true)
+}
+
+func TestJavaInitializeValueSetDiff(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := javaInitializeValueVec()
+	scv := NewSetDiffValue(NewSetEnumValueVec(vec, false), NewSetEnumValueVec(vec, false))
+	requireJavaInitialization(t, scv, false)
+	requireJavaInitialization(t, scv.Set1, false)
+	requireJavaInitialization(t, scv.Set2, false)
+	InitializeValue(scv)
+	requireJavaInitialization(t, scv.Set1, true)
+	requireJavaInitialization(t, scv.Set2, true)
+	requireJavaInitialization(t, scv, true)
+}
+
+func TestJavaInitializeValueSubset(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := javaInitializeValueVec()
+	scv := NewSubsetValue(NewSetEnumValueVec(vec, false))
+	requireJavaInitialization(t, scv, false)
+	requireJavaInitialization(t, scv.Set, false)
+	InitializeValue(scv)
+	requireJavaInitialization(t, scv.Set, true)
+	requireJavaInitialization(t, scv, true)
+}
+
+func TestJavaInitializeValueRecord(t *testing.T) {
+	javaInitializeValueSetup(t)
+	internTable := NewInternTable(2)
+	a, b := internTable.Put("a"), internTable.Put("b")
+	vec := javaInitializeValueVec()
+	aVal, bVal := NewSetEnumValueVec(vec, false), NewSetEnumValueVec(vec, false)
+	rcdv := NewRecordValue([]*UniqueString{b, a}, []Value{bVal, aVal}, false)
+	requireJavaInitialization(t, rcdv, false)
+	for _, v := range rcdv.Values {
+		requireJavaInitialization(t, v, false)
 	}
+	InitializeValue(rcdv)
+	for _, v := range rcdv.Values {
+		requireJavaInitialization(t, v, true)
+	}
+	requireJavaInitialization(t, rcdv, true)
 }
 
-func TestInitializeValueNormalizesUnionAndSubset(t *testing.T) {
-	outer := NewSetEnumValue([]Value{
-		NewSetEnumValue([]Value{NewIntValue(42)}, false),
-		NewSetEnumValue([]Value{NewIntValue(23)}, false),
-		NewSetEnumValue([]Value{NewIntValue(4711)}, false),
-		NewSetEnumValue([]Value{IntOne}, false),
-	}, false)
-	union := NewUnionValue(outer)
-	requireNotNormalized(t, "union", union)
-	requireNotNormalized(t, "union set", outer)
-
-	InitializeValue(union)
-
-	requireNormalized(t, "union", union)
-	requireNormalized(t, "union set", outer)
-
-	subsetSet := unnormalizedIntSet()
-	subset := NewSubsetValue(subsetSet)
-	requireNotNormalized(t, "subset", subset)
-	requireNotNormalized(t, "subset set", subsetSet)
-
-	InitializeValue(subset)
-
-	requireNormalized(t, "subset", subset)
-	requireNormalized(t, "subset set", subsetSet)
+func TestJavaInitializeValueFcnRecord(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := javaInitializeValueVec()
+	aVal, bVal := NewSetEnumValueVec(vec, false), NewSetEnumValueVec(vec, false)
+	rcdv := NewFcnRcdValue([]Value{NewStringValue("B"), NewStringValue("A")}, []Value{bVal, aVal}, false)
+	requireJavaInitialization(t, rcdv, false)
+	for _, v := range rcdv.Values {
+		requireJavaInitialization(t, v, false)
+	}
+	InitializeValue(rcdv)
+	for _, v := range rcdv.Values {
+		requireJavaInitialization(t, v, true)
+	}
+	requireJavaInitialization(t, rcdv, true)
 }
 
-func TestInitializeValueNormalizesCompositeChildren(t *testing.T) {
-	// Java InitializeValueTest.record uses an isolated InternTable(2).
-	strings := NewInternTable(2)
-	a := strings.Put("a")
-	b := strings.Put("b")
-	aVal := unnormalizedIntSet()
-	bVal := unnormalizedIntSet()
-	record := NewRecordValue([]*UniqueString{b, a}, []Value{bVal, aVal}, false)
-	requireNotNormalized(t, "record", record)
-	requireNotNormalized(t, "record a value", aVal)
-	requireNotNormalized(t, "record b value", bVal)
-
-	InitializeValue(record)
-
-	requireNormalized(t, "record", record)
-	requireNormalized(t, "record a value", aVal)
-	requireNormalized(t, "record b value", bVal)
-
-	fcnA := unnormalizedIntSet()
-	fcnB := unnormalizedIntSet()
-	fcn := NewFcnRcdValue([]Value{NewStringValue("B"), NewStringValue("A")}, []Value{fcnB, fcnA}, false)
-	requireNotNormalized(t, "function record", fcn)
-	requireNotNormalized(t, "function A value", fcnA)
-	requireNotNormalized(t, "function B value", fcnB)
-
-	InitializeValue(fcn)
-
-	requireNormalized(t, "function record", fcn)
-	requireNormalized(t, "function A value", fcnA)
-	requireNormalized(t, "function B value", fcnB)
-
-	tupleValue := unnormalizedIntSet()
-	tuple := NewTupleValue([]Value{tupleValue})
-	requireNotNormalized(t, "tuple child", tupleValue)
-
+func TestJavaInitializeValueTuple(t *testing.T) {
+	javaInitializeValueSetup(t)
+	vec := javaInitializeValueVec()
+	aVal := NewSetEnumValueVec(vec, false)
+	tuple := NewTupleValue([]Value{aVal})
 	InitializeValue(tuple)
+	requireJavaInitialization(t, tuple, true)
+	for _, v := range tuple.Elems {
+		requireJavaInitialization(t, v, true)
+	}
+}
 
-	requireNormalized(t, "tuple", tuple)
-	requireNormalized(t, "tuple child", tupleValue)
+func TestJavaInitializeValueSetOfTuple(t *testing.T) {
+	javaInitializeValueSetup(t)
+	intVal := NewIntervalValue(1, 2)
+	inner := NewSetOfTuplesValue([]Value{intVal, intVal})
+	tuples := NewSetOfTuplesValue([]Value{inner, inner})
+	InitializeValue(tuples)
+	requireJavaInitialization(t, tuples, true)
+	for _, v := range tuples.Sets {
+		requireJavaInitialization(t, v, true)
+	}
+}
+
+func TestJavaInitializeValueSetOfRcds(t *testing.T) {
+	javaInitializeValueSetup(t)
+	values := []Value{
+		NewSetEnumValue(javaInitializeRecordValues(7, "a"), true),
+		NewIntervalValue(1, 2),
+		NewIntervalValue(1, 4),
+	}
+	setOfRcrds, err := NewSetOfRcdsValue(javaInitializeRecordNames(3), values, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	InitializeValue(setOfRcrds)
+	requireJavaInitialization(t, setOfRcrds, true)
+	for _, v := range setOfRcrds.Values {
+		requireJavaInitialization(t, v, true)
+	}
+}
+
+func javaInitializeRecordValues(n int, str string) []Value {
+	values := make([]Value, n)
+	for i := range values {
+		values[i] = NewStringValue(fmt.Sprint(str, i))
+	}
+	return values
+}
+
+func javaInitializeRecordNames(n int) []*UniqueString {
+	names := make([]*UniqueString, n)
+	for i := range names {
+		names[i] = UniqueStringOf(fmt.Sprint("N", i))
+	}
+	return names
 }

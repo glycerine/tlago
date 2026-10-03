@@ -1923,9 +1923,10 @@ core-json-files-baseline-normal.log; retire handle 42423. Final TLC race checks 
 core-json-files-baseline-tlc-race.log; retire handle 96625. Reuse confirmed live handles.
 
 The preceding full race snapshot d6c409f passed (2551.695s root),
-core-json-full-race-final.log; retire handle 6743. The current full race run
-remains live at handle 83512, core-json-files-full-race-final.log, covering the
-ordinary writer/encoder snapshot before only the native symlink-limit correction.
+core-json-full-race-final.log; retire handle 6743. The ordinary writer/encoder full race snapshot passed (2525.182s root),
+core-json-files-full-race-final.log; retire handle 83512. It predates only the
+native symlink-limit correction covered by final normal/TLC race checks and
+fifteen actual-source canonical/mkdirs race observations.
 Logs use core-json-files-* under .codex-gotmp/; current artifacts remain owned
 and disposable. Other providers, extended/native/default charset discovery,
 JSON reader/lenient Gson parsing and allocation/heap exhaustion remain. Broader
@@ -1938,3 +1939,28 @@ JPF verification and benchmarks/supporting fixtures for now. Never weaken a
 source test: inspect and correct production shortcuts, then complete the original
 method mechanically before proceeding. Update TODO_TEST_PORT.md entries to
 "Port complete" and retain whole original parameter/assertion sets.
+
+
+- Correctness test-port batch after the clean baseline d68a83b: completed the
+whole original ContextTest (ten methods, including all null-symbol and cutoff
+assertions), InitializeValueTest (ten methods, including the two missing nested
+set-constructor methods), and FormulaTest (both methods, restoring the omitted
+foo == LET bar == TRUE IN bar case). Initializer tests now follow separate source
+methods rather than consolidated approximation checks, retaining the shared
+ValueVec instances, original scalar values, intern table, normalization assertions
+and FP64 setup. Context retains symbol/object identity and all original assertions;
+the concrete Go symbol removes only the Java dummy subclass's unused abstract
+XML-method boilerplate. There were no production failures in this batch and no
+source assertions weakened or skipped. No invented cases or new fixtures added.
+Unchanged original Java classes compile and JUnit reports OK (22 tests).
+Complete Go translations pass normally; full TLC race checks pass (3.581s).
+Full workspace normal checks passed (312.442s root, 1.084s SANY, 0.930s TLC),
+correctness-java/initialize-context-formula-full-normal.log; retire handle 17599.
+TODO_TEST_PORT.md
+marks these three entries "Port complete" and reconciles 235/1269 mapped logical
+methods (18.5%), 103/626 complete classes (16.5%), 1034 remaining method contexts
+across 523 classes. Counts include inherited classes before parameter expansion
+and exclude original @Ignore contexts. Preserve deferred debugger/scoped,
+checkpoint/recovery, distributed, JPF and benchmark work in the inventory while
+prioritizing ordinary correctness tests. Fix actual production shortcuts when
+original tests expose them before proceeding to the next feature.
