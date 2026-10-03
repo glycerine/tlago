@@ -25,16 +25,18 @@ type SanySyntaxNode struct {
 	PreComments  []string
 	JunctionList bool
 	ProofLevel   int
+	Level        int
+	Parent       *SanySyntaxNode
 }
 
 func NewSanyNode(kind SanyNodeKind, heirs ...*SanySyntaxNode) *SanySyntaxNode {
-	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(heirs), ProofLevel: -1}
+	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(heirs), ProofLevel: -1, Level: -1}
 	node.refreshHeirsAndRange()
 	return node
 }
 
 func NewSanySplitNode(kind SanyNodeKind, zero, one []*SanySyntaxNode) *SanySyntaxNode {
-	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one), ProofLevel: -1}
+	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one), ProofLevel: -1, Level: -1}
 	node.refreshHeirsAndRange()
 	return node
 }
@@ -49,6 +51,7 @@ func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
 		Range:      tok.Range(),
 		Token:      tok,
 		ProofLevel: -1,
+		Level:      -1,
 	}
 	for special := tok.Special; special != nil; special = special.Next {
 		node.PreComments = append(node.PreComments, special.Image)
@@ -93,6 +96,39 @@ func (n *SanySyntaxNode) GetProofLevel() int {
 		return -1
 	}
 	return n.ProofLevel
+}
+
+// SetLevel and SetParent mirror ParseUnit's post-parse tree initialization.
+func (n *SanySyntaxNode) SetLevel(level int) {
+	if n == nil {
+		return
+	}
+	n.Level = level
+	for _, child := range n.Heirs {
+		child.SetLevel(level + 1)
+	}
+}
+
+func (n *SanySyntaxNode) GetLevel() int              { return n.Level }
+func (n *SanySyntaxNode) GetParent() *SanySyntaxNode { return n.Parent }
+
+func (n *SanySyntaxNode) SetParent() {
+	if n == nil {
+		return
+	}
+	for _, child := range n.Heirs {
+		child.Parent = n
+		child.SetParent()
+	}
+}
+
+func (n *SanySyntaxNode) GetOperatorDefinition() any {
+	for node := n; node != nil; node = node.Parent {
+		if node.Kind == SanySyntaxNodeKindByName["N_OperatorDefinition"] {
+			return node
+		}
+	}
+	return nil
 }
 
 func (n *SanySyntaxNode) refreshHeirsAndRange() {

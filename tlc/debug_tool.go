@@ -56,6 +56,26 @@ func debugToolNoDebug(t *Tool) *Tool {
 
 func debugToolEval(t *Tool, expr SemanticNode, args ...any) (Value, error) {
 	c, s0, s1, control, cm := parseEvalArgs(args...)
+	// Preserve DebugTool's distinct Java eval overloads. The overload accepting
+	// only one state forces State mode, including VIEW fingerprint evaluation.
+	states, explicitControl := 0, false
+	for _, arg := range args {
+		switch arg.(type) {
+		case nil, *TLCStateMut:
+			states++
+		case int:
+			explicitControl = true
+		}
+	}
+	if !explicitControl && states < 2 {
+		if states == 0 {
+			t.DebugEvalMode = DebugEvalConst
+			c = EmptyContext
+		} else {
+			t.DebugEvalMode = DebugEvalState
+		}
+		return t.debugEvalImpl(expr, c, s0, s1, control, cm)
+	}
 	for {
 		value, err := debugEvalWithReset(t, expr, c, s0, s1, control, cm)
 		if debugResetTargets(err, expr) {
@@ -313,6 +333,11 @@ func (t *Tool) withDebugEvalModeAny(mode DebugEvalMode, fn func() (any, error)) 
 	}
 	old := t.DebugEvalMode
 	t.DebugEvalMode = mode
+	if mode == DebugEvalDebugger && t.DebugFastTool != nil {
+		oldTool := stateTool
+		stateTool = t.NoDebug()
+		defer func() { stateTool = oldTool }()
+	}
 	defer func() { t.DebugEvalMode = old }()
 	return fn()
 }
@@ -333,8 +358,8 @@ func debugWrapStateFunctor(tool *Tool, functor *StateFunctor) *StateFunctor {
 	}
 	wrapped := *functor
 	wrapped.AddElementFunc = func(state *TLCStateMut) (any, error) {
-		tool.Debugger.PushStateFrame(tool, nil, EmptyContext, state)
-		defer tool.Debugger.PopFrame(tool, nil, EmptyContext)
+		defer tool.Debugger.PopGeneratedStateFrame(state)
+		tool.Debugger.PushGeneratedStateFrame(state)
 		return functor.AddElement(state)
 	}
 	wrapped.AddUnsatisfiedStateFunc = func(state *TLCStateMut, pred SemanticNode, con *Context) *TLCStateMut {

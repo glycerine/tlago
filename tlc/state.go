@@ -347,9 +347,13 @@ func (s *TLCStateMut) ensureSources() {
 }
 
 func (s *TLCStateMut) FingerPrint() uint64 {
+	return s.FingerPrintWithTool(stateTool)
+}
+
+func (s *TLCStateMut) FingerPrintWithTool(tool *Tool) uint64 {
 	values := s.symmetryRepresentativeValues()
 	fp := FP64New()
-	if stateTool != nil && stateTool.ViewSpec != nil {
+	if tool != nil && tool.ViewSpec != nil {
 		for _, value := range s.values {
 			if value == nil {
 				panic(NewNullPointerException())
@@ -361,7 +365,7 @@ func (s *TLCStateMut) FingerPrint() uint64 {
 			state = NewEmptyState()
 			state.values = values
 		}
-		value, err := stateTool.Eval(stateTool.ViewSpec, EmptyContext, state)
+		value, err := tool.Eval(tool.ViewSpec, EmptyContext, state)
 		if err != nil {
 			panic(err)
 		}

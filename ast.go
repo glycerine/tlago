@@ -88,6 +88,7 @@ type Declaration struct {
 }
 
 type Definition struct {
+	Syntax          *SanySyntaxNode
 	Name            string
 	Params          []string
 	ParamArities    map[string]int
@@ -195,12 +196,22 @@ type NewSymbol struct {
 	Source Position
 }
 
+// SanyExprSource retains the parser node selected by semantic generation.
+// Parenthesized expressions retain their inner expression node.
+type SanyExprSource struct {
+	Syntax *SanySyntaxNode
+}
+
+func (s *SanyExprSource) GetSyntaxNode() *SanySyntaxNode     { return s.Syntax }
+func (s *SanyExprSource) SetSyntaxNode(node *SanySyntaxNode) { s.Syntax = node }
+
 type Expr interface {
 	Position() Position
 	exprNode()
 }
 
 type IdentExpr struct {
+	SanyExprSource
 	Name string
 	Pos  Position
 }
@@ -209,6 +220,7 @@ func (e *IdentExpr) Position() Position { return e.Pos }
 func (*IdentExpr) exprNode()            {}
 
 type LiteralExpr struct {
+	SanyExprSource
 	Kind  string
 	Value string
 	Pos   Position
@@ -218,6 +230,7 @@ func (e *LiteralExpr) Position() Position { return e.Pos }
 func (*LiteralExpr) exprNode()            {}
 
 type UnaryExpr struct {
+	SanyExprSource
 	Op   string
 	Expr Expr
 	Pos  Position
@@ -227,6 +240,7 @@ func (e *UnaryExpr) Position() Position { return e.Pos }
 func (*UnaryExpr) exprNode()            {}
 
 type BinaryExpr struct {
+	SanyExprSource
 	Op           string
 	Left         Expr
 	Right        Expr
@@ -239,6 +253,7 @@ func (e *BinaryExpr) Position() Position { return e.Pos }
 func (*BinaryExpr) exprNode()            {}
 
 type CallExpr struct {
+	SanyExprSource
 	Callee Expr
 	Args   []Expr
 	Pos    Position
@@ -248,6 +263,7 @@ func (e *CallExpr) Position() Position { return e.Pos }
 func (*CallExpr) exprNode()            {}
 
 type IfExpr struct {
+	SanyExprSource
 	Cond Expr
 	Then Expr
 	Else Expr
@@ -258,6 +274,7 @@ func (e *IfExpr) Position() Position { return e.Pos }
 func (*IfExpr) exprNode()            {}
 
 type LetExpr struct {
+	SanyExprSource
 	Recursives  []Declaration
 	Definitions []Definition
 	Instances   []Instance
@@ -269,6 +286,7 @@ func (e *LetExpr) Position() Position { return e.Pos }
 func (*LetExpr) exprNode()            {}
 
 type QuantifierExpr struct {
+	SanyExprSource
 	Kind             string
 	Var              string
 	VarPos           Position
@@ -292,6 +310,7 @@ type CaseArm struct {
 }
 
 type CaseExpr struct {
+	SanyExprSource
 	Arms     []CaseArm
 	Other    Expr
 	OtherPos Position
@@ -302,6 +321,7 @@ func (e *CaseExpr) Position() Position { return e.Pos }
 func (*CaseExpr) exprNode()            {}
 
 type ChooseExpr struct {
+	SanyExprSource
 	Var    string
 	VarPos Position
 	Set    Expr
@@ -313,6 +333,7 @@ func (e *ChooseExpr) Position() Position { return e.Pos }
 func (*ChooseExpr) exprNode()            {}
 
 type TupleExpr struct {
+	SanyExprSource
 	Elems []Expr
 	Pos   Position
 }
@@ -321,6 +342,7 @@ func (e *TupleExpr) Position() Position { return e.Pos }
 func (*TupleExpr) exprNode()            {}
 
 type SetExpr struct {
+	SanyExprSource
 	Elems []Expr
 	Pos   Position
 }
@@ -336,6 +358,7 @@ type RecordField struct {
 }
 
 type RecordExpr struct {
+	SanyExprSource
 	Fields []RecordField
 	Pos    Position
 }
@@ -344,6 +367,7 @@ func (e *RecordExpr) Position() Position { return e.Pos }
 func (*RecordExpr) exprNode()            {}
 
 type RecordComponentExpr struct {
+	SanyExprSource
 	Record   Expr
 	Field    string
 	FieldPos Position
@@ -361,6 +385,7 @@ type RecordSetField struct {
 }
 
 type RecordSetExpr struct {
+	SanyExprSource
 	Fields []RecordSetField
 	Pos    Position
 }
@@ -380,6 +405,7 @@ type BoundVar struct {
 }
 
 type FunctionExpr struct {
+	SanyExprSource
 	Bounds      []BoundVar
 	Body        Expr
 	IsLambda    bool
@@ -391,6 +417,7 @@ func (e *FunctionExpr) Position() Position { return e.Pos }
 func (*FunctionExpr) exprNode()            {}
 
 type FunctionAppExpr struct {
+	SanyExprSource
 	Function Expr
 	Args     []Expr
 	Pos      Position
@@ -413,6 +440,7 @@ type ExceptSpec struct {
 }
 
 type ExceptExpr struct {
+	SanyExprSource
 	Base  Expr
 	Specs []ExceptSpec
 	Pos   Position
@@ -422,6 +450,7 @@ func (e *ExceptExpr) Position() Position { return e.Pos }
 func (*ExceptExpr) exprNode()            {}
 
 type LabelExpr struct {
+	SanyExprSource
 	Name   string
 	Params []string
 	Body   Expr
@@ -432,6 +461,7 @@ func (e *LabelExpr) Position() Position { return e.Pos }
 func (*LabelExpr) exprNode()            {}
 
 type ActionExpr struct {
+	SanyExprSource
 	Kind      string
 	Action    Expr
 	Subscript Expr
@@ -442,6 +472,7 @@ func (e *ActionExpr) Position() Position { return e.Pos }
 func (*ActionExpr) exprNode()            {}
 
 type FairnessExpr struct {
+	SanyExprSource
 	Kind      string
 	Subscript Expr
 	Action    Expr
@@ -452,6 +483,7 @@ func (e *FairnessExpr) Position() Position { return e.Pos }
 func (*FairnessExpr) exprNode()            {}
 
 type FunctionSetExpr struct {
+	SanyExprSource
 	Domain Expr
 	Range  Expr
 	Pos    Position
@@ -461,6 +493,7 @@ func (e *FunctionSetExpr) Position() Position { return e.Pos }
 func (*FunctionSetExpr) exprNode()            {}
 
 type SetComprehensionExpr struct {
+	SanyExprSource
 	Element   Expr
 	Bounds    []BoundVar
 	Predicate Expr

@@ -2974,8 +2974,15 @@ Important Java classes:
   target frame; frame cleanup covers push as well as evaluation. Stepping out
   retains Java's Exit frame pause and subtle/normal presentation. Frame IDs
   combine actual semantic UIDs with a random integer because repeated semantic
-  nodes may occupy multiple frames. Syntax-depth/owning-definition matching,
-  complete live test assertions and attaching DAP transport/capability events
+  nodes may occupy multiple frames. Parser syntax nodes retain depth and
+  parent links, and semantic expression nodes retain those exact syntax objects;
+  frame matching compares syntax depth and owning operator-definition identity.
+  One-item junctions retain their list/item structure, and all variables in one
+  source quantifier share one semantic application with the original bound
+  groups. Generated Init state frames reuse the active evaluation metadata.
+  Concrete frame dispatch preserves state/action hit counts, conditional
+  expressions, ancestor suppression, and action/next trace getS/addT behavior.
+  Complete live test assertions and attaching DAP transport/capability events
   still require source work.
 - `TLCDebugger` breakpoint ownership is concrete state on the debugger:
   `breakpoints` keyed by module/source, boolean exception and invariant halt
@@ -3039,10 +3046,16 @@ Important Java classes:
 
 Debugger variable details:
 
-- Base-frame variable rendering runs in the source DebugEvalDebugger mode;
-  displaying lazy function values must not step recursively into the debugger.
-  Complete lazy context/watch/state-frame presentation still needs source
-  comparison with the full debugger tests.
+- Base-frame variable rendering and synthetic trace reconstruction run in the
+  source DebugEvalDebugger mode; displaying lazy function values and rebuilding
+  disk-backed traces must not step recursively into the debugger. The supplier
+  boundary temporarily installs FastTool for state fingerprint evaluation and
+  restores both tool and mode. DebugTool's one-state Eval overload selects State
+  mode (including VIEW), while its context-only overload selects Const mode.
+  Workers compute a successor fingerprint once and reuse it for state collection,
+  preserving VIEW evaluation count and debugger stops. Variable TraceVariables
+  still needs the source disk prefix; complete lazy context/watch/state-frame
+  presentation and inherited assertions require the full debugger tests.
 - Java's `Value.toTLCVariable` sets type to
   `<ValueClass>: <kind string>` and value to `toString()`.
 - `StringValue` replaces quoted `toString()` output with the unquoted display

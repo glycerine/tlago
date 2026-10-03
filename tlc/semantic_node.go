@@ -48,6 +48,7 @@ type SemanticNodeBase struct {
 	LevelValue    int
 	LevelParamSet []*SymbolNode
 	Location      SourceLocation
+	TreeNode      any // The production SANY syntax node, owned by the parser package.
 }
 
 var nextSemanticNodeUID atomic.Int32
@@ -64,6 +65,9 @@ type semanticToolObjectKey struct {
 func newSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
 	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), Image: image}
 }
+
+func (n *SemanticNodeBase) GetTreeNode() any     { return n.TreeNode }
+func (n *SemanticNodeBase) SetTreeNode(node any) { n.TreeNode = node }
 
 func (n *SemanticNodeBase) Kind() SemanticKind {
 	if n == nil {

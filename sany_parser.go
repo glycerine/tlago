@@ -18,6 +18,8 @@ func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
 	tokens, lexDiags := SanyTokenize(file, source)
 	parser := NewSanyParser(tokens, nil)
 	node := parser.CompilationUnit()
+	node.SetLevel(0)
+	node.SetParent()
 	diags := filterSanyDiagnosticsThroughRootEnd(lexDiags, node)
 	diags = append(diags, parser.diags...)
 	return node, diags
@@ -39,7 +41,10 @@ func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics
 		if parser.check(SanyTokenEOF) {
 			break
 		}
-		modules = append(modules, parser.Module())
+		module := parser.Module()
+		module.SetLevel(0)
+		module.SetParent()
+		modules = append(modules, module)
 	}
 	diags := filterSanyDiagnosticsToModuleSpans(lexDiags, modules)
 	diags = append(diags, parser.diags...)
@@ -1446,19 +1451,14 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 		listKind = "N_DisjList"
 		itemKind = "N_DisjItem"
 	}
-	items := []*SanySyntaxNode{NewSanyNode(SanySyntaxNodeKindByName[itemKind], p.junctionOperatorNode(firstBullet), left)}
-	sawMore := false
+	items := []*SanySyntaxNode{NewSanyNode(SanySyntaxNodeKindByName[itemKind], NewSanyTokenNode(firstBullet), left)}
 	for p.check(kind) && p.peek().Begin.Line > firstBullet.Begin.Line && p.peek().Begin.Column == minColumn {
-		sawMore = true
 		bullet := p.advance()
 		right := p.ExpressionUntil(func(tok *SanyToken) bool {
 			return itemStop(tok)
 		})
 		p.checkJunctionItemIndent(right, firstBullet)
-		items = append(items, NewSanyNode(SanySyntaxNodeKindByName[itemKind], p.junctionOperatorNode(bullet), right))
-	}
-	if !sawMore {
-		return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], p.junctionOperatorNode(firstBullet), left)
+		items = append(items, NewSanyNode(SanySyntaxNodeKindByName[itemKind], NewSanyTokenNode(bullet), right))
 	}
 	list := NewSanyNode(SanySyntaxNodeKindByName[listKind], items...)
 	list.JunctionList = true
@@ -1575,13 +1575,6 @@ func sanyLabelExpressionOperator(expr *SanySyntaxNode) (SanyOperatorInfo, bool) 
 		}
 	}
 	return SanyOperatorInfo{}, false
-}
-
-func (p *SanyParser) junctionOperatorNode(tok *SanyToken) *SanySyntaxNode {
-	if op, ok := GetSanyOperator(tok.Image); ok {
-		return p.genericOperatorNode(tok, op)
-	}
-	return NewSanyNode(SanySyntaxNodeKindByName["N_GenInfixOp"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), NewSanyTokenNode(tok))
 }
 
 func (p *SanyParser) startsOpenExpression() bool {

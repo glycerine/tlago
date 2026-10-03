@@ -1498,6 +1498,7 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	if mod := b.spec.Modules[b.convertingModule]; mod != nil {
 		opDef.SetInRecursive(recursiveDeclarationSections(mod.Recursives)[def.Name] != 0)
 	}
+	b.withSyntaxNode(def.Syntax, opDef)
 	b.withPositionLocation(def.SourcePosition(), opDef)
 	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
 		opDef.SetDeclarationLocation(declaration)
@@ -1836,7 +1837,19 @@ func (b *tlcBridge) withExprLocation(expr Expr, node tlc.SemanticNode) tlc.Seman
 	if expr == nil {
 		return node
 	}
+	if source, ok := expr.(interface{ GetSyntaxNode() *SanySyntaxNode }); ok {
+		b.withSyntaxNode(source.GetSyntaxNode(), node)
+	}
 	return b.withPositionLocation(expr.Position(), node)
+}
+
+func (b *tlcBridge) withSyntaxNode(syntax *SanySyntaxNode, node tlc.SemanticNode) tlc.SemanticNode {
+	if syntax != nil {
+		if setter, ok := node.(interface{ SetTreeNode(any) }); ok {
+			setter.SetTreeNode(syntax)
+		}
+	}
+	return node
 }
 
 func (b *tlcBridge) withPositionLocation(pos Position, node tlc.SemanticNode) tlc.SemanticNode {
@@ -2066,59 +2079,45 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 	} else if e.Kind == "\\E" {
 		op = tlc.OpUE
 	}
-	if e.Set != nil && e.TupleBound {
-		if node, ok := b.tupleQuantifierNode(e, op); ok {
-			return node
-		}
-	}
-	var bound tlc.SemanticNode
-	if e.Set != nil {
-		bound = b.convertExpr(e.Set)
-	}
-	restore := b.pushConvertBoundNames(e.Var)
-	body := b.convertExpr(e.Body)
-	restore()
-	node := b.builtinNode(op, body)
-	if e.Set != nil {
-		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{b.symbol(e.Var)}}
-		node.BdedQuantBounds = []tlc.SemanticNode{bound}
-		node.BdedQuantATuple = []bool{e.TupleBound}
-	} else {
-		node.UnbdedQuantSymbols = []*tlc.SymbolNode{b.symbol(e.Var)}
-	}
-	return node
-}
-
-func (b *tlcBridge) tupleQuantifierNode(e *QuantifierExpr, op *tlc.UniqueString) (tlc.SemanticNode, bool) {
-	if e == nil || e.Set == nil || !e.TupleBound {
-		return nil, false
-	}
-	vars := []string{e.Var}
+	// The central AST represents a source variable list as nested wrappers.
+	// SANY generates one OpApplNode for the entire quantifier, not one per name.
+	quantifiers := []*QuantifierExpr{e}
 	body := e.Body
-	for {
+	for e.Syntax != nil {
 		next, ok := body.(*QuantifierExpr)
-		if !ok || next.Set == nil || !next.TupleBound || next.Kind != e.Kind || next.Set != e.Set {
+		if !ok || next.Syntax != e.Syntax || next.Kind != e.Kind {
 			break
 		}
-		vars = append(vars, next.Var)
+		quantifiers = append(quantifiers, next)
 		body = next.Body
 	}
-	if len(vars) == 1 {
-		return nil, false
+	node := b.builtinNode(op)
+	names := make([]string, 0, len(quantifiers))
+	for i := 0; i < len(quantifiers); {
+		first := quantifiers[i]
+		names = append(names, first.Var)
+		symbols := []*tlc.SymbolNode{b.symbol(first.Var)}
+		i++
+		// Names in the same N_QuantBound share its expression identity. Tuple
+		// bounds remain one tuple group; ordinary names get separate enumerators.
+		for i < len(quantifiers) && quantifiers[i].Set == first.Set && quantifiers[i].TupleBound == first.TupleBound {
+			next := quantifiers[i]
+			names = append(names, next.Var)
+			symbols = append(symbols, b.symbol(next.Var))
+			i++
+		}
+		if first.Set != nil {
+			node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, symbols)
+			node.BdedQuantBounds = append(node.BdedQuantBounds, b.convertExpr(first.Set))
+			node.BdedQuantATuple = append(node.BdedQuantATuple, first.TupleBound)
+		} else {
+			node.UnbdedQuantSymbols = append(node.UnbdedQuantSymbols, symbols...)
+		}
 	}
-	bound := b.convertExpr(e.Set)
-	restore := b.pushConvertBoundNames(vars...)
-	convertedBody := b.convertExpr(body)
+	restore := b.pushConvertBoundNames(names...)
+	node.Args = []tlc.SemanticNode{b.convertExpr(body)}
 	restore()
-	node := b.builtinNode(op, convertedBody)
-	symbols := make([]*tlc.SymbolNode, 0, len(vars))
-	for _, name := range vars {
-		symbols = append(symbols, b.symbol(name))
-	}
-	node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{symbols}
-	node.BdedQuantBounds = []tlc.SemanticNode{bound}
-	node.BdedQuantATuple = []bool{true}
-	return node, true
+	return node
 }
 
 func (b *tlcBridge) caseNode(e *CaseExpr) tlc.SemanticNode {
@@ -2212,7 +2211,7 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 	}
 	// SANY function specifications cover the whole definition, unlike |->
 	// constructor expressions whose location is the bracketed expression.
-	return b.withPositionLocation(def.SourcePosition(), node)
+	return b.withPositionLocation(def.SourcePosition(), b.withSyntaxNode(def.Syntax, node))
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {

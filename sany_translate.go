@@ -1018,7 +1018,7 @@ func sanyHasLocalPrefix(node *SanySyntaxNode) bool {
 }
 
 func sanyDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
-	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
+	def := Definition{Syntax: node, Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
 	heirs := sanyDefinitionHeirs(node)
 	if len(heirs) == 0 {
 		return def, nil
@@ -1170,7 +1170,7 @@ func firstSanyBodyExpressionAfter(heirs []*SanySyntaxNode, start int) *SanySynta
 }
 
 func sanyFunctionDefinition(node *SanySyntaxNode) (Definition, Diagnostics) {
-	def := Definition{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), FunctionDef: true, ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
+	def := Definition{Syntax: node, Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Local: sanyHasLocalPrefix(node), FunctionDef: true, ParamPositions: map[string]Position{}, PreComments: sanyLeadingPreComments(node)}
 	if id := firstSanyIdentifier(node); id != nil {
 		def.Name = id.Image
 		def.Pos = sanyNodePosition(id)
@@ -1213,7 +1213,18 @@ func sanyLeadingPreComments(node *SanySyntaxNode) []string {
 	return nil
 }
 
-func sanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
+func sanyExpr(node *SanySyntaxNode) (expr Expr, diags Diagnostics) {
+	defer func() {
+		if node != nil && node.Kind.JavaName() != "N_ParenExpr" {
+			if source, ok := expr.(interface{ SetSyntaxNode(*SanySyntaxNode) }); ok {
+				source.SetSyntaxNode(node)
+			}
+		}
+	}()
+	return sanyExprImpl(node)
+}
+
+func sanyExprImpl(node *SanySyntaxNode) (Expr, Diagnostics) {
 	if node == nil {
 		return nil, nil
 	}
@@ -1373,6 +1384,9 @@ func sanyJunctionListExpr(node *SanySyntaxNode, op string) (Expr, Diagnostics) {
 		return unsupportedSanyExpr(node)
 	}
 	left, diags := sanyExpr(sanyJunctionItemExpression(items[0]))
+	if len(items) == 1 {
+		return &UnaryExpr{Op: op, Expr: left, Pos: sanyNodePosition(node)}, diags
+	}
 	for _, item := range items[1:] {
 		right, rightDiags := sanyExpr(sanyJunctionItemExpression(item))
 		diags = append(diags, rightDiags...)
@@ -1866,7 +1880,7 @@ func sanyBoundQuantifier(node *SanySyntaxNode) (Expr, Diagnostics) {
 	}
 	body, bodyDiags := sanyExpr(heirs[len(heirs)-1])
 	diags = append(diags, bodyDiags...)
-	return wrapQuantifierExprs(sanyOperatorImage(heirs[0]), bounds, body, sanyNodePosition(node)), diags
+	return wrapQuantifierExprs(sanyOperatorImage(heirs[0]), bounds, body, sanyNodePosition(node), node), diags
 }
 
 func sanyUnboundQuantifier(node *SanySyntaxNode) (Expr, Diagnostics) {
@@ -1885,13 +1899,14 @@ func sanyUnboundQuantifier(node *SanySyntaxNode) (Expr, Diagnostics) {
 	if len(vars) == 0 {
 		return unsupportedSanyExpr(node)
 	}
-	return wrapQuantifierExprs(sanyOperatorImage(heirs[0]), vars, body, sanyNodePosition(node)), diags
+	return wrapQuantifierExprs(sanyOperatorImage(heirs[0]), vars, body, sanyNodePosition(node), node), diags
 }
 
-func wrapQuantifierExprs(kind string, vars []BoundVar, body Expr, pos Position) Expr {
+func wrapQuantifierExprs(kind string, vars []BoundVar, body Expr, pos Position, syntax *SanySyntaxNode) Expr {
 	out := body
 	for i := len(vars) - 1; i >= 0; i-- {
 		out = &QuantifierExpr{
+			SanyExprSource:   SanyExprSource{Syntax: syntax},
 			Kind:             kind,
 			Var:              vars[i].Name,
 			VarPos:           vars[i].Pos,
@@ -2049,7 +2064,7 @@ func assumeProveExpr(body *AssumeProve, pos Position) Expr {
 		}
 		expr = &BinaryExpr{Op: "=>", Left: assumption, Right: body.Prove, Pos: pos}
 	}
-	return wrapQuantifierExprs("\\A", newBounds, expr, pos)
+	return wrapQuantifierExprs("\\A", newBounds, expr, pos, nil)
 }
 
 func sanyAssumeProveBody(node *SanySyntaxNode) (*AssumeProve, Diagnostics) {

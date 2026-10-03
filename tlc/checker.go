@@ -1564,15 +1564,12 @@ func (mc *ModelChecker) doNextWithTool(tool *Tool, curState *TLCStateMut, liveNe
 			}
 			unseen := true
 			if inModel {
-				seen, err := mc.isSeenStateUsingWorker(workerIDForReplayWorker(worker), worker, curState, succState, action)
+				seen, err := mc.isSeenStateUsingWorker(workerIDForReplayWorker(worker), worker, curState, succState, action, liveNextStates)
 				if err != nil {
 					mc.doNextFailed(curState, succState, err)
 					return true, err
 				}
 				unseen = !seen
-				if liveNextStates != nil {
-					liveNextStates.PutFP(succState.FingerPrint(), succState)
-				}
 			}
 			if unseen {
 				stop, err := mc.doNextCheckInvariantsWithTool(tool, curState, succState, false)
@@ -1623,12 +1620,9 @@ func (mc *ModelChecker) processSuccessorForWorker(workerID int, curState *TLCSta
 	}
 	unseen := true
 	if inModel {
-		seen, err := mc.isSeenState(workerID, curState, succState, action)
+		seen, err := mc.isSeenStateUsingWorker(workerID, mc.workerAt(workerID), curState, succState, action, collectedStates)
 		if err != nil {
 			return true, false, err
-		}
-		if collectedStates != nil {
-			collectedStates.PutFP(succState.FingerPrint(), succState)
 		}
 		unseen = !seen
 	} else if mc.AllStateWriter != nil && mc.AllStateWriter.IsConstrained() {
@@ -1711,12 +1705,12 @@ func (mc *ModelChecker) GetDistinctStatesGenerated() uint64 {
 	return mc.FPSet.Size()
 }
 
-func (mc *ModelChecker) isSeenState(workerID int, curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, error) {
-	return mc.isSeenStateUsingWorker(workerID, mc.workerAt(workerID), curState, succState, action)
-}
-
-func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, curState *TLCStateMut, succState *TLCStateMut, action *Action) (bool, error) {
-	fp := succState.FingerPrint()
+func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, curState *TLCStateMut, succState *TLCStateMut, action *Action, collectedStates *SetOfStates) (bool, error) {
+	tool := mc.Tool
+	if worker != nil && worker.Tool != nil {
+		tool = worker.Tool
+	}
+	fp := succState.FingerPrintWithTool(tool)
 	seen := mc.FPSet.Put(fp)
 	if mc.AllStateWriter != nil {
 		status := StateVisitUnseen
@@ -1740,6 +1734,9 @@ func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, cur
 				return seen, err
 			}
 		}
+	}
+	if collectedStates != nil {
+		collectedStates.PutFP(fp, succState)
 	}
 	return seen, nil
 }

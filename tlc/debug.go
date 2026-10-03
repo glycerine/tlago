@@ -394,7 +394,23 @@ func (f *TLCStackFrame) MatchesFrame(other *TLCStackFrame) bool {
 	if f == nil || other == nil {
 		return f == other
 	}
-	return semanticNodeLevel(f.Node) == semanticNodeLevel(other.Node) && semanticNodeSame(f.Node, other.Node)
+	left, leftOK := semanticNodeSyntax(f.Node)
+	right, rightOK := semanticNodeSyntax(other.Node)
+	return leftOK && rightOK && left.GetLevel() == right.GetLevel() && left.GetOperatorDefinition() == right.GetOperatorDefinition()
+}
+
+func semanticNodeSyntax(node SemanticNode) (interface {
+	GetLevel() int
+	GetOperatorDefinition() any
+}, bool) {
+	if node, ok := node.(interface{ GetTreeNode() any }); ok {
+		syntax, ok := node.GetTreeNode().(interface {
+			GetLevel() int
+			GetOperatorDefinition() any
+		})
+		return syntax, ok
+	}
+	return nil, false
 }
 
 func (f *TLCStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
@@ -533,6 +549,25 @@ func (f *TLCStateStackFrame) GetScopes() []TLCScope {
 	return scopes
 }
 
+func (f *TLCStateStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
+	return f.matchesStateBreakpoint(bp, f.GetS(), f.GetT())
+}
+
+func (f *TLCStateStackFrame) matchesStateBreakpoint(bp *TLCSourceBreakpoint, s, t *TLCStateMut) bool {
+	if !f.TLCStackFrame.MatchesBreakpoint(bp) {
+		return false
+	}
+	fire := true
+	if bp.GetHits() > 0 {
+		fire = t != nil && t.Level() >= bp.GetHits()
+	}
+	return bp.MatchesExpression(f.Tool, s, t, f.Context, fire)
+}
+
+func (f *TLCActionStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
+	return f.matchesStateBreakpoint(bp, f.GetS(), f.GetT())
+}
+
 func (f *TLCStateStackFrame) HasScope() bool {
 	return true
 }
@@ -571,12 +606,19 @@ func (f *TLCStateStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFr
 	if f == nil || f.Tool == nil {
 		return nil
 	}
+	value, _ := f.Tool.withDebugEvalModeAny(DebugEvalDebugger, func() (any, error) {
+		return f.getTraceAsStackFrames(f.GetS(), f.AddT()), nil
+	})
+	return value.([]*TLCSyntheticStateStackFrame)
+}
+
+func (f *TLCStateStackFrame) getTraceAsStackFrames(state *TLCStateMut, addT bool) []*TLCSyntheticStateStackFrame {
 	if simulator := CurrentSimulator(); simulator != nil {
-		trace := simulator.GetUncompressedTrace(f.GetS())
+		trace := simulator.GetUncompressedTrace(state)
 		if trace == nil || trace.Size() == 0 {
 			return nil
 		}
-		successor := f.GetS()
+		successor := state
 		width := len(strconv.Itoa(trace.Size()))
 		frames := make([]*TLCSyntheticStateStackFrame, 0, trace.Size())
 		for i := trace.Size() - 1; i >= 0; i-- {
@@ -587,7 +629,6 @@ func (f *TLCStateStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFr
 		return frames
 	}
 
-	state := f.GetS()
 	if state == nil {
 		return nil
 	}
@@ -601,14 +642,14 @@ func (f *TLCStateStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFr
 	}
 
 	suffix := make([]*TLCStateInfo, 0)
-	if f.AddT() {
+	if addT {
 		suffix = append(suffix, NewTLCStateInfo(state))
 	}
 	last := state
 	for s := state.Predecessor(); s != nil; s = s.Predecessor() {
 		if s.IsInitial() {
 			suffix = append(suffix, NewTLCStateInfo(s))
-			return syntheticTraceFramesFromNewestFirst(f.Tool, suffix, f.GetS())
+			return syntheticTraceFramesFromNewestFirst(f.Tool, suffix, state)
 		}
 		suffix = append(suffix, NewTLCStateInfo(s))
 		last = s
@@ -621,7 +662,34 @@ func (f *TLCStateStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFr
 	for i := len(suffix) - 1; i >= 0; i-- {
 		fullTrace = append(fullTrace, suffix[i])
 	}
-	return syntheticTraceFramesFromChronological(f.Tool, fullTrace, f.GetS())
+	return syntheticTraceFramesFromChronological(f.Tool, fullTrace, state)
+}
+
+func (f *TLCActionStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFrame {
+	value, _ := f.Tool.withDebugEvalModeAny(DebugEvalDebugger, func() (any, error) {
+		return f.getTraceAsStackFrames(f.GetS(), f.AddT()), nil
+	})
+	return value.([]*TLCSyntheticStateStackFrame)
+}
+
+func (f *TLCNextStatesStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFrame {
+	value, _ := f.Tool.withDebugEvalModeAny(DebugEvalDebugger, func() (any, error) {
+		return f.getTraceAsStackFrames(f.GetS(), f.AddT()), nil
+	})
+	return value.([]*TLCSyntheticStateStackFrame)
+}
+
+func (f *TLCDebuggerFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFrame {
+	switch {
+	case f.Action != nil:
+		return f.Action.GetTraceAsStackFrames()
+	case f.Next != nil:
+		return f.Next.GetTraceAsStackFrames()
+	case f.State != nil:
+		return f.State.GetTraceAsStackFrames()
+	default:
+		return nil
+	}
 }
 
 func syntheticTraceFramesFromNewestFirst(tool *Tool, trace []*TLCStateInfo, successor *TLCStateMut) []*TLCSyntheticStateStackFrame {
@@ -689,7 +757,7 @@ func (f *TLCActionStackFrame) GetT() *TLCStateMut {
 }
 
 func (f *TLCActionStackFrame) AddT() bool {
-	return true
+	return false
 }
 
 func (f *TLCActionStackFrame) ToRecordValue() *RecordValue {
@@ -2037,6 +2105,15 @@ func (f *TLCDebuggerFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
 	if f.Next != nil {
 		return f.Next.MatchesBreakpoint(bp)
 	}
+	if f.Action != nil {
+		return f.Action.MatchesBreakpoint(bp)
+	}
+	if f.Synthetic != nil {
+		return f.Synthetic.matchesStateBreakpoint(bp, f.Synthetic.GetS(), f.Synthetic.GetT())
+	}
+	if f.State != nil {
+		return f.State.MatchesBreakpoint(bp)
+	}
 	return f.Base != nil && f.Base.MatchesBreakpoint(bp)
 }
 
@@ -2544,7 +2621,7 @@ func (d *TLCDebugger) ensureSyntheticTraceFramesLocked() {
 	if stateFrame == nil {
 		return
 	}
-	traceFrames := stateFrame.GetTraceAsStackFrames()
+	traceFrames := top.GetTraceAsStackFrames()
 	if len(traceFrames) == 0 {
 		return
 	}
@@ -2565,6 +2642,15 @@ func (d *TLCDebugger) clearSyntheticTraceFramesLocked() {
 	}
 }
 
+func (d *TLCDebugger) frameMatchesBreakpointLocked(frame *TLCStackFrame, bp *TLCSourceBreakpoint) bool {
+	for _, candidate := range d.Stack {
+		if candidate != nil && candidate.Base == frame {
+			return candidate.MatchesBreakpoint(bp)
+		}
+	}
+	return frame.MatchesBreakpoint(bp)
+}
+
 func (d *TLCDebugger) matchesBreakpointFrameLocked(frame *TLCStackFrame) bool {
 	if d == nil || frame == nil || d.Breakpoints == nil {
 		return false
@@ -2579,12 +2665,12 @@ func (d *TLCDebugger) matchesBreakpointFrameLocked(frame *TLCStackFrame) bool {
 		return false
 	}
 	for _, breakpoint := range breakpoints {
-		if breakpoint == nil || !frame.MatchesBreakpoint(breakpoint) {
+		if breakpoint == nil || !d.frameMatchesBreakpointLocked(frame, breakpoint) {
 			continue
 		}
 		matchedParent := false
 		for parent := frame.Parent; parent != nil; parent = parent.Parent {
-			if parent.MatchesBreakpoint(breakpoint) {
+			if d.frameMatchesBreakpointLocked(parent, breakpoint) {
 				matchedParent = true
 				break
 			}
@@ -2925,6 +3011,23 @@ func (d *TLCDebugger) PushFrame(tool *Tool, expr SemanticNode, c *Context) *TLCD
 	return d
 }
 
+func (d *TLCDebugger) PushGeneratedStateFrame(state *TLCStateMut) *TLCDebugger {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	source := d.topBaseFrame()
+	frame := NewTLCStateStackFrameNoException(source, source.Node, source.Context, source.Tool, state)
+	d.pushDebuggerFrame(NewDebuggerStateFrame(frame))
+	d.maybeHaltExecutionLocked(&frame.TLCStackFrame, len(d.Stack))
+	return d
+}
+
+func (d *TLCDebugger) PopGeneratedStateFrame(state *TLCStateMut) *TLCDebugger {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	source := d.topBaseFrame()
+	return d.popFrameLocked(source.Tool, source.Node, source.Context)
+}
+
 func (d *TLCDebugger) PushStateFrame(tool *Tool, expr SemanticNode, c *Context, state *TLCStateMut) *TLCDebugger {
 	if d == nil {
 		d = NewTLCDebugger(tool)
@@ -2955,6 +3058,10 @@ func (d *TLCDebugger) PopFrame(tool *Tool, expr SemanticNode, c *Context) *TLCDe
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	return d.popFrameLocked(tool, expr, c)
+}
+
+func (d *TLCDebugger) popFrameLocked(tool *Tool, expr SemanticNode, c *Context) *TLCDebugger {
 	top := d.TopFrame()
 	if top != nil && top.Base == d.SourceFrame {
 		d.SourceFrame = nil

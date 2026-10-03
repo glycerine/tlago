@@ -320,13 +320,28 @@ not a partial persistent translation of either complete test. After this core
 implementation, translated all 17 original TLCDebuggerTest pagination methods;
 unchanged Java originals and targeted Go race verification pass.
 
-Next: continue complete Echo/EWD998 debugger comparison, then translate their
-whole methods and inherited assertions. Source TLCStackFrame.matches compares
-syntax depth and owning operator-definition identity; Go still compares semantic
-level/node identity and must retain actual syntax metadata, not infer it from
-TLA+ effective levels. Also finish state-functor frame reuse, lazy context
-presentation without caching side effects, watch/hover evaluation and exact
-breakpoint verification/diagnostics before claiming full debugger parity.
+The production SANY syntax nodes now retain source depth and parent links;
+central expressions/definitions and TLC semantic nodes preserve actual syntax
+identity. Step-over/out compare syntax depth and owning N_OperatorDefinition
+identity. Retain one-item junction list/item nodes and one semantic quantifier
+for each source variable/bound list. Generated Init state frames reuse the active
+tool/node/context. The concrete debugger frame union preserves state/action
+breakpoint conditions and hit counts, ancestor suppression, and action/next
+trace getS/addT behavior. Debugger supplier evaluation also swaps the state's
+fingerprint tool to FastTool and restores it, matching Java. VIEW evaluation uses
+Java's State-mode overload, and workers reuse a successor's fingerprint when
+collecting states instead of evaluating VIEW twice.
+The full unchanged Echo command sequence now matches all 30 stops, 221 frame
+locations/contexts and 221 syntax-depth/operator-owner records under the race
+detector, plus the original constant groups/entries. This remains an ephemeral
+source comparison, not the complete persistent Echo test translation.
+
+Next: finish source variable trace reconstruction (current TraceVariables lacks
+the disk prefix), concrete state/action/next/synthetic variable presentation and
+lazy-context rendering without cache side effects; port whole EchoDebuggerTest
+and EWD998ChanDebuggerTest methods with their inherited state/trace/scope/value
+assertions after these features. Continue watch/hover and exact breakpoint
+verification/diagnostics before claiming full debugger parity.
 Attaching debugger protocol transport/capability events remain pending. The separate native-only preConstantSnapshot, processConstants
 semantic traversal and dynamic extendee path remain source work, as do ModuleNode
 top-level vectors, proofs/children/traversal and broader nested/parameterized
