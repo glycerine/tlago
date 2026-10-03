@@ -33,8 +33,13 @@ module names rather than physical filenames. Read the progress tail for
 verification. CoverageStatisticsTest and CCoverageTest are now translated too:
 constraint evaluation counts accepted/rejected states, action validity retains
 its cost model, and the parser bridge preserves SANY junction-list and boolean
-application nodes for accurate invariant/LET coverage. Next coverage work
-should compare the remaining upstream model cases, starting with BCoverageTest.
+application nodes for accurate invariant/LET coverage. BCoverageTest,
+DCoverageTest, ECoverageTest and FCoverageTest are now translated too.
+The bridge now retains module/LET recursion flags and represents LAMBDA as an
+operator argument with its own definition and parameter identities; coverage
+visits those definitions. Next compare GCoverageTest and remaining upstream
+coverage model cases. Original model bytes, including upstream whitespace,
+are intentionally retained in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.

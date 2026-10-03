@@ -1291,6 +1291,9 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 		return nil
 	}
 	opDef := tlc.NewOpDefNodeForSymbol(sym, params, body)
+	if mod := b.spec.Modules[b.convertingModule]; mod != nil {
+		opDef.SetInRecursive(recursiveDeclarationSections(mod.Recursives)[def.Name] != 0)
+	}
 	b.withPositionLocation(def.SourcePosition(), opDef)
 	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
 		opDef.SetDeclarationLocation(declaration)
@@ -1415,7 +1418,11 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		}
 		node = tlc.NewBuiltinOpApplNode(tlc.OpSOR, args...)
 	case *FunctionExpr:
-		node = b.functionNode(e)
+		if e.IsLambda {
+			node = b.lambdaNode(e)
+		} else {
+			node = b.functionNode(e)
+		}
 	case *FunctionAppExpr:
 		arg := b.convertFunctionArgs(e.Args)
 		node = tlc.NewBuiltinOpApplNode(tlc.OpFA, b.convertExpr(e.Function), arg)
@@ -1599,7 +1606,11 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 	defer restore()
 	for _, def := range e.Definitions {
 		next := def
-		lets = append(lets, b.convertDefinitionAs(next.Name, &next))
+		opDef := b.convertDefinitionAs(next.Name, &next)
+		if opDef != nil {
+			opDef.SetInRecursive(recursiveDeclarationSections(e.Recursives)[next.Name] != 0)
+		}
+		lets = append(lets, opDef)
 	}
 	for _, inst := range e.Instances {
 		lets = append(lets, b.instanceOpDefinitions(inst)...)
@@ -1711,6 +1722,36 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 		node.UnbdedQuantSymbols = []*tlc.SymbolNode{b.symbol(e.Var)}
 	}
 	return node
+}
+
+func (b *tlcBridge) lambdaNode(e *FunctionExpr) tlc.SemanticNode {
+	params := make([]*tlc.SymbolNode, len(e.Bounds))
+	names := make([]string, len(e.Bounds))
+	previous := make([]*tlc.SymbolNode, len(e.Bounds))
+	for i, bound := range e.Bounds {
+		name := tlcSymbolName(bound.Name)
+		names[i] = name
+		previous[i] = b.symbols[name]
+		params[i] = tlc.NewSymbolNode(name)
+		b.symbols[name] = params[i]
+	}
+	restore := b.pushConvertBoundNames(names...)
+	body := b.convertExpr(e.Body)
+	restore()
+	for i, name := range names {
+		if previous[i] == nil {
+			delete(b.symbols, name)
+		} else {
+			b.symbols[name] = previous[i]
+		}
+	}
+	// Each LAMBDA has its own definition identity; its interned name remains
+	// LAMBDA, as in SANY's generateLambda. It is an operator argument.
+	symbol := tlc.NewSymbolNode("LAMBDA")
+	def := tlc.NewOpDefNodeForSymbol(symbol, params, body)
+	b.withPositionLocation(e.Pos, def)
+	symbol.Data = def
+	return tlc.NewOpArgNode(symbol)
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {

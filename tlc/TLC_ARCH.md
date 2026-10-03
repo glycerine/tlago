@@ -2747,6 +2747,12 @@ resolves `OpDefNode`s through `Tool.Lookup` and `Context.Lookup`; the parser
 front-end must preserve recursive flags and operator-argument nodes for full
 Java-equivalent coverage trees.
 
+The TLC bridge now transfers module and LET RECURSIVE declarations to
+OpDefNode.InRecursive. LAMBDA arguments produce separate LAMBDA definition
+symbols and OpArgNodes, with fresh parameter identities scoped during body
+conversion. Coverage visits an OpArgNode's definition as SANY walkGraph does,
+so the higher-order body links resolve to the actual lambda expression wrappers.
+
 Coverage expression labels come from semantic source locations. Standard-module
 exclusion follows Java's fixed set of nine source-module names, including its
 name-only behavior for replacement modules; a built-in opcode in a user's

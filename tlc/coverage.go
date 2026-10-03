@@ -566,6 +566,12 @@ func (c *coverageCreator) walk(node SemanticNode) {
 		c.preOpDef(n)
 		c.walk(n.Body)
 		c.postOpDef(n)
+	case *OpArgNode:
+		// SANY's OpArgNode.walkGraph visits its operator, including the
+		// otherwise unattached definition of a LAMBDA argument.
+		if def, ok := c.tool.Lookup(n.Op, EmptyContext, EmptyState, false).(*OpDefNode); ok {
+			c.walkOpDef(def)
+		}
 	case *LabelNode:
 		c.walk(n.Body)
 	case *ThmOrAssumpDefNode:
