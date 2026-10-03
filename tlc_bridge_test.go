@@ -36,7 +36,7 @@ Next == x' = x
 	}
 }
 
-func TestCombinatoricsStandardModuleUsesNativeOverrides(t *testing.T) {
+func TestCombinatoricsStandardModuleUsesEligibleNativeOverrides(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "CombinatoricsBridge.tla")
 	writeFile(t, root, `---- MODULE CombinatoricsBridge ----
@@ -53,10 +53,13 @@ C == choose(6, 2) + factorial[3]
 	tool, toolDiags := BuildTLCTool(spec, tlc.NewModelConfig("CombinatoricsBridge"), tlc.RuntimeParameters{})
 	requireNoErrors(t, toolDiags)
 
-	for _, name := range []string{"choose", "factorial"} {
-		if _, ok := tool.DefnsByName[tlc.UniqueStringOf(name)].(*tlc.MethodValue); !ok {
-			t.Fatalf("%s = %T, want native MethodValue", name, tool.DefnsByName[tlc.UniqueStringOf(name)])
-		}
+	if _, ok := tool.DefnsByName[tlc.UniqueStringOf("choose")].(*tlc.MethodValue); !ok {
+		t.Fatalf("choose = %T, want native MethodValue", tool.DefnsByName[tlc.UniqueStringOf("choose")])
+	}
+	// Java rejects factorial's annotated one-argument method for the
+	// zero-argument function definition and evaluates the source function.
+	if _, ok := tool.DefnsByName[tlc.UniqueStringOf("factorial")].(*tlc.FcnLambdaValue); !ok {
+		t.Fatalf("factorial = %T, want source FcnLambdaValue", tool.DefnsByName[tlc.UniqueStringOf("factorial")])
 	}
 }
 

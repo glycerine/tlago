@@ -1486,3 +1486,67 @@ export metadata, full native override registration, DAP protocol/events,
 operating-system locale discovery, other UTF-16 consumers and selected
 distributed transport remain pending. Full TLC completion remains unproven.
 Independent rpc25519/Greenpack transport documentation stays outside this slice.
+
+
+- CommunityModules source feature/test slice: ran the complete unchanged
+upstream build.xml test target's AllTestsUnix/AllTests.cfg invocation with its
+three startup environment variables and its separate GH037/ShiVizTests phase.
+Actual Java sources compile and Java completes the main assumptions with success,
+0 generated/0 distinct/depth 0; ShiViz reports the expected liveness exit 13,
+6 generated/5 distinct/depth 5 and stuttering state 6. These whole-source runs
+exposed gaps beyond the earlier native-export inventories: builtin operator
+arguments lost their original OpDef fallback; imported operator arguments lost
+arity/source identity before ModuleNode contexts existed; already-reduced SANY
+string images were unquoted twice; SequencesExt.Cons was incorrectly registered
+although no such annotated override exists; Combinatorics.factorial's annotated
+one-argument method was accepted for its zero-argument source function; emitted
+simple-path tuples aliased the backtracking buffer; IOUtils literal command
+words gained Go fmt's extra-argument suffix; and unnamed non-LOCAL instances
+cloned parameter-free source definitions, hiding config _TETrace overrides.
+Ported the corresponding Java lookup, conversion, arity eligibility, path
+snapshot, formatter and Generator.generateInstance source-reuse branches.
+MethodValue now retains reflected parameter counts; annotated MethodValue
+registration rejects mismatches while the represented legacy builtin method
+path and @Evaluation signatures retain their separate registration behavior.
+An older invented Go assertion expected factorial to be native; corrected that
+existing assertion to Java's evaluated source function, leaving choose native.
+All 195 original Community native-module definition bindings match actual
+Java module/name/arity/lookup-class/origin observations across sixteen modules.
+IOUtils now checks actual TupleValue rather than tuple-convertible functions,
+validates both template tuple types before converting their string elements,
+validates environment records first and converts environment values after
+formatting. The source convert helper DOES reject non-string elements (its
+IOExec error label is shared across variants); DebuggerValue's StringValue
+subtype is accepted. JavaFormatStrings supplies ignored extra arguments,
+indexing and exact formatter failures before starting a process. Sixty owned
+temporary production calls match actual IOUtils Java outputs, error codes/
+parameters and formatter classes/messages exactly. Probes are under
+.codex-gotmp/community-suite-production/, community-suite-observer/ and
+community-io-production/; no invented persistent tests or vectors were added.
+After implementation, translated the whole original Ant test target in
+community_modules_java_test.go: every original AllTests/AllTestsUnix assumption
+including CSV, JSON, graphs, combinatorics and vector clocks, all Unix IOExec/
+IOEnvExec/template/nested Java/TXT checks, and the separate ShiViz liveness
+invocation. It retains source OS selection, configuration, arguments and exit
+assertions (success then exactly 13), with fresh child processes for Ant's forks
+and IOEnv startup snapshot. Frozen existing Community sources/jars/dependencies
+stage the unchanged nested classpath and command strings; those nested Java
+processes exercise IOUtils while outer model evaluation uses Go. Unix requires
+Java for those original nested commands and skips explicitly if unavailable.
+All 64 relevant original fixture files are byte-identical to the frozen copies.
+The translated complete target passes in 270.014s. Before adding that target,
+full offline normal and race suites pass (root 43.279s/238.804s); the reported
+Linux config test also passes 100 consecutive repetitions. Final full normal workspace checks including the new Ant target pass
+(root 314.766s); the full race check is still running, so do not declare it
+finished yet. The final-harness race target is also live after matching the
+Ant dependency list, exclusion, per-fork environment and startup properties;
+Linux command paths are unchanged. Logs: community-ant-translated-normal.log,
+community-ant-translated-race-final.log,
+community-ant-full-normal-final.log, community-ant-full-race.log,
+community-instance-full-normal.log, community-instance-full-race.log and
+community-config-repeat.log in .codex-gotmp/. Full TLC completion remains
+unproven: broader semantic/local recursive export metadata, full native
+registration/provider discovery, DAP transport/events, locale/UTF-16 consumers
+and distributed network integration remain. Core IOUtils process-error classes,
+byte-decoding/default-charset behavior and other I/O boundaries need their own
+source audit. Independent rpc25519/Greenpack documentation remains unstaged.

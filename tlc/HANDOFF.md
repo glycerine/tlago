@@ -597,10 +597,21 @@ all Unicode scalar uppercase mappings, all 65,536 code-unit print observations,
 18 record cases and ten CSV cases match Java. The existing RecordValueTest is
 now translated completely, with both methods and all fifteen source assertions,
 including select. No invented persistent tests or vectors were added.
-Next: compare the complete CommunityModules AllTests/AllTestsUnix feature surface
-and native override registration, then translate the whole original suite when
-its features are represented. CSVTests belongs to that suite; do not substitute
-a reduced runner/config. Broader semantic metadata remains work as listed below.
+The complete original CommunityModules Ant test target is now translated in
+community_modules_java_test.go after fixing the source features exposed by its
+unchanged AllTestsUnix and ShiViz runs. Both translated phases pass. Source
+operator arguments retain builtin/imported identities and arities, mismatched
+annotated native methods are rejected, quoted string images retain their data,
+simple graph paths own their elements, IOUtils templates use JavaFormatStrings
+with Java validation order, and unnamed non-LOCAL parameter-free instances reuse
+source definitions so config overrides remain visible. Read the progress tail
+for original inputs, all 195 Java binding comparisons and sixty IOUtils records.
+Final full normal workspace checks including this target pass (314.766s root).
+The full race check and reviewed-harness race target are still running; use the
+existing live tool handles/logs before restarting anything. For the expanded race suite,
+use go test -race -timeout 60m ./...; the original vector-clock assumptions are
+expensive. Continue broader semantic/native registration and core I/O fidelity
+work after verification; no reduced Community runner/config is needed.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

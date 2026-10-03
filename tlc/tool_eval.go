@@ -105,6 +105,20 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	if sym.Data != nil {
 		return muxToolObject(sym.Data, state)
 	}
+	if sym.Kind == SymbolBuiltIn {
+		if t != nil {
+			if value := t.Definitions[sym]; value != nil {
+				return muxToolObject(value, state)
+			}
+		}
+		// SANY's builtin symbol is itself an OpDefNode. Retain that node
+		// when a builtin is supplied as an operator argument, so applying
+		// the formal parameter can recover its builtin opcode.
+		if sym.Definition != nil {
+			return sym.Definition
+		}
+		return sym
+	}
 	if sym.Kind == SymbolFormalParam {
 		if t != nil {
 			if value := t.Definitions[sym]; value != nil {

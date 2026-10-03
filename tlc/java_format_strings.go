@@ -1,4 +1,4 @@
-// String-argument formatting used by RecordValue.PrintTLCState and CSV.write.
+// String-argument formatting used by RecordValue.PrintTLCState, CSV.write and IOUtils templates.
 // Ports the applicable OpenJDK java.util.Formatter control flow; OpenJDK's
 // GPLv2 with Classpath Exception notices are retained in tlc/licenses/.
 package tlc
@@ -36,7 +36,7 @@ type javaStringFormatSpecifier struct {
 }
 
 // JavaFormatStrings implements String.format for the string arguments supplied
-// by TLC's record-state and CSV rendering. Numeric, character and date/time
+// by TLC's record-state, CSV and IOUtils rendering. Numeric, character and date/time
 // conversions retain Java's invalid-string-argument failures. UTF-16 truncation
 // retains unpaired surrogates in WTF-8 rather than replacing their identity.
 func JavaFormatStrings(format string, arguments ...string) (string, error) {

@@ -339,6 +339,7 @@ func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel
 		}
 		return eval(args)
 	})
+	value.ParameterCount = arity
 	t.defineStandardValue(name, value, aliases...)
 }
 

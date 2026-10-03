@@ -2271,6 +2271,24 @@ the definition-by-name hook as `TLCExtTLCEvalDefinition`, which looks up a
 zero-arity `OpDefNode` in the concrete `Tool` definition table and evaluates
 its body in the existing context/state pair.
 
+Imported operators retain their original symbols/arities while source bodies
+are converted, before module contexts are installed. Builtin operator arguments
+retain the original builtin OpDef fallback used by SymbolNodeValueLookupProvider.
+For unnamed non-LOCAL instances, Generator.generateInstance reuses the original
+OpDef when the instancee or the definition's original module is parameter-free;
+config replacements depend on that identity. LOCAL and named instances keep
+separate definitions. SequencesExt.Cons has no annotated override in the source,
+so its TLA body remains even though a core Sequences.Cons helper exists.
+Graph simple-path prefixes snapshot their element array before backtracking.
+
+The complete original CommunityModules Ant test target is translated in
+community_modules_java_test.go, using the frozen existing sources and jars:
+AllTestsUnix on Unix (AllTests on Windows), startup environment variables, the
+unchanged nested IOExec Java commands/classpath and the separate ShiViz liveness
+phase. Ant's two forks are fresh Go processes; source success and exit-13 checks
+are retained. This is whole-suite evidence for the represented feature surface,
+not proof of full native discovery, semantic metadata or TLC completion.
+
 Standard module failures should preserve Java's specific `EC.TLC_MODULE_*`
 codes and `Values.ppr` value rendering. In particular, `FiniteSets.Cardinality`
 throws `TLC_MODULE_COMPUTING_CARDINALITY` for non-enumerable values, `STRING`
@@ -2576,17 +2594,23 @@ Go mapping:
   package with concrete functions for `IOSerialize`, `IODeserialize`,
   text/NDJSON `Serialize`, text `Deserialize`, environment lookup, process
   execution, template execution, and `atoi`. Explicit IOUtils compression uses
-  gzip-wrapped Java value streams. Generic value-stream file paths that
+  gzip-wrapped Java value streams. Commands must be actual TupleValue objects;
+  both template tuple checks precede string-element conversion. Environment
+  record validation comes first, while environment-value conversion follows
+  formatting. Templates use shared JavaFormatStrings, preserving ignored extra
+  arguments, indexing and exceptions before process creation. Unquoted
+  environment values preserve Java's StringValue-subclass behavior.
+  Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw
   `DataOutputStream`/random-access graph files remain uncompressed like Java.
-- CommunityModules `Combinatorics` contributes native `factorial` and `choose`
-  operator overrides in `tlc2.overrides.Combinatorics`. Those are distinct from
-  the lower-level `tlc2.util.Combinatorics` table/mixed-radix helpers. The Go
-  port keeps the utility helpers in `combinatorics.go`, registers the two
-  module operators as native standard definitions, and has the root bridge skip
-  the recursive TLA definitions from `Combinatorics.tla` when the frozen
-  CommunityModules library is loaded.
+- CommunityModules `Combinatorics` provides annotated `factorial` and `choose`
+  candidates, distinct from the lower-level `tlc2.util.Combinatorics` helpers.
+  Java rejects the one-argument factorial method for the zero-argument source
+  function `factorial[n \in Nat]`; the bridge retains that recursive TLA
+  function and installs only the eligible choose override for this source.
+  MethodValue retains reflected parameter counts for annotated registration;
+  do not skip a source body solely because an override name is registered.
 - CommunityModules `Bitwise` contributes native overrides for LOCAL recursive
   helper definitions `And`, `Or`, and `Xor`, plus exported `Not` and `shiftR`.
   The exported infix operators `&`, `|`, and `^^` remain TLA definitions that

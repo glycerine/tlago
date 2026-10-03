@@ -63,7 +63,7 @@ func (b *tlcBridge) installModuleNativeOverrides() {
 			if value == nil {
 				value = b.nativeDefinitions[def.Name]
 			}
-			if value == nil || def.Body == nil {
+			if value == nil || def.Body == nil || !bridgeNativeMethodArityMatches(moduleName, value, def.Arity()) {
 				continue
 			}
 			value = tlc.WithEvaluatingOpDef(value, def)
@@ -75,6 +75,21 @@ func (b *tlcBridge) installModuleNativeOverrides() {
 			b.tool.DefnsByName[def.Name] = value
 		}
 	}
+}
+
+func bridgeNativeMethodArityMatches(module string, value any, arity int) bool {
+	// The legacy built-in module classes install their public static methods
+	// without the annotated override's method-parameter-count check.
+	switch module {
+	case "Naturals", "Integers", "Sequences", "FiniteSets", "Bags", "TLC", "Randomization":
+		return true
+	}
+	if method, ok := value.(*tlc.MethodValue); ok && method.ParameterCount >= 0 {
+		return method.ParameterCount == arity
+	}
+	// @Evaluation methods receive unevaluated arguments and use a different
+	// signature; their source registration does not apply this arity check.
+	return true
 }
 
 // Retain the external dependency order and full represented semantic contexts.
@@ -220,7 +235,7 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 	for _, binding := range b.instanceDefinitions {
 		for definition, clone := range binding.defs {
 			source := b.sourceDefinitions[definition]
-			if source == nil {
+			if source == nil || clone == source {
 				continue
 			}
 			clone.SourceDefinition = source.GetSource()

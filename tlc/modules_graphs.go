@@ -309,7 +309,9 @@ func graphSimplePath(kind string, parser graphEndpoints, mode graphMode, graph V
 }
 
 func graphExtendSimplePath(current int, adj *graphAdjacency, path *[]Value, visited []bool, paths *ValueVec) error {
-	paths.Add(NewTupleValue(*path))
+	// Java snapshots path.toArray() for each emitted prefix. Backtracking
+	// reuses the path buffer; earlier tuples must retain their own elements.
+	paths.Add(NewTupleValue(append([]Value(nil), (*path)...)))
 	for _, succ := range adj.succ[current] {
 		idx, err := graphIndexOf(adj.nodes, succ)
 		if err != nil {

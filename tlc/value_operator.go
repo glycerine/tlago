@@ -481,7 +481,10 @@ type MethodValue struct {
 	operatorValueBase
 	Name     string
 	MinLevel int
-	EvalFunc OperatorEvalFunc
+	// ParameterCount retains the reflected Java method's arity for native
+	// override registration. -1 denotes an unrepresented method signature.
+	ParameterCount int
+	EvalFunc       OperatorEvalFunc
 }
 
 func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodValue {
@@ -489,6 +492,7 @@ func NewMethodValue(name string, minLevel int, eval OperatorEvalFunc) *MethodVal
 		operatorValueBase: operatorValueBase{KindValue: MethodValueKind, Label: "<Java Method: " + name + ">", NormalizeMessage: "It is a TLC bug: Attempted to normalize an operator."},
 		Name:              name,
 		MinLevel:          minLevel,
+		ParameterCount:    -1,
 		EvalFunc:          eval,
 	}
 	out.owner = out

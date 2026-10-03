@@ -143,49 +143,35 @@ func IOUtilsIOExec(command Value) (Value, error) {
 }
 
 func IOUtilsIOEnvExec(env Value, command Value) (Value, error) {
+	environment, err := ioUtilsRequireEnvRecord("IOEnvExec", env)
+	if err != nil {
+		return nil, err
+	}
 	argv, err := ioUtilsTupleStrings("IOEnvExec", command)
 	if err != nil {
 		return nil, err
 	}
-	envMap, err := ioUtilsEnvRecord("IOEnvExec", env)
-	if err != nil {
-		return nil, err
-	}
-	return ioUtilsRunProcess(envMap, argv)
+	return ioUtilsRunProcess(ioUtilsEnvRecord(environment), argv)
 }
 
 func IOUtilsIOExecTemplate(commandTemplate Value, parameters Value) (Value, error) {
-	argv, err := ioUtilsTupleStrings("IOExecTemplate", commandTemplate)
+	argv, err := ioUtilsTemplateStrings("IOExecTemplate", commandTemplate, parameters)
 	if err != nil {
 		return nil, err
-	}
-	params, err := ioUtilsTupleStrings("IOExecTemplate", parameters)
-	if err != nil {
-		return nil, err
-	}
-	for i := range argv {
-		argv[i] = ioUtilsJavaSprintf(argv[i], params)
 	}
 	return ioUtilsRunProcess(nil, argv)
 }
 
 func IOUtilsIOEnvExecTemplate(env Value, commandTemplate Value, parameters Value) (Value, error) {
-	argv, err := ioUtilsTupleStrings("IOEnvExecTemplate", commandTemplate)
+	environment, err := ioUtilsRequireEnvRecord("IOEnvExecTemplate", env)
 	if err != nil {
 		return nil, err
 	}
-	params, err := ioUtilsTupleStrings("IOEnvExecTemplate", parameters)
+	argv, err := ioUtilsTemplateStrings("IOEnvExecTemplate", commandTemplate, parameters)
 	if err != nil {
 		return nil, err
 	}
-	envMap, err := ioUtilsEnvRecord("IOEnvExecTemplate", env)
-	if err != nil {
-		return nil, err
-	}
-	for i := range argv {
-		argv[i] = ioUtilsJavaSprintf(argv[i], params)
-	}
-	return ioUtilsRunProcess(envMap, argv)
+	return ioUtilsRunProcess(ioUtilsEnvRecord(environment), argv)
 }
 
 func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
@@ -312,39 +298,92 @@ func ioUtilsRecordRequiredString(record *RecordValue, key string) (string, error
 	return str.RawString(), nil
 }
 
-func ioUtilsTupleStrings(name string, value Value) ([]string, error) {
-	tuple := asTupleValue(value)
-	if tuple == nil {
+func ioUtilsRequireTuple(name string, value Value) (*TupleValue, error) {
+	// IOUtils checks instanceof TupleValue rather than converting a function
+	// to a tuple. Both template tuple checks precede element conversion.
+	tuple, ok := value.(*TupleValue)
+	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, name, "sequence", ValuesPPR(value))
 	}
-	out := make([]string, 0, len(tuple.Elems))
-	for _, elem := range tuple.Elems {
-		str, ok := elem.(*StringValue)
-		if !ok {
+	return tuple, nil
+}
+
+func ioUtilsTupleStrings(name string, value Value) ([]string, error) {
+	tuple, err := ioUtilsRequireTuple(name, value)
+	if err != nil {
+		return nil, err
+	}
+	return ioUtilsConvertStrings(tuple)
+}
+
+func ioUtilsConvertStrings(tuple *TupleValue) ([]string, error) {
+	out := make([]string, len(tuple.Elems))
+	for i, elem := range tuple.Elems {
+		var str *StringValue
+		switch value := elem.(type) {
+		case *StringValue:
+			str = value
+		case *DebuggerValue:
+			str = value.StringValue
+		default:
 			return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "IOExec", "sequence", ValuesPPR(elem))
 		}
-		out = append(out, str.RawString())
+		out[i] = str.RawString()
 	}
 	return out, nil
 }
 
-func ioUtilsEnvRecord(name string, value Value) (map[string]string, error) {
+func ioUtilsTemplateStrings(name string, commandTemplate Value, parameters Value) ([]string, error) {
+	commandTuple, err := ioUtilsRequireTuple(name, commandTemplate)
+	if err != nil {
+		return nil, err
+	}
+	parameterTuple, err := ioUtilsRequireTuple(name, parameters)
+	if err != nil {
+		return nil, err
+	}
+	argv, err := ioUtilsConvertStrings(commandTuple)
+	if err != nil {
+		return nil, err
+	}
+	params, err := ioUtilsConvertStrings(parameterTuple)
+	if err != nil {
+		return nil, err
+	}
+	for i := range argv {
+		argv[i], err = JavaFormatStrings(argv[i], params...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return argv, nil
+}
+
+func ioUtilsRequireEnvRecord(name string, value Value) (*RecordValue, error) {
 	record := asRecordValue(value)
 	if record == nil {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, name, "record", ValuesPPR(value))
 	}
+	return record, nil
+}
+
+func ioUtilsEnvRecord(record *RecordValue) map[string]string {
 	env := make(map[string]string, len(record.Names))
 	for i, name := range record.Names {
 		env[name.String()] = ioUtilsValueString(record.Values[i])
 	}
-	return env, nil
+	return env
 }
 
 func ioUtilsValueString(value Value) string {
-	if str, ok := value.(*StringValue); ok {
-		return str.UnquotedString()
+	switch value := value.(type) {
+	case *StringValue:
+		return value.UnquotedString()
+	case *DebuggerValue:
+		return value.UnquotedString()
+	default:
+		return value.String()
 	}
-	return value.String()
 }
 
 func ioUtilsRunProcess(env map[string]string, argv []string) (Value, error) {
@@ -377,20 +416,6 @@ func ioUtilsRunProcess(env map[string]string, argv []string) (Value, error) {
 		}
 	}
 	return ioUtilsResult(exit, stdout.String(), stderr.String()), nil
-}
-
-func ioUtilsJavaSprintf(format string, args []string) string {
-	converted := format
-	for i := range args {
-		old := "%" + strconv.Itoa(i+1) + "$s"
-		newFmt := "%[" + strconv.Itoa(i+1) + "]s"
-		converted = strings.ReplaceAll(converted, old, newFmt)
-	}
-	values := make([]any, len(args))
-	for i, arg := range args {
-		values[i] = arg
-	}
-	return fmt.Sprintf(converted, values...)
 }
 
 func ioUtilsEncodeString(text string, charset string) ([]byte, error) {

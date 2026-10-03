@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/glycerine/tlago/tlc"
@@ -23,6 +22,7 @@ type tlcBridge struct {
 	symbols                map[string]*tlc.SymbolNode
 	rootModuleName         string
 	moduleDefinitionNames  map[string]map[string]bool
+	conversionContexts     map[*Module]map[string]tlcBridgeContextEntry
 	convertingModule       string
 	convertBoundNames      map[string]int
 	definitionModules      map[*Definition]string
@@ -232,7 +232,7 @@ var bridgeNativeOverrideModuleMembers = map[string]map[string]bool{
 		"SVGElemToString", "NodeOfRingNetwork", "NodesOfDirectedMultiGraph", "PointOnLine",
 	),
 	"SequencesExt": setOf(
-		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix", "Cons",
+		"SetToSeq", "SetToSeqs", "Contains", "LongestCommonPrefix",
 		"FoldSeq", "FoldLeft", "FoldRight", "FoldLeftDomain",
 		"FoldRightDomain", "ReplaceFirstSubSeq", "ReplaceAllSubSeqs",
 		"IsPrefix", "SelectInSeq", "SelectInSubSeq", "SelectLastInSeq",
@@ -431,8 +431,7 @@ func (b *tlcBridge) installDefinitions() {
 		if def == nil {
 			continue
 		}
-		if isNativeStandardDefinitionOverrideName(name, def) {
-			b.installNativeStandardDefinitionOverrideAlias(name, def)
+		if isNativeStandardDefinitionOverrideName(name, def) && b.installNativeStandardDefinitionOverrideAlias(name, def) {
 			continue
 		}
 		opDef := b.convertDefinitionAs(name, def)
@@ -501,6 +500,9 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 					exportName = def.Name
 				}
 				exportSymbol := b.symbol(exportName)
+				if b.reusesInstanceSource(inst, def) {
+					exportSymbol = b.sourceDefinitionSymbol(inst.Module+"!"+def.Name, def)
+				}
 				for _, key := range keys {
 					b.defs[key] = def
 					b.instanceDefinitions[key] = binding
@@ -549,13 +551,13 @@ func isNativeStandardDefinitionOverrideName(name string, def *Definition) bool {
 	return bridgeNativeOverrideModuleMembers[module][member]
 }
 
-func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, def *Definition) {
+func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, def *Definition) bool {
 	if b == nil || b.tool == nil || def == nil || name == "" {
-		return
+		return false
 	}
 	module := moduleNameForSourcePosition(def.SourcePosition())
 	if module == "" {
-		return
+		return false
 	}
 	member := name
 	if i := strings.LastIndex(member, "!"); i >= 0 {
@@ -565,8 +567,8 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	if value == nil {
 		value = b.nativeDefinitions[tlc.UniqueStringOf(member)]
 	}
-	if value == nil {
-		return
+	if value == nil || !bridgeNativeMethodArityMatches(module, value, len(def.Params)) {
+		return false
 	}
 	// Java stores native overrides on the source OpDef body. INSTANCE clones
 	// share that body, possibly underneath SubstIn wrappers.
@@ -577,6 +579,7 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 	}
 	b.rememberNativeStandardDefinition(module, member, name, opDef)
 	b.defineAlias(name, value)
+	return true
 }
 
 func (b *tlcBridge) rememberNativeStandardDefinition(module string, member string, name string, opDef *tlc.OpDefNode) {
@@ -1271,6 +1274,31 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	return opDef
 }
 
+// Generator.generateInstance reuses the original OpDef for an unnamed,
+// non-LOCAL instance when either the instancee or the definition's original
+// module is parameter-free. Config overrides rely on this exact identity.
+func (b *tlcBridge) reusesInstanceSource(inst Instance, def *Definition) bool {
+	if inst.Name != "" || inst.Local {
+		return false
+	}
+	parameterFree := func(module *Module) bool {
+		if module == nil {
+			return false
+		}
+		for _, entry := range tlcBridgeContextEntries(b.spec, module, map[*Module]bool{}) {
+			if entry.kind == ConstantDecl || entry.kind == VariableDecl {
+				return false
+			}
+		}
+		return true
+	}
+	origin := b.definitionModules[def]
+	if origin == "" {
+		origin = moduleNameForSourcePosition(def.SourcePosition())
+	}
+	return parameterFree(b.spec.Modules[inst.Module]) || parameterFree(b.spec.Modules[origin])
+}
+
 func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, binding *tlcBridgeInstance) *tlc.OpDefNode {
 	if clone := binding.defs[def]; clone != nil {
 		return clone
@@ -1279,6 +1307,13 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 	source := b.convertSourceDefinitionAs(inst.Module+"!"+def.Name, def)
 	if source == nil {
 		return nil
+	}
+	if b.reusesInstanceSource(inst, def) {
+		if binding.defs == nil {
+			binding.defs = map[*Definition]*tlc.OpDefNode{}
+		}
+		binding.defs[def] = source
+		return source
 	}
 	// SANY instances reuse their source definition, whose native override may
 	// already be installed. Register an otherwise hidden source without replacing
@@ -1496,6 +1531,9 @@ func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
 					return symbol
 				}
 			}
+			if symbol := b.conversionContextSymbol(module, name); symbol != nil {
+				return symbol
+			}
 			for i := range module.Definitions {
 				def := &module.Definitions[i]
 				if def.Name == name {
@@ -1692,11 +1730,9 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		}
 		return node
 	case "string":
-		value := e.Value
-		if unquoted, err := strconv.Unquote(value); err == nil {
-			value = unquoted
-		}
-		return tlc.NewStringNode(value)
+		// SANY's N_String image has already reduced the source escapes and
+		// quotes. Quoted contents are data, not a second string literal.
+		return tlc.NewStringNode(e.Value)
 	case "model":
 		return tlc.NewValueNode(tlc.MakeModelValue(e.Value))
 	default:

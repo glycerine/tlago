@@ -25,6 +25,47 @@ type tlcBridgeContextEntry struct {
 	instanceSourceName string
 }
 
+// EXTENDS imports the original source symbol before the importing body is
+// generated. Resolve it during conversion too, while the runtime ModuleNodes
+// and their contexts have not yet been installed. In particular, a native
+// operator argument must retain the source arity rather than become a
+// zero-argument expression referring to an unqualified placeholder.
+func (b *tlcBridge) conversionContextSymbol(module *Module, name string) *tlc.SymbolNode {
+	if b.conversionContexts == nil {
+		b.conversionContexts = map[*Module]map[string]tlcBridgeContextEntry{}
+	}
+	entries := b.conversionContexts[module]
+	if entries == nil {
+		entries = map[string]tlcBridgeContextEntry{}
+		for _, entry := range tlcBridgeContextEntries(b.spec, module, map[*Module]bool{}) {
+			if !entry.moduleKey {
+				entries[entry.name] = entry
+			}
+		}
+		b.conversionContexts[module] = entries
+	}
+	entry, exists := entries[name]
+	if !exists || entry.instance != nil {
+		return nil
+	}
+	if entry.module == nil {
+		if _, builtin := sanyBuiltinOperatorInfo(name); builtin {
+			return b.builtinDefinition(name).Symbol
+		}
+		return nil
+	}
+	if entry.kind == VariableDecl || entry.kind == ConstantDecl {
+		return b.declarationSymbol(entry.module, name)
+	}
+	for i := range entry.module.Definitions {
+		definition := &entry.module.Definitions[i]
+		if definition.Name == name {
+			return b.sourceDefinitionSymbol(entry.module.Name+"!"+name, definition)
+		}
+	}
+	return nil
+}
+
 func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool) []tlcBridgeContextEntry {
 	if mod == nil || visiting[mod] {
 		return nil
