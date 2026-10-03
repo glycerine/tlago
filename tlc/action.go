@@ -501,6 +501,12 @@ var EmptyActionItemList = &ActionItemList{}
 // enabled evaluation use ActionItemList with no previous link or action tracking.
 var emptyActionItemListExt = &ActionItemList{extended: true}
 
+// InitializeActionItemListStatics represents a fresh Java classloader. The init
+// singleton retains its previous/action links within one source runtime.
+func InitializeActionItemListStatics() {
+	emptyActionItemListExt = &ActionItemList{extended: true}
+}
+
 func NewActionItemList(pred SemanticNode, con *Context, kind int, next *ActionItemList, cm CostModel) *ActionItemList {
 	if next == nil {
 		next = EmptyActionItemList

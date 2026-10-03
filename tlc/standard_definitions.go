@@ -694,11 +694,7 @@ func standardTrace(tool *Tool, args []SemanticNode, con *Context, state *TLCStat
 	_ = pstate
 	_ = control
 	_ = cm
-	if traceDef := tool.GetTraceDef(); traceDef != nil && traceDef.Symbol != nil && con != nil {
-		if value, ok := con.Lookup(traceDef.Symbol).(Value); ok {
-			return value, nil
-		}
-	}
+	_ = con
 	return TLCExtTraceWithTool(tool, state)
 }
 

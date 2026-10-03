@@ -131,19 +131,31 @@ now calls Values.ppr for each field, matching multiline TLCGet(action) records
 and nested trace tuples. The safety checker case retains register 42 = 4 and
 postcondition assertions; liveness cases retain exact Trace prefixes, loop-back
 B action and stuttering ordinal 2. Current unchanged Java originals all pass. Full Go normal/race suites pass.
-Next: TLCExtTraceTest and TLCExtTraceAliasTest. The unchanged Java alias test
-and preliminary Go production probe already match seven states/actions and
-7/7/0 statistics. TLCExtTraceTest's original embedded config expects success,
-10/10/0 statistics and depth 10; compare it before translating both methods.
-Do not conflate current model parity with complete ALIAS implementation: bridge
-installAliasTarget still bypasses generic Tool.AliasSpec evaluation, ignores its
-explicit prefix supplier and suppresses alias evaluation errors. Java evalAlias
-binds a LazySupplierValue for imported TLCExt.Trace and appends _ALIASEvalError.
-Compare native override/context identities before rewiring those paths: the
-four frozen Alias models and the TLCExtTraceAlias probe currently match via the
-fallback TLCExt.Trace implementation. Record StateString also still differs in
-explicit empty/non-string _format handling and general Java String.format
-semantics; those remain source parity work. TLCGetNonDeterminismTest
+TLCExtTraceTest, TLCExtTraceAliasTest and TLCExtTraceSimTest are now translated
+with their two byte-identical original vectors under
+tlc/test_vectors/models/TLCExtTrace/. Basic checking retains embedded config,
+success, depth 10 and 10/10/0; alias checking retains safety exit, depth 7,
+7/7/0 and the exact seven states/actions/ordinals. Simulation retains num=1,
+10/1/10/0/0 progress and zero uncovered locations. The unchanged Java originals
+pass separately. The bridge now uses SpecProcessor's Tool.AliasSpec rather than
+installAliasTarget callbacks. Generic ALIAS evaluation binds the source lazy
+trace supplier, catches only EvalException/TLCRuntimeException, appends their
+detail message in _ALIASEvalError, and preserves Java value-to-state conversion
+and fresh print-state metadata. The native TLCExt.getTrace override has no extra
+context lookup. The model harness resets ActionItemListExt.Empty to match its
+fresh upstream classloader: its prev/action links otherwise leak an earlier
+model's action into the next test. Do not reset it between calls within a source
+runtime. All four existing Alias models remain green. Full normal/race suites
+and targeted trace checks pass.
+Next: EvalExceptionLivenessTest (DistBakery3aAuxMC), using its original embedded
+config and coverage-disabled setting. A preliminary production Go probe fails
+before initial states at \times (line 51, col 20 to col 33 of DistBakery3aAux),
+with 0/0/0 and exit 75 rather than the expected 950/555/89 and ERROR exit.
+The unchanged Java original passes in a separate JVM. Resolve the
+Cartesian-product bridge/evaluator path before translating its
+15-state trace assertions. Trace-expression variants remain separate pending
+work. Record StateString's explicit empty/non-string _format handling and full
+Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
 bridge parity work; the represented declaration-order slice does not establish

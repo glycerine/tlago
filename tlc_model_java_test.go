@@ -75,6 +75,7 @@ func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump
 	// The upstream runner isolates TLC statics with a per-test classloader.
 	// Fresh tokens preserve source record normalization independent of test order.
 	tlc.UniqueStringInitialize()
+	tlc.InitializeActionItemListStatics()
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false

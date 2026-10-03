@@ -954,14 +954,19 @@ func (t *Tool) EvalAliasInfo(current *TLCStateInfo, successor *TLCStateMut, pref
 	ctxt := EmptyContext
 	if prefix != nil {
 		if traceDef := t.GetImportedTraceDef(); traceDef != nil && traceDef.Symbol != nil {
-			ctxt = ctxt.Cons(traceDef.Symbol, traceTupleFromStateInfos(prefix()))
+			ctxt = ctxt.Cons(traceDef.Symbol, NewLazySupplierValue(traceDef, func() Value {
+				return traceTupleFromStateInfos(prefix())
+			}))
 		}
 	}
 	restore := PushCurrentState(current.State)
 	defer restore()
 	alias, err := t.evalAliasState(current.State, successor, ctxt)
 	if err != nil {
-		return AliasTLCStateInfo(aliasEvaluationErrorState(current.State, err), current), nil
+		if isJavaEvalOrRuntimeException(err) {
+			return AliasTLCStateInfo(aliasEvaluationErrorState(current.State, err), current), nil
+		}
+		return nil, err
 	}
 	if alias != nil {
 		return AliasTLCStateInfo(alias, current), nil
@@ -1004,7 +1009,10 @@ func (t *Tool) EvalAlias(curState *TLCStateMut, sucState *TLCStateMut) *TLCState
 	defer restore()
 	alias, err := t.evalAliasState(curState, sucState, EmptyContext)
 	if err != nil {
-		return aliasEvaluationErrorState(curState, err)
+		if isJavaEvalOrRuntimeException(err) {
+			return aliasEvaluationErrorState(curState, err)
+		}
+		panic(err)
 	}
 	if alias != nil {
 		return alias
@@ -1012,28 +1020,40 @@ func (t *Tool) EvalAlias(curState *TLCStateMut, sucState *TLCStateMut) *TLCState
 	return curState
 }
 
-func (t *Tool) evalAliasState(current *TLCStateMut, successor *TLCStateMut, ctxt *Context) (*TLCStateMut, error) {
+func (t *Tool) evalAliasState(current *TLCStateMut, successor *TLCStateMut, ctxt *Context) (alias *TLCStateMut, err error) {
+	// Value.toState may itself throw one of the two failures caught by Java
+	// Tool.evalAlias. Other exceptions escape this boundary.
+	defer func() {
+		if failure := recover(); failure != nil {
+			if cause, ok := failure.(error); ok && isJavaEvalOrRuntimeException(cause) {
+				alias, err = nil, cause
+				return
+			}
+			panic(failure)
+		}
+	}()
 	if t == nil || t.AliasSpec == nil {
 		return current, nil
-	}
-	if successor == nil {
-		successor = EmptyState
 	}
 	value, err := t.Eval(t.AliasSpec, ctxt, current, successor, EvalClear, CostModel{})
 	if err != nil {
 		return nil, err
 	}
-	rcd := asRecordValue(value)
-	if rcd == nil {
+	// Only RecordValue and FcnRcdValue override Java Value.toState;
+	// CounterExample inherits RecordValue's implementation.
+	var record *RecordValue
+	switch value := value.(type) {
+	case *RecordValue:
+		record = value
+	case *CounterExample:
+		record = value.RecordValue
+	case *FcnRcdValue:
+		record = value.ToRecord()
+	}
+	if record == nil {
 		return nil, nil
 	}
-	alias := rcd.ToState()
-	if alias != nil && current != nil {
-		alias.level = current.level
-		alias.pred = current.pred
-		alias.action = current.action
-	}
-	return alias, nil
+	return record.ToState(), nil
 }
 
 func aliasEvaluationErrorState(current *TLCStateMut, err error) *TLCStateMut {
@@ -1044,26 +1064,17 @@ func aliasEvaluationErrorState(current *TLCStateMut, err error) *TLCStateMut {
 	names := append([]*UniqueString(nil), record.Names...)
 	values := append([]Value(nil), record.Values...)
 	names = append(names, UniqueStringOf("_ALIASEvalError"))
-	msg := ""
-	if err != nil {
-		msg = err.Error()
+	message := javaThrowableDetailMessage(err)
+	if message == nil {
+		panic(NewNullPointerException())
 	}
-	values = append(values, NewStringValue(msg))
-	state := NewRecordValue(names, values, false).ToState()
-	if state != nil && current != nil {
-		state.level = current.level
-		state.pred = current.pred
-		state.action = current.action
-	}
-	return state
+	values = append(values, NewStringValue(*message))
+	return NewRecordValue(names, values, false).ToState()
 }
 
 func traceTupleFromStateInfos(infos []*TLCStateInfo) Value {
 	values := make([]Value, 0, len(infos))
 	for _, info := range infos {
-		if info == nil || info.State == nil {
-			continue
-		}
 		values = append(values, NewRecordValueFromInsMap(info.State.Values()))
 	}
 	return NewTupleValue(values)

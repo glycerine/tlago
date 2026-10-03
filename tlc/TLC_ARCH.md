@@ -440,6 +440,14 @@ Current adapter responsibilities:
   that are subsets or supersets of the spec variables; Go mirrors that with a
   concrete record-backed state, preserving state-variable fingerprint/equality
   behavior while printing the alias record and honoring `_format`.
+  `SpecProcessor` installs `Tool.AliasSpec`; the bridge does not replace the
+  tool's alias overloads. Prefix-aware evaluation binds imported `TLCExt.Trace`
+  to `LazySupplierValue`, while pairwise evaluation uses an empty context.
+  Only `EvalException`/`TLCRuntimeException` become `_ALIASEvalError` fields;
+  other failures escape. Printable record states retain their fresh metadata,
+  and `AliasTLCStateInfo` preserves the original ordinal/action separately.
+  The native `TLCExt.getTrace` override does not look up this context itself.
+  Full `_format`/Java formatter parity remains pending.
 - resolve config-selected `INIT`, `NEXT`, `SPECIFICATION`, invariants,
   properties, constraints, view, and postconditions into `Action` or semantic
   nodes.
