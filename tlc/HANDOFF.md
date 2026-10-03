@@ -928,3 +928,17 @@ Java TLC architecture and behavior surfaces, with `PORT_PROGRESS.md` indicating
 no major unaudited core areas remain. Translate existing Java tests
 feature by feature during this phase, after their implementations are ported,
 as the user requested; do not defer all tests until the entire port is complete.
+
+
+Correctness continuation: StateQueueTest is now port complete in queue_test.go,
+with all nine original methods separated, exact Integer.MIN_VALUE/MAX_VALUE,
+ten repeated identical/distinct enqueue cases, and original assertion order.
+Opaque zero-valued Go state identities replace unused DummyTLCState abstract
+stubs; no production changes needed. Unchanged Java JUnit with -ea passes nine
+methods; Go targeted methods and full TLC -race pass (3.322s); retire handles
+92874 and 34280. Current inventory: 240/1269 methods (18.9%), 104/626 complete
+classes (16.6%), 1029 pending contexts across 522 classes, two partial classes.
+Next: DiskPoolWriterTest requires faithful WAITING/BLOCKED/alive/join observations;
+current Go writers expose neither native lifecycle completion nor wait state.
+Do not replace its assertions with a sleep-and-no-error approximation. Alternatively
+advance direct value/module tests while preserving this implementation prerequisite.

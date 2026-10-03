@@ -1964,3 +1964,20 @@ and exclude original @Ignore contexts. Preserve deferred debugger/scoped,
 checkpoint/recovery, distributed, JPF and benchmark work in the inventory while
 prioritizing ordinary correctness tests. Fix actual production shortcuts when
 original tests expose them before proceeding to the next feature.
+
+
+- Completed all nine original StateQueueTest methods as separate Go tests. Earlier
+consolidated queue checks omitted Integer.MIN_VALUE and substituted a host-sized
+maximum for Java Integer.MAX_VALUE; the translation now uses exact signed 32-bit
+extremes and preserves all original assertions and order. Added the missing
+ordinary dequeue and ten identical/distinct enqueue cases. DummyTLCState is an
+opaque identity in these operations, represented by distinct Go state pointers;
+unused Java abstract-method stubs are unnecessary. No production behavior failed
+or was changed. Original Java JUnit with -ea passes all nine methods (0.008s),
+Go targeted tests pass (0.011s), and full TLC -race passes (3.322s). Prior full
+workspace normal checks remain green; this slice changes queue tests only.
+TODO_TEST_PORT.md marks StateQueueTest "Port complete" and updates counts to
+240/1269 methods (18.9%), 104/626 complete classes (16.6%), 1029 pending contexts
+across 522 classes. The five user-deferred topics remain deferred. Writer tests
+still need native wait-state/liveness/join observations to translate their source
+assertions faithfully; do not credit a weaker sleep/no-error check.

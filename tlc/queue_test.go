@@ -9,61 +9,108 @@ import (
 	"testing"
 )
 
-func TestMemStateQueuePortedJavaBasicBehaviors(t *testing.T) {
-	initTLCCheckerTest(t)
+// Complete mechanical translation of tlc2.tool.queue.StateQueueTest.
+// Queue operations use DummyTLCState only as an opaque identity. A fresh,
+// zero-valued Go state supplies the same identity without unused Java stubs.
+func javaStateQueueSetup(t *testing.T) *MemStateQueue {
+	t.Helper()
 	oldWorkers := NumWorkers()
 	SetNumWorkers(1)
 	t.Cleanup(func() { SetNumWorkers(oldWorkers) })
+	return NewMemStateQueue("")
+}
 
-	q := NewMemStateQueue()
-	expected := checkerTestState(1)
-	q.Enqueue(expected)
-	if actual := q.SDequeue(); actual != expected {
-		t.Fatalf("SDequeue after Enqueue = %p, want %p", actual, expected)
-	}
-	if actual := q.SDequeue(); actual != nil {
-		t.Fatalf("SDequeue on empty queue = %p, want nil", actual)
-	}
-	if actual := q.Dequeue(); actual != nil {
-		t.Fatalf("Dequeue on empty queue = %p, want nil", actual)
-	}
-
-	expected = checkerTestState(2)
-	q.SEnqueue(expected)
-	if q.Size() != 1 {
-		t.Fatalf("size after SEnqueue = %d, want 1", q.Size())
-	}
-	if actual := q.SDequeue(); actual != expected {
-		t.Fatalf("SDequeue after SEnqueue = %p, want %p", actual, expected)
-	}
-	if q.Size() != 0 {
-		t.Fatalf("size after SDequeue = %d, want 0", q.Size())
+func requireJavaStateQueueSize(t *testing.T, q *MemStateQueue, expected int64) {
+	t.Helper()
+	if actual := q.Size(); actual != expected {
+		t.Fatalf("queue size = %d, want %d", actual, expected)
 	}
 }
 
-func TestMemStateQueueSDequeueManyMatchesJavaAbuseCases(t *testing.T) {
-	initTLCCheckerTest(t)
-	oldWorkers := NumWorkers()
-	SetNumWorkers(1)
-	t.Cleanup(func() { SetNumWorkers(oldWorkers) })
+func TestJavaStateQueueEnqueue(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	expected := &TLCStateMut{}
+	q.Enqueue(expected)
+	if actual := q.SDequeue(); actual != expected {
+		t.Fatalf("sDequeue = %p, want %p", actual, expected)
+	}
+}
 
-	q := NewMemStateQueue()
+func TestJavaStateQueueSDequeueEmpty(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	if state := q.SDequeue(); state != nil {
+		t.Fatalf("sDequeue = %p, want nil", state)
+	}
+}
+
+func TestJavaStateQueueDequeueEmpty(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	if state := q.Dequeue(); state != nil {
+		t.Fatalf("dequeue = %p, want nil", state)
+	}
+}
+
+func TestJavaStateQueueSDequeueNotEmpty(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	expected := &TLCStateMut{}
+	q.SEnqueue(expected)
+	requireJavaStateQueueSize(t, q, 1)
+	actual := q.SDequeue()
+	requireJavaStateQueueSize(t, q, 0)
+	if actual != expected {
+		t.Fatalf("sDequeue = %p, want %p", actual, expected)
+	}
+}
+
+func TestJavaStateQueueDequeueNotEmpty(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	expected := &TLCStateMut{}
+	q.Enqueue(expected)
+	requireJavaStateQueueSize(t, q, 1)
+	actual := q.Dequeue()
+	requireJavaStateQueueSize(t, q, 0)
+	if actual != expected {
+		t.Fatalf("dequeue = %p, want %p", actual, expected)
+	}
+}
+
+func TestJavaStateQueueEnqueueAddNotSame(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	const j = 10
+	for i := 0; i < j; i++ {
+		q.SEnqueue(&TLCStateMut{})
+	}
+	requireJavaStateQueueSize(t, q, j)
+}
+
+func TestJavaStateQueueEnqueueAddSame(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	state := &TLCStateMut{}
+	const j = 10
+	for i := 0; i < j; i++ {
+		q.SEnqueue(state)
+	}
+	requireJavaStateQueueSize(t, q, j)
+}
+
+func TestJavaStateQueueSDequeueAbuseEmpty(t *testing.T) {
+	q := javaStateQueueSetup(t)
 	expectPanic(t, func() { q.SDequeueMany(0) })
 	expectPanic(t, func() { q.SDequeueMany(-1) })
-	if got := q.SDequeueMany(int(^uint(0) >> 1)); got != nil {
-		t.Fatalf("SDequeueMany on empty queue = %#v, want nil", got)
+	expectPanic(t, func() { q.SDequeueMany(-2147483648) })
+	if actual := q.SDequeueMany(2147483647); actual != nil {
+		t.Fatalf("sDequeue(Integer.MAX_VALUE) = %v, want nil", actual)
 	}
+}
 
-	state := checkerTestState(1)
-	q.SEnqueue(state)
+func TestJavaStateQueueSDequeueAbuseNonEmpty(t *testing.T) {
+	q := javaStateQueueSetup(t)
+	q.SEnqueue(&TLCStateMut{})
 	expectPanic(t, func() { q.SDequeueMany(0) })
 	expectPanic(t, func() { q.SDequeueMany(-1) })
-	got := q.SDequeueMany(int(^uint(0) >> 1))
-	if len(got) != 1 || got[0] != state {
-		t.Fatalf("SDequeueMany huge request = %#v, want single queued state", got)
-	}
-	if q.Size() != 0 {
-		t.Fatalf("size after SDequeueMany = %d, want 0", q.Size())
+	expectPanic(t, func() { q.SDequeueMany(-2147483648) })
+	if actual := q.SDequeueMany(2147483647); len(actual) != 1 {
+		t.Fatalf("sDequeue(Integer.MAX_VALUE).length = %d, want 1", len(actual))
 	}
 }
 

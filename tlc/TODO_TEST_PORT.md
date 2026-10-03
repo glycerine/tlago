@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **103 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (16.5%).**
-- **235 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (18.5%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **1,034 logical method contexts across 523 classes remain to port or reconcile.** 3 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **104 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (16.6%).**
+- **240 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (18.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **1,029 logical method contexts across 522 classes remain to port or reconcile.** 2 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -37,11 +37,11 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
-| Queues and pool writers | 2 | 0 | 11 | 4 | 7 |
+| Queues and pool writers | 2 | 1 | 11 | 9 | 2 |
 | Values, lazy functions, enumeration, and value streams | 17 | 4 | 189 | 18 | 171 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 5 | 91 | 16 | 75 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **103** | **1,269** | **235** | **1,034** |
+| **Total** | **626** | **104** | **1,269** | **240** | **1,029** |
 
 ## Porting rules and proposed order
 
@@ -54,7 +54,7 @@ entries visible. If a test fails, check the mechanical translation and inspect
 production TLC for shortcuts; implement the missing behavior before moving on,
 without weakening the original assertions. Mark finished entries **Port complete**.
 
-1. Finish incomplete original methods/classes already represented in Go: `DumpLoadTraceTest`’s two enabled binary cases, `TypedSetTest.testParseSet6`, and the remaining `StateQueueTest` methods. Reconcile older value/module/utility checks with complete original inputs and assertions.
+1. Finish incomplete original methods/classes already represented in Go: `DumpLoadTraceTest`’s two enabled binary cases, `TypedSetTest.testParseSet6`. Reconcile older value/module/utility checks with complete original inputs and assertions.
 2. Port small direct value, collection, module, and output tests against their existing production implementations. Fix actual production gaps before completing the affected original method.
 3. Port numbered suite/evaluation-order and checker/model regressions in coherent topics, then simulation and liveness models; checkpoint/recovery remains deferred. Carry constructor settings and inherited coverage/exit/trace assertions with each test.
 4. Port generated TTrace variants after their original run and trace-spec pipeline work accurately. Preserve ordering and generated-artifact dependencies.
@@ -607,10 +607,8 @@ Memory-state queues and disk/byte-array writer wakeup/finish behavior; stress an
 
 - [ ] [tlc2/tool/queue/DiskPoolWriterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/DiskPoolWriterTest.java) — **Reconcile**: `testStatePoolWriterIgnoresEmptyWakeAndStopsOnFinish`, `testByteArrayPoolWriterIgnoresEmptyWakeAndStopsOnFinish`.
   Related Go checks: [tlc/queue_test.go](queue_test.go).
-- [ ] [tlc2/tool/queue/StateQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/StateQueueTest.java) — **Partial**: `testDequeueNotEmpty`, `testEnqueueAddNotSame`, `testEnqueueAddSame`, `testsDequeueAbuseEmpty`, `testsDequeueAbuseNonEmpty`.
-  Related Go checks: [tlc/queue_test.go](queue_test.go).
-  Already mapped: `testEnqueue`, `testsDequeueEmpty`, `testDequeueEmpty`, `testsDequeueNotEmpty`.
-  Go abuse cases omit Integer.MIN_VALUE and use host-sized maximum rather than Java Integer.MAX_VALUE; complete original inputs/assertions.
+- [x] [tlc2/tool/queue/StateQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/StateQueueTest.java) — **Port complete**: `testEnqueue`, `testsDequeueEmpty`, `testDequeueEmpty`, `testsDequeueNotEmpty`, `testDequeueNotEmpty`, `testEnqueueAddNotSame`, `testEnqueueAddSame`, `testsDequeueAbuseEmpty`, `testsDequeueAbuseNonEmpty`.
+  Go translation: [tlc/queue_test.go](queue_test.go).
 
 ### Values, lazy functions, enumeration, and value streams
 
@@ -988,7 +986,7 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/tool/doinitfunctor/DoInitFunctorInvariantTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/doinitfunctor/DoInitFunctorInvariantTest.java) | `testSpec` | [tlc_init_model_java_test.go](../tlc_init_model_java_test.go) |
 | [tlc2/tool/doinitfunctor/DoInitFunctorPropertyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/doinitfunctor/DoInitFunctorPropertyTest.java) | `testSpec` | [tlc_init_model_java_test.go](../tlc_init_model_java_test.go) |
 | [tlc2/tool/fp/MultiFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/MultiFPSetTest.java) | `testCTorLowerMin`, `testCTorMin`, `testCTorMax`, `testCTorHigherMax`, `testPutMax`, `testPutMin`, `testPutZero`, `testGetFPSet`, `testGetFPSet0`, `testGetFPSet1`, `testGetFPSetL`, `testGetFPSet0L`, `testGetFPSet1L`, `testGetFPSetOffHeap`, `testGetFPSetOffHeap0`, `testGetFPSetOffHeap1` | [tlc/multi_fpset_java_test.go](multi_fpset_java_test.go) |
-| [tlc2/tool/queue/StateQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/StateQueueTest.java) | `testEnqueue`, `testsDequeueEmpty`, `testDequeueEmpty`, `testsDequeueNotEmpty` | [tlc/queue_test.go](queue_test.go) |
+| [tlc2/tool/queue/StateQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/StateQueueTest.java) | `testEnqueue`, `testsDequeueEmpty`, `testDequeueEmpty`, `testsDequeueNotEmpty`, `testDequeueNotEmpty`, `testEnqueueAddNotSame`, `testEnqueueAddSame`, `testsDequeueAbuseEmpty`, `testsDequeueAbuseNonEmpty` | [tlc/queue_test.go](queue_test.go) |
 | [tlc2/util/BitVectorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BitVectorTest.java) | `testToString`, `testToStringRange` | [tlc/bit_vector_test.go](bit_vector_test.go) |
 | [tlc2/util/ContextTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/ContextTest.java) | `testLookupEmpty`, `testLookupBranch`, `testLookupSymbolNodeNull`, `testLookup`, `testLookupCutOffFalse`, `testLookupCutOffTrue`, `testLookupWithAtBranching`, `testLookupWithCutOffFalseAtBranching`, `testLookupWithCutOffTrueAtBranching`, `testLookupSymbolNode` | [tlc/context_java_test.go](context_java_test.go) |
 | [tlc2/util/FP64Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/FP64Test.java) | `testExtendLongInt` | [tlc/fp64_test.go](fp64_test.go) |
