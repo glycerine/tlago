@@ -106,7 +106,7 @@ func isJavaIOException(err error) bool {
 		return true
 	}
 	switch err.(type) {
-	case *IOException, *MailUnsupportedDataTypeException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite
@@ -138,7 +138,7 @@ func isJavaError(err error) bool {
 	return generic || javaSystemFailureCode(err) != NoError
 }
 
-// Activation class initialization and Class.newInstance inspect these exact
+// Java class initialization and reflection inspect these exact
 // checked/Error families; a throwable's cause does not change its catch type.
 type ExceptionInInitializerError struct{ javaExceptionBase }
 
@@ -163,16 +163,14 @@ type ClassNotFoundException struct{ javaExceptionBase }
 func NewClassNotFoundException(message ...string) *ClassNotFoundException {
 	return &ClassNotFoundException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
-func (e *ClassNotFoundException) Error() string               { return javaThrowableMessage(e) }
-func (e *ClassNotFoundException) mailClassNotFoundException() {}
+func (e *ClassNotFoundException) Error() string { return javaThrowableMessage(e) }
 
 type IllegalAccessException struct{ javaExceptionBase }
 
 func NewIllegalAccessException(message ...string) *IllegalAccessException {
 	return &IllegalAccessException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
-func (e *IllegalAccessException) Error() string               { return javaThrowableMessage(e) }
-func (e *IllegalAccessException) mailIllegalAccessException() {}
+func (e *IllegalAccessException) Error() string { return javaThrowableMessage(e) }
 
 type InstantiationException struct{ javaExceptionBase }
 
@@ -194,8 +192,7 @@ func (e *InvocationTargetException) GetTargetException() error { return e.Cause 
 func NewInstantiationException(message ...string) *InstantiationException {
 	return &InstantiationException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }
-func (e *InstantiationException) Error() string               { return javaThrowableMessage(e) }
-func (e *InstantiationException) mailInstantiationException() {}
+func (e *InstantiationException) Error() string { return javaThrowableMessage(e) }
 
 type SecurityException struct{ javaExceptionBase }
 
@@ -504,3 +501,24 @@ func isJavaOutOfMemoryError(err error) bool {
 	code := javaSystemFailureCode(err)
 	return code == ECSystemOutOfMemory || code == ECSystemOutOfMemoryLiveness
 }
+
+type NamingException struct{ javaExceptionBase }
+
+func NewNamingException(message ...string) *NamingException {
+	return &NamingException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *NamingException) Error() string { return javaThrowableMessage(e) }
+
+type UnsupportedEncodingException struct{ *IOException }
+
+func NewUnsupportedEncodingException(message string) *UnsupportedEncodingException {
+	return &UnsupportedEncodingException{NewIOException(message)}
+}
+func (e *UnsupportedEncodingException) Error() string { return javaThrowableMessage(e) }
+
+type NumberFormatException struct{ *IllegalArgumentException }
+
+func NewNumberFormatException(value string) *NumberFormatException {
+	return &NumberFormatException{NewIllegalArgumentException("For input string: \"" + value + "\"")}
+}
+func (e *NumberFormatException) Error() string { return javaThrowableMessage(e) }

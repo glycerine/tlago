@@ -246,10 +246,10 @@ func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, 
 
 // RunDistributedServer connects TLCServer.main to production application
 // creation and packaged model properties. Email reporting remains disabled
-// regardless of mail properties or constructor/delivery overrides.
+// by user policy.
 func RunDistributedServer(process *tlc.DistributedServerProcess, args []string, env tlc.DistributedServerEnvironment, runtime tlc.RuntimeParameters, classpath ...[]tlc.FilenameClasspathEntry) (Diagnostics, error) {
 	var diags Diagnostics
-	if env.LoadProperties == nil && env.MailEnvironment.LoadProperties == nil {
+	if env.LoadProperties == nil {
 		env.LoadProperties = func() {
 			var configured []tlc.FilenameClasspathEntry
 			if len(classpath) > 0 {

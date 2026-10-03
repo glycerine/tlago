@@ -13,10 +13,10 @@ JVM emulation are excluded from TLC completion. Do not continue their pending
 constructors, discovery, probes, tests or downloads. This overrides every older
 mail-related "next", "pending" or "required" entry in these documents.
 
-The main thread must make only the minimal integration changes needed to make
-email construction/delivery unavailable, including when email properties or
-overrides are supplied, while preserving model loading and normal console
-output. Leave unrelated existing work intact. Then resume core TLC parity and
+The later user instruction authorizes the main thread to remove email-only
+source, tests, fixtures, resources and stale plans after detaching integration.
+Preserve core distributed behavior, packaged property loading, console output,
+generic exceptions, OpenJDK notices and x/text. Then resume core TLC parity and
 port existing Java tests after implementing each feature. Prioritize state
 counts, diagnostic/trace parity, fairness/liveness, checkpoint/recovery, storage,
 coverage and simulation. Do not invent new regression/unit tests.
@@ -46,88 +46,6 @@ to this feature-by-feature sequence.
 Do not switch back to the older SANY XML or ApalacheIR corpus sweeps unless the
 user explicitly asks. Those are valuable, but they are paused. The current goal
 is TLC.
-
-### Historical email dependency work — stopped and excluded
-
-The following mail/library record is historical only. Its remaining-work and
-next-step statements are superseded by the scope directive above and must not
-be executed. Resume core TLC work at "Immediate Next Steps" below.
-
-Latest mail dependency progress: Activation MIME parsing/casing and Mailcap
-registry parsing/discovery/lookup have their existing Java tests translated.
-CommandMap eager initialization/get/set/reset/security and the bundled handler
-loadClass/newInstance algorithm are now implemented, with reentrant class and
-instance synchronization, permanent initialization failures and lazy resources.
-Read the latest progress entry for verification and the explicit JVM boundaries.
-ActivationDataFlavor's own constructors/getters/equality/normalization and its
-inherited AWT metadata/comparison paths now have native ports. Preserve its
-shadowed fields: inherited metadata/hash/overloads often see null base fields.
-AWT MIME parsing uses a separate grammar and Hashtable enumeration; its error
-and partial-mutation quirks must not be replaced by the Activation parser.
-All four existing ActivationDataFlavorTest methods are translated and pass.
-Bundled plain/HTML/XML text handlers now have native class lookup, flavor arrays,
-transfer/content/write methods and their nine existing Java assertions translated.
-Preserve default charset use, ignored MIME charset parameters, stream no-close,
-pending high surrogates through flush and failed encoder-buffer state. The modern
-Geronimo javamail handler body differs from this bundled activation handler.
-Bundled image handlers now have native algorithms and default class lookup;
-ImageIO MIME filtering/factory iterators have native ports and exact standard
-fresh-reader/writer validation. Preserve the missing reader input and plain
-OutputStream writer output, including TIFF's distinct rejection. Keep the
-RenderedImage-before-BufferedImage branch order, unknown-type trailing space,
-provider prefetch/checked-I/O deregistration/null result and no stream/graphics
-close/dispose. ImageIO now has the native ordering graph and object-key hash-map
-operations, wired into standard reader/writer enumeration in source registration
-order. Preserve copied in-degrees with live out-edges, cycle/blocked-node omission,
-node disposal, old-node iteration after clear, hash/comparable tie ordering,
-partial mutation on virtual-key failures, captured table references across
-reentrant key callbacks and movable=false iterator tree removal.
-ServiceRegistry/SubRegistry now have native registration/leaf-class replacement,
-category/overload checks, callback catch/partial mutation, captured-context clear,
-reentrant monitors, live category/unordered iterators, filtering and finalizer bodies.
-Standard reader/writer providers use that same registry implementation. Preserve
-the unordered iterator removal that leaves graph/context entries, and clear's
-callback exceptions that leave partial class-map removal and retained graph/contexts.
-All 36 source methods match installed JDK bytecode; 11,080 actual-JDK/native -race
-comparisons include callback reentry/errors, mutation, filtering and security-manager
-null-context callback suppression. Existing ServiceRegistryRestriction and
-ServiceRegistrySyncTest are translated after implementation and pass in Java/Go.
-The seven OpenJDK SPI base classes now have native constructor, getter, clone,
-factory-delegation and metadata-format lookup algorithms. Preserve mandatory versus
-optional array validation, mutable STANDARD type-array identity, protected fields
-versus virtual getters, default cache/lossless flags, null factory arguments and
-metadata exception/cause boundaries. All 51 non-abstract source methods match JDK
-bytecode; 7,914 actual-JDK/native -race comparisons include named-module exports.
-The two existing SpiTest constructor methods are translated after implementation.
-The six standard stream SPI constructors, descriptions, cache flags, class inventory
-and factory branches are now ported. Preserve File/RAF catch(Exception) null returns,
-output-only stack diagnostics (without the registry diagnostic header), escaping
-Error, the output RAF diagnostic saying "input", and stream file/memory cache selection.
-All 28 source methods/initializers match installed JDK bytecode; 16,128 comparisons
-against the installed SPI classes with instrumented backing constructors pass -race.
-The unchanged SpiVersionNumbers and its Go translation pass. Actual FileImage/
-FileCacheImage/MemoryCacheImage stream construction, storage, disposer and operations
-still require their native implementations or explicit constructor providers; missing
-constructors fail explicitly outside the source catch rather than returning null.
-The standard reader/writer concrete constructors/metadata, schemas and non-null AWT
-type-specifier creation remain required. Module/loader/reflection/privileged operations
-use explicit VM providers. Continue with those dependencies and
-IIORegistry/ServiceLoader/AppContext lifetime. ImageIO must capture the
-AppContext registry at class initialization.
-Discovery is an explicit lazy provider boundary; no adapter means advancing lookup
-fails explicitly, rather than returning an invented empty provider list. Secured
-access-context capture/privileged execution requires its VM provider. The native
-default runs without a SecurityManager. Official upstream OrderingTest,
-DeregisterOrderedSpiTest, RegisterPluginTwiceTest and DeregisterAllSpiTest remain
-for porting after IIORegistry and required SPI metadata. VM identity hashes/class/
-comparable discovery, compatible-stream initialization, full concrete SPI metadata,
-AWT rasterization and image codecs remain required. Continue multipart/MIME
-and DataHandler object/factory/cache/buffered-pipe dependencies after these slices.
-Read the latest progress entry for bytecode and Java/native verification.
-Remaining AWT work includes full class
-loading/initialization, text selection/readers, object and MIME externalization.
-Full JVM class inventory/linking/loader isolation, stack/cast diagnostics and
-native thread/URL/locale/charset providers remain required.
 
 ## Operating Rules
 
@@ -222,8 +140,8 @@ first.
 
 ## Immediate Next Steps
 
-Apply the email prohibition above first; do not resume the historical mail or
-ImageIO slice. Only minimal integration disablement is authorized in that area.
+Email integration and its dependency code have been removed under the user's
+explicit authorization. Continue core TLC work; do not restore reporting.
 
 Start by reading the top and tail of `tlc/PORT_PROGRESS.md`, then continue the
 breadth-first Java source audit from areas that are not marked recently audited.

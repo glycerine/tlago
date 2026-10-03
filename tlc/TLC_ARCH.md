@@ -5,10 +5,10 @@ forbidden.** Email delivery and its JavaMail/SMTP/MIME/Activation/ImageIO/AWT/
 codec dependencies, including mail-driven JVM emulation, are excluded from
 this port's completion requirements. Stop that work immediately; no further
 porting, audits, probes, test translation or downloads for that dependency chain.
-Older descriptions below are historical source notes, not instructions to
-finish those libraries. Make only the minimal integration changes needed to
-disable email construction/delivery while preserving model loading and console
-output, then focus on core TLC algorithms and their existing Java tests.
+The later user instruction authorizes surgical removal of the email-only
+source, tests, fixtures, resources and stale plans. Preserve core distributed
+behavior, packaged property loading, console output, generic exceptions,
+OpenJDK notices and x/text. Continue core TLC and its existing Java tests.
 
 This document records the architecture of the Java TLC model checker in
 `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2` and its tests in
@@ -3182,370 +3182,6 @@ Direct `isAlive` remains true. Shutdown ignores only direct NoSuchObjectExceptio
 and does not recreate the executor or latch. AwaitTermination waits for the
 latch, then sleeps ten seconds before returning.
 
-util.MailSender now has a concrete constructor/report port. It preserves early
-ModelInJar property loading, recipient/primary/alternate address ordering,
-output-before-error stream installation and partial failure side effects. Its
-caller list gains output and nonempty error logs, every recipient is attempted,
-and alternate-sender attempts reread the body and copy the current attachments.
-MX records use source raw-attribute parsing and stable priority order; missing
-and empty attributes differ. Live SMTP properties retain the localhost suffix
-quirk and sticky greylist markers, with source ten-/one-minute throttling and
-interruption handling. MailLogPrintStream echoes only println(String), retains
-PrintStream trouble/close behavior and default UTF-8 surrogate encoding. Body
-extraction follows Scanner(File)'s strict decoder, 1024-unit buffer lifetime,
-Java whitespace/line separators and delimiter filtering, including discarded
-characters from a malformed read. Disabled mail is functional by default.
-JavaMail address parsing now defaults to the dependency grammar port described
-below; Session/MIME/SMTP and native JNDI DNS remain explicit provider boundaries;
-complete ToolIO/MP/SANY stream routing and broader charset/locale/JVM providers
-still need implementation. Actual-source report,
-stream and exception-chain probes and production disabled-mail server/worker
-integration pass under -race. Delivery probes use a fake transport.
-
-The native MailInternetAddress parser/constructor now mirrors bundled JavaMail
-1.6.8. List parsing and detailed validation remain separate, with strict/lenient
-header parsing, groups, route addresses, comments, quotes, literals and source
-recovery quirks. Errors retain message/ref/position in UTF-16 units, and raw
-EncodedPersonal stays separate from lazy RFC2047-decoded Personal. Raw-personal
-construction bypasses parsing, and setters retain source partial mutation on
-encoding failure. String/Unicode and array formatting retain source quoting,
-nullable empty lists, CRLF segments, column overflow and Unicode byte counting. InternetAddress and MimeUtility properties have separate
-lazy class lifetimes; folding/unfolding and bogus-header case comparisons preserve
-Java behavior, including UTF-16 columns, safe continuations and dotted/dotless I.
-Source parser/check/unquote bytecode matches the bundled jar after
-compiler-layout normalization. The translated upstream
-JUnit tests and exact test_vectors/javamail/addrlist and folddata corpora pass
-192 address cases, 48 folding cases and three extra validation cases under -race;
-13,552 address/unfold and 19,935 folding observations against the bundled jar,
-plus enabled-mail production server/worker integration with two fake deliveries
-also pass. This dependency
-port retains upstream EPL-2.0 headers and tlc/licenses/javamail-LICENSE.md.
-MailMIMECodec now ports RFC2047 text/word B/Q encoding/decoding and quoting,
-including ASCII early returns, surrogate-aware recursive splitting, strict and
-lenient whitespace/inner-word behavior, source malformed payload diagnostics and
-separate charset/default caches. DefaultMailMIMECodec exposes the process JDK
-charset boundary; providers are configured before use. Native UTF-8, ASCII,
-Latin-1, UTF-16 and GB18030 adapters preserve source replacement and mapping
-behavior. Other known codecs remain explicit provider boundaries; complete JVM
-inventories, legacy codecs and custom charset-map loading still need porting.
-The GB18030 adapter carries OpenJDK GPLv2/Classpath notices under licenses/ and
-preserves default 2022/optional 2000 tables, private-use reverse mappings and
-malformed widths. All 253,696 complete BMP/byte-table observations match the
-installed JDK; 59,428 bundled-JavaMail word/address observations also match under
--race. Seven MIME source methods match bundled bytecode after layout normalization.
-The translated InternetAddressFoldTest adds nine exact addrfolddata cases, and
-MimeUtilityTest adds its surrogate-pair and Chinese-alias word tests, after their
-features. All 254 translated mail cases pass; enabled-mail production integration
-with two fake deliveries and the offline suite also pass.
-HeaderTokenizer, ContentType and ParameterList now provide the native MIME header
-dependencies. They retain UTF-16 token positions, nested comments, peek/next state,
-strict/lenient and Windows/Apple parsing, RFC2231 single/split encoded values,
-orphan segments, failure consistency, literals and source splitting/folding.
-ParameterList freezes its own seven property flags independently of MimeUtility.
-The main list uses InsMap insertion order; auxiliary maps/sets retain OpenJDK
-bucket and collision-tree traversal, including resize/deletion and clear capacity.
-NamesEnumeration supplies the live fail-fast Java iterator; GetNames is the Go
-snapshot convenience. ISO-2022-JP decoding now retains OpenJDK escape/shift states,
-malformed widths and JIS0208 mappings through exact deltas against pinned x/text;
-encoding and other Japanese variants remain provider boundaries. The HashMap
-ordering and ISO decoder files retain their OpenJDK GPLv2/Classpath notices.
-After implementation, translated HeaderTokenizerTest, ContentTypeTest and five
-ParameterList suites pass the original assertions with exact tokenlist/paramdata/
-paramdatanostrict fixtures in test_vectors/javamail/. Fresh suite processes mirror
-Java's isolated class loaders. NonAsciiFileNames awaits MimeBodyPart rather than
-substituting another feature. All 339 translated mail assertion cases pass under
--race; temporary comparisons against actual Java pass 63,156 parser/serialization,
-1,400 collision and 600 enumeration observations, plus 46,816 ISO decoder inputs.
-All 65,536 JIS0208 mapping entries were audited; the full offline Go suite passes.
-MimeUtility Content-Transfer-Encoding selection now scans native DataSources and
-DataHandler writeTo streams with source ASCII counts, long lines, EOL checks,
-per-read CR reset, max overshoot, EncodingAware precedence, charset compatibility
-cache and Exception/IOException/Error/close boundaries. ByteArrayDataSource keeps
-shared storage, Reader buffer growth/trim/no-close, and String charset selection.
-Shared byte streams retain mark/reset, child ranges, signed-int edge arithmetic
-and no-op close; the Go reader adapter supplies Java EOF/error ordering and
-available counts for native regular files and byte streams. File streams close
-idempotently and retain typed IOException/Stream Closed errors.
-The bundled Activation library is Apache Geronimo 1.1. Native DataHandler ports
-its eager DataSource metadata and 1024-byte writeTo/close path. FileDataSource and
-FileTypeMap/MimetypesFileTypeMap keep constructor/resource/property precedence,
-exact embedded defaults, raw case-sensitive extension keys, comment/tokenizer
-quirks, source catches and default-map lifetime, including a synchronized getter
-and independently published setter. Class-loader, default-reader,
-security and other JVM providers have explicit callbacks; native Activation
-default readers port OpenJDK StreamDecoder and BufferedReader.readLine with
-separate 8192-byte/8192-UTF-16-unit buffers, UTF-8/ASCII/Latin-1 replacement,
-available-driven read-ahead, unpublished failed fills, CR/LF and zero-read rules.
-The filename map constructor retains close-once reader state on close failure.
-Inherited ByteArrayInputStream behavior is also kept in its own OpenJDK file.
-OpenJDK GPLv2/Classpath and ASF notices/licenses accompany their separate code.
-Generic JavaError now escapes the existing catch(Exception) boundaries in
-distributed options, FP calls, init/trace and server cleanup; two actual-source
-main cleanup comparisons match with fake delivery. Four MimeUtility and 20
-Geronimo methods match bundled bytecode after compiler-layout normalization.
-After these features, all five upstream MimeUtilityTest methods and both
-MimetypesFileTypeMapTest methods are translated; all 344 mail assertion cases
-pass -race. Temporary actual-jar comparisons pass 15,400 encoding/type-map/byte
-source/shared-stream and 6,192 resource-reader observations. Sixteen source
-reader-close comparisons and native file availability/close/error/truncation
-checks also pass. The full offline Go suite passes in the working tree.
-Activation MimeType/MimeTypeParameterList now retain their own grammar and
-case-sensitive base-type matching, including empty tokens, UTF-16 diagnostics,
-quoted escapes, partial/retained parameter state, nullable values and Java
-HashMap order/live enumeration. readExternal preserves readUTF/parse catches and
-nullable IOException messages; writeExternal retains writeUTF/flush ordering.
-Full JVM object serialization and default-locale providers have explicit native
-callbacks. English lowercasing uses a separate OpenJDK ConditionalSpecialCasing/
-RuleBasedBreakIterator adapter with exact forward/backward/following/boundary
-state, BMP/supplementary lookup and byte-identical 21.0.12.1 word-rule data.
-The existing JavaMail English lowercaser uses the same contextual sigma/dotted-I
-rules. Signed-int modification counters retain source wraparound in both paths.
-All simple lower mappings and Lu/Ll/Lt categories were compared for all 1,114,112
-code points; 279,474 actual-jar/parser/case comparisons, 48 external I/O and 12
-counter comparisons match under native -race. Existing 63,156 parser cases and
-1,800 contextual-name cases also pass. After implementation, all seven original
-MimeTypeTest and eleven MimeTypeParameterListTest methods are translated and
-pass alongside unchanged Java test bodies. Full offline working-tree checks pass.
-MailcapCommandMap registry instances now preserve the bundled UTF-16 parser,
-native raw entries, later overrides, wildcard/fallback lookup quirks and exact
-HashMap command/MIME order. OpenJDK copy-constructor/putAll pre-sizing precedes
-source entry traversal; a wildcard-only fallback retains its source NPE, and
-all-command wildcard queries retain duplicate lists. Only single-command lookup
-strips parameters, and a selected map without a requested verb stops lookup.
-Discovery preserves resource names/order, caught failure families, partial entries,
-finally-close replacement and supplied-stream ownership. Filename Reader parsing
-propagates I/O failures and supports null-path constructor ordering. Native default
-classpath discovery includes the byte-identical bundled META-INF/mailcap; explicit
-resource/classpath providers supply their own full inventory. CommandInfo metadata
-is ported; its Beans/Externalizable object creation is pending. All five existing
-MailcapCommandMapTest methods are translated after these registry features, with
-upstream disabled assertions retained. Original Java bodies, 7,382 actual-jar
-registry comparisons and 1,125 discovery/constructor/failure event comparisons
-pass, alongside translated mail -race tests and the full offline working-tree suite.
-CommandMap now initializes the eager default Mailcap instance, preserves default
-get/set/reset and security ordering, and delegates DataSource overloads unless a
-subclass provider overrides them. Its unsynchronized publication allows reentrant
-setters during construction. Separate superclass/subclass initialization states
-retain owner reentry, waiter blocking, Error/Exception distinctions, permanent
-failure and later NoClassDefFoundError causes. Getter-first failure may leave
-Mailcap initialized and usable; constructor-first failure poisons both classes.
-Native class initialization follows JLS 12.4.2; full JVM linking/assertion status,
-allocation failures, arbitrary loader isolation and stack/thread providers remain
-boundaries. Typed initializer/linkage/reflection exception families retain source
-identities and nullable causes/messages without TLC error-code fabrication.
-Mailcap captures its context loader before resource parsing, traverses enumerations
-lazily across opens and retains null-loader/catch behavior. Its instance monitor
-is reentrant through lookup and constructor/loader callbacks. Content-handler
-creation obtains a fresh context loader each time, uses defining-loader fallback
-only for null, directly calls loadClass/newInstance and checks the handler carrier;
-only ClassNotFoundException/IllegalAccessException/InstantiationException are
-swallowed. Current trunk's ProviderLocator must not replace the bundled call.
-Class/resource/handler operation callbacks represent JVM boundaries; no unported
-bundled class is falsely treated as absent. Handler flavor values can now carry
-the native MailDataFlavor metadata/comparison port.
-Twelve source methods match bundled bytecode. Ten cold init/reentry/failure,
-four concurrent init (sixteen waiters each), 32 setter/security/overload, 672
-handler creation and 30 lazy enumeration reference sequences pass under native
--race, as do the prior registry/discovery comparisons and translated mail tests.
-The full offline working-tree suite passes. No CommandMap test class exists upstream;
-the existing Mailcap tests remain unchanged.
-ActivationDataFlavor now ports all its own constructors, shadowed MIME/class/name
-fields, getters/setter, typed equality and protected normalization methods.
-Its inherited DataFlavor overloads retain base-field reads, null errors, wildcard
-matching, text charset/document comparisons, hashing, cloning and class/text
-predicates. In particular, an Activation flavor's inherited hash is zero and its
-inherited primary/subtype are null. Ordinary MIME/Class constructors supply the
-metadata needed by the original upstream equality test. Class identity remains
-distinct from its name; arbitrary class loading/hierarchies use explicit providers.
-AWT MimeType/MimeTypeParameterList have their own UTF-16 parser, English base-type
-casing, default-locale parameter names, clone/hash/equality and Hashtable order.
-Malformed names/trailing whitespace preserve StringIndexOutOfBoundsException;
-parsing retains partial state on failure. Public keys enumeration remains live
-without fail-fast checks; parameter equality uses a structural-change iterator.
-Canonical charset metadata embeds 927 normalized names/aliases for 173 standard
-OpenJDK 21.0.12.1 charsets (17,518 bytes, SHA-256
-91097096ee47ef0205353cf2d0394a92e3f50b02b0b794eef042cf4e0b24f394).
-This inventory supplies names, independently of the still-required conversion codecs.
-AWT MIME sources match all 39 JDK bytecode methods; DataFlavor source matches all
-50. Nine Activation flavor methods match bundled bytecode directly; two have
-reviewed legacy class-literal cache and StringBuffer/StringBuilder compiler shapes.
-Temporary Java/native -race probes pass 5,894 flavor comparisons and 17,364 direct
-AWT parser/mutation/enumeration comparisons. After implementation, translated
-the four original ActivationDataFlavorTest methods; original Java bodies,
-translated mail -race tests and full offline working-tree checks pass.
-Bundled AbstractTextHandler and TextPlain/Html/XmlHandler now provide native
-flavor arrays, typed-flavor transfer, default-reader content and object/string
-writeTo methods. Arrays are fresh but their contained flavor retains identity.
-A mismatched flavor returns null before consulting the DataSource. MIME charset
-parameters are ignored; null objects return before writer construction and an
-object's nullable toString runs before validating the output stream. Streams
-remain open. Native default class lookup now loads these three concrete handlers
-with stable class identities and fresh instances; other classes remain explicit
-providers. Arbitrary object toString, legacy readers/writers and default charset
-lifetime have operation callbacks rather than guessed representations.
-The JDK writer operations retain the 512-byte initial buffer, growth up to 8192,
-UTF-8/ASCII/Latin-1 replacement, pending high surrogates through flush, flipped
-buffer state on write failure and reentrant synchronization. Latin-1 array-loop
-overflow precedes trailing-surrogate parsing, unlike UTF-8/ASCII. OutputStreamWriter
-inherits PrintStream charset; the native UTF-8 log stream supplies that metadata.
-The shared decoder now keeps typed ByteBuffer position errors for oversized read
-counts and catches IOException from available whether returned or thrown.
-Eight reconstructed handler methods match bundled bytecode; all 24 StreamEncoder
-and 15 OutputStreamWriter source methods match the installed JDK. Temporary
-Java/native -race comparisons pass 6,858 text read/write/transfer/metadata cases,
-default CommandMap creation/read/write for all three MIME types and PrintStream
-charset/checked-I/O comparisons. After implementation, translated nine existing
-Geronimo AbstractHandler/TextPlain/Html/XmlTest assertions; original Java bodies
-pass through namespace-only bridges to the bundled classes. Translated mail -race
-tests and the full offline working-tree suite pass. No new persistent vectors.
-Bundled AbstractImageHandler and ImageGif/JpegHandler now supply all handler
-algorithms, native class lookup/fresh instances and java.awt.Image flavor metadata.
-Preserve the bundled input omission: getContent uses the source type but never
-reads its stream or sets the reader input. Unknown MIME errors access the type
-twice and retain the trailing space in "Unknown image type ". writeTo selects the
-writer and sets its plain OutputStream before inspecting the object; standard
-providers reject that output, with TIFF's distinct diagnostic. RenderedImage is
-checked before BufferedImage, so actual buffered images take the first branch.
-An AWT Image supplies width then height, constructs TYPE_INT_ARGB, draws with null
-background/observer, ignores the draw result, writes its raster and flushes only
-after successful writing. No stream or graphics is closed/disposed.
-ImageIO MIME filtering retains reflective metadata-error suppression (including
-wrapped Error), exact case-insensitive matching and ordered provider prefetch.
-Reader/writer factory iterators catch checked IOException, deregister only that
-category, return null without trying another provider and preserve remove errors.
-A category error returns Collections.emptyIterator and its IllegalStateException
-on removal. The standard six provider families supply native MIME metadata and
-fresh null-input/null-output validation; compatible-stream initialization, full
-registry ordering/class replacement/thread-group discovery, initialized codec
-behavior and AWT rasterization remain required ports. Operation carriers expose
-these boundaries without substituting Go image codecs or guessed pixel data.
-Seven reconstructed bundled handler methods match instructions, branches and
-literal String constant bytes. Twenty-one ImageIO/ServiceRegistry iterator/
-ImageWriter/IIOImage source methods match installed JDK 21.0.12.1 bytecode.
-Temporary actual-Java/native -race comparisons pass 14,777 default metadata/
-content/transfer/write/iterator/removal cases, 617 ordered custom-SPI filtering/
-factory/read/write/deregistration/flush/error cases and default CommandMap image
-handler loading/instance/flavor/class identity integration. Native graphics/raster
-callbacks verify the handler calls; full pixel behavior remains pending. No
-upstream Geronimo image-handler tests exist in the inspected tree; no persistent
-tests or vectors were invented. Translated mail -race tests and the full offline
-working-tree suite pass.
-PartiallyOrderedSet, DigraphNode and PartialOrderIterator now have native ports,
-used by default standard reader/writer enumeration. Hardwired provider order is
-GIF/BMP/WBMP/TIFF/PNG/JPEG; each provider carries its stable leaf class and SPI
-hierarchy metadata. Hash-map bucket order supplies unconstrained provider order;
-ordering reverses a direct preference before adding its opposite. Symmetric unset
-short-circuits, and removal updates incoming/outgoing neighbors from arrays.
-The iterator copies signed in-degrees and its zero queue, then reads live out-edges
-on next. Cycles and their blocked successors remain unreturned. Clear retains
-old nodes held by iterators; new out-edges to nodes absent from the scratch map
-retain the source NullPointerException rather than being silently skipped.
-Object-key HashMap operations preserve query-side virtual hash/equals/compare,
-null keys/values, hash spreading, class-name/VM-identity tree tie breaks, collision
-list/tree roots, split/untreeification replacement nodes, resize thresholds,
-signed size/modCount and fail-fast iterators. Reentrant virtual-key callbacks
-retain the table reference captured before clear/grow/remove. Iterator tree removal retains the
-source movable=false path. Existing string-map rotations/balancing are reused;
-its original string ordering remains unchanged. Verified Comparable<Self> and
-VM class/identity metadata come from native carriers or explicit providers;
-full reflection discovery and wider VM runtime isolation remain required.
-All 24 graph and 30 supporting HashMap source methods match installed JDK bytecode
-using their explicitly compiled class paths. Temporary actual-JDK/native -race
-comparisons pass 21,315 map operations, 14,790 virtual-key exception/partial-table
-observations, 21,870 reentrant-key clear/grow/remove observations and 8,935 graph
-operations. These compare virtual calls, table size/
-capacity/modCount/tree order, in-degrees/out-edge order and iterator mutation,
-with actual Java identity hashes supplied to the native metadata boundary.
-Prior 14,777 default image and 617 custom-SPI cases plus default CommandMap
-integration still match. Existing translated mail -race and full offline
-working-tree checks pass; no persistent tests or vectors were invented.
-Public ServiceRegistry/SubRegistry operations now use concrete registries with
-exact five-category restrictions, leaf-Class replacement, all-category snapshots,
-provider identity checks, ordering/clear/finalizer bodies and reentrant monitors.
-Standard reader/writer enumeration and deregistration use the same implementation;
-MIME lookup reuses the general FilterIterator while retaining reflective metadata
-failure suppression. Category and unordered-provider iterators remain live and
-fail-fast; unordered removal changes only the class map. Registration catches all
-callback throwables and prints diagnostics, while replacement/deregistration/clear
-callback failures propagate after the source mutations. Clearing removes class-map
-entries before callbacks, retains captured contexts during the loop, uses privileged
-execution, skips null-context callbacks with a security manager and clears graph/
-contexts only after successful completion. Native unsecured contexts represent
-presence/identity; secured permission-domain capture/execution needs the VM adapter.
-Iterator operations guard native shared data without snapshotting its live nodes.
-All 36 source methods match explicitly compiled OpenJDK 21.0.12.1 bytecode.
-11,080 actual-JDK/native -race comparisons cover callback reentry/errors, partial
-clearing, ordering, class replacement, filtering and iterator/category mutation,
-including real JDK security-manager null-context suppression. After implementation,
-the existing ServiceRegistryRestriction (18 operations) and five-second concurrent
-ServiceRegistrySyncTest are translated and pass in Java and Go under -race.
-Prior 14,777 image-handler and 617 custom-SPI comparisons plus default CommandMap
-integration still match. The full offline suite passes without the config-test skip.
-The seven OpenJDK IIOServiceProvider/reader-writer/reader/writer/input-stream/
-output-stream/transcoder SPI base classes now have native constructors, blank
-constructor defaults, fresh getter arrays, factory overload delegation, own-plugin
-class-name checks, cache/lossless defaults and metadata-format lookup. Mandatory
-names/type arrays reject null and empty values; optional empty arrays become null.
-Public mutable STANDARD_INPUT_TYPE/OUTPUT_TYPE arrays retain identity and constructor
-substitution even after element mutation. Base method bodies read protected fields
-independently of virtual getter overrides. The rendered-image encoder overload calls
-the static ImageTypeSpecifier factory before virtual canEncodeImage dispatch.
-Metadata lookup retains native/extra selection, unchecked extra-array access outside
-the wrapping catch, Class.forName(false) through the provider's defining loader,
-IIOMetadataFormat assignability, module identity/export checks, privileged class
-lookup and reflective getInstance invocation. Exception failures become
-IllegalStateException with their original cause; Error escapes, while a target Error
-wrapped by Method.invoke remains an InvocationTargetException cause. Standard format
-singleton/schema, non-null AWT specifier construction and VM module/loader/reflection/
-secured privilege operations remain explicit required implementations/providers.
-All 51 non-abstract methods in the seven source classes match explicitly compiled
-OpenJDK 21.0.12.1 bytecode. Temporary actual-JDK/native -race comparisons pass 7,914
-constructor/getter/clone/factory/metadata observations, including real named-module
-export checks. VM automatic ClassCastException wording is normalized in that probe;
-full VM diagnostic wording remains pending. After implementation, the two existing
-SpiTest constructor methods are translated and pass; its complete registry/schema
-enumeration remains pending. Concrete standard reader/writer SPI constructors and the backing image streams
-remain required before full IIORegistry integration.
-The six standard File/InputStream/OutputStream/RAF stream SPI constructors now have
-native vendor/version/input-output Class metadata, exact descriptions, cache flags,
-leaf-Class lookup/fresh construction and factory branches. Java InputStream/
-OutputStream/File/RAF identities use explicit carriers; arbitrary Go io.Reader/
-io.Writer structural compatibility does not imply those Java classes. File and
-RAF input factories return null on Exception; their output counterparts first print
-only the stack trace. Diagnostic failures propagate outside that catch. Error escapes
-all four factories. RAF output retains the source "input not a RandomAccessFile!"
-message. Stream factories select FileCacheImage versus MemoryCacheImage construction,
-forward cacheDir only to file caching, propagate failures and inherit the no-argument
-cache=true/null-dir delegation. File/RAF factories ignore useCache and cacheDir.
-The actual eight backing stream constructor overloads, their storage/disposer and
-read/write/seek operations remain required native ports; explicit constructor
-operations expose that boundary and missing operations fail after argument checking,
-outside the source exception catch. All 28 source methods/initializers match explicitly
-compiled installed JDK 21.0.12.1 bytecode. Temporary comparisons of installed SPI
-classes against native -race pass 16,128 observations with instrumented backing
-constructors, including diagnostic throw/return and constructor return/throw/panic.
-That probe verifies SPI policy, not backing stream behavior. The unchanged original
-SpiVersionNumbers and its Go translation pass after implementation. Standard reader/
-writer concrete constructors/metadata still remain before full IIORegistry integration.
-Next: ServiceLoader/IIORegistry AppContext lifetime and ImageIO's captured registry.
-Lookup discovery is lazy and requires its explicit adapter when advanced; missing
-discovery never silently produces an empty list. Complete concrete standard SPI constructors,
-metadata schemas and the backing standard image streams, then translate
-OrderingTest/DeregisterOrderedSpiTest/RegisterPluginTwiceTest/DeregisterAllSpiTest.
-Compatible-stream initialization, native image codecs/AWT and multipart/MIME
-dependencies remain next, then object DataHandler factory/cache/pipes. Full
-AWT class-loading/initialization, desktop text selection/readers, MIME/Object
-externalization and startup/provider default charset lifetime remain required.
-Full JVM cast/automatic exception wording, native class inventory, Beans and object
-serialization remain required providers/ports alongside wider mail runtime work.
-Remaining mail work includes Geronimo object/URL/pipe/content-handler/factory/
-command-map/AWT paths and its DataHandlerTest.testObjectInputStream, remaining
-address-object/local-address/Session methods, MIME body parts/NonAsciiFileNames,
-Session/SMTP, JNDI DNS and complete ToolIO/MP/SANY routing. Full JVM default-reader/
-charset/property/security/resource/locale providers, nonregular file/archive
-availability, startup-frozen default charset and legacy charset converters
-remain required; no approximation is substituted for the explicit boundaries.
-
 TLCWorkerAndFPSet.main now has native and root RunDistributedWorkerAndFPServer
 entry points. It starts named FP-server and worker threads in source order,
 passing the same argument array, without a readiness barrier or joins. Start
@@ -3560,24 +3196,20 @@ integration defers worker bootstrap until after initialization; arbitrary
 simultaneous bootstrap/evaluation still lacks FP64/UniqueString runtime isolation.
 No dedicated upstream launcher tests exist.
 
-TLCServer.main now runs through DistributedServerProcess and the root
-RunDistributedServer application bridge. It preserves version/mail/parser
-ordering, evaluated label fallbacks, frozen constructor selection, management
-and worker-hook registration before checking, and source GC/error/close handling.
-Its finally block retains the nil-server dereference and exact forced-shutdown,
-unregister, module collection, result delivery and exit ordering. Exception
-precedence follows Java, including Error escaping the close Exception catch.
+TLCServer.main runs through DistributedServerProcess and the root
+RunDistributedServer application bridge. Packaged model properties load before
+application creation through the independent LoadProperties operation. The
+server retains constructor selection, management and worker-hook registration
+before checking, and source GC/error/close handling. Its finally block retains
+the nil-server dereference, forced shutdown and management unregistration.
+Exception precedence follows Java, including Error escaping the close Exception
+catch. Email construction, capture, attachments and delivery have been removed
+by user instruction. Normal console streams remain installed.
 The executor exposes a native interruption signal for shutdownNow task/RPC
-adapters, with ordinary shutdown leaving accepted work uninterrupted.
-CreateMail can override the native MailSender constructor; ordinary disabled
-mail now uses the source constructor/report flow. The root bridge reads its
-packaged properties before application creation. Enabled mail requires the
-JavaMail/address/output providers described below. OS hooks are retained
-callbacks unless the provided installer registers them. Mail protocol providers,
-process hooks, JMX/JDK interruption providers, wire RPC and config-read process
-exit remain pending. Actual-source main comparisons
-and production server/worker/local-naming integration pass under the race
-detector. The full upstream transport harness remains explicitly skipped; no
+adapters, with ordinary shutdown leaving accepted work uninterrupted. OS hooks
+are retained callbacks unless the installer registers them. Process hooks,
+JMX/JDK interruption providers, wire RPC and config-read process exit remain
+pending. The full upstream transport harness remains explicitly skipped; no
 dedicated main tests exist.
 
 TLCWorker.main now runs through a concrete DistributedWorkerProcess and the
@@ -3594,7 +3226,7 @@ interruptible wait/sleep boundaries with the ten-second disposal delay.
 Application config syntax failures preserve ConfigFileException. Actual-source
 command comparisons and production parser/local naming/two-worker integration
 pass under the race detector. Wire invocation, MP/SANY console routing,
-config-read process exit, standalone process/mail wiring and simultaneous
+config-read process exit, standalone process wiring and simultaneous
 FP64/interner class-global isolation remain separate pending work. No dedicated
 upstream main/shutdown/await tests exist; transport-dependent tests remain with
 the full transport feature.

@@ -5,38 +5,12 @@ import (
 	"runtime"
 )
 
-const DistributedModelNameProperty = "modelName"
-const DistributedSpecNameProperty = "specName"
-
-// DistributedServerMail is a dormant result carrier. Email reporting is disabled
-// by user policy; the server neither constructs nor invokes it.
-type DistributedServerMail struct {
-	ModelName string
-	SpecName  string
-	Deliver   func([]*TLAFile) (bool, error)
-}
-
-func (m *DistributedServerMail) Send(files []*TLAFile) (bool, error) {
-	if emailReportingDisabled {
-		return false, NewUnsupportedOperationException("Email reporting is disabled")
-	}
-	if m == nil {
-		return false, NewNullPointerException()
-	}
-	if m.Deliver == nil {
-		return true, nil
-	}
-	return m.Deliver(files)
-}
-
 // DistributedServerEnvironment supplies TLCServer.main's process boundaries.
-// Model properties load before application creation. Email construction and
-// delivery overrides are ignored; the normal console streams remain installed.
+// Model properties load before application creation; normal console streams
+// remain installed.
 // The defaults use the native server/checker and local management bean.
 type DistributedServerEnvironment struct {
 	LoadProperties      func()
-	CreateMail          func() (*DistributedServerMail, error)
-	MailEnvironment     MailSenderEnvironment
 	CreateApp           func([]string) (*TLCApp, error)
 	Property            func(string, string) string
 	CreateServer        func(*TLCApp, int) (*TLCServer, error)
@@ -56,7 +30,6 @@ type DistributedServerEnvironment struct {
 // captures that invocation's server, even if Run is called again later.
 type DistributedServerProcess struct {
 	App           *TLCApp
-	Mail          *DistributedServerMail
 	Server        *TLCServer
 	MBean         *TLCStandardMBean
 	ShutdownHooks []func() error
@@ -82,7 +55,7 @@ func (p *DistributedServerProcess) Run(args []string, env DistributedServerEnvir
 	InitializeTLCServerProperties()
 	PrintMessage(ECTLCVersion, "TLC Server "+TLCVersion())
 	p.MBean = NewNullTLCStandardMBean()
-	p.App, p.Mail, p.Server = nil, nil, nil
+	p.App, p.Server = nil, nil
 	env = distributedServerEnvironment(env)
 	pending := invokeDistributedServerOperation(func() error {
 		if failure := p.start(args, env); failure != nil {
@@ -108,10 +81,7 @@ func (p *DistributedServerProcess) Run(args []string, env DistributedServerEnvir
 }
 func distributedServerEnvironment(env DistributedServerEnvironment) DistributedServerEnvironment {
 	if env.LoadProperties == nil {
-		env.LoadProperties = env.MailEnvironment.LoadProperties
-		if env.LoadProperties == nil {
-			env.LoadProperties = func() { NewModelInJar().LoadProperties() }
-		}
+		env.LoadProperties = func() { NewModelInJar().LoadProperties() }
 	}
 	if env.Property == nil {
 		env.Property = func(key, fallback string) string {

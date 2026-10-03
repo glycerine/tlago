@@ -4,10 +4,11 @@ Stop all email reporting and its dependency-porting work immediately. Spend no
 more cycles on JavaMail, SMTP, MIME/Activation, ImageIO/AWT, image codecs, or JVM
 emulation pursued for email. These are excluded from TLC completion criteria,
 not remaining requirements. This overrides older mail-related plans and notes.
-Make only the minimal integration changes needed to disable email construction
-and delivery regardless of email properties or overrides, while preserving core
-model loading and normal console output. Resume core TLC parity and its existing
-Java tests after implementing their features; do not invent regression/unit tests.
+The user's later instruction authorizes surgical removal of email-only source,
+tests, fixtures, resources and stale plans. The main thread owns this removal.
+Preserve core distributed behavior, packaged property loading, console output,
+generic exceptions, OpenJDK notices and x/text. Resume core TLC parity and port
+existing Java tests after implementing their features; do not invent tests.
 
 A rule for storing test vectors and associated test data: do not create a 
 directory named testdata. Avoid this as a directory name. Use test_vectors instead. 
