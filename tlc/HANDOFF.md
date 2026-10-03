@@ -632,6 +632,20 @@ parameters. All 65,562 non-null production observations match exactly normally
 and under -race; null retains its distinct NullPointerException family. VM
 helpful-null diagnostic text remains source work. Its existing assumptions stay
 in the complete Ant target with no invented tests or reduced runner.
+Core TXT argument/exception and option-validation boundaries now retain source
+casts, class names, evaluation order and Error propagation. Charset lookup,
+enum mapping, strict encoding and incompatible file-option checks preserve their
+separate source stages. Empty/nonempty options keep their distinct defaults;
+SYNC/native DSYNC and umask-filtered creation are represented. The registered
+priority chain retains its source primary reflected method signature while
+executing JSON 25 before TXT 50. All 165 direct source calls and 87 full-chain
+calls match normally and under -race; the real parser bridge already retains
+unknown-format TLA fallback. Final workspace normal checks and three platform
+builds pass. The new full race run is live (handle 25120, core-txt-full-race-final.log);
+the earlier charset full race run has completed successfully. Continue filesystem
+error/path/symlink/delete/close semantics, NDJSON stream boundaries and process
+charset work. No new persistent tests/vectors were added; existing Ant tests stay
+whole and unchanged.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

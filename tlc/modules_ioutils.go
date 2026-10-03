@@ -74,38 +74,42 @@ func IOUtilsSerialize(payload Value, dest Value, options Value) (Value, error) {
 }
 
 func IOUtilsDeserialize(src Value, options Value) (Value, error) {
-	opts := asRecordValue(options)
-	if opts == nil {
-		return ioUtilsResult(1, "", "Deserialize error invalid parameters: options is not a record"), nil
+	opts, err := ioUtilsTXTRecord(options)
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
 	}
-	if ioUtilsRecordString(opts, "format") != "TXT" {
+	format, err := ioUtilsTXTFormat(opts)
+	if err != nil {
+		return nil, err
+	}
+	if format != "TXT" {
 		return ValUndef, nil
 	}
-	path, ok := src.(*StringValue)
-	if !ok {
-		return ioUtilsResult(1, "", "Deserialize error invalid parameters: source is not a string"), nil
-	}
-	charset, err := ioUtilsRecordRequiredString(opts, "charset")
+	path, err := ioUtilsTXTString(src)
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
 	}
-	// Java evaluates Paths.get and Charset.forName before Files.readString
-	// opens the file. In particular, a missing file must not hide a bad charset.
+	charset, err := ioUtilsTXTStringField(opts, "charset")
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
+	}
+	if path == nil || charset == nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", NewNullPointerException()), nil
+	}
 	if strings.ContainsRune(path.RawString(), 0) {
-		err := NewInvalidPathException(path.RawString(), "Nul character not allowed")
-		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+javaThrowableString(err)), nil
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", NewInvalidPathException(path.RawString(), "Nul character not allowed")), nil
 	}
-	charset, err = javaCharsetName(charset)
+	name, err := javaCharsetName(charset.RawString())
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+javaThrowableString(err)), nil
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
 	}
 	data, err := os.ReadFile(path.RawString())
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+err.Error()), nil
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
 	}
-	text, err := ioUtilsDecodeString(data, charset)
+	text, err := ioUtilsDecodeString(data, name)
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+javaThrowableString(err)), nil
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
 	}
 	return ioUtilsResult(0, text, ""), nil
 }
@@ -192,41 +196,54 @@ func IOUtilsIOEnvExecTemplate(env Value, commandTemplate Value, parameters Value
 }
 
 func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
-	path, ok := dest.(*StringValue)
-	if !ok {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: destination is not a string")
-	}
-	text, ok := payload.(*StringValue)
-	if !ok {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: payload is not a string")
-	}
-	fileOptions, err := ioUtilsOpenFileOptions(opts)
+	text, err := ioUtilsTXTString(payload)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error())
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err)
 	}
-	charset, err := ioUtilsRecordRequiredString(opts, "charset")
+	path, err := ioUtilsTXTString(dest)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error())
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err)
+	}
+	options, charset, err := ioUtilsTXTOptions(opts)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err)
+	}
+	if path == nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", NewNullPointerException())
 	}
 	if strings.ContainsRune(path.RawString(), 0) {
-		err := NewInvalidPathException(path.RawString(), "Nul character not allowed")
-		return ioUtilsResult(1, "", "Serialize error writing to the file: "+javaThrowableString(err))
+		return ioUtilsTXTFailure("Serialize", "writing to the file", NewInvalidPathException(path.RawString(), "Nul character not allowed"))
 	}
-	data, err := javaCharsetEncode(text.RawString(), charset, true)
+	if text == nil || charset == nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", NewNullPointerException())
+	}
+	name, err := javaCharsetName(charset.RawString())
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error writing to the file: "+javaThrowableString(err))
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	enums, err := ioUtilsTXTEnums(options)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	data, err := javaCharsetEncode(text.RawString(), name, true)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
+	}
+	fileOptions, err := ioUtilsFileOptionsFromEnums(enums)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
 	}
 	filePath := path.RawString()
-	file, err := os.OpenFile(filePath, fileOptions.flag, 0o644)
+	file, err := os.OpenFile(filePath, fileOptions.flag, 0o666)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
 	}
 	defer file.Close()
 	if fileOptions.deleteOnClose {
 		defer os.Remove(filePath)
 	}
 	if _, err := file.Write(data); err != nil {
-		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
 	}
 	return ioUtilsResult(0, "Finish writing to the file with success!", "")
 }
@@ -241,49 +258,58 @@ func ioUtilsOpenFileOptions(opts *RecordValue) (ioUtilsFileOptions, error) {
 	if err != nil {
 		return ioUtilsFileOptions{}, err
 	}
-	tuple := asTupleValue(value)
-	if tuple == nil {
-		return ioUtilsFileOptions{}, fmt.Errorf("openOptions is not a sequence")
+	tuple, err := ioUtilsTXTTuple(value)
+	if err != nil {
+		return ioUtilsFileOptions{}, err
 	}
+	if tuple == nil {
+		return ioUtilsFileOptions{}, NewNullPointerException()
+	}
+	strings := make([]*StringValue, len(tuple.Elems))
+	for i, value := range tuple.Elems {
+		strings[i], err = ioUtilsTXTString(value)
+		if err != nil {
+			return ioUtilsFileOptions{}, err
+		}
+	}
+	enums, err := ioUtilsTXTEnums(strings)
+	if err != nil {
+		return ioUtilsFileOptions{}, err
+	}
+	return ioUtilsFileOptionsFromEnums(enums)
+}
+
+func ioUtilsFileOptionsFromEnums(enums []string) (ioUtilsFileOptions, error) {
 	options := ioUtilsFileOptions{flag: os.O_WRONLY}
-	if len(tuple.Elems) == 0 {
+	if len(enums) == 0 {
 		options.flag |= os.O_CREATE | os.O_TRUNC
 		return options, nil
 	}
-	sawWriteOrAppend := false
-	sawCreate := false
-	for _, opt := range tuple.Elems {
-		str, ok := opt.(*StringValue)
-		if !ok {
-			return ioUtilsFileOptions{}, fmt.Errorf("openOptions contains a non-string value")
-		}
-		switch str.RawString() {
-		case "WRITE":
-			sawWriteOrAppend = true
+	appendMode, truncate := false, false
+	for _, name := range enums {
+		switch name {
+		case "READ":
+			return ioUtilsFileOptions{}, NewIllegalArgumentException("READ not allowed")
 		case "CREATE":
 			options.flag |= os.O_CREATE
-			sawCreate = true
 		case "CREATE_NEW":
 			options.flag |= os.O_CREATE | os.O_EXCL
-			sawCreate = true
 		case "TRUNCATE_EXISTING":
 			options.flag |= os.O_TRUNC
+			truncate = true
 		case "APPEND":
 			options.flag |= os.O_APPEND
-			sawWriteOrAppend = true
+			appendMode = true
 		case "DELETE_ON_CLOSE":
 			options.deleteOnClose = true
-		case "SPARSE", "SYNC", "DSYNC":
-			// Java accepts these StandardOpenOption values. Their durability and
-			// allocation hints are not visible at the TLA+ value level.
-		case "READ":
-			return ioUtilsFileOptions{}, fmt.Errorf("READ not allowed for writing")
-		default:
-			return ioUtilsFileOptions{}, fmt.Errorf("No enum constant java.nio.file.StandardOpenOption.%s", str.RawString())
+		case "SYNC":
+			options.flag |= os.O_SYNC
+		case "DSYNC":
+			options.flag |= ioUtilsDataSyncFlag()
 		}
 	}
-	if !sawWriteOrAppend && !sawCreate && options.flag == os.O_WRONLY {
-		options.flag |= os.O_CREATE | os.O_TRUNC
+	if appendMode && truncate {
+		return ioUtilsFileOptions{}, NewIllegalArgumentException("APPEND + TRUNCATE_EXISTING not allowed")
 	}
 	return options, nil
 }

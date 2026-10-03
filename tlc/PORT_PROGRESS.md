@@ -1648,3 +1648,55 @@ first; do not replace them with eager MethodValues. TXT payload casts still need
 to occur before destination evaluation. Broader metadata, native discovery, DAP
 and distributed transport remain. Full TLC completion remains unproven.
 Independent rpc25519/Greenpack documentation remains outside this commit.
+
+
+- Core TXT argument/option slice: source casts now use actual RecordValue and
+TupleValue objects, retain the represented StringValue subclass, and report the
+concrete Java ClassCastException family/message. Options are evaluated first;
+payload evaluation and cast precede destination evaluation/cast. Required format
+lookup/cast remains outside the parameter catch. OpenOptions tuple cast precedes
+charset cast, and charset cast precedes element casts. Captured evaluation/lookup
+exceptions use Java toString; catch(Exception) excludes Error, including returned
+Go error carriers. Null casts remain legal until the source dereference boundary;
+VM-generated helpful-null details remain unported. The shared class-cast renderer
+now names TLCStateStackFrame$DebuggerValue correctly. JSON's priority handler also
+retains the source required format cast and StringValue-subclass path acceptance.
+
+Charset resolution precedes StandardOpenOption.valueOf; enum failures enter the
+writing-file error record. Files.writeString encodes strictly before validating
+output-stream option combinations. Empty options retain CREATE/TRUNCATE defaults;
+nonempty options do not invent them. READ and APPEND/TRUNCATE failures retain
+source IllegalArgumentException text. SYNC and available native DSYNC flags are
+represented separately; systems lacking a separate flag use synchronous writes.
+TXT creation uses 0666 filtered by the process umask. Platform provider behavior,
+symlink/DELETE_ON_CLOSE timing and close/error families are not established by
+these observations and remain source work.
+
+Owned actual-source observers in .codex-gotmp/core-txt-production/ exercise the
+unchanged compiled IOUtils methods with instrumented Tool evaluation, comparing
+argument order, returned fields, thrown class/message, file existence and bytes.
+All 165 direct TXT observations match exactly. The full registered priority chain
+exposed missing reflected method signatures and wrong primary-method metadata:
+Go now retains the IOUtils primary signature while sorting execution JSON 25
+before TXT 50. All 87 chain observations match exactly through a production-loaded
+Go parser/bridge Tool, including unknown-format pure TLA fallback. Synthetic
+NewTool bodies are not valid oracles for that fallback; the real bridge already
+preserves it and needed no edit. Both comparisons also match under -race in
+separate owned directories. No invented persistent tests or vectors were added.
+The original complete CommunityModules Ant target is rerun unchanged in workspace
+checks. Initial and final full normal checks pass (305.719s and 311.716s root).
+Windows/amd64, Darwin/arm64 and FreeBSD/amd64 TLC builds pass. The final full race
+check is still running: core-txt-full-race-final.log, live handle 25120. Do not
+restart it solely for an observation timeout. The earlier charset full race check
+completed successfully (2577.423s root); its snapshot predates the later getter
+representation and atoi fixes, whose final normal/TLC-race/production checks are
+recorded above. Current normal logs are core-txt-full-normal{,-final}.log;
+platform build logs use core-txt-{windows,darwin,freebsd}-build.log.
+
+Remaining core I/O work includes filesystem exception families and normalized
+paths, symlink/delete/close semantics, provider/default charset discovery and
+process byte decoding. Public direct convenience APIs and the NDJSON stream
+creation/catch boundaries still need their own source comparison. Broader
+semantic metadata, native provider discovery, DAP and distributed transport remain.
+Full TLC completion remains unproven. Independent rpc25519/Greenpack notes stay
+outside this slice.

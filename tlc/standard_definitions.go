@@ -155,8 +155,8 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		return IOUtilsIODeserialize(path, compress)
 	})
 	t.defineStandardPriorityEvaluating("Serialize", 3,
-		standardEvaluatingHandler{priority: 25, eval: standardJsonTextSerialize},
 		standardEvaluatingHandler{priority: 50, eval: standardIOUtilsTextSerialize},
+		standardEvaluatingHandler{priority: 25, eval: standardJsonTextSerialize},
 	)
 	t.defineStandardEvaluatingWithPriority("Deserialize", 2, 0, 50, standardIOUtilsTextDeserialize)
 	t.defineStandardMethod("IOEnv", 0, func(args []Value) (Value, error) { return IOUtilsIOEnv(), nil })
@@ -405,7 +405,19 @@ func newStandardEvaluatingValue(name string, arity int, minLevel int, priority i
 }
 
 func newStandardEvaluatingValueForOpDef(name string, arity int, minLevel int, priority int, opDef *OpDefNode, eval EvaluatingEvalFunc) *EvaluatingValue {
-	return NewEvaluatingValue(name, minLevel, priority, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	method := name
+	switch name {
+	case "Serialize":
+		owner := "tlc2.overrides.IOUtils"
+		if priority == 25 {
+			owner = "tlc2.module.Json"
+		}
+		method = "public static synchronized tlc2.value.impl.Value " + owner + ".textSerialize(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
+	case "Deserialize":
+		method = "public static synchronized tlc2.value.impl.Value tlc2.overrides.IOUtils.textDeserialize(tlc2.tool.impl.Tool,tla2sany.semantic.ExprOrOpArgNode[],tlc2.util.Context,tlc2.tool.TLCState,tlc2.tool.TLCState,int,tlc2.tool.coverage.CostModel)"
+	}
+
+	return NewEvaluatingValue(method, minLevel, priority, opDef, func(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))
 		}
@@ -468,7 +480,11 @@ func standardJsonTextSerialize(tool *Tool, args []SemanticNode, con *Context, st
 	if opts == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "ndJsonSerialize", "sequence", ValuesPPR(options))
 	}
-	if ioUtilsRecordString(opts, "format") != "NDJSON" {
+	format, err := ioUtilsTXTFormat(opts)
+	if err != nil {
+		return nil, err
+	}
+	if format != "NDJSON" {
 		return nil, nil
 	}
 	payload, err := tool.Eval(args[0], con, state, pstate, control, cm)
@@ -482,51 +498,62 @@ func standardJsonTextSerialize(tool *Tool, args []SemanticNode, con *Context, st
 	if err != nil {
 		return nil, err
 	}
-	path, ok := dest.(*StringValue)
-	if !ok {
+	path, castError := ioUtilsTXTString(dest)
+	if castError != nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(dest))
 	}
 	return JsonTextSerialize(path, payload, options)
 }
 
 func standardIOUtilsTextSerialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	options, err := tool.Eval(args[2], con, state, pstate, control, cm)
+	options, err := ioUtilsTXTEval(tool, args[2], con, state, pstate, control, cm)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error()), nil
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err), nil
 	}
-	opts := asRecordValue(options)
-	if opts == nil {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: options is not a record"), nil
+	opts, err := ioUtilsTXTRecord(options)
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err), nil
 	}
-	if ioUtilsRecordString(opts, "format") != "TXT" {
+	format, err := ioUtilsTXTFormat(opts)
+	if err != nil {
+		return nil, err
+	}
+	if format != "TXT" {
 		return nil, nil
 	}
-	payload, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	payload, err := ioUtilsTXTEval(tool, args[0], con, state, pstate, control, cm)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error()), nil
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err), nil
 	}
-	dest, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	if _, err := ioUtilsTXTString(payload); err != nil {
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err), nil
+	}
+	dest, err := ioUtilsTXTEval(tool, args[1], con, state, pstate, control, cm)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error()), nil
+		return ioUtilsTXTFailure("Serialize", "invalid parameters", err), nil
 	}
 	return ioUtilsSerializeTXT(payload, dest, opts), nil
 }
 
 func standardIOUtilsTextDeserialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
-	options, err := tool.Eval(args[1], con, state, pstate, control, cm)
+	options, err := ioUtilsTXTEval(tool, args[1], con, state, pstate, control, cm)
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
 	}
-	opts := asRecordValue(options)
-	if opts == nil {
-		return ioUtilsResult(1, "", "Deserialize error invalid parameters: options is not a record"), nil
+	opts, err := ioUtilsTXTRecord(options)
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
 	}
-	if ioUtilsRecordString(opts, "format") != "TXT" {
+	format, err := ioUtilsTXTFormat(opts)
+	if err != nil {
+		return nil, err
+	}
+	if format != "TXT" {
 		return nil, nil
 	}
-	src, err := tool.Eval(args[0], con, state, pstate, control, cm)
+	src, err := ioUtilsTXTEval(tool, args[0], con, state, pstate, control, cm)
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
+		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
 	}
 	return IOUtilsDeserialize(src, options)
 }

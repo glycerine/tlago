@@ -838,6 +838,8 @@ func valueStreamClassCast(value any, target string) *ClassCastException {
 	switch value.(type) {
 	case *UniqueString:
 		class = "util.UniqueString"
+	case *DebuggerValue:
+		class = "tlc2.debug.TLCStateStackFrame$DebuggerValue"
 	case *BoolValue, *IntValue, *StringValue, *ModelValue, *TupleValue, *RecordValue,
 		*SetEnumValue, *IntervalValue, *FcnRcdValue, *FcnLambdaValue, *CounterExample,
 		*SetOfTuplesValue, *SetOfRcdsValue, *SetOfFcnsValue, *SubsetValue, *KSubsetValue,

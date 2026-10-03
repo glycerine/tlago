@@ -2617,6 +2617,16 @@ Go mapping:
   subclasses are accepted; invalid values retain the original TLC error code
   and parameters. Null reaches the source NullPointerException boundary while
   constructing error parameters; VM-generated helpful-null detail remains pending.
+  TXT callback casts retain concrete Java type errors and evaluation order;
+  format lookup/cast lies outside the parameter catch. Only Exception enters
+  error records, while Error reaches the evaluating override's outer catch.
+  Charset lookup precedes enum mapping, strict encoding precedes incompatible
+  output-stream flag checks, and explicit options do not gain empty-list defaults.
+  The priority wrapper retains the IOUtils primary reflected signature while
+  executing JSON 25 before TXT 50; its real source TLA fallback is preserved.
+  Native DSYNC is distinct from SYNC where available; creation permissions honor
+  the process umask. Filesystem provider/path/symlink/delete/close behavior and
+  public convenience/NDJSON stream boundaries remain source work.
   Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw
