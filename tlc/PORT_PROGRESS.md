@@ -1350,3 +1350,67 @@ outputs are .codex-gotmp/java-debugger-original/java-GetScopedIdentifiers-origin
 and java-DebugTLCVariable-original.log. Next: compare/implement those source
 features, then translate every original method/case. No persistent partial tests
 were added for either class; full TLC completion remains unproven.
+
+
+- Scoped identifier/nested debugger variable slice: compared Java
+TLCDebuggerExpression.getScopedIdentifiers/getScopedSymbols and the debugger
+expression builder's two-stage LET handling against the production semantic
+bridge. Exposed the shared Go scope helper, retaining symbol identity across
+LET/local operator definitions, formal parameters, quantified tuple/multiple
+variables and LAMBDA operator arguments. The builder removes all LET names
+before formatting/deduplicating parameter signatures, preserving source operator
+arity and LOCAL definition stubs. All eighteen original production scope records
+match Java exactly under -race, including the known infix-parameter bug expected
+by the original test. No new TLA+ cases were authored.
+Compared DebugTLCVariable/getTLCVariables for the four original inline value
+constructions; all nine expansion records and five child records match Java
+exactly for names, types, values and random-reference presence. Observations are
+grouped by original method rather than depending on JUnit method order; numeric
+random references are not compared. Existing nested-value production code needed
+no correction. Empty/nested finite sets, the tuple's two integer children and
+infinite STRING retain source behavior. Owned production probes/observations:
+.codex-gotmp/scoped-identifiers-production-probe/,
+.codex-gotmp/debug-variable-production-probe/,
+.codex-gotmp/java-debugger-original/{GetScopedIdentifiersParityProbe,
+DebugTLCVariableParityProbe}.java (under tlc2/debug),
+java-GetScopedIdentifiers-probe.log, java-DebugTLCVariable-probe-correct.log,
+.codex-gotmp/go-GetScopedIdentifiers-probe-final.log and
+go-DebugTLCVariable-probe-correct.log. Temporary observers retain all original
+JUnit assertions. The unchanged original classes also pass now: 18 runs/zero
+failures/zero ignored and 4 runs/zero failures/zero ignored, respectively
+(java-GetScopedIdentifiers-original-current.log,
+java-DebugTLCVariable-original-current.log).
+After production comparison, translated both whole original test classes:
+tlc_debug_scoped_identifiers_java_test.go retains every original Unicode input,
+terminator, expected identifier set, wrapper/location, four assertion sites per
+case and the source known-bug expectation; tlc/debug_variable_java_test.go retains
+all four original methods, eight equality/expansion sites, nine runtime expansion
+checks and the two-child loop. SANY's production bridge constructs the runtime
+semantic graph for the scope tests without starting a checker or inventing
+Init/Next definitions. Inline source values require no new fixture files. Both
+whole translations pass under -race, as do existing ExpressionBreakpoint,
+EWD998 debugger and Debug02/03/04/05 whole methods (root 33.056s). Full offline
+go test ./... passes (root 42.366s normal); full race results follow below.
+No invented unit/regression tests or vectors. Next: compare RecordValue.toState/
+StateString's explicit empty/non-string format selection and Java Formatter
+behavior, then translate any corresponding whole original tests. Broader semantic
+level/theorem/proof/instance/export metadata, full native override registration,
+DAP protocol/capability events and selected distributed transport remain pending;
+full TLC completion is unproven. Independent rpc25519/Greenpack documentation
+remains outside this slice.
+
+
+- Full offline go test ./... and go test -race ./... pass (root 42.366s
+normal, 228.629s race). Whole-source audit confirms all eighteen Unicode
+inputs/terminators/expected sets, four assertions per scope case, all four
+nested-variable methods, eight equality/expansion sites and the two-child loop.
+The original Java classes, all eighteen production scope records and all nine
+expansions/five child records remain verified; code/document diff checks pass.
+Source review confirms the next gap in RecordValue.PrintTLCState.toString:
+Java distinguishes an absent _format from an explicitly empty string and casts
+non-string format values; Go currently falls back to defaults in both cases.
+Its fmt.Sprintf call also differs from String.format. RecordValueTest contains
+only its already-translated deep-copy/error methods, so no original formatter
+method exists there to port. Implement source formatting behavior before any
+corresponding original test translations; do not invent replacements.
+Independent rpc25519/Greenpack transport notes remain unstaged.

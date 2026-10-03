@@ -568,10 +568,23 @@ assertion (8 equality/1 true sites), all six module expressions and the full
 nineteen-iteration export/readback loop. Source doDumpTrace=false and BASE_DIR
 resolver overrides are retained; runtime files use an isolated temporary
 directory. Debug05.tla is byte-identical under test_vectors/models/debug.
-Next: GetScopedIdentifiersTests and DebugTLCVariableTest feature comparison,
-then their whole source methods. Both unchanged Java classes pass (18 and 4
-methods/cases respectively). Scoped identifier extraction has not been exposed
-as its source helper; production comparison and those translations remain work.
+GetScopedIdentifiersTests and DebugTLCVariableTest are now translated in full.
+The source scoped-symbol helper retains symbol identity across LET definitions,
+operator parameters, quantified variables and LAMBDA arguments; generated
+signatures preserve operator arity. Debugger expression construction uses that
+helper and removes LET names before formatting its parameter set, matching the
+source's LOCAL stub handling. All eighteen original scope records match Java
+exactly, including the upstream known infix-parameter quirk. All four original
+nested-variable methods match nine expansion/five child records, including
+names, types, values and expandability. Existing production nested-value code
+needed no change. The whole Go translations preserve all four assertions per
+scope case, all eight nested-variable equality sites and the two-child loop;
+source inline inputs are unchanged and no invented vectors/tests were added.
+Both unchanged Java classes pass (18 and 4 cases/methods respectively), as do
+the whole Go translations and existing debugger expression tests under -race.
+Next: RecordValue.toState/StateString format selection and Java Formatter
+behavior, followed by any corresponding whole original tests. Broader semantic
+metadata and native override registration remain source work as listed below.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

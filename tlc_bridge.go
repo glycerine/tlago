@@ -980,7 +980,6 @@ func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode
 	opName := b.unusedDebuggerOpName()
 	path := root.PathTo(location, false)
 	lets := map[string]*tlc.OpDefNode{}
-	parameters := map[string]int{}
 	for _, node := range path {
 		if node, ok := node.(*tlc.LetInNode); ok {
 			for _, def := range node.Lets {
@@ -988,35 +987,20 @@ func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode
 			}
 		}
 	}
-	addParameters := func(params []*tlc.SymbolNode) {
-		for _, param := range params {
-			parameters[param.GetName().String()] = param.Arity
+	parameters := tlc.GetScopedSymbols(root, path)
+	signatureSet := tlc.NewInsMap[string, struct{}]()
+	for symbol := range parameters.All() {
+		name := symbol.GetName().String()
+		if symbol.Definition != nil {
+			name = symbol.Definition.Name.String()
 		}
-	}
-	for _, node := range path {
-		switch node := node.(type) {
-		case *tlc.LetInNode:
-			for _, def := range node.Lets {
-				parameters[def.Name.String()] = def.Arity()
-			}
-		case *tlc.OpDefNode:
-			if root.GetOpDef(node.Name) == nil {
-				parameters[node.Name.String()] = node.Arity()
-			}
-			addParameters(node.Params)
-		case *tlc.OpApplNode:
-			addParameters(node.GetQuantSymbolLists())
-		case *tlc.OpArgNode:
-			if def := node.Op.Definition; def != nil {
-				addParameters(def.Params)
-			}
+		if lets[name] == nil {
+			signatureSet.Set(debuggerOperatorSignature(name, symbol.Arity), struct{}{})
 		}
 	}
 	var signatures []string
-	for name, arity := range parameters {
-		if lets[name] == nil {
-			signatures = append(signatures, debuggerOperatorSignature(name, arity))
-		}
+	for signature := range signatureSet.All() {
+		signatures = append(signatures, signature)
 	}
 	sort.Strings(signatures)
 	letNames := make([]string, 0, len(lets))

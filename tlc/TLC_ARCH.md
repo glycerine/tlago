@@ -3235,6 +3235,23 @@ Debugger variable details:
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
+- `TLCDebuggerExpression.getScopedSymbols` now has a shared Go helper used by
+  debugger expression construction and `GetScopedIdentifiers`. It collects
+  identity-distinct LET definitions, local operator/formal parameters, quantified
+  variables and LAMBDA parameters on the inner-to-root path. Top-level definitions,
+  constants and variables are inherited from the root module. Generated parameter
+  signatures retain arity, and LET names are excluded before formatting because
+  their LOCAL stubs are substituted with source definitions. The complete
+  GetScopedIdentifiersTests translation retains all eighteen original inputs,
+  expected sets and four assertions per case, including the source's known
+  infix-parameter quirk. All eighteen production records match Java exactly.
+- The complete DebugTLCVariableTest translation retains all four original methods,
+  eight equality sites and the nested tuple's two-child loop. Production Go and
+  Java agree on all nine expansions and five child records (name, type, value,
+  reference presence); numeric random references are not compared. Empty and
+  infinite sets yield no children. Existing nested-value production behavior
+  required no correction. Both whole test classes and existing debugger expression
+  tests pass under -race. Full semantic/protocol parity remains work.
 - Java's `Value.toTLCVariable` sets type to
   `<ValueClass>: <kind string>` and value to `toString()`.
 - `StringValue` replaces quoted `toString()` output with the unquoted display
