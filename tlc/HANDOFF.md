@@ -607,11 +607,27 @@ with Java validation order, and unnamed non-LOCAL parameter-free instances reuse
 source definitions so config overrides remain visible. Read the progress tail
 for original inputs, all 195 Java binding comparisons and sixty IOUtils records.
 Final full normal workspace checks including this target pass (314.766s root).
-The full race check and reviewed-harness race target are still running; use the
-existing live tool handles/logs before restarting anything. For the expanded race suite,
+The expanded full race check passes (2601.730s root), and the reviewed-harness
+race target also passes (2364.191s). For the expanded race suite,
 use go test -race -timeout 60m ./...; the original vector-clock assumptions are
 expensive. Continue broader semantic/native registration and core I/O fidelity
 work after verification; no reduced Community runner/config is needed.
+Core TXT charset fidelity now follows OpenJDK's actual Files.writeString/
+readString paths for the six guaranteed charsets and their JDK aliases. TXT
+rejects malformed/unmappable input before opening a write destination; JSON's
+OutputStreamWriter path retains replacement instead. UTF-16 empty output has
+no BOM, and strict UTF-8 error lengths follow String's optimized file path.
+Typed coding/charset exceptions retain Java class names, length messages and
+IOException catch classification. Read charset validation precedes file access;
+NUL paths precede charset validation. Both 1,234,164-record production comparisons
+(strict Files and replacement stream/String codecs) match Java exactly; ten
+path/charset-priority records match too. These are owned ephemeral observations,
+not new persistent tests/vectors. The existing complete Ant suite includes the
+original IOUtils tests; keep running that whole target. Broader provider charsets,
+process default-charset discovery/decoding, file error/option precedence and
+invalid-value casts still need their source features. IOUtils.atoi also still
+uses Go ASCII parsing instead of the existing Java decimal parser; implement
+that separately with actual-source observations before changing its tests.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

@@ -106,7 +106,7 @@ func isJavaIOException(err error) bool {
 		return true
 	}
 	switch err.(type) {
-	case *IOException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
+	case *IOException, *CharacterCodingException, *MalformedInputException, *UnmappableCharacterException, *UnsupportedEncodingException, *FileNotFoundException, *UnknownHostException, *NetConnectException, *NetBindException, *NoRouteToHostException, *MalformedURLException, *EOFException, *os.PathError, *os.LinkError, *os.SyscallError:
 		return true
 	}
 	return err == io.EOF || err == io.ErrUnexpectedEOF || err == io.ErrClosedPipe || err == io.ErrShortWrite

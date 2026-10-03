@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"unicode/utf16"
 )
 
 var ioUtilsExecNames = []*UniqueString{
@@ -91,13 +90,23 @@ func IOUtilsDeserialize(src Value, options Value) (Value, error) {
 	if err != nil {
 		return ioUtilsResult(1, "", "Deserialize error invalid parameters: "+err.Error()), nil
 	}
+	// Java evaluates Paths.get and Charset.forName before Files.readString
+	// opens the file. In particular, a missing file must not hide a bad charset.
+	if strings.ContainsRune(path.RawString(), 0) {
+		err := NewInvalidPathException(path.RawString(), "Nul character not allowed")
+		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+javaThrowableString(err)), nil
+	}
+	charset, err = javaCharsetName(charset)
+	if err != nil {
+		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+javaThrowableString(err)), nil
+	}
 	data, err := os.ReadFile(path.RawString())
 	if err != nil {
 		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+err.Error()), nil
 	}
 	text, err := ioUtilsDecodeString(data, charset)
 	if err != nil {
-		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+err.Error()), nil
+		return ioUtilsResult(1, "", "Deserialize error reading from the file: "+javaThrowableString(err)), nil
 	}
 	return ioUtilsResult(0, text, ""), nil
 }
@@ -191,9 +200,13 @@ func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
 	if err != nil {
 		return ioUtilsResult(1, "", "Serialize error invalid parameters: "+err.Error())
 	}
-	data, err := ioUtilsEncodeString(text.RawString(), charset)
+	if strings.ContainsRune(path.RawString(), 0) {
+		err := NewInvalidPathException(path.RawString(), "Nul character not allowed")
+		return ioUtilsResult(1, "", "Serialize error writing to the file: "+javaThrowableString(err))
+	}
+	data, err := javaCharsetEncode(text.RawString(), charset, true)
 	if err != nil {
-		return ioUtilsResult(1, "", "Serialize error writing to the file: "+err.Error())
+		return ioUtilsResult(1, "", "Serialize error writing to the file: "+javaThrowableString(err))
 	}
 	filePath := path.RawString()
 	file, err := os.OpenFile(filePath, fileOptions.flag, 0o644)
@@ -418,108 +431,12 @@ func ioUtilsRunProcess(env map[string]string, argv []string) (Value, error) {
 	return ioUtilsResult(exit, stdout.String(), stderr.String()), nil
 }
 
+// JSON's stream writer replaces unencodable input; Files.writeString in the
+// TXT handler instead calls javaCharsetEncode with no replacement.
 func ioUtilsEncodeString(text string, charset string) ([]byte, error) {
-	switch ioUtilsCanonicalCharset(charset) {
-	case "UTF-8":
-		return []byte(text), nil
-	case "US-ASCII":
-		out := make([]byte, 0, len(text))
-		for _, r := range text {
-			if r > 0x7f {
-				out = append(out, '?')
-			} else {
-				out = append(out, byte(r))
-			}
-		}
-		return out, nil
-	case "ISO-8859-1":
-		out := make([]byte, 0, len(text))
-		for _, r := range text {
-			if r > 0xff {
-				out = append(out, '?')
-			} else {
-				out = append(out, byte(r))
-			}
-		}
-		return out, nil
-	case "UTF-16":
-		return ioUtilsEncodeUTF16(text, true, false), nil
-	case "UTF-16BE":
-		return ioUtilsEncodeUTF16(text, false, false), nil
-	case "UTF-16LE":
-		return ioUtilsEncodeUTF16(text, false, true), nil
-	default:
-		return nil, fmt.Errorf("UnsupportedCharsetException: %s", charset)
-	}
+	return javaCharsetEncode(text, charset, false)
 }
 
 func ioUtilsDecodeString(data []byte, charset string) (string, error) {
-	switch ioUtilsCanonicalCharset(charset) {
-	case "UTF-8":
-		return string(data), nil
-	case "US-ASCII", "ISO-8859-1":
-		runes := make([]rune, len(data))
-		for i, b := range data {
-			runes[i] = rune(b)
-		}
-		return string(runes), nil
-	case "UTF-16":
-		if len(data) >= 2 {
-			if data[0] == 0xfe && data[1] == 0xff {
-				return ioUtilsDecodeUTF16(data[2:], false), nil
-			}
-			if data[0] == 0xff && data[1] == 0xfe {
-				return ioUtilsDecodeUTF16(data[2:], true), nil
-			}
-		}
-		return ioUtilsDecodeUTF16(data, false), nil
-	case "UTF-16BE":
-		return ioUtilsDecodeUTF16(data, false), nil
-	case "UTF-16LE":
-		return ioUtilsDecodeUTF16(data, true), nil
-	default:
-		return "", fmt.Errorf("UnsupportedCharsetException: %s", charset)
-	}
-}
-
-func ioUtilsCanonicalCharset(charset string) string {
-	canon := strings.ToUpper(strings.ReplaceAll(charset, "_", "-"))
-	switch canon {
-	case "UTF8":
-		return "UTF-8"
-	case "ASCII", "US-ASCII":
-		return "US-ASCII"
-	case "ISO8859-1", "ISO-8859-1", "LATIN1", "LATIN-1":
-		return "ISO-8859-1"
-	default:
-		return canon
-	}
-}
-
-func ioUtilsEncodeUTF16(text string, bom bool, littleEndian bool) []byte {
-	words := utf16.Encode([]rune(text))
-	out := make([]byte, 0, len(words)*2+2)
-	if bom {
-		out = append(out, 0xfe, 0xff)
-	}
-	for _, word := range words {
-		if littleEndian {
-			out = append(out, byte(word), byte(word>>8))
-		} else {
-			out = append(out, byte(word>>8), byte(word))
-		}
-	}
-	return out
-}
-
-func ioUtilsDecodeUTF16(data []byte, littleEndian bool) string {
-	words := make([]uint16, 0, len(data)/2)
-	for i := 0; i+1 < len(data); i += 2 {
-		if littleEndian {
-			words = append(words, uint16(data[i])|uint16(data[i+1])<<8)
-		} else {
-			words = append(words, uint16(data[i])<<8|uint16(data[i+1]))
-		}
-	}
-	return string(utf16.Decode(words))
+	return javaCharsetDecode(data, charset, false)
 }

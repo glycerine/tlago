@@ -1550,3 +1550,61 @@ registration/provider discovery, DAP transport/events, locale/UTF-16 consumers
 and distributed network integration remain. Core IOUtils process-error classes,
 byte-decoding/default-charset behavior and other I/O boundaries need their own
 source audit. Independent rpc25519/Greenpack documentation remains unstaged.
+
+
+- Core text charset slice: compared CommunityModules IOUtils.textSerialize/
+textDeserialize and Json's OutputStreamWriter boundary with installed OpenJDK 21
+Files/String and sun.nio.cs codec bytecode. Earlier standard-charset audit notes
+were too broad: TXT used replacement/raw decoding where Files uses strict
+no-replacement helpers; unpaired units were lost, malformed UTF-8 and odd UTF-16
+bytes were accepted, empty UTF-16 writes emitted an extra BOM, and invented
+UTF_8/LATIN-1 aliases were accepted. Ported the six guaranteed standard charsets
+and their actual aliases/name grammar. Strict Latin-1 reports the first
+unencodable UTF-16 unit as unmappable(1), ASCII distinguishes malformed surrogate
+units and unmappable pairs, and String's optimized UTF-8 writer reports a lone
+surrogate as unmappable(1). Strict UTF-8 read errors retain the source optimized
+full-width/truncated-prefix lengths, distinct from CharsetDecoder replacement
+consumption. UTF-16 retains BOM/endian rules, accepts U+FFFE as source does,
+rejects odd bytes and broken pairs, and emits no BOM for empty output. JSON's
+shared stream encoder retains replacement (one '?' per supplementary pair for
+single-byte charsets and source replacement for lone units). Added concrete
+coding/charset exception families, derived length messages with a null base
+IOException detail, and correct IOException catch and throwable-class rendering.
+TXT reads resolve charset before accessing the file; NUL path errors precede
+charset validation. File writes still encode before opening or changing output.
+
+Owned temporary production comparisons under .codex-gotmp/core-charset-production/
+match every return record, UTF-16 output unit, written byte and class/message
+across 1,234,164 strict Files operations. Inputs include all 65,536 individual
+UTF-16 units for each charset, every two-byte decode input for each charset,
+surrogate/BOM boundaries, complete UTF-8 tails for selected three-byte prefixes,
+four-byte/truncated prefix classes, JDK aliases and name failures. A separate
+1,234,164-record comparison with actual OutputStreamWriter/new String replacement
+codecs matches the shared Go production helpers exactly. Ten actual file
+path/charset-priority records match too. Final exception-constructor representation
+preserves the source no-message CharacterCodingException base and getMessage
+length override; 308 strict observations and the complete replacement comparison
+still match on that implementation. No invented persistent tests or fixtures.
+Source TLC/Community tests have no dedicated charset methods: the original
+IOUtilsTests and IOUtilsUnixTests remain in the already-translated complete Ant
+target, which is rerun through workspace checks. The earlier Community full race
+suite has now completed successfully (2601.730s root). Initial charset full
+normal checks pass (309.199s root); final TLC -race checks pass (3.385s). Final
+workspace normal checks pass (327.817s root); the charset full race snapshot
+is still running. Use its live handle/log before launching duplicates. The full race snapshot
+predates only the source-equivalent coding-exception getter representation fix;
+final TLC -race and direct source observations include it. Logs are
+core-charset-full-normal{,-final}.log, core-charset-full-race.log and
+core-charset-tlc-race-final.log in .codex-gotmp/. The older final-harness Ant
+race target also passes (2364.191s). OpenJDK notices remain under tlc/licenses/.
+
+This is core text I/O work, with no email dependencies or work. Extended/provider
+charsets, default process charset discovery and decoding, filesystem exception
+families, option mapping/error precedence and invalid-value casts remain pending.
+A further source audit confirms IOUtils.atoi must use Java Integer.parseInt's
+BMP digit rules rather than Go strconv.ParseInt; its existing Java assumption
+methods are already in the whole Ant target and should remain unchanged after
+that feature fix. Broader semantic metadata, native provider discovery, DAP
+transport/events and distributed network integration also remain. Independent
+rpc25519/Greenpack documentation stays outside this slice. Full TLC completion
+remains unproven.

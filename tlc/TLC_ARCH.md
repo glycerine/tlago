@@ -2600,6 +2600,17 @@ Go mapping:
   formatting. Templates use shared JavaFormatStrings, preserving ignored extra
   arguments, indexing and exceptions before process creation. Unquoted
   environment values preserve Java's StringValue-subclass behavior.
+  TXT uses Java's strict Files.writeString/readString codec paths, including
+  optimized UTF-8 malformed-length reporting, Latin-1/ASCII unmappable failures,
+  UTF-16 surrogate/BOM behavior and empty-output BOM suppression. JSON's stream
+  writer uses replacement encoding instead. Core codecs operate on preserved
+  UTF-16 units and recognize the six guaranteed charsets with actual JDK aliases;
+  extended/provider charsets remain pending. Coding exceptions retain their
+  IOException family and source class/message; illegal/unsupported charset names
+  retain their separate IllegalArgumentException families. Read charset lookup
+  precedes file access, and NUL path validation precedes charset lookup. Process
+  default charset/byte decoding, filesystem error families, open-option validation
+  order and invalid-value cast behavior remain distinct source requirements.
   Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw

@@ -74,6 +74,16 @@ func javaThrowableClassName(err error) string {
 		return "java.rmi.server.ExportException"
 	case *AccessException:
 		return "java.rmi.AccessException"
+	case *CharacterCodingException:
+		return "java.nio.charset.CharacterCodingException"
+	case *MalformedInputException:
+		return "java.nio.charset.MalformedInputException"
+	case *UnmappableCharacterException:
+		return "java.nio.charset.UnmappableCharacterException"
+	case *UnsupportedCharsetException:
+		return "java.nio.charset.UnsupportedCharsetException"
+	case *IllegalCharsetNameException:
+		return "java.nio.charset.IllegalCharsetNameException"
 	case *IOException:
 		return "java.io.IOException"
 	case *FileNotFoundException:
