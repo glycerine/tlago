@@ -942,3 +942,19 @@ Next: DiskPoolWriterTest requires faithful WAITING/BLOCKED/alive/join observatio
 current Go writers expose neither native lifecycle completion nor wait state.
 Do not replace its assertions with a sleep-and-no-error approximation. Alternatively
 advance direct value/module tests while preserving this implementation prerequisite.
+
+
+EnumerableValueTest is also port complete: exact seeded sweep across n=1..10656,
+all original bounds and uniqueness assertions. The test calls Go's production
+SubsetEnumerator equivalent directly because the Java dummy only forwards size;
+its unused abstract stubs contribute no behavior. Current original implementation
+and test pass Java -ea JUnit (1.392s); Go sweep passes (1.184s); full TLC -race
+passes (7.642s). Inventory now 241/1269 mapped methods, 105/626 complete classes,
+1028 pending methods across 521 classes. Retire handles 39012, 66448, 95532.
+Current follow-up candidates: original value/stream/module methods and model
+regressions, fixing production shortcomings when exposed. Preserve the original
+DiskPoolWriterTest wait-state/join requirements when taking up that feature.
+
+Full TLC normal checks for the queue/enumeration snapshot pass (1.749s); retire
+handle 21325. Baseline and first batch full workspace normal results remain green;
+this continuation changes original-test translations and documentation only.

@@ -1981,3 +1981,20 @@ TODO_TEST_PORT.md marks StateQueueTest "Port complete" and updates counts to
 across 522 classes. The five user-deferred topics remain deferred. Writer tests
 still need native wait-state/liveness/join observations to translate their source
 assertions faithfully; do not credit a weaker sleep/no-error check.
+
+
+- EnumerableValueTest.test is port complete in value_enumerable_java_test.go.
+Preserved seed 15041980, every size n=1..10656, the hasNext/nextIndex loop,
+per-index bounds assertion, unique-index count and set clearing. The source dummy
+only forwards its size to the SubsetEnumerator constructor; Go invokes the same
+production indexed enumerator directly, omitting unused abstract-method stubs.
+Current original EnumerableValue.java and unchanged test compile together against
+frozen dependencies; Java -ea JUnit passes (1.392s). Go full sweep passes (1.184s),
+and full TLC -race passes (7.642s). No implementation failures or weakened cases.
+Inventory counts reconcile to 241/1269 methods (19.0%), 105/626 complete classes
+(16.8%), 1028 pending contexts across 521 classes; two classes remain partial.
+Retire live handles 39012, 66448 and 95532. All user-deferred topics remain skipped.
+
+Full TLC normal checks for the queue/enumeration snapshot pass (1.749s); retire
+handle 21325. Baseline and first batch full workspace normal results remain green;
+this continuation changes original-test translations and documentation only.
