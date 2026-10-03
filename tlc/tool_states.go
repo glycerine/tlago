@@ -14,7 +14,7 @@ const (
 
 func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
 	init := t.GetInitStateSpec()
-	acts := EmptyActionItemList
+	acts := emptyActionItemListExt
 	for i := len(init) - 1; i > 0; i-- {
 		elem := init[i]
 		acts = acts.ConsAction(elem, ActionItemPred)
@@ -25,7 +25,7 @@ func (t *Tool) GetInitStatesImpl(functor *StateFunctor) error {
 	elem := init[0]
 	ps := NewEmptyState()
 	if acts.IsEmpty() {
-		acts = &ActionItemList{Next: EmptyActionItemList, act: elem}
+		acts.SetAction(elem)
 	}
 	return t.GetInitStatesForPredicate(elem.Pred, acts, elem.Con, ps, functor, elem.CM)
 }

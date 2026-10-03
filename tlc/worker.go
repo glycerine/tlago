@@ -511,7 +511,7 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 	if err := w.ensureTraceRAF(); err != nil {
 		return err
 	}
-	ptr := int64(len(w.traceRecordsFallback()))
+	var ptr int64
 	if w.traceRAF != nil {
 		filePtr, err := w.traceRAF.GetFilePointer()
 		if err != nil {
@@ -527,6 +527,8 @@ func (w *Worker) WriteInitState(initialState *TLCStateMut, fp uint64) error {
 		if err := w.traceRAF.WriteLong(int64(fp)); err != nil {
 			return err
 		}
+	} else {
+		ptr = int64(len(w.traceRecordsFallback()))
 	}
 	w.lastPtr = ptr
 	initialState.WorkerID = int16(w.ID)
@@ -555,7 +557,7 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 			w.SetLevel(level)
 		}
 	}
-	ptr := int64(len(w.traceRecordsFallback()))
+	var ptr int64
 	if w.traceRAF != nil {
 		filePtr, err := w.traceRAF.GetFilePointer()
 		if err != nil {
@@ -571,6 +573,8 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 		if err := w.traceRAF.WriteLong(int64(succFP)); err != nil {
 			return err
 		}
+	} else {
+		ptr = int64(len(w.traceRecordsFallback()))
 	}
 	w.lastPtr = ptr
 	succState.WorkerID = int16(w.ID)
@@ -588,7 +592,7 @@ func (w *Worker) traceRecordsFallback() []TraceRecord {
 	if w == nil || w.DisableTraceMirror || w.Checker == nil || w.Checker.Trace == nil {
 		return nil
 	}
-	return w.Checker.Trace.records
+	return w.Checker.Trace.Records()
 }
 
 func (w *Worker) ReadStateRecord(ptr int64) (ConcurrentTraceRecord, error) {

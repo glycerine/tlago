@@ -67,11 +67,22 @@ record initialization follows its Java override, and ordinary constant operator
 pre-evaluation catches Throwable as upstream does. Tool loading now runs within
 TLC.process error handling, including the mode banner and finished message.
 Undefined identifiers and assumption diagnostics preserve Java codes/locations.
-Next: TLCGetAllTest, TLCGetLevelTest and TLCSetInitTest, then broader checker
-safety/trace comparisons. Complete SANY module context/declaration ordering and
-instantiation-aware constant-processing eligibility remain part of the bridge
-parity work; this slice does not establish their completion. Original model bytes, including
-upstream whitespace, are intentionally retained in test_vectors/.
+TLCGetAllTest, TLCGetLevelTest and TLCSetInitTest are now translated too.
+The bridge reconstructs the represented SANY module context insertion keys,
+including builtin bucket occupancy, to retain Java's variable declaration and
+trace order. The DOT/state writer serializes worker writes; coverage counters
+use concurrent increments; ordinary next/enabled action lists retain the base
+Java behavior rather than init-only action tracking. Worker disk trace writes
+no longer read the shared in-memory mirror unnecessarily. The translated
+harness preserves the source worker count and provides an existing trace output
+directory. Read the progress tail for verification.
+Next: TLCSetSimTest and TLCSetMultiSimTest, then broader checker safety/trace
+comparisons. TLCGetNonDeterminismTest is ignored upstream by design; preserve
+that status when translating it. Complete SANY contexts, nested export
+composition and instantiation-aware constant-processing eligibility remain
+bridge parity work; the represented declaration-order slice does not establish
+their completion. Original model bytes, including upstream whitespace, are
+intentionally retained in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.

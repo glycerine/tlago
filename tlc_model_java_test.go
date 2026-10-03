@@ -31,6 +31,7 @@ import (
 	"context"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -48,6 +49,11 @@ func runJavaTLCModelTestWithCoverage(t *testing.T, name string, coverage bool, e
 }
 
 func runJavaTLCModelTestWithSettings(t *testing.T, name string, coverage, dump bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	return runJavaTLCModelTestWithWorkers(t, name, coverage, dump, 1, extraArgs...)
+}
+
+func runJavaTLCModelTestWithWorkers(t *testing.T, name string, coverage, dump bool, workers int, extraArgs ...string) *tlc.Result {
 	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
@@ -68,7 +74,11 @@ func runJavaTLCModelTestWithSettings(t *testing.T, name string, coverage, dump b
 	}
 	tlc.SetFilenameUserDirectory(&directory)
 	meta := t.TempDir()
-	args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0"}
+	traceDirectory := t.TempDir()
+	args := []string{"-metadir", meta, "-deadlock", "-generateSpecTE", "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
+	if workers == 1 {
+		args = append(args, "-debugger", "nosuspend,port=4712,nohalt")
+	}
 	tlc.Globals.CoverageInterval = -1
 	if coverage {
 		args = append(args, "-coverage", "1")

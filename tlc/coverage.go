@@ -210,7 +210,7 @@ func (m CostModel) evalCount(fresh bool) int64 {
 		return -1
 	}
 	if fresh {
-		return m.node.Primary
+		return m.GetPrimary()
 	}
 	return m.node.SnapshotPrimary
 }
@@ -220,7 +220,7 @@ func (m CostModel) secondaryCount(fresh bool) int64 {
 		return -1
 	}
 	if fresh {
-		return m.node.Secondary
+		return m.GetSecondary()
 	}
 	return m.node.SnapshotSecondary
 }

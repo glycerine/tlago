@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync/atomic"
 )
 
 type CostModel struct {
@@ -78,7 +79,7 @@ func (m CostModel) IncInvocations(values ...int64) CostModel {
 	if len(values) > 0 {
 		value = values[0]
 	}
-	m.node.Primary += value
+	atomic.AddInt64(&m.node.Primary, value)
 	return m
 }
 
@@ -90,7 +91,7 @@ func (m CostModel) IncSecondary(values ...int64) CostModel {
 	if len(values) > 0 {
 		value = values[0]
 	}
-	m.node.Secondary += value
+	atomic.AddInt64(&m.node.Secondary, value)
 	return m
 }
 
@@ -104,14 +105,14 @@ func (m CostModel) GetPrimary() int64 {
 	if m.node == nil {
 		return -1
 	}
-	return m.node.Primary
+	return atomic.LoadInt64(&m.node.Primary)
 }
 
 func (m CostModel) GetSecondary() int64 {
 	if m.node == nil {
 		return -1
 	}
-	return m.node.Secondary
+	return atomic.LoadInt64(&m.node.Secondary)
 }
 
 func (m CostModel) HasValues() bool {
@@ -477,13 +478,14 @@ func (a *Action) IsPossible() bool {
 }
 
 type ActionItemList struct {
-	Pred SemanticNode
-	Con  *Context
-	Kind int
-	Next *ActionItemList
-	CM   CostModel
-	act  *Action
-	prev *ActionItemList
+	Pred     SemanticNode
+	Con      *Context
+	Kind     int
+	Next     *ActionItemList
+	CM       CostModel
+	act      *Action
+	prev     *ActionItemList
+	extended bool
 }
 
 const (
@@ -495,11 +497,15 @@ const (
 
 var EmptyActionItemList = &ActionItemList{}
 
+// Java uses ActionItemListExt only for getInitStates; ordinary next-state and
+// enabled evaluation use ActionItemList with no previous link or action tracking.
+var emptyActionItemListExt = &ActionItemList{extended: true}
+
 func NewActionItemList(pred SemanticNode, con *Context, kind int, next *ActionItemList, cm CostModel) *ActionItemList {
 	if next == nil {
 		next = EmptyActionItemList
 	}
-	return &ActionItemList{Pred: pred, Con: con, Kind: kind, Next: next, CM: cm}
+	return &ActionItemList{Pred: pred, Con: con, Kind: kind, Next: next, CM: cm, extended: next.extended}
 }
 
 func (l *ActionItemList) CarPred() SemanticNode {
@@ -518,7 +524,9 @@ func (l *ActionItemList) Cdr() *ActionItemList {
 	if l == nil || l.Next == nil {
 		return EmptyActionItemList
 	}
-	l.Next.prev = l
+	if l.extended {
+		l.Next.prev = l
+	}
 	return l.Next
 }
 
@@ -542,22 +550,22 @@ func (l *ActionItemList) ConsAction(act *Action, kind int) *ActionItemList {
 	if CoverageActionEnabled() {
 		itemCM = act.CM.Get(l.Pred)
 	}
-	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: itemCM, act: act}
+	return &ActionItemList{Pred: act.Pred, Con: act.Con, Kind: kind, Next: l, CM: itemCM, act: act, extended: l.extended}
 }
 
 func (l *ActionItemList) IsEmpty() bool {
-	return l == nil || l == EmptyActionItemList || (l.Pred == nil && l.Next == EmptyActionItemList && l.Kind == 0)
+	return l == nil || l == EmptyActionItemList || l == emptyActionItemListExt || (l.Pred == nil && l.Next == EmptyActionItemList && l.Kind == 0)
 }
 
 func (l *ActionItemList) SetAction(action *Action) {
-	if l == nil {
+	if l == nil || !l.extended {
 		return
 	}
 	l.act = action
 }
 
 func (l *ActionItemList) GetAction() *Action {
-	if l == nil {
+	if l == nil || !l.extended {
 		return nil
 	}
 	if l.prev != nil {

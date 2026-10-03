@@ -24,13 +24,14 @@
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
 // Copyright (c) 2022, Oracle and/or its affiliates.
-// Copyright (c) 2018, 2019 Microsoft Research. All rights reserved.
+// Copyright (c) 2016, 2018, 2019, 2021 Microsoft Research. All rights reserved.
 // Copyright (c) 2025 Microsoft Corp. All rights reserved.
 // Ports of the existing checker testSpec methods, after their implementation.
 package tlago
 
 import (
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -236,5 +237,119 @@ func TestJavaGithub1109a(t *testing.T) {
 	}
 	if !matched {
 		t.Fatalf("TLC_CONFIG_SUBSTITUTION_NON_CONSTANT=%v, want C/C2", javaTLCRecords(result, tlc.ECTLCConfigSubstitutionNonConstant))
+	}
+}
+
+func TestJavaTLCGetAll(t *testing.T) {
+	result := runJavaTLCModelTestWithWorkers(t, "TLCGetAll", true, true, runtime.NumCPU(), "-config", "TLCGetAll.tla")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want success", result.ExitStatus)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCPostconditionFalse, tlc.ECTLCPostconditionEvaluationError} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected diagnostic %d: %v", code, got)
+		}
+	}
+	for _, m := range javaTLCRecords(result, tlc.ECTLCCoverageValue) {
+		if len(m.Params) > 1 && strings.TrimSpace(m.Params[1]) == "0" {
+			t.Fatalf("unexpected uncovered line: %v", m.Params)
+		}
+	}
+	values := tlc.Globals.MainChecker.GetAllValue(42)
+	if len(values) == 0 {
+		t.Fatal("register 42 is empty")
+	}
+	if value, ok := values[0].(*tlc.IntValue); !ok || value.Val != 10101 {
+		t.Fatalf("register 42=%v, want 10101", values[0])
+	}
+}
+
+func TestJavaTLCSetInit(t *testing.T) {
+	result := runJavaTLCModelTest(t, "TLCSetInit")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want success", result.ExitStatus)
+	}
+	if got := javaTLCRecords(result, tlc.ECGeneral); len(got) != 0 {
+		t.Fatalf("unexpected GENERAL: %v", got)
+	}
+	for _, m := range javaTLCRecords(result, tlc.ECTLCCoverageValue) {
+		if len(m.Params) > 1 && strings.TrimSpace(m.Params[1]) == "0" {
+			t.Fatalf("unexpected uncovered line: %v", m.Params)
+		}
+	}
+}
+
+func TestJavaTLCGetLevel(t *testing.T) {
+	result := runJavaTLCModelTest(t, "TLCGetLevel")
+	if result.ExitStatus != tlc.ExitStatusViolationLiveness {
+		t.Fatalf("exit status=%d, want liveness violation", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	matched := false
+	for _, m := range javaTLCRecords(result, tlc.ECTLCStats) {
+		if reflect.DeepEqual(m.Params, []string{"4", "4", "0"}) {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("TLC_STATS=%v, want 4/4/0", javaTLCRecords(result, tlc.ECTLCStats))
+	}
+	if got := javaTLCRecords(result, tlc.ECGeneral); len(got) != 0 {
+		t.Fatalf("unexpected GENERAL: %v", got)
+	}
+	violations := javaTLCRecords(result, tlc.ECTLCTemporalPropertyViolated)
+	if len(violations) == 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED not recorded")
+	}
+	matched = false
+	for _, m := range violations {
+		if len(m.Params) > 0 && m.Params[0] == "Prop" {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("temporal violation=%v, want Prop", violations)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCCounterExample)) == 0 {
+		t.Fatal("TLC_COUNTER_EXAMPLE not recorded")
+	}
+	states := javaTLCRecords(result, tlc.ECTLCStatePrint2)
+	if len(states) == 0 {
+		t.Fatal("TLC_STATE_PRINT2 not recorded")
+	}
+	expected := []string{
+		"/\\ yb = 0\n/\\ x = 0\n/\\ y = 0\n/\\ z = 1",
+		"/\\ yb = 1\n/\\ x = 1\n/\\ y = 1\n/\\ z = 2",
+		"/\\ yb = 2\n/\\ x = 2\n/\\ y = 2\n/\\ z = 3",
+		"/\\ yb = 3\n/\\ x = 3\n/\\ y = 3\n/\\ z = 4",
+	}
+	if len(states) != len(expected) {
+		t.Fatalf("trace has %d states, want %d", len(states), len(expected))
+	}
+	for i, m := range states {
+		if m.StateInfo == nil {
+			t.Fatalf("state %d has no info", i+1)
+		}
+		info, ok := m.StateInfo.Info.(string)
+		if !ok || info == "<Initial predicate>" || strings.HasPrefix(info, "<Action") {
+			t.Fatalf("extended trace action %d=%v", i+1, m.StateInfo.Info)
+		}
+		if got := strings.TrimSpace(m.StateInfo.String()); got != expected[i] {
+			t.Fatalf("state %d=%q, want %q", i+1, got, expected[i])
+		}
+		if m.StateNumber != i+1 {
+			t.Fatalf("state number=%d, want %d", m.StateNumber, i+1)
+		}
+	}
+	stutter := javaTLCRecords(result, tlc.ECTLCStatePrint3)
+	if len(stutter) == 0 || stutter[0].StateNumber != 5 {
+		t.Fatalf("stuttering=%v, want state 5", stutter)
+	}
+	for _, code := range []int{tlc.ECTLCPostconditionFalse, tlc.ECTLCPostconditionEvaluationError} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected diagnostic %d: %v", code, got)
+		}
 	}
 }

@@ -27,6 +27,7 @@ const (
 )
 
 type StateWriter struct {
+	mu                  sync.Mutex
 	Noop                bool
 	Dot                 bool
 	Constrained         bool
@@ -153,6 +154,17 @@ func NewDotStateWriter(fname string, opts DotStateWriterOptions) (*StateWriter, 
 }
 
 func (w *StateWriter) WriteInitState(state *TLCStateMut) error {
+	if w == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.writeInitState(state)
+}
+
+// Java's synchronized writeState methods call each other with the monitor held.
+// Internal helpers retain that boundary without reacquiring Go's mutex.
+func (w *StateWriter) writeInitState(state *TLCStateMut) error {
 	if w != nil && w.WriteInitStateFunc != nil {
 		if err := w.WriteInitStateFunc(state); err != nil {
 			return err
@@ -166,7 +178,7 @@ func (w *StateWriter) WriteInitState(state *TLCStateMut) error {
 		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", fp, stateToDot(state.EvalStateLevelAlias(), nil, false))
 		w.maintainRank(state)
 		if err == nil && w.snapshot {
-			err = w.Snapshot()
+			err = w.snapshotFile()
 		}
 		return err
 	}
@@ -180,6 +192,11 @@ func (w *StateWriter) WriteTransition(curState *TLCStateMut, succState *TLCState
 }
 
 func (w *StateWriter) WriteTransitionVisual(curState *TLCStateMut, succState *TLCStateMut, status StateVisitStatus, action *Action, visualization StateVisualization, reason ...SemanticNode) error {
+	if w == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	if w != nil && w.WriteTransitionFunc != nil {
 		if err := w.WriteTransitionFunc(curState, succState, status, action, reason...); err != nil {
 			return err
@@ -190,7 +207,7 @@ func (w *StateWriter) WriteTransitionVisual(curState *TLCStateMut, succState *TL
 	}
 	if !w.Dot {
 		if status != StateVisitSeen {
-			return w.WriteInitState(succState)
+			return w.writeInitState(succState)
 		}
 		return nil
 	}
@@ -199,7 +216,7 @@ func (w *StateWriter) WriteTransitionVisual(curState *TLCStateMut, succState *TL
 
 func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCStateMut, status StateVisitStatus, visualization StateVisualization, action *Action, reason ...SemanticNode) error {
 	if curState == nil {
-		return w.WriteInitState(succState)
+		return w.writeInitState(succState)
 	}
 	if !w.stuttering && visualization == StateVisualizationStuttering {
 		return nil
@@ -241,7 +258,7 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 	}
 	w.maintainRank(curState)
 	if err == nil && w.snapshot {
-		err = w.Snapshot()
+		err = w.snapshotFile()
 	}
 	return err
 }
@@ -311,6 +328,15 @@ func (w *StateWriter) GetDumpFileName() string {
 }
 
 func (w *StateWriter) Snapshot() error {
+	if w == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.snapshotFile()
+}
+
+func (w *StateWriter) snapshotFile() error {
 	if w == nil || w.writer == nil || w.fname == "" {
 		return nil
 	}
@@ -331,7 +357,12 @@ func dotWriterJavaReplace(fname string, replacement string) string {
 }
 
 func (w *StateWriter) Close() error {
-	if w == nil || w.closed {
+	if w == nil {
+		return nil
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.closed {
 		return nil
 	}
 	w.closed = true
