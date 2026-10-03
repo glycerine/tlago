@@ -37,9 +37,13 @@ application nodes for accurate invariant/LET coverage. BCoverageTest,
 DCoverageTest, ECoverageTest and FCoverageTest are now translated too.
 The bridge now retains module/LET recursion flags and represents LAMBDA as an
 operator argument with its own definition and parameter identities; coverage
-visits those definitions. Next compare GCoverageTest and remaining upstream
-coverage model cases. Original model bytes, including upstream whitespace,
-are intentionally retained in test_vectors/.
+visits those definitions. GCoverageTest, HCoverageTest, ICoverageTest and
+JCoverageTest are now translated too. ENABLED retains its current cost model,
+unnamed SPECIFICATION actions retain Java's unnamed marker/location labels, and
+named function definitions preserve recursive/nonrecursive specification nodes,
+recursive self bindings and complete source ranges. Next compare KCoverageTest
+and remaining upstream coverage model cases. Original model bytes, including
+upstream whitespace, are intentionally retained in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.

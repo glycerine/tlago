@@ -2753,6 +2753,18 @@ symbols and OpArgNodes, with fresh parameter identities scoped during body
 conversion. Coverage visits an OpArgNode's definition as SANY walkGraph does,
 so the higher-order body links resolve to the actual lambda expression wrappers.
 
+ENABLED evaluation carries the current cost model into the enabled interpreter;
+the convenience overload without coverage remains separate. Anonymous actions
+created while splitting a SPECIFICATION retain Java's unnamed marker, and their
+string labels use the predicate's semantic location (with numeric literal-node
+string overrides preserved).
+
+Named function definitions use `$NonRecursiveFcnSpec` or `$RecursiveFcnSpec`
+instead of the `$FcnConstructor` used by bracketed `|->` expressions. Recursive
+definitions have a fresh self symbol in the body and the constructor's unbounded
+symbol list; the evaluator binds it to the function lambda and keeps evaluation
+lazy. Both specification constructors span the full function definition.
+
 Coverage expression labels come from semantic source locations. Standard-module
 exclusion follows Java's fixed set of nine source-module names, including its
 name-only behavior for replacement modules; a built-in opcode in a user's

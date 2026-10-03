@@ -1286,7 +1286,12 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 		restore()
 		b.convertingModule = prevModule
 	}()
-	body := b.convertExpr(def.Expr)
+	var body tlc.SemanticNode
+	if function, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+		body = b.functionDefinitionNode(def, function)
+	} else {
+		body = b.convertExpr(def.Expr)
+	}
 	if body == nil {
 		return nil
 	}
@@ -1752,6 +1757,34 @@ func (b *tlcBridge) lambdaNode(e *FunctionExpr) tlc.SemanticNode {
 	b.withPositionLocation(e.Pos, def)
 	symbol.Data = def
 	return tlc.NewOpArgNode(symbol)
+}
+
+func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc.SemanticNode {
+	op := tlc.OpNRFS
+	var self *tlc.SymbolNode
+	if exprReferencesName(e, def.Name, nil) {
+		op = tlc.OpRFS
+		self = tlc.NewSymbolNode(def.Name)
+		previous := b.symbols[def.Name]
+		b.symbols[def.Name] = self
+		restore := b.pushConvertBoundNames(def.Name)
+		defer func() {
+			restore()
+			if previous == nil {
+				delete(b.symbols, def.Name)
+			} else {
+				b.symbols[def.Name] = previous
+			}
+		}()
+	}
+	node := b.functionNode(e).(*tlc.OpApplNode)
+	node.Operator = tlc.NewSymbolNode(op.String())
+	if self != nil {
+		node.UnbdedQuantSymbols = []*tlc.SymbolNode{self}
+	}
+	// SANY function specifications cover the whole definition, unlike |->
+	// constructor expressions whose location is the bracketed expression.
+	return b.withPositionLocation(def.SourcePosition(), node)
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {

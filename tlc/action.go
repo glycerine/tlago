@@ -340,6 +340,15 @@ func (a *Action) String() string {
 	if a == nil {
 		return "<Action nil>"
 	}
+	// Java's SemanticNode.toString uses its location; numeric nodes override
+	// that method with their literal image.
+	switch a.Pred.(type) {
+	case *NumeralNode, *DecimalNode:
+	default:
+		if location, ok := semanticNodeSourceLocation(a.Pred); ok {
+			return "<Action " + location.String() + ">"
+		}
+	}
 	return "<Action " + SemanticString(a.Pred) + ">"
 }
 

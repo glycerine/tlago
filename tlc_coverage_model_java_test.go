@@ -492,3 +492,159 @@ func TestJavaFCoverage(t *testing.T) {
 <Next line 10, col 1 to line 10, col 4 of module F>: 0:2
   line 10, col 9 to line 10, col 19 of module F: 2`)
 }
+
+// Port of GCoverageTest.testSpec with the original model and records.
+func TestJavaGCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "G", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"1"}) {
+		t.Errorf("search depth=%v, want 1", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"2", "1", "0"}) {
+		t.Errorf("stats=%v, want 2/1/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Init line 6, col 1 to line 6, col 4 of module G>: 1:1
+  line 6, col 9 to line 6, col 20 of module G: 1
+<Next line 8, col 1 to line 8, col 4 of module G>: 0:1
+  line 8, col 12 to line 8, col 25 of module G: 1
+  line 9, col 12 to line 9, col 27 of module G: 2
+  line 10, col 12 to line 10, col 23 of module G: 2
+<Prop line 12, col 1 to line 12, col 4 of module G>
+  line 12, col 9 to line 12, col 20 of module G: 1
+  |line 8, col 12 to line 8, col 25 of module G: 1
+  |line 9, col 12 to line 9, col 27 of module G: 1
+  |line 10, col 12 to line 10, col 23 of module G: 1`)
+}
+
+// Port of HCoverageTest.testSpec with the original model and records.
+func TestJavaHCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "H", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"3"}) {
+		t.Errorf("search depth=%v, want 3", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"26", "6", "0"}) {
+		t.Errorf("stats=%v, want 26/6/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Inv line 22, col 1 to line 22, col 3 of module H>: 1:31
+  line 22, col 11 to line 22, col 16 of module H: 1
+  line 23, col 11 to line 23, col 15 of module H: 31
+<A line 11, col 1 to line 11, col 1 of module H>: 1:6
+  line 11, col 6 to line 11, col 12 of module H: 6
+<BandC line 13, col 1 to line 13, col 5 of module H (13 13 14 28)>: 2:15
+  line 13, col 16 to line 13, col 26 of module H: 11
+  |line 13, col 16 to line 13, col 16 of module H: 6
+  |line 13, col 22 to line 13, col 26 of module H: 6
+  line 14, col 16 to line 14, col 28 of module H: 15
+  |line 14, col 23 to line 14, col 28 of module H: 5
+<BandC line 13, col 1 to line 13, col 5 of module H (15 13 16 22)>: 1:3
+  line 15, col 16 to line 15, col 21 of module H: 3
+  |line 15, col 16 to line 15, col 16 of module H: 6
+  line 16, col 16 to line 16, col 22 of module H: 3
+<DandE line 18, col 1 to line 18, col 5 of module H (18 11 18 27)>: 1:1
+  line 18, col 11 to line 18, col 16 of module H: 7
+  |line 18, col 11 to line 18, col 11 of module H: 6
+  line 18, col 21 to line 18, col 27 of module H: 1
+<DandE line 18, col 1 to line 18, col 5 of module H (18 34 18 53)>: 0:0
+  line 18, col 34 to line 18, col 40 of module H: 6
+  line 18, col 45 to line 18, col 53 of module H: 0`)
+}
+
+// Port of ICoverageTest.testSpec with the original model and records.
+func TestJavaICoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "I", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"1"}) {
+		t.Errorf("search depth=%v, want 1", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"20", "5", "0"}) {
+		t.Errorf("stats=%v, want 20/5/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Action line 11, col 9 to line 11, col 25 of module I>: 5:5
+  line 11, col 9 to line 11, col 25 of module I: 5
+  |line 11, col 15 to line 11, col 25 of module I: 1:6
+<Action line 11, col 52 to line 11, col 55 of module I>: 0:15
+  line 11, col 52 to line 11, col 52 of module I: 15
+  |line 8, col 1 to line 9, col 22 of module I: 15
+  ||line 9, col 8 to line 9, col 22 of module I: 15
+  ||line 8, col 9 to line 8, col 15 of module I: 15
+  line 11, col 54 to line 11, col 54 of module I: 15
+<Inv line 13, col 1 to line 13, col 3 of module I>
+  line 13, col 8 to line 13, col 34 of module I: 5
+  |line 13, col 27 to line 13, col 34 of module I: 15
+  |line 13, col 17 to line 13, col 24 of module I: 5`)
+}
+
+// Port of JCoverageTest.testSpec with the original model and records.
+func TestJavaJCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "J", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"2"}) {
+		t.Errorf("search depth=%v, want 2", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"11", "6", "0"}) {
+		t.Errorf("stats=%v, want 11/6/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Init line 5, col 1 to line 5, col 4 of module J>: 5:5
+  line 5, col 12 to line 5, col 28 of module J: 1:6
+  line 6, col 12 to line 6, col 40 of module J: 5
+  |line 6, col 16 to line 6, col 40 of module J: 5:25
+  ||line 6, col 23 to line 6, col 33 of module J: 5:30
+<Next line 12, col 1 to line 12, col 4 of module J>: 1:6
+  line 12, col 12 to line 12, col 22 of module J: 6
+  |line 12, col 17 to line 12, col 22 of module J: 6
+  ||line 9, col 2 to line 10, col 19 of module J: 6
+  |||line 9, col 7 to line 9, col 11 of module J: 6
+  |||line 9, col 16 to line 9, col 40 of module J: 2
+  |||line 10, col 7 to line 10, col 19 of module J: 4
+  ||line 12, col 21 to line 12, col 21 of module J: 6
+  line 13, col 12 to line 13, col 22 of module J: 6`)
+}

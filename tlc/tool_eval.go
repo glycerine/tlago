@@ -442,7 +442,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 		return t.setValueSource(expr, value), nil
 	case OpcodeEnabled:
 		sfun := NewFunctionalState()
-		enabled, err := t.Enabled(args[0], BranchContext(c), s0, sfun)
+		enabled, err := t.EnabledImpl(args[0], EmptyActionItemList, BranchContext(c), s0, sfun, cm)
 		if err != nil {
 			return nil, err
 		}

@@ -1244,11 +1244,11 @@ func (p *SpecProcessor) processConfigSpec(tool *Tool, pred SemanticNode, c *Cont
 
 	level := tool.GetLevelBound(pred, c)
 	if level <= TLCLevelState {
-		p.InitPred = append(p.InitPred, NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred)))
+		p.InitPred = append(p.InitPred, NewAction(SpecsAddSubsts(pred, subs), c, ""))
 		return
 	}
 	if level == TLCLevelTemporal {
-		action := NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred))
+		action := NewAction(SpecsAddSubsts(pred, subs), c, "")
 		p.attachSpecPropertyOrigin(action, stack)
 		p.Temporals = append(p.Temporals, action)
 		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
@@ -1329,13 +1329,13 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 		}
 		if boxArg != nil && boxArg.Operator != nil && GetOpCode(boxArg.Operator.Name) == OpcodeSA && len(boxArg.Args) > 0 {
 			if p.NextPred == nil {
-				p.NextPred = NewAction(SpecsAddSubsts(boxArg.Args[0], subs), c, SemanticString(boxArg.Args[0]))
+				p.NextPred = NewAction(SpecsAddSubsts(boxArg.Args[0], subs), c, "")
 			} else {
 				p.addConfigError(ECTLCCantHandleTooManyNextStateRels)
 			}
 			return true
 		}
-		action := NewAction(SpecsAddSubsts(pred, subs), c, SemanticString(pred))
+		action := NewAction(SpecsAddSubsts(pred, subs), c, "")
 		p.Temporals = append(p.Temporals, action)
 		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
 		return true
