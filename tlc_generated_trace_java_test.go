@@ -23,12 +23,13 @@
  * Contributors:
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
-// Ports of TraceExpressionSpecSafetyBFSTest, TraceExpressionSpecSafetySimTest
-// and TraceExpressionSpecRuntimeTest, including their inherited assertions.
+// Ports of the five concrete TraceExpressionSpec tests and their inherited
+// generated-tool assertions.
 package tlago
 
 import (
 	"math"
+	"path/filepath"
 	"testing"
 
 	"github.com/glycerine/tlago/tlc"
@@ -200,5 +201,116 @@ func TestJavaTraceExpressionSpecRuntime(t *testing.T) {
 	}
 	if tool.GetModelConfig().GetCheckDeadlock() {
 		t.Fatal("generated runtime-error config checks deadlocks")
+	}
+}
+
+func requireJavaGeneratedModules(t *testing.T, tool *tlc.Tool, root string) {
+	t.Helper()
+	table := tool.GetSpecProcessor().GetModuleTbl()
+	if table == nil {
+		t.Fatal("generated tool has no module table")
+	}
+	for _, name := range []string{root, root + "_TEExpression", root + "_TETrace"} {
+		if table.GetModuleNode(tlc.UniqueStringOf(name)) == nil {
+			t.Fatalf("module table has no %s", name)
+		}
+	}
+}
+
+func TestJavaTraceExpressionSpecDeadlock(t *testing.T) {
+	tool := runJavaGeneratedTraceSpec(t, "TESpecDeadlockTest", "TESpecDeadlockTest", "-modelcheck", tlc.ExitStatusViolationDeadlock, true, math.MaxFloat64)
+	processor := tool.GetSpecProcessor()
+	actions := tool.GetActions()
+	if len(actions) != 1 {
+		t.Fatalf("actions=%d, want 1", len(actions))
+	}
+	invariants := processor.GetInvariants()
+	if len(invariants) != 1 {
+		t.Fatalf("invariants=%d, want 1", len(invariants))
+	}
+	if len(processor.GetInitPred()) != 1 || processor.GetNextPred() == nil {
+		t.Fatal("expected one init predicate and a next-state relation")
+	}
+	states := javaGeneratedInitialStates(t, tool)
+	for i := 0; i < 4; i++ {
+		state := requireJavaGeneratedTraceState(t, tool, states, invariants[0], true)
+		requireJavaGeneratedValue(t, state, "x", tlc.NewIntValue(int32(i)))
+		requireJavaGeneratedValue(t, state, "y", tlc.NewBoolValue(i%2 != 0))
+		if i < 3 {
+			var err error
+			states, err = tool.GetNextStates(actions[0], state)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if tool.GetModelConfig().GetAlias() == "" {
+		t.Fatal("generated config has no ALIAS")
+	}
+	// Java leaves the generated-config deadlock assertion commented out (TODO).
+	requireJavaGeneratedModules(t, tool, "TESpecDeadlockTest")
+}
+
+func TestJavaTraceExpressionSpecLasso(t *testing.T) {
+	// The source override preserves the runtime's default partial-check setting.
+	tool := runJavaGeneratedTraceSpec(t, "TESpecTest", "TESpecLassoTest.cfg", "-modelcheck", tlc.ExitStatusViolationLiveness, false, tlc.Globals.LivenessThreshold)
+	processor := tool.GetSpecProcessor()
+	actions := tool.GetActions()
+	if len(actions) != 1 {
+		t.Fatalf("actions=%d, want 1", len(actions))
+	}
+	if len(processor.GetInvariants()) != 0 {
+		t.Fatalf("invariants=%d, want 0", len(processor.GetInvariants()))
+	}
+	if len(processor.GetImpliedTemporals()) != 1 {
+		t.Fatalf("properties=%d, want 1", len(processor.GetImpliedTemporals()))
+	}
+	if len(processor.GetInitPred()) != 1 || processor.GetNextPred() == nil {
+		t.Fatal("expected one init predicate and a next-state relation")
+	}
+	if tool.GetModelConfig().GetAlias() == "" || tool.GetModelConfig().GetCheckDeadlock() {
+		t.Fatal("expected ALIAS and disabled deadlock checking")
+	}
+	requireJavaGeneratedModules(t, tool, "TESpecTest")
+	checker, err := tlc.NewLiveCheck1(tool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Java uses a relative states directory in its test working directory.
+	if err := checker.Init(tool, actions, filepath.Join(t.TempDir(), "states")); err != nil {
+		t.Fatal(err)
+	}
+	states := javaGeneratedInitialStates(t, tool)
+	var previous *tlc.TLCStateMut
+	for i := 0; i < 3; i++ {
+		state := requireJavaGeneratedTraceState(t, tool, states, nil, true)
+		requireJavaGeneratedValue(t, state, "x", tlc.NewIntValue(int32(i%2)))
+		requireJavaGeneratedValue(t, state, "y", tlc.NewBoolValue(i%2 != 0))
+		if i == 0 {
+			err = checker.AddInitState(tool, state, state.FingerPrint())
+		} else {
+			next := tlc.NewSetOfStates(1)
+			next.Put(state)
+			err = checker.AddNextState(tool, previous, previous.FingerPrint(), next)
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		previous = state
+		if i < 2 {
+			states, err = tool.GetNextStates(actions[0], state)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	_, err = checker.FinalCheck(tool)
+	// Java catches LiveException, including its LiveCounterExampleException
+	// subclass. Do not accept another error or a successful final check.
+	switch err.(type) {
+	case *tlc.LiveException, *tlc.LiveCounterExampleException:
+		return
+	default:
+		t.Fatalf("finalCheck error=%T %v, want LiveException", err, err)
 	}
 }

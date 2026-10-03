@@ -217,10 +217,12 @@ func (s *Spec) ApplyToTool(tool *Tool) *Tool {
 }
 
 type SpecProcessor struct {
-	RootFile string
-	ToolID   int64
-	Defns    *Defns
-	Config   *ModelConfig
+	RootFile   string
+	ToolID     int64
+	Defns      *Defns
+	Config     *ModelConfig
+	ModuleTbl  *ExternalModuleTable
+	RootModule *ModuleNode
 
 	ConstantDeclarations []*SymbolNode
 	RootDefinitions      *InsMap[string, *OpDefNode]
@@ -258,6 +260,9 @@ type SpecProcessor struct {
 	AliasSpecName     string
 	SpecificationName string
 }
+
+func (p *SpecProcessor) GetModuleTbl() *ExternalModuleTable { return p.ModuleTbl }
+func (p *SpecProcessor) GetRootModule() *ModuleNode         { return p.RootModule }
 
 func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecProcessor {
 	if defns == nil {
@@ -614,9 +619,14 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 		}
 		realDef := opDef
 		if opDef.Symbol != nil && tool != nil {
-			if lookedUp, ok := tool.Lookup(opDef.Symbol, EmptyContext, EmptyState, false).(*OpDefNode); ok && lookedUp != nil {
-				realDef = lookedUp
+			// Java pre-evaluates only when lookup still returns an OpDefNode.
+			// Native/body overrides and installed values must not be replaced
+			// with the value of their original TLA+ placeholder body.
+			lookedUp, ok := tool.Lookup(opDef.Symbol, EmptyContext, EmptyState, false).(*OpDefNode)
+			if !ok || lookedUp == nil {
+				continue
 			}
+			realDef = lookedUp
 		}
 		if realDef == nil || realDef.Arity() != 0 || realDef.Body == nil {
 			continue

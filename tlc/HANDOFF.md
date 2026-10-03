@@ -263,15 +263,31 @@ the resolver includes both the original user directory and generated directory.
 The ModelCheckerTestCase harness now scopes/restores Double.MAX_VALUE for its
 liveness threshold. DumpLoadTraceTest retains its default periodic checks.
 Full normal and race suites pass, along with targeted generated/replay checks.
-Next: retain/expose the semantic ExternalModuleTable in the TLC bridge before
-translating TraceExpressionSpecDeadlockTest and TraceExpressionSpecLassoTest.
-Both unchanged Java originals pass. Go deadlock generation/replay matches the
-four asserted states; the generated lasso has one property, no invariants and
-0/FALSE -> 1/TRUE -> 0/FALSE, and LiveCheck1 reports its expected liveness failure.
-These probes do not replace their module-table assertions: those translations
-remain pending. Port the semantic graph and contexts, not a name-only substitute.
-Complete semantic module graphs and constant-processing snapshot/eligibility
-metadata remain broader source work. Record StateString's explicit empty/non-string _format handling and full
+TraceExpressionSpecDeadlockTest and TraceExpressionSpecLassoTest are now
+translated after retaining the represented semantic module graph and contexts.
+SpecProcessor exposes its actual ExternalModuleTable and root ModuleNode. The
+bridge preserves dependency order, builtin/operator/declaration identities,
+context Pair and Hashtable orders, EXTENDS relationships, instantiated flags,
+LOCAL instance definitions and shared bodies. Java creates distinct LOCAL
+parameter-free instance definitions sharing their source bodies; applications
+in the owning module now bind to those definitions. On the same Java-generated
+monoliths, all module/declaration/operator orders match for 11 deadlock and 12
+lasso modules, as do all 334 and 395 operator/body identity relationships.
+The original deadlock test retains all four good/in-model/invariant-valid states,
+ALIAS and three module lookups; its commented deadlock TODO remains unasserted.
+The lasso retains default periodic checks, one property/no invariants, all three
+0/FALSE -> 1/TRUE -> 0/FALSE states, module lookups and LiveCheck1 failure.
+Three additional source vectors are byte-identical under test_vectors/.
+Periodic liveness reads graph size before suspending workers; publish the two
+node-pointer-table primitive int counts atomically while retaining the existing
+solution monitor. Constant pre-evaluation now requires lookup to return an
+OpDefNode, matching Java and preserving native/value overrides rather than
+evaluating their TLA+ placeholder bodies. Full normal and race suites pass.
+Next: port SpecProcessor's per-module constant-processing eligibility and maps,
+using the retained source module identities. ModuleNode top-level vectors,
+proofs/children/traversal, broader nested/parameterized instance origin metadata
+and constant-processing snapshots remain broader source work; this represented
+graph slice does not establish their completion. Record StateString's explicit empty/non-string _format handling and full
 Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain

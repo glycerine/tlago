@@ -12,24 +12,27 @@ import (
 )
 
 type tlcBridge struct {
-	tool                  *tlc.Tool
-	processor             *tlc.SpecProcessor
-	spec                  *Spec
-	cfg                   *tlc.ModelConfig
-	runtime               tlc.RuntimeParameters
-	defs                  map[string]*Definition
-	defns                 *tlc.Defns
-	diags                 Diagnostics
-	symbols               map[string]*tlc.SymbolNode
-	rootModuleName        string
-	moduleDefinitionNames map[string]map[string]bool
-	convertingModule      string
-	convertBoundNames     map[string]int
-	definitionModules     map[*Definition]string
-	sourceSymbols         map[*Definition]*tlc.SymbolNode
-	sourceDefinitions     map[*Definition]*tlc.OpDefNode
-	instanceDefinitions   map[string]*tlcBridgeInstance
-	nativeDefinitions     map[*tlc.UniqueString]any
+	tool                   *tlc.Tool
+	processor              *tlc.SpecProcessor
+	spec                   *Spec
+	cfg                    *tlc.ModelConfig
+	runtime                tlc.RuntimeParameters
+	defs                   map[string]*Definition
+	defns                  *tlc.Defns
+	diags                  Diagnostics
+	symbols                map[string]*tlc.SymbolNode
+	rootModuleName         string
+	moduleDefinitionNames  map[string]map[string]bool
+	convertingModule       string
+	convertBoundNames      map[string]int
+	definitionModules      map[*Definition]string
+	sourceSymbols          map[*Definition]*tlc.SymbolNode
+	sourceDefinitions      map[*Definition]*tlc.OpDefNode
+	instanceDefinitions    map[string]*tlcBridgeInstance
+	nativeDefinitions      map[*tlc.UniqueString]any
+	builtinDefinitions     map[string]*tlc.OpDefNode
+	moduleNodes            map[*Module]*tlc.ModuleNode
+	localModuleDefinitions map[string]*tlc.OpDefNode
 }
 
 type tlcBridgeInstance struct {
@@ -316,6 +319,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installVariables()
 	bridge.installConstantDeclarations()
 	bridge.installDefinitions()
+	bridge.installModuleTable()
 	bridge.installRootDefinitions()
 	bridge.installRuntimeConstants()
 	bridge.installConfigConstants()
@@ -1691,7 +1695,7 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 	case *CallExpr:
 		node = b.callNode(e)
 	case *IfExpr:
-		node = tlc.NewBuiltinOpApplNode(tlc.OpITE, b.convertExpr(e.Cond), b.convertExpr(e.Then), b.convertExpr(e.Else))
+		node = b.builtinNode(tlc.OpITE, b.convertExpr(e.Cond), b.convertExpr(e.Then), b.convertExpr(e.Else))
 	case *LetExpr:
 		node = b.letNode(e)
 	case *QuantifierExpr:
@@ -1705,13 +1709,13 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		for _, elem := range e.Elems {
 			args = append(args, b.convertExpr(elem))
 		}
-		node = tlc.NewBuiltinOpApplNode(tlc.OpTup, args...)
+		node = b.builtinNode(tlc.OpTup, args...)
 	case *SetExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Elems))
 		for _, elem := range e.Elems {
 			args = append(args, b.convertExpr(elem))
 		}
-		node = tlc.NewBuiltinOpApplNode(tlc.OpSE, args...)
+		node = b.builtinNode(tlc.OpSE, args...)
 	case *RecordExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Fields))
 		for _, field := range e.Fields {
@@ -1720,13 +1724,13 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 				fieldPos = field.Pos
 			}
 			name := b.withPositionLocation(fieldPos, tlc.NewStringNode(field.Name))
-			pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, name, b.convertExpr(field.Value))
+			pair := b.builtinNode(tlc.OpPair, name, b.convertExpr(field.Value))
 			args = append(args, b.withPositionLocation(fieldPos, pair))
 		}
-		node = tlc.NewBuiltinOpApplNode(tlc.OpRC, args...)
+		node = b.builtinNode(tlc.OpRC, args...)
 	case *RecordComponentExpr:
 		field := b.withPositionLocation(e.FieldPos, tlc.NewStringNode(e.Field))
-		node = tlc.NewBuiltinOpApplNode(tlc.OpRS, b.convertExpr(e.Record), field)
+		node = b.builtinNode(tlc.OpRS, b.convertExpr(e.Record), field)
 	case *RecordSetExpr:
 		args := make([]tlc.SemanticNode, 0, len(e.Fields))
 		for _, field := range e.Fields {
@@ -1735,10 +1739,10 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 				fieldPos = field.Pos
 			}
 			name := b.withPositionLocation(fieldPos, tlc.NewStringNode(field.Name))
-			pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, name, b.convertExpr(field.Set))
+			pair := b.builtinNode(tlc.OpPair, name, b.convertExpr(field.Set))
 			args = append(args, b.withPositionLocation(fieldPos, pair))
 		}
-		node = tlc.NewBuiltinOpApplNode(tlc.OpSOR, args...)
+		node = b.builtinNode(tlc.OpSOR, args...)
 	case *FunctionExpr:
 		if e.IsLambda {
 			node = b.lambdaNode(e)
@@ -1747,7 +1751,7 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		}
 	case *FunctionAppExpr:
 		arg := b.convertFunctionArgs(e.Args)
-		node = tlc.NewBuiltinOpApplNode(tlc.OpFA, b.convertExpr(e.Function), arg)
+		node = b.builtinNode(tlc.OpFA, b.convertExpr(e.Function), arg)
 	case *ExceptExpr:
 		node = b.exceptNode(e)
 	case *LabelExpr:
@@ -1757,15 +1761,15 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		if e.Kind == "angle" {
 			op = tlc.OpAA
 		}
-		node = tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
+		node = b.builtinNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
 	case *FairnessExpr:
 		op := tlc.OpWF
 		if e.Kind == "SF" {
 			op = tlc.OpSF
 		}
-		node = tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Subscript), b.convertExpr(e.Action))
+		node = b.builtinNode(op, b.convertExpr(e.Subscript), b.convertExpr(e.Action))
 	case *FunctionSetExpr:
-		node = tlc.NewBuiltinOpApplNode(tlc.OpSOF, b.convertExpr(e.Domain), b.convertExpr(e.Range))
+		node = b.builtinNode(tlc.OpSOF, b.convertExpr(e.Domain), b.convertExpr(e.Range))
 	case *SetComprehensionExpr:
 		node = b.setComprehensionNode(e)
 	default:
@@ -1861,9 +1865,9 @@ func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
 	op := e.Op
 	switch op {
 	case "/\\":
-		return tlc.NewBuiltinOpApplNode(tlc.OpCL, b.convertExpr(e.Expr))
+		return b.builtinNode(tlc.OpCL, b.convertExpr(e.Expr))
 	case "\\/":
-		return tlc.NewBuiltinOpApplNode(tlc.OpDL, b.convertExpr(e.Expr))
+		return b.builtinNode(tlc.OpDL, b.convertExpr(e.Expr))
 	case "~", "\\neg":
 		op = "\\lnot"
 	}
@@ -1887,7 +1891,7 @@ func (b *tlcBridge) binaryNode(e *BinaryExpr) tlc.SemanticNode {
 		}
 		collect(e.Left)
 		collect(e.Right)
-		return tlc.NewBuiltinOpApplNode(tlc.OpCP, args...)
+		return b.builtinNode(tlc.OpCP, args...)
 	}
 	if e.JunctionList {
 		op := tlc.OpCL
@@ -1906,7 +1910,7 @@ func (b *tlcBridge) binaryNode(e *BinaryExpr) tlc.SemanticNode {
 		}
 		collect(e.Left)
 		collect(e.Right)
-		return tlc.NewBuiltinOpApplNode(op, args...)
+		return b.builtinNode(op, args...)
 	}
 	op := tlcBinaryOperator(e.Op)
 	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Left), b.convertExpr(e.Right))
@@ -1921,9 +1925,9 @@ func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
 			args = append(args, b.convertExpr(arg))
 		}
 		if len(args) == 2 {
-			return tlc.NewBuiltinOpApplNode(tlc.OpFA, args[0], args[1])
+			return b.builtinNode(tlc.OpFA, args[0], args[1])
 		}
-		return tlc.NewBuiltinOpApplNode(tlc.OpFA, args[0], tlc.NewBuiltinOpApplNode(tlc.OpTup, args[1:]...))
+		return b.builtinNode(tlc.OpFA, args[0], b.builtinNode(tlc.OpTup, args[1:]...))
 	}
 	args := make([]tlc.SemanticNode, 0, len(e.Args))
 	for _, arg := range e.Args {
@@ -2021,7 +2025,7 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 	restore := b.pushConvertBoundNames(e.Var)
 	body := b.convertExpr(e.Body)
 	restore()
-	node := tlc.NewBuiltinOpApplNode(op, body)
+	node := b.builtinNode(op, body)
 	if e.Set != nil {
 		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{b.symbol(e.Var)}}
 		node.BdedQuantBounds = []tlc.SemanticNode{bound}
@@ -2053,7 +2057,7 @@ func (b *tlcBridge) tupleQuantifierNode(e *QuantifierExpr, op *tlc.UniqueString)
 	restore := b.pushConvertBoundNames(vars...)
 	convertedBody := b.convertExpr(body)
 	restore()
-	node := tlc.NewBuiltinOpApplNode(op, convertedBody)
+	node := b.builtinNode(op, convertedBody)
 	symbols := make([]*tlc.SymbolNode, 0, len(vars))
 	for _, name := range vars {
 		symbols = append(symbols, b.symbol(name))
@@ -2067,14 +2071,14 @@ func (b *tlcBridge) tupleQuantifierNode(e *QuantifierExpr, op *tlc.UniqueString)
 func (b *tlcBridge) caseNode(e *CaseExpr) tlc.SemanticNode {
 	args := make([]tlc.SemanticNode, 0, len(e.Arms)+1)
 	for _, arm := range e.Arms {
-		pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, b.convertExpr(arm.Test), b.convertExpr(arm.Value))
+		pair := b.builtinNode(tlc.OpPair, b.convertExpr(arm.Test), b.convertExpr(arm.Value))
 		args = append(args, b.withPositionLocation(arm.Pos, pair))
 	}
 	if e.Other != nil {
-		pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, nil, b.convertExpr(e.Other))
+		pair := b.builtinNode(tlc.OpPair, nil, b.convertExpr(e.Other))
 		args = append(args, b.withPositionLocation(e.OtherPos, pair))
 	}
-	return tlc.NewBuiltinOpApplNode(tlc.OpCase, args...)
+	return b.builtinNode(tlc.OpCase, args...)
 }
 
 func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
@@ -2089,7 +2093,7 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 	restore := b.pushConvertBoundNames(e.Var)
 	body := b.convertExpr(e.Body)
 	restore()
-	node := tlc.NewBuiltinOpApplNode(op, body)
+	node := b.builtinNode(op, body)
 	if e.Set != nil {
 		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{b.symbol(e.Var)}}
 		node.BdedQuantBounds = []tlc.SemanticNode{bound}
@@ -2170,7 +2174,7 @@ func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
 	restore := b.pushConvertBoundNames(priorBound...)
 	body := b.convertExpr(e.Body)
 	restore()
-	node := tlc.NewBuiltinOpApplNode(tlc.OpFC, body)
+	node := b.builtinNode(tlc.OpFC, body)
 	b.appendBoundGroups(node, b.boundGroups(e.Bounds, boundExprs))
 	return node
 }
@@ -2187,11 +2191,11 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 				pathElems = append(pathElems, b.convertExpr(index))
 			}
 		}
-		path := b.withPositionLocation(spec.Pos, tlc.NewBuiltinOpApplNode(tlc.OpTup, pathElems...))
-		pair := tlc.NewBuiltinOpApplNode(tlc.OpPair, path, b.convertExpr(spec.Value))
+		path := b.withPositionLocation(spec.Pos, b.builtinNode(tlc.OpTup, pathElems...))
+		pair := b.builtinNode(tlc.OpPair, path, b.convertExpr(spec.Value))
 		args = append(args, b.withPositionLocation(spec.Pos, pair))
 	}
-	return tlc.NewBuiltinOpApplNode(tlc.OpExc, args...)
+	return b.builtinNode(tlc.OpExc, args...)
 }
 
 func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNode {
@@ -2208,7 +2212,7 @@ func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNo
 		restore := b.pushConvertBoundNames(priorBound...)
 		predicate := b.convertExpr(e.Predicate)
 		restore()
-		filtered := tlc.NewBuiltinOpApplNode(tlc.OpSSO, predicate)
+		filtered := b.builtinNode(tlc.OpSSO, predicate)
 		filterSymbols, filterTuple := b.appendFilteredComprehensionBounds(filtered, groups, e.Pos)
 		if setComprehensionElementIsBound(e) {
 			return filtered
@@ -2216,7 +2220,7 @@ func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNo
 		bodyRestore := b.pushConvertBoundNames(priorBound...)
 		body := b.convertExpr(e.Element)
 		bodyRestore()
-		node := tlc.NewBuiltinOpApplNode(tlc.OpSOA, body)
+		node := b.builtinNode(tlc.OpSOA, body)
 		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, filterSymbols)
 		node.BdedQuantBounds = append(node.BdedQuantBounds, filtered)
 		node.BdedQuantATuple = append(node.BdedQuantATuple, filterTuple)
@@ -2225,7 +2229,7 @@ func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNo
 	restore := b.pushConvertBoundNames(priorBound...)
 	body := b.convertExpr(e.Element)
 	restore()
-	node := tlc.NewBuiltinOpApplNode(tlc.OpSOA, body)
+	node := b.builtinNode(tlc.OpSOA, body)
 	b.appendBoundGroups(node, groups)
 	return node
 }
@@ -2283,7 +2287,7 @@ func (b *tlcBridge) appendFilteredComprehensionBounds(node *tlc.OpApplNode, grou
 		allSymbols = append(allSymbols, group.symbols...)
 		productArgs = append(productArgs, group.bound)
 	}
-	product := b.withPositionLocation(pos, tlc.NewBuiltinOpApplNode(tlc.OpCP, productArgs...))
+	product := b.withPositionLocation(pos, b.builtinNode(tlc.OpCP, productArgs...))
 	node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, allSymbols)
 	node.BdedQuantBounds = append(node.BdedQuantBounds, product)
 	node.BdedQuantATuple = append(node.BdedQuantATuple, true)
@@ -2298,7 +2302,7 @@ func (b *tlcBridge) convertFunctionArgs(args []Expr) tlc.SemanticNode {
 	for _, arg := range args {
 		elems = append(elems, b.convertExpr(arg))
 	}
-	return tlc.NewBuiltinOpApplNode(tlc.OpTup, elems...)
+	return b.builtinNode(tlc.OpTup, elems...)
 }
 
 func (b *tlcBridge) symbol(name string) *tlc.SymbolNode {

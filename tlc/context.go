@@ -11,6 +11,8 @@ const (
 	SymbolUnknown SymbolKind = iota
 	SymbolVariableDecl
 	SymbolUserDefinedOp
+	SymbolConstantDecl
+	SymbolBuiltIn
 )
 
 type SymbolNode struct {

@@ -19,22 +19,25 @@ const (
 )
 
 const (
-	SemanticUnknownKind       SemanticKind = 0
-	SemanticUserDefinedOpKind SemanticKind = 5
-	SemanticOpArgKind         SemanticKind = 8
-	SemanticOpApplKind        SemanticKind = 9
-	SemanticLetInKind         SemanticKind = 10
-	SemanticSubstInKind       SemanticKind = 13
-	SemanticNumeralKind       SemanticKind = 16
-	SemanticDecimalKind       SemanticKind = 17
-	SemanticStringKind        SemanticKind = 18
-	SemanticAtNodeKind        SemanticKind = 19
-	SemanticThmOrAssumpKind   SemanticKind = 23
-	SemanticLabelKind         SemanticKind = 29
-	SemanticAPSubstInKind     SemanticKind = 30
-	SemanticValueKind         SemanticKind = 1001
-	SemanticPossibleTrackKind SemanticKind = 1002
-	SemanticPossibleCheckKind SemanticKind = 1003
+	SemanticUnknownKind        SemanticKind = 0
+	SemanticModuleKind         SemanticKind = 1
+	SemanticUserDefinedOpKind  SemanticKind = 5
+	SemanticModuleInstanceKind SemanticKind = 6
+	SemanticBuiltInKind        SemanticKind = 7
+	SemanticOpArgKind          SemanticKind = 8
+	SemanticOpApplKind         SemanticKind = 9
+	SemanticLetInKind          SemanticKind = 10
+	SemanticSubstInKind        SemanticKind = 13
+	SemanticNumeralKind        SemanticKind = 16
+	SemanticDecimalKind        SemanticKind = 17
+	SemanticStringKind         SemanticKind = 18
+	SemanticAtNodeKind         SemanticKind = 19
+	SemanticThmOrAssumpKind    SemanticKind = 23
+	SemanticLabelKind          SemanticKind = 29
+	SemanticAPSubstInKind      SemanticKind = 30
+	SemanticValueKind          SemanticKind = 1001
+	SemanticPossibleTrackKind  SemanticKind = 1002
+	SemanticPossibleCheckKind  SemanticKind = 1003
 )
 
 type SemanticNodeBase struct {
@@ -204,6 +207,8 @@ func SemanticLevel(node SemanticNode) int {
 	switch n := node.(type) {
 	case nil:
 		return TLCLevelConstant
+	case *ModuleNode:
+		return n.GetLevel()
 	case *OpDefNode:
 		return n.GetLevel()
 	case *LabelNode:
@@ -525,7 +530,7 @@ func SemanticKindOf(node SemanticNode) SemanticKind {
 	case nil:
 		return SemanticUnknownKind
 	case *OpDefNode:
-		return SemanticUserDefinedOpKind
+		return n.Kind()
 	case *LabelNode:
 		return SemanticLabelKind
 	case *OpApplNode:

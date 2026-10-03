@@ -1,6 +1,9 @@
 package tlc
 
-import "fmt"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 const (
 	nodePtrEmpty              = int64(-1)
@@ -16,8 +19,10 @@ func IsDiskGraphFilePointer(loc int64) bool {
 	return loc < DiskGraphMaxPtr
 }
 
+// Periodic liveness work reads size before suspending workers. Publish Java's
+// primitive int count atomically while graph mutations retain their solution lock.
 type NodePtrTable struct {
-	count  int
+	count  int32
 	length int
 	thresh int
 	keys   []uint64
@@ -38,7 +43,7 @@ func NewNodePtrTable(size int) *NodePtrTable {
 }
 
 func (t *NodePtrTable) Put(k uint64, elem int64) {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -46,7 +51,7 @@ func (t *NodePtrTable) Put(k uint64, elem int64) {
 		if t.elems[loc] == nodePtrEmpty {
 			t.keys[loc] = k
 			t.elems[loc] = elem
-			t.count++
+			atomic.AddInt32(&t.count, 1)
 			return
 		}
 		if t.keys[loc] == k {
@@ -58,7 +63,7 @@ func (t *NodePtrTable) Put(k uint64, elem int64) {
 }
 
 func (t *NodePtrTable) GetLoc(k uint64) int {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -106,7 +111,7 @@ func (t *NodePtrTable) Size() int {
 	if t == nil {
 		return 0
 	}
-	return t.count
+	return int(atomic.LoadInt32(&t.count))
 }
 
 func (t *NodePtrTable) GetSize() int {
@@ -126,7 +131,7 @@ func (t *NodePtrTable) grow() {
 	for i := range t.elems {
 		t.elems[i] = nodePtrEmpty
 	}
-	t.count = 0
+	atomic.StoreInt32(&t.count, 0)
 	for i, elem := range oldElems {
 		if elem != nodePtrEmpty {
 			t.Put(oldKeys[i], elem)
@@ -394,7 +399,7 @@ func livenessHashLoc(k uint64, length int) int {
 }
 
 type TableauNodePtrTable struct {
-	count   int
+	count   int32
 	length  int
 	thresh  int
 	nodes   [][]int32
@@ -422,7 +427,7 @@ func (t *TableauNodePtrTable) Size() int {
 	if t == nil {
 		return 0
 	}
-	return t.count
+	return int(atomic.LoadInt32(&t.count))
 }
 
 func (t *TableauNodePtrTable) GetSize() int {
@@ -433,7 +438,7 @@ func (t *TableauNodePtrTable) GetSize() int {
 }
 
 func (t *TableauNodePtrTable) Get(k uint64, tidx int) int64 {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -462,7 +467,7 @@ func (t *TableauNodePtrTable) PutElem(k uint64, tidx int, elem int64) {
 }
 
 func (t *TableauNodePtrTable) put(k uint64, tidx int, addElem int64, newElem int64) {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -470,7 +475,7 @@ func (t *TableauNodePtrTable) put(k uint64, tidx int, addElem int64, newElem int
 		node := t.nodes[loc]
 		if node == nil {
 			t.nodes[loc] = t.addElem(k, tidx, addElem)
-			t.count++
+			atomic.AddInt32(&t.count, 1)
 			return
 		}
 		if TableauGetKey(node) == k {
@@ -487,7 +492,7 @@ func (t *TableauNodePtrTable) put(k uint64, tidx int, addElem int64, newElem int
 }
 
 func (t *TableauNodePtrTable) GetLoc(k uint64, tidx int) int {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -507,7 +512,7 @@ func (t *TableauNodePtrTable) GetLoc(k uint64, tidx int) int {
 }
 
 func (t *TableauNodePtrTable) GetNodes(k uint64) []int32 {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -524,7 +529,7 @@ func (t *TableauNodePtrTable) GetNodes(k uint64) []int32 {
 }
 
 func (t *TableauNodePtrTable) GetNodesLoc(k uint64) int {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -556,7 +561,7 @@ func (t *TableauNodePtrTable) IsDone(k uint64) bool {
 }
 
 func (t *TableauNodePtrTable) SetDone(k uint64) int {
-	if t.count >= t.thresh {
+	if atomic.LoadInt32(&t.count) >= int32(t.thresh) {
 		t.grow()
 	}
 	loc := livenessHashLoc(k, t.length)
@@ -564,7 +569,7 @@ func (t *TableauNodePtrTable) SetDone(k uint64) int {
 		node := t.nodes[loc]
 		if node == nil {
 			t.nodes[loc] = tableauAddKey(k)
-			t.count++
+			atomic.AddInt32(&t.count, 1)
 			return loc
 		}
 		if TableauGetKey(node) == k {

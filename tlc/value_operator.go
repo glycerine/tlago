@@ -7,12 +7,27 @@ import (
 
 type OpDefNode struct {
 	SemanticNodeBase
-	Symbol              *SymbolNode
-	Name                *UniqueString
-	Params              []*SymbolNode
-	Body                SemanticNode
-	DeclarationLocation SourceLocation
-	InRecursive         bool
+	Symbol                    *SymbolNode
+	Name                      *UniqueString
+	Params                    []*SymbolNode
+	Body                      SemanticNode
+	DeclarationLocation       SourceLocation
+	InRecursive               bool
+	Local                     bool
+	OriginallyDefinedInModule *ModuleNode
+	SourceDefinition          *OpDefNode
+}
+
+func (n *OpDefNode) IsLocal() bool   { return n.Local }
+func (n *OpDefNode) HasSource() bool { return n.SourceDefinition != nil }
+func (n *OpDefNode) GetOriginallyDefinedInModuleNode() *ModuleNode {
+	return n.OriginallyDefinedInModule
+}
+func (n *OpDefNode) GetSource() *OpDefNode {
+	if n.SourceDefinition != nil {
+		return n.SourceDefinition
+	}
+	return n
 }
 
 func NewOpDefNode(name string, params []*SymbolNode, body SemanticNode) *OpDefNode {
@@ -46,6 +61,9 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 func (n *OpDefNode) Arity() int {
 	if n == nil {
 		return 0
+	}
+	if n.Kind() == SemanticBuiltInKind {
+		return n.Symbol.Arity
 	}
 	return len(n.Params)
 }

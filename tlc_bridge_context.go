@@ -12,13 +12,17 @@ import (
 // ModuleNode obtains declarations by reversing Hashtable.elements(). Keep both
 // orders: sorting declaration names changes state printing and variable slots.
 type tlcBridgeContextEntry struct {
-	name      string
-	kind      DeclarationKind
-	module    *Module
-	position  Position
-	local     bool
-	moduleKey bool
-	initial   bool
+	name               string
+	kind               DeclarationKind
+	module             *Module
+	position           Position
+	local              bool
+	moduleKey          bool
+	initial            bool
+	moduleInstance     bool
+	instance           *Instance
+	instanceOwner      *Module
+	instanceSourceName string
 }
 
 func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool) []tlcBridgeContextEntry {
@@ -113,10 +117,15 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 	})
 	for _, item := range items {
 		if instance := item.instance; instance != nil {
-			for _, entry := range tlcBridgeContextEntries(spec, spec.Modules[instance.Module], visiting) {
-				if entry.local || entry.kind != OperatorDecl {
+			// Generator instances iterate Context.getByClass via Hashtable.elements,
+			// unlike EXTENDS, which merges the source Pair links in insertion order.
+			for _, entry := range tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, spec.Modules[instance.Module], visiting)) {
+				if entry.local || entry.kind != OperatorDecl || entry.moduleInstance {
 					continue
 				}
+				entry.instanceSourceName = entry.name
+				entry.instance = instance
+				entry.instanceOwner = mod
 				if instance.Name != "" {
 					entry.name = instance.Name + "!" + entry.name
 				}
@@ -124,7 +133,7 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 				put(entry, true)
 			}
 			if instance.Name != "" {
-				put(tlcBridgeContextEntry{name: instance.Name, kind: OperatorDecl, module: mod, local: instance.Local}, true)
+				put(tlcBridgeContextEntry{name: instance.Name, kind: OperatorDecl, module: mod, local: instance.Local, moduleInstance: true}, true)
 			}
 		}
 		for _, entry := range item.entries {
@@ -135,6 +144,19 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 }
 
 func tlcBridgeDeclarationOrder(entries []tlcBridgeContextEntry, kind DeclarationKind) []tlcBridgeContextEntry {
+	var declarations []tlcBridgeContextEntry
+	for _, entry := range tlcBridgeContextContentOrder(entries) {
+		if entry.kind == kind {
+			declarations = append(declarations, entry)
+		}
+	}
+	for i, j := 0, len(declarations)-1; i < j; i, j = i+1, j-1 {
+		declarations[i], declarations[j] = declarations[j], declarations[i]
+	}
+	return declarations
+}
+
+func tlcBridgeContextContentOrder(entries []tlcBridgeContextEntry) []tlcBridgeContextEntry {
 	buckets := make([][]tlcBridgeContextEntry, 11)
 	count, threshold := 0, 8
 	put := func(table [][]tlcBridgeContextEntry, entry tlcBridgeContextEntry) {
@@ -171,18 +193,13 @@ func tlcBridgeDeclarationOrder(entries []tlcBridgeContextEntry, kind Declaration
 			insert(entry)
 		}
 	}
-	var declarations []tlcBridgeContextEntry
+	var content []tlcBridgeContextEntry
 	for i := len(buckets) - 1; i >= 0; i-- {
 		for _, entry := range buckets[i] {
-			if entry.kind == kind {
-				declarations = append(declarations, entry)
-			}
+			content = append(content, entry)
 		}
 	}
-	for i, j := 0, len(declarations)-1; i < j; i, j = i+1, j-1 {
-		declarations[i], declarations[j] = declarations[j], declarations[i]
-	}
-	return declarations
+	return content
 }
 
 func (b *tlcBridge) variableDeclarations() []*tlc.SymbolNode {
