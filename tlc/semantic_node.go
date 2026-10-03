@@ -72,6 +72,8 @@ func newSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
 func (n *SemanticNodeBase) GetTreeNode() any     { return n.TreeNode }
 func (n *SemanticNodeBase) SetTreeNode(node any) { n.TreeNode = node }
 
+func (n *SemanticNodeBase) GetHumanReadableImage() string { return n.Location.String() }
+
 func (n *SemanticNodeBase) Kind() SemanticKind {
 	if n == nil {
 		return SemanticUnknownKind

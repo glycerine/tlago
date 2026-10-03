@@ -11,7 +11,7 @@ func (t *Tool) IsInModelImpl(state *TLCStateMut) (bool, error) {
 }
 
 func (t *Tool) IsInModelForConstraintImpl(constraint SemanticNode, state *TLCStateMut) (bool, error) {
-	return t.evalConstraint(constraint, state, EmptyState)
+	return t.evalConstraint(constraint, state)
 }
 
 func (t *Tool) IsInActionsImpl(s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
@@ -28,7 +28,7 @@ func (t *Tool) IsInActionsForConstraintImpl(constraint SemanticNode, s1 *TLCStat
 	return t.evalConstraint(constraint, s1, s2)
 }
 
-func (t *Tool) evalConstraint(constraint SemanticNode, s0 *TLCStateMut, s1 *TLCStateMut) (bool, error) {
+func (t *Tool) evalConstraint(constraint SemanticNode, s0 *TLCStateMut, successor ...*TLCStateMut) (bool, error) {
 	cm := DoNotRecordCostModel
 	if CoverageEnabled() {
 		object := SemanticToolObjectForTool(t, constraint)
@@ -41,10 +41,21 @@ func (t *Tool) evalConstraint(constraint SemanticNode, s0 *TLCStateMut, s1 *TLCS
 		}
 		cm = action.CM
 	}
-	valid, err := t.evalPredicateValue(constraint, EmptyContext, s0, s1, EvalClear, "constraint", cm)
+	// Source isInModel uses the one-state eval overload, which selects State
+	// mode in DebugTool. Action constraints use the two-state/control overload.
+	args := []any{EmptyContext, s0, cm}
+	if len(successor) > 0 {
+		args = []any{EmptyContext, s0, successor[0], EvalClear, cm}
+	}
+	value, err := t.Eval(constraint, args...)
 	if err != nil {
 		return false, err
 	}
+	bval, ok := value.(*BoolValue)
+	if !ok {
+		return false, NewTLCRuntimeException(ECTLCExpectedValue, "boolean", semanticNodeLocationString(constraint))
+	}
+	valid := bval.Val
 	if CoverageEnabled() {
 		if valid {
 			cm.IncSecondary()

@@ -3115,8 +3115,19 @@ Debugger variable details:
   match all 419 hover/breakpoint and 448 expression/watch/stack records, plus 60
   dynamic dependency records. Retained modules, Bags/Randomization overrides,
   original root identity, transient-wrapper exclusion and radix/large/decimal
-  diagnostics agree. Whole EWD998 Go assertions and broader semantic metadata
-  remain source work; no narrowed persistent EWD998 test was added. Raw displayed
+  diagnostics agree. The entire EWD998ChanDebuggerTest is now translated with
+  every original assertion and four byte-identical model/config vectors. The
+  inherited Set<Variable> overload preserves displayed name/value/type checks
+  and lazy-cache counts without invoking the separate Context overload's state
+  assertions. Context maps and displayed names use declaration names while the
+  evaluator retains qualified lookup keys. Semantic context bindings use source
+  signatures and OpDefNode human-readable images: leftmost attached comments,
+  one-child images separated by spaces, Java ASCII trim and no variable type.
+  State constraints call the one-state eval overload, so debugger hit conditions
+  use the current state's level; action constraints retain the two-state path.
+  Unchanged Java and the complete Go method pass, as do full offline normal/race
+  suites. Broader semantic metadata and full debugger completion remain source
+  work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to

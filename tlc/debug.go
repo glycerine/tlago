@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"reflect"
 	"sort"
 	"strconv"
@@ -308,7 +309,16 @@ func (f *TLCStackFrame) contextVariables(rnd *rand.Rand, s, t *TLCStateMut, catc
 			}
 			value = evaluated
 		}
-		variables = append(variables, f.debugVariableForAny(value, symbolNodeDebugName(name), rnd))
+		switch v := value.(type) {
+		case Value:
+			variables = append(variables, f.debugVariableForValue(v, symbolNodeDebugName(name), rnd))
+		case interface{ GetHumanReadableImage() string }:
+			variables = append(variables, &DebugTLCVariable{Name: name.GetSignature(), Value: v.GetHumanReadableImage()})
+		case error:
+			variables = append(variables, &DebugTLCVariable{Name: symbolNodeDebugName(name), Value: fmt.Sprint(c.Value()), Type: v.Error()})
+		default:
+			fmt.Fprintf(os.Stderr, "This is interesting!!! What's this??? %v\n", value)
+		}
 	}
 	return variables
 }
@@ -382,24 +392,6 @@ func (f *TLCStackFrame) stackVariables(rnd *rand.Rand) []*DebugTLCVariable {
 		}
 	}
 	return variables
-}
-
-func (f *TLCStackFrame) debugVariableForAny(value any, name string, rnd *rand.Rand) *DebugTLCVariable {
-	if workerValue, ok := value.(*WorkerValue); ok {
-		value = workerValue.ValueForWorker(CurrentThreadIDOr(0))
-	}
-	switch v := value.(type) {
-	case nil:
-		return &DebugTLCVariable{Name: name, Value: "<nil>"}
-	case Value:
-		return f.debugVariableForValue(v, name, rnd)
-	case SemanticNode:
-		return &DebugTLCVariable{Name: name, Value: SemanticString(v), Type: reflect.TypeOf(v).String()}
-	case error:
-		return &DebugTLCVariable{Name: name, Value: v.Error(), Type: reflect.TypeOf(v).String()}
-	default:
-		return &DebugTLCVariable{Name: name, Value: fmt.Sprint(v), Type: reflect.TypeOf(v).String()}
-	}
 }
 
 func (f *TLCStackFrame) debugVariableForValue(value Value, name string, rnd *rand.Rand) *DebugTLCVariable {
@@ -1550,7 +1542,7 @@ func symbolNodeDebugName(node *SymbolNode) string {
 	if node == nil || node.Name == nil {
 		return ""
 	}
-	return node.Name.String()
+	return node.GetName().String()
 }
 
 func semanticNodeLevel(node SemanticNode) int {

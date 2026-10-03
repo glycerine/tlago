@@ -271,6 +271,8 @@ func debuggerFrameArguments(t *testing.T, f *tlc.TLCDebuggerFrame, args []any) [
 			expected = c
 		} else if _, ok := remaining[0].(map[string]string); ok || remaining[0] == nil {
 			expected = nil
+		} else if _, ok := remaining[0].(javaDebuggerVariableSet); ok {
+			expected = nil
 		}
 	}
 	found := false
@@ -336,6 +338,12 @@ func assertTLCActionFrame(t *testing.T, f *tlc.TLCDebuggerFrame, args ...any) {
 	t.Helper()
 	remaining := debuggerFrameArguments(t, f, args)
 	debuggerAssertTrue(t, f.Action != nil)
+	if len(remaining) > 0 {
+		if expected, ok := remaining[0].(javaDebuggerVariableSet); ok {
+			assertDebuggerContextVariableSet(t, f, expected)
+			return
+		}
+	}
 	debuggerScope(t, f.GetScopes(), "Action")
 	predecessor := f.Action.GetS()
 	debuggerAssertTrue(t, predecessor != nil && predecessor.AllAssigned())
@@ -351,6 +359,38 @@ func assertTLCActionFrame(t *testing.T, f *tlc.TLCDebuggerFrame, args ...any) {
 	}
 	debuggerAssertEqual(t, want, f.Action.State.Level())
 }
+
+// Source TLCDebuggerTestCase's Set<Variable> overload checks displayed name,
+// value and type, plus cache counts, without invoking the Context overload's
+// state/trace assertions. Its unassigned parameter is intentionally unused.
+type javaDebuggerVariableSet []*tlc.DebugTLCVariable
+
+func assertDebuggerContextVariableSet(t *testing.T, f *tlc.TLCDebuggerFrame, expected javaDebuggerVariableSet) {
+	t.Helper()
+	var lazies []*tlc.LazyValue
+	var counts []int
+	for context := f.Base.Context; context != nil; context = context.Next() {
+		if lazy, ok := context.Value().(*tlc.LazyValue); ok {
+			lazies = append(lazies, lazy)
+			counts = append(counts, lazy.CacheCount)
+		}
+	}
+	variables := f.GetVariables(f.Base.ContextID, nil)
+	debuggerAssertEqual(t, f.Base.Context.ToMap().Len(), len(variables))
+	for _, variable := range variables {
+		found := false
+		for _, e := range expected {
+			if variable.Name == e.Name && variable.Value == e.Value && variable.Type == e.Type {
+				found = true
+				break
+			}
+		}
+		debuggerAssertTrue(t, found)
+	}
+	for i, lazy := range lazies {
+		debuggerAssertEqual(t, counts[i], lazy.CacheCount)
+	}
+}
 func debuggerAssertState(t *testing.T, f *tlc.TLCDebuggerFrame, remaining []any) {
 	t.Helper()
 	debuggerAssertTrue(t, f.State.State != nil)
@@ -360,7 +400,9 @@ func debuggerAssertState(t *testing.T, f *tlc.TLCDebuggerFrame, remaining []any)
 			offset = 1
 		} else if c, ok := remaining[0].(*tlc.Context); ok {
 			offset = 1
-			assertDebuggerContext(t, c, f.Base.Context)
+			if c != nil {
+				assertDebuggerContext(t, c, f.Base.Context)
+			}
 			if c == tlc.EmptyContext {
 				debuggerAssertEqual(t, 0, f.Base.NestedVariables.Len())
 			}

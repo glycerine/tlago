@@ -947,3 +947,32 @@
 - Final ephemeral production Go/source comparisons pass under -race: all 419 hover/breakpoint records, 448 expression/watch/stack records and 60 dependency records agree. Bags persists after a failed expression and is reused; Randomization's native override, missing Strings module behavior, original root identity and transient-wrapper exclusion agree. An initial scoped-expression comparison exposed the missing ModuleNode walkGraph branch; ported context/top-level traversal, including Java Context's diagnostic/skip branch for internal ModuleName keys, and repeated the complete source probes successfully. These are temporary comparisons, not invented persistent tests or a narrowed EWD998 translation.
 
 - The entire unchanged Java EWD998ChanDebuggerTest reports one run/zero failures/zero ignored. Existing complete Go Echo/ExpressionBreakpoint translations and the previously flaky ModelConfig case pass. Final full offline go test ./... and go test -race ./... pass (root 34.219s/203.390s; TLC 0.783s/3.165s); code/document diff checks pass. No new persistent tests or vectors were added in this production slice. Next: translate the remaining original Set<Variable> inherited lazy-cache assertion form, then the entire EWD998ChanDebuggerTest method and all byte-identical EWD998 vectors, without weakening/skipping any source assertions. DAP transport/capability events, theorem/proof/top-level/level metadata, broader instance/export metadata, complete native override registration, formatting/trace expressions and selected distributed transport remain pending. Full TLC completion is not established. Independent rpc25519/Greenpack transport notes remain outside this checker commit.
+
+
+- Complete EWD998 debugger test slice: after implementing production features,
+translated the entire original EWD998ChanDebuggerTest.testSpec and its inherited
+Set<Variable> lazy-cache overload. Retained all 154 equality assertions, all
+truth/false/reference assertions, 5 base-frame, 21 state-frame, 7 action-frame and
+1 next-state-frame calls. Source assertNotNull(response) is statically guaranteed
+by Go's concrete response. Four original EWD998 vectors are frozen byte-identical
+under tlc/test_vectors/models/EWD998; no invented tests or vectors.
+
+- The complete method exposed two production gaps. Context.toMap and display
+names now use source declaration names while preserving qualified evaluator
+lookup keys. Semantic context bindings show Java signatures and full OpDefNode
+human-readable images, with leftmost attached comments, one-child spacing, ASCII
+trim and no type; replaced the earlier name-only signature approximation at its
+TLCEvalDefinition use too. State constraints now call Java's one-state eval
+overload, selecting State mode and the current state's level for hit conditions;
+action constraints keep their two-state/control overload. The inherited test
+helper preserves typed nil expected Context as Java's null without comparing it.
+
+- Unchanged Java JUnit reports one run/zero failures/zero ignored; the complete
+Go test passes. Final full offline go test ./... and go test -race ./... pass;
+code/document diff checks pass, excluding byte-identical upstream fixture
+whitespace. Next: original EWD998TraceDebuggerTest production comparison, then
+its complete translation after remaining features. DAP transport/capability
+events, broader theorem/proof/level/instance/export metadata, complete native
+override registration, formatter/trace expressions and selected distributed
+transport remain pending. Full TLC completion is not established. Independent
+rpc25519/Greenpack documentation remains outside this checker commit.

@@ -94,6 +94,30 @@ func (n *SanySyntaxNode) GetHeirs() []*SanySyntaxNode {
 	return append([]*SanySyntaxNode(nil), n.Heirs...)
 }
 
+// GetAttachedComments follows the leftmost heir to the token, as in SANY.
+func (n *SanySyntaxNode) GetAttachedComments() []string {
+	if n.Kind < SanyNodeNullId {
+		return n.PreComments
+	}
+	if len(n.Heirs) == 0 {
+		return nil
+	}
+	return n.Heirs[0].GetAttachedComments()
+}
+
+// Expose the one-child images across the parser/TLC package boundary without
+// merging them with zero: OpDefNode prints a space after each one child.
+func (n *SanySyntaxNode) GetOneHumanReadableImages() []string {
+	if n.One == nil {
+		return nil
+	}
+	images := make([]string, len(n.One))
+	for i, child := range n.One {
+		images[i] = child.GetHumanReadableImage()
+	}
+	return images
+}
+
 // GetHumanReadableImage mirrors SyntaxTreeNode, including its zero-child
 // check: a node with only one children returns its own image.
 func (n *SanySyntaxNode) GetHumanReadableImage() string {

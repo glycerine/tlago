@@ -123,21 +123,53 @@ func (n *OpDefNode) String() string {
 	return n.Name.String()
 }
 
-func (n *OpDefNode) Signature() string {
-	if n == nil || n.Name == nil {
-		return "<anonymous>"
-	}
-	if len(n.Params) == 0 {
-		return n.Name.String()
-	}
-	parts := make([]string, 0, len(n.Params))
-	for _, param := range n.Params {
-		if param == nil || param.Name == nil {
-			continue
+func (n *OpDefNode) GetSignature() string {
+	var out strings.Builder
+	out.WriteString(n.Name.String())
+	if n.Arity() > 0 && n.Kind() != SemanticBuiltInKind {
+		out.WriteByte('(')
+		for i, param := range n.Params {
+			if param.GetTreeNode() != nil {
+				out.WriteString(syntaxNodeHumanReadableImage(param))
+				if i < len(n.Params)-1 {
+					out.WriteString(", ")
+				}
+			}
 		}
-		parts = append(parts, param.Name.String())
+		out.WriteByte(')')
 	}
-	return n.Name.String() + "(" + strings.Join(parts, ", ") + ")"
+	return out.String()
+}
+
+func (n *OpDefNode) GetComment() string {
+	var out strings.Builder
+	if tree, ok := n.GetTreeNode().(interface{ GetAttachedComments() []string }); ok {
+		for _, comment := range tree.GetAttachedComments() {
+			out.WriteString(comment)
+			out.WriteByte('\n')
+		}
+	}
+	return strings.TrimFunc(strings.ReplaceAll(out.String(), "\n$", ""), func(r rune) bool { return r <= 0x20 })
+}
+
+func (n *OpDefNode) GetHumanReadableImage() string {
+	var out strings.Builder
+	out.WriteString(n.GetComment())
+	out.WriteByte('\n')
+	tree, ok := n.GetTreeNode().(interface{ GetOneHumanReadableImages() []string })
+	var images []string
+	if ok {
+		images = tree.GetOneHumanReadableImages()
+	}
+	if images != nil {
+		for _, image := range images {
+			out.WriteString(image)
+			out.WriteByte(' ')
+		}
+	} else {
+		out.WriteString(n.GetSourceLocation().String())
+	}
+	return strings.TrimFunc(out.String(), func(r rune) bool { return r <= 0x20 })
 }
 
 type OperatorEvalFunc func(args []Value, control int) (Value, error)

@@ -46,6 +46,17 @@ func (s *SymbolNode) GetName() *UniqueString {
 	return s.Name
 }
 
+func (s *SymbolNode) GetSignature() string {
+	if s.Definition != nil {
+		return s.Definition.GetSignature()
+	}
+	return s.GetName().String()
+}
+
+func (s *SymbolNode) GetHumanReadableImage() string {
+	return semanticNodeHoverImage(s)
+}
+
 func NewSymbolNode(name string) *SymbolNode {
 	return &SymbolNode{Name: UniqueStringOf(name)}
 }
@@ -161,7 +172,7 @@ func (c *Context) fillMap(out *InsMap[*UniqueString, Value]) {
 		return
 	}
 	for cur := c; cur != nil && cur != EmptyContext && cur.name != nil; cur = cur.next {
-		out.Set(cur.name.Name, contextValueAsValue(cur.value))
+		out.Set(cur.name.GetName(), contextValueAsValue(cur.value))
 		if cur.next == nil || cur.next == EmptyContext || cur.next.name == nil {
 			if cur.next != nil {
 				cur.next.fillMap(out)

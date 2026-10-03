@@ -423,16 +423,29 @@ Final ephemeral source/Go comparisons match all 419 hover/breakpoint records,
 448 expression/watch/stack records and 60 dependency records under race
 instrumentation. Dependency checks retain Bags after a failed expression, reuse
 its overrides, load Randomization and preserve the root/transient-wrapper rules.
-The entire unchanged Java EWD998ChanDebuggerTest passes separately. Existing
-complete Go Echo/ExpressionBreakpoint tests and full offline normal/race suites
-pass. No partial persistent EWD998 test or invented tests/vectors were added.
-Next: translate the remaining source Set<Variable> inherited lazy-cache assertion
-form, then the entire EWD998ChanDebuggerTest method with all original assertions
-and byte-identical EWD998 model vectors. Attaching DAP transport/capability events,
-full SANY level metadata, theorem/proof/top-level children, broader nested and
-parameterized instance metadata/export composition and complete native override
-registration remain source work. These probes do not establish whole EWD998 Go
-test parity, full debugger completion or full TLC completion.
+After production work, the entire original EWD998ChanDebuggerTest.testSpec is
+translated, including the source Set<Variable> inherited lazy-cache overload.
+All 154 equality assertions, truth/false/reference assertions and 5 base-frame,
+21 state-frame, 7 action-frame and 1 next-state-frame calls are retained. The
+source response non-null assertion is guaranteed by Go's concrete response type.
+All four EWD998 model/config vectors are byte-identical to Java's originals under
+test_vectors/models/EWD998. No invented tests or vectors were added.
+The whole method exposed and fixed two production gaps: context maps/display
+names use source declaration names rather than qualified evaluator lookup keys;
+semantic context bindings use Java signatures and full human-readable operator
+definitions, including attached comments and one-child spacing, without a type.
+State constraints invoke the source one-state eval overload, selecting State
+mode and the current state's level for hit-count breakpoints. Action constraints
+retain the two-state overload. The inherited helper also preserves a typed nil
+expected context as Java's null, without comparing it against the actual context.
+Unchanged Java JUnit reports one run/zero failures/zero ignored. The complete Go
+method and full offline normal/race suites pass, alongside Echo and
+ExpressionBreakpoint. Next: compare the original EWD998TraceDebuggerTest and
+implement its remaining trace/debugger features before translating its whole
+method. Attaching DAP transport/capability events, full SANY level metadata,
+theorem/proof/top-level children, broader nested and parameterized instance
+metadata/export composition and complete native override registration remain
+source work. Full debugger and full TLC completion are not established.
 Record StateString's explicit empty/non-string _format handling and full Java
 String.format semantics also remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it.
