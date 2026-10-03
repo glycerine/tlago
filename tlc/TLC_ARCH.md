@@ -3150,6 +3150,22 @@ Debugger variable details:
   The whole test preserves initial-state/action/constraint/invariant/alias loops
   and assertions. Three original vectors remain byte-identical in test_vectors.
   Unchanged Java, the complete Go method and full normal/race suites pass.
+  Both entire original EWD840 error debugger methods are also translated after
+  source comparisons matching 31 initial-error and 61 action-error records under
+  race instrumentation. Legacy exception variables use semantic human-readable
+  locations, nullable detail messages, Java simple class names and no nested
+  reference; a missing exception retains Java's NullPointerException boundary.
+  Action.UNKNOWN keeps the source null semantic node with its builtin location,
+  syntax image and minimum-integer kind. LET evaluation binds only zero-arity
+  definitions as lazy values, leaving parameterized source operators on their
+  semantic symbols. The harness checks the source pending exit sentinel -1 while
+  still paused, then disconnects for cleanup. It refreshes the cached integer
+  statics to match Java's isolated test classloader and prevent source metadata
+  from a preceding CallStackTool run from changing the next exception stop.
+  Source metadata reads/writes are synchronized to preserve Java reference
+  atomicity when workers attach lazy sources to shared cached integer values.
+  Two new original vectors remain byte-identical in test_vectors. Unchanged Java,
+  both complete Go methods and full normal/race suites pass.
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.

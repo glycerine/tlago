@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode/utf16"
 )
 
@@ -161,6 +162,10 @@ type BaseValue struct {
 	CM     CostModel
 }
 
+// Java reference reads/writes are atomic. Protect the Go interface's two words
+// when worker-local lazy values attach source metadata to shared cached values.
+var valueSourceMutex sync.RWMutex
+
 func newBaseValue(cms ...CostModel) BaseValue {
 	if len(cms) > 0 {
 		return BaseValue{CM: cms[0]}
@@ -185,7 +190,9 @@ func (BaseValue) unsupported(format string, args ...any) error {
 
 func (v *BaseValue) SetSource(source SemanticNode) {
 	if v != nil {
+		valueSourceMutex.Lock()
 		v.source = source
+		valueSourceMutex.Unlock()
 	}
 }
 
@@ -193,11 +200,14 @@ func (v *BaseValue) GetSource() SemanticNode {
 	if v == nil {
 		return nil
 	}
-	return v.source
+	valueSourceMutex.RLock()
+	source := v.source
+	valueSourceMutex.RUnlock()
+	return source
 }
 
 func (v *BaseValue) HasSource() bool {
-	return v != nil && v.source != nil
+	return v.GetSource() != nil
 }
 
 type BoolValue struct {
@@ -330,6 +340,15 @@ var (
 	IntOne    = NewIntValue(1)
 	IntZero   = NewIntValue(0)
 )
+
+// Recreate IntValue's class statics when starting an isolated Java test loader.
+// Cached values can retain CallStackTool source metadata from an earlier run.
+func InitializeIntValueStatics() {
+	for i := range intValueCache {
+		intValueCache[i] = &IntValue{Val: int32(i)}
+	}
+	IntNegOne, IntOne, IntZero = NewIntValue(-1), NewIntValue(1), NewIntValue(0)
+}
 
 func NewIntValue(v int32) *IntValue {
 	if v >= 0 && int(v) < len(intValueCache) {

@@ -270,12 +270,21 @@ func (f *TLCStackFrame) GetConstants(rnd *rand.Rand) []*DebugTLCVariable {
 
 func (f *TLCStackFrame) GetExceptionAsVariable() []*DebugTLCVariable {
 	if f == nil || f.Exception == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
+	name := semanticNodeJavaString(f.Node)
+	if node, ok := f.Node.(interface{ GetHumanReadableImage() string }); ok {
+		name = node.GetHumanReadableImage()
+	}
+	message := javaThrowableDetailMessage(f.Exception)
+	value := ""
+	if message != nil {
+		value = *message
+	}
+	typeName := javaThrowableClassName(f.Exception)
+	typeName = typeName[strings.LastIndexAny(typeName, ".$")+1:]
 	return []*DebugTLCVariable{{
-		Name:  semanticNodeDebugName(f.Node, nil),
-		Value: f.Exception.Error(),
-		Type:  reflect.TypeOf(f.Exception).String(),
+		Name: name, Value: value, ValueNull: message == nil, Type: typeName,
 	}}
 }
 
@@ -1350,9 +1359,17 @@ type DebugTLCVariable struct {
 	Name                      string
 	Type                      string
 	Value                     string
+	ValueNull                 bool // Java Variable.getValue may return null for a throwable message.
 	VariablesReference        int
 	VSCodeVariableMenuContext string
 	TLCValue                  Value
+}
+
+func (v *DebugTLCVariable) GetValue() *string {
+	if v.ValueNull {
+		return nil
+	}
+	return javaString(v.Value)
 }
 
 func NewDebugTLCVariable(name *UniqueString) *DebugTLCVariable {

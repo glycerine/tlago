@@ -139,13 +139,22 @@ func (h *javaDebuggerModel) continueFrames(count ...int) []*tlc.TLCDebuggerFrame
 }
 func (h *javaDebuggerModel) close() {
 	defer func() { tlc.TLCDebuggerFactoryOverride = h.prior }()
+	// ModelCheckerTestCase.actualExitStatus starts at -1. Error debugger tests
+	// assert that sentinel while TLC is still paused, before cleanup resumes it.
+	if !h.t.Failed() && h.exitStatus == -1 {
+		select {
+		case <-h.done:
+			h.t.Errorf("debugger model completed before the source's pending-exit assertion: %v", h.result)
+		default:
+		}
+	}
 	h.debugger.DisconnectCommand()
 	select {
 	case <-h.done:
 	case <-time.After(30 * time.Second):
 		h.t.Fatal("TLC did not terminate after debugger disconnect")
 	}
-	if !h.t.Failed() {
+	if !h.t.Failed() && h.exitStatus != -1 {
 		if h.result == nil || h.result.ExitStatus != h.exitStatus {
 			h.t.Fatalf("debugger model result=%v, want exit status %d", h.result, h.exitStatus)
 		}

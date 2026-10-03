@@ -711,9 +711,7 @@ func letDefinitionsContextWithCostModel(c *Context, lets []*OpDefNode, cm CostMo
 		}
 		if opDef.Arity() == 0 {
 			c1 = c1.Cons(sym, NewLazyValue(opDef.Body, c1, true, cm))
-			continue
 		}
-		c1 = c1.Cons(sym, opDef)
 	}
 	for _, binding := range bindings {
 		if binding.Symbol == nil {

@@ -115,6 +115,7 @@ func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments
 	// The upstream runner isolates TLC statics with a per-test classloader.
 	// Fresh tokens preserve source record normalization independent of test order.
 	tlc.UniqueStringInitialize()
+	tlc.InitializeIntValueStatics()
 	tlc.InitializeActionItemListStatics()
 	tlc.InitializeFPIntSetStatics()
 	tlc.SetMainChecker(nil)

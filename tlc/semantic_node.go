@@ -69,6 +69,22 @@ func newSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
 	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), Image: image}
 }
 
+// SemanticNode.nullSN retains the builtin syntax/location used by Action.UNKNOWN.
+type NullSemanticNode struct{ SemanticNodeBase }
+
+type nullSemanticSyntax struct{}
+
+func (nullSemanticSyntax) GetHumanReadableImage() string { return "***I do not exist***" }
+
+func (n *NullSemanticNode) LevelDataToString() string { return "-2147483648" }
+
+var NullSemanticNodeInstance = func() *NullSemanticNode {
+	base := newSemanticNodeBase(SemanticKind(-2147483648), "***I do not exist***")
+	base.Location = NewSourceLocation("--TLA+ BUILTINS--", 0, 0, 0, 0)
+	base.TreeNode = nullSemanticSyntax{}
+	return &NullSemanticNode{base}
+}()
+
 func (n *SemanticNodeBase) GetTreeNode() any     { return n.TreeNode }
 func (n *SemanticNodeBase) SetTreeNode(node any) { n.TreeNode = node }
 

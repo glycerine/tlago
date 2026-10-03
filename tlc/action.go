@@ -292,7 +292,7 @@ type Action struct {
 
 const unnamedActionName = "UnnamedAction"
 
-var UnknownAction = &Action{Name: unnamedActionName}
+var UnknownAction = &Action{Pred: NullSemanticNodeInstance, Con: EmptyContext, Name: unnamedActionName}
 
 func NewAction(pred SemanticNode, con *Context, name string) *Action {
 	if con == nil {

@@ -472,8 +472,29 @@ count assertion; continue_(steps) retains the original alias stepping sequence.
 All three original vectors are byte-identical under test_vectors/models/EWD840.
 Unchanged Java JUnit and the complete Go method pass; final full offline normal
 and race suites pass. No invented tests or vectors were added.
-Next: original EWD840 error/action debugger and simulation feature comparisons,
-then each complete source method after porting its features. Attaching DAP
+Both original EWD840 error debugger methods are now completely translated.
+The initial-state comparison matches 31 frame/exception/context/state records;
+the action-error comparison matches 61 records, both under race instrumentation.
+Legacy exception variables retain source human-readable locations, nullable
+throwable detail messages, Java simple class names and no nested reference.
+Action.UNKNOWN retains SemanticNode.nullSN's builtin location, syntax image and
+minimum-integer kind. Parameterized LET definitions do not enter the evaluation
+context; the source zero-arity lazy bindings remain. The harness checks Java's
+pending actualExitStatus sentinel -1 before resuming for cleanup, since both
+original methods finish while TLC is paused. It refreshes IntValue's cached
+statics as the source per-test classloader does; prior CallStackTool source
+metadata otherwise moves the action exception stop up to SelectSeq. Source
+metadata reads/writes are synchronized to preserve Java reference atomicity when
+worker-local lazy values attach a source to shared cached integer values.
+EWD840ErrorDebuggerTest retains all 7 equality, 6 null and 1 non-null assertions,
+1 base-frame and 7 state-frame calls. EWD840ErrorActionDebuggerTest retains all
+7 equality assertions, the null-exception loop, 1 non-null assertion and its
+complete action-frame assertion. Error02.tla and Error03.tla are byte-identical
+original vectors in test_vectors/models/EWD840. Unchanged Java JUnit methods,
+both complete Go translations and full offline normal/race suites pass.
+No invented tests or vectors were added.
+Next: original EWD840 simulation debugger production comparison, then its whole
+source method after implementing any missing features. Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
 metadata/export composition and complete native override registration remain

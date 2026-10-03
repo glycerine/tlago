@@ -1039,3 +1039,59 @@ method. DAP transport/capabilities, broader theorem/proof/level/instance/export
 metadata, complete native override registration, formatter/trace expressions and
 selected distributed transport remain pending. Full TLC completion remains
 unproven. Independent rpc25519/Greenpack notes stay outside this checker commit.
+
+
+- EWD840 error debugger production slice: unchanged Java
+EWD840ErrorDebuggerTest and EWD840ErrorActionDebuggerTest each report one run,
+zero failures and zero ignored. Temporary production comparisons match all 31
+initial-error and 61 action-error frame/exception/context/state records under
+-race. Source initial-error synthetic trace metadata exposed the missing
+SemanticNode.nullSN on Action.UNKNOWN: retain its builtin location, actual null
+syntax image and minimum-integer kind. Legacy exception variables now use the
+source human-readable semantic image, nullable throwable detail message, Java
+simple class name and zero nested reference. A missing exception throws Java's
+NullPointerException. Parameterized LET definitions no longer enter the runtime
+evaluation context; source zero-arity lazy bindings and represented INSTANCE
+bindings remain.
+
+- After implementation and complete source comparisons, translated both entire
+original testSpec methods. Initial-error retains all 7 equality, 6 null and
+1 non-null assertions, 1 base-frame and 7 state-frame calls. Action-error retains
+all 7 equality assertions, the complete null-exception loop, non-null assertion
+and action-frame assertion. The two original embedded-config vectors Error02.tla
+and Error03.tla are byte-identical under test_vectors/models/EWD840. No invented
+tests or vectors. The source expected -1 is the pending actualExitStatus sentinel,
+since these methods finish while TLC remains paused; check it before disconnecting
+for Go cleanup rather than asserting a final process result.
+
+- The complete suite exposed source metadata retained on cached IntValue values
+from a preceding CallStackTool run. That turned a direct runtime equality failure
+into a FingerprintException and moved the debugger stop from the lambda body to
+SelectSeq. Refresh the integer cache and ValNegOne/ValOne/ValZero statics in the
+existing model harness as Java's isolated classloader does. The complete preceding
+Echo/EvalException/EvalExceptionLiveness/EWD840 sequence now passes without any
+changed expected frames or diagnostic text. Final full normal/race checks follow
+below. Broader init/next LET-context source differences and semantic graph work
+remain outside this evaluation correction.
+
+
+- Refreshing cached statics exposed concurrent lazy source attachment in the
+existing TestJavaSafetyDieHardAliasSupDumpLoadTraceTLCAutoWorkers. Synchronize
+BaseValue source reads/writes: Java object reference assignments are atomic,
+whereas Go's SemanticNode interface has two words. Keep source check/assignment
+semantics and exception metadata intact. The original affected multiworker test
+and both complete error debugger methods pass three repetitions under -race.
+No invented race test was added. Final full checks are recorded below.
+
+
+- Final offline go test ./... and go test -race ./... pass after the metadata
+synchronization (root 37.548s normal, 223.739s race).
+Both final production comparisons still match all 31/61 source records under
+-race. Assertion and fixture-byte audits pass; code/document diff checks pass,
+excluding preserved original vector whitespace. Next: original
+EWD840DebuggerSimTest production comparison and missing simulation debugger
+features, then its complete source method. DAP transport/capabilities, broader
+semantic/level/instance/export metadata, complete native overrides, formatter/
+trace expressions and selected distributed transport remain pending. Full TLC
+completion remains unproven. Independent rpc25519/Greenpack notes remain outside
+this checker commit.
