@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const livenessTableauExportPathProperty = "tlc2.tool.liveness.Liveness.tableauExportPath"
@@ -553,6 +554,9 @@ func (p *PossibleErrorModel) writeString(b *strings.Builder, padding string, che
 }
 
 type OrderOfSolution struct {
+	// Java LiveCheck synchronizes graph mutations on the OrderOfSolution.
+	graphMu sync.Mutex
+
 	Tableau              *TBGraph
 	Promises             []*LiveExprNode
 	ContainsBoxInPromise bool

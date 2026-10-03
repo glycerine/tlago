@@ -343,6 +343,8 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	if c.Solution.HasTableau() {
 		return c.addNextStateTableau(tool, s0, fp0, nextStates, actionResults, checkStateRes)
 	}
+	c.Solution.graphMu.Lock()
+	defer c.Solution.graphMu.Unlock()
 	if c.DiskGraph != nil {
 		if err := c.addNextStateDisk(s0, fp0, nextStates, actionResults, checkStateRes); err != nil {
 			return err
@@ -416,53 +418,7 @@ func (c *LiveChecker) addNextStateDisk(s0 *TLCStateMut, fp0 uint64, nextStates *
 }
 
 func (c *LiveChecker) addNextStateTableau(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
-	if c.TableauDiskGraph != nil {
-		if err := c.addNextStateTableauDisk(tool, s0, fp0, nextStates, actionResults, checkStateRes); err != nil {
-			return err
-		}
-	}
-	alen := len(c.Solution.CheckAction)
-	nextStates.ResetNext()
-	for idx := 0; idx < nextStates.Size(); idx++ {
-		s1 := nextStates.Next()
-		if s1 == nil {
-			continue
-		}
-		for _, srcTNode := range c.Solution.Tableau.Nodes {
-			sourceKey := graphNodeKey(fp0, srcTNode.Index)
-			source := c.Graph.Get(sourceKey)
-			if source == nil {
-				continue
-			}
-			for _, dstTNode := range srcTNode.Nexts {
-				ok, err := dstTNode.IsConsistent(s1, tool)
-				if err != nil {
-					return err
-				}
-				if !ok {
-					continue
-				}
-				target, err := c.ensureGraphNode(tool, s1, s1.FingerPrint(), dstTNode.Index)
-				if err != nil {
-					return err
-				}
-				_ = target
-				source.AddTransition(s1.FingerPrint(), dstTNode.Index, len(c.Solution.CheckState), alen, actionResults, alen*idx, nextStates.Size()-idx)
-			}
-		}
-	}
-	nextStates.ResetNext()
-	_ = checkStateRes
-	return nil
-}
-
-func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool) error {
-	dgraph := c.TableauDiskGraph
 	oos := c.Solution
-	if dgraph == nil || oos == nil || oos.Tableau == nil {
-		return nil
-	}
-	cnt := 0
 	succCnt := nextStates.Size()
 	tableau := oos.Tableau
 	consistency := NewBitVector(tableau.Size() * succCnt)
@@ -483,10 +439,72 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 		}
 	}
 
+	nextStates.ResetNext()
+
+	var prefix *LongVec
+	err := func() error {
+		oos.graphMu.Lock()
+		defer oos.graphMu.Unlock()
+		if c.TableauDiskGraph != nil {
+			var err error
+			prefix, err = c.addNextStateTableauDisk(tool, s0, fp0, nextStates, actionResults, checkStateRes, consistency)
+			if err != nil || prefix != nil {
+				return err
+			}
+		}
+		alen := len(c.Solution.CheckAction)
+		nextStates.ResetNext()
+		for idx := 0; idx < nextStates.Size(); idx++ {
+			s1 := nextStates.Next()
+			if s1 == nil {
+				continue
+			}
+			for _, srcTNode := range c.Solution.Tableau.Nodes {
+				sourceKey := graphNodeKey(fp0, srcTNode.Index)
+				source := c.Graph.Get(sourceKey)
+				if source == nil {
+					continue
+				}
+				for _, dstTNode := range srcTNode.Nexts {
+					if !consistency.Get(dstTNode.Index*succCnt + idx) {
+						continue
+					}
+					target, err := c.ensureGraphNode(tool, s1, s1.FingerPrint(), dstTNode.Index)
+					if err != nil {
+						return err
+					}
+					_ = target
+					source.AddTransition(s1.FingerPrint(), dstTNode.Index, len(c.Solution.CheckState), alen, actionResults, alen*idx, nextStates.Size()-idx)
+				}
+			}
+		}
+		nextStates.ResetNext()
+		return nil
+	}()
+	if err != nil {
+		return err
+	}
+	// Java reconstructs the fingerprint prefix under the solution monitor,
+	// then regenerates and prints the states after releasing it.
+	if prefix != nil {
+		return c.printSafetyLikeLivenessError(tool, prefix)
+	}
+	return nil
+}
+
+func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextStates *SetOfStates, actionResults *BitVector, checkStateRes []bool, consistency *BitVector) (*LongVec, error) {
+	dgraph := c.TableauDiskGraph
+	oos := c.Solution
+	if dgraph == nil || oos == nil || oos.Tableau == nil {
+		return nil, nil
+	}
+	cnt := 0
+	succCnt := nextStates.Size()
+
 	loc0 := dgraph.SetDone(fp0)
 	nodes := dgraph.GetNodesByLoc(loc0)
 	if nodes == nil {
-		return nil
+		return nil, nil
 	}
 	alen := len(oos.CheckAction)
 	allocationHint := (len(nodes) / dgraph.GetElemLength()) * succCnt
@@ -495,7 +513,7 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 		tnode0 := oos.Tableau.GetNode(tidx0)
 		node0, err := dgraph.GetNode(fp0, tidx0)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		originalSuccSize := node0.SuccSize()
 		node0.SetCheckState(checkStateRes)
@@ -512,13 +530,13 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 				if consistency.Get(tnode1.Index*succCnt+sidx) && (ptr1 == -1 || !node0.TransExists(successor, tnode1.Index)) {
 					node0.AddTransition(successor, tnode1.Index, len(checkStateRes), alen, actionResults, sidx*alen, allocationHint-cnt)
 					if err := c.Writer.WriteLivenessTransition(s0, tnode0, s1, tnode1, actionResults, sidx*alen, alen, StateVisitUnseen); err != nil {
-						return err
+						return nil, err
 					}
 					if ptr1 == -1 {
 						dgraph.RecordNode(successor, tnode1.Index)
 						if isDone {
 							if err := c.addNextStateTableauDone(tool, s1, successor, tnode1); err != nil {
-								return err
+								return nil, err
 							}
 						}
 					}
@@ -530,7 +548,7 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 		if (originalSuccSize == 0 && originalSuccSize == node0.SuccSize()) || originalSuccSize < node0.SuccSize() {
 			node0.Realign()
 			if _, err := dgraph.AddNode(node0); err != nil {
-				return err
+				return nil, err
 			}
 			c.Size = int64(dgraph.Size())
 		}
@@ -540,13 +558,13 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 		prefix, err := dgraph.GetPath(c.ErrorGraphNode.StateFP, c.ErrorGraphNode.TIndex)
 		dgraph.DestroyCache()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		c.ErrorPrefix = prefix
 		c.ErrorGraphNode = nil
-		return c.printSafetyLikeLivenessError(tool, prefix)
+		return prefix, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (c *LiveChecker) printSafetyLikeLivenessError(tool *Tool, prefix *LongVec) error {

@@ -23,7 +23,7 @@
  * Contributors:
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
-// Port of DumpLoadTraceTest's single-worker safety and bidirectional methods after
+// Port of DumpLoadTraceTest's safety and bidirectional methods after
 // implementing source native/body override lookup through INSTANCE imports.
 package tlago
 
@@ -38,9 +38,14 @@ import (
 
 func runJavaDumpLoadTrace(t *testing.T, name, format string, status int, extraArgs ...string) {
 	t.Helper()
+	runJavaDumpLoadTraceWithWorkers(t, name, format, status, "1", "1", extraArgs...)
+}
+
+func runJavaDumpLoadTraceWithWorkers(t *testing.T, name, format string, status int, dumpWorkers, loadWorkers string, extraArgs ...string) {
+	t.Helper()
 	traceFile := filepath.Join(t.TempDir(), name+"."+format)
 	dump := runJavaTLCModelTestWithArguments(t, name, name, func(meta, _ string) []string {
-		args := []string{"-metadir", meta, "-workers", "1", "-noGenerateSpecTE", "-fp", "4"}
+		args := []string{"-metadir", meta, "-workers", dumpWorkers, "-noGenerateSpecTE", "-fp", "4"}
 		args = append(args, extraArgs...)
 		return append(args, "-dumpTrace", format, traceFile)
 	})
@@ -56,7 +61,7 @@ func runJavaDumpLoadTrace(t *testing.T, name, format string, status int, extraAr
 	}
 
 	load := runJavaTLCModelTestWithArguments(t, name, name, func(meta, _ string) []string {
-		args := []string{"-metadir", meta, "-workers", "1", "-noGenerateSpecTE", "-fp", "4"}
+		args := []string{"-metadir", meta, "-workers", loadWorkers, "-noGenerateSpecTE", "-fp", "4"}
 		args = append(args, extraArgs...)
 		return append(args, "-loadTrace", format, traceFile)
 	})
@@ -84,11 +89,15 @@ func runJavaDumpLoadTrace(t *testing.T, name, format string, status int, extraAr
 	if len(dumpTrace) == 0 || len(loadTrace) == 0 {
 		t.Fatal("dump/load error trace missing")
 	}
-	if len(dumpTrace) != len(loadTrace) {
+	if dumpWorkers != loadWorkers {
+		if len(loadTrace) > len(dumpTrace) {
+			t.Fatalf("prefix length %d exceeds original trace length %d", len(loadTrace), len(dumpTrace))
+		}
+	} else if len(dumpTrace) != len(loadTrace) {
 		t.Fatalf("trace lengths differ: dump=%d load=%d", len(dumpTrace), len(loadTrace))
 	}
-	for i, state := range dumpTrace {
-		loaded := loadTrace[i]
+	for i, loaded := range loadTrace {
+		state := dumpTrace[i]
 		if state.StateNumber != loaded.StateNumber {
 			t.Fatalf("state numbers differ at position %d", i)
 		}
@@ -116,4 +125,20 @@ func TestJavaLivenessBidirectionalDumpLoadTraceJSON(t *testing.T) {
 
 func TestJavaLivenessBidirectionalDumpLoadTraceTLC(t *testing.T) {
 	runJavaDumpLoadTrace(t, "BidirectionalTransitions", "tlc", tlc.ExitStatusViolationLiveness, "-config", "BidirectionalTransitions1Bx.cfg")
+}
+
+func TestJavaSafetyDumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithWorkers(t, "DieHard", "json", tlc.ExitStatusViolationSafety, "auto", "1")
+}
+
+func TestJavaSafetyDumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithWorkers(t, "DieHard", "tlc", tlc.ExitStatusViolationSafety, "auto", "1")
+}
+
+func TestJavaLivenessBidirectionalDumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithWorkers(t, "BidirectionalTransitions", "json", tlc.ExitStatusViolationLiveness, "auto", "1", "-config", "BidirectionalTransitions1Bx.cfg")
+}
+
+func TestJavaLivenessBidirectionalDumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithWorkers(t, "BidirectionalTransitions", "tlc", tlc.ExitStatusViolationLiveness, "auto", "1", "-config", "BidirectionalTransitions1Bx.cfg")
 }

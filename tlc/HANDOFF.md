@@ -217,13 +217,24 @@ generated trace-spec file. DieHard uses the existing original vectors; the two
 BidirectionalTransitions vectors are byte-identical. All four unchanged Java
 original methods, targeted normal/race and full normal/race suites pass.
 Production replay counts match Java 36/7/0 (safety) and 21/5/0 (liveness).
-Next: translate the original DumpLoadTraceTest auto-worker methods, retaining
--workers auto and the source prefix comparison for differing worker counts.
-The unchanged safety JSON auto-worker method passes in Java; Go's preliminary
-auto-worker dump produced an eight-state trace and single-worker replay matched
-all eight states with safety exit. Also compare the remaining ALIAS/CodePlex/
-TESpec/Example1 dump/load methods before translation. Preserve upstream Ignore
-annotations for garbled EWD840 JSON and multi-worker ALIAS variable subsetting.
+The four original DumpLoadTraceTest auto-worker safety/bidirectional methods
+are now translated too, retaining -workers auto for dump, one worker for load
+and the source prefix comparison with exact indexed states and ordinals. Those
+runs exposed missing synchronized(oos) in Go's modern liveness graph path.
+OrderOfSolution now owns the graph monitor; disk/tableau mutations and the Go
+in-memory graph mirror share it. Tableau consistency is computed outside the
+monitor and reused, while fingerprint-prefix recovery stays inside and state
+regeneration/printing happens after release, matching Java's lock boundary.
+All four unchanged Java auto-worker methods and all eight Go dump/load methods
+pass; targeted existing liveness and the formerly remote-failing mixed config
+set test pass with the race detector. Full normal/race suites pass.
+Next: compare and translate remaining ALIAS/CodePlex/TESpec/Example1 dump/load
+methods. The unchanged single-worker AliasSub JSON method and Go production
+replay already match safety exit, seven common-variable states and 132/32/9;
+translate the source intersection assertions, retaining separate dump/load
+specs/configs and original vectors. Preserve the upstream Ignore annotations
+for garbled EWD840 JSON and the two AliasSub auto-worker methods (AliasSub2 and
+AliasSup methods remain enabled upstream).
 Complete semantic module graphs and constant-processing snapshot/eligibility
 metadata remain broader source work.
 Trace-expression variants remain separate pending
