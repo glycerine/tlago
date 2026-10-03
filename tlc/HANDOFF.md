@@ -76,9 +76,21 @@ Java behavior rather than init-only action tracking. Worker disk trace writes
 no longer read the shared in-memory mirror unnecessarily. The translated
 harness preserves the source worker count and provides an existing trace output
 directory. Read the progress tail for verification.
-Next: TLCSetSimTest and TLCSetMultiSimTest, then broader checker safety/trace
-comparisons. TLCGetNonDeterminismTest is ignored upstream by design; preserve
-that status when translating it. Complete SANY contexts, nested export
+TLCSetSimTest and TLCSetMultiSimTest are now translated too. Unary minus
+retains SANY's distinct -. operator and Java's Neg override rather than binary
+Minus. Their harness preserves debugger-enabled/disabled execution and resets
+checker/simulator globals to match upstream classloader isolation. The two
+original model/config vectors are byte-identical; the model reaches its own
+TLCSet exit at 4,225 generated states with both debugger settings. Current Java
+TLC constructs Simulator for both settings despite the older test comment about
+SingleThreadedSimulator; do not add that removed variant.
+Full normal/race checks pass. Next: the original DoInitFunctor invariant,
+continuation and minimal-error-stack models, then broader checker safety/trace
+comparisons. Preliminary runs match invariant stop/continue and nested stack
+locations; fix NatGEQ's wrong-type diagnostic naming > instead of >= before
+translating the error-stack test. Run the Java originals separately with this
+JDK to retain test-static isolation; combined direct JUnit leaks continuation. TLCGetNonDeterminismTest
+is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
 bridge parity work; the represented declaration-order slice does not establish
 their completion. Original model bytes, including upstream whitespace, are

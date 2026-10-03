@@ -353,3 +353,32 @@ func TestJavaTLCGetLevel(t *testing.T) {
 		}
 	}
 }
+
+func TestJavaTLCSetSim(t *testing.T) {
+	result := runJavaTLCModelTestWithSettings(t, "TLCSetSim", true, false, "-config", "TLCSet.cfg", "-simulate", "-depth", "4224")
+	requireJavaTLCSetSimulation(t, result)
+}
+
+// TLCSetMultiSimTest inherits TLCSetSimTest.testSpec and disables the debugger.
+func TestJavaTLCSetMultiSim(t *testing.T) {
+	result := runJavaTLCModelTestWithDebugger(t, "TLCSetSim", true, false, false, 1, "-config", "TLCSet.cfg", "-simulate", "-depth", "4224")
+	requireJavaTLCSetSimulation(t, result)
+}
+
+func requireJavaTLCSetSimulation(t *testing.T, result *tlc.Result) {
+	t.Helper()
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want success", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	if got := javaTLCRecords(result, tlc.ECGeneral); len(got) != 0 {
+		t.Fatalf("unexpected GENERAL: %v", got)
+	}
+	for _, m := range javaTLCRecords(result, tlc.ECTLCCoverageValue) {
+		if len(m.Params) > 1 && strings.TrimSpace(m.Params[1]) == "0" {
+			t.Fatalf("unexpected uncovered line: %v", m.Params)
+		}
+	}
+}

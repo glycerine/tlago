@@ -1835,8 +1835,6 @@ func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
 		return tlc.NewBuiltinOpApplNode(tlc.OpDL, b.convertExpr(e.Expr))
 	case "~", "\\neg":
 		op = "\\lnot"
-	case "-.":
-		op = "-"
 	}
 	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Expr))
 }
