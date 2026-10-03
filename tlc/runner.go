@@ -29,6 +29,7 @@ const (
 
 type Options struct {
 	Tool                      *Tool
+	LoadTool                  func() (*Tool, error)
 	SpecFile                  string
 	ConfigFile                string
 	MetaDir                   string
@@ -171,7 +172,7 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	if t == nil {
 		t = NewTLC(Options{})
 	}
-	if t.Tool == nil {
+	if t.Tool == nil && t.LoadTool == nil {
 		if t.UserOutput != nil {
 			_ = t.UserOutput.Close()
 		}
@@ -195,7 +196,6 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		defer RemoveMessageRecorder(traceRecorder)
 	}
 
-	PrintMessage(ECTLCStarting)
 	var result *Result
 	var err error
 	func() {
@@ -211,6 +211,26 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 				result = &Result{ErrorCode: code}
 			}
 		}()
+		// TLC.process prints the mode banner before constructing FastTool,
+		// including when configuration-time constant evaluation fails.
+		if t.Mode == RunModeSimulate {
+			PrintMessage(ECTLCModeSimu, t.simulationRuntimeParams()...)
+		} else if t.DFIDMode {
+			PrintMessage(ECTLCModeMCDFS, t.modelCheckingRuntimeParams()...)
+		} else {
+			PrintMessage(ECTLCModeMC, t.modelCheckingRuntimeParams()...)
+		}
+		PrintMessage(ECTLCStarting)
+		if t.Tool == nil {
+			t.Tool, err = t.LoadTool()
+			if err != nil {
+				panic(err)
+			}
+			if t.Tool == nil {
+				panic(newTLCError(ECGeneral, "TLC runner has no tool"))
+			}
+			t.attachDebuggerIfRequested()
+		}
 		switch t.Mode {
 		case RunModeSimulate:
 			result, err = t.processSimulation()
@@ -230,7 +250,7 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 			result.ErrorCode = ECGeneral
 		}
 	}
-	if traceRecorder != nil && t.FromCheckpoint == "" {
+	if traceRecorder != nil && t.FromCheckpoint == "" && t.Tool != nil {
 		if mcError, ok := traceRecorder.MCErrorTrace(); ok {
 			outputDir := t.TraceSpecOutputDir
 			if outputDir == "" {
@@ -348,7 +368,6 @@ func (t *TLC) prepareRandomSeed() {
 
 func (t *TLC) processModelChecking() (*Result, error) {
 	if t.DFIDMode {
-		PrintMessage(ECTLCModeMCDFS, t.modelCheckingRuntimeParams()...)
 		opts := make([]DFIDModelCheckerOption, 0, 2)
 		if t.FromCheckpoint != "" {
 			opts = append(opts, WithDFIDFromCheckpoint(t.FromCheckpoint))
@@ -367,7 +386,6 @@ func (t *TLC) processModelChecking() (*Result, error) {
 		return result, err
 	}
 
-	PrintMessage(ECTLCModeMC, t.modelCheckingRuntimeParams()...)
 	opts := make([]ModelCheckerOption, 0, 5)
 	if t.FPSet != nil {
 		opts = append(opts, WithModelCheckerFPSet(t.FPSet))
@@ -465,7 +483,6 @@ func defaultTLCDebugHalt() bool {
 }
 
 func (t *TLC) processSimulation() (*Result, error) {
-	PrintMessage(ECTLCModeSimu, t.simulationRuntimeParams()...)
 	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, t.Seed,
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),

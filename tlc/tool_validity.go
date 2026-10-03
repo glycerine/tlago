@@ -108,12 +108,20 @@ func (t *Tool) CheckAssumptionsImpl() int {
 		if i < len(t.AssumptionIsAxiom) && t.AssumptionIsAxiom[i] {
 			continue
 		}
+		description := SemanticString(assumption)
+		switch assumption.(type) {
+		case *NumeralNode, *DecimalNode:
+		default:
+			if location, ok := semanticNodeSourceLocation(assumption); ok {
+				description = location.String()
+			}
+		}
 		ok, err := t.IsValidExpr(assumption, EmptyContext)
 		if err != nil {
-			return PrintErrorNullable(ECTLCAssumptionEvaluationError, javaString(SemanticString(assumption)), javaThrowableDetailMessage(err))
+			return PrintErrorNullable(ECTLCAssumptionEvaluationError, javaString(description), javaThrowableDetailMessage(err))
 		}
 		if !ok {
-			return PrintError(ECTLCAssumptionFalse, SemanticString(assumption))
+			return PrintError(ECTLCAssumptionFalse, description)
 		}
 	}
 	return NoError

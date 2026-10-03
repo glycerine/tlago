@@ -222,6 +222,8 @@ type SpecProcessor struct {
 	Defns    *Defns
 	Config   *ModelConfig
 
+	ConstantDeclarations []*SymbolNode
+
 	Variables         []*UniqueString
 	VariablesNodes    []*SymbolNode
 	ProcessedDefs     *InsMap[string, struct{}]
@@ -597,6 +599,7 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 	if p.ConstantDefns == nil {
 		p.ConstantDefns = NewInsMap[string, Value]()
 	}
+	p.processDeclaredConstantDefinitions(tool)
 	vetoes := specProcessorVetoedConstantOperators()
 	type update struct {
 		name          *UniqueString
@@ -628,9 +631,7 @@ func (p *SpecProcessor) ProcessConstantDefinitions(tool *Tool) {
 		if tool.GetLevelBound(realDef.Body, EmptyContext) != TLCLevelConstant {
 			continue
 		}
-		val, err := DemuxWorkerValue(func() (Value, error) {
-			return tool.Eval(realDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
-		}, true, NumWorkers())
+		val, err := evaluateConstantOperatorDefinition(tool, realDef)
 		if err != nil || val == nil {
 			continue
 		}
@@ -672,6 +673,78 @@ func specProcessorVetoedConstantOperators() map[string]bool {
 		}
 	}
 	return out
+}
+
+// Java processConstantDefns evaluates replacements of declared constants even
+// when the replacement is not constant-level. Only a failed evaluation of a
+// genuinely nonconstant operator is a configuration error.
+func (p *SpecProcessor) processDeclaredConstantDefinitions(tool *Tool) {
+	for _, declaration := range p.ConstantDeclarations {
+		value := tool.Lookup(declaration, EmptyContext, nil, false)
+		if constant, ok := value.(Value); ok {
+			InitializeValue(constant)
+			p.ConstantDefns.Set(declaration.Name.String(), constant)
+			continue
+		}
+		opDef, ok := value.(*OpDefNode)
+		if !ok || opDef == nil {
+			continue
+		}
+		if opDef.Arity() != declaration.Arity {
+			panic(NewTLCRuntimeException(ECTLCConfigWrongSubstitutionNumberOfArgs, declaration.Name.String(), opDef.Name.String()))
+		}
+		if opDef.Arity() != 0 {
+			continue
+		}
+		result, err := evaluateDeclaredConstantDefinition(tool, opDef)
+		if err != nil {
+			if tool.GetLevelBound(opDef.Body, EmptyContext) > TLCLevelConstant {
+				addendum := ""
+				if !isValueEvalException(err) {
+					addendum = " - specifically: " + err.Error()
+				}
+				panic(NewTLCRuntimeException(ECTLCConfigSubstitutionNonConstant, declaration.Name.String(), opDef.Name.String(), addendum))
+			}
+			continue
+		}
+		opDef.SetToolObject(result)
+		if property, _ := tlcLookupSystemProperty("tlc2.tool.impl.SpecProcessor.aggressiveConstantCaching"); javaBooleanProperty(property) {
+			declaration.Data = result
+		}
+		p.ConstantDefns.Set(opDef.Name.String(), MuxWorkerValue(result, 0))
+	}
+}
+
+func evaluateDeclaredConstantDefinition(tool *Tool, opDef *OpDefNode) (result any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			failure, ok := recovered.(error)
+			if !ok || !isValueEvalException(failure) && javaRuntimeException(failure) == nil {
+				panic(recovered)
+			}
+			err = failure
+		}
+	}()
+	result, err = DemuxWorkerValue(func() (Value, error) {
+		return tool.Eval(opDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
+	}, true, NumWorkers())
+	if err != nil && !isValueEvalException(err) && javaRuntimeException(err) == nil {
+		panic(err)
+	}
+	return result, err
+}
+
+// The ordinary operator pre-evaluation loop catches Throwable, unlike the
+// narrower declared-constant replacement catch above.
+func evaluateConstantOperatorDefinition(tool *Tool, opDef *OpDefNode) (result any, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result, err = nil, panicValueAsError(recovered)
+		}
+	}()
+	return DemuxWorkerValue(func() (Value, error) {
+		return tool.Eval(opDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
+	}, true, NumWorkers())
 }
 
 func specProcessorConstantVetoed(vetoes map[string]bool, names ...*UniqueString) bool {

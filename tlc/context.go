@@ -17,6 +17,7 @@ type SymbolNode struct {
 	Name     *UniqueString
 	Data     any
 	Kind     SymbolKind
+	Arity    int
 	Location SourceLocation
 }
 

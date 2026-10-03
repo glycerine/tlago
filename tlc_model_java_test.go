@@ -44,6 +44,11 @@ func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Re
 
 func runJavaTLCModelTestWithCoverage(t *testing.T, name string, coverage bool, extraArgs ...string) *tlc.Result {
 	t.Helper()
+	return runJavaTLCModelTestWithSettings(t, name, coverage, true, extraArgs...)
+}
+
+func runJavaTLCModelTestWithSettings(t *testing.T, name string, coverage, dump bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
@@ -63,10 +68,13 @@ func runJavaTLCModelTestWithCoverage(t *testing.T, name string, coverage bool, e
 	}
 	tlc.SetFilenameUserDirectory(&directory)
 	meta := t.TempDir()
-	args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-dump", "dot", filepath.Join(meta, name+".dot"), "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0"}
+	args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0"}
 	tlc.Globals.CoverageInterval = -1
 	if coverage {
 		args = append(args, "-coverage", "1")
+	}
+	if dump {
+		args = append(args, "-dump", "dot", filepath.Join(meta, name+".dot"))
 	}
 	args = append(args, extraArgs...)
 	args = append(args, name)
@@ -81,12 +89,11 @@ func runJavaTLCModelTestWithCoverage(t *testing.T, name string, coverage bool, e
 	recorder := &tlc.MemoryRecorder{}
 	tlc.AddMessageRecorder(recorder)
 	defer tlc.RemoveMessageRecorder(recorder)
-	tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, nil, opts.RuntimeParams)
-	requireNoErrors(t, diags)
-	if err != nil {
-		t.Fatal(err)
+	opts.LoadTool = func() (*tlc.Tool, error) {
+		tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, nil, opts.RuntimeParams)
+		requireNoErrors(t, diags)
+		return tool, err
 	}
-	opts.Tool = tool
 	result, _ := tlc.NewTLC(opts).Process(context.Background())
 	if result == nil {
 		t.Fatal("TLC result is nil")

@@ -587,13 +587,15 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitSyntaxFailure
 	}
-	tool, toolDiags := BuildTLCTool(spec, cfg, opts.RuntimeParams)
-	toolDiags = diagOpts.apply(toolDiags)
-	if toolDiags.HasErrors() {
-		writeDiagnostics(stderr, toolDiags)
-		return ExitSemanticFailure
+	opts.LoadTool = func() (*tlcruntime.Tool, error) {
+		tool, toolDiags := BuildTLCTool(spec, cfg, opts.RuntimeParams)
+		toolDiags = diagOpts.apply(toolDiags)
+		if toolDiags.HasErrors() {
+			writeDiagnostics(stderr, toolDiags)
+			return nil, toolDiags
+		}
+		return tool, nil
 	}
-	opts.Tool = tool
 	if cfg.GetCheckDeadlock() {
 		opts.Deadlock = true
 	} else {

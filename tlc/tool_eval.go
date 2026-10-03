@@ -293,7 +293,7 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			if !EvalIsEnabled(control) && EvalIsPrimed(control) && opNode.IsVariableDecl() {
 				return nil, newTLCError(ECGeneral, "state is not completely specified: %s in %s", opNode.Name, SemanticString(expr))
 			}
-			return nil, newTLCError(ECGeneral, "undefined operator %s in %s", opNode, SemanticString(expr))
+			return nil, NewTLCRuntimeException(ECTLCConfigUndefinedOrNoOperator, opNode.Name.String(), semanticNodeLocationString(expr))
 		default:
 			return ValUndef, newTLCError(ECGeneral, "cannot evaluate operator %s bound to %T", opNode, val)
 		}

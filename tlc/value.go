@@ -94,6 +94,17 @@ func InitializeValue(value Value) Value {
 	if value == nil {
 		return nil
 	}
+	if operator, ok := value.(*OpRcdValue); ok {
+		// OpRcdValue.initialize initializes each argument and output; the
+		// operator itself has no normalization or fingerprint definition.
+		for i, arguments := range operator.Domain {
+			for j, argument := range arguments {
+				operator.Domain[i][j] = InitializeValue(argument)
+			}
+			operator.Values[i] = InitializeValue(operator.Values[i])
+		}
+		return operator
+	}
 	value.DeepNormalize()
 	switch value.(type) {
 	case *MethodValue, *EvaluatingValue, *PriorityEvaluatingValue, *CallableValue:

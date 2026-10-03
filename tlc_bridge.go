@@ -310,6 +310,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.tool.ModuleFiles = append([]string(nil), spec.ModuleFiles...)
 	bridge.tool.ParseDebuggerExpressionFunc = bridge.parseDebuggerExpression
 	bridge.installVariables()
+	bridge.installConstantDeclarations()
 	bridge.installDefinitions()
 	bridge.installRuntimeConstants()
 	bridge.installConfigConstants()
@@ -334,6 +335,38 @@ func (b *tlcBridge) installVariables() {
 	if b.processor != nil {
 		b.processor.SetVariableNodes(nodes)
 	}
+}
+
+func (b *tlcBridge) installConstantDeclarations() {
+	seen := map[*tlc.SymbolNode]bool{}
+	visited := map[*Module]bool{}
+	var visit func(*Module)
+	visit = func(mod *Module) {
+		if mod == nil || visited[mod] {
+			return
+		}
+		visited[mod] = true
+		for _, ext := range mod.Extends {
+			visit(b.spec.Modules[ext])
+		}
+		for _, declaration := range mod.Declarations {
+			if declaration.Kind != ConstantDecl {
+				continue
+			}
+			for _, name := range declaration.Names {
+				symbol := b.declarationSymbol(mod, name)
+				symbol.Arity = declaration.Arities[name]
+				if !seen[symbol] {
+					seen[symbol] = true
+					b.processor.ConstantDeclarations = append(b.processor.ConstantDeclarations, symbol)
+				}
+			}
+		}
+		for _, inner := range mod.Nested {
+			visit(inner)
+		}
+	}
+	visit(b.spec.Root)
 }
 
 func (b *tlcBridge) installDefinitions() {

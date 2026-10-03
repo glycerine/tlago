@@ -24,6 +24,8 @@
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
 // Copyright (c) 2022, Oracle and/or its affiliates.
+// Copyright (c) 2018, 2019 Microsoft Research. All rights reserved.
+// Copyright (c) 2025 Microsoft Corp. All rights reserved.
 // Ports of the existing checker testSpec methods, after their implementation.
 package tlago
 
@@ -135,5 +137,104 @@ func TestJavaConstantOperatorConfiguration(t *testing.T) {
 	}
 	if !matched {
 		t.Fatalf("TLC_INVARIANT_VIOLATED_BEHAVIOR=%v, want Inv", javaTLCRecords(result, tlc.ECTLCInvariantViolatedBehavior))
+	}
+}
+
+func TestJavaPossibleCounts(t *testing.T) {
+	result := runJavaTLCModelTest(t, "PossibleCountsTest")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want success", result.ExitStatus)
+	}
+	for _, code := range []int{tlc.ECTLCConfigIDMustNotBeConstant, tlc.ECTLCPostconditionFalse, tlc.ECTLCPostconditionEvaluationError} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected diagnostic %d: %v", code, got)
+		}
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCPossibleUnwitnessed} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected diagnostic %d: %v", code, got)
+		}
+	}
+}
+
+func TestJavaTLCSet(t *testing.T) {
+	result := runJavaTLCModelTestWithSettings(t, "TLCSet", true, false, "-config", "TLCSetPost.cfg")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want success", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCPostconditionFalse, tlc.ECTLCPostconditionEvaluationError} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected diagnostic %d: %v", code, got)
+		}
+	}
+	for _, m := range javaTLCRecords(result, tlc.ECTLCCoverageValue) {
+		if len(m.Params) > 1 && strings.TrimSpace(m.Params[1]) == "0" {
+			t.Fatalf("unexpected uncovered line: %v", m.Params)
+		}
+	}
+}
+
+func TestJavaTLCGetNamedUndefined(t *testing.T) {
+	result := runJavaTLCModelTest(t, "TLCGetNamedUndefined")
+	if result.ExitStatus != tlc.ExitStatusErrorConfigParse {
+		t.Fatalf("exit status=%d, want config parse error", result.ExitStatus)
+	}
+	for _, code := range []int{tlc.ECTLCFinished, tlc.ECTLCModuleTLCGetUndefined, tlc.ECTLCConfigSubstitutionNonConstant} {
+		if len(javaTLCRecords(result, code)) == 0 {
+			t.Fatalf("diagnostic %d not recorded", code)
+		}
+	}
+}
+
+func TestJavaGithub1109(t *testing.T) {
+	result := runJavaTLCModelTest(t, "Github1109", "-config", "Github1109.tla")
+	if result.ExitStatus != tlc.ExitStatusViolationAssumption {
+		t.Fatalf("exit status=%d, want assumption violation", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCConfigSubstitutionNonConstant} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected diagnostic %d: %v", code, got)
+		}
+	}
+	records := javaTLCRecords(result, tlc.ECTLCAssumptionEvaluationError)
+	if len(records) == 0 {
+		t.Fatal("TLC_ASSUMPTION_EVALUATION_ERROR not recorded")
+	}
+	matched := false
+	for _, parameter := range records[0].Params {
+		if strings.Contains(parameter, "Seq({\"s\"})\ncannot be enumerated") {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("TLC_ASSUMPTION_EVALUATION_ERROR=%v, want unenumerable Seq(S)", records)
+	}
+}
+
+func TestJavaGithub1109a(t *testing.T) {
+	result := runJavaTLCModelTest(t, "Github1109a", "-config", "Github1109a.tla")
+	if result.ExitStatus != tlc.ExitStatusErrorConfigParse {
+		t.Fatalf("exit status=%d, want config parse error", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	matched := false
+	for _, m := range javaTLCRecords(result, tlc.ECTLCConfigSubstitutionNonConstant) {
+		if len(m.Params) >= 2 && m.Params[0] == "C" && m.Params[1] == "C2" {
+			matched = true
+		}
+	}
+	if !matched {
+		t.Fatalf("TLC_CONFIG_SUBSTITUTION_NON_CONSTANT=%v, want C/C2", javaTLCRecords(result, tlc.ECTLCConfigSubstitutionNonConstant))
 	}
 }
