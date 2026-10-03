@@ -29,6 +29,7 @@ package tlago
 
 import (
 	"context"
+	"math"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -65,6 +66,7 @@ func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, 
 
 func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
 	t.Helper()
+	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	return runJavaTLCModelTestWithArguments(t, name, root, func(meta, traceDirectory string) []string {
 		args := []string{"-metadir", meta, "-deadlock", "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
 		// Java's noGenerateSpec override omits -generateSpecTE entirely. Supplying
@@ -89,6 +91,16 @@ func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump
 		args = append(args, extraArgs...)
 		return args
 	})
+}
+
+// ModelCheckerTestCase disables partial liveness checks by default. The
+// CommonTestCase-based DumpLoadTraceTest uses the exact-argument helper directly
+// and retains the runtime default instead.
+func setJavaModelLivenessThreshold(t *testing.T, threshold float64) {
+	t.Helper()
+	previous := tlc.Globals.LivenessThreshold
+	tlc.Globals.LivenessThreshold = threshold
+	t.Cleanup(func() { tlc.Globals.LivenessThreshold = previous })
 }
 
 func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string) *tlc.Result {

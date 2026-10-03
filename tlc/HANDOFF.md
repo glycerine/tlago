@@ -251,19 +251,27 @@ constraint admits other states and another cycle can be selected. Do not
 weaken its equality/prefix assertions, invent a skip or disable partial checks
 to hide this source timing limitation. The source garbled-JSON @Ignore remains
 ported; these two enabled methods have not been accepted as test ports.
-Next core comparison: TraceExpressionSpecSafetyBFSTest and its generated-tool
-assertions, then the other TraceExpressionSpec variants. The unchanged Java
-original passes. Go generates and loads the safety module and reproduces all
-four expected states with safety exit; install the generated directory on the
-resolver before assessing load errors. Preserve the source -noGenerateSpecTEBin,
-coverage/DOT/JSON-dump-disabled settings, enabled debugger and generated-spec
-output directory. The ModelCheckerTestCase source sets livenessThreshold to
-Double.MAX_VALUE; scope that to its harness, not DumpLoadTraceTest, which uses
-its own fresh runtime and default periodic-check behavior.
+TraceExpressionSpecSafetyBFSTest, TraceExpressionSpecSafetySimTest and
+TraceExpressionSpecRuntimeTest are now translated after comparing the unchanged
+Java originals and production Go generated tools. Their inherited assertions
+retain one action/invariant/init, the next relation, good/in-model/valid states,
+the four x/y safety states or five runtime-error records, ALIAS and disabled
+deadlock checking. Original safety/runtime configs and runtime model are copied
+byte-for-byte under test_vectors/models/TESpecTest/. Generation and replay use
+the same interner, the source debugger/noGenerateSpecTEBin flags and metadir;
+the resolver includes both the original user directory and generated directory.
+The ModelCheckerTestCase harness now scopes/restores Double.MAX_VALUE for its
+liveness threshold. DumpLoadTraceTest retains its default periodic checks.
+Full normal and race suites pass, along with targeted generated/replay checks.
+Next: retain/expose the semantic ExternalModuleTable in the TLC bridge before
+translating TraceExpressionSpecDeadlockTest and TraceExpressionSpecLassoTest.
+Both unchanged Java originals pass. Go deadlock generation/replay matches the
+four asserted states; the generated lasso has one property, no invariants and
+0/FALSE -> 1/TRUE -> 0/FALSE, and LiveCheck1 reports its expected liveness failure.
+These probes do not replace their module-table assertions: those translations
+remain pending. Port the semantic graph and contexts, not a name-only substitute.
 Complete semantic module graphs and constant-processing snapshot/eligibility
-metadata remain broader source work.
-Trace-expression variants remain separate pending
-work. Record StateString's explicit empty/non-string _format handling and full
+metadata remain broader source work. Record StateString's explicit empty/non-string _format handling and full
 Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
