@@ -147,13 +147,31 @@ fresh upstream classloader: its prev/action links otherwise leak an earlier
 model's action into the next test. Do not reset it between calls within a source
 runtime. All four existing Alias models remain green. Full normal/race suites
 and targeted trace checks pass.
-Next: EvalExceptionLivenessTest (DistBakery3aAuxMC), using its original embedded
-config and coverage-disabled setting. A preliminary production Go probe fails
-before initial states at \times (line 51, col 20 to col 33 of DistBakery3aAux),
-with 0/0/0 and exit 75 rather than the expected 950/555/89 and ERROR exit.
-The unchanged Java original passes in a separate JVM. Resolve the
-Cartesian-product bridge/evaluator path before translating its
-15-state trace assertions. Trace-expression variants remain separate pending
+EvalExceptionLivenessTest is now translated too, retaining its byte-identical
+DistBakery3aAuxMC.tla with embedded DistBakery3aAux/ProtoBakeryTest modules and
+config, disabled coverage, ERROR exit, 950/555/89 statistics, exact function
+comparison diagnostic, all 15 trace states and source action/ordinal assertions.
+The bridge converts Cartesian-product syntax into Java's $CartesianProd node;
+synthetic n-ary links flatten within their source range, while parenthesized
+operands remain nested. The evaluator already implements this opcode. The three
+remaining SetOfTuplesValueTest indexed-sampling methods are translated after
+comparing the shared implementation and running all five unchanged Java methods:
+empty Nat product, 8,000,000-element product and 64,000,000,000-element product.
+Their source seed, overflow exception, enumerator kind, sample/cardinality,
+HashSet-style deduplication and membership assertions are retained. Full normal
+and race suites pass.
+Next: ValueSemanticsAssumeTest, which passes unchanged Java with 0/0/0 statistics.
+The preliminary production Go run instead overflows the goroutine stack in
+convertDefinitionAs/convertInstanceDefinition: an unqualified INSTANCE's exported
+name overlaps its canonical source name, so converting the clone's source routes
+back into the same instance binding. Separate source-definition conversion from
+instance-export routing before translating the assumptions. Do not work around
+this with a smaller model or suppress the conversion failure. The relevant
+ignored probe log is .codex-gotmp/go-ValueSemanticsAssume-probe.log; its source is
+ValueSemanticsAssume.tla/ValueSemanticsCases.tla and the original cfg. Also ready
+for translation: unchanged DepthFirstErrorTraceTest passes Java; the Go probe
+already matches safety exit and all eight states/actions with -dfid 9.
+Trace-expression variants remain separate pending
 work. Record StateString's explicit empty/non-string _format handling and full
 Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export

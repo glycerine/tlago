@@ -1821,6 +1821,24 @@ func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) binaryNode(e *BinaryExpr) tlc.SemanticNode {
+	if e.Op == "\\X" || e.Op == "\\times" {
+		// Java Generator.N_Times emits one $CartesianProd application. The
+		// central AST's synthetic n-ary links share one source range;
+		// parenthesized operands retain their own ranges and remain nested.
+		var args []tlc.SemanticNode
+		var collect func(Expr)
+		collect = func(expr Expr) {
+			if nested, ok := expr.(*BinaryExpr); ok && nested.SanyNary && nested.Pos == e.Pos && (nested.Op == "\\X" || nested.Op == "\\times") {
+				collect(nested.Left)
+				collect(nested.Right)
+				return
+			}
+			args = append(args, b.convertExpr(expr))
+		}
+		collect(e.Left)
+		collect(e.Right)
+		return tlc.NewBuiltinOpApplNode(tlc.OpCP, args...)
+	}
 	if e.JunctionList {
 		op := tlc.OpCL
 		if e.Op == "\\/" {
