@@ -58,6 +58,10 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.IllegalAccessException"
 	case *InstantiationException:
 		return "java.lang.InstantiationException"
+	case *NoSuchMethodException:
+		return "java.lang.NoSuchMethodException"
+	case *InvocationTargetException:
+		return "java.lang.reflect.InvocationTargetException"
 	case *JavaError:
 		return "java.lang.Error"
 	case *SecurityException:

@@ -3471,10 +3471,35 @@ the existing ServiceRegistryRestriction (18 operations) and five-second concurre
 ServiceRegistrySyncTest are translated and pass in Java and Go under -race.
 Prior 14,777 image-handler and 617 custom-SPI comparisons plus default CommandMap
 integration still match. The full offline suite passes without the config-test skip.
+The seven OpenJDK IIOServiceProvider/reader-writer/reader/writer/input-stream/
+output-stream/transcoder SPI base classes now have native constructors, blank
+constructor defaults, fresh getter arrays, factory overload delegation, own-plugin
+class-name checks, cache/lossless defaults and metadata-format lookup. Mandatory
+names/type arrays reject null and empty values; optional empty arrays become null.
+Public mutable STANDARD_INPUT_TYPE/OUTPUT_TYPE arrays retain identity and constructor
+substitution even after element mutation. Base method bodies read protected fields
+independently of virtual getter overrides. The rendered-image encoder overload calls
+the static ImageTypeSpecifier factory before virtual canEncodeImage dispatch.
+Metadata lookup retains native/extra selection, unchecked extra-array access outside
+the wrapping catch, Class.forName(false) through the provider's defining loader,
+IIOMetadataFormat assignability, module identity/export checks, privileged class
+lookup and reflective getInstance invocation. Exception failures become
+IllegalStateException with their original cause; Error escapes, while a target Error
+wrapped by Method.invoke remains an InvocationTargetException cause. Standard format
+singleton/schema, non-null AWT specifier construction and VM module/loader/reflection/
+secured privilege operations remain explicit required implementations/providers.
+All 51 non-abstract methods in the seven source classes match explicitly compiled
+OpenJDK 21.0.12.1 bytecode. Temporary actual-JDK/native -race comparisons pass 7,914
+constructor/getter/clone/factory/metadata observations, including real named-module
+export checks. VM automatic ClassCastException wording is normalized in that probe;
+full VM diagnostic wording remains pending. After implementation, the two existing
+SpiTest constructor methods are translated and pass; its complete registry/schema
+enumeration remains pending. Concrete standard SPI constructors and six standard
+stream providers remain required before full IIORegistry integration.
 Next: ServiceLoader/IIORegistry AppContext lifetime and ImageIO's captured registry.
 Lookup discovery is lazy and requires its explicit adapter when advanced; missing
-discovery never silently produces an empty list. Complete SPI class constructors,
-stream/transcoder metadata and the six standard stream providers, then translate
+discovery never silently produces an empty list. Complete concrete standard SPI constructors,
+metadata schemas and the six standard stream providers, then translate
 OrderingTest/DeregisterOrderedSpiTest/RegisterPluginTwiceTest/DeregisterAllSpiTest.
 Compatible-stream initialization, native image codecs/AWT and multipart/MIME
 dependencies remain next, then object DataHandler factory/cache/pipes. Full

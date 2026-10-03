@@ -65,7 +65,7 @@ func mailNewImageSPIClass(name string, parents []*MailActivationClass) *MailActi
 	}}
 }
 func mailImageRegistryClass(name string) *MailActivationClass {
-	for _, c := range []*MailActivationClass{mailImageRegisterableServiceClass, mailImageIIOServiceProviderClass, mailImageReaderWriterSPIClass, mailImageReaderSPIClass, mailImageWriterSPIClass, mailImageTranscoderSPIClass, mailImageInputStreamSPIClass, mailImageOutputStreamSPIClass} {
+	for _, c := range []*MailActivationClass{mailImageRegisterableServiceClass, mailImageIIOServiceProviderClass, mailImageReaderWriterSPIClass, mailImageReaderSPIClass, mailImageWriterSPIClass, mailImageTranscoderSPIClass, mailImageInputStreamSPIClass, mailImageOutputStreamSPIClass, mailImageInputStreamClass, mailImageOutputStreamClass, mailImageMetadataFormatClass} {
 		if c.Name == name {
 			return c
 		}

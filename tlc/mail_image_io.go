@@ -46,6 +46,8 @@ type MailImageIOEnvironment struct {
 var DefaultMailImageIOEnvironment MailImageIOEnvironment
 
 type MailImageSPI struct {
+	Metadata  MailImageSPIMetadata
+	Overrides MailImageSPIOverrides
 	// Leaf class and virtual object/comparable operations are registry metadata.
 	// ComparableClass denotes a verified Comparable<Self> declaration.
 	Class                *MailActivationClass
@@ -107,6 +109,8 @@ func mailImageSPIList(providers []*MailImageSPI) *MailImageSPIIterator {
 }
 
 type MailImageReader struct {
+	Class    *MailActivationClass
+	Provider *MailImageSPI
 	ReadFunc func(int32) (*MailBufferedImage, error)
 }
 
@@ -123,6 +127,8 @@ func (r *MailImageReader) Read(index int32) (*MailBufferedImage, error) {
 }
 
 type MailImageWriter struct {
+	Class             *MailActivationClass
+	Provider          *MailImageSPI
 	SetOutputFunc     func(any) error
 	WriteRenderedFunc func(*MailRenderedImage) error
 	WriteIIOFunc      func(*MailIIOImage) error
@@ -188,10 +194,7 @@ func mailImageMIMEFilter(mime string) func(*MailImageSPI) (bool, error) {
 			if p == nil {
 				return false, NewNullPointerException()
 			}
-			if p.MIMETypesFunc == nil {
-				return false, NewUnsupportedOperationException("Image SPI MIME metadata provider required")
-			}
-			names, err := p.MIMETypesFunc()
+			names, err := p.GetMIMETypes()
 			if err != nil {
 				return false, err
 			}
@@ -319,10 +322,7 @@ func (i *MailImageReaderIterator) Next() (*MailImageReader, error) {
 			if p == nil {
 				return nil, NewNullPointerException()
 			}
-			if p.CreateReaderFunc == nil {
-				return nil, NewUnsupportedOperationException("Image SPI reader factory required")
-			}
-			return p.CreateReaderFunc()
+			return p.CreateReaderInstance()
 		})
 		if isJavaIOException(err) {
 			if e := mailImageDeregister(i.environment, p, true); e != nil {
@@ -348,10 +348,7 @@ func (i *MailImageWriterIterator) Next() (*MailImageWriter, error) {
 			if p == nil {
 				return nil, NewNullPointerException()
 			}
-			if p.CreateWriterFunc == nil {
-				return nil, NewUnsupportedOperationException("Image SPI writer factory required")
-			}
-			return p.CreateWriterFunc()
+			return p.CreateWriterInstance()
 		})
 		if isJavaIOException(err) {
 			if e := mailImageDeregister(i.environment, p, false); e != nil {

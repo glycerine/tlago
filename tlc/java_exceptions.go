@@ -176,6 +176,21 @@ func (e *IllegalAccessException) mailIllegalAccessException() {}
 
 type InstantiationException struct{ javaExceptionBase }
 
+type NoSuchMethodException struct{ javaExceptionBase }
+
+func NewNoSuchMethodException(message ...string) *NoSuchMethodException {
+	return &NoSuchMethodException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
+}
+func (e *NoSuchMethodException) Error() string { return javaThrowableMessage(e) }
+
+type InvocationTargetException struct{ javaExceptionBase }
+
+func NewInvocationTargetException(target error, message ...string) *InvocationTargetException {
+	return &InvocationTargetException{newJavaExceptionBase(optionalJavaMessage(message), target)}
+}
+func (e *InvocationTargetException) Error() string             { return javaThrowableMessage(e) }
+func (e *InvocationTargetException) GetTargetException() error { return e.Cause }
+
 func NewInstantiationException(message ...string) *InstantiationException {
 	return &InstantiationException{newJavaExceptionBase(optionalJavaMessage(message), nil)}
 }

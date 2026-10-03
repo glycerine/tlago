@@ -71,15 +71,25 @@ All 36 source methods match installed JDK bytecode; 11,080 actual-JDK/native -ra
 comparisons include callback reentry/errors, mutation, filtering and security-manager
 null-context callback suppression. Existing ServiceRegistryRestriction and
 ServiceRegistrySyncTest are translated after implementation and pass in Java/Go.
-Continue with IIORegistry/ServiceLoader/AppContext lifetime and full SPI constructors/
-metadata. ImageIO must capture the AppContext registry at class initialization.
+The seven OpenJDK SPI base classes now have native constructor, getter, clone,
+factory-delegation and metadata-format lookup algorithms. Preserve mandatory versus
+optional array validation, mutable STANDARD type-array identity, protected fields
+versus virtual getters, default cache/lossless flags, null factory arguments and
+metadata exception/cause boundaries. All 51 non-abstract source methods match JDK
+bytecode; 7,914 actual-JDK/native -race comparisons include named-module exports.
+The two existing SpiTest constructor methods are translated after implementation.
+Full standard concrete SPI constructors, six stream providers, metadata schemas and
+non-null AWT type-specifier creation remain required. Module/loader/reflection/
+privileged operations use explicit VM providers. Continue with those dependencies
+and IIORegistry/ServiceLoader/AppContext lifetime. ImageIO must capture the
+AppContext registry at class initialization.
 Discovery is an explicit lazy provider boundary; no adapter means advancing lookup
 fails explicitly, rather than returning an invented empty provider list. Secured
 access-context capture/privileged execution requires its VM provider. The native
 default runs without a SecurityManager. Official upstream OrderingTest,
 DeregisterOrderedSpiTest, RegisterPluginTwiceTest and DeregisterAllSpiTest remain
 for porting after IIORegistry and required SPI metadata. VM identity hashes/class/
-comparable discovery, compatible-stream initialization, full SPI metadata,
+comparable discovery, compatible-stream initialization, full concrete SPI metadata,
 AWT rasterization and image codecs remain required. Continue multipart/MIME
 and DataHandler object/factory/cache/buffered-pipe dependencies after these slices.
 Read the latest progress entry for bytecode and Java/native verification.
