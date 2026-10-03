@@ -2777,6 +2777,15 @@ use OpArgNode. Instance parameters have their own scoped symbols. EXTENDS retain
 root declaration identity. Definition conversion tracks actual module membership,
 including inner modules whose physical source file belongs to the outer module.
 The parser retains the instance definition LHS range for action declarations.
+Imported operator definitions (including native module aliases) share a canonical
+symbol and original definition body. Alias names remain in the tool/processor
+definition tables. Replacing a module definition therefore reaches references
+through EXTENDS and instance imports without rebinding unrelated definitions.
+LET definitions use fresh scoped symbols carrying the original OpDefNode for
+default lookup; contextual lazy values still take precedence during evaluation.
+Coverage walks LET definitions in SANY Context Hashtable order: Java UTF-16 name
+hashes, descending buckets, head-first chains and source capacity/rehashing.
+Evaluation retains declaration order.
 
 Coverage expression labels come from semantic source locations. Standard-module
 exclusion follows Java's fixed set of nine source-module names, including its
@@ -3745,6 +3754,9 @@ Pay extra care to these areas:
 - VIEW fingerprinting.
 - Context branch/cutoff behavior for `ENABLED`.
 - Prime and unprime handling in action evaluation.
+- Square actions return TRUE immediately when A is true; angle actions return
+  FALSE immediately when A is false. Their subscript is evaluated only on the
+  remaining path, preserving Java exception precedence and coverage.
 - `UNCHANGED` and tuple-of-vars handling.
 - Action splitting and action names.
 - Exact distinction among constraints, invariants, implied actions, and

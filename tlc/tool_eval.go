@@ -1542,6 +1542,12 @@ func (t *Tool) evalActionSubscript(expr SemanticNode, opcode int, args []Semanti
 	if err != nil {
 		return nil, err
 	}
+	if opcode == OpcodeAA && !res.Val {
+		return BoolFalse, nil
+	}
+	if opcode == OpcodeSA && res.Val {
+		return BoolTrue, nil
+	}
 	v0, err := t.Eval(args[1], c, s0, EmptyState, control, cm)
 	if err != nil {
 		return nil, err

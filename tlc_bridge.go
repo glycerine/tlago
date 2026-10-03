@@ -356,7 +356,7 @@ func (b *tlcBridge) installDefinitions() {
 		if opDef == nil {
 			continue
 		}
-		b.define(opDef.Symbol, opDef)
+		b.defineAlias(name, opDef)
 	}
 }
 
@@ -411,6 +411,26 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 			}
 		}
 	}
+	// EXTENDS references the original definition, including native overrides.
+	// Keep a single symbol for those aliases so a module-scoped replacement
+	// reaches every expression bound to that definition.
+	aliases := make([]string, 0, len(b.defs))
+	for alias := range b.defs {
+		aliases = append(aliases, alias)
+	}
+	sort.Strings(aliases)
+	for _, alias := range aliases {
+		def := b.defs[alias]
+		module := b.definitionModules[def]
+		if module == "" || b.instanceDefinitions[alias] != nil {
+			continue
+		}
+		canonical := module + "!" + def.Name
+		if module == b.rootModuleName {
+			canonical = def.Name
+		}
+		b.symbols[alias] = b.symbol(canonical)
+	}
 }
 
 func isNativeStandardDefinitionOverrideName(name string, def *Definition) bool {
@@ -458,7 +478,7 @@ func (b *tlcBridge) installNativeStandardDefinitionOverrideAlias(name string, de
 		}
 	}
 	b.rememberNativeStandardDefinition(module, member, name, opDef)
-	b.define(b.symbol(name), value)
+	b.defineAlias(name, value)
 }
 
 func (b *tlcBridge) rememberNativeStandardDefinition(module string, member string, name string, opDef *tlc.OpDefNode) {
@@ -549,7 +569,7 @@ func (b *tlcBridge) installConfigOverridesUnder(prefix string, overrides *tlc.In
 		}
 		opDef := b.convertDefinitionAs(qualifiedSpecName, def)
 		if opDef != nil {
-			b.define(opDef.Symbol, opDef)
+			b.defineAlias(qualifiedSpecName, opDef)
 		}
 	}
 }
@@ -584,8 +604,18 @@ func (b *tlcBridge) defineName(name string, value any) *tlc.SymbolNode {
 		return nil
 	}
 	sym := b.symbol(name)
-	b.define(sym, value)
+	b.defineAlias(name, value)
 	return sym
+}
+
+func (b *tlcBridge) defineAlias(name string, value any) {
+	b.define(b.symbol(name), value)
+	if b.tool != nil {
+		b.tool.DefnsByName[tlc.UniqueStringOf(name)] = value
+	}
+	if b.defns != nil {
+		b.defns.Put(name, value)
+	}
 }
 
 func (b *tlcBridge) instanceOpDefinitions(inst Instance) []*tlc.OpDefNode {
@@ -1347,8 +1377,9 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if binding := b.instanceDefinitions[name]; binding != nil && b.defs[name] == def {
 		return b.convertInstanceDefinition(name, def, binding)
 	}
-	canonicalSource := name == b.definitionModules[def]+"!"+def.Name
-	if source := b.sourceDefinitions[def]; canonicalSource && source != nil {
+	// SANY aliases share the original OpDefNode and body, rather than
+	// reconstructing a definition for each imported name.
+	if source := b.sourceDefinitions[def]; source != nil {
 		return source
 	}
 	sym := b.symbol(name)
@@ -1384,9 +1415,7 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if declaration := b.sourceLocationForPosition(def.DeclarationPosition()); !declaration.IsNull() {
 		opDef.SetDeclarationLocation(declaration)
 	}
-	if canonicalSource {
-		b.sourceDefinitions[def] = opDef
-	}
+	b.sourceDefinitions[def] = opDef
 	return opDef
 }
 
@@ -1827,6 +1856,20 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 			letNames = append(letNames, def.Name)
 		}
 	}
+	priorSymbols := make([]*tlc.SymbolNode, len(letNames))
+	for i, name := range letNames {
+		priorSymbols[i] = b.symbols[name]
+		b.symbols[name] = tlc.NewSymbolNode(name)
+	}
+	defer func() {
+		for i, name := range letNames {
+			if priorSymbols[i] == nil {
+				delete(b.symbols, name)
+			} else {
+				b.symbols[name] = priorSymbols[i]
+			}
+		}
+	}()
 	restore := b.pushConvertBoundNames(letNames...)
 	defer restore()
 	for _, def := range e.Definitions {
@@ -1834,6 +1877,10 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 		opDef := b.convertDefinitionAs(next.Name, &next)
 		if opDef != nil {
 			opDef.SetInRecursive(recursiveDeclarationSections(e.Recursives)[next.Name] != 0)
+			// A Java OpApplNode references its LET OpDefNode directly. Keep
+			// that definition available to graph walking and default lookup;
+			// evaluation's contextual lazy binding still takes precedence.
+			opDef.Symbol.Data = opDef
 		}
 		lets = append(lets, opDef)
 	}

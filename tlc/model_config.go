@@ -784,6 +784,20 @@ func (l *modelConfigLexer) next() modelConfigToken {
 		return l.stringToken()
 	case isConfigNumberStart(ch):
 		start := l.offset
+		// SANY identifiers can start with digits when the token contains a
+		// letter. JavaCC selects that complete identifier over a numeral.
+		end, hasLetter := start, false
+		for end < len(l.input) && isConfigIdentPart(l.input[end]) {
+			c := l.input[end]
+			hasLetter = hasLetter || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
+			end++
+		}
+		if hasLetter {
+			for l.offset < end {
+				l.advanceByte()
+			}
+			return modelConfigToken{kind: configTokenIdentifier, image: l.input[start:end], line: line, col: col}
+		}
 		for !l.eof() && isConfigDigit(l.peekByte()) {
 			l.advanceByte()
 		}

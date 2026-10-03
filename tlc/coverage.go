@@ -538,7 +538,7 @@ func (c *coverageCreator) walk(node SemanticNode) {
 				c.letIns[newSemanticNodeKey(let.Body)] = n.Body
 			}
 		}
-		for _, let := range n.Lets {
+		for _, let := range coverageLetDefinitions(n.Lets) {
 			c.walkOpDef(let)
 		}
 		c.walk(n.Body)
@@ -577,6 +577,43 @@ func (c *coverageCreator) walk(node SemanticNode) {
 	case *ThmOrAssumpDefNode:
 		c.walk(n.Body)
 	}
+}
+
+// LetInNode.walkGraph visits SANY Context's default Java Hashtable, rather
+// than its declaration-ordered getLets array. Preserve its bucket/chain order
+// and rehashing while keeping the evaluator's LET declaration order intact.
+func coverageLetDefinitions(lets []*OpDefNode) []*OpDefNode {
+	buckets := make([][]*OpDefNode, 11)
+	count, threshold := 0, 8
+	index := func(def *OpDefNode, capacity int) int {
+		return int(uint32(javaStringHashCode(def.Name.String()))&0x7fffffff) % capacity
+	}
+	put := func(table [][]*OpDefNode, def *OpDefNode) {
+		i := index(def, len(table))
+		table[i] = append([]*OpDefNode{def}, table[i]...)
+	}
+	for _, def := range lets {
+		if def == nil || def.Name == nil {
+			continue
+		}
+		if count >= threshold {
+			old := buckets
+			buckets = make([][]*OpDefNode, 2*len(old)+1)
+			threshold = 3 * len(buckets) / 4
+			for i := len(old) - 1; i >= 0; i-- {
+				for _, entry := range old[i] {
+					put(buckets, entry)
+				}
+			}
+		}
+		put(buckets, def)
+		count++
+	}
+	out := make([]*OpDefNode, 0, count)
+	for i := len(buckets) - 1; i >= 0; i-- {
+		out = append(out, buckets[i]...)
+	}
+	return out
 }
 
 func (c *coverageCreator) walkQuantifierBounds(n *OpApplNode) {

@@ -46,8 +46,15 @@ MCoverageTest and OCoverageTest are now translated too. Instance definitions
 retain SubstInNode bindings, shared source bodies and Subst identities, distinct
 instancee declaration symbols and instance declaration ranges. O now reports
 separate next-state and invariant substitution counts. Worker generated-state
-reporting uses atomic access. Next compare the remaining Github314, Github377,
-Github649 and Implied coverage models. Original model bytes, including
+reporting uses atomic access. Github314CoverageTest, Github377CoverageTest,
+Github649CoverageTest and ImpliedCoverageTest are now translated too, completing
+the current upstream coverage model testSpec translations. Imported definitions
+and native aliases share their source symbol/body identities, so module-scoped
+overrides reach their references. LET definitions keep scoped identities and
+SANY Context graph order. Config identifiers may start with digits, and square/
+angle action evaluation short-circuits as Java does. Full normal/race checks pass.
+Next: resume broader checker comparisons, starting with ConstLevelInvariantTest
+and its constant-level diagnostic, then existing safety/trace model tests. Original model bytes, including
 upstream whitespace, are intentionally retained in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.

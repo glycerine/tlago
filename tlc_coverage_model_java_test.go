@@ -771,3 +771,197 @@ func TestJavaOCoverage(t *testing.T) {
 <Inv line 28, col 1 to line 28, col 3 of module O>
   line 28, col 8 to line 28, col 14 of module O: 4`)
 }
+
+func TestJavaGithub314Coverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "Github314", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"3"}) {
+		t.Errorf("search depth=%v, want 3", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"3", "3", "0"}) {
+		t.Errorf("stats=%v, want 3/3/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+}
+
+func TestJavaGithub377Coverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "Github377", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"1"}) {
+		t.Errorf("search depth=%v, want 1", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"2", "1", "0"}) {
+		t.Errorf("stats=%v, want 2/1/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Action line 5, col 9 to line 5, col 16 of module Github377>: 1:1
+  line 5, col 9 to line 5, col 16 of module Github377: 1
+<Action line 5, col 24 to line 5, col 34 of module Github377>: 0:1
+  line 5, col 24 to line 5, col 34 of module Github377: 1
+<1Inv line 9, col 1 to line 9, col 4 of module Github377>
+  line 10, col 6 to line 10, col 69 of module Github377: 1
+  line 11, col 5 to line 11, col 13 of module Github377: 1
+<1InvNonRec line 15, col 1 to line 15, col 10 of module Github377>
+  line 16, col 6 to line 16, col 40 of module Github377: 1
+  line 17, col 5 to line 17, col 13 of module Github377: 1
+<2Inv line 21, col 1 to line 21, col 4 of module Github377>
+  line 25, col 10 to line 25, col 47 of module Github377: 1
+  |line 25, col 10 to line 25, col 34 of module Github377: 1
+  |line 25, col 39 to line 25, col 47 of module Github377: 1
+  ||line 25, col 39 to line 25, col 44 of module Github377: 1
+  |||line 23, col 11 to line 23, col 70 of module Github377: 1
+  ||||line 23, col 34 to line 23, col 70 of module Github377: 2
+  ||||line 23, col 25 to line 23, col 27 of module Github377: 1
+  line 26, col 7 to line 26, col 11 of module Github377: 1
+<2aInv line 28, col 1 to line 28, col 5 of module Github377>
+  line 32, col 10 to line 33, col 21 of module Github377: 1
+  |line 32, col 13 to line 32, col 21 of module Github377: 1
+  |line 33, col 13 to line 33, col 21 of module Github377: 1
+  ||line 33, col 13 to line 33, col 18 of module Github377: 1
+  |||line 31, col 11 to line 31, col 42 of module Github377: 1
+  ||||line 31, col 34 to line 31, col 42 of module Github377: 1
+  |||||line 31, col 34 to line 31, col 39 of module Github377: 1
+  ||||||line 30, col 11 to line 30, col 70 of module Github377: 1
+  |||||||line 30, col 34 to line 30, col 70 of module Github377: 2
+  |||||||line 30, col 25 to line 30, col 27 of module Github377: 1
+  |||||line 31, col 41 to line 31, col 41 of module Github377: 1
+  ||||line 31, col 25 to line 31, col 27 of module Github377: 1
+  line 34, col 7 to line 34, col 11 of module Github377: 1
+<2bInv line 36, col 1 to line 36, col 5 of module Github377>
+  line 40, col 10 to line 40, col 31 of module Github377: 1
+  |line 40, col 10 to line 40, col 18 of module Github377: 1
+  |line 40, col 23 to line 40, col 31 of module Github377: 1
+  ||line 40, col 23 to line 40, col 28 of module Github377: 1
+  |||line 39, col 11 to line 39, col 42 of module Github377: 1
+  ||||line 39, col 34 to line 39, col 42 of module Github377: 1
+  |||||line 39, col 34 to line 39, col 39 of module Github377: 1
+  ||||||line 38, col 11 to line 38, col 70 of module Github377: 1
+  |||||||line 38, col 34 to line 38, col 70 of module Github377: 2
+  |||||||line 38, col 25 to line 38, col 27 of module Github377: 1
+  |||||line 39, col 41 to line 39, col 41 of module Github377: 1
+  ||||line 39, col 25 to line 39, col 27 of module Github377: 1
+  line 41, col 7 to line 41, col 11 of module Github377: 1
+<3aInv line 44, col 1 to line 44, col 5 of module Github377>
+  line 48, col 10 to line 50, col 21 of module Github377: 1
+  |line 49, col 16 to line 49, col 21 of module Github377: 1
+  |line 50, col 13 to line 50, col 21 of module Github377: 1
+  ||line 50, col 13 to line 50, col 18 of module Github377: 1
+  |||line 47, col 11 to line 47, col 42 of module Github377: 1
+  ||||line 47, col 34 to line 47, col 42 of module Github377: 1
+  |||||line 47, col 34 to line 47, col 39 of module Github377: 1
+  ||||||line 46, col 11 to line 46, col 70 of module Github377: 1
+  |||||||line 46, col 34 to line 46, col 70 of module Github377: 2
+  |||||||line 46, col 25 to line 46, col 27 of module Github377: 1
+  ||||line 47, col 25 to line 47, col 27 of module Github377: 1
+  line 51, col 7 to line 51, col 11 of module Github377: 1
+<3bInv line 55, col 1 to line 55, col 5 of module Github377>
+  line 58, col 11 to line 58, col 42 of module Github377: 1
+  line 57, col 11 to line 57, col 70 of module Github377: 1
+  |line 57, col 34 to line 57, col 70 of module Github377: 2
+  |line 57, col 25 to line 57, col 27 of module Github377: 1
+  line 60, col 13 to line 60, col 31 of module Github377: 1
+  line 61, col 7 to line 61, col 11 of module Github377: 1
+<4Inv line 66, col 1 to line 66, col 4 of module Github377>
+  line 71, col 11 to line 71, col 18 of module Github377: 1
+  line 72, col 7 to line 72, col 11 of module Github377: 1`)
+}
+
+func TestJavaGithub649Coverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "Github649", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"2"}) {
+		t.Errorf("search depth=%v, want 2", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"3", "2", "0"}) {
+		t.Errorf("stats=%v, want 3/2/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Init line 14, col 1 to line 14, col 4 of module Github649>: 1:1
+  line 12, col 21 to line 12, col 25 of module Github649: 2
+  line 12, col 32 to line 12, col 37 of module Github649: 1
+  line 12, col 44 to line 12, col 60 of module Github649: 1
+  line 14, col 21 to line 14, col 25 of module Github649: 1
+<Next line 16, col 1 to line 16, col 4 of module Github649>: 1:2
+  line 16, col 9 to line 16, col 23 of module Github649: 2
+<TypeOK line 9, col 1 to line 9, col 6 of module Github649>
+  line 9, col 11 to line 9, col 24 of module Github649: 2
+  |line 7, col 15 to line 7, col 62 of module Github649: 4
+  ||line 7, col 18 to line 7, col 22 of module Github649: 4
+  ||line 7, col 29 to line 7, col 41 of module Github649: 2
+  ||line 7, col 48 to line 7, col 62 of module Github649: 2
+  |line 9, col 17 to line 9, col 21 of module Github649: 2
+<Constraint line 18, col 1 to line 18, col 10 of module Github649>: 3:3
+  line 19, col 5 to line 19, col 26 of module Github649: 3
+  |line 12, col 18 to line 12, col 60 of module Github649: 9
+  ||line 12, col 21 to line 12, col 25 of module Github649: 9
+  ||line 12, col 32 to line 12, col 37 of module Github649: 3
+  ||line 12, col 44 to line 12, col 60 of module Github649: 6
+  |line 19, col 10 to line 19, col 14 of module Github649: 3
+  |line 19, col 17 to line 19, col 22 of module Github649: 3`)
+}
+
+func TestJavaImpliedCoverage(t *testing.T) {
+	result := runJavaTLCModelTest(t, "Implied", "-coverage", "9999")
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d; messages=%+v", result.ExitStatus, result.Messages)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	depth := javaTLCRecords(result, tlc.ECTLCSearchDepth)
+	if len(depth) == 0 || !reflect.DeepEqual(depth[0].Params, []string{"3"}) {
+		t.Errorf("search depth=%v, want 3", depth)
+	}
+	stats := javaTLCRecords(result, tlc.ECTLCStats)
+	if len(stats) == 0 || !reflect.DeepEqual(stats[0].Params, []string{"3", "3", "0"}) {
+		t.Errorf("stats=%v, want 3/3/0", stats)
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCCoverageMismatch} {
+		if records := javaTLCRecords(result, code); len(records) != 0 {
+			t.Errorf("unexpected records: %v", records)
+		}
+	}
+	assertJavaCoverage(t, result, `<Init line 6, col 1 to line 6, col 4 of module Implied>: 1:1
+  line 6, col 9 to line 6, col 13 of module Implied: 1
+<Next line 7, col 1 to line 7, col 4 of module Implied>: 2:2
+  line 7, col 9 to line 7, col 13 of module Implied: 2
+  |line 7, col 9 to line 7, col 9 of module Implied: 3
+  line 7, col 18 to line 7, col 27 of module Implied: 2
+<Action line 10, col 17 to line 10, col 25 of module Implied>
+  line 10, col 17 to line 10, col 25 of module Implied: 1
+<Action line 12, col 31 to line 12, col 48 of module Implied>
+  line 12, col 31 to line 12, col 48 of module Implied: 2`)
+}
