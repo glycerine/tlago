@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 )
 
 type Worker struct {
@@ -20,7 +21,7 @@ type Worker struct {
 	Checker               *ModelChecker
 	Tool                  *Tool
 	Halted                bool
-	MaxLevel              int
+	maxLevel              atomic.Int32
 	UnseenSuccessorStates int
 	done                  chan struct{}
 	Err                   error
@@ -64,6 +65,15 @@ func NewWorker(id int) *Worker {
 		SetOfStatesMultiplier: 1,
 		OutDegree:             NewFixedSizedBucketStatistics(fmt.Sprintf("TLCWorkerThread-%03d", id), workerOutDegreeBucketCount),
 	}
+}
+
+// Java's maxLevel is volatile: reporting reads it while this worker runs.
+func (w *Worker) GetMaxLevel() int {
+	return int(w.maxLevel.Load())
+}
+
+func (w *Worker) SetLevel(level int) {
+	w.maxLevel.Store(int32(level))
 }
 
 func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
@@ -337,8 +347,8 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 		return nil, newWorkerNextStateError(errInvariantViolated, succState)
 	}
 	if queued && succState != nil {
-		if succState.Level() > w.MaxLevel {
-			w.MaxLevel = succState.Level()
+		if succState.Level() > w.GetMaxLevel() {
+			w.SetLevel(succState.Level())
 		}
 	}
 	return w, nil
@@ -541,8 +551,8 @@ func (w *Worker) WriteNextState(curState *TLCStateMut, succFP uint64, succState 
 	if curState != nil {
 		prevUID = curState.UID
 		prevWorker = curState.WorkerID
-		if level := curState.Level() + 1; level > w.MaxLevel {
-			w.MaxLevel = level
+		if level := curState.Level() + 1; level > w.GetMaxLevel() {
+			w.SetLevel(level)
 		}
 	}
 	ptr := int64(len(w.traceRecordsFallback()))

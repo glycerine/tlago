@@ -78,8 +78,8 @@ func TestWorkerFunctorPathProcessesSuccessorsLikeModelChecker(t *testing.T) {
 	if worker.OutDegree.Observations() != 1 || worker.OutDegree.Median() != 1 {
 		t.Fatalf("worker out-degree observations/median = %v/%v, want 1/1", worker.OutDegree.Observations(), worker.OutDegree.Median())
 	}
-	if worker.MaxLevel != 2 {
-		t.Fatalf("worker max level = %d, want 2", worker.MaxLevel)
+	if worker.GetMaxLevel() != 2 {
+		t.Fatalf("worker max level = %d, want 2", worker.GetMaxLevel())
 	}
 }
 

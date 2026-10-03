@@ -30,8 +30,11 @@ The existing ACoverageTest is translated too, with byte-identical model data and
 expected coverage. SpecProcessor now retains declaration symbols and preserves
 their source locations when applying the tool; variable coverage uses semantic
 module names rather than physical filenames. Read the progress tail for
-verification. Next coverage work should compare the remaining upstream model
-cases, starting with CoverageStatisticsTest.
+verification. CoverageStatisticsTest and CCoverageTest are now translated too:
+constraint evaluation counts accepted/rejected states, action validity retains
+its cost model, and the parser bridge preserves SANY junction-list and boolean
+application nodes for accurate invariant/LET coverage. Next coverage work
+should compare the remaining upstream model cases, starting with BCoverageTest.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.

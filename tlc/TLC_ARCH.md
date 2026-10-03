@@ -1658,6 +1658,10 @@ Important behavior:
 
 `Worker` is both a thread and an `INextStateFunctor`.
 
+Worker maximum trace depth is Java's private volatile int. Go stores it in an
+atomic Int32 and exposes GetMaxLevel/SetLevel; ConcurrentTLCTrace reporting
+loads it through the getter while the worker writes successor trace records.
+
 Worker loop:
 
 1. `sDequeue` current state from the shared blocking queue. A `null`/`nil`
@@ -2751,6 +2755,19 @@ matching OpApplNodeWrapper.equals. ActionWrapper.get resolves its predicate to
 the child expression wrapper and unwraps SubstIn/LetIn bodies; only expression
 wrappers return themselves for their own expression. Zero-count primed parents
 retain the extra indentation before reporting their children.
+
+Constraint evaluation resolves its per-tool Action metadata and passes that
+Action's cost model through evaluation. Rejected constraints increment the
+primary counter; accepted constraints increment the secondary counter. Action
+validity checks likewise pass the Action's cost model, preserving invariant and
+implied-property expression coverage.
+
+The parser bridge preserves SANY's n-ary `$ConjList`/`$DisjList` applications
+for bullet lists, flattening only binary AST folds within the same junction
+frame. Nested junctions keep their own nodes. Single-item lists keep a unary
+list application. Boolean literals retain predefined TRUE/FALSE operator
+applications, allowing LET bodies and boolean expressions to be covered at
+their actual source locations.
 
 Coverage counts:
 

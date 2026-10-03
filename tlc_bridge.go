@@ -1500,7 +1500,9 @@ func positionIsZero(pos Position) bool {
 func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 	switch e.Kind {
 	case "bool":
-		return tlc.NewValueNode(tlc.NewBoolValue(strings.EqualFold(e.Value, "TRUE")))
+		// TRUE and FALSE are predefined SANY operator applications. Keep the
+		// application node so evaluation and coverage retain its source location.
+		return tlc.NewOpApplNode(b.exprSymbol(strings.ToUpper(e.Value)))
 	case "number":
 		if strings.Contains(e.Value, ".") {
 			b.diags = append(b.diags, errorAt(e.Pos, "E7010", "TLC can't handle real numbers.\n%s", e.Value))
@@ -1529,6 +1531,10 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
 	op := e.Op
 	switch op {
+	case "/\\":
+		return tlc.NewBuiltinOpApplNode(tlc.OpCL, b.convertExpr(e.Expr))
+	case "\\/":
+		return tlc.NewBuiltinOpApplNode(tlc.OpDL, b.convertExpr(e.Expr))
 	case "~", "\\neg":
 		op = "\\lnot"
 	case "-.":
@@ -1538,6 +1544,25 @@ func (b *tlcBridge) unaryNode(e *UnaryExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) binaryNode(e *BinaryExpr) tlc.SemanticNode {
+	if e.JunctionList {
+		op := tlc.OpCL
+		if e.Op == "\\/" {
+			op = tlc.OpDL
+		}
+		var args []tlc.SemanticNode
+		var collect func(Expr)
+		collect = func(expr Expr) {
+			if nested, ok := expr.(*BinaryExpr); ok && sanySameJunctionFrame(e, nested) {
+				collect(nested.Left)
+				collect(nested.Right)
+				return
+			}
+			args = append(args, b.convertExpr(expr))
+		}
+		collect(e.Left)
+		collect(e.Right)
+		return tlc.NewBuiltinOpApplNode(op, args...)
+	}
 	op := tlcBinaryOperator(e.Op)
 	return tlc.NewOpApplNode(b.exprSymbol(op), b.convertExpr(e.Left), b.convertExpr(e.Right))
 }

@@ -11,7 +11,7 @@ func (t *Tool) IsInModelImpl(state *TLCStateMut) (bool, error) {
 }
 
 func (t *Tool) IsInModelForConstraintImpl(constraint SemanticNode, state *TLCStateMut) (bool, error) {
-	return t.evalPredicateValue(constraint, EmptyContext, state, EmptyState, EvalClear, "model constraint")
+	return t.evalConstraint(constraint, state, EmptyState)
 }
 
 func (t *Tool) IsInActionsImpl(s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
@@ -25,7 +25,34 @@ func (t *Tool) IsInActionsImpl(s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
 }
 
 func (t *Tool) IsInActionsForConstraintImpl(constraint SemanticNode, s1 *TLCStateMut, s2 *TLCStateMut) (bool, error) {
-	return t.evalPredicateValue(constraint, EmptyContext, s1, s2, EvalClear, "action constraint")
+	return t.evalConstraint(constraint, s1, s2)
+}
+
+func (t *Tool) evalConstraint(constraint SemanticNode, s0 *TLCStateMut, s1 *TLCStateMut) (bool, error) {
+	cm := DoNotRecordCostModel
+	if CoverageEnabled() {
+		object := SemanticToolObjectForTool(t, constraint)
+		action, ok := object.(*Action)
+		if object == nil || ok && action == nil {
+			panic(NewNullPointerException())
+		}
+		if !ok {
+			panic(NewClassCastException())
+		}
+		cm = action.CM
+	}
+	valid, err := t.evalPredicateValue(constraint, EmptyContext, s0, s1, EvalClear, "constraint", cm)
+	if err != nil {
+		return false, err
+	}
+	if CoverageEnabled() {
+		if valid {
+			cm.IncSecondary()
+		} else {
+			cm.IncInvocations()
+		}
+	}
+	return valid, nil
 }
 
 func (t *Tool) EvalRewardImpl(s1 *TLCStateMut, s2 *TLCStateMut, fallback float64) (float64, error) {
@@ -54,21 +81,21 @@ func (t *Tool) IsValidTransitionImpl(action *Action, s0 *TLCStateMut, s1 *TLCSta
 	if action == nil {
 		return false, newTLCError(ECGeneral, "cannot validate nil action")
 	}
-	return t.evalPredicateValue(action.Pred, action.Con, s0, s1, EvalClear, action.GetName())
+	return t.evalPredicateValue(action.Pred, action.Con, s0, s1, EvalClear, action.GetName(), action.CM)
 }
 
 func (t *Tool) IsValidStateImpl(action *Action, state *TLCStateMut) (bool, error) {
 	if action == nil {
 		return false, newTLCError(ECGeneral, "cannot validate nil action")
 	}
-	return t.evalPredicateValue(action.Pred, action.Con, state, EmptyState, EvalClear, action.GetName())
+	return t.evalPredicateValue(action.Pred, action.Con, state, EmptyState, EvalClear, action.GetName(), action.CM)
 }
 
 func (t *Tool) IsValidActionImpl(action *Action) (bool, error) {
 	if action == nil {
 		return false, newTLCError(ECGeneral, "cannot validate nil action")
 	}
-	return t.evalPredicateValue(action.Pred, action.Con, EmptyState, EmptyState, EvalClear, action.GetName())
+	return t.evalPredicateValue(action.Pred, action.Con, EmptyState, EmptyState, EvalClear, action.GetName(), action.CM)
 }
 
 func (t *Tool) CheckAssumptionsImpl() int {
@@ -118,11 +145,15 @@ func postConditionPredicateString(post *Action) string {
 	return SemanticString(post.GetPred())
 }
 
-func (t *Tool) evalPredicateValue(expr SemanticNode, ctxt *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, where string) (bool, error) {
+func (t *Tool) evalPredicateValue(expr SemanticNode, ctxt *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, where string, costModels ...CostModel) (bool, error) {
 	if ctxt == nil {
 		ctxt = EmptyContext
 	}
-	value, err := t.Eval(expr, ctxt, s0, s1, control, CostModel{})
+	cm := DoNotRecordCostModel
+	if len(costModels) > 0 {
+		cm = costModels[0]
+	}
+	value, err := t.Eval(expr, ctxt, s0, s1, control, cm)
 	if err != nil {
 		return false, err
 	}

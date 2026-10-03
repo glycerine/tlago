@@ -75,8 +75,10 @@ func (t *ConcurrentTLCTrace) GetLevel() int {
 	}
 	maxLevel := 1
 	for _, worker := range t.Workers {
-		if worker != nil && worker.MaxLevel > maxLevel {
-			maxLevel = worker.MaxLevel
+		if worker != nil {
+			if level := worker.GetMaxLevel(); level > maxLevel {
+				maxLevel = level
+			}
 		}
 	}
 	if maxLevel == 1 && t.TLCTrace != nil {
