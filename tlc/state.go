@@ -94,6 +94,12 @@ func SetTLCStateTool(tool *Tool) {
 	}
 	statePreserveMetadata = tool.usesExtendedStateMetadata()
 	SetStateSymmetryPermutations(tool.GetSymmetryPerms())
+	// Java constructs FastTool first; DebugTool's copy constructor does not
+	// replace TLCStateMutExt.mytool. Workers explicitly fingerprint with their
+	// debug tool, while parameterless state fingerprints retain FastTool.
+	if tool.DebugFastTool != nil {
+		stateTool = tool.NoDebug()
+	}
 }
 
 type TLCStateMut struct {

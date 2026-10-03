@@ -336,11 +336,28 @@ locations/contexts and 221 syntax-depth/operator-owner records under the race
 detector, plus the original constant groups/entries. This remains an ephemeral
 source comparison, not the complete persistent Echo test translation.
 
-Next: finish source variable trace reconstruction (current TraceVariables lacks
-the disk prefix), concrete state/action/next/synthetic variable presentation and
-lazy-context rendering without cache side effects; port whole EchoDebuggerTest
-and EWD998ChanDebuggerTest methods with their inherited state/trace/scope/value
-assertions after these features. Continue watch/hover and exact breakpoint
+Variable trace display now reconstructs the disk prefix and source in-memory
+suffix, retains action addT=false versus next addT=true, and filters incomplete
+simulation states. Next simulation traces keep padded names and selection IDs;
+model-checking trace display does not add simulation-only selection IDs. State
+and action variable rendering runs through the debugger supplier boundary,
+remembers nested references, and shows Java's interleaved unprimed/primed action
+record fields (including the trailing space), pending-value text/type and
+fingerprint fallback. Context lazy values evaluate with concrete frame states
+without updating their own caches. FastTool retains its original tool mode and
+remains the parameterless state-fingerprint tool, matching Java construction.
+Workers still fingerprint explicitly with the active debug tool.
+After these features, the complete EchoDebuggerTest.testSpec is translated with
+all source assertions and used inherited frame/context/state/trace/successor
+helpers. Its four upstream vectors are byte-identical under test_vectors/models/
+Echo. Unchanged Java and Go normal/race executions pass. The expanded source
+probe matches all 30 stops/221 frames plus 696 scopes, 137 context variables,
+158 state-variable records and 838 trace-variable records. Fingerprint type
+presence matches; raw fingerprint numbers depend on each runtime's intern-token
+namespace (observed NoNode token Java=1, Go=127) and are not claimed equal.
+Next: finish the remaining EWD998ChanDebuggerTest features (full lazy-variable
+assertions, stack expression images, watch/hover and expression-location lookup),
+then translate that entire source method. Continue exact breakpoint
 verification/diagnostics before claiming full debugger parity.
 Attaching debugger protocol transport/capability events remain pending. The separate native-only preConstantSnapshot, processConstants
 semantic traversal and dynamic extendee path remain source work, as do ModuleNode

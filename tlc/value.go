@@ -470,6 +470,9 @@ func (v *StringValue) Length() int {
 
 func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 	defer catchValueFailure(v, &err)
+	if pending, ok := other.(*DebuggerValue); ok {
+		other = pending.StringValue
+	}
 	o, ok := other.(*StringValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {
@@ -482,6 +485,9 @@ func (v *StringValue) Compare(other Value) (resultInt int, err error) {
 
 func (v *StringValue) Equal(other Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
+	if pending, ok := other.(*DebuggerValue); ok {
+		other = pending.StringValue
+	}
 	o, ok := other.(*StringValue)
 	if !ok {
 		if mv, ok := other.(*ModelValue); ok {

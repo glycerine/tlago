@@ -413,6 +413,41 @@ func NewRecordValue(names []*UniqueString, values []Value, isNorm bool, cms ...C
 	return &RecordValue{BaseValue: newBaseValue(cms...), Names: names, Values: values, IsNorm: isNorm}
 }
 
+// NewRecordValueFromState ports RecordValue(TLCState[, Value]).
+func NewRecordValueFromState(state *TLCStateMut, defaultValue ...Value) *RecordValue {
+	names := make([]*UniqueString, len(stateVariables))
+	values := make([]Value, len(stateVariables))
+	for i, variable := range stateVariables {
+		names[i] = variable.Name
+		values[i] = state.Lookup(variable.Name)
+		if values[i] == nil && len(defaultValue) > 0 {
+			values[i] = defaultValue[0]
+		}
+	}
+	return NewRecordValue(names, values, false)
+}
+
+// NewRecordValueFromStates ports the debugger's paired state constructor,
+// including the trailing space on unprimed keys and interleaved field order.
+func NewRecordValueFromStates(state, successor *TLCStateMut, defaultValue Value) *RecordValue {
+	names := make([]*UniqueString, len(stateVariables)*2)
+	values := make([]Value, len(names))
+	for i, variable := range stateVariables {
+		j := i * 2
+		names[j] = UniqueStringOf(variable.Name.String() + " ")
+		names[j+1] = UniqueStringOf(variable.Name.String() + "'")
+		values[j] = state.Lookup(variable.Name)
+		values[j+1] = successor.Lookup(variable.Name)
+		if values[j] == nil {
+			values[j] = defaultValue
+		}
+		if values[j+1] == nil {
+			values[j+1] = defaultValue
+		}
+	}
+	return NewRecordValue(names, values, false)
+}
+
 func NewRecordValueFromInsMap(values *InsMap[*UniqueString, Value]) *RecordValue {
 	if values == nil {
 		return EmptyRecord

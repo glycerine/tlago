@@ -19,9 +19,6 @@ func (t *Tool) installDebugTool() *Tool {
 		fast.DebugPort = -1
 		fast.DebugFastTool = nil
 		fast.DebugEvalMode = DebugEvalConst
-		if fast.Mode == ModeDebugger {
-			fast.Mode = ModeMC
-		}
 		t.DebugFastTool = &fast
 	}
 	t.DebugEvalMode = DebugEvalConst
@@ -48,9 +45,6 @@ func debugToolNoDebug(t *Tool) *Tool {
 	copied.Debugger = nil
 	copied.DebugPort = -1
 	copied.DebugFastTool = nil
-	if copied.Mode == ModeDebugger {
-		copied.Mode = ModeMC
-	}
 	return &copied
 }
 

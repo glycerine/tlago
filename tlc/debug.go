@@ -210,19 +210,23 @@ func (f *TLCStackFrame) GetScopes() []TLCScope {
 }
 
 func (f *TLCStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+	return f.getVariablesWithStates(ref, rnd, EmptyState, nil)
+}
+
+func (f *TLCStackFrame) getVariablesWithStates(ref int, rnd *rand.Rand, s, t *TLCStateMut) []*DebugTLCVariable {
 	if f == nil {
 		return nil
 	}
 	if f.Tool != nil {
 		value, _ := f.Tool.withDebugEvalModeAny(DebugEvalDebugger, func() (any, error) {
-			return f.getVariables(ref, rnd), nil
+			return f.getVariables(ref, rnd, s, t), nil
 		})
 		return value.([]*DebugTLCVariable)
 	}
-	return f.getVariables(ref, rnd)
+	return f.getVariables(ref, rnd, s, t)
 }
 
-func (f *TLCStackFrame) getVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
+func (f *TLCStackFrame) getVariables(ref int, rnd *rand.Rand, s, t *TLCStateMut) []*DebugTLCVariable {
 	if rnd == nil {
 		rnd = rand.New(rand.NewSource(1))
 	}
@@ -248,7 +252,7 @@ func (f *TLCStackFrame) getVariables(ref int, rnd *rand.Rand) []*DebugTLCVariabl
 	}
 	switch ref {
 	case f.ContextID:
-		variables = append(variables, f.contextVariables(rnd)...)
+		variables = append(variables, f.contextVariables(rnd, s, t)...)
 	case f.GetConstantsID():
 		variables = append(variables, f.constantVariables(rnd)...)
 	case f.GetStackID():
@@ -284,13 +288,26 @@ func (f *TLCStackFrame) HasStackVariables() bool {
 	return false
 }
 
-func (f *TLCStackFrame) contextVariables(rnd *rand.Rand) []*DebugTLCVariable {
+func (f *TLCStackFrame) contextVariables(rnd *rand.Rand, s, t *TLCStateMut) []*DebugTLCVariable {
 	var variables []*DebugTLCVariable
 	for c := f.Context; c != nil && c != EmptyContext; c = c.Next() {
 		name := c.Name()
 		value := c.Value()
 		if name == nil && value == nil {
 			continue
+		}
+		if workerValue, ok := value.(*WorkerValue); ok {
+			value = workerValue.ValueForWorker(CurrentThreadIDOr(0))
+		}
+		if lazy := asLazyValue(value); lazy != nil {
+			// Eval deliberately bypasses GetValue: displaying a lazy binding must
+			// not update the evaluator's cached value or cache count.
+			evaluated, err := debugUnlazy(lazy, f.Tool, s, t)
+			if err != nil {
+				variables = append(variables, &DebugTLCVariable{Name: symbolNodeDebugName(name), Value: fmt.Sprint(value), Type: err.Error()})
+				continue
+			}
+			value = evaluated
 		}
 		variables = append(variables, f.debugVariableForAny(value, symbolNodeDebugName(name), rnd))
 	}
@@ -381,7 +398,7 @@ func (f *TLCStackFrame) debugVariableForValue(value Value, name string, rnd *ran
 }
 
 func (f *TLCStackFrame) rememberNestedVariable(variable *DebugTLCVariable) {
-	if f == nil || variable == nil || variable.VariablesReference == 0 {
+	if f == nil || variable == nil {
 		return
 	}
 	if f.NestedVariables == nil {
@@ -454,7 +471,19 @@ func (e *AbortEvalException) Error() string {
 	return "debug abort evaluation"
 }
 
-var DebuggerNotEvaluatedValue Value = NewStringValue("?")
+type DebuggerValue struct{ *StringValue }
+
+const debuggerPendingType = "Evaluation pending... (value has not been determined yet)"
+
+func (v *DebuggerValue) KindString() string { return debuggerPendingType }
+func (v *DebuggerValue) String() string     { return "?" }
+func (v *DebuggerValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
+	sb.WriteString("?")
+	return sb
+}
+func (v *DebuggerValue) DeepCopy() Value { return v }
+
+var DebuggerNotEvaluatedValue Value = &DebuggerValue{NewStringValue("?")}
 
 const (
 	debugScopeException  = "Exception"
@@ -521,7 +550,7 @@ func (f *TLCStateStackFrame) ToVariable(rnd *rand.Rand) *DebugTLCVariable {
 	if state != nil {
 		name = fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction()))
 	}
-	return debugStateAsVariable(state, f.ToRecordValue(), name, rnd)
+	return f.getStateAsVariable(f.ToRecordValue(), name, rnd)
 }
 
 func (f *TLCStateStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
@@ -529,12 +558,12 @@ func (f *TLCStateStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVa
 		return nil
 	}
 	if ref == f.StateID {
-		return []*DebugTLCVariable{f.ToVariable(rnd)}
+		return f.debugVariables(func() []*DebugTLCVariable { return []*DebugTLCVariable{f.ToVariable(rnd)} })
 	}
 	if ref == f.StateID+1 {
 		return f.TraceVariables(rnd)
 	}
-	return f.TLCStackFrame.GetVariables(ref, rnd)
+	return f.getVariablesWithStates(ref, rnd, f.GetS(), nil)
 }
 
 func (f *TLCStateStackFrame) GetScopes() []TLCScope {
@@ -576,30 +605,92 @@ func (f *TLCStateStackFrame) ScopeName() string {
 	return debugScopeState
 }
 
+func (f *TLCStackFrame) debugVariables(fn func() []*DebugTLCVariable) []*DebugTLCVariable {
+	value, _ := f.Tool.withDebugEvalModeAny(DebugEvalDebugger, func() (any, error) { return fn(), nil })
+	return value.([]*DebugTLCVariable)
+}
+
+func (f *TLCStackFrame) getStateAsVariable(record Value, name string, rnd *rand.Rand) *DebugTLCVariable {
+	variable := f.debugVariableForValue(record, name, rnd)
+	variable.Type = "State"
+	variable.SetVscodeVariableMenuContext("state")
+	return variable
+}
+
+func (f *TLCStateStackFrame) getStateAsVariable(record Value, name string, rnd *rand.Rand) *DebugTLCVariable {
+	variable := f.TLCStackFrame.getStateAsVariable(record, name, rnd)
+	variable.Type = debugStateVariableType(f.GetT())
+	return variable
+}
+
 func (f *TLCStateStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVariable {
 	if f == nil {
 		return nil
 	}
-	state := f.GetT()
-	if state == nil {
+	return f.debugVariables(func() []*DebugTLCVariable { return f.traceVariables(rnd, f.AddT(), false, nil) })
+}
+
+// getT and the state's variable renderer are inherited by action frames. Only
+// next-state frames add the current state to the trace before its predecessors.
+func (f *TLCStateStackFrame) traceVariables(rnd *rand.Rand, addT, padded bool, idToState map[int]*TLCStateMut) []*DebugTLCVariable {
+	t := f.GetT()
+	if t == nil {
 		return nil
 	}
-	var out []*DebugTLCVariable
-	if state.IsInitial() {
-		out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, nil), "1: "+debugActionLocation(state.GetAction()), rnd))
-		return out
+	render := func(state *TLCStateMut, name string) *DebugTLCVariable {
+		return f.getStateAsVariable(debugStateRecordValue(state, nil), name, rnd)
 	}
-	if f.AddT() {
-		out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, state.Predecessor()), fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction())), rnd))
+	if t.IsInitial() && !padded {
+		name := InitialPredicate
+		if t.HasAction() {
+			name = debugActionLocation(t.GetAction())
+		}
+		return []*DebugTLCVariable{render(t, "1: "+name)}
 	}
-	for predecessor := state.Predecessor(); predecessor != nil; predecessor = predecessor.Predecessor() {
-		name := fmt.Sprintf("%d: %s", predecessor.Level(), debugActionLocation(predecessor.GetAction()))
-		out = append(out, debugStateAsVariable(predecessor, debugStateRecordValue(predecessor, nil), name, rnd))
-		if predecessor.IsInitial() {
-			break
+	var trace []*DebugTLCVariable
+	if addT {
+		trace = append(trace, render(t, fmt.Sprintf("%d: %s", t.Level(), debugActionLocation(t.GetAction()))))
+	}
+	var prefix []*TLCStateInfo
+	if simulator := CurrentSimulator(); simulator != nil {
+		states := simulator.GetUncompressedTrace(t)
+		for i := 0; i < states.Size(); i++ {
+			state := states.At(i)
+			if state.AllAssigned() {
+				prefix = append(prefix, NewTLCStateInfo(state))
+			}
+		}
+	} else {
+		last := t
+		for state := t.Predecessor(); state != nil; state = state.Predecessor() {
+			if state.IsInitial() {
+				name := InitialPredicate
+				if state.HasAction() {
+					name = debugActionLocation(state.GetAction())
+				}
+				return append(trace, render(state, "1: "+name))
+			}
+			trace = append(trace, render(state, fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction()))))
+			last = state
+		}
+		if checker := MainChecker(); checker != nil {
+			prefix = checker.GetTraceInfo(last)
 		}
 	}
-	return out
+	width := len(strconv.Itoa(len(prefix)))
+	for i := len(prefix) - 1; i >= 0; i-- {
+		info := prefix[i]
+		name := fmt.Sprintf("%d: %v", info.State.Level(), info.Info)
+		if padded {
+			name = fmt.Sprintf("%0*d: %v", width, info.State.Level(), info.Info)
+		}
+		variable := render(info.State, name)
+		if idToState != nil {
+			idToState[variable.VariablesReference] = info.State
+		}
+		trace = append(trace, variable)
+	}
+	return trace
 }
 
 func (f *TLCStateStackFrame) GetTraceAsStackFrames() []*TLCSyntheticStateStackFrame {
@@ -774,7 +865,7 @@ func (f *TLCActionStackFrame) ToVariable(rnd *rand.Rand) *DebugTLCVariable {
 	if state != nil {
 		name = fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction()))
 	}
-	return debugStateAsVariable(state, f.ToRecordValue(), name, rnd)
+	return f.getStateAsVariable(f.ToRecordValue(), name, rnd)
 }
 
 func (f *TLCActionStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
@@ -782,12 +873,12 @@ func (f *TLCActionStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCV
 		return nil
 	}
 	if ref == f.StateID {
-		return []*DebugTLCVariable{f.ToVariable(rnd)}
+		return f.debugVariables(func() []*DebugTLCVariable { return []*DebugTLCVariable{f.ToVariable(rnd)} })
 	}
 	if ref == f.StateID+1 {
 		return f.TraceVariables(rnd)
 	}
-	return f.TLCStackFrame.GetVariables(ref, rnd)
+	return f.getVariablesWithStates(ref, rnd, f.GetS(), f.GetT())
 }
 
 func (f *TLCActionStackFrame) GetScopes() []TLCScope {
@@ -803,27 +894,7 @@ func (f *TLCActionStackFrame) GetScopes() []TLCScope {
 }
 
 func (f *TLCActionStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVariable {
-	if f == nil {
-		return nil
-	}
-	state := f.GetT()
-	if state == nil {
-		return nil
-	}
-	var out []*DebugTLCVariable
-	if state.IsInitial() {
-		out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, nil), "1: "+debugActionLocation(state.GetAction()), rnd))
-		return out
-	}
-	out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, f.GetS()), fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction())), rnd))
-	for predecessor := state.Predecessor(); predecessor != nil; predecessor = predecessor.Predecessor() {
-		name := fmt.Sprintf("%d: %s", predecessor.Level(), debugActionLocation(predecessor.GetAction()))
-		out = append(out, debugStateAsVariable(predecessor, debugStateRecordValue(predecessor, nil), name, rnd))
-		if predecessor.IsInitial() {
-			break
-		}
-	}
-	return out
+	return f.TLCStateStackFrame.TraceVariables(rnd)
 }
 
 func (f *TLCActionStackFrame) ScopeName() string {
@@ -857,16 +928,18 @@ func (f *TLCInitStatesStackFrame) GetStateVariables(rnd *rand.Rand) []*DebugTLCV
 	if f == nil {
 		return nil
 	}
-	states := sortedStatesByString(f.GetStates())
-	width := len(strconv.Itoa(len(states)))
-	out := make([]*DebugTLCVariable, 0, len(states))
-	for i, state := range states {
-		name := fmt.Sprintf("%d.%0*d: %s", state.Level(), width, i+1, debugActionLocation(state.GetAction()))
-		variable := debugStateAsVariable(state, NewRecordValueFromInsMap(state.Values()), name, rnd)
-		f.IDToStateMap[variable.VariablesReference] = state
-		out = append(out, variable)
-	}
-	return out
+	return f.debugVariables(func() []*DebugTLCVariable {
+		states := sortedStatesByString(f.GetStates())
+		width := len(strconv.Itoa(len(states)))
+		out := make([]*DebugTLCVariable, 0, len(states))
+		for i, state := range states {
+			name := fmt.Sprintf("%d.%0*d: %s", state.Level(), width, i+1, debugActionLocation(state.GetAction()))
+			variable := f.getStateAsVariable(NewRecordValueFromInsMap(state.Values()), name, rnd)
+			f.IDToStateMap[variable.VariablesReference] = state
+			out = append(out, variable)
+		}
+		return out
+	})
 }
 
 func (f *TLCInitStatesStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
@@ -994,16 +1067,18 @@ func (f *TLCNextStatesStackFrame) GetSuccessorVariables(rnd *rand.Rand) []*Debug
 	if f == nil {
 		return nil
 	}
-	successors := sortedSuccessors(f.GetSuccessors())
-	width := len(strconv.Itoa(len(successors)))
-	out := make([]*DebugTLCVariable, 0, len(successors))
-	for i, state := range successors {
-		name := fmt.Sprintf("%d.%0*d: %s", state.Level(), width, i+1, debugActionLocation(state.GetAction()))
-		variable := debugStateAsVariable(state, NewRecordValueFromInsMap(state.Values()), name, rnd)
-		f.IDToStateMap[variable.VariablesReference] = state
-		out = append(out, variable)
-	}
-	return out
+	return f.debugVariables(func() []*DebugTLCVariable {
+		successors := sortedSuccessors(f.GetSuccessors())
+		width := len(strconv.Itoa(len(successors)))
+		out := make([]*DebugTLCVariable, 0, len(successors))
+		for i, state := range successors {
+			name := fmt.Sprintf("%d.%0*d: %s", state.Level(), width, i+1, debugActionLocation(state.GetAction()))
+			variable := f.getStateAsVariable(NewRecordValueFromInsMap(state.Values()), name, rnd)
+			f.IDToStateMap[variable.VariablesReference] = state
+			out = append(out, variable)
+		}
+		return out
+	})
 }
 
 func (f *TLCNextStatesStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
@@ -1016,7 +1091,7 @@ func (f *TLCNextStatesStackFrame) GetVariables(ref int, rnd *rand.Rand) []*Debug
 	if ref == f.StateID+1 {
 		return f.TraceVariables(rnd)
 	}
-	return f.TLCStackFrame.GetVariables(ref, rnd)
+	return f.getVariablesWithStates(ref, rnd, f.GetS(), nil)
 }
 
 func (f *TLCNextStatesStackFrame) GetScopes() []TLCScope {
@@ -1035,20 +1110,14 @@ func (f *TLCNextStatesStackFrame) TraceVariables(rnd *rand.Rand) []*DebugTLCVari
 	if f == nil {
 		return nil
 	}
-	state := f.GetT()
-	if state == nil {
-		return nil
-	}
-	var out []*DebugTLCVariable
-	out = append(out, debugStateAsVariable(state, debugStateRecordValue(state, nil), fmt.Sprintf("%d: %s", state.Level(), debugActionLocation(state.GetAction())), rnd))
-	for predecessor := state.Predecessor(); predecessor != nil; predecessor = predecessor.Predecessor() {
-		name := fmt.Sprintf("%d: %s", predecessor.Level(), debugActionLocation(predecessor.GetAction()))
-		out = append(out, debugStateAsVariable(predecessor, debugStateRecordValue(predecessor, nil), name, rnd))
-		if predecessor.IsInitial() {
-			break
+	return f.debugVariables(func() []*DebugTLCVariable {
+		simulation := CurrentSimulator() != nil
+		var idToState map[int]*TLCStateMut
+		if simulation {
+			idToState = f.IDToStateMap
 		}
-	}
-	return out
+		return f.traceVariables(rnd, !simulation, simulation, idToState)
+	})
 }
 
 func (f *TLCNextStatesStackFrame) MatchesBreakpoint(bp *TLCSourceBreakpoint) bool {
@@ -1424,6 +1493,9 @@ func debugValueTypeString(value Value) string {
 	if value == nil {
 		return ""
 	}
+	if _, ok := value.(*DebuggerValue); ok {
+		return debuggerPendingType
+	}
 	typ := reflect.TypeOf(value)
 	name := "Value"
 	if typ != nil {
@@ -1588,15 +1660,48 @@ func debugStateCopy(state *TLCStateMut) *TLCStateMut {
 func debugStateAsVariable(state *TLCStateMut, record Value, name string, rnd *rand.Rand) *DebugTLCVariable {
 	variable := NewDebugTLCVariableName(name).SetInstance(record)
 	variable.SetVscodeVariableMenuContext("state")
-	variable.Type = "State"
-	if state != nil && state.AllAssigned() {
-		variable.Type = fmt.Sprintf("FP64: %d", int64(state.FingerPrint()))
-	}
+	variable.Type = debugStateVariableType(state)
 	if debugValueMayHaveNested(variable.TLCValue) {
 		variable.VariablesReference = debugVariableReference(rnd)
 	}
 	variable.Value = debugValueString(variable.TLCValue)
 	return variable
+}
+
+func debugStateVariableType(state *TLCStateMut) (typ string) {
+	typ = "State"
+	defer func() {
+		if failure := recover(); failure != nil {
+			if err, ok := failure.(error); ok && debugValueFailure(err) {
+				return
+			}
+			panic(failure)
+		}
+	}()
+	if state != nil && state.AllAssigned() {
+		typ = fmt.Sprintf("FP64: %d", int64(state.FingerPrint()))
+	}
+	return typ
+}
+
+func debugValueFailure(err error) bool {
+	if _, ok := err.(*FingerprintException); ok {
+		return true
+	}
+	return isJavaEvalOrRuntimeException(err)
+}
+
+func debugUnlazy(lazy *LazyValue, tool *Tool, s, t *TLCStateMut) (value Value, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			if caught, ok := failure.(error); ok && (debugValueFailure(caught) || (s == EmptyState && isJavaNullPointerException(caught))) {
+				err = caught
+				return
+			}
+			panic(failure)
+		}
+	}()
+	return lazy.Eval(tool, s, t)
 }
 
 func stateInfoState(info *TLCStateInfo) *TLCStateMut {
@@ -1621,26 +1726,10 @@ func debugStateRecordValue(state *TLCStateMut, predecessor *TLCStateMut) *Record
 	if state == nil {
 		return EmptyRecord
 	}
-	names := []*UniqueString{}
-	values := []Value{}
 	if predecessor != nil {
-		for name, value := range predecessor.Values().All() {
-			names = append(names, UniqueStringOf(name.String()))
-			values = append(values, value)
-		}
+		return NewRecordValueFromStates(predecessor, state, DebuggerNotEvaluatedValue)
 	}
-	for name, value := range state.Values().All() {
-		field := name
-		if predecessor != nil {
-			field = UniqueStringOf(name.String() + "'")
-		}
-		if value == nil {
-			value = DebuggerNotEvaluatedValue
-		}
-		names = append(names, field)
-		values = append(values, value)
-	}
-	return NewRecordValue(names, values, false)
+	return NewRecordValueFromState(state, DebuggerNotEvaluatedValue)
 }
 
 func sortedStatesByString(set *SetOfStates) []*TLCStateMut {

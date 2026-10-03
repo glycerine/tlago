@@ -3053,9 +3053,25 @@ Debugger variable details:
   restores both tool and mode. DebugTool's one-state Eval overload selects State
   mode (including VIEW), while its context-only overload selects Const mode.
   Workers compute a successor fingerprint once and reuse it for state collection,
-  preserving VIEW evaluation count and debugger stops. Variable TraceVariables
-  still needs the source disk prefix; complete lazy context/watch/state-frame
-  presentation and inherited assertions require the full debugger tests.
+  preserving VIEW evaluation count and debugger stops. Java creates FastTool
+  first and the DebugTool copy constructor leaves the parameterless state
+  fingerprint tool on FastTool; Go preserves that initialization and keeps the
+  original tool mode on the fast copy. TraceVariables reconstructs the disk
+  prefix and predecessor suffix, excludes the action successor and adds the
+  current next-state state. Simulation filters incomplete states; next-state
+  simulation traces use padded names and retain selection IDs. State renderers
+  remember nested references and report the current getT fingerprint, including
+  source exception fallback, even for older records in the Trace scope. Paired
+  action records interleave variable names with a trailing space and their
+  primed names. Pending values print ? without quotes and carry the source
+  evaluation-pending type. Concrete context lazy evaluation uses getS/getT as
+  appropriate and does not call the cache-mutating GetValue.
+  The complete original Echo debugger test, including its inherited assertions,
+  now passes in Go normally and under race instrumentation; unchanged Java
+  passes too. EWD998's full lazy-value/stack/watch/hover assertion surface and
+  the remaining presentation details still require source work. Raw displayed
+  fingerprint numbers use each runtime's interned tokens; matching record
+  values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to
   `<ValueClass>: <kind string>` and value to `toString()`.
 - `StringValue` replaces quoted `toString()` output with the unquoted display
