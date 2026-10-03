@@ -14,11 +14,14 @@ const (
 )
 
 type SymbolNode struct {
-	Name     *UniqueString
-	Data     any
-	Kind     SymbolKind
-	Arity    int
-	Location SourceLocation
+	Name *UniqueString
+	Data any
+	// SANY's operator symbol is the OpDefNode itself. Retain that semantic
+	// identity separately from evaluation overrides and context bindings.
+	Definition *OpDefNode
+	Kind       SymbolKind
+	Arity      int
+	Location   SourceLocation
 }
 
 func NewSymbolNode(name string) *SymbolNode {

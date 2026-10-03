@@ -174,14 +174,30 @@ DepthFirstErrorTraceTest is translated with its two byte-identical vectors,
 -dfid 9, JSON trace dumping, safety exit, eight exact trimmed states, empty action labels, trace
 ordinals and complete zero-uncovered assertion. Both unchanged Java originals
 pass; targeted checks and full normal/race suites pass.
-Next concrete bridge gap: unchanged CyclicRedefineInstanceTest passes Java
-(depth 2, 3/2/0, FALSE/TRUE trace), while Go fails at LET B == INSTANCE Base's
-B!Next with exit 75. Its source disables debugger/coverage/trace dumping and trace-spec
-generation, retains DOT dumping and enables SpecProcessor.allowCyclicRedefinitions. Resolve LET-local
-instance export/context identities and source cyclic-config behavior before
-translating this original test. Ignored comparison logs are
-.codex-gotmp/go-CyclicRedefineInstance-current.log and
-.codex-gotmp/java-next-models/java-CyclicRedefineInstanceTest-current.log.
+CyclicRedefineInstance/Init/Next/Op/SubAction/VarsTest are now translated after
+porting their source features. LET-local INSTANCE exports have lexical symbols
+and attached definitions. Source semantic identities are retained separately
+from evaluation overrides; graph traversal, isDefinedWith's SubstIn rejection
+and delayed application substitution implement allowCyclicRedefinitions.
+Root definitions retain source context order before config overrides; config
+rewrites precede constant evaluation. Formal parameters get distinct symbols
+and bare operator arguments become OpArgNodes. Ordinary overrides consult the
+original OpDef tool object; module overrides retain existing symbol bindings.
+Definition-table indices are no longer reset after installation, which had
+allowed a deferred override to overwrite TRUE's slot. The six translations
+preserve disabled debugger/coverage/JSON trace dumping/generated trace spec,
+retained DOT dumping, exact source exits/depth/statistics and both safety traces.
+Their nine source vectors are byte-identical. All six unchanged Java originals,
+targeted Go checks and full normal/race suites pass.
+Next: complete the original DepthFirstDieHardTest comparison before translating
+it. The unchanged Java test passes; the preliminary Go production probe matches
+its seven states and empty action labels under -dfid 7, but generated counts
+are 834/68 versus Java 876/68. Compare the exact source debugger/trace settings
+before classifying that difference. Ignored logs are
+.codex-gotmp/go-DepthFirstDieHard-current.log and
+.codex-gotmp/java-next-models/java-DepthFirstDieHardTest-current.log.
+Body tool-object lookup through SubstIn, complete semantic module graphs and
+constant-processing snapshot/eligibility metadata remain broader source work.
 Trace-expression variants remain separate pending
 work. Record StateString's explicit empty/non-string _format handling and full
 Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest

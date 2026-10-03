@@ -197,3 +197,19 @@ func (b *tlcBridge) variableDeclarations() []*tlc.SymbolNode {
 	}
 	return nodes
 }
+
+// ModuleNode.getOpDefs reverses Context.getOpDefs' newest-first insertion links.
+// Keep the original definitions, before config overrides replace Defns entries.
+func (b *tlcBridge) installRootDefinitions() {
+	b.processor.RootDefinitions = tlc.NewInsMap[string, *tlc.OpDefNode]()
+	for _, entry := range tlcBridgeContextEntries(b.spec, b.spec.Root, map[*Module]bool{}) {
+		if entry.kind != OperatorDecl || entry.initial {
+			continue
+		}
+		if def := b.defs[entry.name]; def != nil {
+			if node := b.convertDefinitionAs(entry.name, def); node != nil {
+				b.processor.RootDefinitions.Set(entry.name, node)
+			}
+		}
+	}
+}

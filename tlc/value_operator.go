@@ -26,18 +26,21 @@ func NewOpDefNodeForSymbol(symbol *SymbolNode, params []*SymbolNode, body Semant
 		symbol = NewSymbolNode("")
 	}
 	symbol.MarkUserDefinedOp()
+	symbol.Arity = len(params)
 	name := symbol.Name
 	image := ""
 	if name != nil {
 		image = name.String()
 	}
-	return &OpDefNode{
+	definition := &OpDefNode{
 		SemanticNodeBase: newSemanticNodeBase(SemanticUserDefinedOpKind, image),
 		Symbol:           symbol,
 		Name:             name,
 		Params:           outParams,
 		Body:             body,
 	}
+	symbol.Definition = definition
+	return definition
 }
 
 func (n *OpDefNode) Arity() int {

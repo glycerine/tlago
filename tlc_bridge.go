@@ -315,11 +315,12 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installVariables()
 	bridge.installConstantDeclarations()
 	bridge.installDefinitions()
+	bridge.installRootDefinitions()
 	bridge.installRuntimeConstants()
 	bridge.installConfigConstants()
 	bridge.installInstanceAliases()
-	bridge.installModelTargets()
 	bridge.installAssumptions()
+	bridge.installModelTargets()
 	bridge.installRuntimeParameters()
 	bridge.tool.AssignActionIDs()
 	return bridge.tool, bridge.diags
@@ -587,10 +588,6 @@ func (b *tlcBridge) installConfigConstants() {
 	for moduleName, constants := range b.cfg.GetModConstants().All() {
 		b.installConfigConstantsUnder(moduleName+"!", constants)
 	}
-	b.installConfigOverridesUnder("", b.cfg.GetOverrides())
-	for moduleName, overrides := range b.cfg.GetModOverrides().All() {
-		b.installConfigOverridesUnder(moduleName+"!", overrides)
-	}
 }
 
 func (b *tlcBridge) installConfigConstantsUnder(prefix string, constants *tlc.ConfigConstants) {
@@ -621,27 +618,6 @@ func (b *tlcBridge) installConfigConstantsUnder(prefix string, constants *tlc.Co
 			continue
 		}
 		b.defineName(name, constant.Value)
-	}
-}
-
-func (b *tlcBridge) installConfigOverridesUnder(prefix string, overrides *tlc.InsMap[string, string]) {
-	if overrides == nil {
-		return
-	}
-	for specName, configName := range overrides.All() {
-		def := b.defs[configName]
-		if def == nil && prefix != "" {
-			def = b.defs[prefix+configName]
-		}
-		qualifiedSpecName := prefix + specName
-		if def == nil {
-			b.diags = append(b.diags, errorAt(Position{}, "E7002", "CONSTANT override %s <- %s references an unknown operator", qualifiedSpecName, configName))
-			continue
-		}
-		opDef := b.convertDefinitionAs(qualifiedSpecName, def)
-		if opDef != nil {
-			b.defineAlias(qualifiedSpecName, opDef)
-		}
 	}
 }
 
@@ -750,8 +726,8 @@ func (b *tlcBridge) installAssumptions() {
 		}
 		expr := b.convertExpr(assumption.Expr)
 		if expr != nil {
-			b.tool.Assumptions = append(b.tool.Assumptions, expr)
-			b.tool.AssumptionIsAxiom = append(b.tool.AssumptionIsAxiom, false)
+			b.processor.Assumptions = append(b.processor.Assumptions, expr)
+			b.processor.AssumptionIsAxiom = append(b.processor.AssumptionIsAxiom, false)
 		}
 	}
 }
@@ -1419,6 +1395,7 @@ func (b *tlcBridge) sourceDefinitionSymbol(name string, def *Definition) *tlc.Sy
 	if b.instanceDefinitions[name] != nil {
 		symbol = tlc.NewSymbolNode(name)
 	}
+	symbol.Arity = len(def.Params)
 	b.sourceSymbols[def] = symbol
 	return symbol
 }
@@ -1431,8 +1408,12 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	}
 	sym := b.sourceDefinitionSymbol(name, def)
 	params := make([]*tlc.SymbolNode, len(def.Params))
+	priorParams := make([]*tlc.SymbolNode, len(def.Params))
 	for i, param := range def.Params {
-		params[i] = b.symbol(param)
+		priorParams[i] = b.symbols[param]
+		params[i] = tlc.NewSymbolNode(param)
+		params[i].Arity = def.ParamArities[param]
+		b.symbols[param] = params[i]
 	}
 	prevModule := b.convertingModule
 	if module := b.definitionModules[def]; module != "" {
@@ -1443,6 +1424,13 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	restore := b.pushConvertBoundNames(def.Params...)
 	defer func() {
 		restore()
+		for i, name := range def.Params {
+			if priorParams[i] == nil {
+				delete(b.symbols, name)
+			} else {
+				b.symbols[name] = priorParams[i]
+			}
+		}
 		b.convertingModule = prevModule
 	}()
 	var body tlc.SemanticNode
@@ -1455,6 +1443,9 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 		return nil
 	}
 	opDef := tlc.NewOpDefNodeForSymbol(sym, params, body)
+	// Qualification belongs to the lookup alias. EXTENDS preserves the
+	// instancee's original OpDef name for signatures and action labels.
+	opDef.Name = tlc.UniqueStringOf(def.Name)
 	if mod := b.spec.Modules[b.convertingModule]; mod != nil {
 		opDef.SetInRecursive(recursiveDeclarationSections(mod.Recursives)[def.Name] != 0)
 	}
@@ -1932,6 +1923,12 @@ func (b *tlcBridge) callNode(e *CallExpr) tlc.SemanticNode {
 	}
 	args := make([]tlc.SemanticNode, 0, len(e.Args))
 	for _, arg := range e.Args {
+		if ident, ok := arg.(*IdentExpr); ok {
+			if symbol := b.exprSymbol(ident.Name); symbol.Arity > 0 {
+				args = append(args, b.withExprLocation(arg, tlc.NewOpArgNode(symbol)))
+				continue
+			}
+		}
 		args = append(args, b.convertExpr(arg))
 	}
 	return tlc.NewOpApplNode(b.exprSymbol(callee.Name), args...)
@@ -1943,6 +1940,15 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 	for _, def := range e.Definitions {
 		if def.Name != "" {
 			letNames = append(letNames, def.Name)
+		}
+	}
+	for _, inst := range e.Instances {
+		if mod := b.spec.Modules[inst.Module]; mod != nil {
+			for _, def := range mod.Definitions {
+				if !def.Local {
+					letNames = append(letNames, inst.qualifier()+"!"+def.Name)
+				}
+			}
 		}
 	}
 	priorSymbols := make([]*tlc.SymbolNode, len(letNames))
@@ -1974,7 +1980,12 @@ func (b *tlcBridge) letNode(e *LetExpr) tlc.SemanticNode {
 		lets = append(lets, opDef)
 	}
 	for _, inst := range e.Instances {
-		lets = append(lets, b.instanceOpDefinitions(inst)...)
+		for _, opDef := range b.instanceOpDefinitions(inst) {
+			// Java getActions unwraps LET without extending its context. The
+			// exported OpDef is therefore also available directly at its symbol.
+			opDef.Symbol.Data = opDef
+			lets = append(lets, opDef)
+		}
 	}
 	node := tlc.NewLetInNode(b.convertExpr(e.Body), lets...)
 	for _, inst := range e.Instances {

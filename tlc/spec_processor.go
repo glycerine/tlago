@@ -223,6 +223,7 @@ type SpecProcessor struct {
 	Config   *ModelConfig
 
 	ConstantDeclarations []*SymbolNode
+	RootDefinitions      *InsMap[string, *OpDefNode]
 
 	Variables         []*UniqueString
 	VariablesNodes    []*SymbolNode
@@ -385,17 +386,12 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 		locations[node.Name.String()] = node.Location
 	}
 	SetStateVariablesWithLocations(names, locations)
-	if len(names) != 0 {
-		if p.Defns != nil {
-			p.Defns.SetDefnCount(len(names))
-		}
-	}
 	p.applyDefinitionsToTool(tool)
 	if p.Defns != nil {
 		p.PreConstantSnap = p.Defns.Snapshot()
 	}
-	p.ProcessConstantDefinitions(tool)
 	p.ProcessConfigConstantsAndOverrides(tool)
+	p.ProcessConstantDefinitions(tool)
 	p.ProcessConfig()
 	p.applyDefinitionsToTool(tool)
 	tool.ModelConfig = p.Config
@@ -834,7 +830,21 @@ func (p *SpecProcessor) applyConfigOverrides(tool *Tool) {
 	if p == nil || p.Config == nil || p.Config.GetOverrides() == nil {
 		return
 	}
-	for lhs, rhs := range p.Config.GetOverrides().All() {
+	// Java visits root OpDefs in semantic context order, then checks leftover
+	// override keys. Keep the source graph even after Defns entries are replaced.
+	names := NewInsMap[string, struct{}]()
+	if p.RootDefinitions != nil {
+		for name := range p.RootDefinitions.All() {
+			if _, ok := p.Config.GetOverrides().Get2(name); ok {
+				names.Set(name, struct{}{})
+			}
+		}
+	}
+	for name := range p.Config.GetOverrides().All() {
+		names.Set(name, struct{}{})
+	}
+	for lhs := range names.All() {
+		rhs := p.Config.GetOverrides().Get(lhs)
 		if lhs == "" {
 			continue
 		}
@@ -843,6 +853,19 @@ func (p *SpecProcessor) applyConfigOverrides(tool *Tool) {
 			continue
 		}
 		lhsVal := p.defn(lhs)
+		if p.RootDefinitions != nil {
+			if def := p.RootDefinitions.Get(lhs); def != nil {
+				lhsVal = def
+			}
+		}
+		if lhsVal == nil {
+			for _, declaration := range p.ConstantDeclarations {
+				if declaration.Name.String() == lhs {
+					lhsVal = declaration
+					break
+				}
+			}
+		}
 		if lhsVal == nil {
 			p.addConfigError(ECTLCConfigIDDoesNotAppearInSpec, lhs)
 			continue
@@ -853,14 +876,37 @@ func (p *SpecProcessor) applyConfigOverrides(tool *Tool) {
 			continue
 		}
 		if lhsDef, ok := lhsVal.(*OpDefNode); ok && lhsDef != nil {
-			if rhsDef, ok := rhsVal.(*OpDefNode); ok && rhsDef != nil && lhsDef.Arity() != rhsDef.Arity() {
-				p.addConfigError(ECTLCConfigWrongSubstitutionNumberOfArgs, lhs, rhs)
-				continue
+			if rhsDef, ok := rhsVal.(*OpDefNode); ok && rhsDef != nil {
+				if lhsDef.Arity() != rhsDef.Arity() {
+					p.addConfigError(ECTLCConfigWrongSubstitutionNumberOfArgs, lhs, rhs)
+					continue
+				}
+				if enabled, _ := tlcLookupSystemProperty("tlc2.tool.impl.SpecProcessor.allowCyclicRedefinitions"); javaBooleanProperty(enabled) && SemanticIsDefinedWith(rhsDef, lhsDef) {
+					SemanticSubstituteFor(p.rootSemanticNodes(), rhsDef, lhsDef)
+					p.putConfigDefinition(lhs, rhsVal, nil)
+					continue
+				}
 			}
 			lhsDef.SetToolObject(rhsVal)
 		}
 		p.putConfigDefinition(lhs, rhsVal, tool)
 	}
+}
+
+func (p *SpecProcessor) rootSemanticNodes() []SemanticNode {
+	nodes := append([]SemanticNode(nil), p.Assumptions...)
+	if p.RootDefinitions != nil {
+		for _, def := range p.RootDefinitions.All() {
+			nodes = append(nodes, def)
+		}
+	} else if p.Defns != nil {
+		for _, value := range p.Defns.All() {
+			if def, ok := value.(*OpDefNode); ok {
+				nodes = append(nodes, def)
+			}
+		}
+	}
+	return nodes
 }
 
 func (p *SpecProcessor) applyConfigModuleOverrides(tool *Tool) {
@@ -923,6 +969,20 @@ func (p *SpecProcessor) putConfigDefinition(name string, value any, tool *Tool) 
 	sym := NewSymbolNode(name)
 	if oldDef, ok := old.(*OpDefNode); ok && oldDef != nil && oldDef.Symbol != nil {
 		sym = oldDef.Symbol
+	} else if p.RootDefinitions != nil && p.RootDefinitions.Get(name) != nil {
+		sym = p.RootDefinitions.Get(name).Symbol
+	} else {
+		for existing := range tool.Definitions {
+			if existing.Name == sym.Name {
+				tool.Define(existing, value)
+			}
+		}
+		for _, declaration := range p.ConstantDeclarations {
+			if declaration.Name == sym.Name {
+				sym = declaration
+				break
+			}
+		}
 	}
 	tool.Define(sym, value)
 }
