@@ -3020,11 +3020,17 @@ Important Java classes:
   defining `__DebuggerExpr__N == <condition>`, parsing/checking it through the
   production SANY path, and converting the generated operator back into TLC's
   semantic node graph. The hook is source-location aware, matching Java's API
-  shape. The bridge collects scoped definition parameters, LET definitions,
-  quantifier/CHOOSE/function/comprehension bound variables, and operator-arity
-  parameters from the Go AST around the breakpoint location. LET definitions are
-  first emitted as parseable wrapper stubs and then replaced with the original
-  converted LET operator bodies, mirroring Java's stub/substitution strategy.
+  shape. The bridge now collects parameters and LET operators from the retained
+  semantic child path, including formal arities and quantifier/operator-argument
+  parameters. Child order follows the represented SANY getChildren methods;
+  OpAppl bounds precede operands, and LET definitions precede its body. The root
+  of pathTo is visited without preemption, as Java walkChildren does. LOCAL
+  wrapper stubs reconnect to the actual LET definitions and symbols so captured
+  lazy bindings and operator parameters remain usable. Expression conversion
+  reuses the existing source graph and native/config bindings. Source parse and
+  represented semantic/level diagnostics keep Java messages and locations.
+  Dynamic dependency resolution, complete dynamic extendee/module overrides,
+  native-only snapshots and full semantic level metadata remain pending.
 - `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
   useful in Go as plain structs even before a debug-adapter server exists.
   `TLCDebugger.InitializeCapabilities` mirrors Java `initialize`: goto-state is
@@ -3068,8 +3074,16 @@ Debugger variable details:
   appropriate and does not call the cache-mutating GetValue.
   The complete original Echo debugger test, including its inherited assertions,
   now passes in Go normally and under race instrumentation; unchanged Java
-  passes too. EWD998's full lazy-value/stack/watch/hover assertion surface and
-  the remaining presentation details still require source work. Raw displayed
+  passes too. The complete ExpressionBreakpointTest is translated too with
+  its source context-map and lazy-cache assertions. Concrete expression/getWatch
+  methods preserve nullable requests/results, supplier evaluation, base/state/action/
+  synthetic state dispatch, source exception catches, parameter-name lookup,
+  TLCExt CounterExample injection and nested references. Stack names use the
+  actual syntax tree's human-readable image (including its zero/one quirk) and
+  source Variable equality. The EWD998 live probe matches 211 expression and
+  156 getWatch responses plus 21 stack-variable records across eight stops/52
+  frames under race instrumentation. Whole EWD998, hover, protocol evaluation
+  dispatch and broader semantic metadata still require source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to

@@ -368,7 +368,19 @@ func (f *TLCStackFrame) stackVariables(rnd *rand.Rand) []*DebugTLCVariable {
 		if cur.Value == nil {
 			continue
 		}
-		variables = append(variables, cur.debugVariableForValue(cur.Value, semanticNodeDebugName(cur.Node, nil), rnd))
+		variable := cur.debugVariableForValue(cur.Value, semanticNodeHumanReadableImage(cur.Node), rnd)
+		duplicate := false
+		for _, prior := range variables {
+			// Variable.equals excludes the transient TLC value, but includes
+			// its nested reference as well as its display fields.
+			if prior.Name == variable.Name && prior.Value == variable.Value && prior.Type == variable.Type && prior.VariablesReference == variable.VariablesReference && prior.VSCodeVariableMenuContext == variable.VSCodeVariableMenuContext {
+				duplicate = true
+				break
+			}
+		}
+		if !duplicate {
+			variables = append(variables, variable)
+		}
 	}
 	return variables
 }

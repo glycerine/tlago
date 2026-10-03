@@ -27,6 +27,7 @@ const (
 	SemanticOpArgKind          SemanticKind = 8
 	SemanticOpApplKind         SemanticKind = 9
 	SemanticLetInKind          SemanticKind = 10
+	SemanticAssumeKind         SemanticKind = 20
 	SemanticSubstInKind        SemanticKind = 13
 	SemanticNumeralKind        SemanticKind = 16
 	SemanticDecimalKind        SemanticKind = 17
@@ -517,6 +518,21 @@ type ThmOrAssumpDefNode struct {
 	Body   SemanticNode
 	Params []*SymbolNode
 }
+
+type AssumeNode struct {
+	SemanticNodeBase
+	Assume  SemanticNode
+	Module  *ModuleNode
+	Def     *ThmOrAssumpDefNode
+	IsAxiom bool
+}
+
+func NewAssumeNode(expr SemanticNode, module *ModuleNode, definition *ThmOrAssumpDefNode) *AssumeNode {
+	return &AssumeNode{SemanticNodeBase: newSemanticNodeBase(SemanticAssumeKind, "ASSUME"), Assume: expr, Module: module, Def: definition}
+}
+
+func (n *AssumeNode) GetAssume() SemanticNode     { return n.Assume }
+func (n *AssumeNode) GetDef() *ThmOrAssumpDefNode { return n.Def }
 
 func NewThmOrAssumpDefNode(name string, body SemanticNode, params ...*SymbolNode) *ThmOrAssumpDefNode {
 	return &ThmOrAssumpDefNode{Name: UniqueStringOf(name), Body: body, Params: append([]*SymbolNode(nil), params...)}

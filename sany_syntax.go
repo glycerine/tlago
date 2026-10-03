@@ -1,6 +1,9 @@
 package tlago
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type SanyRange struct {
 	Begin Position
@@ -89,6 +92,27 @@ func (n *SanySyntaxNode) GetHeirs() []*SanySyntaxNode {
 		return nil
 	}
 	return append([]*SanySyntaxNode(nil), n.Heirs...)
+}
+
+// GetHumanReadableImage mirrors SyntaxTreeNode, including its zero-child
+// check: a node with only one children returns its own image.
+func (n *SanySyntaxNode) GetHumanReadableImage() string {
+	if len(n.Zero) > 0 {
+		var out strings.Builder
+		for _, child := range n.Zero {
+			out.WriteString(child.GetHumanReadableImage())
+		}
+		for _, child := range n.One {
+			out.WriteString(child.GetHumanReadableImage())
+		}
+		return out.String()
+	}
+	for _, prefix := range []string{"N_", "Not a node", "Token"} {
+		if strings.HasPrefix(n.Image, prefix) {
+			return ""
+		}
+	}
+	return n.Image
 }
 
 func (n *SanySyntaxNode) GetProofLevel() int {

@@ -1107,6 +1107,13 @@ func (t *Tool) ParseDebuggerExpression(location SourceLocation, condition string
 	return nil, fmt.Errorf("debug breakpoint expression parsing is not configured: %s", condition)
 }
 
+func (t *Tool) GetModule(name string) *ModuleNode {
+	if t == nil || t.SpecProcessor == nil || t.SpecProcessor.ModuleTbl == nil {
+		return nil
+	}
+	return t.SpecProcessor.ModuleTbl.GetModuleNode(UniqueStringOf(name))
+}
+
 func (t *Tool) IsDebugger() bool {
 	return t != nil && ((t.IsDebuggerFunc != nil && t.IsDebuggerFunc(t)) || t.Debugger != nil)
 }

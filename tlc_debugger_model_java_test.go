@@ -49,7 +49,7 @@ type javaDebuggerModel struct {
 	prior    *tlc.TLCDebugger
 }
 
-func startJavaDebuggerModel(t *testing.T, folder, model string) *javaDebuggerModel {
+func startJavaDebuggerModel(t *testing.T, folder, model string, extraArgs ...string) *javaDebuggerModel {
 	t.Helper()
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	h := &javaDebuggerModel{t: t, debugger: tlc.NewTLCDebugger(nil), done: make(chan struct{}), prior: tlc.TLCDebuggerFactoryOverride}
@@ -57,7 +57,7 @@ func startJavaDebuggerModel(t *testing.T, folder, model string) *javaDebuggerMod
 	go func() {
 		defer close(h.done)
 		h.result = runJavaTLCModelTestWithArguments(t, folder, model, func(meta, traceDirectory string) []string {
-			return []string{"-metadir", meta, "-deadlock", "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0", "-dumpTrace", "json", filepath.Join(traceDirectory, "tlc2.debug."+folder+"DebuggerTest.json"), "-debugger", "-noGenerateSpecTE"}
+			return append([]string{"-metadir", meta, "-deadlock", "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0", "-dumpTrace", "json", filepath.Join(traceDirectory, "tlc2.debug."+folder+"DebuggerTest.json"), "-debugger", "-noGenerateSpecTE"}, extraArgs...)
 		})
 	}()
 	defer func() {
@@ -269,7 +269,7 @@ func debuggerFrameArguments(t *testing.T, f *tlc.TLCDebuggerFrame, args []any) [
 	if len(remaining) > 0 {
 		if c, ok := remaining[0].(*tlc.Context); ok {
 			expected = c
-		} else if remaining[0] == nil {
+		} else if _, ok := remaining[0].(map[string]string); ok || remaining[0] == nil {
 			expected = nil
 		}
 	}
@@ -300,7 +300,37 @@ func assertTLCStateFrame(t *testing.T, f *tlc.TLCDebuggerFrame, args ...any) {
 	t.Helper()
 	remaining := debuggerFrameArguments(t, f, args)
 	debuggerAssertTrue(t, f.State != nil && f.Action == nil)
+	if len(remaining) > 0 {
+		if expected, ok := remaining[0].(map[string]string); ok {
+			assertDebuggerContextVariables(t, f, expected)
+			return
+		}
+	}
 	debuggerAssertState(t, f, remaining)
+}
+
+// Source's Map overload compares the displayed bindings and checks that
+// GetVariables leaves each captured LazyValue cache count unchanged.
+func assertDebuggerContextVariables(t *testing.T, f *tlc.TLCDebuggerFrame, expected map[string]string) {
+	t.Helper()
+	var lazies []*tlc.LazyValue
+	var counts []int
+	for context := f.Base.Context; context != nil; context = context.Next() {
+		if lazy, ok := context.Value().(*tlc.LazyValue); ok {
+			lazies = append(lazies, lazy)
+			counts = append(counts, lazy.CacheCount)
+		}
+	}
+	variables := f.GetVariables(f.Base.ContextID, nil)
+	debuggerAssertEqual(t, len(expected), len(variables))
+	for _, variable := range variables {
+		value, exists := expected[variable.Name]
+		debuggerAssertTrue(t, exists)
+		debuggerAssertEqual(t, value, variable.Value)
+	}
+	for i, lazy := range lazies {
+		debuggerAssertEqual(t, counts[i], lazy.CacheCount)
+	}
 }
 func assertTLCActionFrame(t *testing.T, f *tlc.TLCDebuggerFrame, args ...any) {
 	t.Helper()

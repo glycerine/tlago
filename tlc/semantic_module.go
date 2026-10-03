@@ -184,6 +184,7 @@ type ModuleNode struct {
 	Extendees    []*ModuleNode
 	Instantiated bool
 	Standard     bool
+	TopLevel     []SemanticNode
 
 	constantDecls      []*SymbolNode
 	variableDecls      []*SymbolNode

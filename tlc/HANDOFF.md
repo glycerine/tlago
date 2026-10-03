@@ -355,10 +355,35 @@ probe matches all 30 stops/221 frames plus 696 scopes, 137 context variables,
 158 state-variable records and 838 trace-variable records. Fingerprint type
 presence matches; raw fingerprint numbers depend on each runtime's intern-token
 namespace (observed NoNode token Java=1, Go=127) and are not claimed equal.
-Next: finish the remaining EWD998ChanDebuggerTest features (full lazy-variable
-assertions, stack expression images, watch/hover and expression-location lookup),
-then translate that entire source method. Continue exact breakpoint
-verification/diagnostics before claiming full debugger parity.
+Debugger stack variables now use SyntaxTreeNode.getHumanReadableImage and
+source Variable equality, preserving source order and nested references.
+Concrete frames expose nullable expression requests/results and getWatch with the
+source state/action/synthetic overloads, supplier mode, exception boundaries,
+parameter-name lookup, nested expansion and TLCExt CounterExample context.
+The expression compiler now follows the retained semantic child path, emits
+LOCAL stubs and reconnects them to actual LET operator/symbol identities rather
+than reconverting source definitions. Syntax, semantic and represented level
+errors retain Java messages and locations. The path traversal enters its root
+without preemption, matching Java walkChildren; preemption applies to children.
+Module top-level assumptions retain actual shared evaluator expressions and
+inherited source order. Broader top-level nodes/proofs remain pending.
+After the production work, the complete original ExpressionBreakpointTest is
+translated, including its embedded config, hit/column/condition, state value,
+context map and lazy-cache assertions. Its one original vector is byte-identical
+under test_vectors/models/ExpressionBreakpointTest/. Unchanged Java and targeted
+Go tests pass. Final full offline go test ./... and go test -race ./... pass
+(root 32.759s/197.687s; TLC 0.862s/3.425s). The live EWD998 source/Go probe
+matches eight stops, 52 frame
+locations, 211 expression responses, 156 getWatch responses and 21 stack-variable
+records, and finishes successfully under race instrumentation. This is an
+ephemeral comparison, not a partial persistent EWD998 test.
+Next: source hover/location lookup, complete formal-parameter syntax/location
+and bound identities, protocol evaluate dispatch, remaining EWD998 lazy-variable
+assertion forms and breakpoint verification before translating the entire
+EWD998ChanDebuggerTest method. Attaching DAP remains pending. Dynamic dependency
+resolution, native-only snapshots, complete dynamic extendee/module overrides
+and SANY semantic level metadata still require source work; the debugger probe
+does not establish parity for those paths or full debugger completion.
 Attaching debugger protocol transport/capability events remain pending. The separate native-only preConstantSnapshot, processConstants
 semantic traversal and dynamic extendee path remain source work, as do ModuleNode
 top-level vectors, proofs/children/traversal and broader nested/parameterized
