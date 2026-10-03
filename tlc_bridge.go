@@ -26,6 +26,7 @@ type tlcBridge struct {
 	convertingModule      string
 	convertBoundNames     map[string]int
 	definitionModules     map[*Definition]string
+	sourceSymbols         map[*Definition]*tlc.SymbolNode
 	sourceDefinitions     map[*Definition]*tlc.OpDefNode
 	instanceDefinitions   map[string]*tlcBridgeInstance
 }
@@ -35,6 +36,7 @@ type tlcBridgeInstance struct {
 	inst   Instance
 	substs []tlc.Subst
 	params []*tlc.SymbolNode
+	defs   map[*Definition]*tlc.OpDefNode
 }
 
 type tlcBridgeInstanceTarget struct {
@@ -430,6 +432,7 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 		return
 	}
 	b.definitionModules = map[*Definition]string{}
+	b.sourceSymbols = map[*Definition]*tlc.SymbolNode{}
 	b.sourceDefinitions = map[*Definition]*tlc.OpDefNode{}
 	b.instanceDefinitions = map[string]*tlcBridgeInstance{}
 	names := make([]string, 0, len(b.spec.Modules))
@@ -466,9 +469,15 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 						}
 					}
 				}
+				exportName := key
+				if inst.exportsUnqualified() {
+					exportName = def.Name
+				}
+				exportSymbol := b.symbol(exportName)
 				for _, key := range keys {
 					b.defs[key] = def
 					b.instanceDefinitions[key] = binding
+					b.symbols[key] = exportSymbol
 				}
 			}
 		}
@@ -491,7 +500,7 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 		if module == b.rootModuleName {
 			canonical = def.Name
 		}
-		b.symbols[alias] = b.symbol(canonical)
+		b.symbols[alias] = b.sourceDefinitionSymbol(canonical, def)
 	}
 }
 
@@ -1390,12 +1399,37 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 	if binding := b.instanceDefinitions[name]; binding != nil && b.defs[name] == def {
 		return b.convertInstanceDefinition(name, def, binding)
 	}
+	return b.convertSourceDefinitionAs(name, def)
+}
+
+// A source OpDefNode and its instantiated export can have the same name but
+// retain distinct identities in Java SANY. Source conversion must not route
+// back through the instancer's export table.
+func (b *tlcBridge) sourceDefinitionSymbol(name string, def *Definition) *tlc.SymbolNode {
+	if symbol := b.sourceSymbols[def]; symbol != nil {
+		return symbol
+	}
+	if module := b.definitionModules[def]; module != "" {
+		name = module + "!" + def.Name
+		if module == b.rootModuleName {
+			name = def.Name
+		}
+	}
+	symbol := b.symbol(name)
+	if b.instanceDefinitions[name] != nil {
+		symbol = tlc.NewSymbolNode(name)
+	}
+	b.sourceSymbols[def] = symbol
+	return symbol
+}
+
+func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc.OpDefNode {
 	// SANY aliases share the original OpDefNode and body, rather than
 	// reconstructing a definition for each imported name.
 	if source := b.sourceDefinitions[def]; source != nil {
 		return source
 	}
-	sym := b.symbol(name)
+	sym := b.sourceDefinitionSymbol(name, def)
 	params := make([]*tlc.SymbolNode, len(def.Params))
 	for i, param := range def.Params {
 		params[i] = b.symbol(param)
@@ -1433,8 +1467,11 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 }
 
 func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, binding *tlcBridgeInstance) *tlc.OpDefNode {
+	if clone := binding.defs[def]; clone != nil {
+		return clone
+	}
 	inst := binding.inst
-	source := b.convertDefinitionAs(inst.Module+"!"+def.Name, def)
+	source := b.convertSourceDefinitionAs(inst.Module+"!"+def.Name, def)
 	if source == nil {
 		return nil
 	}
@@ -1501,6 +1538,10 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 	if !positionIsZero(inst.LHSPos) {
 		clone.SetDeclarationLocation(b.sourceLocationForPosition(inst.LHSPos))
 	}
+	if binding.defs == nil {
+		binding.defs = map[*Definition]*tlc.OpDefNode{}
+	}
+	binding.defs[def] = clone
 	return clone
 }
 
@@ -1621,6 +1662,16 @@ func (b *tlcBridge) resolveExprName(name string) string {
 }
 
 func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
+	if !b.convertBound(name) {
+		if module := b.spec.Modules[b.convertingModule]; module != nil {
+			for i := range module.Definitions {
+				def := &module.Definitions[i]
+				if def.Name == name {
+					return b.sourceDefinitionSymbol(name, def)
+				}
+			}
+		}
+	}
 	return b.symbol(b.resolveExprName(name))
 }
 
@@ -1631,7 +1682,11 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 	var node tlc.SemanticNode
 	switch e := expr.(type) {
 	case *IdentExpr:
-		node = tlc.NewOpApplNode(b.exprSymbol(e.Name))
+		if e.Name == "@" {
+			node = tlc.NewAtNode()
+		} else {
+			node = tlc.NewOpApplNode(b.exprSymbol(e.Name))
+		}
 	case *LiteralExpr:
 		node = b.convertLiteral(e)
 	case *UnaryExpr:

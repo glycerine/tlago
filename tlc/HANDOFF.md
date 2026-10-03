@@ -160,17 +160,28 @@ empty Nat product, 8,000,000-element product and 64,000,000,000-element product.
 Their source seed, overflow exception, enumerator kind, sample/cardinality,
 HashSet-style deduplication and membership assertions are retained. Full normal
 and race suites pass.
-Next: ValueSemanticsAssumeTest, which passes unchanged Java with 0/0/0 statistics.
-The preliminary production Go run instead overflows the goroutine stack in
-convertDefinitionAs/convertInstanceDefinition: an unqualified INSTANCE's exported
-name overlaps its canonical source name, so converting the clone's source routes
-back into the same instance binding. Separate source-definition conversion from
-instance-export routing before translating the assumptions. Do not work around
-this with a smaller model or suppress the conversion failure. The relevant
-ignored probe log is .codex-gotmp/go-ValueSemanticsAssume-probe.log; its source is
-ValueSemanticsAssume.tla/ValueSemanticsCases.tla and the original cfg. Also ready
-for translation: unchanged DepthFirstErrorTraceTest passes Java; the Go probe
-already matches safety exit and all eight states/actions with -dfid 9.
+ValueSemanticsAssumeTest is now translated too, with its three byte-identical
+source vectors and original no-debugger/noGenerateSpec/JSON trace-dump settings.
+Go passes all
+489 unchanged ASSUME clauses and matches Java success/0/0/0. Source-definition
+conversion is separate from instance-export routing; each source definition
+retains its own symbol, export aliases share one cached clone, and source-body
+references keep source identities. The bridge emits AtNode for EXCEPT @. Native
+FiniteSets IsFiniteSet/Cardinality overrides carry their source reflection
+signatures, and located semantic nodes render their Java source locations in
+evaluation errors. Other native signatures remain a broader metadata task.
+DepthFirstErrorTraceTest is translated with its two byte-identical vectors,
+-dfid 9, JSON trace dumping, safety exit, eight exact trimmed states, empty action labels, trace
+ordinals and complete zero-uncovered assertion. Both unchanged Java originals
+pass; targeted checks and full normal/race suites pass.
+Next concrete bridge gap: unchanged CyclicRedefineInstanceTest passes Java
+(depth 2, 3/2/0, FALSE/TRUE trace), while Go fails at LET B == INSTANCE Base's
+B!Next with exit 75. Its source disables debugger/coverage/trace dumping and trace-spec
+generation, retains DOT dumping and enables SpecProcessor.allowCyclicRedefinitions. Resolve LET-local
+instance export/context identities and source cyclic-config behavior before
+translating this original test. Ignored comparison logs are
+.codex-gotmp/go-CyclicRedefineInstance-current.log and
+.codex-gotmp/java-next-models/java-CyclicRedefineInstanceTest-current.log.
 Trace-expression variants remain separate pending
 work. Record StateString's explicit empty/non-string _format handling and full
 Java String.format semantics also remain source parity work. TLCGetNonDeterminismTest

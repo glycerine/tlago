@@ -323,7 +323,16 @@ func (t *Tool) defineStandardMethod(name string, arity int, eval func([]Value) (
 }
 
 func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel int, eval func([]Value) (Value, error), aliases ...string) {
-	value := NewMethodValue(name, minLevel, func(args []Value, control int) (Value, error) {
+	method := name
+	// MethodValue reports Method.toString() when a native value operation fails.
+	// Preserve the source reflection metadata, including its declared return type.
+	switch name {
+	case "IsFiniteSet":
+		method = "public static tlc2.value.IBoolValue tlc2.module.FiniteSets.IsFiniteSet(tlc2.value.impl.Value)"
+	case "Cardinality":
+		method = "public static tlc2.value.impl.IntValue tlc2.module.FiniteSets.Cardinality(tlc2.value.impl.Value)"
+	}
+	value := NewMethodValue(method, minLevel, func(args []Value, control int) (Value, error) {
 		_ = control
 		if len(args) != arity {
 			return nil, newTLCError(ECGeneral, "%s expected %d arguments, got %d", name, arity, len(args))

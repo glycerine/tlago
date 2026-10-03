@@ -109,6 +109,9 @@ func (n *SemanticNodeBase) SetToolObject(value any) {
 }
 
 func (n *SemanticNodeBase) String() string {
+	if n != nil && !n.Location.IsNull() {
+		return n.Location.String()
+	}
 	if n == nil || n.Image == "" {
 		return "<semantic node>"
 	}
@@ -307,6 +310,9 @@ func NewBuiltinOpApplNode(op *UniqueString, args ...SemanticNode) *OpApplNode {
 }
 
 func (n *OpApplNode) String() string {
+	if n != nil && !n.Location.IsNull() {
+		return n.Location.String()
+	}
 	if n == nil || n.Operator == nil {
 		return "<operator application>"
 	}
