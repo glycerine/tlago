@@ -607,7 +607,7 @@ func (v *RecordValue) StateString() string {
 		if i == formatIndex {
 			continue
 		}
-		b.WriteString(fmt.Sprintf(format, name.String(), valueString(v.Values[i])))
+		b.WriteString(fmt.Sprintf(format, name.String(), ValuesPPR(v.Values[i])))
 	}
 	return b.String()
 }

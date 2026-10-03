@@ -60,6 +60,11 @@ func runJavaTLCModelTestWithWorkers(t *testing.T, name string, coverage, dump bo
 
 func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
 	t.Helper()
+	return runJavaTLCModelTestWithRoot(t, name, name, coverage, dump, debugger, workers, extraArgs...)
+}
+
+func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
+	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
@@ -100,10 +105,10 @@ func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, 
 		args = append(args, "-coverage", "1")
 	}
 	if dump {
-		args = append(args, "-dump", "dot", filepath.Join(meta, name+".dot"))
+		args = append(args, "-dump", "dot", filepath.Join(meta, root+".dot"))
 	}
 	args = append(args, extraArgs...)
-	args = append(args, name)
+	args = append(args, root)
 	opts, err := tlc.ParseTLCOptions(args)
 	if err != nil {
 		t.Fatal(err)

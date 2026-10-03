@@ -120,13 +120,30 @@ TLCGet(level) undefined and named _POSSIBLE register lookup fail after reset.
 TraceWithLargeSetOfInitialStatesTest is translated too, with its two original
 vectors and source -maxSetSize 10 setting, direct initial-state trace/action
 assertions and zero uncovered set. The harness restores the set bound. Full normal/race checks pass.
-Next: original PrintTraceRaceTest (four workers), then broader checker safety/
-trace comparisons. Its models live under test-model/PrintTraceRace/ with MC as
-the root module; preserve the original worker count and invariant evaluation
-failure status. Both unchanged Java and the preliminary Go production probe
-already match exit 76, statistics 2/2/0 and the two record-valued states. The
-translation needs the harness to distinguish fixture directory from root module
-name (PrintTraceRace versus MC); do not flatten unrelated MC fixtures together. TLCGetNonDeterminismTest
+PrintTraceRaceTest is now translated too with four workers and three original
+vectors in tlc/test_vectors/models/PrintTraceRace/. The harness distinguishes
+fixture directory from root module MC, retaining the source stats, failure
+status, two record states/ordinals and complete uncovered-location set.
+All four Alias checker testSpec methods are translated too: safety with the
+debugger disabled, simulation with num=1, lasso and stuttering. Their three
+original model/config vectors are byte-identical. ALIAS record-state printing
+now calls Values.ppr for each field, matching multiline TLCGet(action) records
+and nested trace tuples. The safety checker case retains register 42 = 4 and
+postcondition assertions; liveness cases retain exact Trace prefixes, loop-back
+B action and stuttering ordinal 2. Current unchanged Java originals all pass. Full Go normal/race suites pass.
+Next: TLCExtTraceTest and TLCExtTraceAliasTest. The unchanged Java alias test
+and preliminary Go production probe already match seven states/actions and
+7/7/0 statistics. TLCExtTraceTest's original embedded config expects success,
+10/10/0 statistics and depth 10; compare it before translating both methods.
+Do not conflate current model parity with complete ALIAS implementation: bridge
+installAliasTarget still bypasses generic Tool.AliasSpec evaluation, ignores its
+explicit prefix supplier and suppresses alias evaluation errors. Java evalAlias
+binds a LazySupplierValue for imported TLCExt.Trace and appends _ALIASEvalError.
+Compare native override/context identities before rewiring those paths: the
+four frozen Alias models and the TLCExtTraceAlias probe currently match via the
+fallback TLCExt.Trace implementation. Record StateString also still differs in
+explicit empty/non-string _format handling and general Java String.format
+semantics; those remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
 bridge parity work; the represented declaration-order slice does not establish
