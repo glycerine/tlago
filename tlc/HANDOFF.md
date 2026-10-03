@@ -508,13 +508,26 @@ spec breakpoint, synthetic trace levels, exact Stop invariant message, construct
 config/seed/fingerprint/simulation arguments and safety exit. One more original
 vector, MC02Sim.tla, is byte-identical under test_vectors/models/EWD840. Unchanged
 Java JUnit, the whole Go method and full offline normal/race suites pass. No
-invented tests or vectors were added. One full normal run exposed an intermittent
-DieHard auto-worker binary trace prefix mismatch; the final full normal/race runs
-and 200 targeted repetitions pass, but the cause is not established. Read the
-progress tail before further checker work. Then compare the remaining original
-Debug02Test, Debug03Test, Debug03SimTest, Debug04SimTest and Debug05SimTest features
-and translate each complete source method. Debug03Test covers next-state and
-synthetic frames. Attaching DAP
+invented tests or vectors were added. The intermittent DieHard auto-worker
+binary trace prefix mismatch is now reproduced by the unchanged original Java
+method under temporary worker scheduling delays: exactly the same empty-big vs
+pour-big-to-small state at index 6. Both sources check invariants on rejected
+successors, so a nonminimal dump can replay to an earlier off-trace violation.
+Preserve source behavior and all original assertions; do not add retries or
+weaken the comparison. Read the progress tail for the scheduling evidence.
+The whole original Debug03Test and Debug03SimTest methods are now translated
+after production comparisons matching 17 checker and 572 simulation records.
+Next-state and synthetic frames retain source locations, contexts, nine sorted
+successors, trace variables and selection references. Simulation keeps all four
+loops, forward x=0..8 selections, backward navigation, stepping out to the two
+initial states and selecting the second initial state. Source assertions remain
+complete: checker 1 equality/1 next-frame/1 synthetic-frame call; simulation
+11 equality/2 true/2 init-frame/3 next-frame calls. Debug03.tla is byte-identical
+under test_vectors/models/debug. Both Java originals and complete Go methods
+pass; checker counts are 92/10/0/depth 2, and simulation generates 1,055 states
+and two traces. Next: compare the remaining original Debug02Test, Debug04SimTest
+and Debug05SimTest production features, then translate each whole source method.
+Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
 metadata/export composition and complete native override registration remain

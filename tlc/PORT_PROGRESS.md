@@ -1149,3 +1149,55 @@ semantic/level/instance/export metadata, complete native overrides, formatter/
 trace expressions and selected distributed transport remain pending. Full TLC
 completion remains unproven. Independent rpc25519/Greenpack notes stay outside
 this checker commit.
+
+
+- Follow-up to the intermittent DieHard auto-worker binary prefix failure:
+source Worker.addElement enqueues allowed successors before checking later ones,
+and source rejected successors still have invariants checked. Temporary Java
+worker delays let another worker claim the duplicate empty-big state through a
+longer predecessor chain, while delaying the shortest invariant violation. The
+entire unchanged DumpLoadTraceTest.testSafetyDumpLoadTraceTLCAutoWorkers then
+fails its original assertTraceIsPrefix at exactly index 6, with the identical
+empty-big/2/0/2 vs pour-big-to-small/3/4/1 state values seen in Go. Its flags and
+assertions remain unchanged; only the owned scheduling probe changes delays,
+exception observation and available processor count. This establishes a source
+race in the test's assumption that replay is always the same prefix, rather
+than evidence requiring a Go trace semantic change. Preserve invariant checks
+on constrained-out successors. Do not invent tests, weaken assertions, skip,
+retry or serialize exploration to hide this Java timing limitation. Probe code
+is ephemeral. Earlier missing-export and successful long-trace probes are not
+substitutes for this exact source comparison failure.
+
+- Debug03 source slice: unchanged Java Debug03Test and Debug03SimTest each report
+one run/zero failures/zero ignored. Go production comparisons match all 17
+checker and 572 simulation frame/context/state/initial/successor/trace records,
+including locations, levels, nine sorted successor records, trace variables and
+selection references across all 20 simulation stops. Checker statistics match
+92 generated/10 distinct/0 queued/depth 2; simulation matches 1,055 generated
+states/two traces/success. Reviewed TLCNextStatesStackFrame, initial/synthetic
+frames, gotoState, predecessor selection, source SetElement behavior and
+ExplorationWorker's initial-state regeneration. The represented production
+behavior already matches; no speculative feature change was needed.
+
+- After implementation/source verification, translated both complete original
+Debug03 testSpec methods. Checker retains its 1 equality, 1 next-frame and
+1 synthetic-frame call. Simulation retains all 11 equality/2 true assertions,
+2 init-frame/3 next-frame calls, all four loops, forward x=0..8 successor choices,
+backward selection of each predecessor, stepOut to the initial chooser, selecting
+the second initial state, original constructor config/simulation arguments and
+success exit. The inherited init-frame helper keeps Java's TODO, while explicit
+initial-state-size assertions remain. The shared source harness now exposes
+GotoStateArgument-based stop synchronization. The original embedded-config
+Debug03.tla is byte-identical under test_vectors/models/debug. Both whole Go
+methods pass under -race. No invented tests or vectors. Final full checks follow
+below; next original debugger slices are Debug02Test, Debug04SimTest and
+Debug05SimTest. Broader semantic/level/instance/export metadata, native overrides,
+DAP transport/capabilities, formatter/trace expressions and selected distributed
+transport remain pending; full TLC completion is unproven.
+
+
+- Final offline go test ./... and go test -race ./... pass (root 37.980s normal,
+228.054s race). Whole-source assertion counts, all four simulation loops, original
+fixture bytes and all 17/572 production records match. Code/document diff checks
+pass, excluding preserved upstream fixture whitespace. Independent
+rpc25519/Greenpack transport documentation remains outside this debugger commit.

@@ -115,6 +115,11 @@ func (h *javaDebuggerModel) stepOut() []*tlc.TLCDebuggerFrame {
 	h.awaitStop()
 	return h.frames()
 }
+func (h *javaDebuggerModel) gotoState(argument *tlc.GotoStateArgument) []*tlc.TLCDebuggerFrame {
+	h.debugger.GotoStateCommand(argument.VariablesReference)
+	h.awaitStop()
+	return h.frames()
+}
 func (h *javaDebuggerModel) next() []*tlc.TLCDebuggerFrame {
 	h.debugger.StepOverCommand()
 	h.awaitStop()

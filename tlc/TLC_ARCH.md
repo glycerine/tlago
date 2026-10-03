@@ -1627,6 +1627,15 @@ Port guidance:
   postcondition hook. Evaluation failures remain on Java's separate
   `doNextEvalFailed` path.
 
+The original DieHard auto-worker binary dump/replay prefix test is timing
+sensitive in Java too. Temporary worker scheduling delays reproduce the exact
+index-6 empty-big vs pour-big-to-small comparison failure seen in Go. A worker
+can explore a longer prefix before another worker claims the shortest violation;
+trace constraints reject other successors but do not suppress their invariant
+checks. Single-worker replay can therefore stop at an earlier off-trace violation.
+Keep the source checks and complete assertions intact. No retries, skips or
+production trace changes were added to hide this source limitation.
+
 ### CheckImpl and CheckImplFile
 
 `CheckImpl` is Java TLC's implementation checker. It reuses the model-checking
@@ -3178,6 +3187,17 @@ Debugger variable details:
   assertions, all three loops and original simulation/config/seed/fingerprint
   arguments. One more original vector is byte-identical in test_vectors.
   Unchanged Java, the whole Go method and full normal/race suites pass.
+  The complete original Debug03Test and Debug03SimTest are also translated
+  after matching 17 checker and 572 simulation frame/context/state/initial/
+  successor/trace records. Existing production behavior already matches this
+  slice: nine sorted successors, selection by variables reference, forward and
+  backward trace construction, stepping out to the initial-state chooser and
+  selecting its second state. All four simulation loops and all source assertions
+  remain intact, including inherited state/next/synthetic helpers. The shared
+  harness mirrors gotoState's stop synchronization. One original embedded-config
+  vector is byte-identical in test_vectors/models/debug. The source checker has
+  92/10/0/depth 2; simulation generates 1,055 states and two traces. Both unchanged
+  Java methods and both whole Go translations pass under the represented runtime.
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
