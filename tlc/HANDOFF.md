@@ -78,10 +78,20 @@ versus virtual getters, default cache/lossless flags, null factory arguments and
 metadata exception/cause boundaries. All 51 non-abstract source methods match JDK
 bytecode; 7,914 actual-JDK/native -race comparisons include named-module exports.
 The two existing SpiTest constructor methods are translated after implementation.
-Full standard concrete SPI constructors, six stream providers, metadata schemas and
-non-null AWT type-specifier creation remain required. Module/loader/reflection/
-privileged operations use explicit VM providers. Continue with those dependencies
-and IIORegistry/ServiceLoader/AppContext lifetime. ImageIO must capture the
+The six standard stream SPI constructors, descriptions, cache flags, class inventory
+and factory branches are now ported. Preserve File/RAF catch(Exception) null returns,
+output-only stack diagnostics (without the registry diagnostic header), escaping
+Error, the output RAF diagnostic saying "input", and stream file/memory cache selection.
+All 28 source methods/initializers match installed JDK bytecode; 16,128 comparisons
+against the installed SPI classes with instrumented backing constructors pass -race.
+The unchanged SpiVersionNumbers and its Go translation pass. Actual FileImage/
+FileCacheImage/MemoryCacheImage stream construction, storage, disposer and operations
+still require their native implementations or explicit constructor providers; missing
+constructors fail explicitly outside the source catch rather than returning null.
+The standard reader/writer concrete constructors/metadata, schemas and non-null AWT
+type-specifier creation remain required. Module/loader/reflection/privileged operations
+use explicit VM providers. Continue with those dependencies and
+IIORegistry/ServiceLoader/AppContext lifetime. ImageIO must capture the
 AppContext registry at class initialization.
 Discovery is an explicit lazy provider boundary; no adapter means advancing lookup
 fails explicitly, rather than returning an invented empty provider list. Secured

@@ -3494,12 +3494,33 @@ constructor/getter/clone/factory/metadata observations, including real named-mod
 export checks. VM automatic ClassCastException wording is normalized in that probe;
 full VM diagnostic wording remains pending. After implementation, the two existing
 SpiTest constructor methods are translated and pass; its complete registry/schema
-enumeration remains pending. Concrete standard SPI constructors and six standard
-stream providers remain required before full IIORegistry integration.
+enumeration remains pending. Concrete standard reader/writer SPI constructors and the backing image streams
+remain required before full IIORegistry integration.
+The six standard File/InputStream/OutputStream/RAF stream SPI constructors now have
+native vendor/version/input-output Class metadata, exact descriptions, cache flags,
+leaf-Class lookup/fresh construction and factory branches. Java InputStream/
+OutputStream/File/RAF identities use explicit carriers; arbitrary Go io.Reader/
+io.Writer structural compatibility does not imply those Java classes. File and
+RAF input factories return null on Exception; their output counterparts first print
+only the stack trace. Diagnostic failures propagate outside that catch. Error escapes
+all four factories. RAF output retains the source "input not a RandomAccessFile!"
+message. Stream factories select FileCacheImage versus MemoryCacheImage construction,
+forward cacheDir only to file caching, propagate failures and inherit the no-argument
+cache=true/null-dir delegation. File/RAF factories ignore useCache and cacheDir.
+The actual eight backing stream constructor overloads, their storage/disposer and
+read/write/seek operations remain required native ports; explicit constructor
+operations expose that boundary and missing operations fail after argument checking,
+outside the source exception catch. All 28 source methods/initializers match explicitly
+compiled installed JDK 21.0.12.1 bytecode. Temporary comparisons of installed SPI
+classes against native -race pass 16,128 observations with instrumented backing
+constructors, including diagnostic throw/return and constructor return/throw/panic.
+That probe verifies SPI policy, not backing stream behavior. The unchanged original
+SpiVersionNumbers and its Go translation pass after implementation. Standard reader/
+writer concrete constructors/metadata still remain before full IIORegistry integration.
 Next: ServiceLoader/IIORegistry AppContext lifetime and ImageIO's captured registry.
 Lookup discovery is lazy and requires its explicit adapter when advanced; missing
 discovery never silently produces an empty list. Complete concrete standard SPI constructors,
-metadata schemas and the six standard stream providers, then translate
+metadata schemas and the backing standard image streams, then translate
 OrderingTest/DeregisterOrderedSpiTest/RegisterPluginTwiceTest/DeregisterAllSpiTest.
 Compatible-stream initialization, native image codecs/AWT and multipart/MIME
 dependencies remain next, then object DataHandler factory/cache/pipes. Full

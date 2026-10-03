@@ -65,12 +65,12 @@ func mailNewImageSPIClass(name string, parents []*MailActivationClass) *MailActi
 	}}
 }
 func mailImageRegistryClass(name string) *MailActivationClass {
-	for _, c := range []*MailActivationClass{mailImageRegisterableServiceClass, mailImageIIOServiceProviderClass, mailImageReaderWriterSPIClass, mailImageReaderSPIClass, mailImageWriterSPIClass, mailImageTranscoderSPIClass, mailImageInputStreamSPIClass, mailImageOutputStreamSPIClass, mailImageInputStreamClass, mailImageOutputStreamClass, mailImageMetadataFormatClass} {
+	for _, c := range []*MailActivationClass{mailImageRegisterableServiceClass, mailImageIIOServiceProviderClass, mailImageReaderWriterSPIClass, mailImageReaderSPIClass, mailImageWriterSPIClass, mailImageTranscoderSPIClass, mailImageInputStreamSPIClass, mailImageOutputStreamSPIClass, mailImageInputStreamClass, mailImageOutputStreamClass, mailImageMetadataFormatClass, mailImageFileClass, mailImageRAFClass, mailImageJavaOutputStreamClass} {
 		if c.Name == name {
 			return c
 		}
 	}
-	for _, list := range [][]*MailActivationClass{mailStandardImageReaderClasses, mailStandardImageWriterClasses} {
+	for _, list := range [][]*MailActivationClass{mailStandardImageReaderClasses, mailStandardImageWriterClasses, mailStandardImageStreamClasses} {
 		for _, c := range list {
 			if c.Name == name {
 				return c
@@ -669,10 +669,18 @@ func mailImagePrintRegistrationFailure(failure error) error {
 	if _, typed := err.(interface{ GetMessage() *string }); typed && !isJavaIOException(err) {
 		return err
 	}
+	return mailImagePrintStackTrace(failure)
+}
+func mailImagePrintStackTrace(failure error) error {
+	env := DefaultMailImageRegistryEnvironment
 	if env.PrintStackTrace != nil {
 		return env.PrintStackTrace(failure)
 	}
-	_, err = fmt.Fprint(out, javaThrowableStackTrace(failure))
+	out := env.SystemErr
+	if out == nil {
+		out = os.Stderr
+	}
+	_, err := fmt.Fprint(out, javaThrowableStackTrace(failure))
 	if _, typed := err.(interface{ GetMessage() *string }); typed && !isJavaIOException(err) {
 		return err
 	}
