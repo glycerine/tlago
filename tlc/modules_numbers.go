@@ -50,6 +50,10 @@ func NatGEQ(x, y Value) (*BoolValue, error) {
 	return intComparison(">", x, y, func(a, b int32) bool { return a >= b })
 }
 
+func IntGEQ(x, y Value) (*BoolValue, error) {
+	return intComparison(">=", x, y, func(a, b int32) bool { return a >= b })
+}
+
 func DotDot(x, y *IntValue) *IntervalValue {
 	return NewIntervalValue(x.Val, y.Val)
 }

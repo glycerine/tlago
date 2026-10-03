@@ -5,6 +5,14 @@ import "sync"
 var standardTLCEvalMu sync.RWMutex
 var standardTLCEvalCache = make(map[tlcExtCacheKey]Value)
 
+// SpecProcessor.processModuleOverrides visits inherited Naturals definitions
+// when Integers is loaded too. Its GEQ method differs in its argument-error label.
+func (t *Tool) InstallIntegerDefinitions() {
+	if t != nil {
+		t.defineStandardMethod("GEQ", 2, func(args []Value) (Value, error) { return IntGEQ(args[0], args[1]) }, "\\geq")
+	}
+}
+
 func (t *Tool) InstallStandardDefinitions() *Tool {
 	if t == nil {
 		return nil

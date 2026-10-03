@@ -84,12 +84,22 @@ original model/config vectors are byte-identical; the model reaches its own
 TLCSet exit at 4,225 generated states with both debugger settings. Current Java
 TLC constructs Simulator for both settings despite the older test comment about
 SingleThreadedSimulator; do not add that removed variant.
-Full normal/race checks pass. Next: the original DoInitFunctor invariant,
-continuation and minimal-error-stack models, then broader checker safety/trace
-comparisons. Preliminary runs match invariant stop/continue and nested stack
-locations; fix NatGEQ's wrong-type diagnostic naming > instead of >= before
-translating the error-stack test. Run the Java originals separately with this
-JDK to retain test-static isolation; combined direct JUnit leaks continuation. TLCGetNonDeterminismTest
+All six original DoInitFunctor checker testSpec methods are now translated:
+invariant failure, continuation, no-continuation, minimal error stack, initial
+property failure and initial evaluation exception. Their five original models
+and configs are byte-identical. The bridge installs Integers.GEQ when the
+external Integers module is loaded, including through trace runtime modules;
+Naturals.GEQ retains Java's intentional > error label. The model harness also
+resets/restores continuation to preserve upstream test-static isolation. Original
+record assertions compare the first record's parameter prefix, and uncovered
+assertions compare the complete set of zero-count locations. Full normal/race
+checks pass. Run Java originals separately with this JDK; combined direct JUnit
+leaks continuation because its classloader lacks upstream isolation.
+Next: IncompleteNextTest and IncompleteNextMultipleActionsTest, then broader
+checker safety/trace comparisons. Both unchanged Java originals pass. Go matches
+exit status/statistics but currently records no state trace for these models;
+partial states also print <nil> rather than Java's null. Fix those behaviors
+before translating their original assertions. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
 bridge parity work; the represented declaration-order slice does not establish

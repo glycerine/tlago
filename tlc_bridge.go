@@ -369,6 +369,9 @@ func (b *tlcBridge) installConstantDeclarations() {
 }
 
 func (b *tlcBridge) installDefinitions() {
+	if mod := b.spec.Modules["Integers"]; mod != nil && moduleNameForSourcePosition(mod.Pos) == mod.Name {
+		b.tool.InstallIntegerDefinitions()
+	}
 	b.prepareInstanceDefinitions()
 	names := make([]string, 0, len(b.defs))
 	for name := range b.defs {
