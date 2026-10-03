@@ -111,9 +111,15 @@ func (h *javaDebuggerModel) stepIn(count ...int) []*tlc.TLCDebuggerFrame {
 	}
 	return h.frames()
 }
-func (h *javaDebuggerModel) stepOut() []*tlc.TLCDebuggerFrame {
-	h.debugger.StepOutCommand()
-	h.awaitStop()
+func (h *javaDebuggerModel) stepOut(count ...int) []*tlc.TLCDebuggerFrame {
+	n := 1
+	if len(count) > 0 {
+		n = count[0]
+	}
+	for i := 0; i < n; i++ {
+		h.debugger.StepOutCommand()
+		h.awaitStop()
+	}
 	return h.frames()
 }
 func (h *javaDebuggerModel) gotoState(argument *tlc.GotoStateArgument) []*tlc.TLCDebuggerFrame {
@@ -249,6 +255,21 @@ func debuggerAssertEqual(t *testing.T, want, got any) {
 		}
 	} else if !reflect.DeepEqual(want, got) {
 		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+func debuggerAssertNotEqual(t *testing.T, unexpected, got any) {
+	t.Helper()
+	if value, ok := unexpected.(tlc.Value); ok {
+		actual, ok := got.(tlc.Value)
+		if !ok {
+			return
+		}
+		equal, err := value.Equal(actual)
+		if err != nil || equal {
+			t.Fatalf("value=%v, unexpected %v (error=%v)", got, unexpected, err)
+		}
+	} else if reflect.DeepEqual(unexpected, got) {
+		t.Fatalf("unexpected value %v", got)
 	}
 }
 func debuggerScope(t *testing.T, scopes []tlc.TLCScope, name string) tlc.TLCScope {

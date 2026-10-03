@@ -1243,3 +1243,48 @@ are under .codex-gotmp/java-debugger-original/ (Debug04SimParityProbe,
 java-Debug04Sim-original.log and java-Debug04Sim-probe.log). Next: compare the
 complete Go production sequence, implement any true gaps, then translate the
 entire original method. No persistent partial Debug04 test was added.
+
+
+- Debug04 simulation slice: compared the entire production command sequence under
+-race with the unchanged Java original and a complete-method observer retaining
+all original assertions. Both source runs report one run/zero failures/zero
+ignored, 543 generated states/four traces/seed 1/aril 0. All 1,410 records have
+matching structure, with 1,288 exact and 122 differences derived solely from tied
+maximum-distance step-over selections. Java converts successors to HashSet and
+selects the maximum Hamming distance; its test requires adjacent values to differ,
+without asserting a specific tied choice. Verified each runtime's selected
+values, complete trace, evaluation results and fingerprint type labels remain
+consistent. Exact frame locations, contexts, stop counts and all behavior outside
+these choices match. No production correction was required.
+
+- After production/source verification, translated the entire original
+Debug04SimTest.testSpec: 34 equality, 2 array equality, 16 true and 1 not-equal
+assertion sites, all five loops, 3 init-frame/9 next-frame helper calls, all 215
+runtime expression evaluations, both idempotence checks, initial A selection,
+forward/backward navigation, state assignment, REPL/watch results, conditional
+x/x-prime and ENABLED breakpoints, 51 continues, level 1/2/3/4 breakpoints and
+FALSE termination. Preserve the source backward-loop watch expression sequence
+(including repeated x-prime). The shared harness ports the source stepOut(count)
+overload and not-equal value assertion. Original Debug04.tla is byte-identical
+under test_vectors/models/debug. The complete Go method passes under -race.
+No invented tests or fixtures. Full suite checks follow below. Next original
+slice: Debug05SimTest production feature comparison, then its complete method.
+Full SANY level/instance/export metadata, native registration, DAP transport and
+capability events, formatter/trace expressions and selected distributed transport
+remain pending; full TLC completion is unproven.
+
+
+- Final offline go test ./... and go test -race ./... pass (root 38.458s normal,
+229.095s race). The complete method also passes under -race after the final
+source-equivalent comparison error handling adjustment. Whole source assertion
+sites, five source loops, 24 evaluation call sites/215 runtime evaluations and
+original fixture bytes match. All production observations and tied-choice
+consistency checks pass. Code/document diff checks pass, excluding preserved
+upstream fixture whitespace. Independent rpc25519/Greenpack notes remain outside
+this debugger commit.
+The unchanged original Debug05SimTest also passes with one run/zero failures/
+zero ignored, 51 generated states/one trace/depth 25/seed 1/aril 0. Its six native
+module expressions and full nineteen-iteration JSON/binary export loop run
+successfully. Output: .codex-gotmp/java-debugger-original/java-Debug05Sim-original.log.
+Next: compare the entire Go production sequence, implement any true gaps, then
+translate the whole original method. No persistent partial Debug05 test exists.

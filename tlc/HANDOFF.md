@@ -535,8 +535,22 @@ view and single next-frame helper call remain intact. Its embedded-config vector
 Debug02.tla is byte-identical under test_vectors/models/debug. Unchanged Java and
 the complete Go method pass; source production counts are 3/2/0/depth 2. The
 source hover harness constructs the absolute module URI, symbol query, source
-coordinate fragment and top-frame selection. Next: original Debug04SimTest and
-Debug05SimTest production features followed by each whole source method.
+coordinate fragment and top-frame selection.
+The complete original Debug04SimTest.testSpec is translated after the full
+production sequence was checked under -race. All 1,410 observation records have
+matching structure: 1,288 match exactly; 122 reflect different successors tied
+for maximum Hamming distance. Java's stepOver selects from HashSet iteration,
+and its test requires consecutive x values to differ. Each runtime's trace,
+expression results and fingerprint labels agree with its chosen states; both
+complete with 543 generated states and four traces. Preserve that source
+assertNotEquals rather than imposing a particular tied successor. Existing
+production code required no correction. The whole test retains 34 equality,
+2 array equality, 16 true and 1 not-equal assertion sites, all five loops,
+3 init-frame/9 next-frame calls, all 215 expression evaluations, both idempotence
+checks and all conditional/unconditional breakpoint commands. Shared stepOut
+supports the original count overload. Debug04.tla is byte-identical under
+test_vectors/models/debug. The unchanged Java original and complete Go method
+pass. Next: original Debug05SimTest production features, then its whole method.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

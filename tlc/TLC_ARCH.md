@@ -3207,6 +3207,18 @@ Debugger variable details:
   preserves absolute module URI, symbol query, coordinate fragment and top-frame
   identity. The original embedded-config vector is byte-identical in test_vectors.
   Both source and production Go complete successfully with 3/2/0/depth 2.
+  The whole original Debug04SimTest passes after checking its complete production
+  sequence under -race. StepIn chooses a minimum-distance successor; stepOver
+  chooses a maximum-distance successor. Java uses HashSet iteration to resolve
+  equal distances; source tests require adjacent values to differ, without
+  specifying which tied maximum wins. Of 1,410 records, 1,288 match exactly and
+  122 contain choice-derived state/trace/expression/fingerprint differences.
+  Each trace and expression remains consistent with its chosen state. Both
+  runtimes generate 543 states and four traces and preserve all original
+  assertion sites, five loops, 215 expression evaluations, state assignment,
+  idempotence and action/ENABLED/level breakpoint behavior. The inherited stepOut
+  count overload is translated; the embedded-config fixture is byte-identical
+  in test_vectors. No production correction was needed for this slice.
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
