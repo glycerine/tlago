@@ -1,5 +1,15 @@
 # TLC Architecture Notes for the Go Port
 
+**Scope exception required by the user (2026-10-02): email reporting is
+forbidden.** Email delivery and its JavaMail/SMTP/MIME/Activation/ImageIO/AWT/
+codec dependencies, including mail-driven JVM emulation, are excluded from
+this port's completion requirements. Stop that work immediately; no further
+porting, audits, probes, test translation or downloads for that dependency chain.
+Older descriptions below are historical source notes, not instructions to
+finish those libraries. Make only the minimal integration changes needed to
+disable email construction/delivery while preserving model loading and console
+output, then focus on core TLC algorithms and their existing Java tests.
+
 This document records the architecture of the Java TLC model checker in
 `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2` and its tests in
 `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`. It is meant to guide a

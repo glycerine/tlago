@@ -8,6 +8,16 @@ avoid circular imports while the port is still converging.
 
 ## Current Active Work
 
+User scope correction (2026-10-02): email reporting is forbidden. Stop work on
+email and its JavaMail/SMTP/MIME/Activation/ImageIO/AWT/codec dependencies,
+including mail-driven JVM emulation, probes, test ports and downloads. These
+are excluded from TLC completion, even where older notes call them required.
+Hard-disable the email integration with the smallest change needed; preserve
+core model loading and normal console output. Focus remaining work on the TLC
+checker, values, simulation, liveness, traces, checkpoint/recovery, storage,
+coverage and their existing Java tests. Existing dormant mail work does not
+need further completion or cleanup to finish TLC.
+
 The active goal at the time of handoff is the Go TLC model checker port under
 `tlc/`, not the older SANY XML or ApalacheIR corpus sweeps. Read
 `tlc/HANDOFF.md` first, then `tlc/PORT_PROGRESS.md`, before resuming work.

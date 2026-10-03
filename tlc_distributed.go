@@ -245,12 +245,12 @@ func RunDistributedWorker(process *tlc.DistributedWorkerProcess, args []string, 
 }
 
 // RunDistributedServer connects TLCServer.main to production application
-// creation and packaged MailSender properties. CreateMail can override the
-// constructor; enabled mail requires its JavaMail/output boundary providers.
+// creation and packaged model properties. Email reporting remains disabled
+// regardless of mail properties or constructor/delivery overrides.
 func RunDistributedServer(process *tlc.DistributedServerProcess, args []string, env tlc.DistributedServerEnvironment, runtime tlc.RuntimeParameters, classpath ...[]tlc.FilenameClasspathEntry) (Diagnostics, error) {
 	var diags Diagnostics
-	if env.CreateMail == nil && env.MailEnvironment.LoadProperties == nil {
-		env.MailEnvironment.LoadProperties = func() {
+	if env.LoadProperties == nil && env.MailEnvironment.LoadProperties == nil {
+		env.LoadProperties = func() {
 			var configured []tlc.FilenameClasspathEntry
 			if len(classpath) > 0 {
 				configured = classpath[0]

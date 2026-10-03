@@ -8,10 +8,8 @@ import (
 const DistributedModelNameProperty = "modelName"
 const DistributedSpecNameProperty = "specName"
 
-// DistributedServerMail supplies MailSender's result boundary. Its constructor
-// is responsible for ModelInJar properties, address parsing and output capture.
-// A nil Deliver represents the source disabled-mail case. SMTP/MIME delivery
-// and output capture are separate from the server command lifecycle.
+// DistributedServerMail is a dormant result carrier. Email reporting is disabled
+// by user policy; the server neither constructs nor invokes it.
 type DistributedServerMail struct {
 	ModelName string
 	SpecName  string
@@ -19,6 +17,9 @@ type DistributedServerMail struct {
 }
 
 func (m *DistributedServerMail) Send(files []*TLAFile) (bool, error) {
+	if emailReportingDisabled {
+		return false, NewUnsupportedOperationException("Email reporting is disabled")
+	}
 	if m == nil {
 		return false, NewNullPointerException()
 	}
@@ -29,10 +30,11 @@ func (m *DistributedServerMail) Send(files []*TLAFile) (bool, error) {
 }
 
 // DistributedServerEnvironment supplies TLCServer.main's process boundaries.
-// CreateMail overrides the MailSender constructor before application loading.
-// The defaults use the concrete native server/checker and local management bean;
-// wire export, mail delivery and OS shutdown hooks require their own adapters.
+// Model properties load before application creation. Email construction and
+// delivery overrides are ignored; the normal console streams remain installed.
+// The defaults use the native server/checker and local management bean.
 type DistributedServerEnvironment struct {
+	LoadProperties      func()
 	CreateMail          func() (*DistributedServerMail, error)
 	MailEnvironment     MailSenderEnvironment
 	CreateApp           func([]string) (*TLCApp, error)
@@ -105,13 +107,10 @@ func (p *DistributedServerProcess) Run(args []string, env DistributedServerEnvir
 	return pending
 }
 func distributedServerEnvironment(env DistributedServerEnvironment) DistributedServerEnvironment {
-	if env.CreateMail == nil {
-		env.CreateMail = func() (*DistributedServerMail, error) {
-			sender, err := NewMailSender(env.MailEnvironment)
-			if err != nil {
-				return nil, err
-			}
-			return sender.DistributedServerMail(), nil
+	if env.LoadProperties == nil {
+		env.LoadProperties = env.MailEnvironment.LoadProperties
+		if env.LoadProperties == nil {
+			env.LoadProperties = func() { NewModelInJar().LoadProperties() }
 		}
 	}
 	if env.Property == nil {
@@ -170,14 +169,7 @@ func (p *DistributedServerProcess) start(args []string, env DistributedServerEnv
 		}
 	}()
 	SetNumWorkers(0)
-	if env.CreateMail == nil {
-		return NewNullPointerException()
-	}
-	mail, err := env.CreateMail()
-	if err != nil {
-		return err
-	}
-	p.Mail = mail
+	env.LoadProperties()
 	if env.CreateApp == nil {
 		return NewNullPointerException()
 	}
@@ -186,17 +178,9 @@ func (p *DistributedServerProcess) start(args []string, env DistributedServerEnv
 		return err
 	}
 	p.App = app
-	// getFileName is evaluated as the fallback argument even with a configured
-	// property. A null application therefore fails before property lookup.
 	if app == nil {
 		return NewNullPointerException()
 	}
-	modelName := env.Property(DistributedModelNameProperty, app.GetFileName())
-	if mail == nil {
-		return NewNullPointerException()
-	}
-	mail.ModelName = modelName
-	mail.SpecName = env.Property(DistributedSpecNameProperty, app.GetFileName())
 	count := TLCServerExpectedFPSetCount()
 	if count <= 0 {
 		count = 0 // Source selects the ordinary constructor with no count arg.
@@ -236,24 +220,6 @@ func (p *DistributedServerProcess) finish(env DistributedServerEnvironment) erro
 	}
 	if _, err := env.Unregister(p.MBean); err != nil {
 		return err
-	}
-	if p.Mail != nil {
-		files := []*TLAFile{}
-		if p.App != nil {
-			var err error
-			files, err = env.ModuleFiles(p.App)
-			if err != nil {
-				return err
-			}
-		}
-		sent, err := p.Mail.Send(files)
-		if err != nil {
-			return err
-		}
-		if !sent {
-			PrintMessage(ECGeneral, "Sending result mail failed.")
-			env.Exit(1)
-		}
 	}
 	return nil
 }

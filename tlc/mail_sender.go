@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// Email reporting is forbidden. A constant prevents properties or runtime
+// adapter overrides from enabling dormant construction or delivery code.
+const emailReportingDisabled = true
 const ResultMailAddressProperty = "result.mail.address"
 
 // MailInternetAddress retains InternetAddress's parsed mailbox and separate
@@ -71,6 +74,9 @@ type MailSender struct {
 }
 
 func NewMailSender(env MailSenderEnvironment, mainFile ...*string) (sender *MailSender, err error) {
+	if emailReportingDisabled {
+		return nil, NewUnsupportedOperationException("Email reporting is disabled")
+	}
 	defer func() {
 		if failure := recover(); failure != nil {
 			sender = nil
@@ -232,6 +238,9 @@ func (m *MailSender) SendDefault() (bool, error) { return m.Send(&MailFileList{}
 // It attempts every recipient even after one succeeds, using the alternate
 // sender only on failure and rereading the body before each attempt.
 func (m *MailSender) Send(files *MailFileList) (success bool, err error) {
+	if emailReportingDisabled {
+		return false, NewUnsupportedOperationException("Email reporting is disabled")
+	}
 	defer func() {
 		if failure := recover(); failure != nil {
 			success = false
@@ -282,6 +291,9 @@ func (m *MailSender) Send(files *MailFileList) (success bool, err error) {
 }
 
 func SendMailRequest(request MailRequest, env MailSenderEnvironment) (success bool, err error) {
+	if emailReportingDisabled {
+		return false, NewUnsupportedOperationException("Email reporting is disabled")
+	}
 	defer func() {
 		if failure := recover(); failure != nil {
 			success = false

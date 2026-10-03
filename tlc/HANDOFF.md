@@ -6,6 +6,21 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
+Priority user directive (2026-10-02): **email reporting is forbidden.** Stop
+email reporting and its dependency work immediately; it must consume no more
+cycles. JavaMail, SMTP, MIME/Activation, ImageIO/AWT, image codecs and mail-driven
+JVM emulation are excluded from TLC completion. Do not continue their pending
+constructors, discovery, probes, tests or downloads. This overrides every older
+mail-related "next", "pending" or "required" entry in these documents.
+
+The main thread must make only the minimal integration changes needed to make
+email construction/delivery unavailable, including when email properties or
+overrides are supplied, while preserving model loading and normal console
+output. Leave unrelated existing work intact. Then resume core TLC parity and
+port existing Java tests after implementing each feature. Prioritize state
+counts, diagnostic/trace parity, fairness/liveness, checkpoint/recovery, storage,
+coverage and simulation. Do not invent new regression/unit tests.
+
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.
 - Java tests to port after their features: `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.
@@ -31,6 +46,12 @@ to this feature-by-feature sequence.
 Do not switch back to the older SANY XML or ApalacheIR corpus sweeps unless the
 user explicitly asks. Those are valuable, but they are paused. The current goal
 is TLC.
+
+### Historical email dependency work — stopped and excluded
+
+The following mail/library record is historical only. Its remaining-work and
+next-step statements are superseded by the scope directive above and must not
+be executed. Resume core TLC work at "Immediate Next Steps" below.
 
 Latest mail dependency progress: Activation MIME parsing/casing and Mailcap
 registry parsing/discovery/lookup have their existing Java tests translated.
@@ -201,6 +222,9 @@ first.
 
 ## Immediate Next Steps
 
+Apply the email prohibition above first; do not resume the historical mail or
+ImageIO slice. Only minimal integration disablement is authorized in that area.
+
 Start by reading the top and tail of `tlc/PORT_PROGRESS.md`, then continue the
 breadth-first Java source audit from areas that are not marked recently audited.
 Good next slices are:
@@ -252,6 +276,9 @@ slightly less idiomatic when that makes source-of-truth comparison simpler.
   keep this naming rule when porting any further Java test vectors.
 
 ## Completion Definition For This Phase
+
+Email reporting and all dependencies pursued for it are excluded by the user's
+scope correction. Their unfinished work cannot prevent this phase's completion.
 
 This phase is complete when the Go code has a coherent, faithful mirror of the
 Java TLC architecture and behavior surfaces, with `PORT_PROGRESS.md` indicating
