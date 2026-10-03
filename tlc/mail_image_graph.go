@@ -209,20 +209,23 @@ func (i *mailImagePartialOrderIterator) next() *MailImageSPI {
 func (i *mailImagePartialOrderIterator) remove() { panic(NewUnsupportedOperationException()) }
 
 // Class identities for the hardwired reader/writer providers. The common
-// hierarchy is metadata; full SPI constructors and registry lifecycle are
+// hierarchy is metadata; full SPI constructors and IIORegistry lifetime are
 // separate required ports.
-var mailImageRegisterableServiceClass = &MailActivationClass{Name: "javax.imageio.spi.RegisterableService"}
-var mailImageIIOServiceProviderClass = &MailActivationClass{Name: "javax.imageio.spi.IIOServiceProvider", Parents: []*MailActivationClass{mailFlavorObjectClass, mailImageRegisterableServiceClass}}
-var mailImageReaderWriterSPIClass = &MailActivationClass{Name: "javax.imageio.spi.ImageReaderWriterSpi", Parents: []*MailActivationClass{mailImageIIOServiceProviderClass}}
-var mailImageReaderSPIClass = &MailActivationClass{Name: "javax.imageio.spi.ImageReaderSpi", Parents: []*MailActivationClass{mailImageReaderWriterSPIClass}}
-var mailImageWriterSPIClass = &MailActivationClass{Name: "javax.imageio.spi.ImageWriterSpi", Parents: []*MailActivationClass{mailImageReaderWriterSPIClass}}
+var mailImageRegisterableServiceClass = mailNewImageSPIClass("javax.imageio.spi.RegisterableService", nil)
+var mailImageIIOServiceProviderClass = mailNewImageSPIClass("javax.imageio.spi.IIOServiceProvider", []*MailActivationClass{mailFlavorObjectClass, mailImageRegisterableServiceClass})
+var mailImageReaderWriterSPIClass = mailNewImageSPIClass("javax.imageio.spi.ImageReaderWriterSpi", []*MailActivationClass{mailImageIIOServiceProviderClass})
+var mailImageReaderSPIClass = mailNewImageSPIClass("javax.imageio.spi.ImageReaderSpi", []*MailActivationClass{mailImageReaderWriterSPIClass})
+var mailImageWriterSPIClass = mailNewImageSPIClass("javax.imageio.spi.ImageWriterSpi", []*MailActivationClass{mailImageReaderWriterSPIClass})
+var mailImageTranscoderSPIClass = mailNewImageSPIClass("javax.imageio.spi.ImageTranscoderSpi", []*MailActivationClass{mailImageIIOServiceProviderClass})
+var mailImageInputStreamSPIClass = mailNewImageSPIClass("javax.imageio.spi.ImageInputStreamSpi", []*MailActivationClass{mailImageIIOServiceProviderClass})
+var mailImageOutputStreamSPIClass = mailNewImageSPIClass("javax.imageio.spi.ImageOutputStreamSpi", []*MailActivationClass{mailImageIIOServiceProviderClass})
 var mailStandardImageReaderClasses = mailStandardImageClasses("Reader", mailImageReaderSPIClass)
 var mailStandardImageWriterClasses = mailStandardImageClasses("Writer", mailImageWriterSPIClass)
 
 func mailStandardImageClasses(direction string, parent *MailActivationClass) []*MailActivationClass {
 	result := make([]*MailActivationClass, 0, 6)
 	for _, kind := range []string{"gif.GIF", "bmp.BMP", "wbmp.WBMP", "tiff.TIFF", "png.PNG", "jpeg.JPEG"} {
-		result = append(result, &MailActivationClass{Name: "com.sun.imageio.plugins." + kind + "Image" + direction + "Spi", Parents: []*MailActivationClass{parent}})
+		result = append(result, mailNewImageSPIClass("com.sun.imageio.plugins."+kind+"Image"+direction+"Spi", []*MailActivationClass{parent}))
 	}
 	return result
 }

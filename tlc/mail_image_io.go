@@ -25,12 +25,11 @@
  * questions.
  */
 // OpenJDK ImageIO MIME filtering/factory iterators and the AWT operations used
-// by Geronimo image handlers. Full registry lifecycle, desktop rasterization, initialized
+// by Geronimo image handlers. Full IIORegistry discovery/lifetime, desktop rasterization, initialized
 // readers/writers and codec implementations remain separate required ports.
 package tlc
 
 import (
-	"sync"
 	"sync/atomic"
 )
 
@@ -59,10 +58,13 @@ type MailImageSPI struct {
 	MIMETypesFunc        func() ([]*string, error)
 	CreateReaderFunc     func() (*MailImageReader, error)
 	CreateWriterFunc     func() (*MailImageWriter, error)
+	OnRegistrationFunc   func(*MailImageServiceRegistry, *MailActivationClass) error
+	OnDeregistrationFunc func(*MailImageServiceRegistry, *MailActivationClass) error
 }
 type MailImageSPIIterator struct {
 	HasNextFunc func() (bool, error)
 	NextFunc    func() (*MailImageSPI, error)
+	RemoveFunc  func() error
 }
 
 func (i *MailImageSPIIterator) HasNext() (bool, error) {
@@ -79,6 +81,17 @@ func (i *MailImageSPIIterator) Next() (*MailImageSPI, error) {
 			return nil, NewNullPointerException()
 		}
 		return i.NextFunc()
+	})
+}
+func (i *MailImageSPIIterator) Remove() error {
+	return mailImageRegistryCall(func() error {
+		if i == nil {
+			return NewNullPointerException()
+		}
+		if i.RemoveFunc == nil {
+			return NewUnsupportedOperationException()
+		}
+		return i.RemoveFunc()
 	})
 }
 func mailImageSPIList(providers []*MailImageSPI) *MailImageSPIIterator {
@@ -160,26 +173,15 @@ func (w *MailImageWriter) WriteIIOImage(image *MailIIOImage) error {
 }
 
 type mailImageFilteredIterator struct {
-	source          *MailImageSPIIterator
-	mime            string
-	next            *MailImageSPI
+	*mailImageRegistryFilter
 	emptyCollection bool
 }
 
-func (f *mailImageFilteredIterator) advance() error {
-	for {
-		more, err := f.source.HasNext()
-		if err != nil {
-			return err
-		}
-		if !more {
-			f.next = nil
-			return nil
-		}
-		p, err := f.source.Next()
-		if err != nil {
-			return err
-		}
+func mailEmptyImageIterator() *mailImageFilteredIterator {
+	return &mailImageFilteredIterator{mailImageRegistryFilter: &mailImageRegistryFilter{source: mailImageSPIList(nil)}, emptyCollection: true}
+}
+func mailImageMIMEFilter(mime string) func(*MailImageSPI) (bool, error) {
+	return func(p *MailImageSPI) (bool, error) {
 		// Method.invoke wraps target throwables in InvocationTargetException. The
 		// ContainsFilter catches Exception, including that wrapper around an Error.
 		found, err := mailInvoke(func() (bool, error) {
@@ -194,27 +196,14 @@ func (f *mailImageFilteredIterator) advance() error {
 				return false, err
 			}
 			for _, name := range names {
-				if name != nil && mailAddressEqualsIgnoreCase(f.mime, *name) {
+				if name != nil && mailAddressEqualsIgnoreCase(mime, *name) {
 					return true, nil
 				}
 			}
 			return false, nil
 		})
-		if err == nil && found {
-			f.next = p
-			return nil
-		}
+		return err == nil && found, nil
 	}
-}
-func (f *mailImageFilteredIterator) nextSPI() (*MailImageSPI, error) {
-	if f.next == nil {
-		return nil, NewNoSuchElementException()
-	}
-	p := f.next
-	if err := f.advance(); err != nil {
-		return nil, err
-	}
-	return p, nil
 }
 
 type MailImageReaderIterator struct {
@@ -240,15 +229,15 @@ func mailImageIterator(mime *string, readers bool) (*mailImageFilteredIterator, 
 	}
 	if err != nil {
 		if _, ok := err.(*IllegalArgumentException); ok {
-			return &mailImageFilteredIterator{source: mailImageSPIList(nil), mime: *mime, emptyCollection: true}, e, nil
+			return mailEmptyImageIterator(), e, nil
 		} else {
 			return nil, e, err
 		}
 	}
-	f := &mailImageFilteredIterator{source: source, mime: *mime}
+	f := &mailImageFilteredIterator{mailImageRegistryFilter: &mailImageRegistryFilter{source: source, filter: mailImageMIMEFilter(*mime)}}
 	if err := f.advance(); err != nil {
 		if _, ok := err.(*IllegalArgumentException); ok {
-			f = &mailImageFilteredIterator{source: mailImageSPIList(nil), mime: *mime, emptyCollection: true}
+			f = mailEmptyImageIterator()
 		} else {
 			return nil, e, err
 		}
@@ -313,8 +302,7 @@ func mailImageDeregister(e MailImageIOEnvironment, p *MailImageSPI, readers bool
 		_, err := e.Deregister(p, readers)
 		return err
 	}
-	mailStandardDeregisterImageSPI(p, readers)
-	return nil
+	return mailStandardDeregisterImageSPI(p, readers)
 }
 func (i *MailImageReaderIterator) Next() (*MailImageReader, error) {
 	return mailInvoke(func() (*MailImageReader, error) {
@@ -324,7 +312,7 @@ func (i *MailImageReaderIterator) Next() (*MailImageReader, error) {
 		var p *MailImageSPI
 		r, err := mailInvoke(func() (*MailImageReader, error) {
 			var err error
-			p, err = i.filtered.nextSPI()
+			p, err = i.filtered.nextProvider()
 			if err != nil {
 				return nil, err
 			}
@@ -353,7 +341,7 @@ func (i *MailImageWriterIterator) Next() (*MailImageWriter, error) {
 		var p *MailImageSPI
 		w, err := mailInvoke(func() (*MailImageWriter, error) {
 			var err error
-			p, err = i.filtered.nextSPI()
+			p, err = i.filtered.nextProvider()
 			if err != nil {
 				return nil, err
 			}
@@ -375,17 +363,19 @@ func (i *MailImageWriterIterator) Next() (*MailImageWriter, error) {
 	})
 }
 
-// These are the standard 21.0.12.1 SPI MIME names. They have no overlaps between
-// providers within a category, so provider order does not select among codecs.
-var mailStandardImageRegistry = struct {
-	sync.Mutex
-	readers, writers mailImagePartiallyOrderedSet
-	initialized      bool
-}{}
+// Standard providers use the same ServiceRegistry class map, callbacks and
+// ordering graph as public registries. IIORegistry AppContext/ServiceLoader
+// discovery and the remaining six standard stream providers are still required.
+var mailStandardImageRegistry *MailImageServiceRegistry
+var mailStandardImageRegistryInitialization mailActivationClassInitialization
 
 func mailInitStandardImageRegistry() {
-	if mailStandardImageRegistry.initialized {
-		return
+	registry, err := NewMailImageServiceRegistry(mailImageClassList([]*MailActivationClass{
+		mailImageReaderSPIClass, mailImageWriterSPIClass, mailImageTranscoderSPIClass,
+		mailImageInputStreamSPIClass, mailImageOutputStreamSPIClass,
+	}))
+	if err != nil {
+		panic(err)
 	}
 	for index, kind := range []struct{ mime, input, output string }{
 		{"image/gif", "Input not set!", "output == null!"},
@@ -432,30 +422,34 @@ func mailInitStandardImageRegistry() {
 			}
 			return w, nil
 		}}
-		mailStandardImageRegistry.readers.add(reader)
-		mailStandardImageRegistry.writers.add(writer)
+		if err := registry.RegisterServiceProvider(reader); err != nil {
+			panic(err)
+		}
+		if err := registry.RegisterServiceProvider(writer); err != nil {
+			panic(err)
+		}
 	}
-	mailStandardImageRegistry.initialized = true
+	mailStandardImageRegistry = registry
 }
 func mailStandardImageSPIs(readers bool) *MailImageSPIIterator {
-	mailStandardImageRegistry.Lock()
-	defer mailStandardImageRegistry.Unlock()
-	mailInitStandardImageRegistry()
-	providers := &mailStandardImageRegistry.writers
+	mailStandardImageRegistryInitialization.initialize("javax.imageio.ImageIO", nil, mailInitStandardImageRegistry)
+	category := mailImageWriterSPIClass
 	if readers {
-		providers = &mailStandardImageRegistry.readers
+		category = mailImageReaderSPIClass
 	}
-	iter := providers.iterator()
-	return &MailImageSPIIterator{HasNextFunc: func() (bool, error) { return iter.hasNext(), nil }, NextFunc: func() (*MailImageSPI, error) { return iter.next(), nil }}
+	iter, err := mailStandardImageRegistry.GetServiceProviders(category, true)
+	if err != nil {
+		panic(err)
+	}
+	return iter
 }
-func mailStandardDeregisterImageSPI(p *MailImageSPI, readers bool) {
-	mailStandardImageRegistry.Lock()
-	defer mailStandardImageRegistry.Unlock()
-	providers := &mailStandardImageRegistry.writers
+func mailStandardDeregisterImageSPI(p *MailImageSPI, readers bool) error {
+	category := mailImageWriterSPIClass
 	if readers {
-		providers = &mailStandardImageRegistry.readers
+		category = mailImageReaderSPIClass
 	}
-	providers.remove(p)
+	_, err := mailStandardImageRegistry.DeregisterServiceProviderInCategory(p, category)
+	return err
 }
 
 // Stream and AWT carriers retain JVM type distinctions; Go image.Image or

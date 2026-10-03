@@ -61,13 +61,24 @@ order. Preserve copied in-degrees with live out-edges, cycle/blocked-node omissi
 node disposal, old-node iteration after clear, hash/comparable tie ordering,
 partial mutation on virtual-key failures, captured table references across
 reentrant key callbacks and movable=false iterator tree removal.
-Continue with full ServiceRegistry/SubRegistry registration/class replacement,
-category/overload checks, callback catch/partial mutation, access-context clear,
-reentrant monitors and unordered iterators, then IIORegistry/ServiceLoader/AppContext
-lifetime. ImageIO captures its registry at class initialization. Official upstream
-OrderingTest, DeregisterOrderedSpiTest, RegisterPluginTwiceTest, DeregisterAllSpiTest,
-ServiceRegistryRestriction and ServiceRegistrySyncTest are identified for porting
-after their public registry/SPI feature implementations. VM identity hashes/class/
+ServiceRegistry/SubRegistry now have native registration/leaf-class replacement,
+category/overload checks, callback catch/partial mutation, captured-context clear,
+reentrant monitors, live category/unordered iterators, filtering and finalizer bodies.
+Standard reader/writer providers use that same registry implementation. Preserve
+the unordered iterator removal that leaves graph/context entries, and clear's
+callback exceptions that leave partial class-map removal and retained graph/contexts.
+All 36 source methods match installed JDK bytecode; 11,080 actual-JDK/native -race
+comparisons include callback reentry/errors, mutation, filtering and security-manager
+null-context callback suppression. Existing ServiceRegistryRestriction and
+ServiceRegistrySyncTest are translated after implementation and pass in Java/Go.
+Continue with IIORegistry/ServiceLoader/AppContext lifetime and full SPI constructors/
+metadata. ImageIO must capture the AppContext registry at class initialization.
+Discovery is an explicit lazy provider boundary; no adapter means advancing lookup
+fails explicitly, rather than returning an invented empty provider list. Secured
+access-context capture/privileged execution requires its VM provider. The native
+default runs without a SecurityManager. Official upstream OrderingTest,
+DeregisterOrderedSpiTest, RegisterPluginTwiceTest and DeregisterAllSpiTest remain
+for porting after IIORegistry and required SPI metadata. VM identity hashes/class/
 comparable discovery, compatible-stream initialization, full SPI metadata,
 AWT rasterization and image codecs remain required. Continue multipart/MIME
 and DataHandler object/factory/cache/buffered-pipe dependencies after these slices.

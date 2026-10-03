@@ -3449,14 +3449,34 @@ with actual Java identity hashes supplied to the native metadata boundary.
 Prior 14,777 default image and 617 custom-SPI cases plus default CommandMap
 integration still match. Existing translated mail -race and full offline
 working-tree checks pass; no persistent tests or vectors were invented.
-Next: public ServiceRegistry/SubRegistry category/registration/class replacement,
-all-category overloads, callback catches/partial mutation, access-context clear,
-reentrant monitors and unordered iterators, then ServiceLoader/IIORegistry
-AppContext lifetime and ImageIO's captured class-initialization registry. Port
-identified OpenJDK OrderingTest/DeregisterOrderedSpiTest/RegisterPluginTwiceTest/
-DeregisterAllSpiTest/ServiceRegistryRestriction/ServiceRegistrySyncTest after their
-public operations and SPI metadata exist. Complete stream/transcoder SPI metadata,
-compatible-stream initialization, native image codecs/AWT and multipart/MIME
+Public ServiceRegistry/SubRegistry operations now use concrete registries with
+exact five-category restrictions, leaf-Class replacement, all-category snapshots,
+provider identity checks, ordering/clear/finalizer bodies and reentrant monitors.
+Standard reader/writer enumeration and deregistration use the same implementation;
+MIME lookup reuses the general FilterIterator while retaining reflective metadata
+failure suppression. Category and unordered-provider iterators remain live and
+fail-fast; unordered removal changes only the class map. Registration catches all
+callback throwables and prints diagnostics, while replacement/deregistration/clear
+callback failures propagate after the source mutations. Clearing removes class-map
+entries before callbacks, retains captured contexts during the loop, uses privileged
+execution, skips null-context callbacks with a security manager and clears graph/
+contexts only after successful completion. Native unsecured contexts represent
+presence/identity; secured permission-domain capture/execution needs the VM adapter.
+Iterator operations guard native shared data without snapshotting its live nodes.
+All 36 source methods match explicitly compiled OpenJDK 21.0.12.1 bytecode.
+11,080 actual-JDK/native -race comparisons cover callback reentry/errors, partial
+clearing, ordering, class replacement, filtering and iterator/category mutation,
+including real JDK security-manager null-context suppression. After implementation,
+the existing ServiceRegistryRestriction (18 operations) and five-second concurrent
+ServiceRegistrySyncTest are translated and pass in Java and Go under -race.
+Prior 14,777 image-handler and 617 custom-SPI comparisons plus default CommandMap
+integration still match. The full offline suite passes without the config-test skip.
+Next: ServiceLoader/IIORegistry AppContext lifetime and ImageIO's captured registry.
+Lookup discovery is lazy and requires its explicit adapter when advanced; missing
+discovery never silently produces an empty list. Complete SPI class constructors,
+stream/transcoder metadata and the six standard stream providers, then translate
+OrderingTest/DeregisterOrderedSpiTest/RegisterPluginTwiceTest/DeregisterAllSpiTest.
+Compatible-stream initialization, native image codecs/AWT and multipart/MIME
 dependencies remain next, then object DataHandler factory/cache/pipes. Full
 AWT class-loading/initialization, desktop text selection/readers, MIME/Object
 externalization and startup/provider default charset lifetime remain required.
