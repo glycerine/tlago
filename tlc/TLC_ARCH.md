@@ -2996,10 +2996,11 @@ Important Java classes:
   breakpoint, a nested frame does not fire it again. Verification is fuzzy like
   Java: the breakpoint is always stored, but the response is marked verified
   only when a same-line semantic node is found under a source range that
-  `Location.includes` the breakpoint range. Java walks a `ModuleNode`; Go does
-  not retain that exact SANY module object, so it walks the processed semantic
-  definitions for the module while preserving Java's range-in-range inclusion
-  logic, including the deliberately non-point breakpoint range with begin line
+  `Location.includes` the breakpoint range. Go now walks the actual retained
+  ModuleNode's SemanticChildren, matching Java walkChildren's unconditional root
+  visitation and child preemption. INSTANCE modules retain their own source
+  assumptions for location lookup, without adding them to TLC's checked root
+  EXTENDS closure. Verification preserves the deliberately non-point range with begin line
   `line + 1` and end line `line`. Breakpoints in modules that are not part of
   the debugged spec remain verified, matching Java's `moduleNode == null` case.
   A hit condition on the configured `Next` predicate is reported as unverified
@@ -3082,8 +3083,22 @@ Debugger variable details:
   actual syntax tree's human-readable image (including its zero/one quirk) and
   source Variable equality. The EWD998 live probe matches 211 expression and
   156 getWatch responses plus 21 stack-variable records across eight stops/52
-  frames under race instrumentation. Whole EWD998, hover, protocol evaluation
-  dispatch and broader semantic metadata still require source work. Raw displayed
+  frames under race instrumentation. Hover and protocol Evaluate dispatch now
+  follow Java's nullable response/request behavior, concrete frame state/prime
+  lookup, lazy fallback and source exception classes. Hover URI parsing retains
+  Java path/query/fragment masks, percent escapes, coordinate splitting and
+  missing-fragment/module/index failures. Ordinary formal and bound parameters
+  retain fresh symbols, source locations and actual parser syntax; all bounds
+  convert before entering the quantified scope. Lookup preserves a source
+  definition before a same-name INSTANCE alias. Base-only NullPointerException
+  catches depend on frame type rather than the EmptyState sentinel.
+  The corrected live hover comparison matches five stops/79 frames, 120 paths,
+  16 responses, 171 breakpoint line-verification results and 21 URI cases under
+  race instrumentation. Empty/syntax-invalid conditions agree. The missing
+  DoesNotExist dependency condition still incorrectly verifies: dependency
+  resolution, dynamic extendee/override processing, condition preparation/scope,
+  whole EWD998 and broader semantic metadata remain source work. No narrowed
+  persistent EWD998 test was added. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to

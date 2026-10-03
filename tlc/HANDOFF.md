@@ -377,13 +377,39 @@ matches eight stops, 52 frame
 locations, 211 expression responses, 156 getWatch responses and 21 stack-variable
 records, and finishes successfully under race instrumentation. This is an
 ephemeral comparison, not a partial persistent EWD998 test.
-Next: source hover/location lookup, complete formal-parameter syntax/location
-and bound identities, protocol evaluate dispatch, remaining EWD998 lazy-variable
-assertion forms and breakpoint verification before translating the entire
-EWD998ChanDebuggerTest method. Attaching DAP remains pending. Dynamic dependency
-resolution, native-only snapshots, complete dynamic extendee/module overrides
-and SANY semantic level metadata still require source work; the debugger probe
-does not establish parity for those paths or full debugger completion.
+Hover now follows actual semantic paths and formal identities, with concrete
+base/state/action handling of primed variables, pending assignments, lazy values,
+record fields, source types and nested references. Ordinary operator/function,
+quantifier, CHOOSE, LAMBDA and comprehension parameters retain distinct formal
+symbols and actual parser locations/syntax; all bounded domains convert before
+installing any bound symbol, matching Generator.processQuantBoundArgs. Parameterized
+INSTANCE/proof metadata still requires broader source work. Lookup retains an
+operator's actual definition before a same-name alias, preserving source versus
+INSTANCE identities and removing an extra refinement substitution frame.
+Protocol Evaluate dispatch now retains hover/variables/repl/watch/clipboard,
+nullable results and source monitor/frame lookup behavior. Hover URI parsing
+checks Java path/query/fragment character masks, UTF-16 escapes, source coordinate
+splitting and exception boundaries. Lazy display catches depend on the concrete
+frame type, including base-only NullPointerException handling.
+Breakpoint verification walks the selected ModuleNode's actual syntax children,
+retaining root visitation without preemption and fuzzy child range inclusion.
+INSTANCE modules retain their own assumptions for location lookup, while checker
+assumption multiplicity remains restricted to the root EXTENDS closure.
+The corrected ephemeral Java/Go hover probe matches five stops, all 79 frame
+locations, 120 semantic paths, 16 hover responses, all 171 original line-verification
+results and 21 URI response/exception cases; Go finishes successfully under race
+instrumentation. Empty and malformed-syntax condition results match too. The
+missing-dependency condition LET T == INSTANCE DoesNotExist IN T!YOLO still
+incorrectly verifies in Go; Java reports a located semantic error. This is an
+explicit remaining compiler/dependency gap, not a passing breakpoint assertion.
+The entire unchanged Java EWD998ChanDebuggerTest passes separately. No partial
+persistent EWD998 test or invented tests/vectors were added. Final full offline
+normal/race verification is recorded at the progress tail.
+Next: source TLCDebuggerExpression.resolveDependencies, dynamic extendee/module
+overrides and condition preparation/selected-module scope, then remaining EWD998
+lazy-variable assertion forms and the entire EWD998ChanDebuggerTest method.
+Attaching DAP, native-only snapshots and SANY semantic level metadata remain
+pending; the probe does not establish those paths or full debugger completion.
 Attaching debugger protocol transport/capability events remain pending. The separate native-only preConstantSnapshot, processConstants
 semantic traversal and dynamic extendee path remain source work, as do ModuleNode
 top-level vectors, proofs/children/traversal and broader nested/parameterized

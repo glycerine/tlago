@@ -13,6 +13,7 @@ const (
 	SymbolUserDefinedOp
 	SymbolConstantDecl
 	SymbolBuiltIn
+	SymbolFormalParam
 )
 
 type SymbolNode struct {
@@ -26,6 +27,16 @@ type SymbolNode struct {
 	Kind       SymbolKind
 	Arity      int
 	Location   SourceLocation
+	TreeNode   any
+}
+
+func (s *SymbolNode) GetSourceLocation() SourceLocation         { return s.Location }
+func (s *SymbolNode) SetSourceLocation(location SourceLocation) { s.Location = location }
+func (s *SymbolNode) GetTreeNode() any                          { return s.TreeNode }
+func (s *SymbolNode) SetTreeNode(tree any)                      { s.TreeNode = tree }
+
+func NewFormalParamSymbolNode(name string, arity int) *SymbolNode {
+	return &SymbolNode{Name: UniqueStringOf(name), Arity: arity, Kind: SymbolFormalParam}
 }
 
 func (s *SymbolNode) GetName() *UniqueString {

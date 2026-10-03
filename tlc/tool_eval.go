@@ -105,17 +105,32 @@ func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, stat
 	if sym.Data != nil {
 		return muxToolObject(sym.Data, state)
 	}
+	if sym.Kind == SymbolFormalParam {
+		if t != nil {
+			if value := t.Definitions[sym]; value != nil {
+				return muxToolObject(value, state)
+			}
+		}
+		if state != nil {
+			if value := state.Lookup(sym.Name); value != nil {
+				return value
+			}
+		}
+		// The source lookup returns the original formal node when its exact
+		// context binding is absent. Other declarations with its name differ.
+		return sym
+	}
 	if sym.Name != nil {
 		if t != nil {
 			if val := t.Definitions[sym]; val != nil {
 				return muxToolObject(val, state)
 			}
 			if sym.IsUserDefinedOp() {
-				if val := t.DefnsByName[sym.Name]; val != nil {
-					return muxToolObject(val, state)
-				}
 				if sym.Definition != nil {
 					return sym.Definition
+				}
+				if val := t.DefnsByName[sym.Name]; val != nil {
+					return muxToolObject(val, state)
 				}
 				return nil
 			}

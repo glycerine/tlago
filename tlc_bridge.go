@@ -742,13 +742,13 @@ func (b *tlcBridge) installAssumptions() {
 	// repeated EXTENDS paths retain the same source expression identity.
 	converted := map[*NamedExpr]*tlc.AssumeNode{}
 	topLevels := map[*Module]bool{}
-	var visit func(*Module)
-	visit = func(module *Module) {
+	var visit func(*Module, bool)
+	visit = func(module *Module, checking bool) {
 		if module == nil {
 			return
 		}
 		for _, name := range module.Extends {
-			visit(b.spec.Modules[name])
+			visit(b.spec.Modules[name], checking)
 			if !topLevels[module] {
 				b.moduleNodes[module].TopLevel = append(b.moduleNodes[module].TopLevel, b.moduleNodes[b.spec.Modules[name]].TopLevel...)
 			}
@@ -785,12 +785,27 @@ func (b *tlcBridge) installAssumptions() {
 			if !topLevels[module] {
 				b.moduleNodes[module].TopLevel = append(b.moduleNodes[module].TopLevel, node)
 			}
-			b.processor.Assumptions = append(b.processor.Assumptions, node.Assume)
-			b.processor.AssumptionIsAxiom = append(b.processor.AssumptionIsAxiom, node.IsAxiom)
+			if checking {
+				b.processor.Assumptions = append(b.processor.Assumptions, node.Assume)
+				b.processor.AssumptionIsAxiom = append(b.processor.AssumptionIsAxiom, node.IsAxiom)
+			}
 		}
 		topLevels[module] = true
 	}
-	visit(b.spec.Root)
+	visit(b.spec.Root, true)
+	// INSTANCE modules keep their own source assumptions for location lookup;
+	// TLC checks only the root module's EXTENDS closure above.
+	names := make([]string, 0, len(b.spec.Modules))
+	for name := range b.spec.Modules {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		module := b.spec.Modules[name]
+		if !topLevels[module] {
+			visit(module, false)
+		}
+	}
 }
 
 func (b *tlcBridge) installModelTargets() {
@@ -1225,8 +1240,7 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 	priorParams := make([]*tlc.SymbolNode, len(def.Params))
 	for i, param := range def.Params {
 		priorParams[i] = b.symbols[param]
-		params[i] = tlc.NewSymbolNode(param)
-		params[i].Arity = def.ParamArities[param]
+		params[i] = b.formalParameter(param, def.ParamArities[param], def.ParamPositions[param], def.Syntax)
 		b.symbols[param] = params[i]
 	}
 	prevModule := b.convertingModule
@@ -1857,18 +1871,18 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 		body = next.Body
 	}
 	node := b.builtinNode(op)
-	names := make([]string, 0, len(quantifiers))
+	parameters := make([]*tlc.SymbolNode, len(quantifiers))
+	for i, quantifier := range quantifiers {
+		parameters[i] = b.formalParameter(quantifier.Var, quantifier.OperatorArity, quantifier.VarPos, e.Syntax)
+	}
+	// Generator.processQuantBoundArgs converts every domain before adding any
+	// quantified variable to the new context.
 	for i := 0; i < len(quantifiers); {
 		first := quantifiers[i]
-		names = append(names, first.Var)
-		symbols := []*tlc.SymbolNode{b.symbol(first.Var)}
+		symbols := []*tlc.SymbolNode{parameters[i]}
 		i++
-		// Names in the same N_QuantBound share its expression identity. Tuple
-		// bounds remain one tuple group; ordinary names get separate enumerators.
 		for i < len(quantifiers) && quantifiers[i].Set == first.Set && quantifiers[i].TupleBound == first.TupleBound {
-			next := quantifiers[i]
-			names = append(names, next.Var)
-			symbols = append(symbols, b.symbol(next.Var))
+			symbols = append(symbols, parameters[i])
 			i++
 		}
 		if first.Set != nil {
@@ -1879,7 +1893,7 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 			node.UnbdedQuantSymbols = append(node.UnbdedQuantSymbols, symbols...)
 		}
 	}
-	restore := b.pushConvertBoundNames(names...)
+	restore := b.pushFormalParameters(parameters)
 	node.Args = []tlc.SemanticNode{b.convertExpr(body)}
 	restore()
 	return node
@@ -1907,41 +1921,26 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 	if e.Set != nil {
 		bound = b.convertExpr(e.Set)
 	}
-	restore := b.pushConvertBoundNames(e.Var)
+	parameter := b.formalParameter(e.Var, 0, e.VarPos, e.Syntax)
+	restore := b.pushFormalParameters([]*tlc.SymbolNode{parameter})
 	body := b.convertExpr(e.Body)
 	restore()
 	node := b.builtinNode(op, body)
 	if e.Set != nil {
-		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{b.symbol(e.Var)}}
+		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{parameter}}
 		node.BdedQuantBounds = []tlc.SemanticNode{bound}
 		node.BdedQuantATuple = []bool{false}
 	} else {
-		node.UnbdedQuantSymbols = []*tlc.SymbolNode{b.symbol(e.Var)}
+		node.UnbdedQuantSymbols = []*tlc.SymbolNode{parameter}
 	}
 	return node
 }
 
 func (b *tlcBridge) lambdaNode(e *FunctionExpr) tlc.SemanticNode {
-	params := make([]*tlc.SymbolNode, len(e.Bounds))
-	names := make([]string, len(e.Bounds))
-	previous := make([]*tlc.SymbolNode, len(e.Bounds))
-	for i, bound := range e.Bounds {
-		name := tlcSymbolName(bound.Name)
-		names[i] = name
-		previous[i] = b.symbols[name]
-		params[i] = tlc.NewSymbolNode(name)
-		b.symbols[name] = params[i]
-	}
-	restore := b.pushConvertBoundNames(names...)
+	params := b.boundParameters(e.Bounds, e.Syntax)
+	restore := b.pushFormalParameters(params)
 	body := b.convertExpr(e.Body)
 	restore()
-	for i, name := range names {
-		if previous[i] == nil {
-			delete(b.symbols, name)
-		} else {
-			b.symbols[name] = previous[i]
-		}
-	}
 	// Each LAMBDA has its own definition identity; its interned name remains
 	// LAMBDA, as in SANY's generateLambda. It is an operator argument.
 	symbol := tlc.NewSymbolNode("LAMBDA")
@@ -1956,7 +1955,7 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 	var self *tlc.SymbolNode
 	if exprReferencesName(e, def.Name, nil) {
 		op = tlc.OpRFS
-		self = tlc.NewSymbolNode(def.Name)
+		self = b.formalParameter(def.Name, 0, def.SourcePosition(), def.Syntax)
 		previous := b.symbols[def.Name]
 		b.symbols[def.Name] = self
 		restore := b.pushConvertBoundNames(def.Name)
@@ -1980,17 +1979,14 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
-	priorBound := make([]string, 0, len(e.Bounds))
-	boundExprs := make([]tlc.SemanticNode, 0, len(e.Bounds))
-	for _, bound := range e.Bounds {
-		restorePrior := b.pushConvertBoundNames(priorBound...)
-		boundExprs = append(boundExprs, b.convertExpr(bound.Set))
-		restorePrior()
-		priorBound = append(priorBound, bound.Name)
+	boundExprs := make([]tlc.SemanticNode, len(e.Bounds))
+	for i, bound := range e.Bounds {
+		boundExprs[i] = b.convertExpr(bound.Set)
 	}
-	restore := b.pushConvertBoundNames(priorBound...)
+	parameters := b.boundParameters(e.Bounds, e.Syntax)
+	restore := b.pushFormalParameters(parameters)
+	defer restore()
 	body := b.convertExpr(e.Body)
-	restore()
 	node := b.builtinNode(tlc.OpFC, body)
 	b.appendBoundGroups(node, b.boundGroups(e.Bounds, boundExprs))
 	return node
@@ -2016,36 +2012,29 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNode {
-	priorBound := make([]string, 0, len(e.Bounds))
-	boundExprs := make([]tlc.SemanticNode, 0, len(e.Bounds))
-	for _, bound := range e.Bounds {
-		restorePrior := b.pushConvertBoundNames(priorBound...)
-		boundExprs = append(boundExprs, b.convertExpr(bound.Set))
-		restorePrior()
-		priorBound = append(priorBound, bound.Name)
+	boundExprs := make([]tlc.SemanticNode, len(e.Bounds))
+	for i, bound := range e.Bounds {
+		boundExprs[i] = b.convertExpr(bound.Set)
 	}
+	parameters := b.boundParameters(e.Bounds, e.Syntax)
+	restore := b.pushFormalParameters(parameters)
+	defer restore()
 	groups := b.boundGroups(e.Bounds, boundExprs)
 	if e.Predicate != nil {
-		restore := b.pushConvertBoundNames(priorBound...)
 		predicate := b.convertExpr(e.Predicate)
-		restore()
 		filtered := b.builtinNode(tlc.OpSSO, predicate)
 		filterSymbols, filterTuple := b.appendFilteredComprehensionBounds(filtered, groups, e.Pos)
 		if setComprehensionElementIsBound(e) {
 			return filtered
 		}
-		bodyRestore := b.pushConvertBoundNames(priorBound...)
 		body := b.convertExpr(e.Element)
-		bodyRestore()
 		node := b.builtinNode(tlc.OpSOA, body)
 		node.BdedQuantSymbolLists = append(node.BdedQuantSymbolLists, filterSymbols)
 		node.BdedQuantBounds = append(node.BdedQuantBounds, filtered)
 		node.BdedQuantATuple = append(node.BdedQuantATuple, filterTuple)
 		return node
 	}
-	restore := b.pushConvertBoundNames(priorBound...)
 	body := b.convertExpr(e.Element)
-	restore()
 	node := b.builtinNode(tlc.OpSOA, body)
 	b.appendBoundGroups(node, groups)
 	return node

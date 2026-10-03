@@ -3,7 +3,6 @@ package tlc
 import (
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -210,23 +209,23 @@ func (f *TLCStackFrame) GetScopes() []TLCScope {
 }
 
 func (f *TLCStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVariable {
-	return f.getVariablesWithStates(ref, rnd, EmptyState, nil)
+	return f.getVariablesWithStates(ref, rnd, EmptyState, nil, true)
 }
 
-func (f *TLCStackFrame) getVariablesWithStates(ref int, rnd *rand.Rand, s, t *TLCStateMut) []*DebugTLCVariable {
+func (f *TLCStackFrame) getVariablesWithStates(ref int, rnd *rand.Rand, s, t *TLCStateMut, catchNull bool) []*DebugTLCVariable {
 	if f == nil {
 		return nil
 	}
 	if f.Tool != nil {
 		value, _ := f.Tool.withDebugEvalModeAny(DebugEvalDebugger, func() (any, error) {
-			return f.getVariables(ref, rnd, s, t), nil
+			return f.getVariables(ref, rnd, s, t, catchNull), nil
 		})
 		return value.([]*DebugTLCVariable)
 	}
-	return f.getVariables(ref, rnd, s, t)
+	return f.getVariables(ref, rnd, s, t, catchNull)
 }
 
-func (f *TLCStackFrame) getVariables(ref int, rnd *rand.Rand, s, t *TLCStateMut) []*DebugTLCVariable {
+func (f *TLCStackFrame) getVariables(ref int, rnd *rand.Rand, s, t *TLCStateMut, catchNull bool) []*DebugTLCVariable {
 	if rnd == nil {
 		rnd = rand.New(rand.NewSource(1))
 	}
@@ -252,7 +251,7 @@ func (f *TLCStackFrame) getVariables(ref int, rnd *rand.Rand, s, t *TLCStateMut)
 	}
 	switch ref {
 	case f.ContextID:
-		variables = append(variables, f.contextVariables(rnd, s, t)...)
+		variables = append(variables, f.contextVariables(rnd, s, t, catchNull)...)
 	case f.GetConstantsID():
 		variables = append(variables, f.constantVariables(rnd)...)
 	case f.GetStackID():
@@ -288,7 +287,7 @@ func (f *TLCStackFrame) HasStackVariables() bool {
 	return false
 }
 
-func (f *TLCStackFrame) contextVariables(rnd *rand.Rand, s, t *TLCStateMut) []*DebugTLCVariable {
+func (f *TLCStackFrame) contextVariables(rnd *rand.Rand, s, t *TLCStateMut, catchNull bool) []*DebugTLCVariable {
 	var variables []*DebugTLCVariable
 	for c := f.Context; c != nil && c != EmptyContext; c = c.Next() {
 		name := c.Name()
@@ -302,7 +301,7 @@ func (f *TLCStackFrame) contextVariables(rnd *rand.Rand, s, t *TLCStateMut) []*D
 		if lazy := asLazyValue(value); lazy != nil {
 			// Eval deliberately bypasses GetValue: displaying a lazy binding must
 			// not update the evaluator's cached value or cache count.
-			evaluated, err := debugUnlazy(lazy, f.Tool, s, t)
+			evaluated, err := debugUnlazy(lazy, f.Tool, s, t, catchNull)
 			if err != nil {
 				variables = append(variables, &DebugTLCVariable{Name: symbolNodeDebugName(name), Value: fmt.Sprint(value), Type: err.Error()})
 				continue
@@ -368,7 +367,7 @@ func (f *TLCStackFrame) stackVariables(rnd *rand.Rand) []*DebugTLCVariable {
 		if cur.Value == nil {
 			continue
 		}
-		variable := cur.debugVariableForValue(cur.Value, semanticNodeHumanReadableImage(cur.Node), rnd)
+		variable := cur.debugVariableForValue(cur.Value, syntaxNodeHumanReadableImage(cur.Node), rnd)
 		duplicate := false
 		for _, prior := range variables {
 			// Variable.equals excludes the transient TLC value, but includes
@@ -575,7 +574,7 @@ func (f *TLCStateStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCVa
 	if ref == f.StateID+1 {
 		return f.TraceVariables(rnd)
 	}
-	return f.getVariablesWithStates(ref, rnd, f.GetS(), nil)
+	return f.getVariablesWithStates(ref, rnd, f.GetS(), nil, false)
 }
 
 func (f *TLCStateStackFrame) GetScopes() []TLCScope {
@@ -890,7 +889,7 @@ func (f *TLCActionStackFrame) GetVariables(ref int, rnd *rand.Rand) []*DebugTLCV
 	if ref == f.StateID+1 {
 		return f.TraceVariables(rnd)
 	}
-	return f.getVariablesWithStates(ref, rnd, f.GetS(), f.GetT())
+	return f.getVariablesWithStates(ref, rnd, f.GetS(), f.GetT(), false)
 }
 
 func (f *TLCActionStackFrame) GetScopes() []TLCScope {
@@ -1103,7 +1102,7 @@ func (f *TLCNextStatesStackFrame) GetVariables(ref int, rnd *rand.Rand) []*Debug
 	if ref == f.StateID+1 {
 		return f.TraceVariables(rnd)
 	}
-	return f.getVariablesWithStates(ref, rnd, f.GetS(), nil)
+	return f.getVariablesWithStates(ref, rnd, f.GetS(), nil, false)
 }
 
 func (f *TLCNextStatesStackFrame) GetScopes() []TLCScope {
@@ -1703,10 +1702,10 @@ func debugValueFailure(err error) bool {
 	return isJavaEvalOrRuntimeException(err)
 }
 
-func debugUnlazy(lazy *LazyValue, tool *Tool, s, t *TLCStateMut) (value Value, err error) {
+func debugUnlazy(lazy *LazyValue, tool *Tool, s, t *TLCStateMut, catchNull bool) (value Value, err error) {
 	defer func() {
 		if failure := recover(); failure != nil {
-			if caught, ok := failure.(error); ok && (debugValueFailure(caught) || (s == EmptyState && isJavaNullPointerException(caught))) {
+			if caught, ok := failure.(error); ok && (debugValueFailure(caught) || (catchNull && isJavaNullPointerException(caught))) {
 				err = caught
 				return
 			}
@@ -2538,62 +2537,32 @@ func (d *TLCDebugger) verifyBreakpointLocationLocked(module string, breakpoint *
 	if breakpoint == nil {
 		return false, true
 	}
-	moduleKnown := d.debugModuleKnownLocked(module)
-	verified := !moduleKnown
-	target := breakpoint.GetLocation()
-	if d == nil || d.Tool == nil || d.Tool.SpecProcessor == nil || d.Tool.SpecProcessor.Defns == nil {
-		return moduleKnown, verified
-	}
-	for _, value := range d.Tool.SpecProcessor.Defns.All() {
-		node, ok := value.(SemanticNode)
-		if !ok || node == nil {
-			continue
-		}
-		semanticWalk(node, func(current SemanticNode) bool {
-			if verified {
-				return false
-			}
-			loc, ok := semanticNodeSourceLocation(current)
-			if !ok || loc.IsNull() {
-				return true
-			}
-			if loc.Source == module {
-				moduleKnown = true
-			}
-			if loc.Source != "" && loc.Source != module {
-				return false
-			}
-			if !loc.Includes(target) {
-				return false
-			}
-			if loc.BeginLine == breakpoint.Line && loc.EndLine == breakpoint.Line {
-				verified = true
-				return false
-			}
-			return true
-		})
-	}
-	if !moduleKnown {
+	if d == nil || d.Tool == nil {
 		return false, true
 	}
-	return true, verified
-}
-
-func (d *TLCDebugger) debugModuleKnownLocked(module string) bool {
-	if d == nil || d.Tool == nil || module == "" {
-		return false
+	moduleNode := d.Tool.GetModule(module)
+	if moduleNode == nil {
+		return false, true
 	}
-	if d.Tool.RootName == module {
-		return true
-	}
-	for _, file := range d.Tool.ModuleFiles {
-		base := filepath.Base(file)
-		base = strings.TrimSuffix(base, filepath.Ext(base))
-		if base == module {
-			return true
+	target := breakpoint.GetLocation()
+	verified := false
+	// SemanticNode.walkChildren visits the root without preemption. Each child
+	// is preempted once a match is found or its location excludes the request.
+	var visit func(SemanticNode)
+	visit = func(node SemanticNode) {
+		location, _ := semanticNodeSourceLocation(node)
+		if location.BeginLine == breakpoint.Line && location.EndLine == breakpoint.Line {
+			verified = true
+		}
+		for _, child := range SemanticChildren(node) {
+			location, ok := semanticNodeSourceLocation(child)
+			if !verified && ok && location.Includes(target) {
+				visit(child)
+			}
 		}
 	}
-	return false
+	visit(moduleNode)
+	return true, verified
 }
 
 func (d *TLCDebugger) nextBreakpointRejectsHitConditionLocked(breakpoint *TLCSourceBreakpoint) bool {
