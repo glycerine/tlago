@@ -42,17 +42,18 @@ import (
 )
 
 type javaDebuggerModel struct {
-	t        *testing.T
-	debugger *tlc.TLCDebugger
-	done     chan struct{}
-	result   *tlc.Result
-	prior    *tlc.TLCDebugger
+	t          *testing.T
+	debugger   *tlc.TLCDebugger
+	done       chan struct{}
+	result     *tlc.Result
+	prior      *tlc.TLCDebugger
+	exitStatus int
 }
 
-func startJavaDebuggerModel(t *testing.T, folder, model string, extraArgs ...string) *javaDebuggerModel {
+func startJavaDebuggerModel(t *testing.T, folder, model string, exitStatus int, extraArgs ...string) *javaDebuggerModel {
 	t.Helper()
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
-	h := &javaDebuggerModel{t: t, debugger: tlc.NewTLCDebugger(nil), done: make(chan struct{}), prior: tlc.TLCDebuggerFactoryOverride}
+	h := &javaDebuggerModel{t: t, debugger: tlc.NewTLCDebugger(nil), done: make(chan struct{}), prior: tlc.TLCDebuggerFactoryOverride, exitStatus: exitStatus}
 	tlc.TLCDebuggerFactoryOverride = h.debugger
 	go func() {
 		defer close(h.done)
@@ -140,8 +141,8 @@ func (h *javaDebuggerModel) close() {
 		h.t.Fatal("TLC did not terminate after debugger disconnect")
 	}
 	if !h.t.Failed() {
-		if h.result == nil || h.result.ExitStatus != tlc.ExitStatusSuccess {
-			h.t.Fatalf("debugger model did not succeed: %v", h.result)
+		if h.result == nil || h.result.ExitStatus != h.exitStatus {
+			h.t.Fatalf("debugger model result=%v, want exit status %d", h.result, h.exitStatus)
 		}
 	}
 }

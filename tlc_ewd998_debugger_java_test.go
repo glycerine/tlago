@@ -38,7 +38,7 @@ import (
 
 func TestJavaEWD998ChanDebugger(t *testing.T) {
 	const UTILS, FOLDER, RM, MDL = "Utils", "EWD998", "EWD998Chan", "EWD998Chan"
-	h := startJavaDebuggerModel(t, FOLDER, MDL)
+	h := startJavaDebuggerModel(t, FOLDER, MDL, tlc.ExitStatusSuccess)
 	defer h.close()
 	// These adapters retain the source's nullable String and protocol requests.
 	str := func(s string) *string { return &s }

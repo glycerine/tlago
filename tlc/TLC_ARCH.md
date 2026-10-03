@@ -3126,8 +3126,14 @@ Debugger variable details:
   State constraints call the one-state eval overload, so debugger hit conditions
   use the current state's level; action constraints retain the two-state path.
   Unchanged Java and the complete Go method pass, as do full offline normal/race
-  suites. Broader semantic metadata and full debugger completion remain source
-  work. Raw displayed
+  suites. The complete EWD998TraceDebuggerTest is also translated after verifying
+  production parity: _TETrace hover preserves the exact two-state tuple, type,
+  nested reference and expected liveness-violation exit. Its byte-identical
+  embedded-config/multimodule source is frozen in test_vectors. The inherited
+  test harness now retains each Java constructor's expected exit status; source
+  success tests still require success. Unchanged Java, full normal Go and all four
+  debugger model tests under race instrumentation pass. Broader semantic metadata
+  and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to

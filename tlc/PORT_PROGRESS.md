@@ -976,3 +976,25 @@ events, broader theorem/proof/level/instance/export metadata, complete native
 override registration, formatter/trace expressions and selected distributed
 transport remain pending. Full TLC completion is not established. Independent
 rpc25519/Greenpack documentation remains outside this checker commit.
+
+
+- EWD998 trace debugger slice: the unchanged original Java EWD998TraceDebuggerTest
+reports one run/zero failures/zero ignored. The production Go comparison already
+matches its exact _TETrace two-state tuple, TupleValue type, nonzero nested
+reference and final liveness-violation exit 13. No production correction was
+necessary. After verifying these features, translated the entire source method
+with both equality assertions and the nonzero-reference assertion, constructor
+config arguments and expected exit status. The inherited debugger test harness
+now accepts the original constructor's expected exit instead of assuming success;
+all three previous model tests retain success. One new original vector,
+EWD998_TTrace.tla, is byte-identical and frozen under test_vectors/models/EWD998;
+it includes the embedded config and three modules. No invented tests or vectors.
+
+- All four complete Go debugger model tests pass normally and under -race
+(5.221s/25.991s); full offline go test ./... passes (root 37.522s, SANY 1.010s,
+TLC 0.873s). Source assertion/fixture-byte audits and code/document diff checks
+pass, excluding preserved original fixture whitespace. Next: original
+EWD840DebuggerTest production comparison, then its complete translation after
+any missing features. Full TLC completion remains unproven; prior debugger,
+semantic graph, formatter/trace-expression and distributed transport work still
+remains. Independent rpc25519/Greenpack notes stay outside this checker commit.

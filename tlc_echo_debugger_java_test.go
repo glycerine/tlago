@@ -37,7 +37,7 @@ import (
 func TestJavaEchoDebugger(t *testing.T) {
 	const RM = "Echo"
 	const MDL = "MCEcho"
-	h := startJavaDebuggerModel(t, "Echo", "MCEcho")
+	h := startJavaDebuggerModel(t, "Echo", "MCEcho", tlc.ExitStatusSuccess)
 	defer h.close()
 	stackFrames := h.frames()
 	debuggerAssertEqual(t, 1, len(stackFrames))

@@ -440,9 +440,21 @@ retain the two-state overload. The inherited helper also preserves a typed nil
 expected context as Java's null, without comparing it against the actual context.
 Unchanged Java JUnit reports one run/zero failures/zero ignored. The complete Go
 method and full offline normal/race suites pass, alongside Echo and
-ExpressionBreakpoint. Next: compare the original EWD998TraceDebuggerTest and
-implement its remaining trace/debugger features before translating its whole
-method. Attaching DAP transport/capability events, full SANY level metadata,
+ExpressionBreakpoint. The original EWD998TraceDebuggerTest production comparison
+also matches: the _TETrace hover returns the exact two-state tuple, TupleValue
+type and nested reference, and the run ends with liveness violation exit 13.
+After verifying those features, translated its entire method, retaining both
+equality assertions and the nonzero-reference assertion, constructor config
+arguments and expected exit status. The shared source harness now accepts each
+original test's expected exit, instead of assuming success; existing tests still
+expect success. One more byte-identical vector, EWD998_TTrace.tla, contains its
+embedded config and three original modules. Unchanged Java JUnit reports one
+run/zero failures/zero ignored; full normal Go and all four complete debugger
+model tests under race instrumentation pass. No production correction was
+necessary for this trace test; no invented tests or vectors were added.
+Next: original EWD840DebuggerTest production comparison, then its complete method
+after implementing any missing debugger features. Attaching DAP
+transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
 metadata/export composition and complete native override registration remain
 source work. Full debugger and full TLC completion are not established.

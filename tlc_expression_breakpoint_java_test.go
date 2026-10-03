@@ -31,7 +31,7 @@ import (
 
 func TestJavaExpressionBreakpoint(t *testing.T) {
 	const RM = "ExpressionBreakpointTest"
-	h := startJavaDebuggerModel(t, RM, RM, "-config", RM+".tla")
+	h := startJavaDebuggerModel(t, RM, RM, tlc.ExitStatusSuccess, "-config", RM+".tla")
 	defer h.close()
 	h.setBreakpoints(debuggerBreakpoint(RM, 8, 5, 1, "(i + l + k) > j"))
 	h.continueFrames()
