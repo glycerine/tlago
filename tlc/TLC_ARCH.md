@@ -407,6 +407,13 @@ Tricky details:
 
 ### Go SANY to TLC Bridge
 
+Application loading includes runtime extendee modules before building the tool,
+so trace postconditions and runtime constraints can resolve their operators.
+Actions created from definitions reuse the body converted in that definition's
+module scope; reconverting at the root loses bindings to LOCAL operators.
+The initial definition table includes TRUE, FALSE, the normalized BOOLEAN set
+{FALSE, TRUE}, and STRING before processing user definitions.
+
 The root package owns the production Go SANY parser and semantic tree. The TLC
 runtime package must not import the root package, so the adapter lives in the
 root package as `BuildTLCTool`. Import direction is one-way: root `tlago`
@@ -2731,6 +2738,15 @@ symbol rather than Java's `SymbolNode` subclass hierarchy, the coverage creator
 resolves `OpDefNode`s through `Tool.Lookup` and `Context.Lookup`; the parser
 front-end must preserve recursive flags and operator-argument nodes for full
 Java-equivalent coverage trees.
+
+Coverage expression labels come from semantic source locations. Standard-module
+exclusion follows Java's fixed set of nine source-module names, including its
+name-only behavior for replacement modules; a built-in opcode in a user's
+module remains covered. Primed wrapper membership compares source locations,
+matching OpApplNodeWrapper.equals. ActionWrapper.get resolves its predicate to
+the child expression wrapper and unwraps SubstIn/LetIn bodies; only expression
+wrappers return themselves for their own expression. Zero-count primed parents
+retain the extra indentation before reporting their children.
 
 Coverage counts:
 

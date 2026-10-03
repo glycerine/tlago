@@ -10,6 +10,9 @@ func (t *Tool) InstallStandardDefinitions() *Tool {
 		return nil
 	}
 
+	t.defineStandardValue("TRUE", BoolTrue)
+	t.defineStandardValue("FALSE", BoolFalse)
+	t.defineStandardValue("BOOLEAN", NewSetEnumValue([]Value{BoolFalse, BoolTrue}, true))
 	t.defineStandardValue("Nat", Nat())
 	t.defineStandardValue("Int", Int())
 	t.defineStandardValue("STRING", STRING())

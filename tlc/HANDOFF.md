@@ -21,6 +21,14 @@ port existing Java tests after implementing each feature. Prioritize state
 counts, diagnostic/trace parity, fairness/liveness, checkpoint/recovery, storage,
 coverage and simulation. Do not invent new regression/unit tests.
 
+Latest core slice: existing Java EmptySubsetEqTest and SubsetEqTest are now
+translated with their original model fixtures under tlc/test_vectors/models/.
+Their end-to-end runs fixed coverage wrapper selection/source filtering,
+predefined BOOLEAN values, runtime-module loading and LOCAL postcondition
+binding. All four OpApplNodeWrapperTest report methods are translated too.
+Read the progress tail for verification. Next coverage work should compare the
+remaining upstream model cases and preserve variable declaration locations.
+
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.
 - Java tests to port after their features: `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2`.

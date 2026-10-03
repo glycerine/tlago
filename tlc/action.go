@@ -129,6 +129,20 @@ func (m CostModel) Get(expr SemanticNode) CostModel {
 	if m.node.Children == nil {
 		m.node.Children = NewInsMap[semanticNodeKey, *CostModelNode]()
 	}
+	if m.node.Action != nil {
+		// ActionWrapper.get resolves its predicate to a child wrapper. Only
+		// OpApplNodeWrapper.get returns itself for its own expression.
+		switch node := expr.(type) {
+		case *SubstInNode:
+			expr = node.Body
+		case *LetInNode:
+			expr = node.Body
+		}
+		if child := m.node.Children.Get(newSemanticNodeKey(expr)); child != nil {
+			return CostModel{node: child}
+		}
+		return m
+	}
 	if sameSemanticNode(expr, m.node.Expr) || SemanticKindOf(expr) != SemanticOpApplKind {
 		return m
 	}

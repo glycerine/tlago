@@ -132,6 +132,20 @@ func (n *SemanticNodeBase) SetSourceLocation(location SourceLocation) {
 	}
 }
 
+// SemanticNode.isStandardModule delegates to Java's StandardModules name set.
+// It deliberately classifies by source module name, including replaced modules.
+func (n *SemanticNodeBase) IsStandardModule() bool {
+	if n == nil {
+		return false
+	}
+	switch n.Location.Source {
+	case "FiniteSets", "Sequences", "Bags", "Naturals", "Integers", "Reals", "RealTime", "Randomization", "TLC":
+		return true
+	default:
+		return false
+	}
+}
+
 func (n *SemanticNodeBase) GetLevel() int {
 	if n == nil {
 		return TLCLevelConstant

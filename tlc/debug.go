@@ -1092,6 +1092,9 @@ func (l SourceLocation) String() string {
 	if l.IsNull() {
 		return "Unknown location"
 	}
+	if l.Source != "--unknown--" && l.BeginLine == 0 && l.BeginColumn == 0 && l.EndLine == 0 && l.EndColumn == 0 {
+		return "In module " + l.Source
+	}
 	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s", l.BeginLine, l.BeginColumn, l.EndLine, l.EndColumn, l.Source)
 }
 

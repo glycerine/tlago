@@ -286,6 +286,11 @@ func (p *SpecProcessor) SetVariables(names []string) {
 	SetUniqueStringVariableCount(len(names))
 	if p.Defns != nil {
 		p.Defns.SetDefnCount(len(names))
+		// SpecProcessor installs these predefined values before user definitions.
+		p.Defns.Put("TRUE", BoolTrue)
+		p.Defns.Put("FALSE", BoolFalse)
+		p.Defns.Put("BOOLEAN", NewSetEnumValue([]Value{BoolFalse, BoolTrue}, true))
+		p.Defns.Put("STRING", STRING())
 	}
 }
 

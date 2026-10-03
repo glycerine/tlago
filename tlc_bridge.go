@@ -1225,7 +1225,12 @@ func (b *tlcBridge) actionFromDefinition(name string, init bool) *tlc.Action {
 	if opDef == nil {
 		return nil
 	}
-	return b.actionFromExpr(name, def.Expr, opDef, init)
+	// Reuse the body converted in the definition's module scope. Converting
+	// it again here loses bindings to that module's LOCAL operators.
+	action := tlc.NewActionFromOpDef(opDef.Body, tlc.EmptyContext, opDef, init, false)
+	action.Name = name
+	action.CM = tlc.NewCostModel(opDef.Body)
+	return action
 }
 
 func (b *tlcBridge) actionFromExpr(name string, expr Expr, opDef *tlc.OpDefNode, init bool) *tlc.Action {

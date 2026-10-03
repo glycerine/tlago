@@ -126,6 +126,7 @@ func (m CostModel) reportNode(level int, fresh bool) {
 		if node.isZero() && consistent.isZero() {
 			if m.IsPrimed() {
 				m.printSelf(level)
+				level++
 			}
 			m.printChildren(level)
 			return
@@ -270,12 +271,13 @@ func coverageNodeLocation(node *CostModelNode) string {
 	if node.Action != nil {
 		return coverageActionLocation(node.Action)
 	}
-	return SemanticString(node.Expr)
+	location, _ := semanticNodeSourceLocation(node.Expr)
+	return location.String()
 }
 
 type coverageCreator struct {
 	tool         *Tool
-	primed       map[semanticNodeKey]bool
+	primed       map[SourceLocation]bool
 	stack        []CostModel
 	root         CostModel
 	ctx          *Context
@@ -457,7 +459,7 @@ func reportConstraintCoverage(tool *Tool, nodes []SemanticNode) {
 func newCoverageCreator(tool *Tool) *coverageCreator {
 	creator := &coverageCreator{
 		tool:         tool,
-		primed:       make(map[semanticNodeKey]bool),
+		primed:       make(map[SourceLocation]bool),
 		visiting:     make(map[semanticNodeKey]bool),
 		opDefNodes:   make(map[*OpDefNode]bool),
 		substs:       make(map[semanticNodeKey]Subst),
@@ -469,7 +471,10 @@ func newCoverageCreator(tool *Tool) *coverageCreator {
 		if node == nil {
 			break
 		}
-		creator.primed[newSemanticNodeKey(node)] = true
+		// Java's OpApplNodeWrapper equality compares source locations, so
+		// separately instantiated applications at the same location match.
+		location, _ := semanticNodeSourceLocation(node)
+		creator.primed[location] = true
 	}
 	return creator
 }
@@ -595,7 +600,8 @@ func (c *coverageCreator) preOpAppl(node *OpApplNode) {
 	}
 	parent := c.peek()
 	cm := parent.AddChild(node)
-	if c.primed[newSemanticNodeKey(node)] {
+	location, _ := semanticNodeSourceLocation(node)
+	if c.primed[location] {
 		cm.SetPrimed()
 	}
 	if node.Operator != nil && node.Operator.Name != nil && GetOpCode(node.Operator.Name) == OpcodeUnchanged {
@@ -610,7 +616,7 @@ func (c *coverageCreator) preOpAppl(node *OpApplNode) {
 			cm.SetRecursive(prior)
 		}
 	}
-	if def, ok := c.lookupToolOpDef(node); ok && sameSymbol(def.Symbol, node.Operator) && c.argsContainOpArgNodes(node) && !c.isStandardOpDef(def) {
+	if def, ok := c.lookupToolOpDef(node); ok && sameSymbol(def.Symbol, node.Operator) && GetOpCode(node.Operator.Name) == 0 && GetOpCode(def.Name) == 0 && c.argsContainOpArgNodes(node) && !def.IsStandardModule() {
 		c.ctx = c.coverageOpContext(def, node.Args, c.ctx)
 	}
 	if def, ok := c.lookupContextOpDef(node); ok {
@@ -677,7 +683,7 @@ func (c *coverageCreator) createSubstitutionChild(body SemanticNode) CostModel {
 	}
 	sub := &coverageCreator{
 		tool:         c.tool,
-		primed:       make(map[semanticNodeKey]bool),
+		primed:       make(map[SourceLocation]bool),
 		root:         c.root,
 		ctx:          EmptyContext,
 		visiting:     make(map[semanticNodeKey]bool),
@@ -775,15 +781,8 @@ func (c *coverageCreator) lookupContextOpDef(node *OpApplNode) (*OpDefNode, bool
 	return def, ok && def != nil
 }
 
-func (c *coverageCreator) isStandardOpDef(def *OpDefNode) bool {
-	return def == nil || def.Name == nil || GetOpCode(def.Name) != 0
-}
-
 func (c *coverageCreator) isStandardModuleNode(node *OpApplNode) bool {
-	if node == nil || node.Operator == nil || node.Operator.Name == nil {
-		return false
-	}
-	return GetOpCode(node.Operator.Name) != 0
+	return node != nil && node.IsStandardModule()
 }
 
 func (c *coverageCreator) peek() CostModel {

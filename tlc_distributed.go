@@ -115,7 +115,10 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		}
 		return nil, nil, err
 	}
-	spec, diags := LoadSanySpec(rootFile, LoadOptions{FilenameResolver: resolver})
+	spec, diags := LoadSanySpec(rootFile, LoadOptions{
+		FilenameResolver: resolver,
+		ExtraModules:     runtime.ExtendeeModules(),
+	})
 	if diags.HasErrors() {
 		return nil, diags, nil
 	}
