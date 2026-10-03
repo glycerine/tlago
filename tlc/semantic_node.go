@@ -74,6 +74,28 @@ func (n *SemanticNodeBase) SetTreeNode(node any) { n.TreeNode = node }
 
 func (n *SemanticNodeBase) GetHumanReadableImage() string { return n.Location.String() }
 
+// SemanticNode.toString normally prints the location. Numeral and Decimal
+// override it, while showPlainFormulae selects the actual SANY syntax image.
+func semanticNodeJavaString(node SemanticNode) string {
+	switch n := node.(type) {
+	case *NumeralNode:
+		return n.String()
+	case *DecimalNode:
+		return n.String()
+	}
+	if _, present := tlcLookupSystemProperty("tla2sany.semantic.SemanticNode.showPlainFormulae"); present {
+		if n, ok := node.(interface{ GetTreeNode() any }); ok {
+			if tree, ok := n.GetTreeNode().(interface{ GetHumanReadableImage() string }); ok {
+				return tree.GetHumanReadableImage()
+			}
+		}
+	}
+	if location, ok := semanticNodeSourceLocation(node); ok {
+		return location.String()
+	}
+	return toContextString(node)
+}
+
 func (n *SemanticNodeBase) Kind() SemanticKind {
 	if n == nil {
 		return SemanticUnknownKind

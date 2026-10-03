@@ -452,8 +452,28 @@ embedded config and three original modules. Unchanged Java JUnit reports one
 run/zero failures/zero ignored; full normal Go and all four complete debugger
 model tests under race instrumentation pass. No production correction was
 necessary for this trace test; no invented tests or vectors were added.
-Next: original EWD840DebuggerTest production comparison, then its complete method
-after implementing any missing debugger features. Attaching DAP
+The original EWD840DebuggerTest production comparison now matches all 624
+frame/context/state records over 37 stops and ends with Java's safety exit 12,
+127 generated states, 38 distinct states, queue 3 and depth 6. Initialization
+suppresses debugger stops until a checker/simulator exists. Source definition
+symbols retain actual declaration names, syntax and locations; lazy semantic
+images use Java's SemanticNode.toString rather than evaluator lookup names.
+Unsupported expression evaluation retains the detailed runtime exception's
+expression/context and located message. Initial and next-state invariant control
+exceptions are distinct fresh objects; next-state exceptions retain their own
+known flag. Worker wrapping exceptions keep explicit expression/state accessors
+without a cause/message. Debugger catches inspect the directly thrown class and
+use the source base/action frame overloads, removing a false stop while unwinding.
+After production parity, translated the entire EWD840DebuggerTest.testSpec:
+35 equality, one true and one non-null assertion, 3 base-frame, 7 state-frame,
+34 action-frame, 1 init-frame and 1 next-frame call, including both source loops.
+The inherited init-frame helper preserves the source's unimplemented successor
+count assertion; continue_(steps) retains the original alias stepping sequence.
+All three original vectors are byte-identical under test_vectors/models/EWD840.
+Unchanged Java JUnit and the complete Go method pass; final full offline normal
+and race suites pass. No invented tests or vectors were added.
+Next: original EWD840 error/action debugger and simulation feature comparisons,
+then each complete source method after porting its features. Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
 metadata/export composition and complete native override registration remain

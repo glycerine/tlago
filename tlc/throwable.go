@@ -136,6 +136,12 @@ func javaThrowableClassName(err error) string {
 		return "tlc2.tool.EvalException"
 	case *StatefulRuntimeException:
 		return "tlc2.tool.StatefulRuntimeException"
+	case *InvariantViolatedException:
+		return "tlc2.tool.INextStateFunctor$InvariantViolatedException"
+	case *DoInitInvariantViolatedException:
+		return "tlc2.tool.ModelChecker$DoInitFunctor$InvariantViolatedException"
+	case *WorkerWrappingRuntimeException:
+		return "tlc2.tool.Worker$WrappingRuntimeException"
 	case *WorkerException:
 		return "tlc2.tool.WorkerException"
 	case *ConfigFileException, *ConfigError:
@@ -155,6 +161,9 @@ func javaThrowableClassName(err error) string {
 		}
 		if isValueEvalException(failure) {
 			return "tlc2.tool.EvalException"
+		}
+		if failure.Expr != nil {
+			return "util.Assert$TLCDetailedRuntimeException"
 		}
 		return "util.Assert$TLCRuntimeException"
 	default:

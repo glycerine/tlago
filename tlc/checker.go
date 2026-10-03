@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -10,8 +9,6 @@ import (
 	"sync"
 	"time"
 )
-
-var errInvariantViolated = errors.New("tlc invariant violated")
 
 const javaIntegerMaxValue = int(1<<31 - 1)
 
@@ -1386,7 +1383,7 @@ func (mc *ModelChecker) doInitWithTool(tool *Tool, ignoreCancel bool) (int, erro
 	}
 	functor := &doInitFunctor{mc: mc, tool: tool, forceChecks: ignoreCancel, returnValue: NoError}
 	err := tool.GetInitStates(NewStateFunctor(functor.AddElement))
-	if err == errInvariantViolated {
+	if isDoInitInvariantViolatedException(err) {
 		mc.ErrState = functor.errState
 		return functor.returnValue, nil
 	}
@@ -2158,7 +2155,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		PrintError(ECTLCInitialState, "current state is not a legal state", curState.String())
 		f.errState = curState
 		f.returnValue = ECTLCInitialState
-		return f.returnValue, errInvariantViolated
+		return f.returnValue, NewDoInitInvariantViolatedException()
 	}
 	inModel, err := f.tool.IsInModel(curState)
 	if err != nil {
@@ -2204,7 +2201,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 				if !continuationEnabled() {
 					f.errState = curState
 					f.returnValue = ECTLCInvariantViolatedInitial
-					return f.returnValue, errInvariantViolated
+					return f.returnValue, NewDoInitInvariantViolatedException()
 				}
 			}
 		}
@@ -2221,7 +2218,7 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 				PrintError(ECTLCPropertyViolatedInitial, nameAt(f.tool.GetImpliedInitNames(), i), alias.String())
 				f.errState = curState
 				f.returnValue = ECTLCPropertyViolatedInitial
-				return f.returnValue, errInvariantViolated
+				return f.returnValue, NewDoInitInvariantViolatedException()
 			}
 		}
 	}
@@ -2240,7 +2237,7 @@ func (f *doInitFunctor) handleInitError(curState *TLCStateMut, err error) (any, 
 func isJavaAbortingInitError(err error) bool {
 	// Java DoInitFunctor immediately rethrows only invariant, Assert, and eval
 	// failures. Other throwables are recorded and surfaced after getInitStates.
-	if err == errInvariantViolated {
+	if isDoInitInvariantViolatedException(err) {
 		return true
 	}
 	return isJavaEvalOrRuntimeException(err)

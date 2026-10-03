@@ -11,7 +11,17 @@ type TLCError struct {
 	// Runtime distinguishes Java TLCRuntimeException from the legacy native
 	// EvalException carriers represented by this same Go type.
 	Runtime bool
-	known   bool
+	// Java's detailed runtime failure retains the failed semantic expression
+	// and its evaluation context on the same TLCRuntimeException carrier.
+	Expr  SemanticNode
+	Ctxt  *Context
+	known bool
+}
+
+func NewTLCDetailedRuntimeException(code int, message string, expr SemanticNode, ctxt *Context) *TLCError {
+	failure := newTLCError(code, "%s", message)
+	failure.Runtime, failure.Expr, failure.Ctxt = true, expr, ctxt
+	return failure
 }
 
 func (e *TLCError) Error() string {

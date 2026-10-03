@@ -32,31 +32,20 @@ type Worker struct {
 	DisableTraceMirror    bool
 }
 
-type workerNextStateError struct {
+type WorkerWrappingRuntimeException struct {
+	throwableTrace
 	Err   error
 	State *TLCStateMut
 }
 
-func newWorkerNextStateError(err error, state *TLCStateMut) error {
-	if err == nil {
-		return nil
-	}
-	return &workerNextStateError{Err: err, State: state}
+func NewWorkerWrappingRuntimeException(err error, state *TLCStateMut) error {
+	return &WorkerWrappingRuntimeException{throwableTrace: captureThrowableTrace(), Err: err, State: state}
 }
 
-func (e *workerNextStateError) Error() string {
-	if e == nil || e.Err == nil {
-		return ""
-	}
-	return e.Err.Error()
-}
-
-func (e *workerNextStateError) Unwrap() error {
-	if e == nil {
-		return nil
-	}
-	return e.Err
-}
+func (e *WorkerWrappingRuntimeException) Error() string             { return javaThrowableClassName(e) }
+func (e *WorkerWrappingRuntimeException) GetMessage() *string       { return nil }
+func (e *WorkerWrappingRuntimeException) UnwrapState() *TLCStateMut { return e.State }
+func (e *WorkerWrappingRuntimeException) UnwrapExp() error          { return e.Err }
 
 func NewWorker(id int) *Worker {
 	return &Worker{
@@ -220,8 +209,8 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	recordedOutcome := false
 	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
 	if err != nil {
-		if wrapped, ok := err.(*workerNextStateError); ok && wrapped != nil {
-			w.Checker.doNextFailed(curState, wrapped.State, wrapped.Err)
+		if wrapped, ok := err.(*WorkerWrappingRuntimeException); ok && wrapped != nil {
+			w.Checker.doNextFailed(curState, wrapped.UnwrapState(), wrapped.UnwrapExp())
 			recordedOutcome = true
 		} else {
 			w.Checker.doNextFailed(curState, nil, err)
@@ -245,7 +234,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	if w.Checker.CheckLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
-			if err == errInvariantViolated {
+			if isInvariantViolatedException(err) {
 				if w.Checker.StateQueue != nil {
 					w.Checker.StateQueue.FinishAll()
 				}
@@ -330,7 +319,7 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 	// Java Worker.addElement throws INextStateFunctor.InvariantViolatedException
 	// after doNextSetErr records stop-worthy successor failures.
 	if w.Halted {
-		return nil, newWorkerNextStateError(errInvariantViolated, succState)
+		return nil, NewWorkerWrappingRuntimeException(NewInvariantViolatedException(), succState)
 	}
 	if action != nil && CoverageActionEnabled() {
 		action.CM.IncInvocations()
@@ -341,10 +330,10 @@ func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState
 		w.Halted = true
 	}
 	if err != nil {
-		return nil, newWorkerNextStateError(err, succState)
+		return nil, NewWorkerWrappingRuntimeException(err, succState)
 	}
 	if stop {
-		return nil, newWorkerNextStateError(errInvariantViolated, succState)
+		return nil, NewWorkerWrappingRuntimeException(NewInvariantViolatedException(), succState)
 	}
 	if queued && succState != nil {
 		if succState.Level() > w.GetMaxLevel() {

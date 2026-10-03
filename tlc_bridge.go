@@ -1218,6 +1218,9 @@ func (b *tlcBridge) sourceDefinitionSymbol(name string, def *Definition) *tlc.Sy
 		symbol = tlc.NewSymbolNode(name)
 	}
 	symbol.Arity = len(def.Params)
+	symbol.DeclarationName = tlc.UniqueStringOf(def.Name)
+	b.withSyntaxNode(def.Syntax, symbol)
+	b.withPositionLocation(def.SourcePosition(), symbol)
 	b.sourceSymbols[def] = symbol
 	return symbol
 }

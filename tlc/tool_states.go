@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"errors"
 	"fmt"
 	"os"
 )
@@ -607,13 +606,15 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		defer func() { t.DebugEvalMode = old }()
 		t.Debugger.PushActionFrame(t, pred, c, s0, action, s1)
 		defer func() {
-			if err != nil && !debugErrorKnown(err) {
-				if errors.Is(err, errInvariantViolated) {
+			if !debugErrorKnown(err) {
+				if isInvariantViolatedException(err) {
 					t.Debugger.MarkInvariantViolatedFrame(t, pred, c, s0, action, s1, err)
-				} else {
-					t.Debugger.PushActionExceptionFrame(t, pred, c, s0, action, s1, err)
+					t.Debugger.PopExceptionFrame(t, pred, c, nil, err)
+				} else if isJavaEvalOrRuntimeException(err) {
+					// This source catch uses the base-frame overload.
+					t.Debugger.PushExceptionFrame(t, pred, c, err)
+					t.Debugger.PopExceptionFrame(t, pred, c, nil, err)
 				}
-				t.Debugger.PopExceptionFrame(t, pred, c, nil, err)
 			}
 			t.Debugger.PopFrame(t, pred, c)
 		}()
@@ -1108,13 +1109,14 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 			return t.NoDebug().ProcessUnchanged(action, expr, acts, c, s0, s1, nss, cm)
 		}
 		defer func() {
-			if err != nil && !debugErrorKnown(err) {
-				if errors.Is(err, errInvariantViolated) {
+			if !debugErrorKnown(err) {
+				if isInvariantViolatedException(err) {
 					t.Debugger.MarkInvariantViolatedFrame(t, expr, c, s0, action, s1, err)
-				} else {
+					t.Debugger.PopExceptionFrame(t, expr, c, nil, err)
+				} else if isJavaEvalOrRuntimeException(err) {
 					t.Debugger.PushActionExceptionFrame(t, expr, c, s0, action, s1, err)
+					t.Debugger.PopExceptionFrame(t, expr, c, nil, err)
 				}
-				t.Debugger.PopExceptionFrame(t, expr, c, nil, err)
 			}
 		}()
 	}

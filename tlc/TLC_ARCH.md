@@ -2163,8 +2163,11 @@ node and the `OrderOfSolution` has an empty possible-error model, Java records
 complete, prints a temporal-property counterexample, stops the main checker,
 and throws the invariant-violation control exception to escape the worker
 without printing a second generic error. The Go port mirrors this with
-`LiveChecker.printSafetyLikeLivenessError` and the existing
-`errInvariantViolated` sentinel.
+`LiveChecker.printSafetyLikeLivenessError` and a fresh source
+`INextStateFunctor.InvariantViolatedException` carrying its own known flag.
+The initial-state functor uses its separate plain-runtime invariant exception;
+worker wrapping exceptions retain the failing state/exception without a cause.
+Debugger catches inspect direct exception classes rather than cause chains.
 
 `LiveWorker`:
 
@@ -3132,8 +3135,22 @@ Debugger variable details:
   embedded-config/multimodule source is frozen in test_vectors. The inherited
   test harness now retains each Java constructor's expected exit status; source
   success tests still require success. Unchanged Java, full normal Go and all four
-  debugger model tests under race instrumentation pass. Broader semantic metadata
-  and full debugger completion remain source work. Raw displayed
+  debugger model tests under race instrumentation pass. The complete original
+  EWD840DebuggerTest is now translated after a production comparison matching
+  624 frame/context/state records across 37 stops and Java's 127/38/3 statistics,
+  depth 6 and safety exit. Initialization suppresses debugger evaluation until a
+  checker/simulator exists. Source definition symbols retain declaration names,
+  syntax and locations; lazy semantic images use SemanticNode.toString, including
+  numeral/decimal overrides and showPlainFormulae. Unsupported evaluation retains
+  the source detailed runtime exception's expression/context and located message.
+  Invariant control exceptions are fresh objects with distinct initial/next-state
+  classes. Worker wrappers expose their stored state/exception without setting a
+  cause/message. Debugger catches use direct source exception types and actual
+  base/action frame overloads; invariant handling sets each object's known flag.
+  The whole test preserves initial-state/action/constraint/invariant/alias loops
+  and assertions. Three original vectors remain byte-identical in test_vectors.
+  Unchanged Java, the complete Go method and full normal/race suites pass.
+  Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to

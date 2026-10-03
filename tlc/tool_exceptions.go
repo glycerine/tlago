@@ -137,6 +137,33 @@ type StatefulRuntimeException struct {
 	hasCause bool
 }
 
+// INextStateFunctor.InvariantViolatedException is stateful; the similarly
+// named DoInitFunctor exception is a separate, plain RuntimeException.
+type InvariantViolatedException struct{ *StatefulRuntimeException }
+
+func NewInvariantViolatedException() *InvariantViolatedException {
+	return &InvariantViolatedException{NewStatefulRuntimeException("Invariant violated")}
+}
+
+func isInvariantViolatedException(err error) bool {
+	_, ok := err.(*InvariantViolatedException)
+	return ok
+}
+
+type DoInitInvariantViolatedException struct{ throwableTrace }
+
+func NewDoInitInvariantViolatedException() *DoInitInvariantViolatedException {
+	return &DoInitInvariantViolatedException{captureThrowableTrace()}
+}
+
+func (e *DoInitInvariantViolatedException) Error() string       { return javaThrowableClassName(e) }
+func (e *DoInitInvariantViolatedException) GetMessage() *string { return nil }
+
+func isDoInitInvariantViolatedException(err error) bool {
+	_, ok := err.(*DoInitInvariantViolatedException)
+	return ok
+}
+
 func NewStatefulRuntimeException(args ...any) *StatefulRuntimeException {
 	ex := &StatefulRuntimeException{throwableTrace: captureThrowableTrace()}
 	for _, arg := range args {

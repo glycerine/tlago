@@ -382,7 +382,7 @@ func debugToolActive(t *Tool) bool {
 }
 
 func (t *Tool) debugToolIsInitializing() bool {
-	return t == nil || t.Debugger == nil
+	return t == nil || t.Debugger == nil || (MainChecker() == nil && CurrentSimulator() == nil)
 }
 
 func debugToolIsLiveness(control int, s0 *TLCStateMut, s1 *TLCStateMut) bool {

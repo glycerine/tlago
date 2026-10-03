@@ -998,3 +998,44 @@ EWD840DebuggerTest production comparison, then its complete translation after
 any missing features. Full TLC completion remains unproven; prior debugger,
 semantic graph, formatter/trace-expression and distributed transport work still
 remains. Independent rpc25519/Greenpack notes stay outside this checker commit.
+
+
+- EWD840 debugger production slice: the unchanged original Java
+EWD840DebuggerTest reports one run/zero failures/zero ignored. The corrected
+production Go sequence matches all 624 frame/context/state records over 37
+stops normally and under -race, reaches the same 127 generated/38 distinct/3
+queue statistics, depth 6 and safety exit 12, and has no extra unwinding stop.
+Initial constants match the source assertions; the runtime JSON filename follows
+each probe's explicit output directory. These comparisons are temporary probes,
+not persistent substitute tests.
+
+- Ported DebugTool's checker/simulator initialization guard, actual declaration
+name/syntax/location metadata for source definition symbols, SemanticNode.toString
+lazy images, and detailed unsupported-evaluation failures retaining expression
+and context. Initial and next-state invariant control exceptions are separate
+fresh source classes; next-state objects inherit StatefulRuntimeException's known
+flag. Worker wrapping exceptions retain explicit expression/state accessors
+without setting a cause/message. Debugger getNextStatesAppl/processUnchanged
+catches use direct exception classes and their source base/action frame overloads;
+markInvariantViolatedFrame sets the per-object known flag.
+
+- After implementing these features, translated the entire original
+EWD840DebuggerTest.testSpec: all 35 equality, one truth and one non-null assertion,
+3 base-frame, 7 state-frame, 34 action-frame, 1 init-frame and 1 next-frame call.
+Both loops, contexts/unassigned variables, source locations, constants, step
+counts, constraints, invariant and alias trace assertions remain intact. The
+inherited init-frame helper preserves Java's TODO for initial successor counts;
+continue_(steps) retains the original multi-continue alias sequence. All three
+original model/config vectors are byte-identical under test_vectors/models/EWD840.
+No invented tests or vectors.
+
+- Complete Go translation passes; full offline go test ./... and go test -race
+./... pass after the final production correction. The previously flaky
+TestModelConfigParsesConstantsOverridesAndModuleScopes passes 100 repetitions.
+Source assertion/fixture-byte audits and code/document diff checks pass, excluding
+preserved upstream fixture whitespace. Next: compare original EWD840 error/action
+debugger and simulation production features, then translate each whole source
+method. DAP transport/capabilities, broader theorem/proof/level/instance/export
+metadata, complete native override registration, formatter/trace expressions and
+selected distributed transport remain pending. Full TLC completion remains
+unproven. Independent rpc25519/Greenpack notes stay outside this checker commit.

@@ -120,17 +120,22 @@ func (h *javaDebuggerModel) next() []*tlc.TLCDebuggerFrame {
 	h.awaitStop()
 	return h.frames()
 }
-func (h *javaDebuggerModel) continueFrames() []*tlc.TLCDebuggerFrame {
-	h.debugger.ContinueCommand()
-	select {
-	case <-h.debugger.StoppedEvents():
-		return h.frames()
-	case <-h.done:
-		return nil
-	case <-time.After(30 * time.Second):
-		h.t.Fatal("timed out awaiting debugger continue")
+func (h *javaDebuggerModel) continueFrames(count ...int) []*tlc.TLCDebuggerFrame {
+	n := 1
+	if len(count) > 0 {
+		n = count[0]
 	}
-	return nil
+	for i := 0; i < n; i++ {
+		h.debugger.ContinueCommand()
+		select {
+		case <-h.debugger.StoppedEvents():
+		case <-h.done:
+			return nil
+		case <-time.After(30 * time.Second):
+			h.t.Fatal("timed out awaiting debugger continue")
+		}
+	}
+	return h.frames()
 }
 func (h *javaDebuggerModel) close() {
 	defer func() { tlc.TLCDebuggerFactoryOverride = h.prior }()
@@ -500,4 +505,11 @@ func assertTLCNextStatesFrame(t *testing.T, f *tlc.TLCDebuggerFrame, args ...any
 		}
 		debuggerAssertTrue(t, found)
 	}
+}
+
+func assertTLCInitStatesFrame(t *testing.T, f *tlc.TLCDebuggerFrame, args ...any) {
+	t.Helper()
+	assertTLCFrame(t, f, args[:len(args)-1]...)
+	debuggerAssertTrue(t, f.Init != nil)
+	// Source TODO: expectedSuccessors is unused; no initial-state assertions.
 }

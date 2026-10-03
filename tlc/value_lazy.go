@@ -226,7 +226,7 @@ func (v *LazyValue) String() string {
 func (v *LazyValue) ToString(sb *strings.Builder, offset int, swallow bool) *strings.Builder {
 	defer catchValueFailure(v, nil)
 	if v.Val == nil || v.Val == ValUndef {
-		sb.WriteString("<LAZY " + toContextString(v.Expr) + ">")
+		sb.WriteString("<LAZY " + semanticNodeJavaString(v.Expr) + ">")
 		return sb
 	}
 	return appendValueString(v.Val, sb, offset, swallow)

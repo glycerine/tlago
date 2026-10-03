@@ -214,12 +214,7 @@ func (t *Tool) EvalImpl(expr SemanticNode, c *Context, s0 *TLCStateMut, s1 *TLCS
 	case *PossibleCheckNode:
 		return t.evalPossibleCheckNode(expr)
 	default:
-		if value := SemanticToolObject(expr); value != nil {
-			if v, ok := value.(Value); ok {
-				return v, nil
-			}
-		}
-		return ValUndef, newTLCError(ECGeneral, "attempted to evaluate an expression that cannot be evaluated: %s", SemanticString(expr))
+		return nil, NewTLCDetailedRuntimeException(ECGeneral, "Attempted to evaluate an expression that cannot be evaluated.\n"+semanticNodeJavaString(expr), expr, c)
 	}
 }
 

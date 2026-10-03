@@ -3304,6 +3304,9 @@ func (d *TLCDebugger) MarkInvariantViolatedFrame(tool *Tool, expr SemanticNode, 
 	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if !debugExceptionNotYetHandled(err) {
+		return d
+	}
 	frame := NewTLCActionStackFrame(d.topBaseFrame(), expr, c, tool, predecessor, action, state, err)
 	return d.pushFrameAndMaybeHalt(d.HaltInv, NewDebuggerActionFrame(frame))
 }

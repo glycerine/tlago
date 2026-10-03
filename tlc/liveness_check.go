@@ -586,7 +586,7 @@ func (c *LiveChecker) printSafetyLikeLivenessError(tool *Tool, prefix *LongVec) 
 		mc.mu.Lock()
 		if mc.PrintedLivenessErrorStack {
 			mc.mu.Unlock()
-			return errInvariantViolated
+			return NewInvariantViolatedException()
 		}
 		mc.PrintedLivenessErrorStack = true
 		mc.mu.Unlock()
@@ -621,7 +621,7 @@ func (c *LiveChecker) printSafetyLikeLivenessError(tool *Tool, prefix *LongVec) 
 			tool.CheckPostConditionWithCounterExample(NewCounterExampleFromTrace(trace))
 		}
 	}
-	return errInvariantViolated
+	return NewInvariantViolatedException()
 }
 
 func (c *LiveChecker) reconstructSafetyLikeLivenessPrefix(tool *Tool, prefix *LongVec) ([]*TLCStateInfo, error) {

@@ -137,7 +137,7 @@ func (e *TLAPlusExecutor) Step(mapping *TLAPlusMapping) (any, error) {
 				return nil, err
 			}
 			if !ok {
-				return nil, errInvariantViolated
+				return nil, NewInvariantViolatedException()
 			}
 		}
 		result, err := e.State.ExecCallable()
