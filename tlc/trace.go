@@ -333,46 +333,76 @@ func (t *TLCTrace) GetTrace(state *TLCStateMut) []*TLCStateInfo {
 }
 
 func (t *TLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCStateMut) {
-	trace := t.errorTraceInfo(curState, succState)
-	if len(trace) == 0 {
+	if curState == nil {
 		return
 	}
+	t.printTraceWithPrefix(curState, succState, t.GetTraceAt(curState.UID, false))
+}
+
+// printTraceWithPrefix follows TLCTrace.printTrace(s1, s2, prefix). The printed
+// trace is recovered from s1, including when s2 is incomplete and has no UID.
+// Worker postcondition reconstruction follows a separate source path.
+func (t *TLCTrace) printTraceWithPrefix(curState *TLCStateMut, succState *TLCStateMut, prefix []*TLCStateInfo) {
 	PrintError(ECTLCBehaviorUpToThisPoint)
-	trace = aliasTraceWithTool(t.Tool, trace)
-	for i, info := range trace {
-		previous := javaTracePrintPredecessor(trace, i, curState, succState)
-		PrintInvariantViolationStateTraceState(info, previous, i+1, i == len(trace)-1)
+	if curState.IsInitial() {
+		if succState == nil {
+			PrintInvariantViolationStateTraceState(NewTLCStateInfo(curState))
+		} else {
+			info := t.aliasTraceState(NewTLCStateInfo(curState), succState, prefix)
+			PrintInvariantViolationStateTraceState(info, curState, 1)
+			info = t.stateInfoForTransition(succState, curState)
+			info = t.aliasTraceState(info, succState, prefix)
+			PrintInvariantViolationStateTraceState(info, curState, 2, true)
+		}
+		return
+	}
+
+	var lastState *TLCStateMut
+	idx := 0
+	for idx < len(prefix)-1 {
+		j := idx + 1
+		info := t.aliasTraceState(prefix[idx], prefix[j].State, prefix[:j])
+		PrintInvariantViolationStateTraceState(info, lastState, idx+1)
+		lastState = prefix[idx].State
+		idx++
+	}
+
+	var info *TLCStateInfo
+	if len(prefix) == 0 {
+		info = t.stateInfoForState(curState, nil)
+	} else {
+		previous := prefix[len(prefix)-1]
+		curState.SetPredecessor(previous.State)
+		aliased := t.aliasTraceState(previous, curState, prefix)
+		idx++
+		PrintInvariantViolationStateTraceState(aliased, lastState, idx)
+		info = t.stateInfoForState(curState, previous.State)
+	}
+	successor := succState
+	if successor == nil {
+		lastState = nil
+		successor = info.State
+	}
+	aliased := t.aliasTraceState(info, successor, prefix, info)
+	idx++
+	PrintInvariantViolationStateTraceState(aliased, lastState, idx, succState == nil)
+	if succState != nil {
+		previous := info
+		info = t.stateInfoForTransition(succState, curState)
+		info = t.aliasTraceState(info, succState, prefix, previous, info)
+		idx++
+		PrintInvariantViolationStateTraceState(info, (*TLCStateMut)(nil), idx, true)
 	}
 }
 
-func (t *TLCTrace) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
-	if curState == nil {
-		if succState == nil {
-			return nil
+func (t *TLCTrace) aliasTraceState(info *TLCStateInfo, successor *TLCStateMut, prefix []*TLCStateInfo, suffix ...*TLCStateInfo) *TLCStateInfo {
+	if t.Tool != nil {
+		alias, err := t.Tool.EvalAliasInfoPrefixSuffix(info, successor, prefix, suffix...)
+		if err == nil && alias != nil {
+			return alias
 		}
-		trace := trimTraceState(t.GetTrace(succState), succState)
-		return append(trace, t.stateInfoForTransition(succState, nil))
 	}
-	if succState == nil {
-		if curState.IsInitial() {
-			return []*TLCStateInfo{t.stateInfoForState(curState, nil)}
-		}
-		trace := trimTraceState(t.GetTrace(curState), curState)
-		return append(trace, t.stateInfoForState(curState, lastTraceState(trace)))
-	}
-	if succState.AllAssigned() && succState.WorkerID == TLCStateInitWorkerID {
-		if curState.IsInitial() {
-			return []*TLCStateInfo{
-				t.stateInfoForState(curState, nil),
-				t.stateInfoForTransition(succState, curState),
-			}
-		}
-		trace := trimTraceState(t.GetTrace(curState), curState)
-		trace = append(trace, t.stateInfoForState(curState, lastTraceState(trace)))
-		return append(trace, t.stateInfoForTransition(succState, curState))
-	}
-	trace := trimTraceState(t.GetTrace(succState), succState)
-	return append(trace, t.stateInfoForTransition(succState, curState))
+	return info
 }
 
 func (t *TLCTrace) stateInfoForState(state *TLCStateMut, predecessor *TLCStateMut) *TLCStateInfo {
@@ -414,10 +444,7 @@ func (t *TLCTrace) stateInfoForTransition(state *TLCStateMut, predecessor *TLCSt
 			return info
 		}
 	}
-	info := NewTLCStateInfo(state)
-	fp := state.FingerPrint()
-	info.FP = &fp
-	return info
+	return NewTLCStateInfo(state)
 }
 
 func (t *TLCTrace) GetTraceBetween(from *TLCStateMut, to *TLCStateMut) []*TLCStateInfo {

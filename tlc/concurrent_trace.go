@@ -89,6 +89,17 @@ func (t *ConcurrentTLCTrace) GetLevel() int {
 	return maxLevel
 }
 
+func (t *ConcurrentTLCTrace) PrintTrace(curState *TLCStateMut, succState *TLCStateMut) {
+	if curState == nil {
+		return
+	}
+	var prefix []*TLCStateInfo
+	if !curState.IsInitial() {
+		prefix = t.GetTraceFromState(curState)
+	}
+	t.printTraceWithPrefix(curState, succState, prefix)
+}
+
 func (t *ConcurrentTLCTrace) GetTraceFromState(state *TLCStateMut) []*TLCStateInfo {
 	if state == nil {
 		return nil

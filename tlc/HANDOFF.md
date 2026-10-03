@@ -95,11 +95,23 @@ record assertions compare the first record's parameter prefix, and uncovered
 assertions compare the complete set of zero-count locations. Full normal/race
 checks pass. Run Java originals separately with this JDK; combined direct JUnit
 leaks continuation because its classloader lacks upstream isolation.
-Next: IncompleteNextTest and IncompleteNextMultipleActionsTest, then broader
-checker safety/trace comparisons. Both unchanged Java originals pass. Go matches
-exit status/statistics but currently records no state trace for these models;
-partial states also print <nil> rather than Java's null. Fix those behaviors
-before translating their original assertions. TLCGetNonDeterminismTest
+IncompleteNextTest and IncompleteNextMultipleActionsTest are now translated too,
+with their four byte-identical model/config vectors. Printed checker traces now
+follow TLCTrace.printTrace and ConcurrentTLCTrace.printTrace separately from the
+Worker postcondition path: recover the predecessor prefix, print an initial
+state directly, and recover a partial successor through equality rather than
+fingerprinting it. Source ALIAS prefix/suffix arguments and final/diff-state
+printing are preserved. State variable values use Values.ppr, including null
+for unassigned variables. Both models match Java's trace, action labels,
+diagnostics, state counts and complete uncovered-location sets. Full normal
+and race checks pass.
+Next: original EvalExceptionTest (DistBakery), then broader checker safety/trace
+comparisons. A preliminary production probe reaches only 3 states instead of
+24 and fails while evaluating ENABLED at line 119 (the vars tuple is
+being treated as a Boolean), before Java's intended <= argument failure.
+Variable order and normalized record keys in the trace also differ. Resolve
+those source gaps before translating its six-state trace and nested-stack
+assertions. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
 bridge parity work; the represented declaration-order slice does not establish

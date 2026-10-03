@@ -1872,35 +1872,11 @@ func (mc *ModelChecker) checkPostConditionWithErrorTrace(curState *TLCStateMut, 
 }
 
 func (mc *ModelChecker) printBehaviorTrace(curState *TLCStateMut, succState *TLCStateMut) {
-	trace := mc.errorTraceInfo(curState, succState)
-	if len(trace) == 0 {
-		return
+	if mc.ConcurrentTrace != nil {
+		mc.ConcurrentTrace.PrintTrace(curState, succState)
+	} else if mc.Trace != nil {
+		mc.Trace.PrintTrace(curState, succState)
 	}
-	PrintError(ECTLCBehaviorUpToThisPoint)
-	trace = mc.aliasErrorTrace(trace)
-	for i, info := range trace {
-		previous := javaTracePrintPredecessor(trace, i, curState, succState)
-		PrintInvariantViolationStateTraceState(info, previous, i+1, i == len(trace)-1)
-	}
-}
-
-func javaTracePrintPredecessor(trace []*TLCStateInfo, index int, curState *TLCStateMut, succState *TLCStateMut) *TLCStateMut {
-	if index < 0 || index >= len(trace) {
-		return nil
-	}
-	if curState != nil && curState.IsInitial() {
-		if succState != nil {
-			return curState
-		}
-		return nil
-	}
-	if index == len(trace)-1 {
-		return nil
-	}
-	if index > 0 && trace[index-1] != nil {
-		return trace[index-1].OriginalState()
-	}
-	return nil
 }
 
 func (mc *ModelChecker) errorTraceInfo(curState *TLCStateMut, succState *TLCStateMut) []*TLCStateInfo {
@@ -2025,13 +2001,6 @@ func (mc *ModelChecker) traceInfoPrefix(state *TLCStateMut) []*TLCStateInfo {
 		return trimTraceState(mc.Trace.GetTrace(state), state)
 	}
 	return trimTraceState(NewTLCTrace().GetTrace(state), state)
-}
-
-func (mc *ModelChecker) aliasErrorTrace(trace []*TLCStateInfo) []*TLCStateInfo {
-	if mc == nil {
-		return trace
-	}
-	return aliasTraceWithTool(mc.Tool, trace)
 }
 
 func aliasTraceWithTool(tool *Tool, trace []*TLCStateInfo) []*TLCStateInfo {

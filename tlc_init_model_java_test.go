@@ -159,7 +159,7 @@ func TestJavaDoInitFunctorEvalException(t *testing.T) {
 	requireJavaTLCUncovered(t, result, "line 9, col 9 to line 9, col 14 of module DoInitFunctorEvalException")
 }
 
-func requireJavaTLCUncovered(t *testing.T, result *tlc.Result, location string) {
+func requireJavaTLCUncovered(t *testing.T, result *tlc.Result, locations ...string) {
 	t.Helper()
 	uncovered := map[string]bool{}
 	for _, m := range javaTLCRecords(result, tlc.ECTLCCoverageValue) {
@@ -167,7 +167,10 @@ func requireJavaTLCUncovered(t *testing.T, result *tlc.Result, location string) 
 			uncovered[strings.TrimSpace(strings.ReplaceAll(m.Params[0], "|", ""))] = true
 		}
 	}
-	want := map[string]bool{location: true}
+	want := map[string]bool{}
+	for _, location := range locations {
+		want[location] = true
+	}
 	if !reflect.DeepEqual(uncovered, want) {
 		t.Fatalf("uncovered=%v, want %v", uncovered, want)
 	}

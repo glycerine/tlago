@@ -637,7 +637,7 @@ func (s *TLCStateMut) StringForVariables(last *TLCStateMut, vars ...*UniqueStrin
 		if last == nil || !stateValuesEqual(last.Lookup(key), value) {
 			b.WriteString(key.String())
 			b.WriteString(" = ")
-			b.WriteString(valueString(value))
+			b.WriteString(ValuesPPR(value))
 			b.WriteString("\n")
 		}
 		return b.String()
@@ -651,7 +651,7 @@ func (s *TLCStateMut) StringForVariables(last *TLCStateMut, vars ...*UniqueStrin
 		b.WriteString("/\\ ")
 		b.WriteString(key.String())
 		b.WriteString(" = ")
-		b.WriteString(valueString(value))
+		b.WriteString(ValuesPPR(value))
 		b.WriteString("\n")
 	}
 	return b.String()
