@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **105 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (16.8%).**
-- **241 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (19.0%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **1,028 logical method contexts across 521 classes remain to port or reconcile.** 2 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **106 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (16.9%).**
+- **254 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (20.0%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **1,015 logical method contexts across 520 classes remain to port or reconcile.** 2 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -38,10 +38,10 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
 | Queues and pool writers | 2 | 1 | 11 | 9 | 2 |
-| Values, lazy functions, enumeration, and value streams | 17 | 5 | 189 | 19 | 170 |
+| Values, lazy functions, enumeration, and value streams | 17 | 6 | 189 | 32 | 157 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 5 | 91 | 16 | 75 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **105** | **1,269** | **241** | **1,028** |
+| **Total** | **626** | **106** | **1,269** | **254** | **1,015** |
 
 ## Porting rules and proposed order
 
@@ -621,8 +621,9 @@ Original primitive/composite value, normalization, comparison, EXCEPT, serializa
   Go translation: [tlc/value_enumerable_java_test.go](value_enumerable_java_test.go); complete seeded size sweep 1 through 10,656.
 - [ ] [tlc2/value/impl/FcnLambdaValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/FcnLambdaValueTest.java) — **Reconcile**: `testEmptyIntervalDomainToTuple`, `testToString`, `testToFcnRcd`, `testSelectAndApply`, `testTakeExceptOverridesValue`, `testDomainIsStableAcrossConversion`, `testToFcnRcdReturnsCachedInstance`, `testToRcdForIntervalDomainIsNull`, `testToRcdForStringDomain`, `testFingerprintStableAcrossConversion`, `testTakeExceptThenConvertToFcnRcd`, `testToFcnRcdAssertFail`, `testToFcnRcdClassCastException`, `testToFcnRcdSilentCorruption`, `testToFcnRcdSilentCorruptionFP`, `testToTupleWithExceptIntervalDomain`, `testToTupleWithExceptSetEnumDomain`, `testToTupleWithExceptFP`.
   Related Go checks: [tlc/value_lambda_test.go](value_lambda_test.go).
-- [ ] [tlc2/value/impl/FcnRcdValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/FcnRcdValueTest.java) — **Reconcile**: `testSelecEmpty`, `testSelecNormalizedEmpty`, `testEmptyIntervalDomainToTuple`, `testSelect`, `testSelectNormalized`, `testSelectLinearSearchTypedMV`, `testSelectBinarySearchTypedMV`, `testMalformedExplicitFcnEqualsIntervalDoesNotWrap`, `testMalformedIntervalFcnSelectDoesNotWrap`, `testMalformedIntervalFcnExceptDoesNotWrap`, `testEmptyIntervalFcnCompareToAgreesWithEquals`, `testEmptyIntervalFcnVsEmptyTupleCompareTo`, `testEmptyIntervalFcnsNormalize`.
-  Related Go checks: [tlc/value_function_test.go](value_function_test.go).
+- [x] [tlc2/value/impl/FcnRcdValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/FcnRcdValueTest.java) — **Port complete**: `testSelecEmpty`, `testSelecNormalizedEmpty`, `testEmptyIntervalDomainToTuple`, `testSelect`, `testSelectNormalized`, `testSelectLinearSearchTypedMV`, `testSelectBinarySearchTypedMV`, `testMalformedExplicitFcnEqualsIntervalDoesNotWrap`, `testMalformedIntervalFcnSelectDoesNotWrap`, `testMalformedIntervalFcnExceptDoesNotWrap`, `testEmptyIntervalFcnCompareToAgreesWithEquals`, `testEmptyIntervalFcnVsEmptyTupleCompareTo`, `testEmptyIntervalFcnsNormalize`.
+  Go translation: [tlc/value_function_test.go](value_function_test.go).
+  Preserves the full -64..63 domain / -128..127 selection matrix and exact typed-model-value exception messages; production binary search now follows Arrays.binarySearch.
 - [x] [tlc2/value/impl/InitializeValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/InitializeValueTest.java) — **Port complete**: `union`, `setcap`, `setcup`, `setdiff`, `subset`, `record`, `fcnrecord`, `tuple`, `setOfTuple`, `setOfRcds`.
   Go translation: [tlc/value_initialize_test.go](value_initialize_test.go).
 - [ ] [tlc2/value/impl/IntervalValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/IntervalValueTest.java) — **Reconcile**: `testElementAt`, `testElementAtOutOfBoundsNegative`, `testElementAtOutOfBoundsSize`, `sizeOverflow`, `compareToOverflow1`, `testCompareExtremeIntervals`, `testEmptyIntervalEquality`, `testCompareEmptyIntervals`, `testSizeOfMaximumRepresentableInterval`, `testExtremeIntervalSize`, `testMaxIntSingletonEnumerator`, `testMaxIntSingletonSubsetEq`, `testMaxIntSingletonFingerprint`, `testMaxIntSingletonDiffCapCup`.
@@ -994,6 +995,7 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/util/MemIntStackTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/MemIntStackTest.java) | `testPeak` | [tlc/int_stack_test.go](int_stack_test.go) |
 | [tlc2/util/SynchronousDiskIntStackTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/SynchronousDiskIntStackTest.java) | `testPushIntNoWrite`, `testPushIntWrite` | [tlc/int_stack_test.go](int_stack_test.go) |
 | [tlc2/value/impl/EnumerableValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/EnumerableValueTest.java) | `test` | [tlc/value_enumerable_java_test.go](value_enumerable_java_test.go) |
+| [tlc2/value/impl/FcnRcdValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/FcnRcdValueTest.java) | `testSelecEmpty`, `testSelecNormalizedEmpty`, `testEmptyIntervalDomainToTuple`, `testSelect`, `testSelectNormalized`, `testSelectLinearSearchTypedMV`, `testSelectBinarySearchTypedMV`, `testMalformedExplicitFcnEqualsIntervalDoesNotWrap`, `testMalformedIntervalFcnSelectDoesNotWrap`, `testMalformedIntervalFcnExceptDoesNotWrap`, `testEmptyIntervalFcnCompareToAgreesWithEquals`, `testEmptyIntervalFcnVsEmptyTupleCompareTo`, `testEmptyIntervalFcnsNormalize` | [tlc/value_function_test.go](value_function_test.go) |
 | [tlc2/value/impl/InitializeValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/InitializeValueTest.java) | `union`, `setcap`, `setcup`, `setdiff`, `subset`, `record`, `fcnrecord`, `tuple`, `setOfTuple`, `setOfRcds` | [tlc/value_initialize_test.go](value_initialize_test.go) |
 | [tlc2/value/impl/RecordValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/RecordValueTest.java) | `testDeepCopy`, `testErrorMessages` | [tlc/value_record_test.go](value_record_test.go) |
 | [tlc2/value/impl/SetOfTuplesValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SetOfTuplesValueTest.java) | `testToStringLazy`, `testEmptyNonEnumerableComponent`, `testRandomSubsetEmptyNonEnumerableComponent`, `testRandomSubsetBeyondSetBound`, `testRandomSubsetBeyondIntMaxValue` | [tlc/value_tuple_product_java_test.go](value_tuple_product_java_test.go) + [tlc/value_setconstructors_test.go](value_setconstructors_test.go) |

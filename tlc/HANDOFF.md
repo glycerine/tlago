@@ -958,3 +958,27 @@ DiskPoolWriterTest wait-state/join requirements when taking up that feature.
 Full TLC normal checks for the queue/enumeration snapshot pass (1.749s); retire
 handle 21325. Baseline and first batch full workspace normal results remain green;
 this continuation changes original-test translations and documentation only.
+
+
+FcnRcdValueTest is now port complete: all thirteen original methods, complete
+selection matrices and exact typed-model-value exception messages. Its binary
+search case exposed a production shortcut (Go lower_bound versus Java
+Arrays.binarySearch); Select now follows Java's inclusive high bound, immediate
+compare==0 return and subsequent equality check. Preserve the unchanged A_Z
+exception expectation. Original current Java production class plus original
+JUnit tests pass (13 methods, 0.303s); Go translations pass (2.344s); full TLC
+-race passes (26.815s). Retire handles 43177, 49416, 96528. Full normal workspace
+checks passed (314.927s root, 1.068s SANY, 3.594s TLC),
+correctness-java/fcn-record-full-normal.log; retire handle 37843. This coherent
+slice is ready to commit. Inventory now 254/1269 mapped methods (20.0%), 106/626
+complete classes (16.9%), 1015 pending methods across 520 classes.
+Next value-stream reconciliation must preserve real files, close/reopen and
+23/26-byte gzip file-size assertions; current byte-buffer approximations omit
+those source assertions. Do not weaken them. Remaining direct value/module tests
+and model regressions remain in scope; five user-deferred topics stay skipped.
+
+IntervalValueTest follow-up: original elementAt (three methods) has no Go
+production method yet. Port its short-circuit 0 <= idx && idx < size() check,
+IntValue.gen(low+idx) and exact Assert.fail message/source before the tests.
+The remaining interval methods also need original overflow exception family/text,
+comparison extremes, both post-reset enumerator assertions and Diff/Cap/Cup sizes.

@@ -1998,3 +1998,22 @@ Retire live handles 39012, 66448 and 95532. All user-deferred topics remain skip
 Full TLC normal checks for the queue/enumeration snapshot pass (1.749s); retire
 handle 21325. Baseline and first batch full workspace normal results remain green;
 this continuation changes original-test translations and documentation only.
+
+
+- Completed the thirteen original FcnRcdValueTest methods in value_function_test.go,
+replacing reduced selection examples with both full original matrices (upper
+-64..63, lower -64..upper-1, arguments -128..127). Retained all original malformed
+interval, empty tuple/function, symmetric comparison and normalization assertions,
+including both typed-model-value methods and exact TLCRuntimeException messages.
+The binary-search test failed with A_a instead of Java's A_Z. Production Select
+used a lower-bound search with an exclusive upper bound; Java uses
+Arrays.binarySearch, an inclusive upper bound and immediate return on compare==0
+before its equality check. Ported those exact search steps; kept test messages
+unchanged. Java current FcnRcdValue.java and unchanged original test compile and
+JUnit -ea passes all thirteen (0.303s). Go complete methods pass (2.344s), and
+full TLC -race passes (26.815s); retire handles 43177, 49416 and 96528.
+Full workspace normal checks passed (314.927s root, 1.068s SANY, 3.594s TLC),
+correctness-java/fcn-record-full-normal.log; retire handle 37843.
+Inventory reconciles 254/1269 mapped methods (20.0%), 106/626 complete classes
+(16.9%), 1015 pending method contexts across 520 classes. All original source
+assertions remain; no invented cases. Deferred user topics remain deferred.

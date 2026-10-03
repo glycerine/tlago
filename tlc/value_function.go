@@ -1085,8 +1085,11 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 		return nil, nil
 	}
 	if v.IsNorm && len(v.Domain) >= fcnRcdLinearSearchThreshold() {
-		low, high := 0, len(v.Domain)
-		for low < high {
+		// Arrays.binarySearch uses an inclusive upper bound and returns at the
+		// first equal comparison. The visited values also determine which typed
+		// model-value comparison reports an error.
+		low, high := 0, len(v.Domain)-1
+		for low <= high {
 			mid := (low + high) >> 1
 			cmp, err := v.Domain[mid].Compare(arg)
 			if err != nil {
@@ -1094,16 +1097,15 @@ func (v *FcnRcdValue) Select(arg Value) (resultValue Value, err error) {
 			}
 			if cmp < 0 {
 				low = mid + 1
+			} else if cmp > 0 {
+				high = mid - 1
 			} else {
-				high = mid
+				eq, err := v.Domain[mid].Equal(arg)
+				if err != nil || !eq {
+					return nil, err
+				}
+				return v.Values[mid], nil
 			}
-		}
-		if low >= 0 && low < len(v.Domain) {
-			eq, err := v.Domain[low].Equal(arg)
-			if err != nil || !eq {
-				return nil, err
-			}
-			return v.Values[low], nil
 		}
 		return nil, nil
 	}
