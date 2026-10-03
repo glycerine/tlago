@@ -39,6 +39,11 @@ import (
 
 func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Result {
 	t.Helper()
+	return runJavaTLCModelTestWithCoverage(t, name, true, extraArgs...)
+}
+
+func runJavaTLCModelTestWithCoverage(t *testing.T, name string, coverage bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
@@ -58,7 +63,11 @@ func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Re
 	}
 	tlc.SetFilenameUserDirectory(&directory)
 	meta := t.TempDir()
-	args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-dump", "dot", filepath.Join(meta, name+".dot"), "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-coverage", "1", "-workers", "1", "-checkpoint", "0"}
+	args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-dump", "dot", filepath.Join(meta, name+".dot"), "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0"}
+	tlc.Globals.CoverageInterval = -1
+	if coverage {
+		args = append(args, "-coverage", "1")
+	}
 	args = append(args, extraArgs...)
 	args = append(args, name)
 	opts, err := tlc.ParseTLCOptions(args)
@@ -67,6 +76,11 @@ func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Re
 	}
 	opts.FPSetConfiguration = tlc.NewFPSetConfigurationWithRatioAndImplementation(1, "tlc2.tool.fp.MSBDiskFPSet")
 	opts.FPSetConfiguration.SetMemory(1 << 20)
+	// ModelCheckerTestCase installs its recorder before tool construction, so
+	// retain configuration diagnostics as well as messages from TLC.process.
+	recorder := &tlc.MemoryRecorder{}
+	tlc.AddMessageRecorder(recorder)
+	defer tlc.RemoveMessageRecorder(recorder)
 	tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, nil, opts.RuntimeParams)
 	requireNoErrors(t, diags)
 	if err != nil {
@@ -77,6 +91,7 @@ func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Re
 	if result == nil {
 		t.Fatal("TLC result is nil")
 	}
+	result.Messages = append([]tlc.Message(nil), recorder.Messages...)
 	return result
 }
 

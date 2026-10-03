@@ -1425,7 +1425,12 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 	if source == nil {
 		return nil
 	}
-	b.define(source.Symbol, source)
+	// SANY instances reuse their source definition, whose native override may
+	// already be installed. Register an otherwise hidden source without replacing
+	// that override with the TLA+ placeholder body.
+	if b.tool.Lookup(source.Symbol, nil, nil, false) == nil {
+		b.define(source.Symbol, source)
+	}
 	params := make([]*tlc.SymbolNode, 0, len(inst.Params)+len(source.Params))
 	if binding.params == nil {
 		binding.params = make([]*tlc.SymbolNode, len(inst.Params))

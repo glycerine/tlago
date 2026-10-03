@@ -53,8 +53,14 @@ and native aliases share their source symbol/body identities, so module-scoped
 overrides reach their references. LET definitions keep scoped identities and
 SANY Context graph order. Config identifiers may start with digits, and square/
 angle action evaluation short-circuits as Java does. Full normal/race checks pass.
-Next: resume broader checker comparisons, starting with ConstLevelInvariantTest
-and its constant-level diagnostic, then existing safety/trace model tests. Original model bytes, including
+ConstLevelInvariantTest, PostConditionsTest, PostConditionsFailTest and
+ConstantOperatorConfigurationTest are now translated too. Instance conversion
+preserves installed native source overrides rather than replacing them with
+placeholder definitions. AbstractChecker exposes the source getAllValue indexed
+worker collection. The model harness records configuration-time diagnostics and
+supports the source coverage-disabled setting. Read the progress tail for checks.
+Next: PossibleCountsTest and the remaining original TLCGet/TLCSet model tests,
+then broader checker safety/trace comparisons. Original model bytes, including
 upstream whitespace, are intentionally retained in test_vectors/.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.

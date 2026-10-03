@@ -152,6 +152,16 @@ func (c *AbstractChecker) SetWorkerValues(idx int, values []Value) {
 	}
 }
 
+func (c *AbstractChecker) GetAllValue(idx int) []Value {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	values := make([]Value, len(c.Workers))
+	for i, worker := range c.Workers {
+		values[i] = worker.GetLocalValue(idx)
+	}
+	return values
+}
+
 func (c *AbstractChecker) GetAllValues() Value {
 	if c == nil || len(c.Workers) == 0 || c.Workers[0] == nil {
 		return EmptyFcn
