@@ -2602,8 +2602,9 @@ Go mapping:
   environment values preserve Java's StringValue-subclass behavior.
   TXT uses Java's strict Files.writeString/readString codec paths, including
   optimized UTF-8 malformed-length reporting, Latin-1/ASCII unmappable failures,
-  UTF-16 surrogate/BOM behavior and empty-output BOM suppression. JSON's stream
-  writer uses replacement encoding instead. Core codecs operate on preserved
+  UTF-16 surrogate/BOM behavior and empty-output BOM suppression. Ordinary
+  OutputStreamWriter/FileWriter constructors use replacement; Files.newBufferedWriter
+  in core Json.textSerialize uses a REPORT encoder. Core codecs operate on preserved
   UTF-16 units and recognize the six guaranteed charsets with actual JDK aliases;
   extended/provider charsets remain pending. Coding exceptions retain their
   IOException family and source class/message; illegal/unsupported charset names
@@ -2636,8 +2637,21 @@ Go mapping:
   Files writes complete 8192-byte chunks; close failure is reported if no earlier
   error exists. Reads retain the int-array size Error before allocating content.
   Native filename charset discovery, other filesystem providers, memory-exhaustion
-  allocation behavior and public convenience/NDJSON stream boundaries remain
-  source work.
+  allocation behavior and other public convenience I/O boundaries remain source work.
+  Core Json.textSerialize evaluates options, converts its record and checks format,
+  then evaluates/converts payload once, then destination. Open-option tuple and
+  charset casts precede element casts outside the try; path/charset/enum/flag/open,
+  node conversion, writing and close lie inside catch(Exception), retaining Error.
+  Its writer mirrors platform-thread BufferedWriter's 8192 UTF-16-unit buffer and
+  StreamEncoder's separate 8192-byte buffer with REPORT coding exceptions. Close
+  flushes and closes even after failure; later close failures are suppressed on
+  the primary failure, recursively, before the outer RuntimeException cause is
+  constructed. Throwable rendering prints suppressed failures before the cause.
+  Gson string escaping keeps raw UTF-16 units and does not apply HTML escaping;
+  unsupported nodes retain the source IOException class/message. Record apply
+  returns a present null component directly. Ordinary JSON FileWriter/reader
+  boundaries, default charsets, Gson parser leniency and Java static monitor
+  coordination remain distinct source requirements.
   Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw

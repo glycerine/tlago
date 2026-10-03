@@ -476,6 +476,9 @@ func standardJsonTextSerialize(tool *Tool, args []SemanticNode, con *Context, st
 	if err != nil {
 		return nil, err
 	}
+	if options == nil {
+		return nil, NewNullPointerException()
+	}
 	opts := asRecordValue(options)
 	if opts == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "ndJsonSerialize", "sequence", ValuesPPR(options))
@@ -491,18 +494,25 @@ func standardJsonTextSerialize(tool *Tool, args []SemanticNode, con *Context, st
 	if err != nil {
 		return nil, err
 	}
-	if asTupleValue(payload) == nil {
+	if payload == nil {
+		return nil, NewNullPointerException()
+	}
+	tuple := asTupleValue(payload)
+	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Serialize", "sequence", ValuesPPR(payload))
 	}
 	dest, err := tool.Eval(args[1], con, state, pstate, control, cm)
 	if err != nil {
 		return nil, err
 	}
+	if dest == nil {
+		return nil, NewNullPointerException()
+	}
 	path, castError := ioUtilsTXTString(dest)
 	if castError != nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(dest))
 	}
-	return JsonTextSerialize(path, payload, options)
+	return jsonTextSerializeTuple(path, tuple, opts)
 }
 
 func standardIOUtilsTextSerialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

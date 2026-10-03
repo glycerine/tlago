@@ -669,17 +669,21 @@ func (v *RecordValue) Size() (resultInt int, err error) {
 
 func (v *RecordValue) Apply(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
-	out, err := v.Select(arg)
-	if err != nil {
-		return nil, err
+	if arg == nil {
+		return nil, NewNullPointerException()
 	}
-	if out == nil {
-		if sv, ok := arg.(*StringValue); ok {
-			return nil, v.unsupported("Attempted to access nonexistent field '%s' of record\n%s", sv.Val, ValuesPPR(v))
+	if debugger, ok := arg.(*DebuggerValue); ok {
+		arg = debugger.StringValue
+	}
+	if sv, ok := arg.(*StringValue); ok {
+		for i, name := range v.Names {
+			if sv.Val.Equal(name) {
+				return v.Values[i], nil
+			}
 		}
-		return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
+		return nil, v.unsupported("Attempted to access nonexistent field '%s' of record\n%s", sv.Val, ValuesPPR(v))
 	}
-	return out, nil
+	return nil, v.unsupported("Attempted to access record by a non-string argument: %s", ValuesPPR(arg))
 }
 
 func (v *RecordValue) Select(arg Value) (resultValue Value, err error) {

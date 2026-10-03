@@ -614,9 +614,10 @@ expensive. Continue broader semantic/native registration and core I/O fidelity
 work after verification; no reduced Community runner/config is needed.
 Core TXT charset fidelity now follows OpenJDK's actual Files.writeString/
 readString paths for the six guaranteed charsets and their JDK aliases. TXT
-rejects malformed/unmappable input before opening a write destination; JSON's
-OutputStreamWriter path retains replacement instead. UTF-16 empty output has
-no BOM, and strict UTF-8 error lengths follow String's optimized file path.
+rejects malformed/unmappable input before opening a write destination. Ordinary
+OutputStreamWriter/FileWriter constructors retain replacement; Json.textSerialize
+uses Files.newBufferedWriter's REPORT encoder, as recorded below. UTF-16 empty
+output has no BOM, and strict UTF-8 error lengths follow String's optimized file path.
 Typed coding/charset exceptions retain Java class names, length messages and
 IOException catch classification. Read charset validation precedes file access;
 NUL paths precede charset validation. Both 1,234,164-record production comparisons
@@ -641,8 +642,9 @@ priority chain retains its source primary reflected method signature while
 executing JSON 25 before TXT 50. All 165 direct source calls and 87 full-chain
 calls match normally and under -race; the real parser bridge already retains
 unknown-format TLA fallback. Final workspace normal checks and three platform
-builds pass. The new full race run is live (handle 25120, core-txt-full-race-final.log);
-the earlier charset full race run has completed successfully. Linux TXT filesystem
+builds pass. The TXT full race run completed successfully (2577.919s root,
+snapshot 183fd47); retire handle 25120. It predates the Linux filesystem and
+current JSON slices. Linux TXT filesystem
 boundaries now preserve normalized separators without resolving dot/parent
 components, empty syscall paths, strict UTF-8 native path encoding and NIO error
 families. DELETE_ON_CLOSE unlinks immediately and refuses final symlinks; ignored
@@ -655,6 +657,25 @@ and three sparse-file/charset calls; bounded TXT and sparse calls match under
 convenience boundaries, native/default charset discovery and other filesystem
 providers. No new persistent tests/vectors were added; the original whole Ant
 suite and TXT round-trip assumptions remain unchanged. See the progress tail.
+Core Json.textSerialize now retains the actual Files.newBufferedWriter path:
+REPORT encoding, separate 8192 UTF-16-character/8192-byte buffers, opening before
+node conversion, partial output, close-error suppression and RuntimeException
+wrapping only inside the source try. Options and payload conversions occur once
+before destination evaluation. Required casts stay outside the catch. Gson string
+escaping preserves UTF-16 units and accepts the represented StringValue subclass;
+RecordValue.apply returns a present null component instead of treating it as absent.
+All 932 actual-source observations match normally and under -race, including
+56 suppressed-failure cases and normalized stack headings; all 65,536 single-unit
+JSON strings match Java. VM helpful-null text and real Java stack frames are not
+claimed. The complete original core JsonTest is now translated after the feature,
+with its byte-identical JsonTests.tla under test_vectors/ and private output cwd.
+Actual unchanged source JUnit and translated normal/race runs pass. This does not
+establish ordinary JSON FileWriter/reader/default-charset, parser leniency,
+provider charset or static-monitor parity; those remain source work. The final
+full workspace normal run passed (313.379s root), core-json-full-normal-final.log.
+The full race run remains live at handle 6743, core-json-full-race-final.log.
+Reuse that handle; do not start a replacement for an observation timeout. Read
+the progress tail for final status.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

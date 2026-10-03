@@ -834,6 +834,12 @@ func valueStreamArrayLength(length int32) int {
 }
 
 func valueStreamClassCast(value any, target string) *ClassCastException {
+	class := javaValueClassName(value)
+	return NewClassCastException("class " + class + " cannot be cast to class " + target +
+		" (" + class + " and " + target + " are in unnamed module of loader 'app')")
+}
+
+func javaValueClassName(value any) string {
 	var class string
 	switch value.(type) {
 	case *UniqueString:
@@ -851,6 +857,5 @@ func valueStreamClassCast(value any, target string) *ClassCastException {
 		// Objects not represented by this port retain their Go type name.
 		class = fmt.Sprintf("%T", value)
 	}
-	return NewClassCastException("class " + class + " cannot be cast to class " + target +
-		" (" + class + " and " + target + " are in unnamed module of loader 'app')")
+	return class
 }

@@ -1761,3 +1761,82 @@ public convenience APIs, NDJSON stream boundaries and other filesystem providers
 remain. Broader metadata, native discovery, DAP and distributed transport remain.
 Full TLC completion is unproven. Independent rpc25519/Greenpack docs remain
 outside this slice.
+
+
+- Core Json.textSerialize NDJSON stream slice: authoritative source is core
+src/tlc2/module/Json.java, whose evaluating override is absent from Community
+Json.java. Earlier general claims that JSON stream writing always replaces
+malformed input are superseded: Files.newBufferedWriter supplies a CharsetEncoder
+with REPORT actions. Ordinary OutputStreamWriter/FileWriter constructors still
+replace. String's optimized strict Files codec and the REPORT encoder differ:
+UTF-8 unmatched surrogates are malformed here, and Latin-1 supplementary pairs
+report unmappable length two. Existing exhaustive String-codec observations remain
+valid for their separate methods.
+
+The evaluating callback retains options/format, payload conversion and destination
+order. Converted record/tuple objects are retained once rather than reconverting
+after destination evaluation. Required tuple/string/element casts remain outside
+the source catch; native null dereferences retain their exception families, without
+manufacturing VM helpful detail text. RecordValue.apply now returns a present
+null field directly, mirrors the single source catch and accepts the represented
+StringValue subclass. Missing fields retain their existing failure.
+
+The actual Linux stream opens before JSON node conversion and encoding, reusing
+the prior source-derived path/open-option/delete behavior. BufferedWriter retains
+8192 UTF-16 units, while StreamEncoder separately retains 8192 bytes, REPORT
+surrogate/unmappable errors, UTF-16 BOM state and leftover surrogate state.
+Source buffer flip/clear order survives failed writes; partial file content is
+retained. Close flushes character/byte buffers and closes the file despite errors;
+primary failures retain suppressed close failures, including nested suppression,
+and Json wraps caught Exception as RuntimeException(cause). Error stays outside
+that catch. Source JDK 21 bytecode was inspected for the platform-thread buffer
+and close paths; virtual-thread-specific buffer sizing is not represented here.
+Throwable suppression uses shared synchronized storage and stack rendering places
+suppressed failures before causes, preserving indent/order. This is the internal
+resource-close path, not a claim of the complete public Java Throwable API.
+
+Gson JsonElement string rendering now uses its actual non-HTML-safe escaping:
+control escapes, U+2028/U+2029 escapes, and unchanged remaining UTF-16 units,
+including unmatched surrogates until stream encoding. The represented debugger
+StringValue subclass follows the string branch. Unsupported values retain
+IOException with the Java class name; null retains NullPointerException.
+
+Owned .codex-gotmp/core-json-production/ observers call unchanged compiled core
+Json.java through the actual Java Tool and production-loaded Go parser/bridge Tool.
+All 932 bounded calls match returned values, evaluation order, UTF-16 exception
+messages, causes, recursive suppressed-failure trees, normalized stack headings,
+partial file bytes and symlink state normally and under -race. Fifty-six cases
+contain suppressed failures. Six guaranteed charsets, malformed/unmappable input,
+character/byte buffer edges, native file failures and option/cast boundaries are
+represented. All 65,536 single UTF-16-unit actual Json.toJson strings match exactly.
+Stack comparison excludes runtime frames/common-frame counts, since Go frames
+represent this port; VM helpful-null messages are disabled for these observations.
+A temporary observer factory initially randomized record fields; both factories
+now construct the same deterministic field order, without altering production.
+No owned probes were promoted to persistent tests/vectors.
+
+After implementation, the complete original core JsonTest.test is translated in
+tlc_json_java_test.go, including all four recorder assertions and the inherited
+successful-exit check. Its entire JsonTests.tla (embedded config and all original
+ASSUMEs) is byte-identical to upstream and frozen under tlc/test_vectors/models/.
+A forked test executable/private cwd preserves classloader/static isolation and
+contains target/json file output. The unchanged actual source JUnit test plus
+source parent harness passes OK (1 test), with freshly compiled core Json first
+on its classpath. The final translated normal/race test passes (0.101s/2.418s root),
+and TLC race checks pass (3.657s); three platform builds (Windows/amd64, Darwin/arm64, FreeBSD/amd64) pass.
+Logs use core-json-* under .codex-gotmp/; actual-source artifacts are under
+core-json-production/. Final full workspace normal checks pass (313.379s root),
+core-json-full-normal-final.log, including the unchanged complete CommunityModules
+Ant translation. The full race run is live at handle 6743,
+core-json-full-race-final.log. Reuse that live handle instead of restarting on
+timeout. The prior full race handle 25120
+completed successfully, root 2577.919s, snapshot 183fd47 before the filesystem and
+JSON slices; retire it. Removing only old regular disposable Go cache files
+restored disk space; source and tracked fixtures were preserved.
+
+Remaining JSON work includes ordinary FileWriter/reader/default-charset paths,
+Gson parser leniency and synchronized static-method coordination. Extended
+provider/native/default charsets, other filesystem providers and allocation/heap
+exhaustion remain. Broader semantic metadata, native discovery, DAP and distributed
+transport remain. Full TLC completion is unproven. Independent rpc25519/Greenpack
+documentation remains outside this slice.

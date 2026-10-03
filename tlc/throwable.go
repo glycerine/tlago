@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 // Throwable detail messages are nullable in Java. Go's error string remains a
@@ -228,7 +229,13 @@ func javaBasicThrowableString(err error) string {
 // Runtime frames are captured when the ported exception is constructed, like
 // Throwable.fillInStackTrace. Frame names and files describe the Go port.
 type throwableTrace struct {
-	pcs []uintptr
+	pcs         []uintptr
+	suppression *throwableSuppression
+}
+
+type throwableSuppression struct {
+	mu     sync.Mutex
+	errors []error
 }
 
 func captureThrowableTrace() throwableTrace {
@@ -236,13 +243,39 @@ func captureThrowableTrace() throwableTrace {
 	for {
 		n := runtime.Callers(2, pcs)
 		if n < len(pcs) {
-			return throwableTrace{pcs: pcs[:n]}
+			return throwableTrace{pcs: pcs[:n], suppression: &throwableSuppression{}}
 		}
 		pcs = make([]uintptr, len(pcs)*2)
 	}
 }
 
 func (trace throwableTrace) throwablePCs() []uintptr { return trace.pcs }
+
+func (trace throwableTrace) GetSuppressed() []error {
+	if trace.suppression == nil {
+		return []error{}
+	}
+	trace.suppression.mu.Lock()
+	defer trace.suppression.mu.Unlock()
+	return append([]error{}, trace.suppression.errors...)
+}
+
+func (trace throwableTrace) addSuppressedError(err error) {
+	if trace.suppression != nil {
+		trace.suppression.mu.Lock()
+		defer trace.suppression.mu.Unlock()
+		trace.suppression.errors = append(trace.suppression.errors, err)
+	}
+}
+
+// Used by source try-with-resources paths after both operations have failed.
+func javaSuppressCloseError(primary, secondary error) {
+	if primary != nil && secondary != nil {
+		if throwable, ok := primary.(interface{ addSuppressedError(error) }); ok {
+			throwable.addSuppressedError(secondary)
+		}
+	}
+}
 
 func javaThrowableCause(err error) error {
 	if failure, ok := err.(*FingerprintException); ok {
@@ -262,19 +295,16 @@ func javaThrowableCause(err error) error {
 func javaThrowableStackTrace(err error) string {
 	var output strings.Builder
 	var seen []error
-	var write func(error, []uintptr, bool)
-	write = func(failure error, enclosing []uintptr, cause bool) {
+	var write func(error, []uintptr, string, string)
+	write = func(failure error, enclosing []uintptr, caption, indent string) {
 		for _, prior := range seen {
 			if reflect.TypeOf(failure).Comparable() && failure == prior {
-				output.WriteString("\t[CIRCULAR REFERENCE: " + javaThrowableString(failure) + "]\n")
+				output.WriteString(indent + caption + "[CIRCULAR REFERENCE: " + javaThrowableString(failure) + "]\n")
 				return
 			}
 		}
 		seen = append(seen, failure)
-		if cause {
-			output.WriteString("Caused by: ")
-		}
-		output.WriteString(javaThrowableString(failure) + "\n")
+		output.WriteString(indent + caption + javaThrowableString(failure) + "\n")
 		var pcs []uintptr
 		if trace, ok := failure.(interface{ throwablePCs() []uintptr }); ok {
 			pcs = trace.throwablePCs()
@@ -287,21 +317,26 @@ func javaThrowableStackTrace(err error) string {
 			frames := runtime.CallersFrames(pcs[:len(pcs)-common])
 			for {
 				frame, more := frames.Next()
-				fmt.Fprintf(&output, "\tat %s(%s:%d)\n", frame.Function, frame.File, frame.Line)
+				fmt.Fprintf(&output, "%s\tat %s(%s:%d)\n", indent, frame.Function, frame.File, frame.Line)
 				if !more {
 					break
 				}
 			}
 		}
 		if common > 0 {
-			fmt.Fprintf(&output, "\t... %d more\n", common)
+			fmt.Fprintf(&output, "%s\t... %d more\n", indent, common)
+		}
+		if throwable, ok := failure.(interface{ GetSuppressed() []error }); ok {
+			for _, suppressed := range throwable.GetSuppressed() {
+				write(suppressed, pcs, "Suppressed: ", indent+"\t")
+			}
 		}
 		if nested := javaThrowableCause(failure); nested != nil {
-			write(nested, pcs, true)
+			write(nested, pcs, "Caused by: ", indent)
 		}
 	}
 	if err != nil {
-		write(err, nil, false)
+		write(err, nil, "", "")
 	}
 	return output.String()
 }

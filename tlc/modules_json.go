@@ -134,39 +134,36 @@ func NDJsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
 }
 
 func JsonTextSerialize(path *StringValue, payload Value, options Value) (*BoolValue, error) {
+	if options == nil {
+		return nil, NewNullPointerException()
+	}
 	opts := asRecordValue(options)
 	if opts == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "third", "ndJsonSerialize", "sequence", ValuesPPR(options))
 	}
-	format, err := opts.Apply(NewStringValue("format"))
+	format, err := ioUtilsTXTFormat(opts)
 	if err != nil {
 		return nil, err
 	}
-	formatString, ok := format.(*StringValue)
-	if !ok || formatString.RawString() != "NDJSON" {
+	if format != "NDJSON" {
 		return nil, nil
+	}
+	if payload == nil {
+		return nil, NewNullPointerException()
 	}
 	tuple := asTupleValue(payload)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "first", "Serialize", "sequence", ValuesPPR(payload))
 	}
-	fileOptions, err := ioUtilsOpenFileOptions(opts)
+	return jsonTextSerializeTuple(path, tuple, opts)
+}
+
+func jsonTextSerializeTuple(path *StringValue, tuple *TupleValue, opts *RecordValue) (*BoolValue, error) {
+	openOptions, charset, err := ioUtilsTXTOptions(opts)
 	if err != nil {
 		return nil, err
 	}
-	file, err := os.OpenFile(path.RawString(), fileOptions.flag, 0o644)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	if fileOptions.deleteOnClose {
-		defer os.Remove(path.RawString())
-	}
-	charset, err := ioUtilsRecordRequiredString(opts, "charset")
-	if err != nil {
-		return nil, err
-	}
-	if err := jsonWriteNDJSONWithCharset(file, tuple, charset); err != nil {
+	if err := jsonWriteNDJSONFile(path, tuple, openOptions, charset); err != nil {
 		return nil, err
 	}
 	return BoolTrue, nil
@@ -189,6 +186,8 @@ func jsonWriteValue(b *bytes.Buffer, value Value) error {
 	case *TupleValue:
 		return jsonWriteTuple(b, v)
 	case *StringValue:
+		return jsonWriteString(b, v.RawString())
+	case *DebuggerValue:
 		return jsonWriteString(b, v.RawString())
 	case *ModelValue:
 		return jsonWriteString(b, v.String())
@@ -217,7 +216,7 @@ func jsonWriteValue(b *bytes.Buffer, value Value) error {
 			}
 			return jsonWriteSet(b, set)
 		}
-		return newTLCError(ECGeneral, "Cannot convert value: unsupported value type %T", value)
+		return jsonUnsupportedValue(value)
 	}
 }
 
@@ -249,7 +248,7 @@ func jsonWriteObject(b *bytes.Buffer, value Value) error {
 		fcn := v.ToFcnRcd()
 		return jsonWriteFcn(b, fcn)
 	default:
-		return newTLCError(ECGeneral, "Cannot convert value: unsupported value type %T", value)
+		return jsonUnsupportedValue(value)
 	}
 }
 
@@ -275,7 +274,7 @@ func jsonWriteArray(b *bytes.Buffer, value Value) error {
 			}
 			return jsonWriteSet(b, set)
 		}
-		return newTLCError(ECGeneral, "Cannot convert value: unsupported value type %T", value)
+		return jsonUnsupportedValue(value)
 	}
 }
 
@@ -325,23 +324,6 @@ func jsonWriteNDJSON(writer *bufio.Writer, tuple *TupleValue) error {
 		}
 	}
 	return nil
-}
-
-func jsonWriteNDJSONWithCharset(writer io.Writer, tuple *TupleValue, charset string) error {
-	var utf8 bytes.Buffer
-	buffered := bufio.NewWriter(&utf8)
-	if err := jsonWriteNDJSON(buffered, tuple); err != nil {
-		return err
-	}
-	if err := buffered.Flush(); err != nil {
-		return err
-	}
-	encoded, err := ioUtilsEncodeString(utf8.String(), charset)
-	if err != nil {
-		return err
-	}
-	_, err = writer.Write(encoded)
-	return err
 }
 
 func jsonWriteFcn(b *bytes.Buffer, value *FcnRcdValue) error {
@@ -405,12 +387,42 @@ func jsonWriteSet(b *bytes.Buffer, value *SetEnumValue) error {
 }
 
 func jsonWriteString(b *bytes.Buffer, value string) error {
-	encoded, err := json.Marshal(value)
-	if err != nil {
-		return err
+	// JsonElement.toString uses Gson JsonWriter without HTML-safe escaping.
+	// Keep Java UTF-16 units, including unmatched surrogates, for the writer.
+	units := []uint16{'"'}
+	const hex = "0123456789abcdef"
+	for _, unit := range javaStringUTF16(value) {
+		switch unit {
+		case '"', '\\':
+			units = append(units, '\\', unit)
+		case '\b':
+			units = append(units, '\\', 'b')
+		case '\f':
+			units = append(units, '\\', 'f')
+		case '\n':
+			units = append(units, '\\', 'n')
+		case '\r':
+			units = append(units, '\\', 'r')
+		case '\t':
+			units = append(units, '\\', 't')
+		default:
+			if unit < 0x20 || unit == 0x2028 || unit == 0x2029 {
+				units = append(units, '\\', 'u', uint16(hex[unit>>12]), uint16(hex[unit>>8&15]), uint16(hex[unit>>4&15]), uint16(hex[unit&15]))
+			} else {
+				units = append(units, unit)
+			}
+		}
 	}
-	b.Write(encoded)
+	units = append(units, '"')
+	b.WriteString(javaStringFromUTF16(units))
 	return nil
+}
+
+func jsonUnsupportedValue(value Value) error {
+	if value == nil {
+		return NewNullPointerException()
+	}
+	return NewIOException("Cannot convert value: unsupported value type " + javaValueClassName(value))
 }
 
 func jsonFcnIsSequence(value *FcnRcdValue) bool {
