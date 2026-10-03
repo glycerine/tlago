@@ -2609,8 +2609,9 @@ Go mapping:
   IOException family and source class/message; illegal/unsupported charset names
   retain their separate IllegalArgumentException families. Read charset lookup
   precedes file access, and NUL path validation precedes charset lookup. Process
-  default charset/byte decoding, filesystem error families, open-option validation
-  order and invalid-value cast behavior remain distinct source requirements.
+  default/native charset discovery and process byte decoding remain distinct
+  source requirements; callback casts and option-validation order are represented
+  below.
   IOUtils.atoi uses the shared Java decimal parser: UTF-16/BMP decimal digits,
   ASCII signs, signed int limits, decimal leading zeros and rejection of
   supplementary digits, whitespace and radix prefixes. Source StringValue
@@ -2625,8 +2626,18 @@ Go mapping:
   The priority wrapper retains the IOUtils primary reflected signature while
   executing JSON 25 before TXT 50; its real source TLA fallback is preserved.
   Native DSYNC is distinct from SYNC where available; creation permissions honor
-  the process umask. Filesystem provider/path/symlink/delete/close behavior and
-  public convenience/NDJSON stream boundaries remain source work.
+  the process umask. Linux TXT paths collapse repeated/trailing slashes without
+  resolving dot/parent components; empty syscall paths address the current
+  directory. The represented native UTF-8 encoding rejects malformed UTF-16 paths
+  before charset lookup. Linux opens produce typed NIO exceptions with normalized
+  path messages; channel failures produce IOException without a path. CREATE_NEW
+  retains its source empty/final-dot quirks. DELETE_ON_CLOSE forces final-link
+  nofollow except with CREATE_NEW, unlinks immediately, and ignores unlink errors.
+  Files writes complete 8192-byte chunks; close failure is reported if no earlier
+  error exists. Reads retain the int-array size Error before allocating content.
+  Native filename charset discovery, other filesystem providers, memory-exhaustion
+  allocation behavior and public convenience/NDJSON stream boundaries remain
+  source work.
   Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw

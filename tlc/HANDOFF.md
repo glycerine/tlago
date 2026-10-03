@@ -642,10 +642,19 @@ executing JSON 25 before TXT 50. All 165 direct source calls and 87 full-chain
 calls match normally and under -race; the real parser bridge already retains
 unknown-format TLA fallback. Final workspace normal checks and three platform
 builds pass. The new full race run is live (handle 25120, core-txt-full-race-final.log);
-the earlier charset full race run has completed successfully. Continue filesystem
-error/path/symlink/delete/close semantics, NDJSON stream boundaries and process
-charset work. No new persistent tests/vectors were added; existing Ant tests stay
-whole and unchanged.
+the earlier charset full race run has completed successfully. Linux TXT filesystem
+boundaries now preserve normalized separators without resolving dot/parent
+components, empty syscall paths, strict UTF-8 native path encoding and NIO error
+families. DELETE_ON_CLOSE unlinks immediately and refuses final symlinks; ignored
+unlink errors and CREATE_NEW empty/final-dot quirks are retained. Open errors
+retain paths, channel errors do not; close failures cannot turn into success.
+The Files read-size limit retains its Error boundary. Owned observations match
+763 bounded TXT calls, 128 open-channel calls, 120 nullable exception constructors
+and three sparse-file/charset calls; bounded TXT and sparse calls match under
+-race too. Final full normal and TLC race checks pass. Continue NDJSON stream/public
+convenience boundaries, native/default charset discovery and other filesystem
+providers. No new persistent tests/vectors were added; the original whole Ant
+suite and TXT round-trip assumptions remain unchanged. See the progress tail.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

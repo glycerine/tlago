@@ -93,17 +93,21 @@ func IOUtilsDeserialize(src Value, options Value) (Value, error) {
 	if err != nil {
 		return ioUtilsTXTFailure("Deserialize", "invalid parameters", err), nil
 	}
-	if path == nil || charset == nil {
+	if path == nil {
 		return ioUtilsTXTFailure("Deserialize", "reading from the file", NewNullPointerException()), nil
 	}
-	if strings.ContainsRune(path.RawString(), 0) {
-		return ioUtilsTXTFailure("Deserialize", "reading from the file", NewInvalidPathException(path.RawString(), "Nul character not allowed")), nil
+	filePath, err := ioUtilsTXTPath(path.RawString())
+	if err != nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
+	}
+	if charset == nil {
+		return ioUtilsTXTFailure("Deserialize", "reading from the file", NewNullPointerException()), nil
 	}
 	name, err := javaCharsetName(charset.RawString())
 	if err != nil {
 		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
 	}
-	data, err := os.ReadFile(path.RawString())
+	data, err := ioUtilsTXTReadFile(filePath)
 	if err != nil {
 		return ioUtilsTXTFailure("Deserialize", "reading from the file", err), nil
 	}
@@ -211,8 +215,9 @@ func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
 	if path == nil {
 		return ioUtilsTXTFailure("Serialize", "writing to the file", NewNullPointerException())
 	}
-	if strings.ContainsRune(path.RawString(), 0) {
-		return ioUtilsTXTFailure("Serialize", "writing to the file", NewInvalidPathException(path.RawString(), "Nul character not allowed"))
+	filePath, err := ioUtilsTXTPath(path.RawString())
+	if err != nil {
+		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
 	}
 	if text == nil || charset == nil {
 		return ioUtilsTXTFailure("Serialize", "writing to the file", NewNullPointerException())
@@ -233,16 +238,7 @@ func ioUtilsSerializeTXT(payload Value, dest Value, opts *RecordValue) Value {
 	if err != nil {
 		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
 	}
-	filePath := path.RawString()
-	file, err := os.OpenFile(filePath, fileOptions.flag, 0o666)
-	if err != nil {
-		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
-	}
-	defer file.Close()
-	if fileOptions.deleteOnClose {
-		defer os.Remove(filePath)
-	}
-	if _, err := file.Write(data); err != nil {
+	if err := ioUtilsTXTWriteFile(filePath, data, fileOptions); err != nil {
 		return ioUtilsTXTFailure("Serialize", "writing to the file", err)
 	}
 	return ioUtilsResult(0, "Finish writing to the file with success!", "")

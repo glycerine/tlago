@@ -1700,3 +1700,64 @@ creation/catch boundaries still need their own source comparison. Broader
 semantic metadata, native provider discovery, DAP and distributed transport remain.
 Full TLC completion remains unproven. Independent rpc25519/Greenpack notes stay
 outside this slice.
+
+
+- Linux core TXT filesystem slice: Paths.get retains UnixPath normalization:
+repeated/trailing slashes collapse, dot/parent components survive symlink
+resolution, and an empty syscall path addresses the current directory while its
+logical diagnostic path remains empty. NUL retains the original input; strict
+native UTF-8 encoding failures retain normalized input in InvalidPathException
+and precede charset resolution. Native filename charset discovery for other
+process locales is still pending; this does not establish all native encodings.
+FileSystemException and its NoSuchFile/AccessDenied/FileAlreadyExists subclasses
+retain nullable file/other/reason getters, dynamic message composition and the
+IOException catch family. Linux native open failures preserve the normalized
+path; directory-read/disk-full channel failures retain plain IOException messages.
+Symlink loops retain the UnixException suffix; forced nofollow produces its
+separate IOException message. Native C-locale errno text matches all 140 local
+libc slots observed, including Go's missing/unknown slots; this libc comparison
+is distinct from actual Java IOUtils observations.
+
+UnixChannelFactory DELETE_ON_CLOSE now uses nofollow except with CREATE_NEW,
+unlinks immediately after opening and ignores unlink errors. CREATE_NEW retains
+its empty-path array-bounds failure, final-dot EEXIST check and directory EISDIR
+conversion. Files.write sends complete chunks of at most 8192 bytes and checks
+close failures; a prior operation failure wins over a close failure. Files.read
+checks the signed-int array size before reading and retains OutOfMemoryError,
+which remains outside IOUtils catch(Exception). Close-failure control flow is
+source-derived; no artificial close failure was injected. Other filesystem
+providers remain separate source work; their fallback does not establish parity.
+
+Owned .codex-gotmp/core-txt-production/ observers call unchanged compiled
+Community IOUtils and actual JDK Files/newOutputStream. All 763 bounded TXT calls
+match argument order, result fields, UTF-16 diagnostics, file bytes and symlink
+state exactly normally and under -race. Cases include permissions, missing and
+non-directory parents, empty/doubled/trailing paths, symlink/parent resolution,
+all represented option combinations and disk-full writes. All 128 open-channel
+observations match, including existence while the channel is open and final-link
+refusal. All 120 nullable exception constructor/getter/rendering observations match Java;
+three sparse-file/charset calls match normally and under Go -race.
+An exploratory unbounded-device read was interrupted and excluded from these
+counts; Go allocation/heap-exhaustion behavior is not established. No owned probe
+or vector was promoted to a persistent test. Existing original TXT round-trip
+assumptions in IOUtilsUnixTests and the whole translated Ant target are unchanged.
+
+The earlier 165 direct TXT and 87 production-loaded priority-chain observations
+also still match exactly after this change. Initial full workspace normal checks
+pass (318.336s root), and TLC -race checks pass (3.575s); final TLC -race checks
+pass (3.395s). Final full workspace normal checks pass (312.507s root).
+The subsequent null-message Error carrier review added subtype methods to retain
+concrete class names despite Go embedding; all 120 getter/rendering observations
+match after that correction, and its TLC -race check passes (3.499s). The full
+workspace normal snapshot predates only those three convenience Error methods.
+Windows/amd64, Darwin/arm64, FreeBSD/amd64 and Linux/mips64le TLC builds pass.
+An observer race build encountered ENOSPC; removing only old disposable Go cache
+files restored space, and the observer build/run then passed. Source and tracked
+fixtures were not removed. Logs use core-txt-files-* under .codex-gotmp/.
+The prior complete full race run is still live at handle 25120, log
+core-txt-full-race-final.log, and predates this filesystem slice. Do not restart
+it solely for a timeout. Native/default charset discovery, process byte decoding,
+public convenience APIs, NDJSON stream boundaries and other filesystem providers
+remain. Broader metadata, native discovery, DAP and distributed transport remain.
+Full TLC completion is unproven. Independent rpc25519/Greenpack docs remain
+outside this slice.

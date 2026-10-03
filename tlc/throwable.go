@@ -92,6 +92,14 @@ func javaThrowableClassName(err error) string {
 		return "java.net.UnknownHostException"
 	case *InvalidPathException:
 		return "java.nio.file.InvalidPathException"
+	case *FileSystemException:
+		return "java.nio.file.FileSystemException"
+	case *NoSuchFileException:
+		return "java.nio.file.NoSuchFileException"
+	case *AccessDeniedException:
+		return "java.nio.file.AccessDeniedException"
+	case *FileAlreadyExistsException:
+		return "java.nio.file.FileAlreadyExistsException"
 	case *IndexOutOfBoundsException:
 		return "java.lang.IndexOutOfBoundsException"
 	case *StringIndexOutOfBoundsException:
