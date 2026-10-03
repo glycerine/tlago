@@ -3198,6 +3198,15 @@ Debugger variable details:
   vector is byte-identical in test_vectors/models/debug. The source checker has
   92/10/0/depth 2; simulation generates 1,055 states and two traces. Both unchanged
   Java methods and both whole Go translations pass under the represented runtime.
+  The complete original Debug02Test also passes after comparison of all 24
+  hover/frame/state records under -race. Source exact-location lookup distinguishes
+  a point in a primed application from its full range; pending assignments retain
+  null response types and "?", while assigned booleans retain source type strings
+  and TRUE/FALSE. All 51 equality/8 true/4 false assertions, constant-module view,
+  step commands and next-frame helper remain intact. The source hover harness
+  preserves absolute module URI, symbol query, coordinate fragment and top-frame
+  identity. The original embedded-config vector is byte-identical in test_vectors.
+  Both source and production Go complete successfully with 3/2/0/depth 2.
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.

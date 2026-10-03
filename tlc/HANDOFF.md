@@ -525,8 +525,18 @@ complete: checker 1 equality/1 next-frame/1 synthetic-frame call; simulation
 11 equality/2 true/2 init-frame/3 next-frame calls. Debug03.tla is byte-identical
 under test_vectors/models/debug. Both Java originals and complete Go methods
 pass; checker counts are 92/10/0/depth 2, and simulation generates 1,055 states
-and two traces. Next: compare the remaining original Debug02Test, Debug04SimTest
-and Debug05SimTest production features, then translate each whole source method.
+and two traces.
+The complete original Debug02Test.testSpec is translated after matching all 24
+hover/frame/state records under -race. Existing production behavior retains exact
+semantic source ranges, pending assignments, TRUE/FALSE state values, nullable
+type responses and source type strings while stepping through state/action/next
+frames. The original 51 equality, 8 true and 4 false assertions, constant module
+view and single next-frame helper call remain intact. Its embedded-config vector
+Debug02.tla is byte-identical under test_vectors/models/debug. Unchanged Java and
+the complete Go method pass; source production counts are 3/2/0/depth 2. The
+source hover harness constructs the absolute module URI, symbol query, source
+coordinate fragment and top-frame selection. Next: original Debug04SimTest and
+Debug05SimTest production features followed by each whole source method.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

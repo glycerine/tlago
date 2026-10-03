@@ -31,6 +31,7 @@ package tlago
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -216,6 +217,18 @@ func (h *javaDebuggerModel) setBreakpoints(bp javaDebuggerBreakpoints) {
 func (h *javaDebuggerModel) sourcePath(f *tlc.TLCDebuggerFrame) string {
 	syntax := f.Base.Node.(interface{ GetTreeNode() any }).GetTreeNode().(*SanySyntaxNode)
 	return syntax.Range.Begin.File
+}
+func (h *javaDebuggerModel) evaluateHover(module, symbol string, beginLine, beginColumn, endLine, endColumn int) tlc.TLCEvaluateResponse {
+	h.t.Helper()
+	path, err := filepath.Abs(module)
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	uri := url.URL{Scheme: "tlaplus", Path: filepath.ToSlash(path), RawQuery: symbol,
+		Fragment: fmt.Sprintf("%d %d %d %d", beginLine, beginColumn, endLine, endColumn)}
+	expression := uri.String()
+	frameID := h.debugger.TopFrame().Base.ID
+	return h.debugger.Evaluate(tlc.TLCEvaluateArguments{Context: "hover", Expression: &expression, FrameID: &frameID})
 }
 func debuggerAssertTrue(t *testing.T, yes bool) {
 	t.Helper()

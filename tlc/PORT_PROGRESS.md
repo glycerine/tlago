@@ -1201,3 +1201,45 @@ transport remain pending; full TLC completion is unproven.
 fixture bytes and all 17/572 production records match. Code/document diff checks
 pass, excluding preserved upstream fixture whitespace. Independent
 rpc25519/Greenpack transport documentation remains outside this debugger commit.
+
+
+- Debug02 hover slice: unchanged Java Debug02Test reports one run/zero failures/
+zero ignored. The full production sequence matches all 24 hover/frame/state
+records under -race, exact source ranges and pending/assigned state and action
+values. Both runtimes complete with success and 3 generated/2 distinct/0 queued/
+depth 2. Reviewed the source hover dispatch, exact module PathTo and prime-path
+selection, partial-state handling, nullable type responses and constants. The
+represented implementation already matches; no production correction was needed.
+An initial probe read an action frame's embedded successor as its predecessor;
+corrected the owned observer to use the action frame's source GetS/GetT. This was
+a probe issue, not a product change. All corrected records match.
+
+- After source verification, translated the entire original Debug02Test.testSpec:
+all 51 equality, 8 true and 4 false assertions, all 24 hover calls, exact stepIn
+counts, partial successor checks, TRUE/FALSE transitions, constant-module nested
+view and inherited next-frame helper. Preserve the final source type-only check
+without inventing an extra result assertion. The shared hover helper ports the
+source absolute module URI, symbol query, coordinate fragment and top frame ID.
+The original embedded-config Debug02.tla is byte-identical under
+test_vectors/models/debug. The complete Go method passes under -race. No
+invented tests or vectors. Full suite checks follow below. Next: original
+Debug04SimTest and Debug05SimTest production feature comparison, then each whole
+source method. Their ports and DAP transport/capability events, broader semantic/
+level/instance/export metadata, full native registration, formatter/trace
+expressions and selected distributed transport remain pending. Full TLC
+completion remains unproven.
+
+
+- Final offline go test ./... and go test -race ./... pass (root 37.979s normal,
+222.131s race). Complete source assertion/call counts, original fixture bytes and
+all 24 production evaluation/frame/state records match. Code/document diff checks
+pass, excluding preserved original fixture whitespace. Independent
+rpc25519/Greenpack notes remain outside this debugger commit.
+The unchanged original Debug04SimTest and a temporary full-method observation
+copy both pass with one run/zero failures/zero ignored, 543 generated states/four
+traces/seed 1/aril 0. The observation captures its 36 reported stops and expression
+responses while retaining all original assertions. The owned probe and output
+are under .codex-gotmp/java-debugger-original/ (Debug04SimParityProbe,
+java-Debug04Sim-original.log and java-Debug04Sim-probe.log). Next: compare the
+complete Go production sequence, implement any true gaps, then translate the
+entire original method. No persistent partial Debug04 test was added.
