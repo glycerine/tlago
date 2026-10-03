@@ -14,9 +14,10 @@ const (
 )
 
 type SymbolNode struct {
-	Name *UniqueString
-	Data any
-	Kind SymbolKind
+	Name     *UniqueString
+	Data     any
+	Kind     SymbolKind
+	Location SourceLocation
 }
 
 func NewSymbolNode(name string) *SymbolNode {

@@ -1014,7 +1014,9 @@ func tlaPositionToTLCSourceLocation(mod *Module, pos Position) tlc.SourceLocatio
 		source = mod.Name
 	}
 	if pos.File != "" {
-		source = pos.File
+		// SANY semantic locations use the module name, while parser positions
+		// retain the physical filename.
+		source = moduleNameForSourcePosition(pos)
 	}
 	endLine, endColumn := pos.EndLine, pos.EndColumn
 	if endLine == 0 {

@@ -223,6 +223,7 @@ type SpecProcessor struct {
 	Config   *ModelConfig
 
 	Variables         []*UniqueString
+	VariablesNodes    []*SymbolNode
 	ProcessedDefs     *InsMap[string, struct{}]
 	UnprocessedDefns  *Defns
 	ConstantDefns     *InsMap[string, Value]
@@ -277,15 +278,26 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 }
 
 func (p *SpecProcessor) SetVariables(names []string) {
-	p.Variables = make([]*UniqueString, len(names))
+	nodes := make([]*SymbolNode, len(names))
 	for i, name := range names {
-		variable := UniqueStringOf(name)
+		nodes[i] = NewVariableSymbolNode(name)
+	}
+	p.SetVariableNodes(nodes)
+}
+
+// SetVariableNodes retains the root module's declarations, as Java's
+// SpecProcessor does, including their locations and symbol identities.
+func (p *SpecProcessor) SetVariableNodes(nodes []*SymbolNode) {
+	p.VariablesNodes = nodes
+	p.Variables = make([]*UniqueString, len(nodes))
+	for i, node := range nodes {
+		variable := node.Name
 		variable.SetLoc(i)
 		p.Variables[i] = variable
 	}
-	SetUniqueStringVariableCount(len(names))
+	SetUniqueStringVariableCount(len(nodes))
 	if p.Defns != nil {
-		p.Defns.SetDefnCount(len(names))
+		p.Defns.SetDefnCount(len(nodes))
 		// SpecProcessor installs these predefined values before user definitions.
 		p.Defns.Put("TRUE", BoolTrue)
 		p.Defns.Put("FALSE", BoolFalse)
@@ -363,11 +375,15 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	p.ToolID = tool.ID
 	tool.SpecProcessor = p
 	names := make([]string, len(p.Variables))
+	locations := make(map[string]SourceLocation, len(p.VariablesNodes))
 	for i, variable := range p.Variables {
 		names[i] = variable.String()
 	}
+	for _, node := range p.VariablesNodes {
+		locations[node.Name.String()] = node.Location
+	}
+	SetStateVariablesWithLocations(names, locations)
 	if len(names) != 0 {
-		SetStateVariables(names)
 		if p.Defns != nil {
 			p.Defns.SetDefnCount(len(names))
 		}
@@ -408,11 +424,11 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	tool.AssignActionIDs()
 }
 
-func (p *SpecProcessor) GetVariablesNodes() []*UniqueString {
+func (p *SpecProcessor) GetVariablesNodes() []*SymbolNode {
 	if p == nil {
 		return nil
 	}
-	return append([]*UniqueString(nil), p.Variables...)
+	return p.VariablesNodes
 }
 
 func (p *SpecProcessor) GetInitPred() []*Action {

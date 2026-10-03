@@ -306,12 +306,16 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 
 func (b *tlcBridge) installVariables() {
 	vars := moduleVariables(b.spec.Root)
-	tlc.SetStateVariablesWithLocations(vars, moduleVariableLocations(b.spec.Root))
-	if b.processor != nil {
-		b.processor.SetVariables(vars)
+	locations := moduleVariableLocations(b.spec.Root)
+	tlc.SetStateVariablesWithLocations(vars, locations)
+	nodes := make([]*tlc.SymbolNode, len(vars))
+	for i, name := range vars {
+		nodes[i] = b.symbol(name)
+		nodes[i].MarkVariableDecl()
+		nodes[i].Location = locations[name]
 	}
-	for _, name := range vars {
-		b.symbol(name).MarkVariableDecl()
+	if b.processor != nil {
+		b.processor.SetVariableNodes(nodes)
 	}
 }
 

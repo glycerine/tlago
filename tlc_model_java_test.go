@@ -37,7 +37,7 @@ import (
 	"github.com/glycerine/tlago/tlc"
 )
 
-func runJavaTLCModelTest(t *testing.T, name string) *tlc.Result {
+func runJavaTLCModelTest(t *testing.T, name string, extraArgs ...string) *tlc.Result {
 	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
@@ -58,7 +58,10 @@ func runJavaTLCModelTest(t *testing.T, name string) *tlc.Result {
 	}
 	tlc.SetFilenameUserDirectory(&directory)
 	meta := t.TempDir()
-	opts, err := tlc.ParseTLCOptions([]string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-dump", "dot", filepath.Join(meta, name+".dot"), "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-coverage", "1", "-workers", "1", "-checkpoint", "0", name})
+	args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-dump", "dot", filepath.Join(meta, name+".dot"), "-generateSpecTE", "-teSpecOutDir", filepath.Join(meta, "TE"), "-fp", "0", "-seed", "1", "-coverage", "1", "-workers", "1", "-checkpoint", "0"}
+	args = append(args, extraArgs...)
+	args = append(args, name)
+	opts, err := tlc.ParseTLCOptions(args)
 	if err != nil {
 		t.Fatal(err)
 	}

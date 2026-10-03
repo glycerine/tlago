@@ -338,6 +338,10 @@ objects. Key jobs:
 - Build `Action` objects with contexts and names.
 - Initialize `ModelValue` state.
 - Set variable locations on `UniqueString`.
+- Retain the variable declaration symbols and their semantic source locations.
+  `SetVariableNodes` stores the parser bridge's declaration identities, and
+  `ApplyToTool` preserves their module/line/column metadata in the state table.
+  `GetVariablesNodes` exposes the backing declaration array, matching Java.
 - Set the definition table count to the number of variables before storing
   definitions. Java does this explicitly with `defns.setDefnCount(varDecls.length)`;
   the Go port keeps the same visible step instead of hiding it in `Defns`.
@@ -345,8 +349,8 @@ objects. Key jobs:
   `SpecProcessor`: init/next predicates, temporal and implied temporal actions,
   invariants, implied init/action checks, model/action constraints, assumptions,
   `_RL_REWARD`, `_PERIODIC`, definition snapshots, constant-definition cache,
-  and postcondition specs. Go returns slice copies from these concrete methods
-  to keep callers from mutating processor-owned slices by accident.
+  and postcondition specs. Most Go accessors return slice copies;
+  `GetVariablesNodes` retains Java's backing-array behavior.
 
 Tricky details:
 

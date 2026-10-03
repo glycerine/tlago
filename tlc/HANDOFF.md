@@ -26,8 +26,12 @@ translated with their original model fixtures under tlc/test_vectors/models/.
 Their end-to-end runs fixed coverage wrapper selection/source filtering,
 predefined BOOLEAN values, runtime-module loading and LOCAL postcondition
 binding. All four OpApplNodeWrapperTest report methods are translated too.
-Read the progress tail for verification. Next coverage work should compare the
-remaining upstream model cases and preserve variable declaration locations.
+The existing ACoverageTest is translated too, with byte-identical model data and
+expected coverage. SpecProcessor now retains declaration symbols and preserves
+their source locations when applying the tool; variable coverage uses semantic
+module names rather than physical filenames. Read the progress tail for
+verification. Next coverage work should compare the remaining upstream model
+cases, starting with CoverageStatisticsTest.
 
 - Repository: `/mnt/oldrog/home/jaten/go/src/github.com/tlaplus/tlago`.
 - Java source of truth: `../tlaplus/tlatools/org.lamport.tlatools/src/tlc2`.
