@@ -23,8 +23,9 @@
  * Contributors:
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
-// Port of DumpLoadTraceTest's safety and bidirectional methods after
-// implementing source native/body override lookup through INSTANCE imports.
+// Port of DumpLoadTraceTest methods after implementing source native/body
+// overrides and external trace deserialization. Two timing-sensitive enabled
+// EWD840 binary methods remain pending; only original @Ignore methods skip.
 package tlago
 
 import (
@@ -43,10 +44,15 @@ func runJavaDumpLoadTrace(t *testing.T, name, format string, status int, extraAr
 
 func runJavaDumpLoadTraceWithWorkers(t *testing.T, name, format string, status int, dumpWorkers, loadWorkers string, extraArgs ...string) {
 	t.Helper()
-	traceFile := filepath.Join(t.TempDir(), name+"."+format)
-	dump := runJavaTLCModelTestWithArguments(t, name, name, func(meta, _ string) []string {
+	runJavaDumpLoadTraceWithSpecs(t, name, name, name, format, status, dumpWorkers, loadWorkers, extraArgs, extraArgs)
+}
+
+func runJavaDumpLoadTraceWithSpecs(t *testing.T, fixture, dumpSpec, loadSpec, format string, status int, dumpWorkers, loadWorkers string, dumpExtraArgs, loadExtraArgs []string) {
+	t.Helper()
+	traceFile := filepath.Join(t.TempDir(), dumpSpec+"."+format)
+	dump := runJavaTLCModelTestWithArguments(t, fixture, dumpSpec, func(meta, _ string) []string {
 		args := []string{"-metadir", meta, "-workers", dumpWorkers, "-noGenerateSpecTE", "-fp", "4"}
-		args = append(args, extraArgs...)
+		args = append(args, dumpExtraArgs...)
 		return append(args, "-dumpTrace", format, traceFile)
 	})
 	file, err := os.Stat(traceFile)
@@ -60,9 +66,9 @@ func runJavaDumpLoadTraceWithWorkers(t *testing.T, name, format string, status i
 		t.Fatal("dump did not record TLC_FINISHED")
 	}
 
-	load := runJavaTLCModelTestWithArguments(t, name, name, func(meta, _ string) []string {
+	load := runJavaTLCModelTestWithArguments(t, fixture, loadSpec, func(meta, _ string) []string {
 		args := []string{"-metadir", meta, "-workers", loadWorkers, "-noGenerateSpecTE", "-fp", "4"}
-		args = append(args, extraArgs...)
+		args = append(args, loadExtraArgs...)
 		return append(args, "-loadTrace", format, traceFile)
 	})
 	if len(javaTLCRecords(load, tlc.ECTLCFinished)) == 0 {
@@ -106,7 +112,9 @@ func runJavaDumpLoadTraceWithWorkers(t *testing.T, name, format string, status i
 		}
 		original := strings.TrimSpace(state.StateInfo.String())
 		replayed := strings.TrimSpace(loaded.StateInfo.String())
-		if original != replayed {
+		if dumpSpec != loadSpec {
+			assertJavaTraceStatesEqualOnIntersection(t, original, replayed, i)
+		} else if original != replayed {
 			t.Fatalf("state strings differ at position %d: dump=%q load=%q", i, original, replayed)
 		}
 	}
@@ -141,4 +149,145 @@ func TestJavaLivenessBidirectionalDumpLoadTraceJSONAutoWorkers(t *testing.T) {
 
 func TestJavaLivenessBidirectionalDumpLoadTraceTLCAutoWorkers(t *testing.T) {
 	runJavaDumpLoadTraceWithWorkers(t, "BidirectionalTransitions", "tlc", tlc.ExitStatusViolationLiveness, "auto", "1", "-config", "BidirectionalTransitions1Bx.cfg")
+}
+
+// Port of DumpLoadTraceTest.parseStateString and assertStatesEqualOnIntersection.
+func parseJavaTraceStateString(state string) *tlc.InsMap[string, string] {
+	vars := tlc.NewInsMap[string, string]()
+	for _, line := range strings.Split(state, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "/\\") {
+			line = strings.TrimSpace(line[2:])
+		}
+		if eq := strings.Index(line, "="); eq > 0 {
+			vars.Set(strings.TrimSpace(line[:eq]), strings.TrimSpace(line[eq+1:]))
+		}
+	}
+	return vars
+}
+
+func assertJavaTraceStatesEqualOnIntersection(t *testing.T, original, replayed string, index int) {
+	t.Helper()
+	vars1 := parseJavaTraceStateString(original)
+	vars2 := parseJavaTraceStateString(replayed)
+	common := 0
+	for name, value := range vars1.All() {
+		other, found := vars2.Get2(name)
+		if !found {
+			continue
+		}
+		common++
+		if value != other {
+			t.Fatalf("state %d variable %q differs: dump=%q load=%q", index, name, value, other)
+		}
+	}
+	if common == 0 {
+		t.Fatalf("state %d has no common variables: dump=%v load=%v", index, vars1, vars2)
+	}
+}
+
+func TestJavaSafetyDieHardAliasSubDumpLoadTraceJSON(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "json", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "DieHardAliasSub.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSubDumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	t.Skip("Upstream @Ignore: Multi-worker BFS + ALIAS variable subsetting: non-shortest counterexample breaks level-indexed trace constraint")
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "json", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "DieHardAliasSub.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSubDumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "tlc", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "DieHardAliasSub.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSubDumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	t.Skip("Upstream @Ignore: Multi-worker BFS + ALIAS variable subsetting: non-shortest counterexample breaks level-indexed trace constraint")
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "tlc", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "DieHardAliasSub.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSub2DumpLoadTraceJSON(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "json", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "DieHardAliasSub2.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSub2DumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "json", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "DieHardAliasSub2.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSub2DumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "tlc", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "DieHardAliasSub2.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSub2DumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "tlc", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "DieHardAliasSub2.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSupDumpLoadTraceJSON(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "json", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "DieHardAliasSup.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSupDumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "json", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "DieHardAliasSup.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSupDumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "tlc", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "DieHardAliasSup.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyDieHardAliasSupDumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "DieHardAlias", "DieHardAlias", "DieHard", "tlc", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "DieHardAliasSup.cfg"}, []string{"-config", "DieHard.cfg"})
+}
+
+func TestJavaSafetyTESpecEqAliasDumpLoadTraceJSON(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "TESpecTest", "TESpecTest", "TESpecTest", "json", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "TESpecEqAliasSafetyTest.cfg"}, []string{"-config", "TESpecEqAliasSafetyTest.cfg"})
+}
+
+func TestJavaSafetyTESpecEqAliasDumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "TESpecTest", "TESpecTest", "TESpecTest", "json", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "TESpecEqAliasSafetyTest.cfg"}, []string{"-config", "TESpecEqAliasSafetyTest.cfg"})
+}
+
+func TestJavaSafetyTESpecEqAliasDumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "TESpecTest", "TESpecTest", "TESpecTest", "tlc", tlc.ExitStatusViolationSafety, "1", "1", []string{"-config", "TESpecEqAliasSafetyTest.cfg"}, []string{"-config", "TESpecEqAliasSafetyTest.cfg"})
+}
+
+func TestJavaSafetyTESpecEqAliasDumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "TESpecTest", "TESpecTest", "TESpecTest", "tlc", tlc.ExitStatusViolationSafety, "auto", "1", []string{"-config", "TESpecEqAliasSafetyTest.cfg"}, []string{"-config", "TESpecEqAliasSafetyTest.cfg"})
+}
+
+func TestJavaLivenessExample1DumpLoadTraceJSON(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "Example1", "Example1", "Example1", "json", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-config", "Example1.cfg"}, []string{"-config", "Example1.cfg"})
+}
+
+func TestJavaLivenessExample1DumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "Example1", "Example1", "Example1", "json", tlc.ExitStatusViolationLiveness, "auto", "1", []string{"-config", "Example1.cfg"}, []string{"-config", "Example1.cfg"})
+}
+
+func TestJavaLivenessExample1DumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "Example1", "Example1", "Example1", "tlc", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-config", "Example1.cfg"}, []string{"-config", "Example1.cfg"})
+}
+
+func TestJavaLivenessExample1DumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "Example1", "Example1", "Example1", "tlc", tlc.ExitStatusViolationLiveness, "auto", "1", []string{"-config", "Example1.cfg"}, []string{"-config", "Example1.cfg"})
+}
+
+func TestJavaLivenessMCDumpLoadTraceJSON(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "MC", "MC", "json", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-deadlock"}, []string{"-deadlock"})
+}
+
+func TestJavaLivenessMCDumpLoadTraceJSONAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "MC", "MC", "json", tlc.ExitStatusViolationLiveness, "auto", "1", []string{"-deadlock"}, []string{"-deadlock"})
+}
+
+func TestJavaLivenessMCDumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "MC", "MC", "tlc", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-deadlock"}, []string{"-deadlock"})
+}
+
+func TestJavaLivenessMCDumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "MC", "MC", "tlc", tlc.ExitStatusViolationLiveness, "auto", "1", []string{"-deadlock"}, []string{"-deadlock"})
+}
+
+func TestJavaLivenessEWD840MC3DumpLoadTraceJSON(t *testing.T) {
+	t.Skip("Upstream @Ignore: Disabled because JSON trace serialization is garbled because of limited types.")
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "EWD840MC3", "EWD840MC3", "json", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-deadlock"}, []string{"-deadlock"})
 }

@@ -458,7 +458,9 @@ func TLCTraceDeserialize(absolutePath *StringValue) (Value, error) {
 		return nil, err
 	}
 	defer in.Close()
-	return in.Read()
+	// Java's read(internTbl.toMap()) delegates to readExternal: the trace
+	// may come from a different process with a different UniqueString order.
+	return in.ReadExternal()
 }
 
 func TLCTraceState(state *TLCStateMut) Value {

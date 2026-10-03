@@ -228,13 +228,38 @@ regeneration/printing happens after release, matching Java's lock boundary.
 All four unchanged Java auto-worker methods and all eight Go dump/load methods
 pass; targeted existing liveness and the formerly remote-failing mixed config
 set test pass with the race detector. Full normal/race suites pass.
-Next: compare and translate remaining ALIAS/CodePlex/TESpec/Example1 dump/load
-methods. The unchanged single-worker AliasSub JSON method and Go production
-replay already match safety exit, seven common-variable states and 132/32/9;
-translate the source intersection assertions, retaining separate dump/load
-specs/configs and original vectors. Preserve the upstream Ignore annotations
-for garbled EWD840 JSON and the two AliasSub auto-worker methods (AliasSub2 and
-AliasSup methods remain enabled upstream).
+External binary trace deserialization now calls ReadExternal, matching Java's
+read(internTbl.toMap()) delegation. Records loaded into a different intern table
+must normalize against its field-name order; ordinary Read had made binary
+ALIAS replay report a missing counterexample field that was visibly present.
+Modern disk liveness checkers now use their disk graph alone as Java does;
+they no longer evaluate source/target predicates again for an extra memory
+mirror. The memory path remains for checkers without disk storage.
+DumpLoadTraceTest now has 33 of its 35 original methods translated: 30 enabled
+methods and the three original @Ignore skips. Ten enabled DieHard ALIAS cases
+retain separate dump/load specs/configs, nonempty common-variable comparisons,
+ordinals and source equality/prefix assertions. Four each TESpec EqAlias,
+Example1 and MC cases retain exact source flags and worker counts. Their 16
+copied model/config vectors are byte-identical. All enabled unchanged Java
+methods pass normally; targeted Go race and full normal/race suites pass.
+The two enabled EWD840 binary translations remain pending. Their ordinary Go
+production runs match Java's eight states and 15986/1566/0 then 7198/677/0,
+but race instrumentation triggers partial liveness checks and a longer replay.
+Pacing the unchanged Java test reproduces the same assertion failure: an
+eight-state dump replays as 15 or 19 states. Beyond the dumped prefix the
+constraint admits other states and another cycle can be selected. Do not
+weaken its equality/prefix assertions, invent a skip or disable partial checks
+to hide this source timing limitation. The source garbled-JSON @Ignore remains
+ported; these two enabled methods have not been accepted as test ports.
+Next core comparison: TraceExpressionSpecSafetyBFSTest and its generated-tool
+assertions, then the other TraceExpressionSpec variants. The unchanged Java
+original passes. Go generates and loads the safety module and reproduces all
+four expected states with safety exit; install the generated directory on the
+resolver before assessing load errors. Preserve the source -noGenerateSpecTEBin,
+coverage/DOT/JSON-dump-disabled settings, enabled debugger and generated-spec
+output directory. The ModelCheckerTestCase source sets livenessThreshold to
+Double.MAX_VALUE; scope that to its harness, not DumpLoadTraceTest, which uses
+its own fresh runtime and default periodic-check behavior.
 Complete semantic module graphs and constant-processing snapshot/eligibility
 metadata remain broader source work.
 Trace-expression variants remain separate pending

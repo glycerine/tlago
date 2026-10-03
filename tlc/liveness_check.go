@@ -310,6 +310,9 @@ func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint6
 				if err := c.Writer.WriteLivenessInitState(state, tnode); err != nil {
 					return err
 				}
+				if c.TableauDiskGraph != nil {
+					continue
+				}
 				node, err := c.ensureGraphNode(tool, state, stateFP, tnode.Index)
 				if err != nil {
 					return err
@@ -324,6 +327,9 @@ func (c *LiveChecker) AddInitState(tool *Tool, state *TLCStateMut, stateFP uint6
 	}
 	if err := c.Writer.WriteLivenessState(state); err != nil {
 		return err
+	}
+	if c.DiskGraph != nil {
+		return nil
 	}
 	node, err := c.ensureGraphNode(tool, state, stateFP, -1)
 	if err != nil {
@@ -346,9 +352,9 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	c.Solution.graphMu.Lock()
 	defer c.Solution.graphMu.Unlock()
 	if c.DiskGraph != nil {
-		if err := c.addNextStateDisk(s0, fp0, nextStates, actionResults, checkStateRes); err != nil {
-			return err
-		}
+		// Java's modern checker stores the graph on disk. The in-memory
+		// path below must not repeat predicate evaluation for disk successors.
+		return c.addNextStateDisk(s0, fp0, nextStates, actionResults, checkStateRes)
 	}
 	source, err := c.ensureGraphNodeWithStateChecks(fp0, -1, checkStateRes)
 	if err != nil {
@@ -448,9 +454,7 @@ func (c *LiveChecker) addNextStateTableau(tool *Tool, s0 *TLCStateMut, fp0 uint6
 		if c.TableauDiskGraph != nil {
 			var err error
 			prefix, err = c.addNextStateTableauDisk(tool, s0, fp0, nextStates, actionResults, checkStateRes, consistency)
-			if err != nil || prefix != nil {
-				return err
-			}
+			return err
 		}
 		alen := len(c.Solution.CheckAction)
 		nextStates.ResetNext()
