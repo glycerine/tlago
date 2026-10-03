@@ -6,10 +6,13 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
+
+// Only the three source synchronized static writers acquire Json.class.
+// Evaluation may recursively invoke another writer on the same Java thread.
+var jsonClassMonitor distributedServerMonitor
 
 func JsonToJson(value Value) (*StringValue, error) {
 	var b bytes.Buffer
@@ -87,53 +90,40 @@ func NDJsonDeserialize(path *StringValue) (Value, error) {
 }
 
 func JsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
-	if path == nil {
-		return nil, newTLCError(ECGeneral, "JsonSerialize expected a string path")
+	jsonClassMonitor.Lock()
+	defer jsonClassMonitor.Unlock()
+	if value == nil {
+		return nil, NewNullPointerException()
 	}
 	if asTupleValue(value) == nil && asRecordValue(value) == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "JsonSerialize", "sequence or record", ValuesPPR(value))
 	}
-	if err := ensureJSONParent(path); err != nil {
-		return nil, err
-	}
-	var b bytes.Buffer
-	if err := jsonWriteValue(&b, value); err != nil {
-		return nil, err
-	}
-	if err := os.WriteFile(path.RawString(), b.Bytes(), 0o644); err != nil {
+	// Java checks the converted shape, then serializes the original value.
+	if err := jsonWriteOrdinaryFile(path, []Value{value}, false); err != nil {
 		return nil, err
 	}
 	return BoolTrue, nil
 }
 
 func NDJsonSerialize(path *StringValue, value Value) (*BoolValue, error) {
-	if path == nil {
-		return nil, newTLCError(ECGeneral, "ndJsonSerialize expected a string path")
+	jsonClassMonitor.Lock()
+	defer jsonClassMonitor.Unlock()
+	if value == nil {
+		return nil, NewNullPointerException()
 	}
 	tuple := asTupleValue(value)
 	if tuple == nil {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", "ndJsonSerialize", "sequence", ValuesPPR(value))
 	}
-	if err := ensureJSONParent(path); err != nil {
-		return nil, err
-	}
-	file, err := os.Create(path.RawString())
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	writer := bufio.NewWriter(file)
-	if err := jsonWriteNDJSON(writer, tuple); err != nil {
-		return nil, err
-	}
-	if err := writer.Flush(); err != nil {
+	if err := jsonWriteOrdinaryFile(path, tuple.Elems, true); err != nil {
 		return nil, err
 	}
 	return BoolTrue, nil
 }
 
 func JsonTextSerialize(path *StringValue, payload Value, options Value) (*BoolValue, error) {
+	jsonClassMonitor.Lock()
+	defer jsonClassMonitor.Unlock()
 	if options == nil {
 		return nil, NewNullPointerException()
 	}
@@ -167,14 +157,6 @@ func jsonTextSerializeTuple(path *StringValue, tuple *TupleValue, opts *RecordVa
 		return nil, err
 	}
 	return BoolTrue, nil
-}
-
-func ensureJSONParent(path *StringValue) error {
-	parent := filepath.Dir(path.RawString())
-	if parent == "." || parent == "" {
-		return nil
-	}
-	return os.MkdirAll(parent, 0o755)
 }
 
 func jsonWriteValue(b *bytes.Buffer, value Value) error {
@@ -307,22 +289,6 @@ func jsonWriteTuple(b *bytes.Buffer, value *TupleValue) error {
 		}
 	}
 	b.WriteByte(']')
-	return nil
-}
-
-func jsonWriteNDJSON(writer *bufio.Writer, tuple *TupleValue) error {
-	for _, elem := range tuple.Elems {
-		var b bytes.Buffer
-		if err := jsonWriteValue(&b, elem); err != nil {
-			return err
-		}
-		if _, err := writer.Write(b.Bytes()); err != nil {
-			return err
-		}
-		if err := writer.WriteByte('\n'); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

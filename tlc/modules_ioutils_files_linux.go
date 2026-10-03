@@ -18,19 +18,7 @@ func ioUtilsTXTPath(input string) (string, error) {
 		return "", NewInvalidPathException(input, "Nul character not allowed")
 	}
 	// Keep dot/parent components: filesystem resolution can traverse symlinks.
-	var path strings.Builder
-	lastSlash := false
-	for i := 0; i < len(input); i++ {
-		slash := input[i] == '/'
-		if !slash || !lastSlash {
-			path.WriteByte(input[i])
-		}
-		lastSlash = slash
-	}
-	normalized := path.String()
-	if len(normalized) > 1 && lastSlash {
-		normalized = normalized[:len(normalized)-1]
-	}
+	normalized := javaUnixNormalizePath(input)
 	// Linux native filename UTF-8 is represented here. Native charset discovery
 	// for other process locales remains a separate source feature.
 	encoded, err := javaCharsetEncode(normalized, "UTF-8", true)

@@ -673,9 +673,41 @@ Actual unchanged source JUnit and translated normal/race runs pass. This does no
 establish ordinary JSON FileWriter/reader/default-charset, parser leniency,
 provider charset or static-monitor parity; those remain source work. The final
 full workspace normal run passed (313.379s root), core-json-full-normal-final.log.
-The full race run remains live at handle 6743, core-json-full-race-final.log.
-Reuse that handle; do not start a replacement for an observation timeout. Read
-the progress tail for final status.
+The full race run for that preceding JSON snapshot passed (2551.695s root),
+core-json-full-race-final.log; retire handle 6743.
+Ordinary Json.serialize/ndSerialize now retain FileWriter replacement encoding,
+opening before node conversion, ignored mkdirs results and unwrapped primary
+failures with suppressed close errors. Linux legacy File paths retain logical
+UTF-16 diagnostics while native filename access replaces malformed units; NUL
+and empty-path errors differ from NIO. Directory canonical fallback preserves
+hard parent failures. Default charset keeps frozen startup file.encoding and
+cached resolution; runtime property changes do not alter it. Six standard
+charsets/aliases are represented; extended providers and COMPAT/native discovery
+remain. The three synchronized static writers share the existing reentrant class
+monitor, including argument evaluation in NDJSON. All 7,008 actual-source calls
+(584 inputs across twelve startup charset names) match normally/under -race;
+584 production CLI startup-charset calls, fifteen canonical/mkdirs side-effect
+calls and the reentrant/contended monitor call match under -race too. Consecutive
+high-surrogate input at encoder boundaries retains the next pending surrogate.
+Canonical fallback respects the kernel's forty-symlink limit rather than Go's
+more permissive resolver. Original JsonTest remains whole and passes. Full
+normal checks passed after the encoder correction (312.380s root); final normal
+checks after the native symlink-limit correction passed (309.577s root),
+core-json-files-baseline-normal.log; retire handle 42423. Final TLC race checks passed (3.555s),
+core-json-files-baseline-tlc-race.log; retire handle 96625. The full workspace race run at handle 83512,
+core-json-files-full-race-final.log, covers the ordinary-writer/encoder snapshot
+before only the native symlink-limit correction. Reuse confirmed live handles.
+JSON readers/Gson leniency and other native providers remain source work;
+read the progress tail for final verification status.
+
+Current user direction: finish and commit the pending JSON work and all current
+documentation, then prioritize mechanically porting original correctness tests.
+Use TODO_TEST_PORT.md for the inventory and update completed entries to
+"Port complete". Temporarily skip debugger/scoped identifiers, checkpoint/recovery
+models, distributed TLC, JPF verification, and benchmarks/supporting fixtures.
+When a ported original test fails, inspect for shortcuts in production TLC and
+finish the accurate implementation before moving on; preserve the source test.
+
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
@@ -713,6 +745,20 @@ Do not switch back to the older SANY XML or ApalacheIR corpus sweeps unless the
 user explicitly asks. Those are valuable, but they are paused. The current goal
 is TLC.
 
+## Distributed Transport Decision
+
+User decision (2026-10-03): use the user's `~/rpc25519` system
+(`github.com/glycerine/rpc25519`) for distributed TLC communications, with
+Greenpack serialization (`github.com/glycerine/greenpack`). The local source is
+`/mnt/oldrog/home/jaten/rpc25519`.
+
+Use its peer/circuit/fragment actor API to pipeline state and fingerprint
+batches without waiting synchronously for each remote response. Correlate
+asynchronous results with outstanding batches; dependent work still requires
+its results. Preserve Java TLC's deduplication, checkpoint, failure-recovery and
+termination semantics. This records the selected transport; network integration
+remains pending. See `TLC_ARCH.md` for the intended mapping.
+
 ## Operating Rules
 
 - Keep implementation mostly in package `tlc`; avoid splitting into subpackages
@@ -739,6 +785,7 @@ is TLC.
 - `PLAN.md`: broad project plan. It still contains SANY and Apalache history,
   but the current active section points to this TLC handoff.
 - `ARCH.md`: detailed Java SANY architecture notes.
+- `tlc/TODO_TEST_PORT.md`: original Java test-method inventory and current port status.
 - `tlc/TLC_ARCH.md`: detailed Java TLC architecture, APIs, data structures,
   algorithms, performance notes, and the original mechanical port order.
 - `tlc/PORT_PROGRESS.md`: living audit log and do-not-revisit ledger. Read the

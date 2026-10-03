@@ -2649,9 +2649,20 @@ Go mapping:
   constructed. Throwable rendering prints suppressed failures before the cause.
   Gson string escaping keeps raw UTF-16 units and does not apply HTML escaping;
   unsupported nodes retain the source IOException class/message. Record apply
-  returns a present null component directly. Ordinary JSON FileWriter/reader
-  boundaries, default charsets, Gson parser leniency and Java static monitor
-  coordination remain distinct source requirements.
+  returns a present null component directly. Ordinary Json.serialize/ndSerialize
+  use the same buffered stream carrier with replacement encoding, open before
+  node conversion, ignore mkdirs' return and retain unwrapped failures/suppression.
+  Linux legacy File paths replace malformed filename units for native access while
+  retaining the logical UTF-16 path in FileNotFoundException; NUL/empty behavior
+  remains distinct from NIO. Directory creation retains canonical fallback and
+  hard parent failures and the native kernel symlink limit, rather than Go's
+  more permissive EvalSymlinks limit. Adjacent high surrogates preserve the
+  next pending unit after replacement. Initial file.encoding is frozen separately from runtime
+  property mutation and default charset resolution is cached; the six guaranteed
+  charsets/aliases are represented. Json's three synchronized static writers
+  share the existing reentrant class monitor; NDJSON holds it across evaluation.
+  Reader boundaries, extended provider/COMPAT/native default charset discovery,
+  Gson parser leniency and other native File providers remain source work.
   Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw
@@ -3374,7 +3385,22 @@ Port guidance:
 
 ## Distributed TLC Architecture
 
-Distributed TLC uses Java RMI:
+Go transport decision from the user (2026-10-03): use `~/rpc25519`
+(`github.com/glycerine/rpc25519`) with Greenpack serialization
+(`github.com/glycerine/greenpack`). Local reference source is
+`/mnt/oldrog/home/jaten/rpc25519`; `ckt_example.go` demonstrates the
+peer/circuit/fragment actor API. This is the selected transport, with integration
+still pending.
+
+The intended mapping is peers for the coordinator, workers and fingerprint
+servers, circuits for their batch traffic, and Greenpack-encoded fragments for
+state/fingerprint requests and results. Correlate asynchronous results with
+outstanding batches and keep multiple independent batches in flight. A batch
+still needs its fingerprint answers before dependent work proceeds. Preserve
+Java TLC's deduplication, checkpoint boundaries, failure/retry behavior and
+termination detection as networking is introduced.
+
+The Java reference implementation uses RMI:
 
 - `TLCServer`
 - `TLCWorker`
@@ -3902,7 +3928,8 @@ Port guidance:
 
 - Do not port RMI mechanically as networking first.
 - Preserve semantics in local concrete abstractions first.
-- Later choose Go RPC/gRPC only after single-process behavior is conformant.
+- Use the selected rpc25519/Greenpack transport and its peer/circuit/fragment
+  API when introducing networking, preserving the local Java semantics.
 - Port a feature's Java tests after implementing that feature in Go. Keep
   transport-dependent tests with the transport feature they exercise.
 - The Go port should keep `TLCServer`, `DistributedWorker`,

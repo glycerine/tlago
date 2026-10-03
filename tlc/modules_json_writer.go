@@ -92,6 +92,7 @@ type jsonFileWriter struct {
 	position, limit  int
 	leftover         uint16
 	hasLeftover, bom bool
+	replace          bool
 }
 
 func newJSONFileWriter(file *os.File, charset string) *jsonFileWriter {
@@ -125,7 +126,7 @@ func (w *jsonFileWriter) flushChars() error {
 }
 
 func (w *jsonFileWriter) encode(units []uint16) error {
-	if w.hasLeftover {
+	for w.hasLeftover {
 		if len(units) == 0 {
 			return nil
 		}
@@ -134,7 +135,10 @@ func (w *jsonFileWriter) encode(units []uint16) error {
 		if err := w.encodeUnits([]uint16{w.leftover, units[0]}); err != nil {
 			return err
 		}
-		w.hasLeftover = false
+		// Replacement can consume the old high surrogate and leave the new
+		// high surrogate pending. flushLeftoverChar then reads another input
+		// unit, rather than discarding the pending flag after that first pair.
+		w.hasLeftover = units[0] >= 0xd800 && units[0] <= 0xdbff
 		units = units[1:]
 	}
 	return w.encodeUnits(units)
@@ -156,11 +160,23 @@ func (w *jsonFileWriter) encodeUnits(units []uint16) error {
 				return nil
 			}
 			if units[i+1] < 0xdc00 || units[i+1] > 0xdfff {
-				return NewMalformedInputException(1)
+				if !w.replace {
+					return NewMalformedInputException(1)
+				}
+				if err := w.put(w.replacementBytes()); err != nil {
+					return err
+				}
+				continue
 			}
 			count = 2
 		} else if unit >= 0xdc00 && unit <= 0xdfff {
-			return NewMalformedInputException(1)
+			if !w.replace {
+				return NewMalformedInputException(1)
+			}
+			if err := w.put(w.replacementBytes()); err != nil {
+				return err
+			}
+			continue
 		}
 		var encoded []byte
 		switch w.charset {
@@ -170,7 +186,14 @@ func (w *jsonFileWriter) encodeUnits(units []uint16) error {
 				limit = 255
 			}
 			if unit > limit {
-				return NewUnmappableCharacterException(count)
+				if !w.replace {
+					return NewUnmappableCharacterException(count)
+				}
+				if err := w.put(w.replacementBytes()); err != nil {
+					return err
+				}
+				i += count - 1
+				continue
 			}
 			encoded = []byte{byte(unit)}
 		case "UTF-8":
@@ -237,10 +260,27 @@ func (w *jsonFileWriter) closeEncoder() (err error) {
 		}
 	}()
 	if w.hasLeftover {
-		return NewMalformedInputException(1)
+		if !w.replace {
+			return NewMalformedInputException(1)
+		}
+		if err := w.put(w.replacementBytes()); err != nil {
+			return err
+		}
+		w.hasLeftover = false
 	}
 	if w.position > 0 {
 		return w.writeBytes()
 	}
 	return nil
+}
+
+func (w *jsonFileWriter) replacementBytes() []byte {
+	switch w.charset {
+	case "UTF-16", "UTF-16BE":
+		return []byte{0xff, 0xfd}
+	case "UTF-16LE":
+		return []byte{0xfd, 0xff}
+	default:
+		return []byte{'?'}
+	}
 }

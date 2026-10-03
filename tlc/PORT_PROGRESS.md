@@ -1827,9 +1827,9 @@ and TLC race checks pass (3.657s); three platform builds (Windows/amd64, Darwin/
 Logs use core-json-* under .codex-gotmp/; actual-source artifacts are under
 core-json-production/. Final full workspace normal checks pass (313.379s root),
 core-json-full-normal-final.log, including the unchanged complete CommunityModules
-Ant translation. The full race run is live at handle 6743,
-core-json-full-race-final.log. Reuse that live handle instead of restarting on
-timeout. The prior full race handle 25120
+Ant translation. That preceding JSON full race run passed (2551.695s root);
+retire handle 6743. Its log is
+core-json-full-race-final.log. The prior full race handle 25120
 completed successfully, root 2577.919s, snapshot 183fd47 before the filesystem and
 JSON slices; retire it. Removing only old regular disposable Go cache files
 restored disk space; source and tracked fixtures were preserved.
@@ -1840,3 +1840,101 @@ provider/native/default charsets, other filesystem providers and allocation/heap
 exhaustion remain. Broader semantic metadata, native discovery, DAP and distributed
 transport remain. Full TLC completion is unproven. Independent rpc25519/Greenpack
 documentation remains outside this slice.
+
+
+- Ordinary core Json.serialize/ndSerialize FileWriter slice: both validate payload
+before dereferencing the path; Json.serialize checks the converted shape but
+serializes the original value, while ndSerialize retains the converted tuple.
+Files open/truncate before node conversion. File.mkdirs' return is ignored;
+no parent-creation error replaces the subsequent native open failure. Ordinary
+try-with-resources retains the primary Exception/Error without the NDJSON
+RuntimeException wrapper, adding close failures as suppressed failures.
+The existing BufferedWriter/StreamEncoder carrier now represents replacement
+coding for FileWriter as well as REPORT coding for Files.newBufferedWriter.
+Replacement preserves surrogate-pair consumption and separate character/byte
+buffers; UTF-8/ASCII/Latin-1 use question-mark replacement, UTF-16 variants U+FFFD.
+
+Linux java.io.File normalizes separators without resolving dot components;
+its native filename encoding replaces malformed UTF-16, unlike NIO's strict
+UnixPath. FileOutputStream keeps the original normalized UTF-16 logical path
+in FileNotFoundException(path + native reason), including malformed units.
+NUL yields FileNotFoundException("Invalid file path"); empty native paths retain
+ENOENT rather than addressing the current directory. Files use 0666 and directory
+creation 0777, filtered by umask. mkdirs first tries the raw path, then canonical
+parent creation. Canonicalization resolves an existing prefix and normalizes
+unresolved dot components; hard failures in a parent, including symlink loops,
+cannot be discarded. The shared Unix separator normalizer is reused by TXT.
+Other native File providers and native filename charset discovery remain pending;
+the non-Linux fallback does not establish those source semantics.
+
+Default FileWriter charset now retains a frozen initial file.encoding value
+with cached resolution, separate from later runtime System property mutation.
+The Go command's startup -D processing supplies the initial value. JDK 21
+Charset/FileWriter/FileOutputStream/File/UnixFileSystem bytecode was inspected.
+Six guaranteed charsets and their aliases are represented; unknown initial names
+fall back to UTF-8 as the standard provider does. Extended standard/provider
+charsets and COMPAT/native locale discovery remain unported; these observations
+do not establish those settings. The initial/default charset carrier is now
+available for the later reader/process byte-decoding port.
+
+Json's three synchronized static writer methods share the existing concrete
+reentrant monitor. The evaluating NDJSON callback acquires it before evaluating
+options, allowing same-thread recursive JSON writes while other writers wait;
+ordinary reader/string methods remain unsynchronized as source. This resolves the
+static-monitor gap noted in the previous JSON slice without inventing an interface.
+
+Owned .codex-gotmp/core-json-files-production/ observers invoke unchanged compiled
+core Json.java and JDK file methods. All 7,008 bounded method calls (584 cases
+under twelve startup charset names: six standard charsets, three aliases and
+three invalid-name fallbacks) match value/error family, UTF-16 diagnostics,
+recursive suppression, normalized stack headings, file bytes and file/symlink
+state normally and under -race. Runtime file.encoding changes remain ineffective.
+Two cases per encoding include suppressed close failures. Both producers now
+reset every owned path per case, including files read after a failed validation;
+earlier stale observer artifacts are excluded. Fifteen actual File canonical/
+mkdirs observations match normalized paths, return values and created-directory
+side effects under Go -race; they exposed and fixed the hard-parent-loop boundary.
+One actual-source monitor observation matches reentrancy, contender exclusion,
+file existence while blocked and output bytes under Go -race. The previous 932
+NDJSON observations still match after shared writer/path/monitor edits, normally
+and under -race. No owned observer was promoted to a persistent test/vector.
+
+The complete existing JsonTest and its unchanged original vector, translated in
+the previous slice after the JSON feature, are rerun in full. No dedicated writer
+boundary Java test exists in the TLC source; no new unit/regression test invented.
+Full workspace normal checks pass after the adjacent-surrogate correction
+(312.380s root); TLC race checks pass (3.524s) and the entire original JsonTest
+race check passes (2.424s root). Windows/amd64, Darwin/arm64 and FreeBSD/amd64
+builds pass. The final 7,008 normal and 7,008 race observations match unchanged
+Java. Seventy-two adjacent-surrogate cases exposed sixteen differences in the
+old flushLeftoverChar translation: after replacing a retained high surrogate,
+a new high surrogate must remain pending and consume another input unit.
+All 584 actual Go CLI -Dfile.encoding=UTF-16LE calls match Java startup behavior.
+The previous 932 NDJSON cases match under -race after this shared encoder fix.
+
+Two additional actual File observations exposed Go EvalSymlinks' higher link
+limit: JDK/native realpath refuses a forty-one-link parent, whereas Go previously
+resolved it and created a directory. Canonical fallback now checks the native
+Stat ELOOP result before Go's lexical resolver. All fifteen actual-source
+canonical/mkdirs observations match paths, exception families, booleans and
+created directories under Go -race after this final production correction.
+Final whole normal checks passed (309.577s root),
+core-json-files-baseline-normal.log; retire handle 42423. Final TLC race checks passed (3.555s),
+core-json-files-baseline-tlc-race.log; retire handle 96625. Reuse confirmed live handles.
+
+The preceding full race snapshot d6c409f passed (2551.695s root),
+core-json-full-race-final.log; retire handle 6743. The current full race run
+remains live at handle 83512, core-json-files-full-race-final.log, covering the
+ordinary writer/encoder snapshot before only the native symlink-limit correction.
+Logs use core-json-files-* under .codex-gotmp/; current artifacts remain owned
+and disposable. Other providers, extended/native/default charset discovery,
+JSON reader/lenient Gson parsing and allocation/heap exhaustion remain. Broader
+semantic metadata, native discovery, DAP and distributed transport remain.
+Full TLC completion is unproven. The user now requests committing all current
+source/documentation, including rpc25519/Greenpack notes and the test inventory,
+for a green starting point, then prioritizing original correctness-test ports.
+Skip debugger/scoped identifiers, checkpoint/recovery models, distributed TLC,
+JPF verification and benchmarks/supporting fixtures for now. Never weaken a
+source test: inspect and correct production shortcuts, then complete the original
+method mechanically before proceeding. Update TODO_TEST_PORT.md entries to
+"Port complete" and retain whole original parameter/assertion sets.

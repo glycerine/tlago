@@ -635,6 +635,9 @@ func tlcSetStartupSystemProperty(name string, value string) {
 }
 
 func tlcApplyStartupSystemProperty(name string, value string) {
+	if name == "file.encoding" {
+		javaSetStartupFileEncoding(value)
+	}
 	if name == mpGeneralDebugProperty {
 		mpGeneralDebug = javaBooleanProperty(value)
 	}

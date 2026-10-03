@@ -472,6 +472,8 @@ func standardStringArg(name string, args []Value, index int) (*StringValue, erro
 }
 
 func standardJsonTextSerialize(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {
+	jsonClassMonitor.Lock()
+	defer jsonClassMonitor.Unlock()
 	options, err := tool.Eval(args[2], con, state, pstate, control, cm)
 	if err != nil {
 		return nil, err
