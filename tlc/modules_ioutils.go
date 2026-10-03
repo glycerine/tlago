@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"sort"
-	"strconv"
 	"strings"
 )
 
@@ -132,15 +131,24 @@ func ioUtilsBuildEnv() Value {
 }
 
 func IOUtilsAtoi(value Value) (Value, error) {
-	str, ok := value.(*StringValue)
+	if value == nil {
+		// Java reaches v.toString() while building the argument-error parameters.
+		return nil, NewNullPointerException()
+	}
+	var str *StringValue
+	switch value := value.(type) {
+	case *StringValue:
+		str = value
+	case *DebuggerValue:
+		str = value.StringValue
+	default:
+		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
+	}
+	i, ok := javaParseDecimalInt(str.RawString())
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
 	}
-	i, err := strconv.ParseInt(str.RawString(), 10, 32)
-	if err != nil {
-		return nil, newTLCErrorCode(ECTLCModuleOneArgumentError, "atoi", "string", ValuesPPR(value))
-	}
-	return NewIntValue(int32(i)), nil
+	return NewIntValue(i), nil
 }
 
 func IOUtilsIOExec(command Value) (Value, error) {

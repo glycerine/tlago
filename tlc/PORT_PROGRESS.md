@@ -1608,3 +1608,43 @@ that feature fix. Broader semantic metadata, native provider discovery, DAP
 transport/events and distributed network integration also remain. Independent
 rpc25519/Greenpack documentation stays outside this slice. Full TLC completion
 remains unproven.
+
+
+- IOUtils.atoi source slice: replaced strconv.ParseInt with the shared Java
+Integer.parseInt decimal implementation. Preserves BMP Unicode digit scripts,
+ASCII signs, leading zeros, signed 32-bit limits and rejection of supplementary
+digits, whitespace, underscores and radix prefixes. The source StringValue
+subclass DebuggerValue follows the same parse/fall-through path. Invalid inputs
+retain the original TLC_MODULE_ONE_ARGUMENT_ERROR and all three parameters;
+printing still uses the original value, preserving the debugger placeholder.
+Null reaches Java's distinct NullPointerException boundary when building those
+parameters rather than producing a TLC argument error. Generic VM-generated
+helpful-null diagnostic text is still unported; source class/message observations
+confirm that compiler debug metadata changes the referenced parameter label.
+No VM detail string is manufactured in the Go exception.
+
+Owned .codex-gotmp/core-atoi-production/ comparisons use the actual unchanged
+compiled Community IOUtils.java (its source copy is byte-identical to upstream).
+All 65,536 single UTF-16 units, twenty-three signed/boundary/mixed-script/invalid
+strings, boolean, integer and the original debugger placeholder match results,
+error codes and all UTF-16 parameter units exactly: 65,562 records normally and
+under -race. The additional null observation checks its exception family, for
+65,563 matching family/result/parameter records in both runs. Its enhanced VM
+message is excluded explicitly. Shared BMP decimal digit classification now has
+an exhaustive actual-method comparison; avoid repeating it without new evidence.
+The six existing atoi assumptions in IOUtilsTests remain in the complete original
+Ant target translated previously; no persistent tests or vectors were invented
+or changed. Initial full workspace normal checks pass (310.747s root), and final
+TLC -race checks pass (3.378s). Final full workspace checks pass (315.088s root).
+Logs are core-atoi-full-normal{,-final}.log and core-atoi-tlc-race{,-final}.log
+under .codex-gotmp/. The earlier charset full race snapshot remains live; reuse
+its existing handle before launching another expensive full run.
+
+The next IOUtils source boundaries remain TXT argument casts and their timing,
+open-option enum/flag mapping and error precedence, Java filesystem error families,
+and process default-charset decoding. The evaluating overrides are already
+registered as the source priority chain (JSON 25, TXT 50), with options evaluated
+first; do not replace them with eager MethodValues. TXT payload casts still need
+to occur before destination evaluation. Broader metadata, native discovery, DAP
+and distributed transport remain. Full TLC completion remains unproven.
+Independent rpc25519/Greenpack documentation remains outside this commit.

@@ -2611,6 +2611,12 @@ Go mapping:
   precedes file access, and NUL path validation precedes charset lookup. Process
   default charset/byte decoding, filesystem error families, open-option validation
   order and invalid-value cast behavior remain distinct source requirements.
+  IOUtils.atoi uses the shared Java decimal parser: UTF-16/BMP decimal digits,
+  ASCII signs, signed int limits, decimal leading zeros and rejection of
+  supplementary digits, whitespace and radix prefixes. Source StringValue
+  subclasses are accepted; invalid values retain the original TLC error code
+  and parameters. Null reaches the source NullPointerException boundary while
+  constructing error parameters; VM-generated helpful-null detail remains pending.
   Generic value-stream file paths that
   correspond to Java's `ValueOutputStream(File/String)` and
   `ValueInputStream(File/String)` honor the global gzip flag; raw

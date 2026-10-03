@@ -625,9 +625,13 @@ path/charset-priority records match too. These are owned ephemeral observations,
 not new persistent tests/vectors. The existing complete Ant suite includes the
 original IOUtils tests; keep running that whole target. Broader provider charsets,
 process default-charset discovery/decoding, file error/option precedence and
-invalid-value casts still need their source features. IOUtils.atoi also still
-uses Go ASCII parsing instead of the existing Java decimal parser; implement
-that separately with actual-source observations before changing its tests.
+invalid-value casts still need their source features. IOUtils.atoi now uses
+Java decimal parsing and StringValue-subclass acceptance, preserving signed
+limits, BMP digit scripts, supplementary-digit rejection and source error
+parameters. All 65,562 non-null production observations match exactly normally
+and under -race; null retains its distinct NullPointerException family. VM
+helpful-null diagnostic text remains source work. Its existing assumptions stay
+in the complete Ant target with no invented tests or reduced runner.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
