@@ -86,6 +86,28 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.IndexOutOfBoundsException"
 	case *StringIndexOutOfBoundsException:
 		return "java.lang.StringIndexOutOfBoundsException"
+	case *IllegalFormatException:
+		return "java.util.IllegalFormatException"
+	case *DuplicateFormatFlagsException:
+		return "java.util.DuplicateFormatFlagsException"
+	case *FormatFlagsConversionMismatchException:
+		return "java.util.FormatFlagsConversionMismatchException"
+	case *IllegalFormatConversionException:
+		return "java.util.IllegalFormatConversionException"
+	case *IllegalFormatFlagsException:
+		return "java.util.IllegalFormatFlagsException"
+	case *IllegalFormatPrecisionException:
+		return "java.util.IllegalFormatPrecisionException"
+	case *IllegalFormatWidthException:
+		return "java.util.IllegalFormatWidthException"
+	case *MissingFormatArgumentException:
+		return "java.util.MissingFormatArgumentException"
+	case *MissingFormatWidthException:
+		return "java.util.MissingFormatWidthException"
+	case *UnknownFormatConversionException:
+		return "java.util.UnknownFormatConversionException"
+	case *IllegalFormatArgumentIndexException:
+		return "java.util.IllegalFormatArgumentIndexException"
 	case *IllegalArgumentException:
 		return "java.lang.IllegalArgumentException"
 	case *URISyntaxException:

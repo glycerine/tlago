@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unicode/utf16"
 )
 
 type ValueKind byte
@@ -584,24 +583,24 @@ func (v *StringValue) RawString() string {
 }
 
 func tlaStringPrintVersion(s string) string {
-	var b strings.Builder
-	for _, c := range utf16.Encode([]rune(s)) {
-		switch c {
+	var escaped []uint16
+	for _, char := range javaStringUTF16(s) {
+		switch char {
 		case '"':
-			b.WriteString(`\"`)
+			escaped = append(escaped, '\\', '"')
 		case '\\':
-			b.WriteString(`\\`)
+			escaped = append(escaped, '\\', '\\')
 		case '\t':
-			b.WriteString(`\t`)
+			escaped = append(escaped, '\\', 't')
 		case '\n':
-			b.WriteString(`\n`)
+			escaped = append(escaped, '\\', 'n')
 		case '\f':
-			b.WriteString(`\f`)
+			escaped = append(escaped, '\\', 'f')
 		case '\r':
-			b.WriteString(`\r`)
+			escaped = append(escaped, '\\', 'r')
 		default:
-			b.WriteRune(rune(c))
+			escaped = append(escaped, char)
 		}
 	}
-	return b.String()
+	return javaStringFromUTF16(escaped)
 }

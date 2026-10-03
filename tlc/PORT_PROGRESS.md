@@ -1414,3 +1414,75 @@ only its already-translated deep-copy/error methods, so no original formatter
 method exists there to port. Implement source formatting behavior before any
 corresponding original test translations; do not invent replacements.
 Independent rpc25519/Greenpack transport notes remain unstaged.
+
+
+- Record-state/CSV formatting slice: compared RecordValue.toState and
+PrintTLCState.toString, CommunityModules CSV.write, StringValue.PrintVersion and
+the installed OpenJDK 21 Formatter/FormatSpecifier/Flags/Conversion/DateTime/
+exception bytecode. Source format selection distinguishes absent _format from
+an explicit empty string, casts non-string formats and fails on null values;
+ported those branches and the concrete DebuggerValue StringValue subtype.
+ToState now visits every matching raw record field instead of stopping at the
+first, preserving the last binding. Shared JavaFormatStrings implements the
+actual string arguments supplied by both TLC call sites: parse/validate the
+entire template before rendering, then preserve independent ordinary/explicit/
+previous argument indexes, duplicate/bad flags, width and precision limits,
+conversion validation and exception order, ignored extra arguments, %%/%n,
+uppercase, boolean and Java UTF-16 string-hash conversions. Numeric/character/
+date-time templates retain the source invalid-string-argument failures, rather
+than silently accepting Go formatting. Concrete formatter exception families,
+getters, messages and throwable class names are retained. Formatter language/
+category and platform line-separator startup properties freeze on first use,
+including language-case normalization. OS default-locale discovery remains
+unrepresented beyond the current English default/property support.
+Direct production comparison found StringValue.PrintVersion emitted each
+surrogate unit through Go WriteRune, replacing an emoji with two replacement
+characters before CSV formatting. Shared UTF-16/WTF-8 helpers now preserve code
+units across string escaping, precision, concatenation, uppercase and hash
+conversion. The UTF-8 CSV boundary replaces unmatched units with '?' and keeps
+valid supplementary pairs, matching Java's encoder. Other UTF-16 consumers have
+not been declared complete. CSV formats successfully before creating/appending
+its file and uses the source line separator.
+Owned standalone comparisons match all 60,551 source-grammar/Unicode template
+records for output code units or exact exception class/message, 49 locale
+samples each for en/tr/az/lt/el and uppercase TR, 1,525 code points whose Java
+uppercase differs, an aggregate of all 1,112,064 Unicode scalars (including
+unchanged ones), and the source printer's complete 65,536 code-unit sequence
+(including escapes, pairs and unmatched surrogates). Locale/line-separator
+freezing and custom separators match Java; all 60,551 custom-separator records
+match too. Eighteen record observations and ten actual Java CSV override
+observations match output/UTF-8 bytes, return values, exception class/message,
+source StringValue-subclass acceptance and no file creation on format errors.
+Raw duplicate field binding matches the source last binding. Probes are owned
+and temporary, with no invented persistent tests/fixtures:
+.codex-gotmp/formatter-production-probe/,
+record-format-production-probe/, record-bind-production-probe/,
+csv-format-production-probe/, formatter-freeze-production-probe/,
+string-print-production-probe/ and .codex-gotmp/java-debugger-original/
+(FormatStringProbe, FormatLocaleProbe, UnicodeFormatCases, FormatterFreezeProbe,
+RecordFormatProbe, RecordBindProbe, CSVFormatProbe, StringPrintUnitsProbe).
+The paired outputs are java-formatter-{en-final,TR,line-separator,unicode,
+all-scalars}.jsonl, go-formatter-*.jsonl, java/go-record-format.jsonl,
+java/go-record-bind.log, java/go-csv-format.jsonl, java/go-formatter-freeze.log
+and java/go-string-print-units.log. Java files are in java-debugger-original;
+Go files are in .codex-gotmp. Installed bytecode is formatter*.bytecode there.
+After the feature comparison, completed both original RecordValueTest methods
+in the existing value_record_test.go, preserving isolated InternTable(2), all
+fifteen assertion sites, the missing select call and source conditional catches
+(the source methods do not assert that an exception occurred). The unchanged
+Java class passes with two runs/zero failures/zero ignored; whole-source audit
+confirms twelve deep-copy and three error assertions with two apply calls and
+one select call. No dedicated original TLC formatter/PrintVersion methods exist
+in that class. CommunityModules CSVTests is an assumption module imported by
+the complete AllTests/AllTestsUnix suite with AllTests.cfg and the original Ant
+runtime/environment; do not invent a standalone config or persist a partial
+replacement. Compare/implement the complete suite's native feature surface,
+then translate the whole suite. The existing complete Alias/TLCExtTrace/Debug05
+translations and RecordValue methods pass under -race. Final full offline
+normal and race suites pass on the reviewed source (root 39.666s and 226.925s;
+TLC 0.906s and 3.491s respectively). Source/assertion audits and diff checks pass.
+Broader SANY level/theorem/proof/instance/
+export metadata, full native override registration, DAP protocol/events,
+operating-system locale discovery, other UTF-16 consumers and selected
+distributed transport remain pending. Full TLC completion remains unproven.
+Independent rpc25519/Greenpack transport documentation stays outside this slice.

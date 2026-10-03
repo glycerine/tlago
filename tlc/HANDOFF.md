@@ -582,16 +582,33 @@ scope case, all eight nested-variable equality sites and the two-child loop;
 source inline inputs are unchanged and no invented vectors/tests were added.
 Both unchanged Java classes pass (18 and 4 cases/methods respectively), as do
 the whole Go translations and existing debugger expression tests under -race.
-Next: RecordValue.toState/StateString format selection and Java Formatter
-behavior, followed by any corresponding whole original tests. Broader semantic
-metadata and native override registration remain source work as listed below.
+RecordValue.toState/StateString now preserves Java's format selection: absent
+_format selects the default, an explicit empty format suppresses output, and
+non-string/null format values throw their source exceptions. StringValue's
+DebuggerValue subtype is accepted. Duplicate record fields bind in source order,
+so the last matching field supplies the state variable. State rendering and CSV
+now share Java's formatter behavior for their actual string arguments, including
+whole-template validation, indexing/reuse, flags, width, UTF-16 precision,
+boolean/hash conversion, uppercase and typed formatting failures. CSV writes the
+source UTF-8 bytes and line separator after successful formatting. The shared
+string printer preserves supplementary and unpaired surrogate units rather than
+replacing an emoji with two replacement characters. All 60,551 template records,
+all Unicode scalar uppercase mappings, all 65,536 code-unit print observations,
+18 record cases and ten CSV cases match Java. The existing RecordValueTest is
+now translated completely, with both methods and all fifteen source assertions,
+including select. No invented persistent tests or vectors were added.
+Next: compare the complete CommunityModules AllTests/AllTestsUnix feature surface
+and native override registration, then translate the whole original suite when
+its features are represented. CSVTests belongs to that suite; do not substitute
+a reduced runner/config. Broader semantic metadata remains work as listed below.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
 metadata/export composition and complete native override registration remain
 source work. Full debugger and full TLC completion are not established.
-Record StateString's explicit empty/non-string _format handling and full Java
-String.format semantics also remain source parity work. TLCGetNonDeterminismTest
+Operating-system default-locale discovery and other UTF-16 consumers remain
+source work; formatter startup language/category and line-separator properties
+are represented and frozen on first use. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it.
 Original model bytes, including upstream whitespace, remain in test_vectors/.
 

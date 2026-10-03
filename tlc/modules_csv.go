@@ -2,7 +2,6 @@ package tlc
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"math"
 	"os"
@@ -62,15 +61,15 @@ func CSVWrite(template Value, parameter Value, absolutePath Value) (Value, error
 	}
 
 	tuple.DeepNormalize()
-	params := make([]any, len(tuple.Elems))
+	params := make([]string, len(tuple.Elems))
 	for i, value := range tuple.Elems {
 		params[i] = value.String()
 	}
-	line, err := csvJavaStringFormat(format.RawString(), params)
+	line, err := JavaFormatStrings(format.RawString(), params...)
 	if err != nil {
 		return nil, err
 	}
-	return BoolTrue, csvAppendLines(path.RawString(), []string{line})
+	return BoolTrue, csvAppendLines(path.RawString(), []string{javaStringUTF8(line)})
 }
 
 func CSVRead(columns Value, delim Value, absolutePath Value) (Value, error) {
@@ -155,7 +154,7 @@ func csvAppendLines(path string, lines []string) error {
 	}
 	defer file.Close()
 	for _, line := range lines {
-		if _, err := file.WriteString(line + "\n"); err != nil {
+		if _, err := file.WriteString(line + javaFormatLineSeparator()); err != nil {
 			return err
 		}
 	}
@@ -197,32 +196,4 @@ func csvRegexSplit(line string, delimiter string) ([]string, error) {
 		parts = parts[:len(parts)-1]
 	}
 	return parts, nil
-}
-
-func csvJavaStringFormat(format string, params []any) (string, error) {
-	var converted strings.Builder
-	for i := 0; i < len(format); i++ {
-		if format[i] != '%' || i+1 >= len(format) {
-			converted.WriteByte(format[i])
-			continue
-		}
-		if format[i+1] == '%' {
-			converted.WriteString("%%")
-			i++
-			continue
-		}
-		j := i + 1
-		for j < len(format) && format[j] >= '0' && format[j] <= '9' {
-			j++
-		}
-		if j > i+1 && j+1 < len(format) && format[j] == '$' && format[j+1] == 's' {
-			converted.WriteString("%[")
-			converted.WriteString(format[i+1 : j])
-			converted.WriteString("]s")
-			i = j + 1
-			continue
-		}
-		converted.WriteByte(format[i])
-	}
-	return fmt.Sprintf(converted.String(), params...), nil
 }

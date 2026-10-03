@@ -478,7 +478,24 @@ Current adapter responsibilities:
   other failures escape. Printable record states retain their fresh metadata,
   and `AliasTLCStateInfo` preserves the original ordinal/action separately.
   The native `TLCExt.getTrace` override does not look up this context itself.
-  Full `_format`/Java formatter parity remains pending.
+  `_format` now distinguishes absent/default formatting from an explicitly
+  empty string, retains source null/class-cast failures and accepts the concrete
+  DebuggerValue StringValue subtype. Record-to-state conversion binds every
+  matching field in source order, preserving last-binding behavior for raw
+  duplicate fields. State formatting uses the shared Java string-argument
+  formatter, with whole-template parsing/validation before argument rendering,
+  independent ordinary/explicit/previous indexes, typed source exceptions,
+  flags/width/UTF-16 precision, boolean and Java string-hash conversions,
+  uppercase and platform line separators. Numeric, character and date/time
+  templates reject the source string arguments as Java does. Locale/category
+  startup properties freeze on first formatter use; OS locale discovery remains
+  work. All 60,551 source-grammar observations, every Unicode scalar uppercase
+  mapping, all 65,536 code-unit print observations and eighteen record cases
+  match Java. Unpaired UTF-16 units are retained as WTF-8 for internal formatting;
+  the CSV UTF-8 boundary replaces them with '?' as Java's encoder does. Other
+  UTF-16 consumers remain source work; this is not full string-system parity.
+  The existing RecordValueTest translation now retains both whole methods,
+  all fifteen assertions and the original conditional catch behavior.
 - resolve config-selected `INIT`, `NEXT`, `SPECIFICATION`, invariants,
   properties, constraints, view, and postconditions into `Action` or semantic
   nodes.
@@ -2588,8 +2605,12 @@ Go mapping:
   `FiniteSetsExt` call `op(value, acc)`, while `BagsExt.FoldBag` follows Java's
   `op(acc, bagElement)` loop for each multiplicity.
 - CommunityModules `CSV` and `GraphViz` are side-effect/string rendering
-  overrides. CSV appends UTF-8 text lines with Java `String.format`-style
-  `%1$s` placeholders, normalizes records before header/value emission, uses
+  overrides. CSV's actual string arguments use the shared Java formatter,
+  preserving indexing/reuse, flags, UTF-16 precision, uppercase/boolean/hash
+  output and typed invalid-template/conversion failures before file creation.
+  Ten direct source observations match return values, exact UTF-8 file bytes,
+  exceptions and creation timing. It appends the source line separator,
+  normalizes records before header/value emission, uses
   raw `StringValue` contents for paths and delimiters, treats the delimiter in
   `CSVRead` as a Java regex, returns an empty tuple/zero count for missing
   files, and overflows beyond signed 32-bit record counts. `GraphViz.DotDiGraph`

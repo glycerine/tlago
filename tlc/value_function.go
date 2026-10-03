@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -607,7 +606,6 @@ func (v *RecordValue) ToState() *TLCStateMut {
 		for i, name := range v.Names {
 			if name == variable.Name {
 				state.Bind(variable.Name, v.Values[i])
-				break
 			}
 		}
 	}
@@ -623,15 +621,28 @@ func (v *RecordValue) StateString() string {
 	formatIndex := -1
 	for i, name := range v.Names {
 		if name == UniqueStringOf("_format") {
-			if sv, ok := v.Values[i].(*StringValue); ok {
-				format = sv.Val.String()
+			if isNil(v.Values[i]) {
+				panic(NewNullPointerException("Cannot read field \"val\" because \"this.rcd.values[idx]\" is null"))
 			}
+			var sv *StringValue
+			switch value := v.Values[i].(type) {
+			case *StringValue:
+				sv = value
+			case *DebuggerValue:
+				sv = value.StringValue
+			default:
+				panic(valueStreamClassCast(v.Values[i], "tlc2.value.impl.StringValue"))
+			}
+			if sv.Val == nil {
+				panic(NewNullPointerException("Cannot invoke \"util.UniqueString.toString()\" because \"this.rcd.values[idx].val\" is null"))
+			}
+			format = sv.Val.String()
 			formatIndex = i
 			break
 		}
 	}
-	if format == "" {
-		if len(v.Names) == 1 || (len(v.Names) == 2 && formatIndex >= 0) {
+	if formatIndex < 0 {
+		if len(v.Names) == 1 {
 			format = "%s = %s\n"
 		} else {
 			format = "/\\ %s = %s\n"
@@ -642,9 +653,13 @@ func (v *RecordValue) StateString() string {
 		if i == formatIndex {
 			continue
 		}
-		b.WriteString(fmt.Sprintf(format, name.String(), ValuesPPR(v.Values[i])))
+		text, err := JavaFormatStrings(format, name.String(), ValuesPPR(v.Values[i]))
+		if err != nil {
+			panic(err)
+		}
+		b.WriteString(text)
 	}
-	return b.String()
+	return javaStringFromUTF16(javaStringUTF16(b.String()))
 }
 
 func (v *RecordValue) Size() (resultInt int, err error) {
