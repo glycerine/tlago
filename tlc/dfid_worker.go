@@ -203,7 +203,14 @@ func (w *DFIDWorker) Run() {
 }
 
 func (w *DFIDWorker) stopOnResult(result int, err error) bool {
-	if err == nil && result == NoError {
+	// Java doNext records semantic failures and returns allSuccNonLeaf. The
+	// worker still advances/backtracks until its inner depth loop finishes;
+	// stopCode is checked only by the outer initial-state loop. Only a thrown
+	// error leaves run immediately.
+	if result != NoError && w.Result == NoError {
+		w.Result = result
+	}
+	if err == nil {
 		return false
 	}
 	w.StopCode = 2

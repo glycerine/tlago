@@ -66,3 +66,66 @@ func TestJavaDepthFirstErrorTrace(t *testing.T) {
 	}
 	requireJavaTLCUncovered(t, result)
 }
+
+// Port of DepthFirstDieHardTest.testSpec and its -dfid 7 constructor.
+func TestJavaDepthFirstDieHard(t *testing.T) {
+	result := runJavaTLCModelTest(t, "DieHard", "-dfid", "7",
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "DieHard.json"))
+	if result.ExitStatus != tlc.ExitStatusViolationSafety {
+		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	for _, code := range []int{tlc.ECGeneral, tlc.ECTLCStatePrint1} {
+		if got := javaTLCRecords(result, code); len(got) != 0 {
+			t.Fatalf("unexpected code %d records: %v", code, got)
+		}
+	}
+	expectedTrace := []string{
+		`/\ action = "nondet"
+/\ smallBucket = 0
+/\ bigBucket = 0
+/\ water_to_pour = 0`,
+		`/\ action = "fill big"
+/\ smallBucket = 0
+/\ bigBucket = 5
+/\ water_to_pour = 0`,
+		`/\ action = "pour big to small"
+/\ smallBucket = 3
+/\ bigBucket = 2
+/\ water_to_pour = 3`,
+		`/\ action = "empty small"
+/\ smallBucket = 0
+/\ bigBucket = 2
+/\ water_to_pour = 3`,
+		`/\ action = "pour big to small"
+/\ smallBucket = 2
+/\ bigBucket = 0
+/\ water_to_pour = 2`,
+		`/\ action = "fill big"
+/\ smallBucket = 2
+/\ bigBucket = 5
+/\ water_to_pour = 2`,
+		`/\ action = "pour big to small"
+/\ smallBucket = 3
+/\ bigBucket = 4
+/\ water_to_pour = 1`,
+	}
+	records := javaTLCRecords(result, tlc.ECTLCStatePrint2)
+	if len(records) != len(expectedTrace) {
+		t.Fatalf("trace length=%d, want %d", len(records), len(expectedTrace))
+	}
+	for i, record := range records {
+		if record.StateInfo == nil || strings.TrimSpace(record.StateInfo.String()) != expectedTrace[i] {
+			t.Fatalf("trace state %d=%v, want %q", i+1, record.StateInfo, expectedTrace[i])
+		}
+		if record.StateNumber != i+1 {
+			t.Fatalf("trace ordinal=%d, want %d", record.StateNumber, i+1)
+		}
+		if got := record.StateInfo.Info; got != "" {
+			t.Fatalf("trace action %d=%q, want empty label", i+1, got)
+		}
+	}
+	requireJavaTLCUncovered(t, result)
+}

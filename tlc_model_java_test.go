@@ -76,6 +76,7 @@ func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump
 	// Fresh tokens preserve source record normalization independent of test order.
 	tlc.UniqueStringInitialize()
 	tlc.InitializeActionItemListStatics()
+	tlc.InitializeFPIntSetStatics()
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false

@@ -189,13 +189,26 @@ preserve disabled debugger/coverage/JSON trace dumping/generated trace spec,
 retained DOT dumping, exact source exits/depth/statistics and both safety traces.
 Their nine source vectors are byte-identical. All six unchanged Java originals,
 targeted Go checks and full normal/race suites pass.
-Next: complete the original DepthFirstDieHardTest comparison before translating
-it. The unchanged Java test passes; the preliminary Go production probe matches
-its seven states and empty action labels under -dfid 7, but generated counts
-are 834/68 versus Java 876/68. Compare the exact source debugger/trace settings
-before classifying that difference. Ignored logs are
-.codex-gotmp/go-DepthFirstDieHard-current.log and
-.codex-gotmp/java-next-models/java-DepthFirstDieHardTest-current.log.
+DepthFirstDieHardTest is translated with its two byte-identical vectors and
+original -dfid 7/debugger/coverage/DOT/JSON trace-dump/generated-spec settings.
+The seven exact states, empty action labels, ordinals, Finished/no GENERAL/no
+STATE_PRINT1 and zero-uncovered assertions pass. Corrected DFIDWorker's early
+return after semantic violations: Java finishes its inner depth loop, checking
+stopCode only in the outer initial-state loop; thrown errors still leave run
+immediately. Go now matches Java's 876/68 production counts as well as the trace.
+The original test deliberately has no count assertions. FPIntSet statics are
+initialized for each translated-test runtime, matching Java's fresh classloader;
+retained levels had made the two DFID tests loop together. Both translated DFID
+checks and full normal/race suites pass.
+Next concrete trace-replay gap: unchanged DumpLoadTraceTest's
+testSafetyDumpLoadTraceJSON passes when invoked alone in its original source
+class (the custom isolated JUnit runner ignores method filtering). Go dumps the
+same seven-state DieHard safety trace, but -loadTrace json fails during init at
+TLC's unbounded CHOOSE placeholder, line 75, with exit 75. Compare native
+operator/body tool-object identities through the helper modules' LOCAL
+INSTANCE imports before translating the original dump/load methods. Ignored
+logs: .codex-gotmp/go-DieHard-load-json.log and
+.codex-gotmp/java-next-models/java-DumpLoadTraceTest-json-single.log.
 Body tool-object lookup through SubstIn, complete semantic module graphs and
 constant-processing snapshot/eligibility metadata remain broader source work.
 Trace-expression variants remain separate pending

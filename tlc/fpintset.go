@@ -28,6 +28,16 @@ var (
 	fpIntSetLeveled int32
 )
 
+// InitializeFPIntSetStatics provides the initial static field values of a
+// newly loaded Java FPIntSet class. A checker does not reset these fields;
+// isolated runtimes, such as the upstream per-test classloader, do.
+func InitializeFPIntSetStatics() {
+	fpIntSetMu.Lock()
+	fpIntSetLevel = 1
+	fpIntSetLeveled = 0
+	fpIntSetMu.Unlock()
+}
+
 func FPIntSetIncLevel() {
 	fpIntSetMu.Lock()
 	fpIntSetLevel++
