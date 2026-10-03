@@ -188,7 +188,7 @@ type Tool struct {
 	EvalAliasInfoFunc               func(*Tool, *TLCStateInfo, *TLCStateMut, func() []*TLCStateInfo) (*TLCStateInfo, error)
 	EvalAliasInfoPairFunc           func(*Tool, *TLCStateInfo, *TLCStateMut) (*TLCStateInfo, error)
 	EvalAliasFunc                   func(*Tool, *TLCStateMut, *TLCStateMut) *TLCStateMut
-	ParseDebuggerExpressionFunc     func(*Tool, SourceLocation, string) (*OpDefNode, error)
+	ParseDebuggerExpressionFunc     func(*Tool, *ModuleNode, SourceLocation, string) (*OpDefNode, error)
 	NoDebugFunc                     func(*Tool) *Tool
 	IsDebuggerFunc                  func(*Tool) bool
 }
@@ -1100,9 +1100,13 @@ func (t *Tool) NoDebug() *Tool {
 	return t
 }
 
-func (t *Tool) ParseDebuggerExpression(location SourceLocation, condition string) (*OpDefNode, error) {
+func (t *Tool) ParseDebuggerExpression(location SourceLocation, condition string, semanticRoot ...*ModuleNode) (*OpDefNode, error) {
 	if t != nil && t.ParseDebuggerExpressionFunc != nil {
-		return t.ParseDebuggerExpressionFunc(t, location, condition)
+		root := t.SpecProcessor.GetRootModule()
+		if len(semanticRoot) > 0 {
+			root = semanticRoot[0]
+		}
+		return t.ParseDebuggerExpressionFunc(t, root, location, condition)
 	}
 	return nil, fmt.Errorf("debug breakpoint expression parsing is not configured: %s", condition)
 }

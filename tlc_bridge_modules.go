@@ -4,10 +4,23 @@
 package tlago
 
 import (
+	"maps"
 	"strings"
 
 	"github.com/glycerine/tlago/tlc"
 )
+
+// Keep Integers' override available when a debugger expression first loads it
+// after the running spec was compiled with just Naturals.
+func (b *tlcBridge) retainIntegerNativeOverride() {
+	tool := *b.tool
+	tool.Definitions = maps.Clone(tool.Definitions)
+	tool.DefnsByName = maps.Clone(tool.DefnsByName)
+	tool.InstallIntegerDefinitions()
+	for _, name := range []string{"GEQ", "\\geq"} {
+		b.nativeDefinitions[tlc.UniqueStringOf("Integers!"+name)] = tool.DefnsByName[tlc.UniqueStringOf(name)]
+	}
+}
 
 func (b *tlcBridge) builtinDefinition(name string) *tlc.OpDefNode {
 	if b.builtinDefinitions == nil {
@@ -68,9 +81,18 @@ func (b *tlcBridge) installModuleNativeOverrides() {
 // Internal modules have graph identities too, but never become external table
 // entries merely because the loader indexes them by name.
 func (b *tlcBridge) installModuleTable() {
-	table := tlc.NewExternalModuleTable()
-	b.processor.ModuleTbl = table
-	nodes := map[*Module]*tlc.ModuleNode{}
+	b.processor.ModuleTbl = tlc.NewExternalModuleTable()
+	b.moduleNodes = map[*Module]*tlc.ModuleNode{}
+	b.localModuleDefinitions = map[string]*tlc.OpDefNode{}
+	b.extendModuleTable(true)
+}
+
+// Add newly compiled modules without replacing the live modules, contexts,
+// source symbols or previously applied configuration/native bindings.
+func (b *tlcBridge) extendModuleTable(publishRoot bool) {
+	table := b.processor.ModuleTbl
+	nodes := b.moduleNodes
+	added := map[*Module]bool{}
 	var modules []*Module
 	seen := map[*Module]bool{}
 	var visit func(*Module)
@@ -98,6 +120,10 @@ func (b *tlcBridge) installModuleTable() {
 	}
 	outer := enclosingModules(b.spec)
 	for _, mod := range modules {
+		if nodes[mod] != nil {
+			continue
+		}
+		added[mod] = true
 		context := tlc.NewSemanticContext(table)
 		if outer[mod] == nil {
 			context = global.Duplicate(table)
@@ -109,13 +135,14 @@ func (b *tlcBridge) installModuleTable() {
 		node.SetStandard(outer[mod] == nil && mod.Library)
 		nodes[mod] = node
 	}
-	b.moduleNodes = nodes
-	b.localModuleDefinitions = map[string]*tlc.OpDefNode{}
 	for definition, node := range b.sourceDefinitions {
 		node.OriginallyDefinedInModule = nodes[b.spec.Modules[b.definitionModules[definition]]]
 		node.Local = definition.Local
 	}
 	for _, mod := range modules {
+		if !added[mod] {
+			continue
+		}
 		node := nodes[mod]
 		for _, ext := range mod.Extends {
 			node.Extendees = append(node.Extendees, nodes[b.spec.Modules[ext]])
@@ -162,7 +189,7 @@ func (b *tlcBridge) installModuleTable() {
 				node.Context.AddSymbolToContext(key, symbol)
 			}
 		}
-		if outer[mod] == nil {
+		if outer[mod] == nil && (publishRoot || mod != b.spec.Root) {
 			table.Put(node.Name, node.Context, node)
 		}
 	}
@@ -205,8 +232,10 @@ func (b *tlcBridge) installModuleTable() {
 			}
 		}
 	}
-	table.SetRootModule(nodes[b.spec.Root])
-	b.processor.RootModule = table.GetRootModule()
+	if publishRoot {
+		table.SetRootModule(nodes[b.spec.Root])
+		b.processor.RootModule = table.GetRootModule()
+	}
 	// Publish fully populated cached accessors before worker threads use them.
 	for _, mod := range modules {
 		node := nodes[mod]

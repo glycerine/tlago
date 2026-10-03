@@ -235,19 +235,24 @@ func (l *sanyLoader) registerModuleRecursive(mod *Module) {
 }
 
 func ParseSanyModuleSource(file, source string) (*Module, Diagnostics) {
-	root, diags := ParseSanySyntax(file, source)
+	module, _, diags := parseSanyModuleSourceWithDependencies(file, source)
+	return module, diags
+}
+
+func parseSanyModuleSourceWithDependencies(file, source string) (*Module, []string, Diagnostics) {
+	root, dependencies, diags := parseSanySyntaxWithDependencies(file, source)
 	if diags.HasErrors() || root == nil {
 		mod := &Module{SourcePath: file, Source: source}
 		if root != nil {
 			mod.Name = SanyModuleName(root)
 			mod.Pos = sanyNodePosition(root)
 		}
-		return mod, diags
+		return mod, dependencies, diags
 	}
 	mod, modDiags := sanyModuleFromSyntax(file, root)
 	setModuleSourceRecursive(mod, source)
 	diags = append(diags, modDiags...)
-	return mod, diags
+	return mod, dependencies, diags
 }
 
 func parseSanyModuleSources(file, source string) ([]*Module, Diagnostics) {

@@ -229,7 +229,7 @@ type SpecProcessor struct {
 
 	Variables         []*UniqueString
 	VariablesNodes    []*SymbolNode
-	ProcessedDefs     *InsMap[string, struct{}]
+	ProcessedDefs     *InsMap[*OpDefNode, struct{}]
 	UnprocessedDefns  *Defns
 	ConstantDefns     *InsMap[*ModuleNode, *InsMap[SemanticNode, any]]
 	Snapshot          *Defns
@@ -276,7 +276,7 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 		ToolID:           nextToolID.Add(1),
 		Defns:            defns,
 		Config:           config,
-		ProcessedDefs:    NewInsMap[string, struct{}](),
+		ProcessedDefs:    NewInsMap[*OpDefNode, struct{}](),
 		UnprocessedDefns: NewDefns(),
 		ConstantDefns:    NewInsMap[*ModuleNode, *InsMap[SemanticNode, any]](),
 	}
@@ -310,7 +310,11 @@ func (p *SpecProcessor) SetVariableNodes(nodes []*SymbolNode) {
 		p.Defns.Put("TRUE", BoolTrue)
 		p.Defns.Put("FALSE", BoolFalse)
 		p.Defns.Put("BOOLEAN", NewSetEnumValue([]Value{BoolFalse, BoolTrue}, true))
-		p.Defns.Put("STRING", STRING())
+		stringMethod := NewMethodValue("public static tlc2.value.impl.Value tlc2.module.Strings.STRING()", 0, func(_ []Value, _ int) (Value, error) { return STRING(), nil })
+		p.Defns.Put("STRING", stringMethod)
+		// Java snapshots just these predefined/native entries before processing
+		// source modules, ordinary definitions, native overrides or config.
+		p.PreConstantSnap = p.Defns.Snapshot()
 	}
 }
 
@@ -392,9 +396,6 @@ func (p *SpecProcessor) ApplyToTool(tool *Tool) {
 	}
 	SetStateVariablesWithLocations(names, locations)
 	p.applyDefinitionsToTool(tool)
-	if p.Defns != nil {
-		p.PreConstantSnap = p.Defns.Snapshot()
-	}
 	p.ProcessConfigConstantsAndOverrides(tool)
 	// Java snapshots after processSpec installs overrides, before pre-evaluation.
 	p.Snapshot = p.Defns.Snapshot()

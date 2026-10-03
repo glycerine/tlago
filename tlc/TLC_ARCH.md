@@ -373,8 +373,16 @@ Tricky details:
   Capture Java's `Snapshot` after config constants/overrides and before
   `ProcessConstantDefinitions`. `getUnprocessedDefns`, symmetry, `_RL_REWARD`
   and `_PERIODIC` use it after ordinary constants have been evaluated. The
-  separate native-only `preConstantSnapshot` used by semantic traversal and
-  dynamic extendees still needs its full source processing path.
+  separate native-only `preConstantSnapshot` is captured after the predefined
+  TRUE/FALSE/BOOLEAN and Strings.STRING MethodValue entries, before ordinary
+  definitions/config bindings. Represented `processConstants` walks modules,
+  operator and LET bodies, substitutions, assumptions, bounds, labels and
+  operator arguments, using an identity set of processed OpDefs. Initial and
+  dynamic extendees share that snapshot independently of pre-evaluation. SANY
+  numerals retain radix/image and big-integer metadata; constant processing
+  rejects large integers and decimal nodes with the original Java messages.
+  Theorem/proof graph traversal and full native override registration remain
+  broader source work.
 - Config keyword validation is keyword-specific. `INIT`, `NEXT`, `VIEW`,
   `POSTCONDITION`, `_POSSIBLE`, `_PERIODIC`, and `_RL_REWARD` require
   zero-arity operator definitions; `INVARIANT` and `PROPERTY` ignore literal
@@ -3014,11 +3022,12 @@ Important Java classes:
   column less than or equal to the semantic node begin column. Conditional
   breakpoints evaluate through `tool.noDebug().eval` and swallow evaluation
   failures so a broken debugger expression does not crash TLC. Named operator
-  conditions are resolved directly from `SpecProcessor`. Arbitrary non-`TRUE`
-  conditions go through `Tool.ParseDebuggerExpressionFunc`, installed by the
-  root `tlcBridge`; it mirrors Java `TLCDebuggerExpression.process` by building
-  a synthetic `__DebuggerModule__N` module that `EXTENDS` the root module,
-  defining `__DebuggerExpr__N == <condition>`, parsing/checking it through the
+  conditions resolve by exact name in the selected semantic module. Other
+  nonblank conditions go through `Tool.ParseDebuggerExpressionFunc`, installed
+  by the root `tlcBridge`; it mirrors Java `TLCDebuggerExpression.process` by
+  building a synthetic `__DebuggerModule__N` module that `EXTENDS` the selected
+  module. Frame expression requests retain the processor root. The wrapper
+  defines `__DebuggerExpr__N == <condition>`, parsing/checking it through the
   production SANY path, and converting the generated operator back into TLC's
   semantic node graph. The hook is source-location aware, matching Java's API
   shape. The bridge now collects parameters and LET operators from the retained
@@ -3030,8 +3039,15 @@ Important Java classes:
   lazy bindings and operator parameters remain usable. Expression conversion
   reuses the existing source graph and native/config bindings. Source parse and
   represented semantic/level diagnostics keep Java messages and locations.
-  Dynamic dependency resolution, complete dynamic extendee/module overrides,
-  native-only snapshots and full semantic level metadata remain pending.
+  Missing dependencies resolve through the default filename resolver and actual
+  parser dependency list, recursively extending the live external module table.
+  Successful dependencies persist after later expression failures; transient
+  wrappers stay unpublished and leave the original root in place. Incremental
+  contexts reuse existing source/config/native/lazy identities. Constant graph
+  processing uses the native-only snapshot, followed by represented native
+  module overrides and then LOCAL-stub substitution through ModuleNode's graph.
+  Full level/theorem/proof/instance metadata and complete native override
+  registration remain source work.
 - `TLCCapabilities` and `GotoStateEvent`: small protocol data types. They are
   useful in Go as plain structs even before a debug-adapter server exists.
   `TLCDebugger.InitializeCapabilities` mirrors Java `initialize`: goto-state is
@@ -3094,11 +3110,13 @@ Debugger variable details:
   catches depend on frame type rather than the EmptyState sentinel.
   The corrected live hover comparison matches five stops/79 frames, 120 paths,
   16 responses, 171 breakpoint line-verification results and 21 URI cases under
-  race instrumentation. Empty/syntax-invalid conditions agree. The missing
-  DoesNotExist dependency condition still incorrectly verifies: dependency
-  resolution, dynamic extendee/override processing, condition preparation/scope,
-  whole EWD998 and broader semantic metadata remain source work. No narrowed
-  persistent EWD998 test was added. Raw displayed
+  race instrumentation. Empty/syntax-invalid and missing DoesNotExist dependency
+  conditions agree, including the exact located semantic error. Final comparisons
+  match all 419 hover/breakpoint and 448 expression/watch/stack records, plus 60
+  dynamic dependency records. Retained modules, Bags/Randomization overrides,
+  original root identity, transient-wrapper exclusion and radix/large/decimal
+  diagnostics agree. Whole EWD998 Go assertions and broader semantic metadata
+  remain source work; no narrowed persistent EWD998 test was added. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.
 - Java's `Value.toTLCVariable` sets type to

@@ -12,9 +12,16 @@ type SanyParser struct {
 	moduleName      string
 	proofLevelStack []int
 	junctionColumns []int
+	dependencyList  []string
+	internalModules []string
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
+	node, _, diags := parseSanySyntaxWithDependencies(file, source)
+	return node, diags
+}
+
+func parseSanySyntaxWithDependencies(file, source string) (*SanySyntaxNode, []string, Diagnostics) {
 	tokens, lexDiags := SanyTokenize(file, source)
 	parser := NewSanyParser(tokens, nil)
 	node := parser.CompilationUnit()
@@ -22,7 +29,18 @@ func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
 	node.SetParent()
 	diags := filterSanyDiagnosticsThroughRootEnd(lexDiags, node)
 	diags = append(diags, parser.diags...)
-	return node, diags
+	return node, parser.Dependencies(), diags
+}
+
+func (p *SanyParser) Dependencies() []string { return append([]string(nil), p.dependencyList...) }
+
+func (p *SanyParser) addDependency(name string) {
+	for _, internal := range p.internalModules {
+		if internal == name {
+			return
+		}
+	}
+	p.dependencyList = append(p.dependencyList, name)
 }
 
 func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics) {
@@ -147,10 +165,13 @@ func (p *SanyParser) atModuleStart() bool {
 }
 
 func (p *SanyParser) Module() *SanySyntaxNode {
+	stackLevel := len(p.internalModules)
 	begin := p.BeginModule()
 	extends := p.Extends()
 	body := p.Body()
 	end := p.EndModule()
+	p.internalModules = p.internalModules[:stackLevel]
+	p.internalModules = append(p.internalModules, begin.GetHeirs()[1].Image)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Module"], begin, extends, body, end)
 }
 
@@ -173,10 +194,14 @@ func (p *SanyParser) Extends() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenExtends) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.Identifier())
+		name := p.Identifier()
+		p.addDependency(name.Image)
+		heirs = append(heirs, name)
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.Identifier())
+			name := p.Identifier()
+			p.addDependency(name.Image)
+			heirs = append(heirs, name)
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Extends"], heirs...)
@@ -265,7 +290,9 @@ func (p *SanyParser) Instance() *SanySyntaxNode {
 func (p *SanyParser) Instantiation() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenInstance, "expected INSTANCE"))
-	heirs = append(heirs, p.Identifier())
+	name := p.Identifier()
+	p.addDependency(name.Image)
+	heirs = append(heirs, name)
 	if p.match(SanyTokenWith) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		heirs = append(heirs, p.Substitution())

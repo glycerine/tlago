@@ -2,13 +2,11 @@ package tlago
 
 import (
 	"fmt"
-	"maps"
 	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/glycerine/tlago/tlc"
 )
@@ -35,6 +33,8 @@ type tlcBridge struct {
 	builtinDefinitions     map[string]*tlc.OpDefNode
 	moduleNodes            map[*Module]*tlc.ModuleNode
 	localModuleDefinitions map[string]*tlc.OpDefNode
+	indexedModules         map[*Module]bool
+	assumptionModules      map[*Module]bool
 }
 
 type tlcBridgeInstance struct {
@@ -322,12 +322,15 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installConstantDeclarations()
 	bridge.installDefinitions()
 	bridge.installModuleTable()
+	bridge.installAssumptions()
+	for _, module := range bridge.processor.ModuleTbl.GetModuleNodes() {
+		bridge.processor.ProcessConstantsDynamicExtendee(module)
+	}
 	bridge.installRootDefinitions()
 	bridge.installModuleNativeOverrides()
 	bridge.installRuntimeConstants()
 	bridge.installConfigConstants()
 	bridge.installInstanceAliases()
-	bridge.installAssumptions()
 	bridge.installModelTargets()
 	bridge.installRuntimeParameters()
 	bridge.tool.AssignActionIDs()
@@ -416,6 +419,7 @@ func (b *tlcBridge) installDefinitions() {
 	for name, value := range b.tool.DefnsByName {
 		b.nativeDefinitions[name] = value
 	}
+	b.retainIntegerNativeOverride()
 	b.prepareInstanceDefinitions()
 	names := make([]string, 0, len(b.defs))
 	for name := range b.defs {
@@ -443,23 +447,31 @@ func (b *tlcBridge) installDefinitions() {
 // evaluator needs substituted AST copies; TLC instead binds the source symbols
 // through SubstInNode, as SANY does, and shares the substitutions among clones.
 func (b *tlcBridge) prepareInstanceDefinitions() {
-	if b.definitionModules != nil || b.spec == nil {
+	if b.spec == nil {
 		return
 	}
-	b.definitionModules = map[*Definition]string{}
-	b.sourceSymbols = map[*Definition]*tlc.SymbolNode{}
-	b.sourceDefinitions = map[*Definition]*tlc.OpDefNode{}
-	b.instanceDefinitions = map[string]*tlcBridgeInstance{}
+	if b.definitionModules == nil {
+		b.definitionModules = map[*Definition]string{}
+		b.sourceSymbols = map[*Definition]*tlc.SymbolNode{}
+		b.sourceDefinitions = map[*Definition]*tlc.OpDefNode{}
+		b.instanceDefinitions = map[string]*tlcBridgeInstance{}
+	}
+	if b.indexedModules == nil {
+		b.indexedModules = map[*Module]bool{}
+	}
 	names := make([]string, 0, len(b.spec.Modules))
 	for name := range b.spec.Modules {
 		names = append(names, name)
 	}
 	sort.Strings(names)
+	indexed := false
 	for _, name := range names {
 		mod := b.spec.Modules[name]
-		if mod == nil {
+		if mod == nil || b.indexedModules[mod] {
 			continue
 		}
+		b.indexedModules[mod] = true
+		indexed = true
 		for i := range mod.Definitions {
 			b.definitionModules[&mod.Definitions[i]] = name
 		}
@@ -496,6 +508,9 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 				}
 			}
 		}
+	}
+	if !indexed {
+		return
 	}
 	// EXTENDS references the original definition, including native overrides.
 	// Keep a single symbol for those aliases so a module-scoped replacement
@@ -734,6 +749,10 @@ func (b *tlcBridge) standardInstanceBindings(inst Instance) []tlc.LetBinding {
 }
 
 func (b *tlcBridge) installAssumptions() {
+	b.installModuleAssumptions(true)
+}
+
+func (b *tlcBridge) installModuleAssumptions(checkingRoot bool) {
 	if b.spec == nil || b.spec.Root == nil {
 		return
 	}
@@ -741,10 +760,13 @@ func (b *tlcBridge) installAssumptions() {
 	// before this module's own assumptions. INSTANCE does not copy assumptions;
 	// repeated EXTENDS paths retain the same source expression identity.
 	converted := map[*NamedExpr]*tlc.AssumeNode{}
-	topLevels := map[*Module]bool{}
+	if b.assumptionModules == nil {
+		b.assumptionModules = map[*Module]bool{}
+	}
+	topLevels := b.assumptionModules
 	var visit func(*Module, bool)
 	visit = func(module *Module, checking bool) {
-		if module == nil {
+		if module == nil || !checking && topLevels[module] {
 			return
 		}
 		for _, name := range module.Extends {
@@ -792,7 +814,7 @@ func (b *tlcBridge) installAssumptions() {
 		}
 		topLevels[module] = true
 	}
-	visit(b.spec.Root, true)
+	visit(b.spec.Root, checkingRoot)
 	// INSTANCE modules keep their own source assumptions for location lookup;
 	// TLC checks only the root module's EXTENDS closure above.
 	names := make([]string, 0, len(b.spec.Modules))
@@ -939,11 +961,13 @@ func parseRuntimeTLAExpression(expr string, modules []string) (Expr, Diagnostics
 	return nil, diags
 }
 
-func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, location tlc.SourceLocation, expression string) (*tlc.OpDefNode, error) {
-	if debuggerExpressionIsBlank(expression) {
+func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode, location tlc.SourceLocation, expression string) (*tlc.OpDefNode, error) {
+	if tlc.JavaStringIsBlank(expression) {
 		return nil, nil
 	}
-	root := b.processor.GetRootModule()
+	if root == nil {
+		panic(tlc.NewNullPointerException())
+	}
 	if op := root.GetOpDef(tlc.UniqueStringOf(expression)); op != nil {
 		return op, nil
 	}
@@ -996,7 +1020,7 @@ func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, location tlc.SourceL
 	}
 	sort.Strings(letNames)
 	var source strings.Builder
-	fmt.Fprintf(&source, "---- MODULE %s ----\nEXTENDS %s\n", moduleName, b.spec.Root.Name)
+	fmt.Fprintf(&source, "---- MODULE %s ----\nEXTENDS %s\n", moduleName, root.Name)
 	for _, name := range letNames {
 		def := lets[name]
 		params := make([]string, len(def.Params))
@@ -1018,79 +1042,48 @@ func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, location tlc.SourceL
 	if b.spec.Root.SourcePath != "" {
 		file = filepath.Join(filepath.Dir(b.spec.Root.SourcePath), file)
 	}
-	mod, diagnostics := ParseSanyModuleSource(file, source.String())
+	mod, dependencies, diagnostics := parseSanyModuleSourceWithDependencies(file, source.String())
 	if diagnostics.HasErrors() || mod == nil {
 		return nil, fmt.Errorf("Syntax error while parsing breakpoint expression \"%s\"", expression)
 	}
-	modules := maps.Clone(b.spec.Modules)
-	modules[moduleName] = mod
-	wrapped := &Spec{Root: mod, Modules: modules, SemanticOrder: append(append([]string(nil), b.spec.SemanticOrder...), moduleName)}
+	failed, err := b.resolveDebuggerDependencies(dependencies)
+	if err != nil {
+		return nil, err
+	}
+	if failed {
+		return nil, debuggerSemanticError(location, "Semantic error while parsing breakpoint expression \"%s\"", expression)
+	}
+	wrapped := b.debuggerSpec(mod)
 	if diagnostics := CheckSpec(wrapped); diagnostics.HasErrors() {
+		semanticFailure, _ := debuggerDiagnosticFailures(diagnostics)
 		phase := "Level-checking"
-		for _, diagnostic := range diagnostics {
-			if diagnostic.Severity == SeverityError && !debuggerLevelDiagnostic(diagnostic.Code) {
-				phase = "Semantic"
-				break
-			}
+		if semanticFailure {
+			phase = "Semantic"
 		}
 		return nil, debuggerSemanticError(location, "%s error while parsing breakpoint expression \"%s\"", phase, expression)
 	}
-
-	// Extend the converted graph, retaining source identities and their native,
-	// config, and lazy bindings. Parsing an expression must not rebuild modules.
-	convert := *b
-	convert.spec = wrapped
-	convert.rootModuleName = moduleName
-	convert.defs = maps.Clone(b.defs)
-	convert.symbols = maps.Clone(b.symbols)
-	convert.definitionModules = maps.Clone(b.definitionModules)
-	convert.sourceSymbols = maps.Clone(b.sourceSymbols)
-	convert.sourceDefinitions = maps.Clone(b.sourceDefinitions)
-	convert.convertBoundNames = map[string]int{}
-	convert.diags = nil
-	var definition *Definition
-	for i := range mod.Definitions {
-		def := &mod.Definitions[i]
-		convert.defs[def.Name] = def
-		convert.definitionModules[def] = moduleName
-		if original := lets[def.Name]; original != nil {
-			// ModuleNode.substituteFor reconnects each LOCAL stub to the
-			// original LET operator; its body and runtime symbol stay shared.
-			convert.sourceDefinitions[def] = original
-			convert.sourceSymbols[def] = original.Symbol
-			convert.symbols[def.Name] = original.Symbol
-			convert.symbols[moduleName+"!"+def.Name] = original.Symbol
-		} else if def.Name == opName {
-			definition = def
-		}
-	}
-	if definition == nil {
+	convert := b.debuggerBridge(wrapped)
+	convert.prepareInstanceDefinitions()
+	convert.extendModuleTable(false)
+	convert.installModuleAssumptions(false)
+	module := convert.moduleNodes[mod]
+	op := module.GetOpDef(tlc.UniqueStringOf(opName))
+	if op == nil {
 		return nil, debuggerSemanticError(location, "Unable to find debugger expression op %s", opName)
 	}
-	op := convert.convertDefinitionAs(opName, definition)
-	if convert.diags.HasErrors() || op == nil {
+	if convert.diags.HasErrors() {
 		return nil, debuggerSemanticError(location, "Semantic error while parsing breakpoint expression \"%s\"", expression)
 	}
 	level := tool.GetLevelBound(op.Body, tlc.EmptyContext)
 	if level > tlc.TLCLevelAction {
 		return nil, debuggerSemanticError(location, "Debug expressions must be action-level or below; actual level: Temporal")
 	}
-	return op, nil
-}
-
-// String.isBlank uses Character.isWhitespace. Unicode's nonbreaking spaces
-// and NEL are not Java whitespace, while the ASCII information separators are.
-func debuggerExpressionIsBlank(expression string) bool {
-	for _, char := range expression {
-		if char >= '\t' && char <= '\r' || char >= '\u001c' && char <= '\u001f' {
-			continue
-		}
-		if char != '\u00a0' && char != '\u2007' && char != '\u202f' && (unicode.Is(unicode.Zs, char) || unicode.Is(unicode.Zl, char) || unicode.Is(unicode.Zp, char)) {
-			continue
-		}
-		return false
+	b.processor.ProcessConstantsDynamicExtendee(module)
+	b.installModuleNativeOverrides()
+	for _, name := range letNames {
+		tlc.SemanticSubstituteFor([]tlc.SemanticNode{module}, lets[name], module.GetOpDef(tlc.UniqueStringOf(name)))
 	}
-	return true
+	return op, nil
 }
 
 func debuggerSemanticError(location tlc.SourceLocation, format string, args ...any) error {
@@ -1496,6 +1489,14 @@ func (b *tlcBridge) resolveExprName(name string) string {
 func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
 	if !b.convertBound(name) {
 		if module := b.spec.Modules[b.convertingModule]; module != nil {
+			if node := b.moduleNodes[module]; node != nil {
+				switch symbol := node.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(name)}).(type) {
+				case *tlc.OpDefNode:
+					return symbol.Symbol
+				case *tlc.SymbolNode:
+					return symbol
+				}
+			}
 			for i := range module.Definitions {
 				def := &module.Definitions[i]
 				if def.Name == name {
@@ -1683,15 +1684,14 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		return tlc.NewOpApplNode(b.exprSymbol(strings.ToUpper(e.Value)))
 	case "number":
 		if strings.Contains(e.Value, ".") {
-			b.diags = append(b.diags, errorAt(e.Pos, "E7010", "TLC can't handle real numbers.\n%s", e.Value))
-			return tlc.NewValueNode(tlc.ValUndef)
+			return tlc.NewDecimalNode(nil, e.Value)
 		}
-		value, err := strconv.ParseInt(e.Value, 10, 32)
+		node, err := tlc.NewNumeralNodeFromString(e.Value)
 		if err != nil {
-			b.diags = append(b.diags, errorAt(e.Pos, "E7011", "integer literal %s is outside TLC int32 range", e.Value))
+			b.diags = append(b.diags, errorAt(e.Pos, "E7011", "%s", err))
 			return tlc.NewValueNode(tlc.ValUndef)
 		}
-		return tlc.NewNumeralNode(int32(value))
+		return node
 	case "string":
 		value := e.Value
 		if unquoted, err := strconv.Unquote(value); err == nil {

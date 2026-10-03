@@ -399,21 +399,40 @@ The corrected ephemeral Java/Go hover probe matches five stops, all 79 frame
 locations, 120 semantic paths, 16 hover responses, all 171 original line-verification
 results and 21 URI response/exception cases; Go finishes successfully under race
 instrumentation. Empty and malformed-syntax condition results match too. The
-missing-dependency condition LET T == INSTANCE DoesNotExist IN T!YOLO still
-incorrectly verifies in Go; Java reports a located semantic error. This is an
-explicit remaining compiler/dependency gap, not a passing breakpoint assertion.
-The entire unchanged Java EWD998ChanDebuggerTest passes separately. No partial
-persistent EWD998 test or invented tests/vectors were added. Final full offline
-normal/race verification is recorded at the progress tail.
-Next: source TLCDebuggerExpression.resolveDependencies, dynamic extendee/module
-overrides and condition preparation/selected-module scope, then remaining EWD998
-lazy-variable assertion forms and the entire EWD998ChanDebuggerTest method.
-Attaching DAP, native-only snapshots and SANY semantic level metadata remain
-pending; the probe does not establish those paths or full debugger completion.
-Attaching debugger protocol transport/capability events remain pending. The separate native-only preConstantSnapshot, processConstants
-semantic traversal and dynamic extendee path remain source work, as do ModuleNode
-top-level vectors, proofs/children/traversal and broader nested/parameterized
-instance metadata and export composition. Full TLC completion is not established.
+missing-dependency condition LET T == INSTANCE DoesNotExist IN T!YOLO now
+reports Java's exact located semantic error. Conditions use Java isBlank and the
+selected module's graph, preserving exact-name operator lookup without trimming
+or a global-name shortcut; frame expression evaluation retains the processor root.
+Debugger dependency loading follows the actual parser dependency list, including
+completed internal-module names, recursively reusing the live external table.
+Successful dependencies persist across later expression failures; temporary
+wrapper modules stay out of that table and do not replace its root. Existing
+source/config/native identities survive incremental context construction.
+The separate preConstantSnapshot now contains TRUE/FALSE/BOOLEAN and the native
+Strings.STRING MethodValue before ordinary definitions or config bindings.
+Source processConstants traverses represented modules, operator/LET/label bodies,
+substitutions, assumptions, bounded expressions and operator arguments, retaining
+an identity set for processed definitions. Initial and dynamic modules use this
+snapshot separately from constant pre-evaluation. Numerals retain their original
+radix/image and big-integer metadata; large integers and decimals fail during
+constant processing with Java messages. Dynamic wrappers run constant processing
+and represented native module overrides before reconnecting LOCAL stubs through
+ModuleNode graph substitution. Integers' own GEQ override is available when first
+loaded dynamically, including its inherited Naturals operators.
+Final ephemeral source/Go comparisons match all 419 hover/breakpoint records,
+448 expression/watch/stack records and 60 dependency records under race
+instrumentation. Dependency checks retain Bags after a failed expression, reuse
+its overrides, load Randomization and preserve the root/transient-wrapper rules.
+The entire unchanged Java EWD998ChanDebuggerTest passes separately. Existing
+complete Go Echo/ExpressionBreakpoint tests and full offline normal/race suites
+pass. No partial persistent EWD998 test or invented tests/vectors were added.
+Next: translate the remaining source Set<Variable> inherited lazy-cache assertion
+form, then the entire EWD998ChanDebuggerTest method with all original assertions
+and byte-identical EWD998 model vectors. Attaching DAP transport/capability events,
+full SANY level metadata, theorem/proof/top-level children, broader nested and
+parameterized instance metadata/export composition and complete native override
+registration remain source work. These probes do not establish whole EWD998 Go
+test parity, full debugger completion or full TLC completion.
 Record StateString's explicit empty/non-string _format handling and full Java
 String.format semantics also remain source parity work. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it.

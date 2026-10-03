@@ -2,7 +2,9 @@ package tlc
 
 import (
 	"fmt"
+	"math/big"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -422,8 +424,11 @@ func NewValueNode(value Value) *ValueNode {
 
 type NumeralNode struct {
 	SemanticNodeBase
-	Value *IntValue
+	Value    *IntValue
+	BigValue *big.Int
 }
+
+func (n *NumeralNode) String() string { return n.Image }
 
 func NewNumeralNode(value int32) *NumeralNode {
 	intValue := NewIntValue(value)
@@ -435,10 +440,44 @@ func NewNumeralNode(value int32) *NumeralNode {
 	}
 }
 
+// SANY retains out-of-range numerals and their original radix/image. TLC
+// rejects the big value later, when SpecProcessor processes the constants.
+func NewNumeralNodeFromString(image string) (*NumeralNode, error) {
+	number, radix := strings.ToLower(image), 10
+	if strings.HasPrefix(number, "\\") && len(number) > 2 {
+		switch number[1] {
+		case 'b':
+			radix = 2
+		case 'o':
+			radix = 8
+		case 'h':
+			radix = 16
+		default:
+			return nil, fmt.Errorf("Unknown numeral format: %s", number)
+		}
+		number = number[2:]
+	}
+	value, err := strconv.ParseInt(number, radix, 32)
+	node := NewNumeralNode(int32(value))
+	node.Image = image
+	if err != nil {
+		large, valid := new(big.Int).SetString(number, radix)
+		if !valid {
+			return nil, err
+		}
+		node.Value = IntZero
+		node.BigValue = large
+		node.SetToolObject(nil)
+	}
+	return node, nil
+}
+
 type DecimalNode struct {
 	SemanticNodeBase
 	Value Value
 }
+
+func (n *DecimalNode) String() string { return n.Image }
 
 func NewDecimalNode(value Value, image string) *DecimalNode {
 	base := newSemanticNodeBase(SemanticDecimalKind, image)

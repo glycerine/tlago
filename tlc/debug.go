@@ -2082,8 +2082,7 @@ func debugModuleNameFromSource(source string) string {
 }
 
 func (d *TLCDebugger) newConditionalBreakpointLocked(condition string) *TLCSourceBreakpoint {
-	condition = strings.TrimSpace(condition)
-	if condition == "" {
+	if JavaStringIsBlank(condition) {
 		condition = "TRUE"
 	}
 	op, err := d.breakpointConditionOpLocked(condition, NullSourceLocation)
@@ -2091,16 +2090,13 @@ func (d *TLCDebugger) newConditionalBreakpointLocked(condition string) *TLCSourc
 }
 
 func (d *TLCDebugger) breakpointConditionOpLocked(condition string, location SourceLocation) (*OpDefNode, error) {
-	condition = strings.TrimSpace(condition)
-	if condition == "" || strings.EqualFold(condition, "TRUE") {
+	if JavaStringIsBlank(condition) {
 		return nil, nil
 	}
-	if d != nil && d.Tool != nil && d.Tool.SpecProcessor != nil {
-		if op, ok := d.Tool.SpecProcessor.defn(condition).(*OpDefNode); ok && op != nil {
-			return op, nil
-		}
-	}
 	if d != nil && d.Tool != nil {
+		if !location.IsNull() {
+			return d.Tool.ParseDebuggerExpression(location, condition, d.Tool.GetModule(location.Source))
+		}
 		return d.Tool.ParseDebuggerExpression(location, condition)
 	}
 	return nil, fmt.Errorf("debug breakpoint expression parsing is not configured: %s", condition)

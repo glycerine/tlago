@@ -4,6 +4,8 @@
 
 package tlc
 
+import "fmt"
+
 // Walk the represented SANY graph by semantic identity, without following
 // evaluation tool objects. Java symbols that define operators are OpDefNodes;
 // Go retains that relation in SymbolNode.Definition.
@@ -29,6 +31,26 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 		seen[key] = true
 		preVisit(node)
 		switch n := node.(type) {
+		case *ModuleNode:
+			if n == nil {
+				return
+			}
+			if n.Context != nil {
+				for i := len(n.Context.buckets) - 1; i >= 0; i-- {
+					for _, entry := range n.Context.buckets[i] {
+						if entry.key.Module {
+							// Preserve Context.walkGraph's distinct ModuleName
+							// branch, which reports and skips inner modules.
+							fmt.Printf("Bug in debugging caused by inner module %s\nSANY will throw a null pointer exception.\n", entry.key.Name)
+						} else {
+							walk(entry.pair.node)
+						}
+					}
+				}
+			}
+			for _, top := range n.TopLevel {
+				walk(top)
+			}
 		case *OpDefNode:
 			if n == nil {
 				return
