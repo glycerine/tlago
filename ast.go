@@ -26,6 +26,8 @@ type Module struct {
 	ProofRefNodes []*SanySyntaxNode
 	Proofs        []ProofSummary
 	Nested        []*Module
+
+	ImplicitExtends []string // Runtime additions, absent from the source module context.
 }
 
 type Instance struct {

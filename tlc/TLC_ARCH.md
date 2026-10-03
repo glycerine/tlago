@@ -3363,7 +3363,9 @@ nested RuntimeException wrapping with FileNotFoundException/IOException causes.
 loads through the worker resolver using the existing parser, semantic checker,
 and TLC bridge. It now installs a fresh worker interning context before any
 configuration or semantic values are created, with FP64 initialization from
-the server polynomial before installing that source.
+the server polynomial before installing that source. Fresh-context bootstrap
+refreshes builtin, counterexample, TLCGetSet and TLCExt interned class-static
+names; keeping names from the discarded table breaks register-key identity.
 `StartDistributedWorkerGroup` then creates the shared local group and starts
 asynchronous registration. The server exposes the TLCApp command-line deadlock
 flag (default true), constant preprocess flag and current FP64 polynomial;

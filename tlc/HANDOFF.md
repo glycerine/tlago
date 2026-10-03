@@ -105,13 +105,28 @@ printing are preserved. State variable values use Values.ppr, including null
 for unassigned variables. Both models match Java's trace, action labels,
 diagnostics, state counts and complete uncovered-location sets. Full normal
 and race checks pass.
-Next: original EvalExceptionTest (DistBakery), then broader checker safety/trace
-comparisons. A preliminary production probe reaches only 3 states instead of
-24 and fails while evaluating ENABLED at line 119 (the vars tuple is
-being treated as a Boolean), before Java's intended <= argument failure.
-Variable order and normalized record keys in the trace also differ. Resolve
-those source gaps before translating its six-state trace and nested-stack
-assertions. TLCGetNonDeterminismTest
+EvalExceptionTest (DistBakery) is now translated too with its byte-identical
+original TLA+ file, retaining the embedded config, coverage-disabled setting,
+24/17/5 statistics, ERROR exit, six-state trace and exact <= argument error/
+nested stack. The bridge preserves Java WF/SF argument order (subscript,
+action), retains runtime-added EXTENDS separately from source context imports,
+and interns syntax token images in input-file order before converting operators.
+Next/init bindings survive evaluation errors as Java exception unwinding does;
+unbinding occurs on successful returns. This preserves the final error state.
+The source harness starts fresh interner contexts to match per-test classloaders;
+worker bootstrap refreshes TLCGetSet and TLCExt class-static names as well as
+builtin/counterexample names. Do not remove those refreshes: stale keys make
+TLCGet(level) undefined and named _POSSIBLE register lookup fail after reset.
+TraceWithLargeSetOfInitialStatesTest is translated too, with its two original
+vectors and source -maxSetSize 10 setting, direct initial-state trace/action
+assertions and zero uncovered set. The harness restores the set bound. Full normal/race checks pass.
+Next: original PrintTraceRaceTest (four workers), then broader checker safety/
+trace comparisons. Its models live under test-model/PrintTraceRace/ with MC as
+the root module; preserve the original worker count and invariant evaluation
+failure status. Both unchanged Java and the preliminary Go production probe
+already match exit 76, statistics 2/2/0 and the two record-valued states. The
+translation needs the harness to distinguish fixture directory from root module
+name (PrintTraceRace versus MC); do not flatten unrelated MC fixtures together. TLCGetNonDeterminismTest
 is ignored upstream by design; preserve that status when translating it. Complete SANY contexts, nested export
 composition and instantiation-aware constant-processing eligibility remain
 bridge parity work; the represented declaration-order slice does not establish

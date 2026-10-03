@@ -186,6 +186,8 @@ func UniqueStringInitializeWithSource(source InternSource) {
 	internTable.SetSource(source)
 	initBuiltInOPs()
 	initCounterExampleUniqueStrings()
+	initTLCGetSetUniqueStrings()
+	initTLCExtUniqueStrings()
 }
 
 func (s *TLCServer) Intern(str string) (*UniqueString, error) {

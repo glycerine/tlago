@@ -287,6 +287,7 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	if cfg == nil {
 		cfg = tlc.NewModelConfig(spec.Root.Name)
 	}
+	internTLCSourceSyntaxNames(spec)
 	tlc.ResetUniqueStringLocations()
 	defns := tlc.NewDefns()
 	bridge := &tlcBridge{
@@ -320,6 +321,32 @@ func BuildTLCTool(spec *Spec, cfg *tlc.ModelConfig, runtime tlc.RuntimeParameter
 	bridge.installRuntimeParameters()
 	bridge.tool.AssignActionIDs()
 	return bridge.tool, bridge.diags
+}
+
+// Java parses the root syntax before its dependencies and semantic conversion.
+// Intern token images in that source order before converting definitions: record
+// normalization compares UniqueString tokens, not alphabetical field names.
+func internTLCSourceSyntaxNames(spec *Spec) {
+	modules := []*Module{spec.Root}
+	seen := map[*Module]bool{}
+	for _, filename := range spec.ModuleFiles {
+		name := strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
+		if mod := spec.Modules[name]; mod != nil {
+			modules = append(modules, mod)
+		}
+	}
+	for _, mod := range modules {
+		if mod == nil || seen[mod] {
+			continue
+		}
+		seen[mod] = true
+		tokens, _ := NewSanyTokenManager(mod.SourcePath, mod.Source).LexAll()
+		for _, token := range tokens {
+			if token.Kind != SanyTokenEOF {
+				tlc.UniqueStringOf(token.Image)
+			}
+		}
+	}
 }
 
 func (b *tlcBridge) installVariables() {
@@ -1735,7 +1762,7 @@ func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 		if e.Kind == "SF" {
 			op = tlc.OpSF
 		}
-		node = tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Action), b.convertExpr(e.Subscript))
+		node = tlc.NewBuiltinOpApplNode(op, b.convertExpr(e.Subscript), b.convertExpr(e.Action))
 	case *FunctionSetExpr:
 		node = tlc.NewBuiltinOpApplNode(tlc.OpSOF, b.convertExpr(e.Domain), b.convertExpr(e.Range))
 	case *SetComprehensionExpr:

@@ -64,17 +64,22 @@ func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, 
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
 	oldContinuation := tlc.Globals.Continuation
+	oldSetBound := tlc.Globals.SetBound
 	oldPoly := tlc.FP64IrredPoly()
 	oldUserDir := tlc.GetFilenameUserDirectory()
 	// The upstream runner isolates TLC statics with a per-test classloader.
+	// Fresh tokens preserve source record normalization independent of test order.
+	tlc.UniqueStringInitialize()
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false
+	tlc.Globals.SetBound = 1000000
 	t.Cleanup(func() {
 		tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir = oldCoverage, oldCheckpoint, oldMeta
 		tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator = oldWorkers, oldMain, oldSimulator
 		tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime = oldTool, oldDFID, oldStart
 		tlc.Globals.Continuation = oldContinuation
+		tlc.Globals.SetBound = oldSetBound
 		tlc.FP64InitPoly(oldPoly)
 		tlc.SetFilenameUserDirectory(oldUserDir)
 		tlc.SetTLCStateTool(nil)

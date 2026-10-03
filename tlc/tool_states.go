@@ -359,7 +359,9 @@ func (t *Tool) initEquality(init SemanticNode, left SemanticNode, right Semantic
 	if lval == nil {
 		ps.Bind(varName, rval)
 		err = t.GetInitStatesFromActionList(acts, ps, states, cm)
-		ps.Unbind(varName)
+		if err == nil {
+			ps.Unbind(varName)
+		}
 		return err
 	}
 	eq, err := lval.Equal(rval)
@@ -418,7 +420,6 @@ func (t *Tool) enumerateInitAssignment(varName *UniqueString, domain Value, pred
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
 		ps.Bind(varName, elem)
 		if err := t.GetInitStatesFromActionList(acts, ps, states, cm); err != nil {
-			ps.Unbind(varName)
 			return err
 		}
 		ps.Unbind(varName)
@@ -1003,7 +1004,7 @@ func (t *Tool) nextEquality(action *Action, pred SemanticNode, left SemanticNode
 	if lval == nil {
 		resState := s1.Bind(varNode.Name, rval)
 		res, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
-		if res != nil {
+		if err == nil && res != nil {
 			res.Unbind(varNode.Name)
 		}
 		return res, err
@@ -1069,7 +1070,7 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 		for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
 			resState := res.Bind(varName, elem)
 			next, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
-			if next != nil {
+			if err == nil && next != nil {
 				next.Unbind(varName)
 			}
 			if err != nil {
@@ -1088,7 +1089,7 @@ func (t *Tool) enumerateNextAssignment(action *Action, varName *UniqueString, do
 	for elem := enum.NextElement(); elem != nil; elem = enum.NextElement() {
 		resState := res.Bind(varName, elem)
 		next, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
-		if next != nil {
+		if err == nil && next != nil {
 			next.Unbind(varName)
 		}
 		if err != nil {
@@ -1127,7 +1128,7 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 		if val1 == nil {
 			resState := s1.Bind(varName, val0)
 			res, err := t.GetNextStatesFromActionList(action, acts, s0, resState, nss, cm)
-			if res != nil {
+			if err == nil && res != nil {
 				res.Unbind(varName)
 			}
 			return res, err

@@ -95,7 +95,9 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 	l.rootDir = filepath.Dir(rootPath)
 	rootMod := l.loadPath(rootPath, false, rootFilename)
 	if rootMod != nil {
+		sourceExtendsLen := len(rootMod.Extends)
 		rootMod.Extends = appendModuleNames(rootMod.Extends, l.opts.ExtraModules...)
+		rootMod.ImplicitExtends = append([]string(nil), rootMod.Extends[sourceExtendsLen:]...)
 		l.loadDependencies(rootMod)
 	}
 	return &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}, l.diags

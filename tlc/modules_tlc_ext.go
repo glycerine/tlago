@@ -11,6 +11,13 @@ import (
 
 var possibleCountsKey = UniqueStringOf("s:_possible")
 var tlcExtActionField = UniqueStringOf("_action")
+
+// Refresh class-static extension names with the current worker interner.
+func initTLCExtUniqueStrings() {
+	possibleCountsKey = UniqueStringOf("s:_possible")
+	tlcExtActionField = UniqueStringOf("_action")
+}
+
 var pickSuccessorMu sync.Mutex
 var tlcExtFingerprintMu sync.Mutex
 var tlcExtCacheStore = struct {
