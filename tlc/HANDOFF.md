@@ -493,8 +493,28 @@ complete action-frame assertion. Error02.tla and Error03.tla are byte-identical
 original vectors in test_vectors/models/EWD840. Unchanged Java JUnit methods,
 both complete Go translations and full offline normal/race suites pass.
 No invented tests or vectors were added.
-Next: original EWD840 simulation debugger production comparison, then its whole
-source method after implementing any missing features. Attaching DAP
+The entire original EWD840DebuggerSimTest.testSpec is translated too after a
+production comparison matching all 911 frame/exception/context/state records
+across 39 stops under race instrumentation, 35 generated states, one trace and
+safety exit 12. SimulationWorkerError now extends the source invariant exception,
+initializes its own known flag through its constructor and displays its formatted
+error-code/parameter message. Catch dispatch recognizes this actual subclass,
+restoring the invariant halt before alias evaluation and preventing duplicate
+handling while unwinding. Every simulation error construction path uses the
+same initialized source class; its stored exception remains separate from cause.
+The whole test retains all 38 equality, 3 true and 1 non-null assertion, 3 base-frame,
+7 state-frame and 27 action-frame calls, all three loops, conditional level > 3
+spec breakpoint, synthetic trace levels, exact Stop invariant message, constructor
+config/seed/fingerprint/simulation arguments and safety exit. One more original
+vector, MC02Sim.tla, is byte-identical under test_vectors/models/EWD840. Unchanged
+Java JUnit, the whole Go method and full offline normal/race suites pass. No
+invented tests or vectors were added. One full normal run exposed an intermittent
+DieHard auto-worker binary trace prefix mismatch; the final full normal/race runs
+and 200 targeted repetitions pass, but the cause is not established. Read the
+progress tail before further checker work. Then compare the remaining original
+Debug02Test, Debug03Test, Debug03SimTest, Debug04SimTest and Debug05SimTest features
+and translate each complete source method. Debug03Test covers next-state and
+synthetic frames. Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance
 metadata/export composition and complete native override registration remain

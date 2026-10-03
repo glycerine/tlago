@@ -82,7 +82,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 		},
 	}
 	if err := w.Tool.GetInitStates(initFunctor); err != nil {
-		return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+		return NewSimulationWorkerError(ECGeneral, nil, w.GetTrace(w.CurState), err)
 	}
 	w.CurState = w.RandomState(w.InitStates)
 	SetCurrentState(w.CurState)
@@ -101,7 +101,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 			if workerErr, ok := err.(*SimulationWorkerError); ok {
 				return workerErr
 			}
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(w.CurState), Err: err}
+			return NewSimulationWorkerError(ECGeneral, nil, w.GetTrace(w.CurState), err)
 		}
 		if w.Halted.Load() {
 			w.Halted.Store(false)
@@ -109,13 +109,13 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 		}
 		if w.NextStates.IsEmpty() {
 			if w.CheckDeadlock {
-				return &SimulationWorkerError{Code: ECTLCDeadlockReached, StateTrace: w.GetTrace(w.CurState)}
+				return NewSimulationWorkerError(ECTLCDeadlockReached, nil, w.GetTrace(w.CurState))
 			}
 			break
 		}
 		next := w.RandomState(w.NextStates)
 		if _, err := next.ExecCallable(); err != nil {
-			return &SimulationWorkerError{Code: ECGeneral, StateTrace: w.GetTrace(next), Err: err}
+			return NewSimulationWorkerError(ECGeneral, nil, w.GetTrace(next), err)
 		}
 		w.Statistics.CollectPostSuccessor(w.CurState, next.GetAction(), next)
 		w.CurState = next

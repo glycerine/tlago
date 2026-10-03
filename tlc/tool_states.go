@@ -607,7 +607,7 @@ func (t *Tool) GetNextStatesAppl(action *Action, pred *OpApplNode, acts *ActionI
 		t.Debugger.PushActionFrame(t, pred, c, s0, action, s1)
 		defer func() {
 			if !debugErrorKnown(err) {
-				if isInvariantViolatedException(err) {
+				if IsInvariantViolatedException(err) {
 					t.Debugger.MarkInvariantViolatedFrame(t, pred, c, s0, action, s1, err)
 					t.Debugger.PopExceptionFrame(t, pred, c, nil, err)
 				} else if isJavaEvalOrRuntimeException(err) {
@@ -1110,7 +1110,7 @@ func (t *Tool) ProcessUnchanged(action *Action, expr SemanticNode, acts *ActionI
 		}
 		defer func() {
 			if !debugErrorKnown(err) {
-				if isInvariantViolatedException(err) {
+				if IsInvariantViolatedException(err) {
 					t.Debugger.MarkInvariantViolatedFrame(t, expr, c, s0, action, s1, err)
 					t.Debugger.PopExceptionFrame(t, expr, c, nil, err)
 				} else if isJavaEvalOrRuntimeException(err) {

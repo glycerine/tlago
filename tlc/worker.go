@@ -234,7 +234,7 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	}
 	if w.Checker.CheckLiveness {
 		if err := w.CheckLiveness(curState); err != nil {
-			if isInvariantViolatedException(err) {
+			if IsInvariantViolatedException(err) {
 				if w.Checker.StateQueue != nil {
 					w.Checker.StateQueue.FinishAll()
 				}

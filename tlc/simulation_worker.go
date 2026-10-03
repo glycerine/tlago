@@ -9,6 +9,7 @@ import (
 )
 
 type SimulationWorkerError struct {
+	*InvariantViolatedException
 	Code           int
 	Params         []string
 	NullableParams []*string
@@ -17,14 +18,22 @@ type SimulationWorkerError struct {
 	Tool           *Tool
 }
 
+func NewSimulationWorkerError(code int, params []string, stateTrace *StateVec, exception ...error) *SimulationWorkerError {
+	failure := &SimulationWorkerError{
+		InvariantViolatedException: NewInvariantViolatedException(),
+		Code:                       code, Params: params, StateTrace: stateTrace,
+	}
+	if len(exception) > 0 {
+		failure.Err = exception[0]
+	}
+	return failure
+}
+
 func (e *SimulationWorkerError) Error() string {
 	if e == nil {
 		return ""
 	}
-	if e.Err != nil {
-		return e.Err.Error()
-	}
-	return fmt.Sprintf("simulation worker error %d", e.Code)
+	return *e.GetMessage()
 }
 
 func (e *SimulationWorkerError) HasTrace() bool {
@@ -429,12 +438,8 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	defer ResetCurrentState()
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			workerErr := &SimulationWorkerError{
-				Code:       NoError,
-				StateTrace: w.GetTrace(w.CurState),
-				Err:        recoveredAsError(recovered),
-				Tool:       w.Tool,
-			}
+			workerErr := NewSimulationWorkerError(NoError, nil, w.GetTrace(w.CurState), recoveredAsError(recovered))
+			workerErr.Tool = w.Tool
 			w.ResultQueue <- SimulationWorkerFailed(w.ID, workerErr)
 			keepRunning = false
 		}
@@ -497,7 +502,7 @@ func (w *SimulationWorker) GetNextActionAltIndex(index int, p int, actions []*Ac
 
 func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	if w == nil || w.Tool == nil {
-		return &SimulationWorkerError{Code: ECGeneral, Err: newTLCError(ECGeneral, "simulation worker has no tool")}
+		return NewSimulationWorkerError(ECGeneral, nil, nil, newTLCError(ECGeneral, "simulation worker has no tool"))
 	}
 	if w.debug {
 		return w.SimulateExplorationTrace()
@@ -516,7 +521,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		}
 		if len(actions) == 0 {
 			if w.CheckDeadlock {
-				return &SimulationWorkerError{Code: ECTLCDeadlockReached, StateTrace: w.GetTrace(w.CurState)}
+				return NewSimulationWorkerError(ECTLCDeadlockReached, nil, w.GetTrace(w.CurState))
 			}
 			break
 		}
@@ -543,7 +548,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		}
 		if w.NextStates.IsEmpty() {
 			if w.CheckDeadlock {
-				return &SimulationWorkerError{Code: ECTLCDeadlockReached, StateTrace: w.GetTrace(w.CurState)}
+				return NewSimulationWorkerError(ECTLCDeadlockReached, nil, w.GetTrace(w.CurState))
 			}
 			break
 		}
@@ -614,7 +619,7 @@ func (w *SimulationWorker) AddGeneratedSuccessor(curState *TLCStateMut, action *
 	}
 	succ.SetPredecessor(curState).SetAction(action)
 	if !w.Tool.IsGoodState(succ) {
-		return &SimulationWorkerError{Code: ECTLCStateNotCompletelySpecifiedNext, Params: incompleteNextStateParams(w.Tool, action, succ), StateTrace: w.GetTrace(succ)}
+		return NewSimulationWorkerError(ECTLCStateNotCompletelySpecifiedNext, incompleteNextStateParams(w.Tool, action, succ), w.GetTrace(succ))
 	}
 	w.Statistics.CollectPreSuccessor(curState, action, succ)
 	if workerErr := w.CheckInvariants(succ); workerErr != nil {
@@ -651,7 +656,7 @@ func (w *SimulationWorker) CheckInvariants(state *TLCStateMut) *SimulationWorker
 			return newSimulationWorkerErrorNullable(ECTLCInvariantEvaluationFailed, []*string{javaString(nameAt(names, i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
 		}
 		if !valid {
-			return &SimulationWorkerError{Code: ECTLCInvariantViolatedBehavior, Params: []string{nameAt(names, i)}, StateTrace: w.GetTrace(state)}
+			return NewSimulationWorkerError(ECTLCInvariantViolatedBehavior, []string{nameAt(names, i)}, w.GetTrace(state))
 		}
 	}
 	return nil
@@ -665,7 +670,7 @@ func (w *SimulationWorker) CheckImpliedActions(state *TLCStateMut) *SimulationWo
 			return newSimulationWorkerErrorNullable(ECTLCActionPropertyEvaluationFailed, []*string{javaString(nameAt(names, i)), javaThrowableDetailMessage(err)}, w.GetTrace(state))
 		}
 		if !valid {
-			return &SimulationWorkerError{Code: ECTLCActionPropertyViolatedBehavior, Params: []string{nameAt(names, i)}, StateTrace: w.GetTrace(state)}
+			return NewSimulationWorkerError(ECTLCActionPropertyViolatedBehavior, []string{nameAt(names, i)}, w.GetTrace(state))
 		}
 	}
 	return nil
@@ -801,7 +806,9 @@ func actionIDFromStateAction(stats *SimulationWorkerStatistics, action *Action) 
 
 func newSimulationWorkerErrorNullable(code int, params []*string, trace *StateVec) *SimulationWorkerError {
 	copied := copyNullableMessageParameters(params)
-	return &SimulationWorkerError{Code: code, Params: messageParameterStrings(copied), NullableParams: copied, StateTrace: trace}
+	failure := NewSimulationWorkerError(code, messageParameterStrings(copied), trace)
+	failure.NullableParams = copied
+	return failure
 }
 
 func (e *SimulationWorkerError) GetMessage() *string {

@@ -3166,6 +3166,18 @@ Debugger variable details:
   atomicity when workers attach lazy sources to shared cached integer values.
   Two new original vectors remain byte-identical in test_vectors. Unchanged Java,
   both complete Go methods and full normal/race suites pass.
+  The entire original EWD840DebuggerSimTest also passes after source comparison
+  of all 911 frame/exception/context/state records across 39 stops under -race,
+  35 generated states, one trace and safety exit 12. SimulationWorkerError extends
+  the invariant exception and initializes its own inherited known flag. Direct
+  catch dispatch recognizes the subclass and retains its formatted error-code/
+  parameter message and separate stored exception, restoring the invariant stop
+  before alias evaluation without duplicate handling. All construction paths use
+  the initialized source class. The complete test preserves conditional spec
+  breakpoints, synthetic trace levels, action/state/constraint/invariant/alias
+  assertions, all three loops and original simulation/config/seed/fingerprint
+  arguments. One more original vector is byte-identical in test_vectors.
+  Unchanged Java, the whole Go method and full normal/race suites pass.
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.

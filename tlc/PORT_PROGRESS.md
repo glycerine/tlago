@@ -1095,3 +1095,57 @@ semantic/level/instance/export metadata, complete native overrides, formatter/
 trace expressions and selected distributed transport remain pending. Full TLC
 completion remains unproven. Independent rpc25519/Greenpack notes remain outside
 this checker commit.
+
+
+- EWD840 simulation debugger slice: unchanged Java EWD840DebuggerSimTest reports
+one run/zero failures/zero ignored. Its production Go sequence initially matched
+749 records through the first 32 stops, then skipped the Stop invariant failure.
+Ported SimulationWorkerError's source inheritance from INextStateFunctor's
+InvariantViolatedException, constructor initialization of its per-object known
+flag, formatted error-code/parameter message and separate stored exception.
+Every simulation error construction path now initializes that source class.
+Catch dispatch recognizes the actual subclass, restoring the invariant halt and
+avoiding duplicate handling during unwinding. The corrected full production
+comparison matches all 911 frame/exception/context/state records across 39 stops
+under -race, including invariant and alias trace stops, 35 generated states, one
+trace and safety exit 12. Probes are ephemeral and do not substitute for source
+assertions.
+
+- After implementing and verifying the feature, translated the whole original
+EWD840DebuggerSimTest.testSpec: all 38 equality assertions, 3 true and 1 non-null
+assertion, 3 base-frame, 7 state-frame and 27 action-frame calls. Preserve all three
+source loops, initial states, constants, action steps, state/action constraints,
+invariant, conditional level > 3 spec breakpoint, synthetic trace levels, exact
+Stop exception message, alias trace, constructor config/seed/fingerprint/simulation
+arguments and final safety exit. The source harness retains the condition overload
+for spec breakpoints. One more original embedded source vector, MC02Sim.tla, is
+byte-identical under test_vectors/models/EWD840. No invented tests or vectors.
+The complete Go test passes under -race; final full suite results follow below.
+
+
+- Final offline go test ./... and go test -race ./... pass (root 39.063s
+normal and 221.649s race). The reported mixed-config test passes 100 repetitions.
+One earlier full normal run failed the existing
+TestJavaSafetyDumpLoadTraceTLCAutoWorkers at index 6: an empty-big dumped state
+replayed as an invariant-violating pour-big-to-small state. Twenty then 200
+uncached targeted repetitions pass. The unchanged Java original passes 30 runs.
+Temporary Java worker scheduling probes retain the entire original method and
+all assertions; several longer traces replay correctly, while a probe that
+favored a different predecessor for a duplicate state failed earlier with a
+missing exported trace. This does not establish identical Java/Go failure or a
+Go correction. In both source implementations, rejected successors still have
+invariants checked; multiworker exploration may choose a nonminimal trace.
+Investigate canonical predecessor/replay/export timing before further checker
+changes; do not suppress the assertion, add retries or invent tests. No production
+trace changes were made for this unproven cause.
+
+- Source assertion and fixture-byte audits pass. The final production simulation
+comparison still matches all 911 Java records. Code/document diff checks pass,
+excluding preserved upstream fixture whitespace. Next debugger slices are the
+original Debug02Test, Debug03Test, Debug03SimTest, Debug04SimTest and Debug05SimTest
+production features followed by each whole source method; Debug03Test covers
+next-state and synthetic frames. DAP transport/capability events, broader
+semantic/level/instance/export metadata, complete native overrides, formatter/
+trace expressions and selected distributed transport remain pending. Full TLC
+completion remains unproven. Independent rpc25519/Greenpack notes stay outside
+this checker commit.

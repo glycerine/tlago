@@ -145,9 +145,15 @@ func NewInvariantViolatedException() *InvariantViolatedException {
 	return &InvariantViolatedException{NewStatefulRuntimeException("Invariant violated")}
 }
 
-func isInvariantViolatedException(err error) bool {
-	_, ok := err.(*InvariantViolatedException)
-	return ok
+func IsInvariantViolatedException(err error) bool {
+	switch failure := err.(type) {
+	case *InvariantViolatedException:
+		return failure != nil
+	case *SimulationWorkerError:
+		return failure != nil
+	default:
+		return false
+	}
 }
 
 type DoInitInvariantViolatedException struct{ throwableTrace }

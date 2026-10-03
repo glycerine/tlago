@@ -170,8 +170,12 @@ func (h *javaDebuggerModel) replaceBreakpoints(module string, line int) {
 	h.unsetBreakpoints()
 	h.setBreakpoints(debuggerBreakpoint(module, line))
 }
-func (h *javaDebuggerModel) setSpecBreakpoint() {
-	h.debugger.SetExceptionBreakpoints([]tlc.TLCExceptionBreakpointFilterOption{{FilterID: tlc.TLCInvariantBreakpointsFilter}, {FilterID: tlc.TLCExceptionBreakpointsFilter}, {FilterID: tlc.TLCSpecBreakpointsFilter}})
+func (h *javaDebuggerModel) setSpecBreakpoint(conditions ...string) {
+	condition := ""
+	if len(conditions) > 0 {
+		condition = conditions[0]
+	}
+	h.debugger.SetExceptionBreakpoints([]tlc.TLCExceptionBreakpointFilterOption{{FilterID: tlc.TLCInvariantBreakpointsFilter}, {FilterID: tlc.TLCExceptionBreakpointsFilter}, {FilterID: tlc.TLCSpecBreakpointsFilter, Condition: condition}})
 }
 
 type javaDebuggerBreakpoints struct {
