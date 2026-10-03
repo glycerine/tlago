@@ -103,7 +103,7 @@ func setJavaModelLivenessThreshold(t *testing.T, threshold float64) {
 	t.Cleanup(func() { tlc.Globals.LivenessThreshold = previous })
 }
 
-func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string) *tlc.Result {
+func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string, resolvers ...tlc.FilenameToStream) *tlc.Result {
 	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
@@ -154,7 +154,11 @@ func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments
 	tlc.AddMessageRecorder(recorder)
 	defer tlc.RemoveMessageRecorder(recorder)
 	opts.LoadTool = func() (*tlc.Tool, error) {
-		tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, nil, opts.RuntimeParams)
+		var resolver tlc.FilenameToStream
+		if len(resolvers) > 0 {
+			resolver = resolvers[0]
+		}
+		tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, resolver, opts.RuntimeParams)
 		requireNoErrors(t, diags)
 		return tool, err
 	}

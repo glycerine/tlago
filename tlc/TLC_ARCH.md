@@ -3219,6 +3219,19 @@ Debugger variable details:
   idempotence and action/ENABLED/level breakpoint behavior. The inherited stepOut
   count overload is translated; the embedded-config fixture is byte-identical
   in test_vectors. No production correction was needed for this slice.
+  Debug05's complete production sequence matches all 950 frame/context/state/
+  variable/expression records under -race, including 21 stops and 63 evaluations.
+  Named LET instances keep WITH substitutions through the parser, standard-module
+  declaration enumeration, cloned SubstIn bodies and original module-context
+  symbol identities. Spec.getCounterExampleDef now reads shared live definitions
+  after dynamic imports, so the no-debug tool observes the same CounterExample
+  context as the debugger. All nineteen JSON payloads agree. Both Java and Go
+  readers decode all 38 cross-runtime binary exports to the same original trace
+  values; serialized string tokens and normalized field order are runtime-local.
+  The complete original Debug05SimTest translation preserves its full export/
+  readback loop, all assertions, no automatic dumpTrace and explicit resolver
+  overrides. The original fixture is byte-identical under test_vectors. Both
+  runtimes generate 51 states/one trace/depth 25 and finish successfully.
   Broader semantic metadata and full debugger completion remain source work. Raw displayed
   fingerprint numbers use each runtime's interned tokens; matching record
   values and fingerprint type presence do not establish numerical equality.

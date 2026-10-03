@@ -550,7 +550,28 @@ production code required no correction. The whole test retains 34 equality,
 checks and all conditional/unconditional breakpoint commands. Shared stepOut
 supports the original count overload. Debug04.tla is byte-identical under
 test_vectors/models/debug. The unchanged Java original and complete Go method
-pass. Next: original Debug05SimTest production features, then its whole method.
+pass.
+Debug05SimTest's production features and complete original method are now
+ported. Named LET instances with WITH substitutions stop at the enclosing IN;
+embedded standard modules retain declared constant substitutions; source TLA+
+operator bindings keep their instantiated SubstIn body; and a dynamically
+imported declaration reuses its original module-context identity. CounterExample
+lookup reads the live shared SpecProcessor definitions, matching Java Spec and
+avoiding the fast debugger tool's stale copy after TLCExt import. The whole
+production sequence matches all 950 frame/context/state/variable/expression
+records, including 21 stops and 63 evaluations, under -race. All nineteen JSON
+payloads match. Java and Go readers each decode all 38 Java/Go binary exports to
+the same original trace payloads; raw streams contain runtime-specific string
+tokens/record ordering. Both runtimes finish successfully with 51 generated
+states/one trace/depth 25/seed 1/aril 0. The complete Go test retains every source
+assertion (8 equality/1 true sites), all six module expressions and the full
+nineteen-iteration export/readback loop. Source doDumpTrace=false and BASE_DIR
+resolver overrides are retained; runtime files use an isolated temporary
+directory. Debug05.tla is byte-identical under test_vectors/models/debug.
+Next: GetScopedIdentifiersTests and DebugTLCVariableTest feature comparison,
+then their whole source methods. Both unchanged Java classes pass (18 and 4
+methods/cases respectively). Scoped identifier extraction has not been exposed
+as its source helper; production comparison and those translations remain work.
 Attaching DAP
 transport/capability events, full SANY level metadata,
 theorem/proof/top-level children, broader nested and parameterized instance

@@ -740,6 +740,11 @@ func (b *tlcBridge) standardInstanceBindings(inst Instance) []tlc.LetBinding {
 		if value == nil {
 			continue
 		}
+		if _, defined := value.(*tlc.OpDefNode); defined {
+			// Keep the instance's cloned body and SubstIn bindings. Binding
+			// the original TLA+ definition here would bypass WITH substitutions.
+			continue
+		}
 		out = append(out, tlc.LetBinding{
 			Symbol: b.symbol(inst.qualifier() + "!" + member),
 			Value:  value,
@@ -1370,7 +1375,7 @@ func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
 }
 
 func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlcBridgeInstanceTarget {
-	if mod == nil || visiting[mod.Name] || isEmbeddedStandardModule(mod) {
+	if mod == nil || visiting[mod.Name] {
 		return nil
 	}
 	visiting[mod.Name] = true
@@ -1401,6 +1406,13 @@ func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlc
 }
 
 func (b *tlcBridge) declarationSymbol(mod *Module, name string) *tlc.SymbolNode {
+	if node := b.moduleNodes[mod]; node != nil {
+		if declaration, ok := node.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(name)}).(*tlc.SymbolNode); ok {
+			// A dependency compiled as a temporary root keeps its original
+			// declaration identity when later instantiated by debugger expressions.
+			return declaration
+		}
+	}
 	// EXTENDS shares declaration identity with the root. An INSTANCE retains
 	// the instancee's declaration and substitutes a binding for that symbol.
 	var extends func(*Module, map[string]bool) bool

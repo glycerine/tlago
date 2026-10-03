@@ -1317,7 +1317,9 @@ func (p *SanyParser) ExpressionUntilDefinitionBoundary(extraStop func(*SanyToken
 func (p *SanyParser) ExpressionUntilCommaOrBodyBoundary() *SanySyntaxNode {
 	startLine := p.peek().Begin.Line
 	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		if tok.Kind == SanyTokenComma || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
+		// A named instance in LET ends its final substitution at the enclosing
+		// IN. Java's OpOrExpr leaves that token for LetIn to consume.
+		if tok.Kind == SanyTokenComma || tok.Kind == SanyTokenLetin || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
 			return true
 		}
 		return tok.Begin.Line >= startLine && p.startsBodyItemAt(0)

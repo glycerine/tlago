@@ -1288,3 +1288,65 @@ module expressions and full nineteen-iteration JSON/binary export loop run
 successfully. Output: .codex-gotmp/java-debugger-original/java-Debug05Sim-original.log.
 Next: compare the entire Go production sequence, implement any true gaps, then
 translate the whole original method. No persistent partial Debug05 test exists.
+
+
+- Debug05 debugger expression/export production slice: the unchanged Java
+Debug05SimTest and complete-method observer both pass with one run/zero failures/
+zero ignored, 51 generated states/one trace/depth 25/seed 1/aril 0. Comparison of
+the entire Go command sequence exposed source gaps before translating the test.
+The parser now leaves the enclosing LET IN after the last INSTANCE WITH
+substitution, as Java OpOrExpr does. Embedded standard modules now contribute
+their declared substitution targets; native-instance bindings do not replace a
+cloned TLA+ OpDef with its original body and bypass WITH. Declarations of a
+runtime-loaded dependency preserve their original module-context symbol when
+the temporary root becomes an instancee. Spec.getCounterExampleDef reads live
+shared definitions, so importing TLCExt after creating the fast debugger tool
+still finds the context's current counterexample instead of returning an empty
+trace. Source wrong-type/arity and nullable-definition failures are retained.
+
+- With these corrections, all 950 frame/context/state/variable/expression records
+match under -race, after normalizing only owned file paths and the observer's nil
+spelling. The sequence includes 21 stops and all 63 evaluations. Every one of the
+nineteen JSON trace payloads agrees, with growing trace length and exact states/
+actions/variables. Binary streams preserve Java's external value format; raw
+bytes contain different runtime interned string tokens and record field ordering.
+Both Java and Go readers each successfully decode all 38 Java/Go binary exports
+to the identical original JSON trace values. No binary-format change or extra
+persistent binary fixture was needed. Ephemeral evidence lives under
+.codex-gotmp/java-debugger-original/ (Debug05SimParityProbe, Debug05ParityCapture,
+java-Debug05Sim-probe.log, debug05-foreign-bin/, java-Debug05-decode.log) and
+.codex-gotmp/go-Debug05-probe-decl.log, go-Debug05-decode.log, compare-debug05.py.
+
+- After production verification, translated the entire original
+Debug05SimTest.testSpec, retaining all 8 equality/1 true assertion sites, 9 static
+expression call sites/63 runtime evaluations, all six native module expressions,
+both allowed bag display orders, the complete nineteen-iteration JSON export/
+JSON readback/binary export loop, source frame selection and continue commands,
+no automatic trace dump, explicit BASE_DIR resolver and success exit. The shared
+harness accepts the original doDumpTrace/resolver overrides; source relative
+runtime exports are mapped to an isolated temporary directory. Original
+Debug05.tla is byte-identical in test_vectors/models/debug. The complete Go
+method passes under -race. No invented tests or vectors. Full suite results
+follow below. Next: original GetScopedIdentifiersTests and DebugTLCVariableTest
+production features, followed by their whole source methods. Scoped identifier
+extraction has not been exposed as its source helper; comparison remains work.
+Broader SANY level/instance/export/theorem/proof metadata, full native override
+registration, DAP transport/capability events, full formatter behavior and
+selected distributed transport remain pending; full TLC completion is unproven.
+
+
+- Full offline go test ./... and go test -race ./... pass (root 39.268s normal,
+232.978s race). Final source review also retained Java's instanceof behavior for
+PriorityEvaluatingValue when retrieving CounterExample definitions; the complete
+Debug05 and all seven existing original TLCExtTrace/Alias translations pass
+under -race after that concrete-subtype adjustment. Whole source assertion and
+expression counts, loop bounds, original vector bytes, all 950 production
+records, nineteen JSON payloads and both readers' 38 cross-runtime binary
+payloads are verified. Code/document diff checks pass. Independent
+rpc25519/Greenpack transport documentation remains outside this commit.
+Unchanged original GetScopedIdentifiersTests reports 18 runs/zero failures/zero
+ignored; DebugTLCVariableTest reports 4 runs/zero failures/zero ignored. Their
+outputs are .codex-gotmp/java-debugger-original/java-GetScopedIdentifiers-original.log
+and java-DebugTLCVariable-original.log. Next: compare/implement those source
+features, then translate every original method/case. No persistent partial tests
+were added for either class; full TLC completion remains unproven.

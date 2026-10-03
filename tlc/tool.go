@@ -906,6 +906,30 @@ func (t *Tool) GetCounterExampleDef() *OpDefNode {
 	if t == nil {
 		return nil
 	}
+	if t.SpecProcessor != nil {
+		// Spec.getCounterExampleDef reads the live shared definitions. A
+		// debugger expression can import TLCExt after the fast tool was copied.
+		value := t.SpecProcessor.Defns.Get("CounterExample")
+		if value == nil {
+			return nil
+		}
+		var evaluating *EvaluatingValue
+		switch value := value.(type) {
+		case *EvaluatingValue:
+			evaluating = value
+		case *PriorityEvaluatingValue:
+			evaluating = value.EvaluatingValue
+		default:
+			panic(NewTLCRuntimeException(ECGeneral))
+		}
+		if evaluating.OpDef == nil {
+			panic(NewNullPointerException())
+		}
+		if evaluating.OpDef.Arity() != 0 {
+			panic(NewTLCRuntimeException(ECGeneral))
+		}
+		return evaluating.OpDef
+	}
 	return t.CounterExampleDef
 }
 

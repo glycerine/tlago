@@ -53,14 +53,29 @@ type javaDebuggerModel struct {
 
 func startJavaDebuggerModel(t *testing.T, folder, model string, exitStatus int, extraArgs ...string) *javaDebuggerModel {
 	t.Helper()
+	return startJavaDebuggerModelWithOptions(t, folder, model, exitStatus, javaDebuggerModelOptions{dumpTrace: true}, extraArgs...)
+}
+
+type javaDebuggerModelOptions struct {
+	dumpTrace bool
+	resolver  tlc.FilenameToStream
+}
+
+func startJavaDebuggerModelWithOptions(t *testing.T, folder, model string, exitStatus int, options javaDebuggerModelOptions, extraArgs ...string) *javaDebuggerModel {
+	t.Helper()
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	h := &javaDebuggerModel{t: t, debugger: tlc.NewTLCDebugger(nil), done: make(chan struct{}), prior: tlc.TLCDebuggerFactoryOverride, exitStatus: exitStatus}
 	tlc.TLCDebuggerFactoryOverride = h.debugger
 	go func() {
 		defer close(h.done)
 		h.result = runJavaTLCModelTestWithArguments(t, folder, model, func(meta, traceDirectory string) []string {
-			return append([]string{"-metadir", meta, "-deadlock", "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0", "-dumpTrace", "json", filepath.Join(traceDirectory, "tlc2.debug."+folder+"DebuggerTest.json"), "-debugger", "-noGenerateSpecTE"}, extraArgs...)
-		})
+			args := []string{"-metadir", meta, "-deadlock", "-fp", "0", "-seed", "1", "-workers", "1", "-checkpoint", "0"}
+			if options.dumpTrace {
+				args = append(args, "-dumpTrace", "json", filepath.Join(traceDirectory, "tlc2.debug."+folder+"DebuggerTest.json"))
+			}
+			args = append(args, "-debugger", "-noGenerateSpecTE")
+			return append(args, extraArgs...)
+		}, options.resolver)
 	}()
 	defer func() {
 		if t.Failed() {
