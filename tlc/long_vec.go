@@ -1,3 +1,8 @@
+// Copyright (c) 2003 Compaq Corporation.  All rights reserved.
+// Portions Copyright (c) 2003 Microsoft Corporation.  All rights reserved.
+// Last modified on Mon 30 Apr 2007 at 13:26:33 PST by lamport
+//
+//	modified on Mon Dec  4 16:20:19 PST 2000 by yuanyu
 package tlc
 
 import (
@@ -15,7 +20,7 @@ func NewLongVec() *LongVec {
 
 func NewLongVecWithCapacity(capacity int) *LongVec {
 	if capacity < 0 {
-		capacity = 0
+		panic(NewNegativeArraySizeException(strconv.Itoa(capacity)))
 	}
 	return &LongVec{data: make([]int64, 0, capacity)}
 }
@@ -27,7 +32,23 @@ func NewLongVecFrom(values []int64) *LongVec {
 }
 
 func (v *LongVec) Add(x int64) {
+	if len(v.data) == cap(v.data) {
+		v.ensureCapacity(len(v.data) + 1)
+	}
 	v.data = append(v.data, x)
+}
+
+// Java LongVec doubles its backing array, including growth from capacity zero.
+func (v *LongVec) ensureCapacity(minCapacity int) {
+	if cap(v.data) < minCapacity {
+		newCapacity := int(int32(cap(v.data)) + int32(cap(v.data)))
+		if newCapacity < minCapacity {
+			newCapacity = minCapacity
+		}
+		data := make([]int64, len(v.data), newCapacity)
+		copy(data, v.data)
+		v.data = data
+	}
 }
 
 func (v *LongVec) AddElement(x int64) {
@@ -36,7 +57,7 @@ func (v *LongVec) AddElement(x int64) {
 
 func (v *LongVec) At(index int) int64 {
 	v.rangeCheck(index)
-	return v.data[index]
+	return v.arrayAt(index)
 }
 
 func (v *LongVec) ElementAt(index int) int64 {
@@ -44,7 +65,7 @@ func (v *LongVec) ElementAt(index int) int64 {
 }
 
 func (v *LongVec) Last() int64 {
-	return v.data[len(v.data)-1]
+	return v.arrayAt(len(v.data) - 1)
 }
 
 func (v *LongVec) LastElement() int64 {
@@ -53,7 +74,13 @@ func (v *LongVec) LastElement() int64 {
 
 func (v *LongVec) Remove(index int) {
 	v.rangeCheck(index)
-	v.data[index] = v.data[len(v.data)-1]
+	// Array assignment evaluates its right-hand side before checking the
+	// destination index, as in the original Java expression.
+	last := v.arrayAt(len(v.data) - 1)
+	if index < 0 || index >= cap(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, cap(v.data)))
+	}
+	v.data[:cap(v.data)][index] = last
 	v.data = v.data[:len(v.data)-1]
 }
 
@@ -82,16 +109,13 @@ func (v *LongVec) Reverse() *LongVec {
 }
 
 func (v *LongVec) Pack() *LongVec {
-	if len(v.data) <= 1 {
-		return v
-	}
-	filtered := v.data[:0]
+	filtered := NewLongVecWithCapacity(v.Size())
 	for _, x := range v.data {
-		if len(filtered) == 0 || filtered[len(filtered)-1] != x {
-			filtered = append(filtered, x)
+		if filtered.IsEmpty() || filtered.LastElement() != x {
+			filtered.AddElement(x)
 		}
 	}
-	v.data = filtered
+	v.data = filtered.data
 	return v
 }
 
@@ -122,7 +146,16 @@ func (v *LongVec) String() string {
 }
 
 func (v *LongVec) rangeCheck(index int) {
-	if index < 0 || index >= len(v.data) {
-		panic("LongVec index out of bounds")
+	if index >= len(v.data) {
+		message := "Index: " + strconv.Itoa(index) + ", Size: " + strconv.Itoa(len(v.data))
+		panic(&IndexOutOfBoundsException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)})
 	}
+}
+
+// Negative indices bypass rangeCheck in Java and fail on the backing array.
+func (v *LongVec) arrayAt(index int) int64 {
+	if index < 0 || index >= cap(v.data) {
+		panic(NewArrayIndexOutOfBoundsException(index, cap(v.data)))
+	}
+	return v.data[:cap(v.data)][index]
 }

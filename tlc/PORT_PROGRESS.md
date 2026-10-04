@@ -2432,3 +2432,45 @@ Current Go rangeCheck's string panic is not that exception family. Fix productio
 before completing these tests. Growth is source double-capacity/minCapacity,
 not Go append's larger-vector growth policy. Negative capacity must not be silently
 clamped to zero. Preserve Growing's actual Exception catch in testGrowAndShrink.
+
+
+LongVecTest and GrowingLongVecTest are port complete in long_vec_java_test.go:
+all eight base methods, all eight inherited subclass contexts using its zero-capacity
+factory, plus testGrowAndShrink. Preserve explicit new LongVec(10) in the two
+original methods for both classes, twelve index-zero remove attempts (-1..10
+loop), every value/size assertion and the original catch families. Base catches
+accept actual IndexOutOfBoundsException and its array/string subclasses, never
+arbitrary Go panics. Growing's extra method retains its broader Exception catch,
+rejecting Java Error and foreign Go failures. Original cases/assertions intact;
+no invented regression/unit methods or additional persistent vectors.
+Production LongVec fixes: negative capacity throws actual NegativeArraySizeException;
+Add grows with the source's double-capacity/minimum rule, retaining Java 32-bit
+capacity arithmetic; rangeCheck rejects only index >= elementCount and throws
+actual IndexOutOfBoundsException with Index:/Size: detail. Negative indices reach
+the backing-array access and throw actual ArrayIndexOutOfBoundsException with
+backing capacity (not logical size). Last retains direct array semantics. Remove
+retains right-hand-side evaluation before destination-array checks; javap of the
+current original class confirms laload before lastore. Pack now allocates its
+source filtered array and replaces storage, removing the earlier in-place shortcut
+(and its short-circuit for size <= 1). Java source methods were compared before
+translation; tests were not weakened to accept the former string panic.
+Unchanged Java originals pass all 17 (0.010s). Final Go originals plus existing
+LongVec checks pass (0.017s), handles 3968/86950 retired. Final full workspace normal passes (handle 1678 retired):
+ok  	github.com/glycerine/tlago	313.213s
+?   	github.com/glycerine/tlago/cmd/tlago	[no test files]
+ok  	github.com/glycerine/tlago/sany_tests	0.992s
+ok  	github.com/glycerine/tlago/tlc	44.150s
+Full TLC race passes: ok  	github.com/glycerine/tlago/tlc	414.234s
+Handle 48906 retired; all verification handles in this slice are terminal.
+Low disk space addressed by inspecting and removing only 311 owned regular
+hex64-d Go cache data files older than 48h, oldest first (~2.16GB). No source,
+fixtures, user data, cache directories or live test processes removed.
+Inventory now 442/1269 contexts (34.8%), 122/626 complete classes (19.5%), 827 pending
+contexts across 504 classes; one partial. All five deferred topics stay deferred.
+Next: MemIntQueueTest's five original methods. Source methods and related Go
+checks were read, no credit yet. Retain irrelevant directory/prefix constructor
+arguments, source NoSuchElementException catches, zero-long fixture (old Go
+long-roundtrip test uses a different number), capacity-four wrap/grow sequence,
+all size assertions and only the assertions actually present in the source.
+Inspect MemIntQueue/Go IntQueue production before translating; do not credit
+old generic-panic expectations as the original NoSuchElementException catches.
