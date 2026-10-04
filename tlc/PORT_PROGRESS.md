@@ -3611,3 +3611,39 @@ Commit sevenfaithful1389ports/corefixes/docs now. Inventory687/1269(54.1%),
 Next179a/b/c originals passed unchangedJavaJUnit; notactivated/credited in Go.
 Goal remains active with full originalscope/deferredtopics. No inventedtests,
 sourcefixture changes, debuggerfeature work or weakening originalassertions.
+
+
+2026-10-04: Github179a/b/c original tests translated in
+`tlc_github_179_java_test.go`, retaining all runner defaults, exit statuses,
+FINISHED, exact reflected method signatures/failure text and complete nested
+expression stacks (including final newline). Six original fixtures are byte
+identical. Original Java JUnit passes all three. Production standard-method
+metadata now includes the full Print/PrintT signatures. CallStackTool replay
+starts from the ordinary evaluator rather than copying DebugTool hooks, matching
+Java Tool(other)'s shared-Spec constructor and preserving inner predicate frames.
+No assertions weakened or new tests invented. Five focused repetitions pass.
+Inventory: 690/1269 method contexts (54.4%), 258/626 classes (41.2%);
+579 contexts across 368 classes remain (one partial class).
+Broad checks pending: workspace11681, full TLC race11832, focused root race53911
+(five runs of the three ports and four original FingerprintException cases).
+Logs: `.codex-gotmp/github179-{workspace,tlc-race,root-race}.log`.
+Next: Github362 instance-scoping test; unchanged original Java JUnit passes.
+Overall goal remains active; user-deferred topics remain deferred.
+
+
+Github179 workspace check PASS: root401.615s, SANY1.128s, TLC63.859s;
+retire11681. Focused root race PASS120.451s (five repetitions of all three
+Github179 ports and four original FingerprintException ports); retire53911.
+Full TLC race11832 remains running. No production edits since checks launched.
+Next unchanged Java Github362, Github391 and Github407 JUnit all pass; source
+assertions reviewed, no Go credit yet. Goal remains active.
+
+
+Final Github179 checkpoint: full TLC race PASS571.732s; retire11832.
+All checks green: full workspace, full TLC race, five focused normal repetitions
+and five focused root race repetitions including original fingerprint failures.
+Six fixtures match source bytes; Go/docs whitespace checks clean. Commit the
+three faithful ports, native signature metadata and ordinary call-stack replay.
+Inventory690/1269(54.4%),258/626(41.2%),579 pending contexts/368 classes.
+No live test processes. Next Github362, then391/407; their unchanged Java tests
+pass and remain uncredited until translated. Overall goal remains active.

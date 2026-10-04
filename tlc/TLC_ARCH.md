@@ -4474,3 +4474,13 @@ Exhaustion raises the existing StackOverflowError type as a panic, bypassing
 Exception-only fallbacks and reaching TLC.process's specific resource-error
 catch. Normal and race compiler escape analysis confirm the markers stay on the
 stack; finite expansion and the two original overflow tests all pass.
+
+
+Native MethodValue diagnostics retain Java reflection's full method signature,
+including Print and PrintT's declared return and parameter types. Call-stack
+replay uses the ordinary evaluator's hooks: Java CallStackTool constructs a Tool
+from shared Spec fields, and cannot inherit DebugTool's virtual evaluation
+behavior. Starting the Go copy from NoDebug preserves the shared semantic graph
+while routing every nested predicate through the replay call-stack recorder.
+The original Github179a/b/c tests preserve exact native errors and full source
+location stacks with all source runner defaults enabled.

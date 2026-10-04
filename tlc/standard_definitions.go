@@ -327,6 +327,10 @@ func (t *Tool) defineStandardMethodWithMinLevel(name string, arity int, minLevel
 	// MethodValue reports Method.toString() when a native value operation fails.
 	// Preserve the source reflection metadata, including its declared return type.
 	switch name {
+	case "Print":
+		method = "public static tlc2.value.impl.Value tlc2.module.TLC.Print(tlc2.value.impl.Value,tlc2.value.impl.Value)"
+	case "PrintT":
+		method = "public static tlc2.value.impl.Value tlc2.module.TLC.PrintT(tlc2.value.impl.Value)"
 	case "ToString":
 		method = "public static tlc2.value.impl.Value tlc2.module.TLC.ToString(tlc2.value.impl.Value)"
 	case "IsFiniteSet":
