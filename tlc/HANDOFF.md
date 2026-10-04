@@ -1247,3 +1247,47 @@ thirty original fingerprint matrix rows (2+10+10+8), before/after fingerprint an
 explicit enumeration sizes, all eleven invalid-k assertions in both operand
 directions for both k=-1 and k=4, exact hash and strings, and checked printing's
 large-count swallow case. Source uses FP64.Zero for the fingerprint calls.
+
+
+KSubsetValueTest is port complete in value_ksubset_java_test.go: all eleven
+original methods, four n=32/33/63/64 enumerations with every non-null/size
+assertion and original IllegalArgumentException catch, normalization's six literal
+expected subsets, all thirty original fingerprint matrix rows (2+10+10+8), exact
+Combinatorics.choose expected sizes before/after FP64.Zero fingerprinting and after
+explicit enumeration. Preserve every invalid-k assertion for both -1 and 4:
+size/isEmpty, both equality and comparison directions, hash equality, ordinary and
+randomized null enumeration, toSetEnum equality and exact checked string. Checked
+printing's large-count swallow string is unchanged. No source test assertions
+weakened, matrices reduced, cases invented or commented specs made runnable.
+Production KSubsetValue.Size now returns actual IllegalArgumentException with
+original k/n message at the original count guard, replacing fmt.Errorf. Source
+inherited toSetEnum's size-before-enumerator order remains correct.
+Source Java and unchanged JUnit pass all eleven (0.276s), Go target passes (0.680s).
+Final full-workspace normal check passes:
+ok  	github.com/glycerine/tlago	316.529s
+?   	github.com/glycerine/tlago/cmd/tlago	[no test files]
+ok  	github.com/glycerine/tlago/sany_tests	0.988s
+ok  	github.com/glycerine/tlago/tlc	44.256s
+Full TLC -race passes: ok  	github.com/glycerine/tlago/tlc	426.589s
+Retire handles 79623,24328,41661. Inventory now 405/1269 contexts (31.9%), 116/626
+complete classes (18.5%), 864 pending contexts across 510 classes; one partial.
+Five user-deferred topics stay deferred.
+
+Next value streams: read all six original ValueInputOutputStreamTest methods and
+StringDeserializeTLCTest plus original model references. Current source
+ValueInputStream/ValueOutputStream and unchanged original six-method test pass
+Java -ea (0.035s), value-stream-junit.log. Not credited as Go translations yet.
+Preserve source file constructors/global compression, individual short/int and
+natural operations, actual Close ordering, exact gzip file-length assertions
+23 (short naturals) and 26 (naturals), actual cold raw string/record fixtures with
+-1 metadata and exact source strings, and readExternal followed by first interning
+for assertions. Never replace the two compressed lengths with raw lengths or
+roundtrip-only checks. Ignored gzip-size-probe.go directly exercised the original
+two natural cases against current production; Go returns 27/30 bytes, not 23/26.
+Actual production compression must be fixed before these tests are completed.
+Optional user architecture question asked whether pure Go is required or CGO/zlib
+is acceptable; no response as of this commit, and default assumption after the
+response window is pure Go. No compression changes made yet. Honor a later reply.
+Original compressed StringDeserialize.vos, .tla and .cfg are in upstream test-model;
+use tlc/test_vectors for any persistent copies and preserve complete inherited
+model harness/exit assertions in addition to the two explicit recorder checks.

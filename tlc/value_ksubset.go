@@ -229,7 +229,7 @@ func (v *KSubsetValue) Size() (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		return 0, fmt.Errorf("k=%d and n=%d", v.K, baseSize)
+		return 0, NewIllegalArgumentException(fmt.Sprintf("k=%d and n=%d", v.K, baseSize))
 	}
 	return int(count.Int64()), nil
 }
