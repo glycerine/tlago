@@ -1851,3 +1851,34 @@ list, missing Randomization. Preserve original constructor/temp dir, generated
 source, caught exception/message behavior and full default modules; fix actual
 production before crediting the method. Do not simply accept Go errors in a test
 adapter instead of porting the original REPL processInput behavior.
+
+
+WarningControlTest correctness checkpoint (2026-10-03):
+All eighteen original methods translated in output_warning_control_java_test.go,
+including every direct HandleParameters result, TLC/SANY set-membership/empty
+assertion, source @After reset/warn=true, native stdout/err capture and strict
+runtime exception expectation. Java's boolean result maps to Go's error return;
+its TLCRuntimeException maps to the established TLCError with Runtime=true. Other
+panic families are rethrown. Source dummy MC and numeric arguments remain exact;
+only its relative metadata directories are isolated under the test temp cwd.
+Production now registers SANY and TLC controls separately, exposes read-only
+backed set views, resets without replacing the views' backing sets, validates
+both kinds of conflicts and bridges SANY registrations to model-check parsing.
+Native ToolIO stream assignment overrides TOOL capture without changing mode.
+HandleParameters emits its once-only welcome and actual MP command-line errors.
+Numeric code parsing retains Java comma-split/trailing-empty, ASCII trim and
+Integer.parseInt semantics. Audited actual EC declared fields: remove nested exit
+status values10/75/150/255, include declared7001..7010; GENERAL1000 is TLC first.
+SANY overlap errors retain actual ErrorCode enum names. Source enum MIT notice
+retained. No deferred distributed implementation work is added.
+Unchanged actual Java TLC/MP/ToolIO/EC/ErrorCode and original JUnit eighteen pass
+with -ea(0.085s); final Go class plus original MP four pass(0.013s), focused race
+passes(1.033s). Eleven direct Java/Go code-registration/error-output cases match
+byte-for-byte after omitting only the runtime build greeting line; these ignored
+probes add no test credit. Full workspace passes(root310.325s,SANY0.890s,
+TLC47.877s); retire61045/29540. Full TLC race passes(426.282s); retire68918.
+No checks remain running.
+Inventory549/1269 contexts(43.3%),135/626 complete classes(21.6%),720 pending
+across491 classes,one partial. CLI/output2/5 classes,22/37 methods complete.
+Next after green commit: remaining CLI/output originals (TLCTest ten, REPLTest
+one, SpecTraceExpressionWriterTest four). All five deferred topics stay deferred.

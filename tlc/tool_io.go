@@ -16,10 +16,11 @@ const (
 // message even when its argument contains newlines; print accumulates a prefix.
 var toolIO = struct {
 	sync.Mutex
-	mode        int
-	out, err    io.Writer
-	messages    []string
-	nextMessage string
+	mode                   int
+	captureOut, captureErr bool
+	out, err               io.Writer
+	messages               []string
+	nextMessage            string
 }{out: os.Stdout, err: os.Stderr, messages: make([]string, 0, 1)}
 
 func ToolIOGetMode() int {
@@ -35,6 +36,7 @@ func ToolIOSetMode(mode int) bool {
 		return false
 	}
 	toolIO.mode = mode
+	toolIO.captureOut, toolIO.captureErr = mode == ToolIOTool, mode == ToolIOTool
 	if mode == ToolIOSystem {
 		toolIO.out, toolIO.err = os.Stdout, os.Stderr
 	}
@@ -74,7 +76,11 @@ func ToolIOErrPrintln(text string) { toolIOWrite(text, true, true) }
 func toolIOWrite(text string, newline, toError bool) {
 	toolIO.Lock()
 	defer toolIO.Unlock()
-	if toolIO.mode == ToolIOTool {
+	capture := toolIO.captureOut
+	if toError {
+		capture = toolIO.captureErr
+	}
+	if capture {
 		if newline {
 			if len(toolIO.messages) == cap(toolIO.messages) {
 				grown := make([]string, len(toolIO.messages), 2*cap(toolIO.messages))
@@ -100,12 +106,19 @@ func toolIOWrite(text string, newline, toError bool) {
 	}
 }
 
-// The Go command boundary supplies process streams explicitly. TOOL buffering
-// remains independent of those streams, as in the Java embedding boundary.
+// Assigning native out/err streams overrides the buffered stream instances while
+// retaining ToolIO.mode, just as assigning ToolIO.out and ToolIO.err does in Java.
 func ToolIOSetSystemStreams(out, err io.Writer) func() {
 	toolIO.Lock()
 	oldOut, oldErr := toolIO.out, toolIO.err
+	oldCaptureOut, oldCaptureErr := toolIO.captureOut, toolIO.captureErr
 	toolIO.out, toolIO.err = out, err
+	toolIO.captureOut, toolIO.captureErr = false, false
 	toolIO.Unlock()
-	return func() { toolIO.Lock(); toolIO.out, toolIO.err = oldOut, oldErr; toolIO.Unlock() }
+	return func() {
+		toolIO.Lock()
+		toolIO.out, toolIO.err = oldOut, oldErr
+		toolIO.captureOut, toolIO.captureErr = oldCaptureOut, oldCaptureErr
+		toolIO.Unlock()
+	}
 }

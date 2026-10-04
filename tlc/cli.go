@@ -79,6 +79,8 @@ func ParseTLCOptions(args []string) (Options, error) {
 
 	tlcSuppressedCodes := NewInsMap[int, bool]()
 	tlcMessagesAsErrors := NewInsMap[int, bool]()
+	sanySuppressedCodes := NewInsMap[int, bool]()
+	sanyMessagesAsErrors := NewInsMap[int, bool]()
 
 	index := 0
 	for index < len(args) {
@@ -137,13 +139,13 @@ func ParseTLCOptions(args []string) (Options, error) {
 			index++
 		case arg == "-suppressMessages":
 			var err error
-			index, err = parseTLCMessageCodeList(args, index, tlcSuppressedCodes, "-suppressMessages", true)
+			index, err = parseTLCMessageCodeList(args, index, tlcSuppressedCodes, sanySuppressedCodes, "-suppressMessages", true)
 			if err != nil {
 				return opts, err
 			}
 		case arg == "-messagesAsErrors":
 			var err error
-			index, err = parseTLCMessageCodeList(args, index, tlcMessagesAsErrors, "-messagesAsErrors", false)
+			index, err = parseTLCMessageCodeList(args, index, tlcMessagesAsErrors, sanyMessagesAsErrors, "-messagesAsErrors", false)
 			if err != nil {
 				return opts, err
 			}
@@ -432,10 +434,13 @@ func ParseTLCOptions(args []string) (Options, error) {
 		}
 	}
 
-	if !Globals.Warn && tlcSuppressedCodes.Len() > 0 {
+	if !Globals.Warn && (tlcSuppressedCodes.Len() > 0 || sanySuppressedCodes.Len() > 0) {
 		return opts, tlcCommandLineError("Error: -nowarning already suppresses all warnings, making -suppressMessages redundant. Remove -nowarning to suppress only the specified messages, or remove -suppressMessages to suppress all warnings.")
 	}
 	if overlap := messageCodeOverlap(tlcSuppressedCodes, tlcMessagesAsErrors); overlap != "" {
+		return opts, tlcCommandLineError("Error: The following codes were set to both -suppressMessages and -messagesAsErrors: " + overlap)
+	}
+	if overlap := sanyMessageCodeOverlap(sanySuppressedCodes, sanyMessagesAsErrors); overlap != "" {
 		return opts, tlcCommandLineError("Error: The following codes were set to both -suppressMessages and -messagesAsErrors: " + overlap)
 	}
 	for code := range tlcSuppressedCodes.All() {
@@ -443,6 +448,13 @@ func ParseTLCOptions(args []string) (Options, error) {
 	}
 	for code := range tlcMessagesAsErrors.All() {
 		TreatTLCMessageAsError(code)
+	}
+
+	for code := range sanySuppressedCodes.All() {
+		SuppressSANYMessage(code)
+	}
+	for code := range sanyMessagesAsErrors.All() {
+		TreatSANYMessageAsError(code)
 	}
 
 	if opts.SpecFile == "" {
@@ -504,6 +516,10 @@ func ParseTLCOptions(args []string) (Options, error) {
 func (t *TLC) HandleParameters(args []string) error {
 	opts, err := ParseTLCOptions(args)
 	if err != nil {
+		if t != nil {
+			t.printWelcome()
+			PrintError(ECWrongCommandlineParamsTLC, err.Error())
+		}
 		return err
 	}
 	if t == nil {
@@ -513,6 +529,7 @@ func (t *TLC) HandleParameters(args []string) error {
 		opts.Tool = t.Tool
 	}
 	t.Options = opts
+	t.printWelcome()
 	return nil
 }
 
@@ -563,22 +580,34 @@ func isDebuggerSubargument(arg string) bool {
 	return strings.Contains(lower, "port=") || strings.Contains(lower, "nosuspend") || strings.Contains(lower, "nohalt") || strings.Contains(lower, "suspend") || strings.Contains(lower, "halt")
 }
 
-func parseTLCMessageCodeList(args []string, index int, dst *InsMap[int, bool], option string, suppress bool) (int, error) {
+func parseTLCMessageCodeList(args []string, index int, dst *InsMap[int, bool], sanyDst *InsMap[int, bool], option string, suppress bool) (int, error) {
 	if index+1 >= len(args) {
 		return index, tlcCommandLineError("Error: " + option + " requires a comma-separated list of message codes.")
 	}
-	for _, part := range strings.Split(args[index+1], ",") {
-		code, err := strconv.Atoi(strings.TrimSpace(part))
-		if err != nil {
-			return index, tlcCommandLineError("Error: unknown message code: " + strings.TrimSpace(part))
+	parts := strings.Split(args[index+1], ",")
+	if args[index+1] != "" {
+		for len(parts) > 0 && parts[len(parts)-1] == "" {
+			parts = parts[:len(parts)-1]
 		}
+	}
+	for _, part := range parts {
+		text := strings.TrimFunc(part, func(r rune) bool { return r <= ' ' })
+		parsed, ok := javaParseDecimalInt(text)
+		if !ok {
+			return index, tlcCommandLineError("Error: " + *NewNumberFormatException(text).GetMessage())
+		}
+		code := int(parsed)
 		if !knownJavaMessageCode(code) {
-			return index, tlcCommandLineError("Error: unknown message code: " + strings.TrimSpace(part))
+			return index, tlcCommandLineError(fmt.Sprintf("Error: unknown message code: %d", code))
 		}
 		if suppress && isJavaSANYErrorMessageCode(code) {
 			return index, tlcCommandLineError(fmt.Sprintf("Error: code %d is an error and cannot be suppressed.", code))
 		}
-		dst.Set(code, true)
+		if _, tlcCode := knownJavaTLCMessageCodes[code]; tlcCode {
+			dst.Set(code, true)
+		} else {
+			sanyDst.Set(code, true)
+		}
 	}
 	return index + 2, nil
 }
@@ -592,6 +621,9 @@ func knownJavaMessageCode(code int) bool {
 }
 
 func isJavaSANYErrorMessageCode(code int) bool {
+	if _, tlcCode := knownJavaTLCMessageCodes[code]; tlcCode {
+		return false
+	}
 	if _, ok := knownJavaSANYMessageCodes[code]; !ok {
 		return false
 	}
@@ -608,41 +640,41 @@ func intSet(values ...int) map[int]struct{} {
 }
 
 var knownJavaTLCMessageCodes = intSet(
-	-123456, -1, 0, 10, 75, 150, 255,
-	1000, 1001, 1002, 1003, 1005, 1101, 1102, 2000, 2001,
-	2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107, 2108, 2109,
-	2110, 2111, 2112, 2113, 2114, 2115, 2116, 2117, 2118, 2119,
-	2120, 2121, 2122, 2123, 2124, 2125, 2126, 2127, 2128, 2129,
-	2130, 2131, 2132, 2133, 2134, 2135, 2136, 2137, 2138, 2139,
-	2140, 2141, 2142, 2143, 2144, 2145, 2146, 2147, 2148, 2149,
-	2154, 2155, 2156, 2157, 2158, 2159, 2160, 2161, 2162, 2163,
-	2164, 2165, 2166, 2167, 2168, 2169, 2170, 2171, 2172, 2173,
-	2174, 2175, 2176, 2177, 2178, 2179, 2180, 2181, 2182, 2183,
-	2184, 2185, 2186, 2187, 2188, 2189, 2190, 2191, 2192, 2193,
-	2194, 2195, 2196, 2197, 2198, 2199, 2200, 2201, 2202, 2203,
-	2204, 2205, 2206, 2207, 2208, 2209, 2210, 2211, 2212, 2213,
-	2214, 2215, 2216, 2217, 2218, 2219, 2220, 2221, 2222, 2223,
-	2224, 2225, 2226, 2227, 2228, 2229, 2230, 2231, 2232, 2233,
-	2234, 2235, 2236, 2237, 2238, 2239, 2240, 2241, 2242, 2243,
-	2244, 2245, 2246, 2247, 2248, 2249, 2250, 2251, 2252, 2253,
-	2254, 2255, 2256, 2257, 2258, 2259, 2260, 2261, 2262, 2263,
-	2264, 2265, 2266, 2267, 2268, 2269, 2270, 2271, 2272, 2273,
-	2274, 2279, 2280, 2281, 2282, 2283, 2284, 2300, 2301, 2400,
-	2401, 2402, 2403, 2404, 2405, 2501, 2502, 2772, 2773, 2774,
-	2775, 2776, 2777, 2778, 2779, 2780, 3000, 3001, 3002, 3100,
-	3101, 3102, 3103, 3104, 3105, 3106, 3107, 3108, 3109, 3110,
-	3111, 3112, 3113, 3114, 4000, 4001, 4002, 5001, 5002, 5003,
-	5004, 5005, 5006, 7000, 20000,
+	-123456, -1, 0, 1000, 1001, 1002, 1003, 1005, 1101, 1102,
+	2000, 2001, 2100, 2101, 2102, 2103, 2104, 2105, 2106, 2107,
+	2108, 2109, 2110, 2111, 2112, 2113, 2114, 2115, 2116, 2117,
+	2118, 2119, 2120, 2121, 2122, 2123, 2124, 2125, 2126, 2127,
+	2128, 2129, 2130, 2131, 2132, 2133, 2134, 2135, 2136, 2137,
+	2138, 2139, 2140, 2141, 2142, 2143, 2144, 2145, 2146, 2147,
+	2148, 2149, 2154, 2155, 2156, 2157, 2158, 2159, 2160, 2161,
+	2162, 2163, 2164, 2165, 2166, 2167, 2168, 2169, 2170, 2171,
+	2172, 2173, 2174, 2175, 2176, 2177, 2178, 2179, 2180, 2181,
+	2182, 2183, 2184, 2185, 2186, 2187, 2188, 2189, 2190, 2191,
+	2192, 2193, 2194, 2195, 2196, 2197, 2198, 2199, 2200, 2201,
+	2202, 2203, 2204, 2205, 2206, 2207, 2208, 2209, 2210, 2211,
+	2212, 2213, 2214, 2215, 2216, 2217, 2218, 2219, 2220, 2221,
+	2222, 2223, 2224, 2225, 2226, 2227, 2228, 2229, 2230, 2231,
+	2232, 2233, 2234, 2235, 2236, 2237, 2238, 2239, 2240, 2241,
+	2242, 2243, 2244, 2245, 2246, 2247, 2248, 2249, 2250, 2251,
+	2252, 2253, 2254, 2255, 2256, 2257, 2258, 2259, 2260, 2261,
+	2262, 2263, 2264, 2265, 2266, 2267, 2268, 2269, 2270, 2271,
+	2272, 2273, 2274, 2279, 2280, 2281, 2282, 2283, 2284, 2300,
+	2301, 2400, 2401, 2402, 2403, 2404, 2405, 2501, 2502, 2772,
+	2773, 2774, 2775, 2776, 2777, 2778, 2779, 2780, 3000, 3001,
+	3002, 3100, 3101, 3102, 3103, 3104, 3105, 3106, 3107, 3108,
+	3109, 3110, 3111, 3112, 3113, 3114, 4000, 4001, 4002, 5001,
+	5002, 5003, 5004, 5005, 5006, 7000, 7001, 7002, 7003, 7004,
+	7005, 7006, 7007, 7008, 7009, 7010, 20000,
 )
 
 var knownJavaSANYMessageCodes = intSet(
-	4003, 4004, 4005, 4200, 4201, 4202, 4203, 4204, 4205, 4206,
-	4220, 4221, 4222, 4223, 4224, 4240, 4241, 4242, 4243, 4244,
-	4245, 4246, 4247, 4260, 4261, 4262, 4270, 4271, 4272, 4273,
-	4274, 4275, 4290, 4291, 4292, 4293, 4294, 4310, 4311, 4312,
-	4313, 4314, 4315, 4330, 4331, 4332, 4333, 4334, 4335, 4336,
-	4337, 4350, 4351, 4352, 4353, 4354, 4355, 4356, 4357, 4800,
-	4801, 4802, 4803, 4804, 4805,
+	1000, 4003, 4004, 4005, 4200, 4201, 4202, 4203, 4204, 4205,
+	4206, 4220, 4221, 4222, 4223, 4224, 4240, 4241, 4242, 4243,
+	4244, 4245, 4246, 4247, 4260, 4261, 4262, 4270, 4271, 4272,
+	4273, 4274, 4275, 4290, 4291, 4292, 4293, 4294, 4310, 4311,
+	4312, 4313, 4314, 4315, 4330, 4331, 4332, 4333, 4334, 4335,
+	4336, 4337, 4350, 4351, 4352, 4353, 4354, 4355, 4356, 4357,
+	4800, 4801, 4802, 4803, 4804, 4805,
 )
 
 var knownJavaSANYWarningMessageCodes = intSet(4800, 4801, 4802, 4803, 4804, 4805)
@@ -657,7 +689,10 @@ func messageCodeOverlap(a *InsMap[int, bool], b *InsMap[int, bool]) string {
 			parts = append(parts, strconv.Itoa(code))
 		}
 	}
-	return strings.Join(parts, ", ")
+	if len(parts) == 0 {
+		return ""
+	}
+	return "[" + strings.Join(parts, ", ") + "]"
 }
 
 func runtimeInvariantModules(expr string) []string {

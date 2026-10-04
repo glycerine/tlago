@@ -13,6 +13,7 @@ func TestJavaMP(t *testing.T) {
 			toolIO.Lock()
 			oldMode, oldOut, oldErr := toolIO.mode, toolIO.out, toolIO.err
 			oldMessages, oldNext := toolIO.messages, toolIO.nextMessage
+			oldCaptureOut, oldCaptureErr := toolIO.captureOut, toolIO.captureErr
 			toolIO.Unlock()
 			Globals.Lock()
 			oldTool := Globals.Tool
@@ -21,6 +22,7 @@ func TestJavaMP(t *testing.T) {
 			t.Cleanup(func() {
 				toolIO.Lock()
 				toolIO.mode, toolIO.out, toolIO.err = oldMode, oldOut, oldErr
+				toolIO.captureOut, toolIO.captureErr = oldCaptureOut, oldCaptureErr
 				toolIO.messages, toolIO.nextMessage = oldMessages, oldNext
 				toolIO.Unlock()
 				Globals.Lock()

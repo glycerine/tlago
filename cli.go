@@ -446,6 +446,23 @@ func (opts diagnosticCLIOptions) validate() error {
 	return nil
 }
 
+func (opts diagnosticCLIOptions) withTLCMessageControls() diagnosticCLIOptions {
+	suppressed, elevated := tlcruntime.SANYMessageControls()
+	for _, code := range suppressed {
+		if opts.suppressed == nil {
+			opts.suppressed = map[string]bool{}
+		}
+		opts.suppressed[normalizeDiagnosticCode(strconv.Itoa(code))] = true
+	}
+	for _, code := range elevated {
+		if opts.elevated == nil {
+			opts.elevated = map[string]bool{}
+		}
+		opts.elevated[normalizeDiagnosticCode(strconv.Itoa(code))] = true
+	}
+	return opts
+}
+
 func (opts diagnosticCLIOptions) apply(diags Diagnostics) Diagnostics {
 	return DiagnosticOptions{
 		SuppressedCodes: opts.suppressed,
@@ -571,6 +588,7 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
+	diagOpts = diagOpts.withTLCMessageControls()
 	loadOpts.ExtraModules = appendModuleNames(loadOpts.ExtraModules, tlcRuntimeParameterModules(opts.RuntimeParams)...)
 	spec, diags := LoadSanySpec(opts.SpecFile, loadOpts)
 	diags = diagOpts.apply(diags)

@@ -47,6 +47,8 @@ var Globals = struct {
 	Tool                       bool
 	SuppressedMessages         *InsMap[int, bool]
 	MessagesAsErrors           *InsMap[int, bool]
+	SANYSuppressedMessages     *InsMap[int, bool]
+	SANYMessagesAsErrors       *InsMap[int, bool]
 	StartTime                  time.Time
 }{
 	EnumBound:                  2000,
@@ -68,6 +70,8 @@ var Globals = struct {
 	LastCheckpoint:             time.Now(),
 	SuppressedMessages:         NewInsMap[int, bool](),
 	MessagesAsErrors:           NewInsMap[int, bool](),
+	SANYSuppressedMessages:     NewInsMap[int, bool](),
+	SANYMessagesAsErrors:       NewInsMap[int, bool](),
 	StartTime:                  time.Now(),
 }
 
