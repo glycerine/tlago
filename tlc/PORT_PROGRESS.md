@@ -3861,3 +3861,34 @@ Inventory738/1269 contexts,303/626 complete classes;531 contexts/323 classes
 pending,one partial. Next pending family Github817/b/c/d/e; all five unchanged
 Java references already pass. Later819/849/858/866/971a/b/c/d/e references also
 pass unchanged. Goal active; user-deferred topics remain deferred.
+
+2026-10-04: Github817/b/c/d/e,819,849,858,866 original testSpec methods
+translated with original fixture bytes, constructor overrides and assertions.
+All nine unchanged Java JUnit references pass. Five combined focused Go
+repetitions pass20.610s; five focused root race repetitions pass161.558s.
+817 retains zero-uncovered coverage and complete action-property counterexample;
+819 retains liveness-tautology/FAILURE_LIVENESS_EVAL;849 retains forced trace
+specification/default JSON and absence of native-method override diagnostic.
+858 preserves seed1 simulation, both JSON and tlcaction dumps, exact complete
+state100/ordinal/PassToken(2) action and forced trace generation. Initial858
+failure was missing original CommunityModules classpath; supplying the same
+archive as Java's tool manifest fixed setup, with model/assertions unchanged.
+866 keeps two workers and its full postcondition. It exposed a missing platform
+property default: tlcLookupSystemProperty now supplies native file.separator
+when absent, retaining explicit property/environment overrides and undefined
+property fallback. Five focused866 repetitions pass5.764s. No invented tests or
+weakened assertions. Nine new fixture files are byte-identical to Java.
+Full offline workspace passes (root430.386s, SANY0.979s, TLC64.206s).
+Full TLC race passes567.289s; all check handles terminal.
+Inventory747/1269 contexts,312/626 complete classes;522 contexts/314 classes
+pending,one partial. Next pending issue family Github971a/b/c/d/e; all unchanged
+Java references pass. Scratch translation preserves original three/four-count
+queue latches and all delegation through the existing runner queue injection;
+not yet activated or credited. Goal active; user-deferred topics unchanged.
+
+Next trace-topic preflight: unchanged DumpAsDotTest passes, including exact DOT
+bytes, postcondition register42 and zero-uncovered coverage. Unchanged
+DistributedTrace fails assertNoTESpec (trace spec generated) and inherited
+SUCCESS0 versus actual safety12. Keep pending; do not weaken assertions or
+invent a skip. Logs original-DumpAsDotTest-junit.log and
+original-DistributedTrace-junit.log in ignored correctness-java scratch.

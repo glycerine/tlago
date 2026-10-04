@@ -620,6 +620,11 @@ func tlcLookupSystemProperty(name string) (string, bool) {
 	if value, ok := os.LookupEnv(name); ok {
 		return value, true
 	}
+	// Java initializes this platform property before TLC starts. Preserve
+	// explicit overrides above and supply the native separator by default.
+	if name == "file.separator" {
+		return string(os.PathSeparator), true
+	}
 	return "", false
 }
 
