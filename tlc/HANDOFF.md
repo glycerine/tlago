@@ -2313,3 +2313,62 @@ Go tests/fixtures added yet. Goal remains active, hundreds of contexts remain.
 
 Staged diff whitespace warnings are confined to unchanged upstream Java fixture
 files under native_overrides (verified byte-identical); preserve source bytes.
+
+
+## 2026-10-04: original action composition and assignment models
+
+Ported ActionCompositionATest/BTest.testSpec and all six original assignment
+classes' test methods: AssignmentInit,InitNeg,InitExpensive,Next,Next2,Next3.
+New root tlc_action_composition_java_test.go and tlc_assignment_models_java_test.go;
+15 original TLA/CFG files copied byte-for-byte into test_vectors/models/cdot and
+six assignment model directories. No production changes in this checkpoint.
+Cdot classes retain source module path cdot/rootActionComposition, A/B configs,
+Tool.CDOT_KEY true using isolated environment property, doCoverage=false,
+default debugger/dot/JSON/generate-spec settings and inherited exits. A retains
+FINISHED/noGENERAL,10/4/0/depth3/success. B retains10/4/0/depth3,safety violation,
+invariant-behavior and state-print records and CommonTestCase's full trace checks:
+exact x0,x4,x6, all ordinals and action-metadata conditions. Source list capacity2
+is not its length; actual trace has3 states. No extra B assertions added.
+Assignment models keep complete original fixtures/configurations and every source
+FINISHED/noGENERAL/zero-uncovered/success assertion. Stats Init6/5/0,Neg2/1/0,
+Expensive10002/1/0,Next3/2/0,Next2 3/2/0,Next3 26/5/0; only Next assertsdepth2,
+as source does. Expensive retains0..10000 and CHOOSE e in SUBSET1..18:TRUE
+unchanged. No bounds/expression/caching bypass or substitute model introduced.
+All8 unchanged original Java JUnit classes pass separate JVMs(-ea,-Xmx256m,
+writable scratch basepath): A0.444s,B0.489s,Init0.446s,Neg0.456s,
+Expensive0.497s,Next0.419s,Next2 0.415s,Next3 0.449s.
+Go normal A1.044s,B1.425s,Init1.075s,other5 combined5.250s pass.
+Combined all8 root race31.089s passes; retire12324,
+composition-assignment-race.log. Full workspace passes(root374.271s,SANY1.126s,
+TLC61.723s); retire22226, composition-assignment-full-normal.log. No checks remain
+running. Retain final production baseline9708a18 full TLC race557.551s plus
+original EvalControl race1.029s; current checkpoint changes root tests/fixtures/
+docs only, no TLC production or TLC package tests. Repetition unnecessary.
+Inventory602/1269 contexts(47.4%),175/626 complete classes(28.0%),667 pending
+across451 classes,one partial. Evaluation topic22/45 classes,23/51 methods
+complete,28 pending. Standard topic remainsfullycomplete75/75. MappedJSONmain
+counts independently recomputed and match document. All15 source files verified
+byte-identical including no-final-newline configs/comment whitespace. Deferred
+five user topics untouched; goal remains active, hundreds of contexts remain.
+
+Next inspected class SetOfStatesTest still Reconcile (all6 original methods
+unported). Its original DummyTLCState extends abstract TLCState, with constant
+fingerprint and inherited object-identity equality. EqualityDummyTLCState extends
+it and overrides equality/hash by fingerprint and id. Current Go SetOfStates
+accepts/returns only *TLCStateMut; older Go tests substitute model-variable states,
+sum values instead of fingerprints, use reduced collision cases and omit source
+iterator/HashSet assertions. Do not credit them or smuggle fp/id into mutable
+state values/test-only callbacks. Faithful port requires actual state polymorphism
+at the production set/container boundary and mechanical original dummy classes.
+Original matrices32 inserts,32 same-fingerprint/different-id additions,32 equal
+reinserts; preserve all assertions and iterator reset/sum528, HashSet size32.
+Source SetOfStates.java also catches specific TLCRuntimeException equality
+failures to permit mixed value types in liveness successors; current Go put0 has
+no source catch. Audit full source function, constructors, tool/no-tool fingerprint
+paths, growth, clear/iterator semantics before port credit. This is required
+implementation work, not a reason to weaken original tests. No SetOfStates
+production/test/fixture changes made yet. Interface return changes will affect
+liveness/debugger/container callers; preserve evaluator state semantics and
+respect deferred topics (routine adaptations of existing callers are sufficient).
+After set class, remaining cdot contexts (CdotWithContext A/B/C/D and chained
+cdots) and evaluator model cases continue existing topic; read original setup.

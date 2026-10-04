@@ -3090,3 +3090,19 @@ Inventory594/1269 contexts(46.8%),167/626 complete classes(26.7%). Standard topi
 44/44 classes and75/75 contexts complete; evaluation topic14/45 classes and
 15/51 contexts complete,36 pending. Deferred topics unchanged. Next action
 composition/assignment model cohort remains unported; follow original setup.
+
+
+### 2026-10-04 — Original action-composition and assignment models
+
+Ported complete original ActionCompositionATest/BTest plus all six assignment
+model tests. Retained cdot property/configs, coverage=false overrides, inherited
+exits, exact3state trace, all counts/depth/coverage conditions, full10001-choice
+expensive input and unchanged fixture bytes. No production changes required.
+All8 unchanged Java JUnit classes pass; combined Go root race31.089s passes.
+Full workspace passes(root374.271s,SANY1.126s,TLC61.723s). No checks running.
+Retain prior full TLC race557.551s + EvalControl race1.029s baseline: only root
+tests/fixtures/docs changed. Inventory602/1269 contexts(47.4%),175/626 complete
+classes(28.0%); evaluation topic23/51 methods and22/45 classes complete,
+28 pending. Fifteen original fixture files copied byte-for-byte. Next original
+SetOfStatesTest needs production abstract-state/container support before its six
+methods can be credited. Deferred topics unchanged.
