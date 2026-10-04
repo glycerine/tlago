@@ -6,23 +6,27 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-2026-10-04 correctness-test batch: fifteen CodePlexBug08 original methods now
-have complete Go translations, including seven actual generated TTrace rechecks.
-All fifteen unchanged Java references and the focused Go batch pass. Exact graph
-sizes exposed two production shortcuts: missing explicit VETO_CLEANUP retention
-in LiveChecker.Close, and periodic coverage sorting Tool.Actions in place. Go now
-retains the graph under the source property and reports through a sorted copy;
-the translated tests close retained graphs after their assertions. Full TLC race
-passes (564.061s). Full workspace passes (root 849.693s, SANY 1.031s, TLC 64.395s).
-The initial root race command timed out at 30m during the tenth test
-(FL2TTrace/original); the first nine completed without failures or race reports.
-The remaining six pass under race (751.535s) with a 45m harness deadline. All
-fifteen contexts are checked under race; all verification handles are terminal.
-Inventory: 814/1,269 contexts and 379/626 complete classes; 455 contexts across
-247 classes pending, one partial. The five user-deferred topics and the
-liveness-directory checkpoint FL2 case remain deferred. Next original references
-EmptyOrderOfSolutionsTest and ErrorTraceConstructionTest/_TTraceTest pass
-unchanged; no Go credit yet.
+2026-10-04 current batch: EmptyOrderOfSolutionsTest and
+ErrorTraceConstructionTest plus its actual generated TTrace recheck translated
+in tlc_error_trace_construction_java_test.go. All three unchanged Java references
+and focused Go pass; five complete race repetitions pass (72.075s). Full offline
+workspace72345 passes (root833.142s,SANY0.917s,TLC62.190s); terminal and retired. This verifies the three-test batch before new examples compiled.
+No production changes since9967273; full TLC race564.061s remains applicable.
+Five new fixtures are byte-identical; original exits/settings/diagnostics/full
+traces/exact graph sizes/loop-back actions/coverage preserved.
+Inventory817/1269 contexts (64.4%),382/626 complete classes;452 contexts across
+244 classes remain,one partial. All twenty topic rows verified. Next unchanged
+Java references ExamplesACPNBTLCTest, ExamplesAbaAsynByzTest and
+ExamplesAsyncTerminationDetectionTest pass in Java. Nine new example tests are
+untracked and uncredited; ACP and Aba Go postcondition assertions fail, Async
+passes. Do not advance to remaining six before fixing these failures.
+Keep original -lncheck final and disabled debugger/generation/DOT/JSON/coverage.
+Investigate eager Go built-in interning before config: Java ACP model tokens
+are1..9, graph fingerprints differ already at initial state. Go token probe20034
+live; Java80447 needs terminal confirmation. Remove temporary graph-capture
+helper from untracked examples test after diagnosis. Read progress tail.
+The five user-deferred topics and checkpoint FL2 variant remain deferred.
+Previous batch committed9967273 with clean worktree and green checks.
 
 Priority user directive (2026-10-02): **email reporting is forbidden.** Stop
 email reporting and its dependency work immediately; it must consume no more

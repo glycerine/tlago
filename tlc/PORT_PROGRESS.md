@@ -4351,3 +4351,61 @@ Next original references EmptyOrderOfSolutionsTest and ErrorTraceConstructionTes
 _TTraceTest pass unchanged, with generated prerequisite explicitly present.
 They have no Go translation or inventory credit yet. Goal active; the five
 user-deferred topics remain deferred.
+
+2026-10-04: Empty-formula and error-trace correctness batch.
+Mechanically translated EmptyOrderOfSolutionsTest.testSpec and
+ErrorTraceConstructionTest.testSpec plus its actual generated TTrace recheck in
+tlc_error_trace_construction_java_test.go. Preserve the tautology diagnostic and
+FAILURE_LIVENESS_EVAL exit, both complete eight-state traces with ordinals/named
+actions, original property alias, exact nodes_0/ptrs_0 sizes (288/128 and240/128),
+exact source/generated loop-back actions and zero-uncovered assertions. Retain
+all inherited JSON/DOT/debugger/coverage/generation settings; explicit source
+veto retains graph handles until teardown closes them. Five fixtures byte-exact.
+All three unchanged Java references pass (after-codeplex08-<Class>-junit.log).
+Focused Go passes2.403s (4284 terminal0); after adding explicit inherited veto to
+the empty-formula case, five complete race repetitions pass72.075s (97670
+terminal0). No production changes, weakened assertions, invented tests or skips.
+Full offline workspace72345 passes (root833.142s,SANY0.917s,TLC62.190s); terminal0 and retired. This run compiled before the new example translations.
+Inventory817/1269 contexts (64.4%),382/626 complete classes;452 pending contexts
+across244 classes,one partial. All twenty topic totals verified.
+Next three unchanged Java references pass (11792 terminal0):
+ExamplesACPNBTLCTest, ExamplesAbaAsynByzTest and
+ExamplesAsyncTerminationDetectionTest. Original constructors require -lncheck
+final and disable debugger, generation, DOT, JSON and coverage. Full source
+postcondition absence assertions retained when translating; no Go credit yet.
+Logs examples-first-<Class>-junit.log, examples-first-javac.log. Goal active;
+all user-deferred topics remain deferred.
+
+2026-10-04: Next example-model preflight while workspace72345 runs.
+Six more unchanged Java references pass (18084 terminal0): BcastByz,
+BcastFolklore, BlockingQueuePoisonApple, BufferedRandomAccessFile, Cf1sFolklore,
+CoffeeCan100Beans. Third preflight61469 terminal0 passes EWD840, EWD998ChanID,
+EWD998, EnvironmentController, Huang and LiveHourClock unchanged. Logs
+examples-second/third-<Class>-junit.log and corresponding javac logs.
+Nine original first/second preflight tests translated mechanically into
+untracked tlc_examples_liveness_java_test.go with20 exact model/config fixtures,
+all source assertions and five inherited setting overrides. First three focused
+Go tests90530 terminal1: ACP and Aba fail original TLC_POSTCONDITION_FALSE
+absence assertions; AsyncTerminationDetection passes. Remaining six not run;
+fix these failures before advancing. Same state counts as Java, different
+counterexamples. No new inventory credit.
+None of these nine contexts credited yet. Workspace72345 compiled before this
+new file and only verifies the preceding three-test batch; final broad run for
+new examples still required. Current staged snapshot contains only preceding
+empty-formula/error-trace batch. Whitespace gate for that staged snapshot
+excludes only pristine ErrorTraceConstruction.tla line44; all five staged
+fixtures verified byte-identical. Goal active, no production changes yet.
+
+Temporary diagnostic captures (35107 terminal1,1081 terminal0) show ACP
+first graph fingerprints already differ although graph-byte sizes match.
+Java initial fingerprint -7306691953681482169 versusGo2935950145605467314.
+Java token probe80447 prints model values p0,p1,waiting,notsent,undecided,commit,
+abort,yes,no with tokens1..9, confirming config parsing precedes lazy Java
+built-in name interning. Go UniqueStringInitializeWithSource eagerly invokes
+initBuiltInOPs/initCounterExampleUniqueStrings/initTLCGetSetUniqueStrings/
+initTLCExtUniqueStrings before config parsing; inspect and correct actual
+production initialization sequence. Go token probe20034 remains live; poll it.
+Java80447 handle needs terminal confirmation. Temporary capture helper lives
+only in untracked tlc_examples_liveness_java_test.go; remove all probes before
+final testing/commit. Captures stay ignored under .codex-gotmp. No production
+edit yet. Preceding three-test batch verified and ready to commit independently.
