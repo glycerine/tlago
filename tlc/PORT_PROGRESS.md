@@ -4102,3 +4102,42 @@ pass (46715 retired; ttrace-random-element-<Class>-junit.log). Their existing Go
 first phases already explicitly preserve JSON; retain all seeds, workers,
 simulation/debugger settings and assertions when factoring generation helpers.
 Those four upcoming rechecks remain missing/uncredited.
+
+2026-10-04 current batch: RandomElementTest_TTraceTest.test,
+RandomElementXandYTest_TTraceTest.test,
+RandomElementSimulationTest_TTraceTest.test and
+RandomElementT4Test_TTraceTest.test translated in
+ tlc_ttrace_random_element_java_test.go. Each fully asserted original model
+runs first, followed by a recheck of its actual generated class-name Go TTrace
+artifact. Existing first-phase methods only factor helpers accepting output-path
+arguments; all assertions and source settings are unchanged. Preserve exact
+seeds8006803340504660123,8006642976694192746 and15041980; simulation num=1 and
+first-phase debugger=false; T4 uses four workers in both phases. Recheck defaults
+remain fp0/seed1, JSON/DOT, no generation/no coverage, debugger for one worker.
+Single-worker variants preserve exact11/3-state traces, named actions/ordinals,
+FINISHED/no TLC_BUG, behavior diagnostic and zero-uncovered; RandomElement also
+preserves11/11/0 stats. Simulation recheck asserts every original generated
+_init line25..26 and_next line30..36 location. T4 preserves all11 y/x component,
+bound and ordinal assertions, including fresh getVals snapshots as in Java.
+No weakened assertions, substitute source-model reruns or invented tests.
+All four unchanged Java first/recheck pairs previously passed, with generated
+prerequisites explicitly verified present (46715 retired). Java checkout still
+8f4bc8b73ad1202774a6bf70143436f8ba50aab0. All four reused fixtures verified
+byte-identical; no new persistent fixtures. Final first Go8 tests PASS7.274s
+(29003 terminal); five combined normal repetitions PASS21.803s (10317 terminal);
+five combined root race repetitions PASS195.069s (80905 terminal). All three
+handles retired. Full workspace PASS448.840s root/1.036s SANY/64.395s TLC
+(67309 terminal and retired). All required checks green; ready to commit.
+TLC production unchanged since8812d14, whose full TLC race passes557.944s.
+Inventory764/1269 contexts,329/626 complete classes;505 contexts/297 classes
+pending,one partial;TTrace11/45 complete. Goal active; deferred topics unchanged.
+Next reference preflight: unchanged RandomSubsetATest/TTrace,
+RandomSubsetBTest/TTrace,RandomSubsetNextTest/TTrace,
+RandomSubsetNextT4Test/TTrace and RandomSubsetTest/TTrace all pass.74457 terminal;
+logs ttrace-random-subset-<Class>-junit.log and
+ ttrace-random-subset-javac.log in ignored correctness-java scratch. Actual
+prerequisite files checked present before each recheck; no assumption skips
+credited. These five upcoming TTrace contexts are not translated/credited.
+Preserve both inherited RandomSubset_TTrace parameter tuples, original seeds,
+first-phase worker/debugger/JSON settings, complete traces and source literal
+bounds (including firstX in the original y upper-bound expression).

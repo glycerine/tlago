@@ -42,7 +42,13 @@ func javaRandomElementTrace(xs []int) []string {
 
 // Original RandomElementTest.test, including inherited safety-violation exit.
 func TestJavaRandomElement(t *testing.T) {
-	r := runJavaTLCModelTest(t, "RandomElement", "-seed", "8006803340504660123", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementTest.json"))
+	runJavaRandomElement(t)
+}
+
+func runJavaRandomElement(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-seed", "8006803340504660123", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementTest.json")}, extraArgs...)
+	r := runJavaTLCModelTest(t, "RandomElement", args...)
 	if r.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
 	}
@@ -58,11 +64,18 @@ func TestJavaRandomElement(t *testing.T) {
 	}
 	requireJavaRandomSubsetTrace(t, r, javaRandomElementTrace([]int{843, 920, 483, 173, 590, 104, 785, 463, 443, 151, 767}), true)
 	requireJavaTLCUncovered(t, r)
+	return r
 }
 
 // Original RandomElementXandYTest.test with its exact seed and three-state trace.
 func TestJavaRandomElementXandY(t *testing.T) {
-	r := runJavaTLCModelTest(t, "RandomElementXandY", "-seed", "8006642976694192746", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementXandYTest.json"))
+	runJavaRandomElementXandY(t)
+}
+
+func runJavaRandomElementXandY(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-seed", "8006642976694192746", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementXandYTest.json")}, extraArgs...)
+	r := runJavaTLCModelTest(t, "RandomElementXandY", args...)
 	if r.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
 	}
@@ -77,11 +90,18 @@ func TestJavaRandomElementXandY(t *testing.T) {
 	}
 	requireJavaRandomSubsetTrace(t, r, []string{"/\\ x = 0\n/\\ y = 0", "/\\ x = 1\n/\\ y = 1", "/\\ x = 0\n/\\ y = 1"}, true)
 	requireJavaTLCUncovered(t, r)
+	return r
 }
 
 // Original RandomElementT4Test.test with its four-worker override.
 func TestJavaRandomElementT4(t *testing.T) {
-	r := runJavaTLCModelTestWithWorkers(t, "RandomElement", true, true, 4, "-seed", "15041980", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementT4Test.json"))
+	runJavaRandomElementT4(t)
+}
+
+func runJavaRandomElementT4(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-seed", "15041980", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementT4Test.json")}, extraArgs...)
+	r := runJavaTLCModelTestWithWorkers(t, "RandomElement", true, true, 4, args...)
 	if r.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
 	}
@@ -114,12 +134,19 @@ func TestJavaRandomElementT4(t *testing.T) {
 			t.Fatalf("ordinal=%d, want %d", record.StateNumber, cnt)
 		}
 	}
+	return r
 }
 
 // Original RandomElementSimulationTest.test, including debugger=false and
 // CommonTestCase's action-aware trace assertion overload.
 func TestJavaRandomElementSimulation(t *testing.T) {
-	r := runJavaTLCModelTestWithDebugger(t, "RandomElement", true, true, false, 1, "-seed", "8006803340504660123", "-simulate", "num=1", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementSimulationTest.json"))
+	runJavaRandomElementSimulation(t)
+}
+
+func runJavaRandomElementSimulation(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-seed", "8006803340504660123", "-simulate", "num=1", "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomElementSimulationTest.json")}, extraArgs...)
+	r := runJavaTLCModelTestWithDebugger(t, "RandomElement", true, true, false, 1, args...)
 	if r.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
 	}
@@ -153,4 +180,5 @@ func TestJavaRandomElementSimulation(t *testing.T) {
 		}
 	}
 	requireJavaTLCUncovered(t, r)
+	return r
 }
