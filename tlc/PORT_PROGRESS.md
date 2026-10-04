@@ -3263,3 +3263,37 @@ testSpec translations plus the corresponding production fixes. Inventory
 653/1269contexts51.5%,221/626classes35.3%;616contexts remain across405classes.
 Commit this green checkpoint; next ElevatedSanyWarning (Java preflight passed).
 The overall correctness-suite port goal remains active; deferred topics unchanged.
+
+2026-10-04 ElevatedSanyWarning.testSpec and beforeSetUp translated in
+ tlc_elevated_sany_warning_java_test.go; both original W4802 corpus fixtures
+copied byte-exact to test_vectors/models/ElevatedSanyWarning. Absolute TLA
+argument, messagesAsErrors4802, source JSON/DOT/coverage/debugger/worker defaults,
+ERROR_SPEC_PARSE, TLC_PARSING_FAILED and actual ToolIO stdout substring retained.
+Core shared loader now applies SANY message controls, reports actual diagnostics
+on ToolIO.out and raises source coded parsing failure for checked errors or
+promoted warnings, retaining ordinary-error parameters. No weakened assertions.
+First Go run failed before loading because shared test helper used the absolute
+specification as a dump filename; helper now puts its basename under metadir.
+Original Java uses the class name under metadir. Absolute input retained.
+Helper isolates all four MP message-control maps per source classloader and
+restores prior maps, so a promoted warning cannot leak to subsequent models.
+Original Java PASS0.262s; Go focused PASS0.033s; all seven selected neighboring
+models five-race repetitions PASS82.197s, retire34003. Workspace93076 live;
+log elevated-warning-workspace.log. tlc package unchanged since96097d0, whose
+fullTLCrace PASS560.863s remains baseline. Inventory654/1269contexts51.5%,
+222/626classes35.5%;615pending404classes; safety31/34complete3pending.
+Next issue-regression sources BugzillaBug279,CodePlexBug21,Github1087 inspected;
+unchanged original Java preflights all PASS (logs original-<Class>-junit.log).
+Java generated states moved to ignored correctness-java/issues-next-states.
+No Go translations/fixture credit for those three yet. Bug279 requires original
+checkDeadLock=true,doDump=false (avoid enumerating SUBSET1..20), exact three-state
+trace/normalized full SUBSET1..8 expected string,3/3/0,zeroUncovered,deadlock exit.
+CodePlexBug21 source assumption/function-override model0/0/0/SUCCESS/noGENERAL;
+Github1087 uses Github602 root/explicitcfg,2/1/0,trace1/-1,postcondition registers.
+Overall goal active and deferred topics unchanged. No commit until workspace green.
+
+Final Elevated workspace93076 PASS377.101/1.105/62.023s; retire93076.
+All final handles terminal; rootrace34003 PASS82.197s; TLCpackage unchanged,
+96097d0 fullrace560.863s retained. Original fixture blank EOF line preserved;
+stagedGo/docs whitespaceclean. Commit warning port and continue issue regressions.
+Next originalJava Bugzilla2792.209s/CodePlex21.479s/Github1087.510s all PASS.

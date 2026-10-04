@@ -95,7 +95,9 @@ func runJavaTLCModelTestWithDeadlock(t *testing.T, name, root string, coverage, 
 			args = append(args, "-coverage", "1")
 		}
 		if dump {
-			args = append(args, "-dump", "dot", filepath.Join(meta, root+".dot"))
+			// Source uses the test class name beneath metadir, even when
+			// the specification argument is an absolute corpus filename.
+			args = append(args, "-dump", "dot", filepath.Join(meta, filepath.Base(root)+".dot"))
 		}
 		args = append(args, extraArgs...)
 		return args
@@ -127,6 +129,12 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	oldSetBound := tlc.Globals.SetBound
 	oldPoly := tlc.FP64IrredPoly()
 	oldUserDir := tlc.GetFilenameUserDirectory()
+	tlc.Globals.Lock()
+	oldSuppressed, oldElevated := tlc.Globals.SuppressedMessages, tlc.Globals.MessagesAsErrors
+	oldSANYSuppressed, oldSANYElevated := tlc.Globals.SANYSuppressedMessages, tlc.Globals.SANYMessagesAsErrors
+	tlc.Globals.SuppressedMessages, tlc.Globals.MessagesAsErrors = tlc.NewInsMap[int, bool](), tlc.NewInsMap[int, bool]()
+	tlc.Globals.SANYSuppressedMessages, tlc.Globals.SANYMessagesAsErrors = tlc.NewInsMap[int, bool](), tlc.NewInsMap[int, bool]()
+	tlc.Globals.Unlock()
 	// The upstream runner isolates TLC statics with a per-test classloader.
 	// Fresh tokens preserve source record normalization independent of test order.
 	tlc.UniqueStringInitialize()
@@ -139,6 +147,10 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	tlc.SetUseView(false)
 	tlc.Globals.SetBound = 1000000
 	t.Cleanup(func() {
+		tlc.Globals.Lock()
+		tlc.Globals.SuppressedMessages, tlc.Globals.MessagesAsErrors = oldSuppressed, oldElevated
+		tlc.Globals.SANYSuppressedMessages, tlc.Globals.SANYMessagesAsErrors = oldSANYSuppressed, oldSANYElevated
+		tlc.Globals.Unlock()
 		tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir = oldCoverage, oldCheckpoint, oldMeta
 		tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator = oldWorkers, oldMain, oldSimulator
 		tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime = oldTool, oldDFID, oldStart

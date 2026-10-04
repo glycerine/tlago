@@ -4410,3 +4410,11 @@ while SourcePath and parsing-progress provenance retain the actual temporary
 file. Parameter substitution follows the two distinct SANY equations:
 SubstInNode replaces sequentially; APSubstInNode uses the first matching
 Subst.allParamSet replacement for each original body parameter.
+
+The shared TLC tool loader applies MP's SANY suppression/elevation settings to
+front-end diagnostics before testing success, and writes controlled diagnostics
+to ToolIO.out. Ordinary parse/semantic errors retain diagnostic parameters in
+TLC_PARSING_FAILED; elevated warnings also abort with that code, as the original
+SpecProcessor.processSpec does when SANY exits unsuccessfully. The original
+ElevatedSanyWarning model exercises actual warning promotion, stdout and the
+inherited parsing-failure exit rather than a test-only diagnostic path.

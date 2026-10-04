@@ -115,19 +115,34 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		}
 		return nil, nil, err
 	}
+	// SpecProcessor.processSpec passes MP's SANY controls to the front end,
+	// writes its diagnostics to ToolIO.out, then raises TLC_PARSING_FAILED
+	// for checked errors or an unsuccessful (including elevated-warning) exit.
+	messageControls := (diagnosticCLIOptions{}).withTLCMessageControls()
+	processSANYDiagnostics := func(raw Diagnostics) Diagnostics {
+		controlled := messageControls.apply(raw)
+		for _, diagnostic := range controlled {
+			tlc.ToolIOPrintln(diagnostic.String())
+		}
+		if controlled.HasErrors() {
+			var parameters []string
+			for _, diagnostic := range raw {
+				if diagnostic.Severity == SeverityError {
+					parameters = append(parameters, diagnostic.String())
+				}
+			}
+			panic(tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed, parameters...))
+		}
+		return controlled
+	}
 	spec, diags := LoadSanySpec(rootFile, LoadOptions{
 		ParsingProgress:  tlc.ToolIOPrintln,
 		ResolutionError:  tlc.ToolIOErrPrintln,
 		FilenameResolver: resolver,
 		ExtraModules:     runtime.ExtendeeModules(),
 	})
-	if diags.HasErrors() {
-		return nil, diags, nil
-	}
-	diags = append(diags, CheckSpec(spec)...)
-	if diags.HasErrors() {
-		return nil, diags, nil
-	}
+	diags = processSANYDiagnostics(diags)
+	diags = append(diags, processSANYDiagnostics(CheckSpec(spec))...)
 	// SpecProcessor looks up the constructor's raw root name after SANY.
 	// In particular, direct constructors retaining a .tla suffix fail here;
 	// create strips that suffix before invoking the constructor.
