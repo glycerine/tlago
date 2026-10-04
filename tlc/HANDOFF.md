@@ -2029,7 +2029,7 @@ All five deferred topics remain deferred; no distributed or email work.
 Next-class Java compilation already succeeded in ignored scratch: original
 ConstantContextTLCCacheTest/TLCExtTest plus unchanged test harness dependencies,
 -sourcepath upstream test directory, CP classes+tla2tools+JUnit+Hamcrest.
-Log tlc-ext-model-javac.log. Do not run them with upstream BASE_PATH directly: 
+Log tlc-ext-model-javac.log. Do not run them with upstream BASE_PATH directly:
 TTrace getTESpecOutDir writes under BASE_PATH/generated, so first copy exact
 source models into a writable scratch test-model directory and set basepath.
 No next-class Go test or fixture has been created yet.
