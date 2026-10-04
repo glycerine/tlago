@@ -852,16 +852,19 @@ func (b *tlcBridge) installRuntimeParameters() {
 		return
 	}
 	for _, inv := range b.runtime.Invariants {
-		expr, diags := parseRuntimeTLAExpression(inv.Expression, inv.Modules)
-		b.diags = append(b.diags, diags...)
-		if diags.HasErrors() || expr == nil {
-			continue
+		// RuntimeInvariantTemplate uses the same expression compiler as Java's
+		// TLCDebuggerExpression, with the root module and null source location.
+		op, err := b.parseDebuggerExpression(b.tool, b.moduleNodes[b.spec.Root], tlc.NullSourceLocation, inv.Expression)
+		if err != nil {
+			// SpecProcessor catches parsing/semantic failures and calls Assert.fail.
+			panic(tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed2, err.Error()))
 		}
-		action := b.actionFromExpr(inv.Expression, expr, nil, false)
-		if action != nil {
-			b.tool.Invariants = append(b.tool.Invariants, action)
-			b.tool.InvariantNames = append(b.tool.InvariantNames, inv.Expression)
+		if op == nil {
+			panic(tlc.NewNullPointerException())
 		}
+		action := tlc.NewActionFromOpDef(op.Body, tlc.EmptyContext, op, false, true)
+		b.tool.Invariants = append(b.tool.Invariants, action)
+		b.tool.InvariantNames = append(b.tool.InvariantNames, action.GetNameOfDefault())
 	}
 	for _, constraint := range b.runtime.Constraints {
 		if node := b.nodeForModuleDefinition(constraint.Module, constraint.Operator, "runtime constraint"); node != nil {
@@ -940,33 +943,6 @@ func moduleQualifiedName(module string, operator string) string {
 		return ""
 	}
 	return module + "!" + operator
-}
-
-func parseRuntimeTLAExpression(expr string, modules []string) (Expr, Diagnostics) {
-	if strings.TrimSpace(expr) == "" {
-		return nil, Diagnostics{errorAt(Position{}, "E7020", "runtime invariant expression is empty")}
-	}
-	var source strings.Builder
-	source.WriteString("---- MODULE __TLCRuntimeExpression ----\n")
-	if len(modules) > 0 {
-		source.WriteString("EXTENDS ")
-		source.WriteString(strings.Join(modules, ", "))
-		source.WriteByte('\n')
-	}
-	source.WriteString("__RuntimeExpression == ")
-	source.WriteString(expr)
-	source.WriteString("\n====\n")
-	mod, diags := ParseSanyModuleSource("__TLCRuntimeExpression.tla", source.String())
-	if diags.HasErrors() || mod == nil {
-		return nil, diags
-	}
-	for i := range mod.Definitions {
-		if mod.Definitions[i].Name == "__RuntimeExpression" {
-			return mod.Definitions[i].Expr, diags
-		}
-	}
-	diags = append(diags, errorAt(Position{}, "E7021", "runtime invariant expression did not produce a definition"))
-	return nil, diags
 }
 
 func (b *tlcBridge) parseDebuggerExpression(tool *tlc.Tool, root *tlc.ModuleNode, location tlc.SourceLocation, expression string) (*tlc.OpDefNode, error) {

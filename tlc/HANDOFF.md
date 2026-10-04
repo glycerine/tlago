@@ -2713,3 +2713,36 @@ errors from cli.go loader currently fall through GENERAL, and positive-only root
 model helper aborts before Process on diags.HasErrors. Fix actual production
 loader classification and adapt original negative-case harness before C credit;
 do not weaken ERROR_SPEC_PARSE exit or hardcode test results. No Go A/B/C added.
+
+2026-10-04 InvParameterizedA/B/C original testSpec ports added in
+`tlc_inv_parameterized_java_test.go`, original embedded-config fixture exactbytes.
+Source defaultdebuggertrue/workers1,noGeneration,coveragefalse,dotfalse,JSONfalse
+retained. Ainvlevel4=26/7/1depth4,safetyexit,FINISHED,zeroUncovered;
+Bexact~(small=3 /\ big=0)=2/2/0depth2,safetyexit,FINISHED,zeroUncovered;
+Cexactgarbledinput=ERROR_SPEC_PARSE+FINISHED only(asoriginalplusinheritedexit).
+Initial Go A/B pass,Cfails positive-harness diagnostic becauseproductionruntime
+invariant used standalone syntax-only parse and silentlyskipped invalidinput.
+Fixed actual bridge to call existing shared expression compiler(root/nullLoc),
+retain compiledOpDef/internalAction/sourceActionname,throwTLC_PARSING_FAILED2
+oncompilererror. Removed oldparseRuntimeTLAExpression; noexpected-casehook,
+positive-model requireNoErrors unchanged. Syntax-only exceptionfix was superseded
+beforecredit by full sharedcompilerreuse to avoid retaining shortcut.
+UnchangedJavaA/B/Cpass .411/.362/.252s. FinalfocusedGo3.548s and all3five-race
+repetitions34.639s pass; retire24248/33147. Fullworkspace passes374.918/1.073/61.063s; retire78462.
+Log inv-parameterized-workspace.log; all sessions terminal. TLCpackage
+unchanged since f4a73e0 verified fullTLCrace544.633s; rootbridgechangecovered
+by new rootrace and fullworkspace. Inventory646/1269contexts50.9%,214/626classes
+34.2%,623pending412classes,onepartial;safety23/34complete11pending.
+Deferredtopics unchanged; goalactive.
+
+Next inspected originalFingerprintExceptionInitTest/NextTest/NextCallstackTest;
+all3unchangedJavaJUnitpass,logsoriginal-<Class>-junit.log,compilelog
+fingerprint-next-javac.log; retire85550. Exactfixtures copied onlyignoredJava
+scratchmodels, no persistentGo fixtures/testports yet. Preserve complete
+fingerprint diagnostic stacks/overflowmessages, InitnoGENERAL,NextGENERAL,
+source stats/initcounts,coverageuncoveredsets,FAILURE_SPEC_EVALexit/defaults.
+Hangvariant inspected and unchangedJavaJUnit passes .445s; compilelog
+fingerprint-hang-javac.log/original-FingerprintExceptionHangTest-junit.log,
+retire69454. SourceFAILURE_SPEC_EVAL,FINISHED/noGENERAL,exact3-framecallstack
+and integer1/nonintegeremptysetcomparisonmessage. No Goport activated for any
+of4fingerprinttests yet; no manualcomparisoncredit.

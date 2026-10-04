@@ -4359,3 +4359,13 @@ and derives its output filename through `GetDumpFileName`. The original
 DotConstrainedTest uses an embedded DOT writer with an overridden transition
 method; it receives the actual checker flags, without instrumentation hooks or
 inferences from generated DOT text.
+
+Runtime invariant templates now use the existing shared expression compiler with
+root-module scope and the null source location, as RuntimeInvariantTemplate does
+in Java. This performs semantic/dependency/level checking and retains the compiled
+OpDefNode on an internal Action. Invariant names come from that Action. The old
+standalone syntax-only expression module and direct AST conversion were removed.
+SpecProcessor's failure boundary raises TLC_PARSING_FAILED2 for compiler errors;
+it never silently omits a malformed invariant. TLC.process records the coded
+exception, emits FINISHED, and selects ERROR_SPEC_PARSE. This is reuse of the
+existing compiler by the invariant feature, without new debugger test work.

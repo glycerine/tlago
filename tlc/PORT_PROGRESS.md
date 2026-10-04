@@ -3194,3 +3194,22 @@ five race repetitions20.059s, fullworkspace374.736/1.090/65.439s and fullTLCrace
 Inventory643/1269contexts(50.7%),211/626classes(33.7%),626pending415classes;
 safety20/34complete14pending. Deferred topics unchanged. Next runtime-invariant
 negative parse handling and original InvParameterizedA/B/C; goal remains active.
+
+2026-10-04 correctness checkpoint: original InvParameterizedA/B/C.testSpec
+complete in tlc_inv_parameterized_java_test.go, one byte-identical embedded-config
+model fixture. All source invariant text/level, settings, statistics, depths,
+FINISHED, uncovered assertions and inherited safety/parse exits retained. Initial
+C failed because standalone syntax-only runtime-invariant parsing recorded a
+diagnostic and skipped the invariant. Production now uses the existing shared
+expression compiler with root/nullLocation, preserving semantic/dependency/level
+checks, OpDef identity, internal Action and source name. Compiler errors throw
+TLC_PARSING_FAILED2 at SpecProcessor's boundary; standalone shortcut removed.
+No test/harness weakening. UnchangedJava3pass .411/.362/.252s; finalfocusedGo
+3.548s, five race repetitions of all3 34.639s, fullworkspace374.918/1.073/61.063s
+pass. TLCpackage unchanged since f4a73e0 fullTLCrace544.633s. All checks terminal.
+Inventory646/1269contexts50.9%,214/626classes34.2%,623pending412classes,
+safety23/34complete11pending; deferred topics unchanged, goalactive.
+Next four original FingerprintException models: unchangedJavaall4pass and source
+assertions inspected; no Go credit until faithful translations execute. Fixtures
+for Java preflight remain ignored scratch only. Preserve exact stack/message and
+coverage assertions, source general/no-general distinctions and exits.
