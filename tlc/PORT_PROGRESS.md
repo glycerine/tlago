@@ -2402,3 +2402,33 @@ Next: CombinatoricsTest's eleven methods. Read every original method: retain ful
 slowBigChoose/bigChoose matrix (n/k=63..247), all eight literal bit-length and
 exact-long/decimal cases. Existing Go beyond-table sweep is only 11x11 and must
 not substitute for the original 185x185 matrix. No CombinatoricsTest credit yet.
+
+
+CombinatoricsTest is port complete in combinatorics_java_test.go: all eleven
+original methods, full 62x62 choose/binomial matrix, full 63x63 choose/bigChoose
+exact-long matrix, full 185x185 slowBigChoose/bigChoose matrix for n/k=63..247,
+and all eight literal bit-length and exact-long/decimal methods. Exact-long
+conversion checks represent Java longValueExact rather than truncating BigInt;
+the three large values retain exact original decimal strings. Related old Go
+checks stay intact, but their narrower beyond-table loop is not used for credit.
+Production Choose/Binomial/BigChoose/SlowBigChoose/Fact and table initialization
+were compared against Java; the operations exercised by this class match and
+needed no production change. Java originals pass all eleven (1.319s), Go target
+passes (0.647s), target -race passes (4.417s), full TLC normal passes (43.535s).
+Retire handles 96593/95625/35067/15646. This slice changes only tests/docs;
+production full workspace normal/full TLC race verification remains recorded in
+068acee. No tests weakened, matrices reduced or regression/unit cases invented.
+Inventory now 425/1269 contexts (33.5%), 120/626 complete classes (19.2%), 844 pending
+contexts across 506 classes; one partial. All five deferred topics stay deferred.
+Next: complete LongVecTest (eight original methods) and GrowingLongVecTest
+(the same eight inherited plus testGrowAndShrink). Source was read, no credit yet.
+Keep explicit new LongVec(10) in two inherited methods (do not substitute the
+subclass getLongVec hook). Original remove-beyond loop is -1..10 but repeatedly
+removes index zero; retain all twelve attempts. Source rangeCheck checks only
+index >= elementCount and throws IndexOutOfBoundsException with Index:/Size:
+message; negative indices reach the array and throw ArrayIndexOutOfBoundsException,
+which the original catch accepts as an IndexOutOfBoundsException subclass.
+Current Go rangeCheck's string panic is not that exception family. Fix production
+before completing these tests. Growth is source double-capacity/minCapacity,
+not Go append's larger-vector growth policy. Negative capacity must not be silently
+clamped to zero. Preserve Growing's actual Exception catch in testGrowAndShrink.
