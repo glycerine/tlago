@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `b1b4a11`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `186a2ec`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **320 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (51.1%).**
-- **755 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (59.5%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **514 logical method contexts across 306 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **321 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (51.3%).**
+- **756 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (59.6%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **513 logical method contexts across 305 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -25,10 +25,10 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
 | Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
 | Evaluation, initial states, next states, and action composition | 45 | 45 | 51 | 51 | 0 |
-| Safety checking, diagnostics, and checker lifecycle | 34 | 31 | 34 | 31 | 3 |
+| Safety checking, diagnostics, and checker lifecycle | 34 | 30 | 34 | 30 | 4 |
 | Issue regressions in the evaluator and checker | 98 | 98 | 101 | 101 | 0 |
-| Traces, aliases, dump/load, and generated trace specs | 17 | 15 | 48 | 45 | 3 |
-| Generated TTrace recheck variants | 45 | 2 | 45 | 2 | 43 |
+| Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
+| Generated TTrace recheck variants | 45 | 5 | 45 | 5 | 40 |
 | Liveness and fairness model regressions | 101 | 1 | 101 | 1 | 100 |
 | Liveness graph, tableau, and expression helpers | 6 | 0 | 48 | 0 | 48 |
 | Simulation and multithreaded simulation | 20 | 0 | 55 | 0 | 55 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **320** | **1,269** | **755** | **514** |
+| **Total** | **626** | **321** | **1,269** | **756** | **513** |
 
 ## Porting rules and proposed order
 
@@ -212,6 +212,7 @@ Invariants, state/action properties, assumptions/postconditions, deadlocks, DFID
 - [x] [tlc2/tool/DotConstrainedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DotConstrainedTest.java) — **Port complete**: `testSpec` in [tlc_dot_constrained_java_test.go](../tlc_dot_constrained_java_test.go). Original writer override delegates before atomically observing constrained flags; exact trace, exit, statistics, register, postcondition and coverage assertions preserved.
 - [x] [tlc2/tool/ElevatedSanyWarning.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ElevatedSanyWarning.java) — **Port complete**: `testSpec` → [tlc_elevated_sany_warning_java_test.go](../tlc_elevated_sany_warning_java_test.go); original absolute corpus input, message elevation, actual ToolIO stdout, parsing-failure recorder assertion and inherited ERROR_SPEC_PARSE exit/settings preserved.
 - [x] [tlc2/tool/EmptyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EmptyTest.java) — **Port complete**: `testSpec` → [tlc_continue_empty_java_test.go](../tlc_continue_empty_java_test.go); full source worker counts, options, coverage, exit and recorder assertions retained.
+- [ ] [tlc2/tool/EvalExceptionTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalExceptionTest.java) — **Reconcile**: `testSpec`. Existing [tlc_eval_exception_java_test.go](../tlc_eval_exception_java_test.go) preserves the assertions but omits inherited `doDumpTrace=true`; restore the original JSON dump setting before translating its generated TTrace variant. This discovered setup gap is removed from confirmed counts pending correction.
 - [x] [tlc2/tool/FingerprintExceptionHangTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/FingerprintExceptionHangTest.java) — **Port complete**: `testSpec` → [tlc_fingerprint_hang_java_test.go](../tlc_fingerprint_hang_java_test.go); exact source diagnostic stacks/messages, recorder checks, coverage assertions where present, inherited options and FAILURE_SPEC_EVAL exit retained.
 - [x] [tlc2/tool/FingerprintExceptionInitTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/FingerprintExceptionInitTest.java) — **Port complete**: `testSpec` → [tlc_fingerprint_exceptions_java_test.go](../tlc_fingerprint_exceptions_java_test.go); exact source diagnostic stacks/messages, recorder checks, coverage assertions where present, inherited options and FAILURE_SPEC_EVAL exit retained.
 - [x] [tlc2/tool/FingerprintExceptionNextCallstackTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/FingerprintExceptionNextCallstackTest.java) — **Port complete**: `testSpec` → [tlc_fingerprint_exceptions_java_test.go](../tlc_fingerprint_exceptions_java_test.go); exact source diagnostic stacks/messages, recorder checks, coverage assertions where present, inherited options and FAILURE_SPEC_EVAL exit retained.
@@ -338,13 +339,18 @@ Trace reconstruction, alias evaluation, trace races, external trace serializatio
   Already mapped: `testLivenessMCDumpLoadTraceJSON`, `testLivenessMCDumpLoadTraceTLC`, `testLivenessMCDumpLoadTraceJSONAutoWorkers`, `testLivenessMCDumpLoadTraceTLCAutoWorkers`, `testSafetyDumpLoadTraceJSON`, `testSafetyDumpLoadTraceTLC`, `testSafetyDumpLoadTraceJSONAutoWorkers`, `testSafetyDumpLoadTraceTLCAutoWorkers`, `testLivenessBidirectionalDumpLoadTraceJSON`, `testLivenessBidirectionalDumpLoadTraceTLC`, `testLivenessBidirectionalDumpLoadTraceJSONAutoWorkers`, `testLivenessBidirectionalDumpLoadTraceTLCAutoWorkers`, `testSafetyTESpecEqAliasDumpLoadTraceJSON`, `testSafetyTESpecEqAliasDumpLoadTraceTLC`, `testSafetyTESpecEqAliasDumpLoadTraceJSONAutoWorkers`, `testSafetyTESpecEqAliasDumpLoadTraceTLCAutoWorkers`, `testLivenessExample1DumpLoadTraceJSON`, `testLivenessExample1DumpLoadTraceTLC`, `testLivenessExample1DumpLoadTraceJSONAutoWorkers`, `testLivenessExample1DumpLoadTraceTLCAutoWorkers`, `testSafetyDieHardAliasSubDumpLoadTraceJSON`, `testSafetyDieHardAliasSubDumpLoadTraceTLC`, `testSafetyDieHardAliasSub2DumpLoadTraceJSON`, `testSafetyDieHardAliasSub2DumpLoadTraceTLC`, `testSafetyDieHardAliasSub2DumpLoadTraceJSONAutoWorkers`, `testSafetyDieHardAliasSub2DumpLoadTraceTLCAutoWorkers`, `testSafetyDieHardAliasSupDumpLoadTraceJSON`, `testSafetyDieHardAliasSupDumpLoadTraceTLC`, `testSafetyDieHardAliasSupDumpLoadTraceJSONAutoWorkers`, `testSafetyDieHardAliasSupDumpLoadTraceTLCAutoWorkers`.
   Two enabled EWD840 binary methods remain; three original @Ignore methods already have Go skips.
 
+- [ ] [tlc2/tool/PrintTraceRaceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PrintTraceRaceTest.java) — **Reconcile**: `testSpec`. Existing [tlc_print_trace_race_java_test.go](../tlc_print_trace_race_java_test.go) preserves the assertions and four workers but omits inherited `doDumpTrace=true`; restore the original JSON dump setting before translating its generated TTrace variant. This discovered setup gap is removed from confirmed counts pending correction.
+
 ### Generated TTrace recheck variants
 
 Every concrete *_TTraceTest and *_TTrace class, including inherited testSpec. These require the original first run and generated trace-spec artifacts; do not replace them with a rerun of the source model.
 
-- [ ] [tlc2/tool/BugzillaBug279Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/BugzillaBug279Test_TTraceTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/DepthFirstDieHardTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstDieHardTest_TTraceTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/DepthFirstErrorTraceTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstErrorTraceTest_TTraceTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/BugzillaBug279Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/BugzillaBug279Test_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_subset_depth_first_java_test.go](../tlc_ttrace_subset_depth_first_java_test.go). Rechecks the actual Go-generated artifact after the fully asserted original model run; preserves original settings, complete trace/ordinals, diagnostics, safety exit and zero-uncovered assertion. Retains deadlock checking, disabled DOT, 3/3/0 stats and the lazily represented subset. JSON conversion now invokes each lazy value’s source `toSetEnum` method rather than manually enumerating with different allocation, ordering and coverage behavior.
+- [x] [tlc2/tool/DepthFirstDieHardTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstDieHardTest_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_subset_depth_first_java_test.go](../tlc_ttrace_subset_depth_first_java_test.go). Rechecks the actual Go-generated artifact after the fully asserted original model run; preserves original settings, complete trace/ordinals, diagnostics, safety exit and zero-uncovered assertion. The first phase retains DFID and blank action labels; the recheck asserts the exact original generated `_init`/`_next` source locations.
+- [x] [tlc2/tool/DepthFirstErrorTraceTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstErrorTraceTest_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_subset_depth_first_java_test.go](../tlc_ttrace_subset_depth_first_java_test.go). Rechecks the actual Go-generated artifact after the fully asserted original model run; preserves original settings, complete trace/ordinals, diagnostics, safety exit and zero-uncovered assertion. The first phase retains DFID and blank action labels; the recheck asserts the exact original generated `_init`/`_next` source locations.
 - [ ] [tlc2/tool/EvalExceptionTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalExceptionTest_TTraceTest.java) — **Missing**: `testSpec`.
 - [x] [tlc2/tool/Github461Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github461Test_TTraceTest.java) — **Port complete**: `testSpec`.
   Go translation: [tlc_ttrace_first_java_test.go](../tlc_ttrace_first_java_test.go). Executes the fully asserted original Go model first, then rechecks its actual generated monolithic TTrace artifact with the original basename/config, resolver, no-generation and no-coverage settings. Preserves the safety exit, complete five-state trace/actions/ordinals and zero-uncovered assertion.
@@ -971,7 +977,6 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/tool/DumpLoadTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DumpLoadTraceTest.java) | `testLivenessMCDumpLoadTraceJSON`, `testLivenessMCDumpLoadTraceTLC`, `testLivenessMCDumpLoadTraceJSONAutoWorkers`, `testLivenessMCDumpLoadTraceTLCAutoWorkers`, `testSafetyDumpLoadTraceJSON`, `testSafetyDumpLoadTraceTLC`, `testSafetyDumpLoadTraceJSONAutoWorkers`, `testSafetyDumpLoadTraceTLCAutoWorkers`, `testLivenessBidirectionalDumpLoadTraceJSON`, `testLivenessBidirectionalDumpLoadTraceTLC`, `testLivenessBidirectionalDumpLoadTraceJSONAutoWorkers`, `testLivenessBidirectionalDumpLoadTraceTLCAutoWorkers`, `testSafetyTESpecEqAliasDumpLoadTraceJSON`, `testSafetyTESpecEqAliasDumpLoadTraceTLC`, `testSafetyTESpecEqAliasDumpLoadTraceJSONAutoWorkers`, `testSafetyTESpecEqAliasDumpLoadTraceTLCAutoWorkers`, `testLivenessExample1DumpLoadTraceJSON`, `testLivenessExample1DumpLoadTraceTLC`, `testLivenessExample1DumpLoadTraceJSONAutoWorkers`, `testLivenessExample1DumpLoadTraceTLCAutoWorkers`, `testSafetyDieHardAliasSubDumpLoadTraceJSON`, `testSafetyDieHardAliasSubDumpLoadTraceTLC`, `testSafetyDieHardAliasSub2DumpLoadTraceJSON`, `testSafetyDieHardAliasSub2DumpLoadTraceTLC`, `testSafetyDieHardAliasSub2DumpLoadTraceJSONAutoWorkers`, `testSafetyDieHardAliasSub2DumpLoadTraceTLCAutoWorkers`, `testSafetyDieHardAliasSupDumpLoadTraceJSON`, `testSafetyDieHardAliasSupDumpLoadTraceTLC`, `testSafetyDieHardAliasSupDumpLoadTraceJSONAutoWorkers`, `testSafetyDieHardAliasSupDumpLoadTraceTLCAutoWorkers` | [tlc_dump_load_trace_java_test.go](../tlc_dump_load_trace_java_test.go) |
 | [tlc2/tool/EmptySubsetEqTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EmptySubsetEqTest.java) | `testSpec` | [tlc_model_java_test.go](../tlc_model_java_test.go) |
 | [tlc2/tool/EvalExceptionLivenessTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalExceptionLivenessTest.java) | `testSpec` | [tlc_eval_exception_liveness_java_test.go](../tlc_eval_exception_liveness_java_test.go) |
-| [tlc2/tool/EvalExceptionTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalExceptionTest.java) | `testSpec` | [tlc_eval_exception_java_test.go](../tlc_eval_exception_java_test.go) |
 | [tlc2/tool/Github1109Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github1109Test.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/Github1109aTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github1109aTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/Github361Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github361Test.java) | `testSpec` | [tlc_constant_processing_java_test.go](../tlc_constant_processing_java_test.go) |
@@ -999,7 +1004,6 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/tool/PossibleCountsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PossibleCountsTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/PostConditionsFailTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PostConditionsFailTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/PostConditionsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PostConditionsTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
-| [tlc2/tool/PrintTraceRaceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PrintTraceRaceTest.java) | `testSpec` | [tlc_print_trace_race_java_test.go](../tlc_print_trace_race_java_test.go) |
 | [tlc2/tool/SubsetEqTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SubsetEqTest.java) | `testSpec` | [tlc_model_java_test.go](../tlc_model_java_test.go) |
 | [tlc2/tool/TLCExtTraceSimTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCExtTraceSimTest.java) | `testSpec` | [tlc_ext_trace_java_test.go](../tlc_ext_trace_java_test.go) |
 | [tlc2/tool/TLCGetAllTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCGetAllTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |

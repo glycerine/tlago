@@ -3607,3 +3607,50 @@ no-DOT settings and original subset values; DFID first phases retain blank
 source action labels, while TTrace rechecks assert exact generated _init/_next
 locations and complete traces. DistributedTrace and two EWD840 binary cases
 remain pending for the previously documented reasons.
+
+2026-10-04: original BugzillaBug279Test_TTraceTest.testSpec,
+DepthFirstDieHardTest_TTraceTest.testSpec and
+DepthFirstErrorTraceTest_TTraceTest.testSpec translated in
+ tlc_ttrace_subset_depth_first_java_test.go. Each fully asserted original Go
+model runs first, then its actual generated class-name TTrace artifact is
+rechecked. Original Bug279 deadlock/no-DOT, lazy subset,3/3/0 stats, complete
+trace/actions/ordinals and zero-uncovered retained. Original DFID first phases
+retain7/9 depths and blank action labels; BFS TTrace rechecks preserve all7/8
+states and exact _init/_next locations. No assertions weakened or invented
+permanent tests. TTrace helper now mirrors Java isFile assumption exactly and
+supports original deadlock override; existing defaults remain identical.
+Initial Go focused6 tests passed before production review. Extra JSON postcondition diagnostics revealed a
+production shortcut despite these original methods passing: modules_json.go
+manually enumerated lazy values instead of Java's value.toSetEnum. This changed
+allocation growth/bounds, cache, normalization/order and coverage semantics.
+JSON value/array branches now call existing toSetEnumValue; manual fallback
+removed. Original Java Bug279 first phase reaches heap-space error with256MiB
+heap; recheck succeeds. Go falsely stopped atValueVec1M growth bound although
+Subset.toSetEnum allocates exact1048576 size asJava. Go's fixed conversion now
+serializes the whole subset without false limit error; native Go heap can
+complete the original first phase too. No JSON/DOT/coverage setting disabled.
+Final focused first run PASS20.836s; five normal repetitions including existing
+TestJavaJson PASS113.829s. These finished38312/65220 handles are retired.
+Full TLC race31965 passes560.577s; terminal and retired. Focused root race8012
+(five new TTrace+Json+461TTrace repetitions,45m outer timeout for the full subset
+under instrumentation) passes745.825s; terminal and retired. Every selected
+method passes all five repetitions, with no races or assumption skips.
+Full offline workspace38419 passes (root445.265s, SANY1.082s, TLC60.674s);
+terminal and retired. All validation handles are terminal.
+All six reused model/config fixtures verified byte-identical to Java originals. Inventory756/1269 contexts,321/626 complete
+classes;513 contexts/305 classes pending,one partial;TTrace5/45.
+Next first-phase review discovered EvalExceptionTest and PrintTraceRaceTest
+omit inherited doDumpTrace=true. Reclassified both existing methods as
+Reconcile and removed two contexts/classes from confirmed counts pending
+correction. Restore original JSON dumps before translating their TTrace
+variants; retain all existing assertions and source settings (including four
+workers for PrintTraceRace). No code changes to those methods yet.
+Current three new ports and JSON production fix ready for green commit.
+Next reference preflight: unchanged EvalExceptionTest/TTrace and
+PrintTraceRaceTest/TTrace allpass;85741 terminal. Unchanged RandomElementTest,
+RandomElementT4Test,RandomElementSimulationTest,RandomElementXandYTest and all
+four TTrace counterparts allpass;46715 terminal. Generated prerequisites
+explicitly checkedpresent (no missing-artifact skips credited). Logs
+ ttrace-eval-race-<Class>-junit.log and ttrace-random-element-<Class>-junit.log,
+corresponding javaclogs in ignored correctness-java scratch. These six upcoming
+methods are not yet translated/credited. Goalactive,userdeferredtopicsunchanged.

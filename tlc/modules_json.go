@@ -191,8 +191,10 @@ func jsonWriteValue(b *bytes.Buffer, value Value) error {
 	case *SetEnumValue:
 		return jsonWriteSet(b, v)
 	default:
-		if enumerable, ok := asEnumerable(value); ok {
-			set, err := enumerableValueToSet(enumerable)
+		if _, ok := asEnumerable(value); ok {
+			// Java invokes the value's toSetEnum, preserving its cache,
+			// allocation size, ordering and coverage semantics.
+			set, err := toSetEnumValue(value)
 			if err != nil {
 				return err
 			}
@@ -249,8 +251,10 @@ func jsonWriteArray(b *bytes.Buffer, value Value) error {
 	case *SetEnumValue:
 		return jsonWriteSet(b, v)
 	default:
-		if enumerable, ok := asEnumerable(value); ok {
-			set, err := enumerableValueToSet(enumerable)
+		if _, ok := asEnumerable(value); ok {
+			// Java invokes the value's toSetEnum, preserving its cache,
+			// allocation size, ordering and coverage semantics.
+			set, err := toSetEnumValue(value)
 			if err != nil {
 				return err
 			}
@@ -405,22 +409,6 @@ func jsonFcnIsSequence(value *FcnRcdValue) bool {
 		}
 	}
 	return true
-}
-
-func enumerableValueToSet(enumerable Enumerable) (*SetEnumValue, error) {
-	values := NewValueVec(0)
-	enum := enumerable.Elements()
-	for {
-		elem := enum.NextElement()
-		if elem == nil {
-			if err := enum.Err(); err != nil {
-				return nil, err
-			}
-			break
-		}
-		values.Add(elem)
-	}
-	return NewSetEnumValueVec(values, false), nil
 }
 
 func jsonReadValue(dec *json.Decoder) (Value, error) {

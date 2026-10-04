@@ -39,7 +39,12 @@ import (
 // this second phase. The original first tests also retain all their assertions.
 func runJavaTTraceRecheck(t *testing.T, name, generated string, randomFPSeed, dump bool) *tlc.Result {
 	t.Helper()
-	if _, err := os.Stat(generated); err != nil {
+	return runJavaTTraceRecheckWithDeadlock(t, name, generated, randomFPSeed, dump, false)
+}
+
+func runJavaTTraceRecheckWithDeadlock(t *testing.T, name, generated string, randomFPSeed, dump, checkDeadlock bool) *tlc.Result {
+	t.Helper()
+	if info, err := os.Stat(generated); err != nil || !info.Mode().IsRegular() {
 		t.Skip("No TE spec was generated, please run test with original spec")
 	}
 	original, err := filepath.Abs(filepath.Join("tlc", "test_vectors", "models", name))
@@ -55,7 +60,10 @@ func runJavaTTraceRecheck(t *testing.T, name, generated string, randomFPSeed, du
 	resolver := tlc.NewSimpleFilenameToStream([]string{original}, tlc.FilenameResolverOptions{Classpath: classpath, UserDirectory: &generatedDirectory})
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	return runJavaTLCModelTestWithArguments(t, name, generatedName, func(meta, traceDirectory string) []string {
-		args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt", "-noGenerateSpecTE", "-workers", "1", "-checkpoint", "0"}
+		args := []string{"-metadir", meta, "-debugger", "nosuspend,port=4712,nohalt", "-noGenerateSpecTE", "-workers", "1", "-checkpoint", "0"}
+		if !checkDeadlock {
+			args = append(args, "-deadlock")
+		}
 		if !randomFPSeed {
 			args = append(args, "-fp", "0", "-seed", "1")
 		}

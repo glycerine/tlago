@@ -35,8 +35,13 @@ import (
 )
 
 func TestJavaDepthFirstErrorTrace(t *testing.T) {
-	result := runJavaTLCModelTest(t, "DepthFirstErrorTrace", "-dfid", "9",
-		"-dumpTrace", "json", filepath.Join(t.TempDir(), "DepthFirstErrorTrace.json"))
+	runJavaDepthFirstErrorTrace(t)
+}
+
+func runJavaDepthFirstErrorTrace(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-dfid", "9", "-dumpTrace", "json", filepath.Join(t.TempDir(), "DepthFirstErrorTrace.json")}, extraArgs...)
+	result := runJavaTLCModelTest(t, "DepthFirstErrorTrace", args...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
 	}
@@ -65,12 +70,18 @@ func TestJavaDepthFirstErrorTrace(t *testing.T) {
 		}
 	}
 	requireJavaTLCUncovered(t, result)
+	return result
 }
 
 // Port of DepthFirstDieHardTest.testSpec and its -dfid 7 constructor.
 func TestJavaDepthFirstDieHard(t *testing.T) {
-	result := runJavaTLCModelTest(t, "DieHard", "-dfid", "7",
-		"-dumpTrace", "json", filepath.Join(t.TempDir(), "DieHard.json"))
+	runJavaDepthFirstDieHard(t)
+}
+
+func runJavaDepthFirstDieHard(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-dfid", "7", "-dumpTrace", "json", filepath.Join(t.TempDir(), "DieHard.json")}, extraArgs...)
+	result := runJavaTLCModelTest(t, "DieHard", args...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
 	}
@@ -128,4 +139,5 @@ func TestJavaDepthFirstDieHard(t *testing.T) {
 		}
 	}
 	requireJavaTLCUncovered(t, result)
+	return result
 }

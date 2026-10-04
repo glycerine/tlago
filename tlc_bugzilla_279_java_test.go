@@ -34,8 +34,14 @@ import (
 
 // Original BugzillaBug279Test.testSpec and its deadlock/dump overrides.
 func TestJavaBugzillaBug279(t *testing.T) {
+	runJavaBugzillaBug279(t)
+}
+
+func runJavaBugzillaBug279(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "BugzillaBug279Test.json")}, extraArgs...)
 	r := runJavaTLCModelTestWithDeadlock(t, "BugzillaBug279", "InitStateBug", true, false, true, 1, true,
-		"-dumpTrace", "json", filepath.Join(t.TempDir(), "BugzillaBug279Test.json"))
+		args...)
 	if r.ExitStatus != tlc.ExitStatusViolationDeadlock {
 		t.Fatalf("exit=%d, want VIOLATION_DEADLOCK", r.ExitStatus)
 	}
@@ -62,4 +68,5 @@ func TestJavaBugzillaBug279(t *testing.T) {
 		"/\\ set = " + tlc.ValuesPPR(subset.Normalize()) + "\n/\\ pc = 2\n/\\ fun = {5}",
 	}, true)
 	requireJavaTLCUncovered(t, r)
+	return r
 }
