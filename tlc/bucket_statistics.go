@@ -1,3 +1,28 @@
+/*******************************************************************************
+ * Copyright (c) 2017 Microsoft Research. All rights reserved.
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+ * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Contributors:
+ *   Markus Alexander Kuppe - initial API and implementation
+ ******************************************************************************/
 package tlc
 
 import (
@@ -38,14 +63,14 @@ func NewBucketStatisticsWithMX(title string, pkg string, name string) *BucketSta
 
 func (s *BucketStatistics) AddSample(amount int) {
 	if amount < 0 {
-		panic("Negative amount invalid")
+		panic(NewIllegalArgumentException("Negative amount invalid"))
 	}
 	s.AddSampleCount(amount, 1)
 }
 
 func (s *BucketStatistics) AddSampleCount(amount int, count int64) {
 	if amount < 0 {
-		panic("Negative amount invalid")
+		panic(NewIllegalArgumentException("Negative amount invalid"))
 	}
 	if count <= 0 {
 		return
@@ -174,7 +199,7 @@ func NewFixedSizedBucketStatistics(title string, maximum int) *FixedSizedBucketS
 
 func (s *FixedSizedBucketStatistics) AddSample(amount int) {
 	if amount < 0 {
-		panic("Negative amount invalid")
+		panic(NewIllegalArgumentException("Negative amount invalid"))
 	}
 	idx := amount
 	if idx >= len(s.buckets) {
@@ -278,7 +303,7 @@ func bucketMedian(observations int64, samples []BucketSample) int {
 			return sample.Amount
 		}
 	}
-	panic("bug, shoud not get here")
+	panic(NewRuntimeException("bug, shoud not get here"))
 }
 
 func bucketMean(observations int64, samples []BucketSample) float64 {
@@ -321,14 +346,14 @@ func bucketStdDev(observations int64, samples []BucketSample) float64 {
 
 func bucketPercentile(observations int64, samples []BucketSample, quantile float64) float64 {
 	if math.IsNaN(quantile) {
-		panic("NaN")
+		panic(NewIllegalArgumentException("NaN"))
 	}
 	if observations <= 0 {
 		return -1
 	}
 	quantile = math.Min(1, quantile)
 	quantile = math.Max(0, quantile)
-	pos := int(float64(observations) * quantile)
+	pos := javaDoubleToInt(float64(observations) * quantile)
 	if int64(pos) > observations {
 		return float64(len(samples))
 	}
@@ -367,7 +392,7 @@ func bucketString(title string, observations int64, samples []BucketSample, min 
 	b.WriteString("--------------------------------%n")
 	for _, sample := range samples {
 		b.WriteString(fmt.Sprintf("%02d:%02d ", sample.Amount, sample.Count))
-		for j := 0; j < int(math.Log(float64(sample.Count))); j++ {
+		for j := 0; float64(j) < math.Log(float64(sample.Count)); j++ {
 			b.WriteByte('#')
 		}
 		b.WriteString("%n")
@@ -504,7 +529,7 @@ func NewFixedSizedConcurrentBucketStatistics(title string, maximum int) *FixedSi
 
 func (s *FixedSizedConcurrentBucketStatistics) AddSample(amount int) {
 	if amount < 0 {
-		panic("Negative amount invalid")
+		panic(NewIllegalArgumentException("Negative amount invalid"))
 	}
 	idx := amount
 	if idx >= len(s.buckets) {

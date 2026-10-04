@@ -2523,3 +2523,46 @@ Read constructor matrices and every method before translating; current Java
 BucketStatisticsTest has ConcurrentBucketStatistics and BucketStatistics rows.
 No statistics-test translation credit yet. Preserve floating-point comparisons,
 source exception families, empty/sample cases, percentile/NaN behavior and strings.
+
+
+BucketStatisticsTest and FixedSizedBucketStatisticsTest are port complete in
+bucket_statistics_java_test.go: all ten/six original methods, both original rows
+per class (ConcurrentBucketStatistics/BucketStatistics and
+FixedSizedConcurrentBucketStatistics/FixedSizedBucketStatistics), fresh per-method
+instances, original titles and fixed capacity eight. Retained all samples,
+Double.compare equality including signed zero/canonical NaN, source Math.round
+long-to-double standard-deviation comparison, duplicate 0.5-percentile assertion,
+unasserted out-of-range clamp calls, empty metrics, strict IllegalArgumentException
+catches and invocation-only toString checks. No invented assertions or tests.
+Original JUnit runs all 32 expanded cases successfully (0.026s); Go original and
+existing related checks pass (0.011s). The initial Go run reproduced a real
+failure: negative-sample catch saw a string panic rather than IllegalArgumentException.
+Production negative sample/NaN failures now carry concrete IllegalArgumentException;
+median's unreachable source RuntimeException retains its family/message too.
+Source review also fixed percentile's saturating Java double-to-int cast (using
+the existing javaDoubleToInt conversion) and logarithmic display loop: compare
+integer j directly with the logarithm, rather than truncate the logarithm first.
+This retains source fractional-log rounding and literal %n separators. Source
+MIT/copyright headers are retained. None of these fixes weakens original checks.
+Final full workspace normal passes (root 313.177s, SANY 1.120s, TLC 44.595s).
+Full TLC race passes (415.625s). Retire handles 48867/9562. Retire targeted handle 10815 and failing pre-fix handle 72237.
+Inventory now 469/1269 contexts (37.0%), 126/626 complete classes (20.1%), 800
+pending contexts across 500 classes, one partial. The five deferred topics remain
+deferred. Next utility correctness candidates: BufferedRandomAccessFileTest (all
+18 methods) and BufferedRandomAccessFileFuzzTest (two methods); neither credited.
+Read all setup, fixtures, original randomness/file operations and source exception
+contracts before translating. Do not shorten the fuzz sequence or substitute
+weaker generic panic expectations for checked Java IOException catches.
+Source comparison evidence for statistics (ignored scratch probe, not a new test):
+full empty/populated output for all four classes, typed negative/NaN messages and
+5-billion-observation percentile with 4-billion/1-billion buckets match Java/Go
+byte for byte. Next source files now read in full: BufferedRandomAccessFileTest,
+BufferedRandomAccessFileFuzzTest and its AbstractFileState helper; Go buffered-file
+production read; main Java buffering/close/length/read/write methods read. Fuzzer
+uses available processor count workers with Java Random(threadID), one shared
+run counter bounded at 10000 total traces (despite its constant's name), fifty
+operations per trace and BOUND=2*8192. Retain rejection sampling, eight operations,
+undefined-hole model, signed byte literals, full-read oracle smoothing, minimizer
+and failure report. Do not silently change this to Go fuzzing or fewer traces.
+No buffered-file test credit yet; source closed-handle catches require actual
+IOException with message containing File handle closed, not errors.New alone.
