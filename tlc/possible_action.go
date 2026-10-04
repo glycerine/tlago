@@ -25,12 +25,18 @@ func (t *Tool) evalPossibleTrackNode(node *PossibleTrackNode, c *Context, s0 *TL
 		}
 		return nil, newTLCError(ECGeneral, "_POSSIBLE predicate %s evaluated to %s instead of a boolean", node.Name, value.KindString())
 	}
-	next, err := possibleCountsWith(node.Name, boolValue.Val, possibleLocalCounts(s0))
+	// _Possible._Update uses TLCGetOrDefault/TLCSet on the executing worker's
+	// named register. The predecessor state's creator may be another worker.
+	key := NewStringValueFromUnique(possibleCountsKey)
+	current, err := TLCGetOrDefault(key, EmptyTuple)
 	if err != nil {
 		return nil, err
 	}
-	setPossibleLocalCounts(s0, next)
-	return BoolTrue, nil
+	next, err := possibleCountsWith(node.Name, boolValue.Val, current)
+	if err != nil {
+		return nil, err
+	}
+	return TLCSet(key, next)
 }
 
 func (t *Tool) evalPossibleCheckNode(node *PossibleCheckNode) (Value, error) {
@@ -44,31 +50,6 @@ func (t *Tool) evalPossibleCheckNode(node *PossibleCheckNode) (Value, error) {
 		return BoolFalse, nil
 	}
 	return BoolTrue, nil
-}
-
-func possibleLocalCounts(state *TLCStateMut) Value {
-	workerID := workerIDFromState(state)
-	if checker := MainChecker(); checker != nil {
-		if value := checker.GetNamedValue(workerID, possibleCountsKey); value != nil {
-			return value
-		}
-	}
-	if simulator := CurrentSimulator(); simulator != nil {
-		if value := simulator.GetLocalNamedValue(possibleCountsKey); value != nil {
-			return value
-		}
-	}
-	return EmptyFcn
-}
-
-func setPossibleLocalCounts(state *TLCStateMut, value Value) {
-	if checker := MainChecker(); checker != nil {
-		checker.SetNamedValue(workerIDFromState(state), possibleCountsKey, value)
-		return
-	}
-	if simulator := CurrentSimulator(); simulator != nil {
-		simulator.SetAllNamedValues(possibleCountsKey, value)
-	}
 }
 
 func possibleCountsWith(name string, witnessed bool, current Value) (*FcnRcdValue, error) {

@@ -3163,3 +3163,20 @@ AssertExpressionStack and multicoreDepthFirstTerminate are Reconcile: original
 Java itself fails its current expectations; no weakened tests, newskips or
 incompatible Go production changes. These earn noportcredit. Overallgoalactive,
 deferredtopics unchanged.
+
+
+### 2026-10-04 — Continuation, diameters and postconditions
+
+Ported5 original methods, exact3/4worker settings, full32record continuation,
+diameterlowerbound/minimum,postconditiondiagnostic/exit and allcoverageassertions.
+Nine sourcefixtures byte-identical. UnchangedJava5 pass.
+Diameter failedfirstcombinedGo race because _POSSIBLE incorrectly selected
+registers by predecessorcreator. Fixed production to use actualexecutingworker
+TLCGetOrDefault/TLCSet adapters, preserving bootstrap/simulator semantics.
+UnchangedDiameter5race repetitions19.557s and5moreJavaJVMruns pass; all5final
+rootrace21.521s passes. Fullworkspace passes(root377.387s,SANY0.972s,TLC63.260s); retire15462.
+FullTLCrace passes560.987s againstfinalproduction; retire47789. No checks
+remainrunning; originalfullrun canceledforactualcorrection.
+Inventory642/1269contexts(50.6%),210/626classes(33.5%); safety19/34complete,
+15pending. No weakenedtests/fixtures or invented regression/unit methods.
+Deferredtopicsunchanged; goalactive.

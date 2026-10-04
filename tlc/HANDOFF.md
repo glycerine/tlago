@@ -2598,3 +2598,90 @@ source-message reconciliation detail, not justification to substituteworkers.
 Staged diff --check flags only original AS.tla line18 trailing whitespace,
 verified source-identical. Preserve fixture bytes. No generated runtime
 metadata remains under persistent Test2 vectors; staged Go/docs check is clean.
+
+
+## 2026-10-04: original continuation, diameter and postcondition methods
+
+Completed5 original methods: ContinueTest/EmptyTest in
+root tlc_continue_empty_java_test.go,DiameterTest in tlc_diameter_java_test.go,
+MinimumDiameterTest/PostAssumptionTest in tlc_post_assumption_minimum_java_test.go.
+Nine TLA/CFG fixtures (Continue2,Empty2,DieHardTLA2+DieHardTLAPA1,Minimum2)
+copied byte-for-byte. All original source setup/assertions preserved.
+Continue workers3,-continue,noGeneration,coverage/dot/JSONtrue,defaultdebugger
+option (notinstalledwithworkers3),success,FINISHED,32/29/0,depth29,STATE_PRINT2,
+exact32concatenatedrecords,noTEspec,zeroUncovered. Source commented-out trace
+lists remain nonassertions; no traceorder substitution/singleworker shortcut.
+Empty defaults plus secondexplicit -coverage1,success,FINISHED/noGENERAL,0/0/0.
+Diameter workers4,defaultotherflags,success,FINISHED/noGENERAL,97/16/0,
+getRecordAsInt's actual firstdepthrecord parsed32bit >=8 (not exact8/oneworker),
+zeroUncovered. Minimum defaults exceptdotfalse,success,FINISHED/noGENERAL,
+2/1/0,depth1,zeroUncovered. PostAssumption sharedDieHardTLA/configDieHardTLAPA
+(without.cfgsuffixasoriginal),defaults,VIOLATION_ASSUMPTION,FINISHED,97/16/0,
+POSTCONDITION_FALSE PostCondition,zeroUncovered; originalfails postcondition
+intentionally (no noGENERAL assertion added).
+Unchanged Java5 JUnit pass separateJVMs: Continue0.433s,Empty0.449s,
+Diameter0.624s,Minimum0.538s,Post0.524s; safety-counts-javac.log,original-
+<Class>-junit.log. Go firstnormalContinue/Empty3.713s,Diameter1.789s,
+Post/Minimum3.331s pass; retire31721/86190/94580/96649.
+
+Combined firstGo race31854 failed18.056s: Diameter's actual PossibleCounts
+postcondition false,exit10 vsSUCCESS. No DataRace warning: this was a logical
+lost-update bug despite individually locked register accesses. Original fixture
+postcondition checks _Counts HasFour8 and PourAction14; do not change/remove it
+or weaken inheritedexit, workers4,coverage ordepth assertion. Retired original
+fullworkspace91424(130) for the actual production correction below.
+Production possible_action.go used possibleLocalCounts/setPossibleLocalCounts
+indexed by predecessorstate.WorkerID. That is the state's creator, not the
+executing worker; workers evaluating successors from another worker's states
+could concurrently read/write the same register and lose counts. Java generated
+_Possible._Update/_Track delegates TLCGetOrDefault("s:_possible",<<>>)/TLCSet,
+which use Thread.currentThread()/broadcastatbootstrap. Replaced both shortcuts
+with those real production Go adapters and the source EmptyTupledefault;
+removed incorrect helperfunctions. This also preserves simulatorworker-local
+updates and main-thread broadcast/bootstrap instead of prior mismatches. No
+new test-only hooks, locks hiding wrongownership, cannedcount, test weakening,
+regression/unit methods orfixturechanges.
+Unchanged fourworkerDiameter nowpassesfive consecutive -race repetitions19.557s;
+retire66750,diameter-fixed-repeat-race.log. Original Java passesfive more separate
+JVMrepetitions,diameter-java-repeated.log; retire88799. All5finalGo rootrace
+passes21.521s; retire42421,safety-counts-fixed-root-race.log.
+Fullworkspace finalproduction passes(root377.387s,SANY0.972s,TLC63.260s);
+retire15462,safety-counts-fixed-full-normal.log. FullTLCrace passes560.987s; retire47789,
+safety-counts-fixed-tlc-race.log. No checks remain running.
+Do not restart for observationtimeouts. These supersede oldbaseline for changed
+_POSSIBLE production. Inventory642/1269contexts(50.6%),210/626completeclasses
+(33.5%),627pendingacross416classes,onepartial. Safetytopic19/34complete,
+15pending. Deferredtopicsunchanged; goalactive.
+
+Next inspected source DotConstrained,ElevatedSanyWarning,InvParameterizedA/B/C;
+no Go tests/fixtures for these activated. DotConstrained needs full actual
+getStateWriter subclass/wrapper after CLIparse: explicitdotconstrained,
+default doDumpfalse,strictprefixtrue (strictdedupfalse),defaultotheropts,
+callbackcalls basewrite before atomically marking IsNotInModel. Must assert
+actualcallback,FINISHED/noGENERAL,4/2/0,safety,trace0/1/-1(allmetadata/ordinals),
+register42nonempty/firstInt4,bothpostconditiondiagnosticsabsent,zeroUncovered.
+Current root helper has no getStateWriter override; production Options.StateWriter
+and StateWriter callback surface exist. Do not fake callback by reading DOT text,
+setflagunconditionally or replace expectedtrace. Implement faithful setup and
+real delegation beforecredit. Ninefixtures for currentbatch sourceverified.
+Elevated warning needs source SANYW4802 PreTest and actualToolIOcapturedstdout,
+messagesAsErrors4802,ERROR_SPEC_PARSE,ECTLCParsingFailed and substringWarning
+ treatedaserror; expectedparseerrors must flow through productionratherthan
+current modelhelper's requireNoErrors extra check. NotDebuggerfeaturework.
+InvParameterizedA invlevel4=>26/7/1depth4,safety;B -inv~(small=3/\big=0)=>
+2/2/0depth2,safety;Cgarbledexpression=>ERROR_SPEC_PARSE+FINISHED.
+All3 configembeddedInvParameterizedTest.tla,noGeneration,coveragefalse,dotfalse,
+JSONfalse,defaultdebuggertrue; A/BzeroUncovered evencoveragefalse.
+Bridge has runtimeexpr parser; sourceCLIdiagflow and modelhelper negativeparse
+handling needaudit beforetranslation. Nocredit yet; do not relaxparseexit.
+
+Original upcoming DotConstrained and InvParameterizedA/B/C JavaJUnit now all
+passunchanged; safety-next-javac.log,original-<Class>-junit.log; retire42543.
+No Goportcredit yet. CLI root cli.go loader currently returns raw Diagnostics
+errors from runtimeinvariant parsing; TLCrunner/modelhelper negativeparse flow
+stillneeds full sourceaudit beforeC, not fakeexpectedexit. These are production
+boundary discrepancies to check, not reasons to weaken C's ERROR_SPEC_PARSE.
+
+Staged diff --check warnings are confined to original Continue/DieHardTLA
+fixture trailing whitespace (all9 sourcefiles byte-identical). Preserve bytes.
+Staged Go/production/docs check is clean.
