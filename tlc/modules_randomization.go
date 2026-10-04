@@ -51,7 +51,9 @@ func RandomSubsetSet(numberOfPicks Value, probabilityString Value, set Value) (V
 	if !ok {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", operator, "string literal representing a probability", ValuesPPR(probabilityString))
 	}
-	probability, err := strconv.ParseFloat(probText.Val.String(), 64)
+	// Java Double.valueOf accepts its own literal grammar, suffixes and ASCII
+	// whitespace; Go ParseFloat alone does not preserve that grammar.
+	probability, err := parseJavaDoubleProperty(probText.Val.String())
 	if err != nil || probability < 0 || probability > 1 {
 		return nil, newTLCErrorCode(ECTLCModuleArgumentError, "second", operator, "string literal does not represent a parsable probability", ValuesPPR(probabilityString))
 	}

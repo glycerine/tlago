@@ -1716,3 +1716,35 @@ methods); source count/location identified, no new translation credit yet.
 Preserve all source cardinality/randomness fixtures, original typed exceptions
 and codes, full loops and first-versus-second call behavior. Inspect production
 Randomization before translating; do required functionality work before moving on.
+
+
+RandomizationTest: all sixteen original methods are translated in
+modules_randomization_java_test.go. Preserve source @BeforeClass seed15041980 and
+FP64 initialization; JUnit DEFAULT method order shares one generator across Go
+subtest goroutines. All source duplicate zero/negative cases, exact inputs,
+cardinality/not-null checks, fresh normalized empty sets, membership and strict EvalException
+family/message-contains catches remain. Runtime and other error families escape.
+No additional tests/assertions or smaller random workload. Java original unchanged
+passes all sixteen with -ea (0.053s); Go initial originals pass (0.154s).
+Source audit found raw Go ParseFloat in RandomSubsetSet was a shortcut for Java
+Double.valueOf. Production now uses the existing Java literal parser: suffixes,
+ASCII whitespace, hex floating literals, signed NaN, syntax and overflow match.
+Ignored actual-source Java/Go comparisons agree byte-for-byte for21 probability
+strings, resulting sets/cardinalities, error codes/messages and subsequent RNG
+nextLong; these probes earn no additional translation credit.
+Final full workspace normal passes(root314.209s,SANY0.948s,TLC48.613s); retire20941.
+Full TLC race passes(432.814s); retire38242. No checks remain running.
+Production final checks cover the probability parser change. Final original-class
+race/full TLC normal also cover the normalized empty-set fixture correction. Retire initial Go99562 and literal probe32806. Final source constructor review
+corrected all three fresh empty fixtures to normalized=true, exactly new
+SetEnumValue(). Complete final original class race passes(1.185s); retire12719.
+Full TLC normal rerun covers that final test-only fixture correction and passes
+(46.685s); retire19795.
+Inventory now523/1269 contexts(41.2%),131/626 complete classes(20.9%),746 pending
+contexts across495 classes,one partial. Standard module topic17/44 classes fully
+mapped and48/75 methods mapped. All five deferred topics remain deferred.
+Next after green checks/commit: presentation MCErrorTest and MCStateTest (two
+original methods each), source tests and shared Utils read. Preserve all six
+round trips, backward-compatible label space, ordered variable values, exact token
+loop and error trace's five original state ordinals1,2,3,5,6. Audit production
+against Java before translation; no credit until entire original assertions pass.
