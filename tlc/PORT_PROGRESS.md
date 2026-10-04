@@ -2124,3 +2124,21 @@ errors and all four huge sets at sample sizes 0,1,2,799,1024,8932,16933. The com
 109031 sample is not an active source case. Do not downgrade this correctness test
 to a benchmark exclusion or reduce its sample matrix. Five user-deferred topics
 remain deferred.
+
+
+SetOfFcnsValueTest is port complete in value_fcn_set_java_test.go: all sixteen
+original methods translated with indexed SubsetEnumerator.elementAt, literal
+expected functions, domain/value lengths, membership, Java-compatible HashSet
+hashing/equality, empty/non-enumerable domain/range cases and exact exception
+messages. Preserved all four huge function sets and all seven active sample sizes
+0,1,2,799,1024,8932,16933 (28 cases), including size-overflow exception checks and
+duplicate counts. The source-commented 109031 case remains inactive. No seed or
+replacement cases invented and no production changes needed. Current Java source
+classes and unchanged JUnit test pass all sixteen (2.478s), Go targeted passes
+(8.182s), whole TLC normal passes (10.529s); whole TLC -race passes:
+ok  	github.com/glycerine/tlago/tlc	91.217s
+Retire handles 60975,18330,99392,54091. Prior full-workspace results remain green;
+this slice adds tests/docs only. Inventory now 347/1269 contexts (27.3%), 111/626
+complete classes (17.7%), 922 pending contexts across 515 classes; one partial.
+All five user-deferred topics remain deferred. Next reconcile TupleValueTest's
+complete original testErrorMessages, including the multi-argument apply overload.

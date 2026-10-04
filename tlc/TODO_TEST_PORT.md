@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **110 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (17.6%).**
-- **331 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (26.1%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **938 logical method contexts across 516 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **111 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (17.7%).**
+- **347 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (27.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **922 logical method contexts across 515 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -38,10 +38,10 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
 | Queues and pool writers | 2 | 1 | 11 | 9 | 2 |
-| Values, lazy functions, enumeration, and value streams | 17 | 9 | 189 | 108 | 81 |
+| Values, lazy functions, enumeration, and value streams | 17 | 10 | 189 | 124 | 65 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 5 | 91 | 16 | 75 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **110** | **1,269** | **331** | **938** |
+| **Total** | **626** | **111** | **1,269** | **347** | **922** |
 
 ## Porting rules and proposed order
 
@@ -633,8 +633,9 @@ Original primitive/composite value, normalization, comparison, EXCEPT, serializa
 - [x] [tlc2/value/impl/ModelValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/ModelValueTest.java) — **Port complete**: `testEqualsUntyped`, `testEqualsStringMV`, `testEqualsIntMV`, `testEqualsBoolMV`, `testEqualsIVMV`, `testEqualsRcdMV`, `testEqualsTupeMV`, `testCompareToUntyped`, `testCompareToStringMV`, `testCompareToIntMV`, `testCompareToBoolMV`, `testCompareToIVMV`, `testCompareToRcdMV`, `testCompareToTupeMV`, `testEqualsTyped`, `testEqualsTypedMVsUntyped`, `testEqualsTwoTypedMVs`, `testEqualsStringTypedMV`, `testEqualsTypedMVString`, `testEqualsIntTypedMV`, `testEqualsTypedMVInt`, `testEqualsBoolTypedMV`, `testEqualsTypedMVBool`, `testEqualsIVTypedMV`, `testEqualsTypedMVIV`, `testEqualsRcdTypedMV`, `testEqualsTypedMVRcd`, `testEqualsTupeTypedMV`, `testEqualsTypedMVTupe`, `testCompareToTyped`, `testCompareToTypedMVsUntyped`, `testCompareToTwoTypedMVs`, `testCompareToStringTypedMV`, `testCompareToTypedMVString`, `testCompareToIntTypedMV`, `testCompareToTypedMVInt`, `testCompareToBoolTypedMV`, `testCompareToTypedMVBool`, `testCompareToIVTypedMV`, `testCompareToTypedMVIV`, `testCompareToRcdTypedMV`, `testCompareToTypedMVRcd`, `testCompareToTupeTypedMV`, `testCompareToTypedMVTupe`.
   Go translation: [tlc/value_model_test.go](value_model_test.go).
   Preserves all 44 original methods in JUnit runner order, exact comparison results, operand directions, source constructor flags and expected TLCRuntimeException types.
-- [ ] [tlc2/value/impl/SetOfFcnsValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SetOfFcnsValueTest.java) — **Reconcile**: `testRangeSubsetValue`, `testDomainEmpty`, `testRangeEmpty`, `testDomainAndRangeEmpty`, `testRandomSubsetAndValueEnumerator`, `testDomainModelValue`, `testDomainIntervalRangeSetEnumValueSize9`, `testDomainIntervalRangeSetEnumValueSize27`, `testDomainIntervalRangeSetEnumValueSize256`, `testRandomSubsetFromReallyLarge`, `testEmptyNonEnumerableDomain`, `testUnitNonEnumerableRange`, `testUnitNonEnumerableRangeInterval`, `testNonEnumerableRange`, `testNonEnumerableRangeInterval`, `testRandomSubsetEmptyNonEnumerableDomain`.
-  Related Go checks: [tlc/value_setoffcns_test.go](value_setoffcns_test.go).
+- [x] [tlc2/value/impl/SetOfFcnsValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SetOfFcnsValueTest.java) — **Port complete**: `testRangeSubsetValue`, `testDomainEmpty`, `testRangeEmpty`, `testDomainAndRangeEmpty`, `testRandomSubsetAndValueEnumerator`, `testDomainModelValue`, `testDomainIntervalRangeSetEnumValueSize9`, `testDomainIntervalRangeSetEnumValueSize27`, `testDomainIntervalRangeSetEnumValueSize256`, `testRandomSubsetFromReallyLarge`, `testEmptyNonEnumerableDomain`, `testUnitNonEnumerableRange`, `testUnitNonEnumerableRangeInterval`, `testNonEnumerableRange`, `testNonEnumerableRangeInterval`, `testRandomSubsetEmptyNonEnumerableDomain`.
+  Go translation: [tlc/value_fcn_set_java_test.go](value_fcn_set_java_test.go).
+  Preserves indexed enumeration, all literal expected functions, the full four-set/seven-sample huge-set matrix, Java hashing/equality and exact non-enumerable failures.
 - [ ] [tlc2/value/impl/SetOfRcrdValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SetOfRcrdValueTest.java) — **Reconcile**: `testSimple`, `testRangeSubsetValue`, `testRandomSubset`, `testRandomSubsetVaryingParameters`, `testRandomSubsetAstronomically`, `testEmptyNonEnumerableField`, `testRandomSubsetEmptyNonEnumerableField`.
   Related Go checks: [tlc/value_setconstructors_test.go](value_setconstructors_test.go).
   Existing testSimple-like Go check uses ordinary enumeration; Java uses indexed SubsetEnumerator.elementAt. Preserve that path.
@@ -1008,3 +1009,4 @@ This appendix records the numerator, including methods in partially translated c
 ## Maintaining this inventory
 
 When a complete original method lands, record its Java class/method and Go file, remove only that method from the unchecked topic entry, and adjust the topic and overall counts. Keep inherited subclass contexts, original ignored methods, and supplementary suites separate. Recompute against the Java checkout if it changes. Reconcile related legacy Go tests before claiming additional credit; source comments or PORT_PROGRESS claims alone do not prove that every original assertion is retained.
+| [tlc2/value/impl/SetOfFcnsValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SetOfFcnsValueTest.java) | `testRangeSubsetValue`, `testDomainEmpty`, `testRangeEmpty`, `testDomainAndRangeEmpty`, `testRandomSubsetAndValueEnumerator`, `testDomainModelValue`, `testDomainIntervalRangeSetEnumValueSize9`, `testDomainIntervalRangeSetEnumValueSize27`, `testDomainIntervalRangeSetEnumValueSize256`, `testRandomSubsetFromReallyLarge`, `testEmptyNonEnumerableDomain`, `testUnitNonEnumerableRange`, `testUnitNonEnumerableRangeInterval`, `testNonEnumerableRange`, `testNonEnumerableRangeInterval`, `testRandomSubsetEmptyNonEnumerableDomain` | [tlc/value_fcn_set_java_test.go](value_fcn_set_java_test.go) |
