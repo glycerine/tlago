@@ -55,7 +55,7 @@ type Options struct {
 	DFIDMode                  bool
 	DFIDDepth                 int
 	CheckpointDurationMillis  int64
-	StateWriter               *StateWriter
+	StateWriter               IStateWriter
 	FPSet                     FPSet
 	FPIndex                   int
 	FPSetConfiguration        *FPSetConfiguration

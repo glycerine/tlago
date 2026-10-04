@@ -229,7 +229,7 @@ func addLivenessChecksToBin(checks []*LiveExprNode, bin *[]*LiveExprNode) []int 
 	return out
 }
 
-func NewLiveCheckFromTool(tool *Tool, metadir string, stateWriter *StateWriter) (*LiveCheck, error) {
+func NewLiveCheckFromTool(tool *Tool, metadir string, stateWriter IStateWriter) (*LiveCheck, error) {
 	solutions, err := ProcessLiveness(tool)
 	if err != nil {
 		return nil, err

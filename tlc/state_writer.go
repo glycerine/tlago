@@ -26,6 +26,23 @@ const (
 	StateVisualizationDotted
 )
 
+// IStateWriter is the state-output contract used by TLC's checker. Keeping the
+// contract separate from the default writer preserves Java's virtual dispatch
+// for custom writers, including constrained transitions.
+type IStateWriter interface {
+	WriteInitState(*TLCStateMut) error
+	WriteTransition(*TLCStateMut, *TLCStateMut, StateVisitStatus, *Action, ...SemanticNode) error
+	WriteTransitionVisual(*TLCStateMut, *TLCStateMut, StateVisitStatus, *Action, StateVisualization, ...SemanticNode) error
+	IsConstrained() bool
+	IsNoop() bool
+	IsDot() bool
+	GetDumpFileName() string
+	Snapshot() error
+	Close() error
+}
+
+var _ IStateWriter = (*StateWriter)(nil)
+
 type StateWriter struct {
 	mu                  sync.Mutex
 	Noop                bool

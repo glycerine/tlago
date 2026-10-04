@@ -3180,3 +3180,17 @@ remainrunning; originalfullrun canceledforactualcorrection.
 Inventory642/1269contexts(50.6%),210/626classes(33.5%); safety19/34complete,
 15pending. No weakenedtests/fixtures or invented regression/unit methods.
 Deferredtopicsunchanged; goalactive.
+
+2026-10-04 correctness test checkpoint: original DotConstrainedTest.testSpec
+complete in tlc_dot_constrained_java_test.go. Implemented production IStateWriter
+at runner/checker/liveness input boundaries to preserve actual writer override
+virtual dispatch. The faithful embedded DOT writer delegates first, then observes
+IsNotInModel atomically. Original options, safety exit, FINISHED/noGENERAL,
+4/2/0 stats, exact0/1/-1 trace metadata/ordinals, register42 firstInt4,
+postcondition diagnostics and zero-uncovered assertions retained. Both model
+fixtures byte-identical to Java; unchanged Java passes0.512s. Go focused1.863s,
+five race repetitions20.059s, fullworkspace374.736/1.090/65.439s and fullTLCrace
+544.633s pass. All check sessions terminal. No invented tests or weakened cases.
+Inventory643/1269contexts(50.7%),211/626classes(33.7%),626pending415classes;
+safety20/34complete14pending. Deferred topics unchanged. Next runtime-invariant
+negative parse handling and original InvParameterizedA/B/C; goal remains active.

@@ -94,7 +94,7 @@ func NewNoopLivenessStateWriter() *LivenessStateWriter {
 	return &LivenessStateWriter{Noop: true}
 }
 
-func NewDotLivenessStateWriter(stateWriter *StateWriter) (*LivenessStateWriter, error) {
+func NewDotLivenessStateWriter(stateWriter IStateWriter) (*LivenessStateWriter, error) {
 	fname := "DotStateWriter_liveness.dot"
 	if stateWriter != nil && stateWriter.GetDumpFileName() != "" {
 		fname = dotWriterJavaReplace(stateWriter.GetDumpFileName(), "_liveness.dot")
@@ -887,7 +887,7 @@ func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *Liv
 	return check
 }
 
-func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metadir string, stateWriter *StateWriter) (*LiveCheck, error) {
+func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metadir string, stateWriter IStateWriter) (*LiveCheck, error) {
 	if metadir == "" {
 		tmp, err := os.MkdirTemp("", "tlago-livecheck-")
 		if err != nil {

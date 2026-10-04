@@ -6,9 +6,9 @@ Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **210 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (33.5%).**
-- **642 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (50.6%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **627 logical method contexts across 416 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **211 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (33.7%).**
+- **643 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (50.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **626 logical method contexts across 415 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -25,7 +25,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
 | Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
 | Evaluation, initial states, next states, and action composition | 45 | 45 | 51 | 51 | 0 |
-| Safety checking, diagnostics, and checker lifecycle | 34 | 19 | 34 | 19 | 15 |
+| Safety checking, diagnostics, and checker lifecycle | 34 | 20 | 34 | 20 | 14 |
 | Issue regressions in the evaluator and checker | 98 | 3 | 101 | 3 | 98 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
 | Generated TTrace recheck variants | 45 | 0 | 45 | 0 | 45 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **210** | **1,269** | **642** | **627** |
+| **Total** | **626** | **211** | **1,269** | **643** | **626** |
 
 ## Porting rules and proposed order
 
@@ -209,7 +209,7 @@ Invariants, state/action properties, assumptions/postconditions, deadlocks, DFID
 - [x] [tlc2/tool/ContinueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ContinueTest.java) — **Port complete**: `testSpec` → [tlc_continue_empty_java_test.go](../tlc_continue_empty_java_test.go); full source worker counts, options, coverage, exit and recorder assertions retained.
 - [ ] [tlc2/tool/DepthFirstTerminate.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstTerminate.java) — **Reconcile**: `testSpec`. Unchanged Java requests availableProcessors workers but current TLC rejects DFID with multiple workers (issue548); on this48-core host it records GENERAL and exits255, violating the original assertions. Preserve the worker setting and keep pending; no new skip or single-worker substitute.
 - [x] [tlc2/tool/DiameterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DiameterTest.java) — **Port complete**: `testSpec` → [tlc_diameter_java_test.go](../tlc_diameter_java_test.go); full source worker counts, options, coverage, exit and recorder assertions retained.
-- [ ] [tlc2/tool/DotConstrainedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DotConstrainedTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/DotConstrainedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DotConstrainedTest.java) — **Port complete**: `testSpec` in [tlc_dot_constrained_java_test.go](../tlc_dot_constrained_java_test.go). Original writer override delegates before atomically observing constrained flags; exact trace, exit, statistics, register, postcondition and coverage assertions preserved.
 - [ ] [tlc2/tool/ElevatedSanyWarning.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ElevatedSanyWarning.java) — **Missing**: `testSpec`.
 - [x] [tlc2/tool/EmptyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EmptyTest.java) — **Port complete**: `testSpec` → [tlc_continue_empty_java_test.go](../tlc_continue_empty_java_test.go); full source worker counts, options, coverage, exit and recorder assertions retained.
 - [ ] [tlc2/tool/FingerprintExceptionHangTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/FingerprintExceptionHangTest.java) — **Missing**: `testSpec`.

@@ -2685,3 +2685,31 @@ boundary discrepancies to check, not reasons to weaken C's ERROR_SPEC_PARSE.
 Staged diff --check warnings are confined to original Continue/DieHardTLA
 fixture trailing whitespace (all9 sourcefiles byte-identical). Preserve bytes.
 Staged Go/production/docs check is clean.
+
+2026-10-04: DotConstrainedTest.testSpec ported in
+`tlc_dot_constrained_java_test.go`. Production runner/checker/liveness input
+boundaries now accept IStateWriter, preserving Java custom-writer virtual
+transition dispatch. Concrete default writers and liveness implementation remain.
+Test embeds actual DOT writer, calls base first and atomically observes source
+IsNotInModel bit. Uses original strict prefix (not dedup), constrained true,
+other options false; source CLI/default setup retained. Parser-created writer is
+closed before reopening the same filename to avoid buffered output clobbering.
+All source assertions retained: safety exit, FINISHED/noGENERAL,4/2/0,
+invariant behavior,exact0/1/-1 trace with metadata/ordinals,callbacktrue,
+register42nonempty/firstInt4,no postcondition diagnostics,zeroUncovered.
+Github602.tla/DotConstrained.cfg byte-identical to upstream. Unchanged Java
+passes .512s; Go focused1.863s and five race repetitions20.059s pass.
+Full workspace passed: root374.736s,SANY1.090s,TLC65.439s; retire44042.
+Full TLCrace passed544.633s; retire56130. All checks terminal, no live runs.
+Logs dot-constrained-{workspace,tlc-race,root-race}.log under scratch.
+Inventory643/1269contexts(50.7%),211/626classes(33.7%);626pending415classes,
+safety20/34complete14pending. Deferred topics unchanged; goal active.
+
+Next InvParameterizedA/B/C: retain all source arguments/assertions/embeddedconfig.
+Original Java all3 pass. Source SpecProcessor.java lines921..932 catches
+ParseException/SemanticException/AbortException from runtime invariant generation
+and Assert.fail(TLC_PARSING_FAILED2,e), not GENERAL or success. Go raw diagnostic
+errors from cli.go loader currently fall through GENERAL, and positive-only root
+model helper aborts before Process on diags.HasErrors. Fix actual production
+loader classification and adapt original negative-case harness before C credit;
+do not weaken ERROR_SPEC_PARSE exit or hardcode test results. No Go A/B/C added.

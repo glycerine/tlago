@@ -24,14 +24,14 @@ type AbstractChecker struct {
 	FromCheckpoint            string
 	Metadir                   string
 	Tool                      *Tool
-	AllStateWriter            *StateWriter
+	AllStateWriter            IStateWriter
 	Workers                   []*Worker
 	PrintedLivenessErrorStack bool
 	Config                    Value
 	StartTime                 time.Time
 }
 
-func NewAbstractChecker(tool *Tool, metadir string, stateWriter *StateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
+func NewAbstractChecker(tool *Tool, metadir string, stateWriter IStateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
 	if stateWriter == nil {
 		stateWriter = NewNoopStateWriter()
 	}
@@ -325,7 +325,7 @@ func WithModelCheckerStateQueue(queue StateQueue) ModelCheckerOption {
 	}
 }
 
-func WithModelCheckerStateWriter(writer *StateWriter) ModelCheckerOption {
+func WithModelCheckerStateWriter(writer IStateWriter) ModelCheckerOption {
 	return func(mc *ModelChecker) {
 		if writer == nil {
 			writer = NewNoopStateWriter()

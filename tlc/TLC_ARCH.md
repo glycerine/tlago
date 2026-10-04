@@ -4349,3 +4349,13 @@ simulation retains local-worker registers. `_Counts` aggregates per-worker
 values after model checking. The original four-worker DiameterTest's actual
 model postcondition checks these counts; its unchanged assertions exercise the
 production correction without synthetic state IDs or test-only callbacks.
+
+The checker and runner accept the `IStateWriter` contract rather than the concrete
+`StateWriter`. This mirrors Java's virtual state-writer dispatch: a custom writer
+can delegate to the default DOT writer and then observe constrained transition
+flags. Default dump constructors and the concrete liveness DOT implementation
+retain their existing file/format behavior. Liveness setup accepts the interface
+and derives its output filename through `GetDumpFileName`. The original
+DotConstrainedTest uses an embedded DOT writer with an overridden transition
+method; it receives the actual checker flags, without instrumentation hooks or
+inferences from generated DOT text.

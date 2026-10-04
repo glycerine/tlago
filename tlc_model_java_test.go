@@ -114,6 +114,11 @@ func setJavaModelLivenessThreshold(t *testing.T, threshold float64) {
 
 func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string, resolvers ...tlc.FilenameToStream) *tlc.Result {
 	t.Helper()
+	return runJavaTLCModelTestWithRunnerSetup(t, name, root, arguments, nil, resolvers...)
+}
+
+func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string, setup func(*tlc.TLC), resolvers ...tlc.FilenameToStream) *tlc.Result {
+	t.Helper()
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
@@ -171,7 +176,11 @@ func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments
 		requireNoErrors(t, diags)
 		return tool, err
 	}
-	result, _ := tlc.NewTLC(opts).Process(context.Background())
+	runner := tlc.NewTLC(opts)
+	if setup != nil {
+		setup(runner)
+	}
+	result, _ := runner.Process(context.Background())
 	if result == nil {
 		t.Fatal("TLC result is nil")
 	}
