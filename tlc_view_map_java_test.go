@@ -33,7 +33,13 @@ import (
 
 // Original ViewMapTest.testSpec, including every action label in the trace.
 func TestJavaViewMap(t *testing.T) {
-	r := runJavaTLCModelTest(t, "ViewMap", "-view", "-dumpTrace", "json", filepath.Join(t.TempDir(), "ViewMapTest.json"))
+	runJavaViewMap(t)
+}
+
+func runJavaViewMap(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := []string{"-view", "-dumpTrace", "json", filepath.Join(t.TempDir(), "ViewMapTest.json")}
+	r := runJavaTLCModelTest(t, "ViewMap", append(args, extraArgs...)...)
 	if r.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
 	}
@@ -88,4 +94,5 @@ func TestJavaViewMap(t *testing.T) {
 	if value, ok := values[0].(*tlc.IntValue); !ok || value.Val != 43 {
 		t.Fatalf("register42=%v, want IntValue43", values[0])
 	}
+	return r
 }

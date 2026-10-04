@@ -27,6 +27,7 @@
 package tlago
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -34,7 +35,13 @@ import (
 )
 
 func TestJavaTraceWithLargeSetOfInitialStates(t *testing.T) {
-	result := runJavaTLCModelTest(t, "TraceWithLargeSetOfInitialStatesTest", "-maxSetSize", "10")
+	runJavaTraceWithLargeSetOfInitialStates(t)
+}
+
+func runJavaTraceWithLargeSetOfInitialStates(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := []string{"-maxSetSize", "10", "-dumpTrace", "json", filepath.Join(t.TempDir(), "TraceWithLargeSetOfInitialStatesTest.json")}
+	result := runJavaTLCModelTest(t, "TraceWithLargeSetOfInitialStatesTest", append(args, extraArgs...)...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want safety violation", result.ExitStatus)
 	}
@@ -74,4 +81,5 @@ func TestJavaTraceWithLargeSetOfInitialStates(t *testing.T) {
 		}
 	}
 	requireJavaTLCUncovered(t, result)
+	return result
 }

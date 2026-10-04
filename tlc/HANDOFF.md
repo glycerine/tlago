@@ -3786,3 +3786,45 @@ actual prerequisite artifacts verified present. Those three TTrace contexts
 remain missing/uncredited. Shared Go recheck helper needs extra CLI arguments
 for original -maxSetSize10 and -view; preserve complete source assertions,
 JSON/DOT/debugger, exact generated action locations and liveness stuttering5.
+
+2026-10-04 current batch after4db4541: restored inherited JSON trace-dump setup
+in TLCGetLevelTest and TraceWithLargeSetOfInitialStatesTest without changing any
+original assertions; factored fully asserted generation helpers for those two
+and ViewMapTest. Ported TLCGetLevelTest_TTraceTest.testSpec,
+TraceWithLargeSetOfInitialStatesTest_TTraceTest.testSpec and
+ViewMapTest_TTraceTest.testSpec in tlc_ttrace_level_view_java_test.go. Each runs
+the fully asserted original phase then rechecks its actual Go-generated class-name
+artifact, retaining original JSON/DOT/debugger/no-generation/no-coverage settings.
+Shared recheck helper now accepts source extra CLI arguments after base settings,
+preserving -maxSetSize10 and -view. Level recheck retains liveness exit,
+FINISHED/4/4/0/no GENERAL, temporal/counterexample/trace diagnostics, complete
+four-state/actions/ordinal trace and stuttering5. Large-initial-state recheck
+retains safety exit, FINISHED/no GENERAL/no TLC_BUG, behavior diagnostic,
+full two-state trace/ordinals, exact _init line25..26/_next line30..36 source
+locations and zero-uncovered. View recheck retains safety exit, FINISHED/no
+GENERAL/no TLC_BUG, behavior diagnostic, full eight-state trace including pc,
+ordinals and exact _init line27..29/_next line33..41 source locations. No
+weakened assertions, substitute source-model reruns, new skips or invented tests.
+All three unchanged Java original/recheck pairs pass (24269 retired), with actual
+prerequisite files verified present. Java revision8f4bc8b73ad1202774a6bf70143436f8ba50aab0
+revalidated. Six reused fixtures byte-identical. Focused all6 PASS5.742s
+(9450 terminal/retired); five normal repetitions of all6 plus prior Github461
+recheck PASS22.992s (97208 terminal/retired); five root race repetitions of same
+PASS205.157s (11032 terminal/retired). All20 topic totals independently agree with
+source/method inventory:772/1269 contexts,337/626 complete classes;497 contexts/
+289 classes pending,one partial;TTrace19/45 complete. No production changes;
+full TLC race baseline8812d14 PASS557.944s remains applicable. Full workspace
+PASS509.150s root/1.148s SANY/61.547s TLC (35459 terminal/retired). All required
+checks green; ready to commit. Goal active, deferred topics unchanged.
+Next eligible batch: all10 NoFairnessButLiveProp*Test.testSpec models (no TTrace
+first-phase prerequisites left among the remaining ordinary tool/ variants).
+All10 unchanged Java JUnit reference tests pass (87998 terminal/retired,
+no-fairness-<Class>-junit.log and no-fairness-javac.log in correctness-java scratch).
+They all override coverage=false but retain assertZeroUncovered, original
+JSON/DOT/debugger/forced generation, FINISHED/3/2/0/depth2 and source-specific
+SUCCESS or VIOLATION_LIVENESS exits. Preserve original exact warning-presence/
+absence assertions, including P's no temporal violation and deferred fairness
+warning. Shared NoFairnessButLiveProp.tla embeds module H; copy exact full original
+module and all10 configs under test_vectors. Those contexts remain missing and
+uncredited. Deferred checkpoint TTrace remains skipped; other pending TTrace
+classes need their liveness/simulation original phases ported first.

@@ -30,6 +30,7 @@
 package tlago
 
 import (
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -280,7 +281,13 @@ func TestJavaTLCSetInit(t *testing.T) {
 }
 
 func TestJavaTLCGetLevel(t *testing.T) {
-	result := runJavaTLCModelTest(t, "TLCGetLevel")
+	runJavaTLCGetLevel(t)
+}
+
+func runJavaTLCGetLevel(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "TLCGetLevelTest.json")}
+	result := runJavaTLCModelTest(t, "TLCGetLevel", append(args, extraArgs...)...)
 	if result.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit status=%d, want liveness violation", result.ExitStatus)
 	}
@@ -352,6 +359,7 @@ func TestJavaTLCGetLevel(t *testing.T) {
 			t.Fatalf("unexpected diagnostic %d: %v", code, got)
 		}
 	}
+	return result
 }
 
 func TestJavaTLCSetSim(t *testing.T) {
