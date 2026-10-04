@@ -7,7 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"runtime"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"sync"
@@ -168,23 +168,33 @@ func tlcRuntimeFPMemSize(fpMemSize float64) int64 {
 	if fpMemSize >= float64(maxMemory) {
 		fpMemSize = float64(maxMemory - (maxMemory >> 2))
 	}
-	if fpMemSize < 0 {
-		return 0
-	}
-	return int64(fpMemSize)
+	return javaDoubleToLong(fpMemSize)
 }
+
+var tlcDefaultHeapBudget = sync.OnceValue(func() int64 {
+	memory, err := tlcPhysicalMemoryBytes()
+	if err != nil {
+		panic(NewIllegalStateException("Cannot determine TLC memory budget: " + err.Error() + "; configure GOMEMLIMIT"))
+	}
+	// Match the source VM's default maximum-heap fraction. The native Go limit,
+	// when configured, takes precedence; committed/reserved memory is not a limit.
+	budget := memory / 4
+	// Apply the default through the native runtime as well: returning a budget
+	// while leaving the GC unlimited would not model Runtime.maxMemory.
+	// Preserve a limit configured before initialization.
+	if configured := debug.SetMemoryLimit(-1); configured != math.MaxInt64 {
+		return configured
+	}
+	debug.SetMemoryLimit(budget)
+	return budget
+})
 
 func tlcRuntimeMaxHeapMemoryBytes() int64 {
 	limit := debug.SetMemoryLimit(-1)
-	if limit > 0 && limit < math.MaxInt64/4 {
+	if limit != math.MaxInt64 {
 		return limit
 	}
-	var stats runtime.MemStats
-	runtime.ReadMemStats(&stats)
-	if stats.Sys > 0 {
-		return int64(stats.Sys)
-	}
-	return tlcRuntimeMinFPMemSize * 4
+	return tlcDefaultHeapBudget()
 }
 
 func tlcRuntimeNonHeapPhysicalMemory() int64 {
@@ -1326,9 +1336,32 @@ func NewMultiFPSet(config *FPSetConfiguration) *MultiFPSet {
 	}
 	childConfig := NewMultiFPSetConfiguration(config)
 	count := 1 << bits
+	// Java's hard heap limit throws a catchable OutOfMemoryError while building
+	// this object graph. Go's GC limit is soft and a fatal allocator failure
+	// cannot be recovered. Reject a provably impossible graph before allocation;
+	// this is a lower bound from concrete native sizes, not a child-count cap.
+	perChild := uint64(reflect.TypeOf((*FPSet)(nil)).Elem().Size())
+	implementation := childConfig.GetImplementation()
+	switch implementation {
+	case "tlc2.tool.fp.FPSet", "tlc2.tool.fp.DiskFPSet", "tlc2.tool.fp.HeapBasedDiskFPSet", "tlc2.tool.fp.NonCheckpointableDiskFPSet":
+		// These known, non-instantiable classes return nil from the factory;
+		// their temporary configurations are not retained by the parent list.
+	default:
+		perChild += uint64(reflect.TypeOf(FPSetConfiguration{}).Size())
+	}
+	if !fpSetSupportsArchitecture(implementation) || implementation == "tlc2.tool.fp.MSBDiskFPSet" || implementation == "tlc2.tool.fp.LSBDiskFPSet" {
+		perChild += uint64(reflect.TypeOf(DiskFPSet{}).Size())
+	}
+	budget := tlcRuntimeMaxHeapMemoryBytes()
+	if budget < 0 || uint64(count) > uint64(budget)/perChild {
+		panic(NewOutOfMemoryError("Java heap space"))
+	}
 	sets := make([]FPSet, count)
 	for i := range sets {
-		sets[i] = NewFPSet(childConfig)
+		// Source getNestedFPSets creates a new MultiFPSetConfiguration each
+		// iteration. Keep each child's mutable configuration independent.
+		nestedConfig := *childConfig
+		sets[i] = NewFPSet(&nestedConfig)
 	}
 	return &MultiFPSet{
 		Sets:   sets,

@@ -331,14 +331,17 @@ func ParseTLCOptions(args []string) (Options, error) {
 			opts.Aril = value
 			index += 2
 		case arg == "-maxSetSize":
-			value, err := parseNonnegativeIntOption(args, index, "maxSetSize", "-maxSetSize")
-			if err != nil {
-				return opts, err
+			if index+1 >= len(args) {
+				return opts, tlcCommandLineError("Error: maxSetSize required.")
 			}
-			if !IsValidSetSize(value) {
+			bound, ok := javaParseDecimalInt(args[index+1])
+			if !ok {
+				return opts, tlcCommandLineError("Error: An integer for maxSetSize required. But encountered " + args[index+1])
+			}
+			if !IsValidSetSize(int(bound)) {
 				return opts, tlcCommandLineError("Error: Value in interval [0, 2147483647] for maxSetSize required. But encountered " + args[index+1])
 			}
-			Globals.SetBound = value
+			Globals.SetBound = int(bound)
 			index += 2
 		case arg == "-recover":
 			if index+1 >= len(args) {
@@ -401,12 +404,13 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if index+1 >= len(args) {
 				return opts, tlcCommandLineError("Error: fpset memory size required.")
 			}
-			fpMemSize, err := strconv.ParseFloat(args[index+1], 64)
-			if err != nil || fpMemSize < 0 {
+			fpMemSize, err := parseJavaDoubleProperty(args[index+1])
+			if err != nil || fpMemSize < 0 || math.IsNaN(fpMemSize) {
 				return opts, tlcCommandLineError("Error: An positive integer or a fraction for fpset memory size/percentage required. But encountered " + args[index+1])
 			}
 			if fpMemSize > 1 {
-				opts.FPSetConfiguration.SetMemory(int64(fpMemSize))
+				ToolIOPrintln("Using -fpmem with an abolute memory value has been deprecated. Please allocate memory for the TLC process via the JVM mechanisms and use -fpmem to set the fraction to be used for fingerprint storage.")
+				opts.FPSetConfiguration.SetMemory(javaDoubleToLong(fpMemSize))
 				opts.FPSetConfiguration.SetRatio(1)
 			} else {
 				opts.FPSetConfiguration.SetRatio(fpMemSize)

@@ -2915,3 +2915,69 @@ Inventory549/1269 contexts(43.3%),135/626 complete classes(21.6%),720 pending
 across491 classes,one partial. CLI/output2/5 classes,22/37 methods complete.
 Next after green commit: remaining CLI/output originals (TLCTest ten, REPLTest
 one, SpecTraceExpressionWriterTest four). All five deferred topics stay deferred.
+
+
+TLCTest correctness checkpoint (2026-10-03), final verification green:
+All ten original tlc2.TLCTest methods translated in cli_java_test.go. Preserve
+exact -fpmem inputs, minimum/75%/50%/99% assertions and heap-allocation assumptions,
+all seven maxSetSize validations/global checks, three simulation file/num calls
+and six exact runtime conversions. Temporary cwd isolates MC metadata; parent
+cleanup restores class-owned globals. No invented permanent tests.
+Production fixes Java float-to-long saturation for Long.MAX_VALUE, full
+Double.parseDouble literal parsing, source deprecation output and invalid-ratio
+failure. maxSetSize uses Java Integer.parseInt and actual error templates.
+Runtime conversion retains strict millisecond thresholds, UTC calendar fields
+(day-of-year/year wrap) and FORMAT-locale digits, including negative/signed-long
+input. Source duplicate24h branch selects the same pattern.
+The half-memory assertion exposed a shortcut: Runtime.MemStats.Sys measured
+changing reserved memory, not a maximum. Configured Go GOMEMLIMIT/runtime limit
+now supplies the budget. When unconfigured, native physical/container capacity
+supplies a stable quarter-memory budget, applied through debug.SetMemoryLimit.
+Linux honors cgroup-v1/v2 membership/mount roots/visible ancestor hard limits;
+Darwin/Windows use native physical-memory APIs; other platforms require
+GOMEMLIMIT. The Go runtime limit is soft; it is not a JVM hard allocation cap.
+Full native checks then exposed original TestJavaMultiFPSetCTorMax requesting
+2^30 children: normal timed out in that constructor; race ended with a
+ThreadSanitizer address-restoration failure after heavy allocation, with no
+preceding race report. Go now raises the existing concrete OutOfMemoryError for
+a provably unaffordable mandatory object graph, using native interface/config/
+DiskFPSet sizes against the budget. No fixed child-count cap or changed test
+inputs/assertions. Temporary configs for the four nil-returning factories are
+excluded. Java getNestedFPSets creates a new config each iteration; Go now copies
+an independent configuration per child. The table representation was a
+preliminary hypothesis only and was not changed.
+Unchanged original JUnit ten passes(-ea0.118s; -Xmx256m0.121s); complete Go ten
+passes0.014s, focused race1.033s, configured256MiB race1.045s. Complete original
+MultiFPSet/TLC translations plus existing factory-load check race passes37.261s.
+Unchanged original MultiFPSetTest.testCTorMax compiled and JUnit Request executes
+it(-ea -Xmx256m): run1/failures0. Darwin/Windows amd64 builds pass.
+Actual Java -Xmx256m/Go GOMEMLIMIT=256MiB literal/code/error probes(seventeen
+cases) and runtime boundary/signed-long/year-wrap probes(nineteen cases) match
+byte-for-byte, also in Arabic locale. Omit only build greeting lines in ignored
+probes; no original assertion normalized, no extra translation credit.
+Final full workspace passes(root303.042s,SANY0.977s,TLC62.059s), retire42720.
+Final full TLC race passes545.514s; retire74112.
+Log .codex-gotmp/correctness-java/tlc-cli-full-race-oom-final.log.
+All final broad gates are green; no checks remain running.
+Prior49328/93295 were terminal failures;37219/32211/91020/23607 deliberately
+interrupted for production corrections; focused99827 is terminal green.
+Inventory559/1269 contexts(44.1%),136/626 complete classes(21.7%),710 pending
+across490 classes,one partial. CLI/output3/5 classes,32/37 methods complete.
+All five deferred topics remain deferred.
+Next after green commit: SpecTraceExpressionWriterTest four and REPLTest one.
+Full trace-writer class source reviewed: four actual SANY front-end acceptance
+checks plus named-Formula assertion. Exact temp-file setup, preamble/init/next,
+two MC error states, two-buffer ordering and multiline/comment expression strings
+prepared in ignored spec-trace-writer-draft.go. It is NOT activated or credited.
+Port source AbstractSpecWriter.appendContentToBuffers(nullable independent
+TLA/CFG strings), needed by root-package SANY integration; TLA-only Append is
+insufficient. Source says "Provided for test code". Existing Go
+SpecTraceExpressionBuildInitNextBuffers already returns the required two builders;
+use it directly. Do not use concatenating FullToBuffers or bypass actual file
+writes and full parse/semantic conclude checks. Reconcile draft with source,
+port helper, activate/run/repair original methods after this green checkpoint.
+Disk: two inspected owned regular hex64-d cache prunes older48h,218 files
+1818337811 bytes and253 files1606262853 bytes. Manifests
+ tlc-cli-cache-candidates.json and tlc-cli-cache-candidates-2.json; native
+identity/type/uid/time revalidated before each unlink. No source/vector/user
+files or directories removed.

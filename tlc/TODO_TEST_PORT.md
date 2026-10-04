@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **135 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (21.6%).**
-- **549 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (43.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **720 logical method contexts across 491 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **136 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (21.7%).**
+- **559 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (44.1%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **710 logical method contexts across 490 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -21,7 +21,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 
 | Topic | Non-ignored classes | Classes fully mapped | Logical methods | Mapped methods | Pending methods |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| CLI, REPL, messages, and trace-spec output | 5 | 2 | 37 | 22 | 15 |
+| CLI, REPL, messages, and trace-spec output | 5 | 3 | 37 | 32 | 5 |
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
 | Standard modules, constants, native overrides, and random values | 44 | 17 | 75 | 48 | 27 |
 | Evaluation, initial states, next states, and action composition | 45 | 12 | 51 | 12 | 39 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **135** | **1,269** | **549** | **720** |
+| **Total** | **626** | **136** | **1,269** | **559** | **710** |
 
 ## Porting rules and proposed order
 
@@ -73,8 +73,8 @@ Command-line options, runtime flags, REPL input, MP console rendering, warning p
 
 - [ ] [tlc2/REPLTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/REPLTest.java) — **Reconcile**: `testProcessInput`.
   Related Go checks: [repl_test.go](../repl_test.go).
-- [ ] [tlc2/TLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/TLCTest.java) — **Reconcile**: `testHandleParametersAbsoluteInvalid`, `testHandleParametersAbsoluteValid`, `testHandleParametersFractionInvalid`, `testHandleParametersAllocateLowerBound`, `testHandleParametersAllocateUpperBound`, `testHandleParametersAllocateHalf`, `testHandleParametersAllocate90`, `testHandleParametersMaxSetSize`, `testHandleParametersSimulateFileNum`, `testRuntimeConversion`.
-  Related Go checks: [tlc/runner_test.go](runner_test.go).
+- [x] [tlc2/TLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/TLCTest.java) — **Port complete**: `testHandleParametersAbsoluteInvalid`, `testHandleParametersAbsoluteValid`, `testHandleParametersFractionInvalid`, `testHandleParametersAllocateLowerBound`, `testHandleParametersAllocateUpperBound`, `testHandleParametersAllocateHalf`, `testHandleParametersAllocate90`, `testHandleParametersMaxSetSize`, `testHandleParametersSimulateFileNum`, `testRuntimeConversion`.
+  Go translation: [tlc/cli_java_test.go](cli_java_test.go). All ten original methods, exact memory ratios and signed bounds, heap-allocation assumptions, global set-size checks, simulation arguments and six runtime-format assertions retained. Production fixes Java floating-to-long saturation and uses a stable native heap budget rather than reserved memory.
 - [x] [tlc2/output/MPTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/output/MPTest.java) — **Port complete**: `testPrintErrorInt`, `testPrintErrorIntString`, `testPrintErrorIntStringArray`, `testPrintProgressStats`.
   Go translation: [tlc/output_mp_java_test.go](output_mp_java_test.go). Full per-method ToolIO setup, actual production println capture, all exact counts/overload substitutions, six formatted progress parameters and both original locale alternatives retained. Production console/buffering and Java integral locale formatting now implemented.
 - [ ] [tlc2/output/SpecTraceExpressionWriterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/output/SpecTraceExpressionWriterTest.java) — **Reconcile**: `testInitNextWithNoError`, `testInitNextWithError`, `testInitNextWithErrorAndTraceExpression`, `testMultilineTraceExpression`.
@@ -989,6 +989,7 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/tool/coverage/MCoverageTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/coverage/MCoverageTest.java) | `testSpec` | [tlc_coverage_model_java_test.go](../tlc_coverage_model_java_test.go) |
 | [tlc2/tool/coverage/OCoverageTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/coverage/OCoverageTest.java) | `testSpec` | [tlc_coverage_model_java_test.go](../tlc_coverage_model_java_test.go) |
 | [tlc2/output/MPTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/output/MPTest.java) | `testPrintErrorInt`, `testPrintErrorIntString`, `testPrintErrorIntStringArray`, `testPrintProgressStats` | [tlc/output_mp_java_test.go](output_mp_java_test.go) |
+| [tlc2/TLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/TLCTest.java) | `testHandleParametersAbsoluteInvalid`, `testHandleParametersAbsoluteValid`, `testHandleParametersFractionInvalid`, `testHandleParametersAllocateLowerBound`, `testHandleParametersAllocateUpperBound`, `testHandleParametersAllocateHalf`, `testHandleParametersAllocate90`, `testHandleParametersMaxSetSize`, `testHandleParametersSimulateFileNum`, `testRuntimeConversion` | [tlc/cli_java_test.go](cli_java_test.go) |
 | [tlc2/output/WarningControlTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/output/WarningControlTest.java) | `testSuppressMessagesSanyCode`, `testSuppressMessagesSanyErrorCodeFails`, `testSuppressMessagesTlcCode`, `testSuppressMessagesMultipleCodes`, `testSuppressMessagesUnknownCodeFails`, `testSuppressMessagesMissingArgFails`, `testMessagesAsErrorsSanyWarningCode`, `testMessagesAsErrorsTlcCode`, `testMessagesAsErrorsUnknownCodeFails`, `testMessagesAsErrorsMissingArgFails`, `testNowarningConflictWithSuppressMessages`, `testNowarningConflictWithmessagesAsErrors`, `testSameTlcCode`, `testSameSanyCode`, `testRuntimeSuppressedWarningProducesNoOutput`, `testRuntimeUnsuppressedWarningProducesOutput`, `testRuntimeWarningAsErrorThrowsTLCRuntimeException`, `testRuntimeWarningWithoutElevationDoesNotThrow` | [tlc/output_warning_control_java_test.go](output_warning_control_java_test.go) |
 | [tlc2/tool/coverage/OpApplNodeWrapperTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/coverage/OpApplNodeWrapperTest.java) | `testReportCoverage01`, `testReportCoverage02`, `testReportCoverage03`, `testReportCoverage04` | [tlc/coverage_java_test.go](coverage_java_test.go) |
 | [tlc2/tool/distributed/DistributedDoInitFunctorEvalExceptionTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/DistributedDoInitFunctorEvalExceptionTest.java) | `testSpec` | [tlc_distributed_test.go](../tlc_distributed_test.go) |

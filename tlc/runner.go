@@ -1,3 +1,5 @@
+// Copyright (c) 2003 Compaq Corporation. All rights reserved.
+// Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlc
 
 import (
@@ -514,25 +516,42 @@ func (t *TLC) finishedRuntime() string {
 	return humanReadableTLCRuntime(elapsed)
 }
 
-func humanReadableTLCRuntime(elapsed time.Duration) string {
-	if elapsed < 0 {
-		elapsed = 0
+// ConvertRuntimeToHumanReadable retains TLC's strict millisecond boundaries
+// and SimpleDateFormat UTC calendar fields (day-of-year, rather than elapsed
+// days). The duplicate day branch in Java selects the same pattern.
+func ConvertRuntimeToHumanReadable(runtimeMillis int64) string {
+	const day = int64(86400000)
+	millis := runtimeMillis
+	if runtimeMillis > day {
+		millis -= day
 	}
-	totalSeconds := int64(elapsed / time.Second)
-	days := totalSeconds / 86400
-	hours := (totalSeconds / 3600) % 24
-	minutes := (totalSeconds / 60) % 60
-	seconds := totalSeconds % 60
+	date := time.UnixMilli(millis).UTC()
+	var result string
 	switch {
-	case days > 0:
-		return fmt.Sprintf("%dd %02dh", days, hours)
-	case hours > 0:
-		return fmt.Sprintf("%02dh %02dmin", hours, minutes)
-	case minutes > 0:
-		return fmt.Sprintf("%02dmin %02ds", minutes, seconds)
+	case runtimeMillis > day:
+		result = fmt.Sprintf("%dd %02dh", date.YearDay(), date.Hour())
+	case runtimeMillis > 3600000:
+		result = fmt.Sprintf("%02dh %02dmin", date.Hour(), date.Minute())
+	case runtimeMillis > 60000:
+		result = fmt.Sprintf("%02dmin %02ds", date.Minute(), date.Second())
 	default:
-		return fmt.Sprintf("%02ds", seconds)
+		result = fmt.Sprintf("%02ds", date.Second())
 	}
+	// DateFormat's numeric fields use the process FORMAT locale's zero digit.
+	MessageNumberFormat(0) // Initialize the shared source locale symbols.
+	if mpNumberSymbols.zero != '0' {
+		result = strings.Map(func(r rune) rune {
+			if r >= '0' && r <= '9' {
+				return mpNumberSymbols.zero + r - '0'
+			}
+			return r
+		}, result)
+	}
+	return result
+}
+
+func humanReadableTLCRuntime(elapsed time.Duration) string {
+	return ConvertRuntimeToHumanReadable(elapsed.Milliseconds())
 }
 
 func (t *TLC) modelCheckingRuntimeParams() []string {
