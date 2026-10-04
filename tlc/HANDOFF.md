@@ -2216,3 +2216,100 @@ and class path suffixes required by both unannotated classes. Jar test custom
 classpath setup must retain source semantics. Annotation source calls three
 recorder.recorded methods without asserting them; preserve active assertions.
 All five user-deferred topics remain outside new work. Goal remains active.
+
+
+## 2026-10-04: native user-module discovery and original override tests
+
+This checkpoint implements native Go linkage/discovery for user module classes
+and the source SpecProcessor.processModuleOverrides registration algorithm.
+Production files tlc/native_class.go and tlc/spec_processor_native.go; bridge
+invokes processing after existing standard native bindings. Spec retains SANY's
+FilenameResolver so class resources use the actual resolver/classpath. Source
+reflection metadata is carried with linked Go callbacks through NativeClass and
+NativeMethod descriptors. RegisterNativeClass returns binding-restoration closure.
+RequireResource preserves source class-file lookup for legacy/native adapters;
+Go implementations are linked callbacks, never execution of Java bytecode or
+inline replacement TLA bodies. Test-class adapters live only in root *_test.go.
+Class resource lookup follows resolver, classpath, package fallback. Resolver
+catch(Exception) excludes Error; outer catch(Throwable) emits replacing-modules
+failure. Registry accesses are locked; declared method slices copied on link/load.
+Conventional methods enumerate all public static declarations, TLARegistry map,
+root-origin arity map, annotated-method skip, missing-name/arity warnings,
+loaded metadata and actual definition/body installation. Final zero-argument
+methods evaluate eagerly at registration before mismatch checks. Ordered native
+indexes retain built-in index name then source property/default/path separator.
+Annotation order Evaluation,Callable,Operator, module/identifier checks,
+minLevel/warn/silent/priority composition and source arity diagnostics retained.
+Index catches direct InstantiationException/IllegalAccessException only, not
+wrapped causes. MP now has exact source loaded/three mismatch message templates.
+Architecture details in TLC_ARCH.md. Arbitrary Java binaries still require their
+Go callback port to be linked; do not interpret resources as executable code.
+
+Original UserModuleOverrideTest, FromJarTest, AnnotationTest.testSpec ports in
+root tlc_user_module_override_java_test.go. Source Get returnsTRUE despiteFALSE
+TLA body, proving actual native use; source Get2(v1)/Get3 returnFALSE. Both
+unannotated tests retain sorted two mismatch records and exact source signatures,
+real class resource suffixes,2/1/0,FINISHED,noGENERAL,zero-uncovered,success.
+Annotation class retains source unasserted recorded calls, actual active success/
+stats/coverage assertions; all five original annotated fixture methods ported.
+Native index fixture TLCTestOverrides.get retains EvaluatingValueTest then
+UserModuleOverrideAnnotationImpl; source property/customBuild classpath retained.
+Original jar copied unmodified and still supplies its TLA module/class resource.
+Jar bytecode inspected with javap: GetTRUE,Get2(Value)FALSE,Get3FALSE.
+Root tlc_native_override_fixtures_java_test.go links fixture methods and metadata
+through production loader. Native callbacks/metadata do not emit test records.
+Evaluation fixture keeps synchronized static action via mutex and binds successor
+x42 then returnsTRUE. Original EvaluatingValueTest.testSpec port in root
+ tlc_evaluating_value_java_test.go: full3/2/0/depth2,FINISHED,noGENERAL,
+noTEMPORAL_PROPERTY_VIOLATED/noCOUNTER_EXAMPLE,successful inherited exit.
+Original TLA action x'=FALSE remains unchanged; native callback genuinely replaces
+it. No invented checks/coverage requirements or relaxed model inputs.
+Eight TLA/CFG files, one resolver-local class resource, and seven native fixture
+files copied byte-identically from upstream (16 files total). Includes original
+Java fixture sources, class resources and UserModuleOverrideFromJar.jar.
+Evaluation callback's class is compiled Go linkage (source JUnit classloader's
+compiled test-class counterpart), resource URI go:tlc2.tool.EvaluatingValueTest;
+its method signature/default priority100/warntrue retained. No original assertion
+depends on its resource path. All source jar members/hash inspected.
+Original unchanged Java JUnit passes separately(-ea,-Xmx256m,source test-index
+property and actual native-fixture/jar classpath): UserModuleOverrideTest0.418s,
+FromJarTest0.444s,AnnotationTest0.418s,EvaluatingValueTest0.409s.
+First normal Go checks pass2.007s conventional,3.592s jar+annotation,1.865sEV.
+Focused four-context root race passes17.314s after final exception corrections;
+retire42060. Earlier16.847s focused root pass predates final catch correction.
+Initial full normal81341 and TLCrace94843 explicitly terminated(exit130) for
+actual production catch corrections, not an observation timeout. Do not revive.
+
+During long gates, ported original EvalControlTest.test and testIfEnabled in
+ tlc/eval_control_java_test.go; all12+3 assertions retained, no production changes.
+Original unchanged Java JUnit2methods pass0.005s; Go focused race1.029s pass,
+retire74847. Existing eval_control_test.go only had unrelated PartialBoolean
+checks, so prior Reconcile row now genuinely completes original methods.
+Full workspace after final production changes passes(root368.645s,SANY1.051s,
+TLC64.443s); retire55619, native-override-full-normal.log. It compiled before
+EvalControl tests were added. Final full workspace includes those two and passes(root371.729s,SANY1.107s,
+TLC62.378s); retire44838, native-override-final-normal.log. All packages reran.
+Full TLC race passes557.551s; retire9423, native-override-tlc-race.log.
+Its test matrix was compiled
+before EvalControl additions. Focused EvalControl race covers the only two added
+methods against identical final production; collectively no method omitted.
+Retain that distinction in validation reporting; no need to repeat heavy old
+TLC race matrix solely for these two independent pure-flag test additions.
+Final root/TLC production source unchanged after all three replacement gates
+began. No checks remain running. No pending production correction identified
+in original four methods. Full race557.551s + focused original EvalControl
+race1.029s covers every current TLC test; root new-model race17.314s also passes.
+Inventory594/1269 contexts(46.8%),167/626 complete classes(26.7%),675 pending
+across459 classes,one partial. Standard topic44/44 classes,75/75 methods complete.
+Evaluation topic14/45 classes,15/51 contexts complete,36 pending. MappedJSON
+counts independently recomputed and match doc. All five deferred topics unchanged.
+Next evaluation cohort: ActionCompositionATest/BTest source module cdot/
+ActionComposition, configs A/B,Tool.CDOT_KEY true,doCoverage false. A success
+10/4/0/depth3/FINISHED/noGENERAL. B safety10/4/0/depth3,invariant-behavior record,
+exact3state trace x0,x4,x6 (source ArrayList capacity2 is not trace length2).
+AssignmentInitTest source6/5/0,FINISHED,noGENERAL,zero-uncovered,success.
+Inspect all constructor/inherited settings before new credit; no new cohort
+Go tests/fixtures added yet. Goal remains active, hundreds of contexts remain.
+
+Staged diff whitespace warnings are confined to unchanged upstream Java fixture
+files under native_overrides (verified byte-identical); preserve source bytes.

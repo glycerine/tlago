@@ -3065,3 +3065,28 @@ Inventory588/1269 contexts(46.3%),162/626 complete classes(25.9%); standard
 module topic72/75 contexts and41/44 classes complete, three native-override
 classes pending. Deferred topics unchanged. Next implement native override
 discovery and original mismatch diagnostics before crediting those tests.
+
+
+### 2026-10-04 — Native user-module registration and original tests
+
+Implemented source conventional/annotated native override discovery and
+registration for linked Go classes, including resolver/classpath/archive resource
+provenance, declared-method/name/arity checks, ordered indexes, Evaluation/
+Callable/Operator dispatch, priority composition, eager final constant methods,
+source exception boundaries and exact MP loaded/mismatch templates. The bridge
+uses SANY's retained resolver. Fixture callbacks execute through production
+registration/model checking; no model bodies or recorder results substituted.
+Ported complete original UserModuleOverrideTest, FromJarTest, AnnotationTest,
+EvaluatingValueTest and both EvalControlTest methods (six contexts/five classes).
+Preserved original test-index/property/classpath, jar bytes, signatures, actual
+resource suffixes, inherited exits, stats/depth/coverage and source unasserted
+recorder calls. Sixteen source fixtures/resources copied byte-for-byte.
+All original Java JUnit methods pass unchanged. New root-model race17.314s and
+two new EvalControl-method race1.029s pass. Full existing TLC race557.551s passes
+against final production; its compiled matrix predates only those two pure-flag
+method additions, both covered separately. Final full workspace including all
+new methods passes(root371.729s,SANY1.107s,TLC62.378s). No checks remain running.
+Inventory594/1269 contexts(46.8%),167/626 complete classes(26.7%). Standard topic
+44/44 classes and75/75 contexts complete; evaluation topic14/45 classes and
+15/51 contexts complete,36 pending. Deferred topics unchanged. Next action
+composition/assignment model cohort remains unported; follow original setup.

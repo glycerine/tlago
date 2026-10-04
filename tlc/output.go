@@ -1196,6 +1196,22 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 2 {
 			return fmt.Sprintf("Attempted to apply the operator overridden by the Java method\n%s,\nbut it produced the following error:\n%s", params[0], params[1])
 		}
+	case ECTLCModuleValueJavaMethodOverrideLoaded:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Loading %s operator override from %s with signature: %s.", params[0], params[1], params[2])
+		}
+	case ECTLCModuleValueJavaMethodOverrideMismatch:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Failed to match %s operator override from %s with signature: %s.", params[0], params[1], params[2])
+		}
+	case ECTLCModuleValueJavaMethodOverrideIdentifierMismatch:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Failed to match %s operator override from %s with signature: %s (no such operator).", params[0], params[1], params[2])
+		}
+	case ECTLCModuleValueJavaMethodOverrideModuleMismatch:
+		if len(params) >= 3 {
+			return fmt.Sprintf("Failed to match %s operator override from %s with signature: %s (no such module).", params[0], params[1], params[2])
+		}
 	case ECTLCModuleArgumentError:
 		if len(params) >= 4 {
 			return fmt.Sprintf("The %s argument of %s should be a %s, but instead it is:\n%s", params[0], params[1], params[2], params[3])

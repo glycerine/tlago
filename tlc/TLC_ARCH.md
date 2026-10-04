@@ -4265,3 +4265,53 @@ The Go TLC port is ready when:
 - It can checkpoint and recover models that Java tests cover.
 - It performs within the same rough complexity class as Java TLC on large
   models, with disk-backed queues and fingerprint sets available.
+
+
+## Native user-module override registration (2026-10-04)
+
+`tlc/native_class.go` supplies the native class-linkage boundary for Go ports of
+Java override classes. An application registers `NativeClass` descriptors with
+`RegisterNativeClass`: declared method names, source reflection signatures,
+visibility/static/final flags, parameter counts, annotation metadata, and actual
+Go callbacks. The returned function restores the previous class binding. These
+callbacks are compiled Go implementations; Java class bytes remain provenance
+and resolver/classpath resources. Loading an arbitrary Java binary does not
+provide its executable Go implementation. `RequireResource` retains the source
+class-file discovery requirement for a linked adapter; ordinary linked Go
+classes can supply their own resource URI. Test fixture classes are linked in
+root test code, never in production and never by replacing TLA definitions.
+
+`NativeClassLoader` follows TLAClass's resolver/unqualified-classpath/package
+fallback order and retains directory/archive resource URIs. Its resolver
+attempt catches Exception; outer class loading catches Throwable and produces
+TLC_ERROR_REPLACING_MODULES. `LoadSanySpec` now retains its FilenameResolver in
+`Spec`, so the bridge and native loader share SANY's actual resolver/classpath.
+The previously ported standard native bindings remain installed by the bridge;
+`SpecProcessor.ProcessModuleOverrides` adds external conventional module classes
+and ordered user ITLCOverrides indexes using the same source registration
+boundaries. The built-in index name precedes the system-property-selected
+indexes; the source property separator/default are preserved.
+
+Conventional registration enumerates every declared public static method,
+uses TLARegistry name mapping, skips Operator/Evaluation annotations for the
+later index pass, and checks non-built-in methods against root operators
+originally defined in that module. Missing names and arity mismatches emit the
+source warning; accepted methods emit loaded metadata and replace actual body
+ToolObjects/Defns. Public static final zero-argument methods are evaluated at
+registration, following MethodValue.get, even before mismatch checks.
+Annotation registration checks module/identifier first, handles Evaluation,
+Callable, then Operator in source order, preserves priority composition,
+minLevel/warn/silent settings, method arity and constructor failure catches.
+Index instantiation catches only the thrown InstantiationException or
+IllegalAccessException type; a cause of that type does not widen the catch.
+Production MP templates now include exact source loaded and all three mismatch
+messages. Source path-dependent parts remain actual resource URIs.
+
+Original UserModuleOverride, jar, annotation and EvaluatingValue model tests
+exercise native callbacks through production SANY/spec processing/model checking.
+The conventional Get returns TRUE despite its FALSE TLA body; the annotated
+Get/Get2 return TRUE; the Evaluation callback synchronously binds successor x
+to42 despite its FALSE assignment in TLA. This distinguishes native execution
+from running the unmodified TLA fallback. Original fixture files/jar/class
+resources are retained under test_vectors, with callbacks mechanically ported
+from Java source and jar bytecode. No evaluator branch depends on test names.

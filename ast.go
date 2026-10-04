@@ -1,12 +1,15 @@
 package tlago
 
+import "github.com/glycerine/tlago/tlc"
+
 type Spec struct {
-	LibraryPaths  []string
-	Root          *Module
-	Modules       map[string]*Module
-	SemanticOrder []string
-	ModuleFiles   []string // Logical filenames supplied to the filename resolver.
-	Diags         Diagnostics
+	FilenameResolver tlc.FilenameToStream
+	LibraryPaths     []string
+	Root             *Module
+	Modules          map[string]*Module
+	SemanticOrder    []string
+	ModuleFiles      []string // Logical filenames supplied to the filename resolver.
+	Diags            Diagnostics
 }
 
 type Module struct {

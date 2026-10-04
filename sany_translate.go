@@ -115,7 +115,7 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 		rootMod.ImplicitExtends = append([]string(nil), rootMod.Extends[sourceExtendsLen:]...)
 		l.loadDependencies(rootMod)
 	}
-	return &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}, l.diags
+	return &Spec{FilenameResolver: opts.FilenameResolver, LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}, l.diags
 }
 
 func appendModuleNames(names []string, extra ...string) []string {

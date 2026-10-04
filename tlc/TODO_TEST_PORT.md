@@ -6,9 +6,9 @@ Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **162 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (25.9%).**
-- **588 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (46.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **681 logical method contexts across 464 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **167 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (26.7%).**
+- **594 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (46.8%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **675 logical method contexts across 459 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -23,8 +23,8 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | --- | ---: | ---: | ---: | ---: | ---: |
 | CLI, REPL, messages, and trace-spec output | 5 | 5 | 37 | 37 | 0 |
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
-| Standard modules, constants, native overrides, and random values | 44 | 41 | 75 | 72 | 3 |
-| Evaluation, initial states, next states, and action composition | 45 | 12 | 51 | 12 | 39 |
+| Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
+| Evaluation, initial states, next states, and action composition | 45 | 14 | 51 | 15 | 36 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 7 | 34 | 7 | 27 |
 | Issue regressions in the evaluator and checker | 98 | 3 | 101 | 3 | 98 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **162** | **1,269** | **588** | **681** |
+| **Total** | **626** | **167** | **1,269** | **594** | **675** |
 
 ## Porting rules and proposed order
 
@@ -150,9 +150,9 @@ The nine newly translated standard-module models retain all original fixture byt
 - [x] [tlc2/tool/StandardModulesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/StandardModulesTest.java) — **Port complete**: `testSpec`.
   Go translation: [tlc_module_models_java_test.go](../tlc_module_models_java_test.go), `TestJavaStandardModulesModel`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
 - [x] [tlc2/tool/SubseteqNextStateTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SubseteqNextStateTest.java) — **Port complete**: `testSpec` → [tlc_subseteq_next_state_java_test.go](../tlc_subseteq_next_state_java_test.go); original constructor, inherited exit, and all active assertions retained.
-- [ ] [tlc2/tool/UserModuleOverrideAnnotationTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideAnnotationTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/UserModuleOverrideFromJarTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideFromJarTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/UserModuleOverrideTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/UserModuleOverrideAnnotationTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideAnnotationTest.java) — **Port complete**: `testSpec` → [tlc_user_module_override_java_test.go](../tlc_user_module_override_java_test.go); original native fixture callbacks, constructor/index/classpath setup, inherited exit, and all active assertions retained.
+- [x] [tlc2/tool/UserModuleOverrideFromJarTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideFromJarTest.java) — **Port complete**: `testSpec` → [tlc_user_module_override_java_test.go](../tlc_user_module_override_java_test.go); original native fixture callbacks, constructor/index/classpath setup, inherited exit, and all active assertions retained.
+- [x] [tlc2/tool/UserModuleOverrideTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideTest.java) — **Port complete**: `testSpec` → [tlc_user_module_override_java_test.go](../tlc_user_module_override_java_test.go); original native fixture callbacks, constructor/index/classpath setup, inherited exit, and all active assertions retained.
 
 The eight random-subset model translations preserve both fixed seeds and exact traces, every original state/queue count, four-worker setup, complete tuple/component checks and zero-uncovered assertions. The original `RandomSubsetTest` y-bound condition uses `firstX` for its upper bound; that literal condition is retained. Predicate-set and standard-module models run their complete original inputs through the production parser/checker.
 
@@ -174,9 +174,8 @@ Bindings, assignment, quantified evaluation, LET, INSTANCE, actions, enabledness
 - [ ] [tlc2/tool/CdotWithContextDTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextDTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/ChainedCdotsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ChainedCdotsTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/EmptyExistentialQuantifierTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EmptyExistentialQuantifierTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/EvalControlTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalControlTest.java) — **Reconcile**: `test`, `testIfEnabled`.
-  Related Go checks: [tlc/eval_control_test.go](eval_control_test.go).
-- [ ] [tlc2/tool/EvaluatingValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvaluatingValueTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/EvalControlTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalControlTest.java) — **Port complete**: `test`, `testIfEnabled` → [tlc/eval_control_java_test.go](eval_control_java_test.go); all original flag transitions and fifteen assertions retained.
+- [x] [tlc2/tool/EvaluatingValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvaluatingValueTest.java) — **Port complete**: `testSpec` → [tlc_evaluating_value_java_test.go](../tlc_evaluating_value_java_test.go); original native fixture callbacks, constructor/index/classpath setup, inherited exit, and all active assertions retained.
 - [ ] [tlc2/tool/LetDef1BoxedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/LetDef1BoxedTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/LetDef1BoxedbTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/LetDef1BoxedbTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/LetDef1BoxedcTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/LetDef1BoxedcTest.java) — **Missing**: `testSpec`.

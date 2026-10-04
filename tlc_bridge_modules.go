@@ -75,6 +75,7 @@ func (b *tlcBridge) installModuleNativeOverrides() {
 			b.tool.DefnsByName[def.Name] = value
 		}
 	}
+	b.processor.ProcessModuleOverrides(b.tool, tlc.NewNativeClassLoader("tlc2.module", b.spec.FilenameResolver))
 }
 
 func bridgeNativeMethodArityMatches(module string, value any, arity int) bool {
