@@ -3647,3 +3647,58 @@ three faithful ports, native signature metadata and ordinary call-stack replay.
 Inventory690/1269(54.4%),258/626(41.2%),579 pending contexts/368 classes.
 No live test processes. Next Github362, then391/407; their unchanged Java tests
 pass and remain uncredited until translated. Overall goal remains active.
+
+
+2026-10-04: Github362/391/407 and all four Github432 methods translated.
+Original Java JUnit passes all seven methods unchanged. Nine original fixtures
+(including Github407.dump) are byte-identical under test_vectors. Ports retain
+all original assertions and runner defaults/overrides: six instance-scope output
+substrings, zero-state stats, complete plain dump line/EOF comparison and
+zero-uncovered checks, four config substitutions and exact symmetry-warning
+parameters/cardinality or absence. Github432's exit assertion stays disabled
+as in the source. Config substitutions use isolated temporary files.
+Production fixes: StateWriter mirrors println(state.toString()), adding its
+missing final newline; symmetry argument names come from SyntaxTreeNode's human
+readable image and the same Permutations substring/config-alias logic as Java.
+Five focused normal repetitions PASS11.192s. No assertions weakened, new tests
+invented, or deferred-topic work added. Inventory697/1269(54.9%),262/626(41.9%);
+572 pending contexts/364 classes (one partial class). Issue topic43/98 classes,
+46/101 methods. Broad checks running: workspace23520, full TLC race85376,
+focused root race88198 (five runs of all seven ports).
+Logs `.codex-gotmp/github362432-{workspace,tlc-race,root-race}.log`.
+Baselinef4ed912; do not commit until green. Next Github461, Github525, Github597.
+Overall goal remains active with user-deferred topics unchanged.
+
+
+Focused root race88198 PASS120.583s (five runs of all seven new methods); retire.
+Workspace23520 and full TLC race85376 remain live. All new fixtures were compared
+byte-for-byte; no implementation changes since broad checks launched.
+Next Github461/525/597 unchanged Java JUnit all pass; compile log
+correctness-java/github461525597-javac.log, original-<Class>-junit.log. Java597
+process73424 terminal. No Go tests/fixtures/inventory credit for these next cases.
+461 preserves full x=0..4 trace, exact assertion message and two-frame nested
+stack, zero uncovered and inherited assertion exit. 525 preserves Error exit,
+FINISHED/unsupported-liveness diagnostic/no GENERAL. 597 uses original dekker.tla
+embedded config, no fixed fp/seed (noRandomFPandSeed=false), coverage/DOT false,
+debugger/forced TE/JSON defaults true; stats4356/1500/0, Termination violation,
+counterexample/state-print/back-to-state existence and inherited liveness exit.
+Use the exact-arguments helper for597 rather than retaining fp0/seed1 defaults.
+Overall goal remains active; next original tests are ready after this checkpoint.
+
+
+Full workspace23520 PASS399.345s root/1.020s SANY/63.549s TLC; retire23520.
+Focused root race88198 PASS120.583s. Full TLC race85376 remains live; no edits
+since checks launched. All seven ports and both production corrections are
+ready for a green commit after that last check. Goal remains active.
+
+
+Final Github362/391/407/432 checkpoint: full TLC race85376 PASS568.462s;
+retire85376. All final checks green: full workspace399.345s root/1.020s SANY/
+63.549s TLC; full TLC race568.462s; five focused root race runs120.583s; five
+focused normal runs11.192s. All nine fixtures match original bytes. Go/docs
+whitespace clean; preserve any original fixture whitespace. Commit all seven
+original-method ports and the plain-dump/symmetry-warning production fixes.
+Inventory697/1269(54.9%),262/626(41.9%),572 pending contexts/364 classes.
+All processes terminal. Next Github461/525/597 unchanged Java JUnit passed,
+with source assertion/runner requirements documented above; no Go credit yet.
+The full original correctness-port goal remains active, deferred topics unchanged.

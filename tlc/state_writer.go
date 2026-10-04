@@ -199,7 +199,7 @@ func (w *StateWriter) writeInitState(state *TLCStateMut) error {
 		}
 		return err
 	}
-	_, err := fmt.Fprintf(w.writer, "State %d:\n%s", w.stateNum, state.String())
+	_, err := fmt.Fprintf(w.writer, "State %d:\n%s\n", w.stateNum, state.String())
 	w.stateNum++
 	return err
 }

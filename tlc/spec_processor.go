@@ -1271,8 +1271,16 @@ func (p *SpecProcessor) symmetrySetEnumFromArgumentNode(tool *Tool, node Semanti
 
 func (p *SpecProcessor) symmetryArgumentDisplayName(node SemanticNode) string {
 	name := SemanticString(node)
-	if appl, ok := node.(*OpApplNode); ok && appl != nil && appl.Operator != nil && appl.Operator.Name != nil && appl.Operator.Name.String() == "Permutations" && len(appl.Args) == 1 {
-		name = SemanticString(appl.Args[0])
+	// Java extracts the alias from the syntax image, not SemanticNode.toString
+	// (which normally reports a source location).
+	if semantic, ok := node.(interface{ GetTreeNode() any }); ok {
+		if tree, ok := semantic.GetTreeNode().(interface{ GetHumanReadableImage() string }); ok {
+			name = tree.GetHumanReadableImage()
+		}
+	}
+	const permutations = "Permutations"
+	if strings.HasPrefix(name, permutations) {
+		name = name[len(permutations)+1 : len(name)-1]
 	}
 	if p != nil && p.Config != nil {
 		if override := p.Config.GetOverridenSpecNameForConfigName(name); override != "" {

@@ -4484,3 +4484,12 @@ behavior. Starting the Go copy from NoDebug preserves the shared semantic graph
 while routing every nested predicate through the replay call-stack recorder.
 The original Github179a/b/c tests preserve exact native errors and full source
 location stacks with all source runner defaults enabled.
+
+
+Plain StateWriter writes a newline after the state's own textual representation,
+as Java PrintWriter.println does; this retains the blank separator between states
+in the original Github407 golden dump. Symmetry cardinality warnings derive
+argument display names from the original syntax image, strip the Permutations
+application text, then consult the config override-name mapping. Semantic node
+stringification normally prints a location and cannot substitute for that image.
+The four original Github432 rows preserve both warning grammar and exact names.
