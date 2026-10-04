@@ -1748,3 +1748,34 @@ original methods each), source tests and shared Utils read. Preserve all six
 round trips, backward-compatible label space, ordered variable values, exact token
 loop and error trace's five original state ordinals1,2,3,5,6. Audit production
 against Java before translation; no credit until entire original assertions pass.
+
+
+Presentation MCErrorTest and MCStateTest: all four original methods are port
+complete in model_error_state_java_test.go. Shared original Utils buildState,
+toLabelFormat and toTlcOutputFormat loops retained, with ASCII Java trim semantics.
+Go's MCState API stores location text: canonical nonempty fixture strings retain
+Location.toString values and the empty fixture maps to Location.nullLoc's
+"Unknown location". None of the original assertions compares location objects.
+MCState retains all six exact round-trip tuples, leading-space compatibility
+label, names/flags/ordinals and ordered variable name/value comparisons. Record
+printer retains all nine tokens, trim/prefix/substr loop and fail diagnostics;
+no stronger final-empty-string assertion was invented. MCError keeps original
+message, all five states with ordinals1,2,3,5,6 and x=1..5, map x->y, both loops,
+state/variable counts and variable name/single-line display-name checks.
+No tests were weakened, no extra cases or production changes. Actual Java
+MCVariable/MCState/MCError source and original tests/Utils compile unchanged;
+all four pass -ea(0.021s). Go originals pass(0.011s), complete original classes
+race passes(1.028s); retire46207/69059. Full TLC normal passes(44.945s);
+retire55131. No checks remain running. Full workspace normal and full TLC race
+from preceding
+bf642ba remain green for unchanged production/root packages.
+Inventory now527/1269 contexts(41.5%),133/626 complete classes(21.2%),742 pending
+contexts across493 classes,one partial. Presentation topic complete5/5 classes,
+13/13 methods. Utility/value topics remain complete; all five deferred topics
+remain deferred. Next: CLI/output originals. Full REPLTest(testProcessInput)
+and MPTest(four methods) read; preserve all thirteen REPL calls on one instance,
+exact empty-string results for invalid expressions, temp-directory construction,
+per-method ToolIO TOOL/reset, exact message counts and overload substitutions,
+all six progress parameters and both original locale alternatives. Inspect actual
+production console boundary before translating; implement missing behavior before
+crediting output methods. Root REPL translation may require full root checks.
