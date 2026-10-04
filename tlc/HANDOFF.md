@@ -2421,3 +2421,56 @@ A/B/C assert FINISHED,noGENERAL,5/3/0,depth2; D1/1/0,depth1. Chained9/4/0,depth2
 no postcondition false/evaluation error, register42 nonempty and first IntValue9.
 No new tests/fixtures for these classes activated yet. Preserve constructor,
 generation/dump/worker settings and all inherited assertions before credit. Goal remains active.
+
+
+## 2026-10-04: original action-composition contexts and chained actions
+
+Completed original CdotWithContextA/B/C/D.testSpec and ChainedCdots.testSpec in
+root tlc_cdot_context_java_test.go. Ten TLA/CFG files copied byte-for-byte from
+source cdot directory; no production changes. Every source assertion and
+constructor/inherited option retained: CDOT propertytrue with isolatedt.Setenv,
+coverage=false,debugger=false,workers1,deadlockdisabled,fp0/seed1/checkpoint0,
+dot/JSONdumptrue,success exits. B/D noGenerateSpecTE; A/C/Chained generate as
+source. A/B/C5/3/0 depth2,D1/1/0 depth1,Chained9/4/0 depth2,FINISHED/noGENERAL.
+Chained retains both absent postcondition diagnostics, register42 nonempty and
+first IntValue9. Actual model's postcondition also checks TLCGet(0)=63, running
+through production composition/evaluation/worker registers; no substitute model
+or recorder assertions. Full source fixtures retained including B/D temporal
+properties and context constraints.
+All5 unchanged Java JUnit pass in separate JVMs: A0.414s,B0.386s,C0.428s,
+D0.420s,Chained0.457s. Go focused normal5.305s and all5 root race18.876s pass;
+retire6460/32713/79004. Full workspace passes(root379.229s,SANY1.102s,TLC61.182s); retire89465,
+cdot-context-full-normal.log. No checks remain running. TLC production/pkgtests unchanged; retain current
+full TLC race e3b3f46 547.729s, no redundant rerun.
+Inventory613/1269 contexts(48.3%),181/626 complete classes(28.9%),656 pending
+across445 classes,one partial. Evaluation28/45classes,34/51methods complete,
+17pending. MappedJSON independently recomputed; all10fixtures byte-identical.
+Deferred five user topics untouched; goal remains active.
+
+Next17 evaluation contexts inspected, no Go tests/fixtures activated yet:
+EmptyExistentialQuantifier: -configsameTLA,checkDeadlocktrue,expecteddeadlock,
+FINISHED/noGENERAL,1/1/0; default coverage/debugger/dot/JSON/generation retained.
+MinimalSetOfInitStates: defaults,FINISHED/noGENERAL,INIT_GENERATED2 8/s/6,
+stats14/6/0 depth1,zeroUncovered. Preserve counts despite historical comment.
+MinimalSetOfNextStates: defaults,INIT_GENERATED1 1,57/7/0 depth2,FINISHED/noGENERAL,
+exact uncovered lines34/42 col10..15, not alternate counts or relaxedcoverage.
+UndeclaredRecursion: configTLA,success,debuggerfalse,noGeneration,noJSON,
+coveragefalse; dottrue; FINISHED/noGENERAL,depth0,0/0/0.
+Remaining eight LET boxed variants and five InitEvalOrder contexts need full
+setup/trace/coverage audit before credit. Four InitEvalOrder1..4 methods are
+inherited; Basic declares its own FINISHED/noGENERAL,2/1/0,zeroUncovered method.
+All use default settings; configs1..4 select four conjunct orders in shared
+InitEvalOrder.tla, which imports EvalOrder/Base.tla (must copy this dependency).
+No claim of Go port completion. LETa/b liveness exit and fullTRUE/FALSEtrace;
+c/d success stats3/2/0, FINISHED/SUCCESS; defaults differ by variant.
+
+Original Java preflight of all17 remaining evaluation contexts now passes
+unchanged. First InitEvalOrder1..4 scratch attempts failed because Base.tla was
+missing from scratch; copied the actual source dependency and allfour pass on
+rerun. No Java source/assertions changed. Logs original-<Class>-junit.log;
+evaluation-remaining-javac.log. Retire32629 and42700. This earns no port credit;
+all17 remain Missing until complete Go translations and verification.
+
+Staged diff --check warnings are only original fixture bytes: source trailing
+space and TLA ======= delimiters (Git labels these conflict markers). All ten
+files verified byte-identical; preserve them. Go/docs diff --check is clean.

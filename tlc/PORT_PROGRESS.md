@@ -3122,3 +3122,15 @@ passes547.729s including all six new methods and final production. No checks
 remain running; previous runs canceled for an actual constructor fix.
 Inventory608/1269 contexts(47.9%),176/626 complete classes(28.1%); evaluation
 29/51 methods,23/45 classes complete,22 pending. Deferred topics unchanged.
+
+
+### 2026-10-04 — Original action-composition contexts
+
+Ported original CdotWithContextA/B/C/D and ChainedCdots methods with all source
+settings, counts/depth, inherited exits and chained postcondition diagnostics/
+register42 IntValue9. Ten source fixtures byte-identical; no production changes.
+All5 original Java JUnit pass unchanged; focused Go5.305s and root race18.876s
+pass. Full workspace passes(root379.229s,SANY1.102s,TLC61.182s). No checks running. Retain full TLC race547.729s
+baseline because this checkpoint changes only root tests/fixtures/docs.
+Inventory613/1269 contexts(48.3%),181/626 complete classes(28.9%); evaluation
+34/51methods,28/45classes complete,17pending. Deferred topics unchanged.

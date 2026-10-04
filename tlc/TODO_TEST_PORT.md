@@ -6,9 +6,9 @@ Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **176 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (28.1%).**
-- **608 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (47.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **661 logical method contexts across 450 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **181 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (28.9%).**
+- **613 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (48.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **656 logical method contexts across 445 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -24,7 +24,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | CLI, REPL, messages, and trace-spec output | 5 | 5 | 37 | 37 | 0 |
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
 | Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
-| Evaluation, initial states, next states, and action composition | 45 | 23 | 51 | 29 | 22 |
+| Evaluation, initial states, next states, and action composition | 45 | 28 | 51 | 34 | 17 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 7 | 34 | 7 | 27 |
 | Issue regressions in the evaluator and checker | 98 | 3 | 101 | 3 | 98 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **176** | **1,269** | **608** | **661** |
+| **Total** | **626** | **181** | **1,269** | **613** | **656** |
 
 ## Porting rules and proposed order
 
@@ -168,11 +168,11 @@ Bindings, assignment, quantified evaluation, LET, INSTANCE, actions, enabledness
 - [x] [tlc2/tool/AssignmentNext2Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AssignmentNext2Test.java) — **Port complete**: `test` → [tlc_assignment_models_java_test.go](../tlc_assignment_models_java_test.go); original constructor/configuration, inherited exit, and all active assertions retained.
 - [x] [tlc2/tool/AssignmentNext3Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AssignmentNext3Test.java) — **Port complete**: `test` → [tlc_assignment_models_java_test.go](../tlc_assignment_models_java_test.go); original constructor/configuration, inherited exit, and all active assertions retained.
 - [x] [tlc2/tool/AssignmentNextTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AssignmentNextTest.java) — **Port complete**: `test` → [tlc_assignment_models_java_test.go](../tlc_assignment_models_java_test.go); original constructor/configuration, inherited exit, and all active assertions retained.
-- [ ] [tlc2/tool/CdotWithContextATest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextATest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/CdotWithContextBTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextBTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/CdotWithContextCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextCTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/CdotWithContextDTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextDTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/ChainedCdotsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ChainedCdotsTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/CdotWithContextATest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextATest.java) — **Port complete**: `testSpec` → [tlc_cdot_context_java_test.go](../tlc_cdot_context_java_test.go); source constructor/inherited settings and all assertions retained.
+- [x] [tlc2/tool/CdotWithContextBTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextBTest.java) — **Port complete**: `testSpec` → [tlc_cdot_context_java_test.go](../tlc_cdot_context_java_test.go); source constructor/inherited settings and all assertions retained.
+- [x] [tlc2/tool/CdotWithContextCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextCTest.java) — **Port complete**: `testSpec` → [tlc_cdot_context_java_test.go](../tlc_cdot_context_java_test.go); source constructor/inherited settings and all assertions retained.
+- [x] [tlc2/tool/CdotWithContextDTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/CdotWithContextDTest.java) — **Port complete**: `testSpec` → [tlc_cdot_context_java_test.go](../tlc_cdot_context_java_test.go); source constructor/inherited settings and all assertions retained.
+- [x] [tlc2/tool/ChainedCdotsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ChainedCdotsTest.java) — **Port complete**: `testSpec` → [tlc_cdot_context_java_test.go](../tlc_cdot_context_java_test.go); source constructor/inherited settings and all assertions retained.
 - [ ] [tlc2/tool/EmptyExistentialQuantifierTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EmptyExistentialQuantifierTest.java) — **Missing**: `testSpec`.
 - [x] [tlc2/tool/EvalControlTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalControlTest.java) — **Port complete**: `test`, `testIfEnabled` → [tlc/eval_control_java_test.go](eval_control_java_test.go); all original flag transitions and fifteen assertions retained.
 - [x] [tlc2/tool/EvaluatingValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvaluatingValueTest.java) — **Port complete**: `testSpec` → [tlc_evaluating_value_java_test.go](../tlc_evaluating_value_java_test.go); original native fixture callbacks, constructor/index/classpath setup, inherited exit, and all active assertions retained.
