@@ -259,7 +259,7 @@ func (w *Worker) CheckLiveness(curState *TLCStateMut) error {
 		w.SetOfStates = w.CreateSetOfStates()
 	}
 	curFP := curState.FingerPrint()
-	w.SetOfStates.PutFP(curFP, curState)
+	w.SetOfStates.PutFP(curFP, curState, w.Tool)
 	if w.Checker.AllStateWriter != nil {
 		if err := w.Checker.AllStateWriter.WriteTransitionVisual(curState, curState, StateVisitUnseen, nil, StateVisualizationStuttering); err != nil {
 			return err

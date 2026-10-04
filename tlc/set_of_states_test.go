@@ -39,7 +39,7 @@ func TestSetOfStatesIteratesAllStatesAndResets(t *testing.T) {
 	var sum int32
 	var predecessor *TLCStateMut
 	for i := 0; i < set.Size(); i++ {
-		state := set.Next()
+		state := set.Next().(*TLCStateMut)
 		if state == predecessor {
 			t.Fatalf("Next returned same state twice in a row")
 		}

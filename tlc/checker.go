@@ -1733,7 +1733,11 @@ func (mc *ModelChecker) isSeenStateUsingWorker(workerID int, worker *Worker, cur
 		}
 	}
 	if collectedStates != nil {
-		collectedStates.PutFP(fp, succState)
+		if worker != nil {
+			collectedStates.PutFP(fp, succState, tool)
+		} else {
+			collectedStates.PutFP(fp, succState)
+		}
 	}
 	return seen, nil
 }

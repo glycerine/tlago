@@ -3106,3 +3106,19 @@ classes(28.0%); evaluation topic23/51 methods and22/45 classes complete,
 28 pending. Fifteen original fixture files copied byte-for-byte. Next original
 SetOfStatesTest needs production abstract-state/container support before its six
 methods can be credited. Deferred topics unchanged.
+
+
+### 2026-10-04 — Original SetOfStates methods
+
+Ported all six original methods, full32/64 collision matrices, actual constant-
+fingerprint dummy state classes, iterator identity/sum528 and HashSet size32.
+Fixed production state polymorphism, equality-error propagation, tool-aware
+rehashing, source equality catch, iterator preservation, signed/string rendering
+and constructor failures. Concrete evaluator adapters remain explicit.
+Original Java6 pass0.007s; Go focused normal0.012s and final race1.054s pass.
+Ignored boundary probes agree byte-for-byte; no new regression/unit methods.
+Full workspace passes(root379.623s,SANY1.010s,TLC63.792s). Final full TLC race
+passes547.729s including all six new methods and final production. No checks
+remain running; previous runs canceled for an actual constructor fix.
+Inventory608/1269 contexts(47.9%),176/626 complete classes(28.1%); evaluation
+29/51 methods,23/45 classes complete,22 pending. Deferred topics unchanged.

@@ -4315,3 +4315,22 @@ to42 despite its FALSE assignment in TLA. This distinguishes native execution
 from running the unmodified TLA fallback. Original fixture files/jar/class
 resources are retained under test_vectors, with callbacks mechanically ported
 from Java source and jar bytecode. No evaluator branch depends on test names.
+
+
+### Polymorphic state sets
+
+`TLCState` defines the virtual fingerprint/tool-fingerprint, equality, hash,
+action and string surface used by `SetOfStates`. The evaluator still uses
+`*TLCStateMut`; liveness conversions and `ToSlice` are concrete evaluator
+boundaries, while `Next` and `ToSet` accept genuine alternate state types.
+`StateVec` remains concrete. Each collection entry supplies its own behavior;
+no fingerprint/equality hooks or synthetic model variables replace state types.
+
+`SetOfStates` retains Java's open addressing, source tool/no-tool growth,
+iterator position across growth/clear, reset semantics, signed fingerprint
+printing and unconditional UTF16 terminal-code-unit removal. Only the source
+TLCRuntimeException equality mismatch is suppressed at the collision boundary,
+with its message assertion preserved. Mutable-state equality propagates value
+failures elsewhere. `TLCStateSet` preserves HashSet hash/equals behavior, including
+TLCStateMut's inherited object-identity hash despite structural equality. Action
+subsets filter by actual action identity and use these same set semantics.

@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"math"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -100,6 +101,18 @@ func SetTLCStateTool(tool *Tool) {
 	if tool.DebugFastTool != nil {
 		stateTool = tool.NoDebug()
 	}
+}
+
+// TLCState is the polymorphic state surface used by state collections. The
+// evaluator continues to operate on mutable states; collection implementations
+// must retain each state's own fingerprint, equality and hash semantics.
+type TLCState interface {
+	FingerPrint() uint64
+	FingerPrintWithTool(*Tool) uint64
+	Equal(TLCState) bool
+	HashCode() int32
+	GetAction() *Action
+	String() string
 }
 
 type TLCStateMut struct {
@@ -600,19 +613,42 @@ func (s *TLCStateMut) CopyWith(prototype *TLCStateMut) *TLCStateMut {
 	return out
 }
 
-func (s *TLCStateMut) Equal(other *TLCStateMut) bool {
+func (s *TLCStateMut) Equal(obj TLCState) bool {
+	other, ok := obj.(*TLCStateMut)
+	if !ok {
+		return false
+	}
 	if s == nil || other == nil {
 		return s == other
 	}
-	if len(s.values) != len(other.values) {
-		return false
-	}
 	for i := range s.values {
-		if !stateValuesEqual(s.values[i], other.values[i]) {
+		if i >= len(other.values) {
+			panic(NewArrayIndexOutOfBoundsException(i, len(other.values)))
+		}
+		if s.values[i] == nil {
+			if other.values[i] != nil {
+				return false
+			}
+			continue
+		}
+		if other.values[i] == nil {
+			return false
+		}
+		equal, err := s.values[i].Equal(other.values[i])
+		if err != nil {
+			panic(err)
+		}
+		if !equal {
 			return false
 		}
 	}
 	return true
+}
+
+// Java TLCStateMut deliberately inherits Object.hashCode despite overriding
+// equals. Retain object identity here rather than substituting a fingerprint.
+func (s *TLCStateMut) HashCode() int32 {
+	return int32(reflect.ValueOf(s).Pointer())
 }
 
 func (s *TLCStateMut) String() string {

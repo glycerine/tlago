@@ -313,7 +313,7 @@ func (lc *LiveCheck1) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	lc.mu.Lock()
 	defer lc.mu.Unlock()
 	for i := 0; i < nextStates.Size(); i++ {
-		s2 := nextStates.Next()
+		s2 := nextStates.Next().(*TLCStateMut)
 		if s2 == nil {
 			continue
 		}

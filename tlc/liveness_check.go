@@ -363,7 +363,7 @@ func (c *LiveChecker) AddNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, next
 	alen := len(c.Solution.CheckAction)
 	nextStates.ResetNext()
 	for idx := 0; idx < nextStates.Size(); idx++ {
-		s1 := nextStates.Next()
+		s1 := nextStates.Next().(*TLCStateMut)
 		if s1 == nil {
 			continue
 		}
@@ -394,7 +394,7 @@ func (c *LiveChecker) addNextStateDisk(s0 *TLCStateMut, fp0 uint64, nextStates *
 	node0.SetCheckState(checkStateRes)
 	nextStates.ResetNext()
 	for sidx := 0; sidx < succCnt; sidx++ {
-		successorState := nextStates.Next()
+		successorState := nextStates.Next().(*TLCStateMut)
 		if successorState == nil {
 			continue
 		}
@@ -431,7 +431,7 @@ func (c *LiveChecker) addNextStateTableau(tool *Tool, s0 *TLCStateMut, fp0 uint6
 	for _, tableauNode := range tableau.Nodes {
 		nextStates.ResetNext()
 		for sidx := 0; sidx < succCnt; sidx++ {
-			s1 := nextStates.Next()
+			s1 := nextStates.Next().(*TLCStateMut)
 			if s1 == nil {
 				continue
 			}
@@ -459,7 +459,7 @@ func (c *LiveChecker) addNextStateTableau(tool *Tool, s0 *TLCStateMut, fp0 uint6
 		alen := len(c.Solution.CheckAction)
 		nextStates.ResetNext()
 		for idx := 0; idx < nextStates.Size(); idx++ {
-			s1 := nextStates.Next()
+			s1 := nextStates.Next().(*TLCStateMut)
 			if s1 == nil {
 				continue
 			}
@@ -523,7 +523,7 @@ func (c *LiveChecker) addNextStateTableauDisk(tool *Tool, s0 *TLCStateMut, fp0 u
 		node0.SetCheckState(checkStateRes)
 		nextStates.ResetNext()
 		for sidx := 0; sidx < succCnt; sidx++ {
-			s1 := nextStates.Next()
+			s1 := nextStates.Next().(*TLCStateMut)
 			if s1 == nil {
 				continue
 			}
@@ -978,7 +978,7 @@ func (lc *LiveCheck) addNextState(tool *Tool, s0 *TLCStateMut, fp0 uint64, nextS
 		actionResults := NewBitVector(alen * nextStates.Size())
 		nextStates.ResetNext()
 		for sidx := 0; sidx < nextStates.Size(); sidx++ {
-			s1 := nextStates.Next()
+			s1 := nextStates.Next().(*TLCStateMut)
 			if s1 == nil {
 				continue
 			}

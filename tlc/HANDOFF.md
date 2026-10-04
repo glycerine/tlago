@@ -2372,3 +2372,52 @@ liveness/debugger/container callers; preserve evaluator state semantics and
 respect deferred topics (routine adaptations of existing callers are sufficient).
 After set class, remaining cdot contexts (CdotWithContext A/B/C/D and chained
 cdots) and evaluator model cases continue existing topic; read original setup.
+
+
+## 2026-10-04: original SetOfStates tests and production state semantics
+
+Completed all six original SetOfStatesTest methods in
+set_of_states_java_test.go, mechanically translating DummyTLCState's constant
+fingerprint/object identity and EqualityDummyTLCState's class/fingerprint/id
+comparison and int32 hash. Preserved every original assertion, all32-element
+loops,64 distinct same-fingerprint states,32 equal reinserts, iterator identity,
+fingerprint sum528 and Java HashSet size32. Older mutable-state checks remain;
+they no longer substitute for the original custom-state tests.
+Production SetOfStates now stores the TLCState collection interface rather than
+forcing every state to be TLCStateMut. Evaluator/liveness callers explicitly
+retain mutable-state boundaries; ToSlice remains the concrete evaluator adapter.
+StateVec still uses mutable states: this checkpoint does not claim a complete
+abstract-state conversion of every evaluator API. TLCStateMut.Equal now propagates
+value equality failures and follows the source receiver-length loop instead of
+silently treating errors/unequal lengths as false. Its hash remains native object
+identity, preserving Java's deliberate equals-without-hashCode behavior.
+SetOfStates implements source tool/no-tool fingerprint overloads through growth,
+passes actual worker tools from successor collection, preserves iteratorIndex
+across clear/growth, rejects negative capacity/nil vectors, increments iteration
+before bounds failure, and prints signed fingerprints with the source UTF16
+last-code-unit chop. Collision handling catches only direct TLCRuntimeException
+with the source constrained equality-message assertion; other failures propagate.
+TLCStateSet provides source HashSet hash/equals semantics for ToSet and action-
+identity subsets. No fingerprint/id values were smuggled into mutable states,
+and no test-only production callback or reduced matrix was introduced.
+Unchanged original Java JUnit: all6 pass0.007s. Go focused normal0.012s and final
+focused race1.054s pass. Ignored Java/Go boundary mains produce byte-identical
+logs for signed/chopped string, iterator after growth, tool fingerprint rehash,
+mixed-type equality catch and nil-vector failure. These probes earn no test
+credit and add no persistent regression/unit tests.
+Full workspace passes(root379.623s,SANY1.010s,TLC63.792s); session21479 retired.
+Earlier normal13214/race82477 were terminated130 for the actual nil-vector
+constructor correction, superseded by final verification. Final full TLC race
+passes547.729s; session20676 retired, set-of-states-full-race.log. Its compiled
+matrix includes all six new methods and final production. Final focused
+session51511 has finished0. No checks remain running.
+Inventory608/1269 contexts(47.9%),176/626 complete classes(28.1%),661 pending
+across450 classes,one partial. Evaluation topic23/45 classes,29/51 methods
+complete,22 pending. MappedJSON independently reconciled. Deferred topics
+unchanged. Next inspected original CdotWithContextA/B/C/D and ChainedCdots methods;
+all set CDOT_KEY=true, debugger=false,coverage=false,source cdot path. B/D
+noGenerateSpec=true; A/C/Chained keep generation. Inherited success exits retained.
+A/B/C assert FINISHED,noGENERAL,5/3/0,depth2; D1/1/0,depth1. Chained9/4/0,depth2,
+no postcondition false/evaluation error, register42 nonempty and first IntValue9.
+No new tests/fixtures for these classes activated yet. Preserve constructor,
+generation/dump/worker settings and all inherited assertions before credit. Goal remains active.
