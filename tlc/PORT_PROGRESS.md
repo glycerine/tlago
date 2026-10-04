@@ -3134,3 +3134,16 @@ pass. Full workspace passes(root379.229s,SANY1.102s,TLC61.182s). No checks runni
 baseline because this checkpoint changes only root tests/fixtures/docs.
 Inventory613/1269 contexts(48.3%),181/626 complete classes(28.9%); evaluation
 34/51methods,28/45classes complete,17pending. Deferred topics unchanged.
+
+
+### 2026-10-04 — Evaluation topic completed
+
+Ported17 remaining evaluation contexts with exact state-generation counts,
+coverage locations, deadlock settings, LETvariant exits and full two-state
+traces, recursion options and initialization-order configs/dependency. All22
+source fixture files byte-identical; no production changes needed.
+Unchanged original Java17 pass. Go focused4/8/5 groups pass4.765s/4.878s/2.159s;
+combined all17rootrace58.170s passes. Full workspace passes(root380.443s,SANY1.021s,TLC61.213s); no checks running;
+retain full TLC race547.729s baseline for unchanged production/pkgtests.
+Inventory630/1269contexts(49.6%),198/626classes(31.6%); evaluationtopic complete
+45/45classes,51/51contexts. Deferred topics unchanged; overall goal active.

@@ -2474,3 +2474,52 @@ all17 remain Missing until complete Go translations and verification.
 Staged diff --check warnings are only original fixture bytes: source trailing
 space and TLA ======= delimiters (Git labels these conflict markers). All ten
 files verified byte-identical; preserve them. Go/docs diff --check is clean.
+
+
+## 2026-10-04: remaining original evaluation methods
+
+Ported all17 remaining contexts: EmptyExistentialQuantifier, MinimalSetOfInit/
+NextStates,UndeclaredRecursion (tlc_evaluation_remaining_java_test.go), eight
+LetDef1/2Boxed variants (tlc_let_boxed_java_test.go), InitEvalOrder1..4 inherited
+methods plus Basic's declared method (tlc_init_eval_order_java_test.go).
+All source settings and assertions retained; no production changes. Empty
+quantifier enablesdeadlock,configTLA,expectsdeadlock,FINISHED/noGENERAL,1/1/0.
+MinimalInit retains8/s/6,14/6/0,depth1,zeroUncovered. MinimalNext retains1initial,
+57/7/0,depth2 and exactly zero coverage at source lines34/42,col10..15; helper
+uses source CommonTestCase.assertUncovered's set semantics, not relaxedcoverage.
+Recursion retains embedded Base/configTLA,debuggerfalse,coveragefalse,noJSON,
+noGenerateSpec,dottrue,success,FINISHED/noGENERAL,0/0/0,depth0.
+LET variantsa/b retain debuggerfalse,expectedliveness,2/2/0,FINISHED,action-property
+violation,STATE_PRINT2 and fullCommonTestCase traceTRUE/FALSE (initial predicate,
+action metadata, allordinals,ASCIItrim,exactlength). c/d retain defaultdebugger,
+success,FINISHED/SUCCESS,3/2/0. AllLET retaincoverage/dottrue,noGenerateSpec,noJSON;
+no unsolicited coverage/general/stuttering assertions. InitOrder1..4 preserve
+configs/conjunctorders,defaultsettings,success,FINISHED/noGENERAL,2/1/0; Basic
+alsozeroUncovered. EvalOrder/Base.tla included, not substituted. All22 original
+TLA/CFG fixture files verified byte-identical. Copyright notices retained.
+All17 unchanged original Java tests pass (prior checkpoint preflight, original-
+<Class>-junit.log). Go focused four4.765s,LET8 4.878s,InitOrder5 2.159s pass;
+retire67012/85439/29205. Combined all17 root race58.170s passes; retire3590,
+evaluation-final-race.log. Full workspace passes(root380.443s,SANY1.021s,TLC61.213s); retire66868,
+evaluation-final-full-normal.log. No checks remain running. No TLC production/pkgtests changed; retain
+full TLC race e3b3f46 547.729s; no redundant repeat.
+Inventory630/1269contexts(49.6%),198/626 completeclasses(31.6%),639pending
+across428classes,onepartial. Evaluation nowfullycomplete45/45classes,51/51
+contexts. MappedJSON independently recomputed. Deferred topics unchanged;
+goal remains active, hundreds of original contexts remain.
+
+Next inspected ASTest and ActionLevelPropA..E; no Go tests/fixtures activated.
+AS sourcefolderAS,expected FAILURE_SPEC_EVAL,only STATES_AND_NO_NEXT_ACTION plus
+inheritedexit; all defaults retained. ActionLevelProp sharedmodule/configA..E,
+coveragefalse,allotherdefaults,ERROR_CONFIG_PARSE,FINISHED,source diagnostic:
+A/B/C PROPERTY_ACTION_LEVEL,D PROPERTY_ACTION_LEVEL_SQUARE_A_SUB_V,
+E PROPERTY_ACTION_LEVEL_ANGLE_A_SUB_V. Preserve original config/model files and
+source distinction among bare, square,angle action-level properties.
+
+Allsix upcoming AS/ActionLevelProp Java JUnit contexts pass unchanged in separate
+JVM scratch runs; original-<Class>-junit.log,safety-action-level-javac.log,
+retire71137. No Go port credit/tests/fixtures for those six yet.
+
+Staged diff --check warnings are confined to unchanged source fixture trailing
+whitespace in EvalOrder and MinimalSet files; all22fixtures independently
+byte-compared. Go/docs staged whitespace check is clean. Preserve source bytes.
