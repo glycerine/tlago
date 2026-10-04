@@ -1065,3 +1065,29 @@ and nil predecessor state. Retain function/EXCEPT identity, conversion ordering,
 all nested EXCEPT assertions and fingerprint seeds; don't substitute parser models
 or approximate bad-sharing checks. Only existing Go lazy test is a fallback-format
 case, not a translation of these original methods.
+
+
+FcnLambdaValueTest is port complete in value_lambda_java_test.go: all eighteen
+original methods mechanically translated, with all 49 equality, three null and
+one identity assertions reconciled against source. Preserved the constant-result
+Tool.EvalFunc mock, formal x/arity zero, nullSN semantic body, EmptyContext,
+EvalClear, TLCStates dummy v0=0/uid=0, nil predecessor, constructor locations,
+conversion ordering, nested/shared EXCEPT regressions, cache identity and original
+fingerprint calls/FP64.Init sites. Native zero CostModel (Node nil) represents
+source null arguments. Class cleanup restores intern/state/tool/metadata/symmetry
+and fingerprint globals without resetting between original methods. Source and
+Go lazy-function implementation call only Tool.eval; no other mock methods need
+runtime reflection boilerplate. No original assertions weakened, fixtures changed,
+or invented tests added; no production changes needed. Current source Java class
+and unchanged original test plus TLCStates helper pass JUnit -ea (18, 0.038s).
+Targeted Go passes (0.011s); full TLC normal passes (3.516s), full TLC -race passes
+(26.717s). Retire handles 36079, 13799, 50272. Prior full workspace results remain
+green; this slice adds tests/docs only. Inventory now 331/1269 methods (26.1%),
+110/626 complete classes (17.6%), 938 pending methods across 516 classes.
+Next: complete SetOfFcnsValueTest, retaining indexed subset enumeration rather
+than substituting ordinary enumeration, all empty domain/range sampling checks,
+all expected function/domain/value/membership assertions, exact non-enumerable
+errors and all four huge sets at sample sizes 0,1,2,799,1024,8932,16933. The commented
+109031 sample is not an active source case. Do not downgrade this correctness test
+to a benchmark exclusion or reduce its sample matrix. Five user-deferred topics
+remain deferred.
