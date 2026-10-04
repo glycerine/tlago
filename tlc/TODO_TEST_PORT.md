@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **127 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (20.3%).**
-- **487 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (38.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **782 logical method contexts across 499 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **128 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (20.4%).**
+- **489 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (38.5%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **780 logical method contexts across 498 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -39,9 +39,9 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
-| Collections, buffered files, combinatorics, and statistics | 14 | 13 | 91 | 89 | 2 |
+| Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **127** | **1,269** | **487** | **782** |
+| **Total** | **626** | **128** | **1,269** | **489** | **780** |
 
 ## Porting rules and proposed order
 
@@ -655,7 +655,8 @@ Original primitive/composite value, normalization, comparison, EXCEPT, serializa
 
 Original utility cases, file operations/fuzz sequences, integer queues/stacks, vectors, contexts, combinatorics, and parameterized statistics.
 
-- [ ] [tlc2/util/BufferedRandomAccessFileFuzzTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileFuzzTest.java) — **Missing**: `fuzz`, `testWellDefined`.
+- [x] [tlc2/util/BufferedRandomAccessFileFuzzTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileFuzzTest.java) — **Port complete**: `fuzz`, `testWellDefined`.
+  Go translation: [tlc/buffered_random_access_file_fuzz_java_test.go](buffered_random_access_file_fuzz_java_test.go). Original 10,000 shared-counter traces of 50 operations, every processor worker/seed, eight operations, rejection sampling, independent native file oracle, defined-hole model, full-read smoothing, minimizer and exact well-definedness case are retained. This is the original correctness harness, not a shortened Go fuzz substitute.
 - [x] [tlc2/util/BufferedRandomAccessFileTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileTest.java) — **Port complete**: `testWrite`, `testWriteSeek`, `testWriteSeekNoLength`, `testRead`, `testReadSeekNoLength`, `testInvalidateBufferedData`, `testReadAfterSeekPastEndOfFile`, `testWriteAfterSeekPastEndOfFile`, `testObscureSetLengthBehavior`, `testIdempotentClose`, `testIOExceptionOnUseAfterClose`, `regressionTest01`, `regressionTest02`, `regressionTest03`, `regressionTest04`, `regressionTest05`, `regressionTest06`, `regressionTest07`.
   Go translation: [tlc/buffered_random_access_file_java_test.go](buffered_random_access_file_java_test.go). All eighteen original methods, complete buffer-size loops, fifteen typed closed-handle catches and every operation/literal in all seven generated traces; no exception requirement was added to the two permissive seek/no-length catches.
 - [x] [tlc2/util/ByteUtilsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/ByteUtilsTest.java) — **Port complete**: `test1`, `test2`, `test3`, `test4`, `test5`, `test6`.
@@ -1034,3 +1035,4 @@ When a complete original method lands, record its Java class/method and Go file,
 | [tlc2/util/statistics/BucketStatisticsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/statistics/BucketStatisticsTest.java) | `testInvalidArgument`, `testMean`, `testMedian`, `testMin`, `testMin2`, `testMax`, `testStandardDeviation`, `testGetPercentile`, `testGetPercentileNaN`, `testToString` | [tlc/bucket_statistics_java_test.go](bucket_statistics_java_test.go) |
 | [tlc2/util/statistics/FixedSizedBucketStatisticsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/statistics/FixedSizedBucketStatisticsTest.java) | `testMin`, `testMin2`, `testMax`, `testInvalidArgument`, `testGetPercentileNaN`, `testMaximum` | [tlc/bucket_statistics_java_test.go](bucket_statistics_java_test.go) |
 | [tlc2/util/BufferedRandomAccessFileTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileTest.java) | `testWrite`, `testWriteSeek`, `testWriteSeekNoLength`, `testRead`, `testReadSeekNoLength`, `testInvalidateBufferedData`, `testReadAfterSeekPastEndOfFile`, `testWriteAfterSeekPastEndOfFile`, `testObscureSetLengthBehavior`, `testIdempotentClose`, `testIOExceptionOnUseAfterClose`, `regressionTest01`, `regressionTest02`, `regressionTest03`, `regressionTest04`, `regressionTest05`, `regressionTest06`, `regressionTest07` | [tlc/buffered_random_access_file_java_test.go](buffered_random_access_file_java_test.go) |
+| [tlc2/util/BufferedRandomAccessFileFuzzTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileFuzzTest.java) | `fuzz`, `testWellDefined` | [tlc/buffered_random_access_file_fuzz_java_test.go](buffered_random_access_file_fuzz_java_test.go) |

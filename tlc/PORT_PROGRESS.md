@@ -2666,3 +2666,53 @@ passes (0.013s), handle 97370 retired; the full fuzz method remains unrun, zero
 inventory credit. Overlay/Java class outputs are ignored scratch evidence.
 Next action: finish review and full workload of the draft original fuzz class,
 then copy it into tlc/ and update inventory only after verified whole-class parity.
+
+
+BufferedRandomAccessFileFuzzTest is translated in
+buffered_random_access_file_fuzz_java_test.go: both original methods and the full
+original harness. One worker per available processor (Java and Go both report 48
+here), Java Random(threadID), shared atomic run IDs 1..10000, fifty operations per
+trace, BOUND=16384, all eight source operations, original random array lengths/
+offsets/lengths and rejection sampling. Independent AbstractFileState BitSet
+adapter retains union of prior writes, exclusive range ends, undefined holes,
+next-clear-bit criterion and original seek/truncate/read cursor rules. Source
+1024-bit hint and dynamic word growth retained. Native unbuffered os.File oracle
+implements Java RandomAccessFile EOF and setLength pointer rules; actual production
+BufferedRandomAccessFile is the other side. No buffered implementation was used
+as the oracle. ReadArray preserves first zero-length read, null vs empty list,
+partial-read smoothing at unchanged offset and signed byte result comparison.
+All source file operations remain. Minimize retains stride, deletion/order,
+unchanged-source append identity cases and wellDefined short circuit. Catch
+Exception|AssertionError is separate from the outer Throwable worker catch;
+represented Java Error escapes to the outer boundary. Workers retain source atomic
+publication and stop behavior; joins complete before failure/minimization reporting.
+Go's native goroutines replace source named daemon threads (names are unused by
+this original's assertions); all workers are joined, with no smaller processor cap.
+Go test cleanup replaces source deleteOnExit, retaining the original two temp
+files per trace until the full method finishes. Cleanup preserves first failure
+while closing in source reverse order, including second-resource init failure.
+No source checks inspect suppressed-exception arrays or unused RunResult hashCode.
+Source wellDefined's six literal operations/offsets/length/-39 byte are exact.
+Diagnostics retain signed byte lists, source labels and RuntimeException wrappers.
+No invented tests, shortened workload, skipped seeds, assertions or minimizer.
+Java original all two methods pass with -ea (0.960s), Go initial original run
+passes (1.694s), initial complete Go race run passes (11.315s). Parsed all three
+logs: exactly 10000 distinct run IDs 1..10000 each; JUnit's first console line is
+prefixed by its progress dot, handled in the external evidence parser. Java/Go
+actual generation comparisons for all 48 seeds, two fifty-operation traces each,
+full operation byte arrays and subsequent nextLong are byte-identical (4848 lines).
+These ignored probes are evidence, not added test credit. Final resource-close
+review adjusted first-exception precedence after these initial runs; final focused
+complete fuzz race passes (11.566s) and full TLC normal passes (46.785s).
+Retire handles 61356/81395. Earlier
+full TLC normal passes (45.046s); retire 73428. Retire 89777/86028/26326/27325.
+No production functionality changed in this checkpoint; preceding full workspace
+and full TLC race green baseline remain applicable to unchanged production/root
+packages. Final checks specifically cover the added full original test harness.
+Inventory now 489/1269 contexts (38.5%), 128/626 complete classes (20.4%), 780
+pending contexts across 498 classes, one partial. Utility correctness topic now
+complete 14/14 classes, 91/91 methods. All five deferred topics remain deferred.
+Next: standard module correctness originals, beginning SequencesTest (full source
+read this turn), then module/TLCTest. Inspect production source and preserve full
+string fixtures, exception codes/messages, cardinality cases and complete source
+function loops; do not credit existing approximate checks before reconciliation.
