@@ -6,30 +6,108 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-2026-10-04 latest: Liveness helper batch committedc64fd09 after48 original
-contexts normal0.039s/race1.078s and fullTLC65.935s green. All helper handles
-terminal/retired. Next six original Examples now translated and normal77862
-PASS61.674s: LockHS/MCAlternatingBit/MCEWD687a/MCLiveInternalMemory/
-MCLiveWriteThroughCache/MCWriteThroughCache.28 original assertions plus
-inherited exits/five settings overrides preserved,26 byte-identical fixtures;
-all unchanged Java references PASS. No production changes needed in this batch.
-Inventory886/1269(69.8%),409/626classes(65.3%);383contexts/217classes pending,
-onepartial, all20topicrows verified. Required gates: rootfocusedrace6270 PASS631.084s, terminal0/retired
-(.codex-gotmp/examples-fourth-six-race.log); fullworkspace88519 PASS(root1181.648s,SANY0.993s,TLC65.132s),
-terminal0/retired (.codex-gotmp/examples-fourth-six-full-workspace.jsonl). Workspace uses -json
-for live package/test progress, unlike previously buffered -v multi-package run.
-All required current-batch gates green.30 intended staged paths checked;
-26 vectors byte-identical. Ready for authorized commit. No helper probes active.
-Read-only preparation: unchanged Java fifth preflight38279 PASS (YoYoNoPruning/
-NbacgGuer01/Prisoners/SDPAttackNewSolution/SchedulingAllocator/SimpleAllocator),
-terminal0/retired. Six translations+14 fixture maps only in ignored
-examples-fifth-six.go.preview/examples-fifth-six-fixtures.json;30assertions,
-no active Go or inventory credit. Original SDPAttack safety reference90667 also
-PASS/terminal0/retired. Whole method, original stats1103/526/175 and all eleven
-full states/ordinals/actions through existing CommonTestCase assertion helper
-prepared only in ignored examples-sdp-safety.go.preview plus fixture map;
-no active Go/credit. Constants/state formatting transcribed mechanically.
+2026-10-04 latest: Previous six lock/protocol/memory/cache Examples committed
+00893c4 after focused normal61.674s/race631.084s and fullworkspace PASS
+(root1181.648s,SANY0.993s,TLC65.132s). Those handles are terminal/retired.
 
+Current uncommitted batch: twelve remaining original Examples methods and29
+byte-identical Java fixtures in test_vectors. MCYoYoNoPruning/NbacgGuer01/
+Prisoners/SDPAttackNewSolution/SchedulingAllocator/SimpleAllocator/
+SingleLaneBridge/SpanTreeRandom/SpanTree/SyncTerminationDetection/SDPAttack/
+MCDistributedReplicatedLog. All unchanged Java references PASS (38279,62315,
+90667,25396 terminal/retired). All original constructor flags, class isolation,
+classpath, recorder assertions, full postconditions, traces and exit checks
+retained. SDPAttack: stats1103/526/175, all11 states, full21-argument formatter
+and14constant strings. ReplicatedLog is an ordinary local single-worker model,
+not distributed TLC transport: stats271/37/0, all6states and named back-edge2.
+
+Initial Go77918 terminal1/retired after594.281s:11pass, onlyYoYo full
+postcondition fails. Counts and states match Java110/60/depth19, but Go wrapper
+lost the source action location. Java Specs.addSubsts uses the source
+SubstInNode copy constructor, retaining syntax and shared substitution array.
+Production NewSubstInNodeFromSource now preserves TreeNode/Location/Substs;
+SpecsAddSubsts calls it. No weakened assertion. Focused YoYo9506 PASS2.065s.
+Current complete12 normal25227 PASS570.714s, terminal0/retired.
+YoYo+19 original coverage race90782 PASS100.888s, terminal0/retired.
+Full TLC package race7106 PASS624.947s, terminal0/retired, log
+.codex-gotmp/examples-source-subst-full-tlc-race.log.
+Full workspace89315 PASS(root1600.051s,SANY1.089s,TLC67.616s), terminal0/
+retired. JSONL
+.codex-gotmp/examples-twelve-full-workspace.jsonl (60m timeout).
+An initial workspace invocation used a malformed timeout flag and terminated
+before tests; corrected89315 is the actual gate. Do not restart live gates.
+
+Next two source-only slices now installed, with no production change from
+TemporalDoubleNegation tests:8whole subclass contexts/16pristine fixtures,
+normal38137 PASS5.658s, race28833 PASS26.526s, terminal0/retired. Four original
+Github1037/Github790/InitialLivenessEvaluationError/InvariantOnly contexts and
+8pristine fixtures installed. Initial run48878 terminal1/retired: only initial
+liveness error fails, Go prints same Java diagnostic/stats but exit255 versus
+source allowed151(config error)/12(safety). Java always takes original thrown
+exception code before diagnostic replay; Go reportInitException kept a generic
+failure unless result==NoError. Production checker.go now unconditionally
+uses initExceptionCode(err) for non-nil exceptions, exactly source catch logic.
+All4 corrected99897 PASS4.967s, terminal0/retired; original assertions unchanged.
+
+Current gates for this second production fix: fullTLC normal37983 PASS64.054s, terminal0/retired,
+.codex-gotmp/initial-live-error-full-tlc-go.log; root race48326 PASS72.231s, terminal0/retired, covering
+all12new temporal/initial cases plus11existing original initialization methods,
+.codex-gotmp/initial-live-error-init-and-temporal-race.log. Workspace89315 PASS but was compiled BEFORE the checker.go initial-error fix and the
+12new temporal/initial tests; do not claim that gate covers these additions.
+Its root integration evidence remains useful for the source-constructor fix;
+Fresh full workspace65076 PASS(root1621.178s,SANY0.918s,TLC66.273s), terminal0/
+retired, compiled with both production fixes and all24new source contexts. Log
+.codex-gotmp/examples-temporal-initial-current-full-workspace.jsonl. All current
+gates green; no live handles. Ready for authorized commit, then install remaining
+original liveness model slices. Do not restart terminal runs.
+
+Inventory now910/1269(71.7%),433/626(69.2%),359contexts/193classes pending,
+onepartial; liveness78/101,23pending. All20topic rows verified. Exactly63 intended paths staged/reviewed:3production files,3source test files,
+4docs,53byte-identical Java fixtures. Latest handoff/progress receipts to be restaged
+before commit. No production/test edits beyond those compiled by65076.
+
+Independent preparation, uninstalled/uncredited: liveness-four-simple.go.preview
+(4source methods/8fixture maps), liveness-finite-and-loop.go.preview (11methods/
+22fixture maps). Source-only review JSON remaining-liveness-review.json covers
+21methods. Java preflight4818 first12classes PASS then terminal1 on unchanged
+LivenessSymmetryWarning inherited expected-success exit (actual13 from April25MC).
+That source contradiction is noted in TODO; don't weaken or manufacture success.
+Remaining9 graph models95224 PASS, terminal0/retired. Finite/loop preview now
+regenerated with source assertion order by prepare_liveness_finite_and_loop_ordered.py.
+Also prepared liveness-six-diagnostics-symmetry.go.preview (6complete original
+methods/14fixture maps), preserving source assertion order, workers NumCPU, full
+nested-expression strings, exact named action labels, graphs, register42 and
+coverage checks. All21 eligible remaining liveness models have green unchanged
+Java references. Their Go drafts remain uninstalled/uncredited; review all
+fixtures/imports/settings before installation, fix any production failure first.
+
+Offheap matrix preview offheap-indexer-parameter-matrices.go.preview preserves
+all1104rows per class, five inherited methods and original assumptions (15
+logical contexts/16560parameter contexts). All3 unchanged Java reference classes
+31994 PASS, terminal0/retired; not installed or credited. TLC iterator9 original
+methods Java PASS in preflight-tlc-iterator-source-methods.py; ignored preview
+tlc-iterator-source-methods.go.preview. Production needs Java getLast/reads
+and strict NoSuchElementException exhaustion instead of io.EOF before test port.
+Existing msbDiskIterator has only hasNext/next; source MSBDiskFPSet.java lines186+
+contains full methods. Keep native error-return adaptation with exact exception
+boundary, don't weaken original catch. These methods are not installed/credited.
+Independent numbered-suite preparation:104 non-ignored concrete classes
+extracted from source inventory (exclude abstract SuiteTestCase and ignored
+Test61). Unchanged Java preflight11601 PASS all104, terminal0/retired, script
+.codex-gotmp/correctness-java/preflight-numbered-legacy-suite.py, per-class logs
+numbered-legacy-suite-<Class>-junit.log. Compiles SuiteTestCase/SuiteETestCase and
+original TestPrintStream. Source review JSON numbered-legacy-source-review.json.
+No Go numbered test/fixture installation or inventory credit yet. Future
+negative SANY cases must use actual source console capture and production error
+propagation; current shared model helper requires zero parser diagnostics, so
+that assumption cannot be carried into intentional parser-error cases.
+SuiteTestCase: default stats2/1/0/1; preserve all subclass constructor counts,
+uncovered sets and Test52/55/56/63 additional full coverage. Test19/27/33 retain
+full large state spaces, no sampling. SuiteETestCase: actual ToolIO out+err
+TestPrintStream capture, exact substring checks, constructor args (ETest8 uses
+simulation and original ERROR TODO), deadlock overrides (ETest3/Test220) and
+exit checks. TestInvalidInvariant uses root test-model directory, not suite.
+Five user-deferred topics and checkpoint FL2 variant remain deferred.
 
 
 2026-10-04: Six Examples tests and namespace fixes committed52959cb after

@@ -439,6 +439,16 @@ func NewSubstInNode(body SemanticNode, substs ...Subst) *SubstInNode {
 	}
 }
 
+// SANY's SubstInNode(SubstInNode, ExprNode, Errors) constructor reuses the
+// source syntax and substitution array when replacing the expression body.
+func NewSubstInNodeFromSource(source *SubstInNode, body SemanticNode) *SubstInNode {
+	node := NewSubstInNode(body)
+	node.TreeNode = source.TreeNode
+	node.Location = source.Location
+	node.Substs = source.Substs
+	return node
+}
+
 type APSubstInNode struct {
 	SemanticNodeBase
 	Substs []Subst

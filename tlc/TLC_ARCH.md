@@ -1,5 +1,22 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04 current correctness slice: twelve Examples methods/29pristine
+fixtures PASS570.714s after preserving Java's substitution-constructor metadata.
+YoYo plus19 original coverage race PASS100.888s; full TLC race PASS624.947s.
+Eight original temporal-negation contexts/16fixtures PASS normal5.658s and
+race26.526s. Four original success/initial-error contexts/8fixtures PASS4.967s
+after preserving the original initialization exception code before replay.
+Current initialization/temporal race PASS72.231s (23original methods), full
+TLC normal PASS64.054s. Fresh full workspace PASS(root1621.178s,
+SANY0.918s,TLC66.273s) with both fixes and all24new contexts. All gates green,
+ready for authorized commit.
+Earlier substitution-only workspace also PASS(root1600.051s), but the fresh
+1621.178s gate is the current-source receipt.
+TODO_TEST_PORT:910/1269 contexts (71.7%),433/626 complete classes,359pending.
+The five deferred topics remain skipped; no original assertion weakened.
+
+
+
 **Scope exception required by the user (2026-10-02): email reporting is
 forbidden.** Email delivery and its JavaMail/SMTP/MIME/Activation/ImageIO/AWT/
 codec dependencies, including mail-driven JVM emulation, are excluded from
@@ -4760,3 +4777,10 @@ Both DiskGraph and TableauDiskGraph keep that same failure boundary.
 The failure also retains Java's RuntimeException family via the existing
 generic exception type. Original graph test catch blocks reject I/O errors;
 returning an untyped error and accepting every error would lose that boundary.
+
+
+Specs.addSubsts reconstructs each wrapper with Java's SubstInNode(source,body)
+constructor, preserving the source syntax tree and shared substitution array.
+Go NewSubstInNodeFromSource carries TreeNode/Location/Substs while allocating
+a fresh semantic node and replacing only the body. Unnamed action locations
+and CounterExample action records therefore retain the INSTANCE source range.

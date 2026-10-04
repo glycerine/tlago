@@ -40,7 +40,7 @@ func SpecsAddSubsts(expr SemanticNode, subs *List) SemanticNode {
 		if !ok || sn == nil {
 			panic(newTLCError(ECGeneral, "SpecsAddSubsts expected *SubstInNode, got %T", subs.Car()))
 		}
-		res = NewSubstInNode(res, sn.Substs...)
+		res = NewSubstInNodeFromSource(sn, res)
 		subs = subs.Cdr()
 	}
 	return res

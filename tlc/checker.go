@@ -1420,9 +1420,9 @@ func (mc *ModelChecker) reportInitException(result int, err error) int {
 		}
 		return ECGeneral
 	}
-	if result == NoError {
-		result = initExceptionCode(err)
-	}
+	// Java's catch(Throwable) takes the original exception's code before
+	// diagnostic replay, even when doInit returned a generic failure code.
+	result = initExceptionCode(err)
 	message := javaThrowableMessage(err)
 	if javaSystemFailureCode(err) == ECSystemStackOverflow {
 		message = formatMessage(ECSystemStackOverflow, nil)

@@ -1,5 +1,22 @@
 # TLC Port Progress
 
+2026-10-04 current correctness slice: twelve Examples methods/29pristine
+fixtures PASS570.714s after preserving Java's substitution-constructor metadata.
+YoYo plus19 original coverage race PASS100.888s; full TLC race PASS624.947s.
+Eight original temporal-negation contexts/16fixtures PASS normal5.658s and
+race26.526s. Four original success/initial-error contexts/8fixtures PASS4.967s
+after preserving the original initialization exception code before replay.
+Current initialization/temporal race PASS72.231s (23original methods), full
+TLC normal PASS64.054s. Fresh full workspace PASS(root1621.178s,
+SANY0.918s,TLC66.273s) with both fixes and all24new contexts. All gates green,
+ready for authorized commit.
+Earlier substitution-only workspace also PASS(root1600.051s), but the fresh
+1621.178s gate is the current-source receipt.
+TODO_TEST_PORT:910/1269 contexts (71.7%),433/626 complete classes,359pending.
+The five deferred topics remain skipped; no original assertion weakened.
+
+
+
 ## Notes To Future Us
 
 - **Priority user scope correction (2026-10-02): email reporting is forbidden and must consume no more cycles.** Stop email/JavaMail/SMTP/MIME/Activation/ImageIO/AWT/codec work and mail-driven JVM emulation immediately, including audits, probes, new test ports and downloads. All older mail-related next/pending/required entries are historical and superseded; these dependencies are excluded from TLC completion. The later user instruction authorizes surgical removal of email-only source/tests/fixtures/resources and stale plans while preserving core distributed behavior, packaged property loading, console output, generic exceptions, OpenJDK notices and x/text. Resume core TLC parity and existing Java tests feature by feature; do not invent regression/unit tests.
@@ -4691,3 +4708,36 @@ TLC65.132s), terminal0/retired; JSONL confirms no failure events. Six source
 examples normal61.674s/race631.084s; all required gates green.30 intended
 staged paths checked,26 pristine vectors preserve source bytes. Ready for
 authorized commit; no production changes in this six-test batch.
+
+2026-10-04: Six-example batch committed00893c4 after normal/race/fullworkspace
+green; clean tree before next slice. Installed12 remaining source Examples
+methods and29 byte-exact vectors from Java dependency closures. All unchanged
+Java references passed. Uniformcases retain48 direct recorder assertions;
+SDPAttack adds5 recorder checks, complete11 states through mechanically copied
+21argument/14constant string formatter and inherited exact trace assertions.
+LocalReplicatedLog adds7 recorder checks,6full states and named back-edge
+assertion; ordinary single-worker local checker model, no distributed transport
+work. Focused Go77918 active, no inventory credit yet.
+
+2026-10-04: Initial12 discovery77918 failed YoYo full PostCondition despite
+matching Java110 generated/60distinct/depth19 and initial state values.
+Unnamed action metadata <Action subst> loses sourceINSTANCE line16. Java
+Specs.addSubsts uses copying SubstInNode constructor retaining source stn and
+shared substitution array. Go shortcut made a fresh wrapper without source
+metadata. Ported NewSubstInNodeFromSource and routed SpecsAddSubsts throughit;
+source TreeNode/Location/Substs retained with fresh semantic identity/body.
+Unchanged complete YoYo9506 PASS2.065s, terminal0/retired. Remaining initial
+batch still uses old binary; finish discovery then rerun current source.
+No assertions or postcondition fixtures weakened; no credit yet for12.
+
+2026-10-04: Initial12 discovery77918 terminal1/retired after594.281s; only
+YoYo failed,11 others PASS unchanged. SingleLaneBridge155.38s/SpanTreeRandom
+199.23s dominate. Source fix independently makes whole YoYo PASS2.065s.
+Complete12 current-source rerun started, log examples-final-twelve-source-subst-go.log;
+await all current-source methods before credit and broader/race gates.
+
+2026-10-04: Current12 normal25227 active. Constructor source-array sharing
+justifies fresh fullTLCrace and focused original YoYo+coverage rootrace; both
+started in examples-source-subst-full-tlc-race.log and
+examples-source-subst-yoyo-coverage-race.log. No source mutations pending;
+await results before crediting12 or committing.
