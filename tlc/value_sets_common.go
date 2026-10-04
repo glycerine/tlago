@@ -41,37 +41,32 @@ func IsEmptyValue(value Value) (resultBool bool, err error) {
 			return false, err
 		}
 		return elem == nil, nil
+	case *SetPredValue:
+		enum := v.Elements()
+		elem := enum.NextElement()
+		if err := enum.Err(); err != nil {
+			return false, err
+		}
+		return elem == nil, nil
 	case *SetOfTuplesValue:
 		for _, set := range v.Sets {
-			finite, err := set.IsFinite()
+			empty, err := IsEmptyValue(set)
 			if err != nil {
 				return false, err
 			}
-			if finite {
-				empty, err := IsEmptyValue(set)
-				if err != nil {
-					return false, err
-				}
-				if empty {
-					return true, nil
-				}
+			if empty {
+				return true, nil
 			}
 		}
 		return false, nil
 	case *SetOfRcdsValue:
 		for _, set := range v.Values {
-			finite, err := set.IsFinite()
+			empty, err := IsEmptyValue(set)
 			if err != nil {
 				return false, err
 			}
-			if finite {
-				empty, err := IsEmptyValue(set)
-				if err != nil {
-					return false, err
-				}
-				if empty {
-					return true, nil
-				}
+			if empty {
+				return true, nil
 			}
 		}
 		return false, nil
@@ -110,9 +105,9 @@ func IsEmptyValue(value Value) (resultBool bool, err error) {
 		if obj, ok := v.UserObj.(UserObjWithIsEmpty); ok {
 			return obj.IsEmpty()
 		}
-		return false, v.unsupported("should not call isEmpty() on value %s", v)
+		return false, v.unsupported("Shouldn't call isEmpty() on value %s", v.UserObj.String())
 	default:
-		return false, newTLCError(ECGeneral, "should not call isEmpty() on value %s", value)
+		return false, newTLCError(ECGeneral, "Shouldn't call isEmpty() on value %s", ValuesPPR(value))
 	}
 }
 

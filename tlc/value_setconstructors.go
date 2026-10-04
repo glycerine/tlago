@@ -59,9 +59,9 @@ func (v *SetOfTuplesValue) Equal(other Value) (resultBool bool, err error) {
 
 func (v *SetOfTuplesValue) Member(elem Value) (resultBool bool, err error) {
 	defer catchValueFailure(v, &err)
-	tv, ok := elem.(*TupleValue)
-	if !ok {
-		if fcn, ok := elem.(*FcnRcdValue); ok {
+	tv := asTupleValue(elem)
+	if tv == nil {
+		if fcn := asFcnRcdValue(elem); fcn != nil {
 			if fcn.Intv != nil {
 				return false, nil
 			}

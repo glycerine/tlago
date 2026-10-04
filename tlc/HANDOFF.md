@@ -2033,3 +2033,77 @@ Log tlc-ext-model-javac.log. Do not run them with upstream BASE_PATH directly:
 TTrace getTESpecOutDir writes under BASE_PATH/generated, so first copy exact
 source models into a writable scratch test-model directory and set basepath.
 No next-class Go test or fixture has been created yet.
+
+Standard-module correctness models checkpoint (2026-10-04), final verification green:
+Previous green checkpoint 0e4a0f6/bc2cc84. tlc_module_models_java_test.go now
+mechanically translates nine original concrete classes/methods:
+ConstantContextTLCCacheTest.test, TLCExtTest.test, BagsTest.testSpec,
+ConstantRank1TLCEvalTest.testSpec, ConstantRank2AssertErrorTest.testSpec,
+EmptySetEqAssumeTest.testSpec, EmptySetEqStatesTest.testSpec,
+EmptySetEqStatesRcdTest.testRcdSpec, KSubsetAssumeTest.testSpec.
+All source recorder assertions and inherited successful exit retained. Source
+model/config/dependency files copied to tlc/test_vectors/models; all16 files
+verified byte-identical to upstream, with complete assumption lists unmodified.
+Class setup: TLCExt debugger=false and embedded .tla config; constant-rank
+classes noGenerateSpec=true/doDumpTrace=false; emptiness/kSubset classes
+noGenerateSpec=true but keep default JSON trace dump. State variants keep
+checkDeadLock=true and complete assertZeroUncovered. Helper now has explicit
+checkDeadlock option and omits -deadlock for those two classes; existing callers
+retain their prior behavior. KSubset gets original CommunityModules archive on
+native CLASSPATH, matching original Java tool manifest; do not replace module
+source with resolver.go's convenience placeholders.
+Actual new EmptySetEqAssume failed success exit at model line476. Source
+SetOfTuplesValue.member starts with elem.toTuple(), then elem.toFcnRcd(). Go had
+used only concrete tuple/FcnRcd assertions, wrongly rejecting valid functions.
+Production now calls existing complete asTupleValue/asFcnRcdValue converters.
+Next failure534 exposed finite-only guards in product IsEmptyValue. Java Value
+isEmpty scans each component directly in order, so nonenumerable differences
+raise errors before later emptiness can decide. Removed the guards only from
+isEmpty; Java isFinite still has its own appropriate finite guards.
+Next failure544 exposed entirely missing SetPredValue isEmpty branch. Added
+source elements().nextElement() plus native enumeration-error propagation.
+Next failure603 exposed incorrect default-isEmpty message; source uses exact
+Shouldn't call isEmpty() on value ANY. Default UserObj uses its own raw String,
+while Value default uses ValuesPPR, preserving source message construction.
+Next failure690 was native MethodValue metadata abbreviated as ToString. Added
+actual full public static Value TLC.ToString(Value) signature, preserving normal
+reflective error wrapper rather than weakening AssertError or changing fixtures.
+Complete EmptySetEqAssume now passes, including every remaining exact error
+assertion through end of source model. State variants and KSubset all pass too.
+No invented permanent tests: only original class/method translations. Ignored
+empty-set-probe confirmed original failed ToString wrappers, no test credit.
+Original unchanged Java JUnit all9 pass(-ea -Xmx256m), separately isolated
+JVMs and writable scratch basepath. Logs tlc-cache-model-junit.log(.434s),
+tlc-ext-model-junit.log(.424s), empty-set-assume-junit.log(.716s), and
+original-{BagsTest(.717s),ConstantRank1TLCEvalTest(.384s),
+ConstantRank2AssertErrorTest(.382s),EmptySetEqStatesTest(.470s),
+EmptySetEqStatesRcdTest(.463s),KSubsetAssumeTest(.571s)}-junit.log.
+The first source runs failed due to an uncompiled unchanged TTrace harness
+class, not model behavior; explicitly compiled that original support class.
+Final combined root race passes35.002s; retire4302. Older draft normal83364 and
+TLC race94275 intentionally interrupted for final source UserObj formatting
+correction. Final full normal passes(root306.199s,SANY0.943s,TLC64.204s); retire12067.
+Full TLC race passes581.216s; retire46067. No checks remain running. Logs standard-models-full-normal
+and standard-models-full-race under .codex-gotmp/correctness-java/.
+Inventory573/1269(45.2%),147/626 classes(23.5%),696 pending across479 classes,
+one partial; standard-module topic26/44 classes57/75 methods,18 pending.
+Mapped JSON independently recomputed with source=test,path starts tlc2/,
+nonabstract/nonignored/active filter; totals match document. Appendices excluded.
+Final checkpoint has passed its full workspace and race gates. All five deferred topics stay
+outside new work; no email/distributed work.
+Next source models inspected: RandomSubsetATest/BTest inherit RandomSubset
+one full method, with seeds15041980/918347981374 and exact two-state traces,
+8008 initial/8009 generated+distinct/8007 queued. RandomSubsetTest includes
+all trace value/type/tuple bounds and zero-uncovered, and an upstream typo:
+its y bound assertion is firstY>=100000000 && firstX<=100000010; preserve that
+literal original condition instead of inventing a stronger y upper bound.
+RandomSubsetNextTest retains full67291/7729/999 counts and eleven exact trace
+states. RandomSubsetNextT4Test requires4 workers and eleven trace states with
+range/ordinal checks, not exact scheduler-dependent x values. Tuples variant
+5461/5461/4095 and seven complete state/tuple checks. SetOfFcns variant keeps
+1000 initial/2000 generated/1000 distinct/0queued/depth1/zero-uncovered;
+commented-out upstream assertions are not active requirements.
+No next-model fixtures or Go tests have been added yet. Candidates SetPredValue,
+StandardModules and RandomSubsetEmpty retain complete original zero-state
+model assumptions and source recorder checks. Do not skip random/multithreaded
+correctness simply because distributed tests are deferred.

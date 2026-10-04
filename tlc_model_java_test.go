@@ -66,9 +66,18 @@ func runJavaTLCModelTestWithDebugger(t *testing.T, name string, coverage, dump, 
 
 func runJavaTLCModelTestWithRoot(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, extraArgs ...string) *tlc.Result {
 	t.Helper()
+	return runJavaTLCModelTestWithDeadlock(t, name, root, coverage, dump, debugger, workers, false, extraArgs...)
+}
+
+// ModelCheckerTestCase.checkDeadLock overrides whether -deadlock is omitted.
+func runJavaTLCModelTestWithDeadlock(t *testing.T, name, root string, coverage, dump, debugger bool, workers int, checkDeadlock bool, extraArgs ...string) *tlc.Result {
+	t.Helper()
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	return runJavaTLCModelTestWithArguments(t, name, root, func(meta, traceDirectory string) []string {
-		args := []string{"-metadir", meta, "-deadlock", "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
+		args := []string{"-metadir", meta, "-teSpecOutDir", traceDirectory, "-fp", "0", "-seed", "1", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
+		if !checkDeadlock {
+			args = append(args, "-deadlock")
+		}
 		// Java's noGenerateSpec override omits -generateSpecTE entirely. Supplying
 		// both flags retains forced generation and adds an unwanted binary dump.
 		noGenerate := false

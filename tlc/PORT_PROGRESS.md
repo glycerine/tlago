@@ -3023,3 +3023,17 @@ Nine ignored Java/Go output/error boundary probes match byte-for-byte and earn
 no original-test credit. Full workspace passes(root304.652s,SANY1.061s,TLC62.020s);
 full TLC race passes562.312s. Inventory564/1269 methods(44.4%),138/626 complete
 classes(22.0%); CLI/output all37/37 methods and5/5 classes complete. No active checks.
+
+Standard-module original correctness models (2026-10-04): nine complete source
+classes translated in tlc_module_models_java_test.go, all16 original model/config
+and dependency files retained byte-for-byte. Source class overrides, recorder
+checks, inherited success exits, deadlock and zero-uncovered conditions retained.
+EmptySetEqAssume exposed production shortcuts: tuple membership lacked Java
+conversions, product isEmpty skipped nonfinite components, predicate-set isEmpty
+was missing, default errors differed, and ToString method metadata was abbreviated.
+Fixed actual value/override functionality before crediting the original tests;
+no assumption or error expectation weakened. Original Java nine classes pass;
+final combined model race passes35.002s. Full workspace passes(root306.199s,
+SANY0.943s,TLC64.204s); full TLC race passes581.216s. No checks remain running.
+Inventory573/1269 contexts(45.2%),147/626 complete classes(23.5%); standard
+module topic57/75 contexts,26/44 classes complete. Five deferred topics unchanged.
