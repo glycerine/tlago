@@ -1439,9 +1439,7 @@ func ExitStatusForErrorCode(code int) int {
 	case ECTLCInvariantEvaluationFailed,
 		ECTLCInvariantViolatedLevel:
 		return ExitStatusFailureSafetyEval
-	case ECTLCLiveFormulaTautology,
-		ECTLCLiveCannotHandleFormula,
-		ECTLCLiveWrongFormulaFormat:
+	case ECTLCLiveFormulaTautology:
 		return ExitStatusFailureLivenessEval
 	case ECTLCInvariantViolatedInitial,
 		ECTLCInvariantViolatedBehavior:

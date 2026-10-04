@@ -4493,3 +4493,16 @@ argument display names from the original syntax image, strip the Permutations
 application text, then consult the config override-name mapping. Semantic node
 stringification normally prints a location and cannot substitute for that image.
 The four original Github432 rows preserve both warning grammar and exact names.
+
+
+TLCEval's global cache guard must support Java ReentrantReadWriteLock's writer
+and reader reentrancy. Nested constant TLCEval calls hold the outer writer while
+entering the inner read/write paths. The Go internal lock preserves the default
+nonfair policy (writers may barge; new readers wait behind a queued writer),
+concurrent readers, per-goroutine hold counts and read-to-write upgrade blocking.
+WorkerValue.demux uses the state-only eval overload with an Empty successor,
+not a null marker. Passing null bypasses LazyValue's cache and changes exact
+coverage counts for nested argument expressions. Both original Github648 tests
+retain every coverage row and the ten-worker duplication case.
+ExitStatusForErrorCode follows EC's explicit cases: only liveness tautology maps
+to77; unsupported and malformed formulas fall through to the generic255 status.

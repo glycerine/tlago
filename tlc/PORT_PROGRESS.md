@@ -3702,3 +3702,68 @@ Inventory697/1269(54.9%),262/626(41.9%),572 pending contexts/364 classes.
 All processes terminal. Next Github461/525/597 unchanged Java JUnit passed,
 with source assertion/runner requirements documented above; no Go credit yet.
 The full original correctness-port goal remains active, deferred topics unchanged.
+
+
+2026-10-04: Github461/525/597/648/648wN/652 original methods translated.
+All six unchanged Java JUnit tests pass. Eight model/config fixtures match source
+bytes. Original assertions retained: assertion message/full five-state trace,
+extended-state metadata/ordinals, exact two-frame stack and zero uncovered;
+unsupported-formula diagnostic and Error exit; Dekker4356/1500/0 Termination
+counterexample/state/back-to-state diagnostics with random fp/seed and original
+coverage/DOT overrides; zero-state652; all35 coverage/count/cost rows for both
+one and ten workers in648. Both70-line coverage literals were compared exactly
+to the concatenated Java literals. No model-size/worker-count reduction.
+Production fixes: ExitStatusForErrorCode maps only LIVE_FORMULA_TAUTOLOGY to77,
+as Java EC does; unsupported/wrong-format formulas retain generic255. TLCEval's
+class-wide lock is Java's reentrant nonfair RW lock; a plain Go RWMutex deadlocked
+on nested constants. New internal reentrantReadWriteLock retains concurrent
+readers, writer/read reentrancy, queued-reader writer preference, writer barging,
+read-to-write blocking and source65535 acquisition limits. Installed OpenJDK
+NonfairSync javap confirms writerShouldBlock=false and readerShouldBlock uses
+apparentlyFirstQueuedIsExclusive; logreentrant-rw-reference.log. Demux evaluates
+with Empty successor state, as Java's state-only overload does, preserving
+LazyValue caching and exact coverage instead of re-evaluating argument wrappers.
+All six ports five repetitions PASS34.515s after these fixes.
+Original deadlock run48135 terminalFAIL600.073s; trace github648652-focused.log
+proves RLock inside writer-held standardTLCEvalConst. Failed build runs9791/
+23396/27915 terminal: filesystem exhausted (17MB free), not source/compiler
+failure. Removed only generated Go cache entries older than one hour:129.03GiB;
+130GiB available, source/test_vectors untouched. Cleanup3293 terminal. Focused
+handles67352/93956/37439/91628 terminal; retire all.
+Inventory703/1269(55.4%),268/626(42.8%),566 pending contexts/358 classes
+(one partial class); issue49/98 classes,52/101 methods. Broad checks running:
+workspace22755, full TLC race76601, focused root race37270 (five runs all six
+plus original1198 A/B/C/D/F/H). Logs github461652-{workspace,tlc-race,root-race}.
+Baselinea29bb49; do not commit until green. Next Github680a/b/c. Full goal active;
+user-deferred topics unchanged. No invented tests or weakened source assertions.
+
+
+Next Github680a/b/c unchanged Java JUnit all PASS; compiler loggithub680-javac.log
+and original-<Class>-junit.log. Models remain only in ignored Java scratch; no
+Go credit/active fixtures. Preserve original -config <model>.tla/-nowarning,
+debugger=false, coverage/DOT/forcedTE/JSON defaults, inherited success exit,
+FINISHED/no GENERAL, depth1, stats1/1/0 and exact UNCHANGED_VARIABLE_CHANGED:
+a x at line7col20, b x at line7col22, c x at line8col22. Suppressed console
+warnings still reach the recorder in Java. Current broad handles22755/76601/
+37270 remain live; no production changes since their launch. Goal active.
+
+
+Workspace22755 PASS399.676s root/1.036s SANY/63.897s TLC; retire22755.
+Focused root race37270 PASS389.520s: five runs of all six new ports plus original
+Github1198 A/B/C/D/F/H. Retire37270. Full TLC race76601 still live, no production
+edits since checks launched. Disk129GiB available; cleanup resolved compilation.
+Goal remains active; next680a/b/c original Java tests already pass.
+
+
+Final Github461/525/597/648/648wN/652 checkpoint: full TLC race76601
+PASS573.771s; retire76601. All final checks green: workspace399.676s root/
+1.036s SANY/63.897s TLC; full TLC race573.771s; five focused root race runs
+389.520s including all six new cases and1198 A/B/C/D/F/H; five normal runs
+34.515s. Eight fixtures byte-identical; both35-line coverage literals exact.
+Go/docs whitespace clean; preserve original fixture whitespace. Commit all six
+faithful ports, generic reentrant RW guard, correct Empty-state demux overload
+and source exit-code mapping. Inventory703/1269(55.4%),268/626(42.8%),566 pending
+contexts/358 classes (one partial). All processes terminal. Next680a/b/c original
+Java JUnit passed unchanged; no Go activation/credit yet. Full goal remains
+active, user-deferred topics unchanged. Source/test_vectors untouched by cache
+cleanup; only old generated Go cache entries were removed.

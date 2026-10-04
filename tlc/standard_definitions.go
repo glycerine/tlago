@@ -1,8 +1,6 @@
 package tlc
 
-import "sync"
-
-var standardTLCEvalMu sync.RWMutex
+var standardTLCEvalMu reentrantReadWriteLock
 var standardTLCEvalCache = make(map[tlcExtCacheKey]Value)
 
 // SpecProcessor.processModuleOverrides visits inherited Naturals definitions
@@ -652,7 +650,7 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 		return value, nil
 	}
 	demuxed, err := DemuxWorkerValue(func() (Value, error) {
-		return tool.Eval(expr, EmptyContext, EmptyState, nil, EvalClear, cm)
+		return tool.Eval(expr, EmptyContext, EmptyState, EmptyState, EvalClear, cm)
 	}, true, NumWorkers())
 	if err != nil {
 		return nil, err

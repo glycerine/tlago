@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `f4ed912`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `a29bb49`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **262 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (41.9%).**
-- **697 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (54.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **572 logical method contexts across 364 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **268 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (42.8%).**
+- **703 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (55.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **566 logical method contexts across 358 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -26,7 +26,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
 | Evaluation, initial states, next states, and action composition | 45 | 45 | 51 | 51 | 0 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 31 | 34 | 31 | 3 |
-| Issue regressions in the evaluator and checker | 98 | 43 | 101 | 46 | 55 |
+| Issue regressions in the evaluator and checker | 98 | 49 | 101 | 52 | 49 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
 | Generated TTrace recheck variants | 45 | 0 | 45 | 0 | 45 |
 | Liveness and fairness model regressions | 101 | 1 | 101 | 1 | 100 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **262** | **1,269** | **697** | **572** |
+| **Total** | **626** | **268** | **1,269** | **703** | **566** |
 
 ## Porting rules and proposed order
 
@@ -271,12 +271,12 @@ The original Github, Bugzilla, and CodePlex cases under tool/. Read each origina
 - [x] [tlc2/tool/Github391Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github391Test.java) — **Port complete**: `testSpec` → [tlc_github_362_391_407_java_test.go](../tlc_github_362_391_407_java_test.go); original zero-state stats/search depth, FINISHED and inherited success exit; all runner defaults retained.
 - [x] [tlc2/tool/Github407Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github407Test.java) — **Port complete**: `testSpec` → [tlc_github_362_391_407_java_test.go](../tlc_github_362_391_407_java_test.go); original 9/4/0 stats, depth3, FINISHED, inherited success exit, complete golden dump/EOF and zero-uncovered assertions; original doDump override retained and plain state writer newline corrected.
 - [x] [tlc2/tool/Github432Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github432Test.java) — **Port complete**: `testA`, `testB`, `testC`, `testD` → [tlc_github_432_java_test.go](../tlc_github_432_java_test.go); all four original config-substitution rows, exact warning cardinality/parameters or absence, original exit-assertion override and all runner defaults; warning names extracted from syntax images as Java does.
-- [ ] [tlc2/tool/Github461Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github461Test.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github525Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github525Test.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github597Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github597Test.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github648Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github648Test.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github648wNTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github648wNTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github652Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github652Test.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/Github461Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github461Test.java) — **Port complete**: `testSpec` → [tlc_github_461_525_597_java_test.go](../tlc_github_461_525_597_java_test.go); original assertion diagnostic, full x=0..4 trace/ordinals/extended-state metadata, exact nested stack/newline, zero uncovered and inherited assertion exit; all runner defaults.
+- [x] [tlc2/tool/Github525Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github525Test.java) — **Port complete**: `testSpec` → [tlc_github_461_525_597_java_test.go](../tlc_github_461_525_597_java_test.go); original FINISHED/unsupported-formula diagnostic/no GENERAL and inherited Error exit; production exit-code mapping corrected to source.
+- [x] [tlc2/tool/Github597Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github597Test.java) — **Port complete**: `testSpec` → [tlc_github_461_525_597_java_test.go](../tlc_github_461_525_597_java_test.go); original random fp/seed and embedded dekker config, coverage/DOT disabled, exact 4356/1500/0 stats, Termination violation/counterexample/state/back-to-state assertions and inherited liveness exit.
+- [x] [tlc2/tool/Github648Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github648Test.java) — **Port complete**: `testSpec` → [tlc_github_648_652_java_test.go](../tlc_github_648_652_java_test.go); original one-worker settings, FINISHED, depth1, 1332/36/0 stats, all 35 exact coverage/count/cost lines and inherited success exit; nested TLCEval global reentrancy and Empty next-state argument implemented.
+- [x] [tlc2/tool/Github648wNTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github648wNTest.java) — **Port complete**: `testSpec` → [tlc_github_648_652_java_test.go](../tlc_github_648_652_java_test.go); original ten-worker settings, FINISHED, depth1, 1332/36/0 stats, all 35 exact per-worker coverage/count/cost lines and inherited success exit; no worker-count/model-size reduction.
+- [x] [tlc2/tool/Github652Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github652Test.java) — **Port complete**: `testSpec` → [tlc_github_648_652_java_test.go](../tlc_github_648_652_java_test.go); original embedded config, FINISHED, no GENERAL, zero-state stats/depth and inherited success exit; all runner defaults.
 - [ ] [tlc2/tool/Github680aTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github680aTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/Github680bTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github680bTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/Github680cTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github680cTest.java) — **Missing**: `testSpec`.
