@@ -4264,3 +4264,51 @@ liveness exits, FINISHED/no GENERAL,13/3/0 original and4/3/0 recheck stats,
 property names Prop1Bx/Prop1By, all3 exact states/actions/ordinals x0,x2,x1 and
 original back-to-state1 assertions (first recorded parameter, without an
 additional action-label assertion).
+
+2026-10-04 current batch after9297572: all6 original BidirectionalTransitions
+model contexts and all4 generated TTrace rechecks translated in
+ tlc_bidirectional_liveness_java_test.go. Successful variants preserve exact
+13/3/0/depth2 and9/4/0/depth3, FINISHED/no GENERAL, SUCCESS and zero-uncovered.
+1Bx/1By and2Cx/2Cy original phases retain every inherited assertion, source
+configs (2C arguments without .cfg suffix), liveness exits, exact13/3/0 or9/4/0,
+property names Prop1Bx/Prop1By/Prop2Cx/Prop2Cy, temporal/counterexample/trace,
+complete3/4-state traces/actions/ordinals and first-record loop-back1. Rechecks
+run fully asserted original phases, then actual generated class-name Go artifacts
+with source JSON/DOT/debugger/no-generation/no-coverage settings and4/3/0 or5/4/0
+stats, full traces and loop-back1; no extra property-name/action-label assertion
+added where originals omit it. All10 unchanged Java references pass (58617 and
+23512 retired; bidirectional1b/rest-<Class>-junit.log). Seven total fixtures byte
+exact (five newly copied, two reused). Focused10 PASS5.959s (95121 retired), five
+normal repetitions PASS24.531s (94213 retired), five root race repetitions
+PASS242.389s (67894 retired). No production changes.
+During broad verification, ported ChooseTableauSymmetryTestA.testSpec and its
+actual generated TTrace recheck in tlc_choose_tableau_symmetry_java_test.go.
+Preserve source model/config/imports, liveness exits, FINISHED/no GENERAL,
+13/6/0 first phase and6/5/0 recheck, both original violated-property aliases,
+temporal/counterexample/trace diagnostics, all five complete states/ordinals,
+every exact source/generated action label, loop-back3 and its exact action label,
+zero-uncovered and original JSON/DOT/debugger/coverage/generation overrides.
+Three new fixtures byte-identical; retain original MCa.tla trailing whitespace
+on lines10/15 rather than normalize source. Upstream ignored ChooseTableauSymmetryTest
+disposition unchanged. Both unchanged Java references pass (41082 retired),
+actual prerequisite file verified present. Focused2 PASS4.682s (11900 retired),
+five normal repetitions PASS6.792s (5965 retired), five root race repetitions
+PASS66.415s (4236 retired). No weakened tests, new skips or invented tests.
+Initial Bidirectional-only broad snapshot PASS519.013s root/1.083s SANY/65.022s
+TLC (20057 terminal/retired). Because two symmetry methods were added after its
+compilation, final current-source broad PASS518.007s root/0.892s SANY/62.904s
+TLC (60114 terminal/retired). All required checks green; ready to commit. Production unchanged since8812d14, verified git diff tlc/*.go empty; full TLC
+race baseline557.944s remains applicable. All20 topic totals agree with source/
+method mapping:799/1269 contexts,364/626 complete classes;470 contexts/262 classes
+pending,one partial;TTrace24/45 complete. Goal active; deferred topics unchanged.
+Next eligible batch: CodePlexBug08 and CodePlexBug08a, AgentRing/AgentRing790,
+EWD840FL1..4 and their generated rechecks. Do not port/run the FromCheckpoint
+class while checkpoint/recovery is deferred. Java reference preflight59633
+terminal/retired: all unchanged15 classes pass (no checkpoint), with actual
+generated prerequisites checked before rechecks; logs codeplex08-<Class>-junit.log, codeplex08-javac.log.
+Those15 contexts remain missing/uncredited. Preserve original constructor path
+CodePlexBug08, complete trace/action/ordinal/property-alias/stuttering/loop-back
+assertions and source defaults; AgentRing790 overrides coverage=false, SUCCESS,
+FINISHED/TLC_SUCCESS/no temporal violation. All remaining originals have liveness
+exits. Source fixture names/paths discovered via rg; model inputs copied only to
+ignored Java scratch for preflight, no new persistent CodePlex fixtures this turn.
