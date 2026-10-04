@@ -4653,3 +4653,48 @@ including exact DOT bytes; DistributedTrace remains pending with two original
 Java assertion failures, and two EWD840 DumpLoadTrace methods retain their
 previously documented timing discrepancy. Goal active; user-deferred topics
 unchanged.
+
+2026-10-04: original DumpAsDotTest.testSpec translated, with unchanged Java
+JUnit reference passing and three new fixtures plus reused CodeplexBug8
+byte-identical. Original exact DOT master comparison,18/11/0 counts,
+FINISHED/no GENERAL, postcondition absence checks, register42 firstInt18,
+zero-uncovered coverage and liveness exit retained. All default coverage,
+DOT/JSON/debugger/forced trace generation and explicit colorize/actionlabels/
+stuttering options preserved. First Go failure exposed actual production
+shortcuts: numeric rank-node sorting, insertion-order action legend, and an
+early stuttering return that skipped rank maintenance/snapshot. StateWriter
+now mirrors Java's HashMap/HashSet order, source label/legend formatting,
+stuttering continuation and constructor header flush. dot_hash_map.go ports
+only the operations DOT uses for Comparable Integer/Long/String keys, including
+put vs computeIfAbsent insertion/resize timing, bucket splits, red-black
+collision trees, tree root/list order and untreeification on resize. Source
+OpenJDK21 HashMap and local JDK21 bytecode consulted; copyright/license retained.
+Ignored CLI probes (not permanent tests or inventory credit) match Java byte
+for byte for3374 iteration/lookup snapshots (10,433,564 bytes), including signed
+Long/hash collisions, UTF16 String collisions, resizing and tree splits.
+No master normalization, weakened assertions or invented permanent tests.
+Final five normal repetitions pass5.679s; final five focused root race
+repetitions (DumpAsDot, existing DOT cases and Github391) pass61.651s.
+Constructor-flush review superseded earlier broad verification:41682/29419
+terminated130;87639 passed61.667s before final flush and is retired. Final full workspace51679 passes (root416.794s, SANY0.983s, TLC62.560s);
+retired. Final full TLC race63793 passes551.758s; retired. All final verification
+handles terminal; ready for green commit. Inventory753/1269 contexts,318/626 complete classes;
+516 contexts/308 classes pending,one partial. Next eligible topic: generated
+TTrace correctness variants, preserving original generation/recheck pipeline;
+first source Github461Test_TTraceTest and Github597Test_TTraceTest inspected.
+DistributedTrace remains pending with original Java failures, two EWD840 binary
+methods retain documented partial-check timing limitation. Goal active;
+user-deferred topics unchanged.
+
+First TTrace Java preflight: Github461Test then Github461Test_TTraceTest and
+Github597Test then Github597Test_TTraceTest all pass unchanged. Generated
+prerequisite files were explicitly checked present before recheck, so these
+are executed references, not missing-artifact assumption skips. Logs
+ ttrace-first-<Class>-junit.log; javac ttrace-first-javac.log;16957 terminal.
+Original TTrace base uses generated class-name TTrace.tla as both model/config,
+noGenerateSpec=true, coverage=false, default JSON/DOT/debugger, resolver with
+original spec path.597 additionally omits fp/seed (random), disables DOT and
+keeps debugger/JSON. Its original first model is dekker with embedded config;
+source first-Go port already preserves random fp/seed. No Go TTrace port credit
+yet; upcoming tests must generate Go artifacts then recheck, retaining exact
+461 five-state trace/actions/ordinals and597 diagnostic/loop existence checks.

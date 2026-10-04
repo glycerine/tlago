@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,8 +59,8 @@ type StateWriter struct {
 	snapshot            bool
 	stuttering          bool
 	strict              map[uint64]struct{}
-	actionToColors      *InsMap[string, int]
-	rankToNodes         map[int]map[uint64]struct{}
+	actionToColors      *dotHashMap[string, int]
+	rankToNodes         *dotHashMap[int, *dotLongSet]
 	colorGen            int
 	closed              bool
 }
@@ -150,8 +149,8 @@ func NewDotStateWriter(fname string, opts DotStateWriterOptions) (*StateWriter, 
 	w.snapshot = opts.Snapshot
 	w.Constrained = opts.Constrained
 	w.stuttering = opts.Stuttering
-	w.actionToColors = NewInsMap[string, int]()
-	w.rankToNodes = make(map[int]map[uint64]struct{})
+	w.actionToColors = newDotHashMap[string, int](javaFormatStringHash, dotCompareString)
+	w.rankToNodes = newDotHashMap[int, *dotLongSet](func(level int) int32 { return int32(level) }, dotCompareInt)
 	w.colorGen = 1
 	if opts.Strict {
 		w.strict = make(map[uint64]struct{})
@@ -167,6 +166,8 @@ func NewDotStateWriter(fname string, opts DotStateWriterOptions) (*StateWriter, 
 	_, _ = w.writer.WriteString("nodesep=0.35;\n")
 	_, _ = w.writer.WriteString("subgraph cluster_graph {\n")
 	_, _ = w.writer.WriteString("color=\"white\";\n")
+	// DotStateWriter's constructor flushes the graph header immediately.
+	_ = w.writer.Flush()
 	return w, nil
 }
 
@@ -254,25 +255,25 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 	}
 	if visualization == StateVisualizationStuttering {
 		_, err = w.writer.WriteString(" [style=\"dashed\",color=\"lightgray\"];\n")
-		return err
-	}
-	if action != nil {
-		_, _ = w.writer.WriteString(w.dotTransitionLabel(action, reason...))
-	}
-	_, _ = w.writer.WriteString(";\n")
-	if status != StateVisitSeen {
-		style := ""
-		if status == StateVisitNotInModel {
-			style = ",style = filled, fillcolor=lightyellow"
+	} else {
+		if action != nil {
+			_, _ = w.writer.WriteString(w.dotTransitionLabel(action, reason...))
 		}
-		predLabelState := curState.EvalStateLevelAlias()
-		succLabelState := succState.EvalStateLevelAlias()
-		_, err = fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"%s];\n",
-			int64(sfp),
-			stateToDot(succLabelState, predLabelState, printDiffsOnly()),
-			stateToDot(succState, nil, false),
-			style,
-		)
+		_, _ = w.writer.WriteString(";\n")
+		if status != StateVisitSeen {
+			style := ""
+			if status == StateVisitNotInModel {
+				style = ",style = filled, fillcolor=lightyellow"
+			}
+			predLabelState := curState.EvalStateLevelAlias()
+			succLabelState := succState.EvalStateLevelAlias()
+			_, err = fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"%s];\n",
+				int64(sfp),
+				stateToDot(succLabelState, predLabelState, printDiffsOnly()),
+				stateToDot(succState, nil, false),
+				style,
+			)
+		}
 	}
 	w.maintainRank(curState)
 	if err == nil && w.snapshot {
@@ -288,7 +289,7 @@ func (w *StateWriter) dotTransitionLabel(action *Action, reason ...SemanticNode)
 	}
 	actionName := ""
 	if w.actionLabels && action != nil {
-		actionName = dotEscape(strings.TrimSpace(action.GetInvocationSignature()))
+		actionName = dotJavaTrim(strings.ReplaceAll(strings.ReplaceAll(action.GetInvocationSignature(), "\\", "\\\\"), "\"", "\\\""))
 	}
 	predText := ""
 	if len(reason) > 0 && reason[0] != nil {
@@ -302,7 +303,7 @@ func (w *StateWriter) getActionColor(action *Action) int {
 		return 1
 	}
 	if w.actionToColors == nil {
-		w.actionToColors = NewInsMap[string, int]()
+		w.actionToColors = newDotHashMap[string, int](javaFormatStringHash, dotCompareString)
 	}
 	name := action.GetName()
 	if color, ok := w.actionToColors.Get2(name); ok {
@@ -318,12 +319,8 @@ func (w *StateWriter) maintainRank(state *TLCStateMut) {
 		return
 	}
 	level := state.Level()
-	nodes := w.rankToNodes[level]
-	if nodes == nil {
-		nodes = make(map[uint64]struct{})
-		w.rankToNodes[level] = nodes
-	}
-	nodes[state.FingerPrint()] = struct{}{}
+	nodes := w.rankToNodes.getOrCreate(level, newDotLongSet)
+	nodes.Set(state.FingerPrint(), struct{}{})
 }
 
 func (w *StateWriter) IsConstrained() bool {
@@ -405,19 +402,9 @@ func (w *StateWriter) Close() error {
 
 func (w *StateWriter) dotClosingTrailer() string {
 	var b strings.Builder
-	levels := make([]int, 0, len(w.rankToNodes))
-	for level := range w.rankToNodes {
-		levels = append(levels, level)
-	}
-	sort.Ints(levels)
-	for _, level := range levels {
-		nodes := make([]uint64, 0, len(w.rankToNodes[level]))
-		for fp := range w.rankToNodes[level] {
-			nodes = append(nodes, fp)
-		}
-		sort.Slice(nodes, func(i, j int) bool { return nodes[i] < nodes[j] })
+	for _, nodes := range w.rankToNodes.All() {
 		b.WriteString("{rank = same; ")
-		for _, fp := range nodes {
+		for fp := range nodes.All() {
 			b.WriteString(strconv.FormatInt(int64(fp), 10))
 			b.WriteByte(';')
 		}
@@ -429,7 +416,7 @@ func (w *StateWriter) dotClosingTrailer() string {
 		b.WriteString("node [ labeljust=\"l\",colorscheme=\"paired12\",style=filled,shape=record ]\n")
 		for action, color := range w.actionToColors.All() {
 			name := strings.ReplaceAll(action, "!", ":")
-			b.WriteString(fmt.Sprintf("%s [label=\"%s\",fillcolor=%d]\n", dotID(name), dotEscape(action), color))
+			b.WriteString(fmt.Sprintf("%s [label=\"%s\",fillcolor=%d]\n", name, action, color))
 		}
 		b.WriteString("}")
 	}
@@ -442,9 +429,9 @@ func stateToDot(state *TLCStateMut, pred *TLCStateMut, diffsOnly bool) string {
 		return ""
 	}
 	if pred != nil && diffsOnly {
-		return dotEscape(strings.TrimSpace(state.StringForVariables(pred)))
+		return dotEscape(dotJavaTrim(state.StringForVariables(pred)))
 	}
-	return dotEscape(strings.TrimSpace(state.String()))
+	return dotEscape(dotJavaTrim(state.String()))
 }
 
 func dotEscape(text string) string {
@@ -454,17 +441,6 @@ func dotEscape(text string) string {
 	return text
 }
 
-func dotID(text string) string {
-	var b strings.Builder
-	for _, r := range text {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
-			b.WriteRune(r)
-		} else {
-			b.WriteByte('_')
-		}
-	}
-	if b.Len() == 0 {
-		return "action"
-	}
-	return b.String()
+func dotJavaTrim(text string) string {
+	return strings.TrimFunc(text, func(r rune) bool { return r <= ' ' })
 }
