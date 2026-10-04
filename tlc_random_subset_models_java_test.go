@@ -83,9 +83,10 @@ func requireJavaRandomSubsetTrace(t *testing.T, result *tlc.Result, expected []s
 	}
 }
 
-func runJavaRandomSubsetSeed(t *testing.T, seed int64, x, y int, p, q string) {
+func runJavaRandomSubsetSeed(t *testing.T, seed int64, x, y int, p, q string, extraArgs ...string) *tlc.Result {
 	t.Helper()
-	result := runJavaTLCModelTest(t, "RandomSubset", "-seed", strconv.FormatInt(seed, 10), "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomSubset.json"))
+	args := []string{"-seed", strconv.FormatInt(seed, 10), "-dumpTrace", "json", filepath.Join(t.TempDir(), "RandomSubset.json")}
+	result := runJavaTLCModelTest(t, "RandomSubset", append(args, extraArgs...)...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
 	}
@@ -113,6 +114,7 @@ func runJavaRandomSubsetSeed(t *testing.T, seed int64, x, y int, p, q string) {
 	}
 	// The original one-worker debugger setup selects TLCStateMutExt.
 	requireJavaRandomSubsetTrace(t, result, []string{state("TRUE"), state("FALSE")}, true)
+	return result
 }
 
 // Original RandomSubsetATest and RandomSubsetBTest constructors and inherited method.
@@ -139,7 +141,13 @@ func javaRandomSubsetTupleIn(t *testing.T, value tlc.Value, n int) {
 
 // Original RandomSubsetTest.testSpec with every active trace assertion.
 func TestJavaRandomSubsetModel(t *testing.T) {
-	result := runJavaTLCModelTest(t, "RandomSubset", "-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.RandomSubsetTest.json"))
+	runJavaRandomSubsetModel(t)
+}
+
+func runJavaRandomSubsetModel(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.RandomSubsetTest.json")}
+	result := runJavaTLCModelTest(t, "RandomSubset", append(args, extraArgs...)...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
 	}
@@ -214,6 +222,7 @@ func TestJavaRandomSubsetModel(t *testing.T) {
 		t.Fatalf("second z differs from FALSE: %v", err)
 	}
 	requireJavaTLCUncovered(t, result)
+	return result
 }
 
 // Original RandomSubsetSetOfFcnsTest.testSpec (commented-out assertions omitted).
@@ -236,7 +245,13 @@ func TestJavaRandomSubsetSetOfFcns(t *testing.T) {
 
 // Original RandomSubsetNextTest.testSpec, exact source seed/counts/trace.
 func TestJavaRandomSubsetNext(t *testing.T) {
-	result := runJavaTLCModelTest(t, "RandomSubsetNext", "-seed", "15041980", "-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.RandomSubsetNextTest.json"))
+	runJavaRandomSubsetNext(t)
+}
+
+func runJavaRandomSubsetNext(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := []string{"-seed", "15041980", "-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.RandomSubsetNextTest.json")}
+	result := runJavaTLCModelTest(t, "RandomSubsetNext", append(args, extraArgs...)...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
 	}
@@ -254,11 +269,18 @@ func TestJavaRandomSubsetNext(t *testing.T) {
 		"/\\ x = 23\n/\\ y = 0", "/\\ x = 26\n/\\ y = 1", "/\\ x = 18\n/\\ y = 2", "/\\ x = 29\n/\\ y = 3", "/\\ x = 189\n/\\ y = 4", "/\\ x = 19\n/\\ y = 5", "/\\ x = 92\n/\\ y = 6", "/\\ x = 250\n/\\ y = 7", "/\\ x = 41\n/\\ y = 8", "/\\ x = 52\n/\\ y = 9", "/\\ x = 78\n/\\ y = 10",
 	}, true)
 	requireJavaTLCUncovered(t, result)
+	return result
 }
 
 // Original RandomSubsetNextT4Test.testSpec and its four-worker override.
 func TestJavaRandomSubsetNextT4(t *testing.T) {
-	result := runJavaTLCModelTestWithWorkers(t, "RandomSubsetNext", true, true, 4, "-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.RandomSubsetNextT4Test.json"))
+	runJavaRandomSubsetNextT4(t)
+}
+
+func runJavaRandomSubsetNextT4(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.RandomSubsetNextT4Test.json")}
+	result := runJavaTLCModelTestWithWorkers(t, "RandomSubsetNext", true, true, 4, append(args, extraArgs...)...)
 	if result.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit status=%d, want VIOLATION_SAFETY", result.ExitStatus)
 	}
@@ -290,6 +312,7 @@ func TestJavaRandomSubsetNextT4(t *testing.T) {
 			t.Fatalf("state ordinal=%d, want %d", record.StateNumber, cnt)
 		}
 	}
+	return result
 }
 
 // Original RandomSubsetNextTuplesTest.testSpec, including every tuple component.

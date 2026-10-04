@@ -4141,3 +4141,39 @@ credited. These five upcoming TTrace contexts are not translated/credited.
 Preserve both inherited RandomSubset_TTrace parameter tuples, original seeds,
 first-phase worker/debugger/JSON settings, complete traces and source literal
 bounds (including firstX in the original y upper-bound expression).
+
+2026-10-04 current batch after24c2e4e: five original RandomSubset TTrace contexts
+translated in tlc_ttrace_random_subset_java_test.go: RandomSubsetATest_TTraceTest,
+RandomSubsetBTest_TTraceTest (inherited RandomSubset_TTrace.testSpec),
+RandomSubsetNextTest_TTraceTest, RandomSubsetNextT4Test_TTraceTest and
+RandomSubsetTest_TTraceTest. Each first phase runs every original assertion and
+then the actual Go-generated class-name artifact is rechecked. Parent helpers
+only accept output-path arguments; assertions/settings unchanged. Preserve
+seeds15041980/918347981374, full two/eleven-state traces/actions/ordinals,
+FINISHED/no GENERAL or TLC_BUG as originally asserted, exact init/stats/depth,
+four-worker settings without debugger, JSON/DOT/no generation/no coverage,
+inherited safety exit and original coverage assertions. RandomSubsetTest
+preserves exact _init line31..35/_next line39..51 generated source locations,
+getVals snapshots, all component/tuple bounds and UNCHANGED comparisons,
+including firstX in the original y upper-bound expression. No weakened tests,
+substitute source-model rechecks or invented persistent tests. All five Java
+first/recheck reference pairs pass (74457 retired); actual artifacts verified
+present. Four reused fixtures byte-identical; Java revision unchanged.
+First focused all10 PASS150.857s (86856 terminal/retired). Five normal
+four-worker recheck repetitions PASS110.829s (9631 terminal/retired).
+Focused race all5 rechecks PASS165.241s (27263 terminal/retired), each including
+its fully asserted original phase. No production changes; full TLC race
+baseline8812d14 PASS557.944s remains applicable. Full workspace PASS513.155s
+root/0.984s SANY/64.227s TLC (54194 terminal/retired). All required checks green;
+ready to commit. Next-source audit found missing inherited JSON trace dump in
+older TLCGetLevelTest and TraceWithLargeSetOfInitialStatesTest ports; both
+conservatively changed to Reconcile and removed from numerator until restored.
+Adjusted inventory767/1269 contexts,332/626 complete classes;502 contexts/294
+classes pending,one partial;TTrace16/45 complete. Goal active; deferred topics
+unchanged. Next eligible batch: restore those two parent setups and port their
+TTrace rechecks plus ViewMapTest_TTraceTest. All three unchanged Java first/recheck
+pairs pass (24269 terminal/retired; ttrace-level-view-<Class>-junit.log), with
+actual prerequisite artifacts verified present. Those three TTrace contexts
+remain missing/uncredited. Shared Go recheck helper needs extra CLI arguments
+for original -maxSetSize10 and -view; preserve complete source assertions,
+JSON/DOT/debugger, exact generated action locations and liveness stuttering5.

@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `8812d14`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `24c2e4e`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **329 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (52.6%).**
-- **764 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (60.2%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **505 logical method contexts across 297 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **332 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (53.0%).**
+- **767 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (60.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **502 logical method contexts across 294 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -23,12 +23,12 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | --- | ---: | ---: | ---: | ---: | ---: |
 | CLI, REPL, messages, and trace-spec output | 5 | 5 | 37 | 37 | 0 |
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
-| Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
+| Standard modules, constants, native overrides, and random values | 44 | 43 | 75 | 74 | 1 |
 | Evaluation, initial states, next states, and action composition | 45 | 45 | 51 | 51 | 0 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 31 | 34 | 31 | 3 |
 | Issue regressions in the evaluator and checker | 98 | 98 | 101 | 101 | 0 |
-| Traces, aliases, dump/load, and generated trace specs | 17 | 15 | 48 | 45 | 3 |
-| Generated TTrace recheck variants | 45 | 11 | 45 | 11 | 34 |
+| Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
+| Generated TTrace recheck variants | 45 | 16 | 45 | 16 | 29 |
 | Liveness and fairness model regressions | 101 | 1 | 101 | 1 | 100 |
 | Liveness graph, tableau, and expression helpers | 6 | 0 | 48 | 0 | 48 |
 | Simulation and multithreaded simulation | 20 | 0 | 55 | 0 | 55 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **329** | **1,269** | **764** | **505** |
+| **Total** | **626** | **332** | **1,269** | **767** | **502** |
 
 ## Porting rules and proposed order
 
@@ -155,6 +155,8 @@ The nine newly translated standard-module models retain all original fixture byt
 - [x] [tlc2/tool/UserModuleOverrideTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideTest.java) — **Port complete**: `testSpec` → [tlc_user_module_override_java_test.go](../tlc_user_module_override_java_test.go); original native fixture callbacks, constructor/index/classpath setup, inherited exit, and all active assertions retained.
 
 The eight random-subset model translations preserve both fixed seeds and exact traces, every original state/queue count, four-worker setup, complete tuple/component checks and zero-uncovered assertions. The original `RandomSubsetTest` y-bound condition uses `firstX` for its upper bound; that literal condition is retained. Predicate-set and standard-module models run their complete original inputs through the production parser/checker.
+
+- [ ] [tlc2/tool/TLCGetLevelTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCGetLevelTest.java) — **Reconcile**: `testSpec`. Existing [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) retains the original assertions but omits the inherited JSON trace-dump setup; restore that setting before crediting the complete method.
 
 ### Evaluation, initial states, next states, and action composition
 
@@ -341,6 +343,8 @@ Trace reconstruction, alias evaluation, trace races, external trace serializatio
 
 - [x] [tlc2/tool/PrintTraceRaceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PrintTraceRaceTest.java) — **Port complete**: `testSpec` in [tlc_print_trace_race_java_test.go](../tlc_print_trace_race_java_test.go). Restored inherited JSON dump setting; preserves four workers, original first-two-state/ordinal assertions, payload shape, diagnostics, stats, uncovered location and FAILURE_SAFETY_EVAL exit. The fully asserted helper also provides the original first phase for the TTrace test.
 
+- [ ] [tlc2/tool/TraceWithLargeSetOfInitialStatesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TraceWithLargeSetOfInitialStatesTest.java) — **Reconcile**: `testSpec`. Existing [tlc_trace_model_java_test.go](../tlc_trace_model_java_test.go) retains the original assertions but omits the inherited JSON trace-dump setup; restore that setting before crediting the complete method.
+
 ### Generated TTrace recheck variants
 
 Every concrete *_TTraceTest and *_TTrace class, including inherited testSpec. These require the original first run and generated trace-spec artifacts; do not replace them with a rerun of the source model.
@@ -367,11 +371,16 @@ Every concrete *_TTraceTest and *_TTrace class, including inherited testSpec. Th
   Go translation: [tlc_ttrace_random_element_java_test.go](../tlc_ttrace_random_element_java_test.go). Rechecks the actual generated Go artifact after the fully asserted original model run, preserving seeds, JSON/DOT, no-generation/no-coverage, worker/debugger settings and inherited safety exit. Preserves FINISHED/no TLC_BUG, behavior diagnostic, 11/11/0 stats, all eleven exact states/actions/ordinals and zero-uncovered.
 - [x] [tlc2/tool/RandomElementXandYTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomElementXandYTest_TTraceTest.java) — **Port complete**: `test`.
   Go translation: [tlc_ttrace_random_element_java_test.go](../tlc_ttrace_random_element_java_test.go). Rechecks the actual generated Go artifact after the fully asserted original model run, preserving seeds, JSON/DOT, no-generation/no-coverage, worker/debugger settings and inherited safety exit. Preserves FINISHED/no TLC_BUG, behavior diagnostic, all three exact states/actions/ordinals and zero-uncovered.
-- [ ] [tlc2/tool/RandomSubsetATest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetATest_TTraceTest.java) — **Missing**: `testSpec` (from `RandomSubset_TTrace`).
-- [ ] [tlc2/tool/RandomSubsetBTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetBTest_TTraceTest.java) — **Missing**: `testSpec` (from `RandomSubset_TTrace`).
-- [ ] [tlc2/tool/RandomSubsetNextT4Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextT4Test_TTraceTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetNextTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextTest_TTraceTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetTest_TTraceTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/RandomSubsetATest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetATest_TTraceTest.java) — **Port complete**: `testSpec` (from `RandomSubset_TTrace`).
+  Go translation: [tlc_ttrace_random_subset_java_test.go](../tlc_ttrace_random_subset_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, retaining JSON/DOT/no-generation/no-coverage and inherited safety exit. Preserves inherited RandomSubset_TTrace settings, FINISHED/no GENERAL, 1 initial state, 2/2/0 stats, depth 2 and both exact seeded states/actions/ordinals.
+- [x] [tlc2/tool/RandomSubsetBTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetBTest_TTraceTest.java) — **Port complete**: `testSpec` (from `RandomSubset_TTrace`).
+  Go translation: [tlc_ttrace_random_subset_java_test.go](../tlc_ttrace_random_subset_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, retaining JSON/DOT/no-generation/no-coverage and inherited safety exit. Preserves inherited RandomSubset_TTrace settings, FINISHED/no GENERAL, 1 initial state, 2/2/0 stats, depth 2 and both exact seeded states/actions/ordinals.
+- [x] [tlc2/tool/RandomSubsetNextT4Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextT4Test_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_random_subset_java_test.go](../tlc_ttrace_random_subset_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, retaining JSON/DOT/no-generation/no-coverage and inherited safety exit. Preserves four workers in both phases without debugger, FINISHED/no TLC_BUG, behavior diagnostic, all eleven state components/bounds/ordinals and fresh getVals snapshots.
+- [x] [tlc2/tool/RandomSubsetNextTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextTest_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_random_subset_java_test.go](../tlc_ttrace_random_subset_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, retaining JSON/DOT/no-generation/no-coverage and inherited safety exit. Preserves source seed 15041980, FINISHED/no TLC_BUG, behavior diagnostic, 11/11/0 recheck stats, all eleven exact states/actions/ordinals and zero-uncovered.
+- [x] [tlc2/tool/RandomSubsetTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetTest_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_random_subset_java_test.go](../tlc_ttrace_random_subset_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, retaining JSON/DOT/no-generation/no-coverage and inherited safety exit. Preserves FINISHED/no GENERAL, 1 initial state, 2/2/0 stats, depth 2, original generated _init/_next locations, getVals snapshots, every component/tuple/bound/UNCHANGED assertion and zero-uncovered. Retains firstX in the original y upper-bound expression.
 - [ ] [tlc2/tool/TLCGetLevelTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCGetLevelTest_TTraceTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/TraceWithLargeSetOfInitialStatesTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TraceWithLargeSetOfInitialStatesTest_TTraceTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/ViewMapTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ViewMapTest_TTraceTest.java) — **Missing**: `testSpec`.
@@ -1013,13 +1022,11 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/tool/SubsetEqTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SubsetEqTest.java) | `testSpec` | [tlc_model_java_test.go](../tlc_model_java_test.go) |
 | [tlc2/tool/TLCExtTraceSimTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCExtTraceSimTest.java) | `testSpec` | [tlc_ext_trace_java_test.go](../tlc_ext_trace_java_test.go) |
 | [tlc2/tool/TLCGetAllTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCGetAllTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
-| [tlc2/tool/TLCGetLevelTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCGetLevelTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/TLCGetNamedUndefinedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCGetNamedUndefinedTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/TLCSetInitTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCSetInitTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/TLCSetMultiSimTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCSetMultiSimTest.java) | `testSpec` (from `TLCSetSimTest`) | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/TLCSetSimTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCSetSimTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
 | [tlc2/tool/TLCSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TLCSetTest.java) | `testSpec` | [tlc_checker_model_java_test.go](../tlc_checker_model_java_test.go) |
-| [tlc2/tool/TraceWithLargeSetOfInitialStatesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/TraceWithLargeSetOfInitialStatesTest.java) | `testSpec` | [tlc_trace_model_java_test.go](../tlc_trace_model_java_test.go) |
 | [tlc2/tool/ValueSemanticsAssumeTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ValueSemanticsAssumeTest.java) | `testSpec` | [tlc_value_semantics_assume_java_test.go](../tlc_value_semantics_assume_java_test.go) |
 | [tlc2/tool/coverage/ACoverageTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/coverage/ACoverageTest.java) | `testSpec` | [tlc_coverage_model_java_test.go](../tlc_coverage_model_java_test.go) |
 | [tlc2/tool/coverage/BCoverageTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/coverage/BCoverageTest.java) | `testSpec` | [tlc_coverage_model_java_test.go](../tlc_coverage_model_java_test.go) |
