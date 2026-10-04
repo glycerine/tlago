@@ -4312,3 +4312,42 @@ assertions and source defaults; AgentRing790 overrides coverage=false, SUCCESS,
 FINISHED/TLC_SUCCESS/no temporal violation. All remaining originals have liveness
 exits. Source fixture names/paths discovered via rg; model inputs copied only to
 ignored Java scratch for preflight, no new persistent CodePlex fixtures this turn.
+
+2026-10-04: Fifteen original CodePlexBug08 class methods translated, including
+seven actual generated TTrace rechecks and AgentRing790's successful,
+coverage-disabled run. All fifteen unchanged Java references pass. Ten new
+fixtures and eight reused model/config files match source bytes. Complete
+original assertions and runner settings retained: full states/actions/ordinals,
+exact nodes_0/ptrs_0 sizes, first-record diagnostic parameters, coverage and
+register42 postconditions where asserted. The checkpoint FL2 variant remains
+deferred. No invented tests, weakened assertions or substituted artifacts.
+
+The first failure exposed the missing AbstractLiveChecker.close VETO_CLEANUP
+branch. Go now retains graph handles under the explicit source property while
+closing the writer; test teardown closes all retained graphs after assertions.
+The next focused run failed only FL2 and its first TTrace phase: nodes_0 was
+54,037,220 bytes rather than 54,037,212. Captured graph files each contain 51,956
+records but differ in successor order. Temporary worker probes confirmed equal
+set capacity 32/multiplier 2 and isolated the mutation after the first periodic
+coverage report. Java CostModelCreator uses a separate TreeSet; Go had sorted
+Tool.Actions in place. Reporting now sorts a copy, preserving checker action
+order. All temporary Go probes and capture hooks removed; worker.go matches the
+previous HEAD. Initial broad sessions 31710/76505/76548 terminated 130 and were
+superseded by verification after this production correction.
+
+Final focused batch passes 352.337s. Full offline workspace passes (root
+849.693s, SANY 1.031s, TLC 64.395s). Full TLC race passes 564.061s. The first nine
+root race tests completed without failures or race reports before the 30m testing
+alarm stopped 55203 during FL2TTrace/original (1800.085s). The six remaining
+race tests pass 751.535s with a 45m limit. All fifteen original contexts
+are thus checked under race, preserving every original setting/assertion; the
+initial race command timed out, not a model or assertion. All check handles
+terminal. Source fixture whitespace remains byte-identical: the staged
+whitespace gate excludes only the pristine AgentRing.tla, AgentRingMC.tla,
+EWD840MC1.tla and EWD840MC2.cfg (including its source blank line at EOF).
+Inventory: 814/1,269 contexts (64.1%), 379/626 complete classes; 455 contexts
+across 247 classes remain, one partial. All twenty topic totals verified.
+Next original references EmptyOrderOfSolutionsTest and ErrorTraceConstructionTest/
+_TTraceTest pass unchanged, with generated prerequisite explicitly present.
+They have no Go translation or inventory credit yet. Goal active; the five
+user-deferred topics remain deferred.

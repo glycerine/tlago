@@ -860,8 +860,8 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 		// Important Java compatibility: this branch is load-bearing.  Java TLC
 		// snapshots an interrupted/error run with queued work and then vetoes
 		// metadata deletion so users can recover and continue.  Do not "tidy"
-		// the metadir here.  The Go port still closes owned resources below;
-		// preserving recovery artifacts must not preserve open handles too.
+		// the metadir here. This local checkpoint veto still closes resources;
+		// only the explicit VETO_CLEANUP property retains the liveness graph.
 		if checkpointErr := mc.Checkpoint(); checkpointErr != nil && err == nil {
 			err = checkpointErr
 		}
@@ -898,8 +898,8 @@ func (mc *ModelChecker) Cleanup(success bool, cleanup bool) error {
 	}
 	if cleanup && !vetoCleanup {
 		// Java's FileUtil.deleteDir(path, success) is deliberately recursive only
-		// on success. Keep failure artifacts for inspection/recovery, but close
-		// every owned resource above so the failure path does not leak handles.
+		// on success. Keep failure artifacts for inspection/recovery. Resources
+		// close above, except graphs retained by the explicit VETO_CLEANUP property.
 		deleteDirLikeJava(mc.Metadir, success)
 	}
 	return err

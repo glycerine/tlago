@@ -4698,3 +4698,18 @@ keeps debugger/JSON. Its original first model is dekker with embedded config;
 source first-Go port already preserves random fp/seed. No Go TTrace port credit
 yet; upcoming tests must generate Go artifacts then recheck, retaining exact
 461 five-state trace/actions/ordinals and597 diagnostic/loop existence checks.
+
+Coverage reporting preserves the checker's action array. Java CostModelCreator
+iterates a separate sorted TreeSet; Go sorts a copied slice before reporting
+shared cost models. Sorting Tool.Actions in place during a periodic report
+changes successor insertion order, which can alter tableau expansion and the
+serialized liveness graph. The original CodePlexBug08EWD840FL2 graph-size
+assertion exposed this during a run long enough to report coverage mid-search.
+
+LiveChecker.Close mirrors Java AbstractLiveChecker.close: the explicit
+ModelChecker.vetoCleanup property retains disk graph handles for subsequent
+inspection, while the liveness writer still closes. A local checkpoint cleanup
+veto only preserves metadata and does not retain graph handles. The original
+CodePlexBug08 tests set the explicit property, flush the retained graphs and
+check actual nodes_0/ptrs_0 sizes. Their Go teardown closes all retained graphs
+after those assertions, before restoring checker statics or removing metadata.

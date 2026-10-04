@@ -366,7 +366,9 @@ func reportCoverage(tool *Tool) {
 			action.CM.Report()
 		}
 	}
-	actions := tool.GetActions()
+	// Java reports through a separate TreeSet. Sorting the checker's action
+	// array would change successor order after a periodic coverage report.
+	actions := append([]*Action(nil), tool.GetActions()...)
 	sort.SliceStable(actions, func(i, j int) bool {
 		return coverageActionLess(actions[i], actions[j])
 	})

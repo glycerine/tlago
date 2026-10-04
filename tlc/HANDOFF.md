@@ -6,6 +6,24 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
+2026-10-04 correctness-test batch: fifteen CodePlexBug08 original methods now
+have complete Go translations, including seven actual generated TTrace rechecks.
+All fifteen unchanged Java references and the focused Go batch pass. Exact graph
+sizes exposed two production shortcuts: missing explicit VETO_CLEANUP retention
+in LiveChecker.Close, and periodic coverage sorting Tool.Actions in place. Go now
+retains the graph under the source property and reports through a sorted copy;
+the translated tests close retained graphs after their assertions. Full TLC race
+passes (564.061s). Full workspace passes (root 849.693s, SANY 1.031s, TLC 64.395s).
+The initial root race command timed out at 30m during the tenth test
+(FL2TTrace/original); the first nine completed without failures or race reports.
+The remaining six pass under race (751.535s) with a 45m harness deadline. All
+fifteen contexts are checked under race; all verification handles are terminal.
+Inventory: 814/1,269 contexts and 379/626 complete classes; 455 contexts across
+247 classes pending, one partial. The five user-deferred topics and the
+liveness-directory checkpoint FL2 case remain deferred. Next original references
+EmptyOrderOfSolutionsTest and ErrorTraceConstructionTest/_TTraceTest pass
+unchanged; no Go credit yet.
+
 Priority user directive (2026-10-02): **email reporting is forbidden.** Stop
 email reporting and its dependency work immediately; it must consume no more
 cycles. JavaMail, SMTP, MIME/Activation, ImageIO/AWT, image codecs and mail-driven

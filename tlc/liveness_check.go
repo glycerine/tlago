@@ -1301,10 +1301,14 @@ func (c *LiveChecker) Close() error {
 		return nil
 	}
 	var err error
-	if c.TableauDiskGraph != nil {
-		err = c.TableauDiskGraph.Close()
-	} else if c.DiskGraph != nil {
-		err = c.DiskGraph.Close()
+	// Java AbstractLiveChecker.close retains the graph when VETO_CLEANUP
+	// is set, so callers can inspect it after model checking finishes.
+	if !modelCheckerVetoCleanup() {
+		if c.TableauDiskGraph != nil {
+			err = c.TableauDiskGraph.Close()
+		} else if c.DiskGraph != nil {
+			err = c.DiskGraph.Close()
+		}
 	}
 	if c.Writer != nil {
 		if closeErr := c.Writer.Close(); err == nil {
