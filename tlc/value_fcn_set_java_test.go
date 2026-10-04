@@ -134,6 +134,9 @@ type javaFcnSetHash struct {
 func (s *javaFcnSetHash) contains(t *testing.T, v Value) bool {
 	t.Helper()
 	for _, old := range s.buckets[ValueJavaHashCode(v)] {
+		if v == old { // Java HashMap's key identity check also handles null.
+			return true
+		}
 		eq, err := v.Equal(old)
 		if err != nil {
 			t.Fatal(err)
@@ -150,6 +153,9 @@ func (s *javaFcnSetHash) add(t *testing.T, v Value) {
 	// inserting a new value. Keep the same fingerprint call count here.
 	h := ValueJavaHashCode(v)
 	for _, old := range s.buckets[h] {
+		if v == old {
+			return
+		}
 		eq, err := v.Equal(old)
 		if err != nil {
 			t.Fatal(err)

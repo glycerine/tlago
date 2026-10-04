@@ -1066,7 +1066,7 @@ func (v *SubsetValue) Size() (resultInt int, err error) {
 		return 0, err
 	}
 	if size >= 31 {
-		return 0, newTLCErrorCode(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
+		return 0, NewTLCRuntimeException(ECTLCModuleOverflow, "the number of elements in:\n"+ValuesPPR(v))
 	}
 	return 1 << size, nil
 }
@@ -1177,6 +1177,12 @@ func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
 	if v.PSet != nil && !v.PSetDummy {
 		return v.PSet.Elements()
 	}
+	return v.ElementsNormalized()
+}
+
+// ElementsNormalized ports the direct SubsetValue.elementsNormalized entry
+// point, independently of the cached powerset used by Elements.
+func (v *SubsetValue) ElementsNormalized() ValueEnumeration {
 	size, err := v.Set.Size()
 	if err != nil {
 		return newErrorEnumeration(err)
@@ -1189,7 +1195,13 @@ func (v *SubsetValue) Elements() (enumeration ValueEnumeration) {
 		return newErrorEnumeration(err)
 	}
 	if set == nil {
-		return newErrorEnumeration(v.unsupported("Attempted to compute the value of an expression of form\nSUBSET S, but S is a non-enumerable value:\n%s", ValuesPPR(v.Set)))
+		message := "Attempted to compute the value of an expression of form\nSUBSET S, but S is a non-enumerable value:\n" + ValuesPPR(v.Set)
+		if source := v.GetSource(); source != nil {
+			return newErrorEnumeration(NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext))
+		}
+		failure := newTLCError(ECGeneral, "%s", message)
+		failure.Runtime = true
+		return newErrorEnumeration(failure)
 	}
 	if _, err := set.normalizeSet(); err != nil {
 		return newErrorEnumeration(err)

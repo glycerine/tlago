@@ -119,7 +119,7 @@ func numberOfKElements(base Value, k int) (int64, error) {
 	}
 	count := BigChoose(size, choice)
 	if count.BitLen() > 63 {
-		return 0, fmt.Errorf("k=%d and n=%d", k, size)
+		return 0, NewIllegalArgumentException(fmt.Sprintf("k=%d and n=%d", k, size))
 	}
 	return count.Int64(), nil
 }
@@ -164,7 +164,7 @@ func newKElementEnumeration(owner Value, base Value, k int) (*KElementEnumeratio
 		return nil, err
 	}
 	if count > math.MaxInt32 {
-		return nil, fmt.Errorf("Subset too large.")
+		return nil, NewIllegalArgumentException("Subset too large.")
 	}
 	set, err := tryToSetEnumValue(base)
 	if err != nil {

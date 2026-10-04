@@ -1197,3 +1197,53 @@ complete 65,536-subset/unranking sweeps, all 61 binomial sum rows, original
 23,131/23,071/23,077 random-set sample sizes, normalized ordering, actual exception
 types, empty-enumerator independence and randomized KSubset cases. Do not replace
 original class methods with existing approximate Go checks or smaller samples.
+
+
+SubsetValueTest is port complete in value_subset_java_test.go: all 37 original
+methods and all original helper assertions/fixtures translated. Preserve original
+seed 15041980 and FP64.Init, independently shuffled fixtures using a separate
+default JavaRandom and the actual Collections.shuffle descending Fisher-Yates
+algorithm, including source's normalized=true flags on shuffled values. Verified
+all 37 method positions against actual JUnit runner descriptions; run in that
+order and share the seeded TLC generator across Go subtest goroutines, preserving
+source's single-thread random stream. Restoring global state is class isolation;
+no reset between original methods. TreeSet helper retains Java comparator calls,
+first-key validation, red/black insertion and rotations, not hash-based substitutes.
+HashSet helper now preserves key identity and null handling before equals.
+Kept both complete 65,536-subset sweeps, all 61 binomial sum rows, expected boundary
+counts and real IllegalArgumentException catch, all explicit sorted K-subset rows,
+2,342/4,223/2,148 samples, 23,131/23,071/23,077 random-set samples, normalization
+and list-order checks, empty-enumerator independence and all randomized K cases.
+Catch-only testRandomSubsetSubsetNoOverflow remains catch-only as source.
+
+Production corrected NumberOfKElements and bounded KElementEnumeration overflow
+families to IllegalArgumentException; exposed direct ElementsNormalized separately
+from cached Elements, retaining source-aware assertion failures. Initial faithfully
+ported overflow-catch test failed because SubsetValue.Size returned an EvalException
+carrier. Fixed actual production to NewTLCRuntimeException with original code and
+parameters, leaving test catch/assertions intact. All 37 Go methods now pass
+(1.612s targeted; predates only final non-enumerable/source-detail correction).
+Current source Combinatorics, SubsetValue, KSubsetValue and unchanged original JUnit
+pass all 37 Java methods (0.91s). Final snapshot full workspace normal passes:
+ok  	github.com/glycerine/tlago	316.108s
+?   	github.com/glycerine/tlago/cmd/tlago	[no test files]
+ok  	github.com/glycerine/tlago/sany_tests	0.921s
+ok  	github.com/glycerine/tlago/tlc	43.204s
+Full TLC -race passes: ok  	github.com/glycerine/tlago/tlc	420.487s
+Retire handles 61943 (initial red),88821,26161,21887. No tests weakened, matrices
+reduced, alternate fixtures substituted or invented regression/unit cases added.
+Inventory now 394/1269 contexts (31.0%), 115/626 complete classes (18.4%), 875 pending
+contexts across 511 classes; one partial. All five deferred topics stay deferred.
+
+Next: complete KSubsetValueTest's eleven original methods. Source Java class and
+unchanged original JUnit already pass all eleven (0.276s), ksubset-junit.log.
+Read every method and its shared doTest helper; no Go credit yet. Correct production
+KSubsetValue.Size's remaining fmt.Errorf overflow to actual IllegalArgumentException
+before translating testEnumerateN64's catch. Its inherited Java toSetEnum does call
+size() before constructing the enumerator, matching native ordering; don't replace
+that guard with another message/path. Retain all four n=32/33/63/64 enumeration
+methods including null/size assertions, normalization's six exact elements, all
+thirty original fingerprint matrix rows (2+10+10+8), before/after fingerprint and
+explicit enumeration sizes, all eleven invalid-k assertions in both operand
+directions for both k=-1 and k=4, exact hash and strings, and checked printing's
+large-count swallow case. Source uses FP64.Zero for the fingerprint calls.
