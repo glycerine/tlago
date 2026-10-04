@@ -57,7 +57,7 @@ func NewValueOutputStreamWithCompression(out io.Writer, compress bool) *ValueOut
 		closer = c
 	}
 	if compress {
-		gzipWriter := gzip.NewWriter(out)
+		gzipWriter := newZlibGzipWriter(out)
 		writer = gzipWriter
 		closer = closeInOrder(gzipWriter, closer)
 	}

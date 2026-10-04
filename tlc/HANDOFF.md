@@ -1291,3 +1291,50 @@ response window is pure Go. No compression changes made yet. Honor a later reply
 Original compressed StringDeserialize.vos, .tla and .cfg are in upstream test-model;
 use tlc/test_vectors for any persistent copies and preserve complete inherited
 model harness/exit assertions in addition to the two explicit recorder checks.
+
+
+ValueInputOutputStreamTest is port complete in value_stream_java_test.go: all six
+original methods, global compression constructors, short/int extrema and zero,
+compact-natural read/write operations and the unchanged compressed lengths 23/26.
+The blind string and record reads write the literal UTF-8 bytes and -1 metadata
+without using Value/UniqueString before reading; retain kind, interning/text,
+record cardinality and selection assertions. Test globals match Java's isolated
+classloader and are restored after the class.
+Production gzip output now uses a pure-Go port of JZlib's default zlib deflater
+(level 6, window 15, memory level 8, NO_FLUSH/FINISH). Preserve source lazy matching,
+hash chains/window sliding, token limits, Huffman heap ties/overflow repair,
+run-length tree encoding, stored/fixed/dynamic block selection, bit packing,
+terminal block and Java's gzip header/CRC/size trailer. No input special cases,
+trailer stripping, buffering the entire input, CGO or external process dependency.
+Algorithm provenance is JZlib a21be20213d66eff15904d925e9b721956a01ef7; original BSD
+copyright/license notices are retained in code and JZLIB_LICENSE.txt. The optional
+architecture question had no answer; the previously stated pure-Go assumption
+remains in effect. Do not claim compressor byte equality for all native-zlib
+versions/inputs: original cases match, and ephemeral native-zlib comparisons of
+the source .vos payload repeated 0/1/2/3/4/20/100/1000/10000 times (up to 9.48MB)
+were byte-identical and successfully decompressed. Those probes are not new tests.
+StringDeserializeTLCTest.test is port complete in tlc_string_deserialize_java_test.go,
+with all three original vectors byte-identical in test_vectors/models/StringDeserialize.
+Its .vos is uncompressed (the original model calls IODeserialize(..., FALSE));
+the earlier handoff description calling it compressed was incorrect. Retain the
+original property path setup, CommunityModules classpath (IOUtils), full inherited
+checker settings/success exit assertion and both FINISHED/GENERAL recorder checks.
+The initial Go run failed to resolve IOUtils until the test supplied the same
+CommunityModules jar classpath used by Java. No production shortcut or weakened
+assertion was needed. Unchanged Java original passes (0.582s), Go passes (0.160s).
+All six Go stream methods pass (0.017s); source Java six methods passed (0.035s).
+Inventory now 412/1269 contexts (32.5%), 118/626 complete classes (18.8%), 857 pending
+contexts across 508 classes; one partial. Values/value streams topic is complete:
+17/17 classes, 189/189 methods. All five deferred topics stay deferred.
+Final full workspace normal passes (handle 96850 retired):
+ok  	github.com/glycerine/tlago	317.159s
+?   	github.com/glycerine/tlago/cmd/tlago	[no test files]
+ok  	github.com/glycerine/tlago/sany_tests	1.068s
+ok  	github.com/glycerine/tlago/tlc	43.469s
+Targeted deserialization model race passes (1.639s), handle 75318 retired.
+Final targeted six stream methods pass (0.016s), handle 65645 retired.
+Unchanged original Java six methods rerun: 6 pass (0.034s).
+Full TLC race passes: ok  	github.com/glycerine/tlago/tlc	415.789s
+Handle 6990 retired; all verification handles in this slice are terminal.
+Next: reconcile both existing DiskPoolWriterTest original methods, retaining the
+empty-wakeup/finish behavior and source timeouts before crediting the queue topic.
