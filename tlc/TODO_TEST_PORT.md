@@ -6,9 +6,9 @@ Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **147 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (23.5%).**
-- **573 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (45.2%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **696 logical method contexts across 479 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **157 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (25.1%).**
+- **583 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (45.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **686 logical method contexts across 469 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -23,7 +23,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | --- | ---: | ---: | ---: | ---: | ---: |
 | CLI, REPL, messages, and trace-spec output | 5 | 5 | 37 | 37 | 0 |
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
-| Standard modules, constants, native overrides, and random values | 44 | 26 | 75 | 57 | 18 |
+| Standard modules, constants, native overrides, and random values | 44 | 36 | 75 | 67 | 8 |
 | Evaluation, initial states, next states, and action composition | 45 | 12 | 51 | 12 | 39 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 7 | 34 | 7 | 27 |
 | Issue regressions in the evaluator and checker | 98 | 3 | 101 | 3 | 98 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **147** | **1,269** | **573** | **696** |
+| **Total** | **626** | **157** | **1,269** | **583** | **686** |
 
 ## Porting rules and proposed order
 
@@ -129,20 +129,32 @@ The nine newly translated standard-module models retain all original fixture byt
 - [ ] [tlc2/tool/RandomElementT4Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomElementT4Test.java) — **Missing**: `test`.
 - [ ] [tlc2/tool/RandomElementTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomElementTest.java) — **Missing**: `test`.
 - [ ] [tlc2/tool/RandomElementXandYTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomElementXandYTest.java) — **Missing**: `test`.
-- [ ] [tlc2/tool/RandomSubsetATest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetATest.java) — **Missing**: `testSpec` (from `RandomSubset`).
-- [ ] [tlc2/tool/RandomSubsetBTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetBTest.java) — **Missing**: `testSpec` (from `RandomSubset`).
-- [ ] [tlc2/tool/RandomSubsetEmptyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetEmptyTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetNextT4Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextT4Test.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetNextTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetNextTuplesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextTuplesTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetSetOfFcnsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetSetOfFcnsTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/RandomSubsetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/SetPredValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SetPredValueTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/StandardModulesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/StandardModulesTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/RandomSubsetATest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetATest.java) — **Port complete**: `testSpec` (from `RandomSubset`).
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetA`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetBTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetBTest.java) — **Port complete**: `testSpec` (from `RandomSubset`).
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetB`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetEmptyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetEmptyTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetEmpty`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetNextT4Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextT4Test.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetNextT4`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetNextTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetNext`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetNextTuplesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetNextTuplesTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetNextTuples`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetSetOfFcnsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetSetOfFcnsTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetSetOfFcns`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/RandomSubsetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomSubsetTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_random_subset_models_java_test.go](../tlc_random_subset_models_java_test.go), `TestJavaRandomSubsetModel`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/SetPredValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SetPredValueTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_module_models_java_test.go](../tlc_module_models_java_test.go), `TestJavaSetPredValueModel`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
+- [x] [tlc2/tool/StandardModulesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/StandardModulesTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_module_models_java_test.go](../tlc_module_models_java_test.go), `TestJavaStandardModulesModel`. Full original fixture, seed/setup, recorder and trace/value assertions retained.
 - [ ] [tlc2/tool/SubseteqNextStateTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SubseteqNextStateTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/UserModuleOverrideAnnotationTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideAnnotationTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/UserModuleOverrideFromJarTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideFromJarTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/UserModuleOverrideTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/UserModuleOverrideTest.java) — **Missing**: `testSpec`.
+
+The eight random-subset model translations preserve both fixed seeds and exact traces, every original state/queue count, four-worker setup, complete tuple/component checks and zero-uncovered assertions. The original `RandomSubsetTest` y-bound condition uses `firstX` for its upper bound; that literal condition is retained. Predicate-set and standard-module models run their complete original inputs through the production parser/checker.
 
 ### Evaluation, initial states, next states, and action composition
 

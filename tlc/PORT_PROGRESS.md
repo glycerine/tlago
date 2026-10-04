@@ -3037,3 +3037,15 @@ final combined model race passes35.002s. Full workspace passes(root306.199s,
 SANY0.943s,TLC64.204s); full TLC race passes581.216s. No checks remain running.
 Inventory573/1269 contexts(45.2%),147/626 complete classes(23.5%); standard
 module topic57/75 contexts,26/44 classes complete. Five deferred topics unchanged.
+
+Random-subset original model checkpoint (2026-10-04): all8 original concrete
+random-subset contexts translated, plus original predicate-set and standard-module
+models. Original seeds/counts/action metadata/traces/all tuple and value checks,
+4-worker setup and zero-uncovered assertions retained. All14 original fixture
+files copied byte-for-byte; no production changes required. Original Java10
+passes; combined8-context Go root race160.534s and other2-context race11.161s
+pass. Full workspace passes(root363.854s,SANY0.946s,TLC62.365s). No checks
+remain running. Full TLC race581.216s baseline remains
+valid because this checkpoint changes root tests/fixtures/docs only.
+Inventory583/1269 contexts(45.9%),157/626 complete classes(25.1%); standard
+module topic67/75 contexts and36/44 classes complete,8 pending. Deferred topics unchanged.

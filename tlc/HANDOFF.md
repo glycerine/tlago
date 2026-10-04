@@ -2107,3 +2107,66 @@ No next-model fixtures or Go tests have been added yet. Candidates SetPredValue,
 StandardModules and RandomSubsetEmpty retain complete original zero-state
 model assumptions and source recorder checks. Do not skip random/multithreaded
 correctness simply because distributed tests are deferred.
+
+Random-subset correctness models checkpoint (2026-10-04), final verification green:
+Previous green checkpoint4d028ab. New tlc_random_subset_models_java_test.go
+ports all8 original RandomSubset concrete contexts: Empty, A, B, base Test,
+SetOfFcns, Next, NextT4, NextTuples. Original source fixtures/configs copied
+unchanged;14 new files across7 model dirs including SetPredValue/StandardModules.
+The two latter original model tests were appended to tlc_module_models_java_test.go.
+No production code changed in this checkpoint; existing random enumeration,
+Java-seed/BigInteger product paths and previous value fixes satisfy all cases.
+Every source assertion retained: fixed seeds15041980/918347981374, exact A/B
+trace values,8008 initial/8009 generated+distinct/8007queued/depth2; base trace
+checks5 variables,both integer bounds,booleans,all3 tuple components,UNCHANGED
+values,initial/action metadata and zero-uncovered. Source y-bound typo retains
+firstY>=100000000 && firstX<=100000010 literally; do not strengthen it.
+Inherited CommonTestCase.assertTraceWith fully translated(length,initial/action
+conditions,exact trimmed states,all ordinals). Java ASCII String.trim semantics
+reuse existing root replJavaTrim; depth parsing uses signed32-bit ParseInt.
+One-worker debugger setup selects extended metadata in these original classes;
+helper branches remain explicit. No new debugger functionality or skipped-topic
+work introduced. Four-worker case keeps4 workers,eleven trace y0..10,x1..1000,
+ordinals and source absence-of-BUG condition; no deterministic x assertion added.
+Next exact67291/7729/999 stats and all11 source trace states retained. Tuples
+exact5461/5461/4095,initial4,trace7 and every p/q component range retained.
+SetOfFcns initial1000/generated2000/distinct1000/queue0/depth1/zero-uncovered;
+commented-out source assertions remain inactive. Empty model's complete
+assumptions retained; predicate model evaluates and prints original LP; standard
+module model uses full original EXTENDS list/config. All successful exit and
+safety-violation exit expectations include inherited source teardown assertion.
+All new defaults keep coverage/dot/JSON trace/generate-spec setup; Empty only
+has source noGenerateSpec override. No sample matrices substituted.
+Original unchanged Java JUnit all10 pass(-ea,-Xmx256m,writable scratch basepath),
+separate JVMs. Logs original-{RandomSubsetEmptyTest(.537s),RandomSubsetATest
+(1.349s),RandomSubsetBTest(1.279s),RandomSubsetTest(1.400s),
+RandomSubsetSetOfFcnsTest(.527s),RandomSubsetNextTest(1.134s),
+RandomSubsetNextT4Test(.776s),RandomSubsetNextTuplesTest(.847s),
+SetPredValueTest(.651s),StandardModulesTest(.457s)}-junit.log.
+Go normal individual checks all pass: Empty1.101s,A/B21.950s,base/fcns12.624s,
+Next14.670s,T4/Tuples27.036s,predicate/standard3.866s.
+Full8-context root random-model race passes160.534s; retire41576.
+Other2-context root race passes11.161s; retire84010. No race remains running.
+Full workspace normal passes(root363.854s,SANY0.946s,TLC62.365s); retire70843.
+Log random-models-full-normal.log. No checks remain running. Retain verified full TLC race
+581.216s baseline4d028ab: this checkpoint changes root tests/fixtures/docs only,
+no TLC production or TLC package tests. Full TLC race repetition unnecessary.
+Inventory583/1269(45.9%),157/626 classes(25.1%),686 pending across469 classes,
+one partial. Standard-module topic36/44 classes,67/75 contexts,8 pending.
+Mapped JSON counts independently recomputed and match document. All14 copied
+files verified byte-identical, including original whitespace. Do not edit away
+upstream trailing whitespace in persistent vectors for git diff --check.
+Next8 standard-module contexts: RandomElementTest,RandomElementT4Test,
+RandomElementSimulationTest,RandomElementXandYTest,SubseteqNextStateTest,
+UserModuleOverrideAnnotationTest,UserModuleOverrideFromJarTest,UserModuleOverrideTest.
+First4 random-element source seeds/traces ready to inspect; XandY seed
+8006642976694192746 has exact3-state trace0/0,1/1,0/1+zero-uncovered. Simulation
+seed8006803340504660123,-simulate num=1,debugger=false,exact11 states/actions,
+zero-uncovered; preserve source action-aware assertTraceWith overload.
+SubseteqNextState original68/8/0/depth2 and successful exit. User override jar
+class requires original customBuild extra classpath. Both unannotated override
+classes assert sorted2 mismatch records(exact Get2/Get3 method strings/path suffix),
+2/1/0 stats,success,zero-uncovered. Annotation class calls three recorder.recorded
+methods without asserting their results; retain actual active assertions only.
+No next-context Go code/fixtures added yet. All five deferred topics remain
+outside new work. Current checkpoint has passed its complete normal gate.

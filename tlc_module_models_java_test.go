@@ -192,3 +192,33 @@ func TestJavaKSubsetAssume(t *testing.T) {
 	}
 	requireJavaTLCRecordedParams(t, result, tlc.ECTLCStats, "0", "0", "0")
 }
+
+// Original SetPredValueTest.testSpec and its full printed predicate model.
+func TestJavaSetPredValueModel(t *testing.T) {
+	result := runJavaTLCModelTest(t, "SetPredValue", "-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.SetPredValueTest.json"))
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want SUCCESS", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	if records := javaTLCRecords(result, tlc.ECGeneral); len(records) != 0 {
+		t.Fatalf("unexpected GENERAL: %v", records)
+	}
+	requireJavaTLCRecordedParams(t, result, tlc.ECTLCStats, "0", "0", "0")
+}
+
+// Original StandardModulesTest.testSpec; all source EXTENDS modules retained.
+func TestJavaStandardModulesModel(t *testing.T) {
+	result := runJavaTLCModelTest(t, "StandardModules", "-dumpTrace", "json", filepath.Join(t.TempDir(), "tlc2.tool.StandardModulesTest.json"))
+	if result.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit status=%d, want SUCCESS", result.ExitStatus)
+	}
+	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED not recorded")
+	}
+	if records := javaTLCRecords(result, tlc.ECGeneral); len(records) != 0 {
+		t.Fatalf("unexpected GENERAL: %v", records)
+	}
+	requireJavaTLCRecordedParams(t, result, tlc.ECTLCStats, "0", "0", "0")
+}
