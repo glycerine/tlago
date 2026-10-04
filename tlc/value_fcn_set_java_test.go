@@ -146,13 +146,21 @@ func (s *javaFcnSetHash) contains(t *testing.T, v Value) bool {
 }
 func (s *javaFcnSetHash) add(t *testing.T, v Value) {
 	t.Helper()
-	if s.contains(t, v) {
-		return
+	// HashSet.add/HashMap.put hashes its incoming key once, including when
+	// inserting a new value. Keep the same fingerprint call count here.
+	h := ValueJavaHashCode(v)
+	for _, old := range s.buckets[h] {
+		eq, err := v.Equal(old)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if eq {
+			return
+		}
 	}
 	if s.buckets == nil {
 		s.buckets = map[int32][]Value{}
 	}
-	h := ValueJavaHashCode(v)
 	s.buckets[h] = append(s.buckets[h], v)
 	s.values = append(s.values, v)
 }

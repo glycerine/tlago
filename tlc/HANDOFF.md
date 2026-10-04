@@ -1142,3 +1142,58 @@ fifty values sampled at k=10000. Keep actual non-enumerable/empty-field cases an
 class FP64.Init setup. Reuse Java-compatible hash/equality helpers from the
 completed function-set translation; never replace this matrix with samples or
 exclude it as a benchmark. Finish needed production work before moving on.
+
+
+SetOfRcrdValueTest is port complete in value_record_set_java_test.go: all seven
+original methods, original helper constructors/normalization flags, @BeforeClass
+FP64.Init, indexed SubsetEnumerator.elementAt for names/field membership,
+ordinary/indexed HashSet equality, original length/membership/cardinality checks,
+empty/non-enumerable fields and actual needBigInteger/elements(k) checks.
+Preserved the entire n=1..6, m=1..4, kOutOfN=0..size-1 sweep: 6,684 samples checking
+9,246,174 records, clearing the same HashSet each iteration; astronomical sample
+uses ten fields of fifty values, k=10000. No fixed seed invented. Source Java
+classes and unchanged original seven-method test pass (16.119s); Go targeted
+passes (71.528s, predates only the shared HashSet.add helper correction). Corrected
+that helper to hash once per insertion as Java HashMap.put does, retaining actual
+ValueJavaHashCode and equals for collision/duplicate detection. Final record-set
+snapshot whole-TLC normal passes (40.915s), whole-TLC -race passes:
+ok  	github.com/glycerine/tlago/tlc	392.825s
+Retire 76243,66031,35695. No production changes or weakened/invented cases.
+
+SubsetEnumeratorTest is port complete in value_subset_enumerator_java_test.go:
+both original methods over all twelve shared parameter rows and all eleven
+fractions each (264 cases). Preserved original inputs/constructor flags, decimal
+ASCII model values (65..74, not letters), Math.ceil, source fingerprint setup after
+all parameters are constructed, all size/unique/membership assertions, both
+HashSet constructions and native elements(k)/getRandomSubset production paths.
+All twelve source values are finite; native randomSubsetOfEnumerable dispatch
+retains its existing finite-set boundary before the source-equivalent sampling
+path. Original source EnumerableValue and unchanged original JUnit pass all
+24 expanded methods (0.059s). Go target passes (0.055s), targeted -race passes
+(1.239s); retire 6678,79270. The whole-TLC race result above predates only this
+new test file; its complete new matrix has the separate passing race run.
+No production changes required. Final full-workspace normal check includes both
+new classes and the shared helper correction:
+ok  	github.com/glycerine/tlago	317.352s
+?   	github.com/glycerine/tlago/cmd/tlago	[no test files]
+ok  	github.com/glycerine/tlago/sany_tests	0.999s
+ok  	github.com/glycerine/tlago/tlc	42.212s
+Retire handle64633. Inventory now 357/1269 methods (28.1%), 114/626 complete classes
+(18.2%), 912 pending methods across 512 classes; one partial. Five user-deferred
+topics stay deferred. Scratch drafts are superseded by tracked files.
+
+Next SubsetValueTest: read all 37 methods/helpers and verified current Java source
+Combinatorics, SubsetValue and KSubsetValue against unchanged JUnit: all 37 pass
+Java -ea (0.91s), subset-value-junit.log. Not credited as Go translations yet.
+Correct identified production error-family gaps before translating their catches:
+numberOfKElements returns fmt.Errorf for >Long.MAX_VALUE but Java throws
+IllegalArgumentException("k=... and n=..."); newKElementEnumeration likewise
+returns fmt.Errorf("Subset too large.") instead of IllegalArgumentException.
+Keep original class seed 15041980 and FP64.Init; fixture Collections.shuffle uses
+its own default java.util.Random, independently of RandomEnumerableValues.
+Preserve shuffled values even when source flags them normalized; do not substitute
+sorted fixtures. Retain TreeSet comparison-based duplicate detection where used,
+complete 65,536-subset/unranking sweeps, all 61 binomial sum rows, original
+23,131/23,071/23,077 random-set sample sizes, normalized ordering, actual exception
+types, empty-enumerator independence and randomized KSubset cases. Do not replace
+original class methods with existing approximate Go checks or smaller samples.
