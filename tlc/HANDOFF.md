@@ -3429,3 +3429,25 @@ ad50e68, whose full TLC race passed570.326s. Inventory728/1269 contexts,293/626
 complete classes;541 contexts/333 classes pending,one partial. Next missing issue
 is Github726Test; unchanged Java references for726/742/743/746/757 already
 pass in the scratch runner. Goal active and user-deferred topics unchanged.
+
+2026-10-04: Github726/742/743/746/757 original testSpec methods translated.
+All five unchanged Java JUnit references pass; nine fixtures match source bytes.
+Five focused Go repetitions pass9.308s. Exact original assertions retained:
+726 captures complete writes and uses list membership,742 rejects the full6×6
+fairness formula,743 retains all four trace states/actions/ordinals,746 keeps
+initial-state field order/newline,757 retains CounterExample postcondition and
+explicit JSON/noGenerateSpec overrides. Production fixes: LNConj DNF product
+uses Java Math.multiplyExact's signed32-bit overflow boundary and exact diagnostic
+before allocating; Tool.getState(successor,predecessor) catches only direct
+TLCRuntimeException from candidate equality and continues to other successors,
+preserving other exception types and state-generation failures. Initial742 run
+failed with Go out-of-memory from the missing overflow check; after correction,
+743 exposed the missing catch/truncated trace, now fully passing. No weakened
+assertions or invented tests. Five focused root race repetitions (new cases
+plus725 and alias liveness) pass261.674s. Full offline workspace passes
+(root420.629s, SANY1.039s, TLC63.961s). Full TLC race passes555.004s; all
+check handles terminal.
+Inventory733/1269 contexts,298/626 complete classes;536 contexts/328 classes
+pending,one partial. Next pending issues: Github766 and Github766Simulate;
+both unchanged Java references already pass in the scratch runner.
+Goal active; user-deferred topics remain deferred.

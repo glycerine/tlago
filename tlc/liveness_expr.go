@@ -757,7 +757,14 @@ func (n *LiveExprNode) conjToDNF() *LiveExprNode {
 		switch elem.Kind {
 		case LiveExprDisj:
 			parts = append(parts, elem)
-			total *= elem.Count()
+			// Java LNConj uses Math.multiplyExact on a signed 32-bit int,
+			// rejecting overflow before allocating the cross product.
+			product := int64(total) * int64(elem.Count())
+			if product > 1<<31-1 || product < -1<<31 {
+				panic(NewTLCRuntimeException(ECTLCLiveCannotHandleFormula,
+					"because it exceeds the maximum supported size in disjunctive normal form."))
+			}
+			total = int(product)
 		case LiveExprConj:
 			parts = append(parts, elem.Bodies...)
 		default:

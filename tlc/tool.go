@@ -623,13 +623,28 @@ func (t *Tool) GetStateForTransition(successor *TLCStateMut, predecessor *TLCSta
 		}
 		for i := 0; nextStates != nil && i < nextStates.Size(); i++ {
 			state := nextStates.At(i)
-			if state != nil && successor.Equal(state) {
+			if state != nil && statesEqualForReconstruction(successor, state) {
 				state.attachTraceMetadata(predecessor, action)
 				return NewTLCStateInfo(state, action), nil
 			}
 		}
 	}
 	return nil, nil
+}
+
+// Tool.getState(s1, s) skips candidates whose values are incomparable to s1.
+// Catch only Java's TLCRuntimeException from equality, not state generation or
+// other exception types, so reconstruction can try the next successor.
+func statesEqualForReconstruction(successor, candidate *TLCStateMut) (equal bool) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			if javaRuntimeException(panicValueAsError(failure)) == nil {
+				panic(failure)
+			}
+			equal = false
+		}
+	}()
+	return successor.Equal(candidate)
 }
 
 func (t *Tool) SetSymmetryPermutations(perms []*MVPerm) *Tool {
