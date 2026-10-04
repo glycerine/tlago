@@ -2566,3 +2566,103 @@ undefined-hole model, signed byte literals, full-read oracle smoothing, minimize
 and failure report. Do not silently change this to Go fuzzing or fewer traces.
 No buffered-file test credit yet; source closed-handle catches require actual
 IOException with message containing File handle closed, not errors.New alone.
+
+
+BufferedRandomAccessFileTest is port complete: all eighteen original methods in
+buffered_random_access_file_java_test.go. Preserve full 8192/8 long loops, original
+seek/length/read/write order, all file modes and temp-name prefixes, source close
+scopes, fifteen typed closed-handle catches/message assertions, and all seven
+unchanged generated traces. Both seek/no-length catches remain permissive (they
+accept IOException but do not require one). Complete signed byte arrays retain
+all 5/5/364/701 source literals, mechanically checked against Java; no sliced-down
+fixtures or invented assertions. Go wrappers represent Java throw and -1-return
+boundaries while executing the actual production buffered file. Ordinary Read's
+Go io.EOF sentinel maps to Java read(byte[]...) returning -1; primitive reads must
+throw a concrete EOFException. Original IOException catches require represented
+Java carriers, not native Go errors with a similar message. Temporary file cleanup
+uses Go test cleanup instead of Java process-exit deletion.
+Initial original run found errors.errorString instead of IOException after close.
+Production now returns concrete IOException("File handle closed"), converts native
+file IO failures at the RandomAccessFile boundary while preserving represented
+exceptions, and returns actual EOFException on incomplete primitive reads. Existing
+Go EOF checks still work through EOFException.Is(io.EOF).
+Removed the fresh-buffer allocation shortcut: source synchronized LIFO availBuffs
+pool starts at 100 slots and grows by ten; constructor borrows, close pools only
+after successful flush, repeat close never pools twice. Finally sets closed before
+underlying close; a close failure overrides a flush failure like Java. The original
+double-close test now executes actual pooled-buffer behavior. Removed eager
+read-only write rejection before buffer mutations; failures occur at actual native
+write/length operations. Init uses native stat for source length without moving
+the underlying pointer. Native setLength now also moves the disk pointer down to
+newLength (os.File.Truncate alone does not), then refreshes diskPos and constrains
+curr through the original seek path. Seek checks open at its source boundary;
+Seeek retains the source internal no-check behavior. No other test was weakened.
+Java originals pass all eighteen with assertions enabled (0.038s); final Go
+originals plus existing buffered-file/BitVector checks pass (0.017s). Retire handles
+85556/95002/24724/56352. Full workspace normal and full TLC race running with final
+production/tests, superseded by a further source failure-path correction; handles 47773/46248
+were deliberately stopped (exit 130), not credited. Final handles 12558/52425
+now run full workspace normal/full TLC race against the corrected revision.
+Inventory now 487/1269 contexts (38.4%), 127/626 complete classes (20.3%), 782
+pending contexts across 499 classes, one partial. Five deferred topics stay deferred.
+Next: complete BufferedRandomAccessFileFuzzTest and its AbstractFileState helper;
+zero credit yet. Retain available-processor workers, per-worker Java Random seed,
+shared 10000-trace bound, fifty operations, full BOUND=16384, read smoothing,
+rejection sampling and minimizer. Use an independent native RandomAccessFile
+adapter for the oracle, not another BufferedRandomAccessFile instance. Source
+AbstractFileState uses a 1024-bit initial-capacity hint and tracks defined writes,
+not concrete byte values. Disk headroom now about 1GB; full original fuzzer retains
+20k temp files until test cleanup. If more headroom is required, inspect disposable
+owned Go cache entries and prune only bounded old regular hex64-d data; no source,
+vectors or user files. Do not shorten the original fuzzer to avoid storage needs.
+An ignored direct-source probe (not a new test) confirms default JVM/Go agreement
+for read-only buffered writes followed by flush/close failure, closed reads,
+underlying-pointer truncation with logical cursor zero and primitive EOF. The
+probe exposed early diskPos mutation: flushBuffer now changes diskPos only after
+a complete successful write, and fillBuffer adds the total count after the read
+loop completes. Native failure therefore retains source cached state. Original
+Java tests also pass with -ea; the probe uses the normal assertions-disabled JVM
+because a repeated read-only write failure intentionally violates Java's optional
+native-pointer assertion. Go has no optional Java assert instrumentation here;
+that distinction is not hidden by a test or comparison normalization. Retire
+probe handle 14402 and final targeted handle 30498 (pass 0.017s). No further
+production edits after starting final broad handles 12558/52425.
+Final broad handles 12558/52425 stopped with build failures caused by disk full
+(root link mapping output: no space left on device; race TLC build failure).
+These are terminal and not credited as verification. Inspected and then removed
+449 owned regular hex64-d Go cache files older than 48h, rechecking inode/device,
+size/mtime and ownership against braf-cache-candidates.json before each deletion;
+freed 3201707945 bytes (about 3.2GB). Source/vectors and cache directories untouched.
+Current final retry handles 37285/46774: full workspace normal/full TLC race, logs
+braf-full-normal-retry.log/braf-tlc-race-retry.log; still running, no result yet.
+Ignored draft full fuzz translation prepared at
+.codex-gotmp/correctness-java/buffered_random_access_file_fuzz_java_test.go.
+It is NOT part of the Go test suite, has zero test-port credit, and must be reviewed,
+compiled and run before installation/credit. Uses original eight operations,
+independent BitSet adapter, independent native file oracle with Java pointer
+truncation behavior, per-processor workers, seeds/counter, full reads with null vs
+empty distinction, minimizer and testWellDefined's exact literal operations.
+Review original Exception|AssertionError catch and Go panic mapping, native
+oracle close/error boundaries and thread-count mapping. Retain complete traces,
+10000 total runs and all fifty operations; no new invented tests. The authoritative
+next action after the eighteen-method green checkpoint is finishing this original
+fuzz class, not switching to a smaller statistical or timing surrogate.
+Full workspace normal retry is terminal and passes (see braf-full-normal-retry.log);
+retire handle 37285. Full TLC race retry handle 46774 still active, no result yet.
+Fuzz draft Random calls now use actual NextIntN(int32). Replaced TLC BitVector
+storage adapter with independent JDK BitSet union semantics (TLC SetRange overwrites
+boundary bits, unlike BitSet.set); draft now uses exclusive ranges preserving prior
+writes. Its inner comparison catch rethrows represented Java Error to the outer
+Throwable handler. Original Java fuzz class and AbstractFileState compile unchanged
+in ignored correctness-java/classes. Draft still uncompiled/uninstalled, zero credit;
+review source catch/close/diagnostic semantics and compare generated operations
+against actual Java before running full workload. Buffer correctness checkpoint
+production/tests remain unchanged during final broad retry.
+Final buffered-file checkpoint verification: full workspace normal passes
+(root 307.300s, SANY 1.079s, TLC 46.135s); full TLC race passes (416.567s).
+Retire retry handles 37285/46774. No tests or production edits after starting
+these retry runs. Fuzz draft overlay compiles and its original testWellDefined
+passes (0.013s), handle 97370 retired; the full fuzz method remains unrun, zero
+inventory credit. Overlay/Java class outputs are ignored scratch evidence.
+Next action: finish review and full workload of the draft original fuzz class,
+then copy it into tlc/ and update inventory only after verified whole-class parity.

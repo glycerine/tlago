@@ -1,3 +1,9 @@
+// Copyright (c) 2003 Compaq Corporation.  All rights reserved.
+// Portions Copyright (c) 2003 Microsoft Corporation.  All rights reserved.
+// Copyright (c) 2024, Oracle and/or its affiliates.
+// Last modified on Mon 30 Apr 2007 at 13:26:26 PST by lamport
+//
+//	modified on Mon Jun 19 14:28:04 PDT 2000 by yuanyu
 package tlc
 
 import (
@@ -5,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync"
 )
 
 const (
@@ -12,6 +19,48 @@ const (
 	BufferedRandomAccessFileBuffSz    = 1 << BufferedRandomAccessFileLogBuffSz
 	bufferedRandomAccessFileBuffMask  = ^int64(BufferedRandomAccessFileBuffSz - 1)
 )
+
+// Source mu/availBuffs/numAvailBuffs: a synchronized LIFO pool, growing by ten.
+var bufferedRandomAccessFileBuffers = struct {
+	sync.Mutex
+	available [][]byte
+	count     int
+}{available: make([][]byte, 100)}
+
+func takeBufferedRandomAccessFileBuffer() []byte {
+	p := &bufferedRandomAccessFileBuffers
+	p.Lock()
+	defer p.Unlock()
+	if p.count > 0 {
+		p.count--
+		return p.available[p.count]
+	}
+	return make([]byte, BufferedRandomAccessFileBuffSz)
+}
+
+func returnBufferedRandomAccessFileBuffer(buffer []byte) {
+	p := &bufferedRandomAccessFileBuffers
+	p.Lock()
+	defer p.Unlock()
+	if p.count >= len(p.available) {
+		next := make([][]byte, p.count+10)
+		copy(next, p.available[:p.count])
+		p.available = next
+	}
+	p.available[p.count] = buffer
+	p.count++
+}
+
+// Native file errors cross the RandomAccessFile IOException boundary here.
+func bufferedRandomAccessFileIOError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if _, represented := err.(interface{ GetMessage() *string }); represented {
+		return err
+	}
+	return NewIOException(err.Error())
+}
 
 type BufferedRandomAccessFile struct {
 	file     *os.File
@@ -39,16 +88,16 @@ func NewBufferedRandomAccessFile(name string, mode string) (*BufferedRandomAcces
 	}
 	file, err := os.OpenFile(name, flag, 0o666)
 	if err != nil {
-		return nil, err
+		return nil, bufferedRandomAccessFileIOError(err)
 	}
 	raf := &BufferedRandomAccessFile{
 		file:     file,
 		writable: writable,
-		buff:     make([]byte, BufferedRandomAccessFileBuffSz),
+		buff:     takeBufferedRandomAccessFileBuffer(),
 	}
 	if err := raf.init(); err != nil {
 		_ = file.Close()
-		return nil, err
+		return nil, bufferedRandomAccessFileIOError(err)
 	}
 	return raf, nil
 }
@@ -58,77 +107,74 @@ func (f *BufferedRandomAccessFile) init() error {
 	f.lo = 0
 	f.curr = 0
 	f.diskPos = 0
-	length, err := f.file.Seek(0, io.SeekEnd)
+	info, err := f.file.Stat()
 	if err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
-	f.length = length
-	if _, err := f.file.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
+	f.length = info.Size()
 	return f.fillBuffer()
 }
 
 func (f *BufferedRandomAccessFile) requireOpenFile() error {
 	if f == nil || f.closed || f.file == nil {
-		return errors.New("File handle closed")
+		return NewIOException("File handle closed")
 	}
 	return nil
 }
 
 func (f *BufferedRandomAccessFile) InvalidateBufferedData() error {
 	if err := f.Flush(); err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
 	return f.fillBuffer()
 }
 
-func (f *BufferedRandomAccessFile) Close() error {
+func (f *BufferedRandomAccessFile) Close() (err error) {
 	if f == nil || f.closed {
 		return nil
 	}
-	var err error
-	if flushErr := f.Flush(); flushErr != nil {
-		err = flushErr
+	// Source finally sets closed before the underlying close. A close failure
+	// replaces a flush failure; a buffer is pooled only after successful flush.
+	defer func() {
+		f.closed = true
+		if closeErr := f.file.Close(); closeErr != nil {
+			err = bufferedRandomAccessFileIOError(closeErr)
+		}
+	}()
+	if err = f.Flush(); err != nil {
+		return err
 	}
-	if closeErr := f.file.Close(); err == nil && closeErr != nil {
-		err = closeErr
-	}
-	f.closed = true
-	return err
+	returnBufferedRandomAccessFileBuffer(f.buff)
+	return nil
 }
 
 func (f *BufferedRandomAccessFile) Flush() error {
 	if err := f.requireOpenFile(); err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
 	_, err := f.flushBuffer()
-	return err
+	return bufferedRandomAccessFileIOError(err)
 }
 
 func (f *BufferedRandomAccessFile) flushBuffer() (bool, error) {
 	if !f.dirty {
 		return false, nil
 	}
-	if !f.writable {
-		return false, errors.New("file not open for writing")
-	}
 	length := min64(f.length-f.lo, BufferedRandomAccessFileBuffSz)
 	if length > 0 {
 		if f.diskPos != f.lo {
 			if _, err := f.file.Seek(f.lo, io.SeekStart); err != nil {
-				return false, err
+				return false, bufferedRandomAccessFileIOError(err)
 			}
-			f.diskPos = f.lo
 		}
 		n, err := f.file.Write(f.buff[:length])
-		f.diskPos += int64(n)
 		if err != nil {
-			return false, err
+			return false, bufferedRandomAccessFileIOError(err)
 		}
 		if n != int(length) {
-			return false, io.ErrShortWrite
+			return false, bufferedRandomAccessFileIOError(io.ErrShortWrite)
 		}
+		f.diskPos = f.lo + length
 	}
 	f.dirty = false
 	return true, nil
@@ -137,7 +183,7 @@ func (f *BufferedRandomAccessFile) flushBuffer() (bool, error) {
 func (f *BufferedRandomAccessFile) fillBuffer() error {
 	if f.diskPos != f.lo {
 		if _, err := f.file.Seek(f.lo, io.SeekStart); err != nil {
-			return err
+			return bufferedRandomAccessFileIOError(err)
 		}
 		f.diskPos = f.lo
 	}
@@ -146,38 +192,38 @@ func (f *BufferedRandomAccessFile) fillBuffer() error {
 		n, err := f.file.Read(f.buff[count:])
 		if n > 0 {
 			count += n
-			f.diskPos += int64(n)
 		}
 		if err == io.EOF {
-			return nil
+			break
 		}
 		if err != nil {
-			return err
+			return bufferedRandomAccessFileIOError(err)
 		}
 		if n == 0 {
-			return nil
+			break
 		}
 	}
+	f.diskPos += int64(count)
 	return nil
 }
 
 func (f *BufferedRandomAccessFile) Seek(pos int64) error {
+	if err := f.requireOpenFile(); err != nil {
+		return err
+	}
 	_, err := f.Seeek(pos)
-	return err
+	return bufferedRandomAccessFileIOError(err)
 }
 
 func (f *BufferedRandomAccessFile) Seeek(pos int64) (bool, error) {
-	if err := f.requireOpenFile(); err != nil {
-		return false, err
-	}
 	f.curr = pos
 	if pos < f.lo || pos >= f.lo+BufferedRandomAccessFileBuffSz {
 		if _, err := f.flushBuffer(); err != nil {
-			return false, err
+			return false, bufferedRandomAccessFileIOError(err)
 		}
 		f.lo = pos & bufferedRandomAccessFileBuffMask
 		if err := f.fillBuffer(); err != nil {
-			return false, err
+			return false, bufferedRandomAccessFileIOError(err)
 		}
 		return true, nil
 	}
@@ -200,18 +246,25 @@ func (f *BufferedRandomAccessFile) Length() (int64, error) {
 
 func (f *BufferedRandomAccessFile) SetLength(newLength int64) error {
 	if err := f.requireOpenFile(); err != nil {
-		return err
-	}
-	if !f.writable {
-		return errors.New("file not open for writing")
+		return bufferedRandomAccessFileIOError(err)
 	}
 	if err := f.file.Truncate(newLength); err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
 	f.length = newLength
-	if pos, err := f.file.Seek(0, io.SeekCurrent); err == nil {
-		f.diskPos = pos
+	pos, err := f.file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return bufferedRandomAccessFileIOError(err)
 	}
+	// Java RandomAccessFile.setLength moves the underlying pointer whenever it
+	// lies beyond newLength. os.File.Truncate alone does not perform that move.
+	if pos > newLength {
+		pos, err = f.file.Seek(newLength, io.SeekStart)
+		if err != nil {
+			return bufferedRandomAccessFileIOError(err)
+		}
+	}
+	f.diskPos = pos
 	if f.curr > newLength {
 		return f.Seek(newLength)
 	}
@@ -221,7 +274,7 @@ func (f *BufferedRandomAccessFile) SetLength(newLength int64) error {
 func (f *BufferedRandomAccessFile) restoreInvariantsAfterIncreasingCurr() error {
 	if f.curr >= f.lo+BufferedRandomAccessFileBuffSz {
 		_, err := f.Seeek(f.curr)
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
 	return nil
 }
@@ -263,7 +316,10 @@ func (f *BufferedRandomAccessFile) Read(p []byte) (int, error) {
 
 func (f *BufferedRandomAccessFile) ReadFull(p []byte) error {
 	_, err := io.ReadFull(f, p)
-	return err
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return NewEOFException()
+	}
+	return bufferedRandomAccessFileIOError(err)
 }
 
 func (f *BufferedRandomAccessFile) ReadSignedByte() (int, error) {
@@ -272,7 +328,7 @@ func (f *BufferedRandomAccessFile) ReadSignedByte() (int, error) {
 		return value, err
 	}
 	if value < 0 {
-		return value, io.EOF
+		return value, NewEOFException()
 	}
 	if value >= 128 {
 		value -= 256
@@ -356,10 +412,7 @@ func (f *BufferedRandomAccessFile) ReadLongNat() (int64, error) {
 
 func (f *BufferedRandomAccessFile) WriteByteValue(value int) error {
 	if err := f.requireOpenFile(); err != nil {
-		return err
-	}
-	if !f.writable {
-		return errors.New("file not open for writing")
+		return bufferedRandomAccessFileIOError(err)
 	}
 	f.buff[f.curr-f.lo] = byte(value)
 	f.curr++
@@ -373,9 +426,6 @@ func (f *BufferedRandomAccessFile) WriteByteValue(value int) error {
 func (f *BufferedRandomAccessFile) Write(p []byte) (int, error) {
 	if err := f.requireOpenFile(); err != nil {
 		return 0, err
-	}
-	if !f.writable {
-		return 0, errors.New("file not open for writing")
 	}
 	written := 0
 	for len(p) > 0 {
@@ -392,7 +442,7 @@ func (f *BufferedRandomAccessFile) Write(p []byte) (int, error) {
 func (f *BufferedRandomAccessFile) WriteFull(p []byte) error {
 	n, err := f.Write(p)
 	if err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
 	if n != len(p) {
 		return io.ErrShortWrite
@@ -455,7 +505,7 @@ func (f *BufferedRandomAccessFile) writeAtMost(p []byte) (int, error) {
 
 func (f *BufferedRandomAccessFile) Reset() error {
 	if err := f.SetLength(0); err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
 	return f.init()
 }
