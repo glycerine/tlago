@@ -1,8 +1,11 @@
 package tlago
 
 import (
+	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/glycerine/tlago/tlc"
@@ -77,14 +80,16 @@ func ModelCheckSanySource(specFile, specSource, cfgSource string, opts ModelChec
 }
 
 type sanyLoader struct {
-	opts          LoadOptions
-	modules       map[string]*Module
-	diags         Diagnostics
-	loading       map[string]bool
-	loaded        map[string]bool
-	semanticOrder []string
-	moduleFiles   []string
-	rootDir       string
+	opts            LoadOptions
+	modules         map[string]*Module
+	diags           Diagnostics
+	loading         map[string]bool
+	loaded          map[string]bool
+	semanticOrder   []string
+	moduleFiles     []string
+	rootDir         string
+	rootPath        string
+	monolithTempDir string
 }
 
 func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
@@ -108,6 +113,7 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 		rootPath = abs
 	}
 	l.rootDir = filepath.Dir(rootPath)
+	l.rootPath = rootPath
 	rootMod := l.loadPath(rootPath, false, rootFilename)
 	if rootMod != nil {
 		sourceExtendsLen := len(rootMod.Extends)
@@ -162,7 +168,19 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 	}
 	if l.opts.FilenameResolver != nil {
 		file := l.opts.FilenameResolver.Resolve(name+".tla", true)
-		return l.loadPath(file.GetPath(), file.IsLibraryModule(), name+".tla")
+		if !file.Exists() {
+			if mod := l.loadMonolithModule(name); mod != nil {
+				return mod
+			}
+			if l.opts.ResolutionError != nil {
+				l.opts.ResolutionError(fmt.Sprintf("File does not exist: %s while looking in these directories: %s", file.GetAbsolutePath(), l.opts.FilenameResolver.GetFullPath()))
+			}
+		}
+		provenance := ""
+		if path := file.GetLibraryPath(); path != nil {
+			provenance = *path
+		}
+		return l.loadPath(file.GetPath(), file.IsLibraryModule(), name+".tla", provenance)
 	}
 	if l.opts.PreferLibraryModules {
 		if mod := l.loadLibraryModule(name); mod != nil {
@@ -183,6 +201,9 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 		if mod := l.loadLibraryModule(name); mod != nil {
 			return mod
 		}
+	}
+	if mod := l.loadMonolithModule(name); mod != nil {
+		return mod
 	}
 	pos := Position{}
 	if importer != nil {
@@ -206,23 +227,19 @@ func (l *sanyLoader) loadLibraryModule(name string) *Module {
 	return nil
 }
 
-func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string) *Module {
+func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string, provenance ...string) *Module {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		l.diags = append(l.diags, errorAt(Position{File: path, Line: 1, Column: 1}, "E1202", "cannot read %s: %v", path, err))
 		return nil
 	}
 	l.moduleFiles = append(l.moduleFiles, logicalFilename)
-	mods, diags := parseSanyModuleSources(path, string(data))
+	l.reportParsing(path, provenance...)
+	extracted := l.monolithTempDir != "" && filepath.Dir(path) == l.monolithTempDir
+	mod, _, diags := parseSanyModuleSourceWithDependencies(path, string(data), extracted)
 	l.diags = append(l.diags, diags...)
-	if len(mods) == 0 {
-		return &Module{SourcePath: path, Source: string(data)}
-	}
-	mod := mods[0]
 	if standard {
-		for _, loaded := range mods {
-			setModuleLibraryRecursive(loaded, true)
-		}
+		setModuleLibraryRecursive(mod, true)
 	}
 	if mod.Name == "" {
 		return mod
@@ -233,10 +250,76 @@ func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string
 			l.diags = append(l.diags, errorAt(mod.Pos, "E4221", "file name %q does not match module name %q", fileMod, mod.Name))
 		}
 	}
-	for _, loaded := range mods {
-		l.registerModuleRecursive(loaded)
-	}
+	l.registerModuleRecursive(mod)
 	return mod
+}
+
+// FileUtil.createNamedInputStream falls back to the root monolith only after
+// ordinary resolution fails. MonolithSpecExtractor keeps the module delimiters
+// and writes an actual temporary file, whose provenance is the root file.
+func (l *sanyLoader) loadMonolithModule(name string) *Module {
+	if l.rootPath == "" {
+		return nil
+	}
+	data, err := os.ReadFile(l.rootPath)
+	if err != nil {
+		return nil
+	}
+	start := regexp.MustCompile(`^-{4,}\s*MODULE\s+` + regexp.QuoteMeta(name) + `\s*-{3,}$`)
+	active := false
+	var text strings.Builder
+	source := strings.ReplaceAll(strings.ReplaceAll(string(data), "\r\n", "\n"), "\r", "\n")
+	for _, line := range strings.Split(source, "\n") {
+		if active && strings.HasPrefix(line, "====") {
+			text.WriteString(line + "\n")
+			break
+		}
+		if !active && start.MatchString(line) {
+			active = true
+		}
+		if active {
+			text.WriteString(line + "\n")
+		}
+	}
+	if !active {
+		return nil
+	}
+	if l.monolithTempDir == "" {
+		l.monolithTempDir, err = os.MkdirTemp("", "tlago-monolith-")
+		if err != nil {
+			return nil
+		}
+	}
+	path := filepath.Join(l.monolithTempDir, filepath.Base(name)+".tla")
+	if err = os.WriteFile(path, []byte(text.String()), 0600); err != nil {
+		return nil
+	}
+	return l.loadPath(path, false, name+".tla", l.rootPath)
+}
+
+func (l *sanyLoader) reportParsing(path string, provenance ...string) {
+	if l.opts.ParsingProgress == nil {
+		return
+	}
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		resolved = path
+	}
+	if absolute, err := filepath.Abs(resolved); err == nil {
+		resolved = absolute
+	}
+	origin := ""
+	if len(provenance) > 0 && provenance[0] != "" {
+		original := provenance[0]
+		originalPath := original
+		if uri, err := url.Parse(original); err == nil && uri.Scheme != "" {
+			originalPath = uri.Path
+		}
+		if originalPath != resolved {
+			origin = " (" + original + ")"
+		}
+	}
+	l.opts.ParsingProgress(fmt.Sprintf("Parsing file %s%s", resolved, origin))
 }
 
 func (l *sanyLoader) registerModuleRecursive(mod *Module) {
@@ -254,8 +337,13 @@ func ParseSanyModuleSource(file, source string) (*Module, Diagnostics) {
 	return module, diags
 }
 
-func parseSanyModuleSourceWithDependencies(file, source string) (*Module, []string, Diagnostics) {
+func parseSanyModuleSourceWithDependencies(file, source string, extracted ...bool) (*Module, []string, Diagnostics) {
 	root, dependencies, diags := parseSanySyntaxWithDependencies(file, source)
+	if len(extracted) > 0 && extracted[0] && root != nil {
+		// An extracted sibling has its own module-relative source locations;
+		// its physical temporary path remains the module's SourcePath.
+		rebaseSameFileSiblingModuleSyntax(root)
+	}
 	if diags.HasErrors() || root == nil {
 		mod := &Module{SourcePath: file, Source: source}
 		if root != nil {

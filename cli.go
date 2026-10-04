@@ -589,6 +589,8 @@ func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 		return ExitToolFailure
 	}
 	diagOpts = diagOpts.withTLCMessageControls()
+	loadOpts.ParsingProgress = tlcruntime.ToolIOPrintln
+	loadOpts.ResolutionError = tlcruntime.ToolIOErrPrintln
 	loadOpts.ExtraModules = appendModuleNames(loadOpts.ExtraModules, tlcRuntimeParameterModules(opts.RuntimeParams)...)
 	spec, diags := LoadSanySpec(opts.SpecFile, loadOpts)
 	diags = diagOpts.apply(diags)

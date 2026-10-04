@@ -3236,3 +3236,30 @@ safety27/34complete7pending, deferredtopics unchanged;goalactive.
 UpcomingoriginalJavaViewMap/MonolithSpec/TSnapShotallpass .623/.525/.501s.
 ViewMapinitialscratchfailurewasmissingtarget/GeneratedTESpecs directory,
 correctedharnesssetupwithunchangedtest; notupstreamdiscrepancy/noReconcilecredit.
+
+2026-10-04 correctness tests: original ViewMapTest, MonolithSpecTest and
+TSnapShotTest testSpec translations; six byte-exact fixtures. Full source flags,
+worker counts, exits, recorder/coverage/state/action assertions preserved.
+Production VIEW string formatting now uses SANY allParams and variable locations;
+monolith loading now resolves files first, extracts required sibling modules to
+real temporary files, and reports actual parsing provenance through ToolIO.
+Extracted syntax retains logical module positions and physical SourcePath.
+APSubstInNode and SubstInNode retain their distinct source substitution equations.
+Original Java tests pass; final focused root race checks (all three plus existing
+SANY semantic bridge, five repetitions) pass60.755s. Final full workspace58698
+and TLCrace39479 pending; logs safety-next-final-{workspace,tlc-race}.log.
+Inventory653/1269contexts51.5%,221/626classes35.3%; safety30/34complete.
+Deferred topics unchanged. ElevatedSanyWarning next; unchanged Java preflight
+passes with both original corpus fixtures. No test assertions weakened.
+
+Final workspace58698 PASS: root382.944s, SANY0.926s, TLC64.393s; retire58698.
+Final focused rootrace81848 PASS60.755s; retire81848. FullTLCrace39479
+stilllive. StagedGo/docs whitespaceclean; fixturewarnings are byte-exact
+original whitespace, deliberately preserved.
+
+Final TLCrace39479 PASS560.863s; retire39479. All final checks terminal
+and green. This batch completes ViewMap, MonolithSpec and TSnapShot original
+testSpec translations plus the corresponding production fixes. Inventory
+653/1269contexts51.5%,221/626classes35.3%;616contexts remain across405classes.
+Commit this green checkpoint; next ElevatedSanyWarning (Java preflight passed).
+The overall correctness-suite port goal remains active; deferred topics unchanged.

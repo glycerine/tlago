@@ -123,6 +123,7 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
 	oldContinuation := tlc.Globals.Continuation
+	oldUseView := tlc.UseView()
 	oldSetBound := tlc.Globals.SetBound
 	oldPoly := tlc.FP64IrredPoly()
 	oldUserDir := tlc.GetFilenameUserDirectory()
@@ -135,12 +136,14 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false
+	tlc.SetUseView(false)
 	tlc.Globals.SetBound = 1000000
 	t.Cleanup(func() {
 		tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir = oldCoverage, oldCheckpoint, oldMeta
 		tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator = oldWorkers, oldMain, oldSimulator
 		tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime = oldTool, oldDFID, oldStart
 		tlc.Globals.Continuation = oldContinuation
+		tlc.SetUseView(oldUseView)
 		tlc.Globals.SetBound = oldSetBound
 		tlc.FP64InitPoly(oldPoly)
 		tlc.SetFilenameUserDirectory(oldUserDir)

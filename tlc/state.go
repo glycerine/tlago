@@ -660,7 +660,7 @@ func (s *TLCStateMut) String() string {
 		if err != nil {
 			panic(err)
 		}
-		return valueString(value)
+		return SemanticValueString(stateTool.ViewSpec, value)
 	}
 	return s.StringForVariables(nil)
 }

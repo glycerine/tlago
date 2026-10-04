@@ -11,6 +11,9 @@ import (
 var embeddedJavaStandardModules embed.FS
 
 type LoadOptions struct {
+	// ParsingProgress receives SANY file/provenance progress; nil is silent.
+	ParsingProgress      func(string)
+	ResolutionError      func(string)
 	FilenameResolver     tlc.FilenameToStream
 	LibraryPaths         []string
 	PreferLibraryModules bool

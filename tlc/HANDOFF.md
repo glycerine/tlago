@@ -2815,3 +2815,60 @@ Finalworkspace377.561/0.973/63.747s and all4five-rootrace71.626s green against
 finalproduction. StagedGo/docs whitespacecheckclean; onefixturetrailing-space
 warning is originalNextCallstackmoduleheader, preservedbyte-identically. Ready
 for greencommit of4 originaltests+realproductionfixes+inventory/documents.
+
+2026-10-04 ViewMap,MonolithSpec,TSnapShot original testSpec translations added:
+ tlc_view_map_java_test.go,tlc_monolith_spec_java_test.go,tlc_tsnapshot_java_test.go.
+Six source-exact fixtures. TSnapShot4workers/defaultflags/MCroot/subdir,
+FAILURE_SAFETY_EVAL,FINISHED/noGENERAL/noBUG/behavior preserved. ViewMap source
+-view/defaultflags/safety,all8states+all8exactactions/ordinals,uncoveredline91
+col60..73,register42firstInt43/postconditiondiagnostics preserved. InitialView
+failed tupleprintedraw; productionnowSemanticValueString OpAppl override with
+SemanticAllParams(sourceunion/removal/subst,fixedpointrecursion) prints labeled
+variablesbyVarLoc when tuplelengthmatchesallParams. BaseprintsValuesPPR.
+Original sourceallParams semantics retained ratherthan hardcoding ViewMapvars.
+Rootmodelhelper restores/resetsUseView to match source per-classloader isolation.
+Monolith sourceactualToolIOstreams,embeddedcfg/success,214/54/0,noMissingFile,
+3provenancepatterns/zeroUncovered preserved. Regexonlyfixturepathsuffix adapted
+from test-model to test_vectors/models/MonolithSpec; sourcewildcarddots retained.
+Actual SANY loader fallsbackafterordinaryresolution;rootonlyparsedfirst, missing
+module extractedwithdelimiters into realtempfile thenparsedondemand. Progress
+canonicalpath/provenance andresolutionerror callbacksrouteactualToolIO in core
+loaderandCLI. No fabricatedlogs/fixture-sidecars or weakenedtests. Tmpfiles retained
+for semantic/tool/trace lifetime,asexistingclasspath extraction adapters do.
+UnchangedJava3pass .623/.525/.501s; focusedGo4.824s and all3five-rootrace61.198s
+pass; retire93054/72192/33722/94406/93263/19287/82439. Finalfullworkspace82686,
+fullTLCrace91929 stilllive; logs safety-next-{workspace,tlc-race,root-race}.log;
+retireonlyafterterminalresults. Inventory653/1269contexts51.5%,221/626classes
+35.3%,616pending405classes;safety30/34complete4pending;deferredtopicsunchanged,
+goalactive. No finalcommituntilbroadchecksgreen.
+Next ElevatedSanyWarning unchangedJavaJUnit passes .262s with BOTH source
+W4802_Pre_Test.tla/cfg copied to scratchcorpus preservingabsolutepath. Initial
+scratchrun255missingcfgwascopyomission, notupstreamdiscrepancy. Logs
+ original-ElevatedSanyWarning-junit.log/elevated-warning-javac.log.
+No Goport activatedyet. Must apply SANYMessageControls in coreloader, reportactual
+promoteddiagnosticonToolIOstdout,throwTLC_PARSING_FAILED,ERROR_SPEC_PARSE;
+originaltest'sstdoutsubstringWarningtreatedaserror+parsingfailurecode+exit.
+CoreCLIalreadyappliesdiagnosticCLIOptions.withTLCMessageControls;coreapp loader
+currentlydoesn't. Do not fake output, dropinheritedexit or weakensourcecase.
+
+Current batch broad-check correction: workspace82686 failed only the existing
+SANY sibling-module source-position assertion (temporary path vs logical Common).
+Extracted sibling syntax now retains module-relative positions and physical
+SourcePath separately; original assertion unchanged. TLCrace91929 passed562.003s.
+Source review also corrected APSubstInNode to simultaneous Subst.allParamSet
+replacement over original body parameters; SubstInNode remains sequential.
+Retire32070(cancel130 for this code correction),69453(terminalPASS).
+Final checks now58698(workspace),39479(TLCrace),81848(five focused rootrace),
+logs safety-next-final-{workspace,tlc-race,root-race}.log. No commit until green.
+
+Final workspace58698 PASS: root382.944s, SANY0.926s, TLC64.393s; retire58698.
+Final focused rootrace81848 PASS60.755s; retire81848. FullTLCrace39479
+stilllive. StagedGo/docs whitespaceclean; fixturewarnings are byte-exact
+original whitespace, deliberately preserved.
+
+Final TLCrace39479 PASS560.863s; retire39479. All final checks terminal
+and green. This batch completes ViewMap, MonolithSpec and TSnapShot original
+testSpec translations plus the corresponding production fixes. Inventory
+653/1269contexts51.5%,221/626classes35.3%;616contexts remain across405classes.
+Commit this green checkpoint; next ElevatedSanyWarning (Java preflight passed).
+The overall correctness-suite port goal remains active; deferred topics unchanged.

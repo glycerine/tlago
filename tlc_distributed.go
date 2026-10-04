@@ -116,6 +116,8 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		return nil, nil, err
 	}
 	spec, diags := LoadSanySpec(rootFile, LoadOptions{
+		ParsingProgress:  tlc.ToolIOPrintln,
+		ResolutionError:  tlc.ToolIOErrPrintln,
 		FilenameResolver: resolver,
 		ExtraModules:     runtime.ExtendeeModules(),
 	})

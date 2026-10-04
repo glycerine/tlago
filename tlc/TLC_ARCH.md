@@ -4385,3 +4385,28 @@ source-if-missing behavior. Adding a source in the getValue path could turn an
 ordinary runtime failure into a FingerprintException, whose nullable detail
 message suppresses a GENERAL diagnostic. The original fingerprint-exception
 models cover both paths, their exact trace strings, coverage, and source exits.
+
+VIEW presentation delegates to SemanticValueString, matching
+SemanticNode.toString(IValue) and OpApplNode's tuple override. SemanticAllParams
+uses SANY's union, formal/bound-symbol removal and substitution equations over
+semantic identities, iterating recursive definitions to a fixed point. Tuple
+values with matching parameter count print names in var-location order; other
+values use ordinary Values.ppr. VIEW fingerprinting remains separate from this
+presentation method. The original ViewMap test checks all eight states and action
+labels, its model postcondition and coverage.
+
+SANY file loading now resolves ordinary dependencies before falling back to the
+root monolith, matching FileUtil.createNamedInputStream. Embedded modules are
+extracted between source delimiters to real temporary files and parsed on demand;
+unused sibling modules are not eagerly registered or parsed. Parsing progress
+reports canonical file paths plus physical monolith/resource provenance. The
+production TLC loaders route progress and missing-file diagnostics through actual
+ToolIO streams. LoadOptions exposes callbacks and retains silent library defaults.
+The original MonolithSpec test captures those streams and checks three provenance
+patterns; only the source fixture-directory suffix is adapted to test_vectors.
+
+Extracted monolith siblings retain logical module-relative syntax positions,
+while SourcePath and parsing-progress provenance retain the actual temporary
+file. Parameter substitution follows the two distinct SANY equations:
+SubstInNode replaces sequentially; APSubstInNode uses the first matching
+Subst.allParamSet replacement for each original body parameter.
