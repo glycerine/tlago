@@ -3815,7 +3815,7 @@ Prop liveness violation,2/1/0 stats,depth1,full single-state trace/ordinal/actio
 and stuttering2;725h uses725g with725h.cfg,exact Inv initial-state text/newline
 and safety exit. Five normal repetitions pass12.897s and five focused race
 repetitions pass136.002s. Full offline workspace passes (root415.375s,
-SANY/TLC cached from prior green verification); all check handles terminal. TLC production unchanged since
+SANY0.967s, TLC61.806s); all check handles terminal. TLC production unchanged since
 ad50e68, whose full TLC race passed570.326s. Inventory728/1269 contexts,293/626
 complete classes;541 contexts/333 classes pending,one partial. Next missing issue
 is Github726Test; unchanged Java references for726/742/743/746/757 already
