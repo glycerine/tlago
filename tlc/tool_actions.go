@@ -73,7 +73,9 @@ func (t *Tool) collectActionsAppl(next *OpApplNode, con *Context, opDef *OpDefNo
 			}
 		}
 		if opcode == 0 {
-			t.appendSplitAction(actions, next, con, opDef, cm)
+			// Java uses the applied operator's declaration when state-level
+			// arguments prevent decomposition, rather than the enclosing action.
+			t.appendSplitAction(actions, next, con, next.Operator.Definition, cm)
 			return nil
 		}
 	}

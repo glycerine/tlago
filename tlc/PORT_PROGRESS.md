@@ -3842,3 +3842,22 @@ Inventory733/1269 contexts,298/626 complete classes;536 contexts/328 classes
 pending,one partial. Next pending issues: Github766 and Github766Simulate;
 both unchanged Java references already pass in the scratch runner.
 Goal active; user-deferred topics remain deferred.
+
+2026-10-04: Github766/766Simulate/798I/798N/807 original testSpec methods
+translated with original settings and assertions. All five unchanged Java JUnit
+references pass; four fixtures match original bytes. Five focused Go repetitions
+pass11.056s and five focused root race repetitions (new cases plus aliases)
+pass124.266s. Github807 exposed a production shortcut: action decomposition used
+the enclosing operator when state-level arguments prevented further splitting.
+Java instead uses the applied operator declaration. Tool.collectActionsAppl now
+preserves that declaration, restoring the exact Add action/location in the full
+three-state trace and CounterExample/TLCGet("spec") postcondition. No assertion
+weakened; no invented tests. Github766 retains its explicit JSON/simulation
+arguments; both798 cases retain their exact counts/depth;807 retains debugger=false,
+noGenerateSpec=true and no JSON.
+Full offline workspace passes (root425.504s, SANY1.070s, TLC62.970s).
+Full TLC race passes551.188s; all check handles terminal.
+Inventory738/1269 contexts,303/626 complete classes;531 contexts/323 classes
+pending,one partial. Next pending family Github817/b/c/d/e; all five unchanged
+Java references already pass. Later819/849/858/866/971a/b/c/d/e references also
+pass unchanged. Goal active; user-deferred topics remain deferred.
