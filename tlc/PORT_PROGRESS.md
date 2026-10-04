@@ -3049,3 +3049,19 @@ remain running. Full TLC race581.216s baseline remains
 valid because this checkpoint changes root tests/fixtures/docs only.
 Inventory583/1269 contexts(45.9%),157/626 complete classes(25.1%); standard
 module topic67/75 contexts and36/44 classes complete,8 pending. Deferred topics unchanged.
+
+
+### 2026-10-04 — Original RandomElement and subseteq next-state tests
+
+Ported five complete original Java methods: RandomElementTest, T4,
+Simulation, XandY, and SubseteqNextStateTest. Original seeds, exact traces,
+action location labels, ordinals, four-worker setup, state counts, inherited
+exit expectations and source coverage assertions retained. Six original
+TLA/CFG fixtures copied byte-for-byte to test_vectors. No production changes.
+All five unchanged Java JUnit classes pass; focused Go root race16.691s passes.
+Full workspace passes(root366.485s,SANY0.914s,TLC59.849s). No checks remain
+running. Full TLC race581.216s baseline remains valid for this root-only batch.
+Inventory588/1269 contexts(46.3%),162/626 complete classes(25.9%); standard
+module topic72/75 contexts and41/44 classes complete, three native-override
+classes pending. Deferred topics unchanged. Next implement native override
+discovery and original mismatch diagnostics before crediting those tests.

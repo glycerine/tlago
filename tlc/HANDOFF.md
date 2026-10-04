@@ -2170,3 +2170,49 @@ classes assert sorted2 mismatch records(exact Get2/Get3 method strings/path suff
 methods without asserting their results; retain actual active assertions only.
 No next-context Go code/fixtures added yet. All five deferred topics remain
 outside new work. Current checkpoint has passed its complete normal gate.
+
+
+## 2026-10-04: original RandomElement and subseteq next-state tests
+
+Current checkpoint adds original RandomElementTest, RandomElementT4Test,
+RandomElementSimulationTest, RandomElementXandYTest (test), and
+SubseteqNextStateTest (testSpec). Root files tlc_random_element_models_java_test.go
+and tlc_subseteq_next_state_java_test.go. Six original TLA/CFG files copied
+byte-for-byte to tlc/test_vectors/models; no production code changed.
+Every original constructor/inherited successful or safety-violation exit,
+coverage/dot/JSON/generate-spec setup and active assertion retained. Seeded
+single-worker model checks exact932/855/388 and all11 states/ordinals/actions.
+Four-worker model retains4 workers, source seed15041980, all11 y values,
+x1..1000 and ordinals without adding scheduler-specific expectations.
+Simulation retains debugger=false, -simulate num=1, seed8006803340504660123,
+all11 exact states and exact Init/Next source location labels plus ordinals.
+XandY seed8006642976694192746 retains exact3 states0/0,1/1,0/1.
+Zero-uncovered checks retained where source asserts them; four-worker source
+has none. Subseteq next-state retains68/8/0 and depth2; original postcondition
+and _POSSIBLE model configuration unchanged.
+Unchanged original Java JUnit classes each pass in separate JVM(-ea,-Xmx256m):
+RandomElementTest0.522s,T4Test0.465s,SimulationTest0.352s,XandYTest0.453s,
+SubseteqNextStateTest0.517s. Initial scratch run lacked flat model files and
+exited file-not-found; corrected scratch layout only, then all original runs
+passed. No Java source or persistent fixture was modified.
+Focused all-five Go root race passes16.691s, random-element-subseteq-race.log;
+retire41918. Normal new root checks pass(first1.742s,other3 3.397s,subseteq1.106s).
+Full workspace passes(root366.485s,SANY0.914s,TLC59.849s); retire47901.
+Log random-element-full-normal.log. No checks remain running.
+Retain full TLC race581.216s baseline4d028ab; this checkpoint
+changes root tests/fixtures/docs only, no TLC production/package tests.
+Inventory588/1269 contexts(46.3%),162/626 complete classes(25.9%),681 pending
+across464 classes, one partial. Standard-module topic72/75 methods,41/44 classes,
+three pending. Mapped JSON counts independently recomputed and match document.
+Remaining native-override classes: UserModuleOverrideTest,
+UserModuleOverrideFromJarTest,UserModuleOverrideAnnotationTest. Inspected source
+but no Go test/fixture/production changes for these yet. Bridge current native
+override installer uses fixed module/member map and silently skips absent/wrong
+arity native methods. Implement actual native module discovery/metadata and
+source mismatch diagnostics before port credit; never substitute TLA inline
+bodies/fake recorder entries. Source Get returnsTrue while TLA bodyFALSE, so
+passing requires actual native callback. Get2/Get3 full original method strings
+and class path suffixes required by both unannotated classes. Jar test custom
+classpath setup must retain source semantics. Annotation source calls three
+recorder.recorded methods without asserting them; preserve active assertions.
+All five user-deferred topics remain outside new work. Goal remains active.
