@@ -3503,7 +3503,7 @@ invent a skip. Logs original-DumpAsDotTest-junit.log and
 original-DistributedTrace-junit.log in ignored correctness-java scratch.
 
 2026-10-04: Github971a/b/c/d/e original testSpec and beforeSetUp queue wrappers
-translated. All five unchanged Java JUnit references pass. Seven original model/
+translated. All five unchanged Java JUnit references pass. Six original model/
 config fixtures match bytes. First focused Go run passes5.210s; five combined
 normal repetitions pass8.589s and five root race repetitions pass80.632s.
 Original two workers and three/four-dequeue CountDownLatch semantics retained:
