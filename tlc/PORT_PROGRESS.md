@@ -3428,3 +3428,67 @@ source originals1145/1145b/1147/1161/1161Violated have already passed unchanged
 JavaJUnit. All known test process handles are terminal. Overall goal remains
 active; continue exact source assertions and production fixes, deferred topics
 unchanged. No new debugger tests/features added; Echo was a core config fix.
+
+Github1145/1145b/1147/1161/1161Violated originals now mechanically ported,
+with all ten model/resource fixtures byte-identical (9 model files + 1 goldenDOT).
+No weakened test assertions. OriginalJavaJUnit all5 pass unchanged (existing
+original-<Class>-junit.log). Go1145 pair PASS3.390s with source default JSON
+for1145 and no instrumentation for1145b; lazy EXCEPT conversion already correct.
+Initial1161 FAIL applying abs!Test3 with wrong number of arguments; violated
+case passed. Bridge shortcut: exported instance symbols had arity0 until body
+conversion, misclassifying an operator argument when its definition sorted later.
+prepareInstanceDefinitions now records len(instance.Params)+len(source.Params)
+before converting any bodies, following Java Generator.generateModuleDefinition
+full parameter signature. Both1161 PASS3.043s, unchanged full s=0..5 trace.
+Initial1147 failed exact goldenDOT at first high-bit fingerprint: Go rendered
+unsigned decimal vs Java Long.toString signed. Production DotStateWriter now
+renders signed int64 for init nodes, edges, successors and rank entries.
+Exact goldenDOT/EOF, counts/depth/postcondition/zeroUncovered all PASS1.863s.
+New tests stay original assertions; no additional invented regression tests.
+Inventory668/1269(52.6%),236/626(37.7%);601pending contexts/390classes.
+Broad checks live: workspace31317,fullTLCrace5920,focusedrootrace26186(5runs,
+all5new plus sixGithub1134). Logs github1145-1161-{workspace,tlc-race,root-race}.
+No commit until checks green; previous green checkpoint4772dfc. Current goal
+active and deferred topics unchanged. Last focused handles17720,65699,74680,
+50973,98661 all terminal; do not re-poll retired handles.
+
+Next originalGithub1198a/b/c/d/f/h JavaJUnit pass unchanged (6classes), using
+complete model+Github1198abs+sixconfigs. First scratch pass lacked abs dependency
+and failed SANY; after copying exact original dependency all6 PASS. This was a
+harness fixture issue, not an upstream assertion conflict. Logs original-
+Github1198<letter>Test-junit.log; javac loggithub1198-javac.log. Scratch draft
+.codex-gotmp/github1198-draft.go.txt only; no active Go1198 translation/credit yet.
+Originals all expect3/2/0,depth2,FINISHED,success,zeroUncovered. Coveragefalse
+but debugger/gen/DOT/JSON defaults retained. a/b/c require tautology2258 warning;
+d/f/h require its absence. All source configs/properties remain exact; include
+Github1198abs.tla even for a..f since the root always imports that module.
+RetireJava handles10917/44425 terminal. BroadGo31317/5920/26186 remain live.
+
+Focused rootrace26186 PASS182.489s (5runs, all5new + sixGithub1134); retire26186.
+Full workspace31317 and fullTLCrace5920 remain live. Only later Go edit was a
+comment correcting the1161 property-count wording; production/assertions unchanged.
+Next Java1244/1244b/1244c/1302/1302b/1302c all PASS unchanged; original-
+<Class>-junit.log, github1244-1302-javac.log, retire42507 terminal. No activeGo
+translation or inventory credit yet. Preserve1244 embedded CONFIG within same
+TLA file, exact -config Github1244.tla, noGenerateSpecTE/JSONfalse, otherdefaults;
+variants cfgb/c route initial/action/temporal wrappers, exact3/2/0 success.
+1302 original simulation num=3/depth3, -config sameTLA, stats10/1/0,zeroUncovered;
+coverage/debugger/gen disabled, DOT/JSON retained. 1302b source expectedinitial
+Inv exacttwo function states, noStats/noGENERAL, safety exit; coverage/debug/DOT/
+JSONdisabled but forcedtracegeneration enabled. 1302c success2/1/0,noGENERAL,
+samefalse instrumentation/truegeneration. PreserveactualEXCEPTfunction models
+and embedded config, not handwritten substitutes. Next1198 precedes these six.
+
+Full workspace31317 PASS393.269s root,1.051s SANY,64.088s TLC; retire31317.
+Rootrace5runs182.489s already passed. FullTLCrace5920 remains live; commit after
+that final result. Go/docs whitespace checks clean, all10 originalfixtures exact.
+
+FullTLCrace5920 PASS560.033s; retire5920. Final checkpoint all green: workspace
+root393.269s/SANY1.051s/TLC64.088s; fullTLCrace560.033s; focusedrootrace5runs
+182.489s (all5new + sixGithub1134). All10 originalmodel/resourcefixtures exact,
+Go/docs diff checks clean. Commit new1145/1145b/1147/1161/1161Violated ports and
+production signature/DOT corrections now. All process handles terminal. Inventory
+668/1269(52.6%),236/626classes(37.7%);601pendingcontexts/390classes,1partial.
+Next activate scratch Github1198 draft and complete fixture set; all6 originals
+pass JavaJUnit unchanged. Then1244/1302 originals already preflighted. Preserve
+full objective/deferred scope and fix implementation on every new red test.

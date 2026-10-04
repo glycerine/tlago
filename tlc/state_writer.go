@@ -192,7 +192,7 @@ func (w *StateWriter) writeInitState(state *TLCStateMut) error {
 	}
 	if w.Dot {
 		fp := state.FingerPrint()
-		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", fp, stateToDot(state.EvalStateLevelAlias(), nil, false))
+		_, err := fmt.Fprintf(w.writer, "%d [label=\"%s\",style = filled]\n", int64(fp), stateToDot(state.EvalStateLevelAlias(), nil, false))
 		w.maintainRank(state)
 		if err == nil && w.snapshot {
 			err = w.snapshotFile()
@@ -247,7 +247,8 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 		}
 		w.strict[key] = struct{}{}
 	}
-	_, err := fmt.Fprintf(w.writer, "%d -> %d", cfp, sfp)
+	// Java's Long.toString renders the 64-bit fingerprint as signed decimal.
+	_, err := fmt.Fprintf(w.writer, "%d -> %d", int64(cfp), int64(sfp))
 	if err != nil {
 		return err
 	}
@@ -267,7 +268,7 @@ func (w *StateWriter) writeDotTransition(curState *TLCStateMut, succState *TLCSt
 		predLabelState := curState.EvalStateLevelAlias()
 		succLabelState := succState.EvalStateLevelAlias()
 		_, err = fmt.Fprintf(w.writer, "%d [label=\"%s\",tooltip=\"%s\"%s];\n",
-			sfp,
+			int64(sfp),
 			stateToDot(succLabelState, predLabelState, printDiffsOnly()),
 			stateToDot(succState, nil, false),
 			style,
@@ -417,7 +418,7 @@ func (w *StateWriter) dotClosingTrailer() string {
 		sort.Slice(nodes, func(i, j int) bool { return nodes[i] < nodes[j] })
 		b.WriteString("{rank = same; ")
 		for _, fp := range nodes {
-			b.WriteString(strconv.FormatUint(fp, 10))
+			b.WriteString(strconv.FormatInt(int64(fp), 10))
 			b.WriteByte(';')
 		}
 		b.WriteString("}\n")

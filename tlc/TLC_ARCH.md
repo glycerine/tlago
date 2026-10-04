@@ -4442,3 +4442,13 @@ Defns entries and module lookup aliases may still reference the original node;
 its configured replacement remains authoritative when evaluating shared symbols.
 This preserves the distinction from module-specific constants/overrides, which
 Java attaches to original definition bodies.
+
+Instance export signatures are prepared before converting bodies: instantiated
+operator arity is the sum of instance formal count and source operator formal
+count, matching Generator.generateModuleDefinition's concatenated parameters.
+Operator arguments are therefore emitted as OpArgNode even when the source
+operator's body is converted later. This is required by parameterized liveness
+properties passing an instance operator through nested wrappers.
+DOT fingerprints retain uint64 identity internally but use signed int64 decimal
+in output, matching Java Long.toString in initial nodes, transition endpoints,
+successor nodes and rank entries. The Github1147 golden graph checks every line.

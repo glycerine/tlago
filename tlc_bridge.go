@@ -502,6 +502,12 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 				exportSymbol := b.symbol(exportName)
 				if b.reusesInstanceSource(inst, def) {
 					exportSymbol = b.sourceDefinitionSymbol(inst.Module+"!"+def.Name, def)
+				} else {
+					// SANY installs the instantiated operator's full signature
+					// in its context before later definitions refer to it. Keep
+					// its arity available before converting any definition body,
+					// including uses of the operator as an OpArgNode.
+					exportSymbol.Arity = len(inst.Params) + len(def.Params)
 				}
 				for _, key := range keys {
 					b.defs[key] = def
