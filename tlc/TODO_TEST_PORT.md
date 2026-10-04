@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **108 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (17.3%).**
-- **312 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (24.6%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **957 logical method contexts across 518 classes remain to port or reconcile.** 2 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **109 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (17.4%).**
+- **313 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (24.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **956 logical method contexts across 517 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -22,7 +22,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Topic | Non-ignored classes | Classes fully mapped | Logical methods | Mapped methods | Pending methods |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | CLI, REPL, messages, and trace-spec output | 5 | 0 | 37 | 0 | 37 |
-| Presentation models | 5 | 2 | 13 | 8 | 5 |
+| Presentation models | 5 | 3 | 13 | 9 | 4 |
 | Standard modules, constants, native overrides, and random values | 44 | 14 | 75 | 14 | 61 |
 | Evaluation, initial states, next states, and action composition | 45 | 12 | 51 | 12 | 39 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 7 | 34 | 7 | 27 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 8 | 189 | 90 | 99 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 5 | 91 | 16 | 75 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **108** | **1,269** | **312** | **957** |
+| **Total** | **626** | **109** | **1,269** | **313** | **956** |
 
 ## Porting rules and proposed order
 
@@ -54,7 +54,7 @@ entries visible. If a test fails, check the mechanical translation and inspect
 production TLC for shortcuts; implement the missing behavior before moving on,
 without weakening the original assertions. Mark finished entries **Port complete**.
 
-1. Finish incomplete original methods/classes already represented in Go: `DumpLoadTraceTest`’s two enabled binary cases, `TypedSetTest.testParseSet6`. Reconcile older value/module/utility checks with complete original inputs and assertions.
+1. Finish incomplete original methods/classes already represented in Go: `DumpLoadTraceTest`’s two enabled binary cases. Reconcile older value/module/utility checks with complete original inputs and assertions.
 2. Port small direct value, collection, module, and output tests against their existing production implementations. Fix actual production gaps before completing the affected original method.
 3. Port numbered suite/evaluation-order and checker/model regressions in coherent topics, then simulation and liveness models; checkpoint/recovery remains deferred. Carry constructor settings and inherited coverage/exit/trace assertions with each test.
 4. Port generated TTrace variants after their original run and trace-spec pipeline work accurately. Preserve ordering and generated-artifact dependencies.
@@ -93,10 +93,8 @@ Assignment, Formula, TypedSet, MCError, and MCState helpers.
   Related Go checks: [tlc/state_info_test.go](state_info_test.go), [tlc/trace_test.go](trace_test.go).
 - [ ] [tlc2/model/MCStateTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/MCStateTest.java) — **Reconcile**: `testParseRoundTrips`, `testSimpleRecordPrinter`.
   Related Go checks: [tlc/state_info_test.go](state_info_test.go), [tlc/trace_test.go](trace_test.go).
-- [ ] [tlc2/model/TypedSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/TypedSetTest.java) — **Partial**: `testParseSet6`.
-  Related Go checks: [tlc/model_test.go](model_test.go).
-  Already mapped: `testParseSet1`, `testParseSet2`, `testParseSet3`, `testParseSet4`, `testParseSet5`.
-  testParseSet6 lacks the original null-input assertion; preserve a represented nullable boundary.
+- [x] [tlc2/model/TypedSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/TypedSetTest.java) — **Port complete**: `testParseSet1`, `testParseSet2`, `testParseSet3`, `testParseSet4`, `testParseSet5`, `testParseSet6`.
+  Go translation: [tlc/model_test.go](model_test.go); original null input uses the nullable production boundary. Java trim semantics retained.
 
 ### Standard modules, constants, native overrides, and random values
 
@@ -917,7 +915,7 @@ This appendix records the numerator, including methods in partially translated c
 | [tlc2/debug/TLCDebuggerTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/debug/TLCDebuggerTest.java) | `testStackFrameWhileRunning`, `testStackFramePaginationEmpty`, `testStackFramePaginationEmpty2`, `testStackFramePaginationEmpty3`, `testStackFramePaginationEmpty4`, `testStackFramePaginationEmpty5`, `testStackFramePaginationEmpty6`, `testStackFramePaginationEmpty7`, `testStackFramePaginationLevelNull`, `testStackFramePaginationLevel0`, `testStackFramePaginationStartFrame0`, `testStackFramePaginationStartFrame1`, `testStackFramePaginationStartFrameNegative`, `testStackFramePagination`, `testStackFramePaginationsStartFrame1`, `testStackFramePaginationsStartFrameSubList`, `testStackFramePaginationsStartFrameOutOfRange` | [tlc/debug_java_test.go](debug_java_test.go) |
 | [tlc2/model/AssignmentTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/AssignmentTest.java) | `test` | [tlc/model_test.go](model_test.go) |
 | [tlc2/model/FormulaTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/FormulaTest.java) | `testUnnamed`, `testNamed` | [tlc/model_test.go](model_test.go) |
-| [tlc2/model/TypedSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/TypedSetTest.java) | `testParseSet1`, `testParseSet2`, `testParseSet3`, `testParseSet4`, `testParseSet5` | [tlc/model_test.go](model_test.go) |
+| [tlc2/model/TypedSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/model/TypedSetTest.java) | `testParseSet1`, `testParseSet2`, `testParseSet3`, `testParseSet4`, `testParseSet5`, `testParseSet6` | [tlc/model_test.go](model_test.go) |
 | [tlc2/module/JsonTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/JsonTest.java) | `test` | [tlc_json_java_test.go](../tlc_json_java_test.go) |
 | [tlc2/module/TLCExtTraceAliasTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/TLCExtTraceAliasTest.java) | `test` | [tlc_ext_trace_java_test.go](../tlc_ext_trace_java_test.go) |
 | [tlc2/module/TLCExtTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/TLCExtTraceTest.java) | `test` | [tlc_ext_trace_java_test.go](../tlc_ext_trace_java_test.go) |

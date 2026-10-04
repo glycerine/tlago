@@ -88,9 +88,6 @@ func TestTypedSetParseMatchesJava(t *testing.T) {
 		{"typed", "p_1,     p_2,    p_3, \n p_4, p_5", "p", []string{"1", "2", "3", "4", "5"}},
 		{"mixedType", "p_1, i_2, p_3, p_4, p_5", "", []string{"p_1", "i_2", "p_3", "p_4", "p_5"}},
 		{"emptyTypedValue", "p_, p_2, p_3, p_4, p_5", "", []string{"p_", "p_2", "p_3", "p_4", "p_5"}},
-		{"empty", "", "", nil},
-		{"commas", ", , , , ", "", nil},
-		{"bracedCommas", "{, , , ,}", "", nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -101,6 +98,27 @@ func TestTypedSetParseMatchesJava(t *testing.T) {
 				t.Fatalf("ParseTypedSet(%q) = type %q values %v, want type %q values %v", tc.input, got.Type, got.Values, expected.Type, expected.Values)
 			}
 		})
+	}
+}
+
+// Complete original TypedSetTest.testParseSet6, including its actual null input.
+func TestJavaTypedSetParseSet6(t *testing.T) {
+	reference := NewTypedSet()
+	sample := ParseTypedSet("")
+	if !reference.Equals(sample) {
+		t.Fatal("empty string did not produce the reference empty set")
+	}
+	sample = ParseTypedSetNullable(nil)
+	if !reference.Equals(sample) {
+		t.Fatal("null did not produce the reference empty set")
+	}
+	sample = ParseTypedSet(", , , , ")
+	if !reference.Equals(sample) {
+		t.Fatal("commas did not produce the reference empty set")
+	}
+	sample = ParseTypedSet("{, , , ,}")
+	if !reference.Equals(sample) {
+		t.Fatal("braced commas did not produce the reference empty set")
 	}
 }
 

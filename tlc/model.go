@@ -26,7 +26,9 @@ const (
 var formulaNamePattern = regexp.MustCompile(`(?s)^\s*(\w+)\s*==(.*)$`)
 var typedSetValidTypePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9]*$`)
 var typedSetNumberOnlyPattern = regexp.MustCompile(`^[0-9]*$`)
-var typedSetSplitPattern = regexp.MustCompile(`\s*,\s*`)
+
+// Java's default regex \s includes vertical tab; Go's \s does not.
+var typedSetSplitPattern = regexp.MustCompile(`[ \t\n\v\f\r]*,[ \t\n\v\f\r]*`)
 
 type Formula struct {
 	Text string
@@ -310,13 +312,23 @@ func NewTypedSet() *TypedSet {
 }
 
 func ParseTypedSet(set string) *TypedSet {
+	return ParseTypedSetNullable(&set)
+}
+
+// ParseTypedSetNullable preserves TypedSet.parseSet's nullable String input.
+func ParseTypedSetNullable(input *string) *TypedSet {
 	result := NewTypedSet()
-	set = strings.TrimSpace(set)
+	if input == nil {
+		return result
+	}
+	// Java String.trim removes only code units at or below U+0020.
+	trim := func(r rune) bool { return r <= ' ' }
+	set := strings.TrimFunc(*input, trim)
 	if set == "" {
 		return result
 	}
 	if strings.HasPrefix(set, "{") && strings.HasSuffix(set, "}") {
-		set = strings.TrimSpace(set[1 : len(set)-1])
+		set = strings.TrimFunc(set[1:len(set)-1], trim)
 	}
 	if set == "" {
 		return result

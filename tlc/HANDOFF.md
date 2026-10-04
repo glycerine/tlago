@@ -1036,3 +1036,32 @@ Next finish TypedSetTest.testParseSet6 with the actual Java null input; Go's
 string-only ParseTypedSet API currently cannot represent it. Port the nullable
 boundary first, retaining existing string callers and all four original null-set
 assertions. The five user-deferred topics stay deferred.
+
+
+TypedSetTest is port complete: testParseSet6 now preserves all four original
+empty/null/comma/braced-comma inputs and equality assertions. Added production
+ParseTypedSetNullable(*string), with existing string callers delegating to that
+same implementation. Actual nil input returns a newly constructed empty set.
+Source comparison also corrected Go Unicode TrimSpace to Java String.trim's
+code-unit <= U+0020 rule at both trim points. Current original TypedSet.java and
+unchanged original JUnit class pass all six methods (0.007s); targeted Go passes
+(0.017s), full TLC -race passes (27.010s). Retire handles 3734 and 3814.
+Full workspace normal checks passed (312.382s root, 1.047s SANY, 3.735s TLC),
+correctness-java/typed-set-full-normal.log; retire 10817. That snapshot predates
+only the final split-pattern whitespace correction; final whole-TLC normal and
+race checks cover the resulting implementation (3.642s/27.112s); retire 4655/99372. Inventory now 313/1269 mapped contexts (24.7%), 109/626
+complete classes (17.4%), 956 pending contexts across 517 classes; only one class
+is partial. No source assertions weakened or invented cases. Deferred topics stay
+skipped. ModelValueTest was committed separately as 1aba5f3.
+
+
+Next lazy-function slice: current FcnLambdaValue.java and unchanged original
+FcnLambdaValueTest compile with original test/tlc2/tool/TLCStates.java (required
+support class absent from the frozen jar), and Java -ea JUnit passes all eighteen
+(0.040s). Not yet credited as Go translations. Go Tool.EvalFunc already supplies
+the same constant-result eval mock; preserve params/formal x, null semantic body,
+EmptyContext, EvalClear, actual TLCStates one-variable dummy state (v0=0, uid=0),
+and nil predecessor state. Retain function/EXCEPT identity, conversion ordering,
+all nested EXCEPT assertions and fingerprint seeds; don't substitute parser models
+or approximate bad-sharing checks. Only existing Go lazy test is a fallback-format
+case, not a translation of these original methods.
