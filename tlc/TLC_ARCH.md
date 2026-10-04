@@ -4737,3 +4737,15 @@ infinite-state trace-expression lasso test requiring partial liveness checks.
 The Go source-test runner resets LNCheck to default before parsing the
 original class's flags and restores its outer value afterward. Production CLI
 behavior and each original explicit strategy remain unchanged.
+
+
+Source and INSTANCE operator identities: Java SANY Generator creates a symbol
+per source declaration and a distinct qualified declaration per instantiated
+export. A bridge lookup alias such as EWD998Chan!EWD998!Spec can also name a
+module-local export; aliases cannot own semantic declaration identities. Source
+symbols and prepared instance export symbols have separate identity caches.
+LET's predeclared operator symbols are reused so recursive/local references
+continue to bind to the same definition. Module context conversion validates
+the instance owner and source position before taking an alias-table entry;
+a nested export otherwise clones the operator from the actual instancee
+context, preserving the outer qualified name and substitution boundary.

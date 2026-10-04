@@ -39,11 +39,12 @@ type tlcBridge struct {
 }
 
 type tlcBridgeInstance struct {
-	owner  *Module
-	inst   Instance
-	substs []tlc.Subst
-	params []*tlc.SymbolNode
-	defs   map[*Definition]*tlc.OpDefNode
+	owner   *Module
+	inst    Instance
+	substs  []tlc.Subst
+	params  []*tlc.SymbolNode
+	defs    map[*Definition]*tlc.OpDefNode
+	symbols map[*Definition]*tlc.SymbolNode
 }
 
 type tlcBridgeInstanceTarget struct {
@@ -520,7 +521,9 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 				if inst.exportsUnqualified() {
 					exportName = def.Name
 				}
-				exportSymbol := b.symbol(exportName)
+				// Each instantiated declaration owns its symbol. A qualified
+				// lookup alias can also name an export in another module.
+				exportSymbol := tlc.NewSymbolNode(exportName)
 				if b.reusesInstanceSource(inst, def) {
 					exportSymbol = b.sourceDefinitionSymbol(inst.Module+"!"+def.Name, def)
 				} else {
@@ -530,6 +533,10 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 					// including uses of the operator as an OpArgNode.
 					exportSymbol.Arity = len(inst.Params) + len(def.Params)
 				}
+				if binding.symbols == nil {
+					binding.symbols = map[*Definition]*tlc.SymbolNode{}
+				}
+				binding.symbols[def] = exportSymbol
 				for _, key := range keys {
 					b.defs[key] = def
 					b.instanceDefinitions[key] = binding
@@ -1202,19 +1209,18 @@ func (b *tlcBridge) convertDefinitionAs(name string, def *Definition) *tlc.OpDef
 // A source OpDefNode and its instantiated export can have the same name but
 // retain distinct identities in Java SANY. Source conversion must not route
 // back through the instancer's export table.
-func (b *tlcBridge) sourceDefinitionSymbol(name string, def *Definition) *tlc.SymbolNode {
+func (b *tlcBridge) sourceDefinitionSymbol(_ string, def *Definition) *tlc.SymbolNode {
 	if symbol := b.sourceSymbols[def]; symbol != nil {
 		return symbol
 	}
-	if module := b.definitionModules[def]; module != "" {
-		name = module + "!" + def.Name
-		if module == b.rootModuleName {
-			name = def.Name
-		}
-	}
-	symbol := b.symbol(name)
-	if b.instanceDefinitions[name] != nil {
-		symbol = tlc.NewSymbolNode(name)
+	// SANY creates a symbol for each source declaration. A qualified lookup
+	// alias can also name an INSTANCE export in another module, whose symbol
+	// must not be renamed or rebound when this source declaration is compiled.
+	symbol := tlc.NewSymbolNode(def.Name)
+	if _, moduleDeclaration := b.definitionModules[def]; !moduleDeclaration && b.convertBound(def.Name) {
+		// LET declares its operator symbols before generating their bodies,
+		// including recursive references and references from later definitions.
+		symbol = b.symbol(def.Name)
 	}
 	// The qualified key belongs to the bridge's lookup table. SANY's source
 	// OpDef is itself the operator symbol and retains its declared name.
@@ -1346,7 +1352,11 @@ func (b *tlcBridge) convertInstanceDefinition(name string, def *Definition, bind
 	if len(binding.substs) > 0 {
 		body = b.withPositionLocation(inst.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
 	}
-	clone := tlc.NewOpDefNodeForSymbol(b.symbol(name), params, body)
+	symbol := binding.symbols[def]
+	if symbol == nil {
+		symbol = b.symbol(name)
+	}
+	clone := tlc.NewOpDefNodeForSymbol(symbol, params, body)
 	clone.SourceDefinition = source.GetSource()
 	clone.Local = inst.Local
 	if inst.Name != "" && len(binding.substs) > 0 {

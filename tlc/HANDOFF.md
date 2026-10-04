@@ -6,39 +6,48 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-2026-10-04 current batch: nine original Examples liveness tests translated
-in tlc_examples_liveness_java_test.go with20 byte-exact fixtures and original
-manifest CommunityModules classpath. All nine unchanged Java and focused Go
-runs pass (first three102.519s,remaining six152.124s). Whole methods marked
-Port complete; inventory826/1269 (65.1%),391/626 classes;443 contexts/235 classes
-pending,one partial. All twenty topic rows verified. Two production fixes:
-lazy per-context class-static interning restores config model tokens1..9 versus
-127..135, making ACP's postcondition pass; source-ordered semantic StringNode
-interning restores function-set initial order, making Aba's postcondition pass.
-Escape reduction uses the existing parser reduceTLAString. Cached record keys
-initialize before constructing checker/simulator/statistics/Possible records.
-Full nine root race52483 PASS2259.397s and full TLC race3635 PASS621.014s,
-terminal0 and retired. Workspace63499 terminal1 after45m: original
-TestJavaTraceExpressionSpecLasso explores indefinitely because -lncheck final
-leaked from examples into later source tests. It passes isolated49223(5.063s).
-The original CommonTestCase uses IsolatedTestCaseRunner/fresh TLC globals;
-TLCGlobals.lnCheck defaults to default. Go helper now resets/restores LNCheck
-per source test class, preserving every explicit -lncheck flag and assertion.
-Paired original CoffeeCan+Lasso normal49414 PASS9.342s, terminal0/retired;
-paired race71225 PASS43.336s, terminal0/retired. Current-source full
-workspace4745 PASS(root1124.830s,SANY0.916s,TLC65.751s), terminal0/retired.
-All verification handles terminal; required gates green. Nine-test batch ready
-for the authorized commit.
-Original39/39 assertions and20 exact fixtures retained; no temporary Go probes.
-All39 intended paths staged; helper/static-isolation correction included.
-Third Java preflight EWD840/EWD998ChanID/EWD998/EnvironmentController/Huang/
-LiveHourClock passes unchanged. Their six translations and21 fixture mappings
-are prepared only in ignored examples-next-six.go.preview and
-examples-next-six-fixtures.json; no active Go source or credit yet. Fourth
-Java preflight43729 PASS: LockHS/MCAlternatingBit/MCEWD687a/
-MCLiveInternalMemory/MCLiveWriteThroughCache/MCWriteThroughCache; terminal0
-and retired, no Go translation or credit. All source snapshots unchanged.
-Previous batch df08ad9 committed three contexts after full workspace/race green.
+2026-10-04: Previous nine Examples tests, production initialization fixes and
+source-class LNCheck isolation committed as efdd910 after green full workspace
+(root1124.830s), nine-example race2259.397s and TLC package race621.014s.
+Current batch adds six complete original Examples methods: EWD840, EWD998ChanID,
+EWD998, EnvironmentController, Huang and LiveHourClock, with21 byte-exact
+fixtures. All six unchanged Java references pass. Original26 assertions,
+inherited exits, five settings overrides, final liveness mode and original
+CommunityModules classpath retained. Inventory832/1269(65.6%),397/626classes;
+437 contexts/229 classes pending, one partial. All20 topic rows verified.
+
+EWD998ChanID exposed a production shortcut: source declarations borrowed symbols
+from a global qualified-alias cache, overwriting the root Spec with an instancee
+Spec. Source declarations now own their symbols, while LET retains its
+predeclared symbols for recursion and references from later local definitions.
+An initial always-fresh variant broke LET F/qq and was corrected before proceeding.
+Further semantic metadata audit found EWD998Chan!EWD998!Spec incorrectly named
+EWD998!Spec: the root-context key collided with an inner module's lookup alias.
+Instantiated declarations now own symbols; context conversion checks the actual
+instance owner/source position before using the alias table, otherwise builds
+the enclosing clone from its source context. All four inspected root/nested
+operator names now match their context keys. Six original tests plus ignored
+metadata probe PASS17.177s. Temporary probe removed from active Go source.
+
+Current required gates: full offline workspace89196 PASS(root1143.104s,
+SANY0.908s,TLC66.125s), terminal0/retired; focused root
+race12129(six new examples and19 original coverage methods) PASS207.031s,
+terminal0 and retired.
+Logs .codex-gotmp/examples-six-full-workspace.log and examples-six-root-race.log.
+Separate four existing bridge tests race92665 PASS1.937s, terminal0/retired,
+.codex-gotmp/examples-six-existing-bridge-race.log.
+All required gates green; current six-test batch ready for authorized commit. TLC package production
+unchanged since its full race621.014s. Fourth Java preflight43729 already PASS:
+LockHS/MCAlternatingBit/MCEWD687a/MCLiveInternalMemory/
+MCLiveWriteThroughCache/MCWriteThroughCache; translations and26 fixture mappings now prepared only in ignored
+examples-fourth-six.go.preview/examples-fourth-six-fixtures.json; no active Go
+source or credit yet. All48 liveness-helper contexts (six source classes, including seven inherited
+TableauDiskGraph methods) now prepared only in ignored previews:
+liveness-expression-java-tests.go.preview, tbpar-java-tests.go.preview,
+graph-node-java-tests.go.preview, tableau-node-ptr-java-tests.go.preview and
+disk-graph-java-tests.go.preview. Uncredited and uncompiled; source LNNext TODO
+comments retained, object identity assertions use pointer identity, Java seed4711
+preserved. Existing unchanged48 Java references already passed JUnit0.064s.
 Five user-deferred topics and checkpoint FL2 variant remain deferred.
 
 Priority user directive (2026-10-02): **email reporting is forbidden.** Stop

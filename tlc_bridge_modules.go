@@ -308,7 +308,10 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 		key = entry.name
 	}
 	if def := b.defs[key]; def != nil {
-		return b.convertDefinitionAs(key, def)
+		binding := b.instanceDefinitions[key]
+		if entry.instance == nil || binding != nil && binding.owner == entry.instanceOwner && binding.inst.SourcePosition() == entry.instance.SourcePosition() {
+			return b.convertDefinitionAs(key, def)
+		}
 	}
 	if entry.instance != nil && entry.instance.Name != "" {
 		// Native definitions inherited by an instancee are semantic OpDefs too,
@@ -336,8 +339,10 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 				if len(binding.substs) > 0 {
 					body = b.withPositionLocation(entry.instance.SourcePosition(), tlc.NewSubstInNode(body, binding.substs...))
 				}
-				clone := tlc.NewOpDefNodeForSymbol(b.symbol(key), params, body)
-				clone.Name = tlc.UniqueStringOf(entry.name)
+				// The enclosing module's lookup key may also name an inner
+				// INSTANCE export. This clone owns the full name in its context.
+				symbol := tlc.NewSymbolNode(entry.name)
+				clone := tlc.NewOpDefNodeForSymbol(symbol, params, body)
 				clone.Local = entry.instance.Local
 				clone.SourceDefinition = source.GetSource()
 				clone.OriginallyDefinedInModule = b.moduleNodes[entry.instanceOwner]

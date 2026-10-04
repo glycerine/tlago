@@ -4573,3 +4573,50 @@ pristine Java vector paths. Ready to commit initialization parity fixes,
 nine complete source methods and faithful per-class strategy isolation.
 Inventory826/1269 (65.1%),391/626 classes;443 contexts remain. Goal active,
 user exclusions retained; next six source examples still unported/uncredited.
+
+
+2026-10-04: Nine-example batch committed efdd910 after all required green gates.
+Next six complete Java Examples methods translated (EWD840/EWD998ChanID/EWD998/
+EnvironmentController/Huang/LiveHourClock),26 original assertions plus inherited
+exit checks and all five overrides,21 byte-exact fixtures, original classpath.
+Unchanged Java6 PASS. Initial Go62896 failed only ChanID(EWD998Chan!active
+undefined). Semantic inspection proved root Spec was rebound to the imported
+EWD998.Spec through shared qualified-alias symbols. Source declarations now own
+symbols. The first always-fresh variant58662 broke predeclared LET F/qq in Utils/
+DyadicRationals; lexical declaration reuse restores the Java generator boundary,
+all six56008 PASS15.072s. No assertions or fixtures changed to accommodate failure.
+
+A further ignored metadata audit13781 exposed a nested context key/name mismatch:
+EWD998Chan!EWD998!Spec had the inner EWD998!Spec name. Fresh per-instance symbols
+alone55204 left this mismatch. Context conversion now validates the instance
+owner/source position before taking a qualified-alias shortcut, otherwise clones
+the actual source context operator with its complete outer name. Metadata+six
+originals39608 PASS17.177s; all four inspected names match root context keys.
+All probes moved to ignored scratch, no invented persistent test credited.
+Inventory832/1269(65.6%),397/626classes,437 contexts/229classes pending,onepartial;
+all20topic rows checked. Full workspace89196 and focused root race12129 started
+on current production source. Await terminal results before authorized commit.
+
+2026-10-04: Focused root race12129 PASS207.031s, six new examples and19
+original coverage tests, terminal0/retired. Four existing bridge tests
+race92665 PASS1.937s, terminal0/retired. Full workspace89196 remains active,
+Go buffers package output until completion. No restarting or competing broad run.
+Next six originals prepared only in ignored preview with26 source fixture maps;
+LiveExprNodeTest two whole methods prepared with32 active source assertions
+and four original commented LNNext TODO assertions, no Go source or credit yet.
+
+2026-10-04: Read-only/source-preview preparation while workspace89196 runs:
+all48 liveness-helper contexts now mechanically prepared in five ignored
+*.go.preview files; no active source/credit yet. Source assertion-site audit:
+GraphNode6methods14sites, LiveExprNode2/32, TBPar6/44,
+TableauNodePtrTable9/41, DiskGraph7/29, TableauDiskGraph11local/44 plus
+seven inherited DiskGraph methods/29. Java Object equals assertions retain
+pointer identity, Java Random seed4711 retained, four commented LNNext source
+TODO assertions remain comments. No invented persistent tests.
+
+2026-10-04: Full current-source offline workspace89196 PASS:
+root1143.104s,SANY0.908s,TLC66.125s; terminal0 and retired.
+All current six-test gates green, root25-test race207.031s and separate
+four bridge tests race1.937s.28 intended paths reviewed/staged;21 vectors
+byte-identical to source and excluded from whitespace normalization.
+Ready for authorized commit; all verification handles terminal/retired.
