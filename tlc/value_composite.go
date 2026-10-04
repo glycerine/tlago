@@ -325,20 +325,39 @@ func (v *TupleValue) Apply(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	i, ok := arg.(*IntValue)
 	if !ok {
-		return nil, v.unsupported("Attempted to access tuple at a non integral index: %s", arg)
+		return nil, v.tupleAssertFailure("Attempted to access tuple at a non integral index: " + ValuesPPR(arg))
 	}
 	idx := int(i.Val)
 	if idx <= 0 || idx > len(v.Elems) {
-		return nil, v.unsupported("Attempted to access index %d of tuple\n%s\nwhich is out of bounds.", idx, v)
+		return nil, v.tupleAssertFailure(fmt.Sprintf("Attempted to access index %d of tuple\n%s\nwhich is out of bounds.", idx, ValuesPPR(v)))
 	}
 	return v.Elems[idx-1], nil
+}
+
+// ApplyArgs ports TupleValue.apply(Value[], int). Java discards control when
+// delegating to the single-argument overload, whose result is control-independent.
+func (v *TupleValue) ApplyArgs(args []Value, control int) (resultValue Value, err error) {
+	defer catchValueFailure(v, &err)
+	if len(args) != 1 {
+		return nil, v.tupleAssertFailure(fmt.Sprintf("Attempted to access tuple with %d arguments when it expects 1.", len(args)))
+	}
+	return v.Apply(args[0])
+}
+
+func (v *TupleValue) tupleAssertFailure(message string) *TLCError {
+	if source := v.GetSource(); source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	failure := newTLCError(ECGeneral, "%s", message)
+	failure.Runtime = true
+	return failure
 }
 
 func (v *TupleValue) Select(arg Value) (resultValue Value, err error) {
 	defer catchValueFailure(v, &err)
 	i, ok := arg.(*IntValue)
 	if !ok {
-		return nil, v.unsupported("Attempted to access tuple at a non integral index: %s", arg)
+		return nil, v.tupleAssertFailure("Attempted to access tuple at a non integral index: " + ValuesPPR(arg))
 	}
 	idx := int(i.Val)
 	if idx > 0 && idx <= len(v.Elems) {

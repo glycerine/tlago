@@ -1109,3 +1109,36 @@ this slice adds tests/docs only. Inventory now 347/1269 contexts (27.3%), 111/62
 complete classes (17.7%), 922 pending contexts across 515 classes; one partial.
 All five user-deferred topics remain deferred. Next reconcile TupleValueTest's
 complete original testErrorMessages, including the multi-argument apply overload.
+
+
+TupleValueTest is port complete: testErrorMessages preserves all four original
+catch-only contains assertions, original values and call order. Source has no
+fail() after its try blocks; Go likewise checks caught TLCRuntimeException messages
+without inventing stronger cases. Ported missing production TupleValue.ApplyArgs:
+source argument-count assertion, single-argument delegation (control discarded),
+and original catch/wrap boundary. Existing Apply/Select assertions now retain
+Java Values.ppr and source-aware Assert.fail behavior (detailed failure with
+EmptyContext, fingerprint wrapper, Runtime tag), following TupleValue.java and
+util/Assert.java. No test weakening or new cases. Current source Java class and
+unchanged original JUnit pass (1, 0.032s), Go targeted passes (0.013s).
+Full workspace normal check passes on final production/test snapshot:
+ok  	github.com/glycerine/tlago	316.574s
+?   	github.com/glycerine/tlago/cmd/tlago	[no test files]
+ok  	github.com/glycerine/tlago/sany_tests	0.971s
+ok  	github.com/glycerine/tlago/tlc	10.689s
+Full TLC -race passes: ok  	github.com/glycerine/tlago/tlc	95.634s
+Retire handles 5019,37400,66512. Inventory now 348/1269 contexts (27.4%), 112/626
+complete classes (17.9%), 921 pending contexts across 514 classes; one partial.
+Five user-deferred topics remain deferred.
+
+Next SetOfRcrdValueTest: compiled current source SetOfRcdsValue.java and unchanged
+original JUnit; all seven pass Java -ea (16.119s), retire handle39273. No Go credit
+yet. Draft Go translation is only ignored scratch at
+.codex-gotmp/correctness-java/value_record_set_java_test.go; not compiled or
+accepted. Review against original before promoting. Preserve indexed elementAt
+names/field membership, HashSet equality/cardinality and all loops n=1..6,
+m=1..4, kOutOfN=0..size-1, clearing the same set each time, plus ten fields of
+fifty values sampled at k=10000. Keep actual non-enumerable/empty-field cases and
+class FP64.Init setup. Reuse Java-compatible hash/equality helpers from the
+completed function-set translation; never replace this matrix with samples or
+exclude it as a benchmark. Finish needed production work before moving on.

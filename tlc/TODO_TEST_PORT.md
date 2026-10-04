@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **111 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (17.7%).**
-- **347 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (27.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **922 logical method contexts across 515 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **112 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (17.9%).**
+- **348 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (27.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **921 logical method contexts across 514 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -38,10 +38,10 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
 | Queues and pool writers | 2 | 1 | 11 | 9 | 2 |
-| Values, lazy functions, enumeration, and value streams | 17 | 10 | 189 | 124 | 65 |
+| Values, lazy functions, enumeration, and value streams | 17 | 11 | 189 | 125 | 64 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 5 | 91 | 16 | 75 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **111** | **1,269** | **347** | **922** |
+| **Total** | **626** | **112** | **1,269** | **348** | **921** |
 
 ## Porting rules and proposed order
 
@@ -642,8 +642,9 @@ Original primitive/composite value, normalization, comparison, EXCEPT, serializa
 - [ ] [tlc2/value/impl/SubsetEnumeratorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SubsetEnumeratorTest.java) — **Missing**; parameterized: preserve all original rows: `testElementsInt`, `testGetRandomSubset`.
 - [ ] [tlc2/value/impl/SubsetValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SubsetValueTest.java) — **Reconcile**: `testRandomSubsetE7F1`, `testRandomSubsetE7F05`, `testRandomSubsetE6F1`, `testRandomSubsetE5F01`, `testRandomSubsetE5F025`, `testRandomSubsetE5F05`, `testRandomSubsetE5F075`, `testRandomSubsetE5F1`, `testRandomSubsetE32F1ENeg6`, `testRandomSubsetE17F1ENeg3`, `testRandomSubsetSubset16`, `testRandomSubsetSubset256`, `testRandomSubsetSubset65536`, `testRandomSubsetSubsetNoOverflow`, `testEmptyEnumerationsAreIndependent`, `testKSubsetEnumerator`, `testKSubsetEnumeratorNegative`, `testKSubsetEnumeratorGTCapacity`, `testNumKSubset`, `testNumKSubset2`, `testNumKSubsetNeg`, `testNumKSubsetKGTN`, `testNumKSubsetUpTo62`, `testNumKSubsetPreventsOverflow`, `testUnrankKSubsets`, `testUnrank16viaRank`, `testRandomSetOfSubsets`, `testRandomSetOfSubsets300`, `testRandomSetOfSubsets400`, `testElementsNormalizedIsNormalized`, `testKElementsAreNormalized`, `testKElementsMatchElementsNormalized`, `testRandomSubsetGeneratorK0`, `testRandomSubsetGeneratorKNegative`, `testRandomSubsetGeneratorKNplus1`, `testRandomSubsetGeneratorN10`, `testRandomSubsetGeneratorN100`.
   Related Go checks: [tlc/value_setoffcns_test.go](value_setoffcns_test.go), [tlc/value_ksubset_test.go](value_ksubset_test.go).
-- [ ] [tlc2/value/impl/TupleValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/TupleValueTest.java) — **Reconcile**: `testErrorMessages`.
-  Related Go checks: [tlc/value_tuple_test.go](value_tuple_test.go).
+- [x] [tlc2/value/impl/TupleValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/TupleValueTest.java) — **Port complete**: `testErrorMessages`.
+  Go translation: [tlc/value_tuple_java_test.go](value_tuple_java_test.go).
+  Preserves all four source catch/message assertions, including Java's absence of fail() after the try blocks; added the missing production array-argument overload and source-aware assertion failures.
 
 ### Collections, buffered files, combinatorics, and statistics
 
@@ -1010,3 +1011,4 @@ This appendix records the numerator, including methods in partially translated c
 
 When a complete original method lands, record its Java class/method and Go file, remove only that method from the unchecked topic entry, and adjust the topic and overall counts. Keep inherited subclass contexts, original ignored methods, and supplementary suites separate. Recompute against the Java checkout if it changes. Reconcile related legacy Go tests before claiming additional credit; source comments or PORT_PROGRESS claims alone do not prove that every original assertion is retained.
 | [tlc2/value/impl/SetOfFcnsValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/SetOfFcnsValueTest.java) | `testRangeSubsetValue`, `testDomainEmpty`, `testRangeEmpty`, `testDomainAndRangeEmpty`, `testRandomSubsetAndValueEnumerator`, `testDomainModelValue`, `testDomainIntervalRangeSetEnumValueSize9`, `testDomainIntervalRangeSetEnumValueSize27`, `testDomainIntervalRangeSetEnumValueSize256`, `testRandomSubsetFromReallyLarge`, `testEmptyNonEnumerableDomain`, `testUnitNonEnumerableRange`, `testUnitNonEnumerableRangeInterval`, `testNonEnumerableRange`, `testNonEnumerableRangeInterval`, `testRandomSubsetEmptyNonEnumerableDomain` | [tlc/value_fcn_set_java_test.go](value_fcn_set_java_test.go) |
+| [tlc2/value/impl/TupleValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/TupleValueTest.java) | `testErrorMessages` | [tlc/value_tuple_java_test.go](value_tuple_java_test.go) |
