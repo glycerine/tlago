@@ -34,7 +34,13 @@ import (
 
 // Original Github461Test.testSpec with its complete assertion trace and call stack.
 func TestJavaGithub461(t *testing.T) {
-	r := runJavaTLCModelTest(t, "Github461", "-dumpTrace", "json", filepath.Join(t.TempDir(), "Github461Test.json"))
+	runJavaGithub461(t)
+}
+
+func runJavaGithub461(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "Github461Test.json")}, extraArgs...)
+	r := runJavaTLCModelTest(t, "Github461", args...)
 	if r.ExitStatus != tlc.ExitStatusViolationAssert {
 		t.Fatalf("exit=%d, want VIOLATION_ASSERT; messages=%v", r.ExitStatus, r.Messages)
 	}
@@ -45,6 +51,7 @@ func TestJavaGithub461(t *testing.T) {
 	requireJavaRandomSubsetTrace(t, r, []string{"x = 0", "x = 1", "x = 2", "x = 3", "x = 4"}, true)
 	requireJavaTLCRecordedParams(t, r, tlc.ECTLCNestedExpression, "0. Line 9, column 5 to line 10, column 17 in Github461\n1. Line 9, column 8 to line 9, column 65 in Github461\n\n")
 	requireJavaTLCUncovered(t, r)
+	return r
 }
 
 // Original Github525Test.testSpec with all runner defaults.
@@ -66,11 +73,17 @@ func TestJavaGithub525(t *testing.T) {
 // Original Github597Test.testSpec and its noRandomFPandSeed/doCoverage/doDump
 // overrides. Preserve the runtime's random fp/seed by omitting both arguments.
 func TestJavaGithub597(t *testing.T) {
+	runJavaGithub597(t)
+}
+
+func runJavaGithub597(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	r := runJavaTLCModelTestWithArguments(t, "Github597", "dekker", func(meta, traceDirectory string) []string {
-		return []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt",
+		args := []string{"-metadir", meta, "-deadlock", "-debugger", "nosuspend,port=4712,nohalt",
 			"-generateSpecTE", "-teSpecOutDir", traceDirectory, "-workers", "1", "-checkpoint", "0",
 			"-dumpTrace", "json", filepath.Join(t.TempDir(), "Github597Test.json"), "-config", "dekker.tla"}
+		return append(args, extraArgs...)
 	})
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
@@ -91,4 +104,5 @@ func TestJavaGithub597(t *testing.T) {
 			t.Fatalf("diagnostic %d absent", code)
 		}
 	}
+	return r
 }

@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `e6f58f5`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `b1b4a11`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **318 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (50.8%).**
-- **753 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (59.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **516 logical method contexts across 308 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **320 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (51.1%).**
+- **755 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (59.5%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **514 logical method contexts across 306 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -28,7 +28,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Safety checking, diagnostics, and checker lifecycle | 34 | 31 | 34 | 31 | 3 |
 | Issue regressions in the evaluator and checker | 98 | 98 | 101 | 101 | 0 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 15 | 48 | 45 | 3 |
-| Generated TTrace recheck variants | 45 | 0 | 45 | 0 | 45 |
+| Generated TTrace recheck variants | 45 | 2 | 45 | 2 | 43 |
 | Liveness and fairness model regressions | 101 | 1 | 101 | 1 | 100 |
 | Liveness graph, tableau, and expression helpers | 6 | 0 | 48 | 0 | 48 |
 | Simulation and multithreaded simulation | 20 | 0 | 55 | 0 | 55 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **318** | **1,269** | **753** | **516** |
+| **Total** | **626** | **320** | **1,269** | **755** | **514** |
 
 ## Porting rules and proposed order
 
@@ -346,8 +346,10 @@ Every concrete *_TTraceTest and *_TTrace class, including inherited testSpec. Th
 - [ ] [tlc2/tool/DepthFirstDieHardTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstDieHardTest_TTraceTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/DepthFirstErrorTraceTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstErrorTraceTest_TTraceTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/EvalExceptionTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/EvalExceptionTest_TTraceTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github461Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github461Test_TTraceTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/Github597Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github597Test_TTraceTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/Github461Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github461Test_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_first_java_test.go](../tlc_ttrace_first_java_test.go). Executes the fully asserted original Go model first, then rechecks its actual generated monolithic TTrace artifact with the original basename/config, resolver, no-generation and no-coverage settings. Preserves the safety exit, complete five-state trace/actions/ordinals and zero-uncovered assertion.
+- [x] [tlc2/tool/Github597Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/Github597Test_TTraceTest.java) — **Port complete**: `testSpec`.
+  Go translation: [tlc_ttrace_first_java_test.go](../tlc_ttrace_first_java_test.go). Executes the fully asserted original Go model first, then rechecks its actual generated monolithic TTrace artifact with the original basename/config, resolver, no-generation and no-coverage settings. Preserves random fp/seed, disabled DOT, liveness exit, FINISHED/no GENERAL, temporal violation, counterexample, trace and loop-back existence assertions.
 - [ ] [tlc2/tool/PrintTraceRaceTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/PrintTraceRaceTest_TTraceTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/RandomElementSimulationTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomElementSimulationTest_TTraceTest.java) — **Missing**: `test`.
 - [ ] [tlc2/tool/RandomElementT4Test_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/RandomElementT4Test_TTraceTest.java) — **Missing**: `test`.

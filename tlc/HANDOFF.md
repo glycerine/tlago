@@ -3568,3 +3568,42 @@ keeps debugger/JSON. Its original first model is dekker with embedded config;
 source first-Go port already preserves random fp/seed. No Go TTrace port credit
 yet; upcoming tests must generate Go artifacts then recheck, retaining exact
 461 five-state trace/actions/ordinals and597 diagnostic/loop existence checks.
+
+2026-10-04: Github461Test_TTraceTest.testSpec and
+Github597Test_TTraceTest.testSpec translated in tlc_ttrace_first_java_test.go.
+Each executes the fully asserted original Go model in a subtest, then rechecks
+its actual generated monolithic TTrace artifact. No source-model rerun or Java
+golden substitutes for the generated Go artifact. Original first-model asserts
+are unchanged; their helpers now allow the class-name trace output path.
+Original TTrace no-generation/no-coverage settings, one worker, debugger, JSON,
+fp0/seed1 defaults retained;597 preserves random fp/seed and disabled DOT.
+461 retains safety exit, all five states/actions/ordinals and zero-uncovered;
+597 retains liveness exit, FINISHED/no GENERAL, temporal violation,
+counterexample, trace and back-to-state existence. Original missing-artifact
+assumption retained; all credited runs actually generated and rechecked files.
+Initial Go setup failures came from the explicit resolver missing the standard
+classpath and an absolute config argument instead of the original basename.
+Resolver now has application classpath, generated user directory and original
+spec library path; model/config arguments use the generated basename. Java's
+ModelConfig also passes the basename unchanged to monolith extraction: no
+production change was needed or made. No weakened assertions/invented tests.
+All four unchanged Java first-model/recheck JUnit references pass. Final Go
+first run passes12.393s; five combined normal repetitions pass78.915s; five
+combined root race repetitions pass495.934s. Full offline workspace passes
+(root431.224s, SANY0.939s, TLC63.233s).53599,56526,67264 terminal and retired.
+TLC production remains b1b4a11, whose full TLC race passed551.758s.
+Inventory755/1269 contexts,320/626 complete classes;514 contexts/306 classes
+pending,one partial. Generated TTrace topic2/45 complete. Ready for green
+commit; goal active, user-deferred topics unchanged.
+Next-batch Java preflight: BugzillaBug279Test/TTrace and both
+DepthFirstDieHardTest/TTrace and DepthFirstErrorTraceTest/TTrace pairs pass
+unchanged, with generated prerequisites explicitly checked present. Initial
+DieHard scratch run lacked DieHard.cfg and exited255; copying original model/
+config bytes resolved setup. Logs ttrace-next-<Class>-junit.log and
+ ttrace-next-javac.log in ignored correctness-java scratch;49187 failed setup,
+2670 all remaining references pass; both terminal. These three upcoming TTrace
+methods are not yet translated or credited. Preserve Bug279 deadlock-check/
+no-DOT settings and original subset values; DFID first phases retain blank
+source action labels, while TTrace rechecks assert exact generated _init/_next
+locations and complete traces. DistributedTrace and two EWD840 binary cases
+remain pending for the previously documented reasons.
