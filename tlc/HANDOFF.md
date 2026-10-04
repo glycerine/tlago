@@ -2523,3 +2523,78 @@ retire71137. No Go port credit/tests/fixtures for those six yet.
 Staged diff --check warnings are confined to unchanged source fixture trailing
 whitespace in EvalOrder and MinimalSet files; all22fixtures independently
 byte-compared. Go/docs staged whitespace check is clean. Preserve source bytes.
+
+
+## 2026-10-04: original configuration and absolute-path diagnostics
+
+Completed7 original contexts: ASTest.testSpec,ActionLevelPropA..E.testSpec,
+AbsoluteSpecPathTest.test. New root tlc_as_java_test.go,
+tlc_action_level_prop_java_test.go,tlc_absolute_spec_path_java_test.go; ten
+TLA/CFG fixtures from AS/sharedActionLevelProp/Test2 copied byte-for-byte.
+No production changes. AS retains defaults and only original NO_NEXT_ACTION
+plus inherited FAILURE_SPEC_EVAL exit; no extra assertions. ActionLevelProp
+retains coveragefalse and all other defaults,configA..E,FINISHED,
+ERROR_CONFIG_PARSE and exact source codes: A/B/Cbare,D square,Eangle.
+AbsolutePath retains CommonTestCase's actual singleCLIarg absoluteTest2path,
+FINISHED,depth5,6/5/0,noGENERAL; no new exit,seed,deadlock ortrace-generation
+assertions. The actual fixture files are copied unchanged into t.TempDir's
+absolute BASE_PATH before execution so default metadata is cleaned there.
+The earlier direct persistent fixture path created runtime states artifacts;
+terminated fullnormal65472(130) for this actual test-isolation correction.
+Removed only those newly generated Test2/states files after terminal status;
+fixtures untouched. Source Test2's postcondition currently fails in both Java
+and Go, but this original method has no exit/postcondition assertion. Do not
+credit numbered Test2 model context from this distinct absolutepath test.
+All7 unchanged Java JUnit pass: AS0.421s,A0.309s,B0.336s,C0.308s,D0.301s,
+E0.300s,Absolute0.389s; original-<Class>-junit.log. Go first6normal2.427s,
+combined final7normal2.634s(beforepathisolation) pass. Final isolated all7
+rootrace28.203s passes; retire34215,safety-diagnostics-isolated-race.log.
+Earlier race13524 passed26.291s and is superseded; notrunning. Retire20513,
+93536,95015,90586; the lasttwo include upstreamAssert failure detailed below.
+Final fullworkspace passes(root375.799s,SANY1.087s,TLC62.317s); retire34721,
+safety-diagnostics-isolated-full-normal.log. No checks remain running. TLC production/pkgtests unchanged;
+retain fullTLCrace e3b3f46 547.729s. Inventory637/1269contexts(50.2%),205/626
+completeclasses(32.7%),632pendingacross421classes,onepartial. Safetytopic14/34
+contexts/classes complete,20pending. Evaluation51/51 remainscomplete.
+All10fixtures exactbytes, no runtime files should entercommit. Deferred topics
+unchanged; overallgoalactive.
+
+Upstream source-test mismatch: AssertExpressionStack (not a Go implementation
+shortfall). Exact mechanical translation failed inheritedSUCCESS(exit0) and
+assertNoTESpec; unchanged Java at rev8f4bc8b fails exactly those same assertions.
+Java current EC maps VALUE_ASSERT_FAILED toVIOLATION_ASSERT14 and current
+ModelCheckerTestCase defaults force -generateSpecTE. Go correctly produces
+exit14, trace x0/x1, nestedcallstack and generatedTEspec, matching sourceengine.
+Did not change source expectations, addskip, or make production incompatible.
+Mark Reconcile and keepuncredited. The exact failing translation is only an
+ignored scratch draft assert-expression-stack-draft.go.txt; its two untracked
+fixture copies removed, not part of the green suite. Logs original-
+AssertExpressionStack-junit.log and safety-path-stack-go.log prove mismatch.
+Java workingtree clean. Still needs upstream expectations reconciled before a
+faithful green port can be credited; this does not prevent other valid ports.
+
+Next preflight ContinueTest/DepthFirstTerminate/EmptyTest source and models read.
+Continue unchangedJava passes; workers3,-continue,noGenerateSpec,defaultcoverage/
+dot/JSON,success,FINISHED,32/29/0,depth29,STATE_PRINT2 exactly32 records,
+noTEspec,zeroUncovered. Source commented-out trace lists remainnonassertions.
+Empty unchangedJava passes; defaults plus explicit second -coverage1,success,
+FINISHED/noGENERAL,0/0/0. No Go translations/fixtures activated yet.
+DepthFirstTerminate unchangedJava fails on48corehost: source overridesworkers
+availableProcessors and -dfid50, but current TLC intentionally rejectsmultiple
+DFIDworkers(issue548),recordingGENERAL/exit255 againstnoGENERAL/successasserts.
+Mark Reconcile,keepuncredited; no single-worker substitute/newskip introduced.
+Logs original-ContinueTest-junit.log,original-DepthFirstTerminate-junit.log,
+original-EmptyTest-junit.log,safety-lifecycle-javac.log; retire23553 (1 dueJava
+DFID failure) and separateEmpty run(0). No checks frompreflight remainrunning.
+
+Source customBuild.xml default test/test-dist broad batch pattern is
+**/*Test*.java (lines810/1253); neither AssertExpressionStack.java nor
+DepthFirstTerminate.java matches it. Main inventory intentionally includes
+nonignored concrete classes beyond the default Ant selection, so both remain
+visible/pending without credit. Go DFID already has the multiple-worker guard
+(dfid_checker.go); its diagnostic currently omits Java's issue548 URL, a future
+source-message reconciliation detail, not justification to substituteworkers.
+
+Staged diff --check flags only original AS.tla line18 trailing whitespace,
+verified source-identical. Preserve fixture bytes. No generated runtime
+metadata remains under persistent Test2 vectors; staged Go/docs check is clean.

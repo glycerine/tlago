@@ -6,9 +6,9 @@ Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **198 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (31.6%).**
-- **630 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (49.6%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **639 logical method contexts across 428 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **205 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (32.7%).**
+- **637 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (50.2%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **632 logical method contexts across 421 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -25,7 +25,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Presentation models | 5 | 5 | 13 | 13 | 0 |
 | Standard modules, constants, native overrides, and random values | 44 | 44 | 75 | 75 | 0 |
 | Evaluation, initial states, next states, and action composition | 45 | 45 | 51 | 51 | 0 |
-| Safety checking, diagnostics, and checker lifecycle | 34 | 7 | 34 | 7 | 27 |
+| Safety checking, diagnostics, and checker lifecycle | 34 | 14 | 34 | 14 | 20 |
 | Issue regressions in the evaluator and checker | 98 | 3 | 101 | 3 | 98 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 14 | 48 | 44 | 4 |
 | Generated TTrace recheck variants | 45 | 0 | 45 | 0 | 45 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **198** | **1,269** | **630** | **639** |
+| **Total** | **626** | **205** | **1,269** | **637** | **632** |
 
 ## Porting rules and proposed order
 
@@ -198,16 +198,16 @@ Bindings, assignment, quantified evaluation, LET, INSTANCE, actions, enabledness
 
 Invariants, state/action properties, assumptions/postconditions, deadlocks, DFID, views, model errors, and completion/cleanup.
 
-- [ ] [tlc2/tool/ASTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ASTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/AbsoluteSpecPathTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AbsoluteSpecPathTest.java) — **Missing**: `test`.
-- [ ] [tlc2/tool/ActionLevelPropATest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropATest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/ActionLevelPropBTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropBTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/ActionLevelPropCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropCTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/ActionLevelPropDTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropDTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/ActionLevelPropETest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropETest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/AssertExpressionStack.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AssertExpressionStack.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/ASTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ASTest.java) — **Port complete**: `testSpec` → [tlc_as_java_test.go](../tlc_as_java_test.go); all original assertions and source settings retained.
+- [x] [tlc2/tool/AbsoluteSpecPathTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AbsoluteSpecPathTest.java) — **Port complete**: `test` → [tlc_absolute_spec_path_java_test.go](../tlc_absolute_spec_path_java_test.go); all original assertions and source settings retained.
+- [x] [tlc2/tool/ActionLevelPropATest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropATest.java) — **Port complete**: `testSpec` → [tlc_action_level_prop_java_test.go](../tlc_action_level_prop_java_test.go); all original assertions and source settings retained.
+- [x] [tlc2/tool/ActionLevelPropBTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropBTest.java) — **Port complete**: `testSpec` → [tlc_action_level_prop_java_test.go](../tlc_action_level_prop_java_test.go); all original assertions and source settings retained.
+- [x] [tlc2/tool/ActionLevelPropCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropCTest.java) — **Port complete**: `testSpec` → [tlc_action_level_prop_java_test.go](../tlc_action_level_prop_java_test.go); all original assertions and source settings retained.
+- [x] [tlc2/tool/ActionLevelPropDTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropDTest.java) — **Port complete**: `testSpec` → [tlc_action_level_prop_java_test.go](../tlc_action_level_prop_java_test.go); all original assertions and source settings retained.
+- [x] [tlc2/tool/ActionLevelPropETest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ActionLevelPropETest.java) — **Port complete**: `testSpec` → [tlc_action_level_prop_java_test.go](../tlc_action_level_prop_java_test.go); all original assertions and source settings retained.
+- [ ] [tlc2/tool/AssertExpressionStack.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/AssertExpressionStack.java) — **Reconcile**: `testSpec`. Unchanged Java at the inventory revision fails `assertNoTESpec` and inherited SUCCESS exit: the source base enables generation and EC maps the assertion failure to exit14. Go produces the same trace, generation and exit. Keep pending; no weakened test, new skip, or incompatible production change. Exact translation remains an ignored scratch draft until upstream expectations are reconciled.
 - [ ] [tlc2/tool/ContinueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ContinueTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/DepthFirstTerminate.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstTerminate.java) — **Missing**: `testSpec`.
+- [ ] [tlc2/tool/DepthFirstTerminate.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DepthFirstTerminate.java) — **Reconcile**: `testSpec`. Unchanged Java requests availableProcessors workers but current TLC rejects DFID with multiple workers (issue548); on this48-core host it records GENERAL and exits255, violating the original assertions. Preserve the worker setting and keep pending; no new skip or single-worker substitute.
 - [ ] [tlc2/tool/DiameterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DiameterTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/DotConstrainedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/DotConstrainedTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/ElevatedSanyWarning.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ElevatedSanyWarning.java) — **Missing**: `testSpec`.

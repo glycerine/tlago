@@ -3147,3 +3147,19 @@ combined all17rootrace58.170s passes. Full workspace passes(root380.443s,SANY1.0
 retain full TLC race547.729s baseline for unchanged production/pkgtests.
 Inventory630/1269contexts(49.6%),198/626classes(31.6%); evaluationtopic complete
 45/45classes,51/51contexts. Deferred topics unchanged; overall goal active.
+
+
+### 2026-10-04 — Configuration diagnostics and absolute paths
+
+Ported7 original AS,ActionLevelPropA..E and AbsoluteSpecPath methods, preserving
+exact source diagnostics/exits/options and all assertions. Ten fixture files
+byte-identical. Absolute-path execution keeps its soleCLIarg and isolates
+unchanged inputs/defaultmetadata under a temporary absoluteBASE_PATH.
+All7 unchangedJava pass; final all7Go rootrace28.203s passes. No production
+changes. Final fullworkspace passes(root375.799s,SANY1.087s,TLC62.317s); no checks
+running. Retain fullTLCrace547.729s for unchanged production/pkgtests.
+Inventory637/1269contexts(50.2%),205/626classes(32.7%); safety14/34complete.
+AssertExpressionStack and multicoreDepthFirstTerminate are Reconcile: original
+Java itself fails its current expectations; no weakened tests, newskips or
+incompatible Go production changes. These earn noportcredit. Overallgoalactive,
+deferredtopics unchanged.
