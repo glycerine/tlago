@@ -3297,3 +3297,41 @@ All final handles terminal; rootrace34003 PASS82.197s; TLCpackage unchanged,
 96097d0 fullrace560.863s retained. Original fixture blank EOF line preserved;
 stagedGo/docs whitespaceclean. Commit warning port and continue issue regressions.
 Next originalJava Bugzilla2792.209s/CodePlex21.479s/Github1087.510s all PASS.
+
+2026-10-04 issue regressions: original BugzillaBug279Test,CodePlexBug21Test and
+Github1087Test testSpec translations in tlc_bugzilla_279_java_test.go,
+ tlc_codeplex_21_java_test.go,tlc_github_1087_java_test.go. Six byte-exact fixtures.
+Bug279 exact source 3/3/0,deadlock/FINISHED/noGENERAL,three states/full source
+Values.ppr(normalizedSUBSET1..8) expectation,zeroUncovered; checkDeadLock=true,
+doDump=false and all other base defaults incl JSON/coverage/debugger retained.
+The SUBSET1..20 bound is unchanged; no costly-enumeration substitute or sample.
+CodePlex21 function/tuple override assumptions,0/0/0,SUCCESS/FINISHED/noGENERAL;
+Github1087 Github602 root,explicitcfg,safety/FINISHED/noGENERAL,2/1/0,exacttrace
+1/-1,register42firstInt2/bothpostconditiondiagnostics retained. Trace helpers
+also validate source state ordinals/action metadata. No production changes
+needed, no weakened/invented assertions. Original Java passes2.209/.479/.510s;
+Go focused all3pass6.160s. Workspace31154 and five-rootrace38900 live; logs
+issues-next-{workspace,root-race}.log; retire only after terminal results.
+TLCpackage unchanged since96097d0 fullrace560.863s. Inventory657/1269contexts
+51.8%,225/626classes35.9%;612pending401classes;issue topic6/98classescomplete.
+Next Github1134a/b/c/d/e/f source inspected; all unchanged Java preflights PASS
+(consult original-Github1134{a,b,c,d,e,f}Test-junit.log for timings). No Go tests/fixtures or inventory credit for those yet. Models
+live in source test-model/gh1134 (five TLA modules plus six cfgs), rootMC.tla,
+explicitMC{letter}.cfg, noGenerateSpec=true/doDumpTrace=false, otherdefaults.
+A livenessinitialproperty failure Init/stateINITtuple+zeroUncovered; B/C/E
+SUCCESS,9/4/0,zeroUncovered; D/F initial-evaluation failure exact tuplefunction
+out-of-domain3 message and initialstate. AllFINISHED and source exits retained.
+Temporary Java runs now workdir ignored scratch root, keeping generatedstates
+out of repo root. Deferred topics unchanged; overallgoalactive.
+
+Issue batch final focused rootrace38900 PASS115.445s; retire38900.
+All six Github1134 Java preflights pass unchanged; no Go translations activated.
+Workspace31154 remains live; no new production changes during this check.
+
+Final issue workspace31154 PASS374.743/1.001/62.059s; retire31154.
+Rootrace38900 PASS115.445s; all final handles terminal, baselineTLC fullrace
+560.863s retained (no TLCpackage code changes). StagedGo/docs whitespaceclean;
+Github602 original trailing blanks retained, all six fixtures byte-exact.
+Commit issue tests as green checkpoint; next Github1134a..f, all source Java
+preflights green and no Go translations activated. Inventory657/1269contexts
+51.8%,225/626classes35.9%,612pending401classes; goalactive/deferred unchanged.
