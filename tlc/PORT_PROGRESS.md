@@ -2716,3 +2716,36 @@ Next: standard module correctness originals, beginning SequencesTest (full sourc
 read this turn), then module/TLCTest. Inspect production source and preserve full
 string fixtures, exception codes/messages, cardinality cases and complete source
 function loops; do not credit existing approximate checks before reconciliation.
+
+
+Standard module SequencesTest and tlc2.module.TLCTest are port complete in
+modules_sequences_tlc_java_test.go: all thirteen plus five original methods.
+Sequences keeps every exact string/int/tuple fixture, StringValue type checks,
+UniqueString.of equality, ten strict EvalException family catches and all original
+error codes. It uses the established native-module TLCError EvalException carrier
+and actual EvalException where applicable, excludes TLCRuntimeException via the
+existing family classifier, then verifies exact code; it does not merely accept
+any error like the older approximate Go checks. Source class has no explicit
+interner reset, and none was invented. TLC class retains @BeforeClass FP64.Init,
+both tuple/record combine cases with normalization before ordered length/array
+assertions, both MaxInt32 interval-side cases without extra normalization or
+instanceof checks, and complete 1..5 permutation enumeration. Array equality uses
+expected.Value.equals(actual) in source order. Source HashSet<Value> uses the
+existing test adapter backed by ValueJavaHashCode and actual Value.Equal/identity,
+retaining actual keys and hashing each incoming key once; it does not deduplicate
+by display strings. Retain input size five, Enumerable assertion, total size120,
+per-element size calls and final distinct size120. Both source copyright/MIT
+notices retained. No extra assertions or invented cases. No production changes
+were necessary: source/Go decomposition inspected for tested operators.
+Original Java source Sequences/TLC classes and both original test classes compile
+unchanged and pass all eighteen methods with -ea (0.046s). Final Go originals pass
+(0.012s). Targeted complete original race passes (1.030s); full TLC normal passes
+(44.939s). Retire handles 14050/87604. Retire targeted handles 20406/80410. Production/root
+packages remain unchanged since full workspace/full TLC race green baseline.
+Inventory now 507/1269 contexts (40.0%), 130/626 complete classes (20.8%), 762
+pending contexts across 496 classes, one partial. Utility topic remains complete,
+all five deferred topics deferred. Next: complete RandomizationTest (sixteen
+methods); source count/location identified, no new translation credit yet.
+Preserve all source cardinality/randomness fixtures, original typed exceptions
+and codes, full loops and first-versus-second call behavior. Inspect production
+Randomization before translating; do required functionality work before moving on.

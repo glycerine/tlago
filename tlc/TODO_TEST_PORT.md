@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **128 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (20.4%).**
-- **489 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (38.5%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **780 logical method contexts across 498 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **130 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (20.8%).**
+- **507 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (40.0%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **762 logical method contexts across 496 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -23,7 +23,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | --- | ---: | ---: | ---: | ---: | ---: |
 | CLI, REPL, messages, and trace-spec output | 5 | 0 | 37 | 0 | 37 |
 | Presentation models | 5 | 3 | 13 | 9 | 4 |
-| Standard modules, constants, native overrides, and random values | 44 | 14 | 75 | 14 | 61 |
+| Standard modules, constants, native overrides, and random values | 44 | 16 | 75 | 32 | 43 |
 | Evaluation, initial states, next states, and action composition | 45 | 12 | 51 | 12 | 39 |
 | Safety checking, diagnostics, and checker lifecycle | 34 | 7 | 34 | 7 | 27 |
 | Issue regressions in the evaluator and checker | 98 | 3 | 101 | 3 | 98 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **128** | **1,269** | **489** | **780** |
+| **Total** | **626** | **130** | **1,269** | **507** | **762** |
 
 ## Porting rules and proposed order
 
@@ -104,12 +104,12 @@ Original module models and direct module-method tests, constant evaluation, modu
   Related Go checks: [tlc/modules_tlc_ext_test.go](modules_tlc_ext_test.go).
 - [ ] [tlc2/module/RandomizationTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/RandomizationTest.java) — **Reconcile**: `testRandomSubsetNonFinite`, `testV1Valid`, `testV2Larger1`, `testSetNonFinite`, `testV1Negative`, `testV1NoIntValue`, `testV1Zero`, `testV2Zero`, `testV2Negative`, `testV3Empty`, `testV3AstronomicallyLarge`, `testV3isInfinite`, `testRSSV2Zero`, `testRSSV2Negative`, `testRSSV2Cardinality`, `testRSSV2TwiceCardinality`.
   Related Go checks: [tlc/random_generator_test.go](random_generator_test.go).
-- [ ] [tlc2/module/SequencesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/SequencesTest.java) — **Reconcile**: `testTailString`, `testHeadString`, `testHeadStringEmpty`, `testAppendString`, `testAppendString2`, `testAppendStringNonString`, `testConcatStringToSeq`, `testConcatSeqToString`, `testConcatStringToString`, `testConcatIntToSeq`, `testConcatSeqToInt`, `testConcatIntToInt`, `testSubseq`.
-  Related Go checks: [tlc/modules_sequences_test.go](modules_sequences_test.go).
+- [x] [tlc2/module/SequencesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/SequencesTest.java) — **Port complete**: `testTailString`, `testHeadString`, `testHeadStringEmpty`, `testAppendString`, `testAppendString2`, `testAppendStringNonString`, `testConcatStringToSeq`, `testConcatSeqToString`, `testConcatStringToString`, `testConcatIntToSeq`, `testConcatSeqToInt`, `testConcatIntToInt`, `testSubseq`.
+  Go translation: [tlc/modules_sequences_tlc_java_test.go](modules_sequences_tlc_java_test.go). Every original method, fixture, specific EvalException code/UniqueString equality, normalization order, MaxInt32 interval side, full permutation loop and Value.hashCode/equals HashSet assertion are retained.
 - [ ] [tlc2/module/TLCExtTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/TLCExtTest.java) — **Reconcile**: `test`.
   Related Go checks: [tlc/modules_tlc_ext_test.go](modules_tlc_ext_test.go).
-- [ ] [tlc2/module/TLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/TLCTest.java) — **Reconcile**: `testA`, `testB`, `testCombineMaxIntIntervalOnLeft`, `testCombineMaxIntIntervalOnRight`, `testPermutations`.
-  Related Go checks: [tlc/modules_misc_test.go](modules_misc_test.go).
+- [x] [tlc2/module/TLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/TLCTest.java) — **Port complete**: `testA`, `testB`, `testCombineMaxIntIntervalOnLeft`, `testCombineMaxIntIntervalOnRight`, `testPermutations`.
+  Go translation: [tlc/modules_sequences_tlc_java_test.go](modules_sequences_tlc_java_test.go). Every original method, fixture, specific EvalException code/UniqueString equality, normalization order, MaxInt32 interval side, full permutation loop and Value.hashCode/equals HashSet assertion are retained.
 - [ ] [tlc2/tool/BagsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/BagsTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/ConstantRank1TLCEvalTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ConstantRank1TLCEvalTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/ConstantRank2AssertErrorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ConstantRank2AssertErrorTest.java) — **Missing**: `testSpec`.
@@ -1036,3 +1036,5 @@ When a complete original method lands, record its Java class/method and Go file,
 | [tlc2/util/statistics/FixedSizedBucketStatisticsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/statistics/FixedSizedBucketStatisticsTest.java) | `testMin`, `testMin2`, `testMax`, `testInvalidArgument`, `testGetPercentileNaN`, `testMaximum` | [tlc/bucket_statistics_java_test.go](bucket_statistics_java_test.go) |
 | [tlc2/util/BufferedRandomAccessFileTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileTest.java) | `testWrite`, `testWriteSeek`, `testWriteSeekNoLength`, `testRead`, `testReadSeekNoLength`, `testInvalidateBufferedData`, `testReadAfterSeekPastEndOfFile`, `testWriteAfterSeekPastEndOfFile`, `testObscureSetLengthBehavior`, `testIdempotentClose`, `testIOExceptionOnUseAfterClose`, `regressionTest01`, `regressionTest02`, `regressionTest03`, `regressionTest04`, `regressionTest05`, `regressionTest06`, `regressionTest07` | [tlc/buffered_random_access_file_java_test.go](buffered_random_access_file_java_test.go) |
 | [tlc2/util/BufferedRandomAccessFileFuzzTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileFuzzTest.java) | `fuzz`, `testWellDefined` | [tlc/buffered_random_access_file_fuzz_java_test.go](buffered_random_access_file_fuzz_java_test.go) |
+| [tlc2/module/SequencesTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/SequencesTest.java) | `testTailString`, `testHeadString`, `testHeadStringEmpty`, `testAppendString`, `testAppendString2`, `testAppendStringNonString`, `testConcatStringToSeq`, `testConcatSeqToString`, `testConcatStringToString`, `testConcatIntToSeq`, `testConcatSeqToInt`, `testConcatIntToInt`, `testSubseq` | [tlc/modules_sequences_tlc_java_test.go](modules_sequences_tlc_java_test.go) |
+| [tlc2/module/TLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/module/TLCTest.java) | `testA`, `testB`, `testCombineMaxIntIntervalOnLeft`, `testCombineMaxIntIntervalOnRight`, `testPermutations` | [tlc/modules_sequences_tlc_java_test.go](modules_sequences_tlc_java_test.go) |
