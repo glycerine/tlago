@@ -127,6 +127,9 @@ type TLCStateMut struct {
 	cached      map[int]Value
 	printRecord *RecordValue
 	functional  bool
+	// ENABLED uses TLCStateFun's persistent bindings, including declarations
+	// outside the root module that have no slot in the mutable state vector.
+	functionalBindings *TLCStateFun
 }
 
 func NewEmptyState() *TLCStateMut {
@@ -151,6 +154,7 @@ func (s *TLCStateMut) CreateEmpty() *TLCStateMut {
 func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
 	if s != nil && s.functional {
 		s = s.functionalCopy()
+		s.functionalBindings = NewTLCStateFun(&SymbolNode{Name: name}, value, s.functionalBindings)
 	}
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) {
@@ -162,6 +166,7 @@ func (s *TLCStateMut) Bind(name *UniqueString, value Value) *TLCStateMut {
 func (s *TLCStateMut) BindWithSource(name *UniqueString, value Value, source SemanticNode) *TLCStateMut {
 	if s != nil && s.functional {
 		s = s.functionalCopy()
+		s.functionalBindings = NewTLCStateFun(&SymbolNode{Name: name}, value, s.functionalBindings)
 	}
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) {
@@ -198,23 +203,27 @@ func (s *TLCStateMut) functionalCopy() *TLCStateMut {
 		copy(sources, s.sources)
 	}
 	return &TLCStateMut{
-		WorkerID:    s.WorkerID,
-		UID:         s.UID,
-		level:       s.level,
-		values:      values,
-		sources:     sources,
-		pred:        s.pred,
-		action:      s.action,
-		callable:    s.callable,
-		cached:      s.cached,
-		printRecord: s.printRecord,
-		functional:  true,
+		WorkerID:           s.WorkerID,
+		UID:                s.UID,
+		level:              s.level,
+		values:             values,
+		sources:            sources,
+		pred:               s.pred,
+		action:             s.action,
+		callable:           s.callable,
+		cached:             s.cached,
+		printRecord:        s.printRecord,
+		functional:         true,
+		functionalBindings: s.functionalBindings,
 	}
 }
 
 func (s *TLCStateMut) Lookup(name *UniqueString) Value {
 	if s == nil || name == nil {
 		return nil
+	}
+	if s.functional {
+		return s.functionalBindings.Lookup(name)
 	}
 	loc := name.VarLoc()
 	if loc >= 0 && loc < len(s.values) && s.values[loc] != nil {
@@ -250,13 +259,14 @@ func (s *TLCStateMut) Copy() *TLCStateMut {
 		copy(sources, s.sources)
 	}
 	out := &TLCStateMut{
-		WorkerID:    TLCStateInitWorkerID,
-		UID:         TLCStateInitUID,
-		level:       s.level,
-		values:      values,
-		sources:     sources,
-		printRecord: s.printRecord,
-		functional:  s.functional,
+		WorkerID:           TLCStateInitWorkerID,
+		UID:                TLCStateInitUID,
+		level:              s.level,
+		values:             values,
+		sources:            sources,
+		printRecord:        s.printRecord,
+		functional:         s.functional,
+		functionalBindings: s.functionalBindings,
 	}
 	if statePreserveMetadata {
 		out.pred = s.pred
@@ -278,13 +288,14 @@ func (s *TLCStateMut) DeepCopy() *TLCStateMut {
 		}
 	}
 	out := &TLCStateMut{
-		WorkerID:    s.WorkerID,
-		UID:         s.UID,
-		level:       s.level,
-		values:      values,
-		sources:     sources,
-		printRecord: s.printRecord,
-		functional:  s.functional,
+		WorkerID:           s.WorkerID,
+		UID:                s.UID,
+		level:              s.level,
+		values:             values,
+		sources:            sources,
+		printRecord:        s.printRecord,
+		functional:         s.functional,
+		functionalBindings: s.functionalBindings,
 	}
 	if statePreserveMetadata {
 		out.pred = s.pred

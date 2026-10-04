@@ -69,7 +69,9 @@ func (t *Tool) DefineName(name string, value any) *SymbolNode {
 }
 
 func (t *Tool) Lookup(sym *SymbolNode, con *Context, state *TLCStateMut, primed bool) any {
-	return t.LookupWithCutoff(sym, con, false, state, primed)
+	// Primed ENABLED lookup stops at Context.branch for variable declarations;
+	// constants and formal parameters still resolve through the outer context.
+	return t.LookupWithCutoff(sym, con, primed && sym != nil && sym.IsVariableDecl(), state, primed)
 }
 
 func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, state *TLCStateMut, primed bool) any {

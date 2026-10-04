@@ -4506,3 +4506,20 @@ coverage counts for nested argument expressions. Both original Github648 tests
 retain every coverage row and the ten-worker duplication case.
 ExitStatusForErrorCode follows EC's explicit cases: only liveness tautology maps
 to77; unsupported and malformed formulas fall through to the generic255 status.
+
+2026-10-04: Github680a/b/c and all eight Github687 variants translated.
+All eleven unchanged original Java JUnit tests pass; all twelve model/config
+fixtures match original bytes. Original assertions and runner settings retained,
+including suppressed warnings and the 687 trace-generation overrides. Five
+focused Go repetitions pass (15.534s); five focused race repetitions pass
+(190.095s). Production now applies variable context
+cutoff during primed lookup, shares the branched ENABLED context with the
+changed-subscript action item, and keeps persistent TLCStateFun bindings for
+instantiated variables without root-state vector slots. Constant-false config
+specification reports TLC_CONFIG_SPEC_IS_TRIVIAL as Java does. No assertions
+weakened and no invented tests. Inventory: 714/1269 logical contexts, 279/626
+fully mapped concrete classes; 555 contexts/347 classes pending, one partial.
+Full offline workspace passes (root 409.440s, SANY 1.067s, TLC 65.403s);
+full TLC race verification passes (567.957s). All check handles terminal.
+Next pending issue family after this verified batch: Github696/696b. User's
+five deferred topics remain deferred. Goal remains active.

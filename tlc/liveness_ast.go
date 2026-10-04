@@ -99,11 +99,12 @@ func newLiveStateEnabled(body SemanticNode, con *Context, subscript SemanticNode
 			return true, nil
 		}
 		sfun := NewFunctionalState()
+		c1 := BranchContext(con)
 		acts := EmptyActionItemList
 		if subscript != nil {
-			acts = acts.Cons(subscript, con, DoNotRecordCostModel, ActionItemChanged)
+			acts = acts.Cons(subscript, c1, DoNotRecordCostModel, ActionItemChanged)
 		}
-		state, err := tool.EnabledImpl(body, acts, BranchContext(con), s1, sfun, DoNotRecordCostModel)
+		state, err := tool.EnabledImpl(body, acts, c1, s1, sfun, DoNotRecordCostModel)
 		if err != nil {
 			return false, err
 		}

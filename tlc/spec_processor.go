@@ -1446,7 +1446,7 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 			return true
 		case *BoolValue:
 			if !v.Val {
-				p.addConfigError(ECTLCConfigIDHasValue, "specification", opNodeName(pred.Operator), v.String())
+				p.addConfigError(ECTLCConfigSpecIsTrivial, opNodeName(pred.Operator))
 			}
 			return true
 		case *LazyValue:
