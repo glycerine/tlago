@@ -1779,3 +1779,75 @@ per-method ToolIO TOOL/reset, exact message counts and overload substitutions,
 all six progress parameters and both original locale alternatives. Inspect actual
 production console boundary before translating; implement missing behavior before
 crediting output methods. Root REPL translation may require full root checks.
+
+
+MPTest: all four complete original output methods translated in
+output_mp_java_test.go, with per-method ToolIO TOOL/reset, actual production
+println capture, exact message counts/overload substitutions, six MP.format long
+parameters and both original comma/dot locale alternatives. No recorder-to-string
+substitute, extra assertions/cases, or weakened expected output. Source MP and
+ToolIO classes plus original MPTest compile unchanged; Java -ea passes(0.045s),
+Go initial complete class passes(0.011s), constructor/final follow-up passes(0.012s).
+Production audit found recorder-only PrintMessage/PrintError and absent UNIT_TEST
+template. Added real ToolIO system/tool output, shared out/err buffering, exact
+print/println message boundaries, reset, mode validation, defensive reads and
+explicit array doubling. Preserve source getAllMessages arraycopy bounds failure
+when pending text follows an exactly full buffer, including concrete exception
+and native arraycopy detail. Source Java bug is not repaired or hidden. Console
+printing retains recorder events separately, source severity prefixes/tool
+STARTMSG/ENDMSG envelopes, warnings' history/hint/suppression timing, PrintState's
+rendered return, GetMessage's tool envelope and source timestamp/noTimestamps
+format. UNIT_TEST uses sequential repeated substitution; absent and unused
+parameters remain original. Six-parameter progress branch requires exactly six.
+CLI runTLCModelCheck connects supplied system streams and restores them afterward.
+MP.format's explicit ###,###.### pattern now groups by three with localized digits,
+separators and negative affixes, preserving every signed-long bit (including MIN).
+Raw Go CLDR defaults were not equivalent. Retained actual OpenJDK21.0.12.1 locale
+symbols/affixes for1068 available locales and66 CLDR numbering keywords in generated
+output_decimal_symbols.go, deduplicated into41 complete symbol sets. Existing
+OpenJDK notices remain referenced. Default/category properties, script casing,
+legacy language aliases/Thai variant, Unicode nu vs private-use distinction,
+unknown/multipart numbering fallback and locale parent lookup represented. Cached
+process-default symbols match source default Locale setup; no Go Locale.setDefault
+API is asserted. Source MPDecimalSymbols/MPNumberingSymbols extraction stays in
+ignored scratch as audit provenance, not runnable original test credit.
+Actual Java/Go integral comparisons across1068 locales,11 values each, including
+both signed64 limits match byte-for-byte(11748 lines). Direct actual-source console
+probe matches all original operations in plain/tool modes plus partial/multiline
+buffer boundaries and concrete exactly-full-buffer failure. Those ignored source
+probes add no translation credit. Go table/core were reviewed after this evidence;
+final focused original race passes(1.029s); retire78257. Final broad checks
+remain to confirm final production/root edits.
+Old broad handles38530/49744 deliberately stopped(exit130) for the source buffer
+fix;5538/52540 deliberately stopped(exit130) after source script-case review.
+Retire10129/62638/69488/50323/72001/24553/86476/68165/70274; all terminal.
+Final full workspace normal passes(root312.323s,SANY1.046s,TLC48.526s); retire79366.
+Full TLC race passes(428.026s); retire82520. No checks remain running.
+Final original Java/Go German-locale runs pass too(Java0.048s,Go race1.028s);
+retire28574. Additional actual-source comparisons of66 numbering systems in four
+locales plus eight Unicode/private-use/script forms match(2992 lines). Those
+ignored probes earn no extra translation credit. Final production/root is green.
+Disk: inspected owned regular exact hex64-d cache entries older48h; pruned272
+files2006160721 bytes, manifest mp-cache-candidates.json. Second inspected prune
+187 files1506045376 bytes, manifest mp-cache-candidates-2.json. No source/vector/user
+files or directories were removed.
+Inventory531/1269 contexts(41.8%),134/626 complete classes(21.4%),738 pending across
+492 classes,one partial. CLI/output topic1/5 classes complete,4/37 methods mapped.
+All five deferred topics stay deferred. Next after green commit: WarningControlTest(all eighteen methods), then
+remaining CLI/output originals including REPLTest(testProcessInput). Full original
+WarningControlTest and current HandleParameters/message-control APIs read. Direct
+HandleParameters currently validates/registers TLC codes; SANY codes are handled
+only by root CLI extraction and require actual integration before crediting the
+original direct-call methods. Preserve source @After reset/warn=true, every
+registration/empty-set assertion, all conflicts, original dummy Model filename,
+typed runtime exception expectation and real captured stdout/err. Native stream
+assignment must reflect source ToolIO.out/err overriding buffering even if mode
+remains TOOL; current SystemStreams API sets only native-system backing streams.
+Add that real source capability when translating the direct runtime captures,
+rather than bypassing the print boundary in the tests.
+REPL audit shows original expects an instance processInput boundary with thirteen
+calls; Go currently has EvaluateREPLExpression only and older generated EXTENDS
+list, missing Randomization. Preserve original constructor/temp dir, generated
+source, caught exception/message behavior and full default modules; fix actual
+production before crediting the method. Do not simply accept Go errors in a test
+adapter instead of porting the original REPL processInput behavior.

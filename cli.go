@@ -559,6 +559,8 @@ func stripTLCModelCheckFlag(args []string) ([]string, bool) {
 }
 
 func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
+	restoreStreams := tlcruntime.ToolIOSetSystemStreams(stdout, stderr)
+	defer restoreStreams()
 	tlcArgs, loadOpts, diagOpts, err := extractTLCLoadOptions(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)

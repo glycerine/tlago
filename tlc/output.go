@@ -1,3 +1,4 @@
+// Portions Copyright (c) 2025, Oracle and/or its affiliates.
 package tlc
 
 import (
@@ -473,8 +474,7 @@ func PrintTLCBug(code int, params ...string) int {
 
 func PrintState(code int, params []string, state *TLCStateMut, stateNumber int) string {
 	text := formatMessage(code, params)
-	recordStateMessage(code, params, text, state, nil, stateNumber)
-	return text
+	return recordStateMessage(code, params, text, state, nil, stateNumber)
 }
 
 func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber int) string {
@@ -483,8 +483,7 @@ func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber i
 	if info != nil {
 		state = info.State
 	}
-	recordStateMessage(code, params, text, state, info, stateNumber)
-	return text
+	return recordStateMessage(code, params, text, state, info, stateNumber)
 }
 
 func recordMessage(code int, severity Severity, params ...string) {
@@ -507,10 +506,17 @@ func getMessageParameters(code int, params []string, nullableParams []*string) s
 	// subsequently throws (for example, while substituting a null parameter).
 	defaultRecorder.Record(Message{Code: code, Severity: SeverityNone,
 		Params: copied, NullableParams: nullableCopied, FormattingOnly: true})
+	text := formatMessage(code, copied)
 	if nullableCopied != nil {
-		return formatNullableMessage(code, nullableCopied)
+		text = formatNullableMessage(code, nullableCopied)
 	}
-	return formatMessage(code, copied)
+	Globals.Lock()
+	tool := Globals.Tool
+	Globals.Unlock()
+	if tool {
+		return consoleMessageEnvelope(code, SeverityNone, text)
+	}
+	return text
 }
 
 func recordMessageParameters(code int, severity Severity, params []string, nullableParams []*string) {
@@ -544,9 +550,13 @@ func recordMessageParameters(code int, severity Severity, params []string, nulla
 		Text:           text,
 		Suppressed:     !visible,
 	})
+	// Recorder events and console output are separate Java MP boundaries.
+	if severity != SeverityWarning || warn {
+		printConsoleMessage(code, severity, text, visible)
+	}
 }
 
-func recordStateMessage(code int, params []string, text string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) {
+func recordStateMessage(code int, params []string, text string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) string {
 	suppressed, _, _ := messageControlFor(code)
 	copied := append([]string(nil), params...)
 	defaultRecorder.Record(Message{
@@ -559,10 +569,20 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 		StateInfo:   info,
 		StateNumber: stateNumber,
 	})
+	return printConsoleMessage(code, SeverityState, text, !suppressed)
 }
 
 func formatMessage(code int, params []string) string {
 	switch code {
+	case ECUnitTest:
+		text := "[%1%][%2%]"
+		for i, param := range params {
+			placeholder := fmt.Sprintf("%%%d%%", i+1)
+			for strings.Contains(text, placeholder) {
+				text = strings.Replace(text, placeholder, param, 1)
+			}
+		}
+		return text
 	case ECCFGErrorReadingFile:
 		return "TLC encountered the following error when trying to read the configuration file " + configMessageParam(params, 0) + ":\n" + configMessageParam(params, 1)
 	case ECCFGGeneral, ECCFGMissingID, ECCFGTwiceKeyword, ECCFGExpectID, ECCFGExpectedSymbol:
@@ -712,7 +732,7 @@ func formatMessage(code int, params []string) string {
 		if len(params) == 4 {
 			return fmt.Sprintf("Progress(%s) at %s: %s states generated, %s distinct states found, %s states left on queue.", params[0], messageNow(), params[1], params[2], params[3])
 		}
-		if len(params) >= 6 {
+		if len(params) == 6 {
 			return fmt.Sprintf("Progress(%s) at %s: %s states generated (%s s/min), %s distinct states found (%s ds/min), %s states left on queue.", params[0], messageNow(), params[1], params[4], params[2], params[5], params[3])
 		}
 	case ECTLCProgressStartStatsDFID:
@@ -1306,7 +1326,10 @@ func formatMessage(code int, params []string) string {
 }
 
 func messageNow() string {
-	return time.Now().String()
+	if javaBooleanProperty(tlcGetSystemProperty("tlc2.output.MP.noTimestamps", "")) {
+		return "NOW"
+	}
+	return time.Now().Format("2006-01-02 15:04:05")
 }
 
 func messageParam(params []string, index int) string {
