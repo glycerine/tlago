@@ -1430,7 +1430,7 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 		return false
 	}
 	args := pred.Args
-	val := tool.Lookup(pred.Operator, c, EmptyState, false)
+	val := tool.LookupSymbolValue(pred.Operator, c, false)
 	if len(args) == 0 {
 		switch v := val.(type) {
 		case *OpDefNode:
@@ -1459,8 +1459,11 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 		case nil:
 			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "specification", opNodeName(pred.Operator))
 			return true
+		case *SymbolNode:
+			p.addConfigError(ECTLCConfigOpIsEqual, opNodeName(pred.Operator), semanticNodeLocationString(v), "spec")
+			return true
 		default:
-			p.addConfigError(ECTLCConfigIDHasValue, "specification", opNodeName(pred.Operator), configValueString(v))
+			p.addConfigError(ECTLCConfigOpIsEqual, opNodeName(pred.Operator), configValueString(v), "spec")
 			return true
 		}
 	}
@@ -1582,8 +1585,8 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 	}
 	args := pred.Args
 	opNode := pred.Operator
-	val := tool.Lookup(opNode, c, EmptyState, false)
-	if len(args) == 0 {
+	val := tool.LookupSymbolValue(opNode, c, false)
+	if len(args) == 0 && !opNode.IsVariableDecl() {
 		switch v := val.(type) {
 		case *OpDefNode:
 			if v == nil || v.Arity() != 0 {
@@ -1598,7 +1601,7 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 			return true
 		case *BoolValue:
 			if !v.Val {
-				p.addConfigError(ECTLCConfigIDHasValue, "property", opNodeName(opNode), v.String())
+				p.addConfigError(ECTLCConfigSpecIsTrivial, opNodeName(opNode))
 			}
 			return true
 		case *LazyValue:
@@ -1612,7 +1615,7 @@ func (p *SpecProcessor) processConfigPropertyAppl(tool *Tool, name string, confi
 			p.addConfigError(ECTLCConfigSpecifiedNotDefined, "property", opNodeName(opNode))
 			return true
 		default:
-			p.addConfigError(ECTLCConfigIDHasValue, "property", opNodeName(opNode), configValueString(v))
+			p.addConfigError(ECTLCConfigOpIsEqual, opNodeName(opNode), configValueString(v), "property")
 			return true
 		}
 	}

@@ -35,6 +35,7 @@ type tlcBridge struct {
 	localModuleDefinitions map[string]*tlc.OpDefNode
 	indexedModules         map[*Module]bool
 	assumptionModules      map[*Module]bool
+	semanticLevels         *sanyXMLExporter
 }
 
 type tlcBridgeInstance struct {
@@ -1248,6 +1249,15 @@ func (b *tlcBridge) convertSourceDefinitionAs(name string, def *Definition) *tlc
 		return nil
 	}
 	opDef := tlc.NewOpDefNodeForSymbol(sym, params, body)
+	// Preserve SANY's static operator level. SpecProcessor uses it for config
+	// validation and warnings, independently of coverage and runtime overrides.
+	if module := b.spec.Modules[b.convertingModule]; module != nil {
+		if b.semanticLevels == nil {
+			b.semanticLevels = newSanyXMLExporter(b.spec, SanyXMLOptions{})
+		}
+		ctx := sanyXMLExprContext{module: module, scope: b.semanticLevels.scopeForModule(module, map[string]bool{})}
+		opDef.SetLevel(int(b.semanticLevels.operatorLevel(def.Name, ctx)))
+	}
 	// Qualification belongs to the lookup alias. EXTENDS preserves the
 	// instancee's original OpDef name for signatures and action labels.
 	opDef.Name = tlc.UniqueStringOf(def.Name)

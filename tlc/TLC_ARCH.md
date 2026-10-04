@@ -4523,3 +4523,23 @@ Full offline workspace passes (root 409.440s, SANY 1.067s, TLC 65.403s);
 full TLC race verification passes (567.957s). All check handles terminal.
 Next pending issue family after this verified batch: Github696/696b. User's
 five deferred topics remain deferred. Goal remains active.
+
+2026-10-04: Github696/696b and Github715/b/c/d original methods translated.
+All six unchanged Java JUnit tests pass; nine original fixtures byte-identical.
+Five focused Go repetitions pass (12.085s); five focused race repetitions
+including680/687 pass (295.983s). Exact diagnostics, presence/absence,
+depth/stats and inherited exits retained, with original coverage=false for715.
+696 passes without production changes. Source inspection and715 failures fixed
+config decomposition: semantic lookup retains unbound symbol identity; a bare
+variable in SPECIFICATION reports TLC_CONFIG_OP_IS_EQUAL with its declaration
+location and spec tag, while a property variable reaches level-based handling.
+Constant-false property and nonboolean config diagnostics match source branches.
+Source operator definitions now retain static SANY levels using the existing
+SANY level analysis, independently of coverage and runtime overrides; previously
+all nonbuiltin definition levels defaulted to zero, suppressing715 warnings.
+Inventory now720/1269 contexts,285/626 complete classes;549 contexts/341 classes
+pending, one partial. Full offline workspace passes (root423.974s, SANY0.999s,
+TLC64.192s). Full TLC race passes (570.326s); all check handles terminal.
+Next pending family: Github725 through725h;
+all eight unchanged Java JUnit tests already pass in the scratch reference runner.
+No invented tests or weakened assertions. Goal active; deferred topics unchanged.

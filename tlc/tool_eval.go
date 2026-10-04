@@ -74,6 +74,15 @@ func (t *Tool) Lookup(sym *SymbolNode, con *Context, state *TLCStateMut, primed 
 	return t.LookupWithCutoff(sym, con, primed && sym != nil && sym.IsVariableDecl(), state, primed)
 }
 
+// LookupSymbolValue implements SymbolNodeValueLookupProvider.lookup without
+// looking in a state. Unbound declarations retain their semantic identity.
+func (t *Tool) LookupSymbolValue(sym *SymbolNode, con *Context, cutoff bool) any {
+	if value := t.LookupWithCutoff(sym, con, cutoff && sym != nil && sym.IsVariableDecl(), nil, false); value != nil {
+		return value
+	}
+	return sym
+}
+
 func (t *Tool) LookupWithCutoff(sym *SymbolNode, con *Context, cutoff bool, state *TLCStateMut, primed bool) any {
 	if sym == nil {
 		return nil
