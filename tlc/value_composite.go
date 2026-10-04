@@ -719,9 +719,33 @@ func (v *IntervalValue) Size() (resultInt int, err error) {
 	}
 	size := int64(v.High) - int64(v.Low) + 1
 	if size > math.MaxInt32 {
-		return 0, newTLCError(ECGeneral, "Size of interval value exceeds the maximum representable size (32bits): %s.", v)
+		return 0, v.intervalAssertFailure("Size of interval value exceeds the maximum representable size (32bits): " + ValuesPPR(v) + ".")
 	}
 	return int(size), nil
+}
+
+// ElementAt ports IntervalValue.elementAt, including its short-circuit bounds
+// check: a negative index must not evaluate size() on an overflowing interval.
+func (v *IntervalValue) ElementAt(index int) (Value, error) {
+	if index >= 0 {
+		size, err := v.Size()
+		if err != nil {
+			return nil, err
+		}
+		if index < size {
+			return NewIntValue(v.Low + int32(index)), nil
+		}
+	}
+	return nil, v.intervalAssertFailure("Attempted to retrieve out-of-bounds element from the interval value " + ValuesPPR(v) + ".")
+}
+
+func (v *IntervalValue) intervalAssertFailure(message string) *TLCError {
+	if source := v.GetSource(); source != nil {
+		return NewTLCDetailedRuntimeException(ECGeneral, message, source, EmptyContext)
+	}
+	failure := newTLCError(ECGeneral, "%s", message)
+	failure.Runtime = true
+	return failure
 }
 
 func (v *IntervalValue) Normalize() Value      { return v }

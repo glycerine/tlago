@@ -982,3 +982,37 @@ production method yet. Port its short-circuit 0 <= idx && idx < size() check,
 IntValue.gen(low+idx) and exact Assert.fail message/source before the tests.
 The remaining interval methods also need original overflow exception family/text,
 comparison extremes, both post-reset enumerator assertions and Diff/Cap/Cup sizes.
+
+
+IntervalValueTest continuation: all fourteen original methods translated; production
+ElementAt is now implemented with Java evaluation order and source-aware failures.
+Size overflow also retains detailed source/context. Java original current production
+class and original tests pass (14 methods); targeted Go tests pass. TODO marks port
+complete, 268/1269 mapped methods, 107/626 complete classes, 1001 pending contexts
+across 519 classes. Initial normal workspace checks at 89185 failed on TLC disk-full writes;
+root and SANY passed (interval-full-normal.log). Retire 89185.
+Initial race build 56510 failed because disk filled. After pruning only inspected
+old disposable cache objects, retry 97304 passed (27.431s; retire handle),
+interval-tlc-race-retry.log. Poll live normal handle 89185; do not restart it. Update terminal results
+and commit when green. Retire handles 59627 and 56510. Scope exclusions unchanged.
+
+Full normal handle 89185 terminated: root passed (313.822s), SANY passed
+(1.006s), but TLC had failed on disk-full TempDir/testlog writes before cache
+cleanup. Retire 89185; the old live statements above are superseded. Full
+workspace normal retry passed with free disk space (315.060s root, 1.043s SANY,
+3.576s TLC); retire 55823. Preserve original failure log interval-full-normal.log
+and passing interval-full-normal-retry.log.
+
+Next ModelValueTest: current original ModelValue.java and unchanged class
+compile and pass JUnit -ea (44 methods, 0.032s). Not yet credited as Go ports.
+Preserve JUnit method execution order because UniqueString.compareTo uses intern
+IDs, and exact +/-1 comparisons depend on creation order across the class.
+Actual JUnit runner order is in owned ignored correctness-java/model-value-junit-order.txt.
+Keep source testCompareToTupeMV using StringValue("foo") as written, despite
+its name. Keep BoolFalse versus BoolTrue direction-specific inputs and all
+expected TLCRuntimeException families; old Go checks accepted any error/sign.
+
+ModelValue class isolation can save/restore the package internTable pointer
+and modelValues count/table/mvs under its mutex, using a fresh InternTable while
+executing the original JUnit order. Do not reset the intern table per method,
+hoist all input creation, or replace exact compare results with sign tests.

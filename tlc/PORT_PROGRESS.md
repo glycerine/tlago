@@ -2017,3 +2017,36 @@ correctness-java/fcn-record-full-normal.log; retire handle 37843.
 Inventory reconciles 254/1269 mapped methods (20.0%), 106/626 complete classes
 (16.9%), 1015 pending method contexts across 520 classes. All original source
 assertions remain; no invented cases. Deferred user topics remain deferred.
+
+
+- IntervalValueTest is port complete in value_interval_test.go: all fourteen
+original methods, original intervals/integer extremes, exception family and
+message checks, comparison signs, complete singleton/reset assertions and all
+Diff/Cap/Cup size assertions. Added the missing production IntervalValue.ElementAt
+before translating tests, preserving negative-index short circuit before Size,
+IntValue generation and exact source-aware Assert.fail handling. Size overflow
+also now retains detailed source/context and runtime-failure identity rather
+than only a message. Current original IntervalValue.java plus unchanged original
+JUnit tests pass (14 methods, 0.018s); targeted Go tests pass (0.012s). No source
+assertions weakened; no invented cases. Inventory reconciles 268/1269 methods
+(21.1%), 107/626 complete classes (17.1%), 1001 pending contexts across 519 classes.
+Initial race build 56510 failed on disk exhaustion, not a test failure. Removed
+1326 inspected, owned regular hex-d Go cache objects older than 48h (8592008205
+bytes); no source, vector, directory or user data removed. Race retry passed (27.431s); retire handle
+97304, correctness-java/interval-tlc-race-retry.log. Full normal workspace handle 89185 later failed on disk-full TLC writes
+performed before cleanup; root/SANY passed. Retire targeted handle 59627 and
+failed race handle 56510. The post-cleanup full workspace retry passed
+(315.060s root, 1.043s SANY, 3.576s TLC), interval-full-normal-retry.log; retire
+handle 55823. All checks are green for this slice.
+
+Full normal handle 89185 terminated: root passed (313.822s), SANY passed
+(1.006s), but TLC had failed on disk-full TempDir/testlog writes before cache
+cleanup. Retire 89185; the old live statements above are superseded. Full
+workspace normal retry passed with free disk space (315.060s root, 1.043s SANY,
+3.576s TLC); retire 55823. Preserve original failure log interval-full-normal.log
+and passing interval-full-normal-retry.log.
+
+- Read-only preparation for the next ModelValueTest slice: current original
+production class and unchanged 44-method Java class pass JUnit -ea (0.032s).
+Captured actual JUnit runner order in the owned ignored model-value-junit-order.txt
+for intern-order-dependent exact comparisons. No Go completion credit added.
