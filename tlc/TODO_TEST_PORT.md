@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **118 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (18.8%).**
-- **412 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (32.5%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **857 logical method contexts across 508 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **119 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (19.0%).**
+- **414 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (32.6%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **855 logical method contexts across 507 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -37,11 +37,11 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
-| Queues and pool writers | 2 | 1 | 11 | 9 | 2 |
+| Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 5 | 91 | 16 | 75 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **118** | **1,269** | **412** | **857** |
+| **Total** | **626** | **119** | **1,269** | **414** | **855** |
 
 ## Porting rules and proposed order
 
@@ -603,8 +603,8 @@ Disk/memory/off-heap factories, recovery, duplicate merging, high/low fingerprin
 
 Memory-state queues and disk/byte-array writer wakeup/finish behavior; stress and JPF suites are listed separately below.
 
-- [ ] [tlc2/tool/queue/DiskPoolWriterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/DiskPoolWriterTest.java) — **Reconcile**: `testStatePoolWriterIgnoresEmptyWakeAndStopsOnFinish`, `testByteArrayPoolWriterIgnoresEmptyWakeAndStopsOnFinish`.
-  Related Go checks: [tlc/queue_test.go](queue_test.go).
+- [x] [tlc2/tool/queue/DiskPoolWriterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/DiskPoolWriterTest.java) — **Port complete**: `testStatePoolWriterIgnoresEmptyWakeAndStopsOnFinish`, `testByteArrayPoolWriterIgnoresEmptyWakeAndStopsOnFinish`.
+  Go translation: [tlc/disk_pool_writer_java_test.go](disk_pool_writer_java_test.go). Both source methods retain actual writer lifecycle observation, notification under the writer lock, 10ms polling, 5000ms deadlines, return-to-wait assertions and actual termination after finishAll.
 - [x] [tlc2/tool/queue/StateQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/StateQueueTest.java) — **Port complete**: `testEnqueue`, `testsDequeueEmpty`, `testDequeueEmpty`, `testsDequeueNotEmpty`, `testDequeueNotEmpty`, `testEnqueueAddNotSame`, `testEnqueueAddSame`, `testsDequeueAbuseEmpty`, `testsDequeueAbuseNonEmpty`.
   Go translation: [tlc/queue_test.go](queue_test.go).
 
@@ -1023,3 +1023,4 @@ When a complete original method lands, record its Java class/method and Go file,
 | [tlc2/value/impl/KSubsetValueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/impl/KSubsetValueTest.java) | `testEnumerateN32`, `testEnumerateN33`, `testEnumerateN63`, `testEnumerateN64`, `testNormalization`, `testKSubsetFingerprintingS009`, `testKSubsetFingerprintingS032`, `testKSubsetFingerprintingS033`, `testKSubsetFingerprintingS063`, `testInvalidKDenotesEmptySet`, `testToStringLargeSwallowsCountError` | [tlc/value_ksubset_java_test.go](value_ksubset_java_test.go) |
 | [tlc2/value/ValueInputOutputStreamTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/ValueInputOutputStreamTest.java) | `testWriteShort`, `testWriteInt`, `testWriteShortNat`, `testWriteNat`, `testBlindReadStringValue`, `testBlindReadRecordValue` | [tlc/value_stream_java_test.go](value_stream_java_test.go) |
 | [tlc2/value/StringDeserializeTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/value/StringDeserializeTLCTest.java) | `test` | [tlc_string_deserialize_java_test.go](../tlc_string_deserialize_java_test.go) |
+| [tlc2/tool/queue/DiskPoolWriterTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/queue/DiskPoolWriterTest.java) | `testStatePoolWriterIgnoresEmptyWakeAndStopsOnFinish`, `testByteArrayPoolWriterIgnoresEmptyWakeAndStopsOnFinish` | [tlc/disk_pool_writer_java_test.go](disk_pool_writer_java_test.go) |

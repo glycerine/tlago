@@ -2371,3 +2371,34 @@ Full TLC race passes: ok  	github.com/glycerine/tlago/tlc	415.789s
 Handle 6990 retired; all verification handles in this slice are terminal.
 Next: reconcile both existing DiskPoolWriterTest original methods, retaining the
 empty-wakeup/finish behavior and source timeouts before crediting the queue topic.
+
+
+DiskPoolWriterTest is port complete in disk_pool_writer_java_test.go: both original
+state and byte-array writer methods, temporary disk directories and finishAll
+teardown, every shared wakeup/return-to-WAITING/aliveness/termination assertion,
+5000ms deadlines and 10ms polling. Notification remains under the actual writer
+mutex; the test observes its real native goroutine runtime state while the writer
+cannot reacquire the lock. Actual termination substitutes for Java Thread.join;
+neither a finished flag nor a notification acknowledgement replaces liveness.
+Go runtime.Stack is used only in the translated test helper. Snapshot native IDs
+before construction, then identify the unique newly started writer by its Start
+frame so its startup wrapper remains alive even before run begins. The first
+receiver-frame-only translation falsely reported termination during startup;
+corrected the observation, not the assertions or production behavior. The test
+fails explicitly if identity is missing/ambiguous. Thread state parsing is a Go
+runtime-format dependency localized to this source-test adaptation.
+Production StatePoolWriter and ByteArrayPoolWriter wait/finish loops were compared
+with current Java source; the guarded empty wake and finished checks already
+match and needed no production change. Current Java source and unchanged original
+JUnit pass both methods (0.049s). Go originals pass 100 repetitions (1.280s), and
+-race 100 repetitions (1.987s). Full TLC normal passes (43.391s). Earlier committed
+068acee has full workspace normal and full TLC race green; this slice changes only
+tests/docs. Retire handles 70263/17457 (initial observation reds), 30927/59827/39824.
+Inventory now 414/1269 contexts (32.6%), 119/626 complete classes (19.0%), 855 pending
+contexts across 507 classes; one partial. Queue/pool-writer topic is complete:
+2/2 classes and 11/11 methods. All five user-deferred topics stay deferred.
+Next: CombinatoricsTest's eleven methods. Read every original method: retain full
+62x62 choose/binomial sweep, 63x63 choose/bigChoose exact-long sweep, 185x185
+slowBigChoose/bigChoose matrix (n/k=63..247), all eight literal bit-length and
+exact-long/decimal cases. Existing Go beyond-table sweep is only 11x11 and must
+not substitute for the original 185x185 matrix. No CombinatoricsTest credit yet.
