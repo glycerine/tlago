@@ -381,3 +381,143 @@ func TestJavaExamplesLiveHourClock(t *testing.T) {
 		t.Fatal("TLC_POSTCONDITION_EVALUATION_ERROR present")
 	}
 }
+
+// Original ExamplesLockHSTest.testSpec, constructor and all five settings overrides.
+func TestJavaExamplesLockHS(t *testing.T) {
+	setJavaExampleClasspath(t)
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "ExamplesLockHS", "LockHS", false, false, false, 1, "-noGenerateSpecTE", "-lncheck", "final")
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit=%d, want SUCCESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCSuccess)) == 0 {
+		t.Fatal("TLC_SUCCESS absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCTemporalPropertyViolated)) != 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED present")
+	}
+}
+
+// Original ExamplesMCAlternatingBitTest.testSpec, constructor and all five settings overrides.
+func TestJavaExamplesMCAlternatingBit(t *testing.T) {
+	setJavaExampleClasspath(t)
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "ExamplesMCAlternatingBit", "MCAlternatingBit", false, false, false, 1, "-noGenerateSpecTE", "-lncheck", "final")
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
+		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCTemporalPropertyViolated)) == 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCTemporalPropertyViolated, "PermanentBitDisagreement")
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionFalse)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_FALSE present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionEvaluationError)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_EVALUATION_ERROR present")
+	}
+}
+
+// Original ExamplesMCEWD687aTest.testSpec, constructor and all five settings overrides.
+func TestJavaExamplesMCEWD687a(t *testing.T) {
+	setJavaExampleClasspath(t)
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "ExamplesMCEWD687a", "MCEWD687a", false, false, false, 1, "-noGenerateSpecTE", "-lncheck", "final")
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
+		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCTemporalPropertyViolated)) == 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCTemporalPropertyViolated, "LeaderPermanentlyActive")
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionFalse)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_FALSE present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionEvaluationError)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_EVALUATION_ERROR present")
+	}
+}
+
+// Original ExamplesMCLiveInternalMemoryTest.testSpec, constructor and all five settings overrides.
+func TestJavaExamplesMCLiveInternalMemory(t *testing.T) {
+	setJavaExampleClasspath(t)
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "ExamplesMCLiveInternalMemory", "MCLiveInternalMemory", false, false, false, 1, "-noGenerateSpecTE", "-lncheck", "final")
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
+		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCTemporalPropertyViolated)) == 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCTemporalPropertyViolated, "AlwaysBusy")
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionFalse)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_FALSE present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionEvaluationError)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_EVALUATION_ERROR present")
+	}
+}
+
+// Original ExamplesMCLiveWriteThroughCacheTest.testSpec, constructor and all five settings overrides.
+func TestJavaExamplesMCLiveWriteThroughCache(t *testing.T) {
+	setJavaExampleClasspath(t)
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "ExamplesMCLiveWriteThroughCache", "MCLiveWriteThroughCache", false, false, false, 1, "-noGenerateSpecTE", "-lncheck", "final")
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
+		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCTemporalPropertyViolated)) == 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCTemporalPropertyViolated, "PermanentlyBusy")
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionFalse)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_FALSE present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionEvaluationError)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_EVALUATION_ERROR present")
+	}
+}
+
+// Original ExamplesMCWriteThroughCacheTest.testSpec, constructor and all five settings overrides.
+func TestJavaExamplesMCWriteThroughCache(t *testing.T) {
+	setJavaExampleClasspath(t)
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "ExamplesMCWriteThroughCache", "MCWriteThroughCache", false, false, false, 1, "-noGenerateSpecTE", "-lncheck", "final")
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
+		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCTemporalPropertyViolated)) == 0 {
+		t.Fatal("TLC_TEMPORAL_PROPERTY_VIOLATED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCTemporalPropertyViolated, "BusyLeadsToRdy")
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionFalse)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_FALSE present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCPostconditionEvaluationError)) != 0 {
+		t.Fatal("TLC_POSTCONDITION_EVALUATION_ERROR present")
+	}
+}

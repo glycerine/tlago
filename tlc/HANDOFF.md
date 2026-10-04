@@ -6,6 +6,32 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
+2026-10-04 latest: Liveness helper batch committedc64fd09 after48 original
+contexts normal0.039s/race1.078s and fullTLC65.935s green. All helper handles
+terminal/retired. Next six original Examples now translated and normal77862
+PASS61.674s: LockHS/MCAlternatingBit/MCEWD687a/MCLiveInternalMemory/
+MCLiveWriteThroughCache/MCWriteThroughCache.28 original assertions plus
+inherited exits/five settings overrides preserved,26 byte-identical fixtures;
+all unchanged Java references PASS. No production changes needed in this batch.
+Inventory886/1269(69.8%),409/626classes(65.3%);383contexts/217classes pending,
+onepartial, all20topicrows verified. Required gates: rootfocusedrace6270 PASS631.084s, terminal0/retired
+(.codex-gotmp/examples-fourth-six-race.log); fullworkspace88519 PASS(root1181.648s,SANY0.993s,TLC65.132s),
+terminal0/retired (.codex-gotmp/examples-fourth-six-full-workspace.jsonl). Workspace uses -json
+for live package/test progress, unlike previously buffered -v multi-package run.
+All required current-batch gates green.30 intended staged paths checked;
+26 vectors byte-identical. Ready for authorized commit. No helper probes active.
+Read-only preparation: unchanged Java fifth preflight38279 PASS (YoYoNoPruning/
+NbacgGuer01/Prisoners/SDPAttackNewSolution/SchedulingAllocator/SimpleAllocator),
+terminal0/retired. Six translations+14 fixture maps only in ignored
+examples-fifth-six.go.preview/examples-fifth-six-fixtures.json;30assertions,
+no active Go or inventory credit. Original SDPAttack safety reference90667 also
+PASS/terminal0/retired. Whole method, original stats1103/526/175 and all eleven
+full states/ordinals/actions through existing CommonTestCase assertion helper
+prepared only in ignored examples-sdp-safety.go.preview plus fixture map;
+no active Go/credit. Constants/state formatting transcribed mechanically.
+
+
+
 2026-10-04: Six Examples tests and namespace fixes committed52959cb after
 full workspace89196 PASS(root1143.104s,SANY0.908s,TLC66.125s), focused root
 race12129 PASS207.031s (six examples+19 original coverage methods), and four

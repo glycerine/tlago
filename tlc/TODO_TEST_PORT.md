@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `52959cb`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `c64fd09`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **403 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (64.4%).**
-- **880 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (69.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **389 logical method contexts across 223 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **409 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (65.3%).**
+- **886 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (69.8%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **383 logical method contexts across 217 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -29,7 +29,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Issue regressions in the evaluator and checker | 98 | 98 | 101 | 101 | 0 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 15 | 48 | 45 | 3 |
 | Generated TTrace recheck variants | 45 | 32 | 45 | 32 | 13 |
-| Liveness and fairness model regressions | 101 | 48 | 101 | 48 | 53 |
+| Liveness and fairness model regressions | 101 | 54 | 101 | 54 | 47 |
 | Liveness graph, tableau, and expression helpers | 6 | 6 | 48 | 48 | 0 |
 | Simulation and multithreaded simulation | 20 | 0 | 55 | 0 | 55 |
 | Coverage | 20 | 20 | 23 | 23 | 0 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **403** | **1,269** | **880** | **389** |
+| **Total** | **626** | **409** | **1,269** | **886** | **383** |
 
 ## Porting rules and proposed order
 
@@ -493,13 +493,13 @@ Temporal semantics, fairness, constraints, symmetry, double negation, counterexa
 - [x] [tlc2/tool/liveness/ExamplesEnvironmentControllerTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesEnvironmentControllerTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
 - [x] [tlc2/tool/liveness/ExamplesHuangTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesHuangTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
 - [x] [tlc2/tool/liveness/ExamplesLiveHourClockTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesLiveHourClockTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
-- [ ] [tlc2/tool/liveness/ExamplesLockHSTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesLockHSTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/ExamplesMCAlternatingBitTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCAlternatingBitTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/liveness/ExamplesLockHSTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesLockHSTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
+- [x] [tlc2/tool/liveness/ExamplesMCAlternatingBitTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCAlternatingBitTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
 - [ ] [tlc2/tool/liveness/ExamplesMCDistributedReplicatedLogTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCDistributedReplicatedLogTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/ExamplesMCEWD687aTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCEWD687aTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/ExamplesMCLiveInternalMemoryTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCLiveInternalMemoryTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/ExamplesMCLiveWriteThroughCacheTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCLiveWriteThroughCacheTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/ExamplesMCWriteThroughCacheTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCWriteThroughCacheTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/liveness/ExamplesMCEWD687aTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCEWD687aTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
+- [x] [tlc2/tool/liveness/ExamplesMCLiveInternalMemoryTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCLiveInternalMemoryTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
+- [x] [tlc2/tool/liveness/ExamplesMCLiveWriteThroughCacheTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCLiveWriteThroughCacheTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
+- [x] [tlc2/tool/liveness/ExamplesMCWriteThroughCacheTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCWriteThroughCacheTest.java) — **Port complete**: `testSpec` → [tlc_examples_liveness_java_test.go](../tlc_examples_liveness_java_test.go). All original presence/absence assertions, exact property alias where asserted, inherited exit and five settings overrides, final liveness mode, pristine fixtures and original CommunityModules manifest classpath retained; postconditions compare the complete counterexample where configured.
 - [ ] [tlc2/tool/liveness/ExamplesMCYoYoNoPruningTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesMCYoYoNoPruningTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/ExamplesNbacgGuer01Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesNbacgGuer01Test.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/ExamplesPrisonersTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/ExamplesPrisonersTest.java) — **Missing**: `testSpec`.

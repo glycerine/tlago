@@ -4654,3 +4654,40 @@ All48 source helpers normal0.039s/race1.078s and fullTLC65.935s green.
 11 intended paths staged, git whitespace check clean; no fixture changes.
 Required gates satisfied for the leaf failure type/text correction and complete
 source test translations. All current handles terminal/retired; ready to commit.
+
+2026-10-04: Helper batch committedc64fd09; working tree clean before next slice.
+Next6 original Examples installed in root test file,26 pristine fixtures:
+LockHS/MCAlternatingBit/MCEWD687a/MCLiveInternalMemory/
+MCLiveWriteThroughCache/MCWriteThroughCache.28source assertions and inherited
+exit checks/five overrides retained. Their unchanged Java references green.
+Focused Go77862 active; no credit yet. Java state counts respectively28/240/
+178/4408/5196/5196 distinct; inspect full source assertions/postconditions.
+
+2026-10-04: Next six original Examples normal77862 PASS61.674s, terminal0/
+retired. LockHS1.66s,AlternatingBit1.79s,EWD687a2.13s,InternalMemory10.31s,
+LiveWriteThroughCache37.56s,WriteThroughCache8.16s; all original assertions and
+complete postconditions unchanged. No production changes needed.
+Inventory886/1269(69.8%),409/626classes(65.3%),383contexts/217classes pending,
+onepartial; all20topicrows verified. Required rootrace6270/fullworkspace88519
+active; workspace -json exposes live progress in ignored JSONL log.
+
+2026-10-04: Unchanged Java next-six preflight38279 PASS, terminal0/retired;
+30 source assertions/14 fixtures prepared in ignored previews only, uncredited.
+Original SDPAttack safety preflight90667 PASS, terminal0/retired; complete
+5 recorder assertions+11-state inherited trace assertions/ordinals/actions
+prepared mechanically in ignored preview with exact source string concatenation
+helper and fixture mapping. No partial trace or invented expectations.
+
+2026-10-04: Full six-example focused race6270 PASS631.084s, terminal0/retired.
+All28 source assertions and inherited exits intact. Workspace88519 active,
+SANY0.993s/TLC65.132s already passed, no root failure events.
+30 intended staged paths checked;26 byte-exact vectors preserve source whitespace.
+Four remaining uniform Examples Java references62315 PASS (SingleLaneBridge/
+SpanTreeRandom/SpanTree/SyncTerminationDetection), terminal0/retired.
+No new Go source or inventory credit for those references yet.
+
+2026-10-04: Full current workspace88519 PASS(root1181.648s,SANY0.993s,
+TLC65.132s), terminal0/retired; JSONL confirms no failure events. Six source
+examples normal61.674s/race631.084s; all required gates green.30 intended
+staged paths checked,26 pristine vectors preserve source bytes. Ready for
+authorized commit; no production changes in this six-test batch.
