@@ -2050,3 +2050,23 @@ and passing interval-full-normal-retry.log.
 production class and unchanged 44-method Java class pass JUnit -ea (0.032s).
 Captured actual JUnit runner order in the owned ignored model-value-junit-order.txt
 for intern-order-dependent exact comparisons. No Go completion credit added.
+
+
+ModelValueTest is port complete in value_model_test.go: all 44 original methods
+mechanically translated in the actual JUnit 4 runner order. Retained constructor
+locations, false single-field RecordValue normalization flags, direction-specific
+BoolFalse/BoolTrue inputs, the source's StringValue("foo") in testCompareToTupeMV,
+exact +/-1/0 assertions and TLCRuntimeException expectations. Original method,
+assertion and expected-exception counts reconcile. A fresh class-level intern table
+and model registry isolate the original execution while restoring prior Go state;
+no per-method reset, input hoisting, weaker sign checks or any-error catches.
+Current original Java production/test class passes JUnit -ea (44, 0.032s);
+final targeted Go passes (0.012s), full TLC normal passes (3.593s), full TLC
+-race passes (26.070s). No production changes needed. Retire handles 35654,
+12212, 57494 and 21067. Prior full workspace normal remains green; this slice
+changes tests/docs only. Inventory now 312/1269 mapped methods (24.6%), 108/626
+complete classes (17.3%), 957 pending contexts across 518 classes, two partial.
+Next finish TypedSetTest.testParseSet6 with the actual Java null input; Go's
+string-only ParseTypedSet API currently cannot represent it. Port the nullable
+boundary first, retaining existing string callers and all four original null-set
+assertions. The five user-deferred topics stay deferred.
