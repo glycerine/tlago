@@ -3213,3 +3213,26 @@ Next four original FingerprintException models: unchangedJavaall4pass and source
 assertions inspected; no Go credit until faithful translations execute. Fixtures
 for Java preflight remain ignored scratch only. Preserve exact stack/message and
 coverage assertions, source general/no-general distinctions and exits.
+
+2026-10-04 correctness tests: four original FingerprintException model testSpec
+translations in tlc_fingerprint_exceptions_java_test.go and
+ tlc_fingerprint_hang_java_test.go, eight source-exact fixture copies. All exact
+fingerprint traces, overflow/member/comparison messages, coverage, counts,
+GENERAL presence/absence, source defaults and FAILURE_SPEC_EVAL exits preserved.
+Initial failures exposed missing panic catches and extra LazyValue.getValue
+source attachment. Production now retains callback state/cause at init catches,
+wraps worker callback Exceptions with successor (Errors escape), separates inner
+and outer worker throwable catches, and catches panics for init/diagnostic replay.
+Init fallback preserves the original runtime code. LazyValue.getValue and
+LazySupplierValue.getValue preserve Java's no-source-attachment behavior;
+LazyValue.eval retains source-if-missing. No tests weakened or invented.
+OriginalJava4pass .433/.409/.424/.445s, focusedGo5.047s and finalall4five-race
+repetitions71.626s pass. Initialbroadchecks canceled130 for actualfallback-code
+correction. Finalworkspace passes377.561/0.973/63.747s; retire67023.
+FinalTLCrace passes552.842s; retire36836. Allfinalcheckshandlesterminal.
+StagedGo/docs whitespaceclean; originalNextCallstackheadertrailing-space kept.
+Inventory650/1269contexts51.2%,218/626classes34.8%,619pending408classes;
+safety27/34complete7pending, deferredtopics unchanged;goalactive.
+UpcomingoriginalJavaViewMap/MonolithSpec/TSnapShotallpass .623/.525/.501s.
+ViewMapinitialscratchfailurewasmissingtarget/GeneratedTESpecs directory,
+correctedharnesssetupwithunchangedtest; notupstreamdiscrepancy/noReconcilecredit.

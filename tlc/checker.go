@@ -1377,12 +1377,18 @@ func (mc *ModelChecker) DoInit(ignoreCancel bool) (int, error) {
 	return mc.doInitWithTool(mc.Tool, ignoreCancel)
 }
 
-func (mc *ModelChecker) doInitWithTool(tool *Tool, ignoreCancel bool) (int, error) {
+func (mc *ModelChecker) doInitWithTool(tool *Tool, ignoreCancel bool) (result int, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			err = panicValueAsError(failure)
+			result = initExceptionCode(err)
+		}
+	}()
 	if tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
 	}
 	functor := &doInitFunctor{mc: mc, tool: tool, forceChecks: ignoreCancel, returnValue: NoError}
-	err := tool.GetInitStates(NewStateFunctor(functor.AddElement))
+	err = tool.GetInitStates(NewStateFunctor(functor.AddElement))
 	if isDoInitInvariantViolatedException(err) {
 		mc.ErrState = functor.errState
 		return functor.returnValue, nil
@@ -1512,7 +1518,12 @@ func mcErrorCodeOrGeneral(mc *ModelChecker) int {
 	return ECGeneral
 }
 
-func (mc *ModelChecker) doNextWithTool(tool *Tool, curState *TLCStateMut, liveNextStates *SetOfStates, worker *Worker) (bool, error) {
+func (mc *ModelChecker) doNextWithTool(tool *Tool, curState *TLCStateMut, liveNextStates *SetOfStates, worker *Worker) (stop bool, err error) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			stop, err = true, panicValueAsError(failure)
+		}
+	}()
 	if mc == nil {
 		return true, newTLCError(ECGeneral, "model checker is nil")
 	}
@@ -2144,7 +2155,7 @@ type doInitFunctor struct {
 	returnValue int
 }
 
-func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
+func (f *doInitFunctor) AddElement(curState *TLCStateMut) (result any, err error) {
 	if isPowerOfTwo(f.mc.NumberOfInitialStates) && f.mc.NumberOfInitialStates > 1 {
 		PrintMessage(ECTLCComputingInitProgress, fmt.Sprintf("%d", f.mc.NumberOfInitialStates))
 	}
@@ -2155,6 +2166,13 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 		}
 		return f.returnValue, nil
 	}
+	// DoInitFunctor catches throwables from fingerprinting and state callbacks
+	// as well as failures returned by evaluator methods.
+	defer func() {
+		if failure := recover(); failure != nil {
+			result, err = f.handleInitError(curState, panicValueAsError(failure))
+		}
+	}()
 	if !f.tool.IsGoodState(curState) {
 		PrintError(ECTLCInitialState, "current state is not a legal state", curState.String())
 		f.errState = curState
@@ -2230,6 +2248,11 @@ func (f *doInitFunctor) AddElement(curState *TLCStateMut) (any, error) {
 }
 
 func (f *doInitFunctor) handleInitError(curState *TLCStateMut, err error) (any, error) {
+	if javaSystemFailureCode(err) == ECSystemOutOfMemory {
+		PrintError(ECSystemOutOfMemoryTooManyInit)
+		f.returnValue = ECSystemOutOfMemoryTooManyInit
+		return f.returnValue, nil
+	}
 	f.errState = curState
 	f.err = err
 	if isJavaAbortingInitError(err) {

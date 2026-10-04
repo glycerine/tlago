@@ -128,12 +128,12 @@ func (w *Worker) Run() (err error) {
 	var curState *TLCStateMut
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			err = newTLCError(ECGeneral, "%v", recovered)
+			err = panicValueAsError(recovered)
 			if w.Checker != nil {
 				w.Checker.nextErrorMu.Lock()
 				defer w.Checker.nextErrorMu.Unlock()
 				if w.Checker.SetErrState(curState, nil, true, ECGeneral) {
-					PrintError(ECGeneral, fmt.Sprint(recovered))
+					PrintError(ECGeneral, generalErrorParams("", err)...)
 				}
 				if w.Checker.StateQueue != nil {
 					w.Checker.StateQueue.FinishAll()
@@ -207,7 +207,16 @@ func (w *Worker) DoNext(curState *TLCStateMut) (bool, error) {
 	defer restoreRandomState()
 	preNext := w.GetStatesGenerated()
 	recordedOutcome := false
-	halt, err := w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
+	// Worker.run has an inner catch(Throwable) around getNextStates, separate
+	// from its outer loop catch. Preserve the throwable before doNextFailed.
+	halt, err := func() (halt bool, err error) {
+		defer func() {
+			if failure := recover(); failure != nil {
+				halt, err = false, panicValueAsError(failure)
+			}
+		}()
+		return w.Tool.GetNextStatesWithFunctor(w.NextStateFunctor(), curState)
+	}()
 	if err != nil {
 		if wrapped, ok := err.(*WorkerWrappingRuntimeException); ok && wrapped != nil {
 			w.Checker.doNextFailed(curState, wrapped.UnwrapState(), wrapped.UnwrapExp())
@@ -309,7 +318,18 @@ func (w *Worker) claimLivenessErrorStackPrinter() bool {
 	return true
 }
 
-func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState *TLCStateMut) (any, error) {
+func (w *Worker) AddNextElement(curState *TLCStateMut, action *Action, succState *TLCStateMut) (result any, err error) {
+	// Worker.addElement catches Exception, wraps its cause with the successor,
+	// and leaves Java Error subclasses for run's surrounding throwable catch.
+	defer func() {
+		if failure := recover(); failure != nil {
+			cause := panicValueAsError(failure)
+			if isJavaError(cause) {
+				panic(failure)
+			}
+			result, err = nil, NewWorkerWrappingRuntimeException(cause, succState)
+		}
+	}()
 	if w == nil {
 		return nil, newTLCError(ECGeneral, "worker is nil")
 	}

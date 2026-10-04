@@ -2746,3 +2746,72 @@ fingerprint-hang-javac.log/original-FingerprintExceptionHangTest-junit.log,
 retire69454. SourceFAILURE_SPEC_EVAL,FINISHED/noGENERAL,exact3-framecallstack
 and integer1/nonintegeremptysetcomparisonmessage. No Goport activated for any
 of4fingerprinttests yet; no manualcomparisoncredit.
+
+2026-10-04 four FingerprintException original testSpec ports activated:
+Init/Next/NextCallstack in tlc_fingerprint_exceptions_java_test.go,Hang in
+ tlc_fingerprint_hang_java_test.go. Eight exactbytes fixtures (Nextcfgsharedcopy).
+Allsource defaults/debugger/options/JSON,FAILURE_SPEC_EVAL exits preserved.
+InitFINISHED/noGENERAL,exacttwo-value-source-stack+overflow36,twoUncovered;
+NextFINISHED/stats2/1/0/init1/GENERAL,exactvalue-stack+overflow32,oneUncovered;
+CallstackFINISHED/stats1/1/0/init1/GENERAL,exactfiveframes+SUBSET42message;
+HangFINISHED/noGENERAL,exactthreeframes+integer1/noninteger{}message.
+InitialGo3fail(Init/Nextexit255,CallstackmissingGENERAL),Hangpass. Production
+fixes: DoInitFunctor catches panics,retainsstate/cause,typedabort/delayedthrow and
+OutOfMemoryTooManyInit; init/replay boundary catchespanics;Worker.addElement
+catchExceptionwrapscause+successor,JavaErrorsescape;innernext-generationcatch
+separatefromouterWorkerloopcatch,bothpreserveactualthrowable. LazyValue.getValue
+andLazySupplier.getValue no longerattachsource(JavaonlyLazyValue.evaldoes).
+IncorrectsourceattachmentturnednormalCallstackRuntimeExceptioninto nullable-
+messageFingerprintException andsuppressedGENERAL. Do notrestore it.
+FinalfocusedGo5.047s, unchangedJava4pass .433/.409/.424/.445s. Testsunchanged
+through fixes; no inventedchecks. Retire86002/38271/38006/6229/35910.
+Checks currentlylive: fullworkspace16332,fullTLCrace38449,all4five-rootrace90758;
+logs fingerprint-{workspace,tlc-race,root-race}.log; retireafterterminalresults.
+Inventory650/1269contexts51.2%,218/626classes34.8%,619pending408classes,
+safety27/34complete7pending;deferredtopics unchanged;goalactive.
+Nextinspected ViewMap(full8statetrace+all8exactactionlabels,register42firstInt43,
+uncoveredline91col60..73,postconditiondiagsabsent,safety/default -view),
+MonolithSpec(embeddedcfg,214/54/0,zeroUncovered,actualToolIOcapturednoMissingFile
+and3parsing-pathregexes),TSnapShot4workers(MCroot,TSnapShotsubdir,FAILURE_SAFETY_EVAL,
+FINISHED/noGENERAL/noBUG/behavior). NoGoportcredit yet; sourcefilesinspectedonly.
+Monolith outputassertions needactualproductionSANY/TLC logging, not fabricated
+text or weakerregexes. TSnapShotis multithreadedmodeldiagnostic, notcheckpoint.
+
+UpcomingViewMap/MonolithSpec/TSnapShot originalJavaJUnitpreflight allpassunchanged
+.623/.525/.501s; compilelog safety-final-next-javac.log,logs original-<Class>-junit.log;
+retire8183. Scratchrun directory safety-next-model-run/test-model intentionally
+preserves sourceMonolithpathregex ending test-model. ViewMapfirstpreflightfailed
+because scratch target/GeneratedTESpecs directory absent(_TLCTraceSilent binary
+serialization),notanupstreamtestdiscrepancy; aftercreatingexpectedharnessoutputdir,
+unchangedtestpasses. Do notmarkViewMapReconcile/newskip or removePostCondition
+assertionbasedonthatscratchfailure. FutureJava modelpreflights must create
+BASE_PATH/../target/GeneratedTESpecs beforegeneration,matchingbuildharness.
+No Goports of3nexttests yet; currentcredit only4fingerprintmethods.
+
+Final init-outer-catch review corrected fallbackcode: typed runtime initialization
+exceptions thrown outside callbacks must retain initExceptionCode(err),matching
+ModelChecker.catch(Throwable),ratherthan genericGENERAL. Existingfinalfocused
+cases stillrequired unchanged. Oldfullworkspace16332/fullTLCrace38449 were
+terminated130 for thisactualproductioncorrection; initialrootrace90758 passed
+74.117s. Finalchecks nowlive67023(fullworkspace),36836(fullTLCrace),28485(all4
+five-rootrace),logs fingerprint-{workspace,tlc-race,root-race}-final.log. Retire
+onlyafterterminal; no observationtimeouts treatedasstop. No finalcommit yet.
+
+Finalall4five-rootrace passes71.626s; retire28485. Bothfinalbroadchecks remain
+live67023/36836. Upcomingmonolith loader already parses/registers allmodules
+fromphysicalsource in sany_translate.go loadPath; don'tassume unsupported or
+extract artificialsidecarfixtures. Its originaltest stillrequiresactualparsing
+path/outputmetadata on ToolIOstdout. loadPath currentlyrecordslogicalModuleFiles
+but emitsnoparsingprogress; TLAFile has libraryPath accessors. Inspectsource
+MonolithSpecExtractor/NamedInputStream/SANYbeforeimplementing requiredoutput.
+
+Finalfullworkspace passes(root377.561s,SANY0.973s,TLC63.747s); retire67023.
+Finalrootrace28485passed71.626s(retired). FinalTLCrace36836stilllive; waitfor
+terminalresult beforecommit. Lastproductionedit onlyinitfallbackcode, no further
+codechangeswhilethesechecksrun. Preserve sourcefixturewhitespace/endmarkers.
+
+FinalfullTLCrace passes552.842s; retire36836. Allcheckshandlesterminal.
+Finalworkspace377.561/0.973/63.747s and all4five-rootrace71.626s green against
+finalproduction. StagedGo/docs whitespacecheckclean; onefixturetrailing-space
+warning is originalNextCallstackmoduleheader, preservedbyte-identically. Ready
+for greencommit of4 originaltests+realproductionfixes+inventory/documents.

@@ -79,7 +79,6 @@ func (v *LazyValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLCStateMut
 	if err != nil {
 		return nil, err
 	}
-	attachValueSourceIfMissing(res, v.Expr)
 	if v.IsCacheable() {
 		v.Val = res
 		v.ToolID = tool.GetID()
@@ -252,9 +251,7 @@ func (v *LazySupplierValue) GetValue(tool *Tool, state *TLCStateMut, pstate *TLC
 	if v.Supplier == nil {
 		return ValUndef, nil
 	}
-	value := v.Supplier()
-	attachValueSourceIfMissing(value, v.Expr)
-	return value, nil
+	return v.Supplier(), nil
 }
 
 func asLazyValue(value any) *LazyValue {

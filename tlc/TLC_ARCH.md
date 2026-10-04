@@ -4369,3 +4369,19 @@ SpecProcessor's failure boundary raises TLC_PARSING_FAILED2 for compiler errors;
 it never silently omits a malformed invariant. TLC.process records the coded
 exception, emits FINISHED, and selects ERROR_SPEC_PARSE. This is reuse of the
 existing compiler by the invariant feature, without new debugger test work.
+
+Initialization callbacks catch fingerprinting and other panics at Java's
+DoInitFunctor throwable boundary, retaining the current state and cause. Runtime
+and invariant failures abort; other throwables are stored until init enumeration
+finishes; actual OutOfMemoryError selects TOO_MANY_INIT. The enclosing init and
+next-state replay calls convert panics to retained errors for diagnostic replay.
+Worker.addElement wraps Exception with the successor state but lets Java Error
+subclasses escape. Worker.run's inner catch around next-state generation is
+separate from its outer loop catch; both preserve the original throwable.
+
+LazyValue.getValue and LazySupplierValue.getValue do not attach source metadata
+in Java and now preserve that distinction in Go. LazyValue.eval retains its
+source-if-missing behavior. Adding a source in the getValue path could turn an
+ordinary runtime failure into a FingerprintException, whose nullable detail
+message suppresses a GENERAL diagnostic. The original fingerprint-exception
+models cover both paths, their exact trace strings, coverage, and source exits.
