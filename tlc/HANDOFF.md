@@ -3413,3 +3413,19 @@ TLC64.192s). Full TLC race passes (570.326s); all check handles terminal.
 Next pending family: Github725 through725h;
 all eight unchanged Java JUnit tests already pass in the scratch reference runner.
 No invented tests or weakened assertions. Goal active; deferred topics unchanged.
+
+2026-10-04: All eight Github725/b/c/d/e/f/g/h original testSpec methods
+translated. All eight unchanged Java JUnit references pass, and15 model/config
+files match original bytes. First focused Go run passes (5.947s) without further
+production changes. Preserve all original runner overrides: noGenerateSpec=true,
+coverage/debugger=false, default DOT, JSON enabled for725..725f and disabled
+for725g/h. Original assertions retained, including soundness cases:725g has
+Prop liveness violation,2/1/0 stats,depth1,full single-state trace/ordinal/action
+and stuttering2;725h uses725g with725h.cfg,exact Inv initial-state text/newline
+and safety exit. Five normal repetitions pass12.897s and five focused race
+repetitions pass136.002s. Full offline workspace passes (root415.375s,
+SANY/TLC cached from prior green verification); all check handles terminal. TLC production unchanged since
+ad50e68, whose full TLC race passed570.326s. Inventory728/1269 contexts,293/626
+complete classes;541 contexts/333 classes pending,one partial. Next missing issue
+is Github726Test; unchanged Java references for726/742/743/746/757 already
+pass in the scratch runner. Goal active and user-deferred topics unchanged.
