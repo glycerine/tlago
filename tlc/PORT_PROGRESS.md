@@ -4219,3 +4219,48 @@ warning. Shared NoFairnessButLiveProp.tla embeds module H; copy exact full origi
 module and all10 configs under test_vectors. Those contexts remain missing and
 uncredited. Deferred checkpoint TTrace remains skipped; other pending TTrace
 classes need their liveness/simulation original phases ported first.
+
+2026-10-04 current batch after449bbff: all10 original NoFairnessButLiveProp*Test
+contexts translated in tlc_no_fairness_models_java_test.go, with complete58
+source assertions and original configs/exits. All override coverage=false but
+retain zero-uncovered; preserve default JSON/DOT/debugger/forced generation,
+FINISHED/3/2/0/depth2 and exact warning presence/absence, including P's no temporal
+violation and deferred fairness warning on successful checking. Full original
+NoFairnessButLiveProp.tla (including embedded H) and all10 configs copied byte
+exact to test_vectors. All10 unchanged Java JUnit references pass (87998 retired).
+First focused Go PASS6.629s (56683 retired); final literal-config setup retains
+exact source arguments, with five normal repetitions PASS18.078s (70305 retired)
+and five root race repetitions PASS169.524s (97688 retired). No production changes.
+While broad verification ran, ported all5 pending PossibleTest/PossibleFail*Test
+contexts in tlc_possible_models_java_test.go and restored omitted inherited JSON
+trace dump in older PossibleCountsTest. Preserve complete original tests,
+constructor configs, inherited SUCCESS or VIOLATION_ASSUMPTION exits,
+JSON/DOT/coverage/debugger/forced generation and every diagnostic assertion.
+Possible failure tests retain exact first-record/first-parameter BigJump or
+Unreachable predicate names; NoTrans retains no transitions and Mixed retains
+the source's Unreachable priority. PossibleCounts retains all6 assertions;
+PossibleTest retains FINISHED/no GENERAL/no postcondition-false/no unwitnessed.
+All6 unchanged Java references pass (20807 retired; possible-<Class>-junit.log).
+Seven new Possible fixtures plus two existing counts fixtures byte-identical.
+Possible focused6 PASS5.904s (65695 retired); five normal repetitions PASS10.369s
+(69733 retired); five root race repetitions PASS115.192s (42540 retired).
+No weakened assertions, substitute fixtures, new skips or invented tests.
+Initial broad run for NoFairness-only snapshot PASS507.273s root/1.055s SANY/
+63.580s TLC (73630 terminal/retired). Because five tests and restored setup were
+added after that compilation, final broader run for all current source PASS
+509.437s root/0.997s SANY/62.756s TLC (34744 terminal/retired). All required
+checks green; ready to commit. Full TLC race baseline8812d14 PASS557.944s remains
+applicable because production unchanged. All20 topic totals verified against
+source/method mapping:787/1269 contexts,352/626 complete classes;482 contexts/
+274 classes pending,one partial;TTrace19/45 complete. Goal active; deferred topics
+unchanged. Next eligible batch: original BidirectionalTransitions1BxTest and
+BidirectionalTransitions1ByTest inherited BidirectionalTransitions1BTest.testSpec,
+then their actual generated TTrace rechecks inherited BidirectionalTransitions1B_TTrace.
+All4 unchanged Java first/recheck references pass (58617 terminal/retired;
+bidirectional1b-<Class>-junit.log and bidirectional1b-javac.log). Actual generated
+prerequisites checked present before rechecks. Those4 contexts remain missing/
+uncredited. Retain original JSON/DOT/coverage/debugger/forced generation settings,
+liveness exits, FINISHED/no GENERAL,13/3/0 original and4/3/0 recheck stats,
+property names Prop1Bx/Prop1By, all3 exact states/actions/ordinals x0,x2,x1 and
+original back-to-state1 assertions (first recorded parameter, without an
+additional action-label assertion).

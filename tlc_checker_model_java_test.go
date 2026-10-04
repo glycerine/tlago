@@ -143,7 +143,7 @@ func TestJavaConstantOperatorConfiguration(t *testing.T) {
 }
 
 func TestJavaPossibleCounts(t *testing.T) {
-	result := runJavaTLCModelTest(t, "PossibleCountsTest")
+	result := runJavaTLCModelTest(t, "PossibleCountsTest", "-dumpTrace", "json", filepath.Join(t.TempDir(), "PossibleCountsTest.json"))
 	if result.ExitStatus != tlc.ExitStatusSuccess {
 		t.Fatalf("exit status=%d, want success", result.ExitStatus)
 	}
