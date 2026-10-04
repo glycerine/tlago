@@ -1,9 +1,10 @@
+// Copyright (c) 2003 Compaq Corporation.  All rights reserved.
+// Portions Copyright (c) 2003 Microsoft Corporation.  All rights reserved.
 package tlc
 
 import (
 	"io"
 	"math/big"
-	"math/rand"
 )
 
 var (
@@ -32,15 +33,22 @@ func NewBigIntBytes(bytes []byte) *BigInt {
 	return &BigInt{value: value}
 }
 
-func NewBigIntRandom(numBits int, rnd *rand.Rand) *BigInt {
-	if numBits <= 0 {
-		return &BigInt{value: new(big.Int)}
+// BigInt(int, Random) delegates to BigInteger's unsigned randomBits path.
+func NewBigIntRandom(numBits int, rnd *JavaRandom) *BigInt {
+	if numBits < 0 {
+		panic(NewIllegalArgumentException("numBits must be non-negative"))
 	}
-	if rnd == nil {
-		rnd = rand.New(rand.NewSource(1))
+	numBytes := int((int64(numBits) + 7) / 8)
+	bytes := make([]byte, numBytes)
+	if numBytes > 0 {
+		if rnd == nil {
+			panic(NewNullPointerException())
+		}
+		rnd.NextBytes(bytes)
+		excessBits := 8*numBytes - numBits
+		bytes[0] &= byte((uint16(1) << uint(8-excessBits)) - 1)
 	}
-	limit := new(big.Int).Lsh(big.NewInt(1), uint(numBits))
-	return &BigInt{value: new(big.Int).Rand(rnd, limit)}
+	return &BigInt{value: new(big.Int).SetBytes(bytes)}
 }
 
 func NewBigInt(value *big.Int) *BigInt {

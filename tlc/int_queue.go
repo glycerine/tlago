@@ -1,3 +1,34 @@
+// Copyright (c) 2003 Compaq Corporation.  All rights reserved.
+// Portions Copyright (c) 2003 Microsoft Corporation.  All rights reserved.
+// Last modified on Mon 30 Apr 2007 at 13:26:33 PST by lamport
+//      modified on Mon Dec 18 22:56:08 PST 2000 by yuanyu
+
+/*******************************************************************************
+ * Copyright (c) 2015 Microsoft Research. All rights reserved.
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+ * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
+ * Contributors:
+ *   Markus Alexander Kuppe - initial API and implementation
+ ******************************************************************************/
+
 package tlc
 
 import (
@@ -24,7 +55,7 @@ func NewIntQueue() *IntQueue {
 
 func NewIntQueueWithCapacity(capacity int) *IntQueue {
 	if capacity < 0 {
-		capacity = 0
+		panic(NewNegativeArraySizeException(fmt.Sprint(capacity)))
 	}
 	return &IntQueue{elems: make([]int32, capacity)}
 }
@@ -32,9 +63,6 @@ func NewIntQueueWithCapacity(capacity int) *IntQueue {
 func NewIntQueueWithDisk(metadir string, filename string, capacity int) *IntQueue {
 	q := NewIntQueueWithCapacity(capacity)
 	q.diskdir = metadir
-	if filename == "" {
-		filename = "null"
-	}
 	q.filename = filename
 	return q
 }
@@ -60,7 +88,7 @@ func (q *IntQueue) EnqueueLong(elem int64) {
 
 func (q *IntQueue) DequeueInt() int32 {
 	if q.size < 1 {
-		panic("IntQueue is empty")
+		panic(NewNoSuchElementException())
 	}
 	res := q.elems[q.start]
 	q.size--
@@ -76,7 +104,7 @@ func (q *IntQueue) DequeueLong() int64 {
 
 func (q *IntQueue) PopInt() int32 {
 	if q.size < 1 {
-		panic("IntQueue is empty")
+		panic(NewNoSuchElementException())
 	}
 	q.size--
 	return q.elems[q.size]
@@ -204,9 +232,13 @@ func (q *IntQueue) chkptName(ext string) string {
 }
 
 func (q *IntQueue) ensureCapacity(minCapacity int) int {
-	newSize := int((int64(q.size)*3)/2) + 1
-	if min := q.size + minCapacity; newSize < min {
-		newSize = min
+	// MemBasedSet calculates in long, then casts and adds in Java int.
+	newSize := int32((int64(int32(q.size))*3)/2) + 1
+	if minimum := int32(q.size) + int32(minCapacity); newSize < minimum {
+		newSize = minimum
 	}
-	return newSize
+	if newSize < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(newSize)))
+	}
+	return int(newSize)
 }

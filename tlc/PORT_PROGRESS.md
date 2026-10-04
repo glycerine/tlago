@@ -2474,3 +2474,52 @@ long-roundtrip test uses a different number), capacity-four wrap/grow sequence,
 all size assertions and only the assertions actually present in the source.
 Inspect MemIntQueue/Go IntQueue production before translating; do not credit
 old generic-panic expectations as the original NoSuchElementException catches.
+
+
+MemIntQueueTest and ByteUtilsTest are port complete in int_queue_java_test.go
+and byte_utils_java_test.go (five plus six original methods). Queue methods retain
+irrelevant directory/name arguments, 4096 default and capacity-four constructors,
+source zero-long fixture, all size/value assertions, the precise ring-wrap/growth
+sequence and four strict NoSuchElementException catches. Production now throws
+actual NoSuchElementException for empty dequeue/pop, rejects negative capacity
+with actual NegativeArraySizeException, preserves supplied constructor names,
+and follows MemBasedSet's long calculation/int cast/addition growth arithmetic.
+Byte methods retain @Before's five 10000-entry arrays and two temp files, all
+10000-int/long exercises, 10000 1000-bit BigInts, default unseeded Java Random
+instances, half=4999 split, prefix discard before read-until-IOException, all
+three append attempts in one IOException-only catch, source console mismatch
+branches and millisecond timing lines. Original print-only checks remain print-only;
+no extra exception requirement/assertion, smaller samples or substituted fixture.
+Input streams are closed in Go test cleanup rather than leaked until Java exit.
+Array-object diagnostic identities use native Go array identity in Java's [B@hex
+form; those nondeterministic identities are not original assertions.
+Production ByteUtils now preserves IOException carriers/messages and IOException-
+only catch boundaries, including output failures inside append's loop catch;
+known unchecked exceptions are not swallowed as EOF. Negative sized arrays and
+short/invalid array access use concrete Java exception carriers. Empty BigInt
+bytes retain NumberFormatException with Zero length BigInteger, matching current
+JDK bytecode. Removed eager start/finish rejection before source prefix/iteration.
+ReadInto performs bounds checks at the actual read, preserving its source no-op
+for zero/negative length; source FileInputStream probe confirms nil-message
+IndexOutOfBoundsException for invalid offsets. Native stream errors are mapped
+to IOException at the io.Reader/io.Writer boundary while represented Java
+exceptions retain identity. Existing Go error-message checks remain green.
+BigInt's random constructor no longer substitutes math/rand or silently accepts
+negative bit counts/nil RNG. It now takes *JavaRandom and follows JDK randomBits:
+nonnegative check, ceil bytes, nextBytes only for positive byte count, leading-bit
+mask and unsigned magnitude. Zero bits consume no RNG and need no nonnil RNG.
+No previous callers of NewBigIntRandom existed; the translated original exercises
+now use this actual constructor. JDK javap confirms the control flow/mask. An
+ignored source comparison over ten 1000-bit values with seed 15041980 and each
+subsequent nextInt is byte-identical Java/Go; it is evidence, not a new test.
+Java originals: queue five pass (0.005s), bytes six pass (0.230s). Final Go originals
+plus existing related checks pass (0.276s); no diagnostic mismatch lines. Retire
+97824/49151/54582/14834. Final full workspace normal passes (root 314.712s, SANY 1.046s, TLC 44.578s);
+full TLC race passes (417.363s). Retire handles 16479/38026. Inventory now 453/1269 contexts
+(35.7%), 124/626 complete classes (19.8%), 816 pending contexts across 502 classes;
+one partial. All five deferred topics stay deferred. No new regression/unit cases.
+Next: full BucketStatisticsTest and FixedSizedBucketStatisticsTest parameter rows.
+Read constructor matrices and every method before translating; current Java
+BucketStatisticsTest has ConcurrentBucketStatistics and BucketStatistics rows.
+No statistics-test translation credit yet. Preserve floating-point comparisons,
+source exception families, empty/sample cases, percentile/NaN behavior and strings.

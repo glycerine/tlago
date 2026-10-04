@@ -6,9 +6,9 @@ Snapshot: 2026-10-03. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **122 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (19.5%).**
-- **442 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (34.8%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **827 logical method contexts across 504 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **124 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (19.8%).**
+- **453 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (35.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **816 logical method contexts across 502 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -39,9 +39,9 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 1 | 165 | 16 | 149 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
-| Collections, buffered files, combinatorics, and statistics | 14 | 8 | 91 | 44 | 47 |
+| Collections, buffered files, combinatorics, and statistics | 14 | 10 | 91 | 55 | 36 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **122** | **1,269** | **442** | **827** |
+| **Total** | **626** | **124** | **1,269** | **453** | **816** |
 
 ## Porting rules and proposed order
 
@@ -658,8 +658,8 @@ Original utility cases, file operations/fuzz sequences, integer queues/stacks, v
 - [ ] [tlc2/util/BufferedRandomAccessFileFuzzTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileFuzzTest.java) — **Missing**: `fuzz`, `testWellDefined`.
 - [ ] [tlc2/util/BufferedRandomAccessFileTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/BufferedRandomAccessFileTest.java) — **Reconcile**: `testWrite`, `testWriteSeek`, `testWriteSeekNoLength`, `testRead`, `testReadSeekNoLength`, `testInvalidateBufferedData`, `testReadAfterSeekPastEndOfFile`, `testWriteAfterSeekPastEndOfFile`, `testObscureSetLengthBehavior`, `testIdempotentClose`, `testIOExceptionOnUseAfterClose`, `regressionTest01`, `regressionTest02`, `regressionTest03`, `regressionTest04`, `regressionTest05`, `regressionTest06`, `regressionTest07`.
   Related Go checks: [tlc/buffered_random_access_file_test.go](buffered_random_access_file_test.go).
-- [ ] [tlc2/util/ByteUtilsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/ByteUtilsTest.java) — **Reconcile**: `test1`, `test2`, `test3`, `test4`, `test5`, `test6`.
-  Related Go checks: [tlc/byte_utils_test.go](byte_utils_test.go).
+- [x] [tlc2/util/ByteUtilsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/ByteUtilsTest.java) — **Port complete**: `test1`, `test2`, `test3`, `test4`, `test5`, `test6`.
+  Go translation: [tlc/byte_utils_java_test.go](byte_utils_java_test.go). All six original methods, per-method setup, full 10,000-value exercises, 1000-bit Java-random BigInts, original two-array split, three append attempts and IOException-only catch. Original diagnostics and timing output are retained; print-only checks have not been turned into assertions.
 - [x] [tlc2/util/CombinatoricsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/CombinatoricsTest.java) — **Port complete**: `testChoose`, `testChooseBigChoose`, `testSlowChooseBigChoose`, `testBigChoose50c1`, `testBigChoose50c10`, `testBigChoose50c20`, `testBigChoose50c30`, `testBigChoose400c1`, `testBigChoose400c50`, `testBigChoose400c100`, `testBigChoose400c200`.
   Go translation: [tlc/combinatorics_java_test.go](combinatorics_java_test.go). All eleven original methods, complete 62×62 / 63×63 / 185×185 matrices, and all eight literal bit-length and exact-long/decimal cases are retained.
 - [x] [tlc2/util/ContextTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/ContextTest.java) — **Port complete**: `testLookupEmpty`, `testLookupBranch`, `testLookupSymbolNodeNull`, `testLookup`, `testLookupCutOffFalse`, `testLookupCutOffTrue`, `testLookupWithAtBranching`, `testLookupWithCutOffFalseAtBranching`, `testLookupWithCutOffTrueAtBranching`, `testLookupSymbolNode`.
@@ -668,8 +668,8 @@ Original utility cases, file operations/fuzz sequences, integer queues/stacks, v
   Go translation: [tlc/long_vec_java_test.go](long_vec_java_test.go), retaining the original constructor hook, explicit capacity-10 cases, all twelve remove-beyond attempts, exact index-exception catch family and inherited assertions.
 - [x] [tlc2/util/LongVecTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/LongVecTest.java) — **Port complete**: `testReadBeyondCapacity`, `testAddAndReadBeyondCapacity`, `testRemoveBeyondCapacity`, `testAddRemoveBeyondCapacity`, `testRemoveAndGet`, `testRemoveWrongOrder`, `testGetNegative`, `testRemoveNegative`.
   Go translation: [tlc/long_vec_java_test.go](long_vec_java_test.go), retaining the original constructor hook, explicit capacity-10 cases, all twelve remove-beyond attempts, exact index-exception catch family and inherited assertions.
-- [ ] [tlc2/util/MemIntQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/MemIntQueueTest.java) — **Reconcile**: `testDequeuePastLastElement`, `testEnqueueZeros`, `testEnqueueLong`, `testEnqueueDequeueLong`, `testGrow`.
-  Related Go checks: [tlc/int_queue_test.go](int_queue_test.go).
+- [x] [tlc2/util/MemIntQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/MemIntQueueTest.java) — **Port complete**: `testDequeuePastLastElement`, `testEnqueueZeros`, `testEnqueueLong`, `testEnqueueDequeueLong`, `testGrow`.
+  Go translation: [tlc/int_queue_java_test.go](int_queue_java_test.go). All five original methods, irrelevant constructor arguments, default/capacity-four construction, zero-long fixture, exact growth sequence and strict NoSuchElementException catches.
 - [ ] [tlc2/util/statistics/BucketStatisticsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/statistics/BucketStatisticsTest.java) — **Reconcile**; parameterized: preserve all original rows: `testInvalidArgument`, `testMean`, `testMedian`, `testMin`, `testMin2`, `testMax`, `testStandardDeviation`, `testGetPercentile`, `testGetPercentileNaN`, `testToString`.
   Related Go checks: [tlc/bucket_statistics_test.go](bucket_statistics_test.go).
 - [ ] [tlc2/util/statistics/FixedSizedBucketStatisticsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/statistics/FixedSizedBucketStatisticsTest.java) — **Reconcile**; parameterized: preserve all original rows: `testMin`, `testMin2`, `testMax`, `testInvalidArgument`, `testGetPercentileNaN`, `testMaximum`.
@@ -1027,3 +1027,5 @@ When a complete original method lands, record its Java class/method and Go file,
 | [tlc2/util/CombinatoricsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/CombinatoricsTest.java) | `testChoose`, `testChooseBigChoose`, `testSlowChooseBigChoose`, `testBigChoose50c1`, `testBigChoose50c10`, `testBigChoose50c20`, `testBigChoose50c30`, `testBigChoose400c1`, `testBigChoose400c50`, `testBigChoose400c100`, `testBigChoose400c200` | [tlc/combinatorics_java_test.go](combinatorics_java_test.go) |
 | [tlc2/util/GrowingLongVecTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/GrowingLongVecTest.java) | `testReadBeyondCapacity` (from `LongVecTest`), `testAddAndReadBeyondCapacity` (from `LongVecTest`), `testRemoveBeyondCapacity` (from `LongVecTest`), `testAddRemoveBeyondCapacity` (from `LongVecTest`), `testRemoveAndGet` (from `LongVecTest`), `testRemoveWrongOrder` (from `LongVecTest`), `testGetNegative` (from `LongVecTest`), `testRemoveNegative` (from `LongVecTest`), `testGrowAndShrink` | [tlc/long_vec_java_test.go](long_vec_java_test.go) |
 | [tlc2/util/LongVecTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/LongVecTest.java) | `testReadBeyondCapacity`, `testAddAndReadBeyondCapacity`, `testRemoveBeyondCapacity`, `testAddRemoveBeyondCapacity`, `testRemoveAndGet`, `testRemoveWrongOrder`, `testGetNegative`, `testRemoveNegative` | [tlc/long_vec_java_test.go](long_vec_java_test.go) |
+| [tlc2/util/ByteUtilsTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/ByteUtilsTest.java) | `test1`, `test2`, `test3`, `test4`, `test5`, `test6` | [tlc/byte_utils_java_test.go](byte_utils_java_test.go) |
+| [tlc2/util/MemIntQueueTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/util/MemIntQueueTest.java) | `testDequeuePastLastElement`, `testEnqueueZeros`, `testEnqueueLong`, `testEnqueueDequeueLong`, `testGrow` | [tlc/int_queue_java_test.go](int_queue_java_test.go) |
