@@ -758,6 +758,14 @@ func (p *SpecProcessor) ProcessConfigConstantsAndOverrides(tool *Tool) {
 	}
 	constants := configConstantsToDefns(p.Config.GetConstants(), p)
 	for name, value := range constants.All() {
+		// Java attaches a global operator constant assignment to the root
+		// OpDefNode itself. Module aliases can still refer to that same node;
+		// registering those aliases must not undo the configured replacement.
+		if p.RootDefinitions != nil {
+			if definition := p.RootDefinitions.Get(name); definition != nil {
+				definition.SetToolObject(value)
+			}
+		}
 		p.putConfigDefinition(name, value, tool)
 	}
 	p.applyConfigModuleConstants(tool)
@@ -930,13 +938,16 @@ func (p *SpecProcessor) applyConfigModuleOverrides(tool *Tool) {
 			lhsVal := p.defn(qualified)
 			// Native overrides replaced the table entry, but Java still visits
 			// the module's original OpDef and updates its shared body.
-			if p.RootDefinitions != nil {
-				for _, definition := range p.RootDefinitions.All() {
-					if definition.Symbol.Name == UniqueStringOf(qualified) {
+			if p.ModuleTbl != nil && p.ModuleTbl.GetModuleNode(UniqueStringOf(modName)) != nil {
+				lhsVal = nil
+				for _, definition := range p.ModuleTbl.GetModuleNode(UniqueStringOf(modName)).GetOpDefs() {
+					if definition.Name == UniqueStringOf(lhs) {
 						lhsVal = definition
 						break
 					}
 				}
+			} else if p.RootDefinitions != nil && p.RootDefinitions.Get(qualified) != nil {
+				lhsVal = p.RootDefinitions.Get(qualified)
 			}
 			if lhsVal == nil {
 				p.addConfigError(ECTLCConfigIDDoesNotAppearInSpec, lhs)

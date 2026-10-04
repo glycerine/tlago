@@ -648,7 +648,7 @@ func (x *sanyXMLExporter) allocateInstanceParams(owner *Module, inst Instance) {
 			}
 		}
 		paramKey := fmt.Sprintf("%s:param:%d:%s", key, len(x.instParams[key]), name)
-		x.instParams[key] = append(x.instParams[key], x.newSymbol("FormalParamNode", paramKey, name, 0, constantLevel, pos))
+		x.instParams[key] = append(x.instParams[key], x.newSymbol("FormalParamNode", paramKey, name, inst.ParamArities[name], constantLevel, pos))
 	}
 }
 

@@ -36,6 +36,7 @@ type Module struct {
 type Instance struct {
 	Name             string
 	Params           []string
+	ParamArities     map[string]int
 	ParamPositions   map[string]Position
 	Module           string
 	Substitutions    map[string]Expr

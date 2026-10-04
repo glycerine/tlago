@@ -3335,3 +3335,96 @@ Github602 original trailing blanks retained, all six fixtures byte-exact.
 Commit issue tests as green checkpoint; next Github1134a..f, all source Java
 preflights green and no Go translations activated. Inventory657/1269contexts
 51.8%,225/626classes35.9%,612pending401classes; goalactive/deferred unchanged.
+
+2026-10-04 Github1134a/b/c/d/e/f original testSpec translations in
+ tlc_github_1134_java_test.go; eleven byte-exact source gh1134 fixtures.
+Full MC.tla root/explicitMC{letter}.cfg, noGenerateSpec=true/doDumpTrace=false,
+other default coverage/DOT/debugger/oneworker/checkpoint/seed/fp preserved.
+A exact Init/stateINITtuple initial-property diagnostic/liveness exit and
+zeroUncovered; B/C/E SUCCESS/FINISHED,9/4/0,zeroUncovered; D/F exact tuplefunction
+out-of-domain3 initial-error diagnostic/state and FAILURE_SPEC_EVAL preserved.
+Initial all6 failed E4200/E4242 because semantic checker treated instance formal
+n as a target and lacked WITH-expression scope. Source Generator module definition
+pushes formal context first: checker now uses local formals/implicit bindings,
+keeps explicit-target validation separate, preserves duplicate-formal rejection.
+Instance AST retains declared operator formal arities (ident/fixity); translator,
+semantic checks, bridge FormalParam symbols and shared XML export carry them.
+No arity-zero assumption for arbitrary instance formals. XML field propagation
+only; no long XML corpus sweeps. Bridge instance params use actual FormalParam
+symbols/positions. Next A failed name SingleUser!Init vs source Init: original
+source operator Symbol retains declared name; qualified alias stays lookup key.
+Instantiated export names unchanged. No diagnostic string stripping or test edits.
+Original Java all6pass (original-Github1134{letter}Test-junit.log). Go final focused
+all6 PASS5.381s; retire60855/88726/47058/17620. Workspace40684 and five-rootrace
+30778 live; logs github1134-{workspace,root-race}.log. TLCpackage code unchanged,
+96097d0 fullrace560.863s baseline retained. No commit until broad checks green.
+Inventory663/1269contexts52.2%,231/626classes36.9%;606pending395classes,
+issue topic12/98classescomplete; goalactive/deferredtopics unchanged.
+
+Github1134 finalrootrace30778 PASS102.233s (six originals plus existing
+SANY semantic bridge, five repetitions); retire30778. Workspace40684 live.
+Next originalJava Github1145/1145b/1147/1161/1161Violated all pass unchanged
+with complete fixtures/resourceDOT; logs original-<Class>-junit.log. No Go
+tests/fixtures activated for these yet. Java tmpdirs/workdir stay in ignored
+scratch. 1161Abstract is a sibling module embedded in Github1161.tla; preserve
+that single original source rather than inventing a separate module fixture.
+1147 requires full line-by-line golden DOT/EOF equality (actionLabels,colorize),
+51/50/47,depth3,postcondition diagnostics,zeroUncovered and safety exit.
+1145b deliberately disables debugger/gen/coverage/DOT/JSON to retain lazy
+FcnLambda->tuple EXCEPT path; exact initial invariant Inv,x=1 and safety exit.
+1161 pair has debugger/gen/coverage/DOT/JSON disabled; preserve all eight
+operator/CONSTANT/recursive wrappers in original model, no sampling. Violated
+case exact PropertyViolated temporal/counterexample diagnostics and trace0..5
+with source VIOLATION_SAFETY exit. Overall goal active; deferred topics unchanged.
+
+Github1134 broad check40684 FAIL600.286s: existing qualified-LOCAL helper leaked
+unqualified, and originalGithub314Coverage ran unbounded then suite timed out.
+The symbol-name correction exposed remaining lookup-key shortcuts. Production
+bridge defineAlias now registers exact symbol identity and explicit lookup alias
+without automatically exporting a source's declared name. Core module config
+overrides now retrieve the named module's actual original OpDefs from ModuleTbl,
+matching Java's module traversal; no qualified-name expectation on source symbols.
+In-memory Defns-only callers retain alias-key fallback. Test assertions unchanged.
+All six plus both affected prior tests PASS5.840s, retire22134. Package tlc now
+changed, so baseline race is insufficient: rerun full workspace/fullTLCrace plus
+five-focused-rootrace. Logs github1134-final-{workspace,tlc-race,root-race}.log.
+Retire40684 terminalFAIL; no commit until final checks green. Inventory unchanged.
+
+Final Github1134 handles: workspace8679,fullTLCrace95902,five-rootrace74444
+(all six originals,oldGithub314Coverage,qualified-LOCAL prior test,SANYbridge).
+All launched after alias/module-definition corrections. Do not reuse initial
+102.233s race credit for the later production fixes; wait for final results.
+
+Final rootrace74444 PASS121.839s; retire74444. Includes all six Github1134,
+originalGithub314Coverage,qualified-LOCAL prior test,SANYsemanticbridge,5runs.
+Finalworkspace8679 and fullTLCrace95902 still live. No further code edits.
+
+Github1134 workspace8679 terminal FAIL383.406s: only existing TestJavaEchoDebugger
+failed (9 frames instead of 13). This was an earlier model evaluation failure,
+not missing debugger symbols: NoNode's configured model value was overwritten
+by a module alias registration, so Echo evaluated its unbounded CHOOSE body.
+Java SpecProcessor assigns global operator CONSTANT values to root OpDefNode
+ToolObjects (source lines583..597). Go now does the same before registering the
+value in Defns; shared source identity preserves replacement across aliases.
+No existing test assertions changed. FullTLCrace95902 PASS556.286s before this
+last correction; retire95902, rerun after actual package tlc change.
+Focused six Github1134 plus Echo/Github314/qualifiedLOCAL PASS3.661s.
+Final replacement handles: workspace44395,fullTLCrace15236,5-rootrace25317.
+Logs github1134-config-{workspace,tlc-race,root-race}.log. Await green checkpoint.
+
+Replacement full workspace44395 PASS: root387.278s, sany_tests1.017s,
+tlc64.414s; retire44395. Replacement rootrace25317 PASS149.901s (5runs),
+including all six new tests and unchanged Echo/Github314/qualifiedLOCAL.
+FullTLCrace15236 remains live; no further production edits since launch.
+
+Github1134 final fullTLCrace15236 PASS560.735s; retire15236. All final checks
+now green after the global operator constant fix: full workspace387.278s,
+TLC64.414s, SANY1.017s; full TLC race560.735s; focused root race5runs149.901s.
+All 11 original Github1134 fixtures byte-identical; Go/docs diff checks clean.
+Six source cases now Port complete; 663/1269 contexts,231/626 classes translated.
+Commit this checkpoint before activating next original issue tests. Next scratch
+four-test draft github1145-1161-draft.go.txt remains inactive and uncredited;
+source originals1145/1145b/1147/1161/1161Violated have already passed unchanged
+JavaJUnit. All known test process handles are terminal. Overall goal remains
+active; continue exact source assertions and production fixes, deferred topics
+unchanged. No new debugger tests/features added; Echo was a core config fix.

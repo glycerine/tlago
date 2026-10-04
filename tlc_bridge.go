@@ -691,8 +691,12 @@ func (b *tlcBridge) defineName(name string, value any) *tlc.SymbolNode {
 }
 
 func (b *tlcBridge) defineAlias(name string, value any) {
-	b.define(b.symbol(name), value)
+	symbol := b.symbol(name)
 	if b.tool != nil {
+		// Register the symbol's identity without exporting its declared name.
+		// Only this alias is visible here; LOCAL and instancee definitions may
+		// share a declared name with unrelated operators in the root context.
+		b.tool.Definitions[symbol] = value
 		b.tool.DefnsByName[tlc.UniqueStringOf(name)] = value
 	}
 	if b.defns != nil {
@@ -1185,6 +1189,9 @@ func (b *tlcBridge) sourceDefinitionSymbol(name string, def *Definition) *tlc.Sy
 	if b.instanceDefinitions[name] != nil {
 		symbol = tlc.NewSymbolNode(name)
 	}
+	// The qualified key belongs to the bridge's lookup table. SANY's source
+	// OpDef is itself the operator symbol and retains its declared name.
+	symbol.Name = tlc.UniqueStringOf(def.Name)
 	symbol.Arity = len(def.Params)
 	symbol.DeclarationName = tlc.UniqueStringOf(def.Name)
 	b.withSyntaxNode(def.Syntax, symbol)
@@ -1325,7 +1332,7 @@ func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
 	if binding.params == nil {
 		binding.params = make([]*tlc.SymbolNode, len(inst.Params))
 		for i, param := range inst.Params {
-			binding.params[i] = tlc.NewSymbolNode(param)
+			binding.params[i] = b.formalParameter(param, inst.ParamArities[param], inst.ParamPositions[param], nil)
 		}
 	}
 	if binding.substs == nil {

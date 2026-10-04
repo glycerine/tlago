@@ -4418,3 +4418,27 @@ TLC_PARSING_FAILED; elevated warnings also abort with that code, as the original
 SpecProcessor.processSpec does when SANY exits unsuccessfully. The original
 ElevatedSanyWarning model exercises actual warning promotion, stdout and the
 inherited parsing-failure exit rather than a test-only diagnostic path.
+
+Named module-instance parameters belong to a local formal context when checking
+WITH expressions, matching Generator.generateModuleDefinition. They are distinct
+from the instancee's substitution targets; matching names can supply implicit
+substitutions. The central Instance AST retains formal operator arities, which
+flow into semantic checking and actual FormalParam symbols during conversion.
+Source definition symbols retain their declared names and identities; qualified
+bridge keys remain lookup aliases. Exported instantiated definitions keep their
+qualified names. This matters when property decomposition uses an operator's
+name for the initial-state diagnostic, as Github1134a checks exactly.
+
+Alias registration binds the exact semantic symbol and the explicit alias only;
+a source operator's declared name does not automatically become a root export.
+Module-specific config overrides retrieve actual original definitions from the
+named ModuleTbl node, including definitions with native body overrides. Using
+qualified bridge lookup strings as semantic symbol names would miss the shared
+body update and can turn a bounded model into an unbounded search (Github314).
+
+Global config CONSTANT assignments to root operator definitions attach the value
+to the OpDefNode's ToolObject, matching Java SpecProcessor's rootOpDefs loop.
+Defns entries and module lookup aliases may still reference the original node;
+its configured replacement remains authoritative when evaluating shared symbols.
+This preserves the distinction from module-specific constants/overrides, which
+Java attaches to original definition bodies.

@@ -365,7 +365,7 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 		if instance.Name == entry.name {
 			params := make([]*tlc.SymbolNode, len(instance.Params))
 			for i, param := range instance.Params {
-				params[i] = tlc.NewSymbolNode(param)
+				params[i] = b.formalParameter(param, instance.ParamArities[param], instance.ParamPositions[param], nil)
 			}
 			def := tlc.NewOpDefNode(entry.name, params, nil)
 			def.KindValue = tlc.SemanticModuleInstanceKind

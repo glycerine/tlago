@@ -785,15 +785,33 @@ func sanyModuleDefinition(node *SanySyntaxNode) (Instance, Diagnostics) {
 			inst.Name = id.Image
 		}
 		for _, lhsChild := range child.GetHeirs() {
-			if lhsChild.Kind.JavaName() != "N_IdentDecl" {
-				continue
+			name, arity, pos := "", 0, Position{}
+			switch lhsChild.Kind.JavaName() {
+			case "N_IdentDecl":
+				if id := firstSanyIdentifier(lhsChild); id != nil {
+					name, pos = id.Image, sanyNodePosition(id)
+					arity = countDirectSanyChildren(lhsChild, "US")
+					if arity > 0 {
+						pos = sanyNodePosition(lhsChild)
+					}
+				}
+			case "N_PrefixDecl", "N_PostfixDecl":
+				name, arity, pos = sanyFixDeclOperatorName(lhsChild), 1, sanyFixDeclOperatorPosition(lhsChild)
+			case "N_InfixDecl":
+				name, arity, pos = sanyFixDeclOperatorName(lhsChild), 2, sanyNodePosition(lhsChild)
 			}
-			if id := firstSanyIdentifier(lhsChild); id != nil {
-				inst.Params = append(inst.Params, id.Image)
+			if name != "" {
+				inst.Params = append(inst.Params, name)
 				if inst.ParamPositions == nil {
 					inst.ParamPositions = map[string]Position{}
 				}
-				inst.ParamPositions[id.Image] = sanyNodePosition(id)
+				inst.ParamPositions[name] = pos
+				if arity > 0 {
+					if inst.ParamArities == nil {
+						inst.ParamArities = map[string]int{}
+					}
+					inst.ParamArities[name] = arity
+				}
 			}
 		}
 		break

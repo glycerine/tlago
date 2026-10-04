@@ -1960,6 +1960,21 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 	targets := moduleSubstitutionTargets(target, spec)
 	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
 	implicit := moduleImplicitSubstitutions(mod, spec)
+	// Generator.generateModuleDefinition pushes a context for the instance's
+	// formal parameters before processing WITH. These are local formal
+	// parameters, not additional substitution targets of the instancee.
+	locals := map[string]bool{}
+	arities = copyIntMap(arities)
+	declKinds = copyDeclKindMap(declKinds)
+	for _, param := range inst.Params {
+		if locals[param] {
+			diags = append(diags, errorAt(inst.ParamPositions[param], "E4201", "duplicate formal parameter %s", param))
+		}
+		locals[param] = true
+		arities[param] = inst.ParamArities[param]
+		delete(declKinds, param)
+		implicit[param] = inst.ParamArities[param]
+	}
 	substitutions := instanceSubstitutions(inst)
 	substitutionExprs := map[string]Expr{}
 	for _, subst := range substitutions {
@@ -1993,7 +2008,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			diags = append(diags, errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module))
 		}
 		if matchLevels {
-			level := exprLevel(expr, declKinds, nil)
+			level := exprLevel(expr, declKinds, locals)
 			switch substTarget.Kind {
 			case ConstantDecl:
 				if level != constantLevel {
@@ -2006,27 +2021,13 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			}
 		}
 		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, subst.Pos, declKinds)...)
-		diags = append(diags, checkExpr(expr, defined, nil)...)
+		diags = append(diags, checkExpr(expr, defined, locals)...)
 		if !substitutionExprIsOperatorArgument(expr, want, arities) {
-			diags = append(diags, checkCallArity(expr, arities, operatorParams, nil)...)
+			diags = append(diags, checkCallArity(expr, arities, operatorParams, locals)...)
 		}
-		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
+		diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
 	}
 	diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.Pos, declKinds)...)
-	for _, param := range inst.Params {
-		if param == "" {
-			continue
-		}
-		if _, ok := targets[param]; !ok {
-			diags = append(diags, errorAt(inst.ParamPositions[param], "E4242", "INSTANCE parameter %s is not a CONSTANT or VARIABLE of module %s", param, inst.Module))
-			continue
-		}
-		if prev, ok := seen[param]; ok {
-			diags = append(diags, errorAt(inst.ParamPositions[param], "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", param, prev))
-			continue
-		}
-		seen[param] = inst.ParamPositions[param]
-	}
 	for name, target := range targets {
 		if _, ok := seen[name]; ok {
 			continue
