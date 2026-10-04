@@ -528,6 +528,7 @@ func (mc *ModelChecker) GetProgress() int64 {
 }
 
 func (mc *ModelChecker) GetStatistics() Value {
+	ensureTLCGetSetUniqueStrings()
 	if mc == nil {
 		return EmptyRecord
 	}
@@ -567,6 +568,7 @@ func (mc *ModelChecker) GetConfig() Value {
 }
 
 func (c *AbstractChecker) createConfig() Value {
+	ensureTLCGetSetUniqueStrings()
 	if c == nil {
 		return EmptyRecord
 	}

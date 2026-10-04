@@ -179,15 +179,12 @@ func (t *InternTable) slotAt(index int) (*UniqueString, bool) {
 func SetUniqueStringSource(source InternSource) { internTable.SetSource(source) }
 
 // UniqueStringInitializeWithSource starts a fresh worker interning context.
-// Go's eager built-in names are recreated only after installing the source.
+// Java class-static names are initialized on first use in the new context.
 // Call this during bootstrap, before constructing the worker's Tool or values.
 func UniqueStringInitializeWithSource(source InternSource) {
 	internTable = NewInternTable(1024)
 	internTable.SetSource(source)
-	initBuiltInOPs()
-	initCounterExampleUniqueStrings()
-	initTLCGetSetUniqueStrings()
-	initTLCExtUniqueStrings()
+	resetBuiltInOPNames()
 }
 
 func (s *TLCServer) Intern(str string) (*UniqueString, error) {

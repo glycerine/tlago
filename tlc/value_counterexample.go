@@ -3,23 +3,25 @@ package tlc
 import "strings"
 
 var (
-	counterExampleStates  = UniqueStringOf("state")
-	counterExampleActions = UniqueStringOf("action")
-	counterExampleConsole = UniqueStringOf("console")
-	actionRecordName      = UniqueStringOf("name")
-	actionRecordLocation  = UniqueStringOf("location")
-	actionRecordContext   = UniqueStringOf("context")
-	actionRecordParams    = UniqueStringOf("parameters")
-	locationBeginLine     = UniqueStringOf("beginLine")
-	locationBeginColumn   = UniqueStringOf("beginColumn")
-	locationEndLine       = UniqueStringOf("endLine")
-	locationEndColumn     = UniqueStringOf("endColumn")
-	locationModule        = UniqueStringOf("module")
+	counterExampleStates  *UniqueString
+	counterExampleActions *UniqueString
+	counterExampleConsole *UniqueString
+	actionRecordName      *UniqueString
+	actionRecordLocation  *UniqueString
+	actionRecordContext   *UniqueString
+	actionRecordParams    *UniqueString
+	locationBeginLine     *UniqueString
+	locationBeginColumn   *UniqueString
+	locationEndLine       *UniqueString
+	locationEndColumn     *UniqueString
+	locationModule        *UniqueString
 )
 
 // Refresh Java's class-static names when a fresh worker interning context is
 // installed. Their tokens must come from the source rather than the discarded
 // Go package-initialization context.
+var counterExampleClassInterning classInterning
+
 func initCounterExampleUniqueStrings() {
 	counterExampleStates = UniqueStringOf("state")
 	counterExampleActions = UniqueStringOf("action")
@@ -40,6 +42,7 @@ type CounterExample struct {
 }
 
 func NewCounterExample(trace []*TLCStateInfo, action *Action, loopOrdinal int, isConsole bool) *CounterExample {
+	ensureCounterExampleUniqueStrings()
 	if action == nil {
 		action = UnknownAction
 	}
@@ -82,6 +85,7 @@ func NewCounterExample(trace []*TLCStateInfo, action *Action, loopOrdinal int, i
 }
 
 func NewEmptyCounterExample() *CounterExample {
+	ensureCounterExampleUniqueStrings()
 	return NewCounterExample(nil, UnknownAction, 0, true)
 }
 
@@ -105,6 +109,7 @@ func NewCounterExampleFromStateVec(vec *StateVec) *CounterExample {
 }
 
 func (c *CounterExample) ToTrace() Value {
+	ensureCounterExampleUniqueStrings()
 	if c == nil || c.RecordValue == nil {
 		return EmptyTuple
 	}
@@ -135,6 +140,7 @@ func (c *CounterExample) ToTrace() Value {
 }
 
 func stateInfoRecordValue(info *TLCStateInfo) Value {
+	ensureCounterExampleUniqueStrings()
 	if info == nil {
 		return EmptyRecord
 	}
@@ -188,6 +194,7 @@ func (a *Action) ToRecordValue() *RecordValue {
 }
 
 func actionRecordValue(a *Action, extraName *UniqueString, extraValue Value) *RecordValue {
+	ensureCounterExampleUniqueStrings()
 	if a == nil {
 		a = UnknownAction
 	}
@@ -214,6 +221,7 @@ func actionRecordValue(a *Action, extraName *UniqueString, extraValue Value) *Re
 }
 
 func sourceLocationRecordValue(location SourceLocation) *RecordValue {
+	ensureCounterExampleUniqueStrings()
 	return NewRecordValue(
 		[]*UniqueString{locationBeginLine, locationBeginColumn, locationEndLine, locationEndColumn, locationModule},
 		[]Value{
@@ -225,4 +233,8 @@ func sourceLocationRecordValue(location SourceLocation) *RecordValue {
 		},
 		false,
 	)
+}
+
+func ensureCounterExampleUniqueStrings() {
+	counterExampleClassInterning.ensure(initCounterExampleUniqueStrings)
 }

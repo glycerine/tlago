@@ -4409,3 +4409,167 @@ Java80447 handle needs terminal confirmation. Temporary capture helper lives
 only in untracked tlc_examples_liveness_java_test.go; remove all probes before
 final testing/commit. Captures stay ignored under .codex-gotmp. No production
 edit yet. Preceding three-test batch verified and ready to commit independently.
+
+2026-10-04: Three-test batch committed df08ad9 after full workspace green.
+Token probes now terminal: Go20034 fails original ACP assertion as expected,
+Java80447 passes. Go ACP model tokens127..135 versusJava1..9. Explicit eager
+built-in allocation before config is a confirmed parity gap; no production
+correction made yet. Graph roots differ at initialization accordingly.
+All temporary graph/token capture hooks removed from untracked example test;
+ignored diagnostic artifacts retained. All check/probe handles terminal.
+Nine original example translations remain untracked/uncredited; fix ACP/Aba
+before running remaining six. Fifteen Java example references pass unchanged
+across first/second/third preflights. Current inventory817/1269 unchanged.
+
+2026-10-04: Production initialization correction in progress, after df08ad9.
+Added classInterning atomic-context/mutex guard; built-in operator names and
+CounterExample/TLCGetSet/TLCExt class-static names now initialize on first use
+in the current interner. Fresh contexts no longer eagerly allocate126 names
+before ModelConfig. Exported builtin names stay available as unregistered
+names; opcode/builtin-node entry points canonicalize them. UniqueString token,
+comparison/equality/fingerprint/serialization access resolves unregistered
+names while retaining signed real tokens unchanged. Cached record fields in
+checker, simulator, simulation statistics and Possible tracking initialize
+before construction; no new tests or weakened assertions.
+Focused51379 terminal1 (97.745s): ACP original postcondition now passes,
+Aba still fails; Async passes. Initial TLC package26994 terminal1 (60.312s)
+failed only existing simulator aril record test due stale cached names before
+construction. Added guards; focused17057 terminal0 (0.011s), full TLC31882
+terminal0 (67.012s). Subsequent explicit unregistered flag and bridge change
+need final current-source gates; these package runs are earlier snapshots.
+Java ABA variable/graph probe46648 terminal0. Go59826 terminal1 (66.566s):
+variable slots and initial fingerprints match Java, but graphs2/3 initialize
+all sixteen states in reverse order. Java StringValue comparison uses token
+order, and StringNode interns unquoted values during semantic generation;
+Go's alphabetical runtime definition conversion interned V1 beforeV0.
+Bridge now interns these StringNode values in Spec.SemanticOrder and source
+order before runtime conversion. Temporary graph/token hooks removed again;
+all diagnostic artifacts ignored. Focused unchanged three examples64460 live
+with15m deadline; poll before advancing to remaining six. No example contexts
+credited yet; inventory817/1269 unchanged. All other handles terminal/retired.
+
+2026-10-04: Current-source first three examples64460 PASS102.519s, terminal0.
+Both originally failing full postconditions now pass unchanged, confirming
+lazy class interning and semantic StringNode interning fixes. Async passes too.
+Remaining six normal examples and all-nine race runs launched; inventory
+stays817/1269 until full original method/settings fidelity and gates verified.
+No temporary probes in Go. Final broad/full TLC race gates still required.
+
+2026-10-04: Remaining examples classpath setup correction.
+First normal-six launch was terminal1 immediately: BcastByz imported Functions
+from the original tool manifest's CommunityModules.jar, absent from Go test
+classpath. No source assertion changed; setJavaExampleClasspath supplies the
+same existing archive as earlier Github858/KSubset original ports. It applies
+to all nine example constructors. Race89900 compiled before setup correction,
+explicitly interrupted130 and retired as superseded; no race pass claimed.
+Normal-six current setup80684 is live with30m deadline. Poll before advancing;
+full original assertions and fixtures retained. All other handles terminal.
+Full nine race and broad workspace/full TLC race checks remain pending.
+Inventory817/1269 unchanged; new examples uncredited. No temporary Go probes.
+
+2026-10-04: All nine original example contexts now pass unchanged.
+First three normal64460 PASS102.519s; remaining six80684 PASS152.124s,
+terminal0 and retired, with original manifest classpath supplied. All20 fixtures
+byte-identical, all nine original Java references pass. Inventory826/1269
+(65.1%),391/626 complete classes;443 contexts/235 classes pending,one partial.
+All twenty topic totals verified. Whole methods marked Port complete; broad
+verification pending. Mechanical source audit caught StringNode's parser
+escape reduction: semantic interning now uses existing reduceTLAString before
+interning, matching N_String and runtime conversion. Earlier workspace48783
+and nine-race67934 explicitly stopped130/retired because this actual source
+correction superseded their snapshots, not observation timeout or test failure.
+Current-source workspace63499 and nine-race52483 live with45m deadlines.
+Full TLC race3635 remains live and applicable: escape reduction changed only
+root bridge, no tlc package code since its compilation. Logs
+examples-nine-workspace-current.log, examples-nine-race-current.log and
+examples-nine-tlc-race-final.log. Poll these exact handles; do not restart
+without new evidence/source correction. All other handles terminal/retired.
+Final commit pending all current-source gates. No temporary Go probes, invented
+tests, weakened assertions or additional skips. Goal active; excluded topics
+unchanged. Third Java preflight six models remain unported/uncredited.
+
+2026-10-04: Full TLC race3635 PASS621.014s, terminal0 and retired.
+Current workspace63499 and nine-root-race52483 still live. ACP327.32s,
+Aba620.31s, Async37.43s and BcastByz6.99s pass under race instrumentation;
+remaining five still run. No race reports or failures observed. Do not claim
+the whole nine-test race run or workspace green until terminal confirmation.
+Reverified all20 new fixtures byte-for-byte and all original property aliases;
+14 fixtures retain original whitespace. Go/doc diff whitespace check passes.
+Prepared ignored six-method preview and21 exact source-fixture mappings for
+EWD840/EWD998ChanID/EWD998/EnvironmentController/Huang/LiveHourClock; no
+active Go source or fixture changes, no additional inventory credit. Correct
+original property aliases include TokenAwayFromZero and ClockSettles.
+Fourth unchanged Java preflight43729 terminal0 PASS all six LockHS/
+MCAlternatingBit/MCEWD687a/MCLiveInternalMemory/MCLiveWriteThroughCache/
+MCWriteThroughCache. Logs examples-fourth-*-junit.log and preflight summary
+examples-fourth-java-preflight.log; these also remain unported and uncredited.
+Only workspace63499 and nine-root-race52483 are live. Final commit pending.
+
+2026-10-04: Read-only reference preparation during current gates. All six
+unchanged graph-helper Java classes compile and pass48 tests (JUnit0.064s):
+DiskGraphTest, GraphNodeTest, LiveExprNodeTest, TBParTest, TableauDiskGraphTest
+and TableauNodePtrTableTest. Logs graph-helpers-javac.log and
+graph-helpers-junit.log under ignored correctness-java scratch. No Go source
+translation or inventory credit; current compiled snapshots remain unchanged.
+Workspace63499 and nine-root-race52483 still live. TLC race621.014s green.
+
+2026-10-04: Current batch staged explicitly for the authorized commit; no
+commit until remaining live gates finish. All38 intended paths staged.
+Staged Go/docs/non-whitespace vectors pass git diff --cached --check, excluding
+only14 byte-identical original fixture paths with source whitespace. Full
+source-method audit accounts for39/39 original assertions, nine @Test methods,
+inherited exit statuses and all five settings overrides; no temporary probes.
+Race52483 has six complete PASS results (including BlockingQueue29.22s),
+currently BufferedRandomAccessFile advancing. Workspace63499 live, no output
+yet. Poll these two exact handles; do not restart. Full TLC race621.014s PASS.
+
+2026-10-04: Verified wait, both exact handles63499/52483 confirmed live.
+BufferedRandomAccessFile original race test PASS613.66s including unchanged
+postcondition, original final mode/symmetry/settings. Seven of nine race tests
+complete; Cf1sFolklore now running, CoffeeCan100Beans remains last. Workspace
+still active with no output. No failing assertion or race report observed.
+No source mutations or reruns; staged batch commit still awaits both gates.
+
+2026-10-04: Full nine original examples race52483 PASS2259.397s, terminal0
+and retired. All original settings/assertions/postconditions pass unchanged;
+no race reports. Last two: Cf1sFolklore443.05s, CoffeeCan100Beans33.50s.
+Full TLC race621.014s also green and retired. Only workspace63499 remains
+live with45m deadline. No source changes during verification. Current38-path
+batch staged; final commit awaits authoritative workspace result. Poll only
+63499; do not restart on observation timeout. Goal active, inventory826/1269.
+
+2026-10-04: Workspace63499 terminal1/retired after45m (root2700.773s,
+SANY0.932s/TLC67.085s green). Original TraceExpressionSpecLasso ran29m27s
+with infinite x and millions of states: explicit -lncheck final from new
+examples leaked into its required default partial checking. Isolated source
+lasso49223 PASS5.063s, terminal0/retired. Source CommonTestCase annotation
+uses IsolatedTestCaseRunner, isolating TLC statics; TLCGlobals.lnCheck defaults
+to default. Fix Go source-test runner's isolation by resetting LNCheck before
+parsing each class's original flags and restoring the outer value at cleanup.
+Production CLI mutation/semantics and all original assertions remain unchanged.
+No invented regression test: run two existing complete source translations
+CoffeeCan100Beans followed by TraceExpressionSpecLasso. Normal49414 PASS
+9.342s, terminal0/retired; paired race71225 live5m. Current-source full
+workspace4745 live45m, log examples-nine-workspace-isolated.log. Poll only
+these two handles. Nine-example race2259.397s and full TLC race621.014s
+remain applicable to unchanged production and original explicit example flags;
+new race pair verifies isolation. Commit held, inventory826/1269 unchanged.
+
+2026-10-04: Existing original CoffeeCan+Lasso pair race71225 PASS43.336s,
+terminal0/retired. Lasso7.52s including complete generated-tool assertions.
+Both normal/race combined runs prove the corrected per-class strategy
+isolation without changing source flags/assertions. Only workspace4745 live;
+no other live handles. Current39-path batch staged, final commit awaits full
+current-source workspace gate. Do not restart4745 on observation timeout.
+
+2026-10-04: Corrected full offline workspace4745 PASS: root1124.830s,
+SANY0.916s,TLC65.751s; terminal0 and retired. No live verification handles.
+All required current-batch gates green: full TLC race621.014s, nine original
+example race2259.397s and corrected CoffeeCan+Lasso race43.336s. Original
+39/39 assertions, nine inherited exits/settings and20 byte-exact fixtures
+preserved; Java checkout still8f4bc8b73ad1202774a6bf70143436f8ba50aab0.
+All39 intended paths staged, final review whitespace gate green except14
+pristine Java vector paths. Ready to commit initialization parity fixes,
+nine complete source methods and faithful per-class strategy isolation.
+Inventory826/1269 (65.1%),391/626 classes;443 contexts remain. Goal active,
+user exclusions retained; next six source examples still unported/uncredited.

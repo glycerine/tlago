@@ -362,6 +362,26 @@ func internTLCSourceSyntaxNames(spec *Spec) {
 			}
 		}
 	}
+	// SANY StringNode strips the quotes and interns its value while generating
+	// each module's semantic tree. Runtime conversion below may visit definitions
+	// in another order; create these names in the front end's semantic order first.
+	semanticModules := append([]string(nil), spec.SemanticOrder...)
+	if len(semanticModules) == 0 && spec.Root != nil {
+		semanticModules = append(semanticModules, spec.Root.Name)
+	}
+	for _, name := range semanticModules {
+		mod := spec.Modules[name]
+		if mod == nil {
+			continue
+		}
+		tokens, _ := NewSanyTokenManager(mod.SourcePath, mod.Source).LexAll()
+		for _, token := range tokens {
+			if token.Kind == SanyTokenStringLiteral && len(token.Image) >= 2 {
+				tlc.UniqueStringOf(reduceTLAString(token.Image))
+			}
+		}
+	}
+
 }
 
 func (b *tlcBridge) installVariables() {

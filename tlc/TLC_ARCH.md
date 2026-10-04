@@ -4713,3 +4713,27 @@ veto only preserves metadata and does not retain graph handles. The original
 CodePlexBug08 tests set the explicit property, flush the retained graphs and
 check actual nodes_0/ptrs_0 sizes. Their Go teardown closes all retained graphs
 after those assertions, before restoring checker statics or removing metadata.
+
+2026-10-04 initialization parity discovered by original example postconditions:
+Java parses ModelConfig before first active use of the built-in operator and
+native-module classes. Their cached UniqueStrings therefore initialize lazily
+within the current worker/classloader context. Eager Go package initialization
+had allocated126 tokens before ACP's config model values, changing fingerprints
+and the selected counterexample. classInterning now guards each class's names
+with a per-context atomic fast path and mutex. Exported built-in names remain
+available as unregistered names until first use; runtime nodes canonicalize them.
+Config/model fingerprints still use actual UniqueString tokens, as Java does.
+SANY StringNode also interns its unquoted value during semantic generation.
+The bridge preserves that semantic module/source order before visiting runtime
+definitions, whose alphabetical conversion must not choose string tokens or
+function-set enumeration order. Existing checker/simulator records initialize
+cached keys before constructing their field arrays. All nine original example
+methods pass and are credited; see progress for broad and race verification.
+
+The original CommonTestCase isolates TLC statics per test class with
+IsolatedTestCaseRunner. CLI parsing writes -lncheck into TLCGlobals; its
+default must therefore be fresh for later source classes, including the
+infinite-state trace-expression lasso test requiring partial liveness checks.
+The Go source-test runner resets LNCheck to default before parsing the
+original class's flags and restores its outer value afterward. Production CLI
+behavior and each original explicit strategy remain unchanged.

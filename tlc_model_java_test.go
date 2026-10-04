@@ -125,6 +125,7 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
 	oldContinuation := tlc.Globals.Continuation
+	oldLNCheck := tlc.Globals.LNCheck
 	oldUseView := tlc.UseView()
 	oldSetBound := tlc.Globals.SetBound
 	oldPoly := tlc.FP64IrredPoly()
@@ -144,6 +145,9 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false
+	// The source runner's fresh classloader restores the default strategy.
+	// ParseTLCOptions writes -lncheck into the shared runtime globals.
+	tlc.Globals.LNCheck = "default"
 	tlc.SetUseView(false)
 	tlc.Globals.SetBound = 1000000
 	t.Cleanup(func() {
@@ -155,6 +159,7 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 		tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator = oldWorkers, oldMain, oldSimulator
 		tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime = oldTool, oldDFID, oldStart
 		tlc.Globals.Continuation = oldContinuation
+		tlc.Globals.LNCheck = oldLNCheck
 		tlc.SetUseView(oldUseView)
 		tlc.Globals.SetBound = oldSetBound
 		tlc.FP64InitPoly(oldPoly)

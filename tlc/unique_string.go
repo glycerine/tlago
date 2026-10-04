@@ -12,9 +12,10 @@ import (
 )
 
 type UniqueString struct {
-	s   string
-	tok int
-	loc int
+	s            string
+	tok          int
+	loc          int
+	unregistered bool
 }
 
 var internTable = NewInternTable(1024)
@@ -75,6 +76,9 @@ func (u *UniqueString) Token() int {
 	if u == nil {
 		return 0
 	}
+	if u.unregistered {
+		return UniqueStringOf(u.s).Token()
+	}
 	return u.tok
 }
 
@@ -120,26 +124,26 @@ func (u *UniqueString) Compare(other *UniqueString) int {
 		if other == nil {
 			return 0
 		}
-		return -other.tok
+		return -other.Token()
 	}
 	if other == nil {
-		return u.tok
+		return u.Token()
 	}
-	return int(int32(u.tok) - int32(other.tok))
+	return int(int32(u.Token()) - int32(other.Token()))
 }
 
 func (u *UniqueString) Equal(other *UniqueString) bool {
 	if u == nil || other == nil {
 		return u == other
 	}
-	return u.tok == other.tok
+	return u.Token() == other.Token()
 }
 
 func (u *UniqueString) FingerPrint(fp uint64) uint64 {
 	if u == nil {
 		return fp
 	}
-	return FP64ExtendInt(fp, int32(u.tok))
+	return FP64ExtendInt(fp, int32(u.Token()))
 }
 
 func (u *UniqueString) StartsWith(prefix string) bool {
@@ -272,7 +276,7 @@ func writeJavaUniqueStringWithVarCount(out *ValueOutputStream, us *UniqueString,
 	if us == nil {
 		panic(NewNullPointerException())
 	}
-	if err := out.WriteInt(int32(us.tok)); err != nil {
+	if err := out.WriteInt(int32(us.Token())); err != nil {
 		return err
 	}
 	loc := -1

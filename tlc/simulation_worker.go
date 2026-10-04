@@ -264,6 +264,7 @@ func (s *SimulationWorkerStatistics) GetNextRetries() Value {
 }
 
 func (s *SimulationWorkerStatistics) GetTraceStatistics(state *TLCStateMut) Value {
+	ensureTLCGetSetUniqueStrings()
 	actionCounts := NewInsMap[*UniqueString, Value]()
 	for cur := state; cur != nil && !cur.IsInitial(); cur = cur.Predecessor() {
 		action := cur.GetAction()

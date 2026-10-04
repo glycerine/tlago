@@ -358,6 +358,10 @@ func NewOpApplNode(operator *SymbolNode, args ...SemanticNode) *OpApplNode {
 }
 
 func NewBuiltinOpApplNode(op *UniqueString, args ...SemanticNode) *OpApplNode {
+	ensureBuiltInOPs()
+	if op != nil {
+		op = UniqueStringOf(op.String())
+	}
 	return NewOpApplNode(&SymbolNode{Name: op}, args...)
 }
 

@@ -13,59 +13,61 @@ import (
 const TLCNamedRegisterPrefix = "s:"
 
 var (
-	tlcSetExit  = UniqueStringOf("exit")
-	tlcSetPause = UniqueStringOf("pause")
+	tlcSetExit  *UniqueString
+	tlcSetPause *UniqueString
 
-	tlcGetConfig         = UniqueStringOf("config")
-	tlcGetSpec           = UniqueStringOf("spec")
-	tlcGetCoverage       = UniqueStringOf("coverage")
-	tlcGetAction         = UniqueStringOf("action")
-	tlcGetInstall        = UniqueStringOf("install")
-	tlcGetID             = UniqueStringOf("id")
-	tlcGetBehavior       = UniqueStringOf("behavior")
-	tlcGetAll            = UniqueStringOf("all")
-	tlcGetAllNamed       = UniqueStringOf("all:named")
-	tlcGetMode           = UniqueStringOf("mode")
-	tlcGetDeadlock       = UniqueStringOf("deadlock")
-	tlcGetSeed           = UniqueStringOf("seed")
-	tlcGetFingerprint    = UniqueStringOf("fingerprint")
-	tlcGetWorker         = UniqueStringOf("worker")
-	tlcGetTraces         = UniqueStringOf("traces")
-	tlcGetDepth          = UniqueStringOf("depth")
-	tlcGetAril           = UniqueStringOf("aril")
-	tlcGetSched          = UniqueStringOf("sched")
-	tlcGetRevision       = UniqueStringOf("revision")
-	tlcGetLevel          = UniqueStringOf("level")
-	tlcGetStats          = UniqueStringOf("stats")
-	tlcGetDuration       = UniqueStringOf("duration")
-	tlcGetGenerated      = UniqueStringOf("generated")
-	tlcGetDiameter       = UniqueStringOf("diameter")
-	tlcGetDistinct       = UniqueStringOf("distinct")
-	tlcGetInitial        = UniqueStringOf("initial")
-	tlcGetQueue          = UniqueStringOf("queue")
-	tlcGetRetries        = UniqueStringOf("retries")
-	tlcGetDistinctValues = UniqueStringOf("distinctvalues")
-	tlcGetLevelMean      = UniqueStringOf("levelmean")
-	tlcGetLevelVar       = UniqueStringOf("levelvariance")
-	tlcGetCount          = UniqueStringOf("count")
-	tlcRevTimestamp      = UniqueStringOf("timestamp")
-	tlcRevDate           = UniqueStringOf("date")
-	tlcRevTag            = UniqueStringOf("tag")
-	tlcRevCalver         = UniqueStringOf("calver")
-	tlcSpecInits         = UniqueStringOf("inits")
-	tlcSpecActions       = UniqueStringOf("actions")
-	tlcSpecTemporals     = UniqueStringOf("temporals")
-	tlcSpecInvs          = UniqueStringOf("invariants")
-	tlcSpecImplInits     = UniqueStringOf("impliedinits")
-	tlcSpecImplActs      = UniqueStringOf("impliedactions")
-	tlcSpecImplTemps     = UniqueStringOf("impliedtemporals")
-	tlcSpecVars          = UniqueStringOf("variables")
-	tlcSpecActCons       = UniqueStringOf("actionconstraints")
-	tlcSpecCons          = UniqueStringOf("constraints")
+	tlcGetConfig         *UniqueString
+	tlcGetSpec           *UniqueString
+	tlcGetCoverage       *UniqueString
+	tlcGetAction         *UniqueString
+	tlcGetInstall        *UniqueString
+	tlcGetID             *UniqueString
+	tlcGetBehavior       *UniqueString
+	tlcGetAll            *UniqueString
+	tlcGetAllNamed       *UniqueString
+	tlcGetMode           *UniqueString
+	tlcGetDeadlock       *UniqueString
+	tlcGetSeed           *UniqueString
+	tlcGetFingerprint    *UniqueString
+	tlcGetWorker         *UniqueString
+	tlcGetTraces         *UniqueString
+	tlcGetDepth          *UniqueString
+	tlcGetAril           *UniqueString
+	tlcGetSched          *UniqueString
+	tlcGetRevision       *UniqueString
+	tlcGetLevel          *UniqueString
+	tlcGetStats          *UniqueString
+	tlcGetDuration       *UniqueString
+	tlcGetGenerated      *UniqueString
+	tlcGetDiameter       *UniqueString
+	tlcGetDistinct       *UniqueString
+	tlcGetInitial        *UniqueString
+	tlcGetQueue          *UniqueString
+	tlcGetRetries        *UniqueString
+	tlcGetDistinctValues *UniqueString
+	tlcGetLevelMean      *UniqueString
+	tlcGetLevelVar       *UniqueString
+	tlcGetCount          *UniqueString
+	tlcRevTimestamp      *UniqueString
+	tlcRevDate           *UniqueString
+	tlcRevTag            *UniqueString
+	tlcRevCalver         *UniqueString
+	tlcSpecInits         *UniqueString
+	tlcSpecActions       *UniqueString
+	tlcSpecTemporals     *UniqueString
+	tlcSpecInvs          *UniqueString
+	tlcSpecImplInits     *UniqueString
+	tlcSpecImplActs      *UniqueString
+	tlcSpecImplTemps     *UniqueString
+	tlcSpecVars          *UniqueString
+	tlcSpecActCons       *UniqueString
+	tlcSpecCons          *UniqueString
 )
 
 // Refresh class-static register keys when installing a fresh interning context.
 // Java initializes TLCGetSet within that worker or test classloader.
+var tlcGetSetClassInterning classInterning
+
 func initTLCGetSetUniqueStrings() {
 	tlcSetExit = UniqueStringOf("exit")
 	tlcSetPause = UniqueStringOf("pause")
@@ -127,6 +129,7 @@ func TLCGet(vidx Value) (Value, error) {
 }
 
 func TLCGetValue(tool *Tool, vidx Value, s0 *TLCStateMut, s1 *TLCStateMut, control int) (Value, error) {
+	ensureTLCGetSetUniqueStrings()
 	_ = s1
 	switch idx := vidx.(type) {
 	case *IntValue:
@@ -252,6 +255,7 @@ func tlcGetStringValue(tool *Tool, vidx *StringValue, s0 *TLCStateMut, control i
 }
 
 func TLCSet(vidx Value, val Value) (Value, error) {
+	ensureTLCGetSetUniqueStrings()
 	switch idx := vidx.(type) {
 	case *IntValue:
 		if idx.Val < 0 {
@@ -396,6 +400,7 @@ func TLCGetOrDefault(vidx Value, defVal Value) (Value, error) {
 }
 
 func tlcSpecRecord(tool *Tool) Value {
+	ensureTLCGetSetUniqueStrings()
 	if tool == nil {
 		tool = NewTool()
 	}
@@ -427,6 +432,7 @@ func tlcSpecRecord(tool *Tool) Value {
 }
 
 func tlcRevisionRecord() Value {
+	ensureTLCGetSetUniqueStrings()
 	buildDate := TLCBuildDate().UTC()
 	names := []*UniqueString{
 		tlcGetCount,
@@ -478,6 +484,7 @@ func actionSetValue(actions []*Action, convert func(*Action) Value) Value {
 }
 
 func nextActionRecordValue(action *Action) Value {
+	ensureTLCGetSetUniqueStrings()
 	if action != nil && action.CM.HasValues() {
 		coverage := NewRecordValue(
 			[]*UniqueString{tlcGetGenerated, tlcGetDistinct},
@@ -490,6 +497,7 @@ func nextActionRecordValue(action *Action) Value {
 }
 
 func initActionRecordValue(action *Action) Value {
+	ensureTLCGetSetUniqueStrings()
 	if action != nil && action.CM.HasValues() {
 		coverage := NewRecordValue(
 			[]*UniqueString{tlcGetGenerated, tlcGetDistinct},
@@ -502,6 +510,8 @@ func initActionRecordValue(action *Action) Value {
 }
 
 func propertyActionRecordValue(action *Action) Value {
+	ensureTLCGetSetUniqueStrings()
+	ensureCounterExampleUniqueStrings()
 	if action != nil && action.CM.HasValues() {
 		child := action.CM.GetChild()
 		coverage := NewRecordValue(
@@ -515,6 +525,8 @@ func propertyActionRecordValue(action *Action) Value {
 }
 
 func actionRecordValueWithCoverage(action *Action, coverage Value) Value {
+	ensureTLCGetSetUniqueStrings()
+	ensureCounterExampleUniqueStrings()
 	if action == nil {
 		action = UnknownAction
 	}
@@ -535,6 +547,8 @@ func filterInternalActions(actions []*Action) []*Action {
 }
 
 func stateVariablesSetValue() Value {
+	ensureTLCGetSetUniqueStrings()
+	ensureCounterExampleUniqueStrings()
 	vars := StateVariables()
 	if len(vars) == 0 {
 		return EmptySet
@@ -569,6 +583,8 @@ func semanticNodeSetValue(tool *Tool, nodes []SemanticNode) Value {
 }
 
 func constraintRecordValue(tool *Tool, node SemanticNode) Value {
+	ensureTLCGetSetUniqueStrings()
+	ensureCounterExampleUniqueStrings()
 	switch value := SemanticToolObjectForTool(tool, node).(type) {
 	case *OpDefNode:
 		return opDefRecordValue(value)
@@ -583,6 +599,8 @@ func constraintRecordValue(tool *Tool, node SemanticNode) Value {
 }
 
 func opDefRecordValue(op *OpDefNode) Value {
+	ensureTLCGetSetUniqueStrings()
+	ensureCounterExampleUniqueStrings()
 	if op == nil {
 		return EmptyRecord
 	}
@@ -745,4 +763,8 @@ func saturatedIntValueFromInt64(value int64) *IntValue {
 		return NewIntValue(math.MinInt32)
 	}
 	return NewIntValue(int32(value))
+}
+
+func ensureTLCGetSetUniqueStrings() {
+	tlcGetSetClassInterning.ensure(initTLCGetSetUniqueStrings)
 }

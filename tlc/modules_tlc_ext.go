@@ -9,10 +9,12 @@ import (
 	"sync"
 )
 
-var possibleCountsKey = UniqueStringOf("s:_possible")
-var tlcExtActionField = UniqueStringOf("_action")
+var possibleCountsKey *UniqueString
+var tlcExtActionField *UniqueString
 
 // Refresh class-static extension names with the current worker interner.
+var tlcExtClassInterning classInterning
+
 func initTLCExtUniqueStrings() {
 	possibleCountsKey = UniqueStringOf("s:_possible")
 	tlcExtActionField = UniqueStringOf("_action")
@@ -219,6 +221,7 @@ func predecessorTraceTupleValue(state *TLCStateMut) Value {
 }
 
 func stateActionRecordValue(state *TLCStateMut, action *Action) *RecordValue {
+	ensureTLCExtUniqueStrings()
 	if state == nil {
 		return EmptyRecord
 	}
@@ -373,6 +376,7 @@ func valuesEqualForCache(left Value, right Value) (bool, error) {
 }
 
 func PossibleCounts() Value {
+	ensureTLCExtUniqueStrings()
 	values := []Value(nil)
 	if checker := MainChecker(); checker != nil {
 		values = append(values, checker.GetAllNamedValues(possibleCountsKey)...)
@@ -473,3 +477,5 @@ func TLCTraceState(state *TLCStateMut) Value {
 func JsonTraceState(state *TLCStateMut) Value {
 	return TLCTraceState(state)
 }
+
+func ensureTLCExtUniqueStrings() { tlcExtClassInterning.ensure(initTLCExtUniqueStrings) }

@@ -408,6 +408,7 @@ func (s *Simulator) GetAllNamedValues(key *UniqueString) []Value {
 }
 
 func (s *Simulator) GetStatistics(state *TLCStateMut) Value {
+	ensureTLCGetSetUniqueStrings()
 	stats := s.currentWorkerStatistics()
 	m2AndMean := s.WelfordM2Mean.Load()
 	mean := int64(m2AndMean & 0xffffffff)
@@ -476,6 +477,7 @@ func (s *Simulator) GetConfig() Value {
 }
 
 func (s *Simulator) createConfig() Value {
+	ensureTLCGetSetUniqueStrings()
 	if s == nil {
 		return EmptyRecord
 	}

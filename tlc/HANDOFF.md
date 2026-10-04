@@ -6,27 +6,40 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-2026-10-04 current batch: EmptyOrderOfSolutionsTest and
-ErrorTraceConstructionTest plus its actual generated TTrace recheck translated
-in tlc_error_trace_construction_java_test.go. All three unchanged Java references
-and focused Go pass; five complete race repetitions pass (72.075s). Full offline
-workspace72345 passes (root833.142s,SANY0.917s,TLC62.190s); terminal and retired. This verifies the three-test batch before new examples compiled.
-No production changes since9967273; full TLC race564.061s remains applicable.
-Five new fixtures are byte-identical; original exits/settings/diagnostics/full
-traces/exact graph sizes/loop-back actions/coverage preserved.
-Inventory817/1269 contexts (64.4%),382/626 complete classes;452 contexts across
-244 classes remain,one partial. All twenty topic rows verified. Next unchanged
-Java references ExamplesACPNBTLCTest, ExamplesAbaAsynByzTest and
-ExamplesAsyncTerminationDetectionTest pass in Java. Nine new example tests are
-untracked and uncredited; ACP and Aba Go postcondition assertions fail, Async
-passes. Do not advance to remaining six before fixing these failures.
-Keep original -lncheck final and disabled debugger/generation/DOT/JSON/coverage.
-Investigate eager Go built-in interning before config: Java ACP model tokens
-are1..9, graph fingerprints differ already at initial state. Go token probe20034
-live; Java80447 needs terminal confirmation. Remove temporary graph-capture
-helper from untracked examples test after diagnosis. Read progress tail.
-The five user-deferred topics and checkpoint FL2 variant remain deferred.
-Previous batch committed9967273 with clean worktree and green checks.
+2026-10-04 current batch: nine original Examples liveness tests translated
+in tlc_examples_liveness_java_test.go with20 byte-exact fixtures and original
+manifest CommunityModules classpath. All nine unchanged Java and focused Go
+runs pass (first three102.519s,remaining six152.124s). Whole methods marked
+Port complete; inventory826/1269 (65.1%),391/626 classes;443 contexts/235 classes
+pending,one partial. All twenty topic rows verified. Two production fixes:
+lazy per-context class-static interning restores config model tokens1..9 versus
+127..135, making ACP's postcondition pass; source-ordered semantic StringNode
+interning restores function-set initial order, making Aba's postcondition pass.
+Escape reduction uses the existing parser reduceTLAString. Cached record keys
+initialize before constructing checker/simulator/statistics/Possible records.
+Full nine root race52483 PASS2259.397s and full TLC race3635 PASS621.014s,
+terminal0 and retired. Workspace63499 terminal1 after45m: original
+TestJavaTraceExpressionSpecLasso explores indefinitely because -lncheck final
+leaked from examples into later source tests. It passes isolated49223(5.063s).
+The original CommonTestCase uses IsolatedTestCaseRunner/fresh TLC globals;
+TLCGlobals.lnCheck defaults to default. Go helper now resets/restores LNCheck
+per source test class, preserving every explicit -lncheck flag and assertion.
+Paired original CoffeeCan+Lasso normal49414 PASS9.342s, terminal0/retired;
+paired race71225 PASS43.336s, terminal0/retired. Current-source full
+workspace4745 PASS(root1124.830s,SANY0.916s,TLC65.751s), terminal0/retired.
+All verification handles terminal; required gates green. Nine-test batch ready
+for the authorized commit.
+Original39/39 assertions and20 exact fixtures retained; no temporary Go probes.
+All39 intended paths staged; helper/static-isolation correction included.
+Third Java preflight EWD840/EWD998ChanID/EWD998/EnvironmentController/Huang/
+LiveHourClock passes unchanged. Their six translations and21 fixture mappings
+are prepared only in ignored examples-next-six.go.preview and
+examples-next-six-fixtures.json; no active Go source or credit yet. Fourth
+Java preflight43729 PASS: LockHS/MCAlternatingBit/MCEWD687a/
+MCLiveInternalMemory/MCLiveWriteThroughCache/MCWriteThroughCache; terminal0
+and retired, no Go translation or credit. All source snapshots unchanged.
+Previous batch df08ad9 committed three contexts after full workspace/race green.
+Five user-deferred topics and checkpoint FL2 variant remain deferred.
 
 Priority user directive (2026-10-02): **email reporting is forbidden.** Stop
 email reporting and its dependency work immediately; it must consume no more

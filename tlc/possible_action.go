@@ -11,6 +11,7 @@ func NewPossibleAction(pred SemanticNode, con *Context, userPredicate *OpDefNode
 }
 
 func (t *Tool) evalPossibleTrackNode(node *PossibleTrackNode, c *Context, s0 *TLCStateMut, s1 *TLCStateMut, control int, cm CostModel) (Value, error) {
+	ensureTLCExtUniqueStrings()
 	if node == nil {
 		return BoolTrue, nil
 	}
