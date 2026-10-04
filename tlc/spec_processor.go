@@ -1307,6 +1307,13 @@ func (p *SpecProcessor) attachSpecPropertyOrigin(action *Action, stack []Semanti
 	}
 	for _, node := range stack {
 		name := SemanticString(node)
+		if semantic, ok := node.(interface{ GetTreeNode() any }); ok {
+			if tree, ok := semantic.GetTreeNode().(interface{ GetHumanReadableImage() string }); ok {
+				// Java compares SyntaxTreeNode.toString(), not the semantic
+				// node's toString(), which normally contains its location.
+				name = tree.GetHumanReadableImage()
+			}
+		}
 		for _, property := range properties {
 			if name == property {
 				action.GetAuxiliary()[specProcessorPropertyAuxKey] = node
@@ -1389,6 +1396,7 @@ func (p *SpecProcessor) processConfigSpec(tool *Tool, pred SemanticNode, c *Cont
 		p.processConfigSpec(tool, node.Body, c, subs, stack)
 		return
 	case *OpApplNode:
+		stack = append(stack, node)
 		if p.processConfigSpecAppl(tool, node, c, subs, stack) {
 			return
 		}
@@ -1413,7 +1421,6 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 	if pred == nil || pred.Operator == nil {
 		return false
 	}
-	stack = append(stack, pred)
 	args := pred.Args
 	val := tool.Lookup(pred.Operator, c, EmptyState, false)
 	if len(args) == 0 {
@@ -1487,10 +1494,9 @@ func (p *SpecProcessor) processConfigSpecAppl(tool *Tool, pred *OpApplNode, c *C
 			}
 			return true
 		}
-		action := NewAction(SpecsAddSubsts(pred, subs), c, "")
-		p.Temporals = append(p.Temporals, action)
-		p.TemporalNames = append(p.TemporalNames, SemanticString(pred))
-		return true
+		// Other boxed formulas reach the common level-based handler, which
+		// also records their originating property from the complete stack.
+		return false
 	case OpcodeNop:
 		if len(args) > 0 {
 			p.processConfigSpec(tool, args[0], c, subs, stack)

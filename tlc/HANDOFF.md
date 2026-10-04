@@ -3101,3 +3101,65 @@ production signature/DOT corrections now. All process handles terminal. Inventor
 Next activate scratch Github1198 draft and complete fixture set; all6 originals
 pass JavaJUnit unchanged. Then1244/1302 originals already preflighted. Preserve
 full objective/deferred scope and fix implementation on every new red test.
+
+Current batch twelve source cases: Github1198a/b/c/d/f/h,1244/1244b/1244c,
+1302/1302b/1302c. All originalJavaJUnit pass unchanged (prior preflightlogs).
+InitialGo1198 ABC missing tautology warning, D/F/H pass. Production shortcut
+attachSpecPropertyOrigin compared SemanticString (source location) instead of
+Java getTreeNode().toString (syntax image). Now compares actual syntax image;
+synthetic in-memory nodes retain image fallback. Decomposition appends each
+OpAppl to stack in outer caller so level-handler sees complete original stack;
+non-next boxed formulas reach common temporal handler/property tagging, asJava.
+Unchanged1198 assertions now all PASS5.325s. ExactwarningpresenceABC/absenceDFH,
+3/2/0,depth2,zeroUncovered and all original defaults except coveragefalse.
+1244 three PASS3.646s, exactembeddedTLAconfig for first and cfgb/c, original
+noGenerateSpecTE/JSONfalse + debugger/coverage/DOTtrue. Initial/action/temporal
+parameter wrappers exercise production full lazy decomposition; no new fix needed.
+1302 three PASS3.645s; exactsimulator num=3/depth3 stats10/1/0,zeroUncovered;
+companioninitialInv exacttwofunctionstates and noStats/GENERAL,safety exit;
+fingerprintcompanion success2/1/0,noGENERAL. All original runner overrides and
+embeddedCONFIGs retained, including forcedtracegeneration for b/c. Only temp
+translation stringescaping/build typo corrected; no originalassertion weakening.
+14 originalfixture files byte-identical, inventory680/1269(53.6%),248/626(39.6%),
+589pendingcontexts/378classes(1partial); all12 markedPortcomplete. Baseline26e8396.
+Broadverification live: workspace54316,fullTLCrace18175,focusedrootrace68317,
+5runs of all12 + prior1161pair. Logs github1198-1302-{workspace,tlc-race,root-race}.
+Do not commit untilchecks green. Focusedhandles42719/75424/71085/17665 terminal.
+Goal active, deferredtopics unchanged; next original1389familyaftercheckpoint.
+
+Next originalGithub1389 family all7 JavaJUnit PASS unchanged: Counting,Loops,
+StateGuard,base,Violated,ViolatedB,ViolatedC. Exact14 model/config files copied
+only to ignoredJava scratch, classes compiled unchanged; logs original-<Class>-
+junit.log and github1389-javac.log. Javahandle81078 terminal; retire. No active
+Go1389 fixtures/tests/credit yet. All7 disable debugger/gen/DOT/JSON but retain
+coverage default true. Counting exactCountAtMostFour violation/safetyexit and
+postcondition assertions preserve ten-state alternating witness. Base success.
+Violated/B livenessexit,exactPropViolated/two-state x=0,1 trace + back-to1.
+ViolatedC livenessexit/postcondition assertions preserve shape with x-domain1..98.
+Loops/StateGuard exactSystemStackOverflow + noGENERAL and inheritedERROR exit;
+noFINISHED assertion. SourceLoops uses bad(FALSE) re-entering identicalarg;
+StateGuard uses op(x), unresolvable state guard during tableau construction.
+CurrentGo ASTToLive recurses with no recoverable execution-stack mechanism;
+Go runtime overflow is fatal, whereas JavaStackOverflowError is caught by TLC.
+Core already represents StackOverflowError and classifies it in runner. Faithful
+port must implement recoverable runtime-resource behavior, not weaken/skip these
+originals, invent arbitrary semantic recursion cutoffs, or run them in main
+agent process without accounting for Go's fatal native-stack behavior. Resolve
+production under test before moving to later cases. Overall goal remains active.
+
+Focused rootrace68317 PASS220.799s (5runs all12new + prior1161pair); retire68317.
+Workspace54316 and fullTLCrace18175 remain live. No production/assertion changes
+since verification launch. Only documentation/inventory bookkeeping afterward.
+
+Full workspace54316 PASS399.664s root,1.073s SANY,63.265s TLC; retire54316.
+Focusedrootrace5runs220.799s passed. FullTLCrace18175 remains live; commit only
+once final race check passes. Original assertions/fixtures unchanged throughout.
+
+FullTLCrace18175 PASS561.500s; retire18175. All final checks green after core
+property-origin correction: workspace399.664s root/1.073s SANY/63.265s TLC;
+fullTLCrace561.500s; focusedrootrace5runs220.799s(all12new +1161pair). Original
+14 fixtures byte-identical; whitespace checks clean. Commit twelvefaithful
+source ports/corefix/docinventory now. Inventory680/1269(53.6%),248/626(39.6%),
+589pendingcontexts/378classes. All processhandles terminal; next1389seven
+originals preflightedJavahealthy but not activated in Go. No invented regression
+or unit tests. Overallgoal active and full requestedscope/deferredtopics retained.

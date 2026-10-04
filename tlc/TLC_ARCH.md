@@ -4452,3 +4452,11 @@ properties passing an instance operator through nested wrappers.
 DOT fingerprints retain uint64 identity internally but use signed int64 decimal
 in output, matching Java Long.toString in initial nodes, transition endpoints,
 successor nodes and rank entries. The Github1147 golden graph checks every line.
+
+Fairness-property origin tagging compares actual source syntax text, as Java's
+SyntaxTreeNode.toString does, rather than semantic-node location text. The
+specification decomposition stack includes the current OpAppl when reaching the
+level-based handler, and non-next boxed formulas use that handler's origin
+tagging. Conjuncts retain separate copied stacks, and lazy formal references are
+removed before decomposing their original argument. This preserves the exact
+positive/negative tautology-warning distinctions in the Github1198 suite.
