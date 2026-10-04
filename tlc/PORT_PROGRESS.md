@@ -3892,3 +3892,25 @@ DistributedTrace fails assertNoTESpec (trace spec generated) and inherited
 SUCCESS0 versus actual safety12. Keep pending; do not weaken assertions or
 invent a skip. Logs original-DumpAsDotTest-junit.log and
 original-DistributedTrace-junit.log in ignored correctness-java scratch.
+
+2026-10-04: Github971a/b/c/d/e original testSpec and beforeSetUp queue wrappers
+translated. All five unchanged Java JUnit references pass. Seven original model/
+config fixtures match bytes. First focused Go run passes5.210s; five combined
+normal repetitions pass8.589s and five root race repetitions pass80.632s.
+Original two workers and three/four-dequeue CountDownLatch semantics retained:
+enqueue into MemStateQueue before selected-state await; count down before each
+single dequeue; delegate all other queue methods unchanged. Existing runner
+StateQueue injection represents Java's testing-only Factory.sq; no production
+changes needed. Original lncheck/config settings, no coverage/DOT/debugger/JSON/
+trace generation, diagnostics, exact counts/depth where asserted, property names,
+complete state/action/ordinal traces and loop-back2 assertions preserved. Go's
+Value.Equal error is propagated as Java's throwing equals, not discarded.
+No weakened assertions or invented tests. Full offline workspace passes
+(root424.096s, SANY1.056s, TLC62.045s); all check handles terminal. TLC production
+unchanged since9083c0d, whose full race passed567.289s. Inventory752/1269 contexts,317/626 complete classes;517 contexts/309
+classes pending,one partial. Issue-regression topic now98/98 classes and101/101
+contexts complete. Next eligible trace case DumpAsDotTest: unchanged Java passes,
+including exact DOT bytes; DistributedTrace remains pending with two original
+Java assertion failures, and two EWD840 DumpLoadTrace methods retain their
+previously documented timing discrepancy. Goal active; user-deferred topics
+unchanged.
