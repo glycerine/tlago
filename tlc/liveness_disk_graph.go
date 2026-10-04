@@ -449,7 +449,7 @@ func (g *DiskGraph) ToDotViz(oos *OrderOfSolution, labels map[uint64]string) str
 
 func (g *DiskGraph) GetPath(state uint64, tidxIgnored int) (*LongVec, error) {
 	if g == nil {
-		return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidxIgnored)
+		return nil, NewRuntimeException(fmt.Sprintf("Couldn't re-create liveness trace (path) starting at: %d and tidx: %d", int64(state), tidxIgnored))
 	}
 	numOfInits := g.InitNodes.Size()
 	for i := 0; i < numOfInits; i += 2 {
@@ -524,7 +524,7 @@ func (g *DiskGraph) GetPath(state uint64, tidxIgnored int) (*LongVec, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidxIgnored)
+	return nil, NewRuntimeException(fmt.Sprintf("Couldn't re-create liveness trace (path) starting at: %d and tidx: %d", int64(state), tidxIgnored))
 }
 
 func (g *DiskGraph) eachGraphNode(fn func(*GraphNode) error) error {

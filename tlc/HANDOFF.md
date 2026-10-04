@@ -6,48 +6,46 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-2026-10-04: Previous nine Examples tests, production initialization fixes and
-source-class LNCheck isolation committed as efdd910 after green full workspace
-(root1124.830s), nine-example race2259.397s and TLC package race621.014s.
-Current batch adds six complete original Examples methods: EWD840, EWD998ChanID,
-EWD998, EnvironmentController, Huang and LiveHourClock, with21 byte-exact
-fixtures. All six unchanged Java references pass. Original26 assertions,
-inherited exits, five settings overrides, final liveness mode and original
-CommunityModules classpath retained. Inventory832/1269(65.6%),397/626classes;
-437 contexts/229 classes pending, one partial. All20 topic rows verified.
+2026-10-04: Six Examples tests and namespace fixes committed52959cb after
+full workspace89196 PASS(root1143.104s,SANY0.908s,TLC66.125s), focused root
+race12129 PASS207.031s (six examples+19 original coverage methods), and four
+existing bridge tests race92665 PASS1.937s. All handles terminal/retired.
+Previous nine-example batch efdd910 also green and committed.
 
-EWD998ChanID exposed a production shortcut: source declarations borrowed symbols
-from a global qualified-alias cache, overwriting the root Spec with an instancee
-Spec. Source declarations now own their symbols, while LET retains its
-predeclared symbols for recursion and references from later local definitions.
-An initial always-fresh variant broke LET F/qq and was corrected before proceeding.
-Further semantic metadata audit found EWD998Chan!EWD998!Spec incorrectly named
-EWD998!Spec: the root-context key collided with an inner module's lookup alias.
-Instantiated declarations now own symbols; context conversion checks the actual
-instance owner/source position before using the alias table, otherwise builds
-the enclosing clone from its source context. All four inspected root/nested
-operator names now match their context keys. Six original tests plus ignored
-metadata probe PASS17.177s. Temporary probe removed from active Go source.
+Current batch: all48 original liveness-helper contexts translated in five new
+Go test files under tlc/: liveness_expression_java_test.go,
+liveness_tbpar_java_test.go,liveness_graph_node_java_test.go,
+liveness_tableau_node_ptr_java_test.go,liveness_disk_graph_java_test.go.
+Six source classes; TableauDiskGraph includes all seven inherited DiskGraph
+methods with original tableau index0. All233 source assertion sites retained
+(including inherited copies), Java Random seed4711 and full loops preserved,
+TBPar Object equality assertions use pointer identity; LiveExprNode keeps four
+commented LNNext TODO assertions inactive exactly as source. Original dummy
+OpAppl string override and dedicated graph directories retained. No new vectors.
+All48 unchanged Java references previously PASS JUnit0.064s. Initial Go
+translation had two boolean-parentheses compile errors, corrected. Go70672
+terminal1:46 pass, only two partial-graph error strings fail (case mismatch).
+Java AbstractDiskGraph.getPath specifies Couldn't and signed long state text;
+Go production DiskGraph/TableauDiskGraph now match capitalization and int64
+formatting at all four failure returns. No test weakening. All48 corrected
+Go23898 PASS0.041s, terminal0/retired. First gates race93882 PASS1.073s/fullTLC7989 PASS66.543s,
+terminal0/retired. Further source catch audit identified untyped errors as
+another shortcut: Java catch(RuntimeException) must reject IOException.
+Four failure returns now use the existing generic RuntimeException with
+exact message/signed state; source-test catches retain that type boundary.
+Current48 Go17661 PASS0.039s, terminal0/retired. Fresh focused race30550 PASS1.078s, terminal0/retired,
+liveness-helpers48-runtime-type-race.log. FullTLC47362 PASS65.935s, terminal0/retired,
+liveness-helpers-runtime-type-full-tlc.log. All current gates green,
+11 intended staged paths reviewed; ready for authorized commit.
+Root integration success behavior/source tests unchanged since52959cb green
+workspace1143.104s; no repeat broad run justified by this leaf failure boundary.
 
-Current required gates: full offline workspace89196 PASS(root1143.104s,
-SANY0.908s,TLC66.125s), terminal0/retired; focused root
-race12129(six new examples and19 original coverage methods) PASS207.031s,
-terminal0 and retired.
-Logs .codex-gotmp/examples-six-full-workspace.log and examples-six-root-race.log.
-Separate four existing bridge tests race92665 PASS1.937s, terminal0/retired,
-.codex-gotmp/examples-six-existing-bridge-race.log.
-All required gates green; current six-test batch ready for authorized commit. TLC package production
-unchanged since its full race621.014s. Fourth Java preflight43729 already PASS:
-LockHS/MCAlternatingBit/MCEWD687a/MCLiveInternalMemory/
-MCLiveWriteThroughCache/MCWriteThroughCache; translations and26 fixture mappings now prepared only in ignored
-examples-fourth-six.go.preview/examples-fourth-six-fixtures.json; no active Go
-source or credit yet. All48 liveness-helper contexts (six source classes, including seven inherited
-TableauDiskGraph methods) now prepared only in ignored previews:
-liveness-expression-java-tests.go.preview, tbpar-java-tests.go.preview,
-graph-node-java-tests.go.preview, tableau-node-ptr-java-tests.go.preview and
-disk-graph-java-tests.go.preview. Uncredited and uncompiled; source LNNext TODO
-comments retained, object identity assertions use pointer identity, Java seed4711
-preserved. Existing unchanged48 Java references already passed JUnit0.064s.
+Inventory880/1269(69.3%),403/626classes(64.4%);389 contexts/223classes pending,
+one partial. All20topic rows verified. Liveness helpers category now48/48.
+Next six Examples Java preflight already PASS (LockHS/MCAlternatingBit/
+MCEWD687a/MCLiveInternalMemory/MCLiveWriteThroughCache/MCWriteThroughCache);
+translations and26 fixture maps in ignored examples-fourth-six.go.preview and
+examples-fourth-six-fixtures.json, no active source/credit yet.
 Five user-deferred topics and checkpoint FL2 variant remain deferred.
 
 Priority user directive (2026-10-02): **email reporting is forbidden.** Stop

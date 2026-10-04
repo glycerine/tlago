@@ -4749,3 +4749,14 @@ continue to bind to the same definition. Module context conversion validates
 the instance owner and source position before taking an alias-table entry;
 a nested export otherwise clones the operator from the actual instancee
 context, preserving the outer qualified name and substitution boundary.
+
+
+Liveness path failure diagnostics preserve AbstractDiskGraph.getPath's exact
+Java message: "Couldn't re-create liveness trace (path) starting at: ... and
+tidx: ...". Go fingerprints remain uint64 for storage, but diagnostic values
+use int64 to match the source Java long's signed decimal representation.
+Both DiskGraph and TableauDiskGraph keep that same failure boundary.
+
+The failure also retains Java's RuntimeException family via the existing
+generic exception type. Original graph test catch blocks reject I/O errors;
+returning an untyped error and accepting every error would lose that boundary.

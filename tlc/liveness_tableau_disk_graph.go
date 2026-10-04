@@ -300,7 +300,7 @@ func (g *TableauDiskGraph) ToDotViz(oos *OrderOfSolution, labels map[uint64]stri
 
 func (g *TableauDiskGraph) GetPath(state uint64, tidx int) (*LongVec, error) {
 	if g == nil {
-		return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidx)
+		return nil, NewRuntimeException(fmt.Sprintf("Couldn't re-create liveness trace (path) starting at: %d and tidx: %d", int64(state), tidx))
 	}
 	numOfInits := g.InitNodes.Size()
 	for i := 0; i < numOfInits; i += 2 {
@@ -375,7 +375,7 @@ func (g *TableauDiskGraph) GetPath(state uint64, tidx int) (*LongVec, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("couldn't re-create liveness trace (path) starting at: %d and tidx: %d", state, tidx)
+	return nil, NewRuntimeException(fmt.Sprintf("Couldn't re-create liveness trace (path) starting at: %d and tidx: %d", int64(state), tidx))
 }
 
 func (g *TableauDiskGraph) reconstructReversePath(reverseTable *TableauNodePtrTable, startState uint64, startTidx int, finalState uint64, finalTidx int) (*LongVec, error) {

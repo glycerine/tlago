@@ -4620,3 +4620,37 @@ All current six-test gates green, root25-test race207.031s and separate
 four bridge tests race1.937s.28 intended paths reviewed/staged;21 vectors
 byte-identical to source and excluded from whitespace normalization.
 Ready for authorized commit; all verification handles terminal/retired.
+
+2026-10-04: Committed six-example batch52959cb after full workspace/race green.
+Installed48 mechanical helper contexts in5 new Go test files, six Java classes
+including7 inherited tableau methods.233 source assertion sites preserved;
+Java Random4711/full loops, object identity comparisons and inactive LNNext
+TODO assertions retained. Two translation parentheses compile errors corrected.
+Initial helper70672 terminal1:46pass,2exact error text failures; Java message
+Couldn't differs from Go couldn't. Production4failure returns now preserve
+source capitalization and signed Java long fingerprint text; no test weakening.
+All48 corrected helper23898 PASS0.041s, terminal0/retired. Focused race93882
+and full TLC7989 active. Current production change only error formatting,
+root integration source/tests unchanged since full workspace1143.104s.
+Inventory880/1269(69.3%),403/626classes(64.4%),389contexts/223classes pending,
+onepartial; all20topic rows verified, helpercategory48/48 complete.
+
+2026-10-04: First helper gates race93882 PASS1.073s/fullTLC7989 PASS66.543s,
+terminal0/retired. Further catch-boundary review found untyped Go errors could
+absorb I/O failure unlike Java RuntimeException catches. Core path failure
+returns now use existing generic RuntimeException, exact source message/signed
+long text; original catch blocks reject unexpected I/O errors. A replacement
+script apostrophe escape compile error corrected immediately. Current helper
+17661 PASS0.039s, terminal0/retired. Fresh focused race and full TLC gates active
+on runtime-type fix. No changes to source assertions, input graphs or methods.
+
+2026-10-04: Current-source helper race30550 PASS1.078s, terminal0/retired.
+FullTLC47362 remains active; await terminal before commit. Source boxed Long
+assertNotSame equivalence documented: small serialized offsets are within
+Java Long caching, so their object identity is numeric equality in this case.
+
+2026-10-04: Current-source fullTLC47362 PASS65.935s, terminal0/retired.
+All48 source helpers normal0.039s/race1.078s and fullTLC65.935s green.
+11 intended paths staged, git whitespace check clean; no fixture changes.
+Required gates satisfied for the leaf failure type/text correction and complete
+source test translations. All current handles terminal/retired; ready to commit.
