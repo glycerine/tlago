@@ -1948,3 +1948,38 @@ Disk: two inspected owned regular hex64-d cache prunes older48h,218 files
  tlc-cli-cache-candidates.json and tlc-cli-cache-candidates-2.json; native
 identity/type/uid/time revalidated before each unlink. No source/vector/user
 files or directories removed.
+
+
+SpecTraceExpressionWriterTest checkpoint (2026-10-04), final verification green:
+Green previous checkpoint committed f6eb8f3; working tree was clean. All four
+original writer methods now translated in spec_trace_writer_java_test.go with
+exact independent TLA/CFG temp setup, preamble/init/next/two MC error states,
+first-buffer/trace-function/second-buffer ordering, both trace-expression lists,
+multiline swallowed-comment alternatives and original named-Formula assertion.
+Actual generated files feed the legacy front-end; no string-only replacement.
+Ported original AbstractSpecWriter.appendContentToBuffers(nullable strings)
+in production, exported for root-package parser integration. Each non-null
+buffer append remains independent and in source order; nil cfg storage throws
+the established NullPointerException rather than silently skipping it.
+Important source fidelity: SANY.frontEndMain defaults doStrictErrorCodes=false.
+Syntax ParseException produces ERROR(-1); ordinary semantic diagnostics are
+retained but still return OK(0). The unactivated draft had added a stricter
+semantic-error-count assertion absent upstream; final test instead checks the
+exact original return-code condition. Production SanyFrontEndMain runs existing
+real parse and semantic phases and retains diagnostics on Spec; unexpected
+runtime failures propagate. Syntax-invalid input returns the original ERROR(-1).
+Actual Java/Go ignored legacy probes(valid, syntax-invalid, ordinary undefined
+symbol) match byte-for-byte:0/errors=false,-1/errors=true,0/errors=true. They add
+no new permanent tests or translation credit. Source test fixtures untouched.
+Unchanged original Java JUnit four passes(-ea0.149s); complete Go four passes
+0.021s and race1.075s. Retire81558/5769. Full workspace normal passes(root296.058s,SANY1.006s,TLC62.303s); retire4909.
+Log .codex-gotmp/correctness-java/spec-trace-writer-full-normal.log.
+No checks remain running. Prior full TLC race baseline
+545.514s(f6eb8f3) remains verified: new helpers are only called by this new test
+and do not change existing production paths. No full TLC race repetition needed
+for these additions; root class race and full workspace cover current changes.
+Inventory563/1269 contexts(44.4%),137/626 complete classes(21.9%),706 pending
+across489 classes,one partial. CLI/output4/5 classes,36/37 methods complete.
+Current writer checkpoint has passed its full workspace gate.
+Next is REPLTest.testProcessInput(all thirteen calls/one instance); prior source
+notes remain applicable. All five deferred topics remain deferred.

@@ -257,6 +257,23 @@ func SpecWriterCreateSourceContent(value string, identifierOrScheme string, isSc
 	return [][]string{{identifier, identifier + tlaDefinesCR + value}}
 }
 
+// AppendContentToBuffers ports AbstractSpecWriter's nullable test-support
+// boundary. Root-package tests need exported access to run the SANY front end.
+func (w *SpecWriter) AppendContentToBuffers(tla, cfg *string) {
+	if w == nil {
+		panic(NewNullPointerException())
+	}
+	if tla != nil {
+		w.tlaBuffer.WriteString(*tla)
+	}
+	if cfg != nil {
+		if w.cfgBuffer == nil {
+			panic(NewNullPointerException())
+		}
+		w.cfgBuffer.WriteString(*cfg)
+	}
+}
+
 func (w *SpecWriter) TLAString() string {
 	if w == nil {
 		return ""

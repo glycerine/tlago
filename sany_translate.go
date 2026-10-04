@@ -8,6 +8,21 @@ import (
 	"github.com/glycerine/tlago/tlc"
 )
 
+// SanyFrontEndMain is the legacy SANY.frontEndMain boundary with silent output.
+// It runs parsing and semantic analysis, retaining ordinary semantic diagnostics
+// on the spec. Like Java's default doStrictErrorCodes=false, only a parsing-phase
+// failure returns ERROR(-1); ordinary semantic diagnostics do not change OK(0).
+// Unexpected runtime failures propagate, as FrontEndException does in Java.
+func SanyFrontEndMain(file string, opts LoadOptions) (*Spec, int) {
+	spec, diagnostics := LoadSanySpec(file, opts)
+	if diagnostics.HasErrors() {
+		return spec, -1
+	}
+	diagnostics = append(diagnostics, CheckSpec(spec)...)
+	spec.Diags = diagnostics
+	return spec, 0
+}
+
 func CheckSanySource(file, source string) (*Spec, Diagnostics) {
 	return CheckSanySourceWithOptions(file, source, LoadOptions{})
 }
