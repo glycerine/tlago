@@ -3,13 +3,12 @@ package tlc
 import (
 	"fmt"
 	"io"
-	"os"
 	"time"
 )
 
 var (
-	StringSetValue      Value     = NewUserValue(stringsObj{})
-	TLCOutput           io.Writer = os.Stdout
+	StringSetValue      Value = NewUserValue(stringsObj{})
+	TLCOutput           io.Writer
 	TLCOutputToUserFile bool
 )
 
@@ -41,7 +40,12 @@ func TLCPrint(v1, v2 Value) Value {
 	v2c := v2.DeepCopy()
 	v1c.DeepNormalize()
 	v2c.DeepNormalize()
-	if _, err := fmt.Fprintf(TLCOutput, "%s  %s\n", ValuesPPRString(ValueToStringUnchecked(v1c)), ValuesPPRString(ValueToStringUnchecked(v2c))); err != nil {
+	text := ValuesPPRString(ValueToStringUnchecked(v1c)) + "  " + ValuesPPRString(ValueToStringUnchecked(v2c))
+	if TLCOutput == nil {
+		ToolIOPrintln(text)
+		return v2
+	}
+	if _, err := fmt.Fprintln(TLCOutput, text); err != nil {
 		PrintError(ECGeneral, javaGeneralErrorMessage("", err))
 	}
 	return v2
@@ -50,12 +54,12 @@ func TLCPrint(v1, v2 Value) Value {
 func TLCPrintT(v Value) Value {
 	vc := v.DeepCopy()
 	vc.DeepNormalize()
-	var err error
-	if TLCOutputToUserFile {
-		_, err = fmt.Fprint(TLCOutput, ValuesPPRString(ValueToStringUnchecked(vc, "\n")))
-	} else {
-		_, err = fmt.Fprintln(TLCOutput, ValuesPPRString(ValueToStringUnchecked(vc)))
+	if TLCOutput == nil {
+		ToolIOPrintln(ValuesPPRString(ValueToStringUnchecked(vc)))
+		return BoolTrue
 	}
+	_, err := fmt.Fprint(TLCOutput, ValuesPPRString(ValueToStringUnchecked(vc, "\n")))
+
 	if err != nil {
 		PrintError(ECGeneral, javaGeneralErrorMessage("", err))
 	}

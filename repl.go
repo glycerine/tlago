@@ -1,3 +1,4 @@
+// Copyright (c) 2024, Oracle and/or its affiliates.
 package tlago
 
 import (
@@ -19,6 +20,7 @@ const (
 type REPLEvalOptions struct {
 	TempDir              string
 	SpecFile             string
+	specFileSet          bool
 	LibraryPaths         []string
 	PreferLibraryModules bool
 	PrintOutput          io.Writer
@@ -26,9 +28,13 @@ type REPLEvalOptions struct {
 }
 
 func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnostics, error) {
+	return evaluateREPLExpression(expr, opts, false, nil)
+}
+
+func evaluateREPLExpression(expr string, opts REPLEvalOptions, processInput bool, innerStarted *bool) (string, Diagnostics, error) {
 	tempDir := opts.TempDir
 	removeTempDir := false
-	if tempDir == "" {
+	if tempDir == "" && !processInput {
 		dir, err := os.MkdirTemp("", replSpecName)
 		if err != nil {
 			return "", nil, err
@@ -39,18 +45,26 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 	if removeTempDir {
 		defer os.RemoveAll(tempDir)
 	}
-	if err := os.MkdirAll(tempDir, 0o755); err != nil {
-		return "", nil, err
+	if !processInput {
+		if err := os.MkdirAll(tempDir, 0o755); err != nil {
+			return "", nil, err
+		}
 	}
 
-	extends := []string{"Naturals", "Reals", "Sequences", "Bags", "FiniteSets", "TLC"}
+	extends := []string{"Reals", "Sequences", "Bags", "FiniteSets", "TLC", "Randomization"}
+	if popular, available := replPopularModules(); available {
+		extends = append(extends, strings.Split(popular, ",")...)
+	}
 	libraryPaths := append([]string(nil), opts.LibraryPaths...)
-	if opts.SpecFile != "" {
-		specModule := strings.TrimSuffix(filepath.Base(opts.SpecFile), filepath.Ext(opts.SpecFile))
-		if specModule != "" {
+	if opts.SpecFile != "" || opts.specFileSet {
+		specModule := ""
+		if opts.SpecFile != "" {
+			specModule = strings.TrimSuffix(filepath.Base(opts.SpecFile), ".tla")
+		}
+		if processInput || specModule != "" {
 			extends = append(extends, specModule)
 		}
-		if specDir := filepath.Dir(opts.SpecFile); specDir != "." && specDir != "" {
+		if specDir := filepath.Dir(opts.SpecFile); !processInput && specDir != "." && specDir != "" {
 			libraryPaths = append([]string{specDir}, libraryPaths...)
 		}
 	}
@@ -59,7 +73,7 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 	cfgPath := filepath.Join(tempDir, replSpecName+".cfg")
 	specSource := strings.Join([]string{
 		"---- MODULE " + replSpecName + " ----",
-		"EXTENDS " + strings.Join(extends, ", "),
+		"EXTENDS " + strings.Join(extends, ","),
 		"VARIABLE replvar",
 		"replinit == replvar = 0",
 		"replnext == replvar' = 0",
@@ -68,11 +82,27 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 		"",
 	}, "\n")
 	cfgSource := "INIT replinit\nNEXT replnext\n"
+	if err := os.WriteFile(cfgPath, []byte(cfgSource), 0o644); err != nil {
+		return "", nil, err
+	}
 	if err := os.WriteFile(specPath, []byte(specSource), 0o644); err != nil {
 		return "", nil, err
 	}
-	if err := os.WriteFile(cfgPath, []byte(cfgSource), 0o644); err != nil {
-		return "", nil, err
+	if processInput {
+		tlc.ToolIOSetMode(tlc.ToolIOTool)
+		tlc.ToolIOReset()
+		*innerStarted = true
+	}
+
+	oldOutput := tlc.TLCOutput
+	oldOutputToUserFile := tlc.TLCOutputToUserFile
+	if !processInput {
+		tlc.TLCOutput = io.Discard
+		tlc.TLCOutputToUserFile = false
+		defer func() {
+			tlc.TLCOutput = oldOutput
+			tlc.TLCOutputToUserFile = oldOutputToUserFile
+		}()
 	}
 
 	spec, diags := LoadSanySpec(specPath, LoadOptions{
@@ -80,29 +110,30 @@ func EvaluateREPLExpression(expr string, opts REPLEvalOptions) (string, Diagnost
 		PreferLibraryModules: opts.PreferLibraryModules,
 	})
 	if diags.HasErrors() {
+		if processInput {
+			return "", diags, replParsingFailure(diags)
+		}
 		return "", diags, nil
 	}
 	sem := CheckSpec(spec)
 	diags = append(diags, sem...)
 	if sem.HasErrors() {
+		if processInput {
+			return "", diags, replParsingFailure(diags)
+		}
 		return "", diags, nil
 	}
 	cfg, err := tlc.ParseModelConfigSource(cfgPath, cfgSource)
 	if err != nil {
 		return "", diags, err
 	}
-	oldOutput := tlc.TLCOutput
-	oldOutputToUserFile := tlc.TLCOutputToUserFile
-	tlc.TLCOutput = io.Discard
-	tlc.TLCOutputToUserFile = false
-	defer func() {
-		tlc.TLCOutput = oldOutput
-		tlc.TLCOutputToUserFile = oldOutputToUserFile
-	}()
 
 	tool, toolDiags := BuildTLCTool(spec, cfg, tlc.RuntimeParameters{})
 	diags = append(diags, toolDiags...)
 	if toolDiags.HasErrors() {
+		if processInput {
+			return "", diags, replParsingFailure(diags)
+		}
 		return "", diags, nil
 	}
 	valueDef, ok := lookupREPLValueDefinition(tool)

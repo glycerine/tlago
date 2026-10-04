@@ -140,6 +140,23 @@ func isJavaEvalOrRuntimeException(err error) bool {
 	}
 }
 
+// ClassifyEvaluationFailure preserves the Java EvalException and
+// TLCRuntimeException catches at native API boundaries. Java Error subclasses
+// and unrelated exceptions return neither classification.
+func ClassifyEvaluationFailure(err error) (eval bool, runtime *TLCError) {
+	if !isJavaEvalOrRuntimeException(err) {
+		return false, nil
+	}
+	if _, ok := err.(*EvalException); ok {
+		return true, nil
+	}
+	failure := err.(*TLCError)
+	if isValueEvalException(failure) {
+		return true, nil
+	}
+	return false, failure
+}
+
 func (e *TLCError) GetMessage() *string {
 	if e == nil {
 		return nil

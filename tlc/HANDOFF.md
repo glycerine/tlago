@@ -1983,3 +1983,53 @@ across489 classes,one partial. CLI/output4/5 classes,36/37 methods complete.
 Current writer checkpoint has passed its full workspace gate.
 Next is REPLTest.testProcessInput(all thirteen calls/one instance); prior source
 notes remain applicable. All five deferred topics remain deferred.
+
+REPLTest checkpoint (2026-10-04), final verification green:
+Previous green checkpoint a9f9277. Original REPLTest.testProcessInput now in
+repl_java_test.go: all thirteen source calls, exact expressions/results and
+one shared instance, no replacement sample cases or added permanent tests.
+Production REPL.ProcessInput runs the actual existing SANY/checker/tool path.
+Corrected default EXTENDS to Reals,Sequences,Bags,FiniteSets,TLC,Randomization,
+CFG-before-TLA writes, no automatic creation of caller-owned REPL tempdir,
+ToolIO TOOL/reset after both writes, optional native CommunityModules index
+provider and exact spec basename/.tla handling. Source EvalException and
+TLCRuntimeException catches remain narrow; unrelated exceptions/Java Errors
+propagate. Catches/finally apply only after generated files are written, like
+Java's inner try. SANY diagnostic parameters are retained, with source location
+format and Unknown operator presentation for native undefined-name diagnostics.
+Source buffered PrintWriter captures stdout at construction, does not auto-flush
+and retains IO failures internally; finally flush runs after reporting errors
+and TLCOutput becomes nil rather than restoring the prior writer.
+TLC.Print/PrintT now use ToolIO when output is nil; non-null PrintT writers get
+no added newline. Existing convenience EvaluateREPLExpression retains tempdir
+management/output restoration, while using corrected source module imports.
+Original Java JUnit one passes(-ea0.969s); thirteen-call Go test passes0.549s.
+Nine ignored Java/Go boundary probes match byte-for-byte(print, print followed
+by eval failure, repeated calls, type errors, singleton RandomElement, invalid
+names). Probes are diagnostic evidence only, no permanent-test/translation credit.
+Full normal draft checks1946/57825/92375 and race draft91701 were intentionally
+interrupted for actual source-boundary corrections, not timeout failures.
+Final full workspace passes(root304.652s,SANY1.061s,TLC62.020s);
+retire94663. Full TLC race passes562.312s; retire16435. Final focused root
+REPL race passes3.314s; retire98031. No checks remain running.
+Logs .codex-gotmp/correctness-java/repl-{full-normal,full-race,race}.log.
+Earlier focused handles21064/22321/83073/44470, Java89214 and probe4928 terminal.
+Inventory564/1269(44.4%),138/626 classes(22.0%),705 pending across488 classes,
+one partial. CLI/output all5/5 classes37/37 methods port complete.
+Final checkpoint has passed its full workspace and race gates. Next correctness
+models are original
+ConstantContextTLCCacheTest and TLCExtTest (one method each, four recorder
+assertions plus inherited successful exit setup/teardown). Existing root
+runJavaTLCModelTest helpers support original settings; TLCExtTest overrides
+runWithDebugger=false and passes -config TLCExtTest.tla. Their original fixtures
+are in ../tlaplus/tlatools/org.lamport.tlatools/test-model/, not yet copied or
+ported. Native cache microchecks alone do not earn those original model credits.
+All five deferred topics remain deferred; no distributed or email work.
+
+Next-class Java compilation already succeeded in ignored scratch: original
+ConstantContextTLCCacheTest/TLCExtTest plus unchanged test harness dependencies,
+-sourcepath upstream test directory, CP classes+tla2tools+JUnit+Hamcrest.
+Log tlc-ext-model-javac.log. Do not run them with upstream BASE_PATH directly: 
+TTrace getTESpecOutDir writes under BASE_PATH/generated, so first copy exact
+source models into a writable scratch test-model directory and set basepath.
+No next-class Go test or fixture has been created yet.

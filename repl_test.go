@@ -28,7 +28,7 @@ func TestEvaluateREPLExpressionGeneratedSpecExtendsJavaModules(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reading generated REPL spec: %v", err)
 	}
-	if !strings.Contains(string(spec), "EXTENDS Naturals, Reals, Sequences, Bags, FiniteSets, TLC\n") {
+	if !strings.Contains(string(spec), "EXTENDS Reals,Sequences,Bags,FiniteSets,TLC,Randomization\n") {
 		t.Fatalf("generated REPL spec does not mirror Java REPLSpecWriter EXTENDS line:\n%s", spec)
 	}
 }
