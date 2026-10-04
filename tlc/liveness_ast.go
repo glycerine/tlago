@@ -1,6 +1,15 @@
 package tlc
 
+//go:noinline
 func ASTToLive(tool *Tool, expr SemanticNode, con *Context) (*LiveExprNode, error) {
+	// Keep a real stack pointer throughout the recursive translation. Go adjusts
+	// this pointer when growing the goroutine stack; it must never escape to heap.
+	var stackAnchor byte
+	return astToLive(tool, expr, con, &stackAnchor)
+}
+
+func astToLive(tool *Tool, expr SemanticNode, con *Context, stackAnchor *byte) (*LiveExprNode, error) {
+	checkLivenessStack(stackAnchor)
 	if con == nil {
 		con = EmptyContext
 	}
@@ -10,9 +19,9 @@ func ASTToLive(tool *Tool, expr SemanticNode, con *Context) (*LiveExprNode, erro
 	case *LiveExprNode:
 		return n, nil
 	case *LabelNode:
-		return ASTToLive(tool, n.Body, con)
+		return astToLive(tool, n.Body, con, stackAnchor)
 	case *LetInNode:
-		return ASTToLive(tool, n.Body, con)
+		return astToLive(tool, n.Body, con, stackAnchor)
 	case *SubstInNode:
 		con1 := con
 		for _, subst := range n.Substs {
@@ -25,7 +34,7 @@ func ASTToLive(tool *Tool, expr SemanticNode, con *Context) (*LiveExprNode, erro
 				con1 = con1.Cons(subst.Op, tool.GetVal(subst.Expr, con, false, DoNotRecordCostModel))
 			}
 		}
-		return ASTToLive(tool, n.Body, con1)
+		return astToLive(tool, n.Body, con1, stackAnchor)
 	case *APSubstInNode:
 		con1 := con
 		for _, subst := range n.Substs {
@@ -38,9 +47,9 @@ func ASTToLive(tool *Tool, expr SemanticNode, con *Context) (*LiveExprNode, erro
 				con1 = con1.Cons(subst.Op, tool.GetVal(subst.Expr, con, false, DoNotRecordCostModel))
 			}
 		}
-		return ASTToLive(tool, n.Body, con1)
+		return astToLive(tool, n.Body, con1, stackAnchor)
 	case *OpApplNode:
-		return astToLiveAppl(tool, n, con)
+		return astToLiveAppl(tool, n, con, stackAnchor)
 	default:
 		level := SemanticLevel(expr)
 		if tool != nil && level == TLCLevelConstant {
@@ -140,7 +149,7 @@ func newLiveAction(body SemanticNode, con *Context, subscript SemanticNode, isBo
 	})
 }
 
-func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, error) {
+func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context, stackAnchor *byte) (*LiveExprNode, error) {
 	if expr == nil {
 		return LNTrue, nil
 	}
@@ -172,13 +181,18 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 								con1 = con1.Cons(param, tool.GetVal(args[i], con, false, DoNotRecordCostModel))
 							}
 						}
-						live, err := ASTToLive(tool, typed.Body, con1)
+						live, err := astToLive(tool, typed.Body, con1, stackAnchor)
 						if err != nil {
 							if recursive {
 								return nil, err
 							}
 						} else if live.GetLevel() > LiveLevelAction {
 							return live, nil
+						} else {
+							// Java uses the expanded body's actual level here.
+							// Recomputing the recursive operator's static bound
+							// can retain temporal level after a state-level base case.
+							return astToLiveLevel(tool, expr, con, live.GetLevel())
 						}
 					}
 				}
@@ -199,7 +213,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 				out := NewLNDisj()
 				ok := true
 				for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
-					kid, err := ASTToLive(tool, args[0], c1)
+					kid, err := astToLive(tool, args[0], c1, stackAnchor)
 					if err != nil {
 						ok = false
 						break
@@ -227,7 +241,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 				out := NewLNConj()
 				ok := true
 				for c1 := enum.NextElement(); c1 != nil; c1 = enum.NextElement() {
-					kid, err := ASTToLive(tool, args[0], c1)
+					kid, err := astToLive(tool, args[0], c1, stackAnchor)
 					if err != nil {
 						ok = false
 						break
@@ -254,7 +268,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 			if err == nil {
 				if fcn, ok := fval.(*FcnLambdaValue); ok && fcn.FcnRcd == nil {
 					if _, err := tool.getFcnContext(fcn, expr, con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel); err == nil {
-						return ASTToLive(tool, fcn.Body, con)
+						return astToLive(tool, fcn.Body, con, stackAnchor)
 					}
 				}
 			}
@@ -262,7 +276,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 	case OpcodeCL, OpcodeLand:
 		out := NewLNConj()
 		for _, arg := range args {
-			kid, err := ASTToLive(tool, arg, con)
+			kid, err := astToLive(tool, arg, con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -274,7 +288,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 	case OpcodeDL, OpcodeLor:
 		out := NewLNDisj()
 		for _, arg := range args {
-			kid, err := ASTToLive(tool, arg, con)
+			kid, err := astToLive(tool, arg, con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -288,22 +302,22 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 			if guard, err := tool.Eval(args[0], con, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel); err == nil {
 				if boolGuard, ok := guard.(*BoolValue); ok {
 					if boolGuard.Val {
-						return ASTToLive(tool, args[1], con)
+						return astToLive(tool, args[1], con, stackAnchor)
 					}
-					return ASTToLive(tool, args[2], con)
+					return astToLive(tool, args[2], con, stackAnchor)
 				}
 			}
 		}
 		if len(args) >= 3 {
-			guard, err := ASTToLive(tool, args[0], con)
+			guard, err := astToLive(tool, args[0], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
-			thenExpr, err := ASTToLive(tool, args[1], con)
+			thenExpr, err := astToLive(tool, args[1], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
-			elseExpr, err := ASTToLive(tool, args[2], con)
+			elseExpr, err := astToLive(tool, args[2], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -314,7 +328,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodeLnot:
 		if len(args) >= 1 {
-			arg, err := ASTToLive(tool, args[0], con)
+			arg, err := astToLive(tool, args[0], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -324,11 +338,11 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodeImplies:
 		if len(args) >= 2 {
-			left, err := ASTToLive(tool, args[0], con)
+			left, err := astToLive(tool, args[0], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
-			right, err := ASTToLive(tool, args[1], con)
+			right, err := astToLive(tool, args[1], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -360,11 +374,11 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodeLeadsto:
 		if len(args) >= 2 {
-			left, err := ASTToLive(tool, args[0], con)
+			left, err := astToLive(tool, args[0], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
-			right, err := ASTToLive(tool, args[1], con)
+			right, err := astToLive(tool, args[1], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -372,7 +386,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodeBox:
 		if len(args) >= 1 {
-			arg, err := ASTToLive(tool, args[0], con)
+			arg, err := astToLive(tool, args[0], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -380,7 +394,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodeDiamond:
 		if len(args) >= 1 {
-			arg, err := ASTToLive(tool, args[0], con)
+			arg, err := astToLive(tool, args[0], con, stackAnchor)
 			if err != nil {
 				return nil, err
 			}
@@ -388,7 +402,7 @@ func astToLiveAppl(tool *Tool, expr *OpApplNode, con *Context) (*LiveExprNode, e
 		}
 	case OpcodeNop:
 		if len(args) >= 1 {
-			return ASTToLive(tool, args[0], con)
+			return astToLive(tool, args[0], con, stackAnchor)
 		}
 	}
 

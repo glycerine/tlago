@@ -3554,3 +3554,60 @@ source ports/corefix/docinventory now. Inventory680/1269(53.6%),248/626(39.6%),
 589pendingcontexts/378classes. All processhandles terminal; next1389seven
 originals preflightedJavahealthy but not activated in Go. No invented regression
 or unit tests. Overallgoal active and full requestedscope/deferredtopics retained.
+
+Current seven originalGithub1389 cases all mechanically ported and focusedPASS
+7.256s after required production fixes, priorbaseline367465d. All originalJava
+JUnit pass unchanged;14 TLA/cfg fixtures byte-identical. Originalsource coverage
+true,debugger/gen/DOT/JSONfalse preserved; exact original exits/diagnostics,
+fulltrace/back-to-state assertions and modelpostconditions retained. Initialfive
+finitecases: base/Counting/Violated pass, B/C fail255 with translator errors.
+Shortcut in astToLiveAppl recomputed static recursive level after expansion
+returned state-level basecase; Java uses res.getLevel. Go now callsastToLiveLevel
+with expandedlevel immediately. Allfive PASS4.797s with originalassertions.
+Missing recoverable stack resource: Go nativegoroutine overflow is fatal, Java
+Error propagates toTLC.process. Production now anchors actualnative stack
+pointer at topASTToLive and threads it through recursiveprivatecalls; nativebyte
+span guard uses referenceJVM's observeddefault1MiB stack budget (ThreadStackSize
+1024KiB confirmedjava21PrintFlagsFinal loggithub1389-reference-stack-budget.log).
+This is actualstackbytes, not arbitraryoperator-expansion/depth cutoff. Pointer
+stays onstack and is relocated by Go stackgrowth. Both normal/race compiler
+escapeanalysis explicitlyconfirm anchor and stackAnchor donotescape; no marker
+heap promotion. Loggithub1389[-race]-stack-escape.log. Guardpanics actualtyped
+StackOverflowError, bypassing catch(Exception) analog and using existingcore
+runnercode1005/Error exit, noGENERAL. Bothloops/stateGuard PASS. No testcase
+weakening, inventedregression/unit tests, sourcefixture changes or debuggerwork.
+Inventory687/1269(54.1%),255/626(40.7%);582pendingcontexts/371classes(1partial).
+All7 markedPortcomplete. Broadchecks live workspace40527,fullTLCrace30335,
+focusedrootrace14065(5runs all7 +1161pair +1198six +1244three). Logs github1389-
+{workspace,tlc-race,root-race}. Do not commit until green. Earlierfocusedhandles
+32994/70915/67910/46151/91030 and compiler41080/32637 terminal; retire all.
+Overallgoal active, deferred topics unchanged; next179a/b/c aftercheckpoint.
+
+Next originalGithub179a/b/c JavaJUnit allPASS unchanged; logoriginal-<Class>-
+junit.log and github179-javac.log. Sixmodel/cfg fixtures copied only toignored
+Java scratch; no activeGo tests/fixtures/inventorycredit yet. Allrunnerdefaults
+remainenabled: debugger,coverage,DOT,JSON,forcedtracegeneration. a assumptions
+exitViolationAssumption,FINISHED,exactpublic TLC.PrintT Java method signature and
+integer-vs-set normalization failure. b/c FailureSpecEval,FINISHED,exactpublic
+TLC.Print/PrintT method signatures and samefailure, plus everyoriginal nested
+expression stack line/column/range and trailingnewline. Do not weaken or omit
+failurestack assertions. Originalclasses reuse existingcore callstack adapters,
+not new debuggerfeature work. RetireJava75759 terminal; broadGo checks remain
+40527/30335/14065. Baseline367465d before current uncommittedseven1389ports.
+
+Rootrace14065 PASS329.712s (5runs all7 +1161pair +1198six +1244three); retire.
+Full workspace40527 PASS397.851s root/0.992s SANY/63.793s TLC; retire40527.
+FullTLCrace30335 remains live; no production/assertion changes since launch.
+Repeated rootrace includes both overflowcases and allfinite cases eachrun, proving
+continuedcorrectness after stack growth/unwinding with anchors on reusedgoroutine.
+
+Final fullTLCrace30335 PASS556.285s; retire30335. Allfinalchecks green after
+recursivelevel/native-stack corrections: workspace397.851s root/0.992s SANY/
+63.793s TLC;fullTLCrace556.285s;rootrace5runs329.712s all7plus relatedcases.
+Bothcompilerescape proofs normal/race show anchorsdonotescape; referenceJVM
+budget1024KiB independentlyrecorded;14 originalfixtures exact;whitespace clean.
+Commit sevenfaithful1389ports/corefixes/docs now. Inventory687/1269(54.1%),
+255/626(40.7%),582pendingcontexts/371classes(1partial). Allprocesses terminal.
+Next179a/b/c originals passed unchangedJavaJUnit; notactivated/credited in Go.
+Goal remains active with full originalscope/deferredtopics. No inventedtests,
+sourcefixture changes, debuggerfeature work or weakening originalassertions.

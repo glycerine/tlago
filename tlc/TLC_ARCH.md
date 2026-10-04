@@ -4460,3 +4460,17 @@ level-based handler, and non-next boxed formulas use that handler's origin
 tagging. Conjuncts retain separate copied stacks, and lazy formal references are
 removed before decomposing their original argument. This preserves the exact
 positive/negative tautology-warning distinctions in the Github1198 suite.
+
+When recursive liveness expansion returns a constant/state/action-level body,
+astToLiveAppl uses that expanded level immediately, as Java does, instead of
+recomputing the operator's static temporal bound. This preserves state-level
+base cases inside temporal recursive wrappers.
+Liveness translation also preserves recoverable execution-stack exhaustion.
+The public entry holds a non-escaping stack anchor; all recursive private calls
+share its tracked pointer, which Go relocates when growing the goroutine stack.
+The native stack-byte span is bounded by the reference JVM's observed default
+1 MiB thread-stack budget. No operator-count or semantic recursion limit is used.
+Exhaustion raises the existing StackOverflowError type as a panic, bypassing
+Exception-only fallbacks and reaching TLC.process's specific resource-error
+catch. Normal and race compiler escape analysis confirm the markers stay on the
+stack; finite expansion and the two original overflow tests all pass.
