@@ -3,37 +3,38 @@
 // See licenses/openjdk-LICENSE and licenses/openjdk-ADDITIONAL_LICENSE_INFO.
 package tlc
 
-// dotHashMap implements the HashMap operations used by DotStateWriter. Its
-// Integer, Long and String keys are all Comparable; no identity tie-break is
-// needed. Bucket lists, resize splitting and red-black trees retain Java's
-// iteration order. DOT owns the synchronization and never removes entries.
-type dotHashMap[K comparable, V any] struct {
-	table           []*dotHashNode[K, V]
+// javaHashMap implements the HashMap operations used by DOT and TLCState.getVals.
+// Bucket lists, resizing and red-black trees retain source iteration order.
+// Comparable keys use compare; non-Comparable keys supply an identity tie-break.
+// Callers own synchronization. These uses never remove entries.
+type javaHashMap[K comparable, V any] struct {
+	table           []*javaHashNode[K, V]
 	size, threshold int
 	hashCode        func(K) int32
 	compare         func(K, K) int
+	tieBreak        func(K, K) int
 }
 
-type dotHashNode[K comparable, V any] struct {
+type javaHashNode[K comparable, V any] struct {
 	hash                            uint32
 	key                             K
 	value                           V
-	next, prev, parent, left, right *dotHashNode[K, V]
+	next, prev, parent, left, right *javaHashNode[K, V]
 	tree, red                       bool
 }
 
-func newDotHashMap[K comparable, V any](hashCode func(K) int32, compare func(K, K) int) *dotHashMap[K, V] {
-	return &dotHashMap[K, V]{hashCode: hashCode, compare: compare}
+func newJavaHashMap[K comparable, V any](hashCode func(K) int32, compare func(K, K) int) *javaHashMap[K, V] {
+	return &javaHashMap[K, V]{hashCode: hashCode, compare: compare}
 }
 
-func (m *dotHashMap[K, V]) hash(key K) uint32 {
+func (m *javaHashMap[K, V]) hash(key K) uint32 {
 	h := uint32(m.hashCode(key))
 	return h ^ h>>16
 }
 
-func (m *dotHashMap[K, V]) Len() int { return m.size }
+func (m *javaHashMap[K, V]) Len() int { return m.size }
 
-func (m *dotHashMap[K, V]) Get2(key K) (V, bool) {
+func (m *javaHashMap[K, V]) Get2(key K) (V, bool) {
 	if len(m.table) != 0 {
 		h := m.hash(key)
 		p := m.table[int(h)&(len(m.table)-1)]
@@ -41,16 +42,11 @@ func (m *dotHashMap[K, V]) Get2(key K) (V, bool) {
 			for p.parent != nil {
 				p = p.parent
 			}
-			for p != nil {
-				if p.hash == h && p.key == key {
-					return p.value, true
-				}
-				if m.direction(h, key, p) <= 0 {
-					p = p.left
-				} else {
-					p = p.right
-				}
+			if found := m.findTree(p, h, key); found != nil {
+				return found.value, true
 			}
+			var zero V
+			return zero, false
 		}
 		for ; p != nil; p = p.next {
 			if p.hash == h && p.key == key {
@@ -62,7 +58,43 @@ func (m *dotHashMap[K, V]) Get2(key K) (V, bool) {
 	return zero, false
 }
 
-func (m *dotHashMap[K, V]) Set(key K, value V) {
+// TreeNode.find searches both subtrees for equal-hash non-Comparable keys.
+// Identity hashes guide insertion but cannot guide equality lookup: they may collide.
+func (m *javaHashMap[K, V]) findTree(p *javaHashNode[K, V], hash uint32, key K) *javaHashNode[K, V] {
+	for p != nil {
+		left, right := p.left, p.right
+		switch {
+		case int32(p.hash) > int32(hash):
+			p = left
+		case int32(p.hash) < int32(hash):
+			p = right
+		case p.key == key:
+			return p
+		case left == nil:
+			p = right
+		case right == nil:
+			p = left
+		default:
+			if m.compare != nil {
+				if dir := m.compare(key, p.key); dir != 0 {
+					if dir < 0 {
+						p = left
+					} else {
+						p = right
+					}
+					continue
+				}
+			}
+			if found := m.findTree(right, hash, key); found != nil {
+				return found
+			}
+			p = left
+		}
+	}
+	return nil
+}
+
+func (m *javaHashMap[K, V]) Set(key K, value V) {
 	if len(m.table) == 0 {
 		m.resize()
 	}
@@ -70,7 +102,7 @@ func (m *dotHashMap[K, V]) Set(key K, value V) {
 	i := int(h) & (len(m.table) - 1)
 	p := m.table[i]
 	if p == nil {
-		m.table[i] = &dotHashNode[K, V]{hash: h, key: key, value: value}
+		m.table[i] = &javaHashNode[K, V]{hash: h, key: key, value: value}
 	} else if p.tree {
 		if old := m.putTree(p, h, key, value); old != nil {
 			old.value = value
@@ -83,7 +115,7 @@ func (m *dotHashMap[K, V]) Set(key K, value V) {
 				return
 			}
 			if p.next == nil {
-				p.next = &dotHashNode[K, V]{hash: h, key: key, value: value}
+				p.next = &javaHashNode[K, V]{hash: h, key: key, value: value}
 				if count >= 7 {
 					m.treeifyBin(i)
 				}
@@ -100,7 +132,7 @@ func (m *dotHashMap[K, V]) Set(key K, value V) {
 
 // DotStateWriter.computeIfAbsent always constructs a non-null HashSet. Java
 // prepends this mapping, and checks the resize threshold before insertion.
-func (m *dotHashMap[K, V]) getOrCreate(key K, create func() V) V {
+func (m *javaHashMap[K, V]) getOrCreate(key K, create func() V) V {
 	if m.size > m.threshold || len(m.table) == 0 {
 		m.resize()
 	}
@@ -118,7 +150,7 @@ func (m *dotHashMap[K, V]) getOrCreate(key K, create func() V) V {
 		for p := first; p != nil; p = p.next {
 			count++
 		}
-		m.table[i] = &dotHashNode[K, V]{hash: h, key: key, value: value, next: first}
+		m.table[i] = &javaHashNode[K, V]{hash: h, key: key, value: value, next: first}
 		if count >= 7 {
 			m.treeifyBin(i)
 		}
@@ -127,7 +159,7 @@ func (m *dotHashMap[K, V]) getOrCreate(key K, create func() V) V {
 	return value
 }
 
-func (m *dotHashMap[K, V]) All() func(func(K, V) bool) {
+func (m *javaHashMap[K, V]) All() func(func(K, V) bool) {
 	return func(yield func(K, V) bool) {
 		if m == nil {
 			return
@@ -142,7 +174,7 @@ func (m *dotHashMap[K, V]) All() func(func(K, V) bool) {
 	}
 }
 
-func (m *dotHashMap[K, V]) resize() {
+func (m *javaHashMap[K, V]) resize() {
 	old := m.table
 	n := len(old)
 	if n >= 1<<30 {
@@ -158,7 +190,7 @@ func (m *dotHashMap[K, V]) resize() {
 	} else {
 		m.threshold = 1<<31 - 1
 	}
-	m.table = make([]*dotHashNode[K, V], capacity)
+	m.table = make([]*javaHashNode[K, V], capacity)
 	for i, first := range old {
 		if first == nil {
 			continue
@@ -168,7 +200,7 @@ func (m *dotHashMap[K, V]) resize() {
 			continue
 		}
 		wasTree := first.tree
-		var heads, tails [2]*dotHashNode[K, V]
+		var heads, tails [2]*javaHashNode[K, V]
 		var counts [2]int
 		for p := first; p != nil; {
 			next := p.next
@@ -197,7 +229,7 @@ func (m *dotHashMap[K, V]) resize() {
 			m.table[index] = head
 			if wasTree {
 				if counts[part] <= 6 {
-					m.table[index] = dotUntreeify(head)
+					m.table[index] = javaHashUntreeify(head)
 				} else if heads[1-part] != nil {
 					m.treeify(index)
 				}
@@ -206,10 +238,10 @@ func (m *dotHashMap[K, V]) resize() {
 	}
 }
 
-func dotUntreeify[K comparable, V any](head *dotHashNode[K, V]) *dotHashNode[K, V] {
-	var first, last *dotHashNode[K, V]
+func javaHashUntreeify[K comparable, V any](head *javaHashNode[K, V]) *javaHashNode[K, V] {
+	var first, last *javaHashNode[K, V]
 	for p := head; p != nil; p = p.next {
-		node := &dotHashNode[K, V]{hash: p.hash, key: p.key, value: p.value}
+		node := &javaHashNode[K, V]{hash: p.hash, key: p.key, value: p.value}
 		if last == nil {
 			first = node
 		} else {
@@ -220,12 +252,12 @@ func dotUntreeify[K comparable, V any](head *dotHashNode[K, V]) *dotHashNode[K, 
 	return first
 }
 
-func (m *dotHashMap[K, V]) treeifyBin(index int) {
+func (m *javaHashMap[K, V]) treeifyBin(index int) {
 	if len(m.table) < 64 {
 		m.resize()
 		return
 	}
-	var previous *dotHashNode[K, V]
+	var previous *javaHashNode[K, V]
 	for p := m.table[index]; p != nil; p = p.next {
 		p.tree = true
 		p.prev = previous
@@ -234,18 +266,23 @@ func (m *dotHashMap[K, V]) treeifyBin(index int) {
 	m.treeify(index)
 }
 
-func (m *dotHashMap[K, V]) direction(hash uint32, key K, p *dotHashNode[K, V]) int {
+func (m *javaHashMap[K, V]) direction(hash uint32, key K, p *javaHashNode[K, V]) int {
 	if int32(hash) < int32(p.hash) {
 		return -1
 	}
 	if int32(hash) > int32(p.hash) {
 		return 1
 	}
-	return m.compare(key, p.key)
+	if m.compare != nil {
+		if dir := m.compare(key, p.key); dir != 0 {
+			return dir
+		}
+	}
+	return m.tieBreak(key, p.key)
 }
 
-func (m *dotHashMap[K, V]) treeify(index int) {
-	var root *dotHashNode[K, V]
+func (m *javaHashMap[K, V]) treeify(index int) {
+	var root *javaHashNode[K, V]
 	for x := m.table[index]; x != nil; x = x.next {
 		x.left, x.right = nil, nil
 		if root == nil {
@@ -269,7 +306,7 @@ func (m *dotHashMap[K, V]) treeify(index int) {
 				} else {
 					parent.right = x
 				}
-				root = dotBalanceInsertion(root, x)
+				root = javaHashBalanceInsertion(root, x)
 				break
 			}
 		}
@@ -277,14 +314,24 @@ func (m *dotHashMap[K, V]) treeify(index int) {
 	m.moveRootToFront(root)
 }
 
-func (m *dotHashMap[K, V]) putTree(first *dotHashNode[K, V], hash uint32, key K, value V) *dotHashNode[K, V] {
+func (m *javaHashMap[K, V]) putTree(first *javaHashNode[K, V], hash uint32, key K, value V) *javaHashNode[K, V] {
 	root := first
 	for root.parent != nil {
 		root = root.parent
 	}
+	searched := false
 	for p := root; ; {
 		if hash == p.hash && key == p.key {
 			return p
+		}
+		if hash == p.hash && (m.compare == nil || m.compare(key, p.key) == 0) && !searched {
+			searched = true
+			if found := m.findTree(p.left, hash, key); found != nil {
+				return found
+			}
+			if found := m.findTree(p.right, hash, key); found != nil {
+				return found
+			}
 		}
 		dir := m.direction(hash, key, p)
 		parent := p
@@ -295,7 +342,7 @@ func (m *dotHashMap[K, V]) putTree(first *dotHashNode[K, V], hash uint32, key K,
 		}
 		if p == nil {
 			next := parent.next
-			x := &dotHashNode[K, V]{hash: hash, key: key, value: value, next: next, parent: parent, prev: parent, tree: true}
+			x := &javaHashNode[K, V]{hash: hash, key: key, value: value, next: next, parent: parent, prev: parent, tree: true}
 			if dir <= 0 {
 				parent.left = x
 			} else {
@@ -305,13 +352,13 @@ func (m *dotHashMap[K, V]) putTree(first *dotHashNode[K, V], hash uint32, key K,
 			if next != nil {
 				next.prev = x
 			}
-			m.moveRootToFront(dotBalanceInsertion(root, x))
+			m.moveRootToFront(javaHashBalanceInsertion(root, x))
 			return nil
 		}
 	}
 }
 
-func (m *dotHashMap[K, V]) moveRootToFront(root *dotHashNode[K, V]) {
+func (m *javaHashMap[K, V]) moveRootToFront(root *javaHashNode[K, V]) {
 	index := int(root.hash) & (len(m.table) - 1)
 	first := m.table[index]
 	if first == root {
@@ -331,7 +378,7 @@ func (m *dotHashMap[K, V]) moveRootToFront(root *dotHashNode[K, V]) {
 	root.next, root.prev = first, nil
 }
 
-func dotRotateLeft[K comparable, V any](root, p *dotHashNode[K, V]) *dotHashNode[K, V] {
+func javaHashRotateLeft[K comparable, V any](root, p *javaHashNode[K, V]) *javaHashNode[K, V] {
 	if p != nil && p.right != nil {
 		r := p.right
 		p.right = r.left
@@ -353,7 +400,7 @@ func dotRotateLeft[K comparable, V any](root, p *dotHashNode[K, V]) *dotHashNode
 	return root
 }
 
-func dotRotateRight[K comparable, V any](root, p *dotHashNode[K, V]) *dotHashNode[K, V] {
+func javaHashRotateRight[K comparable, V any](root, p *javaHashNode[K, V]) *javaHashNode[K, V] {
 	if p != nil && p.left != nil {
 		l := p.left
 		p.left = l.right
@@ -375,7 +422,7 @@ func dotRotateRight[K comparable, V any](root, p *dotHashNode[K, V]) *dotHashNod
 	return root
 }
 
-func dotBalanceInsertion[K comparable, V any](root, x *dotHashNode[K, V]) *dotHashNode[K, V] {
+func javaHashBalanceInsertion[K comparable, V any](root, x *javaHashNode[K, V]) *javaHashNode[K, V] {
 	x.red = true
 	for {
 		parent := x.parent
@@ -398,14 +445,14 @@ func dotBalanceInsertion[K comparable, V any](root, x *dotHashNode[K, V]) *dotHa
 			}
 			if x == parent.right {
 				x = parent
-				root = dotRotateLeft(root, x)
+				root = javaHashRotateLeft(root, x)
 				parent = x.parent
 				grand = parent.parent
 			}
 			parent.red = false
 			if grand != nil {
 				grand.red = true
-				root = dotRotateRight(root, grand)
+				root = javaHashRotateRight(root, grand)
 			}
 		} else {
 			uncle := grand.left
@@ -418,14 +465,14 @@ func dotBalanceInsertion[K comparable, V any](root, x *dotHashNode[K, V]) *dotHa
 			}
 			if x == parent.left {
 				x = parent
-				root = dotRotateRight(root, x)
+				root = javaHashRotateRight(root, x)
 				parent = x.parent
 				grand = parent.parent
 			}
 			parent.red = false
 			if grand != nil {
 				grand.red = true
-				root = dotRotateLeft(root, grand)
+				root = javaHashRotateLeft(root, grand)
 			}
 		}
 	}
@@ -461,8 +508,8 @@ func dotCompareString(a, b string) int {
 	return len(aa) - len(bb)
 }
 
-func newDotLongSet() *dotHashMap[uint64, struct{}] {
-	return newDotHashMap[uint64, struct{}](func(key uint64) int32 { return int32(key ^ (key >> 32)) }, dotCompareLong)
+func newDotLongSet() *javaHashMap[uint64, struct{}] {
+	return newJavaHashMap[uint64, struct{}](func(key uint64) int32 { return int32(key ^ (key >> 32)) }, dotCompareLong)
 }
 
-type dotLongSet = dotHashMap[uint64, struct{}]
+type dotLongSet = javaHashMap[uint64, struct{}]

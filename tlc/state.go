@@ -519,6 +519,33 @@ func incompleteNextStateParams(tool *Tool, action *Action, state *TLCStateMut) [
 	return []string{actionName(action), verb, strings.Join(names, ", ")}
 }
 
+// GetVals is Java TLCState.getVals: put every declared variable, including an
+// unassigned (null) value, in a fresh HashMap. MCState uses its key-set order;
+// Values remains the declaration-ordered adapter used by RecordValue(TLCState).
+func (s *TLCStateMut) GetVals() *javaHashMap[*UniqueString, Value] {
+	values := newJavaHashMap[*UniqueString, Value](func(key *UniqueString) int32 {
+		if key == nil {
+			return 0
+		}
+		return javaFormatStringHash(key.String())
+	}, nil)
+	// UniqueString is not Comparable in Java. All keys have the same class, so
+	// tieBreakOrder uses identity hashes. A native Go pointer supplies a stable
+	// object identity here; equality lookup still searches both collision subtrees.
+	values.tieBreak = func(a, b *UniqueString) int {
+		aHash := uint32(reflect.ValueOf(a).Pointer()) & 0x7fffffff
+		bHash := uint32(reflect.ValueOf(b).Pointer()) & 0x7fffffff
+		if aHash <= bHash {
+			return -1
+		}
+		return 1
+	}
+	for _, variable := range stateVariables {
+		values.Set(variable.Name, s.Lookup(variable.Name))
+	}
+	return values
+}
+
 func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
 	if s != nil && s.printRecord != nil {
 		out := NewInsMap[*UniqueString, Value]()

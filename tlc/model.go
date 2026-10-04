@@ -665,13 +665,13 @@ func NewMCStateFromTLCStateInfo(info *TLCStateInfo) *MCState {
 	if original == nil {
 		original = info.State
 	}
-	values := original.Values()
+	values := original.GetVals()
 	var vars []*MCVariable
 	for name, value := range values.All() {
 		vars = append(vars, NewMCVariable(name.String(), value))
 	}
 	state.Variables = vars
-	state.Record = NewRecordValueFromInsMap(values)
+	state.Record = NewRecordValueFromInsMap(original.Values())
 	return state
 }
 

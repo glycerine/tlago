@@ -28,6 +28,7 @@
 package tlago
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -35,7 +36,13 @@ import (
 )
 
 func TestJavaPrintTraceRace(t *testing.T) {
-	result := runJavaTLCModelTestWithRoot(t, "PrintTraceRace", "MC", true, true, true, 4)
+	runJavaPrintTraceRace(t)
+}
+
+func runJavaPrintTraceRace(t *testing.T, extraArgs ...string) *tlc.Result {
+	t.Helper()
+	args := append([]string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "PrintTraceRaceTest.json")}, extraArgs...)
+	result := runJavaTLCModelTestWithRoot(t, "PrintTraceRace", "MC", true, true, true, 4, args...)
 	if result.ExitStatus != tlc.ExitStatusFailureSafetyEval {
 		t.Fatalf("exit status=%d, want safety evaluation failure", result.ExitStatus)
 	}
@@ -68,4 +75,5 @@ func TestJavaPrintTraceRace(t *testing.T) {
 	}
 	// Java's Object[2] state payload is represented by StateInfo/StateNumber.
 	requireJavaTLCUncovered(t, result, "line 15, col 12 to line 15, col 28 of module PrintTraceRace")
+	return result
 }

@@ -3654,3 +3654,60 @@ explicitly checkedpresent (no missing-artifact skips credited). Logs
  ttrace-eval-race-<Class>-junit.log and ttrace-random-element-<Class>-junit.log,
 corresponding javaclogs in ignored correctness-java scratch. These six upcoming
 methods are not yet translated/credited. Goalactive,userdeferredtopicsunchanged.
+
+2026-10-04: EvalExceptionTest and PrintTraceRaceTest original first phases
+reconciled by restoring inherited doDumpTrace=true, with all assertions intact.
+Their helpers now permit class-name TTrace output paths. Original evaluation
+coverage=false, JSON/DOT/debugger/fp0/seed1 settings and ERROR exit retained;
+PrintTraceRace keeps four workers, coverage/DOT/JSON, no debugger and
+FAILURE_SAFETY_EVAL exit. First restored-phase gate passes1.632s (62837 terminal).
+An earlier scripting syntax error made no edits;21699 ran the old tests and is
+not credited as verification of restored settings. Both handles are retired.
+New EvalExceptionTest_TTraceTest.testSpec and
+PrintTraceRaceTest_TTraceTest.testSpec translated in tlc_ttrace_eval_race_java_test.go.
+Both execute the fully asserted original model first and recheck the actual
+Go-generated artifact. Eval preserves FINISHED,6/6/0 stats, complete six-state
+trace/actions/ordinals and safety exit. PrintTraceRace preserves four workers,
+FINISHED,2/2/0 stats,no GENERAL,behavior diagnostic, original first-two-state/
+ordinal and two-field payload shape assertions, and safety exit. Shared TTrace
+helper now preserves workers and Java's debugger-only-with-one-worker condition;
+JSON/DOT/no-generation/no-coverage and original missing-artifact assumption stay.
+Initial recheck run98770: PrintTraceRace passes; Eval fails exact record field/
+function order despite matching state counts and first-phase trace. Actual
+production shortcut: MCState consumed declaration-ordered state values while
+Java TLCState.getVals builds a HashMap. That altered the generated invariant's
+variable order and the recheck's record-name intern tokens. Ported GetVals with
+all declared keys, including null/unassigned values; MCState now consumes its
+key-set order, while RecordValue(TLCState) retains declaration-order construction.
+Generalized existing DOT HashMap helper into java_hash_map.go, preserving source
+bucket/list/resize/tree behavior and adding non-Comparable-key subtree search,
+identity tie-break and duplicate search. UniqueString hashes use Java UTF16
+String.hashCode; its class is non-Comparable, with native Go object identities
+for tie-breaking. Tree equality lookup searches both subtrees even when identity
+hashes collide. Source Java TLCState/MCState, cached OpenJDK21 source and local
+JDK21 bytecode consulted; notices/licenses retained. No field pre-intern hack,
+rewritten trace master, weakened assertions or invented permanent tests.
+Final focused4 PASS3.903s (68947 terminal); five normal repetitions of all four
+plus DumpAsDot and Github461TTrace PASS24.533s (57000 terminal); five corresponding
+root race repetitions PASS179.842s (33558 terminal). Full offline workspace
+PASS root456.441s,SANY0.949s,TLC65.141s (87703 terminal). Full TLC race PASS557.944s
+(30057 terminal). All verification handles retired; ready for green commit.
+All four reused fixtures byte-identical. Unchanged Java first/recheck references
+for both pairs previously passed and generated prerequisites were checked present.
+Ignored CLI probes (not permanent tests/inventory credit): all3374 prior DOT
+iteration/lookup snapshots (10,433,564bytes) still match Java exactly after helper
+changes (57581 terminal). Additional non-Comparable probe captures actual Java
+identity hashes, including an actual collision (keys62354/105841,hash2134400190),
+then replays insertion/update/lookup with those identities in Go. All256 snapshots
+(280,259bytes) match byte-for-byte, including tree collisions and resize splits.
+Inventory760/1269 contexts,325/626 complete classes;509 contexts/301 classes
+pending,one partial;TTrace7/45 complete. Both first phases restored to Port
+complete, and both new rechecks marked Port complete. Goal active; deferred
+Debugger/scoped identifiers,Checkpoint/recovery,Distributed TLC,JPF and
+Benchmarks/supporting fixtures unchanged. Next eligible batch: four random-element
+TTrace variants. Unchanged first/recheck Java pairs for RandomElementTest,
+RandomElementT4Test,RandomElementSimulationTest and RandomElementXandYTest already
+pass (46715 retired; ttrace-random-element-<Class>-junit.log). Their existing Go
+first phases already explicitly preserve JSON; retain all seeds, workers,
+simulation/debugger settings and assertions when factoring generation helpers.
+Those four upcoming rechecks remain missing/uncredited.

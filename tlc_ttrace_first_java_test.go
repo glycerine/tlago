@@ -29,6 +29,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/glycerine/tlago/tlc"
@@ -43,6 +44,11 @@ func runJavaTTraceRecheck(t *testing.T, name, generated string, randomFPSeed, du
 }
 
 func runJavaTTraceRecheckWithDeadlock(t *testing.T, name, generated string, randomFPSeed, dump, checkDeadlock bool) *tlc.Result {
+	t.Helper()
+	return runJavaTTraceRecheckWithWorkers(t, name, generated, randomFPSeed, dump, checkDeadlock, 1)
+}
+
+func runJavaTTraceRecheckWithWorkers(t *testing.T, name, generated string, randomFPSeed, dump, checkDeadlock bool, workers int) *tlc.Result {
 	t.Helper()
 	if info, err := os.Stat(generated); err != nil || !info.Mode().IsRegular() {
 		t.Skip("No TE spec was generated, please run test with original spec")
@@ -60,7 +66,10 @@ func runJavaTTraceRecheckWithDeadlock(t *testing.T, name, generated string, rand
 	resolver := tlc.NewSimpleFilenameToStream([]string{original}, tlc.FilenameResolverOptions{Classpath: classpath, UserDirectory: &generatedDirectory})
 	setJavaModelLivenessThreshold(t, math.MaxFloat64)
 	return runJavaTLCModelTestWithArguments(t, name, generatedName, func(meta, traceDirectory string) []string {
-		args := []string{"-metadir", meta, "-debugger", "nosuspend,port=4712,nohalt", "-noGenerateSpecTE", "-workers", "1", "-checkpoint", "0"}
+		args := []string{"-metadir", meta, "-noGenerateSpecTE", "-workers", strconv.Itoa(workers), "-checkpoint", "0"}
+		if workers == 1 {
+			args = append(args, "-debugger", "nosuspend,port=4712,nohalt")
+		}
 		if !checkDeadlock {
 			args = append(args, "-deadlock")
 		}

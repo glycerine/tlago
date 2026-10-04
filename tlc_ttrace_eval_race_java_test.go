@@ -23,33 +23,29 @@
  * Contributors:
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
-// Port of EvalExceptionTest.testSpec and its coverage-disabled constructor.
 package tlago
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/glycerine/tlago/tlc"
 )
 
-func TestJavaEvalException(t *testing.T) {
-	runJavaEvalException(t)
-}
-
-func runJavaEvalException(t *testing.T, extraArgs ...string) *tlc.Result {
-	t.Helper()
-	args := append([]string{"-config", "DistBakery.tla", "-dumpTrace", "json", filepath.Join(t.TempDir(), "EvalExceptionTest.json")}, extraArgs...)
-	result := runJavaTLCModelTestWithCoverage(t, "DistBakery", false, args...)
-	if result.ExitStatus != tlc.ExitStatusError {
-		t.Fatalf("exit status=%d, want ERROR", result.ExitStatus)
+// Original EvalExceptionTest_TTraceTest.testSpec. Recheck the generated error trace.
+func TestJavaEvalExceptionTTrace(t *testing.T) {
+	generated := filepath.Join(t.TempDir(), "EvalExceptionTestTTrace.tla")
+	if !t.Run("original", func(t *testing.T) { runJavaEvalException(t, "-teSpecOutDir", generated) }) {
+		return
 	}
-	if len(javaTLCRecords(result, tlc.ECTLCFinished)) == 0 {
-		t.Fatal("TLC_FINISHED not recorded")
+	r := runJavaTTraceRecheck(t, "DistBakery", generated, false, true)
+	if r.ExitStatus != tlc.ExitStatusViolationSafety {
+		t.Fatalf("exit=%d, want VIOLATION_SAFETY; messages=%v", r.ExitStatus, r.Messages)
 	}
-	requireJavaTLCRecordedParams(t, result, tlc.ECTLCStats, "24", "17", "5")
-	requireJavaTLCRecordedParams(t, result, tlc.ECTLCModuleArgumentErrorAn, "first", "<=", "integer", "(-1 :> 0)")
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "6", "6", "0")
 	expectedTrace := []string{
 		"/\\ num = (-2 :> 0 @@ -1 :> 0)\n/\\ rnum = (-2 :> (-1 :> 0) @@ -1 :> (-2 :> 0))\n/\\ net = (-2 :> (-1 :> <<>>) @@ -1 :> (-2 :> <<>>))\n/\\ acks = (-2 :> {} @@ -1 :> {})\n/\\ pc = ( [node |-> -2, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -2, type |-> \"mutex\"] :> \"ncs\" @@\n  [node |-> -1, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -1, type |-> \"mutex\"] :> \"ncs\" )",
 		"/\\ num = (-2 :> 0 @@ -1 :> 0)\n/\\ rnum = (-2 :> (-1 :> 0) @@ -1 :> (-2 :> 0))\n/\\ net = (-2 :> (-1 :> <<>>) @@ -1 :> (-2 :> <<>>))\n/\\ acks = (-2 :> {} @@ -1 :> {})\n/\\ pc = ( [node |-> -2, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -2, type |-> \"mutex\"] :> \"enter\" @@\n  [node |-> -1, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -1, type |-> \"mutex\"] :> \"ncs\" )",
@@ -58,26 +54,45 @@ func runJavaEvalException(t *testing.T, extraArgs ...string) *tlc.Result {
 		"/\\ num = (-2 :> 1 @@ -1 :> 0)\n/\\ rnum = (-2 :> (-1 :> 0) @@ -1 :> (-2 :> 1))\n/\\ net = (-2 :> (-1 :> <<>>) @@ -1 :> (-2 :> <<[type |-> \"ack\"]>>))\n/\\ acks = (-2 :> {-2} @@ -1 :> {})\n/\\ pc = ( [node |-> -2, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -2, type |-> \"mutex\"] :> \"e1\" @@\n  [node |-> -1, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -1, type |-> \"mutex\"] :> \"enter\" )",
 		"/\\ num = (-2 :> 1 @@ -1 :> (-1 :> 0))\n/\\ rnum = (-2 :> (-1 :> 0) @@ -1 :> (-2 :> 1))\n/\\ net = ( -2 :> (-1 :> <<>>) @@\n  -1 :> (-2 :> <<[type |-> \"ack\"], [type |-> \"write\", num |-> (-1 :> 0)]>>) )\n/\\ acks = (-2 :> {-2} @@ -1 :> {-1})\n/\\ pc = ( [node |-> -2, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -2, type |-> \"mutex\"] :> \"e1\" @@\n  [node |-> -1, type |-> \"msg\"] :> \"a\" @@\n  [node |-> -1, type |-> \"mutex\"] :> \"e1\" )",
 	}
-	records := javaTLCRecords(result, tlc.ECTLCStatePrint2)
-	if len(records) != len(expectedTrace) {
-		t.Fatalf("trace length=%d, want %d", len(records), len(expectedTrace))
+	requireJavaRandomSubsetTrace(t, r, expectedTrace, true)
+}
+
+// Original PrintTraceRaceTest_TTraceTest.testSpec and its four-worker override.
+func TestJavaPrintTraceRaceTTrace(t *testing.T) {
+	generated := filepath.Join(t.TempDir(), "PrintTraceRaceTestTTrace.tla")
+	if !t.Run("original", func(t *testing.T) { runJavaPrintTraceRace(t, "-teSpecOutDir", generated) }) {
+		return
 	}
-	for i, record := range records {
+	r := runJavaTTraceRecheckWithWorkers(t, "PrintTraceRace", generated, false, true, false, 4)
+	if r.ExitStatus != tlc.ExitStatusViolationSafety {
+		t.Fatalf("exit=%d, want VIOLATION_SAFETY; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "2", "2", "0")
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCBehaviorUpToThisPoint)) == 0 {
+		t.Fatal("TLC_BEHAVIOR_UP_TO_THIS_POINT absent")
+	}
+	records := javaTLCRecords(r, tlc.ECTLCStatePrint2)
+	expectedTrace := []string{"S = [q |-> <<>>, i |-> 1]", "S = [q |-> <<1>>, i |-> 2]"}
+	if len(records) < len(expectedTrace) {
+		t.Fatalf("trace length=%d, want at least two records", len(records))
+	}
+	for i, want := range expectedTrace {
+		record := records[i]
 		if record.StateInfo == nil {
 			t.Fatalf("trace state %d has no TLCStateInfo", i+1)
 		}
-		info, ok := record.StateInfo.Info.(string)
-		if !ok || info == tlc.InitialPredicate || strings.HasPrefix(info, "<Action") {
-			t.Fatalf("trace action %d=%v, want a named action", i+1, record.StateInfo.Info)
-		}
-		if got := strings.TrimSpace(record.StateInfo.String()); got != expectedTrace[i] {
-			t.Fatalf("trace state %d=%q, want %q", i+1, got, expectedTrace[i])
+		if got := replJavaTrim(record.StateInfo.String()); got != want {
+			t.Fatalf("trace state %d=%q, want %q", i+1, got, want)
 		}
 		if record.StateNumber != i+1 {
 			t.Fatalf("trace ordinal=%d, want %d", record.StateNumber, i+1)
 		}
 	}
-	requireJavaTLCRecordedParams(t, result, tlc.ECTLCNestedExpression,
-		"0. Line 209, column 5 to line 209, column 32 in DistBakery\n1. Line 209, column 22 to line 209, column 32 in DistBakery\n\n")
-	return result
+	// Java's Object[2] payload is represented by StateInfo and StateNumber.
 }

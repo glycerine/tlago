@@ -59,8 +59,8 @@ type StateWriter struct {
 	snapshot            bool
 	stuttering          bool
 	strict              map[uint64]struct{}
-	actionToColors      *dotHashMap[string, int]
-	rankToNodes         *dotHashMap[int, *dotLongSet]
+	actionToColors      *javaHashMap[string, int]
+	rankToNodes         *javaHashMap[int, *dotLongSet]
 	colorGen            int
 	closed              bool
 }
@@ -149,8 +149,8 @@ func NewDotStateWriter(fname string, opts DotStateWriterOptions) (*StateWriter, 
 	w.snapshot = opts.Snapshot
 	w.Constrained = opts.Constrained
 	w.stuttering = opts.Stuttering
-	w.actionToColors = newDotHashMap[string, int](javaFormatStringHash, dotCompareString)
-	w.rankToNodes = newDotHashMap[int, *dotLongSet](func(level int) int32 { return int32(level) }, dotCompareInt)
+	w.actionToColors = newJavaHashMap[string, int](javaFormatStringHash, dotCompareString)
+	w.rankToNodes = newJavaHashMap[int, *dotLongSet](func(level int) int32 { return int32(level) }, dotCompareInt)
 	w.colorGen = 1
 	if opts.Strict {
 		w.strict = make(map[uint64]struct{})
@@ -303,7 +303,7 @@ func (w *StateWriter) getActionColor(action *Action) int {
 		return 1
 	}
 	if w.actionToColors == nil {
-		w.actionToColors = newDotHashMap[string, int](javaFormatStringHash, dotCompareString)
+		w.actionToColors = newJavaHashMap[string, int](javaFormatStringHash, dotCompareString)
 	}
 	name := action.GetName()
 	if color, ok := w.actionToColors.Get2(name); ok {
