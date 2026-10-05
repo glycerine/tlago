@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-05 ConcurrentWriteTest partial port/source reconciliation aftercff4473:
+Original methods test and test3 now enabled in concurrent_write_java_test.go;
+exact four1,000-value loops (4,000 total), eight independent BufferedRandomAccessFile
+handles, all400,000,000 source writes and ALL400,000,000 read assertions retained.
+Source invokeAll returned futures remain uninspected; Go captures task panics at
+that same boundary and waits for every writer. Actual production BRAF used;
+no invented tests, size reduction or source behavior changes.
+Unchanged Java source test passes; test3 passes its entire original400M case.
+53202 terminal exit1: test pass then test1 FAIL expected1,000,000/actual0.
+68714 terminal exit0 wrapper: test2 FAIL same expected1,000,000/actual0; test3 PASS.
+Individual result logs concurrent-write-original-test{,1,2,3}.log authoritative.
+Go51027 initial exact draft terminal exit1/test pass then test1 fails at same
+1,000,000/0; test2 separate terminal exit1 same value, concurrent-write-test2-go.
+Both source failures arise from unaligned partition boundary buffer pages and
+close-time stale whole-page flushes; pinned production intentionally unchanged.
+Ignored scratch concurrent_write_full_draft_test.go retains exact methods0..3,
+including failing methods1/2. No persistent skip or weakened expectation.
+Go37502 terminal exit0/full original test3 normal27.095s, concurrent-write-test3-
+go.log; retired. Go14745 terminal exit0/source test race1.033s, concurrent-write-
+baseline-final-race.log; retired. Go77573 terminal exit0/ALL18 original BRAF
+methods race1.039s, concurrent-write-buffer-final-race.log; retired. Its parent
+regex selected BRAF only; do not claim it covered ConcurrentWrite source test3.
+Source test4 adds partition position AND global j*8, leaving gaps. Full unchanged
+Java method55977 LIVE, concurrent-write-original-test4.log; no shortened loop or
+patched source. Python owns dedicated generated scratch tempdir and deletes it
+only after Java terminal; this avoids accumulating source's undeleted big files.
+Poll exact handle. Methods1/2/4 stay reconcile and uncredited. Supplemental
+concurrent inventory2/17 complete contexts;12 generator +3 write contexts remain.
+Main1251/1269,609/626 and sharedutil55/56 unchanged. JVM-specific InliningTest and
+TLCRuntimeTest explicitly documented reconcile, not portable simplified tests.
+Whole43828 remains LIVE at collector snapshot before this test-only addition,
+execution-stats-final-workspace-go.log. No current whole completion claim.
+Latest observed space5.8GiB while Java4 writes; Go3 generated file removed by
+normal TempDir cleanup after terminal. No fixture/user-source cleanup performed.
+Goal ACTIVE. Next parallel fingerprint flusher needed before generator ports:
+source OffHeapDiskFPSet.getFlusher selects ConcurrentOffHeapMSBFlusher for8192+
+array and partitionlength>2*PROBE_LIMIT. Go currently sequential actual eviction;
+port source concurrent sort/merge/barrier/offset handling accurately, no shortcut.
+
 2026-10-05 shared util ExecutionStatisticsCollectorTest complete afterb827ba7:
 All twelve original methods now in execution_statistics_collector_java_test.go,
 including source capture-only submit override, all original preference inputs,
