@@ -1,5 +1,18 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04 latest:24 original correctness contexts and both production fixes
+committed9acb8a7 after full workspace and relevant race checks passed. Next four
+original liveness methods (Github604/Github702/IncompatibleTypesLive/TwoPhaseCommit)
+pass19.070s with eight pristine fixtures, all original assertions/settings and
+inherited exits retained, no production change. Additional race run: three pass, TwoPhaseCommit retains original timing-sensitive
+zero-uncovered assertion and fails on transient earlier coverage. Same failure
+reproduced unchanged in Java under interpreted/earlier-report pacing; do not
+weaken assertion, filter records or change source test flags. Source audit fixes
+actual periodic-report omission: ReportCoverage now supplies Java end/overhead
+marker. Fresh normal four-case/full-TLC and original coverage race gates running.
+TODO_TEST_PORT now914/1269(72.0%),437/626classes complete,355contexts pending.
+
+
 2026-10-04 current correctness slice: twelve Examples methods/29pristine
 fixtures PASS570.714s after preserving Java's substitution-constructor metadata.
 YoYo plus19 original coverage race PASS100.888s; full TLC race PASS624.947s.
@@ -4784,3 +4797,9 @@ constructor, preserving the source syntax tree and shared substitution array.
 Go NewSubstInNodeFromSource carries TreeNode/Location/Substs while allocating
 a fresh semantic node and replacing only the body. Unnamed action locations
 and CounterExample action records therefore retain the INSTANCE source range.
+
+Periodic checker coverage calls ReportCoverage(tool,StartTime), matching Java
+AbstractChecker.reportCoverage/CostModelCreator.report, including END and
+runtime overhead classification. The recorder keeps every periodic report;
+source zero-uncovered assertions can observe transient zeros when diagnostic
+instrumentation slows a model. Their original all-report semantics are retained.

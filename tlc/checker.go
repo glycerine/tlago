@@ -1275,7 +1275,7 @@ func (mc *ModelChecker) reportPeriodicCoverage() {
 	if mc == nil || !checkerCoverageEnabled(mc.Tool) {
 		return
 	}
-	reportCoverage(mc.Tool)
+	ReportCoverage(mc.Tool, mc.StartTime)
 }
 
 func checkerCoverageEnabled(tool *Tool) bool {

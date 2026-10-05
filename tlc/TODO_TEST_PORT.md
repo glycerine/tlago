@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `00893c4`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `9acb8a7`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **433 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (69.2%).**
-- **910 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (71.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **359 logical method contexts across 193 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **437 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (69.8%).**
+- **914 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (72.0%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **355 logical method contexts across 189 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -29,7 +29,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Issue regressions in the evaluator and checker | 98 | 98 | 101 | 101 | 0 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 15 | 48 | 45 | 3 |
 | Generated TTrace recheck variants | 45 | 32 | 45 | 32 | 13 |
-| Liveness and fairness model regressions | 101 | 78 | 101 | 78 | 23 |
+| Liveness and fairness model regressions | 101 | 82 | 101 | 82 | 19 |
 | Liveness graph, tableau, and expression helpers | 6 | 6 | 48 | 48 | 0 |
 | Simulation and multithreaded simulation | 20 | 0 | 55 | 0 | 55 |
 | Coverage | 20 | 20 | 23 | 23 | 0 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 0 | 104 | 0 | 104 |
-| **Total** | **626** | **433** | **1,269** | **910** | **359** |
+| **Total** | **626** | **437** | **1,269** | **914** | **355** |
 
 ## Porting rules and proposed order
 
@@ -514,8 +514,8 @@ Temporal semantics, fairness, constraints, symmetry, double negation, counterexa
 - [x] [tlc2/tool/liveness/Github1037Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github1037Test.java) — **Port complete**: `testSpec` → [tlc_liveness_success_initial_error_java_test.go](../tlc_liveness_success_initial_error_java_test.go). Preserves the complete original method, inherited exit checks, constructor configuration and all five settings overrides, default liveness strategy, and pristine fixtures.
 - [ ] [tlc2/tool/liveness/Github317Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github317Test.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/Github317aTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github317aTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/Github604Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github604Test.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/Github702Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github702Test.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/liveness/Github604Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github604Test.java) — **Port complete**: `testSpec` → [tlc_liveness_four_simple_java_test.go](../tlc_liveness_four_simple_java_test.go). Full original method, inherited successful exit and constructor/settings retained; monolith configs, 17/4/0 and 10,507/103/0 statistics, depth, temporal-violation absence and zero-uncovered checks retained where asserted. All eight fixtures are byte-identical to Java.
+- [x] [tlc2/tool/liveness/Github702Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github702Test.java) — **Port complete**: `testSpec` → [tlc_liveness_four_simple_java_test.go](../tlc_liveness_four_simple_java_test.go). Full original method, inherited successful exit and constructor/settings retained; monolith configs, 17/4/0 and 10,507/103/0 statistics, depth, temporal-violation absence and zero-uncovered checks retained where asserted. All eight fixtures are byte-identical to Java.
 - [ ] [tlc2/tool/liveness/Github710aTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github710aTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/Github710bTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github710bTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/Github710cTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github710cTest.java) — **Missing**: `testSpec`.
@@ -524,7 +524,7 @@ Temporal semantics, fairness, constraints, symmetry, double negation, counterexa
 - [ ] [tlc2/tool/liveness/Github710eFairTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github710eFairTest.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/Github710eTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github710eTest.java) — **Missing**: `testSpec`.
 - [x] [tlc2/tool/liveness/Github790Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Github790Test.java) — **Port complete**: `testSpec` → [tlc_liveness_success_initial_error_java_test.go](../tlc_liveness_success_initial_error_java_test.go). Preserves the complete original method, inherited exit checks, constructor configuration and all five settings overrides, default liveness strategy, and pristine fixtures.
-- [ ] [tlc2/tool/liveness/IncompatibleTypesLiveTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/IncompatibleTypesLiveTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/liveness/IncompatibleTypesLiveTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/IncompatibleTypesLiveTest.java) — **Port complete**: `testSpec` → [tlc_liveness_four_simple_java_test.go](../tlc_liveness_four_simple_java_test.go). Full original method, inherited successful exit and constructor/settings retained; monolith configs, 17/4/0 and 10,507/103/0 statistics, depth, temporal-violation absence and zero-uncovered checks retained where asserted. All eight fixtures are byte-identical to Java.
 - [x] [tlc2/tool/liveness/InitialLivenessEvaluationErrorInvariantOnlyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/InitialLivenessEvaluationErrorInvariantOnlyTest.java) — **Port complete**: `testSpec` → [tlc_liveness_success_initial_error_java_test.go](../tlc_liveness_success_initial_error_java_test.go). Preserves the complete original method, inherited exit checks, constructor configuration and all five settings overrides, default liveness strategy, and pristine fixtures. Original configuration-error/safety alternatives and exact diagnostic/statistics branches retained; invariant-only control requires safety failure and the complete two-state trace. Production now retains the original exception code before diagnostic replay.
 - [x] [tlc2/tool/liveness/InitialLivenessEvaluationErrorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/InitialLivenessEvaluationErrorTest.java) — **Port complete**: `testSpec` → [tlc_liveness_success_initial_error_java_test.go](../tlc_liveness_success_initial_error_java_test.go). Preserves the complete original method, inherited exit checks, constructor configuration and all five settings overrides, default liveness strategy, and pristine fixtures. Original configuration-error/safety alternatives and exact diagnostic/statistics branches retained; invariant-only control requires safety failure and the complete two-state trace. Production now retains the original exception code before diagnostic replay.
 - [ ] [tlc2/tool/liveness/LivenessSymmetryWarning.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/LivenessSymmetryWarning.java) — **Missing**: `testSpec`. The unchanged Java reference fails its inherited successful-exit assertion: expected 0, actual 13 (liveness violation from April25MC). Original assertions remain pending; do not manufacture a successful exit or weaken the test.
@@ -542,7 +542,7 @@ Temporal semantics, fairness, constraints, symmetry, double negation, counterexa
 - [x] [tlc2/tool/liveness/TemporalDoubleNegationImplicationTautologyTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/TemporalDoubleNegationImplicationTautologyTest.java) — **Port complete**: `testValidProperty` → [tlc_temporal_double_negation_java_test.go](../tlc_temporal_double_negation_java_test.go). Preserves the complete original method, inherited exit checks, constructor configuration and all five settings overrides, default liveness strategy, and pristine fixtures.
 - [x] [tlc2/tool/liveness/TemporalDoubleNegationLeadsToDualTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/TemporalDoubleNegationLeadsToDualTest.java) — **Port complete**: `testValidProperty` → [tlc_temporal_double_negation_java_test.go](../tlc_temporal_double_negation_java_test.go). Preserves the complete original method, inherited exit checks, constructor configuration and all five settings overrides, default liveness strategy, and pristine fixtures.
 - [ ] [tlc2/tool/liveness/Test3.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/Test3.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/liveness/TwoPhaseCommitTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/TwoPhaseCommitTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/liveness/TwoPhaseCommitTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/TwoPhaseCommitTest.java) — **Port complete**: `testSpec` → [tlc_liveness_four_simple_java_test.go](../tlc_liveness_four_simple_java_test.go). Full original method, inherited successful exit and constructor/settings retained; monolith configs, 17/4/0 and 10,507/103/0 statistics, depth, temporal-violation absence and zero-uncovered checks retained where asserted. All eight fixtures are byte-identical to Java. Original zero-uncovered assertion is retained across all reports: extra Go race instrumentation can make periodic reports expose transient zeros before final coverage, and unchanged Java reproduces the same assertion failure under slower/earlier-report pacing. Default normal Java and Go runs pass; no final-report filtering or timing flags were substituted.
 - [ ] [tlc2/tool/liveness/UnsymmetricModelCheckerTestA.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/UnsymmetricModelCheckerTestA.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/liveness/UnsymmetricModelCheckerTestB.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/UnsymmetricModelCheckerTestB.java) — **Missing**: `testSpec`.
 

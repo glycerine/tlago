@@ -6,6 +6,59 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
+2026-10-04 latest checkpoint: 24 original Examples/temporal/initial contexts,
+53pristine Java fixtures and two production fixes committed9acb8a7. Full current
+workspace PASS(root1621.178s,SANY0.918s,TLC66.273s), original initialization/
+temporal race23methods PASS72.231s; earlier full TLC race PASS624.947s.
+All those handles terminal/retired; working tree clean at9acb8a7.
+
+Now installed four original liveness methods in
+ tlc_liveness_four_simple_java_test.go: Github604/Github702/IncompatibleTypesLive/
+TwoPhaseCommit, eight pristine fixtures. All unchanged Java references PASS in
+preflights4818/95224. Go66312 PASS19.070s, terminal0/retired.
+Race9811 terminal1/retired after120.449s: first3 PASS, TwoPhaseCommit fails only
+original zero-uncovered assertion because early periodic report contains zeros,
+final report all covered. No data-race report. Profile97203 terminal1/retired
+103.792s, same timing failure. Profiling retained original test/settings;
+binary moved to ignored .codex-gotmp/two-phase-original-race.test, cpu profile
+same prefix.cpu. Hot path is source-faithful symmetry/value comparison; no
+speculative optimization or race-disable attributes added.
+
+Java TestMPRecorder retains every report; Go zero-coverage helper matches it.
+AbstractChecker.runTLC coverage countdown matches Go (coverage/progress interval,
+3sec first wait then countdown ticks). Independent unchanged-Java diagnostic8148
+reproduces identical assertZeroUncovered failure: -Xint and
+-Dtlc2.TLC.progressInterval=120, original test/model/CLI unchanged,52.317s.
+This diagnostic changes pacing, is NOT baseline success evidence, and does NOT
+justify weakening assertions, dropping earlier coverage or changing source flags.
+Keep test complete/original and document original timing limit under extra race
+instrumentation; normal constructor/default Java and Go cases pass.
+
+Source audit found separate actual production omission: periodic Go coverage
+called reportCoverage directly without Java's coverage-end/overhead marker.
+checker.go reportPeriodicCoverage now calls ReportCoverage(tool,StartTime),
+matching AbstractChecker.reportCoverage -> CostModelCreator.report. No state
+algorithm/assertion changes. Gates retired: whole4normal92360 PASS20.519s;
+fullTLCnormal21664 PASS65.347s; original19coverage+first3liveness root
+race83939 PASS90.236s. This race gate excludes TwoPhaseCommit.
+Final source review corrected IncompatibleTypesLive coverage to its original
+inherited true default; final whole4normal48581 PASS5.915s. Its focused race
+41443 PASS5.915s, terminal0/retired. All current gates are terminal.
+
+Inventory914/1269(72.0%),437/626(69.8%),355pending contexts/189classes,
+onepartial, liveness82/101. All20topic rows verified. Commit14intended paths
+(source test1,8pristine fixtures,4docs,checker.go) after current normal/source
+coverage gates; source assertion unchanged. Whole9acb8a7 workspace receipt
+plus relevant current gates suffice for this reporting-boundary leaf change.
+Next: eleven finite/loop methods then six diagnostics/symmetry methods already
+prepared, review and install each coherent slice, fix any production failure
+before moving on. After these, liveness topic leaves only deferred checkpoint
+FL2 and the unchanged-Java-failing LivenessSymmetryWarning. Keep source failure
+visible; don't weaken expectations or invent a skip.
+
+Historical receipts and independent preparation for continuation follow;
+the previously described 24-context batch is now committed9acb8a7.
+
 2026-10-04 latest: Previous six lock/protocol/memory/cache Examples committed
 00893c4 after focused normal61.674s/race631.084s and fullworkspace PASS
 (root1181.648s,SANY0.993s,TLC65.132s). Those handles are terminal/retired.
