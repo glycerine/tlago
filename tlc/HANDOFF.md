@@ -1,5 +1,43 @@
 # TLC Port Handoff
 
+2026-10-05 actual OffHeap CAS insertion restored after3c274be:
+Source put/contains use atomic array words and CAS without a set-wide monitor.
+Removed native s.mu serialization from both paths; existing per-slot CAS retry,
+duplicate detection, atomic counts and shared eviction quiescence remain intact.
+Shared eviction flag now atomic: CAS selection, no barrier-mutex acquisition on
+ordinary nonpending operations, source compareAndSet(true,false) assertion before
+releasing waiters. IncWorkers now asserts num==initialized numThreads as Java.
+No new persistent tests or weakened source assertions; inventory credit unchanged.
+Unchanged Java9710 terminal exit1/retired, source-supported two workers with all
+8,388,608 scalar insertions: completes eviction,8,416,189 total puts (quota
+overshoot), zero collisions; fails original upper bound atline182. Native17875
+race terminal exit1/131.49s,8,439,146 puts, same source upper-bound failure and
+no race reports. After final reset CAS assertion audit, native2746 normal terminal
+exit1/54.50s,8,429,817 puts, same upper-bound failure. Both retired. Scheduling
+changes exact overshoot; size==overallPuts and eviction assertions hold. Logs
+concurrent-fpset-cas-eviction-{original-java,native-race}.log and concurrent-fpset-
+cas-final-eviction-native-go.log. Configured audits do not credit default2.1B cases.
+Other configured nine-method24685 race terminal exit1/same source upper bounds,
+no races; default partitioned57170 race terminal exit1/5.51s/source lower bound,
+all48 producer counts match original, no races; both retired. One-worker source-
+supported OffHeap three whole methods20480 entries ALL pass17.04s/race94947;
+retired. Original98082 terminal exit0/retired: all23 OffHeap (161.78s, includes
+99,999,999-entry index), all3 OffHeapLong(.55s) and three related native checks
+pass race, offheap-cas-original-related-race.log. Before final reset guard audit;
+final guard exercised by full configured eviction above. No failure credited pass.
+Whole52175 still LIVE at3c274be counter snapshot BEFORE CAS; standalone TLC88405
+LIVE at CAS snapshot before final reset guard. Logs fpset-atomic-counters-final-
+workspace-go.log/offheap-cas-final-tlc-go.log. No duplicate whole run started.
+Next source audit found ValueOutputStream/InputStream constructors omit source
+8192-byte BufferedDataOutputStream/InputStream. Must reconcile serializers and
+random-access primitive adapters before applying buffering; no stream change yet.
+Prepared ignored long_disk_state_queue_growth_draft_test.go with exact2,147,483,648
+enqueues of one Dummy-equivalent object: workerShort.MAX_VALUE,uid0,level1,no value
+payload, Empty-state identity restored at cleanup. Source method never dequeues,
+fingerprints or invokes other dummy stubs. Full growth remains unexecuted and
+uncredited; raw state bytes14GiB before filesystem metadata. Do not substitute a
+smaller loop or variable-valued state. Goal active; deferred topics unchanged.
+
 2026-10-05 fingerprint counter races fixed while auditing concurrent generators:
 Staged complete original four producer bodies and twelve concrete method contexts
 in ignored concurrent_fpset_full_draft_test.go/overlay. Preserve source default

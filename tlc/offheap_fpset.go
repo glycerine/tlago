@@ -20,7 +20,7 @@ type offHeapSynchronizer struct {
 	mu              sync.Mutex
 	cond            *sync.Cond
 	sets            *InsMap[*OffHeapDiskFPSet, struct{}]
-	flusherChosen   bool
+	flusherChosen   atomic.Bool
 	parties         int
 	waiting         int
 	generation      uint64
@@ -68,17 +68,18 @@ func (s *offHeapSynchronizer) incWorkers(numWorkers int) {
 }
 
 func (s *offHeapSynchronizer) evict() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if !s.flusherChosen {
-		s.flusherChosen = true
-	}
+	s.flusherChosen.CompareAndSwap(false, true)
 }
 
 func (s *offHeapSynchronizer) awaitIfPending() error {
+	// Java checks its AtomicBoolean before entering the phaser. Ordinary
+	// lookups and CAS insertions do not acquire the global barrier mutex.
+	if !s.flusherChosen.Load() {
+		return nil
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !s.flusherChosen {
+	if !s.flusherChosen.Load() {
 		return nil
 	}
 	generation := s.generation
@@ -93,11 +94,13 @@ func (s *offHeapSynchronizer) awaitIfPending() error {
 		s.lastEvictionErr = firstErr
 		s.waiting = 0
 		s.generation++
-		s.flusherChosen = false
+		if !s.flusherChosen.CompareAndSwap(true, false) {
+			panic(NewTLCRuntimeException(ECGeneral))
+		}
 		s.cond.Broadcast()
 		return firstErr
 	}
-	for generation == s.generation && s.flusherChosen {
+	for generation == s.generation && s.flusherChosen.Load() {
 		s.cond.Wait()
 	}
 	return s.lastEvictionErr
@@ -112,43 +115,38 @@ func offHeapDiskFPSetProbeLimit() int {
 	return offHeapDefaultProbeLimit
 }
 
+// Source puts and membership checks use atomic array words and CAS, with the
+// shared eviction barrier providing exclusive access only during a flush.
 func (s *OffHeapDiskFPSet) Put(fp uint64) bool {
 	fp0 := fp & diskFPSetFlushedMask
 	for {
 		if err := offHeapGlobalSync.awaitIfPending(); err != nil {
 			panic(err)
 		}
-		s.mu.Lock()
 		start := 0
 		if s.index != nil {
 			if found := s.memLookup0(fp0); found == offHeapFound {
 				atomic.AddUint64(&s.memHitCnt, 1)
-				s.mu.Unlock()
 				return true
 			} else {
 				start = found
 			}
 			hit, err := s.diskLookup(fp0)
 			if err != nil {
-				s.mu.Unlock()
 				panic(err)
 			}
 			if hit {
 				atomic.AddUint64(&s.diskHitCnt, 1)
-				s.mu.Unlock()
 				return true
 			}
 		}
 		seen, inserted := s.memInsert0(fp0, start)
 		if seen {
-			s.mu.Unlock()
 			return true
 		}
 		if inserted {
-			s.mu.Unlock()
 			return false
 		}
-		s.mu.Unlock()
 		offHeapGlobalSync.evict()
 	}
 }
@@ -157,8 +155,6 @@ func (s *OffHeapDiskFPSet) Contains(fp uint64) bool {
 	if err := offHeapGlobalSync.awaitIfPending(); err != nil {
 		panic(err)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	fp0 := fp & diskFPSetFlushedMask
 	if s.memLookup(fp0) {
 		return true
@@ -418,6 +414,9 @@ func (s *OffHeapDiskFPSet) offHeapLongComparator(fpA int64, posA int64, fpB int6
 }
 
 func (s *OffHeapDiskFPSet) IncWorkers(num int) {
+	if num != s.numThreads {
+		panic(NewAssertionError())
+	}
 	offHeapGlobalSync.incWorkers(num)
 }
 
