@@ -1,5 +1,60 @@
 # TLC Port Progress
 
+2026-10-05 verified original Test210 diagnostic checkpoint afteread7f9a:
+Original Test210.testSpec is mechanically translated with ERROR_SPEC_PARSE,
+no GENERAL, all ten exact TestPrintStream substrings (header/count9 plus nine
+full location/message blocks), original SuiteETestCase flags and two byte-identical
+vectors. Initial Go output had two errors instead of nine. Selector resolution
+used ASSUME/PROVE's quantified expression projection and did not walk proof steps;
+it lost NEW clause indices/domains, lexical declaration scope and SUFFICES handling.
+Proof steps now retain their qualified names, ASSUME/PROVE bodies and SUFFICES
+status. Resolve actual clause structure and nested NEW domains, track the enclosing
+proof versus subsequent statements, follow Java's illegalLabelRef/illegalAPPosRef
+and SUFFICES positional wrapper rules, and retain individual selector ranges.
+Named assumption labels are legal. Nested proof ASSUME/PROVE labels are validated
+with Java's full range/message. BY facts retain fact/expression mode, including
+leaf-only proofs without numbered steps; NEW fact selections retain their source
+NewSymbol rather than evaluating a projected domain. This is a selector/diagnostic
+port, not a declaration of complete native proof-graph or all Generator parity.
+
+Whole original Test210 first passes normal0.040s; focused race1.159s (38423
+terminal/retired) before the final explicit domain/leaf traversal additions.
+Related original legacy contexts (201–210/216/219/220/99/999/InvalidInvariant and
+ETest1–16) pass race98.963s (73617 terminal/retired) before the final leaf-only
+proof retention. Root parser/semantic/XML/elevated-warning race14.474s (43387
+terminal/retired), SANY Java race8.226s (47389 terminal/retired).
+Final leaf-retention code: complete SANY Java race7.901s (85424 terminal/retired),
+log legacy-error-test210-final-sany-race.log. Final combined related root/legacy
+race gate passes114.107s (42109 terminal/retired), log
+legacy-error-test210-final-related-race.log. Keyword directives now use token
+kinds (BY/DF/SUFFICES) rather than images, preserving keyword record fields.
+That refinement passes root/Test208/Test210 race21.221s and full SANY Java
+race8.109s (83989/68691 terminal/retired). Final
+ASSUME/PROVE selections retain structured targets in fact mode; Java rejects a
+whole AP as an expression rather than evaluating its quantified projection.
+Final guard code passes related root/Test208/Test210 race20.627s (30971
+terminal/retired) and full SANY Java race8.121s (90316 terminal/retired), logs
+legacy-error-test210-ap-final-race.log and legacy-error-test210-ap-sany-race.log.
+All logs under .codex-gotmp/. Every original assertion remains unchanged.
+Inventory1082/1269 contexts (85.3%),562/626 complete classes (89.8%),187pending
+across64classes; legacy99/104 complete. Next original Test212, then213/214/215/217.
+Test212 requires six exact non-Leibniz substitution errors at whole INSTANCE
+ranges and its two dependency modules; fix real Leibniz analysis before advancing.
+
+Corrected INSTANCE full workspace57071 passes exit0/terminal, root1772.759s,
+SANY0.932s/TLC72.721s, log legacy-error-context-final-workspace-go.log. This covers
+caf0ad3 production code and ETest1–3, before ETest5/16 semantic report/validation
+changes and before Test210. Full diagnostic snapshot23927 finished exit1/retired,
+root1791.100s/SANY1.083s/TLC70.782s; it compiled BEFORE caf0ad3 and failed only the
+three now-fixed INSTANCE-order cases. Do not credit that older snapshot as green.
+Current ETest16 whole workspace75902 remains live, log
+legacy-error-etest16-final-workspace-go.log. It includes7f51f9c and ETest1–16,
+but not the current Test210 semantic changes. Resume this exact handle, never
+restart on an observation timeout, and preserve its eventual receipt's scope.
+A final full workspace gate is required for the current production changes.
+Preserve the five deferred topics and test_vectors fixture naming.
+This entry is authoritative; older counts/gate/next-context notes are historical.
+
 2026-10-05 ETest8–16 complete after6e5d315:
 All16 original SuiteETestCase contexts are now complete translations. This batch
 preserves the nine original constructors, all inherited runner flags, every source

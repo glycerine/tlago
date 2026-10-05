@@ -146,3 +146,36 @@ func TestJavaLegacySuiteETest16(t *testing.T) {
 		}
 	}
 }
+
+// Original Test210.testSpec and ERROR_SPEC_PARSE constructor, preserving all
+// ten exact TestPrintStream substrings and full SuiteETestCase runner settings.
+func TestJavaLegacySuiteTest210(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest210", "test210", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test210.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"Semantic errors:\n\n*** Errors: 9\n",
+		"line 33, col 16 to line 33, col 19 of module test210\n\nAccessing subexpression labeled `laby' of ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.\n",
+		"line 35, col 16 to line 35, col 16 of module test210\n\nAccessing ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.\n",
+		"line 42, col 41 to line 42, col 55 of module test210\n\nLabel not allowed within scope of declaration in nested ASSUME/PROVE.\n",
+		"line 43, col 30 to line 43, col 44 of module test210\n\nLabel not allowed within scope of declaration in nested ASSUME/PROVE.\n",
+		"line 55, col 16 to line 55, col 16 of module test210\n\nAccessing non-existent subexpression of a SUFFICES\n",
+		"line 62, col 15 to line 62, col 18 of module test210\n\nAccessing subexpression labeled `laby' of ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.\n",
+		"line 63, col 15 to line 63, col 18 of module test210\n\nAccessing subexpression labeled `labi' of ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.\n",
+		"line 64, col 15 to line 64, col 18 of module test210\n\nAccessing subexpression labeled `labu' of ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.\n",
+		"line 65, col 15 to line 65, col 15 of module test210\n\nAccessing ASSUME/PROVE clause within the scope of a declaration\n from outside that declaration's scope.\n",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

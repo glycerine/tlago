@@ -556,7 +556,7 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			}
 			if named.Expr != nil {
 				mod.Theorems = append(mod.Theorems, named)
-				if proof := sanyTheoremProof(item, named.Expr); len(proof.Steps) > 0 {
+				if proof := sanyTheoremProof(item, named.Expr); len(proof.Steps) > 0 || len(proof.Facts) > 0 {
 					mod.Proofs = append(mod.Proofs, proof)
 				}
 			}
@@ -906,7 +906,7 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 }
 
 func sanyTheoremProof(node *SanySyntaxNode, goal Expr) ProofSummary {
-	proof := ProofSummary{Goal: goal, Pos: sanyNodePosition(node)}
+	proof := ProofSummary{Goal: goal, Pos: sanyNodePosition(node), Facts: sanyLeafProofFacts(node)}
 	for _, child := range node.GetHeirs() {
 		if child.Kind.JavaName() == "N_Proof" {
 			proof.Steps = append(proof.Steps, sanyProofSteps(child)...)
@@ -943,10 +943,11 @@ func sanyProofStepsAt(node *SanySyntaxNode, depth int) []ProofStep {
 }
 
 func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
-	step := ProofStep{Pos: sanyNodePosition(node)}
+	step := ProofStep{Pos: sanyNodePosition(node), Facts: sanyLeafProofFacts(node)}
 	for _, child := range node.GetHeirs() {
 		if child.Token != nil && isSanyProofStepStartKind(child.Token.Kind) {
 			step.Name = sanyProofStepName(child.Image)
+			step.QualifiedName = sanyXMLProofStepNameImage(child.Image)
 			step.Implicit = child.Token.Kind == SanyTokenProofimplicitsteplexeme ||
 				strings.HasPrefix(child.Image, "<+>") ||
 				strings.HasPrefix(child.Image, "<*>")
@@ -979,7 +980,12 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 			step.Refs = append(step.Refs, sanyProofStepRefs(child)...)
 		case "N_AssertStep":
 			step.Kind = "ASSERT"
-			step.Expr, _ = sanyExpr(lastSanyExpression(child))
+			step.Expr, step.AssumeProveBody, _ = sanyExprWithAssumeProveBody(lastSanyExpression(child))
+			for _, token := range child.GetHeirs() {
+				if token.Token != nil && token.Token.Kind == SanyTokenSuffices {
+					step.Suffices = true
+				}
+			}
 			step.Refs = append(step.Refs, sanyProofStepRefs(child)...)
 		case "N_QEDStep":
 			step.Kind = "QED"
@@ -2608,4 +2614,32 @@ func unsupportedSanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 		pos = sanyNodePosition(node)
 	}
 	return &IdentExpr{Pos: pos}, Diagnostics{errorAt(pos, "E1400", "unsupported SANY expression %s", name)}
+}
+
+// BY has USE/HIDE's fact syntax. Only a bare GeneralId is generated in fact
+// mode; references nested inside expressions remain expression selections.
+func sanyLeafProofFacts(node *SanySyntaxNode) []ProofFact {
+	var facts []ProofFact
+	if node == nil {
+		return nil
+	}
+	by := false
+	for _, child := range node.GetHeirs() {
+		if child.Token != nil && child.Token.Kind == SanyTokenBy {
+			by = true
+			continue
+		}
+		if by && child.Token != nil && child.Token.Kind == SanyTokenDF {
+			break
+		}
+		if by && isSanyExpressionNode(child) {
+			expr, _ := sanyExpr(child)
+			if expr != nil {
+				facts = append(facts, ProofFact{Expr: expr, Direct: child.Kind.JavaName() == "N_GeneralId"})
+			}
+		} else if !by && child.Kind.JavaName() != "N_ProofStep" {
+			facts = append(facts, sanyLeafProofFacts(child)...)
+		}
+	}
+	return facts
 }

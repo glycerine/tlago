@@ -160,22 +160,32 @@ type ProofRef struct {
 	Pos  Position
 }
 
+type ProofFact struct {
+	Expr   Expr
+	Direct bool
+}
+
 type ProofSummary struct {
+	Facts []ProofFact
 	Goal  Expr
 	Steps []ProofStep
 	Pos   Position
 }
 
 type ProofStep struct {
-	Name     string
-	Implicit bool
-	Depth    int
-	Kind     string
-	Expr     Expr
-	Exprs    []Expr
-	Bounds   []BoundVar
-	Refs     []string
-	Pos      Position
+	Facts           []ProofFact
+	QualifiedName   string
+	AssumeProveBody *AssumeProve
+	Suffices        bool
+	Name            string
+	Implicit        bool
+	Depth           int
+	Kind            string
+	Expr            Expr
+	Exprs           []Expr
+	Bounds          []BoundVar
+	Refs            []string
+	Pos             Position
 }
 
 type AssumeProve struct {

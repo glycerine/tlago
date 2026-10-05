@@ -447,7 +447,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			continue
 		}
 		if !assumption.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
+			diags = append(diags, checkLabels(expr, labelCheckContext{allowed: assumption.Name != ""})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkExpr(expr, defined, nil)...)
@@ -1187,7 +1187,12 @@ func checkAssumeProveLabelsInScope(body *AssumeProve, topLevel, declarationScope
 func checkLabelsInAssumeProveNewBlock(expr Expr) Diagnostics {
 	var diags Diagnostics
 	if label, ok := expr.(*LabelExpr); ok {
-		diags = append(diags, errorAt(label.Pos, "E4334", "label %s is not allowed in a nested ASSUME/PROVE block with NEW", label.Name))
+		diagnostic := errorAt(label.Pos, "E4334", "label %s is not allowed in a nested ASSUME/PROVE block with NEW", label.Name)
+		if label.Syntax != nil {
+			diagnostic.SANYRange = label.Syntax.Range
+		}
+		diagnostic.SANYMessage = "Label not allowed within scope of declaration in nested ASSUME/PROVE."
+		diags = append(diags, diagnostic)
 	}
 	for _, child := range sanySubexpressionChildren(expr) {
 		diags = append(diags, checkLabelsInAssumeProveNewBlock(child)...)
@@ -1707,6 +1712,9 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind)
 	var nonExprScopes []proofNameScope
 	var boundScopes []proofNameScope
 	for _, step := range proof.Steps {
+		if step.AssumeProveBody != nil {
+			diags = append(diags, checkAssumeProveLabels(step.AssumeProveBody, true)...)
+		}
 		nonExprScopes = pruneProofNameScopes(nonExprScopes, step.Depth)
 		boundScopes = pruneProofNameScopes(boundScopes, step.Depth)
 		nonExprSteps := activeProofNames(nonExprScopes)
