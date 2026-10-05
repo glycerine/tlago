@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-05 remaining seven simulation counterexample contexts complete after548e359:
+Whole AbstractExampleTestCase.testSpec is translated for Example1Test,
+Example2Test, LiveCheckExample1Test and LiveCheckExample2Test in
+ tlc_simulation_counterexamples_java_test.go. Preserve constructor depth11,
+unbounded trace count, property names Liveness1/Liveness2, stats12, all ten exact
+state strings/ordinals/actions, back-loop1/action and source postcondition checks.
+Experimental static initializer is preserved. LiveCheck examples execute every
+counterexample/trace assertion before source assumeTrue(false), translated as
+ t.Skip; no new early skip and no claimed postcondition execution in those cases.
+Whole SimulationTest2a/LiveCheckSimulationTest2a methods preserve original
+unbounded/depth6 and num100/depth10 constructors, Prop1, first/last states0/4,
+ordinals and repeated source STATE_PRINT2 check. Whole StutteringTest preserves
+CodePlexBug08/MC, default-depth/unbounded simulation, stuttering presence and
+back-loop absence. Retain inherited debugger/seed1/workers1/coverage/dot/JSON/
+trace-generation flags and exit assertions in every context.
+All nine model input files match original Java bytes; four new Example2/Test2a
+vectors, five existing Example1/CodePlex inputs. No production changes or weakened
+assertions were needed. Unchanged original Java preflights pass -ea: Example1
+0.441s (prepared log),Example2 0.442s,LiveCheck examples0.552s/0.540s,
+SimulationTest2a0.402s,LiveCheckSimulationTest2a0.480s,Stuttering0.414s;
+logs simulation-remaining-<Class>-original-java.log (Example1 prepared variant).
+Initial Example1 scratch directory failure is not a behavioral parity failure:
+original build target/GeneratedTESpecs must exist; unchanged rerun passes.
+Focused Go race76633 terminal exit0,7.495s; log
+simulation-counterexamples-initial-race.log, with five passes/two original
+assumption skips after full trace assertions. Related original simulator,
+successful simulation, Example1 dump/load and alias-liveness checks60295 pass
+root race50.127s; TLC1.042s explicitly has no matching tests. Log
+simulation-counterexamples-related-race.log. Fixtures/source assertions reviewed.
+Inventory1142/1269 contexts (90.0%),587/626 classes (93.8%);127pending across39classes.
+Simulation55/55 methods,20/20 classes complete. Generated TTrace variants are
+separate pending contexts; next seven simulation-generated rechecks, retaining
+full original generation settings and recheck assertions.
+Full workspace84016 (73419a7),59582 (c0c789b),79605 (3d715c3) and39038
+(pre-final queue bounds) remain live after this turn's polls. These precede eleven
+new test-only contexts; current focused/related gates cover the additional tests.
+No terminal current full-suite success is claimed. Resume exact handles.
+
 2026-10-05 four successful/assumption simulation contexts complete after73419a7:
 Whole original SimulationTest2, LiveCheckSimulationTest2,
 SimulationTest2PostCondition and SimulationTestAssumption testSpec methods are
