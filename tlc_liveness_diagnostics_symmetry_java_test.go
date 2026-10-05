@@ -109,9 +109,13 @@ func TestJavaLivenessNoSymmetryTableauModelChecker(t *testing.T) {
 }
 
 // Original OneBitMutexNoSymmetryTest.testSpec, constructor, setup and inherited exit.
-func TestJavaLivenessOneBitMutexNoSymmetry(t *testing.T) {
+func TestJavaLivenessOneBitMutexNoSymmetry(t *testing.T) { runJavaLivenessOneBitMutexNoSymmetry(t) }
+
+func runJavaLivenessOneBitMutexNoSymmetry(t *testing.T, extraArgs ...string) {
+	t.Helper()
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "OneBitMutexNoSymmetry", "OneBitMutexNoSymmetryMC", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "OneBitMutexNoSymmetryTest.json"))
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "OneBitMutexNoSymmetryTest.json")}
+	r := runJavaTLCModelTestWithRoot(t, "OneBitMutexNoSymmetry", "OneBitMutexNoSymmetryMC", true, true, true, 1, append(args, extraArgs...)...)
 	retainJavaCodePlexGraphs(t)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
@@ -152,8 +156,14 @@ func TestJavaLivenessOneBitMutexNoSymmetry(t *testing.T) {
 
 // Original UnsymmetricModelCheckerTestA.testSpec, constructor, setup and inherited exit.
 func TestJavaLivenessUnsymmetricModelCheckerTestA(t *testing.T) {
+	runJavaLivenessUnsymmetricModelCheckerTestA(t)
+}
+
+func runJavaLivenessUnsymmetricModelCheckerTestA(t *testing.T, extraArgs ...string) {
+	t.Helper()
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "UnsymmetricModelCheckerTestA", "UnsymmetricMCA", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "UnsymmetricModelCheckerTestA.json"))
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "UnsymmetricModelCheckerTestA.json")}
+	r := runJavaTLCModelTestWithRoot(t, "UnsymmetricModelCheckerTestA", "UnsymmetricMCA", true, true, true, 1, append(args, extraArgs...)...)
 	retainJavaCodePlexGraphs(t)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)

@@ -1,5 +1,44 @@
 # TLC Port Handoff
 
+2026-10-05 five remaining in-scope generated liveness contexts complete after318811c:
+Whole LoopTest_TTraceTest, LoopTestForcedPartial_TTraceTest,
+OneBitMutexNoSymmetryTest_TTraceTest, Test3_TTraceTest and
+UnsymmetricModelCheckerTestA_TTraceTest methods are translated in
+ tlc_liveness_remaining_ttrace_java_test.go. Preserve constructors, inherited
+VIOLATION_LIVENESS/debugger/dot/JSON/no-generation/no-coverage/FP0/seed1/workers1,
+resolver paths and actual generated artifacts. Full original generation assertions
+are retained; five original helpers accept only destination overrides, with no
+change to existing test inputs/assertions. Forced partial retains the original
+AddAndCheckLiveCheck static switch across generation and recheck. Graphs are
+retained/flushed/closed via existing source-parity helpers.
+Loop exact stats3/3/0/init1, graph80/48, x0/1/2, stuttering4 and zero uncovered;
+forced partial exact1/1/0/init1,x0,stuttering2; Test3 exact5/4/0,x0/1/0/2,loop1,
+zero uncovered; Unsymmetric exactlive1/init1+empty/stats3/2/0,x=a/1,loop1 and
+exact generated _init23:5-23:24/_next27:5-33:29 labels; OneBitMutex exact14/13/0,
+graph380/208, all13states, loop4/_next42:5-54:37. The latter's complete Java
+string literals are mechanically concatenated and byte-verified against Go.
+All12 existing model input files match original Java bytes. No production changes
+or weakened assertions were needed. Unchanged original generation/recheck pairs
+pass Java -ea: Loop0.492/0.525s,forced0.508/0.482s,Test3 0.513/0.563s,
+OneBitMutex0.966/0.829s,Unsymmetric0.511/0.532s. Logs
+liveness-remaining-ttrace-<Class>-original-java.log; compilation
+liveness-remaining-ttrace-original-javac.log. Go focused65048 is terminal exit0,
+race55.020s, log liveness-remaining-ttrace-initial-race.log. Final related80759
+is terminal exit0; ok  	github.com/glycerine/tlago	96.755s; log liveness-remaining-ttrace-related-race.log.
+Original and generated models plus ChooseTableauSymmetry/CodePlex rechecks
+retain all original assertions.
+Inventory1154/1269 contexts (90.9%),599/626 classes (95.7%);115pending across27classes.
+Generated rechecks44/45 complete; the only remaining checkpoint context is deferred.
+Next in-scope correctness work: fingerprint/indexer/iterator original cases and
+full parameter matrices (97pending across10classes), plus existing unresolved
+safety/liveness/dump-load contexts. Do not substitute smaller parameter samples.
+Full workspace49471 is last polled live, snapshot318811c before these five
+test-only contexts; log simulation-ttrace-exploration-final-workspace-go.log.
+Old84016/59582 were polled live and lack the exploration fix;79605/39038 are
+terminal TLCSetSim timeout failures as documented below.
+No current full-suite pass claimed. Resume exact live handles; do not restart
+from observation timeout. Focused/related gates cover the additional tests.
+
 2026-10-05 seven generated simulation recheck contexts complete after9f5cc2c:
 Whole AbstractExample_TTrace.testSpec is translated for Example1/Example2 and
 LiveCheckExample1/LiveCheckExample2 generated subclasses in

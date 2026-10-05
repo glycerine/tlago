@@ -262,9 +262,13 @@ func TestJavaLivenessGithub710eFair(t *testing.T) {
 }
 
 // Original LoopTest.testSpec, constructor, setup and inherited exit.
-func TestJavaLivenessLoop(t *testing.T) {
+func TestJavaLivenessLoop(t *testing.T) { runJavaLivenessLoop(t) }
+
+func runJavaLivenessLoop(t *testing.T, extraArgs ...string) {
+	t.Helper()
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "Loop", "SystemLoop", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "LoopTest.json"))
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "LoopTest.json")}
+	r := runJavaTLCModelTestWithRoot(t, "Loop", "SystemLoop", true, true, true, 1, append(args, extraArgs...)...)
 	retainJavaCodePlexGraphs(t)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
@@ -294,11 +298,15 @@ func TestJavaLivenessLoop(t *testing.T) {
 }
 
 // Original LoopTestForcedPartial.testSpec, constructor, setup and inherited exit.
-func TestJavaLivenessLoopTestForcedPartial(t *testing.T) {
+func TestJavaLivenessLoopTestForcedPartial(t *testing.T) { runJavaLivenessLoopTestForcedPartial(t) }
+
+func runJavaLivenessLoopTestForcedPartial(t *testing.T, extraArgs ...string) {
+	t.Helper()
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
 	// Source static initializer sets AbstractChecker.LIVENESS_TESTING_IMPLEMENTATION.
 	t.Setenv("tlc2.tool.liveness.ILiveCheck.testing", "true")
-	r := runJavaTLCModelTestWithRoot(t, "LoopTestForcedPartial", "SystemLoop", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "LoopTestForcedPartial.json"))
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "LoopTestForcedPartial.json")}
+	r := runJavaTLCModelTestWithRoot(t, "LoopTestForcedPartial", "SystemLoop", true, true, true, 1, append(args, extraArgs...)...)
 	retainJavaCodePlexGraphs(t)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
@@ -348,9 +356,13 @@ func TestJavaLivenessLoopTestWeakFair(t *testing.T) {
 }
 
 // Original Test3.testSpec, constructor, setup and inherited exit.
-func TestJavaLivenessTest3(t *testing.T) {
+func TestJavaLivenessTest3(t *testing.T) { runJavaLivenessTest3(t) }
+
+func runJavaLivenessTest3(t *testing.T, extraArgs ...string) {
+	t.Helper()
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "Test3", "Test3", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test3.json"))
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test3.json")}
+	r := runJavaTLCModelTestWithRoot(t, "Test3", "Test3", true, true, true, 1, append(args, extraArgs...)...)
 	retainJavaCodePlexGraphs(t)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS; messages=%v", r.ExitStatus, r.Messages)
