@@ -1,5 +1,21 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 source buffering restored:
+Sequential ValueOutputStream uses the original 8,192-byte BufferedDataOutputStream
+above optional gzip and flushes/closes that chain. ValueInputStream eagerly fills
+BufferedDataInputStream; its File overload retains FileUtil's additional buffer.
+The original byte-array queue adapters remain direct and disable handle tables.
+Graph node/pointer files use BufferedRandomAccessFile instead of sequential
+ValueStreams at shared seek offsets. GraphNode/BitVector share only the primitive
+data protocol used by those two source types. File length and cursor are logical
+buffered values; flush and both graph reset variants follow the source operations.
+Graph checkpoint longs remain direct DataInputStream/DataOutputStream primitives.
+InternTable uses original buffered data streams and atEOF. Peeking at the backing
+reader after an eager prefetch loses records. UniqueString reads/writes use the
+source primitive string protocol; no extra length field or encoding changes.
+See HANDOFF.md for exact verification snapshots and TODO_TEST_PORT.md for inventory.
+No new persistent tests or test credits; all original assertions retained.
+
 2026-10-05 actual OffHeap CAS insertion restored after3c274be:
 Source put/contains use atomic array words and CAS without a set-wide monitor.
 Removed native s.mu serialization from both paths; existing per-slot CAS retry,

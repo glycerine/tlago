@@ -868,7 +868,7 @@ func (n *GraphNode) GetTNode(tableau *TBGraph) *TBGraphNode {
 	return tableau.GetNode(n.TIndex)
 }
 
-func (n *GraphNode) Write(out *ValueOutputStream) error {
+func (n *GraphNode) Write(out dataOutput) error {
 	if err := out.WriteNat(int32(len(n.Nodes))); err != nil {
 		return err
 	}
@@ -880,7 +880,7 @@ func (n *GraphNode) Write(out *ValueOutputStream) error {
 	return n.Checks.Write(out)
 }
 
-func (n *GraphNode) Read(in *ValueInputStream) error {
+func (n *GraphNode) Read(in dataInput) error {
 	count, err := in.ReadNat()
 	if err != nil {
 		return err

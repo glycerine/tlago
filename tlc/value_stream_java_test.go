@@ -37,7 +37,7 @@ import (
 func TestJavaValueInputOutputStream(t *testing.T) {
 	oldGzip := UseGZIP()
 	oldIntern := internTable
-	SetUseGZIP(true) // TLCGlobals' default in the original isolated JVM.
+	SetUseGZIP(false) // TLCGlobals.useGZIP at original JVM startup.
 	internTable = NewInternTable(1024)
 	t.Cleanup(func() { SetUseGZIP(oldGzip); internTable = oldIntern })
 	for _, name := range []string{"testWriteShort", "testWriteInt", "testWriteShortNat", "testWriteNat", "testBlindReadStringValue", "testBlindReadRecordValue"} {

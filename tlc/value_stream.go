@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"os"
 	"reflect"
 )
 
@@ -45,42 +46,76 @@ func NewValueOutputStream(out io.Writer) *ValueOutputStream {
 }
 
 func NewValueOutputStreamWithoutHandles(out io.Writer) *ValueOutputStream {
-	stream := NewValueOutputStream(out)
-	stream.disableHandles = true
+	// Source byte-queue adapters write directly to their byte array and have
+	// no handle table; they do not construct a sequential ValueOutputStream.
+	stream := &ValueOutputStream{out: out, disableHandles: true}
+	if closer, ok := out.(io.Closer); ok {
+		stream.closer = closer
+	}
 	return stream
+}
+
+type valueStreamWriteCloser struct {
+	io.Writer
+	io.Closer
+}
+
+type valueStreamReadCloser struct {
+	io.Reader
+	io.Closer
 }
 
 func NewValueOutputStreamWithCompression(out io.Writer, compress bool) *ValueOutputStream {
 	writer := out
-	var closer io.Closer
-	if c, ok := out.(io.Closer); ok {
-		closer = c
-	}
 	if compress {
 		gzipWriter := newZlibGzipWriter(out)
-		writer = gzipWriter
-		closer = closeInOrder(gzipWriter, closer)
+		var underlying io.Closer
+		if closer, ok := out.(io.Closer); ok {
+			underlying = closer
+		}
+		writer = valueStreamWriteCloser{gzipWriter, closeInOrder(gzipWriter, underlying)}
 	}
-	return &ValueOutputStream{out: writer, closer: closer, handles: make(map[any]int)}
+	buffer := NewBufferedDataOutputStream(writer)
+	return &ValueOutputStream{out: buffer, closer: buffer, handles: make(map[any]int)}
 }
 
 func NewValueOutputStreamWithGlobalCompression(out io.Writer) *ValueOutputStream {
 	return NewValueOutputStreamWithCompression(out, UseGZIP())
 }
 
+func (s *ValueOutputStream) WriteString(value string) error {
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteString(value)
+	}
+	_, err := s.WriteRaw(javaLegacyStringBytes(value))
+	return err
+}
+
 func (s *ValueOutputStream) WriteShort(value int16) error {
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteShort(value)
+	}
 	return binary.Write(s.out, binary.BigEndian, value)
 }
 
 func (s *ValueOutputStream) WriteInt(value int32) error {
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteInt(value)
+	}
 	return binary.Write(s.out, binary.BigEndian, value)
 }
 
 func (s *ValueOutputStream) WriteLong(value int64) error {
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteLong(value)
+	}
 	return binary.Write(s.out, binary.BigEndian, value)
 }
 
 func (s *ValueOutputStream) WriteByte(value byte) error {
+	if buffer, ok := s.out.(*BufferedDataOutputStream); ok {
+		return buffer.WriteByte(int8(value))
+	}
 	_, err := s.out.Write([]byte{value})
 	return err
 }
@@ -376,9 +411,9 @@ type ValueInputStream struct {
 }
 
 func NewValueInputStream(in io.Reader) *ValueInputStream {
-	stream := &ValueInputStream{in: in, handles: make([]any, 16)}
-	if closer, ok := in.(io.Closer); ok {
-		stream.closer = closer
+	stream, err := newBufferedValueInputStream(in, false, false)
+	if err != nil {
+		panic(err)
 	}
 	return stream
 }
@@ -416,46 +451,86 @@ func (r *byteValueInputReader) Read(dst []byte) (int, error) {
 	return len(dst), nil
 }
 
-func NewValueInputStreamWithCompression(in io.Reader, compressed bool) (*ValueInputStream, error) {
+func newBufferedValueInputStream(in io.Reader, compressed, fileOverload bool) (*ValueInputStream, error) {
 	reader := in
-	var closer io.Closer
-	if c, ok := in.(io.Closer); ok {
-		closer = c
-	}
 	if compressed {
 		gzipReader, err := gzip.NewReader(in)
 		if err != nil {
 			return nil, err
 		}
-		reader = gzipReader
-		closer = closeInOrder(gzipReader, closer)
+		var underlying io.Closer
+		if closer, ok := in.(io.Closer); ok {
+			underlying = closer
+		}
+		reader = valueStreamReadCloser{gzipReader, closeInOrder(gzipReader, underlying)}
 	}
-	return &ValueInputStream{in: reader, closer: closer, handles: make([]any, 16)}, nil
+	// Java's File overload first calls FileUtil.newBdFIS and then invokes
+	// the InputStream overload, which constructs its own eager buffer.
+	if _, file := in.(*os.File); file && fileOverload {
+		buffer, err := NewBufferedDataInputStream(reader)
+		if err != nil {
+			return nil, err
+		}
+		reader = buffer
+	}
+	buffer, err := NewBufferedDataInputStream(reader)
+	if err != nil {
+		return nil, err
+	}
+	return &ValueInputStream{in: buffer, closer: buffer, handles: make([]any, 16)}, nil
+}
+
+func NewValueInputStreamWithCompression(in io.Reader, compressed bool) (*ValueInputStream, error) {
+	return newBufferedValueInputStream(in, compressed, true)
 }
 
 func NewValueInputStreamWithGlobalCompression(in io.Reader) (*ValueInputStream, error) {
 	return NewValueInputStreamWithCompression(in, UseGZIP())
 }
 
+func (s *ValueInputStream) ReadString(length int) (string, error) {
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadString(length)
+	}
+	bytes := make([]byte, length)
+	if err := s.ReadFully(bytes); err != nil {
+		return "", err
+	}
+	return javaLegacyStringFromBytes(bytes), nil
+}
+
 func (s *ValueInputStream) ReadShort() (int16, error) {
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadShort()
+	}
 	var value int16
 	err := binary.Read(s.in, binary.BigEndian, &value)
 	return value, valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadInt() (int32, error) {
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadInt()
+	}
 	var value int32
 	err := binary.Read(s.in, binary.BigEndian, &value)
 	return value, valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadLong() (int64, error) {
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		return buffer.ReadLong()
+	}
 	var value int64
 	err := binary.Read(s.in, binary.BigEndian, &value)
 	return value, valueStreamReadError(err)
 }
 
 func (s *ValueInputStream) ReadByte() (byte, error) {
+	if buffer, ok := s.in.(*BufferedDataInputStream); ok {
+		value, err := buffer.ReadByte()
+		return byte(value), err
+	}
 	var buf [1]byte
 	_, err := io.ReadFull(s.in, buf[:])
 	return buf[0], valueStreamReadError(err)

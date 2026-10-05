@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -182,7 +181,7 @@ func (t *InternTable) beginChkptWithVarCount(metadir string, varCount int) error
 	if err != nil {
 		return distributedFileOpenException(path, err)
 	}
-	out := NewValueOutputStream(file)
+	out := NewBufferedDataOutputStream(file)
 	t.dataMu.RLock()
 	tokenCnt := t.tokenCnt
 	t.dataMu.RUnlock()
@@ -229,8 +228,11 @@ func (t *InternTable) Recover(metadir string) error {
 	if err != nil {
 		return distributedFileOpenException(uniqueStringChkptName(metadir, "chkpt"), err)
 	}
-	reader := bufio.NewReader(file)
-	in := NewValueInputStream(reader)
+	in, err := NewBufferedDataInputStream(file)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
 	defer file.Close()
 	tokenCnt, err := in.ReadInt()
 	if err != nil {
@@ -242,12 +244,7 @@ func (t *InternTable) Recover(metadir string) error {
 	t.dataMu.Lock()
 	t.tokenCnt = tokenCnt
 	t.dataMu.Unlock()
-	for {
-		if _, err := reader.Peek(1); err == io.EOF {
-			break
-		} else if err != nil {
-			return err
-		}
+	for !in.AtEOF() {
 		us, err := readJavaUniqueString(in)
 		if errors.Is(err, io.EOF) {
 			failure := newTLCErrorCodeNullable(ECSystemCheckpointRecoveryCorrupt, javaThrowableDetailMessage(err))
@@ -264,7 +261,17 @@ func (t *InternTable) Recover(metadir string) error {
 			t.putValue(us)
 		}()
 	}
-	return file.Close()
+	return in.Close()
+}
+
+type uniqueStringDataOutput interface {
+	WriteInt(int32) error
+	WriteString(string) error
+}
+
+type uniqueStringDataInput interface {
+	ReadInt() (int32, error)
+	ReadString(int) (string, error)
 }
 
 func writeJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
@@ -272,7 +279,7 @@ func writeJavaUniqueString(out *ValueOutputStream, us *UniqueString) error {
 	return writeJavaUniqueStringWithVarCount(out, us, varCount)
 }
 
-func writeJavaUniqueStringWithVarCount(out *ValueOutputStream, us *UniqueString, varCount int) error {
+func writeJavaUniqueStringWithVarCount(out uniqueStringDataOutput, us *UniqueString, varCount int) error {
 	if us == nil {
 		panic(NewNullPointerException())
 	}
@@ -290,11 +297,10 @@ func writeJavaUniqueStringWithVarCount(out *ValueOutputStream, us *UniqueString,
 	if err := out.WriteInt(int32(len(bytes))); err != nil {
 		return err
 	}
-	_, err := out.WriteRaw(bytes)
-	return err
+	return out.WriteString(us.s)
 }
 
-func readJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
+func readJavaUniqueString(in uniqueStringDataInput) (*UniqueString, error) {
 	tok, err := in.ReadInt()
 	if err != nil {
 		return nil, err
@@ -307,11 +313,11 @@ func readJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
 	if err != nil {
 		return nil, err
 	}
-	bytes := make([]byte, valueStreamArrayLength(length))
-	if err := in.ReadFully(bytes); err != nil {
+	str, err := in.ReadString(valueStreamArrayLength(length))
+	if err != nil {
 		return nil, err
 	}
-	return &UniqueString{s: javaLegacyStringFromBytes(bytes), tok: int(tok), loc: int(loc)}, nil
+	return &UniqueString{s: str, tok: int(tok), loc: int(loc)}, nil
 }
 
 func readExternalJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
@@ -325,11 +331,11 @@ func readExternalJavaUniqueString(in *ValueInputStream) (*UniqueString, error) {
 	if err != nil {
 		return nil, err
 	}
-	bytes := make([]byte, valueStreamArrayLength(length))
-	if err := in.ReadFully(bytes); err != nil {
+	str, err := in.ReadString(valueStreamArrayLength(length))
+	if err != nil {
 		return nil, err
 	}
-	return UniqueStringOf(javaLegacyStringFromBytes(bytes)), nil
+	return UniqueStringOf(str), nil
 }
 
 func javaLegacyStringBytes(s string) []byte {

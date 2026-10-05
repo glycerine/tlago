@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-05 value-stream buffering and graph storage restored after c5c6804:
+ValueOutputStream now uses original 8,192-byte BufferedDataOutputStream above
+optional gzip, with source flush/close chain. ValueInputStream uses eager original
+BufferedDataInputStream; File overload retains FileUtil's second buffer layer.
+Direct byte-queue adapters retain their original no-buffer/no-handle behavior.
+Liveness node/pointer files now use original BufferedRandomAccessFile, logical
+length/cursor, flush and compact primitives rather than transient sequential
+ValueStreams over shared file offsets. DiskGraph.reset calls pointer RAF.reset
+then node RAF.reset; TableauDiskGraph.reset calls pointer/node setLength(0).
+Graph checkpoints keep source direct DataInput/OutputStream long primitives.
+InternTable uses original BufferedData streams and atEOF, removing underlying
+reader Peek which skipped prefetched checkpoint strings. UniqueString primitive
+helpers use original ReadString/WriteString protocol, including ReadExternal.
+Original ValueInputOutputStreamTest startup useGZIP corrected to false; explicit
+method choices remain unchanged. Nine existing native checks close output before
+inspecting bytes. No weakened assertions, new persistent tests, skips or credit.
+All44 unchanged Java stream/buffer/graph contexts PASS .115s after compiling
+original InternTable/UniqueString; value-stream-buffer-intern-original-java.log.
+Temporary recovery probes are uncredited: old caller68613 fails both3/1000-entry
+cases (.014s); corrected native36094 race PASS2.019s and unchanged Java recover
+all tokens. Logs intern-buffer-recovery-probe-{before-go,go,java,javac}.log.
+Final related20088 race PASS7.430s; final external-string adjustment46224 focused
+race PASS6.009s; both terminal/retired. Root simulation82942 race PASS239.183s
+at final reset snapshot before InternTable correction; terminal/retired.
+Full TLC64012 PASS445.651s at InternTable fix snapshot before final external-
+string helper adjustment (covered by46224); terminal/retired, value-stream-buffer-
+intern-final-tlc-go.log. Whole73494 terminal PASS1746.634s root/1.222s SANY/
+426.685s TLC at buffering snapshot before final reset/InternTable changes; retired,
+value-stream-buffer-final-workspace-go.log. Do not call this a final-snapshot
+whole-workspace run. Earlier83202/79982 TLC and52175/88405 gates terminal/retired.
+Sandbox-only63407 failed collector NIC suffix assertion; unrestricted collector
+and full TLC pass. No source test weakened for sandbox limitations.
+Ignored long_fpset_full_draft_test.go stages all six huge inherited contexts with
+original factories, seed15041980, loops, assertions and checkpoints. Overlay45996
+PASS compile only (.013s/no tests run), retired; no inventory credit. Sequential
+source loop requests3,221,225,473 iterations; TODO records repeated-value static
+observation as unexecuted, not a full Java result. Disk-growth draft retains all
+2,147,483,648 enqueues and14GiB raw state storage before filesystem metadata.
+Main1251/1269 contexts,609/626 classes; shared55/56,long14/22,concurrent2/17 unchanged.
+Goal active; deferred topics unchanged. Next: final-snapshot workspace gate, then
+resource preflight for full stress workloads. Preserve source failure decisions.
+
 2026-10-05 actual OffHeap CAS insertion restored after3c274be:
 Source put/contains use atomic array words and CAS without a set-wide monitor.
 Removed native s.mu serialization from both paths; existing per-slot CAS retry,

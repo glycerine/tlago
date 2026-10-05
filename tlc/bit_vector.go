@@ -192,7 +192,7 @@ func (bv *BitVector) StringRangeChars(start, length int, one, zero byte) string 
 	return "[" + string(buf) + "]"
 }
 
-func (bv *BitVector) Write(out *ValueOutputStream) error {
+func (bv *BitVector) Write(out dataOutput) error {
 	if bv == nil {
 		return out.WriteNat(0)
 	}
@@ -207,7 +207,7 @@ func (bv *BitVector) Write(out *ValueOutputStream) error {
 	return nil
 }
 
-func (bv *BitVector) Read(in *ValueInputStream) error {
+func (bv *BitVector) Read(in dataInput) error {
 	length, err := in.ReadNat()
 	if err != nil {
 		return err

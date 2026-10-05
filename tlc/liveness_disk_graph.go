@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -12,8 +13,8 @@ type DiskGraph struct {
 	MetaDir        string
 	Solution       int
 	chkptName      string
-	nodeFile       *os.File
-	ptrFile        *os.File
+	nodeFile       *livenessDataFile
+	ptrFile        *livenessDataFile
 	InitNodes      *LongVec
 	Cache          []*GraphNode
 	NodePtrTbl     *NodePtrTable
@@ -25,11 +26,11 @@ func NewDiskGraph(metadir string, soln int, outDegreeStats ...any) (*DiskGraph, 
 	if err := os.MkdirAll(metadir, 0o755); err != nil {
 		return nil, err
 	}
-	nodeFile, err := os.OpenFile(filepath.Join(metadir, fmt.Sprintf("nodes_%d", soln)), os.O_RDWR|os.O_CREATE, 0o644)
+	nodeFile, err := newLivenessDataFile(filepath.Join(metadir, fmt.Sprintf("nodes_%d", soln)))
 	if err != nil {
 		return nil, err
 	}
-	ptrFile, err := os.OpenFile(filepath.Join(metadir, fmt.Sprintf("ptrs_%d", soln)), os.O_RDWR|os.O_CREATE, 0o644)
+	ptrFile, err := newLivenessDataFile(filepath.Join(metadir, fmt.Sprintf("ptrs_%d", soln)))
 	if err != nil {
 		_ = nodeFile.Close()
 		return nil, err
@@ -93,7 +94,7 @@ func (g *DiskGraph) AddNode(node *GraphNode) (int64, error) {
 		return -1, err
 	}
 	g.putNode(node, ptr)
-	ptrOut := NewValueOutputStream(g.ptrFile)
+	ptrOut := g.ptrFile
 	if err := ptrOut.WriteLong(int64(node.StateFP)); err != nil {
 		return -1, err
 	}
@@ -103,7 +104,7 @@ func (g *DiskGraph) AddNode(node *GraphNode) (int64, error) {
 	if err := ptrOut.WriteLongNat(ptr); err != nil {
 		return -1, err
 	}
-	nodeOut := NewValueOutputStream(g.nodeFile)
+	nodeOut := g.nodeFile
 	if err := node.Write(nodeOut); err != nil {
 		return -1, err
 	}
@@ -130,16 +131,10 @@ func (g *DiskGraph) GetPtr(fp uint64, tidx int) int64 {
 }
 
 func (g *DiskGraph) Reset() error {
-	if err := g.nodeFile.Truncate(0); err != nil {
+	if err := g.ptrFile.Reset(); err != nil {
 		return err
 	}
-	if _, err := g.nodeFile.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-	if err := g.ptrFile.Truncate(0); err != nil {
-		return err
-	}
-	if _, err := g.ptrFile.Seek(0, io.SeekStart); err != nil {
+	if err := g.nodeFile.Reset(); err != nil {
 		return err
 	}
 	g.NodePtrTbl = NewNodePtrTable(255)
@@ -182,12 +177,11 @@ func (g *DiskGraph) BeginChkpt() error {
 	if err != nil {
 		return err
 	}
-	out := NewValueOutputStream(file)
-	if err := out.WriteLong(nodePos); err != nil {
+	if err := binary.Write(file, binary.BigEndian, nodePos); err != nil {
 		_ = file.Close()
 		return err
 	}
-	if err := out.WriteLong(ptrPos); err != nil {
+	if err := binary.Write(file, binary.BigEndian, ptrPos); err != nil {
 		_ = file.Close()
 		return err
 	}
@@ -219,16 +213,15 @@ func (g *DiskGraph) Recover() error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
-	nodePos, err := in.ReadLong()
-	if err != nil {
+	// Source checkpoints use DataInputStream directly on FileInputStream.
+	var nodePos, ptrPos int64
+	if err := binary.Read(file, binary.BigEndian, &nodePos); err != nil {
 		_ = file.Close()
-		return err
+		return bufferedRandomAccessFileIOError(valueStreamReadError(err))
 	}
-	ptrPos, err := in.ReadLong()
-	if err != nil {
+	if err := binary.Read(file, binary.BigEndian, &ptrPos); err != nil {
 		_ = file.Close()
-		return err
+		return bufferedRandomAccessFileIOError(valueStreamReadError(err))
 	}
 	if err := file.Close(); err != nil {
 		return err
@@ -328,7 +321,7 @@ func (g *DiskGraph) MakeNodePtrTblTo(ptr int64) error {
 	if _, err := g.ptrFile.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
-	in := NewValueInputStream(g.ptrFile)
+	in := g.ptrFile
 	for {
 		cur, err := g.ptrFile.Seek(0, io.SeekCurrent)
 		if err != nil {
@@ -546,7 +539,7 @@ func (g *DiskGraph) eachGraphNode(fn func(*GraphNode) error) error {
 	if _, err := g.ptrFile.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
-	in := NewValueInputStream(g.ptrFile)
+	in := g.ptrFile
 	for {
 		cur, err := g.ptrFile.Seek(0, io.SeekCurrent)
 		if err != nil {
@@ -667,7 +660,7 @@ func (g *DiskGraph) getNodeFromDisk(fp uint64, tidx int, ptr int64) (*GraphNode,
 		return nil, err
 	}
 	gnode := NewGraphNode(fp, tidx)
-	if err := gnode.Read(NewValueInputStream(g.nodeFile)); err != nil {
+	if err := gnode.Read(g.nodeFile); err != nil {
 		return nil, err
 	}
 	_, err = g.nodeFile.Seek(cur, io.SeekStart)

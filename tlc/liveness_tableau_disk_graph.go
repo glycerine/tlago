@@ -1,6 +1,7 @@
 package tlc
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -76,7 +77,7 @@ func (g *TableauDiskGraph) AddNode(node *GraphNode) (int64, error) {
 		return -1, err
 	}
 	g.putTableauNode(node, ptr)
-	ptrOut := NewValueOutputStream(g.ptrFile)
+	ptrOut := g.ptrFile
 	if err := ptrOut.WriteLong(int64(node.StateFP)); err != nil {
 		return -1, err
 	}
@@ -86,7 +87,7 @@ func (g *TableauDiskGraph) AddNode(node *GraphNode) (int64, error) {
 	if err := ptrOut.WriteLongNat(ptr); err != nil {
 		return -1, err
 	}
-	nodeOut := NewValueOutputStream(g.nodeFile)
+	nodeOut := g.nodeFile
 	if err := node.Write(nodeOut); err != nil {
 		return -1, err
 	}
@@ -156,7 +157,10 @@ func (g *TableauDiskGraph) SetMaxLink(state uint64, tidx int) {
 }
 
 func (g *TableauDiskGraph) Reset() error {
-	if err := g.DiskGraph.Reset(); err != nil {
+	if err := g.ptrFile.SetLength(0); err != nil {
+		return err
+	}
+	if err := g.nodeFile.SetLength(0); err != nil {
 		return err
 	}
 	g.TableauNodePtrTbl = NewTableauNodePtrTable(255)
@@ -171,16 +175,15 @@ func (g *TableauDiskGraph) Recover() error {
 	if err != nil {
 		return err
 	}
-	in := NewValueInputStream(file)
-	nodePos, err := in.ReadLong()
-	if err != nil {
+	// Source checkpoints use DataInputStream directly on FileInputStream.
+	var nodePos, ptrPos int64
+	if err := binary.Read(file, binary.BigEndian, &nodePos); err != nil {
 		_ = file.Close()
-		return err
+		return bufferedRandomAccessFileIOError(valueStreamReadError(err))
 	}
-	ptrPos, err := in.ReadLong()
-	if err != nil {
+	if err := binary.Read(file, binary.BigEndian, &ptrPos); err != nil {
 		_ = file.Close()
-		return err
+		return bufferedRandomAccessFileIOError(valueStreamReadError(err))
 	}
 	if err := file.Close(); err != nil {
 		return err
@@ -235,7 +238,7 @@ func (g *TableauDiskGraph) MakeNodePtrTblToTable(ptr int64, table *TableauNodePt
 	if _, err := g.ptrFile.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
-	in := NewValueInputStream(g.ptrFile)
+	in := g.ptrFile
 	for {
 		cur, err := g.ptrFile.Seek(0, io.SeekCurrent)
 		if err != nil {
@@ -445,7 +448,7 @@ func (g *TableauDiskGraph) eachTableauGraphNode(fn func(*GraphNode) error) error
 	if _, err := g.ptrFile.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
-	in := NewValueInputStream(g.ptrFile)
+	in := g.ptrFile
 	for {
 		cur, err := g.ptrFile.Seek(0, io.SeekCurrent)
 		if err != nil {

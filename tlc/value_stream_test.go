@@ -28,6 +28,9 @@ func TestValueStreamsRoundTripPrimitiveEncodings(t *testing.T) {
 		t.Fatalf("WriteInt zero returned error: %v", err)
 	}
 
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
+	}
 	in := NewValueInputStream(bytes.NewReader(buf.Bytes()))
 	for i, want := range []int16{math.MaxInt16, math.MinInt16, 0} {
 		got, err := in.ReadShort()
@@ -52,6 +55,9 @@ func TestValueStreamsCompactNaturalEncodings(t *testing.T) {
 	if err := shortOut.WriteShortNat(0); err != nil {
 		t.Fatalf("WriteShortNat zero returned error: %v", err)
 	}
+	if err := shortOut.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if got, want := shortBuf.Len(), 3; got != want {
 		t.Fatalf("short nat encoded length = %d, want %d", got, want)
 	}
@@ -70,6 +76,9 @@ func TestValueStreamsCompactNaturalEncodings(t *testing.T) {
 	}
 	if err := natOut.WriteNat(0); err != nil {
 		t.Fatalf("WriteNat zero returned error: %v", err)
+	}
+	if err := natOut.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if got, want := natBuf.Len(), 6; got != want {
 		t.Fatalf("nat encoded length = %d, want %d", got, want)
@@ -131,6 +140,9 @@ func TestValueOutputStreamWithoutHandlesExpandsRepeatedObjects(t *testing.T) {
 	if err := sharedOut.Write(repeated); err != nil {
 		t.Fatalf("shared second Write returned error: %v", err)
 	}
+	if err := sharedOut.Close(); err != nil {
+		t.Fatal(err)
+	}
 	if !bytes.Contains(shared.Bytes(), []byte{byte(DummyValueKind)}) {
 		t.Fatalf("ordinary stream did not emit dummy handle for repeated value: %x", shared.Bytes())
 	}
@@ -160,6 +172,9 @@ func TestValueInputStreamBlindReadStringValue(t *testing.T) {
 	}
 	writeExternalUniqueString(t, out, text)
 
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
+	}
 	value, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).ReadExternal()
 	if err != nil {
 		t.Fatalf("ReadExternal returned error: %v", err)
@@ -194,6 +209,9 @@ func TestValueInputStreamBlindReadRecordValue(t *testing.T) {
 		t.Fatalf("WriteInt value returned error: %v", err)
 	}
 
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
+	}
 	value, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).ReadExternal()
 	if err != nil {
 		t.Fatalf("ReadExternal returned error: %v", err)
@@ -247,6 +265,9 @@ func TestValueStreamsWriteMaterializedReducibleSetValuesAsJavaSetEnums(t *testin
 		if err := out.Write(value); err != nil {
 			t.Fatalf("%T Write returned error: %v", value, err)
 		}
+		if err := out.Close(); err != nil {
+			t.Fatal(err)
+		}
 		got, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).Read()
 		if err != nil {
 			t.Fatalf("%T Read returned error: %v", value, err)
@@ -266,6 +287,9 @@ func TestValueStreamsWriteMaterializedFcnLambdaAsJavaFcnRcd(t *testing.T) {
 	if err := out.Write(lambda); err != nil {
 		t.Fatalf("Write materialized FcnLambdaValue returned error: %v", err)
 	}
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
+	}
 	got, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).Read()
 	if err != nil {
 		t.Fatalf("Read materialized FcnLambdaValue returned error: %v", err)
@@ -282,6 +306,9 @@ func TestValueStreamsWriteCounterExampleAsJavaRecord(t *testing.T) {
 	out := NewValueOutputStream(&buf)
 	if err := out.Write(counterExample); err != nil {
 		t.Fatalf("Write CounterExample returned error: %v", err)
+	}
+	if err := out.Close(); err != nil {
+		t.Fatal(err)
 	}
 	got, err := NewValueInputStream(bytes.NewReader(buf.Bytes())).Read()
 	if err != nil {
