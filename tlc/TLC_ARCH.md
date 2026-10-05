@@ -1,5 +1,15 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 long disk-queue growth verification:
+The original growth test now performs all2,147,483,648 enqueue operations and
+checks the64-bit queue size. One Dummy-equivalent state has workerShort.MAX_VALUE,
+uid0,level1 and no value payload, matching its inherited Java base serialization.
+The source class has no spec variables; its native fixture keeps that context
+until background pool threads stop, then restores outer statics. Pool storage
+is approximately14GiB; no compact replacement or reduced loop is used. Both
+complete Java and Go ten-method classes pass. See HANDOFF.md for exact checks.
+No production changes were required for this original test.
+
 2026-10-05 source buffering restored:
 Sequential ValueOutputStream uses the original 8,192-byte BufferedDataOutputStream
 above optional gzip and flushes/closes that chain. ValueInputStream eagerly fills

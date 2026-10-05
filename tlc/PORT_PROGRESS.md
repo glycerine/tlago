@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-05 full original long DiskStateQueue growth complete after7d61a44:
+Added testGrowBeyondIntMaxValue to the persistent original class translation.
+Preserve all2,147,483,648 SEnqueue calls, one reused Dummy-equivalent object,
+workerShort.MAX_VALUE/uid0/level1 base header, no payload and exact final size.
+Class setup now preserves the source empty-variable context and restores native
+statics after stopping pool threads. Nine inherited method bodies/assertions
+remain unchanged. No production change, invented test, reduced bound or new skip.
+Unchanged original single method94396 PASS runs1/failures0/ignored0, elapsed80.1s;
+retired. Complete unchanged Java class23834 PASS all10 in82.673s; retired. Both
+use actual pinned queue/pool/value/buffer sources compiled unchanged. Logs
+long-disk-state-queue-growth-{original-java,original-progress,original-javac,
+final-class-java,final-class-original-progress}.log. Wrapper progress observes
+file count/time/free space without changing the Java tests. Original Ant's
+runtime exclusion stays documented; explicit full method/class references ran.
+Go overlay73136 full original growth PASS130.761s; retired. Final persistent
+class90553 PASS all10/full growth124.935s; retired, final-class-go.log. Final
+inherited nine76166 race PASS1.043s; retired, final-inherited-race.log. Growth
+was verified normally with full bounds; do not claim a full-growth race pass.
+All corresponding logs use long-disk-state-queue-growth- prefix. Existing buffer
+and storage race verification remains applicable; production unchanged since7d61a44.
+Private cache cleanup reclaimed only regenerable Go *-d output blobs (655 older6h,
+7,402,414,586 bytes; then272 older5h,1,735,627,761 bytes). No vectors/source/logs
+removed. Each original-size growth run used14GiB raw state storage, then cleaned
+its own generated pools. Cache-clean receipts retained in ignored scratch.
+TODO and mapping now long15/22 contexts,7 pending, one complete class of4.
+Main1251/1269,609/626; shared55/56; concurrent2/17 unchanged. Whole58167 remains
+LIVE at exact production commit7d61a44 before this test-only addition; log
+value-stream-buffer-committed-final-workspace-go.log. Poll exact handle; no
+current-tree whole-suite pass claim. New full class verified separately above.
+Goal active; user-deferred topics unchanged. Remaining huge FP tests require
+further resource preflight and retain full source bounds and source failures.
+
 2026-10-05 value-stream buffering and graph storage restored after c5c6804:
 ValueOutputStream now uses original 8,192-byte BufferedDataOutputStream above
 optional gzip, with source flush/close chain. ValueInputStream uses eager original
