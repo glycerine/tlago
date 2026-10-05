@@ -4898,3 +4898,19 @@ assertion retained. Test42 has no invented platform skip. All 15 Go normal pass
 Inventory 1016/1269 (80.1%), 496/626 classes (79.2%), 253 pending/130 classes,
 one partial. All 20 topic rows verified. Five intended commit paths: one test
 file and four docs. Latest full TLC production gate remains green and unchanged.
+
+2026-10-04: Factory15 committed as `9c593ff`, clean tree. Installed all whole
+original Test34–49 methods and 34 pristine source vectors. Initial source run
+65497 failed Test44 (6.962s), retired; Test34–43 passed. Found bridge's false
+alias rewriting user-definable \subset to built-in \subseteq; Java treats them
+as distinct. Removed the two-line shortcut; original whole Test44 passes 1.185s
+(7123 retired). All 16 corrected methods pass 10.110s (61928 retired). Related
+subset/module/config models and compact semantic tests pass 5.581s (85527
+retired). Current 16-method race 1892 active. Initial fixture preparation 97515
+failed with missing files, retired/no success credit; corrected installation
+verified every source byte before execution. Inventory 1032/1269 (81.3%),
+512/626 classes (81.8%), 237 pending/114 classes. All 20 topic rows and 34
+fixture bytes verified. Expected40-path commit after current race check.
+
+Final whole 16-method race passes 75.251s, handle 1892 retired. All handles
+retired; all source/related checks green. Ready for the explicit 40-path commit.

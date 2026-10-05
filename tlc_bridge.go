@@ -2195,8 +2195,6 @@ func tlcBinaryOperator(op string) string {
 		return "\\lor"
 	case "<=>":
 		return "\\equiv"
-	case "\\subseteq", "\\subset":
-		return "\\subseteq"
 	default:
 		return tlcSymbolName(op)
 	}

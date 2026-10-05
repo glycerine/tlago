@@ -1,5 +1,15 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04: Original legacy Test34–49 methods pass normal 10.110s after a
+source failure exposed a bridge shortcut mapping user-definable `\subset` to
+built-in `\subseteq`. Java distinguishes them; removing that false alias lets
+normal symbol resolution call the user definition. Test44's full precedence/
+operator model and Test48/49's complete definition/alias cases are preserved.
+Related subset/module/config models and compact semantic checks pass 5.581s;
+whole 16-method race passes 75.251s. All handles retired. TLC package production is unchanged from its
+last full green gate. Inventory 1032/1269 contexts, 512/626 classes, 237 pending.
+
+
 2026-10-04: Legacy Test27–33 and complete config literal recognition committed
 as `956f530` after whole-method normal, direct config race, exact original
 config/override model race and current full TLC checks. Additional complete
