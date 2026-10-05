@@ -4824,3 +4824,25 @@ successful checks. Inventory968/1269contexts,462/626classes,301pending/164classe
 onepartial; all20topic rows verified.10intendedpaths, no fixture changes.
 Current fullTLC85805 PASS66.714s, retired. All13source cases normal/race and
 fullTLC green; all handles retired; ready for10path authorized commit.
+
+2026-10-04: Array batch committed as `0cd6db0`. Ported all 18 original legacy
+Test1–18 inherited methods with their constructor/default settings and exact
+stats/uncovered assertions; copied 36 byte-exact vectors. Source failures fixed
+in production: EXCEPT tuple selectors, tuple CHOOSE formals/scoping/bridge,
+quantifier token-kind aliases, and tuple binder parameter counts. Java's static
+function-arity check and its older Go test remain intact after Java disproved
+an intermediate removal proposal. No original assertions weakened.
+All 18 current normal pass (9.238s), handle 92818 retired. Original all 104
+legacy Java references passed preflight 11601. Current full workspace 22373
+and 18-method race 92607 active; finalize these before commit/new production.
+Inventory now 986/1269 (77.7%), 480/626 classes (76.7%), 283 pending/146 classes.
+All 20 topic rows and 36 fixture bytes verified. Five deferred topics unchanged.
+
+2026-10-04: Final workspace normal passes: root 1647.375s, SANY tests 0.935s,
+TLC 68.700s. Handle 22373 retired; JSONL has no failure events and all 18 new
+methods passed within that run. Current 18-method race passes 66.557s, handle
+92607 retired. All 48 intended paths staged and whitespace checked excluding
+pristine vectors. All handles retired; green batch ready for commit. Next
+ignored previews: Test19–26 (8/16 vectors), Test27–33 (7/14), Test57 override
+(1/3), FPSetFactoryTest (15 original methods/helpers; source Java 0.152s PASS).
+No preview credit or implementation changes claimed.

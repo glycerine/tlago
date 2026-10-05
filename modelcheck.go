@@ -673,11 +673,12 @@ func inlineDefinitionCalls(expr Expr, defs map[string]*Definition, seen map[stri
 		return caseExpr
 	case *ChooseExpr:
 		return &ChooseExpr{
-			Var:    e.Var,
-			VarPos: e.VarPos,
-			Set:    inlineDefinitionCalls(e.Set, defs, copySeen(seen)),
-			Body:   inlineDefinitionCalls(e.Body, defs, copySeen(seen)),
-			Pos:    e.Pos,
+			TupleVars: e.TupleVars,
+			Var:       e.Var,
+			VarPos:    e.VarPos,
+			Set:       inlineDefinitionCalls(e.Set, defs, copySeen(seen)),
+			Body:      inlineDefinitionCalls(e.Body, defs, copySeen(seen)),
+			Pos:       e.Pos,
 		}
 	case *TupleExpr:
 		tuple := &TupleExpr{Pos: e.Pos}
@@ -853,11 +854,11 @@ func substituteParams(expr Expr, replacements map[string]Expr) Expr {
 	case *ChooseExpr:
 		chooseReplacements := map[string]Expr{}
 		for name, replacement := range replacements {
-			if name != e.Var {
+			if !e.bindsName(name) {
 				chooseReplacements[name] = replacement
 			}
 		}
-		return &ChooseExpr{Var: e.Var, VarPos: e.VarPos, Set: substituteParams(e.Set, replacements), Body: substituteParams(e.Body, chooseReplacements), Pos: e.Pos}
+		return &ChooseExpr{TupleVars: e.TupleVars, Var: e.Var, VarPos: e.VarPos, Set: substituteParams(e.Set, replacements), Body: substituteParams(e.Body, chooseReplacements), Pos: e.Pos}
 	case *TupleExpr:
 		tuple := &TupleExpr{Pos: e.Pos}
 		for _, elem := range e.Elems {
@@ -2790,6 +2791,9 @@ func selectCaseExpr(expr *CaseExpr, st State) (Expr, bool, error) {
 }
 
 func evalChooseInt(expr *ChooseExpr, st State) (int, error) {
+	if expr.TupleVars != nil {
+		return 0, fmt.Errorf("tuple CHOOSE is not an integer")
+	}
 	if expr.Set == nil {
 		return 0, fmt.Errorf("unbounded CHOOSE is not an integer")
 	}
@@ -2898,11 +2902,11 @@ func substituteLets(expr Expr, bindings map[string]Expr, seen map[string]bool) E
 	case *ChooseExpr:
 		chooseBindings := map[string]Expr{}
 		for name, binding := range bindings {
-			if name != e.Var {
+			if !e.bindsName(name) {
 				chooseBindings[name] = binding
 			}
 		}
-		return &ChooseExpr{Var: e.Var, VarPos: e.VarPos, Set: substituteLets(e.Set, bindings, copySeen(seen)), Body: substituteLets(e.Body, chooseBindings, copySeen(seen)), Pos: e.Pos}
+		return &ChooseExpr{TupleVars: e.TupleVars, Var: e.Var, VarPos: e.VarPos, Set: substituteLets(e.Set, bindings, copySeen(seen)), Body: substituteLets(e.Body, chooseBindings, copySeen(seen)), Pos: e.Pos}
 	case *TupleExpr:
 		tuple := &TupleExpr{Pos: e.Pos}
 		for _, elem := range e.Elems {

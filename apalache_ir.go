@@ -771,13 +771,14 @@ func apalacheSubstituteParamsAtSharedUseSource(expr Expr, replacements map[strin
 		}
 		return caseExpr
 	case *ChooseExpr:
-		chooseReplacements := apalacheScopedSubstitutions(replacements, []string{e.Var})
+		chooseReplacements := apalacheScopedSubstitutions(replacements, e.boundNames())
 		return &ChooseExpr{
-			Var:    e.Var,
-			VarPos: e.VarPos,
-			Set:    apalacheSubstituteParamsAtSharedUseSource(e.Set, replacements, finalPositions),
-			Body:   apalacheSubstituteParamsAtSharedUseSource(e.Body, chooseReplacements, finalPositions),
-			Pos:    e.Pos,
+			TupleVars: e.TupleVars,
+			Var:       e.Var,
+			VarPos:    e.VarPos,
+			Set:       apalacheSubstituteParamsAtSharedUseSource(e.Set, replacements, finalPositions),
+			Body:      apalacheSubstituteParamsAtSharedUseSource(e.Body, chooseReplacements, finalPositions),
+			Pos:       e.Pos,
 		}
 	case *TupleExpr:
 		tuple := &TupleExpr{Pos: e.Pos}
@@ -936,7 +937,7 @@ func apalacheCollectSubstitutionFinalPositions(expr Expr, replacements map[strin
 		}
 		apalacheCollectSubstitutionFinalPositions(e.Other, replacements, finalPositions)
 	case *ChooseExpr:
-		chooseReplacements := apalacheScopedSubstitutions(replacements, []string{e.Var})
+		chooseReplacements := apalacheScopedSubstitutions(replacements, e.boundNames())
 		apalacheCollectSubstitutionFinalPositions(e.Set, replacements, finalPositions)
 		apalacheCollectSubstitutionFinalPositions(e.Body, chooseReplacements, finalPositions)
 	case *TupleExpr:
@@ -1022,7 +1023,7 @@ func apalacheExprAtPosition(expr Expr, pos Position) Expr {
 	case *CaseExpr:
 		return &CaseExpr{Arms: append([]CaseArm(nil), e.Arms...), Other: e.Other, OtherPos: e.OtherPos, Pos: pos}
 	case *ChooseExpr:
-		return &ChooseExpr{Var: e.Var, VarPos: e.VarPos, Set: e.Set, Body: e.Body, Pos: pos}
+		return &ChooseExpr{TupleVars: e.TupleVars, Var: e.Var, VarPos: e.VarPos, Set: e.Set, Body: e.Body, Pos: pos}
 	case *TupleExpr:
 		return &TupleExpr{Elems: append([]Expr(nil), e.Elems...), Pos: pos}
 	case *SetExpr:
@@ -1176,7 +1177,9 @@ func collectApalacheExprUses(expr Expr, locals map[string]bool, uses map[string]
 	case *ChooseExpr:
 		collectApalacheExprUses(e.Set, locals, uses)
 		bodyLocals := copyBoolMap(locals)
-		bodyLocals[e.Var] = true
+		for _, name := range e.boundNames() {
+			bodyLocals[name] = true
+		}
 		collectApalacheExprUses(e.Body, bodyLocals, uses)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
@@ -1645,7 +1648,7 @@ func apalacheExprBindsName(expr Expr, name string) bool {
 		}
 		return apalacheExprBindsName(e.Other, name)
 	case *ChooseExpr:
-		return e.Var == name || apalacheExprBindsName(e.Set, name) || apalacheExprBindsName(e.Body, name)
+		return e.bindsName(name) || apalacheExprBindsName(e.Set, name) || apalacheExprBindsName(e.Body, name)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
 			if apalacheExprBindsName(elem, name) {
@@ -1779,6 +1782,9 @@ func apalacheCase(e *CaseExpr, opts ApalacheIROptions, ctx apalacheExprContext) 
 }
 
 func apalacheChoose(e *ChooseExpr, opts ApalacheIROptions, ctx apalacheExprContext) (interface{}, Diagnostics) {
+	if e.TupleVars != nil {
+		return nil, Diagnostics{errorAt(e.Pos, "E6004", "unsupported ApalacheIR tuple CHOOSE")}
+	}
 	body, bodyDiags := apalacheExprIn(e.Body, opts, ctx.withLocals(e.Var))
 	name := apalacheNameExJSON{Source: apalacheSource(e.Pos, opts), Type: "Untyped", Kind: "NameEx", Name: e.Var}
 	if e.Set == nil {

@@ -6,33 +6,60 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Latest green batch committedfcb3f4d:41original liveness/indexer/iterator contexts,
-36pristine vectors and3production files;47paths committed, clean tree then.
-Workspace root1645.594s/SANY1.010s/TLC65.352s plus later iterator fullTLC69.871s/
-FPstorage race52.546s, new matrices normal3.923s/race16.023s; all handles retired.
-Current13whole LongArray/LongArrays original methods installed in
- tlc/long_array_java_test.go and tlc/long_arrays_java_test.go.
-Production core AssertionError carrier/class/catch exclusion and LongArray
-bounds match source assert. Initial13 failed Empty1: Go infinite-precision
-constructor rejected zero while Java asserts positions>=0. Corrected constructor
-accepts zero and uses source AssertionError for invalid config. No test weakened.
-Corrected all13normal50563 PASS0.019s, retired. Original Java99350 all7PASS0.412s/
-all6PASS0.012s. Current relevant arrays/throwable/indexer race81012 PASS31.603s
-in long-array-corrected-thirteen-and-indexer-race.log, retired.
-FullTLC85805 PASS66.714s, retired; long-array-corrected-current-full-tlc-go.log.
-Initial invalid-constructor snapshots59947race/68477fullTLC both failed/retired;
-never count them as success. Don't restart live checks.
-Inventory968/1269(76.3%),462/626classes(73.8%),301pending/164classes,onepartial.
-All20topicrows verified. Current10intendedpaths:4production(java_exceptions,
-throwable,long_array,offheap_indexer),2source testfiles,4docs. No vectors.
-Original zero-memory loop typo preserved literally; full21383random/10321swap,
-44Basic2literals/15rangeassertions/all sorting-verification helpers retained.
-All required checks green. Stage10explicitpaths/check and commit before
-new production work. Next first18legacy whole source methods/36vectors prepared
-in ignored legacy-suite-first-eighteen.go.preview and fixture map; larger78source
-preview/172vectors includes four full coverage hooks and complete Test19/27/33
-spaces. Uninstalled/uncredited. All104legacy unchangedJava refsPASS11601.
-Goal active;5deferred user topics remain deferred, no invented tests/skips.
+Last green commit: `0cd6db0`, containing all 13 original LongArray/LongArrays
+methods and their production assertion/empty-indexer fixes. Earlier 41-context
+batch is committed as `fcb3f4d`.
+
+Current batch: all 18 original `Test1` through `Test18` inherited
+`SuiteTestCase.testSpec` methods, in
+`tlc_legacy_suite_first_eighteen_java_test.go`, with 36 byte-exact source vectors
+under `tlc/test_vectors/models/LegacySuiteTestN/`. Original settings, stats,
+coverage/uncovered assertions and exit status are preserved.
+
+The source tests exposed four production gaps, now corrected:
+- An EXCEPT bracket with multiple indices is one tuple argument, not several
+  path levels (`tlc_bridge.go`, matching Generator's EXCEPT selector).
+- Tuple-bound CHOOSE retains all formals/positions in the central AST, semantic
+  scope, substitutions, XML and TLC bridge. Existing TLC tuple evaluation is used.
+- Quantifier aliases select semantics by token kind, matching Generator; raw
+  `\exists` previously became a universal quantifier.
+- Named function parameter counts treat a tuple binder as one parameter,
+  matching `OpApplNode.getNumberOfBoundedBoundSymbols`.
+
+All 18 current source methods pass normal (9.238s), handle 92818 retired;
+`legacy-suite-first-eighteen-domain-count-go.log`. All 104 unchanged Java legacy
+references passed the prior preflight (11601 retired). All 36 fixture bytes and
+20 inventory topic rows verified. Inventory: 986/1269 contexts (77.7%), 480/626
+classes (76.7%), 283 pending across 146 classes, one partial.
+
+Full workspace normal passes: root 1647.375s, SANY tests 0.935s, TLC 68.700s;
+handle 22373 retired. JSONL `legacy-eighteen-current-full-workspace.jsonl`
+contains no failure events, and all 18 new methods passed inside that run.
+The complete 18-method race passes 66.557s, handle 92607 retired;
+`legacy-eighteen-current-race-go.log`. All handles retired.
+All 48 intended paths are staged and checked; commit this green batch before
+new production work. Next prepared batch: tests 19–26 (8 whole methods, 16
+vectors) in ignored `legacy-suite-next-eight.go.preview` and its fixture map.
+Tests 27–33 have a separate 7-method/14-vector preview. Test57's original
+custom override has a 1-method/3-vector preview and retains its safety exit
+without inherited stats/coverage assertions. The fingerprint factory preview
+contains all 15 whole original methods/helpers; unchanged Java passes all 15
+(0.152s). These previews are uninstalled and uncredited.
+
+During investigation, a proposed removal of the static function-arity check
+was disproved by unchanged Java SANY and corrected before credit: the Java
+check does exist; its tuple parameter count was wrong in Go. The original
+older Go arity test and static checker have been restored. The intermediate
+single-Test10 pass without the check is not a final verification receipt.
+ApalacheIR explicitly reports tuple CHOOSE unsupported; the separate legacy
+integer evaluator rejects tuple CHOOSE as non-integer. Neither silently emits
+an empty scalar binding. Actual TLC tuple CHOOSE executes via its native path.
+
+The ignored 78-context preview includes these 18 plus 60 additional whole
+inherited methods, four complete coverage hooks and 172 vector mappings.
+Next install only the remaining contexts after the current green commit;
+preserve full Test19/27/33 state spaces. No invented tests or skips. The user's
+five deferred topics remain deferred. The overall goal remains active.
 
 Historical receipts/preparation follow; prior41batch is now committedfcb3f4d.
 

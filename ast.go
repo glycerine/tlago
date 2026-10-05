@@ -326,15 +326,50 @@ func (*CaseExpr) exprNode()            {}
 
 type ChooseExpr struct {
 	SanyExprSource
-	Var    string
-	VarPos Position
-	Set    Expr
-	Body   Expr
-	Pos    Position
+	// TupleVars retains each formal parameter of CHOOSE <<x, ...>>.
+	TupleVars []BoundVar
+	Var       string
+	VarPos    Position
+	Set       Expr
+	Body      Expr
+	Pos       Position
 }
 
 func (e *ChooseExpr) Position() Position { return e.Pos }
 func (*ChooseExpr) exprNode()            {}
+
+func (e *ChooseExpr) boundVars() []BoundVar {
+	if e.TupleVars != nil {
+		bounds := append([]BoundVar(nil), e.TupleVars...)
+		for i := range bounds {
+			bounds[i].Set = e.Set
+		}
+		return bounds
+	}
+	pos := e.VarPos
+	if pos.Line == 0 && pos.Column == 0 && pos.File == "" {
+		pos = e.Pos
+	}
+	return []BoundVar{{Name: e.Var, Set: e.Set, Pos: pos}}
+}
+
+func (e *ChooseExpr) boundNames() []string {
+	bounds := e.boundVars()
+	names := make([]string, len(bounds))
+	for i, bound := range bounds {
+		names[i] = bound.Name
+	}
+	return names
+}
+
+func (e *ChooseExpr) bindsName(name string) bool {
+	for _, bound := range e.boundVars() {
+		if bound.Name == name {
+			return true
+		}
+	}
+	return false
+}
 
 type TupleExpr struct {
 	SanyExprSource

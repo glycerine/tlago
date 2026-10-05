@@ -1985,17 +1985,17 @@ func (b *tlcBridge) chooseNode(e *ChooseExpr) tlc.SemanticNode {
 	if e.Set != nil {
 		bound = b.convertExpr(e.Set)
 	}
-	parameter := b.formalParameter(e.Var, 0, e.VarPos, e.Syntax)
-	restore := b.pushFormalParameters([]*tlc.SymbolNode{parameter})
+	parameters := b.boundParameters(e.boundVars(), e.Syntax)
+	restore := b.pushFormalParameters(parameters)
 	body := b.convertExpr(e.Body)
 	restore()
 	node := b.builtinNode(op, body)
 	if e.Set != nil {
-		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{{parameter}}
+		node.BdedQuantSymbolLists = [][]*tlc.SymbolNode{parameters}
 		node.BdedQuantBounds = []tlc.SemanticNode{bound}
-		node.BdedQuantATuple = []bool{false}
+		node.BdedQuantATuple = []bool{e.TupleVars != nil}
 	} else {
-		node.UnbdedQuantSymbols = []*tlc.SymbolNode{parameter}
+		node.UnbdedQuantSymbols = parameters
 	}
 	return node
 }
@@ -2064,8 +2064,10 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 			if component.Field != "" {
 				pathElems = append(pathElems, b.withPositionLocation(component.FieldPos, tlc.NewStringNode(component.Field)))
 			}
-			for _, index := range component.Indices {
-				pathElems = append(pathElems, b.convertExpr(index))
+			if len(component.Indices) > 0 {
+				// One bracket component is one function argument; multiple
+				// indices form a tuple, as in Generator's EXCEPT selector.
+				pathElems = append(pathElems, b.convertFunctionArgs(component.Indices))
 			}
 		}
 		path := b.withPositionLocation(spec.Pos, b.builtinNode(tlc.OpTup, pathElems...))

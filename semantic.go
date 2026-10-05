@@ -958,7 +958,7 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		}
 	case *ChooseExpr:
 		diags = append(diags, checkLabels(e.Set, ctx)...)
-		diags = append(diags, checkLabels(e.Body, ctx.withBound(e.Var))...)
+		diags = append(diags, checkLabels(e.Body, ctx.withBounds(e.boundVars()))...)
 	case *TupleExpr:
 		diags = append(diags, checkDuplicateSiblingLabels(e.Elems)...)
 		for _, elem := range e.Elems {
@@ -1817,7 +1817,7 @@ func checkProofStepExpressionRefs(expr Expr, nonExprSteps map[string]bool, declK
 		return diags
 	case *ChooseExpr:
 		diags = append(diags, checkProofStepExpressionRefs(e.Set, nonExprSteps, declKinds, boundNames)...)
-		diags = append(diags, checkProofStepExpressionRefs(e.Body, nonExprSteps, declKinds, proofNamesWithName(boundNames, e.Var))...)
+		diags = append(diags, checkProofStepExpressionRefs(e.Body, nonExprSteps, declKinds, proofNamesWithBounds(boundNames, e.boundVars()))...)
 		return diags
 	case *FunctionExpr:
 		for _, bound := range e.Bounds {
@@ -1882,7 +1882,7 @@ func checkAssumeProveDefinitionUse(expr Expr, assumeProveDefs map[string]bool, l
 		}
 	case *ChooseExpr:
 		diags = append(diags, checkAssumeProveDefinitionUse(e.Set, assumeProveDefs, locals)...)
-		diags = append(diags, checkAssumeProveDefinitionUse(e.Body, assumeProveDefs, withLocal(locals, e.Var))...)
+		diags = append(diags, checkAssumeProveDefinitionUse(e.Body, assumeProveDefs, withLocal(locals, e.boundNames()...))...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
 			diags = append(diags, checkAssumeProveDefinitionUse(elem, assumeProveDefs, locals)...)
@@ -2326,7 +2326,7 @@ func checkInstanceSubstitutionArgLevelConstraintsExpr(expr Expr, targetName stri
 		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Other, targetName, subst, substPos, declKinds, locals)...)
 	case *ChooseExpr:
 		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, withLocal(locals, e.Var))...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, withLocal(locals, e.boundNames()...))...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
 			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, subst, substPos, declKinds, locals)...)
@@ -2646,7 +2646,19 @@ func definitionFunctionArity(def Definition) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	return len(fn.Bounds), true
+	// OpApplNode.getNumberOfBoundedBoundSymbols counts a tuple binder once.
+	count := 0
+	for i := 0; i < len(fn.Bounds); {
+		bound := fn.Bounds[i]
+		count++
+		i++
+		if bound.TupleBound {
+			for i < len(fn.Bounds) && fn.Bounds[i].TupleBound && fn.Bounds[i].Set == bound.Set {
+				i++
+			}
+		}
+	}
+	return count, true
 }
 
 type operatorParamSpec struct {
@@ -2843,12 +2855,14 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		}
 	case *ChooseExpr:
 		diags = append(diags, checkExpr(e.Set, defined, locals)...)
-		diags = append(diags, checkBoundName(e.Var, e.Pos, defined, locals)...)
 		chooseLocals := map[string]bool{}
 		for name, ok := range locals {
 			chooseLocals[name] = ok
 		}
-		chooseLocals[e.Var] = true
+		for _, bound := range e.boundVars() {
+			diags = append(diags, checkBoundName(bound.Name, bound.Pos, defined, chooseLocals)...)
+			chooseLocals[bound.Name] = true
+		}
 		diags = append(diags, checkExpr(e.Body, defined, chooseLocals)...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
@@ -3119,7 +3133,9 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 	case *ChooseExpr:
 		diags = append(diags, recur(e.Set, arities, locals)...)
 		chooseLocals := copyBoolMap(locals)
-		chooseLocals[e.Var] = true
+		for _, name := range e.boundNames() {
+			chooseLocals[name] = true
+		}
 		diags = append(diags, recur(e.Body, arities, chooseLocals)...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
@@ -3297,7 +3313,9 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 	case *ChooseExpr:
 		diags = append(diags, checkOperatorArgumentKinds(e.Set, operatorParams, arities, locals)...)
 		chooseLocals := copyBoolMap(locals)
-		chooseLocals[e.Var] = true
+		for _, name := range e.boundNames() {
+			chooseLocals[name] = true
+		}
 		diags = append(diags, checkOperatorArgumentKinds(e.Body, operatorParams, arities, chooseLocals)...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
@@ -3515,7 +3533,9 @@ func checkFunctionArity(expr Expr, functionArities map[string]int, locals map[st
 	case *ChooseExpr:
 		diags = append(diags, checkFunctionArity(e.Set, functionArities, locals)...)
 		chooseLocals := copyBoolMap(locals)
-		chooseLocals[e.Var] = true
+		for _, name := range e.boundNames() {
+			chooseLocals[name] = true
+		}
 		diags = append(diags, checkFunctionArity(e.Body, functionArities, chooseLocals)...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
@@ -3814,7 +3834,9 @@ func checkPrimedConstants(expr Expr, declKinds map[string]DeclarationKind, local
 		for name, ok := range locals {
 			chooseLocals[name] = ok
 		}
-		chooseLocals[e.Var] = true
+		for _, name := range e.boundNames() {
+			chooseLocals[name] = true
+		}
 		diags = append(diags, checkPrimedConstants(e.Body, declKinds, chooseLocals)...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
@@ -3966,7 +3988,7 @@ func checkLevelComposition(expr Expr, declKinds map[string]DeclarationKind, loca
 		}
 	case *ChooseExpr:
 		diags = append(diags, checkLevelComposition(e.Set, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Body, declKinds, withLocal(locals, e.Var))...)
+		diags = append(diags, checkLevelComposition(e.Body, declKinds, withLocal(locals, e.boundNames()...))...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
 			diags = append(diags, checkLevelComposition(elem, declKinds, locals)...)
@@ -4062,9 +4084,11 @@ func levelsMixActionAndTemporal(left, right tlaLevel) bool {
 	return (left == actionLevel && right == temporalLevel) || (left == temporalLevel && right == actionLevel)
 }
 
-func withLocal(locals map[string]bool, name string) map[string]bool {
+func withLocal(locals map[string]bool, names ...string) map[string]bool {
 	out := copyBoolMap(locals)
-	out[name] = true
+	for _, name := range names {
+		out[name] = true
+	}
 	return out
 }
 
@@ -4133,7 +4157,9 @@ func exprLevel(expr Expr, declKinds map[string]DeclarationKind, locals map[strin
 		return level
 	case *ChooseExpr:
 		chooseLocals := copyBoolMap(locals)
-		chooseLocals[e.Var] = true
+		for _, name := range e.boundNames() {
+			chooseLocals[name] = true
+		}
 		return maxTlaLevel(exprLevel(e.Set, declKinds, locals), exprLevel(e.Body, declKinds, chooseLocals))
 	case *TupleExpr:
 		level := constantLevel

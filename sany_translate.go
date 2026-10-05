@@ -2006,7 +2006,7 @@ func sanyBoundQuantifier(node *SanySyntaxNode) (Expr, Diagnostics) {
 	}
 	body, bodyDiags := sanyExpr(heirs[len(heirs)-1])
 	diags = append(diags, bodyDiags...)
-	return wrapQuantifierExprs(sanyOperatorImage(heirs[0]), bounds, body, sanyNodePosition(node), node), diags
+	return wrapQuantifierExprs(sanyQuantifierKind(heirs[0]), bounds, body, sanyNodePosition(node), node), diags
 }
 
 func sanyUnboundQuantifier(node *SanySyntaxNode) (Expr, Diagnostics) {
@@ -2025,7 +2025,23 @@ func sanyUnboundQuantifier(node *SanySyntaxNode) (Expr, Diagnostics) {
 	if len(vars) == 0 {
 		return unsupportedSanyExpr(node)
 	}
-	return wrapQuantifierExprs(sanyOperatorImage(heirs[0]), vars, body, sanyNodePosition(node), node), diags
+	return wrapQuantifierExprs(sanyQuantifierKind(heirs[0]), vars, body, sanyNodePosition(node), node), diags
+}
+
+// Generator chooses quantifier semantics by token kind, including aliases.
+func sanyQuantifierKind(node *SanySyntaxNode) string {
+	switch node.Kind.JavaName() {
+	case "EXISTS":
+		return "\\E"
+	case "FORALL":
+		return "\\A"
+	case "T_EXISTS":
+		return "\\EE"
+	case "T_FORALL":
+		return "\\AA"
+	default:
+		return sanyOperatorImage(node)
+	}
 }
 
 func wrapQuantifierExprs(kind string, vars []BoundVar, body Expr, pos Position, syntax *SanySyntaxNode) Expr {
@@ -2114,11 +2130,14 @@ func sanyCaseArm(node *SanySyntaxNode) (CaseArm, Diagnostics) {
 }
 
 func sanyChoose(node *SanySyntaxNode) (Expr, Diagnostics) {
-	id := firstSanyIdentifier(node)
-	if id == nil {
+	choose := &ChooseExpr{Pos: sanyNodePosition(node)}
+	if tuple := firstSanyChildKind(node, "N_IdentifierTuple"); tuple != nil {
+		choose.TupleVars = sanyBoundIntroVars(tuple)
+	} else if id := firstSanyIdentifier(node); id != nil {
+		choose.Var, choose.VarPos = id.Image, sanyNodePosition(id)
+	} else {
 		return unsupportedSanyExpr(node)
 	}
-	choose := &ChooseExpr{Var: id.Image, VarPos: sanyNodePosition(id), Pos: sanyNodePosition(node)}
 	var diags Diagnostics
 	if maybe := firstSanyChildKind(node, "N_MaybeBound"); maybe != nil {
 		if setNode := lastSanyExpression(maybe); setNode != nil {
@@ -2127,7 +2146,7 @@ func sanyChoose(node *SanySyntaxNode) (Expr, Diagnostics) {
 			choose.Set = set
 		}
 	}
-	if choose.Set == nil {
+	if choose.Set == nil && choose.TupleVars == nil {
 		if chooseToken := firstSanyChildKind(node, "CHOOSE"); chooseToken != nil {
 			choose.VarPos = sanyNodePosition(chooseToken)
 		}

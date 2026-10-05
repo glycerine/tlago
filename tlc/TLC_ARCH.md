@@ -1,5 +1,19 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04 current: original legacy Test1–18 methods exposed four corrected
+SANY/TLC translation gaps. Each EXCEPT bracket is one function argument;
+multiple indices form a tuple, preserving distinct path components. CHOOSE
+with a tuple binder retains every formal and source position through semantic
+scope and transformations, then emits one bounded symbol group marked as a
+tuple. Existing TLC tuple CHOOSE evaluation binds its components and returns
+the chosen tuple. Quantifier semantics use token kinds, including aliases.
+Named function parameter counts match Java's bounded-symbol count: scalar
+formals count separately, each tuple binder counts once. Java's static
+function-application arity check remains intact.
+All 18 original methods pass normal (9.238s) and race (66.557s). Full
+workspace passes: root 1647.375s, SANY tests 0.935s, TLC 68.700s. Inventory: 986/1269 contexts, 480/626 classes, 283 pending.
+
+
 2026-10-04 latest:41-context batch committedfcb3f4d after broad/race checks.
 Current13original LongArray/LongArrays methods preserve full source inputs,
 loops and assertions. Java language assertions carry AssertionError (an Error,

@@ -5009,12 +5009,7 @@ func (x *sanyXMLExporter) chooseXML(e *ChooseExpr, ctx sanyXMLExprContext) (stri
 	if e.Set != nil {
 		oper = "$BoundedChoose"
 	}
-	pos := e.VarPos
-	if pos.Line == 0 && pos.Column == 0 && pos.File == "" {
-		pos = e.Pos
-	}
-	bounds := []BoundVar{{Name: e.Var, Set: e.Set, Pos: pos}}
-	return x.boundOpXML(oper, e.Pos, bounds, e.Body, ctx, false)
+	return x.boundOpXML(oper, e.Pos, e.boundVars(), e.Body, ctx, false)
 }
 
 func (x *sanyXMLExporter) boundOpXML(oper string, pos Position, bounds []BoundVar, body Expr, ctx sanyXMLExprContext, forceFormalLevel bool) (string, Diagnostics) {
@@ -5580,7 +5575,9 @@ func (x *sanyXMLExporter) exprParamUse(expr Expr, ctx sanyXMLExprContext, shadow
 	case *ChooseExpr:
 		use := x.exprParamUse(e.Set, ctx, shadowed)
 		bodyShadowed := copyBoolMap(shadowed)
-		bodyShadowed[e.Var] = true
+		for _, name := range e.boundNames() {
+			bodyShadowed[name] = true
+		}
 		use.merge(x.exprParamUse(e.Body, ctx, bodyShadowed))
 		return use
 	case *TupleExpr:
@@ -5755,7 +5752,9 @@ func (x *sanyXMLExporter) exprParamUseWithDefinitionRefs(expr Expr, ctx sanyXMLE
 	case *ChooseExpr:
 		use := x.exprParamUseWithDefinitionRefs(e.Set, ctx, shadowed, visiting)
 		bodyShadowed := copyBoolMap(shadowed)
-		bodyShadowed[e.Var] = true
+		for _, name := range e.boundNames() {
+			bodyShadowed[name] = true
+		}
 		use.merge(x.exprParamUseWithDefinitionRefs(e.Body, ctx, bodyShadowed, visiting))
 		return use
 	case *TupleExpr:
@@ -6234,7 +6233,9 @@ func (x *sanyXMLExporter) exprLevelData(expr Expr, ctx sanyXMLExprContext, shado
 		return data
 	case *ChooseExpr:
 		bodyShadowed := copyBoolMap(shadowed)
-		bodyShadowed[e.Var] = true
+		for _, name := range e.boundNames() {
+			bodyShadowed[name] = true
+		}
 		return mergeSanyXMLLevelData(x.exprLevelData(e.Set, ctx, shadowed), x.exprLevelData(e.Body, ctx, bodyShadowed))
 	case *TupleExpr:
 		return x.operatorApplicationLevelData("$Tuple", nil, e.Elems, ctx, shadowed)
@@ -7019,7 +7020,9 @@ func exprReferencesName(expr Expr, name string, shadowed map[string]bool) bool {
 			return true
 		}
 		next := copyBoolMap(shadowed)
-		next[e.Var] = true
+		for _, name := range e.boundNames() {
+			next[name] = true
+		}
 		return exprReferencesName(e.Body, name, next)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
