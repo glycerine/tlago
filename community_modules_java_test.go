@@ -6,6 +6,7 @@ package tlago
 
 import (
 	"archive/zip"
+	"bytes"
 	"context"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/glycerine/tlago/tlc"
 )
@@ -34,7 +36,9 @@ func TestJavaCommunityModulesAnt(t *testing.T) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
+	t.Logf("Preparing CommunityModules fixtures in %s", dir)
 	for _, name := range []string{"tests", "modules"} {
+		t.Logf("Copying CommunityModules %s", name)
 		if err := os.CopyFS(filepath.Join(dir, name), os.DirFS(filepath.Join(root, "CommunityModules", name))); err != nil {
 			t.Fatal(err)
 		}
@@ -76,9 +80,38 @@ func TestJavaCommunityModulesAnt(t *testing.T) {
 			if phase == "all" {
 				cmd.Env = append(cmd.Env, "SOME_TEST_ENV_VAR=TLCFTW", "SOME-TEST-ENV-VAR=TLCFTW", "SOME_TEST_ENV_VAR_N23=23")
 			}
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("original Ant %s invocation: %v\n%s", phase, err, output)
+			// Keep the original complete output for failures, and stream it
+			// immediately in verbose runs instead of hiding it in CombinedOutput.
+			var output bytes.Buffer
+			var writer io.Writer = &output
+			if testing.Verbose() {
+				writer = io.MultiWriter(os.Stdout, &output)
+			}
+			// Using the same writer for both streams makes os/exec serialize
+			// their writes, including writes to the retained bytes.Buffer.
+			cmd.Stdout, cmd.Stderr = writer, writer
+			started := time.Now()
+			t.Logf("Starting CommunityModules %s phase", phase)
+			if err := cmd.Start(); err != nil {
+				t.Fatalf("original Ant %s invocation: %v", phase, err)
+			}
+			completed := make(chan error, 1)
+			go func() { completed <- cmd.Wait() }()
+			ticker := time.NewTicker(10 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case err := <-completed:
+					if err != nil {
+						t.Fatalf("original Ant %s invocation: %v\n%s", phase, err, output.String())
+					}
+					t.Logf("Completed CommunityModules %s phase after %s", phase, time.Since(started).Round(time.Second))
+					return
+				case <-ticker.C:
+					if testing.Verbose() {
+						t.Logf("CommunityModules %s phase still running after %s; waiting for child process %d", phase, time.Since(started).Round(time.Second), cmd.Process.Pid)
+					}
+				}
 			}
 		})
 	}
@@ -86,6 +119,7 @@ func TestJavaCommunityModulesAnt(t *testing.T) {
 
 func runJavaCommunityModulesAntPhase(t *testing.T, phase string) {
 	t.Helper()
+	t.Logf("CommunityModules %s: preparing Go TLC options", phase)
 	args := []string{"-fp", "1", "-metadir", filepath.Join("build", "states"), "-cleanup", "-config", filepath.Join("tests", "AllTests.cfg")}
 	wantExit := tlc.ExitStatusSuccess
 	switch phase {
@@ -112,10 +146,13 @@ func runJavaCommunityModulesAntPhase(t *testing.T, phase string) {
 	}
 	resolver := tlc.NewSimpleFilenameToStream([]string{filepath.Dir(opts.SpecFile), "modules"}, tlc.FilenameResolverOptions{Classpath: classpath})
 	opts.LoadTool = func() (*tlc.Tool, error) {
+		t.Logf("CommunityModules %s: loading %s and its module dependencies", phase, opts.SpecFile)
 		tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, resolver, opts.RuntimeParams)
 		requireNoErrors(t, diags)
+		t.Logf("CommunityModules %s: module loading complete", phase)
 		return tool, err
 	}
+	t.Logf("CommunityModules %s: starting Go TLC (expected exit %d)", phase, wantExit)
 	result, err := tlc.NewTLC(opts).Process(context.Background())
 	if result == nil {
 		t.Fatalf("original Ant %s: nil result, error %v", phase, err)
@@ -129,6 +166,7 @@ func runJavaCommunityModulesAntPhase(t *testing.T, phase string) {
 
 func extractCommunityAntClasses(t *testing.T, path, dest string) {
 	t.Helper()
+	t.Logf("Extracting CommunityModules dependency %s", filepath.Base(path))
 	archive, err := zip.OpenReader(path)
 	if err != nil {
 		t.Fatal(err)
