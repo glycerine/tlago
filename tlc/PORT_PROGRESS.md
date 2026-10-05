@@ -1,5 +1,29 @@
 # TLC Port Progress
 
+2026-10-05 original concurrent OffHeap partitioned default failure verified:
+Compiled unchanged MultiThreadedFPSetTest, OffHeap subclass and original generator
+sources. Original JUnit method runs with source default48 workers,64MiB offheap,
+INSERTIONS=2,147,483,649 and all per-thread bucket traversals intact. Java94369
+terminal exit1/retired: all8,388,575 puts complete with zero collisions; fails base
+size>=INSERTIONS at MultiThreadedFPSetTest.java:181. Source generator explicitly
+ignores INSERTIONS and instead fills floor8,388,608/48 buckets per thread, with
+worker0 skipping fingerprint0. Thus even the original source cannot satisfy its
+minimum-size assertion at defaults. No Go production shortcut implicated.
+Ignored default-property full native draft44125 terminal exit1/retired,1.016s;
+size8,388,575 and same lower-bound assertion. Verified ALL48 producer counts equal
+source: worker0=174761, other47=174762; all collisions0. Original invariant and
+local bucketCapacity==0 assertions remain intact but are not reached in either
+run. Native scratch reporter/lifecycle scaffolding is uncredited; no persistent
+new test or translation count assigned. Logs concurrent-offheap-partitioned-
+original-{javac,java}.log and concurrent-offheap-partitioned-draft-go.log; ignored
+concurrent_offheap_partitioned_draft_test.go and overlay retained for next audit.
+TODO marks this method Reconcile with verified pinned-source failure instead of
+an unexplained missing case. Counts unchanged main1251/1269,shared55/56,long14/22,
+concurrent2/17. Whole12436 still LIVE at dd8f136 before later queue/simple-fill
+commits; poll exact handle. Local free disk now2.6GiB, full random stress workloads
+still require >=16GiB per file. Pending source behavior/resource questions remain
+unanswered; no new skip/reduced bound or source behavior changes. Goal ACTIVE.
+
 2026-10-05 long LSB/MSB inherited simple-fill contexts complete after 9f8e452:
 Ported FPSetTest.testSimpleFill in both concrete long classes, preserving direct
 LSBDiskFPSet/MSBDiskFPSet construction, supplied default configuration, init(1),
