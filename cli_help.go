@@ -67,8 +67,8 @@ func printCLIHelp(w io.Writer, command string) {
 	}
 	fmt.Fprintln(w)
 	if command == "" || command == "modelcheck" {
-		writeCLIHelpParagraph(w, "Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go invocation: tlago [FLAGS] Spec.tla. The optional modelcheck (mc) subcommand uses exactly the same TLC runner and flags. TLC options keep the Java single-dash spelling and case. The module's .tla and config's .cfg extensions are optional. Exactly one root module is required.")
-		writeCLIHelpParagraph(w, "Toolbox model editors generate a model module and .cfg from constants, behavior, invariants, properties, constraints, symmetry, and model values. On the CLI these model choices belong in the .tla/.cfg files; they are not separate command-line flags. GUI names below refer to the original Toolbox. Other editors may label the same choices differently.")
+		//writeCLIHelpParagraph(w, "Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go invocation: tlago [FLAGS] Spec.tla. The optional modelcheck (mc) subcommand uses exactly the same TLC runner and flags. TLC options keep the Java single-dash spelling and case. The module's .tla and config's .cfg extensions are optional. Exactly one root module is required.")
+		//writeCLIHelpParagraph(w, "Toolbox model editors generate a model module and .cfg from constants, behavior, invariants, properties, constraints, symmetry, and model values. On the CLI these model choices belong in the .tla/.cfg files; they are not separate command-line flags. GUI names below refer to the original Toolbox. Other editors may label the same choices differently.")
 	}
 	groups := cliHelpGroups(command)
 	fmt.Fprintln(w, "FLAG QUICK REFERENCE")
