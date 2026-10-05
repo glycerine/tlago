@@ -1,5 +1,45 @@
 # TLC Port Handoff
 
+2026-10-05 whole original MSB disk-fingerprint class complete afterd835600:
+All19 MSBDiskFPSetTest2 contexts translated in tlc/msb_disk_fpset_java_test.go.
+Reuse complete inherited12-constructor/three-recovery source helpers with
+subclass lower256/upper2147483648 and MSB constructor. Preserve all99998 trace
+fingerprints/contains checks, all1024 forced-flush calls and duplicate warning;
+no smaller default memory budget or loop. getMSBDiskFPSet uses original dummy
+raw100-fingerprint budget, exact100 assertion, init1 and class-name/timestamp
+filename. Four declared methods retain highFP1<<62, discarded new iterator
+then OLD iterator getLast after manual flush, catch-only-NoSuchElementException,
+lowFP1/new iterator last check, high fingerprints9223368718049406096 and
+9223335424116589377 with false/true/true puts across two flushes, and no-bucket
+exception. Every original assertion retained; no invented tests or production
+changes. Existing native iterator/configuration implementation passes directly.
+Original Java19 methods pass7.373s, log msb-disk-original-java.log; fresh source
+was inspected again and sibling source worktree remains unchanged.
+Go97266 terminal exit0/all19 normal206.495s, log msb-disk-initial-go.log.
+Four DECLARED methods only44212 terminal exit0/race1.038s, log
+ msb-disk-declared-methods-race.log. Do not describe this as all19-method race.
+Related68491 terminal exit0/race21.109s, log msb-disk-related-race.log: original
+three TLCIterator subclasses, FPSetFactory methods and native disk checks.
+Inherited helper implementation already passed full LSB15 race963.741s; current
+MSB full1024 forced-flush traversal is verified by its complete normal run.
+All appropriate gates for this test-only batch are green; ready to commit.
+Inventory1204/1269 contexts(94.9%),607/626 classes(97.0%);65pending/19classes.
+Fingerprint118/165 methods,18/20 classes complete;47pending in OffHeap23/Short24.
+No full current-source workspace green claim: existing AliasSub2 auto-worker
+replay mismatch remains documented and reproduces identically in Java when
+loading the captured trace. Async behavior question remains pending; preserve
+pinned Java semantics until answered. No replay assertion/semantics changed.
+No tests remain live;97266/44212/68491 terminal and retired. User-deferred topics
+unchanged; goal remains active. Next eligible independent batch: whole Short24.
+Re-read all six original runKnown conditional early returns (testZeroFP,
+testMinFP,testMemLookupWithZeros,testMemLookupWithMin,testDiskLookupWithZerosOnPage,
+testDiskLookupWithLongMinValueOnPage), not merely the first two. Preserve every
+branch/body even when default runKnown=false; do not introduce extra skips.
+All24 unchanged Java methods already pass0.373s, log short-disk-original-java.log.
+Source LSB clone buffer is fixed-length cnt including unfilled zeros; Go current
+append-only buffer drops those slots. Port full tests and fix actual production
+if they expose this discrepancy, without weakening disk-zero assertions.
+
 2026-10-05 validated LSB batch ready for isolated commit:
 All15 original contexts and current source-derived constructor/recovery fixes
 pass final full-class race963.741s, original Java1.127s and related race56.789s.
