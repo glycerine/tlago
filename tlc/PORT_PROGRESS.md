@@ -4764,3 +4764,50 @@ is timing-sensitive under extra race instrumentation; unchanged Java reproduces
 its transient-zero failure under interpreted/earlier-report diagnostic pacing.
 No assertion weakened or source runtime setting substituted. Inventory914/1269.
 Focused IncompatibleTypesLive source-settings race PASS5.915s, retired41443.
+
+2026-10-04:17 original finite-prefix/loop/diagnostic/symmetry contexts installed,
+36 pristine fixtures. ForcedPartial found invented check0 exception; return
+Java's result code alone, preserving CheckTrace's separate source LiveException.
+Full11normal PASS6.943s/race41.715s; fullTLC snapshot PASS65.983s.
+Github317 found missing coded diagnostic; eval now retains Java2148/name/location
+parameters and detailed expression/context. All6correctednormal PASS14.494s.
+Current6race2281 and current fullworkspace54860 active. Inventory931/1269,
+454/626classes;338pending/172classes,onepartial. All20topicrows verified.
+
+2026-10-04: Corrected6source rootrace PASS62.663s, retired2281. Full current
+workspace54860 active: SANY1.010s/TLC65.352s PASS, root still running.
+Broader prior result-code snapshot7003 PASS412.569s, retired; excludes newer
+fairness change. Original15 offheap indexer contexts/three concrete subclasses
+now port complete:1104rows each, duplicate rows and complete5methods/1024loop,
+exact assumptions and fresh explicit constructors. All3sourceJavaPASS31994;
+Go normal3.923s/race16.023s,16285/81316 retired. No production change for
+matrices; workspace54860 compiled before these leaf tests, separately verified.
+Inventory946/1269contexts,457/626classes,323pending/169classes,onepartial.
+Ignored source preview prepares first18legacy methods, no install/credit yet.
+
+2026-10-04: OriginalTLCIterator three methods across three concrete variants
+ported after missing source getLast/reads/typed exhaustion/monotonic Assert
+boundaries. All3Java refsPASS;9Go contexts normal0.010s, retired73707.
+Current fullTLC72092 and relevant fingerprint-storage race64996 active.
+Workspace54860 predates this iterator leaf and additional matrix/iterator tests;
+it remains the liveness/evaluator integration gate, leaf gates cover latest
+storage methods. No changed successful-iteration/merge behavior.
+Inventory955/1269contexts(75.3%),460/626classes(73.5%),314pending/166classes.
+All20topicrows verified. Ignored78legacy source preview/172fixture mappings
+prepared, including complete four additional coverage hooks; no port credit.
+Current fullTLC72092 PASS69.871s; fingerprint-storage race64996 PASS52.546s,
+both terminal0/retired. Only fullworkspace54860 remains active.
+
+2026-10-04: Unchanged original LongArrayTest7methods PASS0.412s and
+LongArraysTest6methods PASS0.012s, preflight99350 retired. Prepared ignored
+whole13source methods and complete array sorting helpers; no install/credit.
+Original zero-memory loop typo retained literally; original unseeded random
+21383-value swap/10321swap preserved;44full Basic2 literals and15range asserts.
+Typed AssertionError bounds feature remains prerequisite for7method array port.
+
+2026-10-04: Fullworkspace54860 PASS(root1645.594s,SANY1.010s,TLC65.352s),
+terminal0/retired; JSONL confirms no failure events. Later iterator leaf has its
+current fullTLC69.871s/fingerprint-storage race52.546s gates; new matrix leaf
+normal3.923s/race16.023s. All41neworiginal contexts source-normal/race green;
+all36fixtures byte exact, all20inventory topic rows agree.47intendedpaths staged
+and checked; no unrelated edits or original assertion weakened. Ready to commit.

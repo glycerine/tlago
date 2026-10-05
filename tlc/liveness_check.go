@@ -1116,10 +1116,10 @@ func (lc *LiveCheck) check0(tool *Tool, finalCheck bool) (int, error) {
 	}
 	if foundChecker != nil {
 		PrintMessage(ECTLCCheckingTemporalPropsEnd, humanReadableTLCRuntime(time.Since(start)))
-		if foundChecker.ErrorCounterEx != nil {
-			return ECTLCTemporalPropertyViolated, NewLiveCounterExampleException(ECTLCTemporalPropertyViolated, "temporal property violated", foundChecker.ErrorCounterEx)
-		}
-		return ECTLCTemporalPropertyViolated, NewLiveException(ECTLCTemporalPropertyViolated, "temporal property violated")
+		// Java check0 reports a violation as a result code. AddAndCheckLiveCheck
+		// deliberately ignores that code during insertion and keeps building the
+		// graph; throwing here would turn that path into an unexpected failure.
+		return ECTLCTemporalPropertyViolated, nil
 	}
 	if firstErr != nil {
 		return printLivenessWorkerFailure(firstErr), firstErr

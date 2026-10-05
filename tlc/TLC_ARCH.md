@@ -1,16 +1,19 @@
 # TLC Architecture Notes for the Go Port
 
-2026-10-04 latest:24 original correctness contexts and both production fixes
-committed9acb8a7 after full workspace and relevant race checks passed. Next four
-original liveness methods (Github604/Github702/IncompatibleTypesLive/TwoPhaseCommit)
-pass19.070s with eight pristine fixtures, all original assertions/settings and
-inherited exits retained, no production change. Additional race run: three pass, TwoPhaseCommit retains original timing-sensitive
-zero-uncovered assertion and fails on transient earlier coverage. Same failure
-reproduced unchanged in Java under interpreted/earlier-report pacing; do not
-weaken assertion, filter records or change source test flags. Source audit fixes
-actual periodic-report omission: ReportCoverage now supplies Java end/overhead
-marker. Fresh normal four-case/full-TLC and original coverage race gates running.
-TODO_TEST_PORT now914/1269(72.0%),437/626classes complete,355contexts pending.
+2026-10-04 latest: four original liveness cases and complete periodic coverage
+boundary committed3822bf9. Current17 original liveness tests preserve complete
+source methods/settings and expose two fixed shortcuts: check0 manufactured a
+violation exception in addition to Java's result code, prematurely aborting
+forced partial insertion; Tool.eval discarded the source coded undefined
+fairness-variable diagnostic. The corrected paths retain source result/error
+boundaries and detailed expression/context parameters. Eleven source methods
+PASS normal6.943s/race41.715s; six PASS normal14.494s/race62.663s. Full
+workspace PASS(root1645.594s,SANY1.010s,TLC65.352s); all handles retired. Additional original15offheap
+indexer contexts pass complete1104-row matrices normal3.923s/race16.023s, with
+no production changes. Additional original9iterator contexts pass normal0.010s after source reverse
+positive-entry scan, read count and typed exhaustion/monotonic Assert boundaries.
+Latest fullTLCnormal PASS69.871s/fingerprint-storage race PASS52.546s.
+Inventory955/1269contexts,460/626classes,314pending.
 
 
 2026-10-04 current correctness slice: twelve Examples methods/29pristine
@@ -4803,3 +4806,18 @@ AbstractChecker.reportCoverage/CostModelCreator.report, including END and
 runtime overhead classification. The recorder keeps every periodic report;
 source zero-uncovered assertions can observe transient zeros when diagnostic
 instrumentation slows a model. Their original all-report semantics are retained.
+
+LiveCheck.check0 returns ECTLCTemporalPropertyViolated with no thrown exception,
+as Java does; AddAndCheckLiveCheck deliberately ignores intermediate result
+codes and continues insertion. CheckTrace retains its separate source throw
+when its final result is nonzero. This distinction preserves complete model
+statistics and the forced partial shortest counterexample.
+
+The evaluator's undefined primed fairness-variable branch carries code2148,
+variable name, exact expression location and failed expression/context through
+Java's detailed runtime exception path. Generic text loses recorder parameters.
+
+MSBDiskFPSet.TLCIterator.getLast scans buckets/slots backward for signed-positive
+unflushed entries without moving its cursor. reads returns successful reads.
+Exhaustion uses NoSuchElementException; the strict increasing assertion uses
+Java's coded runtime carrier. Existing successful next/flush paths are unchanged.

@@ -1269,15 +1269,33 @@ func (i *msbDiskIterator) next() (uint64, error) {
 		}
 	}
 	if !found {
-		return 0, io.EOF
+		return 0, NewNoSuchElementException()
 	}
 	if i.havePrevious && i.previous >= result {
-		return 0, fmt.Errorf("MSBDiskFPSet iterator is not strictly increasing")
+		return 0, NewTLCRuntimeException(ECGeneral)
 	}
 	i.previous = result
 	i.havePrevious = true
 	i.readElements++
 	return result, nil
+}
+
+// getLast scans the unflushed positive entries from the last bucket backward,
+// matching MSBDiskFPSet.TLCIterator.getLast independently of the read cursor.
+func (i *msbDiskIterator) getLast() (uint64, error) {
+	for first := len(i.buff) - 1; first >= 0; first-- {
+		bucket := i.buff[first]
+		for second := len(bucket) - 1; second >= 0; second-- {
+			if int64(bucket[second]) > 0 {
+				return bucket[second], nil
+			}
+		}
+	}
+	return 0, NewNoSuchElementException()
+}
+
+func (i *msbDiskIterator) reads() int64 {
+	return i.readElements
 }
 
 func readFingerprintFile(path string) ([]uint64, error) {

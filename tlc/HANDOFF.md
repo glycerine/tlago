@@ -6,6 +6,68 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
+
+Latest active slice after committed3822bf9:17 original liveness contexts in
+ tlc_liveness_finite_and_loop_java_test.go (11) and
+ tlc_liveness_diagnostics_symmetry_java_test.go (6),36 pristine fixtures.
+Two faithful production fixes: LiveCheck.check0 returns the violation result
+code without manufacturing a thrown exception (Java AddAndCheck ignores its
+intermediate result and continues graph insertion); Tool.eval emits coded
+TLC_STATE_NOT_COMPLETELY_SPECIFIED_LIVE with exact parameters/expr/context
+instead of generic text when a primed fairness variable is undefined.
+Original assertion/settings changes: none. First11 discovery omitted Loop from
+its run regex and found ForcedPartial failure; corrected complete11 PASS6.943s
+normal/41.715s race. FullTLC result-code snapshot PASS65.983s. First6 discovery
+failed only317 missing diagnostic; corrected complete6normal PASS14.494s.
+All17 unchanged Java references were already PASS in preflights4818/95224.
+Corrected6rootrace2281 PASS62.663s, terminal0/retired. Result-code broader
+liveness/CodePlex/temporal snapshot7003 PASS412.569s, retired; compiled before
+fairness fix/new6, not current full-source gate. Full workspace54860 PASS(root1645.594s,SANY1.010s,TLC65.352s), terminal0/
+retired; JSONL liveness-seventeen-current-full-workspace.jsonl. All handles
+retired. Keep leaf-specific receipts for the later iterator/matrix additions.
+Also installed15 original OffHeapIndexerParameterized inherited contexts across
+three subclasses in tlc/fpset_offheap_indexer_parameterized_java_test.go.
+All1104rows (duplicates retained), all five methods/full1024-iteration loop,
+fresh explicit indexer constructors on every source getIndexer call and exact
+source assumptions. Unchanged Java all3PASS31994; Go16285normal PASS3.923s,
+81316race PASS16.023s, both retired. No production changes for matrix slice.
+Workspace54860 was compiled before matrices: its current production/model
+coverage remains valid; complete leaf matrices verified independently.
+Inventory955/1269(75.3%),460/626classes(73.5%),314pending/166classes,
+onepartial; liveness99/101. All20topicrows and36fixture bytes verified.
+Remaining liveness cases: deferred checkpointFL2 and source-failing warning.
+All required checks green.47 intended paths staged (3production,4testfiles,
+36vectors,4docs), whitespace checked excluding pristine vectors. Commit now
+before next production changes.
+Also installed original iterator9contexts in tlc/fpset_iterator_java_test.go,
+after porting getLast reverse-positive scan/reads plus source typed exhaustion
+and monotonic Assert boundaries in fpset_disk.go. All3original Java refsPASS;
+Go73707 PASS0.010s, terminal0/retired. Current fullTLC72092 PASS69.871s and relevant
+FPSet/DiskFP/MSB/Iterator race64996 PASS52.546s, both terminal0/retired; logs tlc-iterator-current-full-tlc-go.log
+and tlc-iterator-and-fingerprint-storage-race.log. Workspace54860 predates only
+this isolated iterator leaf change and added matrices/iterator source tests;
+its current liveness/evaluator integration remains relevant. Keep gate receipts
+honest, no redundant whole-workspace restart for these leaf methods.
+Ignored previews: first18legacy whole SuiteTestCase contexts/36fixture mappings
+in legacy-suite-first-eighteen.go.preview; also78whole inherited suite contexts
+(with four complete additional coverage hooks) and172fixture mappings in
+legacy-suite-inherited-seventy-eight.go.preview. Includes complete large
+Test19/27/33 state spaces, no sampling. Both uninstalled/uncredited; inspect
+before install, start first18 after this green commit. All104unchanged Java
+legacy references alreadyPASS11601. Renderer never rerun wholesale.
+
+Next arrays references verified99350: unchanged LongArrayTest all7PASS0.412s,
+LongArraysTest all6PASS0.012s. Ignored long-array-seven-methods.go.preview and
+long-arrays-six-methods.go.preview contain all13source methods/complete helpers.
+LongArray bounds need actual Java AssertionError type before source catches can
+pass; existing rangeCheck panics string. Add only core generic exception carrier,
+not forbidden email/dependencies/JVM emulation. Keep testZeroMemory's original
+both i<j/i++ loops unchanged even though zero iterations occur. Random-swap
+retains unseeded JavaRandomDefault/full21383 values; swap uses10321.
+LongArrays Basic2 copies44full signed literals; range method retains15source
+assertions and all comparator/sentinel/member/wrapped-range/order/count loops.
+These array ports remain UNINSTALLED/UNCREDITED; review source before use.
+
 2026-10-04 latest checkpoint: 24 original Examples/temporal/initial contexts,
 53pristine Java fixtures and two production fixes committed9acb8a7. Full current
 workspace PASS(root1621.178s,SANY0.918s,TLC66.273s), original initialization/

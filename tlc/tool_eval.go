@@ -349,7 +349,9 @@ func (t *Tool) EvalApplImpl(expr *OpApplNode, c *Context, s0 *TLCStateMut, s1 *T
 			return t.Eval(v.Body, c1, s0, s1, control, cm)
 		case nil:
 			if !EvalIsEnabled(control) && EvalIsPrimed(control) && opNode.IsVariableDecl() {
-				return nil, newTLCError(ECGeneral, "state is not completely specified: %s in %s", opNode.Name, SemanticString(expr))
+				failure := NewTLCRuntimeException(ECTLCStateNotCompletelySpecifiedLive, opNode.Name.String(), SemanticString(expr))
+				failure.Expr, failure.Ctxt = expr, c
+				return nil, failure
 			}
 			return nil, NewTLCRuntimeException(ECTLCConfigUndefinedOrNoOperator, opNode.Name.String(), semanticNodeLocationString(expr))
 		default:
