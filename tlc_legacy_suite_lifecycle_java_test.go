@@ -1,5 +1,6 @@
 /*******************************************************************************
  * Copyright (c) 2016 Microsoft Research. All rights reserved.
+ * Copyright (c) 2020 Microsoft Research. All rights reserved.
  * Copyright (c) 2026 NVIDIA Corporation. All rights reserved.
  *
  * The MIT License (MIT)
@@ -24,19 +25,20 @@
  * Contributors:
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
-
 package tlago
 
 import (
-	"github.com/glycerine/tlago/tlc"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
-// Original Test207: whole inherited SuiteTestCase.testSpec and constructor.
-func TestJavaLegacySuiteTest207(t *testing.T) {
+// Original Test216: whole overriding testSpec and SuiteETestCase settings.
+func TestJavaLegacySuiteTest216(t *testing.T) {
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest207", "test207", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test207.json"))
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest216", "test216", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test216.json"))
 	retainJavaCodePlexGraphs(t)
 	if r.ExitStatus != tlc.ExitStatusSuccess {
 		t.Fatalf("exit=%d, want SUCCESS; messages=%v", r.ExitStatus, r.Messages)
@@ -44,67 +46,55 @@ func TestJavaLegacySuiteTest207(t *testing.T) {
 	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
 		t.Fatal("TLC_FINISHED absent")
 	}
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "0", "0", "0")
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInitGenerated1, "0")
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "28", "7", "0")
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInitGenerated2, "21", "s", "7")
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	requireJavaTLCUncovered(t, r, "line 12, col 22 to line 12, col 32 of module test216")
+}
+
+// Original Test220: whole overriding testSpec and checkDeadLock=true.
+func TestJavaLegacySuiteTest220(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithDeadlock(t, "LegacySuiteTest220", "test220", true, true, true, 1, true, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test220.json"))
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit=%d, want SUCCESS; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCDeadlockReached)) != 0 {
+		t.Fatal("TLC_DEADLOCK_REACHED present")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "2", "2", "0")
 	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
 		t.Fatal("GENERAL present")
 	}
 	requireJavaTLCUncovered(t, r)
 }
 
-// Original Test208: whole inherited SuiteTestCase.testSpec and constructor.
-func TestJavaLegacySuiteTest208(t *testing.T) {
+// Original TestInvalidInvariant: whole testSpec and FAILURE_SAFETY_EVAL constructor.
+func TestJavaLegacySuiteTestInvalidInvariant(t *testing.T) {
 	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest208", "test208", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test208.json"))
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTestInvalidInvariant", "testinvalidinvariant", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "TestInvalidInvariant.json"))
 	retainJavaCodePlexGraphs(t)
-	if r.ExitStatus != tlc.ExitStatusSuccess {
-		t.Fatalf("exit=%d, want SUCCESS; messages=%v", r.ExitStatus, r.Messages)
+	if r.ExitStatus != tlc.ExitStatusFailureSafetyEval {
+		t.Fatalf("exit=%d, want FAILURE_SAFETY_EVAL; messages=%v", r.ExitStatus, r.Messages)
 	}
 	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
 		t.Fatal("TLC_FINISHED absent")
 	}
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "0", "0", "0")
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInitGenerated1, "0")
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInvariantViolatedLevel, "Invariant")
 	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
 		t.Fatal("GENERAL present")
 	}
-	requireJavaTLCUncovered(t, r)
-}
-
-// Original Test209: whole inherited SuiteTestCase.testSpec and constructor.
-func TestJavaLegacySuiteTest209(t *testing.T) {
-	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest209", "test209", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test209.json"))
-	retainJavaCodePlexGraphs(t)
-	if r.ExitStatus != tlc.ExitStatusSuccess {
-		t.Fatalf("exit=%d, want SUCCESS; messages=%v", r.ExitStatus, r.Messages)
+	for _, message := range javaTLCRecords(r, tlc.ECGeneral) {
+		for _, param := range message.Params {
+			if strings.Contains(param, "Note that a bug can cause TLC to incorrectly report this error.") {
+				t.Fatal("GENERAL contains incorrect-reporting note")
+			}
+		}
 	}
-	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
-		t.Fatal("TLC_FINISHED absent")
-	}
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "0", "0", "0")
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInitGenerated1, "0")
-	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
-		t.Fatal("GENERAL present")
-	}
-	requireJavaTLCUncovered(t, r)
-}
-
-// Original Test219: whole inherited SuiteTestCase.testSpec and constructor.
-func TestJavaLegacySuiteTest219(t *testing.T) {
-	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
-	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest219", "test219", true, true, true, 1, "-dumpTrace", "json", filepath.Join(t.TempDir(), "Test219.json"))
-	retainJavaCodePlexGraphs(t)
-	if r.ExitStatus != tlc.ExitStatusSuccess {
-		t.Fatalf("exit=%d, want SUCCESS; messages=%v", r.ExitStatus, r.Messages)
-	}
-	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
-		t.Fatal("TLC_FINISHED absent")
-	}
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "0", "0", "0")
-	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInitGenerated1, "0")
-	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
-		t.Fatal("GENERAL present")
-	}
-	requireJavaTLCUncovered(t, r)
 }

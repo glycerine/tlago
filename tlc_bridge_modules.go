@@ -195,11 +195,7 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 					symbol = def
 				}
 			default:
-				// Named theorem/assumption definitions share their evaluated
-				// source body with the represented runtime operator.
-				if def := b.moduleContextDefinition(mod, entry); def != nil {
-					symbol = tlc.NewThmOrAssumpDefNode(entry.name, def.Body, def.Params...)
-				}
+				symbol = b.moduleContextTheorem(mod, entry)
 			}
 			if symbol != nil {
 				node.Context.AddSymbolToContext(key, symbol)
@@ -313,15 +309,22 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 			return b.convertDefinitionAs(key, def)
 		}
 	}
-	if entry.instance != nil && entry.instance.Name != "" {
-		// Native definitions inherited by an instancee are semantic OpDefs too,
-		// even when the runtime export index contains only their native values.
+	if entry.instance != nil {
+		// Instantiate the instancee's complete semantic context, including
+		// imported and nested-instance operators. Generator iterates all of
+		// its OpDefNodes, not just definitions written in the module body.
 		instancee := b.moduleNodes[b.spec.Modules[entry.instance.Module]]
 		if instancee != nil {
 			if source, ok := instancee.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(entry.instanceSourceName)}).(*tlc.OpDefNode); ok && source != nil {
 				cacheKey := entry.instanceOwner.Name + "!" + entry.name
 				if clone := b.localModuleDefinitions[cacheKey]; clone != nil {
 					return clone
+				}
+				// Generator preserves the source identity for unnamed non-LOCAL
+				// instances when either relevant module is parameter-free.
+				if entry.instance.Name == "" && !entry.instance.Local &&
+					(instancee.IsParameterFree() || source.OriginallyDefinedInModule != nil && source.OriginallyDefinedInModule.IsParameterFree()) {
+					return source
 				}
 				binding := b.instanceBinding(entry.instanceOwner, *entry.instance)
 				b.prepareInstanceBinding(binding)
@@ -337,7 +340,7 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 				clone.Local = entry.instance.Local
 				clone.SourceDefinition = source.GetSource()
 				clone.OriginallyDefinedInModule = b.moduleNodes[entry.instanceOwner]
-				if len(binding.substs) > 0 {
+				if entry.instance.Name != "" && len(binding.substs) > 0 {
 					clone.CompoundID = append([]*tlc.UniqueString{tlc.UniqueStringOf(entry.instance.Name)}, source.GetCompoundID()...)
 				}
 				b.withPositionLocation(entry.instance.SourcePosition(), clone)
@@ -380,4 +383,70 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 		}
 	}
 	return nil
+}
+
+// Generator imports the complete ThmOrAssumpDefNode context separately from
+// OpDefNodes. Its substitution wrapper is APSubstIn, and nested instances keep
+// all earlier wrappers and the original theorem's source identity.
+func (b *tlcBridge) moduleContextTheorem(mod *Module, entry tlcBridgeContextEntry) *tlc.ThmOrAssumpDefNode {
+	if b.theoremDefinitions == nil {
+		b.theoremDefinitions = map[string]*tlc.ThmOrAssumpDefNode{}
+	}
+	owner := entry.module
+	if entry.instance != nil {
+		owner = entry.instanceOwner
+	}
+	if owner == nil {
+		return nil
+	}
+	key := owner.Name + "!" + entry.name
+	if node := b.theoremDefinitions[key]; node != nil {
+		return node
+	}
+	var node *tlc.ThmOrAssumpDefNode
+	if entry.instance != nil {
+		instancee := b.moduleNodes[b.spec.Modules[entry.instance.Module]]
+		if instancee == nil {
+			return nil
+		}
+		source, ok := instancee.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(entry.instanceSourceName)}).(*tlc.ThmOrAssumpDefNode)
+		if !ok || source == nil {
+			return nil
+		}
+		if entry.instance.Name == "" && !entry.instance.Local &&
+			(instancee.IsParameterFree() || source.OriginallyDefinedInModule != nil && source.OriginallyDefinedInModule.IsParameterFree()) {
+			b.theoremDefinitions[key] = source
+			return source
+		}
+		binding := b.instanceBinding(owner, *entry.instance)
+		b.prepareInstanceBinding(binding)
+		params := append(append([]*tlc.SymbolNode(nil), binding.params...), source.Params...)
+		body := source.Body
+		if len(binding.substs) > 0 {
+			body = b.withPositionLocation(entry.instance.SourcePosition(), tlc.NewAPSubstInNode(body, binding.substs...))
+		}
+		node = tlc.NewThmOrAssumpDefNode(entry.name, body, params...)
+		lookup := key
+		if owner == b.spec.Root {
+			lookup = entry.name
+		}
+		node.Symbol = b.symbol(lookup)
+		node.Symbol.Arity = len(params)
+		node.Local = entry.instance.Local
+		node.OriginallyDefinedInModule = b.moduleNodes[owner]
+		node.SourceDefinition = source.GetSource()
+	} else {
+		definition := b.moduleContextDefinition(mod, entry)
+		if definition == nil {
+			return nil
+		}
+		node = tlc.NewThmOrAssumpDefNode(entry.name, definition.Body, definition.Params...)
+		node.Symbol = definition.Symbol
+		node.Local = definition.Local
+		node.OriginallyDefinedInModule = b.moduleNodes[owner]
+	}
+	node.Symbol.Data = node
+	b.define(node.Symbol, node)
+	b.theoremDefinitions[key] = node
+	return node
 }

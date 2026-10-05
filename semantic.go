@@ -1453,6 +1453,15 @@ func applyInstanceParamArity(symbol *semanticExportedSymbol, inst Instance) {
 	}
 	symbol.arity += len(inst.Params)
 	symbol.hasArity = true
+	// An instantiated operator receives the module-definition parameters
+	// before its own parameters. Preserve those positions in the argument
+	// specifications as well as in the total arity, as Generator does when
+	// constructing the instantiated OpDefNode's formal parameter list.
+	prefix, _ := definitionOperatorParamSpecs(Definition{
+		Params: inst.Params, ParamArities: inst.ParamArities,
+	})
+	symbol.operatorParams = append(prefix, symbol.operatorParams...)
+	symbol.hasOperatorParams = true
 }
 
 func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []semanticExportedSymbol {

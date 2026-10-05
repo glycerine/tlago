@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `b0ee5ae`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-04. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `63c8bc4`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **538 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (85.9%).**
-- **1,058 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (83.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **211 logical method contexts across 88 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **545 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (87.1%).**
+- **1,065 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (83.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **204 logical method contexts across 81 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -40,8 +40,8 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
-| Numbered legacy model suite | 104 | 75 | 104 | 75 | 29 |
-| **Total** | **626** | **538** | **1,269** | **1,058** | **211** |
+| Numbered legacy model suite | 104 | 82 | 104 | 82 | 22 |
+| **Total** | **626** | **545** | **1,269** | **1,065** | **204** |
 
 ## Porting rules and proposed order
 
@@ -793,18 +793,18 @@ Every concrete ETest*, Test*, and TestInvalidInvariant in tool/suite/. Inherited
 - [x] [tlc2/tool/suite/Test206.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test206.java) — **Port complete**: whole inherited `testSpec` and original constructor/settings in [tlc_legacy_suite_subexpression_java_test.go](../tlc_legacy_suite_subexpression_java_test.go); full original selector/lambda/INSTANCE model and all assertions retained.
 - [x] [tlc2/tool/suite/Test207.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test207.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_proof_and_selectors_java_test.go](../tlc_legacy_suite_proof_and_selectors_java_test.go).
 - [x] [tlc2/tool/suite/Test208.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test208.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_proof_and_selectors_java_test.go](../tlc_legacy_suite_proof_and_selectors_java_test.go).
-- [ ] [tlc2/tool/suite/Test209.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test209.java) — **Missing**: `testSpec` (from `SuiteTestCase`).
+- [x] [tlc2/tool/suite/Test209.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test209.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_proof_and_selectors_java_test.go](../tlc_legacy_suite_proof_and_selectors_java_test.go).
 - [x] [tlc2/tool/suite/Test21.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test21.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_next_eight_java_test.go](../tlc_legacy_suite_next_eight_java_test.go).
 - [ ] [tlc2/tool/suite/Test210.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test210.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/suite/Test212.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test212.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/suite/Test213.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test213.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/suite/Test214.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test214.java) — **Missing**: `testSpec`.
 - [ ] [tlc2/tool/suite/Test215.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test215.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/suite/Test216.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test216.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/suite/Test216.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test216.java) — **Port complete**: whole original overriding `testSpec` and original constructor/settings in [tlc_legacy_suite_lifecycle_java_test.go](../tlc_legacy_suite_lifecycle_java_test.go).
 - [ ] [tlc2/tool/suite/Test217.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test217.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/suite/Test219.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test219.java) — **Missing**: `testSpec` (from `SuiteTestCase`).
+- [x] [tlc2/tool/suite/Test219.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test219.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_proof_and_selectors_java_test.go](../tlc_legacy_suite_proof_and_selectors_java_test.go).
 - [x] [tlc2/tool/suite/Test22.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test22.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_next_eight_java_test.go](../tlc_legacy_suite_next_eight_java_test.go).
-- [ ] [tlc2/tool/suite/Test220.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test220.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/suite/Test220.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test220.java) — **Port complete**: whole original overriding `testSpec` and original constructor/settings in [tlc_legacy_suite_lifecycle_java_test.go](../tlc_legacy_suite_lifecycle_java_test.go).
 - [x] [tlc2/tool/suite/Test23.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test23.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_next_eight_java_test.go](../tlc_legacy_suite_next_eight_java_test.go).
 - [x] [tlc2/tool/suite/Test24.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test24.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_next_eight_java_test.go](../tlc_legacy_suite_next_eight_java_test.go).
 - [x] [tlc2/tool/suite/Test25.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test25.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_next_eight_java_test.go](../tlc_legacy_suite_next_eight_java_test.go).
@@ -857,9 +857,9 @@ Every concrete ETest*, Test*, and TestInvalidInvariant in tool/suite/. Inherited
 - [x] [tlc2/tool/suite/Test7.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test7.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_first_eighteen_java_test.go](../tlc_legacy_suite_first_eighteen_java_test.go).
 - [x] [tlc2/tool/suite/Test8.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test8.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_first_eighteen_java_test.go](../tlc_legacy_suite_first_eighteen_java_test.go).
 - [x] [tlc2/tool/suite/Test9.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test9.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_first_eighteen_java_test.go](../tlc_legacy_suite_first_eighteen_java_test.go).
-- [ ] [tlc2/tool/suite/Test99.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test99.java) — **Missing**: `testSpec` (from `SuiteTestCase`).
-- [ ] [tlc2/tool/suite/Test999.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test999.java) — **Missing**: `testSpec` (from `SuiteTestCase`).
-- [ ] [tlc2/tool/suite/TestInvalidInvariant.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/TestInvalidInvariant.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/suite/Test99.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test99.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_misc_models_java_test.go](../tlc_legacy_suite_misc_models_java_test.go).
+- [x] [tlc2/tool/suite/Test999.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/Test999.java) — **Port complete**: whole inherited `testSpec` (from `SuiteTestCase`) and original constructor/settings in [tlc_legacy_suite_misc_models_java_test.go](../tlc_legacy_suite_misc_models_java_test.go).
+- [x] [tlc2/tool/suite/TestInvalidInvariant.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/suite/TestInvalidInvariant.java) — **Port complete**: whole original overriding `testSpec` and original constructor/settings in [tlc_legacy_suite_lifecycle_java_test.go](../tlc_legacy_suite_lifecycle_java_test.go).
 
 ## Upstream ignored tests in the main suite
 

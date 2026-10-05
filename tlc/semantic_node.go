@@ -607,9 +607,13 @@ func NewPossibleCheckNode(name string) *PossibleCheckNode {
 }
 
 type ThmOrAssumpDefNode struct {
-	Name   *UniqueString
-	Body   SemanticNode
-	Params []*SymbolNode
+	Name                      *UniqueString
+	Body                      SemanticNode
+	Params                    []*SymbolNode
+	Symbol                    *SymbolNode
+	Local                     bool
+	OriginallyDefinedInModule *ModuleNode
+	SourceDefinition          *ThmOrAssumpDefNode
 }
 
 type AssumeNode struct {
@@ -628,7 +632,17 @@ func (n *AssumeNode) GetAssume() SemanticNode     { return n.Assume }
 func (n *AssumeNode) GetDef() *ThmOrAssumpDefNode { return n.Def }
 
 func NewThmOrAssumpDefNode(name string, body SemanticNode, params ...*SymbolNode) *ThmOrAssumpDefNode {
-	return &ThmOrAssumpDefNode{Name: UniqueStringOf(name), Body: body, Params: append([]*SymbolNode(nil), params...)}
+	node := &ThmOrAssumpDefNode{Name: UniqueStringOf(name), Body: body, Params: append([]*SymbolNode(nil), params...), Symbol: NewSymbolNode(name)}
+	node.Symbol.Arity = len(params)
+	node.Symbol.Data = node
+	return node
+}
+
+func (n *ThmOrAssumpDefNode) GetSource() *ThmOrAssumpDefNode {
+	if n.SourceDefinition != nil {
+		return n.SourceDefinition
+	}
+	return n
 }
 
 func (n *ThmOrAssumpDefNode) String() string {

@@ -161,7 +161,7 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 			// Generator instances iterate Context.getByClass via Hashtable.elements,
 			// unlike EXTENDS, which merges the source Pair links in insertion order.
 			for _, entry := range tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, spec.Modules[instance.Module], visiting)) {
-				if entry.local || entry.kind != OperatorDecl || entry.moduleInstance {
+				if entry.local || (entry.kind != OperatorDecl && entry.kind != "") || entry.moduleInstance {
 					continue
 				}
 				entry.instanceSourceName = entry.name

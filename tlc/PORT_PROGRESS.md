@@ -1,5 +1,61 @@
 # TLC Port Progress
 
+2026-10-04 latest verified implementation checkpoint after63c8bc4:
+Seven further original contexts are complete: Test209, Test219, Test99, Test999,
+Test216, Test220 and TestInvalidInvariant. Preserve every original constructor,
+flag, inherited/custom assertion, and all19 byte-identical fixture files. Test216
+includes all three original dependency modules (216a/b/c); the earlier ignored
+fixture draft omitted them and has been corrected before installation.
+Test219 first failed semantic operator-argument checks: instance formal parameters
+were counted in arity but missing from argument-position metadata. Prefix the
+instance formal specifications as Java Generator.java:4880 does. Its next failure
+was missing imported Inst!Foo: instantiate the whole source semantic context,
+including nested imports, retaining SubstIn wrappers and source-node reuse.
+Test216 then exposed omitted imported named theorems. Java imports those separately
+as ThmOrAssumpDefNodes (Generator.java:4940 onward), using APSubstIn wrappers.
+The bridge now preserves those context entries, actual theorem symbols, parameters,
+locality, defining module and original source identity. Ordinary theorem references
+resolve to their theorem symbols; no constant replacements or weakened tests.
+Whole Test216 now passes28/7/0, INIT_GENERATED2 21/s/7, and the exact original
+uncovered location. Test220 retains checkDeadLock=true so its config decides.
+TestInvalidInvariant retains FAILURE_SAFETY_EVAL, the invariant-level diagnostic
+and both GENERAL assertions. Whole99/999 normal pass1.097s/1.130s; race9.185s
+(84526 terminal/retired). Whole216/220/InvalidInvariant normal pass1.374s/1.622s/
+1.121s (71276/72356/71961 terminal/retired). Final focused root parser/semantic/XML,
+all installed201–209/216/219/220/99/999/InvalidInvariant, cyclic INSTANCE,
+native override and four bridge cases pass race82.897s (40154 terminal/retired).
+Existing full SANY Java tests pass race7.978s (14888 terminal/retired), covering
+the new instance-parameter semantic metadata; no later SANY semantic changes.
+Inventory1065/1269 contexts (83.9%),545/626 complete classes (87.1%),204pending
+across81 classes; legacy82/104 complete. Next original context: ETest1. Remaining
+legacy contexts: ETest1–16, Test210/212/213/214/215/217. Preserve exact source
+error counts, location ranges, diagnostic substrings, statuses and coverage.
+Several ETests are runtime/config/simulation errors, not all SANY parse failures.
+Do not replace their assertions with a generic failure or add invented tests.
+
+Completed gates from the preceding snapshot: workspace44152 exits0/retired,
+root1793.053s/SANY0.923s/TLC70.700s, log legacy-proof-fields-workspace-go.log.
+It compiled the207/208 production code committed in63c8bc4, before the verbosity
+harness and later INSTANCE/theorem changes. Whole CommunityModules verbose run
+73656 exits0/retired, both unchanged phases pass306.247s, log
+community-progress-verbose-go.log. That covers the progress-output change840d494
+and preceding207/208 code, before the later INSTANCE/theorem implementation.
+Live output, setup/loading messages and10s phase/elapsed/PID heartbeats confirmed.
+
+Whole current TLC package race42143 passes646.992s (terminal/retired), log
+legacy-theorem-imports-tlc-race.log.
+Required workspace gates still active; resume existing handles, never restart:
+-83892: final current-source whole workspace, legacy-theorem-imports-final-workspace-go.log.
+-77547: older INSTANCE-export workspace, legacy-instance-exports-workspace-go.log;
+ compiled before the theorem fix and later test files, so historical scope only.
+All logs are under .codex-gotmp/. Do not claim full current-source green until
+83892 reports terminal success. All focused and TLC package race checks are
+green. Record
+terminal gate receipts and fix any actual failure before proceeding to ETest1.
+Preserve the five deferred topics and never create a testdata fixture directory.
+The snapshots below are historical; this entry is authoritative.
+
+
 2026-10-04 Test207/Test208 checkpoint (focused checks pass; full gates still running):
 Original Test207 and Test208 are now complete translations, with all inherited
 assertions, original constructor/settings, and four byte-identical source vectors.

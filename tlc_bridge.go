@@ -34,6 +34,7 @@ type tlcBridge struct {
 	builtinDefinitions     map[string]*tlc.OpDefNode
 	moduleNodes            map[*Module]*tlc.ModuleNode
 	localModuleDefinitions map[string]*tlc.OpDefNode
+	theoremDefinitions     map[string]*tlc.ThmOrAssumpDefNode
 	indexedModules         map[*Module]bool
 	assumptionModules      map[*Module]bool
 	semanticLevels         *sanyXMLExporter
@@ -1557,6 +1558,8 @@ func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
 			if node := b.moduleNodes[module]; node != nil {
 				switch symbol := node.Context.GetSymbol(tlc.SemanticContextKey{Name: tlc.UniqueStringOf(name)}).(type) {
 				case *tlc.OpDefNode:
+					return symbol.Symbol
+				case *tlc.ThmOrAssumpDefNode:
 					return symbol.Symbol
 				case *tlc.SymbolNode:
 					return symbol
