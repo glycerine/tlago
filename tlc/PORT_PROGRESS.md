@@ -1,5 +1,48 @@
 # TLC Port Progress
 
+2026-10-05 whole original off-heap iterator contexts complete after6f3a1de:
+Both OffHeapIteratorTest methods are translated in tlc/offheap_iterator_java_test.go.
+Preserve source LongArray.isSupported assumption, elements32, complete64-element
+arrays initialized1..64, InfinitePrecisionIndexer64/1, all32 returned values,
+exact count32, all64 preservation checks for next, all32 high-bit marking checks
+for markNext. Preserve the upper-half loop's repeated array.get(elements) check;
+do not substitute get(i) or invent stronger/different test assertions.
+Production offheap_fpset.go ports missing markNext, shared mark-aware next0,
+Java do/while ordering, skip-empty/evicted traversal, source wrap assertion,
+bounded EMPTY return and NoSuchElementException exhaustion. Preserve null/zero
+array exception families and nil-receiver exception instead of fabricated empty
+results. Native CheckFPs partition loop catches only the source
+NoSuchElementException; do not swallow other failures or fabricate elements.
+
+Unchanged Java -ea passes both methods0.013s, log offheap-iterator-original-java.log;
+compile offheap-iterator-original-javac.log. Go focused18633 passes race1.029s,
+log offheap-iterator-initial-race.log. Final nil-hasNext refinement31282 passes
+race1.027s, log offheap-iterator-final-race.log. Related22353 passes race54.183s,
+log offheap-iterator-related-race.log: original LongArray/LongArrays/FPSetFactory/
+MultiFPSet and related native offheap/disk checks retain assertions. That gate
+precedes the final nil-hasNext exception refinement, which affects only nil
+receivers; final focused gate covers current complete iterator code.
+No invented persistent tests, smaller arrays or weakened assertions.
+Inventory1164/1269 contexts (91.7%),603/626 classes (96.3%);105pending across23classes.
+Fingerprint topic78/165 methods,14/20 classes complete;87pending across6classes:
+LSBDiskFPset15,MSBDiskFPSetTest2 19,OffHeapBitshiftingIndexer5,
+OffHeapDiskFPSet23,OffHeapIndexerEquivalence1,ShortDiskFPSet24.
+Next complete bitshifting parameter matrix (all1104 original rows/assumptions),
+then remaining heap/offheap cases and full equivalence matrix; no sampling.
+
+Full workspace49471 is now terminal exit0: root1859.599s,SANY1.142s,TLC69.948s;
+log simulation-ttrace-exploration-final-workspace-go.log. This is the latest
+completed whole suite, snapshot318811c with the exploration stopping fix, before
+five later liveness rechecks/page arithmetic/zero readers/offheap iterator changes.
+Do not credit those later changes from that older receipt.
+New full83491 is live, log offheap-iterator-final-workspace-go.log; iterator core
+before only the final nil-hasNext refinement. Full9378 is live at zero-reader
+work before this iterator port, log fpset-bug246-zero-readers-final-workspace-go.log.
+Full90170 is live before zero readers/iterator, log
+fpset-bugs210-242-final-workspace-go.log. Old84016 remains live without the
+exploration fix. Resume83491/9378/90170/84016 exact handles. Do not restart from
+observation timeout or claim current whole-suite green before terminal evidence.
+
 2026-10-05 whole Bug246 disk-fingerprint contexts complete after53bb262:
 Both original Bug246DiskFPSetTest methods are translated in
  tlc/fpset_bug246_java_test.go. testLinearFillup preserves runtime.maxMemory /

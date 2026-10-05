@@ -271,22 +271,31 @@ func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 		}
 		end++
 		canWrap := !isLast || id == 0
-		itr := newOffHeapIterator(s.array, s.tblCnt, start, s.indexer, canWrap)
-		x, ok := itr.next()
-		if !ok {
-			continue
-		}
-		for {
-			y, ok := itr.nextUntil(end)
+		func() {
+			defer func() {
+				if failure := recover(); failure != nil {
+					if _, ok := failure.(*NoSuchElementException); !ok {
+						panic(failure)
+					}
+				}
+			}()
+			itr := newOffHeapIterator(s.array, s.tblCnt, start, s.indexer, canWrap)
+			x, ok := itr.next()
 			if !ok {
-				break
+				return
 			}
-			d := y - x
-			if d < distance {
-				distance = d
+			for {
+				y, ok := itr.nextUntil(end)
+				if !ok {
+					break
+				}
+				d := y - x
+				if d < distance {
+					distance = d
+				}
+				x = y
 			}
-			x = y
-		}
+		}()
 	}
 	return uint64(distance)
 }
@@ -577,39 +586,62 @@ func newOffHeapIterator(array *LongArray, elements int64, start int64, indexer *
 }
 
 func (i *offHeapIterator) next() (int64, bool) {
-	return i.next0(1<<63 - 1)
+	return i.next0(false, 1<<63-1)
 }
 
 func (i *offHeapIterator) nextUntil(maxPos int64) (int64, bool) {
 	if i.pos >= maxPos {
 		return 0, false
 	}
-	return i.next0(maxPos)
+	return i.next0(false, maxPos)
 }
 
-func (i *offHeapIterator) next0(maxPos int64) (int64, bool) {
-	if i == nil || i.array == nil || i.array.Size() == 0 {
-		return 0, false
+// Original Iterator.markNext sets MARK_FLUSHED on the selected array entry.
+func (i *offHeapIterator) markNext() (int64, bool) {
+	return i.next0(true, 1<<63-1)
+}
+
+func (i *offHeapIterator) next0(mark bool, maxPos int64) (int64, bool) {
+	if i == nil || i.array == nil {
+		panic(NewNullPointerException())
 	}
-	for i.hasNext() && i.pos < maxPos {
+	if i.array.Size() == 0 {
+		panic(NewArithmeticException("/ by zero"))
+	}
+	// Preserve Java's do/while: the first position is examined even when
+	// hasNext is false, and continues evaluate the condition at the loop end.
+	for {
 		position := i.pos % i.array.Size()
 		elem := i.array.Get(position)
-		if elem <= 0 {
-			i.pos++
-			continue
-		}
-		baseIdx := i.indexer.GetIdx(uint64(elem))
-		if baseIdx > i.pos {
-			i.pos++
-			continue
+		if elem > 0 {
+			baseIdx := i.indexer.GetIdx(uint64(elem))
+			if baseIdx > i.pos {
+				if !i.canWrap {
+					panic(NewAssertionError())
+				}
+			} else {
+				i.pos++
+				if mark {
+					i.array.Set(position, int64(uint64(elem)|diskFPSetMarkFlushed))
+				}
+				i.elementsRead++
+				return elem, true
+			}
 		}
 		i.pos++
-		i.elementsRead++
-		return elem, true
+		if !i.hasNext() || i.pos >= maxPos {
+			break
+		}
 	}
-	return 0, false
+	if i.pos >= maxPos {
+		return 0, false
+	}
+	panic(NewNoSuchElementException())
 }
 
 func (i *offHeapIterator) hasNext() bool {
-	return i != nil && i.elementsRead < i.elements
+	if i == nil {
+		panic(NewNullPointerException())
+	}
+	return i.elementsRead < i.elements
 }
