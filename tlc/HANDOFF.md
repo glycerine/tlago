@@ -25,10 +25,12 @@ Private cache cleanup reclaimed only regenerable Go *-d output blobs (655 older6
 removed. Each original-size growth run used14GiB raw state storage, then cleaned
 its own generated pools. Cache-clean receipts retained in ignored scratch.
 TODO and mapping now long15/22 contexts,7 pending, one complete class of4.
-Main1251/1269,609/626; shared55/56; concurrent2/17 unchanged. Whole58167 remains
-LIVE at exact production commit7d61a44 before this test-only addition; log
-value-stream-buffer-committed-final-workspace-go.log. Poll exact handle; no
-current-tree whole-suite pass claim. New full class verified separately above.
+Main1251/1269,609/626; shared55/56; concurrent2/17 unchanged. Whole58167
+terminal PASS1747.757s root/1.189s SANY/435.965s TLC at exact production
+commit7d61a44 before test-only4041dc0; retired. Log value-stream-buffer-
+committed-final-workspace-go.log. The later complete queue class passes all10
+separately as recorded above. Production unchanged; all required checks green.
+This is scoped verification, not a whole run at4041dc0.
 Goal active; user-deferred topics unchanged. Remaining huge FP tests require
 further resource preflight and retain full source bounds and source failures.
 
