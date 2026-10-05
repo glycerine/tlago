@@ -6,60 +6,45 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Last green commit: `0cd6db0`, containing all 13 original LongArray/LongArrays
-methods and their production assertion/empty-indexer fixes. Earlier 41-context
-batch is committed as `fcb3f4d`.
+Last green commit: `051bb16`, all 18 original legacy Test1–18 methods,
+36 pristine source vectors and four production fixes (EXCEPT tuple selectors,
+tuple CHOOSE scopes/bridge, quantifier aliases and tuple parameter counts).
+Full workspace passes: root 1647.375s, SANY tests 0.935s, TLC 68.700s;
+handle 22373 retired. All 18 also pass focused race 66.557s (92607 retired).
+Earlier array batch is committed as `0cd6db0`.
 
-Current batch: all 18 original `Test1` through `Test18` inherited
-`SuiteTestCase.testSpec` methods, in
-`tlc_legacy_suite_first_eighteen_java_test.go`, with 36 byte-exact source vectors
-under `tlc/test_vectors/models/LegacySuiteTestN/`. Original settings, stats,
-coverage/uncovered assertions and exit status are preserved.
+Current batch: original Test19–26 inherited SuiteTestCase methods in
+`tlc_legacy_suite_next_eight_java_test.go`, 16 byte-exact source vectors.
+All 8 pass normal (19.290s), handle 89455 retired;
+`legacy-suite-next-eight-go.log`. Test19 retains 400000 initial/distinct states
+and 800000 generated. Test20 preserves original uncovered set equality,
+including the source's duplicate locations at different indentation levels.
+Original settings/constructors/assertions are intact; no production changes.
+All 104 unchanged Java legacy references passed preflight 11601.
+All 8 current methods pass race (98.765s), handle 93847 retired;
+`legacy-suite-next-eight-race-go.log`. All handles retired. Commit the 21 intended paths:
+1 test file, 16 vectors, 4 docs. No redundant full workspace restart is needed:
+production is identical to the green commit; new whole methods are checked
+independently. Keep those verification scopes explicit.
 
-The source tests exposed four production gaps, now corrected:
-- An EXCEPT bracket with multiple indices is one tuple argument, not several
-  path levels (`tlc_bridge.go`, matching Generator's EXCEPT selector).
-- Tuple-bound CHOOSE retains all formals/positions in the central AST, semantic
-  scope, substitutions, XML and TLC bridge. Existing TLC tuple evaluation is used.
-- Quantifier aliases select semantics by token kind, matching Generator; raw
-  `\exists` previously became a universal quantifier.
-- Named function parameter counts treat a tuple binder as one parameter,
-  matching `OpApplNode.getNumberOfBoundedBoundSymbols`.
+Inventory: 994/1269 contexts (78.3%), 488/626 classes (78.0%),
+275 pending across 138 classes, one partial. All 20 topic rows and 16 fixture
+bytes verified. Next ignored preview: Test27–33 (7 whole methods, 14 vectors),
+with full Test27/33 state spaces; install only after this green commit.
+The larger 78-context preview contains 26 now-ported contexts and 52 still
+uninstalled/uncredited contexts, including four full additional coverage hooks.
+Test57's original custom override has a 1-method/3-vector preview and retains
+its safety exit without inherited stats/coverage assertions. FPSetFactoryTest
+has a 15-method preview with full helpers; unchanged Java passes all 15 (0.152s).
+These other previews are uninstalled and uncredited.
 
-All 18 current source methods pass normal (9.238s), handle 92818 retired;
-`legacy-suite-first-eighteen-domain-count-go.log`. All 104 unchanged Java legacy
-references passed the prior preflight (11601 retired). All 36 fixture bytes and
-20 inventory topic rows verified. Inventory: 986/1269 contexts (77.7%), 480/626
-classes (76.7%), 283 pending across 146 classes, one partial.
-
-Full workspace normal passes: root 1647.375s, SANY tests 0.935s, TLC 68.700s;
-handle 22373 retired. JSONL `legacy-eighteen-current-full-workspace.jsonl`
-contains no failure events, and all 18 new methods passed inside that run.
-The complete 18-method race passes 66.557s, handle 92607 retired;
-`legacy-eighteen-current-race-go.log`. All handles retired.
-All 48 intended paths are staged and checked; commit this green batch before
-new production work. Next prepared batch: tests 19–26 (8 whole methods, 16
-vectors) in ignored `legacy-suite-next-eight.go.preview` and its fixture map.
-Tests 27–33 have a separate 7-method/14-vector preview. Test57's original
-custom override has a 1-method/3-vector preview and retains its safety exit
-without inherited stats/coverage assertions. The fingerprint factory preview
-contains all 15 whole original methods/helpers; unchanged Java passes all 15
-(0.152s). These previews are uninstalled and uncredited.
-
-During investigation, a proposed removal of the static function-arity check
-was disproved by unchanged Java SANY and corrected before credit: the Java
-check does exist; its tuple parameter count was wrong in Go. The original
-older Go arity test and static checker have been restored. The intermediate
-single-Test10 pass without the check is not a final verification receipt.
-ApalacheIR explicitly reports tuple CHOOSE unsupported; the separate legacy
-integer evaluator rejects tuple CHOOSE as non-integer. Neither silently emits
-an empty scalar binding. Actual TLC tuple CHOOSE executes via its native path.
-
-The ignored 78-context preview includes these 18 plus 60 additional whole
-inherited methods, four complete coverage hooks and 172 vector mappings.
-Next install only the remaining contexts after the current green commit;
-preserve full Test19/27/33 state spaces. No invented tests or skips. The user's
-five deferred topics remain deferred. The overall goal remains active.
+No original test assertions weakened or runtime settings changed. During the
+prior batch, Java disproved a proposed removal of the static function-arity
+check. The check and its older Go test were restored before final verification;
+the actual fix counts tuple binders once, as Java does. ApalacheIR explicitly
+reports tuple CHOOSE unsupported and the separate legacy integer evaluator
+rejects tuple CHOOSE as non-integer; actual TLC executes its native tuple path.
+The user's five deferred topics remain deferred. The overall goal is active.
 
 Historical receipts/preparation follow; prior41batch is now committedfcb3f4d.
 

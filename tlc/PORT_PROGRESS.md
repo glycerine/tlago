@@ -4846,3 +4846,18 @@ pristine vectors. All handles retired; green batch ready for commit. Next
 ignored previews: Test19–26 (8/16 vectors), Test27–33 (7/14), Test57 override
 (1/3), FPSetFactoryTest (15 original methods/helpers; source Java 0.152s PASS).
 No preview credit or implementation changes claimed.
+
+2026-10-04:18-method legacy batch and four production fixes committed as
+`051bb16`, clean tree. Installed whole original Test19–26 methods and 16
+byte-exact vectors. All 8 pass normal (19.290s), handle 89455 retired;
+Test19 preserves full 400000 initial/distinct and 800000 generated states.
+No production changes or weakened assertions. Source all 104 Java references
+already passed preflight. Current 8-method race 93847 active. Current production
+is identical to the full workspace green checkpoint; new original methods are
+verified independently. Inventory 994/1269 (78.3%), 488/626 classes (78.0%),
+275 pending/138 classes, one partial. All 20 topic rows and 16 fixture bytes
+verified. Expected commit is 21 paths (one test file, 16 vectors, four docs).
+
+Final 8-method race passes (98.765s), handle 93847 retired. All handles retired.
+Both normal and race checks pass all whole original methods; ready to commit
+21 explicit paths. Production unchanged from the workspace green checkpoint.

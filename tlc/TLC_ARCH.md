@@ -1,5 +1,14 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04: Legacy Test1–18 and their four production fixes committed as
+`051bb16` after full workspace normal and focused race checks. Additional
+original Test19–26 methods pass normal (19.290s), preserving complete original
+inputs, settings and assertions; no production changes. Test19 retains all
+400000 initial/distinct states and 800000 generated states. All 8 also pass focused race (98.765s); all handles retired. Production remains identical to the verified workspace snapshot;
+new source methods are checked separately. Inventory: 994/1269 contexts,
+488/626 classes, 275 pending.
+
+
 2026-10-04 current: original legacy Test1–18 methods exposed four corrected
 SANY/TLC translation gaps. Each EXCEPT bracket is one function argument;
 multiple indices form a tuple, preserving distinct path components. CHOOSE
