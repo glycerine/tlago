@@ -18,7 +18,7 @@ parser/semantic/XML, original Test201–206, cyclic instance and four native-mod
 bridge checks pass race32.615s (51123 retired). Final current-source workspace
 passes root1777.556s/SANY1.121s/TLC70.088s (2130 terminal/retired); log
 `.codex-gotmp/selector-resolution-isolated-final-workspace-go.log`. All required
-checks green. No production changes after that compilation; ready to commit.
+checks green. No production changes after that compilation; committed `b0ee5ae`.
 
 2026-10-04 selector resolution after `fa672eb`: original Test206 now passes
 with its entire inherited SuiteTestCase.testSpec, original constructor/settings,
@@ -47,8 +47,7 @@ The superseded workspace84999 was interrupted after source-identity changes
 536/626 classes (85.6%),213 pending across90 classes; legacy73/104 complete.
 Remaining selector-negative diagnostics and other legacy contexts are uncredited;
 this test translation does not establish complete Generator selector parity.
-Next: commit this verified selector/Test206 slice, then install
-original Test207 alone from the retained draft. Preserve the five deferred topics.
+Next: install original Test207 alone from the retained draft. Preserve the five deferred topics.
 
 
 2026-10-04 selector work after `c1831ed`: added Generator.Selector's ordered

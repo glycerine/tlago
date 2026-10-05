@@ -6,10 +6,11 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Latest green commit: `fa672eb` (selector syntax/operand foundation).
-Current working slice resolves selectors and ports all of original Test206.
+Latest green code commit: `b0ee5ae` (selector resolution, original Test206,
+and warning-flag isolation for original model tests). Working tree was clean
+after this commit. Earlier selector foundation: `fa672eb`.
 All required checks pass. Final current-source workspace2130 passes root1777.556s,
-SANY1.121s and TLC70.088s (terminal/retired). Ready to commit this slice.
+SANY1.121s and TLC70.088s (terminal/retired). Code/tests committed as `b0ee5ae`.
 
 Final gate correction: the first workspace run84712 failed after1460.845s
 at original Test63's exact coverage assertion (terminal/retired); SANY1.100s
@@ -29,7 +30,7 @@ parser/semantic/XML, original Test201–206, cyclic instance and four native-mod
 bridge checks pass race32.615s (51123 retired). Final current-source workspace
 passes root1777.556s/SANY1.121s/TLC70.088s (2130 terminal/retired); log
 `.codex-gotmp/selector-resolution-isolated-final-workspace-go.log`. All required
-checks green. No production changes after that compilation; ready to commit.
+checks green. No production changes after that compilation; committed `b0ee5ae`.
 
 2026-10-04 selector resolution after `fa672eb`: original Test206 now passes
 with its entire inherited SuiteTestCase.testSpec, original constructor/settings,
@@ -58,8 +59,7 @@ The superseded workspace84999 was interrupted after source-identity changes
 536/626 classes (85.6%),213 pending across90 classes; legacy73/104 complete.
 Remaining selector-negative diagnostics and other legacy contexts are uncredited;
 this test translation does not establish complete Generator selector parity.
-Next: commit this verified selector/Test206 slice, then install
-original Test207 alone from the retained draft. Preserve the five deferred topics.
+Next: install original Test207 alone from the retained draft. Preserve the five deferred topics.
 
 Prepared (ignored, uninstalled/unrun/uncredited) three more whole custom legacy
 methods in `.codex-gotmp/legacy-custom-lifecycle-three.go.preview`, with six source
