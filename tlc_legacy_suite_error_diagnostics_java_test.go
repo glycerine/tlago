@@ -179,3 +179,33 @@ func TestJavaLegacySuiteTest210(t *testing.T) {
 		}
 	}
 }
+
+// Original Test212.testSpec and ERROR_SPEC_PARSE constructor, preserving all
+// seven exact TestPrintStream substrings and full SuiteETestCase runner settings.
+func TestJavaLegacySuiteTest212(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest212", "test212", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test212.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"Semantic errors:\n\n*** Errors: 6\n",
+		"line 27, col 1 to line 27, col 62 of module test212\n\nError in instantiating module 'test212a':\n A non-Leibniz operator substituted for 'Op2'.\n",
+		"line 28, col 1 to line 28, col 62 of module test212\n\nError in instantiating module 'test212a':\n A non-Leibniz operator substituted for 'Op'.\n",
+		"line 29, col 1 to line 29, col 62 of module test212\n\nError in instantiating module 'test212a':\n A non-Leibniz operator substituted for 'Op'.\n",
+		"line 30, col 1 to line 30, col 64 of module test212\n\nError in instantiating module 'test212a':\n A non-Leibniz operator substituted for 'Op2'.\n",
+		"line 31, col 1 to line 31, col 63 of module test212\n\nError in instantiating module 'test212a':\n A non-Leibniz operator substituted for 'Op2'.\n",
+		"line 32, col 1 to line 32, col 63 of module test212\n\nError in instantiating module 'test212a':\n A non-Leibniz operator substituted for 'Op2'.\n",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

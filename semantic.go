@@ -2024,6 +2024,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		}
 	}
 	seen := map[string]Position{}
+	leibniz := newSanyLeibnizAnalyzer(spec)
 	for _, subst := range substitutions {
 		name := subst.Name
 		expr := subst.Expr
@@ -2045,8 +2046,12 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		if got != want {
 			diags = append(diags, errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want))
 		}
-		if want > 0 && substitutionExprNonLeibniz(expr, mod) {
-			diags = append(diags, errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module))
+		if want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
+			diagnostic := errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module)
+			position := inst.SourcePosition()
+			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("Error in instantiating module '%s':\n A non-Leibniz operator substituted for '%s'.", inst.Module, name)
+			diags = append(diags, diagnostic)
 		}
 		if matchLevels {
 			level := exprLevel(expr, declKinds, locals)
@@ -2623,43 +2628,12 @@ func substitutionExprArity(expr Expr, arities map[string]int) int {
 	return 0
 }
 
-func substitutionExprNonLeibniz(expr Expr, mod *Module) bool {
-	ident, ok := expr.(*IdentExpr)
-	if !ok || ident.Name == "" {
-		return false
-	}
-	if info, ok := sanyBuiltinOperatorInfo(ident.Name); ok {
-		return builtinOperatorNonLeibniz(info)
-	}
-	if mod == nil {
-		return false
-	}
-	for _, def := range mod.Definitions {
-		if def.Name == ident.Name && len(def.Params) > 0 {
-			return exprContainsPrime(def.Expr)
-		}
-	}
-	return false
-}
-
 func substitutionBuiltinOperatorInfo(expr Expr) (sanyBuiltinOperator, bool) {
 	ident, ok := expr.(*IdentExpr)
 	if !ok {
 		return sanyBuiltinOperator{}, false
 	}
 	return sanyBuiltinOperatorInfo(ident.Name)
-}
-
-func builtinOperatorNonLeibniz(info sanyBuiltinOperator) bool {
-	if info.arity == 0 {
-		return false
-	}
-	for _, weight := range info.argWeights {
-		if weight == 0 {
-			return true
-		}
-	}
-	return false
 }
 
 func substitutionExprIsOperatorArgument(expr Expr, targetArity int, arities map[string]int) bool {

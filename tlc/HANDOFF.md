@@ -1,5 +1,32 @@
 # TLC Port Handoff
 
+2026-10-05 original Test212 complete:
+The original ERROR_SPEC_PARSE constructor, no-GENERAL assertion, seven exact
+TestPrintStream substrings, inherited SuiteETestCase settings and four
+byte-identical vectors are translated without weakened assertions. Replaced
+INSTANCE's prime-anywhere shortcut with separate all/non-Leibniz formal
+dependencies. Propagate builtin argument weights, imported definitions, LAMBDA,
+INSTANCE substitutions and higher-order arguments; recursive definition summaries
+grow to a fixed point. Preserve Java LetInNode's dependency propagation rule.
+Diagnostics use the whole INSTANCE range and original Java message.
+
+Focused Test212 race passes1.177s; related original legacy contexts plus existing
+parser/semantic/XML/warning selections pass race110.981s (63865 terminal).
+Explicit root parser/SANY semantic/XML/elevated-warning race passes4.239s
+(43677 terminal), complete SANY Java race8.340s (52980 terminal). A temporary
+recursive dependency probe passes race1.029s and was removed, not credited.
+Logs: .codex-gotmp/legacy-error-test212-{fixedpoint,related,root,sany}-race.log.
+Inventory1083/1269 contexts,563/626 classes;186pending across63classes;
+legacy100/104. Next original Test213, then214/215/217.
+
+Earlier ETest16 whole workspace75902 is terminal exit0: root1764.043s,
+SANY0.930s/TLC69.463s (7f51f9c production, before Test210/Test212).
+Test210 full workspace15753 remains live, log
+.codex-gotmp/legacy-error-test210-final-workspace-go.log; resume that handle.
+Current Test212 full workspace82923 is live, log
+.codex-gotmp/legacy-error-test212-final-workspace-go.log; resume that handle.
+Do not claim current full-suite success before its terminal receipt.
+
 2026-10-05 verified original Test210 diagnostic checkpoint afteread7f9a:
 Original Test210.testSpec is mechanically translated with ERROR_SPEC_PARSE,
 no GENERAL, all ten exact TestPrintStream substrings (header/count9 plus nine
