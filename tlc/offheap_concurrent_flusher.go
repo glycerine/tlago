@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 )
 
 type OffHeapRuntimeException struct{ *RuntimeException }
@@ -61,7 +62,7 @@ func (s *OffHeapDiskFPSet) selectOffHeapConcurrentFlusher(numThreads int) *offHe
 			panic(NewIllegalArgumentException())
 		}
 		s.concurrentFlusher = &offHeapConcurrentFlusher{set: s, numThreads: numThreads,
-			r: int64(s.probeLimit), insertions: s.tblCnt, length: javaDoubleToLong(length)}
+			r: int64(s.probeLimit), insertions: atomic.LoadInt64(&s.tblCnt), length: javaDoubleToLong(length)}
 	}
 	return s.concurrentFlusher
 }
@@ -160,11 +161,11 @@ func (f *offHeapConcurrentFlusher) prepareTable() {
 			}
 			switch {
 			case isFirst && isLast:
-				result.disk = s.fileCnt
+				result.disk = atomic.LoadInt64(&s.fileCnt)
 			case isFirst:
 				result.disk = offset(end)
 			case isLast:
-				result.disk = s.fileCnt - offset(start)
+				result.disk = atomic.LoadInt64(&s.fileCnt) - offset(start)
 			default:
 				result.disk = offset(end) - offset(start)
 			}
@@ -201,7 +202,7 @@ func (f *offHeapConcurrentFlusher) mergeNewEntries(out *BufferedRandomAccessFile
 		table += result.table
 		disk += result.disk
 	}
-	if table != f.insertions || disk != s.fileCnt {
+	if table != f.insertions || disk != atomic.LoadInt64(&s.fileCnt) {
 		panic(NewAssertionError())
 	}
 	for id := 1; id < f.numThreads; id++ {
@@ -241,7 +242,7 @@ func (f *offHeapConcurrentFlusher) mergeNewEntries(out *BufferedRandomAccessFile
 		}
 		reads[id] = result.disk
 		if id == f.numThreads-1 {
-			reads[id] = s.fileCnt - result.inOffset
+			reads[id] = atomic.LoadInt64(&s.fileCnt) - result.inOffset
 		}
 	}
 	f.invokeAll(func(id int) {

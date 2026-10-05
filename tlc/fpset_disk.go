@@ -39,11 +39,13 @@ type DiskFPSet struct {
 
 	config *FPSetConfiguration
 
-	maxTblCnt      int64
-	metadir        string
-	fpFilename     string
-	tmpFilename    string
-	filename       string
+	maxTblCnt   int64
+	metadir     string
+	fpFilename  string
+	tmpFilename string
+	filename    string
+	// Counters use atomic accesses for source LongAdder reads and disk-count
+	// publication; plain reads race with concurrent writers and reporters.
 	fileCnt        int64
 	tblCnt         int64
 	tblLoad        int64
@@ -259,7 +261,7 @@ func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet 
 	if err := s.openBRAFReaders(numThreads, diskFPSetBRAFPoolSize); err != nil {
 		panic(diskFPSetInitIOException(s.fpFilename, err))
 	}
-	s.fileCnt = 0
+	atomic.StoreInt64(&s.fileCnt, 0)
 	s.index = nil
 	s.clearTable()
 	return s
@@ -337,10 +339,10 @@ func printNonCheckpointableFPSetWarning(className string) {
 	PrintWarning(ECGeneral, "Checkpointing is not implemented for "+className)
 }
 
+// Source size reads the concurrent table counter and disk count independently;
+// acquiring all table locks both changed that behavior and missed offheap writers.
 func (s *DiskFPSet) Size() uint64 {
-	s.acquireTblWriteLock()
-	defer s.releaseTblWriteLock()
-	return uint64(s.tblCnt + s.fileCnt)
+	return uint64(atomic.LoadInt64(&s.tblCnt) + atomic.LoadInt64(&s.fileCnt))
 }
 
 func (s *DiskFPSet) Sizeof() uint64 {
@@ -389,7 +391,7 @@ func (s *DiskFPSet) Put(fp uint64) bool {
 	if s.needsDiskFlush() && s.flusherChosen.CompareAndSwap(false, true) {
 		s.mu.Lock()
 		s.growDiskMark++
-		insertions := s.tblCnt
+		insertions := atomic.LoadInt64(&s.tblCnt)
 		s.mu.Unlock()
 		start := time.Now()
 		s.rwLock.AcquireAllLocksExcept(lockIndex)
@@ -636,10 +638,10 @@ func (s *DiskFPSet) GetIndexCapacity() int64  { return int64(len(s.index)) }
 func (s *DiskFPSet) GetOverallCapacity() int64 {
 	return s.GetBucketCapacity() + s.GetTblCapacity() + s.GetIndexCapacity()
 }
-func (s *DiskFPSet) GetTblLoad() int64        { return s.tblLoad }
-func (s *DiskFPSet) GetTblCnt() int64         { return s.tblCnt }
+func (s *DiskFPSet) GetTblLoad() int64        { return atomic.LoadInt64(&s.tblLoad) }
+func (s *DiskFPSet) GetTblCnt() int64         { return atomic.LoadInt64(&s.tblCnt) }
 func (s *DiskFPSet) GetMaxTblCnt() int64      { return s.maxTblCnt }
-func (s *DiskFPSet) GetFileCnt() int64        { return s.fileCnt }
+func (s *DiskFPSet) GetFileCnt() int64        { return atomic.LoadInt64(&s.fileCnt) }
 func (s *DiskFPSet) GetDiskLookupCnt() uint64 { return atomic.LoadUint64(&s.diskLookupCnt) }
 func (s *DiskFPSet) GetMemHitCnt() uint64     { return atomic.LoadUint64(&s.memHitCnt) }
 func (s *DiskFPSet) GetDiskHitCnt() uint64    { return atomic.LoadUint64(&s.diskHitCnt) }
@@ -653,7 +655,7 @@ func (s *DiskFPSet) ForceFlush()              { s.forceFlush.Store(true) }
 func (s *DiskFPSet) GetLockCnt() int          { return s.lockCnt }
 func (s *DiskFPSet) GetReaderWriterCnt() int  { return len(s.braf) + len(s.brafPool) }
 func (s *DiskFPSet) GetLoadFactor() float64 {
-	return float64(s.tblCnt) / float64(s.maxTblCnt)
+	return float64(atomic.LoadInt64(&s.tblCnt)) / float64(s.maxTblCnt)
 }
 
 func (s *DiskFPSet) checkValid(fp uint64) uint64 {
@@ -661,10 +663,7 @@ func (s *DiskFPSet) checkValid(fp uint64) uint64 {
 }
 
 func (s *DiskFPSet) needsDiskFlush() bool {
-	s.mu.Lock()
-	tblCnt := s.tblCnt
-	s.mu.Unlock()
-	return tblCnt >= s.maxTblCnt || s.forceFlush.Load()
+	return atomic.LoadInt64(&s.tblCnt) >= s.maxTblCnt || s.forceFlush.Load()
 }
 
 func (s *DiskFPSet) memLookup(fp uint64) bool {
@@ -689,8 +688,8 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 		s.tbl[idx] = bucket
 		s.mu.Lock()
 		s.bucketsCap += diskFPSetInitialBucketCap
-		s.tblLoad++
-		s.tblCnt++
+		atomic.AddInt64(&s.tblLoad, 1)
+		atomic.AddInt64(&s.tblCnt, 1)
 		s.mu.Unlock()
 		return false
 	}
@@ -724,7 +723,7 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 		bucket[reusable] = fp
 	}
 	s.mu.Lock()
-	s.tblCnt++
+	atomic.AddInt64(&s.tblCnt, 1)
 	s.mu.Unlock()
 	return false
 }
@@ -797,7 +796,7 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 	loEntry := int64(loPage) * diskFPSetNumEntriesPerPage
 	hiEntry := int64(hiPage) * diskFPSetNumEntriesPerPage
 	if loPage == indexLength-2 {
-		hiEntry = s.fileCnt - 1
+		hiEntry = atomic.LoadInt64(&s.fileCnt) - 1
 	}
 	for loEntry < hiEntry {
 		midEntry := s.calculateMidEntry(loVal, hiVal, dfp, loEntry, hiEntry)
@@ -858,7 +857,7 @@ func (s *DiskFPSet) readDiskFP(entry int64) (uint64, error) {
 }
 
 func (s *DiskFPSet) flushTable() error {
-	if s.tblCnt == 0 {
+	if atomic.LoadInt64(&s.tblCnt) == 0 {
 		return nil
 	}
 	switch s.mode {
@@ -873,9 +872,9 @@ func (s *DiskFPSet) flushTable() error {
 		return err
 	}
 	s.mu.Lock()
-	s.tblCnt = 0
+	atomic.StoreInt64(&s.tblCnt, 0)
 	s.bucketsCap = 0
-	s.tblLoad = 0
+	atomic.StoreInt64(&s.tblLoad, 0)
 	s.lsbBuff = nil
 	s.mu.Unlock()
 	return nil
@@ -894,7 +893,7 @@ func (s *DiskFPSet) prepareMSBTable() {
 }
 
 func (s *DiskFPSet) prepareLSBTable() {
-	cnt := int(int32(s.tblCnt))
+	cnt := int(int32(atomic.LoadInt64(&s.tblCnt)))
 	if cnt <= 0 {
 		panic(NewTLCRuntimeException(ECGeneral))
 	}
@@ -921,7 +920,7 @@ func (s *DiskFPSet) mergeNewEntries() error {
 		newValues = s.lsbBuff
 	} else {
 		itr := newMSBDiskIterator(s.tbl)
-		newValues = make([]uint64, 0, s.tblCnt)
+		newValues = make([]uint64, 0, atomic.LoadInt64(&s.tblCnt))
 		for itr.hasNext() {
 			next, err := itr.next()
 			if err != nil {
@@ -1021,12 +1020,12 @@ func (s *DiskFPSet) mergeNewEntries() error {
 		return err
 	}
 	s.index = newIndex
-	s.fileCnt = total
+	atomic.StoreInt64(&s.fileCnt, total)
 	return nil
 }
 
 func (s *DiskFPSet) calculateIndexLen(buffLen int64) int {
-	indexLen := ((s.fileCnt + buffLen - 1) / diskFPSetNumEntriesPerPage) + 2
+	indexLen := ((atomic.LoadInt64(&s.fileCnt) + buffLen - 1) / diskFPSetNumEntriesPerPage) + 2
 	if indexLen <= 0 {
 		indexLen = 2
 	}
@@ -1063,7 +1062,7 @@ func (s *DiskFPSet) recoverFileLocked(path string) error {
 	if err := out.Close(); err != nil {
 		return err
 	}
-	s.fileCnt = int64(len(values))
+	atomic.StoreInt64(&s.fileCnt, int64(len(values)))
 	s.rebuildIndex(values)
 	if err := s.reopenBRAFReaders(); err != nil {
 		return err
@@ -1189,8 +1188,8 @@ func (s *DiskFPSet) clearTable() {
 	for i := range s.tbl {
 		s.tbl[i] = nil
 	}
-	s.tblCnt = 0
-	s.tblLoad = 0
+	atomic.StoreInt64(&s.tblCnt, 0)
+	atomic.StoreInt64(&s.tblLoad, 0)
 	s.bucketsCap = 0
 	s.lsbBuff = nil
 }

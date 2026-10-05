@@ -250,7 +250,7 @@ func (s *OffHeapDiskFPSet) RecoverFP(fp uint64) error {
 func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.tblCnt <= 0 {
+	if atomic.LoadInt64(&s.tblCnt) <= 0 {
 		return uint64(1<<63 - 1)
 	}
 	numThreads := NumWorkers()
@@ -285,7 +285,7 @@ func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 				}
 			}
 		}()
-		itr := newOffHeapIterator(s.array, s.tblCnt, start, s.indexer, !isLast || id == 0)
+		itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), start, s.indexer, !isLast || id == 0)
 		x, ok := itr.next()
 		if !ok {
 			return
@@ -325,7 +325,7 @@ func (s *OffHeapDiskFPSet) Sizeof() uint64 {
 }
 
 func (s *OffHeapDiskFPSet) GetTblCapacity() int64     { return s.maxTblCnt }
-func (s *OffHeapDiskFPSet) GetTblLoad() int64         { return s.tblCnt }
+func (s *OffHeapDiskFPSet) GetTblLoad() int64         { return atomic.LoadInt64(&s.tblCnt) }
 func (s *OffHeapDiskFPSet) GetOverallCapacity() int64 { return s.array.Size() }
 func (s *OffHeapDiskFPSet) GetBucketCapacity() int64  { return int64(s.probeLimit) }
 
@@ -334,7 +334,7 @@ func (s *OffHeapDiskFPSet) ForceFlush() {
 }
 
 func (s *OffHeapDiskFPSet) needsDiskFlush() bool {
-	return s.tblCnt >= s.maxTblCnt || s.forceFlush.Load()
+	return atomic.LoadInt64(&s.tblCnt) >= s.maxTblCnt || s.forceFlush.Load()
 }
 
 func (s *OffHeapDiskFPSet) memLookup(fp0 uint64) bool {
@@ -368,7 +368,7 @@ func (s *OffHeapDiskFPSet) memInsert0(fp0 uint64, start int) (seen bool, inserte
 		expected := s.array.Get(position)
 		if expected == 0 || (expected < 0 && fp0 != (uint64(expected)&diskFPSetFlushedMask)) {
 			if s.array.TrySet(position, expected, int64(fp0)) {
-				s.tblCnt++
+				atomic.AddInt64(&s.tblCnt, 1)
 				return false, true
 			}
 			i--
@@ -443,7 +443,7 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 	defer func() {
 		s.flushTime += int64(time.Since(start) / time.Millisecond)
 	}()
-	if s.tblCnt == 0 {
+	if atomic.LoadInt64(&s.tblCnt) == 0 {
 		s.forceFlush.Store(false)
 		return nil
 	}
@@ -456,8 +456,8 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 	} else {
 		s.prepareOffHeapTableLocked()
 	}
-	itr := newOffHeapIterator(s.array, s.tblCnt, 0, s.indexer, true)
-	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}, flusher); err != nil {
+	itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
+	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, flusher); err != nil {
 		return err
 	}
 	ok, err := s.checkOffHeapIndex()
@@ -467,7 +467,8 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 	if !ok {
 		panic(NewAssertionError())
 	}
-	s.tblCnt, s.tblLoad = 0, 0
+	atomic.StoreInt64(&s.tblCnt, 0)
+	atomic.StoreInt64(&s.tblLoad, 0)
 	s.forceFlush.Store(false)
 	return nil
 }
@@ -505,7 +506,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 	defer out.Close()
 	outLength := int64(0)
 	if flusher != nil {
-		outLength = (itr.elements + s.fileCnt) * fpSetLongSize
+		outLength = (itr.elements + atomic.LoadInt64(&s.fileCnt)) * fpSetLongSize
 	}
 	if err := out.SetLength(outLength); err != nil {
 		return err
@@ -548,13 +549,13 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 		return err
 	}
 	s.index = newIndex
-	s.fileCnt += itr.elements
+	atomic.AddInt64(&s.fileCnt, itr.elements)
 	return nil
 }
 
 func (s *OffHeapDiskFPSet) calculateOffHeapIndexLen(buffLen int64) int {
 	indexLen := s.calculateIndexLen(buffLen)
-	if (buffLen+s.fileCnt-1)%diskFPSetNumEntriesPerPage == 0 {
+	if (buffLen+atomic.LoadInt64(&s.fileCnt)-1)%diskFPSetNumEntriesPerPage == 0 {
 		indexLen--
 	}
 	return indexLen

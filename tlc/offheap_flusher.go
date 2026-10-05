@@ -73,7 +73,7 @@ func (s *OffHeapDiskFPSet) getDiskOffset(id int, fp uint64) (int64, error) {
 	loEntry := int64(loPage) * diskFPSetNumEntriesPerPage
 	hiEntry := int64(hiPage) * diskFPSetNumEntriesPerPage
 	if loPage == indexLength-2 {
-		hiEntry = s.fileCnt - 1
+		hiEntry = atomic.LoadInt64(&s.fileCnt) - 1
 	}
 	for loEntry < hiEntry {
 		midEntry = s.calculateMidEntry(loVal, hiVal, dfp, loEntry, hiEntry)
@@ -134,7 +134,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapEntries(inRAF *BufferedRandomAccessFile, 
 		if err != nil {
 			return err
 		}
-	} else if s.fileCnt != 0 {
+	} else if atomic.LoadInt64(&s.fileCnt) != 0 {
 		panic(NewAssertionError())
 	}
 	tableReads := itr.elements
@@ -223,14 +223,14 @@ func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// Dispatch through the OffHeap flusher, rather than the heap-only base method.
-	if s.tblCnt > 0 {
+	if atomic.LoadInt64(&s.tblCnt) > 0 {
 		if s.concurrentFlusher != nil {
 			s.concurrentFlusher.prepareTable()
 		} else {
 			s.prepareOffHeapTableLocked()
 		}
-		itr := newOffHeapIterator(s.array, s.tblCnt, 0, s.indexer, true)
-		if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
+		itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
+		if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
 			return false
 		}
 		ok, err := s.checkOffHeapIndex()
@@ -240,11 +240,12 @@ func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 		if !ok {
 			panic(NewAssertionError())
 		}
-		s.tblCnt, s.tblLoad = 0, 0
+		atomic.StoreInt64(&s.tblCnt, 0)
+		atomic.StoreInt64(&s.tblLoad, 0)
 		s.forceFlush.Store(false)
 	}
 	ok, _ := s.checkFile()
-	return ok && (len(expectFPs) == 0 || uint64(s.fileCnt+s.tblCnt) == expectFPs[0])
+	return ok && (len(expectFPs) == 0 || uint64(atomic.LoadInt64(&s.fileCnt)+atomic.LoadInt64(&s.tblCnt)) == expectFPs[0])
 }
 
 func (s *OffHeapDiskFPSet) checkOffHeapInput() bool {

@@ -1,5 +1,56 @@
 # TLC Port Handoff
 
+2026-10-05 fingerprint counter races fixed while auditing concurrent generators:
+Staged complete original four producer bodies and twelve concrete method contexts
+in ignored concurrent_fpset_full_draft_test.go/overlay. Preserve source default
+2,147,483,649 insertions, runtime worker count, seed15041980+id, short-circuit
+Size frequency, signed1024-item sorting, private TestLongVec raw-array/count
+formula, partition arithmetic, start barrier/timer and normal-only latch countdown.
+Source Long.getLong decoder and original excludes property retained; no invented
+persistent tests, no reduced default bounds and no new translation credit.
+Unchanged Java nine random methods at source-supported properties workers2 and
+insertions20000 all fail size<=INSERTIONS+NUM_THREADS, line182. Generator quotas
+allow a fast producer to continue until slower producers finish their individual
+quotas; batch1024 further overshoots. Counts can vary with scheduling. Java79784
+wrapper terminal exit0 with nine individual exit1 results, property-audit-original
+logs retained, retired. This verifies configured source failures, NOT default
+2.1B-entry workload failures or full completion of those methods.
+Native69190 same nine configured methods initially fails source assertions AND
+reports real port counter races (terminal exit1,2.021s; retired). GetLoadFactor
+read bare table count during writes; OffHeap Size inherited heap table locking
+which did not protect OffHeap writers. Java table count/load use LongAdder;
+source size independently reads table and file counts without taking table locks.
+All native table-count/table-load/disk-count accesses in heap/offheap insertion,
+flush, recovery, index and concurrent merge paths now consistently use atomic
+loads/adds/stores. Size now follows independent source reads; GetLoadFactor and
+management count getters read safely. Existing per-bucket/table/file coordination
+and all source assertions remain unchanged; no table-lock workaround introduced.
+Corrected93790 nine-method configured race terminal exit1/source upper-bound
+failures only, no race reports; retired. Corrected40845 full default OffHeap
+partitioned race terminal exit1/22.62s, source lower-bound failure at8,388,575,
+all48 original producer counts unchanged and no race reports; retired. These
+expected source-failure receipts are not successful test-gate claims.
+Original Java nine methods at source-supported workers1/insertions20480 ALL pass
+including full invariants (37625 terminal exit0/retired). Matching nine native
+whole-method configured race checks ALL pass20.94s (88137 terminal exit0/retired),
+concurrent-fpset-one-worker-native-race.log. These audit generator/factory helpers,
+not the default huge contexts; inventory counts unchanged. Source configurable
+properties are preserved, never substituted as default test bounds.
+Production final68125 terminal exit0/retired: ALL52 persistent original contexts
+race pass across five top-level methods: longLSB2.07s,longMSB4.87s,OffHeap23
+164.09s (includes full99,999,999 index),OffHeapLong3 .58s,ShortDisk24 54.81s.
+Log fpset-atomic-counters-original-race.log, no race reports or weakened inputs.
+Old full12436 terminal GREEN atdd8f136: root1808.606s,SANY1.027s,TLC421.843s,
+offheap-concurrent-flusher-final-workspace-go.log; retired. Predates queue/new
+simple-fill/counter changes. Fresh full52175 LIVE at current atomic-counter
+production snapshot, fpset-atomic-counters-final-workspace-go.log; no duplicate.
+Removed ONLY938 obsolete private Go compiler-cache blobs older12h (15.18GiB),
+regenerable build outputs. Source/fixtures/logs untouched. Free disk16GiB after
+checks; full stress file merge can require two16GiB files, so resource question
+remains relevant. All current source-failure/stress decisions remain unanswered.
+Main1251/1269,shared55/56,long14/22,concurrent2/17 unchanged. TODO/mapping updated
+with configured failure evidence and exact credit limits. Goal ACTIVE.
+
 2026-10-05 original concurrent OffHeap partitioned default failure verified:
 Compiled unchanged MultiThreadedFPSetTest, OffHeap subclass and original generator
 sources. Original JUnit method runs with source default48 workers,64MiB offheap,
