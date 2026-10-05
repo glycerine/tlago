@@ -323,16 +323,7 @@ func (b *tlcBridge) moduleContextDefinition(mod *Module, entry tlcBridgeContextE
 				if clone := b.localModuleDefinitions[cacheKey]; clone != nil {
 					return clone
 				}
-				var binding *tlcBridgeInstance
-				for _, candidate := range b.instanceDefinitions {
-					if candidate.owner == entry.instanceOwner && candidate.inst.SourcePosition() == entry.instance.SourcePosition() {
-						binding = candidate
-						break
-					}
-				}
-				if binding == nil {
-					binding = &tlcBridgeInstance{owner: entry.instanceOwner, inst: *entry.instance}
-				}
+				binding := b.instanceBinding(entry.instanceOwner, *entry.instance)
 				b.prepareInstanceBinding(binding)
 				params := append(append([]*tlc.SymbolNode(nil), binding.params...), source.Params...)
 				body := source.Body

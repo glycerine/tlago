@@ -125,6 +125,7 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
 	oldContinuation := tlc.Globals.Continuation
+	oldWarn := tlc.Globals.Warn
 	oldLNCheck := tlc.Globals.LNCheck
 	oldUseView := tlc.UseView()
 	oldSetBound := tlc.Globals.SetBound
@@ -145,6 +146,10 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false
+	// The original Ant runner forks a fresh JVM per concrete test class.
+	// -nowarning affects getNextStates' all-assigned evaluation path as well
+	// as messages, so preserve its isolation before parsing this test's flags.
+	tlc.Globals.Warn = true
 	// The source runner's fresh classloader restores the default strategy.
 	// ParseTLCOptions writes -lncheck into the shared runtime globals.
 	tlc.Globals.LNCheck = "default"
@@ -159,6 +164,7 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 		tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator = oldWorkers, oldMain, oldSimulator
 		tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime = oldTool, oldDFID, oldStart
 		tlc.Globals.Continuation = oldContinuation
+		tlc.Globals.Warn = oldWarn
 		tlc.Globals.LNCheck = oldLNCheck
 		tlc.SetUseView(oldUseView)
 		tlc.Globals.SetBound = oldSetBound

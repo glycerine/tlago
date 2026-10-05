@@ -6,16 +6,71 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Latest green commit: `c1831ed`, all five original Test201–205 (normal6.761s/
-race22.646s). Prior `dd022c6` contains all18 Test50–60/Test62–65 and
-Test63a/64a/65a methods, 45 byte-exact vectors; no production changes.
-First seven normal 5.314s/race 30.478s; next eleven normal 7.452s/race 42.566s.
-All four full additional coverage strings mechanically match originals.
-All 18 unchanged Java references pass. Prior `b5dcd29` contains source Test34–49
-and false \subset alias removal; all 16 normal 10.110s/race 75.251s and related
-subset/module/config checks 5.581s. Prior full TLC at `956f530` passes 67.357s;
-prior full workspace at `051bb16` passes root 1647.375s/SANY 0.935s/TLC 68.700s.
-Keep those older full gate scopes explicit. All handles retired.
+Latest green commit: `fa672eb` (selector syntax/operand foundation).
+Current working slice resolves selectors and ports all of original Test206.
+All required checks pass. Final current-source workspace2130 passes root1777.556s,
+SANY1.121s and TLC70.088s (terminal/retired). Ready to commit this slice.
+
+Final gate correction: the first workspace run84712 failed after1460.845s
+at original Test63's exact coverage assertion (terminal/retired); SANY1.100s
+and TLC68.170s pass for that snapshot. Do not label the root snapshot green.
+Reproduced unchanged Github680a/b/c then Test63:39115 exit1/retired, while12
+isolated Test63 repetitions pass9.214s (28911 retired). Cause: the Go model-test
+runner omitted reset/restore of TLCGlobals.warn, so earlier original -nowarning
+flags changed Tool.getNextStates0's allAssigned path and coverage. Java Tool
+line1006 uses the same flag; Ant's original runner forks perTest JVMs. Restore
+Warn=true before each original class's flags, then restore prior Warn on cleanup.
+No evaluator/reporting/assertion changes; all original -nowarning flags retained.
+Three full Github680->Test63 race repetitions pass48.668s (85432 retired).
+Final module/LET binding review keeps shared cached bindings for canonical
+module INSTANCEs only; independently lowered LET contexts retain their own
+bindings so captured outer formals are not merged by source position. Existing
+parser/semantic/XML, original Test201–206, cyclic instance and four native-module
+bridge checks pass race32.615s (51123 retired). Final current-source workspace
+passes root1777.556s/SANY1.121s/TLC70.088s (2130 terminal/retired); log
+`.codex-gotmp/selector-resolution-isolated-final-workspace-go.log`. All required
+checks green. No production changes after that compilation; ready to commit.
+
+2026-10-04 selector resolution after `fa672eb`: original Test206 now passes
+with its entire inherited SuiteTestCase.testSpec, original constructor/settings,
+all model assumptions and three byte-identical source vectors. Ordered source
+selectors are resolved before ordinary semantic checks. Preserve each argument
+group's arity, source definition/module, labels, LET contexts, lifted quantifier/
+function/set/CHOOSE formals, and INSTANCE wrappers. Native TLC receives $Nop or
+LAMBDA/OpArg/OpAppl nodes directly; no XML roundtrip. Final selected LabelNodes
+are retained, `!>>` requires exactly two operands, and INSTANCE definitions and
+selected SubstIn copies share cached module-instance bindings/substitution identities.
+Selected operator substitutions are compiled rather than installed as raw
+flattened names. XML's argument-bearing selector lambdas now consume the same
+resolved selection and retain unused-formal argument weights/level omission.
+Two old Go-only XML fixtures had selected a quantifier domain before binding
+it, which Java rejects. Corrected only their source selector order; retained all
+assertions. Both corrected fixtures pass Java SANY. No original test weakened,
+new skips or invented persistent tests.
+Focused existing parser/semantic/XML + original Test201–206 pass normal6.510s
+(21537 retired), race30.383s (58546 retired). Earlier complete Test206 alone
+passes1.973s (24502 retired); unchanged Java JUnit passes0.521s. Existing Java
+SANY suite passes race8.373s (32940 retired). Existing INSTANCE/level checks pass race95.601s (12144 retired);
+all four standard-module/native bridge checks pass race2.043s (5214 retired).
+Workspace84712 later failed at Test63; see final gate correction above.
+The superseded workspace84999 was interrupted after source-identity changes
+(exit130/retired), not a successful gate. Inventory1056/1269 contexts (83.2%),
+536/626 classes (85.6%),213 pending across90 classes; legacy73/104 complete.
+Remaining selector-negative diagnostics and other legacy contexts are uncredited;
+this test translation does not establish complete Generator selector parity.
+Next: commit this verified selector/Test206 slice, then install
+original Test207 alone from the retained draft. Preserve the five deferred topics.
+
+Prepared (ignored, uninstalled/unrun/uncredited) three more whole custom legacy
+methods in `.codex-gotmp/legacy-custom-lifecycle-three.go.preview`, with six source
+fixture mappings in `legacy-custom-lifecycle-three-fixtures.json`: Test216 exact
+28/7/0 stats, INIT_GENERATED2 21/s/7 and its full uncovered location; Test220 keeps
+checkDeadLock=true so the .cfg decides, no deadlock and2/2/0; TestInvalidInvariant
+retains FAILURE_SAFETY_EVAL, exact invariant-level diagnostic and both original
+GENERAL assertions. Preserve full default coverage/DOT/JSON/debugger/generation
+settings, no added inherited initialization/coverage assertions. Original Java
+reference logs already pass all three. After the six remaining inherited cases,
+these three are the next custom methods before the 22 remaining negative cases.
 
 2026-10-04: Eighteen original legacy coverage/INSTANCE methods committed
 as `dd022c6`; all normal/race checks green. Next original Test201–205 all pass:
@@ -57,8 +112,8 @@ Next: connect the selector state machine to source definition/label/LET scopes,
 lift bound formals with exact arity, retain INSTANCE/SubstIn identities and carry
 selected expressions to native TLC. Fix original Test206 before another feature.
 
-NEXT REQUIRED TASK: original Test206 selector implementation, not another
-feature. Complete twelve-method draft preserved as
+Historical pre-resolution task (superseded by the current snapshot above):
+original Test206 selector implementation, not another feature. Complete twelve-method draft preserved as
 `.codex-gotmp/legacy-recursion-selectors-twelve-installed.go.preview`;
 full 30-fixture mapping `.codex-gotmp/legacy-recursion-selectors-twelve-fixtures.json`.
 Only Test201–205 installed; other seven source copies removed from untracked

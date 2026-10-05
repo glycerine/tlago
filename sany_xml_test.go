@@ -789,7 +789,7 @@ Use == Inv!(x)!1
 		xmlText, diags := SanyXMLSource("ParameterizedSelectorCallXML.tla", `---- MODULE ParameterizedSelectorCallXML ----
 CONSTANT S, a, b, c
 Op(x, y) == \A z \in S : x = y
-Use == Op(a, b)!1!(c)
+Use == Op(a, b)!(c)!1
 ====`)
 		requireNoErrors(t, diags)
 
@@ -834,7 +834,7 @@ Use == Choice!Done
 		xmlText, diags := SanyXMLSource("UnusedSelectorLambdaFormalLevelXML.tla", `---- MODULE UnusedSelectorLambdaFormalLevelXML ----
 CONSTANT S, a, b, c
 Op(x, y) == \A z \in S : TRUE
-Use == Op(a, b)!1!(c)
+Use == Op(a, b)!(c)
 ====`)
 		requireNoErrors(t, diags)
 		root, err := parseCanonicalXML(xmlText)

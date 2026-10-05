@@ -137,7 +137,11 @@ func sanySelectorOperand(expr Expr, step SanySelectorStep) (Expr, bool) {
 	case SanySelectorFirst:
 		index = 1
 	case SanySelectorLast:
-		index = len(operands)
+		// Generator.ArgNum only accepts >> for a binary operand list.
+		if len(operands) != 2 {
+			return nil, false
+		}
+		index = 2
 	}
 	if index < 1 || index > len(operands) {
 		return nil, false

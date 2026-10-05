@@ -1,5 +1,56 @@
 # TLC Architecture Notes for the Go Port
 
+Final gate correction: the first workspace run84712 failed after1460.845s
+at original Test63's exact coverage assertion (terminal/retired); SANY1.100s
+and TLC68.170s pass for that snapshot. Do not label the root snapshot green.
+Reproduced unchanged Github680a/b/c then Test63:39115 exit1/retired, while12
+isolated Test63 repetitions pass9.214s (28911 retired). Cause: the Go model-test
+runner omitted reset/restore of TLCGlobals.warn, so earlier original -nowarning
+flags changed Tool.getNextStates0's allAssigned path and coverage. Java Tool
+line1006 uses the same flag; Ant's original runner forks perTest JVMs. Restore
+Warn=true before each original class's flags, then restore prior Warn on cleanup.
+No evaluator/reporting/assertion changes; all original -nowarning flags retained.
+Three full Github680->Test63 race repetitions pass48.668s (85432 retired).
+Final module/LET binding review keeps shared cached bindings for canonical
+module INSTANCEs only; independently lowered LET contexts retain their own
+bindings so captured outer formals are not merged by source position. Existing
+parser/semantic/XML, original Test201–206, cyclic instance and four native-module
+bridge checks pass race32.615s (51123 retired). Final current-source workspace
+passes root1777.556s/SANY1.121s/TLC70.088s (2130 terminal/retired); log
+`.codex-gotmp/selector-resolution-isolated-final-workspace-go.log`. All required
+checks green. No production changes after that compilation; ready to commit.
+
+2026-10-04 selector resolution after `fa672eb`: original Test206 now passes
+with its entire inherited SuiteTestCase.testSpec, original constructor/settings,
+all model assumptions and three byte-identical source vectors. Ordered source
+selectors are resolved before ordinary semantic checks. Preserve each argument
+group's arity, source definition/module, labels, LET contexts, lifted quantifier/
+function/set/CHOOSE formals, and INSTANCE wrappers. Native TLC receives $Nop or
+LAMBDA/OpArg/OpAppl nodes directly; no XML roundtrip. Final selected LabelNodes
+are retained, `!>>` requires exactly two operands, and INSTANCE definitions and
+selected SubstIn copies share cached module-instance bindings/substitution identities.
+Selected operator substitutions are compiled rather than installed as raw
+flattened names. XML's argument-bearing selector lambdas now consume the same
+resolved selection and retain unused-formal argument weights/level omission.
+Two old Go-only XML fixtures had selected a quantifier domain before binding
+it, which Java rejects. Corrected only their source selector order; retained all
+assertions. Both corrected fixtures pass Java SANY. No original test weakened,
+new skips or invented persistent tests.
+Focused existing parser/semantic/XML + original Test201–206 pass normal6.510s
+(21537 retired), race30.383s (58546 retired). Earlier complete Test206 alone
+passes1.973s (24502 retired); unchanged Java JUnit passes0.521s. Existing Java
+SANY suite passes race8.373s (32940 retired). Existing INSTANCE/level checks pass race95.601s (12144 retired);
+all four standard-module/native bridge checks pass race2.043s (5214 retired).
+Workspace84712 later failed at Test63; see final gate correction above.
+The superseded workspace84999 was interrupted after source-identity changes
+(exit130/retired), not a successful gate. Inventory1056/1269 contexts (83.2%),
+536/626 classes (85.6%),213 pending across90 classes; legacy73/104 complete.
+Remaining selector-negative diagnostics and other legacy contexts are uncredited;
+this test translation does not establish complete Generator selector parity.
+Next: commit this verified selector/Test206 slice, then install
+original Test207 alone from the retained draft. Preserve the five deferred topics.
+
+
 2026-10-04 selector work after `c1831ed`: added Generator.Selector's ordered
 step representation to SanyExprSource (`sany_selector.go`, `ast.go`). Preserve
 name/null/numeric/first/last/colon/@ kinds, selector syntax and each step's raw

@@ -4475,6 +4475,9 @@ func (x *sanyXMLExporter) callArgumentXML(arg Expr, index int, operator *sanyXML
 }
 
 func (x *sanyXMLExporter) lambdaForQuantifiedDefinitionCall(e *CallExpr, name string, ctx sanyXMLExprContext) (*sanyXMLSymbol, Diagnostics) {
+	if selected := sanyExprSelection(e); selected != nil {
+		return x.lambdaForResolvedSelector(e, selected, ctx)
+	}
 	if len(e.Args) == 0 {
 		return nil, nil
 	}

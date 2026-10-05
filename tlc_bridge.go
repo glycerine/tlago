@@ -29,6 +29,7 @@ type tlcBridge struct {
 	sourceSymbols          map[*Definition]*tlc.SymbolNode
 	sourceDefinitions      map[*Definition]*tlc.OpDefNode
 	instanceDefinitions    map[string]*tlcBridgeInstance
+	instanceBindings       map[tlcBridgeInstanceKey]*tlcBridgeInstance
 	nativeDefinitions      map[*tlc.UniqueString]any
 	builtinDefinitions     map[string]*tlc.OpDefNode
 	moduleNodes            map[*Module]*tlc.ModuleNode
@@ -501,7 +502,7 @@ func (b *tlcBridge) prepareInstanceDefinitions() {
 			if instancee == nil {
 				continue
 			}
-			binding := &tlcBridgeInstance{owner: mod, inst: inst}
+			binding := b.instanceBinding(mod, inst)
 			for i := range instancee.Definitions {
 				def := &instancee.Definitions[i]
 				if def.Local {
@@ -747,10 +748,11 @@ func (b *tlcBridge) instanceOpDefinitions(inst Instance) []*tlc.OpDefNode {
 		return nil
 	}
 	out := make([]*tlc.OpDefNode, 0, len(mod.Definitions))
-	binding := &tlcBridgeInstance{owner: b.spec.Modules[b.convertingModule], inst: inst}
-	if binding.owner == nil {
-		binding.owner = b.spec.Root
+	owner := b.spec.Modules[b.convertingModule]
+	if owner == nil {
+		owner = b.spec.Root
 	}
+	binding := b.instanceBinding(owner, inst)
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
 		if def.Local {
@@ -1399,7 +1401,7 @@ func (b *tlcBridge) prepareInstanceBinding(binding *tlcBridgeInstance) {
 			}
 			var replacement tlc.SemanticNode
 			if target.arity > 0 {
-				if ident, ok := expr.(*IdentExpr); ok {
+				if ident, ok := expr.(*IdentExpr); ok && sanyExprSelection(expr) == nil {
 					replacement = b.withExprLocation(expr, tlc.NewOpArgNode(b.exprSymbol(ident.Name)))
 				}
 			}
@@ -1577,6 +1579,9 @@ func (b *tlcBridge) exprSymbol(name string) *tlc.SymbolNode {
 func (b *tlcBridge) convertExpr(expr Expr) tlc.SemanticNode {
 	if expr == nil {
 		return nil
+	}
+	if selected := sanyExprSelection(expr); selected != nil {
+		return b.withExprLocation(expr, b.selectorNode(expr, selected))
 	}
 	var node tlc.SemanticNode
 	switch e := expr.(type) {

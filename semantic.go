@@ -11,6 +11,7 @@ func CheckSpec(spec *Spec) Diagnostics {
 		return Diagnostics{errorAt(Position{}, "E1300", "nil spec")}
 	}
 	var diags Diagnostics
+	diags = append(diags, resolveSanySelectors(spec)...)
 	enclosing := enclosingModules(spec)
 	for _, mod := range spec.Modules {
 		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
@@ -1111,6 +1112,14 @@ func checkLabelReferenceArities(expr Expr, labelArities map[string]int) Diagnost
 		return nil
 	}
 	var diags Diagnostics
+	if selected := sanyExprSelection(expr); selected != nil {
+		// selectorToNode has already checked each argument group against its
+		// own operator/label. The flattened call includes outer parameters.
+		for _, arg := range selected.args {
+			diags = append(diags, checkLabelReferenceArities(arg, labelArities)...)
+		}
+		return diags
+	}
 	if call, ok := expr.(*CallExpr); ok {
 		if ident, ok := call.Callee.(*IdentExpr); ok {
 			if want, exists := labelArities[ident.Name]; exists && len(call.Args) != want {
@@ -2565,6 +2574,9 @@ func moduleImplicitSubstitutions(mod *Module, spec *Spec) map[string]int {
 }
 
 func substitutionExprArity(expr Expr, arities map[string]int) int {
+	if selected := sanyExprSelection(expr); selected != nil && selected.operator {
+		return len(selected.params)
+	}
 	if ident, ok := expr.(*IdentExpr); ok {
 		if arity, exists := arities[ident.Name]; exists {
 			return arity
@@ -2776,6 +2788,14 @@ func instanceNameSentinel(name string) string {
 
 func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
+	if selected := sanyExprSelection(expr); selected != nil {
+		// The selected body is checked in its declaration's lexical scope.
+		// Only the actual arguments originate in this use site's scope.
+		for _, arg := range selected.args {
+			diags = append(diags, checkExpr(arg, defined, locals)...)
+		}
+		return diags
+	}
 	switch e := expr.(type) {
 	case *IdentExpr:
 		if e.Name == "" || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {
@@ -3038,6 +3058,15 @@ func addSubexpressionReferenceNames(defined map[string]Position, base string, ex
 
 func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string][]operatorParamSpec, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
+	if selected := sanyExprSelection(expr); selected != nil {
+		for i, arg := range selected.args {
+			if i < len(selected.params) && selected.params[i].OperatorArity > 0 {
+				continue
+			}
+			diags = append(diags, checkCallArity(arg, arities, operatorParams, locals)...)
+		}
+		return diags
+	}
 	recur := func(expr Expr, arities map[string]int, locals map[string]bool) Diagnostics {
 		return checkCallArity(expr, arities, operatorParams, locals)
 	}
@@ -3212,6 +3241,19 @@ func callArgumentIsOperatorArgument(index int, arg Expr, specs []operatorParamSp
 
 func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorParamSpec, arities map[string]int, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
+	if selected := sanyExprSelection(expr); selected != nil {
+		for i, arg := range selected.args {
+			if i < len(selected.params) && selected.params[i].OperatorArity > 0 {
+				want := selected.params[i].OperatorArity
+				got, ok := operatorArgumentArity(arg, arities, locals)
+				if !ok || got != want {
+					diags = append(diags, errorAt(arg.Position(), "E4271", "operator argument arity mismatch: got %d, want %d", got, want))
+				}
+			}
+			diags = append(diags, checkOperatorArgumentKinds(arg, operatorParams, arities, locals)...)
+		}
+		return diags
+	}
 	switch e := expr.(type) {
 	case *UnaryExpr:
 		diags = append(diags, checkOperatorArgumentKinds(e.Expr, operatorParams, arities, locals)...)
@@ -3450,6 +3492,9 @@ func operatorParamSpecIndex(specs []operatorParamSpec, name string) int {
 }
 
 func operatorArgumentArity(expr Expr, arities map[string]int, locals map[string]bool) (int, bool) {
+	if selected := sanyExprSelection(expr); selected != nil && selected.operator {
+		return len(selected.params), true
+	}
 	switch e := expr.(type) {
 	case *IdentExpr:
 		if locals != nil && locals[e.Name] {
