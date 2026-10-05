@@ -612,12 +612,12 @@ Bad(n) == n
 		requireHasErrorContaining(t, diags, "arity")
 	})
 
-	t.Run("rejects prime inside recursive definitions through SANY syntax", func(t *testing.T) {
+	t.Run("rejects primed recursive arguments through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("RecursivePrime.tla", `---- MODULE RecursivePrime ----
 RECURSIVE op(_)
 op(x) == x'
 ====`)
-		requireHasErrorContaining(t, diags, "recursive definition")
+		requireHasErrorContaining(t, diags, "Argument 1 of recursive operator op is primed")
 		requireHasErrorContaining(t, diags, "prime")
 	})
 

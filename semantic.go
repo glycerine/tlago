@@ -374,9 +374,6 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			if got := len(def.Params); got != want {
 				diags = append(diags, errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want))
 			}
-			if exprContainsPrime(def.Expr) {
-				diags = append(diags, errorAt(def.Pos, "E4290", "recursive definition %s cannot contain prime", def.Name))
-			}
 		} else {
 			if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
 				addName(def.Name, def.Pos, OperatorDecl)
@@ -498,6 +495,9 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
 	}
 	for _, def := range mod.Definitions {
+		if _, recursive := recursiveArities[def.Name]; recursive {
+			diags = append(diags, levelChecker.checkRecursiveParameters(def, nil)...)
+		}
 		locals := map[string]bool{}
 		for _, param := range def.Params {
 			locals[param] = true
@@ -748,9 +748,6 @@ func checkLetRecursiveSections(expr *LetExpr) Diagnostics {
 		}
 		if got, want := len(def.Params), recursiveArities[name]; got != want {
 			diags = append(diags, errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want))
-		}
-		if exprContainsPrime(def.Expr) {
-			diags = append(diags, errorAt(def.Pos, "E4290", "recursive definition %s cannot contain prime", def.Name))
 		}
 	}
 	return diags
@@ -4107,6 +4104,9 @@ func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[str
 		letLocals := letScopeLocals(locals, e)
 		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
+			if recursiveNames[def.Name] {
+				diags = append(diags, levelChecker.checkRecursiveParameters(def, letLocals)...)
+			}
 			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			diags = append(diags, levelChecker.check(def.Expr, defLocals)...)
 		}

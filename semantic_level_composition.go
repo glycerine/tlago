@@ -47,7 +47,7 @@ func (c *sanyLevelCompositionChecker) withLet(expr *LetExpr, locals map[string]b
 	}
 	for i := range expr.Definitions {
 		def := &expr.Definitions[i]
-		context.locals[def.Name] = sanyLeibnizLocal{ref: sanySelectorDefinition{module: context.module, def: def, params: sanyDefinitionParams(def)}, context: context}
+		context.locals[def.Name] = sanyLeibnizLocal{recursive: letRecursiveNames(expr)[def.Name], ref: sanySelectorDefinition{module: context.module, def: def, params: sanyDefinitionParams(def)}, context: context}
 	}
 	return &sanyLevelCompositionChecker{dependencies: c.dependencies, context: context}
 }
@@ -147,4 +147,26 @@ func (a *sanyLeibnizAnalyzer) applicationMaximums(operator Expr, selected *sanyS
 		}
 	}
 	return maximums
+}
+
+// ModuleNode forbids priming recursive formal arguments, not free variables in
+// recursive bodies. The body's propagated maximum captures indirect priming.
+func (c *sanyLevelCompositionChecker) checkRecursiveParameters(def Definition, locals map[string]bool) Diagnostics {
+	maximums := c.dependencies.applicationMaximums(&IdentExpr{Name: def.Name}, nil, len(def.Params), c.contextWithLocals(locals))
+	var diags Diagnostics
+	for i, maximum := range maximums {
+		if maximum >= actionLevel {
+			continue
+		}
+		message := fmt.Sprintf("Argument %d of recursive operator %s is primed", i+1, def.Name)
+		diagnostic := errorAt(def.Pos, "E4290", "%s", message)
+		position := def.SourcePosition()
+		if def.Syntax != nil {
+			position = sanyNodePosition(def.Syntax)
+		}
+		diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+		diagnostic.SANYMessage = message
+		diags = append(diags, diagnostic)
+	}
+	return diags
 }

@@ -1,5 +1,49 @@
 # TLC Port Handoff
 
+2026-10-05 four original simulation models complete afterc0c789b:
+Whole testSpec methods for simulation.Github1191Test, Github1191aTest,
+Github602Test and NQSpecTest are translated in tlc_simulation_models_java_test.go.
+Preserve all constructors, inherited ModelCheckerTestCase flags/exit assertions,
+finished/no-GENERAL checks, Github1191a's zero-uncovered check and Github602's
+exact first progress parameters156/1/100/0/0. NQSpec retains its inherited existing
+debugger flag and all100traces; no new debugger/scoped-identifier work is done.
+All8 input files match Java bytes;7 are new vectors, Github602 already exists.
+
+NQSpec initially fails E4290 because Go rejects any prime in a recursive body.
+ModuleNode instead checks each recursive formal's propagated maximum against
+ActionLevel. Primed free variables are allowed. Both module and LET checks now
+use that rule and exact Java diagnostic/range. Recursive signatures initialize
+original formals to ActionLevel and weight1; INSTANCE-prepended and selected bound
+parameters retain their own rules. Preserve monotone dependency/constraint
+propagation and per-iteration caches. This addresses formal argument priming and
+initialization; it does not claim complete SANY higher-order/recursive-section
+level constraint graphs. An existing Go negative case keeps its unchanged input
+and both rejection assertions; its obsolete generic substring is strengthened
+to Java's full Argument1-of-recursive-operator-op-is-primed diagnostic.
+
+Unchanged originals pass Java with -ea:1191 0.378s,1191a0.364s,6020.366s,NQ3.141s;
+logs simulation-models-<Class>Test-original-java.log. Initial Go22109 is terminal
+failure on NQ's blanket rule, log simulation-models-initial-race.log. Final all4
+methods pass race187.391s (39534 terminal), NQ183.72s, log
+simulation-models-recursive-final-race.log. All original assertions/settings
+retained. Full SANY Java passes race9.032s (89421 terminal). Related legacy201–220,
+99/999/InvalidInvariant/ETest plus parser/semantic/XML/elevated-warning selections
+pass race101.892s (64110 terminal), log
+simulation-models-recursive-final-related-java-message-race.log. Earlier related
+84635/44257 fail the obsolete native message assertion and are retired failures,
+not credited passes. Source assertions and fixture bytes were reviewed.
+Inventory1131/1269 contexts (89.1%),576/626 classes (92.0%);138pending across50classes.
+Simulation44/55 methods,9/20 classes complete; next11 liveness/simulation models
+and their generated TTrace variants, retaining every inherited assertion.
+
+Trace workspace82090/46404 are terminal exit0: root1839.855s/1836.917s,
+SANY1.169s/1.135s,TLC68.787s/68.899s. Latest completed full snapshot46404 precedes
+result-queue/simulator/recursive changes. Queue39038/79605 and simulator59582
+snapshots remain live. Current final workspace84016 is live, log
+simulation-models-recursive-final-workspace-go.log, -count=1 -failfast -timeout60m
+./.... Resume exact handles; retain snapshot scopes and do not credit current
+full success before terminal exit0. This supersedes earlier live notes.
+
 2026-10-05 original simulator correctness classes complete after3d715c3:
 Whole tool.SimulatorTest.testPrintBehaviorShouldPrintErrorState is translated in
  tlc_simulator_error_state_java_test.go: Github726 FastTool inputs, seed/aril0,

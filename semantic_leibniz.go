@@ -89,8 +89,9 @@ type sanyLeibnizBinding struct {
 	use     sanyLeibnizUse
 }
 type sanyLeibnizLocal struct {
-	ref     sanySelectorDefinition
-	context *sanyLeibnizContext
+	recursive bool
+	ref       sanySelectorDefinition
+	context   *sanyLeibnizContext
 }
 type sanyLeibnizContext struct {
 	atUse     sanyLeibnizUse
@@ -268,6 +269,26 @@ func (a *sanyLeibnizAnalyzer) definition(ref sanySelectorDefinition, arguments [
 	return a.definitionBody(ref, ref.def.Expr, ref.params, arguments, caller, lexical)
 }
 
+func sanyDefinitionIsRecursive(ref sanySelectorDefinition, lexical *sanyLeibnizContext) bool {
+	if lexical != nil {
+		if local, ok := lexical.locals[ref.def.Name]; ok && local.ref.def == ref.def {
+			return local.recursive
+		}
+	}
+	if ref.module != nil {
+		for _, decl := range ref.module.Declarations {
+			if decl.Kind == RecursiveDecl {
+				for _, name := range decl.Names {
+					if name == ref.def.Name {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 // OpDefNode's formal dependencies are computed independently of the actual
 // scalar values supplied at a use site. Recursive summaries grow monotonically,
 // as in its levelCheck iterations, before mapping formals to those actuals.
@@ -287,8 +308,18 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 	signature := a.signatures[key]
 	if signature == nil {
 		signature = &sanyLeibnizSignature{ids: make([]int, len(params)), non: make([]bool, len(params)), weights: make([]bool, len(params)), maxLevels: make([]tlaLevel, len(params))}
+		recursive := body == ref.def.Expr && sanyDefinitionIsRecursive(ref, lexical)
+		firstFormal := 0
+		for _, wrapper := range ref.wrappers {
+			firstFormal += len(wrapper.inst.Params)
+		}
 		for i := range params {
 			signature.maxLevels[i] = temporalLevel
+			if recursive && i >= firstFormal && i < firstFormal+len(ref.def.Params) {
+				// ModuleNode initializes recursive formals to ActionLevel and weight 1.
+				signature.maxLevels[i] = actionLevel
+				signature.weights[i] = true
+			}
 			signature.ids[i] = a.nextID
 			a.nextID++
 		}
@@ -584,7 +615,7 @@ func (a *sanyLeibnizAnalyzer) expressionUncached(expr Expr, ctx *sanyLeibnizCont
 		}
 		for i := range e.Definitions {
 			def := &e.Definitions[i]
-			nested.locals[def.Name] = sanyLeibnizLocal{ref: sanySelectorDefinition{module: ctx.module, def: def, params: sanyDefinitionParams(def)}, context: nested}
+			nested.locals[def.Name] = sanyLeibnizLocal{recursive: letRecursiveNames(e)[def.Name], ref: sanySelectorDefinition{module: ctx.module, def: def, params: sanyDefinitionParams(def)}, context: nested}
 		}
 		use := a.expression(e.Body, nested)
 		// LetInNode.levelCheck copies allParams from the body, but does not
