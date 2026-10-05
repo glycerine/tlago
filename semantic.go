@@ -445,7 +445,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		if expr == nil {
 			continue
 		}
-		if !defExprPositions[positionKey(expr.Position())] {
+		if !assumption.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
@@ -470,7 +470,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		if expr == nil {
 			continue
 		}
-		if !defExprPositions[positionKey(expr.Position())] {
+		if !theorem.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
@@ -504,10 +504,11 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, defArities, locals)...)
 		diags = append(diags, checkFunctionArity(def.Expr, functionArities, locals)...)
 		diags = append(diags, checkLabelReferenceArities(def.Expr, labelArities)...)
-		diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
 		if def.AssumeProve && def.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(def.AssumeProveBody, true)...)
 			diags = append(diags, checkAssumeProveNewSymbolLevels(def.AssumeProveBody, declKinds)...)
+		} else {
+			diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
 		}
 		if !def.AssumeProve {
 			diags = append(diags, checkAssumeProveDefinitionUse(def.Expr, assumeProveDefs, locals)...)
@@ -938,7 +939,11 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		diags = append(diags, checkLabels(e.Else, ctx)...)
 	case *LetExpr:
 		for _, def := range e.Definitions {
-			diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
+			if def.AssumeProve && def.AssumeProveBody != nil {
+				diags = append(diags, checkAssumeProveLabels(def.AssumeProveBody, true)...)
+			} else {
+				diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
+			}
 		}
 		diags = append(diags, checkLabels(e.Body, ctx)...)
 	case *QuantifierExpr:
@@ -1143,29 +1148,38 @@ func checkLabelReferenceArities(expr Expr, labelArities map[string]int) Diagnost
 }
 
 func checkAssumeProveLabels(body *AssumeProve, topLevel bool) Diagnostics {
+	return checkAssumeProveLabelsInScope(body, topLevel, false)
+}
+
+// Generator tracks NEW declaration scope independently of its formal-parameter
+// stack. A NEW declaration is an OpDeclNode, not a quantified FormalParamNode;
+// it does not become a required label parameter. In nested ASSUME/PROVE blocks,
+// labels are forbidden only after a NEW declaration enters scope.
+func checkAssumeProveLabelsInScope(body *AssumeProve, topLevel, declarationScope bool) Diagnostics {
 	if body == nil {
 		return nil
 	}
-	hasNew := false
-	for _, item := range body.Assumptions {
-		if item.NewSymbol != nil {
-			hasNew = true
-			break
-		}
-	}
 	var diags Diagnostics
+	check := func(expr Expr) {
+		if declarationScope {
+			diags = append(diags, checkLabelsInAssumeProveNewBlock(expr)...)
+		}
+		diags = append(diags, checkLabels(expr, labelCheckContext{allowed: true})...)
+	}
 	for _, item := range body.Assumptions {
 		switch {
-		case item.Nested != nil:
-			diags = append(diags, checkAssumeProveLabels(item.Nested, false)...)
-		case item.Expr != nil:
-			if !topLevel && hasNew {
-				diags = append(diags, checkLabelsInAssumeProveNewBlock(item.Expr)...)
+		case item.NewSymbol != nil:
+			check(item.NewSymbol.Domain)
+			if !topLevel {
+				declarationScope = true
 			}
-			diags = append(diags, checkLabels(item.Expr, labelCheckContext{allowed: true})...)
+		case item.Nested != nil:
+			diags = append(diags, checkAssumeProveLabelsInScope(item.Nested, false, declarationScope)...)
+		case item.Expr != nil:
+			check(item.Expr)
 		}
 	}
-	diags = append(diags, checkLabels(body.Prove, labelCheckContext{allowed: true})...)
+	check(body.Prove)
 	return diags
 }
 

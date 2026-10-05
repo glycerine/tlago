@@ -177,6 +177,7 @@ func (p *SanyParser) Module() *SanySyntaxNode {
 
 func (p *SanyParser) BeginModule() *SanySyntaxNode {
 	begin := p.consumeAny([]SanyTokenKind{SanyTokenBm0, SanyTokenBm1, SanyTokenBm2}, "expected ---- MODULE")
+	p.reclassifyFieldName()
 	name := p.Identifier()
 	if name != nil {
 		p.moduleName = name.Image
@@ -194,11 +195,13 @@ func (p *SanyParser) Extends() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenExtends) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.reclassifyFieldName()
 		name := p.Identifier()
 		p.addDependency(name.Image)
 		heirs = append(heirs, name)
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.reclassifyFieldName()
 			name := p.Identifier()
 			p.addDependency(name.Image)
 			heirs = append(heirs, name)
@@ -290,6 +293,7 @@ func (p *SanyParser) Instance() *SanySyntaxNode {
 func (p *SanyParser) Instantiation() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenInstance, "expected INSTANCE"))
+	p.reclassifyFieldName()
 	name := p.Identifier()
 	p.addDependency(name.Image)
 	heirs = append(heirs, name)
@@ -1339,6 +1343,20 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 				break
 			}
 		}
+		// Java Expression reclassifies the token after a record dot before
+		// parsing it as Identifier, so keywords cannot start other expressions.
+		if sawExpressionToken && !stack.PreInEmptyTop() && p.check(SanyTokenDot) {
+			tok := p.advance()
+			op, _ := GetSanyOperator(tok.Image)
+			stack.Push(p.genericOperatorNode(tok, op), &op)
+			if err := stack.ReduceStack(); err != nil {
+				p.add(tok.Begin, "E1301", err.Error())
+				return stack.TopNode()
+			}
+			p.reclassifyFieldName()
+			stack.Push(p.Identifier(), nil)
+			continue
+		}
 		if p.splitLeadingFairnessIdentifier() {
 			continue
 		}
@@ -2041,6 +2059,9 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfRcds"], heirs...)
 	}
+	if p.peekNext().Kind == SanyTokenMapto {
+		p.reclassifyFieldName()
+	}
 	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenMapto {
 		heirs = append(heirs, p.FieldVal())
 		for p.match(SanyTokenComma) {
@@ -2170,6 +2191,7 @@ func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenDot) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.reclassifyFieldName()
 		heirs = append(heirs, p.Identifier())
 		return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptComponent"], heirs...)
 	}
@@ -2528,6 +2550,24 @@ func (p *SanyParser) genericOperatorReferenceNode(tok *SanyToken, op SanyOperato
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
 		NewSanyNode(SanySyntaxNodeKindByName["N_NonExpPrefixOp"], NewSanyTokenNode(tok)),
 	)
+}
+
+// isSanyFieldNameToken mirrors Java tla+.jj isFieldNameToken. The generated
+// token ranges retain Java's numbering and include its keyword synonyms.
+func isSanyFieldNameToken(kind SanyTokenKind) bool {
+	return (kind >= SanyTokenAction && kind <= SanyTokenExcept) ||
+		kind == SanyTokenExtends ||
+		(kind >= SanyTokenIf && kind <= SanyTokenSF) ||
+		kind == SanyTokenState ||
+		(kind >= SanyTokenThen && kind <= SanyTokenWith) ||
+		kind == SanyTokenUs ||
+		(kind >= SanyTokenOp112 && kind <= SanyTokenOp116)
+}
+
+func (p *SanyParser) reclassifyFieldName() {
+	if isSanyFieldNameToken(p.peek().Kind) {
+		p.peek().Kind = SanyTokenIdentifier
+	}
 }
 
 func (p *SanyParser) Identifier() *SanySyntaxNode {

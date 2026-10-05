@@ -1,5 +1,44 @@
 # TLC Port Handoff
 
+2026-10-04 Test207/Test208 checkpoint (focused checks pass; full gates still running):
+Original Test207 and Test208 are now complete translations, with all inherited
+assertions, original constructor/settings, and four byte-identical source vectors.
+Test207 exposed incorrect NEW declaration treatment in label validation: validate
+preserved ASSUME/PROVE clauses, distinguish NEW OpDeclNodes from quantified formal
+parameters, and track nested declaration scope in source order through PROVE.
+Test208 exposed missing Java isFieldNameToken handling; reserved keyword record
+components and EXCEPT paths now use Java's exact token ranges. Module identifiers
+and the original initial keyword record-constructor branch use the same helper.
+Neither original test nor fixture was weakened. Original207 passes2.032s;
+original208 passes1.164s. Related parser/semantic/XML and original201–208 race
+checks pass33.572s (65197 terminal/retired); earlier complete SANY Java race checks
+pass8.386s. Inventory1058/1269 contexts,538/626 classes,211pending/88classes;
+legacy75/104. Whole original Test209 passes1.205s in ignored overlay35080
+(terminal/retired), not installed/credited. Whole original Test219 fails in
+ignored overlay43516 (exit1/retired): semantic INSTANCE export metadata adds
+parameterized instance arity but omits those parameter positions from operator
+argument specifications. Fix the actual metadata before any later context.
+Logs: .codex-gotmp/legacy-preflight209-go.log and legacy-preflight219-go.log.
+
+CommunityModules progress-output change committed separately as840d494.
+User's CommunityModules steering: keep the whole original test, but make go test
+-v visibly report progress. community_modules_java_test.go now streams the child
+stdout/stderr while preserving complete failure output, reports setup/dependency
+and module-loading phases, and emits phase/elapsed-time/PID heartbeats every10s.
+No original assertions, execution phases or production IOExec behavior changed.
+Live verbose run73656 in .codex-gotmp/community-progress-verbose-go.log shows
+module parsing and repeated10s heartbeats; this is evidence of progress output,
+not a completed correctness gate. Run is still active: resume with write_stdin.
+Whole workspace44152 in .codex-gotmp/legacy-proof-fields-workspace-go.log is
+also still active; it compiled before the verbosity harness change, so its gate
+covers the207/208 parser/semantic fixes. Do not restart or call either run green
+until its authoritative handle/log reports terminal success. Finalize gate
+receipts after these runs finish. This checkpoint records only focused green
+checks; full-workspace success remains pending. Resume the Test219 metadata fix,
+then install/verify/credit original209/219 once complete.
+Preserve the five deferred topics and never create a testdata fixture directory.
+
+
 This handoff is for the next Codex/model after the system upgrade. It records
 the active goal, the current working rules, what is already done, what to avoid,
 and the best next steps for continuing the Go port of Java TLC.
