@@ -1,12 +1,9 @@
 package tlc
 
 import (
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -367,7 +364,13 @@ func (s *OffHeapDiskFPSet) prepareOffHeapTableLocked() {
 	if s == nil || s.array == nil || s.array.Size() == 0 {
 		return
 	}
+	if !s.checkOffHeapInput() {
+		panic(NewAssertionError())
+	}
 	LongArraysSortRange(s.array, 0, s.array.Size()-1+int64(s.probeLimit), s.offHeapLongComparator)
+	if s.checkOffHeapSorted() != -1 {
+		panic(NewAssertionError())
+	}
 }
 
 func (s *OffHeapDiskFPSet) offHeapLongComparator(fpA int64, posA int64, fpB int64, posB int64) int {
@@ -423,134 +426,77 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 		s.forceFlush.Store(false)
 		return nil
 	}
-	values := s.unflushedValuesLocked()
-	if len(values) == 0 {
-		s.tblCnt = 0
-		s.forceFlush.Store(false)
-		return nil
-	}
-	sort.Slice(values, func(i, j int) bool { return values[i] < values[j] })
-	if err := s.mergeOffHeapValues(values); err != nil {
+	s.prepareOffHeapTableLocked()
+	itr := newOffHeapIterator(s.array, s.tblCnt, 0, s.indexer, true)
+	if err := s.mergeOffHeapIterator(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}); err != nil {
 		return err
 	}
-	for _, fp := range values {
-		s.markFlushed(fp)
+	ok, err := s.checkOffHeapIndex()
+	if err != nil {
+		return err
 	}
-	s.tblCnt = 0
-	s.tblLoad = 0
+	if !ok {
+		panic(NewAssertionError())
+	}
+	s.tblCnt, s.tblLoad = 0, 0
 	s.forceFlush.Store(false)
 	return nil
 }
 
-func (s *OffHeapDiskFPSet) unflushedValuesLocked() []uint64 {
-	values := make([]uint64, 0, s.tblCnt)
-	for pos := int64(0); pos < s.array.Size(); pos++ {
-		value := s.array.Get(pos)
-		if value > 0 {
-			values = append(values, uint64(value))
-		}
-	}
-	return values
-}
-
-func (s *OffHeapDiskFPSet) markFlushed(fp uint64) {
-	for i := 0; i <= s.probeLimit; i++ {
-		position := s.indexer.GetIdxProbe(fp, i)
-		value := s.array.Get(position)
-		if uint64(value) == fp {
-			s.array.Set(position, int64(fp|diskFPSetMarkFlushed))
-			return
-		}
-	}
-}
-
+// Retain the native slice entry point while sharing the source stream merge.
 func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
-	oldValues, err := readFingerprintFile(s.fpFilename)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	indexLen := s.calculateOffHeapIndexLen(int64(len(newValues)))
-	newIndex := make([]uint64, indexLen)
+	position := 0
+	return s.mergeOffHeapIterator(offHeapMergeIterator{
+		elements: int64(len(newValues)),
+		markNext: func() (int64, bool) {
+			if position >= len(newValues) {
+				panic(NewNoSuchElementException())
+			}
+			v := newValues[position]
+			position++
+			return int64(v), true
+		},
+		hasNext: func() bool { return position < len(newValues) },
+	})
+}
+
+func (s *OffHeapDiskFPSet) mergeOffHeapIterator(itr offHeapMergeIterator) error {
+	newIndex := make([]uint64, s.calculateOffHeapIndexLen(itr.elements))
 	if err := os.MkdirAll(filepath.Dir(s.tmpFilename), 0o755); err != nil {
 		return err
 	}
-	tmp, err := os.Create(s.tmpFilename)
+	out, err := NewBufferedRandomAccessFile(s.tmpFilename, "rw")
 	if err != nil {
 		return err
 	}
-	currIndex := 0
-	written := int64(0)
-	var last uint64
-	writeFP := func(fp uint64) error {
-		var buf [8]byte
-		binary.BigEndian.PutUint64(buf[:], fp)
-		if _, err := tmp.Write(buf[:]); err != nil {
-			return err
-		}
-		atomic.AddUint64(&s.diskWriteCnt, 1)
-		if written%diskFPSetNumEntriesPerPage == 0 && currIndex < len(newIndex) {
-			newIndex[currIndex] = fp
-			currIndex++
-		}
-		last = fp
-		written++
-		return nil
-	}
-	i, j := 0, 0
-	for i < len(oldValues) && j < len(newValues) {
-		switch {
-		case oldValues[i] < newValues[j]:
-			if err := writeFP(oldValues[i]); err != nil {
-				_ = tmp.Close()
-				return err
-			}
-			i++
-		case oldValues[i] > newValues[j]:
-			if err := writeFP(newValues[j]); err != nil {
-				_ = tmp.Close()
-				return err
-			}
-			j++
-		default:
-			PrintWarning(ECTLCFPValueAlreadyOnDisk, fmt.Sprint(oldValues[i]))
-			if err := writeFP(oldValues[i]); err != nil {
-				_ = tmp.Close()
-				return err
-			}
-			i++
-			j++
-		}
-	}
-	for ; i < len(oldValues); i++ {
-		if err := writeFP(oldValues[i]); err != nil {
-			_ = tmp.Close()
-			return err
-		}
-	}
-	for ; j < len(newValues); j++ {
-		if err := writeFP(newValues[j]); err != nil {
-			_ = tmp.Close()
-			return err
-		}
-	}
-	if written == 0 {
-		last = 0
-	}
-	if currIndex < len(newIndex) {
-		newIndex[currIndex] = last
-		currIndex++
-	}
-	if err := tmp.Close(); err != nil {
+	defer out.Close()
+	if err := out.SetLength(0); err != nil {
 		return err
 	}
-	readerCnt := len(s.braf)
-	poolCnt := len(s.brafPool)
+	in := s.braf[0]
+	if err := in.Seek(0); err != nil {
+		return err
+	}
+	length, err := in.Length()
+	if err != nil {
+		return err
+	}
+	if err := s.mergeOffHeapEntries(in, out, itr, length/fpSetLongSize); err != nil {
+		return err
+	}
+	length, err = out.Length()
+	if err != nil {
+		return err
+	}
+	if err := s.writeIndex(newIndex, out, length/fpSetLongSize-1); err != nil {
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	readerCnt, poolCnt := len(s.braf), len(s.brafPool)
 	if err := s.closeBRAFReaders(); err != nil {
 		return err
-	}
-	if currIndex != indexLen {
-		_ = s.openBRAFReaders(readerCnt, poolCnt)
-		return fmt.Errorf("OffHeapDiskFPSet index mismatch: got %d want %d", currIndex, indexLen)
 	}
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
 		_ = s.openBRAFReaders(readerCnt, poolCnt)
@@ -560,7 +506,7 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 		return err
 	}
 	s.index = newIndex
-	s.fileCnt += int64(len(newValues))
+	s.fileCnt += itr.elements
 	return nil
 }
 

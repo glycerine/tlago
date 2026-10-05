@@ -114,22 +114,24 @@ func NewMSBDiskFPSet(config *FPSetConfiguration) *MSBDiskFPSet {
 }
 
 func NewNonCheckpointableDiskFPSet(config *FPSetConfiguration) *NonCheckpointableDiskFPSet {
-	return &NonCheckpointableDiskFPSet{DiskFPSet: newHeapDiskFPSet(config, diskFPSetModeMSB, false)}
+	if config == nil {
+		config = NewFPSetConfiguration()
+	}
+	maxTblCnt := config.GetMemoryInFingerprintCnt()
+	if maxTblCnt <= 0 {
+		panic(NewIllegalArgumentException("Negative or zero upper storage limit"))
+	}
+	return &NonCheckpointableDiskFPSet{DiskFPSet: &DiskFPSet{
+		config: config, maxTblCnt: maxTblCnt, mode: diskFPSetModeMSB,
+	}}
 }
 
 func NewOffHeapDiskFPSet(config *FPSetConfiguration) *OffHeapDiskFPSet {
 	if config == nil {
 		config = NewFPSetConfiguration()
 	}
-	positions := config.GetMemoryInFingerprintCnt()
-	if positions <= 0 {
-		positions = diskFPSetDefaultMaxTblCnt
-	}
 	base := NewNonCheckpointableDiskFPSet(config)
-	base.DiskFPSet.maxTblCnt = positions
-	base.DiskFPSet.tbl = nil
-	base.DiskFPSet.capacity = 0
-	base.DiskFPSet.mask = 0
+	positions := config.GetMemoryInFingerprintCnt()
 	set := &OffHeapDiskFPSet{
 		NonCheckpointableDiskFPSet: base,
 		array:                      NewLongArray(positions),

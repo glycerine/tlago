@@ -1,5 +1,46 @@
 # TLC Port Handoff
 
+2026-10-05 whole original OffHeapDiskFPSetTest complete after634db62:
+All23 original methods translated in offheap_disk_fpset_java_test.go: all16 exact
+seeds/lengths, complete insertion/special-position/contains/invariant/memory-only
+checks, all four original page sizes and shrinking-TreeSet loop conditions,
+full99999999-entry index with signed-int overflow assertion/actual native seeks,
+original zero-filling reader and dummy iterator virtual overrides, duplicate and
+distinct merges/all10 output values/six warnings/exact warning fingerprint set.
+No smaller index, substitute seed, weakened assertion or invented tests.
+OffHeap constructor previously went through heap-only allocation and checks;
+NonCheckpointable constructor now matches its Java DiskFPSet parent with exact
+positive fingerprint budget/IllegalArgumentException boundary and no heap table.
+Ported source getDiskOffset/isHigher, writeIndex and full streaming merge with
+original independent branches, read counts, duplicates, monotonic assertions and
+virtual markNext/hasNext. Actual eviction now sorts the array using original
+comparator and consumes/marks its source iterator rather than collecting and
+sorting a separate slice. Ported source input/sorted/index assertion helpers and
+OffHeap invariant-flush dispatch. Existing native slice merge adapter shares the
+lower stream merge; it is no longer the eviction path. Original concurrent
+partitioning implementation/stress suites remain outstanding in supplementary
+scope; this serial source path completion does not credit those suites.
+Java49155 terminal exit0/all23 methods34.089s, offheap-disk-original-java.log.
+InitialGo1117 terminal exit0/all23 normal52.027s before final assertion helpers.
+FinalGo1154 terminal exit0/all23 normal53.440s, offheap-disk-final-go.log; full
+index traversal53.23s. Race49218 terminal exit0/22 methods1.278s excluding ONLY
+writeIndex, offheap-disk-declared-race.log; do not claim all23-method race.
+Related96417 terminal exit0/race21.292s, offheap-disk-related-race.log: native
+OffHeap and disk checks, original factory methods and original OffHeap iterators.
+Initial native26998 also terminal exit0/.043s. All these handles retired.
+Inventory1251/1269 contexts(98.6%),609/626 classes(97.3%);18pending/17classes.
+Main fingerprint group165/165 methods/all20 classes complete. Supplementary util,
+long-running/concurrent suites remain in scope and uncredited where unchecked.
+LIVE whole65591 is still the SHORT snapshot before this OffHeap implementation,
+short-disk-final-workspace-go.log; poll exact handle, no current green claim.
+LIVE current TLC85410 is -count=1 -failfast -timeout=20m ./tlc redirected to
+ offheap-disk-final-tlc-go.log; poll exact handle. Neither is terminal yet.
+Existing AliasSub2 captured replay mismatch reproduces in pinned Java; pending
+async behavior choice remains unanswered and no replay semantics/test changed.
+Goal active. Next independent batch: shared util original test translations;
+read full source constructors/methods and implementation first. User-deferred
+models/distributed/JPF/benchmarks and forbidden email scopes remain unchanged.
+
 2026-10-05 whole original ShortDiskFPSetTest complete after297210b:
 All24 original methods translated in short_disk_fpset_java_test.go with complete
 AbstractFPSetTest setup/helpers. Preserve all six source runKnown conditional
