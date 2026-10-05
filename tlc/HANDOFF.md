@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 5, 2026. Latest verified code commit: `305a13f`.
+Updated: October 5, 2026. Full-suite verification baseline: `305a13f`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -41,6 +41,17 @@ packaged properties, networking primitives, OpenJDK notices, and `x/text`.
 Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
+
+The CLI help guide is implemented in `cli_help.go`. `tlago -help` prints all
+commands and flags; `tlago COMMAND -help` and `tlago help COMMAND` filter flag
+details by command. Help includes summaries, explanations, Java/Toolbox
+correspondence, defaults, examples, and current implementation limits. It exits
+successfully without loading files or starting a checker. The existing CLI,
+XML-help/error, SANY warning-control, and Java TLC option tests pass. Manual
+checks covered 46 help invocations, error paths, the expression delimiter,
+complete named TLC-flag coverage, and the absence of help-side file creation.
+The full workspace receipt below remains scoped to core baseline `305a13f`;
+this CLI-only change was verified with focused normal checks and a command build.
 
 Commit `305a13f` restores disk fingerprint reader ownership, removes unnecessary
 counter serialization, and completes the original `DumpLoadTraceTest` class.

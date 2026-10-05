@@ -23,10 +23,31 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|checkimplfile|repl-expr|apalache-json|sany-xml [-I DIR] FILE...")
+		fmt.Fprintln(stderr, "Run tlago -help for commands, flags, examples, and Java/Toolbox equivalents.")
+		return ExitToolFailure
+	}
+	if isCLIHelpFlag(args[0]) {
+		printCLIHelp(stdout, "")
+		return ExitOK
+	}
+	if args[0] == "help" {
+		if len(args) == 1 {
+			printCLIHelp(stdout, "")
+			return ExitOK
+		}
+		if len(args) == 2 && canonicalCLICommand(args[1]) != "" {
+			printCLIHelp(stdout, canonicalCLICommand(args[1]))
+			return ExitOK
+		}
+		fmt.Fprintln(stderr, "usage: tlago help [COMMAND]")
 		return ExitToolFailure
 	}
 	cmd := args[0]
 	files := args[1:]
+	if command := canonicalCLICommand(cmd); command != "" && cliArgsContainHelp(files) {
+		printCLIHelp(stdout, command)
+		return ExitOK
+	}
 	if len(files) == 0 {
 		fmt.Fprintln(stderr, "at least one file is required")
 		return ExitToolFailure
@@ -157,8 +178,10 @@ func sanitizeREPLError(text string) string {
 
 func cliArgsContainHelp(args []string) bool {
 	for _, arg := range args {
-		switch arg {
-		case "-help", "--help", "-h":
+		if arg == "--" {
+			return false
+		}
+		if isCLIHelpFlag(arg) {
 			return true
 		}
 	}

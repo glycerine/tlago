@@ -1,5 +1,24 @@
 # TLC Port Progress
 
+2026-10-05 manual CLI help implemented:
+RunCLI now handles top-level and command-specific -help, --help, -h, and
+help [COMMAND] before file validation or checker setup. New cli_help.go lists
+all command families and flag summaries, then explains each option, its Java
+CLI / Toolbox counterpart, defaults, aliases, examples, and implementation
+limits. In particular, modelcheck --tlc selects the TLC port; -deadlock disables
+checking; Go runtime properties are distinct from JVM arguments. XML options
+accepted without distinct behavior and debugger hooks without a network DAP
+server are described accurately. README adds manual invocation examples.
+Built cmd/tlago and manually checked 46 help invocations, invalid-command/no-arg
+paths, the repl expression delimiter, all 46 named TLC parser flags, and no
+help-created filesystem artifacts. Full and modelcheck help transcripts are in
+ignored .codex-gotmp/tlago-cli-{full,modelcheck}-help.txt. Final focused normal
+checks pass: root 0.015 seconds, SANY 0.013 seconds, TLC 0.015 seconds, covering
+TestCLIBehaviors, original XML help/error tests, SANY CLI warning controls, and
+TestJavaTLC. No new persistent tests, modified original assertions, test-port
+credits, long workload runs, or race instrumentation. The prior whole-workspace
+receipt remains scoped to 305a13f; this help-only change has focused verification.
+
 2026-10-05 handoff grooming: consolidated HANDOFF.md into a current restart
 guide at verified code commit 305a13f. Removed overlapping historical status
 blocks and obsolete active-job instructions from the guide; detailed audit

@@ -1,6 +1,30 @@
 tlago: TLA+ tools ported to Go
 ==============================
 
+## Command-line use
+
+Run the full command and flag guide, or select one command's help:
+
+```bash
+go run ./cmd/tlago -help
+go run ./cmd/tlago modelcheck -help
+```
+
+Help includes a one-line flag reference, detailed explanations, defaults,
+examples, and mappings to Java TLC commands and Toolbox model-editor options.
+`--help`, `-h`, and `help [COMMAND]` are also accepted.
+
+Use `modelcheck --tlc` to select the Go port of Java TLC:
+
+```bash
+go run ./cmd/tlago modelcheck --tlc -workers auto -config MC.cfg MC.tla
+```
+
+This corresponds to `java -cp tla2tools.jar tlc2.TLC -workers auto -config MC.cfg MC`.
+The `--tlc` switch is specific to the Go wrapper. Without it, `modelcheck` uses
+the earlier bounded checker, whose options and limits are explained in help.
+
+
 # repos with corpora/example TLA+ specs to check parsing/processing on
 
 These are vendored under test_vectors/ now
