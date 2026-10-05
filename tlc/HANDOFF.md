@@ -42,16 +42,22 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The CLI help guide is implemented in `cli_help.go`. `tlago -help` prints all
-commands and flags; `tlago COMMAND -help` and `tlago help COMMAND` filter flag
-details by command. Help includes summaries, explanations, Java/Toolbox
-correspondence, defaults, examples, and current implementation limits. It exits
-successfully without loading files or starting a checker. The existing CLI,
-XML-help/error, SANY warning-control, and Java TLC option tests pass. Manual
-checks covered 46 help invocations, error paths, the expression delimiter,
-complete named TLC-flag coverage, and the absence of help-side file creation.
-The full workspace receipt below remains scoped to core baseline `305a13f`;
-this CLI-only change was verified with focused normal checks and a command build.
+TLC is now the default CLI runner. Direct invocations such as
+`tlago -workers auto MC.tla`, `tlago modelcheck -workers auto MC.tla`, and
+`tlago mc -workers auto MC.tla` use the same Java-shaped flags and checker.
+The selection flags `--tlc`, `-tlc`, `--go-tlc`, and `-go-tlc` have been removed,
+as has the bounded checker's CLI path and its `-maxStates` option. The older
+bounded-checker library API is still covered by its existing tests.
+
+The guide in `cli_help.go` prints flag summaries, explanations, Java/Toolbox
+correspondence, defaults, examples, and current implementation limits. Help
+exits successfully without loading files or starting a checker. README includes
+an updated help transcript. Focused normal checks pass: root 6.365 seconds,
+SANY 0.014 seconds, and TLC 0.014 seconds. Manual checks covered 34 direct,
+modelcheck, and mc invocations, including exhaustive checking, simulation,
+violation traces, removed-option errors, and help. Original Java-derived tests
+and the test-port inventory are unchanged. The full workspace receipt below
+remains scoped to core baseline `305a13f`; CLI changes have focused verification.
 
 Commit `305a13f` restores disk fingerprint reader ownership, removes unnecessary
 counter serialization, and completes the original `DumpLoadTraceTest` class.
@@ -247,5 +253,5 @@ Do not compress prose into strings such as "all32", "exit130", or "PASS10.068s".
 Before resuming work, read [PLAN.md](../PLAN.md), this handoff,
 [PORT_PROGRESS.md](PORT_PROGRESS.md), [TLC_ARCH.md](TLC_ARCH.md), and
 [TODO_TEST_PORT.md](TODO_TEST_PORT.md). Choose the next action from current
-pending entries and evidence. The overall porting goal remains active; neither
+pending entries and evidence. The overall porting goal remains incomplete; neither
 the green batch nor the high translation percentage establishes completion.

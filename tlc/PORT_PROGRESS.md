@@ -1,5 +1,26 @@
 # TLC Port Progress
 
+2026-10-05 Java TLC is the default command-line runner:
+Removed the --tlc/-tlc/--go-tlc/-go-tlc selector and the separate bounded CLI
+parser. Direct tlago [FLAGS] SPEC, modelcheck, and mc now call the same TLC
+runner with the original Java option spellings. Removed -maxStates from the
+CLI and help; the older library API remains unchanged. Updated the help guide,
+README examples and embedded transcript, handoff, and persistent CLI rule.
+The existing native CLI check now expects the removed option to be rejected
+and the Java TLC initial-state violation report on stdout, preserving both
+state assignments and the invariant diagnostic. Its first run exposed the
+reporting difference; it was an old bounded-CLI output expectation, not a
+Java-derived assertion or a TLC implementation shortcut. No original Java test
+assertions, fixtures, bounds, or port credits changed.
+Focused normal tests pass: root 6.365 seconds, SANY 0.014 seconds, TLC 0.014
+seconds. Includes TestCLIBehaviors, the bounded library's existing behavior
+tests, original XML-help/error cases, SANY CLI warning controls, and TestJavaTLC.
+The command builds. Manual checks cover 34 direct/modelcheck/mc invocations:
+finite checking, simulation, invariant-violation traces, removed options, and
+help. Help contains no selector or bounded-CLI instructions. No long workloads
+or race instrumentation used. Prior full-suite receipt remains scoped to
+305a13f. Overall test-port blockers and deferred topics are unchanged.
+
 2026-10-05 manual CLI help implemented:
 RunCLI now handles top-level and command-specific -help, --help, -h, and
 help [COMMAND] before file validation or checker setup. New cli_help.go lists

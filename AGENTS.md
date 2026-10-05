@@ -28,3 +28,7 @@ Documentation directive from the user (2026-10-05): keep tlc/HANDOFF.md
 readable and current. Use normal spacing between words and numbers, clear prose,
 and formatted identifiers. Keep detailed run chronology in PORT_PROGRESS.md
 rather than accumulating overlapping status blocks in the handoff.
+
+CLI directive from the user (2026-10-05): use the Java TLC command-line flags
+by default. Direct TLC arguments and modelcheck/mc must use the same TLC runner.
+Do not restore the --tlc selection flag or the bounded checker's CLI path.

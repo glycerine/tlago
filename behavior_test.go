@@ -397,19 +397,20 @@ Use == LibraryValue
 		t.Fatalf("modelcheck exit = %d, want %d", code, ExitOK)
 	}
 	stderr.Reset()
-	if code := RunCLI([]string{"modelcheck", "-maxStates", "3", "-config", unboundedCfg, unbounded}, nil, &stderr); code != ExitSemanticFailure {
-		t.Fatalf("modelcheck maxStates exit = %d, want %d; stderr=%s", code, ExitSemanticFailure, stderr.String())
+	if code := RunCLI([]string{"modelcheck", "-maxStates", "3", "-config", unboundedCfg, unbounded}, nil, &stderr); code != ExitToolFailure {
+		t.Fatalf("removed modelcheck maxStates exit = %d, want %d; stderr=%s", code, ExitToolFailure, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "state limit 3 reached") {
-		t.Fatalf("modelcheck maxStates stderr = %q, want state limit message", stderr.String())
+	if !strings.Contains(stderr.String(), "unrecognized option: -maxStates") {
+		t.Fatalf("modelcheck maxStates stderr = %q, want rejected non-Java option", stderr.String())
 	}
 	stderr.Reset()
-	if code := RunCLI([]string{"modelcheck", "-config", traceFailCfg, traceFail}, nil, &stderr); code != ExitSemanticFailure {
+	var stdout bytes.Buffer
+	if code := RunCLI([]string{"modelcheck", "-config", traceFailCfg, traceFail}, &stdout, &stderr); code != ExitSemanticFailure {
 		t.Fatalf("modelcheck trace failure exit = %d, want %d; stderr=%s", code, ExitSemanticFailure, stderr.String())
 	}
-	traceText := stderr.String()
-	if !strings.Contains(traceText, "1: x = 1, y = 2") || strings.Contains(traceText, "map[") {
-		t.Fatalf("modelcheck trace stderr = %q, want sorted assignment trace", traceText)
+	traceText := stdout.String()
+	if !strings.Contains(traceText, "Invariant Inv is violated by the initial state:") || !strings.Contains(traceText, "/\\ x = 1\n/\\ y = 2") || strings.Contains(traceText, "map[") {
+		t.Fatalf("modelcheck trace stdout = %q, want Java TLC state trace", traceText)
 	}
 }
 

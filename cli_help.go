@@ -45,7 +45,8 @@ func printCLIHelp(w io.Writer, command string) {
 	fmt.Fprintln(w, "tlago: TLA+ parsing, semantic checking, and the Go TLC model checker")
 	fmt.Fprintln(w)
 	if command == "" {
-		fmt.Fprintln(w, "Usage: tlago COMMAND [OPTIONS] FILE...")
+		fmt.Fprintln(w, "Usage: tlago [TLC FLAGS] SPEC")
+		fmt.Fprintln(w, "       tlago COMMAND [OPTIONS] FILE...")
 		fmt.Fprintln(w, "       tlago -help | tlago help [COMMAND]")
 	} else {
 		fmt.Fprintf(w, "Usage: tlago %s [OPTIONS] %s\n", command, cliHelpOperand(command))
@@ -56,7 +57,7 @@ func printCLIHelp(w io.Writer, command string) {
 	for _, c := range []struct{ name, description string }{
 		{"parse", "Parse FILE... with the Go SANY parser; Java counterpart: SANY -s."},
 		{"check", "Parse and check FILE...; Java counterpart: tla2sany.SANY, Toolbox Parse Spec."},
-		{"modelcheck (mc)", "Check one model. Add --tlc to run the port of Java tlc2.TLC."},
+		{"modelcheck (mc)", "Run the Go port of Java tlc2.TLC; also the default without a subcommand."},
 		{"checkimplfile (check-impl-file)", "Monitor implementation trace files; Java: tlc2.tool.CheckImplFile."},
 		{"repl-expr (repl)", "Evaluate one quoted expression; Java: tlc2.REPL expression evaluation."},
 		{"apalache-json", "Export checked modules as JSON IR; no Java TLC checking-mode equivalent."},
@@ -66,8 +67,7 @@ func printCLIHelp(w io.Writer, command string) {
 	}
 	fmt.Fprintln(w)
 	if command == "" || command == "modelcheck" {
-		writeCLIHelpParagraph(w, "Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go invocation: tlago modelcheck --tlc [FLAGS] Spec.tla. The --tlc switch belongs to tlago; subsequent TLC flags keep the Java single-dash spelling and case. The module's .tla and config's .cfg extensions are optional in TLC mode. Exactly one root module is required.")
-		writeCLIHelpParagraph(w, "Without --tlc, modelcheck uses the earlier bounded checker, with -config and -maxStates only (plus module search options). Its default state limit is 10,000. Java TLC flags such as -workers and -simulate require --tlc. Do not use -maxStates with --tlc; Java TLC has no equivalent state-count cutoff flag.")
+		writeCLIHelpParagraph(w, "Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go invocation: tlago [FLAGS] Spec.tla. The optional modelcheck (mc) subcommand uses exactly the same TLC runner and flags. TLC options keep the Java single-dash spelling and case. The module's .tla and config's .cfg extensions are optional. Exactly one root module is required.")
 		writeCLIHelpParagraph(w, "Toolbox model editors generate a model module and .cfg from constants, behavior, invariants, properties, constraints, symmetry, and model values. On the CLI these model choices belong in the .tla/.cfg files; they are not separate command-line flags. GUI names below refer to the original Toolbox. Other editors may label the same choices differently.")
 	}
 	groups := cliHelpGroups(command)
@@ -100,11 +100,11 @@ func printCLIHelp(w io.Writer, command string) {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "EXAMPLES")
 	if command == "" || command == "modelcheck" {
-		fmt.Fprintln(w, "  tlago modelcheck --tlc -workers auto -config MC.cfg MC.tla")
-		fmt.Fprintln(w, "  tlago modelcheck --tlc -simulate num=100 -depth 50 -seed 1 MC.tla")
-		fmt.Fprintln(w, "  tlago modelcheck --tlc -dump dot,actionlabels graph MC.tla")
-		fmt.Fprintln(w, "  tlago modelcheck --tlc -dumpTrace json error.json MC.tla")
-		fmt.Fprintln(w, "  tlago modelcheck --tlc -inv 'x >= 0' MC.tla")
+		fmt.Fprintln(w, "  tlago -workers auto -config MC.cfg MC.tla")
+		fmt.Fprintln(w, "  tlago -simulate num=100 -depth 50 -seed 1 MC.tla")
+		fmt.Fprintln(w, "  tlago -dump dot,actionlabels graph MC.tla")
+		fmt.Fprintln(w, "  tlago -dumpTrace json error.json MC.tla")
+		fmt.Fprintln(w, "  tlago -inv 'x >= 0' MC.tla")
 	}
 	if command == "" || command == "check" || command == "parse" {
 		fmt.Fprintln(w, "  tlago check -I ./modules Spec.tla")
@@ -162,18 +162,16 @@ func cliHelpGroups(command string) []cliHelpGroup {
 		}})
 	}
 	if command == "" || command == "check" || command == "modelcheck" {
-		groups = append(groups, cliHelpGroup{title: "Diagnostics (check and modelcheck --tlc)", options: []cliHelpOption{
+		groups = append(groups, cliHelpGroup{title: "Diagnostics (check and TLC)", options: []cliHelpOption{
 			{"-suppressMessages CODES", "Suppress selected diagnostic codes.", "Provide a comma-separated list of warning/message codes. In check mode, aliases include --suppressMessages, -suppress-messages, and --suppress-messages; E/W-prefixed diagnostic codes are accepted there. TLC mode uses the exact -suppressMessages spelling and numeric Java SANY/TLC codes. A code cannot also be elevated. TLC rejects combining this with -nowarning.", "Java SANY and TLC: -suppressMessages. Toolbox: additional TLC parameters for a checker run; parsing warnings use the SANY diagnostic controls."},
 			{"-messagesAsErrors CODES", "Elevate selected diagnostic codes to errors.", "Use a comma-separated code list. Check mode accepts --messagesAsErrors, -messages-as-errors, --messages-as-errors, and E/W-prefixed codes. TLC mode uses -messagesAsErrors with numeric Java codes. Suppressing and elevating the same code is an error.", "Java SANY and TLC: -messagesAsErrors. Toolbox: additional TLC parameters."},
 		}})
 	}
 	if command == "" || command == "modelcheck" {
-		groups = append(groups, cliHelpGroup{title: "Model-checker selection and bounded checker", options: []cliHelpOption{
-			{"--tlc", "Select the Go port of Java TLC.", "Required to use the TLC flags below. Aliases: -tlc, -go-tlc, --go-tlc. The default modelcheck command retains the earlier bounded checker; this switch selects the full TLC runner.", "Go wrapper switch. Equivalent invocation target in Java is tlc2.TLC; Toolbox launches that checker automatically."},
-			{"-config FILE", "Select the model configuration; default SPEC.cfg.", "Accepted by both checkers. The bounded checker also accepts --config and requires an actual file path. TLC accepts -config, with an optional .cfg extension. The configuration defines constants, behavior, invariants, properties, constraints, symmetry, and other model choices.", "Java TLC: -config FILE. Toolbox generates this file from the model editor; it is not a replacement for the root specification."},
-			{"-maxStates N", "Limit states in the bounded checker; default 10,000.", "Only available without --tlc. N must be positive. Aliases: --maxStates, -max-states, --max-states. Reaching the limit reports a failure rather than claiming the model was fully checked.", "Go bounded-checker option; no equivalent Java TLC flag or Toolbox model-checking state limit."},
+		groups = append(groups, cliHelpGroup{title: "TLC model configuration", options: []cliHelpOption{
+			{"-config FILE", "Select the model configuration; default SPEC.cfg.", "Use the Java spelling -config, with an optional .cfg extension. The configuration defines constants, behavior, invariants, properties, constraints, symmetry, and other model choices.", "Java TLC: -config FILE. Toolbox generates this file from the model editor; it is not a replacement for the root specification."},
 		}})
-		groups = append(groups, cliHelpGroup{title: "TLC exploration (requires modelcheck --tlc)", tlc: true, options: []cliHelpOption{
+		groups = append(groups, cliHelpGroup{title: "TLC exploration", tlc: true, options: []cliHelpOption{
 			{"-modelcheck", "Select the ordinary model-checking command variant.", "Accepted for Java CLI compatibility. A fresh TLC invocation already defaults to exhaustive breadth-first model checking. Choose -dfid for iterative deepening or -simulate for random traces.", "Java TLC: -modelcheck. Toolbox: Model-checking mode in Advanced Options."},
 			{"-workers N|auto", "Set worker count; default 1.", "N must be at least 1. auto selects the available CPU count. More workers change exploration scheduling and can change which error trace is found first. DFID requires one worker.", "Java TLC: -workers. Toolbox: worker-thread count in the execution configuration / Advanced Options."},
 			{"-dfid N", "Use depth-first iterative deepening.", "Start DFID with nonnegative depth N, rather than the default breadth-first search. Use -workers 1. This is an exploration strategy, not a maximum number of reachable states.", "Java TLC: -dfid N. Toolbox: Depth-first checkbox and initial depth in Advanced Options."},
@@ -189,7 +187,7 @@ func cliHelpGroups(command string) []cliHelpGroup {
 			{"-lncheck STRATEGY", "Select the liveness-checking schedule.", "default performs periodic checks; final defers checking to completion; seqfinal uses sequential final checking; sequential selects sequential checks; off disables liveness checking. Disabling checks does not verify temporal properties.", "Java TLC: -lncheck. Toolbox: Verify temporal properties upon termination only corresponds to final; other strategies use additional TLC parameters."},
 			{"-maxSetSize N", "Bound set enumeration; default 1,000,000.", "Positive integer, at most 2,147,483,647. Bounds how large a set TLC may enumerate. This controls expression evaluation, not the number of explored states or simulation traces.", "Java TLC: -maxSetSize. Toolbox: additional TLC parameters."},
 		}})
-		groups = append(groups, cliHelpGroup{title: "TLC fingerprints, storage, and checkpoints (requires --tlc)", tlc: true, options: []cliHelpOption{
+		groups = append(groups, cliHelpGroup{title: "TLC fingerprints, storage, and checkpoints", tlc: true, options: []cliHelpOption{
 			{"-fp N", "Choose fingerprint polynomial index; default random.", "Select the indexed irreducible polynomial used for 64-bit state fingerprints. The index is zero-based. Changing it is useful for repeating a run with a different fingerprint function; it does not change the specification's state semantics.", "Java TLC: -fp N. Toolbox: Fingerprint seed index / Select randomly in Advanced Options. This is different from the simulation random seed."},
 			{"-fpbits N", "Partition fingerprint storage using high bits.", "Accepts 0 through 30; the default disk-set configuration uses 1. N high bits select among 2^N nested fingerprint sets, affecting storage organization and memory distribution.", "Java TLC: -fpbits N. Toolbox: fingerprint-bit setting in Advanced Options."},
 			{"-fpmem FRACTION", "Allocate a fraction of the fingerprint memory budget.", "Normally a fraction between 0 and 1; default 0.25. Values greater than 1 are the deprecated absolute-byte form. Actual allocation depends on the selected fingerprint implementation and runtime memory budget. Go uses its native budget (including GOMEMLIMIT where applicable), not a JVM heap. This does not set a hard limit for the entire process.", "Java TLC: -fpmem. Toolbox: fingerprint-memory allocation. Java -Xmx and the Toolbox JVM heap control have no tlago flag equivalent; configure the Go runtime separately."},
@@ -199,7 +197,7 @@ func cliHelpGroups(command string) []cliHelpGroup {
 			{"-cleanup", "Remove old states metadata before a fresh run.", "Without -recover, performs the source cleanup of the states directory before starting. It can delete previous run storage; keep checkpoints you need elsewhere. With recovery, the recovery directory is retained.", "Java TLC: -cleanup. Toolbox normally manages cleanup for its model runs."},
 			{"-gzip", "Enable gzip for value input/output streams.", "Compression is off by default. Enables the original value-stream gzip layer where those streams are used; it does not mean every metadata or random-access file is compressed.", "Java TLC: -gzip. Toolbox: additional TLC parameters."},
 		}})
-		groups = append(groups, cliHelpGroup{title: "TLC output, traces, and diagnostics (requires --tlc)", tlc: true, options: []cliHelpOption{
+		groups = append(groups, cliHelpGroup{title: "TLC output, traces, and diagnostics", tlc: true, options: []cliHelpOption{
 			{"-coverage MINUTES", "Collect and periodically report coverage.", "Nonnegative report interval in minutes; coverage collection is off by default. Zero enables collection without a positive periodic interval. Coverage profiles expression/action evaluation and helps find unused or unexpectedly expensive specification code.", "Java TLC: -coverage. Toolbox: coverage / profiling selection in Advanced Options and the model results."},
 			{"-difftrace", "Print only changed values in successive states.", "The default prints complete state descriptions. This changes counterexample presentation, not the states that are explored or serialized.", "Java TLC: -difftrace. Toolbox: corresponds to viewing changes between error-trace states; the CLI flag controls textual output."},
 			{"-terse", "Avoid expanding values in Print output.", "Controls value expansion in specification Print statements. Use it to keep user output compact; it is not the same as printing differences between trace states.", "Java TLC: -terse. Toolbox: additional TLC parameters."},

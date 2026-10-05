@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +21,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		stderr = io.Discard
 	}
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: tlago parse|check|modelcheck|checkimplfile|repl-expr|apalache-json|sany-xml [-I DIR] FILE...")
+		fmt.Fprintln(stderr, "usage: tlago [TLC FLAGS] SPEC | parse|check|modelcheck|checkimplfile|repl-expr|apalache-json|sany-xml [OPTIONS] FILE...")
 		fmt.Fprintln(stderr, "Run tlago -help for commands, flags, examples, and Java/Toolbox equivalents.")
 		return ExitToolFailure
 	}
@@ -43,6 +42,13 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		return ExitToolFailure
 	}
 	cmd := args[0]
+	if canonicalCLICommand(cmd) == "" {
+		if cliArgsContainHelp(args) {
+			printCLIHelp(stdout, "modelcheck")
+			return ExitOK
+		}
+		return runModelCheck(args, stdout, stderr)
+	}
 	files := args[1:]
 	if command := canonicalCLICommand(cmd); command != "" && cliArgsContainHelp(files) {
 		printCLIHelp(stdout, command)
@@ -500,105 +506,6 @@ func writeDiagnostics(w io.Writer, diags Diagnostics) {
 }
 
 func runModelCheck(args []string, stdout, stderr io.Writer) int {
-	if tlcArgs, ok := stripTLCModelCheckFlag(args); ok {
-		return runTLCModelCheck(tlcArgs, stdout, stderr)
-	}
-	cfgPath := ""
-	opts := ModelCheckOptions{}
-	loadOpts := LoadOptions{}
-	var files []string
-	for i := 0; i < len(args); i++ {
-		if ok, next, err := consumeLoadCLIOption(args, i, &loadOpts); ok || err != nil {
-			if err != nil {
-				fmt.Fprintln(stderr, err)
-				return ExitToolFailure
-			}
-			i = next
-			continue
-		}
-		switch args[i] {
-		case "-config", "--config":
-			i++
-			if i >= len(args) {
-				fmt.Fprintln(stderr, "-config requires a file")
-				return ExitToolFailure
-			}
-			cfgPath = args[i]
-		case "-maxStates", "--maxStates", "-max-states", "--max-states":
-			i++
-			if i >= len(args) {
-				fmt.Fprintln(stderr, "-maxStates requires a positive integer")
-				return ExitToolFailure
-			}
-			n, err := strconv.Atoi(args[i])
-			if err != nil || n <= 0 {
-				fmt.Fprintf(stderr, "-maxStates requires a positive integer, got %q\n", args[i])
-				return ExitToolFailure
-			}
-			opts.MaxStates = n
-		default:
-			files = append(files, args[i])
-		}
-	}
-	if len(files) != 1 {
-		fmt.Fprintln(stderr, "modelcheck requires exactly one spec file")
-		return ExitToolFailure
-	}
-	specPath := files[0]
-	if cfgPath == "" {
-		cfgPath = strings.TrimSuffix(specPath, filepath.Ext(specPath)) + ".cfg"
-	}
-	spec, diags := LoadSanySpec(specPath, loadOpts)
-	if diags.HasErrors() {
-		writeDiagnostics(stderr, diags)
-		return ExitSyntaxFailure
-	}
-	sem := CheckSpec(spec)
-	if sem.HasErrors() {
-		writeDiagnostics(stderr, sem)
-		return ExitSemanticFailure
-	}
-	cfgData, err := os.ReadFile(cfgPath)
-	if err != nil {
-		fmt.Fprintf(stderr, "cannot read config %s: %v\n", cfgPath, err)
-		return ExitSyntaxFailure
-	}
-	cfg, cfgDiags := ParseConfigSource(cfgPath, string(cfgData))
-	if cfgDiags.HasErrors() {
-		writeDiagnostics(stderr, cfgDiags)
-		return ExitSyntaxFailure
-	}
-	result, runDiags := ModelCheck(spec, cfg, opts)
-	if runDiags.HasErrors() {
-		writeDiagnostics(stderr, runDiags)
-		return ExitSemanticFailure
-	}
-	if !result.OK {
-		fmt.Fprintf(stderr, "%s\n", result.Error)
-		for i, st := range result.Trace {
-			fmt.Fprintf(stderr, "%d: %s\n", i+1, formatState(st))
-		}
-		return ExitSemanticFailure
-	}
-	fmt.Fprintf(stdout, "Model checking completed: %d states explored\n", result.StatesExplored)
-	return ExitOK
-}
-
-func stripTLCModelCheckFlag(args []string) ([]string, bool) {
-	out := make([]string, 0, len(args))
-	found := false
-	for _, arg := range args {
-		switch arg {
-		case "-tlc", "--tlc", "-go-tlc", "--go-tlc":
-			found = true
-		default:
-			out = append(out, arg)
-		}
-	}
-	return out, found
-}
-
-func runTLCModelCheck(args []string, stdout, stderr io.Writer) int {
 	restoreStreams := tlcruntime.ToolIOSetSystemStreams(stdout, stderr)
 	defer restoreStreams()
 	tlcArgs, loadOpts, diagOpts, err := extractTLCLoadOptions(args)
@@ -832,17 +739,4 @@ func validateKnownSANYDiagnosticOverlap(opts diagnosticCLIOptions) error {
 		}
 	}
 	return nil
-}
-
-func formatState(st State) string {
-	keys := make([]string, 0, len(st))
-	for key := range st {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	parts := make([]string, 0, len(keys))
-	for _, key := range keys {
-		parts = append(parts, fmt.Sprintf("%s = %d", key, st[key]))
-	}
-	return strings.Join(parts, ", ")
 }

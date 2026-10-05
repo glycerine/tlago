@@ -1,7 +1,7 @@
 tlago: TLA+ tools ported to Go
 ==============================
 
-(work in progress; expect lots of updates; but v0.0.1 has been tag-ed and can be experimented with).
+(work in progress; expect lots of updates; but v0.0.1 has been tagged and can be experimented with).
 
 ## Command-line use
 
@@ -16,46 +16,48 @@ Help includes a one-line flag reference, detailed explanations, defaults,
 examples, and mappings to Java TLC commands and Toolbox model-editor options.
 `--help`, `-h`, and `help [COMMAND]` are also accepted.
 
-Use `modelcheck --tlc` to select the Go port of Java TLC:
+TLC is the default command. Use the same flags as Java TLC:
 
 ```bash
-go run ./cmd/tlago modelcheck --tlc -workers auto -config MC.cfg MC.tla
+go run ./cmd/tlago -workers auto -config MC.cfg MC.tla
 ```
 
 This corresponds to `java -cp tla2tools.jar tlc2.TLC -workers auto -config MC.cfg MC`.
-The `--tlc` switch is specific to the Go wrapper. Without it, `modelcheck` uses
-the earlier bounded checker, whose options and limits are explained in help.
+`tlago modelcheck -workers auto -config MC.cfg MC.tla` and the shorter `mc`
+subcommand invoke the same TLC runner. A root module can also be passed without
+any subcommand, just as with Java TLC.
 
 # tlago -help
 
 ~~~
-$ tlago -h
+$ tlago -help
 
 tlago: TLA+ parsing, semantic checking, and the Go TLC model checker
 
-Usage: tlago COMMAND [OPTIONS] FILE...
+Usage: tlago [TLC FLAGS] SPEC
+       tlago COMMAND [OPTIONS] FILE...
        tlago -help | tlago help [COMMAND]
 Help aliases: -help, --help, -h. Help needs no input file and exits successfully.
 
 COMMANDS AND JAVA EQUIVALENTS
   parse                               Parse FILE... with the Go SANY parser; Java counterpart: SANY -s.
   check                               Parse and check FILE...; Java counterpart: tla2sany.SANY, Toolbox Parse Spec.
-  modelcheck (mc)                     Check one model. Add --tlc to run the port of Java tlc2.TLC.
+  modelcheck (mc)                     Run the Go port of Java tlc2.TLC; also the default without a subcommand.
   checkimplfile (check-impl-file)     Monitor implementation trace files; Java: tlc2.tool.CheckImplFile.
   repl-expr (repl)                    Evaluate one quoted expression; Java: tlc2.REPL expression evaluation.
   apalache-json                       Export checked modules as JSON IR; no Java TLC checking-mode equivalent.
   sany-xml                            Export checked modules as XML; Java: tla2sany.xml.XMLExporter.
 
-    invocation: tlago modelcheck --tlc [FLAGS] Spec.tla. The --tlc switch
-    belongs to tlago; subsequent TLC flags keep the Java single-dash spelling
-    and case. The module's .tla and config's .cfg extensions are optional in TLC
-    mode. Exactly one root module is required.
-	
-    Without --tlc, modelcheck uses the earlier bounded checker, with -config and
-    -maxStates only (plus module search options). Its default state limit is
-    10,000. Java TLC flags such as -workers and -simulate require --tlc. Do not
-    use -maxStates with --tlc; Java TLC has no equivalent state-count cutoff flag.
-	
+    Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go
+    invocation: tlago [FLAGS] Spec.tla. The optional modelcheck (mc) subcommand
+    uses exactly the same TLC runner and flags. TLC options keep the Java
+    single-dash spelling and case. The module's .tla and config's .cfg
+    extensions are optional. Exactly one root module is required.
+    Toolbox model editors generate a model module and .cfg from constants,
+    behavior, invariants, properties, constraints, symmetry, and model values.
+    On the CLI these model choices belong in the .tla/.cfg files; they are not
+    separate command-line flags. GUI names below refer to the original Toolbox.
+    Other editors may label the same choices differently.
 FLAG QUICK REFERENCE
 
 Help (all commands)
@@ -65,16 +67,14 @@ Module search (parse, check, modelcheck, repl-expr, and exporters)
   -I DIR                                       Add a module search directory; repeat as needed.
   --prefer-library-modules                     Prefer configured library modules during resolution.
 
-Diagnostics (check and modelcheck --tlc)
+Diagnostics (check and TLC)
   -suppressMessages CODES                      Suppress selected diagnostic codes.
   -messagesAsErrors CODES                      Elevate selected diagnostic codes to errors.
 
-Model-checker selection and bounded checker
-  --tlc                                        Select the Go port of Java TLC.
+TLC model configuration
   -config FILE                                 Select the model configuration; default SPEC.cfg.
-  -maxStates N                                 Limit states in the bounded checker; default 10,000.
 
-TLC exploration (requires modelcheck --tlc)
+TLC exploration
   -modelcheck                                  Select the ordinary model-checking command variant.
   -workers N|auto                              Set worker count; default 1.
   -dfid N                                      Use depth-first iterative deepening.
@@ -90,7 +90,7 @@ TLC exploration (requires modelcheck --tlc)
   -lncheck STRATEGY                            Select the liveness-checking schedule.
   -maxSetSize N                                Bound set enumeration; default 1,000,000.
 
-TLC fingerprints, storage, and checkpoints (requires --tlc)
+TLC fingerprints, storage, and checkpoints
   -fp N                                        Choose fingerprint polynomial index; default random.
   -fpbits N                                    Partition fingerprint storage using high bits.
   -fpmem FRACTION                              Allocate a fraction of the fingerprint memory budget.
@@ -100,7 +100,7 @@ TLC fingerprints, storage, and checkpoints (requires --tlc)
   -cleanup                                     Remove old states metadata before a fresh run.
   -gzip                                        Enable gzip for value input/output streams.
 
-TLC output, traces, and diagnostics (requires --tlc)
+TLC output, traces, and diagnostics
   -coverage MINUTES                            Collect and periodically report coverage.
   -difftrace                                   Print only changed values in successive states.
   -terse                                       Avoid expanding values in Print output.
@@ -166,7 +166,7 @@ Module search (parse, check, modelcheck, repl-expr, and exporters)
     -I when selecting a library copy of a module.
     Go loader option; no same-named Java TLC flag or dedicated Toolbox switch.
 
-Diagnostics (check and modelcheck --tlc)
+Diagnostics (check and TLC)
 
   -suppressMessages CODES
     Provide a comma-separated list of warning/message codes. In check mode,
@@ -185,31 +185,16 @@ Diagnostics (check and modelcheck --tlc)
     the same code is an error.
     Java SANY and TLC: -messagesAsErrors. Toolbox: additional TLC parameters.
 
-Model-checker selection and bounded checker
-
-  --tlc
-    Required to use the TLC flags below. Aliases: -tlc, -go-tlc, --go-tlc. The
-    default modelcheck command retains the earlier bounded checker; this switch
-    selects the full TLC runner.
-    Go wrapper switch. Equivalent invocation target in Java is tlc2.TLC; Toolbox
-    launches that checker automatically.
+TLC model configuration
 
   -config FILE
-    Accepted by both checkers. The bounded checker also accepts --config and
-    requires an actual file path. TLC accepts -config, with an optional .cfg
-    extension. The configuration defines constants, behavior, invariants,
-    properties, constraints, symmetry, and other model choices.
+    Use the Java spelling -config, with an optional .cfg extension. The
+    configuration defines constants, behavior, invariants, properties,
+    constraints, symmetry, and other model choices.
     Java TLC: -config FILE. Toolbox generates this file from the model editor;
     it is not a replacement for the root specification.
 
-  -maxStates N
-    Only available without --tlc. N must be positive. Aliases: --maxStates,
-    -max-states, --max-states. Reaching the limit reports a failure rather than
-    claiming the model was fully checked.
-    Go bounded-checker option; no equivalent Java TLC flag or Toolbox
-    model-checking state limit.
-
-TLC exploration (requires modelcheck --tlc)
+TLC exploration
 
   -modelcheck
     Accepted for Java CLI compatibility. A fresh TLC invocation already defaults
@@ -307,7 +292,7 @@ TLC exploration (requires modelcheck --tlc)
     states or simulation traces.
     Java TLC: -maxSetSize. Toolbox: additional TLC parameters.
 
-TLC fingerprints, storage, and checkpoints (requires --tlc)
+TLC fingerprints, storage, and checkpoints
 
   -fp N
     Select the indexed irreducible polynomial used for 64-bit state
@@ -365,7 +350,7 @@ TLC fingerprints, storage, and checkpoints (requires --tlc)
     random-access file is compressed.
     Java TLC: -gzip. Toolbox: additional TLC parameters.
 
-TLC output, traces, and diagnostics (requires --tlc)
+TLC output, traces, and diagnostics
 
   -coverage MINUTES
     Nonnegative report interval in minutes; coverage collection is off by
@@ -585,11 +570,11 @@ Implementation trace monitor (checkimplfile; not modelcheck)
     Java: CheckImplFile -coverage.
 
 EXAMPLES
-  tlago modelcheck --tlc -workers auto -config MC.cfg MC.tla
-  tlago modelcheck --tlc -simulate num=100 -depth 50 -seed 1 MC.tla
-  tlago modelcheck --tlc -dump dot,actionlabels graph MC.tla
-  tlago modelcheck --tlc -dumpTrace json error.json MC.tla
-  tlago modelcheck --tlc -inv 'x >= 0' MC.tla
+  tlago -workers auto -config MC.cfg MC.tla
+  tlago -simulate num=100 -depth 50 -seed 1 MC.tla
+  tlago -dump dot,actionlabels graph MC.tla
+  tlago -dumpTrace json error.json MC.tla
+  tlago -inv 'x >= 0' MC.tla
   tlago check -I ./modules Spec.tla
   tlago repl-expr --spec Spec.tla 'Cardinality({1, 2, 3})'
   tlago help modelcheck
