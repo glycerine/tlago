@@ -1,5 +1,14 @@
 # TLC Port Progress
 
+2026-10-05 handoff grooming: consolidated HANDOFF.md into a current restart
+guide at verified code commit 305a13f. Removed overlapping historical status
+blocks and obsolete active-job instructions from the guide; detailed audit
+receipts remain here and prior handoff versions remain in Git history. Retained
+current scope, test inventory, source-failure and resource blockers, verification
+limits, implementation constraints, and the separation of long and race tests.
+No implementation, test, fixture, inventory count, or verification result changed.
+Future handoff updates must use normal spacing and replace obsolete status.
+
 2026-10-05 user testing directive: separate long workloads from race checks.
 Use full original long inputs in normal runs and short focused concurrency
 checks under -race. Broad race selections including long tests delay porting

@@ -23,3 +23,8 @@ Testing directive from the user (2026-10-05): do not combine long-running
 workloads with -race. Run full long workloads normally, preserving their original
 bounds. Use -race only for short, focused concurrency checks so porting can
 proceed promptly. Do not use broad race selections that include long tests.
+
+Documentation directive from the user (2026-10-05): keep tlc/HANDOFF.md
+readable and current. Use normal spacing between words and numbers, clear prose,
+and formatted identifiers. Keep detailed run chronology in PORT_PROGRESS.md
+rather than accumulating overlapping status blocks in the handoff.
