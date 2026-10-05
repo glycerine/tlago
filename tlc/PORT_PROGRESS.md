@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-05 whole original ShortDiskFPSetTest complete after297210b:
+All24 original methods translated in short_disk_fpset_java_test.go with complete
+AbstractFPSetTest setup/helpers. Preserve all six source runKnown conditional
+early returns and their full bodies; defaultfalse means those six bodies are
+not executed, matching Java, rather than asserting known zero/min bugs fixed.
+Preserve all1125 interpolation tuples/invalid-input filter/four signed bounds,
+3072 low-page insertions and lookups, exact dummy/plain configuration distinction,
+manual zero/min/max flushes, full2047 duplicate page loops and block comparisons.
+Initial source testValues failed on adjacent MaxInt64 fingerprints rounding to
+the same double: Go castNaN becameMinInt64 instead of Java zero. Actual disk
+implementation now uses separate source double conversions, javaDoubleToLong
+and unconditional equal-high decrement. LSB prepareTable now exactly narrows
+count toint32/assertspositive and allocates fixed-length sorted buffer, retaining
+unfilled zeros as Java does rather than dropping them with append. Enabled disk
+zero/min assertions pass without changing their expectations. No invented tests.
+Original unchanged Java all24 pass0.373s (short-disk-original-java.log).
+Go83186 terminal exit0/full24 normal18.151s (short-disk-final-go.log).
+Go89953 terminal exit0/full24 plus factory/three TLCIterator variants/native disk
+race76.002s (short-disk-final-race.log). These handles are retired.
+Preparatory17409 failed on malformed timeout option before running tests; it
+has no verification credit. Actual final command uses -timeout=20m.
+Inventory1228/1269 contexts(96.8%),608/626 classes(97.1%);41pending/18classes.
+Fingerprint142/165 methods,19/20 classes complete;23pending in OffHeapDiskFPSetTest.
+Whole65591 remains LIVE, -count=1 -failfast -timeout=60m ./..., redirected to
+short-disk-final-workspace-go.log. Poll that exact handle; do not mistake silent
+output for termination. No full current-workspace green claim yet. Existing
+AliasSub2 captured replay mismatch reproduces in pinned Java; async behavior
+question remains pending and no replay semantics/assertions changed. Goal active.
+CommunityModules progress change840d494 is confirmed in HEAD ancestry and already
+committed; user can remotely rerun TestJavaCommunityModulesAnt with -v/-count=1.
+Next independent correctness batch is whole OffHeapDiskFPSetTest23 methods.
+
 2026-10-05 whole original MSB disk-fingerprint class complete afterd835600:
 All19 MSBDiskFPSetTest2 contexts translated in tlc/msb_disk_fpset_java_test.go.
 Reuse complete inherited12-constructor/three-recovery source helpers with

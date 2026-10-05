@@ -819,11 +819,12 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 }
 
 func (s *DiskFPSet) calculateMidEntry(loVal uint64, hiVal uint64, dfp float64, loEntry int64, hiEntry int64) int64 {
-	if hiVal == loVal {
-		return loEntry
-	}
-	midEntry := loEntry + int64((float64(hiEntry-loEntry))*(dfp-float64(loVal))/(float64(hiVal)-float64(loVal)))
-	if midEntry == hiEntry && hiEntry > loEntry {
+	dhi, dlo := float64(hiEntry), float64(loEntry)
+	dhiVal, dloVal := float64(int64(hiVal)), float64(int64(loVal))
+	// Adjacent large fingerprints can round to the same double. Java casts
+	// the resulting NaN to zero, rather than Go's implementation-dependent int.
+	midEntry := loEntry + javaDoubleToLong((dhi-dlo)*(dfp-dloVal)/(dhiVal-dloVal))
+	if midEntry == hiEntry {
 		midEntry--
 	}
 	return midEntry
@@ -890,11 +891,17 @@ func (s *DiskFPSet) prepareMSBTable() {
 }
 
 func (s *DiskFPSet) prepareLSBTable() {
-	cnt := int(s.tblCnt)
-	s.lsbBuff = make([]uint64, 0, cnt)
+	cnt := int(int32(s.tblCnt))
+	if cnt <= 0 {
+		panic(NewTLCRuntimeException(ECGeneral))
+	}
+	s.lsbBuff = make([]uint64, cnt)
+	// Java allocates cnt slots, retaining unfilled zeros in the sorted buffer.
+	idx := 0
 	for _, bucket := range s.tbl {
 		for k := 0; k < len(bucket) && int64(bucket[k]) > 0; k++ {
-			s.lsbBuff = append(s.lsbBuff, bucket[k])
+			s.lsbBuff[idx] = bucket[k]
+			idx++
 			bucket[k] |= diskFPSetMarkFlushed
 		}
 	}
