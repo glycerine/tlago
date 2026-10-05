@@ -26,7 +26,7 @@ This corresponds to `java -cp tla2tools.jar tlc2.TLC -workers auto -config MC.cf
 The `--tlc` switch is specific to the Go wrapper. Without it, `modelcheck` uses
 the earlier bounded checker, whose options and limits are explained in help.
 
-# tlgo -help
+# tlago -help
 
 ~~~
 $ tlago -h
