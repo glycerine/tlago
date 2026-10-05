@@ -1,5 +1,33 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 original Test214 complete after6a37709:
+Whole original Test214.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, both
+exact TestPrintStream substrings, inherited SuiteETestCase flags and two
+byte-identical vectors. Initial Go erroneously completed model checking.
+UseOrHideNode.factCheck restricts HIDE facts by semantic node kind; it does not
+restrict USE expressions. The old Go check exempted builtins and omitted other
+fact forms. ProofRef now retains fact expressions; numbered USE/HIDE steps retain
+their facts and participate in proof scope. Resolve selectors in fact mode and
+recognize imported theorem/assumption names and earlier scoped steps. Preserve
+Java's OpAppl-only restriction, including its separate number/string, LET,
+label and ASSUME/PROVE node behavior. Report the exact fact range/message.
+
+Focused original Test214 passes race1.152s (90435 terminal). Related original
+legacy201–214/216/219/220/99/999/InvalidInvariant and ETest1–16 plus root parser,
+semantic/XML/elevated-warning selections pass race99.522s (45817 terminal), log
+.codex-gotmp/legacy-error-test214-final-related-race.log. Full SANY Java race
+passes9.731s (46442 terminal), log legacy-error-test214-final-sany-race.log.
+Both source assertions and vector bytes were independently compared.
+Inventory1085/1269 contexts (85.5%),565/626 classes (90.3%);184pending across
+61classes; legacy102/104. Next original Test215, then217.
+
+Current Test214 full workspace90130 is live, log
+.codex-gotmp/legacy-error-test214-final-workspace-go.log. Older full21282923 and
+full21343019 remain live, logs legacy-error-test212-final-workspace-go.log and
+legacy-error-test213-final-workspace-go.log. Resume these exact handles and
+record each snapshot's scope; no full-suite success claim before terminal exit0.
+This is authoritative; preceding entries record historical checkpoints.
+
 2026-10-05 original Test213 complete after31106ad:
 Whole Test213.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, all six exact
 TestPrintStream substrings, full SuiteETestCase settings and three byte-identical

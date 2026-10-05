@@ -154,6 +154,7 @@ func (e NamedExpr) SourcePosition() Position {
 }
 
 type ProofRef struct {
+	Expr Expr
 	Name string
 	Mode string
 	Defs bool
@@ -173,6 +174,7 @@ type ProofSummary struct {
 }
 
 type ProofStep struct {
+	UseHideRefs     []ProofRef
 	Statement       Position
 	Facts           []ProofFact
 	QualifiedName   string

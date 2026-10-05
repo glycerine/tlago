@@ -427,6 +427,11 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 	assumeProveDefs := assumeProveDefinitionNames(mod.Definitions)
 	theoremLikeDefs := theoremLikeDefinitionNames(mod.Definitions)
 	addNamedAssumptions(theoremLikeDefs, mod.Assumptions)
+	for name, ref := range newSanyLeibnizAnalyzer(spec).resolver.scope(mod) {
+		if ref.def.TheoremLike {
+			theoremLikeDefs[name] = true
+		}
+	}
 	proofStepNames := proofStepNameSet(mod.Proofs)
 	defExprPositions := definitionExpressionPositions(mod.Definitions)
 	assumeProveExprPositions := assumeProveDefinitionExpressionPositions(mod.Definitions)
@@ -1697,13 +1702,40 @@ func checkProofRef(ref ProofRef, defined map[string]Position) Diagnostics {
 }
 
 func checkHideRef(ref ProofRef, theoremLikeDefs, proofStepNames map[string]bool) Diagnostics {
-	if ref.Mode != "HIDE" || ref.Defs || ref.Name == "" || builtinIdentifiers[ref.Name] {
+	if ref.Mode != "HIDE" || ref.Defs || (ref.Name == "" && ref.Expr == nil) {
 		return nil
 	}
-	if theoremLikeDefs[ref.Name] || proofStepNames[ref.Name] {
+	expr := ref.Expr
+	if selected := sanyExprSelection(expr); selected != nil {
+		if selected.newSymbol != nil || selected.assumeProve != nil {
+			return nil
+		}
+		expr = selected.body
+	}
+	name := ref.Name
+	switch e := expr.(type) {
+	case *LiteralExpr:
+		// UseOrHideNode.factCheck checks OpApplKind only. Java represents
+		// booleans as builtin applications, and numbers/strings separately.
+		if e.Kind != "bool" {
+			return nil
+		}
+	case *LetExpr, *LabelExpr:
+		return nil
+	case *IdentExpr:
+		name = e.Name
+	case *CallExpr:
+		if id, ok := e.Callee.(*IdentExpr); ok {
+			name = id.Name
+		}
+	}
+	if theoremLikeDefs[name] || proofStepNames[name] {
 		return nil
 	}
-	return Diagnostics{errorAt(ref.Pos, "E4357", "HIDE can only refer to theorems, assumptions, or proof steps; %s is not a proof fact", ref.Name)}
+	diagnostic := errorAt(ref.Pos, "E4357", "HIDE can only refer to theorems, assumptions, or proof steps; %s is not a proof fact", ref.Name)
+	diagnostic.SANYRange = SanyRange{Begin: ref.Pos, End: ref.Pos.SourceEnd()}
+	diagnostic.SANYMessage = "The only expression allowed as a fact in a HIDE is \nthe name of a theorem, assumption, or step."
+	return Diagnostics{diagnostic}
 }
 
 func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind, module *Module, spec *Spec) Diagnostics {
@@ -1715,12 +1747,23 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 	goalLevels := []tlaLevel{level(proof.Goal, nil)}
 	var nonExprScopes []proofNameScope
 	var boundScopes []proofNameScope
+	var factScopes []proofNameScope
+	factDefinitions := map[string]bool{}
+	for name, ref := range dependencies.resolver.scope(module) {
+		if ref.def.TheoremLike {
+			factDefinitions[name] = true
+		}
+	}
 	for _, step := range proof.Steps {
 		if step.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(step.AssumeProveBody, true)...)
 		}
 		nonExprScopes = pruneProofNameScopes(nonExprScopes, step.Depth)
 		boundScopes = pruneProofNameScopes(boundScopes, step.Depth)
+		factScopes = pruneProofNameScopes(factScopes, step.Depth)
+		for _, ref := range step.UseHideRefs {
+			diags = append(diags, checkHideRef(ref, factDefinitions, activeProofNames(factScopes))...)
+		}
 		nonExprSteps := activeProofNames(nonExprScopes)
 		boundNames := activeProofNames(boundScopes)
 		if step.Implicit && step.Name != "" {
@@ -1789,6 +1832,9 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 		}
 		if step.Name != "" && step.Kind != "ASSERT" {
 			nonExprScopes = append(nonExprScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true}})
+		}
+		if step.Name != "" {
+			factScopes = append(factScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true, step.QualifiedName: true}})
 		}
 		if len(step.Bounds) > 0 && (step.Kind == "PICK" || step.Kind == "TAKE") {
 			boundScopes = append(boundScopes, proofNameScope{Depth: step.Depth, Names: proofBoundNames(step.Bounds)})

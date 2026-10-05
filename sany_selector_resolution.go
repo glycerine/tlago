@@ -162,6 +162,12 @@ func resolveSanySelectors(spec *Spec) Diagnostics {
 		for _, inst := range mod.Instances {
 			r.walkInstance(inst, mod, scope)
 		}
+		for _, ref := range mod.ProofRefs {
+			if !ref.Defs && ref.Expr != nil {
+				_, direct := ref.Expr.(*IdentExpr)
+				r.walkProofFact(ProofFact{Expr: ref.Expr, Direct: direct}, mod, scope)
+			}
+		}
 		for _, proof := range mod.Proofs {
 			r.walkProof(proof, mod, scope)
 		}

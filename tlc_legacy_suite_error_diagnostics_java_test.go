@@ -238,3 +238,28 @@ func TestJavaLegacySuiteTest213(t *testing.T) {
 		}
 	}
 }
+
+// Original Test214.testSpec and ERROR_SPEC_PARSE constructor, preserving all
+// two exact TestPrintStream substrings and full SuiteETestCase runner settings.
+func TestJavaLegacySuiteTest214(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest214", "test214", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test214.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"Semantic errors:\n\n*** Errors: 1\n",
+		"line 10, col 11 to line 10, col 14 of module test214\n\nThe only expression allowed as a fact in a HIDE is \nthe name of a theorem, assumption, or step.\n",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

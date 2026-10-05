@@ -893,6 +893,17 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 			inDefs = true
 			continue
 		}
+		if !inDefs && isSanyExpressionNode(child) && child.Kind.JavaName() != "N_ModuleRef" {
+			expr, _ := sanyExpr(child)
+			ref := ProofRef{Expr: expr, Mode: mode, Pos: sanyNodePosition(child)}
+			if id, ok := expr.(*IdentExpr); ok {
+				ref.Name = id.Name
+			} else if child.Kind.JavaName() == "IDENTIFIER" {
+				ref.Name = child.Image
+			}
+			refs = append(refs, ref)
+			continue
+		}
 		switch child.Kind.JavaName() {
 		case "IDENTIFIER":
 			refs = append(refs, ProofRef{Name: child.Image, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
@@ -960,6 +971,17 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 			step.Statement = sanyNodePosition(child)
 		}
 		switch child.Kind.JavaName() {
+		case "N_UseOrHide":
+			step.UseHideRefs = sanyUseOrHideRefs(child)
+			for _, ref := range step.UseHideRefs {
+				if step.Kind == "" {
+					step.Kind = ref.Mode
+				}
+				if !ref.Defs && ref.Expr != nil {
+					_, direct := ref.Expr.(*IdentExpr)
+					step.Facts = append(step.Facts, ProofFact{Expr: ref.Expr, Direct: direct})
+				}
+			}
 		case "N_HaveStep":
 			step.Kind = "HAVE"
 			step.Expr, _ = sanyExpr(lastSanyExpression(child))
