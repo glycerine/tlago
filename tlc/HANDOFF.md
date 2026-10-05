@@ -1,5 +1,48 @@
 # TLC Port Handoff
 
+2026-10-05 whole original indexer equivalence context complete afterb98941d:
+OffHeapIndexerEquivalenceTest.testInfiniteInfMult translated in
+ tlc/offheap_indexer_equivalence_java_test.go, all7254 original parameter rows,
+including duplicates/order. Retain original isSupported assumption and explicit
+Mult1024/InfinitePrecision constructors; no automatic selection or alternate
+expected implementation. Complete doTest: min(1024,range) unseeded uniformly
+random [lower,upper) samples and equality/monotonicity, full uniform loop with
+both fp/fp+1 equalities, both1023 upper-bound-neighborhood loops with exact
+termination/monotonicity, final upperBound equality. math/rand/v2 preserves
+unseeded bounded random semantics; source uses ThreadLocalRandom without seed.
+Two original @Ignore methods remain uncredited; no extra skips or sampling.
+No production change, weakened assertions or invented persistent tests.
+Unchanged Java76902 terminal exit0/all7254 tests9.235s, log
+ offheap-equivalence-original-java.log; compile offheap-equivalence-original-javac.log.
+Scratch Java original data() and extracted actual Go row generator produce
+byte-identical7254-line CSVs, including order/duplicates; files
+ offheap-equivalence-{java,go}-rows.csv. Probe ignored/uncredited.
+Go74992 terminal exit0/normal20.270s, log offheap-equivalence-initial-go.log.
+Combined79310 terminal exit0/race87.870s, log
+ offheap-equivalence-final-related-race.log; covers full equivalence matrix,
+all three original complete1104-row/five-method indexer matrices, standalone
+bitshifting class, original iterator methods and native indexer test.
+Inventory1170/1269 contexts(92.2%),605/626 classes(96.6%),99pending/21classes.
+Fingerprint84/165 methods,16/20 classes complete;81pending/4classes:
+LSBDiskFPset15,MSBDiskFPSetTest2 19,OffHeapDiskFPSet23,ShortDiskFPSet24.
+Next eligible batch: whole LSBDiskFPsetTest inherited12 constructor checks and
+three low-level fingerprint recovery methods. These are not deferred recovery
+models; preserve99999 full trace range,1024 recoverFP calls,duplicate warning
+property and original DummyFPSetConfiguration raw-memory override.
+Read original AbstractHeapBasedDiskFPSetTest/DummyFPSetConfiguration first;
+Go currently has no test dummy config virtual override, so inspect required
+accurate constructor dispatch rather than substitute ratio or memory clamping.
+
+Whole90170 now terminal exit0: root1889.327s/SANY1.206s/TLC74.773s, log
+ fpset-bugs210-242-final-workspace-go.log. Snapshot includes page-arithmetic fix
+53bb262, before zero-reader/iterator/standalone/equivalence tests. It is the
+latest completed whole-suite green, not a receipt for those later changes.
+Full33379/83491/9378 remain live on documented snapshots; resume exact handles.
+33379 includes final nil-hasNext refinement/standalone tests, before equivalence.
+No restart merely from observation timeout; no full current-source green claim.
+All focused/source/related checks for this test-only batch green, ready to commit.
+Goal active; five user-deferred topics remain unchanged.
+
 2026-10-05 whole standalone bitshifting indexer class complete after8c70c38:
 All five original OffHeapBitshiftingIndexerTest methods translated in
  tlc/offheap_bitshifting_indexer_java_test.go. Preserve both complete128-position
