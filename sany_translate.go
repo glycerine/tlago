@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/glycerine/tlago/tlc"
@@ -265,22 +264,7 @@ func (l *sanyLoader) loadMonolithModule(name string) *Module {
 	if err != nil {
 		return nil
 	}
-	start := regexp.MustCompile(`^-{4,}\s*MODULE\s+` + regexp.QuoteMeta(name) + `\s*-{3,}$`)
-	active := false
-	var text strings.Builder
-	source := strings.ReplaceAll(strings.ReplaceAll(string(data), "\r\n", "\n"), "\r", "\n")
-	for _, line := range strings.Split(source, "\n") {
-		if active && strings.HasPrefix(line, "====") {
-			text.WriteString(line + "\n")
-			break
-		}
-		if !active && start.MatchString(line) {
-			active = true
-		}
-		if active {
-			text.WriteString(line + "\n")
-		}
-	}
+	text, active := tlc.ExtractMonolithModuleSource(string(data), name)
 	if !active {
 		return nil
 	}
@@ -291,7 +275,7 @@ func (l *sanyLoader) loadMonolithModule(name string) *Module {
 		}
 	}
 	path := filepath.Join(l.monolithTempDir, filepath.Base(name)+".tla")
-	if err = os.WriteFile(path, []byte(text.String()), 0600); err != nil {
+	if err = os.WriteFile(path, []byte(text), 0600); err != nil {
 		return nil
 	}
 	return l.loadPath(path, false, name+".tla", l.rootPath)

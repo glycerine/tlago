@@ -1,5 +1,41 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 shared util MonolithSpecExtractorTest complete afterdfe33b7:
+All five original methods in monolith_spec_extractor_java_test.go retain exact
+Windows-prefixed MONOLITH_SPEC fixture, config result, non-null module/name/full
+module text, literal Windows-name empty config/null module and both getConfig
+assertions. ByteArrayInputStream fixture lowers to identical source characters;
+module tests use actual source file and file-backed NamedInputStream metadata.
+Ported MonolithGetConfig/NamedInputStream dependency and MonolithModule temp-file
+creation/default charset output/delete-on-exit registration. Cleanup does not
+repeat the source explicit close; NamedInputStream counter and idempotent file
+close are retained. No invented tests or weakened assertions.
+Actual config parser previously allowed loose markers/unicode trimming. Shared
+source helpers now use exact quoted names, Java ASCII whitespace, four required
+config trailing hyphens/three module trailing hyphens, source CR/LF line rules,
+Java trim<=0x20 and Java dot exclusions for NEL/Unicode separators in end marker.
+SANY loadMonolithModule uses same module extractor while preserving its existing
+real temporary-file/provenance parsing workflow. Test module extraction and
+production loader therefore share their actual marker/text implementation.
+Unchanged Java classes/tests pass5/.039s (monolith-util-original-java.log).
+Final54968 terminal exit0/full5 plus native monolith config/path race1.042s,
+monolith-util-final-race.log. Earlier17150/84161 terminal and retired.
+Final root original MonolithSpec2844 terminal exit0/race5.776s,
+monolith-util-model-final-race.log; initial53365 also6.151s before end-marker
+refinement. Final SANY76789 terminal exit0/race8.735s,
+monolith-util-sany-final-race.log; initial23777 also8.875s before refinement.
+All these handles retired. Shared util inventory23/56 methods (previous18/56);
+main1251/1269 and609/626 unchanged. TODO/method map mark class Port complete.
+Whole SHORT snapshot65591 now terminal exit0/root1853.440s/SANY1.041s/TLC364.572s,
+short-disk-final-workspace-go.log. This is green at634db62 before OffHeap, buffered
+streams and monolith changes; do not claim current whole-workspace green.
+Current whole88583 is LIVE, -count=1 -failfast -timeout=60m ./..., redirected to
+monolith-util-final-workspace-go.log. Poll exact handle, do not restart because
+of silent output. Free space8.5GiB last observed; monitor actual failures.
+Known captured AliasSub2 replay issue and pinned-Java evidence remain unchanged;
+async semantics choice still pending. Goal active. Next independent utility
+batch: whole StringHelper20 methods, inspect source implementation before tests.
+
 2026-10-05 shared util BufferedDataInputStreamTest complete after04c6f15:
 Ported full source BufferedDataInputStream/BufferedDataOutputStream classes in
 buffered_data_stream.go before their original seven tests. Preserve8192-byte

@@ -3,6 +3,7 @@ package tlc
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -224,9 +225,8 @@ func ParseModelConfigFile(configFile string) (*ModelConfig, error) {
 func ExtractMonolithConfigSource(source string, configName string) string {
 	var out strings.Builder
 	active := false
-	for _, rawLine := range strings.Split(source, "\n") {
-		line := strings.TrimSuffix(rawLine, "\r")
-		if active && strings.HasPrefix(line, "====") {
+	for _, line := range monolithLines(source) {
+		if active && monolithEnd(line) {
 			break
 		}
 		if !active && isMonolithConfigStart(line, configName) {
@@ -238,26 +238,12 @@ func ExtractMonolithConfigSource(source string, configName string) string {
 			out.WriteByte('\n')
 		}
 	}
-	return strings.TrimSpace(out.String())
+	return strings.TrimFunc(out.String(), func(r rune) bool { return r <= 0x20 })
 }
 
 func isMonolithConfigStart(line string, configName string) bool {
-	text := strings.TrimSpace(line)
-	if !strings.HasPrefix(text, "----") {
-		return false
-	}
-	text = strings.TrimLeft(text, "-")
-	text = strings.TrimSpace(text)
-	fields := strings.Fields(text)
-	if len(fields) < 2 || fields[0] != "CONFIG" || fields[1] != configName {
-		return false
-	}
-	for _, field := range fields[2:] {
-		if strings.Trim(field, "-") != "" {
-			return false
-		}
-	}
-	return true
+	pattern := `^-{4,}` + monolithWhitespace + `*CONFIG` + monolithWhitespace + `+` + regexp.QuoteMeta(configName) + monolithWhitespace + `*-{4,}$`
+	return regexp.MustCompile(pattern).MatchString(line)
 }
 
 func (m *ModelConfig) GetRawConstants() []string {
