@@ -121,3 +121,28 @@ func TestJavaLegacySuiteETest7(t *testing.T) {
 	}
 	requireJavaTLCRecordedParams(t, r, tlc.ECTLCConfigSubstitutionNonConstant, "C", "Foo")
 }
+
+// Original ETest16.testSpec and ERROR_SPEC_PARSE constructor, preserving both
+// duplicate-field ranges and messages with the full SuiteETestCase settings.
+func TestJavaLegacySuiteETest16(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest16", "etest16", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest16.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	for _, substring := range []string{
+		"*** Errors: 2\n",
+		"line 5, col 27 to line 5, col 27 of module etest16\n",
+		"Non-unique fields in constructor.\n",
+		"line 7, col 27 to line 7, col 27 of module etest16\n",
+		"Non-unique fields in constructor.",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

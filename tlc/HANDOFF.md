@@ -1,5 +1,50 @@
 # TLC Port Handoff
 
+2026-10-05 ETest8–16 complete after6e5d315:
+All16 original SuiteETestCase contexts are now complete translations. This batch
+preserves the nine original constructors, all inherited runner flags, every source
+assertion and18 byte-identical vectors. ETest8 uses -simulate, ERROR (the upstream
+simulator TODO), checkDeadLock=false, FINISHED/STATS_SIMU, no DEADLOCK and its
+exact zero-count uncovered location. ETest9–11 retain FAILURE_SPEC_EVAL, first
+GENERAL record membership-error substrings and exact zero coverage. ETest12–15
+retain VIOLATION_ASSUMPTION and exact first assumption-evaluation error substrings
+for Cardinality overflow, unsuccessful CHOOSE and invalid integer comparison.
+ETest16 initially reported one semantic error instead of Java's two: duplicate
+fields in sets of records were unchecked. Generator.processRcdForms:4094 handles
+both record forms. Go now validates both, reports the repeated field token range
+and Java's Non-unique fields message via the existing SANY diagnostic metadata.
+The source assertions and vectors are unchanged. No invented tests were added.
+
+Final all ETest1–16 pass race40.497s (82330 terminal/retired), log
+legacy-error-etest1-etest16-race.log. Individual8 race1.808s,9–11 race14.175s,
+12–15 race18.217s,16 race1.132s, handles97738/43233/80532/92787 terminal/retired.
+Related root parser/semantic/XML/elevated-warning race14.895s (53867 terminal/
+retired), log legacy-error-record-constructors-related-race.log. Complete SANY
+Java race8.013s (15921 terminal/retired), log
+legacy-error-record-constructors-sany-race.log.
+The three previously failing workspace contexts plus ETest1–3 also pass
+race720.306s (15192 terminal/retired), log workspace-instance-context-fix-race.log.
+This validates caf0ad3's actual INSTANCE filtering correction with unchanged
+EvalExceptionLiveness, EWD998ChanDebugger and BufferedRandomAccessFile assertions.
+Inventory1081/1269 contexts (85.2%),561/626 complete classes (89.6%),188pending
+across65classes; legacy98/104 complete. Next original Test210, then212/213/214/
+215/217. Test210 requires exactly nine semantic errors, exact ranges and full
+ASSUME/PROVE scope, nested-label and SUFFICES diagnostics. Fix the semantic
+implementation before proceeding after any failure; no generic parse-failure
+substitute. The five deferred topics remain deferred.
+
+Only two earlier whole-workspace handles remain confirmed live:23927 (diagnostic
+snapshot BEFORE caf0ad3's INSTANCE context filter fix) and57071 (caf0ad3 production
+code BEFORE f8bd7c9's unknown-operator metadata and the current duplicate-record-set
+validation). Resume these handles; do not restart on observation timeouts. Logs
+legacy-error-reporting-final-workspace-go.log and
+legacy-error-context-final-workspace-go.log under .codex-gotmp/.
+Full current-source verification is still pending; neither snapshot covers the
+latest semantic validation addition. Preserve their receipts with accurate scope,
+then run the required final workspace gate for current production changes.
+Do not claim full current-source green from focused evidence alone.
+This entry is authoritative; earlier inventory and live-handle notes are historical.
+
 2026-10-05 original ETest6 and ETest7 complete after f8bd7c9:
 Original ETest6 passes FAILURE_SPEC_EVAL, the first GENERAL record's exact
 undefined-identifier substring with line16:23 location, and both exact zero-count

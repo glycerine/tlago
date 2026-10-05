@@ -2920,7 +2920,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		seenFields := map[string]Position{}
 		for _, field := range e.Fields {
 			if prev, ok := seenFields[field.Name]; ok {
-				diags = append(diags, errorAt(field.Pos, "E4262", "duplicate record field %s; first field at %s", field.Name, prev))
+				diags = append(diags, sanyDuplicateRecordFieldDiagnostic(field.Name, field.Pos, prev))
 			} else {
 				seenFields[field.Name] = field.Pos
 			}
@@ -2934,7 +2934,13 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 	case *RecordComponentExpr:
 		diags = append(diags, checkExpr(e.Record, defined, locals)...)
 	case *RecordSetExpr:
+		seenFields := map[string]Position{}
 		for _, field := range e.Fields {
+			if prev, ok := seenFields[field.Name]; ok {
+				diags = append(diags, sanyDuplicateRecordFieldDiagnostic(field.Name, field.Pos, prev))
+			} else {
+				seenFields[field.Name] = field.Pos
+			}
 			diags = append(diags, checkExpr(field.Set, defined, locals)...)
 		}
 	case *FunctionExpr:
@@ -4362,5 +4368,14 @@ func sanyUndefinedIdentifierDiagnostic(identifier *IdentExpr) Diagnostic {
 		diagnostic.SANYRange = identifier.Syntax.Range
 	}
 	diagnostic.SANYMessage = fmt.Sprintf("Unknown operator: `%s'.", identifier.Name)
+	return diagnostic
+}
+
+// Generator.processRcdForms checks both record constructors and sets of records
+// and reports the repeated field token, rather than the whole field/value pair.
+func sanyDuplicateRecordFieldDiagnostic(name string, position, previous Position) Diagnostic {
+	diagnostic := errorAt(position, "E4262", "duplicate record field %s; first field at %s", name, previous)
+	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	diagnostic.SANYMessage = "Non-unique fields in constructor."
 	return diagnostic
 }

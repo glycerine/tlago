@@ -108,3 +108,205 @@ func TestJavaLegacySuiteETest6(t *testing.T) {
 		"line 13, col 14 to line 13, col 43 of module etest6",
 		"line 19, col 13 to line 19, col 23 of module etest6")
 }
+
+// Original ETest8.testSpec, -simulate/ERROR constructor and checkDeadLock=false.
+// Preserve the upstream simulator exit-status TODO and full inherited settings.
+func TestJavaLegacySuiteETest8(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithDeadlock(t, "LegacySuiteETest8", "etest8", true, true, true, 1, false,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest8.json"), "-simulate")
+	if r.ExitStatus != tlc.ExitStatusError {
+		t.Fatalf("exit=%d, want ERROR; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCStatsSimu)) == 0 {
+		t.Fatal("TLC_STATS_SIMU absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCDeadlockReached)) != 0 {
+		t.Fatal("TLC_DEADLOCK_REACHED present")
+	}
+	requireJavaTLCUncovered(t, r, "line 18, col 15 to line 18, col 22 of module etest8")
+}
+
+// Original ETest9.testSpec and FAILURE_SPEC_EVAL constructor, preserving its
+// exact GENERAL substring, zero coverage location and full inherited settings.
+func TestJavaLegacySuiteETest9(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest9", "etest9", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest9.json"))
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusFailureSpecEval {
+		t.Fatalf("exit=%d, want FAILURE_SPEC_EVAL; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to check if the value:\n\"a\"\nis an element of Nat."
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECGeneral)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first GENERAL lacks %q: %v", substring, records)
+	}
+	requireJavaTLCUncovered(t, r, "line 13, col 12 to line 13, col 15 of module etest9")
+}
+
+// Original ETest10.testSpec and FAILURE_SPEC_EVAL constructor, preserving its
+// exact GENERAL substring, zero coverage location and full inherited settings.
+func TestJavaLegacySuiteETest10(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest10", "etest10", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest10.json"))
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusFailureSpecEval {
+		t.Fatalf("exit=%d, want FAILURE_SPEC_EVAL; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to check if the value:\n\"a\"\nis an element of Int."
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECGeneral)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first GENERAL lacks %q: %v", substring, records)
+	}
+	requireJavaTLCUncovered(t, r, "line 13, col 12 to line 13, col 15 of module etest10")
+}
+
+// Original ETest11.testSpec and FAILURE_SPEC_EVAL constructor, preserving its
+// exact GENERAL substring, zero coverage location and full inherited settings.
+func TestJavaLegacySuiteETest11(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest11", "etest11", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest11.json"))
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusFailureSpecEval {
+		t.Fatalf("exit=%d, want FAILURE_SPEC_EVAL; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to check if the value:\n1\nis an element of STRING."
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECGeneral)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first GENERAL lacks %q: %v", substring, records)
+	}
+	requireJavaTLCUncovered(t, r, "line 13, col 12 to line 13, col 15 of module etest11")
+}
+
+// Original ETest12.testSpec and VIOLATION_ASSUMPTION constructor, preserving
+// the exact assumption-evaluation diagnostic and all inherited runner settings.
+func TestJavaLegacySuiteETest12(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest12", "etest12", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest12.json"))
+	if r.ExitStatus != tlc.ExitStatusViolationAssumption {
+		t.Fatalf("exit=%d, want VIOLATION_ASSUMPTION; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to apply the operator overridden by the Java method\npublic static tlc2.value.impl.IntValue tlc2.module.FiniteSets.Cardinality(tlc2.value.impl.Value),\nbut it produced the following error:\nOverflow when computing the number of elements in:\n[0..2 -> 1..2000]"
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECTLCAssumptionEvaluationError)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first TLC_ASSUMPTION_EVALUATION_ERROR lacks %q: %v", substring, records)
+	}
+}
+
+// Original ETest13.testSpec and VIOLATION_ASSUMPTION constructor, preserving
+// the exact assumption-evaluation diagnostic and all inherited runner settings.
+func TestJavaLegacySuiteETest13(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest13", "etest13", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest13.json"))
+	if r.ExitStatus != tlc.ExitStatusViolationAssumption {
+		t.Fatalf("exit=%d, want VIOLATION_ASSUMPTION; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to apply the operator overridden by the Java method\npublic static tlc2.value.impl.IntValue tlc2.module.FiniteSets.Cardinality(tlc2.value.impl.Value),\nbut it produced the following error:\nOverflow when computing the number of elements in:\n[0..2 -> 1..2000]"
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECTLCAssumptionEvaluationError)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first TLC_ASSUMPTION_EVALUATION_ERROR lacks %q: %v", substring, records)
+	}
+}
+
+// Original ETest14.testSpec and VIOLATION_ASSUMPTION constructor, preserving
+// the exact assumption-evaluation diagnostic and all inherited runner settings.
+func TestJavaLegacySuiteETest14(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest14", "etest14", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest14.json"))
+	if r.ExitStatus != tlc.ExitStatusViolationAssumption {
+		t.Fatalf("exit=%d, want VIOLATION_ASSUMPTION; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to compute the value of an expression of form\nCHOOSE x \\in S: P, but no element of S satisfied P.\nline 5, col 7 to line 5, col 28 of module etest14"
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECTLCAssumptionEvaluationError)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first TLC_ASSUMPTION_EVALUATION_ERROR lacks %q: %v", substring, records)
+	}
+}
+
+// Original ETest15.testSpec and VIOLATION_ASSUMPTION constructor, preserving
+// the exact assumption-evaluation diagnostic and all inherited runner settings.
+func TestJavaLegacySuiteETest15(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest15", "etest15", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest15.json"))
+	if r.ExitStatus != tlc.ExitStatusViolationAssumption {
+		t.Fatalf("exit=%d, want VIOLATION_ASSUMPTION; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "Attempted to compare integer 2 with non-integer:\n<<3>>"
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECTLCAssumptionEvaluationError)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first TLC_ASSUMPTION_EVALUATION_ERROR lacks %q: %v", substring, records)
+	}
+}
