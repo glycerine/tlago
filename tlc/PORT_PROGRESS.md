@@ -1,5 +1,20 @@
 # TLC Port Progress
 
+2026-10-04: Test34–49 committed as `b5dcd29`. Current batch ports 18 more
+whole original legacy methods: Test50–60, Test62–65 and Test63a/64a/65a.
+Two source test files preserve complete constructors, inherited settings and
+assertions; Test57 retains its entire overriding method and safety exit without
+adding inherited statistics/coverage assertions. All four additional coverage
+hooks (Test52/55/56/63) retain the exact original strings, verified mechanically.
+All 45 copied vectors match original bytes, including INSTANCE dependencies.
+All 18 unchanged Java JUnit references pass. Go first seven normal 5.314s,
+race 30.478s; next eleven normal 7.452s, race 42.566s. Handles 33873/33292/
+80515/6050 all terminal/retired. No production changes or weakened assertions.
+Inventory: 1050/1269 contexts (82.7%), 530/626 complete classes (84.7%),
+219 pending across 96 classes, one partial; legacy suite 67/104 complete.
+The five user-deferred topics remain deferred. All required checks green.
+
+
 2026-10-04 latest:24 original correctness contexts and both production fixes
 committed9acb8a7 after full workspace and relevant race checks passed. Next four
 original liveness methods (Github604/Github702/IncompatibleTypesLive/TwoPhaseCommit)

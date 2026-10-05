@@ -6,56 +6,40 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Latest green commit: `9c593ff`, all 15 original fingerprint factory methods;
-normal 1.132s/race 2.348s, unchanged Java all 15 pass 0.152s. No production
-changes or fixtures. Prior `956f530` contains legacy Test27–33 and full generated
-SANY config literal recognition: all 7 normal 91.927s, config tests race 1.032s,
-exact 10 original config/override model race 36.420s, full TLC normal 67.357s.
-All earlier handles retired. Prior workspace normal at `051bb16` passed root
-1647.375s/SANY tests 0.935s/TLC 68.700s; keep its older scope explicit.
+Latest green commit: `b5dcd29`, legacy Test34–49 plus removal of the false
+user-definable \subset → built-in \subseteq bridge alias. Whole 16 normal
+10.110s/race 75.251s, related subset/module/config checks 5.581s.
+Prior full TLC normal at `956f530` passed 67.357s; prior full workspace at
+`051bb16` passed root 1647.375s/SANY 0.935s/TLC 68.700s. Keep scopes explicit.
 
-Current batch: whole original legacy Test34–49 inherited SuiteTestCase methods
-in `tlc_legacy_suite_modules_operators_java_test.go`, 34 byte-exact source vectors.
-Original constructor/default settings, stats, exit and uncovered assertions
-retained. Source classes reviewed before installation; all 104 unchanged Java
-legacy references had passed preflight 11601.
+2026-10-04: Test34–49 committed as `b5dcd29`. Current batch ports 18 more
+whole original legacy methods: Test50–60, Test62–65 and Test63a/64a/65a.
+Two source test files preserve complete constructors, inherited settings and
+assertions; Test57 retains its entire overriding method and safety exit without
+adding inherited statistics/coverage assertions. All four additional coverage
+hooks (Test52/55/56/63) retain the exact original strings, verified mechanically.
+All 45 copied vectors match original bytes, including INSTANCE dependencies.
+All 18 unchanged Java JUnit references pass. Go first seven normal 5.314s,
+race 30.478s; next eleven normal 7.452s, race 42.566s. Handles 33873/33292/
+80515/6050 all terminal/retired. No production changes or weakened assertions.
+Inventory: 1050/1269 contexts (82.7%), 530/626 complete classes (84.7%),
+219 pending across 96 classes, one partial; legacy suite 67/104 complete.
+The five user-deferred topics remain deferred. All required checks green.
 
-Initial actual source run 65497 failed at Test44 (6.962s), retired; preceding
-Test34–43 passed. Source Test44 defines its own `\subset`. Go's bridge had a
-shortcut rewriting it to built-in `\subseteq`, causing an integer argument to
-be treated as a set. Java BuiltInOperators only defines `\subseteq`; Operators
-lists `\subset` separately as a user-definable operator. Removed that two-line
-rewrite in `tlc_bridge.go`; normal symbol lookup now resolves the original
-user definition. No fixture/test assertions altered. Focused whole Test44
-passes 1.185s (7123 retired); corrected all 16 whole methods pass 10.110s
-(61928 retired), including all source operator precedence/definition/alias
-cases. Related original subset/module/config models and existing compact
-SANY semantic bridge tests pass 5.581s (85527 retired).
+Commit the current 51 intended paths (2 source test files, 45 vectors, 4 docs).
+No repeat of full workspace/TLC needed: production unchanged from the last
+verified snapshot; all 18 new source leaves verified normal and race.
 
-All 16 current whole methods pass race 75.251s, handle 1892 retired;
-`legacy-modules-operators-sixteen-race-go.log`. All handles retired and all
-required checks green. Stage/check and commit 40 intended paths (1 production,
-1 test file, 34 vectors, 4 docs) before further production changes. No full
-workspace or TLC repeat needed for this isolated false-alias removal: complete
-source operator/module models and related subset/semantic checks cover its
-effect; TLC package production remains unchanged from its last full green gate.
-
-Initial preparation error 97515 failed with missing fixtures after a scratch
-selector encountered letter-suffixed class paths; retired, no success credit.
-Corrected installation checked every fixture byte before the actual source run.
-
-Inventory: 1032/1269 contexts (81.3%), 512/626 classes (81.8%),
-237 pending across 114 classes, one partial. All 20 topic rows and 34 fixture
-bytes verified. Legacy suite has 49/104 complete, 55 pending; fingerprint topic
-has 68/165 complete, 97 pending. The five user-deferred topics remain deferred.
-
-Next: original Test50 onward. The 78-context ignored inherited preview now
-contains 49 ported and 29 uninstalled/uncredited contexts; four full coverage
-hooks must be preserved. Test57's separate custom override preview (one method/
-three vectors) retains safety exit and does not add inherited stats/coverage
-assertions. Review original whole methods before installing them. No invented
-tests, weakened original assertions, substituted runtime settings or sampled
-state spaces. The overall goal is active.
+Next eligible batch: original Test99/Test999 and Test201–209/Test219, the
+12 remaining inherited positive contexts in the ignored 78-context preview.
+Review entire original classes/models before installing. Exact fixture group
+selector must allow letter suffixes and match exact class name strings.
+Unchanged Java preflight of all 104 legacy classes already passed (11601 retired).
+Then custom Test220/TestInvalidInvariant and negative ETest1–16/other custom
+legacy contexts remain. Parser-negative tests require faithful ToolIO capture,
+not the positive model helper's no-parser-errors assertion. Fix production
+shortcuts before moving on; do not weaken diagnostics/assertions or add skips.
+The overall goal is active.
 
 Historical receipts/preparation follow; prior41batch is now committedfcb3f4d.
 
