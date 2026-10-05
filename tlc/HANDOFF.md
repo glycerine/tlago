@@ -1,5 +1,43 @@
 # TLC Port Handoff
 
+2026-10-05 long DiskStateQueue inherited correctness contexts complete afterdd8f136:
+All nine original StateQueueTest methods now execute DiskStateQueueTest concrete
+setup in long_disk_state_queue_java_test.go. Existing main StateQueueTest Go
+functions keep their names and share exact bodies via StateQueue interface;
+retain all identity/nil/size assertions, both10-state insertion cases, all three
+nonpositive counts in empty/nonempty contexts and both MAX_VALUE batch requests.
+Source private catch RuntimeException|AssertionError now rejects Go string and
+runtime panics instead of accepting arbitrary recover. No invented tests.
+This exposed a real port shortcut: all four Go concrete queues panicked a string
+before acquiring the queue mutex. Source synchronized sDequeue(int) asserts
+cnt>0 inside mutex. All four now use typed AssertionError with exact source
+"Nonpositive number of states requested." message inside lock. AssertionError
+constructor accepts optional message while preserving nil-message old calls.
+Native cleanup FinishAll models original test fork's background-pool thread
+teardown before TempDir removal; no serialized-state assertions or growth loop
+invented. Original huge method2,147,483,648 enqueue operations remains pending.
+Unchanged Java nine methods individually pass with full before/after setup via
+RunOriginalJUnitMethodAndExit (standard original fork process exit after JUnit),
+long-disk-queue-original-<method>.log. Java26275 terminal exit0/retired.
+Go66713 initial all9 plus inherited main9 and nativeDeque check race1.051s before
+mutex-placement audit; terminal/retired. Final84067 terminal exit0/race1.052s,
+long-disk-queue-final-race.log, all9 new contexts plus original main9 and related
+queue checks (14 top-level methods). Retired. Source assertions/inputs intact;
+no weakening, reduced bound, new skip or fixture substitute.
+Long appendix12/22 contexts (previous3),10 pending: LSB/MSB3 each, OffHeap3,
+DiskStateQueue growth1. Main1251/1269,609/626; shared55/56; concurrent2/17 unchanged.
+TODO/ignored mapping updated. Current full12436 remains LIVE at dd8f136 snapshot
+BEFORE this queue change, offheap-concurrent-flusher-final-workspace-go.log.
+Poll exact handle; current full completion still unproven. No duplicate gate.
+User asynchronous question submitted this turn: where to run exact full2.1B+
+fingerprint workloads (one file>=16GiB) with local disk only4.5GiB free? Options
+prepare remote Linux commands vs run locally after freeing space. No answer yet;
+elapsed time is not authorization or an answer. Continue independent ports.
+Goal ACTIVE; huge cases retain actual source bounds. No distributed/JPF/checkpoint
+model/debugger/benchmark work added. Potential next independent original contexts:
+FPSetTest.testSimpleFill in long LSBDiskFPSet/MSBDiskFPSet concrete classes,
+then full concurrent generator code/test ports preserving all source counts.
+
 2026-10-05 parallel offheap flusher and long-suite partial port aftera281e4a:
 Actual eviction now selects source ConcurrentOffHeapMSBFlusher at array>=8192
 and floor(size/threads)>2*PROBE_LIMIT. Ported exact partition-inclusive sort ranges,

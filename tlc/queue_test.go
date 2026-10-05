@@ -20,7 +20,7 @@ func javaStateQueueSetup(t *testing.T) *MemStateQueue {
 	return NewMemStateQueue("")
 }
 
-func requireJavaStateQueueSize(t *testing.T, q *MemStateQueue, expected int64) {
+func requireJavaStateQueueSize(t *testing.T, q StateQueue, expected int64) {
 	t.Helper()
 	if actual := q.Size(); actual != expected {
 		t.Fatalf("queue size = %d, want %d", actual, expected)
@@ -28,90 +28,140 @@ func requireJavaStateQueueSize(t *testing.T, q *MemStateQueue, expected int64) {
 }
 
 func TestJavaStateQueueEnqueue(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	expected := &TLCStateMut{}
-	q.Enqueue(expected)
-	if actual := q.SDequeue(); actual != expected {
-		t.Fatalf("sDequeue = %p, want %p", actual, expected)
-	}
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testEnqueue")
 }
 
 func TestJavaStateQueueSDequeueEmpty(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	if state := q.SDequeue(); state != nil {
-		t.Fatalf("sDequeue = %p, want nil", state)
-	}
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testsDequeueEmpty")
 }
 
 func TestJavaStateQueueDequeueEmpty(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	if state := q.Dequeue(); state != nil {
-		t.Fatalf("dequeue = %p, want nil", state)
-	}
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testDequeueEmpty")
 }
 
 func TestJavaStateQueueSDequeueNotEmpty(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	expected := &TLCStateMut{}
-	q.SEnqueue(expected)
-	requireJavaStateQueueSize(t, q, 1)
-	actual := q.SDequeue()
-	requireJavaStateQueueSize(t, q, 0)
-	if actual != expected {
-		t.Fatalf("sDequeue = %p, want %p", actual, expected)
-	}
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testsDequeueNotEmpty")
 }
 
 func TestJavaStateQueueDequeueNotEmpty(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	expected := &TLCStateMut{}
-	q.Enqueue(expected)
-	requireJavaStateQueueSize(t, q, 1)
-	actual := q.Dequeue()
-	requireJavaStateQueueSize(t, q, 0)
-	if actual != expected {
-		t.Fatalf("dequeue = %p, want %p", actual, expected)
-	}
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testDequeueNotEmpty")
 }
 
 func TestJavaStateQueueEnqueueAddNotSame(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	const j = 10
-	for i := 0; i < j; i++ {
-		q.SEnqueue(&TLCStateMut{})
-	}
-	requireJavaStateQueueSize(t, q, j)
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testEnqueueAddNotSame")
 }
 
 func TestJavaStateQueueEnqueueAddSame(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	state := &TLCStateMut{}
-	const j = 10
-	for i := 0; i < j; i++ {
-		q.SEnqueue(state)
-	}
-	requireJavaStateQueueSize(t, q, j)
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testEnqueueAddSame")
 }
 
 func TestJavaStateQueueSDequeueAbuseEmpty(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	expectPanic(t, func() { q.SDequeueMany(0) })
-	expectPanic(t, func() { q.SDequeueMany(-1) })
-	expectPanic(t, func() { q.SDequeueMany(-2147483648) })
-	if actual := q.SDequeueMany(2147483647); actual != nil {
-		t.Fatalf("sDequeue(Integer.MAX_VALUE) = %v, want nil", actual)
-	}
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testsDequeueAbuseEmpty")
 }
 
 func TestJavaStateQueueSDequeueAbuseNonEmpty(t *testing.T) {
-	q := javaStateQueueSetup(t)
-	q.SEnqueue(&TLCStateMut{})
-	expectPanic(t, func() { q.SDequeueMany(0) })
-	expectPanic(t, func() { q.SDequeueMany(-1) })
-	expectPanic(t, func() { q.SDequeueMany(-2147483648) })
-	if actual := q.SDequeueMany(2147483647); len(actual) != 1 {
-		t.Fatalf("sDequeue(Integer.MAX_VALUE).length = %d, want 1", len(actual))
+	javaStateQueueOriginalMethod(t, javaStateQueueSetup(t), "testsDequeueAbuseNonEmpty")
+}
+
+var javaStateQueueOriginalMethods = []string{
+	"testEnqueue",
+	"testsDequeueEmpty",
+	"testDequeueEmpty",
+	"testsDequeueNotEmpty",
+	"testDequeueNotEmpty",
+	"testEnqueueAddNotSame",
+	"testEnqueueAddSame",
+	"testsDequeueAbuseEmpty",
+	"testsDequeueAbuseNonEmpty",
+}
+
+// Whole original StateQueueTest methods, shared by its concrete subclasses.
+func javaStateQueueOriginalMethod(t *testing.T, q StateQueue, method string) {
+	t.Helper()
+	switch method {
+	case "testEnqueue":
+		expected := &TLCStateMut{}
+		q.Enqueue(expected)
+		if actual := q.SDequeue(); actual != expected {
+			t.Fatalf("sDequeue = %p, want %p", actual, expected)
+		}
+	case "testsDequeueEmpty":
+		if state := q.SDequeue(); state != nil {
+			t.Fatalf("sDequeue = %p, want nil", state)
+		}
+	case "testDequeueEmpty":
+		if state := q.Dequeue(); state != nil {
+			t.Fatalf("dequeue = %p, want nil", state)
+		}
+	case "testsDequeueNotEmpty":
+		expected := &TLCStateMut{}
+		q.SEnqueue(expected)
+		requireJavaStateQueueSize(t, q, 1)
+		actual := q.SDequeue()
+		requireJavaStateQueueSize(t, q, 0)
+		if actual != expected {
+			t.Fatalf("sDequeue = %p, want %p", actual, expected)
+		}
+	case "testDequeueNotEmpty":
+		expected := &TLCStateMut{}
+		q.Enqueue(expected)
+		requireJavaStateQueueSize(t, q, 1)
+		actual := q.Dequeue()
+		requireJavaStateQueueSize(t, q, 0)
+		if actual != expected {
+			t.Fatalf("dequeue = %p, want %p", actual, expected)
+		}
+	case "testEnqueueAddNotSame":
+		const j = 10
+		for i := 0; i < j; i++ {
+			q.SEnqueue(&TLCStateMut{})
+		}
+		requireJavaStateQueueSize(t, q, j)
+	case "testEnqueueAddSame":
+		state := &TLCStateMut{}
+		const j = 10
+		for i := 0; i < j; i++ {
+			q.SEnqueue(state)
+		}
+		requireJavaStateQueueSize(t, q, j)
+	case "testsDequeueAbuseEmpty":
+		javaStateQueueExpectRuntimeOrAssertion(t, func() { q.SDequeueMany(0) })
+		javaStateQueueExpectRuntimeOrAssertion(t, func() { q.SDequeueMany(-1) })
+		javaStateQueueExpectRuntimeOrAssertion(t, func() { q.SDequeueMany(-2147483648) })
+		if actual := q.SDequeueMany(2147483647); actual != nil {
+			t.Fatalf("sDequeue(Integer.MAX_VALUE) = %v, want nil", actual)
+		}
+	case "testsDequeueAbuseNonEmpty":
+		q.SEnqueue(&TLCStateMut{})
+		javaStateQueueExpectRuntimeOrAssertion(t, func() { q.SDequeueMany(0) })
+		javaStateQueueExpectRuntimeOrAssertion(t, func() { q.SDequeueMany(-1) })
+		javaStateQueueExpectRuntimeOrAssertion(t, func() { q.SDequeueMany(-2147483648) })
+		if actual := q.SDequeueMany(2147483647); len(actual) != 1 {
+			t.Fatalf("sDequeue(Integer.MAX_VALUE).length = %d, want 1", len(actual))
+		}
+	default:
+		t.Fatalf("unknown original queue method %s", method)
 	}
+}
+
+// Original expectRuntimeException catches RuntimeException | AssertionError.
+// Retain the native Java runtime families and reject Go string/runtime panics.
+func javaStateQueueExpectRuntimeOrAssertion(t *testing.T, body func()) {
+	t.Helper()
+	defer func() {
+		switch failure := recover().(type) {
+		case *AssertionError, *RuntimeException, *NegativeArraySizeException,
+			*IllegalArgumentException, *IllegalStateException, *ArrayIndexOutOfBoundsException,
+			*IndexOutOfBoundsException, *StringIndexOutOfBoundsException, *ArithmeticException,
+			*NullPointerException, *NoSuchElementException, *UnsupportedOperationException,
+			*ClassCastException, *SecurityException, *ConcurrentModificationException,
+			*RejectedExecutionException, *InvalidPathException, *NumberFormatException:
+			return
+		default:
+			t.Fatalf("expected RuntimeException or AssertionError, got %T: %v", failure, failure)
+		}
+	}()
+	body()
 }
 
 func TestStateDequeSDequeueManyUpdatesSizeLikeJavaStateQueue(t *testing.T) {

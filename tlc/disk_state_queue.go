@@ -155,11 +155,11 @@ func (q *DiskStateQueue) SDequeue() *TLCStateMut {
 }
 
 func (q *DiskStateQueue) SDequeueMany(cnt int) []*TLCStateMut {
-	if cnt <= 0 {
-		panic("nonpositive number of states requested")
-	}
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	if cnt <= 0 {
+		panic(NewAssertionError("Nonpositive number of states requested."))
+	}
 	if !q.isAvailLocked() {
 		return nil
 	}
