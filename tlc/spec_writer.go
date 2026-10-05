@@ -141,20 +141,17 @@ func NewSpecWriter(generateConfigurationContent bool) *SpecWriter {
 }
 
 func SpecWriterModuleClosingTag(rightMarginWidth int, addModificationHistory bool) string {
-	if rightMarginWidth <= 0 {
-		rightMarginWidth = 77
-	}
 	var b strings.Builder
-	b.WriteString(strings.Repeat("=", rightMarginWidth))
-	b.WriteString(tlaCR)
+	b.WriteString(StringHelperCopyString(javaString("="), int32(rightMarginWidth)))
+	b.WriteString(StringHelperPlatformNewline)
 	if addModificationHistory {
 		b.WriteString("\\* Modification History")
-		b.WriteString(tlaCR)
+		b.WriteString(StringHelperPlatformNewline)
 		b.WriteString("\\* Created ")
 		b.WriteString(specWriterJavaDateString(time.Now()))
 		b.WriteString(" by ")
 		b.WriteString(os.Getenv("USER"))
-		b.WriteString(tlaCR)
+		b.WriteString(StringHelperPlatformNewline)
 	}
 	return b.String()
 }

@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-05 shared util StringHelperTest complete after0643052:
+All20 original JUnit3 methods in string_helper_java_test.go: exact two word-array
+inputs/leading-space input, all five copy counts, six onlySpaces assertions,
+complete seven-row front/end trims and unchanged-text rows, five leading-space
+counts, eight identifier assertions and six strict NullPointerException catches.
+Source commented TODO methods remain inactive/uncredited; no invented tests.
+Production helpers preserve doubling algorithm/negative-copy empty result/null
+concatenation, Java trim<=0x20, Character whitespace exclusions/C0 separators,
+ASCII regex word separators/trailing-empty split behavior and UTF16-char letter/
+digit scans. StringHelper platform newline comes from startup property/native OS.
+SpecWriterModuleClosingTag previously substituted77 for nonpositive width; source
+copy semantics now used directly, with source platform newline in this method.
+Ordinary source callers still explicitly pass77. No default-size replacement.
+Unchanged source Java20 methods pass.011s (string-helper-original-java.log).
+Go77423 terminal exit0/full20 plus native SpecWriter checks race1.031s,
+string-helper-final-race.log. Root25033 terminal exit0/all four original
+SpecTraceExpressionWriter methods race1.088s, string-helper-spec-writer-race.log.
+Both retired. Scratch Java/Go Unicode-table probe compares whitespace/letter-or-
+digit/digit flags for EVERY65536 UTF16 char; byte-identical SHA256
+646c1a146a3ac62262537fe76ec25501b78226b01dd5b19952421cb73afbd7dc.
+Probe files StringHelperCharacterFlags.java/string-helper-character-flags.go and
+string-helper-{java,go}-character-flags.bin are ignored scratch, not invented
+persistent tests or credited original contexts. Actual source predicates match.
+Shared util inventory43/56 contexts (previous23/56); remaining ExecutionStatistics
+Collector12 and TLCRuntime1. Main1251/1269,609/626 unchanged. TODO/mapping updated.
+Whole88583 remains LIVE at Monolith snapshot before StringHelper/writer changes,
+monolith-util-final-workspace-go.log. Poll exact handle. No current full green
+claim. Last green whole65591 SHORT snapshot remains older as documented below.
+Space inspection1564 terminal: no private Go-cache blob>=300MiB. Removed ONLY
+own generated scratch two2GiB-apparent CoreTXT huge.bin probes and three retired
+Java CodePlex08 FL1/FL2 DOT graphs (2.7GiB actually allocated). Raw result logs
+retained; no committed fixtures/source vectors deleted. First apparent-size
+cleanup did not reclaim expected space; graph cleanup yields9.7GiB free observed.
+Goal active; next portable shared utility batch ExecutionStatisticsCollector12:
+read full source/test subclass hooks, no real submissions during test runs.
+TLCRuntime original one method requires Ant UseParallelGC; retain JVM-specific
+case visible rather than substituting a constant or claiming Go GC is ParallelGC.
+Pending captured AliasSub2 source-behavior question unchanged; no replay changes.
+
 2026-10-05 shared util MonolithSpecExtractorTest complete afterdfe33b7:
 All five original methods in monolith_spec_extractor_java_test.go retain exact
 Windows-prefixed MONOLITH_SPEC fixture, config result, non-null module/name/full
