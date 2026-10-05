@@ -1,5 +1,36 @@
 # TLC Port Handoff
 
+2026-10-05 Test213 implementation in progress after07b206a:
+Whole original Test213.testSpec is translated locally with its constructor,
+no-GENERAL assertion, six exact substrings and byte-identical source vectors.
+It remains uncredited and uncommitted. Initial Go run wrongly reached TLC's
+missing-init configuration error. Temporal proof validation now follows Java
+TheoremNode.LevelCheckTemporal: CASE/QED subproofs inherit the enclosing goal,
+other assertions start their own goal. ProofStep retains the statement's syntax
+range separately from the numbered step. Go now produces all three exact Java
+CASE/HAVE/WITNESS errors, but still misses the two INSTANCE level constraints.
+The unchanged original test is red (three errors instead of five); do not
+advance to Test214 or weaken it.
+
+Next implementation: LevelNode.addTemporalLevelConstraintToConstants limits
+ConstantDecl symbols contributing to ASSUME or ASSUME/PROVE levelParams to
+ActionLevel. InstanceNode checks the resulting module levelConstraints even
+for a constant module. Track levelParams through builtin argument weights,
+definitions, shadowing and INSTANCE substitutions; do not approximate this by
+scanning identifier occurrences or reuse XML export as a semantic roundtrip.
+Java sources: semantic/{LevelNode,AssumeNode,AssumeProveNode,InstanceNode}.java.
+Root related parser/semantic/XML and original208/210/212 pass race9.385s,
+log .codex-gotmp/legacy-error-test213-temporal-related-race.log; the sany_tests
+line in that log has no matching tests and gives no SANY suite credit.
+Separate full SANY Java race38683 is terminal exit0 (8.718s), log
+.codex-gotmp/legacy-error-test213-temporal-sany-race.log.
+
+Test210 whole workspace15753 is terminal exit0: root1762.590s,
+SANY0.909s/TLC69.724s, log legacy-error-test210-final-workspace-go.log.
+This covers2303cdb production before Test212 and current Test213 changes.
+Test212 whole workspace82923 remains live; resume its handle, not a new run.
+Current inventory stays1083/1269 contexts and563/626 classes.
+
 2026-10-05 original Test212 complete:
 The original ERROR_SPEC_PARSE constructor, no-GENERAL assertion, seven exact
 TestPrintStream substrings, inherited SuiteETestCase settings and four
