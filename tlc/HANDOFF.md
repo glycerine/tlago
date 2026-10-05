@@ -1,5 +1,47 @@
 # TLC Port Handoff
 
+2026-10-05 whole Bug246 disk-fingerprint contexts complete after53bb262:
+Both original Bug246DiskFPSetTest methods are translated in
+ tlc/fpset_bug246_java_test.go. testLinearFillup preserves runtime.maxMemory /
+TLCRuntime.getFPMemSize(0.5), the original heap-bound assertion, ratio1, LSB dummy,
+init0, timestamp-based filename, full getTblCapacity()-1 descending MaxInt64
+insertions and every duplicate rejection. Retain last bucketCapacity/tblCapacity/
+tblLoad/tblCnt/growDiskMark observations, catch-only-OutOfMemoryError, nulling/
+GC, growDiskMark==0 assertion and unconditional failure with source statistics.
+No fixed memory override, smaller loop or sampled inputs. testFlushDiskFPSet has
+no active statements in original Java (all body commented); the Go method remains
+empty. Count it as a whole translation, not evidence of actual flush coverage.
+
+Source DiskFPSet.init allocates exactly numThreads dedicated readers plus five
+pool readers. Go substituted one when numThreads==0, including opening/reopening.
+Remove that shortcut; retain zero throughout initialization and reopening.
+Negative counts throw the source array-allocation NegativeArraySizeException.
+Remove the fabricated default-reader constant; preserve native readers/pool
+lifecycle, existing pooled reads and source-derived table sizing.
+
+Unchanged original Java -ea passes both methods0.216s, log
+fpset-Bug246DiskFPSetTest-original-java.log; compile fpset-bug246-original-javac.log.
+Native Go focused48195 passes race162.804s, log fpset-bug246-initial-race.log.
+Actual runtime budget67528591360, memory33764295680, capacity67108864; all67108863
+insertions retained. Process inspection confirmed running CPU/allocation before
+terminal pass; observation silence was not treated as a hang or restart trigger.
+Final related87167 passes race57.332s, log
+fpset-bug246-zero-readers-related-race.log; original FPSetFactory/MultiFPSet plus
+related disk/configuration/duplicate/recovery checks retain their assertions.
+No invented persistent tests or weakened original assertions.
+Inventory1162/1269 contexts (91.6%),602/626 classes (96.2%);107pending across24classes.
+Fingerprint topic76/165 methods,13/20 classes complete;89pending across7classes.
+Next original OffHeapIterator methods and full heap/indexer matrices, preserving
+all rows/resources/catch rules; no new checkpoint/recovery MODEL work.
+
+Current full9378 is live, log fpset-bug246-zero-readers-final-workspace-go.log,
+-count=1 -failfast -timeout60m ./.... It includes the zero-reader fix and the full
+runtime-derived Bug246 loop. Previous full90170 is live before zero-reader work,
+log fpset-bugs210-242-final-workspace-go.log; full49471 is live at318811c before
+later test ports/page arithmetic. Old84016 remains live and lacks the exploration
+stopping fix. Do not credit current whole-suite success before terminal exit0.
+Resume9378/90170/49471/84016 exact handles; no restart from observation timeout.
+
 2026-10-05 Bug210/Bug242 whole disk-fingerprint methods complete after42719d2:
 All six original methods are translated in tlc/fpset_disk_bugs_java_test.go.
 Preserve DummyDiskFPSet's LSB constructor/index visibility, Bug210's exact

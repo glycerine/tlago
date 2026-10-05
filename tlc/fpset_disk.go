@@ -26,7 +26,6 @@ const (
 	diskFPSetDefaultMaxTblCnt      = 1 << diskFPSetLogDefaultMaxTblCnt
 	diskFPSetModeLSB               = "lsb"
 	diskFPSetModeMSB               = "msb"
-	diskFPSetDefaultWorkerReaders  = 1
 	diskFPSetBRAFPoolSize          = 5
 	DiskFPSetLogLockCntProperty    = "tlc2.tool.fp.DiskFPSet.logLockCnt"
 	DiskFPSetMetadirPrefixProperty = "tlc2.tool.fp.DiskFPSet.metadirPrefix"
@@ -234,8 +233,8 @@ func diskFPSetError2Warning() bool {
 func (s *DiskFPSet) Init(numThreads int, metadir string, filename string) FPSet {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if numThreads <= 0 {
-		numThreads = diskFPSetDefaultWorkerReaders
+	if numThreads < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(numThreads)))
 	}
 	s.metadir = diskFPSetMetadir(metadir)
 	s.filename = filename
@@ -1061,8 +1060,8 @@ func (s *DiskFPSet) recoverFileLocked(path string) error {
 }
 
 func (s *DiskFPSet) openBRAFReaders(numReaders int, poolSize int) error {
-	if numReaders <= 0 {
-		numReaders = diskFPSetDefaultWorkerReaders
+	if numReaders < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(numReaders)))
 	}
 	if poolSize <= 0 {
 		poolSize = diskFPSetBRAFPoolSize
@@ -1112,9 +1111,6 @@ func (s *DiskFPSet) closeBRAFReaders() error {
 func (s *DiskFPSet) reopenBRAFReaders() error {
 	readerCnt := len(s.braf)
 	poolCnt := len(s.brafPool)
-	if readerCnt <= 0 {
-		readerCnt = diskFPSetDefaultWorkerReaders
-	}
 	if poolCnt <= 0 {
 		poolCnt = diskFPSetBRAFPoolSize
 	}
