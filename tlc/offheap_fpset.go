@@ -2,6 +2,7 @@ package tlc
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -252,14 +253,24 @@ func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 	if s.tblCnt <= 0 {
 		return uint64(1<<63 - 1)
 	}
-	s.prepareOffHeapTableLocked()
 	numThreads := NumWorkers()
 	if numThreads < 1 {
 		numThreads = 1
 	}
-	partitionLen := s.array.Size() / int64(numThreads)
-	distance := int64(1<<63 - 1)
-	for id := 0; id < numThreads; id++ {
+	if flusher := s.selectOffHeapConcurrentFlusher(numThreads); flusher != nil {
+		flusher.prepareTable()
+	} else {
+		s.prepareOffHeapTableLocked()
+	}
+	partitionLen := int64(math.Floor(float64(s.array.Size()) / float64(numThreads)))
+	distances := make([]int64, numThreads)
+	for id := range distances {
+		distances[id] = 1<<63 - 1
+	}
+	// The source creates a separate executor for the closest-pair scan; it does
+	// not shut down the selected flusher's executor after preparing the table.
+	scan := &offHeapConcurrentFlusher{numThreads: numThreads}
+	failures := scan.invokeAll(func(id int) {
 		isLast := id == numThreads-1
 		start := int64(id) * partitionLen
 		end := start + partitionLen
@@ -267,32 +278,42 @@ func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
 			end = s.array.Size() - 1
 		}
 		end++
-		canWrap := !isLast || id == 0
-		func() {
-			defer func() {
-				if failure := recover(); failure != nil {
-					if _, ok := failure.(*NoSuchElementException); !ok {
-						panic(failure)
-					}
+		defer func() {
+			if failure := recover(); failure != nil {
+				if _, ok := failure.(*NoSuchElementException); !ok {
+					panic(failure)
 				}
-			}()
-			itr := newOffHeapIterator(s.array, s.tblCnt, start, s.indexer, canWrap)
-			x, ok := itr.next()
-			if !ok {
-				return
-			}
-			for {
-				y, ok := itr.nextUntil(end)
-				if !ok {
-					break
-				}
-				d := y - x
-				if d < distance {
-					distance = d
-				}
-				x = y
 			}
 		}()
+		itr := newOffHeapIterator(s.array, s.tblCnt, start, s.indexer, !isLast || id == 0)
+		x, ok := itr.next()
+		if !ok {
+			return
+		}
+		for {
+			y, ok := itr.nextUntil(end)
+			if !ok {
+				break
+			}
+			d := y - x
+			if (d > 0) == (d < 0 && itr.pos > end && isLast) {
+				panic(NewAssertionError())
+			}
+			if d < distances[id] {
+				distances[id] = d
+			}
+			x = y
+		}
+	})
+	scan.shutdown = true
+	distance := int64(1<<63 - 1)
+	for id, result := range distances {
+		if failures[id] != nil {
+			panic(newOffHeapRuntimeException(NewExecutionException(failures[id])))
+		}
+		if result < distance {
+			distance = result
+		}
 	}
 	return uint64(distance)
 }
@@ -426,9 +447,17 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 		s.forceFlush.Store(false)
 		return nil
 	}
-	s.prepareOffHeapTableLocked()
+	if !s.checkOffHeapInput() {
+		panic(NewAssertionError())
+	}
+	flusher := s.selectOffHeapConcurrentFlusher(s.numThreads)
+	if flusher != nil {
+		flusher.prepareTable()
+	} else {
+		s.prepareOffHeapTableLocked()
+	}
 	itr := newOffHeapIterator(s.array, s.tblCnt, 0, s.indexer, true)
-	if err := s.mergeOffHeapIterator(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}); err != nil {
+	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}, flusher); err != nil {
 		return err
 	}
 	ok, err := s.checkOffHeapIndex()
@@ -461,6 +490,10 @@ func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
 }
 
 func (s *OffHeapDiskFPSet) mergeOffHeapIterator(itr offHeapMergeIterator) error {
+	return s.mergeOffHeapIteratorWithFlusher(itr, nil)
+}
+
+func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeIterator, flusher *offHeapConcurrentFlusher) error {
 	newIndex := make([]uint64, s.calculateOffHeapIndexLen(itr.elements))
 	if err := os.MkdirAll(filepath.Dir(s.tmpFilename), 0o755); err != nil {
 		return err
@@ -470,7 +503,11 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIterator(itr offHeapMergeIterator) error 
 		return err
 	}
 	defer out.Close()
-	if err := out.SetLength(0); err != nil {
+	outLength := int64(0)
+	if flusher != nil {
+		outLength = (itr.elements + s.fileCnt) * fpSetLongSize
+	}
+	if err := out.SetLength(outLength); err != nil {
 		return err
 	}
 	in := s.braf[0]
@@ -481,7 +518,12 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIterator(itr offHeapMergeIterator) error 
 	if err != nil {
 		return err
 	}
-	if err := s.mergeOffHeapEntries(in, out, itr, length/fpSetLongSize); err != nil {
+	if flusher != nil {
+		err = flusher.mergeNewEntries(out)
+	} else {
+		err = s.mergeOffHeapEntries(in, out, itr, length/fpSetLongSize)
+	}
+	if err != nil {
 		return err
 	}
 	length, err = out.Length()

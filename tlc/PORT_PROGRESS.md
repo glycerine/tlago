@@ -1,5 +1,66 @@
 # TLC Port Progress
 
+2026-10-05 parallel offheap flusher and long-suite partial port aftera281e4a:
+Actual eviction now selects source ConcurrentOffHeapMSBFlusher at array>=8192
+and floor(size/threads)>2*PROBE_LIMIT. Ported exact partition-inclusive sort ranges,
+two cyclic barrier phases, boundary/window stitching, occupancy and old-disk
+counts, prefix offsets, independent preallocated output RAFs/marked input ranges,
+ordered future failures for prepare and intentionally uninspected merge futures,
+all file/iterator/table assertions, post-merge invalidation and executor shutdown.
+Selected flusher persists for source checkInvariant behavior; shutdown reuse
+throws RejectedExecutionException as source. CheckFPs also selects correct sort
+flusher and scans partitions concurrently using separate source executor logic,
+retaining overlap, iterator bounds, XOR assertion and NoSuchElement catch.
+LongArray word get/set now use native Go atomics alongside TrySet CAS to safely
+represent unsafe machine-word accesses when wrapped partition iterators overlap;
+ToArray reads through Get. No whole-table serializing substitute introduced.
+Native mergeOffHeapValues slice adapter retains existing single-stream behavior;
+actual eviction uses selected parallel path and preallocated source output size.
+Original OffHeapDiskFPSetLongTest testSimpleFill/testCollisionBucket/testPosition
+ported with exact ratio1.0 factory ignoring supplied config, default64MiB budget,
+all4 fingerprints/bucket-capacity+1/MAX_VALUE/1 assertions. Long appendix3/22
+contexts complete,19 pending. Main1251/1269,609/626; sharedutil55/56; concurrent2/17
+unchanged. Source two huge inherited methods remain fully sized and pending.
+Unchanged Java three methods pass (offheap-long-original-test*.log); full original
+MultipleFlushes FAILS RejectedExecutionException after8,388,608 first-round puts
+at its invariant call. Go55883 exact original draft fails SAME typed exception,
+33.366s. Both remaining rounds/4-round loop and exactfull default budget retained
+in ignored offheap_long_full_draft_test.go, uncredited. No new skip, reduced
+bound or fresh-executor workaround; persistent class enables only passing3.
+Java74450 terminal wrapper exit0 with individual MultipleFlushes exit1 recorded;
+retired. ConcurrentWrite source4 now55977 terminal exit1 expected50,000,000/actual0
+(full400M writes); retired, TODO now verified source failure rather than hypothesis.
+Go34679 terminal exit0/ALL23 original offheap methods race160.350s INCLUDING full
+99,999,999-index method before final atomic/scan audit; retired. Final26205
+terminal exit0/ALL23 normal50.600s (hugeindex50.35s), offheap-concurrent-flusher-
+final-original-go.log; retired. Final25602 terminal exit0/32 top-level related
+checks race4.027s:13 original LongArray(s),15 factory, iterator/native checks and
+all3 new long methods. offheap-concurrent-flusher-final-complete-related-race.log.
+Retired. Earlier9684 race1.765s selected only smaller names, not array/factory
+prefix methods; receipt must not be overstated. Earlier34409 wrapped merge probe
+race53.508s before scan addition; retired. Final ignored scratch comparison
+43793 terminal exit0/race92.756s:2/3/8workers,2x20K random fingerprints plus500
+wrapped high fingerprints, both closest-pair results, full membership/invariant
+and final file bytes. Java and Go distances9804326358 then74151583646, SHA256
+458330fbffa9ba690eff3420021e1e0521a65f9e9b45d8958b557337fee05005 identical for
+EVERY worker count. Files .codex-gotmp/offheap-parallel-probe/; no invented
+persistent tests or credited original contexts. Java79919 comparison checks all
+finished but JVM remained alive because source scan executor leaks non-daemon
+threads; verified owned PID2884283 then TERM, terminal143/retired. Scratch harness
+now exits0 explicitly after all checks, matching TLC process termination. Final
+74818 terminal exit0/final-java-with-exit.log with SAME complete results; retired.
+Earlier77666/68004/79111/55776 terminal/retired as documented result logs. No
+restart due mere silence: Java lifecycle issue was diagnosed before cleanup.
+Whole43828 now terminal exit0/root1837.551s/SANY1.410s/TLC419.241s, execution-stats-
+final-workspace-go.log, at collector snapshot BEFORE a281e4a/currentflusher; retired.
+Current whole12436 LIVE outside sandbox for collector NIC requirements,
+offheap-concurrent-flusher-final-workspace-go.log, count1/failfast/timeout60m;
+poll exact handle. Latest observed free4.8GiB. No current whole completion claim.
+Goal ACTIVE. Next full concurrent fingerprint generator/helper ports still12
+contexts; preserve source default2,147,483,649 insertions and all generator logic,
+not smaller smoke tests. Long inherited huge loops also still in scope. Source
+faults/JVM-specific contexts remain reconcile, no unauthorized behavioral fix.
+
 2026-10-05 ConcurrentWriteTest partial port/source reconciliation aftercff4473:
 Original methods test and test3 now enabled in concurrent_write_java_test.go;
 exact four1,000-value loops (4,000 total), eight independent BufferedRandomAccessFile

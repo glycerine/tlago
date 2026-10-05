@@ -69,12 +69,15 @@ func (a *LongArray) TrySet(position int64, expected int64, value int64) bool {
 
 func (a *LongArray) Set(position int64, value int64) {
 	a.rangeCheck(position)
-	a.data[position] = uint64(value)
+	// Source unsafe word accesses may overlap when one partition's iterator
+	// skips wrapped entries while another marks them. Represent those native
+	// word accesses atomically in Go, alongside TrySet's compare-and-swap.
+	atomic.StoreUint64(&a.data[position], uint64(value))
 }
 
 func (a *LongArray) Get(position int64) int64 {
 	a.rangeCheck(position)
-	return int64(a.data[position])
+	return int64(atomic.LoadUint64(&a.data[position]))
 }
 
 func (a *LongArray) Swap(position1 int64, position2 int64) {
@@ -134,8 +137,8 @@ func (a *LongArray) ToArray() []int64 {
 		return nil
 	}
 	out := make([]int64, len(a.data))
-	for i, value := range a.data {
-		out[i] = int64(value)
+	for i := range a.data {
+		out[i] = a.Get(int64(i))
 	}
 	return out
 }

@@ -91,10 +91,11 @@ type NonCheckpointableDiskFPSet struct{ *DiskFPSet }
 
 type OffHeapDiskFPSet struct {
 	*NonCheckpointableDiskFPSet
-	array      *LongArray
-	indexer    *OffHeapIndexer
-	numThreads int
-	probeLimit int
+	array             *LongArray
+	indexer           *OffHeapIndexer
+	numThreads        int
+	probeLimit        int
+	concurrentFlusher *offHeapConcurrentFlusher
 }
 
 func NewDiskFPSet(config *FPSetConfiguration) *DiskFPSet {

@@ -224,9 +224,13 @@ func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	defer s.mu.Unlock()
 	// Dispatch through the OffHeap flusher, rather than the heap-only base method.
 	if s.tblCnt > 0 {
-		s.prepareOffHeapTableLocked()
+		if s.concurrentFlusher != nil {
+			s.concurrentFlusher.prepareTable()
+		} else {
+			s.prepareOffHeapTableLocked()
+		}
 		itr := newOffHeapIterator(s.array, s.tblCnt, 0, s.indexer, true)
-		if err := s.mergeOffHeapIterator(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}); err != nil {
+		if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{s.tblCnt, itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
 			return false
 		}
 		ok, err := s.checkOffHeapIndex()
@@ -270,14 +274,17 @@ func (s *OffHeapDiskFPSet) checkOffHeapInput() bool {
 }
 
 func (s *OffHeapDiskFPSet) checkOffHeapSorted() int64 {
+	return s.checkOffHeapSortedRange(0, s.array.Size()-1+int64(s.probeLimit))
+}
+
+func (s *OffHeapDiskFPSet) checkOffHeapSortedRange(start, end int64) int64 {
 	size := s.array.Size()
 	reprobe := int64(s.probeLimit)
-	end := size - 1 + reprobe
 	if reprobe >= size {
 		reprobe = size - 1
 	}
 	previous := int64(0)
-	for pos := int64(0); pos <= end; pos++ {
+	for pos := start; pos <= end; pos++ {
 		value := s.array.Get(pos % size)
 		if value <= 0 {
 			continue
