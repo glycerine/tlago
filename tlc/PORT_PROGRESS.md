@@ -1,5 +1,23 @@
 # TLC Port Progress
 
+2026-10-04: Eighteen original legacy coverage/INSTANCE methods committed
+as `dd022c6`; all normal/race checks green. Next original Test201–205 all pass:
+complete lambda/recursive operator/recursive function/INSTANCE recursion and
+full prefix/qualified operator assumptions retained, 13 byte-exact vectors.
+Focused five normal 6.761s (89042 retired), race 22.646s (6503 retired).
+No production changes. All five unchanged Java references pass.
+Inventory 1055/1269 contexts (83.1%), 535/626 classes (85.5%),
+214 pending across 91 classes; legacy 72/104 complete.
+Discovery twelve-method run 99132 failed at Test206 after Test201–205 passed
+(4.879s, retired). Java passes; Go rejects structural/operator subexpression
+selectors as undefined names/incorrect arities, then graph-retention helper
+panics because model construction failed. Complete Test206 and six unrun tests
+remain ignored drafts and uncredited, with no weakened assertions/new skips.
+Fix the real selector translation before installing them or advancing to a new
+feature. No broad gates run against a known-failing draft. Committed production
+and the five retained whole methods have green checks; deferred topics unchanged.
+
+
 2026-10-04: Test34–49 committed as `b5dcd29`. Current batch ports 18 more
 whole original legacy methods: Test50–60, Test62–65 and Test63a/64a/65a.
 Two source test files preserve complete constructors, inherited settings and

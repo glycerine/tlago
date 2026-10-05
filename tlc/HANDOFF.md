@@ -6,40 +6,85 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Latest green commit: `b5dcd29`, legacy Test34–49 plus removal of the false
-user-definable \subset → built-in \subseteq bridge alias. Whole 16 normal
-10.110s/race 75.251s, related subset/module/config checks 5.581s.
-Prior full TLC normal at `956f530` passed 67.357s; prior full workspace at
-`051bb16` passed root 1647.375s/SANY 0.935s/TLC 68.700s. Keep scopes explicit.
+Latest green commit: `dd022c6`, all 18 original Test50–60/Test62–65 and
+Test63a/64a/65a methods, 45 byte-exact vectors; no production changes.
+First seven normal 5.314s/race 30.478s; next eleven normal 7.452s/race 42.566s.
+All four full additional coverage strings mechanically match originals.
+All 18 unchanged Java references pass. Prior `b5dcd29` contains source Test34–49
+and false \subset alias removal; all 16 normal 10.110s/race 75.251s and related
+subset/module/config checks 5.581s. Prior full TLC at `956f530` passes 67.357s;
+prior full workspace at `051bb16` passes root 1647.375s/SANY 0.935s/TLC 68.700s.
+Keep those older full gate scopes explicit. All handles retired.
 
-2026-10-04: Test34–49 committed as `b5dcd29`. Current batch ports 18 more
-whole original legacy methods: Test50–60, Test62–65 and Test63a/64a/65a.
-Two source test files preserve complete constructors, inherited settings and
-assertions; Test57 retains its entire overriding method and safety exit without
-adding inherited statistics/coverage assertions. All four additional coverage
-hooks (Test52/55/56/63) retain the exact original strings, verified mechanically.
-All 45 copied vectors match original bytes, including INSTANCE dependencies.
-All 18 unchanged Java JUnit references pass. Go first seven normal 5.314s,
-race 30.478s; next eleven normal 7.452s, race 42.566s. Handles 33873/33292/
-80515/6050 all terminal/retired. No production changes or weakened assertions.
-Inventory: 1050/1269 contexts (82.7%), 530/626 complete classes (84.7%),
-219 pending across 96 classes, one partial; legacy suite 67/104 complete.
-The five user-deferred topics remain deferred. All required checks green.
+2026-10-04: Eighteen original legacy coverage/INSTANCE methods committed
+as `dd022c6`; all normal/race checks green. Next original Test201–205 all pass:
+complete lambda/recursive operator/recursive function/INSTANCE recursion and
+full prefix/qualified operator assumptions retained, 13 byte-exact vectors.
+Focused five normal 6.761s (89042 retired), race 22.646s (6503 retired).
+No production changes. All five unchanged Java references pass.
+Inventory 1055/1269 contexts (83.1%), 535/626 classes (85.5%),
+214 pending across 91 classes; legacy 72/104 complete.
+Discovery twelve-method run 99132 failed at Test206 after Test201–205 passed
+(4.879s, retired). Java passes; Go rejects structural/operator subexpression
+selectors as undefined names/incorrect arities, then graph-retention helper
+panics because model construction failed. Complete Test206 and six unrun tests
+remain ignored drafts and uncredited, with no weakened assertions/new skips.
+Fix the real selector translation before installing them or advancing to a new
+feature. No broad gates run against a known-failing draft. Committed production
+and the five retained whole methods have green checks; deferred topics unchanged.
 
-Commit the current 51 intended paths (2 source test files, 45 vectors, 4 docs).
-No repeat of full workspace/TLC needed: production unchanged from the last
-verified snapshot; all 18 new source leaves verified normal and race.
+Current five verified methods/13 vectors/4 docs are ready for green commit.
+No repeat full workspace/TLC needed: production unchanged from verified snapshot.
 
-Next eligible batch: original Test99/Test999 and Test201–209/Test219, the
-12 remaining inherited positive contexts in the ignored 78-context preview.
-Review entire original classes/models before installing. Exact fixture group
-selector must allow letter suffixes and match exact class name strings.
-Unchanged Java preflight of all 104 legacy classes already passed (11601 retired).
-Then custom Test220/TestInvalidInvariant and negative ETest1–16/other custom
-legacy contexts remain. Parser-negative tests require faithful ToolIO capture,
-not the positive model helper's no-parser-errors assertion. Fix production
-shortcuts before moving on; do not weaken diagnostics/assertions or add skips.
-The overall goal is active.
+NEXT REQUIRED TASK: original Test206 selector implementation, not another
+feature. Complete twelve-method draft preserved as
+`.codex-gotmp/legacy-recursion-selectors-twelve-installed.go.preview`;
+full 30-fixture mapping `.codex-gotmp/legacy-recursion-selectors-twelve-fixtures.json`.
+Only Test201–205 installed; other seven source copies removed from untracked
+fixture tree to keep a green baseline, originals remain untouched in Java.
+Restore original Test206 alone from draft/mapping, fix implementation, then
+advance to Test207/208/209/219/Test99/Test999. No source assertions may be weakened.
+Unchanged Java all 104 legacy contexts passed original preflight 11601; per-class
+logs `correctness-java/numbered-legacy-suite-<Class>-junit.log`.
+
+Actual failure: Test206 lines97/94 COp!@!++ undefined and INSTANCE A5 arity0
+instead5; many structural selectors <<,>>, @, colon-to-LET and nested operator
+selectors likewise rejected by CheckSpec. Preserve complete source model.
+Root shortcuts located:
+- `sanyGeneralIDCall` in sany_translate.go ~2470 flattens every prefix's arguments
+  into one list and drops argument-only selector steps. Java Generator.Selector
+  keeps parallel ops/args/opsSTN/opNames vectors for every selector step.
+  Original SanySyntaxNode retained in SanyExprSource; recover step structure or
+  explicitly preserve it in AST, rather than guessing which binder consumes args.
+- sanyParseSubexpressionSelectors accepts only numeric/name labels, omitting
+  @,<<,>>,colon and LET-defined operator selection. Semantic arity/name checks
+  do not generate the actual selected lambda/operator before validation.
+- TLC bridge IdentExpr simply resolves flattened name; no selected-expression
+  resolution. XML exporter has only partial selector/quantifier support; do not
+  assume it implements full Java algorithm or route TLC through XML as a shortcut.
+
+Reference `../tlaplus/tlatools/org.lamport.tlatools/src/tla2sany/semantic/Generator.java`:
+Selector constants/vectors ~320–450, selectorToNode ~622 onward; FindingOpName,
+FollowingLabels, FindingSubExpr; retain formal params/allArgs and SubstIn wrappers.
+Rules reviewed: name resolution including canonical operator aliases and LET
+contexts, labeled binders, structural operands (CallExpr operands exclude callee),
+CASE is pair-of-selectors, record operand selects field value, record component
+second operand is string; EXCEPT only first operand legal (original restriction).
+Bound identifiers: @ abstracts ALL bounded/unbounded formals; argument-only
+selector instantiates ALL, including tuples; numeric/<< />> selects domains.
+Labels are transparent to following structural selection; LET one body operand
+but colon/name enters its definitions. Keep source module/substitution wrappers
+and source positions/capture scopes. Full source Test206 exercises all of these;
+Test209/Test219 exercise further instantiated/theorem/numeric selectors.
+Do not silence semantic diagnostics or bypass CheckSpec: generate correct selected
+expressions/arity/scope and carry them to native TLC semantic nodes.
+
+Credit script current `.codex-gotmp/credit_legacy_recursion_operators_five.py`
+idempotent; all20topic rows/13vector bytes verified. Whole 78 inherited preview now
+has 71 ported and 7 pending. Legacy remaining32 contexts include those7 and25
+negative/custom cases (ETest1–16,Test210/212–217/220/InvalidInvariant).
+Parser-negative helper later needs faithful ToolIO capture. Deferred topics
+unchanged; fixtures test_vectors only. Overall goal active.
 
 Historical receipts/preparation follow; prior41batch is now committedfcb3f4d.
 
