@@ -6,45 +6,63 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Last green commit: `051bb16`, all 18 original legacy Test1–18 methods,
-36 pristine source vectors and four production fixes (EXCEPT tuple selectors,
-tuple CHOOSE scopes/bridge, quantifier aliases and tuple parameter counts).
-Full workspace passes: root 1647.375s, SANY tests 0.935s, TLC 68.700s;
-handle 22373 retired. All 18 also pass focused race 66.557s (92607 retired).
-Earlier array batch is committed as `0cd6db0`.
+Latest green commit: `c5d6b51`, original Test19–26 methods and 16 pristine
+vectors. All 8 pass normal 19.290s/race 98.765s, with no production changes.
+Earlier `051bb16` contains original Test1–18 and four production fixes;
+full workspace normal passes root 1647.375s, SANY tests 0.935s, TLC 68.700s;
+all 18 also pass focused race 66.557s. All previous handles retired.
 
-Current batch: original Test19–26 inherited SuiteTestCase methods in
-`tlc_legacy_suite_next_eight_java_test.go`, 16 byte-exact source vectors.
-All 8 pass normal (19.290s), handle 89455 retired;
-`legacy-suite-next-eight-go.log`. Test19 retains 400000 initial/distinct states
-and 800000 generated. Test20 preserves original uncovered set equality,
-including the source's duplicate locations at different indentation levels.
-Original settings/constructors/assertions are intact; no production changes.
-All 104 unchanged Java legacy references passed preflight 11601.
-All 8 current methods pass race (98.765s), handle 93847 retired;
-`legacy-suite-next-eight-race-go.log`. All handles retired. Commit the 21 intended paths:
-1 test file, 16 vectors, 4 docs. No redundant full workspace restart is needed:
-production is identical to the green commit; new whole methods are checked
-independently. Keep those verification scopes explicit.
+Current batch: whole original Test27–33 methods in
+`tlc_legacy_suite_next_seven_java_test.go`, 14 byte-exact vectors.
+Initial seven-method run failed at Test30: the config lexer split symbolic
+operator overrides into separate characters. Handle 55730 FAIL84.827s retired;
+Test27/28/29 passed before that failure. Actual production fix: ModelConfig
+recognizes the complete literal vocabulary generated from the same JavaCC
+grammar as SANY, using longest matching literals. No handpicked operator list.
+`tlc/model_config_generated_tokens.go` contains all 274 literals; generation is
+maintained in `sany_generate.go`. Root generated SANY output is byte unchanged.
+The existing config parser's other value/comment/identifier paths are retained.
+Original test/config/model assertions and bytes are unchanged.
 
-Inventory: 994/1269 contexts (78.3%), 488/626 classes (78.0%),
-275 pending across 138 classes, one partial. All 20 topic rows and 16 fixture
-bytes verified. Next ignored preview: Test27–33 (7 whole methods, 14 vectors),
-with full Test27/33 state spaces; install only after this green commit.
-The larger 78-context preview contains 26 now-ported contexts and 52 still
-uninstalled/uncredited contexts, including four full additional coverage hooks.
-Test57's original custom override has a 1-method/3-vector preview and retains
-its safety exit without inherited stats/coverage assertions. FPSetFactoryTest
-has a 15-method preview with full helpers; unchanged Java passes all 15 (0.152s).
-These other previews are uninstalled and uncredited.
+Corrected Test30 normal passes 1.134s (97305 retired). All 7 corrected whole
+methods pass normal 91.927s (33387 retired), including Test27's 1109824
+generated/63504 distinct/16 initial states and Test33's 117649 initial/distinct
+states. Existing ModelConfig tests pass race 1.032s (41871 retired), including
+the previously reported remote mixed-constant case. All 104 original Java
+legacy references passed preflight 11601.
 
-No original test assertions weakened or runtime settings changed. During the
-prior batch, Java disproved a proposed removal of the static function-arity
-check. The check and its older Go test were restored before final verification;
-the actual fix counts tuple binders once, as Java does. ApalacheIR explicitly
-reports tuple CHOOSE unsupported and the separate legacy integer evaluator
-rejects tuple CHOOSE as non-integer; actual TLC executes its native tuple path.
-The user's five deferred topics remain deferred. The overall goal is active.
+Current full TLC normal passes 67.357s, handle 22499 retired;
+`legacy-config-literals-current-full-tlc-go.log`.
+The broad race regex accidentally selected CommunityModulesAnt; 52530 was
+interrupted (exit130) and retired, without a source-test failure. No success
+credit for that interrupted gate. Corrected exact 10 original TLC config,
+constant, module-override, monolith and Test30 methods pass race 36.420s,
+handle 16832 retired; `legacy-config-literals-exact-ten-original-models-race-go.log`.
+All current handles retired. All required checks pass. Stage and commit the
+22 intended paths (3 production/generator paths, 1 test file, 14 vectors, 4 docs).
+The prior full workspace receipt predates only this deterministic config-token
+fix and new source methods; preserve verification scopes rather than claiming
+that earlier sweep included these changes. Complete config tests, exact original
+config/override integration, the whole new methods and current full TLC cover
+this change. No original test settings or assertions changed.
+
+Inventory: 1001/1269 contexts (78.9%), 495/626 classes (79.1%),
+268 pending across 131 classes, one partial. All 20 topic rows and 14 fixture
+bytes verified. The large 78-context preview contains 33 now-ported contexts
+and 45 still-uninstalled/uncredited contexts, including four coverage hooks.
+Next source options after this green commit: continue Test34 onward, or install
+the complete FPSetFactoryTest preview (15 whole methods/full helpers; original
+Java all 15 pass 0.152s). Test57's custom override preview (1 method/3 vectors)
+retains its safety exit without inherited stats/coverage assertions. Both are
+uninstalled/uncredited. Preserve whole original methods and full large models.
+
+During the earlier tuple batch, Java disproved a proposed removal of the static
+function-arity check; the check and its older test were restored. Tuple binders
+count once, as Java does. Actual TLC tuple CHOOSE executes its native path;
+ApalacheIR explicitly reports that form unsupported and the separate legacy
+integer evaluator rejects it as non-integer. No weakened original assertions,
+invented tests or runtime-setting changes. Five user-deferred topics remain
+deferred. The overall goal remains active.
 
 Historical receipts/preparation follow; prior41batch is now committedfcb3f4d.
 

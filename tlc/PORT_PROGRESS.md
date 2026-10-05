@@ -4861,3 +4861,29 @@ verified. Expected commit is 21 paths (one test file, 16 vectors, four docs).
 Final 8-method race passes (98.765s), handle 93847 retired. All handles retired.
 Both normal and race checks pass all whole original methods; ready to commit
 21 explicit paths. Production unchanged from the workspace green checkpoint.
+
+2026-10-04:Test19–26 committed as `c5d6b51`, clean tree. Installed whole
+original Test27–33 methods with 14 byte-exact source vectors. Initial 55730
+failed Test30 config parsing (84.827s), retired; preceding Test27/28/29 passed.
+Ported complete SANY literal recognition in the config lexer, generated from
+JavaCC grammar through the existing SANY generator: all 274 literals/longest
+character order verified, root generated SANY file byte unchanged. Original
+Test30 passes 1.134s (97305 retired); all corrected 7 methods pass 91.927s
+(33387 retired), with full source large-model state counts intact. Existing
+ModelConfig tests pass race 1.032s (41871 retired). No test weakened.
+Current full TLC normal 22499 and original config/override models race 52530
+active. Finalize these before the 22-path commit. Inventory 1001/1269 (78.9%),
+495/626 classes (79.1%), 268 pending/131 classes, one partial; all 20 topic rows
+and 14 fixture bytes verified. No new work in the five deferred topics.
+
+Full TLC normal passes 67.357s (22499 retired). Broader race selection 52530
+unintentionally included the full CommunityModules Ant target; interrupted
+exit130 and retired, no source-test failure or success credit. Replaced by an
+exact anchored selection of 10 original TLC config/constant/module-override/
+monolith/Test30 methods. Original method settings/assertions are unchanged.
+
+Exact 10 original TLC config/constant/module-override/monolith/Test30 methods
+pass race 36.420s (16832 retired). Full current TLC normal passes 67.357s.
+All current handles retired and all required checks green; no credit for the
+interrupted overly broad race selection. All 22 intended paths ready to commit.
+Whole source methods and 14 pristine model/config files remain unchanged.

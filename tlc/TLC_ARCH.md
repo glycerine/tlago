@@ -1,5 +1,17 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04: Test19–26 committed as `c5d6b51`. Original Test27–33 now pass
+normal (91.927s) after fixing ModelConfig's symbolic operator tokenization.
+Java uses the SANY token manager for configuration files; Go now recognizes
+its full generated literal vocabulary rather than splitting operators into
+characters. `sany_generate.go` maintains both token tables from the same grammar;
+all 274 literals and longest character-match order verified, with the root SANY
+generated output byte unchanged. The original Test30 symbolic overrides pass
+unchanged. Existing config tests pass race (1.032s). Current full TLC normal passes 67.357s; exact 10 original TLC config/override
+models pass race 36.420s. All handles retired. Inventory: 1001/1269 contexts,
+495/626 classes, 268 pending.
+
+
 2026-10-04: Legacy Test1–18 and their four production fixes committed as
 `051bb16` after full workspace normal and focused race checks. Additional
 original Test19–26 methods pass normal (19.290s), preserving complete original

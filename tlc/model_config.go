@@ -773,11 +773,6 @@ func (l *modelConfigLexer) next() modelConfigToken {
 	}
 	line, col := l.line, l.col
 	rest := l.input[l.offset:]
-	if strings.HasPrefix(rest, "<-") {
-		l.advanceByte()
-		l.advanceByte()
-		return modelConfigToken{kind: configTokenSymbol, image: "<-", line: line, col: col}
-	}
 	ch := l.peekByte()
 	switch {
 	case ch == '"':
@@ -809,6 +804,16 @@ func (l *modelConfigLexer) next() modelConfigToken {
 		}
 		return modelConfigToken{kind: configTokenIdentifier, image: l.input[start:l.offset], line: line, col: col}
 	default:
+		// Java ModelConfig reads SANY tokens, so operator names and override
+		// targets use the complete longest-match literal vocabulary.
+		for _, literal := range modelConfigLiteralTokens {
+			if strings.HasPrefix(rest, literal) {
+				for range len(literal) {
+					l.advanceByte()
+				}
+				return modelConfigToken{kind: configTokenSymbol, image: literal, line: line, col: col}
+			}
+		}
 		l.advanceByte()
 		return modelConfigToken{kind: configTokenSymbol, image: string(ch), line: line, col: col}
 	}
