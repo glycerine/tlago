@@ -1,5 +1,37 @@
 # TLC Port Handoff
 
+2026-10-05 whole standalone bitshifting indexer class complete after8c70c38:
+All five original OffHeapBitshiftingIndexerTest methods translated in
+ tlc/offheap_bitshifting_indexer_java_test.go. Preserve both complete128-position
+sweeps (fpBits1/logPos8 and fpBits2/logPos9), exact power/leading-zero checks,
+both boundary fingerprints at every position, wraparound at positions, all four
+268435456-position checks, overshoot9223371952792813846/probe5 and constructor
+Integer.MAX_VALUE+1 with catch-only-TLCRuntimeException. uint64 preserves Java
+long shift/wrap bit patterns; direct bitshifting constructors retained.
+No production changes, reduced loops, weakened assertions or invented tests.
+The three parameterized indexer classes were already complete (all1104 rows,
+five inherited methods each); the previous next-step matrix note was stale.
+Unchanged Java -ea passes all5 in0.007s; logs offheap-bitshifting-original-java.log
+and offheap-bitshifting-original-javac.log. Go focused36588 terminal exit0/race
+1.036s, log offheap-bitshifting-final-race.log. Related18301 terminal exit0/race
+16.120s, log offheap-bitshifting-related-race.log: all three original complete
+parameter matrices, standalone methods, iterator methods and native indexer test.
+Inventory1169/1269 contexts (92.1%),604/626 classes (96.5%);100pending/22classes.
+Fingerprint83/165 methods,15/20 classes complete;82pending/5classes.
+Next eligible indexer batch: complete OffHeapIndexerEquivalenceTest.testInfiniteInfMult,
+all7254 original rows, full1024 random/uniform/boundary loops and assumptions;
+retain two original @Ignore methods uncredited, no sampling or extra skips.
+
+Current whole suite33379 is live, log offheap-bitshifting-final-workspace-go.log,
+including final nil-hasNext refinement and these five tests. Full83491/9378/90170
+remain live on earlier documented snapshots; re-polled exact handles.
+Old84016 is terminal exit1, timeout1h in TestJavaTLCSetSim54m16s/root3600.060s;
+SANY1.052s/TLC68.802s pass. It predates exploration fix318811c; retire as failure,
+not current regression or green receipt. Log simulation-models-recursive-final-workspace-go.log.
+Latest completed whole green remains49471 at exploration-fix318811c:
+root1859.599s/SANY1.142s/TLC69.948s, before subsequent fingerprint work.
+Do not claim current whole-suite green until terminal evidence. Goal remains active.
+
 2026-10-05 whole original off-heap iterator contexts complete after6f3a1de:
 Both OffHeapIteratorTest methods are translated in tlc/offheap_iterator_java_test.go.
 Preserve source LongArray.isSupported assumption, elements32, complete64-element

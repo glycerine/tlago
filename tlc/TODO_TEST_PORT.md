@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `6f3a1de`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `8c70c38`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **603 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (96.3%).**
-- **1,164 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (91.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **105 logical method contexts across 23 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **604 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (96.5%).**
+- **1,169 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (92.1%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **100 logical method contexts across 22 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -36,12 +36,12 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Debugger and scoped identifiers | 16 | 16 | 35 | 35 | 0 |
 | Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
-| Fingerprint sets, indexers, arrays, and iterators | 20 | 14 | 165 | 78 | 87 |
+| Fingerprint sets, indexers, arrays, and iterators | 20 | 15 | 165 | 83 | 82 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **603** | **1,269** | **1,164** | **105** |
+| **Total** | **626** | **604** | **1,269** | **1,169** | **100** |
 
 ## Porting rules and proposed order
 
@@ -687,7 +687,7 @@ Disk/memory/off-heap factories, recovery, duplicate merging, high/low fingerprin
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
 - [x] [tlc2/tool/fp/OffHeapBitshiftingIndexerParameterizedTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/OffHeapBitshiftingIndexerParameterizedTest.java) — **Port complete**; all five inherited methods (`testZero`, `testOne`, `testLongMin`, `testLongMax`, `testSome`) → [fpset_offheap_indexer_parameterized_java_test.go](fpset_offheap_indexer_parameterized_java_test.go). All 1,104 original rows, duplicate rows, exact 1,024-iteration loop, fresh constructors at each call, subclass indexer types and original assumptions retained. All three unchanged Java classes pass; complete Go matrices pass normal and race. No production changes.
   Related Go checks: [tlc/offheap_indexer_test.go](offheap_indexer_test.go).
-- [ ] [tlc2/tool/fp/OffHeapBitshiftingIndexerTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/OffHeapBitshiftingIndexerTest.java) — **Reconcile**: `testBitshifting`, `testBitshifting2`, `testShift1_268435456`, `testBitshiftOvershoot`, `testNoOverflowErrorBitShifting`.
+- [x] [tlc2/tool/fp/OffHeapBitshiftingIndexerTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/OffHeapBitshiftingIndexerTest.java) — **Port complete**: `testBitshifting`, `testBitshifting2`, `testShift1_268435456`, `testBitshiftOvershoot`, `testNoOverflowErrorBitShifting`. Whole original methods and complete helper sweeps → [offheap_bitshifting_indexer_java_test.go](offheap_bitshifting_indexer_java_test.go); preserve both 128-position boundary sweeps, wraparound probes, overshoot fingerprint and catch-only-TLCRuntimeException constructor check.
   Related Go checks: [tlc/offheap_indexer_test.go](offheap_indexer_test.go).
 - [ ] [tlc2/tool/fp/OffHeapDiskFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/OffHeapDiskFPSetTest.java) — **Reconcile**: `testInsertAndEvict1`, `testInsertAndEvict2`, `testInsertAndEvict3`, `testInsertAndEvict4`, `testInsertAndEvict5`, `testInsertAndEvict6`, `testInsertAndEvict7`, `testInsertAndEvict8`, `testInsertAndEvict9`, `testInsertAndEvict10`, `testInsertAndEvict11`, `testInsertAndEvict12`, `testInsertAndEvict13`, `testInsertAndEvict14`, `testInsertAndEvict15`, `testInsertAndEvict16`, `testOffset1Page`, `testOffset3Page`, `testOffset5Page`, `testOffset9Page`, `testWriteIndex`, `testMergeDuplicate`, `testMergeDistinct`.
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
