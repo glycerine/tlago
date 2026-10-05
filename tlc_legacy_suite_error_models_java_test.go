@@ -55,3 +55,26 @@ func TestJavaLegacySuiteETest3(t *testing.T) {
 	}
 	requireJavaTLCUncovered(t, r)
 }
+
+// Original ETest4.testSpec and FAILURE_SPEC_EVAL constructor, with all inherited
+// SuiteETestCase runner settings and the exact nested-expression stack.
+func TestJavaLegacySuiteETest4(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest4", "etest4", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest4.json"))
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusFailureSpecEval {
+		t.Fatalf("exit=%d, want FAILURE_SPEC_EVAL; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "0", "0", "0")
+	stack := "0. Line 13, column 9 to line 16, column 51 in etest4\n" +
+		"1. Line 13, column 12 to line 13, column 16 in etest4\n" +
+		"2. Line 15, column 12 to line 15, column 26 in etest4\n" +
+		"3. Line 15, column 12 to line 15, column 22 in etest4\n\n"
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCNestedExpression, stack)
+	// This helper compares zero-count coverage records by their exact locations.
+	requireJavaTLCUncovered(t, r, "line 18, col 9 to line 18, col 19 of module etest4")
+}

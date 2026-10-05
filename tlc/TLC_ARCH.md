@@ -1,5 +1,24 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 original ETest4 complete after caf0ad3:
+Whole original ETest4.testSpec passes with FAILURE_SPEC_EVAL, FINISHED, stats0/0/0,
+the exact four-frame TLC_NESTED_EXPRESSION string including its final blank line,
+and the exact zero-count uncovered location. Both vectors are source-identical.
+The initial port passed a literal ': 0' suffix to requireJavaTLCUncovered, whose
+API already filters zero-count records and compares locations. Corrected that
+mechanical translation without changing coverage semantics or implementation.
+ETest1–4 pass race12.043s (82804 terminal/retired), log
+legacy-error-etest1-etest4-race.log. Inventory1069/1269 contexts (84.2%),549/626
+complete classes (87.7%),200pending/77classes; legacy86/104 complete.
+Next context ETest5: preserve one semantic error, range13:15–13:20 and exact
+Unknown operator M!Init diagnostic; fix actual semantic behavior if it fails.
+Workspace57071 remains the final caf0ad3 production gate; it compiled before
+ETest4 was added, so combine its eventual receipt with this focused race evidence.
+Older diagnostic gate23927 compiled before caf0ad3's context filter correction.
+Do not claim a full green workspace while its authoritative final gate is live.
+The five deferred topics remain deferred. All process/log details below retain
+snapshot scope; logs are under .codex-gotmp/.
+
 2026-10-05 ETest1–3 and semantic diagnostic checkpoint (workspace verification pending):
 Original ETest1, ETest2 and ETest3 are complete translations. All six fixture files
 match the original Java vectors byte for byte. Preserve the original constructors,
