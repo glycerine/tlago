@@ -1,5 +1,29 @@
 # TLC Port Handoff
 
+2026-10-05 original ETest5 complete after ce93212:
+Original ETest5.testSpec first rejected M!Init correctly but printed a point range
+and Go's generic undefined-identifier text. Generator.selectorToNode:810 reports
+the complete unresolved compound-name range and Unknown operator message.
+The semantic diagnostic now carries those SANY details separately, excluding
+supplied argument ranges. Generic diagnostic positions and text remain available
+to other frontends. No fixture-dependent reporting or assertion weakening.
+ETest5 preserves ERROR_SPEC_PARSE, no GENERAL, one error, range13:15–13:20 and
+exact Unknown operator text. Both fixtures match original source byte for byte.
+ETest1–5 pass race11.578s (56875 terminal/retired), related root parser/semantic/
+XML/elevated-warning race14.724s (89702 terminal/retired), complete SANY Java
+race8.418s (75558 terminal/retired). Logs: legacy-error-etest1-etest5-race.log,
+legacy-error-unknown-operator-related-race.log,
+legacy-error-unknown-operator-sany-race.log under .codex-gotmp/.
+Inventory1070/1269 contexts (84.3%),550/626 complete classes (87.9%),199pending
+across76classes; legacy87/104 complete. Next original context ETest6, preserve its
+undefined primed-variable GENERAL substring and both exact uncovered locations.
+Workspace57071 is still the caf0ad3 production gate; the later ETest5 change adds
+unknown-identifier SANY report metadata, covered by the focused root/SANY gates.
+Older23927 compiled before the context filter correction. The three original
+workspace failures have a normal PASS69.425s; their additional race gate15192
+remains live. Resume existing handles; do not restart on observation timeouts.
+Do not claim a full current-source green workspace while verification is pending.
+
 2026-10-05 original ETest4 complete after caf0ad3:
 Whole original ETest4.testSpec passes with FAILURE_SPEC_EVAL, FINISHED, stats0/0/0,
 the exact four-frame TLC_NESTED_EXPRESSION string including its final blank line,

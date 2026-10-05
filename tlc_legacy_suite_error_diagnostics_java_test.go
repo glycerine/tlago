@@ -83,3 +83,29 @@ func TestJavaLegacySuiteETest2(t *testing.T) {
 		}
 	}
 }
+
+// Original ETest5.testSpec and ERROR_SPEC_PARSE constructor, with the
+// SuiteETestCase TestPrintStream capture and full inherited runner settings.
+func TestJavaLegacySuiteETest5(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest5", "etest5", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest5.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"*** Errors: 1\n",
+		"line 13, col 15 to line 13, col 20 of module etest5\n",
+		"Unknown operator: `M!Init'.",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

@@ -2837,7 +2837,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 			if base, _, ok := strings.Cut(e.Name, "!"); ok {
 				_, exact := defined[e.Name]
 				if _, isInstance := defined[instanceNameSentinel(base)]; isInstance && !exact {
-					diags = append(diags, errorAt(e.Pos, "E4200", "undefined identifier %s", e.Name))
+					diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
 					return diags
 				}
 			}
@@ -2848,7 +2848,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 				diags = append(diags, errorAt(e.Pos, "E4261", "@ may only be used inside a function EXCEPT replacement"))
 				return diags
 			}
-			diags = append(diags, errorAt(e.Pos, "E4200", "undefined identifier %s", e.Name))
+			diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
 		} else if _, ok := defined[instanceNameSentinel(e.Name)]; ok {
 			diags = append(diags, errorAt(e.Pos, "E4203", "operator name %s is incomplete", e.Name))
 		}
@@ -4340,5 +4340,27 @@ func sanyCallArityDiagnostic(call *CallExpr, name string, want int) Diagnostic {
 		}
 	}
 	diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", name, remaining)
+	return diagnostic
+}
+
+// Generator.selectorToNode extends curNameLoc across the unresolved compound
+// name, excluding supplied arguments, before reporting SYMBOL_UNDEFINED.
+func sanyUndefinedIdentifierDiagnostic(identifier *IdentExpr) Diagnostic {
+	diagnostic := errorAt(identifier.Pos, "E4200", "undefined identifier %s", identifier.Name)
+	if selector := identifier.Selector; selector != nil {
+		for _, step := range selector.Steps {
+			if step.Syntax == nil || step.Kind != SanySelectorName {
+				continue
+			}
+			if diagnostic.SANYRange.Begin.Line == 0 {
+				diagnostic.SANYRange = step.Syntax.Range
+			} else {
+				diagnostic.SANYRange.End = step.Syntax.Range.End
+			}
+		}
+	} else if identifier.Syntax != nil {
+		diagnostic.SANYRange = identifier.Syntax.Range
+	}
+	diagnostic.SANYMessage = fmt.Sprintf("Unknown operator: `%s'.", identifier.Name)
 	return diagnostic
 }
