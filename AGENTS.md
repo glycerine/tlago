@@ -18,3 +18,8 @@ accident and that would be bad.
 
 Do not backup or rebase in git. Make a corrective additional commit instead. We push
 in the background and have seen an accidental git fork and we do not want to lose data.
+
+Testing directive from the user (2026-10-05): do not combine long-running
+workloads with -race. Run full long workloads normally, preserving their original
+bounds. Use -race only for short, focused concurrency checks so porting can
+proceed promptly. Do not use broad race selections that include long tests.

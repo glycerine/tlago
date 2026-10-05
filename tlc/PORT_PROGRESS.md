@@ -1,5 +1,141 @@
 # TLC Port Progress
 
+2026-10-05 user testing directive: separate long workloads from race checks.
+Use full original long inputs in normal runs and short focused concurrency
+checks under -race. Broad race selections including long tests delay porting
+and must not be repeated. Cancelled live84966, confirmed terminal exit130;
+no race pass claimed. Final-code whole workspace22505 remains PASS as recorded
+below. All32 enabled DumpLoadTraceTest methods are translated and verified;
+only the three original ignored methods skip. Current batch ready to commit.
+
+2026-10-05 remaining heap counter serialization removed:
+Source HeapBasedDiskFPSet.memInsert increments LongAdder counts independently.
+Native code still held s.mu solely for atomic tblCnt increments on every reused
+bucket insertion, and kept new-bucket atomic tblLoad/tblCnt under its metadata
+mutex. Removed that leftover serialization. The ordinary Go bucketsCap metadata
+updates retain their lock; stripe locking and atomic counts remain unchanged.
+No assertion, bound, source flag, persistent test body or factory was weakened.
+Prior62471 intentionally interrupted exit130 after this actual source correction;
+last observed original MSB forced-recovery progress593/1024, incomplete/uncredited.
+Prior11838 likewise intentionally interrupted exit130 while original LSB producer
+method was running, incomplete/uncredited. Both terminal/retired. Do not report
+method or race passes for either. Previous full58464 PASS remains valid only for
+the reader snapshot before this counter-lock correction and before two test-only
+additions. Complete dump/load class normal95296/race33118 receipts also predate
+this final counter correction; retain their precise scope.
+Current-tree workspace22505 terminal PASS1811.654s root/1.692s SANY/597.275s
+TLC, retired; fpset-reader-counter-final-workspace-go.log. Includes both added
+original EWD840 methods, final reader/counter code and the full2,147,483,648-call
+queue-growth method. This is whole-workspace verification at the final code,
+unlike the earlier pre-counter/pre-test-addition58464 receipt.
+Original FP race selection84966 cancelled at the user's direction, terminal
+exit130 and retired; fpset-reader-counter-original-related-race.log. No race-pass
+credit. The broad selection combined long recovery workloads with -race; do not
+repeat it. Full normal workspace22505 already passed on the final code.
+Current source-matched256MiB/48-worker partition audit74191 terminal exit1,
+940.940s, retired. Complete LSB579.298s/MSB361.295s producer methods each have
+25165823 puts, zero collisions, all48 counts identical to unchanged Java, and
+original minimum-size failure against2147483649; neither reports a race. Log
+concurrent-heap-partition-reader-counter-draft-race-go.log. Direct receipt regex
+compared all96 producer counts against the two original Java logs. Full original
+property/generator/assertions retained. A verified source assertion failure is
+not a pass or default-environment/full2.1B translation credit.
+No restart due merely to observation timeout; supersession follows actual code
+changes. Cache/resource preflight reclaimed37 private go-build numeric compiler
+output directories older4h,3,637,416,868 bytes; read-only active process references
+excluded before removal (none live). No source, test vectors, Java oracle evidence
+or logs removed. Receipt fpset-counter-compiler-temp-clean-receipt.json. Free
+space checked before rerunning whole suite with full14GiB queue growth enabled.
+Main1253/1269,610/626; shared55/56,long15/22,concurrent2/17 unchanged. Goal active;
+current-code normal workspace gate passed; long race gate cancelled by user.
+User-deferred topics unchanged.
+
+2026-10-05 complete original DumpLoadTraceTest enabled after graph buffering:
+Added the two remaining EWD840 binary methods to tlc_dump_load_trace_java_test.go.
+Reuse the complete original dump/load helper, binary format, fp4, source single/
+auto worker settings and deadlock flags. Preserve file/finished/exit/violation/
+trace/ordinal/full state equality or prefix assertions. No new skip, weakened
+assertion, partial-check override, smaller workload or production change here.
+After original graph/value buffering was restored, both complete draft methods
+87303 PASS10.068s normal;69272 PASS68.523s race;85420 PASS193.971s for three
+complete repeated race runs each (six methods). All terminal/retired. Logs
+ewd840-binary-replay-buffered-draft-{normal,race,repeat-race}-go.log. Unchanged Java90924 both methods PASS runs1/failures0/
+ignored0,1.468s/1.514s wrappers, terminal/retired. Full unchanged original class
+27831 PASS all32 enabled methods13.238s (wrapper13.420s), terminal/retired;
+three original Ignore methods remain. Logs ewd840-binary-replay-buffered-original-
+{testLivenessEWD840MC3DumpLoadTraceTLC,testLivenessEWD840MC3DumpLoadTraceTLCAutoWorkers,
+class-java,class-wrapper,java-wrapper}.log. Explicit Java256MiB runtime budget;
+all original bounded model inputs/assertions unchanged, no stress-size credit.
+Final persistent whole Go class95296 PASS34.788s all32 enabled/three source skips,
+terminal/retired; ewd840-binary-replay-final-class-normal-go.log. Full class33118
+race terminal PASS276.922s, all32 enabled/three original skips, retired;
+ewd840-binary-replay-final-class-race-go.log. Historical paced unchanged Java8-to15/19-state failures remain valid
+source timing evidence; the current successes do not prove all scheduling cases.
+Main inventory1253/1269 (98.7%),610/626 classes (97.4%),16 pending across16 classes.
+Shared55/56,long15/22,concurrent2/17 unchanged. FP race62471 superseded/exit130, uncredited. Workspace58464 terminal PASS1790.761s root/1.118s
+SANY/583.470s TLC, retired; fpset-reader-lifetime-final-workspace-go.log. This
+whole run includes the full original queue-growth method and compiled final
+reader production BEFORE the two test-only additions; scope is that snapshot.
+New tests are separately verified in the complete class as above.
+Goal active; replacement current-snapshot gates pending. Deferred topics unchanged.
+
+Superseded reader concurrency audit11838 (terminal exit130/uncredited): original complete
+LSB/MSB partitioned methods, unchanged default2147483649 insertion property,
+48workers and source-matched explicit256MiB heap resource limit, now under race.
+Log concurrent-heap-partition-reader-fix-draft-race-go.log. Expect the verified
+Java minimum-size failure after25165823 puts; do not mark that failure a pass or
+credit default-environment/full2.1B translation. Source method assertions intact.
+Superseded broad62471 (terminal exit130/uncredited) was in MSB testFPSetRecovery2: read-only own fd/file
+metadata observed465 committed fingerprints out of the full1024 calls. No loop
+bound, default runtime memory budget, source flag or timeout changed. No restart
+from a silent observation. Workspace58464 has completed; scoped receipt above.
+
+2026-10-05 disk fingerprint reader lifetime restored after5946d3e:
+Java selects one BufferedRandomAccessFile for an entire interpolated disk search;
+the native port previously selected a reader for every probe and acquired the
+pool mutex even for an indexed worker reader. Native lookup now retains one
+reader, returns pooled readers only after normal completion, and propagates
+close errors. Indexed workers bypass the pool mutex. An immutable reader-array
+snapshot is published atomically when readers are added or reopened, preserving
+the source array-reference publication without racing a native slice header.
+No invented persistent tests, weakened assertions or completion credits.
+Unchanged Java39242 completes both LSB/MSB partitioned methods with default
+2,147,483,649 insertion property and48 workers at explicit -Xmx256m. Each has
+25,165,823 puts, zero collisions, size==overallPuts, then fails the original
+minimum-size assertion at MultiThreadedFPSetTest.java:181. Java durations24.000s
+and20.884s. Original method subprocesses exit1; wrapper exit0 is not pass credit.
+Final native38869 terminal exit1/452.067s, retired: LSB306.142s/MSB145.778s,
+identical totals and all48 producer counts, same minimum-size failures under
+GOMEMLIMIT=256MiB. Logs concurrent-heap-partition-original-MultiThreadedLSBDiskFPSetTest.log,
+concurrent-heap-partition-original-MultiThreadedMSBDiskFPSetTest.log and
+concurrent-heap-partition-reader-fix-draft-go.log. These are explicit256MiB
+runtime-resource audits, not default-environment/full2.1B verification. Drafts
+remain ignored scratch. Initial native32380 was intentionally interrupted after
+the actual fix; exit130, retired, no method completion or pass credit.
+Existing FP race selection62471 was superseded/exit130, uncredited; log fpset-reader-lifetime-original-
+related-race.log. Whole workspace58464 terminal PASS1790.761s root/1.118s SANY/583.470s TLC at
+final reader code, retired; fpset-reader-lifetime-final-workspace-go.log. This
+snapshot predates the two later test-only additions; full new class verified
+separately above. Replacement84966 was later cancelled by user, exit130, with no FP race credit.
+Cache cleanup removed229 regenerable hash-named Go output blobs older2h,
+4,606,599,962 bytes; no source/vectors/verification logs removed. Receipt
+fpset-reader-cache-clean-receipt.log. Free space checked before whole gate with
+full14GiB original queue growth enabled. Main1251/1269, shared55/56,long15/22,
+concurrent2/17 unchanged. Goal active; user-deferred topics unchanged.
+
+Additional original liveness reconciliation: unchanged pinned Java's complete
+LivenessSymmetryWarning method passes all three warning/diagnostic assertions,
+then fails inherited SUCCESS0 against actual liveness13. Complete native draft
+97499 terminal exit1/1.343s (method1.10s), retired, matches all three assertions
+and inherited exit failure, 4/1/0 stats. Original debugger/coverage/DOT/JSON/
+forced trace generation/single-worker/deadlock/liveness settings retained; source
+April25MC/April25/config read unchanged. Log liveness-symmetry-warning-final-
+draft-go.log; source remaining-liveness-models-LivenessSymmetryWarning-junit.log
+under correctness-java. Initial draft89802 failed due to a wrong fixture path
+and then a cleanup nil dereference; terminal exit1/.015s, retired, no parity
+credit. Corrected draft uses the actual source fixture user directory. No new
+production change or persistent test, assertion weakening, skip or credit.
+
 2026-10-05 full original long DiskStateQueue growth complete after7d61a44:
 Added testGrowBeyondIntMaxValue to the persistent original class translation.
 Preserve all2,147,483,648 SEnqueue calls, one reused Dummy-equivalent object,

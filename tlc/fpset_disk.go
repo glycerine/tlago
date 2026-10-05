@@ -36,6 +36,9 @@ type DiskFPSet struct {
 	fpSetLifecycle
 	mu     sync.Mutex
 	poolMu sync.Mutex
+	// A source array reference is read atomically. Publish the native slice
+	// header and its entries together when readers are added or reopened.
+	readers atomic.Pointer[[]*BufferedRandomAccessFile]
 
 	config *FPSetConfiguration
 
@@ -474,6 +477,7 @@ func (s *DiskFPSet) AddThread() error {
 		return err
 	}
 	s.braf = append(s.braf, raf)
+	s.publishBRAFReaders()
 	return nil
 }
 
@@ -489,6 +493,7 @@ func (s *DiskFPSet) IncWorkers(num int) {
 			panic(err)
 		}
 		s.braf = append(s.braf, raf)
+		s.publishBRAFReaders()
 	}
 }
 
@@ -688,9 +693,9 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 		s.tbl[idx] = bucket
 		s.mu.Lock()
 		s.bucketsCap += diskFPSetInitialBucketCap
+		s.mu.Unlock()
 		atomic.AddInt64(&s.tblLoad, 1)
 		atomic.AddInt64(&s.tblCnt, 1)
-		s.mu.Unlock()
 		return false
 	}
 	bucketLen := len(bucket)
@@ -722,9 +727,7 @@ func (s *DiskFPSet) memInsert(fp uint64) bool {
 		}
 		bucket[reusable] = fp
 	}
-	s.mu.Lock()
 	atomic.AddInt64(&s.tblCnt, 1)
-	s.mu.Unlock()
 	return false
 }
 
@@ -798,12 +801,21 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 	if loPage == indexLength-2 {
 		hiEntry = atomic.LoadInt64(&s.fileCnt) - 1
 	}
+	if hiPage != loPage+1 {
+		return false, newTLCErrorCode(ECSystemIndexError)
+	}
+	// Source diskLookupBinarySearch selects one reader for the entire search.
+	raf, pooled, err := s.openDiskReader()
+	if err != nil {
+		return false, err
+	}
+	diskHit := false
 	for loEntry < hiEntry {
 		midEntry := s.calculateMidEntry(loVal, hiVal, dfp, loEntry, hiEntry)
 		if midEntry < loEntry || midEntry >= hiEntry {
 			return false, newTLCErrorCode(ECSystemIndexError)
 		}
-		v, err := s.readDiskFP(midEntry)
+		v, err := s.readDiskFP(raf, midEntry)
 		if err != nil {
 			return false, err
 		}
@@ -814,10 +826,18 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 			loEntry = midEntry + 1
 			loVal = v
 		} else {
-			return true, nil
+			diskHit = true
+			break
 		}
 	}
-	return false, nil
+	// Like Java, return a pooled reader after a successful search. An I/O
+	// failure propagates before this step and causes TLC to exit.
+	if pooled {
+		if err := s.poolClose(raf); err != nil {
+			return false, err
+		}
+	}
+	return diskHit, nil
 }
 
 func (s *DiskFPSet) calculateMidEntry(loVal uint64, hiVal uint64, dfp float64, loEntry int64, hiEntry int64) int64 {
@@ -832,14 +852,7 @@ func (s *DiskFPSet) calculateMidEntry(loVal uint64, hiVal uint64, dfp float64, l
 	return midEntry
 }
 
-func (s *DiskFPSet) readDiskFP(entry int64) (uint64, error) {
-	raf, pooled, err := s.openDiskReader()
-	if err != nil {
-		return 0, err
-	}
-	if pooled {
-		defer s.poolClose(raf)
-	}
+func (s *DiskFPSet) readDiskFP(raf *BufferedRandomAccessFile, entry int64) (uint64, error) {
 	seeked, err := raf.Seeek(entry * fpSetLongSize)
 	if err != nil {
 		return 0, err
@@ -1096,10 +1109,17 @@ func (s *DiskFPSet) openBRAFReaders(numReaders int, poolSize int) error {
 		s.brafPool[i] = raf
 	}
 	s.poolIndex = 0
+	s.publishBRAFReaders()
 	return nil
 }
 
+func (s *DiskFPSet) publishBRAFReaders() {
+	readers := append([]*BufferedRandomAccessFile(nil), s.braf...)
+	s.readers.Store(&readers)
+}
+
 func (s *DiskFPSet) closeBRAFReaders() error {
+	s.readers.Store(nil)
 	var firstErr error
 	for i, raf := range s.braf {
 		if err := raf.Close(); err != nil && firstErr == nil {
@@ -1132,12 +1152,16 @@ func (s *DiskFPSet) reopenBRAFReaders() error {
 }
 
 func (s *DiskFPSet) openDiskReader() (*BufferedRandomAccessFile, bool, error) {
+	var readers []*BufferedRandomAccessFile
+	if snapshot := s.readers.Load(); snapshot != nil {
+		readers = *snapshot
+	}
+	id := CurrentThreadIDOr(len(readers))
+	if id >= 0 && id < len(readers) && readers[id] != nil {
+		return readers[id], false, nil
+	}
 	s.poolMu.Lock()
 	defer s.poolMu.Unlock()
-	id := CurrentThreadIDOr(len(s.braf))
-	if id >= 0 && id < len(s.braf) && s.braf[id] != nil {
-		return s.braf[id], false, nil
-	}
 	if len(s.brafPool) > 0 && s.poolIndex < len(s.brafPool) {
 		raf := s.brafPool[s.poolIndex]
 		s.poolIndex++
@@ -1149,18 +1173,18 @@ func (s *DiskFPSet) openDiskReader() (*BufferedRandomAccessFile, bool, error) {
 	return raf, true, err
 }
 
-func (s *DiskFPSet) poolClose(raf *BufferedRandomAccessFile) {
+func (s *DiskFPSet) poolClose(raf *BufferedRandomAccessFile) error {
 	if raf == nil {
-		return
+		return nil
 	}
 	s.poolMu.Lock()
 	defer s.poolMu.Unlock()
 	if len(s.brafPool) > 0 && s.poolIndex > 0 {
 		s.poolIndex--
 		s.brafPool[s.poolIndex] = raf
-		return
+		return nil
 	}
-	_ = raf.Close()
+	return raf.Close()
 }
 
 func (s *DiskFPSet) rebuildIndex(values []uint64) {

@@ -23,9 +23,9 @@
  * Contributors:
  *   Markus Alexander Kuppe - initial API and implementation
  ******************************************************************************/
-// Port of DumpLoadTraceTest methods after implementing source native/body
-// overrides and external trace deserialization. Two timing-sensitive enabled
-// EWD840 binary methods remain pending; only original @Ignore methods skip.
+// Port of the complete DumpLoadTraceTest class after implementing source
+// native/body overrides, external trace deserialization and graph buffering.
+// Only original @Ignore methods skip.
 package tlago
 
 import (
@@ -290,4 +290,12 @@ func TestJavaLivenessMCDumpLoadTraceTLCAutoWorkers(t *testing.T) {
 func TestJavaLivenessEWD840MC3DumpLoadTraceJSON(t *testing.T) {
 	t.Skip("Upstream @Ignore: Disabled because JSON trace serialization is garbled because of limited types.")
 	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "EWD840MC3", "EWD840MC3", "json", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-deadlock"}, []string{"-deadlock"})
+}
+
+func TestJavaLivenessEWD840MC3DumpLoadTraceTLC(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "EWD840MC3", "EWD840MC3", "tlc", tlc.ExitStatusViolationLiveness, "1", "1", []string{"-deadlock"}, []string{"-deadlock"})
+}
+
+func TestJavaLivenessEWD840MC3DumpLoadTraceTLCAutoWorkers(t *testing.T) {
+	runJavaDumpLoadTraceWithSpecs(t, "CodePlexBug08", "EWD840MC3", "EWD840MC3", "tlc", tlc.ExitStatusViolationLiveness, "auto", "1", []string{"-deadlock"}, []string{"-deadlock"})
 }

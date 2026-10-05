@@ -1,5 +1,31 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 independent heap table counters:
+HeapBasedDiskFPSet increments its LongAdder table counts without a global monitor.
+Native atomic tblLoad/tblCnt increments now likewise run outside the metadata
+mutex. Bucket-capacity metadata retains its Go lock, and source stripe locking
+still protects table entries. Counter reads remain the source independent reads.
+No test inputs/assertions or memory budgets changed; see HANDOFF.md for gates.
+
+2026-10-05 full original binary dump/load assertions enabled:
+DumpLoadTraceTest now includes both EWD840 binary methods and is complete:
+32 enabled methods and three original Ignore translations. The two methods use
+the existing full source dump/load helper after original graph/value buffering
+was restored. Binary format, polynomial4, worker settings, partial liveness
+checks and complete state/ordinal equality or prefix assertions remain unchanged.
+The entire unchanged Java class and complete Go class pass; Go also passes race
+checks. Historical paced Java replay failures remain source timing evidence,
+not grounds to weaken the assertions or declare universal scheduling stability.
+
+2026-10-05 disk fingerprint reader ownership:
+A disk lookup retains one BufferedRandomAccessFile for its entire interpolation
+search. Indexed worker readers require no pool mutex; fallback readers acquire
+and return through the source pool. Normal completion returns the reader;
+I/O failures propagate before that step. Adding/reopening readers atomically
+publishes an immutable snapshot, matching the source array-reference read while
+avoiding races on a Go slice header. Pool close errors propagate as in Java.
+See HANDOFF.md for original/native assertion comparisons and running gates.
+
 2026-10-05 long disk-queue growth verification:
 The original growth test now performs all2,147,483,648 enqueue operations and
 checks the64-bit queue size. One Dummy-equivalent state has workerShort.MAX_VALUE,
