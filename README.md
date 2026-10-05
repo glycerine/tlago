@@ -46,21 +46,16 @@ COMMANDS AND JAVA EQUIVALENTS
   apalache-json                       Export checked modules as JSON IR; no Java TLC checking-mode equivalent.
   sany-xml                            Export checked modules as XML; Java: tla2sany.xml.XMLExporter.
 
-    Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go
     invocation: tlago modelcheck --tlc [FLAGS] Spec.tla. The --tlc switch
     belongs to tlago; subsequent TLC flags keep the Java single-dash spelling
     and case. The module's .tla and config's .cfg extensions are optional in TLC
     mode. Exactly one root module is required.
+	
     Without --tlc, modelcheck uses the earlier bounded checker, with -config and
     -maxStates only (plus module search options). Its default state limit is
     10,000. Java TLC flags such as -workers and -simulate require --tlc. Do not
-    use -maxStates with --tlc; Java TLC has no equivalent state-count cutoff
-    flag.
-    Toolbox model editors generate a model module and .cfg from constants,
-    behavior, invariants, properties, constraints, symmetry, and model values.
-    On the CLI these model choices belong in the .tla/.cfg files; they are not
-    separate command-line flags. GUI names below refer to the original Toolbox.
-    Other editors may label the same choices differently.
+    use -maxStates with --tlc; Java TLC has no equivalent state-count cutoff flag.
+	
 FLAG QUICK REFERENCE
 
 Help (all commands)
