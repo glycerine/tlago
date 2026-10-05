@@ -1,5 +1,46 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 original simulation worker correctness class complete afterb8dc445:
+All twelve whole original tlc2.tool.simulation.SimulationWorkerTest methods are
+translated in tlc_simulation_worker_correctness_java_test.go. Preserve126 source
+assertions, constructors/seed0, exact branch/depth values, all trace levels/error
+codes, queue emptiness, join/isAlive, interruption, depth1 restriction and the
+70generated states/5traces/packed mean5 counters. All13 BasicMultiTrace .tla/.cfg
+files match source bytes. Setup retains the isolated source statics and user
+directory, FastTool simulation mode before state evaluation and NoOpLiveCheck.
+Cleanup joins owned workers before restoring globals; it does not affect asserts.
+
+Production Simulator and SimulationWorker no longer use a small bounded result
+channel. Port LinkedBlockingQueue FIFO with blocking take, default MAX_INT32
+capacity, interruptible producer waits, nonblocking offer and interruption wakeup.
+This allows original tests to join workers while unread error results remain.
+Source InterruptedException termination uses offer(OK) without counting an
+interrupted trace as completed; exception reports use offer(error). The worker
+loop now terminates through simulateAndReport, preserving source check points
+and final result behavior. IsAlive observes the existing completion channel.
+
+Unchanged original Java class passes12methods with -ea,0.444s, log
+simulation-worker-correctness-original-java.log. Initial faithful Go methods pass
+race2.940s (71558 terminal). Final all19 original worker/trace methods plus
+existing simulator/vector checks pass root race3.116s/TLCrace1.115s (18824 terminal),
+log simulation-worker-correctness-final-bounds-related-race.log. All126 assertions
+were counted per method and reviewed against source, not replaced by subset
+checks. Inventory1106/1269 contexts (87.2%),569/626 classes (90.9%);163pending across
+57classes. Simulation19/55 methods,2/20 classes complete.
+
+Test217 full workspace31625 is terminal exit0: root1815.949s,SANY1.049s,
+TLC69.240s, log legacy-error-test217-final-workspace-go.log. Broad TLC race73112 is
+terminal green638.479s, snapshot before final trace copy adapters/assertions/null
+normalization. Trace full82090 (before null normalization) and46404 (final trace,
+before result queue) remain live. Result queue workspace39038 (before final
+capacity/wakeup details) is live, log simulation-worker-correctness-final-workspace-go.log.
+Final current-code full79605 is live, log
+simulation-worker-correctness-bounds-final-workspace-go.log. Each uses -count=1
+-failfast -timeout60m ./.... Resume exact handles; record snapshot scope and wait
+for terminal exit0 before crediting full success. This supersedes older live notes.
+Next correctness work: original tool.SimulatorTest error-state printing, then
+simulation.SimulatorTest/SimulatorMultiThreadTest and the simulation models.
+
 2026-10-05 original SimulationWorker trace helper class complete after2c0c149:
 All seven whole original tlc2.tool.SimulationWorkerTest methods and its equality
 dummy are translated in tlc/simulation_worker_trace_java_test.go. Preserve all37

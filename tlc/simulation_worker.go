@@ -339,7 +339,7 @@ type SimulationWorker struct {
 	InitStates     *StateVec
 	LocalValues    []Value
 	NamedRegisters *InsMap[*UniqueString, Value]
-	ResultQueue    chan SimulationWorkerResult
+	ResultQueue    *SimulationWorkerResultQueue
 	TraceCnt       int64
 	GlobalTrace    int64
 	MaxTraceNum    int64
@@ -362,9 +362,9 @@ type SimulationWorker struct {
 	RLQ            *InsMap[*Action, *InsMap[int64, float64]]
 }
 
-func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult, seed int64, maxTraceDepth int, maxTraceNum int64, traceActions string, checkDeadlock bool, debug bool, traceFile string, liveCheck *LiveCheck, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorker {
+func NewSimulationWorker(id int, tool *Tool, results *SimulationWorkerResultQueue, seed int64, maxTraceDepth int, maxTraceNum int64, traceActions string, checkDeadlock bool, debug bool, traceFile string, liveCheck *LiveCheck, states *atomic.Int64, traces *atomic.Int64, m2Mean *atomic.Int64) *SimulationWorker {
 	if results == nil {
-		results = make(chan SimulationWorkerResult, 1)
+		results = NewSimulationWorkerResultQueue()
 	}
 	return &SimulationWorker{
 		ID:             id,
@@ -390,6 +390,9 @@ func NewSimulationWorker(id int, tool *Tool, results chan SimulationWorkerResult
 func (w *SimulationWorker) Stop() {
 	if w != nil {
 		w.Stopped.Store(true)
+		if w.ResultQueue != nil {
+			w.ResultQueue.signalInterruptedProducer()
+		}
 	}
 }
 
@@ -407,7 +410,7 @@ func (w *SimulationWorker) Start(initStates *StateVec) {
 }
 
 func (w *SimulationWorker) Run() {
-	for w != nil && !w.Stopped.Load() {
+	for w != nil {
 		if !w.SimulateAndReport() {
 			return
 		}
@@ -432,6 +435,31 @@ func (w *SimulationWorker) Join(timeout time.Duration) bool {
 	}
 }
 
+func (w *SimulationWorker) IsAlive() bool {
+	if w == nil || w.done == nil {
+		return false
+	}
+	select {
+	case <-w.done:
+		return false
+	default:
+		return true
+	}
+}
+
+func (w *SimulationWorker) checkForInterrupt() {
+	if w.Stopped.Load() {
+		panic(NewInterruptedException())
+	}
+}
+
+func (w *SimulationWorker) putResult(result SimulationWorkerResult) {
+	// LinkedBlockingQueue.put acquires its lock interruptibly, even when empty.
+	if err := w.ResultQueue.putInterruptibly(result, &w.Stopped); err != nil {
+		panic(err)
+	}
+}
+
 func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	if w == nil {
 		return false
@@ -441,9 +469,14 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	defer ResetCurrentState()
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			if _, interrupted := recovered.(*InterruptedException); interrupted {
+				w.ResultQueue.Offer(SimulationWorkerOK(w.ID))
+				keepRunning = false
+				return
+			}
 			workerErr := NewSimulationWorkerError(NoError, nil, w.GetTrace(w.CurState), recoveredAsError(recovered))
 			workerErr.Tool = w.Tool
-			w.ResultQueue <- SimulationWorkerFailed(w.ID, workerErr)
+			w.ResultQueue.Offer(SimulationWorkerFailed(w.ID, workerErr))
 			keepRunning = false
 		}
 	}()
@@ -453,10 +486,10 @@ func (w *SimulationWorker) SimulateAndReport() (keepRunning bool) {
 	w.TraceCnt++
 	if err != nil {
 		w.attachToolToError(err)
-		w.ResultQueue <- SimulationWorkerFailed(w.ID, err)
+		w.putResult(SimulationWorkerFailed(w.ID, err))
 	}
-	if w.TraceCnt >= w.MaxTraceNum || w.Stopped.Load() {
-		w.ResultQueue <- SimulationWorkerOK(w.ID)
+	if w.TraceCnt >= w.MaxTraceNum {
+		w.putResult(SimulationWorkerOK(w.ID))
 		return false
 	}
 	return true
@@ -514,9 +547,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 	SetCurrentState(w.CurState)
 	allActions := w.Tool.GetActions()
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
-		if w.Stopped.Load() {
-			return nil
-		}
+		w.checkForInterrupt()
 		w.NextStates.Clear()
 		actions, workerErr := w.FilterActions(allActions, w.CurState)
 		if workerErr != nil {
@@ -563,9 +594,7 @@ func (w *SimulationWorker) SimulateRandomTrace() *SimulationWorkerError {
 		w.CurState = next
 		SetCurrentState(w.CurState)
 	}
-	if w.Stopped.Load() {
-		return nil
-	}
+	w.checkForInterrupt()
 	if workerErr := w.CheckLivenessTrace(); workerErr != nil {
 		return workerErr
 	}

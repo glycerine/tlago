@@ -22,7 +22,7 @@ type Simulator struct {
 	Seed             int64
 	Aril             int64
 	Config           Value
-	ResultQueue      chan SimulationWorkerResult
+	ResultQueue      *SimulationWorkerResultQueue
 	Workers          []*SimulationWorker
 	WorkerMode       SimulationWorkerMode
 	LiveCheck        *LiveCheck
@@ -108,7 +108,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		Seed:          seed,
 		MetaDir:       "states",
 		StartTime:     time.Now(),
-		ResultQueue:   make(chan SimulationWorkerResult, max(NumWorkers(), 1)*2),
+		ResultQueue:   NewSimulationWorkerResultQueue(),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
 	for _, opt := range opts {
@@ -219,7 +219,7 @@ func (s *Simulator) startProgressReporter() func() {
 			case <-ticker.C:
 				switch s.reportSimulationProgress(&coverageCountdown, interval) {
 				case simulatorProgressStop:
-					s.ResultQueue <- SimulationWorkerOK(-1)
+					s.ResultQueue.Put(SimulationWorkerOK(-1))
 					return
 				case simulatorProgressReporterDone:
 					return
@@ -644,7 +644,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 	}
 	var result SimulationWorkerResult
 	for runningCount > 0 {
-		result = <-s.ResultQueue
+		result = s.ResultQueue.Take()
 		if result.WorkerID == -1 {
 			break
 		}
