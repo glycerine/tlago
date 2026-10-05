@@ -51,7 +51,10 @@ Current ETest16 whole workspace75902 remains live, log
 legacy-error-etest16-final-workspace-go.log. It includes7f51f9c and ETest1–16,
 but not the current Test210 semantic changes. Resume this exact handle, never
 restart on an observation timeout, and preserve its eventual receipt's scope.
-A final full workspace gate is required for the current production changes.
+Final current-production whole workspace launched after commit2303cdb: live15753,
+log legacy-error-test210-final-workspace-go.log under .codex-gotmp/. It includes
+all current Test210 selector/proof semantic changes and complete original ports.
+Resume this exact handle. Do not claim its full-suite result before terminal success.
 Preserve the five deferred topics and test_vectors fixture naming.
 This entry is authoritative; older counts/gate/next-context notes are historical.
 
