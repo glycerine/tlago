@@ -1,5 +1,36 @@
 # TLC Port Handoff
 
+2026-10-05 original Test217 complete after9b0d44e:
+Whole original Test217.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, all three
+exact TestPrintStream substrings, inherited SuiteETestCase flags and three
+byte-identical vectors. Go initially reached the configuration error instead.
+Production now propagates minimum argument maximum levels through operator
+signatures and INSTANCE formal arguments. Preserve Java builtin bounds, bounded
+expression domains, CHOOSE/set comprehension bounds, EXCEPT components and @'s
+base/prior-component dependencies; retain per-iteration definition/expression
+caches. Report the whole application range and exact Java diagnostic. This is
+formal maximum-level propagation, not a claim that all higher-order SANY level
+constraint graphs are complete.
+
+Focused Test217 passes race1.269s (85988 terminal). Related original legacy and
+ETest1–16 plus root parser/semantic/XML/elevated-warning checks pass race98.308s
+(91961 terminal), log legacy-error-test217-final-related-race.log. Full SANY Java
+passes race8.775s (55732 terminal), log legacy-error-test217-final-sany-race.log.
+All three source assertion strings and three fixture files match Java exactly.
+Inventory1087/1269 contexts (85.7%),567/626 classes (90.6%);182pending across
+59classes. All104 numbered legacy contexts are translated.
+
+Disk recovery on committed9b0d44e is terminal green: both original EWD840FL1 and
+BufferedRandomAccessFile pass normal138.167s (87959), log
+workspace-disk-recovery-final-code-go.log. Earlier recovery96031 and related
+8809/35777 snapshots timed out before final per-iteration caches; they are retired
+and superseded by the final gates, not counted as passes. Earlier full213/214
+ENOSPC receipts remain failures. Current full21558038 and full21731625 are live,
+logs legacy-error-test215-final-workspace-go.log and
+legacy-error-test217-final-workspace-go.log. Resume these handles; do not claim
+full-suite success until terminal exit0. Full runs use -count=1 to avoid storing
+large successful output cache blobs. This entry supersedes earlier live notes.
+
 2026-10-05 original Test215 complete after50e713f:
 Whole original Test215.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, all nine
 exact TestPrintStream substrings, inherited SuiteETestCase flags and two

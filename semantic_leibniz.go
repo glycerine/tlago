@@ -15,6 +15,7 @@ type sanyLeibnizUse struct {
 	non         map[int]bool
 	levelParams map[int]bool
 	level       tlaLevel
+	constraints map[int]tlaLevel
 }
 
 func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
@@ -32,6 +33,33 @@ func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
 		u.non[id] = true
 	}
 	u.mergeLevelParams(v)
+	for id, maximum := range v.constraints {
+		u.constrainID(id, maximum)
+	}
+}
+
+func (u *sanyLeibnizUse) constrain(params map[int]bool, maximum tlaLevel) {
+	if maximum >= temporalLevel || len(params) == 0 {
+		return
+	}
+	if u.constraints == nil {
+		u.constraints = map[int]tlaLevel{}
+	}
+	for id := range params {
+		u.constrainID(id, maximum)
+	}
+}
+
+func (u *sanyLeibnizUse) constrainID(id int, maximum tlaLevel) {
+	if maximum >= temporalLevel {
+		return
+	}
+	if u.constraints == nil {
+		u.constraints = map[int]tlaLevel{}
+	}
+	if previous, constrained := u.constraints[id]; !constrained || maximum < previous {
+		u.constraints[id] = maximum
+	}
 }
 func (u *sanyLeibnizUse) mergeLevelParams(v sanyLeibnizUse) {
 	u.level = maxTlaLevel(u.level, v.level)
@@ -65,16 +93,19 @@ type sanyLeibnizLocal struct {
 	context *sanyLeibnizContext
 }
 type sanyLeibnizContext struct {
+	atUse     sanyLeibnizUse
+	hasAt     bool
 	module    *Module
 	variables map[string]sanyLeibnizBinding
 	formals   map[string]sanyLeibnizBinding
 	locals    map[string]sanyLeibnizLocal
 }
 type sanyLeibnizSignature struct {
-	ids     []int
-	non     []bool
-	weights []bool
-	free    sanyLeibnizUse
+	ids       []int
+	non       []bool
+	weights   []bool
+	maxLevels []tlaLevel
+	free      sanyLeibnizUse
 }
 type sanyLeibnizDefinitionKey struct {
 	definition *Definition
@@ -185,6 +216,9 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 		if info, ok := sanyBuiltinOperatorInfo(op.Name); ok {
 			use.level = info.level
 			for i, argument := range arguments {
+				if maximum, constrained := builtinArgMaxLevel(info, i); constrained {
+					use.constrain(a.binding(argument).levelParams, maximum)
+				}
 				index := i
 				if info.arity < 0 {
 					index = 0
@@ -252,8 +286,9 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 	key.operators = strings.Join(operators, "/")
 	signature := a.signatures[key]
 	if signature == nil {
-		signature = &sanyLeibnizSignature{ids: make([]int, len(params)), non: make([]bool, len(params)), weights: make([]bool, len(params))}
+		signature = &sanyLeibnizSignature{ids: make([]int, len(params)), non: make([]bool, len(params)), weights: make([]bool, len(params)), maxLevels: make([]tlaLevel, len(params))}
 		for i := range params {
+			signature.maxLevels[i] = temporalLevel
 			signature.ids[i] = a.nextID
 			a.nextID++
 		}
@@ -327,6 +362,10 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 	own := map[int]bool{}
 	for i, id := range signature.ids {
 		own[id] = true
+		if maximum, constrained := use.constraints[id]; constrained && maximum < signature.maxLevels[i] {
+			signature.maxLevels[i] = maximum
+			a.changed = true
+		}
 		if use.levelParams[id] && !signature.weights[i] {
 			signature.weights[i] = true
 			a.changed = true
@@ -367,6 +406,14 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 			a.changed = true
 		}
 	}
+	for id, maximum := range use.constraints {
+		if !own[id] {
+			if previous, constrained := signature.free.constraints[id]; !constrained || maximum < previous {
+				signature.free.constrainID(id, maximum)
+				a.changed = true
+			}
+		}
+	}
 	return a.signatureUse(signature, actuals)
 }
 func copySanyLeibnizBindings(source map[string]sanyLeibnizBinding) map[string]sanyLeibnizBinding {
@@ -377,13 +424,15 @@ func copySanyLeibnizBindings(source map[string]sanyLeibnizBinding) map[string]sa
 	return result
 }
 func sanyLeibnizNestedContext(ctx *sanyLeibnizContext) *sanyLeibnizContext {
-	return &sanyLeibnizContext{module: ctx.module, variables: ctx.variables, formals: copySanyLeibnizBindings(ctx.formals), locals: ctx.locals}
+	return &sanyLeibnizContext{module: ctx.module, variables: ctx.variables, formals: copySanyLeibnizBindings(ctx.formals), locals: ctx.locals, atUse: ctx.atUse, hasAt: ctx.hasAt}
 }
 func (a *sanyLeibnizAnalyzer) boundExpression(bounds []BoundVar, expressions []Expr, ctx *sanyLeibnizContext) sanyLeibnizUse {
 	var use sanyLeibnizUse
 	nested := sanyLeibnizNestedContext(ctx)
 	for _, bound := range bounds {
-		use.merge(a.expression(bound.Set, ctx))
+		domain := a.expression(bound.Set, ctx)
+		use.merge(domain)
+		use.constrain(domain.levelParams, actionLevel)
 		binding := sanyLeibnizBinding{}
 		if bound.LevelKnown {
 			binding.use.level = tlaLevel(bound.Level)
@@ -420,6 +469,9 @@ func (a *sanyLeibnizAnalyzer) expressionUncached(expr Expr, ctx *sanyLeibnizCont
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if e.Name == "@" && ctx.hasAt {
+			return ctx.atUse
+		}
 		if binding, ok := ctx.formals[e.Name]; ok {
 			return a.binding(binding)
 		}
@@ -445,25 +497,85 @@ func (a *sanyLeibnizAnalyzer) expressionUncached(expr Expr, ctx *sanyLeibnizCont
 		}
 		return use
 	case *ActionExpr:
-		use := a.argumentUses([]sanyLeibnizBinding{argument(e.Action), argument(e.Subscript)})
-		use.levelParams = nil
-		use.level = actionLevel
-		return use
+		name := "$SquareAct"
+		if actionExprIsAngle(e) {
+			name = "$AngleAct"
+		}
+		return a.apply(&IdentExpr{Name: name}, []sanyLeibnizBinding{argument(e.Action), argument(e.Subscript)}, ctx)
 	case *FairnessExpr:
-		use := a.argumentUses([]sanyLeibnizBinding{argument(e.Subscript), argument(e.Action)})
-		use.levelParams = nil
-		use.level = temporalLevel
-		return use
+		return a.apply(&IdentExpr{Name: "$" + e.Kind}, []sanyLeibnizBinding{argument(e.Subscript), argument(e.Action)}, ctx)
 	case *ChooseExpr:
 		bounds := e.boundVars()
 		if len(bounds) > 0 {
 			bounds[0].Set = e.Set
 		}
-		return a.boundExpression(bounds, []Expr{e.Body}, ctx)
+		use := a.boundExpression(bounds, []Expr{e.Body}, ctx)
+		use.constrain(use.levelParams, actionLevel)
+		return use
 	case *FunctionExpr:
 		return a.boundExpression(e.Bounds, []Expr{e.Body}, ctx)
 	case *SetComprehensionExpr:
-		return a.boundExpression(e.Bounds, []Expr{e.Element, e.Predicate}, ctx)
+		use := a.boundExpression(e.Bounds, []Expr{e.Element, e.Predicate}, ctx)
+		use.constrain(use.levelParams, actionLevel)
+		return use
+	case *TupleExpr:
+		arguments := make([]sanyLeibnizBinding, len(e.Elems))
+		for i, element := range e.Elems {
+			arguments[i] = argument(element)
+		}
+		return a.apply(&IdentExpr{Name: "$Tuple"}, arguments, ctx)
+	case *SetExpr:
+		arguments := make([]sanyLeibnizBinding, len(e.Elems))
+		for i, element := range e.Elems {
+			arguments[i] = argument(element)
+		}
+		return a.apply(&IdentExpr{Name: "$SetEnumerate"}, arguments, ctx)
+	case *FunctionSetExpr:
+		return a.apply(&IdentExpr{Name: "$SetOfFcns"}, []sanyLeibnizBinding{argument(e.Domain), argument(e.Range)}, ctx)
+	case *RecordSetExpr:
+		arguments := make([]sanyLeibnizBinding, len(e.Fields))
+		for i, field := range e.Fields {
+			arguments[i] = argument(field.Set)
+		}
+		return a.apply(&IdentExpr{Name: "$SetOfRcds"}, arguments, ctx)
+	case *RecordComponentExpr:
+		return a.apply(&IdentExpr{Name: "$RcdSelect"}, []sanyLeibnizBinding{argument(e.Record)}, ctx)
+	case *FunctionAppExpr:
+		var index sanyLeibnizUse
+		for _, expr := range e.Args {
+			index.merge(a.expression(expr, ctx))
+		}
+		index.constrain(index.levelParams, actionLevel)
+		return a.apply(&IdentExpr{Name: "$FcnApply"}, []sanyLeibnizBinding{argument(e.Function), {use: index}}, ctx)
+	case *ExceptExpr:
+		base := a.expression(e.Base, ctx)
+		var use, prefix sanyLeibnizUse
+		use.merge(base)
+		use.constrain(base.levelParams, actionLevel)
+		prefix.merge(base)
+		for _, spec := range e.Specs {
+			nested := sanyLeibnizNestedContext(ctx)
+			nested.hasAt = true
+			nested.atUse = prefix
+			// AtNode copies level/all parameters and constraints from the base
+			// and preceding EXCEPT components, but not nonLeibnizParams.
+			nested.atUse.non = nil
+			var component sanyLeibnizUse
+			for _, path := range spec.Components {
+				for _, expr := range path.Indices {
+					component.merge(a.expression(expr, ctx))
+				}
+			}
+			component.constrain(component.levelParams, actionLevel)
+			component.merge(a.expression(spec.Value, nested))
+			use.merge(component)
+			use.constrain(component.levelParams, actionLevel)
+			var next sanyLeibnizUse
+			next.merge(prefix)
+			next.merge(component)
+			prefix = next
+		}
+		return use
 	case *LetExpr:
 		nested := sanyLeibnizNestedContext(ctx)
 		nested.locals = make(map[string]sanyLeibnizLocal, len(ctx.locals)+len(e.Definitions))
@@ -494,6 +606,9 @@ func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, argu
 	use.level = constantLevel
 	use.merge(signature.free)
 	for i, argument := range arguments {
+		if i < len(signature.maxLevels) {
+			use.constrain(a.binding(argument).levelParams, signature.maxLevels[i])
+		}
 		if i < len(signature.weights) && signature.weights[i] {
 			use.mergeLevelParams(a.binding(argument))
 		}

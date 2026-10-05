@@ -1,5 +1,7 @@
 package tlago
 
+import "fmt"
+
 // OpApplNode checks the levels of the actual arguments, including operator
 // definitions and lexical LET bindings, rather than just their identifier kinds.
 type sanyLevelCompositionChecker struct {
@@ -75,4 +77,74 @@ func sanyLevelDiagnostic(diagnostic Diagnostic, expr Expr, message string) Diagn
 	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 	diagnostic.SANYMessage = message
 	return diagnostic
+}
+
+// OpDefNode takes each formal's maximum from its body's levelConstraints;
+// OpApplNode compares the actual argument level with that maximum. Analyze the
+// source definition with symbolic arguments, including INSTANCE-prepended ones.
+func (c *sanyLevelCompositionChecker) checkApplicationLevels(expr Expr, locals map[string]bool) Diagnostics {
+	var operator Expr
+	var arguments []Expr
+	var selected *sanySelectorSelection
+	name := "LAMBDA"
+	if selection := sanyExprSelection(expr); selection != nil && !selection.operator {
+		selected = selection
+		arguments = selection.args
+		name = selection.name
+	} else if call, ok := expr.(*CallExpr); ok {
+		operator, arguments = call.Callee, call.Args
+		if id, ok := operator.(*IdentExpr); ok {
+			name = id.Name
+			if _, builtin := sanyBuiltinOperatorInfo(name); builtin {
+				return nil
+			}
+		}
+	} else {
+		return nil
+	}
+	if len(arguments) == 0 {
+		return nil
+	}
+	context := c.contextWithLocals(locals)
+	maximums := c.dependencies.applicationMaximums(operator, selected, len(arguments), context)
+	var diags Diagnostics
+	for i, argument := range arguments {
+		if c.dependencies.levelInContext(argument, context) > maximums[i] {
+			diagnostic := errorAt(expr.Position(), "E4274", "operator %s argument %d exceeds maximum level %d", name, i+1, maximums[i])
+			message := fmt.Sprintf("Level error in applying operator %s:\nThe level of argument %d exceeds the maximum level allowed by the operator.", name, i+1)
+			diags = append(diags, sanyLevelDiagnostic(diagnostic, expr, message))
+		}
+	}
+	return diags
+}
+
+func (a *sanyLeibnizAnalyzer) applicationMaximums(operator Expr, selected *sanySelectorSelection, arity int, context *sanyLeibnizContext) []tlaLevel {
+	arguments := make([]sanyLeibnizBinding, arity)
+	for i := range arguments {
+		arguments[i].use = sanyLeibnizUse{all: map[int]bool{i: true}, levelParams: map[int]bool{i: true}}
+	}
+	a.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
+	a.nextID = arity
+	var use sanyLeibnizUse
+	for {
+		a.changed = false
+		a.evaluated = map[sanyLeibnizDefinitionKey]bool{}
+		a.expressions = map[sanyLeibnizExpressionKey]sanyLeibnizUse{}
+		if selected != nil {
+			use = a.definitionBody(selected.definition, selected.body, selected.params, arguments, context, nil)
+		} else {
+			use = a.apply(operator, arguments, context)
+		}
+		if !a.changed {
+			break
+		}
+	}
+	maximums := make([]tlaLevel, arity)
+	for i := range maximums {
+		maximums[i] = temporalLevel
+		if maximum, constrained := use.constraints[i]; constrained {
+			maximums[i] = maximum
+		}
+	}
+	return maximums
 }

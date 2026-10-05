@@ -295,3 +295,29 @@ func TestJavaLegacySuiteTest215(t *testing.T) {
 		}
 	}
 }
+
+// Original Test217.testSpec and ERROR_SPEC_PARSE constructor, preserving all
+// three exact TestPrintStream substrings and full SuiteETestCase runner settings.
+func TestJavaLegacySuiteTest217(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest217", "test217", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test217.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"Semantic errors:\n\n*** Errors: 2\n",
+		"line 12, col 11 to line 12, col 19 of module test217\n\nLevel error in applying operator I!Foo:\nThe level of argument 1 exceeds the maximum level allowed by the operator.\n",
+		"line 13, col 9 to line 13, col 19 of module test217\n\nLevel error in applying operator I!Foo:\nThe level of argument 1 exceeds the maximum level allowed by the operator.\n",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

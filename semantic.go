@@ -4056,7 +4056,7 @@ func checkAssumptionConstantLevel(expr Expr, declKinds map[string]DeclarationKin
 }
 
 func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[string]bool) Diagnostics {
-	var diags Diagnostics
+	diags := levelChecker.checkApplicationLevels(expr, locals)
 	switch e := expr.(type) {
 	case *UnaryExpr:
 		if (e.Op == "[]" || e.Op == "<>") && levelChecker.level(e.Expr, locals) == actionLevel && sanyOperatorApplicationKind(e.Expr) {
