@@ -144,33 +144,36 @@ func newHeapDiskFPSet(config *FPSetConfiguration, mode string, checkpoint bool) 
 	if config == nil {
 		config = NewFPSetConfiguration()
 	}
-	aux := 1.0
-	switch mode {
-	case diskFPSetModeMSB:
-		aux = 1.5
-	case diskFPSetModeLSB:
-		aux = 2.5
-	}
+	lockCnt := diskFPSetLockCount()
+	rwLock := StripedReadWriteLock(lockCnt)
+	aux := (&DiskFPSet{mode: mode}).GetAuxiliaryStorageRequirement()
 	maxMemCnt := int64(float64(config.GetMemoryInFingerprintCnt()) / aux)
 	if maxMemCnt-diskFPSetLogMaxLoad <= 0 {
 		maxMemCnt = diskFPSetDefaultMaxTblCnt
 	}
 	logMaxMemCnt := 63 - bitsLeadingZeros64(uint64(maxMemCnt))
 	if logMaxMemCnt-diskFPSetLogMaxLoad < 0 {
-		logMaxMemCnt = diskFPSetLogMaxLoad
+		panic(NewTLCRuntimeExceptionMessage("Underflow when computing HeapBasedDiskFPSet"))
 	}
-	capacity64 := int64(1) << uint(logMaxMemCnt-diskFPSetLogMaxLoad)
-	if capacity64 <= 0 || capacity64 > int64(math.MaxInt32-8) {
-		capacity64 = int64(math.MaxInt32 - 8)
+	// Java shifts an int here, including its signed overflow and masked distance.
+	cap := int32(1) << uint((logMaxMemCnt-diskFPSetLogMaxLoad)&31)
+	capacity := int(cap)
+	if cap < 0 {
+		capacity = math.MaxInt32 - 8
 	}
-	capacity := int(capacity64)
-	lockCnt := diskFPSetLockCount()
+	maxTblCnt := int64(1) << uint(logMaxMemCnt)
+	if maxTblCnt > config.GetMemoryInFingerprintCnt() {
+		panic(NewTLCRuntimeExceptionMessage("Exceeded upper memory storage limit"))
+	}
+	if !(maxTblCnt > int64(capacity) && capacity > 0) {
+		panic(NewTLCRuntimeExceptionMessage("negative maxTblCnt"))
+	}
 	set := &DiskFPSet{
 		config:       config,
-		maxTblCnt:    int64(1) << uint(logMaxMemCnt),
+		maxTblCnt:    maxTblCnt,
 		tbl:          make([][]uint64, capacity),
 		mask:         uint64(capacity - 1),
-		rwLock:       StripedReadWriteLock(lockCnt),
+		rwLock:       rwLock,
 		capacity:     capacity,
 		logMaxMemCnt: logMaxMemCnt,
 		lockCnt:      lockCnt,
@@ -566,11 +569,10 @@ func (s *DiskFPSet) RecoverFP(fp uint64) error {
 	s.acquireTblWriteLock()
 	defer s.releaseTblWriteLock()
 	if s.memInsert(fp0) {
-		if diskFPSetError2Warning() {
-			PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
-			return nil
+		if !diskFPSetError2Warning() {
+			return NewTLCRuntimeException(ECSystemCheckpointRecoveryCorrupt, "")
 		}
-		return newTLCErrorCode(ECSystemCheckpointRecoveryCorrupt, "")
+		PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
 	}
 	if s.needsDiskFlush() {
 		return s.flushTable()
@@ -1372,4 +1374,16 @@ func bitsLeadingZeros32(x uint32) int {
 		n++
 	}
 	return n
+}
+
+// Original DiskFPSet auxiliary-storage requirement and LSB/MSB overrides.
+func (s *DiskFPSet) GetAuxiliaryStorageRequirement() float64 {
+	switch s.mode {
+	case diskFPSetModeLSB:
+		return 2.5
+	case diskFPSetModeMSB:
+		return 1.5
+	default:
+		return 1
+	}
 }

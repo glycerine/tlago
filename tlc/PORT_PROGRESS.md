@@ -1,5 +1,164 @@
 # TLC Port Progress
 
+2026-10-05 validated LSB batch ready for isolated commit:
+All15 original contexts and current source-derived constructor/recovery fixes
+pass final full-class race963.741s, original Java1.127s and related race56.789s.
+Current whole TLC package passes169.325s; whole root suite remains red on the
+separate existing AliasSub2 auto-worker replay prefix case as documented below.
+Captured-file replay through unchanged Java confirms identical divergent state10
+and raw10-state counterexample, so no Go-source shortcut was identified for
+that captured mismatch. No replay semantics/assertions were changed.
+Commit the verified LSB feature and inventory independently, with the known
+whole-suite failure visible; this does not claim a fully green current workspace
+or completion of the goal. Main inventory1185/1269 and606/626 remains verified.
+Async source-behavior clarification still pending; dependent replay changes await
+an answer. No permission is needed for this already-authorized isolated commit.
+No new test-port batch started; next MSB19 and Short24 source preflights remain
+ready. All background test/reference handles are now terminal and retired.
+
+2026-10-05 LSB15 final race complete; current whole-suite replay failure under investigation:
+Final34156 terminal exit0/all15 original methods race963.741s; recovery1 11.10s,
+full1024 forced-flush recovery2 947.92s, duplicate warning3.12s. Log
+ lsb-disk-final-race.log. This verifies final configuration/constructor/recovery
+changes without smaller budgets/loops. Related61730 race56.789s remains green.
+LSBDiskFPsetTest15 now Port complete in TODO/method mapping. Inventory1185/1269
+contexts(93.4%),606/626 classes(96.8%);84pending/20classes. Fingerprint99/165,
+17/20 classes complete,66pending in MSB19/OffHeap23/Short24. Source Java unchanged.
+Batch still uncommitted because current whole14785 terminal exit1/root774.106s:
+TestJavaSafetyDieHardAliasSub2DumpLoadTraceJSONAutoWorkers action mismatch at
+zero-based state8, dump="empty big"/load="pour big to small". SANY1.148s/TLC169.325s
+pass. Log lsb-disk-final-workspace-go.log. This is not a full green receipt.
+Older full33379 now terminal exit0 root1892.570s/SANY1.163s/TLC82.424s, log
+ offheap-bitshifting-final-workspace-go.log; snapshot before equivalence/current
+LSB code, includes final nil-hasNext refinement/standalone tests. Retire33379.
+All earlier whole handles are now retired; no current whole suite live.
+
+Replay investigation retains every original assertion/fixture/worker setting:
+57522 terminal exit0/30 unchanged Go repetitions20.581s, log
+ lsb-batch-dump-load-alias-reproduce.log. Higher300 repetition12419 terminal exit1
+147.573s, action mismatch at zero-based9: empty big vs pour big to small; log
+ lsb-batch-dump-load-alias-reproduce-300.log. No success credit for failed repetitions.
+Source Java Worker.addElement explicitly checks invariants even when isInModel
+rejects a successor, matching Go processSuccessorForWorker. The source JSON
+constraint checks only alias variables (action here); a rejected alternate
+successor can therefore terminate replay with an invariant violation before
+reaching the recorded next action. Do not weaken prefix assertions or reorder
+normal source invariant checks to conceal this case.
+Scratch source overlay only copies the real dump before replay; all assertions
+unchanged, no persistent test edits. Capture1340 terminal exit1/69.819s with
+11-state alias dump. Files lsb-alias-replay-capture-overlay_test.go/.json,
+ lsb-alias-replay-capture-go.log and lsb-alias-replay-captured.json. Exact captured
+state10 action is pour big to small; Go replay action is pour small to big.
+Original Java CLI (unchanged actual sibling production classes) loads that same
+captured file and produces EXACT same10-state replay/actions/raw values, safety
+exit12, state10 pour small to big,55generated/10distinct/1queue. Log
+ lsb-alias-replay-captured-java.log. Source checkout clean and compiled _JsonTrace
+resource cmp byte-identical to pinned source. This is direct evidence of same
+replay behavior, not an assumption from ordinary Java success.
+Unchanged Java test method fresh compilation/reflection/cleanup:44873 terminal
+exit0/all100 repetitions;51816 terminal exit0/all1000 repetitions. Logs
+ lsb-alias-replay-method-java.log and lsb-alias-replay-method-java-1000.log. These
+ordinary runs did not trigger this captured longer path; do not claim they prove
+replay expectation for every valid multiworker trace. First attempted JUnit
+Request.method ran the whole class due non-filterable IsolatedTestCaseRunner and
+exited255 on missing unrelatedMC.cfg; log lsb-alias-replay-original-java.log.
+Retire as preparation failure, no Java behavior/test-pass credit. Reflection
+invokes the exact source method with all assertions and explicit cleanup; no
+original @Before hooks exist in this class/base. Helper ignored/uncredited.
+User clarification is pending via async question: preserve pinned Java behavior
+and document source test issue, or fix replay to exclude violating successors
+outside the recorded trace (explicit difference from Java). Do not choose a
+source-semantic change from elapsed wait/no answer. Do not weaken/remove/skip
+the enabled test or claim whole green. All process handles listed above terminal.
+Next port remains MSB19 after current batch is settled; no new MSB/Short persistent
+implementation yet. Their unchanged Java preflights remain green19/24 methods.
+Goal active, user-deferred topics unchanged.
+
+2026-10-05 additional authoritative verification during LSB race wait:
+Read-only /proc2559634/fd metadata confirms testFPSetRecovery2 backing file
+contains734 fingerprints (size/8), so the unchanged1024-call loop is advancing.
+Final34156 still live/uncredited; full14785 and33379 still live.
+Older full83491 now terminal exit0: root1895.739s/SANY1.001s/TLC82.629s, log
+ offheap-iterator-final-workspace-go.log. Covers iterator core before final
+nil-hasNext exception refinement, standalone/equivalence and current LSB changes.
+It is the latest completed whole green, with that exact scope; retire83491.
+Unchanged MSBDiskFPSetTest2 preflight29152 passes19 methods7.373s as recorded.
+Independent unchanged ShortDiskFPSetTest Java preflight is terminal exit0:
+all24 methods0.373s, log short-disk-original-java.log; compile
+ short-disk-original-javac.log. Original runKnown property false returns early
+in testZeroFP/testMinFP; do not invent additional early exits in other methods.
+Source remaining tests still run zero/min disk lookup assertions. Original LSB
+prepareTable creates buff=new long[cnt], leaving unfilled zero slots present;
+Go prepareLSBTable currently creates a zero-length slice and appends positives,
+which removes those slots. Inspect this discrepancy when porting the whole Short
+class; preserve zero "magically" appearing on disk after source explicit flush,
+complete1125-value Cartesian calculateMidEntry input matrix/invalid-input filter,
+all bounds and signed midEntry*8 assertion, block/contains consistency and full
+helper checks. Do not weaken zero assertions or claim source conditional
+returns give coverage for skipped zero/min insertions. No Short tests ported or
+credited yet; this read-only audit does not change production pending LSB gates.
+
+2026-10-05 verification continuation of active LSB batch:
+Final15-method race34156 confirmed live in testFPSetRecovery2, process2559634
+at7m48s/100% CPU; do not interpret silent redirect as hang or restart it.
+Final full14785 remains live. Older full33379/83491 likewise confirmed live,
+latest re-poll yielded no terminal status; prior observation elapsed is not exit.
+No implementation edits during this continuation; all existing gate scopes and
+uncredited LSB inventory status retained.
+Independent unchanged Java MSBDiskFPSetTest2 preflight29152 now terminal exit0:
+all19 methods pass7.373s, log msb-disk-original-java.log; compile
+ msb-disk-original-javac.log. Preserve inherited12 constructor/three recovery
+methods, lower256/upper2147483648 and helper dummy100-fingerprint budget/assertion;
+original getLast keeps discarded new iterator and catches NoSuchElementException
+from the OLD iterator before inserting1, then exact new-iterator getLast1.
+Retain exact high fingerprints9223368718049406096 and9223335424116589377,
+false/true/true duplicate assertions across two manual flushes, and no-bucket
+exception. This class still pending/uncredited; do not start its implementation
+before final LSB gate is complete and batch committed. No persistent MSB edits.
+
+2026-10-05 active LSB heap-disk batch afterb8db764:
+All15 original LSBDiskFPsetTest inherited methods translated in
+ tlc/heap_disk_fpset_java_test.go, with complete AbstractHeapBasedDiskFPSetTest
+constructor/recovery helpers and test-side DummyFPSetConfiguration raw-memory
+override. Preserve lower512/upper2147483648, all12 exact byte budgets and all
+three doTest inequalities. Preserve full99999 trace limit (99998 entries),
+original predecessor.uid=1 then fp updates, trace begin/commit checkpoint,
+init1/default configuration, exact size99998 and all99998 contains assertions.
+Retain source ForceFlush, all1024 recoverFP calls, duplicate fingerprint1 twice
+and error2warning=true. Temporary dirs and resource cleanup isolate original
+filename/class-name files without altering inputs/assertions.
+Go adds optional GetMemoryInBytesOverride dispatch to preserve Java virtual
+configuration calls from GetMemoryInFingerprintCnt; test dummy returns its raw
+MemoryInBytes, without ratio substitution/runtime clamping. Expose source LSB/
+MSB auxiliary-storage requirements and use them in constructor calculations.
+Replace silent underflow repair with exact source TLCRuntimeException message,
+retain signed/masked Java int capacity shift and negative-cap overflow fallback,
+add omitted upper-memory and negative-maxTblCnt assertions, source lock creation
+before config calls. RecoverFP duplicates now use source TLCRuntimeException;
+a warning continues to the original flush decision instead of returning early.
+No new persistent tests, smaller tables, early flush reset or weaker assertions.
+Unchanged Java38436 terminal exit0/all15 tests1.127s, log lsb-disk-original-java.log;
+compile lsb-disk-original-javac.log. Initial Go compile undefined NewTLCStateMut
+was corrected to native NewEmptyState UID carrier, not a test pass.
+First normal76156 terminal exit0/all15 methods66.635s, log lsb-disk-final-go.log,
+before final constructor lock-order/duplicate warning-flow corrections.
+Related61730 terminal exit0/race56.789s, log lsb-disk-related-race.log, on final
+code: original factory/MultiFPSet and native configuration/disk checks.
+Final full15 race34156 remains live in testFPSetRecovery2, exact1024 forced-flush
+calls/default runtime-sized table. Last read-only process inspection confirms
+active CPU usage; silence is not terminal and not authorization to reduce loop.
+Full current workspace14785 live, log lsb-disk-final-workspace-go.log.
+Inventory still1170/1269,605/626; LSB15 remain uncredited until final gate completes.
+Do not commit this batch or start another implementation before required gate.
+
+Previous zero-reader full9378 now terminal exit0: root1875.820s/SANY1.160s/
+TLC80.061s, log fpset-bug246-zero-readers-final-workspace-go.log. Includes6f3a1de,
+before iterator/standalone/equivalence/current constructor changes; this latest
+completed whole green does not verify those later changes.
+Older33379/83491 remain live on their documented snapshots. Resume14785/34156/
+33379/83491 exact handles; completed61730/76156/38436/9378 are retired.
+Goal active, user-deferred topics unchanged.
+
 2026-10-05 whole original indexer equivalence context complete afterb98941d:
 OffHeapIndexerEquivalenceTest.testInfiniteInfMult translated in
  tlc/offheap_indexer_equivalence_java_test.go, all7254 original parameter rows,

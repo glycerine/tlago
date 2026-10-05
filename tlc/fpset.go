@@ -27,12 +27,15 @@ const (
 )
 
 type FPSetConfiguration struct {
-	FPBits         int
-	MemoryInBytes  int64
-	Ratio          float64
-	Implementation string
-	NoNesting      bool
-	MemoryDivisor  int64
+	// GetMemoryInBytesOverride preserves subclass dispatch of Java's virtual
+	// getMemoryInBytes, including calls from getMemoryInFingerprintCnt.
+	GetMemoryInBytesOverride func() int64
+	FPBits                   int
+	MemoryInBytes            int64
+	Ratio                    float64
+	Implementation           string
+	NoNesting                bool
+	MemoryDivisor            int64
 }
 
 func NewFPSetConfiguration() *FPSetConfiguration {
@@ -74,6 +77,9 @@ func (c *FPSetConfiguration) SetFPBits(fpBits int) {
 }
 
 func (c *FPSetConfiguration) GetMemoryInBytes() int64 {
+	if c != nil && c.GetMemoryInBytesOverride != nil {
+		return c.GetMemoryInBytesOverride()
+	}
 	if c == nil {
 		return 0
 	}

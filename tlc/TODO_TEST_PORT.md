@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `b98941d`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `b8db764`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **605 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (96.6%).**
-- **1,170 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (92.2%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **99 logical method contexts across 21 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **606 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (96.8%).**
+- **1,185 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (93.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **84 logical method contexts across 20 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -36,12 +36,12 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Debugger and scoped identifiers | 16 | 16 | 35 | 35 | 0 |
 | Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
-| Fingerprint sets, indexers, arrays, and iterators | 20 | 16 | 165 | 84 | 81 |
+| Fingerprint sets, indexers, arrays, and iterators | 20 | 17 | 165 | 99 | 66 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **605** | **1,269** | **1,170** | **99** |
+| **Total** | **626** | **606** | **1,269** | **1,185** | **84** |
 
 ## Porting rules and proposed order
 
@@ -677,7 +677,7 @@ Disk/memory/off-heap factories, recovery, duplicate merging, high/low fingerprin
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
 - [x] [tlc2/tool/fp/FPSetFactoryTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/FPSetFactoryTest.java) — **Port complete**: `testGetDiskFPSet`, `testGetFPSetMSB`, `testGetFPSetLSB`, `testGetFPSetOffHeap`, `testGetFPSetMSBWithMem`, `testGetFPSetLSBWithMem`, `testGetFPSetMSBWithMemAndRatio`, `testGetFPSetLSBWithMemAndRatio`, `testGetFPSetMultiFPSet`, `testGetFPSetLSBMultiFPSet`, `testGetFPSetOffHeapMultiFPSet`, `testGetFPSetMultiFPSetWithMem`, `testGetFPSetLSBMultiFPSetWithMem`, `testGetFPSetOffHeapMultiFPSetWithMem`, `testGetFPSetOffHeapMultiFPSet42`. Complete original methods and helpers in [fpset_factory_java_test.go](fpset_factory_java_test.go).
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
-- [ ] [tlc2/tool/fp/LSBDiskFPsetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/LSBDiskFPsetTest.java) — **Reconcile**: `testCtorLLMinus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorLL` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorLLPlus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorLLNextPow2Min1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16Minus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16Plus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16NextPow2Min1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorULMinus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorUL` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorULPlus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorULNextPow2Min1` (from `AbstractHeapBasedDiskFPSetTest`), `testFPSetRecovery` (from `AbstractHeapBasedDiskFPSetTest`), `testFPSetRecovery2` (from `AbstractHeapBasedDiskFPSetTest`), `testFPSetRecoveryDuplicate` (from `AbstractHeapBasedDiskFPSetTest`).
+- [x] [tlc2/tool/fp/LSBDiskFPsetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/LSBDiskFPsetTest.java) — **Port complete**: `testCtorLLMinus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorLL` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorLLPlus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorLLNextPow2Min1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16Minus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16Plus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorPow16NextPow2Min1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorULMinus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorUL` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorULPlus1` (from `AbstractHeapBasedDiskFPSetTest`), `testCtorULNextPow2Min1` (from `AbstractHeapBasedDiskFPSetTest`), `testFPSetRecovery` (from `AbstractHeapBasedDiskFPSetTest`), `testFPSetRecovery2` (from `AbstractHeapBasedDiskFPSetTest`), `testFPSetRecoveryDuplicate` (from `AbstractHeapBasedDiskFPSetTest`). Whole inherited methods → [heap_disk_fpset_java_test.go](heap_disk_fpset_java_test.go); raw-memory DummyFPSetConfiguration override, all 12 exact budgets/three inequalities, complete 99,998-fingerprint trace recovery, 1,024 forced-flush calls and original duplicate-warning behavior retained. Full class passes Java, Go normal and Go race checks.
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
 - [x] [tlc2/tool/fp/LongArrayTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/LongArrayTest.java) — **Port complete** → [long_array_java_test.go](long_array_java_test.go). All seven original methods, complete 100-element signed extremes/CAS loops, both typed AssertionError catches, original zero-memory loop conditions/increments, 10,321-element swap, full unseeded JavaRandom 21,383-element swap and source architecture assumption retained. Production bounds use Java AssertionError and preserve Error catch/class metadata.
   Related Go checks: [tlc/long_array_test.go](long_array_test.go).
