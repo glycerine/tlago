@@ -956,6 +956,9 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 		}
 	}
 	for _, child := range node.GetHeirs() {
+		if strings.HasSuffix(child.Kind.JavaName(), "Step") {
+			step.Statement = sanyNodePosition(child)
+		}
 		switch child.Kind.JavaName() {
 		case "N_HaveStep":
 			step.Kind = "HAVE"

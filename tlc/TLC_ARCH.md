@@ -1,5 +1,44 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 original Test213 complete after31106ad:
+Whole Test213.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, all six exact
+TestPrintStream substrings, full SuiteETestCase settings and three byte-identical
+vectors. Go initially reached the missing-init configuration error, then reported
+only three errors. The real semantic implementation now yields Java's five errors.
+
+TheoremNode.LevelCheckTemporal's traversal preserves a temporal goal through
+CASE/QED subproofs; ordinary assertions introduce their own goals. ProofStep
+retains the statement range separately from its numbered-step position, producing
+Java's exact CASE/HAVE/WITNESS ranges and messages. Proof levels now resolve actual
+operator definitions and weighted arguments instead of assuming named operators
+are constant-level. The dependency analyzer separately tracks levelParams and
+intrinsic levels, with monotone recursive summaries and known NEW symbol levels.
+LevelNode.addTemporalLevelConstraintToConstants constrains ConstantDecl symbols
+contributing to ASSUME or ASSUME/PROVE levelParams to ActionLevel. Carry these
+constraints through definitions, LAMBDA, extended modules and module INSTANCE
+substitutions. Check explicit and implicit substitutions, including operator
+bodies, even for constant modules. Preserve Java's whole-INSTANCE range/message.
+This ports the temporal-constant constraint rule, not all SANY level-constraint
+or native proof-graph machinery.
+
+Test212/213 first pass race1.283s; intrinsic-level refinement passes race1.333s
+(59205/11020 terminal). Final native proof-level changes pass the related original
+legacy201–213/216/219/220/99/999/InvalidInvariant and ETest1–16 plus root parser,
+semantic/XML/elevated-warning selections: race92.485s (94504 terminal), log
+.codex-gotmp/legacy-error-test213-proof-levels-related-race.log. Complete SANY Java
+race9.299s (39707 terminal), log legacy-error-test213-proof-levels-sany-race.log.
+Earlier final constraints gate race98.769s (6337 terminal) and SANY8.221s
+(24270 terminal) preceded the last native proof-level refinement.
+Exact Java assertion strings and all fixture bytes were independently compared.
+Inventory1084/1269 contexts (85.4%),564/626 classes (90.1%);185pending across
+62classes; legacy101/104. Next original Test214, then215/217.
+
+Full Test212 workspace82923 remains live and predates Test213 changes, log
+.codex-gotmp/legacy-error-test212-final-workspace-go.log. Full current Test213
+workspace43019 remains live, log legacy-error-test213-final-workspace-go.log.
+Resume these exact handles; no full-suite success claim until terminal receipts.
+Preserve the five deferred topics and test_vectors naming.
+
 2026-10-05 Test213 implementation in progress after07b206a:
 Whole original Test213.testSpec is translated locally with its constructor,
 no-GENERAL assertion, six exact substrings and byte-identical source vectors.

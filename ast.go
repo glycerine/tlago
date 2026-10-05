@@ -173,6 +173,7 @@ type ProofSummary struct {
 }
 
 type ProofStep struct {
+	Statement       Position
 	Facts           []ProofFact
 	QualifiedName   string
 	AssumeProveBody *AssumeProve

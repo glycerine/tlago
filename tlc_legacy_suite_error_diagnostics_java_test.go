@@ -209,3 +209,32 @@ func TestJavaLegacySuiteTest212(t *testing.T) {
 		}
 	}
 }
+
+// Original Test213.testSpec and ERROR_SPEC_PARSE constructor, preserving all
+// six exact TestPrintStream substrings and full SuiteETestCase runner settings.
+func TestJavaLegacySuiteTest213(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest213", "test213", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test213.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"Semantic errors:\n\n*** Errors: 5\n",
+		"line 13, col 1 to line 13, col 52 of module test213\n\nLevel error in instantiating module 'test213b':\nThe level of the expression or operator substituted for 'C' \nmust be at most 2.\n",
+		"line 14, col 1 to line 14, col 52 of module test213\n\nLevel error in instantiating module 'test213b':\nThe level of the expression or operator substituted for 'D' \nmust be at most 2.\n",
+		"line 29, col 8 to line 29, col 15 of module test213\n\nNon-constant CASE for temporal goal.\n",
+		"line 31, col 8 to line 31, col 15 of module test213\n\nNon-constant TAKE, WITNESS, or HAVE for temporal goal.\n",
+		"line 33, col 8 to line 33, col 22 of module test213\n\nNon-constant TAKE, WITNESS, or HAVE for temporal goal.\n",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

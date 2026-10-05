@@ -11,11 +11,14 @@ import (
 // Keep those dependencies separate from the occurrence of a prime anywhere in
 // the expression: priming a free state variable does not prime an argument.
 type sanyLeibnizUse struct {
-	all map[int]bool
-	non map[int]bool
+	all         map[int]bool
+	non         map[int]bool
+	levelParams map[int]bool
+	level       tlaLevel
 }
 
 func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
+	u.level = maxTlaLevel(u.level, v.level)
 	if u.all == nil {
 		u.all = map[int]bool{}
 	}
@@ -27,6 +30,16 @@ func (u *sanyLeibnizUse) merge(v sanyLeibnizUse) {
 	}
 	for id := range v.non {
 		u.non[id] = true
+	}
+	u.mergeLevelParams(v)
+}
+func (u *sanyLeibnizUse) mergeLevelParams(v sanyLeibnizUse) {
+	u.level = maxTlaLevel(u.level, v.level)
+	if len(v.levelParams) > 0 && u.levelParams == nil {
+		u.levelParams = map[int]bool{}
+	}
+	for id := range v.levelParams {
+		u.levelParams[id] = true
 	}
 }
 func (u *sanyLeibnizUse) restrict() {
@@ -54,9 +67,10 @@ type sanyLeibnizContext struct {
 	locals    map[string]sanyLeibnizLocal
 }
 type sanyLeibnizSignature struct {
-	ids  []int
-	non  []bool
-	free sanyLeibnizUse
+	ids     []int
+	non     []bool
+	weights []bool
+	free    sanyLeibnizUse
 }
 type sanyLeibnizDefinitionKey struct {
 	definition *Definition
@@ -70,12 +84,14 @@ type sanyLeibnizAnalyzer struct {
 	signatures map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature
 	nextID     int
 	changed    bool
+	declKinds  map[*Module]map[string]DeclarationKind
 }
 
 func newSanyLeibnizAnalyzer(spec *Spec) *sanyLeibnizAnalyzer {
 	return &sanyLeibnizAnalyzer{
-		resolver: &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}},
-		active:   map[sanyLeibnizDefinitionKey]bool{},
+		resolver:  &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}},
+		active:    map[sanyLeibnizDefinitionKey]bool{},
+		declKinds: map[*Module]map[string]DeclarationKind{},
 	}
 }
 func (a *sanyLeibnizAnalyzer) operatorNonLeibniz(expr Expr, module *Module, arity int, locals map[string]bool) bool {
@@ -85,7 +101,7 @@ func (a *sanyLeibnizAnalyzer) operatorNonLeibniz(expr Expr, module *Module, arit
 	}
 	arguments := make([]sanyLeibnizBinding, arity)
 	for i := range arguments {
-		arguments[i].use = sanyLeibnizUse{all: map[int]bool{i: true}}
+		arguments[i].use = sanyLeibnizUse{all: map[int]bool{i: true}, levelParams: map[int]bool{i: true}}
 	}
 	a.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
 	a.nextID = arity
@@ -122,6 +138,8 @@ func (a *sanyLeibnizAnalyzer) argumentUses(arguments []sanyLeibnizBinding) sanyL
 }
 func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBinding, ctx *sanyLeibnizContext) sanyLeibnizUse {
 	use := a.argumentUses(arguments)
+	use.levelParams = nil
+	use.level = constantLevel
 	if selected := sanyExprSelection(operator); selected != nil && selected.operator {
 		ref := selected.definition
 		// The selected body is part of the signature key, without allocating
@@ -137,6 +155,7 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 				use.merge(a.apply(binding.expr, arguments, binding.context))
 			} else {
 				use.merge(binding.use)
+				use.mergeLevelParams(a.argumentUses(arguments))
 			}
 			return use
 		}
@@ -146,10 +165,12 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 				use.merge(a.apply(binding.expr, arguments, binding.context))
 			} else {
 				use.merge(binding.use)
+				use.mergeLevelParams(a.argumentUses(arguments))
 			}
 			return use
 		}
 		if info, ok := sanyBuiltinOperatorInfo(op.Name); ok {
+			use.level = info.level
 			for i, argument := range arguments {
 				index := i
 				if info.arity < 0 {
@@ -158,7 +179,11 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 				if index < len(info.argWeights) && info.argWeights[index] == 0 {
 					argUse := a.binding(argument)
 					argUse.restrict()
+					argUse.levelParams = nil
+					argUse.level = constantLevel
 					use.merge(argUse)
+				} else {
+					use.mergeLevelParams(a.binding(argument))
 				}
 			}
 			return use
@@ -169,6 +194,15 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 		}
 		if ref, ok := a.resolver.scope(ctx.module)[op.Name]; ok {
 			use.merge(a.definition(ref, arguments, ctx, nil))
+		} else {
+			kinds := a.declKinds[ctx.module]
+			if kinds == nil {
+				kinds = moduleLevelDeclKinds(ctx.module, a.resolver.spec, nil)
+				a.declKinds[ctx.module] = kinds
+			}
+			if kinds[op.Name] == VariableDecl {
+				use.level = variableLevel
+			}
 		}
 	case *FunctionExpr:
 		if op.IsLambda {
@@ -205,7 +239,7 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 	key.operators = strings.Join(operators, "/")
 	signature := a.signatures[key]
 	if signature == nil {
-		signature = &sanyLeibnizSignature{ids: make([]int, len(params)), non: make([]bool, len(params))}
+		signature = &sanyLeibnizSignature{ids: make([]int, len(params)), non: make([]bool, len(params)), weights: make([]bool, len(params))}
 		for i := range params {
 			signature.ids[i] = a.nextID
 			a.nextID++
@@ -223,7 +257,7 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 		if param.OperatorArity > 0 && i < len(actuals) {
 			arguments[i] = actuals[i]
 		}
-		arguments[i].use = sanyLeibnizUse{all: map[int]bool{signature.ids[i]: true}}
+		arguments[i].use = sanyLeibnizUse{all: map[int]bool{signature.ids[i]: true}, levelParams: map[int]bool{signature.ids[i]: true}}
 	}
 	ctx := &sanyLeibnizContext{module: ref.module, variables: caller.variables, formals: map[string]sanyLeibnizBinding{}}
 	if lexical != nil {
@@ -273,9 +307,16 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 		offset++
 	}
 	use := a.expression(body, ctx)
+	if body == ref.def.Expr && ref.def.AssumeProveBody != nil {
+		use = a.assumeProveDependencies(ref.def.AssumeProveBody, ctx)
+	}
 	own := map[int]bool{}
 	for i, id := range signature.ids {
 		own[id] = true
+		if use.levelParams[id] && !signature.weights[i] {
+			signature.weights[i] = true
+			a.changed = true
+		}
 		if use.non[id] && !signature.non[i] {
 			signature.non[i] = true
 			a.changed = true
@@ -299,6 +340,19 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 			a.changed = true
 		}
 	}
+	if use.level > signature.free.level {
+		signature.free.level = use.level
+		a.changed = true
+	}
+	for id := range use.levelParams {
+		if !own[id] && !signature.free.levelParams[id] {
+			if signature.free.levelParams == nil {
+				signature.free.levelParams = map[int]bool{}
+			}
+			signature.free.levelParams[id] = true
+			a.changed = true
+		}
+	}
 	return a.signatureUse(signature, actuals)
 }
 func copySanyLeibnizBindings(source map[string]sanyLeibnizBinding) map[string]sanyLeibnizBinding {
@@ -316,7 +370,12 @@ func (a *sanyLeibnizAnalyzer) boundExpression(bounds []BoundVar, expressions []E
 	nested := sanyLeibnizNestedContext(ctx)
 	for _, bound := range bounds {
 		use.merge(a.expression(bound.Set, ctx))
-		nested.formals[bound.Name] = sanyLeibnizBinding{}
+		binding := sanyLeibnizBinding{}
+		if bound.LevelKnown {
+			binding.use.level = tlaLevel(bound.Level)
+			use.merge(binding.use)
+		}
+		nested.formals[bound.Name] = binding
 	}
 	for _, expr := range expressions {
 		use.merge(a.expression(expr, nested))
@@ -328,6 +387,13 @@ func (a *sanyLeibnizAnalyzer) expression(expr Expr, ctx *sanyLeibnizContext) san
 		return sanyLeibnizUse{}
 	}
 	argument := func(expr Expr) sanyLeibnizBinding { return sanyLeibnizBinding{expr: expr, context: ctx} }
+	if selected := sanyExprSelection(expr); selected != nil && !selected.operator && selected.body != nil {
+		arguments := make([]sanyLeibnizBinding, len(selected.args))
+		for i, argumentExpr := range selected.args {
+			arguments[i] = argument(argumentExpr)
+		}
+		return a.definitionBody(selected.definition, selected.body, selected.params, arguments, ctx, nil)
+	}
 	switch e := expr.(type) {
 	case *IdentExpr:
 		if binding, ok := ctx.formals[e.Name]; ok {
@@ -348,7 +414,22 @@ func (a *sanyLeibnizAnalyzer) expression(expr Expr, ctx *sanyLeibnizContext) san
 		}
 		return a.apply(e.Callee, arguments, ctx)
 	case *QuantifierExpr:
-		return a.boundExpression([]BoundVar{{Name: e.Var, Set: e.Set}}, []Expr{e.Body}, ctx)
+		use := a.boundExpression([]BoundVar{{Name: e.Var, Set: e.Set, LevelKnown: e.LevelKnown, Level: e.Level}}, []Expr{e.Body}, ctx)
+		if e.Kind == "\\AA" || e.Kind == "\\EE" || e.Kind == "TEMPORAL_FORALL" || e.Kind == "TEMPORAL_EXISTS" {
+			use.levelParams = nil
+			use.level = temporalLevel
+		}
+		return use
+	case *ActionExpr:
+		use := a.argumentUses([]sanyLeibnizBinding{argument(e.Action), argument(e.Subscript)})
+		use.levelParams = nil
+		use.level = actionLevel
+		return use
+	case *FairnessExpr:
+		use := a.argumentUses([]sanyLeibnizBinding{argument(e.Subscript), argument(e.Action)})
+		use.levelParams = nil
+		use.level = temporalLevel
+		return use
 	case *ChooseExpr:
 		bounds := e.boundVars()
 		if len(bounds) > 0 {
@@ -385,11 +466,18 @@ func (a *sanyLeibnizAnalyzer) expression(expr Expr, ctx *sanyLeibnizContext) san
 
 func (a *sanyLeibnizAnalyzer) signatureUse(signature *sanyLeibnizSignature, arguments []sanyLeibnizBinding) sanyLeibnizUse {
 	use := a.argumentUses(arguments)
+	use.levelParams = nil
+	use.level = constantLevel
 	use.merge(signature.free)
 	for i, argument := range arguments {
+		if i < len(signature.weights) && signature.weights[i] {
+			use.mergeLevelParams(a.binding(argument))
+		}
 		if i < len(signature.non) && signature.non[i] {
 			argUse := a.binding(argument)
 			argUse.restrict()
+			argUse.levelParams = nil
+			argUse.level = constantLevel
 			use.merge(argUse)
 		}
 	}

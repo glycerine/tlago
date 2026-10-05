@@ -439,7 +439,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		diags = append(diags, checkHideRef(ref, theoremLikeDefs, proofStepNames)...)
 	}
 	for _, proof := range mod.Proofs {
-		diags = append(diags, checkProofSummary(proof, declKinds)...)
+		diags = append(diags, checkProofSummary(proof, declKinds, mod, spec)...)
 	}
 	for _, assumption := range mod.Assumptions {
 		expr := assumption.Expr
@@ -1706,9 +1706,13 @@ func checkHideRef(ref ProofRef, theoremLikeDefs, proofStepNames map[string]bool)
 	return Diagnostics{errorAt(ref.Pos, "E4357", "HIDE can only refer to theorems, assumptions, or proof steps; %s is not a proof fact", ref.Name)}
 }
 
-func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind) Diagnostics {
+func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind, module *Module, spec *Spec) Diagnostics {
 	var diags Diagnostics
-	goalLevel := exprLevel(proof.Goal, declKinds, nil)
+	dependencies := newSanyLeibnizAnalyzer(spec)
+	level := func(expr Expr, locals map[string]bool) tlaLevel {
+		return dependencies.substitutionLevel(expr, module, locals)
+	}
+	goalLevels := []tlaLevel{level(proof.Goal, nil)}
 	var nonExprScopes []proofNameScope
 	var boundScopes []proofNameScope
 	for _, step := range proof.Steps {
@@ -1722,30 +1726,45 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind)
 		if step.Implicit && step.Name != "" {
 			diags = append(diags, errorAt(step.Pos, "E4350", "implicit proof step cannot have name %s", step.Name))
 		}
-		if goalLevel == temporalLevel && step.Depth == 0 {
+		// TheoremNode.LevelCheckTemporal follows CASE and QED subproofs
+		// with the enclosing goal. Other assertions start their own goals.
+		for len(goalLevels) <= step.Depth {
+			goalLevels = append(goalLevels, constantLevel)
+		}
+		goalLevel := goalLevels[step.Depth]
+		goalLevels = goalLevels[:step.Depth+1]
+		stepLevel := level(step.Expr, boundNames)
+		for _, expr := range step.Exprs {
+			stepLevel = maxTlaLevel(stepLevel, level(expr, boundNames))
+		}
+		for _, bound := range step.Bounds {
+			stepLevel = maxTlaLevel(stepLevel, level(bound.Set, boundNames))
+		}
+		if goalLevel == temporalLevel && stepLevel != constantLevel {
+			var diagnostic Diagnostic
 			switch step.Kind {
-			case "HAVE":
-				if exprLevel(step.Expr, declKinds, nil) != constantLevel {
-					diags = append(diags, errorAt(step.Pos, "E4352", "temporal proof goal requires constant-level HAVE step"))
-				}
-			case "TAKE":
-				for _, bound := range step.Bounds {
-					if exprLevel(bound.Set, declKinds, nil) != constantLevel {
-						diags = append(diags, errorAt(bound.Pos, "E4352", "temporal proof goal requires constant-level TAKE bound"))
-					}
-				}
-			case "WITNESS":
-				for _, expr := range step.Exprs {
-					if exprLevel(expr, declKinds, nil) != constantLevel {
-						diags = append(diags, errorAt(expr.Position(), "E4352", "temporal proof goal requires constant-level WITNESS expression"))
-					}
-				}
+			case "HAVE", "TAKE", "WITNESS":
+				diagnostic = errorAt(step.Pos, "E4352", "temporal proof goal requires constant-level %s step", step.Kind)
+				diagnostic.SANYMessage = "Non-constant TAKE, WITNESS, or HAVE for temporal goal."
 			case "CASE":
-				if exprLevel(step.Expr, declKinds, nil) != constantLevel {
-					diags = append(diags, errorAt(step.Pos, "E4353", "temporal proof goal requires constant-level CASE step"))
+				diagnostic = errorAt(step.Pos, "E4353", "temporal proof goal requires constant-level CASE step")
+				diagnostic.SANYMessage = "Non-constant CASE for temporal goal."
+			}
+			if diagnostic.SANYMessage != "" {
+				position := step.Statement
+				if position.Line == 0 {
+					position = step.Pos
 				}
+				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+				diags = append(diags, diagnostic)
 			}
 		}
+		childGoal := stepLevel
+		if step.Kind == "CASE" || step.Kind == "QED" {
+			childGoal = goalLevel
+		}
+		goalLevels = append(goalLevels, childGoal)
+
 		if step.Kind == "PICK" && exprLevel(step.Expr, declKinds, nil) == temporalLevel {
 			for _, bound := range step.Bounds {
 				if exprLevel(bound.Set, declKinds, nil) != constantLevel {
@@ -1999,6 +2018,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		return nil
 	}
 	targets := moduleSubstitutionTargets(target, spec)
+	temporalConstraints := moduleTemporalConstantConstraints(target, spec)
 	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
 	implicit := moduleImplicitSubstitutions(mod, spec)
 	// Generator.generateModuleDefinition pushes a context for the instance's
@@ -2066,6 +2086,13 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 				}
 			}
 		}
+		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(expr, mod, locals) > maximum {
+			diagnostic := errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum)
+			position := inst.SourcePosition()
+			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
+			diags = append(diags, diagnostic)
+		}
 		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, subst.Pos, declKinds)...)
 		diags = append(diags, checkExpr(expr, defined, locals)...)
 		if !substitutionExprIsOperatorArgument(expr, want, arities) {
@@ -2086,6 +2113,13 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		}
 		if got != want {
 			diags = append(diags, errorAt(inst.Pos, "E4240", "An operator must be substituted for symbol '%s', and it must have arity %d.", name, want))
+		}
+		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(&IdentExpr{Name: name}, mod, locals) > maximum {
+			diagnostic := errorAt(inst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum)
+			position := inst.SourcePosition()
+			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
+			diags = append(diags, diagnostic)
 		}
 	}
 	return diags
