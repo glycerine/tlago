@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-05 four successful/assumption simulation contexts complete after73419a7:
+Whole original SimulationTest2, LiveCheckSimulationTest2,
+SimulationTest2PostCondition and SimulationTestAssumption testSpec methods are
+translated in tlc_simulation_success_java_test.go. Preserve source depth6/10,
+trace limits50/1, seed1, worker1, inherited debugger/coverage/dot/JSON/trace-spec
+flags and exit assertions. Experimental mode follows the original static
+initializer. SuccessfulSimulationTestCase's whole method, including repeated
+STATE_PRINT2 absence check, is retained in all three inheriting contexts;
+postcondition adds its own assertion. Assumption overrides without calling super.
+All five input files match Java bytes; three new vectors, two existing Test2 files.
+No production changes or weakened assertions were needed. Four unchanged Java
+originals pass -ea:0.419s/0.543s/0.357s/0.332s, logs
+simulation-success-<Class>-original-java.log; compilation log
+simulation-success-original-javac.log. Final focused Go race passes5.582s,
+89078 terminal exit0, log simulation-success-models-initial-race.log.
+Inventory1135/1269 contexts (89.4%),580/626 classes (92.7%);134pending across46classes.
+Simulation48/55 methods,13/20 classes complete; remaining seven original models
+and their generated TTrace variants. Broader original Simulation/LiveCheckSimulation/Simulator selection
+65602 is terminal exit0; log simulation-success-models-related-race.log.
+Full workspace84016 (73419a7),59582 (c0c789b),79605 (3d715c3) and39038
+(pre-final queue bounds) were polled and remain live; no current whole-suite pass
+claimed. New test-only changes are covered by focused/broader gates.
+Next seven unchanged original Java preflights are compiled and run in
+correctness-java/simulation-success-run; logs simulation-remaining-<Class>-
+original-java.log. Example1's initial postcondition failure is scratch setup:
+missing target/GeneratedTESpecs directory. After creating the original build
+output directory, unchanged Example1 passes (prepared log). Six others pass.
+LiveCheck examples retain original assumeTrue(false) after full trace assertions;
+that conditional applies only to postcondition checks, not earlier assertions.
+Do not weaken tests or credit these unported methods from Java preflight alone.
+
 2026-10-05 four original simulation models complete afterc0c789b:
 Whole testSpec methods for simulation.Github1191Test, Github1191aTest,
 Github602Test and NQSpecTest are translated in tlc_simulation_models_java_test.go.
