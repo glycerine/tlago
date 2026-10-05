@@ -4887,3 +4887,14 @@ pass race 36.420s (16832 retired). Full current TLC normal passes 67.357s.
 All current handles retired and all required checks green; no credit for the
 interrupted overly broad race selection. All 22 intended paths ready to commit.
 Whole source methods and 14 pristine model/config files remain unchanged.
+
+2026-10-04:Test27–33 and generated SANY config token recognition committed as
+`956f530`, clean tree. Installed all 15 original FPSetFactoryTest methods/full
+helpers after unchanged Java passes all 15 (0.152s). No production changes or
+fixtures. Complete class classifications, exact source assumptions, nested type
+checks, parent/child memory/ratio/count assertions and repeated max-table budget
+assertion retained. Test42 has no invented platform skip. All 15 Go normal pass
+1.132s (26344 retired), race pass 2.348s (96987 retired). All handles retired.
+Inventory 1016/1269 (80.1%), 496/626 classes (79.2%), 253 pending/130 classes,
+one partial. All 20 topic rows verified. Five intended commit paths: one test
+file and four docs. Latest full TLC production gate remains green and unchanged.

@@ -1,5 +1,14 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04: Legacy Test27–33 and complete config literal recognition committed
+as `956f530` after whole-method normal, direct config race, exact original
+config/override model race and current full TLC checks. Additional complete
+FPSetFactoryTest (15 original methods/helpers) passes normal 1.132s/race 2.348s;
+unchanged Java passes all 15 (0.152s). No production change. Full source type,
+nested memory/ratio/budget assertions and platform assumptions are retained.
+Inventory: 1016/1269 contexts, 496/626 classes, 253 pending. All handles retired.
+
+
 2026-10-04: Test19–26 committed as `c5d6b51`. Original Test27–33 now pass
 normal (91.927s) after fixing ModelConfig's symbolic operator tokenization.
 Java uses the SANY token manager for configuration files; Go now recognizes
