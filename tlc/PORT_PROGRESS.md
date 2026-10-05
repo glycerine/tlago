@@ -1,5 +1,26 @@
 # TLC Port Progress
 
+2026-10-04 selector work after `c1831ed`: added Generator.Selector's ordered
+step representation to SanyExprSource (`sany_selector.go`, `ast.go`). Preserve
+name/null/numeric/first/last/colon/@ kinds, selector syntax and each step's raw
+argument node. N_OpApplication attaches its arguments to the final selector as
+Java does; argument interpretation stays delayed until operator arity is known.
+Added FindingSubExpr operand primitives, distinct from generic AST traversal:
+call arguments exclude callee; record access retains string field operand;
+function application keeps one tuple argument; CASE retains pair structure;
+fairness operand order is subscript/action; quantified/function/set domains keep
+source groups; labels unwrap; EXCEPT replacements retain Java's prohibition.
+These primitives are not yet wired into semantic selector resolution/TLC lowering.
+Test206 remains missing/uncredited; no test assertions changed or new tests added.
+An ignored inspection probe of five original Test206 forms verifies exact ordered
+steps/kinds/argument groups (64712 retired). Existing SANY parser checks pass
+0.022s (67271 retired); existing parser + semantic bridge + all original Test201–205
+pass race22.678s (37114 retired). No full-suite claim and no new inventory credit.
+Next: connect the selector state machine to source definition/label/LET scopes,
+lift bound formals with exact arity, retain INSTANCE/SubstIn identities and carry
+selected expressions to native TLC. Fix original Test206 before another feature.
+
+
 2026-10-04: Eighteen original legacy coverage/INSTANCE methods committed
 as `dd022c6`; all normal/race checks green. Next original Test201–205 all pass:
 complete lambda/recursive operator/recursive function/INSTANCE recursion and

@@ -6,7 +6,8 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
-Latest green commit: `dd022c6`, all 18 original Test50–60/Test62–65 and
+Latest green commit: `c1831ed`, all five original Test201–205 (normal6.761s/
+race22.646s). Prior `dd022c6` contains all18 Test50–60/Test62–65 and
 Test63a/64a/65a methods, 45 byte-exact vectors; no production changes.
 First seven normal 5.314s/race 30.478s; next eleven normal 7.452s/race 42.566s.
 All four full additional coverage strings mechanically match originals.
@@ -33,8 +34,28 @@ Fix the real selector translation before installing them or advancing to a new
 feature. No broad gates run against a known-failing draft. Committed production
 and the five retained whole methods have green checks; deferred topics unchanged.
 
-Current five verified methods/13 vectors/4 docs are ready for green commit.
+The five verified methods/13 vectors/4 docs are committed as `c1831ed`.
 No repeat full workspace/TLC needed: production unchanged from verified snapshot.
+
+2026-10-04 selector work after `c1831ed`: added Generator.Selector's ordered
+step representation to SanyExprSource (`sany_selector.go`, `ast.go`). Preserve
+name/null/numeric/first/last/colon/@ kinds, selector syntax and each step's raw
+argument node. N_OpApplication attaches its arguments to the final selector as
+Java does; argument interpretation stays delayed until operator arity is known.
+Added FindingSubExpr operand primitives, distinct from generic AST traversal:
+call arguments exclude callee; record access retains string field operand;
+function application keeps one tuple argument; CASE retains pair structure;
+fairness operand order is subscript/action; quantified/function/set domains keep
+source groups; labels unwrap; EXCEPT replacements retain Java's prohibition.
+These primitives are not yet wired into semantic selector resolution/TLC lowering.
+Test206 remains missing/uncredited; no test assertions changed or new tests added.
+An ignored inspection probe of five original Test206 forms verifies exact ordered
+steps/kinds/argument groups (64712 retired). Existing SANY parser checks pass
+0.022s (67271 retired); existing parser + semantic bridge + all original Test201–205
+pass race22.678s (37114 retired). No full-suite claim and no new inventory credit.
+Next: connect the selector state machine to source definition/label/LET scopes,
+lift bound formals with exact arity, retain INSTANCE/SubstIn identities and carry
+selected expressions to native TLC. Fix original Test206 before another feature.
 
 NEXT REQUIRED TASK: original Test206 selector implementation, not another
 feature. Complete twelve-method draft preserved as
@@ -56,7 +77,8 @@ Root shortcuts located:
   keeps parallel ops/args/opsSTN/opNames vectors for every selector step.
   Original SanySyntaxNode retained in SanyExprSource; recover step structure or
   explicitly preserve it in AST, rather than guessing which binder consumes args.
-- sanyParseSubexpressionSelectors accepts only numeric/name labels, omitting
+- The new SanySelector step metadata now preserves all original syntax groups,
+  but the old sanyParseSubexpressionSelectors still accepts only numeric/name labels, omitting
   @,<<,>>,colon and LET-defined operator selection. Semantic arity/name checks
   do not generate the actual selected lambda/operator before validation.
 - TLC bridge IdentExpr simply resolves flattened name; no selected-expression

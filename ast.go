@@ -204,10 +204,16 @@ type NewSymbol struct {
 // Parenthesized expressions retain their inner expression node.
 type SanyExprSource struct {
 	Syntax *SanySyntaxNode
+	// Selector keeps the generator's per-step argument syntax. A flattened
+	// CallExpr argument list cannot distinguish Op(a)!lab(b) from Op(a,b)!lab.
+	Selector *SanySelector
 }
 
-func (s *SanyExprSource) GetSyntaxNode() *SanySyntaxNode     { return s.Syntax }
-func (s *SanyExprSource) SetSyntaxNode(node *SanySyntaxNode) { s.Syntax = node }
+func (s *SanyExprSource) GetSyntaxNode() *SanySyntaxNode { return s.Syntax }
+func (s *SanyExprSource) SetSyntaxNode(node *SanySyntaxNode) {
+	s.Syntax = node
+	s.Selector = sanySelectorFromSyntax(node)
+}
 
 type Expr interface {
 	Position() Position
