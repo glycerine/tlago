@@ -121,6 +121,14 @@ func NewNoSuchElementException() *NoSuchElementException {
 }
 func (e *NoSuchElementException) Error() string { return javaThrowableMessage(e) }
 
+// AssertionError is the Error thrown by Java language assertions.
+type AssertionError struct{ javaExceptionBase }
+
+func NewAssertionError() *AssertionError {
+	return &AssertionError{newJavaExceptionBase(nil, nil)}
+}
+func (e *AssertionError) Error() string { return javaThrowableMessage(e) }
+
 type JavaError struct{ javaExceptionBase }
 
 func NewJavaError(message ...string) *JavaError {
@@ -132,7 +140,7 @@ func (e *JavaError) Error() string { return javaThrowableMessage(e) }
 func isJavaError(err error) bool {
 	_, generic := err.(*JavaError)
 	switch err.(type) {
-	case *ExceptionInInitializerError, *NoClassDefFoundError:
+	case *AssertionError, *ExceptionInInitializerError, *NoClassDefFoundError:
 		return true
 	}
 	return generic || javaSystemFailureCode(err) != NoError

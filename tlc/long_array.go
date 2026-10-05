@@ -142,7 +142,7 @@ func (a *LongArray) ToArray() []int64 {
 
 func (a *LongArray) rangeCheck(position int64) {
 	if a == nil || position < 0 || position >= int64(len(a.data)) {
-		panic("LongArray index out of bounds")
+		panic(NewAssertionError())
 	}
 }
 

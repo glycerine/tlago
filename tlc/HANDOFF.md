@@ -6,6 +6,37 @@ and the best next steps for continuing the Go port of Java TLC.
 
 ## Current Snapshot
 
+Latest green batch committedfcb3f4d:41original liveness/indexer/iterator contexts,
+36pristine vectors and3production files;47paths committed, clean tree then.
+Workspace root1645.594s/SANY1.010s/TLC65.352s plus later iterator fullTLC69.871s/
+FPstorage race52.546s, new matrices normal3.923s/race16.023s; all handles retired.
+Current13whole LongArray/LongArrays original methods installed in
+ tlc/long_array_java_test.go and tlc/long_arrays_java_test.go.
+Production core AssertionError carrier/class/catch exclusion and LongArray
+bounds match source assert. Initial13 failed Empty1: Go infinite-precision
+constructor rejected zero while Java asserts positions>=0. Corrected constructor
+accepts zero and uses source AssertionError for invalid config. No test weakened.
+Corrected all13normal50563 PASS0.019s, retired. Original Java99350 all7PASS0.412s/
+all6PASS0.012s. Current relevant arrays/throwable/indexer race81012 PASS31.603s
+in long-array-corrected-thirteen-and-indexer-race.log, retired.
+FullTLC85805 PASS66.714s, retired; long-array-corrected-current-full-tlc-go.log.
+Initial invalid-constructor snapshots59947race/68477fullTLC both failed/retired;
+never count them as success. Don't restart live checks.
+Inventory968/1269(76.3%),462/626classes(73.8%),301pending/164classes,onepartial.
+All20topicrows verified. Current10intendedpaths:4production(java_exceptions,
+throwable,long_array,offheap_indexer),2source testfiles,4docs. No vectors.
+Original zero-memory loop typo preserved literally; full21383random/10321swap,
+44Basic2literals/15rangeassertions/all sorting-verification helpers retained.
+All required checks green. Stage10explicitpaths/check and commit before
+new production work. Next first18legacy whole source methods/36vectors prepared
+in ignored legacy-suite-first-eighteen.go.preview and fixture map; larger78source
+preview/172vectors includes four full coverage hooks and complete Test19/27/33
+spaces. Uninstalled/uncredited. All104legacy unchangedJava refsPASS11601.
+Goal active;5deferred user topics remain deferred, no invented tests/skips.
+
+Historical receipts/preparation follow; prior41batch is now committedfcb3f4d.
+
+
 
 Latest active slice after committed3822bf9:17 original liveness contexts in
  tlc_liveness_finite_and_loop_java_test.go (11) and

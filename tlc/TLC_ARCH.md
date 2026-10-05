@@ -1,5 +1,15 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-04 latest:41-context batch committedfcb3f4d after broad/race checks.
+Current13original LongArray/LongArrays methods preserve full source inputs,
+loops and assertions. Java language assertions carry AssertionError (an Error,
+excluded from catch(Exception)), exact throwable class and nullable message;
+LongArray bounds now use this core carrier. InfinitePrecisionIndexer source
+constructor permits zero positions; empty sorting fixture remains unchanged.
+All13normal PASS0.019s, relevant arrays/throwable/indexer race PASS31.603s,
+fullTLC PASS66.714s. All handles retired.
+Inventory968/1269contexts,462/626classes,301pending.
+
 2026-10-04 latest: four original liveness cases and complete periodic coverage
 boundary committed3822bf9. Current17 original liveness tests preserve complete
 source methods/settings and expose two fixed shortcuts: check0 manufactured a

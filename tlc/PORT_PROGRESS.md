@@ -4811,3 +4811,16 @@ current fullTLC69.871s/fingerprint-storage race52.546s gates; new matrix leaf
 normal3.923s/race16.023s. All41neworiginal contexts source-normal/race green;
 all36fixtures byte exact, all20inventory topic rows agree.47intendedpaths staged
 and checked; no unrelated edits or original assertion weakened. Ready to commit.
+
+2026-10-04:41-context batch committedfcb3f4d, clean tree. Installed original
+LongArrayTest7/LongArraysTest6 after core AssertionError bounds/catch/class port.
+Initial13 Empty1 exposed zero-position constructor shortcut; original Java allows
+zero. Ported source >=0 guard and assertion type; whole13corrected PASS0.019s,
+retired50563. Original Java all7PASS0.412s/all6PASS0.012s. Source zero-memory
+loop typo and complete random/swap/extreme/CAS/literal/range/verifier loops kept.
+Relevant current race81012 PASS31.603s; current fullTLC85805 active. Initial
+race59947/fullTLC68477 used invalid constructor and failed/retired; no credit as
+successful checks. Inventory968/1269contexts,462/626classes,301pending/164classes,
+onepartial; all20topic rows verified.10intendedpaths, no fixture changes.
+Current fullTLC85805 PASS66.714s, retired. All13source cases normal/race and
+fullTLC green; all handles retired; ready for10path authorized commit.

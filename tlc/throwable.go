@@ -49,6 +49,8 @@ func javaThrowableClassName(err error) string {
 		return "java.lang.NoSuchMethodException"
 	case *InvocationTargetException:
 		return "java.lang.reflect.InvocationTargetException"
+	case *AssertionError:
+		return "java.lang.AssertionError"
 	case *JavaError:
 		return "java.lang.Error"
 	case *SecurityException:

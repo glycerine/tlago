@@ -85,8 +85,8 @@ func NewMult1024OffHeapIndexer(positions int64, fpBits int) *OffHeapIndexer {
 }
 
 func NewInfinitePrecisionOffHeapIndexer(positions int64, fpBits int) *OffHeapIndexer {
-	if positions <= 0 || fpBits <= 0 || fpBits >= 64 {
-		panic("invalid InfinitePrecisionOffHeapIndexer configuration")
+	if positions < 0 || fpBits <= 0 || fpBits >= 64 {
+		panic(NewAssertionError())
 	}
 	return &OffHeapIndexer{
 		Kind:      OffHeapIndexerInfinitePrecision,
