@@ -87,9 +87,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 	w.CurState = w.RandomState(w.InitStates)
 	SetCurrentState(w.CurState)
 	for traceIdx := 0; traceIdx < w.MaxTraceDepth; traceIdx++ {
-		if w.Stopped.Load() {
-			return nil
-		}
+		w.checkForInterrupt()
 		w.NextStates.Clear()
 		var err error
 		func() {
@@ -121,9 +119,7 @@ func (w *SimulationWorker) SimulateExplorationTrace() *SimulationWorkerError {
 		w.CurState = next
 		SetCurrentState(w.CurState)
 	}
-	if w.Stopped.Load() {
-		return nil
-	}
+	w.checkForInterrupt()
 	if workerErr := w.CheckLivenessTrace(); workerErr != nil {
 		return workerErr
 	}

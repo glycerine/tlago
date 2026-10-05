@@ -1,5 +1,53 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 seven generated simulation recheck contexts complete after9f5cc2c:
+Whole AbstractExample_TTrace.testSpec is translated for Example1/Example2 and
+LiveCheckExample1/LiveCheckExample2 generated subclasses in
+ tlc_simulation_ttrace_java_test.go: finished/no-GENERAL, temporal/counterexample,
+all ten x0..9 state strings/ordinals/action-shape assertions and back-loop1.
+Whole SimulationTest2a/LiveCheckSimulationTest2a generated methods preserve
+first/last states0/4, ordinals, stuttering absence and repeated STATE_PRINT2 check.
+Whole Stuttering generated method preserves stuttering presence/back-loop absence.
+Every original generation phase runs its full original simulation assertions;
+LiveCheck examples retain their assumeTrue(false) only after full trace checking.
+Original helpers now accept a destination override to generate actual artifacts.
+Every recheck loads that artifact with source resolver path, -noGenerateSpecTE,
+no coverage, inherited debugger/dot/JSON/seed1/workers1/FP0/exit settings.
+No fixture changes or weakened assertions. Seven unchanged originals pass -ea
+against actual Java-generated files:0.577/0.571/0.576/0.560/0.535/0.519/0.548s;
+logs simulation-ttrace-<Class>-original-java.log, compilation
+simulation-ttrace-original-javac.log. Go focused21433 passes race37.045s;
+log simulation-ttrace-initial-race.log. Related90927 passes race80.048s before
+the exploration fix; log simulation-ttrace-related-race.log, not a gate of that fix.
+Inventory1149/1269 contexts (90.5%),594/626 classes (94.9%);120pending across32classes.
+Generated rechecks39/45 complete; six remain, including one deferred checkpoint
+context and five in-scope liveness model rechecks.
+
+Old workspace39038 is terminal failure timeout60m/root3600.055s while running
+unchanged TestJavaTLCSetSim for54m5s. SANY1.048s/TLC72.061s pass in that older
+snapshot. Log simulation-worker-correctness-final-workspace-go.log. Stack/coverage
+show worker continuously regenerating initial states after TLCSet(exit,true).
+The ordinary SimulationWorker interruption port missed ExplorationWorker's two
+checkForInterrupt calls: the Go exploration path returned nil for a stopped
+worker, so the source consumer loop interpreted it as a completed trace and
+started another. Replace both checks in simulation_worker_modes.go with source
+checkForInterrupt, which throws InterruptedException and terminates/report OK
+through SimulateAndReport's existing catch. Preserve original TLCSetSim/MultiSim
+flags, depth4224, unbounded traces, coverage/exit assertions; no test weakening.
+Focused48871 is terminal exit0, race122.551s; both unchanged TLCSetSim
+and TLCSetMultiSim pass. Log simulation-exploration-interrupt-final-race.log.
+Final related91538 is terminal exit0; original generation/rechecks, TLCSet
+stopping and related liveness assertions pass with the production fix. Log
+simulation-ttrace-exploration-final-related-race.log. ok  	github.com/glycerine/tlago	211.320s; ok  	github.com/glycerine/tlago/tlc	1.040s [no tests to run] Final current full49471
+is live, log simulation-ttrace-exploration-final-workspace-go.log,
+-count=1 -failfast -timeout60m ./.... Resume exact handles.
+Old workspace79605 is also terminal failure timeout60m/root3600.065s while
+running unchanged TLCSetSim54m12s; SANY1.110s/TLC71.313s pass in that snapshot.
+Log simulation-worker-correctness-bounds-final-workspace-go.log. It lacks this
+exploration fix and reproduces the same failure. Older84016/59582 were last
+polled live and likewise lack this fix; no current pass credited.
+Latest completed whole suite remains46404, before queue/simulator/recursion work.
+
 2026-10-05 remaining seven simulation counterexample contexts complete after548e359:
 Whole AbstractExampleTestCase.testSpec is translated for Example1Test,
 Example2Test, LiveCheckExample1Test and LiveCheckExample2Test in

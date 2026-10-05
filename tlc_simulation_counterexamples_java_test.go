@@ -34,14 +34,13 @@ import (
 )
 
 // Whole AbstractExampleTestCase.testSpec, with its concrete constructor fields.
-func runJavaSimulationExample(t *testing.T, name, property string, experimental, postcondition bool) {
+func runJavaSimulationExample(t *testing.T, name, property string, experimental, postcondition bool, extraArgs ...string) {
 	t.Helper()
 	if experimental {
 		t.Setenv("TLAGO_SIMULATOR_EXPERIMENTAL_LIVENESS", "true")
 	}
-	r := runJavaTLCModelTestWithRoot(t, name, name, true, true, true, 1,
-		"-dumpTrace", "json", filepath.Join(t.TempDir(), name+"Test.json"),
-		"-simulate", "-depth", "11")
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), name+"Test.json"), "-simulate", "-depth", "11"}
+	r := runJavaTLCModelTestWithRoot(t, name, name, true, true, true, 1, append(args, extraArgs...)...)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS", r.ExitStatus)
 	}
@@ -123,7 +122,7 @@ func TestJavaLiveCheckSimulationExample2(t *testing.T) {
 
 // Whole SimulationTest2a and LiveCheckSimulationTest2a.testSpec methods have the
 // same assertions; retain their distinct constructors and experimental setting.
-func runJavaSimulationTest2a(t *testing.T, experimental bool) {
+func runJavaSimulationTest2a(t *testing.T, experimental bool, extraArgs ...string) {
 	t.Helper()
 	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "SimulationTest2a.json"), "-simulate"}
 	if experimental {
@@ -132,7 +131,7 @@ func runJavaSimulationTest2a(t *testing.T, experimental bool) {
 	} else {
 		args = append(args, "-depth", "6")
 	}
-	r := runJavaTLCModelTestWithRoot(t, "Test2a", "Test2a", true, true, true, 1, args...)
+	r := runJavaTLCModelTestWithRoot(t, "Test2a", "Test2a", true, true, true, 1, append(args, extraArgs...)...)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS", r.ExitStatus)
 	}
@@ -187,9 +186,12 @@ func TestJavaSimulationTest2a(t *testing.T)          { runJavaSimulationTest2a(t
 func TestJavaLiveCheckSimulationTest2a(t *testing.T) { runJavaSimulationTest2a(t, true) }
 
 // Whole original liveness.simulation.StutteringTest.testSpec and constructor.
-func TestJavaSimulationStuttering(t *testing.T) {
-	r := runJavaTLCModelTestWithRoot(t, "CodePlexBug08", "MC", true, true, true, 1,
-		"-dumpTrace", "json", filepath.Join(t.TempDir(), "StutteringTest.json"), "-simulate")
+func TestJavaSimulationStuttering(t *testing.T) { runJavaSimulationStuttering(t) }
+
+func runJavaSimulationStuttering(t *testing.T, extraArgs ...string) {
+	t.Helper()
+	args := []string{"-dumpTrace", "json", filepath.Join(t.TempDir(), "StutteringTest.json"), "-simulate"}
+	r := runJavaTLCModelTestWithRoot(t, "CodePlexBug08", "MC", true, true, true, 1, append(args, extraArgs...)...)
 	if r.ExitStatus != tlc.ExitStatusViolationLiveness {
 		t.Fatalf("exit=%d, want VIOLATION_LIVENESS", r.ExitStatus)
 	}
