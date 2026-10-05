@@ -1,6 +1,8 @@
 tlago: TLA+ tools ported to Go
 ==============================
 
+(work in progress; expect lots of updates; but v0.0.1 has been tag-ed and can be experimented with).
+
 ## Command-line use
 
 Run the full command and flag guide, or select one command's help:
