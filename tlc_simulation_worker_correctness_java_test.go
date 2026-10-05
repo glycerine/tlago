@@ -13,9 +13,15 @@ import (
 // classloader resets statics before each method; setUp selects BasicMultiTrace.
 func javaSimulationWorkerTool(t *testing.T, config string) *tlc.Tool {
 	t.Helper()
+	return javaSimulationTool(t, "BasicMultiTrace", "BasicMultiTrace", config)
+}
+
+func javaSimulationTool(t *testing.T, fixture, root, config string, continuations ...bool) *tlc.Tool {
+	t.Helper()
 	oldUserDir := tlc.GetFilenameUserDirectory()
 	oldMain, oldSimulator, oldTool := tlc.Globals.MainChecker, tlc.Globals.Simulator, tlc.Globals.Tool
 	oldCoverage, oldWarn := tlc.Globals.CoverageInterval, tlc.Globals.Warn
+	oldContinuation := tlc.Globals.Continuation
 	oldView, oldPoly := tlc.UseView(), tlc.FP64IrredPoly()
 	tlc.UniqueStringInitialize()
 	tlc.InitializeIntValueStatics()
@@ -23,6 +29,7 @@ func javaSimulationWorkerTool(t *testing.T, config string) *tlc.Tool {
 	tlc.InitializeFPIntSetStatics()
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
+	tlc.Globals.Continuation = len(continuations) > 0 && continuations[0]
 	tlc.Globals.CoverageInterval = -1
 	tlc.Globals.Warn = true
 	tlc.SetUseView(false)
@@ -35,17 +42,18 @@ func javaSimulationWorkerTool(t *testing.T, config string) *tlc.Tool {
 		tlc.SetSimulator(oldSimulator)
 		tlc.Globals.Tool = oldTool
 		tlc.Globals.CoverageInterval, tlc.Globals.Warn = oldCoverage, oldWarn
+		tlc.Globals.Continuation = oldContinuation
 		tlc.SetUseView(oldView)
 		tlc.FP64InitPoly(oldPoly)
 		tlc.SetFilenameUserDirectory(oldUserDir)
 		tlc.SetTLCStateTool(nil)
 	})
-	directory, err := filepath.Abs(filepath.Join("tlc", "test_vectors", "models", "BasicMultiTrace"))
+	directory, err := filepath.Abs(filepath.Join("tlc", "test_vectors", "models", fixture))
 	if err != nil {
 		t.Fatal(err)
 	}
 	tlc.SetFilenameUserDirectory(&directory)
-	tool, diags, err := loadTLCAppTool("BasicMultiTrace", config, nil, tlc.RuntimeParameters{})
+	tool, diags, err := loadTLCAppTool(root, config, nil, tlc.RuntimeParameters{})
 	requireNoErrors(t, diags)
 	if err != nil {
 		t.Fatal(err)

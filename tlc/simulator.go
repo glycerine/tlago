@@ -24,6 +24,7 @@ type Simulator struct {
 	Config           Value
 	ResultQueue      *SimulationWorkerResultQueue
 	Workers          []*SimulationWorker
+	workerCount      int
 	WorkerMode       SimulationWorkerMode
 	LiveCheck        *LiveCheck
 	LiveCheckInitErr error
@@ -88,6 +89,15 @@ func WithSimulatorLiveCheck(liveCheck *LiveCheck) SimulatorOption {
 	}
 }
 
+// WithSimulatorWorkerCount carries the explicit source constructor argument,
+// including zero workers for simulators used only to print a behavior.
+func WithSimulatorWorkerCount(count int) SimulatorOption {
+	if count < 0 {
+		panic(NewIllegalArgumentException(fmt.Sprintf("Illegal Capacity: %d", count)))
+	}
+	return func(s *Simulator) { s.workerCount = count }
+}
+
 func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, seed int64, opts ...SimulatorOption) *Simulator {
 	if tool != nil {
 		tool.SetMode(ModeSimulation)
@@ -109,6 +119,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 		MetaDir:       "states",
 		StartTime:     time.Now(),
 		ResultQueue:   NewSimulationWorkerResultQueue(),
+		workerCount:   max(NumWorkers(), 1),
 	}
 	simulator.WorkerMode = simulator.selectWorkerMode()
 	for _, opt := range opts {
@@ -128,11 +139,7 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 	// Simulator.aril is still its field-initializer value. Later statistics use
 	// the RNG aril, so keep the cached config and runtime field distinct.
 	simulator.Aril = 0
-	workerCount := NumWorkers()
-	if workerCount < 1 {
-		workerCount = 1
-	}
-	for i := 0; i < workerCount; i++ {
+	for i := 0; i < simulator.workerCount; i++ {
 		simulator.Workers = append(simulator.Workers, simulator.newSimulationWorker(i))
 	}
 	simulator.Config = simulator.createConfig()
@@ -567,51 +574,74 @@ func (s *Simulator) schedulerName() string {
 }
 
 func (s *Simulator) initialStates() (*StateVec, int, error) {
+	filtered, code := s.collectInitialStates()
+	if code != NoError {
+		return nil, code, nil
+	}
+	if s.NumGenStates.Load() == 0 {
+		return nil, PrintError(ECTLCNoStatesSatisfyingInit), nil
+	}
+	if filtered.IsEmpty() {
+		return nil, PrintError(ECTLCNoStatesSatisfyingInitAndConstraint), nil
+	}
+	return filtered, NoError, nil
+}
+
+// collectInitialStates retains Simulator.simulate's try/catch(Exception)
+// around initial generation, validity and model constraints. Java Error
+// subclasses escape this catch; handled exceptions return a diagnostic code.
+func (s *Simulator) collectInitialStates() (filtered *StateVec, code int) {
+	var curState *TLCStateMut
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			exception, ok := recovered.(error)
+			if !ok || isJavaError(exception) {
+				panic(recovered)
+			}
+			code = s.printInitialStateException(curState, exception)
+			filtered = nil
+		}
+	}()
 	all := NewStateVec(0)
-	err := s.Tool.GetInitStates(NewStateFunctor(func(state *TLCStateMut) (any, error) {
+	if err := s.Tool.GetInitStates(NewStateFunctor(func(state *TLCStateMut) (any, error) {
 		all.Add(state)
 		return all, nil
-	}))
-	if err != nil {
-		s.printInitialStateException(nil, err)
-		return nil, ECGeneral, err
+	})); err != nil {
+		panic(err)
+	}
+	filtered = NewStateVec(all.Size())
+	if s.NumGenStates.Load() != 0 {
+		panic(NewAssertionError())
 	}
 	s.StatesGenerated += int64(all.Size())
 	s.NumGenStates.Add(int64(all.Size()))
 	PrintMessage(ECTLCComputingInitProgress, fmtInt64(s.NumGenStates.Load()))
-	filtered := NewStateVec(all.Size())
 	for i := 0; i < all.Size(); i++ {
-		state := all.At(i)
-		if !s.Tool.IsGoodState(state) {
-			PrintError(ECTLCStateNotCompletelySpecifiedInitial, state.String())
-			return nil, ECTLCStateNotCompletelySpecifiedInitial, nil
+		curState = all.At(i)
+		if !s.Tool.IsGoodState(curState) {
+			return nil, PrintError(ECTLCStateNotCompletelySpecifiedInitial, curState.String())
 		}
 		for j, invariant := range s.Tool.GetInvariants() {
-			valid, err := s.Tool.IsValidState(invariant, state)
+			valid, err := s.Tool.IsValidState(invariant, curState)
 			if err != nil {
-				code := s.printInitialStateException(state, err)
-				return nil, code, err
+				panic(err)
 			}
 			if !valid {
-				alias := s.Tool.EvalAlias(state, state)
+				alias := s.Tool.EvalAlias(curState, curState)
 				result := PrintError(ECTLCInvariantViolatedInitial, nameAt(s.Tool.GetInvNames(), j), alias.String())
-				s.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(state))
-				return nil, result, nil
+				s.Tool.CheckPostConditionWithCounterExample(NewCounterExampleFromInitialState(curState))
+				return nil, result
 			}
 		}
-		inModel, err := s.Tool.IsInModel(state)
+		inModel, err := s.Tool.IsInModel(curState)
 		if err != nil {
-			code := s.printInitialStateException(state, err)
-			return nil, code, err
+			panic(err)
 		}
 		if inModel {
-			filtered.Add(state)
+			filtered.Add(curState)
 		}
 	}
-	if all.Size() > 0 && filtered.IsEmpty() {
-		return nil, PrintError(ECTLCNoStatesSatisfyingInitAndConstraint), nil
-	}
-	return filtered, NoError, nil
+	return filtered, NoError
 }
 
 func (s *Simulator) printInitialStateException(state *TLCStateMut, err error) int {
@@ -632,9 +662,6 @@ func (s *Simulator) printInitialStateException(state *TLCStateMut, err error) in
 }
 
 func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
-	if len(s.Workers) == 0 {
-		s.Workers = append(s.Workers, s.newSimulationWorker(0))
-	}
 	running := make(map[int]bool, len(s.Workers))
 	runningCount := 0
 	for i, worker := range s.Workers {
@@ -643,7 +670,7 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 		runningCount++
 	}
 	var result SimulationWorkerResult
-	for runningCount > 0 {
+	for {
 		result = s.ResultQueue.Take()
 		if result.WorkerID == -1 {
 			break
@@ -658,6 +685,9 @@ func (s *Simulator) simulate(initStates *StateVec) SimulationWorkerResult {
 		if running[result.WorkerID] {
 			delete(running, result.WorkerID)
 			runningCount--
+		}
+		if runningCount == 0 {
+			break
 		}
 	}
 	s.shutdownAndJoinWorkers(s.Workers)
@@ -675,8 +705,9 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 			return
 		}
 		if failure := javaRuntimeException(err.Err); failure != nil {
-			err.Code, err.Params = javaRuntimeFailureMessage(failure)
-			printJavaRuntimeException(failure)
+			err.Code = failure.Code
+			s.PrintBehaviorException(failure, err.StateTrace)
+			return
 		} else {
 			err.Code = ECGeneral
 			err.Params = generalErrorParams("", err.Err)
@@ -698,6 +729,13 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 	}
 }
 
+// PrintBehaviorException ports Simulator.printBehavior(TLCRuntimeException,
+// StateVec). Unlike the coded-error overload, this overload has no summary.
+func (s *Simulator) PrintBehaviorException(exception *TLCError, stateTrace *StateVec) {
+	printJavaRuntimeException(exception)
+	s.printBehaviorTrace(stateTrace)
+}
+
 func (s *Simulator) printBehavior(errorCode int, params []string, stateTrace *StateVec) {
 	PrintError(errorCode, params...)
 	s.printBehaviorTrace(stateTrace)
@@ -705,9 +743,6 @@ func (s *Simulator) printBehavior(errorCode int, params []string, stateTrace *St
 }
 
 func (s *Simulator) printBehaviorTrace(stateTrace *StateVec) {
-	if stateTrace == nil || stateTrace.Size() == 0 {
-		return
-	}
 	if s.TraceDepth == simulatorUnboundedTraceDepth {
 		PrintMessage(ECTLCErrorState)
 		PrintStandaloneErrorState(stateTrace.Last())

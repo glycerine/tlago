@@ -50,6 +50,13 @@ func NewTLCRuntimeException(code int, params ...string) *TLCError {
 	return failure
 }
 
+// NewTLCRuntimeExceptionMessage ports Assert.TLCRuntimeException(String).
+func NewTLCRuntimeExceptionMessage(message string) *TLCError {
+	failure := newTLCError(ECGeneral, "%s", message)
+	failure.Runtime = true
+	return failure
+}
+
 func javaMethodOverrideError(signature string, message string) *TLCError {
 	return newTLCErrorCode(ECTLCModuleValueJavaMethodOverride, signature, message)
 }

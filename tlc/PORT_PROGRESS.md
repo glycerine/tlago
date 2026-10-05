@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-05 original simulator correctness classes complete after3d715c3:
+Whole tool.SimulatorTest.testPrintBehaviorShouldPrintErrorState is translated in
+ tlc_simulator_error_state_java_test.go: Github726 FastTool inputs, seed/aril0,
+traceDepth-1/traceNum0, explicit0workers, empty state, uncoded TestException and
+original TLC_ERROR_STATE assertion. Existing two vectors match source bytes.
+Port the uncoded TLCRuntimeException constructor, explicit simulator worker count
+and exception-printing overload. That overload reports no summary; normal worker
+runtime-exception reporting now uses it. Remove fabricated fallback workers and
+empty-trace suppression, preserving the source consumer loop and trace dispatch.
+
+All ten simulation.SimulatorTest methods and all ten inherited
+SimulatorMultiThreadTest contexts are translated in
+ tlc_simulator_correctness_java_test.go. Each context preserves all22 source
+assertions, numWorkers1/4, seed0, FP64 setup, exact configuration names, depth100,
+traceNum100 or MAX_INT64 and continuation settings. TestMPRecorder's string-value
+check examines parameter0 of the first record, as in Java. No substitution with
+later records, reduced worker counts, finite limits or weakened checks.
+
+Initial Go fails original testInvariantBadEvalInitState by returning its exception
+after reporting it. Production now preserves the full initial-state try/catch:
+generation, initial validity/invariants and model constraints catch Exception,
+print the correct current-state/general diagnostic and summary, and return its
+code. Error subclasses escape. Preserve the zero generated-state assertion; the
+no-init/constraint checks remain outside that catch. Assertions are unchanged.
+
+Unchanged Java Simulator.java and tool.SimulatorTest pass1method with -ea,0.247s,
+log simulator-error-state-original-java.log. Original simulation.SimulatorTest
+and SimulatorMultiThreadTest each pass10methods,0.432s/0.506s, logs
+simulator-correctness-SimulatorTest-original-java.log and
+simulator-correctness-SimulatorMultiThreadTest-original-java.log. Initial Go
+failure47825 is retired, log simulator-correctness-initial-race.log. First return
+fix49926 passes20contexts race3.054s. Final all simulator/worker originals plus
+existing simulator/vector checks pass root race5.389s/TLCrace1.145s (84521 terminal),
+log simulator-correctness-final-related-race.log. All45 new source assertions and
+complete method/context settings were checked. Inventory1127/1269 contexts
+(88.8%),572/626 classes (91.4%);142pending across54classes. Simulation40/55 methods,
+5/20 classes complete; next its15 original model contexts and their TTrace forms.
+
+Current final whole workspace59582 is live, log
+simulator-correctness-final-workspace-go.log (-count=1 -failfast -timeout60m ./...).
+Older trace82090/46404 and result-queue39038/79605 full snapshots remain live;
+resume those handles and retain their documented snapshot scope. Latest completed
+full workspace is still Test21731625, before trace/result-queue/simulator changes.
+Do not claim current full-suite success before a terminal exit0. This entry
+supersedes earlier live notes. Deferred topics and pending upstream-failing
+assertions remain on the inventory; this does not establish goal completion.
+
 2026-10-05 original simulation worker correctness class complete afterb8dc445:
 All twelve whole original tlc2.tool.simulation.SimulationWorkerTest methods are
 translated in tlc_simulation_worker_correctness_java_test.go. Preserve126 source
