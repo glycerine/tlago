@@ -39,9 +39,10 @@ code BEFORE f8bd7c9's unknown-operator metadata and the current duplicate-record
 validation). Resume these handles; do not restart on observation timeouts. Logs
 legacy-error-reporting-final-workspace-go.log and
 legacy-error-context-final-workspace-go.log under .codex-gotmp/.
-Full current-source verification is still pending; neither snapshot covers the
-latest semantic validation addition. Preserve their receipts with accurate scope,
-then run the required final workspace gate for current production changes.
+Final current-source full workspace launched after commit7f51f9c: live75902,
+log legacy-error-etest16-final-workspace-go.log under .codex-gotmp/. It includes
+the duplicate-record-set validation and all16 ETests. Resume this exact handle
+and preserve earlier snapshot receipts with their accurate scope.
 Do not claim full current-source green from focused evidence alone.
 This entry is authoritative; earlier inventory and live-handle notes are historical.
 
