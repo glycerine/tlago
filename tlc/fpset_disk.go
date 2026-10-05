@@ -790,8 +790,8 @@ func (s *DiskFPSet) diskLookup(fp uint64) (bool, error) {
 			return true, nil
 		}
 	}
-	loEntry := int64(loPage * diskFPSetNumEntriesPerPage)
-	hiEntry := int64(hiPage * diskFPSetNumEntriesPerPage)
+	loEntry := int64(loPage) * diskFPSetNumEntriesPerPage
+	hiEntry := int64(hiPage) * diskFPSetNumEntriesPerPage
 	if loPage == indexLength-2 {
 		hiEntry = s.fileCnt - 1
 	}

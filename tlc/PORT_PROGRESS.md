@@ -1,5 +1,46 @@
 # TLC Port Progress
 
+2026-10-05 Bug210/Bug242 whole disk-fingerprint methods complete after42719d2:
+All six original methods are translated in tlc/fpset_disk_bugs_java_test.go.
+Preserve DummyDiskFPSet's LSB constructor/index visibility, Bug210's exact
+MaxInt32/1024+8 index and MaxInt64-3/-1/-2 values, one-thread initialized file,
+false diskLookup result and IOException failure. Preserve Bug242 literal memory
+2097153638/MaxInt32/MinInt32/0/1, ratio1 and uninitialized constructors. Original
+large-memory cases accept only OutOfMemoryError or successful construction;
+negative memory must throw Exception; other cases reject Exceptions. Do not
+swallow Java Error families in catch(Exception). Source lifecycle progress logs
+remain verbose. No sampled/smaller index or weakened assertion.
+Source DiskFPSet.diskLookupBinarySearch widens page to long before multiplication.
+Go cast the product afterward, which overflows int on386. Change both lo/hi
+entry computations to int64(page)*NumEntriesPerPage. No other implementation
+changes. Native amd64 focused24613 passes race3.535s; log
+fpset-bugs210-242-final-race.log. Initial attempt only failed compile because Go
+Close has no return, corrected before test gates; initial log is not a pass.
+Unchanged originals pass Java -ea:Bug210 0.132s (1method),Bug2420.143s (5methods);
+logs fpset-<Class>-original-java.log; compile fpset-bugs210-242-original-javac.log.
+Original full-sized Bug210 passes Linux3860.750s,9471 terminal exit0; log
+fpset-bug210-386-unsandboxed.log. Initial sandboxed41678 terminates bad-system-call
+before testing (fpset-bug210-386.log); approved unsandboxed run is actual evidence.
+A source overlay with only the prior multiplication order reproduces the original
+Bug210 failure on386:50376 terminal exit1, negative seek invalid argument,
+0.762s; log fpset-bug210-386-before-widening.log. Overlay leaves worktree untouched.
+This negative control is not a green gate. Final related24149 passes race58.220s;
+log fpset-bugs210-242-related-race.log, original FPSetFactory/MultiFPSet plus
+related disk/configuration/duplicate/recovery tests retain all assertions.
+Inventory1160/1269 contexts (91.4%),601/626 classes (96.0%);109pending across25classes.
+Fingerprint topic74/165 methods,12/20 classes complete;91pending across8classes.
+Next Bug246 whole insertion/flush methods and remaining heap/offheap/iterator
+cases with full parameter matrices; no new checkpoint/recovery MODEL work.
+New full90170 is live after polls, log fpset-bugs210-242-final-workspace-go.log,
+-count=1 -failfast -timeout60m ./.... Previous final49471 remains live, snapshot
+318811c before five liveness recheck and six fingerprint contexts; it includes
+the exploration stopping fix. Old84016 remains live and lacks that fix.
+Old59582 is terminal timeout failure at60m/root3600.043s, TLCSetSim54m3s;
+SANY0.972s/TLC68.388s pass in that old snapshot, which lacks the stopping fix.
+Log simulator-correctness-final-workspace-go.log. Old79605/39038 are already
+terminal TLCSetSim timeout failures. No current whole-suite success claimed.
+Resume90170/49471/84016 exact handles; do not restart from observation timeout.
+
 2026-10-05 five remaining in-scope generated liveness contexts complete after318811c:
 Whole LoopTest_TTraceTest, LoopTestForcedPartial_TTraceTest,
 OneBitMutexNoSymmetryTest_TTraceTest, Test3_TTraceTest and

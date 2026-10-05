@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `318811c`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `42719d2`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **599 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (95.7%).**
-- **1,154 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (90.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **115 logical method contexts across 27 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **601 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (96.0%).**
+- **1,160 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (91.4%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **109 logical method contexts across 25 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -36,12 +36,12 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Debugger and scoped identifiers | 16 | 16 | 35 | 35 | 0 |
 | Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
-| Fingerprint sets, indexers, arrays, and iterators | 20 | 10 | 165 | 68 | 97 |
+| Fingerprint sets, indexers, arrays, and iterators | 20 | 12 | 165 | 74 | 91 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **599** | **1,269** | **1,154** | **115** |
+| **Total** | **626** | **601** | **1,269** | **1,160** | **109** |
 
 ## Porting rules and proposed order
 
@@ -666,9 +666,11 @@ Remote server/worker integration, init failures, fingerprint-manager failover, a
 
 Disk/memory/off-heap factories, recovery, duplicate merging, high/low fingerprints, indexers, arrays, and iterators. Preserve parameter matrices and original resource/concurrency behavior.
 
-- [ ] [tlc2/tool/fp/Bug210DiskFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/Bug210DiskFPSetTest.java) — **Reconcile**: `testDiskLookupWithOverflow`.
+- [x] [tlc2/tool/fp/Bug210DiskFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/Bug210DiskFPSetTest.java) — **Port complete**: `testDiskLookupWithOverflow`.
+  Go translation: [tlc/fpset_disk_bugs_java_test.go](fpset_disk_bugs_java_test.go). All whole original methods, constructor/configuration inputs and catch rules are retained. Retains the complete index of MaxInt32/1024+8 entries and three MaxInt64 offsets. Production widens page indices before multiplication as Java does; original test passes on amd64 and 386.
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
-- [ ] [tlc2/tool/fp/Bug242DiskFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/Bug242DiskFPSetTest.java) — **Reconcile**: `testDiskFPSetWithHighMem`, `testDiskFPSetIntMaxValue`, `testDiskFPSetIntMinValue`, `testDiskFPSetZero`, `testDiskFPSetOne`.
+- [x] [tlc2/tool/fp/Bug242DiskFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/Bug242DiskFPSetTest.java) — **Port complete**: `testDiskFPSetWithHighMem`, `testDiskFPSetIntMaxValue`, `testDiskFPSetIntMinValue`, `testDiskFPSetZero`, `testDiskFPSetOne`.
+  Go translation: [tlc/fpset_disk_bugs_java_test.go](fpset_disk_bugs_java_test.go). All whole original methods, constructor/configuration inputs and catch rules are retained. Retains memory2097153638/MaxInt32/MinInt32/0/1, ratio1, uninitialized dummy constructors, catch-only-OutOfMemoryError allowance for the two large inputs and catch(Exception) excluding Error.
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
 - [ ] [tlc2/tool/fp/Bug246DiskFPSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/fp/Bug246DiskFPSetTest.java) — **Reconcile**: `testLinearFillup`, `testFlushDiskFPSet`.
   Related Go checks: [tlc/fpset_test.go](fpset_test.go).
