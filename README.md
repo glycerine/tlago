@@ -8,8 +8,8 @@ tlago: TLA+ tools ported to Go
 Run the full command and flag guide, or select one command's help:
 
 ```bash
-go run ./cmd/tlago -help
-go run ./cmd/tlago modelcheck -help
+tlago -h
+tlago modelcheck -h
 ```
 
 Help includes a one-line flag reference, detailed explanations, defaults,
@@ -19,7 +19,7 @@ examples, and mappings to Java TLC commands and Toolbox model-editor options.
 TLC is the default command. Use the same flags as Java TLC:
 
 ```bash
-go run ./cmd/tlago -workers auto -config MC.cfg MC.tla
+tlago -workers auto -config MC.cfg MC.tla
 ```
 
 This corresponds to `java -cp tla2tools.jar tlc2.TLC -workers auto -config MC.cfg MC`.
@@ -37,7 +37,6 @@ tlago: TLA+ parsing, semantic checking, and the Go TLC model checker
 Usage: tlago [TLC FLAGS] SPEC
        tlago COMMAND [OPTIONS] FILE...
        tlago -help | tlago help [COMMAND]
-Help aliases: -help, --help, -h. Help needs no input file and exits successfully.
 
 COMMANDS AND JAVA EQUIVALENTS
   parse                               Parse FILE... with the Go SANY parser; Java counterpart: SANY -s.
