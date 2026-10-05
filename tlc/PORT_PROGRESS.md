@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-05 shared util BufferedDataInputStreamTest complete after04c6f15:
+Ported full source BufferedDataInputStream/BufferedDataOutputStream classes in
+buffered_data_stream.go before their original seven tests. Preserve8192-byte
+buffers, eager refills and EOF state, zero-read runtime assertion, signed-byte
+Java char conversion, UTF-16 low-byte output, binary numeric encodings, canonical
+NaNs, line decoding via original default charset and open/close/skip semantics.
+Native Reader bytes-plus-EOF is deferred to the next refill to match Java; reopen
+clears that native pending error while retaining the source curr behavior.
+All seven original methods in buffered_data_stream_java_test.go: exact10/15 and
+2/10 short cases, strict EOFException catches, full8292 payload/8190 advance,
+zero-return stream/strict runtime catch and SYSTEM_STREAM_EMPTY code, initial
+empty EOF and two read failures, original string length/payload/int42 sentinel.
+No invented tests; repeated Close cleanup applies only while still open.
+Fresh original Java source classes/tests compiled unchanged ahead of frozen jar;
+all7 pass0.031s (buffered-data-original-java.log). Go93612 initial full7 race
+1.028s terminal; final65555 full7 plus original ByteUtils/value-stream methods
+and existing UniqueString check race1.897s terminal after length0 assertion-state
+refinement (buffered-data-final-related-race.log). Earlier compile17274 terminal
+exit0/.011s; preparatory test compile failed only nonexistent ErrorCode getter,
+corrected to Code; no verification credit for that failed compilation.
+Supplementary shared util inventory18/56 confirmed contexts, previously11/56.
+Main counts unchanged1251/1269,609/626; supplementary methods are not part of that
+denominator. TODO/method mapping mark BufferedDataInputStreamTest Port complete.
+OffHeap full TLC85410 now terminal exit0/414.941s, log offheap-disk-final-tlc-go.log.
+Snapshot includes04c6f15 production/tests before these new stream declarations;
+new stream batch verified separately above. Retire85410/65555/93612/17274.
+Whole65591 remains LIVE at SHORT snapshot before OffHeap/new streams, log
+short-disk-final-workspace-go.log. Poll exact handle, no full current-workspace
+green claim. Existing captured AliasSub2 replay issue/source evidence and pending
+async choice unchanged. Goal active; next shared-util candidate whole Monolith
+extractor five methods, inspect complete source and native implementation first.
+
 2026-10-05 whole original OffHeapDiskFPSetTest complete after634db62:
 All23 original methods translated in offheap_disk_fpset_java_test.go: all16 exact
 seeds/lengths, complete insertion/special-position/contains/invariant/memory-only

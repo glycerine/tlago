@@ -1,6 +1,6 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `634db62`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `04c6f15`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
@@ -946,9 +946,9 @@ These are outside the 1,269-method main-suite denominator above and must not dis
 
 Shared TLC/SANY file resolution, buffered input, runtime, and string helpers; telemetry preferences are listed separately from forbidden email reporting.
 
-7 classes / 56 logical methods; 11 confirmed translations.
+7 classes / 56 logical methods; 18 confirmed translations.
 
-- [ ] [util/BufferedDataInputStreamTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/util/BufferedDataInputStreamTest.java) — `testReadStringThrowsOnShortStreamAtHalfBoundary`, `testReadStringThrowsOnShortStreamBelowHalfBoundary`, `testReadStringExactLength`, `testReadStringAcrossBufferRefill`, `testConstructorRejectsStreamReturningZero`, `testEmptyStream`, `testWriteReadStringRoundTrip` — pending original-method translation/reconciliation.
+- [x] [util/BufferedDataInputStreamTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/util/BufferedDataInputStreamTest.java) — **Port complete**: `testReadStringThrowsOnShortStreamAtHalfBoundary`, `testReadStringThrowsOnShortStreamBelowHalfBoundary`, `testReadStringExactLength`, `testReadStringAcrossBufferRefill`, `testConstructorRejectsStreamReturningZero`, `testEmptyStream`, `testWriteReadStringRoundTrip` Whole seven-method class → [buffered_data_stream_java_test.go](buffered_data_stream_java_test.go); preserve exact short streams, typed EOF and TLCRuntimeException catches/error code, all 8,292 refill bytes/8,190-byte advance and exact result, initial empty-stream EOF, original string length/payload/sentinel round trip. Production input/output classes preserve eager 8,192-byte refills, source binary/string encodings, zero-read assertion, EOF state, line/skip/open/close methods and UTF-16 byte conversion.
 - [ ] [util/ExecutionStatisticsCollectorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/util/ExecutionStatisticsCollectorTest.java) — `testCompanyLevelNoFile`, `testCompanyLevelUnreadable`, `testCompanyLevelEmptyFile`, `testCompanyLevelNoESCFile`, `testCompanyLevelRandomIdFile`, `testCompanyLevelUserDefinedIdFile`, `testNoFile`, `testUnreadableFile`, `testEmptyFile`, `testNoESCFile`, `testRandomIdFile`, `testUserDefinedIdFile` — pending original-method translation/reconciliation.
 - [x] [util/FileUtilTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/util/FileUtilTest.java) — `testReturnFromCheckpoint`, `testDuplicateStateDirCreation`, `testUseDifferentMetaDir` — mapped in [tlc/file_util_test.go](file_util_test.go).
 - [ ] [util/MonolithSpecExtractorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/util/MonolithSpecExtractorTest.java) — `testExtractConfig`, `testExtractModule`, `testConfigWithWindowsPathAsName`, `testModuleWithWindowsPathAsName`, `testGetConfig` — pending original-method translation/reconciliation.
