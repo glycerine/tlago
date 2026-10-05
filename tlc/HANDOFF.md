@@ -1,5 +1,44 @@
 # TLC Port Handoff
 
+2026-10-05 original SimulationWorker trace helper class complete after2c0c149:
+All seven whole original tlc2.tool.SimulationWorkerTest methods and its equality
+dummy are translated in tlc/simulation_worker_trace_java_test.go. Preserve all37
+assertions, constructor defaults, exact fingerprints/IDs, original state chains
+and predecessor identity after finite stuttering removal. The Go trace path
+previously accepted only TLCStateMut, which could not represent the original
+state's overridden equality/fingerprint/predecessor behavior. StateVec now stores
+TLCState and provides polymorphic ElementAt alongside existing typed access;
+SimulationWorker traverses TLCPredecessorState and corrects predecessors through
+dynamic dispatch. Native state metadata retains generic predecessors. Preserve
+source synchronization on compressed/uncompressed traces and compressed trace's
+initial/level invariants. Copy adapters retain covariant mutable-state return
+methods through the collection surface. This credits the trace helper class,
+not the separate twelve-method simulation.SimulationWorkerTest.
+
+Unchanged Java SimulationWorker.java and both original test/support sources were
+compiled against frozen dependencies; JUnit passes7methods with -ea,0.021s,
+log simulation-worker-trace-original-java.log. Final seven methods plus existing
+state/vector/queue/simulator checks pass race1.127s (4767 terminal), log
+simulation-worker-trace-final-related-race.log. Original assertion counts per
+method match1/4/4/4/7/10/7, and their expressions/operands are retained.
+Inventory1094/1269 contexts (86.2%),568/626 classes (90.7%);175pending across
+58classes. Simulation7/55 methods,1/20 classes complete.
+
+Test215 full workspace58038 is terminal exit0: root1780.992s,SANY0.982s,
+TLC70.398s, log legacy-error-test215-final-workspace-go.log. Test217 full31625
+remains live. Trace workspace82090 is live, compiled before typed-nil normalization, log
+simulation-worker-trace-final-workspace-go.log, using -count=1 -failfast
+-timeout60m ./.... Broad TLC race73112 is live, log
+simulation-worker-trace-final-tlc-race.log; it compiled before the final copy
+adapters and source assertions, so preserve that snapshot scope. Resume each
+handle, do not infer terminal status or full-suite success from silent logs.
+Typed-nil metadata predecessors are normalized to Java null at trace dispatch;
+the final focused gate includes this fix. Final whole workspace46404 is live,
+log simulation-worker-trace-null-final-workspace-go.log, same -count=1 gate.
+This entry supersedes earlier live notes. Next correctness work: the separate
+simulation.SimulationWorkerTest's twelve original methods and BasicMultiTrace
+vectors; retain all seeds, generated trace values, worker completion and counts.
+
 2026-10-05 original Test217 complete after9b0d44e:
 Whole original Test217.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, all three
 exact TestPrintStream substrings, inherited SuiteETestCase flags and three

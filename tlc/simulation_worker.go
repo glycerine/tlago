@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -330,6 +331,7 @@ func (s *SimulationWorkerStatistics) traceCount() int64 {
 }
 
 type SimulationWorker struct {
+	traceMu        sync.Mutex
 	ID             int
 	Tool           *Tool
 	Rand           *JavaRandom
@@ -677,10 +679,15 @@ func (w *SimulationWorker) CheckImpliedActions(state *TLCStateMut) *SimulationWo
 	return nil
 }
 
-func (w *SimulationWorker) GetTrace(state *TLCStateMut) *StateVec {
-	stack := make([]*TLCStateMut, 0)
-	for cur := state; cur != nil; cur = cur.Predecessor() {
-		pred := cur.Predecessor()
+func (w *SimulationWorker) GetTrace(state TLCPredecessorState) *StateVec {
+	w.traceMu.Lock()
+	defer w.traceMu.Unlock()
+	if mutable, ok := state.(*TLCStateMut); ok && mutable == nil {
+		state = nil
+	}
+	stack := make([]TLCPredecessorState, 0)
+	for cur := state; cur != nil; cur = cur.TracePredecessor() {
+		pred := cur.TracePredecessor()
 		if cur.Equal(pred) {
 			continue
 		}
@@ -691,14 +698,32 @@ func (w *SimulationWorker) GetTrace(state *TLCStateMut) *StateVec {
 		trace.Add(stack[i])
 	}
 	for i := 1; i < trace.Size(); i++ {
-		trace.At(i).SetPredecessor(trace.At(i - 1))
+		trace.ElementAt(i).(TLCPredecessorState).SetTracePredecessor(trace.ElementAt(i - 1).(TLCPredecessorState))
+	}
+	if !trace.Empty() {
+		if !trace.ElementAt(0).(TLCPredecessorState).IsInitial() {
+			panic(NewAssertionError())
+		}
+		for i := 0; i < trace.Size(); i++ {
+			if trace.ElementAt(i).(TLCPredecessorState).Level() != i+1 {
+				panic(NewAssertionError())
+			}
+		}
+		if trace.ElementAt(trace.Size()-1).(TLCPredecessorState).Level() != trace.Size() {
+			panic(NewAssertionError())
+		}
 	}
 	return trace
 }
 
-func (w *SimulationWorker) GetUncompressedTrace(state *TLCStateMut) *StateVec {
-	stack := make([]*TLCStateMut, 0)
-	for cur := state; cur != nil; cur = cur.Predecessor() {
+func (w *SimulationWorker) GetUncompressedTrace(state TLCPredecessorState) *StateVec {
+	w.traceMu.Lock()
+	defer w.traceMu.Unlock()
+	if mutable, ok := state.(*TLCStateMut); ok && mutable == nil {
+		state = nil
+	}
+	stack := make([]TLCPredecessorState, 0)
+	for cur := state; cur != nil; cur = cur.TracePredecessor() {
 		stack = append(stack, cur)
 	}
 	trace := NewStateVec(len(stack))

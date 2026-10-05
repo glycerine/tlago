@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `9b0d44e`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `2c0c149`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **567 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (90.6%).**
-- **1,087 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (85.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **182 logical method contexts across 59 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
+- **568 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (90.7%).**
+- **1,094 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (86.2%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **175 logical method contexts across 58 classes remain to port or reconcile.** 1 of those classes have some confirmed methods already ported; other older Go checks may also cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -31,7 +31,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Generated TTrace recheck variants | 45 | 32 | 45 | 32 | 13 |
 | Liveness and fairness model regressions | 101 | 99 | 101 | 99 | 2 |
 | Liveness graph, tableau, and expression helpers | 6 | 6 | 48 | 48 | 0 |
-| Simulation and multithreaded simulation | 20 | 0 | 55 | 0 | 55 |
+| Simulation and multithreaded simulation | 20 | 1 | 55 | 7 | 48 |
 | Coverage | 20 | 20 | 23 | 23 | 0 |
 | Debugger and scoped identifiers | 16 | 16 | 35 | 35 | 0 |
 | Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **567** | **1,269** | **1,087** | **182** |
+| **Total** | **626** | **568** | **1,269** | **1,094** | **175** |
 
 ## Porting rules and proposed order
 
@@ -569,7 +569,8 @@ Direct Java graph, node/table, particle-closure, and live-expression tests.
 
 Both tool/ and tool/simulation/ simulator/worker classes, original simulation models, and liveness/simulation models. Preserve seeds, termination predicates, trace assertions, and worker counts.
 
-- [ ] [tlc2/tool/SimulationWorkerTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SimulationWorkerTest.java) — **Reconcile**: `testGetTraceTLCState0`, `testGetTraceTLCState1`, `testGetTraceTLCState2`, `testGetTraceTLCState3`, `testGetTraceTLCState4`, `testGetTraceTLCState5`, `testGetTraceTLCState6`.
+- [x] [tlc2/tool/SimulationWorkerTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SimulationWorkerTest.java) — **Port complete**: `testGetTraceTLCState0`, `testGetTraceTLCState1`, `testGetTraceTLCState2`, `testGetTraceTLCState3`, `testGetTraceTLCState4`, `testGetTraceTLCState5`, `testGetTraceTLCState6`.
+  Go translation: [tlc/simulation_worker_trace_java_test.go](simulation_worker_trace_java_test.go). All seven whole original methods retain their constructors, equality dummy and 37 size/initial-state/fingerprint/predecessor-identity assertions. Production StateVec storage and SimulationWorker trace traversal retain polymorphic state behavior, source synchronization and corrected predecessor levels after dropping finite stuttering.
   Related Go checks: [tlc/simulator_test.go](simulator_test.go), [tlc/worker_test.go](worker_test.go).
 - [ ] [tlc2/tool/SimulatorTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/SimulatorTest.java) — **Reconcile**: `testPrintBehaviorShouldPrintErrorState`.
   Related Go checks: [tlc/simulator_test.go](simulator_test.go).

@@ -115,13 +115,23 @@ type TLCState interface {
 	String() string
 }
 
+// TLCPredecessorState retains the predecessor operations used by SimulationWorker.
+// Java dispatches these operations through TLCState, including custom states.
+type TLCPredecessorState interface {
+	TLCState
+	TracePredecessor() TLCPredecessorState
+	SetTracePredecessor(TLCPredecessorState)
+	Level() int
+	IsInitial() bool
+}
+
 type TLCStateMut struct {
 	WorkerID    int16
 	UID         int64
 	level       int
 	values      []Value
 	sources     []SemanticNode
-	pred        *TLCStateMut
+	pred        TLCPredecessorState
 	action      *Action
 	callable    func() (any, error)
 	cached      map[int]Value
@@ -567,15 +577,7 @@ func (s *TLCStateMut) Values() *InsMap[*UniqueString, Value] {
 
 func (s *TLCStateMut) SetPredecessor(pred *TLCStateMut) *TLCStateMut {
 	if pred != nil {
-		if pred.level >= math.MaxInt32 {
-			panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
-		}
-		s.level = pred.level + 1
-		if statePreserveMetadata {
-			s.pred = pred
-		} else {
-			s.pred = nil
-		}
+		s.SetTracePredecessor(pred)
 	}
 	return s
 }
@@ -586,7 +588,33 @@ func (s *TLCStateMut) UnsetPredecessor() *TLCStateMut {
 }
 
 func (s *TLCStateMut) Predecessor() *TLCStateMut {
+	if s.pred == nil {
+		return nil
+	}
+	return s.pred.(*TLCStateMut)
+}
+
+func (s *TLCStateMut) TracePredecessor() TLCPredecessorState {
+	// Metadata restoration can assign a typed nil mutable pointer. Java's null
+	// predecessor must remain an empty interface at the polymorphic boundary.
+	if pred, ok := s.pred.(*TLCStateMut); ok && pred == nil {
+		return nil
+	}
 	return s.pred
+}
+
+func (s *TLCStateMut) SetTracePredecessor(pred TLCPredecessorState) {
+	if pred != nil {
+		if pred.Level() >= math.MaxInt32 {
+			panic(newTLCError(ECTLCTraceTooLong, "%s", s.String()))
+		}
+		s.level = pred.Level() + 1
+		if statePreserveMetadata {
+			s.pred = pred
+		} else {
+			s.pred = nil
+		}
+	}
 }
 
 func (s *TLCStateMut) Level() int {
@@ -801,31 +829,50 @@ func IsStateSubset(s1 *TLCStateMut, s2 *TLCStateMut) PartialBoolean {
 	return PartialYes
 }
 
+// CopyState and DeepCopyState expose Java's covariant state-copy methods
+// through the polymorphic collection surface.
+func (s *TLCStateMut) CopyState() TLCState     { return s.Copy() }
+func (s *TLCStateMut) DeepCopyState() TLCState { return s.DeepCopy() }
+
 type StateVec struct {
-	states []*TLCStateMut
+	states []TLCState
 }
 
 func NewStateVec(capacity int) *StateVec {
 	if capacity < 0 {
 		capacity = 0
 	}
-	return &StateVec{states: make([]*TLCStateMut, 0, capacity)}
+	return &StateVec{states: make([]TLCState, 0, capacity)}
 }
 
 func NewStateVecFrom(states []*TLCStateMut) *StateVec {
-	return &StateVec{states: states}
+	v := NewStateVec(len(states))
+	for _, state := range states {
+		v.Add(state)
+	}
+	return v
 }
 
-func (v *StateVec) Empty() bool           { return len(v.states) == 0 }
-func (v *StateVec) IsEmpty() bool         { return len(v.states) == 0 }
-func (v *StateVec) Size() int             { return len(v.states) }
-func (v *StateVec) At(i int) *TLCStateMut { return v.states[i] }
-func (v *StateVec) First() *TLCStateMut   { return v.states[0] }
-func (v *StateVec) Last() *TLCStateMut    { return v.states[len(v.states)-1] }
-func (v *StateVec) Clear()                { v.states = v.states[:0] }
-func (v *StateVec) Reset()                { v.states = v.states[:0] }
+// NewStateVecFromStates retains Java StateVec(TLCState[])'s array ownership.
+func NewStateVecFromStates(states []TLCState) *StateVec { return &StateVec{states: states} }
 
-func (v *StateVec) Add(state *TLCStateMut) *StateVec {
+func (v *StateVec) ElementAt(i int) TLCState { return v.states[i] }
+
+func (v *StateVec) Empty() bool   { return len(v.states) == 0 }
+func (v *StateVec) IsEmpty() bool { return len(v.states) == 0 }
+func (v *StateVec) Size() int     { return len(v.states) }
+func (v *StateVec) At(i int) *TLCStateMut {
+	if v.states[i] == nil {
+		return nil
+	}
+	return v.states[i].(*TLCStateMut)
+}
+func (v *StateVec) First() *TLCStateMut { return v.At(0) }
+func (v *StateVec) Last() *TLCStateMut  { return v.At(v.Size() - 1) }
+func (v *StateVec) Clear()              { v.states = v.states[:0] }
+func (v *StateVec) Reset()              { v.states = v.states[:0] }
+
+func (v *StateVec) Add(state TLCState) *StateVec {
 	v.ensureCanAdd(1)
 	v.states = append(v.states, state)
 	return v
@@ -836,7 +883,7 @@ func (v *StateVec) AddElement(state *TLCStateMut) (any, error) {
 	return v, nil
 }
 
-func (v *StateVec) SetElement(state *TLCStateMut) (any, error) {
+func (v *StateVec) SetElement(state TLCState) (any, error) {
 	v.Clear()
 	v.Add(state)
 	return v, nil
@@ -887,14 +934,14 @@ func (v *StateVec) RemoveAt(index int) {
 	v.Replace(index, nil)
 }
 
-func (v *StateVec) Replace(index int, state *TLCStateMut) {
+func (v *StateVec) Replace(index int, state TLCState) {
 	v.states[index] = state
 }
 
 func (v *StateVec) Copy() *StateVec {
 	out := NewStateVec(len(v.states))
 	for _, state := range v.states {
-		out.Add(state.Copy())
+		out.Add(state.(interface{ CopyState() TLCState }).CopyState())
 	}
 	return out
 }
@@ -902,18 +949,18 @@ func (v *StateVec) Copy() *StateVec {
 func (v *StateVec) DeepCopy() *StateVec {
 	out := NewStateVec(len(v.states))
 	for _, state := range v.states {
-		out.Add(state.DeepCopy())
+		out.Add(state.(interface{ DeepCopyState() TLCState }).DeepCopyState())
 	}
 	return out
 }
 
 func (v *StateVec) DeepNormalize() {
 	for _, state := range v.states {
-		state.DeepNormalize()
+		state.(interface{ DeepNormalize() }).DeepNormalize()
 	}
 }
 
-func (v *StateVec) Contains(state *TLCStateMut) bool {
+func (v *StateVec) Contains(state TLCState) bool {
 	fp := state.FingerPrint()
 	for _, candidate := range v.states {
 		if candidate.FingerPrint() == fp {
@@ -925,7 +972,9 @@ func (v *StateVec) Contains(state *TLCStateMut) bool {
 
 func (v *StateVec) ToSlice() []*TLCStateMut {
 	out := make([]*TLCStateMut, len(v.states))
-	copy(out, v.states)
+	for i := range out {
+		out[i] = v.At(i)
+	}
 	return out
 }
 
@@ -936,7 +985,9 @@ func (v *StateVec) ToList() []*TLCStateMut {
 func (v *StateVec) ToRecords(appendState *TLCStateMut) []Value {
 	values := make([]Value, 0, len(v.states)+1)
 	for _, state := range v.states {
-		values = append(values, NewRecordValueFromInsMap(state.Values()))
+		values = append(values, NewRecordValueFromInsMap(state.(interface {
+			Values() *InsMap[*UniqueString, Value]
+		}).Values()))
 	}
 	values = append(values, NewRecordValueFromInsMap(appendState.Values()))
 	return values
@@ -948,7 +999,9 @@ func (v *StateVec) ToRecordsFrom(from *TLCStateMut, appendState *TLCStateMut) []
 	fromFP := from.FingerPrint()
 	for i := len(v.states) - 1; i >= 0; i-- {
 		state := v.states[i]
-		reversed = append(reversed, NewRecordValueFromInsMap(state.Values()))
+		reversed = append(reversed, NewRecordValueFromInsMap(state.(interface {
+			Values() *InsMap[*UniqueString, Value]
+		}).Values()))
 		if state.FingerPrint() == fromFP {
 			break
 		}
@@ -988,7 +1041,7 @@ func (v *StateVec) ensureCanAdd(add int) {
 	if newCap > bound {
 		newCap = bound
 	}
-	next := make([]*TLCStateMut, len(v.states), newCap)
+	next := make([]TLCState, len(v.states), newCap)
 	copy(next, v.states)
 	v.states = next
 }
