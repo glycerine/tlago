@@ -1,5 +1,40 @@
 # TLC Port Handoff
 
+2026-10-05 shared util ExecutionStatisticsCollectorTest complete afterb827ba7:
+All twelve original methods now in execution_statistics_collector_java_test.go,
+including source capture-only submit override, all original preference inputs,
+unreadable-file setReadable assumption, fully qualified reserved invalid domain,
+canonical localhost routing, exact user identifier and complete UUID/suffix
+assertions. No real submissions from tests; no telemetry startup integration.
+Production ports tested preference/getIdentifier/direct collect0 routing and
+UUIDv1 timestamp/clock/MAC construction with source UUIDv4 fallback. Keeps source
+property precedence, explicit NO_STATISTICS before DNS, default-charset first-line
+CR/LF handling including UTF16 BOM/endian/malformed units, UTF16 truncation and
+Java URLEncoder UTF8 safe-character rules. Untested source async shutdown/UI
+preferences/default-constructor methods are not claimed as implemented here.
+Unchanged Java twelve methods pass .040s outside sandbox, execution-stats-
+original-java-unsandboxed.log. Both source Java and Go fail stable-MAC suffix
+assertions under sandbox interface restrictions; no invented skip or changed
+fallback/assertion. Final reviewed Go34952 terminal exit0/all twelve race1.046s,
+execution-stats-final-reviewed-race.log; retired. Prior33840 terminal exit0
+race1.040s before charset/encoder audit; not final receipt. Reviewed initial
+compile failed on Go rune/byte range and was corrected before final pass.
+Additional same twelve original methods pass with startup default charsets
+UTF-16, UTF-16BE and UTF-16LE;51022 terminal exit0/retired. Logs execution-stats-
+utf-16{,be,le}-go.log; these reruns do not add credited source contexts.
+Shared utility inventory55/56 (previous43); only TLCRuntimeTest remains, with
+original Ant UseParallelGC requirement visible. Main1251/1269,609/626 unchanged.
+Whole88583 now terminal exit0/root1822.580s/SANY1.165s/TLC416.500s, monolith-util-
+final-workspace-go.log, at Monolith snapshot BEFORE StringHelper/collector;
+retired. Current whole43828 LIVE outside sandbox for normal interface access,
+execution-stats-final-workspace-go.log; count1/failfast/timeout60m. Poll exact
+handle. Do not yet claim current whole-workspace green. Latest free space9.1GiB.
+User-requested CommunityModules progress fix ALREADY committed840d494 and an
+ancestor of HEAD: verbose streams, phase progress and10s PID/elapsed heartbeat.
+No extra commit needed for this file. Remote command given to user:
+go test -v -count=1 -timeout=60m -run '^TestJavaCommunityModulesAnt$' .
+Goal remains active; source replay behavior question still pending, unchanged.
+
 2026-10-05 shared util StringHelperTest complete after0643052:
 All20 original JUnit3 methods in string_helper_java_test.go: exact two word-array
 inputs/leading-space input, all five copy counts, six onlySpaces assertions,
