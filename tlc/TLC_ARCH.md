@@ -1,5 +1,35 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-05 original ETest6 and ETest7 complete after f8bd7c9:
+Original ETest6 passes FAILURE_SPEC_EVAL, the first GENERAL record's exact
+undefined-identifier substring with line16:23 location, and both exact zero-count
+uncovered locations. Its first-record substring search follows TestMPRecorder.
+Original ETest7 passes ERROR_CONFIG_PARSE and exact
+TLC_CONFIG_SUBSTITUTION_NON_CONSTANT parameters C/Foo. Preserve full inherited
+SuiteETestCase runner flags and original constructors. All four vectors are
+source-identical; neither test required an implementation change.
+ETest6 race5.864s (80093 terminal/retired), ETest7 race1.764s (31611 terminal/
+retired); logs legacy-error-etest6-race.log and legacy-error-etest7-race.log.
+Inventory1072/1269 contexts (84.5%),552/626 complete classes (88.2%),197pending
+across74classes; legacy89/104 complete. Next original context ETest8. Authoritative
+source overrides earlier informal notes: its constructor uses -simulate and ERROR
+(the upstream TODO notes the simulator's exit status), checkDeadLock=false;
+assert FINISHED/STATS_SIMU, no DEADLOCK and exact uncovered18:15–18:22.
+No substitute model, status correction or extra deadlock checking is allowed.
+
+Last confirmed live handles:15192 (three corrected workspace failures + ETest1–3
+race),23927 (older diagnostic full workspace BEFORE context-filter fix),57071
+(final caf0ad3 production full workspace). Resume these, do not restart on an
+observation timeout. Logs workspace-instance-context-fix-race.log,
+legacy-error-reporting-final-workspace-go.log and
+legacy-error-context-final-workspace-go.log under .codex-gotmp/.
+The corrected three-failure normal run passes69.425s; related original legacy
+race64.544s; ETest1–5 and root/SANY diagnostic race gates pass as recorded below.
+Full workspace verification remains pending; no full-current green claim.
+The earlier bc01728 workspace83892 failed three cases, fixed in caf0ad3, and is
+terminal/retired. No changes to the five deferred topics' scope or fixture naming.
+This is the authoritative next-context checkpoint; older entries are historical.
+
 2026-10-05 original ETest5 complete after ce93212:
 Original ETest5.testSpec first rejected M!Init correctly but printed a point range
 and Go's generic undefined-identifier text. Generator.selectorToNode:810 reports

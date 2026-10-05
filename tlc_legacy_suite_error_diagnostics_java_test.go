@@ -109,3 +109,15 @@ func TestJavaLegacySuiteETest5(t *testing.T) {
 		}
 	}
 }
+
+// Original ETest7.testSpec and ERROR_CONFIG_PARSE constructor, with all inherited
+// SuiteETestCase runner settings and exact nonconstant-substitution parameters.
+func TestJavaLegacySuiteETest7(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest7", "etest7", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest7.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorConfigParse {
+		t.Fatalf("exit=%d, want ERROR_CONFIG_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCConfigSubstitutionNonConstant, "C", "Foo")
+}

@@ -30,6 +30,7 @@ package tlago
 import (
 	"github.com/glycerine/tlago/tlc"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -77,4 +78,33 @@ func TestJavaLegacySuiteETest4(t *testing.T) {
 	requireJavaTLCRecordedParams(t, r, tlc.ECTLCNestedExpression, stack)
 	// This helper compares zero-count coverage records by their exact locations.
 	requireJavaTLCUncovered(t, r, "line 18, col 9 to line 18, col 19 of module etest4")
+}
+
+// Original ETest6.testSpec and FAILURE_SPEC_EVAL constructor, with all inherited
+// SuiteETestCase runner settings and both zero-count uncovered locations.
+func TestJavaLegacySuiteETest6(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteETest6", "etest6", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "ETest6.json"))
+	retainJavaCodePlexGraphs(t)
+	if r.ExitStatus != tlc.ExitStatusFailureSpecEval {
+		t.Fatalf("exit=%d, want FAILURE_SPEC_EVAL; messages=%v", r.ExitStatus, r.Messages)
+	}
+	substring := "In evaluation, the identifier x is either undefined or not an operator.\nline 16, col 23 to line 16, col 23 of module etest6"
+	// TestMPRecorder.recordedWithSubStringValue checks parameters of its first record.
+	records := javaTLCRecords(r, tlc.ECGeneral)
+	found := false
+	if len(records) > 0 {
+		for _, parameter := range records[0].Params {
+			if strings.Contains(parameter, substring) {
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("first GENERAL lacks %q: %v", substring, records)
+	}
+	requireJavaTLCUncovered(t, r,
+		"line 13, col 14 to line 13, col 43 of module etest6",
+		"line 19, col 13 to line 19, col 23 of module etest6")
 }
