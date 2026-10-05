@@ -43,12 +43,16 @@ func (u *sanyLeibnizUse) mergeLevelParams(v sanyLeibnizUse) {
 	}
 }
 func (u *sanyLeibnizUse) restrict() {
-	if u.non == nil {
-		u.non = map[int]bool{}
+	// Do not mutate an argument node's cached dependencies when the parent
+	// operator places its allParams into the parent's nonLeibnizParams.
+	non := make(map[int]bool, len(u.non)+len(u.all))
+	for id := range u.non {
+		non[id] = true
 	}
 	for id := range u.all {
-		u.non[id] = true
+		non[id] = true
 	}
+	u.non = non
 }
 
 type sanyLeibnizBinding struct {
@@ -79,12 +83,19 @@ type sanyLeibnizDefinitionKey struct {
 	operators  string
 }
 type sanyLeibnizAnalyzer struct {
-	resolver   *sanySelectorResolver
-	active     map[sanyLeibnizDefinitionKey]bool
-	signatures map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature
-	nextID     int
-	changed    bool
-	declKinds  map[*Module]map[string]DeclarationKind
+	resolver    *sanySelectorResolver
+	active      map[sanyLeibnizDefinitionKey]bool
+	evaluated   map[sanyLeibnizDefinitionKey]bool
+	expressions map[sanyLeibnizExpressionKey]sanyLeibnizUse
+	signatures  map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature
+	nextID      int
+	changed     bool
+	declKinds   map[*Module]map[string]DeclarationKind
+}
+
+type sanyLeibnizExpressionKey struct {
+	expr    Expr
+	context *sanyLeibnizContext
 }
 
 func newSanyLeibnizAnalyzer(spec *Spec) *sanyLeibnizAnalyzer {
@@ -108,6 +119,8 @@ func (a *sanyLeibnizAnalyzer) operatorNonLeibniz(expr Expr, module *Module, arit
 	var use sanyLeibnizUse
 	for {
 		a.changed = false
+		a.evaluated = map[sanyLeibnizDefinitionKey]bool{}
+		a.expressions = map[sanyLeibnizExpressionKey]sanyLeibnizUse{}
 		use = a.apply(expr, arguments, ctx)
 		if !a.changed {
 			break
@@ -247,9 +260,10 @@ func (a *sanyLeibnizAnalyzer) definitionBody(ref sanySelectorDefinition, body Ex
 		a.signatures[key] = signature
 		a.changed = true
 	}
-	if a.active[key] {
+	if a.active[key] || a.evaluated[key] {
 		return a.signatureUse(signature, actuals)
 	}
+	a.evaluated[key] = true
 	a.active[key] = true
 	defer delete(a.active, key)
 	arguments := make([]sanyLeibnizBinding, len(params))
@@ -386,6 +400,16 @@ func (a *sanyLeibnizAnalyzer) expression(expr Expr, ctx *sanyLeibnizContext) san
 	if expr == nil {
 		return sanyLeibnizUse{}
 	}
+	key := sanyLeibnizExpressionKey{expr: expr, context: ctx}
+	if use, evaluated := a.expressions[key]; evaluated {
+		return use
+	}
+	use := a.expressionUncached(expr, ctx)
+	a.expressions[key] = use
+	return use
+}
+
+func (a *sanyLeibnizAnalyzer) expressionUncached(expr Expr, ctx *sanyLeibnizContext) sanyLeibnizUse {
 	argument := func(expr Expr) sanyLeibnizBinding { return sanyLeibnizBinding{expr: expr, context: ctx} }
 	if selected := sanyExprSelection(expr); selected != nil && !selected.operator && selected.body != nil {
 		arguments := make([]sanyLeibnizBinding, len(selected.args))

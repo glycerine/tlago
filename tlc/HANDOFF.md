@@ -1,5 +1,49 @@
 # TLC Port Handoff
 
+2026-10-05 original Test215 complete after50e713f:
+Whole original Test215.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, all nine
+exact TestPrintStream substrings, inherited SuiteETestCase flags and two
+byte-identical vectors. Initial Go reported eight errors with point ranges and
+generic messages. Report Java's whole temporal-expression range/message and
+individual quantified-bound range/message. Level composition now evaluates
+actual definitions, arguments, enclosing declarations and lexical LET bindings;
+remove the call-argument-dropping logicalOperandLevel shortcut. Preserve
+OpApplNode's node-kind conditions for []/<> action wrappers.
+
+Dependency checking now retains Java OpDefNode/OpApplNode's levelChecked guards:
+check definitions and expressions once per fixed-point iteration. Do not mutate
+cached argument nonLeibnizParams when a parent restricts its allParams.
+Focused Test212/213/214/215/99 pass race6.585s (61277 terminal); Test99 drops from
+38.38s with definition-only caching to4.28s with both source caches, preserving
+all original assertions. Final related original legacy201–215/216/219/220/99/999/
+InvalidInvariant and ETest1–16 plus root parser/semantic/XML/elevated-warning
+selections pass race101.616s (12610 terminal), log
+.codex-gotmp/legacy-error-test215-expression-cache-related-race.log. Full SANY Java
+race8.504s (6787 terminal), log legacy-error-test215-expression-cache-sany-race.log.
+All nine assertion strings and fixture bytes were independently compared.
+Inventory1086/1269 contexts (85.6%),566/626 classes (90.4%);183pending across
+60classes; legacy103/104. Next original Test217 after finishing disk recovery.
+
+Test212 full workspace82923 is terminal exit0: root1776.964s,
+SANY0.935s/TLC70.342s, log legacy-error-test212-final-workspace-go.log. Later
+full21343019 and full21490130 are terminal exit1 due to ENOSPC, not credited green:
+root873.473s/365.299s; each reports explicit no-space-left write failures in
+BufferedRandomAccessFile's nodes_0 or EWD840MC1_liveness.dot and Go's testlog.txt.
+Removed only three stale private Go cache blobs, freeing21.2GiB; vectors intact.
+The two affected original contexts are running race96031, log
+.codex-gotmp/workspace-disk-full-recovery-race.log. EWD840FL1 passes490.04s;
+BufferedRandomAccessFile remains live. This process compiled before per-iteration
+cache additions. Resume the same handle; do not weaken tests or claim it passed.
+
+Current full workspace58038 is live, log legacy-error-test215-final-workspace-go.log.
+Use -count=1 to avoid retaining large successful test-output cache blobs, with
+-failfast -timeout60m ./... otherwise unchanged. Older related race8809 (before
+level caches) and35777 (definition-only cache) are still live; their logs are
+legacy-error-test215-final-related-race.log and
+legacy-error-test215-level-cache-related-race.log. Preserve their eventual
+receipts' snapshot scopes. Current focused/related/SANY gates above are terminal.
+This entry is authoritative; earlier live/full-suite notes are historical.
+
 2026-10-05 original Test214 complete after6a37709:
 Whole original Test214.testSpec preserves ERROR_SPEC_PARSE, no GENERAL, both
 exact TestPrintStream substrings, inherited SuiteETestCase flags and two

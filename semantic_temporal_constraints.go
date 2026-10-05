@@ -7,10 +7,16 @@ func (a *sanyLeibnizAnalyzer) substitutionLevel(expr Expr, module *Module, local
 	for name := range locals {
 		context.formals[name] = sanyLeibnizBinding{}
 	}
+	return a.levelInContext(expr, context)
+}
+
+func (a *sanyLeibnizAnalyzer) levelInContext(expr Expr, context *sanyLeibnizContext) tlaLevel {
 	a.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
 	a.nextID = 0
 	for {
 		a.changed = false
+		a.evaluated = map[sanyLeibnizDefinitionKey]bool{}
+		a.expressions = map[sanyLeibnizExpressionKey]sanyLeibnizUse{}
 		use := a.expression(expr, context)
 		if !a.changed {
 			return use.level
@@ -47,6 +53,8 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 		var use sanyLeibnizUse
 		for {
 			a.changed = false
+			a.evaluated = map[sanyLeibnizDefinitionKey]bool{}
+			a.expressions = map[sanyLeibnizExpressionKey]sanyLeibnizUse{}
 			use = evaluate()
 			if !a.changed {
 				break

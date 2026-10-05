@@ -263,3 +263,35 @@ func TestJavaLegacySuiteTest214(t *testing.T) {
 		}
 	}
 }
+
+// Original Test215.testSpec and ERROR_SPEC_PARSE constructor, preserving all
+// nine exact TestPrintStream substrings and full SuiteETestCase runner settings.
+func TestJavaLegacySuiteTest215(t *testing.T) {
+	t.Setenv("tlc2.tool.ModelChecker.vetoCleanup", "true")
+	var output bytes.Buffer
+	restore := tlc.ToolIOSetSystemStreams(&output, &output)
+	defer restore()
+	r := runJavaTLCModelTestWithRoot(t, "LegacySuiteTest215", "test215", true, true, true, 1,
+		"-dumpTrace", "json", filepath.Join(t.TempDir(), "Test215.json"))
+	if r.ExitStatus != tlc.ExitStatusErrorSpecParse {
+		t.Fatalf("exit=%d, want ERROR_SPEC_PARSE; messages=%v", r.ExitStatus, r.Messages)
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	for _, substring := range []string{
+		"Semantic errors:\n\n*** Errors: 8\n",
+		"line 8, col 6 to line 8, col 14 of module test215\n\nAction used where only temporal formula or state predicate allowed.\n",
+		"line 9, col 6 to line 9, col 14 of module test215\n\nAction used where only temporal formula or state predicate allowed.\n",
+		"line 12, col 6 to line 12, col 16 of module test215\n\nAction used where only temporal formula or state predicate allowed.\n",
+		"line 13, col 6 to line 13, col 16 of module test215\n\nAction used where only temporal formula or state predicate allowed.\n",
+		"line 16, col 6 to line 16, col 11 of module test215\n\n<> followed by action not of form <<A>>_v.\n",
+		"line 20, col 8 to line 20, col 13 of module test215\n\n[] followed by action not of form [A]_v.\n",
+		"line 23, col 25 to line 23, col 26 of module test215\n\nAction-level bound of quantified temporal formula.\n",
+		"line 26, col 26 to line 26, col 27 of module test215\n\nAction-level bound of quantified temporal formula.\n",
+	} {
+		if !strings.Contains(output.String(), substring) {
+			t.Fatalf("TestPrintStream output lacks %q:\n%s", substring, output.String())
+		}
+	}
+}

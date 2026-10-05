@@ -436,6 +436,8 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 	defExprPositions := definitionExpressionPositions(mod.Definitions)
 	assumeProveExprPositions := assumeProveDefinitionExpressionPositions(mod.Definitions)
 	labelArities := moduleLabelArities(mod.Definitions)
+	levelChecker := newSanyLevelCompositionChecker(mod, spec)
+	levelChecker.dependencies.declKinds[mod] = declKinds
 	for _, inst := range mod.Instances {
 		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs)...)
 	}
@@ -466,7 +468,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			diags = append(diags, checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)...)
 		}
 		if !assumption.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkLevelComposition(expr, declKinds, nil)...)
+			diags = append(diags, levelChecker.check(expr, nil)...)
 		}
 		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
 		diags = append(diags, checkAssumptionConstantLevel(expr, declKinds)...)
@@ -491,7 +493,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			diags = append(diags, checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)...)
 		}
 		if !theorem.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkLevelComposition(expr, declKinds, nil)...)
+			diags = append(diags, levelChecker.check(expr, nil)...)
 		}
 		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
 	}
@@ -520,7 +522,7 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 			diags = append(diags, checkAssumeProveDefinitionUse(def.Expr, assumeProveDefs, locals)...)
 		}
 		if !def.AssumeProve {
-			diags = append(diags, checkLevelComposition(def.Expr, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(def.Expr, locals)...)
 		}
 		diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
 	}
@@ -4053,142 +4055,147 @@ func checkAssumptionConstantLevel(expr Expr, declKinds map[string]DeclarationKin
 	return nil
 }
 
-func checkLevelComposition(expr Expr, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	switch e := expr.(type) {
 	case *UnaryExpr:
-		if (e.Op == "[]" || e.Op == "<>") && exprLevel(e.Expr, declKinds, locals) == actionLevel {
+		if (e.Op == "[]" || e.Op == "<>") && levelChecker.level(e.Expr, locals) == actionLevel && sanyOperatorApplicationKind(e.Expr) {
 			if action, wrapped := e.Expr.(*ActionExpr); wrapped {
 				if e.Op == "[]" && actionExprIsAngle(action) {
-					diags = append(diags, errorAt(e.Pos, "E4310", "temporal operator %s cannot be applied to an angle action", e.Op))
+					diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4310", "temporal operator %s cannot be applied to an angle action", e.Op), e, "[] followed by action not of form [A]_v."))
 				}
 				if e.Op == "<>" && !actionExprIsAngle(action) {
-					diags = append(diags, errorAt(e.Pos, "E4311", "temporal operator %s cannot be applied to a square action", e.Op))
+					diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4311", "temporal operator %s cannot be applied to a square action", e.Op), e, "<> followed by action not of form <<A>>_v."))
 				}
 			} else {
 				code := "E4310"
 				if e.Op == "<>" {
 					code = "E4311"
 				}
-				diags = append(diags, errorAt(e.Pos, code, "temporal operator %s cannot be applied directly to an action-level formula", e.Op))
+				message := "[] followed by action not of form [A]_v."
+				if e.Op == "<>" {
+					message = "<> followed by action not of form <<A>>_v."
+				}
+				diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, code, "temporal operator %s cannot be applied directly to an action-level formula", e.Op), e, message))
 			}
 		}
-		diags = append(diags, checkLevelComposition(e.Expr, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Expr, locals)...)
 	case *BinaryExpr:
-		leftLevel := exprLevel(e.Left, declKinds, locals)
-		rightLevel := exprLevel(e.Right, declKinds, locals)
+		leftLevel := levelChecker.level(e.Left, locals)
+		rightLevel := levelChecker.level(e.Right, locals)
 		if (e.Op == "~>" || e.Op == "-+->") && (leftLevel == actionLevel || rightLevel == actionLevel) {
-			diags = append(diags, errorAt(e.Pos, "E4312", "leads-to operator %s cannot have an action-level operand", e.Op))
+			diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4312", "leads-to operator %s cannot have an action-level operand", e.Op), e, "Action used where only temporal formula or state predicate allowed."))
 		}
-		leftLogicalLevel := logicalOperandLevel(e.Left, declKinds, locals)
-		rightLogicalLevel := logicalOperandLevel(e.Right, declKinds, locals)
+		leftLogicalLevel := leftLevel
+		rightLogicalLevel := rightLevel
 		if isLogicalLevelMixingOperator(e.Op) && levelsMixActionAndTemporal(leftLogicalLevel, rightLogicalLevel) {
 			diags = append(diags, errorAt(e.Pos, "E4313", "operator %s cannot mix action and temporal operands", e.Op))
 		}
-		diags = append(diags, checkLevelComposition(e.Left, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Right, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Left, locals)...)
+		diags = append(diags, levelChecker.check(e.Right, locals)...)
 	case *CallExpr:
-		diags = append(diags, checkLevelComposition(e.Callee, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Callee, locals)...)
 		for _, arg := range e.Args {
-			diags = append(diags, checkLevelComposition(arg, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(arg, locals)...)
 		}
 	case *IfExpr:
-		diags = append(diags, checkLevelComposition(e.Cond, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Then, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Else, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Cond, locals)...)
+		diags = append(diags, levelChecker.check(e.Then, locals)...)
+		diags = append(diags, levelChecker.check(e.Else, locals)...)
 	case *LetExpr:
+		levelChecker := levelChecker.withLet(e, locals)
 		letLocals := letScopeLocals(locals, e)
 		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
 			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
-			diags = append(diags, checkLevelComposition(def.Expr, declKinds, defLocals)...)
+			diags = append(diags, levelChecker.check(def.Expr, defLocals)...)
 		}
-		diags = append(diags, checkLevelComposition(e.Body, declKinds, letLocals)...)
+		diags = append(diags, levelChecker.check(e.Body, letLocals)...)
 	case *QuantifierExpr:
-		setLevel := exprLevel(e.Set, declKinds, locals)
-		bodyLevel := exprLevel(e.Body, declKinds, withLocal(locals, e.Var))
+		setLevel := levelChecker.level(e.Set, locals)
+		bodyLevel := levelChecker.level(e.Body, withLocal(locals, e.Var))
 		if setLevel == temporalLevel {
 			diags = append(diags, errorAt(e.Pos, "E4315", "quantifier cannot have a temporal-level bound"))
 		}
 		if setLevel == actionLevel && bodyLevel == temporalLevel {
-			diags = append(diags, errorAt(e.Pos, "E4314", "quantifier with a temporal-level body cannot have an action-level bound"))
+			diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4314", "quantifier with a temporal-level body cannot have an action-level bound"), e.Set, "Action-level bound of quantified temporal formula."))
 		}
-		diags = append(diags, checkLevelComposition(e.Set, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Body, declKinds, withLocal(locals, e.Var))...)
+		diags = append(diags, levelChecker.check(e.Set, locals)...)
+		diags = append(diags, levelChecker.check(e.Body, withLocal(locals, e.Var))...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
-			diags = append(diags, checkLevelComposition(arm.Test, declKinds, locals)...)
-			diags = append(diags, checkLevelComposition(arm.Value, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(arm.Test, locals)...)
+			diags = append(diags, levelChecker.check(arm.Value, locals)...)
 		}
 		if e.Other != nil {
-			diags = append(diags, checkLevelComposition(e.Other, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(e.Other, locals)...)
 		}
 	case *ChooseExpr:
-		diags = append(diags, checkLevelComposition(e.Set, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Body, declKinds, withLocal(locals, e.boundNames()...))...)
+		diags = append(diags, levelChecker.check(e.Set, locals)...)
+		diags = append(diags, levelChecker.check(e.Body, withLocal(locals, e.boundNames()...))...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
-			diags = append(diags, checkLevelComposition(elem, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(elem, locals)...)
 		}
 	case *SetExpr:
 		for _, elem := range e.Elems {
-			diags = append(diags, checkLevelComposition(elem, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(elem, locals)...)
 		}
 	case *RecordExpr:
 		for _, field := range e.Fields {
-			diags = append(diags, checkLevelComposition(field.Value, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(field.Value, locals)...)
 		}
 	case *RecordComponentExpr:
-		if exprLevel(e.Record, declKinds, locals) > actionLevel {
+		if levelChecker.level(e.Record, locals) > actionLevel {
 			diags = append(diags, errorAt(e.Pos, "E4205", "record selection cannot be applied to a temporal-level expression"))
 		}
-		diags = append(diags, checkLevelComposition(e.Record, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Record, locals)...)
 	case *RecordSetExpr:
 		for _, field := range e.Fields {
-			diags = append(diags, checkLevelComposition(field.Set, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(field.Set, locals)...)
 		}
 	case *FunctionExpr:
 		fnLocals := copyBoolMap(locals)
 		for _, bound := range e.Bounds {
-			diags = append(diags, checkLevelComposition(bound.Set, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(bound.Set, locals)...)
 			fnLocals[bound.Name] = true
 		}
-		diags = append(diags, checkLevelComposition(e.Body, declKinds, fnLocals)...)
+		diags = append(diags, levelChecker.check(e.Body, fnLocals)...)
 	case *FunctionAppExpr:
-		diags = append(diags, checkLevelComposition(e.Function, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Function, locals)...)
 		for _, arg := range e.Args {
-			diags = append(diags, checkLevelComposition(arg, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(arg, locals)...)
 		}
 	case *ExceptExpr:
-		diags = append(diags, checkLevelComposition(e.Base, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Base, locals)...)
 		for _, spec := range e.Specs {
 			for _, component := range spec.Components {
 				for _, index := range component.Indices {
-					diags = append(diags, checkLevelComposition(index, declKinds, locals)...)
+					diags = append(diags, levelChecker.check(index, locals)...)
 				}
 			}
-			diags = append(diags, checkLevelComposition(spec.Value, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(spec.Value, locals)...)
 		}
 	case *LabelExpr:
-		diags = append(diags, checkLevelComposition(e.Body, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Body, locals)...)
 	case *ActionExpr:
-		diags = append(diags, checkLevelComposition(e.Action, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Subscript, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Action, locals)...)
+		diags = append(diags, levelChecker.check(e.Subscript, locals)...)
 	case *FairnessExpr:
-		diags = append(diags, checkLevelComposition(e.Subscript, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Action, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Subscript, locals)...)
+		diags = append(diags, levelChecker.check(e.Action, locals)...)
 	case *FunctionSetExpr:
-		diags = append(diags, checkLevelComposition(e.Domain, declKinds, locals)...)
-		diags = append(diags, checkLevelComposition(e.Range, declKinds, locals)...)
+		diags = append(diags, levelChecker.check(e.Domain, locals)...)
+		diags = append(diags, levelChecker.check(e.Range, locals)...)
 	case *SetComprehensionExpr:
 		compLocals := copyBoolMap(locals)
 		for _, bound := range e.Bounds {
-			diags = append(diags, checkLevelComposition(bound.Set, declKinds, locals)...)
+			diags = append(diags, levelChecker.check(bound.Set, locals)...)
 			compLocals[bound.Name] = true
 		}
-		diags = append(diags, checkLevelComposition(e.Element, declKinds, compLocals)...)
+		diags = append(diags, levelChecker.check(e.Element, compLocals)...)
 		if e.Predicate != nil {
-			diags = append(diags, checkLevelComposition(e.Predicate, declKinds, compLocals)...)
+			diags = append(diags, levelChecker.check(e.Predicate, compLocals)...)
 		}
 	}
 	return diags
@@ -4199,13 +4206,6 @@ func actionExprIsAngle(expr *ActionExpr) bool {
 		return false
 	}
 	return expr.Kind == "angle" || expr.Kind == "<>" || expr.Kind == "NO_STUTTER"
-}
-
-func logicalOperandLevel(expr Expr, declKinds map[string]DeclarationKind, locals map[string]bool) tlaLevel {
-	if call, ok := expr.(*CallExpr); ok {
-		return exprLevel(call.Callee, declKinds, locals)
-	}
-	return exprLevel(expr, declKinds, locals)
 }
 
 func isLogicalLevelMixingOperator(op string) bool {
