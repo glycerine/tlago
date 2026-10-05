@@ -1,5 +1,26 @@
 # TLC Port Progress
 
+2026-10-05 long LSB/MSB inherited simple-fill contexts complete after 9f8e452:
+Ported FPSetTest.testSimpleFill in both concrete long classes, preserving direct
+LSBDiskFPSet/MSBDiskFPSet construction, supplied default configuration, init(1),
+source filename and all four unrolled put/contains pairs. OffHeap inherited
+simple-fill now shares the same exact body. Cleanup closes native resources;
+no reduced memory budget, source assertion changes, invented tests or new skips.
+Unchanged pinned Java methods both pass runs=1/failures=0/ignored=0 with -ea,
+long-heap-simple-fill-original-{DiskFPSetTest,MSBDiskFPSetTest}.log. Both source
+class files compiled unchanged. Java oracle uses -Xmx256m as process memory limit;
+Go constructors retain their native default memory calculation and configuration.
+Go96720 terminal exit0/full two contexts race9.142s,
+long-heap-simple-fill-initial-race.log; Go8259 terminal exit0/shared OffHeap
+simple-fill race1.284s, long-heap-shared-offheap-final-race.log. Both retired.
+Long appendix14/22 contexts,8 pending: LSB/MSB two huge methods each, OffHeap
+three (including verified source MultipleFlushes failure), DiskStateQueue growth
+one. Main1251/1269,609/626; shared55/56; concurrent2/17 unchanged. TODO and ignored
+mapping updated. Whole12436 still LIVE at dd8f136 snapshot before queue and these
+new contexts, offheap-concurrent-flusher-final-workspace-go.log; no duplicate run
+or current full-suite success claim. Full stress workloads retain original bounds;
+local space question remains unanswered. Goal active; deferred topics unchanged.
+
 2026-10-05 long DiskStateQueue inherited correctness contexts complete afterdd8f136:
 All nine original StateQueueTest methods now execute DiskStateQueueTest concrete
 setup in long_disk_state_queue_java_test.go. Existing main StateQueueTest Go

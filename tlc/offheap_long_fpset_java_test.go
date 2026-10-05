@@ -16,16 +16,7 @@ func TestJavaOffHeapDiskFPSetLong(t *testing.T) {
 	}
 	t.Run("testSimpleFill", func(t *testing.T) {
 		set := newSet(t)
-		fp := uint64(1)
-		for i := 0; i < 4; i++ {
-			if set.Put(fp) {
-				t.Fatalf("put(%d) unexpectedly present", fp)
-			}
-			if !set.Contains(fp) {
-				t.Fatalf("contains(%d) unexpectedly false", fp)
-			}
-			fp++
-		}
+		javaLongFPSetSimpleFill(t, set)
 	})
 	t.Run("testCollisionBucket", func(t *testing.T) {
 		set := newSet(t)
