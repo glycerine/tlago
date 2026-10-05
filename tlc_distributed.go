@@ -119,10 +119,35 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 	// writes its diagnostics to ToolIO.out, then raises TLC_PARSING_FAILED
 	// for checked errors or an unsuccessful (including elevated-warning) exit.
 	messageControls := (diagnosticCLIOptions{}).withTLCMessageControls()
-	processSANYDiagnostics := func(raw Diagnostics) Diagnostics {
+	processSANYDiagnostics := func(raw Diagnostics, semantic bool) Diagnostics {
 		controlled := messageControls.apply(raw)
+		// SANY prints warnings first, then reports the actual semantic errors.
+		// Elevating a warning changes the exit status, not the error-list count.
+		isSemanticError := func(diagnostic Diagnostic) bool {
+			if !semantic {
+				return false
+			}
+			for _, original := range raw {
+				if original.Severity == SeverityError && original.Code == diagnostic.Code &&
+					original.Pos == diagnostic.Pos && original.Message == diagnostic.Message {
+					return true
+				}
+			}
+			return false
+		}
+		var errors Diagnostics
 		for _, diagnostic := range controlled {
-			tlc.ToolIOPrintln(diagnostic.String())
+			if isSemanticError(diagnostic) {
+				errors = append(errors, diagnostic)
+			} else {
+				tlc.ToolIOPrintln(diagnostic.String())
+			}
+		}
+		if len(errors) > 0 {
+			tlc.ToolIOPrintln(fmt.Sprintf("Semantic errors:\n\n*** Errors: %d\n", len(errors)))
+			for _, diagnostic := range errors {
+				tlc.ToolIOPrintln(sanyJavaErrorDetails(diagnostic) + "\n")
+			}
 		}
 		if controlled.HasErrors() {
 			var parameters []string
@@ -141,8 +166,8 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		FilenameResolver: resolver,
 		ExtraModules:     runtime.ExtendeeModules(),
 	})
-	diags = processSANYDiagnostics(diags)
-	diags = append(diags, processSANYDiagnostics(CheckSpec(spec))...)
+	diags = processSANYDiagnostics(diags, false)
+	diags = append(diags, processSANYDiagnostics(CheckSpec(spec), true)...)
 	// SpecProcessor looks up the constructor's raw root name after SANY.
 	// In particular, direct constructors retaining a .tla suffix fail here;
 	// create strips that suffix before invoking the constructor.
@@ -315,4 +340,20 @@ func RunDistributedWorkerAndFPServer(process *tlc.DistributedWorkerProcess, args
 		}
 	}
 	return tlc.RunDistributedWorkerAndFPServer(process, args, env)
+}
+
+// SANY.ErrorDetails renders the source location followed by a blank line and
+// its message. Keep the generic diagnostic rendering for other frontends.
+func sanyJavaErrorDetails(diagnostic Diagnostic) string {
+	rng := diagnostic.SANYRange
+	if rng.Begin.Line == 0 {
+		rng = SanyRange{Begin: diagnostic.Pos, End: diagnostic.Pos}
+	}
+	message := diagnostic.SANYMessage
+	if message == "" {
+		message = diagnostic.Message
+	}
+	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s\n\n%s",
+		rng.Begin.Line, rng.Begin.Column, rng.End.Line, rng.End.Column,
+		moduleNameForSourcePosition(rng.Begin), message)
 }

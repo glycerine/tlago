@@ -160,8 +160,19 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 		if instance := item.instance; instance != nil {
 			// Generator instances iterate Context.getByClass via Hashtable.elements,
 			// unlike EXTENDS, which merges the source Pair links in insertion order.
-			for _, entry := range tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, spec.Modules[instance.Module], visiting)) {
-				if entry.local || (entry.kind != OperatorDecl && entry.kind != "") || entry.moduleInstance {
+			content := tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, spec.Modules[instance.Module], visiting))
+			// Generator imports operator definitions first, then theorem/assumption
+			// definitions. Global builtins and ModuleNodes belong to neither list.
+			var definitions []tlcBridgeContextEntry
+			for _, kind := range []DeclarationKind{OperatorDecl, ""} {
+				for _, entry := range content {
+					if entry.kind == kind && entry.module != nil && !entry.moduleKey {
+						definitions = append(definitions, entry)
+					}
+				}
+			}
+			for _, entry := range definitions {
+				if entry.local || entry.moduleInstance {
 					continue
 				}
 				entry.instanceSourceName = entry.name

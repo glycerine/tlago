@@ -1,5 +1,48 @@
 # TLC Port Progress
 
+2026-10-05 ETest1–3 and semantic diagnostic checkpoint (workspace verification pending):
+Original ETest1, ETest2 and ETest3 are complete translations. All six fixture files
+match the original Java vectors byte for byte. Preserve the original constructors,
+SuiteETestCase flags and every assertion: exact semantic error count, argument-list
+ranges and arity text for ETest1/2; deadlock exit, FINISHED, stats2/2/0, no GENERAL
+and zero uncovered for ETest3. Inventory1068/1269 contexts (84.2%),548/626 complete
+classes (87.5%),201pending/78classes; legacy85/104 complete.
+Generator.java:900 reports incorrect arity at the final supplied argument-list
+range, with the remaining signature. Diagnostics now carry optional SANY range
+and text separately from their existing generic formatting. The shared TLC loader
+prints actual semantic errors with Java's header/count and ErrorDetails shape;
+warning elevation affects exit status without inflating the actual error count.
+Existing warning-control, elevated-warning and full SANY Java race checks pass.
+ETest1/2 race pass1.277s; ETest3 race pass5.849s. Related root parser/semantic/XML
+and installed legacy contexts pass race60.790s before the context correction below.
+No invented tests or weakened original assertions.
+
+Full workspace83892 finished exit1, root1798.112s/SANY1.160s/TLC72.815s.
+Its bc01728 snapshot failed original EvalExceptionLiveness trace variable order,
+EWD998ChanDebugger variable selection, and BufferedRandomAccessFile postcondition.
+This is authoritative red evidence; do not describe bc01728 as full-suite green.
+The theorem-import filter admitted global builtins and ModuleNodes as theorem
+entries because their declaration kind is empty. Filter those out and import
+operator definitions before theorem/assumption definitions as Java Generator does.
+The three unchanged failing contexts now pass69.425s (98866 terminal/retired),
+log workspace-instance-context-fix-focused.log. Legacy contexts pass race64.544s
+(71457 terminal/retired), log legacy-error-context-fix-race.log, including
+ETest1–3 and Test201–209,216/219/220/99/999/InvalidInvariant. Current guard/final
+code race recheck of the three failures plus ETest1–3 is live15192, log
+workspace-instance-context-fix-race.log. Final corrected whole workspace is
+live57071, log legacy-error-context-final-workspace-go.log.
+Older workspace77547 completed exit0, root1806.145s/SANY1.001s/TLC70.894s,
+log legacy-instance-exports-workspace-go.log; compiled before the theorem fix.
+Current diagnostic workspace23927 remains live, log
+legacy-error-reporting-final-workspace-go.log, but compiled BEFORE the context
+filter correction above. Resume this handle; do not restart it on an observation
+timeout and do not credit it as a gate for the later correction. Logs are under
+.codex-gotmp/. After resolving these failures and recording current verification,
+commit this batch and continue with original ETest4. Its exact nested-expression
+stack and uncovered location must be preserved. The five deferred topics remain
+deferred; existing tests in them must remain green. Never use testdata fixtures.
+This entry supersedes older gate and next-context notes below.
+
 2026-10-04 latest verified implementation checkpoint after63c8bc4:
 Seven further original contexts are complete: Test209, Test219, Test99, Test999,
 Test216, Test220 and TestInvalidInvariant. Preserve every original constructor,

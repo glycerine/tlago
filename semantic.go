@@ -1,6 +1,7 @@
 package tlago
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -3116,7 +3117,7 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 				want, ok = builtinOperatorArity(ident.Name)
 			}
 			if ok && want != len(e.Args) {
-				diags = append(diags, errorAt(e.Pos, "E4204", "operator %s arity mismatch: got %d args, want %d", ident.Name, len(e.Args), want))
+				diags = append(diags, sanyCallArityDiagnostic(e, ident.Name, want))
 			}
 			specs = operatorParams[ident.Name]
 		}
@@ -4317,4 +4318,27 @@ var builtinIdentifiers = map[string]bool{
 	"FALSE":   true,
 	"BOOLEAN": true,
 	"STRING":  true,
+}
+
+// Generator.selectorToNode reports the final argument-list location and the
+// remaining signature after arguments attached to earlier name components.
+func sanyCallArityDiagnostic(call *CallExpr, name string, want int) Diagnostic {
+	diagnostic := errorAt(call.Pos, "E4204", "operator %s arity mismatch: got %d args, want %d", name, len(call.Args), want)
+	remaining := want
+	if selector := call.Selector; selector != nil && len(selector.Steps) > 0 {
+		if selector.Syntax != nil {
+			diagnostic.SANYRange = selector.Syntax.Range
+		}
+		for i, step := range selector.Steps {
+			if i == len(selector.Steps)-1 {
+				if step.Arguments != nil {
+					diagnostic.SANYRange = step.Arguments.Range
+				}
+			} else if step.Arguments != nil {
+				remaining -= len(expressionChildren(step.Arguments))
+			}
+		}
+	}
+	diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", name, remaining)
+	return diagnostic
 }
