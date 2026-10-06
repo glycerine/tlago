@@ -11,6 +11,12 @@ The main inventory covers every test-bearing concrete class in `../tlaplus/tlato
 - **9 logical method contexts across 9 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
+Model-test setup reconciliation (2026-10-06): the common Go runner now retains
+its parsed fingerprint configuration and applies the original Ant off-heap /
+512 KiB settings before parsing. The previous small-MSB replacement was a
+translation shortcut. This correction changes no original assertions and adds
+no method-count credit; verification receipts belong in `PORT_PROGRESS.md`.
+
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
 
 Methods are counted **before parameter expansion**, and non-`@Ignore` does not imply every upstream Ant target executes them: assumptions, target exclusions, platforms, and JVM requirements still apply. For example, `OffHeapIndexerEquivalenceTest.testInfiniteInfMult` has **7,254 parameter rows**; each of the three concrete `OffHeapIndexerParameterizedTest` subclasses inherits five methods over **1,104 rows** (16,560 contexts before assumptions). `GetScopedIdentifiersTests` has all 18 rows ported. Preserve complete matrices rather than substituting a few samples.

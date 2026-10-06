@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-06 original model-runner fingerprint setup correction:
+The common Go runner discarded ParseTLCOptions' fingerprint configuration and
+substituted a 1 MiB, ratio-1 MSB set. Pinned customBuild.xml test-dist instead
+selects OffHeapDiskFPSet and passes -XX:MaxDirectMemorySize=512k to each fork.
+Apply those source settings before parsing and retain the resulting configuration.
+Port TLCRuntime's direct-memory argument parsing through native environment key
+TLAGO_MAX_DIRECT_MEMORY (bytes or case-insensitive k/m/g suffix, signed Java
+shifts, NumberFormatException on malformed values, unchanged 64 MiB default).
+Nested sets still divide the runtime budget; off-heap -fpmem semantics unchanged.
+No new tests, weakened assertions, reduced workloads or inventory credit.
+
+Eight original models pass normally in 158.473s (36877 terminal 0):
+ConstLevelInvariant, CheckpointOnViolation, CheckpointWhenTimeBound (full five
+seconds), CheckpointOnViolationTTrace, CodePlexBug08EWD840FL2FromCheckpoint
+(original archive and three workers), both EWD840FL1/FL2 liveness models and
+LegacySuiteTest44. Exact state counts, graph sizes and complete traces retained.
+Log: /mnt/oldrog/tmp/tlago-source-ant-fpset-models.log. This compiled snapshot
+precedes only the invalid-setting exception-detail refinement, which does not
+change the exercised valid 512k path.
+Original factory/CLI selection passes at default memory in 1.072s (28577 terminal
+0), and factory/CLI/TLC-module selection with final code and 512k passes in
+0.963s (2138 terminal 0). Logs: tlago-source-ant-fpset-runtime.log and
+tlago-source-ant-fpset-runtime-configured.log under /mnt/oldrog/tmp.
+Final all-package compilation passes (59178 terminal 0).
+Full normal workspace suite is LIVE in 85256, timeout 60m, no -race:
+/mnt/oldrog/tmp/tlago-source-ant-fpset-workspace.log. Do not claim a full latest
+workspace pass until it returns. Existing unlimited MSB/LSB original random
+jobs 63113/59782 remain live on a915e08; latest observed progress exceeds
+1.20 billion / 700 million iterations respectively, without reported failure.
+Neither random draft has completion credit yet.
+
+Selector audit: AssertExpressionStack, DepthFirstTerminate,
+LivenessSymmetryWarning and DistributedTrace have no Test in their filenames;
+Java's normal Ant **/*Test*.java selector does not select them. Explicit JUnit
+runs still expose the previously recorded source failures. This is a target
+selection distinction, not permission to weaken their assertions or claim
+passing translations. InliningTest is explicitly selected in the slow batch;
+its generic-batch exclusion does not exclude it from the whole target.
+
+
 2026-10-06 off-heap outer flusher lifecycle correction:
 Source comparison with DiskFPSet.Flusher and OffHeapMSBFlusher found conditional
 preallocation, missing pool-close order, directory recreation, raw rename/I/O

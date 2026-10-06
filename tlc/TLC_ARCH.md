@@ -1,5 +1,19 @@
 # TLC Architecture Notes for the Go Port
 
+## Fingerprint memory and original model-test settings
+
+Java `TLCRuntime.getNonHeapPhysicalMemory` reads the VM's
+`-XX:MaxDirectMemorySize` argument, falling back to 64 MiB. The native equivalent
+is `TLAGO_MAX_DIRECT_MEMORY`: bytes or a case-insensitive `k`, `m`, or `g` suffix.
+Its parsing and signed shifts follow Java; off-heap configuration still ignores
+`-fpmem` and divides this budget among nested fingerprint sets.
+
+The shared original model-test runner applies `customBuild.xml`'s `test-dist`
+settings before parsing TLC arguments: `tlc2.tool.fp.FPSet.impl` selects
+`OffHeapDiskFPSet`, and the direct-memory limit is `512k`. It retains the parsed
+configuration, including explicit test flags. Replacing that configuration with
+an arbitrary small MSB set would change the feature being exercised.
+
 ## Disk fingerprint streaming and recovery
 
 `DiskFPSet.Flusher` merges buffered disk input with new sorted entries into a

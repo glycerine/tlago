@@ -121,6 +121,11 @@ func runJavaTLCModelTestWithArguments(t *testing.T, name, root string, arguments
 
 func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, arguments func(meta, traceDirectory string) []string, setup func(*tlc.TLC), resolvers ...tlc.FilenameToStream) *tlc.Result {
 	t.Helper()
+	// customBuild.xml test-dist forks each class with these VM settings.
+	// Apply them before parsing arguments, preserving the parsed configuration
+	// and any explicit test flags rather than replacing it with a small MSB set.
+	t.Setenv(tlc.FPSetImplProperty, "tlc2.tool.fp.OffHeapDiskFPSet")
+	t.Setenv("TLAGO_MAX_DIRECT_MEMORY", "512k")
 	oldCoverage, oldCheckpoint, oldMeta := tlc.Globals.CoverageInterval, tlc.Globals.CheckpointDurationMillis, tlc.Globals.MetaDir
 	oldWorkers, oldMain, oldSimulator := tlc.Globals.NumWorkers, tlc.Globals.MainChecker, tlc.Globals.Simulator
 	oldTool, oldDFID, oldStart := tlc.Globals.Tool, tlc.Globals.DFIDMax, tlc.Globals.StartTime
@@ -186,8 +191,6 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	if err != nil {
 		t.Fatal(err)
 	}
-	opts.FPSetConfiguration = tlc.NewFPSetConfigurationWithRatioAndImplementation(1, "tlc2.tool.fp.MSBDiskFPSet")
-	opts.FPSetConfiguration.SetMemory(1 << 20)
 	// ModelCheckerTestCase installs its recorder before tool construction, so
 	// retain configuration diagnostics as well as messages from TLC.process.
 	recorder := &tlc.MemoryRecorder{}

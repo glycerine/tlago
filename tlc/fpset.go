@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"runtime/debug"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -203,8 +204,34 @@ func tlcRuntimeMaxHeapMemoryBytes() int64 {
 	return tlcDefaultHeapBudget()
 }
 
+// TLAGO_MAX_DIRECT_MEMORY supplies the native equivalent of the Java VM's
+// -XX:MaxDirectMemorySize argument. TLCRuntime accepts bytes or k/m/g suffixes;
+// absent an explicit limit, preserve its 64 MiB default.
 func tlcRuntimeNonHeapPhysicalMemory() int64 {
-	return tlcRuntimeDefaultNonHeapBytes
+	value, ok := os.LookupEnv("TLAGO_MAX_DIRECT_MEMORY")
+	if !ok {
+		return tlcRuntimeDefaultNonHeapBytes
+	}
+	value = strings.ToLower(value)
+	shift := uint(0)
+	if len(value) > 0 {
+		switch value[len(value)-1] {
+		case 'k':
+			shift = 10
+		case 'm':
+			shift = 20
+		case 'g':
+			shift = 30
+		}
+		if shift != 0 {
+			value = value[:len(value)-1]
+		}
+	}
+	memory, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		panic(NewNumberFormatException(value))
+	}
+	return memory << shift
 }
 
 func fpSetImplementationFromEnv() string {

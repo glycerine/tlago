@@ -86,6 +86,17 @@ pass on final code in 0.077 seconds; all packages compile. The unchanged large
 write-index method was already covered by the full suites above; this focused
 receipt does not claim a new full-class or full-workspace run.
 
+The latest model-test setup correction removes the arbitrary small-MSB override.
+The shared runner now applies the original Ant off-heap implementation and
+`512k` direct-memory setting before parsing, retaining the parsed configuration.
+Native `TLAGO_MAX_DIRECT_MEMORY` supplies Java's VM memory-setting counterpart.
+Eight original safety/checkpoint/recovery/liveness/legacy model tests pass in
+158.473 seconds; existing factory/CLI checks pass at both default and source
+memory settings; all packages compile. No assertions or test-count credits change.
+Full normal workspace verification is running in session `85256`, with log
+`/mnt/oldrog/tmp/tlago-source-ant-fpset-workspace.log`. Poll that handle before
+starting another full suite; the earlier full-suite receipts predate this change.
+
 Current normal stress verification jobs:
 
 | Job | Source snapshot | Session | Log under `/mnt/oldrog/tmp` |
