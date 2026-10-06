@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.031 seconds, session `8825` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.723 seconds, session `23726` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 17.147 seconds, session `17314` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.846 seconds, session `19086` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -191,7 +191,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 364,877,724 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,003,858,310 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -507,10 +507,18 @@ TestSanyOutputFormatting methods now use production SimpleSanyOutput and the
 actual in-memory syntax parser, retaining their original input and assertions.
 Simple/Silent/OutErr routing, level ordinals, no-argument verbatim messages,
 platform line separators and string-argument Java formatting are ported.
-Forty-one scratch routing/format observations match pinned Java; complete SANY
-passes in 1.757 seconds; the final focused parser/semantic gate passes in 0.942
-seconds and original output formatting in 0.018 seconds. Driver numeric/general-Object formatting and parser
-TRACE entry/exit integration remain pending; do not claim full SanyOutput parity. Likewise, the existing syntax corpus
+Forty-one scratch routing/format observations match pinned Java. The parser now
+emits TRACE at actual production entry/exit and reports errors inside its parse
+wrapper. Production exits do not run during exception propagation. Missing
+variable-declaration, identifier LHS/declaration, theorem/proof, LET, quantifier
+bound and infix frames are restored, preserving Java's original spelling and
+LET production name. All 18 bounded complete TRACE/parse-result comparisons
+match Java, including malformed operands, lexical errors and nested definitions.
+Final complete SANY passes in 1.846 seconds, and the focused parser classes plus
+original TLC models pass in 17.147 seconds. Numeric/general-Object driver
+formatting, PrintStream error-state queries and remaining production-frame
+coverage still require reconciliation. Do not claim full SanyOutput or parser
+parity. Likewise, the existing syntax corpus
 port checks parser status and node usage, without the original canonical AST
 comparison. These are remaining translation gaps, not full-suite fidelity
 receipts. Preserve the source harness's known-failure inversion: Java accepts

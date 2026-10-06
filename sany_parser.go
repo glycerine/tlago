@@ -6,6 +6,7 @@ import (
 )
 
 type SanyParser struct {
+	output               SanyOutput
 	tokens               []*SanyToken
 	tokenManager         *SanyTokenManager
 	at                   int
@@ -27,7 +28,11 @@ func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
 }
 
 func parseSanySyntaxWithDependencies(file, source string) (node *SanySyntaxNode, dependencies []string, diags Diagnostics) {
-	parser := &SanyParser{tokenManager: NewSanyTokenManager(file, source)}
+	return parseSanySyntaxUsingOutput(file, source, nil)
+}
+
+func parseSanySyntaxUsingOutput(file, source string, out SanyOutput) (node *SanySyntaxNode, dependencies []string, diags Diagnostics) {
+	parser := &SanyParser{tokenManager: NewSanyTokenManager(file, source), output: out}
 	defer func() {
 		if failure := recover(); failure != nil {
 			switch failure := failure.(type) {
@@ -41,11 +46,22 @@ func parseSanySyntaxWithDependencies(file, source string) (node *SanySyntaxNode,
 				panic(failure)
 			}
 		}
+		for _, diagnostic := range diags {
+			if diagnostic.SANYParseMessage != "" {
+				parser.log(SanyLogError, diagnostic.SANYParseMessage)
+			}
+		}
 	}()
 	node = parser.CompilationUnit()
 	node.SetLevel(0)
 	node.SetParent()
 	return node, parser.Dependencies(), parser.diags
+}
+
+func (p *SanyParser) log(level SanyLogLevel, format string, args ...string) {
+	if p.output != nil {
+		p.output.Log(level, format, args...)
+	}
 }
 
 func (p *SanyParser) Dependencies() []string { return append([]string(nil), p.dependencyList...) }
@@ -286,6 +302,8 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 }
 
 func (p *SanyParser) VariableDeclaration() *SanySyntaxNode {
+	p.beginProduction("variable declaration")
+	defer p.endProduction()
 	keyword := p.consume(SanyTokenVariable, "expected VARIABLE declaration")
 	var one []*SanySyntaxNode
 	one = append(one, p.Identifier())
@@ -383,6 +401,8 @@ func (p *SanyParser) Assumption() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Theorem() *SanySyntaxNode {
+	p.beginProduction("Theorem")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenTheorem) || p.match(SanyTokenProposition) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
@@ -410,6 +430,8 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 func (p *SanyParser) Proof() *SanySyntaxNode {
 	p.pushProofLevel()
 	defer p.popProofLevel()
+	p.beginProduction("Proof")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenProof) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
@@ -1215,6 +1237,8 @@ func (p *SanyParser) LetOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode 
 }
 
 func (p *SanyParser) IdentLHS() *SanySyntaxNode {
+	p.beginProduction("Identifier LHS")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.Identifier())
 	if p.match(SanyTokenLbr) {
@@ -1258,6 +1282,8 @@ func (p *SanyParser) IdentDeclOrSomeFixDecl() *SanySyntaxNode {
 }
 
 func (p *SanyParser) IdentDecl() *SanySyntaxNode {
+	p.beginProduction("Identifier Declation")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.Identifier())
 	if p.match(SanyTokenLbr) {
@@ -1293,6 +1319,8 @@ func (p *SanyParser) QuantBound() *SanySyntaxNode {
 }
 
 func (p *SanyParser) QuantBoundUntil(stopKinds ...SanyTokenKind) *SanySyntaxNode {
+	p.beginProduction("Quant Bound")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.QuantBoundIntro())
 	for p.match(SanyTokenComma) {
@@ -1377,6 +1405,9 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 	p.beginProduction("Expression")
 	active := true
 	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
 		if active {
 			p.endProduction()
 		}
@@ -1501,7 +1532,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 	}
 continuation:
 	if p.aboveCurrentJunction() && !stop(p.peek()) && p.isGrammarInfixOperator(p.peek()) {
-		tok := p.advance()
+		tok := p.infixOpToken()
 		op, _ := GetSanyOperator(tok.Image)
 		stack.Push(p.genericOperatorNode(tok, op), &op)
 		if err := stack.ReduceStack(); err != nil {
@@ -1778,6 +1809,9 @@ func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
 	p.beginProduction("Fairness Expression")
 	active := true
 	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
+		}
 		if active {
 			p.endProduction()
 		}
@@ -1849,6 +1883,9 @@ func (p *SanyParser) FairnessSubscript() *SanySyntaxNode {
 }
 
 func (p *SanyParser) LetIn(stop func(*SanyToken) bool) *SanySyntaxNode {
+	// Preserve Java LetIn's original production name.
+	p.beginProduction("Case Other Arm")
+	defer p.endProduction()
 	let := p.consume(SanyTokenLet, "expected LET")
 	defs := p.LetDefinitions()
 	in := p.consume(SanyTokenLetin, "expected IN in LET expression")
@@ -1857,6 +1894,8 @@ func (p *SanyParser) LetIn(stop func(*SanyToken) bool) *SanySyntaxNode {
 }
 
 func (p *SanyParser) LetDefinitions() *SanySyntaxNode {
+	p.beginProduction("Let Definitions")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	for !p.check(SanyTokenLetin) && !p.check(SanyTokenEOF) {
 		if p.check(SanyTokenRecursive) {
@@ -2669,6 +2708,9 @@ func (p *SanyParser) BangOperatorSelector() *SanySyntaxNode {
 	} else if op.IsPostfix() {
 		kindName = "N_PostfixOp"
 	}
+	if kindName == "N_InfixOp" {
+		return NewSanyNode(SanySyntaxNodeKindByName[kindName], NewSanyTokenNode(p.infixOpToken()))
+	}
 	return NewSanyNode(SanySyntaxNodeKindByName[kindName], NewSanyTokenNode(p.advance()))
 }
 
@@ -3060,4 +3102,11 @@ func (p *SanyParser) tokenAt(offset int) *SanyToken {
 
 func (p *SanyParser) add(pos Position, code, msg string) {
 	p.diags = append(p.diags, errorAt(pos, code, "%s", msg))
+}
+
+// InfixOp alone, unlike the source prefix and postfix productions, owns a frame.
+func (p *SanyParser) infixOpToken() *SanyToken {
+	p.beginProduction("Infix Op")
+	defer p.endProduction()
+	return p.advance()
 }

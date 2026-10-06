@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-06 Parser TRACE integration and source production frames:
+Previous turn completed 71970c8. Connect the output class to actual parsing rather
+than logging only the returned diagnostics. Match source bpa/epa ordering:
+beginning TRACE precedes getToken(1), and ending TRACE follows message-frame pop.
+Report caught parse/token-manager errors after parsing; other panics propagate.
+Default nil output remains silent without formatting, like SilentSanyOutput.
+
+The first eight bounded comparisons exposed absent identifier LHS/declaration,
+variable-declaration, theorem/proof, LET and infix frames. Restore those actual
+productions, including Java's Identifier Declation typo and Case Other Arm name
+for LetIn. A function case exposed the missing Quant Bound frame; restore it.
+Go's deferred exits had been executing on exception unwinding, unlike source epa.
+Propagate the original panic from those exits without popping frames or emitting
+Ending messages. Expression/fairness explicitly run epa before their final
+reduction/structure checks; preserve those boundaries and guard their cleanup.
+
+All 18 scratch complete TRACE/parse-result comparisons now match pinned Java,
+including empty modules, ordinary/higher-order definitions, fairness, tuples,
+nested LETs, proofs, function bounds, operator operands, ASCII postfix, malformed
+percent/operand/fairness/definition and lexical-error paths. Scratch matrix:
+/mnt/oldrog/tmp/tlago-sany-trace-audit.py; logs under
+/mnt/oldrog/tmp/tlago-sany-trace-audit; final summary
+/mnt/oldrog/tmp/tlago-sany-trace-final-audit.log (82822 terminal 0).
+No invented persistent test or assertion changes, and no inventory increment.
+
+Normal verification: original output formatting 0.015 seconds (3444 terminal 0);
+final complete SANY 1.846 seconds (19086 terminal 0); unchanged existing parser,
+semantic bridge, token manager, operator stack and ParseErrorTests plus original
+EWD998ChanDebugger and three fairness/liveness models pass in 17.147 seconds
+(17314 terminal 0). Logs: /mnt/oldrog/tmp/tlago-sany-trace-final-sany.log and
+/mnt/oldrog/tmp/tlago-sany-trace-focused-root.log. No complete grammar/output claim:
+remaining production frames, general driver formatting and broader parity remain.
+Full current MSB run 5144 is still confirmed live; last recorded progress is
+1,003,858,310 of 2,147,483,648. Preserve the same compiled binary and handle.
+
 2026-10-06 Reconcile original SANY output formatting tests:
 The first two TestSanyOutputFormatting methods used test-only concatenation and
 fmt.Sprintf, so their passes did not exercise ported Java functionality. Port

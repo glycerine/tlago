@@ -15,12 +15,19 @@ type sanyParseException struct{ diagnostic Diagnostic }
 // beginProduction/endProduction port the message state in Java's bpa/epa.
 // A thrown exception snapshots that state before the Go stack unwinds.
 func (p *SanyParser) beginProduction(name string) {
+	p.log(SanyLogTrace, "Beginning %s", name)
 	p.messageStack = append(p.messageStack, sanyParseFrame{name, p.peek()})
 	p.expecting = ""
 }
 
 func (p *SanyParser) endProduction() {
+	// Java does not execute epa when the production throws.
+	if failure := recover(); failure != nil {
+		panic(failure)
+	}
+	name := p.messageStack[len(p.messageStack)-1].name
 	p.messageStack = p.messageStack[:len(p.messageStack)-1]
+	p.log(SanyLogTrace, "Ending %s", name)
 	p.expecting = ""
 }
 

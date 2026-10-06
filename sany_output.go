@@ -123,11 +123,6 @@ func sanyOutputPrintln(out io.Writer, format string, args []string) {
 // ParseSanySyntaxWithOutput follows TLAplusParser.parse's reported-error loop.
 // It parses bytes supplied by the caller without module loading or semantics.
 func ParseSanySyntaxWithOutput(file, source string, out SanyOutput) (*SanySyntaxNode, Diagnostics) {
-	node, diags := ParseSanySyntax(file, source)
-	for _, diagnostic := range diags {
-		if diagnostic.SANYParseMessage != "" {
-			out.Log(SanyLogError, diagnostic.SANYParseMessage)
-		}
-	}
+	node, _, diags := parseSanySyntaxUsingOutput(file, source, out)
 	return node, diags
 }

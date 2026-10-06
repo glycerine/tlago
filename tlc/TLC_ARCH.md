@@ -11,8 +11,20 @@ follow Java. ParseSanySyntaxWithOutput reports actual syntax diagnostics without
 file resolution or semantic analysis, matching the original formatting test's
 in-memory parser use. The three unchanged original formatting assertions now
 exercise this production implementation. Numeric/general-Object driver format
-arguments, PrintStream's queryable error state and parser TRACE integration remain
-explicit reconciliation work, so this does not establish full output parity.
+arguments, PrintStream's queryable error state and remaining production-frame
+coverage remain reconciliation work, so this does not establish full output parity.
+
+The syntax parser now owns its output and reports errors after catching only the
+source parse/token-manager exceptions. Its bpa equivalent logs TRACE before
+looking up the first token; epa pops the message frame before logging TRACE.
+Deferred production exits propagate exceptions without popping frames or logging
+spurious endings. Expression and fairness retain their explicit early epa before
+reduction/structure checks. Restored frames include variable declarations,
+identifier LHS/declarations, theorem/proof, LET definitions/expressions, quantifier
+bounds and applicable infix operations. Preserve source spellings, including
+Identifier Declation and LetIn's Case Other Arm label. Eighteen bounded actual
+Java/Go TRACE and parse-result observations match; this is not a complete grammar
+frame audit.
 
 ## Original heap fingerprint stress target
 
