@@ -150,11 +150,19 @@ named function still generates its arguments. Unresolved operator applications
 stop before argument generation. Arity and operator-argument checks honor those
 failure boundaries rather than using later definitions' metadata.
 
-The broader generator still groups some checks by AST category, which can reverse
-the source ordering of errors in an operator and a following assumption. Leaf
-proof facts are retained but not fully generated or resolved, so an unknown `BY`
-fact is still incorrectly accepted. Port actual unit generation and proof scopes;
-do not replace them with error sorting. Seventy-four matching bounded visibility
+Module generation dispatches actual module-body heirs, completing each unit
+before moving to the next. Named theorem definitions, statements and proofs
+share their original syntax unit. Selector preparation runs at that unit rather
+than as a whole-module prepass. Recursive-section checks occur before the unit's
+body; unfinished recursive operators are reported in declaration order. Invalid
+operand selection mirrors Generator.reportSelectorError, including source error
+code 4005, selector description and individual selector-node range.
+
+Leaf proof facts are retained but not fully generated or resolved, so an unknown
+`BY` fact is still incorrectly accepted. Nested module generation still follows
+the enclosing module instead of occurring within its unit. Port these actual
+generation and scope boundaries, without error sorting. Twenty matching module
+order/recursive-section observations and the established 74 matching visibility
 observations do not prove all Generator, constructor or selector paths complete.
 
 ## Module loading and parse-unit relationships

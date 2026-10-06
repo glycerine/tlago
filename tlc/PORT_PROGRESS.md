@@ -1,5 +1,48 @@
 # TLC Port Progress
 
+2026-10-06 Module-unit generation and recursive-section dispatch:
+Previous expression-visibility batch committed as `5c31904`; starting tree clean.
+Normal full root session 96678 returned status 0 in 1,560.338 seconds and is
+retired. Log tlago-bitwise-bridge-root-full.log under /mnt/oldrog/tmp. It verifies
+f5019c4 before expression visibility and this work. Original full LSB 32959
+remains confirmed live, above 1,784,995,386 of 2,147,483,648 insertions, with
+unchanged bounds, factory, seed, assertions and workspace storage. No terminal
+success or test-port credit for that live draft.
+
+Replace grouped registration/checking loops with actual module-body unit
+visitation. Preserve syntax identity on proof references and summaries; named
+theorem definitions, statements and proofs share their actual unit. Prepare
+selectors within each unit, rather than before module generation. Recursive
+section checks occur before the applicable unit body; unfinished recursive
+operators retain declaration-vector ordering, individual symbol ranges and
+original messages. Remove obsolete interval-based module recursive checks.
+
+The initial 20 source-only Java/Go order audit has two mismatches: invalid
+operand selection used a generic code/message and the entire expression range.
+Port Generator.reportSelectorError and selectorItemToString for those branches.
+Final 20 observations match actual Java semantic counts, codes, ranges, messages
+and ordering, including mixed definitions/facts, unfinished recursive names,
+recursive section boundaries and permitted instances. Established 74 visibility
+observations also match. Logs tlago-module-unit-order-audit-corrected.log and
+ tlago-module-unit-final-visibility-audit.log under /mnt/oldrog/tmp. These are
+scratch observations, not invented permanent tests or inventory credit.
+
+Final complete SANY passes 1.344 seconds (83693 retired); existing native behavior
+classes and original TLC selection pass 10.496 seconds (50362 retired). Logs
+ tlago-module-unit-final-sany.log and tlago-module-unit-final-focused.log.
+All-package compilation passes, log tlago-module-unit-final-compile.log. All runs
+normal, original bounds, no broad race checks or special corpus sweep. Existing
+original assertions and fixture bytes are unchanged; TLC leaf code is unchanged,
+so reuse its completed 22503 full-package receipt.
+
+Normal full root session 96647 is live on this module-unit snapshot, original
+bounds, no failfast, 60-minute timeout and workspace temporary directories. Log
+ tlago-module-unit-root-full.log. Preserve handle until terminal status; no full
+current-workspace success claim. Unknown leaf BY facts and nested-module unit
+generation remain implementation work. Broader constructor, parser, context and
+selector reconciliation remains visible; overall port is incomplete and new
+distributed architecture stays postponed.
+
 2026-10-06 Source-order expression contexts and recursive selector boundaries:
 Previous native bridge correction committed as `f5019c4`; starting tree clean.
 Normal root session 96678 remains live on that fixture snapshot, before this

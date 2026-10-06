@@ -950,7 +950,7 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 		}
 		if !inDefs && isSanyExpressionNode(child) && child.Kind.JavaName() != "N_ModuleRef" {
 			expr, _ := sanyExpr(child)
-			ref := ProofRef{Expr: expr, Mode: mode, Pos: sanyNodePosition(child)}
+			ref := ProofRef{Syntax: node, Expr: expr, Mode: mode, Pos: sanyNodePosition(child)}
 			if id, ok := expr.(*IdentExpr); ok {
 				ref.Name = id.Name
 			} else if child.Kind.JavaName() == "IDENTIFIER" {
@@ -961,10 +961,10 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 		}
 		switch child.Kind.JavaName() {
 		case "IDENTIFIER":
-			refs = append(refs, ProofRef{Name: child.Image, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
+			refs = append(refs, ProofRef{Syntax: node, Name: child.Image, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
 		case "N_GeneralId":
 			if name := sanyGeneralIDName(child); name != "" {
-				refs = append(refs, ProofRef{Name: name, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
+				refs = append(refs, ProofRef{Syntax: node, Name: name, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
 			}
 		}
 	}
@@ -972,7 +972,7 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 }
 
 func sanyTheoremProof(node *SanySyntaxNode, goal Expr) ProofSummary {
-	proof := ProofSummary{Goal: goal, Pos: sanyNodePosition(node), Facts: sanyLeafProofFacts(node)}
+	proof := ProofSummary{Syntax: node, Goal: goal, Pos: sanyNodePosition(node), Facts: sanyLeafProofFacts(node)}
 	for _, child := range node.GetHeirs() {
 		if child.Kind.JavaName() == "N_Proof" {
 			proof.Steps = append(proof.Steps, sanyProofSteps(child)...)

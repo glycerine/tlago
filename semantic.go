@@ -39,10 +39,7 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 			return nil
 		}
 		checked[mod] = true
-		before := len(resolver.diags)
-		resolver.resolveModule(mod)
-		diags = appendSanyDiagnostics(diags, resolver.diags[before:]...)
-		checks := &sanyModuleLevelChecks{}
+		checks := &sanyModuleLevelChecks{generator: resolver.moduleGenerator(mod)}
 		diags = appendSanyDiagnostics(diags, generateModuleWithEnclosing(mod, spec, enclosing[mod], checks)...)
 		// Nested semantic graphs belong to the enclosing external module;
 		// they do not have their own SANY progress or reporting iteration.
@@ -173,6 +170,7 @@ type sanyLevelCheck struct {
 }
 
 type sanyModuleLevelChecks struct {
+	generator   *sanyModuleSelectorGenerator
 	recursive   []func() Diagnostics
 	definitions []func() Diagnostics
 	facts       []func() Diagnostics
@@ -214,6 +212,10 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 
 func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, checks *sanyModuleLevelChecks) Diagnostics {
 	var diags Diagnostics
+	if checks.generator == nil {
+		resolver := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
+		checks.generator = resolver.moduleGenerator(mod)
+	}
 	defined := map[string]Position{}
 	declKinds := map[string]DeclarationKind{}
 	arities := map[string]int{}
@@ -442,7 +444,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		instanceSymbols[name] = symbol
 	}
 	localSymbols := moduleOwnSymbols(mod)
-	for _, inst := range mod.Instances {
+	registerInstance := func(inst Instance) {
 		if inst.Name != "" {
 			addName(inst.Name, inst.SourcePosition(), InstanceDecl)
 			defined[instanceNameSentinel(inst.Name)] = inst.SourcePosition()
@@ -451,7 +453,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		diags = append(diags, addInstanceSymbols(inst, spec, defined, declKinds, arities, operatorParamSpecs, instanceSymbols, localSymbols)...)
 	}
-	for _, d := range mod.Declarations {
+	registerDeclaration := func(d Declaration) {
 		seenInDecl := map[string]bool{}
 		for _, name := range d.Names {
 			if seenInDecl[name] {
@@ -478,8 +480,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	}
 	recursiveArities := map[string]int{}
 	recursivePositions := map[string]Position{}
+	var recursiveOrder []string
 	satisfiedRecursive := map[string]bool{}
-	for _, d := range mod.Recursives {
+	registerRecursive := func(d Declaration) {
 		seenInDecl := map[string]bool{}
 		for _, name := range d.Names {
 			if seenInDecl[name] {
@@ -498,7 +501,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				arity = 0
 			}
 			recursiveArities[name] = arity
-			recursivePositions[name] = d.Pos
+			recursivePositions[name] = declarationSymbolPosition(d, name)
+			recursiveOrder = append(recursiveOrder, name)
 			arities[name] = arity
 			if mod.Name != "" {
 				qualified := mod.Name + "!" + name
@@ -508,7 +512,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
-	for _, def := range mod.Definitions {
+	registerDefinition := func(def Definition) {
 		diags = append(diags, checkDefinitionParams(def)...)
 		diags = append(diags, checkDefinitionParamCollisions(def, defined, nil)...)
 		if want, recursive := recursiveArities[def.Name]; recursive {
@@ -552,9 +556,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
-	for _, assumption := range mod.Assumptions {
+	registerAssumption := func(assumption NamedExpr) {
 		if assumption.Name == "" {
-			continue
+			return
 		}
 		pos := assumption.SourcePosition()
 		addName(assumption.Name, pos, OperatorDecl)
@@ -565,12 +569,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			defined[qualified] = pos
 			arities[qualified] = 0
 			declKinds[qualified] = OperatorDecl
-		}
-	}
-	diags = append(diags, checkModuleRecursiveSections(mod)...)
-	for name, pos := range recursivePositions {
-		if !satisfiedRecursive[name] {
-			diags = append(diags, errorAt(pos, "E4291", "recursive declaration %s has no definition", name))
 		}
 	}
 	assumeProveDefs := assumeProveDefinitionNames(mod.Definitions)
@@ -587,24 +585,28 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	labelArities := moduleLabelArities(mod.Definitions)
 	levelChecker := newSanyLevelCompositionChecker(mod, spec)
 	levelChecker.dependencies.declKinds[mod] = declKinds
-	for _, inst := range mod.Instances {
+	generateInstance := func(inst Instance) {
+		diags = append(diags, checks.generator.instance(inst)...)
 		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities, operatorParamSpecs, false)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
 			return checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, true)
 		}})
 	}
-	for _, ref := range mod.ProofRefs {
+	generateProofRef := func(ref ProofRef) {
+		diags = append(diags, checks.generator.reference(ref)...)
 		diags = append(diags, checkProofRef(ref, defined)...)
 		diags = append(diags, checkHideRef(ref, theoremLikeDefs, proofStepNames)...)
 	}
-	for _, proof := range mod.Proofs {
+	generateProof := func(proof ProofSummary) {
+		diags = append(diags, checks.generator.proof(proof)...)
 		diags = append(diags, checkProofSummary(proof, declKinds, mod, spec, false)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{proof.Pos, func() Diagnostics { return checkProofSummary(proof, declKinds, mod, spec, true) }})
 	}
-	for _, assumption := range mod.Assumptions {
+	generateAssumption := func(assumption NamedExpr) {
+		diags = append(diags, checks.generator.fact(assumption)...)
 		expr := assumption.Expr
 		if expr == nil {
-			continue
+			return
 		}
 		if !assumption.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkLabels(expr, labelCheckContext{allowed: assumption.Name != ""})...)
@@ -632,10 +634,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return diags
 		}})
 	}
-	for _, theorem := range mod.Theorems {
+	generateTheorem := func(theorem NamedExpr) {
+		diags = append(diags, checks.generator.fact(theorem)...)
 		expr := theorem.Expr
 		if expr == nil {
-			continue
+			return
 		}
 		if !theorem.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
@@ -662,7 +665,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return diags
 		}})
 	}
-	for _, def := range mod.Definitions {
+	generateDefinition := func(def Definition) {
+		diags = append(diags, checks.generator.definition(&def)...)
 		if _, recursive := recursiveArities[def.Name]; recursive {
 			checks.recursive = append(checks.recursive, func() Diagnostics { return levelChecker.checkRecursiveParameters(def, nil) })
 		}
@@ -706,6 +710,65 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			checks.definitions = append(checks.definitions, levelCheck)
 		}
 	}
+	// Generator.generateModule dispatches the actual body's heirs. Complete
+	// each unit before moving to the next; diagnostic order comes from this
+	// traversal rather than sorting the resulting messages.
+	for _, unit := range sanyModuleGenerationUnits(mod) {
+		if kind := sanyModuleRecursiveSectionType(unit); kind != "" {
+			for _, name := range recursiveOrder {
+				if !satisfiedRecursive[name] {
+					diagnostic := errorAt(unit.position, "E4294", "%s may not appear within a recursive definition section.", kind)
+					if unit.syntax != nil {
+						diagnostic.SANYRange = unit.syntax.Range
+					}
+					diagnostic.SANYMessage = diagnostic.Message
+					diags = append(diags, diagnostic)
+					break
+				}
+			}
+		}
+		switch {
+		case unit.declaration != nil:
+			registerDeclaration(*unit.declaration)
+		case unit.recursive != nil:
+			registerRecursive(*unit.recursive)
+		case unit.instance != nil:
+			generateInstance(*unit.instance)
+			registerInstance(*unit.instance)
+		case unit.assumption != nil:
+			generateAssumption(*unit.assumption)
+			registerAssumption(*unit.assumption)
+		case unit.definition != nil:
+			definition := *unit.definition
+			if definition.TheoremLike {
+				generateDefinition(definition)
+				registerDefinition(definition)
+			} else {
+				registerDefinition(definition)
+				generateDefinition(definition)
+			}
+		}
+		if unit.theorem != nil {
+			generateTheorem(*unit.theorem)
+		}
+		for _, ref := range unit.references {
+			generateProofRef(ref)
+		}
+		for _, proof := range unit.proofs {
+			generateProof(proof)
+		}
+	}
+	// checkForUndefinedRecursiveOps visits the declaration vector, not a map.
+	for _, name := range recursiveOrder {
+		if !satisfiedRecursive[name] {
+			pos := recursivePositions[name]
+			diagnostic := errorAt(pos, "E4291", "recursive declaration %s has no definition", name)
+			diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("Symbol %s declared in RECURSIVE statement but not defined.", name)
+			diags = append(diags, diagnostic)
+		}
+	}
+
 	return diags
 }
 
@@ -754,63 +817,6 @@ func transitiveExtendedModules(spec *Spec, mod *Module, seen map[string]bool) []
 		modules = append(modules, transitiveExtendedModules(spec, depMod, seen)...)
 	}
 	return modules
-}
-
-type recursiveSectionItem struct {
-	kind string
-	pos  Position
-}
-
-func checkModuleRecursiveSections(mod *Module) Diagnostics {
-	var diags Diagnostics
-	if mod == nil || len(mod.Recursives) == 0 {
-		return nil
-	}
-	items := recursiveSectionItems(mod)
-	for _, decl := range mod.Recursives {
-		for _, name := range decl.Names {
-			def, ok := firstDefinitionAfter(mod.Definitions, name, decl.Pos)
-			if !ok {
-				continue
-			}
-			for _, item := range items {
-				if positionBetween(item.pos, decl.Pos, def.Pos) {
-					diags = append(diags, errorAt(item.pos, "E4294", "%s may not appear within a recursive definition section", item.kind))
-				}
-			}
-		}
-	}
-	return diags
-}
-
-func recursiveSectionItems(mod *Module) []recursiveSectionItem {
-	var items []recursiveSectionItem
-	for _, decl := range mod.Declarations {
-		kind := "A declaration"
-		if decl.Kind == VariableDecl {
-			kind = "A VARIABLE declaration"
-		}
-		items = append(items, recursiveSectionItem{kind: kind, pos: decl.Pos})
-	}
-	for _, assumption := range mod.Assumptions {
-		if assumption.Expr != nil {
-			items = append(items, recursiveSectionItem{kind: "An ASSUME", pos: assumption.Position()})
-		}
-	}
-	for _, theorem := range mod.Theorems {
-		if theorem.Expr != nil {
-			items = append(items, recursiveSectionItem{kind: "A THEOREM", pos: theorem.Position()})
-		}
-	}
-	for _, ref := range mod.ProofRefs {
-		items = append(items, recursiveSectionItem{kind: "A USE or HIDE", pos: ref.Pos})
-	}
-	for _, nested := range mod.Nested {
-		if nested != nil {
-			items = append(items, recursiveSectionItem{kind: "A MODULE", pos: nested.Pos})
-		}
-	}
-	return items
 }
 
 func firstDefinitionAfter(defs []Definition, name string, after Position) (Definition, bool) {

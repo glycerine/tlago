@@ -76,19 +76,24 @@ and accepts the corrected `EXTENDS Bitwise, Naturals`. Its LOCAL-helper and nati
 override assertions are unchanged. All four existing bridge checks pass normally
 in 0.372 seconds; log `/mnt/oldrog/tmp/tlago-bitwise-bridge-focused.log`.
 
-Normal root-package session `96678` is live on the `f5019c4` fixture snapshot,
-before the newer expression-visibility corrections.
-It retains all existing tests, original bounds and a 60-minute timeout, without
-race instrumentation or failfast, so subsequent failures remain visible. Both
-temporary-directory variables use workspace `.codex-gotmp`. Log:
-`/mnt/oldrog/tmp/tlago-bitwise-bridge-root-full.log`. Reuse the completed unchanged
-TLC package result; preserve the root handle until terminal status and do not
-claim a pass from silence.
+Normal root-package session `96678` returned status 0 in 1,560.338 seconds
+and is retired. It verifies the `f5019c4` fixture snapshot, before the newer
+expression-visibility and module-unit generation changes. Log:
+`/mnt/oldrog/tmp/tlago-bitwise-bridge-root-full.log`.
+
+Normal full root-package session `96647` is live on the module-unit generation
+snapshot. It retains original bounds and a 60-minute timeout, without race
+instrumentation or failfast. Both temporary-directory variables use workspace
+`.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
+Reuse the completed unchanged TLC package result; preserve the root handle until
+terminal status. Silence does not establish a pass.
 
 Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
+| Final module-unit generation, recursive sections and selector operand errors: existing native behaviors and original TLC selection | Pass | Root 10.496 seconds, session `50362` retired |
+| Complete SANY package on final module-unit snapshot | Pass | 1.344 seconds, session `83693` retired |
 | Final source-order contexts, recursive selector failures and null placeholders: native classes, original parser/output selection, nine original TLC methods and four bridge checks | Pass | Root 12.747 / SANY selection 0.771 seconds, session `96273` retired |
 | Complete SANY package on final expression-visibility snapshot | Pass | 1.587 seconds, session `44533` retired |
 | Native classes, original parser/output selection and nine original TLC correctness tests with source error code 4004 | Pass | Root 9.724 / SANY selection 0.694 seconds, session `49468` retired |
@@ -284,14 +289,22 @@ Seventy-four bounded observations match Java's actual semantic error counts,
 codes, ranges, messages and ordering; this does not establish full Generator parity.
 Receipt: `/mnt/oldrog/tmp/tlago-source-visibility-final-audit-corrected.log`.
 
-Two concrete gaps remain: unknown leaf `BY` facts are not generated or resolved,
-and grouped generation checks can report an assumption error before an earlier
-operator-definition error. Actual Java/Go differences remain in
-`/mnt/oldrog/tmp/tlago-source-visibility-remaining-recursive-final.log`.
-Port actual module-unit generation and proof scopes, rather than sorting error
-messages afterward. Recursive declarations now retain both name visibility and
-body-completion state. Broader constructor, symbol/context and selector boundaries
-remain audit work.
+Module generation now dispatches actual body syntax units rather than grouped
+AST categories. Selector preparation runs within each unit. Declarations,
+instances, definitions, assumptions, theorems and proofs are visited in source
+order; recursive-section checks run before the unit body, and unfinished
+recursive operators are reported in declaration order. Invalid operand selectors
+retain Java's error code 4005, individual selector range and original message.
+Twenty additional source-order and recursive-section observations match Java;
+the established 74 visibility observations still match on this snapshot.
+Receipts: `/mnt/oldrog/tmp/tlago-module-unit-order-audit-corrected.log` and
+`/mnt/oldrog/tmp/tlago-module-unit-final-visibility-audit.log`.
+
+Unknown leaf `BY` facts are still not fully generated or resolved. Nested module
+generation still occurs after the enclosing module rather than within its unit.
+Port those actual generation and proof-scope boundaries next. Broader constructor,
+symbol/context and selector paths remain audit work; these observations do not
+establish full Generator parity.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

@@ -129,7 +129,15 @@ func (r *sanySelectorResolver) addInstance(scope map[string]sanySelectorDefiniti
 		}
 	}
 }
-func (r *sanySelectorResolver) resolveModule(mod *Module) {
+
+type sanyModuleSelectorGenerator struct {
+	resolver *sanySelectorResolver
+	module   *Module
+	scope    map[string]sanySelectorDefinition
+	at       func(*SanySyntaxNode) map[string]sanySelectorDefinition
+}
+
+func (r *sanySelectorResolver) moduleGenerator(mod *Module) *sanyModuleSelectorGenerator {
 	scope := r.scope(mod)
 	// Prepare selectors in each body's generation context. Looking through a
 	// later definition can otherwise report selector errors before Java even
@@ -156,35 +164,56 @@ func (r *sanySelectorResolver) resolveModule(mod *Module) {
 		}
 		return scope
 	}
-	for i := range mod.Definitions {
-		r.walkDefinition(&mod.Definitions[i], mod, at(mod.Definitions[i].Syntax))
-	}
-	for _, a := range mod.Assumptions {
-		if a.AssumeProveBody != nil {
-			r.walkAssumeProve(a.AssumeProveBody, mod, at(a.Syntax))
+	return &sanyModuleSelectorGenerator{resolver: r, module: mod, scope: scope, at: at}
+}
+
+func (g *sanyModuleSelectorGenerator) prepare(run func()) Diagnostics {
+	before := len(g.resolver.diags)
+	run()
+	return g.resolver.diags[before:]
+}
+
+func (g *sanyModuleSelectorGenerator) definition(def *Definition) Diagnostics {
+	return g.prepare(func() { g.resolver.walkDefinition(def, g.module, g.at(def.Syntax)) })
+}
+
+func (g *sanyModuleSelectorGenerator) fact(fact NamedExpr) Diagnostics {
+	return g.prepare(func() {
+		if fact.AssumeProveBody != nil {
+			g.resolver.walkAssumeProve(fact.AssumeProveBody, g.module, g.at(fact.Syntax))
 		} else {
-			r.walk(a.Expr, mod, at(a.Syntax), 0)
+			g.resolver.walk(fact.Expr, g.module, g.at(fact.Syntax), 0)
 		}
-	}
-	for _, a := range mod.Theorems {
-		if a.AssumeProveBody != nil {
-			r.walkAssumeProve(a.AssumeProveBody, mod, at(a.Syntax))
-		} else {
-			r.walk(a.Expr, mod, at(a.Syntax), 0)
-		}
-	}
-	for _, inst := range mod.Instances {
-		r.walkInstance(inst, mod, at(inst.Syntax))
-	}
-	for _, ref := range mod.ProofRefs {
+	})
+}
+
+func (g *sanyModuleSelectorGenerator) instance(instance Instance) Diagnostics {
+	return g.prepare(func() { g.resolver.walkInstance(instance, g.module, g.at(instance.Syntax)) })
+}
+
+func (g *sanyModuleSelectorGenerator) reference(ref ProofRef) Diagnostics {
+	return g.prepare(func() {
 		if !ref.Defs && ref.Expr != nil {
 			_, direct := ref.Expr.(*IdentExpr)
-			r.walkProofFact(ProofFact{Expr: ref.Expr, Direct: direct}, mod, scope)
+			g.resolver.walkProofFact(ProofFact{Expr: ref.Expr, Direct: direct}, g.module, g.at(ref.Syntax))
 		}
-	}
-	for _, proof := range mod.Proofs {
-		r.walkProof(proof, mod, scope)
-	}
+	})
+}
+
+func (g *sanyModuleSelectorGenerator) proof(proof ProofSummary) Diagnostics {
+	return g.prepare(func() {
+		scope := g.at(proof.Syntax)
+		// processTheorem registers the name after generating the statement and
+		// before generating its proof. Later module units remain unavailable.
+		for _, theorem := range g.module.Theorems {
+			if theorem.Syntax == proof.Syntax && theorem.Name != "" {
+				if ref, ok := g.scope[theorem.Name]; ok {
+					scope[theorem.Name] = ref
+				}
+			}
+		}
+		g.resolver.walkProof(proof, g.module, scope)
+	})
 }
 
 func (r *sanySelectorResolver) walkInstance(inst Instance, mod *Module, scope map[string]sanySelectorDefinition) {
@@ -460,7 +489,7 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 				inSuffices = false
 				position := sanySelectorArgNumber(step, len(currentAP.Assumptions)+1)
 				if position < 1 {
-					return nil, true, fmt.Errorf("non-existent operand selected by %s", step.Name)
+					return nil, true, sanyReportSelectorError(step)
 				}
 				declared := false
 				for _, clause := range currentAP.Assumptions[:position-1] {
@@ -500,7 +529,7 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 			}
 			next, ok := sanySelectorOperand(result.body, step)
 			if !ok {
-				return nil, true, fmt.Errorf("non-existent operand selected by %s", step.Name)
+				return nil, true, sanyReportSelectorError(step)
 			}
 			result.body = next
 		}
@@ -580,6 +609,29 @@ func sanySelectorErrorAt(step SanySelectorStep, message string) error {
 	}
 	return detail
 }
+
+// sanyReportSelectorError mirrors Generator.reportSelectorError, including the
+// selector description and the location of the individual selector node.
+func sanyReportSelectorError(step SanySelectorStep) error {
+	item := step.Name
+	if step.Syntax != nil {
+		switch step.Syntax.Kind.JavaName() {
+		case "N_StructOp":
+			item = "argument selector " + step.Name
+		case "N_OpArgs":
+			item = "!(...)"
+		}
+	}
+	detail := &sanySelectorLocationError{
+		code:    "E4005",
+		message: fmt.Sprintf("Nonexistent operand specified by `%s'.", item),
+	}
+	if step.Syntax != nil {
+		detail.location = step.Syntax.Range
+	}
+	return detail
+}
+
 func sanySelectorArgNumber(step SanySelectorStep, count int) int {
 	switch step.Kind {
 	case SanySelectorFirst:

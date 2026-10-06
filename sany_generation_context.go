@@ -293,3 +293,124 @@ func checkLetExpression(expr *LetExpr, context map[string]Position, locals map[s
 	diags = append(diags, checkExpr(expr.Body, context, letLocals)...)
 	return diags
 }
+
+// One syntactic module unit can carry a named theorem definition, its theorem
+// statement, and its proof. They belong to one Generator dispatch iteration.
+type sanyModuleGenerationUnit struct {
+	syntax      *SanySyntaxNode
+	position    Position
+	declaration *Declaration
+	recursive   *Declaration
+	instance    *Instance
+	definition  *Definition
+	assumption  *NamedExpr
+	theorem     *NamedExpr
+	references  []ProofRef
+	proofs      []ProofSummary
+}
+
+func sanyModuleGenerationUnits(mod *Module) []*sanyModuleGenerationUnit {
+	var units []*sanyModuleGenerationUnit
+	bySyntax := map[*SanySyntaxNode]*sanyModuleGenerationUnit{}
+	unit := func(syntax *SanySyntaxNode, position Position) *sanyModuleGenerationUnit {
+		if syntax != nil {
+			if existing := bySyntax[syntax]; existing != nil {
+				return existing
+			}
+		}
+		result := &sanyModuleGenerationUnit{syntax: syntax, position: position}
+		units = append(units, result)
+		if syntax != nil {
+			bySyntax[syntax] = result
+		}
+		return result
+	}
+	for i := range mod.Declarations {
+		declaration := &mod.Declarations[i]
+		unit(declaration.Syntax, declaration.Pos).declaration = declaration
+	}
+	for i := range mod.Recursives {
+		declaration := &mod.Recursives[i]
+		unit(declaration.Syntax, declaration.Pos).recursive = declaration
+	}
+	for i := range mod.Instances {
+		instance := &mod.Instances[i]
+		unit(instance.Syntax, instance.SourcePosition()).instance = instance
+	}
+	for i := range mod.Definitions {
+		definition := &mod.Definitions[i]
+		unit(definition.Syntax, definition.SourcePosition()).definition = definition
+	}
+	for i := range mod.Assumptions {
+		assumption := &mod.Assumptions[i]
+		unit(assumption.Syntax, assumption.SourcePosition()).assumption = assumption
+	}
+	for i := range mod.Theorems {
+		theorem := &mod.Theorems[i]
+		unit(theorem.Syntax, theorem.SourcePosition()).theorem = theorem
+	}
+	for _, nested := range mod.Nested {
+		unit(nested.Syntax, nested.Pos)
+	}
+	for _, syntax := range mod.ProofRefNodes {
+		unit(syntax, sanyNodePosition(syntax))
+	}
+	for _, reference := range mod.ProofRefs {
+		current := unit(reference.Syntax, reference.Pos)
+		current.references = append(current.references, reference)
+	}
+	for _, proof := range mod.Proofs {
+		current := unit(proof.Syntax, proof.Pos)
+		current.proofs = append(current.proofs, proof)
+	}
+	if mod.Syntax != nil {
+		heirs := mod.Syntax.GetHeirs()
+		ordered := make([]*sanyModuleGenerationUnit, 0, len(units))
+		if len(heirs) > 2 {
+			for _, syntax := range heirs[2].GetHeirs() {
+				if unit := bySyntax[syntax]; unit != nil {
+					ordered = append(ordered, unit)
+				}
+			}
+		}
+		return ordered
+	}
+	// Native callers can construct ASTs directly without parser nodes.
+	sort.SliceStable(units, func(i, j int) bool { return units[i].position.Compare(units[j].position) < 0 })
+	return units
+}
+
+// checkIfInRecursiveSection runs at the unit itself, before its body.
+// INSTANCE and ordinary definitions are permitted inside recursive sections.
+func sanyModuleRecursiveSectionType(unit *sanyModuleGenerationUnit) string {
+	if unit.syntax != nil {
+		switch unit.syntax.Kind.JavaName() {
+		case "N_VariableDeclaration":
+			return "A VARIABLE declaration"
+		case "N_ParamDeclaration":
+			return "A declaration"
+		case "N_Theorem":
+			return "A THEOREM"
+		case "N_Assumption":
+			return "An ASSUME"
+		case "N_UseOrHide":
+			return "A USE or HIDE"
+		case "N_Module":
+			return "A MODULE "
+		}
+		return ""
+	}
+	switch {
+	case unit.declaration != nil && unit.declaration.Kind == VariableDecl:
+		return "A VARIABLE declaration"
+	case unit.declaration != nil:
+		return "A declaration"
+	case unit.assumption != nil:
+		return "An ASSUME"
+	case unit.theorem != nil:
+		return "A THEOREM"
+	case len(unit.references) > 0:
+		return "A USE or HIDE"
+	}
+	return ""
+}
