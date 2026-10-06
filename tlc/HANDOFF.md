@@ -94,7 +94,8 @@ Focused verification:
 | Packaged TLC model integration: existing CLI behaviors and original subset methods | Pass | 4.638 seconds; original CLI classes 0.017 seconds |
 | Off-heap barrier failure semantics: original 22 short cases and 48-worker/checkpoint sequence | Pass | 0.077 / 5.319 seconds; sessions `19096` / `18062` retired |
 | Runner completion and memory banners: original message/CLI checks and trace/checkpoint models | Pass | 6.721 / 1.756 seconds; sessions `9440` / `98861` retired |
-| Latest all-package compilation | Pass | Session `54314` retired |
+| Original factory followed by complete off-heap class with Ant isolation | Pass | 46.331 seconds, session `33613` retired; includes 99,999,999-entry index |
+| Latest all-package compilation | Pass | After Ant class and runner seed corrections, terminal 0 |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -157,7 +158,7 @@ Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Full TLC after barrier and duplicate-test reconciliation | `73adde2` | `33649` | `tlago-barrier-reconciliation-full-tlc.log` |
+| Original simulation/recovery/CodePlex models after seed ordering | `592d0d4` plus runner correction | `62916` | `tlago-runner-seed-original-models.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
@@ -185,6 +186,15 @@ workers, interval settings, time bound and assertions. The failed workspace
 snapshot predates this setup correction and later production corrections. The completed broader fingerprint receipt includes
 the original 99,999,999-entry index method and retains all source bounds.
 No job in this table has full-run credit yet. None uses `-race`.
+
+Full TLC `33649` is retired with status 1 at `73adde2`, in 672.555 seconds.
+The original off-heap class hit an uninitialized fingerprint set retained from
+an earlier factory class. Ant uses a fresh JVM per class; the native original
+class now initializes its own singleton before its methods. The exact factory
+then off-heap sequence reproduced the failure in 0.047 seconds and now passes
+in 46.331 seconds, including the complete original index method. Production
+singleton lifetime and original assertions are unchanged. This resolves that
+failure; it is not yet a full-suite success receipt.
 
 The MSB and LSB random jobs retain all 2,147,483,648 iterations, default
 factories/configuration, seed, checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.

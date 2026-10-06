@@ -13,6 +13,9 @@ import (
 
 // Whole original OffHeapDiskFPSetTest, including its 64-bit setup assumption.
 func TestJavaOffHeapDiskFPSet(t *testing.T) {
+	// Ant forks each original test class; constructor-only factory tests from
+	// earlier classes must not remain in this class's singleton barrier.
+	InitializeOffHeapDiskFPSetStatics()
 	run := func(name string, body func(*testing.T)) {
 		t.Run(name, func(t *testing.T) {
 			if strconv.IntSize != 64 {

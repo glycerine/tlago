@@ -1,5 +1,27 @@
 # TLC Port Progress
 
+2026-10-06 original off-heap class Ant isolation:
+Full TLC 33649 at 73adde2 is terminal 1 after 672.555s. It reaches the original
+off-heap class and fails IllegalArgumentException while evicting an uninitialized
+set left registered by an earlier factory class. Pinned customBuild.xml forks
+one JVM per original test class; the native component class lacked that source
+runtime boundary. Initialize the off-heap singleton once at the beginning of
+TestJavaOffHeapDiskFPSet, after prior classes' workers have joined, matching the
+model-test isolation already implemented. Preserve all methods, assertions,
+counts and production singleton lifetime.
+
+Exact original FPSetFactoryGetFPSetOffHeap then OffHeapDiskFPSet class selection
+reproduces the failure in 0.047s before correction (terminal 1), then passes
+46.331s (33613 terminal 0). The single-part -skip selector did not exclude the
+child index method; the corrected run therefore executes the complete source
+class, including the original 99,999,999-entry index. No bound was reduced and
+no duplicate run was started. Logs under /mnt/oldrog/tmp:
+tlago-ant-offheap-class-isolation-before.log and -after.log. Original method
+inventory remains unchanged. Final all-package compilation returns 0 with this
+setup and the separate runner seed-order correction. The latter's focused
+original model selection 62916 remains live at 592d0d4 plus runner correction;
+random 63113/59782 remain live at a915e08. No full suite is credited for 33649.
+
 2026-10-06 TLC runner completion, trace-generation I/O and memory banners:
 Pinned TLC.process finally ignores OUTPUT flush/close IOException, prints
 TLC_FINISHED, then generates the trace spec. Its TraceExplorationSpec.generate
