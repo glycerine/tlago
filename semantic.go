@@ -302,18 +302,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				declKinds[assumption.Name] = OperatorDecl
 			}
 		}
-		for _, export := range syntheticStandardExports(depMod.Name, depMod.Pos) {
-			diags = append(diags, checkImportedSymbolAmbiguity(export.Name, export.Kind, export.Pos, depMod.Name, extendedSymbols, "W4800")...)
-			if _, exists := defined[export.Name]; !exists {
-				defined[export.Name] = export.Pos
-			}
-			if _, exists := declKinds[export.Name]; !exists {
-				declKinds[export.Name] = export.Kind
-			}
-			if _, exists := arities[export.Name]; !exists {
-				arities[export.Name] = export.Arity
-			}
-		}
 	}
 	if enclosing != nil {
 		for _, symbol := range semanticModuleExports(enclosing, spec, map[string]bool{}) {
@@ -432,18 +420,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					if _, exists := declKinds[qualified]; !exists {
 						declKinds[qualified] = OperatorDecl
 					}
-				}
-			}
-			for _, export := range syntheticStandardExports(depMod.Name, depMod.Pos) {
-				diags = append(diags, checkImportedSymbolAmbiguity(export.Name, export.Kind, export.Pos, depMod.Name, extendedSymbols, "W4800")...)
-				if _, exists := defined[export.Name]; !exists {
-					defined[export.Name] = export.Pos
-				}
-				if _, exists := declKinds[export.Name]; !exists {
-					declKinds[export.Name] = export.Kind
-				}
-				if _, exists := arities[export.Name]; !exists {
-					arities[export.Name] = export.Arity
 				}
 			}
 			for _, inst := range depMod.Instances {
@@ -1626,43 +1602,6 @@ func instanceSymbolConflict(symbol semanticExportedSymbol, previous localSymbol)
 	return Diagnostics{diagnostic}
 }
 
-type syntheticExport struct {
-	Name  string
-	Kind  DeclarationKind
-	Arity int
-	Pos   Position
-}
-
-func syntheticStandardExports(moduleName string, pos Position) []syntheticExport {
-	switch moduleName {
-	case "Naturals":
-		return []syntheticExport{
-			{Name: "+", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "-", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "*", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "^", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "<", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: ">", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "\\leq", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "\\geq", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "%", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "\\div", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "..", Kind: OperatorDecl, Arity: 2, Pos: pos},
-		}
-	case "Integers":
-		return []syntheticExport{
-			{Name: "-.", Kind: OperatorDecl, Arity: 1, Pos: pos},
-		}
-	case "Reals":
-		return []syntheticExport{
-			{Name: "/", Kind: OperatorDecl, Arity: 2, Pos: pos},
-			{Name: "Infinity", Kind: OperatorDecl, Arity: 0, Pos: pos},
-		}
-	default:
-		return nil
-	}
-}
-
 func definitionSatisfiesSymbolicConstantDeclaration(def Definition, declKinds map[string]DeclarationKind, arities map[string]int) bool {
 	if def.Name == "" || isIdentifierName(def.Name) {
 		return false
@@ -1876,17 +1815,6 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 			pos:         assumption.SourcePosition(),
 			arity:       0,
 			hasArity:    true,
-		}
-	}
-	for _, export := range syntheticStandardExports(mod.Name, mod.Pos) {
-		byName[export.Name] = semanticExportedSymbol{
-			name:     export.Name,
-			source:   export.Pos,
-			origin:   mod,
-			kind:     export.Kind,
-			pos:      export.Pos,
-			arity:    export.Arity,
-			hasArity: true,
 		}
 	}
 
@@ -3273,10 +3201,14 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		}
 	case *LiteralExpr:
 	case *UnaryExpr:
-		diags = append(diags, checkPercentOperatorSymbolDefined(e.Op, e.Pos, defined, locals)...)
+		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
+			return unresolved
+		}
 		diags = append(diags, checkExpr(e.Expr, defined, locals)...)
 	case *BinaryExpr:
-		diags = append(diags, checkPercentOperatorSymbolDefined(e.Op, e.Pos, defined, locals)...)
+		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
+			return unresolved
+		}
 		diags = append(diags, checkExpr(e.Left, defined, locals)...)
 		diags = append(diags, checkExpr(e.Right, defined, locals)...)
 	case *CallExpr:
@@ -3415,20 +3347,74 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 	return diags
 }
 
-func checkPercentOperatorSymbolDefined(op string, pos Position, defined map[string]Position, locals map[string]bool) Diagnostics {
-	if op != "%" && op != "%%" {
+// GenID appends each raw prefix identifier and the final raw operator token.
+// Alias canonicalization belongs to symbol lookup, not the reported name.
+func sanyOperatorGenIDName(operator *SanySyntaxNode) string {
+	heirs := operator.GetHeirs()
+	if len(heirs) != 2 {
+		return ""
+	}
+	var name strings.Builder
+	for _, element := range heirs[0].GetHeirs() {
+		parts := element.GetHeirs()
+		if len(parts) < 2 {
+			continue
+		}
+		name.WriteString(sanyFirstTokenImage(parts[0]))
+		name.WriteByte('!')
+	}
+	name.WriteString(sanyFirstTokenImage(heirs[1]))
+	return name.String()
+}
+
+// Generator resolves the operator before generating any operand. Parser
+// precedence metadata does not declare a symbol in the semantic context.
+func checkSanyOperatorSymbolDefined(op string, pos Position, syntax *SanySyntaxNode, defined map[string]Position, locals map[string]bool) Diagnostics {
+	name := op
+	form := "infix"
+	operatorRange := SanyRange{Begin: pos, End: pos.SourceEnd()}
+	expressionRange := operatorRange
+	if syntax != nil {
+		expressionRange = syntax.Range
+		heirs := syntax.GetHeirs()
+		index := -1
+		switch syntax.Kind.JavaName() {
+		case "N_InfixExpr":
+			index = 1
+		case "N_PrefixExpr":
+			form, index = "prefix", 0
+		case "N_PostfixExpr":
+			form, index = "postfix", 1
+		}
+		if index >= 0 && index < len(heirs) {
+			operator := heirs[index]
+			operatorRange = operator.Range
+			if rawName := sanyOperatorGenIDName(operator); rawName != "" {
+				name = rawName
+				// GenID.finalAppend changes only the final raw unary '-'.
+				if form == "prefix" && (name == "-" || strings.HasSuffix(name, "!-")) {
+					name += "."
+				}
+			}
+		}
+	}
+	resolvedName := ResolveSanyOperatorSynonym(name)
+	if resolvedName == "" || localIdentifierInScope(locals, resolvedName) {
 		return nil
 	}
-	if op == "" || localIdentifierInScope(locals, op) {
+	if _, ok := sanyInitialBuiltinOperatorInfo(resolvedName); ok {
 		return nil
 	}
-	if _, ok := sanyBuiltinOperatorInfo(op); ok {
+	if _, ok := defined[resolvedName]; ok {
 		return nil
 	}
-	if _, ok := defined[op]; ok {
-		return nil
-	}
-	return Diagnostics{errorAt(pos, "E4200", "undefined operator %s", op)}
+	missing := errorAt(operatorRange.Begin, "E4004", "undefined operator %s", resolvedName)
+	missing.SANYRange = operatorRange
+	missing.SANYMessage = fmt.Sprintf("Could not find declaration or definition of symbol '%s'.", name)
+	unresolved := errorAt(pos, "E4004", "could not resolve %s operator %s", form, resolvedName)
+	unresolved.SANYRange = expressionRange
+	unresolved.SANYMessage = fmt.Sprintf("Couldn't resolve %s operator symbol `%s'.", form, name)
+	return Diagnostics{missing, unresolved}
 }
 
 func theoremStatementReferenceBase(name string) (string, bool) {
@@ -3958,18 +3944,11 @@ func operatorArgumentArity(expr Expr, arities map[string]int, locals map[string]
 }
 
 func builtinOperatorArity(name string) (int, bool) {
-	op, ok := GetSanyOperator(name)
+	info, ok := sanyInitialBuiltinOperatorInfo(name)
 	if !ok {
 		return 0, false
 	}
-	switch {
-	case op.IsPrefix(), op.IsPostfix():
-		return 1, true
-	case op.IsInfix():
-		return 2, true
-	default:
-		return 0, false
-	}
+	return info.arity, true
 }
 
 func checkFunctionArity(expr Expr, functionArities map[string]int, locals map[string]bool) Diagnostics {

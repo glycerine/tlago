@@ -145,7 +145,7 @@ THEOREM RuleTLA1 == ASSUME STATE P, STATE f,
 	t.Run("loads TLC runtime helper standard operators", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Root.tla"), `---- MODULE Root ----
-EXTENDS TLC
+EXTENDS Naturals, TLC
 Choice == RandomElement({1, 2})
 Symmetry == Permutations({"a", "b"})
 Register == TLCSet("level", TLCGet("level") + 1)
@@ -174,12 +174,12 @@ Folded == FoldFunction(+, Zero, f)
 FoldedOnSet == FoldFunctionOnSet(+, Zero, f, S)
 Summed == SumFunction(f) + SumFunctionOnSet(f, S)
 SeqHelpers == SetToSeq(S) \in BoundedSeq(S, One) /\ IsPrefix(<<>>, SetToSeq(S))
-FiniteHelpers == RandomSubset(One, S)
+FiniteHelpers == kSubset(One, S)
 DyadicHelper == PrettyPrint(Add(One, Half(One))) \o PrettyPrint(IsDyadicRational(Half(One)))
 ApalacheHelper == FunAsSeq(f, One, One)
 Facts == Folded \in Nat /\ IsFiniteSet(S)
 THEOREM UsesProofLibs == Facts
-  BY SumFunctionNat, FoldFunctionOnSetType, Induction, SimpleArithmetic DEF Facts
+  BY SumFunctionNat, FoldFunctionOnSetType, NatInduction, SimpleArithmetic DEF Facts
 ====`)
 
 		spec, diags := LoadSanySpec(filepath.Join(dir, "Root.tla"), LoadOptions{})

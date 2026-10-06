@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `0351434`.
+Updated: October 6, 2026. Full-workspace verification baseline: `44aaf11`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,39 +47,48 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The latest completed full normal workspace suite passes on `0351434`:
+The latest completed full normal workspace suite passes on `44aaf11`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,569.930 seconds |
-| SANY tests | Pass | 1.209 seconds |
-| TLC | Pass | 793.867 seconds |
+| Root package | Pass | 1,547.242 seconds |
+| SANY tests | Pass | 1.298 seconds |
+| TLC | Pass | 780.089 seconds |
 | CLI command | No test files | — |
 
-Session `84303` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-definition-lookahead-workspace.log`. This verifies the
-recorded lexical and definition-lookahead snapshot with original bounds and
-normal execution. It predates parser-footer and expression-grammar corrections.
-Historical receipts belong in `PORT_PROGRESS.md`.
+Session `16991` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-expression-grammar-workspace.log`. This verifies the
+parser-footer and expression-grammar snapshot with original bounds and normal
+execution. It predates `aed6180` stack corrections and newer semantic lookup and
+real-module packaging. Historical receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `16991` is live on `44aaf11`, the parser-footer
-and expression-grammar changes. This predates the newer operator-stack work. It preserves original bounds, failfast and a
-60-minute timeout, without race instrumentation. Both `GOTMPDIR` and `TMPDIR`
-use workspace `.codex-gotmp`. Log:
-`/mnt/oldrog/tmp/tlago-expression-grammar-workspace.log`. No success is claimed
-until this same handle returns terminal status. Do not start a duplicate full
-workload.
+Normal workspace session `22503` returned status 1 and is retired. Its root
+package failed the invalid native unary-minus fixture, which is now corrected
+against Java and passes focused checks. Its complete TLC package passed in
+769.038 seconds; CLI has no tests and SANY passed in 1.253 seconds. The root
+failure prevents full-workspace pass credit. Log:
+`/mnt/oldrog/tmp/tlago-operator-resolution-workspace.log`.
+
+Normal root-package session `21211` is live on the final corrected lookup,
+error-code, real-module and native fixture snapshot. It retains all existing
+tests, original bounds, failfast and a 60-minute timeout without race
+instrumentation. Both temporary-directory variables use workspace `.codex-gotmp`.
+Log: `/mnt/oldrog/tmp/tlago-operator-resolution-root-final.log`. The completed
+TLC package is reused rather than duplicated; preserve this root handle until
+terminal status and do not claim a pass from silence.
 
 Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/resolver/semantic/CLI/XML and original output selection after stack corrections | Pass | Root 4.404 / SANY selection 0.695 seconds, session `86333` retired |
-| Complete SANY package with source precedence assertions | Pass | 1.580 seconds, session `14577` retired |
-| Original TLC INSTANCE, warning, trace and action-level selection | Pass | 1.442 seconds, session `58247` retired |
-| Existing bounded root corpus and parser-reference checks | Pass | Final grammar changes |
-| All-package compilation | Pass | Operator-stack corrections |
-| Original Java ParseErrorTests class | Pass | One original parameter/method, 0.074 seconds |
+| Native classes, original parser/output selection and nine original TLC correctness tests with source error code 4004 | Pass | Root 9.724 / SANY selection 0.694 seconds, session `49468` retired |
+| Complete SANY package after final source error-code correction | Pass | 1.338 seconds, session `8868` retired |
+| Original TLC operator configuration, INSTANCE, warning, action-level and assumption-value selection | Pass | Nine original methods; 4.299 seconds before the code correction, included in final `49468` pass |
+| Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
+| Native behavior classes and original REPL source checks, excluding corpus sweeps | Pass | 7.284 seconds, session `31922` retired |
+| Existing native exporter behavior class with Java-valid source and unordered IR | Pass | 0.035 seconds, session `62377` retired |
+| All-package compilation | Pass | Final sources compile; no additional long workloads |
+| Original Java ParseErrorTests class | Pass | Included unchanged in final `49468` selection |
 
 Earlier focused receipts belong in `PORT_PROGRESS.md`. These checks retain their
 recorded scope; passing translated tests does not establish whole-method fidelity
@@ -234,9 +243,29 @@ reduction preserves accumulated errors before the ordinary-constructor exception
 Record selection uses the dedicated reduction. Prefix reduction preserves its
 raw operator node, including unary minus; original precedence assertions compare
 the input symbols unchanged. Twenty-one direct stack observations match Java.
-Eleven of thirteen additional full-front-end observations match; two reveal
-remaining semantic gaps: Go accepts undeclared `-.` and `^+` where Java reports
-symbol-resolution errors. Keep those differences visible and fix actual lookup.
+All thirteen additional full-front-end observations now match after actual
+semantic lookup: undeclared `-.` and `^+` fail before generating operands.
+Twenty-two further observations match declarations, aliases, local operator
+scopes and diagnostic ordering. Raw operator names remain in messages; lookup
+alone resolves aliases. Both missing-operator messages retain Java error code
+4004 (`SUSPECTED_UNREACHABLE_CHECK`), preserving message-control behavior. Built-in arity comes from the actual initial context,
+including the binary `\times`, rather than parser metadata or XML projection.
+
+Packaged module loading now uses the existing byte-exact Java standard modules,
+CommunityModules, TLAPS modules and the single Apalache module source. Abbreviated
+module bodies and synthesized arithmetic exports are removed. Genuine declarations
+and source locations drive imports. This is source loading, not a claim that every
+module runtime override or semantic construct is complete. Native fixture corrections
+retain their assertions and are checked against Java; original Java fixtures are
+unchanged. The exporter sorting check starts with Java-valid source, then deliberately
+reverses its IR definitions before checking the unchanged output-order assertion.
+
+Two concrete generation gaps remain: the assembled module-name map admits an
+operator defined later in the source, and unknown leaf `BY` facts are not generated
+or resolved. Both differ from actual Java output in
+`/mnt/oldrog/tmp/tlago-operator-resolution-boundary-audit.log`. Port declaration
+visibility and proof-fact generation in source order; do not hide these differences
+or treat the matching bounded observations as complete generation parity.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

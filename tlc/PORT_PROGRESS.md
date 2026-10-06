@@ -1,5 +1,111 @@
 # TLC Port Progress
 
+2026-10-06 Actual semantic operator lookup and original packaged module bodies:
+Previous goal turn committed aed6180. Full normal workspace 16991 returns
+status 0 and is retired: root 1,547.242 / SANY 1.298 / TLC 780.089 seconds,
+CLI no tests. It verifies 44aaf11 before aed6180/current lookup corrections;
+log tlago-expression-grammar-workspace.log under /mnt/oldrog/tmp. Original
+full LSB 32959 remains live on its recorded snapshot, now above 1,421,625,300
+of 2,147,483,648 insertions. Preserve original bounds and its live handle.
+
+Inspect Generator.GenID.finalAppend/generateGenID and infix/prefix/postfix
+expression generation. Resolve actual initial-context, declared or locally
+bound symbols before operands, reporting both original failure messages and
+ranges when absent. Remove the percent-only check. Preserve raw GenID spelling
+in diagnostics, canonicalize only for lookup, and apply the unary-negation
+suffix at the generation phase. Built-in arity now comes from the initial
+symbol table, not parser fixity metadata or XML's Cartesian-product mapping.
+All thirteen prior stack/front-end observations now match, including '-.' and
+'^+'. Twenty-two additional observations match declarations, local scopes,
+aliases, missing-operand suppression and exact error accumulation. Correct the
+scratch prefix-definition input to source-valid '-. a == a'; confirm it reaches
+semantic/lint phases, rather than giving semantic credit for a shared parse
+failure. Final logs tlago-operator-resolution-matrix-valid-prefix.log and
+ tlago-operator-resolution-front-end-raw-final.log. Earlier alias mismatch logs
+remain visible; raw GenID assembly fixes that production issue.
+
+Correct lookup exposes invalid native arithmetic fixtures and abbreviated
+library bodies. Embed the existing original Java standard, CommunityModules,
+TLAPS and single Apalache module bytes. Remove all fallback bodies and synthetic
+arithmetic exports; these had also replaced genuine source locations and caused
+false INSTANCE conflicts. Existing resolver checks now use genuine dependencies
+and theorem exports. This does not prove all runtime overrides or semantic
+constructs complete. No original fixture bytes are changed; no corpus sweep or
+invented persistent test is added.
+
+Actual Java verifies sixty native fixture corrections in indexed original/new
+pairs: each original fails semantics and each corrected source passes. Log
+ tlago-operator-resolution-fixture-audit.log and distinct pair outputs under
+ tlago-operator-resolution-fixture-audit. Separate Java checks verify both
+counter-template invariants, log tlago-operator-resolution-next-native-java-validation.log.
+Imports retain existing assertions and source coordinates; strict-subset native
+fixtures define their intended user operator explicitly. The library fixture
+uses genuine kSubset and NatInduction exports instead of invented names.
+Initial receipts with repeated module filenames are superseded by the indexed
+pair audit, which preserves every distinct source/output. No TLC method-count
+credit: these are corrections to existing native checks, not original test ports.
+
+Final focused root parser/resolver/semantic/CLI/XML/model-checker and original
+output selection passes 5.917 seconds; SANY selection 0.640 seconds (11183
+retired). Complete SANY passes 1.248 seconds (34546 retired), log
+ tlago-operator-resolution-sany-final.log. All native behavior classes plus
+original REPL source checks, excluding corpus sweeps, pass 7.284 seconds
+(31922 retired), log tlago-operator-resolution-native-all-focused.log.
+Established eighteen lexical/syntax and sixteen module-loading comparisons
+still match, logs tlago-operator-resolution-parser-boundaries.log and
+ tlago-operator-resolution-loading-boundaries.log (75455 retired). No race.
+
+New normal workspace 22503 has a root failure at a native unary-minus fixture
+missing Integers. Java confirms original SOURCE_ERRORS=0,4 and corrected=0,0;
+add its import without changing the two-UNARY_MINUS assertion. The existing
+native exporter class next exposes an invalid forward-reference sorting fixture.
+Check source-valid B-before-A with Naturals, then deliberately reverse the two
+IR definitions and call the actual exporter. The unchanged B,A output assertion
+still tests reordering; Java verifies the source. Final class passes 0.035 seconds
+(62377 retired), log tlago-operator-resolution-native-ir-valid-source.log.
+This is a targeted native class correction, not an ApalacheIR corpus sweep.
+
+Workspace 22503 later returns status 1 and is retired. Complete TLC passes
+769.038 seconds, SANY 1.253 seconds, CLI no tests, but the recorded root failure
+prevents full-workspace pass credit. Log tlago-operator-resolution-workspace.log.
+Its root snapshot predates the final two native exporter corrections. Original
+bounds, failfast, 60-minute timeout and both temporary-directory variables on
+workspace .codex-gotmp; no race.
+
+Nine unchanged original TLC operator-configuration, INSTANCE, elevated-warning,
+action-level and assumption-value methods pass 4.299 seconds (78504 retired),
+log tlago-operator-resolution-original-tlc-focused.log. Final review restores
+actual code 4004 (SUSPECTED_UNREACHABLE_CHECK) for both operator failures, instead
+of reusing SYMBOL_UNDEFINED's code 4200. Final native classes, original REPL,
+parser/output and those nine original TLC methods pass root 9.724 / SANY
+selection 0.694 seconds (49468 retired), log
+ tlago-operator-resolution-source-code-final.log. Complete SANY passes 1.338
+seconds (8868 retired), log tlago-operator-resolution-source-code-sany.log.
+All-package compilation passes, log tlago-operator-resolution-final-compile.log.
+
+New normal root-only 21211 is live on the final corrected source/error-code and
+fixture snapshot, log tlago-operator-resolution-root-final.log. All existing
+root tests, original bounds, failfast, 60-minute timeout and both temporary
+variables on workspace .codex-gotmp; no race. Reuse the completed unchanged TLC
+package result rather than duplicate that long workload. Preserve this root
+handle until terminal status; no current root or full-workspace success claim. Initial failing selections are retained in
+ tlago-operator-resolution-focused.log,
+ tlago-operator-resolution-real-community.log,
+ tlago-operator-resolution-real-libraries.log,
+ tlago-operator-resolution-verified-fixtures.log,
+ tlago-operator-resolution-complete-focused.log and
+ tlago-operator-resolution-native-ir-focused.log. Those terminal failures earn
+no success credit. Matrix script status alone is not comparison evidence.
+
+A separate actual Java/Go boundary audit reveals two remaining shortcuts:
+forward operator definitions are admitted by the preassembled name map, and
+unknown leaf BY facts are ignored. Both raw diffs remain in
+ tlago-operator-resolution-boundary-audit.log. Two qualified-operator observations
+match parser failures, not successful qualified semantic generation; do not give
+them semantic credit. Next port declaration visibility and proof-fact generation
+in source order, retaining recursive exceptions and proof scopes. The overall
+goal remains incomplete; new distributed architecture stays postponed.
+
 2026-10-06 Source OperatorStack failures and reductions:
 Port the actual OperatorStack ParseException messages, source locations,
 missing-expression cases, precedence failures and mistyped-== hint. Preserve

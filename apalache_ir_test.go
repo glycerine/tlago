@@ -126,7 +126,7 @@ Init == x = 0
 	})
 
 	t.Run("serializes SANY prefix minus as Apalache unary minus", func(t *testing.T) {
-		jsonText, diags := ApalacheIRJSONSource("UnaryMinus.tla", `---- MODULE UnaryMinus ----
+		jsonText, diags := ApalacheIRJSONSource("UnaryMinus.tla", `---- MODULE UnaryMinus ---- EXTENDS Integers
 A == -1
 B == -(1 + 2)
 ====`, ApalacheIROptions{})
@@ -233,10 +233,16 @@ Use == Op
 	})
 
 	t.Run("sorts declarations by define-before-use dependencies", func(t *testing.T) {
-		jsonText, diags := ApalacheIRJSONSource("Sorted.tla", `---- MODULE Sorted ----
-A == B + 1
+		spec, diags := CheckSanySource("Sorted.tla", `---- MODULE Sorted ----
+EXTENDS Naturals
 B == 1
-====`, ApalacheIROptions{})
+A == B + 1
+====`)
+		requireNoErrors(t, diags)
+		// Exercise exporter sorting with an unordered IR input after checking
+		// valid SANY source. Java rejects forward references in TLA+ source.
+		spec.Root.Definitions[0], spec.Root.Definitions[1] = spec.Root.Definitions[1], spec.Root.Definitions[0]
+		jsonText, diags := ApalacheIRJSON(spec, ApalacheIROptions{})
 		requireNoErrors(t, diags)
 
 		var root struct {

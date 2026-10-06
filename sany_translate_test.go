@@ -337,7 +337,7 @@ Rec == [
 	})
 
 	t.Run("checks function constructors and applications through SANY syntax", func(t *testing.T) {
-		_, diags := CheckSanySource("Functions.tla", `---- MODULE Functions ----
+		_, diags := CheckSanySource("Functions.tla", `---- MODULE Functions ---- EXTENDS Naturals
 VARIABLE x
 Fcn == [i \in {1, 2} |-> i + x]
 Val == Fcn[1]
@@ -355,7 +355,7 @@ Val == F[1]
 	})
 
 	t.Run("checks LET-local bounded function definitions through SANY syntax", func(t *testing.T) {
-		_, diags := CheckSanySource("LetBoundedFunctionDefs.tla", `---- MODULE LetBoundedFunctionDefs ----
+		_, diags := CheckSanySource("LetBoundedFunctionDefs.tla", `---- MODULE LetBoundedFunctionDefs ---- EXTENDS Naturals
 Cardinality(Base) ==
   LET CS[T \in SUBSET Base] == IF T = {} THEN 0
                             ELSE 1 + CS[T \ {CHOOSE x : x \in T}]
@@ -384,7 +384,7 @@ a + b == a
 	})
 
 	t.Run("model checks user-defined infix operators through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE InfixOperatorModel ----
+		spec := `---- MODULE InfixOperatorModel ---- EXTENDS Naturals
 VARIABLE x
 a \oplus b == a + b
 Init == x = 1 \oplus 2
@@ -403,7 +403,7 @@ INVARIANT Inv
 	})
 
 	t.Run("checks set comprehensions through SANY syntax", func(t *testing.T) {
-		_, diags := CheckSanySource("Sets.tla", `---- MODULE Sets ----
+		_, diags := CheckSanySource("Sets.tla", `---- MODULE Sets ---- EXTENDS Naturals
 CONSTANT S
 Subset == {x \in S : x = x}
 Mapped == {x + 1 : x \in S}
@@ -741,7 +741,7 @@ PROOF
 
 	t.Run("checks higher-order operator references through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("OperatorRefs.tla", `---- MODULE OperatorRefs ----
-EXTENDS Naturals
+EXTENDS Naturals, Sequences
 Apply(op(_, _), x, y) == op(x, y)
 Add(x, y) == x + y
 Sum == Apply(+, 1, 2)
@@ -798,7 +798,7 @@ THEOREM Good ==
 	})
 
 	t.Run("model checks nondeterministic IF specs through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE Nondet ----
+		spec := `---- MODULE Nondet ---- EXTENDS Naturals
 VARIABLE x
 Init == x \in {0, 1}
 Next == (x < 2 /\ x' \in {x, x + 1}) \/ (x = 2 /\ x' = x)
@@ -816,7 +816,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks UNCHANGED tuple actions through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE TwoVars ----
+		spec := `---- MODULE TwoVars ---- EXTENDS Naturals
 VARIABLE x, y
 Init == x = 0 /\ y = 7
 Next == (x < 2 /\ x' = x + 1 /\ UNCHANGED y) \/ (x = 2 /\ UNCHANGED <<x, y>>)
@@ -834,7 +834,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks LET IN specs through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE LetCounter ----
+		spec := `---- MODULE LetCounter ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == LET Inc == x + 1 IN (x < 3 /\ x' = Inc) \/ (x = 3 /\ x' = x)
@@ -852,7 +852,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks finite quantifiers through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE Quantified ----
+		spec := `---- MODULE Quantified ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == (x < 2 /\ x' = x + 1) \/ (x = 2 /\ x' = x)
@@ -870,7 +870,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks multi-variable bounded quantifiers through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE MultiQuantified ----
+		spec := `---- MODULE MultiQuantified ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == x' = x
@@ -888,7 +888,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks multi-domain bounded quantifiers through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE MultiDomainQuantified ----
+		spec := `---- MODULE MultiDomainQuantified ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == x' = x
@@ -906,7 +906,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks existential action assignments through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE ExistentialActionModel ----
+		spec := `---- MODULE ExistentialActionModel ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == (x < 2 /\ (\E n \in {x, x + 1}: x' = n)) \/ (x = 2 /\ x' = x)
@@ -924,7 +924,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks CASE and labels through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE CaseModel ----
+		spec := `---- MODULE CaseModel ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == x' = CASE x < 2 -> x + 1 [] OTHER -> x
@@ -960,7 +960,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks finite set comprehensions through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE ComprehensionModel ----
+		spec := `---- MODULE ComprehensionModel ---- EXTENDS Naturals
 VARIABLE x
 Init == x \in {n + 1 : n \in 0..2}
 Next == x' = x
@@ -978,7 +978,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks finite function applications through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE FunctionModel ----
+		spec := `---- MODULE FunctionModel ---- EXTENDS Naturals
 VARIABLE x
 F[i \in {1, 2}] == i + 1
 Init == x = F[1]
@@ -1016,7 +1016,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks record EXCEPT updates through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE RecordExceptModel ----
+		spec := `---- MODULE RecordExceptModel ---- EXTENDS Naturals
 VARIABLE x
 Rec == [a |-> x, b |-> 2]
 Updated == [Rec EXCEPT !.a = @ + 1]
@@ -1036,7 +1036,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks function EXCEPT updates through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE FunctionExceptModel ----
+		spec := `---- MODULE FunctionExceptModel ---- EXTENDS Naturals
 VARIABLE x
 F[i \in 0..2] == i
 Updated == [F EXCEPT ![x] = @ + 1]
@@ -1056,7 +1056,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks DOMAIN of finite functions through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE FunctionDomainModel ----
+		spec := `---- MODULE FunctionDomainModel ---- EXTENDS Naturals
 VARIABLE x
 F[i \in 0..2] == i
 Init == x \in DOMAIN F
@@ -1207,7 +1207,7 @@ Inv == x = 3
 		dir := t.TempDir()
 		root := filepath.Join(dir, "SequenceOpsModel.tla")
 		writeFile(t, root, `---- MODULE SequenceOpsModel ----
-EXTENDS Sequences
+EXTENDS Naturals, Sequences
 VARIABLE x
 S == Append(<<1, 2>>, 3)
 Init == x = Head(S) + Len(Tail(S))
@@ -1231,7 +1231,7 @@ Inv == x = 3
 		dir := t.TempDir()
 		root := filepath.Join(dir, "SequenceIndexModel.tla")
 		writeFile(t, root, `---- MODULE SequenceIndexModel ----
-EXTENDS Sequences
+EXTENDS Naturals, Sequences
 VARIABLE x
 S == Append(<<1, 2>>, 3)
 Init == x = S[2] + S[3]
@@ -1279,7 +1279,7 @@ Inv == x \in {1, 2} /\ S[1] = 5 /\ S[2] = 6
 		dir := t.TempDir()
 		root := filepath.Join(dir, "SequenceSelectModel.tla")
 		writeFile(t, root, `---- MODULE SequenceSelectModel ----
-EXTENDS Sequences
+EXTENDS Naturals, Sequences
 VARIABLE x
 S == SelectSeq(<<1, 2, 3>>, LAMBDA n : n > 1)
 Init == x = Len(S) + Head(S)
@@ -1463,7 +1463,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks square action wrappers through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE ActionWrapperModel ----
+		spec := `---- MODULE ActionWrapperModel ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Step == x < 2 /\ x' = x + 1
@@ -1482,7 +1482,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks SPECIFICATION cfg entries through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE SpecificationModel ----
+		spec := `---- MODULE SpecificationModel ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == (x < 2 /\ x' = x + 1) \/ (x = 2 /\ x' = x)
@@ -1500,7 +1500,7 @@ INVARIANT Inv
 	})
 
 	t.Run("model checks integer intervals through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE Intervals ----
+		spec := `---- MODULE Intervals ---- EXTENDS Naturals
 CONSTANT N
 VARIABLE x
 Init == x \in 0..N
@@ -1522,7 +1522,7 @@ INVARIANT Inv
 	t.Run("loads sibling modules for SANY model checking", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 Zero == 0
 One == Zero + 1
 ====`)
@@ -1547,7 +1547,7 @@ Inv == x <= Helper!One
 	t.Run("loads plain INSTANCE modules for SANY model checking", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 Zero == 0
 Inc(n) == n + 1
 ====`)
@@ -1572,7 +1572,7 @@ Inv == x <= Inc(Zero)
 	t.Run("applies INSTANCE WITH substitutions for SANY model checking", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 CONSTANT C
 Start == C
 Inc(n) == n + C
@@ -1642,7 +1642,7 @@ RootUse == I!Use
 	t.Run("checks INSTANCE WITH substitution arity", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 CONSTANT C, F(_)
 Start == C
 Inc(n) == n + 1
@@ -2024,7 +2024,7 @@ BadQualified == Helper!Zero
 	t.Run("applies INSTANCE WITH substitutions to qualified calls", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 CONSTANT C
 Start == C
 Inc(n) == n + C
@@ -2050,7 +2050,7 @@ Inv == x <= 3
 	t.Run("inlines sibling module operator calls for SANY model checking", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 Inc(n) == n + 1
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
@@ -2074,7 +2074,7 @@ Inv == Helper!Inc(x) <= 4
 	t.Run("checks module-qualified sibling references", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 Zero == 0
 Inc(n) == n + 1
 ====`)
@@ -2094,7 +2094,7 @@ BadArity == Helper!Inc(1, 2)
 	t.Run("inlines qualified sibling module infix operator calls", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 a \oplus b == a + b
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
@@ -2116,7 +2116,7 @@ Inv == x = Helper!\oplus(1, 2)
 	})
 
 	t.Run("model checks prefix junction lists through SANY syntax", func(t *testing.T) {
-		spec := `---- MODULE JunctionLists ----
+		spec := `---- MODULE JunctionLists ---- EXTENDS Naturals
 VARIABLE x, y
 Init == /\ x = 0
         /\ y = 0
@@ -2166,7 +2166,7 @@ NestedImplicationOperand ==
 	})
 
 	t.Run("checks function constructors over set comprehensions in records", func(t *testing.T) {
-		_, diags := CheckSanySource("FunctionConstructorRecord.tla", `---- MODULE FunctionConstructorRecord ----
+		_, diags := CheckSanySource("FunctionConstructorRecord.tla", `---- MODULE FunctionConstructorRecord ---- EXTENDS Naturals
 CONSTANT S, f, Zero
 PrettyPrint(x) == x
 View == [

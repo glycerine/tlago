@@ -63,7 +63,7 @@ POSTCONDITION Done
 	})
 
 	t.Run("uses integer constants from cfg", func(t *testing.T) {
-		spec := `---- MODULE BoundedCounter ----
+		spec := `---- MODULE BoundedCounter ---- EXTENDS Naturals
 CONSTANT N
 VARIABLE x
 Init == x = 0
@@ -83,7 +83,7 @@ INVARIANT Inv
 	})
 
 	t.Run("uses cfg model values in invariants", func(t *testing.T) {
-		spec := `---- MODULE ModelValueInvariant ----
+		spec := `---- MODULE ModelValueInvariant ---- A \subset B == A \subseteq B /\ A # B
 CONSTANT Red, Blue
 VARIABLE x
 ASSUME Red /= Blue
@@ -122,7 +122,7 @@ INVARIANT Inv
 	})
 
 	t.Run("checks assumptions before initial states", func(t *testing.T) {
-		spec := `---- MODULE AssumedCounter ----
+		spec := `---- MODULE AssumedCounter ---- EXTENDS Naturals
 CONSTANT N
 ASSUME N > 0
 VARIABLE x
@@ -143,7 +143,7 @@ INVARIANT Inv
 	})
 
 	t.Run("explores finite nondeterminism from set membership", func(t *testing.T) {
-		spec := `---- MODULE Nondet ----
+		spec := `---- MODULE Nondet ---- EXTENDS Naturals
 VARIABLE x
 Init == x \in {0, 1}
 Next == (x < 2 /\ x' \in {x, x + 1}) \/ (x = 2 /\ x' = x)
@@ -167,7 +167,7 @@ INVARIANT Inv
 CONSTRAINT InScope
 CHECK_DEADLOCK FALSE
 `
-		spec := `---- MODULE Constrained ----
+		spec := `---- MODULE Constrained ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == x' = x + 1
@@ -182,7 +182,7 @@ InScope == x < 2
 	})
 
 	t.Run("supports unchanged variables in actions", func(t *testing.T) {
-		spec := `---- MODULE TwoVars ----
+		spec := `---- MODULE TwoVars ---- EXTENDS Naturals
 VARIABLE x, y
 Init == x = 0 /\ y = 7
 Next == (x < 2 /\ x' = x + 1 /\ UNCHANGED y) \/ (x = 2 /\ UNCHANGED <<x, y>>)
@@ -236,7 +236,7 @@ INVARIANT Inv
 	})
 
 	t.Run("checks strict finite set subset predicates", func(t *testing.T) {
-		spec := `---- MODULE StrictSubsetInvariant ----
+		spec := `---- MODULE StrictSubsetInvariant ---- A \subset B == A \subseteq B /\ A # B
 VARIABLE x
 Init == x = 0
 Next == x' = x
@@ -290,7 +290,7 @@ INVARIANT Inv
 	})
 
 	t.Run("applies cfg action constraints to primed successor values", func(t *testing.T) {
-		spec := `---- MODULE ActionConstrained ----
+		spec := `---- MODULE ActionConstrained ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == x' \in {x, x + 1}
@@ -311,7 +311,7 @@ CHECK_DEADLOCK FALSE
 	})
 
 	t.Run("evaluates ENABLED over simple actions", func(t *testing.T) {
-		spec := `---- MODULE EnabledAction ----
+		spec := `---- MODULE EnabledAction ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == x < 1 /\ x' = x + 1
@@ -330,7 +330,7 @@ CHECK_DEADLOCK FALSE
 	})
 
 	t.Run("evaluates LET IN expressions in actions and invariants", func(t *testing.T) {
-		spec := `---- MODULE LetCounter ----
+		spec := `---- MODULE LetCounter ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == LET Inc == x + 1 IN (x < 3 /\ x' = Inc) \/ (x = 3 /\ x' = x)
@@ -348,7 +348,7 @@ INVARIANT Inv
 	})
 
 	t.Run("inlines parameterized operator calls in model checking", func(t *testing.T) {
-		spec := `---- MODULE OperatorCalls ----
+		spec := `---- MODULE OperatorCalls ---- EXTENDS Naturals
 VARIABLE x
 Inc(n) == n + 1
 Init == x = 0
@@ -367,7 +367,7 @@ INVARIANT Inv
 	})
 
 	t.Run("inlines parameterless operator references in model checking", func(t *testing.T) {
-		spec := `---- MODULE OperatorRefs ----
+		spec := `---- MODULE OperatorRefs ---- EXTENDS Naturals
 VARIABLE x
 Start == x = 0
 Step == (x < 2 /\ x' = x + 1) \/ (x = 2 /\ x' = x)
@@ -387,7 +387,7 @@ INVARIANT Inv
 	})
 
 	t.Run("evaluates finite integer quantifiers", func(t *testing.T) {
-		spec := `---- MODULE Quantified ----
+		spec := `---- MODULE Quantified ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == (x < 2 /\ x' = x + 1) \/ (x = 2 /\ x' = x)
@@ -405,7 +405,7 @@ INVARIANT Inv
 	})
 
 	t.Run("checks cfg state properties", func(t *testing.T) {
-		spec := `---- MODULE PropertyCounter ----
+		spec := `---- MODULE PropertyCounter ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == (x < 2 /\ x' = x + 1) \/ (x = 2 /\ x' = x)
@@ -437,7 +437,7 @@ PROPERTY TooSmall
 	})
 
 	t.Run("evaluates cfg postconditions after successful exploration", func(t *testing.T) {
-		spec := `---- MODULE PostconditionCounter ----
+		spec := `---- MODULE PostconditionCounter ---- EXTENDS Naturals
 CONSTANT N
 VARIABLE x
 Init == x = 0
@@ -493,7 +493,7 @@ CHECK_DEADLOCK FALSE
 	})
 
 	t.Run("evaluates integer intervals as finite sets", func(t *testing.T) {
-		spec := `---- MODULE Intervals ----
+		spec := `---- MODULE Intervals ---- EXTENDS Naturals
 CONSTANT N
 VARIABLE x
 Init == x \in 0..N
@@ -515,7 +515,7 @@ INVARIANT Inv
 	t.Run("uses module-qualified integer definitions from dependencies", func(t *testing.T) {
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
-		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ---- EXTENDS Naturals
 Zero == 0
 One == Zero + 1
 ====`)
@@ -540,7 +540,7 @@ Inv == x <= Helper!One
 	})
 
 	t.Run("parses prefix conjunction and disjunction lists", func(t *testing.T) {
-		spec := `---- MODULE JunctionLists ----
+		spec := `---- MODULE JunctionLists ---- EXTENDS Naturals
 VARIABLE x, y
 Init == /\ x = 0
         /\ y = 0
@@ -565,7 +565,7 @@ INVARIANT Inv
 }
 
 func counterSpec(invariant string) string {
-	return `---- MODULE Counter ----
+	return `---- MODULE Counter ---- EXTENDS Naturals
 VARIABLE x
 Init == x = 0
 Next == (x < 3 /\ x' = x + 1) \/ (x = 3 /\ x' = x)

@@ -107,9 +107,38 @@ use OpOrExpr; its reference lookahead retains source token alternatives.
 Lambdas are argument forms, and fairness remains a ParenthesesExpression form.
 Primitive identifiers use source GeneralId wrappers; the semantic bridge keeps
 unqualified built-in Boolean literals through them. General JavaCC expected
-alternatives, remaining production states, label failure continuations and
-operator-stack error messages still require reconciliation. Matching the current
-eighteen failure observations does not establish full parser parity.
+alternatives, remaining production states and label failure continuations still
+require reconciliation. Operator-stack failures now retain source messages and
+locations, dedicated record reduction and raw prefix syntax; final reduction
+reports accumulated errors before the parser exception. Matching bounded failure
+observations does not establish full parser parity.
+
+## Semantic operator lookup and packaged sources
+
+Parser operator metadata supplies fixity and precedence, not declarations.
+Expression generation resolves an operator in the semantic context before
+visiting its operands. Unresolved operators retain the source GenID message and
+following infix/prefix/postfix resolution message at their actual syntax ranges.
+Both retain source error code 4004 (`SUSPECTED_UNREACHABLE_CHECK`).
+GenID assembles raw identifiers and operator spelling; only lookup resolves
+aliases. Unary minus changes its final raw `-` to `-.` during generation.
+Initial-context arity uses the original built-in table: `\times` has arity two,
+independently of XML's variadic Cartesian-product representation.
+
+Native packaged loading embeds existing original module bytes. Java standard
+modules take precedence over CommunityModules, then TLAPS modules and the single
+Apalache module source. The previous abbreviated bodies and synthesized arithmetic
+exports are removed; imports preserve actual declarations and their identities.
+Runtime overrides and remaining semantic constructs still need separate parity
+proof. No XML or ApalacheIR corpus sweep is introduced by this source loading.
+
+Module generation still assembles a broad name map before checking expressions.
+This permits forward operator references that Java rejects. Leaf proof facts are
+retained as syntax/expressions but are not fully generated or resolved, so an
+unknown `BY` fact is also incorrectly accepted. These are concrete next porting
+requirements, not intended compatibility behavior. Preserve source declaration
+visibility, recursive-declaration exceptions, proof scopes and generation order
+when replacing these shortcuts.
 
 ## Module loading and parse-unit relationships
 

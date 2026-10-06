@@ -1202,7 +1202,7 @@ PROOF
 	})
 
 	t.Run("LET recursive operator is in scope for its own body", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("LetRecursiveScopeXML.tla", `---- MODULE LetRecursiveScopeXML ----
+		xmlText, diags := SanyXMLSource("LetRecursiveScopeXML.tla", `---- MODULE LetRecursiveScopeXML ---- EXTENDS Naturals
 Op(a) ==
   LET
     RECURSIVE R(_)
@@ -4461,7 +4461,7 @@ A == [x \in S |-> x]
 	})
 
 	t.Run("serializes recursive definitions with a SANY recursive section", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("RecursiveSectionXML.tla", `---- MODULE RecursiveSectionXML ----
+		xmlText, diags := SanyXMLSource("RecursiveSectionXML.tla", `---- MODULE RecursiveSectionXML ---- EXTENDS Naturals
 RECURSIVE F(_)
 F(n) == IF n = 0 THEN TRUE ELSE LET y == F(n - 1) IN y
 RECURSIVE G(_)
@@ -4545,7 +4545,7 @@ Use == Public
 	})
 
 	t.Run("consecutive RECURSIVE declarations share a SANY recursive section", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("ConsecutiveRecursiveSectionXML.tla", `---- MODULE ConsecutiveRecursiveSectionXML ----
+		xmlText, diags := SanyXMLSource("ConsecutiveRecursiveSectionXML.tla", `---- MODULE ConsecutiveRecursiveSectionXML ---- EXTENDS Naturals
 RECURSIVE F(_)
 RECURSIVE G(_)
 F(n) == IF n = 0 THEN TRUE ELSE G(n - 1)
@@ -4574,7 +4574,7 @@ H(n) == IF n = 0 THEN TRUE ELSE H(n - 1)
 	})
 
 	t.Run("LET RECURSIVE sections follow module recursive sections", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("LetRecursiveSectionOffsetXML.tla", `---- MODULE LetRecursiveSectionOffsetXML ----
+		xmlText, diags := SanyXMLSource("LetRecursiveSectionOffsetXML.tla", `---- MODULE LetRecursiveSectionOffsetXML ---- EXTENDS Naturals
 RECURSIVE F(_)
 F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
 Use ==
@@ -4604,7 +4604,7 @@ Use ==
 	})
 
 	t.Run("LET RECURSIVE sections advance in module source order", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("LetRecursiveSourceOrderXML.tla", `---- MODULE LetRecursiveSourceOrderXML ----
+		xmlText, diags := SanyXMLSource("LetRecursiveSourceOrderXML.tla", `---- MODULE LetRecursiveSourceOrderXML ---- EXTENDS Naturals
 First ==
   LET RECURSIVE F(_)
       F(n) == IF n = 0 THEN TRUE ELSE F(n - 1)
@@ -4638,7 +4638,7 @@ Second ==
 	})
 
 	t.Run("serializes EXCEPT @ as Java-shaped AtNode XML", func(t *testing.T) {
-		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ----
+		xmlText, diags := SanyXMLSource("ExceptAtXML.tla", `---- MODULE ExceptAtXML ---- EXTENDS Naturals
 VARIABLE x
 Next == x' = [x EXCEPT ![1] = @ + 1, ![2] = @[2]]
 ====`)

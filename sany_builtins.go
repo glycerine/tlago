@@ -51,6 +51,18 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemBuiltInSymbol {
 	}
 }
 
+// Resolve a source initial-context symbol without XML's variadic Cartesian
+// product translation: the initial-context \times symbol has arity two.
+func sanyInitialBuiltinOperatorInfo(name string) (sanyBuiltinOperator, bool) {
+	name = ResolveSanyOperatorSynonym(name)
+	for _, info := range sanyBuiltinOperators {
+		if info.name == name {
+			return info, true
+		}
+	}
+	return sanyBuiltinOperator{}, false
+}
+
 func sanyBuiltinOperatorInfo(name string) (sanyBuiltinOperator, bool) {
 	name = sanyXMLBuiltinName(name)
 	for _, info := range sanyBuiltinOperators {
