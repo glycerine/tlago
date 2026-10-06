@@ -81,17 +81,25 @@ and is retired. It verifies the `f5019c4` fixture snapshot, before the newer
 expression-visibility and module-unit generation changes. Log:
 `/mnt/oldrog/tmp/tlago-bitwise-bridge-root-full.log`.
 
-Normal full root-package session `96647` is live on the `19c6f1a` module-unit
-generation snapshot, before the newer nested-generation correction. It retains original bounds and a 60-minute timeout, without race
-instrumentation or failfast. Both temporary-directory variables use workspace
-`.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
-Reuse the completed unchanged TLC package result; preserve the root handle until
-terminal status. Silence does not establish a pass.
+Normal full root-package session `96647` returned status 0 in 1,576.855
+seconds and is retired. It verifies the `19c6f1a` module-unit generation
+snapshot, before nested-generation, diagnostic and recursive-function changes.
+Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
+
+Normal full root-package session `45205` is live on the recursive-function and
+INSTANCE level-checking snapshot. It retains original bounds and a 60-minute
+timeout, without race instrumentation or failfast. Both temporary-directory
+variables use workspace `.codex-gotmp`. Log:
+`/mnt/oldrog/tmp/tlago-recursive-function-instance-root-full.log`.
+Reuse the completed unchanged TLC package result. Preserve the root handle until
+terminal status; silence does not establish a pass.
 
 Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
+| Recursive module functions, declared-operator levels and INSTANCE constant predicate: existing native parser/semantic classes | Pass | Root 6.541 seconds, session `25669` retired |
+| Complete SANY package after recursive-function and INSTANCE corrections | Pass | 1.270 seconds, session `42177` retired |
 | Original semantic-error corpus assertions, diagnostic parameters and generation failure boundaries: existing native behaviors and original TLC selection | Pass | Root 10.265 seconds, session `14523` retired |
 | Complete SANY package with all four original semantic-error corpus assertion families restored | Pass | 1.544 seconds, session `17704` retired |
 | Nested module units and shared recursive state: existing native behaviors and original TLC selection | Pass | Root 11.276 seconds, session `50899` retired |
@@ -326,18 +334,32 @@ selection suppresses duplicate label checks. INSTANCE operator arguments remain
 operator arguments even when their arity mismatches. Duplicate module conflicts
 are generated at their module unit instead of by an earlier approximation.
 
-A separate comparison of fixed-parameter diagnostics matches Java in 120 of 126
-unchanged corpus fixtures. Six production differences remain: missing shadowing
-warnings in `E4201_Op` and `E4293`; an extra incomplete-module diagnostic in
-`E4204_Instance`; an omitted operator-argument level error in `E4246`; and
-premature completion of recursive bindings in `E4292_Function`, `E4293_Function`
-and `E4293`. Receipt:
-`/mnt/oldrog/tmp/tlago-error-parameters-audit-corrected.log`. The comparison checks
-fixed-code order/count and displayed parameter values, with symbolic parameters
-shown by name; it is not a complete diagnostic message/range/type comparison.
-Port these actual generation boundaries next. Unknown leaf `BY` facts are still
-not fully generated or resolved. Broader constructor, symbol/context and selector
-paths remain audit work. Green original assertions do not establish full parity.
+A separate comparison of fixed-parameter diagnostics matches Java in 122 of 126
+unchanged corpus fixtures. Four production differences remain: missing shadowing
+warnings in `E4201_Op` and `E4293`, an extra incomplete-module diagnostic in
+`E4204_Instance`, and premature completion of LET recursive bindings in
+`E4293_Function` and `E4293`. Receipt:
+`/mnt/oldrog/tmp/tlago-function-constant-final-no-perf-parameters-audit.log`.
+The comparison checks fixed-code order/count and displayed parameter values;
+it is not a complete diagnostic message/range/type comparison.
+
+Module recursive functions now preserve rejected declarations, their original
+operator arity and undefined bodies. Function domains are generated before
+recursive arity validation, followed by the body. INSTANCE declaration-level
+matching uses Java's `ModuleNode.isConstant` rule: variables, operator bodies and
+EXTENDS theorems, including local operators but excluding instantiated theorem
+context definitions. Declared-operator operands preserve their levels and level
+parameters. INSTANCE errors retain source range, message, arguments and order.
+Twenty-eight bounded Java/Go observations match full diagnostic output, and all
+74 established visibility observations remain matching. These are scratch
+observations, not invented tests or test-port credit. An additional probe exposed
+an existing parser gap: Go accepts the empty application `F()` whereas Java
+rejects its syntax. Keep that gap visible for the parser production audit.
+
+Port actual LET recursive generation boundaries next. Unknown leaf `BY` facts
+are still not fully generated or resolved. Broader constructor, symbol/context
+and selector paths remain audit work. Green original assertions do not establish
+full parity.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

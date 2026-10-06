@@ -182,11 +182,23 @@ regenerated as zero-argument expressions. Ordinary application level violations
 use source code 4205, not the lambda arity code. Obsolete nested-standard-module
 conflict approximation is removed; conflicts arise at actual nested module units.
 
-The fixed-parameter comparison matches 120 of 126 frozen corpus fixtures. Six
-still differ in shadowing warnings, module-instance arity failure boundaries,
-operator-argument intrinsic level and unfinished recursive binding preservation.
-The comparison concerns fixed-code order/count and displayed parameter values;
-it does not prove all diagnostic messages, ranges or semantic object types match.
+The fixed-parameter comparison matches 122 of 126 frozen corpus fixtures. Four
+still differ in shadowing warnings, module-instance arity failure boundaries and
+unfinished LET recursive binding preservation. The comparison concerns fixed-code
+order/count and displayed parameter values; it does not prove all diagnostic
+messages, ranges or semantic object types match.
+
+Module recursive functions complete only zero-arity declarations. Rejected
+functions preserve the original operator signature and unfinished binding.
+Generation follows source domains, declaration validation, then function body.
+INSTANCE declaration-level matching follows `ModuleNode.isConstant`, including
+local operator bodies and EXTENDS theorems. Instantiated theorem context
+bindings do not enter the module's theorem vector. Declared operators retain
+operand levels and parameters, as in `OpApplNode`. Declaration-level errors
+precede non-Leibniz checks; INSTANCE errors use the full instance range and
+original messages and argument indices. Twenty-eight additional full diagnostic
+observations match Java. An empty application `F()` remains a known parser
+production discrepancy: Java rejects it, while Go accepts it.
 
 Leaf proof facts are retained but not fully generated or resolved, so an unknown
 `BY` fact is still incorrectly accepted. Port actual proof generation and scope

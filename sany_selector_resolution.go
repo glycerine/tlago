@@ -157,6 +157,9 @@ func (r *sanySelectorResolver) moduleGenerator(mod *Module) *sanyModuleSelectorG
 			for name, ref := range scope {
 				if _, exists := context[name]; exists {
 					ref.undefined = !contexts.definitions[syntax][name]
+					if arity, recursive := contexts.recursiveArities[syntax][name]; ref.undefined && recursive {
+						ref.params = make([]BoundVar, arity)
+					}
 					visible[name] = ref
 				}
 			}
@@ -175,6 +178,26 @@ func (g *sanyModuleSelectorGenerator) prepare(run func()) Diagnostics {
 
 func (g *sanyModuleSelectorGenerator) definition(def *Definition) Diagnostics {
 	return g.prepare(func() { g.resolver.walkDefinition(def, g.module, g.at(def.Syntax)) })
+}
+
+// processFunction generates domains before checking the definition's symbol,
+// and generates the function body afterward in its temporary formal context.
+func (g *sanyModuleSelectorGenerator) functionDomains(def *Definition) Diagnostics {
+	return g.prepare(func() {
+		if function, ok := def.Expr.(*FunctionExpr); ok {
+			for _, bound := range function.Bounds {
+				g.resolver.walk(bound.Set, g.module, g.at(def.Syntax), 0)
+			}
+		}
+	})
+}
+
+func (g *sanyModuleSelectorGenerator) functionBody(def *Definition) Diagnostics {
+	return g.prepare(func() {
+		if function, ok := def.Expr.(*FunctionExpr); ok {
+			g.resolver.walk(function.Body, g.module, g.at(def.Syntax), 0)
+		}
+	})
 }
 
 func (g *sanyModuleSelectorGenerator) fact(fact NamedExpr) Diagnostics {
@@ -373,6 +396,18 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 		}
 		result.args = append(result.args, args...)
 		return nil
+	}
+	// selectorToNode validates the declared operator's arity before it asks
+	// whether a selected recursive body has been completed.
+	if !result.operator && len(result.params) != len(rootArgs) {
+		detail := &sanySelectorLocationError{code: "E4204", message: fmt.Sprintf("The operator %s requires %d arguments.", name, len(result.params)), parameters: []any{name, len(result.params)}}
+		if selector.Syntax != nil {
+			detail.location = selector.Syntax.Range
+		}
+		if arguments := selector.Steps[end-1].Arguments; arguments != nil {
+			detail.location = arguments.Range
+		}
+		return nil, true, detail
 	}
 	if err := bind(result.params, rootArgs); err != nil {
 		return nil, true, err

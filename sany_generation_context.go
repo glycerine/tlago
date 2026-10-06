@@ -40,8 +40,9 @@ func setSanyExpressionGenerationFailure(expr Expr, failure sanyGenerationFailure
 // Keep these expression contexts separate from the completed module context
 // used by the subsequent level-checking phase.
 type sanyExpressionContexts struct {
-	bindings    map[*SanySyntaxNode]map[string]Position
-	definitions map[*SanySyntaxNode]map[string]bool
+	bindings         map[*SanySyntaxNode]map[string]Position
+	definitions      map[*SanySyntaxNode]map[string]bool
+	recursiveArities map[*SanySyntaxNode]map[string]int
 }
 
 func (contexts sanyExpressionContexts) at(syntax *SanySyntaxNode, completed map[string]Position) map[string]Position {
@@ -61,7 +62,7 @@ func copySanyExpressionContext(context map[string]Position) map[string]Position 
 }
 
 func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]Position) sanyExpressionContexts {
-	contexts := sanyExpressionContexts{bindings: map[*SanySyntaxNode]map[string]Position{}, definitions: map[*SanySyntaxNode]map[string]bool{}}
+	contexts := sanyExpressionContexts{bindings: map[*SanySyntaxNode]map[string]Position{}, definitions: map[*SanySyntaxNode]map[string]bool{}, recursiveArities: map[*SanySyntaxNode]map[string]int{}}
 	if mod.Syntax == nil {
 		return contexts
 	}
@@ -70,6 +71,7 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 		return contexts
 	}
 	context := copySanyExpressionContext(inherited)
+	recursiveArities := map[string]int{}
 	completed := make(map[string]bool, len(inherited))
 	for name := range inherited {
 		completed[name] = true
@@ -88,6 +90,7 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 	for _, unit := range heirs[2].GetHeirs() {
 		contexts.bindings[unit] = copySanyExpressionContext(context)
 		contexts.definitions[unit] = copyBoolMap(completed)
+		contexts.recursiveArities[unit] = copyIntMap(recursiveArities)
 		switch unit.Kind.JavaName() {
 		case "N_VariableDeclaration", "N_ParamDeclaration":
 			for _, declaration := range mod.Declarations {
@@ -105,6 +108,10 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 				}
 				for _, name := range declaration.Names {
 					addLocal(name, declarationSymbolPosition(declaration, name))
+					recursiveArities[name], _ = declarationArity(declaration, name)
+					if mod.Name != "" {
+						recursiveArities[mod.Name+"!"+name] = recursiveArities[name]
+					}
 				}
 			}
 		case "N_OperatorDefinition", "N_FunctionDefinition", "N_Theorem":
@@ -113,8 +120,12 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 					continue
 				}
 				addLocal(definition.Name, definition.DeclarationPosition())
-				completed[definition.Name] = true
-				completed[mod.Name+"!"+definition.Name] = true
+				complete := true
+				if want, recursive := recursiveArities[definition.Name]; recursive && definition.FunctionDef && want > 0 {
+					complete = false
+				}
+				completed[definition.Name] = complete
+				completed[mod.Name+"!"+definition.Name] = complete
 				addSubexpressionReferenceNames(context, definition.Name, definition.Expr)
 				if mod.Name != "" {
 					addSubexpressionReferenceNames(context, mod.Name+"!"+definition.Name, definition.Expr)
@@ -170,14 +181,31 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 // function's temporary recursion symbol. That symbol and the bound variables
 // are available only while generating the function body.
 func checkDefinitionExpression(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
-	function, ok := definition.Expr.(*FunctionExpr)
+	_, ok := definition.Expr.(*FunctionExpr)
 	if !definition.FunctionDef || !ok {
 		return checkExpr(definition.Expr, context, locals)
+	}
+	return append(checkDefinitionFunctionDomains(definition, context, locals), checkDefinitionFunctionBody(definition, context, locals)...)
+}
+
+func checkDefinitionFunctionDomains(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+	function, ok := definition.Expr.(*FunctionExpr)
+	if !ok {
+		return nil
 	}
 	var diags Diagnostics
 	for _, bound := range function.Bounds {
 		diags = append(diags, checkExpr(bound.Set, context, locals)...)
 	}
+	return diags
+}
+
+func checkDefinitionFunctionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+	function, ok := definition.Expr.(*FunctionExpr)
+	if !ok {
+		return nil
+	}
+	var diags Diagnostics
 	bodyLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
 		diags = append(diags, checkBoundName(bound.Name, bound.Pos, context, bodyLocals)...)

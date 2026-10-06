@@ -248,8 +248,13 @@ func (a *sanyLeibnizAnalyzer) apply(operator Expr, arguments []sanyLeibnizBindin
 				kinds = moduleLevelDeclKinds(ctx.module, a.resolver.spec, nil)
 				a.declKinds[ctx.module] = kinds
 			}
+			// OpApplNode's OpDecl branch preserves every operand's level and
+			// level parameters; a declared operator has no argument weights.
+			if kinds[op.Name] == ConstantDecl || kinds[op.Name] == VariableDecl {
+				use.mergeLevelParams(a.argumentUses(arguments))
+			}
 			if kinds[op.Name] == VariableDecl {
-				use.level = variableLevel
+				use.level = maxTlaLevel(use.level, variableLevel)
 			}
 		}
 	case *FunctionExpr:

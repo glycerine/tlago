@@ -561,12 +561,23 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	registerDefinition := func(def Definition) {
+		recursiveArity, recursive := recursiveArities[def.Name]
+		rejectedRecursiveFunction := recursive && def.FunctionDef && recursiveArity != 0
 		diags = append(diags, checkDefinitionParams(def)...)
 		diags = append(diags, checkDefinitionParamCollisions(def, defined, nil)...)
 		if want, recursive := recursiveArities[def.Name]; recursive {
-			satisfiedRecursive[def.Name] = true
+			// processFunction only completes a RECURSIVE declaration of arity
+			// zero. A rejected declaration remains undefined at module end.
+			satisfiedRecursive[def.Name] = !def.FunctionDef || want == 0
 			if got := len(def.Params); got != want {
-				diags = append(diags, sanyDiagnosticParameters(errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want), def.Name))
+				diagnostic := sanyDiagnosticParameters(errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want), def.Name)
+				if def.FunctionDef {
+					diagnostic.SANYMessage = fmt.Sprintf("Function %s has operator arguments in its RECURSIVE declaration.", def.Name)
+					if def.Syntax != nil {
+						diagnostic.SANYRange = def.Syntax.Range
+					}
+				}
+				diags = append(diags, diagnostic)
 			}
 		} else {
 			if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
@@ -582,6 +593,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					addName(def.Name, def.Pos, OperatorDecl)
 				}
 			}
+		}
+		// A rejected recursive function leaves the original declaration in the
+		// context, including its operator arity and undefined body.
+		if rejectedRecursiveFunction {
+			return
 		}
 		arities[def.Name] = len(def.Params)
 		addSubexpressionReferenceNames(defined, def.Name, def.Expr)
@@ -713,8 +729,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return diags
 		}})
 	}
+	generateFunctionDomains := func(def Definition) {
+		diags = append(diags, checks.generator.functionDomains(&def)...)
+		diags = append(diags, checkDefinitionFunctionDomains(def, expressionContexts.at(def.Syntax, defined), nil)...)
+	}
 	generateDefinition := func(def Definition) {
-		diags = append(diags, checks.generator.definition(&def)...)
+		if def.FunctionDef {
+			diags = append(diags, checks.generator.functionBody(&def)...)
+		} else {
+			diags = append(diags, checks.generator.definition(&def)...)
+		}
 		if _, recursive := recursiveArities[def.Name]; recursive {
 			checks.recursive = append(checks.recursive, func() Diagnostics { return levelChecker.checkRecursiveParameters(def, nil) })
 		}
@@ -726,6 +750,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		bodyContext := expressionContexts.at(def.Syntax, defined)
 		if def.AssumeProve && def.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals)...)
+		} else if def.FunctionDef {
+			diags = append(diags, checkDefinitionFunctionBody(def, bodyContext, locals)...)
 		} else {
 			diags = append(diags, checkDefinitionExpression(def, bodyContext, locals)...)
 		}
@@ -752,7 +778,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
 			return diags
 		}
-		if _, recursive := recursiveArities[def.Name]; recursive && !completedRecursive[def.Name] {
+		if _, recursive := recursiveArities[def.Name]; recursive && satisfiedRecursive[def.Name] && !completedRecursive[def.Name] {
 			checks.recursiveGeneration.complete()
 			completedRecursive[def.Name] = true
 		}
@@ -793,6 +819,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				generateDefinition(definition)
 				registerDefinition(definition)
 			} else {
+				if definition.FunctionDef {
+					generateFunctionDomains(definition)
+				}
 				registerDefinition(definition)
 				generateDefinition(definition)
 			}
@@ -2440,25 +2469,26 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		if !levelChecking && got != want {
 			diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want), name, want))
 		}
+
+		if matchLevels {
+			level := leibniz.substitutionLevel(expr, mod, locals)
+			switch substTarget.Kind {
+			case ConstantDecl:
+				if level != constantLevel {
+					diags = append(diags, sanyInstanceLevelDiagnostic(inst, name, constantLevel, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be constant-level", name), inst.Module, name, constantLevel)))
+				}
+			case VariableDecl:
+				if level > variableLevel {
+					diags = append(diags, sanyInstanceLevelDiagnostic(inst, name, variableLevel, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be variable-level", name), inst.Module, name, variableLevel)))
+				}
+			}
+		}
 		if levelChecking && want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
 			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module), inst.Module, name)
 			position := inst.SourcePosition()
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 			diagnostic.SANYMessage = fmt.Sprintf("Error in instantiating module '%s':\n A non-Leibniz operator substituted for '%s'.", inst.Module, name)
 			diags = append(diags, diagnostic)
-		}
-		if matchLevels {
-			level := exprLevel(expr, declKinds, locals)
-			switch substTarget.Kind {
-			case ConstantDecl:
-				if level != constantLevel {
-					diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be constant-level", name), inst.Module, name, constantLevel))
-				}
-			case VariableDecl:
-				if level > variableLevel {
-					diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be variable-level", name), inst.Module, name, variableLevel))
-				}
-			}
 		}
 		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(expr, mod, locals) > maximum {
 			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum), inst.Module, name, maximum)
@@ -2468,7 +2498,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			diags = append(diags, diagnostic)
 		}
 		if levelChecking {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, subst.Pos, declKinds)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, inst.SourcePosition(), declKinds)...)
 		}
 		if !levelChecking {
 			diags = append(diags, checkExpr(expr, defined, locals)...)
@@ -2481,7 +2511,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		}
 	}
 	if levelChecking {
-		diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.Pos, declKinds)...)
+		diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.SourcePosition(), declKinds)...)
 	}
 	for name, target := range targets {
 		if _, ok := seen[name]; ok {
@@ -2585,7 +2615,10 @@ func checkInstanceSubstitutionCoparameterExpr(expr Expr, moduleName string, subs
 					if errPos.Line == 0 && errPos.Column == 0 && errPos.File == "" {
 						errPos = pos
 					}
-					diags = append(diags, sanyDiagnosticParameters(errorAt(errPos, "E4247", "INSTANCE substitution co-parameter %s exceeds operator %s argument %d level constraint", argIdent.Name, ident.Name, i+1), moduleName, i, ident.Name, maxLevel))
+					diagnostic := sanyDiagnosticParameters(errorAt(errPos, "E4247", "INSTANCE substitution co-parameter %s exceeds operator %s argument %d level constraint", argIdent.Name, ident.Name, i+1), moduleName, i, ident.Name, maxLevel)
+					diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
+					diagnostic.SANYMessage = fmt.Sprintf("Level error when instantiating module '%s':\nThe level of the argument %d of the operator %s' \nmust be at most %d.", moduleName, i, ident.Name, maxLevel)
+					diags = append(diags, diagnostic)
 				}
 			}
 		}
@@ -2879,7 +2912,10 @@ func checkInstanceSubstitutionAppliedArgLevels(pos Position, targetName, moduleN
 		if errPos.Line == 0 && errPos.Column == 0 && errPos.File == "" {
 			errPos = substPos
 		}
-		diags = append(diags, sanyDiagnosticParameters(errorAt(errPos, "E4246", "INSTANCE substitution for %s violates operator %s level constraint: argument %d requires level %d but maximum level is %d", targetName, subst.name, i+1, level, maxLevel), moduleName, i+1, subst.name, level))
+		diagnostic := sanyDiagnosticParameters(errorAt(errPos, "E4246", "INSTANCE substitution for %s violates operator %s level constraint: argument %d requires level %d but maximum level is %d", targetName, subst.name, i+1, level, maxLevel), moduleName, i+1, subst.name, level)
+		diagnostic.SANYRange = SanyRange{Begin: substPos, End: substPos.SourceEnd()}
+		diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the argument %d of the operator %s \nmust be at least %d.", moduleName, i+1, subst.name, level)
+		diags = append(diags, diagnostic)
 	}
 	return diags
 }
@@ -2964,29 +3000,50 @@ func moduleSubstitutionTargets(mod *Module, spec *Spec) map[string]substitutionT
 	return targets
 }
 
+// InstanceNode applies declaration-level matching when ModuleNode.isConstant
+// is false. That predicate includes operator bodies and theorems, not just
+// the presence of VARIABLE declarations.
 func moduleRequiresSubstitutionLevelMatch(mod *Module, spec *Spec) bool {
-	var check func(*Module, map[string]bool) bool
-	check = func(cur *Module, visiting map[string]bool) bool {
-		if cur == nil || visiting[cur.Name] {
+	if mod == nil {
+		return false
+	}
+	for _, symbol := range semanticModuleExports(mod, spec, map[string]bool{}) {
+		if symbol.kind == VariableDecl {
+			return true
+		}
+	}
+	analyzer := newSanyLeibnizAnalyzer(spec)
+	for name, ref := range analyzer.resolver.scope(mod) {
+		// getOpDefs excludes ThmOrAssumpDefNode and module-instance placeholders.
+		if ref.def.TheoremLike {
+			continue
+		}
+		if analyzer.substitutionLevel(&IdentExpr{Name: name}, mod, nil) != constantLevel {
+			return true
+		}
+	}
+	// copyTheorems copies EXTENDS theorems into the module's theorem vector.
+	// INSTANCE creates context definitions, not entries in that vector.
+	seen := map[*Module]bool{}
+	var nonconstantTheorem func(*Module) bool
+	nonconstantTheorem = func(current *Module) bool {
+		if current == nil || seen[current] {
 			return false
 		}
-		visiting[cur.Name] = true
-		defer func() {
-			visiting[cur.Name] = false
-		}()
-		for _, ext := range cur.Extends {
-			if spec != nil && check(spec.Modules[ext], visiting) {
+		seen[current] = true
+		for _, theorem := range current.Theorems {
+			if analyzer.substitutionLevel(theorem.Expr, current, nil) != constantLevel {
 				return true
 			}
 		}
-		for _, decl := range cur.Declarations {
-			if decl.Kind == VariableDecl {
+		for _, name := range current.Extends {
+			if spec != nil && nonconstantTheorem(spec.Modules[name]) {
 				return true
 			}
 		}
 		return false
 	}
-	return check(mod, map[string]bool{})
+	return nonconstantTheorem(mod)
 }
 
 func moduleImplicitSubstitutions(mod *Module, spec *Spec) map[string]int {
@@ -3582,7 +3639,9 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 				return nil
 			}
 			if want, ok := arities[e.Name]; ok && want != 0 {
-				diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, want), e.Name, want))
+				diagnostic := sanyDiagnosticParameters(errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, want), e.Name, want)
+				diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", e.Name, want)
+				diags = append(diags, diagnostic)
 			}
 		}
 	case *UnaryExpr:
@@ -4884,4 +4943,11 @@ func sanyLogicalOperatorDiagnosticName(expr *BinaryExpr) string {
 		}
 	}
 	return sanyCanonicalOperatorImage(expr.Op)
+}
+
+func sanyInstanceLevelDiagnostic(instance Instance, name string, maximum tlaLevel, diagnostic Diagnostic) Diagnostic {
+	position := instance.SourcePosition()
+	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", instance.Module, name, maximum)
+	return diagnostic
 }

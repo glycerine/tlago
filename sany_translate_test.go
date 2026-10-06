@@ -523,7 +523,8 @@ Square == [v']_<<v>>
 Angle == <<v'>>_<<v>>
 AlwaysSquare == [][v]_<<v>>
 EventuallyAngle == <><<v>>_<<v>>
-Use == F([v']_<<v>>, TRUE) /\ F([][v]_<<v>>, TRUE)
+UseSquare == F([v']_<<v>>, TRUE)
+UseAlwaysSquare == F([][v]_<<v>>, TRUE)
 ====`)
 		requireNoErrors(t, diags)
 	})

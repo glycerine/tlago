@@ -1,5 +1,63 @@
 # TLC Port Progress
 
+2026-10-06 Recursive function completion and INSTANCE constant predicate:
+Starting snapshot `370374d`; four production files changed. Source
+`Generator.processFunction` only completes a zero-arity RECURSIVE declaration.
+Preserve a rejected function's original operator signature and undefined binding;
+generate domains before validation and then its body. Selector root arity
+validation precedes undefined-body selection. Bare operator failures retain the
+original diagnostic wording separately from native summaries.
+
+Replace the variable-only INSTANCE approximation with `ModuleNode.isConstant`:
+inspect actual operator levels, including local definitions and instantiated
+operators, plus the theorem vector inherited through EXTENDS. Instantiated
+theorem context definitions do not enter that vector. Port declared-operator
+operand level propagation from `OpApplNode`, and declaration-level matching
+before non-Leibniz checks from `InstanceNode`. Restore full instance ranges,
+source messages and structured arguments for level constraints.
+
+Final bounded diagnostic audit matches all 28 Java/Go observations: recursive
+function signatures, domain/body ordering, later references and selectors,
+intrinsic prime arguments, local and inherited definitions, function levels,
+named/unnamed theorems, named/local instances and instantiated theorem exclusion.
+Log `tlago-function-constant-expanded-no-perf-audit.log`. Established 74
+visibility observations also match; session 75412 returned status 0 and retired.
+Log `tlago-function-constant-final-no-perf-visibility-audit.log`. Concurrent Java
+probes initially collided in JVM performance-data files; disable only JVM
+performance-data collection (`-XX:-UsePerfData`) and rerun full comparisons,
+without filtering diagnostic output or weakening checks. A separate empty
+application probe exposes an existing parser gap: Java rejects `F()` and Go
+accepts it. This remains documented; the arity audit uses valid bare-name syntax.
+
+Fixed-parameter audit matches 122 of 126 original frozen fixtures. Session 20638
+returned status 1 and retired, with four remaining differences: E4201_Op shadowing
+warning, E4204_Instance incomplete-module failure boundary, E4293_Function
+unfinished LET binding and E4293 unfinished binding plus shadowing warning.
+Log `tlago-function-constant-final-no-perf-parameters-audit.log`. No fixture,
+corpus assertion or inventory count changed. These scratch comparisons earn no
+new test-port credit and do not prove general semantic-node parity.
+
+Complete existing SANY package passes 1.270 seconds (42177 retired), log
+`tlago-function-constant-final-sany.log`. Initial focused native check fails
+6.182 seconds (23422 retired): the StepExpressions fixture combined action and
+temporal applications with conjunction. Actual Java rejects it with code 4313.
+Separate the two existing forms into definitions; original native assertions
+remain unchanged and both front ends report zero errors on corrected source.
+Corrected native parser/semantic classes and original ParseErrorTests pass
+6.541 seconds (25669 retired), log `tlago-function-constant-corrected-focused.log`.
+All-package compilation passes (9228 retired), log
+`tlago-function-constant-final-compile.log`. No race instrumentation used.
+
+Earlier full root 96647 returned status 0 in 1,576.855 seconds and retired on
+`19c6f1a`, before newer semantic changes. Log `tlago-module-unit-root-full.log`.
+Final current root run 45205 is live, original bounds, no race/failfast,
+60-minute timeout and both temporary-directory variables in workspace.
+Log `tlago-recursive-function-instance-root-full.log`. Unchanged complete TLC
+package receipt remains 769.038 seconds. Original LSB run 32959 remains live;
+latest observed 1,998,512,339 of 2,147,483,648 insertions. Preserve both handles;
+no current full-workspace or full-LSB terminal pass claim. Overall goal incomplete.
+
+
 2026-10-06 Original semantic-error corpus assertions and ErrorDetails arguments:
 Previous nested-generation batch committed as `ee09f07`; starting tree clean.
 Full root 96647 and original full LSB 32959 remain confirmed live on their
