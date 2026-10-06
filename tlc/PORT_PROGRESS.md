@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-06 CheckImplFile command-line source parity:
+The separate Java trace-checking command does not accept worker auto; Go shared
+TLC's worker helper. Restore signed-32-bit parsing and source message codes for
+workers/depth, with worker global assignment before its positivity check.
+Coverage retains Java signed-32-bit multiplication, global assignment before
+validation, and the source's missing-argument diagnostic with an unsubstituted
+%1% placeholder. Added MP.getError formatting (recorder notification before
+formatting, normal Error prefix or tool envelope, no printing/policy application)
+through the shared message formatter. Existing GetMessage behavior is unchanged.
+Complete the parser's other source message-code choices, literal recovery path
+separator append, empty-token StringIndexOutOfBoundsException and nullable
+config/trace/main-name presence rather than empty-string substitution. Remove the
+unused nonnegative helper. No tests or assertions invented/modified.
+
+Final original MP/TLC/WarningControl classes pass 0.016s, all-package compilation
+passes (56271 terminal 0). Manual unchanged-Java CheckImplFile.main/native scratch
+main (17892 and final rerun terminal 0) match worker auto rejection, zero-worker
+global mutation, depth overflow, missing/invalid coverage text, wrapped interval
+values/rejection, and tool-mode getError3110 envelope. Scratch mains:
+/mnt/oldrog/tmp/CheckImplNumericManual.java and tlago-checkimpl-numeric-manual.go.
+No original CheckImplFile Java test class exists in the pinned test inventory;
+these observations are not test-port credit. All checks normal, without -race.
+
+Workspace 85256 is now terminal 1 and retired: root package timed out at 3600.300s
+in TestJavaCheckpointWhenTimeBound; TLC passed 820.531s and SANY 1.057s. Log:
+/mnt/oldrog/tmp/tlago-source-ant-fpset-workspace.log. Exact snapshot d611cba, before
+later file/offheap/functor/CLI corrections. Stack shows the sole active worker
+waiting in the static offheap barrier after an earlier 48-worker TLCGetAll model.
+Java Ant forkmode=perTest prevents shared phaser state between source classes;
+Go's shared model helper does not reset this static yet. A focused original
+TLCGetAll/CheckpointWhenTimeBound sequence is running as 17783 to confirm.
+Do not claim a full-workspace pass or restart the same failed snapshot.
+Random 63113/59782 remain live at a915e08, without full-run credit.
+
+
 2026-10-06 DFID/fingerprint CLI numeric branch parity:
 TLC's shared nonnegative helper obscured source-specific missing/invalid/range
 diagnostics and DFID's assignment before validation. Port -dfid/-fp branches

@@ -492,19 +492,25 @@ func recordMessage(code int, severity Severity, params ...string) {
 
 // GetMessage mirrors Java MP.getMessage, including its recorder notification.
 func GetMessage(code int, params ...string) string {
-	return getMessageParameters(code, params, nil)
+	return getMessageParameters(code, params, nil, SeverityNone)
 }
 
 func GetMessageNullable(code int, params ...*string) string {
-	return getMessageParameters(code, messageParameterStrings(params), params)
+	return getMessageParameters(code, messageParameterStrings(params), params, SeverityNone)
 }
 
-func getMessageParameters(code int, params []string, nullableParams []*string) string {
+// GetError mirrors MP.getError: notify the recorder and format an error
+// without printing it or applying the warning/suppression policy.
+func GetError(code int, params ...string) string {
+	return getMessageParameters(code, params, nil, SeverityError)
+}
+
+func getMessageParameters(code int, params []string, nullableParams []*string, severity Severity) string {
 	copied := copyMessageParameters(params)
 	nullableCopied := copyNullableMessageParameters(nullableParams)
 	// Java notifies the recorder before formatting, including when formatting
 	// subsequently throws (for example, while substituting a null parameter).
-	defaultRecorder.Record(Message{Code: code, Severity: SeverityNone,
+	defaultRecorder.Record(Message{Code: code, Severity: severity,
 		Params: copied, NullableParams: nullableCopied, FormattingOnly: true})
 	text := formatMessage(code, copied)
 	if nullableCopied != nil {
@@ -514,7 +520,10 @@ func getMessageParameters(code int, params []string, nullableParams []*string) s
 	tool := Globals.Tool
 	Globals.Unlock()
 	if tool {
-		return consoleMessageEnvelope(code, SeverityNone, text)
+		return consoleMessageEnvelope(code, severity, text)
+	}
+	if severity == SeverityError {
+		return "Error: " + text
 	}
 	return text
 }
@@ -1033,9 +1042,7 @@ func formatMessage(code int, params []string) string {
 	case ECCheckParamTraceRequired:
 		return "Expect a filename for -trace option."
 	case ECCheckParamCovreageRequired:
-		if len(params) >= 1 {
-			return fmt.Sprintf("An integer for coverage report interval required. But encountered %s", params[0])
-		}
+		return "An integer for coverage report interval required. But encountered " + configMessageParam(params, 0)
 	case ECCheckParamCovreageRequired2:
 		return "Coverage report interval required."
 	case ECCheckParamCovreageTooSmall:

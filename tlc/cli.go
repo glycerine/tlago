@@ -859,17 +859,6 @@ func parseMinuteIntervalOption(args []string, index int, name, option string) (i
 	return int64(millis), nil
 }
 
-func parseNonnegativeIntOption(args []string, index int, name string, option string) (int, error) {
-	value, err := parseIntOption(args, index, name, option)
-	if err != nil {
-		return 0, err
-	}
-	if value < 0 {
-		return 0, tlcCommandLineError("Error: expect a nonnegative integer for " + option + " option.")
-	}
-	return value, nil
-}
-
 func parseInt64Option(args []string, index int, name string, option string) (int64, error) {
 	if index+1 >= len(args) {
 		return 0, tlcCommandLineError("Error: " + name + " required.")

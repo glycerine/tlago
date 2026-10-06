@@ -88,7 +88,8 @@ Focused verification:
 | Numeric CLI correction: original TLC/WarningControl classes and checkpoint models | Pass | 0.017 / 5.638 seconds |
 | Simulation argument correction: original CLI classes and existing scheduler check | Pass | 0.017 / 0.016 seconds |
 | DFID/fingerprint CLI branches: original CLI classes and four DFID model methods | Pass | 0.016 / 1.529 seconds |
-| Latest all-package compilation | Pass | Session `68368` retired |
+| CheckImplFile/parser and MP.getError correction: original MP/CLI classes | Pass | 0.016 seconds |
+| Latest all-package compilation | Pass | Session `56271` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -116,21 +117,26 @@ the source `NumberFormatException` boundary, replace-all filename handling and
 empty-file presence check. Original CLI classes and the existing scheduler check
 pass; manual unchanged-Java/native outcomes match. DFID/fingerprint numeric
 branches also retain their individual source diagnostics and assignment order;
-four original DFID model methods pass. The separate `CheckImplFile` numeric
-parser needs a follow-up audit of its worker and coverage behavior. See progress
-for exact receipts.
+four original DFID model methods pass. The separate `CheckImplFile` parser now
+preserves its own worker, coverage and message-code behavior, string presence
+and exception boundary. Source `MP.getError` formatting is implemented; original
+MP/CLI tests and manual unchanged-Java comparisons pass. See progress for receipts.
 
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Full workspace with Ant model settings | `d611cba` | `85256` | `tlago-source-ant-fpset-workspace.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicate suites. Workspace verification
-predates the latest file-helper correction; keep its eventual receipt scoped
-to its compiled snapshot. The completed broader fingerprint receipt includes
+Poll these handles before launching duplicate suites. The workspace run at `d611cba` is now retired with status 1: root timed out
+in `TestJavaCheckpointWhenTimeBound`; TLC passed in 820.531 seconds and SANY
+in 1.057 seconds. The log is `tlago-source-ant-fpset-workspace.log` under
+`/mnt/oldrog/tmp`. The source Ant runner forks each test class; the Go model
+helper currently retains the off-heap static barrier from the earlier 48-worker
+`TLCGetAll` model. Focused original sequence `17783` is live to reproduce this
+setup difference. Correct the source-fork isolation before another workspace run.
+The workspace snapshot predates later corrections. The completed broader fingerprint receipt includes
 the original 99,999,999-entry index method and retains all source bounds.
 No job in this table has full-run credit yet. None uses `-race`.
 

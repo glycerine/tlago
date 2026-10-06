@@ -113,73 +113,92 @@ type CheckImplFileOptions struct {
 
 func ParseCheckImplFileOptions(args []string) (CheckImplFileOptions, error) {
 	opts := CheckImplFileOptions{Deadlock: true, Depth: 20}
+	mainFileSet, configFileSet, traceFileSet := false, false, false
 	for index := 0; index < len(args); {
 		switch args[index] {
 		case "-config":
 			if index+1 >= len(args) {
-				return opts, tlcCommandLineError("Error: expect a file name for -config option.")
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamExpectConfigFilename))
 			}
 			opts.ConfigFile = trimConfigExtension(args[index+1])
+			configFileSet = true
 			index += 2
 		case "-deadlock":
 			opts.Deadlock = false
 			index++
 		case "-recover":
 			if index+1 >= len(args) {
-				return opts, tlcCommandLineError("Error: need to specify the metadata directory for recovery.")
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamNeedToSpecifyConfigDir))
 			}
-			opts.FromCheckpoint = cleanPathWithSeparator(args[index+1])
+			opts.FromCheckpoint = args[index+1] + string(os.PathSeparator)
 			index += 2
 		case "-workers":
 			if index+1 >= len(args) {
-				return opts, tlcCommandLineError("Error: expect an integer for -workers option.")
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamWorkerNumberRequired2))
 			}
-			workers, err := parseWorkerCount(args[index+1])
-			if err != nil {
-				return opts, err
+			workers, valid := javaParseDecimalInt(args[index+1])
+			if !valid {
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamWorkerNumberRequired, args[index+1]))
 			}
-			opts.Workers = workers
-			SetNumWorkers(workers)
+			opts.Workers = int(workers)
+			SetNumWorkers(int(workers))
+			if NumWorkers() < 1 {
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamWorkerNumberTooSmall))
+			}
 			index += 2
 		case "-depth":
-			depth, err := parseIntOption(args, index, "depth", "-depth")
-			if err != nil {
-				return opts, err
+			if index+1 >= len(args) {
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamDepthRequired2))
 			}
-			opts.Depth = depth
+			depth, valid := javaParseDecimalInt(args[index+1])
+			if !valid {
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamDepthRequired, args[index+1]))
+			}
+			opts.Depth = int(depth)
 			index += 2
 		case "-trace":
 			if index+1 >= len(args) {
-				return opts, tlcCommandLineError("Error: trace file prefix required.")
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamTraceRequired))
 			}
 			opts.TraceFile = args[index+1]
+			traceFileSet = true
 			index += 2
 		case "-coverage":
-			coverage, err := parseNonnegativeIntOption(args, index, "coverage", "-coverage")
-			if err != nil {
-				return opts, err
+			if index+1 >= len(args) {
+				return opts, tlcCommandLineError(GetError(ECCheckParamCovreageRequired))
 			}
-			opts.CoverageMillis = coverage * 60 * 1000
+			coverage, valid := javaParseDecimalInt(args[index+1])
+			if !valid {
+				return opts, tlcCommandLineError(GetError(ECCheckParamCovreageRequired, args[index+1]))
+			}
+			opts.CoverageMillis = int(coverage * int32(60000))
 			Globals.CoverageInterval = opts.CoverageMillis
+			if Globals.CoverageInterval < 0 {
+				return opts, tlcCommandLineError(GetMessage(ECCheckParamCovreageTooSmall))
+			}
 			index += 2
 		default:
-			if len(args[index]) > 0 && args[index][0] == '-' {
-				return opts, tlcCommandLineError("Error: unrecognized option: " + args[index])
+			if args[index] == "" {
+				return opts, NewStringIndexOutOfBoundsException(0, 0)
 			}
-			if opts.MainFile != "" {
-				return opts, tlcCommandLineError("Error: more than one input files: " + opts.MainFile + " and " + args[index])
+			if args[index][0] == '-' {
+				return opts, tlcCommandLineError(GetError(ECCheckParamUnrecognized, args[index]))
+			}
+			if mainFileSet {
+				return opts, tlcCommandLineError(GetError(ECCheckParamUnrecognized, args[index], opts.MainFile))
 			}
 			opts.MainFile = trimTLAExtension(args[index])
+			mainFileSet = true
 			index++
 		}
 	}
-	if opts.MainFile == "" {
-		return opts, tlcCommandLineError("Error: Missing input TLA+ module.")
+	if !mainFileSet {
+		return opts, tlcCommandLineError(GetMessage(ECCheckParamMissingTLAModule))
 	}
-	if opts.ConfigFile == "" {
+	if !configFileSet {
 		opts.ConfigFile = opts.MainFile
 	}
-	if opts.TraceFile == "" {
+	if !traceFileSet {
 		opts.TraceFile = opts.MainFile + "_trace"
 	}
 	return opts, nil
