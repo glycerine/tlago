@@ -225,48 +225,6 @@ func TestOffHeapDiskFPSetContainsDoesNotCountMemoryHitsLikeJava(t *testing.T) {
 	}
 }
 
-func TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava(t *testing.T) {
-	ClearMessageRecorders()
-	recorder := &MemoryRecorder{}
-	AddMessageRecorder(recorder)
-	t.Cleanup(func() {
-		RemoveMessageRecorder(recorder)
-		ClearMessageRecorders()
-	})
-
-	cfg := NewFPSetConfiguration()
-	cfg.SetMemory(64)
-	set := NewOffHeapDiskFPSet(cfg)
-	set.Init(1, t.TempDir(), "offheap-duplicate-merge")
-	defer set.Close()
-
-	if err := set.mergeOffHeapValues([]uint64{42}); err != nil {
-		t.Fatalf("initial merge returned error: %v", err)
-	}
-	if len(set.index) != 1 {
-		t.Fatalf("initial index length = %d, want Java offheap special-case length 1", len(set.index))
-	}
-	if err := set.mergeOffHeapValues([]uint64{42}); err != nil {
-		t.Fatalf("duplicate merge returned error: %v", err)
-	}
-	if len(set.index) != 2 {
-		t.Fatalf("duplicate index length = %d, want 2", len(set.index))
-	}
-	if set.fileCnt != 2 {
-		t.Fatalf("fileCnt = %d, want Java table-count increment quirk 2", set.fileCnt)
-	}
-	records := recorder.Records(ECTLCFPValueAlreadyOnDisk)
-	if len(records) != 1 {
-		t.Fatalf("warning count = %d, want 1", len(records))
-	}
-	if records[0].Severity != SeverityWarning {
-		t.Fatalf("severity = %v, want warning", records[0].Severity)
-	}
-	if got := records[0].Text; got != "DiskFPSet.mergeNewEntries: 42 is already on disk.\n" {
-		t.Fatalf("message = %q", got)
-	}
-}
-
 func TestDiskFPSetRecoverDuplicateUsesJavaCheckpointCorruptError(t *testing.T) {
 	set := NewMSBDiskFPSet(NewFPSetConfiguration())
 	set.Init(1, t.TempDir(), "recover-duplicate")

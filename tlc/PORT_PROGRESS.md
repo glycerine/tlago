@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-06 off-heap shared barrier and duplicate-test reconciliation:
+Java OffHeapSynchronizer stops on the first throwing eviction. Phaser records
+all arrivals before onAdvance, so a thrown callback leaves that phase incomplete,
+the pending flag true and waiters unreleased. Remove the native continue-all /
+clear-and-release shortcut. Further arrival returns the source IllegalStateException
+with phase/party/arrival state; registration waits for incomplete advance and
+retains the 65,535-party bound. Successful advance clears the flag first and
+wraps phase numbering at 31 bits. Opaque object identity in the diagnostic is
+runtime-specific. Inspected unchanged Java source and local Java 21 Phaser
+bytecode; this ports the barrier contract used by TLC, not a generic Phaser API.
+
+Scratch two-set I/O-failure observations initially showed native two evictions
+and a successful next lookup versus Java one eviction and a subsequent illegal
+arrival. Corrected native observation 96265 returns 0 and matches Java exception
+families, one eviction and unchanged phase. Initial Java launcher used a missing
+configuration setter and did not compile; corrected source invocation uses the
+existing constructor and returns 0. No credit for that initial compile failure.
+Before cleanup, 22 original short off-heap methods pass 0.076s (12582), the
+48-worker/checkpoint sequence passes 5.311s (30121), and compilation passes 89280.
+Final cleanup verification: 22 methods pass 0.077s (19096), original 48-worker
+TLCGetAll then source five-second checkpoint pass 5.319s (18062), and all-package
+compilation passes 78802. All these handles are terminal 0. No race workload.
+
+Full workspace 71687 is terminal 1 at compiled 2e02aa9: root passes 1519.820s,
+SANY passes 1.071s, TLC fails 46.483s in the old handwritten native duplicate
+full-merge test. It predates subsequent CLI and barrier fixes. That test incorrectly
+expects duplicate full-flush success and fileCnt 2. Unchanged Java with assertions
+enabled reports Broken disk index and retains fileCnt 1. Scratch source launcher
+OffHeapDuplicateFullFlushManual.java returns 0 after observing that failure;
+initial recovery insertion failed checkpoint-corruption because the flushed
+fingerprint was still cached. The corrected scratch observation clears only the
+source array cache before inserting the duplicate, retaining the disk contents.
+No credit for the initial failed observation.
+Remove the inaccurate invented test and its otherwise-unused native slice merge
+entry points. Preserve production validation and the complete original Java
+OffHeapDiskFPSetTest.testMergeDuplicate translation: primitive merge, all ten
+output values and six warnings. Final original methods pass unchanged; no
+inventory totals changed and no substitute tests were invented. Scratch launchers
+are manual observations only. Random drafts 63113/59782 remain live at a915e08;
+latest logs show approximately 1.738 billion / 1.216 billion iterations, with
+full source 2,147,483,648 bounds retained and no completion credit.
+
 2026-10-06 ordinary TLC packaged-model command integration:
 The existing ModelInJar/resource/property loader was used by TLCApp/distributed
 entry points but omitted from ordinary TLC.handleParameters/main integration.

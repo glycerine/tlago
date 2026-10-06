@@ -37,6 +37,23 @@ source file permissions, and typed I/O propagation. A destination symlink is
 replaced by the copied file; its referent remains untouched. Failed data copying
 removes the partial destination. The source remains open throughout the copy.
 
+## Off-heap shared eviction barrier
+
+The source singleton uses Phaser with a monotonically increasing registered
+worker count. A successful advance flushes all sets, clears the pending flag,
+then advances the phase and releases waiters. If an eviction throws, it stops
+at that set: the flag remains pending and the phase has all parties arrived.
+Waiters remain in that phase; another arrival raises IllegalStateException.
+Registration waits behind an incomplete advance and retains Phaser's 65,535
+party limit. Phase numbering wraps at 31 bits. Model-test class isolation creates
+a fresh singleton only after the previous runtime's workers have joined.
+
+Duplicate primitive merging and full-flush validation are distinct source
+operations. The original testMergeDuplicate invokes the primitive merge and
+checks its deduplicated output and warnings. A duplicate submitted to the whole
+preallocated flush can instead fail index validation before file-count
+publication. Do not relax full-flush assertions to mimic the primitive test.
+
 ## Off-heap recovery and flusher dispatch
 
 `DiskFPSet.recoverFP` has exclusive access during recovery. Its off-heap virtual

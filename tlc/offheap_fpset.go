@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,14 +17,14 @@ const (
 )
 
 type offHeapSynchronizer struct {
-	mu              sync.Mutex
-	cond            *sync.Cond
-	sets            *InsMap[*OffHeapDiskFPSet, struct{}]
-	flusherChosen   atomic.Bool
-	parties         int
-	waiting         int
-	generation      uint64
-	lastEvictionErr error
+	mu             sync.Mutex
+	cond           *sync.Cond
+	sets           *InsMap[*OffHeapDiskFPSet, struct{}]
+	flusherChosen  atomic.Bool
+	parties        int
+	waiting        int
+	generation     uint64
+	phaserIdentity uint32
 }
 
 var offHeapGlobalSync = newOffHeapSynchronizer()
@@ -40,6 +41,8 @@ func newOffHeapSynchronizer() *offHeapSynchronizer {
 		sets:    NewInsMap[*OffHeapDiskFPSet, struct{}](),
 		parties: 1,
 	}
+	// Source Object.toString uses a runtime-specific 32-bit identity hash.
+	s.phaserIdentity = uint32(reflect.ValueOf(s).Pointer())
 	s.cond = sync.NewCond(&s.mu)
 	return s
 }
@@ -69,8 +72,20 @@ func (s *offHeapSynchronizer) incWorkers(numWorkers int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.parties < numWorkers {
+		if numWorkers > 65535 {
+			panic(NewIllegalStateException("Attempt to register more than 65535 parties for " + s.phaserStateString()))
+		}
+		// bulkRegister waits for onAdvance when the current phase has no
+		// unarrived parties. A failed callback does not complete that phase.
+		for s.waiting == s.parties {
+			s.cond.Wait()
+		}
 		s.parties = numWorkers
 	}
+}
+
+func (s *offHeapSynchronizer) phaserStateString() string {
+	return fmt.Sprintf("tlc2.tool.fp.OffHeapDiskFPSet$OffHeapSynchronizer$1@%x[phase = %d parties = %d arrived = %d]", s.phaserIdentity, s.generation, s.parties, s.waiting)
 }
 
 func (s *offHeapSynchronizer) evict() {
@@ -88,28 +103,32 @@ func (s *offHeapSynchronizer) awaitIfPending() error {
 	if !s.flusherChosen.Load() {
 		return nil
 	}
+	// Phaser has already recorded the last arrival before onAdvance runs.
+	// If that callback throws, the phase remains with zero unarrived parties;
+	// a further arrival is illegal, rather than retrying or releasing waiters.
+	if s.waiting == s.parties {
+		return NewIllegalStateException("Attempted arrival of unregistered party for " + s.phaserStateString())
+	}
 	generation := s.generation
 	s.waiting++
-	if s.waiting >= s.parties {
-		var firstErr error
+	if s.waiting == s.parties {
 		for set := range s.sets.All() {
-			if err := set.evict(); err != nil && firstErr == nil {
-				firstErr = err
+			if err := set.evict(); err != nil {
+				return err
 			}
 		}
-		s.lastEvictionErr = firstErr
-		s.waiting = 0
-		s.generation++
 		if !s.flusherChosen.CompareAndSwap(true, false) {
 			panic(NewTLCRuntimeException(ECGeneral))
 		}
+		s.waiting = 0
+		s.generation = (s.generation + 1) & math.MaxInt32
 		s.cond.Broadcast()
-		return firstErr
+		return nil
 	}
-	for generation == s.generation && s.flusherChosen.Load() {
+	for generation == s.generation {
 		s.cond.Wait()
 	}
-	return s.lastEvictionErr
+	return nil
 }
 
 func offHeapDiskFPSetProbeLimit() int {
@@ -481,27 +500,6 @@ func (s *OffHeapDiskFPSet) flushOffHeapTable() error {
 	s.bucketsCap = 0
 	atomic.StoreInt64(&s.tblLoad, 0)
 	return nil
-}
-
-// Retain the native slice entry point while sharing the source stream merge.
-func (s *OffHeapDiskFPSet) mergeOffHeapValues(newValues []uint64) error {
-	position := 0
-	return s.mergeOffHeapIterator(offHeapMergeIterator{
-		elements: int64(len(newValues)),
-		markNext: func() (int64, bool) {
-			if position >= len(newValues) {
-				panic(NewNoSuchElementException())
-			}
-			v := newValues[position]
-			position++
-			return int64(v), true
-		},
-		hasNext: func() bool { return position < len(newValues) },
-	})
-}
-
-func (s *OffHeapDiskFPSet) mergeOffHeapIterator(itr offHeapMergeIterator) error {
-	return s.mergeOffHeapIteratorWithFlusher(itr, nil)
 }
 
 func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeIterator, flusher *offHeapConcurrentFlusher) (err error) {

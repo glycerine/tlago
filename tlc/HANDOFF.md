@@ -92,7 +92,8 @@ Focused verification:
 | Ant class isolation: original 48-worker TLCGetAll then five-second checkpoint | Pass | 5.329 seconds, session `10096` retired |
 | Persistent CLI parameter state: original CLI/debugger/dump-load methods | Pass | 0.023 / 1.249 seconds |
 | Packaged TLC model integration: existing CLI behaviors and original subset methods | Pass | 4.638 seconds; original CLI classes 0.017 seconds |
-| Latest all-package compilation | Pass | Session `44702` retired |
+| Off-heap barrier failure semantics: original 22 short cases and 48-worker/checkpoint sequence | Pass | 0.077 / 5.319 seconds; sessions `19096` / `18062` retired |
+| Latest all-package compilation | Pass | Session `78802` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -106,6 +107,15 @@ pass in 4.304 seconds; final all-package compilation passes (session `97004`).
 Manual unchanged-Java/native counts match for full-table recovery and configured
 probe exhaustion. No test assertions, bounds or inventory counts changed. The
 full-class receipt above predates this correction; see progress for exact scopes.
+
+The shared off-heap barrier now stops on the first eviction failure and retains
+Java Phaser's incomplete phase and pending-flush state. It does not continue
+flushing other sets or release waiting workers after a failed callback. Further
+arrival reports the source illegal-state diagnostic; worker registration retains
+the 65,535-party limit and waits behind an incomplete advance. Successful phase
+advancement preserves source flag-clearing order and signed 31-bit phase wrap.
+Manual unchanged-Java/native failure observations agree; original short methods
+and the 48-worker/checkpoint sequence pass. No new tests or inventory credit.
 
 State-generation functor defaults now preserve Java's message-less
 `UnsupportedOperationException` for unimplemented `setElement`, `hasStates`,
@@ -130,17 +140,27 @@ first implicit view. Post-condition parsing uses source trailing-empty split
 semantics. `nomonolith` is accepted and consumed as Java does; neither the pinned
 source nor Go changes output for that token. Help and README explain this.
 Original CLI/debugger/dump-load methods and manual source/native observations
-pass; their receipts predate completion of the live workspace snapshot below.
+pass; their receipts predate completion of the retired workspace snapshot below.
 
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Full workspace with source Ant static isolation | `2e02aa9` | `71687` | `tlago-ant-static-isolation-workspace.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicate suites. The workspace run at `d611cba` is now retired with status 1: root timed out
+Poll these handles before launching duplicate suites. Workspace `71687` is
+retired with status 1: root passes in 1,519.820 seconds and SANY in 1.071 seconds,
+but TLC fails in 46.483 seconds in the older handwritten
+`TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava`. It expected a duplicate full
+flush to succeed, whereas unchanged Java asserts `Broken disk index.` before
+publishing the file count. Remove that inaccurate non-Java test and its unused
+slice helper; preserve the complete original `testMergeDuplicate`, including
+all ten output values and six warnings. The final 22 original short off-heap
+cases pass with source validation unchanged. This receipt is not a green
+workspace result and predates the correction.
+
+ The workspace run at `d611cba` is now retired with status 1: root timed out
 in `TestJavaCheckpointWhenTimeBound`; TLC passed in 820.531 seconds and SANY
 in 1.057 seconds. The log is `tlago-source-ant-fpset-workspace.log` under
 `/mnt/oldrog/tmp`. The source Ant runner forks each test class; the Go model
@@ -188,7 +208,7 @@ properties, uses the packaged resolver, selects tool output and disables
 checkpoints. Direct invocation, `modelcheck` and `mc` use the same runner.
 Manual unchanged-Java/native runs of adapted original fixtures match failure
 code 2147 and successful 3-generated/2-distinct state counts. These observations
-add no test-port credit. The live workspace snapshot predates this correction.
+add no test-port credit. The retired `71687` workspace snapshot predates this correction.
 
 The guide in `cli_help.go` prints flag summaries, explanations, Java/Toolbox
 correspondence, defaults, examples, and current implementation limits. Help
