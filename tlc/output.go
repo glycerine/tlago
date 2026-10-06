@@ -283,13 +283,14 @@ const mpGeneralDebugProperty = "tlc2.output.MP.noDebug"
 
 var mpGeneralDebug = initialBooleanProperty(mpGeneralDebugProperty)
 
+// Message is the raw MP recorder event. Console text is formatted only after
+// notification, so recorders must inspect parameters rather than printed text.
 type Message struct {
 	Code     int
 	Severity Severity
 	Params   []string
 	// NullableParams preserves Java null entries for exception diagnostics.
 	NullableParams []*string
-	Text           string
 	Suppressed     bool
 	// FormattingOnly identifies MP.getMessage events, which reach recorders
 	// without printing a diagnostic.
@@ -474,17 +475,15 @@ func PrintTLCBug(code int, params ...string) int {
 }
 
 func PrintState(code int, params []string, state *TLCStateMut, stateNumber int) string {
-	text := formatMessage(code, params)
-	return recordStateMessage(code, params, text, state, nil, stateNumber)
+	return PrintStateInfo(code, params, NewTLCStateInfoWithOrdinal(state, stateNumber), stateNumber)
 }
 
 func PrintStateInfo(code int, params []string, info *TLCStateInfo, stateNumber int) string {
-	text := formatMessage(code, params)
 	var state *TLCStateMut
 	if info != nil {
 		state = info.State
 	}
-	return recordStateMessage(code, params, text, state, info, stateNumber)
+	return recordStateMessage(code, params, state, info, stateNumber)
 }
 
 func recordMessage(code int, severity Severity, params ...string) {
@@ -532,9 +531,9 @@ func getMessageParameters(code int, params []string, nullableParams []*string, s
 }
 
 func recordMessageParameters(code int, severity Severity, params []string, nullableParams []*string) {
-	suppressed, asError, warn := messageControlFor(code)
-	visible := !suppressed
+	// Source warning elevation happens before the printer's recorder event.
 	if severity == SeverityWarning {
+		_, asError, _ := messageControlFor(code)
 		warningToError, _ := tlcLookupSystemProperty("tlc2.output.MP.warning2error")
 		if javaBooleanProperty(warningToError) || asError {
 			if nullableParams != nil {
@@ -544,45 +543,45 @@ func recordMessageParameters(code int, severity Severity, params []string, nulla
 			}
 			panic(NewTLCRuntimeException(code, params...))
 		}
-		visible = warn && !suppressed
-	} else if severity == SeverityError {
-		visible = true
 	}
 	copied := copyMessageParameters(params)
 	nullableCopied := copyNullableMessageParameters(nullableParams)
+	suppressed, _, warn := messageControlFor(code)
+	defaultRecorder.Record(Message{
+		Code: code, Severity: severity, Params: copied, NullableParams: nullableCopied,
+		Suppressed: severity != SeverityError && (suppressed || severity == SeverityWarning && !warn),
+	})
+	// Recorder callbacks precede Java's visibility checks and formatting. They
+	// can change the controls or throw, and formatting itself can throw.
+	suppressed, _, warn = messageControlFor(code)
+	if severity == SeverityWarning {
+		if !warn {
+			return
+		}
+	} else if severity != SeverityError && suppressed {
+		return
+	}
 	var text string
 	if nullableCopied != nil {
 		text = formatNullableMessage(code, nullableCopied, severity)
 	} else {
 		text = formatMessage(code, copied, severity)
 	}
-	defaultRecorder.Record(Message{
-		Code:           code,
-		Severity:       severity,
-		Params:         copied,
-		NullableParams: nullableCopied,
-		Text:           text,
-		Suppressed:     !visible,
-	})
-	// Recorder events and console output are separate Java MP boundaries.
-	if severity != SeverityWarning || warn {
-		printConsoleMessage(code, severity, text, visible)
-	}
+	// Enabled warnings enter the history even when individually suppressed.
+	printConsoleMessage(code, severity, text, severity == SeverityError || !suppressed)
 }
 
-func recordStateMessage(code int, params []string, text string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) string {
+func recordStateMessage(code int, params []string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) string {
 	suppressed, _, _ := messageControlFor(code)
-	copied := append([]string(nil), params...)
+	copied := copyMessageParameters(params)
 	defaultRecorder.Record(Message{
-		Code:        code,
-		Severity:    SeverityState,
-		Params:      copied,
-		Text:        text,
-		Suppressed:  suppressed,
-		State:       state,
-		StateInfo:   info,
-		StateNumber: stateNumber,
+		Code: code, Severity: SeverityState, Params: copied, Suppressed: suppressed,
+		State: state, StateInfo: info, StateNumber: stateNumber,
 	})
+	// Unlike ordinary messages, Java formats suppressed states and returns the
+	// formatted message. Its recorder notification still precedes formatting.
+	text := formatMessage(code, copied, SeverityState)
+	suppressed, _, _ = messageControlFor(code)
 	return printConsoleMessage(code, SeverityState, text, !suppressed)
 }
 

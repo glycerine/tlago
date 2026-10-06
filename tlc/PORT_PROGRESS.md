@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-06 MP public-printer recorder ordering:
+Continue faithful Java parity on master; new distributed architecture stays
+postponed. Ordinary/error/warning/bug/state printer notifications now precede
+formatting. Re-read visibility controls after callbacks. Suppressed ordinary
+messages and bug reports skip formatting; disabled warnings skip formatting.
+Enabled warnings retain formatting/history before individual suppression. State
+output still formats when suppressed and constructs the source ordinal info.
+Remove derived Message.Text from raw events: deriving it early would preserve the
+ordering defect, while notifying again would invent extra events. The original
+four coverage reporting methods now capture ToolIO output like Java's
+TestPrintStream; their assertions stay unchanged. The existing factory check
+inspects the same warning parameter text rather than a derived recorder field.
+No invented persistent tests, source assertion changes, or inventory credit.
+
+Scratch MPRecorderBoundaryManual.java and tlago-recorder-boundary-manual.go
+compare ten unchanged-Java/native printer observations: suppression, disabled
+warnings, missing arguments, callback suppression/disable/tool-mode changes,
+callback exceptions, and state formatting failure. All match event counts,
+exception presence, console bytes and return bytes (18312 terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-recorder-boundary-{java,go}.log. These manual observations
+are verification, not test ports. Existing original MP/WarningControl/four
+coverage methods and native recorder/factory checks pass 0.019s (93218 terminal
+0). Representative original trace/debugger/override models pass 2.718s (15440
+terminal 0). All-package compilation passes (96979 terminal 0). Full-workspace
+baseline remains be6942a; these focused receipts do not replace that snapshot.
+Final source warning suppression check now occurs after formatting/history.
+The final focused selection also includes existing output-stream checks and
+passes 0.019s (39290 terminal 0). No broad or long race workload.
+
+
 2026-10-06 nullable single-pass correction and green workspace receipt:
 Complete MP template port is committed as 6e1bc85. Its public wrapper still
 performed an ordinary formatting pass before formatting nullable parameters.

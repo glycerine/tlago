@@ -27,22 +27,23 @@
 package tlc
 
 import (
+	"bytes"
 	"strconv"
 	"strings"
 	"testing"
 )
 
-func javaCoverageRecorder(t *testing.T) *MemoryRecorder {
+func javaCoverageRecorder(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	previous := Globals.CoverageInterval
 	Globals.CoverageInterval = 1
-	recorder := &MemoryRecorder{}
-	AddMessageRecorder(recorder)
+	output := &bytes.Buffer{}
+	restore := ToolIOSetSystemStreams(output, output)
 	t.Cleanup(func() {
-		RemoveMessageRecorder(recorder)
+		restore()
 		Globals.CoverageInterval = previous
 	})
-	return recorder
+	return output
 }
 
 func javaCoverageNode(count int64) CostModel {
@@ -52,13 +53,8 @@ func javaCoverageNode(count int64) CostModel {
 	return NewCostModel(node).IncInvocations(count)
 }
 
-func requireJavaCoverageContains(t *testing.T, recorder *MemoryRecorder, want string) {
+func requireJavaCoverageContains(t *testing.T, output *bytes.Buffer, want string) {
 	t.Helper()
-	var output strings.Builder
-	for _, message := range recorder.Messages {
-		output.WriteString(message.Text)
-		output.WriteByte('\n')
-	}
 	if !strings.Contains(output.String(), want) {
 		t.Fatalf("coverage output=%q, want substring %q", output.String(), want)
 	}
@@ -68,8 +64,8 @@ func TestJavaReportCoverage01(t *testing.T) {
 	recorder := javaCoverageRecorder(t)
 	root := NewCostModel(nil)
 	root.Report()
-	if len(recorder.Messages) != 0 {
-		t.Fatalf("expected empty output, got %v", recorder.Messages)
+	if recorder.Len() != 0 {
+		t.Fatalf("expected empty output, got %q", recorder.String())
 	}
 	root.AddChildModel(NewCostModel(nil))
 }

@@ -164,6 +164,9 @@ func printConsoleMessage(code int, severity Severity, text string, visible bool)
 			return text
 		}
 		mpConsole.warningHistory[text] = true
+		// Java checks individual warning suppression after formatting and history.
+		suppressed, _, _ := messageControlFor(code)
+		visible = !suppressed
 	} else if tool {
 		text = consoleMessageEnvelope(code, severity, text)
 	} else {

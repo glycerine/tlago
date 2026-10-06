@@ -304,12 +304,15 @@ possible schedule.
 
 ## Remaining work and known blockers
 
-Continue the core source audit. MP's public printer recorder ordering and
-suppression remain to reconcile: Java notifies recorders before formatting, and
-suppressed ordinary messages / globally disabled warnings avoid formatting.
-The native printer currently derives text before its recorder notification.
-Preserve original callback, exception and visibility behavior when correcting it.
-The template-construction method itself is now mechanically ported and verified.
+Continue the core source audit and unresolved original methods below. MP's
+ordinary/error/warning/bug/state printers now notify recorders before formatting.
+Suppressed ordinary messages and globally disabled warnings avoid formatting;
+enabled suppressed warnings still enter history. State output retains its return
+value and ordinal info. Raw events carry parameters rather than derived text.
+The four original coverage reporting methods now capture actual ToolIO output,
+as Java does. Focused original checks and ten manual public-printer comparisons
+pass; see PORT_PROGRESS for receipts. This does not establish parity for every
+throwable/runtime-exception overload or the entire TLC implementation.
 
 Five main-suite contexts have known source-failing or JVM-specific
 reconciliation issues below. The other four pending contexts are original assumption-disabled

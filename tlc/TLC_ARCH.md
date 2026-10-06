@@ -24,6 +24,15 @@ does not, and a missing element raises the source array-bounds exception. Unknow
 codes retain Java's wrong-invocation diagnostic. Recorder and console boundaries
 remain separate.
 
+MP printer recorders receive raw parameters before formatting. Ordinary messages
+and bug reports check suppression after notification and skip formatting when
+suppressed. Warnings check elevation first, then notify, then check the global
+warning switch. Enabled warnings format and enter history even when individually
+suppressed. Errors always format; states format and return their message even
+when suppressed. Recorder callbacks can change controls, change tool mode, or
+throw before formatting. Do not attach derived console text to raw events.
+
+
 ## Runner completion and memory reporting
 
 TLC.process preserves the checker result through its final I/O cleanup. It

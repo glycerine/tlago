@@ -111,9 +111,9 @@ func TestFPSetFactoryUnsupportedImplementationFallsBackLikeJava(t *testing.T) {
 		if record.Severity != SeverityWarning {
 			t.Fatalf("record %d severity = %v, want warning", i, record.Severity)
 		}
-		if !strings.Contains(record.Text, "Selected fingerprint set (set of visited states)") ||
-			!strings.Contains(record.Text, "Reverting to default fingerprint set.") {
-			t.Fatalf("record %d text = %q, want Java unsupported-feature message", i, record.Text)
+		if !strings.Contains(record.Params[0], "Selected fingerprint set (set of visited states)") ||
+			!strings.Contains(record.Params[0], "Reverting to default fingerprint set.") {
+			t.Fatalf("record %d text = %q, want Java unsupported-feature message", i, record.Params[0])
 		}
 	}
 }
