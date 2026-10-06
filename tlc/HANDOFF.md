@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.031 seconds, session `52259` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.799 seconds, session `43384` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.425 seconds, session `7942` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.849 seconds, session `6221` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -191,7 +191,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,116,162,150 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,143,260,123 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -529,6 +529,13 @@ Unicode operators and excluding '.'. The expanded 54 complete TRACE/parse-result
 observations match Java; the same inputs match selected substitution target/arrow
 kinds and images. Final complete SANY passes in 1.799 seconds, and the focused
 parser classes plus original TLC models pass in 16.031 seconds.
+LAMBDA now uses the source identifier-only parameter list and direct identifier
+heirs, with actual Lambda frame, mandatory-token exceptions and expectations.
+Semantic translation reads those identifiers rather than fabricated N_IdentDecl
+nodes. Wrong-arity E4274 retains the source operator-name range; the subsequent
+E4271 still uses the full call range. All 64 bounded complete parser-output
+observations and 12 LAMBDA semantic observations match Java. Final complete SANY
+passes in 1.849 seconds; the focused original checks pass in 16.425 seconds.
 Numeric/general-Object driver
 formatting, PrintStream error-state queries and remaining production-frame
 coverage still require reconciliation. Do not claim full SanyOutput or parser

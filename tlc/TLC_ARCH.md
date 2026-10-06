@@ -53,6 +53,16 @@ Fifty-four bounded complete TRACE/parse-result observations and selected target/
 arrow subtree kinds/images match pinned Java. General JavaCC rescan, remaining
 productions and full syntax-tree parity remain unproven.
 
+LAMBDA's parameter list follows Java Identifier (, Identifier)*, rather than
+formal operator declarations. Its syntax heirs contain direct identifier tokens,
+and semantic bound extraction consumes those actual heirs. Source Lambda frame,
+expectations and mandatory-token failure boundaries are retained. Operator-arity
+mismatch E4274 uses the operator-name location, independently of the subsequent
+OpDef.match E4271 on the complete application. Sixty-four bounded complete parser
+observations and 12 LAMBDA semantic observations match Java. These observations
+cover nested bindings, substitution, arity and unknown identifiers without claiming
+complete semantic graph or application-range parity.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-06 Faithful LAMBDA parameters and semantic arity location:
+Previous turn completed 521b8bb. Java Lambda accepts only Identifier parameters;
+Go had reused formal identifier/operator declarations and fabricated N_IdentDecl
+heirs. Port the exact identifier list, Lambda frame, expectations and mandatory
+token failures. Semantic bound extraction now consumes direct identifier heirs.
+No original fixture/assertion changes and no invented persistent tests.
+
+All 64 bounded complete parser TRACE/parse-result observations match Java,
+including ten additional LAMBDA cases: one/two/nested identifiers, substitution,
+rejected higher-order/symbol formals, empty/trailing/missing-colon/bad-body paths.
+Final rebuilt comparison 84616 terminal 0; log
+/mnt/oldrog/tmp/tlago-sany-lambda-parser-final-audit.log.
+The initial edit accidentally removed adjacent IfThenElse; compilation caught it.
+Restore that method unchanged from HEAD before rebuilding. The earlier 53061
+attempt ran an old binary after its build failed and earns no verification credit.
+Subsequent dependent probes use shell fail-fast and freshly rebuilt binaries.
+
+Semantic comparisons expose a real E4274 location discrepancy: Java reports the
+operator name, Go had overridden it with the entire call range. Retain actual
+owner.Pos/SourceEnd for E4274; the later E4271 remains on the full application.
+One initial substitution-probe parse failure came from Java's resolver cwd;
+run both probes in the fixture directory with the same M.tla declaration.
+All 12 final complete semantic observations match (69295 terminal 0), including
+valid bindings, nested scopes, substitution, wrong arity and unknown identifier.
+Script /mnt/oldrog/tmp/tlago-lambda-semantic-audit.py; logs under
+/mnt/oldrog/tmp/tlago-lambda-semantic-audit; summary
+/mnt/oldrog/tmp/tlago-lambda-semantic-final-audit.log.
+
+Final normal verification: complete SANY 1.849 seconds (6221 terminal 0),
+unchanged existing parser/semantic/token/operator classes, original ParseErrorTests
+and four original TLC models 16.425 seconds (7942 terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-sany-lambda-final-{sany,root}.log. Inventories unchanged.
+Broader production/semantic parity and complete workspace green remain unproven.
+MSB session 5144 remains confirmed live, with last recorded progress
+1,143,260,123/2,147,483,648; keep the same isolated binary and handle.
+
 2026-10-06 INSTANCE/substitution production boundaries:
 Previous turn completed 6d0d9ab. Port Instance, Instantiation and Substitution's
 actual frames, expectations and parse-failure boundaries. Mandatory module names

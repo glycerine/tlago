@@ -2122,14 +2122,20 @@ func (p *SanyParser) MaybeBound() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Lambda(stop func(*SanyToken) bool) *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenLambda, "expected LAMBDA"))
-	heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
+	p.beginProduction("Lambda")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLambda, "expected LAMBDA")}
+	p.expecting = "Identifier"
+	heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected LAMBDA identifier"))
+	p.expecting = "`,' or `:'"
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
+		p.expecting = "Identifier"
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected LAMBDA identifier"))
+		p.expecting = "`,' or `:'"
 	}
-	heirs = append(heirs, p.consume(SanyTokenColon, "expected : in LAMBDA expression"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in LAMBDA expression"))
+	p.expecting = "Expression"
 	heirs = append(heirs, p.ExpressionUntil(stop))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Lambda"], heirs...)
 }

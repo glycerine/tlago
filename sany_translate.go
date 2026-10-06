@@ -2269,13 +2269,11 @@ func sanyChoose(node *SanySyntaxNode) (Expr, Diagnostics) {
 
 func sanyLambda(node *SanySyntaxNode) (Expr, Diagnostics) {
 	lambda := &FunctionExpr{Pos: sanyNodePosition(node), IsLambda: true, PreComments: sanyLeadingPreComments(node)}
-	for _, child := range node.GetHeirs() {
-		if child.Kind.JavaName() != "N_IdentDecl" {
-			continue
-		}
-		if id := firstSanyIdentifier(child); id != nil {
-			lambda.Bounds = append(lambda.Bounds, BoundVar{Name: id.Image, Pos: sanyNodePosition(id)})
-		}
+	heirs := node.GetHeirs()
+	// Lambda's source heirs are LAMBDA, identifier (, identifier)*, ':', body.
+	for i := 1; i < len(heirs)-2; i += 2 {
+		identifier := heirs[i]
+		lambda.Bounds = append(lambda.Bounds, BoundVar{Name: identifier.Image, Pos: sanyNodePosition(identifier)})
 	}
 	body, diags := sanyExpr(lastSanyExpression(node))
 	lambda.Body = body

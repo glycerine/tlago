@@ -358,9 +358,7 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 	diagnostic.SANYMessage = fmt.Sprintf("Expected arity %d but found operator of arity %d.", expected, got)
 	if function, isFunction := argument.(*FunctionExpr); isFunction && function.IsLambda {
 		diagnostic = sanyDiagnosticParameters(errorAt(owner.Pos, "E4274", "operator argument arity mismatch: got %d, want %d", got, expected), got, index+1, owner.Name, expected)
-		if owner.Syntax != nil {
-			diagnostic.SANYRange = owner.Syntax.Range
-		}
+		diagnostic.SANYRange = SanyRange{Begin: owner.Pos, End: owner.Pos.SourceEnd()}
 		diagnostic.SANYMessage = fmt.Sprintf("Lambda expression with arity %d used as argument %d of operator `%s', \nbut an operator of arity %d is required.", got, index+1, owner.Name, expected)
 	}
 	return append(diags, diagnostic)
