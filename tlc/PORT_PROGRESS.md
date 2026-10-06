@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-06 off-heap recovery uses the source current-flusher path:
+Java final DiskFPSet.recoverFP invokes virtual memInsert, then current
+flusher.flushTable when full; Go instead serialized every recovery operation,
+awaited the worker barrier, called normal eviction and selected a fresh flusher.
+Restore exclusive-recovery insertion without extra locking/barrier entry. Only
+probe exhaustion signals ForceFlush and falls back to ordinary Put, preserving
+its lookup/statistics and checked-I/O return boundary. Full tables flush the
+existing flusher, preserving executor state, without eviction growth/timing
+updates or unchecked I/O wrapping. Duplicate error uses TLCRuntimeException;
+warning mode continues through the capacity check. Initial memInsert remains
+memory-only as Java; no speculative disk-duplicate lookup added.
+Extract the shared current-flusher operation for recovery/public invariant/evict;
+normal eviction retains its own flusher selection and checked-I/O wrapper.
+Restore empty-eviction input checking/selection, source assertion details and
+flushTime updates only after success. No tests or assertions changed.
+
+Original 22 short OffHeap cases initially pass 0.073s (95762 terminal 0), then
+final assertion/timing refinement passes 0.067s (49274 terminal 0). Three original
+checkpoint models pass 4.304s (48753 terminal 0): CheckpointOnViolation,
+CheckpointOnViolationTTrace and full CodePlexBug08EWD840FL2FromCheckpoint archive
+recovery with three workers and all original counts/graphs/trace assertions.
+Logs: /mnt/oldrog/tmp/tlago-offheap-recovery-flusher-{focused,models}.log.
+Final all-package compilation passes (97004 terminal 0).
+
+Manual unchanged-Java factory/native observations at explicit 2048-byte
+configuration: 512 recoveries yield size512/table0/file512/evictions0 in both
+(87949 source and native standalone main terminal 0). Under source-supported
+probeLimit4, both yield size512/table4/file508/evictions127 (78693 Java and 20206
+native terminal 0), exercising probe-exhaustion fallback. Active duplicate513
+throws source util.Assert$TLCRuntimeException; native returns TLCError with
+Runtime=true, code2126. The first source attempt 38401 could not access the
+protected constructor and has no verification credit; use upstream factory.
+Native scratch main: /mnt/oldrog/tmp/tlago-offheap-recovery-manual.go. These are
+manual observations, not new persistent regression/unit tests, reduced original
+workloads or method-count credit.
+
+Workspace 85256 remains live at d611cba, random 63113/59782 at a915e08.
+Question pending about preserving exact source-failing, Ant-unselected classes
+in a matching opt-in target; no response/disposition inferred. They remain
+reconciliation drafts and inventory counts remain unchanged.
+
+
 2026-10-06 full original fingerprint validation gate complete:
 Session 80888 returned terminal 0 in 583.638s, compiled f764bb1 before the
 subsequent checkpoint file-helper correction. All whole original LSBDiskFPset,

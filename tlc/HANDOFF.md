@@ -90,6 +90,15 @@ Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
 These are manual verification, not additional unit tests or inventory credit.
 
+The latest off-heap recovery correction uses the current flusher directly when
+recovery fills the table, retaining source statistics and exception boundaries.
+Only probe exhaustion falls back to ordinary put/eviction. Final 22 short original
+off-heap cases pass in 0.067 seconds; three original checkpoint/recovery models
+pass in 4.304 seconds; final all-package compilation passes (session `97004`).
+Manual unchanged-Java/native counts match for full-table recovery and configured
+probe exhaustion. No test assertions, bounds or inventory counts changed. The
+full-class receipt above predates this correction; see progress for exact scopes.
+
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |

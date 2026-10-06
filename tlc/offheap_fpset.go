@@ -212,34 +212,37 @@ func (s *OffHeapDiskFPSet) RecoverTrace(trace *TLCTrace) error {
 	return nil
 }
 
-func (s *OffHeapDiskFPSet) RecoverFP(fp uint64) error {
+// DiskFPSet.recoverFP has exclusive access during recovery. OffHeap's
+// memInsert0 falls back to ordinary put only when all probes are exhausted;
+// a full table otherwise flushes the currently selected flusher directly.
+func (s *OffHeapDiskFPSet) RecoverFP(fp uint64) (err error) {
+	// Put exposes Java checked I/O failures through the native panic boundary.
+	// Restore the checked return for this source throws-IOException method.
+	defer func() {
+		if failure := recover(); failure != nil {
+			if ioErr, ok := failure.(error); ok && isJavaIOException(ioErr) {
+				err = ioErr
+				return
+			}
+			panic(failure)
+		}
+	}()
 	fp0 := fp & diskFPSetFlushedMask
-	for {
-		if err := offHeapGlobalSync.awaitIfPending(); err != nil {
-			return err
-		}
-		s.mu.Lock()
-		seen, inserted := s.memInsert0(fp0, 0)
-		if seen {
-			s.mu.Unlock()
-			if diskFPSetError2Warning() {
-				PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
-				return nil
-			}
-			return newTLCErrorCode(ECSystemCheckpointRecoveryCorrupt, "")
-		}
-		if inserted {
-			if s.needsDiskFlush() {
-				err := s.evictLocked()
-				s.mu.Unlock()
-				return err
-			}
-			s.mu.Unlock()
-			return nil
-		}
-		s.mu.Unlock()
-		offHeapGlobalSync.evict()
+	seen, inserted := s.memInsert0(fp0, 0)
+	if !inserted {
+		s.ForceFlush()
+		seen = s.Put(fp0)
 	}
+	if seen {
+		if !diskFPSetError2Warning() {
+			return NewTLCRuntimeException(ECSystemCheckpointRecoveryCorrupt, "")
+		}
+		PrintWarning(ECSystemCheckpointRecoveryCorrupt, fmt.Sprintf("Encountered duplicate fingerprint value %d", fp0))
+	}
+	if s.needsDiskFlush() {
+		return s.flushOffHeapTable()
+	}
+	return nil
 }
 
 func (s *OffHeapDiskFPSet) CheckFPs() uint64 {
@@ -381,11 +384,11 @@ func (s *OffHeapDiskFPSet) prepareOffHeapTableLocked() {
 		return
 	}
 	if !s.checkOffHeapInput() {
-		panic(NewAssertionError())
+		panic(NewAssertionError("Table violates invariants prior to eviction"))
 	}
 	LongArraysSortRange(s.array, 0, s.array.Size()-1+int64(s.probeLimit), s.offHeapLongComparator)
 	if s.checkOffHeapSorted() != -1 {
-		panic(NewAssertionError())
+		panic(NewAssertionError(fmt.Sprintf("Array %s not fully sorted at index %d and reprobe %d.", s.array.String(), s.checkOffHeapSorted(), s.probeLimit)))
 	}
 }
 
@@ -438,32 +441,38 @@ func (s *OffHeapDiskFPSet) evict() error {
 func (s *OffHeapDiskFPSet) evictLocked() error {
 	s.growDiskMark++
 	start := time.Now()
-	defer func() {
-		s.flushTime += int64(time.Since(start) / time.Millisecond)
-	}()
-	if atomic.LoadInt64(&s.tblCnt) == 0 {
-		s.forceFlush.Store(false)
-		return nil
-	}
 	if !s.checkOffHeapInput() {
-		panic(NewAssertionError())
+		panic(NewAssertionError("Table violates invariants prior to eviction: " + s.array.String()))
 	}
-	flusher := s.selectOffHeapConcurrentFlusher(s.numThreads)
-	if flusher != nil {
-		flusher.prepareTable()
-	} else {
-		s.prepareOffHeapTableLocked()
-	}
-	itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
-	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, flusher); err != nil {
+	s.selectOffHeapConcurrentFlusher(s.numThreads)
+	if err := s.flushOffHeapTable(); err != nil {
 		if isJavaIOException(err) {
 			return newOffHeapRuntimeException(err)
 		}
 		return err
 	}
+	s.flushTime += int64(time.Since(start) / time.Millisecond)
+	return nil
+}
+
+// DiskFPSet.Flusher.flushTable dispatches through the existing flusher. Recovery
+// and public invariant checks do not reselect it or count a normal eviction.
+func (s *OffHeapDiskFPSet) flushOffHeapTable() error {
+	if atomic.LoadInt64(&s.tblCnt) == 0 {
+		return nil
+	}
+	if s.concurrentFlusher != nil {
+		s.concurrentFlusher.prepareTable()
+	} else {
+		s.prepareOffHeapTableLocked()
+	}
+	itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
+	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
+		return err
+	}
 	atomic.StoreInt64(&s.tblCnt, 0)
+	s.bucketsCap = 0
 	atomic.StoreInt64(&s.tblLoad, 0)
-	s.forceFlush.Store(false)
 	return nil
 }
 

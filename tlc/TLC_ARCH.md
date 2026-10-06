@@ -27,6 +27,22 @@ source file permissions, and typed I/O propagation. A destination symlink is
 replaced by the copied file; its referent remains untouched. Failed data copying
 removes the partial destination. The source remains open throughout the copy.
 
+## Off-heap recovery and flusher dispatch
+
+`DiskFPSet.recoverFP` has exclusive access during recovery. Its off-heap virtual
+insertion starts with the source CAS/probe routine; only probe exhaustion signals
+the shared barrier and falls back to ordinary `put`. A table reaching capacity
+flushes the currently selected flusher directly, retaining its executor state
+and checked-I/O boundary. It does not select a new flusher or count an eviction.
+Duplicate recovery uses the coded runtime exception; warning mode continues to
+the same capacity check. The initial insertion deliberately follows Java's
+memory-only routine rather than adding a disk lookup.
+
+Public invariant checks share that current-flusher path. Normal eviction selects
+the flusher and wraps checked I/O, increments its growth counter even for an
+empty table, and records elapsed flush time only after success. Its input/sorted
+assertion details and repeated sorted-check diagnostic evaluation follow Java.
+
 ## Disk fingerprint streaming and recovery
 
 `DiskFPSet.Flusher` merges buffered disk input with new sorted entries into a

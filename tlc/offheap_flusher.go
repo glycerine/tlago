@@ -222,20 +222,9 @@ func (s *OffHeapDiskFPSet) mergeOffHeapEntries(inRAF *BufferedRandomAccessFile, 
 func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	// Dispatch through the OffHeap flusher, rather than the heap-only base method.
-	if atomic.LoadInt64(&s.tblCnt) > 0 {
-		if s.concurrentFlusher != nil {
-			s.concurrentFlusher.prepareTable()
-		} else {
-			s.prepareOffHeapTableLocked()
-		}
-		itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
-		if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
-			panic(err)
-		}
-		atomic.StoreInt64(&s.tblCnt, 0)
-		atomic.StoreInt64(&s.tblLoad, 0)
-		s.forceFlush.Store(false)
+	// Dispatch through the current source flusher, retaining its executor state.
+	if err := s.flushOffHeapTable(); err != nil {
+		panic(err)
 	}
 	ok, err := s.checkFile()
 	if err != nil {
