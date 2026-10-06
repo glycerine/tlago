@@ -8,7 +8,10 @@ The user's later instruction authorizes surgical removal of email-only source,
 tests, fixtures, resources and stale plans. The main thread owns this removal.
 Preserve core distributed behavior, packaged property loading, console output,
 generic exceptions, OpenJDK notices and x/text. Resume core TLC parity and port
-existing Java tests after implementing their features; do not invent tests.
+existing Java tests after implementing their features; do not invent tests--except
+for the new features involved with the distributed checking which is
+based on our rpc25519 and tube which of course will require new tests!
+We like the BDD driven test first approach especially for new architecture like this.
 
 A rule for storing test vectors and associated test data: do not create a 
 directory named testdata. Avoid this as a directory name. Use test_vectors instead. 
