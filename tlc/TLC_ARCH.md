@@ -73,8 +73,15 @@ and logical filename parameters. The existing frontEndParse abort boundary
 reports those details and accumulated Errors. Lexical escaping and character
 columns follow Java UTF-16 code units, including invalid supplementary escapes
 and EOF prefixes. Successful root parsing does not tokenize trailing input.
-Syntax lookahead, expecting state and residual message-stack parity remain
-unfinished; the lexical correction does not replace those parser mechanisms.
+Definition lookahead now ports TLAplusParser.belchDEF over the same lazy token
+stream. It inserts the actual DEFBREAK marker, retains the source token-kind
+operator ranges and stopping conditions, and runs at the source production
+boundaries. ASSUME and ASSUMPTION remain distinct in this lookahead. Definition
+recognition requires the marker; DefStep leaves it for the definition parser.
+Go uses buffered token indices for the source reverse traversal, preserving
+forward Next links and the parser's consumed-token position. Expression grammar,
+expecting state, EOF positions and residual message-stack parity remain
+unfinished; marker insertion does not replace those parser mechanisms.
 
 ## Module loading and parse-unit relationships
 

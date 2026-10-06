@@ -67,6 +67,7 @@ func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics
 		if parser.check(SanyTokenEOF) {
 			break
 		}
+		parser.belchDEF()
 		module := parser.Module()
 		module.SetLevel(0)
 		module.SetParent()
@@ -160,6 +161,7 @@ func SanyModuleName(root *SanySyntaxNode) string {
 }
 
 func (p *SanyParser) CompilationUnit() *SanySyntaxNode {
+	p.belchDEF()
 	if p.match(SanyTokenBeginPragma) {
 		for !p.check(SanyTokenEOF) && !p.check(SanyTokenBm2) {
 			p.advance()
@@ -224,6 +226,7 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 		switch {
 		case p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2):
 			heirs = append(heirs, p.Module())
+			p.belchDEF()
 		case p.check(SanyTokenSeparator):
 			heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		case p.check(SanyTokenVariable):
@@ -341,6 +344,7 @@ func (p *SanyParser) Assumption() *SanySyntaxNode {
 		heirs = append(heirs, p.Identifier())
 		heirs = append(heirs, p.consume(SanyTokenDef, "expected == in assumption"))
 	}
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilBodyBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_Assumption"], nil, heirs)
 }
@@ -356,6 +360,7 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 		heirs = append(heirs, p.Identifier())
 		heirs = append(heirs, p.consume(SanyTokenDef, "expected == in theorem"))
 	}
+	p.belchDEF()
 	if p.startsAssumeProveAt(0) {
 		heirs = append(heirs, p.AssumeProve())
 	} else {
@@ -583,9 +588,6 @@ func (p *SanyParser) ExpressionUntilUseOrHideItemBoundary() *SanySyntaxNode {
 
 func (p *SanyParser) DefStep() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
-	if p.match(SanyTokenDefbreak) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	}
 	if p.match(SanyTokenDefine) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	}
@@ -637,6 +639,7 @@ func (p *SanyParser) ProofFunctionDefinition() *SanySyntaxNode {
 	}
 	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in function definition"))
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in function definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_FunctionDefinition"], nil, heirs)
 }
@@ -644,6 +647,7 @@ func (p *SanyParser) ProofFunctionDefinition() *SanySyntaxNode {
 func (p *SanyParser) ProofOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs := []*SanySyntaxNode{lhs}
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in operator definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
@@ -1144,6 +1148,7 @@ func (p *SanyParser) ModuleDefinition() *SanySyntaxNode {
 	lhs := p.IdentLHS()
 	heirs := []*SanySyntaxNode{lhs}
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in module definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.Instantiation())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], nil, heirs)
 }
@@ -1159,6 +1164,7 @@ func (p *SanyParser) FunctionDefinition() *SanySyntaxNode {
 	}
 	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in function definition"))
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in function definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilBodyBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_FunctionDefinition"], nil, heirs)
 }
@@ -1166,6 +1172,7 @@ func (p *SanyParser) FunctionDefinition() *SanySyntaxNode {
 func (p *SanyParser) OperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs := []*SanySyntaxNode{lhs}
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in operator definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(nil))
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_OperatorDefinition"], nil, heirs)
 }
@@ -1173,6 +1180,7 @@ func (p *SanyParser) OperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 func (p *SanyParser) LetOperatorDefinition(lhs *SanySyntaxNode) *SanySyntaxNode {
 	heirs := []*SanySyntaxNode{lhs}
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in LET definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenLetin
 	}))
@@ -1741,6 +1749,7 @@ func (p *SanyParser) LetFunctionDefinition() *SanySyntaxNode {
 	}
 	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in LET function definition"))
 	heirs = append(heirs, p.consume(SanyTokenDef, "expected == in LET function definition"))
+	p.belchDEF()
 	heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenLetin
 	}))
@@ -2603,9 +2612,10 @@ func (p *SanyParser) startsOperatorOrFunctionDefinitionAt(offset int) bool {
 	if p.tokenAt(offset).Kind == SanyTokenLocal {
 		offset++
 	}
-	if p.tokenAt(offset).Kind == SanyTokenDefbreak {
-		offset++
+	if p.tokenAt(offset).Kind != SanyTokenDefbreak {
+		return false
 	}
+	offset++
 	first := p.tokenAt(offset)
 	second := p.tokenAt(offset + 1)
 	switch {

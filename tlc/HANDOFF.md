@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `7d712b0`.
+Updated: October 6, 2026. Full-workspace verification baseline: `56d0a9a`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,27 +47,28 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The latest completed full normal workspace suite passes on `7d712b0`:
+The latest completed full normal workspace suite passes on `56d0a9a`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,519.135 seconds |
-| SANY tests | Pass | 1.147 seconds |
-| TLC | Pass | 787.539 seconds |
+| Root package | Pass | 1,567.112 seconds |
+| SANY tests | Pass | 1.187 seconds |
+| TLC | Pass | 782.392 seconds |
 | CLI command | No test files | — |
 
-Session `15749` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-import-context-workspace.log`. This verifies its recorded
-snapshot with original bounds and normal execution. It predates the subsequent
-INSTANCE, direct Context, file-loading abort and module-loading corrections.
-Historical failed and successful receipts belong in `PORT_PROGRESS.md`.
+Session `28493` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-module-loading-workspace.log`. This verifies the recorded
+module-loading snapshot with original bounds and normal execution. It predates
+the subsequent lexical and definition-lookahead corrections. Historical
+receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `28493` is live on the `56d0a9a` module-loading
-production snapshot, before the subsequent lexical correction. It preserves original bounds, failfast and a 60-minute
-timeout, without race instrumentation. Both `GOTMPDIR` and `TMPDIR` use workspace
-`.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-module-loading-workspace.log`.
-No success is claimed until this same handle returns terminal status. Do not
-start a duplicate full workload.
+Full normal workspace session `84303` is live on the final lexical and
+definition-lookahead production changes. It preserves original bounds, failfast
+and a 60-minute timeout, without race instrumentation. Both `GOTMPDIR` and
+`TMPDIR` use workspace `.codex-gotmp`. Log:
+`/mnt/oldrog/tmp/tlago-definition-lookahead-workspace.log`. No success is claimed
+until this same handle returns terminal status. Do not start a duplicate full
+workload.
 
 Latest focused verification:
 
@@ -79,6 +80,8 @@ Latest focused verification:
 | Existing tokenizer/parser/resolver/semantic/CLI/XML and original INSTANCE/warning/action-level/trace checks | Pass | Root 5.460 / SANY selection 0.723 seconds, session `41276` retired |
 | Complete SANY package after final lexical correction | Pass | 1.384 seconds, session `81956` retired |
 | All-package compilation | Pass | Final lexical correction |
+| Existing parser/resolver/semantic/CLI/XML and original INSTANCE/warning/action-level/trace selection after definition lookahead | Pass | Root 4.819 / SANY 1.057 seconds, session `13652` retired |
+| Complete SANY package after definition lookahead | Pass | 1.235 seconds, session `70775` retired |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -197,50 +200,56 @@ possible schedule.
 
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include syntax-error lookahead and residual
-stack reporting, generation traversal and multiple-binding context iteration order,
-remaining constructor and semantic-node boundaries. The parser now reads tokens lazily and catches actual lexical failures. It
-reports source TokenMgrError text before ParseUnit's single E4003 abort,
-including EOF and UTF-16 character details. Fifteen lexical/trailing-text
-observations match Java. Three unmodified syntax observations still differ:
-missing expression, bracket and footer. Reconcile their actual lookahead,
-expecting state, token positions and message stack next; do not synthesize
-those messages from generic native errors.
-Missing modules and filename/module-name mismatches now abort loading with
-source E4220/E4221 details and null or actual importing-module locations.
-The existing front-end exception boundary reports these failures; the native
-library API returns diagnostics and preserves a previously parsed root.
-Seven file-loading observations match Java. The source unresolved-module search
-now exhausts EXTENDS before INSTANCE, restarts from the root after each binding,
-and separates file parse units from inner modules. Cycle diagnostics retain
-source E4222 and the complete filename path. Semantic order is derived from the
-recorded parse-unit relationships; inner modules are generated within their
-owning external module. A forward INSTANCE now preserves inherited symbol
-conflicts and the external-module-table E4223 conflict. Sixteen further loading
-observations match Java, with only independent extraction directory names
-normalized in the scratch comparison; raw outputs remain available. General parser parity remains
-unproven. The original SANY
-`TestContext` method now exercises Context directly, with its original failure
-result, one-error count, E4224 code and declaration/definition parameter
-assertions. It lives in root `sany_context_java_test.go` so it can access the
-private context implementation; the parser-fixture surrogate was removed.
-The direct context and production EXTENDS path share diagnostic construction,
-including structured parameters and source locations. EXTENDS conflicts now retain actual symbol
-locations and definition provenance, compare source semantic-node classes, and
-reuse parameter-free instance definitions. Substituted declarations are not
-INSTANCE exports; only an explicit named instance creates a qualified namespace. Per-module semantic
-reporting now follows the shared accumulated Errors instance; nested module
-diagnostics are included in their enclosing external reporting iteration.
-Generation completes before the raw shared Errors.isSuccess gate permits real
-level work. Warning elevation does not change raw Errors success. Further
-semantic-node parity is still required; these checks do not prove completion. Buffered-file modes,
+stack reporting, generation traversal and multiple-binding context iteration
+order, remaining constructor and semantic-node boundaries. The parser now reads
+tokens lazily and catches actual lexical failures. It reports source
+TokenMgrError text before ParseUnit's single E4003 abort, including EOF and
+UTF-16 character details. Fifteen lexical/trailing-text observations match
+Java. The Java `belchDEF` token-stream operation and its production call sites
+are now ported. Definition recognition requires the inserted marker, and
+`DefStep` leaves it for the definition parser as Java does. Twenty-one scratch
+comparisons match actual non-EOF token kinds, images, positions and marker
+placement. This is not an EOF-position or full parser-parity receipt. Three
+unmodified syntax observations still differ: missing expression, bracket and
+footer. The missing expression now leaves the same unrecognized definition
+header for the module footer check. Reconcile actual expression grammar,
+expecting state, EOF token positions and message stack next; do not synthesize
+those messages from generic native errors. Missing modules and filename/module-
+name mismatches now abort loading with source E4220/E4221 details and null or
+actual importing-module locations. The existing front-end exception boundary
+reports these failures; the native library API returns diagnostics and
+preserves a previously parsed root. Seven file-loading observations match Java.
+The source unresolved-module search now exhausts EXTENDS before INSTANCE,
+restarts from the root after each binding, and separates file parse units from
+inner modules. Cycle diagnostics retain source E4222 and the complete filename
+path. Semantic order is derived from the recorded parse-unit relationships;
+inner modules are generated within their owning external module. A forward
+INSTANCE now preserves inherited symbol conflicts and the external-module-table
+E4223 conflict. Sixteen further loading observations match Java, with only
+independent extraction directory names normalized in the scratch comparison;
+raw outputs remain available. General parser parity remains unproven. The
+original SANY `TestContext` method now exercises Context directly, with its
+original failure result, one-error count, E4224 code and declaration/definition
+parameter assertions. It lives in root `sany_context_java_test.go` so it can
+access the private context implementation; the parser-fixture surrogate was
+removed. The direct context and production EXTENDS path share diagnostic
+construction, including structured parameters and source locations. EXTENDS
+conflicts now retain actual symbol locations and definition provenance, compare
+source semantic-node classes, and reuse parameter-free instance definitions.
+Substituted declarations are not INSTANCE exports; only an explicit named
+instance creates a qualified namespace. Per-module semantic reporting now
+follows the shared accumulated Errors instance; nested module diagnostics are
+included in their enclosing external reporting iteration. Generation completes
+before the raw shared Errors.isSuccess gate permits real level work. Warning
+elevation does not change raw Errors success. Further semantic-node parity is
+still required; these checks do not prove completion. Buffered-file modes,
 invalid-mode exceptions and trace/worker opening boundaries were reconciled in
-`db62dfb`; preserve those verified fixes. Do not add
-synthetic phase output. The actual Java record linter is now ported: declaration
-and formal-parameter dependencies, same-domain EXTENDS suppression, binding and
-proof scopes, exact warning text and a distinct phase after successful semantic
-analysis. Matching
-checker output or a high test translation percentage does not prove full parity.
-
+`db62dfb`; preserve those verified fixes. Do not add synthetic phase output.
+The actual Java record linter is now ported: declaration and formal-parameter
+dependencies, same-domain EXTENDS suppression, binding and proof scopes, exact
+warning text and a distinct phase after successful semantic analysis. Matching
+checker output or a high test translation percentage does not prove full
+parity.
 Five main-suite contexts have known source-failing or JVM-specific
 reconciliation issues below. The other four pending contexts are original assumption-disabled
 distributed transport models; checkpoint models are now complete. Consult the inventory for each exact disposition.

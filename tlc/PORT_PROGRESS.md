@@ -1,5 +1,57 @@
 # TLC Port Progress
 
+2026-10-06 Source definition-boundary lookahead:
+Previous turn progress committed as a4e08e0. Full normal workspace 28493 returns
+status 0 and is retired: root 1,567.112 / SANY 1.187 / TLC 782.392 seconds,
+CLI no test files. Log tlago-module-loading-workspace.log under /mnt/oldrog/tmp.
+This verifies 56d0a9a, before lexical and current lookahead changes. Update the
+handoff baseline accordingly. Full original LSB session 32959 remains live on
+its recorded storage snapshot; do not restart or credit it.
+
+Port actual TLAplusParser.belchDEF, retaining stop conditions, source numeric
+operator-kind classifiers, reverse bracket traversal, substitution handling,
+duplicate-marker suppression, image and source positions. Use indices into the
+same lazy token buffer instead of temporarily reversing links; retain real
+forward token links. Call it at CompilationUnit, after nested module parsing,
+after each definition's ==, and after optional named assumption/theorem headers.
+Definition recognition now requires DEFBREAK, as source lookahead does.
+
+Existing focused tests first fail the dotted proof definition fixture. Inspect
+Java DefStep: it does not consume or retain DEFBREAK itself; the definition
+production consumes it. Remove Go's extra consumption rather than change the
+fixture or assertions. Corrected unchanged selection passes root 4.819 / SANY
+1.057 seconds, session 13652 retired; log
+ tlago-definition-lookahead-focused-corrected.log. Initial failed 14058 retired,
+log tlago-definition-lookahead-focused.log. Complete original SANY package passes
+1.235 seconds, session 70775 retired, log tlago-definition-lookahead-sany.log.
+
+Twenty-one scratch comparisons of actual source/Go belchDEF token streams match
+non-EOF token kinds, images, begin/end positions and marker placement. Cases
+include operator headers, brackets, LET, LOCAL, substitutions, USE DEF, named
+facts, source stopping conditions and incomplete definitions. EOF positions are
+not covered by this receipt. Java helper calls the actual package-private source
+method through reflection; Go helper uses a scratch source overlay. Nothing is
+added to persistent tests or inventory. Artifacts under /mnt/oldrog/tmp:
+DefinitionLookaheadManual.java, tlago-definition-lookahead-manual*.go/.json and
+tlago-definition-lookahead-token-compare.log; 82114 retired status 0.
+
+The eighteen established parser observations retain all fifteen lexical matches.
+Three syntax output differences remain, including the true expression-grammar,
+EOF and residual-stack gaps. MissingExpression now stops at the same X header
+as Java, rather than consuming the module footer as an expression. Log
+ tlago-definition-lookahead-parser-compare.log; 65850 retired status 0, which is
+not an all-case passing gate. Sixteen established module-loading comparisons
+still match; 54551 retired status 0, log
+ tlago-definition-lookahead-loading-compare.log. No claims of full parser parity.
+
+Final full normal workspace session 84303 is live on the lexical and definition
+lookahead changes, log tlago-definition-lookahead-workspace.log. Original bounds,
+failfast, 60-minute timeout and both temporary-directory variables on workspace
+.codex-gotmp; no race instrumentation. Preserve that handle and inspect terminal
+status before claiming success. Continue actual syntax grammar and parser error
+state next. The overall faithful TLC port remains incomplete, and new distributed
+architecture stays deferred.
+
 2026-10-06 Lazy parser token reading and lexical failure boundaries:
 Previous turn made progress in 56d0a9a. Full normal workspace 28493 remains
 confirmed live on that snapshot, before this lexical correction; LSB 32959
