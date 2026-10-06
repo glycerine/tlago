@@ -24,8 +24,10 @@ TLCGetAll workers and the checkpoint test's original five-second stopAfter,
 35791-minute interval and full event assertions. Log:
 /mnt/oldrog/tmp/tlago-ant-phaser-after.log. Final all-package compilation passes
 (67671 terminal 0). Normal checks, without -race. Failed workspace 85256 is retired;
-its TLC 820.531s/SANY 1.057s package passes remain scoped to d611cba. A new normal
-workspace run is warranted now that its demonstrated setup discrepancy is fixed.
+its TLC 820.531s/SANY 1.057s package passes remain scoped to d611cba. The new normal
+workspace run 71687 is live at 2e02aa9, with -count=1/-timeout=60m and all original
+workloads. Log: /mnt/oldrog/tmp/tlago-ant-static-isolation-workspace.log. No
+full-workspace completion credit yet.
 Random 63113/59782 remain live at a915e08, without full-run credit.
 
 
