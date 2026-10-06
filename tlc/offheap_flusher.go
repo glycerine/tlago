@@ -233,13 +233,6 @@ func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 		if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
 			panic(err)
 		}
-		ok, err := s.checkOffHeapIndex()
-		if err != nil {
-			panic(err)
-		}
-		if !ok {
-			panic(NewAssertionError())
-		}
 		atomic.StoreInt64(&s.tblCnt, 0)
 		atomic.StoreInt64(&s.tblLoad, 0)
 		s.forceFlush.Store(false)
@@ -310,19 +303,18 @@ func (s *OffHeapDiskFPSet) checkOffHeapSortedRange(start, end int64) int64 {
 	return -1
 }
 
-func (s *OffHeapDiskFPSet) checkOffHeapIndex() (bool, error) {
-	for i := 1; i < len(s.index); i++ {
-		if s.index[i-1] >= s.index[i] {
-			return false, nil
+// OffHeapMSBFlusher checks ordering and file alignment before replacement.
+func checkOffHeapIndexOrder(index []uint64) bool {
+	for i := 1; i < len(index); i++ {
+		if int64(index[i-1]) >= int64(index[i]) {
+			return false
 		}
 	}
-	raf := s.braf[0]
-	length, err := raf.Length()
-	if err != nil {
-		return false, err
-	}
-	length = length/fpSetLongSize - 1
-	for i, fp := range s.index {
+	return true
+}
+
+func checkOffHeapIndexFile(index []uint64, raf *BufferedRandomAccessFile, length int64) (bool, error) {
+	for i, fp := range index {
 		pos := min(int64(i)*diskFPSetNumEntriesPerPage, length)
 		if err := raf.Seek(pos * fpSetLongSize); err != nil {
 			return false, err

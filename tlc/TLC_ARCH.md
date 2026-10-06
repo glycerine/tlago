@@ -33,6 +33,13 @@ boundary as native FPSet put/contains; a false ordering invariant is distinct
 from an I/O failure. The invariant scan also propagates source finally-close
 failures. Flusher IOException wrapping and rename runtime causes preserve
 Java's exception boundaries.
+Flusher validation has two separate source boundaries: off-heap ordering and
+index alignment are checked against the temporary output before file-count
+publication and replacement; both heap and off-heap flushers then scan the
+reopened file for its count, signed order and index endpoints. The latter
+preserves the reader cursor on successful completion and is distinct from the
+public order-only invariant scan. Dedicated readers close in source order before
+the output file, with the first I/O failure propagated through the flusher catch.
 Off-heap sequential and concurrent merges share the source outer flusher
 lifecycle, including reader seek/pool close, full preallocation, temporary-file
 replacement and early file-count publication. Its eviction entry point converts

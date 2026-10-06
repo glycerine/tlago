@@ -461,13 +461,6 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 		}
 		return err
 	}
-	ok, err := s.checkOffHeapIndex()
-	if err != nil {
-		return err
-	}
-	if !ok {
-		panic(NewAssertionError())
-	}
 	atomic.StoreInt64(&s.tblCnt, 0)
 	atomic.StoreInt64(&s.tblLoad, 0)
 	s.forceFlush.Store(false)
@@ -503,7 +496,6 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 			err = NewIOException("Error: merging entries into file " + s.fpFilename + "  " + javaThrowableString(err))
 		}
 	}()
-	newIndex := make([]uint64, s.calculateOffHeapIndexLen(itr.elements))
 	for _, reader := range s.braf {
 		if err := reader.Seek(0); err != nil {
 			return err
@@ -524,6 +516,8 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 	if err := out.SetLength(outLength); err != nil {
 		return err
 	}
+	newIndex := make([]uint64, s.calculateOffHeapIndexLen(itr.elements))
+	s.index = newIndex
 	in := s.braf[0]
 	if err := in.Seek(0); err != nil {
 		return err
@@ -547,13 +541,26 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 	if err := s.writeIndex(newIndex, out, length/fpSetLongSize-1); err != nil {
 		return err
 	}
-	s.index = newIndex
-	atomic.AddInt64(&s.fileCnt, itr.elements)
-	if err := out.Close(); err != nil {
+	if !checkOffHeapIndexOrder(newIndex) {
+		panic(NewAssertionError("Broken disk index."))
+	}
+	ok, err := checkOffHeapIndexFile(newIndex, out, length/fpSetLongSize-1)
+	if err != nil {
 		return err
 	}
+	if !ok {
+		panic(NewAssertionError("Misaligned disk index."))
+	}
+	atomic.AddInt64(&s.fileCnt, itr.elements)
 	readerCnt, poolCnt := len(s.braf), len(s.brafPool)
-	if err := s.closeBRAFReaders(); err != nil {
+	// Source closes dedicated readers in order; pooled readers were closed
+	// before the merge. Propagate the first close failure before closing out.
+	for _, reader := range s.braf {
+		if err := reader.Close(); err != nil {
+			return err
+		}
+	}
+	if err := out.Close(); err != nil {
 		return err
 	}
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
@@ -561,6 +568,13 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 	}
 	if err := s.openBRAFReaders(readerCnt, poolCnt); err != nil {
 		return err
+	}
+	ok, err = s.checkFlushedFile()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		panic(NewAssertionError())
 	}
 	return nil
 }

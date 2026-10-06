@@ -975,8 +975,12 @@ func (s *DiskFPSet) mergeNewEntries() error {
 	if err := s.mergeFingerprintStreams(s.braf[0], out); err != nil {
 		return err
 	}
-	if err := s.closeBRAFReaders(); err != nil {
-		return err
+	// Source closes dedicated readers in order; pooled readers were closed
+	// before the merge. Propagate the first close failure before closing out.
+	for _, reader := range s.braf {
+		if err := reader.Close(); err != nil {
+			return err
+		}
 	}
 	if err := out.Close(); err != nil {
 		return err
@@ -984,7 +988,65 @@ func (s *DiskFPSet) mergeNewEntries() error {
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
 		return newTLCRuntimeExceptionWithCause(ECSystemUnableNotRenameFile, bufferedRandomAccessFileIOError(err))
 	}
-	return s.openBRAFReaders(readerCnt, poolCnt)
+	if err := s.openBRAFReaders(readerCnt, poolCnt); err != nil {
+		return err
+	}
+	ok, err := s.checkFlushedFile()
+	if err != nil {
+		return err
+	}
+	if !ok {
+		panic(NewAssertionError())
+	}
+	return nil
+}
+
+// DiskFPSet.Flusher checks the reopened file's count, endpoints and signed
+// ordering. This differs from the public checkInvariant order-only scan.
+func (s *DiskFPSet) checkFlushedFile() (bool, error) {
+	raf := s.braf[0]
+	length, err := raf.Length()
+	if err != nil {
+		return false, err
+	}
+	if length/fpSetLongSize != atomic.LoadInt64(&s.fileCnt) {
+		return false, nil
+	}
+	ptr, err := raf.GetFilePointer()
+	if err != nil {
+		return false, err
+	}
+	predecessor := int64(math.MinInt64)
+	if length > 0 {
+		predecessor, err = raf.ReadLong()
+		if err != nil {
+			return false, err
+		}
+		if uint64(predecessor) != s.index[0] {
+			return false, nil
+		}
+		for {
+			position, err := raf.GetFilePointer()
+			if err != nil {
+				return false, err
+			}
+			if position >= length {
+				break
+			}
+			value, err := raf.ReadLong()
+			if err != nil {
+				return false, err
+			}
+			if predecessor >= value {
+				return false, nil
+			}
+			predecessor = value
+		}
+	}
+	if err := raf.Seek(ptr); err != nil {
+		return false, err
+	}
+	return uint64(predecessor) == s.index[len(s.index)-1], nil
 }
 
 // MSB walks the sorted table directly; LSB uses the source flusher's sorted

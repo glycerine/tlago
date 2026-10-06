@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-06 fingerprint flusher validation boundaries restored:
+Pinned OffHeapMSBFlusher.mergeNewEntries validates signed index order and index
+alignment against temporary output before updating fileCnt. The Go port instead
+checked the index after replacement, outside the source merge I/O boundary.
+Publish the new index before merging, retain the source Broken disk index /
+Misaligned disk index AssertionError details, validate temporary output, then
+update fileCnt. Both heap and off-heap outer flushers now run the original
+reopened-file assertion: length/count, first/last index endpoints, full signed
+ordering and successful cursor restoration. Public checkInvariant remains its
+separate order-only scan. Dedicated readers close sequentially before output,
+propagating the first close failure; pooled readers were already closed earlier.
+No new tests or changed assertions; no translation-count credit.
+
+Initial original 22 short off-heap cases pass 0.061s (68830 terminal 0), before
+final dedicated-reader close refinement. Final existing 22 short off-heap cases,
+original ShortDisk first-page lookup, MSB iterator and all seven original
+manager entry points pass 0.112s; final all-package compilation passes
+(4842 terminal 0). Logs under /mnt/oldrog/tmp:
+tlago-fpset-validation-offheap.log and tlago-fpset-validation-final-focused.log.
+Broader final original heap/MSB/ShortDisk/off-heap/manager run is LIVE in 80888,
+20m timeout, full bounds, no -race; tlago-fpset-validation-related.log. Selection
+includes the unchanged original 99,999,999-entry writeIndex method; no full-class
+credit until terminal success. Workspace 85256 remains LIVE at the earlier
+d611cba snapshot. Unlimited random jobs 63113/59782 remain LIVE at a915e08.
+
+Corrected inventory's InliningTest selection note: source Ant selects it in the
+explicit slow batch, excluding it only from the later generic batch. JVM-only
+requirements and source-failing methods remain pending; counts unchanged.
+
+
 2026-10-06 original model-runner fingerprint setup correction:
 The common Go runner discarded ParseTLCOptions' fingerprint configuration and
 substituted a 1 MiB, ratio-1 MSB set. Pinned customBuild.xml test-dist instead

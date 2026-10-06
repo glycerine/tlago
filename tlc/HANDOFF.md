@@ -97,6 +97,16 @@ Full normal workspace verification is running in session `85256`, with log
 `/mnt/oldrog/tmp/tlago-source-ant-fpset-workspace.log`. Poll that handle before
 starting another full suite; the earlier full-suite receipts predate this change.
 
+A follow-up fingerprint validation correction restores source off-heap
+index checks against temporary output before count publication/replacement and
+the shared reopened-file count/order/endpoint scan. It also restores dedicated
+reader close order before the output close. Final focused original off-heap,
+forced disk lookup, iterator and manager cases pass in 0.112 seconds; all packages
+compile. Broader original heap/off-heap/ShortDisk/manager verification is live in
+session `80888`, log `/mnt/oldrog/tmp/tlago-fpset-validation-related.log`, normally
+with full bounds and no `-race`. Workspace session `85256` compiled `d611cba`
+before this follow-up; keep its eventual receipt scoped to that snapshot.
+
 Current normal stress verification jobs:
 
 | Job | Source snapshot | Session | Log under `/mnt/oldrog/tmp` |
