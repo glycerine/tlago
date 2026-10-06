@@ -182,11 +182,11 @@ regenerated as zero-argument expressions. Ordinary application level violations
 use source code 4205, not the lambda arity code. Obsolete nested-standard-module
 conflict approximation is removed; conflicts arise at actual nested module units.
 
-The fixed-parameter comparison matches 122 of 126 frozen corpus fixtures. Four
-still differ in shadowing warnings, module-instance arity failure boundaries and
-unfinished LET recursive binding preservation. The comparison concerns fixed-code
-order/count and displayed parameter values; it does not prove all diagnostic
-messages, ranges or semantic object types match.
+The fixed-parameter comparison matches 124 of 126 frozen corpus fixtures. Two
+still differ: operator-constructor shadowing warnings and module-instance arity
+failure boundaries. The comparison concerns fixed-code order/count and displayed
+parameter values; it does not prove all diagnostic messages, ranges or semantic
+object types match.
 
 Module recursive functions complete only zero-arity declarations. Rejected
 functions preserve the original operator signature and unfinished binding.
@@ -199,6 +199,19 @@ precede non-Leibniz checks; INSTANCE errors use the full instance range and
 original messages and argument indices. Twenty-eight additional full diagnostic
 observations match Java. An empty application `F()` remains a known parser
 production discrepancy: Java rejects it, while Go accepts it.
+
+LET expression generation carries recursive declaration identities, levels and
+shared module counters, replacing the nested-name scan. Declarations remain in
+the module vector after lexical scope exit; each LET resets its level count,
+checks unfinished declarations, subtracts without clearing that count and lowers
+the level before IN generation. Wrong-level definitions preserve the original
+binding. Function completion precedes its body; operator completion follows it.
+Selector preparation retains unfinished signatures; LET failures stay attached
+to their expression until actual generation reaches it, without diagnostic
+sorting. Application checks use the retained binding's arity. Twenty-nine bounded
+lower-phase observations match source diagnostics and recursive exceptions.
+Broader constructor, formal/bound context and operand-generation parity remains
+work; these observations do not establish complete LET/Generator coverage.
 
 Leaf proof facts are retained but not fully generated or resolved, so an unknown
 `BY` fact is still incorrectly accepted. Port actual proof generation and scope

@@ -15,12 +15,13 @@ type sanySelectorInstance struct {
 	inst  Instance
 }
 type sanySelectorDefinition struct {
-	module    *Module
-	def       *Definition
-	wrappers  []sanySelectorInstance
-	params    []BoundVar
-	suffices  bool
-	undefined bool // A RECURSIVE declaration whose body has not been generated.
+	module         *Module
+	def            *Definition
+	wrappers       []sanySelectorInstance
+	params         []BoundVar
+	suffices       bool
+	recursiveLevel int
+	undefined      bool // A RECURSIVE declaration whose body has not been generated.
 }
 type sanySelectorSelection struct {
 	name        string
@@ -34,12 +35,14 @@ type sanySelectorSelection struct {
 	assumeProve *AssumeProve
 }
 type sanySelectorResolver struct {
-	spec     *Spec
-	scopes   map[*Module]map[string]sanySelectorDefinition
-	visiting map[*Module]bool
-	diags    Diagnostics
-	inProof  map[*AssumeProve]bool
-	fact     bool
+	spec        *Spec
+	scopes      map[*Module]map[string]sanySelectorDefinition
+	visiting    map[*Module]bool
+	diags       Diagnostics
+	inProof     map[*AssumeProve]bool
+	fact        bool
+	letContexts int
+	letLevel    int
 }
 
 func sanyExprSource(expr Expr) *SanyExprSource {
@@ -259,6 +262,7 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 	if source := sanyExprSource(expr); source != nil && source.Selector != nil {
 		source.selection = nil
 		source.selectorFailure = false
+		source.selectorDiagnostic = nil
 		selection, handled, err := r.selectExpr(expr, scope, expected)
 		if handled {
 			if err != nil {
@@ -272,7 +276,11 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 						diagnostic.Code = detail.code
 					}
 				}
-				r.diags = append(r.diags, diagnostic)
+				if r.letContexts > 0 {
+					source.selectorDiagnostic = &diagnostic
+				} else {
+					r.diags = append(r.diags, diagnostic)
+				}
 				return
 			}
 			source.selection = selection
@@ -307,6 +315,8 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 			r.walk(arg, mod, scope, arity)
 		}
 	case *LetExpr:
+		r.letContexts++
+		r.letLevel++
 		nested := make(map[string]sanySelectorDefinition, len(scope)+len(e.Definitions))
 		for name, ref := range scope {
 			nested[name] = ref
@@ -317,18 +327,25 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 				for _, name := range unit.declaration.Names {
 					arity, _ := declarationArity(*unit.declaration, name)
 					def := &Definition{Name: name, Pos: unit.declaration.Pos, Syntax: unit.declaration.Syntax}
-					nested[name] = sanySelectorDefinition{module: mod, def: def, params: make([]BoundVar, arity), undefined: true}
+					if _, exists := nested[name]; !exists {
+						nested[name] = sanySelectorDefinition{module: mod, def: def, params: make([]BoundVar, arity), undefined: true, recursiveLevel: r.letLevel}
+					}
 				}
 			case unit.definition != nil:
 				def := unit.definition
+				previous, exists := nested[def.Name]
 				r.walkDefinition(def, mod, nested)
-				nested[def.Name] = sanySelectorDefinition{module: mod, def: def, params: sanyDefinitionParams(def)}
+				if !exists || (previous.undefined && previous.recursiveLevel == r.letLevel && (!def.FunctionDef || len(previous.params) == 0)) {
+					nested[def.Name] = sanySelectorDefinition{module: mod, def: def, params: sanyDefinitionParams(def)}
+				}
 			case unit.instance != nil:
 				r.walkInstance(*unit.instance, mod, nested)
 				r.addInstance(nested, mod, *unit.instance)
 			}
 		}
+		r.letLevel--
 		r.walk(e.Body, mod, nested, 0)
+		r.letContexts--
 	default:
 		for _, child := range sanySubexpressionChildren(expr) {
 			r.walk(child, mod, scope, 0)

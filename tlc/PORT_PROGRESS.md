@@ -1,5 +1,63 @@
 # TLC Port Progress
 
+2026-10-06 Stateful LET recursive generation:
+Starting clean snapshot `008083a`. Replace the grouped recursive-section scan
+and nested-name detection with declaration identities retained through expression
+generation. Share module unresolved sum and per-level counters; retain the
+module declaration vector after leaving a LET. Increment the level for LET
+units, reset its counter, check unfinished declarations in vector order and
+subtract its count without clearing it. Lower the level before generating IN
+while preserving lexical bindings. Match source wrong-level operator/function
+validation and function domain/body contexts; complete functions before their
+bodies and operators afterward. Module recursive functions now also complete at
+the source phase. Preserve original exception type and retained semantic errors
+when completion after an IN-level reuse makes the unresolved sum negative.
+
+Selectors preserve rejected recursive bindings and original arities. Initial
+expanded audit exposes three order differences from preparation reporting errors
+before actual generation. Attach LET failures to their expressions and emit them
+when traversal reaches them. No error sorting or assertion weakening. Preserve
+actual symbol kind/arity/location for collision checks, and carry retained LET
+binding arities into application checking. Keep the native E4293 summary text
+independent of the source message/range/arguments.
+
+Final bounded lower-phase Java/Go audit matches all 29 observations, including
+nested wrong levels, function domains, missing bodies, IN-level completion
+exceptions, sibling declaration-vector reuse, duplicate declarations, module/LET
+interaction, rejected selectors and function-domain LETs. Session 77684 returns
+status 0 and retires; log `tlago-let-recursive-binding-final-audit.log`.
+Established 74 visibility cases also match (93810 status 0, retired), log
+`tlago-let-generation-binding-final-visibility-audit.log`. Final fixed-parameter
+corpus audit matches 124 of 126 original frozen files (83016 status 1, retired),
+log `tlago-let-generation-binding-final-parameters-audit.log`. Remaining E4201_Op
+warning and E4204_Instance failure boundary remain visible. No original fixture,
+assertion family, helper exception catch or test-port inventory changed.
+
+Initial focused native checks fail (52732 status 1, 6.680 seconds): the native
+LET shadowing fixture is invalid in Java, and a native E4293 summary changed.
+Retain the old summary with the exact Java message in separate source fields.
+Correct the native acceptance fixture to use distinct Inner/Outer names while
+still exercising zero- and two-arity operators; original assertions unchanged.
+Actual Java rejects prior source with three errors and accepts corrected source
+with none. Go now also reproduces all three prior-source errors after restoring
+the rejected binding's original arity. Scratch receipts under
+`/mnt/oldrog/tmp/tlago-let-native-fixture-audit`; no new persistent tests or credit.
+
+Final complete SANY passes 1.284 seconds (79243 retired), log
+`tlago-let-generation-binding-final-sany.log`. Existing root parser/semantic
+classes plus original ParseErrorTests pass 7.117 seconds (89756 retired), log
+`tlago-let-generation-binding-final-root-focused.log`. All-package compilation
+passes, log `tlago-let-generation-binding-final-compile.log`. Normal execution
+only, no race instrumentation or reduced workloads.
+
+Full root 45205 and unchanged original LSB 32959 remain confirmed live. Root
+snapshot is `008083a`, before this LET batch; do not claim current full pass or
+restart it. Latest LSB observation exceeds 2,055,417,350 of 2,147,483,648 original
+insertions. Preserve both handles and their existing logs. Next actual constructor
+and module-instance failure boundaries, then broader operand/formal/proof scope
+reconciliation. The overall port remains incomplete.
+
+
 2026-10-06 Recursive function completion and INSTANCE constant predicate:
 Starting snapshot `370374d`; four production files changed. Source
 `Generator.processFunction` only completes a zero-arity RECURSIVE declaration.

@@ -180,27 +180,27 @@ func sanyModuleExpressionContexts(mod *Module, spec *Spec, inherited map[string]
 // Generator.processFunction evaluates all domains before introducing the
 // function's temporary recursion symbol. That symbol and the bound variables
 // are available only while generating the function body.
-func checkDefinitionExpression(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+func checkDefinitionExpression(definition Definition, context map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) Diagnostics {
 	_, ok := definition.Expr.(*FunctionExpr)
 	if !definition.FunctionDef || !ok {
-		return checkExpr(definition.Expr, context, locals)
+		return sanyExpressionGenerator(generators).checkDefinitionBody(definition, context, locals)
 	}
-	return append(checkDefinitionFunctionDomains(definition, context, locals), checkDefinitionFunctionBody(definition, context, locals)...)
+	return append(checkDefinitionFunctionDomains(definition, context, locals, generators...), checkDefinitionFunctionBody(definition, context, locals, generators...)...)
 }
 
-func checkDefinitionFunctionDomains(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+func checkDefinitionFunctionDomains(definition Definition, context map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) Diagnostics {
 	function, ok := definition.Expr.(*FunctionExpr)
 	if !ok {
 		return nil
 	}
 	var diags Diagnostics
 	for _, bound := range function.Bounds {
-		diags = append(diags, checkExpr(bound.Set, context, locals)...)
+		diags = append(diags, checkExpr(bound.Set, context, locals, generators...)...)
 	}
 	return diags
 }
 
-func checkDefinitionFunctionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+func checkDefinitionFunctionBody(definition Definition, context map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) Diagnostics {
 	function, ok := definition.Expr.(*FunctionExpr)
 	if !ok {
 		return nil
@@ -212,7 +212,7 @@ func checkDefinitionFunctionBody(definition Definition, context map[string]Posit
 		bodyLocals[bound.Name] = true
 	}
 	bodyLocals[definition.Name] = true
-	diags = append(diags, checkExpr(function.Body, context, bodyLocals)...)
+	diags = append(diags, checkExpr(function.Body, context, bodyLocals, generators...)...)
 	return diags
 }
 
@@ -281,45 +281,6 @@ func sanyLetGenerationUnits(expr *LetExpr) []sanyLetGenerationUnit {
 		sort.SliceStable(units, func(i, j int) bool { return units[i].position.Compare(units[j].position) < 0 })
 	}
 	return units
-}
-
-func checkLetExpression(expr *LetExpr, context map[string]Position, locals map[string]bool) Diagnostics {
-	var diags Diagnostics
-	diags = append(diags, checkLetRecursiveSections(expr)...)
-	units := sanyLetGenerationUnits(expr)
-	letLocals := copyBoolMap(locals)
-	for _, unit := range units {
-		switch {
-		case unit.declaration != nil:
-			for _, name := range unit.declaration.Names {
-				letLocals[name] = true
-			}
-		case unit.definition != nil:
-			definition := *unit.definition
-			diags = append(diags, checkDefinitionParams(definition)...)
-			diags = append(diags, checkDefinitionParamCollisions(definition, context, letLocals)...)
-			bodyLocals := copyBoolMap(letLocals)
-			for _, name := range definition.Params {
-				bodyLocals[name] = true
-			}
-			diags = append(diags, checkDefinitionExpression(definition, context, bodyLocals)...)
-			letLocals[definition.Name] = true
-		case unit.instance != nil:
-			instance := unit.instance
-			bodyLocals := copyBoolMap(letLocals)
-			for _, name := range instance.Params {
-				bodyLocals[name] = true
-			}
-			for _, substitution := range instance.SubstitutionList {
-				diags = append(diags, checkExpr(substitution.Expr, context, bodyLocals)...)
-			}
-			if instance.Name != "" {
-				letLocals[instance.Name+"!"] = true
-			}
-		}
-	}
-	diags = append(diags, checkExpr(expr.Body, context, letLocals)...)
-	return diags
 }
 
 // One syntactic module unit can carry a named theorem definition, its theorem

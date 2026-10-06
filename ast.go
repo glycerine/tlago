@@ -225,10 +225,12 @@ type SanyExprSource struct {
 	Syntax *SanySyntaxNode
 	// Selector keeps the generator's per-step argument syntax. A flattened
 	// CallExpr argument list cannot distinguish Op(a)!lab(b) from Op(a,b)!lab.
-	Selector          *SanySelector
-	selection         *sanySelectorSelection
-	selectorFailure   bool
-	generationFailure sanyGenerationFailure
+	Selector           *SanySelector
+	selection          *sanySelectorSelection
+	generationArity    *int
+	selectorDiagnostic *Diagnostic
+	selectorFailure    bool
+	generationFailure  sanyGenerationFailure
 }
 
 func (s *SanyExprSource) GetSyntaxNode() *SanySyntaxNode    { return s.Syntax }

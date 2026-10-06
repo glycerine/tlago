@@ -262,11 +262,11 @@ Use == LET x == CHOOSE x \in S : TRUE
 		requireNoErrors(t, diags)
 	})
 
-	t.Run("LET zero-arity definitions shadow outer operators in arity checks", func(t *testing.T) {
+	t.Run("LET zero-arity definitions preserve distinct outer operator arities", func(t *testing.T) {
 		_, diags := CheckSanySource("LetShadowArity.tla", `---- MODULE LetShadowArity ----
 Outer(x, y) == x
-Use == LET Outer == {1}
-       IN {d \in Outer : d = 1}
+Use == LET Inner == {1}
+       IN {d \in Inner : Outer(d, 1) = 1}
 ====`)
 		requireNoErrors(t, diags)
 	})

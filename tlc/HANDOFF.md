@@ -86,8 +86,8 @@ seconds and is retired. It verifies the `19c6f1a` module-unit generation
 snapshot, before nested-generation, diagnostic and recursive-function changes.
 Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
 
-Normal full root-package session `45205` is live on the recursive-function and
-INSTANCE level-checking snapshot. It retains original bounds and a 60-minute
+Normal full root-package session `45205` is live on the `008083a` recursive-function
+and INSTANCE level-checking snapshot, before stateful LET generation. It retains original bounds and a 60-minute
 timeout, without race instrumentation or failfast. Both temporary-directory
 variables use workspace `.codex-gotmp`. Log:
 `/mnt/oldrog/tmp/tlago-recursive-function-instance-root-full.log`.
@@ -98,6 +98,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
+| Stateful LET recursive generation, retained bindings and deferred selector errors: existing native parser/semantic classes | Pass | Root 7.117 seconds, session `89756` retired |
+| Complete SANY package after stateful LET corrections | Pass | 1.284 seconds, session `79243` retired |
 | Recursive module functions, declared-operator levels and INSTANCE constant predicate: existing native parser/semantic classes | Pass | Root 6.541 seconds, session `25669` retired |
 | Complete SANY package after recursive-function and INSTANCE corrections | Pass | 1.270 seconds, session `42177` retired |
 | Original semantic-error corpus assertions, diagnostic parameters and generation failure boundaries: existing native behaviors and original TLC selection | Pass | Root 10.265 seconds, session `14523` retired |
@@ -334,12 +336,11 @@ selection suppresses duplicate label checks. INSTANCE operator arguments remain
 operator arguments even when their arity mismatches. Duplicate module conflicts
 are generated at their module unit instead of by an earlier approximation.
 
-A separate comparison of fixed-parameter diagnostics matches Java in 122 of 126
-unchanged corpus fixtures. Four production differences remain: missing shadowing
-warnings in `E4201_Op` and `E4293`, an extra incomplete-module diagnostic in
-`E4204_Instance`, and premature completion of LET recursive bindings in
-`E4293_Function` and `E4293`. Receipt:
-`/mnt/oldrog/tmp/tlago-function-constant-final-no-perf-parameters-audit.log`.
+A separate comparison of fixed-parameter diagnostics matches Java in 124 of 126
+unchanged corpus fixtures. Two production differences remain: a missing shadowing
+warning in `E4201_Op` and an extra incomplete-module diagnostic in
+`E4204_Instance`. Receipt:
+`/mnt/oldrog/tmp/tlago-let-generation-binding-final-parameters-audit.log`.
 The comparison checks fixed-code order/count and displayed parameter values;
 it is not a complete diagnostic message/range/type comparison.
 
@@ -356,10 +357,22 @@ observations, not invented tests or test-port credit. An additional probe expose
 an existing parser gap: Go accepts the empty application `F()` whereas Java
 rejects its syntax. Keep that gap visible for the parser production audit.
 
-Port actual LET recursive generation boundaries next. Unknown leaf `BY` facts
-are still not fully generated or resolved. Broader constructor, symbol/context
-and selector paths remain audit work. Green original assertions do not establish
-full parity.
+LET generation now carries declaration identities, levels and shared module
+recursion counters through actual expression traversal. Its declaration vector
+survives lexical scope exit. The level decreases before IN generation, while
+the LET symbol context remains visible. Rejected nested definitions preserve
+unfinished outer bindings; functions follow domains, validation and body phases.
+LET selector diagnostics are reported when generation reaches their expressions,
+and retained bindings supply application arities. All 29 bounded lower-phase
+comparisons match Java errors and recursive exception boundaries. Existing
+native LET acceptance source now uses distinct inner/outer operator names,
+because Java rejects the prior shadowing fixture; assertions remain unchanged.
+
+Port actual symbol-constructor behavior and module-instance failure boundaries
+next. Proof facts, formal/bound contexts, operator-argument generation and
+application checks still require broader reconciliation. Unknown leaf `BY` facts
+are still not fully generated or resolved. Green original assertions and bounded
+observations do not establish full parity.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root
