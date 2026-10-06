@@ -76,6 +76,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 	teSpecMonolith := true
 	teSpecOut := ""
 	metaDirRoot := ""
+	traceFileSet := false
 
 	tlcSuppressedCodes := NewInsMap[int, bool]()
 	tlcMessagesAsErrors := NewInsMap[int, bool]()
@@ -97,14 +98,16 @@ func ParseTLCOptions(args []string) (Options, error) {
 				for _, simArg := range strings.Split(args[index], ",") {
 					switch {
 					case strings.HasPrefix(simArg, "num="):
-						traceNum, valid := javaParseDecimalLong(strings.ReplaceAll(simArg, "num=", ""))
+						count := strings.ReplaceAll(simArg, "num=", "")
+						traceNum, valid := javaParseDecimalLong(count)
 						if !valid {
-							return opts, tlcCommandLineError("Error: An integer for simulation trace count required. But encountered " + simArg)
+							return opts, NewNumberFormatException(count)
 						}
 						opts.TraceNum = traceNum
 						opts.TraceNumSet = true
 					case strings.HasPrefix(simArg, "file="):
-						opts.TraceFile = strings.TrimPrefix(simArg, "file=")
+						opts.TraceFile = strings.ReplaceAll(simArg, "file=", "")
+						traceFileSet = true
 					case simArg == "stats=basic":
 						opts.TraceActions = "BASIC"
 					case simArg == "stats=full":
@@ -118,7 +121,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 					}
 				}
 				index++
-				if opts.TraceNum == math.MaxInt64 && opts.TraceFile != "" {
+				if opts.TraceNum == math.MaxInt64 && traceFileSet {
 					return opts, tlcCommandLineError("Error: You need to specify a 'num' argument when using the 'file' argument, for example: '\"num=5,file=test.txt\"'.")
 				}
 			}
@@ -518,7 +521,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 func (t *TLC) HandleParameters(args []string) error {
 	opts, err := ParseTLCOptions(args)
 	if err != nil {
-		if t != nil {
+		if _, commandLineError := err.(*TLCCommandLineError); t != nil && commandLineError {
 			t.printWelcome()
 			PrintError(ECWrongCommandlineParamsTLC, err.Error())
 		}

@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-06 simulation subargument source exception/presence parity:
+Follow-up to numeric CLI parsing: invalid simulation num= now returns the source
+NumberFormatException through the native error boundary, without command-line
+welcome/usage output from TLC.HandleParameters. Only TLCCommandLineError triggers
+that source diagnostic path. file= uses Java replace-all semantics, and its
+presence is tracked independently of empty string contents for the required num
+check. The flag-presence state survives repeated simulation options as Java's
+nullable field does. No tests or assertions changed and no new inventory credit.
+
+Original TLC/WarningControl classes pass 0.017s (73115 terminal 0); existing
+simulation-scheduler option check passes 0.016s; final all-package compilation
+passes (99289 terminal 0). Manual unchanged Java source-launcher/native standalone
+main results match invalid/overflow num exception families/messages and absence
+of welcome output, file= without num rejection, repeated file= removal and
+repeated num= removal. Source command returned status 0; native 71127 returned 0.
+Scratch mains: /mnt/oldrog/tmp/TLCSimArgsManual.java and tlago-simargs-manual.go.
+Initial JShell attempts failed because sandboxed JDI sockets were unavailable
+(17083 exit1) and local classloading failed (18985 stopped130 after its goodbye/
+prefs-lock delay); no validation credit for those attempts. Use the Java source
+launcher for this observation. All checks normal, without -race.
+
+Workspace 85256 and random 63113/59782 remain live with their previous compiled
+snapshots; no completion credit inferred from these focused checks.
+
+
 2026-10-06 TLC numeric command-line parsing parity:
 Replace machine-sized Go integer parsing with Java signed-32-bit parsing for
 integer flags, and signed-64-bit parsing for seed/aril/simulation counts. Preserve

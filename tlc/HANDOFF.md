@@ -86,7 +86,8 @@ Focused verification:
 | Latest file-helper correction: existing focused fingerprint/commit checks | Pass | 0.181 seconds, session `27462` retired |
 | State-functor defaults: existing tool/debugger checks and original models | Pass | Core 0.024 seconds; seven init models 0.733 seconds; three debugger models 0.519 seconds |
 | Numeric CLI correction: original TLC/WarningControl classes and checkpoint models | Pass | 0.017 / 5.638 seconds |
-| Latest all-package compilation | Pass | Session `93384` retired |
+| Simulation argument correction: original CLI classes and existing scheduler check | Pass | 0.017 / 0.016 seconds |
+| Latest all-package compilation | Pass | Session `99289` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -109,8 +110,10 @@ The focused receipts above verify the correction; no tests or assertions changed
 Numeric CLI flags now preserve Java signed-32/64-bit parsing, BMP decimal digits,
 worker-auto trimming and interval overflow/assignment order. Original CLI classes
 and checkpoint models pass. Manual unchanged-Java/native edge cases match; these
-are observations, not new test ports. Invalid simulation-count exception handling
-still needs a separate source audit. See progress for exact receipts.
+are observations, not new test ports. The follow-up simulation audit also restores
+the source `NumberFormatException` boundary, replace-all filename handling and
+empty-file presence check. Original CLI classes and the existing scheduler check
+pass; manual unchanged-Java/native outcomes match. See progress for exact receipts.
 
 Current normal verification jobs:
 
