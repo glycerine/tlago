@@ -112,12 +112,12 @@ inventory. Its current totals are:
 
 | Suite | Translated method contexts | Pending contexts |
 | --- | ---: | ---: |
-| Main TLC | 1,259 of 1,269 | 10 |
+| Main TLC | 1,260 of 1,269 | 9 |
 | Shared utilities | 55 of 56 | 1 |
 | Long tests | 15 of 22 | 7 |
 | Concurrent tests | 2 of 17 | 15 |
 
-In the main suite, 616 of 626 non-ignored concrete classes are complete. A method
+In the main suite, 617 of 626 non-ignored concrete classes are complete. A method
 context is a concrete Java class plus a method; inherited methods count once
 per concrete subclass. These totals measure translations, not implementation
 coverage or universal behavioral parity. Original ignored methods are counted
@@ -136,8 +136,8 @@ possible schedule.
 ## Remaining work and known blockers
 
 Five main-suite contexts have known source-failing or JVM-specific
-reconciliation issues below. The other five pending contexts are original
-distributed models; checkpoint models are now complete. Consult the inventory for each exact disposition.
+reconciliation issues below. The other four pending contexts are original assumption-disabled
+distributed transport models; checkpoint models are now complete. Consult the inventory for each exact disposition.
 
 | Eligible class | Unresolved issue |
 | --- | --- |

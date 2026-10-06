@@ -1,5 +1,24 @@
 # TLC Port Progress
 
+2026-10-06 original TLCSet server unsupported-feature test:
+Translated complete TLCSetTest.testSpec with TLCServerTestCase application/server
+setup. Existing server initialization reports the original unsupported TLCSet /
+TLCGet feature diagnostic. Retained ComputingInit and FeatureUnsupported presence,
+GENERAL absence, source default FPSet ratio and MSB implementation, disabled
+checkpoints/deadlock, and unchanged model/config bytes. Native FPSet exit leaves
+the process running, matching the source DummyFPSet override. Isolated registry
+namespace supplies the original per-test process isolation. No new network layer,
+service test, production modification, or fake checker runner introduced.
+Unchanged Java passes one test (0.382 seconds); full original Go method passes
+1.766 seconds. Four related original server/init methods pass normally in
+1.630 seconds. Logs: /mnt/oldrog/tmp/tlago-original-java-server-tlcset.log,
+/mnt/oldrog/tmp/tlago-original-server-tlcset.log and
+/mnt/oldrog/tmp/tlago-original-server-init-related.log. All handles retired;
+no full-suite or race claim. Main inventory 1,260/1,269 contexts, 617/626 classes,
+nine pending: five source-failing/JVM-specific reconciliation cases and four
+upstream assumption-disabled transport models. Long/concurrent appendices remain
+pending separately; main translation percentage is not overall port completion.
+
 2026-10-06 ordinary-checker tests in distributed package and trace reconciliation:
 Confirmed DistributedDoInitFunctorInvariantTest and its Continue variant inherit
 ordinary ModelCheckerTestCase, not distributed transport setup. Existing stop

@@ -6,9 +6,9 @@ Snapshot: 2026-10-06. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **616 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (98.4%).**
-- **1,259 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (99.2%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **10 logical method contexts across 10 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
+- **617 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (98.6%).**
+- **1,260 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (99.3%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **9 logical method contexts across 9 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -35,13 +35,13 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Coverage | 20 | 20 | 23 | 23 | 0 |
 | Debugger and scoped identifiers | 16 | 16 | 35 | 35 | 0 |
 | Checkpoint and recovery models | 2 | 2 | 2 | 2 | 0 |
-| Distributed TLC | 11 | 6 | 41 | 36 | 5 |
+| Distributed TLC | 11 | 7 | 41 | 37 | 4 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 20 | 165 | 165 | 0 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **616** | **1,269** | **1,259** | **10** |
+| **Total** | **626** | **617** | **1,269** | **1,260** | **9** |
 
 ## Porting rules and proposed order
 
@@ -668,7 +668,7 @@ Remote server/worker integration, init failures, fingerprint-manager failover, a
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port.
 - [ ] [tlc2/tool/distributed/EWD840DistributedWithFPSetTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/EWD840DistributedWithFPSetTLCTest.java) — **Missing**: `test`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port.
-- [ ] [tlc2/tool/distributed/TLCSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/TLCSetTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/distributed/TLCSetTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/TLCSetTest.java) — **Port complete**: `testSpec`. Translation: [tlc_distributed_test.go](../tlc_distributed_test.go). Full server/application initialization with unchanged original model/config, source default FPSet ratio and MSB dummy equivalent, isolated registry namespace, and all three diagnostic assertions. Native FPSet exit preserves the process as Java dummy exit does. Unchanged Java and Go pass; no network transport substitute is claimed.
 - [ ] [tlc2/tool/distributed/TSnapShotDistributedTLCTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/distributed/TSnapShotDistributedTLCTest.java) — **Missing**: `test`.
   Upstream DistributedTLCTestCase.setUp unconditionally Assume.assumeTrue(false); retain as transport backlog, not a completed/skipped Go port.
 
