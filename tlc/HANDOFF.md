@@ -171,17 +171,37 @@ final-size check. Log: `/mnt/oldrog/tmp/tlago-long-lsb-random-large-volume.log`.
 Both temporary-directory variables used the large workspace volume. This
 snapshot includes buffered-file and trace corrections, before the simulator
 correction; the TLC fingerprint implementation is unchanged since that run.
-Review the entire draft against the original abstract method and concrete factory
-before installing it or granting inventory credit. No duplicate run is needed
-for unchanged fingerprint code. Do not reclaim unrelated files.
+The abstract method, setup/progress/teardown and concrete factories have now
+been reviewed against Java. The complete LSB and MSB random bodies are installed
+in `long_heap_fpset_stress_java_test.go`, under `tlc_fp_stress`. Java excludes
+these heap classes from `test-dist-long`; the explicit Go target preserves the
+full workloads without adding hours to ordinary test runs. No duplicate LSB run
+is needed for unchanged fingerprint code. Do not reclaim unrelated files.
 
 MSB session `63113` is retired with status 0. Its full random draft passes in
 13,343.32 seconds, including all 2,147,483,648 insertions, checkpoint commit,
 invariant check and final size. It was compiled at `a915e08` before later
 flusher endpoint/count assertions and file-helper fixes. Preserve that limited
-receipt; it does not verify newer changes or earn inventory credit. Both drafts
-retain original factories/configuration, seed, checkpoints, assertions and
-bounds, use `-timeout=0`, and have no race instrumentation.
+receipt; it does not verify newer production changes. The installed translations
+retain original factories/configuration, seed, checkpoints, assertions and bounds.
+Their two method contexts now receive translation credit; current full execution
+is qualified separately.
+
+Current MSB session `5144` is live, using the isolated binary
+`/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
+and the installed test translation. Log:
+`/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
+18:17:43 CDT on October 6 and last reported 364,877,724 of 2,147,483,648
+insertions. Preserve this run and poll the same handle; do not restart it or
+claim a full pass before terminal completion. Its temporary files use the large
+workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
+
+The explicit stress target compiles and lists both original methods. The ordinary
+target omits them. Existing LSB/MSB factory and simple-fill tests pass normally in
+3.459 seconds. Run the full methods with:
+`go test -tags=tlc_fp_stress -run '^TestJavaLong(LSB|MSB)DiskFPSet_testMaxFPSetSizeRnd$' -timeout=0 -v ./tlc`.
+OffHeap random, all three sequential contexts and OffHeap multiple-flush
+reconciliation remain pending.
 
 ## User-visible behavior already completed
 
@@ -217,7 +237,7 @@ inventory. Its current totals are:
 | --- | ---: | ---: |
 | Main TLC | 1,260 of 1,269 | 9 |
 | Shared utilities | 55 of 56 | 1 |
-| Long tests | 15 of 22 | 7 |
+| Long tests | 17 of 22 | 5 |
 | Concurrent tests | 2 of 17 | 15 |
 
 In the main suite, 617 of 626 non-ignored concrete classes are complete. A method
@@ -546,9 +566,10 @@ Additional pending work:
 
 - `TLCRuntimeTest.testIsThroughputOptimized` asserts the JVM ParallelGC selection
   made by the original Ant flag. Do not fabricate a successful Go GC response.
-- Six inherited long fingerprint contexts retain their full loops: 2,147,483,648
-  random iterations or 3,221,225,473 sequential iterations, across three factories.
-  Their full drafts are prepared but not verified or credited.
+- Four inherited long fingerprint contexts remain pending: the OffHeap random
+  method retains 2,147,483,648 iterations, and all three sequential methods retain
+  3,221,225,473 iterations. Their full drafts remain outside the persistent suite
+  and uncredited. LSB/MSB random translations are installed; see receipts above.
 - `OffHeapDiskFPSetLongTest.testMultipleFlushes` fails in unchanged Java and Go
   when an invariant check reaches an already shut-down flusher executor. Keep
   the original four rounds and insertion counts.

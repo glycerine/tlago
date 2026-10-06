@@ -38,7 +38,7 @@ func javaLongFPSetSimpleFill(t *testing.T, set FPSet) {
 }
 
 // Original test-long DiskFPSetTest factory constructs LSBDiskFPSet directly.
-// Its two huge inherited methods remain pending with their original full bounds.
+// Its random method is in the tlc_fp_stress target; the sequential method remains pending.
 func TestJavaLongLSBDiskFPSet(t *testing.T) {
 	t.Run("testSimpleFill", func(t *testing.T) {
 		set := NewLSBDiskFPSet(NewFPSetConfiguration())

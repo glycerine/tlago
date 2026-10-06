@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-06 Original heap fingerprint random test translations:
+Reviewed FPSetTest.testMaxFPSetSizeRnd, AbstractFPSetTest and both concrete heap
+factories against pinned Java. Install the complete LSB and MSB methods under
+`tlc_fp_stress`, following customBuild.xml's explicit exclusion of those classes
+from test-dist-long. Retain default configuration, seed 15041980, all
+2,147,483,648 insertions, predecessor membership, per-insertion size, checkpoint
+commit, invariant and final size. Translate optional statistics and original
+progress arithmetic, including its multiplication and mislabeled GiB output.
+Restore the LSB factory's diagnostic output. Native cleanup uses Close/t.TempDir;
+verbose progress additionally reports the completed iteration count.
+
+No fingerprint production change, shortened workload or invented test. Long
+inventory advances from 15/22 to 17/22 method contexts; only one of four concrete
+classes is complete. Main and concurrent inventories are unchanged.
+
+Normal checks: existing two concrete factory/simple-fill methods pass in 3.459
+seconds (8626 terminal 0). Stress target lists both new methods; ordinary target
+lists neither (93320 terminal 0). Logs are
+/mnt/oldrog/tmp/tlago-heap-random-port-{setup,stress-list,default-list}.log.
+Reuse completed LSB full receipt 32959 rather than repeating unchanged fingerprint
+code. Older full MSB receipt 63113 predates actual fingerprint flusher/file fixes.
+Start the current isolated compiled binary's full MSB method, session 5144,
+without race instrumentation or timeout, on the large workspace volume. It is
+still live; no full current-pass credit. Log:
+/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log. Keep checking that handle
+while progressing independent faithful core work. Sequential methods and OffHeap
+random/multiple-flush contexts remain pending without weakened assertions.
+
 2026-10-06 Restricted expressions, fairness syntax and builtin levels:
 Previous turn made progress in 4816986. Continue from clean master, keeping the
 new distributed service postponed. Java NoOpExtension permits identifiers only;

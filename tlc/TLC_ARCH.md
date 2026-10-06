@@ -1,5 +1,18 @@
 # TLC Architecture Notes for the Go Port
 
+## Original heap fingerprint stress target
+
+The original long-test LSB and MSB random methods are available under the
+`tlc_fp_stress` build tag. Java's `test-dist-long` target excludes these concrete
+heap classes because of runtime. This explicit Go target preserves their full
+2,147,483,648 iterations, default concrete factories and configuration, Java RNG
+seed, per-insertion assertions, checkpoint commit and invariant checks. Run with
+`-timeout=0` and no race instrumentation. Original abstract setup and progress
+logic are retained; verbose progress also includes iteration counts. Inventory
+translation status and full-run verification receipts are tracked separately in
+TODO_TEST_PORT.md and HANDOFF.md. This target adds original tests only and changes
+no production fingerprint behavior.
+
 ## CLI loading and fatal configuration I/O
 
 Ordinary and packaged CLI models construct their tool through the same deferred
