@@ -1,5 +1,63 @@
 # TLC Port Progress
 
+2026-10-06 Lazy parser token reading and lexical failure boundaries:
+Previous turn made progress in 56d0a9a. Full normal workspace 28493 remains
+confirmed live on that snapshot, before this lexical correction; LSB 32959
+remains confirmed live on its recorded storage snapshot. Preserve both handles.
+Continue faithful Java parity; new distributed architecture stays deferred.
+
+Eight initial scratch failures expose generic native lexer/parser diagnostics
+in place of Java's two layers: TLAplusParser.parse reports TokenMgrError or its
+parse stack, then ParseUnit aborts with one INTERNAL_ERROR E4003 in the shared
+parse Errors. Port actual TokenMgrError escaping and lexical message construction,
+including EOF prefixes, invalid escapes, comment termination, source character
+codes and Java UTF-16 columns. Stop token production at that failure. The native
+LexAll API catches it and returns its diagnostic; the parser reads tokens lazily
+and catches lexical failure at the actual requested-token boundary. This avoids
+reading unrelated text after the root module or continuing with invented invalid
+tokens and additional parser errors. LoadPath reports the actual lexical message
+and raises the source single E4003 parse-unit abort with module-only location
+and structured parameters. Preserve native diagnostic text separately.
+
+Expand to EOF and supplementary-character cases. Actual comparisons expose
+three additional UTF-16 mistakes: a supplementary rune has another Java code
+unit even at native EOF; invalid escape location is its first code unit, not
+the last; the source escapes only the offending unit. Fix those cases rather
+than weaken observations. All fifteen lexical/trailing-text observations then
+match Java exactly. Three syntax failures remain unmodified and mismatching:
+missing expression, missing bracket and missing footer. Their source lookahead,
+expecting state, token positions and residual stack are the next concrete work;
+do not claim complete parser parity or filter them from the comparison.
+
+Scratch artifacts under /mnt/oldrog/tmp: tlago-parser-failures-vectors/,
+tlago-parser-failures-compare.py and tlago-parser-failures-before.log,
+tlago-parser-failures-after.log, tlago-parser-failures-expanded.log,
+tlago-parser-failures-utf16-expanded.log,
+tlago-parser-failures-verified-lexical.log. Final comparison 9510 returns status
+0 and is retired; inspect the actual output, whose three syntax diffs remain.
+Its exit status alone is not a passing all-case gate. No persistent invented
+regression tests or TLC inventory credit; existing original SANY tests remain
+unchanged.
+
+Final existing tokenizer/parser/resolver/semantic/CLI/XML and original INSTANCE,
+warning, action-level and trace selection passes root 5.460 / SANY 0.723 seconds,
+session 41276 retired. Complete existing SANY package passes 1.334 seconds,
+session 77636 retired. Final native adapter cleanup returns only tokens actually
+produced before failure, with no synthesized EOF. Existing tokenizer/parser and
+original SANY selection passes root 0.016 / SANY 0.731 seconds, session 39109
+retired; complete SANY passes again in 1.384 seconds, session 81956 retired.
+Additional logs tlago-lexical-boundary-partial-tokens.log and
+tlago-lexical-boundary-final-sany.log. Final all-package compilation passes. Logs:
+tlago-lexical-boundary-final-focused.log,
+tlago-lexical-boundary-verified-sany.log and
+tlago-lexical-boundary-verified-compile.log. All tests run normally, without
+race instrumentation or altered assertions. Sixteen established loading/cycle/
+context observations still match Java, session 22724 retired; log
+tlago-lexical-boundary-loading-compare.log. Independent extraction directory
+names retain the previously documented normalization; raw outputs remain.
+The live full-workspace snapshot predates this batch and does not verify it.
+Goal remains incomplete.
+
 2026-10-06 Source module-resolution loop and parse-unit graph:
 Previous turn made progress in 334e878. Full normal workspace 15749 now returns
 status 0 and is retired: root 1,519.135 / SANY 1.147 / TLC 787.539 seconds,

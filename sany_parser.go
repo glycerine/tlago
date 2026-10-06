@@ -7,6 +7,7 @@ import (
 
 type SanyParser struct {
 	tokens          []*SanyToken
+	tokenManager    *SanyTokenManager
 	at              int
 	diags           Diagnostics
 	moduleName      string
@@ -21,15 +22,22 @@ func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
 	return node, diags
 }
 
-func parseSanySyntaxWithDependencies(file, source string) (*SanySyntaxNode, []string, Diagnostics) {
-	tokens, lexDiags := SanyTokenize(file, source)
-	parser := NewSanyParser(tokens, nil)
-	node := parser.CompilationUnit()
+func parseSanySyntaxWithDependencies(file, source string) (node *SanySyntaxNode, dependencies []string, diags Diagnostics) {
+	parser := &SanyParser{tokenManager: NewSanyTokenManager(file, source)}
+	defer func() {
+		if failure := recover(); failure != nil {
+			if lexical, ok := failure.(*sanyTokenMgrError); ok {
+				diags = append(parser.diags, lexical.diagnostic)
+				dependencies = parser.Dependencies()
+			} else {
+				panic(failure)
+			}
+		}
+	}()
+	node = parser.CompilationUnit()
 	node.SetLevel(0)
 	node.SetParent()
-	diags := filterSanyDiagnosticsThroughRootEnd(lexDiags, node)
-	diags = append(diags, parser.diags...)
-	return node, parser.Dependencies(), diags
+	return node, parser.Dependencies(), parser.diags
 }
 
 func (p *SanyParser) Dependencies() []string { return append([]string(nil), p.dependencyList...) }
@@ -2857,12 +2865,7 @@ func (p *SanyParser) previous() *SanyToken {
 	return p.tokens[p.at-1]
 }
 
-func (p *SanyParser) peek() *SanyToken {
-	if p.at >= len(p.tokens) {
-		return &SanyToken{Kind: SanyTokenEOF}
-	}
-	return p.tokens[p.at]
-}
+func (p *SanyParser) peek() *SanyToken { return p.tokenAt(0) }
 
 func (p *SanyParser) peekNext() *SanyToken {
 	return p.tokenAt(1)
@@ -2870,6 +2873,16 @@ func (p *SanyParser) peekNext() *SanyToken {
 
 func (p *SanyParser) tokenAt(offset int) *SanyToken {
 	idx := p.at + offset
+	for p.tokenManager != nil && idx >= len(p.tokens) {
+		if len(p.tokens) != 0 && p.tokens[len(p.tokens)-1].Kind == SanyTokenEOF {
+			return p.tokens[len(p.tokens)-1]
+		}
+		token := p.tokenManager.NextToken()
+		if len(p.tokens) != 0 {
+			p.tokens[len(p.tokens)-1].Next = token
+		}
+		p.tokens = append(p.tokens, token)
+	}
 	if idx >= len(p.tokens) {
 		return &SanyToken{Kind: SanyTokenEOF}
 	}

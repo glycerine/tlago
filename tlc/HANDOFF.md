@@ -62,8 +62,8 @@ snapshot with original bounds and normal execution. It predates the subsequent
 INSTANCE, direct Context, file-loading abort and module-loading corrections.
 Historical failed and successful receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `28493` is live on the current module-loading
-production snapshot. It preserves original bounds, failfast and a 60-minute
+Full normal workspace session `28493` is live on the `56d0a9a` module-loading
+production snapshot, before the subsequent lexical correction. It preserves original bounds, failfast and a 60-minute
 timeout, without race instrumentation. Both `GOTMPDIR` and `TMPDIR` use workspace
 `.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-module-loading-workspace.log`.
 No success is claimed until this same handle returns terminal status. Do not
@@ -76,7 +76,9 @@ Latest focused verification:
 | Existing parser/resolver/semantic/CLI/XML and original INSTANCE/action-level/trace/warning methods | Pass | 4.771 seconds, session `31624` retired |
 | Original SANY method selection on final source graph | Pass | 0.717 seconds, session `31624` retired |
 | Complete SANY package after inherited-context correction | Pass | 1.359 seconds, session `51638` retired; predates final search-flag preservation |
-| All-package compilation | Pass | Final module-loading graph, session `51926` retired |
+| Existing tokenizer/parser/resolver/semantic/CLI/XML and original INSTANCE/warning/action-level/trace checks | Pass | Root 5.460 / SANY selection 0.723 seconds, session `41276` retired |
+| Complete SANY package after final lexical correction | Pass | 1.384 seconds, session `81956` retired |
+| All-package compilation | Pass | Final lexical correction |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -194,9 +196,16 @@ possible schedule.
 ## Remaining work and known blockers
 
 Continue the core production audit and unresolved original methods below.
-Current concrete production gaps include general syntax-error ErrorDetails
-rendering, generation traversal and multiple-binding context iteration order,
-remaining constructor and semantic-node boundaries. Missing modules and filename/module-name mismatches now abort loading with
+Current concrete production gaps include syntax-error lookahead and residual
+stack reporting, generation traversal and multiple-binding context iteration order,
+remaining constructor and semantic-node boundaries. The parser now reads tokens lazily and catches actual lexical failures. It
+reports source TokenMgrError text before ParseUnit's single E4003 abort,
+including EOF and UTF-16 character details. Fifteen lexical/trailing-text
+observations match Java. Three unmodified syntax observations still differ:
+missing expression, bracket and footer. Reconcile their actual lookahead,
+expecting state, token positions and message stack next; do not synthesize
+those messages from generic native errors.
+Missing modules and filename/module-name mismatches now abort loading with
 source E4220/E4221 details and null or actual importing-module locations.
 The existing front-end exception boundary reports these failures; the native
 library API returns diagnostics and preserves a previously parsed root.

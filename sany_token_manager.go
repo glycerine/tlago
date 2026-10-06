@@ -54,8 +54,16 @@ func SanyTokenize(file, input string) ([]*SanyToken, Diagnostics) {
 	return NewSanyTokenManager(file, input).LexAll()
 }
 
-func (tm *SanyTokenManager) LexAll() ([]*SanyToken, Diagnostics) {
-	var tokens []*SanyToken
+func (tm *SanyTokenManager) LexAll() (tokens []*SanyToken, diags Diagnostics) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			if lexical, ok := failure.(*sanyTokenMgrError); ok {
+				diags = append(tm.diags, lexical.diagnostic)
+			} else {
+				panic(failure)
+			}
+		}
+	}()
 	var previous *SanyToken
 	for {
 		tok := tm.NextToken()
@@ -139,18 +147,42 @@ func (tm *SanyTokenManager) nextSpecToken() *SanyToken {
 
 	candidate := tm.bestSpecCandidate()
 	if candidate.n > 0 {
-		tok := tm.consumeToken(candidate.kind, candidate.n, SanyLexSpec)
 		if candidate.diagCode != "" {
-			tm.diags = append(tm.diags, errorAt(tok.Begin, candidate.diagCode, "%s", candidate.diagMsg))
+			begin, start := tm.pos(), tm.offset
+			tm.consumeBytes(candidate.n)
+			position, after := tm.pos(), tm.input[start:tm.offset]
+			character := tm.peek()
+			if candidate.diagCode == "E1203" {
+				position = tm.lastEnd
+				_, size := utf8.DecodeLastRuneInString(after)
+				character, _ = utf8.DecodeLastRuneInString(after)
+				if character > 0xffff {
+					position.Column--
+				}
+				if !tm.eof() || character > 0xffff {
+					after = after[:len(after)-size]
+				}
+			}
+			eof := tm.eof() && character <= 0xffff
+			if eof {
+				position = tm.lexicalEOFPosition()
+			}
+			tm.lexicalFailure(begin, candidate.diagCode, candidate.diagMsg, position, after, character, eof)
 		}
-		return tok
+		return tm.consumeToken(candidate.kind, candidate.n, SanyLexSpec)
 	}
 
 	begin := tm.pos()
-	start := tm.offset
-	tm.advance()
-	tm.diags = append(tm.diags, errorAt(begin, "E1200", "unexpected character in SANY token stream"))
-	return tm.emitToken(SanyTokenInvalid, begin, tm.lastEnd, tm.input[start:tm.offset], SanyLexSpec)
+	character := tm.advance()
+	position := begin
+	// A supplementary rune still has a second Java code unit, even when
+	// its UTF-8 bytes end the native input.
+	eof := tm.eof() && character <= 0xffff
+	if eof {
+		position = tm.lexicalEOFPosition()
+	}
+	tm.lexicalFailure(begin, "E1200", "unexpected character in SANY token stream", position, "", character, eof)
+	return nil
 }
 
 func (tm *SanyTokenManager) skipSpecWhitespaceOrSpecial() bool {
@@ -227,8 +259,7 @@ func (tm *SanyTokenManager) consumeBlockSpecial() {
 		tm.advance()
 	}
 	tm.state = SanyLexSpec
-	tm.diags = append(tm.diags, errorAt(begin, "E1201", "unterminated block comment"))
-	tm.appendSpecial(tm.emitDetachedToken(SanyTokenBlockComment, begin, tm.lastEnd, tm.input[start:tm.offset], lexState))
+	tm.lexicalFailure(begin, "E1201", "unterminated block comment", tm.lexicalEOFPosition(), "", 0, true)
 }
 
 func (tm *SanyTokenManager) consumeStartedBlockComment() {
@@ -542,6 +573,11 @@ func (tm *SanyTokenManager) advance() rune {
 		tm.column = nextSanyTabColumn(tm.column)
 	} else {
 		tm.column++
+		if r > 0xffff {
+			// SimpleCharStream reads Java UTF-16 code units.
+			tm.column++
+			tm.lastEnd.Column++
+		}
 	}
 	return r
 }

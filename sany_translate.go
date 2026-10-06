@@ -287,6 +287,18 @@ func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string
 	l.reportParsing(path, provenance...)
 	extracted := l.monolithTempDir != "" && filepath.Dir(path) == l.monolithTempDir
 	mod, _, diags := parseSanyModuleSourceWithDependencies(path, string(data), extracted)
+	for _, diagnostic := range diags {
+		if diagnostic.SANYParseMessage == "" {
+			continue
+		}
+		if l.opts.ParsingProgress != nil {
+			l.opts.ParsingProgress(diagnostic.SANYParseMessage)
+		}
+		name := strings.TrimSuffix(filepath.Base(logicalFilename), ".tla")
+		failure := errorAt(Position{File: name}, "E4003", "Could not parse module %s from file %s", name, logicalFilename)
+		failure.SANYParameters = []any{name, logicalFilename}
+		l.abortParse(failure)
+	}
 	l.diags = append(l.diags, diags...)
 	if standard {
 		setModuleLibraryRecursive(mod, true)

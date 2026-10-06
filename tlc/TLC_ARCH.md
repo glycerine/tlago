@@ -59,6 +59,23 @@ catches runtime Exception, prints its stack to System.err and retains the buffer
 Error propagates. Successful reset discards bytes appended during release.
 ToolIO's string capture does not intercept source inherited raw-byte writes.
 
+## Parser lexical failure boundary
+
+The parser requests tokens lazily from its token manager. Token production
+stops on a lexical failure instead of continuing with invalid tokens; the native
+LexAll API catches that failure and returns diagnostics. The parser catches the
+same actual failure at its requested-token boundary, preserving the source
+TokenMgrError message separately from native diagnostic text.
+
+TLAplusParser.parse reports the lexical message; ParseUnit then raises the
+single E4003 failure in SpecObj.parseErrors, with module-only location and module
+and logical filename parameters. The existing frontEndParse abort boundary
+reports those details and accumulated Errors. Lexical escaping and character
+columns follow Java UTF-16 code units, including invalid supplementary escapes
+and EOF prefixes. Successful root parsing does not tokenize trailing input.
+Syntax lookahead, expecting state and residual message-stack parity remain
+unfinished; the lexical correction does not replace those parser mechanisms.
+
 ## Module loading and parse-unit relationships
 
 The loader follows SpecObj's unresolved-name loop, restarting at the root after

@@ -24,6 +24,7 @@ type diagnosticCodeInfo struct {
 }
 
 var diagnosticCodeInfos = map[string]diagnosticCodeInfo{
+	"E4003": {Severity: SeverityError},
 	"E1200": {Severity: SeverityError},
 	"E1201": {Severity: SeverityError},
 	"E1202": {Severity: SeverityError},
@@ -192,13 +193,14 @@ func (p Position) SourceEnd() Position {
 }
 
 type Diagnostic struct {
-	Code           string
-	Severity       Severity
-	Pos            Position
-	Message        string
-	SANYRange      SanyRange
-	SANYMessage    string
-	SANYParameters []any
+	Code             string
+	Severity         Severity
+	Pos              Position
+	Message          string
+	SANYRange        SanyRange
+	SANYMessage      string
+	SANYParameters   []any
+	SANYParseMessage string
 }
 
 func (d Diagnostic) String() string {
