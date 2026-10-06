@@ -1,5 +1,26 @@
 # TLC Port Progress
 
+2026-10-06 DFID/fingerprint CLI numeric branch parity:
+TLC's shared nonnegative helper obscured source-specific missing/invalid/range
+diagnostics and DFID's assignment before validation. Port -dfid/-fp branches
+directly: signed-32-bit parse, original diagnostics, DFID global and fpIndex
+assignment before range rejection. -fpbits now uses its source interval check
+for negative values. Keep the generic helper used by the separate CheckImplFile
+parser; an initial compile caught that dependency after removal, so it was
+restored before verification. No new tests, modified assertions or port credit.
+
+Original TLC/WarningControl methods pass 0.016s (75001 terminal 0); four original
+DepthFirstErrorTrace/DieHard and generated TTrace methods pass 1.529s (13004
+terminal 0). All-package compilation passes (68368 terminal 0). Manual unchanged
+Java source launcher and native scratch main (48870 terminal 0) match all twelve
+missing/bad/negative/overflow diagnostic cases across the three flags. Scratch
+mains under /mnt/oldrog/tmp: TLCNumericBranchesManual.java and
+tlago-numeric-branches-manual.go. These are observations, not additional tests.
+No -race or changed workload bounds. Separate CheckImplFile numeric parser still
+shares unsuitable TLC worker/coverage helpers; follow-up source audit is needed.
+Workspace 85256 and random 63113/59782 remain live, without full-run credit.
+
+
 2026-10-06 simulation subargument source exception/presence parity:
 Follow-up to numeric CLI parsing: invalid simulation num= now returns the source
 NumberFormatException through the native error boundary, without command-line

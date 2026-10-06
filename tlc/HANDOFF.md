@@ -87,7 +87,8 @@ Focused verification:
 | State-functor defaults: existing tool/debugger checks and original models | Pass | Core 0.024 seconds; seven init models 0.733 seconds; three debugger models 0.519 seconds |
 | Numeric CLI correction: original TLC/WarningControl classes and checkpoint models | Pass | 0.017 / 5.638 seconds |
 | Simulation argument correction: original CLI classes and existing scheduler check | Pass | 0.017 / 0.016 seconds |
-| Latest all-package compilation | Pass | Session `99289` retired |
+| DFID/fingerprint CLI branches: original CLI classes and four DFID model methods | Pass | 0.016 / 1.529 seconds |
+| Latest all-package compilation | Pass | Session `68368` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -113,7 +114,11 @@ and checkpoint models pass. Manual unchanged-Java/native edge cases match; these
 are observations, not new test ports. The follow-up simulation audit also restores
 the source `NumberFormatException` boundary, replace-all filename handling and
 empty-file presence check. Original CLI classes and the existing scheduler check
-pass; manual unchanged-Java/native outcomes match. See progress for exact receipts.
+pass; manual unchanged-Java/native outcomes match. DFID/fingerprint numeric
+branches also retain their individual source diagnostics and assignment order;
+four original DFID model methods pass. The separate `CheckImplFile` numeric
+parser needs a follow-up audit of its worker and coverage behavior. See progress
+for exact receipts.
 
 Current normal verification jobs:
 

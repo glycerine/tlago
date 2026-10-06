@@ -383,23 +383,32 @@ func ParseTLCOptions(args []string) (Options, error) {
 			SetNumWorkers(workers)
 			index += 2
 		case arg == "-dfid":
-			value, err := parseNonnegativeIntOption(args, index, "dfid", "-dfid")
-			if err != nil {
-				return opts, err
+			if index+1 >= len(args) {
+				return opts, tlcCommandLineError("Error: expect a nonnegative integer for -dfid option.")
+			}
+			value, valid := javaParseDecimalInt(args[index+1])
+			if !valid {
+				return opts, tlcCommandLineError("Error: expect a nonnegative integer for -dfid option. But encountered " + args[index+1])
+			}
+			Globals.DFIDMax = int(value)
+			if value < 0 {
+				return opts, tlcCommandLineError("Error: expect a nonnegative integer for -dfid option.")
 			}
 			opts.DFIDMode = true
-			opts.DFIDDepth = value
-			Globals.DFIDMax = value
+			opts.DFIDDepth = int(value)
 			index += 2
 		case arg == "-fp":
-			value, err := parseNonnegativeIntOption(args, index, "fp", "-fp")
-			if err != nil {
-				return opts, err
+			if index+1 >= len(args) {
+				return opts, tlcCommandLineError("Error: expect an integer for -fp option.")
 			}
-			if value >= len(FP64Polys) {
+			value, valid := javaParseDecimalInt(args[index+1])
+			if !valid {
+				return opts, tlcCommandLineError("Error: A number for -fp is required. But encountered " + args[index+1])
+			}
+			opts.FPIndex = int(value)
+			if value < 0 || int(value) >= len(FP64Polys) {
 				return opts, tlcCommandLineError(fmt.Sprintf("Error: The number for -fp must be between 0 and %d (inclusive).", len(FP64Polys)-1))
 			}
-			opts.FPIndex = value
 			index += 2
 		case arg == "-fpmem":
 			if index+1 >= len(args) {
@@ -418,7 +427,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 			}
 			index += 2
 		case arg == "-fpbits":
-			value, err := parseNonnegativeIntOption(args, index, "fpbits", "-fpbits")
+			value, err := parseIntOption(args, index, "fpbits", "-fpbits")
 			if err != nil {
 				return opts, err
 			}
