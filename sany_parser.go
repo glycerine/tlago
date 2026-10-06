@@ -6,17 +6,18 @@ import (
 )
 
 type SanyParser struct {
-	tokens          []*SanyToken
-	tokenManager    *SanyTokenManager
-	at              int
-	diags           Diagnostics
-	moduleName      string
-	proofLevelStack []int
-	junctionColumns []int
-	dependencyList  []string
-	internalModules []string
-	messageStack    []sanyParseFrame
-	expecting       string
+	tokens               []*SanyToken
+	tokenManager         *SanyTokenManager
+	at                   int
+	diags                Diagnostics
+	moduleName           string
+	proofLevelStack      []int
+	junctionColumns      []int
+	dependencyList       []string
+	internalModules      []string
+	messageStack         []sanyParseFrame
+	expecting            string
+	failedLookaheadSizes map[*SanyToken]int
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
@@ -1531,27 +1532,10 @@ func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
 	case SanyTokenStringLiteral:
 		return p.String()
 	case SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
-		return p.NoOpExtension()
+		return p.primitiveSelectorExpr(p.NoOpExtensionBase())
 	default:
 		if _, ok := GetSanyOperator(p.peek().Image); ok && (p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) || p.check(SanyTokenOp76)) {
-			selector := p.BangOperatorSelector()
-			var prefix []*SanySyntaxNode
-			args := p.OptionalSelectorOpArgs(selector)
-			for p.match(SanyTokenBang) {
-				bang := NewSanyTokenNode(p.previous())
-				if args == nil {
-					prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, bang))
-				} else {
-					prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, args, bang))
-				}
-				selector = p.BangSelector()
-				args = p.OptionalSelectorOpArgs(selector)
-			}
-			genID := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
-			if args != nil {
-				return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, args)
-			}
-			return genID
+			return p.primitiveSelectorExpr(p.BangOperatorSelector())
 		}
 		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenNumberLiteral}, {SanyTokenStringLiteral}}, "expected expression")
 		return nil
@@ -1560,6 +1544,9 @@ func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
 
 // OpOrExpr is used only for operator arguments and substitution values.
 func (p *SanyParser) OpOrExpr(stop func(*SanyToken) bool) *SanySyntaxNode {
+	if !p.startsOpOrExprAt(0) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator or expression")
+	}
 	if p.check(SanyTokenLambda) {
 		return p.Lambda(stop)
 	}
@@ -2516,21 +2503,83 @@ func (p *SanyParser) OpApplication() *SanySyntaxNode {
 }
 
 func (p *SanyParser) OpArgs() *SanySyntaxNode {
+	p.beginProduction("Optional Arguments")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenLbr, "expected ( in operator arguments"))
-	if !p.check(SanyTokenRbr) {
+	heirs = append(heirs, p.consumeParseToken(SanyTokenLbr, "expected ( in operator arguments"))
+	heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
+		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
+	}))
+	for p.match(SanyTokenComma) {
+		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
 		}))
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
-				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
-			}))
-		}
 	}
-	heirs = append(heirs, p.consume(SanyTokenRbr, "expected ) in operator arguments"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in operator arguments"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_OpArgs"], heirs...)
+}
+
+// Source optional OpArgs uses two-token lookahead: an opening parenthesis
+// followed by the first token of the mandatory OpOrExpr. A failed lookahead
+// leaves the parenthesis for the surrounding production.
+func (p *SanyParser) startsOpArgs() bool {
+	if !p.check(SanyTokenLbr) {
+		return false
+	}
+	if p.startsOpOrExprAt(1) {
+		return true
+	}
+	p.rememberFailedLookahead(2)
+	return false
+}
+
+func (p *SanyParser) startsOpOrExprAt(offset int) bool {
+	kind := p.tokenAt(offset).Kind
+	if kind >= SanyTokenOp57 && kind <= SanyTokenOp119 {
+		return true
+	}
+	switch kind {
+	case SanyTokenCase, SanyTokenChoose, SanyTokenExists, SanyTokenForall,
+		SanyTokenIf, SanyTokenLet, SanyTokenSF, SanyTokenTExists, SanyTokenTForall,
+		SanyTokenLambda, SanyTokenWF, SanyTokenLbr, SanyTokenLsb, SanyTokenLbc,
+		SanyTokenLab, SanyTokenNumberLiteral, SanyTokenStringLiteral,
+		SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return true
+	default:
+		return false
+	}
+}
+
+// PrimitiveExp allows the full BangExt selector production; the restricted
+// NoOpExtension used by action subscripts is a separate source production.
+func (p *SanyParser) primitiveSelectorExpr(selector *SanySyntaxNode) *SanySyntaxNode {
+	var prefix []*SanySyntaxNode
+	args := p.OptionalSelectorOpArgs(selector)
+	for p.check(SanyTokenBang) {
+		bang, next, nextArgs := p.BangExtension()
+		if args != nil {
+			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, args, bang))
+		} else {
+			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, bang))
+		}
+		selector, args = next, nextArgs
+	}
+	genID := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
+	if args != nil {
+		return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, args)
+	}
+	return genID
+}
+
+func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
+	p.beginProduction("Bang Extension")
+	defer p.endProduction()
+	bang = p.consumeParseToken(SanyTokenBang, "expected ! in selector")
+	selector = p.BangSelector()
+	args = p.OptionalSelectorOpArgs(selector)
+	return bang, selector, args
 }
 
 func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
@@ -2570,7 +2619,7 @@ func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
 }
 
 func (p *SanyParser) OptionalSelectorOpArgs(selector *SanySyntaxNode) *SanySyntaxNode {
-	if selector == nil || !p.selectorAllowsOpArgs(selector) || !p.check(SanyTokenLbr) {
+	if selector == nil || !p.selectorAllowsOpArgs(selector) || !p.startsOpArgs() {
 		return nil
 	}
 	return p.OpArgs()

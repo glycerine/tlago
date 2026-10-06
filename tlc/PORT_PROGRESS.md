@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-06 Operator argument grammar and failure boundaries:
+Previous turn made progress in 6af3af0 with a deterministic source replay
+comparison. Start from clean master and continue the faithful production port.
+The documented F() discrepancy comes from treating OpArgs as an optional empty
+list. Java requires OpOrExpr before its comma repetition. Its optional OpArgs
+sites use two-token lookahead and decline the whole list when no argument starts,
+leaving the parenthesis for the surrounding production to reject.
+
+Port the mandatory first argument and source Optional Arguments frame. Retain
+failed argument-lookahead lengths by token identity for ParseException's short
+following-input rendering. Reject an invalid OpOrExpr start before entering the
+expression frames. Separate ordinary PrimitiveExp selector parsing from the
+restricted NoOpExtension call path and retain actual Bang Extension frames.
+An initial 22-case comparison exposes trailing-comma and empty-bang stack
+mismatches; correct the production boundaries rather than normalize messages.
+
+Final normal verification, all terminal 0:
+- All 22 scratch argument observations match full Java parse-message output:
+  session 74235; /mnt/oldrog/tmp/tlago-argument-parse-final-audit.log.
+- Inspect the pinned generated parser's two-token lookahead over every token
+  kind: all 196 accepted kinds match the Go first-token selection. Receipt
+  /mnt/oldrog/tmp/tlago-argument-lookahead-java.log; scratch source helper
+  SourceArgumentLookaheadManual.java. This checks the token set, not complete
+  junction predicates or JavaCC lookahead state.
+- Complete existing SANY passes in 1.626 seconds, session 21477.
+- Existing parser, semantic bridge, token manager and operator stack classes,
+  original ParseErrorTests and unchanged EWD998ChanDebugger pass in 14.180
+  seconds, session 3647.
+- All-package compilation and git diff --check pass. Logs use
+  /mnt/oldrog/tmp/tlago-argument-parse-final-{sany,focused,compile}.log.
+
+All original tests, fixture bytes and assertions remain unchanged. The SANY
+argument/corpus methods already exist; no permanent tests were invented and no
+new inventory credit is claimed. Full-workspace pass remains unproven because
+of the documented native import and original trace-expectation issues. The new
+rpc25519/Tube service remains postponed. No verification job remains live.
+
 2026-10-06 Plain safety trace source replay comparison:
 Continue on clean master 98a5ac0 with the new distributed service postponed.
 Investigate the unresolved JSON auto-worker failure before changing production.

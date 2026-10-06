@@ -212,8 +212,16 @@ bindings do not enter the module's theorem vector. Declared operators retain
 operand levels and parameters, as in `OpApplNode`. Declaration-level errors
 precede non-Leibniz checks; INSTANCE errors use the full instance range and
 original messages and argument indices. Twenty-eight additional full diagnostic
-observations match Java. An empty application `F()` remains a known parser
-production discrepancy: Java rejects it, while Go accepts it.
+observations match Java. Empty operator applications such as `F()` now follow
+Java's grammar. Optional argument lists use two-token lookahead and leave the
+opening parenthesis untouched when the mandatory first argument cannot start.
+The source `OpOrExpr` failure boundary precedes expression production entry.
+`OpArgs` and `BangExt` record their actual production frames. Saved failed
+argument lookahead lengths contribute to ParseException's following-input
+rendering, as JavaCC rescanning does. Twenty-two bounded observations match
+complete source parse messages; the 196 accepted lookahead token kinds match
+pinned generated Java. This is argument-production evidence, not complete
+JavaCC lookahead or parser parity.
 
 LET expression generation carries recursive declaration identities, levels and
 shared module counters, replacing the nested-name scan. Declarations remain in

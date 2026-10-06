@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Proof statement generation, formal signatures, existing native parser/semantic classes, original ParseErrorTests and EWD998ChanDebugger | Pass | Root 14.673 seconds, session `85531` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.290 seconds, session `32560` retired |
+| Existing parser, semantic bridge, token manager and operator stack classes, original ParseErrorTests and EWD998ChanDebugger | Pass | Root 14.180 seconds, session `3647` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.626 seconds, session `21477` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -353,9 +353,14 @@ context definitions. Declared-operator operands preserve their levels and level
 parameters. INSTANCE errors retain source range, message, arguments and order.
 Twenty-eight bounded Java/Go observations match full diagnostic output, and all
 74 established visibility observations remain matching. These are scratch
-observations, not invented tests or test-port credit. An additional probe exposed
-an existing parser gap: Go accepts the empty application `F()` whereas Java
-rejects its syntax. Keep that gap visible for the parser production audit.
+observations, not invented tests or test-port credit. The exposed empty operator application discrepancy is now corrected: optional
+arguments use the source two-token lookahead, and `OpArgs` requires its first
+argument. Invalid argument starts fail before entering an expression; actual
+argument and bang-extension frames retain source residual-stack output. Twenty-two
+bounded parse-message comparisons match Java, including empty calls, nested and
+qualified calls, commas, missing delimiters and valid argument forms. The 196
+accepted lookahead token kinds match the pinned generated Java parser. These
+checks do not establish complete lookahead or parser parity.
 
 LET generation now carries declaration identities, levels and shared module
 recursion counters through actual expression traversal. Its declaration vector

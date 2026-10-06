@@ -24,6 +24,23 @@ func (p *SanyParser) endProduction() {
 	p.expecting = ""
 }
 
+// JavaCC rescans saved failed lookaheads when constructing ParseException.
+// Its short message uses only the longest resulting expected-token sequence.
+// Retain each scanned token's remaining length so a later failure renders the
+// same amount of following input, without consuming it during lookahead.
+func (p *SanyParser) rememberFailedLookahead(length int) {
+	if p.failedLookaheadSizes == nil {
+		p.failedLookaheadSizes = make(map[*SanyToken]int)
+	}
+	for i := 0; i < length; i++ {
+		token := p.tokenAt(i)
+		remaining := length - i
+		if remaining > p.failedLookaheadSizes[token] {
+			p.failedLookaheadSizes[token] = remaining
+		}
+	}
+}
+
 // throwParseException uses the actual expected token sequences, as JavaCC's
 // special ParseException constructor does. getShortMessage uses their maximum
 // length when rendering the following input, and escapes only the prior token.
@@ -34,6 +51,9 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 		if len(sequence) > maxSize {
 			maxSize = len(sequence)
 		}
+	}
+	if lookaheadSize := p.failedLookaheadSizes[p.peek()]; lookaheadSize > maxSize {
+		maxSize = lookaheadSize
 	}
 	message.WriteString("Encountered \"")
 	for i := 0; i < maxSize; i++ {
