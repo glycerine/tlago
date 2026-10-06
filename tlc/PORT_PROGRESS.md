@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-06 first bottom-up distributed service implementation:
+The renewed active goal requests BDD/test-first work and the environment no
+longer requires approval review. Wrote tests before introducing each new API;
+observed missing-symbol compilation failures for replay, FPSet adapter, and
+authority APIs, then implemented them. Added jobcoord.ReplayStream: ordered
+buffering, original result replay, concurrent duplicate coalescing, identity
+conflict rejection, safe retirement, fixed byte-slot reservations, caller-wait
+cancellation, and fail-closed uncertain mutation/panic handling. Added local
+AuthorityGate for lease checks, authenticated-adapter installation boundaries,
+fencing, renewal, and draining before successor activation. Added TLC
+FingerprintBatchResource using the actual FPSet PutBlock and preserving vector
+indices, duplicate fingerprints, zero, and signed Java long bit patterns.
+Focused normal checks PASS: jobcoord 0.005 seconds, TLC 0.019 seconds, covering
+14 service tests, two new adapter tests, and existing MemFPSet/BitVector tests.
+Five short replay concurrency tests PASS under race instrumentation, 1.020
+seconds. Compile-only check of every workspace package also passes
+(`go test -run '^$' ./...`); it is not a full-suite test receipt. No long/race combination, weakened original assertion, or Java test-port
+credit. Local primitives are not yet connected to Tube, transport, coordinator
+batch publication, or replicated checkpoints. Full three-machine recovery
+objective remains incomplete; next integrate Tube/RMember and job-control CAS.
+
+2026-10-06 distributed implementation goal and prerequisite audit:
+Revalidated clean distrib checkout at 2a9af6a and the active goal requesting
+bottom-up BDD/test-first implementation with resilience to one machine failure
+in a three-machine cluster. Automatic approval review rejected creation of
+jobcoord/replay_test.go, citing the earlier AGENTS.md ban on invented tests and
+unverified authorization for the exception. The rejected command created no
+files and ran no tests. Await explicit confirmation before retrying it.
+Updated requirements with R26: automatic one-machine recovery, three physical
+voters/candidates, verified snapshot/artifact copies on distinct machines, and
+an initial recovery generation before dispatch. Aligned the batch plan and
+handoff with this stronger target rather than counting epoch failure as success.
+Read-only audit found 1.3 TiB available and cached rpc25519/Greenpack dependencies;
+Go distributed publication and recovery remain local boundaries. No production
+implementation or test credit claimed.
+
 2026-10-06 reusable distributed job service requirements:
 Added TLC_DIST_REQS.md with 25 identified requirements for authority, fenced
 batch attempts, immutable retry outcomes, claim/publication obligations,

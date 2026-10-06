@@ -25,7 +25,9 @@ Initial scope includes a Tube Raft reliable-membership control plane from the
 start, one elected TLC coordinator, remote compute workers, and optionally remote
 fingerprint servers. Surviving-process reconnects and lost replies are supported.
 Process failure after a fingerprint mutation requires coordinated rollback to a
-completed checkpoint, or termination if none exists. Coordinator election and
+completed checkpoint. The three-machine implementation target requires an
+initial recovery generation and replicated snapshot files before dispatch, so
+loss of one machine does not force manual restart. Coordinator election and
 replacement are provided by Tube from the first implementation; continuing an
 uncheckpointed epoch after coordinator replacement and live fingerprint-shard
 replacement are deferred. This differs from
@@ -173,9 +175,9 @@ completion conditions and current authority checks both pass.
 Tube elects a replacement automatically, but the replacement does not adopt the
 old coordinator's in-memory batch obligations. It fences the old execution,
 selects the latest committed checkpoint manifest from Tube, restores every
-component, and activates a new tuple. If there is no checkpoint, record failure
-and require an explicit restart from initial states; do not announce successful
-continuation. Storage-loss recovery under an unchanged coordinator follows the
+component, and activates a new tuple. Commit a replicated initial-state generation before opening assignment so
+replacement can recover even before the first periodic checkpoint. Missing all
+valid snapshots is a failed deployment precondition, not a successful recovery. Storage-loss recovery under an unchanged coordinator follows the
 same procedure with an incremented RunGeneration.
 
 ## Identities and wire messages
@@ -235,7 +237,12 @@ performance change requiring the same per-operation guarantees.
 Each stream stores `NextExpected`, `RetiredThrough`, and records for completed,
 unretired requests. Admit sequences only within a bounded negotiated window.
 Buffer out-of-order arrivals inside that window; reject requests beyond it with
-an explicit backpressure response. Empty shard vectors need no insertion request.
+an explicit backpressure response. The initial replay implementation reserves
+a fixed byte slot per record: request bytes plus the declared maximum reply must
+fit that slot. This leaves capacity for missing earlier sequences even when later
+requests arrive first. Negotiate slot size before dispatch; split oversized work
+without changing the search bounds. Record/callback overhead is count-bounded
+separately from encoded payload/reply bytes. Empty shard vectors need no insertion request.
 
 For a received insertion:
 
@@ -385,8 +392,10 @@ selects the latest fully completed manifest referenced by Tube, and restores
 queue, trace, intern table, and all fingerprint shards from that same generation.
 Commit a new CoordinatorEpoch/RunGeneration activation, clear old request
 ledgers/caches, and bootstrap every peer again. Old fragments are rejected. If any required
-component is absent, refuse recovery instead of mixing generations. No checkpoint
-means the run failed and must restart from initial states.
+component is absent, refuse recovery instead of mixing generations. Commit the initial generation before exploration. Every committed manifest
+must reference verified component files on at least two distinct machines;
+Tube metadata replication does not replicate those files. Loss of one machine
+must leave a usable generation and permit automatic restoration.
 
 Use jsync to transfer immutable model bundles and completed checkpoint files.
 Verify hashes before making a transferred generation recoverable. File transfer
@@ -427,7 +436,8 @@ insertion replies, duplicate requests/replies, mismatching digests, delayed old
 attempts, repeated acknowledgments, partial storage failures, peer restarts, and
 checkpoint failures, Czar replacement, quorum loss, expired leases, delayed
 membership updates, and stale-coordinator writes. These exercises do not count as Java test-port credit and
-must not become invented persistent unit/regression tests without authorization.
+are supplemented by the newly authorized BDD/test-first service and
+three-machine resilience tests. New service tests are not Java port credit.
 Run long original workloads normally; use -race only for short focused checks.
 
 Implementation acceptance requires evidence that each accepted new fingerprint

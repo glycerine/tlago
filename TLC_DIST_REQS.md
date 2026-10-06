@@ -9,6 +9,10 @@ ordering. [BATCH_PROTOCOL.md](BATCH_PROTOCOL.md) supplies the current concrete
 protocol design; its mechanics implement these requirements rather than defining
 a TLC-specific scheduler that other clients cannot use.
 
+The implementation target is fully working distributed TLC that continues
+correctly after any one machine fails in a three-machine cluster, backed by
+Tube Raft and RMember. Bottom-up development uses BDD and tests before code.
+
 The contract below is normative for the proposed service. It describes required
 behavior, not features already implemented. Existing Java TLC is the reference
 for model-checking semantics; retry-safe replies and fenced coordinator authority
@@ -220,9 +224,11 @@ an eligible recovery point.
 
 **R23. Recovery.** After coordinator/storage-owner failure, restore all participants
 from the same completed snapshot under new authority/generation and clear stale
-attempts, caches, and replay ledgers. Refuse mixed-generation recovery. Without
-a complete checkpoint, report failure and require an explicit initial-state
-restart. Electing a replacement coordinator does not restore lost application
+attempts, caches, and replay ledgers. Refuse mixed-generation recovery. Commit an
+initial-state recovery generation before dispatching exploration, so a single
+machine failure before the first periodic checkpoint still permits automatic
+recovery. Absence of every valid generation is outside the promised healthy
+three-machine starting state and must be reported as failure. Electing a replacement coordinator does not restore lost application
 payloads or provide uninterrupted execution.
 
 **R24. Bounded flow.** Support count and byte credits for assignments, results, claims,
@@ -236,6 +242,46 @@ snapshots before use. TLC supplies fingerprints, interning identity, value/state
 codecs, module dependencies, and checker settings. The service verifies declared
 identities and transfer integrity. jsync is an optional transfer mechanism; it
 cannot establish snapshot consistency by copying changing files.
+
+## Single-machine failure requirement
+
+**R26. Three-machine resilience.** From a healthy three-machine deployment, loss
+of any one machine must leave a Tube quorum, an eligible coordinator candidate,
+and accessible copies of every artifact/component needed to resume TLC. The job
+must automatically recover and reach the same model-checking conclusion; electing
+a replacement or merely reporting a failed epoch is not sufficient. Initial
+storage may remain execution-scoped, but rollback must preserve complete search.
+
+Place one persistent Tube voter on each machine, with coordinator candidates
+capable of recovery on all three. Replicate each completed snapshot component
+and immutable model bundle to at least two distinct machines before acknowledging
+the manifest as committed. Count physical failure domains, not two processes or
+two directories on one host. After a failure, locate surviving verified copies
+and restore replacement fingerprint owners and coordinator storage. Do not require
+an acknowledgment from the dead machine to activate isolated replacement storage.
+
+Commit the initial generation before assigning work. Make subsequent generations
+recoverable under any one-machine loss, retain an earlier recoverable generation
+through preparation, and record locations/hashes in the Tube manifest. An active
+fingerprint shard may have only one owner if loss of that owner triggers recovery
+from these replicated generations. Raft replication of a manifest alone does not
+replicate the files it names.
+
+The fault scope includes a process crash, whole-machine loss with its local disk
+unavailable, and a machine isolated from the other two. The surviving majority
+must recover; the isolated machine must stop when its operating authority expires
+and cannot contaminate the replacement execution on reconnect. No progress is
+promised for two-machine loss or continuing absence of a majority. Clock-drift
+bounds remain a deployment prerequisite for Tube's leases.
+
+Acceptance evidence must cover loss of each machine while it hosts the active
+coordinator, worker computation, or fingerprint mutation, including a lost
+insertion reply and a failure during checkpoint preparation. Use real independent
+processes and storage directories for integration evidence; local replay tests
+alone cannot establish machine-failure resilience. Verify the final TLC result,
+trace validity for violations, no missing search obligations, fenced stale peers,
+and recovery from both initial and periodic snapshots. Preserve the original
+Java correctness tests alongside the new BDD service behaviors.
 
 ## Proposed reusable service boundary
 
@@ -289,8 +335,9 @@ would require a stronger client adapter contract before claiming recovery safety
 Implement generic lifecycle and resource boundaries first, then connect the
 existing TLC production path. Translate existing Java distributed tests after
 their features work, preserving assertions and workload bounds. Temporary
-fault-injection exercises may establish retry/fencing evidence but are not Java
-port credit or authorization to invent persistent tests. Keep long workloads
+fault-injection exercises establish retry/fencing evidence but are not Java
+port credit. The new goal authorizes BDD/test-first service and resilience tests
+in addition to faithful ports of the Java tests. Keep long workloads
 separate from focused race checks.
 
 Verification must demonstrate that every accepted new fingerprint remains
@@ -298,6 +345,21 @@ publishable, duplicate traffic does not duplicate logical effects, old authority
 cannot contaminate a new execution, and success cannot omit outstanding work.
 Use the requirement IDs above to explain implementation decisions and evidence
 in `tlc/PORT_PROGRESS.md`.
+
+## Current implementation evidence
+
+The initial local implementation is `jobcoord.ReplayStream`,
+`jobcoord.AuthorityGate`, and TLC's `FingerprintBatchResource` adapter.
+BDD tests were written and observed failing to compile before each new API was
+implemented. Fourteen service tests and two TLC adapter tests pass; five short
+replay concurrency behaviors also pass under race instrumentation.
+
+This supports local parts of R3/R4 (lease admission and draining), R8/R10
+(original replies and retirement), R11 (TLC bitmap preservation), and R24
+(bounded reservations). It does not establish these requirements end to end:
+no Tube authority adapter, wire transport, coordinator batch ownership,
+replicated snapshot recovery, or R26 machine-failure verification exists yet.
+The new tests are service evidence, not additional Java test-port credit.
 
 ## Reference behavior
 

@@ -29,6 +29,21 @@ job service contract is [TLC_DIST_REQS.md](../TLC_DIST_REQS.md), including batch
 ownership, transaction boundaries, and client-visible linearizability. Tube Raft
 `RMember` supplies coordinator election and authority epochs from the start;
 replacement coordinators recover a completed checkpoint before accepting work.
+The active implementation goal now requires automatic recovery after any one
+machine fails in a three-machine cluster, including replicated initial/periodic
+snapshots. The active goal explicitly requests BDD/test-first development for
+the new job service, superseding the earlier restriction on invented tests in
+this scope. Continue faithful Java test ports alongside the new service behaviors.
+An initial approval-review rejection created no files; the environment now permits
+work without approval review and the renewed goal retains the test-first request.
+
+The first local foundations are implemented in `jobcoord`: bounded insertion
+reply replay and a lease/fencing gate. `FingerprintBatchResource` connects replay
+to the actual TLC FPSet. Fourteen service tests and two adapter tests pass, as
+do existing focused MemFPSet/BitVector checks. Five short replay concurrency
+behaviors pass under `-race`. These do not establish network or machine-failure
+recovery. Next integrate Tube/RMember and Raft job records, then network batch
+ownership and replicated checkpoints. The full distributed objective remains open.
 
 The user continues to defer these topics:
 
