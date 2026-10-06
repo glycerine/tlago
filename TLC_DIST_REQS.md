@@ -361,8 +361,9 @@ This supports local parts of R3/R4 (lease admission and draining), R8/R10
 (original replies and retirement), R11 (TLC bitmap preservation), and R24
 (bounded reservations). It does not establish these requirements end to end:
 the typed membership monitor has no live candidate startup/refresh binding or
-Raft JobControl integration yet; wire transport, coordinator batch ownership,
-replicated snapshot recovery, or R26 machine-failure verification exists yet.
+Raft JobControl integration yet. Wire transport, coordinator batch ownership,
+replicated snapshot recovery, and R26 machine-failure verification also remain
+unimplemented.
 The new tests are service evidence, not additional Java test-port credit.
 
 ## Reference behavior
