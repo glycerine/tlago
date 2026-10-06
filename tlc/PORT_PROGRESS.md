@@ -1,5 +1,28 @@
 # TLC Port Progress
 
+2026-10-06 named fingerprint recovery and failure-boundary correction:
+Source audit of DiskFPSet.recover(String) found Go's whole-file checkpoint slice,
+table reset, destination truncation, missing disk-write accounting, and generic
+ordering failure. Ported Java's buffered stream, file-count/index initialization,
+write/index counter order, retained final fingerprint at EOF, signed ordering
+and coded SYSTEM_INDEX_ERROR assertions. Preserve the source table and existing
+file tail rather than introducing reset/truncate behavior. Removed obsolete
+whole-file reader and slice-based index rebuilder. Public invariant scan checks
+signed order, with expected-size overload comparing Size(), matching source.
+Flusher wraps actual IOException failures with the source merge message;
+rename Assert.fail retains its runtime type, null parameters and cause.
+Existing focused checks pass in 5.176 seconds (41334 terminal 0); original 22
+short OffHeap eviction/offset/merge cases pass in 0.075 seconds. All-package
+compilation passes (31616 terminal 0). No invented tests, changed assertions,
+new feature-test credit or main inventory changes. The original fingerprint
+test directories contain trace recovery calls, not named-file recovery calls;
+these focused receipts do not claim direct named-recovery test coverage.
+Full MSB random 59015 and workspace 44100 remain live on cbdf35a, before this
+follow-up. MSB last prints 1,033,118,916 iterations, with no failure observed.
+Their eventual receipts must remain scoped to that compiled snapshot. Poll
+existing handles; never restart solely because an observation yields no output.
+
+
 2026-10-06 fingerprint streaming merge correction in progress:
 The previous original MSB random run (98446) and full workspace run (83220)
 were deliberately terminated after source inspection exposed the Go flusher

@@ -11,6 +11,7 @@ type TLCError struct {
 	// Runtime distinguishes Java TLCRuntimeException from the legacy native
 	// EvalException carriers represented by this same Go type.
 	Runtime bool
+	Cause   error
 	// Java's detailed runtime failure retains the failed semantic expression
 	// and its evaluation context on the same TLCRuntimeException carrier.
 	Expr  SemanticNode
@@ -49,6 +50,23 @@ func NewTLCRuntimeException(code int, params ...string) *TLCError {
 	failure.Runtime = true
 	return failure
 }
+
+// newTLCRuntimeExceptionWithCause implements Assert.fail(int, Throwable).
+// That source overload sets the message and cause, leaving parameters null.
+func newTLCRuntimeExceptionWithCause(code int, cause error) *TLCError {
+	failure := newTLCError(code, "%s", GetMessageNullable(code, javaThrowableDetailMessage(cause)))
+	failure.Runtime, failure.Cause = true, cause
+	return failure
+}
+
+func (e *TLCError) GetCause() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+func (e *TLCError) Unwrap() error { return e.GetCause() }
 
 // NewTLCRuntimeExceptionMessage ports Assert.TLCRuntimeException(String).
 func NewTLCRuntimeExceptionMessage(message string) *TLCError {

@@ -51,25 +51,36 @@ The previous full MSB random draft (session `98446`) and full workspace run
 shortcut in fingerprint flushing. Both handles returned status 143 and are
 retired, with no pass credit. Their logs remain in `/mnt/oldrog/tmp`.
 
-Current work ports Java's streaming fingerprint merge: buffered random-access
-input/output, a preallocated output file, direct MSB iterator traversal, the
-original LSB sorted buffer, and source index/duplicate checks. The old Go merge
-materialized the entire old file and MSB table and issued one raw file write per
-fingerprint. Existing focused iterator, reader, duplicate-merge and buffered-file checks
-pass on the final streaming code (6.241 seconds); all packages compile.
-The original LSB/MSB/short-disk classes pass normally in 494.131 seconds
-(session `43769`, terminal 0). That run compiled the initial streaming merge
-before the final exception-carrier and validation-scan refinements. The focused
-receipt above checks final code. Full final-code workspace verification is
-live in session `44100`; log:
-`/mnt/oldrog/tmp/tlago-master-streaming-parity-workspace.log`.
-The restarted full MSB random workload is live in session `59015`; log:
-`/mnt/oldrog/tmp/tlago-long-msb-random-streaming-full.log`. Preserve all
-2,147,483,648 iterations and default settings, without `-race`. Poll these
-handles before launching duplicates. The full MSB random and workspace runs
-have no pass credit yet.
-Fingerprint collision and invariant scans now use buffered sequential reads
-as well, rather than allocating the complete fingerprint file.
+Commit `cbdf35a` ports Java's buffered streaming merge and scans. The old Go
+merge materialized the entire disk file and MSB table and issued a raw write
+per fingerprint. MSB now traverses `TLCIterator`; LSB retains its source sorted
+buffer. Output is buffered and preallocated. Focused checks pass in 6.241
+seconds, and all packages compile. Original LSB/MSB/short-disk classes pass in
+494.131 seconds on the first merge snapshot, before the final exception-carrier
+and scan refinements; that receipt is not a final-source full-suite result.
+
+Two normal verification jobs compiled `cbdf35a` and remain live:
+
+| Job | Session | Log under `/mnt/oldrog/tmp` |
+| --- | --- | --- |
+| Full workspace, `go test -count=1 -failfast -timeout=60m ./...` | `44100` | `tlago-master-streaming-parity-workspace.log` |
+| Original full MSB random draft, 2,147,483,648 iterations | `59015` | `tlago-long-msb-random-streaming-full.log` |
+
+Poll these handles before launching duplicates. Neither has pass credit yet.
+The MSB job last printed 1,033,118,916 iterations without a failure and is
+working through its first flush. Preserve default settings and original bounds;
+do not add `-race` or treat a quiet flush as a terminal job.
+
+The subsequent named-file recovery correction streams Java's checkpoint copy,
+preserves its table and file semantics, builds its index while writing, counts
+disk writes, and retains coded order/index failures. Public invariant scans now
+match Java's order-only scan and compare `Size()` for the expected-size overload.
+The flusher preserves the Java IOException wrapper and runtime rename cause.
+Existing focused checks pass in 5.176 seconds; all 22 short original OffHeap
+cases pass separately in 0.075 seconds; all packages compile on the final source.
+No tests or source assertions were changed, and inventory totals are unchanged.
+The two live jobs above predate this follow-up. Verify the newer source after
+those jobs retire; their results must remain scoped to `cbdf35a`.
 
 The full random family draft for LSB/MSB/OffHeap remains outside the enabled
 suite, without completion credit. Its full source loops and factory settings

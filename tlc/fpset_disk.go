@@ -1,7 +1,6 @@
 package tlc
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -632,11 +631,11 @@ func (s *DiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	if err := s.flushTable(); err != nil {
 		return false
 	}
-	ok, count := s.checkFile()
+	ok, _ := s.checkFile()
 	if !ok {
 		return false
 	}
-	return len(expectFPs) == 0 || uint64(count) == expectFPs[0]
+	return len(expectFPs) == 0 || s.Size() == expectFPs[0]
 }
 
 func (s *DiskFPSet) UnexportObject(force bool) {}
@@ -899,6 +898,11 @@ func (s *DiskFPSet) flushTable() error {
 		s.prepareMSBTable()
 	}
 	if err := s.mergeNewEntries(); err != nil {
+		// BufferedRandomAccessFile represents native file failures as IOException.
+		// Catch the thrown type, not an IOException nested in a runtime cause.
+		if _, ioFailure := err.(*IOException); ioFailure {
+			return NewIOException("Error: merging entries into file " + s.fpFilename + "  " + javaThrowableString(err))
+		}
 		return err
 	}
 	s.mu.Lock()
@@ -973,7 +977,7 @@ func (s *DiskFPSet) mergeNewEntries() error {
 		return err
 	}
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
-		return NewTLCRuntimeException(ECSystemUnableNotRenameFile, err.Error())
+		return newTLCRuntimeExceptionWithCause(ECSystemUnableNotRenameFile, bufferedRandomAccessFileIOError(err))
 	}
 	return s.openBRAFReaders(readerCnt, poolCnt)
 }
@@ -1122,42 +1126,69 @@ func (s *DiskFPSet) calculateIndexLen(buffLen int64) int {
 	return int(indexLen)
 }
 
+// recoverFileLocked ports DiskFPSet.recover(String), including write statistics
+// and its index assertions. Recovery has exclusive access to the set.
 func (s *DiskFPSet) recoverFileLocked(path string) error {
-	values, err := readFingerprintFile(path)
+	checkpoint, err := NewBufferedRandomAccessFile(path, "r")
 	if err != nil {
 		return err
 	}
-	s.clearTable()
-	if err := os.MkdirAll(filepath.Dir(s.fpFilename), 0o755); err != nil {
-		return err
-	}
-	out, err := os.Create(s.fpFilename)
+	defer checkpoint.Close()
+	current, err := NewBufferedRandomAccessFile(s.fpFilename, "rw")
 	if err != nil {
 		return err
 	}
-	var predecessor uint64
-	for i, fp := range values {
-		if i > 0 && predecessor >= fp {
-			_ = out.Close()
-			return fmt.Errorf("checkpoint fingerprints out of order")
+	defer current.Close()
+	length, err := checkpoint.Length()
+	if err != nil {
+		return err
+	}
+	fileCnt := length / fpSetLongSize
+	atomic.StoreInt64(&s.fileCnt, fileCnt)
+	indexLen := int(int32((fileCnt-1)/diskFPSetNumEntriesPerPage) + 2)
+	if indexLen < 0 {
+		panic(NewNegativeArraySizeException(fmt.Sprint(indexLen)))
+	}
+	s.index = make([]uint64, indexLen)
+	currIndex, counter := 0, 0
+	var fp int64
+	predecessor := int64(math.MinInt64)
+	for {
+		next, err := checkpoint.ReadLong()
+		var end *EOFException
+		if errors.As(err, &end) {
+			if currIndex != indexLen-1 {
+				return NewTLCRuntimeException(ECSystemIndexError)
+			}
+			s.index[indexLen-1] = uint64(fp)
+			break
 		}
-		var buf [8]byte
-		binary.BigEndian.PutUint64(buf[:], fp)
-		if _, err := out.Write(buf[:]); err != nil {
-			_ = out.Close()
+		if err != nil {
 			return err
+		}
+		fp = next
+		if err := current.WriteLong(fp); err != nil {
+			return err
+		}
+		atomic.AddUint64(&s.diskWriteCnt, 1)
+		if counter == 0 {
+			s.index[currIndex] = uint64(fp)
+			currIndex++
+			counter = diskFPSetNumEntriesPerPage
+		}
+		counter--
+		if predecessor >= fp {
+			return NewTLCRuntimeException(ECSystemIndexError)
 		}
 		predecessor = fp
 	}
-	if err := out.Close(); err != nil {
+	if err := checkpoint.Close(); err != nil {
 		return err
 	}
-	atomic.StoreInt64(&s.fileCnt, int64(len(values)))
-	s.rebuildIndex(values)
-	if err := s.reopenBRAFReaders(); err != nil {
+	if err := current.Close(); err != nil {
 		return err
 	}
-	return nil
+	return s.reopenBRAFReaders()
 }
 
 func (s *DiskFPSet) openBRAFReaders(numReaders int, poolSize int) error {
@@ -1264,27 +1295,6 @@ func (s *DiskFPSet) poolClose(raf *BufferedRandomAccessFile) error {
 	return raf.Close()
 }
 
-func (s *DiskFPSet) rebuildIndex(values []uint64) {
-	if len(values) == 0 {
-		s.index = nil
-		return
-	}
-	indexLen := ((int64(len(values)) - 1) / diskFPSetNumEntriesPerPage) + 2
-	index := make([]uint64, indexLen)
-	curr := 0
-	counter := 0
-	for _, fp := range values {
-		if counter == 0 {
-			index[curr] = fp
-			curr++
-			counter = diskFPSetNumEntriesPerPage
-		}
-		counter--
-	}
-	index[len(index)-1] = values[len(values)-1]
-	s.index = index
-}
-
 func (s *DiskFPSet) clearTable() {
 	for i := range s.tbl {
 		s.tbl[i] = nil
@@ -1295,6 +1305,8 @@ func (s *DiskFPSet) clearTable() {
 	s.lsbBuff = nil
 }
 
+// checkFile performs DiskFPSet.checkInvariant's signed, sequential order scan.
+// The expected-size overload compares Size(), not the backing file length.
 func (s *DiskFPSet) checkFile() (bool, int64) {
 	in, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 	if err != nil {
@@ -1312,13 +1324,7 @@ func (s *DiskFPSet) checkFile() (bool, int64) {
 		if err != nil || predecessor >= value {
 			return false, count
 		}
-		if pos == 0 && len(s.index) > 0 && uint64(value) != s.index[0] {
-			return false, count
-		}
 		predecessor = value
-	}
-	if length > 0 && len(s.index) > 0 && uint64(predecessor) != s.index[len(s.index)-1] {
-		return false, count
 	}
 	return true, count
 }
@@ -1414,36 +1420,6 @@ func (i *msbDiskIterator) getLast() (uint64, error) {
 
 func (i *msbDiskIterator) reads() int64 {
 	return i.readElements
-}
-
-func readFingerprintFile(path string) ([]uint64, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	info, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if info.Size()%fpSetLongSize != 0 {
-		return nil, fmt.Errorf("fingerprint file %s has invalid length %d", path, info.Size())
-	}
-	values := make([]uint64, 0, info.Size()/fpSetLongSize)
-	var buf [8]byte
-	for {
-		_, err := io.ReadFull(file, buf[:])
-		if errors.Is(err, io.EOF) {
-			return values, nil
-		}
-		if errors.Is(err, io.ErrUnexpectedEOF) {
-			return nil, err
-		}
-		if err != nil {
-			return nil, err
-		}
-		values = append(values, binary.BigEndian.Uint64(buf[:]))
-	}
 }
 
 func copyFile(src string, dst string) error {

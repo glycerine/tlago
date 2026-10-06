@@ -1,5 +1,24 @@
 # TLC Architecture Notes for the Go Port
 
+## Disk fingerprint streaming and recovery
+
+`DiskFPSet.Flusher` merges buffered disk input with new sorted entries into a
+preallocated buffered temporary file. MSB traverses its table iterator directly;
+LSB uses its prescribed sorted buffer. Index entries and disk-write counts are
+built with each write. The Go port must not materialize the complete disk file
+or copy the full MSB table. Collision and invariant scans likewise read
+sequentially through `BufferedRandomAccessFile`.
+
+Named-file recovery follows Java `DiskFPSet.recover(String)`: it preserves the
+table and existing file-tail semantics, streams the checkpoint into the current
+file, rebuilds the index while counting writes, and checks signed ordering and
+index length with `SYSTEM_INDEX_ERROR`. It is distinct from the normal no-argument
+checkpoint no-ops and `recover(TLCTrace)` replay. The public invariant method
+checks order; its expected-size overload compares `Size()`. Flusher IOException
+wrapping and rename runtime causes preserve Java's exception boundaries.
+See `HANDOFF.md` for current verification snapshots and live jobs.
+
+
 2026-10-06 checkpoint intern-table initialization:
 TLC.Process restores UniqueString identities before constructing the tool, as
 Java TLC.process does. ModelChecker and DFIDModelChecker recovery must not reload
