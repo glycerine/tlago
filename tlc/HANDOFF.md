@@ -69,11 +69,20 @@ when the old temporary volume ran out of space. SANY passed. Log:
 `/mnt/oldrog/tmp/tlago-sany-lint-workspace.log`. The simulator directory ownership
 has now been corrected to match Java. Future full runs must set **both**
 `GOTMPDIR` and `TMPDIR` to the large workspace `.codex-gotmp` directory.
-Full normal workspace session `95632` is live on the final storage and simulator
-corrections, before the subsequent per-module reporting and level-phase corrections,
-preserving original bounds with no race instrumentation. Log:
-`/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`. No full-suite success is
-claimed until this handle returns terminal status.
+Full normal workspace session `95632` returned status 1 and is retired. Root
+passes in 1,526.156 seconds; SANY passes in 1.093 seconds. TLC fails after
+719.704 seconds at the native injected-tool runner cleanup test, because its
+metadata directory was not prepared. The adapter now creates its directory
+after precleaning, preserving Java's strict storage constructors and parsed
+command/recovery paths. Focused verification passes without changing that test.
+This snapshot predates subsequent semantic reporting, level-phase and import
+context corrections. Log: `/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`.
+
+Full normal workspace session `15749` is live on all current production
+corrections. It retains original bounds, failfast and a 60-minute timeout,
+without race instrumentation. Both temporary variables use workspace
+`.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-import-context-workspace.log`.
+No full-suite success is claimed until this same handle returns terminal status.
 
 Latest focused verification:
 
@@ -91,7 +100,9 @@ Latest focused verification:
 | Original SANY package and focused semantic/CLI/XML/warning checks | Pass | 1.309 / 3.323 seconds, sessions `4764` / `38992` retired |
 | Original recursion, proof and selector models | Pass | 2.795 seconds, session `42104` retired |
 | Original SANY package and semantic/CLI/XML/instance/proof/action-level/trace models | Pass | 1.308 / 9.454 seconds, sessions `46579` / `15579` retired |
-| All-package compilation | Pass | Final semantic generation and level-phase correction |
+| Original SANY and existing semantic/CLI/XML/instance/proof/trace models | Pass | 1.188 / 9.050 seconds, sessions `25595` / `94869` retired |
+| Existing native runner and buffered-file/checker/worker/trace methods | Pass | 7.340 seconds, session `70777` retired |
+| All-package compilation | Pass | Final import-context and native runner corrections |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -102,7 +113,11 @@ Seven manual semantic-output observations match Java for one error, dependency
 errors, chains, siblings, nested modules and a successful dependency. These cover
 reporting order and accumulation. Eleven further observations match generation
 versus level gating, nested graphs, definition-before-top-level ordering, proof
-levels, general assumption checks and unique named-theorem errors.
+levels, general assumption checks and unique named-theorem errors. Sixteen
+import observations match Java for declarations, definitions, named facts,
+class conflicts, diamonds, parameterized instances, reuse, accumulated warnings
+and explicit versus implicit instance namespaces. These are bounded audit
+observations, not a proof of complete semantic-node or context iteration parity.
 
 The latest checker correction initializes coverage, liveness and cached config
 in the parent constructor before storage and workers. Liveness I/O failures are
@@ -203,8 +218,12 @@ possible schedule.
 
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
-ErrorDetails rendering, generation diagnostic ordering and exact import-warning
-provenance, plus remaining constructor and semantic-node boundaries. Per-module semantic
+ErrorDetails rendering, generation and multiple-binding context iteration order,
+SymbolTable INSTANCE conflict diagnostics (`W4801`), and remaining constructor
+and semantic-node boundaries. EXTENDS conflicts now retain actual symbol
+locations and definition provenance, compare source semantic-node classes, and
+reuse parameter-free instance definitions. Substituted declarations are not
+INSTANCE exports; only an explicit named instance creates a qualified namespace. Per-module semantic
 reporting now follows the shared accumulated Errors instance; nested module
 diagnostics are included in their enclosing external reporting iteration.
 Generation completes before the raw shared Errors.isSuccess gate permits real

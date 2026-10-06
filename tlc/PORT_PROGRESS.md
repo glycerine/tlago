@@ -1,5 +1,66 @@
 # TLC Port Progress
 
+2026-10-06 EXTENDS conflict provenance and native runner metadata ownership:
+Previous turn made progress in `76cf612`. Continue faithful Java parity on
+master; new distributed work remains postponed. Eight source/native import
+observations expose wrong definition/declaration ranges and messages plus a
+missing conflict between parameterized-instance definitions. Preserve exact
+individual declaration positions and full definition syntax ranges. Retain
+exported definition origin and INSTANCE wrapper syntax, following Generator's
+parameter-free reuse rules. Nonlocal INSTANCE exports operator and named-fact
+nodes, not its substituted declarations. Merge INSTANCE-produced definitions
+through the same EXTENDS conflict path; retain the first EXTENDS binding.
+
+An expanded source matrix exposes additional class distinctions: Context uses
+OpDeclNode, OpDefNode and ThmOrAssumpDefNode classes, not native declaration
+levels. Constant versus variable declarations produce a warning, whereas
+incompatible semantic-node classes produce the source E4224 error. Named facts
+have the source declaration wording. Preserve exact W4800/E4224 messages,
+locations, prior binding locations and warning accumulation. Fourteen context
+observations then match. A native selector fixture fails because it assumes an
+implicit Helper!Inc namespace from a bare INSTANCE. An intermediate restoration
+makes native checks pass, but direct Java rejects that alias. Remove the shortcut
+instead: only explicit named instances create qualified names. Update only the
+two existing native fixtures with explicit named instances and their required
+Naturals import; preserve all root expressions, assertions and two-state bounds.
+Original Java-derived methods and vectors remain untouched.
+
+Final sixteen manual observations match exact output, including invalid implicit
+and valid explicit module selectors. Initial selector helper setup lacks the
+native resolver's standard module resource and fails before semantics; no credit.
+Use a standard-module-independent identity operator for the two namespace
+observations. Logs and vectors under /mnt/oldrog/tmp:
+tlago-semantic-import-warning-before.log,
+tlago-semantic-import-warning-expanded.log,
+tlago-semantic-import-warning-source-final-compare.log and
+tlago-semantic-import-warning-vectors/. No persistent synthetic tests or test
+inventory credit. Final complete original SANY suite passes 1.188 seconds,
+session 25595 retired. Final existing semantic/CLI/XML/original instance, proof,
+selector, action-level and trace model selection passes 9.050 seconds, session
+94869 retired. Earlier root passes with the temporary implicit alias are not
+final fidelity evidence; intermediate failures remain recorded.
+
+Full workspace session 95632 returns status 1 and is retired. Root passes
+1526.156 seconds; SANY passes 1.093 seconds. TLC fails 719.704 seconds at
+TestTLCRunnerCleanupFlagPrecleanIsSeparateFromCheckerFinalCleanup: injected-tool
+Options bypasses metadata creation that Java handleParameters owns. Restore
+ownership at this native adapter after precleaning, excluding deferred parsed
+command loading and checkpoint recovery. Preserve trace/worker constructors'
+missing-parent failure behavior and leave this existing test unchanged. Native
+runner, buffered-file, checker/worker/trace selection passes 7.340 seconds,
+session 70777 retired; log tlago-native-runner-metadata-focused.log. All-package
+compilation passes on the final batch; log tlago-import-context-runner-compile.log.
+
+Full normal workspace session 15749 is now live on all final production changes,
+with original bounds, failfast, 60-minute timeout and no race instrumentation.
+Both GOTMPDIR and TMPDIR use workspace .codex-gotmp; log
+/mnt/oldrog/tmp/tlago-import-context-workspace.log. No pass until the same handle
+returns terminal status. Unchanged full LSB draft session 32959 remains live on
+its recorded storage snapshot, with no success or inventory credit yet.
+Remaining source audits include multi-binding context iteration, generation
+ordering, W4801 SymbolTable conflicts and ordinary parser ErrorDetails. The
+bounded import matrix does not establish complete context or TLC parity.
+
 2026-10-06 Semantic generation and level-check boundaries:
 Previous goal turn made progress in `bac657c`. Full storage/simulator workspace
 session 95632 and unchanged LSB random draft session 32959 remain confirmed live;

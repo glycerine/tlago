@@ -217,8 +217,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		for _, d := range depMod.Declarations {
 			for _, name := range d.Names {
-				diags = append(diags, checkImportedSymbolKind(name, d.Kind, d.Pos, declKinds)...)
-				diags = append(diags, checkImportedSymbolAmbiguity(name, d.Kind, d.Pos, depMod.Name, extendedSymbols, "W4800")...)
+				diags = append(diags, checkImportedSymbolAmbiguity(name, d.Kind, declarationSymbolPosition(d, name), depMod.Name, extendedSymbols, "W4800")...)
 				if _, exists := defined[name]; !exists {
 					defined[name] = d.Pos
 				}
@@ -238,8 +237,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			if def.Local {
 				continue
 			}
-			diags = append(diags, checkImportedSymbolKind(def.Name, OperatorDecl, def.Pos, declKinds)...)
-			diags = append(diags, checkImportedSymbolAmbiguity(def.Name, OperatorDecl, def.Pos, depMod.Name, extendedSymbols, "W4800")...)
+			diags = append(diags, checkImportedSymbolAmbiguity(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
 			if _, exists := defined[def.Name]; !exists {
 				defined[def.Name] = def.Pos
 			}
@@ -266,8 +264,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				continue
 			}
 			pos := assumption.SourcePosition()
-			diags = append(diags, checkImportedSymbolKind(assumption.Name, OperatorDecl, pos, declKinds)...)
-			diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, OperatorDecl, pos, depMod.Name, extendedSymbols, "W4800")...)
+			diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, semanticTheoremImportKind, pos, depMod.Name, extendedSymbols, "W4800")...)
 			if _, exists := defined[assumption.Name]; !exists {
 				defined[assumption.Name] = pos
 			}
@@ -279,7 +276,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 		for _, export := range syntheticStandardExports(depMod.Name, depMod.Pos) {
-			diags = append(diags, checkImportedSymbolKind(export.Name, export.Kind, export.Pos, declKinds)...)
 			diags = append(diags, checkImportedSymbolAmbiguity(export.Name, export.Kind, export.Pos, depMod.Name, extendedSymbols, "W4800")...)
 			if _, exists := defined[export.Name]; !exists {
 				defined[export.Name] = export.Pos
@@ -310,8 +306,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 			for _, d := range depMod.Declarations {
 				for _, name := range d.Names {
-					diags = append(diags, checkImportedSymbolKind(name, d.Kind, d.Pos, declKinds)...)
-					diags = append(diags, checkImportedSymbolAmbiguity(name, d.Kind, d.Pos, depMod.Name, extendedSymbols, "W4800")...)
+					diags = append(diags, checkImportedSymbolAmbiguity(name, d.Kind, declarationSymbolPosition(d, name), depMod.Name, extendedSymbols, "W4800")...)
 					if _, exists := defined[name]; !exists {
 						defined[name] = d.Pos
 					}
@@ -347,8 +342,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				if def.Local {
 					continue
 				}
-				diags = append(diags, checkImportedSymbolKind(def.Name, OperatorDecl, def.Pos, declKinds)...)
-				diags = append(diags, checkImportedSymbolAmbiguity(def.Name, OperatorDecl, def.Pos, depMod.Name, extendedSymbols, "W4800")...)
+				diags = append(diags, checkImportedSymbolAmbiguity(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
 				if _, exists := defined[def.Name]; !exists {
 					defined[def.Name] = def.Pos
 				}
@@ -387,8 +381,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					continue
 				}
 				pos := assumption.SourcePosition()
-				diags = append(diags, checkImportedSymbolKind(assumption.Name, OperatorDecl, pos, declKinds)...)
-				diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, OperatorDecl, pos, depMod.Name, extendedSymbols, "W4800")...)
+				diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, semanticTheoremImportKind, pos, depMod.Name, extendedSymbols, "W4800")...)
 				if _, exists := defined[assumption.Name]; !exists {
 					defined[assumption.Name] = pos
 				}
@@ -414,7 +407,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				}
 			}
 			for _, export := range syntheticStandardExports(depMod.Name, depMod.Pos) {
-				diags = append(diags, checkImportedSymbolKind(export.Name, export.Kind, export.Pos, declKinds)...)
 				diags = append(diags, checkImportedSymbolAmbiguity(export.Name, export.Kind, export.Pos, depMod.Name, extendedSymbols, "W4800")...)
 				if _, exists := defined[export.Name]; !exists {
 					defined[export.Name] = export.Pos
@@ -431,6 +423,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					continue
 				}
 				for _, symbol := range semanticInstanceSymbols(inst, spec) {
+					diags = append(diags, checkImportedSymbolAmbiguity(symbol.name, symbol.importKind(), symbol.sourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
 					addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 				}
 			}
@@ -1419,20 +1412,50 @@ func checkNestedStandardModuleConflicts(mod *Module) Diagnostics {
 	return diags
 }
 
-func checkImportedSymbolKind(name string, kind DeclarationKind, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
-	if name == "" {
-		return nil
-	}
-	if prev, ok := declKinds[name]; ok && prev != kind {
-		return Diagnostics{errorAt(pos, "E4224", "conflicting imported symbol %s has kinds %s and %s", name, prev, kind)}
-	}
-	return nil
-}
-
 type importedSymbol struct {
 	kind   DeclarationKind
 	pos    Position
 	source string
+}
+
+// Context compares Java semantic node classes, not TLC declaration levels.
+const semanticTheoremImportKind DeclarationKind = "THM_OR_ASSUMP"
+
+func semanticDefinitionImportKind(definition Definition) DeclarationKind {
+	if definition.TheoremLike {
+		return semanticTheoremImportKind
+	}
+	return OperatorDecl
+}
+
+func semanticImportClass(kind DeclarationKind) string {
+	switch kind {
+	case OperatorDecl:
+		return "OpDefNode"
+	case semanticTheoremImportKind:
+		return "ThmOrAssumpDefNode"
+	default:
+		return "OpDeclNode"
+	}
+}
+
+func semanticImportDescription(kind DeclarationKind) string {
+	if kind == OperatorDecl {
+		return "definition"
+	}
+	return "declaration"
+}
+
+func declarationSymbolPosition(declaration Declaration, name string) Position {
+	if position, ok := declaration.NamePositions[name]; ok {
+		return position
+	}
+	return declaration.Pos
+}
+
+func sanySymbolLocation(position Position) string {
+	end := position.SourceEnd()
+	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s", position.Line, position.Column, end.Line, end.Column, moduleNameForSourcePosition(position))
 }
 
 func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Position, source string, seen map[string]importedSymbol, code string) Diagnostics {
@@ -1440,10 +1463,23 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 		return nil
 	}
 	if prev, ok := seen[name]; ok {
-		if prev.kind == kind && prev.source != source {
-			return Diagnostics{warningAt(pos, code, "the %s symbol %s from module %s conflicts with the same kind of imported symbol from module %s at %s; the first import is used", kind, name, source, prev.source, prev.pos)}
+		// Identical exported syntax denotes the same original node across
+		// EXTENDS diamonds and parameter-free INSTANCE reuse. Wrapped
+		// parameterized definitions instead carry their instance's syntax.
+		if prev.pos == pos || prev.source == source {
+			return nil
 		}
-		return nil
+		incomingKind := semanticImportDescription(kind)
+		previousKind := semanticImportDescription(prev.kind)
+		message := fmt.Sprintf("The %s of '%s' conflicts with \nits %s at %s.", incomingKind, name, previousKind, sanySymbolLocation(prev.pos))
+		diagnostic := errorAt(pos, "E4224", "conflicting imported symbol %s has kinds %s and %s", name, prev.kind, kind)
+		if semanticImportClass(prev.kind) == semanticImportClass(kind) {
+			diagnostic = warningAt(pos, code, "the %s symbol %s from module %s conflicts with the same kind of imported symbol from module %s at %s; the first import is used", kind, name, source, prev.source, prev.pos)
+			message = fmt.Sprintf("Warning: the %s of '%s' conflicts with \nits %s at %s.", previousKind, name, previousKind, sanySymbolLocation(prev.pos))
+		}
+		diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
+		diagnostic.SANYMessage = message
+		return Diagnostics{diagnostic}
 	}
 	seen[name] = importedSymbol{kind: kind, pos: pos, source: source}
 	return nil
@@ -1577,6 +1613,9 @@ func isIdentifierName(name string) bool {
 }
 
 type semanticExportedSymbol struct {
+	theoremLike       bool
+	source            Position
+	origin            *Module
 	name              string
 	kind              DeclarationKind
 	pos               Position
@@ -1585,6 +1624,37 @@ type semanticExportedSymbol struct {
 	operatorParams    []operatorParamSpec
 	hasOperatorParams bool
 	unqualified       bool
+}
+
+func (symbol semanticExportedSymbol) importKind() DeclarationKind {
+	if symbol.theoremLike {
+		return semanticTheoremImportKind
+	}
+	return symbol.kind
+}
+
+func (symbol semanticExportedSymbol) sourcePosition() Position {
+	if symbol.source.Line > 0 {
+		return symbol.source
+	}
+	return symbol.pos
+}
+
+func semanticModuleParameterFree(mod *Module, spec *Spec, visiting map[*Module]bool) bool {
+	if mod == nil || visiting[mod] {
+		return true
+	}
+	visiting[mod] = true
+	defer delete(visiting, mod)
+	if len(mod.Declarations) > 0 {
+		return false
+	}
+	for _, ext := range mod.Extends {
+		if !semanticModuleParameterFree(spec.Modules[ext], spec, visiting) {
+			return false
+		}
+	}
+	return true
 }
 
 func semanticInstanceSymbols(inst Instance, spec *Spec) []semanticExportedSymbol {
@@ -1600,10 +1670,18 @@ func semanticInstanceSymbolsWithVisiting(inst Instance, spec *Spec, visiting map
 		return nil
 	}
 	exports := semanticModuleExports(instMod, spec, visiting)
-	qualifier := inst.qualifier()
+	qualifier := inst.Name
 	exportUnqualified := inst.exportsUnqualified()
 	out := make([]semanticExportedSymbol, 0, len(exports))
 	for _, symbol := range exports {
+		// Generator instantiates OpDefNode and ThmOrAssumpDefNode entries,
+		// never the instancee's substituted declaration nodes.
+		if symbol.kind != OperatorDecl {
+			continue
+		}
+		if !semanticModuleParameterFree(instMod, spec, map[*Module]bool{}) && !semanticModuleParameterFree(symbol.origin, spec, map[*Module]bool{}) {
+			symbol.source = inst.SourcePosition()
+		}
 		if exportUnqualified {
 			unqualified := symbol
 			applyInstanceParamArity(&unqualified, inst)
@@ -1651,7 +1729,10 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 	byName := map[string]semanticExportedSymbol{}
 	for _, ext := range mod.Extends {
 		for _, symbol := range semanticModuleExports(spec.Modules[ext], spec, visiting) {
-			byName[symbol.name] = symbol
+			// Context.mergeExtendContext retains the existing binding.
+			if _, exists := byName[symbol.name]; !exists {
+				byName[symbol.name] = symbol
+			}
 		}
 	}
 	for _, inst := range mod.Instances {
@@ -1671,7 +1752,7 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 					pos = namePos
 				}
 			}
-			symbol := semanticExportedSymbol{name: name, kind: decl.Kind, pos: pos}
+			symbol := semanticExportedSymbol{name: name, kind: decl.Kind, pos: pos, source: pos, origin: mod}
 			if decl.Kind == ConstantDecl {
 				if arity, ok := declarationArity(decl, name); ok {
 					symbol.arity = arity
@@ -1687,11 +1768,14 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 			continue
 		}
 		symbol := semanticExportedSymbol{
-			name:     def.Name,
-			kind:     OperatorDecl,
-			pos:      def.Pos,
-			arity:    len(def.Params),
-			hasArity: true,
+			theoremLike: def.TheoremLike,
+			name:        def.Name,
+			source:      def.SourcePosition(),
+			origin:      mod,
+			kind:        OperatorDecl,
+			pos:         def.Pos,
+			arity:       len(def.Params),
+			hasArity:    true,
 		}
 		if specs, ok := definitionOperatorParamSpecsForModule(mod.Name, def); ok {
 			symbol.operatorParams = specs
@@ -1704,16 +1788,21 @@ func semanticModuleExports(mod *Module, spec *Spec, visiting map[string]bool) []
 			continue
 		}
 		byName[assumption.Name] = semanticExportedSymbol{
-			name:     assumption.Name,
-			kind:     OperatorDecl,
-			pos:      assumption.SourcePosition(),
-			arity:    0,
-			hasArity: true,
+			theoremLike: true,
+			name:        assumption.Name,
+			source:      assumption.SourcePosition(),
+			origin:      mod,
+			kind:        OperatorDecl,
+			pos:         assumption.SourcePosition(),
+			arity:       0,
+			hasArity:    true,
 		}
 	}
 	for _, export := range syntheticStandardExports(mod.Name, mod.Pos) {
 		byName[export.Name] = semanticExportedSymbol{
 			name:     export.Name,
+			source:   export.Pos,
+			origin:   mod,
 			kind:     export.Kind,
 			pos:      export.Pos,
 			arity:    export.Arity,
@@ -1784,7 +1873,7 @@ func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, 
 			if exportUnqualified {
 				addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 			}
-			if qualifier != "" {
+			if inst.Name != "" {
 				addSubexpressionReferenceNames(defined, qualifier+"!"+def.Name, def.Expr)
 			}
 		}

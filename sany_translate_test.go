@@ -1918,11 +1918,13 @@ Bad == Hidden
 	t.Run("exports non-local INSTANCE symbols across EXTENDS", func(t *testing.T) {
 		dir := t.TempDir()
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+EXTENDS Naturals
 Zero == 0
 Inc(n) == n + 1
 ====`)
 		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
 INSTANCE Helper
+Helper == INSTANCE Helper
 Public == Inc(Zero)
 ====`)
 		writeFile(t, filepath.Join(dir, "Root.tla"), `---- MODULE Root ----
@@ -1960,11 +1962,13 @@ UseNested == Outer!Leaf!Safe
 		dir := t.TempDir()
 		root := filepath.Join(dir, "Root.tla")
 		writeFile(t, filepath.Join(dir, "Helper.tla"), `---- MODULE Helper ----
+EXTENDS Naturals
 Zero == 0
 Inc(n) == n + 1
 ====`)
 		writeFile(t, filepath.Join(dir, "Middle.tla"), `---- MODULE Middle ----
 INSTANCE Helper
+Helper == INSTANCE Helper
 ====`)
 		writeFile(t, root, `---- MODULE Root ----
 EXTENDS Middle

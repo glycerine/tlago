@@ -187,6 +187,16 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	if t.Cleanup && !t.CleanupPrecleanDone && t.FromCheckpoint == "" {
 		deleteDirLikeJava(t.MetaDir, true)
 	}
+	// Java's handleParameters owns metadata creation before process. The
+	// native Options API with an injected Tool bypasses that boundary, so
+	// this adapter owns its supplied metadata directory after precleaning.
+	// Parsed commands and recovery retain their already prepared paths.
+	if t.Tool != nil && t.LoadTool == nil && t.FromCheckpoint == "" {
+		if err := os.MkdirAll(t.MetaDir, 0o755); err != nil {
+			closeUserOutput()
+			return &Result{ExitStatus: ExitStatusError, ErrorCode: ECGeneral}, err
+		}
+	}
 	recorder := &MemoryRecorder{}
 	AddMessageRecorder(recorder)
 	defer RemoveMessageRecorder(recorder)
