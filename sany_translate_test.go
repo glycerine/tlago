@@ -1857,7 +1857,7 @@ Foo == TRUE
 SomeRecord == [Foo |-> 42]
 ====`)
 		requireNoErrors(t, diags)
-		requireHasWarningContaining(t, diags, "record field Foo")
+		requireHasWarningContaining(t, diags, `The field name "Foo"`)
 	})
 
 	t.Run("warns for stale PlusCal translation checksums", func(t *testing.T) {

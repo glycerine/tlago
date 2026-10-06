@@ -20,7 +20,17 @@ on checked failures. Parsing Exceptions become checked failure even with an empt
 error list; unexpected semantic Exceptions chain through FrontEndException. Only
 that checked exception releases buffered SANY output and becomes the cause of
 TLC_PARSING_FAILED2, without SANY_END or STARTING. Java Error propagates unchanged.
-Full ordinary parser diagnostic rendering remains audit work.
+SANY record linting follows successful semantic checking, with nonstandard
+external modules in semantic insertion order. The linter retains the generating
+lexical contexts for values and the module context for field-name lookup. Any
+same-domain record depending on declarations or parameters suppresses its
+warnings, including records in extended modules. Definitions, INSTANCE
+substitution wrappers and proof scopes retain source traversal semantics;
+operator arguments remain leaves. Lint output contains only the newly generated
+warnings, ordinary warnings before elevated warnings, with exact source ranges
+and messages. Earlier semantic errors or elevated warnings prevent linting.
+Full ordinary parser diagnostic rendering and per-module semantic diagnostic
+accumulation remain audit work.
 
 DelayedPrintStream releases a copied byte snapshot, flushes, then resets the
 buffer. Its byte-buffer operations synchronize separately; destination callbacks

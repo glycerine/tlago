@@ -1,5 +1,85 @@
 # TLC Port Progress
 
+2026-10-06 SANY record linting and phase ordering:
+Previous goal turn made progress in `78cb0a6`, restoring checker construction.
+Continue faithful Java parity on master; the new distributed service remains
+postponed. Replace the semantic-check W4802 heuristic with Linter.java's actual
+record pass. Collect records in generation postorder, retain lexical symbol
+bindings for values, and look up field-name clashes in the module context.
+Suppress warnings for direct/transitive declaration or formal-parameter use in
+any component or same-domain record in the extended-module closure. Preserve
+BOOLEAN and the original-module Nat/Int/Reals special cases, operator-argument
+leaf behavior, definition traversal, explicit/implicit INSTANCE substitutions,
+selected subexpressions and the source recursive traversal's StackOverflowError.
+Use existing semantic binding machinery without exporting XML or resuming corpus
+sweeps. Keep the source MIT notice. Lint only nonstandard external modules, in
+external-table insertion order, after successful semantic analysis; earlier
+semantic errors or elevated warnings prevent linting. Emit the actual lint
+progress and exact W4802 text/range, then report new warnings without a lint
+warning-count header. TLC warning output groups ordinary warnings before elevated
+warnings and preserves the source ErrorDetails text. Per-module accumulation of
+ordinary semantic diagnostics and full parser ErrorDetails remain audit work.
+
+ProofSummary omits DEFINE steps, so collect records from retained proof syntax
+using the existing translators and semantic symbols, including nested scopes,
+NEW declarations, TAKE/PICK and local definition formals. A scratch TAKE example
+exposed the actual shared translator's missing bare IDENTIFIER handling. Retain
+those bounds before the colon instead of inventing a linter-only replacement.
+Deduplicate alternate AST views of the same generated record syntax. Update one
+existing native warning assertion from the old Go phrase to the exact source
+phrase; original Java-derived assertions, vectors, settings and bounds are
+unchanged. No invented persistent tests or new inventory credit.
+
+Final existing warning-control, semantic bridge, elevated SANY warning, CLI,
+assumption/simulation and original SpecTraceExpressionWriter selection passes:
+root 6.091 seconds and SANY 0.015 seconds, session 76791 retired; log
+/mnt/oldrog/tmp/tlago-sany-lint-focused.log. Initial focused run fails the elevated
+warning because DiagnosticOptions prefixes its native message; correct matching
+and render the original ErrorDetails, then retain the test unchanged. Earlier
+intermediate focused runs pass but precede final proof-bound corrections.
+
+Manual source/native evidence, outside persistent inventory: 33 valid cases
+match complete output from semantic processing onward, including lint phases,
+warning text, locations, trailing newlines and warning count. Cases cover literal,
+constant, variable, formal/bound/CHOOSE, operator references/calls, BOOLEAN and
+standard modules, multi-field/same-domain records, LET including unused bodies,
+built-in field clashes, nested records, operator arguments/LAMBDA, named facts,
+proof NEW/DEFINE/TAKE, module-level USE, EXTENDS, selectors, and explicit/implicit substitutions.
+First observations expose BOOLEAN/global built-in lookup and TAKE binding gaps;
+fix the implementation and rerun the complete matrix. Three invalid exploratory fixtures
+had a parameter clash, a duplicate extended definition, or an expression
+forbidden as a HIDE fact; they are not passing
+lint evidence. First EXTENDS/INSTANCE setup also lacked the source resolver's
+working directory; correct the setup without changing production semantics.
+Logs /mnt/oldrog/tmp/tlago-lint-compare.log and tlago-lint-manual-vectors/.
+
+Six full front-end plus checker constructor observations now match stdout and
+storage artifacts, including the previously missing real lint phase. Normalize
+only execution IDs, metadata paths and Starting timestamps; do not remove the
+front-end prefix. The first helper launch lacks its compiled Java class and
+fails before execution; compile the unchanged scratch helper separately and
+rerun. Final session 20969 passes; log
+/mnt/oldrog/tmp/tlago-lint-constructor-compare.log and
+/mnt/oldrog/tmp/tlago-lint-constructor-manual/. No TLC.main or email invocation.
+
+Full normal workspace session 46724 is live, with original workloads, failfast,
+60-minute timeout and no race instrumentation. Its compiled production snapshot
+precedes only the final module-level USE/HIDE record collection; the final
+focused checks and manual comparisons cover that correction. Log
+/mnt/oldrog/tmp/tlago-sany-lint-workspace.log. No full-suite pass claimed yet.
+
+LSB full original random draft session 59782 returns failure after 19,420.414
+seconds and is retired. Last logged progress: 2,144,786,516 of 2,147,483,648
+iterations. The a915e08 snapshot fails during Put/flushTable while merging its
+fingerprint file: IOException, no space left on device, on /mnt/oldrog/tmp.
+This is neither a completed workload nor a production-correctness verdict.
+Preserve the failure receipt and no inventory credit. Post-cleanup disk read:
+old volume has 29 GiB free, workspace volume has 1.3 TiB free. The next complete
+original run must explicitly put its test temporary directory on the large
+workspace volume and retain the unchanged factory, seed, loops, assertions,
+checkpoint and no-race settings. Do not delete unrelated data or shrink bounds.
+The overall TLC completion goal remains active and unproven.
+
 2026-10-06 parent checker construction and eager liveness failures:
 Previous goal turn is progress: `7e89fcb` ports SANY exception boundaries and
 delayed release. Revalidate master and live sessions 83804/59782. Full normal

@@ -8,7 +8,11 @@ import (
 )
 
 func CheckSpec(spec *Spec) Diagnostics {
-	return checkSpecWithProgress(spec, nil)
+	diags := checkSpecWithProgress(spec, nil)
+	if !diags.HasErrors() {
+		diags = append(diags, lintSanySpec(spec, nil)...)
+	}
+	return diags
 }
 
 func checkSpecWithProgress(spec *Spec, progress func(string)) Diagnostics {
@@ -3016,11 +3020,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 			} else {
 				seenFields[field.Name] = field.Pos
 			}
-			if field.Name != "" && (locals == nil || !locals[field.Name]) {
-				if prev, ok := defined[field.Name]; ok {
-					diags = append(diags, warningAt(field.Pos, "W4802", "record field %s has the same name as an existing symbol declared at %s; the symbol value is not used as the field name", field.Name, prev))
-				}
-			}
+
 			diags = append(diags, checkExpr(field.Value, defined, locals)...)
 		}
 	case *RecordComponentExpr:

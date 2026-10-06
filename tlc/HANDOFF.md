@@ -61,8 +61,11 @@ Session `83804` returned status 0 and is retired. Log:
 bounds and uses no race instrumentation. It includes the source MP formatter,
 throwable/debug boundaries, Java-shaped CLI and deferred config-before-SANY
 loading. It predates `7e89fcb` and the latest checker-constructor correction.
-Historical full-suite receipts belong in `PORT_PROGRESS.md`; no full workspace
-job is currently live.
+Historical full-suite receipts belong in `PORT_PROGRESS.md`. Full normal
+workspace session `46724` is now live on the final lint correction after
+`78cb0a6`, before the final module-level USE/HIDE collection; log `/mnt/oldrog/tmp/tlago-sany-lint-workspace.log`. It preserves
+original workloads and uses no race instrumentation. Do not claim its result
+before the same handle returns a terminal status.
 
 Latest focused verification:
 
@@ -73,11 +76,14 @@ Latest focused verification:
 | Original disk/tableau graphs and random-access-file class, short checker/worker/liveness/CLI checks | Pass | 8.345 seconds, constructor correction after `7e89fcb`, session `15345` retired |
 | Original DFID, liveness, checkpoint/time-bound and CLI methods | Pass | 10.320 seconds, constructor correction, session `15450` retired |
 | Four original coverage models | Pass | 1.662 seconds, constructor correction, session `51507` retired |
-| All-package compilation | Pass | Final constructor correction snapshot |
+| Existing SANY warning controls, semantic bridge, CLI, assumption/simulation and original trace-writer methods | Pass | 6.091 / 0.015 seconds, final lint correction, session `76791` retired |
+| All-package compilation | Pass | Constructor correction and linting snapshots |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
 new persistent tests or test-port credit. Preserve each receipt's exact scope.
+The record-lint matrix matches Java in 33 valid cases. Six full front-end plus
+constructor observations now also match with the real lint phase included.
 
 The latest checker correction initializes coverage, liveness and cached config
 in the parent constructor before storage and workers. Liveness I/O failures are
@@ -88,18 +94,22 @@ create missing parent directories. RandomAccessFile opening failures retain the
 source FileNotFoundException. The original five-second time-bound test passes
 unchanged. Further storage/trace constructor error boundaries remain audit work.
 
-## Live long verification
+## Long verification receipts
 
-| Job | Compiled snapshot | Session | Log under `/mnt/oldrog/tmp` |
-| --- | --- | --- | --- |
-| Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
+No original long fingerprint draft is currently live. LSB session `59782`
+failed after 19,420.414 seconds and is retired. It was compiled at `a915e08`;
+log `/mnt/oldrog/tmp/tlago-long-lsb-random-unlimited-final.log`. Last logged
+progress reached 2,144,786,516 of 2,147,483,648 iterations. Fingerprint merging
+failed with `IOException: no space left on device` on `/mnt/oldrog/tmp`.
+No full-workload success or inventory credit is claimed. Its unchanged draft and
+overlay remain `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go` and
+`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`.
 
-The latest observed LSB log exceeds 2.001 billion of 2,147,483,648 iterations.
-Poll the same live handle before launching a duplicate. Quiet flushing is not a
-terminal result. Its shared draft and overlay are
-`/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go` and
-`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`; do not edit them while
-this process runs. Drafts remain outside the persistent inventory.
+The next full original LSB run must explicitly place test temporary storage on
+the large workspace volume. The post-cleanup observation gives 29 GiB free on
+the old volume and 1.3 TiB on the workspace volume. Preserve original bounds,
+factory, seed, assertions and checkpoints; use no race instrumentation. Do not
+reclaim unrelated files. Full workspace session `46724` remains separately live.
 
 MSB session `63113` is retired with status 0. Its full random draft passes in
 13,343.32 seconds, including all 2,147,483,648 insertions, checkpoint commit,
@@ -166,10 +176,13 @@ possible schedule.
 
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
-ErrorDetails rendering, the missing SANY linting phase, and remaining
-storage/trace constructor error boundaries. Random-access-file `rws`/`rwd` modes
+ErrorDetails rendering, source per-module semantic diagnostic accumulation,
+and remaining storage/trace constructor error boundaries. Random-access-file `rws`/`rwd` modes
 and invalid-mode exception behavior also need source reconciliation. Do not add
-lint progress messages without implementing the actual lint checks. Matching
+synthetic phase output. The actual Java record linter is now ported: declaration
+and formal-parameter dependencies, same-domain EXTENDS suppression, binding and
+proof scopes, exact warning text and a distinct phase after successful semantic
+analysis. Matching
 checker output or a high test translation percentage does not prove full parity.
 
 Five main-suite contexts have known source-failing or JVM-specific

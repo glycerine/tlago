@@ -150,12 +150,12 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		sanyPrintln = delayed.Println
 	}
 	messageControls := (diagnosticCLIOptions{}).withTLCMessageControls()
-	processSANYDiagnostics := func(raw Diagnostics, semantic bool) Diagnostics {
+	processSANYDiagnostics := func(raw Diagnostics, phase sanyDiagnosticPhase) Diagnostics {
 		controlled := messageControls.apply(raw)
 		// SANY prints warnings first, then reports the actual semantic errors.
 		// Elevating a warning changes the exit status, not the error-list count.
 		isSemanticError := func(diagnostic Diagnostic) bool {
-			if !semantic {
+			if phase != sanySemanticPhase {
 				return false
 			}
 			for _, original := range raw {
@@ -166,12 +166,50 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 			}
 			return false
 		}
+		var warnings Diagnostics
+		for _, diagnostic := range controlled {
+			for _, original := range raw {
+				if original.Severity == SeverityWarning && original.Code == diagnostic.Code && original.Pos == diagnostic.Pos && (original.Message == diagnostic.Message || "Warning treated as error: "+original.Message == diagnostic.Message) {
+					warning := original
+					warning.Severity = diagnostic.Severity
+					warnings = append(warnings, warning)
+					break
+				}
+			}
+		}
+		if len(warnings) > 0 && phase == sanySemanticPhase {
+			sanyPrintln(fmt.Sprintf("*** Warnings: %d\n", len(warnings)))
+		}
+		if len(warnings) > 0 && phase == sanyParsePhase {
+			sanyPrintln(fmt.Sprintf("Warnings (%d) during syntax parsing of %s:\n", len(warnings), rootFile))
+		}
+		for _, severity := range []Severity{SeverityWarning, SeverityError} {
+			for _, warning := range warnings {
+				if warning.Severity != severity {
+					continue
+				}
+				prefix := ""
+				if severity == SeverityError {
+					prefix = "Warning treated as error: "
+				}
+				sanyPrintln(prefix + sanyJavaErrorDetails(warning) + "\n\n\n")
+			}
+		}
 		var errors Diagnostics
 		for _, diagnostic := range controlled {
 			if isSemanticError(diagnostic) {
 				errors = append(errors, diagnostic)
-			} else {
-				sanyPrintln(diagnostic.String())
+			} else if phase == sanyParsePhase && diagnostic.Severity != SeverityWarning {
+				originalWarning := false
+				for _, warning := range warnings {
+					if warning.Pos == diagnostic.Pos && warning.Code == diagnostic.Code {
+						originalWarning = true
+						break
+					}
+				}
+				if !originalWarning {
+					sanyPrintln(diagnostic.String())
+				}
 			}
 		}
 		if len(errors) > 0 {
@@ -203,8 +241,8 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 			ResolutionError:  sanyPrintln,
 			FilenameResolver: resolver,
 			ExtraModules:     runtime.ExtendeeModules(),
-		}, func(raw Diagnostics, semantic bool) Diagnostics {
-			controlled := processSANYDiagnostics(raw, semantic)
+		}, func(raw Diagnostics, phase sanyDiagnosticPhase) Diagnostics {
+			controlled := processSANYDiagnostics(raw, phase)
 			diags = append(diags, controlled...)
 			return controlled
 		})

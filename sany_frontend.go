@@ -7,10 +7,18 @@ import (
 	"github.com/glycerine/tlago/tlc"
 )
 
+type sanyDiagnosticPhase int
+
+const (
+	sanyParsePhase sanyDiagnosticPhase = iota
+	sanySemanticPhase
+	sanyLintPhase
+)
+
 // runSanyFrontEnd preserves the SANY.parse exception boundaries. parseFailed
 // includes a caught ParseException-equivalent even when parseErrors is empty.
 // Legacy SANY returns OK for ordinary semantic errors; callers inspect them.
-func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, bool) Diagnostics) (spec *Spec, parseDiags, semanticDiags Diagnostics, parseFailed bool) {
+func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, sanyDiagnosticPhase) Diagnostics) (spec *Spec, parseDiags, semanticDiags Diagnostics, parseFailed bool) {
 	println := opts.ParsingProgress
 	if println == nil {
 		println = func(string) {}
@@ -48,7 +56,7 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, boo
 		spec, parseDiags = loader.loadSpec(file)
 		controlled := parseDiags
 		if report != nil {
-			controlled = report(parseDiags, false)
+			controlled = report(parseDiags, sanyParsePhase)
 		}
 		parseFailed = controlled.HasErrors()
 	}()
@@ -58,7 +66,15 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, boo
 	semanticDiags = checkSpecWithProgress(spec, opts.ParsingProgress)
 	controlled := semanticDiags
 	if report != nil {
-		controlled = report(semanticDiags, true)
+		controlled = report(semanticDiags, sanySemanticPhase)
+	}
+	if !controlled.HasErrors() {
+		lintDiags := lintSanySpec(spec, opts.ParsingProgress)
+		semanticDiags = append(semanticDiags, lintDiags...)
+		if report != nil {
+			lintDiags = report(lintDiags, sanyLintPhase)
+		}
+		controlled = append(controlled, lintDiags...)
 	}
 	spec.Diags = append(append(Diagnostics(nil), parseDiags...), controlled...)
 	return
