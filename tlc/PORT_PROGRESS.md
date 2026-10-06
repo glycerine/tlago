@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-06 Plain safety trace source replay comparison:
+Continue on clean master 98a5ac0 with the new distributed service postponed.
+Investigate the unresolved JSON auto-worker failure before changing production.
+Reconstruct its ten console states from the 100-repeat failure receipt in a
+scratch JSON trace. This is not the deleted original serialized artifact; the
+scratch trace has the same state sequence and variable list, with empty action
+edges for the safety replay. Original fixtures and assertions remain unchanged.
+
+Invoke pinned Java FastTool and ModelChecker directly with the original JSON
+constraint/view, fingerprint polynomial 4 and one worker. Do not invoke the
+excluded TLC reporting flow. Java and the existing Go CLI both produce the same
+seven state bodies and 36 generated / 7 distinct / 1 queued statistics. Their
+seventh state pours big to small, whereas the reconstructed dump empties big.
+Source Worker.addElement computes the constraint first, but still checks
+invariants on excluded successors. Go processSuccessorForWorker follows that
+order. Suppressing those invariant checks would diverge from Java.
+
+Receipts: /mnt/oldrog/tmp/tlago-trace-prefix-source-replay/{trace.json,
+java-replay.log,go-replay.log}; scratch harness SourceTraceReplayManual.java.
+The source model/config bytes match the pinned test-model copies. Forty fresh
+lower-level Java dump/replay pairs did not reproduce a prefix mismatch; this
+passing sample does not invalidate the deterministic replay comparison or prove
+that the original test is reliable. Log:
+/mnt/oldrog/tmp/tlago-source-roundtrip-probe.log, session 99587 terminal 0.
+
+The earlier actual alias artifact and Java comparison are already documented in
+TLC_ARCH.md under the LSB replay investigation. Avoid repeating those completed
+runs. Stop the redundant scratch Go CLI repetition loop after finding that
+receipt: session 7091 terminal 130, no completed-run success credit. No permanent
+test, production change, inventory credit or full-workspace pass is claimed.
+Preserve both original prefix assertions and keep the source expectation issue
+visible. Native Naturals import corrections remain unapplied pending explicit
+authorization after automatic approval review rejected the proposed edits.
+
 2026-10-06 Proof @ generation and trace failure reproduction:
 Previous turn made progress in 795594a and retired full root 99670 with five
 failures. Start from clean master; no long full gate is running. Fixture import

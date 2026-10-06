@@ -98,8 +98,13 @@ No fixture edit was applied. Proof `@` generation is now corrected: the unchange
 native case passes in 0.023 seconds and 11 bounded Java comparisons match. The
 trace failures remain unresolved. Ten normal repetitions passed, but 100 further
 repetitions reproduced one JSON auto-worker mismatch in 155.708 seconds. Preserve
-that failure receipt; passing repeats alone do not prove a fix. Compare Java's
-actual checker behavior before changing constraint or invariant handling.
+that failure receipt; passing repeats alone do not prove a fix. A scratch
+reconstruction of its ten console states now replays identically in pinned Java
+and Go: seven states and 36/7/1 statistics. The earlier captured alias artifact
+also replays identically in Java and Go. Both comparisons support retaining the
+source invariant checks on excluded successors. Keep the original prefix
+assertions unchanged and the source expectation issue unresolved; detailed
+receipts are in `PORT_PROGRESS.md` and the LSB replay section of `TLC_ARCH.md`.
 No current complete workspace pass is claimed.
 
 Latest focused verification:
@@ -551,7 +556,7 @@ source-behavior questions have not been resolved by silence.
 
 A separate scheduling concern remains for alias trace replay: source-compatible
 multiworker dumps can replay 10 or 11 states with differing final actions.
-Java and Go check the invariant before the out-of-model trace constraint.
+Java and Go check invariants even on successors excluded by the trace constraint.
 Do not reorder these checks or weaken replay assertions without an explicit
 decision to diverge from Java. See the detailed receipts in `PORT_PROGRESS.md`.
 
