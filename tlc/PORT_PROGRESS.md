@@ -1,5 +1,13 @@
 # TLC Port Progress
 
+2026-10-06 full workspace verification started at 0ee5627:
+MP recorder/visibility correction is committed, with a clean worktree. Full
+normal go test -count=1 -failfast -timeout=60m ./... now runs as session 50735;
+log /mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log. No race flags or
+reduced workload bounds. This run is pending, not a green receipt. Original
+random sessions 63113/59782 remain live at a915e08, approximately 2.115 billion
+and 1.599 billion iterations respectively, with no completion credit yet.
+
 2026-10-06 MP public-printer recorder ordering:
 Continue faithful Java parity on master; new distributed architecture stays
 postponed. Ordinary/error/warning/bug/state printer notifications now precede

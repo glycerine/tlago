@@ -65,6 +65,11 @@ random fingerprint overlay. It predates `6e1bc85`'s complete MP formatter and
 the follow-up single-pass nullable correction, which have focused verification.
 Older green snapshots and retired failures remain in `PORT_PROGRESS.md`.
 
+A new full normal workspace run is active at `0ee5627` (session `50735`).
+Log: `/mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log`. It preserves
+original bounds, uses no race instrumentation, and has no completion credit yet.
+Poll this session rather than starting another full run.
+
 Focused verification:
 
 | Scope | Result | Duration / receipt |
