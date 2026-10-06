@@ -49,7 +49,11 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 				parseDiags = loader.diags
 				spec = loader.snapshot(nil)
 				println(fmt.Sprintf("\nFatal errors while parsing TLA+ spec in file %s\n", file))
-				println(tlc.JavaThrowableString(exception))
+				if abort, ok := exception.(*sanyParseAbort); ok {
+					println(abort.Error())
+				} else {
+					println(tlc.JavaThrowableString(exception))
+				}
 				println(sanyErrorsString(parseDiags))
 			}
 		}()

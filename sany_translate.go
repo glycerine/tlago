@@ -86,11 +86,49 @@ type sanyLoader struct {
 	moduleFiles     []string
 	rootDir         string
 	rootPath        string
+	rootModule      *Module
 	monolithTempDir string
 }
 
-func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
-	return newSanyLoader(opts).loadSpec(root)
+// sanyParseAbort is Errors.addMessage's unrecoverable load failure. The TLC
+// front end catches it at Java's frontEndParse boundary; the native API returns
+// the same accumulated diagnostics to its caller.
+type sanyParseAbort struct {
+	diagnostic Diagnostic
+}
+
+func (failure *sanyParseAbort) Error() string {
+	return sanyJavaErrorDetails(failure.diagnostic)
+}
+
+func (l *sanyLoader) abortParse(diagnostic Diagnostic) {
+	l.diags = appendSanyDiagnostics(l.diags, diagnostic)
+	panic(&sanyParseAbort{diagnostic: diagnostic})
+}
+
+func (l *sanyLoader) missingModule(name string, importer *Module) {
+	diagnostic := errorAt(Position{}, "E4220", "Cannot find source file for module %s", name)
+	diagnostic.SANYParameters = []any{name}
+	if importer != nil {
+		diagnostic = errorAt(Position{File: importer.Name}, "E4220", "Cannot find source file for module %s imported in module %s.", name, importer.Name)
+		diagnostic.SANYParameters = []any{name, importer.Name}
+	}
+	diagnostic.SANYMessage = diagnostic.Message
+	l.abortParse(diagnostic)
+}
+
+func LoadSanySpec(root string, opts LoadOptions) (spec *Spec, diags Diagnostics) {
+	loader := newSanyLoader(opts)
+	defer func() {
+		if failure := recover(); failure != nil {
+			if _, ok := failure.(*sanyParseAbort); !ok {
+				panic(failure)
+			}
+			spec = loader.snapshot(nil)
+			diags = loader.diags
+		}
+	}()
+	return loader.loadSpec(root)
 }
 
 func newSanyLoader(opts LoadOptions) *sanyLoader {
@@ -112,14 +150,23 @@ func (l *sanyLoader) loadSpec(root string) (*Spec, Diagnostics) {
 	}
 	rootFilename := rootPath
 	if opts.FilenameResolver != nil {
-		rootPath = opts.FilenameResolver.Resolve(rootPath, true).GetPath()
+		file := opts.FilenameResolver.Resolve(rootPath, true)
+		if !file.Exists() {
+			l.reportMissingFile(file)
+			l.missingModule(strings.TrimSuffix(filepath.Base(rootPath), ".tla"), nil)
+		}
+		rootPath = file.GetPath()
 	}
 	if abs, err := filepath.Abs(rootPath); err == nil {
 		rootPath = abs
 	}
 	l.rootDir = filepath.Dir(rootPath)
 	l.rootPath = rootPath
+	if _, err := os.Stat(rootPath); os.IsNotExist(err) {
+		l.missingModule(strings.TrimSuffix(filepath.Base(rootPath), ".tla"), nil)
+	}
 	rootMod := l.loadPath(rootPath, false, rootFilename)
+	l.rootModule = rootMod
 	if rootMod != nil {
 		sourceExtendsLen := len(rootMod.Extends)
 		rootMod.Extends = appendModuleNames(rootMod.Extends, l.opts.ExtraModules...)
@@ -130,6 +177,9 @@ func (l *sanyLoader) loadSpec(root string) (*Spec, Diagnostics) {
 }
 
 func (l *sanyLoader) snapshot(root *Module) *Spec {
+	if root == nil {
+		root = l.rootModule
+	}
 	return &Spec{FilenameResolver: l.opts.FilenameResolver, LibraryPaths: append([]string(nil), l.opts.LibraryPaths...), Root: root, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}
 }
 
@@ -163,7 +213,7 @@ func (l *sanyLoader) loadDependencies(mod *Module) {
 	}
 	l.loading[mod.Name] = true
 	for _, dep := range moduleSemanticImports(mod) {
-		depMod := l.loadModule(dep, mod)
+		depMod := l.loadModule(dep, moduleSemanticImportOwner(mod, dep))
 		l.loadDependencies(depMod)
 	}
 	l.loading[mod.Name] = false
@@ -181,9 +231,7 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 			if mod := l.loadMonolithModule(name); mod != nil {
 				return mod
 			}
-			if l.opts.ResolutionError != nil {
-				l.opts.ResolutionError(fmt.Sprintf("File does not exist: %s while looking in these directories: %s", file.GetAbsolutePath(), l.opts.FilenameResolver.GetFullPath()))
-			}
+			l.missingModule(name, importer)
 		}
 		provenance := ""
 		if path := file.GetLibraryPath(); path != nil {
@@ -214,12 +262,14 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 	if mod := l.loadMonolithModule(name); mod != nil {
 		return mod
 	}
-	pos := Position{}
-	if importer != nil {
-		pos = importer.Pos
-	}
-	l.diags = append(l.diags, errorAt(pos, "E4220", "cannot find source file for module %s", name))
+	l.missingModule(name, importer)
 	return nil
+}
+
+func (l *sanyLoader) reportMissingFile(file *tlc.TLAFile) {
+	if l.opts.ResolutionError != nil {
+		l.opts.ResolutionError(fmt.Sprintf("File does not exist: %s while looking in these directories: %s", file.GetAbsolutePath(), l.opts.FilenameResolver.GetFullPath()))
+	}
 }
 
 func (l *sanyLoader) loadLibraryModule(name string) *Module {
@@ -256,7 +306,10 @@ func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string
 	if !standard {
 		fileMod := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 		if fileMod != mod.Name {
-			l.diags = append(l.diags, errorAt(mod.Pos, "E4221", "file name %q does not match module name %q", fileMod, mod.Name))
+			diagnostic := errorAt(Position{}, "E4221", "File name '%s' does not match the name '%s' of the top level module it contains.", fileMod, mod.Name)
+			diagnostic.SANYParameters = []any{fileMod, mod.Name}
+			diagnostic.SANYMessage = diagnostic.Message
+			l.abortParse(diagnostic)
 		}
 	}
 	l.registerModuleRecursive(mod)
@@ -625,6 +678,27 @@ func moduleImports(mod *Module) []string {
 		}
 	}
 	return imports
+}
+
+// Flattening dependencies must retain their importing module for module-only
+// locations in SpecObj's unrecoverable missing-file diagnostics.
+func moduleSemanticImportOwner(mod *Module, name string) *Module {
+	if mod == nil {
+		return nil
+	}
+	own := *mod
+	own.Nested = nil
+	for _, imported := range moduleSemanticImports(&own) {
+		if imported == name {
+			return mod
+		}
+	}
+	for _, nested := range mod.Nested {
+		if owner := moduleSemanticImportOwner(nested, name); owner != nil {
+			return owner
+		}
+	}
+	return nil
 }
 
 func moduleSemanticImports(mod *Module) []string {

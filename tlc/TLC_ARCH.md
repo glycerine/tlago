@@ -32,6 +32,15 @@ and messages. Earlier semantic errors or elevated warnings prevent linting.
 Per-module semantic reporting uses accumulated diagnostics. Full ordinary
 parser diagnostic rendering remains audit work.
 
+Missing-module resolution and filename/module-name mismatch raise the internal
+`sanyParseAbort`, retaining source E4220/E4221 and structured parameters. The
+frontEndParse exception boundary reports the abort details and accumulated
+Errors, stopping further loading. The native LoadSanySpec API returns those
+diagnostics and a previously parsed root. Missing dependencies retain their
+actual importing module, including nested modules. Source null and module-only
+locations have distinct rendering. Resolver failures use stderr; the root-only
+missing-file notice follows FileUtil's monolith-fallback branch.
+
 The direct SANY Context and production EXTENDS conflict path share
 `sanyExtendConflict`. It preserves W4800/E4224, exact messages, incoming ranges
 and four structured parameters, including the prior location. Context merging

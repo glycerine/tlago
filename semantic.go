@@ -1481,6 +1481,9 @@ func sanySymbolLocation(position Position) string {
 		return "Unknown location"
 	}
 	end := position.SourceEnd()
+	if position.Line == 0 && position.Column == 0 && end.Line == 0 && end.Column == 0 && position.File != "" {
+		return "In module " + moduleNameForSourcePosition(position)
+	}
 	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s", position.Line, position.Column, end.Line, end.Column, moduleNameForSourcePosition(position))
 }
 

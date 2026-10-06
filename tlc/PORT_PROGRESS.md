@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-06 SANY file-loading aborts and source locations:
+Previous turn made progress in 58e5003. Continue faithful Java TLC parity on
+master. Full workspace 15749 and unchanged LSB 32959 are confirmed live on
+their recorded earlier snapshots. Neither is restarted or claimed as current
+full-suite success.
+
+Seven scratch comparisons expose generic native read errors in place of Java's
+Errors.addMessage abort for missing root/dependency files and filename/module
+mismatches. The loader now raises an internal parse abort with E4220 or E4221,
+source text and structured parameters. frontEndParse's existing exception
+boundary prints the actual abort details and accumulated Errors, then stops.
+Do not continue to a second missing dependency or semantic generation. The
+native LoadSanySpec API catches this internal abort and returns diagnostics;
+a successfully parsed root is retained in partial dependency-failure results.
+Missing dependencies retain the actual importing nested module instead of the
+outer module used by flattened dependency lists. Source null locations render
+Unknown location; module-only locations render In module <name>.
+
+Resolver notices go to ToolIO.err. FileUtil prints its missing-file notice for
+a root resolution failure, but suppresses it after a dependency's monolith
+fallback, even if extraction returns null. Inspect that source branch and remove
+the extra dependency notice rather than filter it from comparison evidence.
+All seven final full stdout/stderr observations match Java: missing root,
+EXTENDS, INSTANCE, nested EXTENDS, two missing dependencies, wrong root name and
+wrong dependency name. Scratch vectors/script/logs under /mnt/oldrog/tmp:
+tlago-parser-loading-vectors/, tlago-parser-loading-compare.py,
+tlago-parser-loading-before.log, tlago-parser-loading-after.log and
+tlago-parser-loading-final-compare.log. Comparison 23118 returns status 0;
+retired. No persistent synthetic tests or inventory credit.
+
+Existing initial parser/CLI/Context/warning selection passes root 4.551 / SANY
+0.010 seconds, session 19765 retired. Existing parser/resolver/semantic/CLI/XML/
+original Context/elevated-warning selection passes 3.103 seconds, session 24058
+retired. Complete SANY package passes 1.218 seconds, session 46430 retired.
+Final partial-root preservation passes the existing selection again, root
+3.412 / original Errors selection 0.011 seconds, session 61086 retired.
+Assertions and fixtures remain unchanged; no race instrumentation. All-package
+compilation passes. Logs: tlago-parser-loading-focused.log,
+tlago-parser-loading-root-final.log, tlago-parser-loading-full-sany.log,
+tlago-parser-loading-verified.log and tlago-parser-loading-compile.log.
+Sixteen established EXTENDS observations still match unchanged Java exactly;
+session 33750 retired, log tlago-parser-loading-import-compare.log. No matching
+dedicated upstream file-loading test was found in the inspected SANY/TLC test
+sources. General syntax-error rendering, loading/generation traversal and
+semantic-node construction remain audit work; these observations do not prove
+complete parser parity or TLC completion.
+
 2026-10-06 Direct original SANY Context test reconciliation:
 Continue faithful Java parity on master; new distributed architecture remains
 deferred. Replace the parser-fixture surrogate for

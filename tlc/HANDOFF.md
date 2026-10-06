@@ -106,7 +106,9 @@ Latest focused verification:
 | Existing SANY and semantic/CLI/XML/instance/proof/trace model checks | Pass | 1.291 / 9.598 seconds, sessions `85452` / `35327` retired |
 | Direct original Java Context test and existing semantic/CLI/XML/INSTANCE/warning/action-level/trace checks | Pass | 5.590 seconds, session `9858` retired |
 | Complete SANY package after direct Context reconciliation | Pass | 1.236 seconds, session `46254` retired |
-| All-package compilation | Pass | Final direct Context correction |
+| Existing parser/resolver/semantic/CLI/XML and original Context/warning/Errors checks | Pass | Root 3.412 / SANY selection 0.011 seconds, session `61086` retired |
+| Complete SANY package after file-loading abort correction | Pass | 1.218 seconds, session `46430` retired |
+| All-package compilation | Pass | File-loading abort correction |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -224,9 +226,14 @@ possible schedule.
 ## Remaining work and known blockers
 
 Continue the core production audit and unresolved original methods below.
-Current concrete production gaps include ordinary missing-module/syntax-error
-ErrorDetails rendering, generation and multiple-binding context iteration order,
-remaining constructor and semantic-node boundaries. The original SANY
+Current concrete production gaps include general syntax-error ErrorDetails
+rendering, loading/generation traversal and multiple-binding context iteration order,
+remaining constructor and semantic-node boundaries. Missing modules and filename/module-name mismatches now abort loading with
+source E4220/E4221 details and null or actual importing-module locations.
+The existing front-end exception boundary reports these failures; the native
+library API returns diagnostics and preserves a previously parsed root.
+Seven file-loading observations match Java. General parser parity remains
+unproven. The original SANY
 `TestContext` method now exercises Context directly, with its original failure
 result, one-error count, E4224 code and declaration/definition parameter
 assertions. It lives in root `sany_context_java_test.go` so it can access the

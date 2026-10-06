@@ -239,7 +239,7 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		}()
 		spec, parseDiags, semanticDiags, parseFailed = runSanyFrontEnd(rootFile, LoadOptions{
 			ParsingProgress:  sanyPrintln,
-			ResolutionError:  sanyPrintln,
+			ResolutionError:  tlc.ToolIOErrPrintln,
 			FilenameResolver: resolver,
 			ExtraModules:     runtime.ExtendeeModules(),
 		}, func(raw Diagnostics, phase sanyDiagnosticPhase) Diagnostics {
@@ -460,7 +460,7 @@ func sanyJavaErrorDetails(diagnostic Diagnostic) string {
 	if message == "" {
 		message = diagnostic.Message
 	}
-	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s\n\n%s",
-		rng.Begin.Line, rng.Begin.Column, rng.End.Line, rng.End.Column,
-		moduleNameForSourcePosition(rng.Begin), message)
+	location := rng.Begin
+	location.EndLine, location.EndColumn = rng.End.Line, rng.End.Column
+	return sanySymbolLocation(location) + "\n\n" + message
 }
