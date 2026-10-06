@@ -86,11 +86,16 @@ seconds and is retired. It verifies the `19c6f1a` module-unit generation
 snapshot, before nested-generation, diagnostic and recursive-function changes.
 Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
 
-Normal full root-package session `45205` is live on the `008083a` recursive-function
-and INSTANCE level-checking snapshot, before stateful LET generation. It retains original bounds and a 60-minute
-timeout, without race instrumentation or failfast. Both temporary-directory
-variables use workspace `.codex-gotmp`. Log:
+Normal full root-package session `45205` returned status 0 in 1,656.783
+seconds and is retired. It verifies the `008083a` recursive-function and INSTANCE
+snapshot, before stateful LET and symbol-constructor changes. Log:
 `/mnt/oldrog/tmp/tlago-recursive-function-instance-root-full.log`.
+
+Normal full root-package session `77352` is live on the final symbol-constructor
+and module-instance operand-generation snapshot. It retains original bounds and
+a 60-minute timeout, without race instrumentation or failfast. Both temporary
+directory variables use workspace `.codex-gotmp`. Log:
+`/mnt/oldrog/tmp/tlago-symbol-instance-root-full.log`.
 Reuse the completed unchanged TLC package result. Preserve the root handle until
 terminal status; silence does not establish a pass.
 
@@ -98,26 +103,11 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Stateful LET recursive generation, retained bindings and deferred selector errors: existing native parser/semantic classes | Pass | Root 7.117 seconds, session `89756` retired |
-| Complete SANY package after stateful LET corrections | Pass | 1.284 seconds, session `79243` retired |
-| Recursive module functions, declared-operator levels and INSTANCE constant predicate: existing native parser/semantic classes | Pass | Root 6.541 seconds, session `25669` retired |
-| Complete SANY package after recursive-function and INSTANCE corrections | Pass | 1.270 seconds, session `42177` retired |
-| Original semantic-error corpus assertions, diagnostic parameters and generation failure boundaries: existing native behaviors and original TLC selection | Pass | Root 10.265 seconds, session `14523` retired |
-| Complete SANY package with all four original semantic-error corpus assertion families restored | Pass | 1.544 seconds, session `17704` retired |
-| Nested module units and shared recursive state: existing native behaviors and original TLC selection | Pass | Root 11.276 seconds, session `50899` retired |
-| Complete SANY package after retaining interrupted semantic errors and restoring the original corpus exception catch | Pass | 1.664 seconds, session `72574` retired |
-| Final module-unit generation, recursive sections and selector operand errors: existing native behaviors and original TLC selection | Pass | Root 10.496 seconds, session `50362` retired |
-| Complete SANY package on final module-unit snapshot | Pass | 1.344 seconds, session `83693` retired |
-| Final source-order contexts, recursive selector failures and null placeholders: native classes, original parser/output selection, nine original TLC methods and four bridge checks | Pass | Root 12.747 / SANY selection 0.771 seconds, session `96273` retired |
-| Complete SANY package on final expression-visibility snapshot | Pass | 1.587 seconds, session `44533` retired |
-| Native classes, original parser/output selection and nine original TLC correctness tests with source error code 4004 | Pass | Root 9.724 / SANY selection 0.694 seconds, session `49468` retired |
-| Complete SANY package after final source error-code correction | Pass | 1.338 seconds, session `8868` retired |
-| Original TLC operator configuration, INSTANCE, warning, action-level and assumption-value selection | Pass | Nine original methods; 4.299 seconds before the code correction, included in final `49468` pass |
-| Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
-| Native behavior classes and original REPL source checks, excluding corpus sweeps | Pass | 7.284 seconds, session `31922` retired |
-| Existing native exporter behavior class with Java-valid source and unordered IR | Pass | 0.035 seconds, session `62377` retired |
+| Final symbol constructors, function domains and module-instance operands: existing native parser/semantic classes and original ParseErrorTests | Pass | Root 6.958 seconds, session `53706` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.289 seconds, session `97779` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
-| Original Java ParseErrorTests class | Pass | Included unchanged in final `49468` selection |
+| Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
+| Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
 
 Earlier focused receipts belong in `PORT_PROGRESS.md`. These checks retain their
 recorded scope; passing translated tests does not establish whole-method fidelity
@@ -336,13 +326,11 @@ selection suppresses duplicate label checks. INSTANCE operator arguments remain
 operator arguments even when their arity mismatches. Duplicate module conflicts
 are generated at their module unit instead of by an earlier approximation.
 
-A separate comparison of fixed-parameter diagnostics matches Java in 124 of 126
-unchanged corpus fixtures. Two production differences remain: a missing shadowing
-warning in `E4201_Op` and an extra incomplete-module diagnostic in
-`E4204_Instance`. Receipt:
-`/mnt/oldrog/tmp/tlago-let-generation-binding-final-parameters-audit.log`.
-The comparison checks fixed-code order/count and displayed parameter values;
-it is not a complete diagnostic message/range/type comparison.
+The fixed-parameter diagnostic comparison now matches Java in all 126 unchanged
+corpus fixtures. Receipt:
+`/mnt/oldrog/tmp/tlago-symbol-instance-final-50-parameters-audit.log`.
+This checks fixed-code order/count and displayed parameter values; it is not a
+complete diagnostic message/range/type comparison or proof of full semantic parity.
 
 Module recursive functions now preserve rejected declarations, their original
 operator arity and undefined bodies. Function domains are generated before
@@ -368,11 +356,27 @@ comparisons match Java errors and recursive exception boundaries. Existing
 native LET acceptance source now uses distinct inner/outer operator names,
 because Java rejects the prior shadowing fixture; assertions remain unchanged.
 
-Port actual symbol-constructor behavior and module-instance failure boundaries
-next. Proof facts, formal/bound contexts, operator-argument generation and
-application checks still require broader reconciliation. Unknown leaf `BY` facts
-are still not fully generated or resolved. Green original assertions and bounded
-observations do not establish full parity.
+Module operators now retain the first declaration/definition and its signature.
+Duplicate validation precedes the body; the new operator constructor's conflict
+follows it, as in Java. Function constructor failures preserve whether the bound
+context is pushed. Function domains are generated once per syntactic group,
+then bound names, before validating the definition's symbol. Numeric/string leaf
+selectors and bound-name collisions retain source diagnostic details.
+
+Incomplete module-instance names validate arity before generating operands.
+Expression operands retain arity errors; operator operands follow receiving
+formal arities and source expression/operator/lambda failure branches before
+incomplete-name validation. Preserve Java's GeneralId operator-argument behavior:
+attached expression arguments are not generated on that path. All 50 bounded
+full-message comparisons match Java, including warnings and ordering. The 74
+visibility and 29 LET comparisons remain matching. No original tests or fixture
+bytes changed, and scratch probes earn no inventory credit.
+
+Continue actual proof and scoped-context generation. Unknown leaf `BY` facts
+are still not fully generated or resolved. Formal/bound contexts, general
+operator-argument generation and application failure boundaries still need
+broader reconciliation, including compound selectors and LET instances. Green
+original assertions and bounded observations do not establish full parity.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

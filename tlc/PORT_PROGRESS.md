@@ -1,5 +1,67 @@
 # TLC Port Progress
 
+2026-10-06 Symbol construction and module-instance operand generation:
+Starting clean snapshot `b7ff2de`. The remaining fixed-parameter differences
+are E4201_Op's missing constructor warning and E4204_Instance's extra incomplete
+name error. Port original validation/body/constructor phases: duplicate operator
+validation precedes the body, then the new OpDefNode calls symbol construction
+and reports a warning or type/arity conflict. Preserve the first binding and its
+signature, including completed recursive declarations. Track actual symbol
+kind/arity/location as generation registers inherited and local symbols rather
+than preloading later definitions. Selector lookup preserves the first own
+definition. Rejected function constructors retain whether their bound context
+is pushed; named theorem and assumption nodes are not OpDefNodes.
+
+Function generation follows processQuantBoundArgs: generate each syntactic
+bound domain once, then bound names, then validate the function's name. Tuple
+and multi-name bounds share one projected domain. Initial full-message audit
+finds numeric leaf-selector and bound-symbol message differences; port source
+leaf kind handling and exact conflict text. A first leaf-error correction used
+the generic selector code 4340; the source comparison catches it and the final
+code is original 4005. No invented permanent tests or weakened assertions.
+
+Incomplete instance names validate arity before generating operands. Wrong count
+returns nullOAN without generating missing/invalid arguments; correct count
+generates operands before reporting the incomplete name. Further bounded probes
+expose lost operator/expression and higher-order operand errors. Port the
+receiving-formal branch of generateExprOrOpArg, retaining expression arity errors,
+non-operator expression rejection, operator arity mismatch, lambda generation
+and mismatch details. Preserve original GeneralId behavior: attached expression
+arguments are ignored in the operator-argument path. This is source behavior,
+not a Go language redesign. General compound selectors, formal contexts and LET
+instances remain broader reconciliation work.
+
+Final full-message audit matches all 50 bounded Java/Go observations, including
+errors and warnings in generation order, exact ranges/messages, duplicate bodies,
+retained calls/selectors, function failure contexts, shared domains, incomplete
+names and typed operand/lambda failures. Session 26749 returned status 0 and
+retired; log `tlago-symbol-instance-all-messages-50-audit.log`. Final original
+126 frozen-fixture parameter audit also matches all cases (52011 status 0,
+retired), log `tlago-symbol-instance-final-50-parameters-audit.log`. This latter
+comparison checks fixed-code order/count and displayed arguments only, not all
+message/range/object-type parity. Established 74 visibility cases remain matching
+(70296 status 0, retired), log `tlago-symbol-instance-final-50-visibility-audit.log`.
+All 29 lower-phase LET observations remain matching (28154 status 0, retired),
+log `tlago-symbol-instance-final-50-let-audit.log`.
+
+Final complete existing SANY passes 1.289 seconds (97779 retired), log
+`tlago-symbol-instance-final-50-sany.log`. Existing native parser/semantic classes
+and original ParseErrorTests pass 6.958 seconds (53706 retired), log
+`tlago-symbol-instance-final-50-focused.log`. All-package compilation passes, log
+`tlago-symbol-instance-final-50-compile.log`. No tests, original fixture bytes
+or TLC inventory counts changed. No race instrumentation or reduced bounds.
+
+Full root 45205 returned status 0 in 1,656.783 seconds and retired on `008083a`,
+before stateful LET and this constructor batch. Log
+`tlago-recursive-function-instance-root-full.log`. Final current normal full root
+77352 is live with original bounds, no race/failfast, 60-minute timeout and both
+temporary-directory variables in the workspace. Log
+`tlago-symbol-instance-root-full.log`. Original LSB 32959 remains confirmed live;
+last observed 2,145,436,679 of 2,147,483,648 insertions. Silence is not terminal
+success. Preserve both handles. Overall goal remains incomplete; continue actual
+proof/scoped-context and operand-generation reconciliation.
+
+
 2026-10-06 Stateful LET recursive generation:
 Starting clean snapshot `008083a`. Replace the grouped recursive-section scan
 and nested-name detection with declaration identities retained through expression

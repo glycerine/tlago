@@ -182,11 +182,26 @@ regenerated as zero-argument expressions. Ordinary application level violations
 use source code 4205, not the lambda arity code. Obsolete nested-standard-module
 conflict approximation is removed; conflicts arise at actual nested module units.
 
-The fixed-parameter comparison matches 124 of 126 frozen corpus fixtures. Two
-still differ: operator-constructor shadowing warnings and module-instance arity
-failure boundaries. The comparison concerns fixed-code order/count and displayed
-parameter values; it does not prove all diagnostic messages, ranges or semantic
-object types match.
+The fixed-parameter comparison matches all 126 frozen corpus fixtures. It
+concerns fixed-code order/count and displayed parameter values; it does not
+prove all diagnostic messages, ranges or semantic object types match.
+
+Module definition validation preserves the original binding and arity. For
+ordinary operators, duplicate validation occurs before body generation and the
+new OpDefNode constructor's symbol conflict afterward. Rejected function
+construction preserves whether its formal context is pushed. Function domains
+are generated once per syntactic group, then formal names, before symbol
+validation. Bound-symbol and numeric/string leaf-selector errors retain source
+messages and locations.
+
+Module-instance names validate argument count before operand generation and
+incomplete-name failure. Receiving formal arities choose expression versus
+operator-argument generation. Expression arity failures and operator, expression
+and lambda mismatches precede incomplete-name errors. GeneralId operator
+arguments resolve the operator without generating attached expression arguments,
+matching Java's behavior. Fifty bounded full-message observations match errors,
+warnings, ranges and ordering. General operand and compound-selector generation
+still needs broader reconciliation; this is not complete Generator coverage.
 
 Module recursive functions complete only zero-arity declarations. Rejected
 functions preserve the original operator signature and unfinished binding.

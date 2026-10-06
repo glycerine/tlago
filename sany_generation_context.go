@@ -194,8 +194,13 @@ func checkDefinitionFunctionDomains(definition Definition, context map[string]Po
 		return nil
 	}
 	var diags Diagnostics
+	for _, domain := range sanyFunctionDomainExpressions(function) {
+		diags = append(diags, checkExpr(domain, context, locals, generators...)...)
+	}
+	boundLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
-		diags = append(diags, checkExpr(bound.Set, context, locals, generators...)...)
+		diags = append(diags, checkBoundName(bound.Name, bound.Pos, context, boundLocals)...)
+		boundLocals[bound.Name] = true
 	}
 	return diags
 }
@@ -208,7 +213,6 @@ func checkDefinitionFunctionBody(definition Definition, context map[string]Posit
 	var diags Diagnostics
 	bodyLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
-		diags = append(diags, checkBoundName(bound.Name, bound.Pos, context, bodyLocals)...)
 		bodyLocals[bound.Name] = true
 	}
 	bodyLocals[definition.Name] = true
@@ -403,4 +407,16 @@ func sanyModuleRecursiveSectionType(unit *sanyModuleGenerationUnit) string {
 		return "A USE or HIDE"
 	}
 	return ""
+}
+
+// processQuantBoundArgs generates each syntactic domain once before creating
+// any formal names. A multi-name or tuple bound shares one projected domain.
+func sanyFunctionDomainExpressions(function *FunctionExpr) []Expr {
+	var domains []Expr
+	for _, bound := range function.Bounds {
+		if len(domains) == 0 || domains[len(domains)-1] != bound.Set {
+			domains = append(domains, bound.Set)
+		}
+	}
+	return domains
 }

@@ -273,11 +273,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	expressionGeneration.moduleKinds = declKinds
 	expressionGeneration.moduleArities = arities
 	expressionGeneration.moduleSymbols = map[string]localSymbol{}
-	for _, symbol := range semanticModuleExports(mod, spec, map[string]bool{}) {
-		expressionGeneration.moduleSymbols[symbol.name] = localSymbol{kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition()}
-	}
 	functionArities := map[string]int{}
 	operatorParamSpecs := map[string][]operatorParamSpec{}
+	expressionGeneration.moduleOperatorParams = operatorParamSpecs
 	extendedSymbols := map[string]importedSymbol{}
 	enclosingBindings := map[string]importedSymbol{}
 	diags = append(diags, checkPlusCalChecksumWarnings(mod)...)
@@ -499,6 +497,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		symbol.arity = arities[name]
 		instanceSymbols[name] = symbol
 	}
+	for name, symbol := range instanceSymbols {
+		expressionGeneration.moduleSymbols[name] = localSymbol{kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
+	}
 	localSymbols := moduleOwnSymbols(mod)
 	registerInstance := func(inst Instance) {
 		if inst.Name != "" {
@@ -506,8 +507,21 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			defined[instanceNameSentinel(inst.Name)] = inst.SourcePosition()
 			declKinds[inst.Name] = InstanceDecl
 			arities[inst.Name] = len(inst.Params)
+			specs := make([]operatorParamSpec, len(inst.Params))
+			for i, name := range inst.Params {
+				specs[i] = operatorParamSpec{Name: name, Arity: -1}
+				if arity := inst.ParamArities[name]; arity > 0 {
+					specs[i].Arity = arity
+				}
+			}
+			operatorParamSpecs[inst.Name] = specs
 		}
 		diags = append(diags, addInstanceSymbols(inst, spec, defined, declKinds, arities, operatorParamSpecs, instanceSymbols, localSymbols)...)
+		for name, symbol := range instanceSymbols {
+			if _, exists := expressionGeneration.moduleSymbols[name]; !exists {
+				expressionGeneration.moduleSymbols[name] = localSymbol{kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
+			}
+		}
 	}
 	registerDeclaration := func(d Declaration) {
 		seenInDecl := map[string]bool{}
@@ -517,6 +531,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				continue
 			}
 			seenInDecl[name] = true
+			if _, exists := defined[name]; !exists {
+				arity, _ := declarationArity(d, name)
+				expressionGeneration.moduleSymbols[name] = localSymbol{kind: d.Kind, arity: arity, pos: declarationSymbolPosition(d, name)}
+			}
 			addName(name, d.Pos, d.Kind)
 			declKinds[name] = d.Kind
 			if mod.Name != "" {
@@ -573,12 +591,15 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
+	constructorConflicts := map[string]localSymbol{}
 	registerDefinition := func(def Definition) {
-		recursiveArity, recursive := recursiveArities[def.Name]
+		recursiveArity, declaredRecursive := recursiveArities[def.Name]
+		recursive := declaredRecursive && !completedRecursive[def.Name]
 		rejectedRecursiveFunction := recursive && def.FunctionDef && recursiveArity != 0
 		diags = append(diags, checkDefinitionParams(def)...)
 		diags = append(diags, checkDefinitionParamCollisions(def, defined, nil)...)
-		if want, recursive := recursiveArities[def.Name]; recursive {
+		if recursive {
+			want := recursiveArity
 			// processFunction only completes a RECURSIVE declaration of arity
 			// zero. A rejected declaration remains undefined at module end.
 			satisfiedRecursive[def.Name] = !def.FunctionDef || want == 0
@@ -592,21 +613,23 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				}
 				diags = append(diags, diagnostic)
 			}
-		} else {
-			if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
-				if previous, exists := instanceSymbols[def.Name]; exists {
-					symbol := semanticExportedSymbol{name: def.Name, kind: OperatorDecl, theoremLike: def.TheoremLike, source: def.SourcePosition(), arity: len(def.Params)}
-					diags = append(diags, instanceSymbolConflict(symbol, localSymbol{kind: previous.kind, pos: previous.pos, arity: previous.arity})...)
-					position := def.SourcePosition()
-					diagnostic := errorAt(position, "E4201", "duplicate declaration or definition %s; first declared at %s", def.Name, previous.pos)
-					diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-					diagnostic.SANYMessage = fmt.Sprintf("Operator %s already defined or declared.", def.Name)
-					diags = append(diags, diagnostic)
-				} else {
-					addName(def.Name, def.Pos, OperatorDecl)
+		} else if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
+			if previous, exists := expressionGeneration.lookupSymbol(def.Name, defined); exists {
+				position := def.SourcePosition()
+				diagnostic := errorAt(def.Pos, "E4201", "duplicate declaration or definition %s; first declared at %s", def.Name, previous.pos)
+				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+				diagnostic.SANYMessage = fmt.Sprintf("Operator %s already defined or declared.", def.Name)
+				if def.FunctionDef {
+					diagnostic.SANYMessage = fmt.Sprintf("Function name `%s' already defined or declared.", def.Name)
 				}
+				diags = append(diags, diagnostic)
+				constructorConflicts[positionKey(position)] = previous
+				return
+			} else {
+				addName(def.Name, def.Pos, OperatorDecl)
 			}
 		}
+
 		if binding := expressionGeneration.bindings[def.Name]; binding != nil {
 			if !def.FunctionDef {
 				binding.arity = len(def.Params)
@@ -623,6 +646,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if rejectedRecursiveFunction {
 			return
 		}
+		expressionGeneration.moduleSymbols[def.Name] = localSymbol{kind: semanticDefinitionImportKind(def), arity: len(def.Params), pos: def.SourcePosition()}
 		arities[def.Name] = len(def.Params)
 		addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 		if specs, ok := definitionOperatorParamSpecs(def); ok {
@@ -644,11 +668,20 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
+	finishDefinition := func(def Definition) {
+		if previous, exists := constructorConflicts[positionKey(def.SourcePosition())]; exists && !def.FunctionDef {
+			symbol := semanticExportedSymbol{name: def.Name, kind: OperatorDecl, theoremLike: def.TheoremLike, arity: len(def.Params), source: def.SourcePosition()}
+			diags = append(diags, instanceSymbolConflict(symbol, previous)...)
+		}
+	}
 	registerAssumption := func(assumption NamedExpr) {
 		if assumption.Name == "" {
 			return
 		}
 		pos := assumption.SourcePosition()
+		if _, exists := defined[assumption.Name]; !exists {
+			expressionGeneration.moduleSymbols[assumption.Name] = localSymbol{kind: semanticTheoremImportKind, pos: pos}
+		}
 		addName(assumption.Name, pos, OperatorDecl)
 		arities[assumption.Name] = 0
 		declKinds[assumption.Name] = OperatorDecl
@@ -775,7 +808,14 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if def.AssumeProve && def.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals)...)
 		} else if def.FunctionDef {
-			diags = append(diags, checkDefinitionFunctionBody(def, bodyContext, locals, expressionGeneration)...)
+			previous, conflict := constructorConflicts[positionKey(def.SourcePosition())]
+			if conflict && previous.kind != OperatorDecl && previous.kind != InstanceDecl {
+				if function, ok := def.Expr.(*FunctionExpr); ok {
+					diags = append(diags, checkExpr(function.Body, bodyContext, locals)...)
+				}
+			} else {
+				diags = append(diags, checkDefinitionFunctionBody(def, bodyContext, locals, expressionGeneration)...)
+			}
 		} else {
 			diags = append(diags, checkDefinitionExpression(def, bodyContext, locals, expressionGeneration)...)
 		}
@@ -852,6 +892,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				}
 				registerDefinition(definition)
 				generateDefinition(definition)
+				finishDefinition(definition)
 			}
 		}
 		if unit.theorem != nil {
@@ -2003,7 +2044,10 @@ func checkBoundName(name string, pos Position, defined map[string]Position, loca
 		if sameSourceFile(prev, pos) && positionBefore(pos, prev) {
 			return nil
 		}
-		return Diagnostics{errorAt(pos, "E4201", "bound symbol %s conflicts with existing symbol declared at %s", name, prev)}
+		diagnostic := errorAt(pos, "E4201", "bound symbol %s conflicts with existing symbol declared at %s", name, prev)
+		diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
+		diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", name, sanySymbolLocation(prev))
+		return Diagnostics{diagnostic}
 	}
 	return nil
 }
@@ -3327,7 +3371,14 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
 		} else if _, ok := defined[instanceNameSentinel(e.Name)]; ok {
-			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4203", "operator name %s is incomplete", e.Name), e.Name))
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+			if want := generation.moduleArities[e.Name]; want != 0 {
+				diagnostic := sanyDiagnosticParameters(errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, want), e.Name, want)
+				diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", e.Name, want)
+				diags = append(diags, diagnostic)
+			} else {
+				diags = append(diags, sanyIncompleteOperatorDiagnostic(e))
+			}
 		}
 	case *LiteralExpr:
 	case *UnaryExpr:
@@ -3344,6 +3395,25 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		diags = append(diags, generation.checkExpr(e.Left, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Right, defined, locals)...)
 	case *CallExpr:
+		if ident, ok := e.Callee.(*IdentExpr); ok {
+			_, instance := defined[instanceNameSentinel(ident.Name)]
+			_, visible := defined[ident.Name]
+			if instance && visible && !locals[ident.Name] {
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				if want := generation.moduleArities[ident.Name]; want != len(e.Args) {
+					return Diagnostics{sanyCallArityDiagnostic(e, ident.Name, want)}
+				}
+				specs := generation.moduleOperatorParams[ident.Name]
+				for i, arg := range e.Args {
+					expected := 0
+					if i < len(specs) {
+						expected = specs[i].Arity
+					}
+					diags = append(diags, generation.generateOperatorOperand(ident, i, expected, arg, defined, locals)...)
+				}
+				return append(diags, sanyIncompleteOperatorDiagnostic(ident))
+			}
+		}
 		diags = append(diags, generation.checkExpr(e.Callee, defined, locals)...)
 		if sanyExpressionGenerationFailure(e.Callee) != sanyGenerationSucceeded {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
@@ -4928,5 +4998,14 @@ func sanyInstanceLevelDiagnostic(instance Instance, name string, maximum tlaLeve
 	position := instance.SourcePosition()
 	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 	diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", instance.Module, name, maximum)
+	return diagnostic
+}
+
+func sanyIncompleteOperatorDiagnostic(identifier *IdentExpr) Diagnostic {
+	diagnostic := sanyDiagnosticParameters(errorAt(identifier.Pos, "E4203", "operator name %s is incomplete", identifier.Name), identifier.Name)
+	diagnostic.SANYMessage = fmt.Sprintf("Operator name %s is incomplete.", identifier.Name)
+	if identifier.Syntax != nil {
+		diagnostic.SANYRange = identifier.Syntax.Range
+	}
 	return diagnostic
 }

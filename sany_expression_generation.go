@@ -22,15 +22,16 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
-	level         int
-	spec          *Spec
-	module        *sanyModuleRecursiveGeneration
-	declarations  []*sanyRecursiveBinding
-	bindings      map[string]*sanyRecursiveBinding
-	symbols       map[string]localSymbol
-	moduleKinds   map[string]DeclarationKind
-	moduleArities map[string]int
-	moduleSymbols map[string]localSymbol
+	level                int
+	spec                 *Spec
+	module               *sanyModuleRecursiveGeneration
+	declarations         []*sanyRecursiveBinding
+	bindings             map[string]*sanyRecursiveBinding
+	symbols              map[string]localSymbol
+	moduleKinds          map[string]DeclarationKind
+	moduleArities        map[string]int
+	moduleOperatorParams map[string][]operatorParamSpec
+	moduleSymbols        map[string]localSymbol
 }
 
 func sanyExpressionGenerator(generators []*sanyExpressionGeneration) *sanyExpressionGeneration {
@@ -254,4 +255,61 @@ func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]
 		kind = OperatorDecl
 	}
 	return localSymbol{kind: kind, arity: g.moduleArities[name], pos: position}, true
+}
+
+// generateExprOrOpArg selects the expression or operator-argument path from
+// the receiving formal parameter's arity, before incomplete-name validation.
+func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, index, expected int, argument Expr, context map[string]Position, locals map[string]bool) Diagnostics {
+	if expected <= 0 {
+		diags := g.checkExpr(argument, context, locals)
+		diags = append(diags, checkCallArity(argument, g.moduleArities, g.moduleOperatorParams, locals)...)
+		return append(diags, checkOperatorArgumentKinds(argument, g.moduleOperatorParams, g.moduleArities, locals)...)
+	}
+	position := argument.Position()
+	if source, ok := argument.(interface{ GetSyntaxNode() *SanySyntaxNode }); ok && source.GetSyntaxNode() != nil {
+		rangeOfArgument := source.GetSyntaxNode().Range
+		position = rangeOfArgument.Begin
+		position.EndLine, position.EndColumn = rangeOfArgument.End.Line, rangeOfArgument.End.Column
+		switch source.GetSyntaxNode().Kind.JavaName() {
+		case "N_GeneralId", "N_GenInfixOp", "N_GenNonExpPrefixOp", "N_GenPostfixOp", "N_GenPrefixOp", "N_Lambda":
+		default:
+			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4270", "operator parameter requires an operator argument of arity %d", expected), index+1, owner.Name)
+			diagnostic.SANYRange = rangeOfArgument
+			diagnostic.SANYMessage = fmt.Sprintf("An expression appears as argument number %d (counting from 1) to operator '%s', in a position an operator is required.", index+1, owner.Name)
+			return Diagnostics{diagnostic}
+		}
+	}
+	operator := argument
+	// In the GeneralId operator-argument path selectorToNode does not
+	// generate attached expression arguments; it resolves the operator.
+	if call, ok := argument.(*CallExpr); ok && (call.Selector == nil || len(call.Selector.Steps) <= 1) {
+		operator = call.Callee
+	}
+	diags := g.checkExpr(operator, context, locals)
+	if sanyExpressionGenerationFailure(operator) != sanyGenerationSucceeded {
+		return diags
+	}
+	got, ok := operatorArgumentArity(operator, g.moduleArities, locals)
+	if identifier, isIdentifier := operator.(*IdentExpr); !ok && isIdentifier {
+		if symbol, exists := g.lookupSymbol(identifier.Name, context); exists {
+			got, ok = symbol.arity, true
+		}
+	}
+	if literal, isLiteral := argument.(*LiteralExpr); isLiteral && literal.Kind == "bool" {
+		got, ok = 0, true
+	}
+	if !ok || got == expected {
+		return diags
+	}
+	diagnostic := sanyDiagnosticParameters(errorAt(position, "E4271", "operator argument arity mismatch: got %d, want %d", got, expected), expected, got)
+	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	diagnostic.SANYMessage = fmt.Sprintf("Expected arity %d but found operator of arity %d.", expected, got)
+	if function, isFunction := argument.(*FunctionExpr); isFunction && function.IsLambda {
+		diagnostic = sanyDiagnosticParameters(errorAt(owner.Pos, "E4274", "operator argument arity mismatch: got %d, want %d", got, expected), got, index+1, owner.Name, expected)
+		if owner.Syntax != nil {
+			diagnostic.SANYRange = owner.Syntax.Range
+		}
+		diagnostic.SANYMessage = fmt.Sprintf("Lambda expression with arity %d used as argument %d of operator `%s', \nbut an operator of arity %d is required.", got, index+1, owner.Name, expected)
+	}
+	return append(diags, diagnostic)
 }

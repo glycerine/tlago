@@ -86,8 +86,13 @@ func (r *sanySelectorResolver) scope(mod *Module) map[string]sanySelectorDefinit
 	for _, inst := range mod.Instances {
 		r.addInstance(out, mod, inst)
 	}
+	ownDefinitions := map[string]bool{}
 	for i := range mod.Definitions {
 		def := &mod.Definitions[i]
+		if ownDefinitions[def.Name] {
+			continue
+		}
+		ownDefinitions[def.Name] = true
 		out[def.Name] = sanySelectorDefinition{module: mod, def: def, params: sanyDefinitionParams(def)}
 	}
 	for _, assumption := range mod.Assumptions {
@@ -188,8 +193,8 @@ func (g *sanyModuleSelectorGenerator) definition(def *Definition) Diagnostics {
 func (g *sanyModuleSelectorGenerator) functionDomains(def *Definition) Diagnostics {
 	return g.prepare(func() {
 		if function, ok := def.Expr.(*FunctionExpr); ok {
-			for _, bound := range function.Bounds {
-				g.resolver.walk(bound.Set, g.module, g.at(def.Syntax), 0)
+			for _, domain := range sanyFunctionDomainExpressions(function) {
+				g.resolver.walk(domain, g.module, g.at(def.Syntax), 0)
 			}
 		}
 	})
@@ -586,6 +591,13 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 			}
 			if let, ok := result.body.(*LetExpr); ok {
 				result.lets = append(result.lets, let)
+			}
+			if literal, ok := result.body.(*LiteralExpr); ok && (literal.Kind == "number" || literal.Kind == "string") {
+				detail := &sanySelectorLocationError{code: "E4005", message: "Selecting subexpression of expression that has none."}
+				if step.Syntax != nil {
+					detail.location = step.Syntax.Range
+				}
+				return nil, true, detail
 			}
 			next, ok := sanySelectorOperand(result.body, step)
 			if !ok {
