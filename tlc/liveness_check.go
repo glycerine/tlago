@@ -883,7 +883,10 @@ func NewNoOpLiveCheck(tool *Tool, metadir string) *LiveCheck {
 }
 
 func NewLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
-	check, _ := NewLiveCheckWithStateWriter(tool, solutions, metadir, nil)
+	check, err := NewLiveCheckWithStateWriter(tool, solutions, metadir, nil)
+	if err != nil {
+		panic(err)
+	}
 	return check
 }
 
@@ -909,18 +912,31 @@ func NewLiveCheckWithStateWriter(tool *Tool, solutions []*OrderOfSolution, metad
 			}
 			writer = dotWriter
 		}
-		check.Checkers = append(check.Checkers, NewLiveChecker(solution, i, writer, metadir, check.OutDegreeStats))
+		checker := NewLiveChecker(solution, i, writer, metadir, check.OutDegreeStats)
+		if checker.Err != nil {
+			return nil, checker.Err
+		}
+		check.Checkers = append(check.Checkers, checker)
 	}
 	return check, nil
 }
 
 func NewAddAndCheckLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) *LiveCheck {
-	check := NewLiveCheck(tool, solutions, metadir)
-	if check != nil {
-		check.AddAndCheck = true
+	check, err := newAddAndCheckLiveCheck(tool, solutions, metadir)
+	if err != nil {
+		panic(err)
 	}
-	PrintWarning(ECUnitTest, "!!!WARNING: TLC is running in inefficient unit testing mode!!!", "")
 	return check
+}
+
+func newAddAndCheckLiveCheck(tool *Tool, solutions []*OrderOfSolution, metadir string) (*LiveCheck, error) {
+	check, err := NewLiveCheckWithStateWriter(tool, solutions, metadir, nil)
+	if err != nil {
+		return nil, err
+	}
+	check.AddAndCheck = true
+	PrintWarning(ECUnitTest, "!!!WARNING: TLC is running in inefficient unit testing mode!!!", "")
+	return check, nil
 }
 
 func (lc *LiveCheck) NumChecker() int {

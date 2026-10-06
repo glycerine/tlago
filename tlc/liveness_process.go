@@ -246,5 +246,5 @@ func NewAddAndCheckLiveCheckFromTool(tool *Tool, metadir string) (*LiveCheck, er
 	if err != nil {
 		return nil, err
 	}
-	return NewAddAndCheckLiveCheck(liveTool, solutions, metadir), nil
+	return newAddAndCheckLiveCheck(liveTool, solutions, metadir)
 }

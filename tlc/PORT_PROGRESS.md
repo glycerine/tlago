@@ -1,5 +1,72 @@
 # TLC Port Progress
 
+2026-10-06 parent checker construction and eager liveness failures:
+Previous goal turn is progress: `7e89fcb` ports SANY exception boundaries and
+delayed release. Revalidate master and live sessions 83804/59782. Full normal
+workspace session 83804 subsequently returns status 0 and is retired: root
+1531.402 seconds, SANY 1.082 seconds, TLC 787.645 seconds. Its snapshot is
+`d6e88c6`; log /mnt/oldrog/tmp/tlago-cli-loading-workspace.log. Preserve scope:
+it includes earlier CLI/MP changes but predates 7e89fcb and this constructor work.
+
+Source AbstractChecker initializes coverage, liveness, config and termination
+before concrete storage. Go previously created trace/fingerprint/queue first,
+postponed coverage until ModelCheck, retained liveness construction errors for
+later cleanup, and used a no-op live checker in DFID. Move actual liveness into
+the shared parent, keep native injection options, and propagate its initialization
+errors immediately. Report initialized only after success. DFID performs source
+worker/liveness assertions during construction after parent completion, before
+fingerprint allocation; preserve the issue548 link and exact worker diagnostic.
+BFS creates queue then trace, selected fingerprint set and workers. Pass the
+parsed fingerprint configuration without constructing an unused default or
+running its factory early. Cached config follows liveness as source requires.
+Termination is scheduled at parent completion; a default unsupported Stop on
+the timer thread prints its uncaught throwable without killing the Go host.
+
+Fix additional actual shortcuts on this path: NewLiveCheck discarded error
+returns, and per-solution disk-opening errors were retained until state insertion.
+Propagate both before returning/publishing a live check, including AddAndCheck's
+checked factory boundary and omission of its warning on failure. DiskGraph no
+longer creates absent metadata directories or closes its already-created node
+file on pointer-file constructor failure, preserving source construction order.
+RandomAccessFile opening throws FileNotFoundException for missing, directory,
+permission and other native open errors; retain path and capitalized native OS
+reason. Later I/O still uses IOException. rws/rwd and invalid-mode behavior,
+plus remaining trace/storage constructor boundaries, remain explicit audit work.
+
+Scratch source/native observations, not new persistent tests: six constructor
+cases match complete constructor stdout and directory artifacts, including DFID
+worker-first assertions, liveness initialization before rejection, and missing
+metadata directory I/O before DFID/BFS storage. Normalize only native execution
+IDs, supplied metadata paths and Starting timestamps. The first attempted full
+front-end+constructor comparison fails because Java performs Linting of module
+and Go lacks the lint phase. Do not fake that line or claim it matches. Limit
+the constructor observation explicitly to output after Starting; preserve the
+front-end discrepancy as pending production work. Logs under
+/mnt/oldrog/tmp/tlago-constructor-manual/. Source helpers use FastTool/checker
+constructors and never invoke TLC.main/email. A one-second manual termination
+observation matches the Timer uncaught-exception header and surviving host.
+Its first launch mixed Java source-compilation deprecation warnings into stderr;
+compile the scratch helper separately and compare actual runtime output. No
+credit for the failed first comparison or a diminished assertion.
+
+Final existing short checker/worker/liveness/CLI plus whole original graph,
+tableau-graph and BufferedRandomAccessFile class selection passes 8.345 seconds
+(15345 retired; exact RAF class anchor excludes its long fuzzer). Original DFID,
+liveness, checkpoint/time-bound and existing CLI selection passes 10.320 seconds
+(15450 retired); original five-second time bound is unchanged. Four original
+coverage model methods pass 1.662 seconds (51507 retired). Final all-package
+compilation passes. Earlier intermediate selections also pass 7.467/10.837
+seconds but precede the final I/O fixes. No original method, input, assertion,
+fixture, setting or bound changes; no new inventory credit and no race run.
+
+Groom HANDOFF.md from accumulated chronology into a shorter current restart
+guide. Replace its full-workspace baseline with d6e88c6 and list newer focused
+scopes separately. Preserve unresolved test contexts and implementation rules;
+detailed receipts stay here. LSB session 59782 is still live, above 2.001 billion
+of 2,147,483,648 iterations at the last log read, compiled at a915e08 and outside
+persistent inventory credit. Do not restart it or edit its shared overlay.
+The overall TLC completion goal remains unproven and active.
+
 2026-10-06 SANY exception boundaries and delayed output release:
 Previous goal turn is progress: `d6e88c6` commits deferred CLI tool loading and
 source exit mappings. Revalidate clean master and poll live sessions 83804 and

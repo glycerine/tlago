@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `0ee5627`.
+Updated: October 6, 2026. Full-workspace verification baseline: `d6e88c6`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,234 +47,92 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The latest completed full normal workspace suite passes on `0ee5627`:
+The latest completed full normal workspace suite passes on `d6e88c6`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,515.980 seconds |
-| SANY tests | Pass | 1.062 seconds |
-| TLC | Pass | 781.884 seconds |
+| Root package | Pass | 1,531.402 seconds |
+| SANY tests | Pass | 1.082 seconds |
+| TLC | Pass | 787.645 seconds |
 | CLI command | No test files | — |
 
-Session `50735` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log`. This preserves original
-bounds and uses no race instrumentation. It includes the complete MP formatter,
-nullable single-pass correction and ordinary printer recorder/visibility ordering,
-plus the prior checker/storage/runner corrections and full disk-queue growth.
-It excludes outside-suite random fingerprint overlays. It predates the later
-runtime-exception/throwable printers, debug diagnostics and CLI result-wrapper
-correction, which have focused verification. Historical receipts stay in
-`PORT_PROGRESS.md`. Full normal workspace session `83804` is now live on the
-CLI loading correction snapshot after `0bb3f14`; its log is
-`/mnt/oldrog/tmp/tlago-cli-loading-workspace.log`. Poll that same handle; its
-terminal result is not yet available.
+Session `83804` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-cli-loading-workspace.log`. This run preserves all original
+bounds and uses no race instrumentation. It includes the source MP formatter,
+throwable/debug boundaries, Java-shaped CLI and deferred config-before-SANY
+loading. It predates `7e89fcb` and the latest checker-constructor correction.
+Historical full-suite receipts belong in `PORT_PROGRESS.md`; no full workspace
+job is currently live.
 
-The latest CLI loading correction uses the same deferred tool construction for
-ordinary and packaged models. Configuration loads before SANY inside
-`TLC.process`; fatal configuration I/O exits with source status `255` and skips
-FINISHED and trace generation. Tool-mode SANY markers and STARTING follow Java
-phase order. TLC owns message-code argument validation. Semantic checking uses
-loader dependency order and prints actual module progress. All exit mappings
-from `0` through `6000` agree with Java. Existing focused CLI/semantic/model
-checks pass in 5.980 seconds; original message/config/CLI checks pass in 0.020
-seconds, and all packages compile. Full verification is still running.
+Latest focused verification:
 
-Unexpected front-end exception wrapping and delayed output release are now
-ported. Parsing Exceptions become checked failure; unexpected semantic Exceptions
-chain through `FrontEndException` and `TLC_PARSING_FAILED2`; Java Error propagates.
-Source/native failure sequences, delayed-stream behavior and legacy return/type/
-cause observations agree. Original focused front-end/model/trace-writer tests pass
-in 8.516 seconds; SANY passes in 1.339 seconds and five original warning/assumption
-models pass in 2.720 seconds. Final existing stream/CLI checks and compilation pass.
-The live full suite above predates this correction; do not widen that receipt.
-
-Continue auditing front-end failure output: missing-module and syntax-error raw
-diagnostics still differ. Keep these production gaps visible; matching TLC event
-order does not establish full parser-diagnostic parity. AbstractChecker/DFID parent
-constructor failure ordering also remains production audit work.
-
-Focused verification:
-
-| Scope | Result | Duration / receipt |
+| Scope | Result | Receipt |
 | --- | --- | --- |
-| Eight original safety/checkpoint/recovery/liveness/legacy models with Ant settings | Pass | 158.473 seconds, `d611cba` valid-setting path |
-| Original factory/CLI checks, default and source memory settings | Pass | 1.072 / 0.963 seconds |
-| Complete original heap/MSB/ShortDisk/off-heap classes and manager checks | Pass | 583.638 seconds, `f764bb1`, session `80888` retired |
-| Latest file-helper correction: existing focused fingerprint/commit checks | Pass | 0.181 seconds, session `27462` retired |
-| State-functor defaults: existing tool/debugger checks and original models | Pass | Core 0.024 seconds; seven init models 0.733 seconds; three debugger models 0.519 seconds |
-| Numeric CLI correction: original TLC/WarningControl classes and checkpoint models | Pass | 0.017 / 5.638 seconds |
-| Simulation argument correction: original CLI classes and existing scheduler check | Pass | 0.017 / 0.016 seconds |
-| DFID/fingerprint CLI branches: original CLI classes and four DFID model methods | Pass | 0.016 / 1.529 seconds |
-| CheckImplFile/parser and MP.getError correction: original MP/CLI classes | Pass | 0.016 seconds |
-| Ant class isolation: original 48-worker TLCGetAll then five-second checkpoint | Pass | 5.329 seconds, session `10096` retired |
-| Persistent CLI parameter state: original CLI/debugger/dump-load methods | Pass | 0.023 / 1.249 seconds |
-| Packaged TLC model integration: existing CLI behaviors and original subset methods | Pass | 4.638 seconds; original CLI classes 0.017 seconds |
-| Off-heap barrier failure semantics: original 22 short cases and 48-worker/checkpoint sequence | Pass | 0.077 / 5.319 seconds; sessions `19096` / `18062` retired |
-| Runner completion and memory banners: original message/CLI checks and trace/checkpoint models | Pass | 6.721 / 1.756 seconds; sessions `9440` / `98861` retired |
-| Original factory followed by complete off-heap class with Ant isolation | Pass | 46.331 seconds, session `33613` retired; includes 99,999,999-entry index |
-| Recovery/seed ordering: original simulation/recovery/CodePlex models | Pass | 298.728 seconds, session `62916` retired; focused component checks 6.354 seconds |
-| Remaining 186 TLC tests after original off-heap class isolation | Pass | 125.929 seconds, session `14660` retired; retains full index/long bounds |
-| Missing MP diagnostic templates: original MP/warning checks and trace/liveness models | Pass | 0.014 / 1.900 seconds, sessions `38266` / `93875` retired |
-| Complete source MP formatter: original message checks and representative original models | Pass | 0.024 / 2.307 seconds; sessions `73053` / `61273` retired |
-| Latest all-package compilation | Pass | Session `18137` retired |
+| Front-end/CLI/resolver/trace-writer and selected original models | Pass | 8.516 seconds, `7e89fcb`, session `40463` retired |
+| Original SANY package and warning/assumption models | Pass | 1.339 / 2.720 seconds, `7e89fcb`, session `39448` retired |
+| Original disk/tableau graphs and random-access-file class, short checker/worker/liveness/CLI checks | Pass | 8.345 seconds, constructor correction after `7e89fcb`, session `15345` retired |
+| Original DFID, liveness, checkpoint/time-bound and CLI methods | Pass | 10.320 seconds, constructor correction, session `15450` retired |
+| Four original coverage models | Pass | 1.662 seconds, constructor correction, session `51507` retired |
+| All-package compilation | Pass | Final constructor correction snapshot |
 
-Manual source/native observations also confirm named checkpoint contents,
-missing-parent I/O failure, destination-link replacement and unchanged referent.
-These are manual verification, not additional unit tests or inventory credit.
+Source/native scratch observations verify exception types/causes, delayed output,
+constructor diagnostics and storage artifacts. These are manual evidence, not
+new persistent tests or test-port credit. Preserve each receipt's exact scope.
 
-The latest off-heap recovery correction uses the current flusher directly when
-recovery fills the table, retaining source statistics and exception boundaries.
-Only probe exhaustion falls back to ordinary put/eviction. Final 22 short original
-off-heap cases pass in 0.067 seconds; three original checkpoint/recovery models
-pass in 4.304 seconds; final all-package compilation passes (session `97004`).
-Manual unchanged-Java/native counts match for full-table recovery and configured
-probe exhaustion. No test assertions, bounds or inventory counts changed. The
-full-class receipt above predates this correction; see progress for exact scopes.
+The latest checker correction initializes coverage, liveness and cached config
+in the parent constructor before storage and workers. Liveness I/O failures are
+raised immediately; DFID's worker/liveness assertions follow parent construction.
+BFS creates queue, trace and the selected fingerprint implementation in source
+order, without an unused default fingerprint initialization. Disk graphs do not
+create missing parent directories. RandomAccessFile opening failures retain the
+source FileNotFoundException. The original five-second time-bound test passes
+unchanged. Further storage/trace constructor error boundaries remain audit work.
 
-The shared off-heap barrier now stops on the first eviction failure and retains
-Java Phaser's incomplete phase and pending-flush state. It does not continue
-flushing other sets or release waiting workers after a failed callback. Further
-arrival reports the source illegal-state diagnostic; worker registration retains
-the 65,535-party limit and waits behind an incomplete advance. Successful phase
-advancement preserves source flag-clearing order and signed 31-bit phase wrap.
-Manual unchanged-Java/native failure observations agree; original short methods
-and the 48-worker/checkpoint sequence pass. No new tests or inventory credit.
+## Live long verification
 
-State-generation functor defaults now preserve Java's message-less
-`UnsupportedOperationException` for unimplemented `setElement`, `hasStates`,
-and unary next-state insertion. Existing callbacks retain their dispatch.
-The focused receipts above verify the correction; no tests or assertions changed.
-
-Numeric CLI flags now preserve Java signed-32/64-bit parsing, BMP decimal digits,
-worker-auto trimming and interval overflow/assignment order. Original CLI classes
-and checkpoint models pass. Manual unchanged-Java/native edge cases match; these
-are observations, not new test ports. The follow-up simulation audit also restores
-the source `NumberFormatException` boundary, replace-all filename handling and
-empty-file presence check. Original CLI classes and the existing scheduler check
-pass; manual unchanged-Java/native outcomes match. DFID/fingerprint numeric
-branches also retain their individual source diagnostics and assignment order;
-four original DFID model methods pass. The separate `CheckImplFile` parser now
-preserves its own worker, coverage and message-code behavior, string presence
-and exception boundary. Source `MP.getError` formatting is implemented; original
-MP/CLI tests and manual unchanged-Java comparisons pass. See progress for receipts.
-
-Repeated debugger/load-trace options now preserve source option state and the
-first implicit view. Post-condition parsing uses source trailing-empty split
-semantics. `nomonolith` is accepted and consumed as Java does; neither the pinned
-source nor Go changes output for that token. Help and README explain this.
-Original CLI/debugger/dump-load methods and manual source/native observations
-pass; their receipts predate completion of the retired workspace snapshot below.
-
-Runner completion now follows Java: ignore user-output cleanup I/O failures,
-print the finished message, then generate a trace spec. Trace-generation I/O
-reports its original diagnostic without changing the checker result. The
-original generator's ignored mkdirs result and resource-close catch are retained.
-Both trace-generation messages now use the source MP text. Startup banners report
-the configured heap and direct-memory budgets instead of reserved Go memory and
-zero. Original message/CLI, trace/checkpoint and writer tests pass; manual Java
-and Go observations confirm completion order, budgets and preserved results.
-These changes postdate the retired full TLC snapshot `73adde2`.
-
-Recovery now completes before fingerprint/random initialization. A failed
-intern-table recovery leaves the polynomial and enumerable seed unchanged, as
-Java does. Simulation with an automatically chosen seed ignores aril for RNG
-advancement while preserving its parsed option value; the enumerable seed is
-set once before tool construction. Original simulation/recovery/CodePlex checks
-and source/native manual observations pass. No assertions or counts changed.
-
-Missing MP storage, metadata, CHOOSE, liveness and trace diagnostics now retain
-Java's text instead of numeric fallback. Pool cleanup preserves its error/warning
-variants; temporal violations preserve zero/single/plural-property wording.
-Back-to-state and debug-state formatting retain source tool/debug branches.
-Unknown codes use Java's wrong-invocation diagnostic. Manual source/native
-observations match 1,344 rows across those branches; original tests pass.
-The 186-test remainder is retired with status 0. The completed workspace receipt above covers these production corrections.
-
-The full MP template-construction/substitution method now follows all 245 Java
-cases. Literal append sequences are generated; conditional cases preserve exact
-argument counts, tool/debug progress text and pre-substitution PID checks. Normal
-and nullable calls share source sequential replacement. Original MP/warning
-checks pass in 0.024 seconds; original trace/checkpoint/debugger/override models
-pass in 2.307 seconds; all packages compile. Manual source/native matrices match
-all case/count/debug branches and public nullable substitutions. The completed `be6942a` workspace snapshot predates this final formatter correction.
-
-Nullable calls now format exactly once. A first null prevents processing later
-markers, including a self-referencing one that made the previous extra ordinary
-pass loop. The bounded scratch observation reproduces that loop; corrected output
-matches Java and original MP/warning tests pass. No test assertions changed.
-
-Current normal verification jobs:
-
-| Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
+| Job | Compiled snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll live handles before launching duplicate suites. MSB session `63113` is
-now retired with status 0: its complete original random draft passes in
+The latest observed LSB log exceeds 2.001 billion of 2,147,483,648 iterations.
+Poll the same live handle before launching a duplicate. Quiet flushing is not a
+terminal result. Its shared draft and overlay are
+`/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go` and
+`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`; do not edit them while
+this process runs. Drafts remain outside the persistent inventory.
+
+MSB session `63113` is retired with status 0. Its full random draft passes in
 13,343.32 seconds, including all 2,147,483,648 insertions, checkpoint commit,
-invariant check and final size. It was compiled at `a915e08`, before current
-DiskFPSet flusher endpoint/count assertions and file-helper corrections. Preserve
-that exact receipt; it does not verify those later changes. The draft remains
-outside the persistent suite and does not increase inventory credit. Historical
-workspace failures and their corrections are recorded in `PORT_PROGRESS.md`.
+invariant check and final size. It was compiled at `a915e08` before later
+flusher endpoint/count assertions and file-helper fixes. Preserve that limited
+receipt; it does not verify newer changes or earn inventory credit. Both drafts
+retain original factories/configuration, seed, checkpoints, assertions and
+bounds, use `-timeout=0`, and have no race instrumentation.
 
-The random jobs retain all 2,147,483,648 iterations, default
-factories/configuration, seed, checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.
-LSB completed its first 536,870,912-entry flush and resumed insertion without a
-reported failure. Quiet flushes are not terminal jobs. Earlier sessions `98446`,
-`83220` and `59015` are retired without full-run credit; see progress receipts
-for their deliberate termination reasons.
+## User-visible behavior already completed
 
-The full random family draft for LSB/MSB/OffHeap remains outside the enabled
-suite, without completion credit. Its LSB and MSB cases use the live jobs above;
-do not edit their shared draft while those runs are in progress. Its full source
-loops and factory settings
-are in `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go`, with overlay
-`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`. The separate full MSB
-draft and overlay use prefix `/mnt/oldrog/tmp/tlago-long-msb-random-full-`.
+Direct TLC arguments, `modelcheck` and `mc` use the same TLC runner and Java
+flags. Do not restore `--tlc` or the bounded checker's CLI path. Help in
+`cli_help.go` explains flags, defaults and Java/Toolbox correspondence. Packaged
+models load their properties and files through the packaged resolver. Ordinary
+and packaged loading share deferred tool construction after intern recovery.
 
-The Java archive recovery port exposed and fixed late intern-table restoration.
-The full new recovery method, five short component checks, and all-package
-compilation pass. Eight related original checkpoint, recovery, EWD840 and DFID
-model tests pass normally in 230.719 seconds. This is focused verification of
-those model ports; the full `cbdf35a` workspace receipt above also covers them.
+Configuration I/O failures exit with source status `255` and omit FINISHED and
+trace generation. SANY tool markers and STARTING retain source phase order.
+Unexpected parsing Exceptions become checked failure; semantic Exceptions chain
+through FrontEndException and TLC_PARSING_FAILED2; Java Error propagates. Delayed
+SANY output releases only on the unexpected checked-exception path. See
+`TLC_ARCH.md` and `PORT_PROGRESS.md` for details and remaining diagnostic gaps.
 
-TLC is now the default CLI runner. Direct invocations such as
-`tlago -workers auto MC.tla`, `tlago modelcheck -workers auto MC.tla`, and
-`tlago mc -workers auto MC.tla` use the same Java-shaped flags and checker.
-The selection flags `--tlc`, `-tlc`, `--go-tlc`, and `-go-tlc` have been removed,
-as has the bounded checker's CLI path and its `-maxStates` option. The older
-bounded-checker library API is still covered by its existing tests.
-
-The ordinary CLI also handles Java's packaged-model mode: omit the module when
-`CLASSPATH` contains `/model/MC.tla` and its configuration. It loads generated
-properties, uses the packaged resolver, selects tool output and disables
-checkpoints. Direct invocation, `modelcheck` and `mc` use the same runner.
-Manual unchanged-Java/native runs of adapted original fixtures match failure
-code 2147 and successful 3-generated/2-distinct state counts. These observations
-add no test-port credit. The retired `71687` workspace snapshot predates this correction.
-
-The guide in `cli_help.go` prints flag summaries, explanations, Java/Toolbox
-correspondence, defaults, examples, and current implementation limits. Help
-exits successfully without loading files or starting a checker. README includes
-an updated help transcript. Focused normal checks pass: root 6.365 seconds,
-SANY 0.014 seconds, and TLC 0.014 seconds. Manual checks covered 34 direct,
-modelcheck, and mc invocations, including exhaustive checking, simulation,
-violation traces, removed-option errors, and help. Original Java-derived tests
-and the test-port inventory are unchanged. The full `cbdf35a` workspace receipt
-above includes these CLI changes. Historical interrupted race runs have no pass
-credit; never mix the long workloads with `-race`.
-
-The CommunityModules progress changes are already committed as `840d494`.
-Under `go test -v`, the test streams subprocess output and reports phase progress
-with periodic heartbeats. To check it remotely from the repository root:
+CommunityModules progress changes are committed as `840d494`. Under `go test -v`,
+its subprocess output, phase progress and heartbeats remain visible. Remote check:
 
 ```bash
 go test -v -count=1 -timeout=60m -run '^TestJavaCommunityModulesAnt$' .
 ```
 
-The earlier model-config failure comparing `TRUE` with `"blue"` was fixed and is
-covered by the green workspace suite. Reopen it only if new evidence warrants it.
+The earlier model-config failure comparing `TRUE` with `"blue"` is fixed and
+covered by the full suite. Reopen it only if new evidence warrants it.
 
 ## Test-port inventory
 
@@ -306,23 +164,13 @@ possible schedule.
 
 ## Remaining work and known blockers
 
-Continue the core source audit and unresolved original methods below. MP's
-ordinary/error/warning/bug/state printers now notify recorders before formatting.
-Suppressed ordinary messages and globally disabled warnings avoid formatting;
-enabled suppressed warnings still enter history. State output retains its return
-value and ordinal info. Raw events carry parameters rather than derived text.
-The four original coverage reporting methods now capture actual ToolIO output,
-as Java does. Focused original checks and ten manual public-printer comparisons
-pass; see PORT_PROGRESS for receipts. Runtime-exception and throwable printers
-now retain object events, nullable details, suppression and separate stack policies.
-Original simulator/failure/override models pass; 22 manual source/native cases
-verify captured output and events. The subsequent debug port restores MP entry/parameter/exit diagnostics, actual
-process stdout/stderr routing, native goroutine IDs and BFS checker lifecycle
-reports. Original fixture comparisons include these diagnostics and normalized
-native frames. The CLI wrapper now returns TLC's Java exit mapping and does not
-print handled exceptions or completion summaries again. Continue auditing CLI
-welcome/load ordering and constructor failure boundaries, plus pending original
-contexts; entire TLC parity remains unproven.
+Continue the core production audit and unresolved original methods below.
+Current concrete production gaps include ordinary missing-module/syntax-error
+ErrorDetails rendering, the missing SANY linting phase, and remaining
+storage/trace constructor error boundaries. Random-access-file `rws`/`rwd` modes
+and invalid-mode exception behavior also need source reconciliation. Do not add
+lint progress messages without implementing the actual lint checks. Matching
+checker output or a high test translation percentage does not prove full parity.
 
 Five main-suite contexts have known source-failing or JVM-specific
 reconciliation issues below. The other four pending contexts are original assumption-disabled

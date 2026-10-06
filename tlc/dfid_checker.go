@@ -10,7 +10,6 @@ type DFIDModelChecker struct {
 	InitStates      []*TLCStateMut
 	InitFPs         []uint64
 	FPSet           *MemFPIntSet
-	LiveCheck       *LiveCheck
 	DFIDWorkers     []*DFIDWorker
 	StatesGenerated int64
 	CleanupEnabled  bool
@@ -62,28 +61,28 @@ func NewDFIDModelChecker(tool *Tool, metadir string, deadlock bool, opts ...DFID
 			checkDeadlock = deadlock && config.GetCheckDeadlock()
 		}
 	}
-	checkLiveness := false
-	if tool != nil {
-		checkLiveness = !tool.LivenessIsTrue()
-	}
 	mc := &DFIDModelChecker{
-		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
-		FPSet:           NewMemFPIntSet().Init(NumWorkers(), metadir, rootName),
+		AbstractChecker: newAbstractCheckerFields(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		CleanupEnabled:  true,
 	}
-	mc.CheckLiveness = checkLiveness
-	mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	for _, opt := range opts {
 		opt(mc)
 	}
+	mc.AbstractChecker.initialize(mc.Stop)
+	// Java applies these assertions after the complete parent constructor and
+	// before allocating the fingerprint set or worker array.
+	if NumWorkers() != 1 {
+		panic(NewTLCRuntimeException(ECGeneral, "Depth-First Iterative Deepening mode does not support multiple workers (https://github.com/tlaplus/tlaplus/issues/548).  Please run TLC with a single worker."))
+	}
+	if mc.CheckLiveness {
+		panic(NewTLCRuntimeException(ECGeneral, "Depth-First Iterative Deepening mode does not support checking liveness properties (https://github.com/tlaplus/tlaplus/issues/548).  Please check liveness properties in Breadth-First-Search mode."))
+	}
+
 	if mc.FPSet == nil {
 		mc.FPSet = NewMemFPIntSet()
 	}
 	if mc.FPSet.metadir == "" || mc.FPSet.filename == "" {
 		mc.FPSet.Init(NumWorkers(), metadir, rootName)
-	}
-	if mc.LiveCheck == nil {
-		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
 	}
 	return mc
 }
@@ -104,15 +103,7 @@ func (mc *DFIDModelChecker) ModelCheck() (result int, err error) {
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "DFID model checker has no tool")
 	}
-	if NumWorkers() != 1 {
-		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support multiple workers. Please run TLC with a single worker.")
-	}
-	if mc.CheckLiveness {
-		return ECGeneral, newTLCError(ECGeneral, "Depth-First Iterative Deepening mode does not support checking liveness properties (https://github.com/tlaplus/tlaplus/issues/548).  Please check liveness properties in Breadth-First-Search mode.")
-	}
-	if CoverageAnyEnabled() {
-		CreateCoverageCostModels(mc.Tool)
-	}
+
 	recovered, err := mc.Recover()
 	if err != nil {
 		return ECSystemCheckpointRecoveryCorrupt, err

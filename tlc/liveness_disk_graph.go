@@ -23,16 +23,12 @@ type DiskGraph struct {
 }
 
 func NewDiskGraph(metadir string, soln int, outDegreeStats ...any) (*DiskGraph, error) {
-	if err := os.MkdirAll(metadir, 0o755); err != nil {
-		return nil, err
-	}
 	nodeFile, err := newLivenessDataFile(filepath.Join(metadir, fmt.Sprintf("nodes_%d", soln)))
 	if err != nil {
 		return nil, err
 	}
 	ptrFile, err := newLivenessDataFile(filepath.Join(metadir, fmt.Sprintf("ptrs_%d", soln)))
 	if err != nil {
-		_ = nodeFile.Close()
 		return nil, err
 	}
 	var stats any

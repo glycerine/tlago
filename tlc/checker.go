@@ -28,10 +28,17 @@ type AbstractChecker struct {
 	Workers                   []*Worker
 	PrintedLivenessErrorStack bool
 	Config                    Value
+	LiveCheck                 *LiveCheck
 	StartTime                 time.Time
 }
 
 func NewAbstractChecker(tool *Tool, metadir string, stateWriter IStateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
+	checker := newAbstractCheckerFields(tool, metadir, stateWriter, deadlock, fromCheckpoint, startTime)
+	checker.initialize(checker.Stop)
+	return checker
+}
+
+func newAbstractCheckerFields(tool *Tool, metadir string, stateWriter IStateWriter, deadlock bool, fromCheckpoint string, startTime time.Time) *AbstractChecker {
 	if stateWriter == nil {
 		stateWriter = NewNoopStateWriter()
 	}
@@ -52,8 +59,49 @@ func NewAbstractChecker(tool *Tool, metadir string, stateWriter IStateWriter, de
 		AllStateWriter: stateWriter,
 		StartTime:      startTime,
 	}
-	checker.Config = checker.createConfig()
 	return checker
+}
+
+// initialize completes Java's parent constructor before concrete checker storage.
+func (c *AbstractChecker) initialize(stop func()) bool {
+	if CoverageAnyEnabled() {
+		CreateCoverageCostModels(c.Tool)
+	}
+	if c.CheckLiveness && c.Tool != nil && c.Tool.HasSymmetry() {
+		PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry)
+	}
+	if c.LiveCheck == nil {
+		if c.CheckLiveness {
+			DebugPrintMessage("initializing liveness checking")
+			var err error
+			if livenessTestingImplementationEnabled() {
+				c.LiveCheck, err = NewAddAndCheckLiveCheckFromTool(c.Tool, c.Metadir)
+			} else {
+				c.LiveCheck, err = NewLiveCheckFromTool(c.Tool, c.Metadir, c.AllStateWriter)
+			}
+			if err != nil {
+				panic(err)
+			}
+			DebugPrintMessage("liveness checking initialized")
+		} else {
+			c.LiveCheck = NewNoOpLiveCheck(c.Tool, c.Metadir)
+		}
+	}
+	c.Config = c.createConfig()
+	return scheduleStopAfterFromJavaProperty(func() {
+		defer func() {
+			if failure := recover(); failure != nil {
+				// Java's Timer thread reports its uncaught throwable and exits;
+				// it does not terminate the model-checker's host process.
+				_, _ = fmt.Fprint(os.Stderr, "Exception in thread \"TLCStopAfterTimer\" "+javaThrowableStackTrace(panicValueAsError(failure)))
+			}
+		}()
+		stop()
+	})
+}
+
+func (c *AbstractChecker) Stop() {
+	panic(NewUnsupportedOperationException("stop not implemented"))
 }
 
 func (c *AbstractChecker) SetDone() bool {
@@ -294,10 +342,10 @@ type ModelChecker struct {
 	nextErrorMu             sync.Mutex
 	NumberOfInitialStates   int64
 	FPSet                   FPSet
+	FPSetConfiguration      *FPSetConfiguration
 	StateQueue              StateQueue
 	Trace                   *TLCTrace
 	ConcurrentTrace         *ConcurrentTLCTrace
-	LiveCheck               *LiveCheck
 	NextStatesGenerated     int64
 	StatesPerMinute         int64
 	DistinctStatesPerMinute int64
@@ -306,7 +354,6 @@ type ModelChecker struct {
 	RuntimeRatio            float64
 	ForceLiveCheck          bool
 	TimeBound               bool
-	LiveCheckInitErr        error
 	CleanupEnabled          bool
 	cleanupDone             bool
 }
@@ -316,6 +363,12 @@ type ModelCheckerOption func(*ModelChecker)
 func WithModelCheckerFPSet(fpSet FPSet) ModelCheckerOption {
 	return func(mc *ModelChecker) {
 		mc.FPSet = fpSet
+	}
+}
+
+func WithModelCheckerFPSetConfiguration(config *FPSetConfiguration) ModelCheckerOption {
+	return func(mc *ModelChecker) {
+		mc.FPSetConfiguration = config
 	}
 }
 
@@ -375,67 +428,45 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 	if tool != nil {
 		rootName = tool.GetRootName()
 	}
-	concurrentTrace := NewConcurrentTLCTrace(metadir, rootName)
-	concurrentTrace.SetTool(tool)
 	mc := &ModelChecker{
-		AbstractChecker: NewAbstractChecker(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
-		FPSet:           NewFPSet(NewFPSetConfiguration()).Init(NumWorkers(), metadir, rootName),
-		StateQueue:      NewStateQueue(metadir),
-		Trace:           concurrentTrace.TLCTrace,
-		ConcurrentTrace: concurrentTrace,
+		AbstractChecker: newAbstractCheckerFields(tool, metadir, NewNoopStateWriter(), checkDeadlock, "", time.Now()),
 		CleanupEnabled:  true,
 	}
 	for _, opt := range opts {
 		opt(mc)
 	}
-	if mc.FPSet == nil {
-		mc.FPSet = NewFPSet(NewFPSetConfiguration())
+	if mc.AbstractChecker.initialize(mc.Stop) {
+		mc.TimeBound = true
 	}
-	if !fpSetInitialized(mc.FPSet) {
-		mc.FPSet = mc.FPSet.Init(NumWorkers(), metadir, rootName)
-	}
+	// ModelChecker's private constructor creates the queue, then trace. Its
+	// public constructor initializes the selected fingerprint set and workers.
 	if mc.StateQueue == nil {
 		mc.StateQueue = NewStateQueue(metadir)
 	}
 	if !stateQueueInitialized(mc.StateQueue) {
 		setStateQueueDir(mc.StateQueue, metadir)
 	}
+	mc.ConcurrentTrace = NewConcurrentTLCTrace(metadir, rootName)
+	mc.ConcurrentTrace.SetTool(tool)
 	if mc.Trace == nil {
-		mc.Trace = NewTLCTrace(metadir, rootName)
+		mc.Trace = mc.ConcurrentTrace.TLCTrace
 	} else {
 		mc.Trace.SetCheckpointContext(metadir, rootName)
 	}
 	mc.Trace.SetTool(tool)
-	if mc.ConcurrentTrace == nil {
-		mc.ConcurrentTrace = NewConcurrentTLCTrace(metadir, rootName)
-	}
 	mc.ConcurrentTrace.TLCTrace = mc.Trace
-	mc.ConcurrentTrace.SetTool(tool)
-	if mc.LiveCheck == nil {
-		if mc.CheckLiveness {
-			if tool != nil && tool.HasSymmetry() {
-				PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry)
-			}
-			DebugPrintMessage("initializing liveness checking")
-			if livenessTestingImplementationEnabled() {
-				mc.LiveCheck, mc.LiveCheckInitErr = NewAddAndCheckLiveCheckFromTool(tool, metadir)
-			} else {
-				mc.LiveCheck, mc.LiveCheckInitErr = NewLiveCheckFromTool(tool, metadir, mc.AllStateWriter)
-			}
-			if mc.LiveCheckInitErr == nil {
-				DebugPrintMessage("liveness checking initialized")
-			}
-		} else {
-			mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
+
+	if mc.FPSet == nil {
+		config := mc.FPSetConfiguration
+		if config == nil {
+			config = NewFPSetConfiguration()
 		}
+		mc.FPSet = NewFPSet(config)
 	}
-	if mc.LiveCheck == nil {
-		mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
+	if !fpSetInitialized(mc.FPSet) {
+		mc.FPSet = mc.FPSet.Init(NumWorkers(), metadir, rootName)
 	}
 	mc.initWorkers()
-	if scheduleStopAfterFromJavaProperty(mc.Stop) {
-		mc.TimeBound = true
-	}
 	SetMainChecker(mc)
 	return mc
 }
@@ -629,12 +660,6 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	}()
 	if mc.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "model checker has no tool")
-	}
-	if mc.LiveCheckInitErr != nil {
-		return ECGeneral, mc.LiveCheckInitErr
-	}
-	if CoverageAnyEnabled() {
-		CreateCoverageCostModels(mc.Tool)
 	}
 	recovered, err := mc.Recover()
 	if err != nil {

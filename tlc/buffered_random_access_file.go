@@ -11,6 +11,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -88,6 +89,15 @@ func NewBufferedRandomAccessFile(name string, mode string) (*BufferedRandomAcces
 	}
 	file, err := os.OpenFile(name, flag, 0o666)
 	if err != nil {
+		// RandomAccessFile's native open throws FileNotFoundException, even
+		// for other open failures such as permissions or a directory path.
+		if failure, ok := err.(*os.PathError); ok {
+			reason := failure.Err.Error()
+			if len(reason) > 0 {
+				reason = strings.ToUpper(reason[:1]) + reason[1:]
+			}
+			return nil, NewFileNotFoundException(name + " (" + reason + ")")
+		}
 		return nil, bufferedRandomAccessFileIOError(err)
 	}
 	raf := &BufferedRandomAccessFile{

@@ -29,6 +29,24 @@ catches runtime Exception, prints its stack to System.err and retains the buffer
 Error propagates. Successful reset discards bytes appended during release.
 ToolIO's string capture does not intercept source inherited raw-byte writes.
 
+## Checker construction
+
+Parent construction creates coverage cost models, initializes liveness, caches
+TLCGet("config") and schedules source termination before concrete checker storage.
+Liveness disk-opening errors propagate immediately. DFID applies its worker and
+liveness assertions only after that parent constructor completes, before its
+fingerprint set and workers. BFS creates queue and trace, then initializes the
+selected fingerprint set and workers. Configuration-taking native construction
+defers factory selection to that phase; explicit prebuilt objects remain native
+injection options.
+
+Disk graphs require their metadata directory to exist, as Java does. They do
+not create missing parents. LiveCheck propagates each subchecker's opening error
+before publishing the check. RandomAccessFile open failures retain
+FileNotFoundException and the native operating-system reason. Its later I/O
+failures remain IOException. Further trace/storage constructor failure boundaries
+and RandomAccessFile rws/rwd modes remain audit work.
+
 ## Message formatting
 
 `MP.getMessage0` first constructs a template, then substitutes parameters in
