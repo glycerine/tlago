@@ -771,9 +771,6 @@ func (mc *ModelChecker) Recover() (bool, error) {
 	}
 	PrintMessage(ECTLCCheckpointRecoverStart, mc.FromCheckpoint)
 	mc.Metadir = mc.FromCheckpoint
-	if err := RecoverUniqueStrings(mc.FromCheckpoint); err != nil {
-		return false, err
-	}
 	rootName := "Spec"
 	if mc.Tool != nil && mc.Tool.GetRootName() != "" {
 		rootName = mc.Tool.GetRootName()

@@ -1,5 +1,13 @@
 # TLC Architecture Notes for the Go Port
 
+2026-10-06 checkpoint intern-table initialization:
+TLC.Process restores UniqueString identities before constructing the tool, as
+Java TLC.process does. ModelChecker and DFIDModelChecker recovery must not reload
+the table after parsing: parsed strings would otherwise retain different tokens
+from recovered values, causing extra fingerprints and search states. The original
+three-worker CodePlexBug08 archive recovery test now matches Java recovery/final
+counts, graph sizes and complete trace. See PORT_PROGRESS.md for verification.
+
 2026-10-05 independent heap table counters:
 HeapBasedDiskFPSet increments its LongAdder table counts without a global monitor.
 Native atomic tblLoad/tblCnt increments now likewise run outside the metadata

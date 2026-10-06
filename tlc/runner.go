@@ -213,6 +213,13 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 				result = &Result{ErrorCode: code}
 			}
 		}()
+		// TLC.process restores intern identities before constructing FastTool.
+		// Parsed strings and recovered values must share the checkpoint tokens.
+		if t.FromCheckpoint != "" {
+			if err := RecoverUniqueStrings(t.FromCheckpoint); err != nil {
+				panic(err)
+			}
+		}
 		// TLC.process prints the mode banner before constructing FastTool,
 		// including when configuration-time constant evaluation fails.
 		if t.Mode == RunModeSimulate {

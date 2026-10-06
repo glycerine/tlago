@@ -30,7 +30,9 @@ The original checkpoint-on-violation and time-bound model tests are now complete
 Both pass normally with their full assertions; the time-bound test retains the
 source five-second limit. The generated checkpoint trace recheck is also complete
 and passes with its original checkpoint interval and exact seven-state trace.
-Next inspect the Java-produced CodePlexBug08 checkpoint archive recovery case. Debugger/scoped-identifier methods are already mapped.
+The CodePlexBug08 recovery model also passes against the unchanged Java archive
+with three workers and all original assertions. Intern-table recovery now occurs
+before tool construction, matching Java and preserving checkpoint identities. Debugger/scoped-identifier methods are already mapped.
 JPF concurrency verification and benchmarks remain separately tracked; JVM-only
 assertions and source-failing methods require honest reconciliation rather than
 invented Go equivalents. Keep pending entries visible in
@@ -43,6 +45,12 @@ packaged properties, networking primitives, OpenJDK notices, and `x/text`.
 Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
+
+The Java archive recovery port exposed and fixed late intern-table restoration.
+The full new recovery method, five short component checks, and all-package
+compilation pass. Eight related original checkpoint, recovery, EWD840 and DFID
+model tests pass normally in 230.719 seconds. This is focused verification of
+the current change; the complete workspace baseline below remains `305a13f`.
 
 TLC is now the default CLI runner. Direct invocations such as
 `tlago -workers auto MC.tla`, `tlago modelcheck -workers auto MC.tla`, and
@@ -104,12 +112,12 @@ inventory. Its current totals are:
 
 | Suite | Translated method contexts | Pending contexts |
 | --- | ---: | ---: |
-| Main TLC | 1,256 of 1,269 | 13 |
+| Main TLC | 1,259 of 1,269 | 10 |
 | Shared utilities | 55 of 56 | 1 |
 | Long tests | 15 of 22 | 7 |
 | Concurrent tests | 2 of 17 | 15 |
 
-In the main suite, 613 of 626 non-ignored concrete classes are complete. A method
+In the main suite, 616 of 626 non-ignored concrete classes are complete. A method
 context is a concrete Java class plus a method; inherited methods count once
 per concrete subclass. These totals measure translations, not implementation
 coverage or universal behavioral parity. Original ignored methods are counted
@@ -127,13 +135,13 @@ possible schedule.
 
 ## Remaining work and known blockers
 
-Four main-suite contexts have known source-failing or JVM-specific
-reconciliation issues below. The other nine pending contexts include original
-distributed models and related trace/liveness cases; checkpoint models are now
-complete. Consult the inventory for each exact disposition.
+Five main-suite contexts have known source-failing or JVM-specific
+reconciliation issues below. The other five pending contexts are original
+distributed models; checkpoint models are now complete. Consult the inventory for each exact disposition.
 
 | Eligible class | Unresolved issue |
 | --- | --- |
+| `DistributedTrace` | Unchanged Java and the temporary faithful Go translation fail no-generated-TE-spec and inherited success-exit assertions (actual 12). Both produce the original eleven-state trace; retain four workers and original expectations. |
 | `AssertExpressionStack` | Unchanged Java and the faithful Go draft fail `assertNoTESpec` and the inherited success-exit assertion. Trace generation is enabled by the base, and the actual exit is 14. |
 | `DepthFirstTerminate` | The original runtime-derived worker setting requests 48 workers on this host. Java rejects multithreaded DFID, records `GENERAL`, and exits 255; see issue 548. Do not substitute one worker. |
 | `InliningTest` | The whole method includes HotSpot/JFR compiler-inlining records, reflective annotations, and JVM callee descriptors. Porting only its checker assertions would be incomplete. |

@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-06 ordinary-checker tests in distributed package and trace reconciliation:
+Confirmed DistributedDoInitFunctorInvariantTest and its Continue variant inherit
+ordinary ModelCheckerTestCase, not distributed transport setup. Existing stop
+method already covers the complete original NotNine fixture/assertions; verified
+fixture bytes. Added full original continuation case using that same NotNine
+fixture rather than the distinct Inv fixture. Both Go methods pass 3.377 seconds;
+unchanged Java classes pass together (2 tests, command exit 0). Logs:
+/mnt/oldrog/tmp/tlago-original-distributed-init.log and
+/mnt/oldrog/tmp/tlago-original-java-distributed-init.log.
+Unchanged Java DistributedTrace fails assertNoTESpec and inherited SUCCESS exit
+(actual 12). Temporary Go overlay reproduces both and satisfies all eleven trace
+state/value/action-shape/ordinal assertions with original four workers. Initial
+scratch resolver omitted embedded classpath (exit150); corrected audit exits1
+solely for the two original expectations, 1.733 seconds. No source assertion or
+production behavior weakened, no new persistent skip/failed test installed.
+Logs: /mnt/oldrog/tmp/tlago-original-distributed-trace.log and
+/mnt/oldrog/tmp/tlago-distributed-trace-audit-complete.log. Draft overlay retained
+in /mnt/oldrog/tmp for reconciliation, not test-port credit.
+Main inventory now 1,259/1,269 methods, 616/626 classes, ten pending.
+
+2026-10-06 original Java archive recovery and intern initialization correction:
+Translated complete CodePlexBug08EWD840FL2FromCheckpointTest setup/test method,
+retaining source checkpoint.zip bytes, gzip, three workers, inherited liveness
+exit, recovery 1510/39, final 2334/1566/0, graph sizes 54038132/831296, all ten
+trace states/ordinals/action-shape assertions, no generated TE spec, and back to
+state 1. Archive SHA-256:
+4a10a764505bd9455d4aa966c34c41fae75240e13d7319f965c32248137e6a5f.
+Initial run failed with 2762/1628/0: Go restored intern identities after parsing,
+where Java TLC.process restores them before FastTool. Moved intern recovery into
+TLC.Process before tool construction; removed late ModelChecker/DFID reloads.
+Corrected translation's extended-state assertion to ordinary states for the
+original three-worker setting (source debugger applies only with one worker).
+Complete corrected method passes 4.744 seconds; log:
+/mnt/oldrog/tmp/tlago-java-checkpoint-recovery-final.log. Five existing short
+component checks pass normally 2.416 seconds. Related model selection session 16100 exited 1 after its two-minute harness
+timeout during unchanged full EWD840 exploration, which was making progress.
+The recovery method passed again within that selection. Repeated the same exact
+selection normally with a 30-minute timeout; session 18064 exited 0 and is
+retired. All eight original checkpoint/recovery/EWD840/DFID models pass in
+230.719 seconds. Log /mnt/oldrog/tmp/tlago-checkpoint-related-models-full.log.
+All-package compile-only check also passes. No workload or assertion was reduced;
+no race/full-suite claim.
+Main inventory becomes 1,257/1,269 methods, 614/626 classes, 12 pending.
+
 2026-10-06 original checkpoint trace recheck:
 Translated the complete CheckpointOnViolationTest_TTraceTest.testSpec after
 its original generator port. Shared the full original generator assertions;

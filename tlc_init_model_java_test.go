@@ -175,3 +175,22 @@ func requireJavaTLCUncovered(t *testing.T, result *tlc.Result, locations ...stri
 		t.Fatalf("uncovered=%v, want %v", uncovered, want)
 	}
 }
+
+// Original distributed-package DistributedDoInitFunctorInvariantContinueTest
+// extends the ordinary ModelCheckerTestCase. It runs the NotNine fixture with
+// continuation, not the separate Inv fixture in DoInitFunctorInvariantContinue.
+func TestJavaDistributedDoInitFunctorInvariantContinue(t *testing.T) {
+	r := runJavaTLCModelTest(t, "DoInitFunctorInvariant", "-continue")
+	if r.ExitStatus != tlc.ExitStatusSuccess {
+		t.Fatalf("exit=%d, want SUCCESS", r.ExitStatus)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "21", "11")
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL present")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCInvariantViolatedInitial, "NotNine", "x = 9\n")
+	requireJavaTLCUncovered(t, r)
+}

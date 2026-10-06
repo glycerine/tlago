@@ -818,9 +818,6 @@ func (mc *DFIDModelChecker) Recover() (bool, error) {
 	}
 	PrintMessage(ECTLCCheckpointRecoverStart, mc.FromCheckpoint)
 	mc.Metadir = mc.FromCheckpoint
-	if err := RecoverUniqueStrings(mc.FromCheckpoint); err != nil {
-		return false, err
-	}
 	if mc.FPSet != nil {
 		rootName := "Spec"
 		if mc.Tool != nil {
