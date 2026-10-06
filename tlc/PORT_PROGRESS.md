@@ -1,5 +1,28 @@
 # TLC Port Progress
 
+2026-10-06 full suite receipts and scan IOException propagation:
+Full workspace 44100 returns terminal status 0 on cbdf35a: root 1,706.569s,
+SANY 1.068s, TLC 781.592s, CLI has no test files. Log:
+/mnt/oldrog/tmp/tlago-master-streaming-parity-workspace.log. Full normal TLC
+63702 returns terminal status 0 on a915e08, 791.920s; log:
+/mnt/oldrog/tmp/tlago-named-recovery-final-tlc.log. Both handles are retired.
+These include complete enabled original workloads, without race instrumentation.
+Source audit then found collision/invariant scans converting IOException into
+zero/false. Restore thrown typed failures using the existing FPSet Put/Contains
+panic boundary. Order violations still return false. Shared scan returns its
+actual error, and source finally-close errors propagate; expected-size overload
+still compares Size(). OffHeap invariant path preserves its merge/read failures.
+Use the existing isJavaIOException helper for flusher's actual thrown family,
+without catching a runtime exception's nested IOException cause.
+Existing focused checks pass 5.319s (27914 terminal 0); all original manager test
+bodies pass 0.055s; all packages compile (9243 terminal 0). No changed tests,
+invented regressions, reduced bounds, skips or inventory credit. These focused
+checks verify the subsequent correction; broad receipts remain scoped above.
+Full MSB 63113 and LSB 59782 remain live on a915e08. LSB completes its first
+536,870,912-entry flush and resumes insertion, without a reported failure.
+Keep every original iteration and no timeout; poll these jobs before duplicates.
+
+
 2026-10-06 full-bound stress deadline and current verification jobs:
 MSB 59015 completed its 1,073,741,824-entry first flush, resumed insertion and
 last printed 1,113,282,857 iterations without a reported failure. Its explicit

@@ -231,11 +231,11 @@ func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 		}
 		itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
 		if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, s.concurrentFlusher); err != nil {
-			return false
+			panic(err)
 		}
 		ok, err := s.checkOffHeapIndex()
 		if err != nil {
-			return false
+			panic(err)
 		}
 		if !ok {
 			panic(NewAssertionError())
@@ -244,7 +244,10 @@ func (s *OffHeapDiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 		atomic.StoreInt64(&s.tblLoad, 0)
 		s.forceFlush.Store(false)
 	}
-	ok, _ := s.checkFile()
+	ok, err := s.checkFile()
+	if err != nil {
+		panic(err)
+	}
 	return ok && (len(expectFPs) == 0 || uint64(atomic.LoadInt64(&s.fileCnt)+atomic.LoadInt64(&s.tblCnt)) == expectFPs[0])
 }
 

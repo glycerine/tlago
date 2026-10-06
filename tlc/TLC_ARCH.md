@@ -14,8 +14,11 @@ table and existing file-tail semantics, streams the checkpoint into the current
 file, rebuilds the index while counting writes, and checks signed ordering and
 index length with `SYSTEM_INDEX_ERROR`. It is distinct from the normal no-argument
 checkpoint no-ops and `recover(TLCTrace)` replay. The public invariant method
-checks order; its expected-size overload compares `Size()`. Flusher IOException
-wrapping and rename runtime causes preserve Java's exception boundaries.
+checks order; its expected-size overload compares `Size()`. Collision/invariant scans propagate IOException through the same typed-panic
+boundary as native FPSet put/contains; a false ordering invariant is distinct
+from an I/O failure. The invariant scan also propagates source finally-close
+failures. Flusher IOException wrapping and rename runtime causes preserve
+Java's exception boundaries.
 See `HANDOFF.md` for current verification snapshots and live jobs.
 
 

@@ -594,33 +594,36 @@ func (s *DiskFPSet) CheckFPs() uint64 {
 	err := s.flushTable()
 	s.releaseTblWriteLock()
 	if err != nil {
-		return 0
+		panic(err)
 	}
 	in, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 	if err != nil {
-		return 0
+		panic(err)
 	}
 	defer in.Close()
 	length, err := in.Length()
 	if err != nil {
-		return 0
+		panic(err)
 	}
 	dis := uint64(math.MaxInt64)
 	if length > 0 {
 		x, err := in.ReadLong()
 		if err != nil {
-			return 0
+			panic(err)
 		}
 		for pos := int64(fpSetLongSize); pos < length; pos += fpSetLongSize {
 			y, err := in.ReadLong()
 			if err != nil {
-				return 0
+				panic(err)
 			}
 			if difference := y - x; difference >= 0 {
 				dis = minUint64(dis, uint64(difference))
 			}
 			x = y
 		}
+	}
+	if err := in.Close(); err != nil {
+		panic(err)
 	}
 	return dis
 }
@@ -629,9 +632,12 @@ func (s *DiskFPSet) CheckInvariant(expectFPs ...uint64) bool {
 	s.acquireTblWriteLock()
 	defer s.releaseTblWriteLock()
 	if err := s.flushTable(); err != nil {
-		return false
+		panic(err)
 	}
-	ok, _ := s.checkFile()
+	ok, err := s.checkFile()
+	if err != nil {
+		panic(err)
+	}
 	if !ok {
 		return false
 	}
@@ -898,9 +904,8 @@ func (s *DiskFPSet) flushTable() error {
 		s.prepareMSBTable()
 	}
 	if err := s.mergeNewEntries(); err != nil {
-		// BufferedRandomAccessFile represents native file failures as IOException.
-		// Catch the thrown type, not an IOException nested in a runtime cause.
-		if _, ioFailure := err.(*IOException); ioFailure {
+		// Catch the thrown I/O family, not a runtime exception's nested cause.
+		if isJavaIOException(err) {
 			return NewIOException("Error: merging entries into file " + s.fpFilename + "  " + javaThrowableString(err))
 		}
 		return err
@@ -1307,26 +1312,33 @@ func (s *DiskFPSet) clearTable() {
 
 // checkFile performs DiskFPSet.checkInvariant's signed, sequential order scan.
 // The expected-size overload compares Size(), not the backing file length.
-func (s *DiskFPSet) checkFile() (bool, int64) {
+func (s *DiskFPSet) checkFile() (ok bool, err error) {
 	in, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 	if err != nil {
-		return false, 0
+		return false, err
 	}
-	defer in.Close()
+	// Source finally propagates close failures, including after a false result.
+	defer func() {
+		if closeErr := in.Close(); closeErr != nil {
+			err = closeErr
+		}
+	}()
 	length, err := in.Length()
 	if err != nil {
-		return false, 0
+		return false, err
 	}
-	count := length / fpSetLongSize
 	predecessor := int64(math.MinInt64)
 	for pos := int64(0); pos < length; pos += fpSetLongSize {
 		value, err := in.ReadLong()
-		if err != nil || predecessor >= value {
-			return false, count
+		if err != nil {
+			return false, err
+		}
+		if predecessor >= value {
+			return false, nil
 		}
 		predecessor = value
 	}
-	return true, count
+	return true, nil
 }
 
 func (s *DiskFPSet) chkptName(fname string, ext string) string {

@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-suite verification baseline: `305a13f`.
+Updated: October 6, 2026. Full-workspace verification baseline: `cbdf35a`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -32,7 +32,8 @@ source five-second limit. The generated checkpoint trace recheck is also complet
 and passes with its original checkpoint interval and exact seven-state trace.
 The CodePlexBug08 recovery model also passes against the unchanged Java archive
 with three workers and all original assertions. Intern-table recovery now occurs
-before tool construction, matching Java and preserving checkpoint identities. Debugger/scoped-identifier methods are already mapped.
+before tool construction, matching Java and preserving checkpoint identities.
+Debugger/scoped-identifier methods are already mapped.
 JPF concurrency verification and benchmarks remain separately tracked; JVM-only
 assertions and source-failing methods require honest reconciliation rather than
 invented Go equivalents. Keep pending entries visible in
@@ -46,50 +47,55 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The previous full MSB random draft (session `98446`) and full workspace run
-(session `83220`) were deliberately stopped after finding a production port
-shortcut in fingerprint flushing. Both handles returned status 143 and are
-retired, with no pass credit. Their logs remain in `/mnt/oldrog/tmp`.
+The full normal workspace suite passes on `cbdf35a`:
 
-Commit `cbdf35a` ports Java's buffered streaming merge and scans. The old Go
-merge materialized the entire disk file and MSB table and issued a raw write
-per fingerprint. MSB now traverses `TLCIterator`; LSB retains its source sorted
-buffer. Output is buffered and preallocated. Focused checks pass in 6.241
-seconds, and all packages compile. Original LSB/MSB/short-disk classes pass in
-494.131 seconds on the first merge snapshot, before the final exception-carrier
-and scan refinements; that receipt is not a final-source full-suite result.
+| Package | Result | Duration |
+| --- | --- | ---: |
+| Root package | Pass | 1,706.569 seconds |
+| SANY tests | Pass | 1.068 seconds |
+| TLC | Pass | 781.592 seconds |
+| CLI command | No test files | — |
 
-Current normal verification jobs:
+Session `44100` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-master-streaming-parity-workspace.log`. This verifies
+buffered streaming fingerprint storage, the current CLI, all enabled original
+model ports, and the full original disk-queue growth workload. It excludes the
+outside-suite fingerprint random overlay.
+
+The subsequent full normal TLC package suite also passes on `a915e08`, in
+791.920 seconds. Session `63702` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-named-recovery-final-tlc.log`. That snapshot adds faithful
+named-file checkpoint recovery, source invariant semantics and runtime rename
+causes. These results supersede the older `305a13f` workspace baseline.
+
+The follow-up I/O propagation correction preserves Java failures from collision
+and invariant scans instead of returning zero or false on file errors. Shared
+validation distinguishes a false ordering invariant from an IOException, and
+propagates close failures. The flusher uses the existing Java I/O-family catch
+helper. Existing focused checks pass in 5.319 seconds; all original manager test
+bodies pass in 0.055 seconds; all packages compile. No tests or assertions were
+changed. The two full-suite receipts above predate this follow-up and must remain
+scoped to their compiled snapshots.
+
+Current normal stress verification jobs:
 
 | Job | Source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Full workspace, `go test -count=1 -failfast -timeout=60m ./...` | `cbdf35a` | `44100` | `tlago-master-streaming-parity-workspace.log` |
-| Full TLC package, same normal flags | `a915e08` | `63702` | `tlago-named-recovery-final-tlc.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicates. None has pass credit yet.
-The earlier MSB job `59015` completed its first billion-entry flush and reached
-1,113,282,857 iterations without a reported failure. It was deliberately stopped
-because its explicit two-hour deadline was incompatible with the observed
-5.6 million iterations per minute after flushing; terminal status 143, retired.
-It has no full-run credit. The two replacement stress jobs retain every source
-iteration, default factory/configuration, seed and assertion, with `-timeout=0`
-and no `-race`. Expect hours. Quiet flushes are not terminal jobs.
-
-Commit `a915e08` streams Java's named checkpoint copy, preserves its table and
-file semantics, builds its index while writing, counts disk writes, and retains
-coded order/index failures. Public invariant scans match Java's order-only scan
-and compare `Size()` for the expected-size overload. The flusher preserves the
-Java IOException wrapper and runtime rename cause. Existing focused checks pass
-in 5.176 seconds; all 22 short original OffHeap cases pass separately in 0.075
-seconds; all packages compile. No tests or source assertions were changed.
-Inventory totals are unchanged. The older full-workspace result, once available,
-will remain scoped to `cbdf35a`; it does not verify this follow-up.
+Poll these handles before launching duplicates. Neither has full-run credit yet.
+Both retain all 2,147,483,648 iterations, default factories/configuration, seed,
+checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.
+LSB completed its first 536,870,912-entry flush and resumed insertion without a
+reported failure. Quiet flushes are not terminal jobs. Earlier sessions `98446`,
+`83220` and `59015` are retired without full-run credit; see progress receipts
+for their deliberate termination reasons.
 
 The full random family draft for LSB/MSB/OffHeap remains outside the enabled
 suite, without completion credit. Its LSB and MSB cases use the live jobs above;
-do not edit their shared draft while those runs are in progress. Its full source loops and factory settings
+do not edit their shared draft while those runs are in progress. Its full source
+loops and factory settings
 are in `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go`, with overlay
 `/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`. The separate full MSB
 draft and overlay use prefix `/mnt/oldrog/tmp/tlago-long-msb-random-full-`.
@@ -98,7 +104,7 @@ The Java archive recovery port exposed and fixed late intern-table restoration.
 The full new recovery method, five short component checks, and all-package
 compilation pass. Eight related original checkpoint, recovery, EWD840 and DFID
 model tests pass normally in 230.719 seconds. This is focused verification of
-the current change; the complete workspace baseline below remains `305a13f`.
+those model ports; the full `cbdf35a` workspace receipt above also covers them.
 
 TLC is now the default CLI runner. Direct invocations such as
 `tlago -workers auto MC.tla`, `tlago modelcheck -workers auto MC.tla`, and
@@ -114,33 +120,9 @@ an updated help transcript. Focused normal checks pass: root 6.365 seconds,
 SANY 0.014 seconds, and TLC 0.014 seconds. Manual checks covered 34 direct,
 modelcheck, and mc invocations, including exhaustive checking, simulation,
 violation traces, removed-option errors, and help. Original Java-derived tests
-and the test-port inventory are unchanged. The full workspace receipt below
-remains scoped to core baseline `305a13f`; CLI changes have focused verification.
-
-Commit `305a13f` restores disk fingerprint reader ownership, removes unnecessary
-counter serialization, and completes the original `DumpLoadTraceTest` class.
-The working tree was clean after that commit.
-
-The full normal workspace suite passed on the exact committed Go source:
-
-| Package | Result | Duration |
-| --- | --- | ---: |
-| Root package | Pass | 1,811.654 seconds |
-| SANY tests | Pass | 1.692 seconds |
-| TLC | Pass | 597.275 seconds |
-| CLI command | No test files | — |
-
-The command was `go test -count=1 -failfast -timeout=60m ./...`, using the local
-Go cache and temporary directory described below. Session `22505` exited with
-status 0 and is retired. The receipt is
-`.codex-gotmp/fpset-reader-counter-final-workspace-go.log`. This run includes
-both newly added EWD840 binary tests and the full 2,147,483,648-enqueue disk-queue
-workload. It is the final-code workspace result, superseding earlier snapshots.
-
-The broad fingerprint race run, session `84966`, was cancelled at the user's
-request. It exited with status 130 and is retired. It has no race-pass credit.
-Do not resume or repeat that selection: it combined long recovery workloads
-with race instrumentation. No verification process from this batch remains live.
+and the test-port inventory are unchanged. The full `cbdf35a` workspace receipt
+above includes these CLI changes. Historical interrupted race runs have no pass
+credit; never mix the long workloads with `-race`.
 
 The CommunityModules progress changes are already committed as `840d494`.
 Under `go test -v`, the test streams subprocess output and reports phase progress
