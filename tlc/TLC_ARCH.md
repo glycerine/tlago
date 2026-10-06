@@ -1,5 +1,19 @@
 # TLC Architecture Notes for the Go Port
 
+## Parser output routing and original formatting assertions
+
+`sany_output.go` ports the parser's level ordinals and Simple/Silent/OutErr stream
+routing. Messages without arguments remain verbatim; supplied string arguments
+use TLC's source-derived Java formatter, including its exception types. Ordinary
+filtered messages are still formatted before being discarded; silent output
+bypasses formatting. Platform line separators and constructor null-stream errors
+follow Java. ParseSanySyntaxWithOutput reports actual syntax diagnostics without
+file resolution or semantic analysis, matching the original formatting test's
+in-memory parser use. The three unchanged original formatting assertions now
+exercise this production implementation. Numeric/general-Object driver format
+arguments, PrintStream's queryable error state and parser TRACE integration remain
+explicit reconciliation work, so this does not establish full output parity.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

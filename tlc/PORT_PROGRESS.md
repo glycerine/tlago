@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-06 Reconcile original SANY output formatting tests:
+The first two TestSanyOutputFormatting methods used test-only concatenation and
+fmt.Sprintf, so their passes did not exercise ported Java functionality. Port
+LogLevel ordinals, Simple/Silent/OutErr routing, constructor null-stream errors,
+GetStream, no-argument verbatim handling, platform line separators and applicable
+string-argument formatting via the existing JavaFormatStrings implementation.
+GetStream precedes formatting as Java does; filtered ordinary output still
+raises format errors, while SilentSanyOutput does not format. Native writer
+failures are suppressed like PrintStream. Retain the original MIT source notice.
+
+Connect the original helpers and interpolation method to SimpleSanyOutput. The
+percent parse-error method now consumes its unchanged source directly through
+ParseSanySyntaxWithOutput rather than creating/loading a module file and running
+semantics. Retain all original assertions and System.lineSeparator behavior.
+No invented permanent tests; main TLC inventory totals do not change.
+
+Normal original formatting methods pass in 0.014 seconds (67918 terminal 0).
+Complete existing SANY package passes in 1.757 seconds (41565 terminal 0).
+Final focused parser, semantic bridge, token-manager and original parse-error
+classes pass in 0.942 seconds; original output formatting passes in 0.018 seconds
+(50296 terminal 0). Log: /mnt/oldrog/tmp/tlago-sany-output-final-focused.log.
+Scratch native/source observations match exactly (8065 terminal 0): five simple
+thresholds, 25 split threshold pairs, nine string format/error cases, filtered
+format exception and silent malformed format. Logs:
+/mnt/oldrog/tmp/tlago-sany-output-{source,native}-manual.log.
+Driver numeric/general-Object formatting, full PrintStream error-state API and
+parser TRACE entry/exit integration remain outside this bounded port; no full
+output-class or complete parser parity claim. Current full MSB session 5144
+remains live without race instrumentation; preserve its handle and binary.
+
 2026-10-06 Original heap fingerprint random test translations:
 Reviewed FPSetTest.testMaxFPSetSizeRnd, AbstractFPSetTest and both concrete heap
 factories against pinned Java. Install the complete LSB and MSB methods under

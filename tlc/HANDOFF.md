@@ -502,9 +502,15 @@ states and label error continuations remain work. The original `ParseErrorTests.
 `sany_parse_error_java_test.go` and uses the shared actual parsing phase. It
 asserts recorded parser output with the original input and assertion text,
 replacing the semantic-diagnostic surrogate. The original percent-error output
-assertion now checks `token "%"` in actual recorded output. The two existing
-formatting-only methods still use test-local helpers; the production SanyOutput
-classes need faithful reconciliation. Likewise, the existing syntax corpus
+assertion now checks `token "%"` in actual recorded output. The three existing
+TestSanyOutputFormatting methods now use production SimpleSanyOutput and the
+actual in-memory syntax parser, retaining their original input and assertions.
+Simple/Silent/OutErr routing, level ordinals, no-argument verbatim messages,
+platform line separators and string-argument Java formatting are ported.
+Forty-one scratch routing/format observations match pinned Java; complete SANY
+passes in 1.757 seconds; the final focused parser/semantic gate passes in 0.942
+seconds and original output formatting in 0.018 seconds. Driver numeric/general-Object formatting and parser
+TRACE entry/exit integration remain pending; do not claim full SanyOutput parity. Likewise, the existing syntax corpus
 port checks parser status and node usage, without the original canonical AST
 comparison. These are remaining translation gaps, not full-suite fidelity
 receipts. Preserve the source harness's known-failure inversion: Java accepts
