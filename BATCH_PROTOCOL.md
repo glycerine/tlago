@@ -80,6 +80,12 @@ waits for `Ready.Chan`, and continuously services `UpcallMembershipChangeCh` and
 `OperatingLeaseRenewCh`. Both channels have finite buffering and must be drained
 by the control-plane event loop independently of batch computation.
 
+Tube's OperatingLeaseRenewCh carries a time without its epoch/owner. The monitor
+uses that event to request an authenticated tagged refresh, not to extend authority
+from the timestamp alone. Refresh runs separately from event consumption. Candidate
+admission uses the earlier of the Czar deadline and its own operating deadline
+from the authoritative membership reply, with the configured drift margin.
+
 The service elects a Czar through a lease on its tablespace's `czar` key. Its
 `RMVersionTuple.CzarLeaseEpoch` comes from Tube's consensus lease epoch;
 `WithinCzarVersion` orders membership changes within that epoch. Use the elected

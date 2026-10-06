@@ -34,16 +34,21 @@ machine fails in a three-machine cluster, including replicated initial/periodic
 snapshots. The active goal explicitly requests BDD/test-first development for
 the new job service, superseding the earlier restriction on invented tests in
 this scope. Continue faithful Java test ports alongside the new service behaviors.
-An initial approval-review rejection created no files; the environment now permits
-work without approval review and the renewed goal retains the test-first request.
+The updated `AGENTS.md` explicitly permits new BDD tests for distributed
+rpc25519/Tube features. The earlier approval-review conflict is resolved.
 
-The first local foundations are implemented in `jobcoord`: bounded insertion
-reply replay and a lease/fencing gate. `FingerprintBatchResource` connects replay
-to the actual TLC FPSet. Fourteen service tests and two adapter tests pass, as
-do existing focused MemFPSet/BitVector checks. Five short replay concurrency
-behaviors pass under `-race`. These do not establish network or machine-failure
-recovery. Next integrate Tube/RMember and Raft job records, then network batch
-ownership and replicated checkpoints. The full distributed objective remains open.
+The local foundations in `jobcoord` provide bounded insertion reply replay,
+a lease/fencing gate, and a typed Tube `RMemberMonitor`. The monitor drains
+membership events independently of authoritative refresh, rejects delayed or
+conflicting coordinator views, and enforces both Czar and local operating leases.
+It does not extend authority from Tube's untagged renewal timestamps. Twenty
+service tests and two TLC fingerprint adapter tests pass. Four short membership
+event-loop behaviors pass under `-race`; prior five replay race checks also pass.
+`rpc25519` is pinned to v1.46.0, with its resolved dependencies in go.mod/go.sum.
+These results do not establish live elections, job-control CAS, network batching,
+or machine-failure recovery. Next implement Raft job records and connect candidate
+startup/authoritative refresh, then batch ownership and replicated checkpoints.
+The full distributed objective remains open.
 
 The user continues to defer these topics:
 

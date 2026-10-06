@@ -1,5 +1,27 @@
 # TLC Port Progress
 
+2026-10-06 typed Tube membership control adapter:
+Pinned rpc25519 v1.46.0 and resolved its production/transitive dependencies;
+go mod tidy passes. Tube's dependency graph selects x/text v0.33.0. The local
+rpc25519 checkout remains read-only, with no machine-specific replace directive.
+Wrote RMember BDD tests before the new monitor API; initial run failed on missing
+symbols. Implemented monotonic authoritative Czar epoch/version observation,
+copying of owned identity fields, expiry checks, independent/coalesced tagged
+refresh after time-only lease events, and fail-closed shutdown. Two additional
+behaviors exposed actual failures before fixes: shorter local operating lease
+was ignored, and a second event consumer was accepted. Both now pass; candidate
+views use the earlier operating/Czar deadline and Run is single-use.
+All 20 jobcoord tests PASS, 0.010 seconds. Four short membership event-loop tests
+PASS under -race, 1.034 seconds. Prior two-test race receipt 1.031 seconds covered
+the monitor before the additional fixes; do not confuse those scopes. All-package
+compile-only check passes. Focused normal CLI/checker/service selection also
+passes: root 0.692 seconds, jobcoord 0.012 seconds, TLC 0.025 seconds; SANY
+compiled with no selected tests. This is not a full-suite result. No long workload/race combination or Java test-port
+credit. The monitor uses Tube types and event contracts but does not yet start
+live candidates, bind authoritative refresh RPCs, or commit JobControl through
+Tube CAS. Three-machine TLC recovery remains incomplete. Next: job-control records
+and real candidate lifecycle, followed by network batch ownership and snapshots.
+
 2026-10-06 first bottom-up distributed service implementation:
 The renewed active goal requests BDD/test-first work and the environment no
 longer requires approval review. Wrote tests before introducing each new API;

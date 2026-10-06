@@ -350,14 +350,18 @@ in `tlc/PORT_PROGRESS.md`.
 
 The initial local implementation is `jobcoord.ReplayStream`,
 `jobcoord.AuthorityGate`, and TLC's `FingerprintBatchResource` adapter.
-BDD tests were written and observed failing to compile before each new API was
-implemented. Fourteen service tests and two TLC adapter tests pass; five short
-replay concurrency behaviors also pass under race instrumentation.
+BDD tests preceded the new APIs. The typed Tube RMemberMonitor adds consensus
+epoch/version observation, independent refresh/event consumption, local operating
+lease checks, and shutdown/lifecycle fencing. Twenty service tests and two TLC
+adapter tests pass. Five short replay behaviors and four short membership
+event-loop behaviors also pass under race instrumentation. Operating-lease and
+single-consumer tests were observed failing behaviorally before their fixes.
 
 This supports local parts of R3/R4 (lease admission and draining), R8/R10
 (original replies and retirement), R11 (TLC bitmap preservation), and R24
 (bounded reservations). It does not establish these requirements end to end:
-no Tube authority adapter, wire transport, coordinator batch ownership,
+the typed membership monitor has no live candidate startup/refresh binding or
+Raft JobControl integration yet; wire transport, coordinator batch ownership,
 replicated snapshot recovery, or R26 machine-failure verification exists yet.
 The new tests are service evidence, not additional Java test-port credit.
 
