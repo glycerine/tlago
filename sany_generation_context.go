@@ -302,6 +302,7 @@ type sanyModuleGenerationUnit struct {
 	declaration *Declaration
 	recursive   *Declaration
 	instance    *Instance
+	nested      *Module
 	definition  *Definition
 	assumption  *NamedExpr
 	theorem     *NamedExpr
@@ -350,7 +351,7 @@ func sanyModuleGenerationUnits(mod *Module) []*sanyModuleGenerationUnit {
 		unit(theorem.Syntax, theorem.SourcePosition()).theorem = theorem
 	}
 	for _, nested := range mod.Nested {
-		unit(nested.Syntax, nested.Pos)
+		unit(nested.Syntax, nested.Pos).nested = nested
 	}
 	for _, syntax := range mod.ProofRefNodes {
 		unit(syntax, sanyNodePosition(syntax))

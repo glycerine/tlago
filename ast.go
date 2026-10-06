@@ -10,6 +10,7 @@ type Spec struct {
 	SemanticOrder    []string
 	ModuleFiles      []string // Logical filenames supplied to the filename resolver.
 	Diags            Diagnostics
+	SemanticDiags    Diagnostics // SANY semantic Errors, retained even if generation throws.
 }
 
 type Module struct {

@@ -81,8 +81,8 @@ and is retired. It verifies the `f5019c4` fixture snapshot, before the newer
 expression-visibility and module-unit generation changes. Log:
 `/mnt/oldrog/tmp/tlago-bitwise-bridge-root-full.log`.
 
-Normal full root-package session `96647` is live on the module-unit generation
-snapshot. It retains original bounds and a 60-minute timeout, without race
+Normal full root-package session `96647` is live on the `19c6f1a` module-unit
+generation snapshot, before the newer nested-generation correction. It retains original bounds and a 60-minute timeout, without race
 instrumentation or failfast. Both temporary-directory variables use workspace
 `.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
 Reuse the completed unchanged TLC package result; preserve the root handle until
@@ -92,6 +92,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
+| Nested module units and shared recursive state: existing native behaviors and original TLC selection | Pass | Root 11.276 seconds, session `50899` retired |
+| Complete SANY package after retaining interrupted semantic errors and restoring the original corpus exception catch | Pass | 1.664 seconds, session `72574` retired |
 | Final module-unit generation, recursive sections and selector operand errors: existing native behaviors and original TLC selection | Pass | Root 10.496 seconds, session `50362` retired |
 | Complete SANY package on final module-unit snapshot | Pass | 1.344 seconds, session `83693` retired |
 | Final source-order contexts, recursive selector failures and null placeholders: native classes, original parser/output selection, nine original TLC methods and four bridge checks | Pass | Root 12.747 / SANY selection 0.771 seconds, session `96273` retired |
@@ -300,9 +302,21 @@ the established 74 visibility observations still match on this snapshot.
 Receipts: `/mnt/oldrog/tmp/tlago-module-unit-order-audit-corrected.log` and
 `/mnt/oldrog/tmp/tlago-module-unit-final-visibility-audit.log`.
 
-Unknown leaf `BY` facts are still not fully generated or resolved. Nested module
-generation still occurs after the enclosing module rather than within its unit.
-Port those actual generation and proof-scope boundaries next. Broader constructor,
+Nested modules are now generated at their actual body units. They share Java's
+module recursive counters, including the source exception on invalid input where
+an unfinished recursive section spans a nested module. `Spec.SemanticDiags`
+retains semantic errors independently of successful generation; parent errors
+precede child errors even when an exception interrupts generation. The original
+semantic-error corpus helper's `WrongInvocationException` catch is restored,
+without swallowing other exceptions. Twenty-eight bounded source comparisons
+match Java's diagnostics, exception type and message; established visibility
+observations also remain matching. Receipt:
+`/mnt/oldrog/tmp/tlago-nested-unit-final-audit-28.log`.
+
+Unknown leaf `BY` facts are still not fully generated or resolved. Audit the
+original semantic-error corpus's diagnostic parameter-count and no-unreachable-
+check assertions, which its current Go translation still omits. This exception
+boundary correction earns no whole-method inventory credit. Broader constructor,
 symbol/context and selector paths remain audit work; these observations do not
 establish full Generator parity.
 

@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/glycerine/tlago"
+	"github.com/glycerine/tlago/tlc"
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/SemanticErrorCorpusTests.java.
-// Each test starts skipped until its Java assertions are ported and made green.
 func TestSemanticErrorCorpusTests_test(t *testing.T) {
 	corpusDir := sanyTestVectorPath("tla2sany", "semantic", "error_corpus")
 	files := sanyTLAFilesUnder(t, corpusDir, func(path string) bool {
@@ -23,7 +23,7 @@ func TestSemanticErrorCorpusTests_test(t *testing.T) {
 			spec, parseDiags := tlago.LoadSanySpec(file, tlago.LoadOptions{LibraryPaths: []string{corpusDir}, PreferLibraryModules: true})
 			diags := append(tlago.Diagnostics{}, parseDiags...)
 			if !parseDiags.HasErrors() {
-				diags = append(diags, tlago.CheckSpec(spec)...)
+				diags = append(diags, semanticErrorCorpusAnalysis(spec)...)
 			}
 			if got := diags.HasErrors(); got != expectError {
 				t.Fatalf("failure state = %v, want %v for %s\n%s", got, expectError, expectedCode, diags.Error())
@@ -48,4 +48,18 @@ func expectedSemanticErrorCorpusCode(t *testing.T, file string) (string, bool) {
 	}
 	code := strings.SplitN(strings.TrimSuffix(name, "_Test.tla"), "_", 2)[0]
 	return code, strings.HasPrefix(code, "E")
+}
+
+// The original parse helper catches WrongInvocationException for upstream
+// issue 1149, returning the semantic Errors accumulated before the exception.
+func semanticErrorCorpusAnalysis(spec *tlago.Spec) (diags tlago.Diagnostics) {
+	defer func() {
+		if failure := recover(); failure != nil {
+			if _, ok := failure.(*tlc.WrongInvocationException); !ok {
+				panic(failure)
+			}
+			diags = spec.SemanticDiags
+		}
+	}()
+	return tlago.CheckSpec(spec)
 }

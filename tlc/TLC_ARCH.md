@@ -158,12 +158,26 @@ body; unfinished recursive operators are reported in declaration order. Invalid
 operand selection mirrors Generator.reportSelectorError, including source error
 code 4005, selector description and individual selector-node range.
 
+Nested modules are generated within their original module units and share the
+same module-level recursive count and sum. As in Java, checking undefined
+recursive operators subtracts the count from the sum without clearing the count.
+Invalid nested recursive input can therefore raise WrongInvocationException
+when a later definition decrements the sum below zero. Preserve that exception,
+rather than converting it to a completed semantic graph. Spec.SemanticDiags
+retains the semantic Errors accumulated before interrupted generation. Parent
+unit errors precede child errors on both ordinary and interrupted paths.
+
+The original semantic-error corpus helper catches WrongInvocationException for
+upstream issue 1149 and returns the retained semantic Errors. Its Go translation
+now restores that catch; parameter-count and no-unreachable-check assertions
+still need reconciliation, so this does not establish whole-method fidelity.
+
 Leaf proof facts are retained but not fully generated or resolved, so an unknown
-`BY` fact is still incorrectly accepted. Nested module generation still follows
-the enclosing module instead of occurring within its unit. Port these actual
-generation and scope boundaries, without error sorting. Twenty matching module
-order/recursive-section observations and the established 74 matching visibility
-observations do not prove all Generator, constructor or selector paths complete.
+`BY` fact is still incorrectly accepted. Port actual proof generation and scope
+boundaries, without error sorting. Twenty-eight matching nested-module source
+observations, twenty module order/recursive-section observations and the
+established 74 matching visibility observations do not prove all Generator,
+constructor or selector paths complete.
 
 ## Module loading and parse-unit relationships
 

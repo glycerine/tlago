@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 func CheckSpec(spec *Spec) Diagnostics {
@@ -30,21 +32,25 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 		return diags
 	}
 	var diags Diagnostics
+	spec.SemanticDiags = nil
+	defer func() {
+		spec.SemanticDiags = appendSanyDiagnostics(append(Diagnostics(nil), diags...), spec.SemanticDiags...)
+	}()
 	resolver := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 	enclosing := enclosingModules(spec)
 	checked := make(map[*Module]bool, len(spec.Modules))
-	var check func(*Module) *sanyModuleLevelChecks
-	check = func(mod *Module) *sanyModuleLevelChecks {
+	var check func(*Module, *sanyModuleRecursiveGeneration) (*sanyModuleLevelChecks, Diagnostics)
+	check = func(mod *Module, recursive *sanyModuleRecursiveGeneration) (*sanyModuleLevelChecks, Diagnostics) {
 		if mod == nil || checked[mod] {
-			return nil
+			return nil, nil
 		}
 		checked[mod] = true
-		checks := &sanyModuleLevelChecks{generator: resolver.moduleGenerator(mod)}
-		diags = appendSanyDiagnostics(diags, generateModuleWithEnclosing(mod, spec, enclosing[mod], checks)...)
-		// Nested semantic graphs belong to the enclosing external module;
-		// they do not have their own SANY progress or reporting iteration.
-		for _, nested := range mod.Nested {
-			if child := check(nested); child != nil {
+		checks := &sanyModuleLevelChecks{generator: resolver.moduleGenerator(mod), recursiveGeneration: recursive}
+		// Nested graphs are generated at their module unit, sharing the external
+		// module's reporting iteration. Their diagnostics remain in body order.
+		checks.generateNested = func(nested *Module) Diagnostics {
+			child, childDiags := check(nested, checks.recursiveGeneration)
+			if child != nil {
 				checks.nested = append(checks.nested, child)
 			}
 			// Generator adds the completed ModuleNode to SymbolTable after
@@ -70,11 +76,12 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 				diagnostic.SANYMessage = diagnostic.Message
 				diagnostic.SANYParameters = []any{nested.Name, sanySymbolLocation(previous.Pos)}
-				diags = appendSanyDiagnostics(diags, diagnostic)
+				childDiags = appendSanyDiagnostics(childDiags, diagnostic)
 				break
 			}
+			return childDiags
 		}
-		return checks
+		return checks, generateModuleWithEnclosing(mod, spec, enclosing[mod], checks)
 	}
 	for _, name := range spec.SemanticOrder {
 		mod := spec.Modules[name]
@@ -84,7 +91,8 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 		if progress != nil {
 			progress("Semantic processing of module " + name)
 		}
-		checks := check(mod)
+		checks, generated := check(mod, nil)
+		diags = appendSanyDiagnostics(diags, generated...)
 		// SANY assigns this external module's standard provenance after
 		// generation. The resolver call can itself throw during semantics.
 		if spec.FilenameResolver != nil {
@@ -107,7 +115,9 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 	}
 	sort.Strings(remaining)
 	for _, name := range remaining {
-		if checks := check(spec.Modules[name]); checks != nil && !diags.HasErrors() {
+		checks, generated := check(spec.Modules[name], nil)
+		diags = appendSanyDiagnostics(diags, generated...)
+		if checks != nil && !diags.HasErrors() {
 			diags = appendSanyDiagnostics(diags, checks.check()...)
 		}
 	}
@@ -169,13 +179,31 @@ type sanyLevelCheck struct {
 	run      func() Diagnostics
 }
 
+// Generator's module recursion shares curLevel zero, unresolvedCnt[0] and
+// unresolvedSum with nested modules. checkForUndefinedRecursiveOps subtracts
+// the count from the sum without clearing the count, including on invalid input.
+type sanyModuleRecursiveGeneration struct {
+	count int
+	sum   int
+}
+
+func (state *sanyModuleRecursiveGeneration) complete() {
+	state.count--
+	state.sum--
+	if state.sum < 0 {
+		panic(tlc.NewWrongInvocationException("Defined more recursive operators than were declared in RECURSIVE statements."))
+	}
+}
+
 type sanyModuleLevelChecks struct {
-	generator   *sanyModuleSelectorGenerator
-	recursive   []func() Diagnostics
-	definitions []func() Diagnostics
-	facts       []func() Diagnostics
-	topLevel    []sanyLevelCheck
-	nested      []*sanyModuleLevelChecks
+	generator           *sanyModuleSelectorGenerator
+	recursiveGeneration *sanyModuleRecursiveGeneration
+	generateNested      func(*Module) Diagnostics
+	recursive           []func() Diagnostics
+	definitions         []func() Diagnostics
+	facts               []func() Diagnostics
+	topLevel            []sanyLevelCheck
+	nested              []*sanyModuleLevelChecks
 }
 
 func (checks *sanyModuleLevelChecks) check() Diagnostics {
@@ -212,9 +240,27 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 
 func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, checks *sanyModuleLevelChecks) Diagnostics {
 	var diags Diagnostics
+	// Errors belong to SpecObj, independently of a completed ModuleNode. On an
+	// exception, preserve the parent's earlier units before the child's errors.
+	defer func() {
+		if failure := recover(); failure != nil {
+			spec.SemanticDiags = appendSanyDiagnostics(append(Diagnostics(nil), diags...), spec.SemanticDiags...)
+			panic(failure)
+		}
+	}()
 	if checks.generator == nil {
 		resolver := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 		checks.generator = resolver.moduleGenerator(mod)
+	}
+	if checks.recursiveGeneration == nil {
+		checks.recursiveGeneration = &sanyModuleRecursiveGeneration{}
+	}
+	if checks.generateNested == nil {
+		checks.generateNested = func(nested *Module) Diagnostics {
+			child := &sanyModuleLevelChecks{generator: checks.generator.resolver.moduleGenerator(nested), recursiveGeneration: checks.recursiveGeneration}
+			checks.nested = append(checks.nested, child)
+			return generateModuleWithEnclosing(nested, spec, mod, child)
+		}
 	}
 	defined := map[string]Position{}
 	declKinds := map[string]DeclarationKind{}
@@ -481,8 +527,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	recursiveArities := map[string]int{}
 	recursivePositions := map[string]Position{}
 	var recursiveOrder []string
+	completedRecursive := map[string]bool{}
 	satisfiedRecursive := map[string]bool{}
 	registerRecursive := func(d Declaration) {
+		checks.recursiveGeneration.count += len(d.Names)
+		checks.recursiveGeneration.sum += len(d.Names)
 		seenInDecl := map[string]bool{}
 		for _, name := range d.Names {
 			if seenInDecl[name] {
@@ -704,6 +753,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
 			return diags
 		}
+		if _, recursive := recursiveArities[def.Name]; recursive && !completedRecursive[def.Name] {
+			checks.recursiveGeneration.complete()
+			completedRecursive[def.Name] = true
+		}
 		if def.TheoremLike {
 			checks.facts = append(checks.facts, levelCheck)
 		} else {
@@ -714,24 +767,21 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	// each unit before moving to the next; diagnostic order comes from this
 	// traversal rather than sorting the resulting messages.
 	for _, unit := range sanyModuleGenerationUnits(mod) {
-		if kind := sanyModuleRecursiveSectionType(unit); kind != "" {
-			for _, name := range recursiveOrder {
-				if !satisfiedRecursive[name] {
-					diagnostic := errorAt(unit.position, "E4294", "%s may not appear within a recursive definition section.", kind)
-					if unit.syntax != nil {
-						diagnostic.SANYRange = unit.syntax.Range
-					}
-					diagnostic.SANYMessage = diagnostic.Message
-					diags = append(diags, diagnostic)
-					break
-				}
+		if kind := sanyModuleRecursiveSectionType(unit); kind != "" && checks.recursiveGeneration.sum > 0 {
+			diagnostic := errorAt(unit.position, "E4294", "%s may not appear within a recursive definition section.", kind)
+			if unit.syntax != nil {
+				diagnostic.SANYRange = unit.syntax.Range
 			}
+			diagnostic.SANYMessage = diagnostic.Message
+			diags = append(diags, diagnostic)
 		}
 		switch {
 		case unit.declaration != nil:
 			registerDeclaration(*unit.declaration)
 		case unit.recursive != nil:
 			registerRecursive(*unit.recursive)
+		case unit.nested != nil:
+			diags = append(diags, checks.generateNested(unit.nested)...)
 		case unit.instance != nil:
 			generateInstance(*unit.instance)
 			registerInstance(*unit.instance)
@@ -759,14 +809,18 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	// checkForUndefinedRecursiveOps visits the declaration vector, not a map.
-	for _, name := range recursiveOrder {
-		if !satisfiedRecursive[name] {
-			pos := recursivePositions[name]
-			diagnostic := errorAt(pos, "E4291", "recursive declaration %s has no definition", name)
-			diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
-			diagnostic.SANYMessage = fmt.Sprintf("Symbol %s declared in RECURSIVE statement but not defined.", name)
-			diags = append(diags, diagnostic)
+	if checks.recursiveGeneration.count > 0 {
+		for _, name := range recursiveOrder {
+			if !satisfiedRecursive[name] {
+				pos := recursivePositions[name]
+				diagnostic := errorAt(pos, "E4291", "recursive declaration %s has no definition", name)
+				diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
+				diagnostic.SANYMessage = fmt.Sprintf("Symbol %s declared in RECURSIVE statement but not defined.", name)
+				diags = append(diags, diagnostic)
+			}
 		}
+
+		checks.recursiveGeneration.sum -= checks.recursiveGeneration.count
 	}
 
 	return diags

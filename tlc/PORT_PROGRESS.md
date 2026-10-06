@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-06 Nested module unit generation and retained semantic failures:
+Previous module-unit batch committed as `19c6f1a`; starting tree clean.
+Full root 96647 remains confirmed live on that snapshot, before this work,
+log tlago-module-unit-root-full.log. Preserve that job; no duplicate full root
+run or current-snapshot pass claim. Original full LSB 32959 was confirmed live
+this turn and remains undisturbed on its recorded storage snapshot.
+
+Move nested-module generation into its actual unit, preserving external-module
+reporting and separate deferred level checks. Initial 20 source comparisons find
+19 matches and one Java WrongInvocationException on an unfinished parent
+recursive section with a nested module and later definition. Inspect actual
+Generator.unresolvedCnt/unresolvedSum, checkForUndefinedRecursiveOps and
+endOpDefNode: nested modules share curLevel zero; end checks subtract the count
+without clearing it. Port the shared state and immediate negative-sum exception.
+Do not reinterpret invalid input as a successfully generated graph.
+
+This exposes the existing semantic-error corpus translation's omitted original
+WrongInvocationException catch for upstream issue 1149. Preserve semantic Errors
+independently on Spec.SemanticDiags, including parent-before-child diagnostics
+when generation throws. Restore the original helper's exact exception catch;
+other exceptions propagate. Original assertions and frozen fixtures are unchanged.
+The parameter-count and no-unreachable-check assertions are still missing in
+that Go class and remain reconciliation work; no whole-method or inventory credit.
+
+Use actual lower Java frontEndParse/frontEndSemanticAnalysis and Go load/check
+boundaries to inspect both retained diagnostics and exception type/message,
+without comparing unrelated language stack traces. Final 28 distinct observations
+match, log /mnt/oldrog/tmp/tlago-nested-unit-final-audit-28.log. Initial failure
+transcripts remain in tlago-nested-unit-audit.log and
+ tlago-nested-unit-recursive-sany.log. Scratch source/output pairs under
+ tlago-nested-unit-audit earn no invented-test or inventory credit.
+
+Complete SANY passes 1.664 seconds (72574 retired), log
+ tlago-nested-unit-retained-errors-sany.log. Existing native behavior classes and
+original TLC selection pass 11.276 seconds (50899 retired), log
+ tlago-nested-unit-final-focused.log. All-package compilation passes, log
+ tlago-nested-unit-final-compile.log. All 74 established visibility observations also match, with zero mismatches;
+log tlago-nested-unit-final-visibility-audit.log, session 41993 retired. All checks normal, original bounds;
+no broad race checks, special corpus sweeps or TLC leaf changes. Unknown BY
+facts and broader generator/context/constructor parity remain; the goal is
+incomplete and new distributed work stays postponed.
+
 2026-10-06 Module-unit generation and recursive-section dispatch:
 Previous expression-visibility batch committed as `5c31904`; starting tree clean.
 Normal full root session 96678 returned status 0 in 1,560.338 seconds and is
