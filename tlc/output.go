@@ -295,9 +295,11 @@ type Message struct {
 	// FormattingOnly identifies MP.getMessage events, which reach recorders
 	// without printing a diagnostic.
 	FormattingOnly bool
-	State          *TLCStateMut
-	StateInfo      *TLCStateInfo
-	StateNumber    int
+	// Throwable preserves object-valued recorder arguments in exception printers.
+	Throwable   error
+	State       *TLCStateMut
+	StateInfo   *TLCStateInfo
+	StateNumber int
 }
 
 type MessageRecorder interface {

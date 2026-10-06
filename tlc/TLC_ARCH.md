@@ -33,6 +33,25 @@ when suppressed. Recorder callbacks can change controls, change tool mode, or
 throw before formatting. Do not attach derived console text to raw events.
 
 
+## Exception printers
+
+`PrintTLCRuntimeException` preserves MP's object-valued recorder event when the
+exception carries parameters. It reads those parameters after notification and
+skips formatting if suppressed. Nullable entries and empty arrays retain their
+distinct source meanings. Exceptions without parameters use the legacy throwable
+printer, which records the substituted detail and prints errors regardless of
+suppression. The runner and simulator call the same production entry point.
+
+Throwable error overloads retain their separate source rules: a String cause
+with GENERAL builds ECGeneralMsg; a String[] cause formats its ordinary template.
+Non-GENERAL errors and the array overload print stacks only under TLCGlobals.debug.
+GENERAL's stack policy follows MP.noDebug and nullable messages independently.
+Warnings with a throwable record both arguments, check elevation first, and print
+a stack whenever warnings are enabled, including suppressed or duplicate text.
+Null throwable dereferences preserve the source exception boundary. Stack frames
+describe actual Go execution; do not fabricate JVM frames. The separate source
+DebugPrinter diagnostics still need a call-site audit.
+
 ## Runner completion and memory reporting
 
 TLC.process preserves the checker result through its final I/O cleanup. It

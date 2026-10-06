@@ -573,8 +573,7 @@ func javaGeneralErrorMessage(cause string, err error) string {
 		msg += "\nThe error occurred when TLC was " + cause + "."
 	}
 	if err == nil {
-		msg += "\nThe exception was a <nil>\n"
-		return msg
+		panic(NewNullPointerException())
 	}
 	name := javaThrowableClassName(err)
 	if javaRuntimeException(err) != nil {

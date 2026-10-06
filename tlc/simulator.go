@@ -732,7 +732,7 @@ func (s *Simulator) printSimulationWorkerError(err *SimulationWorkerError) {
 // PrintBehaviorException ports Simulator.printBehavior(TLCRuntimeException,
 // StateVec). Unlike the coded-error overload, this overload has no summary.
 func (s *Simulator) PrintBehaviorException(exception *TLCError, stateTrace *StateVec) {
-	printJavaRuntimeException(exception)
+	PrintTLCRuntimeException(exception)
 	s.printBehaviorTrace(stateTrace)
 }
 

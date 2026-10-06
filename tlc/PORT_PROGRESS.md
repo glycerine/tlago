@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-06 runtime-exception and throwable MP printers:
+Previous goal turn is progress: 0ee5627 implements faithful recorder/visibility
+ordering, and 672e17c records the active full suite. Revalidate clean master and
+live sessions 50735/63113/59782 before further work; no restarted workloads.
+Source MP.printTLCRuntimeException records the exception object when parameters
+are non-null and skips formatting when suppressed. The native wrapper instead
+converted it to ordinary PrintError, losing object identity and suppression.
+Port the production entry point and switch runner/simulator callers to it.
+Message.Throwable retains the raw object. No parameter array is synthesized for
+that recorder event; source constructor GetMessage events remain separate.
+
+Implement the distinct throwable error overloads, preserving GENERAL String
+cause versus String[] cause, nullable detail substitution, debug-only stacks and
+GENERAL's independent noDebug/null-message stack policy. Warning Throwable
+records both arguments, elevates through Assert.fail(int, Throwable), and prints
+a stack whenever global warnings are enabled, even for suppressed/duplicate
+text. Restore source null dereference boundaries instead of native <nil> GENERAL
+success text. No invented persistent tests or changed original assertions.
+
+Manual MPRuntimeExceptionManual.java/tlago-runtime-exception-manual.go compare
+16 unchanged-Java/native cases, including object identity, nullable/empty arrays,
+suppression/callback changes, legacy/general/array overloads and normal/suppressed/
+disabled/duplicate/elevated warnings. Final session 50120 terminal 0. Logs:
+/mnt/oldrog/tmp/tlago-runtime-exception-final-{java,go}.log. Native frame lines
+are excluded from stack comparison because they describe actual Go execution.
+An initial broad stdout comparison (69786 terminal 1) differed on source
+DebugPrinter lines under global debug; no success credit for that attempt.
+The corrected comparison inspects the actual captured ToolIO bytes and event
+rows, excluding separate DebugPrinter stdout. That call-site audit stays pending.
+Six MPNullThrowableManual.java/tlago-null-throwable-manual.go observations also
+match source exception class and actual console bytes, with logs
+/mnt/oldrog/tmp/tlago-null-throwable-{java,go}.log.
+
+Existing original message/warning/coverage and native recorder/factory checks
+pass 0.016s then final 0.018s (82369/77283 terminal 0). Original simulator
+correctness, error-state, fingerprint/evaluation failures and overrides pass
+2.088s then final 2.065s (64142/81239 terminal 0). All-package compilation
+78754 is terminal 0. Full workspace 50735 remains live at 0ee5627 and predates
+this correction; no new full green claim. Random 63113 is still live after
+2,146,144,317 iterations in its last periodic log, with checkpoint/invariant
+completion unproven. LSB 59782 is live at approximately 1,610,612,736 iterations.
+No inventory counts change, no new distributed architecture and no broad race.
+
+
 2026-10-06 full workspace verification started at 0ee5627:
 MP recorder/visibility correction is committed, with a clean worktree. Full
 normal go test -count=1 -failfast -timeout=60m ./... now runs as session 50735;

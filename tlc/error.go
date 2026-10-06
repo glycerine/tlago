@@ -209,16 +209,3 @@ func newTLCErrorCodeNullable(code int, params ...*string) *TLCError {
 		NullableParams: copied,
 	}
 }
-
-func printJavaRuntimeException(err *TLCError) int {
-	if err.NullableParams != nil {
-		return PrintErrorNullable(err.Code, err.NullableParams...)
-	}
-	if err.Params != nil {
-		return PrintError(err.Code, err.Params...)
-	}
-	if err.Code == ECGeneral {
-		return PrintError(err.Code, generalErrorParams("", err)...)
-	}
-	return PrintErrorNullable(err.Code, err.GetMessage())
-}

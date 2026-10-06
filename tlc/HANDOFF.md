@@ -68,7 +68,8 @@ Older green snapshots and retired failures remain in `PORT_PROGRESS.md`.
 A new full normal workspace run is active at `0ee5627` (session `50735`).
 Log: `/mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log`. It preserves
 original bounds, uses no race instrumentation, and has no completion credit yet.
-Poll this session rather than starting another full run.
+Poll this session rather than starting another full run. It predates the latest
+runtime-exception/throwable-printer correction, which has focused verification.
 
 Focused verification:
 
@@ -316,8 +317,12 @@ enabled suppressed warnings still enter history. State output retains its return
 value and ordinal info. Raw events carry parameters rather than derived text.
 The four original coverage reporting methods now capture actual ToolIO output,
 as Java does. Focused original checks and ten manual public-printer comparisons
-pass; see PORT_PROGRESS for receipts. This does not establish parity for every
-throwable/runtime-exception overload or the entire TLC implementation.
+pass; see PORT_PROGRESS for receipts. Runtime-exception and throwable printers
+now retain object events, nullable details, suppression and separate stack policies.
+Original simulator/failure/override models pass; 22 manual source/native cases
+verify captured output and events. Go frames and source DebugPrinter stdout are
+outside the normalized stack comparison. Continue the DebugPrinter/call-site
+audit and pending original contexts; entire TLC parity remains unproven.
 
 Five main-suite contexts have known source-failing or JVM-specific
 reconciliation issues below. The other four pending contexts are original assumption-disabled
