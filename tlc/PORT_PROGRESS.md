@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-06 Constant/recursive declaration construction and operator frames:
+Previous turn completed 9c31cf6. A source production-frame audit identified a
+functional shortcut: CONSTANT and RECURSIVE reused formal IdentDecl/SomeFixDecl.
+Java's ConstantDeclarationItems owns a distinct frame and two-token argument
+lookahead, and constructs typed operator leaves rather than raw operator tokens.
+Port ParamSubDecl, ConstantDeclarationItems and Recursive's actual expectation
+boundaries. Preserve failed '(' / non-'_' lookahead length for the source later
+Encountered output. Restore prefix/infix/postfix definition LHS and formal
+Op. Symbol Declaration frames.
+
+Constant and formal operator declarations share token choices but retain their
+separate frames and differing source error wording: prefix or postfix operator
+for constants, infix or postfix operator for formals. Mandatory '_' and invalid
+operator choices throw the source parse failure rather than accumulating a native
+error and continuing. Typed operator leaves retain token image/location/comments
+and no fabricated token child, matching SyntaxTreeNode(module, kind, token).
+No test fixture, assertion or seed changes; no invented persistent test.
+
+All 31 bounded complete TRACE/parse-result observations match pinned Java,
+including the prior 18 plus constants, constant/formal operator declarations,
+recursive declarations, three operator LHS forms and malformed declarations.
+Final audit 42871 terminal 0:
+/mnt/oldrog/tmp/tlago-sany-declaration-final-audit.log.
+The same 31 inputs match selected declaration/LHS subtree kinds, images and
+heir order (80073 terminal 0); logs under
+/mnt/oldrog/tmp/tlago-sany-trace-audit/*.decl-{java,go}.log and summary
+/mnt/oldrog/tmp/tlago-sany-declaration-tree-audit.log. No location or full-module
+AST claim; general JavaCC rescan and remaining productions are still pending.
+
+Normal existing complete SANY passes in 1.574 seconds (28011 terminal 0).
+Existing parser/semantic/token/operator classes, original ParseErrorTests and
+four original TLC models pass in 13.528 seconds (51344 terminal 0).
+Logs: /mnt/oldrog/tmp/tlago-sany-declaration-{complete-sany,focused-root}.log.
+Original test inventory counts do not change. Current full MSB session 5144
+remains confirmed live; last recorded progress 1,089,772,442/2,147,483,648.
+Preserve the same handle and compiled binary; no full current pass claim.
+
 2026-10-06 Parser TRACE integration and source production frames:
 Previous turn completed 71970c8. Connect the output class to actual parsing rather
 than logging only the returned diagnostics. Match source bpa/epa ordering:

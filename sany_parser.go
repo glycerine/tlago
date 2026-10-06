@@ -315,30 +315,70 @@ func (p *SanyParser) VariableDeclaration() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ParamDeclaration() *SanySyntaxNode {
-	keyword := p.consume(SanyTokenConstant, "expected CONSTANT declaration")
-	heirs := []*SanySyntaxNode{NewSanyNode(SanySyntaxNodeKindByName["N_ConsDecl"], keyword)}
+	p.beginProduction("Parameter declaration")
+	defer p.endProduction()
+	p.expecting = "CONSTANT"
+	heirs := []*SanySyntaxNode{p.ParamSubDecl()}
+	p.expecting = "Identifier, operator or _"
 	heirs = append(heirs, p.ConstantDeclarationItem())
+	p.expecting = ","
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier, operator or _"
 		heirs = append(heirs, p.ConstantDeclarationItem())
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ParamDeclaration"], heirs...)
 }
 
+func (p *SanyParser) ParamSubDecl() *SanySyntaxNode {
+	p.beginProduction("Parameter declaration item")
+	defer p.endProduction()
+	keyword := p.consumeParseToken(SanyTokenConstant, "expected CONSTANT declaration")
+	return NewSanyNode(SanySyntaxNodeKindByName["N_ConsDecl"], keyword)
+}
+
 func (p *SanyParser) ConstantDeclarationItem() *SanySyntaxNode {
-	if p.check(SanyTokenIdentifier) {
-		return p.IdentDecl()
+	p.beginProduction("Constant declaration items")
+	defer p.endProduction()
+	p.expecting = "Identifier, _ or prefix op"
+	if !p.check(SanyTokenIdentifier) {
+		return p.fixDeclaration(true)
 	}
-	return p.SomeFixDecl()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenIdentifier, "expected identifier")}
+	p.expecting = "(, comma, or Module Body"
+	// Java jj_2_6(2) accepts only '(' followed by '_'.
+	if p.check(SanyTokenLbr) && p.peekNext().Kind != SanyTokenUs {
+		p.rememberFailedLookahead(2)
+	}
+	if p.check(SanyTokenLbr) && p.peekNext().Kind == SanyTokenUs {
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		p.expecting = "_"
+		heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in constant declaration"))
+		p.expecting = "comma or )"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "_"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in constant declaration"))
+			p.expecting = "comma or )"
+		}
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbr, "expected ) in constant declaration"))
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], heirs...)
 }
 
 func (p *SanyParser) Recursive() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenRecursive, "expected RECURSIVE"))
+	p.beginProduction("Recursive")
+	defer p.endProduction()
+	p.expecting = "RECURSIVE"
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenRecursive, "expected RECURSIVE")}
+	p.expecting = "Identifier, operator or _"
 	heirs = append(heirs, p.ConstantDeclarationItem())
+	p.expecting = ","
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier, operator or _"
 		heirs = append(heirs, p.ConstantDeclarationItem())
+		p.expecting = "`,' or `)'"
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Recursive"], heirs...)
 }
@@ -1256,12 +1296,16 @@ func (p *SanyParser) IdentLHS() *SanySyntaxNode {
 }
 
 func (p *SanyParser) PrefixLHS() *SanySyntaxNode {
+	p.beginProduction("Prefix LHS")
+	defer p.endProduction()
 	op := p.consumeOperator("expected prefix operator in definition")
 	id := p.Identifier()
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixLHS"], op, id)
 }
 
 func (p *SanyParser) InfixLHS() *SanySyntaxNode {
+	p.beginProduction("Infix LHS")
+	defer p.endProduction()
 	left := p.Identifier()
 	op := p.consumeOperator("expected infix operator in definition")
 	right := p.Identifier()
@@ -1269,6 +1313,8 @@ func (p *SanyParser) InfixLHS() *SanySyntaxNode {
 }
 
 func (p *SanyParser) PostfixLHS() *SanySyntaxNode {
+	p.beginProduction("Postfix LHS")
+	defer p.endProduction()
 	left := p.Identifier()
 	op := p.consumeOperator("expected postfix operator in definition")
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixLHS"], left, op)
@@ -1299,18 +1345,38 @@ func (p *SanyParser) IdentDecl() *SanySyntaxNode {
 }
 
 func (p *SanyParser) SomeFixDecl() *SanySyntaxNode {
+	p.beginProduction("Op. Symbol Declaration")
+	defer p.endProduction()
+	return p.fixDeclaration(false)
+}
+
+// ConstantDeclarationItems and SomeFixDecl share token choices and wrappers,
+// but each source production owns its distinct message frame.
+func (p *SanyParser) fixDeclaration(constant bool) *SanySyntaxNode {
 	if p.isNEPrefixOperator(p.peek()) {
-		op := p.consumeOperator("expected prefix operator declaration")
-		us := p.consume(SanyTokenUs, "expected _ after prefix operator declaration")
+		op := sanyOperatorTokenNode("N_NonExpPrefixOp", p.advance())
+		p.expecting = "_"
+		us := p.consumeParseToken(SanyTokenUs, "expected _ after prefix operator declaration")
 		return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixDecl"], op, us)
 	}
-	left := p.consume(SanyTokenUs, "expected _ in operator declaration")
+	if !p.check(SanyTokenUs) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected operator declaration")
+	}
+	left := NewSanyTokenNode(p.advance())
+	p.expecting = "infix or postfix operator"
+	if constant {
+		p.expecting = "prefix or postfix operator"
+	}
 	if p.isInfixOperator(p.peek()) {
-		op := p.consumeOperator("expected infix operator declaration")
-		right := p.consume(SanyTokenUs, "expected _ after infix operator declaration")
+		op := sanyOperatorTokenNode("N_InfixOp", p.infixOpToken())
+		p.expecting = "_"
+		right := p.consumeParseToken(SanyTokenUs, "expected _ after infix operator declaration")
 		return NewSanyNode(SanySyntaxNodeKindByName["N_InfixDecl"], left, op, right)
 	}
-	op := p.consumeOperator("expected postfix operator declaration")
+	if !p.isGrammarPostfixOperator(p.peek()) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenOp57}}, "expected infix or postfix operator declaration")
+	}
+	op := sanyOperatorTokenNode("N_PostfixOp", p.advance())
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PostfixDecl"], left, op)
 }
 
@@ -3109,4 +3175,11 @@ func (p *SanyParser) infixOpToken() *SanyToken {
 	p.beginProduction("Infix Op")
 	defer p.endProduction()
 	return p.advance()
+}
+
+// Source SyntaxTreeNode(module, kind, token) is a leaf with the token's image.
+func sanyOperatorTokenNode(kind string, token *SanyToken) *SanySyntaxNode {
+	node := NewSanyTokenNode(token)
+	node.Kind = SanySyntaxNodeKindByName[kind]
+	return node
 }

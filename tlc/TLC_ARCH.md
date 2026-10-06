@@ -26,6 +26,19 @@ Identifier Declation and LetIn's Case Other Arm label. Eighteen bounded actual
 Java/Go TRACE and parse-result observations match; this is not a complete grammar
 frame audit.
 
+Constant and recursive declarations use Java's separate ConstantDeclarationItems
+production rather than formal IdentDecl. Its two-token lookahead consumes an
+argument list only when '(' is followed by '_'; failed lookahead retains the
+source following-input length for later parse errors. ParamSubDecl retains its
+own production frame and N_ConsDecl node. Source operator declaration wrappers
+are typed leaves whose image/range/comments come directly from their token;
+they have no fabricated token child. Formal operator declarations own their
+separate Op. Symbol Declaration frame and source error wording. Definition
+prefix/infix/postfix LHS frames are also retained. Thirty-one bounded complete
+TRACE/parse-result comparisons and selected declaration/LHS heir-kind/image
+comparisons match pinned Java. These observations do not establish general
+JavaCC rescan, source-range or whole-module syntax-tree parity.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the
