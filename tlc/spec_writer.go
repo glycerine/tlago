@@ -1824,7 +1824,7 @@ func NewTraceExplorationSpecNamed(outputPath string, teModuleName string, origin
 	return spec
 }
 
-func (s *TraceExplorationSpec) Generate(tool *Tool, errTrace *MCError) (string, error) {
+func (s *TraceExplorationSpec) Generate(tool *Tool, errTrace *MCError) (writtenPath string, err error) {
 	if s == nil || errTrace == nil || len(errTrace.States) <= 1 {
 		return "", nil
 	}
@@ -1840,17 +1840,24 @@ func (s *TraceExplorationSpec) Generate(tool *Tool, errTrace *MCError) (string, 
 	if s.TESpecModuleName == "" {
 		s.TESpecModuleName = DeriveTESpecModuleName(s.OriginalModule, time.Now())
 	}
-	if err := os.MkdirAll(s.OutputPath, 0o755); err != nil {
-		PrintMessage(ECTLCTESpecGenerationError, err.Error())
-		return "", err
-	}
+	// Source File.mkdirs returns a boolean that generate ignores; file creation
+	// below supplies the checked-I/O diagnostic if the directory is unavailable.
+	_ = os.MkdirAll(s.OutputPath, 0o755)
 	path := filepath.Join(s.OutputPath, s.TESpecModuleName+".tla")
 	file, err := os.Create(path)
 	if err != nil {
 		PrintMessage(ECTLCTESpecGenerationError, err.Error())
 		return "", err
 	}
-	defer file.Close()
+	// The source try-with-resources close belongs to the same IOException catch.
+	// A write failure stays primary; a close-only failure is reported even after
+	// the completion message, which Java emits before leaving the try body.
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			PrintMessage(ECTLCTESpecGenerationError, closeErr.Error())
+			writtenPath, err = "", closeErr
+		}
+	}()
 	if err := s.WriteSpecTE(tool, errTrace, file); err != nil {
 		PrintMessage(ECTLCTESpecGenerationError, err.Error())
 		return "", err

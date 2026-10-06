@@ -254,12 +254,10 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	if err != nil && result.ErrorCode == NoError {
 		result.ErrorCode = ECGeneral
 	}
-	if closeErr := closeUserOutput(); closeErr != nil && err == nil {
-		err = closeErr
-		if result.ErrorCode == NoError {
-			result.ErrorCode = ECGeneral
-		}
-	}
+	// TLC.process's finally ignores OUTPUT flush/close IOException, prints the
+	// finished message, then generates a trace spec without changing its result.
+	_ = closeUserOutput()
+	PrintMessage(ECTLCFinished, t.finishedRuntime())
 	if traceRecorder != nil && t.FromCheckpoint == "" && t.Tool != nil {
 		if mcError, ok := traceRecorder.MCErrorTrace(); ok {
 			outputDir := t.TraceSpecOutputDir
@@ -270,16 +268,10 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 			if t.TraceSpecModuleName != "" {
 				teSpec = NewTraceExplorationSpecNamed(outputDir, t.TraceSpecModuleName, t.Tool.GetRootName())
 			}
-			if _, genErr := teSpec.Generate(t.Tool, mcError); genErr != nil && err == nil {
-				err = genErr
-				if result.ErrorCode == NoError {
-					result.ErrorCode = ECGeneral
-				}
-			}
+			_, _ = teSpec.Generate(t.Tool, mcError)
 		}
 	}
 	result.ExitStatus = ExitStatusForErrorCode(result.ErrorCode)
-	PrintMessage(ECTLCFinished, t.finishedRuntime())
 	recorder.mu.Lock()
 	result.Messages = append([]Message(nil), recorder.Messages...)
 	recorder.mu.Unlock()
@@ -579,7 +571,7 @@ func (t *TLC) modelCheckingRuntimeParams() []string {
 		runtime.Version(),
 		runtime.GOARCH,
 		fmt.Sprintf("%d", runtimeHeapMB()),
-		"0",
+		fmt.Sprintf("%d", tlcRuntimeNonHeapPhysicalMemory()/1024/1024),
 		fmt.Sprintf("%d", RandomEnumerableSeed()),
 		fmt.Sprintf("%d", t.FPIndex),
 		fmt.Sprintf("%d", os.Getpid()),
@@ -602,7 +594,7 @@ func (t *TLC) simulationRuntimeParams() []string {
 		runtime.Version(),
 		runtime.GOARCH,
 		fmt.Sprintf("%d", runtimeHeapMB()),
-		"0",
+		fmt.Sprintf("%d", tlcRuntimeNonHeapPhysicalMemory()/1024/1024),
 		fmt.Sprintf("%d", os.Getpid()),
 		t.simulationScheduleName(),
 	}
@@ -628,9 +620,7 @@ func pluralSuffix(count int) string {
 }
 
 func runtimeHeapMB() uint64 {
-	var stats runtime.MemStats
-	runtime.ReadMemStats(&stats)
-	return stats.Sys / 1024 / 1024
+	return uint64(tlcRuntimeMaxHeapMemoryBytes() / 1024 / 1024)
 }
 
 func simpleJavaName(name string) string {

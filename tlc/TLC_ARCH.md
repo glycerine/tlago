@@ -1,5 +1,20 @@
 # TLC Architecture Notes for the Go Port
 
+## Runner completion and memory reporting
+
+TLC.process preserves the checker result through its final I/O cleanup. It
+ignores user-output flush/close IOException, prints the finished message, then
+generates a trace spec. Generation reports its own I/O diagnostic without
+promoting that failure to the checker result. The generator ignores mkdirs'
+boolean result; file creation supplies failure details. Its resource close
+shares the I/O catch and preserves a primary write failure. Completion is
+reported before leaving the resource body, as in the source.
+
+Model-checking and simulation startup banners use the configured maximum heap
+budget and direct-memory budget in MiB. Native process heap reservation is not
+the source Runtime.maxMemory equivalent; use the same native budget functions
+that fingerprint configuration uses. Runtime vendor/version fields describe Go.
+
 ## State-generation functor defaults
 
 Go callback-backed `StateFunctor` and `NextStateFunctor` preserve Java interface

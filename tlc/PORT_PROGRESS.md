@@ -1,5 +1,51 @@
 # TLC Port Progress
 
+2026-10-06 TLC runner completion, trace-generation I/O and memory banners:
+Pinned TLC.process finally ignores OUTPUT flush/close IOException, prints
+TLC_FINISHED, then generates the trace spec. Its TraceExplorationSpec.generate
+catches generation IOException internally without changing the checker result.
+Native previously promoted cleanup/generation I/O to the runner error and printed
+finished after generation. Restore source order and result preservation. Add exact
+MP completion/error templates; native previously fell back to numeric codes.
+Generator ignores mkdirs' result and reports file creation failure instead;
+resource-close failures enter the same diagnostic boundary, preserving a primary
+write failure and source completion-before-close timing. Native library Generate
+still returns its I/O observation to callers; Process consumes it like Java.
+Startup banners use the existing configured maximum-heap/direct-memory functions,
+not Go reserved-memory statistics and a hard-coded off-heap zero.
+
+Existing original MP/TLC/WarningControl and related existing runner checks pass
+6.721s (9440 terminal 0). Six original trace/checkpoint/ext-trace model methods
+pass initially 1.470s (96489); final seven-method selection adds the whole original
+SpecTraceExpressionWriter class and passes 1.756s (98861). Final all-package
+compilation passes 54314. Scratch binary build 70632 returns 0. No test assertions,
+settings, fixtures, workload bounds or inventory totals change. No new tests.
+
+Manual unchanged-Java/native original DieHard observes code 2110 and exact
+252/54/11 counts. Source finishes before trace-generation completion; native
+before fix was reversed and printed numeric code 2501. Corrected native prints
+source text and order, with its existing CLI safety-violation exit 4. With
+-Xmx64m / GOMEMLIMIT=64MiB and respective 128m direct-memory settings, both report
+64MB heap and 128MB offheap; native previously reported 23MB and 0MB. Source/native
+closed-output ConstLevelInvariant runs preserve success code 0 and 3/2/0 counts;
+native Process returns nil error. Its configuration is mechanically extracted
+from the original inline block. Source/native blocked trace-output directory
+observations preserve checker code 2110, print finished before generation error,
+and native returns nil error. Final native observation 87178 returns 0; operating
+system I/O text differs naturally. Source launcher bypasses the email main.
+Initial packaged observations omitted their packaged resolvers and failed config
+loading; subsequent absolute-path inline-config/library observations had incorrect
+resolver/config naming and failed before checking. Those attempts receive no
+success credit. Corrected observations run from the original model directories
+with the unmodified model and extracted original configuration.
+Scratch launchers/logs use /mnt/oldrog/tmp/TLCFinalizationManual.java,
+tlago-finalization-library-manual.go and tlago-finalization-*; manual observations
+are not additional test ports. Barrier correction committed as 73adde2. Full
+normal TLC 33649 is running that snapshot, before this runner correction, with
+log tlago-barrier-reconciliation-full-tlc.log and original bounds/no race.
+Random drafts 63113/59782 remain live at a915e08, approximately 1.784 billion /
+1.262 billion iterations; no completion credit.
+
 2026-10-06 off-heap shared barrier and duplicate-test reconciliation:
 Java OffHeapSynchronizer stops on the first throwing eviction. Phaser records
 all arrivals before onAdvance, so a thrown callback leaves that phase incomplete,

@@ -652,6 +652,10 @@ func formatMessage(code int, params []string) string {
 		if len(params) >= 1 {
 			return fmt.Sprintf("Finished in %s at (%s)", params[0], messageNow())
 		}
+	case ECTLCTESpecGenerationComplete:
+		return "Trace exploration spec path: " + configMessageParam(params, 0)
+	case ECTLCTESpecGenerationError:
+		return "Failed to generate trace exploration spec; error message: " + configMessageParam(params, 0)
 	case ECTLCModeMC:
 		return formatModeMCMessage(params, false)
 	case ECTLCModeMCDFS:

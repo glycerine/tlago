@@ -93,7 +93,8 @@ Focused verification:
 | Persistent CLI parameter state: original CLI/debugger/dump-load methods | Pass | 0.023 / 1.249 seconds |
 | Packaged TLC model integration: existing CLI behaviors and original subset methods | Pass | 4.638 seconds; original CLI classes 0.017 seconds |
 | Off-heap barrier failure semantics: original 22 short cases and 48-worker/checkpoint sequence | Pass | 0.077 / 5.319 seconds; sessions `19096` / `18062` retired |
-| Latest all-package compilation | Pass | Session `78802` retired |
+| Runner completion and memory banners: original message/CLI checks and trace/checkpoint models | Pass | 6.721 / 1.756 seconds; sessions `9440` / `98861` retired |
+| Latest all-package compilation | Pass | Session `54314` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -142,10 +143,21 @@ source nor Go changes output for that token. Help and README explain this.
 Original CLI/debugger/dump-load methods and manual source/native observations
 pass; their receipts predate completion of the retired workspace snapshot below.
 
+Runner completion now follows Java: ignore user-output cleanup I/O failures,
+print the finished message, then generate a trace spec. Trace-generation I/O
+reports its original diagnostic without changing the checker result. The
+original generator's ignored mkdirs result and resource-close catch are retained.
+Both trace-generation messages now use the source MP text. Startup banners report
+the configured heap and direct-memory budgets instead of reserved Go memory and
+zero. Original message/CLI, trace/checkpoint and writer tests pass; manual Java
+and Go observations confirm completion order, budgets and preserved results.
+These changes postdate the running full TLC snapshot below.
+
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
+| Full TLC after barrier and duplicate-test reconciliation | `73adde2` | `33649` | `tlago-barrier-reconciliation-full-tlc.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
