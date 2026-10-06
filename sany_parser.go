@@ -1478,16 +1478,21 @@ func (p *SanyParser) QuantBoundIntro() *SanySyntaxNode {
 }
 
 func (p *SanyParser) IdentifierTuple() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenLab, "expected << in identifier tuple"))
-	if !p.check(SanyTokenRab) {
-		heirs = append(heirs, p.Identifier())
+	p.beginProduction("Identifier tuple")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLab, "expected << in identifier tuple")}
+	p.expecting = "Identifier or >>"
+	if p.check(SanyTokenIdentifier) {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected identifier"))
+		p.expecting = "COMMA or >>"
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.Identifier())
+			p.expecting = "COMMA or >>"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected identifier"))
+			p.expecting = "COMMA or >>"
 		}
 	}
-	heirs = append(heirs, p.consume(SanyTokenRab, "expected >> in identifier tuple"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRab, "expected >> in identifier tuple"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IdentifierTuple"], heirs...)
 }
 
@@ -2101,23 +2106,34 @@ func (p *SanyParser) OtherArm(stop func(*SanyToken) bool) *SanySyntaxNode {
 }
 
 func (p *SanyParser) UnboundOrBoundChoose(stop func(*SanyToken) bool) *SanySyntaxNode {
-	choose := p.consume(SanyTokenChoose, "expected CHOOSE")
-	intro := p.QuantBoundIntro()
+	p.beginProduction("(Un)Bounded Choose")
+	defer p.endProduction()
+	choose := p.consumeParseToken(SanyTokenChoose, "expected CHOOSE")
+	var intro *SanySyntaxNode
+	switch p.peek().Kind {
+	case SanyTokenIdentifier:
+		intro = p.consumeParseToken(SanyTokenIdentifier, "expected CHOOSE identifier")
+	case SanyTokenLab:
+		intro = p.IdentifierTuple()
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenLab}}, "expected CHOOSE identifier or tuple")
+	}
 	maybe := p.MaybeBound()
-	colon := p.consume(SanyTokenColon, "expected : in CHOOSE expression")
+	colon := p.consumeParseToken(SanyTokenColon, "expected : in CHOOSE expression")
 	body := p.ExpressionUntil(stop)
 	return NewSanyNode(SanySyntaxNodeKindByName["N_UnboundOrBoundChoose"], choose, intro, maybe, colon, body)
 }
 
 func (p *SanyParser) MaybeBound() *SanySyntaxNode {
+	p.beginProduction("Domain binding")
+	defer p.endProduction()
 	if !p.match(SanyTokenIN) {
 		return NewSanyNode(SanySyntaxNodeKindByName["N_MaybeBound"])
 	}
 	in := NewSanyTokenNode(p.previous())
 	in.Kind = SanySyntaxNodeKindByName["T_IN"]
-	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
-		return tok.Kind == SanyTokenColon || tok.Kind == SanyTokenEOF
-	})
+	p.expecting = "Expression"
+	expr := p.ExpressionUntil(func(tok *SanyToken) bool { return tok.Kind == SanyTokenColon || tok.Kind == SanyTokenEOF })
 	return NewSanyNode(SanySyntaxNodeKindByName["N_MaybeBound"], in, expr)
 }
 

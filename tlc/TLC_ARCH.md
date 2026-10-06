@@ -63,6 +63,20 @@ observations and 12 LAMBDA semantic observations match Java. These observations
 cover nested bindings, substitution, arity and unknown identifiers without claiming
 complete semantic graph or application-range parity.
 
+CHOOSE, MaybeBound and IdentifierTuple preserve source production frames,
+expectations and mandatory-token parse failures. Empty identifier tuples remain
+syntactically permitted. Source processChoose derives formal count from all tuple
+heirs (including delimiters); for <<>>, it therefore creates one formal named >>
+and retains the tuple flag. The Go semantic bridge preserves this arithmetic
+rather than losing tuple identity through an empty/nil slice. Three direct
+FastTool/Go-tool probes match actual bound metadata and results: the empty-tuple
+form over a singleton 1-tuple returns <<1>>, an empty-tuple domain fails the tuple
+shape check (matching error prefix), and ordinary two-formal CHOOSE returns
+<<1, 2>>. These probes use semantic definitions rather than eager-evaluation cache
+values, and do not invoke Java TLC reporting. Seventy-seven bounded complete parser
+observations and 13 CHOOSE semantic observations match Java. General quantifier
+construction and whole semantic-graph parity remain separate reconciliation work.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

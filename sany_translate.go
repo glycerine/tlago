@@ -2242,7 +2242,14 @@ func sanyCaseArm(node *SanySyntaxNode) (CaseArm, Diagnostics) {
 func sanyChoose(node *SanySyntaxNode) (Expr, Diagnostics) {
 	choose := &ChooseExpr{Pos: sanyNodePosition(node)}
 	if tuple := firstSanyChildKind(node, "N_IdentifierTuple"); tuple != nil {
-		choose.TupleVars = sanyBoundIntroVars(tuple)
+		heirs := tuple.GetHeirs()
+		// Source processChoose sizes formals from all tuple heirs, including
+		// delimiters. For <<>>, this retains the closing token as a formal.
+		choose.TupleVars = make([]BoundVar, len(heirs)/2)
+		for i := range choose.TupleVars {
+			identifier := heirs[2*i+1]
+			choose.TupleVars[i] = BoundVar{Name: identifier.Image, Pos: sanyNodePosition(identifier), TupleBound: true}
+		}
 	} else if id := firstSanyIdentifier(node); id != nil {
 		choose.Var, choose.VarPos = id.Image, sanyNodePosition(id)
 	} else {

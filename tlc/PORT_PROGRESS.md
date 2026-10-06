@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-06 CHOOSE/domain binding/identifier tuple source behavior:
+Previous turn completed a58f0cf. Port UnboundOrBoundChoose, MaybeBound and
+IdentifierTuple's actual frames, expectations and mandatory-token failures.
+Preserve the source optional tuple identifier list, including valid empty syntax,
+and its unusual COMMA or >> expectation when an identifier after comma is missing.
+All 77 bounded complete parser TRACE/results match pinned Java (40604 terminal 0),
+log /mnt/oldrog/tmp/tlago-sany-choose-parser-audit.log.
+
+Thirteen complete semantic diagnostic observations initially match too, but source
+review exposes a lost tuple flag: empty sanyBoundIntroVars returned nil, causing
+CHOOSE <<>> to become a scalar binding. Java processChoose uses tuple heir length
+including delimiters, allocating one formal from the closing token for <<>>.
+Preserve that source arithmetic, formal name/position and tuple metadata exactly;
+do not invent zero-formal semantics or reject source-accepted syntax.
+Final rebuilt semantic comparisons all match (60658 terminal 0), logs under
+/mnt/oldrog/tmp/tlago-choose-semantic-audit and summary
+/mnt/oldrog/tmp/tlago-choose-semantic-final-audit.log.
+
+Direct lower-level TLC probes verify actual formal names/tuple flags, selected
+values and an invalid tuple-domain failure prefix in Java FastTool and the Go
+production tool. All three match (29168 terminal 0), including empty tuple syntax
+with a one-tuple domain and ordinary two-variable tuple CHOOSE. No Java TLC.main/
+TLC.process/reporting path. Logs under /mnt/oldrog/tmp/tlago-choose-runtime-audit,
+summary /mnt/oldrog/tmp/tlago-choose-runtime-final-audit.log. Initial probes wrongly
+cast eager cached values to OpDefNode in both languages; replace that harness
+lookup with actual root-module definitions. Those setup failures earn no runtime
+verification credit. Full exception text/types are outside the prefix comparison.
+
+Final normal verification: complete existing SANY 1.809 seconds (48705 terminal 0),
+unchanged parser/semantic/token/operator classes, original ParseErrorTests and
+four original TLC models 16.383 seconds (90667 terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-sany-choose-final-{sany,root}.log. No invented persistent tests
+or changed assertions; inventory counts unchanged. Groom the overlapping recent
+handoff paragraphs into current behavior and bounded scope; keep chronology here.
+Broader quantifier/parser/semantic fidelity and complete workspace green remain
+unproven. MSB session 5144 remains confirmed live; last recorded progress
+1,170,061,613/2,147,483,648. Preserve its isolated binary and handle.
+
 2026-10-06 Faithful LAMBDA parameters and semantic arity location:
 Previous turn completed 521b8bb. Java Lambda accepts only Identifier parameters;
 Go had reused formal identifier/operator declarations and fabricated N_IdentDecl

@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.425 seconds, session `7942` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.849 seconds, session `6221` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.383 seconds, session `90667` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.809 seconds, session `48705` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -191,7 +191,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,143,260,123 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,170,061,613 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -503,44 +503,39 @@ states and label error continuations remain work. The original `ParseErrorTests.
 asserts recorded parser output with the original input and assertion text,
 replacing the semantic-diagnostic surrogate. The original percent-error output
 assertion now checks `token "%"` in actual recorded output. The three existing
-TestSanyOutputFormatting methods now use production SimpleSanyOutput and the
+`TestSanyOutputFormatting` methods use production `SimpleSanyOutput` and the
 actual in-memory syntax parser, retaining their original input and assertions.
-Simple/Silent/OutErr routing, level ordinals, no-argument verbatim messages,
-platform line separators and string-argument Java formatting are ported.
-Forty-one scratch routing/format observations match pinned Java. The parser now
-emits TRACE at actual production entry/exit and reports errors inside its parse
-wrapper. Production exits do not run during exception propagation. Missing
-variable-declaration, identifier LHS/declaration, theorem/proof, LET, quantifier
-bound and infix frames are restored, preserving Java's original spelling and
-LET production name. All 31 bounded complete TRACE/parse-result comparisons match Java, including
-malformed operands, lexical errors, nested definitions and declarations. Constant
-and recursive declarations now use the actual ConstantDeclarationItems production,
-its two-token argument lookahead and source operator leaf constructors. Formal
-operator declarations retain their separate frame and differing error text;
-prefix/infix/postfix definition LHS frames are restored. The same 31 cases match
-selected declaration/LHS heir kinds and images; locations and whole-module trees
-are not claimed. Final complete SANY passes in 1.574 seconds, and the focused
-parser classes plus original TLC models pass in 13.528 seconds. INSTANCE and substitution parsing now retain their source frames and expectation
-boundaries, typed operator target leaves and three-token comma/target/arrow
-lookahead. Bare versus LOCAL instances preserve the source earlier two-token
-body lookahead, including keyword reclassification timing. The reflected source
-substitution target set has all 177 token kinds in its exact interval, including
-Unicode operators and excluding '.'. The expanded 54 complete TRACE/parse-result
-observations match Java; the same inputs match selected substitution target/arrow
-kinds and images. Final complete SANY passes in 1.799 seconds, and the focused
-parser classes plus original TLC models pass in 16.031 seconds.
-LAMBDA now uses the source identifier-only parameter list and direct identifier
-heirs, with actual Lambda frame, mandatory-token exceptions and expectations.
-Semantic translation reads those identifiers rather than fabricated N_IdentDecl
-nodes. Wrong-arity E4274 retains the source operator-name range; the subsequent
-E4271 still uses the full call range. All 64 bounded complete parser-output
-observations and 12 LAMBDA semantic observations match Java. Final complete SANY
-passes in 1.849 seconds; the focused original checks pass in 16.425 seconds.
-Numeric/general-Object driver
-formatting, PrintStream error-state queries and remaining production-frame
+Simple/Silent/OutErr routing, level ordinals, verbatim messages without arguments,
+platform line separators and applicable Java string formatting are ported. The
+parser emits TRACE at actual production entry/exit and reports caught errors
+inside its parse wrapper. Production exits do not run while propagating exceptions.
+Restored frames retain Java's original spelling and LET production name.
+
+Constant/recursive declarations use `ConstantDeclarationItems`, its two-token
+argument lookahead and typed operator leaves. Formal operator declarations retain
+their own frame and error wording. INSTANCE's two-token body lookahead and later
+keyword reclassification match source timing; subsequent substitutions require
+three-token comma/target/arrow lookahead. The exact 177-token target set includes
+Unicode operators and excludes '.'. LAMBDA uses direct identifier parameters;
+semantic translation consumes that tree. Its E4274 arity error uses the operator
+name range, independently of the subsequent full-call E4271 diagnostic.
+
+CHOOSE, optional domain binding and identifier tuples retain their source frames,
+expectations and mandatory-token failures. Preserve empty tuple syntax and Java's
+`processChoose` formal-count arithmetic: `<<>>` creates a tuple formal named `>>`.
+Do not replace it with a scalar binding or a zero-formal tuple. Direct lower-level
+Java/Go TLC probes match tuple flags, names, selected values and an invalid-domain
+error prefix; they do not invoke Java TLC reporting.
+
+Current bounded observations match Java: 77 complete parser TRACE/results, 41
+output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
+31 selected declaration/LHS trees, 54 substitution target/arrow trees and three
+CHOOSE runtime probes. Keep each scope distinct. Whole-module trees, general
+source ranges and complete parser/semantic graph fidelity are not established.
+Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
+Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame
 coverage still require reconciliation. Do not claim full SanyOutput or parser
-parity. Likewise, the existing syntax corpus
-port checks parser status and node usage, without the original canonical AST
+parity. The existing syntax corpus port checks parser status and node usage, without the original canonical AST
 comparison. These are remaining translation gaps, not full-suite fidelity
 receipts. Preserve the source harness's known-failure inversion: Java accepts
 the unchanged LOCAL-in-LET error fixture, and the original expects that success.
