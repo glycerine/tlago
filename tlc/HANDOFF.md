@@ -28,7 +28,9 @@ complete. Do not resume its unfinished code or its service BDD work here.
 
 The original checkpoint-on-violation and time-bound model tests are now complete.
 Both pass normally with their full assertions; the time-bound test retains the
-source five-second limit. Debugger/scoped-identifier methods are already mapped.
+source five-second limit. The generated checkpoint trace recheck is also complete
+and passes with its original checkpoint interval and exact seven-state trace.
+Next inspect the Java-produced CodePlexBug08 checkpoint archive recovery case. Debugger/scoped-identifier methods are already mapped.
 JPF concurrency verification and benchmarks remain separately tracked; JVM-only
 assertions and source-failing methods require honest reconciliation rather than
 invented Go equivalents. Keep pending entries visible in
@@ -102,12 +104,12 @@ inventory. Its current totals are:
 
 | Suite | Translated method contexts | Pending contexts |
 | --- | ---: | ---: |
-| Main TLC | 1,255 of 1,269 | 14 |
+| Main TLC | 1,256 of 1,269 | 13 |
 | Shared utilities | 55 of 56 | 1 |
 | Long tests | 15 of 22 | 7 |
 | Concurrent tests | 2 of 17 | 15 |
 
-In the main suite, 612 of 626 non-ignored concrete classes are complete. A method
+In the main suite, 613 of 626 non-ignored concrete classes are complete. A method
 context is a concrete Java class plus a method; inherited methods count once
 per concrete subclass. These totals measure translations, not implementation
 coverage or universal behavioral parity. Original ignored methods are counted
@@ -126,7 +128,7 @@ possible schedule.
 ## Remaining work and known blockers
 
 Four main-suite contexts have known source-failing or JVM-specific
-reconciliation issues below. The other ten pending contexts include original
+reconciliation issues below. The other nine pending contexts include original
 distributed models and related trace/liveness cases; checkpoint models are now
 complete. Consult the inventory for each exact disposition.
 

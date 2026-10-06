@@ -27,13 +27,20 @@ package tlago
 
 import (
 	"github.com/glycerine/tlago/tlc"
+	"path/filepath"
 	"testing"
 )
 
 // Original CheckpointOnViolationTest.testSpec, including inherited exit status
 // and doCheckpoint's Integer.MAX_VALUE / 60000 interval.
 func TestJavaCheckpointOnViolation(t *testing.T) {
-	r := runJavaTLCModelTest(t, "DieHard", "-checkpoint", "35791")
+	runJavaCheckpointOnViolation(t)
+}
+
+func runJavaCheckpointOnViolation(t *testing.T, extraArgs ...string) {
+	t.Helper()
+	args := append([]string{"-checkpoint", "35791"}, extraArgs...)
+	r := runJavaTLCModelTest(t, "DieHard", args...)
 	if r.ExitStatus != tlc.ExitStatusViolationSafety {
 		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
 	}
@@ -69,6 +76,33 @@ func TestJavaCheckpointWhenTimeBound(t *testing.T) {
 		if len(javaTLCRecords(r, code)) != 0 {
 			t.Fatalf("unexpected event %d", code)
 		}
+	}
+	requireJavaTLCUncovered(t, r)
+}
+
+// Original CheckpointOnViolationTest_TTraceTest.testSpec, including its
+// checkpoint override and inherited safety-violation exit.
+func TestJavaCheckpointOnViolationTTrace(t *testing.T) {
+	generated := filepath.Join(t.TempDir(), "CheckpointOnViolationTestTTrace.tla")
+	if !t.Run("original", func(t *testing.T) { runJavaCheckpointOnViolation(t, "-teSpecOutDir", generated) }) {
+		return
+	}
+	r := runJavaTTraceRecheck(t, "DieHard", generated, false, true, "-checkpoint", "35791")
+	if r.ExitStatus != tlc.ExitStatusViolationSafety {
+		t.Fatalf("exit=%d, want VIOLATION_SAFETY", r.ExitStatus)
+	}
+	if len(javaTLCRecords(r, tlc.ECTLCFinished)) == 0 {
+		t.Fatal("TLC_FINISHED absent")
+	}
+	if len(javaTLCRecords(r, tlc.ECGeneral)) != 0 {
+		t.Fatal("GENERAL recorded")
+	}
+	requireJavaTLCRecordedParams(t, r, tlc.ECTLCStats, "7", "7", "0")
+	if len(javaTLCRecords(r, tlc.ECTLCStatePrint2)) == 0 {
+		t.Fatal("TLC_STATE_PRINT2 absent")
+	}
+	if n := len(javaTLCRecords(r, tlc.ECTLCStatePrint2)); n != 7 {
+		t.Fatalf("trace states=%d, want 7", n)
 	}
 	requireJavaTLCUncovered(t, r)
 }

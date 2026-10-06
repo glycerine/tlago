@@ -1,5 +1,18 @@
 # TLC Port Progress
 
+2026-10-06 original checkpoint trace recheck:
+Translated the complete CheckpointOnViolationTest_TTraceTest.testSpec after
+its original generator port. Shared the full original generator assertions;
+rechecks its actual generated artifact with original checkpoint interval 35791,
+base safety-violation exit, exact 7/7/0 statistics, all seven printed trace
+states, FINISHED/GENERAL checks and uncovered assertion. Both generator and
+recheck pass normally, 1.762 seconds; recheck 0.89 seconds. Log:
+/mnt/oldrog/tmp/tlago-checkpoint-ttrace.log. No production change required.
+Main inventory becomes 1,256/1,269 methods and 613/626 classes, 13 pending.
+Inspected the next recovery case's original checkpoint.zip: three worker trace
+pairs, queue/vars checkpoints and liveness nodes/ptrs; preserve this Java-produced
+archive and source assertions rather than regenerating a native substitute.
+
 2026-10-06 return to master and original checkpoint model ports:
 The user postponed new distributed job-service work until faithful Java TLC
 parity is complete and returned development to master. No Tube/RMember work

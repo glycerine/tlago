@@ -6,9 +6,9 @@ Snapshot: 2026-10-06. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba5
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **612 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (97.8%).**
-- **1,255 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (98.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **14 logical method contexts across 14 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
+- **613 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (97.9%).**
+- **1,256 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (99.0%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **13 logical method contexts across 13 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -28,7 +28,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Safety checking, diagnostics, and checker lifecycle | 34 | 31 | 34 | 31 | 3 |
 | Issue regressions in the evaluator and checker | 98 | 98 | 101 | 101 | 0 |
 | Traces, aliases, dump/load, and generated trace specs | 17 | 16 | 48 | 47 | 1 |
-| Generated TTrace recheck variants | 45 | 44 | 45 | 44 | 1 |
+| Generated TTrace recheck variants | 45 | 45 | 45 | 45 | 0 |
 | Liveness and fairness model regressions | 101 | 99 | 101 | 99 | 2 |
 | Liveness graph, tableau, and expression helpers | 6 | 6 | 48 | 48 | 0 |
 | Simulation and multithreaded simulation | 20 | 20 | 55 | 55 | 0 |
@@ -41,7 +41,7 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **612** | **1,269** | **1,255** | **14** |
+| **Total** | **626** | **613** | **1,269** | **1,256** | **13** |
 
 ## Porting rules and proposed order
 
@@ -397,7 +397,7 @@ Every concrete *_TTraceTest and *_TTrace class, including inherited testSpec. Th
   Go translation: [tlc_ttrace_level_view_java_test.go](../tlc_ttrace_level_view_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, with original JSON/DOT/no-generation/no-coverage/debugger settings. Preserves -maxSetSize10 in both phases, safety exit, FINISHED/no GENERAL/no TLC_BUG, behavior diagnostic, both exact states/ordinals, every original generated _init/_next source location and zero-uncovered.
 - [x] [tlc2/tool/ViewMapTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/ViewMapTest_TTraceTest.java) — **Port complete**: `testSpec`.
   Go translation: [tlc_ttrace_level_view_java_test.go](../tlc_ttrace_level_view_java_test.go). Rechecks its actual generated Go artifact after the fully asserted original model run, with original JSON/DOT/no-generation/no-coverage/debugger settings. Preserves -view in both phases, safety exit, FINISHED/no GENERAL/no TLC_BUG, behavior diagnostic, all eight full states including pc, ordinals and every original generated _init/_next source location.
-- [ ] [tlc2/tool/checkpoint/CheckpointOnViolationTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/checkpoint/CheckpointOnViolationTest_TTraceTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/checkpoint/CheckpointOnViolationTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/checkpoint/CheckpointOnViolationTest_TTraceTest.java) — **Port complete**: `testSpec`. Translation: [tlc_checkpoint_models_java_test.go](../tlc_checkpoint_models_java_test.go). Generates the actual original trace before rechecking; preserves inherited exit, checkpoint interval, exact 7/7/0 counts, all seven trace states and uncovered assertion.
 - [x] [tlc2/tool/liveness/BidirectionalTransitions1BxTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/BidirectionalTransitions1BxTest_TTraceTest.java) — **Port complete**: `testSpec` (from `BidirectionalTransitions1B_TTrace`).
   Go translation: [tlc_bidirectional_liveness_java_test.go](../tlc_bidirectional_liveness_java_test.go). Complete original method and constructor settings, JSON/DOT/debugger/coverage/generation defaults, FINISHED/no GENERAL and exact stats retained. Preserves liveness exit, temporal-violation/counterexample/trace diagnostics, every exact state/action/ordinal and back-to-state1. Runs its fully asserted original model first, then rechecks the actual generated Go artifact with source no-generation/no-coverage settings and exact 4/3/0 or 5/4/0 recheck stats.
 - [x] [tlc2/tool/liveness/BidirectionalTransitions1ByTest_TTraceTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/BidirectionalTransitions1ByTest_TTraceTest.java) — **Port complete**: `testSpec` (from `BidirectionalTransitions1B_TTrace`).
@@ -492,7 +492,7 @@ Temporal semantics, fairness, constraints, symmetry, double negation, counterexa
 - [x] [tlc2/tool/liveness/CodePlexBug08AgentRing790Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08AgentRing790Test.java) — **Port complete**: `testSpec` → [tlc_codeplex08_liveness_java_test.go](../tlc_codeplex08_liveness_java_test.go). Original successful exit and presence/absence assertions, explicit config and coverage=false.
 - [x] [tlc2/tool/liveness/CodePlexBug08AgentRingTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08AgentRingTest.java) — **Port complete**: `testSpec` → [tlc_codeplex08_liveness_java_test.go](../tlc_codeplex08_liveness_java_test.go). Full original assertions/settings, exact graph file sizes, complete states/actions/ordinals and postconditions where asserted.
 - [x] [tlc2/tool/liveness/CodePlexBug08EWD840FL1Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08EWD840FL1Test.java) — **Port complete**: `testSpec` → [tlc_codeplex08_liveness_java_test.go](../tlc_codeplex08_liveness_java_test.go). Full original assertions/settings, exact graph file sizes, complete states/actions/ordinals and postconditions where asserted.
-- [ ] [tlc2/tool/liveness/CodePlexBug08EWD840FL2FromCheckpointTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08EWD840FL2FromCheckpointTest.java) — **Missing**: `testSpec`. Deferred under the user’s checkpoint/recovery scope, despite its liveness-directory location.
+- [ ] [tlc2/tool/liveness/CodePlexBug08EWD840FL2FromCheckpointTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08EWD840FL2FromCheckpointTest.java) — **Missing**: `testSpec`. Next recovery-model candidate under the return to complete Java parity; it must restore the original Java checkpoint.zip, retain three workers, and preserve graph sizes, state counts and full trace assertions.
 - [x] [tlc2/tool/liveness/CodePlexBug08EWD840FL2Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08EWD840FL2Test.java) — **Port complete**: `testSpec` → [tlc_codeplex08_liveness_java_test.go](../tlc_codeplex08_liveness_java_test.go). Full original assertions/settings, exact graph file sizes, complete states/actions/ordinals and postconditions where asserted.
 - [x] [tlc2/tool/liveness/CodePlexBug08EWD840FL3Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08EWD840FL3Test.java) — **Port complete**: `testSpec` → [tlc_codeplex08_liveness_java_test.go](../tlc_codeplex08_liveness_java_test.go). Full original assertions/settings, exact graph file sizes, complete states/actions/ordinals and postconditions where asserted.
 - [x] [tlc2/tool/liveness/CodePlexBug08EWD840FL4Test.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/liveness/CodePlexBug08EWD840FL4Test.java) — **Port complete**: `testSpec` → [tlc_codeplex08_liveness_java_test.go](../tlc_codeplex08_liveness_java_test.go). Full original assertions/settings, exact graph file sizes, complete states/actions/ordinals and postconditions where asserted.
