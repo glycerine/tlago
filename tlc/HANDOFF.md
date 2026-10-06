@@ -185,44 +185,18 @@ Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicate suites. Workspace `71687` is
-retired with status 1: root passes in 1,519.820 seconds and SANY in 1.071 seconds,
-but TLC fails in 46.483 seconds in the older handwritten
-`TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava`. It expected a duplicate full
-flush to succeed, whereas unchanged Java asserts `Broken disk index.` before
-publishing the file count. The inaccurate non-Java test and its unused slice helper were removed. The
-complete original `testMergeDuplicate` retains all ten output values and six
-warnings. The final 22 original short off-heap
-cases pass with source validation unchanged. This receipt is not a green
-workspace result and predates the correction.
+Poll live handles before launching duplicate suites. MSB session `63113` is
+now retired with status 0: its complete original random draft passes in
+13,343.32 seconds, including all 2,147,483,648 insertions, checkpoint commit,
+invariant check and final size. It was compiled at `a915e08`, before current
+DiskFPSet flusher endpoint/count assertions and file-helper corrections. Preserve
+that exact receipt; it does not verify those later changes. The draft remains
+outside the persistent suite and does not increase inventory credit. Historical
+workspace failures and their corrections are recorded in `PORT_PROGRESS.md`.
 
- The workspace run at `d611cba` is now retired with status 1: root timed out
-in `TestJavaCheckpointWhenTimeBound`; TLC passed in 820.531 seconds and SANY
-in 1.057 seconds. The log is `tlago-source-ant-fpset-workspace.log` under
-`/mnt/oldrog/tmp`. The source Ant runner forks each test class; the Go model
-helper had retained the off-heap static barrier from the earlier 48-worker
-`TLCGetAll` model. Focused original sequence `17783` reproduced the wait and is
-retired with status 1. The model setup now initializes a fresh off-heap singleton,
-matching the source fork. Ordinary runtime registration remains unchanged. The
-same original sequence passes in 5.329 seconds (`10096` retired), retaining all
-workers, interval settings, time bound and assertions. The failed workspace
-snapshot predates this setup correction and later production corrections. The completed broader fingerprint receipt includes
-the original 99,999,999-entry index method and retains all source bounds.
-No job in this table has full-run credit yet. None uses `-race`.
-
-Full TLC `33649` is retired with status 1 at `73adde2`, in 672.555 seconds.
-The original off-heap class hit an uninitialized fingerprint set retained from
-an earlier factory class. Ant uses a fresh JVM per class; the native original
-class now initializes its own singleton before its methods. The exact factory
-then off-heap sequence reproduced the failure in 0.047 seconds and now passes
-in 46.331 seconds, including the complete original index method. Production
-singleton lifetime and original assertions are unchanged. This resolves that
-failure; it is not yet a full-suite success receipt.
-
-The MSB and LSB random jobs retain all 2,147,483,648 iterations, default
+The random jobs retain all 2,147,483,648 iterations, default
 factories/configuration, seed, checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.
 LSB completed its first 536,870,912-entry flush and resumed insertion without a
 reported failure. Quiet flushes are not terminal jobs. Earlier sessions `98446`,

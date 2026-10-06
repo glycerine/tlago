@@ -54,6 +54,9 @@ func NewTLCRuntimeException(code int, params ...string) *TLCError {
 // newTLCRuntimeExceptionWithCause implements Assert.fail(int, Throwable).
 // That source overload sets the message and cause, leaving parameters null.
 func newTLCRuntimeExceptionWithCause(code int, cause error) *TLCError {
+	if cause == nil {
+		panic(NewNullPointerException())
+	}
 	failure := newTLCError(code, "%s", GetMessageNullable(code, javaThrowableDetailMessage(cause)))
 	failure.Runtime, failure.Cause = true, cause
 	return failure

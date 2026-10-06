@@ -1,5 +1,31 @@
 # TLC Port Progress
 
+2026-10-06 final null-cause correction and original MSB full-run receipt:
+Exception printer production is committed as 468efd1. Source Assert.fail(int,
+Throwable) dereferences cause.getMessage before creating a failure or notifying
+MP. Add that null check to the shared native cause constructor, including warning
+elevation. Seven scratch null throwable observations now match unchanged Java's
+exception classes and actual captured console bytes; logs
+/mnt/oldrog/tmp/tlago-null-throwable-final-{java,go}.log. No persistent test or
+assertion added. Final original message/warning/coverage checks pass 0.017s
+(76287 terminal 0); final all-package compilation passes (61374 terminal 0).
+
+MSB random session 63113 is now terminal 0 and retired. Its full original draft
+passes in 13343.32s at a915e08, with seed 15041980, default MSB configuration,
+all 2147483648 insertion/containment/size checks, checkpoint begin/commit,
+invariant and final-size assertions. Log:
+/mnt/oldrog/tmp/tlago-long-msb-random-unlimited-final.log. The source end timestamp
+precedes invariant scanning; terminal duration includes it. Inspect the current
+source diff before reusing the receipt: DiskFPSet since a915e08 now checks flusher
+file count/endpoints/order after reopen and corrects file-copy/rename behavior.
+This old-snapshot full pass does not verify those later changes. The live-shared
+scratch overlay/draft is untouched, the method remains outside the persistent
+suite, and inventory counts stay unchanged. LSB 59782 remains live, around
+1630794467 iterations; full workspace 50735 stays live at 0ee5627. No duplicate
+full suites started. Groom HANDOFF's jobs section by removing overlapping retired
+workspace chronology; prior receipts remain in this progress document.
+
+
 2026-10-06 runtime-exception and throwable MP printers:
 Previous goal turn is progress: 0ee5627 implements faithful recorder/visibility
 ordering, and 672e17c records the active full suite. Revalidate clean master and
