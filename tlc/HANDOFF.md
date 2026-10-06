@@ -59,31 +59,37 @@ seconds, and all packages compile. Original LSB/MSB/short-disk classes pass in
 494.131 seconds on the first merge snapshot, before the final exception-carrier
 and scan refinements; that receipt is not a final-source full-suite result.
 
-Two normal verification jobs compiled `cbdf35a` and remain live:
+Current normal verification jobs:
 
-| Job | Session | Log under `/mnt/oldrog/tmp` |
-| --- | --- | --- |
-| Full workspace, `go test -count=1 -failfast -timeout=60m ./...` | `44100` | `tlago-master-streaming-parity-workspace.log` |
-| Original full MSB random draft, 2,147,483,648 iterations | `59015` | `tlago-long-msb-random-streaming-full.log` |
+| Job | Source snapshot | Session | Log under `/mnt/oldrog/tmp` |
+| --- | --- | --- | --- |
+| Full workspace, `go test -count=1 -failfast -timeout=60m ./...` | `cbdf35a` | `44100` | `tlago-master-streaming-parity-workspace.log` |
+| Full TLC package, same normal flags | `a915e08` | `63702` | `tlago-named-recovery-final-tlc.log` |
+| Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
+| Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicates. Neither has pass credit yet.
-The MSB job last printed 1,033,118,916 iterations without a failure and is
-working through its first flush. Preserve default settings and original bounds;
-do not add `-race` or treat a quiet flush as a terminal job.
+Poll these handles before launching duplicates. None has pass credit yet.
+The earlier MSB job `59015` completed its first billion-entry flush and reached
+1,113,282,857 iterations without a reported failure. It was deliberately stopped
+because its explicit two-hour deadline was incompatible with the observed
+5.6 million iterations per minute after flushing; terminal status 143, retired.
+It has no full-run credit. The two replacement stress jobs retain every source
+iteration, default factory/configuration, seed and assertion, with `-timeout=0`
+and no `-race`. Expect hours. Quiet flushes are not terminal jobs.
 
-The subsequent named-file recovery correction streams Java's checkpoint copy,
-preserves its table and file semantics, builds its index while writing, counts
-disk writes, and retains coded order/index failures. Public invariant scans now
-match Java's order-only scan and compare `Size()` for the expected-size overload.
-The flusher preserves the Java IOException wrapper and runtime rename cause.
-Existing focused checks pass in 5.176 seconds; all 22 short original OffHeap
-cases pass separately in 0.075 seconds; all packages compile on the final source.
-No tests or source assertions were changed, and inventory totals are unchanged.
-The two live jobs above predate this follow-up. Verify the newer source after
-those jobs retire; their results must remain scoped to `cbdf35a`.
+Commit `a915e08` streams Java's named checkpoint copy, preserves its table and
+file semantics, builds its index while writing, counts disk writes, and retains
+coded order/index failures. Public invariant scans match Java's order-only scan
+and compare `Size()` for the expected-size overload. The flusher preserves the
+Java IOException wrapper and runtime rename cause. Existing focused checks pass
+in 5.176 seconds; all 22 short original OffHeap cases pass separately in 0.075
+seconds; all packages compile. No tests or source assertions were changed.
+Inventory totals are unchanged. The older full-workspace result, once available,
+will remain scoped to `cbdf35a`; it does not verify this follow-up.
 
 The full random family draft for LSB/MSB/OffHeap remains outside the enabled
-suite, without completion credit. Its full source loops and factory settings
+suite, without completion credit. Its LSB and MSB cases use the live jobs above;
+do not edit their shared draft while those runs are in progress. Its full source loops and factory settings
 are in `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go`, with overlay
 `/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`. The separate full MSB
 draft and overlay use prefix `/mnt/oldrog/tmp/tlago-long-msb-random-full-`.

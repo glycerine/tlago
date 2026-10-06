@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-06 full-bound stress deadline and current verification jobs:
+MSB 59015 completed its 1,073,741,824-entry first flush, resumed insertion and
+last printed 1,113,282,857 iterations without a reported failure. Its explicit
+2-hour deadline was too short: post-flush rates held around 5.6 million/minute,
+requiring about three more hours. Deliberately terminated the identified test
+and parent; handle returned status 143 and is retired, without full-run credit.
+This corrects a harness deadline, not a quiet-observation timeout or source bound.
+Restarted MSB on a915e08 with -timeout=0, shared full family overlay: 63113,
+log /mnt/oldrog/tmp/tlago-long-msb-random-unlimited-final.log. Started the separate
+full LSB method on the same source/config/overlay with -timeout=0: 59782,
+log /mnt/oldrog/tmp/tlago-long-lsb-random-unlimited-final.log. Preserve all
+2,147,483,648 iterations, seed 15041980, predecessor/put/size assertions,
+source progress formula, checkpoint calls, invariant and final-size assertions.
+Scratch helper now also retains source timing/setup/statistics/factory behavior;
+OffHeap factory ignores the supplied config exactly as its source does.
+Resources before scheduling: 230 GiB available RAM and 1.3 TiB available disk.
+No race instrumentation, invented tests, reduced loops, skips or new credit.
+Full workspace 44100 remains live on cbdf35a. Its TLC child exited before the
+new TLC package gate was scheduled; no package pass inferred from process exit.
+Full normal TLC package on a915e08 is now live in 63702; log
+/mnt/oldrog/tmp/tlago-named-recovery-final-tlc.log. All four live handles remain
+uncredited until their terminal results. Poll them before considering duplicates.
+Pinned customBuild.xml confirms LSB/MSB classes are explicitly excluded by
+test-dist-long for runtime; OffHeapDiskFPSetLongTest remains selected. Keep that
+distinction and the separate source suite execution contract in the inventory.
+
+
 2026-10-06 named fingerprint recovery and failure-boundary correction:
 Source audit of DiskFPSet.recover(String) found Go's whole-file checkpoint slice,
 table reset, destination truncation, missing disk-write accounting, and generic
