@@ -79,9 +79,24 @@ operator ranges and stopping conditions, and runs at the source production
 boundaries. ASSUME and ASSUMPTION remain distinct in this lookahead. Definition
 recognition requires the marker; DefStep leaves it for the definition parser.
 Go uses buffered token indices for the source reverse traversal, preserving
-forward Next links and the parser's consumed-token position. Expression grammar,
-expecting state, EOF positions and residual message-stack parity remain
-unfinished; marker insertion does not replace those parser mechanisms.
+forward Next links and the parser's consumed-token position.
+
+Module parsing now records the actual bpa/epa message frames and Module's
+expecting states. Failed EndModule consumption throws a typed internal parse
+exception; its source message renders the actual prior/current tokens and last
+five active frames. The native syntax API catches it and preserves source text
+in diagnostic metadata. The file loader reports that message before ParseUnit's
+E4003 abort. This mechanism currently covers the footer failure, not all grammar
+productions or JavaCC's full lookahead-derived expected-token alternatives.
+EOF token locations follow SimpleCharStream's last-read character, including
+zero positions for empty input, CRLF's separate code units and tab expansion.
+
+runSanyFrontEndParse contains the shared actual loading/parsing phase and its
+checked failure boundary; runSanyFrontEnd calls it before semantic work. The
+original ParseErrorTests.testAll uses this phase directly and checks recorded
+parser output. Expression/ExtendableExpr grammar, remaining production states
+and residual-stack parity remain unfinished; footer handling does not replace
+those parser mechanisms.
 
 ## Module loading and parse-unit relationships
 

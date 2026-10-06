@@ -1,5 +1,66 @@
 # TLC Port Progress
 
+2026-10-06 Actual module-footer ParseException and EOF positions:
+Previous goal turn made progress in 0351434. Full normal workspace 84303 remains
+confirmed live on that snapshot, before current parser-footer changes. Full
+original LSB 32959 remains confirmed live on its recorded storage snapshot;
+latest progress exceeds 1,134,590,298 of 2,147,483,648 insertions. Preserve both
+handles and original workloads; no terminal success or inventory credit.
+
+Port the actual bpa/epa message-state mechanism for Module, BeginModule, Extends
+and Body, and Module's expecting state transitions. EndModule throws a typed
+parse failure at its failed token consumption. The exception captures real prior
+and following tokens, expected sequence and active last-five-frame stack before
+Go unwinds. Native syntax APIs catch it and retain source parser output apart
+from native text; the existing loader reports that actual message and raises
+its single E4003. This covers the footer boundary, not the remaining grammar or
+all JavaCC lookahead-derived expected alternatives.
+
+Inspect SimpleCharStream.BeginToken/readChar/FillBuff and verify source EOF
+locations instead of assuming next-character positions. Empty input yields
+0:0. A final newline retains its own physical position; CRLF stores LF at the
+next column on the CR line, and tabs store the expanded column. Port EOF from
+lastEnd, preserving native next-character positions, and correct lastEnd for
+tabs and CRLF. Twelve source/native EOF coordinates match, including supplementary
+UTF-16 text. Scratch EOFPositionManual.java and tlago-eof-position-manual.go,
+log tlago-parser-eof-position-compare.log under /mnt/oldrog/tmp. No persistent
+invented tests. Source ParseException.add_escapes matches the already ported
+UTF-16 escaping routine.
+
+Existing focused tests first pass root 3.579 / SANY 0.604 seconds, 50394 retired;
+after EOF changes root 4.510 / SANY 0.637 seconds, 68279 retired. Full SANY 68052
+then fails its ParseErrorTests surrogate: it asserts semantic diagnostics where
+the original test asserts recorded parser output. Inspect unchanged upstream
+class and preserve original parameter and exact assertion text. Extract the
+actual shared loading/parsing phase into runSanyFrontEndParse without changing
+its exception boundary. Move the original method into root
+sany_parse_error_java_test.go so it can invoke that real phase. It now creates
+the original generated temporary module name, checks actual parsing failure and
+asserts recorded source output. Delete the diagnostic surrogate, not its source
+assertion. No additional TLC inventory credit; SANY is outside that inventory.
+
+Unchanged Java ParseErrorTests and RecordedSanyOutput compile into scratch and
+pass JUnit: one test, 0.074 seconds, log tlago-parser-footer-original-java-test.log.
+Initial compile lacked its original test-only recording helper; failed command
+retired, no success credit; compile with that helper then passes. Corrected Go
+selection passes root 3.469 / SANY 0.701 seconds, 39748 retired, log
+ tlago-parser-footer-corrected-java-focused.log. Complete SANY passes 1.428
+seconds, 68936 retired, log tlago-parser-footer-corrected-java-sany.log. Final
+all-package compilation passes, log tlago-parser-footer-final-compile.log.
+All execution is normal; no race instrumentation or weakened assertions.
+
+Final rebuilt frontend comparisons match all fifteen lexical observations plus
+MissingExpression and MissingFooter. MissingBracket still mismatches because
+Go consumes ==== as an expression instead of failing at the required ]. Keep
+that original case visible and fix actual grammar/frames next. Logs
+ tlago-parser-footer-final-compare.log and earlier
+ tlago-parser-footer-eof-compare.log: comparison script returns zero despite the
+one remaining diff, so its status is not an all-case passing gate. Sixteen loading
+observations still match after the shared-phase extraction, log
+ tlago-parser-footer-final-loading-compare.log. Final comparison session 18900
+returns zero and is retired. Earlier 36459 and 65771 retired. Overall goal remains
+incomplete; no duplicate full workload while 84303 lives.
+
 2026-10-06 Source definition-boundary lookahead:
 Previous turn progress committed as a4e08e0. Full normal workspace 28493 returns
 status 0 and is retired: root 1,567.112 / SANY 1.187 / TLC 782.392 seconds,

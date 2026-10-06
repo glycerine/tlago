@@ -62,8 +62,8 @@ module-loading snapshot with original bounds and normal execution. It predates
 the subsequent lexical and definition-lookahead corrections. Historical
 receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `84303` is live on the final lexical and
-definition-lookahead production changes. It preserves original bounds, failfast
+Full normal workspace session `84303` is live on the `0351434` lexical and
+definition-lookahead snapshot, before the subsequent parser-footer correction. It preserves original bounds, failfast
 and a 60-minute timeout, without race instrumentation. Both `GOTMPDIR` and
 `TMPDIR` use workspace `.codex-gotmp`. Log:
 `/mnt/oldrog/tmp/tlago-definition-lookahead-workspace.log`. No success is claimed
@@ -82,6 +82,10 @@ Latest focused verification:
 | All-package compilation | Pass | Final lexical correction |
 | Existing parser/resolver/semantic/CLI/XML and original INSTANCE/warning/action-level/trace selection after definition lookahead | Pass | Root 4.819 / SANY 1.057 seconds, session `13652` retired |
 | Complete SANY package after definition lookahead | Pass | 1.235 seconds, session `70775` retired |
+| Existing parser/resolver/semantic/CLI/XML, output methods and corrected original ParseErrorTests | Pass | Root 3.469 / SANY selection 0.701 seconds, session `39748` retired |
+| Complete SANY package after parser-footer correction | Pass | 1.428 seconds, session `68936` retired |
+| Original Java ParseErrorTests class | Pass | One original parameter/method, 0.074 seconds |
+| All-package compilation after shared parsing-phase extraction | Pass | Final parser-footer correction |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -209,13 +213,22 @@ Java. The Java `belchDEF` token-stream operation and its production call sites
 are now ported. Definition recognition requires the inserted marker, and
 `DefStep` leaves it for the definition parser as Java does. Twenty-one scratch
 comparisons match actual non-EOF token kinds, images, positions and marker
-placement. This is not an EOF-position or full parser-parity receipt. Three
-unmodified syntax observations still differ: missing expression, bracket and
-footer. The missing expression now leaves the same unrecognized definition
-header for the module footer check. Reconcile actual expression grammar,
-expecting state, EOF token positions and message stack next; do not synthesize
-those messages from generic native errors. Missing modules and filename/module-
-name mismatches now abort loading with source E4220/E4221 details and null or
+placement. This is not an EOF-position or full parser-parity receipt. The actual parser now maintains module-production message frames and expecting
+state, and throws a typed ParseException at the failed footer consumption.
+Its source message comes from that real failure state, separately from native
+text; the loader reports it before the existing E4003 abort. EOF positions
+retain Java's last-character coordinates, including empty input, CRLF, tabs
+and UTF-16 text. Twelve EOF observations match. The missing-expression and
+missing-footer observations now match complete Java front-end output; fifteen
+lexical observations still match. The missing-bracket observation remains
+incorrect because Go consumes an invalid footer token as an expression.
+Continue the actual Expression/ExtendableExpr grammar, its production frames
+and failure boundaries next. General JavaCC lookahead-derived expected-token
+sequences and remaining production states are not fully ported. The original
+`ParseErrorTests.testAll` now lives in root `sany_parse_error_java_test.go` and
+uses the shared actual parsing phase. It asserts recorded parser output with
+the original input and assertion text, replacing the semantic-diagnostic
+surrogate. Missing modules and filename/module-name mismatches now abort loading with source E4220/E4221 details and null or
 actual importing-module locations. The existing front-end exception boundary
 reports these failures; the native library API returns diagnostics and
 preserves a previously parsed root. Seven file-loading observations match Java.

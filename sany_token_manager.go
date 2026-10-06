@@ -525,7 +525,10 @@ func (tm *SanyTokenManager) emitDetachedToken(kind SanyTokenKind, begin, end Pos
 }
 
 func (tm *SanyTokenManager) eofToken() *SanyToken {
-	pos := tm.pos()
+	// BeginToken's failed read leaves SimpleCharStream at the last character.
+	// Its position arrays remain zero for an empty input stream.
+	pos := tm.lastEnd
+	pos.File = tm.file
 	return tm.emitToken(SanyTokenEOF, pos, pos, "", tm.state)
 }
 
@@ -563,6 +566,8 @@ func (tm *SanyTokenManager) advance() rune {
 	if r == '\r' {
 		if strings.HasPrefix(tm.rest(), "\n") {
 			tm.offset++
+			// Java consumes CR and LF separately, on the same physical line.
+			tm.lastEnd.Column++
 		}
 		tm.line++
 		tm.column = 1
@@ -571,6 +576,7 @@ func (tm *SanyTokenManager) advance() rune {
 		tm.column = 1
 	} else if r == '\t' {
 		tm.column = nextSanyTabColumn(tm.column)
+		tm.lastEnd.Column = tm.column - 1
 	} else {
 		tm.column++
 		if r > 0xffff {

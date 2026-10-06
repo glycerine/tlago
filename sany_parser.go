@@ -15,6 +15,8 @@ type SanyParser struct {
 	junctionColumns []int
 	dependencyList  []string
 	internalModules []string
+	messageStack    []sanyParseFrame
+	expecting       string
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
@@ -26,10 +28,14 @@ func parseSanySyntaxWithDependencies(file, source string) (node *SanySyntaxNode,
 	parser := &SanyParser{tokenManager: NewSanyTokenManager(file, source)}
 	defer func() {
 		if failure := recover(); failure != nil {
-			if lexical, ok := failure.(*sanyTokenMgrError); ok {
-				diags = append(parser.diags, lexical.diagnostic)
+			switch failure := failure.(type) {
+			case *sanyTokenMgrError:
+				diags = append(parser.diags, failure.diagnostic)
 				dependencies = parser.Dependencies()
-			} else {
+			case *sanyParseException:
+				diags = append(parser.diags, failure.diagnostic)
+				dependencies = parser.Dependencies()
+			default:
 				panic(failure)
 			}
 		}
@@ -51,15 +57,24 @@ func (p *SanyParser) addDependency(name string) {
 	p.dependencyList = append(p.dependencyList, name)
 }
 
-func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics) {
+func ParseSanySyntaxModules(file, source string) (modules []*SanySyntaxNode, diags Diagnostics) {
 	tokens, lexDiags := SanyTokenize(file, source)
 	parser := NewSanyParser(tokens, nil)
+	defer func() {
+		if failure := recover(); failure != nil {
+			if parse, ok := failure.(*sanyParseException); ok {
+				diags = append(filterSanyDiagnosticsToModuleSpans(lexDiags, modules), parser.diags...)
+				diags = append(diags, parse.diagnostic)
+			} else {
+				panic(failure)
+			}
+		}
+	}()
 	if parser.match(SanyTokenBeginPragma) {
 		for !parser.check(SanyTokenEOF) && !parser.atModuleStart() {
 			parser.advance()
 		}
 	}
-	var modules []*SanySyntaxNode
 	for !parser.check(SanyTokenEOF) {
 		for !parser.check(SanyTokenEOF) && !parser.atModuleStart() {
 			parser.advance()
@@ -73,7 +88,7 @@ func ParseSanySyntaxModules(file, source string) ([]*SanySyntaxNode, Diagnostics
 		module.SetParent()
 		modules = append(modules, module)
 	}
-	diags := filterSanyDiagnosticsToModuleSpans(lexDiags, modules)
+	diags = filterSanyDiagnosticsToModuleSpans(lexDiags, modules)
 	diags = append(diags, parser.diags...)
 	return modules, diags
 }
@@ -175,10 +190,16 @@ func (p *SanyParser) atModuleStart() bool {
 }
 
 func (p *SanyParser) Module() *SanySyntaxNode {
+	p.beginProduction("Module definition")
+	defer p.endProduction()
 	stackLevel := len(p.internalModules)
+	p.expecting = "---- MODULE"
 	begin := p.BeginModule()
+	p.expecting = "EXTENDS clause or module body"
 	extends := p.Extends()
+	p.expecting = "Module body"
 	body := p.Body()
+	p.expecting = "==== or more Module body"
 	end := p.EndModule()
 	p.internalModules = p.internalModules[:stackLevel]
 	p.internalModules = append(p.internalModules, begin.GetHeirs()[1].Image)
@@ -186,6 +207,8 @@ func (p *SanyParser) Module() *SanySyntaxNode {
 }
 
 func (p *SanyParser) BeginModule() *SanySyntaxNode {
+	p.beginProduction("Begin module")
+	defer p.endProduction()
 	begin := p.consumeAny([]SanyTokenKind{SanyTokenBm0, SanyTokenBm1, SanyTokenBm2}, "expected ---- MODULE")
 	p.reclassifyFieldName()
 	name := p.Identifier()
@@ -197,11 +220,16 @@ func (p *SanyParser) BeginModule() *SanySyntaxNode {
 }
 
 func (p *SanyParser) EndModule() *SanySyntaxNode {
+	if !p.check(SanyTokenEndModule) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenEndModule}}, p.parseErrorMessage("==== or more Module body", p.peek()))
+	}
 	end := p.consume(SanyTokenEndModule, p.parseErrorMessage("==== or more Module body", p.peek()))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_EndModule"], end)
 }
 
 func (p *SanyParser) Extends() *SanySyntaxNode {
+	p.beginProduction("Extends")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenExtends) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
@@ -221,6 +249,8 @@ func (p *SanyParser) Extends() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Body() *SanySyntaxNode {
+	p.beginProduction("Module body")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	for !p.check(SanyTokenEOF) && !p.check(SanyTokenEndModule) {
 		switch {

@@ -36,34 +36,7 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 		}
 	}()
 	loader := newSanyLoader(opts)
-	func() {
-		defer func() {
-			if failure := recover(); failure != nil {
-				exception, ok := failure.(error)
-				if !ok || tlc.IsJavaError(exception) {
-					panic(failure)
-				}
-				// frontEndParse converts caught Exceptions to ParseException.
-				// Preserve diagnostics accumulated before the interrupted load.
-				parseFailed = true
-				parseDiags = loader.diags
-				spec = loader.snapshot(nil)
-				println(fmt.Sprintf("\nFatal errors while parsing TLA+ spec in file %s\n", file))
-				if abort, ok := exception.(*sanyParseAbort); ok {
-					println(abort.Error())
-				} else {
-					println(tlc.JavaThrowableString(exception))
-				}
-				println(sanyErrorsString(parseDiags))
-			}
-		}()
-		spec, parseDiags = loader.loadSpec(file)
-		controlled := parseDiags
-		if report != nil {
-			controlled = report(parseDiags, sanyParsePhase)
-		}
-		parseFailed = controlled.HasErrors()
-	}()
+	spec, parseDiags, parseFailed = runSanyFrontEndParse(file, loader, report)
 	if parseFailed {
 		return
 	}
@@ -83,6 +56,43 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 		controlled = append(controlled, lintDiags...)
 	}
 	spec.Diags = append(append(Diagnostics(nil), parseDiags...), controlled...)
+	return
+}
+
+// runSanyFrontEndParse is the actual parsing phase and its checked failure
+// boundary. Keeping it separate also lets original parsing tests inspect their
+// recorded parser output without running semantic analysis.
+func runSanyFrontEndParse(file string, loader *sanyLoader, report func(Diagnostics, sanyDiagnosticPhase) Diagnostics) (spec *Spec, parseDiags Diagnostics, parseFailed bool) {
+	println := loader.opts.ParsingProgress
+	if println == nil {
+		println = func(string) {}
+	}
+	defer func() {
+		if failure := recover(); failure != nil {
+			exception, ok := failure.(error)
+			if !ok || tlc.IsJavaError(exception) {
+				panic(failure)
+			}
+			// frontEndParse converts caught Exceptions to ParseException.
+			// Preserve diagnostics accumulated before the interrupted load.
+			parseFailed = true
+			parseDiags = loader.diags
+			spec = loader.snapshot(nil)
+			println(fmt.Sprintf("\nFatal errors while parsing TLA+ spec in file %s\n", file))
+			if abort, ok := exception.(*sanyParseAbort); ok {
+				println(abort.Error())
+			} else {
+				println(tlc.JavaThrowableString(exception))
+			}
+			println(sanyErrorsString(parseDiags))
+		}
+	}()
+	spec, parseDiags = loader.loadSpec(file)
+	controlled := parseDiags
+	if report != nil {
+		controlled = report(parseDiags, sanyParsePhase)
+	}
+	parseFailed = controlled.HasErrors()
 	return
 }
 
