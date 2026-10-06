@@ -46,6 +46,13 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
+A full original MSB random fingerprint draft is running normally in session
+`98446`, with all 2,147,483,648 iterations and the default configuration.
+Log: `/mnt/oldrog/tmp/tlago-long-msb-random-full.log`; overlay and draft are in
+`/mnt/oldrog/tmp/tlago-long-msb-random-full-*`. Storage is on the relocated disk
+under ignored `.codex-gotmp`. Poll this handle before considering another run.
+It has no completion credit yet; do not start a duplicate or use `-race`.
+
 The Java archive recovery port exposed and fixed late intern-table restoration.
 The full new recovery method, five short component checks, and all-package
 compilation pass. Eight related original checkpoint, recovery, EWD840 and DFID

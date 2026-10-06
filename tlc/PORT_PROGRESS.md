@@ -1,5 +1,21 @@
 # TLC Port Progress
 
+2026-10-06 full original MSB random fingerprint run started:
+Prepared an overlay translation of FPSetTest.testMaxFPSetSizeRnd with the concrete
+MSBDiskFPSetTest factory. Preserves seed 15041980, default FPSetConfiguration,
+2,147,483,648 iterations, predecessor membership, every put/size assertion,
+minute progress calculation, checkpoint begin/commit, invariant and final count.
+Default native table capacity is 1,073,741,824; 67,108,864 buckets. Runs normally,
+without -race, using relocated .codex-gotmp for temporary set/checkpoint files.
+Resources before startup: approximately 240 GiB available RAM and 1.3 TiB free
+on /mnt/b. Overlay/draft: /mnt/oldrog/tmp/tlago-long-msb-random-full-{overlay.json,
+draft_test.go}; log /mnt/oldrog/tmp/tlago-long-msb-random-full.log.
+Session 98446 is live. First minute: 135,210,643 full iterations; no failures.
+No completed translation/full-run credit until its terminal result is verified.
+Source sequential method also ends by asserting l=2,147,483,649 despite its
+3,221,225,473 loop span, in addition to the already documented duplicate inputs.
+This is static source evidence, not a claim to have executed that full method.
+
 2026-10-06 original TLCSet server unsupported-feature test:
 Translated complete TLCSetTest.testSpec with TLCServerTestCase application/server
 setup. Existing server initialization reports the original unsupported TLCSet /
