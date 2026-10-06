@@ -84,7 +84,8 @@ Focused verification:
 | Original factory/CLI checks, default and source memory settings | Pass | 1.072 / 0.963 seconds |
 | Complete original heap/MSB/ShortDisk/off-heap classes and manager checks | Pass | 583.638 seconds, `f764bb1`, session `80888` retired |
 | Latest file-helper correction: existing focused fingerprint/commit checks | Pass | 0.181 seconds, session `27462` retired |
-| Latest all-package compilation | Pass | Session `6427` retired |
+| State-functor defaults: existing tool/debugger checks and original models | Pass | Core 0.024 seconds; seven init models 0.733 seconds; three debugger models 0.519 seconds |
+| Latest all-package compilation | Pass | Session `13886` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -98,6 +99,11 @@ pass in 4.304 seconds; final all-package compilation passes (session `97004`).
 Manual unchanged-Java/native counts match for full-table recovery and configured
 probe exhaustion. No test assertions, bounds or inventory counts changed. The
 full-class receipt above predates this correction; see progress for exact scopes.
+
+State-generation functor defaults now preserve Java's message-less
+`UnsupportedOperationException` for unimplemented `setElement`, `hasStates`,
+and unary next-state insertion. Existing callbacks retain their dispatch.
+The focused receipts above verify the correction; no tests or assertions changed.
 
 Current normal verification jobs:
 

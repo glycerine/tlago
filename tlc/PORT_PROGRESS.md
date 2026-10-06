@@ -1,5 +1,29 @@
 # TLC Port Progress
 
+2026-10-06 state-generation functor default-method parity:
+Pinned IStateFunctor.setElement/hasStates and unary INextStateFunctor.addElement
+throw message-less UnsupportedOperationException. Go substituted coded GENERAL
+errors for the two insertion/replacement methods and silently returned false from
+unimplemented hasStates. Preserve the source exception family/null message;
+methods with native error returns return the typed exception, while boolean-only
+hasStates uses its runtime panic boundary. Explicit callbacks still dispatch;
+default getStates remains the original empty SetOfStates. No invented tests,
+modified assertions, workload changes or additional translation credit.
+
+Existing tool checks plus original TLCDebugger/DebugTLCVariable classes pass in
+0.024s (82026 terminal 0; 25 top-level selected checks); seven original initial-
+state functor models pass 0.733s (47856 terminal 0), including distributed init
+continuation with original settings/assertions. Original Debug02Debugger,
+Debug03Debugger and Debug03DebuggerSim model methods pass 0.519s (73384 terminal
+0). Final all-package compilation passes (13886 terminal 0). Logs under
+/mnt/oldrog/tmp: tlago-functor-defaults-core.log, tlago-functor-defaults-models.log,
+and tlago-functor-defaults-debugger-models.log. All normally, without -race.
+
+Workspace 85256 remains live at d611cba; random 63113/59782 remain live at a915e08.
+No completion credit for those live jobs. Ant-unselected/source-failing tests
+remain pending the previously requested disposition; no answer inferred.
+
+
 2026-10-06 off-heap recovery uses the source current-flusher path:
 Java final DiskFPSet.recoverFP invokes virtual memInsert, then current
 flusher.flushTable when full; Go instead serialized every recovery operation,

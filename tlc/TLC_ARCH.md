@@ -1,5 +1,15 @@
 # TLC Architecture Notes for the Go Port
 
+## State-generation functor defaults
+
+Go callback-backed `StateFunctor` and `NextStateFunctor` preserve Java interface
+default-method contracts. Unimplemented `IStateFunctor.setElement` and unary
+`INextStateFunctor.addElement` return a message-less `UnsupportedOperationException`
+through their native error return. Unimplemented `hasStates` raises that runtime
+exception through its boolean-only signature. Overrides still dispatch to their
+provided callbacks. The default `getStates` returns an empty `SetOfStates`.
+These contracts matter for debugger state selection and probabilistic enumeration.
+
 ## Fingerprint memory and original model-test settings
 
 Java `TLCRuntime.getNonHeapPhysicalMemory` reads the VM's
