@@ -1,5 +1,18 @@
 # TLC Port Progress
 
+2026-10-06 return to master and original checkpoint model ports:
+The user postponed new distributed job-service work until faithful Java TLC
+parity is complete and returned development to master. No Tube/RMember work
+is carried into this change. Translated complete CheckpointOnViolationTest and
+CheckpointWhenTimeBoundTest methods with inherited exit assertions, all original
+recorder/coverage assertions, interval Integer.MAX_VALUE / 60000, and the full
+five-second stopAfter property. Copied InfiniteStateSpace model/config bytes
+unchanged. Existing checkpoint implementation passes both without modification.
+First violation check passes 1.919 seconds. Complete two-method selection passes
+6.310 seconds normally; time-bound method 5.36 seconds. Log:
+/mnt/oldrog/tmp/tlago-checkpoint-models.log. All-package compile-only check also passes. No race or full-suite claim.
+Main inventory becomes 1,255/1,269 methods and 612/626 classes; 14 pending.
+
 2026-10-05 Java TLC is the default command-line runner:
 Removed the --tlc/-tlc/--go-tlc/-go-tlc selector and the separate bounded CLI
 parser. Direct tlago [FLAGS] SPEC, modelcheck, and mc now call the same TLC

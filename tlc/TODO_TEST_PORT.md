@@ -1,14 +1,14 @@
 # Original TLC test-port inventory
 
-Snapshot: 2026-10-05. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `5946d3e`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
+Snapshot: 2026-10-06. Java source checkout: `8f4bc8b73ad1202774a6bf70143436f8ba50aab0`; Go baseline: `5946d3e`, with the current working tree inspected. This is a source-to-source inventory, not a new test run or a declaration of full Java behavioral parity.
 
 ## Scope and counting
 
 The main inventory covers every test-bearing concrete class in `../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/`, including JUnit 3 tests, annotated JUnit 4 methods, inherited methods, and concrete subclasses with no test methods of their own. Abstract bases and support classes are dependencies, not additional runnable test classes. Separate appendices cover shared `test/util/`, `test-long/`, `test-concurrent/`, `test-verify/`, and benchmarks.
 
-- **610 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (97.4%).**
-- **1,253 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (98.7%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
-- **16 logical method contexts across 16 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
+- **612 of 626 non-`@Ignore` concrete classes have all their logical test methods mapped (97.8%).**
+- **1,255 of 1,269 non-`@Ignore` logical test-method contexts have confirmed translations (98.9%).** A context is `(concrete Java class, method)`; inherited methods count once for each concrete subclass.
+- **14 logical method contexts across 14 classes remain to port or reconcile.** Related older Go checks may cover parts of the remaining cases.
 - There are 660 test-bearing concrete classes in the source tree overall. 34 are wholly disabled by `@Ignore`; 39 ignored method contexts are tracked separately below and excluded from the percentages.
 
 These are conservative translation counts. Credit requires an explicit original-method translation or an inspected match of the original inputs/assertions; merely testing the same Go type, running a model manually, having an ephemeral Java comparison, or copying a fixture is insufficient. Related Go tests whose full original cases/assertions have not been reconciled remain on the checklist. The percentages measure test translation, not TLC implementation completion or source-code coverage.
@@ -34,16 +34,22 @@ Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and C
 | Simulation and multithreaded simulation | 20 | 20 | 55 | 55 | 0 |
 | Coverage | 20 | 20 | 23 | 23 | 0 |
 | Debugger and scoped identifiers | 16 | 16 | 35 | 35 | 0 |
-| Checkpoint and recovery models | 2 | 0 | 2 | 0 | 2 |
+| Checkpoint and recovery models | 2 | 2 | 2 | 2 | 0 |
 | Distributed TLC | 11 | 4 | 41 | 34 | 7 |
 | Fingerprint sets, indexers, arrays, and iterators | 20 | 20 | 165 | 165 | 0 |
 | Queues and pool writers | 2 | 2 | 11 | 11 | 0 |
 | Values, lazy functions, enumeration, and value streams | 17 | 17 | 189 | 189 | 0 |
 | Collections, buffered files, combinatorics, and statistics | 14 | 14 | 91 | 91 | 0 |
 | Numbered legacy model suite | 104 | 104 | 104 | 104 | 0 |
-| **Total** | **626** | **610** | **1,269** | **1,253** | **16** |
+| **Total** | **626** | **612** | **1,269** | **1,255** | **14** |
 
 ## Porting rules and proposed order
+
+Current priority (2026-10-06): development returned to `master`. Postpone the
+new rpc25519/Tube job service until the remaining faithful Java TLC port is
+complete. Core checkpoint model ports are now complete; pursue remaining Java
+parity work without importing the unfinished distributed-service implementation.
+The older topic deferrals below describe the previous work order.
 
 Current user priority (2026-10-03): first finish the pending production work,
 get the suite green, and commit all current changes; then port original
@@ -647,8 +653,8 @@ No remaining non-`@Ignore` original methods identified in this topic. See the ma
 
 Original checkpoint-on-violation and time-bound models; generated recheck variants are listed with TTrace tests.
 
-- [ ] [tlc2/tool/checkpoint/CheckpointOnViolationTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/checkpoint/CheckpointOnViolationTest.java) — **Missing**: `testSpec`.
-- [ ] [tlc2/tool/checkpoint/CheckpointWhenTimeBoundTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/checkpoint/CheckpointWhenTimeBoundTest.java) — **Missing**: `testSpec`.
+- [x] [tlc2/tool/checkpoint/CheckpointOnViolationTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/checkpoint/CheckpointOnViolationTest.java) — **Port complete**: `testSpec`. Translation: [tlc_checkpoint_models_java_test.go](../tlc_checkpoint_models_java_test.go). Original inherited exit, coverage, event/trace assertions and checkpoint interval retained; time-bound test preserves five seconds and unchanged model/configuration.
+- [x] [tlc2/tool/checkpoint/CheckpointWhenTimeBoundTest.java](../../tlaplus/tlatools/org.lamport.tlatools/test/tlc2/tool/checkpoint/CheckpointWhenTimeBoundTest.java) — **Port complete**: `testSpec`. Translation: [tlc_checkpoint_models_java_test.go](../tlc_checkpoint_models_java_test.go). Original inherited exit, coverage, event/trace assertions and checkpoint interval retained; time-bound test preserves five seconds and unchanged model/configuration.
 
 ### Distributed TLC
 

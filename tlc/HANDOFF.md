@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 5, 2026. Full-suite verification baseline: `305a13f`.
+Updated: October 6, 2026. Full-suite verification baseline: `305a13f`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -22,17 +22,17 @@ The Java reference checkout is `../tlaplus`, pinned to
 `github.com/glycerine/tlago`; most TLC implementation lives in package `tlc`,
 with parser integration and model tests in the repository's root package.
 
-The user has deferred these topics:
+Current priority: finish faithful Java TLC parity on `master`. The new reusable
+rpc25519/Tube distributed service is postponed until the remaining port is
+complete. Do not resume its unfinished code or its service BDD work here.
 
-- Debugger and scoped identifiers.
-- Checkpoint and recovery models.
-- Distributed TLC.
-- JPF concurrency verification.
-- Benchmarks and supporting fixtures.
-
-Keep existing enabled tests enabled. Low-level storage and recovery tests remain
-in scope; the checkpoint-model deferral does not exclude them. Keep deferred
-entries visible in [TODO_TEST_PORT.md](TODO_TEST_PORT.md).
+The original checkpoint-on-violation and time-bound model tests are now complete.
+Both pass normally with their full assertions; the time-bound test retains the
+source five-second limit. Debugger/scoped-identifier methods are already mapped.
+JPF concurrency verification and benchmarks remain separately tracked; JVM-only
+assertions and source-failing methods require honest reconciliation rather than
+invented Go equivalents. Keep pending entries visible in
+[TODO_TEST_PORT.md](TODO_TEST_PORT.md).
 
 Email reporting is forbidden and its removal is already committed. Do not
 restore JavaMail, SMTP, MIME/Activation, ImageIO/AWT, image codecs, or JVM
@@ -102,12 +102,12 @@ inventory. Its current totals are:
 
 | Suite | Translated method contexts | Pending contexts |
 | --- | ---: | ---: |
-| Main TLC | 1,253 of 1,269 | 16 |
+| Main TLC | 1,255 of 1,269 | 14 |
 | Shared utilities | 55 of 56 | 1 |
 | Long tests | 15 of 22 | 7 |
 | Concurrent tests | 2 of 17 | 15 |
 
-In the main suite, 610 of 626 non-ignored concrete classes are complete. A method
+In the main suite, 612 of 626 non-ignored concrete classes are complete. A method
 context is a concrete Java class plus a method; inherited methods count once
 per concrete subclass. These totals measure translations, not implementation
 coverage or universal behavioral parity. Original ignored methods are counted
@@ -125,8 +125,10 @@ possible schedule.
 
 ## Remaining work and known blockers
 
-Four main-suite contexts remain eligible under the current topic selection.
-The other 12 pending contexts are in deferred distributed or checkpoint topics.
+Four main-suite contexts have known source-failing or JVM-specific
+reconciliation issues below. The other ten pending contexts include original
+distributed models and related trace/liveness cases; checkpoint models are now
+complete. Consult the inventory for each exact disposition.
 
 | Eligible class | Unresolved issue |
 | --- | --- |
