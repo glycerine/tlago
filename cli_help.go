@@ -45,7 +45,7 @@ func printCLIHelp(w io.Writer, command string) {
 	fmt.Fprintln(w, "tlago: TLA+ parsing, semantic checking, and the Go TLC model checker")
 	fmt.Fprintln(w)
 	if command == "" {
-		fmt.Fprintln(w, "Usage: tlago [TLC FLAGS] SPEC")
+		fmt.Fprintln(w, "Usage: tlago [TLC FLAGS] [SPEC]")
 		fmt.Fprintln(w, "       tlago COMMAND [OPTIONS] FILE...")
 		fmt.Fprintln(w, "       tlago -help | tlago help [COMMAND]")
 	} else {
@@ -67,6 +67,7 @@ func printCLIHelp(w io.Writer, command string) {
 	}
 	fmt.Fprintln(w)
 	if command == "" || command == "modelcheck" {
+		writeCLIHelpParagraph(w, "A root module can be omitted when the classpath contains model/MC.tla and its configuration. Set CLASSPATH to the model archive or resource directory, as with Java TLC's packaged-model mode. TLC loads model/generated.properties, uses the packaged module resolver, enables tool-mode output, and disables checkpoints. Direct invocation, modelcheck, and mc use the same runner.")
 		//writeCLIHelpParagraph(w, "Java invocation: java -cp tla2tools.jar tlc2.TLC [FLAGS] Spec. Go invocation: tlago [FLAGS] Spec.tla. The optional modelcheck (mc) subcommand uses exactly the same TLC runner and flags. TLC options keep the Java single-dash spelling and case. The module's .tla and config's .cfg extensions are optional. Exactly one root module is required.")
 		//writeCLIHelpParagraph(w, "Toolbox model editors generate a model module and .cfg from constants, behavior, invariants, properties, constraints, symmetry, and model values. On the CLI these model choices belong in the .tla/.cfg files; they are not separate command-line flags. GUI names below refer to the original Toolbox. Other editors may label the same choices differently.")
 	}
@@ -130,7 +131,10 @@ func cliHelpOperand(command string) string {
 	if command == "repl-expr" {
 		return "'EXPRESSION'"
 	}
-	if command == "modelcheck" || command == "checkimplfile" {
+	if command == "modelcheck" {
+		return "[SPEC]"
+	}
+	if command == "checkimplfile" {
 		return "SPEC"
 	}
 	return "FILE..."

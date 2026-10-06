@@ -91,7 +91,8 @@ Focused verification:
 | CheckImplFile/parser and MP.getError correction: original MP/CLI classes | Pass | 0.016 seconds |
 | Ant class isolation: original 48-worker TLCGetAll then five-second checkpoint | Pass | 5.329 seconds, session `10096` retired |
 | Persistent CLI parameter state: original CLI/debugger/dump-load methods | Pass | 0.023 / 1.249 seconds |
-| Latest all-package compilation | Pass | Session `27609` retired |
+| Packaged TLC model integration: existing CLI behaviors and original subset methods | Pass | 4.638 seconds; original CLI classes 0.017 seconds |
+| Latest all-package compilation | Pass | Session `44702` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -180,6 +181,14 @@ TLC is now the default CLI runner. Direct invocations such as
 The selection flags `--tlc`, `-tlc`, `--go-tlc`, and `-go-tlc` have been removed,
 as has the bounded checker's CLI path and its `-maxStates` option. The older
 bounded-checker library API is still covered by its existing tests.
+
+The ordinary CLI also handles Java's packaged-model mode: omit the module when
+`CLASSPATH` contains `/model/MC.tla` and its configuration. It loads generated
+properties, uses the packaged resolver, selects tool output and disables
+checkpoints. Direct invocation, `modelcheck` and `mc` use the same runner.
+Manual unchanged-Java/native runs of adapted original fixtures match failure
+code 2147 and successful 3-generated/2-distinct state counts. These observations
+add no test-port credit. The live workspace snapshot predates this correction.
 
 The guide in `cli_help.go` prints flag summaries, explanations, Java/Toolbox
 correspondence, defaults, examples, and current implementation limits. Help

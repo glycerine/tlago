@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-06 ordinary TLC packaged-model command integration:
+The existing ModelInJar/resource/property loader was used by TLCApp/distributed
+entry points but omitted from ordinary TLC.handleParameters/main integration.
+Restore no-module fallback when /model/MC.tla exists on the classpath: load its
+generated.properties, retain the captured resource classpath, select MC, enable
+tool mode and force checkpoint duration 0 even after an explicit interval. Carry
+the packaged loader in native Options and use InJarFilenameToStream plus the
+existing production SANY/config/tool bridge from the common direct/modelcheck/mc
+runner. Preserve explicit configuration selection and native multi-command usage
+when a no-argument invocation has no packaged model. Modelcheck/mc no longer
+reject an omitted file before TLC can select its packaged resource. Normal-file
+execution and packaged execution share the result/exit reporting helper.
+Classpath getter snapshots the loader paths; generated property mutation cannot
+replace the loader that found this model. Update CLI help and README.
+No mail reporting, new RPC/job service, JVM emulation, invented tests or inventory
+credit. Pinned Java has no ModelInJar integration test class; existing TLCTest
+method translations stay unchanged.
+
+Existing native CLI behaviors and original EmptySubsetEq/SubsetEq methods pass
+4.638s (24384 terminal 0); original TLC/WarningControl classes pass 0.017s.
+All-package compilation initially passes 13705, then final after usage/help changes
+passes 44702. Help 26670 returns 0. Manual source/native packaged observations use
+adapted existing originals (module renamed MC, original config unchanged or
+mechanically extracted): EmptySubsetEq yields source/native code 2147 and 1/1/0
+state counts; ConstLevelInvariant completes source code 0/native CLI exit 0 with
+3 generated/2 distinct/0 queued states in both. Direct no-argument, modelcheck
+and mc all load the packaged subset model and report 2147 through native exit 4.
+This is a deliberately failing original model, not an introduced port failure.
+Java source launcher calls TLC.process directly, bypassing forbidden email code.
+Initial Java launcher import used the wrong InJar package and failed to compile;
+corrected model.InJarFilenameToStream invocation returns 0 and prints the source
+checker result. No credit for the initial compile failure. Native standalone
+option observation confirms MC/config MC, tool true, checkpoint 0 and generated
+property "loaded" via TLCGet's source -D property lookup. Logs/jars/source mains
+are scratch-only under /mnt/oldrog/tmp/tlago-packaged-model-manual and
+/mnt/oldrog/tmp/TLCPackagedManual.java, tlago-packaged-options-manual.go.
+These observations are not additional tests or original-method count credit.
+
+Workspace 71687 remains live at 2e02aa9 and predates both subsequent CLI corrections.
+Random 63113/59782 remain live at a915e08. No full-run completion credit yet.
+
+
 2026-10-06 TLC persistent parameter-state and split semantics:
 Repeated -debugger sets the standard port but retains constructor/prior suspend
 and halt until a recognized subargument overrides them. Recognition is source

@@ -472,7 +472,17 @@ func ParseTLCOptions(args []string) (Options, error) {
 	}
 
 	if opts.SpecFile == "" {
-		return opts, tlcCommandLineError("Error: Missing input TLA+ module.")
+		model := NewModelInJar()
+		if !model.HasModel() {
+			return opts, tlcCommandLineError("Error: Missing input TLA+ module.")
+		}
+		model.LoadProperties()
+		opts.PackagedModel = model
+		opts.ToolMode = true
+		Globals.Tool = true
+		opts.CheckpointDurationMillis = 0
+		Globals.CheckpointDurationMillis = 0
+		opts.SpecFile = ModelCheckFileBasename
 	}
 	if opts.ConfigFile == "" {
 		opts.ConfigFile = opts.SpecFile

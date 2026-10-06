@@ -33,6 +33,15 @@ func (m *ModelInJar) resource(name string) *filenameResource {
 	return (&SimpleFilenameToStream{classpath: m.classpath}).findClasspath("model/" + name)
 }
 
+// Classpath returns the captured resource-loader paths. Loading generated
+// properties must not replace the classloader that found the packaged model.
+func (m *ModelInJar) Classpath() []FilenameClasspathEntry {
+	if m == nil {
+		panic(NewNullPointerException())
+	}
+	return append([]FilenameClasspathEntry{}, m.classpath...)
+}
+
 func (m *ModelInJar) HasModel() bool { return m.resource("MC.tla") != nil }
 func (m *ModelInJar) HasCfg() bool   { return m.resource("MC.cfg") != nil }
 

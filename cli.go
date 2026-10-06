@@ -21,6 +21,9 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		stderr = io.Discard
 	}
 	if len(args) == 0 {
+		if tlcruntime.NewModelInJar().HasModel() {
+			return runModelCheck(args, stdout, stderr)
+		}
 		fmt.Fprintln(stderr, "usage: tlago [TLC FLAGS] SPEC | parse|check|modelcheck|checkimplfile|repl-expr|apalache-json|sany-xml [OPTIONS] FILE...")
 		fmt.Fprintln(stderr, "Run tlago -help for commands, flags, examples, and Java/Toolbox equivalents.")
 		return ExitToolFailure
@@ -54,7 +57,7 @@ func RunCLI(args []string, stdout, stderr io.Writer) int {
 		printCLIHelp(stdout, command)
 		return ExitOK
 	}
-	if len(files) == 0 {
+	if len(files) == 0 && cmd != "modelcheck" && cmd != "mc" {
 		fmt.Fprintln(stderr, "at least one file is required")
 		return ExitToolFailure
 	}
@@ -518,6 +521,20 @@ func runModelCheck(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
+	if opts.PackagedModel != nil {
+		classpath, err := tlcApplicationClasspath(opts.PackagedModel.Classpath())
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return ExitToolFailure
+		}
+		resolver := tlcruntime.NewInJarFilenameToStream(tlcruntime.ModelInJarPath,
+			tlcruntime.FilenameResolverOptions{Classpath: classpath})
+		opts.LoadTool = func() (*tlcruntime.Tool, error) {
+			tool, _, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, resolver, opts.RuntimeParams)
+			return tool, err
+		}
+		return runParsedTLCModelCheck(opts, stdout, stderr)
+	}
 	diagOpts = diagOpts.withTLCMessageControls()
 	loadOpts.ParsingProgress = tlcruntime.ToolIOPrintln
 	loadOpts.ResolutionError = tlcruntime.ToolIOErrPrintln
@@ -554,6 +571,10 @@ func runModelCheck(args []string, stdout, stderr io.Writer) int {
 		opts.NoDeadlock = true
 		opts.Deadlock = false
 	}
+	return runParsedTLCModelCheck(opts, stdout, stderr)
+}
+
+func runParsedTLCModelCheck(opts tlcruntime.Options, stdout, stderr io.Writer) int {
 	result, err := tlcruntime.NewTLC(opts).Process(context.Background())
 	if err != nil {
 		fmt.Fprintln(stderr, err)

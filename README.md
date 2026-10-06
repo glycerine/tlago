@@ -34,7 +34,7 @@ $ tlago -help
 
 tlago: TLA+ parsing, semantic checking, and the Go TLC model checker
 
-Usage: tlago [TLC FLAGS] SPEC
+Usage: tlago [TLC FLAGS] [SPEC]
        tlago COMMAND [OPTIONS] FILE...
        tlago -help | tlago help [COMMAND]
 
@@ -46,6 +46,12 @@ COMMANDS AND JAVA EQUIVALENTS
   repl-expr (repl)                    Evaluate one quoted expression; Java: tlc2.REPL expression evaluation.
   apalache-json                       Export checked modules as JSON IR; no Java TLC checking-mode equivalent.
   sany-xml                            Export checked modules as XML; Java: tla2sany.xml.XMLExporter.
+
+    A root module can be omitted when the classpath contains model/MC.tla and
+    its configuration. Set CLASSPATH to the model archive or resource directory,
+    as with Java TLC's packaged-model mode. TLC loads model/generated.properties,
+    uses the packaged module resolver, enables tool-mode output, and disables
+    checkpoints. Direct invocation, modelcheck, and mc use the same runner.
 
 FLAG QUICK REFERENCE
 

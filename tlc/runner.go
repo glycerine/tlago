@@ -34,6 +34,7 @@ type Options struct {
 	LoadTool                  func() (*Tool, error)
 	SpecFile                  string
 	ConfigFile                string
+	PackagedModel             *ModelInJar
 	MetaDir                   string
 	FromCheckpoint            string
 	Mode                      RunMode
