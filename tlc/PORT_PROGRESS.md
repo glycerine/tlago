@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-06 Per-module accumulated semantic reporting:
+The previous goal turn made progress in `db62dfb` and `6722bce`. Both full normal
+workspace session 95632 and unchanged LSB draft session 32959 are confirmed live;
+retain their handles and snapshots. Continue faithful Java parity on master,
+with new distributed work deferred. SANY.frontEndSemanticAnalysis shares one
+Errors instance and reports all accumulated diagnostics after each external
+module. Go previously printed once after the entire semantic traversal. Four
+manual dependency-chain/sibling cases expose the difference; single-module,
+nested-module and successful dependency controls already match.
+
+Add an actual per-module reporting callback in semantic traversal. Resolve
+selectors in the module's semantic iteration rather than a sorted whole-spec
+prepass. Include nested graphs in the enclosing external reporting boundary;
+no nested progress lines. Keep resolver contexts shared and native callers
+without loader order deterministic. The TLC loader replaces its stored semantic
+snapshot at each callback rather than appending duplicate diagnostics. Message
+controls and lint gating use the final accumulated snapshot. No persistent
+synthetic tests, new inventory credit, or weakened original assertions.
+
+All seven final manual observations match the entire semantic/lint output segment
+through the Starting marker, including repeated earlier errors, source locations,
+exact messages and newlines. Temporary direct FastTool helpers never invoke
+TLC.main. Logs /mnt/oldrog/tmp/tlago-semantic-accumulation-before.log and
+/mnt/oldrog/tmp/tlago-semantic-accumulation-compare.log; vectors
+/mnt/oldrog/tmp/tlago-semantic-accumulation-vectors/. Existing complete original
+SANY test package passes 1.309 seconds, session 4764 retired; focused existing
+semantic bridge/CLI/XML/original elevated-warning selection passes 3.323 seconds,
+session 38992 retired. Nine original recursion/proof/selector model methods pass
+2.795 seconds, session 42104 retired. Their settings and vectors remain unchanged.
+Source generation-versus-level-check gating and exact import-warning provenance
+remain separate concrete audit work; reporting observations do not prove them.
+Full workspace session 95632 predates this correction, so any eventual pass only
+verifies its storage/simulator production snapshot. No new full-suite pass claimed.
+
 2026-10-06 Buffered files, trace construction and simulation directory ownership:
 Committed as `db62dfb`; the subsequent documentation correction removes obsolete
 remaining-work claims for buffered-file modes and trace opening boundaries.

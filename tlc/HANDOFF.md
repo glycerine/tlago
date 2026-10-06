@@ -70,7 +70,8 @@ when the old temporary volume ran out of space. SANY passed. Log:
 has now been corrected to match Java. Future full runs must set **both**
 `GOTMPDIR` and `TMPDIR` to the large workspace `.codex-gotmp` directory.
 Full normal workspace session `95632` is live on the final storage and simulator
-corrections, preserving original bounds with no race instrumentation. Log:
+corrections, before the subsequent per-module semantic reporting correction,
+preserving original bounds with no race instrumentation. Log:
 `/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`. No full-suite success is
 claimed until this handle returns terminal status.
 
@@ -87,6 +88,8 @@ Latest focused verification:
 | Original buffered-file class and short checker/worker/trace checks | Pass | 7.765 seconds, session `73698` retired |
 | Original checkpoint/recovery/time-bound/trace-writer and CLI selection | Pass | 13.487 seconds, session `86328` retired |
 | Existing original simulation and simulation-worker selection | Pass | Root 48.055 / TLC 0.012 seconds, session `59011` retired |
+| Original SANY package and focused semantic/CLI/XML/warning checks | Pass | 1.309 / 3.323 seconds, sessions `4764` / `38992` retired |
+| Original recursion, proof and selector models | Pass | 2.795 seconds, session `42104` retired |
 | All-package compilation | Pass | Final storage and simulator corrections |
 
 Source/native scratch observations verify exception types/causes, delayed output,
@@ -94,6 +97,9 @@ constructor diagnostics and storage artifacts. These are manual evidence, not
 new persistent tests or test-port credit. Preserve each receipt's exact scope.
 The record-lint matrix matches Java in 33 valid cases. Six full front-end plus
 constructor observations now also match with the real lint phase included.
+Seven manual semantic-output observations match Java for one error, dependency
+errors, chains, siblings, nested modules and a successful dependency. These cover
+reporting order and accumulation, not all semantic generation or level gating.
 
 The latest checker correction initializes coverage, liveness and cached config
 in the parent constructor before storage and workers. Liveness I/O failures are
@@ -194,8 +200,10 @@ possible schedule.
 
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
-ErrorDetails rendering, source per-module semantic diagnostic accumulation,
-and remaining constructor and semantic-phase boundaries. Buffered-file modes,
+ErrorDetails rendering, source semantic generation-versus-level-check boundaries,
+warning provenance and remaining constructor boundaries. Per-module semantic
+reporting now follows the shared accumulated Errors instance; nested module
+diagnostics are included in their enclosing external reporting iteration. Buffered-file modes,
 invalid-mode exceptions and trace/worker opening boundaries were reconciled in
 `db62dfb`; preserve those verified fixes. Do not add
 synthetic phase output. The actual Java record linter is now ported: declaration

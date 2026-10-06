@@ -7,7 +7,6 @@ package tlago
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -129,51 +128,39 @@ func (r *sanySelectorResolver) addInstance(scope map[string]sanySelectorDefiniti
 		}
 	}
 }
-func resolveSanySelectors(spec *Spec) Diagnostics {
-	r := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
-	names := make([]string, 0, len(spec.Modules))
-	for name := range spec.Modules {
-		names = append(names, name)
+func (r *sanySelectorResolver) resolveModule(mod *Module) {
+	scope := r.scope(mod)
+	for i := range mod.Definitions {
+		r.walkDefinition(&mod.Definitions[i], mod, scope)
 	}
-	sort.Strings(names)
-	for _, name := range names {
-		mod := spec.Modules[name]
-		if mod == nil {
-			continue
-		}
-		scope := r.scope(mod)
-		for i := range mod.Definitions {
-			r.walkDefinition(&mod.Definitions[i], mod, scope)
-		}
-		for _, a := range mod.Assumptions {
-			if a.AssumeProveBody != nil {
-				r.walkAssumeProve(a.AssumeProveBody, mod, scope)
-			} else {
-				r.walk(a.Expr, mod, scope, 0)
-			}
-		}
-		for _, a := range mod.Theorems {
-			if a.AssumeProveBody != nil {
-				r.walkAssumeProve(a.AssumeProveBody, mod, scope)
-			} else {
-				r.walk(a.Expr, mod, scope, 0)
-			}
-		}
-		for _, inst := range mod.Instances {
-			r.walkInstance(inst, mod, scope)
-		}
-		for _, ref := range mod.ProofRefs {
-			if !ref.Defs && ref.Expr != nil {
-				_, direct := ref.Expr.(*IdentExpr)
-				r.walkProofFact(ProofFact{Expr: ref.Expr, Direct: direct}, mod, scope)
-			}
-		}
-		for _, proof := range mod.Proofs {
-			r.walkProof(proof, mod, scope)
+	for _, a := range mod.Assumptions {
+		if a.AssumeProveBody != nil {
+			r.walkAssumeProve(a.AssumeProveBody, mod, scope)
+		} else {
+			r.walk(a.Expr, mod, scope, 0)
 		}
 	}
-	return r.diags
+	for _, a := range mod.Theorems {
+		if a.AssumeProveBody != nil {
+			r.walkAssumeProve(a.AssumeProveBody, mod, scope)
+		} else {
+			r.walk(a.Expr, mod, scope, 0)
+		}
+	}
+	for _, inst := range mod.Instances {
+		r.walkInstance(inst, mod, scope)
+	}
+	for _, ref := range mod.ProofRefs {
+		if !ref.Defs && ref.Expr != nil {
+			_, direct := ref.Expr.(*IdentExpr)
+			r.walkProofFact(ProofFact{Expr: ref.Expr, Direct: direct}, mod, scope)
+		}
+	}
+	for _, proof := range mod.Proofs {
+		r.walkProof(proof, mod, scope)
+	}
 }
+
 func (r *sanySelectorResolver) walkInstance(inst Instance, mod *Module, scope map[string]sanySelectorDefinition) {
 	arities := map[string]int{}
 	if target := r.spec.Modules[inst.Module]; target != nil {

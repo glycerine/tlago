@@ -63,11 +63,13 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 	if parseFailed {
 		return
 	}
-	semanticDiags = checkSpecWithProgress(spec, opts.ParsingProgress)
-	controlled := semanticDiags
-	if report != nil {
-		controlled = report(semanticDiags, sanySemanticPhase)
-	}
+	var controlled Diagnostics
+	semanticDiags = checkSpecWithModuleReport(spec, opts.ParsingProgress, func(accumulated Diagnostics) {
+		controlled = accumulated
+		if report != nil {
+			controlled = report(accumulated, sanySemanticPhase)
+		}
+	})
 	if !controlled.HasErrors() {
 		lintDiags := lintSanySpec(spec, opts.ParsingProgress)
 		semanticDiags = append(semanticDiags, lintDiags...)

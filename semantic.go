@@ -16,41 +16,70 @@ func CheckSpec(spec *Spec) Diagnostics {
 }
 
 func checkSpecWithProgress(spec *Spec, progress func(string)) Diagnostics {
+	return checkSpecWithModuleReport(spec, progress, nil)
+}
+
+// SANY shares one Errors instance across external modules and reports its
+// accumulated contents after each module. Reprinting is not reinsertion.
+func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Diagnostics)) Diagnostics {
 	if spec == nil {
-		return Diagnostics{errorAt(Position{}, "E1300", "nil spec")}
+		diags := Diagnostics{errorAt(Position{}, "E1300", "nil spec")}
+		if report != nil {
+			report(diags)
+		}
+		return diags
 	}
 	var diags Diagnostics
-	diags = append(diags, resolveSanySelectors(spec)...)
+	resolver := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 	enclosing := enclosingModules(spec)
-	checked := make(map[string]bool, len(spec.Modules))
+	checked := make(map[*Module]bool, len(spec.Modules))
+	var check func(*Module)
+	check = func(mod *Module) {
+		if mod == nil || checked[mod] {
+			return
+		}
+		checked[mod] = true
+		before := len(resolver.diags)
+		resolver.resolveModule(mod)
+		diags = append(diags, resolver.diags[before:]...)
+		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
+		// Nested semantic graphs belong to the enclosing external module;
+		// they do not have their own SANY progress or reporting iteration.
+		for _, nested := range mod.Nested {
+			check(nested)
+		}
+	}
 	for _, name := range spec.SemanticOrder {
 		mod := spec.Modules[name]
-		if mod == nil || checked[name] {
+		if mod == nil || checked[mod] {
 			continue
 		}
-		checked[name] = true
 		if progress != nil {
 			progress("Semantic processing of module " + name)
 		}
-		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
+		check(mod)
 		// SANY assigns this external module's standard provenance after
 		// generation. The resolver call can itself throw during semantics.
 		if spec.FilenameResolver != nil {
 			mod.Library = spec.FilenameResolver.IsStandardModule(name)
 		}
+		if report != nil {
+			report(diags)
+		}
 	}
-	// Nested modules and native callers without a loader order still need
-	// checking. Keep their diagnostics deterministic instead of map-ordered.
+	// Native callers without loader order still need deterministic checking.
 	var remaining []string
-	for name := range spec.Modules {
-		if !checked[name] {
+	for name, mod := range spec.Modules {
+		if !checked[mod] {
 			remaining = append(remaining, name)
 		}
 	}
 	sort.Strings(remaining)
 	for _, name := range remaining {
-		mod := spec.Modules[name]
-		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
+		check(spec.Modules[name])
+	}
+	if report != nil && (len(remaining) > 0 || len(spec.SemanticOrder) == 0) {
+		report(diags)
 	}
 	return diags
 }

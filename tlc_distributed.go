@@ -224,6 +224,7 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 	var spec *Spec
 	var parseDiags, semanticDiags, diags Diagnostics
 	var parseFailed bool
+	var reportedParseDiags Diagnostics
 	func() {
 		defer func() {
 			if failure := recover(); failure != nil {
@@ -243,7 +244,17 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 			ExtraModules:     runtime.ExtendeeModules(),
 		}, func(raw Diagnostics, phase sanyDiagnosticPhase) Diagnostics {
 			controlled := processSANYDiagnostics(raw, phase)
-			diags = append(diags, controlled...)
+			switch phase {
+			case sanyParsePhase:
+				reportedParseDiags = append(Diagnostics(nil), controlled...)
+				diags = append(Diagnostics(nil), controlled...)
+			case sanySemanticPhase:
+				// Each module reports the shared accumulated semantic Errors.
+				// Keep one stored copy even though Java prints earlier messages again.
+				diags = append(append(Diagnostics(nil), reportedParseDiags...), controlled...)
+			case sanyLintPhase:
+				diags = append(diags, controlled...)
+			}
 			return controlled
 		})
 	}()
