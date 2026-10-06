@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-06 fingerprint streaming merge correction in progress:
+The previous original MSB random run (98446) and full workspace run (83220)
+were deliberately terminated after source inspection exposed the Go flusher
+materializing the complete disk file and MSB table, with unbuffered per-value
+writes. Both handles returned terminal status 143 and are retired, without
+pass credit. MSB last printed 1,035,002,220 iterations; its first flush had
+not completed. No assertion failure was observed, but interruption is not a pass.
+Java streams old values through BufferedRandomAccessFile and new MSB entries
+through TLCIterator, retaining only LSB's prescribed sorted buffer. Porting
+those algorithms and preallocated buffered output; original bounds and
+assertions remain unchanged. Fingerprint collision and invariant scans also
+stream buffered input rather than materializing the whole file. Final focused
+iterator/reader/duplicate-merge/buffered-file checks pass in 6.241 seconds
+(session 10668, terminal 0). All-package compilation passes (77801, terminal 0).
+Original LSB/MSB/short-disk classes pass normally in 494.131 seconds
+(session 43769, terminal 0). That run compiled the first streaming merge
+before final exception-carrier and scan refinements; the focused final-code
+receipt above and the new full-suite gate cover the final source.
+Restarted full original MSB random verification on final streaming code in
+session 59015; log /mnt/oldrog/tmp/tlago-long-msb-random-streaming-full.log.
+Full final-code workspace verification is now live in session 44100; log
+/mnt/oldrog/tmp/tlago-master-streaming-parity-workspace.log. The separate MSB
+full workload last printed 117,618,356 iterations with no failure. Both live
+workloads retain source bounds and run normally, without race checks.
+No completed full-run credit or inventory changes yet. No new service work
+or invented tests.
+
 2026-10-06 original random fingerprint family prepared:
 Factored the full original FPSetTest.testMaxFPSetSizeRnd translation into a
 shared scratch helper and retained all three concrete factories: LSB/default,

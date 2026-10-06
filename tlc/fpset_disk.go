@@ -592,18 +592,35 @@ func (s *DiskFPSet) RecoverFP(fp uint64) error {
 
 func (s *DiskFPSet) CheckFPs() uint64 {
 	s.acquireTblWriteLock()
-	defer s.releaseTblWriteLock()
-	if err := s.flushTable(); err != nil {
-		return 0
-	}
-	values, err := readFingerprintFile(s.fpFilename)
+	err := s.flushTable()
+	s.releaseTblWriteLock()
 	if err != nil {
 		return 0
 	}
-	dis := uint64(1<<63 - 1)
-	for i := 1; i < len(values); i++ {
-		if values[i] >= values[i-1] {
-			dis = minUint64(dis, values[i]-values[i-1])
+	in, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
+	if err != nil {
+		return 0
+	}
+	defer in.Close()
+	length, err := in.Length()
+	if err != nil {
+		return 0
+	}
+	dis := uint64(math.MaxInt64)
+	if length > 0 {
+		x, err := in.ReadLong()
+		if err != nil {
+			return 0
+		}
+		for pos := int64(fpSetLongSize); pos < length; pos += fpSetLongSize {
+			y, err := in.ReadLong()
+			if err != nil {
+				return 0
+			}
+			if difference := y - x; difference >= 0 {
+				dis = minUint64(dis, uint64(difference))
+			}
+			x = y
 		}
 	}
 	return dis
@@ -923,117 +940,177 @@ func (s *DiskFPSet) prepareLSBTable() {
 	sort.Slice(s.lsbBuff, func(i, j int) bool { return s.lsbBuff[i] < s.lsbBuff[j] })
 }
 
+// mergeNewEntries follows DiskFPSet.Flusher's buffered, streaming merge.
+// The caller holds the table write barrier throughout reader replacement.
 func (s *DiskFPSet) mergeNewEntries() error {
-	oldValues, err := readFingerprintFile(s.fpFilename)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	var newValues []uint64
-	if s.mode == diskFPSetModeLSB {
-		newValues = s.lsbBuff
-	} else {
-		itr := newMSBDiskIterator(s.tbl)
-		newValues = make([]uint64, 0, atomic.LoadInt64(&s.tblCnt))
-		for itr.hasNext() {
-			next, err := itr.next()
-			if err != nil {
-				return err
-			}
-			newValues = append(newValues, next)
+	readerCnt, poolCnt := len(s.braf), len(s.brafPool)
+	for _, reader := range s.braf {
+		if err := reader.Seek(0); err != nil {
+			return err
 		}
 	}
-	if len(newValues) == 0 {
-		return nil
+	for _, reader := range s.brafPool {
+		if err := reader.Close(); err != nil {
+			return err
+		}
 	}
-	total := int64(len(oldValues) + len(newValues))
-	indexLen := s.calculateIndexLen(int64(len(newValues)))
-	newIndex := make([]uint64, indexLen)
-	maxVal := newValues[len(newValues)-1]
-	if len(s.index) > 0 && s.index[len(s.index)-1] > maxVal {
-		maxVal = s.index[len(s.index)-1]
-	}
-	newIndex[indexLen-1] = maxVal
-
-	if err := os.MkdirAll(filepath.Dir(s.tmpFilename), 0o755); err != nil {
-		return err
-	}
-	tmp, err := os.Create(s.tmpFilename)
+	_ = os.Remove(s.tmpFilename)
+	out, err := NewBufferedRandomAccessFile(s.tmpFilename, "rw")
 	if err != nil {
 		return err
 	}
-	currIndex := 0
-	counter := 0
+	defer out.Close()
+	if err := out.SetLength((atomic.LoadInt64(&s.tblCnt) + atomic.LoadInt64(&s.fileCnt)) * fpSetLongSize); err != nil {
+		return err
+	}
+	if err := s.mergeFingerprintStreams(s.braf[0], out); err != nil {
+		return err
+	}
+	if err := s.closeBRAFReaders(); err != nil {
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
+		return NewTLCRuntimeException(ECSystemUnableNotRenameFile, err.Error())
+	}
+	return s.openBRAFReaders(readerCnt, poolCnt)
+}
+
+// MSB walks the sorted table directly; LSB uses the source flusher's sorted
+// buffer. Neither variant copies the existing fingerprint file into memory.
+func (s *DiskFPSet) mergeFingerprintStreams(in, out *BufferedRandomAccessFile) error {
+	buffLen := atomic.LoadInt64(&s.tblCnt)
+	var itr *msbDiskIterator
+	var maxVal uint64
+	if s.mode == diskFPSetModeLSB {
+		buffLen = int64(len(s.lsbBuff))
+		maxVal = s.lsbBuff[buffLen-1]
+	} else {
+		itr = newMSBDiskIterator(s.tbl)
+		var err error
+		maxVal, err = itr.getLast()
+		if err != nil {
+			return err
+		}
+	}
+	if len(s.index) > 0 && s.index[len(s.index)-1] > maxVal {
+		maxVal = s.index[len(s.index)-1]
+	}
+	indexLen := s.calculateIndexLen(buffLen)
+	s.index = make([]uint64, indexLen)
+	s.index[indexLen-1] = maxVal
+	currIndex, counter := 0, 0
 	writeFP := func(fp uint64) error {
-		var buf [8]byte
-		binary.BigEndian.PutUint64(buf[:], fp)
-		if _, err := tmp.Write(buf[:]); err != nil {
+		if err := out.WriteLong(int64(fp)); err != nil {
 			return err
 		}
 		atomic.AddUint64(&s.diskWriteCnt, 1)
 		if counter == 0 {
-			if currIndex >= len(newIndex)-1 {
-				_ = tmp.Close()
-				return fmt.Errorf("DiskFPSet index overflow")
-			}
-			newIndex[currIndex] = fp
+			s.index[currIndex] = fp
 			currIndex++
 			counter = diskFPSetNumEntriesPerPage
 		}
 		counter--
 		return nil
 	}
-	i, j := 0, 0
-	for i < len(oldValues) && j < len(newValues) {
-		if oldValues[i] < newValues[j] {
-			if err := writeFP(oldValues[i]); err != nil {
-				_ = tmp.Close()
-				return err
+	var value uint64
+	eof := atomic.LoadInt64(&s.fileCnt) == 0
+	readOld := func() error {
+		v, err := in.ReadLong()
+		var end *EOFException
+		if errors.As(err, &end) {
+			eof = true
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		value = uint64(v)
+		return nil
+	}
+	if !eof {
+		if err := readOld(); err != nil {
+			return err
+		}
+	}
+	if itr != nil {
+		fp, err := itr.next()
+		if err != nil {
+			return err
+		}
+		eol := false
+		for !eof || !eol {
+			if (value < fp || eol) && !eof {
+				if err := writeFP(value); err != nil {
+					return err
+				}
+				if err := readOld(); err != nil {
+					return err
+				}
+			} else {
+				if value == fp {
+					return NewTLCRuntimeException(ECTLCFPValueAlreadyOnDisk, fmt.Sprint(value))
+				}
+				if err := writeFP(fp); err != nil {
+					return err
+				}
+				next, err := itr.next()
+				var end *NoSuchElementException
+				if errors.As(err, &end) {
+					if itr.hasNext() || itr.reads() != buffLen {
+						return NewTLCRuntimeException(ECGeneral)
+					}
+					eol = true
+				} else if err != nil {
+					return err
+				} else {
+					fp = next
+				}
 			}
-			i++
-		} else if oldValues[i] > newValues[j] {
-			if err := writeFP(newValues[j]); err != nil {
-				_ = tmp.Close()
-				return err
+		}
+	} else {
+		i := 0
+		for !eof && i < len(s.lsbBuff) {
+			if value < s.lsbBuff[i] {
+				if err := writeFP(value); err != nil {
+					return err
+				}
+				if err := readOld(); err != nil {
+					return err
+				}
+			} else {
+				if value == s.lsbBuff[i] {
+					return NewTLCRuntimeException(ECTLCFPValueAlreadyOnDisk, fmt.Sprint(value))
+				}
+				if err := writeFP(s.lsbBuff[i]); err != nil {
+					return err
+				}
+				i++
 			}
-			j++
+		}
+		if eof {
+			for ; i < len(s.lsbBuff); i++ {
+				if err := writeFP(s.lsbBuff[i]); err != nil {
+					return err
+				}
+			}
 		} else {
-			_ = tmp.Close()
-			return newTLCErrorCode(ECTLCFPValueAlreadyOnDisk, fmt.Sprint(oldValues[i]))
+			for !eof {
+				if err := writeFP(value); err != nil {
+					return err
+				}
+				if err := readOld(); err != nil {
+					return err
+				}
+			}
 		}
-	}
-	for ; i < len(oldValues); i++ {
-		if err := writeFP(oldValues[i]); err != nil {
-			_ = tmp.Close()
-			return err
-		}
-	}
-	for ; j < len(newValues); j++ {
-		if err := writeFP(newValues[j]); err != nil {
-			_ = tmp.Close()
-			return err
-		}
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	readerCnt := len(s.braf)
-	poolCnt := len(s.brafPool)
-	if err := s.closeBRAFReaders(); err != nil {
-		return err
 	}
 	if currIndex != indexLen-1 {
-		_ = s.openBRAFReaders(readerCnt, poolCnt)
-		return fmt.Errorf("DiskFPSet index mismatch: got %d want %d", currIndex, indexLen-1)
+		return NewTLCRuntimeException(ECSystemIndexError)
 	}
-	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
-		_ = s.openBRAFReaders(readerCnt, poolCnt)
-		return err
-	}
-	if err := s.openBRAFReaders(readerCnt, poolCnt); err != nil {
-		return err
-	}
-	s.index = newIndex
-	atomic.StoreInt64(&s.fileCnt, total)
+	atomic.AddInt64(&s.fileCnt, buffLen)
 	return nil
 }
 
@@ -1219,21 +1296,31 @@ func (s *DiskFPSet) clearTable() {
 }
 
 func (s *DiskFPSet) checkFile() (bool, int64) {
-	values, err := readFingerprintFile(s.fpFilename)
+	in, err := NewBufferedRandomAccessFile(s.fpFilename, "r")
 	if err != nil {
 		return false, 0
 	}
-	for i := 1; i < len(values); i++ {
-		if values[i-1] >= values[i] {
-			return false, int64(len(values))
-		}
+	defer in.Close()
+	length, err := in.Length()
+	if err != nil {
+		return false, 0
 	}
-	if len(values) > 0 && len(s.index) > 0 {
-		if values[0] != s.index[0] || values[len(values)-1] != s.index[len(s.index)-1] {
-			return false, int64(len(values))
+	count := length / fpSetLongSize
+	predecessor := int64(math.MinInt64)
+	for pos := int64(0); pos < length; pos += fpSetLongSize {
+		value, err := in.ReadLong()
+		if err != nil || predecessor >= value {
+			return false, count
 		}
+		if pos == 0 && len(s.index) > 0 && uint64(value) != s.index[0] {
+			return false, count
+		}
+		predecessor = value
 	}
-	return true, int64(len(values))
+	if length > 0 && len(s.index) > 0 && uint64(predecessor) != s.index[len(s.index)-1] {
+		return false, count
+	}
+	return true, count
 }
 
 func (s *DiskFPSet) chkptName(fname string, ext string) string {

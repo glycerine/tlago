@@ -46,25 +46,36 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-A full original MSB random fingerprint draft is running normally in session
-`98446`, with all 2,147,483,648 iterations and the default configuration.
-Log: `/mnt/oldrog/tmp/tlago-long-msb-random-full.log`; overlay and draft are in
-`/mnt/oldrog/tmp/tlago-long-msb-random-full-*`. Storage is on the relocated disk
-under ignored `.codex-gotmp`. Poll this handle before considering another run.
-It has no completion credit yet; do not start a duplicate or use `-race`.
-The full random family draft for the LSB/MSB/OffHeap factories compiles. Its
-shared original loop and exact factory settings are in
-`/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go`, with overlay
-`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`. Keep these drafts outside
-the enabled suite until full verification; do not launch them alongside the
-current heavy runs. The running MSB job uses its earlier immutable draft.
+The previous full MSB random draft (session `98446`) and full workspace run
+(session `83220`) were deliberately stopped after finding a production port
+shortcut in fingerprint flushing. Both handles returned status 143 and are
+retired, with no pass credit. Their logs remain in `/mnt/oldrog/tmp`.
 
-The complete normal workspace suite is also live in session `83220`, using
-`go test -count=1 -failfast -timeout=60m ./...`. Log:
-`/mnt/oldrog/tmp/tlago-master-parity-workspace.log`. This verifies the current
-committed parity fixes; it excludes the uninstalled fingerprint overlay draft.
-Poll the existing handle before scheduling another full suite. Neither live run
-is a completed gate or a race check.
+Current work ports Java's streaming fingerprint merge: buffered random-access
+input/output, a preallocated output file, direct MSB iterator traversal, the
+original LSB sorted buffer, and source index/duplicate checks. The old Go merge
+materialized the entire old file and MSB table and issued one raw file write per
+fingerprint. Existing focused iterator, reader, duplicate-merge and buffered-file checks
+pass on the final streaming code (6.241 seconds); all packages compile.
+The original LSB/MSB/short-disk classes pass normally in 494.131 seconds
+(session `43769`, terminal 0). That run compiled the initial streaming merge
+before the final exception-carrier and validation-scan refinements. The focused
+receipt above checks final code. Full final-code workspace verification is
+live in session `44100`; log:
+`/mnt/oldrog/tmp/tlago-master-streaming-parity-workspace.log`.
+The restarted full MSB random workload is live in session `59015`; log:
+`/mnt/oldrog/tmp/tlago-long-msb-random-streaming-full.log`. Preserve all
+2,147,483,648 iterations and default settings, without `-race`. Poll these
+handles before launching duplicates. The full MSB random and workspace runs
+have no pass credit yet.
+Fingerprint collision and invariant scans now use buffered sequential reads
+as well, rather than allocating the complete fingerprint file.
+
+The full random family draft for LSB/MSB/OffHeap remains outside the enabled
+suite, without completion credit. Its full source loops and factory settings
+are in `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go`, with overlay
+`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`. The separate full MSB
+draft and overlay use prefix `/mnt/oldrog/tmp/tlago-long-msb-random-full-`.
 
 The Java archive recovery port exposed and fixed late intern-table restoration.
 The full new recovery method, five short component checks, and all-package
@@ -195,10 +206,10 @@ Additional pending work:
   matching Java. These source failures do not earn pass or full-size credit.
 
 The large fingerprint runs need approximately 32 GiB for concurrent main and
-merge/checkpoint files, plus reserve. The latest filesystem check showed only
-12 GiB available. Recheck resources before starting them; do not reduce their
-bounds to fit. Pending resource and source-behavior questions have not been
-resolved by silence.
+merge/checkpoint files, plus reserve. The relocated `/mnt/b` filesystem has approximately 1.3 TiB available as of
+October 6. Use ignored `.codex-gotmp` for large test storage and recheck
+resources before each large workload. Preserve original bounds. Pending
+source-behavior questions have not been resolved by silence.
 
 A separate scheduling concern remains for alias trace replay: source-compatible
 multiworker dumps can replay 10 or 11 states with differing final actions.
