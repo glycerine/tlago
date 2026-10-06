@@ -33,6 +33,41 @@ func javaParseDecimalInt(value string) (int32, bool) {
 	return int32(result), true
 }
 
+// Long.parseLong uses the same UTF-16 decimal digits as Integer.parseInt.
+// Accumulate negatively so the asymmetric signed minimum never overflows.
+func javaParseDecimalLong(value string) (int64, bool) {
+	if value == "" {
+		return 0, false
+	}
+	negative := value[0] == '-'
+	if negative || value[0] == '+' {
+		value = value[1:]
+	}
+	if value == "" {
+		return 0, false
+	}
+	limit := int64(-1<<63 + 1)
+	if negative {
+		limit = -1 << 63
+	}
+	var result int64
+	for _, char := range value {
+		digit := javaIntegerDigit(char)
+		if digit < 0 || digit > 9 || result < limit/10 {
+			return 0, false
+		}
+		result *= 10
+		if result < limit+int64(digit) {
+			return 0, false
+		}
+		result -= int64(digit)
+	}
+	if !negative {
+		result = -result
+	}
+	return result, true
+}
+
 // Integer.getInteger uses Integer.decode: signs precede a hex/octal prefix,
 // whitespace is invalid, and the result must fit a signed Java int.
 func javaDecodeIntProperty(value string) (int, bool) {

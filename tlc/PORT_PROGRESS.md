@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-06 TLC numeric command-line parsing parity:
+Replace machine-sized Go integer parsing with Java signed-32-bit parsing for
+integer flags, and signed-64-bit parsing for seed/aril/simulation counts. Preserve
+Java BMP decimal digit acceptance, ASCII signs, whitespace rejection and overflow
+boundaries. Worker auto uses Java trim semantics. Simulation num= stripping uses
+source replace-all semantics. Coverage/checkpoint multiply in signed 32 bits
+before widening, assign the global before checking the wrapped result, and retain
+the source diagnostics. This deliberately preserves Java interval overflow,
+including negative input that wraps to a nonnegative result. No tests, assertions,
+workload bounds or test-port inventory counts changed.
+
+Final original TLC/WarningControl classes pass 0.017s (75508 terminal 0), covering
+28 source methods. Existing original CheckpointOnViolation, its generated trace
+recheck and CheckpointWhenTimeBound pass 5.638s (37661 terminal 0); the time-bound
+method keeps its source five-second bound. All-package compilation passes (93384
+terminal 0). Normal checks only; no -race. CLI log:
+/mnt/oldrog/tmp/tlago-cli-integer-parity-final.log.
+Manual unchanged-Java/native observations (69963/99151 terminal 0) match rejected
+workers/depth2147483648, accepted Unicode workers2/seed3, signed-minimum seed,
+rejected coverage35792 with global -2147447296, accepted coverage/checkpoint71583
+with 12704 milliseconds, and coverage-2147483648 with zero milliseconds. These
+are scratch-main observations, not invented tests or translation credit.
+Unchecked invalid simulation-count exception handling remains a separate audit;
+this correction does not claim complete CLI parity.
+
+Workspace 85256 remains live at d611cba; random 63113/59782 remain live at a915e08.
+At this observation MSB had reached 1,490,429,307 and LSB 982,760,646 of the original
+2,147,483,648 iterations. No full-run credit until terminal completion.
+
+
 2026-10-06 state-generation functor default-method parity:
 Pinned IStateFunctor.setElement/hasStates and unary INextStateFunctor.addElement
 throw message-less UnsupportedOperationException. Go substituted coded GENERAL

@@ -97,8 +97,8 @@ func ParseTLCOptions(args []string) (Options, error) {
 				for _, simArg := range strings.Split(args[index], ",") {
 					switch {
 					case strings.HasPrefix(simArg, "num="):
-						traceNum, err := strconv.ParseInt(strings.TrimPrefix(simArg, "num="), 10, 64)
-						if err != nil {
+						traceNum, valid := javaParseDecimalLong(strings.ReplaceAll(simArg, "num=", ""))
+						if !valid {
 							return opts, tlcCommandLineError("Error: An integer for simulation trace count required. But encountered " + simArg)
 						}
 						opts.TraceNum = traceNum
@@ -185,7 +185,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 			if index+1 >= len(args) {
 				return opts, tlcCommandLineError("Error: An integer for -invlevel required.")
 			}
-			if _, err := strconv.Atoi(args[index+1]); err != nil {
+			if _, valid := javaParseDecimalInt(args[index+1]); !valid {
 				return opts, tlcCommandLineError("Error: An integer for -invlevel required. But encountered " + args[index+1])
 			}
 			opts.RuntimeParams.Invariants = append(opts.RuntimeParams.Invariants, RuntimeInvariantTemplate{
@@ -294,19 +294,17 @@ func ParseTLCOptions(args []string) (Options, error) {
 			opts.RuntimeParams.PostConditions = append(opts.RuntimeParams.PostConditions, post)
 			index += 2
 		case arg == "-coverage":
-			value, err := parseNonnegativeIntOption(args, index, "coverage report interval", "-coverage")
+			_, err := parseMinuteIntervalOption(args, index, "coverage report interval", "-coverage")
 			if err != nil {
 				return opts, err
 			}
-			Globals.CoverageInterval = value * 60 * 1000
 			index += 2
 		case arg == "-checkpoint":
-			value, err := parseNonnegativeIntOption(args, index, "checkpoint interval", "-checkpoint")
+			value, err := parseMinuteIntervalOption(args, index, "checkpoint interval", "-checkpoint")
 			if err != nil {
 				return opts, err
 			}
-			opts.CheckpointDurationMillis = int64(value) * 60 * 1000
-			Globals.CheckpointDurationMillis = opts.CheckpointDurationMillis
+			opts.CheckpointDurationMillis = value
 			index += 2
 		case arg == "-depth":
 			value, err := parseIntOption(args, index, "trace length", "-depth")
@@ -816,11 +814,37 @@ func parseIntOption(args []string, index int, name string, option string) (int, 
 	if index+1 >= len(args) {
 		return 0, tlcCommandLineError("Error: " + name + " required.")
 	}
-	value, err := strconv.Atoi(args[index+1])
-	if err != nil {
+	value, valid := javaParseDecimalInt(args[index+1])
+	if !valid {
 		return 0, tlcCommandLineError("Error: An integer for " + name + " required. But encountered " + args[index+1])
 	}
-	return value, nil
+	return int(value), nil
+}
+
+// Java multiplies the parsed int before assigning its milliseconds to a long.
+// The global assignment precedes validation of that wrapped signed result.
+func parseMinuteIntervalOption(args []string, index int, name, option string) (int64, error) {
+	if index+1 >= len(args) {
+		return 0, tlcCommandLineError("Error: " + name + " required.")
+	}
+	minutes, valid := javaParseDecimalInt(args[index+1])
+	if !valid {
+		verb := ""
+		if option == "-checkpoint" {
+			verb = " is"
+		}
+		return 0, tlcCommandLineError("Error: An integer for " + name + verb + " required. But encountered " + args[index+1])
+	}
+	millis := minutes * int32(60000)
+	if option == "-coverage" {
+		Globals.CoverageInterval = int(millis)
+	} else {
+		Globals.CheckpointDurationMillis = int64(millis)
+	}
+	if millis < 0 {
+		return 0, tlcCommandLineError("Error: expect a nonnegative integer for " + option + " option.")
+	}
+	return int64(millis), nil
 }
 
 func parseNonnegativeIntOption(args []string, index int, name string, option string) (int, error) {
@@ -838,25 +862,25 @@ func parseInt64Option(args []string, index int, name string, option string) (int
 	if index+1 >= len(args) {
 		return 0, tlcCommandLineError("Error: " + name + " required.")
 	}
-	value, err := strconv.ParseInt(args[index+1], 10, 64)
-	if err != nil {
+	value, valid := javaParseDecimalLong(args[index+1])
+	if !valid {
 		return 0, tlcCommandLineError("Error: An integer for " + name + " required. But encountered " + args[index+1])
 	}
 	return value, nil
 }
 
 func parseWorkerCount(text string) (int, error) {
-	if strings.EqualFold(strings.TrimSpace(text), "auto") {
+	if strings.ToLower(strings.TrimFunc(text, func(char rune) bool { return char <= ' ' })) == "auto" {
 		return runtime.NumCPU(), nil
 	}
-	value, err := strconv.Atoi(text)
-	if err != nil {
+	value, valid := javaParseDecimalInt(text)
+	if !valid {
 		return 0, tlcCommandLineError("Error: worker number or 'auto' required. But encountered " + text)
 	}
 	if value < 1 {
 		return 0, tlcCommandLineError("Error: at least one worker required.")
 	}
-	return value, nil
+	return int(value), nil
 }
 
 func requireDumpSuffix(file string, suffix string) string {
