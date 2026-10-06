@@ -16,8 +16,18 @@ in EC.ExitStatus map to `151`.
 
 SANY tool markers bracket front-end processing, and STARTING follows completion
 before checked errors are raised. Suppressed SANY_START retains buffered output
-on checked failures. Full parser diagnostic rendering and unexpected front-end
-exception wrapping/release remain audit work.
+on checked failures. Parsing Exceptions become checked failure even with an empty
+error list; unexpected semantic Exceptions chain through FrontEndException. Only
+that checked exception releases buffered SANY output and becomes the cause of
+TLC_PARSING_FAILED2, without SANY_END or STARTING. Java Error propagates unchanged.
+Full ordinary parser diagnostic rendering remains audit work.
+
+DelayedPrintStream releases a copied byte snapshot, flushes, then resets the
+buffer. Its byte-buffer operations synchronize separately; destination callbacks
+can write reentrantly. The original PrintStream swallows I/O errors; release
+catches runtime Exception, prints its stack to System.err and retains the buffer.
+Error propagates. Successful reset discards bytes appended during release.
+ToolIO's string capture does not intercept source inherited raw-byte writes.
 
 ## Message formatting
 

@@ -29,6 +29,11 @@ func checkSpecWithProgress(spec *Spec, progress func(string)) Diagnostics {
 			progress("Semantic processing of module " + name)
 		}
 		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
+		// SANY assigns this external module's standard provenance after
+		// generation. The resolver call can itself throw during semantics.
+		if spec.FilenameResolver != nil {
+			mod.Library = spec.FilenameResolver.IsStandardModule(name)
+		}
 	}
 	// Nested modules and native callers without a loader order still need
 	// checking. Keep their diagnostics deterministic instead of map-ordered.

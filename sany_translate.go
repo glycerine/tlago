@@ -16,12 +16,10 @@ import (
 // failure returns ERROR(-1); ordinary semantic diagnostics do not change OK(0).
 // Unexpected runtime failures propagate, as FrontEndException does in Java.
 func SanyFrontEndMain(file string, opts LoadOptions) (*Spec, int) {
-	spec, diagnostics := LoadSanySpec(file, opts)
-	if diagnostics.HasErrors() {
+	spec, _, _, parseFailed := runSanyFrontEnd(file, opts, nil)
+	if parseFailed {
 		return spec, -1
 	}
-	diagnostics = append(diagnostics, CheckSpec(spec)...)
-	spec.Diags = diagnostics
 	return spec, 0
 }
 
@@ -92,12 +90,20 @@ type sanyLoader struct {
 }
 
 func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
-	l := &sanyLoader{
+	return newSanyLoader(opts).loadSpec(root)
+}
+
+func newSanyLoader(opts LoadOptions) *sanyLoader {
+	return &sanyLoader{
 		opts:    opts,
 		modules: map[string]*Module{},
 		loading: map[string]bool{},
 		loaded:  map[string]bool{},
 	}
+}
+
+func (l *sanyLoader) loadSpec(root string) (*Spec, Diagnostics) {
+	opts := l.opts
 	rootPath := root
 	if opts.FilenameResolver != nil {
 		rootPath = tlc.ModuleFilename(rootPath)
@@ -120,7 +126,11 @@ func LoadSanySpec(root string, opts LoadOptions) (*Spec, Diagnostics) {
 		rootMod.ImplicitExtends = append([]string(nil), rootMod.Extends[sourceExtendsLen:]...)
 		l.loadDependencies(rootMod)
 	}
-	return &Spec{FilenameResolver: opts.FilenameResolver, LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: rootMod, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}, l.diags
+	return l.snapshot(rootMod), l.diags
+}
+
+func (l *sanyLoader) snapshot(root *Module) *Spec {
+	return &Spec{FilenameResolver: l.opts.FilenameResolver, LibraryPaths: append([]string(nil), l.opts.LibraryPaths...), Root: root, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}
 }
 
 func appendModuleNames(names []string, extra ...string) []string {

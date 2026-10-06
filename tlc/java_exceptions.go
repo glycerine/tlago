@@ -75,6 +75,23 @@ func NewFileNotFoundException(message string) *FileNotFoundException {
 
 func (e *FileNotFoundException) Error() string { return javaThrowableMessage(e) }
 
+// FrontEndException ports SANY's checked exception and chained constructors.
+type FrontEndException struct{ javaExceptionBase }
+
+func NewFrontEndException(message string) *FrontEndException {
+	return &FrontEndException{newJavaExceptionBase(javaString(message), nil)}
+}
+
+func NewFrontEndExceptionFromCause(cause error) *FrontEndException {
+	var message *string
+	if cause != nil {
+		message = javaString(javaThrowableString(cause))
+	}
+	return &FrontEndException{newJavaExceptionBase(message, cause)}
+}
+
+func (e *FrontEndException) Error() string { return javaThrowableMessage(e) }
+
 type RuntimeException struct{ javaExceptionBase }
 
 func NewRuntimeException(message ...string) *RuntimeException {
@@ -145,6 +162,10 @@ func isJavaError(err error) bool {
 	}
 	return generic || javaSystemFailureCode(err) != NoError
 }
+
+// IsJavaError distinguishes Error from the checked/runtime Exception families
+// for parser integration outside package tlc.
+func IsJavaError(err error) bool { return isJavaError(err) }
 
 // Java class initialization and reflection inspect these exact
 // checked/Error families; a throwable's cause does not change its catch type.

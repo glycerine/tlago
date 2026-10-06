@@ -143,13 +143,11 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 	if toolMode {
 		tlc.PrintMessage(tlc.ECTLCSanyStart)
 	}
-	var delayed strings.Builder
+	var delayed *tlc.DelayedPrintStream
 	sanyPrintln := tlc.ToolIOPrintln
 	if tlc.GetTLCSuppressedCodes().Contains(tlc.ECTLCSanyStart) {
-		// Source buffers this stream and releases it only for FrontEndException,
-		// not for ordinary checked SANY errors. Resolution-side output remains
-		// separate from the SANY stream, as in SimpleFilenameToStream.
-		sanyPrintln = func(text string) { delayed.WriteString(text); delayed.WriteByte('\n') }
+		delayed = tlc.NewDelayedPrintStream(tlc.ToolIORawOutputStream())
+		sanyPrintln = delayed.Println
 	}
 	messageControls := (diagnosticCLIOptions{}).withTLCMessageControls()
 	processSANYDiagnostics := func(raw Diagnostics, semantic bool) Diagnostics {
@@ -185,24 +183,37 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 
 		return controlled
 	}
-	spec, diags := LoadSanySpec(rootFile, LoadOptions{
-		ParsingProgress:  sanyPrintln,
-		ResolutionError:  sanyPrintln,
-		FilenameResolver: resolver,
-		ExtraModules:     runtime.ExtendeeModules(),
-	})
-	parseDiags := diags
-	diags = processSANYDiagnostics(parseDiags, false)
-	var semanticDiags Diagnostics
-	if !diags.HasErrors() {
-		semanticDiags = checkSpecWithProgress(spec, sanyPrintln)
-		diags = append(diags, processSANYDiagnostics(semanticDiags, true)...)
-	}
+	var spec *Spec
+	var parseDiags, semanticDiags, diags Diagnostics
+	var parseFailed bool
+	func() {
+		defer func() {
+			if failure := recover(); failure != nil {
+				if exception, ok := failure.(*tlc.FrontEndException); ok {
+					if delayed != nil {
+						delayed.Release()
+					}
+					panic(tlc.NewTLCRuntimeExceptionWithCause(tlc.ECTLCParsingFailed2, exception))
+				}
+				panic(failure)
+			}
+		}()
+		spec, parseDiags, semanticDiags, parseFailed = runSanyFrontEnd(rootFile, LoadOptions{
+			ParsingProgress:  sanyPrintln,
+			ResolutionError:  sanyPrintln,
+			FilenameResolver: resolver,
+			ExtraModules:     runtime.ExtendeeModules(),
+		}, func(raw Diagnostics, semantic bool) Diagnostics {
+			controlled := processSANYDiagnostics(raw, semantic)
+			diags = append(diags, controlled...)
+			return controlled
+		})
+	}()
 	if toolMode {
 		tlc.PrintMessage(tlc.ECTLCSanyEnd)
 	}
 	tlc.PrintMessage(tlc.ECTLCStarting)
-	if diags.HasErrors() {
+	if parseFailed || diags.HasErrors() {
 		var parameters []string
 		raw := parseDiags
 		if !parseDiags.HasErrors() {

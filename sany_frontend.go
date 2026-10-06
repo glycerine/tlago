@@ -1,0 +1,92 @@
+package tlago
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
+// runSanyFrontEnd preserves the SANY.parse exception boundaries. parseFailed
+// includes a caught ParseException-equivalent even when parseErrors is empty.
+// Legacy SANY returns OK for ordinary semantic errors; callers inspect them.
+func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, bool) Diagnostics) (spec *Spec, parseDiags, semanticDiags Diagnostics, parseFailed bool) {
+	println := opts.ParsingProgress
+	if println == nil {
+		println = func(string) {}
+	}
+	defer func() {
+		if failure := recover(); failure != nil {
+			exception, ok := failure.(error)
+			if !ok || tlc.IsJavaError(exception) {
+				panic(failure)
+			}
+			// SANY.parse logs the unexpected exception, then chains it in its
+			// checked FrontEndException. Errors and logging failures propagate.
+			println(tlc.JavaThrowableString(exception))
+			panic(tlc.NewFrontEndExceptionFromCause(exception))
+		}
+	}()
+	loader := newSanyLoader(opts)
+	func() {
+		defer func() {
+			if failure := recover(); failure != nil {
+				exception, ok := failure.(error)
+				if !ok || tlc.IsJavaError(exception) {
+					panic(failure)
+				}
+				// frontEndParse converts caught Exceptions to ParseException.
+				// Preserve diagnostics accumulated before the interrupted load.
+				parseFailed = true
+				parseDiags = loader.diags
+				spec = loader.snapshot(nil)
+				println(fmt.Sprintf("\nFatal errors while parsing TLA+ spec in file %s\n", file))
+				println(tlc.JavaThrowableString(exception))
+				println(sanyErrorsString(parseDiags))
+			}
+		}()
+		spec, parseDiags = loader.loadSpec(file)
+		controlled := parseDiags
+		if report != nil {
+			controlled = report(parseDiags, false)
+		}
+		parseFailed = controlled.HasErrors()
+	}()
+	if parseFailed {
+		return
+	}
+	semanticDiags = checkSpecWithProgress(spec, opts.ParsingProgress)
+	controlled := semanticDiags
+	if report != nil {
+		controlled = report(semanticDiags, true)
+	}
+	spec.Diags = append(append(Diagnostics(nil), parseDiags...), controlled...)
+	return
+}
+
+// sanyErrorsString follows Errors.toString's grouping and trailing newlines.
+// Mapping all parser diagnostics to original ErrorDetails remains separate work.
+func sanyErrorsString(diags Diagnostics) string {
+	var output strings.Builder
+	for _, severity := range []Severity{SeverityError, SeverityWarning} {
+		var matching Diagnostics
+		for _, diagnostic := range diags {
+			if diagnostic.Severity == severity {
+				matching = append(matching, diagnostic)
+			}
+		}
+		if len(matching) == 0 {
+			continue
+		}
+		kind := "Errors"
+		if severity == SeverityWarning {
+			kind = "Warnings"
+		}
+		fmt.Fprintf(&output, "*** %s: %d\n\n", kind, len(matching))
+		for _, diagnostic := range matching {
+			output.WriteString(sanyJavaErrorDetails(diagnostic))
+			output.WriteString("\n\n\n")
+		}
+	}
+	return output.String()
+}

@@ -122,3 +122,15 @@ func ToolIOSetSystemStreams(out, err io.Writer) func() {
 		toolIO.Unlock()
 	}
 }
+
+// ToolIORawOutputStream is the byte-writing boundary of the current PrintStream.
+// Source ToolPrintStream captures string print/println only; inherited byte
+// writes go to an unconnected pipe and their IOException is swallowed.
+func ToolIORawOutputStream() io.Writer {
+	toolIO.Lock()
+	defer toolIO.Unlock()
+	if toolIO.captureOut {
+		return io.Discard
+	}
+	return toolIO.out
+}

@@ -79,10 +79,19 @@ from `0` through `6000` agree with Java. Existing focused CLI/semantic/model
 checks pass in 5.980 seconds; original message/config/CLI checks pass in 0.020
 seconds, and all packages compile. Full verification is still running.
 
+Unexpected front-end exception wrapping and delayed output release are now
+ported. Parsing Exceptions become checked failure; unexpected semantic Exceptions
+chain through `FrontEndException` and `TLC_PARSING_FAILED2`; Java Error propagates.
+Source/native failure sequences, delayed-stream behavior and legacy return/type/
+cause observations agree. Original focused front-end/model/trace-writer tests pass
+in 8.516 seconds; SANY passes in 1.339 seconds and five original warning/assumption
+models pass in 2.720 seconds. Final existing stream/CLI checks and compilation pass.
+The live full suite above predates this correction; do not widen that receipt.
+
 Continue auditing front-end failure output: missing-module and syntax-error raw
-diagnostics still differ, and unexpected front-end exception wrapping and delayed
-output release need a faithful source port. Keep these production gaps visible;
-matching TLC event order does not establish full parser-diagnostic parity.
+diagnostics still differ. Keep these production gaps visible; matching TLC event
+order does not establish full parser-diagnostic parity. AbstractChecker/DFID parent
+constructor failure ordering also remains production audit work.
 
 Focused verification:
 

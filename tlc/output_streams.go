@@ -2,10 +2,13 @@ package tlc
 
 import (
 	"bytes"
+	"fmt"
 	"io"
+	"os"
 	"sync"
 )
 
+// DelayedPrintStream ports SpecProcessor's retained SANY output buffer.
 type DelayedPrintStream struct {
 	mu       sync.Mutex
 	buffer   bytes.Buffer
@@ -13,36 +16,62 @@ type DelayedPrintStream struct {
 }
 
 func NewDelayedPrintStream(original io.Writer) *DelayedPrintStream {
+	if original == nil {
+		panic(NewNullPointerException("Null output stream"))
+	}
 	return &DelayedPrintStream{original: original}
 }
 
-func (s *DelayedPrintStream) Write(p []byte) (int, error) {
+func (s *DelayedPrintStream) Write(data []byte) (int, error) {
 	if s == nil {
-		return 0, io.ErrClosedPipe
+		panic(NewNullPointerException())
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.buffer.Write(p)
+	return s.buffer.Write(data)
+}
+
+func (s *DelayedPrintStream) WriteByte(value byte) error {
+	if s == nil {
+		panic(NewNullPointerException())
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.buffer.WriteByte(value)
+}
+
+func (s *DelayedPrintStream) Println(text string) {
+	_, _ = fmt.Fprintln(s, text)
 }
 
 func (s *DelayedPrintStream) Release() error {
 	if s == nil {
-		return io.ErrClosedPipe
+		panic(NewNullPointerException())
+	}
+	defer func() {
+		if failure := recover(); failure != nil {
+			exception, ok := failure.(error)
+			if !ok || isJavaError(exception) {
+				panic(failure)
+			}
+			// Source catches Exception, prints to System.err regardless of debug,
+			// and retains the buffer when an unchecked write/flush failure occurs.
+			_, _ = fmt.Fprint(os.Stderr, javaThrowableStackTrace(exception))
+		}
+	}()
+	// ByteArrayOutputStream synchronizes snapshot/reset separately. Original
+	// writes may call back into this buffer; release does not hold its lock.
+	s.mu.Lock()
+	data := append([]byte(nil), s.buffer.Bytes()...)
+	s.mu.Unlock()
+	// original is a PrintStream in Java and swallows write/flush IOExceptions.
+	_, _ = s.original.Write(data)
+	if stream, ok := s.original.(interface{ Flush() error }); ok {
+		_ = stream.Flush()
 	}
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.original == nil {
-		return io.ErrClosedPipe
-	}
-	if _, err := s.original.Write(s.buffer.Bytes()); err != nil {
-		return err
-	}
-	if flusher, ok := s.original.(interface{ Flush() error }); ok {
-		if err := flusher.Flush(); err != nil {
-			return err
-		}
-	}
 	s.buffer.Reset()
+	s.mu.Unlock()
 	return nil
 }
 

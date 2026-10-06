@@ -1,5 +1,72 @@
 # TLC Port Progress
 
+2026-10-06 SANY exception boundaries and delayed output release:
+Previous goal turn is progress: `d6e88c6` commits deferred CLI tool loading and
+source exit mappings. Revalidate clean master and poll live sessions 83804 and
+59782; neither is terminal. Keep the reusable distributed architecture deferred.
+
+Port the SANY.parse distinctions rather than catching every throwable alike.
+frontEndParse catches Exception and logs its fatal header, Throwable.toString,
+and accumulated Errors before returning a ParseException-equivalent status.
+Unexpected semantic Exceptions are logged and chained in FrontEndException.
+Java Error subclasses propagate unchanged. A caught parsing exception remains
+failure even with an empty error list. Share this boundary between legacy
+SanyFrontEndMain and TLC loading. The native loader retains its state so a caught
+exception preserves accumulated diagnostics. Legacy semantic errors retain OK
+while callers inspect the actual diagnostics, matching the external settings.
+
+SpecProcessor catches only FrontEndException, releases suppressed SANY output,
+and wraps the same cause with Assert.fail(TLC_PARSING_FAILED2, Throwable).
+Preserve null parameters, chained type/message/cause and omission of SANY_END
+and STARTING on this unexpected path. Port FrontEndException's constructors into
+the existing shared throwable carriers and expose the existing cause-taking
+Assert constructor for parser integration. Semantic generation also makes the
+source post-generation IsStandardModule resolver call and assigns its result;
+that real call can throw and is not replaced by a cached library flag.
+
+Correct the existing DelayedPrintStream instead of leaving an unused parallel
+implementation. The first compilation exposed my duplicate class declaration;
+remove the new duplicate and fix output_streams.go. This failed compilation is
+not a passing receipt. Release snapshots and resets its synchronized byte buffer
+separately, without holding a lock across destination callbacks. Source original
+PrintStream swallows write/flush IOExceptions; runtime Exceptions are caught and
+printed to System.err independently of debug, retaining the buffer, while Error
+propagates. Reentrant bytes appended during output are discarded by successful
+reset. Preserve the constructor's exact NullPointerException message, "Null
+output stream". The byte-writing ToolIO boundary bypasses ToolPrintStream's
+string capture; its unconnected pipe's swallowed IOException produces no captured
+message, matching source. Existing native Release error-return shape is retained
+with nil on handled outcomes; no source assertion is weakened.
+
+Scratch source/native observations (no persistent tests or inventory credit):
+eight complete TLC process sequences match parsing/semantic RuntimeException and
+Error, each with normal/suppressed SANY output, including coded results 3002,
+2171 and 1000. Normalize only version/platform/memory/PID banners and timing;
+stdout text/order/whitespace and empty stderr agree. Four legacy SANY cases match
+return value or thrown type/message/cause byte for byte. Nine delayed-stream
+cases match stdout and exception headers: normal, write/flush IOException,
+write/flush RuntimeException, write/flush Error, reentrant write, null destination.
+Only actual Java/Go stack frames differ. A separate ToolIO raw-release observation
+matches empty captured messages. Logs under /mnt/oldrog/tmp/tlago-loading-manual/
+and /mnt/oldrog/tmp/tlago-delayed-manual/. Source launchers avoid TLC.main/email.
+
+Existing CLI/semantic/resolver/trace-writer/original model selection passes
+8.516 seconds (40463 retired). Complete original SANY package passes 1.339
+seconds; original elevated-warning, no-fairness-warning and assumption models
+pass 2.720 seconds (39448 retired). Final focused existing stream/MP/TLC/config
+checks and all-package compilation pass (62437 retired). The final nine-case
+comparison is 62464, terminal 0. Original methods, assertions, fixtures and
+bounds are unchanged; inventory totals do not change.
+
+Full normal workspace session 83804 remains live on d6e88c6, before this new
+front-end correction, with log /mnt/oldrog/tmp/tlago-cli-loading-workspace.log.
+Do not restart it or attribute its eventual receipt to newer changes. LSB full
+random session 59782 remains live outside the persistent inventory, above
+1.908 billion of 2,147,483,648 iterations at the last log read; retain its shared
+overlay unchanged. Full parser ErrorDetails rendering remains incomplete for
+ordinary missing-module/syntax errors. This batch completes unexpected exception
+wrapping/release, not all parser diagnostic equivalence or whole TLC completion.
+
 2026-10-06 faithful CLI tool-construction and loading order:
 Previous goal turn is progress: `0bb3f14` ports debug diagnostics and the CLI
 result mapping. Continue on master with the new rpc25519/Tube architecture

@@ -51,9 +51,13 @@ func NewTLCRuntimeException(code int, params ...string) *TLCError {
 	return failure
 }
 
-// newTLCRuntimeExceptionWithCause implements Assert.fail(int, Throwable).
-// That source overload sets the message and cause, leaving parameters null.
 func newTLCRuntimeExceptionWithCause(code int, cause error) *TLCError {
+	return NewTLCRuntimeExceptionWithCause(code, cause)
+}
+
+// NewTLCRuntimeExceptionWithCause implements Assert.fail(int, Throwable).
+// That source overload sets the message and cause, leaving parameters null.
+func NewTLCRuntimeExceptionWithCause(code int, cause error) *TLCError {
 	if cause == nil {
 		panic(NewNullPointerException())
 	}

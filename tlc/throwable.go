@@ -25,6 +25,8 @@ func javaString(value string) *string { return &value }
 
 func javaThrowableClassName(err error) string {
 	switch failure := err.(type) {
+	case *FrontEndException:
+		return "tla2sany.drivers.FrontEndException"
 	case *NamingException:
 		return "javax.naming.NamingException"
 	case *UnsupportedEncodingException:
@@ -377,3 +379,6 @@ func copyMessageParameters(params []string) []string {
 	copy(copied, params)
 	return copied
 }
+
+// JavaThrowableString exposes Throwable.toString to the parser integration.
+func JavaThrowableString(err error) string { return javaThrowableString(err) }
