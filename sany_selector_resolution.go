@@ -15,11 +15,12 @@ type sanySelectorInstance struct {
 	inst  Instance
 }
 type sanySelectorDefinition struct {
-	module   *Module
-	def      *Definition
-	wrappers []sanySelectorInstance
-	params   []BoundVar
-	suffices bool
+	module    *Module
+	def       *Definition
+	wrappers  []sanySelectorInstance
+	params    []BoundVar
+	suffices  bool
+	undefined bool // A RECURSIVE declaration whose body has not been generated.
 }
 type sanySelectorSelection struct {
 	name        string
@@ -130,25 +131,50 @@ func (r *sanySelectorResolver) addInstance(scope map[string]sanySelectorDefiniti
 }
 func (r *sanySelectorResolver) resolveModule(mod *Module) {
 	scope := r.scope(mod)
+	// Prepare selectors in each body's generation context. Looking through a
+	// later definition can otherwise report selector errors before Java even
+	// has that operator in SymbolTable.
+	inherited := map[string]Position{}
+	for _, name := range mod.Extends {
+		for key, ref := range r.scope(r.spec.Modules[name]) {
+			if !ref.def.Local {
+				inherited[key] = ref.def.DeclarationPosition()
+			}
+		}
+	}
+	contexts := sanyModuleExpressionContexts(mod, r.spec, inherited)
+	at := func(syntax *SanySyntaxNode) map[string]sanySelectorDefinition {
+		if context, ok := contexts.bindings[syntax]; ok {
+			visible := make(map[string]sanySelectorDefinition, len(context))
+			for name, ref := range scope {
+				if _, exists := context[name]; exists {
+					ref.undefined = !contexts.definitions[syntax][name]
+					visible[name] = ref
+				}
+			}
+			return visible
+		}
+		return scope
+	}
 	for i := range mod.Definitions {
-		r.walkDefinition(&mod.Definitions[i], mod, scope)
+		r.walkDefinition(&mod.Definitions[i], mod, at(mod.Definitions[i].Syntax))
 	}
 	for _, a := range mod.Assumptions {
 		if a.AssumeProveBody != nil {
-			r.walkAssumeProve(a.AssumeProveBody, mod, scope)
+			r.walkAssumeProve(a.AssumeProveBody, mod, at(a.Syntax))
 		} else {
-			r.walk(a.Expr, mod, scope, 0)
+			r.walk(a.Expr, mod, at(a.Syntax), 0)
 		}
 	}
 	for _, a := range mod.Theorems {
 		if a.AssumeProveBody != nil {
-			r.walkAssumeProve(a.AssumeProveBody, mod, scope)
+			r.walkAssumeProve(a.AssumeProveBody, mod, at(a.Syntax))
 		} else {
-			r.walk(a.Expr, mod, scope, 0)
+			r.walk(a.Expr, mod, at(a.Syntax), 0)
 		}
 	}
 	for _, inst := range mod.Instances {
-		r.walkInstance(inst, mod, scope)
+		r.walkInstance(inst, mod, at(inst.Syntax))
 	}
 	for _, ref := range mod.ProofRefs {
 		if !ref.Defs && ref.Expr != nil {
@@ -180,13 +206,18 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 	}
 	if source := sanyExprSource(expr); source != nil && source.Selector != nil {
 		source.selection = nil
+		source.selectorFailure = false
 		selection, handled, err := r.selectExpr(expr, scope, expected)
 		if handled {
 			if err != nil {
+				source.selectorFailure = true
 				diagnostic := errorAt(expr.Position(), "E4340", "%s", err)
 				if detail, ok := err.(*sanySelectorLocationError); ok {
 					diagnostic.SANYRange = detail.location
 					diagnostic.SANYMessage = detail.message
+					if detail.code != "" {
+						diagnostic.Code = detail.code
+					}
 				}
 				r.diags = append(r.diags, diagnostic)
 				return
@@ -227,16 +258,22 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 		for name, ref := range scope {
 			nested[name] = ref
 		}
-		for i := range e.Definitions {
-			def := &e.Definitions[i]
-			nested[def.Name] = sanySelectorDefinition{module: mod, def: def, params: sanyDefinitionParams(def)}
-		}
-		for _, inst := range e.Instances {
-			r.addInstance(nested, mod, inst)
-			r.walkInstance(inst, mod, nested)
-		}
-		for i := range e.Definitions {
-			r.walk(e.Definitions[i].Expr, mod, nested, 0)
+		for _, unit := range sanyLetGenerationUnits(e) {
+			switch {
+			case unit.declaration != nil:
+				for _, name := range unit.declaration.Names {
+					arity, _ := declarationArity(*unit.declaration, name)
+					def := &Definition{Name: name, Pos: unit.declaration.Pos, Syntax: unit.declaration.Syntax}
+					nested[name] = sanySelectorDefinition{module: mod, def: def, params: make([]BoundVar, arity), undefined: true}
+				}
+			case unit.definition != nil:
+				def := unit.definition
+				r.walkDefinition(def, mod, nested)
+				nested[def.Name] = sanySelectorDefinition{module: mod, def: def, params: sanyDefinitionParams(def)}
+			case unit.instance != nil:
+				r.walkInstance(*unit.instance, mod, nested)
+				r.addInstance(nested, mod, *unit.instance)
+			}
 		}
 		r.walk(e.Body, mod, nested, 0)
 	default:
@@ -309,6 +346,13 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 	}
 	if err := bind(result.params, rootArgs); err != nil {
 		return nil, true, err
+	}
+	if ref.undefined {
+		detail := &sanySelectorLocationError{code: "E4005", message: fmt.Sprintf("Subexpression of  `%s' used inside the operator's definition.", name)}
+		if selector.Steps[end-1].Syntax != nil {
+			detail.location = selector.Steps[end-1].Syntax.Range
+		}
+		return nil, true, detail
 	}
 	currentAP := ref.def.AssumeProveBody
 	apGoal := currentAP
@@ -523,6 +567,7 @@ func sanySelectorBoundBody(expr Expr) ([]BoundVar, Expr) {
 
 // Location-bearing Generator failures retain the individual selector token.
 type sanySelectorLocationError struct {
+	code     string
 	message  string
 	location SanyRange
 }

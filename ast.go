@@ -35,6 +35,7 @@ type Module struct {
 }
 
 type Instance struct {
+	Syntax           *SanySyntaxNode
 	Name             string
 	Params           []string
 	ParamArities     map[string]int
@@ -84,6 +85,7 @@ const (
 )
 
 type Declaration struct {
+	Syntax          *SanySyntaxNode
 	Kind            DeclarationKind
 	Names           []string
 	Arities         map[string]int
@@ -220,11 +222,14 @@ type SanyExprSource struct {
 	Syntax *SanySyntaxNode
 	// Selector keeps the generator's per-step argument syntax. A flattened
 	// CallExpr argument list cannot distinguish Op(a)!lab(b) from Op(a,b)!lab.
-	Selector  *SanySelector
-	selection *sanySelectorSelection
+	Selector          *SanySelector
+	selection         *sanySelectorSelection
+	selectorFailure   bool
+	generationFailure sanyGenerationFailure
 }
 
-func (s *SanyExprSource) GetSyntaxNode() *SanySyntaxNode { return s.Syntax }
+func (s *SanyExprSource) GetSyntaxNode() *SanySyntaxNode    { return s.Syntax }
+func (s *SanyExprSource) generationSource() *SanyExprSource { return s }
 func (s *SanyExprSource) SetSyntaxNode(node *SanySyntaxNode) {
 	s.Syntax = node
 	s.Selector = sanySelectorFromSyntax(node)

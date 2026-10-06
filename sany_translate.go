@@ -891,7 +891,7 @@ func sanyInstance(node *SanySyntaxNode) (Instance, Diagnostics) {
 		return nil
 	}
 	nonLocal := search(node)
-	inst := Instance{Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Substitutions: map[string]Expr{}, Local: sanyHasLocalPrefix(node), PreComments: sanyLeadingPreComments(node)}
+	inst := Instance{Syntax: node, Pos: sanyNodePosition(node), Source: sanyNodePosition(node), Substitutions: map[string]Expr{}, Local: sanyHasLocalPrefix(node), PreComments: sanyLeadingPreComments(node)}
 	if nonLocal == nil {
 		return inst, nil
 	}
@@ -1132,7 +1132,7 @@ func sanyProofStepRefs(node *SanySyntaxNode) []string {
 }
 
 func sanyDeclaration(node *SanySyntaxNode, kind DeclarationKind) Declaration {
-	decl := Declaration{Kind: kind, Pos: sanyNodePosition(node), Arities: map[string]int{}, NamePositions: map[string]Position{}, NamePreComments: map[string][]string{}}
+	decl := Declaration{Syntax: node, Kind: kind, Pos: sanyNodePosition(node), Arities: map[string]int{}, NamePositions: map[string]Position{}, NamePreComments: map[string][]string{}}
 	addName := func(name string, arity int, pos Position, comments []string) {
 		decl.Names = append(decl.Names, name)
 		decl.Arities[name] = arity
@@ -1361,6 +1361,7 @@ func sanyNamedBodyDefinition(node *SanySyntaxNode) (Definition, bool, Diagnostic
 			assumeProveBody = ap
 		}
 		return Definition{
+			Syntax:          node,
 			Name:            heirs[i].Image,
 			Expr:            expr,
 			AssumeProve:     body != nil && body.Kind.JavaName() == "N_AssumeProve",
@@ -2167,7 +2168,7 @@ func sanyLetIn(node *SanySyntaxNode) (Expr, Diagnostics) {
 	if len(heirs) < 4 {
 		return unsupportedSanyExpr(node)
 	}
-	let := &LetExpr{Pos: sanyNodePosition(node)}
+	let := &LetExpr{SanyExprSource: SanyExprSource{Syntax: node}, Pos: sanyNodePosition(node)}
 	var diags Diagnostics
 	for _, child := range heirs[1].GetHeirs() {
 		switch child.Kind.JavaName() {

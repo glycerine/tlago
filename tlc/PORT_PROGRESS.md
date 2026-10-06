@@ -1,5 +1,63 @@
 # TLC Port Progress
 
+2026-10-06 Source-order expression contexts and recursive selector boundaries:
+Previous native bridge correction committed as `f5019c4`; starting tree clean.
+Normal root session 96678 remains live on that fixture snapshot, before this
+production work, log tlago-bitwise-bridge-root-full.log. Original long LSB
+32959 remains live and undisturbed, last inspected above 1,682,578,812 of
+2,147,483,648 insertions. Neither live job earns terminal-success credit.
+
+Port expression visibility from Generator.generateModule/processOperator/
+processFunction/processLetIn and selectorToNode. Retain parser-node identity on
+declarations, instances, named bodies and LET. Visit actual body-node order to
+build each expression's context, keeping the completed context for levels.
+Ordinary definitions and facts enter after their bodies; RECURSIVE enters at
+its declaration. Function domains precede temporary function self-binding.
+LET resolution and selector preparation no longer predeclare later definitions.
+Instance substitution expressions use the context before that instance's exports.
+
+Initial 34 source-only Java/Go observations match; adding 20 LET observations
+also matches. Boundary audit finds six spurious Go diagnostics from visiting
+unresolved-call arguments and reading later arity metadata. Preserve actual
+null versus nullOAN results and stop the applicable generation/arity branches.
+Source selector names accumulate only named components, retaining real ranges.
+A further audit finds recursive body selection incorrectly accepted; preserve
+name visibility separately from definition completion, report source code 4005
+at the named token, and retain failed-selector nullOAN without duplicate unknown
+errors. Final 74 observations match actual Java semantic error counts, codes,
+ranges, messages and ordering, with zero mismatches. Log
+/mnt/oldrog/tmp/tlago-source-visibility-final-audit-corrected.log; distinct source
+and output pairs under tlago-source-visibility-final-audit. All are semantic
+phase observations, not shared parser failures, invented permanent tests or
+inventory credit. Existing original fixtures and assertions remain unchanged.
+
+The initial TLC-constructor scratch helper tried evaluating unbounded recursive
+operators and exposed an unrelated stack overflow. Replace that probe boundary
+with actual Java SANY.frontEndMain and Go SanyFrontEndMain; inspect semantic
+Errors/Diagnostics directly without model evaluation. Preserve the earlier
+failed-constructor transcript in tlago-source-visibility-audit.log, without
+claiming it as a source-generation mismatch or successful constructor audit.
+Likewise, the earlier INSTANCE probes lacked the Go standard-module resolver;
+source-only loading corrects setup without changing source cases.
+
+Final existing native classes, original parser/output selection, nine original
+TLC correctness methods and four bridge checks pass root 12.747 / SANY selection
+0.771 seconds (96273 retired), log tlago-source-visibility-final-focused.log.
+Complete SANY passes 1.587 seconds (44533 retired), log
+ tlago-source-visibility-final-sany.log. Final all-package compilation also
+passes, log tlago-source-visibility-final-compile.log. All runs normal, with workspace temporary
+directories and original bounds. No broad race run or special corpus sweep.
+TLC leaf production is unchanged; reuse its completed 22503 full-package receipt.
+No current full-workspace success claim: root 96678 predates these changes.
+
+Remaining actual-source audit still differs for unknown leaf BY facts and error
+ordering between an operator and a following assumption. Log
+ tlago-source-visibility-remaining-recursive-final.log; its third recursive
+selector observation is now matching. Next port actual module-unit generation
+and proof facts/scopes, rather than sorting diagnostics after generation. Keep
+general parser, constructor, context and selector reconciliation visible. Goal
+remains incomplete; new distributed architecture stays postponed.
+
 2026-10-06 Native Bitwise bridge source correction:
 Previous lookup/module batch committed as `125246f`. Normal root session
 21211 returned status 1 after 319.420 seconds and is retired. The existing

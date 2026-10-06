@@ -132,13 +132,30 @@ exports are removed; imports preserve actual declarations and their identities.
 Runtime overrides and remaining semantic constructs still need separate parity
 proof. No XML or ApalacheIR corpus sweep is introduced by this source loading.
 
-Module generation still assembles a broad name map before checking expressions.
-This permits forward operator references that Java rejects. Leaf proof facts are
-retained as syntax/expressions but are not fully generated or resolved, so an
-unknown `BY` fact is also incorrectly accepted. These are concrete next porting
-requirements, not intended compatibility behavior. Preserve source declaration
-visibility, recursive-declaration exceptions, proof scopes and generation order
-when replacing these shortcuts.
+Expression generation uses per-unit contexts built from actual module-body
+syntax order. Declarations and INSTANCE exports enter when their units are
+visited; ordinary operators and named facts enter after their bodies. `RECURSIVE`
+introduces a name before its body exists. Function domains are checked before the
+temporary recursion symbol; that symbol and the bounds enter for the body.
+LET uses its actual body-node order for both expression checks and selector
+preparation. Completed contexts remain available for subsequent level checking.
+
+Selector preparation cannot inspect later definitions. Recursive declaration
+visibility is separate from body completion: selecting an unfinished body reports
+source UNSUPPORTED_LANGUAGE_FEATURE (4005). Selector failures return the semantic
+null-operator placeholder rather than triggering another unresolved-name error.
+Generation also distinguishes that placeholder from a null symbolic expression.
+The latter stops function-application generation before arguments; an unresolved
+named function still generates its arguments. Unresolved operator applications
+stop before argument generation. Arity and operator-argument checks honor those
+failure boundaries rather than using later definitions' metadata.
+
+The broader generator still groups some checks by AST category, which can reverse
+the source ordering of errors in an operator and a following assumption. Leaf
+proof facts are retained but not fully generated or resolved, so an unknown `BY`
+fact is still incorrectly accepted. Port actual unit generation and proof scopes;
+do not replace them with error sorting. Seventy-four matching bounded visibility
+observations do not prove all Generator, constructor or selector paths complete.
 
 ## Module loading and parse-unit relationships
 

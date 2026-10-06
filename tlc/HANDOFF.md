@@ -76,7 +76,8 @@ and accepts the corrected `EXTENDS Bitwise, Naturals`. Its LOCAL-helper and nati
 override assertions are unchanged. All four existing bridge checks pass normally
 in 0.372 seconds; log `/mnt/oldrog/tmp/tlago-bitwise-bridge-focused.log`.
 
-Normal root-package session `96678` is live on the corrected fixture snapshot.
+Normal root-package session `96678` is live on the `f5019c4` fixture snapshot,
+before the newer expression-visibility corrections.
 It retains all existing tests, original bounds and a 60-minute timeout, without
 race instrumentation or failfast, so subsequent failures remain visible. Both
 temporary-directory variables use workspace `.codex-gotmp`. Log:
@@ -88,6 +89,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
+| Final source-order contexts, recursive selector failures and null placeholders: native classes, original parser/output selection, nine original TLC methods and four bridge checks | Pass | Root 12.747 / SANY selection 0.771 seconds, session `96273` retired |
+| Complete SANY package on final expression-visibility snapshot | Pass | 1.587 seconds, session `44533` retired |
 | Native classes, original parser/output selection and nine original TLC correctness tests with source error code 4004 | Pass | Root 9.724 / SANY selection 0.694 seconds, session `49468` retired |
 | Complete SANY package after final source error-code correction | Pass | 1.338 seconds, session `8868` retired |
 | Original TLC operator configuration, INSTANCE, warning, action-level and assumption-value selection | Pass | Nine original methods; 4.299 seconds before the code correction, included in final `49468` pass |
@@ -267,12 +270,28 @@ retain their assertions and are checked against Java; original Java fixtures are
 unchanged. The exporter sorting check starts with Java-valid source, then deliberately
 reverses its IR definitions before checking the unchanged output-order assertion.
 
-Two concrete generation gaps remain: the assembled module-name map admits an
-operator defined later in the source, and unknown leaf `BY` facts are not generated
-or resolved. Both differ from actual Java output in
-`/mnt/oldrog/tmp/tlago-operator-resolution-boundary-audit.log`. Port declaration
-visibility and proof-fact generation in source order; do not hide these differences
-or treat the matching bounded observations as complete generation parity.
+Expression generation now uses contexts built by visiting actual module-body
+and LET syntax nodes in order. Ordinary definitions and named facts become visible
+after their bodies; `RECURSIVE` names become visible at their declarations. Function
+domains precede their temporary self-binding, which is available in the body.
+Selector preparation uses the same visibility boundary and preserves unfinished
+recursive definitions. Selecting their bodies reports source code 4005 at the
+named token. Failed selectors retain the null-operator placeholder without a
+second undefined-name error. Unresolved symbolic expressions retain Java's distinct
+null result, including function-application argument suppression. The existing
+arity and operator-argument checks do not inspect expressions that failed generation.
+Seventy-four bounded observations match Java's actual semantic error counts,
+codes, ranges, messages and ordering; this does not establish full Generator parity.
+Receipt: `/mnt/oldrog/tmp/tlago-source-visibility-final-audit-corrected.log`.
+
+Two concrete gaps remain: unknown leaf `BY` facts are not generated or resolved,
+and grouped generation checks can report an assumption error before an earlier
+operator-definition error. Actual Java/Go differences remain in
+`/mnt/oldrog/tmp/tlago-source-visibility-remaining-recursive-final.log`.
+Port actual module-unit generation and proof scopes, rather than sorting error
+messages afterward. Recursive declarations now retain both name visibility and
+body-completion state. Broader constructor, symbol/context and selector boundaries
+remain audit work.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

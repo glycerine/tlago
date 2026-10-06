@@ -433,6 +433,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
+	// Local symbols enter the generation context in module-body order.
+	expressionContexts := sanyModuleExpressionContexts(mod, spec, defined)
 	instanceSymbols := enclosingBindings
 	// SymbolTable.resolveSymbol sees the already merged EXTENDS context.
 	for name, symbol := range extendedSymbols {
@@ -586,7 +588,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	levelChecker := newSanyLevelCompositionChecker(mod, spec)
 	levelChecker.dependencies.declKinds[mod] = declKinds
 	for _, inst := range mod.Instances {
-		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, false)...)
+		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities, operatorParamSpecs, false)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
 			return checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, true)
 		}})
@@ -608,7 +610,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkLabels(expr, labelCheckContext{allowed: assumption.Name != ""})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkExpr(expr, defined, nil)...)
+			diags = append(diags, checkExpr(expr, expressionContexts.at(assumption.Syntax, defined), nil)...)
 		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
@@ -639,7 +641,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkLabels(expr, labelCheckContext{})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkExpr(expr, defined, nil)...)
+			diags = append(diags, checkExpr(expr, expressionContexts.at(theorem.Syntax, defined), nil)...)
 		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
@@ -669,10 +671,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			locals[param] = true
 		}
 		defArities := definitionBodyArities(arities, def)
+		bodyContext := expressionContexts.at(def.Syntax, defined)
 		if def.AssumeProve && def.AssumeProveBody != nil {
-			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, defined, locals)...)
+			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals)...)
 		} else {
-			diags = append(diags, checkExpr(def.Expr, defined, locals)...)
+			diags = append(diags, checkDefinitionExpression(def, bodyContext, locals)...)
 		}
 		diags = append(diags, checkCallArity(def.Expr, defArities, operatorParamSpecs, locals)...)
 		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, defArities, locals)...)
@@ -3159,7 +3162,19 @@ func instanceNameSentinel(name string) string {
 
 func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
+	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
+	if source := sanyExprSource(expr); source != nil && source.selectorFailure {
+		// selectorToNode has already reported the error and returned nullOAN.
+		setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+		return nil
+	}
 	if selected := sanyExprSelection(expr); selected != nil {
+		// Selector preparation cannot make a later declaration visible. Resolve
+		// the selected symbol in this body's actual generation context first.
+		if missing := checkSanySelectedSymbol(expr, selected, defined, locals); len(missing) != 0 {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+			return missing
+		}
 		// The selected body is checked in its declaration's lexical scope.
 		// Only the actual arguments originate in this use site's scope.
 		for _, arg := range selected.args {
@@ -3184,6 +3199,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 			if base, _, ok := strings.Cut(e.Name, "!"); ok {
 				_, exact := defined[e.Name]
 				if _, isInstance := defined[instanceNameSentinel(base)]; isInstance && !exact {
+					setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 					diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
 					return diags
 				}
@@ -3195,6 +3211,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 				diags = append(diags, errorAt(e.Pos, "E4261", "@ may only be used inside a function EXCEPT replacement"))
 				return diags
 			}
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
 		} else if _, ok := defined[instanceNameSentinel(e.Name)]; ok {
 			diags = append(diags, errorAt(e.Pos, "E4203", "operator name %s is incomplete", e.Name))
@@ -3202,17 +3219,23 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 	case *LiteralExpr:
 	case *UnaryExpr:
 		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)
 			return unresolved
 		}
 		diags = append(diags, checkExpr(e.Expr, defined, locals)...)
 	case *BinaryExpr:
 		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)
 			return unresolved
 		}
 		diags = append(diags, checkExpr(e.Left, defined, locals)...)
 		diags = append(diags, checkExpr(e.Right, defined, locals)...)
 	case *CallExpr:
 		diags = append(diags, checkExpr(e.Callee, defined, locals)...)
+		if sanyExpressionGenerationFailure(e.Callee) != sanyGenerationSucceeded {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+			return diags
+		}
 		for _, arg := range e.Args {
 			diags = append(diags, checkExpr(arg, defined, locals)...)
 		}
@@ -3221,16 +3244,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		diags = append(diags, checkExpr(e.Then, defined, locals)...)
 		diags = append(diags, checkExpr(e.Else, defined, locals)...)
 	case *LetExpr:
-		diags = append(diags, checkLetRecursiveSections(e)...)
-		letLocals := letScopeLocals(locals, e)
-		recursiveNames := letRecursiveNames(e)
-		for defIndex, def := range e.Definitions {
-			diags = append(diags, checkDefinitionParams(def)...)
-			diags = append(diags, checkDefinitionParamCollisions(def, defined, letScopeLocalsBeforeDefinition(locals, e, defIndex))...)
-			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
-			diags = append(diags, checkExpr(def.Expr, defined, defLocals)...)
-		}
-		diags = append(diags, checkExpr(e.Body, defined, letLocals)...)
+		diags = append(diags, checkLetExpression(e, defined, locals)...)
 	case *QuantifierExpr:
 		diags = append(diags, checkExpr(e.Set, defined, locals)...)
 		diags = append(diags, checkBoundName(e.Var, e.Pos, defined, locals)...)
@@ -3303,6 +3317,10 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 		diags = append(diags, checkExpr(e.Body, defined, fnLocals)...)
 	case *FunctionAppExpr:
 		diags = append(diags, checkExpr(e.Function, defined, locals)...)
+		if sanyExpressionGenerationFailure(e.Function) == sanyGenerationNullExpression {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)
+			return diags
+		}
 		for _, arg := range e.Args {
 			diags = append(diags, checkExpr(arg, defined, locals)...)
 		}
@@ -3488,6 +3506,9 @@ func addSubexpressionReferenceNames(defined map[string]Position, base string, ex
 }
 
 func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string][]operatorParamSpec, locals map[string]bool) Diagnostics {
+	if sanyExpressionGenerationFailure(expr) != sanyGenerationSucceeded {
+		return nil
+	}
 	var diags Diagnostics
 	if selected := sanyExprSelection(expr); selected != nil {
 		for i, arg := range selected.args {
@@ -3671,6 +3692,9 @@ func callArgumentIsOperatorArgument(index int, arg Expr, specs []operatorParamSp
 }
 
 func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorParamSpec, arities map[string]int, locals map[string]bool) Diagnostics {
+	if sanyExpressionGenerationFailure(expr) != sanyGenerationSucceeded {
+		return nil
+	}
 	var diags Diagnostics
 	if selected := sanyExprSelection(expr); selected != nil {
 		for i, arg := range selected.args {
@@ -3952,6 +3976,9 @@ func builtinOperatorArity(name string) (int, bool) {
 }
 
 func checkFunctionArity(expr Expr, functionArities map[string]int, locals map[string]bool) Diagnostics {
+	if sanyExpressionGenerationFailure(expr) != sanyGenerationSucceeded {
+		return nil
+	}
 	var diags Diagnostics
 	switch e := expr.(type) {
 	case *UnaryExpr:
@@ -4032,7 +4059,7 @@ func checkFunctionArity(expr Expr, functionArities map[string]int, locals map[st
 		}
 		diags = append(diags, checkFunctionArity(e.Body, functionArities, fnLocals)...)
 	case *FunctionAppExpr:
-		if ident, ok := e.Function.(*IdentExpr); ok && !locals[ident.Name] {
+		if ident, ok := e.Function.(*IdentExpr); ok && !locals[ident.Name] && sanyExpressionGenerationFailure(ident) == sanyGenerationSucceeded {
 			if want, exists := functionArities[ident.Name]; exists && !validFunctionApplicationArity(want, len(e.Args)) {
 				diags = append(diags, errorAt(e.Pos, "E4260", "function %s arity mismatch: got %d args, want %d", ident.Name, len(e.Args), want))
 			}
@@ -4753,21 +4780,27 @@ func sanyCallArityDiagnostic(call *CallExpr, name string, want int) Diagnostic {
 // name, excluding supplied arguments, before reporting SYMBOL_UNDEFINED.
 func sanyUndefinedIdentifierDiagnostic(identifier *IdentExpr) Diagnostic {
 	diagnostic := errorAt(identifier.Pos, "E4200", "undefined identifier %s", identifier.Name)
+	name := identifier.Name
 	if selector := identifier.Selector; selector != nil {
+		var names []string
 		for _, step := range selector.Steps {
 			if step.Syntax == nil || step.Kind != SanySelectorName {
 				continue
 			}
+			names = append(names, sanyCanonicalOperatorImage(step.Name))
 			if diagnostic.SANYRange.Begin.Line == 0 {
 				diagnostic.SANYRange = step.Syntax.Range
 			} else {
 				diagnostic.SANYRange.End = step.Syntax.Range.End
 			}
 		}
+		if len(names) > 0 {
+			name = strings.Join(names, "!")
+		}
 	} else if identifier.Syntax != nil {
 		diagnostic.SANYRange = identifier.Syntax.Range
 	}
-	diagnostic.SANYMessage = fmt.Sprintf("Unknown operator: `%s'.", identifier.Name)
+	diagnostic.SANYMessage = fmt.Sprintf("Unknown operator: `%s'.", name)
 	return diagnostic
 }
 
