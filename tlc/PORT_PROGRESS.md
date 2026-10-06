@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-06 reusable distributed job service requirements:
+Added TLC_DIST_REQS.md with 25 identified requirements for authority, fenced
+batch attempts, immutable retry outcomes, claim/publication obligations,
+client-visible ordering, completion, snapshot recovery, and bounded flow.
+Separated generic service ownership from TLC resource adapters and clarified
+that execution-scoped Applied is not a crash-durable acknowledgment. Linked
+from BATCH_PROTOCOL.md and the handoff. Documentation only; no implementation,
+test execution, or test-port credit.
+
+2026-10-05 Tube reliable membership required from initial integration:
+Read rpc25519/tube/cmd/member/member.go and the RMember/Czar implementation
+read-only. Updated BATCH_PROTOCOL.md to elect the TLC coordinator through
+RMember's Czar lease and derive authority from CzarLeaseEpoch. Added separate
+candidate membership, lease/channel handling, Raft-committed RunGeneration and
+JobControl records, storage fencing transitions, and Tube checkpoint references.
+Coordinator replacement is elected from the outset; unfinished in-memory work
+still requires checkpoint rollback. Updated the handoff. Documentation only;
+no implementation, tests, or new test-port credit.
+
+2026-10-05 distributed transport protocol planning:
+User moved development to /mnt/b/github.com/tlaplus/tlago on branch distrib
+and prioritized distributed TLC. Read Java coordinator/worker/fingerprint
+interfaces and failure paths, and rpc25519 circuits, Tube, and jsync read-only.
+Added root BATCH_PROTOCOL.md with operation identities, retained insertion
+bitmaps, coordinator publication ownership, acknowledgments/watermarks, bounded
+credits, worker-result replay, and coordinated checkpoint recovery. Initial
+process-failure policy aborts the epoch and restores a complete checkpoint;
+live fingerprint reassignment and coordinator failover are deliberate deferrals,
+not claimed Java parity. Updated the handoff's scope and storage notes.
+Documentation only: no implementation, test-port credit, or test run.
+
 2026-10-05 Java TLC is the default command-line runner:
 Removed the --tlc/-tlc/--go-tlc/-go-tlc selector and the separate bounded CLI
 parser. Direct tlago [FLAGS] SPEC, modelcheck, and mc now call the same TLC

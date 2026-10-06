@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 5, 2026. Full-suite verification baseline: `305a13f`.
+Updated: October 6, 2026. Full-suite verification baseline: `305a13f`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -22,11 +22,18 @@ The Java reference checkout is `../tlaplus`, pinned to
 `github.com/glycerine/tlago`; most TLC implementation lives in package `tlc`,
 with parser integration and model tests in the repository's root package.
 
-The user has deferred these topics:
+Distributed TLC is now prioritized on branch `distrib`, using the development
+checkout at `/mnt/b/github.com/tlaplus/tlago`. The transport and retry-safety
+implementation plan is [BATCH_PROTOCOL.md](../BATCH_PROTOCOL.md). The reusable
+job service contract is [TLC_DIST_REQS.md](../TLC_DIST_REQS.md), including batch
+ownership, transaction boundaries, and client-visible linearizability. Tube Raft
+`RMember` supplies coordinator election and authority epochs from the start;
+replacement coordinators recover a completed checkpoint before accepting work.
+
+The user continues to defer these topics:
 
 - Debugger and scoped identifiers.
 - Checkpoint and recovery models.
-- Distributed TLC.
 - JPF concurrency verification.
 - Benchmarks and supporting fixtures.
 
@@ -125,8 +132,9 @@ possible schedule.
 
 ## Remaining work and known blockers
 
-Four main-suite contexts remain eligible under the current topic selection.
-The other 12 pending contexts are in deferred distributed or checkpoint topics.
+Four main-suite contexts have the reconciliation issues below. Distributed
+contexts are now eligible; checkpoint-model contexts remain deferred. Consult
+the inventory for the exact classes and method counts.
 
 | Eligible class | Unresolved issue |
 | --- | --- |
@@ -163,10 +171,9 @@ Additional pending work:
   matching Java. These source failures do not earn pass or full-size credit.
 
 The large fingerprint runs need approximately 32 GiB for concurrent main and
-merge/checkpoint files, plus reserve. The latest filesystem check showed only
-12 GiB available. Recheck resources before starting them; do not reduce their
-bounds to fit. Pending resource and source-behavior questions have not been
-resolved by silence.
+merge/checkpoint files, plus reserve. Development has moved to `/mnt/b/github.com/tlaplus/tlago`, which the user
+reports has at least 1 TB available. Recheck resources before starting them;
+do not reduce their bounds to fit. Source-behavior questions remain unresolved.
 
 A separate scheduling concern remains for alias trace replay: source-compatible
 multiworker dumps can replay 10 or 11 states with differing final actions.
@@ -202,10 +209,12 @@ sorting, or the existing Java HashMap ordering helpers as the source requires.
 Do not introduce a second parser, compatibility fallback, or speculative
 behavior changes. Consult existing audit notes before repeating old work.
 
-Distributed integration remains deferred. The selected future transport is
+Distributed integration is now prioritized. The selected transport is
 `github.com/glycerine/rpc25519` with Greenpack serialization, using asynchronous
 peer/circuit/fragment APIs. Preserve TLC deduplication, recovery, and termination
-semantics when that work resumes; see `TLC_ARCH.md`.
+semantics as networking is introduced; see `TLC_ARCH.md` and
+[BATCH_PROTOCOL.md](../BATCH_PROTOCOL.md) for the explicit retry protocol and
+its intentional process-failure policy.
 
 ## Testing and workflow
 
