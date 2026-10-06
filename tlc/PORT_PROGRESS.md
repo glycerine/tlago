@@ -1,5 +1,18 @@
 # TLC Port Progress
 
+2026-10-06 full original fingerprint validation gate complete:
+Session 80888 returned terminal 0 in 583.638s, compiled f764bb1 before the
+subsequent checkpoint file-helper correction. All whole original LSBDiskFPset,
+MSBDiskFPSetTest2, OffHeapDiskFPSetTest and ShortDiskFPSetTest bodies plus all
+seven manager entry points pass. This includes the original 99,999,999-entry
+index method and full source recovery/forced-flush loops; no reduced bounds or
+race instrumentation. Log: /mnt/oldrog/tmp/tlago-fpset-validation-related.log.
+Handle retired and removed from the handoff live table. Latest file-helper
+correction remains separately verified by focused checks and manual source/native
+observations; this full-class receipt does not claim later-code verification.
+Workspace 85256 and random 63113/59782 remain live at their listed snapshots.
+
+
 2026-10-06 checkpoint file utility source parity:
 FileUtil.replaceFile delegates to Files.move(REPLACE_EXISTING); the Go helper
 instead deleted the live destination before rename. Rename directly so a missing

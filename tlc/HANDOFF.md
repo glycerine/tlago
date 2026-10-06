@@ -82,7 +82,7 @@ Focused verification:
 | --- | --- | --- |
 | Eight original safety/checkpoint/recovery/liveness/legacy models with Ant settings | Pass | 158.473 seconds, `d611cba` valid-setting path |
 | Original factory/CLI checks, default and source memory settings | Pass | 1.072 / 0.963 seconds |
-| Final flusher assertions: short off-heap, lookup, iterator and manager checks | Pass | 0.112 seconds, `f764bb1` |
+| Complete original heap/MSB/ShortDisk/off-heap classes and manager checks | Pass | 583.638 seconds, `f764bb1`, session `80888` retired |
 | Latest file-helper correction: existing focused fingerprint/commit checks | Pass | 0.181 seconds, session `27462` retired |
 | Latest all-package compilation | Pass | Session `6427` retired |
 
@@ -95,18 +95,17 @@ Current normal verification jobs:
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
 | Full workspace with Ant model settings | `d611cba` | `85256` | `tlago-source-ant-fpset-workspace.log` |
-| Original heap/MSB/ShortDisk/off-heap/manager methods, full bounds | `f764bb1` | `80888` | `tlago-fpset-validation-related.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicate suites. The workspace and broader
-fingerprint runs predate the latest file-helper correction; keep their eventual
-receipts scoped to their compiled snapshots. The broader run includes the
-original 99,999,999-entry index method. No job in this table has full-run credit
-yet. None uses `-race`.
+Poll these handles before launching duplicate suites. Workspace verification
+predates the latest file-helper correction; keep its eventual receipt scoped
+to its compiled snapshot. The completed broader fingerprint receipt includes
+the original 99,999,999-entry index method and retains all source bounds.
+No job in this table has full-run credit yet. None uses `-race`.
 
-The MSB and LSB random jobs retain all 2,147,483,648 iterations, default factories/configuration, seed,
-checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.
+The MSB and LSB random jobs retain all 2,147,483,648 iterations, default
+factories/configuration, seed, checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.
 LSB completed its first 536,870,912-entry flush and resumed insertion without a
 reported failure. Quiet flushes are not terminal jobs. Earlier sessions `98446`,
 `83220` and `59015` are retired without full-run credit; see progress receipts
