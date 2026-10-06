@@ -39,6 +39,20 @@ TRACE/parse-result comparisons and selected declaration/LHS heir-kind/image
 comparisons match pinned Java. These observations do not establish general
 JavaCC rescan, source-range or whole-module syntax-tree parity.
 
+INSTANCE and Substitution retain their source frames and expectation boundaries.
+Source jj_2_12(3) accepts a following substitution only after comma, target and
+'<-'; failed lookahead leaves the comma untouched and retains scanned following
+input length for later error reporting. Source alternatives admit the contiguous
+177-token postfix/prefix/infix/Unicode/identifier interval; using general operator
+metadata would incorrectly admit '.' as a target. Operator targets are typed
+source leaves with token images, without fabricated children. Body's earlier
+two-token INSTANCE lookahead precedes field-name reclassification: bare INSTANCE
+requires an identifier as its second token, while LOCAL exhausts that budget at
+INSTANCE. Instantiation performs field-name reclassification later, as Java does.
+Fifty-four bounded complete TRACE/parse-result observations and selected target/
+arrow subtree kinds/images match pinned Java. General JavaCC rescan, remaining
+productions and full syntax-tree parity remain unproven.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

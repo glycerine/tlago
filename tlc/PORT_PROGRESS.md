@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-06 INSTANCE/substitution production boundaries:
+Previous turn completed 6d0d9ab. Port Instance, Instantiation and Substitution's
+actual frames, expectations and parse-failure boundaries. Mandatory module names
+and substitution arrows now throw source parse failures rather than accumulating
+a native diagnostic or dereferencing a nil node. Retain field-name reclassification
+and dependency insertion order. Substitution operator targets use the source typed
+leaf constructor, including token image and no fabricated child.
+
+Remove unconditional comma consumption in Instantiation. Source jj_2_12(3)
+requires comma, target and '<-'; failed lookahead leaves comma untouched and
+retains source following-input length. A generated-scanner reflection audit
+finds exactly 177 accepted target kinds, the contiguous 113..289 interval, with
+Unicode operator kinds included. Use those source alternatives rather than
+operator metadata, which admits '.' incorrectly. The scratch initial native
+FIRST probe also failed to decode escaped token images; its mismatch output is
+not a runtime failure receipt. The corrected kind-set probe matches Java exactly.
+Logs: /mnt/oldrog/tmp/tlago-substitution-first-{source,native}.log.
+
+Bare INSTANCE 1 exposed the earlier source Body lookahead. Match its two-token
+budget before entering Instance; LOCAL consumes that budget at INSTANCE, allowing
+Instantiation's later module-identifier failure/reclassification. Preserve source
+Module body expectation text, frame and actual keyword timing.
+
+All 54 bounded complete TRACE/parse-result observations now match Java, including
+prior 31 plus plain/local/named/LET instances, multiple and operator substitutions,
+malformed targets/arrows/comma continuations, keyword module names, '.', and Unicode.
+3869 terminal 0; log /mnt/oldrog/tmp/tlago-sany-instance-parser-final-audit.log.
+The same inputs match selected substitution target/arrow node kinds/images and
+heirs (12680 terminal 0), logs under /mnt/oldrog/tmp/tlago-sany-trace-audit and
+summary /mnt/oldrog/tmp/tlago-sany-substitution-tree-audit.log. No whole-tree or
+location parity claim; no invented permanent tests or assertion changes.
+
+Normal verification: complete existing SANY 1.799 seconds (43384 terminal 0);
+unchanged parser/semantic/token/operator classes, original ParseErrorTests and
+four original TLC models 16.031 seconds (52259 terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-sany-instance-parser-{sany,focused-root}.log.
+Inventories unchanged; broader parser/semantic parity remains incomplete.
+Full MSB session 5144 remains confirmed live; last recorded progress
+1,116,162,150/2,147,483,648. Preserve its isolated binary and handle.
+
 2026-10-06 Constant/recursive declaration construction and operator frames:
 Previous turn completed 9c31cf6. A source production-frame audit identified a
 functional shortcut: CONSTANT and RECURSIVE reused formal IdentDecl/SomeFixDecl.

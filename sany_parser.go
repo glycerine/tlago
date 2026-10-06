@@ -270,6 +270,7 @@ func (p *SanyParser) Extends() *SanySyntaxNode {
 func (p *SanyParser) Body() *SanySyntaxNode {
 	p.beginProduction("Module body")
 	defer p.endProduction()
+	p.expecting = "LOCAL, INSTANCE, PROOF, ASSUMPTION, THEOREM, RECURSIVE, declaration, or definition"
 	var heirs []*SanySyntaxNode
 	for !p.check(SanyTokenEOF) && !p.check(SanyTokenEndModule) {
 		switch {
@@ -285,6 +286,12 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 		case p.check(SanyTokenRecursive):
 			heirs = append(heirs, p.Recursive())
 		case p.check(SanyTokenInstance) || (p.check(SanyTokenLocal) && p.peekNext().Kind == SanyTokenInstance):
+			// Body's two-token Instance lookahead has not run field-name
+			// reclassification. With LOCAL, its budget ends at INSTANCE.
+			if p.check(SanyTokenInstance) && p.peekNext().Kind != SanyTokenIdentifier {
+				p.rememberFailedLookahead(2)
+				p.throwParseException([][]SanyTokenKind{{SanyTokenInstance, SanyTokenIdentifier}}, "expected INSTANCE module")
+			}
 			heirs = append(heirs, p.Instance())
 		case p.check(SanyTokenAssume) || p.check(SanyTokenAssumption):
 			heirs = append(heirs, p.Assumption())
@@ -384,42 +391,88 @@ func (p *SanyParser) Recursive() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Instance() *SanySyntaxNode {
+	p.beginProduction("Instance")
+	defer p.endProduction()
+	p.expecting = "LOCAL or instance"
 	var zero []*SanySyntaxNode
 	if p.match(SanyTokenLocal) {
 		zero = append(zero, NewSanyTokenNode(p.previous()))
 	}
 	inst := p.Instantiation()
+	p.expecting = "COMMA or Module Body"
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_Instance"], zero, []*SanySyntaxNode{inst})
 }
 
 func (p *SanyParser) Instantiation() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenInstance, "expected INSTANCE"))
+	p.beginProduction("NonLocalInstance")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenInstance, "expected INSTANCE")}
+	p.expecting = "Module identifier"
 	p.reclassifyFieldName()
-	name := p.Identifier()
+	name := p.consumeParseToken(SanyTokenIdentifier, "expected module identifier")
 	p.addDependency(name.Image)
 	heirs = append(heirs, name)
+	p.expecting = "WITH or another definition."
 	if p.match(SanyTokenWith) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = ""
 		heirs = append(heirs, p.Substitution())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = ""
+		for p.startsFollowingSubstitution() {
+			heirs = append(heirs, NewSanyTokenNode(p.advance()))
+			p.expecting = ""
 			heirs = append(heirs, p.Substitution())
+			p.expecting = ""
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_NonLocalInstance"], heirs...)
 }
 
-func (p *SanyParser) Substitution() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	if p.check(SanyTokenIdentifier) {
-		heirs = append(heirs, p.Identifier())
-	} else {
-		heirs = append(heirs, p.consumeOperator("expected substitution target"))
+func (p *SanyParser) startsSubstitutionTarget(offset int) bool {
+	kind := p.tokenAt(offset).Kind
+	// Source postfix, nonexpression-prefix, infix (including Unicode), and
+	// identifier alternatives cover this contiguous token interval.
+	return kind >= SanyTokenOp57 && kind <= SanyTokenIdentifier
+}
+
+// Java jj_2_12(3) scans only comma, target and '<-'. A failed scan leaves
+// the comma untouched and participates in the later expected-input length.
+func (p *SanyParser) startsFollowingSubstitution() bool {
+	if !p.check(SanyTokenComma) {
+		return false
 	}
-	heirs = append(heirs, p.consume(SanyTokenSubstitute, "expected <- in substitution"))
-	heirs = append(heirs, p.ExpressionUntilCommaOrBodyBoundary())
-	return NewSanyNode(SanySyntaxNodeKindByName["N_Substitution"], heirs...)
+	if !p.startsSubstitutionTarget(1) {
+		p.rememberFailedLookahead(2)
+		return false
+	}
+	if p.tokenAt(2).Kind != SanyTokenSubstitute {
+		p.rememberFailedLookahead(3)
+		return false
+	}
+	return true
+}
+
+func (p *SanyParser) Substitution() *SanySyntaxNode {
+	p.beginProduction("Substitution")
+	defer p.endProduction()
+	var target *SanySyntaxNode
+	switch {
+	case p.check(SanyTokenIdentifier):
+		target = p.consumeParseToken(SanyTokenIdentifier, "expected substitution target")
+	case p.peek().Kind >= SanyTokenOp76 && p.peek().Kind <= SanyTokenOp116:
+		target = sanyOperatorTokenNode("N_NonExpPrefixOp", p.advance())
+	case p.peek().Kind >= SanyTokenOp1 && p.peek().Kind < SanyTokenIdentifier:
+		target = sanyOperatorTokenNode("N_InfixOp", p.infixOpToken())
+	case p.isGrammarPostfixOperator(p.peek()):
+		target = sanyOperatorTokenNode("N_PostfixOp", p.advance())
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected substitution target")
+	}
+	p.expecting = "<-"
+	arrow := p.consumeParseToken(SanyTokenSubstitute, "expected <- in substitution")
+	p.expecting = "Expression or Op. Symbol"
+	value := p.ExpressionUntilCommaOrBodyBoundary()
+	return NewSanyNode(SanySyntaxNodeKindByName["N_Substitution"], target, arrow, value)
 }
 
 func (p *SanyParser) Assumption() *SanySyntaxNode {
