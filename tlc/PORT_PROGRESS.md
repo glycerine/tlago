@@ -1,5 +1,14 @@
 # TLC Port Progress
 
+2026-10-06 fresh full-workspace verification:
+MP template correction committed as be6942a. Working tree clean before launching
+full normal go test ./... -count=1 -timeout=60m with original workload bounds,
+no race instrumentation and offline cache/temp settings. Session 69066 is live
+at that source snapshot; log /mnt/oldrog/tmp/tlago-runner-mp-parity-workspace.log.
+No result or full-suite credit until terminal completion. Original random drafts
+63113/59782 remain live at a915e08; do not restart or alter their shared overlay.
+This document-only receipt does not change compiled production or test code.
+
 2026-10-06 missing MP diagnostics and completed TLC remainder:
 Remainder 14660 at 7906f67 plus the subsequently committed runner correction is
 terminal 0, passing all 186 selected tests in 125.929s. It includes complete

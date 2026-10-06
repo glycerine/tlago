@@ -170,13 +170,13 @@ variants; temporal violations preserve zero/single/plural-property wording.
 Back-to-state and debug-state formatting retain source tool/debug branches.
 Unknown codes use Java's wrong-invocation diagnostic. Manual source/native
 observations match 1,344 rows across those branches; original tests pass.
-The 186-test remainder is retired with status 0. A fresh full workspace receipt
-is still needed after these production corrections.
+The 186-test remainder is retired with status 0. The fresh full workspace run below is pending after these production corrections.
 
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
+| Full workspace after runner and MP source corrections | `be6942a` | `69066` | `tlago-runner-mp-parity-workspace.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
