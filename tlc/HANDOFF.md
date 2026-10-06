@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `cbdf35a`.
+Updated: October 6, 2026. Full-workspace verification baseline: `be6942a`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,34 +47,23 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The full normal workspace suite passes on `cbdf35a`:
+The latest completed full normal workspace suite passes on `be6942a`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,706.569 seconds |
-| SANY tests | Pass | 1.068 seconds |
-| TLC | Pass | 781.592 seconds |
+| Root package | Pass | 1,540.180 seconds |
+| SANY tests | Pass | 1.041 seconds |
+| TLC | Pass | 788.797 seconds |
 | CLI command | No test files | — |
 
-Session `44100` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-master-streaming-parity-workspace.log`. This verifies
-buffered streaming fingerprint storage, the current CLI, all enabled original
-model ports, and the full original disk-queue growth workload. It excludes the
-outside-suite fingerprint random overlay.
-
-The subsequent full normal TLC package suite also passes on `a915e08`, in
-791.920 seconds. Session `63702` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-named-recovery-final-tlc.log`. That snapshot adds faithful
-named-file checkpoint recovery, source invariant semantics and runtime rename
-causes. These results supersede the older `305a13f` workspace baseline.
-
-Subsequent source-parity corrections preserve scan I/O exceptions, off-heap
-flusher lifecycle, validation before replacement and the reopened-file scan.
-The model-test runner now applies Java Ant's off-heap / `512k` settings before
-parsing instead of substituting a small MSB set. Latest checkpoint file helpers
-rename directly, copy without creating parents, replace destination links and
-propagate typed I/O failures. Detailed implementation/run chronology is in
-`PORT_PROGRESS.md`; the full-suite receipts above predate these later changes.
+Session `69066` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-runner-mp-parity-workspace.log`. This includes faithful
+streaming/checkpoint storage, Ant model settings and class isolation, runner
+initialization/finalization, ordinary/packaged CLI integration, the enabled
+original model tests and full disk-queue growth. It excludes the outside-suite
+random fingerprint overlay. It predates `6e1bc85`'s complete MP formatter and
+the follow-up single-pass nullable correction, which have focused verification.
+Older green snapshots and retired failures remain in `PORT_PROGRESS.md`.
 
 Focused verification:
 
@@ -171,7 +160,7 @@ variants; temporal violations preserve zero/single/plural-property wording.
 Back-to-state and debug-state formatting retain source tool/debug branches.
 Unknown codes use Java's wrong-invocation diagnostic. Manual source/native
 observations match 1,344 rows across those branches; original tests pass.
-The 186-test remainder is retired with status 0. The fresh full workspace run below is pending after these production corrections.
+The 186-test remainder is retired with status 0. The completed workspace receipt above covers these production corrections.
 
 The full MP template-construction/substitution method now follows all 245 Java
 cases. Literal append sequences are generated; conditional cases preserve exact
@@ -179,14 +168,17 @@ argument counts, tool/debug progress text and pre-substitution PID checks. Norma
 and nullable calls share source sequential replacement. Original MP/warning
 checks pass in 0.024 seconds; original trace/checkpoint/debugger/override models
 pass in 2.307 seconds; all packages compile. Manual source/native matrices match
-all case/count/debug branches and public nullable substitutions. The running
-workspace snapshot below predates this final formatter correction.
+all case/count/debug branches and public nullable substitutions. The completed `be6942a` workspace snapshot predates this final formatter correction.
+
+Nullable calls now format exactly once. A first null prevents processing later
+markers, including a self-referencing one that made the previous extra ordinary
+pass loop. The bounded scratch observation reproduces that loop; corrected output
+matches Java and original MP/warning tests pass. No test assertions changed.
 
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Full workspace after runner and MP source corrections | `be6942a` | `69066` | `tlago-runner-mp-parity-workspace.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
@@ -311,6 +303,13 @@ valid evidence. Current passing runs do not establish stability under every
 possible schedule.
 
 ## Remaining work and known blockers
+
+Continue the core source audit. MP's public printer recorder ordering and
+suppression remain to reconcile: Java notifies recorders before formatting, and
+suppressed ordinary messages / globally disabled warnings avoid formatting.
+The native printer currently derives text before its recorder notification.
+Preserve original callback, exception and visibility behavior when correcting it.
+The template-construction method itself is now mechanically ported and verified.
 
 Five main-suite contexts have known source-failing or JVM-specific
 reconciliation issues below. The other four pending contexts are original assumption-disabled

@@ -1,5 +1,35 @@
 # TLC Port Progress
 
+2026-10-06 nullable single-pass correction and green workspace receipt:
+Complete MP template port is committed as 6e1bc85. Its public wrapper still
+performed an ordinary formatting pass before formatting nullable parameters.
+That extra pass could process a self-referencing marker after an earlier null,
+although Java stops at that null. Choose the applicable formatting path once in
+both getter and printer wrappers. No source assertions or inventory totals change.
+Scratch source UNIT_TEST with {null, "%2%"} returns [%1%][%2%]. Native before fix
+hits a bounded three-second timeout (12989 terminal 124, no success credit).
+Corrected native 26602 returns 0 and matches source bytes exactly. Both use
+scratch launchers/logs named MPNullStopsReplacementManual.java and
+tlago-null-stops-replacement-* under /mnt/oldrog/tmp. These are observations,
+not invented persistent tests. Original MP/WarningControl and existing stream/
+output checks pass 0.014s (71688 terminal 0).
+
+Full workspace 69066 is now terminal 0 at compiled be6942a: root 1540.180s,
+TLC 788.797s, SANY 1.041s; CLI has no tests. Log
+/mnt/oldrog/tmp/tlago-runner-mp-parity-workspace.log. This is a full green receipt
+for that snapshot, including Ant static isolation and prior runner corrections;
+it predates complete MP template/substitution and this nullable follow-up.
+Update HANDOFF's baseline and current table to the latest completed workspace;
+keep historical chronology here rather than its restart summary.
+
+Source audit identifies a separate remaining public-printer boundary: Java
+records before formatting and skips formatting for suppressed ordinary messages
+or globally disabled warnings. Go currently derives text before notifying its
+recorders. Continue that source audit separately; do not claim whole MP API
+parity merely from complete template matrices. Random 63113/59782 remain live
+at a915e08, approximately 2.048 billion / 1.526 billion iterations, without
+completion credit. No broad race workloads or new architecture work.
+
 2026-10-06 complete MP.getMessage0 template and substitution port:
 Previous goal turn made authoritative production/test/documentation changes;
 classify it as progress. This turn revalidates clean c4bc51b and live sessions

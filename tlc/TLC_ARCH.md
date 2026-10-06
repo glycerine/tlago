@@ -3,7 +3,7 @@
 ## Message formatting
 
 `MP.getMessage0` first constructs a template, then substitutes parameters in
-order. The port follows those two steps for normal and nullable calls. Missing
+order. The port follows those two steps exactly once for normal and nullable calls. Missing
 arguments keep their markers; replacement stops at the first null. A parameter
 can introduce a later marker, which is then substituted. Preserve malformed
 source markers literally, including the missing final percent in the argument

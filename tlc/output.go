@@ -513,9 +513,11 @@ func getMessageParameters(code int, params []string, nullableParams []*string, s
 	// subsequently throws (for example, while substituting a null parameter).
 	defaultRecorder.Record(Message{Code: code, Severity: severity,
 		Params: copied, NullableParams: nullableCopied, FormattingOnly: true})
-	text := formatMessage(code, copied, severity)
+	var text string
 	if nullableCopied != nil {
 		text = formatNullableMessage(code, nullableCopied, severity)
+	} else {
+		text = formatMessage(code, copied, severity)
 	}
 	Globals.Lock()
 	tool := Globals.Tool
@@ -548,9 +550,11 @@ func recordMessageParameters(code int, severity Severity, params []string, nulla
 	}
 	copied := copyMessageParameters(params)
 	nullableCopied := copyNullableMessageParameters(nullableParams)
-	text := formatMessage(code, copied, severity)
+	var text string
 	if nullableCopied != nil {
 		text = formatNullableMessage(code, nullableCopied, severity)
+	} else {
+		text = formatMessage(code, copied, severity)
 	}
 	defaultRecorder.Record(Message{
 		Code:           code,
