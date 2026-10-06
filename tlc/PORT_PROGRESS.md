@@ -1,5 +1,31 @@
 # TLC Port Progress
 
+2026-10-06 TLC persistent parameter-state and split semantics:
+Repeated -debugger sets the standard port but retains constructor/prior suspend
+and halt until a recognized subargument overrides them. Recognition is source
+case-sensitive; its subsequent nohalt/nosuspend checks lowercase the consumed
+text. Repeated -loadTrace appends both constraints but retains the first implicit
+view via putIfAbsent. -postCondition retains the missing-bang diagnostic and
+String.split's discarded trailing empty fields (M!O!! accepted as M!O, M! rejected
+with the form diagnostic). -generateSpecTE nomonolith is consumed but does not
+alter Java output; remove Go's unused false monolith flag and correct help/README
+claims. No tests, assertions, settings or inventory credit changed.
+
+Original TLC/WarningControl classes plus existing binary trace-option check pass
+0.023s (36989 terminal 0); original Debug02/Debug03/Debug03Sim and safety JSON/TLC
+dump-load methods pass 1.249s (47067 terminal 0). Final all-package compilation
+passes (27609 terminal 0). Manual unchanged-Java/native standalone mains match
+seven cases, including repeated debugger options, uppercase-unrecognized token,
+first-view retention, source post-condition split/messages and nomonolith token
+consumption. Scratch mains under /mnt/oldrog/tmp: TLCParameterStateManual.java
+and tlago-parameter-state-manual.go; both commands terminal 0. go run ./cmd/tlago
+-help returns 0 and prints the corrected explanation in
+/mnt/oldrog/tmp/tlago-parameter-state-help.log. These manual observations are not
+invented unit/regression tests or original-method credit. All checks normal,
+without -race. Workspace 71687 remains live at 2e02aa9; random 63113/59782 remain
+live at a915e08 (last MSB 1,580,425,194/LSB 1,072,931,653 of 2,147,483,648).
+
+
 2026-10-06 restore Ant per-class off-heap static isolation:
 Workspace timeout 85256 was TestJavaCheckpointWhenTimeBound (not a separate
 debugger test; the shared model helper enables debugger instrumentation). Java's

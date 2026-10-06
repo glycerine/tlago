@@ -409,8 +409,9 @@ TLC output, traces, and diagnostics
   -generateSpecTE [nomonolith]
     Normally a suitable error produces a TE specification automatically, except
     in tool mode, continuation mode, or when checking a TE spec itself. This
-    flag forces generation; nomonolith disables the monolithic form. Binary
-    companion output remains controlled separately.
+    flag forces generation. The pinned Java TLC accepts nomonolith but does not
+    use it to change output; Go follows that behavior. Binary companion output
+    remains controlled separately.
     Java TLC: -generateSpecTE. Toolbox: trace exploration works with generated
     trace specifications and its own model settings.
 

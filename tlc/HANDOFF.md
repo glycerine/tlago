@@ -90,7 +90,8 @@ Focused verification:
 | DFID/fingerprint CLI branches: original CLI classes and four DFID model methods | Pass | 0.016 / 1.529 seconds |
 | CheckImplFile/parser and MP.getError correction: original MP/CLI classes | Pass | 0.016 seconds |
 | Ant class isolation: original 48-worker TLCGetAll then five-second checkpoint | Pass | 5.329 seconds, session `10096` retired |
-| Latest all-package compilation | Pass | Session `67671` retired |
+| Persistent CLI parameter state: original CLI/debugger/dump-load methods | Pass | 0.023 / 1.249 seconds |
+| Latest all-package compilation | Pass | Session `27609` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -122,6 +123,13 @@ four original DFID model methods pass. The separate `CheckImplFile` parser now
 preserves its own worker, coverage and message-code behavior, string presence
 and exception boundary. Source `MP.getError` formatting is implemented; original
 MP/CLI tests and manual unchanged-Java comparisons pass. See progress for receipts.
+
+Repeated debugger/load-trace options now preserve source option state and the
+first implicit view. Post-condition parsing uses source trailing-empty split
+semantics. `nomonolith` is accepted and consumed as Java does; neither the pinned
+source nor Go changes output for that token. Help and README explain this.
+Original CLI/debugger/dump-load methods and manual source/native observations
+pass; their receipts predate completion of the live workspace snapshot below.
 
 Current normal verification jobs:
 

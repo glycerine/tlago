@@ -73,7 +73,6 @@ func ParseTLCOptions(args []string) (Options, error) {
 	generateTESpec := true
 	generateTESpecBinaryTrace := true
 	forceGenerateTESpec := false
-	teSpecMonolith := true
 	teSpecOut := ""
 	metaDirRoot := ""
 	traceFileSet := false
@@ -199,8 +198,6 @@ func ParseTLCOptions(args []string) (Options, error) {
 		case arg == "-debugger":
 			opts.DebugPort = 4712
 			opts.DebugPortSet = true
-			opts.DebugSuspend = defaultTLCDebugSuspend()
-			opts.DebugHalt = defaultTLCDebugHalt()
 			index++
 			if index < len(args) && isDebuggerSubargument(args[index]) {
 				sub := strings.ToLower(args[index])
@@ -223,7 +220,6 @@ func ParseTLCOptions(args []string) (Options, error) {
 			forceGenerateTESpec = true
 			index++
 			if index < len(args) && args[index] == "nomonolith" {
-				teSpecMonolith = false
 				index++
 			}
 		case arg == "-noGenerateSpecTE" || strings.EqualFold(arg, "-noTE"):
@@ -268,10 +264,14 @@ func ParseTLCOptions(args []string) (Options, error) {
 			switch {
 			case strings.EqualFold(format, "tlc"):
 				opts.RuntimeParams.Constraints = append(opts.RuntimeParams.Constraints, RuntimeConstraint{Module: "_TLCTrace", Operator: "_TLCTraceConstraint", ConstantName: "_TLCTraceInputFile", FileName: fileName})
-				opts.RuntimeParams.View = &RuntimeView{Module: "_TLCTrace", Operator: "_TLCTraceView"}
+				if opts.RuntimeParams.View == nil {
+					opts.RuntimeParams.View = &RuntimeView{Module: "_TLCTrace", Operator: "_TLCTraceView"}
+				}
 			case strings.EqualFold(format, "json"):
 				opts.RuntimeParams.Constraints = append(opts.RuntimeParams.Constraints, RuntimeConstraint{Module: "_JsonTrace", Operator: "_JsonTraceConstraint", ConstantName: "_JsonTraceInputFile", FileName: fileName})
-				opts.RuntimeParams.View = &RuntimeView{Module: "_JsonTrace", Operator: "_JsonTraceView"}
+				if opts.RuntimeParams.View == nil {
+					opts.RuntimeParams.View = &RuntimeView{Module: "_JsonTrace", Operator: "_JsonTraceView"}
+				}
 			default:
 				return opts, tlcCommandLineError("Error: Unknown format " + format + " given to -loadTrace.")
 			}
@@ -510,7 +510,6 @@ func ParseTLCOptions(args []string) (Options, error) {
 	opts.ForceGenerateTraceSpec = forceGenerateTESpec
 	opts.GenerateTraceSpec = forceGenerateTESpec || (generateTESpec && !Globals.Tool && !Globals.Continuation && !IsTraceExplorationSpecFile(opts.SpecFile))
 	opts.GenerateTraceSpecBinary = generateTESpecBinaryTrace
-	opts.GenerateTraceSpecMonolith = teSpecMonolith
 	opts.TraceSpecOutputDir = teSpecOut
 	if opts.GenerateTraceSpec {
 		opts.TraceSpecOutputDir, opts.TraceSpecModuleName = traceSpecOutputAndModule(opts.SpecFile, opts.TraceSpecOutputDir, opts.StartTime)
@@ -590,8 +589,7 @@ func isSimulationSubargument(arg string) bool {
 }
 
 func isDebuggerSubargument(arg string) bool {
-	lower := strings.ToLower(arg)
-	return strings.Contains(lower, "port=") || strings.Contains(lower, "nosuspend") || strings.Contains(lower, "nohalt") || strings.Contains(lower, "suspend") || strings.Contains(lower, "halt")
+	return strings.Contains(arg, "port=") || strings.Contains(arg, "nosuspend") || strings.Contains(arg, "nohalt") || strings.Contains(arg, "suspend") || strings.Contains(arg, "halt")
 }
 
 func parseTLCMessageCodeList(args []string, index int, dst *InsMap[int, bool], sanyDst *InsMap[int, bool], option string, suppress bool) (int, error) {
@@ -801,7 +799,14 @@ func runtimePostConditionForTraceFormat(format string, fileName string) (Runtime
 }
 
 func runtimePostConditionFromModuleBangOperator(moduleBangOp string) (RuntimePostCondition, error) {
+	if !strings.Contains(moduleBangOp, "!") {
+		return RuntimePostCondition{}, tlcCommandLineError("Module!Operator for postCondition required. Encountered: " + moduleBangOp)
+	}
 	parts := strings.Split(moduleBangOp, "!")
+	// String.split removes all trailing empty fields with its default limit.
+	for len(parts) > 0 && parts[len(parts)-1] == "" {
+		parts = parts[:len(parts)-1]
+	}
 	if len(parts) != 2 {
 		return RuntimePostCondition{}, tlcCommandLineError("Module!Operator for postCondition must be of the form module!operator. Encountered: " + moduleBangOp)
 	}
