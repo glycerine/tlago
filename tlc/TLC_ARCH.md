@@ -120,13 +120,20 @@ metadata directories or reopens readers after a failed rename.
 See `HANDOFF.md` for current verification snapshots and live jobs.
 
 
-2026-10-06 checkpoint intern-table initialization:
+## Checkpoint and random initialization
+
 TLC.Process restores UniqueString identities before constructing the tool, as
 Java TLC.process does. ModelChecker and DFIDModelChecker recovery must not reload
 the table after parsing: parsed strings would otherwise retain different tokens
 from recovered values, causing extra fingerprints and search states. The original
 three-worker CodePlexBug08 archive recovery test now matches Java recovery/final
 counts, graph sizes and complete trace. See PORT_PROGRESS.md for verification.
+Recovery also precedes fingerprint-polynomial initialization and enumerable-seed
+assignment. Failure must not change those globals or choose a new implicit seed.
+Simulation chooses its implicit seed without applying aril, but preserves the
+parsed aril field. An explicit seed applies aril through the simulator RNG.
+Enumerable seeding occurs once before tool construction, preserving random
+consumption during configuration/constant evaluation.
 
 2026-10-05 independent heap table counters:
 HeapBasedDiskFPSet increments its LongAdder table counts without a global monitor.

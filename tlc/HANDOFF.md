@@ -95,6 +95,7 @@ Focused verification:
 | Off-heap barrier failure semantics: original 22 short cases and 48-worker/checkpoint sequence | Pass | 0.077 / 5.319 seconds; sessions `19096` / `18062` retired |
 | Runner completion and memory banners: original message/CLI checks and trace/checkpoint models | Pass | 6.721 / 1.756 seconds; sessions `9440` / `98861` retired |
 | Original factory followed by complete off-heap class with Ant isolation | Pass | 46.331 seconds, session `33613` retired; includes 99,999,999-entry index |
+| Recovery/seed ordering: original simulation/recovery/CodePlex models | Pass | 298.728 seconds, session `62916` retired; focused component checks 6.354 seconds |
 | Latest all-package compilation | Pass | After Ant class and runner seed corrections, terminal 0 |
 
 Manual source/native observations also confirm named checkpoint contents,
@@ -152,13 +153,20 @@ Both trace-generation messages now use the source MP text. Startup banners repor
 the configured heap and direct-memory budgets instead of reserved Go memory and
 zero. Original message/CLI, trace/checkpoint and writer tests pass; manual Java
 and Go observations confirm completion order, budgets and preserved results.
-These changes postdate the running full TLC snapshot below.
+These changes postdate the retired full TLC snapshot `73adde2`.
+
+Recovery now completes before fingerprint/random initialization. A failed
+intern-table recovery leaves the polynomial and enumerable seed unchanged, as
+Java does. Simulation with an automatically chosen seed ignores aril for RNG
+advancement while preserving its parsed option value; the enumerable seed is
+set once before tool construction. Original simulation/recovery/CodePlex checks
+and source/native manual observations pass. No assertions or counts changed.
 
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Original simulation/recovery/CodePlex models after seed ordering | `592d0d4` plus runner correction | `62916` | `tlago-runner-seed-original-models.log` |
+| Remaining 186 TLC tests from original off-heap class onward | `7906f67` plus runner correction | `14660` | `tlago-ant-offheap-remainder.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
@@ -167,9 +175,9 @@ retired with status 1: root passes in 1,519.820 seconds and SANY in 1.071 second
 but TLC fails in 46.483 seconds in the older handwritten
 `TestOffHeapDiskFPSetDuplicateMergeWarnsLikeJava`. It expected a duplicate full
 flush to succeed, whereas unchanged Java asserts `Broken disk index.` before
-publishing the file count. Remove that inaccurate non-Java test and its unused
-slice helper; preserve the complete original `testMergeDuplicate`, including
-all ten output values and six warnings. The final 22 original short off-heap
+publishing the file count. The inaccurate non-Java test and its unused slice helper were removed. The
+complete original `testMergeDuplicate` retains all ten output values and six
+warnings. The final 22 original short off-heap
 cases pass with source validation unchanged. This receipt is not a green
 workspace result and predates the correction.
 

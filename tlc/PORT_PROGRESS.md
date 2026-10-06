@@ -1,5 +1,40 @@
 # TLC Port Progress
 
+2026-10-06 TLC recovery, fingerprint and random initialization ordering:
+Native Process previously initialized FP64 and enumerable random values before
+recovering the intern table. Pinned TLC.process does recovery first. Move runner
+initialization inside the source exception boundary after successful recovery;
+initialize the polynomial before selecting an implicit seed. Source preserves
+its parsed aril field when choosing a seed, while ignoring aril for that RNG
+initialization. Native no longer overwrites the option; processSimulation uses
+zero advancement only for NoSeed. Remove its extra enumerable-seed reset after
+tool construction: source sets the enumerable seed once, before FastTool.
+
+Scratch unchanged-Java/native missing-checkpoint observations show the original
+mismatch: source code 1000 preserves polynomial/seed 17; native code 1000 changed
+the polynomial and seed to 42. Corrected native 47476 returns 0 and retains both,
+matching source. Scratch launchers/logs use TLCRecoverySeedManual.java,
+tlago-recovery-seed-manual.go and tlago-recovery-seed-* under /mnt/oldrog/tmp.
+The original successful ConstLevelInvariant simulation with implicit seed and
+aril 7 reports four states, runtime aril 0, checker code 0 and retained option
+aril 7 in both Java and Go (99858 terminal 0). Chosen random seeds naturally
+differ. It uses the existing original model and extracted original config;
+these observations are not additional tests or translation credit.
+
+Existing original CLI/warning/simulator/random component checks and native runner
+checks pass 6.354s (22287 terminal 0). Original simulation, worker, recovery and
+CodePlex model selection passes 298.728s (62916 terminal 0), retaining full seeds,
+workers, original assertions and bounds. Final all-package compilation returns 0.
+No new tests, test weakening, race workloads or inventory-total changes.
+Separate Ant class isolation is committed as 7906f67. After retiring full TLC
+33649, start exactly its unverified remainder: 186 registered tests from the
+original off-heap class onward, retaining the complete index and long methods.
+Selection is generated from go test -list . and preserved in
+/mnt/oldrog/tmp/tlago-ant-offheap-remainder-selection.txt. Session 14660 is live
+at 7906f67 plus this runner correction; log tlago-ant-offheap-remainder.log.
+This targeted remainder is not a full-suite success receipt. Random 63113/59782
+remain live at a915e08, approximately 1.840 billion / 1.318 billion iterations.
+
 2026-10-06 original off-heap class Ant isolation:
 Full TLC 33649 at 73adde2 is terminal 1 after 672.555s. It reaches the original
 off-heap class and fails IllegalArgumentException while evicting an uninitialized

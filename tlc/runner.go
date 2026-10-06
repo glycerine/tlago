@@ -184,8 +184,6 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	t.attachDebuggerIfRequested()
 	closeUserOutput := t.installUserOutput()
 
-	t.prepareRandomSeed()
-	t.applyGlobals()
 	if t.Cleanup && !t.CleanupPrecleanDone && t.FromCheckpoint == "" {
 		deleteDirLikeJava(t.MetaDir, true)
 	}
@@ -221,6 +219,8 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 				panic(err)
 			}
 		}
+		// Recovery must succeed before TLC initializes FP64 or random values.
+		t.applyGlobals()
 		// TLC.process prints the mode banner before constructing FastTool,
 		// including when configuration-time constant evaluation fails.
 		if t.Mode == RunModeSimulate {
@@ -356,6 +356,7 @@ func (t *TLC) applyGlobals() {
 		Globals.DFIDMax = t.DFIDDepth
 	}
 	Globals.Unlock()
+	t.prepareRandomSeed()
 	SetRandomEnumerableSeed(t.Seed)
 }
 
@@ -365,7 +366,6 @@ func (t *TLC) prepareRandomSeed() {
 	}
 	rng := NewJavaRandomDefault()
 	t.Seed = rng.NextLong()
-	t.Aril = 0
 }
 
 func (t *TLC) processModelChecking() (*Result, error) {
@@ -485,15 +485,20 @@ func defaultTLCDebugHalt() bool {
 }
 
 func (t *TLC) processSimulation() (*Result, error) {
+	// With no explicit seed, source uses setSeed(seed) without advancing aril,
+	// while retaining the parsed aril field for later parameter handling.
+	aril := t.Aril
+	if t.NoSeed {
+		aril = 0
+	}
 	simulator := NewSimulator(t.Tool, t.Deadlock, t.TraceDepth, t.TraceNum, t.Seed,
 		WithSimulatorTraceFile(t.TraceFile),
 		WithSimulatorTraceActions(t.TraceActions),
 		WithSimulatorMetaDir(t.MetaDir),
 		WithSimulatorSchedule(t.SimulationSchedule),
-		WithSimulatorAril(t.Aril),
+		WithSimulatorAril(aril),
 		WithSimulatorLiveCheck(t.LiveCheck),
 	)
-	SetRandomEnumerableSeed(simulator.Seed)
 	cancelStopAfter := t.scheduleStopAfter(simulator.Stop)
 	defer cancelStopAfter()
 	code, err := simulator.Simulate()
