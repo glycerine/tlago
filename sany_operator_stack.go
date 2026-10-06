@@ -1,6 +1,9 @@
 package tlago
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type SanyOperatorFixity int
 
@@ -98,7 +101,9 @@ type sanyOperatorStackElement struct {
 }
 
 type SanyOperatorStack struct {
-	stackOfStacks [][]sanyOperatorStackElement
+	stackOfStacks  [][]sanyOperatorStackElement
+	moduleName     string
+	reportedErrors []string
 }
 
 func NewSanyOperatorStack() *SanyOperatorStack {
@@ -154,7 +159,15 @@ func (s *SanyOperatorStack) FinalReduce() (*SanySyntaxNode, error) {
 		return nil, err
 	}
 	if !s.IsWellReduced() {
-		return nil, fmt.Errorf("could not reduce expression stack")
+		var message strings.Builder
+		message.WriteString("Couldn't properly parse expression")
+		for _, element := range s.currentTop()[:s.CurrentSize()-1] {
+			message.WriteString("-- incomplete expression at ")
+			message.WriteString(s.location(element.Node))
+			message.WriteString(".\n")
+		}
+		s.reportedErrors = append(s.reportedErrors, message.String())
+		return nil, nil
 	}
 	return s.stackOfStacks[len(s.stackOfStacks)-1][0].Node, nil
 }
@@ -194,16 +207,36 @@ func (s *SanyOperatorStack) ReduceStack() error {
 	}
 }
 
-func (s *SanyOperatorStack) reduceWithRightPostfix(n int, oR SanyOperatorInfo) error {
-	if n == 0 {
-		return fmt.Errorf("postfix operator %s on empty stack", oR.Symbol)
+// sanyOperatorStackFailure retains the native API's text separately from the
+// actual source ParseException message used by the parser.
+type sanyOperatorStackFailure struct{ sourceMessage, nativeMessage string }
+
+func (failure *sanyOperatorStackFailure) Error() string { return failure.nativeMessage }
+func (s *SanyOperatorStack) failure(sourceMessage, nativeMessage string) error {
+	return &sanyOperatorStackFailure{sourceMessage, nativeMessage}
+}
+func (s *SanyOperatorStack) location(node *SanySyntaxNode) string {
+	module := s.moduleName
+	if node.FileName != "" {
+		module = node.FileName
 	}
+	if module == "" {
+		module = "null"
+	}
+	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s", node.Range.Begin.Line, node.Range.Begin.Column, node.Range.End.Line, node.Range.End.Column, module)
+}
+
+func (s *SanyOperatorStack) reduceWithRightPostfix(n int, oR SanyOperatorInfo) error {
 	top := s.currentTop()
+	tm0 := top[n]
+	if n == 0 {
+		return s.failure(fmt.Sprintf("\n  Encountered postfix op %s in block %s on empty stack", oR.Symbol, s.location(tm0.Node)), fmt.Sprintf("postfix operator %s on empty stack", oR.Symbol))
+	}
 	tm1 := top[n-1]
 	if tm1.isOperator() {
 		oL := *tm1.Operator
 		if oL.IsInfix() || oL.IsPrefix() {
-			return fmt.Errorf("postfix operator %s follows %s operator %s", oR.Symbol, oL.fixityName(), oL.Symbol)
+			return s.failure(fmt.Sprintf("\n  Encountered postfix op %s in block %s following prefix or infix op %s.", oR.Symbol, s.location(tm0.Node), oL.Symbol), fmt.Sprintf("postfix operator %s follows %s operator %s", oR.Symbol, oL.fixityName(), oL.Symbol))
 		}
 		s.reducePostfix()
 		return nil
@@ -213,19 +246,20 @@ func (s *SanyOperatorStack) reduceWithRightPostfix(n int, oR SanyOperatorInfo) e
 	}
 	tm2 := top[n-2]
 	if !tm2.isOperator() {
-		return fmt.Errorf("adjacent expressions without intervening operator")
+		return s.failure(fmt.Sprintf("Expression at location %s and expression at location %s follow each other without any intervening operator.", s.location(tm2.Node), s.location(tm1.Node)), "adjacent expressions without intervening operator")
 	}
 	oL := *tm2.Operator
 	if SanyOperatorSucc(oL, oR) {
 		if oL.IsInfix() {
 			s.reduceInfix(oL)
 		} else {
-			s.reducePrefix(oL)
+			s.reducePrefix()
 		}
 		return nil
 	}
 	if !SanyOperatorPrec(oL, oR) {
-		return fmt.Errorf("precedence conflict between operators %s and %s", oL.Symbol, oR.Symbol)
+		// Source intentionally reports tm0's location for this left operator.
+		return s.failure(fmt.Sprintf("Precedence conflict between ops %s in block %s and %s.", oL.Symbol, s.location(tm0.Node), oR.Symbol), fmt.Sprintf("precedence conflict between operators %s and %s", oL.Symbol, oR.Symbol))
 	}
 	return nil
 }
@@ -234,35 +268,41 @@ func (s *SanyOperatorStack) reduceWithRightPrefix(n int, oR SanyOperatorInfo) er
 	if n == 0 {
 		return nil
 	}
-	tm1 := s.currentTop()[n-1]
+	top := s.currentTop()
+	tm0, tm1 := top[n], top[n-1]
 	if tm1.isOperator() {
 		oL := *tm1.Operator
 		if oL.IsPostfix() {
-			return fmt.Errorf("prefix operator %s follows postfix operator %s", oR.Symbol, oL.Symbol)
+			return s.failure(fmt.Sprintf("\n  Encountered prefix op %s in block %s following postfix op %s.", oR.Symbol, s.location(tm0.Node), oL.Symbol), fmt.Sprintf("prefix operator %s follows postfix operator %s", oR.Symbol, oL.Symbol))
 		}
 		return nil
 	}
-	return fmt.Errorf("prefix operator %s follows an expression", oR.Symbol)
+	return s.failure(fmt.Sprintf("\n  Encountered prefix op %s in block %s following an expression.", oR.Symbol, s.location(tm0.Node)), fmt.Sprintf("prefix operator %s follows an expression", oR.Symbol))
 }
 
 func (s *SanyOperatorStack) reduceWithRightInfix(n int, oR SanyOperatorInfo) error {
+	top := s.currentTop()
+	tm0 := top[n]
 	if n == 0 {
 		if _, ok := GetSanyMixfixOperator(oR); !ok {
-			return fmt.Errorf("infix operator %s on empty stack", oR.Symbol)
+			return s.failure(fmt.Sprintf("\n  Encountered infix op %s in block %s on empty stack.", oR.Symbol, s.location(tm0.Node)), fmt.Sprintf("infix operator %s on empty stack", oR.Symbol))
 		}
 		return nil
 	}
-	top := s.currentTop()
 	tm1 := top[n-1]
 	if tm1.isOperator() {
 		oL := *tm1.Operator
 		if oL.IsInfix() || oL.IsPrefix() {
 			mixR, ok := GetSanyMixfixOperator(oR)
 			if !ok {
-				return fmt.Errorf("infix operator %s follows %s operator %s", oR.Symbol, oL.fixityName(), oL.Symbol)
+				message := fmt.Sprintf("\n  Encountered infix op %s in block %s following prefix or infix op %s.", oR.Symbol, s.location(tm1.Node), oL.Symbol)
+				if oR.Symbol == SanyVoidOperator.Symbol {
+					message = fmt.Sprintf("\n  Missing expression in block %s following prefix or infix op %s.", s.location(tm1.Node), oL.Symbol)
+				}
+				return s.failure(message, fmt.Sprintf("infix operator %s follows %s operator %s", oR.Symbol, oL.fixityName(), oL.Symbol))
 			}
 			if SanyOperatorSucc(oL, mixR) || (oL.Symbol == mixR.Symbol && oL.AssocLeft()) {
-				return fmt.Errorf("precedence conflict between operators %s and %s", oL.Symbol, mixR.Symbol)
+				return s.failure(fmt.Sprintf("\n  Precedence conflict between ops %s in block %s and %s.", oL.Symbol, s.location(tm1.Node), mixR.Symbol), fmt.Sprintf("precedence conflict between operators %s and %s", oL.Symbol, mixR.Symbol))
 			}
 			return nil
 		}
@@ -274,7 +314,7 @@ func (s *SanyOperatorStack) reduceWithRightInfix(n int, oR SanyOperatorInfo) err
 	}
 	tm2 := top[n-2]
 	if !tm2.isOperator() {
-		return fmt.Errorf("adjacent expressions without intervening operator")
+		return s.failure(fmt.Sprintf("Expression at location %s and expression at location %s follow each other without any intervening operator.", s.location(tm2.Node), s.location(tm1.Node)), "adjacent expressions without intervening operator")
 	}
 	oL := *tm2.Operator
 	if mixL, ok := GetSanyMixfixOperator(oL); ok && (n == 2 || top[n-3].isOperator()) {
@@ -284,15 +324,49 @@ func (s *SanyOperatorStack) reduceWithRightInfix(n int, oR SanyOperatorInfo) err
 		if oL.IsInfix() {
 			s.reduceInfix(oL)
 		} else if oL.IsPrefix() {
-			s.reducePrefix(oL)
+			s.reducePrefix()
 		} else {
-			return fmt.Errorf("illegal combination of operators %s and %s", oL.Symbol, oR.Symbol)
+			message := fmt.Sprintf("\n  Illegal combination of operators %s in block %s and %s.", oL.Symbol, s.location(tm2.Node), oR.Symbol)
+			if tm2.Node.Range.Begin.Line < tm1.Node.Range.Begin.Line && oR.Symbol == "=" {
+				message = "\n  *** Hint *** You may have mistyped ==" + message
+			} else if oR.Symbol == SanyVoidOperator.Symbol {
+				message = fmt.Sprintf("\n Error following expression at  %s, missing operator or separator.", s.location(tm2.Node))
+			}
+			return s.failure(message, fmt.Sprintf("illegal combination of operators %s and %s", oL.Symbol, oR.Symbol))
 		}
 		return nil
 	}
 	if !(SanyOperatorPrec(oL, oR) || (oL.Symbol == oR.Symbol && oL.AssocRight())) {
-		return fmt.Errorf("precedence conflict between operators %s and %s", oL.Symbol, oR.Symbol)
+		return s.failure(fmt.Sprintf("\n  Precedence conflict between ops %s in block %s and %s.", oL.Symbol, s.location(tm2.Node), oR.Symbol), fmt.Sprintf("precedence conflict between operators %s and %s", oL.Symbol, oR.Symbol))
 	}
+	return nil
+}
+
+// ReduceRecord ports the dedicated source record reduction, which replaces the
+// top expression immediately rather than treating a dot as an infix operator.
+func (s *SanyOperatorStack) ReduceRecord(middle, right *SanySyntaxNode) error {
+	index := s.CurrentSize() - 1
+	if index < 0 {
+		return s.failure("\n    ``.'' has no left hand side at "+s.location(middle)+".", "record dot has no left hand side")
+	}
+	element := s.currentTop()[index]
+	if element.isOperator() {
+		previous := s.currentTop()[index-1]
+		if element.Operator.IsPostfix() && !previous.isOperator() {
+			s.Push(nil, nil)
+			s.reducePostfix()
+			index = s.CurrentSize() - 1
+			topIndex := len(s.stackOfStacks) - 1
+			s.stackOfStacks[topIndex] = s.currentTop()[:index]
+			index--
+			element = s.currentTop()[index]
+		} else {
+			return s.failure("\n    ``.'' follows operator "+s.location(element.Node)+".", "record dot follows an operator")
+		}
+	}
+	left := s.currentTop()[index].Node
+	record := NewSanyNode(SanySyntaxNodeKindByName["N_RecordComponent"], left, middle, right)
+	s.stackOfStacks[len(s.stackOfStacks)-1][index] = sanyOperatorStackElement{Node: record}
 	return nil
 }
 
@@ -322,51 +396,17 @@ func (s *SanyOperatorStack) reduceInfix(op SanyOperatorInfo) {
 	s.stackOfStacks[topIndex] = top
 }
 
-func (s *SanyOperatorStack) reducePrefix(op SanyOperatorInfo) {
+func (s *SanyOperatorStack) reducePrefix() {
 	topIndex := len(s.stackOfStacks) - 1
 	top := s.stackOfStacks[topIndex]
 	n := len(top) - 1
 	if n < 2 {
 		return
 	}
-	reduced := NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], sanyMixfixOperatorNode(top[n-2].Node, op), top[n-1].Node)
+	reduced := NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], top[n-2].Node, top[n-1].Node)
 	top = append(top[:n-1], top[n:]...)
 	top[n-2] = sanyOperatorStackElement{Node: reduced}
 	s.stackOfStacks[topIndex] = top
-}
-
-func sanyMixfixOperatorNode(node *SanySyntaxNode, op SanyOperatorInfo) *SanySyntaxNode {
-	if node == nil {
-		return nil
-	}
-	kindName := "N_GenInfixOp"
-	if op.IsPrefix() {
-		kindName = "N_GenPrefixOp"
-	} else if op.IsPostfix() {
-		kindName = "N_GenPostfixOp"
-	}
-	kind := SanySyntaxNodeKindByName[kindName]
-	if node.Kind == kind && sanyOperatorImage(node) == op.Symbol {
-		return node
-	}
-	prefix := NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"])
-	if heirs := node.GetHeirs(); len(heirs) > 0 && heirs[0].Kind.JavaName() == "N_IdPrefix" {
-		prefix = heirs[0]
-	}
-	return NewSanyNode(kind, prefix, sanyRetargetOperatorTokenNode(node, op.Symbol))
-}
-
-func sanyRetargetOperatorTokenNode(node *SanySyntaxNode, symbol string) *SanySyntaxNode {
-	tok := sanyFirstToken(node)
-	if tok == nil {
-		return nil
-	}
-	copied := *tok
-	copied.Image = symbol
-	if kind, ok := sanyLiteralTokenKind(symbol); ok {
-		copied.Kind = kind
-	}
-	return NewSanyTokenNode(&copied)
 }
 
 func sanyFirstToken(node *SanySyntaxNode) *SanyToken {

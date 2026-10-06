@@ -62,8 +62,8 @@ recorded lexical and definition-lookahead snapshot with original bounds and
 normal execution. It predates parser-footer and expression-grammar corrections.
 Historical receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `16991` is live on the final parser-footer and
-expression-grammar changes. It preserves original bounds, failfast and a
+Full normal workspace session `16991` is live on `44aaf11`, the parser-footer
+and expression-grammar changes. This predates the newer operator-stack work. It preserves original bounds, failfast and a
 60-minute timeout, without race instrumentation. Both `GOTMPDIR` and `TMPDIR`
 use workspace `.codex-gotmp`. Log:
 `/mnt/oldrog/tmp/tlago-expression-grammar-workspace.log`. No success is claimed
@@ -74,11 +74,11 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/resolver/semantic/CLI/XML and original output selection after expression grammar | Pass | Root 3.340 / SANY selection 0.736 seconds, session `26347` retired |
-| Complete SANY package with source LOCAL corpus expectation | Pass | 1.458 seconds, session `63320` retired |
+| Existing parser/resolver/semantic/CLI/XML and original output selection after stack corrections | Pass | Root 4.404 / SANY selection 0.695 seconds, session `86333` retired |
+| Complete SANY package with source precedence assertions | Pass | 1.580 seconds, session `14577` retired |
 | Original TLC INSTANCE, warning, trace and action-level selection | Pass | 1.442 seconds, session `58247` retired |
 | Existing bounded root corpus and parser-reference checks | Pass | Final grammar changes |
-| All-package compilation | Pass | Final expression grammar |
+| All-package compilation | Pass | Operator-stack corrections |
 | Original Java ParseErrorTests class | Pass | One original parameter/method, 0.074 seconds |
 
 Earlier focused receipts belong in `PORT_PROGRESS.md`. These checks retain their
@@ -229,9 +229,17 @@ bracket consumption raises the actual typed failure with its real production
 frames, and LOCAL retains a single Definition frame. All eighteen established
 lexical and syntax observations now match full Java front-end output.
 
+Operator-stack failures now carry source messages and locations, and final
+reduction preserves accumulated errors before the ordinary-constructor exception.
+Record selection uses the dedicated reduction. Prefix reduction preserves its
+raw operator node, including unary minus; original precedence assertions compare
+the input symbols unchanged. Twenty-one direct stack observations match Java.
+Eleven of thirteen additional full-front-end observations match; two reveal
+remaining semantic gaps: Go accepts undeclared `-.` and `^+` where Java reports
+symbol-resolution errors. Keep those differences visible and fix actual lookup.
+
 General JavaCC lookahead-derived expected-token sequences, remaining production
-states, label error continuations and operator-stack error reporting are not
-fully ported. The original `ParseErrorTests.testAll` lives in root
+states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root
 `sany_parse_error_java_test.go` and uses the shared actual parsing phase. It
 asserts recorded parser output with the original input and assertion text,
 replacing the semantic-diagnostic surrogate. The original percent-error output

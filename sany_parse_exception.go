@@ -29,10 +29,6 @@ func (p *SanyParser) endProduction() {
 // length when rendering the following input, and escapes only the prior token.
 func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessage string) {
 	var message strings.Builder
-	message.WriteString("***Parse Error***\n")
-	if p.expecting != "" {
-		message.WriteString("Was expecting \"" + p.expecting + "\"\n")
-	}
 	maxSize := 0
 	for _, sequence := range expected {
 		if len(sequence) > maxSize {
@@ -56,7 +52,20 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 	if previous := p.previous(); previous != nil {
 		prior = sanyLexicalEscapes(previous.Image)
 	}
-	fmt.Fprintf(&message, "\" at line %d, column %d and token \"%s\" \n\nResidual stack trace follows:\n", token.Begin.Line, token.Begin.Column, prior)
+	fmt.Fprintf(&message, "\" at line %d, column %d and token \"%s\" ", token.Begin.Line, token.Begin.Column, prior)
+	p.throwReportedParseException(message.String(), token.Begin, "E1300", nativeMessage)
+}
+
+// A source ParseException created with a message uses getShortMessage's ordinary
+// constructor branch, without generated expected tokens or an Encountered line.
+func (p *SanyParser) throwReportedParseException(shortMessage string, position Position, code, nativeMessage string) {
+	var message strings.Builder
+	message.WriteString("***Parse Error***\n")
+	if p.expecting != "" {
+		message.WriteString("Was expecting \"" + p.expecting + "\"\n")
+	}
+	message.WriteString(shortMessage)
+	message.WriteString("\n\nResidual stack trace follows:\n")
 	last := len(p.messageStack) - 5
 	if last < 0 {
 		last = 0
@@ -65,9 +74,16 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 		frame := p.messageStack[i]
 		fmt.Fprintf(&message, "%s starting at line %d, column %d.\n", frame.name, frame.token.Begin.Line, frame.token.Begin.Column)
 	}
-	diagnostic := errorAt(token.Begin, "E1300", "%s", nativeMessage)
+	diagnostic := errorAt(position, code, "%s", nativeMessage)
 	diagnostic.SANYParseMessage = message.String()
 	panic(&sanyParseException{diagnostic})
+}
+
+func (p *SanyParser) throwOperatorStackFailure(failure error, position Position) {
+	if source, ok := failure.(*sanyOperatorStackFailure); ok {
+		p.throwReportedParseException(source.sourceMessage, position, "E1301", source.nativeMessage)
+	}
+	panic(failure)
 }
 
 func (p *SanyParser) consumeParseToken(kind SanyTokenKind, nativeMessage string) *SanySyntaxNode {

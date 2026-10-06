@@ -8,7 +8,6 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/OperatorPrecedenceTests.java.
-// Each test starts skipped until its Java assertions are ported and made green.
 func TestOperatorPrecedenceTests_testOperatorCombination(t *testing.T) {
 	operators := sanyOperatorFixtures()
 	for _, op1 := range operators {
@@ -69,8 +68,8 @@ func checkSANYParsePrecedence(t *testing.T, root *tlago.SanySyntaxNode, op1 sany
 	lowerPrecOpSymbol := sanyOperatorImage(lowerPrecOp)
 	higherPrecOp := sanyHigherPrecOperator(lowerPrecOp)
 	higherPrecOpSymbol := sanyOperatorImage(higherPrecOp)
-	parsedOp1Symbol := sanyParsedOperatorSymbol(op1, op1Symbol)
-	parsedOp2Symbol := sanyParsedOperatorSymbol(op2, op2Symbol)
+	parsedOp1Symbol := op1Symbol
+	parsedOp2Symbol := op2Symbol
 	switch {
 	case sanySameOperatorFixture(op1, op2) && op1.associative:
 		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, parsedOp2Symbol, higherPrecOpSymbol, parsedOp1Symbol)
@@ -81,13 +80,6 @@ func checkSANYParsePrecedence(t *testing.T, root *tlago.SanySyntaxNode, op1 sany
 	default:
 		requireSANYOperatorSymbols(t, lowerPrecOpSymbol, parsedOp2Symbol, higherPrecOpSymbol, parsedOp1Symbol)
 	}
-}
-
-func sanyParsedOperatorSymbol(op sanyOperatorFixture, symbol string) string {
-	if op.op.IsPrefix() && symbol == "-" {
-		return "-."
-	}
-	return symbol
 }
 
 func requireSANYOperatorSymbols(t *testing.T, gotLower, wantLower, gotHigher, wantHigher string) {

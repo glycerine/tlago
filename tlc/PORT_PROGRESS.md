@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-06 Source OperatorStack failures and reductions:
+Port the actual OperatorStack ParseException messages, source locations,
+missing-expression cases, precedence failures and mistyped-== hint. Preserve
+source FinalReduce's accumulated parse error and null result, followed by the
+parser's ordinary-constructor exception. The loader reports all parse messages
+before one E4003 abort. Record selection uses the dedicated ReduceRecord rather
+than a dot-as-infix shortcut. Invalid primitive starts and record fields fail at
+the source production boundary. Nested modules retain the root module name.
+
+Source reducePrefix preserves its existing syntax node: unary minus has raw
+N_GenInfixOp/N_InfixOp '-' children, rather than rewriting them to '-.'. Actual
+Java AST verifies this. Correct the native AST expectations while retaining all
+checks, including the operator leaf. The complete SANY run then exposes another
+translation shortcut: OperatorPrecedenceTests rewrote the expected '-' to '-.'.
+Restore the unchanged Java method's raw input-symbol assertions; preserve its
+matrix and comparisons. No invented persistent tests or TLC inventory credit.
+
+Twenty-one direct source/native stack observations match, log
+ tlago-operator-stack-kernel-compare.log under /mnt/oldrog/tmp. Eleven of thirteen
+full-front-end observations match, including missing operands, record failures
+and nested-module precedence locations. Two remaining differences are semantic:
+Go accepts undeclared '-.' and '^+' where Java reports symbol-resolution errors.
+Keep these differences visible in tlago-operator-failures-final-compare.log;
+comparison-script exit status alone is not parity evidence. All eighteen prior
+lexical/syntax observations and sixteen module-loading observations still match,
+logs tlago-operator-failures-parser-boundaries.log and
+ tlago-operator-failures-loading-boundaries.log.
+
+Final focused parser/resolver/semantic/CLI/XML and original-output selection
+passes root 4.404 / SANY selection 0.695 seconds (86333 retired). Complete SANY
+passes 1.580 seconds after restoring source precedence assertions (14577 retired),
+log tlago-operator-failures-sany-source-corrected.log. All-package compilation
+passes. Initial compile and native minus assertion failures are recorded in
+ tlago-operator-failures-focused.log,
+ tlago-operator-failures-prefix-corrected.log and
+ tlago-operator-failures-source-corrected.log; the complete SANY failure is in
+ tlago-operator-failures-sany.log. All those failed runs are retired without
+success credit. No race instrumentation.
+
+Full normal workspace 16991 remains live on the preceding 44aaf11 grammar
+snapshot; it does not verify these newer stack changes. Original full LSB 32959
+remains live on its recorded storage snapshot, now above 1,357,290,394 of
+2,147,483,648 insertions. Preserve both handles and original bounds. Next work
+includes actual semantic operator lookup, remaining generated expected-token
+alternatives, production states, output classes and canonical corpus assertions.
+The overall goal remains incomplete; new distributed architecture stays deferred.
+
 2026-10-06 Source Expression/ExtendableExpr control flow:
 Previous turn made progress in 0386f76. Full normal workspace 84303 returns
 status 0 and is retired: root 1,569.930 / SANY 1.209 / TLC 793.867 seconds,

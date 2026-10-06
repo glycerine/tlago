@@ -82,6 +82,7 @@ func ParseSanySyntaxModules(file, source string) (modules []*SanySyntaxNode, dia
 		if parser.check(SanyTokenEOF) {
 			break
 		}
+		parser.moduleName = ""
 		parser.belchDEF()
 		module := parser.Module()
 		module.SetLevel(0)
@@ -212,7 +213,7 @@ func (p *SanyParser) BeginModule() *SanySyntaxNode {
 	begin := p.consumeAny([]SanyTokenKind{SanyTokenBm0, SanyTokenBm1, SanyTokenBm2}, "expected ---- MODULE")
 	p.reclassifyFieldName()
 	name := p.Identifier()
-	if name != nil {
+	if name != nil && p.moduleName == "" {
 		p.moduleName = name.Image
 	}
 	separator := p.consume(SanyTokenSeparator, "expected ---- after module name")
@@ -1379,6 +1380,7 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 		}
 	}()
 	stack := NewSanyOperatorStack()
+	stack.moduleName = p.moduleName
 	stack.NewStack()
 	p.expressionOperand(stack, stop)
 	// Source Expression calls epa before finalReduce, so a reduction failure
@@ -1387,8 +1389,18 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 	active = false
 	expr, err := stack.FinalReduce()
 	if err != nil {
-		p.add(p.peek().Begin, "E1301", err.Error())
-		return stack.TopNode()
+		p.throwOperatorStackFailure(err, p.peek().Begin)
+	}
+	for _, message := range stack.reportedErrors {
+		diagnostic := errorAt(p.peek().Begin, "E1301", "could not reduce expression stack")
+		diagnostic.SANYParseMessage = message
+		p.diags = append(p.diags, diagnostic)
+	}
+	if expr == nil {
+		p.throwReportedParseException(" Couldn't reduce expression stack.", p.peek().Begin, "E1301", "could not reduce expression stack")
+	}
+	if err := stack.PopStack(); err != nil {
+		panic(err)
 	}
 	return expr
 }
@@ -1401,8 +1413,7 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 		op, _ := GetSanyOperator(tok.Image)
 		stack.Push(p.genericOperatorNode(tok, op), &op)
 		if err := stack.ReduceStack(); err != nil {
-			p.add(tok.Begin, "E1301", err.Error())
-			return
+			p.throwOperatorStackFailure(err, tok.Begin)
 		}
 	}
 	p.splitLeadingFairnessIdentifier()
@@ -1448,6 +1459,9 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 		case SanyTokenLbr, SanyTokenLbc, SanyTokenLab, SanyTokenLsb:
 			stack.Push(p.PrimitiveExpression(), nil)
 		default:
+			if !p.startsPrimitiveExp() {
+				p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected expression")
+			}
 			stack.Push(p.PrimitiveExp(), nil)
 		}
 	}
@@ -1458,15 +1472,15 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 			op, _ := GetSanyOperator(tok.Image)
 			stack.Push(p.genericOperatorNode(tok, op), &op)
 		case p.check(SanyTokenDot):
-			tok := p.advance()
-			op, _ := GetSanyOperator(tok.Image)
-			stack.Push(p.genericOperatorNode(tok, op), &op)
-			if err := stack.ReduceStack(); err != nil {
-				p.add(tok.Begin, "E1301", err.Error())
-				return
-			}
+			middle := NewSanyTokenNode(p.advance())
 			p.reclassifyFieldName()
-			stack.Push(p.Identifier(), nil)
+			if !p.aboveCurrentJunction() {
+				p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected properly indented record field")
+			}
+			right := p.consumeParseToken(SanyTokenIdentifier, "expected record field identifier")
+			if err := stack.ReduceRecord(middle, right); err != nil {
+				p.throwOperatorStackFailure(err, middle.Range.Begin)
+			}
 			continue
 		case p.check(SanyTokenLsb):
 			p.expecting = "function argument"
@@ -1481,8 +1495,7 @@ func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyTok
 			goto continuation
 		}
 		if err := stack.ReduceStack(); err != nil {
-			p.add(p.previous().End, "E1301", err.Error())
-			return
+			p.throwOperatorStackFailure(err, p.previous().End)
 		}
 	}
 continuation:
@@ -1491,10 +1504,20 @@ continuation:
 		op, _ := GetSanyOperator(tok.Image)
 		stack.Push(p.genericOperatorNode(tok, op), &op)
 		if err := stack.ReduceStack(); err != nil {
-			p.add(tok.Begin, "E1301", err.Error())
-			return
+			p.throwOperatorStackFailure(err, tok.Begin)
 		}
 		p.expressionOperand(stack, stop)
+	}
+}
+
+// Source ExtendableExpr performs one-token PrimitiveExp lookahead before
+// entering that production, so an invalid start retains only ExtendableExpr.
+func (p *SanyParser) startsPrimitiveExp() bool {
+	switch p.peek().Kind {
+	case SanyTokenNumberLiteral, SanyTokenStringLiteral, SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return true
+	default:
+		return p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) || p.check(SanyTokenOp76)
 	}
 }
 

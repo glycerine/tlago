@@ -779,11 +779,14 @@ A == -(N - 1)
 		if expr.Kind.JavaName() != "N_PrefixExpr" {
 			t.Fatalf("negative expression = %s heirs %v, want N_PrefixExpr", expr.Kind.JavaName(), sanyNodeKindNames(expr.GetHeirs()))
 		}
-		if got := sanyOperatorImage(expr.GetHeirs()[0]); got != "-." {
-			t.Fatalf("negative operator = %q, want %q", got, "-.")
+		if got := sanyOperatorImage(expr.GetHeirs()[0]); got != "-" {
+			t.Fatalf("negative operator = %q, want original source token %q", got, "-")
 		}
-		if got := expr.GetHeirs()[0].Kind.JavaName(); got != "N_GenPrefixOp" {
-			t.Fatalf("negative operator node = %s, want N_GenPrefixOp", got)
+		if got := expr.GetHeirs()[0].GetHeirs()[1].Kind.JavaName(); got != "N_InfixOp" {
+			t.Fatalf("negative operator leaf = %s, want source N_InfixOp", got)
+		}
+		if got := expr.GetHeirs()[0].Kind.JavaName(); got != "N_GenInfixOp" {
+			t.Fatalf("negative operator node = %s, want source N_GenInfixOp", got)
 		}
 	})
 
