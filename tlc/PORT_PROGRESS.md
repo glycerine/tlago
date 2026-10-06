@@ -1,5 +1,53 @@
 # TLC Port Progress
 
+2026-10-06 Semantic generation and level-check boundaries:
+Previous goal turn made progress in `bac657c`. Full storage/simulator workspace
+session 95632 and unchanged LSB random draft session 32959 remain confirmed live;
+no restarts or success claims. Faithful Java parity on master continues, with
+new distributed work deferred. Five manual cases expose Go executing level
+checks after generation or earlier-module errors, whereas Java gates each
+external module's ModuleNode.levelCheck on raw shared Errors.isSuccess. Split
+actual generation checks from deferred recursive, nested, operator-definition,
+named-fact and source-ordered top-level level-node checks. Complete generation
+for the enclosing external graph before that gate. Preserve generation errors
+and message controls; warning elevation does not manufacture raw semantic errors.
+Split proof and INSTANCE generation checks from their actual level checks.
+
+The initial seven phase observations then match. Broaden to ordered assumption
+and definition errors, named-theorem duplicates, nested level errors and a proof
+level control. Two additional differences expose existing shortcuts: assumption
+checking only recognized a bare variable, and duplicate named-theorem level
+errors were retained. Implement the general expression-level assumption check
+with exact source message and full statement range, and the shared Errors unique
+ErrorDetails behavior. All eleven final observations now match exact semantic
+output, locations, counts and ordering; the earlier seven accumulation observations
+also match. Manual helpers and logs are under /mnt/oldrog/tmp:
+tlago-semantic-level-phase-before.log, tlago-semantic-level-phase-final-compare.log,
+tlago-semantic-level-phase-accumulation.log and corresponding vectors directories.
+No persistent synthetic tests or inventory credit.
+
+Two existing native tests encode earlier Go shortcuts. The unchanged combined
+ProofErrors fixture is checked against Java: exactly three generation errors,
+no temporal proof level errors. Replace its two incorrect expectations with
+exact diagnostic count and absence checks; retain the fixture and its generation
+assertions. A native XML selector fixture incorrectly ASSUMEs a state-level
+named theorem body. Java rejects it with the newly restored general assumption
+check; change that statement to THEOREM, which Java accepts. The same selector,
+source line locations and every XML assertion remain intact. Original Java-derived
+tests, settings, assertions and vectors are unchanged. Source receipts:
+tlago-semantic-level-phase-native-proof/java.out and
+tlago-semantic-level-phase-native-xml/{before,after}-java.out.
+
+Final complete existing SANY package passes in 1.308 seconds, session 46579
+retired; final semantic/CLI/XML/original warning, proof, recursion, instance,
+action-level and trace model selection passes in 9.454 seconds, session 15579
+retired. Intermediate root checks fail the two invalid native expectations above;
+no passing credit for those runs. All-package compilation passes on the final batch; log
+/mnt/oldrog/tmp/tlago-semantic-level-phase-compile.log. All tests run normally
+without race instrumentation. Full session 95632 predates both semantic corrections and cannot verify them.
+Generation diagnostic ordering, import-warning provenance and parser ErrorDetails
+remain concrete source-audit work; a full current workspace pass is not yet proven.
+
 2026-10-06 Per-module accumulated semantic reporting:
 The previous goal turn made progress in `db62dfb` and `6722bce`. Both full normal
 workspace session 95632 and unchanged LSB draft session 32959 are confirmed live;

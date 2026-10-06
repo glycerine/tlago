@@ -33,21 +33,25 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 	resolver := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 	enclosing := enclosingModules(spec)
 	checked := make(map[*Module]bool, len(spec.Modules))
-	var check func(*Module)
-	check = func(mod *Module) {
+	var check func(*Module) *sanyModuleLevelChecks
+	check = func(mod *Module) *sanyModuleLevelChecks {
 		if mod == nil || checked[mod] {
-			return
+			return nil
 		}
 		checked[mod] = true
 		before := len(resolver.diags)
 		resolver.resolveModule(mod)
-		diags = append(diags, resolver.diags[before:]...)
-		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
+		diags = appendSanyDiagnostics(diags, resolver.diags[before:]...)
+		checks := &sanyModuleLevelChecks{}
+		diags = appendSanyDiagnostics(diags, generateModuleWithEnclosing(mod, spec, enclosing[mod], checks)...)
 		// Nested semantic graphs belong to the enclosing external module;
 		// they do not have their own SANY progress or reporting iteration.
 		for _, nested := range mod.Nested {
-			check(nested)
+			if child := check(nested); child != nil {
+				checks.nested = append(checks.nested, child)
+			}
 		}
+		return checks
 	}
 	for _, name := range spec.SemanticOrder {
 		mod := spec.Modules[name]
@@ -57,11 +61,15 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 		if progress != nil {
 			progress("Semantic processing of module " + name)
 		}
-		check(mod)
+		checks := check(mod)
 		// SANY assigns this external module's standard provenance after
 		// generation. The resolver call can itself throw during semantics.
 		if spec.FilenameResolver != nil {
 			mod.Library = spec.FilenameResolver.IsStandardModule(name)
+		}
+		// Source tests raw Errors.isSuccess, before warning elevation.
+		if !diags.HasErrors() {
+			diags = appendSanyDiagnostics(diags, checks.check()...)
 		}
 		if report != nil {
 			report(diags)
@@ -76,7 +84,9 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 	}
 	sort.Strings(remaining)
 	for _, name := range remaining {
-		check(spec.Modules[name])
+		if checks := check(spec.Modules[name]); checks != nil && !diags.HasErrors() {
+			diags = appendSanyDiagnostics(diags, checks.check()...)
+		}
 	}
 	if report != nil && (len(remaining) > 0 || len(spec.SemanticOrder) == 0) {
 		report(diags)
@@ -112,7 +122,71 @@ func enclosingModules(spec *Spec) map[*Module]*Module {
 	return out
 }
 
+func appendSanyDiagnostics(diags Diagnostics, added ...Diagnostic) Diagnostics {
+	if len(added) == 0 {
+		return diags
+	}
+	type details struct{ code, text string }
+	seen := make(map[details]bool, len(diags)+len(added))
+	for _, diagnostic := range diags {
+		seen[details{diagnostic.Code, sanyJavaErrorDetails(diagnostic)}] = true
+	}
+	for _, diagnostic := range added {
+		key := details{diagnostic.Code, sanyJavaErrorDetails(diagnostic)}
+		if !seen[key] {
+			diags = append(diags, diagnostic)
+			seen[key] = true
+		}
+	}
+	return diags
+}
+
+type sanyLevelCheck struct {
+	position Position
+	run      func() Diagnostics
+}
+
+type sanyModuleLevelChecks struct {
+	recursive   []func() Diagnostics
+	definitions []func() Diagnostics
+	facts       []func() Diagnostics
+	topLevel    []sanyLevelCheck
+	nested      []*sanyModuleLevelChecks
+}
+
+func (checks *sanyModuleLevelChecks) check() Diagnostics {
+	var diags Diagnostics
+	for _, run := range checks.recursive {
+		diags = appendSanyDiagnostics(diags, run()...)
+	}
+	for _, nested := range checks.nested {
+		diags = appendSanyDiagnostics(diags, nested.check()...)
+	}
+	for _, run := range checks.definitions {
+		diags = appendSanyDiagnostics(diags, run()...)
+	}
+	for _, run := range checks.facts {
+		diags = appendSanyDiagnostics(diags, run()...)
+	}
+	sort.SliceStable(checks.topLevel, func(i, j int) bool {
+		return checks.topLevel[i].position.Compare(checks.topLevel[j].position) < 0
+	})
+	for _, node := range checks.topLevel {
+		diags = appendSanyDiagnostics(diags, node.run()...)
+	}
+	return diags
+}
+
 func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagnostics {
+	checks := &sanyModuleLevelChecks{}
+	diags := generateModuleWithEnclosing(mod, spec, enclosing, checks)
+	if !diags.HasErrors() {
+		diags = appendSanyDiagnostics(diags, checks.check()...)
+	}
+	return diags
+}
+
+func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, checks *sanyModuleLevelChecks) Diagnostics {
 	var diags Diagnostics
 	defined := map[string]Position{}
 	declKinds := map[string]DeclarationKind{}
@@ -500,14 +574,18 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 	levelChecker := newSanyLevelCompositionChecker(mod, spec)
 	levelChecker.dependencies.declKinds[mod] = declKinds
 	for _, inst := range mod.Instances {
-		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs)...)
+		diags = append(diags, checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, false)...)
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
+			return checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, true)
+		}})
 	}
 	for _, ref := range mod.ProofRefs {
 		diags = append(diags, checkProofRef(ref, defined)...)
 		diags = append(diags, checkHideRef(ref, theoremLikeDefs, proofStepNames)...)
 	}
 	for _, proof := range mod.Proofs {
-		diags = append(diags, checkProofSummary(proof, declKinds, mod, spec)...)
+		diags = append(diags, checkProofSummary(proof, declKinds, mod, spec, false)...)
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{proof.Pos, func() Diagnostics { return checkProofSummary(proof, declKinds, mod, spec, true) }})
 	}
 	for _, assumption := range mod.Assumptions {
 		expr := assumption.Expr
@@ -526,13 +604,19 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		diags = append(diags, checkLabelReferenceArities(expr, labelArities)...)
 		if assumption.AssumeProve && assumption.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(assumption.AssumeProveBody, true)...)
-			diags = append(diags, checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)...)
 		}
-		if !assumption.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, levelChecker.check(expr, nil)...)
-		}
-		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
-		diags = append(diags, checkAssumptionConstantLevel(expr, declKinds)...)
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{assumption.SourcePosition(), func() Diagnostics {
+			var diags Diagnostics
+			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
+				diags = append(diags, checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)...)
+			}
+			if !assumption.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
+				diags = append(diags, levelChecker.check(expr, nil)...)
+			}
+			diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
+			diags = append(diags, checkAssumptionConstantLevel(assumption, levelChecker)...)
+			return diags
+		}})
 	}
 	for _, theorem := range mod.Theorems {
 		expr := theorem.Expr
@@ -551,16 +635,22 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		diags = append(diags, checkLabelReferenceArities(expr, labelArities)...)
 		if theorem.AssumeProve && theorem.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(theorem.AssumeProveBody, true)...)
-			diags = append(diags, checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)...)
 		}
-		if !theorem.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, levelChecker.check(expr, nil)...)
-		}
-		diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{theorem.SourcePosition(), func() Diagnostics {
+			var diags Diagnostics
+			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
+				diags = append(diags, checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)...)
+			}
+			if !theorem.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
+				diags = append(diags, levelChecker.check(expr, nil)...)
+			}
+			diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
+			return diags
+		}})
 	}
 	for _, def := range mod.Definitions {
 		if _, recursive := recursiveArities[def.Name]; recursive {
-			diags = append(diags, levelChecker.checkRecursiveParameters(def, nil)...)
+			checks.recursive = append(checks.recursive, func() Diagnostics { return levelChecker.checkRecursiveParameters(def, nil) })
 		}
 		locals := map[string]bool{}
 		for _, param := range def.Params {
@@ -578,17 +668,28 @@ func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagno
 		diags = append(diags, checkLabelReferenceArities(def.Expr, labelArities)...)
 		if def.AssumeProve && def.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(def.AssumeProveBody, true)...)
-			diags = append(diags, checkAssumeProveNewSymbolLevels(def.AssumeProveBody, declKinds)...)
 		} else {
 			diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
 		}
 		if !def.AssumeProve {
 			diags = append(diags, checkAssumeProveDefinitionUse(def.Expr, assumeProveDefs, locals)...)
 		}
-		if !def.AssumeProve {
-			diags = append(diags, levelChecker.check(def.Expr, locals)...)
+		levelCheck := func() Diagnostics {
+			var diags Diagnostics
+			if def.AssumeProve && def.AssumeProveBody != nil {
+				diags = append(diags, checkAssumeProveNewSymbolLevels(def.AssumeProveBody, declKinds)...)
+			}
+			if !def.AssumeProve {
+				diags = append(diags, levelChecker.check(def.Expr, locals)...)
+			}
+			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
+			return diags
 		}
-		diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
+		if def.TheoremLike {
+			checks.facts = append(checks.facts, levelCheck)
+		} else {
+			checks.definitions = append(checks.definitions, levelCheck)
+		}
 	}
 	return diags
 }
@@ -1801,10 +1902,13 @@ func checkHideRef(ref ProofRef, theoremLikeDefs, proofStepNames map[string]bool)
 	return Diagnostics{diagnostic}
 }
 
-func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind, module *Module, spec *Spec) Diagnostics {
+func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind, module *Module, spec *Spec, levelChecking bool) Diagnostics {
 	var diags Diagnostics
 	dependencies := newSanyLeibnizAnalyzer(spec)
 	level := func(expr Expr, locals map[string]bool) tlaLevel {
+		if !levelChecking {
+			return constantLevel
+		}
 		return dependencies.substitutionLevel(expr, module, locals)
 	}
 	goalLevels := []tlaLevel{level(proof.Goal, nil)}
@@ -1818,18 +1922,20 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 		}
 	}
 	for _, step := range proof.Steps {
-		if step.AssumeProveBody != nil {
+		if !levelChecking && step.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(step.AssumeProveBody, true)...)
 		}
 		nonExprScopes = pruneProofNameScopes(nonExprScopes, step.Depth)
 		boundScopes = pruneProofNameScopes(boundScopes, step.Depth)
 		factScopes = pruneProofNameScopes(factScopes, step.Depth)
-		for _, ref := range step.UseHideRefs {
-			diags = append(diags, checkHideRef(ref, factDefinitions, activeProofNames(factScopes))...)
+		if !levelChecking {
+			for _, ref := range step.UseHideRefs {
+				diags = append(diags, checkHideRef(ref, factDefinitions, activeProofNames(factScopes))...)
+			}
 		}
 		nonExprSteps := activeProofNames(nonExprScopes)
 		boundNames := activeProofNames(boundScopes)
-		if step.Implicit && step.Name != "" {
+		if !levelChecking && step.Implicit && step.Name != "" {
 			diags = append(diags, errorAt(step.Pos, "E4350", "implicit proof step cannot have name %s", step.Name))
 		}
 		// TheoremNode.LevelCheckTemporal follows CASE and QED subproofs
@@ -1871,14 +1977,14 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 		}
 		goalLevels = append(goalLevels, childGoal)
 
-		if step.Kind == "PICK" && exprLevel(step.Expr, declKinds, nil) == temporalLevel {
+		if levelChecking && step.Kind == "PICK" && exprLevel(step.Expr, declKinds, nil) == temporalLevel {
 			for _, bound := range step.Bounds {
 				if exprLevel(bound.Set, declKinds, nil) != constantLevel {
 					diags = append(diags, errorAt(bound.Pos, "E4354", "temporal PICK formula requires constant-level bound"))
 				}
 			}
 		}
-		if step.Kind == "ASSERT" && step.Expr != nil {
+		if !levelChecking && step.Kind == "ASSERT" && step.Expr != nil {
 			for _, ref := range step.Refs {
 				if nonExprSteps[ref] && declKinds[ref] == "" {
 					diags = append(diags, errorAt(step.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", ref))
@@ -1889,9 +1995,11 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 		if step.Kind == "PICK" {
 			exprBoundNames = proofNamesWithBounds(exprBoundNames, step.Bounds)
 		}
-		diags = append(diags, checkProofStepExpressionRefs(step.Expr, nonExprSteps, declKinds, exprBoundNames)...)
-		for _, expr := range step.Exprs {
-			diags = append(diags, checkProofStepExpressionRefs(expr, nonExprSteps, declKinds, boundNames)...)
+		if !levelChecking {
+			diags = append(diags, checkProofStepExpressionRefs(step.Expr, nonExprSteps, declKinds, exprBoundNames)...)
+			for _, expr := range step.Exprs {
+				diags = append(diags, checkProofStepExpressionRefs(expr, nonExprSteps, declKinds, boundNames)...)
+			}
 		}
 		if step.Name != "" && step.Kind != "ASSERT" {
 			nonExprScopes = append(nonExprScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true}})
@@ -2117,7 +2225,7 @@ func checkAssumeProveDefinitionUse(expr Expr, assumeProveDefs map[string]bool, l
 	return diags
 }
 
-func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int, operatorParams map[string][]operatorParamSpec) Diagnostics {
+func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int, operatorParams map[string][]operatorParamSpec, levelChecking bool) Diagnostics {
 	var diags Diagnostics
 	if spec == nil {
 		return nil
@@ -2127,8 +2235,12 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		return nil
 	}
 	targets := moduleSubstitutionTargets(target, spec)
-	temporalConstraints := moduleTemporalConstantConstraints(target, spec)
-	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
+	var temporalConstraints map[string]tlaLevel
+	matchLevels := false
+	if levelChecking {
+		temporalConstraints = moduleTemporalConstantConstraints(target, spec)
+		matchLevels = moduleRequiresSubstitutionLevelMatch(target, spec)
+	}
 	implicit := moduleImplicitSubstitutions(mod, spec)
 	// Generator.generateModuleDefinition pushes a context for the instance's
 	// formal parameters before processing WITH. These are local formal
@@ -2137,7 +2249,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 	arities = copyIntMap(arities)
 	declKinds = copyDeclKindMap(declKinds)
 	for _, param := range inst.Params {
-		if locals[param] {
+		if !levelChecking && locals[param] {
 			diags = append(diags, errorAt(inst.ParamPositions[param], "E4201", "duplicate formal parameter %s", param))
 		}
 		locals[param] = true
@@ -2160,22 +2272,24 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		if name == "" || expr == nil {
 			continue
 		}
-		if prev, ok := seen[name]; ok {
+		if prev, ok := seen[name]; ok && !levelChecking {
 			diags = append(diags, errorAt(subst.Pos, "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", name, prev))
 		} else {
 			seen[name] = subst.Pos
 		}
 		substTarget, ok := targets[name]
 		if !ok {
-			diags = append(diags, errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module))
+			if !levelChecking {
+				diags = append(diags, errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module))
+			}
 			continue
 		}
 		want := substTarget.Arity
 		got := substitutionExprArity(expr, arities)
-		if got != want {
+		if !levelChecking && got != want {
 			diags = append(diags, errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want))
 		}
-		if want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
+		if levelChecking && want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
 			diagnostic := errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module)
 			position := inst.SourcePosition()
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
@@ -2202,14 +2316,22 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
 			diags = append(diags, diagnostic)
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, subst.Pos, declKinds)...)
-		diags = append(diags, checkExpr(expr, defined, locals)...)
-		if !substitutionExprIsOperatorArgument(expr, want, arities) {
+		if levelChecking {
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, subst.Pos, declKinds)...)
+		}
+		if !levelChecking {
+			diags = append(diags, checkExpr(expr, defined, locals)...)
+		}
+		if !levelChecking && !substitutionExprIsOperatorArgument(expr, want, arities) {
 			diags = append(diags, checkCallArity(expr, arities, operatorParams, locals)...)
 		}
-		diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
+		if levelChecking {
+			diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
+		}
 	}
-	diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.Pos, declKinds)...)
+	if levelChecking {
+		diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.Pos, declKinds)...)
+	}
 	for name, target := range targets {
 		if _, ok := seen[name]; ok {
 			continue
@@ -2217,10 +2339,12 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		want := target.Arity
 		got, ok := implicit[name]
 		if !ok {
-			diags = append(diags, errorAt(inst.Pos, "E4240", "INSTANCE %s requires substitution for %s", inst.Module, name))
+			if !levelChecking {
+				diags = append(diags, errorAt(inst.Pos, "E4240", "INSTANCE %s requires substitution for %s", inst.Module, name))
+			}
 			continue
 		}
-		if got != want {
+		if !levelChecking && got != want {
 			diags = append(diags, errorAt(inst.Pos, "E4240", "An operator must be substituted for symbol '%s', and it must have arity %d.", name, want))
 		}
 		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(&IdentExpr{Name: name}, mod, locals) > maximum {
@@ -4105,11 +4229,16 @@ func checkPrimedConstants(expr Expr, declKinds map[string]DeclarationKind, local
 	return diags
 }
 
-func checkAssumptionConstantLevel(expr Expr, declKinds map[string]DeclarationKind) Diagnostics {
-	if ident, ok := expr.(*IdentExpr); ok && declKinds[ident.Name] == VariableDecl {
-		return Diagnostics{errorAt(ident.Pos, "E4206", "assumption must be constant-level; %s is variable-level", ident.Name)}
+func checkAssumptionConstantLevel(assumption NamedExpr, checker *sanyLevelCompositionChecker) Diagnostics {
+	level := checker.level(assumption.Expr, nil)
+	if level == constantLevel {
+		return nil
 	}
-	return nil
+	position := assumption.SourcePosition()
+	diagnostic := errorAt(position, "E4206", "assumption must be constant-level; expression has level %d", level)
+	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	diagnostic.SANYMessage = fmt.Sprintf("Level error: assumptions must be level 0 (Constant), \n"+"but this one has level %d.", level)
+	return Diagnostics{diagnostic}
 }
 
 func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[string]bool) Diagnostics {

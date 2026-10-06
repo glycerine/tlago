@@ -462,7 +462,7 @@ Use == Inv!2
 		xmlText, diags := SanyXMLSource("BangColonReferenceXML.tla", `---- MODULE BangColonReferenceXML ----
 VARIABLE x
 THEOREM T == x = x
-ASSUME T!:
+THEOREM T!:
 Use == T!:
 ====`)
 		requireNoErrors(t, diags)

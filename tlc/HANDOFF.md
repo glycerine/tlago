@@ -70,7 +70,7 @@ when the old temporary volume ran out of space. SANY passed. Log:
 has now been corrected to match Java. Future full runs must set **both**
 `GOTMPDIR` and `TMPDIR` to the large workspace `.codex-gotmp` directory.
 Full normal workspace session `95632` is live on the final storage and simulator
-corrections, before the subsequent per-module semantic reporting correction,
+corrections, before the subsequent per-module reporting and level-phase corrections,
 preserving original bounds with no race instrumentation. Log:
 `/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`. No full-suite success is
 claimed until this handle returns terminal status.
@@ -90,7 +90,8 @@ Latest focused verification:
 | Existing original simulation and simulation-worker selection | Pass | Root 48.055 / TLC 0.012 seconds, session `59011` retired |
 | Original SANY package and focused semantic/CLI/XML/warning checks | Pass | 1.309 / 3.323 seconds, sessions `4764` / `38992` retired |
 | Original recursion, proof and selector models | Pass | 2.795 seconds, session `42104` retired |
-| All-package compilation | Pass | Final storage and simulator corrections |
+| Original SANY package and semantic/CLI/XML/instance/proof/action-level/trace models | Pass | 1.308 / 9.454 seconds, sessions `46579` / `15579` retired |
+| All-package compilation | Pass | Final semantic generation and level-phase correction |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -99,7 +100,9 @@ The record-lint matrix matches Java in 33 valid cases. Six full front-end plus
 constructor observations now also match with the real lint phase included.
 Seven manual semantic-output observations match Java for one error, dependency
 errors, chains, siblings, nested modules and a successful dependency. These cover
-reporting order and accumulation, not all semantic generation or level gating.
+reporting order and accumulation. Eleven further observations match generation
+versus level gating, nested graphs, definition-before-top-level ordering, proof
+levels, general assumption checks and unique named-theorem errors.
 
 The latest checker correction initializes coverage, liveness and cached config
 in the parent constructor before storage and workers. Liveness I/O failures are
@@ -200,10 +203,13 @@ possible schedule.
 
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
-ErrorDetails rendering, source semantic generation-versus-level-check boundaries,
-warning provenance and remaining constructor boundaries. Per-module semantic
+ErrorDetails rendering, generation diagnostic ordering and exact import-warning
+provenance, plus remaining constructor and semantic-node boundaries. Per-module semantic
 reporting now follows the shared accumulated Errors instance; nested module
-diagnostics are included in their enclosing external reporting iteration. Buffered-file modes,
+diagnostics are included in their enclosing external reporting iteration.
+Generation completes before the raw shared Errors.isSuccess gate permits real
+level work. Warning elevation does not change raw Errors success. Further
+semantic-node parity is still required; these checks do not prove completion. Buffered-file modes,
 invalid-mode exceptions and trace/worker opening boundaries were reconciled in
 `db62dfb`; preserve those verified fixes. Do not add
 synthetic phase output. The actual Java record linter is now ported: declaration

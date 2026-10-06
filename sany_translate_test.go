@@ -693,8 +693,16 @@ def == TRUE
 HIDE def
 ====`)
 		requireHasErrorContaining(t, diags, "implicit proof step")
-		requireHasErrorContaining(t, diags, "temporal proof goal")
-		requireHasErrorContaining(t, diags, "temporal PICK")
+		// Java reports the three generation errors in this fixture and never
+		// calls ModuleNode.levelCheck, so temporal proof errors are absent.
+		if len(diags) != 3 {
+			t.Fatalf("generation diagnostics=%d, want 3; diagnostics:\n%s", len(diags), diags)
+		}
+		for _, diagnostic := range diags {
+			if diagnostic.Code == "E4352" || diagnostic.Code == "E4353" || diagnostic.Code == "E4354" {
+				t.Fatalf("level checking ran after generation errors: %s", diagnostic)
+			}
+		}
 		requireHasErrorContaining(t, diags, "ASSUME/PROVE")
 		requireHasErrorContaining(t, diags, "HIDE")
 	})
