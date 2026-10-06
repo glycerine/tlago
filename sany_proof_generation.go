@@ -66,6 +66,12 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 			if symbol.proofStepKind == "DEFINE" {
 				return nil
 			}
+			if symbol.proofStepKind != "" {
+				diagnostic := errorAt(reference.Pos, "E4004", "DEF clause entry refers to a non-definition step.")
+				diagnostic.SANYMessage = diagnostic.Message
+				diagnostic.SANYRange = SanyRange{Begin: reference.Pos, End: reference.Pos.SourceEnd()}
+				diags = append(diags, diagnostic)
+			}
 			if (symbol.kind == OperatorDecl || symbol.kind == InstanceDecl || symbol.kind == semanticTheoremImportKind) && (len(name) == 0 || name[0] != '<') {
 				return nil
 			}
@@ -232,14 +238,28 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				}
 			} else if unit.instance != nil {
 				instance := *unit.instance
+				diags = append(diags, g.generateProofInstanceSubstitutions(instance, module, current)...)
 				for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
-					binding := localSymbol{kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition()}
+					if previous, exists := g.lookupSymbol(symbol.name, current); exists {
+						conflict := symbol
+						if previous.pos != symbol.sourcePosition() {
+							conflict.source = instance.SourcePosition()
+						}
+						diags = append(diags, instanceSymbolConflict(conflict, previous)...)
+						continue
+					}
+					binding := localSymbol{kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition(), operatorParams: symbol.operatorParams}
 					g.symbols[symbol.name] = binding
 					symbolScopes[step.Depth][symbol.name] = binding
 					current[symbol.name] = symbol.sourcePosition()
 					scopes[step.Depth][symbol.name] = symbol.sourcePosition()
 				}
 				if instance.Name != "" {
+					if _, exists := g.lookupSymbol(instance.Name, current); !exists {
+						binding := localSymbol{kind: InstanceDecl, arity: len(instance.Params), pos: instance.SourcePosition()}
+						g.symbols[instance.Name] = binding
+						symbolScopes[step.Depth][instance.Name] = binding
+					}
 					current[instance.Name] = instance.SourcePosition()
 					scopes[step.Depth][instance.Name] = instance.SourcePosition()
 					current[instanceNameSentinel(instance.Name)] = instance.SourcePosition()

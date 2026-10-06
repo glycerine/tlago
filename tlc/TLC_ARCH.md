@@ -261,9 +261,18 @@ remain checked. Unknown context metadata does not manufacture arity zero: this
 fixes imported Len in an INSTANCE substitution's LET without changing the original
 EWD998 debugger test. A further 57 full diagnostic observations and one lower-phase
 exception observation match Java. These are bounded comparisons, not complete
-coverage. Proof-local instances, module namespace resolution, typed NEW/bound
-contexts, general failure boundaries and hierarchical proof level checks remain
-work. Existing corpus passes do not establish complete proof-graph or Generator
+coverage. Non-local proof INSTANCE syntax is now retained; proof-local substitutions
+follow default construction, explicit RHS generation, duplicate detection,
+remaining implicit arity checks and completeness. Illegal targets skip the RHS.
+Operator-generation failures preserve the nullOpArg sentinel and its follow-up
+arity error, while lambda body errors preserve the lambda operator. Module-definition
+formals remain scoped to substitutions, conflicting imports keep first bindings,
+and named-instance prefix arguments are validated separately from the imported
+operator's arguments. Twenty-nine bounded diagnostic observations match Java.
+Inherited instance contexts, constructor identity, symbolic operand failure
+branches and instance levels still require reconciliation. Module namespace
+resolution, typed NEW/bound contexts, general failure boundaries and hierarchical
+proof level checks remain work. Existing corpus passes do not establish complete proof-graph or Generator
 parity. The fixed-parameter comparison selects 121 primary fixtures; earlier prose
 stating 126 overstated that selection. Supporting dependency modules are not
 additional primary comparisons.

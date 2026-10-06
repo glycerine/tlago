@@ -1,5 +1,53 @@
 # TLC Port Progress
 
+2026-10-06 Proof-local INSTANCE generation:
+Previous turn made progress in a37c7eb; revalidate its clean master tree and poll
+99670, confirmed live on 8d13d91. No full-root pass credit; keep the same handle.
+Java generateProof dispatches N_NonLocalInstance, but the Go translator omitted
+it. Project the step and its instance, preserving original syntax. Generate proof
+substitutions before importing operators/theorems. Preserve processSubst phases:
+construct implicit defaults, generate every explicit RHS before duplicate checks,
+check remaining implicit arities, then report missing substitutions. Invalid
+substitution targets report 4242 and omit RHS generation. Module-definition formal
+parameters have their own context during substitutions.
+
+Operator-valued substitutions expose a second omitted phase: after selector
+failure, generateOpArg returns nullOpArg and checkSubstitutionForCorrectArity adds
+4243 at its zero location. Preserve this, the substitution-specific suspected
+unreachable expression error, lambda arity checking and ignored attached GeneralId
+arguments. A lambda body error still returns the lambda operator, so its actual
+arity must survive. Named-instance selector prefixes check their own arguments;
+I!A(TRUE) cannot supply the argument required by I. Conflicting imports preserve
+first signatures; retain imported higher-order parameter metadata. DEF on an
+INSTANCE step reports the original non-definition-step error before the general
+DEF error and Empty BY.
+
+Verification, normal execution with original permanent assertions unchanged:
+- 29 bounded Java source comparisons: terminal 0, handle 10656. Complete code,
+  count, message, range and diagnostic order match. Inputs parse successfully.
+  Receipt /mnt/oldrog/tmp/tlago-proof-instance-final-29.log; scratch source vectors
+  and both outputs live under /mnt/oldrog/tmp/tlago-proof-instance-audit/.
+- Established 58 statement, 49 reference and 50 symbol/operand comparisons match
+  on the preceding operand snapshot (23388, 49307, 43811 terminal 0); later changes
+  concern attached substitution operands and lambda failure arity, covered by the
+  final 29 comparisons. No source corpus or original test was narrowed.
+- Final complete SANY: 1.852 seconds, 48463 terminal 0.
+- Final existing native classes, original ParseErrorTests and unchanged original
+  EWD998ChanDebugger: 15.270 seconds, 22009 terminal 0.
+- Final all-package compilation and git diff --check pass.
+  Logs /mnt/oldrog/tmp/tlago-proof-instance-verified-{sany,focused,compile}.log.
+Initial and intermediate mismatch receipts remain in proof-instance logs and do
+not earn pass credit. The first draft audit overlapped rebuilding its scratch
+binary; it is discarded. Authoritative comparisons ran after terminal builds.
+No persistent invented tests, fixture changes or inventory credit.
+
+Remaining source work includes original inherited instance contexts, constructor
+identity/conflict semantics, symbolic operand failure branches, formal constructor
+contexts and original proof/INSTANCE level nodes. This bounded source generation
+increment does not prove whole Generator or proof parity. Normal root 99670 is
+still live on 8d13d91, before mixed DEFINE and INSTANCE changes. Do not restart
+from silence or claim the current whole workspace green.
+
 2026-10-06 Mixed proof DEFINE traversal:
 Previous turn made progress in `8d13d91`; start from its clean master tree.
 Poll full root handle 99670: confirmed live, no terminal result. It tests the

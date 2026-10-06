@@ -3330,6 +3330,39 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	if source := sanyExprSource(expr); source != nil {
 		source.operatorArgumentsGenerated = false
 	}
+	if source := sanyExprSource(expr); source != nil && source.Selector != nil {
+		name := ""
+		for i, step := range source.Selector.Steps {
+			if i == len(source.Selector.Steps)-1 || step.Kind != SanySelectorName {
+				break
+			}
+			if name != "" {
+				name += "!"
+			}
+			name += step.Name
+			if symbol, exists := generation.lookupSymbol(name, defined); exists && symbol.kind == InstanceDecl && symbol.arity >= 0 {
+				count := 0
+				if step.Arguments != nil {
+					count = len(expressionChildren(step.Arguments))
+				}
+				if count != symbol.arity {
+					position := expr.Position()
+					location := SanyRange{Begin: position, End: position.SourceEnd()}
+					if source.Syntax != nil {
+						location = source.Syntax.Range
+					}
+					if step.Arguments != nil {
+						location = step.Arguments.Range
+					}
+					diagnostic := sanyDiagnosticParameters(errorAt(position, "E4204", "The operator %s requires %d arguments.", name, symbol.arity), name, symbol.arity)
+					diagnostic.SANYMessage = diagnostic.Message
+					diagnostic.SANYRange = location
+					setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+					return Diagnostics{diagnostic}
+				}
+			}
+		}
+	}
 	if source := sanyExprSource(expr); source != nil && source.selectorFailure {
 		// selectorToNode has already reported the error and returned nullOAN.
 		setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)

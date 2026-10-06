@@ -399,10 +399,24 @@ definition heirs in Java order, in both expression generation and selector prepa
 Four bounded source comparisons match, including a rejected forward instance reference.
 Existing 58 statement and 49 reference comparisons still match. Complete SANY passes
 in 1.881 seconds; the existing focused gate passes in 13.476 seconds. These checks
-add no permanent test inventory credit. INSTANCE substitution/construction behavior
-and non-local INSTANCE step projection still need reconciliation.
+add no permanent test inventory credit.
 
-Continue proof-local instance generation, original hierarchical proof level checks,
+Non-local INSTANCE proof steps are now projected and generated. Proof-local WITH
+clauses generate before imported bindings: implicit defaults, explicit operands,
+duplicate detection, implicit arity checks, then missing substitutions. Illegal
+targets omit operand generation. Failed operator operands retain Java's nullOpArg
+and subsequent zero-location arity error; lambda body errors preserve lambda arity.
+Module-definition formals are scoped during substitutions. Conflicting imports
+retain the first binding and its arity. DEF on an INSTANCE step emits Java's
+non-definition error. Named-instance prefix arguments are checked at their actual
+selector component. All 29 bounded source observations match full diagnostics;
+scratch comparisons add no permanent test credit. Existing SANY passes in 1.852
+seconds and the focused gate in 15.270 seconds. Receipts:
+`/mnt/oldrog/tmp/tlago-proof-instance-final-29.log` and
+`/mnt/oldrog/tmp/tlago-proof-instance-verified-{sany,focused,compile}.log`.
+
+Continue proof INSTANCE inherited-context/constructor identity and level checks,
+original hierarchical proof level checks,
 complete typed NEW/bound contexts and constructor/application failure boundaries.
 The current generation path does not establish complete proof-graph parity. Broader
 module namespace resolution, formal/bound contexts, general operator-argument

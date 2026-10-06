@@ -1060,6 +1060,10 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 					step.Instances = append(step.Instances, instance)
 				}
 			}
+		case "N_NonLocalInstance":
+			step.Kind = "INSTANCE"
+			instance, _ := sanyInstance(child)
+			step.Instances = append(step.Instances, instance)
 		case "N_UseOrHide":
 			step.UseHideRefs = sanyUseOrHideRefs(child)
 			for _, ref := range step.UseHideRefs {

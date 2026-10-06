@@ -832,6 +832,7 @@ func (r *sanySelectorResolver) walkProof(proof ProofSummary, mod *Module, scope 
 				}
 			} else if unit.instance != nil {
 				instance := *unit.instance
+				r.walkInstance(instance, mod, nested)
 				introduced := map[string]sanySelectorDefinition{}
 				r.addInstance(introduced, mod, instance)
 				for name, definition := range introduced {
