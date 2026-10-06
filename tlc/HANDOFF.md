@@ -79,7 +79,8 @@ This snapshot predates subsequent semantic reporting, level-phase and import
 context corrections. Log: `/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`.
 
 Full normal workspace session `15749` is live on the `7d712b0` production
-snapshot, before the subsequent INSTANCE conflict correction. It retains original bounds, failfast and a 60-minute timeout,
+snapshot, before the subsequent INSTANCE and direct Context corrections. It retains
+original bounds, failfast and a 60-minute timeout,
 without race instrumentation. Both temporary variables use workspace
 `.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-import-context-workspace.log`.
 No full-suite success is claimed until this same handle returns terminal status.
@@ -103,7 +104,9 @@ Latest focused verification:
 | Original SANY and existing semantic/CLI/XML/instance/proof/trace models | Pass | 1.188 / 9.050 seconds, sessions `25595` / `94869` retired |
 | Existing native runner and buffered-file/checker/worker/trace methods | Pass | 7.340 seconds, session `70777` retired |
 | Existing SANY and semantic/CLI/XML/instance/proof/trace model checks | Pass | 1.291 / 9.598 seconds, sessions `85452` / `35327` retired |
-| All-package compilation | Pass | Final INSTANCE conflict correction |
+| Direct original Java Context test and existing semantic/CLI/XML/INSTANCE/warning/action-level/trace checks | Pass | 5.590 seconds, session `9858` retired |
+| Complete SANY package after direct Context reconciliation | Pass | 1.236 seconds, session `46254` retired |
+| All-package compilation | Pass | Final direct Context correction |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -223,10 +226,13 @@ possible schedule.
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
 ErrorDetails rendering, generation and multiple-binding context iteration order,
-remaining constructor and semantic-node boundaries, and direct context/typed
-diagnostic assertions in the original SANY `TestContext` class. Its existing Go
-method is a parser-fixture surrogate; it is not a faithful translation of the
-source Context/Errors parameter assertions. EXTENDS conflicts now retain actual symbol
+remaining constructor and semantic-node boundaries. The original SANY
+`TestContext` method now exercises Context directly, with its original failure
+result, one-error count, E4224 code and declaration/definition parameter
+assertions. It lives in root `sany_context_java_test.go` so it can access the
+private context implementation; the parser-fixture surrogate was removed.
+The direct context and production EXTENDS path share diagnostic construction,
+including structured parameters and source locations. EXTENDS conflicts now retain actual symbol
 locations and definition provenance, compare source semantic-node classes, and
 reuse parameter-free instance definitions. Substituted declarations are not
 INSTANCE exports; only an explicit named instance creates a qualified namespace. Per-module semantic

@@ -192,12 +192,13 @@ func (p Position) SourceEnd() Position {
 }
 
 type Diagnostic struct {
-	Code        string
-	Severity    Severity
-	Pos         Position
-	Message     string
-	SANYRange   SanyRange
-	SANYMessage string
+	Code           string
+	Severity       Severity
+	Pos            Position
+	Message        string
+	SANYRange      SanyRange
+	SANYMessage    string
+	SANYParameters []any
 }
 
 func (d Diagnostic) String() string {

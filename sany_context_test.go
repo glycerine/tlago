@@ -27,7 +27,8 @@ func TestSanyContextBehaviors(t *testing.T) {
 
 		dst := newSanyContext()
 		dst.addSymbol(sym("Existing", sanyConstantDeclKind, "Root"))
-		requireNoErrors(t, dst.mergeExtendContext(imported))
+		_, diags := dst.mergeExtendContext(imported)
+		requireNoErrors(t, diags)
 
 		if got, want := names(dst.orderedSymbols()), "Existing,A,B"; got != want {
 			t.Fatalf("merged context order = %s, want %s", got, want)
@@ -81,7 +82,7 @@ func TestSanyContextBehaviors(t *testing.T) {
 		imported.addSymbol(sym("A", sanyUserDefinedOpKind, "Right"))
 		imported.addSymbol(sym("B", sanyVariableDeclKind, "Right"))
 
-		diags := dst.mergeExtendContext(imported)
+		_, diags := dst.mergeExtendContext(imported)
 		if len(diags) != 2 {
 			t.Fatalf("merge diagnostics = %d, want 2: %v", len(diags), diags)
 		}
@@ -92,11 +93,15 @@ func TestSanyContextBehaviors(t *testing.T) {
 
 	t.Run("suppresses duplicates from the same original module", func(t *testing.T) {
 		dst := newSanyContext()
-		dst.addSymbol(sym("A", sanyUserDefinedOpKind, "Shared"))
+		original := sym("A", sanyUserDefinedOpKind, "Shared")
+		dst.addSymbol(original)
 		imported := newSanyContext()
-		imported.addSymbol(sym("A", sanyUserDefinedOpKind, "Shared"))
+		instance := sym("A", sanyUserDefinedOpKind, "Shared")
+		instance.source = original
+		imported.addSymbol(instance)
 
-		requireNoErrors(t, dst.mergeExtendContext(imported))
+		_, diags := dst.mergeExtendContext(imported)
+		requireNoErrors(t, diags)
 		if got, want := names(dst.orderedSymbols()), "A"; got != want {
 			t.Fatalf("same-origin merge order = %s, want %s", got, want)
 		}

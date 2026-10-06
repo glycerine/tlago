@@ -29,8 +29,19 @@ substitution wrappers and proof scopes retain source traversal semantics;
 operator arguments remain leaves. Lint output contains only the newly generated
 warnings, ordinary warnings before elevated warnings, with exact source ranges
 and messages. Earlier semantic errors or elevated warnings prevent linting.
-Full ordinary parser diagnostic rendering and per-module semantic diagnostic
-accumulation remain audit work.
+Per-module semantic reporting uses accumulated diagnostics. Full ordinary
+parser diagnostic rendering remains audit work.
+
+The direct SANY Context and production EXTENDS conflict path share
+`sanyExtendConflict`. It preserves W4800/E4224, exact messages, incoming ranges
+and four structured parameters, including the prior location. Context merging
+returns false for incompatible node classes and retains the first binding.
+Class comparisons distinguish operator definitions, named facts, formal
+parameters, declarations and modules. Reused definitions require identical
+source-node identity and a parameter-free originating module; equal module
+names alone do not establish identity. The original Java TestContext method
+exercises this operation directly from the root package. Further semantic-node
+construction and traversal parity remains audit work.
 
 DelayedPrintStream releases a copied byte snapshot, flushes, then resets the
 buffer. Its byte-buffer operations synchronize separately; destination callbacks

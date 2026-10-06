@@ -48,6 +48,7 @@ type sanySemSymbol interface {
 	semLocal() bool
 	semOriginalModuleName() string
 	semPosition() Position
+	semBase() *sanySemSymbolBase
 }
 
 type sanySemSymbolBase struct {
@@ -57,8 +58,11 @@ type sanySemSymbolBase struct {
 	local              bool
 	originalModuleName string
 	pos                Position
+	source             sanySemSymbol
+	parameterized      bool
 }
 
+func (s *sanySemSymbolBase) semBase() *sanySemSymbolBase   { return s }
 func (s *sanySemSymbolBase) semName() string               { return s.name }
 func (s *sanySemSymbolBase) semKind() sanySemKind          { return s.kind }
 func (s *sanySemSymbolBase) semArity() int                 { return s.arity }
@@ -174,11 +178,31 @@ func (c *sanyContext) orderedSymbols() []sanySemSymbol {
 	return out
 }
 
-func (c *sanyContext) mergeExtendContext(imported *sanyContext) Diagnostics {
+func sanyContextImportKind(symbol sanySemSymbol) DeclarationKind {
+	switch symbol.semKind() {
+	case sanyUserDefinedOpKind, sanyBuiltInKind, sanyModuleInstanceKind:
+		return OperatorDecl
+	case sanyThmOrAssumpDefKind:
+		return semanticTheoremImportKind
+	case sanyConstantDeclKind:
+		return ConstantDecl
+	case sanyVariableDeclKind:
+		return VariableDecl
+	case sanyFormalParamKind:
+		return semanticFormalParamImportKind
+	case sanyModuleKind:
+		return InstanceDecl
+	default:
+		return DeclarationKind("BOUND_SYMBOL")
+	}
+}
+
+func (c *sanyContext) mergeExtendContext(imported *sanyContext) (bool, Diagnostics) {
 	var diags Diagnostics
 	if c == nil || imported == nil {
-		return diags
+		return true, diags
 	}
+	success := true
 	for _, entry := range imported.order {
 		sym := entry.sym
 		if sym == nil || sym.semLocal() {
@@ -192,21 +216,33 @@ func (c *sanyContext) mergeExtendContext(imported *sanyContext) Diagnostics {
 		if current.sym == sym || sanySameOriginalModule(current.sym, sym) {
 			continue
 		}
-		if current.sym.semKind() == sym.semKind() {
-			diags = append(diags, warningAt(sym.semPosition(), "W4801", "extended module symbol %s conflicts with another declaration or definition", sym.semName()))
-			continue
+		diagnostic := sanyExtendConflict(sym.semName(), sanyContextImportKind(sym), sym.semPosition(), sanyContextImportKind(current.sym), current.sym.semPosition())
+		diags = appendSanyDiagnostics(diags, diagnostic)
+		if diagnostic.Severity == SeverityError {
+			success = false
 		}
-		diags = append(diags, errorAt(sym.semPosition(), "E4801", "extended module symbol %s conflicts with a different kind of declaration or definition", sym.semName()))
 	}
-	return diags
+	return success, diags
+}
+
+func sanyOriginalSource(symbol sanySemSymbol) sanySemSymbol {
+	if source := symbol.semBase().source; source != nil {
+		return source
+	}
+	return symbol
 }
 
 func sanySameOriginalModule(a, b sanySemSymbol) bool {
-	if a == nil || b == nil {
+	if a == nil || b == nil || semanticImportClass(sanyContextImportKind(a)) != semanticImportClass(sanyContextImportKind(b)) {
 		return false
 	}
-	am, bm := a.semOriginalModuleName(), b.semOriginalModuleName()
-	return am != "" && bm != "" && am == bm
+	kind := a.semKind()
+	if kind != sanyUserDefinedOpKind && kind != sanyBuiltInKind && kind != sanyModuleInstanceKind && kind != sanyThmOrAssumpDefKind {
+		return false
+	}
+	as := sanyOriginalSource(a)
+	bs := sanyOriginalSource(b)
+	return as == bs && !as.semBase().parameterized
 }
 
 type sanyExternalModuleTable struct {

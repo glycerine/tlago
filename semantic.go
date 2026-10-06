@@ -1435,7 +1435,10 @@ type importedSymbol struct {
 }
 
 // Context compares Java semantic node classes, not TLC declaration levels.
-const semanticTheoremImportKind DeclarationKind = "THM_OR_ASSUMP"
+const (
+	semanticTheoremImportKind     DeclarationKind = "THM_OR_ASSUMP"
+	semanticFormalParamImportKind DeclarationKind = "FORMAL_PARAM"
+)
 
 func semanticDefinitionImportKind(definition Definition) DeclarationKind {
 	if definition.TheoremLike {
@@ -1450,13 +1453,17 @@ func semanticImportClass(kind DeclarationKind) string {
 		return "OpDefNode"
 	case semanticTheoremImportKind:
 		return "ThmOrAssumpDefNode"
+	case semanticFormalParamImportKind:
+		return "FormalParamNode"
+	case InstanceDecl:
+		return "ModuleNode"
 	default:
 		return "OpDeclNode"
 	}
 }
 
 func semanticImportDescription(kind DeclarationKind) string {
-	if kind == OperatorDecl {
+	if kind == OperatorDecl || kind == semanticFormalParamImportKind {
 		return "definition"
 	}
 	return "declaration"
@@ -1470,8 +1477,35 @@ func declarationSymbolPosition(declaration Declaration, name string) Position {
 }
 
 func sanySymbolLocation(position Position) string {
+	if position == (Position{}) {
+		return "Unknown location"
+	}
 	end := position.SourceEnd()
 	return fmt.Sprintf("line %d, col %d to line %d, col %d of module %s", position.Line, position.Column, end.Line, end.Column, moduleNameForSourcePosition(position))
+}
+
+type sanyDiagnosticLocation struct {
+	Position Position
+}
+
+func (location sanyDiagnosticLocation) String() string {
+	return sanySymbolLocation(location.Position)
+}
+
+// Context.mergeExtendContext's ErrorDetails retain structured parameters as
+// well as their rendered message. Both the parser and direct context use this.
+func sanyExtendConflict(name string, incomingKind DeclarationKind, incoming Position, existingKind DeclarationKind, existing Position) Diagnostic {
+	incomingDescription := semanticImportDescription(incomingKind)
+	existingDescription := semanticImportDescription(existingKind)
+	parameters := []any{incomingDescription, name, existingDescription, sanyDiagnosticLocation{Position: existing}}
+	diagnostic := errorAt(incoming, "E4224", "The %s of '%s' conflicts with \nits %s at %s.", parameters...)
+	if semanticImportClass(incomingKind) == semanticImportClass(existingKind) {
+		diagnostic = warningAt(incoming, "W4800", "Warning: the %s of '%s' conflicts with \nits %s at %s.", parameters...)
+	}
+	diagnostic.SANYRange = SanyRange{Begin: incoming, End: incoming.SourceEnd()}
+	diagnostic.SANYMessage = diagnostic.Message
+	diagnostic.SANYParameters = parameters
+	return diagnostic
 }
 
 func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Position, source string, seen map[string]importedSymbol, code string) Diagnostics {
@@ -1485,16 +1519,13 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 		if prev.pos == pos || prev.source == source {
 			return nil
 		}
-		incomingKind := semanticImportDescription(kind)
-		previousKind := semanticImportDescription(prev.kind)
-		message := fmt.Sprintf("The %s of '%s' conflicts with \nits %s at %s.", incomingKind, name, previousKind, sanySymbolLocation(prev.pos))
-		diagnostic := errorAt(pos, "E4224", "conflicting imported symbol %s has kinds %s and %s", name, prev.kind, kind)
-		if semanticImportClass(prev.kind) == semanticImportClass(kind) {
-			diagnostic = warningAt(pos, code, "the %s symbol %s from module %s conflicts with the same kind of imported symbol from module %s at %s; the first import is used", kind, name, source, prev.source, prev.pos)
-			message = fmt.Sprintf("Warning: the %s of '%s' conflicts with \nits %s at %s.", previousKind, name, previousKind, sanySymbolLocation(prev.pos))
+		diagnostic := sanyExtendConflict(name, kind, pos, prev.kind, prev.pos)
+		// Retain the native explanatory message separately from ErrorDetails.
+		if diagnostic.Severity == SeverityWarning {
+			diagnostic.Message = fmt.Sprintf("the %s symbol %s from module %s conflicts with the same kind of imported symbol from module %s at %s; the first import is used", kind, name, source, prev.source, prev.pos)
+		} else {
+			diagnostic.Message = fmt.Sprintf("conflicting imported symbol %s has kinds %s and %s", name, prev.kind, kind)
 		}
-		diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
-		diagnostic.SANYMessage = message
 		return Diagnostics{diagnostic}
 	}
 	seen[name] = importedSymbol{kind: kind, pos: pos, source: source}

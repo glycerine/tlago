@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-06 Direct original SANY Context test reconciliation:
+Continue faithful Java parity on master; new distributed architecture remains
+deferred. Replace the parser-fixture surrogate for
+TestContext.testDifferentSymbolClassesDiagnostic with its direct context merge
+in root sany_context_java_test.go. Preserve the original false result, exactly
+one error, E4224 code and incoming declaration/existing definition parameter
+assertions. Root placement permits private Context access; document that
+exception in sany_tests/README.md. No invented regression methods or TLC
+inventory credit; SANY is outside that inventory.
+
+The context merge now returns the source success flag and shares diagnostic
+construction with the production EXTENDS conflict path. Retain source W4800 /
+E4224, exact messages/ranges and four structured parameters; the prior location
+is retained as a location value with source rendering. Compare semantic node
+classes rather than declaration levels, including FormalParamNode and
+ModuleNode. Duplicate-definition suppression requires actual source identity
+and a parameter-free originating module, replacing equal-module-name inference.
+Adapt the existing native duplicate fixture to represent a real shared source;
+its assertions remain unchanged.
+
+Initial direct context/native selection passes 0.262 seconds, session 54887
+retired. Final initial selection passes root 0.248 / SANY 0.647 seconds, session
+95750 retired. Complete SANY package passes 1.236 seconds, session 46254 retired;
+root direct Context and existing semantic/CLI/XML/INSTANCE/elevated-warning/
+action-level/trace-writer selection passes 5.590 seconds, session 9858 retired.
+All use normal execution. All-package compilation also passes; log
+tlago-direct-context-compile.log. Logs under /mnt/oldrog/tmp:
+tlago-direct-context-focused.log, tlago-direct-context-verified.log,
+tlago-direct-context-full-sany.log and tlago-direct-context-root-final.log.
+
+Rebuild the existing scratch front-end helper. All sixteen EXTENDS observations
+and nine INSTANCE observations still match unchanged Java exactly, including
+counts, ranges, messages and order. Comparison sessions 24669 / 59416 return
+status 0 and are retired; logs tlago-direct-context-import-compare.log and
+tlago-direct-context-instance-compare.log. These are manual receipts, not new
+persistent tests or inventory credit. Full workspace 15749 remains live on
+7d712b0, before INSTANCE and direct Context corrections; LSB 32959 remains live
+on its recorded storage snapshot. Neither is restarted or claimed as current
+full-suite success. Remaining ordinary parser diagnostics, generation traversal,
+multi-binding context iteration and semantic-node construction require further
+faithful work. Goal remains incomplete.
+
 2026-10-06 INSTANCE symbol binding conflicts:
 Previous goal turn made progress in `7d712b0`. Full normal workspace session
 15749 and unchanged full LSB draft session 32959 are confirmed live; preserve

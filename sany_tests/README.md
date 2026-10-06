@@ -8,7 +8,10 @@ Fixtures and corpus inputs are mirrored under `sany_tests/test_vectors/tla2sany/
 Do not use a `testdata/` directory here; local cleanup/fuzzer workflows may
 delete it.
 
-Each Java `@Test` method should have a corresponding Go test in this directory.
+Each Java `@Test` method should have a corresponding Go test. Most translations
+live in this directory. The direct `semantic.TestContext` translation lives in
+root `sany_context_java_test.go` to access the private Context implementation and
+check the original merge result, error code and structured parameters.
 Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
