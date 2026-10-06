@@ -98,7 +98,8 @@ Focused verification:
 | Recovery/seed ordering: original simulation/recovery/CodePlex models | Pass | 298.728 seconds, session `62916` retired; focused component checks 6.354 seconds |
 | Remaining 186 TLC tests after original off-heap class isolation | Pass | 125.929 seconds, session `14660` retired; retains full index/long bounds |
 | Missing MP diagnostic templates: original MP/warning checks and trace/liveness models | Pass | 0.014 / 1.900 seconds, sessions `38266` / `93875` retired |
-| Latest all-package compilation | Pass | Session `12720` retired |
+| Complete source MP formatter: original message checks and representative original models | Pass | 0.024 / 2.307 seconds; sessions `73053` / `61273` retired |
+| Latest all-package compilation | Pass | Session `18137` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -171,6 +172,15 @@ Back-to-state and debug-state formatting retain source tool/debug branches.
 Unknown codes use Java's wrong-invocation diagnostic. Manual source/native
 observations match 1,344 rows across those branches; original tests pass.
 The 186-test remainder is retired with status 0. The fresh full workspace run below is pending after these production corrections.
+
+The full MP template-construction/substitution method now follows all 245 Java
+cases. Literal append sequences are generated; conditional cases preserve exact
+argument counts, tool/debug progress text and pre-substitution PID checks. Normal
+and nullable calls share source sequential replacement. Original MP/warning
+checks pass in 0.024 seconds; original trace/checkpoint/debugger/override models
+pass in 2.307 seconds; all packages compile. Manual source/native matrices match
+all case/count/debug branches and public nullable substitutions. The running
+workspace snapshot below predates this final formatter correction.
 
 Current normal verification jobs:
 

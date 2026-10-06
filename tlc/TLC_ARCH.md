@@ -2,13 +2,27 @@
 
 ## Message formatting
 
-MP storage, metadata, CHOOSE, liveness and trace diagnostics retain their original
-text, spelling, newlines and missing-parameter placeholders. Message class reaches
-normal and nullable formatting: pool-cleanup ERROR and WARNING have different
-text, while NONE has no body. Back-to-state formatting follows tool mode, state
-fingerprint text follows the captured debug property, and temporal violations
-retain the original zero/single/plural wording. Unknown codes return Java's
-wrong-invocation diagnostic. Recorder and console boundaries remain separate.
+`MP.getMessage0` first constructs a template, then substitutes parameters in
+order. The port follows those two steps for normal and nullable calls. Missing
+arguments keep their markers; replacement stops at the first null. A parameter
+can introduce a later marker, which is then substituted. Preserve malformed
+source markers literally, including the missing final percent in the argument
+mismatch diagnostic.
+
+All 245 source cases are covered: `output_mp_generated.go` contains the 225
+literal append sequences, and `output_mp.go` ports the 20 conditional cases.
+`go generate` in package `tlc` reads pinned sibling Java MP.java/EC.java. The
+strict generator rejects unfamiliar expressions, changed case counts and any
+change in the manually ported conditional source digest. It needs no Java VM.
+
+Argument counts select the source's exact branches, including empty bodies for
+unsupported counts. Message class distinguishes pool cleanup's error/warning
+text. Tool mode selects simulation/DFID progress and back-to-state text; debug
+mode selects state fingerprint text. Banner PID presence is checked against
+original parameters before substitution: null counts as present, an empty string
+does not, and a missing element raises the source array-bounds exception. Unknown
+codes retain Java's wrong-invocation diagnostic. Recorder and console boundaries
+remain separate.
 
 ## Runner completion and memory reporting
 
