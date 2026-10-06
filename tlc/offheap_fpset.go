@@ -28,6 +28,13 @@ type offHeapSynchronizer struct {
 
 var offHeapGlobalSync = newOffHeapSynchronizer()
 
+// InitializeOffHeapDiskFPSetStatics represents a fresh Java classloader's
+// singleton eviction barrier. Call only when the previous runtime's workers
+// have joined; ordinary FPSet construction and close retain source lifetime.
+func InitializeOffHeapDiskFPSetStatics() {
+	offHeapGlobalSync = newOffHeapSynchronizer()
+}
+
 func newOffHeapSynchronizer() *offHeapSynchronizer {
 	s := &offHeapSynchronizer{
 		sets:    NewInsMap[*OffHeapDiskFPSet, struct{}](),

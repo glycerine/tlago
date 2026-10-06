@@ -89,7 +89,8 @@ Focused verification:
 | Simulation argument correction: original CLI classes and existing scheduler check | Pass | 0.017 / 0.016 seconds |
 | DFID/fingerprint CLI branches: original CLI classes and four DFID model methods | Pass | 0.016 / 1.529 seconds |
 | CheckImplFile/parser and MP.getError correction: original MP/CLI classes | Pass | 0.016 seconds |
-| Latest all-package compilation | Pass | Session `56271` retired |
+| Ant class isolation: original 48-worker TLCGetAll then five-second checkpoint | Pass | 5.329 seconds, session `10096` retired |
+| Latest all-package compilation | Pass | Session `67671` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -133,10 +134,13 @@ Poll these handles before launching duplicate suites. The workspace run at `d611
 in `TestJavaCheckpointWhenTimeBound`; TLC passed in 820.531 seconds and SANY
 in 1.057 seconds. The log is `tlago-source-ant-fpset-workspace.log` under
 `/mnt/oldrog/tmp`. The source Ant runner forks each test class; the Go model
-helper currently retains the off-heap static barrier from the earlier 48-worker
-`TLCGetAll` model. Focused original sequence `17783` is live to reproduce this
-setup difference. Correct the source-fork isolation before another workspace run.
-The workspace snapshot predates later corrections. The completed broader fingerprint receipt includes
+helper had retained the off-heap static barrier from the earlier 48-worker
+`TLCGetAll` model. Focused original sequence `17783` reproduced the wait and is
+retired with status 1. The model setup now initializes a fresh off-heap singleton,
+matching the source fork. Ordinary runtime registration remains unchanged. The
+same original sequence passes in 5.329 seconds (`10096` retired), retaining all
+workers, interval settings, time bound and assertions. The failed workspace
+snapshot predates this setup correction and later production corrections. The completed broader fingerprint receipt includes
 the original 99,999,999-entry index method and retains all source bounds.
 No job in this table has full-run credit yet. None uses `-race`.
 

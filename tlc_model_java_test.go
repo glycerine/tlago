@@ -148,6 +148,10 @@ func runJavaTLCModelTestWithRunnerSetup(t *testing.T, name, root string, argumen
 	tlc.InitializeIntValueStatics()
 	tlc.InitializeActionItemListStatics()
 	tlc.InitializeFPIntSetStatics()
+	// Ant forks each concrete model test class into a fresh JVM. The source
+	// off-heap singleton only increases its registered worker count within
+	// that runtime, so a prior class must not retain its barrier here.
+	tlc.InitializeOffHeapDiskFPSetStatics()
 	tlc.SetMainChecker(nil)
 	tlc.SetSimulator(nil)
 	tlc.Globals.Continuation = false

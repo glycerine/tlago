@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-06 restore Ant per-class off-heap static isolation:
+Workspace timeout 85256 was TestJavaCheckpointWhenTimeBound (not a separate
+debugger test; the shared model helper enables debugger instrumentation). Java's
+OffHeapSynchronizer Phaser is intentionally singleton, starts with one party and
+only increases its registered count. Earlier TLCGetAll uses availableProcessors
+(48 here); the following one-worker infinite-state checkpoint model fills a
+512k-budget nested set and waits forever if that earlier class's static survives.
+Ant test-dist explicitly forks perTest. The prior Go MSB substitution obscured
+this omitted source-runner isolation; d611cba restored source off-heap settings.
+
+Unchanged original TLCGetAll/CheckpointWhenTimeBound sequence reproduces the
+wait: 17783 terminal 1, timeout 30s, /mnt/oldrog/tmp/tlago-ant-phaser-before.log.
+Add InitializeOffHeapDiskFPSetStatics as the native fresh-classloader operation,
+and call it in the shared original model-test setup alongside the existing
+intern/int/action/FPInt static initialization. The ordinary runtime's monotone
+barrier registration remains unchanged; no speculative deregistration/redesign,
+changed workers, bounds, assertions, new tests or inventory credit. Initialization
+requires previous runtime workers to have joined, as documented at its boundary.
+
+The same two original tests now pass 5.329s (10096 terminal 0), retaining all 48
+TLCGetAll workers and the checkpoint test's original five-second stopAfter,
+35791-minute interval and full event assertions. Log:
+/mnt/oldrog/tmp/tlago-ant-phaser-after.log. Final all-package compilation passes
+(67671 terminal 0). Normal checks, without -race. Failed workspace 85256 is retired;
+its TLC 820.531s/SANY 1.057s package passes remain scoped to d611cba. A new normal
+workspace run is warranted now that its demonstrated setup discrepancy is fixed.
+Random 63113/59782 remain live at a915e08, without full-run credit.
+
+
 2026-10-06 CheckImplFile command-line source parity:
 The separate Java trace-checking command does not accept worker auto; Go shared
 TLC's worker helper. Restore signed-32-bit parsing and source message codes for
