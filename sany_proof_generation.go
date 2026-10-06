@@ -155,7 +155,16 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 	scopes := map[int]map[string]Position{}
 	pendingSuffices := map[int]*AssumeProve{}
 	pendingPicks := map[int][]BoundVar{}
+	previousInfixRHS := map[int]Expr{}
 	for _, step := range proof.Steps {
+		for depth := range previousInfixRHS {
+			if depth > step.Depth {
+				delete(previousInfixRHS, depth)
+			}
+		}
+		if step.Kind != "ASSERT" || step.AssumeProveBody != nil {
+			delete(previousInfixRHS, step.Depth)
+		}
 		for depth, bounds := range pendingPicks {
 			if step.Depth <= depth {
 				if scopes[depth] == nil {
@@ -290,7 +299,23 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			}
 			diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
 		} else {
+			infix, isInfix := step.Expr.(*BinaryExpr)
+			isInfix = isInfix && infix.Syntax != nil && infix.Syntax.Kind.JavaName() == "N_InfixExpr"
+			if step.Kind == "ASSERT" && !step.Suffices && isInfix {
+				if left, ok := infix.Left.(*IdentExpr); ok && left.Name == "@" && left.Syntax != nil && left.Syntax.Kind.JavaName() == "N_GeneralId" {
+					heirs := left.Syntax.GetHeirs()
+					if len(heirs) == 2 && len(heirs[0].GetHeirs()) == 0 && heirs[1].Kind.JavaName() == "IDENTIFIER" {
+						left.proofAtTarget = previousInfixRHS[step.Depth]
+					}
+				}
+			}
 			diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
+			if step.Kind == "ASSERT" && !step.Suffices {
+				delete(previousInfixRHS, step.Depth)
+				if isInfix && sanyExpressionGenerationFailure(step.Expr) == sanyGenerationSucceeded {
+					previousInfixRHS[step.Depth] = infix.Right
+				}
+			}
 		}
 		for _, expression := range step.Exprs {
 			diags = append(diags, g.proofExpression(expression, current, nil)...)

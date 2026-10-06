@@ -279,7 +279,12 @@ Operator-operand selection now rejects named prefix arguments before generating
 those arguments or resolving later components, preserving the null result and
 subsequent constructor/substitution arity diagnostics. Nine bounded symbolic
 comparisons cover this shared higher-order and substitution boundary. Proof `@`
-shorthand remains a production gap exposed by the complete root gate. Module namespace
+shorthand exposed by the complete root gate now retains the actual previous
+infix RHS as a `$Nop` reference, without regenerating that expression. Per-depth
+proof histories preserve nested scopes and the source reset rules. Undefined
+`@` emits Java's diagnostic and nullOAN result. Eleven bounded diagnostic
+comparisons and the unchanged native proof-assertion test pass. Complete proof
+level-node/graph reconciliation remains work. Module namespace
 resolution, typed NEW/bound contexts, general failure boundaries and hierarchical
 proof level checks remain work. Existing corpus passes do not establish complete proof-graph or Generator
 parity. The fixed-parameter comparison selects 121 primary fixtures; earlier prose

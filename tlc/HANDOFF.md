@@ -94,7 +94,13 @@ Prioritize these failures before further feature work. Do not weaken the origina
 trace assertions or change worker settings. The original fixture and proposed
 Naturals imports have separate Java source comparisons; automatic approval review
 rejected both proposed native fixture edits. Explicit authorization is pending.
-No fixture edit was applied. No current complete workspace pass is claimed.
+No fixture edit was applied. Proof `@` generation is now corrected: the unchanged
+native case passes in 0.023 seconds and 11 bounded Java comparisons match. The
+trace failures remain unresolved. Ten normal repetitions passed, but 100 further
+repetitions reproduced one JSON auto-worker mismatch in 155.708 seconds. Preserve
+that failure receipt; passing repeats alone do not prove a fix. Compare Java's
+actual checker behavior before changing constraint or invariant handling.
+No current complete workspace pass is claimed.
 
 Latest focused verification:
 
@@ -431,6 +437,15 @@ expressions and subsequent constructor/substitution errors. Existing 31 INSTANCE
 58 statement and 50 symbol observations still match. Complete SANY passes in
 1.838 seconds; focused existing classes pass in 13.960 seconds. Receipts use
 `/mnt/oldrog/tmp/tlago-proof-instance-symbolic-*.log`. No inventory credit.
+
+Proof assertion `@` references now retain the preceding infix RHS per proof depth,
+matching generateProof's `$Nop` reuse without repeating prior diagnostics. Nested
+proofs keep independent history; non-assertion and ASSUME/PROVE steps reset it.
+SUFFICES expression behavior follows the source branch. Undefined `@` retains
+Java's exact diagnostic and nullOAN result. Existing SANY passes in 1.894 seconds;
+focused classes pass in 14.423 seconds. Receipts use
+`/mnt/oldrog/tmp/tlago-proof-at-*.log`. Complete proof-level/graph parity remains
+unproven; these scratch observations add no test inventory credit.
 
 After the full-run failures are resolved, continue proof INSTANCE inherited-context/constructor identity and level checks,
 original hierarchical proof level checks,

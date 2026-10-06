@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-06 Proof @ generation and trace failure reproduction:
+Previous turn made progress in 795594a and retired full root 99670 with five
+failures. Start from clean master; no long full gate is running. Fixture import
+approval is still pending and no fixture was modified. Prioritize the original
+multi-worker trace tests and the production proof @ failure.
+
+Run the two unchanged JSON auto-worker methods ten times normally: 63460 returns
+terminal 0. A further 100-repeat normal run, 50988 terminal 1 in 155.708 seconds,
+reproduces TestJavaSafetyDumpLoadTraceJSONAutoWorkers at position 6. Dump action
+is empty big; loaded action is pour big to small. Receipt:
+/mnt/oldrog/tmp/tlago-trace-roundtrip-reproduce-100.log. Source Worker.doPostCondition
+uses successor trace history while printed output uses predecessor history;
+these are separate original paths. Source Worker.addElement also checks invariants
+on out-of-model successors. Inspect these boundaries and trace replay constraints
+before changing production; suppressing invariant checks to force a prefix would
+be a shortcut. No trace fix is claimed. Original trace methods, bounds, workers
+and assertions remain unchanged. Inventory mapping counts measure translations;
+add an explicit execution qualification to DumpLoadTraceTest rather than claim
+that passing repetitions prove the class green.
+
+Source Generator.generateProof implements @ on the bare left side of an infix
+assertion by constructing $Nop(previous RHS). Retain that original expression
+reference in generation, without regenerating it or repeating diagnostics.
+Maintain previous RHS per proof depth; non-assertion and ASSUME/PROVE steps reset
+history, nested proofs have their own history, and SUFFICES expression branches
+follow the original behavior. Undefined @ now carries the exact Java message and
+nullOAN generation result, while its native summary remains stable.
+
+Final normal verification, terminal 0:
+- Eleven complete Java diagnostic observations, including valid chains, missing
+  predecessors, reset steps, nested scopes, SUFFICES and previous-body errors:
+  79684. Receipt /mnt/oldrog/tmp/tlago-proof-at-audit.log; scratch sources remain
+  outside the repository. No permanent tests were invented.
+- Unchanged native proof assertion @ case: 0.023 seconds, 56176.
+- Established 58 statement (26617) and 49 reference (83535) observations still match.
+- Complete existing SANY: 1.894 seconds, 50607.
+- Existing native classes, original ParseErrorTests and unchanged
+  EWD998ChanDebugger: 14.423 seconds, 90105.
+- All-package compilation and git diff --check pass. Receipts use
+  /mnt/oldrog/tmp/tlago-proof-at-{native,sany,focused,statements,references,compile}.log.
+This repairs one full-gate failure; two native invalid-import snippets still await
+explicit approval, and the two original trace failures need faithful reconciliation.
+No current complete workspace pass, new test-port credit or complete proof-level
+parity is claimed.
+
 2026-10-06 Operator selector prefix boundary and full-root failures:
 Previous turn made progress in 01ac766. Start from clean master and initially
 confirm root 99670 live. Source selectorToNode rejects prefix arguments when

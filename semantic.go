@@ -3387,6 +3387,13 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if e.proofAtTarget != nil {
+			// generateProof constructs $Nop with the already-generated previous
+			// RHS. Do not regenerate it or repeat its diagnostics in this scope.
+			arity := 0
+			e.generationArity = &arity
+			return nil
+		}
 		if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.proofStepKind != "" {
 			if symbol.proofStepKind == "DEFINE" || symbol.proofStepKind == "USE" || symbol.proofStepKind == "HIDE" || symbol.proofStepKind == "INSTANCE" {
 				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
@@ -3449,7 +3456,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 		if _, ok := defined[e.Name]; !ok {
 			if e.Name == "@" {
-				diags = append(diags, errorAt(e.Pos, "E4261", "@ may only be used inside a function EXCEPT replacement"))
+				diagnostic := errorAt(e.Pos, "E4261", "@ may only be used inside a function EXCEPT replacement")
+				diagnostic.SANYMessage = "@ used where its meaning is not defined."
+				diagnostic.SANYRange = SanyRange{Begin: e.Pos, End: e.Pos.SourceEnd()}
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				diags = append(diags, diagnostic)
 				return diags
 			}
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)

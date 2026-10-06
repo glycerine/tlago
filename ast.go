@@ -254,8 +254,9 @@ type Expr interface {
 
 type IdentExpr struct {
 	SanyExprSource
-	Name string
-	Pos  Position
+	proofAtTarget Expr // Generated $Nop operand reuses the previous infix RHS.
+	Name          string
+	Pos           Position
 }
 
 func (e *IdentExpr) Position() Position { return e.Pos }
