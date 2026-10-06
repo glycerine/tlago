@@ -19,6 +19,12 @@ boundary as native FPSet put/contains; a false ordering invariant is distinct
 from an I/O failure. The invariant scan also propagates source finally-close
 failures. Flusher IOException wrapping and rename runtime causes preserve
 Java's exception boundaries.
+Off-heap sequential and concurrent merges share the source outer flusher
+lifecycle, including reader seek/pool close, full preallocation, temporary-file
+replacement and early file-count publication. Its eviction entry point converts
+checked merge I/O into `OffHeapRuntimeException`; public invariant validation
+keeps the separate checked-I/O boundary. Neither path silently recreates removed
+metadata directories or reopens readers after a failed rename.
 See `HANDOFF.md` for current verification snapshots and live jobs.
 
 

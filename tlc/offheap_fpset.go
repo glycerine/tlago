@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -457,6 +456,9 @@ func (s *OffHeapDiskFPSet) evictLocked() error {
 	}
 	itr := newOffHeapIterator(s.array, atomic.LoadInt64(&s.tblCnt), 0, s.indexer, true)
 	if err := s.mergeOffHeapIteratorWithFlusher(offHeapMergeIterator{atomic.LoadInt64(&s.tblCnt), itr.markNext, itr.hasNext}, flusher); err != nil {
+		if isJavaIOException(err) {
+			return newOffHeapRuntimeException(err)
+		}
 		return err
 	}
 	ok, err := s.checkOffHeapIndex()
@@ -493,20 +495,32 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIterator(itr offHeapMergeIterator) error 
 	return s.mergeOffHeapIteratorWithFlusher(itr, nil)
 }
 
-func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeIterator, flusher *offHeapConcurrentFlusher) error {
+func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeIterator, flusher *offHeapConcurrentFlusher) (err error) {
+	// DiskFPSet.Flusher.flushTable wraps checked I/O failures from the entire
+	// merge/replacement lifecycle, while Assert runtime failures pass through.
+	defer func() {
+		if isJavaIOException(err) {
+			err = NewIOException("Error: merging entries into file " + s.fpFilename + "  " + javaThrowableString(err))
+		}
+	}()
 	newIndex := make([]uint64, s.calculateOffHeapIndexLen(itr.elements))
-	if err := os.MkdirAll(filepath.Dir(s.tmpFilename), 0o755); err != nil {
-		return err
+	for _, reader := range s.braf {
+		if err := reader.Seek(0); err != nil {
+			return err
+		}
 	}
+	for _, reader := range s.brafPool {
+		if err := reader.Close(); err != nil {
+			return err
+		}
+	}
+	_ = os.Remove(s.tmpFilename)
 	out, err := NewBufferedRandomAccessFile(s.tmpFilename, "rw")
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-	outLength := int64(0)
-	if flusher != nil {
-		outLength = (itr.elements + atomic.LoadInt64(&s.fileCnt)) * fpSetLongSize
-	}
+	outLength := (itr.elements + atomic.LoadInt64(&s.fileCnt)) * fpSetLongSize
 	if err := out.SetLength(outLength); err != nil {
 		return err
 	}
@@ -533,6 +547,8 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 	if err := s.writeIndex(newIndex, out, length/fpSetLongSize-1); err != nil {
 		return err
 	}
+	s.index = newIndex
+	atomic.AddInt64(&s.fileCnt, itr.elements)
 	if err := out.Close(); err != nil {
 		return err
 	}
@@ -541,14 +557,11 @@ func (s *OffHeapDiskFPSet) mergeOffHeapIteratorWithFlusher(itr offHeapMergeItera
 		return err
 	}
 	if err := replaceFile(s.tmpFilename, s.fpFilename); err != nil {
-		_ = s.openBRAFReaders(readerCnt, poolCnt)
-		return err
+		return newTLCRuntimeExceptionWithCause(ECSystemUnableNotRenameFile, bufferedRandomAccessFileIOError(err))
 	}
 	if err := s.openBRAFReaders(readerCnt, poolCnt); err != nil {
 		return err
 	}
-	s.index = newIndex
-	atomic.AddInt64(&s.fileCnt, itr.elements)
 	return nil
 }
 

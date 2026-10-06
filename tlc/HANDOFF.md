@@ -77,6 +77,15 @@ bodies pass in 0.055 seconds; all packages compile. No tests or assertions were
 changed. The two full-suite receipts above predate this follow-up and must remain
 scoped to their compiled snapshots.
 
+The subsequent off-heap lifecycle correction applies the same source flusher
+rules: seek worker readers and close pooled readers before creating the temporary
+file, preallocate sequential and concurrent output, publish the new index/count
+before file replacement, retain coded rename causes, and wrap eviction I/O failures
+in `OffHeapRuntimeException`. All 22 short original eviction/offset/merge cases
+pass on final code in 0.077 seconds; all packages compile. The unchanged large
+write-index method was already covered by the full suites above; this focused
+receipt does not claim a new full-class or full-workspace run.
+
 Current normal stress verification jobs:
 
 | Job | Source snapshot | Session | Log under `/mnt/oldrog/tmp` |
@@ -158,7 +167,7 @@ configured stress audits, or Java failures as completed translations.
 ignored methods are translated in `tlc_dump_load_trace_java_test.go`. The whole
 unchanged Java class and the Go class passed. The Go class also passed its
 previous focused race run. Those class receipts predate the final counter-lock
-correction; the normal workspace receipt above verifies the final code.
+correction; the normal workspace receipt above verifies that counter correction.
 Historical Java replay failures under deliberately paced scheduling remain
 valid evidence. Current passing runs do not establish stability under every
 possible schedule.

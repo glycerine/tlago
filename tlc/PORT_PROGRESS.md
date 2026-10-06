@@ -1,5 +1,23 @@
 # TLC Port Progress
 
+2026-10-06 off-heap outer flusher lifecycle correction:
+Source comparison with DiskFPSet.Flusher and OffHeapMSBFlusher found conditional
+preallocation, missing pool-close order, directory recreation, raw rename/I/O
+failures, and late count publication in the Go outer merge. Apply Java's shared
+lifecycle to both sequential/concurrent variants: seek all worker readers,
+close pooled readers, delete the temporary file, preallocate full length,
+stream/write the index and update fileCnt before close/replace/reopen. Keep
+Assert rename runtime cause and Flusher IOException message. Eviction wraps
+checked I/O in the existing OffHeapRuntimeException family; public invariant
+validation retains its separate checked-I/O boundary. No new tests or changed
+assertions. Final 22 short original OffHeap cases pass 0.077s (83309 terminal 0);
+all packages compile (13152 terminal 0). The large original writeIndex method
+is unchanged and was covered by the earlier full suites; no new full-class pass
+claimed. MSB 63113 and LSB 59782 remain live on a915e08; latest logs show roughly
+1.11 billion and 602 million iterations without reported failures. No new
+translation credit, timeout, reduced bounds or race instrumentation.
+
+
 2026-10-06 full suite receipts and scan IOException propagation:
 Full workspace 44100 returns terminal status 0 on cbdf35a: root 1,706.569s,
 SANY 1.068s, TLC 781.592s, CLI has no test files. Log:
