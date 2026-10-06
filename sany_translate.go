@@ -29,13 +29,8 @@ func CheckSanySource(file, source string) (*Spec, Diagnostics) {
 
 func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, Diagnostics) {
 	mod, diags := ParseSanyModuleSource(file, source)
-	loader := &sanyLoader{
-		opts:    opts,
-		modules: map[string]*Module{},
-		loading: map[string]bool{},
-		loaded:  map[string]bool{},
-		rootDir: ".",
-	}
+	loader := newSanyLoader(opts)
+	loader.rootDir = "."
 	if file != "" {
 		loader.moduleFiles = append(loader.moduleFiles, file)
 		rootPath := file
@@ -45,12 +40,24 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 		loader.rootDir = filepath.Dir(rootPath)
 	}
 	loader.registerModuleRecursive(mod)
+	if mod != nil {
+		loader.registerLoadUnit(mod, file)
+	}
 	if diags.HasErrors() {
 		spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
 		return spec, diags
 	}
 	if mod != nil {
-		loader.loadDependencies(mod)
+		func() {
+			defer func() {
+				if failure := recover(); failure != nil {
+					if _, ok := failure.(*sanyParseAbort); !ok {
+						panic(failure)
+					}
+				}
+			}()
+			loader.loadDependencies(mod)
+		}()
 		diags = append(diags, loader.diags...)
 	}
 	spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
@@ -80,8 +87,10 @@ type sanyLoader struct {
 	opts            LoadOptions
 	modules         map[string]*Module
 	diags           Diagnostics
-	loading         map[string]bool
-	loaded          map[string]bool
+	parseUnits      map[string]*sanyLoadUnit
+	moduleUnits     map[*Module]*sanyLoadUnit
+	moduleParents   map[*Module]*Module
+	moduleBindings  map[*Module]map[string]*Module
 	semanticOrder   []string
 	moduleFiles     []string
 	rootDir         string
@@ -133,10 +142,12 @@ func LoadSanySpec(root string, opts LoadOptions) (spec *Spec, diags Diagnostics)
 
 func newSanyLoader(opts LoadOptions) *sanyLoader {
 	return &sanyLoader{
-		opts:    opts,
-		modules: map[string]*Module{},
-		loading: map[string]bool{},
-		loaded:  map[string]bool{},
+		opts:           opts,
+		modules:        map[string]*Module{},
+		parseUnits:     map[string]*sanyLoadUnit{},
+		moduleUnits:    map[*Module]*sanyLoadUnit{},
+		moduleParents:  map[*Module]*Module{},
+		moduleBindings: map[*Module]map[string]*Module{},
 	}
 }
 
@@ -167,7 +178,7 @@ func (l *sanyLoader) loadSpec(root string) (*Spec, Diagnostics) {
 	}
 	rootMod := l.loadPath(rootPath, false, rootFilename)
 	l.rootModule = rootMod
-	if rootMod != nil {
+	if rootMod != nil && !l.diags.HasErrors() {
 		sourceExtendsLen := len(rootMod.Extends)
 		rootMod.Extends = appendModuleNames(rootMod.Extends, l.opts.ExtraModules...)
 		rootMod.ImplicitExtends = append([]string(nil), rootMod.Extends[sourceExtendsLen:]...)
@@ -200,30 +211,9 @@ func appendModuleNames(names []string, extra ...string) []string {
 	return names
 }
 
-func (l *sanyLoader) loadDependencies(mod *Module) {
-	if mod == nil {
-		return
-	}
-	if l.loading[mod.Name] {
-		l.diags = append(l.diags, errorAt(mod.Pos, "E4222", "circular module dependency involving %s", mod.Name))
-		return
-	}
-	if l.loaded[mod.Name] {
-		return
-	}
-	l.loading[mod.Name] = true
-	for _, dep := range moduleSemanticImports(mod) {
-		depMod := l.loadModule(dep, moduleSemanticImportOwner(mod, dep))
-		l.loadDependencies(depMod)
-	}
-	l.loading[mod.Name] = false
-	l.loaded[mod.Name] = true
-	l.semanticOrder = append(l.semanticOrder, mod.Name)
-}
-
 func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
-	if mod := l.modules[name]; mod != nil {
-		return mod
+	if unit := l.parseUnits[name]; unit != nil {
+		return unit.root
 	}
 	if l.opts.FilenameResolver != nil {
 		file := l.opts.FilenameResolver.Resolve(name+".tla", true)
@@ -251,6 +241,7 @@ func (l *sanyLoader) loadModule(name string, importer *Module) *Module {
 		if mod.Name != "" {
 			setModuleLibraryRecursive(mod, true)
 			l.modules[mod.Name] = mod
+			l.registerLoadUnit(mod, name+".tla")
 		}
 		return mod
 	}
@@ -313,6 +304,7 @@ func (l *sanyLoader) loadPath(path string, standard bool, logicalFilename string
 		}
 	}
 	l.registerModuleRecursive(mod)
+	l.registerLoadUnit(mod, logicalFilename)
 	return mod
 }
 
@@ -510,7 +502,7 @@ func sanyNodePosition(node *SanySyntaxNode) Position {
 }
 
 func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnostics) {
-	mod := &Module{Name: SanyModuleName(root), SourcePath: file}
+	mod := &Module{Name: SanyModuleName(root), SourcePath: file, Syntax: root}
 	if root != nil {
 		mod.Pos = sanyNodePosition(root)
 	}
@@ -678,27 +670,6 @@ func moduleImports(mod *Module) []string {
 		}
 	}
 	return imports
-}
-
-// Flattening dependencies must retain their importing module for module-only
-// locations in SpecObj's unrecoverable missing-file diagnostics.
-func moduleSemanticImportOwner(mod *Module, name string) *Module {
-	if mod == nil {
-		return nil
-	}
-	own := *mod
-	own.Nested = nil
-	for _, imported := range moduleSemanticImports(&own) {
-		if imported == name {
-			return mod
-		}
-	}
-	for _, nested := range mod.Nested {
-		if owner := moduleSemanticImportOwner(nested, name); owner != nil {
-			return owner
-		}
-	}
-	return nil
 }
 
 func moduleSemanticImports(mod *Module) []string {

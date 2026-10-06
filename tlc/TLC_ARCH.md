@@ -59,6 +59,27 @@ catches runtime Exception, prints its stack to System.err and retains the buffer
 Error propagates. Successful reset discards bytes appended during release.
 ToolIO's string capture does not intercept source inherited raw-byte writes.
 
+## Module loading and parse-unit relationships
+
+The loader follows SpecObj's unresolved-name loop, restarting at the root after
+each binding. It exhausts EXTENDS before searching INSTANCE and checks a
+module's direct unresolved names before traversing resolved extendees,
+instancees and inner modules. INSTANCE traversal retains source syntax order,
+including LET definitions. Inner names obey declaration visibility; only
+EXTENDS exports inner modules.
+
+A parse unit represents one source file. Its ordered extendee and instancee
+relationships drive cycle checking and semantic ordering; inner modules do not
+become independent external processing or lint iterations. Preserve the source
+extendee-vector mutation during cycle traversal and its short-circuit search
+flag behavior. E4222 aborts retain the complete filename cycle.
+
+Nested definitions see preceding inherited INSTANCE bindings with their actual
+source positions, node kinds and arities. After generating an inner module's
+body, SymbolTable.addModule also checks the already generated external module
+table; its conflict retains source E4223. Further semantic graph construction,
+context iteration and generation traversal remain audit work.
+
 ## Checker construction
 
 Parent construction creates coverage cost models, initializes liveness, caches

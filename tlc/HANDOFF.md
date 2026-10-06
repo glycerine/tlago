@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `d6e88c6`.
+Updated: October 6, 2026. Full-workspace verification baseline: `7d712b0`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,68 +47,36 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The latest completed full normal workspace suite passes on `d6e88c6`:
+The latest completed full normal workspace suite passes on `7d712b0`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,531.402 seconds |
-| SANY tests | Pass | 1.082 seconds |
-| TLC | Pass | 787.645 seconds |
+| Root package | Pass | 1,519.135 seconds |
+| SANY tests | Pass | 1.147 seconds |
+| TLC | Pass | 787.539 seconds |
 | CLI command | No test files | — |
 
-Session `83804` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-cli-loading-workspace.log`. This run preserves all original
-bounds and uses no race instrumentation. It includes the source MP formatter,
-throwable/debug boundaries, Java-shaped CLI and deferred config-before-SANY
-loading. It predates `7e89fcb` and the latest checker-constructor correction.
-Historical full-suite receipts belong in `PORT_PROGRESS.md`. Full normal
-workspace session `46724` returned status 1 and is retired. Its lint snapshot
-predates the latest storage and simulator corrections. Root failed the original
-`TestJavaLiveCheckSimulationExample1`; TLC failed the unchanged long disk queue
-when the old temporary volume ran out of space. SANY passed. Log:
-`/mnt/oldrog/tmp/tlago-sany-lint-workspace.log`. The simulator directory ownership
-has now been corrected to match Java. Future full runs must set **both**
-`GOTMPDIR` and `TMPDIR` to the large workspace `.codex-gotmp` directory.
-Full normal workspace session `95632` returned status 1 and is retired. Root
-passes in 1,526.156 seconds; SANY passes in 1.093 seconds. TLC fails after
-719.704 seconds at the native injected-tool runner cleanup test, because its
-metadata directory was not prepared. The adapter now creates its directory
-after precleaning, preserving Java's strict storage constructors and parsed
-command/recovery paths. Focused verification passes without changing that test.
-This snapshot predates subsequent semantic reporting, level-phase and import
-context corrections. Log: `/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`.
+Session `15749` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-import-context-workspace.log`. This verifies its recorded
+snapshot with original bounds and normal execution. It predates the subsequent
+INSTANCE, direct Context, file-loading abort and module-loading corrections.
+Historical failed and successful receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `15749` is live on the `7d712b0` production
-snapshot, before the subsequent INSTANCE and direct Context corrections. It retains
-original bounds, failfast and a 60-minute timeout,
-without race instrumentation. Both temporary variables use workspace
-`.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-import-context-workspace.log`.
-No full-suite success is claimed until this same handle returns terminal status.
+Full normal workspace session `28493` is live on the current module-loading
+production snapshot. It preserves original bounds, failfast and a 60-minute
+timeout, without race instrumentation. Both `GOTMPDIR` and `TMPDIR` use workspace
+`.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-module-loading-workspace.log`.
+No success is claimed until this same handle returns terminal status. Do not
+start a duplicate full workload.
 
 Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Front-end/CLI/resolver/trace-writer and selected original models | Pass | 8.516 seconds, `7e89fcb`, session `40463` retired |
-| Original SANY package and warning/assumption models | Pass | 1.339 / 2.720 seconds, `7e89fcb`, session `39448` retired |
-| Original disk/tableau graphs and random-access-file class, short checker/worker/liveness/CLI checks | Pass | 8.345 seconds, constructor correction after `7e89fcb`, session `15345` retired |
-| Original DFID, liveness, checkpoint/time-bound and CLI methods | Pass | 10.320 seconds, constructor correction, session `15450` retired |
-| Four original coverage models | Pass | 1.662 seconds, constructor correction, session `51507` retired |
-| Existing SANY warning controls, semantic bridge, CLI, assumption/simulation and original trace-writer methods | Pass | 6.091 / 0.015 seconds, final lint correction, session `76791` retired |
-| Original buffered-file class and short checker/worker/trace checks | Pass | 7.765 seconds, session `73698` retired |
-| Original checkpoint/recovery/time-bound/trace-writer and CLI selection | Pass | 13.487 seconds, session `86328` retired |
-| Existing original simulation and simulation-worker selection | Pass | Root 48.055 / TLC 0.012 seconds, session `59011` retired |
-| Original SANY package and focused semantic/CLI/XML/warning checks | Pass | 1.309 / 3.323 seconds, sessions `4764` / `38992` retired |
-| Original recursion, proof and selector models | Pass | 2.795 seconds, session `42104` retired |
-| Original SANY package and semantic/CLI/XML/instance/proof/action-level/trace models | Pass | 1.308 / 9.454 seconds, sessions `46579` / `15579` retired |
-| Original SANY and existing semantic/CLI/XML/instance/proof/trace models | Pass | 1.188 / 9.050 seconds, sessions `25595` / `94869` retired |
-| Existing native runner and buffered-file/checker/worker/trace methods | Pass | 7.340 seconds, session `70777` retired |
-| Existing SANY and semantic/CLI/XML/instance/proof/trace model checks | Pass | 1.291 / 9.598 seconds, sessions `85452` / `35327` retired |
-| Direct original Java Context test and existing semantic/CLI/XML/INSTANCE/warning/action-level/trace checks | Pass | 5.590 seconds, session `9858` retired |
-| Complete SANY package after direct Context reconciliation | Pass | 1.236 seconds, session `46254` retired |
-| Existing parser/resolver/semantic/CLI/XML and original Context/warning/Errors checks | Pass | Root 3.412 / SANY selection 0.011 seconds, session `61086` retired |
-| Complete SANY package after file-loading abort correction | Pass | 1.218 seconds, session `46430` retired |
-| All-package compilation | Pass | File-loading abort correction |
+| Existing parser/resolver/semantic/CLI/XML and original INSTANCE/action-level/trace/warning methods | Pass | 4.771 seconds, session `31624` retired |
+| Original SANY method selection on final source graph | Pass | 0.717 seconds, session `31624` retired |
+| Complete SANY package after inherited-context correction | Pass | 1.359 seconds, session `51638` retired; predates final search-flag preservation |
+| All-package compilation | Pass | Final module-loading graph, session `51926` retired |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -227,12 +195,20 @@ possible schedule.
 
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include general syntax-error ErrorDetails
-rendering, loading/generation traversal and multiple-binding context iteration order,
+rendering, generation traversal and multiple-binding context iteration order,
 remaining constructor and semantic-node boundaries. Missing modules and filename/module-name mismatches now abort loading with
 source E4220/E4221 details and null or actual importing-module locations.
 The existing front-end exception boundary reports these failures; the native
 library API returns diagnostics and preserves a previously parsed root.
-Seven file-loading observations match Java. General parser parity remains
+Seven file-loading observations match Java. The source unresolved-module search
+now exhausts EXTENDS before INSTANCE, restarts from the root after each binding,
+and separates file parse units from inner modules. Cycle diagnostics retain
+source E4222 and the complete filename path. Semantic order is derived from the
+recorded parse-unit relationships; inner modules are generated within their
+owning external module. A forward INSTANCE now preserves inherited symbol
+conflicts and the external-module-table E4223 conflict. Sixteen further loading
+observations match Java, with only independent extraction directory names
+normalized in the scratch comparison; raw outputs remain available. General parser parity remains
 unproven. The original SANY
 `TestContext` method now exercises Context directly, with its original failure
 result, one-error count, E4224 code and declaration/definition parameter

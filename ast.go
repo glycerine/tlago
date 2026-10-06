@@ -13,6 +13,7 @@ type Spec struct {
 }
 
 type Module struct {
+	Syntax        *SanySyntaxNode
 	Name          string
 	SourcePath    string
 	Source        string

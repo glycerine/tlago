@@ -1,5 +1,70 @@
 # TLC Port Progress
 
+2026-10-06 Source module-resolution loop and parse-unit graph:
+Previous turn made progress in 334e878. Full normal workspace 15749 now returns
+status 0 and is retired: root 1,519.135 / SANY 1.147 / TLC 787.539 seconds,
+CLI no tests. Log /mnt/oldrog/tmp/tlago-import-context-workspace.log. This verifies
+7d712b0, before later INSTANCE, direct Context and loading fixes. LSB 32959
+remains live on its recorded earlier storage snapshot; do not restart it.
+
+Nine of eleven initial scratch cases expose wrong loading order, wrong first
+unresolved file, generic cycle diagnostics or separately processed inner
+modules. Port SpecObj's actual search: restart at root after each binding,
+exhaust EXTENDS before INSTANCE, check direct unresolved names before traversing
+resolved extendees/instancees and inner modules. Retain original syntax to find
+INSTANCE names in source order, including LET instances. Preserve declaration
+order for visible inner names and EXTENDS-only inner-module exports. Maintain
+source-file ParseUnits separately from their inner ModuleNodes; record ordered
+relationships, check cycles after each edge and derive semantic order only
+from the file graph. Cycle abort E4222 retains the full source filename path.
+Preserve source Vector.appendNoRepeats mutation of the extendee vector and the
+short-circuit retention of instantiationFound; do not silently redesign them.
+
+An expanded sixteen-case audit exposes missing semantic conflicts after a
+forward INSTANCE extracts a later same-named inner module from the monolith.
+Fix actual inherited unqualified INSTANCE binding visibility, retain its source
+positions/kinds/arities, and apply the existing SymbolTable conflict path to
+nested definitions. Generator adds the completed ModuleNode after generating
+its body; resolveModule also sees already generated external modules. Preserve
+its E4223 code, full range, typed parameters and message. The original one
+warning/two-error sequence then matches Java; no changed inputs or assertions.
+All sixteen final observations match. Only the independent temporary directory
+in the monolith extraction progress line is normalized; retain both raw outputs
+and the module filename/provenance. No other output or diagnostics are filtered.
+
+Scratch artifacts under /mnt/oldrog/tmp: tlago-module-loading-order-vectors/,
+tlago-module-loading-order-compare.py, tlago-module-loading-order-before.log,
+after.log, expanded.log, final-compare.log, context-compare.log,
+reconciled-compare.log and tlago-module-loading-verified-compare.log. Last
+comparison 29467 returns status 0 and is retired. No persistent synthetic tests
+or TLC inventory credit. No dedicated upstream modanalyzer test was found;
+existing original SANY methods remain unchanged.
+
+Initial build selections fail because a new positionBefore duplicates the
+existing helper; remove it and reuse the real helper. Initial corrected build
+then exposes the native in-memory entry point's unregistered root ParseUnit;
+register it and retain its diagnostic-return boundary. Those failed receipts
+are retired and earn no success credit. Final original/native semantic/CLI/
+XML/resolver/INSTANCE/action-level/trace/warning selection passes root 4.771 /
+SANY 0.717 seconds, session 31624 retired. Complete SANY package after inherited
+context correction passes 1.359 seconds, session 51638 retired; this predates
+final search-flag retention. Final all-package compilation passes, session
+51926 retired. Logs tlago-module-loading-verified-final.log,
+tlago-module-loading-final-sany.log and tlago-module-loading-final-compile.log.
+Sixteen established EXTENDS and nine INSTANCE observations still match Java,
+sessions 3460 / 49032 retired; logs tlago-module-loading-import-compare.log and
+tlago-module-loading-instance-compare.log. They predate final search-flag
+retention, whose source loading matrix and focused methods pass afterward.
+
+New full normal workspace 28493 is live on the final working production graph
+following 334e878. Log /mnt/oldrog/tmp/tlago-module-loading-workspace.log. Both
+temporary variables use the large workspace volume; retain original bounds,
+failfast, a 60-minute timeout and no race instrumentation. Do not claim success
+before this same handle returns terminal status. General syntax-error rendering,
+remaining semantic-node construction, context iteration and generation traversal
+still require faithful work. Goal remains incomplete; new distributed
+architecture stays deferred.
+
 2026-10-06 SANY file-loading aborts and source locations:
 Previous turn made progress in 58e5003. Continue faithful Java TLC parity on
 master. Full workspace 15749 and unchanged LSB 32959 are confirmed live on

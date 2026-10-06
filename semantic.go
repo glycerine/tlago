@@ -50,6 +50,32 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 			if child := check(nested); child != nil {
 				checks.nested = append(checks.nested, child)
 			}
+			// Generator adds the completed ModuleNode to SymbolTable after
+			// generating its body. resolveModule falls back to the already
+			// generated external module table.
+			externalRoot := mod
+			for enclosing[externalRoot] != nil {
+				externalRoot = enclosing[externalRoot]
+			}
+			for _, externalName := range spec.SemanticOrder {
+				if externalName == externalRoot.Name {
+					break
+				}
+				if externalName != nested.Name {
+					continue
+				}
+				previous := spec.Modules[externalName]
+				if previous == nil || previous == nested {
+					continue
+				}
+				position := nested.Pos
+				diagnostic := errorAt(position, "E4223", "Multiply-defined module '%s': this definition or declaration conflicts \nwith the one at %s.", nested.Name, sanySymbolLocation(previous.Pos))
+				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+				diagnostic.SANYMessage = diagnostic.Message
+				diagnostic.SANYParameters = []any{nested.Name, sanySymbolLocation(previous.Pos)}
+				diags = appendSanyDiagnostics(diags, diagnostic)
+				break
+			}
 		}
 		return checks
 	}
@@ -194,6 +220,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	functionArities := map[string]int{}
 	operatorParamSpecs := map[string][]operatorParamSpec{}
 	extendedSymbols := map[string]importedSymbol{}
+	enclosingBindings := map[string]importedSymbol{}
 	diags = append(diags, checkPlusCalChecksumWarnings(mod)...)
 	diags = append(diags, checkNestedStandardModuleConflicts(mod)...)
 	addName := func(name string, pos Position, kind DeclarationKind) {
@@ -297,6 +324,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				continue
 			}
 			addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
+			enclosingBindings[symbol.name] = importedSymbol{kind: symbol.importKind(), pos: symbol.sourcePosition(), arity: symbol.arity}
 		}
 	}
 	for _, dep := range mod.Extends {
@@ -429,7 +457,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
-	instanceSymbols := map[string]importedSymbol{}
+	instanceSymbols := enclosingBindings
 	// SymbolTable.resolveSymbol sees the already merged EXTENDS context.
 	for name, symbol := range extendedSymbols {
 		symbol.arity = arities[name]
@@ -850,6 +878,16 @@ func enclosingSymbolVisibleBeforeNested(symbol semanticExportedSymbol, enclosing
 	}
 	if base, _, ok := strings.Cut(symbol.name, "!"); ok && enclosingInstanceBeforeNested(enclosing, base, nested) {
 		return true
+	}
+	for _, inst := range enclosing.Instances {
+		if !positionBefore(inst.SourcePosition(), nested.Pos) {
+			continue
+		}
+		for _, imported := range semanticInstanceSymbols(inst, spec) {
+			if imported.name == symbol.name {
+				return true
+			}
+		}
 	}
 	if enclosingExtendedExportNames(enclosing, spec)[symbol.name] {
 		return true
