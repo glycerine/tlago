@@ -2001,44 +2001,18 @@ func sanyAction(node *SanySyntaxNode) (Expr, Diagnostics) {
 }
 
 func sanyFairness(node *SanySyntaxNode) (Expr, Diagnostics) {
-	exprs := expressionChildren(node)
-	kind := "WF"
 	heirs := node.GetHeirs()
-	if len(heirs) > 0 && heirs[0].Token != nil && heirs[0].Token.Kind == SanyTokenSF {
+	if len(heirs) != 5 {
+		return unsupportedSanyExpr(node)
+	}
+	kind := "WF"
+	if heirs[0].Token != nil && heirs[0].Token.Kind == SanyTokenSF {
 		kind = "SF"
 	}
-	if len(exprs) < 2 {
-		return sanyCallStyleFairness(node, kind)
-	}
-	subscript, subscriptDiags := sanyExpr(exprs[0])
-	action, actionDiags := sanyExpr(exprs[1])
+	subscript, subscriptDiags := sanyExpr(heirs[1])
+	action, actionDiags := sanyExpr(heirs[3])
 	diags := append(subscriptDiags, actionDiags...)
 	return &FairnessExpr{Kind: kind, Subscript: subscript, Action: action, Pos: sanyNodePosition(node)}, diags
-}
-
-func sanyCallStyleFairness(node *SanySyntaxNode, kind string) (Expr, Diagnostics) {
-	for _, child := range node.GetHeirs() {
-		if child.Kind.JavaName() != "N_OpApplication" {
-			continue
-		}
-		heirs := child.GetHeirs()
-		if len(heirs) < 2 {
-			break
-		}
-		subscript, subscriptDiags := sanyExpr(heirs[0])
-		var actionNode *SanySyntaxNode
-		for _, arg := range expressionChildren(heirs[1]) {
-			actionNode = arg
-			break
-		}
-		if actionNode == nil {
-			break
-		}
-		action, actionDiags := sanyExpr(actionNode)
-		diags := append(subscriptDiags, actionDiags...)
-		return &FairnessExpr{Kind: kind, Subscript: subscript, Action: action, Pos: sanyNodePosition(node)}, diags
-	}
-	return unsupportedSanyExpr(node)
 }
 
 func sanyFunctionSet(node *SanySyntaxNode) (Expr, Diagnostics) {

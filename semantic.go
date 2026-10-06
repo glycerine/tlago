@@ -4736,7 +4736,14 @@ func checkAssumptionConstantLevel(assumption NamedExpr, checker *sanyLevelCompos
 }
 
 func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[string]bool) Diagnostics {
-	diags := levelChecker.checkApplicationLevels(expr, locals)
+	var diags Diagnostics
+	switch expr.(type) {
+	case *ActionExpr, *FairnessExpr:
+		// OpApplNode checks operands before applying these builtin maxima.
+		// An invalid operand suppresses a redundant enclosing level error.
+	default:
+		diags = levelChecker.checkApplicationLevels(expr, locals)
+	}
 	switch e := expr.(type) {
 	case *UnaryExpr:
 		if (e.Op == "[]" || e.Op == "<>") && levelChecker.level(e.Expr, locals) == actionLevel && sanyOperatorApplicationKind(e.Expr) {
@@ -4862,11 +4869,17 @@ func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[str
 	case *LabelExpr:
 		diags = append(diags, levelChecker.check(e.Body, locals)...)
 	case *ActionExpr:
-		diags = append(diags, levelChecker.check(e.Action, locals)...)
-		diags = append(diags, levelChecker.check(e.Subscript, locals)...)
+		actionDiags := levelChecker.check(e.Action, locals)
+		subscriptDiags := levelChecker.check(e.Subscript, locals)
+		diags = append(diags, actionDiags...)
+		diags = append(diags, subscriptDiags...)
+		diags = append(diags, levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{!actionDiags.HasErrors(), !subscriptDiags.HasErrors()})...)
 	case *FairnessExpr:
-		diags = append(diags, levelChecker.check(e.Subscript, locals)...)
-		diags = append(diags, levelChecker.check(e.Action, locals)...)
+		subscriptDiags := levelChecker.check(e.Subscript, locals)
+		actionDiags := levelChecker.check(e.Action, locals)
+		diags = append(diags, subscriptDiags...)
+		diags = append(diags, actionDiags...)
+		diags = append(diags, levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{!subscriptDiags.HasErrors(), !actionDiags.HasErrors()})...)
 	case *FunctionSetExpr:
 		diags = append(diags, levelChecker.check(e.Domain, locals)...)
 		diags = append(diags, levelChecker.check(e.Range, locals)...)

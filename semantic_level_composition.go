@@ -83,6 +83,10 @@ func sanyLevelDiagnostic(diagnostic Diagnostic, expr Expr, message string) Diagn
 // OpApplNode compares the actual argument level with that maximum. Analyze the
 // source definition with symbolic arguments, including INSTANCE-prepended ones.
 func (c *sanyLevelCompositionChecker) checkApplicationLevels(expr Expr, locals map[string]bool) Diagnostics {
+	return c.checkApplicationLevelsWithValidity(expr, locals, nil)
+}
+
+func (c *sanyLevelCompositionChecker) checkApplicationLevelsWithValidity(expr Expr, locals map[string]bool, validArguments []bool) Diagnostics {
 	var operator Expr
 	var arguments []Expr
 	var selected *sanySelectorSelection
@@ -100,7 +104,21 @@ func (c *sanyLevelCompositionChecker) checkApplicationLevels(expr Expr, locals m
 			}
 		}
 	} else {
-		return nil
+		switch application := expr.(type) {
+		case *FairnessExpr:
+			name = "$" + application.Kind
+			operator = &IdentExpr{Name: name}
+			arguments = []Expr{application.Subscript, application.Action}
+		case *ActionExpr:
+			name = "$SquareAct"
+			if actionExprIsAngle(application) {
+				name = "$AngleAct"
+			}
+			operator = &IdentExpr{Name: name}
+			arguments = []Expr{application.Action, application.Subscript}
+		default:
+			return nil
+		}
 	}
 	if len(arguments) == 0 {
 		return nil
@@ -109,6 +127,9 @@ func (c *sanyLevelCompositionChecker) checkApplicationLevels(expr Expr, locals m
 	maximums := c.dependencies.applicationMaximums(operator, selected, len(arguments), context)
 	var diags Diagnostics
 	for i, argument := range arguments {
+		if validArguments != nil && !validArguments[i] {
+			continue
+		}
 		if c.dependencies.levelInContext(argument, context) > maximums[i] {
 			diagnostic := sanyDiagnosticParameters(errorAt(expr.Position(), "E4205", "operator %s argument %d exceeds maximum level %d", name, i+1, maximums[i]), name, i+1)
 			message := fmt.Sprintf("Level error in applying operator %s:\nThe level of argument %d exceeds the maximum level allowed by the operator.", name, i+1)

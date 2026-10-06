@@ -1,5 +1,54 @@
 # TLC Port Progress
 
+2026-10-06 Restricted expressions, fairness syntax and builtin levels:
+Previous turn made progress in 4816986. Continue from clean master, keeping the
+new distributed service postponed. Java NoOpExtension permits identifiers only;
+its final argument list is detached into FairnessHook rather than returned as a
+call-shaped expression. Port that construction and the actual restricted-form
+and Fairness Expression frames. Preserve the source's shared hook behavior in
+nested expressions, final argument linking and epa-before-structure-error order.
+Remove sanyCallStyleFairness; translate the source five-heir fairness node directly.
+
+The source CASE2/CASE3 identifier productions exclude WF_ and SF_. Port this
+lexical boundary so the suffix is lexed normally instead of forcibly made an
+identifier by splitLeadingFairnessIdentifier. Remove that parser-side fabrication.
+The unchanged native longest-match input exposed an incorrect handwritten token
+expectation: pinned Java emits WF_ then x. Correct only that exact expected list,
+keeping its input and full assertion helper. Actual Java token receipt:
+/mnt/oldrog/tmp/tlago-fairness-token-native-java.log. No original Java test or
+fixture was modified. Add the actual TupleOrAction production frame for failures.
+
+Full semantic comparisons then expose missing fairness argument maxima. Use the
+existing builtin metadata and application-maximum machinery for $WF/$SF and
+$SquareAct/$AngleAct. Check children first; a child whose level check fails
+suppresses the redundant enclosing argument error, as OpApplNode does. Preserve
+source E4205 arguments, full ranges, messages and order. Deep nested fairness
+now reports the inner violation once rather than accepting the expression or
+inventing an additional parent error.
+
+Final normal verification, all terminal 0:
+- All 42 scratch restricted/fairness cases match parse outcomes/messages and
+  syntax heir kinds/images; the same 42 match complete semantic diagnostics.
+  Session 89573. Logs: /mnt/oldrog/tmp/tlago-restricted-parse-final-complete-audit.log
+  and /mnt/oldrog/tmp/tlago-restricted-semantic-final-audit.log. Tree observations
+  do not claim location parity for empty nodes, whose sentinels still differ.
+- Existing 22 argument observations remain matching, session 39374.
+- Complete existing SANY passes in 1.723 seconds, session 23726.
+- Nine existing root classes/methods pass in 16.031 seconds, session 8825:
+  parser, semantic bridge, token manager, operator stack, original ParseErrorTests,
+  EWD998ChanDebugger, the original custom/standard fairness warning models and
+  LivenessOneBitMutexNoSymmetry. Assertions and workload settings remain intact.
+- All-package compilation, session 58960, and git diff --check pass.
+  Gate logs: /mnt/oldrog/tmp/tlago-restricted-final-{sany,focused,compile}.log.
+
+Earlier focused 20084 fails only the incorrect native token expectation and is
+retired without pass credit; corrected 61753 passes in 16.544 seconds before the
+additional level fix. Initial semantic 34549 exposes the three nested-fairness
+misses and is retired without pass credit. No permanent tests were invented or
+new test-port inventory credit granted. Full-workspace pass remains unproven;
+keep the native import approval and original trace-expectation issues visible.
+No verification job remains live.
+
 2026-10-06 Operator argument grammar and failure boundaries:
 Previous turn made progress in 6af3af0 with a deterministic source replay
 comparison. Start from clean master and continue the faithful production port.

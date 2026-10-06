@@ -18,6 +18,7 @@ type SanyParser struct {
 	messageStack         []sanyParseFrame
 	expecting            string
 	failedLookaheadSizes map[*SanyToken]int
+	fairnessHook         *SanySyntaxNode
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
@@ -1417,7 +1418,6 @@ func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*Sany
 			p.throwOperatorStackFailure(err, tok.Begin)
 		}
 	}
-	p.splitLeadingFairnessIdentifier()
 	if p.startsOpenExpression() && p.aboveCurrentJunction() {
 		stack.Push(p.OpenExpression(stop), nil)
 		return
@@ -1699,7 +1699,7 @@ func (p *SanyParser) LabelExpression(stop func(*SanyToken) bool, stackOp *SanyOp
 
 func (p *SanyParser) LabelName() *SanySyntaxNode {
 	if p.startsNoOpExtension() {
-		return p.NoOpExtension()
+		return p.primitiveSelectorExpr(p.NoOpExtensionBase())
 	}
 	heirs := []*SanySyntaxNode{
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
@@ -1774,21 +1774,74 @@ func (p *SanyParser) OpenExpression(stop func(*SanyToken) bool) *SanySyntaxNode 
 }
 
 func (p *SanyParser) FairnessExpr() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	if p.match(SanyTokenWF) || p.match(SanyTokenSF) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	p.fairnessHook = nil
+	p.beginProduction("Fairness Expression")
+	active := true
+	defer func() {
+		if active {
+			p.endProduction()
+		}
+	}()
+	heirs := make([]*SanySyntaxNode, 5)
+	if p.check(SanyTokenWF) || p.check(SanyTokenSF) {
+		heirs[0] = NewSanyTokenNode(p.advance())
 	} else {
-		heirs = append(heirs, p.consume(SanyTokenWF, "expected WF_ or SF_"))
+		p.throwParseException([][]SanyTokenKind{{SanyTokenWF}, {SanyTokenSF}}, "expected WF_ or SF_")
 	}
-	heirs = append(heirs, p.ReducedExpression())
-	if p.match(SanyTokenLbr) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+	expr := p.ReducedExpression()
+	if p.startsFairnessAction() {
+		heirs[1], expr = expr, nil
+		heirs[2] = p.consumeParseToken(SanyTokenLbr, "expected ( in fairness expression")
+		heirs[3] = p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenRbr, "expected ) in fairness expression"))
+		})
+		heirs[4] = p.consumeParseToken(SanyTokenRbr, "expected ) in fairness expression")
+	}
+	// Java calls epa before linking arguments and reporting structure errors.
+	p.endProduction()
+	active = false
+	if expr != nil {
+		if p.fairnessHook == nil {
+			pos := heirs[0].Range.Begin
+			p.throwReportedParseException("Ill-structured fairness expression at line "+strconv.Itoa(pos.Line)+", column "+strconv.Itoa(pos.Column), pos, "E1300", "ill-structured fairness expression")
+		}
+		parameters := p.fairnessHook.GetHeirs()
+		if len(parameters) != 3 {
+			p.reportFairnessParseError(heirs[0], "")
+			return expr
+		}
+		heirs[1], heirs[2], heirs[3], heirs[4] = expr, parameters[0], parameters[1], parameters[2]
+	} else if heirs[1].Kind.JavaName() == "N_GeneralId" && p.fairnessHook != nil {
+		heirs[1] = NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], heirs[1], p.fairnessHook)
+	} else {
+		switch heirs[1].Kind.JavaName() {
+		case "N_Tuple", "N_ParenExpr", "N_SetEnumerate", "N_SubsetOf", "N_SetOfAll",
+			"N_SetOfFcns", "N_RcdConstructor", "N_SetOfRcds", "N_Except", "N_FcnConst", "N_ActionExpr":
+		default:
+			p.reportFairnessParseError(heirs[0], ": could not link arguments")
+			return heirs[1]
+		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_FairnessExpr"], heirs...)
+}
+
+func (p *SanyParser) startsFairnessAction() bool {
+	if !p.check(SanyTokenLbr) {
+		return false
+	}
+	if p.tokenAt(1).Kind != SanyTokenLambda && p.startsOpOrExprAt(1) {
+		return true
+	}
+	p.rememberFailedLookahead(2)
+	return false
+}
+
+func (p *SanyParser) reportFairnessParseError(token *SanySyntaxNode, suffix string) {
+	pos := token.Range.Begin
+	message := "Error in fairness expression at " + strconv.Itoa(pos.Line) + ": " + strconv.Itoa(pos.Column) + suffix + "\n"
+	diagnostic := errorAt(pos, "E1300", "%s", strings.TrimSpace(message))
+	diagnostic.SANYParseMessage = message
+	p.diags = append(p.diags, diagnostic)
 }
 
 func (p *SanyParser) FairnessSubscript() *SanySyntaxNode {
@@ -2106,6 +2159,8 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 }
 
 func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
+	p.beginProduction("Some << -- >> or >>_ Form")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenLab, "expected <<"))
 	if !p.check(SanyTokenRab) && !p.check(SanyTokenArab) {
@@ -2317,6 +2372,8 @@ func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ReducedExpression() *SanySyntaxNode {
+	p.beginProduction("restricted form of expression")
+	defer p.endProduction()
 	switch {
 	case p.check(SanyTokenIdentifier):
 		return p.NoOpExtension()
@@ -2329,7 +2386,7 @@ func (p *SanyParser) ReducedExpression() *SanySyntaxNode {
 	case p.check(SanyTokenLab):
 		return p.TupleOrAction()
 	default:
-		p.add(p.peek().Begin, "E1302", "expected restricted expression after action subscript")
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenLbr}, {SanyTokenLbc}, {SanyTokenLsb}, {SanyTokenLab}}, "expected restricted expression after action subscript")
 		return nil
 	}
 }
@@ -2356,56 +2413,6 @@ func (p *SanyParser) startsNoOpExtensionBaseAt(offset int) bool {
 	default:
 		return false
 	}
-}
-
-func (p *SanyParser) splitLeadingFairnessIdentifier() bool {
-	tok := p.peek()
-	if tok == nil {
-		return false
-	}
-	var kind SanyTokenKind
-	var prefix string
-	switch {
-	case (tok.Kind == SanyTokenIdentifier || tok.Kind == SanyTokenWF) && strings.HasPrefix(tok.Image, "WF_") && len(tok.Image) > len("WF_"):
-		kind = SanyTokenWF
-		prefix = "WF_"
-	case (tok.Kind == SanyTokenIdentifier || tok.Kind == SanyTokenSF) && strings.HasPrefix(tok.Image, "SF_") && len(tok.Image) > len("SF_"):
-		kind = SanyTokenSF
-		prefix = "SF_"
-	default:
-		return false
-	}
-
-	suffixImage := tok.Image[len(prefix):]
-	prefixEnd := tok.Begin
-	prefixEnd.Column += len(prefix) - 1
-	suffixBegin := tok.Begin
-	suffixBegin.Column += len(prefix)
-	prefixTok := &SanyToken{
-		Kind:     kind,
-		Image:    prefix,
-		Begin:    tok.Begin,
-		End:      prefixEnd,
-		LexState: tok.LexState,
-		Special:  tok.Special,
-	}
-	suffixTok := &SanyToken{
-		Kind:     SanyTokenIdentifier,
-		Image:    suffixImage,
-		Begin:    suffixBegin,
-		End:      tok.End,
-		LexState: tok.LexState,
-		Next:     tok.Next,
-	}
-	prefixTok.Next = suffixTok
-	if p.at > 0 {
-		p.tokens[p.at-1].Next = prefixTok
-	}
-	p.tokens = append(p.tokens, nil)
-	copy(p.tokens[p.at+2:], p.tokens[p.at+1:])
-	p.tokens[p.at] = prefixTok
-	p.tokens[p.at+1] = suffixTok
-	return true
 }
 
 func (p *SanyParser) startsStructOp() bool {
@@ -2584,8 +2591,11 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 
 func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 	var prefix []*SanySyntaxNode
-	selector := p.NoOpExtensionBase()
-	args := p.OptionalSelectorOpArgs(selector)
+	selector := p.consumeParseToken(SanyTokenIdentifier, "expected identifier in restricted expression")
+	var args *SanySyntaxNode
+	if p.startsOpArgs() {
+		args = p.OpArgs()
+	}
 	for p.match(SanyTokenBang) {
 		bang := NewSanyTokenNode(p.previous())
 		if args != nil {
@@ -2593,18 +2603,17 @@ func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 		} else {
 			prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, bang))
 		}
-		selector = p.BangSelector()
-		args = p.OptionalSelectorOpArgs(selector)
+		selector = p.consumeParseToken(SanyTokenIdentifier, "expected identifier in restricted expression")
+		args = nil
+		if p.startsOpArgs() {
+			args = p.OpArgs()
+		}
 	}
-	genID := NewSanyNode(
-		SanySyntaxNodeKindByName["N_GeneralId"],
-		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...),
-		selector,
-	)
-	if args != nil {
-		return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, args)
-	}
-	return genID
+	// The final argument list is detached for FairnessExpr. Earlier prefix
+	// argument lists remain attached to their IdPrefixElement nodes.
+	p.fairnessHook = args
+	return NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"],
+		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
 }
 
 func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {

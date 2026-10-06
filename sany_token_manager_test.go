@@ -42,7 +42,7 @@ CONSTANTS WF_x WF_ Enabled ENABLED ∧ ⇒ \in ℕ
 		requireNoErrors(t, diags)
 		requireSanyTokenNames(t, tokens,
 			"_BM1", "IDENTIFIER", "SEPARATOR",
-			"CONSTANT", "IDENTIFIER", "WF", "IDENTIFIER", "op_112", "AND", "op_infix_implies_uc", "IN", "IDENTIFIER",
+			"CONSTANT", "WF", "IDENTIFIER", "WF", "IDENTIFIER", "op_112", "AND", "op_infix_implies_uc", "IN", "IDENTIFIER",
 			"END_MODULE", "EOF",
 		)
 	})

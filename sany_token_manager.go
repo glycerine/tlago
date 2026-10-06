@@ -392,6 +392,12 @@ func (tm *SanyTokenManager) identifierCandidate() sanyLexCandidate {
 		_, size := utf8.DecodeRuneInString(rest)
 		return sanyLexCandidate{kind: SanyTokenIdentifier, n: size, priority: 50}
 	}
+	// Java's CASE2/CASE3 identifier productions exclude WF_ and SF_.
+	// The fairness token wins over the shorter WF/SF identifier, and the
+	// suffix is then lexed normally (it need not be an identifier).
+	if strings.HasPrefix(rest, "WF_") || strings.HasPrefix(rest, "SF_") {
+		return sanyLexCandidate{kind: SanyTokenIdentifier, n: 2, priority: 50}
+	}
 	i := 0
 	hasLetter := false
 	for i < len(rest) {

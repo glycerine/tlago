@@ -223,6 +223,23 @@ complete source parse messages; the 196 accepted lookahead token kinds match
 pinned generated Java. This is argument-production evidence, not complete
 JavaCC lookahead or parser parity.
 
+Restricted action subscripts use the source identifier-only `NoOpExtension`
+production. Its final argument list remains detached in the parser's shared
+fairness hook; prefix arguments remain attached. `FairnessExpr` uses that hook
+to construct the original five heirs, or reattach the subscript call when a
+separate action follows. Nested hook changes and malformed-list errors follow
+Java. The translator now consumes those heirs directly; the call-style fairness
+reconstruction fallback is removed. `WF_` and `SF_` are tokenized at the source
+identifier boundary, with their suffix lexed normally.
+
+Fairness and action applications use the existing builtin argument maxima:
+subscripts at most state level, actions at most action level. Their operands
+are checked first, and an invalid child suppresses a redundant parent diagnostic.
+Forty-two bounded observations match parse messages, syntax heir kinds/images
+and complete semantic diagnostics. Empty-node location sentinels remain a
+separate unverified boundary. No complete parser or semantic-graph parity is
+claimed by this matrix.
+
 LET expression generation carries recursive declaration identities, levels and
 shared module counters, replacing the nested-name scan. Declarations remain in
 the module vector after lexical scope exit; each LET resets its level count,

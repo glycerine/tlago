@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser, semantic bridge, token manager and operator stack classes, original ParseErrorTests and EWD998ChanDebugger | Pass | Root 14.180 seconds, session `3647` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.626 seconds, session `21477` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.031 seconds, session `8825` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.723 seconds, session `23726` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -361,6 +361,17 @@ bounded parse-message comparisons match Java, including empty calls, nested and
 qualified calls, commas, missing delimiters and valid argument forms. The 196
 accepted lookahead token kinds match the pinned generated Java parser. These
 checks do not establish complete lookahead or parser parity.
+
+Restricted expressions and fairness now use Java's identifier-only subscript
+production, detached final arguments and shared fairness hook. The original
+five-heir fairness node replaces call-style reconstruction. Lexing excludes
+`WF_`/`SF_` from ordinary identifiers, and no parser-side identifier fabrication
+remains. Fairness/action builtin level maxima check children first and suppress
+redundant parent errors. All 42 bounded parse/tree/semantic observations match
+Java. One handwritten native lexer expectation is corrected to Java's exact
+tokens with its input and full assertion intact. Original Java tests and fixtures
+are unchanged. Empty-node location sentinels and complete semantic-level graphs
+remain separate audit work; receipts are in `PORT_PROGRESS.md`.
 
 LET generation now carries declaration identities, levels and shared module
 recursion counters through actual expression traversal. Its declaration vector
