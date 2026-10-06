@@ -52,6 +52,12 @@ Log: `/mnt/oldrog/tmp/tlago-long-msb-random-full.log`; overlay and draft are in
 `/mnt/oldrog/tmp/tlago-long-msb-random-full-*`. Storage is on the relocated disk
 under ignored `.codex-gotmp`. Poll this handle before considering another run.
 It has no completion credit yet; do not start a duplicate or use `-race`.
+The full random family draft for the LSB/MSB/OffHeap factories compiles. Its
+shared original loop and exact factory settings are in
+`/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go`, with overlay
+`/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`. Keep these drafts outside
+the enabled suite until full verification; do not launch them alongside the
+current heavy runs. The running MSB job uses its earlier immutable draft.
 
 The complete normal workspace suite is also live in session `83220`, using
 `go test -count=1 -failfast -timeout=60m ./...`. Log:

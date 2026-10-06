@@ -1,5 +1,21 @@
 # TLC Port Progress
 
+2026-10-06 original random fingerprint family prepared:
+Factored the full original FPSetTest.testMaxFPSetSizeRnd translation into a
+shared scratch helper and retained all three concrete factories: LSB/default,
+MSB/default, and OffHeap's ratio-1.0 factory that ignores the supplied config.
+All 2,147,483,648 iterations, source seed/predecessor/put/size assertions,
+minute-rate formula, no-argument checkpoint calls, invariant and final-size
+assertions remain. Family overlay compile-only check passes, 0.013 seconds;
+no additional heavy workload was started and no completion credit added.
+Artifacts: /mnt/oldrog/tmp/tlago-long-random-family-{draft_test.go,overlay.json}.
+Java DiskFPSet.beginChkpt()/commitChkpt() are intentionally no-ops; the source
+invariant performs disk flushing/validation. Preserve those calls rather than
+silently replacing them with named checkpoint operations.
+Running original MSB draft now exceeds 770,983,871 iterations without failures;
+session 98446 remains live. Full workspace session 83220 remains live too.
+Both handles polled successfully; no duplicate/restart and no -race.
+
 2026-10-06 current master full workspace verification started:
 Started the full enabled normal suite after early-intern recovery fixes and
 original model/server test ports: go test -count=1 -failfast -timeout=60m ./....
