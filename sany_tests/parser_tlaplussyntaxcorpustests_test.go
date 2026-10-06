@@ -199,6 +199,9 @@ func isExpectedSanySyntaxParseFailure(tc sanySyntaxCorpusCase) bool {
 func isSanySyntaxCorpusJavaParseSuccess(title string) bool {
 	switch title {
 	case "Empty Tuple Quantification (GH tlaplus/tlaplus #888)",
+		// Source expectFailures inverts this :error fixture: Java accepts
+		// LOCAL in LET despite issue 616, so the original expects success.
+		"Invalid Use of LOCAL in LET/IN",
 		"Invalid Use of LOCAL in Proof",
 		"Label with Subexpression Prefix (GH tlaplus/tlaplus #885)",
 		"Mistaken Set Filter Tuples Test":

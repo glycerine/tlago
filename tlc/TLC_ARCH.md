@@ -94,9 +94,22 @@ zero positions for empty input, CRLF's separate code units and tab expansion.
 runSanyFrontEndParse contains the shared actual loading/parsing phase and its
 checked failure boundary; runSanyFrontEnd calls it before semantic work. The
 original ParseErrorTests.testAll uses this phase directly and checks recorded
-parser output. Expression/ExtendableExpr grammar, remaining production states
-and residual-stack parity remain unfinished; footer handling does not replace
-those parser mechanisms.
+parser output.
+
+Expression now follows the source prefix sequence and OpenExpression versus
+ExtendableExpr split. ExtendableExpr parses an actual operand, its postfix,
+record and function-application extensions, then the optional recursive infix
+continuation. It leaves unrelated tokens unconsumed for the enclosing grammar.
+A bracket-close failure throws the typed parser exception within the real
+Definition, Expression, ExtendableExpr and SBracketCases message frames.
+Definition uses one frame even with LOCAL. Operator arguments and substitutions
+use OpOrExpr; its reference lookahead retains source token alternatives.
+Lambdas are argument forms, and fairness remains a ParenthesesExpression form.
+Primitive identifiers use source GeneralId wrappers; the semantic bridge keeps
+unqualified built-in Boolean literals through them. General JavaCC expected
+alternatives, remaining production states, label failure continuations and
+operator-stack error messages still require reconciliation. Matching the current
+eighteen failure observations does not establish full parser parity.
 
 ## Module loading and parse-unit relationships
 

@@ -1451,6 +1451,12 @@ func sanyExprImpl(node *SanySyntaxNode) (Expr, Diagnostics) {
 		}
 		return &IdentExpr{Name: node.Image, Pos: sanyNodePosition(node)}, nil
 	case "N_GeneralId":
+		// A primitive identifier is wrapped in GeneralId by Java's parser.
+		// Preserve literal translation for its unqualified built-in booleans.
+		if heirs := node.GetHeirs(); len(heirs) == 2 && len(heirs[0].GetHeirs()) == 0 &&
+			heirs[1].Kind.JavaName() == "IDENTIFIER" && (heirs[1].Image == "TRUE" || heirs[1].Image == "FALSE") {
+			return sanyExpr(heirs[1])
+		}
 		if call, ok, diags := sanyGeneralIDCall(node); ok {
 			return call, diags
 		}

@@ -535,7 +535,8 @@ VARIABLE x, y
 C == CASE x = x -> y [] OTHER -> x
 Ch == CHOOSE z \in S : z = z
 Q == \A z : z = z
-Lam == LAMBDA a, b : a = b
+F(op(_,_)) == op(1,1)
+Lam == F(LAMBDA a, b : a = b)
 ====`)
 		requireNoErrors(t, diags)
 	})

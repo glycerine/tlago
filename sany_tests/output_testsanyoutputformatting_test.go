@@ -2,6 +2,8 @@ package sany_tests
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -30,12 +32,18 @@ func TestTestSanyOutputFormatting_testArgumentsAreStillInterpolated(t *testing.T
 
 func TestTestSanyOutputFormatting_testParseErrorMentioningPercentOperator(t *testing.T) {
 	module := "---- MODULE Test ----\nop == % 1\n====\n"
-	_, diags := tlago.ParseSanySyntax("Test.tla", module)
-	if !diags.HasErrors() {
-		t.Fatalf("parse succeeded; want diagnostics mentioning %%")
+	path := filepath.Join(t.TempDir(), "Test.tla")
+	if err := os.WriteFile(path, []byte(module), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	if got, want := diags.Error(), "%"; !strings.Contains(got, want) {
-		t.Fatalf("parse diagnostics missing %q\n%s", want, got)
+	var out strings.Builder
+	_, diags := tlago.LoadSanySpec(path, tlago.LoadOptions{ParsingProgress: func(message string) { out.WriteString(message); out.WriteByte('\n') }})
+	if !diags.HasErrors() {
+		t.Fatal("parser.parse returned true, want false")
+	}
+	// Preserve the source assertion against the actual recorded parser output.
+	if got, want := out.String(), "token \"%\""; !strings.Contains(got, want) {
+		t.Fatalf("recorded parser output missing %q\n%s", want, got)
 	}
 }
 

@@ -69,3 +69,10 @@ func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessa
 	diagnostic.SANYParseMessage = message.String()
 	panic(&sanyParseException{diagnostic})
 }
+
+func (p *SanyParser) consumeParseToken(kind SanyTokenKind, nativeMessage string) *SanySyntaxNode {
+	if !p.check(kind) {
+		p.throwParseException([][]SanyTokenKind{{kind}}, nativeMessage)
+	}
+	return NewSanyTokenNode(p.advance())
+}

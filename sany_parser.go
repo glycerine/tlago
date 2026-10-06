@@ -631,31 +631,7 @@ func (p *SanyParser) DefStep() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ProofOperatorOrFunctionDefinition() *SanySyntaxNode {
-	if p.match(SanyTokenLocal) {
-		local := NewSanyTokenNode(p.previous())
-		node := p.ProofOperatorOrFunctionDefinition()
-		if node != nil {
-			node.Zero = []*SanySyntaxNode{local}
-			node.refreshHeirsAndRange()
-		}
-		return node
-	}
-	if p.match(SanyTokenDefbreak) {
-	}
-	switch {
-	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLsb:
-		return p.ProofFunctionDefinition()
-	case p.check(SanyTokenIdentifier) && p.isPostfixOperator(p.peekNext()):
-		return p.ProofOperatorDefinition(p.PostfixLHS())
-	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
-		return p.ProofOperatorDefinition(p.InfixLHS())
-	case p.startsModuleDefinitionHeadAt(0):
-		return p.ModuleDefinition()
-	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
-		return p.ProofOperatorDefinition(p.IdentLHS())
-	default:
-		return p.ProofOperatorDefinition(p.PrefixLHS())
-	}
+	return p.definition(true, false)
 }
 
 func (p *SanyParser) ProofFunctionDefinition() *SanySyntaxNode {
@@ -1132,30 +1108,48 @@ func sanyProofStepLevel(tok *SanyToken) (int, bool) {
 }
 
 func (p *SanyParser) OperatorOrFunctionDefinition() *SanySyntaxNode {
+	return p.definition(false, false)
+}
+
+// definition retains one source Definition production even when LOCAL is
+// present. The native caller contexts select their existing expression stops.
+func (p *SanyParser) definition(proof, let bool) (node *SanySyntaxNode) {
+	p.beginProduction("Definition")
+	defer p.endProduction()
+	var local *SanySyntaxNode
 	if p.match(SanyTokenLocal) {
-		local := NewSanyTokenNode(p.previous())
-		node := p.OperatorOrFunctionDefinition()
-		if node != nil {
+		local = NewSanyTokenNode(p.previous())
+	}
+	defer func() {
+		if node != nil && local != nil {
 			node.Zero = []*SanySyntaxNode{local}
 			node.refreshHeirsAndRange()
 		}
-		return node
+	}()
+	p.consumeParseToken(SanyTokenDefbreak, "expected beginning of definition")
+	operator := p.OperatorDefinition
+	function := p.FunctionDefinition
+	if proof {
+		operator = p.ProofOperatorDefinition
+		function = p.ProofFunctionDefinition
 	}
-	if p.match(SanyTokenDefbreak) {
+	if let {
+		operator = p.LetOperatorDefinition
+		function = p.LetFunctionDefinition
 	}
 	switch {
 	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLsb:
-		return p.FunctionDefinition()
+		return function()
 	case p.check(SanyTokenIdentifier) && p.isPostfixOperator(p.peekNext()):
-		return p.OperatorDefinition(p.PostfixLHS())
+		return operator(p.PostfixLHS())
 	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
-		return p.OperatorDefinition(p.InfixLHS())
+		return operator(p.InfixLHS())
 	case p.startsModuleDefinitionHeadAt(0):
 		return p.ModuleDefinition()
 	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
-		return p.OperatorDefinition(p.IdentLHS())
+		return operator(p.IdentLHS())
 	default:
-		return p.OperatorDefinition(p.PrefixLHS())
+		return operator(p.PrefixLHS())
 	}
 }
 
@@ -1366,7 +1360,7 @@ func (p *SanyParser) ExpressionUntilDefinitionBoundary(extraStop func(*SanyToken
 
 func (p *SanyParser) ExpressionUntilCommaOrBodyBoundary() *SanySyntaxNode {
 	startLine := p.peek().Begin.Line
-	return p.ExpressionUntil(func(tok *SanyToken) bool {
+	return p.OpOrExpr(func(tok *SanyToken) bool {
 		// A named instance in LET ends its final substitution at the enclosing
 		// IN. Java's OpOrExpr leaves that token for LetIn to consume.
 		if tok.Kind == SanyTokenComma || tok.Kind == SanyTokenLetin || tok.Kind == SanyTokenEOF || tok.Kind == SanyTokenEndModule {
@@ -1377,113 +1371,179 @@ func (p *SanyParser) ExpressionUntilCommaOrBodyBoundary() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Expression")
+	active := true
+	defer func() {
+		if active {
+			p.endProduction()
+		}
+	}()
 	stack := NewSanyOperatorStack()
 	stack.NewStack()
-	sawExpressionToken := false
-	for {
-		if sawExpressionToken && stop(p.peek()) {
-			if !stack.PreInEmptyTop() {
-				break
-			}
-			if !p.startsJunctionList(stop) && !isSanyProofStepStartKind(p.peek().Kind) {
-				break
-			}
-		}
-		// Java Expression reclassifies the token after a record dot before
-		// parsing it as Identifier, so keywords cannot start other expressions.
-		if sawExpressionToken && !stack.PreInEmptyTop() && p.check(SanyTokenDot) {
-			tok := p.advance()
-			op, _ := GetSanyOperator(tok.Image)
-			stack.Push(p.genericOperatorNode(tok, op), &op)
-			if err := stack.ReduceStack(); err != nil {
-				p.add(tok.Begin, "E1301", err.Error())
-				return stack.TopNode()
-			}
-			p.reclassifyFieldName()
-			stack.Push(p.Identifier(), nil)
-			continue
-		}
-		if p.splitLeadingFairnessIdentifier() {
-			continue
-		}
-		if stack.PreInEmptyTop() && p.startsJunctionList(stop) {
-			stack.Push(p.JunctionList(stop), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if !sawExpressionToken && p.startsOperatorReference(stop) {
-			stack.Push(p.OperatorReference(), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if p.startsLabelAt(0) {
-			stack.Push(p.LabelExpression(stop, stack.TopOperator()), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if p.startsNoOpExtension() {
-			stack.Push(p.NoOpExtension(), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if p.startsOpApplication() {
-			stack.Push(p.OpApplication(), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if sawExpressionToken && !stack.PreInEmptyTop() && p.check(SanyTokenLsb) {
-			node := p.SBracketCases()
-			op, _ := GetSanyOperator("[")
-			stack.Push(node, &op)
-			if err := stack.ReduceStack(); err != nil {
-				p.add(p.previous().End, "E1301", err.Error())
-				return stack.TopNode()
-			}
-			continue
-		}
-		if p.startsOpenExpression() {
-			stack.Push(p.OpenExpression(stop), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if p.startsPrimitiveExpression() {
-			stack.Push(p.PrimitiveExpression(), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if p.startsPrefixJunctionOperand() {
-			stack.Push(p.PrefixJunctionExpression(stop), nil)
-			sawExpressionToken = true
-			continue
-		}
-		if p.check(SanyTokenCasesep) && sawExpressionToken && !stack.PreInEmptyTop() {
-			p.add(p.peek().Begin, "E1300", "CASE separator outside CASE expression")
-			stack.Push(NewSanyTokenNode(p.advance()), nil)
-			sawExpressionToken = true
-			continue
-		}
-		tok := p.advance()
-		if op, ok := GetSanyOperator(tok.Image); ok {
-			stack.Push(p.genericOperatorNode(tok, op), &op)
-			if err := stack.ReduceStack(); err != nil {
-				p.add(tok.Begin, "E1301", err.Error())
-				return stack.TopNode()
-			}
-			continue
-		}
-		stack.Push(NewSanyTokenNode(tok), nil)
-		sawExpressionToken = true
-	}
-	if !sawExpressionToken {
-		p.add(p.peek().Begin, "E1302", "expected expression")
-		return nil
-	}
+	p.expressionOperand(stack, stop)
+	// Source Expression calls epa before finalReduce, so a reduction failure
+	// does not retain this production in the residual stack.
+	p.endProduction()
+	active = false
 	expr, err := stack.FinalReduce()
 	if err != nil {
 		p.add(p.peek().Begin, "E1301", err.Error())
 		return stack.TopNode()
 	}
 	return expr
+}
+
+// expressionOperand is the prefix sequence followed by OpenExpression or
+// ExtendableExpr in the source grammar. The latter pushes onto this same stack.
+func (p *SanyParser) expressionOperand(stack *SanyOperatorStack, stop func(*SanyToken) bool) {
+	for p.startsExpressionPrefix() && p.aboveCurrentJunction() {
+		tok := p.advance()
+		op, _ := GetSanyOperator(tok.Image)
+		stack.Push(p.genericOperatorNode(tok, op), &op)
+		if err := stack.ReduceStack(); err != nil {
+			p.add(tok.Begin, "E1301", err.Error())
+			return
+		}
+	}
+	p.splitLeadingFairnessIdentifier()
+	if p.startsOpenExpression() && p.aboveCurrentJunction() {
+		stack.Push(p.OpenExpression(stop), nil)
+		return
+	}
+	if !p.aboveCurrentJunction() {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected properly indented expression")
+	}
+	p.ExtendableExpr(stack, stop)
+}
+
+func (p *SanyParser) startsExpressionPrefix() bool {
+	switch p.peek().Kind {
+	case SanyTokenOp26, SanyTokenOp29, SanyTokenOp58, SanyTokenCasesep,
+		SanyTokenOp61, SanyTokenOp112, SanyTokenOp113, SanyTokenOp114,
+		SanyTokenOp115, SanyTokenOp116, SanyTokenOp77:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *SanyParser) aboveCurrentJunction() bool {
+	column, active := p.currentJunctionColumn()
+	return !active || column < p.peek().Begin.Column
+}
+
+// ExtendableExpr ports the source operand, postfix-extension loop, and optional
+// infix or label continuation. It never consumes an unrelated following token.
+func (p *SanyParser) ExtendableExpr(stack *SanyOperatorStack, stop func(*SanyToken) bool) {
+	p.beginProduction("ExtendableExpr")
+	defer p.endProduction()
+	if IsSanyJunctionBullet(p.peek().Kind) && stack.PreInEmptyTop() {
+		stack.Push(p.JunctionList(stop), nil)
+	} else if p.startsLabelAt(0) {
+		stack.Push(p.LabelExpression(stop, stack.TopOperator()), nil)
+	} else {
+		switch p.peek().Kind {
+		case SanyTokenWF, SanyTokenSF:
+			stack.Push(p.FairnessExpr(), nil)
+		case SanyTokenLbr, SanyTokenLbc, SanyTokenLab, SanyTokenLsb:
+			stack.Push(p.PrimitiveExpression(), nil)
+		default:
+			stack.Push(p.PrimitiveExp(), nil)
+		}
+	}
+	for p.aboveCurrentJunction() && !stop(p.peek()) {
+		switch {
+		case p.check(SanyTokenOp57) || p.check(SanyTokenOp68) || p.check(SanyTokenOp69) || p.check(SanyTokenOp70):
+			tok := p.advance()
+			op, _ := GetSanyOperator(tok.Image)
+			stack.Push(p.genericOperatorNode(tok, op), &op)
+		case p.check(SanyTokenDot):
+			tok := p.advance()
+			op, _ := GetSanyOperator(tok.Image)
+			stack.Push(p.genericOperatorNode(tok, op), &op)
+			if err := stack.ReduceStack(); err != nil {
+				p.add(tok.Begin, "E1301", err.Error())
+				return
+			}
+			p.reclassifyFieldName()
+			stack.Push(p.Identifier(), nil)
+			continue
+		case p.check(SanyTokenLsb):
+			p.expecting = "function argument"
+			node := p.SBracketCases()
+			if node.Kind.JavaName() == "N_FcnAppl" {
+				op, _ := GetSanyOperator("[")
+				stack.Push(node, &op)
+			} else {
+				stack.Push(node, nil)
+			}
+		default:
+			goto continuation
+		}
+		if err := stack.ReduceStack(); err != nil {
+			p.add(p.previous().End, "E1301", err.Error())
+			return
+		}
+	}
+continuation:
+	if p.aboveCurrentJunction() && !stop(p.peek()) && p.isGrammarInfixOperator(p.peek()) {
+		tok := p.advance()
+		op, _ := GetSanyOperator(tok.Image)
+		stack.Push(p.genericOperatorNode(tok, op), &op)
+		if err := stack.ReduceStack(); err != nil {
+			p.add(tok.Begin, "E1301", err.Error())
+			return
+		}
+		p.expressionOperand(stack, stop)
+	}
+}
+
+// PrimitiveExp covers the primitive (non-parenthesized) operand alternatives.
+func (p *SanyParser) PrimitiveExp() *SanySyntaxNode {
+	p.beginProduction("Primitive expression")
+	defer p.endProduction()
+	switch p.peek().Kind {
+	case SanyTokenNumberLiteral:
+		return p.Number()
+	case SanyTokenStringLiteral:
+		return p.String()
+	case SanyTokenIdentifier, SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
+		return p.NoOpExtension()
+	default:
+		if _, ok := GetSanyOperator(p.peek().Image); ok && (p.isGrammarInfixOperator(p.peek()) || p.isGrammarPostfixOperator(p.peek()) || p.check(SanyTokenOp76)) {
+			selector := p.BangOperatorSelector()
+			var prefix []*SanySyntaxNode
+			args := p.OptionalSelectorOpArgs(selector)
+			for p.match(SanyTokenBang) {
+				bang := NewSanyTokenNode(p.previous())
+				if args == nil {
+					prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, bang))
+				} else {
+					prefix = append(prefix, NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefixElement"], selector, args, bang))
+				}
+				selector = p.BangSelector()
+				args = p.OptionalSelectorOpArgs(selector)
+			}
+			genID := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"], prefix...), selector)
+			if args != nil {
+				return NewSanyNode(SanySyntaxNodeKindByName["N_OpApplication"], genID, args)
+			}
+			return genID
+		}
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}, {SanyTokenNumberLiteral}, {SanyTokenStringLiteral}}, "expected expression")
+		return nil
+	}
+}
+
+// OpOrExpr is used only for operator arguments and substitution values.
+func (p *SanyParser) OpOrExpr(stop func(*SanyToken) bool) *SanySyntaxNode {
+	if p.check(SanyTokenLambda) {
+		return p.Lambda(stop)
+	}
+	if p.startsOperatorReference(stop) && p.peekNext().Kind != SanyTokenLbr {
+		return p.OperatorReference()
+	}
+	return p.ExpressionUntil(stop)
 }
 
 func (p *SanyParser) startsJunctionList(stop func(*SanyToken) bool) bool {
@@ -1503,17 +1563,6 @@ func (p *SanyParser) startsJunctionList(stop func(*SanyToken) bool) bool {
 		}
 		return true
 	}
-}
-
-func (p *SanyParser) startsPrefixJunctionOperand() bool {
-	op, ok := GetSanyOperator(p.peek().Image)
-	return ok && op.IsPrefix() && IsSanyJunctionBullet(p.peekNext().Kind)
-}
-
-func (p *SanyParser) PrefixJunctionExpression(stop func(*SanyToken) bool) *SanySyntaxNode {
-	tok := p.advance()
-	op, _ := GetSanyOperator(tok.Image)
-	return NewSanyNode(SanySyntaxNodeKindByName["N_PrefixExpr"], p.genericOperatorNode(tok, op), p.JunctionList(stop))
 }
 
 func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
@@ -1587,17 +1636,29 @@ func (p *SanyParser) checkJunctionItemIndent(node *SanySyntaxNode, bullet *SanyT
 }
 
 func (p *SanyParser) startsOperatorReference(stop func(*SanyToken) bool) bool {
-	op, ok := GetSanyOperator(p.peek().Image)
-	if !ok {
+	if !p.aboveCurrentJunction() {
 		return false
 	}
-	if op.Symbol == "[" {
+	if !p.startsExpressionPrefix() && !p.check(SanyTokenOp76) && !p.isGrammarInfixOperator(p.peek()) && !p.isGrammarPostfixOperator(p.peek()) {
 		return false
 	}
-	if op.Symbol == "-" && p.peekNext().Kind == SanyTokenLbr {
+	switch p.peekNext().Kind {
+	case SanyTokenComma, SanyTokenRbr, SanyTokenDefbreak, SanyTokenLocal,
+		SanyTokenInstance, SanyTokenTheorem, SanyTokenAssume, SanyTokenEndModule,
+		SanyTokenSeparator, SanyTokenBm0, SanyTokenAssumption, SanyTokenConstant,
+		SanyTokenVariable, SanyTokenRecursive:
+		return true
+	default:
 		return false
 	}
-	return stop(p.peekNext()) || ((op.IsInfix() || op.IsPostfix()) && p.peekNext().Kind == SanyTokenLbr)
+}
+
+func (p *SanyParser) isGrammarInfixOperator(token *SanyToken) bool {
+	return token.Kind >= SanyTokenOp1 && token.Kind <= SanyTokenOp119 && p.isInfixOperator(token)
+}
+
+func (p *SanyParser) isGrammarPostfixOperator(token *SanyToken) bool {
+	return token.Kind == SanyTokenOp57 || token.Kind == SanyTokenOp68 || token.Kind == SanyTokenOp69 || token.Kind == SanyTokenOp70
 }
 
 func (p *SanyParser) OperatorReference() *SanySyntaxNode {
@@ -1672,7 +1733,7 @@ func sanyLabelExpressionOperator(expr *SanySyntaxNode) (SanyOperatorInfo, bool) 
 
 func (p *SanyParser) startsOpenExpression() bool {
 	switch p.peek().Kind {
-	case SanyTokenIf, SanyTokenForall, SanyTokenExists, SanyTokenTExists, SanyTokenTForall, SanyTokenLet, SanyTokenCase, SanyTokenChoose, SanyTokenLambda, SanyTokenWF, SanyTokenSF:
+	case SanyTokenIf, SanyTokenForall, SanyTokenExists, SanyTokenTExists, SanyTokenTForall, SanyTokenLet, SanyTokenCase, SanyTokenChoose:
 		return true
 	default:
 		return false
@@ -1750,22 +1811,7 @@ func (p *SanyParser) LetDefinitions() *SanySyntaxNode {
 }
 
 func (p *SanyParser) LetOperatorOrFunctionDefinition() *SanySyntaxNode {
-	if p.match(SanyTokenDefbreak) {
-	}
-	switch {
-	case p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenLsb:
-		return p.LetFunctionDefinition()
-	case p.check(SanyTokenIdentifier) && p.isPostfixOperator(p.peekNext()):
-		return p.LetOperatorDefinition(p.PostfixLHS())
-	case p.check(SanyTokenIdentifier) && p.isInfixOperator(p.peekNext()) && p.tokenAt(2).Kind == SanyTokenIdentifier:
-		return p.LetOperatorDefinition(p.InfixLHS())
-	case p.startsModuleDefinitionHeadAt(0):
-		return p.ModuleDefinition()
-	case p.check(SanyTokenIdentifier) && (p.peekNext().Kind == SanyTokenLbr || p.peekNext().Kind == SanyTokenDef):
-		return p.LetOperatorDefinition(p.IdentLHS())
-	default:
-		return p.LetOperatorDefinition(p.PrefixLHS())
-	}
+	return p.definition(false, true)
 }
 
 func (p *SanyParser) LetFunctionDefinition() *SanySyntaxNode {
@@ -2073,6 +2119,8 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 }
 
 func (p *SanyParser) SBracketCases() *SanySyntaxNode {
+	p.beginProduction("Some [] Form")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenLsb, "expected ["))
 	if p.startsSBracketFunctionConstructorWithoutMapTo() &&
@@ -2094,7 +2142,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 		}))
-		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_FcnConst"], heirs...)
 	}
 	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenColon {
@@ -2103,7 +2151,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.FieldSet())
 		}
-		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfRcds"], heirs...)
 	}
 	if p.peekNext().Kind == SanyTokenMapto {
@@ -2115,7 +2163,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.FieldVal())
 		}
-		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_RcdConstructor"], heirs...)
 	}
 	if p.findTopLevelBeforeStop(SanyTokenExcept, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
@@ -2128,7 +2176,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.ExceptSpec())
 		}
-		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_Except"], heirs...)
 	}
 	if p.findTopLevelBeforeStop(SanyTokenArrow, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
@@ -2139,7 +2187,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 		}))
-		heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfFcns"], heirs...)
 	}
 	if p.findTopLevelBeforeStop(SanyTokenArsb, SanyTokenRsb, SanyTokenEOF) >= 0 {
@@ -2161,7 +2209,7 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 			}))
 		}
 	}
-	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ]"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_FcnAppl"], heirs...)
 }
 
@@ -2448,12 +2496,12 @@ func (p *SanyParser) OpArgs() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	heirs = append(heirs, p.consume(SanyTokenLbr, "expected ( in operator arguments"))
 	if !p.check(SanyTokenRbr) {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+		heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
 		}))
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			heirs = append(heirs, p.OpOrExpr(func(tok *SanyToken) bool {
 				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
 			}))
 		}

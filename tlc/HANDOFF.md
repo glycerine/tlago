@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `56d0a9a`.
+Updated: October 6, 2026. Full-workspace verification baseline: `0351434`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,26 +47,26 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The latest completed full normal workspace suite passes on `56d0a9a`:
+The latest completed full normal workspace suite passes on `0351434`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,567.112 seconds |
-| SANY tests | Pass | 1.187 seconds |
-| TLC | Pass | 782.392 seconds |
+| Root package | Pass | 1,569.930 seconds |
+| SANY tests | Pass | 1.209 seconds |
+| TLC | Pass | 793.867 seconds |
 | CLI command | No test files | — |
 
-Session `28493` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-module-loading-workspace.log`. This verifies the recorded
-module-loading snapshot with original bounds and normal execution. It predates
-the subsequent lexical and definition-lookahead corrections. Historical
-receipts belong in `PORT_PROGRESS.md`.
+Session `84303` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-definition-lookahead-workspace.log`. This verifies the
+recorded lexical and definition-lookahead snapshot with original bounds and
+normal execution. It predates parser-footer and expression-grammar corrections.
+Historical receipts belong in `PORT_PROGRESS.md`.
 
-Full normal workspace session `84303` is live on the `0351434` lexical and
-definition-lookahead snapshot, before the subsequent parser-footer correction. It preserves original bounds, failfast
-and a 60-minute timeout, without race instrumentation. Both `GOTMPDIR` and
-`TMPDIR` use workspace `.codex-gotmp`. Log:
-`/mnt/oldrog/tmp/tlago-definition-lookahead-workspace.log`. No success is claimed
+Full normal workspace session `16991` is live on the final parser-footer and
+expression-grammar changes. It preserves original bounds, failfast and a
+60-minute timeout, without race instrumentation. Both `GOTMPDIR` and `TMPDIR`
+use workspace `.codex-gotmp`. Log:
+`/mnt/oldrog/tmp/tlago-expression-grammar-workspace.log`. No success is claimed
 until this same handle returns terminal status. Do not start a duplicate full
 workload.
 
@@ -74,18 +74,16 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/resolver/semantic/CLI/XML and original INSTANCE/action-level/trace/warning methods | Pass | 4.771 seconds, session `31624` retired |
-| Original SANY method selection on final source graph | Pass | 0.717 seconds, session `31624` retired |
-| Complete SANY package after inherited-context correction | Pass | 1.359 seconds, session `51638` retired; predates final search-flag preservation |
-| Existing tokenizer/parser/resolver/semantic/CLI/XML and original INSTANCE/warning/action-level/trace checks | Pass | Root 5.460 / SANY selection 0.723 seconds, session `41276` retired |
-| Complete SANY package after final lexical correction | Pass | 1.384 seconds, session `81956` retired |
-| All-package compilation | Pass | Final lexical correction |
-| Existing parser/resolver/semantic/CLI/XML and original INSTANCE/warning/action-level/trace selection after definition lookahead | Pass | Root 4.819 / SANY 1.057 seconds, session `13652` retired |
-| Complete SANY package after definition lookahead | Pass | 1.235 seconds, session `70775` retired |
-| Existing parser/resolver/semantic/CLI/XML, output methods and corrected original ParseErrorTests | Pass | Root 3.469 / SANY selection 0.701 seconds, session `39748` retired |
-| Complete SANY package after parser-footer correction | Pass | 1.428 seconds, session `68936` retired |
+| Existing parser/resolver/semantic/CLI/XML and original output selection after expression grammar | Pass | Root 3.340 / SANY selection 0.736 seconds, session `26347` retired |
+| Complete SANY package with source LOCAL corpus expectation | Pass | 1.458 seconds, session `63320` retired |
+| Original TLC INSTANCE, warning, trace and action-level selection | Pass | 1.442 seconds, session `58247` retired |
+| Existing bounded root corpus and parser-reference checks | Pass | Final grammar changes |
+| All-package compilation | Pass | Final expression grammar |
 | Original Java ParseErrorTests class | Pass | One original parameter/method, 0.074 seconds |
-| All-package compilation after shared parsing-phase extraction | Pass | Final parser-footer correction |
+
+Earlier focused receipts belong in `PORT_PROGRESS.md`. These checks retain their
+recorded scope; passing translated tests does not establish whole-method fidelity
+where reconciliation gaps are documented below.
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -220,15 +218,32 @@ text; the loader reports it before the existing E4003 abort. EOF positions
 retain Java's last-character coordinates, including empty input, CRLF, tabs
 and UTF-16 text. Twelve EOF observations match. The missing-expression and
 missing-footer observations now match complete Java front-end output; fifteen
-lexical observations still match. The missing-bracket observation remains
-incorrect because Go consumes an invalid footer token as an expression.
-Continue the actual Expression/ExtendableExpr grammar, its production frames
-and failure boundaries next. General JavaCC lookahead-derived expected-token
-sequences and remaining production states are not fully ported. The original
-`ParseErrorTests.testAll` now lives in root `sany_parse_error_java_test.go` and
-uses the shared actual parsing phase. It asserts recorded parser output with
-the original input and assertion text, replacing the semantic-diagnostic
-surrogate. Missing modules and filename/module-name mismatches now abort loading with source E4220/E4221 details and null or
+lexical observations still match. The expression parser now follows the source prefix sequence, operand,
+postfix-extension loop and optional recursive infix continuation. It leaves
+unrelated following tokens for the enclosing production. Operator arguments
+and substitution values use `OpOrExpr`, with source operator-token alternatives
+and lookahead; lambdas belong to that argument production. Ordinary identifier
+operands retain source `N_GeneralId` wrappers. The semantic bridge preserves
+unqualified Boolean literal translation through those wrappers. A failed
+bracket consumption raises the actual typed failure with its real production
+frames, and LOCAL retains a single Definition frame. All eighteen established
+lexical and syntax observations now match full Java front-end output.
+
+General JavaCC lookahead-derived expected-token sequences, remaining production
+states, label error continuations and operator-stack error reporting are not
+fully ported. The original `ParseErrorTests.testAll` lives in root
+`sany_parse_error_java_test.go` and uses the shared actual parsing phase. It
+asserts recorded parser output with the original input and assertion text,
+replacing the semantic-diagnostic surrogate. The original percent-error output
+assertion now checks `token "%"` in actual recorded output. The two existing
+formatting-only methods still use test-local helpers; the production SanyOutput
+classes need faithful reconciliation. Likewise, the existing syntax corpus
+port checks parser status and node usage, without the original canonical AST
+comparison. These are remaining translation gaps, not full-suite fidelity
+receipts. Preserve the source harness's known-failure inversion: Java accepts
+the unchanged LOCAL-in-LET error fixture, and the original expects that success.
+
+Missing modules and filename/module-name mismatches now abort loading with source E4220/E4221 details and null or
 actual importing-module locations. The existing front-end exception boundary
 reports these failures; the native library API returns diagnostics and
 preserves a previously parsed root. Seven file-loading observations match Java.

@@ -135,7 +135,8 @@ F[x \in S, y \in T] == x + y
 		}
 		requireSanyNodeKinds(t, def.GetHeirs(), "IDENTIFIER", "LSB", "N_QuantBound", "COMMA", "N_QuantBound", "RSB", "DEF", "N_InfixExpr")
 		firstBound := def.GetHeirs()[2]
-		requireSanyNodeKinds(t, firstBound.GetHeirs(), "IDENTIFIER", "T_IN", "IDENTIFIER")
+		requireSanyNodeKinds(t, firstBound.GetHeirs(), "IDENTIFIER", "T_IN", "N_GeneralId")
+		requireSanyNodeKinds(t, firstBound.GetHeirs()[2].GetHeirs(), "N_IdPrefix", "IDENTIFIER")
 	})
 
 	t.Run("parses infix LHS definitions", func(t *testing.T) {
@@ -670,7 +671,7 @@ C == CASE A -> B [] OTHER -> C
 Ch == CHOOSE x \in S : P
 TupleCh == CHOOSE <<x, y>> \in S : P
 UnboundTupleCh == CHOOSE <<x, y>> : P
-Lam == LAMBDA x, y : x
+Lam == F(LAMBDA x, y : x)
 ====`)
 		requireNoErrors(t, diags)
 		defs := collectSanyDefinitions(root.GetHeirs()[2])
@@ -692,8 +693,8 @@ Lam == LAMBDA x, y : x
 		if expr := defs[4].GetHeirs()[2]; expr.Kind.JavaName() != "N_UnboundOrBoundChoose" || countSanyChildren(expr, "N_IdentifierTuple") != 1 {
 			t.Fatalf("UnboundTupleCh expression = %s heirs %v, want tuple N_UnboundOrBoundChoose", expr.Kind.JavaName(), sanyNodeKindNames(expr.GetHeirs()))
 		}
-		if expr := defs[5].GetHeirs()[2]; expr.Kind.JavaName() != "N_Lambda" {
-			t.Fatalf("Lam expression = %s, want N_Lambda", expr.Kind.JavaName())
+		if expr := findSanyChild(t, findSanyChild(t, defs[5].GetHeirs()[2], "N_OpArgs"), "N_Lambda"); expr.Kind.JavaName() != "N_Lambda" {
+			t.Fatalf("Lam argument = %s, want N_Lambda", expr.Kind.JavaName())
 		}
 	})
 
@@ -1050,9 +1051,11 @@ CallRef == \o(1, 2)
 			t.Fatalf("Refs operator nodes = %v, want infix, non-expression prefix, and postfix operator references", sanyNodeKindNames(refs.GetHeirs()))
 		}
 		callRef := defs[2].GetHeirs()[2]
-		if callRef.Kind.JavaName() != "N_GenInfixOp" || countSanyChildren(callRef, "N_OpArgs") != 1 {
-			t.Fatalf("CallRef expression = %s heirs %v, want infix operator reference with N_OpArgs", callRef.Kind.JavaName(), sanyNodeKindNames(callRef.GetHeirs()))
+		if callRef.Kind.JavaName() != "N_OpApplication" || countSanyChildren(callRef, "N_OpArgs") != 1 {
+			t.Fatalf("CallRef expression = %s heirs %v, want N_OpApplication with N_OpArgs", callRef.Kind.JavaName(), sanyNodeKindNames(callRef.GetHeirs()))
 		}
+		genID := findSanyChild(t, callRef, "N_GeneralId")
+		requireSanyNodeKinds(t, genID.GetHeirs(), "N_IdPrefix", "N_InfixOp")
 	})
 
 	t.Run("parses labeled expressions", func(t *testing.T) {

@@ -1,5 +1,83 @@
 # TLC Port Progress
 
+2026-10-06 Source Expression/ExtendableExpr control flow:
+Previous turn made progress in 0386f76. Full normal workspace 84303 returns
+status 0 and is retired: root 1,569.930 / SANY 1.209 / TLC 793.867 seconds,
+CLI no tests. This verifies 0351434 before parser-footer/current grammar fixes;
+log tlago-definition-lookahead-workspace.log under /mnt/oldrog/tmp. Full original
+LSB 32959 remains confirmed live on its recorded snapshot; no success credit.
+
+Inspect actual javacc/tla+.jj and generated TLAplusParser.Expression,
+ExtendableExpr, PrimitiveExp, ParenthesesExpression and OpOrExpr. Replace the
+flat expression loop that consumed arbitrary following tokens with source prefix,
+operand, postfix-extension loop and optional recursive infix continuation, using
+the same operator stack. Preserve source Expression epa before final reduction.
+Record real Expression, ExtendableExpr and bracket frames; bracket closing throws
+an actual typed ParseException. Shared definition parsing retains one Definition
+frame for LOCAL rather than recursively duplicating it. Operator arguments and
+substitutions use OpOrExpr with source reference lookahead and grammar token
+alternatives; Lambda is an argument, fairness a parenthesized expression.
+
+Initial focused 94082 fails: bracket metadata was incorrectly treated as an actual
+postfix token, and source GeneralId wrappers expose a semantic-bridge shortcut
+for unqualified TRUE/FALSE. Use the four actual postfix-token alternatives,
+separate infix grammar tokens from internal metadata, and translate source Boolean
+wrappers faithfully. Intermediate failed 29799 and 39978 retired, logs
+ tlago-expression-grammar-focused.log,
+ tlago-expression-grammar-postfix-corrected.log,
+ tlago-expression-grammar-booleans-corrected.log. Keep original source tests and
+bounds unchanged.
+
+Actual source AST probes verify N_GeneralId domain/identifier wrappers,
+N_OpApplication for an infix operator call, rejection of a standalone Lambda
+definition and acceptance as an operator argument. Correct two native AST
+assertions and two invalid native Lambda fixtures accordingly; retain Lambda-node
+assertions in the valid argument position and all definition counts. Original
+TestSanyOutputFormatting percent-error method was a diagnostic surrogate; restore
+its exact assertion on token "%" in actual recorded parser output. Original
+input is unchanged. Its two formatting-only methods still use test-local helpers:
+production output-class translation remains work, not full-class credit.
+
+Source AST artifacts under /mnt/oldrog/tmp: ExpressionASTManual.java and
+ tlago-expression-native-fixture-source.log. Corrected focused 47784 passes
+root 3.658 / SANY 0.687 seconds. Final single-frame/grammar-token selection 26347
+passes root 3.340 / SANY 0.736 seconds, log
+ tlago-expression-grammar-definition-frame.log. Final original TLC INSTANCE,
+warning, trace and action-level selection 58247 passes 1.442 seconds, log
+ tlago-expression-grammar-tlc-models.log. Final bounded root corpus/reference
+checks pass, log tlago-expression-grammar-root-corpus.log. All-package compile
+passes, log tlago-expression-grammar-compile.log. No race instrumentation.
+
+Complete SANY 27411 first fails the LOCAL-in-LET corpus :error fixture. Inspect
+unchanged TlaPlusSyntaxCorpusTests and SyntaxCorpusRunner.expectFailures: the
+original explicitly inverts that known parser failure, requiring success for this
+error-tagged fixture. Java's grammar permits LOCAL in LET; do not regress the
+production parser to make an incorrect Go expectation green. Verify unchanged
+fixture parses successfully in actual Java, log tlago-expression-source-local-let.log.
+Correct its known-source-success mapping without altering fixture bytes or adding
+a skip. Final complete SANY 63320 passes 1.458 seconds, log
+ tlago-expression-grammar-sany-source-local.log. Existing corpus translation lacks
+the original canonical AST assertions and needs whole-method reconciliation;
+parser-status/node-usage evidence is narrower than full original corpus parity.
+
+Final rebuilt source/frontend probe matches all eighteen established observations,
+including MissingBracket and its exact real five-frame stack. Log
+ tlago-expression-grammar-final-parser-compare.log has no diffs. Earlier
+ tlago-expression-grammar-parser-compare.log likewise matches after grammar work.
+Script exit status alone is not a gate; actual comparisons inspected. Sixteen
+established module-loading/cycle/context observations still match, log
+ tlago-expression-grammar-final-loading-compare.log. Session 87299 retired status
+0. No invented persistent tests or additional TLC inventory credit.
+
+New full normal workspace 16991 is live on final parser-footer and grammar
+changes, log tlago-expression-grammar-workspace.log. Both temporary-directory
+variables use workspace .codex-gotmp; original bounds, failfast, 60-minute timeout
+and no race instrumentation. Preserve that handle until terminal status. Further
+actual expected-token alternatives, production states, label continuations,
+operator-stack error messages, output classes and canonical corpus assertions
+remain faithful port work. Goal stays incomplete and new distributed architecture
+remains deferred.
+
 2026-10-06 Actual module-footer ParseException and EOF positions:
 Previous goal turn made progress in 0351434. Full normal workspace 84303 remains
 confirmed live on that snapshot, before current parser-footer changes. Full
