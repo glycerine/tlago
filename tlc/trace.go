@@ -37,9 +37,14 @@ func NewTLCTrace(metaDir ...string) *TLCTrace {
 	}
 	if len(metaDir) > 1 {
 		trace.rootName = metaDir[1]
+		trace.rawPaths = true
 	}
-	if trace.diskdir != "" {
-		trace.traceErr = trace.ensureTraceRAFLocked()
+	if trace.diskdir != "" || trace.rawPaths {
+		// TLCTrace opens its RAF during construction; a failed open never
+		// produces a usable trace or reaches fingerprint initialization.
+		if err := trace.ensureTraceRAFLocked(); err != nil {
+			panic(err)
+		}
 	}
 	return trace
 }
@@ -94,12 +99,8 @@ func (t *TLCTrace) ensureTraceRAFLocked() error {
 	if t.traceErr != nil {
 		return t.traceErr
 	}
-	if t.diskdir == "" {
+	if t.diskdir == "" && !t.rawPaths {
 		return nil
-	}
-	if err := os.MkdirAll(t.diskdir, 0o755); err != nil {
-		t.traceErr = err
-		return err
 	}
 	raf, err := NewBufferedRandomAccessFile(t.traceFileName(), "rw")
 	if err != nil {

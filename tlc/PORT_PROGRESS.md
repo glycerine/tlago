@@ -1,5 +1,56 @@
 # TLC Port Progress
 
+2026-10-06 Buffered files, trace construction and simulation directory ownership:
+Continue faithful Java parity on master after `b651aac`; distributed architecture
+remains postponed. Implement BufferedRandomAccessFile's four original modes:
+`r`, `rw`, `rws` with O_SYNC, and `rwd` with O_DSYNC on supported Unix platforms.
+Share the existing data-sync platform helper with IOUtils. Preserve File path
+normalization, mode-before-invalid-path validation, exact IllegalArgumentException
+and FileNotFoundException messages, and rejection of directories even read-only.
+Later I/O errors retain Java's native-reason messages and IOException family;
+negative seek and closed stream messages match source. Trace and worker constructors
+raise opening failures immediately, do not create parents, and preserve literal
+separator concatenation instead of filepath.Join normalization.
+
+Final existing original buffered-file class and short checker/worker/trace checks
+pass in 7.765 seconds, session 73698 retired. Existing checkpoint, recovery,
+time-bound, trace-writer, warning and CLI selection passes in 13.487 seconds,
+session 86328 retired. All-package compilation passes before the simulator
+correction. Manual evidence, without persistent tests or inventory credit: all
+25 source/native mode and path observations, five subsequent-I/O observations,
+and six complete front-end/constructor output plus storage observations match.
+Strace confirms synchronous open flags. Logs under /mnt/oldrog/tmp:
+tlago-raf-mode-compare.log, tlago-raf-io-compare.log,
+tlago-raf-trace-constructor-compare.log and tlago-raf-trace-focused.log.
+
+The earlier full lint workspace session 46724 returns status 1 and is retired:
+root fails TestJavaLiveCheckSimulationExample1 (1458.420 seconds), SANY passes
+(1.158 seconds), TLC fails the unchanged long disk queue on old-volume ENOSPC
+(152.903 seconds). The original liveness simulation also fails alone. Java's
+Simulator owns Files.createTempDirectory for each experimental liveness worker;
+Go incorrectly relied on disk graphs creating directories. Restore source
+ownership with unique temporary directories and immediate constructor failures,
+removing the deferred-error/no-op fallback for both liveness implementations.
+The five directly affected original liveness simulation and trace tests pass
+in 1.855 seconds, session 38175 retired. No original test is weakened.
+Broader existing simulation selection session 59011 passes: root 48.055 seconds,
+TLC 0.012 seconds; all-package compilation also passes. Session retired; log
+/mnt/oldrog/tmp/tlago-simulator-parity-focused.log. Full normal workspace session
+95632 is live on these final production corrections, with failfast, original
+bounds, a 60-minute timeout and no race instrumentation. Both temporary variables
+point to large workspace .codex-gotmp. Log:
+/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log. No full newer pass yet.
+
+Restart the unchanged original full LSB random draft on the large volume:
+session 32959 live, log /mnt/oldrog/tmp/tlago-long-lsb-random-large-volume.log.
+Both GOTMPDIR and TMPDIR point to workspace .codex-gotmp/lsb-random-tmp;
+actual fingerprint placement verified there. Original 2147483648 insertions,
+seed, factory, checkpoint and invariant assertions remain unchanged; no race,
+no timeout and no inventory credit while live. Its compiled snapshot includes
+buffered-file corrections before the later simulator correction. Future full
+workspace tests must likewise set both temporary-directory variables to the
+large workspace, preserving all original workload bounds.
+
 2026-10-06 SANY record linting and phase ordering:
 Previous goal turn made progress in `78cb0a6`, restoring checker construction.
 Continue faithful Java parity on master; the new distributed service remains

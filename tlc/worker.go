@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 )
@@ -73,7 +72,9 @@ func NewModelCheckingWorker(id int, checker *ModelChecker, tool *Tool) *Worker {
 	worker.Checker = checker
 	worker.Tool = tool
 	worker.configureTrace()
-	worker.traceErr = worker.ensureTraceRAF()
+	if err := worker.ensureTraceRAF(); err != nil {
+		panic(err)
+	}
 	if checker != nil {
 		for len(checker.Workers) <= id {
 			checker.Workers = append(checker.Workers, nil)
@@ -456,7 +457,8 @@ func workerTraceFileBase(metadir string, rootName string, id int) string {
 	if rootName == "" {
 		rootName = "Spec"
 	}
-	return filepath.Join(metadir, fmt.Sprintf("%s-%d", rootName, id))
+	// Worker retains FileUtil separator concatenation, including dot components.
+	return metadir + string(os.PathSeparator) + fmt.Sprintf("%s-%d", rootName, id)
 }
 
 func (w *Worker) SetTraceContext(metadir string, rootName string) {
@@ -497,10 +499,6 @@ func (w *Worker) ensureTraceRAF() error {
 	}
 	if w.traceFileBase == "" {
 		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(w.traceFileBase), 0o755); err != nil {
-		w.traceErr = err
-		return err
 	}
 	raf, err := NewBufferedRandomAccessFile(w.traceFileBase+tlcTraceExt, "rw")
 	if err != nil {

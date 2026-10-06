@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"path/filepath"
 	"sync/atomic"
 	"time"
 )
@@ -27,7 +26,6 @@ type Simulator struct {
 	workerCount      int
 	WorkerMode       SimulationWorkerMode
 	LiveCheck        *LiveCheck
-	LiveCheckInitErr error
 	LiveCheck1Errors atomic.Bool
 	NumGenStates     atomic.Int64
 	NumGenTraces     atomic.Int64
@@ -152,9 +150,6 @@ func NewSimulator(tool *Tool, deadlock bool, traceDepth int, traceNum int64, see
 func (s *Simulator) Simulate() (int, error) {
 	if s.Tool == nil {
 		return ECGeneral, newTLCError(ECGeneral, "simulator has no tool")
-	}
-	if s.LiveCheckInitErr != nil {
-		return ECGeneral, s.LiveCheckInitErr
 	}
 	if CoverageAnyEnabled() {
 		CreateCoverageCostModels(s.Tool)
@@ -876,16 +871,21 @@ func (s *Simulator) newSimulationWorker(id int) *SimulationWorker {
 }
 
 func (s *Simulator) newWorkerLiveCheck(tool *Tool, workerID int) *LiveCheck {
-	metadir := filepath.Join(s.MetaDir, fmt.Sprintf("simulator_%d", workerID))
 	if tool == nil || tool.LivenessIsTrue() {
-		return NewNoOpLiveCheck(tool, metadir)
+		return NewNoOpLiveCheck(tool, s.MetaDir)
+	}
+	// Simulator owns the temporary directory, as Files.createTempDirectory in
+	// its Java constructor does. Disk graphs never create missing parents.
+	metadir, err := os.MkdirTemp("", fmt.Sprintf("tlc-simulator-%d-", workerID))
+	if err != nil {
+		if failure, ok := err.(*os.PathError); ok {
+			panic(ioUtilsTXTPathError(failure.Path, failure.Err))
+		}
+		panic(err)
 	}
 	check, err := NewLiveCheckFromTool(tool.NoDebug(), metadir, nil)
 	if err != nil {
-		if s.LiveCheckInitErr == nil {
-			s.LiveCheckInitErr = err
-		}
-		return NewNoOpLiveCheck(tool, metadir)
+		panic(err)
 	}
 	return check
 }
@@ -896,10 +896,7 @@ func (s *Simulator) newWorkerLiveCheck1(tool *Tool, workerID int) *LiveCheck1 {
 	}
 	check, err := NewLiveCheck1WithError(tool.NoDebug(), &s.LiveCheck1Errors, workerID != 0)
 	if err != nil {
-		if s.LiveCheckInitErr == nil {
-			s.LiveCheckInitErr = err
-		}
-		return nil
+		panic(err)
 	}
 	return check
 }

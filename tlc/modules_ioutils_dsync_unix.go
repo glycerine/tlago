@@ -4,4 +4,4 @@ package tlc
 
 import "syscall"
 
-func ioUtilsDataSyncFlag() int { return syscall.O_DSYNC }
+func fileDataSyncFlag() int { return syscall.O_DSYNC }

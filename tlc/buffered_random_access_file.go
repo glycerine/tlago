@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 const (
@@ -60,6 +61,18 @@ func bufferedRandomAccessFileIOError(err error) error {
 	if _, represented := err.(interface{ GetMessage() *string }); represented {
 		return err
 	}
+	if failure, ok := err.(*os.PathError); ok {
+		// RandomAccessFile reports the native reason, without Go's operation
+		// and filename prefix. A closed native descriptor has its own message.
+		if errors.Is(failure.Err, os.ErrClosed) {
+			return NewIOException("Stream Closed")
+		}
+		reason := failure.Err.Error()
+		if len(reason) > 0 {
+			reason = strings.ToUpper(reason[:1]) + reason[1:]
+		}
+		return NewIOException(reason)
+	}
 	return NewIOException(err.Error())
 }
 
@@ -77,28 +90,44 @@ type BufferedRandomAccessFile struct {
 }
 
 func NewBufferedRandomAccessFile(name string, mode string) (*BufferedRandomAccessFile, error) {
+	// BufferedRandomAccessFile delegates through File, retaining separator
+	// normalization without resolving dot or dot-dot path components.
+	name = filenameNormalizeFile(name)
 	flag := os.O_RDONLY
 	writable := false
 	switch mode {
 	case "r":
-	case "rw":
+	case "rw", "rws", "rwd":
 		flag = os.O_RDWR | os.O_CREATE
 		writable = true
+		if mode == "rws" {
+			flag |= os.O_SYNC
+		}
+		if mode == "rwd" {
+			flag |= fileDataSyncFlag()
+		}
 	default:
-		return nil, newTLCError(ECGeneral, "unsupported random access file mode %q", mode)
+		return nil, NewIllegalArgumentException(`Illegal mode "` + mode + `" must be one of "r", "rw", "rws", or "rwd"`)
+	}
+	// RandomAccessFile checks File.isInvalid after validating its mode.
+	if strings.IndexByte(name, 0) >= 0 {
+		return nil, NewFileNotFoundException("Invalid file path")
 	}
 	file, err := os.OpenFile(name, flag, 0o666)
 	if err != nil {
-		// RandomAccessFile's native open throws FileNotFoundException, even
-		// for other open failures such as permissions or a directory path.
-		if failure, ok := err.(*os.PathError); ok {
-			reason := failure.Err.Error()
-			if len(reason) > 0 {
-				reason = strings.ToUpper(reason[:1]) + reason[1:]
-			}
-			return nil, NewFileNotFoundException(name + " (" + reason + ")")
-		}
-		return nil, bufferedRandomAccessFileIOError(err)
+		return nil, bufferedRandomAccessFileOpenError(name, err)
+	}
+	// OpenJDK's native open rejects directories even in read-only mode. Go's
+	// os.OpenFile permits them, so apply that same check before allocating a
+	// buffer or reaching BufferedRandomAccessFile.init.
+	info, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return nil, bufferedRandomAccessFileOpenError(name, err)
+	}
+	if info.IsDir() {
+		_ = file.Close()
+		return nil, bufferedRandomAccessFileOpenError(name, syscall.EISDIR)
 	}
 	raf := &BufferedRandomAccessFile{
 		file:     file,
@@ -110,6 +139,19 @@ func NewBufferedRandomAccessFile(name string, mode string) (*BufferedRandomAcces
 		return nil, bufferedRandomAccessFileIOError(err)
 	}
 	return raf, nil
+}
+
+// RandomAccessFile's native open throws FileNotFoundException for missing,
+// permission, directory and other opening failures. Subsequent I/O is separate.
+func bufferedRandomAccessFileOpenError(name string, err error) error {
+	if failure, ok := err.(*os.PathError); ok {
+		err = failure.Err
+	}
+	reason := err.Error()
+	if len(reason) > 0 {
+		reason = strings.ToUpper(reason[:1]) + reason[1:]
+	}
+	return NewFileNotFoundException(name + " (" + reason + ")")
 }
 
 func (f *BufferedRandomAccessFile) init() error {
@@ -173,7 +215,7 @@ func (f *BufferedRandomAccessFile) flushBuffer() (bool, error) {
 	length := min64(f.length-f.lo, BufferedRandomAccessFileBuffSz)
 	if length > 0 {
 		if f.diskPos != f.lo {
-			if _, err := f.file.Seek(f.lo, io.SeekStart); err != nil {
+			if err := f.seekDisk(f.lo); err != nil {
 				return false, bufferedRandomAccessFileIOError(err)
 			}
 		}
@@ -190,9 +232,18 @@ func (f *BufferedRandomAccessFile) flushBuffer() (bool, error) {
 	return true, nil
 }
 
+// RandomAccessFile.seek validates the offset before entering native I/O.
+func (f *BufferedRandomAccessFile) seekDisk(pos int64) error {
+	if pos < 0 {
+		return NewIOException("Negative seek offset")
+	}
+	_, err := f.file.Seek(pos, io.SeekStart)
+	return bufferedRandomAccessFileIOError(err)
+}
+
 func (f *BufferedRandomAccessFile) fillBuffer() error {
 	if f.diskPos != f.lo {
-		if _, err := f.file.Seek(f.lo, io.SeekStart); err != nil {
+		if err := f.seekDisk(f.lo); err != nil {
 			return bufferedRandomAccessFileIOError(err)
 		}
 		f.diskPos = f.lo

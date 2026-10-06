@@ -62,10 +62,17 @@ bounds and uses no race instrumentation. It includes the source MP formatter,
 throwable/debug boundaries, Java-shaped CLI and deferred config-before-SANY
 loading. It predates `7e89fcb` and the latest checker-constructor correction.
 Historical full-suite receipts belong in `PORT_PROGRESS.md`. Full normal
-workspace session `46724` is now live on the final lint correction after
-`78cb0a6`, before the final module-level USE/HIDE collection; log `/mnt/oldrog/tmp/tlago-sany-lint-workspace.log`. It preserves
-original workloads and uses no race instrumentation. Do not claim its result
-before the same handle returns a terminal status.
+workspace session `46724` returned status 1 and is retired. Its lint snapshot
+predates the latest storage and simulator corrections. Root failed the original
+`TestJavaLiveCheckSimulationExample1`; TLC failed the unchanged long disk queue
+when the old temporary volume ran out of space. SANY passed. Log:
+`/mnt/oldrog/tmp/tlago-sany-lint-workspace.log`. The simulator directory ownership
+has now been corrected to match Java. Future full runs must set **both**
+`GOTMPDIR` and `TMPDIR` to the large workspace `.codex-gotmp` directory.
+Full normal workspace session `95632` is live on the final storage and simulator
+corrections, preserving original bounds with no race instrumentation. Log:
+`/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`. No full-suite success is
+claimed until this handle returns terminal status.
 
 Latest focused verification:
 
@@ -77,7 +84,10 @@ Latest focused verification:
 | Original DFID, liveness, checkpoint/time-bound and CLI methods | Pass | 10.320 seconds, constructor correction, session `15450` retired |
 | Four original coverage models | Pass | 1.662 seconds, constructor correction, session `51507` retired |
 | Existing SANY warning controls, semantic bridge, CLI, assumption/simulation and original trace-writer methods | Pass | 6.091 / 0.015 seconds, final lint correction, session `76791` retired |
-| All-package compilation | Pass | Constructor correction and linting snapshots |
+| Original buffered-file class and short checker/worker/trace checks | Pass | 7.765 seconds, session `73698` retired |
+| Original checkpoint/recovery/time-bound/trace-writer and CLI selection | Pass | 13.487 seconds, session `86328` retired |
+| Existing original simulation and simulation-worker selection | Pass | Root 48.055 / TLC 0.012 seconds, session `59011` retired |
+| All-package compilation | Pass | Final storage and simulator corrections |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -92,11 +102,16 @@ BFS creates queue, trace and the selected fingerprint implementation in source
 order, without an unused default fingerprint initialization. Disk graphs do not
 create missing parent directories. RandomAccessFile opening failures retain the
 source FileNotFoundException. The original five-second time-bound test passes
-unchanged. Further storage/trace constructor error boundaries remain audit work.
+unchanged. Trace and worker constructors now propagate opening failures immediately and
+preserve source path concatenation. Buffered random-access files support all four
+source modes, including synchronous flags, and preserve opening versus later I/O
+exception types and messages. Experimental liveness simulation creates unique
+worker temporary directories itself, as Java does; failures are immediate.
+Further constructor and front-end parity remains audit work.
 
 ## Long verification receipts
 
-No original long fingerprint draft is currently live. LSB session `59782`
+The earlier LSB session `59782`
 failed after 19,420.414 seconds and is retired. It was compiled at `a915e08`;
 log `/mnt/oldrog/tmp/tlago-long-lsb-random-unlimited-final.log`. Last logged
 progress reached 2,144,786,516 of 2,147,483,648 iterations. Fingerprint merging
@@ -105,11 +120,14 @@ No full-workload success or inventory credit is claimed. Its unchanged draft and
 overlay remain `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go` and
 `/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`.
 
-The next full original LSB run must explicitly place test temporary storage on
-the large workspace volume. The post-cleanup observation gives 29 GiB free on
-the old volume and 1.3 TiB on the workspace volume. Preserve original bounds,
-factory, seed, assertions and checkpoints; use no race instrumentation. Do not
-reclaim unrelated files. Full workspace session `46724` remains separately live.
+LSB session `32959` is live on the unchanged full original random draft, using
+both temporary-directory variables on the large workspace volume. Log:
+`/mnt/oldrog/tmp/tlago-long-lsb-random-large-volume.log`. The actual fingerprint
+file is under `.codex-gotmp/lsb-random-tmp`; placement has been verified. This
+snapshot includes the latest buffered-file and trace corrections, before the
+simulator correction. Preserve original bounds, factory, seed, assertions and
+checkpoints; use no race instrumentation. No success or inventory credit until
+the same handle returns terminal status. Do not reclaim unrelated files.
 
 MSB session `63113` is retired with status 0. Its full random draft passes in
 13,343.32 seconds, including all 2,147,483,648 insertions, checkpoint commit,

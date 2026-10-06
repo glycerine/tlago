@@ -301,7 +301,7 @@ func ioUtilsFileOptionsFromEnums(enums []string) (ioUtilsFileOptions, error) {
 		case "SYNC":
 			options.flag |= os.O_SYNC
 		case "DSYNC":
-			options.flag |= ioUtilsDataSyncFlag()
+			options.flag |= fileDataSyncFlag()
 		}
 	}
 	if appendMode && truncate {
