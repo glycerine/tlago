@@ -69,13 +69,20 @@ against Java and passes focused checks. Its complete TLC package passed in
 failure prevents full-workspace pass credit. Log:
 `/mnt/oldrog/tmp/tlago-operator-resolution-workspace.log`.
 
-Normal root-package session `21211` is live on the final corrected lookup,
-error-code, real-module and native fixture snapshot. It retains all existing
-tests, original bounds, failfast and a 60-minute timeout without race
-instrumentation. Both temporary-directory variables use workspace `.codex-gotmp`.
-Log: `/mnt/oldrog/tmp/tlago-operator-resolution-root-final.log`. The completed
-TLC package is reused rather than duplicated; preserve this root handle until
-terminal status and do not claim a pass from silence.
+Normal root-package session `21211` returned status 1 after 319.420 seconds
+and is retired. It exposed the native Bitwise bridge fixture using `+` without
+importing arithmetic. Java rejects that original source with two semantic errors
+and accepts the corrected `EXTENDS Bitwise, Naturals`. Its LOCAL-helper and native
+override assertions are unchanged. All four existing bridge checks pass normally
+in 0.372 seconds; log `/mnt/oldrog/tmp/tlago-bitwise-bridge-focused.log`.
+
+Normal root-package session `96678` is live on the corrected fixture snapshot.
+It retains all existing tests, original bounds and a 60-minute timeout, without
+race instrumentation or failfast, so subsequent failures remain visible. Both
+temporary-directory variables use workspace `.codex-gotmp`. Log:
+`/mnt/oldrog/tmp/tlago-bitwise-bridge-root-full.log`. Reuse the completed unchanged
+TLC package result; preserve the root handle until terminal status and do not
+claim a pass from silence.
 
 Latest focused verification:
 

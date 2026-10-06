@@ -67,7 +67,7 @@ func TestBitwiseStandardModuleKeepsLocalHelpersUnexported(t *testing.T) {
 	dir := t.TempDir()
 	root := filepath.Join(dir, "BitwiseBridge.tla")
 	writeFile(t, root, `---- MODULE BitwiseBridge ----
-EXTENDS Bitwise
+EXTENDS Bitwise, Naturals
 B == INSTANCE Bitwise
 C == B!shiftR(8, 1) + B!Not(5) + (6 & 3)
 ====`)

@@ -1,5 +1,27 @@
 # TLC Port Progress
 
+2026-10-06 Native Bitwise bridge source correction:
+Previous lookup/module batch committed as `125246f`. Normal root session
+21211 returned status 1 after 319.420 seconds and is retired. The existing
+TestBitwiseStandardModuleKeepsLocalHelpersUnexported fixture used + while
+extending only Bitwise, whose arithmetic dependency is LOCAL. Actual upstream
+Java rejects this exact original source with SOURCE_ERRORS=0,2 and accepts
+EXTENDS Bitwise, Naturals with SOURCE_ERRORS=0,0. Distinct source/output pairs
+remain under /mnt/oldrog/tmp/tlago-bitwise-bridge-source-audit/{original,corrected}.
+Correct only the native fixture import; preserve all native override, qualified
+export and LOCAL-helper absence assertions. No production changes, invented
+tests, original fixture edits or test-port inventory credit.
+
+All four existing bridge checks pass normally in 0.372 seconds, session 3964
+retired; log tlago-bitwise-bridge-focused.log under /mnt/oldrog/tmp. Normal full
+root session 96678 is live with original bounds, no failfast, 60-minute timeout,
+both temporary variables on workspace .codex-gotmp and no race instrumentation.
+Log tlago-bitwise-bridge-root-full.log. Reuse the unchanged completed TLC package
+result from 22503; no current full-workspace pass claim. Original long LSB
+session 32959 remains live and undisturbed, with no success or inventory credit.
+Next production work remains actual declaration visibility and proof-fact
+generation in source order. New distributed architecture stays deferred.
+
 2026-10-06 Actual semantic operator lookup and original packaged module bodies:
 Previous goal turn committed aed6180. Full normal workspace 16991 returns
 status 0 and is retired: root 1,547.242 / SANY 1.298 / TLC 780.089 seconds,
