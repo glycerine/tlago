@@ -1,6 +1,8 @@
 # TLC Port Progress
 
 2026-10-06 Buffered files, trace construction and simulation directory ownership:
+Committed as `db62dfb`; the subsequent documentation correction removes obsolete
+remaining-work claims for buffered-file modes and trace opening boundaries.
 Continue faithful Java parity on master after `b651aac`; distributed architecture
 remains postponed. Implement BufferedRandomAccessFile's four original modes:
 `r`, `rw`, `rws` with O_SYNC, and `rwd` with O_DSYNC on supported Unix platforms.

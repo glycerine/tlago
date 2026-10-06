@@ -195,8 +195,9 @@ possible schedule.
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
 ErrorDetails rendering, source per-module semantic diagnostic accumulation,
-and remaining storage/trace constructor error boundaries. Random-access-file `rws`/`rwd` modes
-and invalid-mode exception behavior also need source reconciliation. Do not add
+and remaining constructor and semantic-phase boundaries. Buffered-file modes,
+invalid-mode exceptions and trace/worker opening boundaries were reconciled in
+`db62dfb`; preserve those verified fixes. Do not add
 synthetic phase output. The actual Java record linter is now ported: declaration
 and formal-parameter dependencies, same-domain EXTENDS suppression, binding and
 proof scopes, exact warning text and a distinct phase after successful semantic
