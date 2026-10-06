@@ -822,21 +822,23 @@ func (r *sanySelectorResolver) walkProof(proof ProofSummary, mod *Module, scope 
 			}
 		}
 		active = kept
-		for i := range step.Definitions {
-			definition := &step.Definitions[i]
-			r.walkDefinition(definition, mod, nested)
-			if _, exists := nested[definition.Name]; !exists {
-				nested[definition.Name] = sanySelectorDefinition{module: mod, def: definition, params: sanyDefinitionParams(definition)}
-				active = append(active, entry{depth: step.Depth, name: definition.Name})
-			}
-		}
-		for _, instance := range step.Instances {
-			introduced := map[string]sanySelectorDefinition{}
-			r.addInstance(introduced, mod, instance)
-			for name, definition := range introduced {
-				if _, exists := nested[name]; !exists {
-					nested[name] = definition
-					active = append(active, entry{depth: step.Depth, name: name})
+		for _, unit := range sanyProofDefinitionUnits(&step) {
+			if unit.definition != nil {
+				definition := unit.definition
+				r.walkDefinition(definition, mod, nested)
+				if _, exists := nested[definition.Name]; !exists {
+					nested[definition.Name] = sanySelectorDefinition{module: mod, def: definition, params: sanyDefinitionParams(definition)}
+					active = append(active, entry{depth: step.Depth, name: definition.Name})
+				}
+			} else if unit.instance != nil {
+				instance := *unit.instance
+				introduced := map[string]sanySelectorDefinition{}
+				r.addInstance(introduced, mod, instance)
+				for name, definition := range introduced {
+					if _, exists := nested[name]; !exists {
+						nested[name] = definition
+						active = append(active, entry{depth: step.Depth, name: name})
+					}
 				}
 			}
 		}

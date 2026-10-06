@@ -82,8 +82,8 @@ replacing the real signature. The unchanged original test now passes, alone in
 13.186 seconds and in the final focused gate. Log:
 `/mnt/oldrog/tmp/tlago-symbol-instance-root-full.log`.
 
-Normal full root-package session `99670` is live on the final proof statement,
-formal-signature and Len corrections. It retains original bounds and a 60-minute
+Normal full root-package session `99670` is live on the `8d13d91` proof statement,
+formal-signature and Len snapshot, before the newer mixed DEFINE traversal correction. It retains original bounds and a 60-minute
 timeout, without race instrumentation or failfast. Both temporary-directory
 variables use workspace `.codex-gotmp`. Log:
 `/mnt/oldrog/tmp/tlago-proof-statement-root-full.log`.
@@ -393,6 +393,14 @@ and one lower-phase exception/type/null-message/retained-diagnostics observation
 Logs use `/mnt/oldrog/tmp/tlago-proof-statement-final-*.log`. The existing native
 proof-scope fixture is corrected against Java: PICK keeps I in scope, so a later
 quantifier must use a fresh k. Its named <1>I collision and assertions are unchanged.
+
+Mixed DEFINE steps now retain their syntax and visit operator, function and module
+definition heirs in Java order, in both expression generation and selector preparation.
+Four bounded source comparisons match, including a rejected forward instance reference.
+Existing 58 statement and 49 reference comparisons still match. Complete SANY passes
+in 1.881 seconds; the existing focused gate passes in 13.476 seconds. These checks
+add no permanent test inventory credit. INSTANCE substitution/construction behavior
+and non-local INSTANCE step projection still need reconciliation.
 
 Continue proof-local instance generation, original hierarchical proof level checks,
 complete typed NEW/bound contexts and constructor/application failure boundaries.

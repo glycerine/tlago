@@ -242,7 +242,11 @@ after the entire subproof. Definition-step names have a distinct semantic kind
 for fact and DEF validation. Forty-nine bounded semantic-phase comparisons match
 Java diagnostic messages, ranges and ordering.
 
-Statement and DEFINE-body generation now precede each step's proof. LET and
+Statement and DEFINE-body generation now precede each step's proof. Mixed
+DEFINE steps retain the original proof-step syntax, and both semantic generation
+and selector preparation traverse its definition heirs in order. Module definitions
+therefore become visible to later operators in the same step, without admitting
+forward references. LET and
 DEFINE share operator/function generation, preserving duplicate/body/constructor
 order, first signatures and recursive identity. A failed DEFINE function leaves
 Java's definition vector empty and raises its original no-message array-bounds

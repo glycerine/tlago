@@ -208,40 +208,43 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			diagnostic.SANYRange = SanyRange{Begin: step.Pos, End: step.Pos.SourceEnd()}
 			diags = append(diags, diagnostic)
 		}
-		for _, definition := range step.Definitions {
-			previous, exists := g.lookupSymbol(definition.Name, current)
-			binding := g.bindings[definition.Name]
-			failedFunction := definition.FunctionDef && ((exists && previous.kind != OperatorDecl && previous.kind != InstanceDecl) || (binding != nil && !binding.defined && binding.level != g.level))
-			diags = append(diags, g.generateLocalDefinition(definition, current, map[string]bool{})...)
-			if failedFunction {
-				panic(tlc.NewArrayIndexOutOfBoundsExceptionNoMessage())
-			}
-			locals := map[string]bool{}
-			for _, name := range definition.Params {
-				locals[name] = true
-			}
-			arities, parameters := g.proofSignatures()
-			arities = definitionBodyArities(arities, definition)
-			diags = append(diags, checkCallArity(definition.Expr, arities, parameters, locals)...)
-			diags = append(diags, checkOperatorArgumentKinds(definition.Expr, parameters, arities, locals)...)
-			if symbol, exists := g.symbols[definition.Name]; exists {
-				symbolScopes[step.Depth][definition.Name] = symbol
-				scopes[step.Depth][definition.Name] = current[definition.Name]
-			}
-		}
-		for _, instance := range step.Instances {
-			for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
-				binding := localSymbol{kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition()}
-				g.symbols[symbol.name] = binding
-				symbolScopes[step.Depth][symbol.name] = binding
-				current[symbol.name] = symbol.sourcePosition()
-				scopes[step.Depth][symbol.name] = symbol.sourcePosition()
-			}
-			if instance.Name != "" {
-				current[instance.Name] = instance.SourcePosition()
-				scopes[step.Depth][instance.Name] = instance.SourcePosition()
-				current[instanceNameSentinel(instance.Name)] = instance.SourcePosition()
-				scopes[step.Depth][instanceNameSentinel(instance.Name)] = instance.SourcePosition()
+		for _, unit := range sanyProofDefinitionUnits(&step) {
+			if unit.definition != nil {
+				definition := *unit.definition
+				previous, exists := g.lookupSymbol(definition.Name, current)
+				binding := g.bindings[definition.Name]
+				failedFunction := definition.FunctionDef && ((exists && previous.kind != OperatorDecl && previous.kind != InstanceDecl) || (binding != nil && !binding.defined && binding.level != g.level))
+				diags = append(diags, g.generateLocalDefinition(definition, current, map[string]bool{})...)
+				if failedFunction {
+					panic(tlc.NewArrayIndexOutOfBoundsExceptionNoMessage())
+				}
+				locals := map[string]bool{}
+				for _, name := range definition.Params {
+					locals[name] = true
+				}
+				arities, parameters := g.proofSignatures()
+				arities = definitionBodyArities(arities, definition)
+				diags = append(diags, checkCallArity(definition.Expr, arities, parameters, locals)...)
+				diags = append(diags, checkOperatorArgumentKinds(definition.Expr, parameters, arities, locals)...)
+				if symbol, exists := g.symbols[definition.Name]; exists {
+					symbolScopes[step.Depth][definition.Name] = symbol
+					scopes[step.Depth][definition.Name] = current[definition.Name]
+				}
+			} else if unit.instance != nil {
+				instance := *unit.instance
+				for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
+					binding := localSymbol{kind: symbol.importKind(), arity: symbol.arity, pos: symbol.sourcePosition()}
+					g.symbols[symbol.name] = binding
+					symbolScopes[step.Depth][symbol.name] = binding
+					current[symbol.name] = symbol.sourcePosition()
+					scopes[step.Depth][symbol.name] = symbol.sourcePosition()
+				}
+				if instance.Name != "" {
+					current[instance.Name] = instance.SourcePosition()
+					scopes[step.Depth][instance.Name] = instance.SourcePosition()
+					current[instanceNameSentinel(instance.Name)] = instance.SourcePosition()
+					scopes[step.Depth][instanceNameSentinel(instance.Name)] = instance.SourcePosition()
+				}
 			}
 		}
 		statementContext := copySanyExpressionContext(current)

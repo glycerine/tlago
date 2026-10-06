@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-06 Mixed proof DEFINE traversal:
+Previous turn made progress in `8d13d91`; start from its clean master tree.
+Poll full root handle 99670: confirmed live, no terminal result. It tests the
+8d13d91 snapshot, before this change; preserve the handle and do not restart it.
+Java Generator.generateProof visits N_DefStep heirs in their written order.
+Go split operators/functions and module definitions into two vectors, then
+visited all operators first. Three valid scratch cases therefore rejected an
+instance declared earlier in the same DEFINE step. Retain original proof-step
+syntax and share an ordered unit traversal between expression generation and
+selector preparation. Native ASTs without syntax use source positions.
+
+Four bounded source comparisons now match complete diagnostics, including
+operator-before-instance rejection and instance selectors after declaration.
+External scratch module ProofOrderTarget avoids an unrelated nested-module
+resolver collision in the initial scratch inputs; only the source-valid external
+module cases support this receipt. No permanent tests or fixtures were added.
+Established 58 statement and 49 reference observations remain matching (77034
+and 97104 terminal 0). Complete existing SANY package passes in 1.881 seconds
+(25987 terminal 0); unchanged focused native classes, original ParseErrorTests
+and EWD998ChanDebugger pass in 13.476 seconds (56114 terminal 0). All-package
+compilation and git diff --check pass. An initial command incorrectly selected
+nonexistent ./sany; it failed setup and has no pass credit. The corrected gate
+selects ./sany_tests. Logs: /mnt/oldrog/tmp/tlago-proof-definition-order-*.log;
+four manual vectors and before/after receipts live outside the repository in
+/mnt/oldrog/tmp/tlago-proof-definition-order/.
+
+This fixes traversal, not the remaining proof-local INSTANCE implementation.
+Substitution generation, constructor conflicts, non-local INSTANCE projection,
+typed contexts and hierarchical proof levels remain incomplete. No new test
+inventory credit or current full-workspace pass is claimed.
+
 2026-10-06 Proof statement and DEFINE-body generation:
 Starting clean master `a9e92c7`. Previous turn is progress: committed reference
 projection/generation, checked Java behavior and retired the completed full LSB

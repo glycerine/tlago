@@ -182,6 +182,7 @@ type ProofSummary struct {
 }
 
 type ProofStep struct {
+	Syntax          *SanySyntaxNode
 	Definitions     []Definition
 	Instances       []Instance
 	LeafRefs        []ProofRef

@@ -1027,7 +1027,7 @@ func sanyProofStepsAt(node *SanySyntaxNode, depth int) []ProofStep {
 }
 
 func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
-	step := ProofStep{Pos: sanyNodePosition(node), LeafRefs: sanyLeafProofReferences(node)}
+	step := ProofStep{Syntax: node, Pos: sanyNodePosition(node), LeafRefs: sanyLeafProofReferences(node)}
 	step.Facts = sanyProofFactsFromRefs(step.LeafRefs)
 	for _, child := range node.GetHeirs() {
 		if child.Token != nil && isSanyProofStepStartKind(child.Token.Kind) {

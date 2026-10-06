@@ -287,6 +287,46 @@ func sanyLetGenerationUnits(expr *LetExpr) []sanyLetGenerationUnit {
 	return units
 }
 
+// generateProof processes every DEFINE heir in lexical order, including module
+// definitions interleaved with operator and function definitions.
+func sanyProofDefinitionUnits(step *ProofStep) []sanyLetGenerationUnit {
+	var units []sanyLetGenerationUnit
+	for i := range step.Definitions {
+		definition := &step.Definitions[i]
+		units = append(units, sanyLetGenerationUnit{syntax: definition.Syntax, position: definition.SourcePosition(), definition: definition})
+	}
+	for i := range step.Instances {
+		instance := &step.Instances[i]
+		units = append(units, sanyLetGenerationUnit{syntax: instance.Syntax, position: instance.SourcePosition(), instance: instance})
+	}
+	if step.Syntax == nil {
+		sort.SliceStable(units, func(i, j int) bool { return units[i].position.Compare(units[j].position) < 0 })
+		return units
+	}
+	bySyntax := make(map[*SanySyntaxNode]sanyLetGenerationUnit, len(units))
+	for _, unit := range units {
+		bySyntax[unit.syntax] = unit
+	}
+	units = nil
+	for _, body := range step.Syntax.GetHeirs() {
+		if body.Kind.JavaName() == "N_DefStep" {
+			for _, syntax := range body.GetHeirs() {
+				if unit, ok := bySyntax[syntax]; ok {
+					units = append(units, unit)
+				}
+			}
+		}
+	}
+	// A non-local INSTANCE step contains a single instance rather than DEFINE.
+	if step.Kind == "INSTANCE" {
+		for i := range step.Instances {
+			instance := &step.Instances[i]
+			units = append(units, sanyLetGenerationUnit{syntax: instance.Syntax, position: instance.SourcePosition(), instance: instance})
+		}
+	}
+	return units
+}
+
 // One syntactic module unit can carry a named theorem definition, its theorem
 // statement, and its proof. They belong to one Generator dispatch iteration.
 type sanyModuleGenerationUnit struct {
