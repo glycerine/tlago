@@ -15,3 +15,11 @@ check the original merge result, error code and structured parameters.
 Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
+
+`semantic.SemanticErrorCorpusTests.test` now retains all four original assertion
+families: failure severity, structured argument counts, no suspected-unreachable
+checks, and the expected error code. Its helper preserves the original interrupted
+semantic-generation catch and returns parsing messages before semantic checking.
+Passing those assertions does not establish every diagnostic's full fidelity;
+remaining source differences are recorded in `tlc/HANDOFF.md` and
+`tlc/PORT_PROGRESS.md`. SANY methods do not change the TLC test-port totals.

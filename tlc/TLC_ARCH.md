@@ -169,8 +169,24 @@ unit errors precede child errors on both ordinary and interrupted paths.
 
 The original semantic-error corpus helper catches WrongInvocationException for
 upstream issue 1149 and returns the retained semantic Errors. Its Go translation
-now restores that catch; parameter-count and no-unreachable-check assertions
-still need reconciliation, so this does not establish whole-method fidelity.
+now retains all four original assertion families, including parameter counts and
+absence of suspected-unreachable checks. SanyErrorCode carries all 66 original
+metadata entries. Diagnostic arguments are retained separately from native
+summary wording. INSTANCE constraint checks carry the actual instancee name and
+higher-order checks carry the enclosing operator and argument position.
+
+Label arity failures use the original code 4337, label-node location and message.
+Failed selection retains nullOAN and suppresses later duplicate label checks.
+Mismatched INSTANCE operator arguments remain OpArgNodes rather than being
+regenerated as zero-argument expressions. Ordinary application level violations
+use source code 4205, not the lambda arity code. Obsolete nested-standard-module
+conflict approximation is removed; conflicts arise at actual nested module units.
+
+The fixed-parameter comparison matches 120 of 126 frozen corpus fixtures. Six
+still differ in shadowing warnings, module-instance arity failure boundaries,
+operator-argument intrinsic level and unfinished recursive binding preservation.
+The comparison concerns fixed-code order/count and displayed parameter values;
+it does not prove all diagnostic messages, ranges or semantic object types match.
 
 Leaf proof facts are retained but not fully generated or resolved, so an unknown
 `BY` fact is still incorrectly accepted. Port actual proof generation and scope

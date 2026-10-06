@@ -72,9 +72,9 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 					continue
 				}
 				position := nested.Pos
-				diagnostic := errorAt(position, "E4223", "Multiply-defined module '%s': this definition or declaration conflicts \nwith the one at %s.", nested.Name, sanySymbolLocation(previous.Pos))
+				diagnostic := errorAt(position, "E4223", "distinct modules with name %s: this definition or declaration conflicts with the one at %s", nested.Name, sanySymbolLocation(previous.Pos))
 				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-				diagnostic.SANYMessage = diagnostic.Message
+				diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined module '%s': this definition or declaration conflicts \nwith the one at %s.", nested.Name, sanySymbolLocation(previous.Pos))
 				diagnostic.SANYParameters = []any{nested.Name, sanySymbolLocation(previous.Pos)}
 				childDiags = appendSanyDiagnostics(childDiags, diagnostic)
 				break
@@ -270,10 +270,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	extendedSymbols := map[string]importedSymbol{}
 	enclosingBindings := map[string]importedSymbol{}
 	diags = append(diags, checkPlusCalChecksumWarnings(mod)...)
-	diags = append(diags, checkNestedStandardModuleConflicts(mod)...)
 	addName := func(name string, pos Position, kind DeclarationKind) {
 		if builtinIdentifiers[name] && !isEmbeddedStandardModule(mod) {
-			diags = append(diags, errorAt(pos, "E4202", "cannot redefine built-in symbol %s", name))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(pos, "E4202", "cannot redefine built-in symbol %s", name), name))
 			return
 		}
 		if prev, ok := defined[name]; ok {
@@ -535,7 +534,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		seenInDecl := map[string]bool{}
 		for _, name := range d.Names {
 			if seenInDecl[name] {
-				diags = append(diags, errorAt(d.Pos, "E4291", "duplicate recursive declaration %s", name))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(d.Pos, "E4291", "duplicate recursive declaration %s", name), name))
 				continue
 			}
 			seenInDecl[name] = true
@@ -567,7 +566,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if want, recursive := recursiveArities[def.Name]; recursive {
 			satisfiedRecursive[def.Name] = true
 			if got := len(def.Params); got != want {
-				diags = append(diags, errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want), def.Name))
 			}
 		} else {
 			if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
@@ -768,7 +767,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	// traversal rather than sorting the resulting messages.
 	for _, unit := range sanyModuleGenerationUnits(mod) {
 		if kind := sanyModuleRecursiveSectionType(unit); kind != "" && checks.recursiveGeneration.sum > 0 {
-			diagnostic := errorAt(unit.position, "E4294", "%s may not appear within a recursive definition section.", kind)
+			diagnostic := sanyDiagnosticParameters(errorAt(unit.position, "E4294", "%s may not appear within a recursive definition section.", kind), kind)
 			if unit.syntax != nil {
 				diagnostic.SANYRange = unit.syntax.Range
 			}
@@ -813,7 +812,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		for _, name := range recursiveOrder {
 			if !satisfiedRecursive[name] {
 				pos := recursivePositions[name]
-				diagnostic := errorAt(pos, "E4291", "recursive declaration %s has no definition", name)
+				diagnostic := sanyDiagnosticParameters(errorAt(pos, "E4291", "recursive declaration %s has no definition", name), name)
 				diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
 				diagnostic.SANYMessage = fmt.Sprintf("Symbol %s declared in RECURSIVE statement but not defined.", name)
 				diags = append(diags, diagnostic)
@@ -974,7 +973,7 @@ func checkLetRecursiveSections(expr *LetExpr) Diagnostics {
 		seenInDecl := map[string]bool{}
 		for _, name := range decl.Names {
 			if seenInDecl[name] {
-				diags = append(diags, errorAt(decl.Pos, "E4291", "duplicate recursive declaration %s", name))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(decl.Pos, "E4291", "duplicate recursive declaration %s", name), name))
 				continue
 			}
 			seenInDecl[name] = true
@@ -990,14 +989,14 @@ func checkLetRecursiveSections(expr *LetExpr) Diagnostics {
 		def, ok := firstDefinitionAfter(expr.Definitions, name, pos)
 		if !ok {
 			if letContainsNestedDefinitionName(expr, name) {
-				diags = append(diags, errorAt(pos, "E4293", "recursive declaration %s is defined in the wrong LET/IN level", name))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(pos, "E4293", "recursive declaration %s is defined in the wrong LET/IN level", name), name))
 			} else {
-				diags = append(diags, errorAt(pos, "E4291", "recursive declaration %s has no definition", name))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(pos, "E4291", "recursive declaration %s has no definition", name), name))
 			}
 			continue
 		}
 		if got, want := len(def.Params), recursiveArities[name]; got != want {
-			diags = append(diags, errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want), def.Name))
 		}
 	}
 	return diags
@@ -1302,7 +1301,7 @@ func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
 	seen := map[string]bool{}
 	for _, param := range label.Params {
 		if seen[param] {
-			diags = append(diags, errorAt(label.Pos, "E4330", "repeated label parameter %s in label %s", param, label.Name))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(label.Pos, "E4330", "repeated label parameter %s in label %s", param, label.Name), param, label.Name))
 			continue
 		}
 		seen[param] = true
@@ -1311,7 +1310,7 @@ func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
 	for _, name := range bound {
 		required[name] = true
 		if !seen[name] {
-			diags = append(diags, errorAt(label.Pos, "E4331", "label %s must contain bound parameter %s", label.Name, name))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(label.Pos, "E4331", "label %s must contain bound parameter %s", label.Name, name), label.Name, name))
 		}
 	}
 	for _, param := range label.Params {
@@ -1331,7 +1330,7 @@ func checkDuplicateSiblingLabels(exprs []Expr) Diagnostics {
 			continue
 		}
 		if _, exists := seen[label.Name]; exists {
-			diags = append(diags, errorAt(label.Pos, "E4336", "Duplicate label %s", label.Name))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(label.Pos, "E4336", "Duplicate label %s", label.Name), label.Name))
 			continue
 		}
 		seen[label.Name] = label.Pos
@@ -1368,6 +1367,9 @@ func collectLabelArities(base string, expr Expr, out map[string]int) {
 }
 
 func checkLabelReferenceArities(expr Expr, labelArities map[string]int) Diagnostics {
+	if sanyExpressionGenerationFailure(expr) != sanyGenerationSucceeded {
+		return nil
+	}
 	if expr == nil || len(labelArities) == 0 {
 		return nil
 	}
@@ -1383,12 +1385,12 @@ func checkLabelReferenceArities(expr Expr, labelArities map[string]int) Diagnost
 	if call, ok := expr.(*CallExpr); ok {
 		if ident, ok := call.Callee.(*IdentExpr); ok {
 			if want, exists := labelArities[ident.Name]; exists && len(call.Args) != want {
-				diags = append(diags, errorAt(call.Pos, "E4337", "label %s arity mismatch: got %d args, want %d", ident.Name, len(call.Args), want))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(call.Pos, "E4337", "label %s arity mismatch: got %d args, want %d", ident.Name, len(call.Args), want), ident.Name))
 			}
 		}
 	} else if ident, ok := expr.(*IdentExpr); ok {
 		if want, exists := labelArities[ident.Name]; exists && want != 0 {
-			diags = append(diags, errorAt(ident.Pos, "E4337", "label %s arity mismatch: got 0 args, want %d", ident.Name, want))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(ident.Pos, "E4337", "label %s arity mismatch: got 0 args, want %d", ident.Name, want), ident.Name))
 		}
 	}
 	if let, ok := expr.(*LetExpr); ok {
@@ -1478,30 +1480,6 @@ func isEmbeddedStandardModule(mod *Module) bool {
 	}
 	source, ok := standardModules[mod.Name]
 	return ok && mod.SourcePath == mod.Name+".tla" && strings.TrimSpace(mod.Source) == strings.TrimSpace(source)
-}
-
-func checkNestedStandardModuleConflicts(mod *Module) Diagnostics {
-	if mod == nil {
-		return nil
-	}
-	importsStandard := map[string]bool{}
-	for _, name := range mod.Extends {
-		if _, ok := standardModules[name]; ok {
-			importsStandard[name] = true
-		}
-	}
-	for _, inst := range mod.Instances {
-		if _, ok := standardModules[inst.Module]; ok {
-			importsStandard[inst.Module] = true
-		}
-	}
-	var diags Diagnostics
-	for _, nested := range mod.Nested {
-		if nested != nil && importsStandard[nested.Name] {
-			diags = append(diags, errorAt(nested.Pos, "E4223", "distinct modules with name %s are imported into module %s", nested.Name, mod.Name))
-		}
-	}
-	return diags
 }
 
 type importedSymbol struct {
@@ -1657,6 +1635,7 @@ func instanceSymbolConflict(symbol semanticExportedSymbol, previous localSymbol)
 	}
 	diagnostic := warningAt(position, "W4801", "the INSTANCE export %s conflicts with an existing symbol at %s; the first binding is used", symbol.name, previous.pos)
 	diagnostic.SANYMessage = fmt.Sprintf("Multiple declarations or definitions for symbol %s.  \nThis duplicates the one at %s.", symbol.name, sanySymbolLocation(previous.pos))
+	diagnostic.SANYParameters = []any{symbol.name, sanySymbolLocation(previous.pos)}
 	if previous.kind != symbol.importKind() || previous.arity != symbol.arity {
 		diagnostic = errorAt(position, "E4201", "INSTANCE export %s has kind/arity %s/%d, conflicting with %s/%d at %s", symbol.name, symbol.importKind(), symbol.arity, previous.kind, previous.arity, previous.pos)
 		diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", symbol.name, sanySymbolLocation(previous.pos))
@@ -2094,7 +2073,7 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 				diags = append(diags, checkHideRef(ref, factDefinitions, activeProofNames(factScopes))...)
 			}
 		}
-		nonExprSteps := activeProofNames(nonExprScopes)
+		nonExprSteps := activeProofKinds(nonExprScopes)
 		boundNames := activeProofNames(boundScopes)
 		if !levelChecking && step.Implicit && step.Name != "" {
 			diags = append(diags, errorAt(step.Pos, "E4350", "implicit proof step cannot have name %s", step.Name))
@@ -2147,8 +2126,8 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 		}
 		if !levelChecking && step.Kind == "ASSERT" && step.Expr != nil {
 			for _, ref := range step.Refs {
-				if nonExprSteps[ref] && declKinds[ref] == "" {
-					diags = append(diags, errorAt(step.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", ref))
+				if nonExprSteps[ref] != "" && declKinds[ref] == "" {
+					diags = append(diags, sanyDiagnosticParameters(errorAt(step.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", ref), nonExprSteps[ref]))
 				}
 			}
 		}
@@ -2163,7 +2142,7 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 			}
 		}
 		if step.Name != "" && step.Kind != "ASSERT" {
-			nonExprScopes = append(nonExprScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true}})
+			nonExprScopes = append(nonExprScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true}, Kinds: map[string]string{step.Name: step.Kind}})
 		}
 		if step.Name != "" {
 			factScopes = append(factScopes, proofNameScope{Depth: step.Depth, Names: map[string]bool{step.Name: true, step.QualifiedName: true}})
@@ -2176,6 +2155,7 @@ func checkProofSummary(proof ProofSummary, declKinds map[string]DeclarationKind,
 }
 
 type proofNameScope struct {
+	Kinds map[string]string
 	Depth int
 	Names map[string]bool
 }
@@ -2188,6 +2168,16 @@ func pruneProofNameScopes(scopes []proofNameScope, depth int) []proofNameScope {
 		}
 	}
 	return out
+}
+
+func activeProofKinds(scopes []proofNameScope) map[string]string {
+	kinds := map[string]string{}
+	for _, scope := range scopes {
+		for name, kind := range scope.Kinds {
+			kinds[name] = kind
+		}
+	}
+	return kinds
 }
 
 func activeProofNames(scopes []proofNameScope) map[string]bool {
@@ -2238,15 +2228,15 @@ func proofNamesWithName(names map[string]bool, name string) map[string]bool {
 	return out
 }
 
-func checkProofStepExpressionRefs(expr Expr, nonExprSteps map[string]bool, declKinds map[string]DeclarationKind, boundNames map[string]bool) Diagnostics {
+func checkProofStepExpressionRefs(expr Expr, nonExprSteps map[string]string, declKinds map[string]DeclarationKind, boundNames map[string]bool) Diagnostics {
 	if expr == nil || len(nonExprSteps) == 0 {
 		return nil
 	}
 	var diags Diagnostics
 	switch e := expr.(type) {
 	case *IdentExpr:
-		if !boundNames[e.Name] && nonExprSteps[e.Name] && declKinds[e.Name] == "" {
-			diags = append(diags, errorAt(e.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", e.Name))
+		if !boundNames[e.Name] && nonExprSteps[e.Name] != "" && declKinds[e.Name] == "" {
+			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4351", "proof step %s is not an expression and cannot be used as one", e.Name), nonExprSteps[e.Name]))
 		}
 		return diags
 	case *QuantifierExpr:
@@ -2434,24 +2424,24 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			continue
 		}
 		if prev, ok := seen[name]; ok && !levelChecking {
-			diags = append(diags, errorAt(subst.Pos, "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", name, prev))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4241", "duplicate INSTANCE substitution for %s; first substitution at %s", name, prev), name))
 		} else {
 			seen[name] = subst.Pos
 		}
 		substTarget, ok := targets[name]
 		if !ok {
 			if !levelChecking {
-				diags = append(diags, errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4242", "INSTANCE substitution target %s is not a CONSTANT or VARIABLE of module %s", name, inst.Module), name))
 			}
 			continue
 		}
 		want := substTarget.Arity
 		got := substitutionExprArity(expr, arities)
 		if !levelChecking && got != want {
-			diags = append(diags, errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4243", "INSTANCE substitution %s arity mismatch: got %d, want %d", name, got, want), name, want))
 		}
 		if levelChecking && want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
-			diagnostic := errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module)
+			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module), inst.Module, name)
 			position := inst.SourcePosition()
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 			diagnostic.SANYMessage = fmt.Sprintf("Error in instantiating module '%s':\n A non-Leibniz operator substituted for '%s'.", inst.Module, name)
@@ -2462,16 +2452,16 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			switch substTarget.Kind {
 			case ConstantDecl:
 				if level != constantLevel {
-					diags = append(diags, errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be constant-level", name))
+					diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be constant-level", name), inst.Module, name, constantLevel))
 				}
 			case VariableDecl:
 				if level > variableLevel {
-					diags = append(diags, errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be variable-level", name))
+					diags = append(diags, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be variable-level", name), inst.Module, name, variableLevel))
 				}
 			}
 		}
 		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(expr, mod, locals) > maximum {
-			diagnostic := errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum)
+			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum), inst.Module, name, maximum)
 			position := inst.SourcePosition()
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
@@ -2501,7 +2491,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 		got, ok := implicit[name]
 		if !ok {
 			if !levelChecking {
-				diags = append(diags, errorAt(inst.Pos, "E4240", "INSTANCE %s requires substitution for %s", inst.Module, name))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(inst.Pos, "E4240", "INSTANCE %s requires substitution for %s", inst.Module, name), name, sanySymbolLocation(target.Pos), mod.Name))
 			}
 			continue
 		}
@@ -2509,7 +2499,7 @@ func checkInstanceSubstitutions(mod *Module, inst Instance, spec *Spec, defined 
 			diags = append(diags, errorAt(inst.Pos, "E4240", "An operator must be substituted for symbol '%s', and it must have arity %d.", name, want))
 		}
 		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(&IdentExpr{Name: name}, mod, locals) > maximum {
-			diagnostic := errorAt(inst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum)
+			diagnostic := sanyDiagnosticParameters(errorAt(inst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum), inst.Module, name, maximum)
 			position := inst.SourcePosition()
 			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
@@ -2553,20 +2543,20 @@ func checkInstanceSubstitutionCoparameterLevelConstraints(target *Module, spec *
 			}
 		}
 		for _, def := range cur.Definitions {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(def.Expr, substitutions, operatorInfos, pos, levelKinds)...)
+			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(def.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
 		}
 		for _, assumption := range cur.Assumptions {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(assumption.Expr, substitutions, operatorInfos, pos, levelKinds)...)
+			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(assumption.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
 		}
 		for _, theorem := range cur.Theorems {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(theorem.Expr, substitutions, operatorInfos, pos, levelKinds)...)
+			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(theorem.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
 		}
 	}
 	collect(target)
 	return diags
 }
 
-func checkInstanceSubstitutionCoparameterExpr(expr Expr, substitutions map[string]Expr, operatorInfos map[string]sanyBuiltinOperator, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
+func checkInstanceSubstitutionCoparameterExpr(expr Expr, moduleName string, substitutions map[string]Expr, operatorInfos map[string]sanyBuiltinOperator, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
 	if expr == nil {
 		return nil
 	}
@@ -2595,18 +2585,18 @@ func checkInstanceSubstitutionCoparameterExpr(expr Expr, substitutions map[strin
 					if errPos.Line == 0 && errPos.Column == 0 && errPos.File == "" {
 						errPos = pos
 					}
-					diags = append(diags, errorAt(errPos, "E4247", "INSTANCE substitution co-parameter %s exceeds operator %s argument %d level constraint", argIdent.Name, ident.Name, i+1))
+					diags = append(diags, sanyDiagnosticParameters(errorAt(errPos, "E4247", "INSTANCE substitution co-parameter %s exceeds operator %s argument %d level constraint", argIdent.Name, ident.Name, i+1), moduleName, i, ident.Name, maxLevel))
 				}
 			}
 		}
 	}
 	if let, ok := expr.(*LetExpr); ok {
 		for _, def := range let.Definitions {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(def.Expr, substitutions, operatorInfos, pos, declKinds)...)
+			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(def.Expr, moduleName, substitutions, operatorInfos, pos, declKinds)...)
 		}
 	}
 	for _, child := range sanySubexpressionChildren(expr) {
-		diags = append(diags, checkInstanceSubstitutionCoparameterExpr(child, substitutions, operatorInfos, pos, declKinds)...)
+		diags = append(diags, checkInstanceSubstitutionCoparameterExpr(child, moduleName, substitutions, operatorInfos, pos, declKinds)...)
 	}
 	return diags
 }
@@ -2643,24 +2633,24 @@ func checkInstanceSubstitutionArgLevelConstraints(target *Module, spec *Spec, ta
 				locals[param] = true
 			}
 			if def.AssumeProve && def.AssumeProveBody != nil {
-				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(def.AssumeProveBody, targetName, info, substPos, levelKinds, locals)...)
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(def.AssumeProveBody, targetName, target.Name, info, substPos, levelKinds, locals)...)
 				continue
 			}
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(def.Expr, targetName, info, substPos, levelKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(def.Expr, targetName, target.Name, info, substPos, levelKinds, locals)...)
 		}
 		for _, assumption := range cur.Assumptions {
 			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
-				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(assumption.AssumeProveBody, targetName, info, substPos, levelKinds, nil)...)
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(assumption.AssumeProveBody, targetName, target.Name, info, substPos, levelKinds, nil)...)
 				continue
 			}
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(assumption.Expr, targetName, info, substPos, levelKinds, nil)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(assumption.Expr, targetName, target.Name, info, substPos, levelKinds, nil)...)
 		}
 		for _, theorem := range cur.Theorems {
 			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
-				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(theorem.AssumeProveBody, targetName, info, substPos, levelKinds, nil)...)
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(theorem.AssumeProveBody, targetName, target.Name, info, substPos, levelKinds, nil)...)
 				continue
 			}
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(theorem.Expr, targetName, info, substPos, levelKinds, nil)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(theorem.Expr, targetName, target.Name, info, substPos, levelKinds, nil)...)
 		}
 	}
 	collect(target)
@@ -2717,7 +2707,7 @@ func moduleLevelDeclKinds(mod *Module, spec *Spec, base map[string]DeclarationKi
 	return kinds
 }
 
-func checkInstanceSubstitutionArgLevelConstraintsAssumeProve(body *AssumeProve, targetName string, subst sanyBuiltinOperator, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+func checkInstanceSubstitutionArgLevelConstraintsAssumeProve(body *AssumeProve, targetName, moduleName string, subst sanyBuiltinOperator, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
 	if body == nil {
 		return nil
 	}
@@ -2727,20 +2717,20 @@ func checkInstanceSubstitutionArgLevelConstraintsAssumeProve(body *AssumeProve, 
 		switch {
 		case item.NewSymbol != nil:
 			if item.NewSymbol.Domain != nil {
-				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(item.NewSymbol.Domain, targetName, subst, substPos, declKinds, apLocals)...)
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(item.NewSymbol.Domain, targetName, moduleName, subst, substPos, declKinds, apLocals)...)
 			}
 			apLocals[item.NewSymbol.Name] = true
 		case item.Nested != nil:
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(item.Nested, targetName, subst, substPos, declKinds, apLocals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(item.Nested, targetName, moduleName, subst, substPos, declKinds, apLocals)...)
 		case item.Expr != nil:
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(item.Expr, targetName, subst, substPos, declKinds, apLocals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(item.Expr, targetName, moduleName, subst, substPos, declKinds, apLocals)...)
 		}
 	}
-	diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(body.Prove, targetName, subst, substPos, declKinds, apLocals)...)
+	diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(body.Prove, targetName, moduleName, subst, substPos, declKinds, apLocals)...)
 	return diags
 }
 
-func checkInstanceSubstitutionArgLevelConstraintsExpr(expr Expr, targetName string, subst sanyBuiltinOperator, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+func checkInstanceSubstitutionArgLevelConstraintsExpr(expr Expr, targetName, moduleName string, subst sanyBuiltinOperator, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
 	if expr == nil {
 		return nil
 	}
@@ -2750,125 +2740,125 @@ func checkInstanceSubstitutionArgLevelConstraintsExpr(expr Expr, targetName stri
 		return nil
 	case *UnaryExpr:
 		if e.Op == targetName && !locals[targetName] {
-			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, subst, []Expr{e.Expr}, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, moduleName, subst, []Expr{e.Expr}, substPos, declKinds, locals)...)
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Expr, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Expr, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *BinaryExpr:
 		if e.Op == targetName && !locals[targetName] {
-			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, subst, []Expr{e.Left, e.Right}, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, moduleName, subst, []Expr{e.Left, e.Right}, substPos, declKinds, locals)...)
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Left, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Right, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Left, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Right, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *CallExpr:
 		if ident, ok := e.Callee.(*IdentExpr); ok && ident.Name == targetName && !locals[targetName] {
-			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, subst, e.Args, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionAppliedArgLevels(e.Pos, targetName, moduleName, subst, e.Args, substPos, declKinds, locals)...)
 		} else {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Callee, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Callee, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 		for _, arg := range e.Args {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arg, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arg, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *IfExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Cond, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Then, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Else, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Cond, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Then, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Else, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *LetExpr:
 		letLocals := letScopeLocals(locals, e)
 		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
 			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
 			if def.AssumeProve && def.AssumeProveBody != nil {
-				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(def.AssumeProveBody, targetName, subst, substPos, declKinds, defLocals)...)
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsAssumeProve(def.AssumeProveBody, targetName, moduleName, subst, substPos, declKinds, defLocals)...)
 				continue
 			}
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(def.Expr, targetName, subst, substPos, declKinds, defLocals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(def.Expr, targetName, moduleName, subst, substPos, declKinds, defLocals)...)
 		}
 		for _, inst := range e.Instances {
 			for _, substitution := range instanceSubstitutions(inst) {
-				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(substitution.Expr, targetName, subst, substPos, declKinds, letLocals)...)
+				diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(substitution.Expr, targetName, moduleName, subst, substPos, declKinds, letLocals)...)
 			}
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, letLocals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, moduleName, subst, substPos, declKinds, letLocals)...)
 	case *QuantifierExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, withLocal(locals, e.Var))...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, moduleName, subst, substPos, declKinds, withLocal(locals, e.Var))...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arm.Test, targetName, subst, substPos, declKinds, locals)...)
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arm.Value, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arm.Test, targetName, moduleName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arm.Value, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Other, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Other, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *ChooseExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, withLocal(locals, e.boundNames()...))...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Set, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, moduleName, subst, substPos, declKinds, withLocal(locals, e.boundNames()...))...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *SetExpr:
 		for _, elem := range e.Elems {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(elem, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *RecordExpr:
 		for _, field := range e.Fields {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(field.Value, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(field.Value, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *RecordComponentExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Record, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Record, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *RecordSetExpr:
 		for _, field := range e.Fields {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(field.Set, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(field.Set, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *FunctionExpr:
 		fnLocals := copyBoolMap(locals)
 		for _, bound := range e.Bounds {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(bound.Set, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(bound.Set, targetName, moduleName, subst, substPos, declKinds, locals)...)
 			fnLocals[bound.Name] = true
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, fnLocals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, moduleName, subst, substPos, declKinds, fnLocals)...)
 	case *FunctionAppExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Function, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Function, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		for _, arg := range e.Args {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arg, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(arg, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *ExceptExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Base, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Base, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		for _, spec := range e.Specs {
 			for _, component := range spec.Components {
 				for _, index := range component.Indices {
-					diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(index, targetName, subst, substPos, declKinds, locals)...)
+					diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(index, targetName, moduleName, subst, substPos, declKinds, locals)...)
 				}
 			}
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(spec.Value, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(spec.Value, targetName, moduleName, subst, substPos, declKinds, locals)...)
 		}
 	case *LabelExpr:
 		labelLocals := copyBoolMap(locals)
 		for _, param := range e.Params {
 			labelLocals[param] = true
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, subst, substPos, declKinds, labelLocals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Body, targetName, moduleName, subst, substPos, declKinds, labelLocals)...)
 	case *ActionExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Action, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Subscript, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Action, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Subscript, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *FairnessExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Subscript, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Action, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Subscript, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Action, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *FunctionSetExpr:
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Domain, targetName, subst, substPos, declKinds, locals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Range, targetName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Domain, targetName, moduleName, subst, substPos, declKinds, locals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Range, targetName, moduleName, subst, substPos, declKinds, locals)...)
 	case *SetComprehensionExpr:
 		compLocals := copyBoolMap(locals)
 		for _, bound := range e.Bounds {
-			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(bound.Set, targetName, subst, substPos, declKinds, locals)...)
+			diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(bound.Set, targetName, moduleName, subst, substPos, declKinds, locals)...)
 			compLocals[bound.Name] = true
 		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Element, targetName, subst, substPos, declKinds, compLocals)...)
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Predicate, targetName, subst, substPos, declKinds, compLocals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Element, targetName, moduleName, subst, substPos, declKinds, compLocals)...)
+		diags = append(diags, checkInstanceSubstitutionArgLevelConstraintsExpr(e.Predicate, targetName, moduleName, subst, substPos, declKinds, compLocals)...)
 	}
 	return diags
 }
 
-func checkInstanceSubstitutionAppliedArgLevels(pos Position, targetName string, subst sanyBuiltinOperator, args []Expr, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
+func checkInstanceSubstitutionAppliedArgLevels(pos Position, targetName, moduleName string, subst sanyBuiltinOperator, args []Expr, substPos Position, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
 	for i, arg := range args {
 		if arg == nil {
@@ -2889,7 +2879,7 @@ func checkInstanceSubstitutionAppliedArgLevels(pos Position, targetName string, 
 		if errPos.Line == 0 && errPos.Column == 0 && errPos.File == "" {
 			errPos = substPos
 		}
-		diags = append(diags, errorAt(errPos, "E4246", "INSTANCE substitution for %s violates operator %s level constraint: argument %d requires level %d but maximum level is %d", targetName, subst.name, i+1, level, maxLevel))
+		diags = append(diags, sanyDiagnosticParameters(errorAt(errPos, "E4246", "INSTANCE substitution for %s violates operator %s level constraint: argument %d requires level %d but maximum level is %d", targetName, subst.name, i+1, level, maxLevel), moduleName, i+1, subst.name, level))
 	}
 	return diags
 }
@@ -2922,6 +2912,7 @@ func instanceSubstitutions(inst Instance) []Substitution {
 }
 
 type substitutionTarget struct {
+	Pos   Position
 	Kind  DeclarationKind
 	Arity int
 }
@@ -2945,7 +2936,7 @@ func moduleOwnSubstitutionTargets(mod *Module) map[string]substitutionTarget {
 					arity = declared
 				}
 			}
-			targets[name] = substitutionTarget{Kind: decl.Kind, Arity: arity}
+			targets[name] = substitutionTarget{Kind: decl.Kind, Arity: arity, Pos: declarationSymbolPosition(decl, name)}
 		}
 	}
 	return targets
@@ -3072,11 +3063,13 @@ func substitutionExprIsOperatorArgument(expr Expr, targetArity int, arities map[
 	if !ok {
 		return false
 	}
-	arity, exists := arities[ident.Name]
+	_, exists := arities[ident.Name]
 	if !exists {
-		arity, exists = builtinOperatorArity(ident.Name)
+		_, exists = builtinOperatorArity(ident.Name)
 	}
-	return exists && arity == targetArity
+	// A mismatched operator is still an OpArgNode; do not regenerate it as
+	// a zero-argument expression after reporting its substitution arity.
+	return exists
 }
 
 func declarationArity(decl Declaration, name string) (int, bool) {
@@ -3274,7 +3267,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) D
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			diags = append(diags, sanyUndefinedIdentifierDiagnostic(e))
 		} else if _, ok := defined[instanceNameSentinel(e.Name)]; ok {
-			diags = append(diags, errorAt(e.Pos, "E4203", "operator name %s is incomplete", e.Name))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4203", "operator name %s is incomplete", e.Name), e.Name))
 		}
 	case *LiteralExpr:
 	case *UnaryExpr:
@@ -3589,7 +3582,7 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 				return nil
 			}
 			if want, ok := arities[e.Name]; ok && want != 0 {
-				diags = append(diags, errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, want))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, want), e.Name, want))
 			}
 		}
 	case *UnaryExpr:
@@ -3788,7 +3781,7 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 					if spec.Arity >= 0 {
 						got, ok := operatorArgumentArity(arg, arities, locals)
 						if !ok {
-							diags = append(diags, errorAt(arg.Position(), "E4270", "operator parameter %s requires an operator argument of arity %d", spec.Name, spec.Arity))
+							diags = append(diags, sanyDiagnosticParameters(errorAt(arg.Position(), "E4270", "operator parameter %s requires an operator argument of arity %d", spec.Name, spec.Arity), i+1, ident.Name))
 							continue
 						}
 						if got != spec.Arity {
@@ -3796,10 +3789,10 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 							if fn, ok := arg.(*FunctionExpr); ok && fn.IsLambda {
 								code = "E4274"
 							}
-							diags = append(diags, errorAt(arg.Position(), code, "operator argument arity mismatch for parameter %s: got %d, want %d", spec.Name, got, spec.Arity))
+							diags = append(diags, sanyDiagnosticParameters(errorAt(arg.Position(), code, "operator argument arity mismatch for parameter %s: got %d, want %d", spec.Name, got, spec.Arity), got, i+1, ident.Name, spec.Arity))
 							continue
 						}
-						diags = append(diags, checkHigherOrderArgumentLevelConstraints(arg, spec, e.Args, specs, locals)...)
+						diags = append(diags, checkHigherOrderArgumentLevelConstraints(arg, spec, e.Args, specs, locals, ident.Name, i)...)
 						if operatorArgumentRequiresOperatorParam(arg, operatorParams, locals) {
 							diags = append(diags, errorAt(e.Pos, "E4271", "Argument number %d to operator '%s' should be a %d-parameter operator.", i+1, ident.Name, spec.Arity))
 						}
@@ -3952,7 +3945,7 @@ func operatorArgumentRequiresOperatorParam(arg Expr, operatorParams map[string][
 	return false
 }
 
-func checkHigherOrderArgumentLevelConstraints(arg Expr, spec operatorParamSpec, callArgs []Expr, specs []operatorParamSpec, locals map[string]bool) Diagnostics {
+func checkHigherOrderArgumentLevelConstraints(arg Expr, spec operatorParamSpec, callArgs []Expr, specs []operatorParamSpec, locals map[string]bool, operatorName string, operatorArgIndex int) Diagnostics {
 	var diags Diagnostics
 	for i, minLevel := range spec.ArgMinLevels {
 		if minLevel == constantLevel {
@@ -3962,7 +3955,7 @@ func checkHigherOrderArgumentLevelConstraints(arg Expr, spec operatorParamSpec, 
 		if !ok || maxLevel >= minLevel {
 			continue
 		}
-		diags = append(diags, errorAt(arg.Position(), "E4272", "operator argument %s cannot accept required level %d at argument %d", spec.Name, minLevel, i+1))
+		diags = append(diags, sanyDiagnosticParameters(errorAt(arg.Position(), "E4272", "operator argument %s cannot accept required level %d at argument %d", spec.Name, minLevel, i+1), operatorName, i+1, operatorArgIndex+1, minLevel))
 	}
 	for i, paramName := range spec.ArgParamNames {
 		if paramName == "" {
@@ -3980,7 +3973,7 @@ func checkHigherOrderArgumentLevelConstraints(arg Expr, spec operatorParamSpec, 
 		if level <= maxLevel {
 			continue
 		}
-		diags = append(diags, errorAt(callArgs[callIndex].Position(), "E4273", "operator argument %s co-parameter %s exceeds argument %d level constraint", spec.Name, paramName, i+1))
+		diags = append(diags, sanyDiagnosticParameters(errorAt(callArgs[callIndex].Position(), "E4273", "operator argument %s co-parameter %s exceeds argument %d level constraint", spec.Name, paramName, i+1), operatorName, callIndex+1))
 	}
 	return diags
 }
@@ -4121,7 +4114,7 @@ func checkFunctionArity(expr Expr, functionArities map[string]int, locals map[st
 	case *FunctionAppExpr:
 		if ident, ok := e.Function.(*IdentExpr); ok && !locals[ident.Name] && sanyExpressionGenerationFailure(ident) == sanyGenerationSucceeded {
 			if want, exists := functionArities[ident.Name]; exists && !validFunctionApplicationArity(want, len(e.Args)) {
-				diags = append(diags, errorAt(e.Pos, "E4260", "function %s arity mismatch: got %d args, want %d", ident.Name, len(e.Args), want))
+				diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4260", "function %s arity mismatch: got %d args, want %d", ident.Name, len(e.Args), want), ident.Name, want, len(e.Args)))
 			}
 		} else {
 			diags = append(diags, checkFunctionArity(e.Function, functionArities, locals)...)
@@ -4471,7 +4464,7 @@ func checkAssumptionConstantLevel(assumption NamedExpr, checker *sanyLevelCompos
 		return nil
 	}
 	position := assumption.SourcePosition()
-	diagnostic := errorAt(position, "E4206", "assumption must be constant-level; expression has level %d", level)
+	diagnostic := sanyDiagnosticParameters(errorAt(position, "E4206", "assumption must be constant-level; expression has level %d", level), level)
 	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 	diagnostic.SANYMessage = fmt.Sprintf("Level error: assumptions must be level 0 (Constant), \n"+"but this one has level %d.", level)
 	return Diagnostics{diagnostic}
@@ -4511,7 +4504,7 @@ func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[str
 		leftLogicalLevel := leftLevel
 		rightLogicalLevel := rightLevel
 		if isLogicalLevelMixingOperator(e.Op) && levelsMixActionAndTemporal(leftLogicalLevel, rightLogicalLevel) {
-			diags = append(diags, errorAt(e.Pos, "E4313", "operator %s cannot mix action and temporal operands", e.Op))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4313", "operator %s cannot mix action and temporal operands", e.Op), sanyLogicalOperatorDiagnosticName(e)))
 		}
 		diags = append(diags, levelChecker.check(e.Left, locals)...)
 		diags = append(diags, levelChecker.check(e.Right, locals)...)
@@ -4540,7 +4533,7 @@ func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[str
 		setLevel := levelChecker.level(e.Set, locals)
 		bodyLevel := levelChecker.level(e.Body, withLocal(locals, e.Var))
 		if setLevel == temporalLevel {
-			diags = append(diags, errorAt(e.Pos, "E4315", "quantifier cannot have a temporal-level bound"))
+			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4315", "quantifier cannot have a temporal-level bound"), sanyQuantifierOperatorName(e), e.Var))
 		}
 		if setLevel == actionLevel && bodyLevel == temporalLevel {
 			diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4314", "quantifier with a temporal-level body cannot have an action-level bound"), e.Set, "Action-level bound of quantified temporal formula."))
@@ -4833,6 +4826,7 @@ func sanyCallArityDiagnostic(call *CallExpr, name string, want int) Diagnostic {
 		}
 	}
 	diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", name, remaining)
+	diagnostic.SANYParameters = []any{name, remaining}
 	return diagnostic
 }
 
@@ -4871,4 +4865,23 @@ func sanyDuplicateRecordFieldDiagnostic(name string, position, previous Position
 	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
 	diagnostic.SANYMessage = "Non-unique fields in constructor."
 	return diagnostic
+}
+
+func sanyQuantifierOperatorName(expr *QuantifierExpr) string {
+	if expr.Kind == "\\A" {
+		return "$BoundedForall"
+	}
+	return "$BoundedExists"
+}
+
+func sanyLogicalOperatorDiagnosticName(expr *BinaryExpr) string {
+	if expr.Syntax != nil {
+		switch expr.Syntax.Kind.JavaName() {
+		case "N_ConjList":
+			return "Conjunction list"
+		case "N_DisjList":
+			return "Disjunction list"
+		}
+	}
+	return sanyCanonicalOperatorImage(expr.Op)
 }

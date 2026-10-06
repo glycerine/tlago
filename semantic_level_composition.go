@@ -110,7 +110,7 @@ func (c *sanyLevelCompositionChecker) checkApplicationLevels(expr Expr, locals m
 	var diags Diagnostics
 	for i, argument := range arguments {
 		if c.dependencies.levelInContext(argument, context) > maximums[i] {
-			diagnostic := errorAt(expr.Position(), "E4274", "operator %s argument %d exceeds maximum level %d", name, i+1, maximums[i])
+			diagnostic := sanyDiagnosticParameters(errorAt(expr.Position(), "E4205", "operator %s argument %d exceeds maximum level %d", name, i+1, maximums[i]), name, i+1)
 			message := fmt.Sprintf("Level error in applying operator %s:\nThe level of argument %d exceeds the maximum level allowed by the operator.", name, i+1)
 			diags = append(diags, sanyLevelDiagnostic(diagnostic, expr, message))
 		}
@@ -159,7 +159,7 @@ func (c *sanyLevelCompositionChecker) checkRecursiveParameters(def Definition, l
 			continue
 		}
 		message := fmt.Sprintf("Argument %d of recursive operator %s is primed", i+1, def.Name)
-		diagnostic := errorAt(def.Pos, "E4290", "%s", message)
+		diagnostic := sanyDiagnosticParameters(errorAt(def.Pos, "E4290", "%s", message), i+1, def.Name)
 		position := def.SourcePosition()
 		if def.Syntax != nil {
 			position = sanyNodePosition(def.Syntax)

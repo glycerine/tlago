@@ -3,6 +3,7 @@ package sany_tests
 import (
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -22,11 +23,27 @@ func TestSemanticErrorCorpusTests_test(t *testing.T) {
 			expectedCode, expectError := expectedSemanticErrorCorpusCode(t, file)
 			spec, parseDiags := tlago.LoadSanySpec(file, tlago.LoadOptions{LibraryPaths: []string{corpusDir}, PreferLibraryModules: true})
 			diags := append(tlago.Diagnostics{}, parseDiags...)
-			if !parseDiags.HasErrors() {
+			if len(parseDiags) == 0 {
 				diags = append(diags, semanticErrorCorpusAnalysis(spec)...)
 			}
 			if got := diags.HasErrors(); got != expectError {
 				t.Fatalf("failure state = %v, want %v for %s\n%s", got, expectError, expectedCode, diags.Error())
+			}
+			for _, diag := range diags {
+				value, err := strconv.Atoi(strings.TrimLeft(diag.Code, "EW"))
+				if err != nil {
+					t.Fatalf("invalid original error code %q", diag.Code)
+				}
+				metadata, ok := tlago.SanyErrorCodeFromStandardValue(value)
+				if !ok {
+					t.Fatalf("unknown original error code %q", diag.Code)
+				}
+				if metadata.ParameterCount != -1 && metadata.ParameterCount != len(diag.SANYParameters) {
+					t.Errorf("%s parameter count = %d, want %d: %s", diag.Code, len(diag.SANYParameters), metadata.ParameterCount, diag.Message)
+				}
+				if value == 4004 {
+					t.Errorf("SUSPECTED_UNREACHABLE_CHECK unexpectedly recorded: %s", diag.Message)
+				}
 			}
 			for _, diag := range diags {
 				if diag.Code == expectedCode {
@@ -47,7 +64,15 @@ func expectedSemanticErrorCorpusCode(t *testing.T, file string) (string, bool) {
 		t.Fatalf("semantic error corpus filename %q does not encode an error code", name)
 	}
 	code := strings.SplitN(strings.TrimSuffix(name, "_Test.tla"), "_", 2)[0]
-	return code, strings.HasPrefix(code, "E")
+	value, err := strconv.Atoi(code[1:])
+	if err != nil {
+		t.Fatalf("invalid expected semantic code %q", code)
+	}
+	metadata, ok := tlago.SanyErrorCodeFromStandardValue(value)
+	if !ok {
+		t.Fatalf("unknown expected semantic code %q", code)
+	}
+	return code, metadata.Severity == tlago.SeverityError
 }
 
 // The original parse helper catches WrongInvocationException for upstream

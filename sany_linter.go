@@ -125,7 +125,7 @@ func lintSanySpec(spec *Spec, progress func(string)) Diagnostics {
 					tlaPositionToTLCSourceLocation(mod, symbol.Pos), field.Name, field.Name, field.Name)
 				pos := field.Pos
 				pos.EndLine, pos.EndColumn = pos.Line, pos.Column+len([]rune(field.Name))-1
-				diagnostic := warningAt(pos, "W4802", "%s", message)
+				diagnostic := sanyDiagnosticParameters(warningAt(pos, "W4802", "%s", message), field.Name, tlaPositionToTLCSourceLocation(mod, symbol.Pos))
 				diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
 				diagnostic.SANYMessage = message
 				diags = append(diags, diagnostic)

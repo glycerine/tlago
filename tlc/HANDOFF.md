@@ -92,6 +92,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
+| Original semantic-error corpus assertions, diagnostic parameters and generation failure boundaries: existing native behaviors and original TLC selection | Pass | Root 10.265 seconds, session `14523` retired |
+| Complete SANY package with all four original semantic-error corpus assertion families restored | Pass | 1.544 seconds, session `17704` retired |
 | Nested module units and shared recursive state: existing native behaviors and original TLC selection | Pass | Root 11.276 seconds, session `50899` retired |
 | Complete SANY package after retaining interrupted semantic errors and restoring the original corpus exception catch | Pass | 1.664 seconds, session `72574` retired |
 | Final module-unit generation, recursive sections and selector operand errors: existing native behaviors and original TLC selection | Pass | Root 10.496 seconds, session `50362` retired |
@@ -313,12 +315,29 @@ match Java's diagnostics, exception type and message; established visibility
 observations also remain matching. Receipt:
 `/mnt/oldrog/tmp/tlago-nested-unit-final-audit-28.log`.
 
-Unknown leaf `BY` facts are still not fully generated or resolved. Audit the
-original semantic-error corpus's diagnostic parameter-count and no-unreachable-
-check assertions, which its current Go translation still omits. This exception
-boundary correction earns no whole-method inventory credit. Broader constructor,
-symbol/context and selector paths remain audit work; these observations do not
-establish full Generator parity.
+The semantic-error corpus now retains all four original assertion families:
+failure severity, diagnostic parameter counts, absence of suspected-unreachable
+checks and presence of the expected error code. The original helper returns
+parse diagnostics when any are present, including warnings, and retains the
+source exception catch. All 66 ErrorCode metadata entries are ported. Production
+diagnostics retain actual Java arguments rather than padding parameter lists.
+Invalid label selection reports source code 4337 at the label token; failed
+selection suppresses duplicate label checks. INSTANCE operator arguments remain
+operator arguments even when their arity mismatches. Duplicate module conflicts
+are generated at their module unit instead of by an earlier approximation.
+
+A separate comparison of fixed-parameter diagnostics matches Java in 120 of 126
+unchanged corpus fixtures. Six production differences remain: missing shadowing
+warnings in `E4201_Op` and `E4293`; an extra incomplete-module diagnostic in
+`E4204_Instance`; an omitted operator-argument level error in `E4246`; and
+premature completion of recursive bindings in `E4292_Function`, `E4293_Function`
+and `E4293`. Receipt:
+`/mnt/oldrog/tmp/tlago-error-parameters-audit-corrected.log`. The comparison checks
+fixed-code order/count and displayed parameter values, with symbolic parameters
+shown by name; it is not a complete diagnostic message/range/type comparison.
+Port these actual generation boundaries next. Unknown leaf `BY` facts are still
+not fully generated or resolved. Broader constructor, symbol/context and selector
+paths remain audit work. Green original assertions do not establish full parity.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

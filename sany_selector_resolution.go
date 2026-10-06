@@ -244,6 +244,7 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 				if detail, ok := err.(*sanySelectorLocationError); ok {
 					diagnostic.SANYRange = detail.location
 					diagnostic.SANYMessage = detail.message
+					diagnostic.SANYParameters = append([]any(nil), detail.parameters...)
 					if detail.code != "" {
 						diagnostic.Code = detail.code
 					}
@@ -411,6 +412,13 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 			var params []BoundVar
 			for _, name := range label.Params {
 				params = append(params, BoundVar{Name: name, Pos: label.Pos})
+			}
+			if !result.operator && len(params) != len(args) {
+				detail := &sanySelectorLocationError{code: "E4337", message: fmt.Sprintf("Label `%s' used with wrong number of arguments.", step.Name), parameters: []any{step.Name}}
+				if step.Syntax != nil {
+					detail.location = step.Syntax.Range
+				}
+				return nil, true, detail
 			}
 			if err := bind(params, args); err != nil {
 				return nil, true, err
@@ -596,9 +604,10 @@ func sanySelectorBoundBody(expr Expr) ([]BoundVar, Expr) {
 
 // Location-bearing Generator failures retain the individual selector token.
 type sanySelectorLocationError struct {
-	code     string
-	message  string
-	location SanyRange
+	code       string
+	parameters []any
+	message    string
+	location   SanyRange
 }
 
 func (e *sanySelectorLocationError) Error() string { return e.message }

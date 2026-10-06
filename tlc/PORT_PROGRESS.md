@@ -1,5 +1,61 @@
 # TLC Port Progress
 
+2026-10-06 Original semantic-error corpus assertions and ErrorDetails arguments:
+Previous nested-generation batch committed as `ee09f07`; starting tree clean.
+Full root 96647 and original full LSB 32959 remain confirmed live on their
+recorded earlier snapshots. No duplicate full root or LSB run; no terminal
+success claim. LSB progress exceeds 1,887,238,494 of 2,147,483,648 insertions.
+
+Port all 66 original ErrorCode metadata entries, then restore the corpus's
+parameter-count and no-SUSPECTED_UNREACHABLE_CHECK assertions. Preserve the
+existing failure-severity and expected-code assertions, source fixtures, parameter
+matrix and original WrongInvocationException catch. The helper stops after any
+parse diagnostics, including warnings, as upstream. Initial run 45838 returns
+status 1: production discarded structured arguments across basic, INSTANCE,
+higher-order, recursion, label, logical, proof and warning diagnostics; a generic
+selector failure also emitted invented E4340. Log
+ tlago-error-corpus-parameters-initial.log under /mnt/oldrog/tmp.
+
+Retain actual source arguments at their creation sites, independently of native
+summary text. Thread instancee identity and higher-order argument position through
+recursive checks; retain substitution declaration positions. Track nonexpression
+proof-step kinds for the source diagnostic argument. Port label arity failure to
+source 4337, exact token range/message, and suppress duplicate follow-up checks
+on nullOAN. Mismatched INSTANCE operator arguments remain operator arguments,
+avoiding extra zero-argument call errors. Ordinary application level violations
+use source 4205 rather than lambda arity code 4274. Remove obsolete nested-module
+conflict prepass; generation at the actual unit supplies one source error.
+
+The fixed-parameter audit uses unchanged corpus files and actual Java lower parse/
+semantic/lint phases. Initial helper incorrectly ignored parse errors/warnings;
+correct its phase boundary before interpreting differences. Final comparison
+matches 120 of 126 fixtures, log tlago-error-parameters-audit-corrected.log,
+session 63548 terminal 1 because six actual production differences remain.
+Source/output pairs under tlago-error-parameters-audit. Compare fixed-code order,
+count and displayed arguments, showing semantic symbol parameters by name; no
+full message/range/type parity claim. Six gaps: E4201_Op missing conflict warning;
+E4204_Instance extra incomplete-module error; E4246 missing intrinsic operator
+level error; E4292_Function/E4293_Function/E4293 incorrectly completed recursive
+bindings, with E4293 also missing shadowing warning. Preserve these observations
+as implementation work, not invented tests or inventory credit.
+
+Full SANY 29767 passes 1.243 seconds before the final native summary correction.
+Focused 7901 fails 10.838 seconds: native bridge API expected the existing
+"distinct modules" summary. Preserve that native summary in the actual unit's
+diagnostic while retaining the exact original SANYMessage, structured arguments
+and single source error. No assertion changes. Final focused 14523 passes 10.265
+seconds, log tlago-error-corpus-corrected-focused.log. Final full SANY 17704
+passes 1.544 seconds, log tlago-error-corpus-corrected-sany.log. Final expected
+severity comes from the original ErrorCode metadata; the whole original method
+passes 0.055 seconds after that test-helper correction, log
+ tlago-error-corpus-final-original-method.log. All 74 established
+visibility observations match, log tlago-error-corpus-final-visibility-audit.log,
+56571 retired. All-package compilation passes, log
+ tlago-error-corpus-final-compile.log, 35021 retired. All checks normal, original
+bounds, no broad race or special corpus sweeps. TLC leaf unchanged; reuse its
+recorded full package result. No current full-workspace pass claim. Core parity
+remains incomplete and new distributed work stays postponed.
+
 2026-10-06 Nested module unit generation and retained semantic failures:
 Previous module-unit batch committed as `19c6f1a`; starting tree clean.
 Full root 96647 remains confirmed live on that snapshot, before this work,

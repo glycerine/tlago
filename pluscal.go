@@ -41,11 +41,11 @@ func checkPlusCalChecksumWarnings(mod *Module) Diagnostics {
 	pos := Position{File: mod.SourcePath, Line: firstLine + begin, Column: 1}
 	switch {
 	case pcalDiverged && tlaDiverged:
-		return Diagnostics{warningAt(pos, "W4803", "Both the PlusCal algorithm and its TLA+ translation in module %s have changed since the last translation.", mod.Name)}
+		return Diagnostics{sanyDiagnosticParameters(warningAt(pos, "W4803", "Both the PlusCal algorithm and its TLA+ translation in module %s have changed since the last translation.", mod.Name), mod.Name)}
 	case pcalDiverged:
-		return Diagnostics{warningAt(pos, "W4804", "The PlusCal algorithm in module %s has changed since its last translation.", mod.Name)}
+		return Diagnostics{sanyDiagnosticParameters(warningAt(pos, "W4804", "The PlusCal algorithm in module %s has changed since its last translation.", mod.Name), mod.Name)}
 	case tlaDiverged:
-		return Diagnostics{warningAt(pos, "W4805", "The TLA+ translation in module %s has changed since its last translation.", mod.Name)}
+		return Diagnostics{sanyDiagnosticParameters(warningAt(pos, "W4805", "The TLA+ translation in module %s has changed since its last translation.", mod.Name), mod.Name)}
 	default:
 		return nil
 	}
