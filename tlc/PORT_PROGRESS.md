@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-06 INSTANCE symbol binding conflicts:
+Previous goal turn made progress in `7d712b0`. Full normal workspace session
+15749 and unchanged full LSB draft session 32959 are confirmed live; preserve
+their snapshots and handles. Continue faithful Java parity on master. Six
+manual INSTANCE observations expose wrong W4801 messages/ranges, suppressed
+conflicts between repeated parameterized instances, incorrect local-before versus
+local-after handling, and arity conflicts wrongly reported as warnings.
+
+Track imported binding arities and actual semantic kinds. Use full original or
+INSTANCE wrapper syntax locations. Preserve identical parameter-free nodes;
+compare kind/arity before issuing an ambiguity warning. Report Java's exact
+W4801 and E4201 ErrorDetails. Consider local definitions only when they precede
+the INSTANCE in source; later own operators receive SymbolTable's diagnostic
+followed by Generator's duplicate-operator error. Keep the first binding instead
+of silently replacing it. Broaden to inherited bindings: SymbolTable.resolveSymbol
+also sees the already merged EXTENDS context, so seed the same imported-binding
+state from that context. All nine final observations match exact source output,
+counts, locations and ordering. Logs and vectors under /mnt/oldrog/tmp:
+tlago-semantic-instance-conflict-before.log,
+tlago-semantic-instance-conflict-expanded.log,
+tlago-semantic-instance-conflict-final-compare.log and
+tlago-semantic-instance-conflict-vectors/. No persistent synthetic tests, weakened
+assertions, altered vectors or test inventory credit.
+
+Final focused existing semantic/CLI/XML/original instance, proof, selector,
+action-level, trace and elevated-warning model selection passes 9.598 seconds,
+session 35327 retired. Final complete existing SANY package passes 1.291 seconds,
+session 85452 retired. An intermediate SANY run fails its TestContext surrogate
+because the native explanatory text drops the old kind names. Preserve useful
+native kind/arity details separately from exact SANYMessage; keep assertions
+unchanged. Inspect the actual Java TestContext: its direct Context merge, source
+error code, one-error count and typed parameter assertions are not mechanically
+ported by the current Go parser fixture. Record that reconciliation requirement;
+this passing surrogate is not evidence of complete source test coverage. Final
+all-package compilation passes, session 51660 retired; log
+/mnt/oldrog/tmp/tlago-semantic-instance-conflict-compile.log.
+
+Workspace session 15749 was compiled before this INSTANCE correction, on
+7d712b0; any eventual result verifies only that snapshot. It remains live with
+original full bounds, no race, and both temporary directories on the large
+workspace volume. Do not start a duplicate full workload. LSB 32959 remains
+live on its recorded earlier storage snapshot. Parser ErrorDetails, source
+multi-binding context iteration and generation traversal, direct SANY Context
+coverage, and remaining semantic-node boundaries still require faithful work.
+
 2026-10-06 EXTENDS conflict provenance and native runner metadata ownership:
 Previous turn made progress in `76cf612`. Continue faithful Java parity on
 master; new distributed work remains postponed. Eight source/native import

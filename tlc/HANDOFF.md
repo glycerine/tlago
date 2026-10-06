@@ -78,8 +78,8 @@ command/recovery paths. Focused verification passes without changing that test.
 This snapshot predates subsequent semantic reporting, level-phase and import
 context corrections. Log: `/mnt/oldrog/tmp/tlago-storage-simulator-workspace.log`.
 
-Full normal workspace session `15749` is live on all current production
-corrections. It retains original bounds, failfast and a 60-minute timeout,
+Full normal workspace session `15749` is live on the `7d712b0` production
+snapshot, before the subsequent INSTANCE conflict correction. It retains original bounds, failfast and a 60-minute timeout,
 without race instrumentation. Both temporary variables use workspace
 `.codex-gotmp`. Log: `/mnt/oldrog/tmp/tlago-import-context-workspace.log`.
 No full-suite success is claimed until this same handle returns terminal status.
@@ -102,7 +102,8 @@ Latest focused verification:
 | Original SANY package and semantic/CLI/XML/instance/proof/action-level/trace models | Pass | 1.308 / 9.454 seconds, sessions `46579` / `15579` retired |
 | Original SANY and existing semantic/CLI/XML/instance/proof/trace models | Pass | 1.188 / 9.050 seconds, sessions `25595` / `94869` retired |
 | Existing native runner and buffered-file/checker/worker/trace methods | Pass | 7.340 seconds, session `70777` retired |
-| All-package compilation | Pass | Final import-context and native runner corrections |
+| Existing SANY and semantic/CLI/XML/instance/proof/trace model checks | Pass | 1.291 / 9.598 seconds, sessions `85452` / `35327` retired |
+| All-package compilation | Pass | Final INSTANCE conflict correction |
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not
@@ -116,7 +117,10 @@ versus level gating, nested graphs, definition-before-top-level ordering, proof
 levels, general assumption checks and unique named-theorem errors. Sixteen
 import observations match Java for declarations, definitions, named facts,
 class conflicts, diamonds, parameterized instances, reuse, accumulated warnings
-and explicit versus implicit instance namespaces. These are bounded audit
+and explicit versus implicit instance namespaces. Nine INSTANCE observations
+match source collision kind/arity rules, repeated parameterized wrappers,
+parameter-free reuse, local definition order and existing EXTENDS bindings.
+These are bounded audit
 observations, not a proof of complete semantic-node or context iteration parity.
 
 The latest checker correction initializes coverage, liveness and cached config
@@ -219,8 +223,10 @@ possible schedule.
 Continue the core production audit and unresolved original methods below.
 Current concrete production gaps include ordinary missing-module/syntax-error
 ErrorDetails rendering, generation and multiple-binding context iteration order,
-SymbolTable INSTANCE conflict diagnostics (`W4801`), and remaining constructor
-and semantic-node boundaries. EXTENDS conflicts now retain actual symbol
+remaining constructor and semantic-node boundaries, and direct context/typed
+diagnostic assertions in the original SANY `TestContext` class. Its existing Go
+method is a parser-fixture surrogate; it is not a faithful translation of the
+source Context/Errors parameter assertions. EXTENDS conflicts now retain actual symbol
 locations and definition provenance, compare source semantic-node classes, and
 reuse parameter-free instance definitions. Substituted declarations are not
 INSTANCE exports; only an explicit named instance creates a qualified namespace. Per-module semantic

@@ -430,6 +430,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	instanceSymbols := map[string]importedSymbol{}
+	// SymbolTable.resolveSymbol sees the already merged EXTENDS context.
+	for name, symbol := range extendedSymbols {
+		symbol.arity = arities[name]
+		instanceSymbols[name] = symbol
+	}
 	localSymbols := moduleOwnSymbols(mod)
 	for _, inst := range mod.Instances {
 		if inst.Name != "" {
@@ -507,7 +512,17 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		} else {
 			if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
-				addName(def.Name, def.Pos, OperatorDecl)
+				if previous, exists := instanceSymbols[def.Name]; exists {
+					symbol := semanticExportedSymbol{name: def.Name, kind: OperatorDecl, theoremLike: def.TheoremLike, source: def.SourcePosition(), arity: len(def.Params)}
+					diags = append(diags, instanceSymbolConflict(symbol, localSymbol{kind: previous.kind, pos: previous.pos, arity: previous.arity})...)
+					position := def.SourcePosition()
+					diagnostic := errorAt(position, "E4201", "duplicate declaration or definition %s; first declared at %s", def.Name, previous.pos)
+					diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+					diagnostic.SANYMessage = fmt.Sprintf("Operator %s already defined or declared.", def.Name)
+					diags = append(diags, diagnostic)
+				} else {
+					addName(def.Name, def.Pos, OperatorDecl)
+				}
 			}
 		}
 		arities[def.Name] = len(def.Params)
@@ -1413,6 +1428,7 @@ func checkNestedStandardModuleConflicts(mod *Module) Diagnostics {
 }
 
 type importedSymbol struct {
+	arity  int
 	kind   DeclarationKind
 	pos    Position
 	source string
@@ -1486,8 +1502,9 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 }
 
 type localSymbol struct {
-	kind DeclarationKind
-	pos  Position
+	arity int
+	kind  DeclarationKind
+	pos   Position
 }
 
 func moduleOwnSymbols(mod *Module) map[string]localSymbol {
@@ -1498,7 +1515,7 @@ func moduleOwnSymbols(mod *Module) map[string]localSymbol {
 	for _, decl := range mod.Declarations {
 		for _, name := range decl.Names {
 			if name != "" {
-				symbols[name] = localSymbol{kind: decl.Kind, pos: decl.Pos}
+				symbols[name] = localSymbol{kind: decl.Kind, pos: declarationSymbolPosition(decl, name), arity: decl.Arities[name]}
 			}
 		}
 	}
@@ -1511,39 +1528,30 @@ func moduleOwnSymbols(mod *Module) map[string]localSymbol {
 	}
 	for _, def := range mod.Definitions {
 		if def.Name != "" {
-			symbols[def.Name] = localSymbol{kind: OperatorDecl, pos: def.Pos}
+			symbols[def.Name] = localSymbol{kind: semanticDefinitionImportKind(def), pos: def.SourcePosition(), arity: len(def.Params)}
 		}
 	}
 	for _, assumption := range mod.Assumptions {
 		if assumption.Name != "" {
-			symbols[assumption.Name] = localSymbol{kind: OperatorDecl, pos: assumption.SourcePosition()}
+			symbols[assumption.Name] = localSymbol{kind: semanticTheoremImportKind, pos: assumption.SourcePosition()}
 		}
 	}
 	return symbols
 }
 
-func checkInstanceSymbolAmbiguity(name string, kind DeclarationKind, pos Position, source string, seen map[string]importedSymbol) Diagnostics {
-	if name == "" || source == "" || seen == nil {
+func instanceSymbolConflict(symbol semanticExportedSymbol, previous localSymbol) Diagnostics {
+	position := symbol.sourcePosition()
+	if previous.pos == position {
 		return nil
 	}
-	if prev, ok := seen[name]; ok {
-		if prev.source != source {
-			return Diagnostics{warningAt(pos, "W4801", "the INSTANCE export %s from module %s conflicts with an INSTANCE export from module %s at %s; the first import is used", name, source, prev.source, prev.pos)}
-		}
-		return nil
+	diagnostic := warningAt(position, "W4801", "the INSTANCE export %s conflicts with an existing symbol at %s; the first binding is used", symbol.name, previous.pos)
+	diagnostic.SANYMessage = fmt.Sprintf("Multiple declarations or definitions for symbol %s.  \nThis duplicates the one at %s.", symbol.name, sanySymbolLocation(previous.pos))
+	if previous.kind != symbol.importKind() || previous.arity != symbol.arity {
+		diagnostic = errorAt(position, "E4201", "INSTANCE export %s has kind/arity %s/%d, conflicting with %s/%d at %s", symbol.name, symbol.importKind(), symbol.arity, previous.kind, previous.arity, previous.pos)
+		diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", symbol.name, sanySymbolLocation(previous.pos))
 	}
-	seen[name] = importedSymbol{kind: kind, pos: pos, source: source}
-	return nil
-}
-
-func checkInstanceLocalShadow(name string, pos Position, source string, localSymbols map[string]localSymbol) Diagnostics {
-	if name == "" || source == "" || localSymbols == nil {
-		return nil
-	}
-	if local, ok := localSymbols[name]; ok {
-		return Diagnostics{warningAt(pos, "W4801", "the INSTANCE export %s from module %s conflicts with a local symbol at %s; the local symbol is used", name, source, local.pos)}
-	}
-	return nil
+	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	return Diagnostics{diagnostic}
 }
 
 type syntheticExport struct {
@@ -1851,15 +1859,16 @@ func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, 
 	instMod := spec.Modules[inst.Module]
 	for _, symbol := range semanticInstanceSymbols(inst, spec) {
 		if exportUnqualified && symbol.unqualified {
-			if _, shadowsLocal := localSymbols[symbol.name]; shadowsLocal {
-				diags = append(diags, checkInstanceLocalShadow(symbol.name, symbol.pos, qualifier, localSymbols)...)
-			} else {
-				diags = append(diags, checkInstanceSymbolAmbiguity(symbol.name, symbol.kind, symbol.pos, qualifier, instanceSymbols)...)
-				if prev, ok := instanceSymbols[symbol.name]; ok && prev.source != qualifier {
-					continue
-				}
-				addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
+			if local, exists := localSymbols[symbol.name]; exists && local.pos.Compare(inst.SourcePosition()) < 0 {
+				diags = append(diags, instanceSymbolConflict(symbol, local)...)
+				continue
 			}
+			if previous, exists := instanceSymbols[symbol.name]; exists {
+				diags = append(diags, instanceSymbolConflict(symbol, localSymbol{kind: previous.kind, pos: previous.pos, arity: previous.arity})...)
+				continue
+			}
+			instanceSymbols[symbol.name] = importedSymbol{kind: symbol.importKind(), pos: symbol.sourcePosition(), arity: symbol.arity, source: qualifier}
+			addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 			continue
 		}
 		addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
