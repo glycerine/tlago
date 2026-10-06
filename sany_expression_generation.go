@@ -22,6 +22,7 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	fact                 bool
 	level                int
 	spec                 *Spec
 	module               *sanyModuleRecursiveGeneration

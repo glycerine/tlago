@@ -228,12 +228,23 @@ lower-phase observations match source diagnostics and recursive exceptions.
 Broader constructor, formal/bound context and operand-generation parity remains
 work; these observations do not establish complete LET/Generator coverage.
 
-Leaf proof facts are retained but not fully generated or resolved, so an unknown
-`BY` fact is still incorrectly accepted. Port actual proof generation and scope
-boundaries, without error sorting. Twenty-eight matching nested-module source
-observations, twenty module order/recursive-section observations and the
-established 74 matching visibility observations do not prove all Generator,
-constructor or selector paths complete.
+Proof references retain the original fact/DEF/MODULE distinction and source
+syntax, including leaf-only proofs. Direct GeneralId facts allow complete module
+instance names; their operands and embedded references use expression mode.
+Rejected DEF and MODULE entries are omitted from Java's generated vectors;
+failed expression facts occupy a slot. An empty resulting leaf reports Empty BY.
+Selector errors stay attached until reference generation, preserving source order.
+
+Reference contexts retain qualified proof steps, DEFINE operator/function and
+instance bindings, TAKE/PICK names and NEW declaration arities. Assertion NEW
+names are visible in their own subproof; SUFFICES NEW names become visible only
+after the entire subproof. Definition-step names have a distinct semantic kind
+for fact and DEF validation. Forty-nine bounded semantic-phase comparisons match
+Java diagnostic messages, ranges and ordering. This is an incremental reference
+port: full statement and DEFINE-body generation, constructors, proof-local
+instances, module namespace resolution, typed contexts and level checking still
+need faithful reconciliation. Existing corpus passes do not establish complete
+proof-graph or Generator parity.
 
 ## Module loading and parse-unit relationships
 

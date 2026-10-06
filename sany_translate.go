@@ -611,7 +611,7 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			}
 			if named.Expr != nil {
 				mod.Theorems = append(mod.Theorems, named)
-				if proof := sanyTheoremProof(item, named.Expr); len(proof.Steps) > 0 || len(proof.Facts) > 0 {
+				if proof := sanyTheoremProof(item, named.Expr); len(proof.Steps) > 0 || len(proof.LeafRefs) > 0 {
 					mod.Proofs = append(mod.Proofs, proof)
 				}
 			}
@@ -938,7 +938,7 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 	mode := ""
 	inDefs := false
 	for _, child := range node.GetHeirs() {
-		if child.Token != nil && (child.Token.Kind == SanyTokenUse || child.Token.Kind == SanyTokenHide) {
+		if child.Token != nil && (child.Token.Kind == SanyTokenUse || child.Token.Kind == SanyTokenHide || child.Token.Kind == SanyTokenBy) {
 			mode = child.Image
 			break
 		}
@@ -948,23 +948,40 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 			inDefs = true
 			continue
 		}
-		if !inDefs && isSanyExpressionNode(child) && child.Kind.JavaName() != "N_ModuleRef" {
+		if isSanyExpressionNode(child) && child.Kind.JavaName() != "N_ModuleRef" && child.Kind.JavaName() != "N_ModuleDefinition" {
 			expr, _ := sanyExpr(child)
-			ref := ProofRef{Syntax: node, Expr: expr, Mode: mode, Pos: sanyNodePosition(child)}
+			ref := ProofRef{Syntax: node, Expr: expr, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)}
 			if id, ok := expr.(*IdentExpr); ok {
 				ref.Name = id.Name
+			} else if literal, ok := expr.(*LiteralExpr); ok {
+				ref.Name = literal.Value
+			} else if call, ok := expr.(*CallExpr); ok {
+				if id, ok := call.Callee.(*IdentExpr); ok {
+					ref.Name = id.Name
+				}
 			} else if child.Kind.JavaName() == "IDENTIFIER" {
 				ref.Name = child.Image
 			}
 			refs = append(refs, ref)
 			continue
 		}
+		if child.Token != nil && isSanyProofStepStartKind(child.Token.Kind) {
+			expr, _ := sanyExpr(child)
+			refs = append(refs, ProofRef{Syntax: node, Expr: expr, Name: sanyXMLProofStepNameImage(child.Image), Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
+			continue
+		}
 		switch child.Kind.JavaName() {
+		case "N_ModuleRef", "N_ModuleDefinition":
+			heirs := child.GetHeirs()
+			if len(heirs) > 1 {
+				refs = append(refs, ProofRef{Syntax: node, Module: sanyFirstTokenImage(heirs[1]), Mode: mode, Defs: inDefs, Pos: sanyNodePosition(heirs[1])})
+			}
 		case "IDENTIFIER":
 			refs = append(refs, ProofRef{Syntax: node, Name: child.Image, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
 		case "N_GeneralId":
 			if name := sanyGeneralIDName(child); name != "" {
-				refs = append(refs, ProofRef{Syntax: node, Name: name, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
+				expr, _ := sanyExpr(child)
+				refs = append(refs, ProofRef{Syntax: node, Name: name, Expr: expr, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(child)})
 			}
 		}
 	}
@@ -972,7 +989,8 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 }
 
 func sanyTheoremProof(node *SanySyntaxNode, goal Expr) ProofSummary {
-	proof := ProofSummary{Syntax: node, Goal: goal, Pos: sanyNodePosition(node), Facts: sanyLeafProofFacts(node)}
+	proof := ProofSummary{Syntax: node, Goal: goal, Pos: sanyNodePosition(node), LeafRefs: sanyLeafProofReferences(node)}
+	proof.Facts = sanyProofFactsFromRefs(proof.LeafRefs)
 	for _, child := range node.GetHeirs() {
 		if child.Kind.JavaName() == "N_Proof" {
 			proof.Steps = append(proof.Steps, sanyProofSteps(child)...)
@@ -1009,7 +1027,8 @@ func sanyProofStepsAt(node *SanySyntaxNode, depth int) []ProofStep {
 }
 
 func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
-	step := ProofStep{Pos: sanyNodePosition(node), Facts: sanyLeafProofFacts(node)}
+	step := ProofStep{Pos: sanyNodePosition(node), LeafRefs: sanyLeafProofReferences(node)}
+	step.Facts = sanyProofFactsFromRefs(step.LeafRefs)
 	for _, child := range node.GetHeirs() {
 		if child.Token != nil && isSanyProofStepStartKind(child.Token.Kind) {
 			step.Name = sanyProofStepName(child.Image)
@@ -1026,6 +1045,21 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 			step.Statement = sanyNodePosition(child)
 		}
 		switch child.Kind.JavaName() {
+		case "N_DefStep":
+			step.Kind = "DEFINE"
+			for _, definition := range child.GetHeirs() {
+				switch definition.Kind.JavaName() {
+				case "N_OperatorDefinition":
+					def, _ := sanyDefinition(definition)
+					step.Definitions = append(step.Definitions, def)
+				case "N_FunctionDefinition":
+					def, _ := sanyFunctionDefinition(definition)
+					step.Definitions = append(step.Definitions, def)
+				case "N_ModuleDefinition":
+					instance, _ := sanyModuleDefinition(definition)
+					step.Instances = append(step.Instances, instance)
+				}
+			}
 		case "N_UseOrHide":
 			step.UseHideRefs = sanyUseOrHideRefs(child)
 			for _, ref := range step.UseHideRefs {
@@ -2711,27 +2745,38 @@ func unsupportedSanyExpr(node *SanySyntaxNode) (Expr, Diagnostics) {
 // BY has USE/HIDE's fact syntax. Only a bare GeneralId is generated in fact
 // mode; references nested inside expressions remain expression selections.
 func sanyLeafProofFacts(node *SanySyntaxNode) []ProofFact {
+	return sanyProofFactsFromRefs(sanyLeafProofReferences(node))
+}
+
+func sanyProofFactsFromRefs(refs []ProofRef) []ProofFact {
 	var facts []ProofFact
+	for _, ref := range refs {
+		if ref.Defs || ref.Expr == nil {
+			continue
+		}
+		direct := false
+		if source, ok := ref.Expr.(interface{ GetSyntaxNode() *SanySyntaxNode }); ok && source.GetSyntaxNode() != nil {
+			direct = source.GetSyntaxNode().Kind.JavaName() == "N_GeneralId"
+		}
+		facts = append(facts, ProofFact{Expr: ref.Expr, Direct: direct})
+	}
+	return facts
+}
+
+func sanyLeafProofReferences(node *SanySyntaxNode) []ProofRef {
 	if node == nil {
 		return nil
 	}
-	by := false
 	for _, child := range node.GetHeirs() {
 		if child.Token != nil && child.Token.Kind == SanyTokenBy {
-			by = true
-			continue
-		}
-		if by && child.Token != nil && child.Token.Kind == SanyTokenDF {
-			break
-		}
-		if by && isSanyExpressionNode(child) {
-			expr, _ := sanyExpr(child)
-			if expr != nil {
-				facts = append(facts, ProofFact{Expr: expr, Direct: child.Kind.JavaName() == "N_GeneralId"})
-			}
-		} else if !by && child.Kind.JavaName() != "N_ProofStep" {
-			facts = append(facts, sanyLeafProofFacts(child)...)
+			return sanyUseOrHideRefs(node)
 		}
 	}
-	return facts
+	var refs []ProofRef
+	for _, child := range node.GetHeirs() {
+		if child.Kind.JavaName() != "N_ProofStep" {
+			refs = append(refs, sanyLeafProofReferences(child)...)
+		}
+	}
+	return refs
 }

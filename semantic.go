@@ -715,11 +715,12 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	}
 	generateProofRef := func(ref ProofRef) {
 		diags = append(diags, checks.generator.reference(ref)...)
-		diags = append(diags, checkProofRef(ref, defined)...)
+		diags = append(diags, expressionGeneration.proofReference(ref, mod, defined, nil)...)
 		diags = append(diags, checkHideRef(ref, theoremLikeDefs, proofStepNames)...)
 	}
 	generateProof := func(proof ProofSummary) {
 		diags = append(diags, checks.generator.proof(proof)...)
+		diags = append(diags, expressionGeneration.proofReferences(proof, mod, defined)...)
 		diags = append(diags, checkProofSummary(proof, declKinds, mod, spec, false)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{proof.Pos, func() Diagnostics { return checkProofSummary(proof, declKinds, mod, spec, true) }})
 	}
@@ -1649,9 +1650,10 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 }
 
 type localSymbol struct {
-	arity int
-	kind  DeclarationKind
-	pos   Position
+	proofStepKind string
+	arity         int
+	kind          DeclarationKind
+	pos           Position
 }
 
 func moduleOwnSymbols(mod *Module) map[string]localSymbol {
@@ -3309,6 +3311,9 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool, g
 
 func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) Diagnostics {
 	var diags Diagnostics
+	fact := generation.fact
+	generation.fact = false
+	defer func() { generation.fact = fact }()
 	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
 	if source := sanyExprSource(expr); source != nil && source.selectorFailure {
 		// selectorToNode has already reported the error and returned nullOAN.
@@ -3376,8 +3381,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				diagnostic := sanyDiagnosticParameters(errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, want), e.Name, want)
 				diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", e.Name, want)
 				diags = append(diags, diagnostic)
-			} else {
+			} else if !fact {
 				diags = append(diags, sanyIncompleteOperatorDiagnostic(e))
+			} else {
+				setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
 			}
 		}
 	case *LiteralExpr:
@@ -3410,6 +3417,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 						expected = specs[i].Arity
 					}
 					diags = append(diags, generation.generateOperatorOperand(ident, i, expected, arg, defined, locals)...)
+				}
+				if fact {
+					setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
+					return diags
 				}
 				return append(diags, sanyIncompleteOperatorDiagnostic(ident))
 			}

@@ -35,14 +35,15 @@ type sanySelectorSelection struct {
 	assumeProve *AssumeProve
 }
 type sanySelectorResolver struct {
-	spec        *Spec
-	scopes      map[*Module]map[string]sanySelectorDefinition
-	visiting    map[*Module]bool
-	diags       Diagnostics
-	inProof     map[*AssumeProve]bool
-	fact        bool
-	letContexts int
-	letLevel    int
+	proofContexts int
+	spec          *Spec
+	scopes        map[*Module]map[string]sanySelectorDefinition
+	visiting      map[*Module]bool
+	diags         Diagnostics
+	inProof       map[*AssumeProve]bool
+	fact          bool
+	letContexts   int
+	letLevel      int
 }
 
 func sanyExprSource(expr Expr) *SanyExprSource {
@@ -223,12 +224,7 @@ func (g *sanyModuleSelectorGenerator) instance(instance Instance) Diagnostics {
 }
 
 func (g *sanyModuleSelectorGenerator) reference(ref ProofRef) Diagnostics {
-	return g.prepare(func() {
-		if !ref.Defs && ref.Expr != nil {
-			_, direct := ref.Expr.(*IdentExpr)
-			g.resolver.walkProofFact(ProofFact{Expr: ref.Expr, Direct: direct}, g.module, g.at(ref.Syntax))
-		}
-	})
+	return g.prepare(func() { g.resolver.walkProofReference(ref, g.module, g.at(ref.Syntax)) })
 }
 
 func (g *sanyModuleSelectorGenerator) proof(proof ProofSummary) Diagnostics {
@@ -281,7 +277,7 @@ func (r *sanySelectorResolver) walk(expr Expr, mod *Module, scope map[string]san
 						diagnostic.Code = detail.code
 					}
 				}
-				if r.letContexts > 0 {
+				if r.letContexts > 0 || r.proofContexts > 0 {
 					source.selectorDiagnostic = &diagnostic
 				} else {
 					r.diags = append(r.diags, diagnostic)
@@ -409,6 +405,9 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 	}
 	result := &sanySelectorSelection{name: name, definition: ref, body: ref.def.Expr, params: append([]BoundVar(nil), ref.params...), operator: expected > 0}
 	bind := func(params []BoundVar, args []Expr) error {
+		if expected < 0 {
+			return nil
+		}
 		if result.operator {
 			if len(args) != 0 {
 				return fmt.Errorf("operator selector should not have arguments")
@@ -421,7 +420,7 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 	}
 	// selectorToNode validates the declared operator's arity before it asks
 	// whether a selected recursive body has been completed.
-	if !result.operator && len(result.params) != len(rootArgs) {
+	if expected == 0 && len(result.params) != len(rootArgs) {
 		detail := &sanySelectorLocationError{code: "E4204", message: fmt.Sprintf("The operator %s requires %d arguments.", name, len(result.params)), parameters: []any{name, len(result.params)}}
 		if selector.Syntax != nil {
 			detail.location = selector.Syntax.Range
@@ -464,13 +463,20 @@ func (r *sanySelectorResolver) selectExpr(expr Expr, scope map[string]sanySelect
 				}
 			}
 			if label == nil {
+				if expected < 0 {
+					detail := &sanySelectorLocationError{code: "E4004", message: fmt.Sprintf("Cannot find label `%s'.", step.Name)}
+					if step.Syntax != nil {
+						detail.location = step.Syntax.Range
+					}
+					return nil, true, detail
+				}
 				return nil, true, fmt.Errorf("cannot find label %s", step.Name)
 			}
 			var params []BoundVar
 			for _, name := range label.Params {
 				params = append(params, BoundVar{Name: name, Pos: label.Pos})
 			}
-			if !result.operator && len(params) != len(args) {
+			if expected == 0 && len(params) != len(args) {
 				detail := &sanySelectorLocationError{code: "E4337", message: fmt.Sprintf("Label `%s' used with wrong number of arguments.", step.Name), parameters: []any{step.Name}}
 				if step.Syntax != nil {
 					detail.location = step.Syntax.Range
@@ -742,6 +748,8 @@ func sanyAssumeProveLabel(body *AssumeProve, name string) (*LabelExpr, bool) {
 	return label, declared
 }
 func (r *sanySelectorResolver) walkProof(proof ProofSummary, mod *Module, scope map[string]sanySelectorDefinition) {
+	r.proofContexts++
+	defer func() { r.proofContexts-- }()
 	nested := make(map[string]sanySelectorDefinition, len(scope))
 	for name, ref := range scope {
 		nested[name] = ref
@@ -760,8 +768,13 @@ func (r *sanySelectorResolver) walkProof(proof ProofSummary, mod *Module, scope 
 		body  *AssumeProve
 	}
 	var active []entry
-	for _, fact := range proof.Facts {
-		r.walkProofFact(fact, mod, nested)
+	for _, reference := range proof.LeafRefs {
+		r.walkProofReference(reference, mod, nested)
+	}
+	if len(proof.LeafRefs) == 0 {
+		for _, fact := range proof.Facts {
+			r.walkProofFact(fact, mod, nested)
+		}
 	}
 	for _, step := range proof.Steps {
 		kept := active[:0]
@@ -795,8 +808,16 @@ func (r *sanySelectorResolver) walkProof(proof ProofSummary, mod *Module, scope 
 		if step.AssumeProveBody != nil {
 			r.inProof[step.AssumeProveBody] = true
 		}
-		for _, fact := range step.Facts {
-			r.walkProofFact(fact, mod, nested)
+		for _, reference := range step.UseHideRefs {
+			r.walkProofReference(reference, mod, nested)
+		}
+		for _, reference := range step.LeafRefs {
+			r.walkProofReference(reference, mod, nested)
+		}
+		if len(step.UseHideRefs)+len(step.LeafRefs) == 0 {
+			for _, fact := range step.Facts {
+				r.walkProofFact(fact, mod, nested)
+			}
 		}
 		if step.AssumeProveBody != nil {
 			r.inProof[step.AssumeProveBody] = false
@@ -831,4 +852,15 @@ func (r *sanySelectorResolver) walkAssumeProve(body *AssumeProve, mod *Module, s
 		}
 	}
 	r.walk(body.Prove, mod, scope, 0)
+}
+
+func (r *sanySelectorResolver) walkProofReference(reference ProofRef, module *Module, scope map[string]sanySelectorDefinition) {
+	if reference.Expr == nil {
+		return
+	}
+	if reference.Defs {
+		r.walk(reference.Expr, module, scope, -1)
+		return
+	}
+	r.walkProofFact(ProofFact{Expr: reference.Expr, Direct: sanyProofReferenceDirect(reference)}, module, scope)
 }

@@ -103,8 +103,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Final symbol constructors, function domains and module-instance operands: existing native parser/semantic classes and original ParseErrorTests | Pass | Root 6.958 seconds, session `53706` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.289 seconds, session `97779` retired |
+| Proof references and scoped bindings: existing native parser/semantic classes and original ParseErrorTests | Pass | Root 6.444 seconds, session `52098` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.678 seconds, session `4493` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -156,14 +156,16 @@ No full-workload success or inventory credit is claimed. Its unchanged draft and
 overlay remain `/mnt/oldrog/tmp/tlago-long-random-family-draft_test.go` and
 `/mnt/oldrog/tmp/tlago-long-random-family-overlay.json`.
 
-LSB session `32959` is live on the unchanged full original random draft, using
-both temporary-directory variables on the large workspace volume. Log:
-`/mnt/oldrog/tmp/tlago-long-lsb-random-large-volume.log`. The actual fingerprint
-file is under `.codex-gotmp/lsb-random-tmp`; placement has been verified. This
-snapshot includes the latest buffered-file and trace corrections, before the
-simulator correction. Preserve original bounds, factory, seed, assertions and
-checkpoints; use no race instrumentation. No success or inventory credit until
-the same handle returns terminal status. Do not reclaim unrelated files.
+LSB session `32959` returned status 0 and is retired. The unchanged random
+draft passed in 20,048.87 seconds with all 2,147,483,648 insertions, original
+seed and factory, per-insertion assertions, checkpoint commit, invariant and
+final-size check. Log: `/mnt/oldrog/tmp/tlago-long-lsb-random-large-volume.log`.
+Both temporary-directory variables used the large workspace volume. This
+snapshot includes buffered-file and trace corrections, before the simulator
+correction; the TLC fingerprint implementation is unchanged since that run.
+Review the entire draft against the original abstract method and concrete factory
+before installing it or granting inventory credit. No duplicate run is needed
+for unchanged fingerprint code. Do not reclaim unrelated files.
 
 MSB session `63113` is retired with status 0. Its full random draft passes in
 13,343.32 seconds, including all 2,147,483,648 insertions, checkpoint commit,
@@ -372,11 +374,22 @@ full-message comparisons match Java, including warnings and ordering. The 74
 visibility and 29 LET comparisons remain matching. No original tests or fixture
 bytes changed, and scratch probes earn no inventory credit.
 
-Continue actual proof and scoped-context generation. Unknown leaf `BY` facts
-are still not fully generated or resolved. Formal/bound contexts, general
-operator-argument generation and application failure boundaries still need
-broader reconciliation, including compound selectors and LET instances. Green
-original assertions and bounded observations do not establish full parity.
+Proof projection now retains BY facts, DEF entries, MODULE entries, qualified
+step references and DEFINE bindings. Reference generation preserves source
+fact/expression mode, argument errors, rejected DEF entries, Empty BY and
+statement-versus-SUFFICES NEW visibility through nested subproofs. All 49 bounded
+semantic-phase observations match Java's errors, warnings, ranges, messages and
+ordering; every source parses successfully. The existing 126 fixed-parameter,
+74 visibility, 29 LET and 50 symbol/operand comparisons still match. Scratch
+observations do not add test-port credit.
+
+Continue actual proof statement and DEFINE-body generation, constructor checks,
+proof-local instance generation, complete typed contexts and proof level checks.
+The new reference path does not establish complete proof-graph parity. Broader
+module namespace resolution, formal/bound contexts, general operator-argument
+generation and application failure boundaries still need reconciliation,
+including compound selectors and LET instances. Preserve original assertions
+and diagnose implementation shortcuts before installing more original tests.
 
 General JavaCC lookahead-derived expected-token sequences, remaining production
 states and label error continuations remain work. The original `ParseErrorTests.testAll` lives in root

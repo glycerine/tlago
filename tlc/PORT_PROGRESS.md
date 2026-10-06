@@ -1,5 +1,59 @@
 # TLC Port Progress
 
+2026-10-06 Proof-reference generation and completed LSB draft receipt:
+Starting clean master snapshot `4085e45`. Reference projection previously
+omitted BY DEF, BY MODULE and numbered-step fact tokens, and discarded DEFINE
+steps. Retain those syntax entries and their scoped binding information.
+Generate direct GeneralId facts with isFact, leaving operands and embedded
+expressions in ordinary expression mode. Preserve module-instance arity and
+operand errors, source DEF validation, malformed application continuation,
+missing module diagnostics and Empty BY after rejected entries are omitted.
+Defer selector failures until reference generation to preserve source order.
+
+The unchanged original ProofsTest corpus first exposed missing DEFINE scope.
+Preserve operator/function and instance bindings in the proof context, plus
+qualified statement names, TAKE/PICK names and NEW declaration arities.
+Java source comparison establishes assertion NEW visibility in the subproof and
+SUFFICES NEW visibility only after the whole subproof. A further nested probe
+caught premature installation at the parent step; defer installation until
+return to that depth. No original tests, fixtures or assertions changed.
+Full proof statement/DEFINE-body construction, constructor checks, proof-local
+instances, namespace resolution, complete typed contexts and level checks remain
+work. This increment does not establish complete proof-graph parity.
+
+Final scratch comparison: 49 semantic-phase examples, all Java parses successful,
+zero mismatches in complete diagnostic counts/codes/ranges/messages/order.
+Session `48202` terminal 0, retired; log
+`/mnt/oldrog/tmp/tlago-proof-reference-audit.log`. Three initially invalid
+ASSUME/PROVE fact examples were removed from the manual matrix; no semantic
+coverage is claimed for those parser failures. LET DEF selector spelling was
+corrected to the Java-valid F!:!G before final comparison.
+Established comparisons remain unchanged and matching: 126 fixed-parameter
+fixtures (`86926`), 74 visibility (`34365`), 29 LET (`75432`), 50 symbol/operand
+full-message examples (`60138`), all terminal 0 and retired. Logs use
+`/mnt/oldrog/tmp/tlago-proof-reference-{parameters,visibility,let,symbols}-audit.log`.
+Fixed-parameter comparison covers order/count/displayed arguments, not complete
+messages, ranges or object types. Scratch observations earn no inventory credit.
+
+Final complete SANY package passes 1.678 seconds (`4493` terminal 0); existing
+native parser/semantic behavior classes and original ParseErrorTests pass 6.444
+seconds (`52098` terminal 0). Logs:
+`tlago-proof-reference-final-sany.log` and
+`tlago-proof-reference-final-focused.log` under `/mnt/oldrog/tmp`.
+All-package compilation also passes (`94264` terminal 0).
+Full normal root session `77352` remains live on the earlier `4085e45` snapshot;
+preserve its handle and original bounds. It does not verify newer proof changes.
+Reuse the unchanged complete TLC package receipt, 769.038 seconds.
+
+Original full LSB random draft session `32959` returned terminal 0 and is retired.
+Complete workload passes 20,048.87 seconds, all 2,147,483,648 iterations with
+seed 15041980, original factory/configuration, every predecessor/put/size
+assertion, checkpoint commit, invariant and final size. Log:
+`/mnt/oldrog/tmp/tlago-long-lsb-random-large-volume.log`.
+Workspace temporary placement avoided the prior ENOSPC failure. The draft and
+source need whole-method/factory review before persistent installation and
+inventory credit. No reduced workload, race instrumentation or duplicate run.
+
 2026-10-06 Symbol construction and module-instance operand generation:
 Starting clean snapshot `b7ff2de`. The remaining fixed-parameter differences
 are E4201_Op's missing constructor warning and E4204_Instance's extra incomplete

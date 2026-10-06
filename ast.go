@@ -158,6 +158,7 @@ func (e NamedExpr) SourcePosition() Position {
 }
 
 type ProofRef struct {
+	Module string
 	Syntax *SanySyntaxNode
 	Expr   Expr
 	Name   string
@@ -172,14 +173,18 @@ type ProofFact struct {
 }
 
 type ProofSummary struct {
-	Syntax *SanySyntaxNode
-	Facts  []ProofFact
-	Goal   Expr
-	Steps  []ProofStep
-	Pos    Position
+	LeafRefs []ProofRef
+	Syntax   *SanySyntaxNode
+	Facts    []ProofFact
+	Goal     Expr
+	Steps    []ProofStep
+	Pos      Position
 }
 
 type ProofStep struct {
+	Definitions     []Definition
+	Instances       []Instance
+	LeafRefs        []ProofRef
 	UseHideRefs     []ProofRef
 	Statement       Position
 	Facts           []ProofFact
