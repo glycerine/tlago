@@ -1,5 +1,16 @@
 # TLC Port Progress
 
+2026-10-06 reusable job-service requirements clarification:
+Expanded TLC_DIST_REQS.md with client-visible operation boundaries and ten
+failure/ordering acceptance scenarios. Distinguished per-key linearizability,
+execution-local ledger transitions, publication completion, and Tube control
+commits. An ambiguous CAS requires original operation evidence; a current read
+of a superseding value cannot prove its earlier outcome. Documented generation
+changes and checkpoint rollback as visible to clients, without claiming durable
+per-batch acceptance. Reviewed against Java TLCServerThread's fingerprint claim,
+trace-write, and enqueue sequence. Documentation only; git diff --check passes.
+No implementation or Java test-port completion credit is added by this update.
+
 2026-10-06 typed Tube membership control adapter:
 Pinned rpc25519 v1.46.0 and resolved its production/transitive dependencies;
 go mod tidy passes. Tube's dependency graph selects x/text v0.33.0. The local

@@ -168,9 +168,14 @@ traces across concurrent schedules.
 **R16. Control operations.** Job activation, execution changes, snapshot references,
 and terminal decisions use Tube's linearizable records/CAS. A successfully
 completed control change precedes later dependent control reads. An ambiguous
-reply must be resolved by operation identity or authoritative read, not assumed
-successful or failed. This guarantee is conditional on the configured Tube
-persistence and lease assumptions.
+reply must retain the original operation identity until its outcome is resolved,
+not be assumed successful or failed. An authoritative read resolves that outcome
+only when retained operation evidence proves whether this exact change committed.
+Reading a newer value alone cannot establish the original CAS outcome: another
+writer may already have superseded it. Preserve Tube session/serial identity
+across retransmission; allocating a fresh session creates a different operation.
+This guarantee is conditional on the configured Tube persistence and lease
+assumptions.
 
 **R17. Conditional claims.** Claims on the same key have one authoritative order.
 A claim completed before a different claim begins must be visible to the latter.
@@ -207,6 +212,63 @@ An illustrative history is:
 This is valid: A owns the pending publication throughout. Replacing step 3 with
 "already present" and dropping A's state violates R8, R11, and R12.
 
+## Operation boundaries visible to clients
+
+The service must document these boundaries for its public API. A received RPC
+fragment, transport acknowledgment, or successful send is not a service operation
+completion. Timeouts and disconnections leave admitted mutations unresolved.
+
+| Logical operation | Effective boundary and retry response |
+| --- | --- |
+| Activate/change execution | Tube commits the conditional control-record transition; repeats resolve that same transition, even if later transitions have superseded it. |
+| Assign/supersede attempt | The coordinator changes its tracked owner under current authority; a concurrent acceptance either wins before supersession or is rejected afterwards. |
+| Accept result | The current attempt's complete immutable result and obligations are installed in the coordinator ledger. Repeats replay acceptance without recounting or recreating children. |
+| Claim key | The resource chooses its first claimant. The original operation's retained response identifies that choice on every retry. Different keys in one vector may have different effective instants. |
+| Apply publication | The final required publication stage finishes and the ledger records Applied. Earlier stages remain pending obligations; they are not completed publications. |
+| Retire outcome | A retirement watermark/tombstone advances before payload deletion. Repeating retirement is safe; a later duplicate mutation is rejected rather than executed again. |
+| Commit checkpoint | Tube commits the manifest reference after the consistent cut, component commits, and required verified replicas exist. |
+| Complete job | The fenced coordinator commits the terminal record after exhaustion of every work-producing obligation. |
+
+Assignment, acceptance, and publication ledgers may be local to the authorized
+execution in the initial implementation. Their boundaries are logical atomic
+transitions within that execution, not independent Raft transactions. Operations
+on the same ledger/resource must preserve real-time order; unrelated shard
+operations and computations may proceed concurrently. Clients observe committed
+control state through Tube's appropriate linearizable read path, not an arbitrary
+stale cached record.
+
+Replay does not require a duplicate response to reflect the latest resource
+contents. A retried successful claim can still say "new" after another operation
+sees that key as present. The retry is part of the original invocation history;
+treating it as a new query would change its meaning.
+
+After recovery, execution-scoped acceptance and Applied promises from the old
+generation must not be presented as promises of the new generation. Observers
+receive the new execution identity and selected checkpoint identity. Work after
+that checkpoint may execute again, and progress counters may return to their
+checkpoint values. The restored search must nevertheless retain all obligations
+needed to reach the correct TLC conclusion. A client requiring durable per-batch
+acceptance instead needs a future service mode that durably stores both the
+original outcome and its unfinished publication obligations.
+
+## TLC acceptance scenarios for the reusable service
+
+These scenarios specify observable behavior for future BDD implementation tests;
+they do not claim that integration is already implemented.
+
+| Given / fault | Required observation |
+| --- | --- |
+| A claim inserts a key, then its reply is lost | Retrying the identical operation returns its original winning bit; its state is eventually published once. |
+| Two attempts race to submit one batch | Only the accepted current attempt can publish, affect logical counters, or introduce child work. |
+| A worker disappears after result acceptance | The coordinator still owns the complete accepted result and finishes publication, or the execution undergoes coordinated recovery. |
+| The queue is empty while a claim reply is unresolved | The job remains unfinished because the batch still owns a work-producing obligation. |
+| A claim partially mutates and fails before recording its outcome | The execution is poisoned and recovered; a fresh claim is not used to pretend the failed operation had no effect. |
+| Trace writing succeeds but enqueue fails | No Applied acknowledgment or success decision is issued; recover all participants from one committed checkpoint. |
+| A control CAS commits, loses its reply, and is superseded by another CAS | The first operation resolves its original outcome without overwriting the newer record. |
+| An old coordinator resumes after the majority activates replacement storage | Its commands cannot mutate the replacement execution or commit its terminal decision. |
+| A machine fails while preparing a checkpoint | The incomplete generation is ineligible; surviving verified copies of the earlier committed generation support automatic recovery. |
+| A duplicate arrives after its reply was safely retired | The tombstone rejects it; it cannot recreate resource mutations or child work. |
+
 ## Completion, recovery, and bounded resources
 
 **R21. Dynamic completion.** Complete only when the frontier is empty and no assigned
@@ -228,8 +290,9 @@ attempts, caches, and replay ledgers. Refuse mixed-generation recovery. Commit a
 initial-state recovery generation before dispatching exploration, so a single
 machine failure before the first periodic checkpoint still permits automatic
 recovery. Absence of every valid generation is outside the promised healthy
-three-machine starting state and must be reported as failure. Electing a replacement coordinator does not restore lost application
-payloads or provide uninterrupted execution.
+three-machine starting state and must be reported as failure. Electing a
+replacement coordinator does not restore lost application payloads or provide
+uninterrupted execution.
 
 **R24. Bounded flow.** Support count and byte credits for assignments, results, claims,
 and retained replies. Reserve outcome capacity before resource mutation. Apply
