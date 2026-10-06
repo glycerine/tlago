@@ -239,10 +239,10 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			} else if unit.instance != nil {
 				instance := *unit.instance
 				diags = append(diags, g.generateProofInstanceSubstitutions(instance, module, current)...)
-				for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
+				for _, symbol := range g.proofInstanceSymbols(instance) {
 					if previous, exists := g.lookupSymbol(symbol.name, current); exists {
 						conflict := symbol
-						if previous.pos != symbol.sourcePosition() {
+						if previous.pos != symbol.sourcePosition() && !symbol.theoremLike {
 							conflict.source = instance.SourcePosition()
 						}
 						diags = append(diags, instanceSymbolConflict(conflict, previous)...)

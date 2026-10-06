@@ -409,11 +409,15 @@ and subsequent zero-location arity error; lambda body errors preserve lambda ari
 Module-definition formals are scoped during substitutions. Conflicting imports
 retain the first binding and its arity. DEF on an INSTANCE step emits Java's
 non-definition error. Named-instance prefix arguments are checked at their actual
-selector component. All 29 bounded source observations match full diagnostics;
-scratch comparisons add no permanent test credit. Existing SANY passes in 1.852
-seconds and the focused gate in 15.270 seconds. Receipts:
-`/mnt/oldrog/tmp/tlago-proof-instance-final-29.log` and
-`/mnt/oldrog/tmp/tlago-proof-instance-verified-{sany,focused,compile}.log`.
+selector component. Context.getByClass follows Java Hashtable enumeration, not
+reversed insertion links: keep builtin and unrelated definition entries during
+rehashing, then filter declarations. Import operators first and theorem/assumption
+symbols afterward, in Hashtable order within each class. Theorem conflicts retain
+the original source location. All 31 INSTANCE and four additional context-order
+observations match full diagnostics, including inherited declarations and bucket
+changes. Scratch comparisons add no permanent test credit. Existing SANY passes
+in 1.433 seconds and the focused gate in 14.323 seconds. Receipts:
+`/mnt/oldrog/tmp/tlago-proof-instance-context-final-*.log`.
 
 Continue proof INSTANCE inherited-context/constructor identity and level checks,
 original hierarchical proof level checks,

@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-06 INSTANCE context enumeration correction:
+Previous turn made progress in 52f87d4. Start from its clean master tree and
+confirm root handle 99670 remains live on 8d13d91. The new processSubst helper
+incorrectly treated Context.getByClass as newest-first Pair traversal. Inspect
+Java Context.java: getByClass uses table.elements(), unlike getOpDefs. Four
+additional source comparisons expose missing-substitution ordering differences
+for varied names, many unrelated definitions, inherited declarations and multiple
+EXTENDS parents. Reuse the existing bridge's Java-compatible complete context
+Hashtable traversal, retaining builtin and unrelated entries during rehashing,
+then filter OpDeclNode equivalents. Resolve target declarations from the actual
+retained context entry's originating module instead of the earlier merged map.
+
+Two further comparisons expose alphabetically ordered import conflicts and
+operator-style locations incorrectly assigned to theorem conflicts. Generate
+OpDef imports first, then theorem/assumption imports, in Hashtable order within
+each class. Preserve first bindings and original theorem source locations.
+The correction replaces the previous ordering approximation; it does not claim
+complete context stacks or constructor identity parity.
+
+Final normal verification, all terminal 0:
+- Four context-order observations match complete diagnostics. Receipt
+  /mnt/oldrog/tmp/tlago-proof-instance-context-final-context.log.
+- All 31 expanded INSTANCE observations match (9683); established 58 statement
+  (75911) and 49 reference (66594) observations still match. Receipts use
+  /mnt/oldrog/tmp/tlago-proof-instance-context-final-{instances,statements,references}.log.
+- Complete existing SANY package: 1.433 seconds (88920).
+- Existing native classes, original ParseErrorTests and unchanged original
+  EWD998ChanDebugger: 14.323 seconds (10069).
+- All-package compilation and git diff --check pass. Final package receipts use
+  /mnt/oldrog/tmp/tlago-proof-instance-context-final-{sany,focused,compile}.log.
+Scratch vectors remain outside the repository; no permanent test additions,
+changed assertions or new inventory credit. Initial context and import-order
+mismatches remain in their before logs and earn no pass credit.
+
+Full normal root 99670 is still live on the earlier 8d13d91 snapshot; preserve
+its handle until terminal status. No current complete workspace pass is claimed.
+Continue actual context stacks, source constructor identities, symbolic operand
+failure paths and original proof/INSTANCE level checks. New distributed work
+remains postponed.
+
 2026-10-06 Proof-local INSTANCE generation:
 Previous turn made progress in a37c7eb; revalidate its clean master tree and poll
 99670, confirmed live on 8d13d91. No full-root pass credit; keep the same handle.

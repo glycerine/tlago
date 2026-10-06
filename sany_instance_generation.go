@@ -13,32 +13,20 @@ func (g *sanyExpressionGeneration) generateProofInstanceSubstitutions(instance I
 	if target == nil {
 		return nil
 	}
-	targets := moduleSubstitutionTargets(target, g.spec)
+	// getByClass filters Hashtable.elements(), not Context's insertion links.
+	// Keep every context entry during rehashing; unrelated definitions and
+	// builtin entries affect declaration enumeration too.
+	targets := map[string]substitutionTarget{}
 	var names []string
-	seenNames := map[string]bool{}
-	var collect func(*Module)
-	visiting := map[*Module]bool{}
-	collect = func(mod *Module) {
-		if mod == nil || visiting[mod] {
-			return
+	entries := tlcBridgeContextContentOrder(tlcBridgeContextEntries(g.spec, target, map[*Module]bool{}))
+	for _, entry := range entries {
+		if entry.moduleKey || (entry.kind != ConstantDecl && entry.kind != VariableDecl) {
+			continue
 		}
-		visiting[mod] = true
-		for _, parent := range mod.Extends {
-			collect(g.spec.Modules[parent])
+		if declaration, exists := moduleOwnSubstitutionTargets(entry.module)[entry.name]; exists {
+			targets[entry.name] = declaration
+			names = append(names, entry.name)
 		}
-		for _, declaration := range mod.Declarations {
-			for _, name := range declaration.Names {
-				if _, exists := targets[name]; exists && !seenNames[name] {
-					seenNames[name] = true
-					names = append(names, name)
-				}
-			}
-		}
-	}
-	collect(target)
-	// Context.getByClass traverses its most recently added pair first.
-	for i, j := 0, len(names)-1; i < j; i, j = i+1, j-1 {
-		names[i], names[j] = names[j], names[i]
 	}
 	var diags Diagnostics
 	previousFormals := g.formals
@@ -163,4 +151,30 @@ func (g *sanyExpressionGeneration) generateProofInstanceSubstitutions(instance I
 		}
 	}
 	return diags
+}
+
+// generateInstance and processModuleDefinition import OpDefNodes first, then
+// ThmOrAssumpDefNodes, with Hashtable.elements() order within each class.
+func (g *sanyExpressionGeneration) proofInstanceSymbols(instance Instance) []semanticExportedSymbol {
+	byName := map[string]semanticExportedSymbol{}
+	for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
+		byName[symbol.name] = symbol
+	}
+	entries := tlcBridgeContextContentOrder(tlcBridgeContextEntries(g.spec, g.spec.Modules[instance.Module], map[*Module]bool{}))
+	var symbols []semanticExportedSymbol
+	for _, kind := range []DeclarationKind{OperatorDecl, ""} {
+		for _, entry := range entries {
+			if entry.kind != kind || entry.module == nil || entry.moduleKey || entry.local {
+				continue
+			}
+			name := entry.name
+			if instance.Name != "" {
+				name = instance.Name + "!" + name
+			}
+			if symbol, exists := byName[name]; exists {
+				symbols = append(symbols, symbol)
+			}
+		}
+	}
+	return symbols
 }

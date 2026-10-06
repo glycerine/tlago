@@ -268,9 +268,13 @@ Operator-generation failures preserve the nullOpArg sentinel and its follow-up
 arity error, while lambda body errors preserve the lambda operator. Module-definition
 formals remain scoped to substitutions, conflicting imports keep first bindings,
 and named-instance prefix arguments are validated separately from the imported
-operator's arguments. Twenty-nine bounded diagnostic observations match Java.
-Inherited instance contexts, constructor identity, symbolic operand failure
-branches and instance levels still require reconciliation. Module namespace
+operator's arguments. Context.getByClass enumerates Hashtable buckets and chains,
+including the effects of builtin and unrelated entries on rehashing. Reuse the
+existing Java-compatible context traversal before filtering declarations or
+importing operator and theorem classes. Four context-order and 31 INSTANCE
+observations match Java. Theorem conflicts preserve their original declaration
+location. Full inherited instance contexts, constructor identity, symbolic
+operand failure branches and instance levels still require reconciliation. Module namespace
 resolution, typed NEW/bound contexts, general failure boundaries and hierarchical
 proof level checks remain work. Existing corpus passes do not establish complete proof-graph or Generator
 parity. The fixed-parameter comparison selects 121 primary fixtures; earlier prose
