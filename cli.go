@@ -511,65 +511,52 @@ func writeDiagnostics(w io.Writer, diags Diagnostics) {
 func runModelCheck(args []string, stdout, stderr io.Writer) int {
 	restoreStreams := tlcruntime.ToolIOSetSystemStreams(stdout, stderr)
 	defer restoreStreams()
-	tlcArgs, loadOpts, diagOpts, err := extractTLCLoadOptions(args)
+	tlcArgs, loadOpts, err := extractTLCLoadOptions(args)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return ExitToolFailure
 	}
-	opts, err := tlcruntime.ParseTLCOptions(tlcArgs)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
+	checker := tlcruntime.NewTLC(tlcruntime.Options{})
+	if err := checker.HandleParameters(tlcArgs); err != nil {
+		// HandleParameters reports Java's coded command-line diagnostic itself.
+		if _, reported := err.(*tlcruntime.TLCCommandLineError); !reported {
+			fmt.Fprintln(stderr, err)
+		}
 		return ExitToolFailure
 	}
+	opts := checker.Options
+	var resolver tlcruntime.FilenameToStream
 	if opts.PackagedModel != nil {
 		classpath, err := tlcApplicationClasspath(opts.PackagedModel.Classpath())
 		if err != nil {
 			fmt.Fprintln(stderr, err)
 			return ExitToolFailure
 		}
-		resolver := tlcruntime.NewInJarFilenameToStream(tlcruntime.ModelInJarPath,
+		resolver = tlcruntime.NewInJarFilenameToStream(tlcruntime.ModelInJarPath,
 			tlcruntime.FilenameResolverOptions{Classpath: classpath})
-		opts.LoadTool = func() (*tlcruntime.Tool, error) {
-			tool, _, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, resolver, opts.RuntimeParams)
-			return tool, err
-		}
-		return runParsedTLCModelCheck(opts, stdout, stderr)
-	}
-	diagOpts = diagOpts.withTLCMessageControls()
-	loadOpts.ParsingProgress = tlcruntime.ToolIOPrintln
-	loadOpts.ResolutionError = tlcruntime.ToolIOErrPrintln
-	loadOpts.ExtraModules = appendModuleNames(loadOpts.ExtraModules, tlcRuntimeParameterModules(opts.RuntimeParams)...)
-	spec, diags := LoadSanySpec(opts.SpecFile, loadOpts)
-	diags = diagOpts.apply(diags)
-	if diags.HasErrors() {
-		writeDiagnostics(stderr, diags)
-		return ExitSyntaxFailure
-	}
-	sem := CheckSpec(spec)
-	sem = diagOpts.apply(sem)
-	if sem.HasErrors() {
-		writeDiagnostics(stderr, sem)
-		return ExitSemanticFailure
-	}
-	cfg, err := tlcruntime.ParseModelConfigFile(opts.ConfigFile)
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return ExitSyntaxFailure
-	}
-	opts.LoadTool = func() (*tlcruntime.Tool, error) {
-		tool, toolDiags := BuildTLCTool(spec, cfg, opts.RuntimeParams)
-		toolDiags = diagOpts.apply(toolDiags)
-		if toolDiags.HasErrors() {
-			writeDiagnostics(stderr, toolDiags)
-			return nil, toolDiags
-		}
-		return tool, nil
-	}
-	if cfg.GetCheckDeadlock() {
-		opts.Deadlock = true
 	} else {
-		opts.NoDeadlock = true
-		opts.Deadlock = false
+		classpath, err := tlcApplicationClasspath(nil)
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+			return ExitToolFailure
+		}
+		var userDirectory *string
+		if filepath.IsAbs(opts.SpecFile) {
+			directory := filepath.Dir(opts.SpecFile)
+			userDirectory = &directory
+		}
+		resolver = tlcruntime.NewSimpleFilenameToStream(loadOpts.LibraryPaths,
+			tlcruntime.FilenameResolverOptions{Classpath: classpath, UserDirectory: userDirectory})
+	}
+	// FastTool/SpecProcessor construction belongs inside TLC.process, after
+	// intern recovery and startup reporting. Ordinary and packaged models share
+	// the same config-before-SANY loading and source exception boundaries.
+	opts.LoadTool = func() (*tlcruntime.Tool, error) {
+		tool, diags, err := loadTLCAppTool(opts.SpecFile, opts.ConfigFile, resolver, opts.RuntimeParams)
+		if err == nil && diags.HasErrors() {
+			return nil, diags
+		}
+		return tool, err
 	}
 	return runParsedTLCModelCheck(opts, stdout, stderr)
 }
@@ -684,76 +671,19 @@ func tlcRuntimeParameterModules(params tlcruntime.RuntimeParameters) []string {
 	return params.ExtendeeModules()
 }
 
-func extractTLCLoadOptions(args []string) ([]string, LoadOptions, diagnosticCLIOptions, error) {
+func extractTLCLoadOptions(args []string) ([]string, LoadOptions, error) {
 	loadOpts := LoadOptions{}
-	diagOpts := diagnosticCLIOptions{}
 	tlcArgs := make([]string, 0, len(args))
 	for i := 0; i < len(args); i++ {
 		if ok, next, err := consumeLoadCLIOption(args, i, &loadOpts); ok || err != nil {
 			if err != nil {
-				return nil, loadOpts, diagOpts, err
+				return nil, loadOpts, err
 			}
 			i = next
 			continue
 		}
-		switch args[i] {
-		case "-suppressMessages":
-			tlcArgs = append(tlcArgs, args[i])
-			i++
-			if i >= len(args) {
-				return nil, loadOpts, diagOpts, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
-			}
-			tlcArgs = append(tlcArgs, args[i])
-			if err := addKnownSANYDiagnosticCodes(&diagOpts.suppressed, args[i], true); err != nil {
-				return nil, loadOpts, diagOpts, err
-			}
-			continue
-		case "-messagesAsErrors":
-			tlcArgs = append(tlcArgs, args[i])
-			i++
-			if i >= len(args) {
-				return nil, loadOpts, diagOpts, fmt.Errorf("%s requires a comma-separated diagnostic code list", args[i-1])
-			}
-			tlcArgs = append(tlcArgs, args[i])
-			if err := addKnownSANYDiagnosticCodes(&diagOpts.elevated, args[i], false); err != nil {
-				return nil, loadOpts, diagOpts, err
-			}
-			continue
-		}
+		// TLC owns validation of both TLC and SANY message codes.
 		tlcArgs = append(tlcArgs, args[i])
 	}
-	if err := validateKnownSANYDiagnosticOverlap(diagOpts); err != nil {
-		return nil, loadOpts, diagOpts, err
-	}
-	return tlcArgs, loadOpts, diagOpts, nil
-}
-
-func addKnownSANYDiagnosticCodes(dst *map[string]bool, text string, suppress bool) error {
-	for _, part := range strings.Split(text, ",") {
-		code := normalizeDiagnosticCode(part)
-		if code == "" {
-			return fmt.Errorf("empty diagnostic code in %q", text)
-		}
-		normalized, info, ok := lookupDiagnosticCode(code)
-		if !ok {
-			continue
-		}
-		if suppress && info.Severity != SeverityWarning {
-			return fmt.Errorf("message code %s cannot be suppressed", normalized)
-		}
-		if *dst == nil {
-			*dst = map[string]bool{}
-		}
-		(*dst)[normalized] = true
-	}
-	return nil
-}
-
-func validateKnownSANYDiagnosticOverlap(opts diagnosticCLIOptions) error {
-	for code := range opts.suppressed {
-		if diagnosticCodeSetContains(opts.elevated, code) {
-			return fmt.Errorf("message code %s cannot be configured in both -suppressMessages and -messagesAsErrors", code)
-		}
-	}
-	return nil
+	return tlcArgs, loadOpts, nil
 }

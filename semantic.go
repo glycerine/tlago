@@ -8,13 +8,39 @@ import (
 )
 
 func CheckSpec(spec *Spec) Diagnostics {
+	return checkSpecWithProgress(spec, nil)
+}
+
+func checkSpecWithProgress(spec *Spec, progress func(string)) Diagnostics {
 	if spec == nil {
 		return Diagnostics{errorAt(Position{}, "E1300", "nil spec")}
 	}
 	var diags Diagnostics
 	diags = append(diags, resolveSanySelectors(spec)...)
 	enclosing := enclosingModules(spec)
-	for _, mod := range spec.Modules {
+	checked := make(map[string]bool, len(spec.Modules))
+	for _, name := range spec.SemanticOrder {
+		mod := spec.Modules[name]
+		if mod == nil || checked[name] {
+			continue
+		}
+		checked[name] = true
+		if progress != nil {
+			progress("Semantic processing of module " + name)
+		}
+		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
+	}
+	// Nested modules and native callers without a loader order still need
+	// checking. Keep their diagnostics deterministic instead of map-ordered.
+	var remaining []string
+	for name := range spec.Modules {
+		if !checked[name] {
+			remaining = append(remaining, name)
+		}
+	}
+	sort.Strings(remaining)
+	for _, name := range remaining {
+		mod := spec.Modules[name]
 		diags = append(diags, checkModuleWithEnclosing(mod, spec, enclosing[mod])...)
 	}
 	return diags

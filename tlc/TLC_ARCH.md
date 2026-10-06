@@ -1,5 +1,24 @@
 # TLC Architecture Notes for the Go Port
 
+## CLI loading and fatal configuration I/O
+
+Ordinary and packaged CLI models construct their tool through the same deferred
+loader inside `TLC.process`, after intern recovery and the mode banner. Loading
+parses configuration before SANY. `HandleParameters` prints coded command-line
+errors through MP, and the TLC parser validates TLC and SANY message codes.
+
+`ProcessExit` carries a source `System.exit` outcome through the native library
+boundary. The CLI returns its mapped status without killing a library caller's
+host process. This path omits source finally actions: OUTPUT cleanup, FINISHED
+and trace generation. Configuration I/O code `5001`, like the other CFG lexer
+codes, maps to source fallback `255`; only the explicit TLC configuration cases
+in EC.ExitStatus map to `151`.
+
+SANY tool markers bracket front-end processing, and STARTING follows completion
+before checked errors are raised. Suppressed SANY_START retains buffered output
+on checked failures. Full parser diagnostic rendering and unexpected front-end
+exception wrapping/release remain audit work.
+
 ## Message formatting
 
 `MP.getMessage0` first constructs a template, then substitutes parameters in

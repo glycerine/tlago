@@ -64,7 +64,25 @@ plus the prior checker/storage/runner corrections and full disk-queue growth.
 It excludes outside-suite random fingerprint overlays. It predates the later
 runtime-exception/throwable printers, debug diagnostics and CLI result-wrapper
 correction, which have focused verification. Historical receipts stay in
-`PORT_PROGRESS.md`; no full workspace job is currently live.
+`PORT_PROGRESS.md`. Full normal workspace session `83804` is now live on the
+CLI loading correction snapshot after `0bb3f14`; its log is
+`/mnt/oldrog/tmp/tlago-cli-loading-workspace.log`. Poll that same handle; its
+terminal result is not yet available.
+
+The latest CLI loading correction uses the same deferred tool construction for
+ordinary and packaged models. Configuration loads before SANY inside
+`TLC.process`; fatal configuration I/O exits with source status `255` and skips
+FINISHED and trace generation. Tool-mode SANY markers and STARTING follow Java
+phase order. TLC owns message-code argument validation. Semantic checking uses
+loader dependency order and prints actual module progress. All exit mappings
+from `0` through `6000` agree with Java. Existing focused CLI/semantic/model
+checks pass in 5.980 seconds; original message/config/CLI checks pass in 0.020
+seconds, and all packages compile. Full verification is still running.
+
+Continue auditing front-end failure output: missing-module and syntax-error raw
+diagnostics still differ, and unexpected front-end exception wrapping and delayed
+output release need a faithful source port. Keep these production gaps visible;
+matching TLC event order does not establish full parser-diagnostic parity.
 
 Focused verification:
 

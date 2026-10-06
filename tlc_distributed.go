@@ -98,9 +98,29 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 	}
 	configName := tlc.ModelConfigPath(configFile)
 	configPath := resolver.Resolve(configName, false).GetPath()
-	data, err := os.ReadFile(configPath)
+	// ModelConfig uses FileUtil.newFIS: a missing file or failed open returns
+	// null, followed by its diagnostic and immediate process exit.
+	file, err := os.Open(configPath)
 	if err != nil {
-		return nil, nil, &tlc.ConfigFileError{Code: tlc.ECCFGErrorReadingFile, Params: []string{configName, err.Error()}}
+		if _, statErr := os.Stat(configPath); statErr == nil {
+			tlc.ToolIOPrintln("***Internal error: Unable to create FileInputStream")
+		}
+		tlc.PrintError(tlc.ECCFGErrorReadingFile, configName, "File not found.")
+		tlc.ExitTLCProcess(tlc.ECCFGErrorReadingFile)
+	}
+	// On Unix FileInputStream opening a directory fails before reading, whereas
+	// os.Open succeeds. Preserve FileUtil's null-open result in that case.
+	if info, statErr := file.Stat(); statErr == nil && info.IsDir() {
+		_ = file.Close()
+		tlc.ToolIOPrintln("***Internal error: Unable to create FileInputStream")
+		tlc.PrintError(tlc.ECCFGErrorReadingFile, configName, "File not found.")
+		tlc.ExitTLCProcess(tlc.ECCFGErrorReadingFile)
+	}
+	data, readErr := io.ReadAll(file)
+	_ = file.Close()
+	if readErr != nil {
+		tlc.PrintError(tlc.ECCFGErrorReadingFile, configName, readErr.Error())
+		tlc.ExitTLCProcess(tlc.ECCFGErrorReadingFile)
 	}
 	source := string(data)
 	if strings.HasSuffix(configName, ".tla") {
@@ -115,9 +135,22 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 		}
 		return nil, nil, err
 	}
-	// SpecProcessor.processSpec passes MP's SANY controls to the front end,
-	// writes its diagnostics to ToolIO.out, then raises TLC_PARSING_FAILED
-	// for checked errors or an unsuccessful (including elevated-warning) exit.
+	// SpecProcessor brackets SANY in tool mode and reports Starting after
+	// front-end completion, before evaluating its checked error status.
+	tlc.Globals.Lock()
+	toolMode := tlc.Globals.Tool
+	tlc.Globals.Unlock()
+	if toolMode {
+		tlc.PrintMessage(tlc.ECTLCSanyStart)
+	}
+	var delayed strings.Builder
+	sanyPrintln := tlc.ToolIOPrintln
+	if tlc.GetTLCSuppressedCodes().Contains(tlc.ECTLCSanyStart) {
+		// Source buffers this stream and releases it only for FrontEndException,
+		// not for ordinary checked SANY errors. Resolution-side output remains
+		// separate from the SANY stream, as in SimpleFilenameToStream.
+		sanyPrintln = func(text string) { delayed.WriteString(text); delayed.WriteByte('\n') }
+	}
 	messageControls := (diagnosticCLIOptions{}).withTLCMessageControls()
 	processSANYDiagnostics := func(raw Diagnostics, semantic bool) Diagnostics {
 		controlled := messageControls.apply(raw)
@@ -140,34 +173,48 @@ func loadTLCAppTool(specFile, configFile string, resolver tlc.FilenameToStream, 
 			if isSemanticError(diagnostic) {
 				errors = append(errors, diagnostic)
 			} else {
-				tlc.ToolIOPrintln(diagnostic.String())
+				sanyPrintln(diagnostic.String())
 			}
 		}
 		if len(errors) > 0 {
-			tlc.ToolIOPrintln(fmt.Sprintf("Semantic errors:\n\n*** Errors: %d\n", len(errors)))
+			sanyPrintln(fmt.Sprintf("Semantic errors:\n\n*** Errors: %d\n", len(errors)))
 			for _, diagnostic := range errors {
-				tlc.ToolIOPrintln(sanyJavaErrorDetails(diagnostic) + "\n")
+				sanyPrintln(sanyJavaErrorDetails(diagnostic) + "\n\n")
 			}
 		}
-		if controlled.HasErrors() {
-			var parameters []string
-			for _, diagnostic := range raw {
-				if diagnostic.Severity == SeverityError {
-					parameters = append(parameters, diagnostic.String())
-				}
-			}
-			panic(tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed, parameters...))
-		}
+
 		return controlled
 	}
 	spec, diags := LoadSanySpec(rootFile, LoadOptions{
-		ParsingProgress:  tlc.ToolIOPrintln,
-		ResolutionError:  tlc.ToolIOErrPrintln,
+		ParsingProgress:  sanyPrintln,
+		ResolutionError:  sanyPrintln,
 		FilenameResolver: resolver,
 		ExtraModules:     runtime.ExtendeeModules(),
 	})
-	diags = processSANYDiagnostics(diags, false)
-	diags = append(diags, processSANYDiagnostics(CheckSpec(spec), true)...)
+	parseDiags := diags
+	diags = processSANYDiagnostics(parseDiags, false)
+	var semanticDiags Diagnostics
+	if !diags.HasErrors() {
+		semanticDiags = checkSpecWithProgress(spec, sanyPrintln)
+		diags = append(diags, processSANYDiagnostics(semanticDiags, true)...)
+	}
+	if toolMode {
+		tlc.PrintMessage(tlc.ECTLCSanyEnd)
+	}
+	tlc.PrintMessage(tlc.ECTLCStarting)
+	if diags.HasErrors() {
+		var parameters []string
+		raw := parseDiags
+		if !parseDiags.HasErrors() {
+			raw = semanticDiags
+		}
+		for _, diagnostic := range raw {
+			if diagnostic.Severity == SeverityError {
+				parameters = append(parameters, diagnostic.String())
+			}
+		}
+		panic(tlc.NewTLCRuntimeException(tlc.ECTLCParsingFailed, parameters...))
+	}
 	// SpecProcessor looks up the constructor's raw root name after SANY.
 	// In particular, direct constructors retaining a .tla suffix fail here;
 	// create strips that suffix before invoking the constructor.

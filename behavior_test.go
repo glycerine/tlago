@@ -399,14 +399,15 @@ Use == LibraryValue
 		t.Fatalf("modelcheck exit = %d, want %d", code, ExitOK)
 	}
 	stderr.Reset()
-	if code := RunCLI([]string{"modelcheck", "-maxStates", "3", "-config", unboundedCfg, unbounded}, nil, &stderr); code != ExitToolFailure {
+	var stdout bytes.Buffer
+	if code := RunCLI([]string{"modelcheck", "-maxStates", "3", "-config", unboundedCfg, unbounded}, &stdout, &stderr); code != ExitToolFailure {
 		t.Fatalf("removed modelcheck maxStates exit = %d, want %d; stderr=%s", code, ExitToolFailure, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "unrecognized option: -maxStates") {
-		t.Fatalf("modelcheck maxStates stderr = %q, want rejected non-Java option", stderr.String())
+	if !strings.Contains(stdout.String(), "unrecognized option: -maxStates") {
+		t.Fatalf("modelcheck maxStates stdout = %q, want Java TLC command-line diagnostic", stdout.String())
 	}
 	stderr.Reset()
-	var stdout bytes.Buffer
+	stdout.Reset()
 	if code := RunCLI([]string{"modelcheck", "-config", traceFailCfg, traceFail}, &stdout, &stderr); code != tlcruntime.ExitStatusViolationSafety {
 		t.Fatalf("modelcheck trace failure exit = %d, want %d; stderr=%s", code, tlcruntime.ExitStatusViolationSafety, stderr.String())
 	}

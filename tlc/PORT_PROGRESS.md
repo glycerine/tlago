@@ -1,5 +1,63 @@
 # TLC Port Progress
 
+2026-10-06 faithful CLI tool-construction and loading order:
+Previous goal turn is progress: `0bb3f14` ports debug diagnostics and the CLI
+result mapping. Continue on master with the new rpc25519/Tube architecture
+postponed. Ordinary CLI models now use HandleParameters and the same deferred
+LoadTool callback as packaged models. FastTool construction follows intern
+recovery and the mode banner inside TLC.process. Configuration parsing precedes
+SANY; source exceptions reach the existing process catch rather than an early
+native CLI return. Command-line errors use the source MP stdout diagnostic.
+Remove duplicate SANY-only validation from the CLI extractor: the TLC parser
+owns both TLC and SANY message codes. Retain explicit library directories and
+absolute-spec directory resolution. Remove the CLI override that re-enabled
+-deadlock despite its parsed false setting; checker/config conjunction remains.
+
+Port ModelConfig's fatal I/O boundary through ProcessExit, preserving its
+missing-file diagnostic and source FileUtil internal-error line for an existing
+file that cannot be opened, including a directory on Unix. The CLI exits with
+the mapped status; the Go library carries that outcome without terminating its
+host. Source System.exit bypasses OUTPUT cleanup, FINISHED and trace generation.
+The first scratch source/native run exposed the old native mapping of all six
+CFG lexer/I/O codes to 151. EC.ExitStatus has no such cases: they map to 255.
+Remove those extra cases. A subsequent comparison of every integer code from
+0 through 6000 matches unchanged Java exactly. Earlier speculation that the
+missing-config exit was 151 was incorrect; no success credit for that mismatch.
+
+SpecProcessor brackets SANY with tool-mode START/END and prints STARTING only
+after the front end, including checked errors. Suppressing SANY_START buffers
+ordinary front-end output without releasing it on checked failures, as source
+does. Semantic checking now follows loader dependency order rather than Go map
+iteration and reports each external module as it is checked. Nested/native
+modules without loader order retain checking in deterministic name order.
+Semantic error spacing follows the source PrintStream. Unexpected front-end
+exception wrapping/release and full parser error rendering remain incomplete:
+missing-module and syntax-error raw diagnostics still differ from Java. Do not
+claim whole front-end output parity from matching TLC event order.
+
+Scratch observations, not invented persistent tests: nine CLI failure/suppression
+cases retain source event order and mapped outcomes; six complete normalized
+stdout/stderr comparisons match (missing config, directory config, config syntax,
+semantic error in ordinary/tool modes, and suppressed parse). Runtime version,
+platform/memory/PID banner and timestamps/durations are normalized; diagnostic
+text, order and whitespace are preserved. The source launcher uses handleParameters
+and process, never TLC.main or mail. Logs: /mnt/oldrog/tmp/tlago-loading-manual/
+and /mnt/oldrog/tmp/tlc-exit-map-{java,go}.log. Source process return codes are
+mapped through EC.ExitStatus; its launcher returns OS zero for nonfatal results.
+
+Final focused existing CLI/semantic/original safety/checkpoint/liveness/override
+selection passes 5.980 seconds (87719 retired). Original TLC/MP/warning/config
+selection passes 0.020 seconds (78814 retired); all-package compilation passes
+(19285 retired). Earlier intermediate checks also passed but are not the final
+snapshot. Existing native CLI test captures the Java command-line diagnostic on
+stdout; no original Java assertion or bound changed, no new inventory credit.
+Full normal suite session 83804 is live on this correction snapshot, with
+-count=1 -failfast -timeout=60m and no race instrumentation. Log:
+/mnt/oldrog/tmp/tlago-cli-loading-workspace.log. Do not restart it or claim a
+terminal result until its live handle returns. Existing LSB full-bound scratch
+session 59782 remains live and outside inventory credit; its latest log exceeds
+1.858 billion of 2,147,483,648 iterations. Preserve its shared overlay unchanged.
+
 2026-10-06 core DebugPrinter and CLI result wrapper:
 Previous goal turn is progress: 468efd1/17f3d51 implement faithful throwable
 printers and null cause handling, and record the retired full MSB random receipt.

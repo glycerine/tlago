@@ -199,10 +199,16 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 
 	var result *Result
 	var err error
+	processExited := false
 	func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				err = panicValueAsError(recovered)
+				if exit, ok := err.(*ProcessExit); ok {
+					processExited = true
+					result = &Result{ErrorCode: exit.ErrorCode}
+					return
+				}
 				code, params := tlcProcessFailureMessage(err)
 				if failure := javaRuntimeException(err); failure != nil {
 					PrintTLCRuntimeException(failure)
@@ -230,7 +236,6 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 		} else {
 			PrintMessage(ECTLCModeMC, t.modelCheckingRuntimeParams()...)
 		}
-		PrintMessage(ECTLCStarting)
 		if t.Tool == nil {
 			t.Tool, err = t.LoadTool()
 			if err != nil {
@@ -253,6 +258,15 @@ func (t *TLC) Process(ctx context.Context) (*Result, error) {
 	}
 	if err != nil && result.ErrorCode == NoError {
 		result.ErrorCode = ECGeneral
+	}
+	if processExited {
+		// Source System.exit does not unwind TLC.process's finally: no OUTPUT
+		// cleanup, finished message or trace generation follows the diagnostic.
+		result.ExitStatus = ExitStatusForErrorCode(result.ErrorCode)
+		recorder.mu.Lock()
+		result.Messages = append([]Message(nil), recorder.Messages...)
+		recorder.mu.Unlock()
+		return result, err
 	}
 	// TLC.process's finally ignores OUTPUT flush/close IOException, prints the
 	// finished message, then generates a trace spec without changing its result.

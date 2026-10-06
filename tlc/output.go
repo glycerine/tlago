@@ -662,13 +662,7 @@ func ExitStatusForErrorCode(code int) int {
 		return ExitStatusViolationAssumption
 	case ECTLCValueAssertFailed:
 		return ExitStatusViolationAssert
-	case ECCFGErrorReadingFile,
-		ECCFGGeneral,
-		ECCFGMissingID,
-		ECCFGTwiceKeyword,
-		ECCFGExpectID,
-		ECCFGExpectedSymbol,
-		ECTLCConfigValueNotAssignedToConstantParam,
+	case ECTLCConfigValueNotAssignedToConstantParam,
 		ECTLCConfigRHSIDAppearedAfterLHSID,
 		ECTLCConfigWrongSubstitution,
 		ECTLCConfigWrongSubstitutionNumberOfArgs,
