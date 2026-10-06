@@ -1,5 +1,17 @@
 # TLC Port Progress
 
+2026-10-06 current master full workspace verification started:
+Started the full enabled normal suite after early-intern recovery fixes and
+original model/server test ports: go test -count=1 -failfast -timeout=60m ./....
+Session 83220 is live; log /mnt/oldrog/tmp/tlago-master-parity-workspace.log.
+Uses relocated .codex-gotmp for test storage. No race instrumentation, reduced
+bounds, or new service work. This run does not include the outside-suite overlay
+random fingerprint draft, which remains separately live in session 98446.
+Latest original stress progress: 371,487,542/2,147,483,648 iterations, no failures.
+Both handles were polled and confirmed running; no completed verification credit.
+Asked for the user's disposition of JVM-only JFR/ParallelGC/JPF checks; pending
+an answer, existing exclusions/reconciliation entries and assertions remain intact.
+
 2026-10-06 full original MSB random fingerprint run started:
 Prepared an overlay translation of FPSetTest.testMaxFPSetSizeRnd with the concrete
 MSBDiskFPSetTest factory. Preserves seed 15041980, default FPSetConfiguration,

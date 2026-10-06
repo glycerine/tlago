@@ -53,6 +53,13 @@ Log: `/mnt/oldrog/tmp/tlago-long-msb-random-full.log`; overlay and draft are in
 under ignored `.codex-gotmp`. Poll this handle before considering another run.
 It has no completion credit yet; do not start a duplicate or use `-race`.
 
+The complete normal workspace suite is also live in session `83220`, using
+`go test -count=1 -failfast -timeout=60m ./...`. Log:
+`/mnt/oldrog/tmp/tlago-master-parity-workspace.log`. This verifies the current
+committed parity fixes; it excludes the uninstalled fingerprint overlay draft.
+Poll the existing handle before scheduling another full suite. Neither live run
+is a completed gate or a race check.
+
 The Java archive recovery port exposed and fixed late intern-table restoration.
 The full new recovery method, five short component checks, and all-package
 compilation pass. Eight related original checkpoint, recovery, EWD840 and DFID
