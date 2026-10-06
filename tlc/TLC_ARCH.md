@@ -1,5 +1,15 @@
 # TLC Architecture Notes for the Go Port
 
+## Message formatting
+
+MP storage, metadata, CHOOSE, liveness and trace diagnostics retain their original
+text, spelling, newlines and missing-parameter placeholders. Message class reaches
+normal and nullable formatting: pool-cleanup ERROR and WARNING have different
+text, while NONE has no body. Back-to-state formatting follows tool mode, state
+fingerprint text follows the captured debug property, and temporal violations
+retain the original zero/single/plural wording. Unknown codes return Java's
+wrong-invocation diagnostic. Recorder and console boundaries remain separate.
+
 ## Runner completion and memory reporting
 
 TLC.process preserves the checker result through its final I/O cleanup. It

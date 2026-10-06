@@ -96,7 +96,9 @@ Focused verification:
 | Runner completion and memory banners: original message/CLI checks and trace/checkpoint models | Pass | 6.721 / 1.756 seconds; sessions `9440` / `98861` retired |
 | Original factory followed by complete off-heap class with Ant isolation | Pass | 46.331 seconds, session `33613` retired; includes 99,999,999-entry index |
 | Recovery/seed ordering: original simulation/recovery/CodePlex models | Pass | 298.728 seconds, session `62916` retired; focused component checks 6.354 seconds |
-| Latest all-package compilation | Pass | After Ant class and runner seed corrections, terminal 0 |
+| Remaining 186 TLC tests after original off-heap class isolation | Pass | 125.929 seconds, session `14660` retired; retains full index/long bounds |
+| Missing MP diagnostic templates: original MP/warning checks and trace/liveness models | Pass | 0.014 / 1.900 seconds, sessions `38266` / `93875` retired |
+| Latest all-package compilation | Pass | Session `12720` retired |
 
 Manual source/native observations also confirm named checkpoint contents,
 missing-parent I/O failure, destination-link replacement and unchanged referent.
@@ -162,11 +164,19 @@ advancement while preserving its parsed option value; the enumerable seed is
 set once before tool construction. Original simulation/recovery/CodePlex checks
 and source/native manual observations pass. No assertions or counts changed.
 
+Missing MP storage, metadata, CHOOSE, liveness and trace diagnostics now retain
+Java's text instead of numeric fallback. Pool cleanup preserves its error/warning
+variants; temporal violations preserve zero/single/plural-property wording.
+Back-to-state and debug-state formatting retain source tool/debug branches.
+Unknown codes use Java's wrong-invocation diagnostic. Manual source/native
+observations match 1,344 rows across those branches; original tests pass.
+The 186-test remainder is retired with status 0. A fresh full workspace receipt
+is still needed after these production corrections.
+
 Current normal verification jobs:
 
 | Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
-| Remaining 186 TLC tests from original off-heap class onward | `7906f67` plus runner correction | `14660` | `tlago-ant-offheap-remainder.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 

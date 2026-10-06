@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-06 missing MP diagnostics and completed TLC remainder:
+Remainder 14660 at 7906f67 plus the subsequently committed runner correction is
+terminal 0, passing all 186 selected tests in 125.929s. It includes complete
+original index and long methods. This verifies the previously unreached suffix;
+it is not a full-workspace receipt. Runner ordering is committed as 4da8c2c.
+
+Source MP audit found missing storage/pool/index/stream/metadata, CHOOSE/module,
+liveness-warning, trace-length, temporal-violation, counterexample and state
+message templates. Implement the 27 original codes mechanically, preserving
+spelling, newlines, missing placeholders and parameter-count branches. Carry
+message class through normal/nullable formatting so pool cleanup retains error,
+warning and empty NONE text. Preserve tool-mode back-to-state and static debug
+fingerprint formatting. Temporal violation retains zero/single/plural wording
+and source Oxford comma. Unknown codes use the source wrong-invocation message.
+No Java tests are added or weakened: the existing original MP/WarningControl
+translations remain complete, with unchanged inventory totals.
+
+Unchanged Java/private getMessage0 and native public printer/MemoryRecorder
+observations match byte-for-byte for 672 rows with debug disabled and 672 with
+debug enabled: 27 source codes plus unknown, NONE/ERROR/WARNING, zero/one/two/four
+parameters, normal/tool mode. Both corrected standalone launchers and comparison
+commands return 0. Scratch files under /mnt/oldrog/tmp:
+MPMissingTemplatesManual.java, tlago-missing-templates-manual.go and
+tlago-missing-templates-{java,go}[-debug].log. These are manual observations,
+not new tests or inventory credit. Initial source-constant spelling in production
+failed compilation; corrected to the existing ECTLCTooManyPossibleStates. The
+first scratch native launcher also used nonexistent ToolIO/recorder APIs and
+failed to compile, leaving an empty comparison log; no success credit for either
+attempt. Corrected comparison uses the actual ToolIOTool and recorder Records.
+
+Original MP/WarningControl plus existing output/exception stream checks pass
+0.014s (38266 terminal 0). Seven original ext-trace/dump-load/liveness/checkpoint
+methods pass 1.900s (93875 terminal 0). All-package compilation passes 12720.
+No race workloads, assertion changes, reduced bounds or new architecture work.
+Full-workspace verification will follow this commit; random 63113/59782 remain
+live at a915e08, approximately 1.904 billion / 1.382 billion iterations, without
+completion credit. The last whole workspace/full-TLC failures remain retired
+with their exact scopes documented; do not describe them as green latest suites.
+
 2026-10-06 TLC recovery, fingerprint and random initialization ordering:
 Native Process previously initialized FP64 and enumerable random values before
 recovering the intern table. Pinned TLC.process does recovery first. Move runner

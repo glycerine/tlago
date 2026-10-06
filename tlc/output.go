@@ -448,12 +448,12 @@ func PrintErrorNullable(code int, params ...*string) int {
 	return code
 }
 
-func formatNullableMessage(code int, params []*string) string {
+func formatNullableMessage(code int, params []*string, messageClass ...Severity) string {
 	placeholders := make([]string, len(params))
 	for i := range placeholders {
 		placeholders[i] = fmt.Sprintf("%%%d%%", i+1)
 	}
-	text := formatMessage(code, placeholders)
+	text := formatMessage(code, placeholders, messageClass...)
 	for i, param := range params {
 		if param == nil {
 			break
@@ -512,9 +512,9 @@ func getMessageParameters(code int, params []string, nullableParams []*string, s
 	// subsequently throws (for example, while substituting a null parameter).
 	defaultRecorder.Record(Message{Code: code, Severity: severity,
 		Params: copied, NullableParams: nullableCopied, FormattingOnly: true})
-	text := formatMessage(code, copied)
+	text := formatMessage(code, copied, severity)
 	if nullableCopied != nil {
-		text = formatNullableMessage(code, nullableCopied)
+		text = formatNullableMessage(code, nullableCopied, severity)
 	}
 	Globals.Lock()
 	tool := Globals.Tool
@@ -547,9 +547,9 @@ func recordMessageParameters(code int, severity Severity, params []string, nulla
 	}
 	copied := copyMessageParameters(params)
 	nullableCopied := copyNullableMessageParameters(nullableParams)
-	text := formatMessage(code, copied)
+	text := formatMessage(code, copied, severity)
 	if nullableCopied != nil {
-		text = formatNullableMessage(code, nullableCopied)
+		text = formatNullableMessage(code, nullableCopied, severity)
 	}
 	defaultRecorder.Record(Message{
 		Code:           code,
@@ -581,7 +581,7 @@ func recordStateMessage(code int, params []string, text string, state *TLCStateM
 	return printConsoleMessage(code, SeverityState, text, !suppressed)
 }
 
-func formatMessage(code int, params []string) string {
+func formatMessage(code int, params []string, messageClass ...Severity) string {
 	switch code {
 	case ECUnitTest:
 		text := "[%1%][%2%]"
@@ -607,6 +607,107 @@ func formatMessage(code int, params []string) string {
 			text += "It was expecting " + configMessageParam(params, 1) + ", but did not find it."
 		}
 		return text
+	case ECSystemErrorReadingPool:
+		if len(params) == 2 {
+			return "when reading pool file " + configMessageParam(params, 1) + " (StatePoolReader.run):\n" + configMessageParam(params, 0)
+		}
+		return "when reading the disk (StatePoolReader.run):\n" + configMessageParam(params, 0)
+	case ECSystemErrorWritingPool:
+		return "when writing the disk (StatePoolWriter.run):\n" + configMessageParam(params, 0)
+	case ECSystemErrorCleaningPool:
+		if len(messageClass) > 0 {
+			switch messageClass[0] {
+			case SeverityError:
+				return "Exception cleaning up an obsolete disk file.\n" + configMessageParam(params, 0)
+			case SeverityWarning:
+				return "Failed to clean up an obsolete disk file. Please manually delete " + configMessageParam(params, 0) + " if free disk space is low."
+			}
+		}
+		return ""
+	case ECSystemDiskgraphAccess:
+		return "DiskGraph.toString()"
+	case ECSystemFileNull:
+		return "File must be not null"
+	case ECSystemInterrupted:
+		return "Thread has been interrupted."
+	case ECSystemIndexError:
+		return "Index error."
+	case ECSystemStreamEmpty:
+		return "The provided input stream was null, empty or could not be accessed."
+	case ECSystemUnableNotRenameFile:
+		return "Unable not rename file during the clean-up."
+	case ECSystemDiskIOErrorForFile:
+		return "Disk I/O error accessing the file for " + configMessageParam(params, 0) + "."
+	case ECSystemMetadirExists:
+		return "TLC writes its files to a directory whose name is generated from the current time.\nThis directory should be " + configMessageParam(params, 0) + ", but that directory already exists.\nTrying to run TLC again will probably fix this problem."
+	case ECSystemMetadirCreationError:
+		return "TLC could not make a directory " + configMessageParam(params, 0) + " for the disk files it needs to write."
+	case ECTLCMetadirExists:
+		return "TLC writes its files to a directory which name is generated from the current time.\nThis directory should be " + configMessageParam(params, 0) + ", but that directory already exists.\nTrying to run TLC again will probably fix this problem.\n"
+	case ECTLCMetadirCanNotBeCreated:
+		return "TLC could not make a directory for the disk files it needs to write.\n"
+	case ECTLCStringModuleNotFound:
+		return "This is a TLC bug: TLC could not find its built-in String module.\n"
+	case ECTLCChooseArgumentsWrong:
+		return "The arguments to " + configMessageParam(params, 0) + " are not appropriate."
+	case ECTLCChooseUpperBound:
+		return "Choose can only deal with numbers up to " + configMessageParam(params, 0)
+	case ECTLCTooManyPossibleStates:
+		return "Too many possible next states for the last state in the trace."
+	case ECTLCErrorReplacingModules:
+		return "Found a Java class for module " + configMessageParam(params, 0) + ", but unable to read\nit as a Java class object. " + configMessageParam(params, 1)
+	case ECTLCFeatureUnsupportedLivenessSymmetry:
+		return "Declaring symmetry during liveness checking is dangerous. It might cause TLC to miss violations of the stated liveness properties. Please check liveness without symmetry defined."
+	case ECTLCFeatureLivenessConstraints:
+		return "Declaring state or action constraints during liveness checking is dangerous: Please read section 14.3.5 on page 247 of Specifying Systems (https://lamport.azurewebsites.net/tla/book.html) and optionally the discussion at https://discuss.tlapl.us/msg00994.html for more details."
+	case ECTLCTraceTooLong:
+		return "The specification contains one or more behaviors with 65536 or more states,\nbut TLC can only handle behaviors of length up to 65535 states. The last\nstate in the behavior is:\n" + configMessageParam(params, 0)
+	case ECTLCTemporalPropertyViolated:
+		if len(params) == 0 {
+			return "Temporal properties were violated.\n"
+		}
+		if len(params) == 1 {
+			return "Temporal property " + params[0] + " was violated.\n"
+		}
+		text := "Temporal properties "
+		for i, param := range params {
+			if i == len(params)-1 {
+				if len(params) == 2 {
+					text += " and "
+				} else {
+					text += ", and "
+				}
+			} else if i > 0 {
+				text += ", "
+			}
+			text += param
+		}
+		return text + " were violated.\n"
+	case ECTLCCounterExample:
+		return "The following behavior constitutes a counter-example:\n"
+	case ECTLCBackToState:
+		if len(params) != 1 && len(params) != 2 {
+			return ""
+		}
+		Globals.Lock()
+		tool := Globals.Tool
+		Globals.Unlock()
+		text := "Back to state " + params[0]
+		if tool {
+			text = params[0] + ": Back to state"
+		}
+		if len(params) == 2 {
+			text += ": " + params[1]
+		}
+		return text + "\n"
+	case ECTLCStatePrint2:
+		text := configMessageParam(params, 0) + ": " + configMessageParam(params, 1) + "\n" + configMessageParam(params, 2)
+		if mpGeneralDebug {
+			text += "fp: " + configMessageParam(params, 3) + "\n"
+		}
+		return text
+	case ECTLCStatePrint3:
+		return configMessageParam(params, 0) + ": Stuttering"
 	case ECSystemUnableToOpenFile:
 		return "Unable to open " + messageParam(params, 0) + ".\n" + messageParam(params, 1)
 	case ECSystemStackOverflow:
@@ -1346,10 +1447,7 @@ func formatMessage(code int, params []string) string {
 	case ECTLCModuleOverrideStdout:
 		return strings.Join(params, "")
 	}
-	if len(params) == 0 {
-		return fmt.Sprintf("%d", code)
-	}
-	return fmt.Sprintf("%d %s", code, strings.Join(params, " "))
+	return "Wrong invocation of TLC error printer. Error code not found."
 }
 
 func messageNow() string {
