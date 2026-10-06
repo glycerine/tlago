@@ -68,54 +68,44 @@ The subsequent full normal TLC package suite also passes on `a915e08`, in
 named-file checkpoint recovery, source invariant semantics and runtime rename
 causes. These results supersede the older `305a13f` workspace baseline.
 
-The follow-up I/O propagation correction preserves Java failures from collision
-and invariant scans instead of returning zero or false on file errors. Shared
-validation distinguishes a false ordering invariant from an IOException, and
-propagates close failures. The flusher uses the existing Java I/O-family catch
-helper. Existing focused checks pass in 5.319 seconds; all original manager test
-bodies pass in 0.055 seconds; all packages compile. No tests or assertions were
-changed. The two full-suite receipts above predate this follow-up and must remain
-scoped to their compiled snapshots.
+Subsequent source-parity corrections preserve scan I/O exceptions, off-heap
+flusher lifecycle, validation before replacement and the reopened-file scan.
+The model-test runner now applies Java Ant's off-heap / `512k` settings before
+parsing instead of substituting a small MSB set. Latest checkpoint file helpers
+rename directly, copy without creating parents, replace destination links and
+propagate typed I/O failures. Detailed implementation/run chronology is in
+`PORT_PROGRESS.md`; the full-suite receipts above predate these later changes.
 
-The subsequent off-heap lifecycle correction applies the same source flusher
-rules: seek worker readers and close pooled readers before creating the temporary
-file, preallocate sequential and concurrent output, publish the new index/count
-before file replacement, retain coded rename causes, and wrap eviction I/O failures
-in `OffHeapRuntimeException`. All 22 short original eviction/offset/merge cases
-pass on final code in 0.077 seconds; all packages compile. The unchanged large
-write-index method was already covered by the full suites above; this focused
-receipt does not claim a new full-class or full-workspace run.
+Focused verification:
 
-The latest model-test setup correction removes the arbitrary small-MSB override.
-The shared runner now applies the original Ant off-heap implementation and
-`512k` direct-memory setting before parsing, retaining the parsed configuration.
-Native `TLAGO_MAX_DIRECT_MEMORY` supplies Java's VM memory-setting counterpart.
-Eight original safety/checkpoint/recovery/liveness/legacy model tests pass in
-158.473 seconds; existing factory/CLI checks pass at both default and source
-memory settings; all packages compile. No assertions or test-count credits change.
-Full normal workspace verification is running in session `85256`, with log
-`/mnt/oldrog/tmp/tlago-source-ant-fpset-workspace.log`. Poll that handle before
-starting another full suite; the earlier full-suite receipts predate this change.
+| Scope | Result | Duration / receipt |
+| --- | --- | --- |
+| Eight original safety/checkpoint/recovery/liveness/legacy models with Ant settings | Pass | 158.473 seconds, `d611cba` valid-setting path |
+| Original factory/CLI checks, default and source memory settings | Pass | 1.072 / 0.963 seconds |
+| Final flusher assertions: short off-heap, lookup, iterator and manager checks | Pass | 0.112 seconds, `f764bb1` |
+| Latest file-helper correction: existing focused fingerprint/commit checks | Pass | 0.181 seconds, session `27462` retired |
+| Latest all-package compilation | Pass | Session `6427` retired |
 
-A follow-up fingerprint validation correction restores source off-heap
-index checks against temporary output before count publication/replacement and
-the shared reopened-file count/order/endpoint scan. It also restores dedicated
-reader close order before the output close. Final focused original off-heap,
-forced disk lookup, iterator and manager cases pass in 0.112 seconds; all packages
-compile. Broader original heap/off-heap/ShortDisk/manager verification is live in
-session `80888`, log `/mnt/oldrog/tmp/tlago-fpset-validation-related.log`, normally
-with full bounds and no `-race`. Workspace session `85256` compiled `d611cba`
-before this follow-up; keep its eventual receipt scoped to that snapshot.
+Manual source/native observations also confirm named checkpoint contents,
+missing-parent I/O failure, destination-link replacement and unchanged referent.
+These are manual verification, not additional unit tests or inventory credit.
 
-Current normal stress verification jobs:
+Current normal verification jobs:
 
-| Job | Source snapshot | Session | Log under `/mnt/oldrog/tmp` |
+| Job | Compiled source snapshot | Session | Log under `/mnt/oldrog/tmp` |
 | --- | --- | --- | --- |
+| Full workspace with Ant model settings | `d611cba` | `85256` | `tlago-source-ant-fpset-workspace.log` |
+| Original heap/MSB/ShortDisk/off-heap/manager methods, full bounds | `f764bb1` | `80888` | `tlago-fpset-validation-related.log` |
 | Full original MSB random draft, no timeout | `a915e08` | `63113` | `tlago-long-msb-random-unlimited-final.log` |
 | Full original LSB random draft, no timeout | `a915e08` | `59782` | `tlago-long-lsb-random-unlimited-final.log` |
 
-Poll these handles before launching duplicates. Neither has full-run credit yet.
-Both retain all 2,147,483,648 iterations, default factories/configuration, seed,
+Poll these handles before launching duplicate suites. The workspace and broader
+fingerprint runs predate the latest file-helper correction; keep their eventual
+receipts scoped to their compiled snapshots. The broader run includes the
+original 99,999,999-entry index method. No job in this table has full-run credit
+yet. None uses `-race`.
+
+The MSB and LSB random jobs retain all 2,147,483,648 iterations, default factories/configuration, seed,
 checkpoint calls and assertions, with `-timeout=0` and no `-race`. Expect hours.
 LSB completed its first 536,870,912-entry flush and resumed insertion without a
 reported failure. Quiet flushes are not terminal jobs. Earlier sessions `98446`,

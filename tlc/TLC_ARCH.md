@@ -14,6 +14,19 @@ settings before parsing TLC arguments: `tlc2.tool.fp.FPSet.impl` selects
 configuration, including explicit test flags. Replacing that configuration with
 an arbitrary small MSB set would change the feature being exercised.
 
+## Fingerprint checkpoint file operations
+
+`FileUtil.replaceFile` uses `Files.move(REPLACE_EXISTING)`; the native helper
+renames directly, preserving the live file when a missing source causes failure.
+Do not delete the destination before renaming. Named checkpoint commit failures
+remain typed `IOException` with the original `DiskFPSet.commitChkpt` message.
+
+Checkpoint copying follows `Files.copy(REPLACE_EXISTING)` for fingerprint files:
+no parent-directory creation, same-file no-op, destination-link replacement,
+source file permissions, and typed I/O propagation. A destination symlink is
+replaced by the copied file; its referent remains untouched. Failed data copying
+removes the partial destination. The source remains open throughout the copy.
+
 ## Disk fingerprint streaming and recovery
 
 `DiskFPSet.Flusher` merges buffered disk input with new sorted entries into a

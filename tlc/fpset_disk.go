@@ -540,7 +540,7 @@ func (s *DiskFPSet) CommitChkptFile(fname string) error {
 	oldChkpt := s.chkptName(fname, "chkpt")
 	newChkpt := s.chkptName(fname, "tmp")
 	if err := os.Rename(newChkpt, oldChkpt); err != nil {
-		return fmt.Errorf("DiskFPSet.commitChkpt: cannot delete %s", oldChkpt)
+		return NewIOException("DiskFPSet.commitChkpt: cannot delete " + oldChkpt)
 	}
 	return nil
 }
@@ -1496,32 +1496,51 @@ func (i *msbDiskIterator) reads() int64 {
 	return i.readElements
 }
 
-func copyFile(src string, dst string) error {
+// FileUtil.copyFile uses Files.copy(REPLACE_EXISTING), with no parent-directory
+// creation. Keep the source open while replacing the destination, preserve the
+// same-file no-op, and replace destination links rather than following them.
+func copyFile(src string, dst string) (err error) {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
 	}
-	defer in.Close()
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
-	}
-	out, err := os.Create(dst)
+	defer func() {
+		if closeErr := in.Close(); err == nil && closeErr != nil {
+			err = bufferedRandomAccessFileIOError(closeErr)
+		}
+	}()
+	info, err := in.Stat()
 	if err != nil {
-		return err
+		return bufferedRandomAccessFileIOError(err)
+	}
+	if target, statErr := os.Lstat(dst); statErr == nil {
+		if os.SameFile(info, target) {
+			return nil
+		}
+		if err := os.Remove(dst); err != nil {
+			return bufferedRandomAccessFileIOError(err)
+		}
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return bufferedRandomAccessFileIOError(statErr)
+	}
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_EXCL, info.Mode().Perm())
+	if err != nil {
+		return bufferedRandomAccessFileIOError(err)
 	}
 	_, copyErr := io.Copy(out, in)
 	closeErr := out.Close()
 	if copyErr != nil {
-		return copyErr
+		_ = os.Remove(dst)
+		return bufferedRandomAccessFileIOError(copyErr)
 	}
-	return closeErr
+	return bufferedRandomAccessFileIOError(closeErr)
 }
 
+// FileUtil.replaceFile delegates to Files.move(REPLACE_EXISTING). The native
+// rename replaces an existing file without a separate delete that could lose
+// the live file when the move fails.
 func replaceFile(src string, dst string) error {
-	if err := os.Remove(dst); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	return os.Rename(src, dst)
+	return bufferedRandomAccessFileIOError(os.Rename(src, dst))
 }
 
 func bitsLeadingZeros64(x uint64) int {

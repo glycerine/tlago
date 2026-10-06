@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-06 checkpoint file utility source parity:
+FileUtil.replaceFile delegates to Files.move(REPLACE_EXISTING); the Go helper
+instead deleted the live destination before rename. Rename directly so a missing
+source does not destroy the live file. Named DiskFPSet checkpoint commit errors
+now use IOException and retain the original message. FileUtil.copyFile delegates
+to Files.copy(REPLACE_EXISTING), with no MkdirAll: preserve missing-parent errors,
+same-file no-op, replacement of destination links without modifying referents,
+source mode, partial-copy cleanup and typed I/O errors, including close failures.
+No new persistent tests, changed assertions or inventory credit.
+
+Existing short original off-heap/first-page-lookup/iterator/manager methods and
+existing commit-message checks pass 0.181s (27462 terminal 0), log
+/mnt/oldrog/tmp/tlago-fpset-file-replacement-focused.log. All packages compile
+(6427 terminal 0). Manual unchanged-Java FileUtil observations (14761 terminal 0)
+confirm failed rename preserves live target, missing-parent copy does not create
+parent, same-file copy preserves contents, and replacing a destination link
+preserves its referent. Native production named-checkpoint API manual run
+(23411 terminal 0) writes and commits fingerprint 42 (000000000000002a), replaces
+a destination link leaving sentinel referent intact, and returns IOException for
+missing commit / missing parent without creating the directory. Scratch main:
+/mnt/oldrog/tmp/tlago-named-checkpoint-manual.go. These manual observations are
+not invented regression/unit tests and have no original-method credit.
+Installed-JDK bytecode lookup of UnixCopyFile was unavailable; no evidence claim
+from that attempted lookup. Java FileUtil itself was executed unchanged instead.
+
+Broader fingerprint 80888 is still LIVE at f764bb1 (before file-helper changes),
+now in original 99,999,999-entry writeIndex after both complete heap recovery
+families. Full workspace 85256 remains LIVE at d611cba. Random 63113/59782 remain
+LIVE at a915e08. Reuse these handles; no duplicate or broad race workload.
+Handoff's current verified state is groomed into scoped receipts and one job
+table instead of overlapping follow-up status paragraphs.
+
+
 2026-10-06 fingerprint flusher validation boundaries restored:
 Pinned OffHeapMSBFlusher.mergeNewEntries validates signed index order and index
 alignment against temporary output before updating fileCnt. The Go port instead
