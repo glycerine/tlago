@@ -160,6 +160,7 @@ func printConsoleMessage(code int, severity Severity, text string, visible bool)
 				text += "\n(Use the -nowarning option to disable this warning.)"
 			}
 		}
+		DebugPrintMessage("Leaving getMessage()")
 		if mpConsole.warningHistory[text] {
 			return text
 		}
@@ -178,6 +179,9 @@ func printConsoleMessage(code int, severity Severity, text string, visible bool)
 		case SeverityState:
 			text = "State " + text
 		}
+	}
+	if severity != SeverityWarning {
+		DebugPrintMessage("Leaving getMessage()")
 	}
 	if visible {
 		ToolIOPrintln(text)

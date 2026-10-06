@@ -1,5 +1,71 @@
 # TLC Port Progress
 
+2026-10-06 core DebugPrinter and CLI result wrapper:
+Previous goal turn is progress: 468efd1/17f3d51 implement faithful throwable
+printers and null cause handling, and record the retired full MSB random receipt.
+Revalidate clean master, pinned Java and live sessions 50735/59782. Source
+util.DebugPrinter uses process System.out/System.err independently of ToolIO and
+prints the current execution ID. Port the helper using actual goroutine IDs and
+Go stack frames. Port MP's entry/parameter/exit/stack diagnostics, preserving null
+parameter text, its historical leave-line typo, omission on formatter/callback
+exceptions, disabled/suppressed paths, and warning-history ordering. GetTLCBug
+formats without a recorder event, as its original method does.
+
+BFS checker construction and modelCheck preserve source debug phases for liveness
+initialization, initial-state evaluation, exceptions, no-next-action completion,
+running, final liveness and cleanup. Report successful construction only after
+actual initialization succeeds. Source AbstractChecker/DFID parent constructor
+failure ordering and full CLI welcome/loading ordering remain audit work.
+The argument diagnostic belongs to the shared successful parser boundary so both
+native CLI and HandleParameters emit it once. Initial five-model comparison
+61245 terminal 1 exposed its placement only in HandleParameters: direct CLI
+bypasses that method. Correct placement; do not hide the missing line.
+
+Scratch observations (not invented persistent tests): MPDebugRuntimeManual.java /
+tlago-debug-runtime-manual.go compare all 17 full debug stdout sequences, raw
+events, captured ToolIO bytes and bug-getter output (9745 terminal 0). Ten
+MPDebugBoundaryManual.java / tlago-debug-boundary-manual.go cases match ordinary,
+state-failure, callback and suppression debug sequences (82167 terminal 0).
+A subsequent successful state case also matches entry/exit and return bytes.
+Five original fixtures ConstLevelInvariant, DieHard, FingerprintExceptionInit,
+Empty and Github726 match CLI/BFS lifecycle diagnostics after the routing fix
+(59129 terminal 0), including both no-action branches. LiveHourClock additionally
+matches real liveness construction and final violation phases (38099 terminal 0).
+Logs under /mnt/oldrog/tmp/tlago-debug-{runtime,boundary,model-manual,live-manual}*.
+IDs and actual Java/Go frame lines are normalized; source diagnostic text/order
+is retained. No new test-port count or fixture changes.
+
+Full init-exception stderr comparison then exposed the native CLI wrapper's extra
+printing of an exception already handled by TLC. It also returned SANY's generic
+semantic status 4 instead of the source TLC mapping. Fix production
+runParsedTLCModelCheck to return Result.ExitStatus, without duplicate exception or
+completion lines. Update the existing native CLI assertion from generic 4 to
+Java's specific safety status 12; all original Java methods remain unchanged.
+The first stderr comparison was not a pass: the extra native lines are corrected
+in production rather than excluded from comparison. Five final original fixture
+runs match source stderr (with native IDs/frames normalized) and the unchanged
+EC.ExitStatus method's mapped exits: 0, 12 and 75 (90230 terminal 0). Java exit
+probe first used a mistyped classpath and was corrected, with no credit for that
+failed launch. No TLC.main/email code is invoked in these source observations.
+
+Final original MP/WarningControl/TLC/coverage checks pass 0.020s (10727 terminal
+0). Original checker/simulator/failure/trace/debugger/liveness selection passes
+2.425s (43136 terminal 0), and existing CLI plus original failures/liveness pass
+4.555s after the wrapper correction (66977 terminal 0). Final all-package
+compilation 15565 is terminal 0 and predates only that small wrapper correction;
+final all-package compilation after the wrapper correction also passes
+(root 0.012s, SANY/TLC 0.011s; CLI has no test files). No broad or long race checks.
+
+Full workspace 50735 is now terminal 0 and retired at compiled 0ee5627: root
+1515.980s, TLC 781.884s, SANY 1.062s; CLI has no tests. Log
+/mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log. This full green snapshot
+includes complete MP templates and ordinary recorder ordering; it predates later
+throwable/debug/CLI result corrections. Update HANDOFF's baseline to this actual
+receipt without claiming whole latest-workspace coverage. LSB random 59782 stays
+live at a915e08 around 1741759097 iterations, with no completion credit. No
+new distributed architecture or duplicate full suites started.
+
+
 2026-10-06 final null-cause correction and original MSB full-run receipt:
 Exception printer production is committed as 468efd1. Source Assert.fail(int,
 Throwable) dereferences cause.getMessage before creating a failure or notifying

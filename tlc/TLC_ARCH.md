@@ -32,7 +32,6 @@ suppressed. Errors always format; states format and return their message even
 when suppressed. Recorder callbacks can change controls, change tool mode, or
 throw before formatting. Do not attach derived console text to raw events.
 
-
 ## Exception printers
 
 `PrintTLCRuntimeException` preserves MP's object-valued recorder event when the
@@ -49,8 +48,21 @@ GENERAL's stack policy follows MP.noDebug and nullable messages independently.
 Warnings with a throwable record both arguments, check elevation first, and print
 a stack whenever warnings are enabled, including suppressed or duplicate text.
 Null throwable dereferences preserve the source exception boundary. Stack frames
-describe actual Go execution; do not fabricate JVM frames. The separate source
-DebugPrinter diagnostics still need a call-site audit.
+describe actual Go execution; do not fabricate JVM frames. `DebugPrintMessage` and `DebugPrintThrowable` preserve util.DebugPrinter's
+separate process stdout/stderr, global debug guard, exact source prefixes and
+actual native goroutine IDs. MP entry/parameter/exit diagnostics retain source
+ordering and omissions on exceptional exits. GetTLCBug formats without recording.
+Successful parameter parsing reports the source argument string; BFS construction,
+init, run, liveness and cleanup report their source phases. DFID parent constructor
+failure ordering and full native CLI load/welcome ordering still need source audit.
+
+## CLI result wrapper
+
+The native CLI returns Result.ExitStatus directly after TLC.process. Source TLC
+main maps the checker code through EC.ExitStatus. Do not replace distinct TLC
+violations with the SANY semantic-error status, duplicate already handled
+exceptions on stderr, or append a second completion summary. Non-TLC parser and
+semantic commands retain their own exit contracts.
 
 ## Runner completion and memory reporting
 
@@ -170,7 +182,6 @@ checked merge I/O into `OffHeapRuntimeException`; public invariant validation
 keeps the separate checked-I/O boundary. Neither path silently recreates removed
 metadata directories or reopens readers after a failed rename.
 See `HANDOFF.md` for current verification snapshots and live jobs.
-
 
 ## Checkpoint and random initialization
 
@@ -6262,7 +6273,6 @@ The Go TLC port is ready when:
 - It performs within the same rough complexity class as Java TLC on large
   models, with disk-backed queues and fingerprint sets available.
 
-
 ## Native user-module override registration (2026-10-04)
 
 `tlc/native_class.go` supplies the native class-linkage boundary for Go ports of
@@ -6312,7 +6322,6 @@ from running the unmodified TLA fallback. Original fixture files/jar/class
 resources are retained under test_vectors, with callbacks mechanically ported
 from Java source and jar bytecode. No evaluator branch depends on test names.
 
-
 ### Polymorphic state sets
 
 `TLCState` defines the virtual fingerprint/tool-fingerprint, equality, hash,
@@ -6330,7 +6339,6 @@ with its message assertion preserved. Mutable-state equality propagates value
 failures elsewhere. `TLCStateSet` preserves HashSet hash/equals behavior, including
 TLCStateMut's inherited object-identity hash despite structural equality. Action
 subsets filter by actual action identity and use these same set semantics.
-
 
 ### POSSIBLE counters and executing workers
 

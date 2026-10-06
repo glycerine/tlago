@@ -514,21 +514,30 @@ func getMessageParameters(code int, params []string, nullableParams []*string, s
 	// subsequently throws (for example, while substituting a null parameter).
 	defaultRecorder.Record(Message{Code: code, Severity: severity,
 		Params: copied, NullableParams: nullableCopied, FormattingOnly: true})
-	var text string
-	if nullableCopied != nil {
-		text = formatNullableMessage(code, nullableCopied, severity)
-	} else {
-		text = formatMessage(code, copied, severity)
-	}
+	return getRenderedMessage(code, copied, nullableCopied, severity)
+}
+
+// GetTLCBug ports MP.getTLCBug, which formats without notifying recorders.
+func GetTLCBug(code int) string {
+	return getRenderedMessage(code, nil, nil, SeverityTLCBug)
+}
+
+func getRenderedMessage(code int, params []string, nullable []*string, severity Severity) string {
+	text := formatMPMessageBody(code, params, nullable, severity)
 	Globals.Lock()
 	tool := Globals.Tool
 	Globals.Unlock()
 	if tool {
-		return consoleMessageEnvelope(code, severity, text)
+		text = consoleMessageEnvelope(code, severity, text)
+	} else {
+		switch severity {
+		case SeverityError:
+			text = "Error: " + text
+		case SeverityTLCBug:
+			text = "TLC Bug: " + text
+		}
 	}
-	if severity == SeverityError {
-		return "Error: " + text
-	}
+	DebugPrintMessage("Leaving getMessage()")
 	return text
 }
 
@@ -553,24 +562,23 @@ func recordMessageParameters(code int, severity Severity, params []string, nulla
 		Code: code, Severity: severity, Params: copied, NullableParams: nullableCopied,
 		Suppressed: severity != SeverityError && (suppressed || severity == SeverityWarning && !warn),
 	})
+	debugMessagePrinterEnter(code, severity)
 	// Recorder callbacks precede Java's visibility checks and formatting. They
 	// can change the controls or throw, and formatting itself can throw.
 	suppressed, _, warn = messageControlFor(code)
 	if severity == SeverityWarning {
 		if !warn {
+			debugMessagePrinterLeave(severity)
 			return
 		}
 	} else if severity != SeverityError && suppressed {
+		debugMessagePrinterLeave(severity)
 		return
 	}
-	var text string
-	if nullableCopied != nil {
-		text = formatNullableMessage(code, nullableCopied, severity)
-	} else {
-		text = formatMessage(code, copied, severity)
-	}
+	text := formatMPMessageBody(code, copied, nullableCopied, severity)
 	// Enabled warnings enter the history even when individually suppressed.
 	printConsoleMessage(code, severity, text, severity == SeverityError || !suppressed)
+	debugMessagePrinterLeave(severity)
 }
 
 func recordStateMessage(code int, params []string, state *TLCStateMut, info *TLCStateInfo, stateNumber int) string {
@@ -582,9 +590,12 @@ func recordStateMessage(code int, params []string, state *TLCStateMut, info *TLC
 	})
 	// Unlike ordinary messages, Java formats suppressed states and returns the
 	// formatted message. Its recorder notification still precedes formatting.
-	text := formatMessage(code, copied, SeverityState)
+	DebugPrintMessage("entering printState(String[])")
+	text := formatMPMessageBody(code, copied, nil, SeverityState)
 	suppressed, _, _ = messageControlFor(code)
-	return printConsoleMessage(code, SeverityState, text, !suppressed)
+	message := printConsoleMessage(code, SeverityState, text, !suppressed)
+	DebugPrintMessage("leaving printState(String[])")
+	return message
 }
 
 func formatMessage(code int, params []string, messageClass ...Severity) string {

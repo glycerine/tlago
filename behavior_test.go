@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	tlcruntime "github.com/glycerine/tlago/tlc"
 )
 
 func TestParserBehaviors(t *testing.T) {
@@ -405,8 +407,8 @@ Use == LibraryValue
 	}
 	stderr.Reset()
 	var stdout bytes.Buffer
-	if code := RunCLI([]string{"modelcheck", "-config", traceFailCfg, traceFail}, &stdout, &stderr); code != ExitSemanticFailure {
-		t.Fatalf("modelcheck trace failure exit = %d, want %d; stderr=%s", code, ExitSemanticFailure, stderr.String())
+	if code := RunCLI([]string{"modelcheck", "-config", traceFailCfg, traceFail}, &stdout, &stderr); code != tlcruntime.ExitStatusViolationSafety {
+		t.Fatalf("modelcheck trace failure exit = %d, want %d; stderr=%s", code, tlcruntime.ExitStatusViolationSafety, stderr.String())
 	}
 	traceText := stdout.String()
 	if !strings.Contains(traceText, "Invariant Inv is violated by the initial state:") || !strings.Contains(traceText, "/\\ x = 1\n/\\ y = 2") || strings.Contains(traceText, "map[") {

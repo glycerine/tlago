@@ -576,20 +576,16 @@ func runModelCheck(args []string, stdout, stderr io.Writer) int {
 
 func runParsedTLCModelCheck(opts tlcruntime.Options, stdout, stderr io.Writer) int {
 	result, err := tlcruntime.NewTLC(opts).Process(context.Background())
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-	}
 	if result == nil {
+		if err != nil {
+			fmt.Fprintln(stderr, err)
+		}
 		return ExitToolFailure
 	}
-	if result.ErrorCode != tlcruntime.NoError {
-		if err == nil {
-			fmt.Fprintf(stderr, "TLC failed with error code %d\n", result.ErrorCode)
-		}
-		return ExitSemanticFailure
-	}
-	fmt.Fprintf(stdout, "TLC model checking completed: %d states generated, %d distinct states\n", result.StatesGenerated, result.DistinctStates)
-	return ExitOK
+	// TLC.process has already reported checker and handled exception outcomes.
+	// Java main maps that result directly to its exit status without another
+	// error line or a second completion summary.
+	return result.ExitStatus
 }
 
 func runCheckImplFile(args []string, stdout, stderr io.Writer) int {

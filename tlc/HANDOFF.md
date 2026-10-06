@@ -1,6 +1,6 @@
 # TLC Port Handoff
 
-Updated: October 6, 2026. Full-workspace verification baseline: `be6942a`.
+Updated: October 6, 2026. Full-workspace verification baseline: `0ee5627`.
 
 This is the current restart guide for the Go TLC port. Detailed audit history
 and run receipts belong in [PORT_PROGRESS.md](PORT_PROGRESS.md). Older versions
@@ -47,29 +47,24 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-The latest completed full normal workspace suite passes on `be6942a`:
+The latest completed full normal workspace suite passes on `0ee5627`:
 
 | Package | Result | Duration |
 | --- | --- | ---: |
-| Root package | Pass | 1,540.180 seconds |
-| SANY tests | Pass | 1.041 seconds |
-| TLC | Pass | 788.797 seconds |
+| Root package | Pass | 1,515.980 seconds |
+| SANY tests | Pass | 1.062 seconds |
+| TLC | Pass | 781.884 seconds |
 | CLI command | No test files | — |
 
-Session `69066` returned status 0 and is retired. Log:
-`/mnt/oldrog/tmp/tlago-runner-mp-parity-workspace.log`. This includes faithful
-streaming/checkpoint storage, Ant model settings and class isolation, runner
-initialization/finalization, ordinary/packaged CLI integration, the enabled
-original model tests and full disk-queue growth. It excludes the outside-suite
-random fingerprint overlay. It predates `6e1bc85`'s complete MP formatter and
-the follow-up single-pass nullable correction, which have focused verification.
-Older green snapshots and retired failures remain in `PORT_PROGRESS.md`.
-
-A new full normal workspace run is active at `0ee5627` (session `50735`).
-Log: `/mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log`. It preserves
-original bounds, uses no race instrumentation, and has no completion credit yet.
-Poll this session rather than starting another full run. It predates the latest
-runtime-exception/throwable-printer correction, which has focused verification.
+Session `50735` returned status 0 and is retired. Log:
+`/mnt/oldrog/tmp/tlago-mp-public-boundaries-workspace.log`. This preserves original
+bounds and uses no race instrumentation. It includes the complete MP formatter,
+nullable single-pass correction and ordinary printer recorder/visibility ordering,
+plus the prior checker/storage/runner corrections and full disk-queue growth.
+It excludes outside-suite random fingerprint overlays. It predates the later
+runtime-exception/throwable printers, debug diagnostics and CLI result-wrapper
+correction, which have focused verification. Historical receipts stay in
+`PORT_PROGRESS.md`; no full workspace job is currently live.
 
 Focused verification:
 
@@ -294,9 +289,13 @@ as Java does. Focused original checks and ten manual public-printer comparisons
 pass; see PORT_PROGRESS for receipts. Runtime-exception and throwable printers
 now retain object events, nullable details, suppression and separate stack policies.
 Original simulator/failure/override models pass; 22 manual source/native cases
-verify captured output and events. Go frames and source DebugPrinter stdout are
-outside the normalized stack comparison. Continue the DebugPrinter/call-site
-audit and pending original contexts; entire TLC parity remains unproven.
+verify captured output and events. The subsequent debug port restores MP entry/parameter/exit diagnostics, actual
+process stdout/stderr routing, native goroutine IDs and BFS checker lifecycle
+reports. Original fixture comparisons include these diagnostics and normalized
+native frames. The CLI wrapper now returns TLC's Java exit mapping and does not
+print handled exceptions or completion summaries again. Continue auditing CLI
+welcome/load ordering and constructor failure boundaries, plus pending original
+contexts; entire TLC parity remains unproven.
 
 Five main-suite contexts have known source-failing or JVM-specific
 reconciliation issues below. The other four pending contexts are original assumption-disabled

@@ -532,6 +532,7 @@ func ParseTLCOptions(args []string) (Options, error) {
 			})
 		}
 	}
+	DebugPrintMessage("TLC arguments:" + strings.Join(args, " ") + "\n")
 	parseOK = true
 	return opts, nil
 }

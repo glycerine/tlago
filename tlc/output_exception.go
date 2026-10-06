@@ -1,6 +1,8 @@
 // Portions Copyright (c) 2025, Oracle and/or its affiliates.
 package tlc
 
+import "fmt"
+
 // PrintErrorThrowable ports MP.printError(int, Throwable). General errors use
 // ECGeneralMsg; other codes substitute the nullable detail and print a stack
 // only with TLCGlobals.debug enabled.
@@ -40,6 +42,7 @@ func printDebugThrowable(failure error) {
 	debug := Globals.Debug
 	Globals.Unlock()
 	if debug {
+		DebugPrintMessage("printing stacktrace in printError(int, Throwable, boolean)")
 		printThrowable(failure)
 	}
 }
@@ -58,16 +61,13 @@ func PrintTLCRuntimeException(failure *TLCError) int {
 	suppressed, _, _ := messageControlFor(failure.Code)
 	defaultRecorder.Record(Message{Code: failure.Code, Severity: SeverityError,
 		Throwable: failure, Suppressed: suppressed})
+	DebugPrintMessage(fmt.Sprintf("entering printTLCRuntimeException(TLCRuntimeException) with errorCode %d", failure.Code))
 	suppressed, _, _ = messageControlFor(failure.Code)
 	if !suppressed {
-		var text string
-		if failure.NullableParams != nil {
-			text = formatNullableMessage(failure.Code, failure.NullableParams, SeverityError)
-		} else {
-			text = formatMessage(failure.Code, failure.Params, SeverityError)
-		}
+		text := formatMPMessageBody(failure.Code, failure.Params, failure.NullableParams, SeverityError)
 		printConsoleMessage(failure.Code, SeverityError, text, true)
 	}
+	DebugPrintMessage("leaving printTLCRuntimeException(TLCRuntimeException) with errorCode ")
 	return failure.Code
 }
 
@@ -84,12 +84,15 @@ func PrintWarningThrowable(code int, parameter string, failure error) {
 	params := []string{parameter}
 	defaultRecorder.Record(Message{Code: code, Severity: SeverityWarning,
 		Params: params, Throwable: failure, Suppressed: suppressed || !warn})
+	DebugPrintMessage(fmt.Sprintf("entering printWarning(int, String, Exception) with errorCode %d", code))
 	_, _, warn = messageControlFor(code)
 	if warn {
-		text := formatMessage(code, params, SeverityWarning)
+		text := formatMPMessageBody(code, params, nil, SeverityWarning)
 		printConsoleMessage(code, SeverityWarning, text, true)
+		DebugPrintMessage("printing stacktrace in printError(int, Throwable, boolean)")
 		printThrowable(failure)
 	}
+	DebugPrintMessage("leaving printWarning(int, String[])")
 }
 
 func printThrowable(failure error) {

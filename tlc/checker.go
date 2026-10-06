@@ -416,10 +416,14 @@ func NewModelChecker(tool *Tool, metadir string, deadlock bool, opts ...ModelChe
 			if tool != nil && tool.HasSymmetry() {
 				PrintWarning(ECTLCFeatureUnsupportedLivenessSymmetry)
 			}
+			DebugPrintMessage("initializing liveness checking")
 			if livenessTestingImplementationEnabled() {
 				mc.LiveCheck, mc.LiveCheckInitErr = NewAddAndCheckLiveCheckFromTool(tool, metadir)
 			} else {
 				mc.LiveCheck, mc.LiveCheckInitErr = NewLiveCheckFromTool(tool, metadir, mc.AllStateWriter)
+			}
+			if mc.LiveCheckInitErr == nil {
+				DebugPrintMessage("liveness checking initialized")
 			}
 		} else {
 			mc.LiveCheck = NewNoOpLiveCheck(tool, metadir)
@@ -600,6 +604,8 @@ func (mc *ModelChecker) CheckAssumptions() int {
 
 func (mc *ModelChecker) ModelCheck() (result int, err error) {
 	result = NoError
+	DebugPrintMessage("entering modelCheck()")
+	debugCleanupExit := ""
 	cleanupSuccessOverride := false
 	hasCleanupSuccessOverride := false
 	defer func() {
@@ -610,8 +616,12 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		if hasCleanupSuccessOverride {
 			cleanupSuccess = cleanupSuccessOverride
 		}
-		if cleanupErr := mc.Cleanup(cleanupSuccess, mc.CleanupEnabled); err == nil {
+		cleanupErr := mc.Cleanup(cleanupSuccess, mc.CleanupEnabled)
+		if err == nil {
 			err = cleanupErr
+		}
+		if cleanupErr == nil && debugCleanupExit != "" {
+			DebugPrintMessage(debugCleanupExit)
 		}
 		if result == NoError && mc.ErrorCode != NoError {
 			result = mc.ErrorCode
@@ -638,20 +648,27 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		if result := mc.CheckAssumptions(); result != NoError {
 			return result, nil
 		}
+		DebugPrintMessage("doInit(false)")
 		PrintMessage(ECTLCComputingInit)
 		result, err = mc.DoInit(false)
 		if err != nil {
+			DebugPrintMessage("exception in init")
+			DebugPrintThrowable(err)
+			debugCleanupExit = "exiting, because init failed with exception"
 			result = mc.reportInitException(result, err)
 			mc.PrintSummary(false)
 			return result, err
 		}
 		if result != NoError {
+			DebugPrintMessage("exiting, because init failed")
 			mc.checkPostConditionAfterInitFailure()
 			return result, nil
 		}
 		mc.PrintInitGenerated()
 	}
+	DebugPrintMessage("init processed")
 	if len(mc.Tool.GetActions()) == 0 {
+		debugCleanupExit = "exiting with actions.length == 0"
 		if !mc.StateQueue.IsEmpty() {
 			PrintError(ECTLCStatesAndNoNextAction)
 			result = ECTLCStatesAndNoNextAction
@@ -663,8 +680,11 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 		mc.PrintSummary(true)
 		return NoError, nil
 	}
+	debugCleanupExit = "exiting modelCheck()"
+	DebugPrintMessage("running TLC")
 	result, err = mc.RunTLC(javaIntegerMaxValue)
 	if err != nil || result != NoError {
+		DebugPrintMessage("TLC terminated with error")
 		result = resultOrGeneralForError(result, err)
 		mc.PrintSummary(false)
 		if statsErr := mc.PrintLivenessStatistics(); err == nil {
@@ -680,8 +700,17 @@ func (mc *ModelChecker) ModelCheck() (result int, err error) {
 				fmtUint64(mc.GetDistinctStatesGenerated()),
 				fmtInt64(mc.GetStateQueueSize()),
 			)
+			DebugPrintMessage("checking liveness")
 			result, err = mc.LiveCheck.FinalCheck(mc.Tool.NoDebug())
+			if err == nil {
+				DebugPrintMessage("liveness check complete")
+			}
 			if err != nil || result != NoError {
+				if err == nil {
+					DebugPrintMessage("exiting error status on liveness check")
+				} else {
+					DebugPrintMessage("TLC terminated with error")
+				}
 				result = resultOrGeneralForError(result, err)
 				mc.PrintSummary(false)
 				if statsErr := mc.PrintLivenessStatistics(); err == nil {
