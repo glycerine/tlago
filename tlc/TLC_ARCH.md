@@ -274,7 +274,12 @@ existing Java-compatible context traversal before filtering declarations or
 importing operator and theorem classes. Four context-order and 31 INSTANCE
 observations match Java. Theorem conflicts preserve their original declaration
 location. Full inherited instance contexts, constructor identity, symbolic
-operand failure branches and instance levels still require reconciliation. Module namespace
+operand failure branches and instance levels still require reconciliation.
+Operator-operand selection now rejects named prefix arguments before generating
+those arguments or resolving later components, preserving the null result and
+subsequent constructor/substitution arity diagnostics. Nine bounded symbolic
+comparisons cover this shared higher-order and substitution boundary. Proof `@`
+shorthand remains a production gap exposed by the complete root gate. Module namespace
 resolution, typed NEW/bound contexts, general failure boundaries and hierarchical
 proof level checks remain work. Existing corpus passes do not establish complete proof-graph or Generator
 parity. The fixed-parameter comparison selects 121 primary fixtures; earlier prose

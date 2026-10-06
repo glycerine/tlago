@@ -82,15 +82,19 @@ replacing the real signature. The unchanged original test now passes, alone in
 13.186 seconds and in the final focused gate. Log:
 `/mnt/oldrog/tmp/tlago-symbol-instance-root-full.log`.
 
-Normal full root-package session `99670` is live on the `8d13d91` proof statement,
-formal-signature and Len snapshot, before the newer mixed DEFINE traversal correction. It retains original bounds and a 60-minute
-timeout, without race instrumentation or failfast. Both temporary-directory
-variables use workspace `.codex-gotmp`. Log:
-`/mnt/oldrog/tmp/tlago-proof-statement-root-full.log`.
-Preserve this handle until terminal status; silence does not establish a pass.
-The existing TLC methods are unchanged by the new no-message exception constructor;
-its new proof failure path has a separate source comparison. No current complete
-workspace pass is claimed.
+Normal full root-package session `99670` returned status 1 in 1,605.816 seconds
+and is retired. It tested `8d13d91`, before mixed DEFINE and INSTANCE changes.
+Three failing test classes contain five failures: native XML snippets
+TerminalByPrefixFactXML and ProofPickBoundLevelXML use `..` without Naturals;
+proof `@` shorthand is not generated; unchanged original
+TestJavaSafetyDumpLoadTraceJSONAutoWorkers and
+TestJavaSafetyDieHardAliasSub2DumpLoadTraceJSONAutoWorkers report differing
+replayed trace states. Log: `/mnt/oldrog/tmp/tlago-proof-statement-root-full.log`.
+Prioritize these failures before further feature work. Do not weaken the original
+trace assertions or change worker settings. The original fixture and proposed
+Naturals imports have separate Java source comparisons; automatic approval review
+rejected both proposed native fixture edits. Explicit authorization is pending.
+No fixture edit was applied. No current complete workspace pass is claimed.
 
 Latest focused verification:
 
@@ -419,7 +423,16 @@ changes. Scratch comparisons add no permanent test credit. Existing SANY passes
 in 1.433 seconds and the focused gate in 14.323 seconds. Receipts:
 `/mnt/oldrog/tmp/tlago-proof-instance-context-final-*.log`.
 
-Continue proof INSTANCE inherited-context/constructor identity and level checks,
+Operator operands now reject arguments on a named selector prefix before generating
+its arguments or resolving later name components. This shared selectorToNode
+boundary supplies both higher-order calls and INSTANCE substitutions. Nine symbolic
+observations match Java, including an unknown prefix, ignored invalid argument
+expressions and subsequent constructor/substitution errors. Existing 31 INSTANCE,
+58 statement and 50 symbol observations still match. Complete SANY passes in
+1.838 seconds; focused existing classes pass in 13.960 seconds. Receipts use
+`/mnt/oldrog/tmp/tlago-proof-instance-symbolic-*.log`. No inventory credit.
+
+After the full-run failures are resolved, continue proof INSTANCE inherited-context/constructor identity and level checks,
 original hierarchical proof level checks,
 complete typed NEW/bound contexts and constructor/application failure boundaries.
 The current generation path does not establish complete proof-graph parity. Broader

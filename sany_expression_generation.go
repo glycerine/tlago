@@ -313,6 +313,24 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 			return Diagnostics{diagnostic}
 		}
 	}
+	if source := sanyExprSource(argument); source != nil && source.Selector != nil {
+		for i, step := range source.Selector.Steps {
+			// Final application arguments are outside the GeneralId operand;
+			// selectorToNode examines the GeneralId's prefix arguments.
+			if i == len(source.Selector.Steps)-1 {
+				break
+			}
+			if step.Kind == SanySelectorName && step.Arguments != nil {
+				position := sanyNodePosition(step.Syntax)
+				message := fmt.Sprintf("Selector `%s' should not have argument(s).", step.Name)
+				diagnostic := errorAt(position, "E4005", "%s", message)
+				diagnostic.SANYMessage = message
+				diagnostic.SANYRange = step.Syntax.Range
+				setSanyExpressionGenerationFailure(argument, sanyGenerationNullOperator)
+				return Diagnostics{diagnostic}
+			}
+		}
+	}
 	operator := argument
 	// In the GeneralId operator-argument path selectorToNode does not
 	// generate attached expression arguments; it resolves the operator.

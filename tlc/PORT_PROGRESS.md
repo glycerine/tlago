@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-06 Operator selector prefix boundary and full-root failures:
+Previous turn made progress in 01ac766. Start from clean master and initially
+confirm root 99670 live. Source selectorToNode rejects prefix arguments when
+expectedArity is positive, before name resolution or argument generation. Go
+accepted I(TRUE)!+ as an INSTANCE operator operand. Port the check into the shared
+operator-operand generator, preserving the selector-token range, null result,
+and subsequent substitution/constructor diagnostics. Final nine symbolic source
+observations match complete diagnostics (51694 terminal 0), including unknown
+prefix names and ignored invalid argument expressions. Existing 31 INSTANCE
+(25271), 58 statement (40123), and 50 symbol/operand (76774) comparisons remain
+matching, all terminal 0. Complete SANY passes in 1.838 seconds (37196); focused
+native classes, original ParseErrorTests and unchanged EWD998ChanDebugger pass
+in 13.960 seconds (98051). All-package compilation and git diff --check pass.
+Receipts: /mnt/oldrog/tmp/tlago-proof-instance-symbolic-*.log. Scratch observations
+add no permanent test credit; original tests and fixtures are unchanged.
+
+Full root 99670 then returned terminal 1 in 1,605.816 seconds and is retired.
+Snapshot 8d13d91 fails three classes, containing five failing cases:
+- TestSanyXMLBehaviors: terminal BY prefix fact and PICK domain snippets use ..
+  without importing Naturals; proof @ shorthand is not semantically generated.
+- TestJavaSafetyDumpLoadTraceJSONAutoWorkers: state strings differ at position 9.
+- TestJavaSafetyDieHardAliasSub2DumpLoadTraceJSONAutoWorkers: state 10 action differs.
+Log /mnt/oldrog/tmp/tlago-proof-statement-root-full.log. Expected TLC violations in
+other model outputs are not test failures. Preserve original worker counts and
+trace assertions; investigate actual trace dump/replay and proof generation.
+Do not restart the full workload until these failures have concrete fixes.
+
+Java rejects each current native .. snippet with two undefined-operator errors
+and accepts each with EXTENDS Naturals. Neither named module exists in pinned
+original test/test-long sources. Source-only before/after receipts live under
+/mnt/oldrog/tmp/tlago-root-invalid-domain-fixtures/. Automatic approval review
+rejected the proposed two-import native fixture edit twice, citing fixture
+preservation and a requirement for explicit authorization. No edit executed.
+Explicit approval was requested asynchronously, with concrete module names and
+unchanged assertions. Continue unaffected production fixes while it is pending;
+never bypass the rejection through another editing mechanism. No current full
+workspace pass is claimed. This receipt changes the next priority to resolving
+the full-root failures before more feature ports.
+
 2026-10-06 INSTANCE context enumeration correction:
 Previous turn made progress in 52f87d4. Start from its clean master tree and
 confirm root handle 99670 remains live on 8d13d91. The new processSubst helper
