@@ -227,7 +227,8 @@ type NewSymbol struct {
 // SanyExprSource retains the parser node selected by semantic generation.
 // Parenthesized expressions retain their inner expression node.
 type SanyExprSource struct {
-	Syntax *SanySyntaxNode
+	operatorArgumentsGenerated bool
+	Syntax                     *SanySyntaxNode
 	// Selector keeps the generator's per-step argument syntax. A flattened
 	// CallExpr argument list cannot distinguish Op(a)!lab(b) from Op(a,b)!lab.
 	Selector           *SanySelector

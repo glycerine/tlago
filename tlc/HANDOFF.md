@@ -69,42 +69,35 @@ against Java and passes focused checks. Its complete TLC package passed in
 failure prevents full-workspace pass credit. Log:
 `/mnt/oldrog/tmp/tlago-operator-resolution-workspace.log`.
 
-Normal root-package session `21211` returned status 1 after 319.420 seconds
-and is retired. It exposed the native Bitwise bridge fixture using `+` without
-importing arithmetic. Java rejects that original source with two semantic errors
-and accepts the corrected `EXTENDS Bitwise, Naturals`. Its LOCAL-helper and native
-override assertions are unchanged. All four existing bridge checks pass normally
-in 0.372 seconds; log `/mnt/oldrog/tmp/tlago-bitwise-bridge-focused.log`.
-
-Normal root-package session `96678` returned status 0 in 1,560.338 seconds
-and is retired. It verifies the `f5019c4` fixture snapshot, before the newer
-expression-visibility and module-unit generation changes. Log:
-`/mnt/oldrog/tmp/tlago-bitwise-bridge-root-full.log`.
-
-Normal full root-package session `96647` returned status 0 in 1,576.855
-seconds and is retired. It verifies the `19c6f1a` module-unit generation
-snapshot, before nested-generation, diagnostic and recursive-function changes.
-Log: `/mnt/oldrog/tmp/tlago-module-unit-root-full.log`.
-
 Normal full root-package session `45205` returned status 0 in 1,656.783
 seconds and is retired. It verifies the `008083a` recursive-function and INSTANCE
 snapshot, before stateful LET and symbol-constructor changes. Log:
 `/mnt/oldrog/tmp/tlago-recursive-function-instance-root-full.log`.
 
-Normal full root-package session `77352` is live on the final symbol-constructor
-and module-instance operand-generation snapshot. It retains original bounds and
-a 60-minute timeout, without race instrumentation or failfast. Both temporary
-directory variables use workspace `.codex-gotmp`. Log:
+Normal full root-package session `77352` returned status 1 in 1,564.264 seconds
+and is retired. It tested `4085e45`, before proof-reference changes, and exposed
+`TestJavaEWD998ChanDebugger`: a LET in an INSTANCE substitution gave imported
+`Len` a fabricated zero arity. Preserve unknown signature metadata instead of
+replacing the real signature. The unchanged original test now passes, alone in
+13.186 seconds and in the final focused gate. Log:
 `/mnt/oldrog/tmp/tlago-symbol-instance-root-full.log`.
-Reuse the completed unchanged TLC package result. Preserve the root handle until
-terminal status; silence does not establish a pass.
+
+Normal full root-package session `99670` is live on the final proof statement,
+formal-signature and Len corrections. It retains original bounds and a 60-minute
+timeout, without race instrumentation or failfast. Both temporary-directory
+variables use workspace `.codex-gotmp`. Log:
+`/mnt/oldrog/tmp/tlago-proof-statement-root-full.log`.
+Preserve this handle until terminal status; silence does not establish a pass.
+The existing TLC methods are unchanged by the new no-message exception constructor;
+its new proof failure path has a separate source comparison. No current complete
+workspace pass is claimed.
 
 Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Proof references and scoped bindings: existing native parser/semantic classes and original ParseErrorTests | Pass | Root 6.444 seconds, session `52098` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.678 seconds, session `4493` retired |
+| Proof statement generation, formal signatures, existing native parser/semantic classes, original ParseErrorTests and EWD998ChanDebugger | Pass | Root 14.673 seconds, session `85531` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.290 seconds, session `32560` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -328,9 +321,11 @@ selection suppresses duplicate label checks. INSTANCE operator arguments remain
 operator arguments even when their arity mismatches. Duplicate module conflicts
 are generated at their module unit instead of by an earlier approximation.
 
-The fixed-parameter diagnostic comparison now matches Java in all 126 unchanged
-corpus fixtures. Receipt:
-`/mnt/oldrog/tmp/tlago-symbol-instance-final-50-parameters-audit.log`.
+The fixed-parameter diagnostic comparison matches Java in all 121 unchanged
+primary error-corpus fixtures. Four supporting modules are loaded as dependencies,
+not additional primary fixtures. Earlier receipt prose incorrectly said 126;
+the actual original fixture selection and comparison contain 121. Receipt:
+`/mnt/oldrog/tmp/tlago-proof-statement-final-parameters.log`.
 This checks fixed-code order/count and displayed parameter values; it is not a
 complete diagnostic message/range/type comparison or proof of full semantic parity.
 
@@ -379,13 +374,29 @@ step references and DEFINE bindings. Reference generation preserves source
 fact/expression mode, argument errors, rejected DEF entries, Empty BY and
 statement-versus-SUFFICES NEW visibility through nested subproofs. All 49 bounded
 semantic-phase observations match Java's errors, warnings, ranges, messages and
-ordering; every source parses successfully. The existing 126 fixed-parameter,
+ordering; every source parses successfully. The existing 121 fixed-parameter,
 74 visibility, 29 LET and 50 symbol/operand comparisons still match. Scratch
 observations do not add test-port credit.
 
-Continue actual proof statement and DEFINE-body generation, constructor checks,
-proof-local instance generation, complete typed contexts and proof level checks.
-The new reference path does not establish complete proof-graph parity. Broader
+Proof statements and DEFINE bodies now generate in lexical order. DEFINE shares
+operator/function phases with LET, retaining first bindings and recursive identity.
+Domains precede function construction; an absent definition-vector entry preserves
+Java's no-message ArrayIndexOutOfBoundsException and earlier diagnostics. PICK
+names are visible in its formula, hidden during its whole subproof, then installed
+for following steps. Pseudo-expression errors now arise at actual expression
+selection, before later BY errors. Formal operator arities and declaration locations
+are retained. Higher-order operands use receiving-formal generation followed by
+operator-constructor matching; existing level constraints remain checked.
+
+All 58 further comparisons match: 57 complete semantic diagnostic observations
+and one lower-phase exception/type/null-message/retained-diagnostics observation.
+Logs use `/mnt/oldrog/tmp/tlago-proof-statement-final-*.log`. The existing native
+proof-scope fixture is corrected against Java: PICK keeps I in scope, so a later
+quantifier must use a fresh k. Its named <1>I collision and assertions are unchanged.
+
+Continue proof-local instance generation, original hierarchical proof level checks,
+complete typed NEW/bound contexts and constructor/application failure boundaries.
+The current generation path does not establish complete proof-graph parity. Broader
 module namespace resolution, formal/bound contexts, general operator-argument
 generation and application failure boundaries still need reconciliation,
 including compound selectors and LET instances. Preserve original assertions

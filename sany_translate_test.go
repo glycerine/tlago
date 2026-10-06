@@ -723,6 +723,8 @@ THEOREM []v
 	})
 
 	t.Run("allows proof step names to collide with scoped bound identifiers", func(t *testing.T) {
+		// PICK keeps I in scope after its proof. Java rejects another binder I;
+		// keep the named <1>I step collision and use a fresh quantifier variable.
 		_, diags := CheckSanySource("ProofStepBoundIdentifierCollision.tla", `---- MODULE ProofStepBoundIdentifierCollision ----
 EXTENDS Naturals
 U == {1}
@@ -733,7 +735,7 @@ PROOF
 <1>3. CASE I \in U
   BY <1>2
 <1>I. PICK j : j = j
-<1>4. CASE \A I \in U : I = I
+<1>4. CASE \A k \in U : k = k
   BY <1>2
 <1>. QED
 ====`)

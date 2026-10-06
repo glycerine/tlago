@@ -594,7 +594,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	constructorConflicts := map[string]localSymbol{}
 	registerDefinition := func(def Definition) {
 		recursiveArity, declaredRecursive := recursiveArities[def.Name]
-		recursive := declaredRecursive && !completedRecursive[def.Name]
+		binding := expressionGeneration.bindings[def.Name]
+		recursive := declaredRecursive && !completedRecursive[def.Name] && (binding == nil || !binding.defined)
 		rejectedRecursiveFunction := recursive && def.FunctionDef && recursiveArity != 0
 		diags = append(diags, checkDefinitionParams(def)...)
 		diags = append(diags, checkDefinitionParamCollisions(def, defined, nil)...)
@@ -721,7 +722,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	generateProof := func(proof ProofSummary) {
 		diags = append(diags, checks.generator.proof(proof)...)
 		diags = append(diags, expressionGeneration.proofReferences(proof, mod, defined)...)
-		diags = append(diags, checkProofSummary(proof, declKinds, mod, spec, false)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{proof.Pos, func() Diagnostics { return checkProofSummary(proof, declKinds, mod, spec, true) }})
 	}
 	generateAssumption := func(assumption NamedExpr) {
@@ -843,7 +843,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
 			return diags
 		}
-		if _, recursive := recursiveArities[def.Name]; recursive && satisfiedRecursive[def.Name] && !completedRecursive[def.Name] {
+		if _, recursive := recursiveArities[def.Name]; recursive && satisfiedRecursive[def.Name] && !completedRecursive[def.Name] && (expressionGeneration.bindings[def.Name] == nil || !expressionGeneration.bindings[def.Name].defined) {
 			checks.recursiveGeneration.complete()
 			if binding := expressionGeneration.bindings[def.Name]; binding != nil {
 				binding.defined = true
@@ -909,7 +909,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	// checkForUndefinedRecursiveOps visits the declaration vector, not a map.
 	if checks.recursiveGeneration.count > 0 {
 		for _, name := range recursiveOrder {
-			if !satisfiedRecursive[name] {
+			binding := expressionGeneration.bindings[name]
+			if !satisfiedRecursive[name] && (binding == nil || !binding.defined) {
 				pos := recursivePositions[name]
 				diagnostic := sanyDiagnosticParameters(errorAt(pos, "E4291", "recursive declaration %s has no definition", name), name)
 				diagnostic.SANYRange = SanyRange{Begin: pos, End: pos.SourceEnd()}
@@ -924,11 +925,17 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	return diags
 }
 
-func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, locals map[string]bool) Diagnostics {
+func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, locals map[string]bool, generators ...*sanyExpressionGeneration) Diagnostics {
 	if body == nil {
 		return nil
 	}
 	var diags Diagnostics
+	generate := func(expr Expr, locals map[string]bool) Diagnostics {
+		if len(generators) != 0 && generators[0] != nil {
+			return generators[0].proofExpression(expr, defined, locals)
+		}
+		return checkExpr(expr, defined, locals)
+	}
 	apLocals := copyBoolMap(locals)
 	for _, item := range body.Assumptions {
 		switch {
@@ -936,17 +943,17 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 			sym := item.NewSymbol
 			diags = append(diags, checkBindingName("NEW symbol", sym.Name, sym.Pos, defined, apLocals)...)
 			if sym.Domain != nil {
-				diags = append(diags, checkExpr(sym.Domain, defined, apLocals)...)
+				diags = append(diags, generate(sym.Domain, apLocals)...)
 			}
 			apLocals[sym.Name] = true
 		case item.Nested != nil:
-			diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals)...)
+			diags = append(diags, checkAssumeProveBindings(item.Nested, defined, apLocals, generators...)...)
 		case item.Expr != nil:
-			diags = append(diags, checkExpr(item.Expr, defined, apLocals)...)
+			diags = append(diags, generate(item.Expr, apLocals)...)
 		}
 	}
 	if body.Prove != nil {
-		diags = append(diags, checkExpr(body.Prove, defined, apLocals)...)
+		diags = append(diags, generate(body.Prove, apLocals)...)
 	}
 	return diags
 }
@@ -1650,10 +1657,12 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 }
 
 type localSymbol struct {
-	proofStepKind string
-	arity         int
-	kind          DeclarationKind
-	pos           Position
+	proofStepKind    string
+	proofAssumeProve bool
+	operatorParams   []operatorParamSpec
+	arity            int
+	kind             DeclarationKind
+	pos              Position
 }
 
 func moduleOwnSymbols(mod *Module) map[string]localSymbol {
@@ -1994,13 +2003,16 @@ func addInstanceSymbols(inst Instance, spec *Spec, defined map[string]Position, 
 
 func checkDefinitionParams(def Definition) Diagnostics {
 	var diags Diagnostics
-	seen := map[string]bool{}
-	for _, param := range def.Params {
-		if seen[param] {
-			diags = append(diags, errorAt(def.Pos, "E4201", "duplicate parameter %s in definition %s", param, def.Name))
-			continue
+	seen := map[string]Position{}
+	for _, param := range sanyDefinitionParams(&def) {
+		if previous, exists := seen[param.Name]; exists {
+			diagnostic := errorAt(param.Pos, "E4201", "duplicate parameter %s in definition %s", param.Name, def.Name)
+			diagnostic.SANYRange = SanyRange{Begin: param.Pos, End: param.Pos.SourceEnd()}
+			diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", param.Name, sanySymbolLocation(previous))
+			diags = append(diags, diagnostic)
+		} else {
+			seen[param.Name] = param.Pos
 		}
-		seen[param] = true
 	}
 	return diags
 }
@@ -3315,6 +3327,9 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	generation.fact = false
 	defer func() { generation.fact = fact }()
 	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
+	if source := sanyExprSource(expr); source != nil {
+		source.operatorArgumentsGenerated = false
+	}
 	if source := sanyExprSource(expr); source != nil && source.selectorFailure {
 		// selectorToNode has already reported the error and returned nullOAN.
 		setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
@@ -3339,9 +3354,40 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.proofStepKind != "" {
+			if symbol.proofStepKind == "DEFINE" || symbol.proofStepKind == "USE" || symbol.proofStepKind == "HIDE" || symbol.proofStepKind == "INSTANCE" {
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				message := "Step number of non-expression step used as an expression."
+				if fact {
+					message = "Step number of non-fact used as a fact"
+				}
+				diagnostic := errorAt(e.Pos, "E4004", "%s", message)
+				diagnostic.SANYMessage = message
+				diagnostic.SANYRange = SanyRange{Begin: e.Pos, End: e.Pos.SourceEnd()}
+				return Diagnostics{diagnostic}
+			}
+			if !fact && symbol.proofAssumeProve {
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				diagnostic := errorAt(e.Pos, "E4355", "ASSUME/PROVE used where an expression is required.")
+				diagnostic.SANYMessage = diagnostic.Message
+				diagnostic.SANYRange = SanyRange{Begin: e.Pos, End: e.Pos.SourceEnd()}
+				return Diagnostics{diagnostic}
+			}
+			if !fact && symbol.proofStepKind != "ASSERT" {
+				kind := symbol.proofStepKind
+				if kind == "QED" {
+					kind = "QED step"
+				}
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				diagnostic := sanyDiagnosticParameters(errorAt(e.Pos, "E4351", "%s proof step selected instead of expression.", kind), kind)
+				diagnostic.SANYMessage = diagnostic.Message
+				diagnostic.SANYRange = SanyRange{Begin: e.Pos, End: e.Pos.SourceEnd()}
+				return Diagnostics{diagnostic}
+			}
+		}
 		e.generationArity = nil
 		if generation.symbols != nil {
-			if symbol, exists := generation.lookupSymbol(e.Name, defined); exists {
+			if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.arity >= 0 {
 				arity := symbol.arity
 				e.generationArity = &arity
 			}
@@ -3430,6 +3476,19 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			return diags
 		}
+		if identifier, ok := e.Callee.(*IdentExpr); ok {
+			_, signatures := generation.proofSignatures()
+			specs := signatures[identifier.Name]
+			if len(specs) == len(e.Args) {
+				higherOrder := false
+				for _, spec := range specs {
+					higherOrder = higherOrder || spec.Arity > 0
+				}
+				if higherOrder {
+					return append(diags, generation.generateApplicationOperands(e, identifier, specs, defined, locals)...)
+				}
+			}
+		}
 		for _, arg := range e.Args {
 			diags = append(diags, generation.checkExpr(arg, defined, locals)...)
 		}
@@ -3441,7 +3500,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		diags = append(diags, generation.checkLet(e, defined, locals)...)
 	case *QuantifierExpr:
 		diags = append(diags, generation.checkExpr(e.Set, defined, locals)...)
-		diags = append(diags, checkBoundName(e.Var, e.Pos, defined, locals)...)
+		position := e.VarPos
+		if position.Line == 0 {
+			position = e.Pos
+		}
+		diags = append(diags, checkBoundName(e.Var, position, defined, locals)...)
 		quantLocals := map[string]bool{}
 		for name, ok := range locals {
 			quantLocals[name] = ok
@@ -3703,6 +3766,10 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 	if sanyExpressionGenerationFailure(expr) != sanyGenerationSucceeded {
 		return nil
 	}
+	if source := sanyExprSource(expr); source != nil && source.operatorArgumentsGenerated {
+		return nil
+	}
+
 	var diags Diagnostics
 	if selected := sanyExprSelection(expr); selected != nil {
 		for i, arg := range selected.args {
@@ -3718,11 +3785,15 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
-		if e.Name != "" && (!locals[e.Name] || e.generationArity != nil) {
+		_, formalArity := arities[localOperatorArityKey(e.Name)]
+		if e.Name != "" && (!locals[e.Name] || e.generationArity != nil || formalArity) {
 			if _, ok := builtinOperatorArity(e.Name); ok {
 				return nil
 			}
 			want, ok := arities[e.Name]
+			if locals[e.Name] {
+				want, ok = arities[localOperatorArityKey(e.Name)]
+			}
 			if e.generationArity != nil {
 				want, ok = *e.generationArity, true
 			}
@@ -3739,18 +3810,24 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 		diags = append(diags, recur(e.Right, arities, locals)...)
 	case *CallExpr:
 		var specs []operatorParamSpec
-		if ident, ok := e.Callee.(*IdentExpr); ok && (!locals[ident.Name] || ident.generationArity != nil) {
-			want, ok := arities[ident.Name]
-			if ident.generationArity != nil {
-				want, ok = *ident.generationArity, true
+		if ident, isIdentifier := e.Callee.(*IdentExpr); isIdentifier {
+			_, formalArity := arities[localOperatorArityKey(ident.Name)]
+			if !locals[ident.Name] || ident.generationArity != nil || formalArity {
+				want, ok := arities[ident.Name]
+				if locals[ident.Name] {
+					want, ok = arities[localOperatorArityKey(ident.Name)]
+				}
+				if ident.generationArity != nil {
+					want, ok = *ident.generationArity, true
+				}
+				if !ok {
+					want, ok = builtinOperatorArity(ident.Name)
+				}
+				if ok && want != len(e.Args) {
+					diags = append(diags, sanyCallArityDiagnostic(e, ident.Name, want))
+				}
+				specs = operatorParams[ident.Name]
 			}
-			if !ok {
-				want, ok = builtinOperatorArity(ident.Name)
-			}
-			if ok && want != len(e.Args) {
-				diags = append(diags, sanyCallArityDiagnostic(e, ident.Name, want))
-			}
-			specs = operatorParams[ident.Name]
 		}
 		if _, ok := e.Callee.(*IdentExpr); !ok {
 			diags = append(diags, recur(e.Callee, arities, locals)...)
@@ -3898,6 +3975,31 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 	if sanyExpressionGenerationFailure(expr) != sanyGenerationSucceeded {
 		return nil
 	}
+	if source := sanyExprSource(expr); source != nil && source.operatorArgumentsGenerated {
+		call, ok := expr.(*CallExpr)
+		if !ok {
+			return nil
+		}
+		identifier, ok := call.Callee.(*IdentExpr)
+		if !ok {
+			return nil
+		}
+		var diags Diagnostics
+		specs := operatorParams[identifier.Name]
+		for i, spec := range specs {
+			if i >= len(call.Args) {
+				break
+			}
+			if spec.Arity > 0 {
+				got, known := operatorArgumentArity(call.Args[i], arities, locals)
+				if known && got == spec.Arity {
+					diags = append(diags, checkHigherOrderArgumentLevelConstraints(call.Args[i], spec, call.Args, specs, locals, identifier.Name, i)...)
+				}
+			}
+		}
+		return diags
+	}
+
 	var diags Diagnostics
 	if selected := sanyExprSelection(expr); selected != nil {
 		for i, arg := range selected.args {

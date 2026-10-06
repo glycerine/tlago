@@ -62,12 +62,45 @@ func sanyExprSelection(expr Expr) *sanySelectorSelection {
 	return nil
 }
 func sanyDefinitionParams(def *Definition) []BoundVar {
-	params := make([]BoundVar, len(def.Params))
+	var params []BoundVar
+	if def.Syntax != nil {
+		heirs := sanyDefinitionHeirs(def.Syntax)
+		if len(heirs) != 0 {
+			lhs := heirs[0]
+			for _, child := range lhs.GetHeirs() {
+				param := BoundVar{HasOperatorArity: true}
+				switch child.Kind.JavaName() {
+				case "N_IdentDecl":
+					if id := firstSanyIdentifier(child); id != nil {
+						param.Name = id.Image
+						param.Pos = sanyNodePosition(child)
+						param.OperatorArity = countDirectSanyChildren(child, "US")
+					}
+				case "N_PrefixDecl", "N_PostfixDecl":
+					param.Name, param.Pos, param.OperatorArity = sanyFixDeclOperatorName(child), sanyNodePosition(child), 1
+				case "N_InfixDecl":
+					param.Name, param.Pos, param.OperatorArity = sanyFixDeclOperatorName(child), sanyNodePosition(child), 2
+				case "IDENTIFIER":
+					if lhs.Kind.JavaName() != "N_IdentLHS" {
+						param.Name, param.Pos = child.Image, sanyNodePosition(child)
+					}
+				}
+				if param.Name != "" {
+					params = append(params, param)
+				}
+			}
+		}
+	}
+	if len(params) == len(def.Params) {
+		return params
+	}
+	params = make([]BoundVar, len(def.Params))
 	for i, name := range def.Params {
 		params[i] = BoundVar{Name: name, Pos: def.ParamPositions[name], OperatorArity: def.ParamArities[name], HasOperatorArity: true}
 	}
 	return params
 }
+
 func (r *sanySelectorResolver) scope(mod *Module) map[string]sanySelectorDefinition {
 	if scope := r.scopes[mod]; scope != nil {
 		return scope
@@ -789,6 +822,24 @@ func (r *sanySelectorResolver) walkProof(proof ProofSummary, mod *Module, scope 
 			}
 		}
 		active = kept
+		for i := range step.Definitions {
+			definition := &step.Definitions[i]
+			r.walkDefinition(definition, mod, nested)
+			if _, exists := nested[definition.Name]; !exists {
+				nested[definition.Name] = sanySelectorDefinition{module: mod, def: definition, params: sanyDefinitionParams(definition)}
+				active = append(active, entry{depth: step.Depth, name: definition.Name})
+			}
+		}
+		for _, instance := range step.Instances {
+			introduced := map[string]sanySelectorDefinition{}
+			r.addInstance(introduced, mod, instance)
+			for name, definition := range introduced {
+				if _, exists := nested[name]; !exists {
+					nested[name] = definition
+					active = append(active, entry{depth: step.Depth, name: name})
+				}
+			}
+		}
 		if step.AssumeProveBody != nil {
 			r.walkAssumeProve(step.AssumeProveBody, mod, nested)
 		} else {

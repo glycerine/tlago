@@ -1,5 +1,82 @@
 # TLC Port Progress
 
+2026-10-06 Proof statement and DEFINE-body generation:
+Starting clean master `a9e92c7`. Previous turn is progress: committed reference
+projection/generation, checked Java behavior and retired the completed full LSB
+draft. Revalidate the tree and existing root handle before continuing.
+Initial bounded source comparison finds that proof statement/DEFINE bodies are
+never generated. Share LET's original operator/function phases with DEFINE;
+visit bodies in lexical order, retain first bindings, function-domain ordering,
+constructor diagnostics and source recursive declaration identity. Module finish
+uses actual binding completion when a proof DEFINE completed the declaration.
+Formal parameter positions come from each actual LHS syntax entry, preserving
+first and duplicate occurrences rather than a last-name map.
+
+Generate ASSERT, HAVE, CASE, WITNESS, TAKE, PICK and ASSUME/PROVE statements,
+domains and expression/argument errors before their proofs. Java hides PICK names
+throughout the entire subproof, then installs them for subsequent steps; replace
+the premature binding. Move pseudo-step and ASSUME/PROVE expression checks to
+actual selection, preserving body-before-BY diagnostic order. Prepare DEFINE
+selectors in the generating proof scope. Preserve the original malformed DEFINE
+function exception: processFunction leaves no vector element, then elementAt(0)
+raises ArrayIndexOutOfBoundsException with null message. The lower semantic
+comparison preserves the exception family/message and accumulated diagnostics;
+stack frames are not compared.
+
+New higher-order probes expose the old single-error surrogate. Generate operands
+by receiving-formal arities, then perform OpDefNode.match on the resulting
+operator arguments, preserving its additional constructor error. Keep actual
+formal operator arities/locations, first signatures and existing level constraints.
+The first broad gate correctly catches missing formal signatures, lost level
+constraints and the IllegalOperatorTest constructor check; fix production instead
+of altering those original tests. Native summaries remain separate from exact
+Java messages. Broader typed NEW/bound contexts, proof-local instance generation,
+namespace resolution, general failure boundaries and original hierarchical proof
+level checks remain work; no complete proof-graph claim.
+
+Full root session 77352 returned terminal 1 after 1,564.264 seconds and is retired;
+it compiled `4085e45`, before reference changes. It exposed the unchanged original
+EWD998ChanDebugger: default LET generation manufactured arity zero for imported
+Len in an INSTANCE substitution. Unknown metadata now preserves the actual later
+signature check instead of overwriting it. The original debugger method passes
+13.186 seconds alone (10557 terminal 0) and in the final focused gate.
+The native proof-bound fixture also assumed I could be rebound after PICK.
+Unchanged Java rejects it; the source-valid correction uses quantifier k while
+retaining named <1>I, existing PICK binding I and all original native assertions.
+No original Java fixture or test assertion was changed.
+
+Final verification, all normal execution and terminal 0:
+- 58 bounded statement observations (16198), including 57 complete diagnostic
+  comparisons and one lower semantic exception observation. All ordinary inputs
+  parse successfully; code/count/range/message/order match exactly.
+- Established 49 reference (74161), 121 primary fixed-parameter (17409),
+  74 visibility (66337), 29 LET (65817) and 50 symbol/operand (53760) comparisons
+  remain matching. Scratch probes earn no persistent test-port credit.
+- Complete original SANY package: 1.290 seconds (32560).
+- Existing ten native classes, original ParseErrorTests and unchanged original
+  EWD998ChanDebugger: 14.673 seconds (85531).
+- Final all-package compile passes; git diff --check passes.
+Logs: `/mnt/oldrog/tmp/tlago-proof-statement-final-{statements,references,parameters,
+visibility,let,symbols,sany,focused,compile}.log`. Earlier failed observations
+remain in their logs and earn no success credit.
+
+Count correction: earlier documentation repeatedly said 126 fixed-parameter
+fixtures. Authoritative current selection is 121 original primary _Test.tla
+fixtures plus four supporting module files, not 126 primary comparisons. The
+comparison script and permanent original test selection were not narrowed.
+Correct current handoff/architecture counts and preserve this correction beside
+historical receipts. This does not change TLC's separate inventory denominator.
+
+Normal complete root session 99670 is live on final production and the corrected
+native fixture, with original bounds, timeout 60 minutes and no race/failfast.
+Both temporary-directory variables use workspace .codex-gotmp. Preserve handle;
+log `/mnt/oldrog/tmp/tlago-proof-statement-root-full.log`. Existing TLC method
+behavior is unchanged by the new null-message exception constructor, whose new
+proof failure path has the lower source comparison. No current full-workspace
+pass or new test inventory credit is claimed. LSB 32959 is retired with full
+original workload success; whole draft/factory review and installation still
+precede credit.
+
 2026-10-06 Proof-reference generation and completed LSB draft receipt:
 Starting clean master snapshot `4085e45`. Reference projection previously
 omitted BY DEF, BY MODULE and numbered-step fact tokens, and discarded DEFINE

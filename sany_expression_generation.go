@@ -22,6 +22,7 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	formals              map[string]localSymbol
 	fact                 bool
 	level                int
 	spec                 *Spec
@@ -125,87 +126,7 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 				}
 			}
 		case unit.definition != nil:
-			definition := *unit.definition
-			diags = append(diags, checkDefinitionParams(definition)...)
-			diags = append(diags, checkDefinitionParamCollisions(definition, positions, letLocals)...)
-			bodyLocals := copyBoolMap(letLocals)
-			for _, name := range definition.Params {
-				bodyLocals[name] = true
-			}
-			// Domains precede resolving the function's own symbol.
-			if definition.FunctionDef {
-				diags = append(diags, checkDefinitionFunctionDomains(definition, positions, bodyLocals, g)...)
-			}
-			previousSymbol, symbolExists := g.lookupSymbol(definition.Name, positions)
-			binding := g.bindings[definition.Name]
-			recursive := binding != nil && !binding.defined
-			wrongLevel := recursive && binding.level != g.level
-			if wrongLevel {
-				kind := "operator"
-				if definition.FunctionDef {
-					kind = "function"
-				}
-				diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4293", fmt.Sprintf("Recursive %s %s defined at wrong LET/IN level.", kind, definition.Name)))
-			} else if recursive {
-				matches := len(definition.Params) == binding.arity
-				for _, arity := range definition.ParamArities {
-					matches = matches && arity == 0
-				}
-				if !matches {
-					message := fmt.Sprintf("Definition of %s has different arity than its RECURSIVE declaration.", definition.Name)
-					if definition.FunctionDef {
-						message = fmt.Sprintf("Function %s has operator arguments in its RECURSIVE declaration.", definition.Name)
-					}
-					diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4292", message))
-				}
-				if definition.FunctionDef && binding.arity == 0 {
-					g.complete(binding, definition.SourcePosition())
-				}
-				if !definition.FunctionDef {
-					binding.arity = len(definition.Params)
-				}
-			} else if _, exists := positions[definition.Name]; exists || locals[definition.Name] {
-				message := fmt.Sprintf("Operator %s already defined or declared.", definition.Name)
-				if definition.FunctionDef {
-					message = fmt.Sprintf("Function name `%s' already defined or declared.", definition.Name)
-				}
-				diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4201", message))
-			}
-			if definition.FunctionDef {
-				if wrongLevel || (symbolExists && previousSymbol.kind != OperatorDecl) {
-					// processFunction still generates the body, but does not push its
-					// quantifier context when resolving the symbol failed.
-					function, _ := definition.Expr.(*FunctionExpr)
-					if function != nil {
-						diags = append(diags, g.checkExpr(function.Body, positions, letLocals)...)
-					}
-				} else {
-					if binding == nil && !symbolExists {
-						letLocals[definition.Name] = true
-						positions[definition.Name] = definition.SourcePosition()
-						g.symbols[definition.Name] = localSymbol{kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition()}
-					}
-					diags = append(diags, checkDefinitionFunctionBody(definition, positions, bodyLocals, g)...)
-				}
-			} else {
-				diags = append(diags, g.checkDefinitionBody(definition, positions, bodyLocals)...)
-				if recursive && !wrongLevel {
-					g.complete(binding, definition.SourcePosition())
-				}
-				if wrongLevel {
-					// The newly constructed OpDefNode calls SymbolTable.addSymbol; the
-					// existing declaration remains the symbol table binding.
-					diags = append(diags, instanceSymbolConflict(semanticExportedSymbol{name: definition.Name, kind: OperatorDecl, arity: len(definition.Params), source: definition.SourcePosition()}, localSymbol{kind: OperatorDecl, arity: binding.arity, pos: binding.position})...)
-				} else if !recursive {
-					if previous, exists := g.lookupSymbol(definition.Name, positions); exists {
-						diags = append(diags, instanceSymbolConflict(semanticExportedSymbol{name: definition.Name, kind: OperatorDecl, arity: len(definition.Params), source: definition.SourcePosition()}, previous)...)
-					} else {
-						positions[definition.Name] = definition.SourcePosition()
-						g.symbols[definition.Name] = localSymbol{kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition()}
-						letLocals[definition.Name] = true
-					}
-				}
-			}
+			diags = append(diags, g.generateLocalDefinition(*unit.definition, positions, letLocals)...)
 		case unit.instance != nil:
 			instance := unit.instance
 			bodyLocals := copyBoolMap(letLocals)
@@ -233,11 +154,118 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 	return diags
 }
 
+// processOperator and processFunction are shared by LET and proof DEFINE steps.
+// The caller owns the lexical context and the Generator's current LET level.
+func (g *sanyExpressionGeneration) generateLocalDefinition(definition Definition, positions map[string]Position, letLocals map[string]bool) Diagnostics {
+	var diags Diagnostics
+	diags = append(diags, checkDefinitionParams(definition)...)
+	diags = append(diags, checkDefinitionParamCollisions(definition, positions, letLocals)...)
+	bodyLocals := copyBoolMap(letLocals)
+	for _, name := range definition.Params {
+		bodyLocals[name] = true
+	}
+	// Domains precede resolving the function's own symbol.
+	if definition.FunctionDef {
+		diags = append(diags, checkDefinitionFunctionDomains(definition, positions, bodyLocals, g)...)
+	}
+	previousSymbol, symbolExists := g.lookupSymbol(definition.Name, positions)
+	binding := g.bindings[definition.Name]
+	recursive := binding != nil && !binding.defined
+	wrongLevel := recursive && binding.level != g.level
+	if wrongLevel {
+		kind := "operator"
+		if definition.FunctionDef {
+			kind = "function"
+		}
+		diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4293", fmt.Sprintf("Recursive %s %s defined at wrong LET/IN level.", kind, definition.Name)))
+	} else if recursive {
+		matches := len(definition.Params) == binding.arity
+		for _, arity := range definition.ParamArities {
+			matches = matches && arity == 0
+		}
+		if !matches {
+			message := fmt.Sprintf("Definition of %s has different arity than its RECURSIVE declaration.", definition.Name)
+			if definition.FunctionDef {
+				message = fmt.Sprintf("Function %s has operator arguments in its RECURSIVE declaration.", definition.Name)
+			}
+			diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4292", message))
+		}
+		if definition.FunctionDef && binding.arity == 0 {
+			g.complete(binding, definition.SourcePosition())
+		}
+		if !definition.FunctionDef {
+			binding.arity = len(definition.Params)
+		}
+	} else if _, exists := positions[definition.Name]; exists || letLocals[definition.Name] {
+		message := fmt.Sprintf("Operator %s already defined or declared.", definition.Name)
+		if definition.FunctionDef {
+			message = fmt.Sprintf("Function name `%s' already defined or declared.", definition.Name)
+		}
+		diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4201", message))
+	}
+	if definition.FunctionDef {
+		if wrongLevel || (symbolExists && previousSymbol.kind != OperatorDecl) {
+			// processFunction still generates the body, but does not push its
+			// quantifier context when resolving the symbol failed.
+			function, _ := definition.Expr.(*FunctionExpr)
+			if function != nil {
+				diags = append(diags, g.checkExpr(function.Body, positions, letLocals)...)
+			}
+		} else {
+			if binding == nil && !symbolExists {
+				letLocals[definition.Name] = true
+				positions[definition.Name] = definition.SourcePosition()
+				specs, _ := definitionOperatorParamSpecs(definition)
+				g.symbols[definition.Name] = localSymbol{kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition(), operatorParams: specs}
+			}
+			diags = append(diags, checkDefinitionFunctionBody(definition, positions, bodyLocals, g)...)
+		}
+	} else {
+		diags = append(diags, g.checkDefinitionBody(definition, positions, bodyLocals)...)
+		if recursive && !wrongLevel {
+			g.complete(binding, definition.SourcePosition())
+		}
+		if wrongLevel {
+			// The newly constructed OpDefNode calls SymbolTable.addSymbol; the
+			// existing declaration remains the symbol table binding.
+			diags = append(diags, instanceSymbolConflict(semanticExportedSymbol{name: definition.Name, kind: OperatorDecl, arity: len(definition.Params), source: definition.SourcePosition()}, localSymbol{kind: OperatorDecl, arity: binding.arity, pos: binding.position})...)
+		} else if !recursive {
+			if previous, exists := g.lookupSymbol(definition.Name, positions); exists {
+				diags = append(diags, instanceSymbolConflict(semanticExportedSymbol{name: definition.Name, kind: OperatorDecl, arity: len(definition.Params), source: definition.SourcePosition()}, previous)...)
+			} else {
+				positions[definition.Name] = definition.SourcePosition()
+				specs, _ := definitionOperatorParamSpecs(definition)
+				g.symbols[definition.Name] = localSymbol{kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition(), operatorParams: specs}
+				letLocals[definition.Name] = true
+			}
+		}
+	}
+	return diags
+}
+
 func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
+	previous := g.formals
+	g.formals = map[string]localSymbol{}
+	for name, symbol := range previous {
+		g.formals[name] = symbol
+	}
+	defer func() { g.formals = previous }()
+	for _, parameter := range sanyDefinitionParams(&definition) {
+		if _, exists := g.lookupSymbol(parameter.Name, context); exists {
+			continue
+		}
+		if _, builtin := builtinOperatorArity(parameter.Name); builtin {
+			continue
+		}
+		g.formals[parameter.Name] = localSymbol{kind: "FORMAL", arity: parameter.OperatorArity, pos: parameter.Pos}
+	}
 	return g.checkExpr(definition.Expr, context, locals)
 }
 
 func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]Position) (localSymbol, bool) {
+	if symbol, exists := g.formals[name]; exists {
+		return symbol, true
+	}
 	if binding := g.bindings[name]; binding != nil {
 		return localSymbol{kind: OperatorDecl, arity: binding.arity, pos: binding.position}, true
 	}
@@ -255,7 +283,11 @@ func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]
 	if kind == RecursiveDecl {
 		kind = OperatorDecl
 	}
-	return localSymbol{kind: kind, arity: g.moduleArities[name], pos: position}, true
+	arity, known := g.moduleArities[name]
+	if !known {
+		arity = -1
+	}
+	return localSymbol{kind: kind, arity: arity, pos: position}, true
 }
 
 // generateExprOrOpArg selects the expression or operator-argument path from
@@ -263,8 +295,9 @@ func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]
 func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, index, expected int, argument Expr, context map[string]Position, locals map[string]bool) Diagnostics {
 	if expected <= 0 {
 		diags := g.checkExpr(argument, context, locals)
-		diags = append(diags, checkCallArity(argument, g.moduleArities, g.moduleOperatorParams, locals)...)
-		return append(diags, checkOperatorArgumentKinds(argument, g.moduleOperatorParams, g.moduleArities, locals)...)
+		arities, parameters := g.proofSignatures()
+		diags = append(diags, checkCallArity(argument, arities, parameters, locals)...)
+		return append(diags, checkOperatorArgumentKinds(argument, parameters, arities, locals)...)
 	}
 	position := argument.Position()
 	if source, ok := argument.(interface{ GetSyntaxNode() *SanySyntaxNode }); ok && source.GetSyntaxNode() != nil {
@@ -313,4 +346,51 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 		diagnostic.SANYMessage = fmt.Sprintf("Lambda expression with arity %d used as argument %d of operator `%s', \nbut an operator of arity %d is required.", got, index+1, owner.Name, expected)
 	}
 	return append(diags, diagnostic)
+}
+
+// generateExprOrOpArg produces all operands before OpDefNode.match validates
+// the resulting operator arguments. A failed operand is the source nullOAN.
+func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, identifier *IdentExpr, specs []operatorParamSpec, context map[string]Position, locals map[string]bool) Diagnostics {
+	var diags Diagnostics
+	owner := *identifier
+	owner.Syntax = call.Syntax
+	var invalid []int
+	arities, parameters := g.proofSignatures()
+	for i, argument := range call.Args {
+		generated := g.generateOperatorOperand(&owner, i, specs[i].Arity, argument, context, locals)
+		for j := range generated {
+			if generated[j].Code == "E4270" {
+				generated[j].Message = fmt.Sprintf("operator parameter %s requires an operator argument of arity %d", specs[i].Name, specs[i].Arity)
+			}
+		}
+		diags = append(diags, generated...)
+		if specs[i].Arity > 0 {
+			operator := argument
+			if application, ok := argument.(*CallExpr); ok && (application.Selector == nil || len(application.Selector.Steps) <= 1) {
+				operator = application.Callee
+			}
+			got, known := operatorArgumentArity(operator, arities, locals)
+			if name, ok := operator.(*IdentExpr); ok && !known {
+				if symbol, exists := g.lookupSymbol(name.Name, context); exists && symbol.arity >= 0 {
+					got, known = symbol.arity, true
+				}
+			}
+			if !known || got != specs[i].Arity || sanyExpressionGenerationFailure(operator) != sanyGenerationSucceeded || operatorArgumentRequiresOperatorParam(operator, parameters, locals) {
+				invalid = append(invalid, i)
+			}
+		}
+	}
+	for _, i := range invalid {
+		message := fmt.Sprintf("Argument number %d to operator '%s' \nshould be a %d-parameter operator.", i+1, identifier.Name, specs[i].Arity)
+		diagnostic := sanyDiagnosticParameters(errorAt(call.Pos, "E4271", "%s", message), i+1, identifier.Name, specs[i].Arity)
+		diagnostic.SANYMessage = message
+		if call.Syntax != nil {
+			diagnostic.SANYRange = call.Syntax.Range
+		} else {
+			diagnostic.SANYRange = SanyRange{Begin: call.Pos, End: call.Pos.SourceEnd()}
+		}
+		diags = append(diags, diagnostic)
+	}
+	call.operatorArgumentsGenerated = true
+	return diags
 }

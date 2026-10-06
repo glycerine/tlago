@@ -245,6 +245,11 @@ func (e *WrongInvocationException) Error() string { return javaThrowableMessage(
 
 type ArrayIndexOutOfBoundsException struct{ javaExceptionBase }
 
+// Vector.checkBounds throws the no-argument Java constructor, with a null message.
+func NewArrayIndexOutOfBoundsExceptionNoMessage() *ArrayIndexOutOfBoundsException {
+	return &ArrayIndexOutOfBoundsException{javaExceptionBase: newJavaExceptionBase(nil, nil)}
+}
+
 func NewArrayIndexOutOfBoundsException(index, length int) *ArrayIndexOutOfBoundsException {
 	message := fmt.Sprintf("Index %d out of bounds for length %d", index, length)
 	return &ArrayIndexOutOfBoundsException{javaExceptionBase: newJavaExceptionBase(javaString(message), nil)}

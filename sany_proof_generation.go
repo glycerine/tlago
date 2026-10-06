@@ -5,11 +5,15 @@
 
 package tlago
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/glycerine/tlago/tlc"
+)
 
 func sanyProofReferenceDirect(reference ProofRef) bool {
 	if source, ok := reference.Expr.(interface{ GetSyntaxNode() *SanySyntaxNode }); ok && source.GetSyntaxNode() != nil {
-		return source.GetSyntaxNode().Kind.JavaName() == "N_GeneralId"
+		node := source.GetSyntaxNode()
+		return node.Kind.JavaName() == "N_GeneralId" || (node.Token != nil && isSanyProofStepStartKind(node.Token.Kind))
 	}
 	_, identifier := reference.Expr.(*IdentExpr)
 	return identifier
@@ -94,8 +98,9 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 	g.fact = sanyProofReferenceDirect(reference)
 	diags := g.checkExpr(reference.Expr, context, locals)
 	g.fact = previousFact
-	diags = append(diags, checkCallArity(reference.Expr, g.moduleArities, g.moduleOperatorParams, locals)...)
-	return append(diags, checkOperatorArgumentKinds(reference.Expr, g.moduleOperatorParams, g.moduleArities, locals)...)
+	arities, parameters := g.proofSignatures()
+	diags = append(diags, checkCallArity(reference.Expr, arities, parameters, locals)...)
+	return append(diags, checkOperatorArgumentKinds(reference.Expr, parameters, arities, locals)...)
 }
 
 // The enclosing theorem's NEW context is visible in its proof. A statement's
@@ -113,6 +118,12 @@ func sanyProofNewSymbols(context map[string]Position, body *AssumeProve) {
 
 func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *Module, context map[string]Position) Diagnostics {
 	var diags Diagnostics
+	defer func() {
+		if failure := recover(); failure != nil {
+			g.spec.SemanticDiags = appendSanyDiagnostics(append(Diagnostics(nil), diags...), g.spec.SemanticDiags...)
+			panic(failure)
+		}
+	}()
 	previousSymbols := g.symbols
 	defer func() { g.symbols = previousSymbols }()
 	g.symbols = map[string]localSymbol{}
@@ -120,6 +131,11 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		g.symbols[name] = symbol
 	}
 	base := copySanyExpressionContext(context)
+	for name := range base {
+		if symbol, exists := g.lookupSymbol(name, base); exists {
+			base[name] = symbol.pos
+		}
+	}
 	for _, theorem := range module.Theorems {
 		if theorem.Syntax == proof.Syntax {
 			sanyProofNewSymbols(base, theorem.AssumeProveBody)
@@ -132,7 +148,19 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 
 	scopes := map[int]map[string]Position{}
 	pendingSuffices := map[int]*AssumeProve{}
+	pendingPicks := map[int][]BoundVar{}
 	for _, step := range proof.Steps {
+		for depth, bounds := range pendingPicks {
+			if step.Depth <= depth {
+				if scopes[depth] == nil {
+					scopes[depth] = map[string]Position{}
+				}
+				for _, bound := range bounds {
+					scopes[depth][bound.Name] = bound.Pos
+				}
+				delete(pendingPicks, depth)
+			}
+		}
 		// A SUFFICES NEW context is installed only after its whole subproof.
 		for depth, body := range pendingSuffices {
 			if step.Depth <= depth {
@@ -174,12 +202,32 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		if scopes[step.Depth] == nil {
 			scopes[step.Depth] = map[string]Position{}
 		}
+		if step.Implicit && step.Name != "" {
+			diagnostic := errorAt(step.Pos, "E4350", "implicit proof step cannot have name %s", step.Name)
+			diagnostic.SANYMessage = "<*> and <+> cannot be used for a named step."
+			diagnostic.SANYRange = SanyRange{Begin: step.Pos, End: step.Pos.SourceEnd()}
+			diags = append(diags, diagnostic)
+		}
 		for _, definition := range step.Definitions {
-			symbol := localSymbol{kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition()}
-			g.symbols[definition.Name] = symbol
-			symbolScopes[step.Depth][definition.Name] = symbol
-			current[definition.Name] = definition.SourcePosition()
-			scopes[step.Depth][definition.Name] = definition.SourcePosition()
+			previous, exists := g.lookupSymbol(definition.Name, current)
+			binding := g.bindings[definition.Name]
+			failedFunction := definition.FunctionDef && ((exists && previous.kind != OperatorDecl && previous.kind != InstanceDecl) || (binding != nil && !binding.defined && binding.level != g.level))
+			diags = append(diags, g.generateLocalDefinition(definition, current, map[string]bool{})...)
+			if failedFunction {
+				panic(tlc.NewArrayIndexOutOfBoundsExceptionNoMessage())
+			}
+			locals := map[string]bool{}
+			for _, name := range definition.Params {
+				locals[name] = true
+			}
+			arities, parameters := g.proofSignatures()
+			arities = definitionBodyArities(arities, definition)
+			diags = append(diags, checkCallArity(definition.Expr, arities, parameters, locals)...)
+			diags = append(diags, checkOperatorArgumentKinds(definition.Expr, parameters, arities, locals)...)
+			if symbol, exists := g.symbols[definition.Name]; exists {
+				symbolScopes[step.Depth][definition.Name] = symbol
+				scopes[step.Depth][definition.Name] = current[definition.Name]
+			}
 		}
 		for _, instance := range step.Instances {
 			for _, symbol := range semanticInstanceSymbols(instance, g.spec) {
@@ -196,17 +244,66 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				scopes[step.Depth][instanceNameSentinel(instance.Name)] = instance.SourcePosition()
 			}
 		}
+		statementContext := copySanyExpressionContext(current)
+		if step.AssumeProveBody != nil {
+			diags = append(diags, checkAssumeProveBindings(step.AssumeProveBody, statementContext, nil, g)...)
+		} else if step.Kind == "PICK" || step.Kind == "TAKE" {
+			var previousDomain Expr
+			for _, bound := range step.Bounds {
+				if bound.Set != nil && bound.Set != previousDomain {
+					diags = append(diags, g.proofExpression(bound.Set, current, nil)...)
+					previousDomain = bound.Set
+				}
+			}
+			for _, bound := range step.Bounds {
+				if previous, exists := statementContext[bound.Name]; exists {
+					diagnostic := errorAt(bound.Pos, "E4201", "bound symbol %s conflicts with existing symbol", bound.Name)
+					diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", bound.Name, sanySymbolLocation(previous))
+					diagnostic.SANYRange = SanyRange{Begin: bound.Pos, End: bound.Pos.SourceEnd()}
+					diags = append(diags, diagnostic)
+				} else {
+					statementContext[bound.Name] = bound.Pos
+				}
+			}
+			diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
+		} else {
+			diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
+		}
+		for _, expression := range step.Exprs {
+			diags = append(diags, g.proofExpression(expression, current, nil)...)
+		}
 		for _, reference := range step.UseHideRefs {
 			diags = append(diags, g.proofReference(reference, module, current, nil)...)
 		}
+		for _, reference := range step.UseHideRefs {
+			facts, steps := map[string]bool{}, map[string]bool{}
+			for name := range current {
+				if symbol, exists := g.lookupSymbol(name, current); exists {
+					if symbol.kind == semanticTheoremImportKind {
+						facts[name] = true
+					}
+					if symbol.proofStepKind != "" {
+						steps[name] = true
+					}
+				}
+			}
+			diags = append(diags, checkHideRef(reference, facts, steps)...)
+		}
+		if step.AssumeProveBody != nil {
+			diags = append(diags, checkAssumeProveLabels(step.AssumeProveBody, true)...)
+		}
 		if step.QualifiedName != "" {
-			symbol := localSymbol{proofStepKind: step.Kind, kind: semanticTheoremImportKind, pos: step.Pos}
+			kind := step.Kind
+			if step.Suffices {
+				kind = "SUFFICES"
+			}
+			symbol := localSymbol{proofStepKind: kind, proofAssumeProve: step.AssumeProveBody != nil, kind: semanticTheoremImportKind, pos: step.Pos}
 			g.symbols[step.QualifiedName] = symbol
 			symbolScopes[step.Depth][step.QualifiedName] = symbol
 			current[step.QualifiedName] = step.Pos
 			scopes[step.Depth][step.QualifiedName] = step.Pos
 		}
-		if step.Kind == "TAKE" || step.Kind == "PICK" {
+		if step.Kind == "TAKE" {
 			for _, bound := range step.Bounds {
 				current[bound.Name] = bound.Pos
 				scopes[step.Depth][bound.Name] = bound.Pos
@@ -224,6 +321,9 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		}
 		diags = append(diags, g.leafProofReferences(step.LeafRefs, module, ownProof)...)
 		g.symbols = ownSymbols
+		if step.Kind == "PICK" {
+			pendingPicks[step.Depth] = step.Bounds
+		}
 
 		if step.AssumeProveBody != nil {
 			depth := step.Depth + 1
@@ -280,4 +380,31 @@ func sanyProofNewBindings(symbols map[string]localSymbol, body *AssumeProve) {
 			symbols[symbol.Name] = localSymbol{kind: kind, arity: symbol.Arity, pos: symbol.Pos}
 		}
 	}
+}
+
+func (g *sanyExpressionGeneration) proofExpression(expr Expr, context map[string]Position, locals map[string]bool) Diagnostics {
+	diags := g.checkExpr(expr, context, locals)
+	arities, parameters := g.proofSignatures()
+	diags = append(diags, checkCallArity(expr, arities, parameters, locals)...)
+	return append(diags, checkOperatorArgumentKinds(expr, parameters, arities, locals)...)
+}
+
+func (g *sanyExpressionGeneration) proofSignatures() (map[string]int, map[string][]operatorParamSpec) {
+	arities := copyIntMap(g.moduleArities)
+	parameters := map[string][]operatorParamSpec{}
+	for name, specs := range g.moduleOperatorParams {
+		parameters[name] = specs
+	}
+	for name, symbol := range g.symbols {
+		if symbol.arity >= 0 {
+			arities[name] = symbol.arity
+		}
+		parameters[name] = symbol.operatorParams
+	}
+	for name, symbol := range g.formals {
+		arities[name] = symbol.arity
+		arities[localOperatorArityKey(name)] = symbol.arity
+		parameters[name] = nil
+	}
+	return arities, parameters
 }

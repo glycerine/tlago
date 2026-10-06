@@ -182,7 +182,7 @@ regenerated as zero-argument expressions. Ordinary application level violations
 use source code 4205, not the lambda arity code. Obsolete nested-standard-module
 conflict approximation is removed; conflicts arise at actual nested module units.
 
-The fixed-parameter comparison matches all 126 frozen corpus fixtures. It
+The fixed-parameter comparison matches all 121 primary error-corpus fixtures. It
 concerns fixed-code order/count and displayed parameter values; it does not
 prove all diagnostic messages, ranges or semantic object types match.
 
@@ -240,11 +240,29 @@ instance bindings, TAKE/PICK names and NEW declaration arities. Assertion NEW
 names are visible in their own subproof; SUFFICES NEW names become visible only
 after the entire subproof. Definition-step names have a distinct semantic kind
 for fact and DEF validation. Forty-nine bounded semantic-phase comparisons match
-Java diagnostic messages, ranges and ordering. This is an incremental reference
-port: full statement and DEFINE-body generation, constructors, proof-local
-instances, module namespace resolution, typed contexts and level checking still
-need faithful reconciliation. Existing corpus passes do not establish complete
-proof-graph or Generator parity.
+Java diagnostic messages, ranges and ordering.
+
+Statement and DEFINE-body generation now precede each step's proof. LET and
+DEFINE share operator/function generation, preserving duplicate/body/constructor
+order, first signatures and recursive identity. A failed DEFINE function leaves
+Java's definition vector empty and raises its original no-message array-bounds
+exception; earlier diagnostics survive. PICK introduces names in its formula,
+removes them during the entire subproof and installs them afterward. Pseudo-step
+and ASSUME/PROVE expression errors arise at actual reference generation.
+
+Formal operator bindings retain arity and source location. Higher-order calls
+with matched argument counts generate operands from receiving formal arities,
+then perform operator-constructor matching. Existing higher-order level constraints
+remain checked. Unknown context metadata does not manufacture arity zero: this
+fixes imported Len in an INSTANCE substitution's LET without changing the original
+EWD998 debugger test. A further 57 full diagnostic observations and one lower-phase
+exception observation match Java. These are bounded comparisons, not complete
+coverage. Proof-local instances, module namespace resolution, typed NEW/bound
+contexts, general failure boundaries and hierarchical proof level checks remain
+work. Existing corpus passes do not establish complete proof-graph or Generator
+parity. The fixed-parameter comparison selects 121 primary fixtures; earlier prose
+stating 126 overstated that selection. Supporting dependency modules are not
+additional primary comparisons.
 
 ## Module loading and parse-unit relationships
 
