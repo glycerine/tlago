@@ -1,5 +1,24 @@
 # TLC Port Progress
 
+2026-10-07 Canonical public SANY level-check integration:
+Previous completed commit: 3704b7d. Replace CheckSanySpecLevels' older AST
+analysis with the generated root's actual ModuleNode.levelCheck, using the
+source next-iteration overload and combining its result with Errors success.
+Preserve null-root failure and separate generation/level diagnostics.
+
+The full existing SANY suite initially exposes an INSTANCE assertion comparing
+Go int constants against canonical int32 diagnostic parameters. The source
+compares Java Integer values; correct the translated assertion to int32(1) and
+int32(3), retaining both expected values and every other source assertion.
+No production diagnostic coercion or weakened test is introduced.
+
+Full SANY session 22678 passes normally in 2.011s. All five original incremental
+semantic methods pass in 0.056s. All-package compile session 46530 passes.
+Compile unchanged original TestLevelChecking and TestInstanceNode plus their
+API dependencies outside the repository, then run JUnit: OK (52 tests), 0.09s.
+All sessions retired. No new tests, race workloads or full-workspace pass claim.
+Legacy CheckSpec/TLC frontend routing and known root-suite failures remain open.
+
 2026-10-07 Complete original standalone incremental LET methods:
 Previous completed commit: 3c9c397. Port original letInExpressionTest and
 letInExpressionWithTransitiveDepsTest in root sany_incremental_semantic_java_test.go.

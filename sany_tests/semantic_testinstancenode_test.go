@@ -66,7 +66,7 @@ func TestTestInstanceNode_testOperatorArgumentMinimumLevelDiagnostic(t *testing.
 		t.Fatalf("want one INSTANCE_SUBSTITUTION_LEVEL_CONSTRAINT_NOT_MET: %v", diags)
 	}
 	parameters := diagnostics[0].SANYParameters
-	if len(parameters) < 4 || parameters[1] != 1 || parameters[3] != 3 {
+	if len(parameters) < 4 || parameters[1] != int32(1) || parameters[3] != int32(3) {
 		t.Fatalf("The diagnostic should report a one-based argument position and its required level: %v", parameters)
 	}
 }

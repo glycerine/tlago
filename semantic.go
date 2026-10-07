@@ -40,15 +40,12 @@ func GenerateSanySpec(spec *Spec) Diagnostics {
 // CheckSanySpecLevels checks the generated root, retaining ModuleNode's cached
 // levelCorrect result independently of the Errors supplied to each invocation.
 func CheckSanySpecLevels(spec *Spec) (bool, Diagnostics) {
-	if spec == nil || spec.Root == nil || spec.levelChecks[spec.Root] == nil {
+	if spec == nil || spec.Root == nil || spec.Root.semanticNode == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	checks := spec.levelChecks[spec.Root]
-	// LevelNode.levelCheck(Errors) starts a new module iteration. Child
-	// definitions and top-level nodes keep their own source caching rules.
-	checks.levelChecked = false
-	diags := checks.check()
-	return checks.levelCorrect && !diags.HasErrors(), diags
+	var diags Diagnostics
+	levelOK := sanyLevelCheckNext(spec.Root.semanticNode, &diags)
+	return levelOK && !diags.HasErrors(), diags
 }
 
 func generateSpecWithModuleReport(spec *Spec, progress func(string), report func(Diagnostics), checkLevels bool) Diagnostics {

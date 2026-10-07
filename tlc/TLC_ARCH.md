@@ -9725,6 +9725,17 @@ now retain exact generation, syntax ownership and source-reference assertions be
 shared evaluator collection integration and broader graph/parser fidelity remain.
 
 
+## Public SANY canonical level-check phase
+
+`CheckSanySpecLevels` calls `sanyLevelCheckNext` on the actual generated root
+`ModuleNode`, matching Java `SANYFrontend.checkLevel`. It returns the source
+level-check result combined with diagnostic success. It no longer substitutes
+the older AST level analysis for the canonical graph. The complete original
+51-row level matrix and INSTANCE minimum-level diagnostic pass, as do the
+unchanged 52 Java cases. Diagnostic integer assertions use Java-width `int32`.
+Generation and level logs remain separate. The legacy `CheckSpec`/TLC runner's
+level-check path has not yet been migrated by this change.
+
 ## Complete original incremental semantic LET tests
 
 Root `sany_incremental_semantic_java_test.go` now translates both original LET

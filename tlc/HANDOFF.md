@@ -47,6 +47,15 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
+`CheckSanySpecLevels` now invokes the generated root's canonical
+`ModuleNode.levelCheck`, matching `SANYFrontend.checkLevel`. The full SANY
+suite passes, including the original 51-row level matrix and INSTANCE diagnostic
+test. The unchanged Java originals pass all 52 cases. The INSTANCE assertion
+uses `int32` for Java integer diagnostic parameters, preserving expected values
+1 and 3. All five original incremental semantic methods and all-package compile
+checks pass. This does not change the legacy `CheckSpec` runner or establish a
+new full-workspace verification baseline.
+
 The latest completed full normal workspace suite passes on `44aaf11`:
 
 | Package | Result | Duration |
