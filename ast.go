@@ -138,6 +138,8 @@ func (d Definition) DeclarationPosition() Position {
 }
 
 type NamedExpr struct {
+	semanticNode    sanySemanticGraphNode
+	definitionNode  *sanySemThmOrAssumpDefNode
 	Name            string
 	Expr            Expr
 	AssumeProve     bool

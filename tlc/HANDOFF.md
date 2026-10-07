@@ -1057,8 +1057,14 @@ TheoremNode owner constructors now preserve definition backlinks, AXIOM and
 Suffices metadata, theorem-body assertions and child arrays. LeafProofNode
 construction retains actual arrays and flags. Module assertion/top-level collection
 operations preserve Java's cached mutable getter arrays. All 64 owner/leaf/cache
-observations match upstream. Generation, proof ownership and EXTENDS collection
-inheritance remain pending; no generated-module completion is claimed.
+observations match upstream. Assumption expression generation now registers actual named definitions after
+body generation, attaches labels, then allocates the separate owner. Accepted
+bindings retain their identity in later scalar references; rejected definitions
+preserve the earlier table binding. All 306 whole-module comparison rows across
+22 bounded cases match Java, including diagnostic codes/ranges/messages. Missing
+child graphs or earlier native-only import identities remain incomplete. Theorem
+generation, proof ownership and EXTENDS collection inheritance remain pending;
+no full generated-module completion or new original-method credit is claimed.
 
 Named theorem/assumption and proof-step goal ownership, full proof marker/context
 and clause lifetime, labeled AP, Suffices integration, LabelNode level checking

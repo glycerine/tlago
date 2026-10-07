@@ -1,5 +1,28 @@
 # TLC Architecture Notes for the Go Port
 
+## Assumption generation
+
+For source expression assumptions, generate the body before allocating either a
+named ThmOrAssumpDefNode or its AssumeNode owner. Named bodies use a fresh label
+scope; completion registers the definition, attaches the popped labels and appends
+it to module definitions. The separate owner is then allocated and appended to
+both assumption and ordered top-level vectors, retaining the definition backlink.
+Unsuccessful duplicate registration retains the earlier binding while the new
+owner and definition remain in their source collections. Actual accepted
+assumption definitions are carried through symbol lookup and scalar applications.
+
+A failed expression can supply the generator's actual failure node. Missing
+canonical child graphs or earlier native-only imported identities keep the owner
+incomplete. Legacy scope metadata changes only for an accepted canonical binding;
+the fallback remains for paths without those identities. Legacy label checking
+runs after generation so canonical labels retain their own source diagnostics.
+
+Theorem/proof generation, AP goals, inherited assertion vectors, other top-level
+owners and complete inherited level checking/visitors remain separate unfinished
+work. A partially populated module vector is not evidence of complete module
+construction. Bounded assumption graph observations do not add original Java
+method completion credit.
+
 ## Assertion owners and leaf-proof constructors
 
 Concrete AssumeNode and TheoremNode constructors retain actual module, statement,
@@ -17,7 +40,8 @@ of nonempty facts. Module assertion additions append the same owner to the typed
 assertion vector and ordered top-level vector. Each getter caches its first array;
 mutating that array persists and later vector appends do not invalidate it.
 
-Generation does not yet populate these owners or collections. Proof generation,
+Assumption expression generation now populates its owners and collections.
+Theorem and proof generation,
 EXTENDS collection inheritance, other top-level owners, inherited level checking
 and visitors remain unfinished. Direct constructor observations are separate from
 whole generated-module and original Java test-suite coverage.
@@ -42,8 +66,8 @@ and aliasing as other label owners. Matching tests the application's actual
 operator arity, ignoring the receiver's arity and operands, as Java does.
 
 The constructor class and matching dispatch are ready for generator integration.
-Actual processTheorem/processAssumption ownership, goal installation, registration
-and module vectors, theorem/assumption backlinks, proof fields and complete
+Actual processTheorem ownership and AP goal installation, complete module
+vectors, generated theorem/proof backlinks and complete
 inherited level data/visitors still require implementation. Bounded constructor
 comparisons do not establish complete named AP or theorem graph parity.
 

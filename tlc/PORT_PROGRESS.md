@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-07 Assumption generation and named definition identities:
+Previous completed commit: 1446c72. Port processAssumption ordering for source
+expression bodies: named assumptions push label scope, generate the body, create
+and register ThmOrAssumpDefNode, attach its popped labels and append it to module
+definitions, then allocate AssumeNode and append that same owner to the assumption
+and top-level vectors. Unnamed assumptions generate labels without a definition
+scope, preserving the actual null-label failure node. Retain owners and definitions
+on NamedExpr, and actual theorem/assumption definition identities in symbol lookup.
+Later scalar applications reference the accepted definition, not a recreated body.
+
+Use real registration diagnostics and preserve earlier same-class/conflicting
+bindings. Update native scope metadata only when the table accepted the new
+identity. Move legacy label checking after generation so canonical labels own
+source diagnostics. Actual failed expression sentinels may still be valid bodies;
+an unported child graph or an earlier native-only import identity keeps the owner
+incomplete. Do not replace unseen imports or fabricate body nodes.
+
+All 306 complete Java/Go rows agree across 22 whole modules: 283 prefixed rows
+(140 graph nodes, 24 assumption owners, 24 ordered top-level entries, 34 module
+bindings, 18 definition-reference identities, six label references, 13 diagnostics,
+two LET bindings and 22 cases), plus multiline source/diagnostic continuations.
+Compare actual owner/definition/body/backlink pointers, shared UID allocation order,
+syntax kinds, labels, null failure nodes and complete diagnostic codes/ranges/
+messages. Cases cover all three assumption keywords, named/unnamed bodies,
+label nesting/duplicates, constant references, repeated definitions, cross-class
+conflicts, self/undefined references, LET/formal scope and wrong/higher-order use.
+
+Initial scratch matrix contained invalid a() syntax; both parsers rejected it.
+Replace that scratch case with valid higher-order use. Fix the observer's omitted
+nested theorem-definition references, then its duplicate top-level reference
+printing; do not alter production assertions to fit those observer errors. Final
+comparison and compile-all pass (79354). Existing focused root/SANY/TLC tests
+pass in 46.349s (44604); full sany_tests pass in 1.820s (60878). All handles are
+retired. No race workload or permanent invented test was added. Existing corpus
+AssumeTest coverage remains part of the SANY gate; no additional original Java
+method completion credit is claimed.
+
+Named theorem and proof generation, named AP goal installation, imported/INSTANCE
+identities, EXTENDS assertion inheritance, full module top-level ownership and
+inherited level checking/visitors remain pending. The bounded comparisons do not
+establish full generated-module or TLC completion.
+
 2026-10-07 Assertion owners, leaf-proof construction and module collections:
 Previous completed commit: 43386fa. Port AssumeNode and TheoremNode constructors,
 body/definition/proof/name/flag accessors and child arrays. Preserve AXIOM detection

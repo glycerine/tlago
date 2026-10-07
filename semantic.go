@@ -819,6 +819,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	registerAssumption := func(assumption NamedExpr) {
+		if node := assumption.definitionNode; node != nil {
+			if expressionGeneration.formalSymbolTable().resolveSymbol(node.semName()) == node {
+				pos := assumption.SourcePosition()
+				defined[assumption.Name] = pos
+				expressionGeneration.moduleSymbols[assumption.Name] = localSymbol{theoremDefNode: node, kind: semanticTheoremImportKind, arity: 0, pos: pos}
+				arities[assumption.Name] = 0
+				declKinds[assumption.Name] = OperatorDecl
+			}
+			return
+		}
 		if assumption.Name == "" {
 			return
 		}
@@ -866,14 +876,13 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return !d.HasErrors(), d
 		}}})
 	}
-	generateAssumption := func(assumption NamedExpr) {
+	generateAssumption := func(assumptionNode *NamedExpr) {
+		assumptionNode.semanticNode, assumptionNode.definitionNode = nil, nil
+		assumption := *assumptionNode
 		diags = append(diags, checks.generator.fact(assumption)...)
 		expr := assumption.Expr
 		if expr == nil {
 			return
-		}
-		if !assumption.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
-			diags = append(diags, checkLabels(expr, labelCheckContext{allowed: assumption.Name != ""})...)
 		}
 		if !assumeProveExprPositions[positionKey(expr.Position())] {
 			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
@@ -884,8 +893,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				}
 				diags = append(diags, expressionGeneration.checkAssumeProveBody(assumption.AssumeProveBody, expressionContexts.at(assumption.Syntax, defined), nil, assumption.Name != "")...)
 			} else {
-				diags = append(diags, checkExpr(expr, expressionContexts.at(assumption.Syntax, defined), nil)...)
+				diags = append(diags, expressionGeneration.generateAssumptionExpression(assumptionNode, expressionContexts.at(assumption.Syntax, defined))...)
 			}
+		}
+		if !assumption.AssumeProve && !defExprPositions[positionKey(expr.Position())] {
+			diags = append(diags, checkLabels(expr, labelCheckContext{allowed: assumption.Name != ""})...)
 		}
 		diags = append(diags, checkCallArity(expr, arities, operatorParamSpecs, nil)...)
 		diags = append(diags, checkOperatorArgumentKinds(expr, operatorParamSpecs, arities, nil)...)
@@ -1084,7 +1096,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			generateInstance(unit.instance)
 			registerInstance(*unit.instance)
 		case unit.assumption != nil:
-			generateAssumption(*unit.assumption)
+			generateAssumption(unit.assumption)
 			registerAssumption(*unit.assumption)
 		case unit.definition != nil:
 			definition := *unit.definition
@@ -2074,6 +2086,7 @@ type localSymbol struct {
 	instanceSyntax   *SanySyntaxNode
 	builtinNode      *sanySemOpDefNode
 	opDefNode        *sanySemOpDefNode
+	theoremDefNode   *sanySemThmOrAssumpDefNode
 	formalNode       *sanyFormalParamNode
 	declarationNode  *sanySemOpDeclNode
 	proofStepKind    string
@@ -3476,6 +3489,8 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			graphSymbol = e.formalNode
 		} else if e.declarationNode != nil {
 			graphSymbol = e.declarationNode
+		} else if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.theoremDefNode != nil {
+			graphSymbol = symbol.theoremDefNode
 		} else if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.opDefNode != nil {
 			graphSymbol = symbol.opDefNode
 		} else {
