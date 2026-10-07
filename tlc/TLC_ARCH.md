@@ -1,14 +1,22 @@
 # TLC Architecture Notes for the Go Port
 
-## Ordinary local definitions and LET ownership
+## Ordinary definitions and LET ownership
 
-For ordinary nonrecursive local definitions with generated bodies, OpDef
+For ordinary nonrecursive local/top-level definitions with generated bodies, OpDef
 construction occurs after the temporary parameter context is popped. The actual
 SymbolTable registers the new node and keeps the earlier binding if registration
 is rejected. Native symbol metadata, identifier references and applications
 retain that canonical definition identity. Definition formals keep their exact
 LHS syntax, including the entire declaration of operator-valued parameters.
 The operator's own name is resolved while those parameters remain visible.
+
+Top-level generation retains the constructed OpDef on the actual Definition and
+appends it to ModuleNode.definitions. Native module symbol metadata publishes
+that node only if the actual SymbolTable binds it; rejected definitions retain
+the earlier declaration/definition binding. Actual constructor registration
+diagnostics replace the native finishDefinition surrogate when the graph exists.
+The constructor helper is shared with local definition generation. Retained LET
+definitions do not thereby become bindings in the root module context.
 
 LET owns a real semantic context through its IN body. LetIn retains that context,
 the supplied arrays and generated body before the context is popped. getLets
@@ -20,7 +28,7 @@ enclosing definition.
 Missing recursive declarations/completion, function and INSTANCE nodes leave
 LET graphs incomplete. Ordinary definitions within unresolved recursive sections
 also await canonical recursion fields; no native placeholder completes them.
-Top-level ordinary definition integration, labels, full inherited LevelNode
+Imported/function/theorem/ASSUME-PROVE graphs, labels, full inherited LevelNode
 fields and canonical level checking, visitors and evaluator sharing are pending.
 
 ## CASE, records and syntax-time token identities

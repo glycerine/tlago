@@ -791,6 +791,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 	}
 	finishDefinition := func(def Definition) {
+		if def.semanticNode != nil {
+			return
+		}
 		if previous, exists := constructorConflicts[positionKey(def.SourcePosition())]; exists && !def.FunctionDef {
 			symbol := semanticExportedSymbol{name: def.Name, kind: OperatorDecl, theoremLike: def.TheoremLike, arity: len(def.Params), source: def.SourcePosition()}
 			diags = append(diags, instanceSymbolConflict(symbol, previous)...)
@@ -919,7 +922,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		diags = append(diags, checks.generator.functionDomains(&def)...)
 		diags = append(diags, checkDefinitionFunctionDomains(def, expressionContexts.at(def.Syntax, defined), nil, expressionGeneration)...)
 	}
-	generateDefinition := func(def Definition) {
+	generateDefinition := func(definition *Definition) {
+		definition.semanticNode = nil
+		def := *definition
 		if def.FunctionDef {
 			diags = append(diags, checks.generator.functionBody(&def)...)
 		} else {
@@ -947,6 +952,24 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		} else {
 			diags = append(diags, checkDefinitionExpression(def, bodyContext, locals, expressionGeneration)...)
+		}
+		// Java processOperator constructs/registers after generating the body
+		// and popping its parameter scope. Keep missing imported/recursive
+		// identities incomplete instead of installing a synthetic definition.
+		_, recursive := recursiveArities[def.Name]
+		_, conflict := constructorConflicts[positionKey(def.SourcePosition())]
+		previous := expressionGeneration.formalSymbolTable().resolveSymbol(def.Name)
+		if !def.FunctionDef && !def.TheoremLike && !def.AssumeProve && !recursive && checks.recursiveGeneration.sum == 0 && (!conflict || previous != nil) && !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
+			diags = append(diags, expressionGeneration.constructOrdinaryDefinition(definition)...)
+			def.semanticNode = definition.semanticNode
+			if node := def.semanticNode; node != nil {
+				mod.semanticNode.definitions = append(mod.semanticNode.definitions, node)
+				if expressionGeneration.formalSymbolTable().resolveSymbol(def.Name) == node {
+					symbol := expressionGeneration.moduleSymbols[def.Name]
+					symbol.opDefNode = node
+					expressionGeneration.moduleSymbols[def.Name] = symbol
+				}
+			}
 		}
 		diags = append(diags, checkCallArity(def.Expr, defArities, operatorParamSpecs, locals)...)
 		diags = append(diags, checkOperatorArgumentKinds(def.Expr, operatorParamSpecs, defArities, locals)...)
@@ -1022,15 +1045,15 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		case unit.definition != nil:
 			definition := *unit.definition
 			if definition.TheoremLike {
-				generateDefinition(definition)
+				generateDefinition(unit.definition)
 				registerDefinition(definition)
 			} else {
 				if definition.FunctionDef {
 					generateFunctionDomains(definition)
 				}
 				registerDefinition(definition)
-				generateDefinition(definition)
-				finishDefinition(definition)
+				generateDefinition(unit.definition)
+				finishDefinition(*unit.definition)
 			}
 		}
 		if unit.theorem != nil {

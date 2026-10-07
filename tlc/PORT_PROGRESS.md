@@ -1,5 +1,53 @@
 # TLC Port Progress
 
+2026-10-07 Top-level ordinary OpDef graph integration:
+Previous completed commit: 9936f1b (production slice 453bd8f). Top-level ordinary
+nonrecursive operator definitions with generated bodies now construct the same
+real OpDef used by local definition generation. Construction and SymbolTable
+registration follow body generation and formal-context restoration. Retain the
+node on the actual Definition, append it to ModuleNode.definitions, and publish
+its identity in native module symbol metadata only when the actual table binds
+that new node. Later references and scalar calls retain that same definition.
+
+Keep the existing binding after rejected redefinitions, including declaration
+conflicts, and retain the newly constructed node in the module's definition
+list. The real constructor's registration diagnostics replace the native
+finishDefinition conflict surrogate when a canonical node exists. Nested LET
+definitions remain in source module-definition order without becoming root
+context bindings. Local and top-level construction share one helper rather
+than repeating field initialization.
+
+Imported/recursive/function/theorem/ASSUME-PROVE and missing-child identities
+are still incomplete. Definitions in unresolved recursive sections await their
+actual recursion fields. Native symbolic-constant/implementation compatibility
+forms do not receive a fabricated ordinary definition. Canonical OpDef level
+checking, labels, visitors and evaluator graph sharing also remain pending.
+No full graph or original basicOpDefTest completion is claimed.
+
+Twenty-three whole-module actual Java Generator.generate versus Go
+GenerateSanySpec cases cover literals, prior definitions/calls, scalar and
+operator-valued formals, infix definitions, LOCAL, constants/variables, nested
+LET and records/CASE, duplicate declarations/definitions/parameters, own-name
+parameters and rejected LET shadows. All 309 observations agree: 175 graph
+nodes, 46 references, three LET-context bindings, 49 root-context observations,
+12 generation diagnostics and 23 case results. Syntax kinds, relative UID
+allocation, definition order, constructor/recursion flags and LET levels agree.
+The observer was corrected to permit absent local/root context bindings for
+retained LET definitions; the source cases and graph assertions were preserved.
+Scratch sources, cases, overlays and Java/Go logs use
+/mnt/oldrog/tmp/tlago-module-definition; receipt
+/mnt/oldrog/tmp/tlago-module-definition-comparison.log. Final Go observer 30045
+terminal 0, 0.024 seconds. No persistent invented tests or method-count credit.
+
+All packages compile (71409 terminal 0). Full original SANY suite passes in
+2.012 seconds (1954 terminal 0). Focused existing parser/SANY/TLC integration
+gate passes in 47.032 seconds (70466 terminal 0), log
+/mnt/oldrog/tmp/tlago-module-definition-focused.json. Rebuilt the diagnostic
+observer: all 56 prior bounded comparisons agree with Java, quantifier 11,
+named function 15, proof 17 and CHOOSE 13 (36638, 95024, 95311, 4354 terminal 0);
+logs tlago-module-definition-*-diag.log. No race, XML corpus sweep, full-workspace
+pass or TLC test-inventory count change. All verification handles are retired.
+
 2026-10-07 Ordinary local OpDefs and canonical LET contexts:
 Previous completed commit: 1d555e4. Ordinary nonrecursive LET/DEFINE definitions
 with actual generated bodies now construct the real OpDef after the formal

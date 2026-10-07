@@ -1035,9 +1035,17 @@ through IN, constructs LetIn before popping, and preserves module definition
 order. All 247 observations across 17 Java/Go cases agree, as do six getter cases.
 Exact formal declaration syntax and own-parameter name resolution match source.
 Full SANY, focused existing models and all 56 formal diagnostic comparisons pass.
-Top-level OpDef integration, recursive/function/INSTANCE graphs, labels, canonical
-level checking and evaluator sharing remain pending. basicOpDefTest stays
+Recursive/function/INSTANCE graphs, labels, canonical level checking and
+evaluator sharing remain pending. basicOpDefTest stays
 reconcile; no original-method or full-workspace completion credit is added.
+Top-level ordinary definitions now use the shared actual OpDef constructor after
+body generation and formal-scope restoration. Definition lists and subsequent
+scalar references retain node identities; rejected redefinitions keep the earlier
+binding and actual constructor diagnostics. All 309 observations across 23 Java/Go
+module cases agree. Full SANY, focused existing TLC integrations, compilation
+and all 56 formal diagnostic comparisons pass. Imported/recursive/function/fact
+graphs, canonical level checking, labels and evaluator sharing remain unfinished.
+No additional original-method or full-workspace completion credit is claimed.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

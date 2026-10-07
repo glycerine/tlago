@@ -259,14 +259,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 		// context has been popped. Do not reconstruct missing body symbols.
 		body := sanyGeneratedExpressionNode(definition.Expr)
 		if !recursive && body != nil && g.module.sum == 0 && (!symbolExists || previousSymbol.opDefNode != nil) {
-			var semanticModule *sanySemModuleNode
-			if g.currentModule != nil {
-				semanticModule = g.currentModule.semanticNode
-			}
-			node, generated := newSanySemOpDefNode(definition.Name, sanyUserDefinedOpKind, sanyGenerationSource(definition.Expr).definitionFormals, definition.Local, body, semanticModule, g.formalSymbolTable(), definition.Syntax, true, nil)
-			node.letInLevel = g.level
-			definition.semanticNode = node
-			diags = append(diags, generated...)
+			diags = append(diags, g.constructOrdinaryDefinition(definition)...)
 		}
 		if recursive && !wrongLevel {
 			g.complete(binding, definition.SourcePosition())
@@ -660,5 +653,22 @@ func (g *sanyExpressionGeneration) checkRecordForm(expr Expr, operator string, f
 	if node, ok := sanyGeneratedExpressionNode(expr).(*sanySemOpApplNode); ok && g.currentModule != nil && g.currentModule.semanticNode != nil {
 		g.currentModule.semanticNode.addRecord(node)
 	}
+	return diagnostics
+}
+
+// The actual body/formals are retained by generation. Construction happens only
+// after the parameter scope has been popped, and registers in the current table.
+func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Definition) Diagnostics {
+	source := sanyGenerationSource(definition.Expr)
+	if source == nil || source.semanticGraph == nil {
+		return nil
+	}
+	var module *sanySemModuleNode
+	if g.currentModule != nil {
+		module = g.currentModule.semanticNode
+	}
+	node, diagnostics := newSanySemOpDefNode(definition.Name, sanyUserDefinedOpKind, source.definitionFormals, definition.Local, source.semanticGraph, module, g.formalSymbolTable(), definition.Syntax, true, nil)
+	node.letInLevel = g.level
+	definition.semanticNode = node
 	return diagnostics
 }
