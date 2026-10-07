@@ -1,3 +1,28 @@
+# TLC Architecture Notes for the Go Port
+
+## TLCEval expression-node cache
+
+TLCEval's constant path reads and writes the actual expression-node tool slot.
+Remove the separate process-wide UID-keyed cache and its literal-node exclusions.
+Preprocessed values and WorkerValue instances are visible to the override;
+separate nodes with colliding UIDs remain independent. Read under the existing
+reentrant lock, then release/read again under its write lock before evaluating,
+converting and storing the resulting Value. Mux uses the current worker index,
+or zero outside a worker, as Java does. Invalid worker indices raise the source
+array bounds exception; they must not silently select worker zero.
+
+Preserve source lock boundaries: value-cast failure releases the read lock,
+while WorkerValue.mux failure occurs before its finally block. Invalid worker
+observations must come after normal writes in a scratch process, since source
+read-lock leakage would otherwise prevent those writes. The source and Go
+probes both demonstrated that behavior. Thirteen exact observations cover
+pre-existing values, UID collisions, conversion/cache reuse, worker selection,
+bounds and cast identity. Cast-message text is not established by that probe.
+The distinct TLCCache global store, hash-map behavior and lock fidelity remain
+pending, along with general WorkerValue demux and native unindexed cache APIs.
+No permanent test was invented; the existing original TLCEval and TLCCache
+model methods remain unchanged and pass.
+
 ## Numeric proof-step conversion
 
 The parser's proof-step helper uses signed 32-bit parsing, as Java's
@@ -8,8 +33,6 @@ usual decimal width. Implicit `*` and `+` levels keep their source sentinel
 values. Existing parser/front-end exception boundaries retain propagation.
 Thirteen temporary exact helper observations match Java; this does not establish
 whole proof-generation parity or add original-test inventory credit.
-
-# TLC Architecture Notes for the Go Port
 
 ## Semantic node constructor foundation
 

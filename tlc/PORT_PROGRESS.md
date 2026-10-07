@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-06 Source TLCEval node-slot cache and worker mux bounds:
+Previous completed commit: 6392374. Java TLCEval reads WorkerValue.mux of the
+expression's indexed tool slot and writes its converted Value there. Go used
+a second process-wide UID-keyed map, excluded literal nodes and selected a
+fallback worker from a state. Remove that map and exclusion predicate; use the
+actual semantic slot, current worker/default zero and source lock recheck.
+WorkerValue invalid indices now throw ArrayIndexOutOfBoundsException instead
+of silently selecting worker zero; zero-length arrays also throw.
+
+Thirteen exact manual observations match Java's actual TLCEval override and
+Go's actual standard override: pre-existing values, independent equal-UID nodes,
+conversion to SetEnumValue, stored/reused identity, valid worker mux, two invalid
+indices, empty worker array, and ClassCastException identity. The cast message
+is not part of this comparison. Receipts:
+/mnt/oldrog/tmp/tlago-tlceval-node-{java,go}.log. Temporary Java probe reflection
+sets one UID equal to another and constructs WorkerValue arrays; no original
+workload is changed or credited as translated.
+
+Initial temporary Java compile exposed an ambiguous Context import; use
+actual tlc2.util.Context. Both first probes then demonstrated source read-lock
+leakage after invalid worker muxing, blocking the later cache write. Stop only
+those exact scratch processes (Java session 87745 status 143, Go session 21184
+status 1), preserving original full suite 23915. Correct Go's separate cast
+exception boundary to release the read lock as source does. Reorder normal
+scratch writes before invalid mux cases; terminal corrected probes both pass
+and all thirteen source observations match. No production lock cleanup was
+invented to hide the source behavior, and no permanent tests were added.
+
+Six unchanged whole original model methods pass 2.668 seconds: ConstantRank1TLCEval,
+ConstantContextTLCCache, TLCGetAll, ACoverage and both simulation worker constraint
+models. Preserve original bounds/settings/assertions. Existing focused evaluator,
+spec-processing, context, coverage and cache checks pass 0.021 seconds.
+Receipts: /mnt/oldrog/tmp/tlago-tlceval-node-{models,tlc}.log.
+Final all-package compile receipt: /mnt/oldrog/tmp/tlago-tlceval-node-final-compile.log.
+No inventory increase or full-workspace pass claim. TLCCache's global store,
+HashMap semantics and lock fidelity remain pending. Existing normal full TLC
+session 23915 is confirmed live, compiled at 6392374 before this cache change;
+its eventual receipt must retain that snapshot qualification.
+
 2026-10-06 Static Java TLC tool identity and completed full MSB run:
 Previous completed commit: e2c3231. Java Spec owns one static toolId obtained
 from FrontEnd's zero-based int counter. Go instead allocated a fresh int64 for

@@ -1,7 +1,6 @@
 package tlc
 
 var standardTLCEvalMu reentrantReadWriteLock
-var standardTLCEvalCache = make(map[tlcExtCacheKey]Value)
 
 // SpecProcessor.processModuleOverrides visits inherited Naturals definitions
 // when Integers is loaded too. Its GEQ method differs in its argument-error label.
@@ -633,21 +632,23 @@ func standardTLCEval(tool *Tool, args []SemanticNode, con *Context, state *TLCSt
 		}
 		return TLCEvalChecked(value)
 	}
-	return standardTLCEvalConst(tool, expr, state, cm)
+	return standardTLCEvalConst(tool, expr, cm)
 }
 
-func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm CostModel) (Value, error) {
+func standardTLCEvalConst(tool *Tool, expr SemanticNode, cm CostModel) (Value, error) {
 	standardTLCEvalMu.RLock()
-	if value, ok := semanticCachedTLCEvalValue(tool, expr); ok {
-		standardTLCEvalMu.RUnlock()
-		return value, nil
+	if object := semanticCachedTLCEvalObject(tool, expr); object != nil {
+		// Source releases the read lock around the value cast, but a failure
+		// during WorkerValue.mux occurs before that finally block.
+		defer standardTLCEvalMu.RUnlock()
+		return castTLCEvalObject(object), nil
 	}
 	standardTLCEvalMu.RUnlock()
 
 	standardTLCEvalMu.Lock()
 	defer standardTLCEvalMu.Unlock()
-	if value, ok := semanticCachedTLCEvalValue(tool, expr); ok {
-		return value, nil
+	if object := semanticCachedTLCEvalObject(tool, expr); object != nil {
+		return castTLCEvalObject(object), nil
 	}
 	demuxed, err := DemuxWorkerValue(func() (Value, error) {
 		return tool.Eval(expr, EmptyContext, EmptyState, EmptyState, EvalClear, cm)
@@ -655,10 +656,7 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 	if err != nil {
 		return nil, err
 	}
-	workerID, ok := CurrentWorkerID()
-	if !ok {
-		workerID = workerIDFromState(state)
-	}
+	workerID, _ := CurrentWorkerID()
 	value := MuxWorkerValue(demuxed, workerID)
 	value, err = TLCEvalChecked(value)
 	if err != nil {
@@ -668,37 +666,25 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, state *TLCStateMut, cm 
 	return value, nil
 }
 
-func semanticCachedTLCEvalValue(tool *Tool, node SemanticNode) (Value, bool) {
-	key, ok := standardTLCEvalCacheKey(tool, node)
-	if !ok {
-		return nil, false
+func semanticCachedTLCEvalObject(tool *Tool, node SemanticNode) any {
+	object := SemanticToolObjectForTool(tool, node)
+	if worker, ok := object.(*WorkerValue); ok {
+		workerID, _ := CurrentWorkerID()
+		object = worker.ValueForWorker(workerID)
 	}
-	value := standardTLCEvalCache[key]
-	return value, value != nil
+	return object
+}
+
+func castTLCEvalObject(object any) Value {
+	value, ok := object.(Value)
+	if !ok {
+		panic(NewClassCastException("tool object is not a TLC value"))
+	}
+	return value
 }
 
 func setSemanticTLCEvalValue(tool *Tool, node SemanticNode, value Value) {
-	key, ok := standardTLCEvalCacheKey(tool, node)
-	if !ok {
-		return
-	}
-	standardTLCEvalCache[key] = value
-}
-
-func standardTLCEvalCacheKey(tool *Tool, node SemanticNode) (tlcExtCacheKey, bool) {
-	switch node.(type) {
-	case nil, Value, *ValueNode, *NumeralNode, *DecimalNode, *StringNode:
-		return tlcExtCacheKey{}, false
-	}
-	toolID := int32(0)
-	if tool != nil {
-		toolID = tool.ID
-	}
-	nodeID := SemanticJavaHashCode(node)
-	if withUID, ok := node.(interface{ GetUID() int32 }); ok {
-		nodeID = withUID.GetUID()
-	}
-	return tlcExtCacheKey{toolID: toolID, nodeID: nodeID}, true
+	SetSemanticToolObjectForTool(tool, node, value)
 }
 
 func standardTLCSet(tool *Tool, args []SemanticNode, con *Context, state *TLCStateMut, pstate *TLCStateMut, control int, cm CostModel) (Value, error) {

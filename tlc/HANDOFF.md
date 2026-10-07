@@ -654,8 +654,16 @@ static ID across Tool construction and spec processors, matching Spec; creating
 a new tool does not allocate another cache namespace. A maximum positive slot
 write raises the source NegativeArraySizeException before changing storage.
 Thirteen exact ID observations and the sixteen prior slot observations match.
-Formal-parameter graph construction, concrete class equality, remaining
-unindexed cache APIs and complete allocation order remain pending.
+TLCEval now stores its converted constant value on the expression's indexed
+tool slot, as Java does, replacing its global UID-keyed map. Read pre-existing
+values through WorkerValue muxing, then preserve the source read/write-lock
+recheck and cache write. Worker selection follows the current worker, defaulting
+to zero outside a worker; invalid indices raise source bounds exceptions instead
+of silently selecting zero. Thirteen exact cache observations and six unchanged
+original model methods pass. TLCCache's separate global store, unindexed APIs,
+formal-parameter graph construction, concrete class equality and complete
+allocation order remain pending. Detailed lock-boundary receipts are in
+PORT_PROGRESS.md; no whole-superclass or full-workspace parity claim.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three
@@ -818,7 +826,9 @@ semantics when that work resumes; see `TLC_ARCH.md`.
 ## Testing and workflow
 
 Current verification: normal full TLC session `23915` is running against the
-shared tool-ID port; log `/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log`.
+shared tool-ID port compiled at `6392374`; log
+`/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log`. This binary predates the
+subsequent TLCEval node-cache correction.
 Poll this handle and inspect its terminal result before claiming a full-suite
 pass. Focused checks are green; no new full-workspace pass is established.
 

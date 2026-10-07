@@ -192,11 +192,11 @@ func currentGoroutineID() uint64 {
 }
 
 func (v *WorkerValue) ValueForWorker(workerID int) Value {
-	if v == nil || len(v.values) == 0 {
+	if v == nil {
 		return nil
 	}
 	if workerID < 0 || workerID >= len(v.values) {
-		workerID = 0
+		panic(NewArrayIndexOutOfBoundsException(workerID, len(v.values)))
 	}
 	return v.values[workerID]
 }
