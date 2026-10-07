@@ -3,6 +3,8 @@ package tlago
 import (
 	"strconv"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 type SanyParser struct {
@@ -1251,11 +1253,14 @@ func sanyProofStepLevel(tok *SanyToken) (int, bool) {
 	if end <= 1 {
 		return 0, false
 	}
-	level, err := strconv.Atoi(tok.Image[1:end])
+	// Java Integer.parseInt rejects overflow rather than treating the step as
+	// an unrecognized token or accepting a native 64-bit proof level.
+	text := tok.Image[1:end]
+	level, err := strconv.ParseInt(text, 10, 32)
 	if err != nil {
-		return 0, false
+		panic(tlc.NewNumberFormatException(text))
 	}
-	return level, true
+	return int(level), true
 }
 
 func (p *SanyParser) OperatorOrFunctionDefinition() *SanySyntaxNode {

@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-06 Signed Java proof-step numeric conversion:
+Previous completed commit: d2f93f9. The proof-step helper used strconv.Atoi,
+accepting 64-bit values that Java Integer.parseInt rejects. Failed conversion
+also returned the ordinary unrecognized-token result rather than throwing.
+Port signed 32-bit parsing and shared NumberFormatException with the exact
+source message. Retain implicit levels and leading-zero behavior. Existing
+exception boundaries propagate this unchecked failure; no diagnostic fallback.
+
+All 13 exact Java/Go helper observations match: zero, ordinary levels, leading
+zeros, MAX_VALUE and its predecessor, four wider values, long leading-zero
+valid and overflowing values, and implicit * / + levels. Temporary probes live
+outside the repository. Initial Java probe used a nonexistent byte[] constructor;
+correct it to InputStream before compiling and comparing. No credit for that
+failed compile. Receipts: /mnt/oldrog/tmp/tlago-proof-level-{java,go}.log.
+No feature-specific original Java helper test found in test/tla2sany/parser;
+no permanent test invented or existing assertion changed.
+
+Existing focused root parser/bridge/original proof checks pass 5.505 seconds;
+the complete existing SANY package passes 1.694 seconds; every package compiles.
+Receipts: /mnt/oldrog/tmp/tlago-proof-level-{root,sany,compile}.log.
+No inventory or full-workspace pass credit. Source inspection also establishes
+that pending tool-ID reconciliation includes allocation lifetime, not just width:
+Spec's static ID comes from FrontEnd's zero-based int counter, while Go allocates
+an int64 per NewTool. Leave that change for a separate verified port.
+Full MSB session 5144 remains live and now reports all 2,147,483,648 insertions;
+final checkpoint/invariant checks and terminal status remain unverified.
+
 2026-10-06 Source per-node indexed tool arrays:
 Previous completed commit: fd6a875. Java SemanticNode owns an Object[] tools,
 while Go evaluator helpers used a process-wide map keyed by tool ID and node

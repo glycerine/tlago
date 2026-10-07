@@ -1,3 +1,14 @@
+## Numeric proof-step conversion
+
+The parser's proof-step helper uses signed 32-bit parsing, as Java's
+Integer.parseInt does. Overflow raises the shared NumberFormatException with
+`For input string: "..."`; it must not return the ordinary unrecognized-token
+result. Leading zeros remain valid, even when their count exceeds an integer's
+usual decimal width. Implicit `*` and `+` levels keep their source sentinel
+values. Existing parser/front-end exception boundaries retain propagation.
+Thirteen temporary exact helper observations match Java; this does not establish
+whole proof-generation parity or add original-test inventory credit.
+
 # TLC Architecture Notes for the Go Port
 
 ## Semantic node constructor foundation
@@ -27,8 +38,10 @@ negative-index exception type/message. Go synchronizes each node's array for
 concurrent cache access. Constructor and zero-value initialization publish the
 storage together with assignment state. The helper routes indexed calls to
 actual semantic nodes; non-node inputs are rejected instead of hashed into a
-shared namespace. Existing unindexed literal/cache APIs and the tool-ID counter
-width still need source reconciliation; this is not whole superclass parity.
+shared namespace. Existing unindexed literal/cache APIs and tool-ID allocation
+still need source reconciliation: Java Spec retains one static tool ID from
+FrontEnd's zero-based int counter, while Go currently increments an int64 for
+each NewTool call. This is not whole superclass parity.
 
 Sixteen exact source observations compare tool slots on distinct nodes with
 colliding UIDs, separate tool numbers, sparse holes, clearing, growth on null

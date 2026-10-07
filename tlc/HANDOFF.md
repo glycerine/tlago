@@ -195,7 +195,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 2,142,502,311 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 2,147,483,648 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -612,6 +612,11 @@ Assume-Prove retains its source frame, mandatory assumptions/PROVE/body and
 expectations. Nested labels use the exact identifier/`::`/recursive production,
 without the former broad label-name scan. Proof nesting admits 100 levels and
 rejects 101 before entering a new Proof frame, matching Java.
+Numeric proof-step levels now use Java's signed 32-bit conversion. Overflow
+raises `NumberFormatException` with the source message instead of accepting a
+64-bit level or silently treating it as an unrecognized token. Thirteen source
+boundary observations match, including leading zeros and implicit levels.
+
 Expression labels are formed after parsing the primitive and postfix extensions.
 Their source shape is validated at `::`; parameterized labels retain an
 `N_OpApplication`. The operator stack removes the label operand before parsing
