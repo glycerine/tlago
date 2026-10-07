@@ -6,10 +6,11 @@ import "github.com/glycerine/tlago/tlc"
 // nodes. Remaining graph constructors and allocation order are ported separately.
 type sanySemanticNode struct {
 	tlc.SemanticNodeBase
+	sanyLevelData
 }
 
 func newSanySemanticNode(kind sanySemKind) sanySemanticNode {
-	return sanySemanticNode{SemanticNodeBase: tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), "")}
+	return sanySemanticNode{SemanticNodeBase: tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), ""), sanyLevelData: newSanyLevelData()}
 }
 
 func (n *sanySemanticNode) getUID() int32            { return n.GetUID() }

@@ -68,6 +68,16 @@ func (m *JavaSemanticMap[K, V]) Remove(key K) bool {
 	}
 	return false
 }
+
+// HashMap.clear increments modCount even when already empty, retaining capacity.
+func (m *JavaSemanticMap[K, V]) Clear() {
+	if m == nil {
+		panic(NewNullPointerException())
+	}
+	m.modCount++
+	m.entries.size = 0
+	clear(m.entries.table)
+}
 func (m *JavaSemanticMap[K, V]) All() func(func(K, V) bool) {
 	if m == nil {
 		panic(NewNullPointerException())

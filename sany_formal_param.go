@@ -9,7 +9,7 @@ import (
 
 // FormalParamNode owns its SemanticNode identity. The enclosing native module
 // and retained parser node preserve declaration ownership for graph generation.
-// Its LevelNode data and graph visitors are ported separately.
+// LevelNode data is inherited from the canonical semantic base.
 type sanyFormalParamNode struct {
 	sanySemSymbolBase
 	nullName       bool
@@ -140,4 +140,18 @@ func (g *sanyExpressionGeneration) resolveLabelFormals(label *LabelExpr, context
 		}
 		label.formalNodes = append(label.formalNodes, node)
 	}
+}
+
+// FormalParamNode initializes its two parameter sets only while levelChecked
+// is zero. In particular an explicit zero iteration leaves it eligible again.
+func (n *sanyFormalParamNode) levelCheck(iter int32, errors *Diagnostics) bool {
+	if n == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	if n.levelChecked == 0 {
+		n.levelChecked = iter
+		n.levelParams.add(n)
+		n.allParams.add(n)
+	}
+	return true
 }

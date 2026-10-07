@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Inherited canonical LevelNode data and formal/declaration checks:
+Previous completed commit: 232561f. Add fresh common mutable level metadata to
+all canonical SANY constructors and remove shadow OpDef/OpDecl fields. Use actual
+SymbolNode and ArgLevelParam collections with Java equality, hashing and iteration.
+Port zero-only getter guards and exact messages, signed next-iteration dispatch,
+source data formatting/name helpers, temporal constant constraints, canonical
+subnode aggregation and complete original FormalParamNode/OpDeclNode checks.
+Use virtual getters rather than bypassing subclasses through their backing data.
+Record iteration before child traversal; preserve partial writes and continue
+checks after false results. Skip kinds 1/6 but check kind 21. Formal zero iteration
+remains eligible for later initialization; declarations do not update iteration.
+Add source HashMap/HashSet clearing that retains table capacity and invalidates
+iterators even for an already-empty map.
+
+Initial compile-all 52301 passes and retires. External Java/Go observers stay
+under /mnt/oldrog/tmp/tlago-level-node-*. First Go observer 76299 fails to compile
+because the observer's multi-type switch binds an interface, rather than error;
+fix its assertion without changing scenarios. Replace observer's attempted
+key-by-key clearing with actual source clear, which must work even after probe
+UID mutation. Observer 98348 returns 0 and all 566 rows agree. Extend with virtual
+getter dispatch and seven nullable metadata/partial-write cases: 45396 returns 0
+and all 575 rows agree. Compare JVM null exception class, excluding its native
+helpful-message synthesis. WrongInvocation messages and all data strings remain
+exact. Constructors, all 38 kind names, negative/zero/repeated/extreme iterations,
+next-iteration wraparound, pointer ownership, nullable collections, skips and
+partial failure state are covered. All observer handles retired; no permanent
+new tests or original-method completion credit.
+
+Affected original root/parser/context/proof/recursion/TLC-model gate passes
+47.715s with 282 selected test passes (67189 retired). Full short SANY passes
+1.840s (68310 retired), compile-all passes (87936 retired). Retained whole-module
+observer 96944 returns 0; full comparison excluding only the Go runner envelope
+still matches all 24,529 Java graph/diagnostic rows. All handles retired and
+normal checks only; no race or full-workspace pass claim. TLC-owned literals,
+remaining class-specific level checking and evaluator sharing remain pending.
+The three incremental semantic methods remain reconcile.
+
 2026-10-07 Canonical level-constraint map port:
 Previous completed commit: 3095426. Port SetOfLevelConstraints and
 SetOfArgLevelConstraints using actual canonical symbol and ParamAndPosition keys.

@@ -23,8 +23,6 @@ type sanySemOpDefNode struct {
 	stepNode           sanySemanticGraphNode
 	module             *sanySemModuleNode
 	defined            bool
-	level              tlaLevel
-	levelChecked       int32
 	argMaxLevels       []tlaLevel
 	argWeights         []int
 	leibniz            []bool
@@ -71,12 +69,8 @@ type sanySemLabelNode struct {
 // nullSN or a formal. Its declaration is checked at constant level once.
 type sanySemOpDeclNode struct {
 	sanySemSymbolBase
-	level        tlaLevel
-	levelChecked int
-	table        *sanySymbolTable
-	module       *sanySemModuleNode
-	levelParams  map[*sanySemOpDeclNode]struct{}
-	allParams    map[*sanySemOpDeclNode]struct{}
+	table  *sanySymbolTable
+	module *sanySemModuleNode
 }
 
 // OpDeclNode initializes its level data before registration. Registration is
@@ -84,9 +78,10 @@ type sanySemOpDeclNode struct {
 func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity int, module *sanySemModuleNode, syntax any) *sanySemOpDeclNode {
 	n := &sanySemOpDeclNode{
 		sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(kind), name: name, arity: arity},
-		level:             level, levelChecked: 1, module: module,
-		levelParams: make(map[*sanySemOpDeclNode]struct{}), allParams: make(map[*sanySemOpDeclNode]struct{}),
+		module:            module,
 	}
+	n.level = level
+	n.levelChecked = 1
 	if module != nil {
 		n.originalModuleName = module.semName()
 	}
@@ -114,8 +109,8 @@ func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity i
 		n.pos = Position{File: n.Location.Source}
 	}
 	if kind == sanyConstantDeclKind {
-		n.levelParams[n] = struct{}{}
-		n.allParams[n] = struct{}{}
+		n.levelParams.add(n)
+		n.allParams.add(n)
 	}
 	return n
 }

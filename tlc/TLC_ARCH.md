@@ -9249,3 +9249,32 @@ symbol classes use Java class names; native object identity supplies ties within
 a class, as in the existing collection ports. The 680 comparison rows cover
 bucket growth, copies, merges, removals, nulls, equality and iterator boundaries;
 they do not establish cross-runtime object-identity tree ordering.
+
+## Inherited canonical LevelNode data
+
+`sany_level_node.go` supplies Java's common mutable level fields to canonical
+SANY constructors through their semantic base. Each constructor owns fresh
+symbol sets, argument-dependency sets and constraint maps; OpDef and OpDecl no
+longer keep duplicate level fields. Symbol sets use concrete-class/kind/UID
+equality, while argument-dependency sets use source ArgLevelParam reference
+comparisons. The sets retain their Java backing-map iteration and mutation
+behavior, including capacity-preserving clearing.
+
+Getter guards reject only a zero `levelChecked`, preserving negative Java
+iterations and the source non-Leibniz getter's `getAllParams` error message.
+The next-iteration entry point uses signed Java wraparound and concrete-node
+check dispatch. Formatting and subnode aggregation call virtual getters through
+the canonical interface. Aggregation records the iteration before traversal,
+skips ModuleKind and ModuleInstanceKind, still checks InstanceKind, visits later
+children after a false result, and retains all prior metadata writes on failure.
+The temporal-constant helper tests source symbol kind rather than concrete class.
+Formal parameters populate level/all-parameter sets only while their iteration
+is zero; declarations retain constructor data and return true without updating
+that iteration. These are the complete original checks for those two classes.
+
+The current interface covers canonical SANY classes. TLC-owned literal nodes
+still need shared metadata integration before heterogeneous bodies use it.
+Class-specific operator, application, instance, proof and module checking and
+shared evaluator ownership remain incomplete. The 575 direct Java observations
+and retained 24,529 graph rows verify this inherited-data integration; they do
+not close the remaining original incremental semantic methods.

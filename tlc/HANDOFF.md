@@ -1194,9 +1194,13 @@ source `occur` behavior. All 5,125 temporary Java/Go comparison rows agree.
 The original `SetOfLevelConstraints` and `SetOfArgLevelConstraints` are also
 ported, including tightening puts, raw copy constructors, nullable values,
 source key equality and HashMap iteration. All 680 temporary map observations
-agree with Java. Inherited `LevelNode` data and checking remain pending; the
-three incremental semantic methods remain reconcile. No original-method credit
-added.
+agree with Java. Canonical SANY constructors now own the inherited `LevelNode`
+data, actual mutable symbol/argument sets and source getter guards. Formal and
+declaration level checks and canonical subnode aggregation agree with Java across
+575 direct observations. The retained 24,529 whole-module graph/diagnostic rows
+still agree. Mixed graphs containing TLC-owned literals, class-specific recursive
+checks and evaluator integration remain pending; the three incremental semantic
+methods remain reconcile. No original-method credit added.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
