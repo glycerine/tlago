@@ -9516,3 +9516,29 @@ prechecked metadata, and invoke the actual source temporal helper; PICK cases
 also exercise the source inherited-counter cache. These verify theorem logic,
 not ordinary OpApplNode.levelCheck, which remains unported. No source test is
 replaced with prechecked metadata and no original-method credit is added.
+
+
+## Canonical ASSUME/PROVE level checking
+
+`sany_assume_prove_level.go` translates the complete source AssumeProveNode
+algorithm. Each fresh iteration records its counter and resets correctness.
+The first assumption pass skips null entries and collects boolean failures;
+PROVE is checked next but its boolean result is deliberately ignored. The
+second assumption pass calls their checks again without a null exemption, then
+compares levels. Preserve both virtual getLevel calls when an assumption exceeds
+the current level; do not replace them with one max call.
+
+Level/all-parameter sets, constraint maps and argument dependencies merge into
+retained collections, with PROVE first in each phase and assumptions in order.
+Non-Leibniz parameters remain untouched. Temporal-constant constraints are added
+only if the assumption checks succeeded. Every null failure retains preceding
+counter, correctness, level and collection writes. Current prove/assumption
+fields are read afresh, matching source traversal rather than capturing the
+whole graph before checking.
+
+All 143 external Java/Go rows agree exactly across zero to three assumptions,
+false PROVE/assumption results, correctness resets, signed/repeated iterations,
+fourteen partial-failure scenarios, complete metadata and child-call counts,
+and a virtual level getter that changes between reads. These observations add
+no original-method credit and do not complete unported descendant classes or
+shared evaluator integration.

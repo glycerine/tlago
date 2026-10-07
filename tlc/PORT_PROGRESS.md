@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-07 Canonical AssumeProveNode level check:
+Previous completed commit: 8bf4d91. Translate complete source two-pass assumption
+checking, ignored PROVE boolean result, direct level initialization and repeated
+virtual level reads. Reset correctness on a fresh iteration, retain metadata
+merges in source phase/order, leave non-Leibniz untouched and add temporal
+constant constraints only after successful assumption checks. Preserve null
+skipping only in first pass and all preceding writes on later failure.
+
+External observer /mnt/oldrog/tmp/tlago-assume-prove-level-* uses actual source
+AssumeProve/Formal nodes and controlled ExprNode metadata. Initial observer 38630
+passes and all 142 full rows match across zero-to-three assumptions, four modes,
+eight iteration phases and fourteen partial-failure cases. Extend with a virtual
+level getter returning 5 for comparison and 1 for assignment; source and Go each
+call it twice and retain level 1. Final observer 93783 passes; all 143 full rows
+agree after stripping only Go runner envelope. No production test is invented,
+scenario weakened or original-method completion credit added.
+
+Focused affected semantic/parser/resolver/scoped and original incremental/builtin
+checks 85996 pass normally in 9.639s (180 passing test events). Full SANY 41456
+passes in 1.981s; all-package compile 32218 passes. All handles retired. No race
+or shortened workloads. Keep the last broader model receipt separate: this slice
+uses the affected semantic gate and does not claim a new full-workspace pass.
+Application/instance and remaining module/evaluator dependencies still prevent
+closing the two original incremental LET methods. Update handoff and architecture.
+
 2026-10-07 Canonical TheoremNode and temporal-proof level checking:
 Previous completed commit: ace8def. Translate complete source TheoremNode check
 and recursive LevelCheckTemporal helper. Retain shadow and inherited iteration

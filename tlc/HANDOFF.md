@@ -1247,6 +1247,11 @@ aggregation, including PICK and recursive temporal-proof checks. All 223 direct
 Java observations agree. Application checking is still a dependency: temporal
 application cases use explicitly prechecked source nodes in the observer,
 not an original-test completion receipt.
+AssumeProveNode now follows the complete source check: two assumption passes,
+ignored PROVE boolean result, retained metadata merges and temporal-constant
+constraints only when assumption checks succeed. Preserve null failure order
+and repeated virtual level reads. All 143 direct Java rows agree. No original
+method completion credit is added.
 Application, instance, remaining proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
