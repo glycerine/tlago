@@ -112,9 +112,10 @@ Latest focused verification:
 | Scope | Result | Receipt |
 | --- | --- | --- |
 | Earlier parser/semantic snapshot, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.055 seconds, session `32902` retired |
-| Current focused parser/context/bridge, original ParseErrorTests, six original proof/selector models and scoped identifier/reference checks | Pass | Root 4.806 seconds, session `42372` retired |
-| Complete existing SANY package; canonical corpus AST assertions remain pending | Pass | 1.782 seconds, session `81678` retired |
-| Current TLC identity contexts, semantic table, original coverage and function context | Pass | 0.014 seconds, session `28097` retired |
+| Current focused parser/context/bridge, original ParseErrorTests, six original proof/selector models and scoped identifier/reference checks | Pass | Root 5.509 seconds, session `55110` retired |
+| Complete existing SANY package; canonical corpus AST assertions remain pending | Pass | 1.730 seconds, session `71430` retired |
+| Current TLC tools, spec processing, contexts, semantic table and coverage | Pass | 0.022 seconds, session `27147` retired |
+| Original TLCGetAll, ACoverage and both simulation constraint models | Pass | 2.160 seconds, session `96274` retired |
 | Earlier focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -194,7 +195,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 2,033,554,558 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 2,142,502,311 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -637,8 +638,13 @@ when the signed counter wraps, including UID -1; assignment state is separate
 from the stored UID bits. Existing Go zero-value base support remains separate
 from normal eager source construction. Twenty-six bounded source observations
 match shared allocation, hash/kind and tool-slot operations, repeated UID reads
-and signed boundaries. Formal-parameter graph construction, source runtime
-classes/equality and complete allocation order remain pending.
+and signed boundaries. Indexed tool objects now belong to each base node, as in Java, rather than a
+global UID/hash map. SANY and TLC use the same per-node slots. Sparse growth,
+null writes, retained array length and negative-index exceptions follow source;
+distinct nodes retain separate slots even when UIDs collide. Thirty-five source
+slot observations match. Formal-parameter graph construction, concrete class
+equality, remaining unindexed cache APIs and complete allocation order remain
+pending.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three

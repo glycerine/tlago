@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-06 Source per-node indexed tool arrays:
+Previous completed commit: fd6a875. Java SemanticNode owns an Object[] tools,
+while Go evaluator helpers used a process-wide map keyed by tool ID and node
+UID or fallback hash. Distinct nodes could alias, and cached values retained
+old graphs globally. Remove that map and key fallback. SemanticNodeBase now
+owns indexed storage initialized by its constructor; native zero-value base
+initialization publishes storage with assignment state. SANY delegates its
+slot operations to that same base instead of maintaining a second array.
+
+Port source get/set semantics: missing nonnegative slots return null; writes
+grow through toolId+1 and retain old entries; null writes still grow; clearing
+does not shrink; negative reads/writes report the actual current array length
+via ArrayIndexOutOfBoundsException. Per-node locking preserves Go concurrent
+cache access. Indexed helpers require actual node storage rather than assigning
+hash-based cache identity to non-semantic inputs. Leave unindexed literal/cache
+APIs and tool-ID width pending for separate source reconciliation.
+
+All 16 exact Java/Go slot observations match, including distinct nodes with
+the same UID retaining independent objects, separate IDs and sparse holes,
+clearing, growth on a null write and exception type/message after growth.
+Temporary reflection rewinds the source counter to exercise UID collision
+without reducing or replacing any original workload. Receipts:
+/mnt/oldrog/tmp/tlago-node-tool-slots-{java,go}.log. All 19 retained SANY slot,
+kind and hash observations also match through shared storage:
+/mnt/oldrog/tmp/tlago-node-tool-slots-sany-manual.log. No permanent tests invented.
+
+Existing focused TLC tool/spec-processing/context/coverage checks pass 0.022
+seconds; relevant existing root checks pass 5.509 seconds; the complete existing
+SANY package passes 1.730 seconds. Four unchanged whole original model methods
+also pass 2.160 seconds: TLCGetAll, ACoverage, SimulationWorkerModelStateConstraint
+and SimulationWorkerModelActionConstraint. Preserve all assertions, auto-worker
+settings and the original simulation 100-by-100 bounds. Every package compiles.
+Receipts: /mnt/oldrog/tmp/tlago-node-tool-slots-{tlc,root,sany,original-models,compile}.log.
+No inventory or full-workspace pass credit. FormalParamNode identity, source
+class equality, complete graph allocation and the six detailed label-generation
+differences remain pending. MSB session 5144 is confirmed live; last logged
+2,142,502,311 of 2,147,483,648 insertions. Await terminal completion and final
+checkpoint/invariant assertions; do not restart or infer a pass from progress.
+
 2026-10-06 One shared semantic UID constructor and stable wrapped IDs:
 Previous completed commit: 55448fd. Inspection finds two UID allocators: the
 SANY-only counter introduced in 1470b93 and TLC's existing superclass counter.

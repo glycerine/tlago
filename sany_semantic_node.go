@@ -6,7 +6,6 @@ import "github.com/glycerine/tlago/tlc"
 // nodes. Remaining graph constructors and allocation order are ported separately.
 type sanySemanticNode struct {
 	tlc.SemanticNodeBase
-	tools []any
 }
 
 func newSanySemanticNode(kind sanySemKind) sanySemanticNode {
@@ -19,23 +18,9 @@ func (n *sanySemanticNode) setKind(kind sanySemKind) { n.KindValue = tlc.Semanti
 func (n *sanySemanticNode) hashCode() int32          { return n.JavaHashCode() }
 
 func (n *sanySemanticNode) getToolObject(toolID int) any {
-	if len(n.tools) <= toolID {
-		return nil
-	}
-	if toolID < 0 {
-		panic(tlc.NewArrayIndexOutOfBoundsException(toolID, len(n.tools)))
-	}
-	return n.tools[toolID]
+	return n.GetToolObjectAt(int64(toolID))
 }
 
 func (n *sanySemanticNode) setToolObject(toolID int, object any) {
-	if len(n.tools) <= toolID {
-		tools := make([]any, toolID+1)
-		copy(tools, n.tools)
-		n.tools = tools
-	}
-	if toolID < 0 {
-		panic(tlc.NewArrayIndexOutOfBoundsException(toolID, len(n.tools)))
-	}
-	n.tools[toolID] = object
+	n.SetToolObjectAt(int64(toolID), object)
 }

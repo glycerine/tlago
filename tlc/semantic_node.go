@@ -47,6 +47,7 @@ type SemanticNodeBase struct {
 	KindValue      SemanticKind
 	uidPlusOne     int32
 	uidInitialized uint32
+	indexedTools   *semanticNodeToolSlots
 	ToolObject     any
 	Image          string
 	LevelValue     int
@@ -57,20 +58,18 @@ type SemanticNodeBase struct {
 
 var nextSemanticNodeUID atomic.Int32
 var semanticNodeUIDInitialization sync.Mutex
-var semanticToolObjects = struct {
-	sync.RWMutex
-	values map[semanticToolObjectKey]any
-}{values: make(map[semanticToolObjectKey]any)}
 
-type semanticToolObjectKey struct {
-	toolID int64
-	nodeID int32
+// Each semantic node owns its array. The lock preserves Go's concurrent cache
+// access while array growth, retained slots and bounds follow SemanticNode.
+type semanticNodeToolSlots struct {
+	sync.RWMutex
+	values []any
 }
 
 // NewSemanticNodeBase allocates SemanticNode's process-wide Java int UID.
 // SANY context symbols and TLC evaluator nodes share this constructor.
 func NewSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
-	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), uidInitialized: 1, Image: image}
+	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), uidInitialized: 1, indexedTools: &semanticNodeToolSlots{}, Image: image}
 }
 
 // SemanticNode.nullSN retains the builtin syntax/location used by Action.UNKNOWN.
@@ -134,6 +133,7 @@ func (n *SemanticNodeBase) GetUID() int32 {
 		semanticNodeUIDInitialization.Lock()
 		if atomic.LoadUint32(&n.uidInitialized) == 0 {
 			atomic.StoreInt32(&n.uidPlusOne, nextSemanticNodeUID.Add(1))
+			n.indexedTools = &semanticNodeToolSlots{}
 			atomic.StoreUint32(&n.uidInitialized, 1)
 		}
 		semanticNodeUIDInitialization.Unlock()
@@ -162,6 +162,51 @@ func (n *SemanticNodeBase) SetToolObject(value any) {
 	if n != nil {
 		n.ToolObject = value
 	}
+}
+
+func (n *SemanticNodeBase) toolSlots() *semanticNodeToolSlots {
+	if atomic.LoadUint32(&n.uidInitialized) == 0 {
+		n.GetUID()
+	}
+	return n.indexedTools
+}
+
+// GetToolObjectAt ports SemanticNode.getToolObject(toolId). Missing nonnegative
+// slots return null; negative indices throw even when the array is empty.
+func (n *SemanticNodeBase) GetToolObjectAt(toolID int64) any {
+	if n == nil {
+		return nil
+	}
+	slots := n.toolSlots()
+	slots.RLock()
+	defer slots.RUnlock()
+	if int64(len(slots.values)) <= toolID {
+		return nil
+	}
+	if toolID < 0 {
+		panic(NewArrayIndexOutOfBoundsException(int(toolID), len(slots.values)))
+	}
+	return slots.values[int(toolID)]
+}
+
+// SetToolObjectAt grows through the requested index and preserves all earlier
+// slots. Storing null still grows the source array and does not shrink it.
+func (n *SemanticNodeBase) SetToolObjectAt(toolID int64, object any) {
+	if n == nil {
+		return
+	}
+	slots := n.toolSlots()
+	slots.Lock()
+	defer slots.Unlock()
+	if int64(len(slots.values)) <= toolID {
+		values := make([]any, int(toolID)+1)
+		copy(values, slots.values)
+		slots.values = values
+	}
+	if toolID < 0 {
+		panic(NewArrayIndexOutOfBoundsException(int(toolID), len(slots.values)))
+	}
+	slots.values[int(toolID)] = object
 }
 
 func (n *SemanticNodeBase) String() string {
@@ -749,14 +794,13 @@ func SemanticToolObjectForTool(tool *Tool, node SemanticNode) any {
 }
 
 func SemanticToolObjectForToolID(toolID int64, node SemanticNode) any {
-	key, ok := semanticToolObjectKeyForNode(toolID, node)
-	if !ok {
+	if node == nil {
 		return nil
 	}
-	semanticToolObjects.RLock()
-	value := semanticToolObjects.values[key]
-	semanticToolObjects.RUnlock()
-	return value
+	if slots, ok := node.(interface{ GetToolObjectAt(int64) any }); ok {
+		return slots.GetToolObjectAt(toolID)
+	}
+	panic(NewClassCastException("semantic node does not implement indexed tool-object storage"))
 }
 
 func SetSemanticToolObjectForTool(tool *Tool, node SemanticNode, value any) {
@@ -768,28 +812,14 @@ func SetSemanticToolObjectForTool(tool *Tool, node SemanticNode, value any) {
 }
 
 func SetSemanticToolObjectForToolID(toolID int64, node SemanticNode, value any) {
-	key, ok := semanticToolObjectKeyForNode(toolID, node)
-	if !ok {
+	if node == nil {
 		return
 	}
-	semanticToolObjects.Lock()
-	if value == nil {
-		delete(semanticToolObjects.values, key)
-	} else {
-		semanticToolObjects.values[key] = value
+	if slots, ok := node.(interface{ SetToolObjectAt(int64, any) }); ok {
+		slots.SetToolObjectAt(toolID, value)
+		return
 	}
-	semanticToolObjects.Unlock()
-}
-
-func semanticToolObjectKeyForNode(toolID int64, node SemanticNode) (semanticToolObjectKey, bool) {
-	if node == nil {
-		return semanticToolObjectKey{}, false
-	}
-	nodeID := SemanticJavaHashCode(node)
-	if withUID, ok := node.(interface{ GetUID() int32 }); ok {
-		nodeID = withUID.GetUID()
-	}
-	return semanticToolObjectKey{toolID: toolID, nodeID: nodeID}, true
+	panic(NewClassCastException("semantic node does not implement indexed tool-object storage"))
 }
 
 func SemanticString(node SemanticNode) string {

@@ -17,10 +17,24 @@ so initialization does not change an already assigned wrapped UID. Normal source
 constructors do not use that zero-value initialization path. Do not reset the
 counter during front-end initialization.
 
-SANY's tool-slot array retains the source grow/read/write semantics, including
-negative-index exceptions and unchanged array length after clearing. TLC's other
-indexed tool-object machinery still needs separate reconciliation; the shared
-constructor does not establish whole superclass API fidelity.
+Indexed tool slots now reside in SemanticNodeBase. Both SANY and evaluator
+nodes use that same storage. Replace the former process-wide map keyed by UID
+or fallback hash: source stores objects on each node, independently of hash or
+UID collisions, and unreferenced graphs can release their cached objects.
+GetToolObjectAt/SetToolObjectAt retain sparse growth, preserved earlier slots,
+null writes that still grow the array, unchanged length after clearing and
+negative-index exception type/message. Go synchronizes each node's array for
+concurrent cache access. Constructor and zero-value initialization publish the
+storage together with assignment state. The helper routes indexed calls to
+actual semantic nodes; non-node inputs are rejected instead of hashed into a
+shared namespace. Existing unindexed literal/cache APIs and the tool-ID counter
+width still need source reconciliation; this is not whole superclass parity.
+
+Sixteen exact source observations compare tool slots on distinct nodes with
+colliding UIDs, separate tool numbers, sparse holes, clearing, growth on null
+writes and bounds before/after growth. Nineteen earlier SANY observations still
+match through the shared API. These are temporary manual probes, not invented
+persistent tests or translation credit.
 
 The current expression-generation formals still need actual FormalParamNode
 identity. Java equality also checks the concrete runtime class, kind and UID.
