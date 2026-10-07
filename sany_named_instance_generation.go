@@ -184,3 +184,17 @@ func (g *sanyExpressionGeneration) canonicalInstanceSelectorSymbol(expr Expr) sa
 	}
 	return g.formalSymbolTable().resolveSymbol(name)
 }
+
+// DEF selectors name a definition without applying any instance prefix.
+func (g *sanyExpressionGeneration) canonicalInstanceDefinitionSymbol(expr Expr) sanySemSymbol {
+	source := sanyExprSource(expr)
+	if source == nil || source.Selector == nil {
+		return nil
+	}
+	for _, step := range source.Selector.Steps {
+		if step.Arguments != nil {
+			return nil
+		}
+	}
+	return g.canonicalInstanceSelectorSymbol(expr)
+}

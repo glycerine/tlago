@@ -51,7 +51,29 @@ func (g *sanyExpressionGeneration) generateProofReference(reference ProofRef, mo
 		}
 		if source := sanyGenerationSource(reference.Expr); len(diags) == 0 && source != nil && source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" {
 			selector := sanyExprSource(reference.Expr)
-			if selector == nil || selector.Selector == nil || len(selector.Selector.Steps) <= 1 {
+			if selector != nil && selector.Selector != nil {
+				name := ""
+				for i, step := range selector.Selector.Steps {
+					if step.Kind != SanySelectorName {
+						break
+					}
+					if step.Arguments != nil {
+						diagnostic := errorAt(sanyNodePosition(step.Syntax), "E4005", "Selector `%s' should not have argument(s).", step.Name)
+						diagnostic.SANYMessage, diagnostic.SANYRange = diagnostic.Message, step.Syntax.Range
+						diags = append(diags, diagnostic)
+						break
+					}
+					if name != "" {
+						name += "!"
+					}
+					name += step.Name
+					symbol := g.formalSymbolTable().resolveSymbol(name)
+					if symbol == nil || (i < len(selector.Selector.Steps)-1 && symbol.semKind() != sanyModuleInstanceKind) {
+						break
+					}
+				}
+			}
+			if len(diags) == 0 && (selector == nil || selector.Selector == nil || len(selector.Selector.Steps) <= 1 || g.canonicalInstanceDefinitionSymbol(reference.Expr) != nil) {
 				if symbol := g.formalSymbolTable().resolveSymbol(reference.Name); symbol != nil {
 					valid := symbol.semKind() == sanyUserDefinedOpKind || symbol.semKind() == sanyModuleInstanceKind || symbol.semKind() == sanyThmOrAssumpDefKind && (len(symbol.semName()) == 0 || symbol.semName()[0] != '<')
 					if definition, ok := symbol.(*sanySemOpDefNode); ok && definition.semKind() == sanyNumberedProofStepKind {

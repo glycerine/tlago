@@ -1,5 +1,29 @@
 # TLC Architecture Notes for the Go Port
 
+## Qualified instance references and rejection order
+
+Qualified GeneralId operator arguments now validate the actual imported symbol's
+arity before allocating `OpArgNode`, matching `selectorToNode`. Preserve terminal
+module-name rejection before that final arity check: an instance name remains an
+incomplete operator even when used in a higher-order argument position. Ordinary
+prefix-application checks use the actual `ModuleInstanceKind` node and arity, so
+an invalid applied prefix is diagnosed before resolving an unknown final name.
+Native signature metadata alone does not establish the semantic node's class.
+
+Qualified instance facts resolve the actual module-name node. DEF references with
+unapplied instance prefixes retain the actual qualified definition in the
+USE/HIDE/BY definition array. Each applied DEF selector is rejected with the
+source diagnostic before resolving that item. A failed earlier lookup stops
+further processing; preserve the caller's follow-up diagnostic. Label and operand selectors still require their distinct source paths.
+
+All 1,750 observed rows match Java across 41 whole-module scenarios, including
+actual application operands/OpArg symbols, relative allocation IDs, source
+parameters, wrappers, proof fact/definition arrays, valid qualified arguments,
+wrong arities, missing names and invalid applied prefixes. Scratch comparisons
+add no original-method completion credit. General subexpression selections,
+qualified fixity operators, inherited levels and evaluator graph sharing remain
+pending; this comparison is not a full semantic-parity claim.
+
 ## Named INSTANCE definitions and caller ownership
 
 `processModuleDefinition` now constructs actual qualified operator, theorem and

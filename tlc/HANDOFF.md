@@ -1112,8 +1112,14 @@ caller-owned LET/proof instance arrays. Qualified calls retain actual imported
 operators; bare module names are rejected as expressions before application
 construction and retained directly as facts/DEF references. All 605 observed rows
 across 18 whole modules match Java, including duplicates, higher-order formals,
-empty targets and nested named instances. EXTENDS inheritance, complete instance
-vectors and general qualified selectors remain incomplete. Bounded generation
+empty targets and nested named instances. Qualified GeneralId arguments now
+check actual symbol arity before allocating OpArg; instance-prefix application
+errors precede final lookup, and terminal module names remain incomplete
+operators. Qualified instance fact/DEF references retain actual symbols and proof
+array slots. All 1,750 observed rows across 41 whole modules match Java, including
+actual operands, proof reference arrays and rejection order. EXTENDS inheritance,
+complete instance vectors and general subexpression/fixity selectors remain
+incomplete. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 

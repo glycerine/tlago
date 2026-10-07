@@ -490,8 +490,13 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 	}
 	// GeneralId selectors reject an incorrect expected arity before allocating
 	// OpArg. The older fixity GenID path has different error/sentinel behavior.
-	if source := sanyGenerationSource(argument); source != nil && source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" && (source.Selector == nil || len(source.Selector.Steps) <= 1) {
+	if source := sanyGenerationSource(argument); source != nil && source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" && (source.Selector == nil || len(source.Selector.Steps) <= 1 || g.canonicalInstanceSelectorSymbol(argument) != nil) {
 		got, known := operatorArgumentArity(operator, g.moduleArities, locals)
+		if symbol := g.canonicalInstanceSelectorSymbol(argument); symbol != nil {
+			// selectorToNode rejects a terminal instance name as incomplete
+			// before reaching its final operator-argument arity check.
+			got, known = symbol.semArity(), symbol.semKind() != sanyModuleInstanceKind
+		}
 		if identifier, ok := operator.(*IdentExpr); ok && !known {
 			if symbol, exists := g.lookupSymbol(identifier.Name, context); exists && symbol.arity >= 0 {
 				got, known = symbol.arity, true
@@ -499,6 +504,11 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 		}
 		if literal, ok := operator.(*LiteralExpr); ok && literal.Kind == "bool" {
 			got, known = 0, true
+		}
+		if identifier, ok := operator.(*IdentExpr); ok {
+			if symbol := g.formalSymbolTable().resolveSymbol(identifier.Name); symbol != nil && symbol.semKind() == sanyModuleInstanceKind {
+				known = false
+			}
 		}
 		if known && got != expected {
 			g.retainNullOperatorOperand(argument, false)

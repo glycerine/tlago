@@ -50,8 +50,9 @@ func (builder *sanyUseOrHideBuilder) appendReference(g *sanyExpressionGeneration
 			builder.complete = false
 			return
 		}
-		// Qualified selectors still need their actual selected symbol identity.
-		if source := sanyExprSource(reference.Expr); source != nil && source.Selector != nil && len(source.Selector.Steps) > 1 {
+		// Instance prefixes retain the actual qualified symbol; other
+		// selectors still need their selected definition identity.
+		if source := sanyExprSource(reference.Expr); source != nil && source.Selector != nil && len(source.Selector.Steps) > 1 && g.canonicalInstanceDefinitionSymbol(reference.Expr) != symbol {
 			builder.complete = false
 			return
 		}

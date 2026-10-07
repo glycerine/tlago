@@ -1,5 +1,46 @@
 # TLC Port Progress
 
+2026-10-07 Qualified instance arguments and proof references:
+Previous completed commit: 690ce9a. Use actual qualified symbols to validate
+GeneralId operator-argument arity before allocating OpArg. Preserve terminal
+module-name incomplete-operator rejection before final arity checks, including
+unqualified names. Resolve qualified module-name facts directly to their actual
+node. DEF entries with unapplied instance prefixes retain actual qualified
+symbols in proof reference arrays. Reject applied DEF selectors before lookup,
+matching selectorToNode's initial argument check. Ordinary instance-prefix arity
+checks now use actual ModuleInstanceKind nodes rather than incomplete native
+class metadata, preserving prefix-error precedence over final-name lookup.
+
+Scratch comparison adds actual OpAppl operands, OpArg symbol/arity identities
+and leaf proof fact/definition array slots. Initial 1,024-row comparison exposed
+one extra OpArg allocation before wrong-arity rejection; fix production order.
+Expanded 1,163 rows exposed the native-only qualified module DEF rejection;
+retain accepted actual symbols and vector entries. Expanded proof-reference
+matrix exposed prefix arity and DEF argument diagnostic precedence; fix actual
+production paths. All 1,556 rows match. Terminal qualified module arguments
+exposed E4271 before source E4203; retain source incomplete-name rejection. All
+1,616 rows then match. Add both unqualified module-name argument cases; all
+1,712 rows match. Keep a missing(1)!op DEF input to establish the initial selector
+argument check precedes lookup of that same missing name. A temporary
+resolve-first implementation contradicted Java and was removed. Retain a second
+missing!I(1)!op input: an earlier failed lookup stops later argument checking.
+Final validation follows per-item argument check, resolution and instance-prefix
+continuation; all 1,750 rows across 41 whole modules match Java. Receipts and
+observers remain outside the repository at /mnt/oldrog/tmp/tlago-qualified-instance-*. No permanent tests or
+original-method completion credit added; assertions and fixture bytes unchanged.
+
+Initial existing affected root gate passes 46.826s (46586 retired), full SANY
+passes 1.955s (53164 retired), compilation passes (85564 retired). After terminal
+name corrections, final affected root gate passes 47.572s (6773 retired), complete
+SANY passes 1.982s (51657 retired), and compile-all passes (27058 retired).
+After final per-item DEF ordering correction, existing semantic/resolver and
+original Test206–220 gate passes 17.561s (74222 retired), complete SANY passes
+1.864s (30066 retired), and compile-all passes (30946 retired). All handles
+retired; git diff --check passes. Normal
+execution only; no broad race or full-workspace pass claim. Remaining general
+subexpression/fixity selectors, EXTENDS inheritance, inherited levels, visitors
+and evaluator sharing are still pending. Distributed service work stays deferred.
+
 2026-10-07 Named INSTANCE definitions, formals and caller-owned vectors:
 Previous completed commit: b9eb77e. Port processModuleDefinition's actual
 qualified operator/theorem/module-name constructors, parameter concatenation,

@@ -3448,7 +3448,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			if operatorArgument && step.Arguments == nil {
 				continue
 			}
-			if symbol, exists := generation.lookupSymbol(name, defined); exists && symbol.kind == InstanceDecl && symbol.arity >= 0 {
+			symbol, exists := generation.lookupSymbol(name, defined)
+			if actual := generation.formalSymbolTable().resolveSymbol(name); actual != nil && actual.semKind() == sanyModuleInstanceKind {
+				symbol.kind, symbol.arity, exists = InstanceDecl, actual.semArity(), true
+			}
+			if exists && symbol.kind == InstanceDecl && symbol.arity >= 0 {
 				count := 0
 				if step.Arguments != nil {
 					count = len(expressionChildren(step.Arguments))
@@ -3568,6 +3572,8 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			graphSymbol = symbol.theoremDefNode
 		} else if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.opDefNode != nil {
 			graphSymbol = symbol.opDefNode
+		} else if symbol := generation.canonicalInstanceSelectorSymbol(e); symbol != nil {
+			graphSymbol = symbol
 		} else {
 			graphSymbol = sanyGlobalInitialContext(false).getSymbol(e.Name)
 		}
