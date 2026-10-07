@@ -29,10 +29,26 @@ requirements. Native expressions without resolved metadata retain their old scop
 representation. Filtered sets traverse their source predicate once.
 
 Fourteen required-parameter observations across sixteen scratch cases match Java;
-fourteen cases also match complete diagnostics. Extra validation still compares
-names. Port HashSet iteration and aggregate extra diagnostics, complete unified
-LS/generator integration, and stop allocation under forbidden label bodies.
-Absolute allocation order remains unproven.
+all sixteen cases now match complete diagnostics. Extra validation uses a Java
+HashSet adapter keyed by UID for one concrete semantic class/kind. Its hash uses
+the exact SemanticNode formula, `31*(31+kind)+UID`, with int32 overflow. Hashes are
+injective within this domain, so distinct keys cannot need an identity tie-break.
+Required nodes are removed in LS sequence order; iteration of remaining buckets
+produces the source's single aggregate error.
+
+The adapter uses the existing OpenJDK HashMap port. Removal specializes source
+removeNode's `matchValue=false, movable=true` path, including removeTreeNode,
+balanceDeletion, conversion back to lists and moving the tree root to the front.
+3,470 direct Java/Go operation and iteration observations match, with tree bins
+confirmed before removal across collision/high-bit patterns. Nine earlier complete
+label diagnostic cases match. Native/unresolved metadata retains its old adapter.
+
+This does not establish absolute graph allocation order. Three of five expanded
+aggregate cases differ in parameter order: formal_20, formal_70 and nested_20.
+Actual first formal UID in the 70-parameter case is Java 305, Go 1 (hashes 1607
+and 1303). Complete the missing graph constructors rather than manufacturing UID
+offsets. Complete unified LS/generator integration and stop allocation beneath
+forbidden label bodies. No full LabelNode graph parity claim.
 
 ## TAKE/PICK formal construction and proof scope
 

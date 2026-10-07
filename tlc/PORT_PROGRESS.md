@@ -1,5 +1,53 @@
 # TLC Port Progress
 
+2026-10-06 Source HashSet removal and aggregate label extras:
+Previous completed commit: d0d9fa1. Port OpenJDK 21 HashMap removeNode's
+matchValue=false/movable=true specialization, removeTreeNode and balanceDeletion
+into the existing map implementation. Preserve list unlinking, root/color swaps,
+small-tree conversion and root movement, so removals preserve source iteration.
+JavaSemanticUIDSet specializes membership for a single semantic concrete class/kind,
+using source kind/UID hash and UID equality. Label validation uses add/remove and
+bucket/tree iteration for one aggregate E4332 extra-parameter message. Retain
+actual formal nodes for names rather than sorting or guessing allocation offsets.
+
+The initial adapter wrongly used UID alone as its hash. Initial nine/required
+comparisons passed, but larger allocation inspection exposed that source hashes
+include kind: Java formal UID 305 hashes to 1607; Go UID 1 hashes to 1303.
+Inspect SemanticNode.hashCode and correct the adapter to `31*(31+kind)+UID`, with
+int32 arithmetic. Initial receipts/handles 44742,31620,3110,55361 and 1230 are
+terminal and retired but earn no final hash-formula parity credit. Initial extra
+runner exited 1 while its enclosing shell ended 0 after cat; do not treat that as
+a green audit. Final receipts below use the corrected formula.
+
+3,470 exact Java HashSet vs Go adapter operation/result/size/iteration observations
+match for five UID patterns, covering duplicates, present/absent removals, re-adds,
+drain, negative/high-bit hashes and signed overflow. Read-only reflection confirms
+initial tree bins 0,4,4,3,4 across those patterns, so tree-removal paths are actually
+exercised. Corrected handle 70047 terminal 0; final tree-coverage comparison shell
+terminal 0. Receipts: /mnt/oldrog/tmp/tlago-semantic-uid-set-{java,go}.log. Scratch
+helpers remain outside the repo; no permanent tests invented or inventory credit.
+
+Final existing focused parser/semantic/original ParseError/legacy/scoped methods
+pass 4.544 seconds (46907); whole SANY package passes 1.461 seconds (97322);
+all packages compile (93878). Logs:
+/mnt/oldrog/tmp/tlago-label-set-{root,sany,compile}-final.log. Freshly rebuild the
+scratch Go diagnostic frontend. Fifteen complete label-flow cases, all sixteen
+required-parameter cases, and all nine previously failing broader label cases now
+match complete Java diagnostics. Final expanded aggregate audit still differs in
+three of five cases: formal_20, formal_70, nested_20. Combined handle 56107 terminal
+1 because that expanded audit fails. Logs:
+/mnt/oldrog/tmp/tlago-label-set-{flow,required,nine,extra}-final.log. Preserve full
+outputs and failure status; do not claim complete label-feature parity.
+
+The 70-parameter allocation probe confirms actual UID ranges Java 305..374 vs
+Go 1..70, with matching source hash formulas. Helpers/logs:
+/mnt/oldrog/tmp/SourceLabelUIDManual.java, tlago-label-uid-manual_test.go and
+tlago-label-uid-{java,go}.log. Complete missing semantic graph constructors and
+allocation order next; retain actual IDs rather than offsets. Unified label guards,
+full LS/LabelNode graph and evaluator sharing remain pending. All handles terminal
+and retired. git diff --check passes; no race workloads, weakened original tests,
+settings/bound changes or current full-workspace claim. Service work remains deferred.
+
 2026-10-06 Ordered required label formals and domain scope:
 Previous completed commit: f49e415. labelCheckContext now carries ordered formal
 arrays for the current label frame, retaining source pushFormalParams boundaries.

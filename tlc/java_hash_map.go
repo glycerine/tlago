@@ -7,7 +7,7 @@ package tlc
 // Bucket lists, resizing and red-black trees retain source iteration order.
 // Comparable keys use compare; non-Comparable keys supply an identity tie-break.
 // The optional equality callback ports object equals beyond native identity.
-// Callers own synchronization. These uses never remove entries.
+// Callers own synchronization. Semantic UID sets also remove entries.
 type javaHashMap[K comparable, V any] struct {
 	table           []*javaHashNode[K, V]
 	size, threshold int
@@ -520,3 +520,271 @@ func newDotLongSet() *javaHashMap[uint64, struct{}] {
 }
 
 type dotLongSet = javaHashMap[uint64, struct{}]
+
+// Remove ports removeNode(hash, key, null, false, true). These callers do
+// not request value matching or iterator removal with an immovable tree root.
+func (m *javaHashMap[K, V]) Remove(key K) bool {
+	if len(m.table) == 0 {
+		return false
+	}
+	hash := m.hash(key)
+	index := int(hash) & (len(m.table) - 1)
+	p := m.table[index]
+	if p == nil {
+		return false
+	}
+	var node *javaHashNode[K, V]
+	if p.hash == hash && m.keysEqual(key, p.key) {
+		node = p
+	} else if p.next != nil {
+		if p.tree {
+			root := p
+			for root.parent != nil {
+				root = root.parent
+			}
+			node = m.findTree(root, hash, key)
+		} else {
+			for e := p.next; e != nil; e = e.next {
+				if e.hash == hash && m.keysEqual(key, e.key) {
+					node = e
+					break
+				}
+				p = e
+			}
+		}
+	}
+	if node == nil {
+		return false
+	}
+	if node.tree {
+		m.removeTreeNode(node)
+	} else if node == p {
+		m.table[index] = node.next
+	} else {
+		p.next = node.next
+	}
+	m.size--
+	return true
+}
+
+func (m *javaHashMap[K, V]) removeTreeNode(p *javaHashNode[K, V]) {
+	index := int(p.hash) & (len(m.table) - 1)
+	first := m.table[index]
+	root := first
+	succ, pred := p.next, p.prev
+	if pred == nil {
+		first = succ
+		m.table[index] = first
+	} else {
+		pred.next = succ
+	}
+	if succ != nil {
+		succ.prev = pred
+	}
+	if first == nil {
+		return
+	}
+	for root.parent != nil {
+		root = root.parent
+	}
+	if root.right == nil || root.left == nil || root.left.left == nil {
+		m.table[index] = javaHashUntreeify(first)
+		return
+	}
+	pl, pr := p.left, p.right
+	var replacement *javaHashNode[K, V]
+	if pl != nil && pr != nil {
+		s := pr
+		for s.left != nil {
+			s = s.left
+		}
+		s.red, p.red = p.red, s.red
+		sr, pp := s.right, p.parent
+		if s == pr {
+			p.parent = s
+			s.right = p
+		} else {
+			sp := s.parent
+			p.parent = sp
+			if sp != nil {
+				if s == sp.left {
+					sp.left = p
+				} else {
+					sp.right = p
+				}
+			}
+			s.right = pr
+			if pr != nil {
+				pr.parent = s
+			}
+		}
+		p.left = nil
+		p.right = sr
+		if sr != nil {
+			sr.parent = p
+		}
+		s.left = pl
+		if pl != nil {
+			pl.parent = s
+		}
+		s.parent = pp
+		if pp == nil {
+			root = s
+		} else if p == pp.left {
+			pp.left = s
+		} else {
+			pp.right = s
+		}
+		if sr != nil {
+			replacement = sr
+		} else {
+			replacement = p
+		}
+	} else if pl != nil {
+		replacement = pl
+	} else if pr != nil {
+		replacement = pr
+	} else {
+		replacement = p
+	}
+	if replacement != p {
+		replacement.parent = p.parent
+		pp := p.parent
+		if pp == nil {
+			root = replacement
+			root.red = false
+		} else if p == pp.left {
+			pp.left = replacement
+		} else {
+			pp.right = replacement
+		}
+		p.left = nil
+		p.right = nil
+		p.parent = nil
+	}
+	r := root
+	if !p.red {
+		r = javaHashBalanceDeletion(root, replacement)
+	}
+	if replacement == p {
+		pp := p.parent
+		p.parent = nil
+		if pp != nil {
+			if p == pp.left {
+				pp.left = nil
+			} else if p == pp.right {
+				pp.right = nil
+			}
+		}
+	}
+	m.moveRootToFront(r)
+}
+
+func javaHashBalanceDeletion[K comparable, V any](root, x *javaHashNode[K, V]) *javaHashNode[K, V] {
+	for {
+		if x == nil || x == root {
+			return root
+		}
+		xp := x.parent
+		if xp == nil {
+			x.red = false
+			return x
+		}
+		if x.red {
+			x.red = false
+			return root
+		}
+		xpl, xpr := xp.left, xp.right
+		if xpl == x {
+			if xpr != nil && xpr.red {
+				xpr.red = false
+				xp.red = true
+				root = javaHashRotateLeft(root, xp)
+				xp = x.parent
+				xpr = nil
+				if xp != nil {
+					xpr = xp.right
+				}
+			}
+			if xpr == nil {
+				x = xp
+			} else {
+				sl, sr := xpr.left, xpr.right
+				if (sr == nil || !sr.red) && (sl == nil || !sl.red) {
+					xpr.red = true
+					x = xp
+				} else {
+					if sr == nil || !sr.red {
+						if sl != nil {
+							sl.red = false
+						}
+						xpr.red = true
+						root = javaHashRotateRight(root, xpr)
+						xp = x.parent
+						xpr = nil
+						if xp != nil {
+							xpr = xp.right
+						}
+					}
+					if xpr != nil {
+						xpr.red = xp != nil && xp.red
+						sr = xpr.right
+						if sr != nil {
+							sr.red = false
+						}
+					}
+					if xp != nil {
+						xp.red = false
+						root = javaHashRotateLeft(root, xp)
+					}
+					x = root
+				}
+			}
+		} else {
+			if xpl != nil && xpl.red {
+				xpl.red = false
+				xp.red = true
+				root = javaHashRotateRight(root, xp)
+				xp = x.parent
+				xpl = nil
+				if xp != nil {
+					xpl = xp.left
+				}
+			}
+			if xpl == nil {
+				x = xp
+			} else {
+				sl, sr := xpl.left, xpl.right
+				if (sl == nil || !sl.red) && (sr == nil || !sr.red) {
+					xpl.red = true
+					x = xp
+				} else {
+					if sl == nil || !sl.red {
+						if sr != nil {
+							sr.red = false
+						}
+						xpl.red = true
+						root = javaHashRotateLeft(root, xpl)
+						xp = x.parent
+						xpl = nil
+						if xp != nil {
+							xpl = xp.left
+						}
+					}
+					if xpl != nil {
+						xpl.red = xp != nil && xp.red
+						sl = xpl.left
+						if sl != nil {
+							sl.red = false
+						}
+					}
+					if xp != nil {
+						xp.red = false
+						root = javaHashRotateRight(root, xp)
+					}
+					x = root
+				}
+			}
+		}
+	}
+}

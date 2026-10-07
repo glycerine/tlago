@@ -761,20 +761,19 @@ Required parameters now use ordered formal groups from the current label scope,
 removing matched UIDs in source sequence order. Rejected same-named nodes remain
 distinct requirements. Quantifier domains are checked together before the group
 enters scope; nested labels and LET definitions reset that scope. Fourteen required
-parameter observations across sixteen scratch cases match; fourteen of those cases
-also match complete diagnostics. Extra parameters still use the older name-based
-traversal. Unified generation guards and complete LS/HashSet integration remain
-pending.
+parameter observations across sixteen scratch cases match; all sixteen now match
+complete diagnostics. Extra parameters use Java HashSet membership, removal and
+iteration to produce one aggregate diagnostic. The earlier nine-case diagnostic
+comparison now matches completely. HashMap removal includes tree rebalancing and
+conversion back to lists; 3,470 operation/iteration observations match Java.
 
-Next semantic work: port HashSet iteration and aggregate extra-parameter checks,
-then unify label scope/generation guards and audit remaining constructors.
-The earlier nine-case comparison now has four
-matches and five differences: `arg_constant`, `label_select`, `params`,
-`qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;
-non-formal arguments need the source leaf-location diagnostic and distinct dummy
-FormalParamNodes. Preserve UID-based hashing and actual HashSet iteration rather
-than inventing a sorted/declared order. Receipts are in PORT_PROGRESS.md; the
-broader audit is still failing and earns no whole-feature completion credit.
+Next semantic work: complete source semantic graph constructors and allocation
+order, then unify label scope/generation guards. The expanded aggregate audit has
+three differences (`formal_20`, `formal_70`, `nested_20`) out of five cases. The
+70-formal case assigns first UID 305 in Java and 1 in Go; both hash formulas include
+kind and UID. Preserve these actual identities and HashSet iteration rather than
+inventing offsets or sorting names. Full LabelNode/LS graph integration remains
+pending. Receipts are in PORT_PROGRESS.md; larger ordering parity is still failing.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

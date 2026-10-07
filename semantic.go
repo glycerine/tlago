@@ -1418,15 +1418,18 @@ func checkLabelParameters(label *LabelExpr, ctx labelCheckContext) Diagnostics {
 		diags = append(diags, diagnostic)
 	}
 	seen := map[string]bool{}
-	seenFormals := map[int32]bool{}
+	seenFormals := tlc.NewJavaSemanticUIDSet(int32(sanyFormalParamKind))
+	formalByUID := map[int32]*sanyFormalParamNode{}
 	for i, param := range label.Params {
 		repeated := seen[param]
 		if label.formalNodes != nil {
 			// All entries have the same concrete FormalParamNode class/kind;
 			// SemanticNode.equals therefore compares their retained UIDs.
 			uid := label.formalNodes[i].getUID()
-			repeated = seenFormals[uid]
-			seenFormals[uid] = true
+			repeated = !seenFormals.Add(uid)
+			if !repeated {
+				formalByUID[uid] = label.formalNodes[i]
+			}
 		}
 		if repeated {
 			diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4330", "repeated label parameter %s in label %s", param, label.Name), param, label.Name)
@@ -1450,10 +1453,9 @@ func checkLabelParameters(label *LabelExpr, ctx labelCheckContext) Diagnostics {
 				name := node.semName()
 				required[name] = true
 				uid := node.getUID()
-				if !seenFormals[uid] {
+				if !seenFormals.Remove(uid) {
 					missing(name)
 				}
-				delete(seenFormals, uid)
 			}
 		}
 	} else {
@@ -1464,9 +1466,21 @@ func checkLabelParameters(label *LabelExpr, ctx labelCheckContext) Diagnostics {
 			}
 		}
 	}
-	for _, param := range label.Params {
-		if !required[param] {
-			diags = append(diags, errorAt(label.Pos, "E4332", "unnecessary label parameter %s in label %s", param, label.Name))
+	if label.formalNodes != nil && !ctx.unresolvedBounds {
+		if seenFormals.Len() != 0 {
+			message := "Label " + label.Name + " declares extra parameter(s)  "
+			for uid := range seenFormals.All() {
+				message += formalByUID[uid].semName() + "  "
+			}
+			diagnostic := errorAt(label.Pos, "E4332", "unnecessary label parameter(s) in label %s", label.Name)
+			diagnostic.SANYMessage = message
+			diags = append(diags, diagnostic)
+		}
+	} else {
+		for _, param := range label.Params {
+			if !required[param] {
+				diags = append(diags, errorAt(label.Pos, "E4332", "unnecessary label parameter %s in label %s", param, label.Name))
+			}
 		}
 	}
 	return diags
