@@ -4,11 +4,11 @@ func SpecsGetLevel(expr SemanticNode, c *Context) int {
 	if c == nil {
 		c = EmptyContext
 	}
-	level := SemanticLevel(expr)
 	params := SemanticLevelParams(expr)
 	if len(params) == 0 {
-		return level
+		return SemanticLevel(expr)
 	}
+	level := SemanticLevel(expr)
 	for _, param := range params {
 		res := c.LookupCutoff(param, true)
 		switch value := res.(type) {

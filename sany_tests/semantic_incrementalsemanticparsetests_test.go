@@ -30,22 +30,8 @@ import (
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/IncrementalSemanticParseTests.java.
 // Remaining methods require reconciliation with the original canonical graph assertions.
-// Complete basicExpressionTest and bigRadixNumeralTest live in root
+// Complete basicOpDefTest, basicExpressionTest and bigRadixNumeralTest live in root
 // sany_incremental_semantic_java_test.go.
-func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
-	spec := checkedSANYModuleBody(t, "op == 0")
-	def := requireSANYDefinition(t, spec.Root, "op")
-	if got := len(def.Params); got != 0 {
-		t.Fatalf("op arity = %d, want 0", got)
-	}
-	if def.Expr == nil {
-		t.Fatal("op has nil body")
-	}
-	if lit, ok := def.Expr.(*tlago.LiteralExpr); !ok || lit.Kind != "number" || lit.Value != "0" {
-		t.Fatalf("op body = %#v, want numeric literal 0", def.Expr)
-	}
-}
-
 func TestIncrementalSemanticParseTests_letInExpressionTest(t *testing.T) {
 	spec := checkedSANYModuleBody(t, "op == LET M == INSTANCE Naturals IN M!+(1, 2)")
 	if spec.Modules["Naturals"] == nil {

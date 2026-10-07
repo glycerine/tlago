@@ -59,8 +59,8 @@ func TestTestBuiltInOperatorInitialization_testInitAndReInit(t *testing.T) {
 					t.Fatalf("%s: params length = %d, want %d", name, len(params), expected.arity)
 				}
 			}
-			if actual.level != expected.level {
-				t.Fatalf("%s: level = %d, want %d", name, actual.level, expected.level)
+			if *actual.level != expected.level {
+				t.Fatalf("%s: level = %d, want %d", name, *actual.level, expected.level)
 			}
 			if !reflect.DeepEqual(actual.getArgMaxLevels(), expected.argMaxLevels) {
 				t.Fatalf("%s: argMaxLevels = %#v, want %#v", name, actual.getArgMaxLevels(), expected.argMaxLevels)

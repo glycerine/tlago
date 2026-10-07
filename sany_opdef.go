@@ -121,3 +121,10 @@ func (node *sanySemOpDefNode) setParams(params []*sanyFormalParamNode) {
 	}
 	node.formalNodes = params
 }
+
+func (node *sanySemOpDefNode) getInRecursive() bool {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return node.inRecursive
+}

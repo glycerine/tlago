@@ -148,8 +148,8 @@ func (n *sanyFormalParamNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	if n == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	if n.levelChecked == 0 {
-		n.levelChecked = iter
+	if *n.levelChecked == 0 {
+		*n.levelChecked = iter
 		n.levelParams.add(n)
 		n.allParams.add(n)
 	}

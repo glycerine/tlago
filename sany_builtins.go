@@ -63,8 +63,8 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemOpDefNode {
 			node.leibniz[i] = weight > 0
 			node.isLeibniz = node.isLeibniz && node.leibniz[i]
 		}
-		node.level = info.level
-		node.levelChecked = 99
+		*node.level = info.level
+		*node.levelChecked = 99
 	}
 	return node
 }

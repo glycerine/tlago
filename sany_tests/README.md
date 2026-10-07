@@ -61,13 +61,18 @@ original syntax-node identity, ConstantLevel and concrete NumeralNode type.
 Numeral level checking records the supplied signed 32-bit iteration and the
 no-iteration overload advances it, matching source even for decreasing iterations
 and signed wraparound. The normal composite checker invokes it at iteration 1.
-This does not complete the common LevelNode getter guards, other metadata, or
-recursive graph iteration propagation.
+Literal getter guards and canonical mutable metadata are now integrated with
+the same TLC body nodes. Recursive checking of other graph classes remains pending.
 
-The other three methods in `semantic.IncrementalSemanticParseTests` remain
+`semantic.IncrementalSemanticParseTests.basicOpDefTest` is **port complete** in
+the root translation. It parses `op == 0` incrementally and generates the actual
+operator without an enclosing module. It preserves both log-success assertions,
+non-null result, name, arity, recursion flag, actual level checking, syntax-node
+identity, constant level and concrete NumeralNode body type.
+
+The other two methods in `semantic.IncrementalSemanticParseTests` remain
 **reconcile**. Their native-AST checks omit original canonical semantic-node
-assertions: ordinary OpDef recursion/arity/body metadata, syntax-node identity,
-actual level-check results and constant levels, dependency module tables,
+assertions: syntax-node identity, actual level-check results and constant levels, dependency module tables,
 concrete LetInNode/OpApplNode types, and imported operator source identity.
 Implement the production graph and incremental generator behavior before
 crediting these methods; parsing the same snippets is insufficient.

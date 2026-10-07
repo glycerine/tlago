@@ -139,8 +139,8 @@ func TestSanyBuiltInContextBehaviors(t *testing.T) {
 			if !ok {
 				t.Fatalf("builtin %s = %#v, want semantic built-in", tc.name, ctx.getSymbol(tc.name))
 			}
-			if symbol.semArity() != tc.arity || symbol.level != tc.level {
-				t.Fatalf("builtin %s arity/level = %d/%d, want %d/%d", tc.name, symbol.semArity(), symbol.level, tc.arity, tc.level)
+			if symbol.semArity() != tc.arity || *symbol.level != tc.level {
+				t.Fatalf("builtin %s arity/level = %d/%d, want %d/%d", tc.name, symbol.semArity(), *symbol.level, tc.arity, tc.level)
 			}
 		}
 	})

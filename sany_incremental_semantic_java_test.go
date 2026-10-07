@@ -112,3 +112,47 @@ func TestIncrementalSemanticParseTests_basicExpressionTest(t *testing.T) {
 		t.Fatalf("result = %T, want NumeralNode", node)
 	}
 }
+
+// Complete IncrementalSemanticParseTests.basicOpDefTest. Parse one definition
+// directly, then use the production processOperator path shared by local
+// definitions; no enclosing module or completed-spec surrogate is introduced.
+func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
+	manager := NewSanyTokenManager("", "op == 0")
+	manager.SwitchTo(SanyLexSpec)
+	parser := &SanyParser{tokenManager: manager}
+	parser.belchDEF()
+	syntax := parser.OperatorOrFunctionDefinition()
+	definition, log := sanyDefinition(syntax)
+	generator := sanyExpressionGenerator(nil)
+	generator.nodes = newSanyGeneratorNodes()
+	log = append(log, generator.generateLocalDefinition(&definition, map[string]Position{}, map[string]bool{})...)
+	if log.HasErrors() {
+		t.Fatalf("semantic generation: %v", log)
+	}
+	result := definition.semanticNode
+	if result == nil {
+		t.Fatal("generated definition is nil")
+	}
+	if result.semName() != "op" {
+		t.Fatalf("name = %s, want op", result.semName())
+	}
+	if result.semArity() != 0 {
+		t.Fatalf("arity = %d, want 0", result.semArity())
+	}
+	if result.getInRecursive() {
+		t.Fatal("getInRecursive = true")
+	}
+	sanyLevelCheckNext(result, &log)
+	if log.HasErrors() {
+		t.Fatalf("level checking: %v", log)
+	}
+	if result.GetTreeNode() != syntax {
+		t.Fatal("generated definition does not retain original syntax identity")
+	}
+	if result.getLevel() != constantLevel {
+		t.Fatalf("level = %d, want ConstantLevel", result.getLevel())
+	}
+	if _, ok := result.getBody().(*tlc.NumeralNode); !ok {
+		t.Fatalf("body = %T, want NumeralNode", result.getBody())
+	}
+}

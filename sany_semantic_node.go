@@ -5,12 +5,15 @@ import "github.com/glycerine/tlago/tlc"
 // SemanticNode's constructor identity is shared with the evaluator's semantic
 // nodes. Remaining graph constructors and allocation order are ported separately.
 type sanySemanticNode struct {
-	tlc.SemanticNodeBase
-	sanyLevelData
+	*tlc.SemanticNodeBase
+	*sanyLevelData
 }
 
 func newSanySemanticNode(kind sanySemKind) sanySemanticNode {
-	return sanySemanticNode{SemanticNodeBase: tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), ""), sanyLevelData: newSanyLevelData()}
+	base := tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), "")
+	data := newSanyLevelData(&base)
+	base.CanonicalLevelData = data
+	return sanySemanticNode{SemanticNodeBase: &base, sanyLevelData: data}
 }
 
 func (n *sanySemanticNode) getUID() int32            { return n.GetUID() }

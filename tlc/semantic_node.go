@@ -51,16 +51,18 @@ const (
 )
 
 type SemanticNodeBase struct {
-	KindValue      SemanticKind
-	uidPlusOne     int32
-	uidInitialized uint32
-	indexedTools   *semanticNodeToolSlots
-	ToolObject     any
-	Image          string
-	LevelValue     int
-	LevelParamSet  []*SymbolNode
-	Location       SourceLocation
-	TreeNode       any // The production SANY syntax node, owned by the parser package.
+	KindValue          SemanticKind
+	uidPlusOne         int32
+	uidInitialized     uint32
+	indexedTools       *semanticNodeToolSlots
+	ToolObject         any
+	Image              string
+	LevelValue         int
+	LevelChecked       int32
+	CanonicalLevelData any // Parser-owned canonical collections on this same node.
+	LevelParamSet      []*SymbolNode
+	Location           SourceLocation
+	TreeNode           any // The production SANY syntax node, owned by the parser package.
 }
 
 var nextSemanticNodeUID atomic.Int32
@@ -543,9 +545,8 @@ func NewValueNode(value Value) *ValueNode {
 
 type NumeralNode struct {
 	SemanticNodeBase
-	Value        *IntValue
-	BigValue     *big.Int
-	LevelChecked int32
+	Value    *IntValue
+	BigValue *big.Int
 }
 
 func (n *NumeralNode) String() string { return n.Image }
@@ -557,12 +558,18 @@ func (n *NumeralNode) BigVal() *big.Int { return n.BigValue }
 // NumeralNode.levelCheck records the supplied iteration, even if it is lower
 // than a previous one. It has no descendants or level errors to compute.
 func (n *NumeralNode) LevelCheck(iter int32) bool {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
 	n.LevelChecked = iter
 	return true
 }
 
 // LevelNode's no-iteration overload requests the next iteration.
 func (n *NumeralNode) LevelCheckNext() bool {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
 	return n.LevelCheck(n.LevelChecked + 1)
 }
 
@@ -652,7 +659,6 @@ type DecimalNode struct {
 	mantissa       int64
 	exponent       int32
 	bigValue       *DecimalLiteralValue
-	LevelChecked   int32
 }
 
 func (n *DecimalNode) String() string               { return n.IntegralPart + "." + n.FractionalPart }
@@ -660,10 +666,18 @@ func (n *DecimalNode) Mantissa() int64              { return n.mantissa }
 func (n *DecimalNode) Exponent() int32              { return n.exponent }
 func (n *DecimalNode) BigVal() *DecimalLiteralValue { return n.bigValue }
 func (n *DecimalNode) LevelCheck(iter int32) bool {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
 	n.LevelChecked = iter
 	return true
 }
-func (n *DecimalNode) LevelCheckNext() bool { return n.LevelCheck(n.LevelChecked + 1) }
+func (n *DecimalNode) LevelCheckNext() bool {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	return n.LevelCheck(n.LevelChecked + 1)
+}
 
 // DecimalNode retains trailing zeros; Java's constructor does not normalize
 // the mantissa or exponent, despite its historical class comment.
@@ -699,16 +713,23 @@ func NewDecimalNode(value Value, image string) *DecimalNode {
 
 type StringNode struct {
 	SemanticNodeBase
-	Value        *StringValue
-	LevelChecked int32
+	Value *StringValue
 }
 
 func (n *StringNode) GetRep() *UniqueString { return n.Value.Val }
 func (n *StringNode) LevelCheck(iter int32) bool {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
 	n.LevelChecked = iter
 	return true
 }
-func (n *StringNode) LevelCheckNext() bool { return n.LevelCheck(n.LevelChecked + 1) }
+func (n *StringNode) LevelCheckNext() bool {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	return n.LevelCheck(n.LevelChecked + 1)
+}
 
 func NewStringNode(value string) *StringNode {
 	stringValue := NewStringValue(value)
@@ -949,4 +970,64 @@ func semanticValueString(value Value) string {
 		return "<nil>"
 	}
 	return value.String()
+}
+
+func (n *NumeralNode) GetLevel() int {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	if n.LevelChecked == 0 {
+		panic(NewWrongInvocationException("getLevel called before levelCheck"))
+	}
+	return n.LevelValue
+}
+
+func (n *DecimalNode) GetLevel() int {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	if n.LevelChecked == 0 {
+		panic(NewWrongInvocationException("getLevel called before levelCheck"))
+	}
+	return n.LevelValue
+}
+
+func (n *StringNode) GetLevel() int {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	if n.LevelChecked == 0 {
+		panic(NewWrongInvocationException("getLevel called before levelCheck"))
+	}
+	return n.LevelValue
+}
+
+func (n *NumeralNode) GetLevelParams() []*SymbolNode {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	if n.LevelChecked == 0 {
+		panic(NewWrongInvocationException("getLevelParams called before levelCheck"))
+	}
+	return n.SemanticNodeBase.GetLevelParams()
+}
+
+func (n *DecimalNode) GetLevelParams() []*SymbolNode {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	if n.LevelChecked == 0 {
+		panic(NewWrongInvocationException("getLevelParams called before levelCheck"))
+	}
+	return n.SemanticNodeBase.GetLevelParams()
+}
+
+func (n *StringNode) GetLevelParams() []*SymbolNode {
+	if n == nil {
+		panic(NewNullPointerException())
+	}
+	if n.LevelChecked == 0 {
+		panic(NewWrongInvocationException("getLevelParams called before levelCheck"))
+	}
+	return n.SemanticNodeBase.GetLevelParams()
 }

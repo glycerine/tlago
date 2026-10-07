@@ -40,9 +40,11 @@ func TestSpecsGetLevelFollowsLazyValuesAndOperatorDefinitions(t *testing.T) {
 	param := NewSymbolNode("P")
 	expr := NewNumeralNode(1)
 	expr.AddLevelParams(param)
+	expr.LevelCheckNext()
 
 	lazyBody := NewNumeralNode(2)
 	lazyBody.SetLevel(TLCLevelAction)
+	lazyBody.LevelCheckNext()
 	lazyCtx := EmptyContext.Cons(param, NewLazyValue(lazyBody, EmptyContext, true))
 	if got := SpecsGetLevel(expr, lazyCtx); got != TLCLevelAction {
 		t.Fatalf("lazy level = %d, want %d", got, TLCLevelAction)

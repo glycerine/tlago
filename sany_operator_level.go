@@ -13,10 +13,10 @@ func (n *sanySemOpArgNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	if n == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	if n.levelChecked >= iter {
+	if *n.levelChecked >= iter {
 		return n.levelCorrect
 	}
-	n.levelChecked = iter
+	*n.levelChecked = iter
 	operator := func() sanyCanonicalLevelNode {
 		return sanyRequireCanonicalLevelNode(n.operator.(sanySemanticGraphNode))
 	}
@@ -25,7 +25,7 @@ func (n *sanySemOpArgNode) levelCheck(iter int32, errors *Diagnostics) bool {
 		panic(tlc.NewNullPointerException())
 	}
 	n.levelCorrect = operator().levelCheck(iter, errors)
-	n.level = operator().getLevel()
+	*n.level = operator().getLevel()
 	n.levelParams = operator().getLevelParams()
 	n.allParams = operator().getAllParams()
 	n.levelConstraints = operator().getLevelConstraints()
@@ -39,10 +39,10 @@ func (n *sanySemOpDefNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	if n == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	if n.levelChecked >= iter || (!n.inRecursiveSection && n.levelChecked > 0) {
+	if *n.levelChecked >= iter || (!n.inRecursiveSection && *n.levelChecked > 0) {
 		return n.levelCorrect
 	}
-	n.levelChecked = iter
+	*n.levelChecked = iter
 	if n.getKind() == sanyNumberedProofStepKind {
 		step := sanyRequireCanonicalLevelNode(n.stepNode)
 		n.levelCorrect = step.levelCheck(iter, errors)
@@ -52,7 +52,7 @@ func (n *sanySemOpDefNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	}
 	body := func() sanyCanonicalLevelNode { return sanyRequireCanonicalLevelNode(n.body) }
 	n.levelCorrect = body().levelCheck(iter, errors)
-	n.level = max(n.level, body().getLevel())
+	*n.level = max(*n.level, body().getLevel())
 	lcSet := body().getLevelConstraints()
 	count := func() int {
 		if n.formalNodes == nil {
@@ -158,8 +158,14 @@ func sanyRequireCanonicalLevelNode(node sanySemanticGraphNode) sanyCanonicalLeve
 	if levelNode, ok := node.(sanyCanonicalLevelNode); ok {
 		return levelNode
 	}
-	// Mixed TLC-owned literals need real shared metadata integration. Do not
-	// replace their unported collections or guards with fabricated empty data.
+	switch literal := node.(type) {
+	case *tlc.NumeralNode:
+		return sanyCanonicalLiteral(literal, &literal.SemanticNodeBase)
+	case *tlc.DecimalNode:
+		return sanyCanonicalLiteral(literal, &literal.SemanticNodeBase)
+	case *tlc.StringNode:
+		return sanyCanonicalLiteral(literal, &literal.SemanticNodeBase)
+	}
 	panic(tlc.NewUnsupportedOperationException("Canonical level metadata is not yet integrated for this semantic node"))
 }
 func sanyLevelSymbolOccurs(symbol sanySemSymbol, params []*sanyFormalParamNode) bool {

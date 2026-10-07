@@ -61,7 +61,7 @@ func sanyExpressionGenerator(generators []*sanyExpressionGeneration) *sanyExpres
 	if len(generators) != 0 && generators[0] != nil {
 		return generators[0]
 	}
-	return &sanyExpressionGeneration{module: &sanyModuleRecursiveGeneration{}, bindings: map[string]*sanyRecursiveBinding{}}
+	return &sanyExpressionGeneration{module: &sanyModuleRecursiveGeneration{}, bindings: map[string]*sanyRecursiveBinding{}, symbols: map[string]localSymbol{}}
 }
 
 func (g *sanyExpressionGeneration) complete(binding *sanyRecursiveBinding, position Position) {

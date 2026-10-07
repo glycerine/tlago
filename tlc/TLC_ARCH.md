@@ -833,7 +833,8 @@ actual ASSUME/PROVE structure; the legacy quantifier-shaped view must not
 allocate false scalar FormalParams or quantifier applications for NEW.
 Canonical NEW/AssumeProve and INSTANCE/fact graphs, missing function bodies,
 inherited LevelNode fields and iteration, visitors and shared evaluator
-construction remain pending. The original basicOpDefTest remains reconcile.
+construction remain pending. The later shared literal level integration closes
+the original basicOpDefTest; it does not complete those other features.
 
 ## Ordinary definitions and LET ownership
 
@@ -9272,10 +9273,9 @@ Formal parameters populate level/all-parameter sets only while their iteration
 is zero; declarations retain constructor data and return true without updating
 that iteration. These are the complete original checks for those two classes.
 
-The current interface covers canonical SANY classes. TLC-owned literal nodes
-still need shared metadata integration before heterogeneous bodies use it.
-Class-specific operator, application, instance, proof and module checking and
-shared evaluator ownership remain incomplete. The 575 direct Java observations
+The interface covers canonical SANY classes and views of actual TLC literal
+nodes. Class-specific application, instance, proof and module checking and
+shared evaluator collection ownership remain incomplete. The 575 direct Java observations
 and retained 24,529 graph rows verify this inherited-data integration; they do
 not close the remaining original incremental semantic methods.
 
@@ -9306,8 +9306,28 @@ same getters as Java, retaining its assertions and null array-length behavior.
 
 The 792 external observations use canonical source symbols and controlled
 ExprNode bodies to verify the complete metadata algorithm and failure order.
-They do not establish checking of all generated TLA bodies. Mixed TLC-owned
-literals explicitly remain unsupported by the canonical adapter until real
-shared level metadata is integrated; do not supply fake constant/empty metadata
-to close the incremental operator test. Application, instance, proof/module
-checking and shared evaluator integration remain pending.
+They do not establish checking of all generated TLA bodies. Application,
+instance, proof/module checking and shared evaluator integration remain pending.
+
+## Shared canonical literal level metadata
+
+Canonical SANY bases now hold pointers to the actual `tlc.SemanticNodeBase` and
+its canonical metadata. The level and signed iteration cells alias the base
+fields, so copying a canonical node base does not split them. Generated numeral,
+decimal and string bodies retain their concrete TLC identity and syntax node.
+`sany_literal_level.go` exposes those bodies through views that allocate no UID
+and reuse the canonical collections stored on the literal base. Those are real
+mutable symbol sets, argument dependencies and constraint maps, not constant
+or empty stand-ins. Root generation initializes them; TLC-only constructors
+initialize them when first accessed by the canonical interface. Direct TLC
+level checks and setters share the scalar cells. Getter guards reject only
+iteration zero, and next-iteration checks preserve signed wraparound.
+
+The legacy TLC parameter getter still returns its TLC symbol slice projection.
+It does not expose canonical root symbol sets; integrating that evaluator API
+remains work. `SpecsGetLevel` now reads parameters before level, as Java does,
+and requires already checked literal nodes. Its old synthetic test now performs
+that missing setup, retaining all assertions. Sixty direct Java observations
+verify literal checks, mutation and mixed aggregation; all retained common,
+operator and module observations remain equal. The complete original
+`basicOpDefTest` now runs the actual incremental operator generator and checker.

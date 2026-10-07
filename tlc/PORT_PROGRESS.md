@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-07 Shared literal level metadata and full original basicOpDefTest:
+Previous completed commit: df73896. Canonical semantic bases now point to their
+actual TLC base and canonical collections. Alias the base level and signed
+iteration cells; retain concrete NumeralNode, DecimalNode and StringNode bodies.
+Literal views own no UID and reuse real mutable canonical collections on those
+nodes. Eagerly initialize metadata in generation, lazily for TLC-only constructors
+when accessed canonically. Direct TLC checks/setters share the same cells.
+Literal getters enforce source zero-only guards and checks preserve signed
+iteration wraparound. The legacy TLC symbol-parameter projection remains separate;
+this does not complete evaluator collection sharing or other node-class checks.
+
+Translate the complete original IncrementalSemanticParseTests.basicOpDefTest,
+using its direct definition parser, no enclosing module, actual generation and
+OpDef checking. Preserve all original assertions. Initialize standalone generator
+symbol bookkeeping, and add the source recursion accessor. Remove the old AST-only
+surrogate. Mark only this SANY method port complete; two incremental methods still
+reconcile and the TLC inventory counts do not change.
+
+Initial compile 6393 passes. First focus 81707 fails in an old synthetic Specs
+setup that constructs unchecked literals; root original methods pass. Inspect Java
+Specs: it reads getLevelParams before getLevel and assumes prior SANY checking.
+Correct production read order and the synthetic test's missing LevelCheck setup,
+retaining every assertion. Focus 51632 passes root 0.016s / TLC 0.011s.
+External literal observer first fails Go compilation because its scratch slice
+uses a semantic interface lacking GetUID; fix only its slice interface. Corrected
+observer 92372 passes and all 60 complete Java output rows agree, including getter
+guards, decreasing/repeated/overflow iterations, collection mutation and mixed
+aggregation. The observer additionally verifies repeat views share metadata and
+allocate no semantic identity. Scratch files remain outside the repository.
+
+Mechanically adapt retained observers to pointer cells without changing cases.
+Common observer 7914 passes: all 575 rows agree. Operator observer 36133 passes:
+all 792 rows agree. Whole-module observer 4115 passes: all 24,529 complete graph
+and diagnostic rows agree. All comparisons strip only the Go runner envelope.
+Broad original model/semantic gate 52382 passes normally in 46.831s (283 passing
+test events). Full SANY 89222 passes in 2.124s; all-package compile 81664 passes.
+Short TLC semantic/liveness/Specs/state selection passes in 0.012s. No race run,
+long-workload shortening, invented permanent test or weakened assertion. All
+handles retired. These gates do not establish a new full-workspace pass.
+
 2026-10-07 Canonical operator-argument and operator-definition level algorithms:
 Previous completed commit: 64ab259. Translate complete source OpArgNode.levelCheck
 and OpDefNode.levelCheck, including cache guards, early iteration recording,

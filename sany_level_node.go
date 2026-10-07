@@ -14,18 +14,20 @@ import (
 // analyzer's integer parameter IDs are not substitutes for SymbolNode keys.
 type sanyLevelData struct {
 	levelCorrect        bool
-	level               tlaLevel
+	level               *tlaLevel
 	levelParams         *sanyLevelSet[sanySemSymbol]
 	levelConstraints    *sanySetOfLevelConstraints
 	argLevelConstraints *sanySetOfArgLevelConstraints
 	argLevelParams      *sanyLevelSet[*sanyArgLevelParam]
 	allParams           *sanyLevelSet[sanySemSymbol]
 	nonLeibnizParams    *sanyLevelSet[sanySemSymbol]
-	levelChecked        int32
+	levelChecked        *int32
 }
 
-func newSanyLevelData() sanyLevelData {
-	return sanyLevelData{
+func newSanyLevelData(base *tlc.SemanticNodeBase) *sanyLevelData {
+	return &sanyLevelData{
+		level:               (*tlaLevel)(&base.LevelValue),
+		levelChecked:        &base.LevelChecked,
 		levelCorrect:        true,
 		levelParams:         newSanyLevelSymbolSet(),
 		levelConstraints:    newSanySetOfLevelConstraints(),
@@ -36,8 +38,8 @@ func newSanyLevelData() sanyLevelData {
 	}
 }
 
-// This interface covers the canonical SANY classes. TLC-owned literal nodes
-// still require integration with this shared metadata before mixed graphs check.
+// Canonical SANY classes and TLC literal views expose the same owned metadata.
+// Literal views preserve the underlying concrete body node and semantic identity.
 type sanyLevelAccess interface {
 	getLevel() tlaLevel
 	getLevelParams() *sanyLevelSet[sanySemSymbol]
@@ -64,7 +66,7 @@ func sanyLevelCheckNext(node sanyCanonicalLevelNode, errors *Diagnostics) bool {
 	if node == nil || reflect.ValueOf(node).IsNil() {
 		panic(tlc.NewNullPointerException())
 	}
-	return node.levelCheck(node.getLevelData().levelChecked+1, errors)
+	return node.levelCheck(*node.getLevelData().levelChecked+1, errors)
 }
 func (n *sanySemanticNode) levelCheck(iter int32, errors *Diagnostics) bool {
 	if n == nil {
@@ -80,10 +82,10 @@ func (n *sanySemanticNode) levelCheckSubnodes(iter int32, sub []sanyCanonicalLev
 	if n == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	if n.levelChecked >= iter {
+	if *n.levelChecked >= iter {
 		return n.levelCorrect
 	}
-	n.levelChecked = iter
+	*n.levelChecked = iter
 	if sub == nil {
 		panic(tlc.NewNullPointerException())
 	}
@@ -95,7 +97,7 @@ func (n *sanySemanticNode) levelCheckSubnodes(iter int32, sub []sanyCanonicalLev
 			// Evaluate the child even after an earlier child has returned false.
 			correct := child.levelCheck(iter, errors)
 			n.levelCorrect = correct && n.levelCorrect
-			n.level = max(n.level, child.getLevel())
+			*n.level = max(*n.level, child.getLevel())
 			n.levelParams.addAll(child.getLevelParams())
 			constraints := child.getLevelConstraints()
 			var constraintMap *tlc.JavaSemanticMap[sanySemSymbol, *int32]
@@ -121,13 +123,13 @@ func (n *sanyLevelData) requireChecked(message string) {
 	if n == nil {
 		panic(tlc.NewNullPointerException())
 	}
-	if n.levelChecked == 0 {
+	if *n.levelChecked == 0 {
 		panic(tlc.NewWrongInvocationException(message))
 	}
 }
 func (n *sanyLevelData) getLevel() tlaLevel {
 	n.requireChecked("getLevel called before levelCheck")
-	return n.level
+	return *n.level
 }
 func (n *sanyLevelData) getLevelParams() *sanyLevelSet[sanySemSymbol] {
 	n.requireChecked("getLevelParams called before levelCheck")

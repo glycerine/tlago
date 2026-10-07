@@ -3694,6 +3694,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			node := tlc.NewDecimalNodeFromParts(parts[0], parts[1])
 			bridge := tlcBridge{}
 			bridge.withExprLocation(e, node)
+			sanyCanonicalLiteral(node, &node.SemanticNodeBase)
 			e.decimalNode = node
 			e.semanticGraph = node
 		} else if e.Kind == "number" {
@@ -3703,12 +3704,14 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 			bridge := tlcBridge{}
 			bridge.withExprLocation(e, node)
+			sanyCanonicalLiteral(node, &node.SemanticNodeBase)
 			e.numeralNode = node
 			e.semanticGraph = node
 		} else if e.Kind == "string" {
 			node := tlc.NewStringNode(e.Value)
 			bridge := tlcBridge{}
 			bridge.withExprLocation(e, node)
+			sanyCanonicalLiteral(node, &node.SemanticNodeBase)
 			e.stringNode = node
 			e.semanticGraph = node
 		} else if e.Kind == "bool" {

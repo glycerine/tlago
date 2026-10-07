@@ -1020,7 +1020,8 @@ Label rejection uses those same stacks. All 22 EXCEPT graph cases match Java's
 Both complete 22-case diagnostic sets agree on codes, ranges and messages.
 Existing focused root/TLC tests, full sany_tests and compile-all pass. Detailed
 receipts belong in PORT_PROGRESS.md. No permanent tests or original-method credits
-were added in these construction slices; basicOpDefTest remains reconcile.
+were added in those construction slices. The later level-checking integration
+closes basicOpDefTest; see the current level-checking status below.
 
 Label tables now preserve Java's default Hashtable bucket/chain enumeration and
 rehash behavior. LabelNode and OpDef accessors retain nullable table identity,
@@ -1202,10 +1203,16 @@ still agree. Operator arguments now perform the source level check and retain
 shared operator collections, while keeping their own non-Leibniz set. The full
 operator-definition level algorithm and metadata accessors are translated;
 792 direct source observations agree, including recursive bounds, weights,
-higher-order conditions, partial failures and numbered steps. Literal bodies and
-other unported child checks still prevent closing the operator feature or the
-three incremental semantic methods, which remain reconcile. Evaluator integration
-also remains pending. No original-method completion credit added.
+higher-order conditions, partial failures and numbered steps. Canonical nodes and
+actual TLC literal bodies now share their level and iteration cells. Literal
+views retain actual mutable canonical sets and constraints on the body node and
+allocate no semantic identity; direct TLC checks and setters observe the same
+cells. All 60 direct literal observations and the retained 575, 792 and 24,529
+comparison rows agree with Java. The full original incremental basicOpDefTest is
+now port complete. The LET and transitive-import methods remain reconcile.
+Application, instance, proof/module checks and evaluator collection sharing
+remain pending: the legacy TLC symbol-parameter API still returns its separate
+TLC symbol projection. No TLC inventory count changes.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

@@ -82,8 +82,8 @@ func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity i
 		sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(kind), name: name, arity: arity},
 		module:            module,
 	}
-	n.level = level
-	n.levelChecked = 1
+	*n.level = level
+	*n.levelChecked = 1
 	if module != nil {
 		n.originalModuleName = module.semName()
 	}
