@@ -9514,7 +9514,7 @@ Theorem/ThmOrAssumpDef/LeafProof/NonLeafProof nodes and controlled ExprNode bodi
 Temporal application cases use real source OpApplNode objects with explicitly
 prechecked metadata, and invoke the actual source temporal helper; PICK cases
 also exercise the source inherited-counter cache. These verify theorem logic,
-not ordinary OpApplNode.levelCheck, which remains unported. No source test is
+not ordinary OpApplNode.levelCheck, which is translated below. No source test is
 replaced with prechecked metadata and no original-method credit is added.
 
 
@@ -9603,8 +9603,8 @@ theorem cases over signed/repeated iterations. Observations retain child-call
 counts, recursive tables, complete collections, diagnostics, formatting and
 twelve partial failures. NPE observations compare exception class rather than
 JVM enhanced messages. No original test method is credited. Ordinary application,
-ordinary application descendants still prevent whole-module
-checking and the two original incremental LET methods from being complete.
+remaining generation/evaluator integration still prevents whole-module completion
+and the two original incremental LET methods from being complete.
 
 
 ## Canonical substitution-wrapper level checks
@@ -9638,8 +9638,8 @@ nodes and controlled ExprNode metadata. They compare complete inherited level
 data, child calls, module iteration and collection identity, including successful
 chained/duplicate substitutions, false child results and malformed metadata.
 Runtime NPE/CCE observations compare class, not enhanced JVM messages. These
-are manual evidence, not original-method credit. Ordinary application checking
-remains a dependency of the original incremental LET methods.
+are manual evidence, not original-method credit. Standalone generation and source-reference assertions remain dependencies of the
+original incremental LET methods.
 
 
 ## Canonical instance level checking
@@ -9680,4 +9680,47 @@ warnings, null logs/fields, formal filtering and successful chained/duplicate
 substitutions. A final actual-instance case retains two distinct parameter lists
 that render the same message. NPE/CCE observations compare class rather than
 enhanced JVM messages. Retained 332 module rows still agree. No original method
-credit is added; ordinary application and shared evaluator integration remain.
+credit is added; standalone generation and shared evaluator integration remain.
+
+
+## Canonical application level checking
+
+`sany_application_level.go` translates the complete OpApplNode.levelCheck and
+private getArg helper. AnyDef dispatch covers actual OpDefNode and
+ThmOrAssumpDefNode objects. Check operands and ranges first, skipping null entries
+only in the source phases that do so. Preserve cached correctness, repeated child
+checks and diagnostic suppression; a false operator check does not independently
+force application correctness false. Check argument bounds, higher-order minimum
+bounds, co-parameter conditions and temporal ranges with the source diagnostics
+and parameters.
+
+Defined applications compute weighted levels and propagate operator/operand/range
+parameter sets. Remove bound symbols from all three sets, filter operand LC/ALP
+metadata as specified and retain the source later additions of argument bounds.
+Translate higher-order LC/ALC/ALP dependencies through actual argument definitions
+and formal references, including non-Leibniz argument propagation. Preserve the
+source fresh ALP allocation after ALC computation; other destination collections
+remain retained. getArg captures the formal array, scans the current operand
+array and returns the first reference match, preserving null and bounds failures.
+
+Declared applications check their operator and operands, replace LP/LC/ALC/ALP
+sets/maps in source phase order and retain all/non-Leibniz sets. Preserve the
+source omission of range metadata from this branch. Both branches finish with
+stuttering checks for []/<>, action restrictions for ~>/-+->, mixed logical
+argument checks and action-bound restrictions on temporal quantification. Name
+checks call getName().toString semantics, so a null formal name fails after all
+preceding metadata writes. Fixed-format diagnostic parameters now compare actual
+symbol references and normalize typed-null symbol arguments to null.
+
+All 2,897 external Java/Go rows agree: 1,152 normal checks over defined, theorem,
+declared/formal and builtin operators; 1,536 temporal cases using fresh actual
+child applications; 96 malformed cases retaining every collection separately;
+112 direct private getArg observations; and one null-name case. Actual source
+application constructors are followed by explicit controlled metadata/array
+assignments for manual observation, not substituted into original tests. Compare
+full metadata, collection identity, child calls, diagnostics and raw parameter
+values. Runtime NPE/CCE observations compare class, not enhanced JVM messages.
+Retained 545 instance and 332 module rows agree. These add no original-method
+credit or full-workspace verification claim. The original standalone LET tests
+still require exact generation, syntax ownership and source-reference assertions;
+shared evaluator collection integration and broader graph/parser fidelity remain.

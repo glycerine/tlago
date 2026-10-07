@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Canonical OpApplNode complete level checking:
+Previous completed commit: f63e1be. Translate complete source AnyDef/declared
+operator branches and private getArg. Preserve source child-check ordering,
+cached correctness, weights, higher-order bounds, non-Leibniz propagation,
+bound-symbol filtering, retained/reset collections and LC/ALC/ALP translation.
+Translate all final temporal diagnostics. Preserve reference lookup, null/array
+failures, short-circuit evaluation and partial writes. Correct final formal null
+name dereference. Diagnostic symbol parameters now compare reference identity,
+not reflected struct equality, and typed-null parameters normalize to null.
+
+External observers /mnt/oldrog/tmp/tlago-application-level-* use actual source
+applications and explicit controlled arrays/ExprNode metadata, actual definitions,
+formal/operator arguments and builtin symbols. No original fixture is replaced.
+Initial observer 71710 passes: 1,152 complete rows agree. Expanded temporal
+observer 76234 passes: 2,688 complete rows agree; these include fresh actual child
+applications, not prechecked temporal nodes. Add 96 malformed cases retaining
+every metadata collection separately. A scratch Java compile error assumed a
+nonexistent theorem parameter setter; use the actual private field instead and
+recompile successfully. Observer 96089 passes: 2,784 rows agree. Add 112 direct
+private getArg observations, including first matches, same-UID distinct symbols,
+nulls and array bounds. Observer 79111 passes: 2,896 rows agree. Final null-name
+observer 28922 passes: all 2,897 complete rows agree. NPE/CCE compares class, not
+enhanced JVM messages; diagnostics include raw parameter values. No permanent
+invented tests, weakened source scenario or original-method completion credit.
+
+Initial compile 48425, semantic gate 6532 and full SANY 37380 pass. After final
+null-name/diagnostic changes, affected original semantic/parser/resolver/scoped/
+incremental/builtin gate 40721 passes normally in 9.705s (180 passing test events).
+Full SANY 7348 passes in 2.034s; all-package compile 11726 passes. Retained instance
+observer 66377 passes with all 545 source rows; retained module observer 80302
+passes with all 332 rows. All handles retired. No race, shortened workloads or
+new full-workspace claim. Update handoff and architecture. The two original
+incremental LET methods remain reconcile pending their standalone generation,
+level checking, syntax identity and source-reference assertions. Shared evaluator
+collections and broader canonical generation/parser fidelity remain incomplete.
+
 2026-10-07 Canonical InstanceNode level checks and proof-instance getters:
 Previous completed commit: 769a3f8. Translate full source replacement/module
 checks, declaration/LC/argument/co-parameter bounds and diagnostic suppression.

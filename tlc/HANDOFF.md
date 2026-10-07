@@ -1244,9 +1244,9 @@ result false, and temporal-constant constraints update the assumption's own
 collections. All 160 detailed Java observations and 575 retained common rows
 agree. TheoremNode now preserves its own shadow counter and inherited subnode
 aggregation, including PICK and recursive temporal-proof checks. All 223 direct
-Java observations agree. Application checking is still a dependency: temporal
-application cases use explicitly prechecked source nodes in the observer,
-not an original-test completion receipt.
+Java observations agree. Those temporal proof cases use explicitly prechecked
+source applications and add no original-test credit; fresh application checking
+is translated below.
 AssumeProveNode now follows the complete source check: two assumption passes,
 ignored PROVE boolean result, retained metadata merges and temporal-constant
 constraints only when assumption checks succeed. Preserve null failure order
@@ -1278,8 +1278,20 @@ and retains its other metadata. Proof-instance getter overrides and raw formatte
 follow Java. Parameterized level diagnostics retain their original arguments for
 duplicate equality, including recursive-module diagnostics. All 545 direct Java
 rows and the retained 332 module rows agree. These are manual observations;
-ordinary application checking still prevents closing the original LET methods.
-Application and evaluator collection sharing
+standalone generation and source-reference assertions still need reconciliation
+for the original LET methods.
+OpApplNode now translates its complete source level algorithm for declared and
+AnyDef operators, including theorem/assumption definitions, higher-order bounds,
+weights, non-Leibniz propagation, bound filtering, LC/ALC/ALP translation and all
+temporal checks. Preserve source retained/reset collection choices, false-result
+caching, short-circuit/repeated checks and failure writes. Private getArg matches
+formal references rather than UIDs. All 2,897 Java observations and retained
+545 instance/332 module rows agree. Temporal cases include fresh child
+applications. Diagnostic symbol parameters compare references, including null
+normalization. These observations add no original-method completion credit.
+The two original standalone LET methods remain reconcile until their actual
+generation, level checks, syntax identity and source references are translated.
+Standalone generation, remaining graph fidelity and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
 

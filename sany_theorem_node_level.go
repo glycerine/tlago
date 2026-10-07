@@ -129,10 +129,32 @@ func sanyAddFixedLevelMessage(errors *Diagnostics, tree any, code, message strin
 	diagnostic.SANYRange = location
 	diagnostic.SANYMessage = message
 	diagnostic.SANYParameters = append([]any(nil), parameters...)
+	for i, parameter := range diagnostic.SANYParameters {
+		if symbol, ok := parameter.(sanySemSymbol); ok && sanyLevelSymbolReference(symbol) == nil {
+			diagnostic.SANYParameters[i] = nil
+		}
+	}
 	for _, existing := range *errors {
-		if existing.Code == code && existing.SANYMessage == message && reflect.DeepEqual(existing.SANYParameters, diagnostic.SANYParameters) && existing.SANYRange.Begin.File == location.Begin.File && existing.SANYRange.Begin.Line == location.Begin.Line && existing.SANYRange.Begin.Column == location.Begin.Column && existing.SANYRange.End.Line == location.End.Line && existing.SANYRange.End.Column == location.End.Column {
+		if existing.Code == code && existing.SANYMessage == message && sanyLevelMessageParametersEqual(existing.SANYParameters, diagnostic.SANYParameters) && existing.SANYRange.Begin.File == location.Begin.File && existing.SANYRange.Begin.Line == location.Begin.Line && existing.SANYRange.Begin.Column == location.Begin.Column && existing.SANYRange.End.Line == location.End.Line && existing.SANYRange.End.Column == location.End.Column {
 			return
 		}
 	}
 	*errors = append(*errors, diagnostic)
+}
+
+func sanyLevelMessageParametersEqual(left, right []any) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i, value := range left {
+		if symbol, ok := value.(sanySemSymbol); ok {
+			other, ok := right[i].(sanySemSymbol)
+			if !ok || sanyLevelSymbolReference(symbol) != sanyLevelSymbolReference(other) {
+				return false
+			}
+		} else if !reflect.DeepEqual(value, right[i]) {
+			return false
+		}
+	}
+	return true
 }
