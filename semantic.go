@@ -1393,9 +1393,31 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 
 func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
 	var diags Diagnostics
+	// generateLabel resolves every argument before formalParamsEqual. Each
+	// non-formal occurrence reports at its own argument syntax, even when
+	// another occurrence has the same spelling.
+	for i, syntax := range label.illegalParameterSyntax {
+		if syntax == nil {
+			continue
+		}
+		param := label.Params[i]
+		diagnostic := sanyDiagnosticParameters(errorAt(sanyNodePosition(syntax), "E4332", "Illegal parameter %s of label `%s'.", param, label.Name), param, label.Name)
+		diagnostic.SANYMessage = diagnostic.Message
+		diagnostic.SANYRange = syntax.Range
+		diags = append(diags, diagnostic)
+	}
 	seen := map[string]bool{}
-	for _, param := range label.Params {
-		if seen[param] {
+	seenFormals := map[int32]bool{}
+	for i, param := range label.Params {
+		repeated := seen[param]
+		if label.formalNodes != nil {
+			// All entries have the same concrete FormalParamNode class/kind;
+			// SemanticNode.equals therefore compares their retained UIDs.
+			uid := label.formalNodes[i].getUID()
+			repeated = seenFormals[uid]
+			seenFormals[uid] = true
+		}
+		if repeated {
 			diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4330", "repeated label parameter %s in label %s", param, label.Name), param, label.Name)
 			diagnostic.SANYMessage = fmt.Sprintf("Repeated formal parameter %s \nin label `%s'.", param, label.Name)
 			diags = append(diags, diagnostic)

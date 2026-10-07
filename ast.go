@@ -541,7 +541,8 @@ func (e *ExceptExpr) Position() Position { return e.Pos }
 func (*ExceptExpr) exprNode()            {}
 
 type LabelExpr struct {
-	formalNodes []*sanyFormalParamNode
+	formalNodes            []*sanyFormalParamNode
+	illegalParameterSyntax []*SanySyntaxNode
 	SanyExprSource
 	Name   string
 	Params []string

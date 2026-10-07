@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-06 Label argument errors and formal-identity repetition:
+Previous completed commit: cb92e1f. Retain each dummy parameter's source argument
+syntax in LabelExpr. After body traversal, emit the source E4332 illegal-parameter
+message and exact argument range for each non-formal occurrence, before repetition
+validation. Repetition uses retained formal UID identity: all entries have the
+same concrete FormalParamNode class/kind, matching SemanticNode.equals. Repeated
+actual formals report E4330; distinct same-named dummies do not. Native labels
+without generated arrays retain their existing representation. Required and extra
+parameter validation still uses names; full LS/HashSet integration is pending.
+
+Twenty-two exact diagnostic observations in twelve scratch source comparisons
+match the argument-resolution/repetition phases. Cases include constant, variable,
+operator, unknown names, repeated actual/dummy formals, operator parameters,
+quantified and CHOOSE binders, mixed arguments and nested labels. The probe
+explicitly selects these phases and preserves complete source/Go diagnostic logs;
+this is not a claim that all diagnostics match. No existing tests were filtered
+or assertions weakened. Handle 39724 terminal 0. Scratch runner/vectors/log:
+/mnt/oldrog/tmp/tlago-label-argument-audit.py, tlago-label-argument-audit/ and
+tlago-label-argument-audit.log. No permanent tests invented or inventory credit.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 4.581 seconds (21290). Whole SANY package passes
+1.439 seconds (64487); all packages compile (58085). Receipts:
+/mnt/oldrog/tmp/tlago-label-argument-{root,sany,compile}.log. Rebuild the scratch
+all-messages Go frontend before both existing source comparisons. Fifteen complete
+label-flow cases still match. The broader nine-case comparison remains four
+matches/five differences: arg_constant, label_select, params, qualified_callee and
+repeated. Combined comparison handle 15595 terminal 1 because that broader audit
+still fails. Logs: /mnt/oldrog/tmp/tlago-label-argument-{flow,nine}.log. All handles
+terminal and retired. No race workloads, original bounds/settings changes or
+current full-workspace claim. git diff --check passes.
+
+Next: port LS required-formal identity and HashSet add/remove/iteration behavior,
+including aggregate extra-parameter diagnostics. Unified guards, complete source
+graph allocation and evaluator sharing remain pending. New service work stays
+postponed while Java parity is completed.
+
 2026-10-06 Retained resolved label parameter arrays:
 Previous completed commit: 7fd7727. Native LabelExpr retains ordered formal nodes.
 After body generation, resolve actual formal identities from the generator's

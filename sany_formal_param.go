@@ -89,10 +89,12 @@ func (g *sanyExpressionGeneration) bindFormalParameter(node *sanyFormalParamNode
 // Diagnostic traversal and the LS parameter stack are integrated separately.
 func (g *sanyExpressionGeneration) resolveLabelFormals(label *LabelExpr, context map[string]Position) {
 	label.formalNodes = nil
+	label.illegalParameterSyntax = nil
 	if label.Syntax == nil {
 		return
 	}
 	label.formalNodes = make([]*sanyFormalParamNode, 0, len(label.Params))
+	label.illegalParameterSyntax = make([]*SanySyntaxNode, len(label.Params))
 	heirs := label.Syntax.GetHeirs()
 	if len(heirs) == 0 || heirs[0].Kind.JavaName() != "N_OpApplication" {
 		return
@@ -103,6 +105,7 @@ func (g *sanyExpressionGeneration) resolveLabelFormals(label *LabelExpr, context
 		node := symbol.formalNode
 		if node == nil {
 			argument := args[2*i+1]
+			label.illegalParameterSyntax[i] = argument
 			node = newSanyFormalParamNode(name, 0, sanyNodePosition(argument), argument, g.currentModule)
 		}
 		label.formalNodes = append(label.formalNodes, node)

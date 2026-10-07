@@ -13,10 +13,17 @@ have distinct dummy identities.
 Twenty-two direct Java SANY observations match for definition formals, quantified
 formals, repeated references, empty arrays and non-formal dummies, including their
 relative construction order and syntax/location. This is retained native metadata,
-not a complete LabelNode graph. The separate diagnostic traversal still validates
-names. It must use these arrays with the source LS stack and UID-based HashSet
-operations, emit illegal-argument diagnostics, and unify guards so forbidden label
-bodies allocate no nodes. Absolute allocation order remains unproven.
+not a complete LabelNode graph. The diagnostic traversal now emits an illegal
+parameter message for every non-formal occurrence at its complete argument range,
+then checks repetition by retained UID identity. All entries have the same concrete
+FormalParamNode class and kind, so UID membership implements their equals test.
+Distinct dummy nodes do not trigger repetition despite equal names.
+
+Twenty-two exact argument/repetition diagnostic observations across twelve scratch
+cases match Java. Required and extra parameter validation still compares names;
+port the source LS stack and UID-based HashSet operations, including aggregate
+extra-parameter iteration, and unify guards so forbidden label bodies allocate no
+nodes. Absolute allocation order remains unproven.
 
 ## TAKE/PICK formal construction and proof scope
 

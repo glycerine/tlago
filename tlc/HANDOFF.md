@@ -752,10 +752,13 @@ data and absolute allocation order remain pending.
 Label expression generation now retains resolved formal arrays after generating
 its body. Existing formals are shared; each non-formal argument occurrence gets
 its own dummy node using the argument's complete syntax and location. Twenty-two
-actual source-node observations match; existing focused checks pass. This is
-constructor metadata only: the separate label diagnostic traversal still compares
-names. Unified guards, LS stacks, illegal-argument diagnostics and identity-based
-HashSet validation remain pending.
+actual source-node observations match; existing focused checks pass. Label
+argument diagnostics now report each non-formal occurrence at its own argument
+syntax before repetition checks. Repetition uses retained UID identity, so distinct
+dummy nodes with the same spelling do not count as repeated formals. Twenty-two
+argument/repetition observations across twelve scratch cases match Java.
+Required and extra parameters still use the older name-based traversal. Unified
+guards, LS stacks and full identity-based HashSet validation remain pending.
 
 Next semantic work: use the retained arrays in Generator's label-parameter checks
 and port its LS stack, auditing remaining declaration constructors as needed.
