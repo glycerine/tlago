@@ -13,6 +13,12 @@ type sanySemThmOrAssumpDefNode struct {
 	suffices         bool
 	formalNodes      []*sanyFormalParamNode
 	proof            sanySemanticGraphNode
+	argMaxLevels     []tlaLevel
+	argWeights       []int
+	minMaxLevel      [][]tlaLevel
+	opLevelCond      [][][]bool
+	leibniz          []bool
+	isLeibniz        bool
 	labels           *sanyLabelTable
 }
 

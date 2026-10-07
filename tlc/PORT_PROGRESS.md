@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-07 Canonical theorem/assumption definition level checking:
+Previous completed commit: 4b2b905. Translate complete ThmOrAssumpDefNode.levelCheck
+and guarded maximum/weight/higher-order and Leibniz accessors. Preserve fresh
+bounds/weight allocation, direct body-level assignment, retained parameter and
+dependency sets, raw constraint copies and formal-reference removals. Retain
+source quirks: weights assign to themselves and Leibniz arrays are allocated
+inside the formal loop, leaving only the last slot initially true. Empty formal
+arrays retain prior Leibniz state. Use actual body virtual getters, not a native
+analyzer surrogate. Full descendant checks remain incomplete.
+
+External observer under /mnt/oldrog/tmp/tlago-theorem-level-* uses actual source
+ThmOrAssumpDef/Formal/LET nodes and controlled ExprNode metadata. Observer 4063
+passes; all 458 complete Java output rows match exactly after removing only the
+Go runner envelope. Preserve zero-to-three parameter matrix, theorem/assumption
+construction, false/repeated/decreasing/overflow iteration checks, full metadata
+formatting, all four indexed getter matrices, twelve partial-failure scenarios,
+mutable Leibniz aliasing and theorem-in-LET integration. No permanent test is
+invented; these observations add no original-method credit. Both incremental
+LET methods remain reconcile until all actual descendant/setup checks work.
+
+Broad affected original/model gate 42293 passes normally in 47.863s with 283
+passing test events. Full SANY 99899 passes in 1.998s; all-package compile 3038
+passes. All handles retired. No race, shortened workload or weakened assertion.
+No new full-workspace verification claim. Update handoff and architecture.
+
 2026-10-07 Canonical LabelNode level check and getter delegation:
 Previous completed commit: 98649b9. Translate complete source LabelNode.levelCheck
 and six overridden getters in sany_label_level.go. Preserve the source cached

@@ -9355,7 +9355,7 @@ The source for this constructor behavior is the installed JDK 21 bytecode.
 All 68 external Java/Go observations match, including complete metadata text and
 collection order, false/repeated/decreasing checks, skipped definitions, null
 failure state, and copy capacities across nine sizes. These observations add no
-original-test credit. Application, instance, theorem and module descendant
+original-test credit. Application, instance and module descendant
 checks remain dependencies before the original incremental LET tests can close.
 
 
@@ -9378,5 +9378,31 @@ Eighty-one external Java/Go rows agree exactly, including full metadata text,
 set/map identity, signed iterations, false body results, null body/parameter
 failures, body replacement with an unchecked literal, direct mutation and
 operator definitions whose bodies are labels. These scratch observations add no
-original-method credit. General application, substitution, theorem, instance,
+original-method credit. General application, substitution, instance,
 proof/module checking and evaluator collection sharing remain incomplete.
+
+
+## Canonical theorem and assumption definition level checking
+
+`sany_theorem_level.go` translates `ThmOrAssumpDefNode.levelCheck` and its metadata
+accessors. This differs from ordinary OpDef checking: every fresh iteration
+recreates maximum-level and weight arrays, assigns the current body's level
+directly, and rebuilds higher-order tables. Preserve the source weight assignment
+to itself and the Leibniz array allocation inside the parameter loop. With no
+parameters the Leibniz fields retain their prior values; with parameters only
+the last slot is initially true before non-Leibniz removal. Do not substitute
+the ordinary operator's monotonic algorithm or repair Java's apparent quirks.
+
+Parameter and dependency sets retain accumulated members across fresh checks.
+Constraints are raw copies with bound formals removed; argument dependencies
+persist unless both symbols occur by reference in the formal array. All guarded
+accessors retain source zero-only checks, variadic indexing and nullable-table
+fallbacks. The Leibniz accessor returns the actual mutable array. Partial failure
+keeps prior writes and table allocation. The production body remains the actual
+semantic node and all reads use current virtual getters.
+
+All 458 external Java/Go output rows match across zero to three formals,
+theorems/assumptions, false results, repeated/decreasing/overflow iterations,
+complete metadata and getter matrices, twelve failure cases, Leibniz aliasing
+and a theorem definition in a LET. These scratch observations add no original
+method credit and do not establish checks for every generated descendant class.

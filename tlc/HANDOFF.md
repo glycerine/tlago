@@ -1221,6 +1221,10 @@ LabelNode now checks formals and its actual body, preserving the source cached
 non-Leibniz set remains separate. All 81 direct Java observations agree, including
 label-bodied operator checks and exact getter guards. These observations add no
 original-method completion credit.
+Theorem/assumption definitions now use their complete source metadata algorithm
+and guarded accessors. Preserve source fresh-table resets, non-monotonic levels,
+unchanged weights and the Leibniz allocation inside the formal loop. All 458
+direct observations agree, including theorem definitions in LET checks.
 Application, instance, proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
