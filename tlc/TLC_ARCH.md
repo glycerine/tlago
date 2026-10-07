@@ -1,5 +1,30 @@
 # TLC Architecture Notes for the Go Port
 
+## InstanceNode and substitution storage
+
+InstanceNode now retains its nullable interned name, localness, target module,
+syntax and nullable step name. Supplied parameter and Subst arrays remain shared;
+null arrays become nonnull empty arrays. Construction allocates exactly one
+semantic UID. Its level accessor returns zero, as an INSTANCE proof step does
+not contribute to the enclosing proof's level. Children are a fresh array of
+substitution expressions, including null expressions; a null Subst entry raises
+the source typed NullPointerException. Module and parameters are not children.
+
+Subst is separate from SemanticNode and allocates no UID. Preserve declaration,
+expression, expression syntax and implicitness independently. setExpr updates
+both expression and implicitness. getSub searches in array order by declaration
+identity, including a null declaration, and returns the first match. Null arrays
+and null entries retain their source failures.
+
+All 582 rows across 192 InstanceNode constructor combinations and Subst mutation/
+lookup observations match Java, covering supplied-array mutation, null entries,
+step-name reset and UID allocation. These are temporary comparisons, not new
+permanent tests or original-method completion credit. The existing translated
+TestInstanceNode level-diagnostic method remains unchanged. Actual generation,
+SubstIn/APSubstIn wrappers, complete level inheritance, visitor dispatch and
+module/proof/LET instance vectors remain pending; no fabricated instance graphs
+are installed to stand in for those features.
+
 ## AP proof-step goals and declaration lifetimes
 
 Create the provisional named step goal before generating AP. The outer AP and

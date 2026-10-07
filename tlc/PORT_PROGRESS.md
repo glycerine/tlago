@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 InstanceNode constructors and Subst storage:
+Previous completed commit: 96244e0. Port actual InstanceNode constructor, name/
+module/localness/step-name accessors, constant-zero level accessor and fresh
+children consisting only of substitution expressions. Normalize null parameter
+and substitution arrays to empty arrays; retain supplied arrays and entries.
+Port Subst as a non-semantic object with no UID, independent declaration/
+expression/syntax/implicit fields, source mutation rules and first-match identity
+lookup. Null lookup arrays and null substitution entries retain typed source
+NullPointerException failures.
+
+All 582 complete Java/Go rows agree: 192 InstanceNode combinations varying
+parameter/substitution shapes, names, localness, module and syntax, plus six
+Subst mutation/lookup/allocation observations. Preserve aliases under caller
+mutation, nullable expressions, null-entry failures, step-name reset, kinds,
+levels and exact UID deltas. Scratch files/logs remain outside the repository
+under /mnt/oldrog/tmp/tlago-instance-ctor-*. Initial observer 21878 returned 0,
+but its nil syntax comparison used a typed nil interface and differed; fix the
+observer comparison without dropping any source row. Corrected observer 99951
+returned 0 and all 582 rows match. Both handles retired; no permanent tests
+invented and no original Java method completion credit added.
+
+The original TestInstanceNode.testOperatorArgumentMinimumLevelDiagnostic is
+already translated in sany_tests/semantic_testinstancenode_test.go; retain its
+unchanged parsing, generation, level-checking and parameter assertions. Complete
+sany_tests passes 1.879s (55474 retired). Existing affected root/parser/proof/TLC-
+model gate passes 46.815s (62786 retired); compile-all passes (13468 retired).
+git diff --check passes. No race, broad workload repetition or full-workspace
+pass claim. Actual INSTANCE generation, SubstIn/APSubstIn wrappers, module/proof/
+LET vectors, inherited levels and visitors remain pending. Continue those source
+requirements without fabricated import graphs. New distributed work is postponed.
+
 2026-10-07 TAKE/PICK applications and captured proof bindings:
 Previous completed commit: ad80a2a. Port actual bounded/unbounded $Take/$Pick
 applications, retaining source syntax, formal groups, tuple flags and domain

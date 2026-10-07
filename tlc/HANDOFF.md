@@ -1093,7 +1093,12 @@ Java. TAKE/PICK now construct actual bounded/unbounded applications, retain
 source formal groups and label parameters, and install PICK bindings after its
 proof using the captured context. All 2,424 rows across 35 whole TAKE/PICK
 modules match Java, including nested scope restoration and rejected bindings.
-INSTANCE proof graphs remain incomplete; bounded generation evidence does not
+InstanceNode constructor/accessors/children and Subst storage/mutation/identity
+lookup now match all 582 rows across 192 constructor combinations and mutation
+observations. Supplied arrays retain identity, null arrays become empty, and
+null entries preserve source failures. Actual INSTANCE generation, substitution
+wrappers and module/proof/LET instance vectors remain incomplete; bounded
+generation evidence does not
 complete inherited level checking, visitors or evaluator graph sharing.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
