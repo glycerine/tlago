@@ -1102,8 +1102,12 @@ across 180 source scenarios. Preserve their distinct source diagnostic codes.
 Production INSTANCE substitution templates now retain actual defaults, explicit
 RHS nodes and shared Subst mutations, including canonical label rejection outside
 a definition. All 51 rows across 17 direct processSubst scenarios match Java.
-Named-instance formal syntax and actual INSTANCE import generation, inherited
-wrapper levels/visitors and module/proof/LET instance vectors remain incomplete;
+Unnamed INSTANCE now retains actual shared/copied imported definitions, source
+pointers, wrappers, module vectors and proof-context bindings. Targets retain
+the instantiated flag; proof instances preserve body syntax and Java raw-array
+localness. All 347 rows across 12 valid whole modules and one retained parser
+rejection match Java. Named module definitions/formal syntax, EXTENDS inheritance,
+complete instance vectors and inherited wrapper levels/visitors remain incomplete;
 bounded
 generation evidence does not
 complete inherited level checking, visitors or evaluator graph sharing.

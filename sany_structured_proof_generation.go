@@ -264,7 +264,13 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 			graph.node = useHide
 		}
 	case "INSTANCE":
-		graph.complete = false
+		if len(step.Instances) != 1 || step.Instances[0].semanticNode == nil {
+			graph.complete = false
+		} else {
+			node := step.Instances[0].semanticNode
+			node.setStepName(graph.name)
+			graph.node = node
+		}
 	default:
 		graph.theorem = true
 		graph.suffices = step.Suffices

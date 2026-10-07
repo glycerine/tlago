@@ -30,6 +30,9 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 	if target == nil {
 		return nil
 	}
+	if target.semanticNode != nil {
+		target.semanticNode.isInstantiated = true
+	}
 	// getByClass filters Hashtable.elements(), not Context's insertion links.
 	// Keep every context entry during rehashing; unrelated definitions and
 	// builtin entries affect declaration enumeration too.
@@ -276,6 +279,13 @@ func (g *sanyExpressionGeneration) registerInstanceSymbols(instance Instance, co
 			added = append(added, instance.Name)
 		}
 		context[instanceNameSentinel(instance.Name)] = context[instance.Name]
+	}
+	if instance.semanticNode != nil {
+		for _, symbol := range g.instanceSymbols(instance) {
+			g.symbols[symbol.name] = retainSanyInstanceSymbol(g.symbols[symbol.name], g.formalSymbolTable().resolveSymbol(symbol.name))
+		}
+		// Canonical generation already reported registration diagnostics.
+		diags = nil
 	}
 	return diags, added
 }

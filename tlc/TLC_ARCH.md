@@ -1,5 +1,41 @@
 # TLC Architecture Notes for the Go Port
 
+## Unnamed INSTANCE imports and ownership
+
+Production unnamed INSTANCE generation now uses actual context enumeration,
+filtering local, builtin and module-name definitions. Reuse parameter-free
+operators where Java does; LOCAL copies and parameterized bodies retain the
+source constructor/module rules. SubstIn and APSubstIn wrappers share the actual
+substitutions, original parameter arrays, labels and source pointers. Preserve
+the source's asymmetric theorem-registration branch for a parameter-free original
+inside a parameterized target. Operator imports always enter the module definition
+vector; theorem imports enter it only for top-level INSTANCE generation.
+
+Allocate the InstanceNode after importing definitions. Top-level instances enter
+both the module instance vector and top-level vector; proof instances retain their
+body syntax and nullable step number, with numbered symbols pointing back to the
+same instance. Proof contexts retain actual accepted imported symbols. Native
+metadata now shares those pointers and canonical registration owns diagnostics.
+Targets retain the source instantiated flag. getInstances copies and caches the
+vector once, preserving the source cache lifetime and supplied instance identities.
+
+Use the syntax node's raw Zero-array presence for Java local(), including proof
+N_NonLocalInstance nodes whose nonnull Zero array makes localness true. Do not
+replace this with a LOCAL-token check. Proof INSTANCE keeps its body syntax;
+source replaces full-step syntax on theorem and USE/HIDE nodes separately.
+
+All 347 Java/Go observation rows agree across 12 valid whole modules and one
+retained parser-rejection input. Cover top-level/shared/LOCAL/parameterized
+imports, assertion wrappers, repeated imports, conflicts, chained instances,
+default/explicit substitutions, numbered/unnamed proof instances, exact UID order,
+source/body/module identity, labels, module vectors and proof-context backlinks.
+Anonymous LET INSTANCE syntax is rejected by both parsers and gets no semantic
+completion credit. The source LET generation branch is connected; incomplete
+named module definitions now keep LET graphs incomplete rather than fabricating
+an empty instance array. Named module definitions, EXTENDS inheritance, complete
+instance vectors, inherited level checks, visitors and evaluator graph sharing
+remain pending. No permanent tests or original-method completion credit added.
+
 ## Production INSTANCE substitution templates
 
 The production INSTANCE generator now retains an actual SubstIn template and

@@ -292,6 +292,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			} else if unit.instance != nil {
 				instance := unit.instance
 				diags = append(diags, g.generateInstanceSubstitutions(instance, module, current)...)
+				diags = append(diags, g.generateUnnamedInstance(instance, false)...)
 				registered, names := g.registerInstanceSymbols(*instance, current)
 				diags = append(diags, registered...)
 				for _, name := range names {

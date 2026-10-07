@@ -618,10 +618,19 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 			operatorParamSpecs[inst.Name] = specs
 		}
-		diags = append(diags, addInstanceSymbols(inst, spec, defined, declKinds, arities, operatorParamSpecs, instanceSymbols, localSymbols)...)
+		registered := addInstanceSymbols(inst, spec, defined, declKinds, arities, operatorParamSpecs, instanceSymbols, localSymbols)
+		if inst.semanticNode == nil {
+			diags = append(diags, registered...)
+		}
 		for name, symbol := range instanceSymbols {
 			if _, exists := expressionGeneration.moduleSymbols[name]; !exists {
 				expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: symbol.declarationNode, kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
+			}
+		}
+		if inst.semanticNode != nil {
+			for _, symbol := range expressionGeneration.instanceSymbols(inst) {
+				actual := mod.symbolTable.resolveSymbol(symbol.name)
+				expressionGeneration.moduleSymbols[symbol.name] = retainSanyInstanceSymbol(expressionGeneration.moduleSymbols[symbol.name], actual)
 			}
 		}
 	}
@@ -857,6 +866,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	generateInstance := func(inst *Instance) {
 		diags = append(diags, checks.generator.instance(*inst)...)
 		diags = append(diags, expressionGeneration.generateInstanceSubstitutions(inst, mod, expressionContexts.at(inst.Syntax, defined))...)
+		diags = append(diags, expressionGeneration.generateUnnamedInstance(inst, true)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: inst.SourcePosition(), node: &sanyCachedLevelCheck{run: func() (bool, Diagnostics) {
 			return levelChecker.checkInstanceSubstitutionLevelResult(*inst)
 		}}})

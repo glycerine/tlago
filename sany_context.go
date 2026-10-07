@@ -73,6 +73,9 @@ func (s *sanySemSymbolBase) semPosition() Position         { return s.pos }
 type sanySemModuleNode struct {
 	sanySemSymbolBase
 	context                  *sanyContext
+	isInstantiated           bool
+	instanceVec              []*sanySemInstanceNode
+	instances                []*sanySemInstanceNode
 	nestingLevel             int
 	definitions              []sanySemanticGraphNode
 	records                  []*sanySemOpApplNode

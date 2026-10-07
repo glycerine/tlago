@@ -1,5 +1,56 @@
 # TLC Port Progress
 
+2026-10-07 Actual unnamed INSTANCE imports and vectors:
+Previous completed commit: a7601c5. Port generateInstance's actual operator/
+assertion import enumeration and ownership branches. Share parameter-free
+operators where source does, construct LOCAL copies and wrap parameterized
+bodies in actual SubstIn/APSubstIn nodes. Retain original formals, labels, source
+pointers and originating/instantiating modules. Preserve source's asymmetric
+registration of parameter-free-origin theorems in a parameterized target.
+Operator imports enter module definitions in source order; theorem imports enter
+that vector only at top level. Canonical registration owns diagnostics; native
+metadata shares accepted actual pointers and does not report them twice.
+
+Allocate actual InstanceNode after imports. Top-level nodes enter instance and
+top-level vectors; getInstances copies and caches once. Mark targets instantiated.
+Bare proof INSTANCE retains its body syntax, nullable step name and numbered
+symbol backlink. Connect source proof/LET generation branches; missing named
+module-definition identities keep LET graphs incomplete rather than installing
+an empty instance array. Canonical context/export preflight prevents native-only
+imports from yielding partial fabricated graphs. Named module definitions,
+EXTENDS inheritance, remaining vectors, inherited levels, visitors and evaluator
+sharing remain pending. No permanent tests or original-method credit added.
+
+All 347 complete Java/Go rows match across 12 valid whole modules plus a retained
+anonymous LET parser-rejection input. Cover shared/LOCAL/parameterized imports,
+assertion wrappers, repeated imports/conflicts, earlier root definitions, chained
+instances, mixed defaults/explicit substitutions, exact relative UIDs, source/
+body/module/label identities, module vectors, numbered/unnamed proof instances
+and proof contexts/backlinks. Scratch files/logs remain outside the repository
+under /mnt/oldrog/tmp/tlago-instance-import-*. Java rejects anonymous LET INSTANCE
+and LOCAL INSTANCE; preserve the final parser-rejection observation and grant no
+semantic completion credit for it.
+
+Initial compile 34090 returned 0 and is retired. Observer 33042 used an incomplete
+manual Spec dependency table; 68715 also incorrectly treated the nested module as
+an external semantic root. Match the loader's registered inner module and
+external-root-only SemanticOrder; 61344 returned 0 and all initial 168 rows match.
+Expanded ten-module comparison retains all 281 rows. Observer 73933 failed on the
+invalid LET input; retain its parser rejection rather than drop it. 14461 returns
+0 and exposes two real source differences in proofs: Java local() follows raw
+Zero-array presence, making N_NonLocalInstance local, and InstanceNode syntax
+stays the statement body rather than full proof step. Fix production; 71494
+returns 0 and all 347 rows match. No expected output weakened; all handles retired.
+
+Existing affected root/parser/proof/TLC-model gate passes 46.909s (43488 retired).
+Complete sany_tests initially passes 1.845s (82318 retired), compile-all passes
+(81646 retired). After proof localness/syntax corrections, existing semantic/
+resolver and original Test206–220 selection passes 17.553s (90083 retired), and
+complete sany_tests passes 2.102s (97611 retired). git diff --check passes. Normal
+execution only; no race, broad long-workload repetition or full-workspace pass
+claim. Next port named module-definition construction and ownership. Distributed
+work remains postponed until core parity is complete.
+
 2026-10-07 Production INSTANCE substitution template integration:
 Previous completed commit: 8029384. Retain actual SubstIn templates and formal
 arrays on source Instances. Allocate the template before default applications or

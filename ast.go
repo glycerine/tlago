@@ -42,6 +42,7 @@ type Module struct {
 }
 
 type Instance struct {
+	semanticNode           *sanySemInstanceNode
 	substitutionNode       *sanySemSubstInNode
 	formalNodes            []*sanyFormalParamNode
 	generatedSubstitutions []sanyGeneratedSubstitution

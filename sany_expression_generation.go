@@ -181,6 +181,10 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 		case unit.instance != nil:
 			instance := unit.instance
 			diags = append(diags, g.generateInstanceSubstitutions(instance, g.currentModule, positions)...)
+			diags = append(diags, g.generateUnnamedInstance(instance, true)...)
+			if instance.semanticNode == nil {
+				completeGraph = false
+			}
 			registered, names := g.registerInstanceSymbols(*instance, positions)
 			diags = append(diags, registered...)
 			definitions := map[string]sanySelectorDefinition{}
