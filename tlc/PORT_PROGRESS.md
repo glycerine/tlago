@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary constant and variable declaration construction:
+Previous completed commit: f3f69f8. Generate concrete OpDeclNode instances in
+module-body order, before duplicate registration checks. Retain rejected nodes
+and accepted local context bindings. Preserve whole-item syntax/ranges, source
+kind/level/arity, semantic module ownership and levelChecked 1. Constants place
+themselves in levelParams and allParams; variables have empty sets. Identifier
+expressions retain their actual local declaration node. The class-wide ASSUME
+marker now uses the same constructor. Full SymbolTable registration, imported
+identities, remaining LevelNode constraints and graph visitors remain pending.
+
+Thirty-eight actual Java observations match, including seven root/nested
+constant/operator-constant/variable nodes, reference identity and the duplicate
+constructor allocation gap. Scratch Go also checks all rejected nodes are retained
+and the first binding survives. Initial compilation used the wrong Go name
+stateLevel; correct it to variableLevel. Initial duplicate-probe Go compilation
+failed on a missing separator; correct the temporary helper and rerun. Neither
+failure earns verification credit. Final comparison and all-package compile
+session 41179 terminal 0. Logs: /mnt/oldrog/tmp/tlago-declaration-{java,go}.log
+and tlago-declaration-compile-final.log. Helpers SourceDeclarationManual.java,
+tlago-declaration-manual_test.go and overlay/source directories remain outside
+the repository. No invented permanent tests or inventory credit.
+
+Freshly built frontend preserves complete Java diagnostics for 15 label-flow,
+16 required-parameter, nine broader-label and five expanded aggregate-label
+cases; session 7396 terminal 0. Logs:
+/mnt/oldrog/tmp/tlago-declaration-label-{flow,required,nine,extra}.log.
+Final unchanged focused root checks pass 5.360 seconds (77575), complete existing
+SANY package passes 1.745 seconds (29914), and four whole original models pass
+2.407 seconds (66850). All handles terminal 0 and retired. Logs:
+/mnt/oldrog/tmp/tlago-declaration-{root,sany,models}-final.log.
+No full-workspace pass is established for this snapshot. New distributed service
+work remains postponed. Keep remaining tests and parity gaps visible.
+
+
 2026-10-07 Module construction and class-wide ASSUME declaration:
 Previous completed commit: 574eae8. Native generation retains a concrete
 ModuleNode before the module body, with source arity -2, whole-module

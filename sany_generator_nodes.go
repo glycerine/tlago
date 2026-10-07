@@ -52,14 +52,40 @@ type sanySemOpDeclNode struct {
 	sanySemSymbolBase
 	level        tlaLevel
 	levelChecked int
+	module       *sanySemModuleNode
+	levelParams  map[*sanySemOpDeclNode]struct{}
+	allParams    map[*sanySemOpDeclNode]struct{}
+}
+
+// OpDeclNode initializes its level data before registration. Registration is
+// performed by the generator's current scope; rejected nodes keep their identity.
+func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity int, module *sanySemModuleNode, syntax *SanySyntaxNode) *sanySemOpDeclNode {
+	n := &sanySemOpDeclNode{
+		sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(kind), name: name, arity: arity},
+		level:             level, levelChecked: 1, module: module,
+		levelParams: make(map[*sanySemOpDeclNode]struct{}), allParams: make(map[*sanySemOpDeclNode]struct{}),
+	}
+	if module != nil {
+		n.originalModuleName = module.semName()
+	}
+	if syntax != nil {
+		n.TreeNode = syntax
+		n.pos = sanyNodePosition(syntax)
+		bridge := tlcBridge{convertingModule: n.originalModuleName}
+		n.Location = bridge.sourceLocationForPosition(n.pos)
+	} else {
+		n.TreeNode = nil
+		n.Location = tlc.NullSourceLocation
+	}
+	if kind == sanyConstantDeclKind {
+		n.levelParams[n] = struct{}{}
+		n.allParams[n] = struct{}{}
+	}
+	return n
 }
 
 var sanyInAssumeDummyNode = sync.OnceValue(func() *sanySemOpDeclNode {
-	return &sanySemOpDeclNode{
-		sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(0), name: "$$InAssume", arity: 0},
-		level:             constantLevel,
-		levelChecked:      1,
-	}
+	return newSanySemOpDeclNode("$$InAssume", 0, constantLevel, 0, nil, nil)
 })
 
 type sanyGeneratorNodes struct {

@@ -552,9 +552,21 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
+	mod.declarationNodes = nil
 	registerDeclaration := func(d Declaration) {
 		seenInDecl := map[string]bool{}
-		for _, name := range d.Names {
+		for i, name := range d.Names {
+			var syntax *SanySyntaxNode
+			if d.Syntax != nil {
+				syntax = d.Syntax.GetHeirs()[2*i+1]
+			}
+			kind, level := sanyConstantDeclKind, constantLevel
+			if d.Kind == VariableDecl {
+				kind, level = sanyVariableDeclKind, variableLevel
+			}
+			arity, _ := declarationArity(d, name)
+			node := newSanySemOpDeclNode(sanyCanonicalOperatorImage(name), kind, level, arity, mod.semanticNode, syntax)
+			mod.declarationNodes = append(mod.declarationNodes, node)
 			if seenInDecl[name] {
 				diags = append(diags, errorAt(d.Pos, "E4201", "duplicate declaration %s", name))
 				continue
@@ -562,7 +574,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			seenInDecl[name] = true
 			if _, exists := defined[name]; !exists {
 				arity, _ := declarationArity(d, name)
-				expressionGeneration.moduleSymbols[name] = localSymbol{kind: d.Kind, arity: arity, pos: declarationSymbolPosition(d, name)}
+				expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: node, kind: d.Kind, arity: arity, pos: declarationSymbolPosition(d, name)}
+				if mod.semanticNode.context.getSymbol(node.semName()) == nil {
+					mod.semanticNode.context.addSymbol(node)
+				}
 			}
 			addName(name, d.Pos, d.Kind)
 			declKinds[name] = d.Kind
@@ -1772,6 +1787,7 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 type localSymbol struct {
 	builtinNode      *sanySemBuiltInSymbol
 	formalNode       *sanyFormalParamNode
+	declarationNode  *sanySemOpDeclNode
 	proofStepKind    string
 	proofAssumeProve bool
 	operatorParams   []operatorParamSpec
@@ -3578,8 +3594,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 		}
 		e.formalNode = nil
+		e.declarationNode = nil
 		if symbol, exists := generation.lookupSymbol(e.Name, defined); exists {
 			e.formalNode = symbol.formalNode
+			e.declarationNode = symbol.declarationNode
 		}
 		e.generationArity = nil
 		if generation.symbols != nil {

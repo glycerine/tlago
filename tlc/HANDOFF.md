@@ -791,13 +791,21 @@ arity -2, whole-module syntax/location, zero-based nesting and separate contexts
 Nested nodes enter the parent's definition list; formals retain the constructed
 module owner. Fourteen module observations match Java. Generator class initialization
 also retains its process-wide `$$InAssume` declaration before instance sentinels.
-Twenty-eight sentinel/marker observations match. Ordinary declaration/operator
-context entries and complete module definition graphs remain pending.
+Twenty-eight sentinel/marker observations match. Ordinary constants and variables
+now retain concrete OpDeclNode identities, whole declaration-item syntax,
+module ownership and constructor level data. Constants include themselves in
+both parameter sets; variables do not. Generation allocates rejected declaration
+nodes and keeps the earlier accepted binding. Local accepted declarations enter
+the module context, and identifier expressions retain their declaration node.
+Thirty-eight actual Java observations match, including a rejected duplicate's
+allocation gap. Complete SymbolTable registration, imported declaration identity,
+operator context entries and ordered module definition graphs remain pending.
 
 The five expanded aggregate-label cases now match completely. The 70-formal UID
 range and first hash match Java exactly (305..374, 1607), without offsets. This
 verifies that construction prefix, not complete allocation order across all graphs.
-Next semantic work: port ordinary declaration/operator graph construction, wire
+Next semantic work: complete declaration registration/import identity and ordinary
+operator graph construction, wire
 failure results to retained sentinels, and unify label generation guards. Complete
 LS/LabelNode graphs, marker scope integration, level data and evaluator sharing
 remain pending. Receipts are in PORT_PROGRESS.md.

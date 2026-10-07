@@ -1,5 +1,22 @@
 # TLC Architecture Notes for the Go Port
 
+## Retained ordinary declaration nodes
+
+Generate OpDeclNode for every constant and variable occurrence before attempting
+registration, including rejected duplicates. Retain the constructed nodes in
+source order on the native module. Constants use kind 2 and level 0; variables
+use kind 3 and level 1. Arity and whole-item syntax follow Generator.buildParameter
+and processVariables. Each node owns its UID, semantic module link and levelChecked
+value 1. Constant levelParams and allParams contain the node itself; variable
+sets are empty. Local accepted nodes enter the retained module context, and
+identifier expressions retain their actual declaration identity. The class-wide
+ASSUME marker uses the same constructor with null module and syntax.
+
+Thirty-eight actual Java observations match. Full SymbolTable registration,
+EXTENDS/INSTANCE identity propagation, the remaining LevelNode constraints and
+graph visitors still require porting; the native scope adapter remains in use.
+
+
 ## Retained ModuleNode and Generator ASSUME marker
 
 Generate each ModuleNode before its body. The native semantic node retains source
@@ -21,7 +38,8 @@ scope installation/resolution remains pending.
 All five expanded aggregate label cases now match complete Java diagnostics. The
 70-formal range and first hash are exactly 305..374 and 1607 in both runtimes.
 This proves the inspected construction prefix, not general allocation order:
-ordinary OpDeclNode/OpDefNode/OpApplNode construction, all context entries and the
+complete declaration registration and ordinary OpDefNode/OpApplNode construction,
+all context entries and the
 complete ordered module-definition graph remain incomplete. Canonical failure
 results, LevelNode data, visitors and evaluator sharing still require porting.
 
