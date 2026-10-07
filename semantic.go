@@ -2127,11 +2127,16 @@ func (location sanyDiagnosticLocation) String() string {
 // Context.mergeExtendContext's ErrorDetails retain structured parameters as
 // well as their rendered message. Both the parser and direct context use this.
 func sanyExtendConflict(name string, incomingKind DeclarationKind, incoming Position, existingKind DeclarationKind, existing Position) Diagnostic {
+	return sanyExtendConflictForClasses(name, incomingKind, incoming, existingKind, existing, semanticImportClass(incomingKind) == semanticImportClass(existingKind))
+}
+
+func sanyExtendConflictForClasses(name string, incomingKind DeclarationKind, incoming Position, existingKind DeclarationKind, existing Position, sameClass bool) Diagnostic {
 	incomingDescription := semanticImportDescription(incomingKind)
 	existingDescription := semanticImportDescription(existingKind)
 	parameters := []any{incomingDescription, name, existingDescription, sanyDiagnosticLocation{Position: existing}}
 	diagnostic := errorAt(incoming, "E4224", "The %s of '%s' conflicts with \nits %s at %s.", parameters...)
-	if semanticImportClass(incomingKind) == semanticImportClass(existingKind) {
+	if sameClass {
+		parameters[0] = existingDescription
 		diagnostic = warningAt(incoming, "W4800", "Warning: the %s of '%s' conflicts with \nits %s at %s.", parameters...)
 	}
 	diagnostic.SANYRange = SanyRange{Begin: incoming, End: incoming.SourceEnd()}

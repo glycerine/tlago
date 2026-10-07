@@ -242,50 +242,67 @@ func sanyContextImportKind(symbol sanySemSymbol) DeclarationKind {
 	case *sanySemModuleNode:
 		return InstanceDecl
 	}
-	switch symbol.semKind() {
-	case sanyUserDefinedOpKind, sanyBuiltInKind, sanyModuleInstanceKind:
-		return OperatorDecl
-	case sanyThmOrAssumpDefKind:
-		return semanticTheoremImportKind
-	case sanyConstantDeclKind:
-		return ConstantDecl
-	case sanyVariableDeclKind:
-		return VariableDecl
-	case sanyFormalParamKind:
-		return semanticFormalParamImportKind
-	case sanyModuleKind:
-		return InstanceDecl
-	default:
-		return DeclarationKind("BOUND_SYMBOL")
-	}
+	return ConstantDecl // kindOfNode treats every other concrete class as a declaration.
 }
 
 func (c *sanyContext) mergeExtendContext(imported *sanyContext) (bool, Diagnostics) {
 	var diags Diagnostics
 	if c == nil || imported == nil {
-		return true, diags
+		panic(tlc.NewNullPointerException())
 	}
+	// reversePairList copies the source history before adding any pairs. In
+	// particular, merging a context into itself cannot extend this traversal.
+	entries := append([]*sanyContextEntry(nil), imported.order...)
 	success := true
-	for _, entry := range imported.order {
+	for _, entry := range entries {
 		sym := entry.sym
-		if sym == nil || sym.semLocal() {
+		if sym == nil || (reflect.ValueOf(sym).Kind() == reflect.Pointer && reflect.ValueOf(sym).IsNil()) {
+			panic(tlc.NewNullPointerException())
+		}
+		if sym.semLocal() {
 			continue
 		}
-		current := c.table[entry.key]
+		_, module := sym.(*sanySemModuleNode)
+		key := sanyContextKey{name: sym.semName(), module: module}
+		current := c.table[key]
 		if current == nil {
-			c.add(entry.key, sym)
+			c.add(key, sym)
 			continue
 		}
-		if current.sym == sym || sanySameOriginalModule(current.sym, sym) {
+		if current.sym == sym {
 			continue
 		}
-		diagnostic := sanyExtendConflict(sym.semName(), sanyContextImportKind(sym), sym.semPosition(), sanyContextImportKind(current.sym), current.sym.semPosition())
+		if current.sym == nil || (reflect.ValueOf(current.sym).Kind() == reflect.Pointer && reflect.ValueOf(current.sym).IsNil()) {
+			panic(tlc.NewNullPointerException())
+		}
+		sameClass := reflect.TypeOf(current.sym) == reflect.TypeOf(sym)
+		if sameClass && sanySameOriginalModule(current.sym, sym) {
+			continue
+		}
+		incomingPosition := sanyContextSymbolTreePosition(sym)
+		existingPosition := sanyContextSymbolTreePosition(current.sym)
+		diagnostic := sanyExtendConflictForClasses(sym.semName(), sanyContextImportKind(sym), incomingPosition, sanyContextImportKind(current.sym), existingPosition, sameClass)
 		diags = appendSanyDiagnostics(diags, diagnostic)
-		if diagnostic.Severity == SeverityError {
+		if !sameClass {
 			success = false
 		}
 	}
 	return success, diags
+}
+
+// Merge diagnostics dereference the current tree, not cached declaration metadata.
+func sanyContextSymbolTreePosition(symbol sanySemSymbol) Position {
+	tree := symbol.semBase().GetTreeNode()
+	if tree == nil || (reflect.ValueOf(tree).Kind() == reflect.Pointer && reflect.ValueOf(tree).IsNil()) {
+		panic(tlc.NewNullPointerException())
+	}
+	if syntax, ok := tree.(*SanySyntaxNode); ok {
+		return sanyNodePosition(syntax)
+	}
+	if tree == tlc.NullSemanticNodeInstance.GetTreeNode() {
+		return Position{File: tlc.NullSemanticNodeInstance.Location.Source}
+	}
+	panic("unsupported context symbol syntax node")
 }
 
 func sanyOriginalSource(symbol sanySemSymbol) sanySemSymbol {

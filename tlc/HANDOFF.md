@@ -1147,7 +1147,12 @@ observations add no permanent tests or original-method credit. Context duplicati
 now copies history independently but shares symbol nodes, rebuilding lookup
 newest-first with plain node names exactly as Java does. The oldest repeated
 name wins and module keys become plain names in the copy. All 1,578 direct
-comparison rows and the retained 16,872 module rows match. Bounded generation
+comparison rows and the retained 16,872 module rows match. EXTENDS Context
+merge now snapshots history, derives keys from actual classes/names, compares
+concrete classes and reads current syntax-tree locations. All 1,115 direct
+merge rows and the retained module rows match Java. Its module-generation
+caller still discards canonical diagnostics in favor of native import metadata;
+that ownership reconciliation remains pending. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 

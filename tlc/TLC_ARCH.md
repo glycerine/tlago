@@ -1,5 +1,31 @@
 # TLC Architecture Notes for the Go Port
 
+## EXTENDS Context merge uses actual node classes and names
+
+`Context.mergeExtendContext` snapshots the source Pair history before traversal,
+then processes it oldest-first. Derive each lookup key from the symbol's actual
+name and class: ModuleNodes use ModuleName keys; every other node uses a plain
+name. An original insertion key is not retained by the merge. This matters after
+Context duplication, and for self-merges that add a previously absent key.
+
+Skip local nodes, retain the first accepted binding, and suppress identical
+pointers before comparing concrete classes. Definitions from the same immediate
+source in a parameter-free module avoid a warning. Otherwise, equal concrete
+classes warn and different classes error. Diagnostic descriptions follow
+kindOfNode's class checks; warning descriptions both use the existing node.
+Read the current syntax trees for diagnostic locations, including null failures.
+Null contexts and null history or conflicting lookup symbols throw typed
+NullPointerException rather than returning success or silently skipping entries.
+
+All 1,115 direct Java/Go rows match across six actual node classes, constant and
+variable declarations, three supplied-key forms, separate/self/identity merges,
+lookup retention, diagnostic messages/parameters, local formals and null cases.
+The retained 16,872 whole-module rows also match. Existing scaffold helpers now
+supply actual operator/declaration classes with their original requested kinds;
+assertions and cases remain unchanged. This adds no original-method credit.
+Module-generation diagnostic ownership still uses native import metadata and
+needs reconciliation; this Context correction does not complete that caller.
+
 ## Context duplication preserves source history and lookup quirks
 
 `Context.duplicate` copies the complete Pair history, sharing its symbol nodes

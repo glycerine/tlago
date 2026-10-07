@@ -3,11 +3,24 @@ package tlago
 import (
 	"strings"
 	"testing"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 func TestSanyContextBehaviors(t *testing.T) {
-	sym := func(name string, kind sanySemKind, module string) *sanySemSymbolBase {
-		return newSanySemSymbol(name, kind, 0, module, Position{File: module, Line: 1, Column: 1})
+	// Exercise actual Java-equivalent classes in Context's class comparison.
+	sym := func(name string, kind sanySemKind, module string) sanySemSymbol {
+		position := Position{File: module, Line: 1, Column: 1}
+		if kind == sanyConstantDeclKind || kind == sanyVariableDeclKind {
+			node := newSanySemOpDeclNode(name, kind, 0, 0, nil, tlc.NullSemanticNodeInstance.GetTreeNode())
+			node.pos = position
+			return node
+		}
+		node := newSanySemNullOpDefNode(name)
+		node.setKind(kind)
+		node.pos = position
+		node.originalModuleName = module
+		return node
 	}
 	names := func(symbols []sanySemSymbol) string {
 		parts := make([]string, 0, len(symbols))
@@ -20,7 +33,7 @@ func TestSanyContextBehaviors(t *testing.T) {
 	t.Run("preserves insertion order when merging extended contexts", func(t *testing.T) {
 		imported := newSanyContext()
 		local := sym("Hidden", sanyUserDefinedOpKind, "Base")
-		local.local = true
+		local.semBase().local = true
 		imported.addSymbol(local)
 		imported.addSymbol(sym("A", sanyUserDefinedOpKind, "Base"))
 		imported.addSymbol(sym("B", sanyVariableDeclKind, "Base"))
@@ -97,7 +110,7 @@ func TestSanyContextBehaviors(t *testing.T) {
 		dst.addSymbol(original)
 		imported := newSanyContext()
 		instance := sym("A", sanyUserDefinedOpKind, "Shared")
-		instance.source = original
+		instance.semBase().source = original
 		imported.addSymbol(instance)
 
 		_, diags := dst.mergeExtendContext(imported)

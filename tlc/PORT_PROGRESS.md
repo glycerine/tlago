@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 EXTENDS Context merge keys, classes and syntax locations:
+Previous completed commit: 0bd0b13. Port mergeExtendContext's reversePairList
+snapshot and oldest-first traversal. Derive keys from actual node names/classes,
+not the original insertion keys: ModuleNodes use ModuleName; other nodes use
+plain names. Preserve first accepted bindings, pointer identity, source-module
+suppression and concrete-class warning/error decisions. Remove semantic-kind
+fallback from diagnostic descriptions; source kindOfNode only recognizes actual
+OpDef/FormalParam classes as definitions. Warnings describe the existing class
+in both description parameters. Read current syntax-tree locations and preserve
+null receiver/history/conflicting-symbol/tree failures.
+
+Manual observer 26422 returned 0: all 1,115 rows match Java across six actual
+classes, constant/variable declarations, three key forms and separate/self/same-
+pointer merges, with exact messages/parameters and retained bindings. Final
+observer 61888 returned 0 after syntax-location correction; all rows still match.
+Retained whole-module observer 49774 returned 0; final 76172 also returned 0,
+with all 16,872 rows matching unchanged Java. Scratch files remain outside the
+repo under /mnt/oldrog/tmp/tlago-context-merge-*. No permanent new tests or
+original-method completion credit added; original TestContext stays unchanged.
+
+Existing scaffold symbol helper supplied generic base-class proxies, which cannot
+represent Java's actual class comparison. Replace those inputs with actual
+OpDef/OpDecl nodes, retaining all cases/assertions. Initial gate 65360 failed
+47.925s because the helper left user operators at the null constructor's kind
+zero. Restore each requested kind; do not weaken the original kind assertion.
+Initial SANY 24992 passed 1.837s and compile 65836 passed; all retired. Final
+root/parser/context/proof/TLC-model gate passes 47.800s (62127 retired), full
+SANY passes 1.753s (24534 retired), and compile-all passes (79549 retired).
+All handles retired; git diff --check passes. Normal execution only, with no
+broad race or full-workspace pass claim.
+
+Module generation still discards canonical Context merge diagnostics while
+reporting native import metadata. Reconcile that caller and missing-extendee
+abort behavior next; inherited levels, general selectors, visitors and evaluator
+sharing remain incomplete. New distributed service work remains deferred.
+
 2026-10-07 Context duplicate history and lookup insertion:
 Previous completed commit: 31fa8bc. Port Context.duplicate against the actual
 Pair loop. Copy independent entries while sharing symbol nodes; rebuild lookup
