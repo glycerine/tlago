@@ -3336,14 +3336,41 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)
 			return unresolved
 		}
+		operator := generation.applicationOperator(e.Op, e.Syntax, defined)
 		diags = append(diags, generation.checkExpr(e.Expr, defined, locals)...)
+		if e.Syntax != nil && (e.Syntax.Kind.JavaName() == "N_ConjList" || e.Syntax.Kind.JavaName() == "N_DisjList") {
+			name := "$ConjList"
+			if e.Syntax.Kind.JavaName() == "N_DisjList" {
+				name = "$DisjList"
+			}
+			retainSanyBuiltInApplication(e, name, []Expr{e.Expr})
+		} else {
+			diags = append(diags, retainSanyMatchedApplication(e, operator, []Expr{e.Expr})...)
+		}
 	case *BinaryExpr:
 		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullExpression)
 			return unresolved
 		}
+		operator := generation.applicationOperator(e.Op, e.Syntax, defined)
 		diags = append(diags, generation.checkExpr(e.Left, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Right, defined, locals)...)
+		if e.Syntax != nil {
+			switch e.Syntax.Kind.JavaName() {
+			case "N_ConjList", "N_DisjList":
+				name := "$ConjList"
+				if e.Syntax.Kind.JavaName() == "N_DisjList" {
+					name = "$DisjList"
+				}
+				retainSanyBuiltInApplication(e, name, sanySourceNaryOperands(e))
+			case "N_Times":
+				retainSanyBuiltInApplication(e, "$CartesianProd", sanySourceNaryOperands(e))
+			default:
+				diags = append(diags, retainSanyMatchedApplication(e, operator, []Expr{e.Left, e.Right})...)
+			}
+		} else if !e.JunctionList && !e.SanyNary {
+			diags = append(diags, retainSanyMatchedApplication(e, operator, []Expr{e.Left, e.Right})...)
+		}
 	case *CallExpr:
 		if ident, ok := e.Callee.(*IdentExpr); ok {
 			_, instance := defined[instanceNameSentinel(ident.Name)]

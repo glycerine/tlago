@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-07 Prefix/infix/postfix, junction and Cartesian application graphs:
+Previous completed commit: 2df3b84. Continue actual operator-body generation.
+Generator resolves GenID and its synonym before generating operands, including
+prefix '-' becoming '-.'. Retain that ordering and resolve the actual semantic
+symbol, rather than rebuilding it from the native AST's normalized spelling.
+Wire real prefix/infix/postfix applications through the general matched OpAppl
+constructor, retaining actual generated children. Symbols or child graphs not
+yet constructed remain explicitly incomplete; no placeholder stands in for them.
+
+Source junction lists and N_Times each produce one builtin application. Native
+AST translation flattens them into several wrappers; gather only wrappers
+without their own syntax so no intermediate application is allocated. Keep
+explicitly nested source expressions separate. Single-item junctions use their
+source builtin list constructor, not an incorrectly matched binary operator.
+Cartesian products use $CartesianProd even for two factors. General calls and
+selectors still need their earlier arity/selection checks and source identities
+wired before constructor matching; do not add unreachable duplicate diagnostics
+as a replacement for those checks. Ordinary OpDef generation/registration and
+other body graphs, LevelNode data and evaluator sharing remain pending.
+
+Scratch actual Java/Go comparisons cover 59 literal/builtin/operator expressions:
+ASCII/Unicode aliases, all three fixities, logic/set operators, action/temporal
+forms, single/multiple junction lists, n-ary Cartesian products and explicitly
+nested products. All 215 graph nodes agree in kind, syntax kind, operator name,
+operand order, bound/range array shape and relative UID allocation. Global
+operator identity, original root syntax and fresh generation are also checked
+in Go. Receipt /mnt/oldrog/tmp/tlago-operator-expression-comparison.log; Go
+42126 terminal 0. An expanded 36-case bound/operator observation checks 249
+nodes, 57 formal references and 30 bound groups, including operators inside
+quantifiers, CHOOSE, functions/comprehensions and Cartesian products. All 372
+observations agree exactly; Go 73924 terminal 0, receipt
+/mnt/oldrog/tmp/tlago-operator-bound-comparison.log. Scratch files use those
+prefixes. No new persistent tests, original-method credit or corpus sweep.
+
+Full existing SANY passes normally in 2.087 seconds (25603, terminal 0).
+Focused parser/context/bridge and original TLC model gate passes in 47.210
+seconds (20017, terminal 0). All packages compile (49417, terminal 0).
+Rebuild the scratch diagnostic helper, then all 56 formal-scope diagnostic
+observations still match source Java (40887, terminal 0). Diff whitespace checks
+pass and all handles are retired. Original assertions/fixtures and inventory
+counts unchanged, no new full-workspace pass or race workload. New distributed
+architecture remains postponed. Continue real call/selector construction and
+remaining expression graphs before complete ordinary OpDef integration.
+
 2026-10-07 Concrete symbol matching and general application/OpArg constructors:
 Previous completed commit: d92dd77. Continue source symbol application review.
 Port OpDeclNode.match and every OpDefNode.match branch, including module-kind

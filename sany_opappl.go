@@ -2,7 +2,10 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
-import "github.com/glycerine/tlago/tlc"
+import (
+	"github.com/glycerine/tlago/tlc"
+	"strings"
+)
 
 // OpApplNode's builtin constructor deliberately skips operator.match. Its
 // operator comes from the global context, not the enclosing module's table.
@@ -195,4 +198,80 @@ func retainSanyBoundApplication(expr Expr, name string, bounds []BoundVar, param
 		i = end
 	}
 	source.semanticGraph = newSanySemBoundedOpApplNode(name, nil, []sanySemanticGraphNode{operand}, groups, tuples, ranges, source.Syntax)
+}
+
+// Generator resolves the raw GenID, including prefix '-' becoming '-.', before
+// generating operands. The native AST's normalized spelling cannot replace it.
+func (g *sanyExpressionGeneration) applicationOperator(op string, syntax *SanySyntaxNode, context map[string]Position) sanySemSymbol {
+	name := op
+	if syntax != nil {
+		heirs := syntax.GetHeirs()
+		index := -1
+		switch syntax.Kind.JavaName() {
+		case "N_PrefixExpr":
+			index = 0
+		case "N_InfixExpr", "N_PostfixExpr":
+			index = 1
+		}
+		if index >= 0 && index < len(heirs) {
+			if raw := sanyOperatorGenIDName(heirs[index]); raw != "" {
+				name = raw
+				if syntax.Kind.JavaName() == "N_PrefixExpr" && (name == "-" || strings.HasSuffix(name, "!-")) {
+					name += "."
+				}
+			}
+		}
+	}
+	name = ResolveSanyOperatorSynonym(name)
+	if symbol := g.formalSymbolTable().resolveSymbol(name); symbol != nil {
+		return symbol
+	}
+	if symbol, ok := g.lookupSymbol(name, context); ok {
+		if symbol.formalNode != nil {
+			return symbol.formalNode
+		}
+		if symbol.declarationNode != nil {
+			return symbol.declarationNode
+		}
+	}
+	return nil
+}
+
+func retainSanyMatchedApplication(expr Expr, operator sanySemSymbol, children []Expr) Diagnostics {
+	source := sanyGenerationSource(expr)
+	if source == nil || operator == nil {
+		return nil
+	}
+	operands := make([]sanySemanticGraphNode, len(children))
+	for i, child := range children {
+		operands[i] = sanyGeneratedExpressionNode(child)
+		if operands[i] == nil {
+			return nil
+		}
+	}
+	node, diagnostics, err := newSanySemOpApplNode(operator, operands, source.Syntax)
+	if err != nil {
+		panic(err)
+	}
+	source.semanticGraph = node
+	return diagnostics
+}
+
+// A single parser junction/product node is flattened into native wrappers.
+// Only wrappers lacking their own syntax belong to this source application;
+// explicitly nested expressions retain separate applications and identities.
+func sanySourceNaryOperands(root *BinaryExpr) []Expr {
+	var operands []Expr
+	var collect func(Expr)
+	collect = func(expr Expr) {
+		if nested, ok := expr.(*BinaryExpr); ok && nested.Syntax == nil && nested.Op == root.Op && ((root.JunctionList && nested.JunctionList) || (root.Syntax != nil && root.Syntax.Kind.JavaName() == "N_Times" && nested.SanyNary)) {
+			collect(nested.Left)
+			collect(nested.Right)
+			return
+		}
+		operands = append(operands, expr)
+	}
+	collect(root.Left)
+	collect(root.Right)
+	return operands
 }

@@ -1004,6 +1004,13 @@ graphs. All 138 direct match/constructor cases and 25 expression trees agree
 with Java; full SANY and focused original models pass. Shared Errors ownership,
 frontend exception conversion and full call/operator/selector wiring remain
 pending. No additional original-method completion is claimed.
+Prefix/infix/postfix graphs now resolve source operator spelling before
+operands and retain matched applications. Junctions and Cartesian products
+preserve one source application without allocating AST wrapper nodes; explicitly
+nested products stay separate. Fifty-nine expression and 36 bound/operator
+comparisons agree with Java, including allocation order. Existing SANY and
+focused original TLC models pass. Full call/selector checks and identities,
+remaining bodies and ordinary OpDef integration are still pending.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

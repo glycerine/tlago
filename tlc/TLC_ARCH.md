@@ -1,5 +1,22 @@
 # TLC Architecture Notes for the Go Port
 
+## Operator applications and flattened syntax forms
+
+Prefix/infix/postfix generation resolves the raw GenID and source synonym
+before generating operands. Prefix '-' becomes '-.' as in GenID.finalAppend.
+The AST's normalized spelling is insufficient for declaration lookup. Actual
+resolved symbols and generated children feed the general matched constructor.
+Unknown canonical symbols/children remain incomplete rather than synthesized.
+
+Junction lists and Cartesian products construct one source builtin application.
+Their AST wrappers lacking syntax are flattened; explicitly nested source nodes
+keep their own applications. Single-item junctions still use $ConjList/$DisjList,
+and N_Times uses $CartesianProd even for two operands. Avoid allocating unused
+intermediate applications: semantic UID order is part of source graph identity.
+Bounded source comparisons verify shapes, syntax kinds, operand order and
+relative allocation. Full call/selector checks and identities, ordinary OpDef
+integration, other bodies, LevelNode data and evaluator sharing remain pending.
+
 ## Concrete symbol matching and primary OpArg construction
 
 The general OpAppl constructor initializes its graph, calls the actual formal,
@@ -16,7 +33,7 @@ Shared Errors ownership and frontend exception conversion remain pending.
 Primary OpArg nodes retain the actual resolved symbol, name/arity, syntax and
 canonical semantic ModuleNode. Available zero-arity references and boolean
 literals now retain matched application graphs; operator references retain
-OpArgs. Full call, prefix/infix/postfix and selector wiring remain pending,
+OpArgs. Full call and selector wiring remain pending,
 alongside imported identities, LevelNode data and evaluator sharing. Direct
 source comparisons verify matcher/constructor branches; they do not establish
 complete ordinary operator generation or original-method completion.
