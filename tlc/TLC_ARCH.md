@@ -4,7 +4,7 @@
 
 `Generator.processExtendsList` distinguishes an absent ModuleNode from an absent
 context on a resolved module. For an absent context, log INTERNAL_ERROR 4003 with
-`Couldn't find context for module `%s'.` and the actual UniqueString parameter.
+``Couldn't find context for module `%s'.`` and the actual UniqueString parameter.
 Continue copying assumption, theorem and top-level vectors, then finish the
 extendee array and generate the body. Java returns an AbortException object from
 Errors.addMessage here but does not throw it. Go now preserves that control flow
