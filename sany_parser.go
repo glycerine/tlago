@@ -767,52 +767,77 @@ func (p *SanyParser) HaveStep() *SanySyntaxNode {
 }
 
 func (p *SanyParser) TakeStep() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenTake, "expected TAKE"))
+	p.beginProduction("TakeStep")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenTake, "expected TAKE")}
+	p.expecting = "identifier"
 	if p.takeUsesQuantBounds() {
-		heirs = append(heirs, p.ProofQuantBoundUntil(SanyTokenComma, SanyTokenEOF))
+		heirs = append(heirs, p.QuantBound())
+		p.expecting = "comma or step"
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.ProofQuantBoundUntil(SanyTokenComma, SanyTokenEOF))
+			p.expecting = "identifier or tuple of identifiers"
+			heirs = append(heirs, p.QuantBound())
+			p.expecting = "comma or proof step"
+		}
+	} else if p.check(SanyTokenIdentifier) {
+		heirs = append(heirs, p.Identifier())
+		p.expecting = "comma or proof step"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "identifier"
+			heirs = append(heirs, p.Identifier())
+			p.expecting = "comma or proof step"
 		}
 	} else {
-		heirs = append(heirs, p.Identifier())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.Identifier())
-		}
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected TAKE identifier")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_TakeStep"], heirs...)
 }
 
 func (p *SanyParser) WitnessStep() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenWitness, "expected WITNESS"))
+	p.beginProduction("WitnessStep")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenWitness, "expected WITNESS")}
+	p.expecting = "expression"
 	heirs = append(heirs, p.ExpressionUntilCommaOrProofBoundary())
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "expression"
 		heirs = append(heirs, p.ExpressionUntilCommaOrProofBoundary())
+		p.expecting = "comma or colon"
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_WitnessStep"], heirs...)
 }
 
 func (p *SanyParser) PickStep() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenPick, "expected PICK"))
+	p.beginProduction("PickStep")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenPick, "expected PICK")}
+	p.expecting = "identifier"
 	if p.pickUsesIdentifierList() {
-		heirs = append(heirs, p.IdentDecl())
+		heirs = append(heirs, p.Identifier())
+		p.expecting = "comma, or colon"
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.IdentDecl())
+			p.expecting = "identifier"
+			heirs = append(heirs, p.Identifier())
+			p.expecting = "comma or colon"
+		}
+	} else if p.check(SanyTokenLab) || p.check(SanyTokenIdentifier) {
+		heirs = append(heirs, p.QuantBound())
+		p.expecting = "comma or colon"
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "identifier or tuple of identifiers"
+			heirs = append(heirs, p.QuantBound())
+			p.expecting = "comma or colon"
 		}
 	} else {
-		heirs = append(heirs, p.ProofQuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.ProofQuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
-		}
+		p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenIdentifier}}, "expected PICK identifier or tuple")
 	}
-	heirs = append(heirs, p.consume(SanyTokenColon, "expected : in PICK step"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in PICK step"))
+	p.expecting = "expression"
 	heirs = append(heirs, p.ExpressionUntilProofBoundary())
 	return NewSanyNode(SanySyntaxNodeKindByName["N_PickStep"], heirs...)
 }
@@ -893,33 +918,6 @@ func (p *SanyParser) AssumeProveItem() *SanySyntaxNode {
 		return p.NewSymb()
 	}
 	return p.ExpressionUntilAssumeProveBoundary()
-}
-
-func (p *SanyParser) ProofQuantBoundUntil(stopKinds ...SanyTokenKind) *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.QuantBoundIntro())
-	for p.match(SanyTokenComma) {
-		if p.findBeforeStopIgnoring(SanyTokenIN, SanyTokenComma, stopKinds...) < 0 {
-			p.at--
-			break
-		}
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.QuantBoundIntro())
-	}
-	in := p.consume(SanyTokenIN, "expected \\in in quantifier bound")
-	if in != nil {
-		in.Kind = SanySyntaxNodeKindByName["T_IN"]
-	}
-	heirs = append(heirs, in)
-	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-		for _, stop := range stopKinds {
-			if tok.Kind == stop {
-				return true
-			}
-		}
-		return p.isProofBoundary(tok)
-	}))
-	return NewSanyNode(SanySyntaxNodeKindByName["N_QuantBound"], heirs...)
 }
 
 func (p *SanyParser) NewSymb() *SanySyntaxNode {
@@ -1017,10 +1015,6 @@ func (p *SanyParser) ExpressionUntilAssumeProveBoundary() *SanySyntaxNode {
 	})
 }
 
-func (p *SanyParser) atProofBoundary() bool {
-	return p.isProofBoundary(p.peek())
-}
-
 func (p *SanyParser) isProofBoundary(tok *SanyToken) bool {
 	return tok.Kind == SanyTokenEOF ||
 		tok.Kind == SanyTokenEndModule ||
@@ -1035,22 +1029,34 @@ func (p *SanyParser) startsProofStepAt(offset int) bool {
 }
 
 func (p *SanyParser) takeUsesQuantBounds() bool {
-	return p.check(SanyTokenLab) || (p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenIN)
+	return p.proofIdentifierListFollowedBy(SanyTokenIN) || p.check(SanyTokenLab)
 }
 
 func (p *SanyParser) pickUsesIdentifierList() bool {
-	offset := 0
-	for {
-		if p.tokenAt(offset).Kind != SanyTokenIdentifier {
-			return false
-		}
-		offset++
-		if p.tokenAt(offset).Kind == SanyTokenComma {
-			offset++
-			continue
-		}
-		return p.tokenAt(offset).Kind == SanyTokenColon
+	return p.proofIdentifierListFollowedBy(SanyTokenColon)
+}
+
+// The source previews scan Identifier (COMMA Identifier)* then the separator.
+// A failed repetition restores the scan position before testing the separator;
+// JavaCC's rescan still retains the following token reached by that repetition.
+func (p *SanyParser) proofIdentifierListFollowedBy(separator SanyTokenKind) bool {
+	if p.tokenAt(0).Kind != SanyTokenIdentifier {
+		p.rememberFailedLookahead(1)
+		return false
 	}
+	offset := 1
+	for p.tokenAt(offset).Kind == SanyTokenComma {
+		if p.tokenAt(offset+1).Kind != SanyTokenIdentifier {
+			p.rememberFailedLookahead(offset + 2)
+			break
+		}
+		offset += 2
+	}
+	if p.tokenAt(offset).Kind == separator {
+		return true
+	}
+	p.rememberFailedLookahead(offset + 1)
+	return false
 }
 
 func (p *SanyParser) startsAssumeProveAt(offset int) bool {
@@ -3279,26 +3285,6 @@ func (p *SanyParser) findBeforeStop(target SanyTokenKind, stops ...SanyTokenKind
 			return offset
 		}
 		for _, stop := range stops {
-			if tok.Kind == stop {
-				return -1
-			}
-		}
-		if tok.Kind == SanyTokenEOF {
-			return -1
-		}
-	}
-}
-
-func (p *SanyParser) findBeforeStopIgnoring(target, ignoreStop SanyTokenKind, stops ...SanyTokenKind) int {
-	for offset := 0; ; offset++ {
-		tok := p.tokenAt(offset)
-		if tok.Kind == target {
-			return offset
-		}
-		for _, stop := range stops {
-			if stop == ignoreStop {
-				continue
-			}
 			if tok.Kind == stop {
 				return -1
 			}

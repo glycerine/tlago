@@ -600,9 +600,14 @@ outside-proof and `<+>` failures; implicit references use the enclosing level.
 Operator and symbolic structural selectors are typed token leaves. Projection
 retains empty commands and generation counts appended entries, including failed
 facts, before reporting source empty-BY/USE/HIDE diagnostics.
+TAKE and PICK use source full identifier-list previews, mandatory choices and
+shared `QuantBound` nodes. Unbounded PICK uses identifier leaves, without
+fabricated declaration wrappers. TAKE/PICK/WITNESS retain source frames and
+expectations, including missing items, commas, domains and PICK's colon/body.
+Remove the separate proof-bound scanner and its unused search helper.
 General JavaCC rescan, the theorem's three-token Assume-Prove selection,
-TAKE/PICK/WITNESS grammar, proof-depth limits and remaining proof productions are
-reconciliation work; this is not complete Proof grammar or generation parity.
+proof-depth limits and remaining proof/Assume-Prove productions are reconciliation
+work; this is not complete Proof grammar or generation parity.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
@@ -614,16 +619,16 @@ source image and zero-valued slot, then reports constructor errors before name
 resolution. Reconstructed tuple membership retains both structural diagnostics.
 General selector and constructor fidelity remains reconciliation work.
 
-Current bounded observations match Java: 423 complete parser TRACE/results, 41
+Current bounded observations match Java: 469 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
 runtime probes, plus 93 selected expression trees including ranges, four function-application
 runtime probes, ten bracket constructor/group metadata and runtime probes,
-16 brace semantic observations, 25 command-generation observations,
+16 brace semantic observations, 25 command-generation observations, nine binder-generation observations,
 nine brace metadata/runtime probes, all 446
 node-image entries, and 16 selected complete definition trees with kinds, images
-and ranges, plus 56 selected complete module trees with kinds, images,
+and ranges, plus 76 selected complete module trees with kinds, images,
 ranges, original images and proof levels.
 Keep each scope distinct. Whole-module canonical AST assertions, general source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.

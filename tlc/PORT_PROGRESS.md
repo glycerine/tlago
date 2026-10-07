@@ -1,5 +1,46 @@
 # TLC Port Progress
 
+2026-10-06 Proof binder lookahead and common bounds:
+Previous completed commit: 388604d. Port TakeStep/PickStep/WitnessStep frames,
+mandatory tokens and source expectation transitions. TAKE's unlimited preview
+scans Identifier (COMMA Identifier)* IN, with LAB as its other entry; it no longer
+checks only the first name. PICK's preview scans the same list followed by COLON.
+Failed list repetitions restore the preview position before the final separator,
+while retaining the source rescan's following-input span. Initial invalid choices
+fail in TakeStep/PickStep instead of entering another production.
+
+Use shared QuantBound for proof domains and lists; remove ProofQuantBoundUntil's
+search-before-stop heuristic, its unused search helper, and the unused proof
+boundary validator. Unbounded PICK emits Identifier leaves as Java does, without
+N_IdentDecl wrappers. PICK requires its colon and body; WITNESS preserves source
+expression/comma expectations and mandatory items. No original Java assertion,
+fixture, seed, setting or workload changed; no permanent new tests invented.
+
+Pinned Java's complete tree for the unchanged native proof-binder fixture has
+an IDENTIFIER y under N_PickStep, not N_IdentDecl. Correct that handwritten native
+node-kind assertion while retaining the exact one-child count and all other
+assertions. Receipt: /mnt/oldrog/tmp/tlago-binder-source-fixture.java.log.
+
+All 469 complete actual parser TRACE/result observations match pinned Java:
+46 new TAKE/PICK/WITNESS cases plus all earlier 423, including malformed lists,
+missing domains/bodies, tuple cases and higher-order PICK rejection. Inspect
+MATCH count 469 and different [] in
+/mnt/oldrog/tmp/tlago-sany-binder-parser-audit.log. All 76 selected complete module
+trees match kinds, images, ranges, original images and proof levels, including
+20 new binder trees: /mnt/oldrog/tmp/tlago-binder-module-tree-audit.log. Nine binder
+generation comparisons match source error counts, codes, messages and ranges,
+including visibility of introduced multi-name and tuple-bound identifiers in
+later WITNESS steps: /mnt/oldrog/tmp/tlago-sany-binder-semantic.log.
+
+Existing original SANY package passes 1.583 seconds; explicit relevant native
+parser/bridge/context/token-manager/scaffold checks, original ParseErrorTests,
+six source proof/selector/lifecycle models and scoped-identifier/reference checks
+pass 4.421 seconds. Logs: /mnt/oldrog/tmp/tlago-sany-binder-{sany,root}.log.
+Every package compiles: /mnt/oldrog/tmp/tlago-sany-binder-compile.log.
+No new test-inventory credit, canonical AST or full-workspace parity claim.
+The theorem's Assume-Prove preview, proof-depth limit and remaining productions
+are pending. Preserve live full MSB session 5144; it was polled live this turn.
+
 2026-10-06 Shared BY/USE/HIDE grammar and generated command entries:
 Previous completed commit: ac45a30. Port source UseOrHideOrBy as the actual shared
 production, including Proof's token-one/token-two BY priority, frames and exact

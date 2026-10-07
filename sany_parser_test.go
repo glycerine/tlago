@@ -323,8 +323,8 @@ PROOF
 		if countSanyChildren(take, "N_QuantBound") != 1 {
 			t.Fatalf("TAKE heirs = %v, want N_QuantBound", sanyNodeKindNames(take.GetHeirs()))
 		}
-		if countSanyChildren(pick, "N_IdentDecl") != 1 {
-			t.Fatalf("PICK heirs = %v, want N_IdentDecl", sanyNodeKindNames(pick.GetHeirs()))
+		if countSanyChildren(pick, "IDENTIFIER") != 1 {
+			t.Fatalf("PICK heirs = %v, want IDENTIFIER", sanyNodeKindNames(pick.GetHeirs()))
 		}
 	})
 
