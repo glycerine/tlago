@@ -47,14 +47,18 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-`CheckSanySpecLevels` now invokes the generated root's canonical
-`ModuleNode.levelCheck`, matching `SANYFrontend.checkLevel`. The full SANY
-suite passes, including the original 51-row level matrix and INSTANCE diagnostic
-test. The unchanged Java originals pass all 52 cases. The INSTANCE assertion
-uses `int32` for Java integer diagnostic parameters, preserving expected values
-1 and 3. All five original incremental semantic methods and all-package compile
-checks pass. This does not change the legacy `CheckSpec` runner or establish a
-new full-workspace verification baseline.
+Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
+generated `ModuleNode.levelCheck`. The driver preserves Java's external-module
+order, shared diagnostic log and raw-success gate. Integration exposed the
+missing EXCEPT `AtNode.levelCheck` and ASSUME integer diagnostic parameter; both
+are now translated. Existing temporal diagnostic expectations require the seven
+exact Java messages/ranges. The native qualified-module fixture now declares
+the named INSTANCE required by both Java and Go, retaining its two-state check.
+The full SANY suite, focused frontend/config tests, all five original incremental
+methods, 26 original TLC model methods and all-package compile checks pass.
+The unchanged Java level-check originals pass all 52 cases. The INSTANCE
+assertion uses `int32`, preserving expected values 1 and 3. No new full-workspace
+verification baseline is established by these focused checks.
 
 The latest completed full normal workspace suite passes on `44aaf11`:
 

@@ -28,8 +28,8 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 }
 
 // GenerateSanySpec runs Generator without ModuleNode.levelCheck, as the
-// programmatic SANYFrontend.processSemantics phase does. The legacy runner
-// retains its per-external-module generation/level-check sequence.
+// programmatic SANYFrontend.processSemantics phase does. The driver retains
+// Java SANY's per-external-module generation/level-check sequence.
 func GenerateSanySpec(spec *Spec) Diagnostics {
 	if spec != nil {
 		spec.initialContext = sanyGlobalInitialContext(true)
@@ -123,7 +123,7 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 		if progress != nil {
 			progress("Semantic processing of module " + name)
 		}
-		checks, generated := check(mod, nil)
+		_, generated := check(mod, nil)
 		diags = appendSanyDiagnostics(diags, generated...)
 		// SANY assigns this external module's standard provenance after
 		// generation. The resolver call can itself throw during semantics.
@@ -134,8 +134,8 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 			spec.semanticModules.put(name, mod.semanticNode.context, mod.semanticNode)
 		}
 		// Source tests raw Errors.isSuccess, before warning elevation.
-		if checkLevels && !diags.HasErrors() {
-			diags = appendSanyDiagnostics(diags, checks.check()...)
+		if checkLevels && mod.semanticNode != nil && !diags.HasErrors() {
+			sanyLevelCheckNext(mod.semanticNode, &diags)
 		}
 		if report != nil {
 			report(diags)
@@ -150,13 +150,14 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 	}
 	sort.Strings(remaining)
 	for _, name := range remaining {
-		checks, generated := check(spec.Modules[name], nil)
+		mod := spec.Modules[name]
+		_, generated := check(mod, nil)
 		diags = appendSanyDiagnostics(diags, generated...)
 		if mod := spec.Modules[name]; enclosing[mod] == nil && mod.semanticNode != nil {
 			spec.semanticModules.put(name, mod.semanticNode.context, mod.semanticNode)
 		}
-		if checkLevels && checks != nil && !diags.HasErrors() {
-			diags = appendSanyDiagnostics(diags, checks.check()...)
+		if checkLevels && mod.semanticNode != nil && !diags.HasErrors() {
+			sanyLevelCheckNext(mod.semanticNode, &diags)
 		}
 	}
 	if report != nil && (len(remaining) > 0 || len(spec.SemanticOrder) == 0) {
@@ -327,8 +328,8 @@ func (checks *sanyModuleLevelChecks) check() Diagnostics {
 func checkModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module) Diagnostics {
 	checks := &sanyModuleLevelChecks{}
 	diags := generateModuleWithEnclosing(mod, spec, enclosing, checks)
-	if !diags.HasErrors() {
-		diags = appendSanyDiagnostics(diags, checks.check()...)
+	if mod.semanticNode != nil && !diags.HasErrors() {
+		sanyLevelCheckNext(mod.semanticNode, &diags)
 	}
 	return diags
 }

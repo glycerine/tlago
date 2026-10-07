@@ -1,5 +1,44 @@
 # TLC Port Progress
 
+2026-10-07 Canonical SANY driver and EXCEPT level checking:
+Previous completed commit: a9b8f0c. Route the main CheckSpec/TLC frontend and
+single-module helper through actual ModuleNode.levelCheck. Preserve Java's
+external-module generation/publication/check order, shared Errors and raw
+success gate. No AST-check fallback substitutes for canonical graph checking.
+
+Initial focused session 29316 exposes missing AtNode.levelCheck and native
+temporal wording expectations. Port the complete AtNode source method: captured
+operand array, iteration caching, ignored child correctness, containing-component
+check before the level-loop break, ordered preceding-component metadata merges,
+retained collections and untouched non-Leibniz metadata. Session 34573 verifies
+EXCEPT models and reports only old native temporal wording expectations. Run
+Java SANY on the unchanged temporal example: seven errors. Require all seven
+exact codes/messages/ranges in the existing native test, replacing paraphrases.
+
+Session 88738 then exposes missing E4206 parameter metadata in AssumeNode.
+Retain the source int32 level parameter and include parameters in diagnostic
+deduplication. Full SANY 36187 passes in 1.828s. External manual Java/Go
+observers tlago-at-level-* compare 56 exact rows: containing component at every
+position, absent/repeated component references, repeated/signed/max iterations,
+child calls, correctness and all metadata. Go overlay session 16507 returns 0;
+row comparison is exact. These observations add no original-method credit.
+No standalone Java AtNode test class was found in the pinned original tests.
+
+Broad native/original model session 27188 returns 1 in 99.381s because a native
+fixture qualifies Helper operators after EXTENDS without a named INSTANCE.
+An external overlay of prior semantic.go reproduces the same failure (96545,
+0.022s); it predates this change. Java rejects the unchanged fixture with five
+unknown-operator errors. Java accepts adding Helper == INSTANCE Helper. Correct
+that native setup while retaining the original two-state model assertion;
+complete native config/model suite 60624 passes in 0.097s.
+
+Original-only model session 5266 passes all 26 selected methods in 97.695s,
+including unchanged Test20–39, config, monolith and module overrides. JSON log:
+/mnt/oldrog/tmp/tlago-canonical-driver-original-models.json. Full original bounds
+are preserved, including Test27's 1,109,824 generated states. Final focused
+frontend/config gate 99358 passes in 1.059s; all-package compile passes. All
+handles retired. No race, new permanent tests or full-workspace pass claim.
+
 2026-10-07 Canonical public SANY level-check integration:
 Previous completed commit: 3704b7d. Replace CheckSanySpecLevels' older AST
 analysis with the generated root's actual ModuleNode.levelCheck, using the

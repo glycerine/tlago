@@ -9733,8 +9733,25 @@ level-check result combined with diagnostic success. It no longer substitutes
 the older AST level analysis for the canonical graph. The complete original
 51-row level matrix and INSTANCE minimum-level diagnostic pass, as do the
 unchanged 52 Java cases. Diagnostic integer assertions use Java-width `int32`.
-Generation and level logs remain separate. The legacy `CheckSpec`/TLC runner's
-level-check path has not yet been migrated by this change.
+Generation and level logs remain separate.
+
+The main `CheckSpec`/TLC driver and single-module helper now also call the actual
+generated ModuleNode. The driver retains Java SANY's external-module order,
+table publication before checking, shared diagnostic log and raw Errors-success
+gate. Canonical checks replace the older AST check plans at these entry points.
+Generating an incomplete graph must expose its missing implementation rather
+than silently falling back to AST summaries.
+
+`sany_at_level.go` translates the complete EXCEPT AtNode level algorithm. It
+captures the enclosing EXCEPT operand array, ignores child correctness and
+checks the containing component before breaking the level loop. Subsequent
+metadata passes merge the base and preceding components only. Collections are
+retained and non-Leibniz parameters are untouched. An external manual Java/Go
+comparison agrees on all 56 rows, including component positions and repeated
+references, iteration caching, child calls and complete level metadata. No
+original-method credit is claimed for manual observations. AssumeNode now also
+retains its source integer diagnostic parameter. Full SANY and 26 original TLC
+model methods pass; this is not full-workspace completion.
 
 ## Complete original incremental semantic LET tests
 

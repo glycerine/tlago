@@ -38,9 +38,10 @@ func (n *sanySemAssumeNode) levelCheck(iter int32, errors *Diagnostics) bool {
 		diagnostic := errorAt(location.Begin, "E4206", "%s", message)
 		diagnostic.SANYRange = location
 		diagnostic.SANYMessage = message
+		diagnostic.SANYParameters = []any{int32(level)}
 		present := false
 		for _, existing := range *errors {
-			if existing.Code == diagnostic.Code && existing.SANYMessage == message &&
+			if existing.Code == diagnostic.Code && existing.SANYMessage == message && sanyLevelMessageParametersEqual(existing.SANYParameters, diagnostic.SANYParameters) &&
 				existing.SANYRange.Begin.File == location.Begin.File && existing.SANYRange.Begin.Line == location.Begin.Line && existing.SANYRange.Begin.Column == location.Begin.Column && existing.SANYRange.End.Line == location.End.Line && existing.SANYRange.End.Column == location.End.Column {
 				present = true
 				break

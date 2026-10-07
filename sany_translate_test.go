@@ -339,11 +339,29 @@ BadMix == v' /\ []v
 BadTemporalBound == \A x \in []v : TRUE
 BadActionBoundTemporalBody == \E x \in v' : []v
 ====`)
-		requireHasErrorContaining(t, diags, "temporal operator")
-		requireHasErrorContaining(t, diags, "leads-to")
-		requireHasErrorContaining(t, diags, "mix action and temporal")
-		requireHasErrorContaining(t, diags, "temporal-level bound")
-		requireHasErrorContaining(t, diags, "action-level bound")
+		// Exact diagnostics from Java SANY for this unchanged module.
+		expected := []struct {
+			code, message    string
+			line, begin, end int
+		}{
+			{"E4310", "[] followed by action not of form [A]_v.", 3, 14, 19},
+			{"E4311", "<> followed by action not of form <<A>>_v.", 4, 18, 23},
+			{"E4312", "Action used where only temporal formula or state predicate allowed.", 5, 13, 21},
+			{"E4312", "Action used where only temporal formula or state predicate allowed.", 6, 13, 23},
+			{"E4313", "\\land has both temporal formula and action as arguments.", 7, 11, 19},
+			{"E4315", "Level error in applying operator $BoundedForall:\nThe level of the range for the bounded variable line 8, col 24 to line 8, col 24 of module LevelComposition \nexceeds the maximum level allowed by the operator.", 8, 21, 39},
+			{"E4314", "Action-level bound of quantified temporal formula.", 9, 40, 41},
+		}
+		if len(diags) != len(expected) {
+			t.Fatalf("want seven Java level diagnostics: %v", diags)
+		}
+		for i, want := range expected {
+			diagnostic := diags[i]
+			location := diagnostic.SANYRange
+			if diagnostic.Code != want.code || diagnostic.SANYMessage != want.message || location.Begin.Line != want.line || location.End.Line != want.line || location.Begin.Column != want.begin || location.End.Column != want.end {
+				t.Fatalf("level diagnostic = %#v, want %#v", diagnostic, want)
+			}
+		}
 	})
 
 	t.Run("checks record constructors and field access through SANY syntax", func(t *testing.T) {

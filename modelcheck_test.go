@@ -522,6 +522,7 @@ One == Zero + 1
 		writeFile(t, root, `---- MODULE Root ----
 EXTENDS Helper
 VARIABLE x
+Helper == INSTANCE Helper
 Init == x = Helper!Zero
 Next == (x < Helper!One /\ x' = x + Helper!One) \/ (x = Helper!One /\ x' = x)
 Inv == x <= Helper!One
