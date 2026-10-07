@@ -5,11 +5,12 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"math/big"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 func SanyXMLSource(file, source string) ([]byte, Diagnostics) {
@@ -4341,29 +4342,47 @@ func (x *sanyXMLExporter) literalXML(e *LiteralExpr, ctx sanyXMLExprContext) (st
 	case "number":
 		if strings.Contains(e.Value, ".") {
 			parts := strings.SplitN(e.Value, ".", 2)
+			node := e.decimalNode
+			if node == nil {
+				node = tlc.NewDecimalNodeFromParts(parts[0], parts[1])
+			}
+			mantissa := strconv.FormatInt(node.Mantissa(), 10)
+			exponent := node.Exponent()
+			if value := node.BigVal(); value != nil {
+				mantissa = value.UnscaledValue().String()
+				exponent = value.Scale()
+			}
 			var b bytes.Buffer
 			b.WriteString("<DecimalNode>")
 			x.writeNode(&b, e.Pos, constantLevel)
 			b.WriteString("<mantissa>")
-			xmlText(&b, strings.ReplaceAll(e.Value, ".", ""))
+			xmlText(&b, mantissa)
 			b.WriteString("</mantissa><exponent>")
-			xmlInt(&b, -len(parts[1]))
+			xmlInt(&b, int(exponent))
 			b.WriteString("</exponent><integralPart>")
-			xmlText(&b, parts[0])
+			xmlText(&b, node.IntegralPart)
 			b.WriteString("</integralPart><fractionalPart>")
-			xmlText(&b, parts[1])
+			xmlText(&b, node.FractionalPart)
 			b.WriteString("</fractionalPart></DecimalNode>")
 			return b.String(), nil
 		}
-		n := new(big.Int)
-		if _, ok := n.SetString(e.Value, 0); !ok {
-			return "", Diagnostics{errorAt(e.Pos, "E7004", "invalid integer literal %q for SANY XML export", e.Value)}
+		node := e.numeralNode
+		if node == nil {
+			var err error
+			node, err = tlc.NewNumeralNodeFromString(e.Value)
+			if err != nil {
+				return "", Diagnostics{errorAt(e.Pos, "E7004", "invalid integer literal %q for SANY XML export", e.Value)}
+			}
+		}
+		value := strconv.FormatInt(int64(node.Val()), 10)
+		if bigValue := node.BigVal(); bigValue != nil {
+			value = bigValue.String()
 		}
 		var b bytes.Buffer
 		b.WriteString("<NumeralNode>")
 		x.writeNode(&b, e.Pos, constantLevel)
 		b.WriteString("<IntValue>")
-		xmlText(&b, n.String())
+		xmlText(&b, value)
 		b.WriteString("</IntValue></NumeralNode>")
 		return b.String(), nil
 	case "string", "model":

@@ -1775,6 +1775,9 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		if e.numeralNode != nil {
 			return e.numeralNode
 		}
+		if e.decimalNode != nil {
+			return e.decimalNode
+		}
 		if strings.Contains(e.Value, ".") {
 			return tlc.NewDecimalNode(nil, e.Value)
 		}

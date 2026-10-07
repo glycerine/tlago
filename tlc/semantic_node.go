@@ -605,20 +605,93 @@ func NewNumeralNodeFromString(image string) (*NumeralNode, error) {
 	return node, nil
 }
 
-type DecimalNode struct {
-	SemanticNodeBase
-	Value Value
+// DecimalLiteralValue retains BigDecimal's unscaled value and scale for SANY
+// literal metadata. TLC still rejects real numbers during constant processing.
+type DecimalLiteralValue struct {
+	unscaled *big.Int
+	scale    int32
 }
 
-func (n *DecimalNode) String() string { return n.Image }
+func (v *DecimalLiteralValue) UnscaledValue() *big.Int { return v.unscaled }
+func (v *DecimalLiteralValue) Scale() int32            { return v.scale }
+func (v *DecimalLiteralValue) String() string {
+	image := new(big.Int).Abs(v.unscaled).String()
+	sign := ""
+	if v.unscaled.Sign() < 0 {
+		sign = "-"
+	}
+	adjusted := int64(len(image)) - 1 - int64(v.scale)
+	if v.scale >= 0 && adjusted >= -6 {
+		point := len(image) - int(v.scale)
+		if v.scale == 0 {
+			return sign + image
+		}
+		if point > 0 {
+			return sign + image[:point] + "." + image[point:]
+		}
+		return sign + "0." + strings.Repeat("0", -point) + image
+	}
+	if len(image) > 1 {
+		image = image[:1] + "." + image[1:]
+	}
+	exponent := strconv.FormatInt(adjusted, 10)
+	if adjusted >= 0 {
+		exponent = "+" + exponent
+	}
+	return sign + image + "E" + exponent
+}
+
+type DecimalNode struct {
+	SemanticNodeBase
+	Value          Value
+	IntegralPart   string
+	FractionalPart string
+	mantissa       int64
+	exponent       int32
+	bigValue       *DecimalLiteralValue
+	LevelChecked   int32
+}
+
+func (n *DecimalNode) String() string               { return n.IntegralPart + "." + n.FractionalPart }
+func (n *DecimalNode) Mantissa() int64              { return n.mantissa }
+func (n *DecimalNode) Exponent() int32              { return n.exponent }
+func (n *DecimalNode) BigVal() *DecimalLiteralValue { return n.bigValue }
+func (n *DecimalNode) LevelCheck(iter int32) bool {
+	n.LevelChecked = iter
+	return true
+}
+func (n *DecimalNode) LevelCheckNext() bool { return n.LevelCheck(n.LevelChecked + 1) }
+
+// DecimalNode retains trailing zeros; Java's constructor does not normalize
+// the mantissa or exponent, despite its historical class comment.
+func NewDecimalNodeFromParts(integral, fractional string) *DecimalNode {
+	n := &DecimalNode{
+		SemanticNodeBase: NewSemanticNodeBase(SemanticDecimalKind, integral+"."+fractional),
+		IntegralPart:     integral, FractionalPart: fractional,
+	}
+	mantissa, err := strconv.ParseInt(integral+fractional, 10, 64)
+	if err == nil {
+		n.mantissa = mantissa
+		n.exponent = -int32(len(fractional))
+	} else {
+		unscaled, valid := new(big.Int).SetString(integral+fractional, 10)
+		if !valid {
+			panic(NewNumberFormatException(n.String()))
+		}
+		n.bigValue = &DecimalLiteralValue{unscaled: unscaled, scale: int32(len(fractional))}
+	}
+	return n
+}
 
 func NewDecimalNode(value Value, image string) *DecimalNode {
-	base := NewSemanticNodeBase(SemanticDecimalKind, image)
-	base.ToolObject = value
-	return &DecimalNode{
-		SemanticNodeBase: base,
-		Value:            value,
+	parts := strings.SplitN(image, ".", 2)
+	if len(parts) != 2 {
+		panic(NewNumberFormatException(image))
 	}
+	n := NewDecimalNodeFromParts(parts[0], parts[1])
+	n.Value = value
+	n.SetToolObject(value)
+	return n
 }
 
 type StringNode struct {

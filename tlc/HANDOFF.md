@@ -958,6 +958,13 @@ level state. All 72 property rows match source. The complete original builtin
 initialization/reinitialization class passes in Java and Go; no TLC count changes.
 Ordinary OpDef construction still needs actual generated bodies, formal metadata,
 source symbol registration timing and recursion fields before crediting its test.
+Generated decimals now retain source image parts, signed-long mantissa/exponent
+and overflow unscaled value/scale. TLC and XML reuse their representation.
+The exporter preserves source's overflow scale sign and uses generated numeral
+values for leading-zero/radix integers. Ten constructor cases, eight decimal XML
+metadata cases and ten numeral XML values match Java. The original decimal XML
+method remains unchanged and passes in Java/Go. This is bounded evidence and
+SANY method credit only; ordinary OpDef and other canonical graphs remain pending.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

@@ -1,5 +1,57 @@
 # TLC Port Progress
 
+2026-10-07 Shared decimal representation and literal XML source parity:
+Previous completed commit: 4569bce. Continue ordinary OpDef/body inspection;
+full ordinary graph construction remains pending. The body literal path exposes
+real numeric metadata gaps. Port DecimalNode's signed-long mantissa, negative
+fractional-length exponent, preserved image parts, overflow unscaled value/scale
+and iteration recording. Preserve source trailing zeros; the implementation
+does not normalize despite its historical class comment. Overflow mantissa and
+exponent remain zero. Retain the decimal during SANY generation, reuse it in
+TLC, and check it at normal iteration 1. Fresh generation clears both prior
+integer/decimal nodes. TLC constant processing still rejects reals. The overflow
+value stores literal metadata and canonical decimal/scientific text; it does
+not introduce real arithmetic in the checker.
+
+XML formerly emitted raw zero-prefixed mantissas and always negative exponents.
+Read generated fields instead: small decimal mantissa/exponent, or overflow
+unscaled value and source BigDecimal.scale (positive). Preserve original image
+parts. Integer XML also used incompatible Go base-zero parsing; use the actual
+NumeralNode representation, fixing leading-zero decimal and TLA radix values.
+Ungenerated AST callers use the same constructors. Copy the original decimal
+XML test MIT notice, remove its stale scaffold comment, and preserve both
+original substring assertions and byte-identical Decimal.tla. No invented tests.
+
+Unchanged original TestDecimalXMLExport passes JUnit in 0.18 seconds, terminal
+0. Ten scratch constructor cases match actual Java image, mantissa, exponent,
+big value, scale and 5/2/next level iterations, including signed-long boundaries
+and scientific notation. Receipt /mnt/oldrog/tmp/tlago-decimal-node-comparison.log.
+Eight actual source XML metadata comparisons match every decimal field, including
+zero spelling and overflow scale; 33976 terminal 0, receipt
+/mnt/oldrog/tmp/tlago-decimal-xml-comparison.log. Final 73074 replays all eight
+and compares ten numeral XML values with actual Java, including 00089, 010,
+32-bit overflow and lowercase/uppercase radix prefixes: all exact, terminal 0.
+Receipt /mnt/oldrog/tmp/tlago-numeral-xml-comparison.log. These bounded scratch
+probes earn no extra test-port credit and are not a corpus sweep.
+
+Initial compile 34157 failed a missing XML import; fix it. Scratch Java XML
+caller initially failed package-private access; put that caller in the actual
+XML package. Removing the alternate integer decoder left an unused math/big
+import; remove it and rebuild the probe (74306, terminal 0). No assertion changes.
+Full Go SANY first passes in 2.049 seconds (75771, terminal 0), and focused
+parser/context/semantic bridge/original TLC models pass in 47.454 seconds
+(4168, terminal 0), receipt /mnt/oldrog/tmp/tlago-decimal-node-root.log. Every
+package compiles (24839, terminal 0). After fresh-generation reset, short original
+numeral/builtin/decimal and bridge/TLC checks pass (91436, terminal 0). After
+final XML changes, full SANY passes in 1.900 seconds (5164, terminal 0), short
+original literal/builtin and existing bridge/TLC checks pass (86652, terminal 0;
+root 1.249 seconds, TLC 0.012 seconds). Explicit verbose basic XML library/CLI
+checks both run and pass in 0.021 seconds, terminal 0. Every final package
+compiles again, terminal 0. All handles retired. Mark the original decimal XML
+method port complete, without changing TLC counts or full-workspace receipts.
+Update architecture and handoff; common LevelNode and ordinary graph requirements
+remain pending. No long race runs, broad sweeps or new distributed architecture.
+
 2026-10-07 Common builtin OpDefs and whole original initialization test:
 Previous completed commit: cc643dc. Inspect ordinary Generator.processOperator:
 source creates body/formals before constructing and registering an ordinary

@@ -3290,9 +3290,16 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 		}
 	case *LiteralExpr:
-		// Generator.generateExpression constructs NumeralNode at N_Number,
-		// before the evaluator bridge processes constants.
-		if e.Kind == "number" && !strings.Contains(e.Value, ".") {
+		// Generator constructs integer and decimal nodes before the evaluator
+		// bridge processes constants. A fresh generation replaces prior nodes.
+		e.numeralNode, e.decimalNode = nil, nil
+		if e.Kind == "number" && strings.Contains(e.Value, ".") {
+			parts := strings.SplitN(e.Value, ".", 2)
+			node := tlc.NewDecimalNodeFromParts(parts[0], parts[1])
+			bridge := tlcBridge{}
+			bridge.withExprLocation(e, node)
+			e.decimalNode = node
+		} else if e.Kind == "number" {
 			node, err := tlc.NewNumeralNodeFromString(e.Value)
 			if err != nil {
 				panic(err)
@@ -4449,6 +4456,9 @@ func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals m
 	case *LiteralExpr:
 		if e.numeralNode != nil {
 			correct = e.numeralNode.LevelCheck(1) && correct
+		}
+		if e.decimalNode != nil {
+			correct = e.decimalNode.LevelCheck(1) && correct
 		}
 	case *UnaryExpr:
 		operandCorrect, operandDiags := levelChecker.checkResult(e.Expr, locals)

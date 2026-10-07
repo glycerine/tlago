@@ -1,5 +1,27 @@
 # TLC Architecture Notes for the Go Port
 
+## Decimal and integer literal metadata
+
+SANY creates and retains DecimalNode alongside NumeralNode during expression
+generation. Fresh generation replaces prior literal nodes. Decimal construction
+parses the concatenated integral/fractional parts as a signed long and keeps the
+negative fractional length as its exponent. It preserves zeros instead of
+normalizing. On overflow, the literal's metadata retains an arbitrary-precision
+unscaled value and signed 32-bit scale; numeric fields stay zero, matching Java.
+Decimal image parts retain their exact source spelling. Level checking records
+the supplied iteration and always succeeds. The TLC bridge reuses generated
+nodes, and constant processing still rejects real-number expressions.
+
+XML reads numeric representation fields. For a small decimal it emits its
+mantissa and negative exponent; for an overflow decimal source DecimalNode
+emits its unscaled value and positive scale. Preserve this source branch rather
+than imposing a different sign convention. Integral/fractional XML fields retain
+the source image. Integer XML uses NumeralNode's integer or big-integer value,
+including decimal leading zeros and TLA radix prefixes. Go's base-zero parser
+is not a compatible substitute. Existing ungenerated AST callers use the same
+literal constructors. This verifies literal metadata, not complete graph export
+or common LevelNode fields/guards.
+
 ## Builtin OpDef initialization
 
 The initial context stores actual `sanySemOpDefNode` objects for builtins and

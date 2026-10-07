@@ -82,3 +82,13 @@ empty arrays remain distinct. The property table matches Java mechanically.
 Builtins now use the common OpDef node rather than a separate symbol class;
 ordinary operator graph construction remains pending. This whole SANY class
 adds no TLC inventory credit.
+
+`xml.TestDecimalXMLExport.test` is **port complete** with its byte-identical
+original fixture and both original XML substring assertions. Unchanged Java and
+Go pass. The production decimal representation now preserves source mantissa,
+exponent, original image parts and overflow unscaled-value/scale fields. The
+exporter reads those fields, including Java's positive scale in its overflow
+branch; it does not reinterpret that branch as a negative decimal exponent.
+Integer XML also uses the generated numeral representation, preserving decimal
+leading-zero and TLA radix semantics instead of Go radix auto-detection. Bounded
+scratch constructor/XML comparisons earn no additional original-test credit.
