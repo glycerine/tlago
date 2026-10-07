@@ -83,3 +83,28 @@ func (g *sanyExpressionGeneration) bindFormalParameter(node *sanyFormalParamNode
 	g.formals[name] = localSymbol{formalNode: node, kind: "FORMAL", arity: node.semArity(), pos: position}
 	return nil
 }
+
+// generateLabel resolves its parameter array after generating the body. A
+// non-formal symbol receives a fresh dummy node for each argument occurrence.
+// Diagnostic traversal and the LS parameter stack are integrated separately.
+func (g *sanyExpressionGeneration) resolveLabelFormals(label *LabelExpr, context map[string]Position) {
+	label.formalNodes = nil
+	if label.Syntax == nil {
+		return
+	}
+	label.formalNodes = make([]*sanyFormalParamNode, 0, len(label.Params))
+	heirs := label.Syntax.GetHeirs()
+	if len(heirs) == 0 || heirs[0].Kind.JavaName() != "N_OpApplication" {
+		return
+	}
+	args := heirs[0].GetHeirs()[1].GetHeirs()
+	for i, name := range label.Params {
+		symbol, _ := g.lookupSymbol(name, context)
+		node := symbol.formalNode
+		if node == nil {
+			argument := args[2*i+1]
+			node = newSanyFormalParamNode(name, 0, sanyNodePosition(argument), argument, g.currentModule)
+		}
+		label.formalNodes = append(label.formalNodes, node)
+	}
+}

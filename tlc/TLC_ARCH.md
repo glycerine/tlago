@@ -1,5 +1,23 @@
 # TLC Architecture Notes for the Go Port
 
+## Retained label parameter arrays
+
+After generating a label body, resolve each label argument in the current symbol
+context. Retain the actual FormalParamNode when resolution supplies one. For
+non-formal symbols, construct a fresh zero-arity dummy FormalParamNode for every
+occurrence using the complete argument syntax node and location, with current
+module ownership and no binding installation. A parameterless label retains an
+empty array. Same-formal repetitions share identity; repeated non-formal names
+have distinct dummy identities.
+
+Twenty-two direct Java SANY observations match for definition formals, quantified
+formals, repeated references, empty arrays and non-formal dummies, including their
+relative construction order and syntax/location. This is retained native metadata,
+not a complete LabelNode graph. The separate diagnostic traversal still validates
+names. It must use these arrays with the source LS stack and UID-based HashSet
+operations, emit illegal-argument diagnostics, and unify guards so forbidden label
+bodies allocate no nodes. Absolute allocation order remains unproven.
+
 ## TAKE/PICK formal construction and proof scope
 
 The proof generator retains an ordered formal-node array on each TAKE/PICK step.

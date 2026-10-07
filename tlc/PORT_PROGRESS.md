@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-06 Retained resolved label parameter arrays:
+Previous completed commit: 7fd7727. Native LabelExpr retains ordered formal nodes.
+After body generation, resolve actual formal identities from the generator's
+context. Each non-formal occurrence receives a separate dummy FormalParamNode
+using the complete argument syntax/location, zero arity and current module,
+without installing a binding. Empty source argument lists retain an empty array.
+
+Twenty-two exact observations match actual SANY LabelNode parameter arrays,
+including ordinary/quantified formal references, repeated actual-formal identity,
+repeated constant names producing distinct dummies, kind/arity/localness/module,
+dummy syntax/location and consecutive relative UID construction. Scratch Java
+uses SANY.frontEndMain with SilentSanyOutput and inspects the generated module;
+no TLC reporting entrypoint. Go overlay 73712 terminal 0. Receipts:
+/mnt/oldrog/tmp/tlago-label-formal-{java,go}.log. Helpers, overlay and vectors stay
+outside the repository; no permanent tests invented or inventory credit awarded.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 5.246 seconds (4632); whole SANY package passes
+1.868 seconds (54976); all packages compile (88272). All handles terminal 0 and
+retired. Receipts: /mnt/oldrog/tmp/tlago-label-formal-{root,sany,compile}.log.
+Rebuild the scratch Go all-messages frontend before auditing diagnostics. Fifteen
+label-flow cases still match. The broader nine-case audit still has four matches
+and five differences: arg_constant, label_select, params, qualified_callee and
+repeated. Combined handle 10958 terminal 1 because the broader audit remains
+failing; no green diagnostic-parity claim. Logs:
+/mnt/oldrog/tmp/tlago-label-formal-{flow,nine}.log. No assertion/bound changes,
+race workloads or current full-workspace claim.
+
+Next: use resolved arrays in label diagnostics and implement Generator's LS stack
+and source UID-based HashSet behavior. Illegal non-formal leaf diagnostics,
+aggregate extras, unified generation guards, complete LabelNode graph and absolute
+allocation order remain pending. Existing name-based diagnostic traversal remains
+in place while this constructor foundation is integrated.
+
 2026-10-06 TAKE/PICK formal construction and accepted proof bindings:
 Previous completed commit: 21bafab. Faithfully follow Generator's domain-before-
 parameter construction and distinct TAKE/PICK scope rules. ProofStep retains

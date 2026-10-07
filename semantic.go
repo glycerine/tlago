@@ -3672,6 +3672,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 	case *LabelExpr:
 		diags = append(diags, generation.checkExpr(e.Body, defined, locals)...)
+		generation.resolveLabelFormals(e, defined)
 	case *ActionExpr:
 		diags = append(diags, generation.checkExpr(e.Action, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Subscript, defined, locals)...)
