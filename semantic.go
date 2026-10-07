@@ -3337,7 +3337,7 @@ func checkExpr(expr Expr, defined map[string]Position, locals map[string]bool, g
 	return generation.checkExpr(expr, defined, locals)
 }
 
-func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) Diagnostics {
+func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[string]Position, locals map[string]bool) (result Diagnostics) {
 	var diags Diagnostics
 	fact := generation.fact
 	generation.fact = false
@@ -3347,6 +3347,27 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		source.operatorArgumentsGenerated = false
 	}
 	if source := sanyExprSource(expr); source != nil && source.Selector != nil {
+		// Selector.finish reports every unrecognized syntax kind before
+		// selectorToNode starts resolving the first name.
+		var constructorDiags Diagnostics
+		for _, step := range source.Selector.Steps {
+			if step.Kind == 0 && step.Syntax != nil && step.Syntax.Kind.JavaName() != "N_StructOp" {
+				diagnostic := errorAt(sanyNodePosition(step.Syntax), "E4003", "Unexpected token found.")
+				diagnostic.SANYRange = step.Syntax.Range
+				diagnostic.SANYMessage = diagnostic.Message
+				constructorDiags = append(constructorDiags, diagnostic)
+			}
+		}
+		defer func() { result = append(constructorDiags, result...) }()
+		if len(source.Selector.Steps) > 0 && source.Selector.Steps[0].Kind != SanySelectorName {
+			step := source.Selector.Steps[0]
+			message := fmt.Sprintf("Need name or step number here, not `%s'.", step.Name)
+			diagnostic := errorAt(sanyNodePosition(step.Syntax), "E4005", "%s", message)
+			diagnostic.SANYRange = step.Syntax.Range
+			diagnostic.SANYMessage = message
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+			return Diagnostics{diagnostic}
+		}
 		name := ""
 		for i, step := range source.Selector.Steps {
 			if i == len(source.Selector.Steps)-1 || step.Kind != SanySelectorName {

@@ -115,7 +115,9 @@ func sanySelectorStep(node *SanySyntaxNode) (SanySelectorStep, bool) {
 	case "IDENTIFIER", "N_InfixOp", "N_NonExpPrefixOp", "N_PostfixOp", "N_PrefixOp", "ProofStepLexeme", "ProofImplicitStepLexeme":
 		step.Kind = SanySelectorName
 	default:
-		return step, false
+		// Selector.finish retains the zero-valued op slot and the syntax
+		// node's own image, then reports its unexpected kind during generation.
+		step.Name = node.Image
 	}
 	return step, true
 }

@@ -33,13 +33,13 @@ type SanySyntaxNode struct {
 }
 
 func NewSanyNode(kind SanyNodeKind, heirs ...*SanySyntaxNode) *SanySyntaxNode {
-	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(heirs), ProofLevel: -1, Level: -1}
+	node := &SanySyntaxNode{Kind: kind, Image: sanySyntaxNodeImage(kind), Zero: compactSanyHeirs(heirs), ProofLevel: -1, Level: -1}
 	node.refreshHeirsAndRange()
 	return node
 }
 
 func NewSanySplitNode(kind SanyNodeKind, zero, one []*SanySyntaxNode) *SanySyntaxNode {
-	node := &SanySyntaxNode{Kind: kind, Image: kind.JavaName(), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one), ProofLevel: -1, Level: -1}
+	node := &SanySyntaxNode{Kind: kind, Image: sanySyntaxNodeImage(kind), Zero: compactSanyHeirs(zero), One: compactSanyHeirs(one), ProofLevel: -1, Level: -1}
 	node.refreshHeirsAndRange()
 	return node
 }

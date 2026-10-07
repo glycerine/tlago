@@ -1,5 +1,54 @@
 # TLC Port Progress
 
+2026-10-06 Source brace grammar, selector errors and node images:
+Previous turn completed 9ce59cf. Replace BraceCases' searches ahead for a colon
+with Java's matchFcnConst preview, immediate IdentifierTuple/Identifier COMMA or
+COLON lookaheads, and expression-then-continuation fallback. Retain held membership
+reconstruction, typed IN, the source subset expectation, mandatory tokens and the
+explicit forbidden complex-membership comprehension message. Remove the unused
+colon-search/binder-colon helpers. No permanent tests or fixtures changed.
+
+All initial 308 complete parser comparisons match (2377 terminal 0). Forty new
+brace observations cover malformed intros/domains/predicates, membership
+reconstruction, simple/complex comprehensions, Unicode membership, nested binders
+and indentation. Sixteen actual semantic observations expose one production
+shortcut (94371 terminal 1): reconstructed tuple membership was projected as an
+operator named <<, instead of retaining the unrecognized Selector.finish slot.
+Port that retained node image/zero slot, ordered constructor diagnostics and the
+source FindingOpName missing-name return. Actual E4003/E4005 messages and ranges
+now match; retain null-operator generation state. No weakened comparison.
+
+The first selected-tree run exposes one additional image mismatch (76684 terminal
+1): CHOOSE's kind constant name differs from SyntaxTreeConstants.SyntaxNodeImage.
+Port the entire 446-entry source image array for both node constructors, retaining
+source index order and bounds failure type. Compare all entries with actual Java
+images (normal terminal 0), raw receipts
+/mnt/oldrog/tmp/tlago-node-images.{java,go}.log. Do not special-case CHOOSE.
+All 93 final selected expression trees match kinds/images/ranges (95114 terminal
+0), log /mnt/oldrog/tmp/tlago-brace-tree-final-audit.log. This includes 23 new trees
+and the previous 70. No whole-module canonical AST or full constructor claim.
+
+After all production changes, all 308 complete TRACE/result observations match
+(18928 terminal 0; MATCH count 308 and different []), log
+/mnt/oldrog/tmp/tlago-sany-brace-parser-final-audit.log. Final 16 semantic comparisons
+match after rebuilding the final native helper, log
+/mnt/oldrog/tmp/tlago-brace-semantic-final-details.log. Nine lower-level Java
+FastTool/Go tool comparisons match actual opcode/group/tuple metadata and values
+(20367 terminal 0), log /mnt/oldrog/tmp/tlago-brace-runtime-audit.log. Boolean-array
+formatting alone normalizes commas/spaces. No Java TLC reporting path, no scratch
+inventory credit. General JavaCC rescan/selector/semantic-node fidelity is pending.
+
+Final normal gates: existing complete sany_tests 1.634 seconds (42569 terminal
+0); parser/semantic/token/operator classes, original ParseErrorTests, six original
+TLC models, GetScopedIdentifiers and reference/scaffold checks 17.496 seconds
+(25007 terminal 0). All-package compilation passes without additional workloads.
+Logs /mnt/oldrog/tmp/tlago-sany-brace-final-{sany,root,compile}.log. No race workload
+or changed original assertions. Earlier SANY 1.500-second gate precedes downstream
+corrections and is superseded. Full workspace green remains unproven; previous
+native imports and trace failures remain documented and unchanged. MSB 5144
+confirmed live with its same binary/full bounds; last logged progress
+1,520,688,981/2,147,483,648. Preserve its handle; do not restart it.
+
 2026-10-06 Source square-bracket grammar and constructor bound groups:
 Previous turn completed c0f514c. Replace SBracketCases' searches ahead for MAPTO,
 ARROW, EXCEPT and action delimiters with Java's actual production flow. Preserve

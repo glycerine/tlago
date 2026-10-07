@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier and RandomSubsetSetOfFcns | Pass | Root 17.276 seconds, session `66498` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.547 seconds, session `68477` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.496 seconds, session `25007` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.634 seconds, session `42569` retired |
 | Existing focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -557,8 +557,10 @@ index components require an expression. Preserve the source `= or ,` expectation
 typed equality token and keyword field reclassification. `!.@` records an error
 without throwing, then parsing continues so later errors retain their source order.
 Shared `Identifier` consumption now throws immediately instead of returning nil.
-Brace forms retain their source frame and mandatory delimiters; general brace
-lookahead/construction remains reconciliation work. Square-bracket parsing now
+Brace forms now use Java's function preview and immediate identifier/tuple
+comma/colon lookaheads. Preserve source membership reconstruction, typed IN,
+subset expectations and the explicit complex-membership comprehension error.
+Do not search ahead for a later colon to choose the form. Square-bracket parsing now
 uses Java's function preview and field lookaheads, followed by one mandatory
 expression and its actual continuation token. Function bounds, record fields,
 applications, function sets, EXCEPT and action forms retain source delimiters and
@@ -585,13 +587,20 @@ Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
 is converted once before the formals enter the context, matching Java generation.
 
-Current bounded observations match Java: 268 complete parser TRACE/results, 41
+Node constructors now use the actual 446-entry source `SyntaxNodeImage` table,
+which differs from node-kind constant names. Unknown selector syntax retains its
+source image and zero-valued slot, then reports constructor errors before name
+resolution. Reconstructed tuple membership retains both structural diagnostics.
+General selector and constructor fidelity remains reconciliation work.
+
+Current bounded observations match Java: 308 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
-runtime probes, plus 70 selected expression trees including ranges, four function-application
+runtime probes, plus 93 selected expression trees including ranges, four function-application
 runtime probes, ten bracket constructor/group metadata and runtime probes,
-and 16 selected complete definition trees with kinds, images
+16 brace semantic observations, nine brace metadata/runtime probes, all 446
+node-image entries, and 16 selected complete definition trees with kinds, images
 and ranges. Keep each scope distinct. Whole-module trees, general
 source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.

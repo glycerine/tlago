@@ -135,8 +135,8 @@ it does not accept an empty index. A field named @ pushes the nonthrowing source
 parse error @ used in !.@, preserving subsequent parsing and ordered messages.
 Shared Identifier now uses the actual throwing token-consumption path, eliminating
 nil dereferences in malformed components. BraceCases has its actual Some { } form
-frame and mandatory delimiters. General brace/square-bracket selection/lookahead is
-still separate reconciliation work. All 176 complete bounded parser observations
+frame and mandatory delimiters. The later source decision-flow port of brace and
+square-bracket forms is described below. All 176 complete bounded parser observations
 and 43 selected expression trees (including retained trees after nonthrowing !.@
 errors) match Java. Existing original model assertions and fixtures are unchanged.
 
@@ -158,6 +158,28 @@ expression trees match Java. Four lower-level FastTool/Go-tool probes match actu
 application opcode/metadata and values for chained, nested, multiple and tuple-valued
 applications. No Java TLC reporting entry point is used. Full constructor/parser/
 semantic-graph parity and whole-module canonical AST assertions remain unproven.
+
+BraceCases and SBracketCases now follow their source decisions rather than
+searching ahead for a separator. matchFcnConst previews an identifier list or
+balanced LAB/RAB followed by IN, leaving tuple validation to IdentifierTuple.
+Braces separately preview an identifier/identifier tuple followed immediately by
+COMMA or COLON; other forms parse one expression before choosing its continuation.
+Preserve membership reconstruction through N_GeneralId/N_GenInfixOp, the typed
+T_IN leaf and the source complex-membership comprehension error. Square-bracket
+forms require their source bounds, expressions and delimiters. Function and
+set-comprehension bridge groups share one conversion of each syntactic domain,
+before formals enter context, and preserve separate adjacent tuple domains.
+
+SyntaxTreeNode constructors use the full source SyntaxNodeImage array, distinct
+from node-kind constant names. All 446 source entries match both native constructor
+images. Selector.finish's unknown syntax retains a zero-valued slot and the node's
+own image, so generation reports its constructor diagnostic before FindingOpName
+reports a missing name. Reconstructed tuple membership reports E4003 and E4005
+instead of inventing an operator named <<. Current bounded observations match:
+308 complete parser traces/results, 93 selected expression trees, 16 brace semantic
+cases and nine actual brace opcode/group/value cases. These are scratch evidence,
+not original test-inventory credit; whole-module canonical AST, general JavaCC
+rescan and complete selector/semantic-node fidelity remain unproven.
 
 ## Original heap fingerprint stress target
 

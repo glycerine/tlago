@@ -2353,53 +2353,124 @@ func (p *SanyParser) ParenExpr() *SanySyntaxNode {
 func (p *SanyParser) BraceCases() *SanySyntaxNode {
 	p.beginProduction("Some { } form")
 	defer p.endProduction()
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consumeParseToken(SanyTokenLbc, "expected {"))
-	if p.startsQuantBoundIntro() &&
-		p.findTopLevelBeforeStop(SanyTokenIN, SanyTokenColon, SanyTokenRbc, SanyTokenEOF) >= 0 &&
-		p.findTopLevelSetComprehensionColonBeforeStop(SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
-		heirs = append(heirs, p.QuantBoundIntro())
-		in := p.consume(SanyTokenIN, "expected \\in in subset expression")
-		if in != nil {
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLbc, "expected {")}
+	kind := "N_SetEnumerate"
+	var held *SanySyntaxNode
+	readExpression := func() *SanySyntaxNode {
+		return p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenColon || tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
+		})
+	}
+	readElements := func() {
+		for p.match(SanyTokenComma) {
+			if held != nil {
+				heirs = append(heirs, held)
+				held = nil
+			}
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), readExpression())
+		}
+	}
+	readBounds := func() {
+		heirs = append(heirs, p.QuantBound())
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
+		}
+	}
+	matchedFunctionHead := p.matchFcnConst()
+	if matchedFunctionHead || p.startsExpressionLookahead() {
+		if matchedFunctionHead {
+			var intro *SanySyntaxNode
+			if p.check(SanyTokenLab) {
+				intro = p.IdentifierTuple()
+			} else {
+				intro = p.Identifier()
+			}
+			p.expecting = "\\in"
+			in := p.consumeParseToken(SanyTokenIN, "expected \\in in set form")
 			in.Kind = SanySyntaxNodeKindByName["T_IN"]
+			domain := readExpression()
+			p.expecting = "':', ',' or '}'"
+			identifier := NewSanyNode(SanySyntaxNodeKindByName["N_GeneralId"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), intro)
+			operator := NewSanyNode(SanySyntaxNodeKindByName["N_GenInfixOp"], NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]), in)
+			held = NewSanyNode(SanySyntaxNodeKindByName["N_InfixExpr"], identifier, operator, domain)
+			if p.match(SanyTokenColon) {
+				held = nil
+				kind = "N_SubsetOf"
+				heirs = append(heirs, intro, in, domain, NewSanyTokenNode(p.previous()), readExpression())
+			} else {
+				readElements()
+			}
+		} else if p.braceSimpleHead(SanyTokenComma) {
+			heirs = append(heirs, readExpression())
+			readElements()
+		} else if p.braceSimpleHead(SanyTokenColon) {
+			kind = "N_SetOfAll"
+			heirs = append(heirs, readExpression(), p.consumeParseToken(SanyTokenColon, "expected : in set comprehension"))
+			readBounds()
+		} else if p.startsExpressionLookahead() {
+			expression := readExpression()
+			heirs = append(heirs, expression)
+			if p.match(SanyTokenColon) {
+				colon := p.previous()
+				kind = "N_SetOfAll"
+				children := expression.GetHeirs()
+				if expression.Kind.JavaName() == "N_InfixExpr" && len(children) > 1 {
+					operator := children[1].GetHeirs()
+					if len(operator) > 1 && operator[1].Image == "\\in" {
+						message := "Form {a \\in b : c \\in d }, at line " + strconv.Itoa(colon.Begin.Line) + ", is not allowed"
+						p.throwReportedParseException(message, colon.Begin, "E1300", message)
+					}
+				}
+				heirs = append(heirs, NewSanyTokenNode(colon))
+				readBounds()
+			} else {
+				readElements()
+			}
+		} else {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected set expression")
 		}
-		heirs = append(heirs, in)
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenColon || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenColon, "expected : in subset expression"))
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRbc, "expected }"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_SubsetOf"], heirs...)
 	}
-	if p.findTopLevelSetComprehensionColonBeforeStop(SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenColon || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenColon, "expected : in set comprehension"))
-		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenRbc, SanyTokenEOF))
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenRbc, SanyTokenEOF))
+	close := p.consumeParseToken(SanyTokenRbc, "expected }")
+	if held != nil {
+		heirs = append(heirs, held)
+	}
+	heirs = append(heirs, close)
+	return NewSanyNode(SanySyntaxNodeKindByName[kind], heirs...)
+}
+
+// Java jj_2_42/43 scan IdentifierTuple or Identifier followed immediately by
+// COMMA/COLON. Failed previews retain their furthest following-input position.
+func (p *SanyParser) braceSimpleHead(separator SanyTokenKind) bool {
+	offset := 0
+	if p.tokenAt(offset).Kind == SanyTokenLab {
+		offset++
+		if p.tokenAt(offset).Kind == SanyTokenIdentifier {
+			offset++
+			for p.tokenAt(offset).Kind == SanyTokenComma {
+				offset++
+				if p.tokenAt(offset).Kind != SanyTokenIdentifier {
+					p.rememberFailedLookahead(offset + 1)
+					return false
+				}
+				offset++
+			}
 		}
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRbc, "expected }"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfAll"], heirs...)
-	}
-	if !p.check(SanyTokenRbc) {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
-		}))
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
-			}))
+		if p.tokenAt(offset).Kind != SanyTokenRab {
+			p.rememberFailedLookahead(offset + 1)
+			return false
 		}
+		offset++
+	} else if p.tokenAt(offset).Kind == SanyTokenIdentifier {
+		offset++
+	} else {
+		p.rememberFailedLookahead(1)
+		return false
 	}
-	heirs = append(heirs, p.consumeParseToken(SanyTokenRbc, "expected }"))
-	return NewSanyNode(SanySyntaxNodeKindByName["N_SetEnumerate"], heirs...)
+	if p.tokenAt(offset).Kind == separator {
+		return true
+	}
+	p.rememberFailedLookahead(offset + 1)
+	return false
 }
 
 // Java jj_2_49(1) checks Expression's first token, including its junction
@@ -3237,50 +3308,6 @@ func (p *SanyParser) findTopLevelBeforeStop(target SanyTokenKind, stops ...SanyT
 		case SanyTokenEOF:
 			return -1
 		}
-	}
-}
-
-func (p *SanyParser) findTopLevelSetComprehensionColonBeforeStop(stops ...SanyTokenKind) int {
-	depth := 0
-	binderColons := 0
-	for offset := 0; ; offset++ {
-		tok := p.tokenAt(offset)
-		if depth == 0 {
-			if tok.Kind == SanyTokenColon {
-				if binderColons > 0 {
-					binderColons--
-				} else {
-					return offset
-				}
-			}
-			for _, stop := range stops {
-				if tok.Kind == stop {
-					return -1
-				}
-			}
-			if sanyTokenOwnsFollowingColon(tok.Kind) {
-				binderColons++
-			}
-		}
-		switch tok.Kind {
-		case SanyTokenLbr, SanyTokenLsb, SanyTokenLbc, SanyTokenLab:
-			depth++
-		case SanyTokenRbr, SanyTokenRsb, SanyTokenRbc, SanyTokenRab:
-			if depth > 0 {
-				depth--
-			}
-		case SanyTokenEOF:
-			return -1
-		}
-	}
-}
-
-func sanyTokenOwnsFollowingColon(kind SanyTokenKind) bool {
-	switch kind {
-	case SanyTokenChoose, SanyTokenForall, SanyTokenExists, SanyTokenTExists, SanyTokenTForall, SanyTokenLambda:
-		return true
-	default:
-		return false
 	}
 }
 
