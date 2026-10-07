@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-07 Context duplicate history and lookup insertion:
+Previous completed commit: 31fa8bc. Port Context.duplicate against the actual
+Pair loop. Copy independent entries while sharing symbol nodes; rebuild lookup
+newest-first using info.getName(), not each original insertion key. This preserves
+the source oldest-binding winner for repeated names, loss of ModuleName keys
+in copied lookup, and reverse-insertion Hashtable collision/rehash order.
+Null receivers and null symbols in history now throw typed NullPointerException.
+Do not silently improve these source quirks or retain forward-insertion behavior.
+
+Manual observer matches all 1,578 Java/Go rows: empty source/copy, 39 insertions,
+collision names and rehashes, repeated names, actual ModuleNodes and module keys,
+a supplied key differing from the symbol's name, second-generation copies,
+independent copy mutation, shared UIDs and null receiver/history entries.
+Observer 79790 returned 0 and is retired. Retained 47 whole-module/definition-path
+observer 60473 returned 0 and is retired; all 16,872 rows still match Java.
+Scratch sources, overlays and receipts remain outside the repository under
+/mnt/oldrog/tmp/tlago-context-duplicate-*. No permanent tests, weakened assertions
+or original-method credit added. The original Java TestContext class has no
+additional duplication test to translate; existing methods remain unchanged.
+
+Existing affected root/parser/context/proof/TLC-model gate passes 47.464s
+(34982 retired), full SANY passes 1.865s (86668 retired), and compile-all passes
+(31896 retired). All handles retired; git diff --check passes. Normal execution,
+no broad race or full-workspace pass claim. EXTENDS diagnostic ownership,
+missing-extendee aborts, inherited levels, selectors, visitors and evaluator
+sharing remain pending. New distributed service work stays deferred.
+
 2026-10-07 Definition paths and counted UniqueString joins:
 Previous completed commit: 0947818. Port OpDefNode.getLocalName, hasPath and
 getPathName against the actual compound array; preserve getCompoundId aliasing

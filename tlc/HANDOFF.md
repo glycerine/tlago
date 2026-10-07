@@ -1143,7 +1143,11 @@ credit. Definition-path accessors now preserve actual compound-array ownership,
 local-name lookup and counted path joins. `UniqueStringJoinN` follows Java
 assertions, null behavior, literal `!` and intermediate interning order. All
 16,872 manual comparison rows across the retained 47 modules match Java. These
-observations add no permanent tests or original-method credit. Bounded generation
+observations add no permanent tests or original-method credit. Context duplication
+now copies history independently but shares symbol nodes, rebuilding lookup
+newest-first with plain node names exactly as Java does. The oldest repeated
+name wins and module keys become plain names in the copy. All 1,578 direct
+comparison rows and the retained 16,872 module rows match. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 

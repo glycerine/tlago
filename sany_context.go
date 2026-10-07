@@ -150,12 +150,22 @@ func newSanyContext() *sanyContext {
 }
 
 func (c *sanyContext) duplicate() *sanyContext {
-	dup := newSanyContext()
 	if c == nil {
-		return dup
+		panic(tlc.NewNullPointerException())
 	}
-	for _, entry := range c.order {
-		dup.add(entry.key, entry.sym)
+	dup := newSanyContext()
+	// Copy Pair history without linking it into the lookup table yet. Java
+	// visits newest to oldest and uses info.getName(), even for module pairs.
+	dup.order = make([]*sanyContextEntry, len(c.order))
+	for i := len(c.order) - 1; i >= 0; i-- {
+		symbol := c.order[i].sym
+		if symbol == nil || (reflect.ValueOf(symbol).Kind() == reflect.Pointer && reflect.ValueOf(symbol).IsNil()) {
+			panic(tlc.NewNullPointerException())
+		}
+		entry := &sanyContextEntry{key: sanyContextKey{name: symbol.semName()}, sym: symbol}
+		dup.order[i] = entry
+		dup.putContentEntry(entry)
+		dup.table[entry.key] = entry
 	}
 	return dup
 }

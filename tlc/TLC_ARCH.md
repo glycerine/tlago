@@ -1,5 +1,23 @@
 # TLC Architecture Notes for the Go Port
 
+## Context duplication preserves source history and lookup quirks
+
+`Context.duplicate` copies the complete Pair history, sharing its symbol nodes
+while allocating independent entries. It rebuilds the Hashtable newest-first,
+using each node's plain name rather than the original insertion key. Consequently,
+the oldest history entry wins a repeated name, and module-name keys become plain
+symbol keys. Repeated duplication preserves these results. Keep this behavior
+even though ordinary insertion uses the newest binding and distinct module keys.
+Hashtable collision and rehash order follows that reverse insertion order.
+Null contexts or null symbols in history throw NullPointerException.
+
+All 1,578 manual Java/Go rows match across empty contexts, 39 insertions,
+collisions/rehashes, replacements, module nodes and keys, a key differing from
+the symbol name, repeat copies and copy-only mutations. The retained 16,872
+whole-module rows still match. No permanent tests or original-method credit added.
+EXTENDS diagnostic ownership and the remaining general Context/graph audits
+remain incomplete.
+
 ## Definition paths and counted UniqueString joins
 
 `OpDefNode.getLocalName`, `hasPath` and `getPathName` now read the actual
