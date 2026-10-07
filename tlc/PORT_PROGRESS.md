@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-07 Unqualified fixity GenID operator operands:
+Previous completed commit: 7779920. Port generateExprOrOpArg's older SANY1
+GenID branch for zero-prefix prefix/infix/postfix operands. Resolve the raw name
+and operator synonym without constructing an OpArg first. Correct arity retains
+one actual module-owned OpArg. Wrong arity returns the owning Generator's
+nullOpArg, reports E4004 at the enclosing call and retains the actual enclosing
+operator object among the five source diagnostic parameters. An undefined
+operator returns nullOAN with the source declaration-lookup E4004, rather than
+the selector path's E4200. The concrete enclosing matcher then emits its own
+source rejection. Qualified GenID prefixes and their generated arguments await
+canonical INSTANCE/selector integration; do not mark those graphs complete.
+
+Thirty whole-module actual Java/Go cases agree across all 693 complete output
+rows: 623 prefixed observations (362 graph nodes, 112 references, 75 module
+context entries, 31 diagnostics, 30 cases, nine null results, two LET context
+entries and two builtin operand identities). The matrix includes the prior 20
+higher-order cases plus infix/postfix and alias successes, wrong arities and
+an undeclared fixity operator. Global builtin subgraphs are excluded from this
+observer's allocation normalization; its builtin operand check verifies actual
+global-context identity, name and arity. Both observers additionally assert
+that the wrong-arity error parameter is the actual enclosing operator object.
+The frontend diagnostic observer matches all 30 cases' error codes, source
+ranges and complete messages. Java rejected two exploratory bare-minus inputs;
+exclude those from both semantic case lists. A scratch observer compile typo
+and a builtin null-syntax traversal error were corrected before comparison;
+neither changed production semantics or permanent tests. The first source
+comparison exposed the E4200/E4004 undefined-symbol difference and production
+was corrected without changing the source-valid matrix.
+
+Verification: focused existing root/SANY/TLC integration gate passes in 47.289s
+(26766), full sany_tests passes in 1.957s and compile-all succeeds (91362).
+The graph and exact diagnostics run is terminal zero (84269), and the extra
+actual diagnostic-parameter identity run is terminal zero (10768). Final source
+outputs are /mnt/oldrog/tmp/tlago-fixity-{java,go,diag}.log and root JSON; the
+bounded probes remain outside the repository. No new permanent tests, original
+method completion, inventory changes, full-workspace credit or race workload
+is claimed. Canonical NEW/AP/function/recursive/INSTANCE/fact and qualified
+selector graphs, complete LevelNode checking and evaluator sharing remain
+unfinished. The original basicOpDefTest stays reconcile.
+
 2026-10-07 Higher-order operands, LAMBDA and ASSUME/PROVE scope:
 Previous completed commit: 39ce0dd. Higher-order calls now feed actual operands
 to the real OpAppl constructor and symbol matcher. Retain the owning Generator's

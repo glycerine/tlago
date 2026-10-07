@@ -7,8 +7,12 @@ constructor and symbol matcher when their graphs are available. A failed
 operator operand retains its owning Generator's nullOAN; an arity-mismatched
 lambda retains that Generator's nullOpArg. GeneralId expected-arity rejection
 precedes OpArg allocation. Missing unported graphs remain incomplete rather
-than acquiring a replacement node. The older fixity GenID wrong-arity path
-still needs its distinct source error and sentinel behavior.
+than acquiring a replacement node. Unqualified prefix/infix/postfix GenID
+operands resolve the raw name and synonym before allocating OpArg. Wrong arity
+returns nullOpArg and reports E4004 at the enclosing call; an undefined symbol
+returns nullOAN with GenID's E4004 declaration-lookup diagnostic. Error parameters
+retain the actual enclosing operator object; its default Java string is its
+location. Qualified GenID prefix arguments still need canonical integration.
 
 LAMBDA generation creates actual formal nodes and its body in a temporary
 context, restores that context, then constructs an unregistered user-defined

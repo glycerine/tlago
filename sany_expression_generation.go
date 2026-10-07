@@ -406,6 +406,19 @@ func (g *sanyExpressionGeneration) generateOperatorOperand(owner *IdentExpr, ind
 			}
 		}
 	}
+	if identifier, ok := argument.(*IdentExpr); ok {
+		if source := sanyGenerationSource(argument); source != nil && source.Syntax != nil {
+			switch source.Syntax.Kind.JavaName() {
+			case "N_GenInfixOp", "N_GenNonExpPrefixOp", "N_GenPostfixOp", "N_GenPrefixOp":
+				// Qualified GenID prefixes may generate their own arguments;
+				// that path still awaits canonical prefix graph integration.
+				heirs := source.Syntax.GetHeirs()
+				if len(heirs) > 0 && len(heirs[0].GetHeirs()) == 0 {
+					return g.generateFixityOperatorOperand(owner, index, expected, identifier, context, locals)
+				}
+			}
+		}
+	}
 	operator := argument
 	// In the GeneralId operator-argument path selectorToNode does not
 	// generate attached expression arguments; it resolves the operator.
@@ -766,5 +779,51 @@ func (g *sanyExpressionGeneration) generateLambdaOperand(owner *IdentExpr, index
 	diagnostic := sanyDiagnosticParameters(errorAt(owner.Pos, "E4274", "operator argument arity mismatch: got %d, want %d", node.semArity(), expected), node.semArity(), index+1, owner.Name, expected)
 	diagnostic.SANYRange = SanyRange{Begin: owner.Pos, End: owner.Pos.SourceEnd()}
 	diagnostic.SANYMessage = fmt.Sprintf("Lambda expression with arity %d used as argument %d of operator `%s', \nbut an operator of arity %d is required.", node.semArity(), index+1, owner.Name, expected)
+	return append(diagnostics, diagnostic)
+}
+
+// The SANY1 GenID branch resolves before allocating OpArg. Unlike GeneralId,
+// wrong arity reports at the enclosing application and returns nullOpArg.
+func (g *sanyExpressionGeneration) generateFixityOperatorOperand(owner *IdentExpr, index, expected int, argument *IdentExpr, context map[string]Position, locals map[string]bool) Diagnostics {
+	name := argument.Name
+	argument.Name = ResolveSanyOperatorSynonym(sanyOperatorGenIDName(argument.Syntax))
+	previousOperatorArgument, previousReferenceOnly := g.operatorArgument, g.symbolReferenceOnly
+	g.operatorArgument, g.symbolReferenceOnly = true, true
+	diagnostics := g.checkExpr(argument, context, locals)
+	g.operatorArgument, g.symbolReferenceOnly = previousOperatorArgument, previousReferenceOnly
+	operator := g.applicationOperator(argument.Name, nil, context)
+	argument.Name = name
+	if sanyExpressionGenerationFailure(argument) != sanyGenerationSucceeded {
+		// GenID.finalAppend logs a declaration lookup failure rather than
+		// selectorToNode's unknown-operator diagnostic.
+		for i := range diagnostics {
+			if diagnostics[i].Code == "E4200" {
+				rawName := sanyOperatorGenIDName(argument.Syntax)
+				diagnostic := sanyDiagnosticParameters(errorAt(argument.Pos, "E4004", "undefined operator %s", rawName), rawName)
+				diagnostic.SANYRange = argument.Syntax.Range
+				diagnostic.SANYMessage = fmt.Sprintf("Could not find declaration or definition of symbol '%s'.", rawName)
+				diagnostics[i] = diagnostic
+			}
+		}
+		g.retainNullOperatorOperand(argument, false)
+		return diagnostics
+	}
+	if operator == nil {
+		return diagnostics
+	}
+	if operator.semArity() == expected {
+		return append(diagnostics, retainSanySymbolReference(argument, operator, true, g.currentModule)...)
+	}
+	g.retainNullOperatorOperand(argument, true)
+	mainOperator := g.applicationOperator(owner.Name, nil, context)
+	if mainOperator == nil {
+		// Its source location/string requires an actual resolved SymbolNode.
+		return diagnostics
+	}
+	format := "Operator with incorrect arity passed as argument. \nOperator '%s' of arity %s is argument number %s (counting from 1) to operator `%s', \nbut an operator of arity %s was expected."
+	parameters := []any{operator.semName(), operator.semArity(), index + 1, mainOperator, expected}
+	diagnostic := sanyDiagnosticParameters(errorAt(owner.Pos, "E4004", "operator argument arity mismatch: got %d, want %d", operator.semArity(), expected), parameters...)
+	diagnostic.SANYMessage = fmt.Sprintf(format, operator.semName(), fmt.Sprint(operator.semArity()), fmt.Sprint(index+1), mainOperator.semBase().Location.String(), fmt.Sprint(expected))
+	diagnostic.SANYRange = SanyRange{Begin: owner.Pos, End: owner.Pos.SourceEnd()}
 	return append(diagnostics, diagnostic)
 }

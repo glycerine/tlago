@@ -1054,8 +1054,12 @@ allocation order. All 475 output rows across 20 Java/Go cases agree, including
 arity in its lexical scope and avoids generating false scalar formals from the
 legacy quantifier-shaped view. All 29 phase cases, 30 substitution cases and
 56 formal diagnostic cases agree. Existing SANY and focused TLC integrations
-pass. Canonical NEW/AP and qualified selector graphs, the older fixity GenID
-wrong-arity path, recursive/function/INSTANCE/fact graphs and full LevelNode
+pass. The unqualified fixity GenID path now preserves raw-name resolution, source
+wrong-arity and undefined-symbol diagnostics, actual error parameter identity
+and the correct sentinels without allocating unused OpArgs. All 693 output
+rows across 30 source-valid Java/Go cases agree, as do their complete diagnostic
+codes, ranges and messages. Canonical NEW/AP, qualified selector and GenID
+prefix graphs, recursive/function/INSTANCE/fact graphs and full LevelNode
 checking remain pending. basicOpDefTest stays reconcile; no original-method
 or full-workspace completion credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
