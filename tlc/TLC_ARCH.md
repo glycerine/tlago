@@ -111,7 +111,15 @@ substitution context; initializing only the outermost module loses stronger
 nested bounds. EXTENDS imports nodes rather than the extendee's whole module
 bound set. Sort translated constant names to retain deterministic collection.
 Thirty expanded source comparisons match, including 29 parseable modules and
-one grammar rejection. Full formal-operator metadata, imported graph identities,
+one grammar rejection. InstanceNode also merges each substitution expression's
+own level constraints, argument constraints and co-parameter relationships,
+independently of whether the substituted declaration occurs in target bodies.
+Collect those expressions in the instancer's lexical context from the retained
+resolved substitution array, including implicit defaults and WITH replacements.
+Do not reconstruct defaults from a completed-module name scan. Twenty-seven
+additional parseable RHS comparisons match complete source diagnostics, including
+unused LET definitions, composite expressions and scalar/operator defaults.
+Full formal-operator metadata, imported graph identities,
 original frontend phase APIs and canonical evaluator sharing remain separate
 pending work.
 

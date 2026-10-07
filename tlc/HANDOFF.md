@@ -913,11 +913,14 @@ LOCAL definitions from EXTENDS imports. Unexported LOCAL bodies do not add
 independent constraints to an importer; exported references still retain their
 body dependencies. Nonconstant target module bounds survive nested INSTANCE
 substitutions, including LOCAL INSTANCE. All 30 expanded comparisons match
-(29 parseable modules plus one grammar rejection). Focused root/model checks
-pass in 31.049 seconds, complete SANY passes in 1.825 seconds, and compilation
-passes. Final affected semantic assertions and all bounded comparisons also pass
-after sorting translated constant names. Original corpus fixtures and assertions
-are unchanged; no inventory credit or new full-workspace pass is added.
+(29 parseable modules plus one grammar rejection). Instance constraint collection
+also merges every retained substitution expression's own constraints, even when
+the target declaration is unused. Use the actual resolved default/WITH array
+instead of reconstructing defaults by name. All 27 additional parseable RHS
+cases and prior bounded comparisons match Java. Current focused root/model checks
+pass in 27.372 seconds, complete SANY passes in 2.013 seconds, and compilation
+passes. Original corpus fixtures and assertions are unchanged; no inventory
+credit or new full-workspace pass is added.
 Full canonical LevelNode fields and iteration, imported graph identity, full
 formal-operator metadata, the remaining Java frontend helper API and evaluator
 sharing remain pending. The green comparisons do not prove complete LevelNode

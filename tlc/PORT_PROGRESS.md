@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Resolved substitution RHS constraint aggregation:
+Previous completed commit: 27e73a1. InstanceNode merges each substitution
+expression's LevelConstraints, ArgLevelConstraints and ArgLevelParams after
+translating the target module's constraints. The Go collector only rebuilt a
+name-based default/WITH context and traversed target bodies. Initial 15-case
+comparison 23450 returns 1 with 13 mismatches: constraints disappear when the
+target declaration is unused. Java reports additional 4245/4246/4247 errors for
+prime, ENABLED, equality, Op(C), action arguments and composite RHS expressions.
+
+Collect each retained generatedSubstitutions expression in the instancer's
+lexical context before collecting target bodies. Reuse the actual resolved
+implicit/WITH array and source order instead of reconstructing defaults by name.
+Existing expression collection also retains unused LET definition constraints.
+No test assertions, fixtures or original-method inventory credit changed.
+
+Corrected initial 15-case comparison 51707 returns 0. Expand to 27 parseable
+cases covering implicit scalar/operator defaults, unused local definitions,
+CASE, IF, EXCEPT, CHOOSE, function domains, comprehensions and compound operator
+operands. All complete diagnostic logs match Java (97349, terminal 0). Log:
+/mnt/oldrog/tmp/tlago-subst-rhs-constraint-expanded.log. Scratch vectors stay
+outside the repository and are not permanent invented tests.
+
+Focused root checks plus seven unchanged original related model methods pass
+normally in 27.372 seconds (46795); complete SANY passes in 2.013 seconds
+(27758); all-package compilation passes (64316). All preceding 30 module-scope,
+27 phase, 26 co-parameter, 24 argument, 24 level, 29 AP phase and 12 prime
+comparisons remain exact (28139, terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-rhs-constraint-final-*.log. All handles terminal and
+retired. No new full-workspace pass, complete canonical LET/INSTANCE graph or
+LevelNode metadata parity is claimed. New distributed service remains postponed.
+
 2026-10-07 Exported LOCAL constraints and nested INSTANCE bounds:
 Previous completed commit: b1d8768. First audit of 13 ASSUME-PROVE INSTANCE
 cases matches complete Java diagnostics (67727, terminal 0). Expand to 19 with

@@ -193,11 +193,12 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 				owner.formals[param] = sanyLeibnizBinding{}
 			}
 			variables := map[string]sanyLeibnizBinding{}
-			for name := range moduleSubstitutionTargets(target, spec) {
-				variables[name] = sanyLeibnizBinding{expr: &IdentExpr{Name: name}, context: owner}
-			}
-			for _, subst := range instanceSubstitutions(instance) {
-				variables[subst.Name] = sanyLeibnizBinding{expr: subst.Expr, context: owner}
+			for _, subst := range instance.generatedSubstitutions {
+				// InstanceNode merges every substitution expression's own
+				// constraints, even when the target declaration is unused.
+				// Keep the actual resolved default/WITH array and its order.
+				expression(subst.expr, owner)
+				variables[subst.name] = sanyLeibnizBinding{expr: subst.expr, context: owner}
 			}
 			collect(target, &sanyLeibnizContext{module: target, variables: variables, formals: map[string]sanyLeibnizBinding{}}, false)
 		}
