@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-07 NEW declaration/wrapper construction and selected bindings:
+Previous completed commit: 37b4e77. Retain actual NEW wrapper and declaration
+syntax in the native AST. Port generateNewSymb order: generate the optional
+domain, build/register actual OpDeclNode with source NEW kind/level/arity/synonym
+and module, then allocate NewSymbNode with that actual declaration/domain.
+Retain selected earlier bindings after duplicates or conflicts. Proof native
+scopes now carry selected actual declaration pointers rather than reconstructing
+only metadata. The wrapper still owns the new declaration after rejection.
+getChildren returns null without a set, otherwise the actual set as its sole child.
+Missing earlier imported/native identities remain explicit registration gaps;
+no fake earlier binding is fabricated.
+
+The source comparison exposed another generation shortcut: a bare higher-arity
+symbol reported arity only during a later native pass, leaving enclosing graphs
+incomplete. Reject it during actual generation and return this Generator's nullOAN.
+Separate call-name and operator-operand paths retain their original behavior.
+Use Operators.resolveSynonym's actual Go equivalent for declared operator names.
+
+All 234 output rows match Java's private generateNewSymb across 25 cases: 230
+prefixed observations (100 graph nodes, 36 selected declaration references/level/
+parameter-set/module observations, 36 child-array nullness/identity checks,
+25 cases, 25 null domains and eight diagnostics). Cases cover optional NEW,
+all five declaration kinds, scalar/higher arity, prefix/infix/postfix/synonyms,
+domains and later use of actual declarations, self-reference before registration,
+duplicates/conflicts and unresolved domains. Source preparation invokes the real
+method in a module context; these comparisons do not establish surrounding AP/
+proof/goal allocation order. Parser-rejected operator/variable domain probes were
+replaced with a source-accepted duplicate scalar domain probe; no original test,
+fixture or assertion was altered. Observers remain outside the repository.
+
+All 25 full frontend diagnostic codes, ranges and messages match Java. Existing
+AP phases 29 and substitutions 30 still agree (69389). Existing formal comparisons
+also match: quantifier 11, named-function 15, proof 17 and CHOOSE 13 (40603).
+Focused existing root/SANY/TLC gate passes in 47.477s (11059); final full sany_tests
+passes in 1.733s and compile-all succeeds (70343). Final direct graph logs have
+234 exactly matching rows, including all child getters. All handles are terminal
+zero. Receipts are under /mnt/oldrog/tmp/tlago-new-*, including Java/Go graph logs,
+root JSON, compile log and per-case diagnostics. No race workload was run.
+
+Remaining: surrounding canonical AP/goal/marker and clause lifetime; NEW inherited
+level data/checking and visitors; label/AtNode level checking, imported/qualified/
+INSTANCE/fact identities, shared Errors/exception ownership and evaluator graph
+reuse. Existing Java NEW assertions live in the already mapped semantic/error
+corpora; native corpus level/reference helpers still require canonical replacement.
+basicOpDefTest stays reconcile. No additional original-method, TLC inventory or
+full-workspace completion credit is added.
+
 2026-10-07 Label table enumeration and source accessors:
 Previous completed commit: 9712c3a. Replace label maps with shared nullable
 sanyLabelTable pointers in LS frames, source bodies, LabelNodes and OpDefs. Port

@@ -1028,7 +1028,17 @@ arity, body, goal and single body child. The 22 bounded table/accessor cases mat
 all 869 rows; 25 generated-label cases match all 602 graph/enumeration rows and
 complete diagnostics. Existing focused root/TLC, SANY and compile gates pass.
 
-Canonical AP/NEW/goal/marker ownership, goal-clause lifetime after AP, LabelNode
+NEW now constructs actual declaration and NewSymbNode graphs, generating the
+domain before registration. Retain declaration/wrapper syntax, source kind/level,
+arity, synonyms, selected earlier bindings and actual domain identities. Native
+proof scopes carry these selected declaration pointers. Bare higher-arity symbols
+now reject during generation and preserve actual nullOAN in enclosing graphs.
+The 25 bounded generateNewSymb cases match all 234 output rows and their complete
+frontend diagnostics. Existing root/TLC, SANY and compile checks pass; the 56
+formal and 59 AP phase/substitution comparisons still match. Surrounding canonical
+AP allocation and NEW level/visitor/evaluator integration remain pending.
+
+Canonical AP/goal/marker ownership, goal-clause lifetime after AP, LabelNode
 level checking and visitors, AtNode level data and full inherited checks remain
 unfinished. Qualified selectors, INSTANCE/fact and imported identities, recursive
 level iteration, shared Errors/exception integration and evaluator graph sharing

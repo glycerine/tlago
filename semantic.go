@@ -1177,17 +1177,13 @@ func checkAssumeProveBindings(body *AssumeProve, defined map[string]Position, lo
 		switch {
 		case item.NewSymbol != nil:
 			sym := item.NewSymbol
-			bindingDiags := checkBindingName("NEW symbol", sym.Name, sym.Pos, defined, apLocals)
-			diags = append(diags, bindingDiags...)
-			if sym.Domain != nil {
-				diags = append(diags, generate(sym.Domain, apLocals)...)
-			}
-			if generation != nil && !bindingDiags.HasErrors() {
-				kind := ConstantDecl
-				if sym.Kind == 25 {
-					kind = VariableDecl
+			if generation != nil {
+				diags = append(diags, generation.generateNewSymbol(sym, defined, apLocals)...)
+			} else {
+				diags = append(diags, checkBindingName("NEW symbol", sym.Name, sym.Pos, defined, apLocals)...)
+				if sym.Domain != nil {
+					diags = append(diags, generate(sym.Domain, apLocals)...)
 				}
-				generation.symbols[sym.Name] = localSymbol{kind: kind, arity: sym.Arity, pos: sym.Pos}
 			}
 			apLocals[sym.Name] = true
 			if generation != nil && generation.labelAPDepth > 1 {
@@ -3385,6 +3381,15 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			graphSymbol = symbol.opDefNode
 		} else {
 			graphSymbol = sanyGlobalInitialContext(false).getSymbol(e.Name)
+		}
+		if !symbolReferenceOnly && !operatorArgument && graphSymbol != nil && graphSymbol.semArity() > 0 {
+			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+			diagnostic := sanyDiagnosticParameters(errorAt(e.Pos, "E4204", "operator %s arity mismatch: got 0 args, want %d", e.Name, graphSymbol.semArity()), e.Name, graphSymbol.semArity())
+			diagnostic.SANYMessage = fmt.Sprintf("The operator %s requires %d arguments.", e.Name, graphSymbol.semArity())
+			if e.Syntax != nil {
+				diagnostic.SANYRange = e.Syntax.Range
+			}
+			return Diagnostics{diagnostic}
 		}
 		if !symbolReferenceOnly {
 			diags = append(diags, retainSanySymbolReference(e, graphSymbol, operatorArgument, generation.currentModule)...)

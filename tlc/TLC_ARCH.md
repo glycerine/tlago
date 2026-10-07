@@ -1,5 +1,32 @@
 # TLC Architecture Notes for the Go Port
 
+## NEW declaration construction and binding identity
+
+NEW retains its wrapper syntax and its declaration's own syntax. Generate the
+optional domain before buildParameter constructs and registers the OpDeclNode.
+Use the declared NEW kind/level, actual arity, operator synonym and current module.
+Only ordinary ConstantDeclKind populates the declaration's own level/all-parameter
+sets; NEW constant/state/action/temporal declarations do not do so.
+
+Allocate NewSymbNode after registration, retaining the actual declaration and
+domain nodes. Its getChildren returns null without a domain, otherwise only the
+domain, matching source rather than treating the declaration as this getter's
+child. Registration retains an earlier duplicate/rejected binding; the wrapper
+still owns its newly constructed declaration. The native proof scope carries the
+selected actual declaration rather than rebuilding name/arity metadata. Missing
+earlier imported/native identities remain an explicit registration gap.
+
+Bare higher-arity symbols reject during generation and retain the owning
+Generator's nullOAN before enclosing construction. Reporting the same error only
+in a later native arity pass leaves enclosing graphs incomplete and loses source
+allocation order. Operator operands and call-name resolution keep separate paths.
+
+The bounded comparisons invoke Java's actual generateNewSymb in a prepared
+module context. They establish this method's construction order and references,
+not full surrounding AP/goal/marker allocation or NEW level checking. Canonical
+AP owners, clause lifetime, NEW inherited level data/visitors, imported identity
+integration and evaluator sharing still require implementation.
+
 ## EXCEPT construction and AtNode reference ownership
 
 Generate the base before allocating the EXCEPT application. Allocate its mutable

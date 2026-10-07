@@ -432,6 +432,10 @@ func sanyProofNewBindings(symbols map[string]localSymbol, body *AssumeProve) {
 	}
 	for _, clause := range body.Assumptions {
 		if symbol := clause.NewSymbol; symbol != nil {
+			if symbol.bindingSymbol != nil {
+				symbols[symbol.Name] = *symbol.bindingSymbol
+				continue
+			}
 			kind := ConstantDecl
 			if symbol.Kind == 25 {
 				kind = VariableDecl

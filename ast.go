@@ -225,13 +225,17 @@ type AssumeProveItem struct {
 }
 
 type NewSymbol struct {
-	Name   string
-	Arity  int
-	Kind   int
-	Level  tlaLevel
-	Domain Expr
-	Pos    Position
-	Source Position
+	semanticNode      *sanySemNewSymbNode
+	bindingSymbol     *localSymbol
+	Syntax            *SanySyntaxNode
+	declarationSyntax *SanySyntaxNode
+	Name              string
+	Arity             int
+	Kind              int
+	Level             tlaLevel
+	Domain            Expr
+	Pos               Position
+	Source            Position
 }
 
 // SanyExprSource retains the parser node selected by semantic generation.

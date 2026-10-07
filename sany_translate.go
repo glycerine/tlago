@@ -2377,6 +2377,7 @@ func sanyAssumeProveBody(node *SanySyntaxNode) (*AssumeProve, Diagnostics) {
 func sanyNewSymbol(node *SanySyntaxNode) (NewSymbol, Diagnostics, bool) {
 	id := sanyNewSymbIdentifier(node)
 	sym := NewSymbol{
+		Syntax: node,
 		Kind:   24,
 		Level:  constantLevel,
 		Pos:    sanyNodePosition(node),
@@ -2411,6 +2412,7 @@ func sanyNewSymbol(node *SanySyntaxNode) (NewSymbol, Diagnostics, bool) {
 	for _, child := range node.GetHeirs() {
 		switch child.Kind.JavaName() {
 		case "N_IdentDecl":
+			sym.declarationSyntax = child
 			if id := firstSanyIdentifier(child); id != nil {
 				sym.Name = id.Image
 				sym.Arity = countDirectSanyChildren(child, "US")
@@ -2421,12 +2423,14 @@ func sanyNewSymbol(node *SanySyntaxNode) (NewSymbol, Diagnostics, bool) {
 				}
 			}
 		case "N_PrefixDecl", "N_PostfixDecl":
+			sym.declarationSyntax = child
 			if name := sanyFixDeclOperatorName(child); name != "" {
 				sym.Name = name
 				sym.Pos = sanyFixDeclOperatorPosition(child)
 				sym.Arity = 1
 			}
 		case "N_InfixDecl":
+			sym.declarationSyntax = child
 			if name := sanyFixDeclOperatorName(child); name != "" {
 				sym.Name = name
 				sym.Pos = sanyFixDeclOperatorPosition(child)
