@@ -64,6 +64,7 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 	}
 	var diags Diagnostics
 	spec.levelChecks = map[*Module]*sanyModuleLevelChecks{}
+	spec.semanticModules = newSanyExternalModuleTable()
 	spec.SemanticDiags = nil
 	defer func() {
 		spec.SemanticDiags = appendSanyDiagnostics(append(Diagnostics(nil), diags...), spec.SemanticDiags...)
@@ -90,32 +91,6 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 			child, childDiags := check(nested, checks.recursiveGeneration)
 			if child != nil {
 				checks.nested = append(checks.nested, child)
-			}
-			// Generator adds the completed ModuleNode to SymbolTable after
-			// generating its body. resolveModule falls back to the already
-			// generated external module table.
-			externalRoot := mod
-			for enclosing[externalRoot] != nil {
-				externalRoot = enclosing[externalRoot]
-			}
-			for _, externalName := range spec.SemanticOrder {
-				if externalName == externalRoot.Name {
-					break
-				}
-				if externalName != nested.Name {
-					continue
-				}
-				previous := spec.Modules[externalName]
-				if previous == nil || previous == nested {
-					continue
-				}
-				position := nested.Pos
-				diagnostic := errorAt(position, "E4223", "distinct modules with name %s: this definition or declaration conflicts with the one at %s", nested.Name, sanySymbolLocation(previous.Pos))
-				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-				diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined module '%s': this definition or declaration conflicts \nwith the one at %s.", nested.Name, sanySymbolLocation(previous.Pos))
-				diagnostic.SANYParameters = []any{nested.Name, sanySymbolLocation(previous.Pos)}
-				childDiags = appendSanyDiagnostics(childDiags, diagnostic)
-				break
 			}
 			return childDiags
 		}
@@ -158,6 +133,9 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 		if spec.FilenameResolver != nil {
 			mod.Library = spec.FilenameResolver.IsStandardModule(name)
 		}
+		if mod.semanticNode != nil {
+			spec.semanticModules.put(name, mod.semanticNode.context, mod.semanticNode)
+		}
 		// Source tests raw Errors.isSuccess, before warning elevation.
 		if checkLevels && !diags.HasErrors() {
 			diags = appendSanyDiagnostics(diags, checks.check()...)
@@ -177,6 +155,9 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 	for _, name := range remaining {
 		checks, generated := check(spec.Modules[name], nil)
 		diags = appendSanyDiagnostics(diags, generated...)
+		if mod := spec.Modules[name]; enclosing[mod] == nil && mod.semanticNode != nil {
+			spec.semanticModules.put(name, mod.semanticNode.context, mod.semanticNode)
+		}
 		if checkLevels && checks != nil && !diags.HasErrors() {
 			diags = appendSanyDiagnostics(diags, checks.check()...)
 		}
@@ -188,7 +169,28 @@ func generateSpecWithModuleReport(spec *Spec, progress func(string), report func
 }
 
 func checkModule(mod *Module, spec *Spec) Diagnostics {
-	return checkModuleWithEnclosing(mod, spec, nil)
+	if spec.semanticModules == nil {
+		spec.semanticModules = newSanyExternalModuleTable()
+	}
+	var diags Diagnostics
+	// The single-module entry point still needs the preceding external
+	// semantic graphs that SANY supplies to Generator in loader order.
+	for _, name := range spec.SemanticOrder {
+		if name == mod.Name {
+			break
+		}
+		dependency := spec.Modules[name]
+		if dependency == nil {
+			continue
+		}
+		if dependency.semanticNode == nil {
+			diags = appendSanyDiagnostics(diags, generateModuleWithEnclosing(dependency, spec, nil, &sanyModuleLevelChecks{})...)
+		}
+		if dependency.semanticNode != nil {
+			spec.semanticModules.put(name, dependency.semanticNode.context, dependency.semanticNode)
+		}
+	}
+	return appendSanyDiagnostics(diags, checkModuleWithEnclosing(mod, spec, nil)...)
 }
 
 func enclosingModules(spec *Spec) map[*Module]*Module {
@@ -378,7 +380,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		mod.symbolTable = enclosing.symbolTable.duplicateForInnerModule()
 		mod.symbolTable.pushContext(context)
 	} else {
-		mod.symbolTable = newSanySymbolTable(context, nil)
+		if spec.semanticModules == nil {
+			spec.semanticModules = newSanyExternalModuleTable()
+		}
+		mod.symbolTable = newSanySymbolTable(context, spec.semanticModules)
 	}
 	mod.symbolTable.module = mod.semanticNode
 	mod.semanticNode.nestingLevel = 0
@@ -1120,6 +1125,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			registerRecursive(*unit.recursive)
 		case unit.nested != nil:
 			diags = append(diags, checks.generateNested(unit.nested)...)
+			if unit.nested.semanticNode != nil {
+				for _, diagnostic := range mod.symbolTable.addModule(unit.nested.semanticNode) {
+					// Keep the native API's description alongside the actual
+					// constructor diagnostic retained in SANYMessage.
+					if diagnostic.Code == "E4223" {
+						diagnostic.Message = fmt.Sprintf("distinct modules with name %s: this definition or declaration conflicts with the one at %v", unit.nested.Name, diagnostic.SANYParameters[1])
+					}
+					diags = append(diags, diagnostic)
+				}
+			}
 		case unit.instance != nil:
 			generateInstance(unit.instance)
 			registerInstance(*unit.instance)

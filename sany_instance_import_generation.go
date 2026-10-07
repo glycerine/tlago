@@ -3,12 +3,7 @@
 package tlago
 
 func (module *sanySemModuleNode) isParameterFree() bool {
-	for _, symbol := range module.context.contentSymbols() {
-		if _, declaration := symbol.(*sanySemOpDeclNode); declaration {
-			return false
-		}
-	}
-	return true
+	return len(module.getConstantDecls()) == 0 && len(module.getVariableDecls()) == 0
 }
 func (module *sanySemModuleNode) getInstances() []*sanySemInstanceNode {
 	if module.instances == nil {

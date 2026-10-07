@@ -76,6 +76,11 @@ type sanySemModuleNode struct {
 	isInstantiated           bool
 	instanceVec              []*sanySemInstanceNode
 	instances                []*sanySemInstanceNode
+	constantDecls            []*sanySemOpDeclNode
+	variableDecls            []*sanySemOpDeclNode
+	opDefs                   []*sanySemOpDefNode
+	thmOrAssDefs             []*sanySemThmOrAssumpDefNode
+	modDefs                  []*sanySemModuleNode
 	nestingLevel             int
 	definitions              []sanySemanticGraphNode
 	records                  []*sanySemOpApplNode

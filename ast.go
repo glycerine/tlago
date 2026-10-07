@@ -5,6 +5,7 @@ import "github.com/glycerine/tlago/tlc"
 type Spec struct {
 	levelChecks      map[*Module]*sanyModuleLevelChecks
 	initialContext   *sanyContext
+	semanticModules  *sanyExternalModuleTable
 	FilenameResolver tlc.FilenameToStream
 	LibraryPaths     []string
 	Root             *Module

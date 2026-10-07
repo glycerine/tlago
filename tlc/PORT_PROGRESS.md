@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-07 Module collection snapshots and actual inner-module contexts:
+Previous completed commit: 472e5a8. Port Context's declaration/module vectors in
+Hashtable order and operator/theorem vectors through the separate newest-first
+Pair history. Preserve replaced definition entries and concrete-class filters.
+ModuleNode getters cache reverse copies for declaration/definition arrays and a
+forward copy for inner modules. Preserve empty nonnull arrays, shared nodes,
+returned-array mutation and cache lifetime. isParameterFree uses these cached
+constant/variable arrays in the source short-circuit order.
+
+The expanded observer exposed missing actual inner-module registration. Register
+completed nodes in the enclosing SymbolTable after generation. Share one actual
+external-module table across generators, populated after provenance and before
+level checks. Remove the manually reconstructed E4223 path; canonical registration
+owns source diagnostics and rejected bindings. Native Message retains the earlier
+API wording independently of exact SANYMessage. The private single-module checker
+now prepares preceding external dependency graphs, matching Generator's required
+input rather than relying on ungenerated metadata.
+
+Retained forward LOCAL named INSTANCE input exposed a fabricated template UID
+before its target context existed. Generate named formals first, report missing
+context at the actual module token, then skip template/import construction.
+Leave the target uninstantiated, as Java does. All 5,697 observation rows match
+across 43 whole-module scenarios with actual vectors, UID identities, hash rehashes,
+replaced history entries, frozen cache snapshots, returned-array aliasing, nested
+modules and forward context failure. Scratch files are outside the repository:
+/mnt/oldrog/tmp/tlago-module-collections-*. Initial observer brace mistake was
+corrected; the missing modules and forward-reference differences were production
+fixes, with source cases retained. No permanent tests or method credit added.
+
+Initial complete SANY passes 1.993s (74904 retired); compilation passes (25941
+retired). Initial affected root gate fails in 48.394s (94236 retired), with two
+native bridge failures: earlier Message expected distinct modules, and direct
+checkModule(Middle) lacked Helper's semantic graph. Correct production adapters
+and dependency generation, keeping tests unchanged. Complete bridge class then
+passes 1.408s (17393 retired). Final related semantic/resolver and original
+Test206–220 gate passes 17.463s (28513 retired); final complete SANY passes
+1.993s (30700 retired), and compile-all passes (53942 retired). All live handles
+are retired; git diff --check passes.
+Sixteen existing loader/front-end comparisons and one added external/inner name
+conflict match source output (32289 and 10295 retired); only independent extraction
+directory names are normalized in the retained script, with raw files saved.
+No whole-workspace pass claim. No broad race or changed workload bounds.
+EXTENDS inheritance, complete module vectors, levels, visitors and evaluator
+sharing remain pending; distributed service development stays deferred.
+
 2026-10-07 Qualified instance arguments and proof references:
 Previous completed commit: 690ce9a. Use actual qualified symbols to validate
 GeneralId operator-argument arity before allocating OpArg. Preserve terminal

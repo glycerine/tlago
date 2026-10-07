@@ -1,5 +1,36 @@
 # TLC Architecture Notes for the Go Port
 
+## Module collection snapshots and inner-module registration
+
+Context declaration vectors filter actual OpDeclNode classes by constant or
+variable kind in Hashtable enumeration order. Inner-module vectors use the same
+enumeration and concrete class filter. Operator and theorem definition vectors
+follow the separate Pair history chain newest-first, retaining replaced entries;
+operator vectors exclude builtin and module-name kinds. ModuleNode lazily caches
+a reversed copy of declaration/operator/theorem vectors, and a forward copy of
+inner-module vectors. Subsequent mutations do not invalidate those arrays, and
+callers receive the same mutable array. `isParameterFree` queries those cached
+constant/variable arrays with Java's short-circuit order.
+
+Completed inner ModuleNodes now register in the enclosing SymbolTable, after
+body generation. A shared external-module table is populated in loader order
+after standard provenance assignment and before level checks. Inner symbol tables
+share that table. Actual registration now owns E4223 and rejected bindings;
+preserve the native message separately from the exact source SANY diagnostic.
+The private single-module checker prepares preceding dependency graphs in loader
+order rather than attempting INSTANCE against native metadata alone.
+
+A forward inner-module INSTANCE reports missing context after named formals and
+before substitution-template allocation, preserving relative UIDs and leaving
+the target uninstantiated. Missing-context source locations use the actual module
+name token. All 5,697 observed rows match across 43 whole-module scenarios,
+including hash rehashing, duplicate history entries, shared declaration/definition
+identities, cache mutation, returned-array aliasing, nested modules and forward
+references. Seventeen loader/front-end observations also match Java, including
+external/inner module name conflicts. These comparisons add no original-method
+completion credit and do not establish complete module inheritance, level,
+visitor or evaluator parity.
+
 ## Qualified instance references and rejection order
 
 Qualified GeneralId operator arguments now validate the actual imported symbol's

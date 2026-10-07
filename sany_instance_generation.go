@@ -30,9 +30,6 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 	if target == nil {
 		return nil
 	}
-	if target.semanticNode != nil {
-		target.semanticNode.isInstantiated = true
-	}
 	// getByClass filters Hashtable.elements(), not Context's insertion links.
 	// Keep every context entry during rehashing; unrelated definitions and
 	// builtin entries affect declaration enumeration too.
@@ -87,6 +84,28 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 		instance.formalNodes = append(instance.formalNodes, node)
 		diags = append(diags, g.bindFormalParameter(node, context, nil)...)
 	}
+	if target.semanticNode == nil {
+		position := instance.SourcePosition()
+		var find func(*SanySyntaxNode)
+		find = func(syntax *SanySyntaxNode) {
+			if syntax == nil {
+				return
+			}
+			if syntax.Kind.JavaName() == "N_NonLocalInstance" {
+				if heirs := syntax.GetHeirs(); len(heirs) > 1 {
+					position = sanyNodePosition(heirs[1])
+				}
+				return
+			}
+			for _, child := range syntax.GetHeirs() {
+				find(child)
+			}
+		}
+		find(instance.Syntax)
+		diagnostic := sanyRegistrationDiagnostic(position, "E4003", "Module %s does not have a context.", instance.Module)
+		return append(diags, diagnostic)
+	}
+	target.semanticNode.isInstantiated = true
 	base, _ := newSanySemSubstitutionNode(sanySubstInKind, instance.Syntax, make([]*sanySemSubst, 0), nil, module.semanticNode, target.semanticNode, false)
 	template := &sanySemSubstInNode{base}
 	complete := target.semanticNode != nil

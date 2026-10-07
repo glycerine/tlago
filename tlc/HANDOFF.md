@@ -1119,7 +1119,12 @@ operators. Qualified instance fact/DEF references retain actual symbols and proo
 array slots. All 1,750 observed rows across 41 whole modules match Java, including
 actual operands, proof reference arrays and rejection order. EXTENDS inheritance,
 complete instance vectors and general subexpression/fixity selectors remain
-incomplete. Bounded generation
+incomplete. Context/module collection getters now preserve source enumeration,
+definition history and lazy array snapshots. Inner modules register actual nodes
+in the enclosing context, with a shared loader-ordered external-module table.
+Forward inner references fail before template allocation. All 5,697 observed rows
+across 43 whole modules and 17 loader observations match Java. EXTENDS inheritance
+and complete module/level/visitor/evaluator graph parity remain pending. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 
