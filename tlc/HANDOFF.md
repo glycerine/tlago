@@ -1209,7 +1209,7 @@ views retain actual mutable canonical sets and constraints on the body node and
 allocate no semantic identity; direct TLC checks and setters observe the same
 cells. All 60 direct literal observations and the retained 575, 792 and 24,529
 comparison rows agree with Java. The full original incremental basicOpDefTest is
-now port complete. The LET and transitive-import methods remain reconcile.
+now port complete. The complete LET and transitive-import translations follow below.
 LetInNode now performs the complete source check: ordered component traversal,
 body parameter-set copies, retained constraint/dependency merges and filtering
 of dependencies bound by local formals. It preserves the source omission of
@@ -1278,8 +1278,8 @@ and retains its other metadata. Proof-instance getter overrides and raw formatte
 follow Java. Parameterized level diagnostics retain their original arguments for
 duplicate equality, including recursive-module diagnostics. All 545 direct Java
 rows and the retained 332 module rows agree. These are manual observations;
-standalone generation and source-reference assertions still need reconciliation
-for the original LET methods.
+standalone generation and source-reference assertions are now retained in the
+complete original LET translations below.
 OpApplNode now translates its complete source level algorithm for declared and
 AnyDef operators, including theorem/assumption definitions, higher-order bounds,
 weights, non-Leibniz propagation, bound filtering, LC/ALC/ALP translation and all
@@ -1289,8 +1289,14 @@ formal references rather than UIDs. All 2,897 Java observations and retained
 545 instance/332 module rows agree. Temporal cases include fresh child
 applications. Diagnostic symbol parameters compare references, including null
 normalization. These observations add no original-method completion credit.
-The two original standalone LET methods remain reconcile until their actual
-generation, level checks, syntax identity and source references are translated.
+All five original IncrementalSemanticParseTests methods are now port complete.
+The two standalone LET tests preserve original dependency tables, actual module
+and expression checks, syntax identity, constant levels, concrete graph classes
+and exact imported source references. They use the original embedded module
+sources, not enclosing-module surrogates. Unchanged Java JUnit and all five Go
+methods pass. OpDefNode getSource/hasSource now preserve the source immediate
+reference and self fallback, including typed-null handling. No TLC inventory
+count changes; broader standalone generation and evaluator integration remain.
 Standalone generation, remaining graph fidelity and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

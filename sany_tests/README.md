@@ -62,7 +62,8 @@ Numeral level checking records the supplied signed 32-bit iteration and the
 no-iteration overload advances it, matching source even for decreasing iterations
 and signed wraparound. The normal composite checker invokes it at iteration 1.
 Literal getter guards and canonical mutable metadata are now integrated with
-the same TLC body nodes. Recursive checking of other graph classes remains pending.
+the same TLC body nodes. Canonical composite level algorithms are now translated; remaining generation
+and evaluator integration do not establish whole-frontend completion.
 
 `semantic.IncrementalSemanticParseTests.basicOpDefTest` is **port complete** in
 the root translation. It parses `op == 0` incrementally and generates the actual
@@ -70,12 +71,23 @@ operator without an enclosing module. It preserves both log-success assertions,
 non-null result, name, arity, recursion flag, actual level checking, syntax-node
 identity, constant level and concrete NumeralNode body type.
 
-The other two methods in `semantic.IncrementalSemanticParseTests` remain
-**reconcile**. Their native-AST checks omit original canonical semantic-node
-assertions: syntax-node identity, actual level-check results and constant levels, dependency module tables,
-concrete LetInNode/OpApplNode types, and imported operator source identity.
-Implement the production graph and incremental generator behavior before
-crediting these methods; parsing the same snippets is insufficient.
+`semantic.IncrementalSemanticParseTests.letInExpressionTest` and
+`letInExpressionWithTransitiveDepsTest` are **port complete** in root
+`sany_incremental_semantic_java_test.go`. They parse the original standalone
+expressions, retain exactly one original parser dependency, load/check actual
+canonical dependency modules, and generate against the external module table
+with a dummy module. Preserve both log-success assertions, non-null result,
+actual recursive level checking, syntax identity, constant level, concrete
+LetInNode/OpApplNode/OpDefNode classes and the exact imported source reference.
+The four embedded standard-module sources match the pinned Java files byte for
+byte. The dependency helper uses production loading/generation and checks each
+actual module before entering it in the external table. It does not wrap the
+expression in a synthetic module or skip missing children.
+
+All five original methods in this class are now translated. The unchanged Java
+JUnit class passes all five; all five Go translations pass. Older AST facade
+checks in this directory remain supplementary and add no duplicate method credit.
+This completes this class, not the broader SANY frontend or TLC port.
 
 `semantic.TestBuiltInOperatorInitialization.testInitAndReInit` is **port complete**
 in root `sany_builtin_initialization_java_test.go`. Its complete helper checks

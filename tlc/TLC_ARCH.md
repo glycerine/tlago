@@ -9356,7 +9356,7 @@ All 68 external Java/Go observations match, including complete metadata text and
 collection order, false/repeated/decreasing checks, skipped definitions, null
 failure state, and copy capacities across nine sizes. These observations add no
 original-test credit. Application, instance and module descendant
-checks remain dependencies before the original incremental LET tests can close.
+checks are translated below, enabling the complete original incremental LET tests.
 
 
 ## Canonical LabelNode level checking
@@ -9604,7 +9604,7 @@ counts, recursive tables, complete collections, diagnostics, formatting and
 twelve partial failures. NPE observations compare exception class rather than
 JVM enhanced messages. No original test method is credited. Ordinary application,
 remaining generation/evaluator integration still prevents whole-module completion
-and the two original incremental LET methods from being complete.
+beyond the original incremental LET methods completed below.
 
 
 ## Canonical substitution-wrapper level checks
@@ -9638,8 +9638,7 @@ nodes and controlled ExprNode metadata. They compare complete inherited level
 data, child calls, module iteration and collection identity, including successful
 chained/duplicate substitutions, false child results and malformed metadata.
 Runtime NPE/CCE observations compare class, not enhanced JVM messages. These
-are manual evidence, not original-method credit. Standalone generation and source-reference assertions remain dependencies of the
-original incremental LET methods.
+are manual evidence, not original-method credit. The complete original incremental LET methods are translated below.
 
 
 ## Canonical instance level checking
@@ -9722,5 +9721,32 @@ full metadata, collection identity, child calls, diagnostics and raw parameter
 values. Runtime NPE/CCE observations compare class, not enhanced JVM messages.
 Retained 545 instance and 332 module rows agree. These add no original-method
 credit or full-workspace verification claim. The original standalone LET tests
-still require exact generation, syntax ownership and source-reference assertions;
+now retain exact generation, syntax ownership and source-reference assertions below;
 shared evaluator collection integration and broader graph/parser fidelity remain.
+
+
+## Complete original incremental semantic LET tests
+
+Root `sany_incremental_semantic_java_test.go` now translates both original LET
+methods, completing all five IncrementalSemanticParseTests methods. Parse the
+original standalone snippets and compare the single parser dependency. The test
+helper loads the actual embedded Java standard-module source through production
+SANY loading, generates each dependency and invokes its actual canonical level
+check before publishing its context/module in ExternalModuleTable. Naturals,
+TLC, Sequences and FiniteSets embedded files match pinned Java source byte for
+byte. There are no synthetic enclosing modules, prechecked metadata or shortened
+assertions in these original tests.
+
+Generate the expression using the actual external table and a dummy module,
+then preserve the source assertions: generation log success, non-null result,
+actual level checking and its log success, original syntax reference, constant
+level, exact LetInNode/OpApplNode/OpDefNode classes and the imported operator's
+actual source-definition reference. OpDefNode getSource/hasSource now expose
+Java's immediate source/self fallback without recursively flattening the source
+chain; typed-null symbol references match Java null. Supplementary native AST
+facade checks remain separate and add no duplicate original-method credit.
+
+The unchanged original Java JUnit class passes all five methods, and all five
+Go translations pass. Only the two newly translated SANY methods gain completion
+credit; main TLC inventory totals do not change. This does not establish general
+incremental-generator, corpus AST or whole-workspace completion.

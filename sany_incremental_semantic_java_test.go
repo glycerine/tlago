@@ -156,3 +156,104 @@ func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
 		t.Fatalf("body = %T, want NumeralNode", result.getBody())
 	}
 }
+
+// Original standalone LET methods: generate the expression itself, with the
+// dependency modules in ExternalModuleTable, rather than wrapping it in a module.
+func TestIncrementalSemanticParseTests_letInExpressionTest(t *testing.T) {
+	incrementalJavaLET(t, "LET M == INSTANCE Naturals IN M!+(1, 2)", "Naturals", "+", []string{"Naturals"})
+}
+func TestIncrementalSemanticParseTests_letInExpressionWithTransitiveDepsTest(t *testing.T) {
+	incrementalJavaLET(t, "LET T == INSTANCE TLC IN T!JavaTime", "TLC", "JavaTime", []string{"Naturals", "Sequences", "FiniteSets"})
+}
+func incrementalJavaLET(t *testing.T, text, dependency, operator string, required []string) {
+	t.Helper()
+	manager := NewSanyTokenManager("", text)
+	manager.SwitchTo(SanyLexSpec)
+	parser := &SanyParser{tokenManager: manager}
+	parser.belchDEF()
+	syntax := parser.ExpressionUntil(func(token *SanyToken) bool { return token.Kind == SanyTokenEOF })
+	dependencies := parser.Dependencies()
+	if len(dependencies) != 1 || dependencies[0] != dependency {
+		t.Fatalf("dependencies = %v, want [%s]", dependencies, dependency)
+	}
+	spec := incrementalJavaDependencies(t, dependencies)
+	for _, name := range required {
+		if spec.semanticModules.getModule(name) == nil {
+			t.Fatalf("missing external module %s", name)
+		}
+	}
+	expr, log := sanyExpr(syntax)
+	generator := sanyExpressionGenerator(nil)
+	generator.nodes = newSanyGeneratorNodes()
+	generator.spec = spec
+	generator.currentModule = &Module{semanticNode: newSanySemModuleNode("", nil, Position{})}
+	generator.currentModule.symbolTable = newSanySymbolTable(sanyGlobalInitialContext(false).duplicate(), spec.semanticModules)
+	log = append(log, generator.checkExpr(expr, nil, nil)...)
+	if log.HasErrors() {
+		t.Fatalf("semantic generation: %s", sanyErrorsString(log))
+	}
+	result := sanyGeneratedExpressionNode(expr)
+	if !sanyGraphNodePresent(result) {
+		t.Fatal("generated expression is nil")
+	}
+	level := sanyRequireCanonicalLevelNode(result)
+	sanyLevelCheckNext(level, &log)
+	if log.HasErrors() {
+		t.Fatalf("level checking: %s", sanyErrorsString(log))
+	}
+	if sanyGraphTreeNode(result) != syntax {
+		t.Fatal("expression does not retain original syntax identity")
+	}
+	if level.getLevel() != constantLevel {
+		t.Fatalf("level = %d, want ConstantLevel", level.getLevel())
+	}
+	actual, ok := result.(*sanySemLetInNode)
+	if !ok {
+		t.Fatalf("result = %T, want LetInNode", result)
+	}
+	application, ok := actual.body.(*sanySemOpApplNode)
+	if !ok {
+		t.Fatalf("LET body = %T, want OpApplNode", actual.body)
+	}
+	reference, ok := application.operator.(*sanySemOpDefNode)
+	if !ok {
+		t.Fatalf("operator = %T, want OpDefNode", application.operator)
+	}
+	original, ok := spec.semanticModules.getModule(dependency).context.getSymbol(operator).(*sanySemOpDefNode)
+	if !ok || original == nil {
+		t.Fatalf("missing source operator %s!%s", dependency, operator)
+	}
+	if reference.getSource() != original {
+		t.Fatalf("imported operator source = %p, want actual external definition %p", reference.getSource(), original)
+	}
+}
+
+// Translate resolveDependencies using the production source loader/generator,
+// checking each actual canonical module before entering it in the external table.
+func incrementalJavaDependencies(t *testing.T, dependencies []string) *Spec {
+	t.Helper()
+	loader := newSanyLoader(LoadOptions{})
+	var root *Module
+	for _, dependency := range dependencies {
+		root = loader.loadModule(dependency, nil)
+		if root == nil || loader.diags.HasErrors() {
+			t.Fatalf("dependency parsing %s: %v", dependency, loader.diags)
+		}
+		loader.loadDependencies(root)
+	}
+	spec := loader.snapshot(root)
+	spec.semanticModules = newSanyExternalModuleTable()
+	for _, name := range spec.SemanticOrder {
+		module := spec.Modules[name]
+		log := generateModuleWithEnclosing(module, spec, nil, &sanyModuleLevelChecks{})
+		if log.HasErrors() {
+			t.Fatalf("dependency generation %s: %s", name, sanyErrorsString(log))
+		}
+		sanyLevelCheckNext(module.semanticNode, &log)
+		if log.HasErrors() {
+			t.Fatalf("dependency level checking %s: %s", name, sanyErrorsString(log))
+		}
+		spec.semanticModules.put(name, module.semanticNode.context, module.semanticNode)
+	}
+	return spec
+}

@@ -128,3 +128,24 @@ func (node *sanySemOpDefNode) getInRecursive() bool {
 	}
 	return node.inRecursive
 }
+
+func (node *sanySemOpDefNode) getSource() *sanySemOpDefNode {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	reference := sanyLevelSymbolReference(node.source)
+	if reference == nil {
+		return node
+	}
+	source, ok := reference.(*sanySemOpDefNode)
+	if !ok {
+		panic(tlc.NewClassCastException("not an OpDefNode"))
+	}
+	return source
+}
+func (node *sanySemOpDefNode) hasSource() bool {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return sanyLevelSymbolReference(node.source) != nil
+}

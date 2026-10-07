@@ -29,9 +29,9 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/IncrementalSemanticParseTests.java.
-// Remaining methods require reconciliation with the original canonical graph assertions.
-// Complete basicOpDefTest, basicExpressionTest and bigRadixNumeralTest live in root
-// sany_incremental_semantic_java_test.go.
+// These are supplementary AST facade checks. All five complete original-method
+// translations, including canonical graph and source-identity assertions, live
+// in root sany_incremental_semantic_java_test.go.
 func TestIncrementalSemanticParseTests_letInExpressionTest(t *testing.T) {
 	spec := checkedSANYModuleBody(t, "op == LET M == INSTANCE Naturals IN M!+(1, 2)")
 	if spec.Modules["Naturals"] == nil {

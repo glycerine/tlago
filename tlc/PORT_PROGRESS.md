@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-07 Complete original standalone incremental LET methods:
+Previous completed commit: 3c9c397. Port original letInExpressionTest and
+letInExpressionWithTransitiveDepsTest in root sany_incremental_semantic_java_test.go.
+Use original standalone inputs, parser dependency assertions, actual external
+module tables and canonical generation/checking with the source dummy module.
+Retain both log-success checks, non-null expression, syntax reference, constant
+level, concrete LET/application/operator classes and exact imported source refs.
+Translate resolveDependencies through production loading/generation; check each
+actual dependency module before publishing it. Four embedded standard-module
+sources match pinned Java files byte for byte. No synthetic enclosing module,
+metadata prechecking or weakened assertions replaces original test setup.
+
+Initial compile exposes missing OpDefNode.getSource. Port source getSource and
+hasSource immediate reference/self fallback, including typed-null references.
+Original LET selection 94000 passes. Compile unchanged Java original class and
+its original syntax helper outside the repository, then run JUnit with original
+standard resources: OK (5 tests), 0.088s. All five original Go incremental methods
+2004 pass in 0.061s. Both new methods gain SANY completion credit; older AST
+facade checks remain supplementary, not additional method credit. No invented
+permanent test; all five originals in this class now port complete.
+
+Affected original semantic/parser/resolver/scoped/incremental/builtin gate 94695
+passes normally in 9.581s (182 passing test events). Full SANY 92681 passes in
+1.832s; all-package compile 60755 passes. All handles retired. No race, shortened
+workloads or new full-workspace verification claim. Update SANY README, main
+TODO_TEST_PORT SANY note, handoff and architecture. Main TLC inventory counts
+remain unchanged. Broader generation/parser fidelity, shared evaluator collections
+and known full-workspace failures remain outside this completed class.
+
 2026-10-07 Canonical OpApplNode complete level checking:
 Previous completed commit: f63e1be. Translate complete source AnyDef/declared
 operator branches and private getArg. Preserve source child-check ordering,
