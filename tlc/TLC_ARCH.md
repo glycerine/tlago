@@ -1,5 +1,22 @@
 # TLC Architecture Notes for the Go Port
 
+## Retained builtin application graphs
+
+Semantic generation retains actual graphs on expression generation sources.
+Literal graph references point to the already-generated TLC literal nodes.
+Tuple/set enumeration, IF, function-set/application, action and fairness
+branches construct actual SANY OpApplNodes after generating their children.
+The builtin constructor preserves operands and syntax, resolves its operator
+from the global context, leaves bound/tuple arrays null and creates a non-null
+empty ranges array. It skips matching exactly as Java constructor 3 does.
+Function application uses one argument directly; all other argument counts
+construct $Tuple at the same application syntax before $FcnApply. Fresh
+generation replaces retained graphs. No placeholder represents an unported
+child: its containing graph remains incomplete. Ordinary symbol matching,
+bound/LET/INSTANCE graphs, LevelNode data and evaluator sharing remain pending.
+Bounded source comparisons establish the implemented tree shapes, syntax kinds,
+operand order and relative allocation order, not complete expression parity.
+
 ## Ordinary OpDef construction and actual graph links
 
 Graph edges use the shared Kind/GetUID semantic identity methods so they can

@@ -981,6 +981,13 @@ scope exit restores both representations and rejected duplicates preserve the
 earlier binding. All 56 existing bounded formal diagnostic comparisons match
 Java; full SANY and the focused original-model gate pass. Ordinary OpDef/body
 construction and complete constructor registration timing remain pending.
+Builtin tuple/set, IF, function-set/application, action and fairness generation
+now retains actual OpAppl graphs with original operand and syntax references.
+Literal graph references use their already-generated nodes. Nineteen bounded
+expressions match Java for 75 node shapes, syntax kinds and relative allocation
+order. Fresh generation replaces graphs. Unported child kinds remain incomplete;
+ordinary matching, bound/LET/INSTANCE graphs and evaluator sharing are pending.
+No original-method or full-workspace completion credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

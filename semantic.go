@@ -3107,6 +3107,9 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		generation.operatorArgument = operatorArgument
 	}()
 	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
+	if source := sanyGenerationSource(expr); source != nil {
+		source.semanticGraph = nil
+	}
 	if source := sanyExprSource(expr); source != nil {
 		source.operatorArgumentsGenerated = false
 	}
@@ -3299,6 +3302,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			bridge := tlcBridge{}
 			bridge.withExprLocation(e, node)
 			e.decimalNode = node
+			e.semanticGraph = node
 		} else if e.Kind == "number" {
 			node, err := tlc.NewNumeralNodeFromString(e.Value)
 			if err != nil {
@@ -3307,11 +3311,13 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			bridge := tlcBridge{}
 			bridge.withExprLocation(e, node)
 			e.numeralNode = node
+			e.semanticGraph = node
 		} else if e.Kind == "string" {
 			node := tlc.NewStringNode(e.Value)
 			bridge := tlcBridge{}
 			bridge.withExprLocation(e, node)
 			e.stringNode = node
+			e.semanticGraph = node
 		}
 	case *UnaryExpr:
 		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {
@@ -3375,6 +3381,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		diags = append(diags, generation.checkExpr(e.Cond, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Then, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Else, defined, locals)...)
+		retainSanyBuiltInApplication(e, "$IfThenElse", []Expr{e.Cond, e.Then, e.Else})
 	case *LetExpr:
 		diags = append(diags, generation.checkLet(e, defined, locals)...)
 	case *QuantifierExpr:
@@ -3393,10 +3400,12 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		for _, elem := range e.Elems {
 			diags = append(diags, generation.checkExpr(elem, defined, locals)...)
 		}
+		retainSanyBuiltInApplication(e, "$Tuple", e.Elems)
 	case *SetExpr:
 		for _, elem := range e.Elems {
 			diags = append(diags, generation.checkExpr(elem, defined, locals)...)
 		}
+		retainSanyBuiltInApplication(e, "$SetEnumerate", e.Elems)
 	case *RecordExpr:
 		seenFields := map[string]Position{}
 		for _, field := range e.Fields {
@@ -3433,6 +3442,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		for _, arg := range e.Args {
 			diags = append(diags, generation.checkExpr(arg, defined, locals)...)
 		}
+		retainSanyFunctionApplication(e)
 	case *ExceptExpr:
 		diags = append(diags, generation.checkExpr(e.Base, defined, locals)...)
 		for _, spec := range e.Specs {
@@ -3451,12 +3461,23 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	case *ActionExpr:
 		diags = append(diags, generation.checkExpr(e.Action, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Subscript, defined, locals)...)
+		operator := "$SquareAct"
+		if e.Kind == "angle" || e.Kind == "<>" || e.Kind == "NO_STUTTER" {
+			operator = "$AngleAct"
+		}
+		retainSanyBuiltInApplication(e, operator, []Expr{e.Action, e.Subscript})
 	case *FairnessExpr:
 		diags = append(diags, generation.checkExpr(e.Subscript, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Action, defined, locals)...)
+		operator := "$WF"
+		if e.Kind == "SF" || e.Kind == "SF_" {
+			operator = "$SF"
+		}
+		retainSanyBuiltInApplication(e, operator, []Expr{e.Subscript, e.Action})
 	case *FunctionSetExpr:
 		diags = append(diags, generation.checkExpr(e.Domain, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Range, defined, locals)...)
+		retainSanyBuiltInApplication(e, "$SetOfFcns", []Expr{e.Domain, e.Range})
 	case *SetComprehensionExpr:
 		body := e.Element
 		if e.Predicate != nil {

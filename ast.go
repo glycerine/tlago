@@ -236,6 +236,7 @@ type NewSymbol struct {
 // SanyExprSource retains the parser node selected by semantic generation.
 // Parenthesized expressions retain their inner expression node.
 type SanyExprSource struct {
+	semanticGraph              sanySemanticGraphNode
 	definitionFormals          []*sanyFormalParamNode
 	operatorArgumentsGenerated bool
 	Syntax                     *SanySyntaxNode

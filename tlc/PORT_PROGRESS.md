@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-07 Retain actual builtin expression application graphs:
+Previous completed commit: 37b6f21. Continue actual ordinary-body generation.
+Port OpApplNode constructor 3: retain its supplied operand array and syntax,
+use OpApplKind, null bounded/unbounded/tuple arrays and a non-null empty ranges
+array, and resolve the operator in the global context. Source deliberately
+skips match in this constructor. Retain actual generated graph nodes on each
+expression's generation source; literals expose their already-retained node.
+Fresh generation clears graph references and constructs replacements. Wire
+production tuple, set enumeration, IF, function-set, function application,
+action and fairness branches. Preserve source operand order. Function
+applications with more or fewer than one argument construct an actual $Tuple
+at the application's syntax node before $FcnApply. Keep one argument directly.
+
+Do not fill unported child graphs with placeholders or evaluator reconstructions.
+Their containing graph stays incomplete until that child is implemented. The
+existing evaluator path remains separate for these applications. Ordinary symbol
+matching/application, records, CASE, bound operators, LET/INSTANCE, common
+LevelNode fields and full evaluator graph sharing still need porting. Ordinary
+OpDef Generator wiring and its original test remain pending; no method credit.
+
+Scratch observers invoke actual Java Generator.generateExpression and Go's
+actual production generation, using 19 literal/nested builtin expressions.
+All 75 graph nodes match in kind, syntax kind, operator, operand order, relative
+UID allocation and bound/range array shape; all 19 generation-success values
+agree. Receipt /mnt/oldrog/tmp/tlago-builtin-expression-comparison.log; source
+and Go observers plus case JSON/overlay have the same tlago-builtin-expression
+prefix. Additional scratch checks confirm global operator identity, non-null
+ranges, original root syntax identity and fresh-generation replacement. Final
+Go observer 12788 terminal 0; final 94-row comparison exact. These are bounded
+observations, not permanent invented tests or original-method credit.
+
+Initial Java observer rejected a numeric restricted action subscript; use the
+same Java-valid tuple subscript for both observers, preserving that rejection
+receipt in this chronology. Initial Go observation exposed misuse of the
+selector-only sanyExprSource helper, which covers Ident/Call only. Add generic
+generation-source access without expanding selector behavior. Corrected 60106
+passes normally in 0.017 seconds; final checks above supersede it.
+Full SANY first passes in 2.052 seconds (16973), final in 1.839 seconds (38211).
+Focused existing parser/context/bridge and original TLC model gate passes in
+47.654 seconds (77200). All packages compile, terminal 0, and whitespace checks
+pass. All handles retired. No original assertions/fixtures, inventory counts,
+full-workspace pass claims or race workloads added. Keep new distributed work
+postponed; continue canonical bodies before wiring complete ordinary operators.
+
 2026-10-07 Ordinary OpDef constructor and shared graph-link identity:
 Previous completed commit: 35f0a74. Continue ordinary processOperator review.
 Graph links required private root-package methods and could not retain actual
