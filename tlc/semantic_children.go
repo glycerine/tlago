@@ -2,6 +2,8 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlc
 
+import "reflect"
+
 // SemanticChildren follows SANY getChildren, rather than walkGraph. Operator
 // definitions referenced by an application are not its syntax children.
 func SemanticChildren(node SemanticNode) []SemanticNode {
@@ -43,6 +45,24 @@ func SemanticChildren(node SemanticNode) []SemanticNode {
 	}
 }
 
+// SemanticListOfChildren follows SemanticNode.getListOfChildren: null entries
+// are removed without changing the raw getChildren result.
+func SemanticListOfChildren(node SemanticNode) []SemanticNode {
+	children := SemanticChildren(node)
+	result := make([]SemanticNode, 0, len(children))
+	for _, child := range children {
+		if child == nil {
+			continue
+		}
+		value := reflect.ValueOf(child)
+		if value.Kind() == reflect.Pointer && value.IsNil() {
+			continue
+		}
+		result = append(result, child)
+	}
+	return result
+}
+
 // SemanticPathTo ports SemanticNode.pathTo: the first syntax path is returned
 // innermost first, and formal declarations are considered explicitly.
 func SemanticPathTo(root SemanticNode, location SourceLocation, requireExact bool) []SemanticNode {
@@ -50,7 +70,7 @@ func SemanticPathTo(root SemanticNode, location SourceLocation, requireExact boo
 	var visit func(SemanticNode)
 	visit = func(node SemanticNode) {
 		loc, ok := semanticNodeSourceLocation(node)
-		children := SemanticChildren(node)
+		children := SemanticListOfChildren(node)
 		if ok && (loc == location || !requireExact && len(children) == 0 && loc.Includes(location)) {
 			path = make([]SemanticNode, 0)
 		} else {
@@ -78,6 +98,9 @@ func SemanticPathTo(root SemanticNode, location SourceLocation, requireExact boo
 		}
 	}
 	visit(root)
+	if path == nil {
+		return make([]SemanticNode, 0)
+	}
 	return path
 }
 

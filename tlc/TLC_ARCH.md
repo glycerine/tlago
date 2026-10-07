@@ -9867,3 +9867,27 @@ also match complete diagnostic names, ranges and parameter types/values for
 compound names, attached arguments, name components after navigation and symbolic
 operators. These observations do not establish the entire selector state machine,
 higher-order malformed selection behavior or source allocation order.
+
+## Canonical child traversal and source locations
+
+SemanticNode containment traversal is separate from walkGraph. Raw getChildren
+retains null entries; getListOfChildren filters them into a fresh list, and
+hasChildren uses that filtered list. ModuleNode caches its actual OpDefs followed
+by its populated topLevel array. OpApplNode builds a fresh array of ranges then
+operands. Preserve source null-array failure timing instead of lazily populating
+fields during traversal.
+
+walkChildren calls preVisit before snapshotting filtered children, defaults to
+preempting children, ignores child postVisit return values and returns the root's
+postVisit result. It has no UID suppression. pathTo checks current syntax locations
+and formal declarations, stops searching once a path is found, and returns the
+innermost node first. An unmatched path is a nonnull empty list. The runtime
+SemanticPathTo helper likewise filters raw null entries before deciding whether
+a node is a leaf.
+
+Read current syntax filenames and all four coordinates directly for canonical
+paths; do not substitute cached semantic locations or fill zero end coordinates.
+Token constructors must retain their filename, as Java's SyntaxTreeNode does.
+External production observers match 15,082 child, callback, path and mutation
+rows over three original models. This covers observed containment behavior, not
+all syntax allocations, malformed nodes or evaluator graph sharing.

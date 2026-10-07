@@ -63,12 +63,6 @@ with the native AST's export list. That comparison is absent in Java and wrongly
 rejects modules with recursive LOCAL definitions: Java retains the recursive
 declaration's locality flag. Actual child/body completeness checks remain.
 
-Final focused verification passes: 205 test pass events in 5.470 seconds,
-complete SANY in 1.919 seconds and all-package compilation. All focused handles
-are retired. Existing source tests and fixtures are unchanged, and test-port
-inventory counts do not increase. Full-workspace session `12025` below tests an
-earlier implementation snapshot and cannot verify these latest changes.
-
 Full normal workspace verification of `4cd17ea` has finished. Session `12025`
 returned status 1 and is retired. TLC passed in 775.694 seconds and SANY passed
 in 1.525 seconds. Root failed in 1,561.759 seconds on three native XML fixtures:
@@ -90,10 +84,6 @@ the driver now publishes the final external module after its level check, as Jav
 does. The original Java class and Go translation pass. No full graph-allocation,
 invalid-selector or evaluator-sharing completion is claimed.
 
-Latest focused gate passes 233 test events in 5.218 seconds, with the original
-assumption retained. Complete SANY passes in 1.707 seconds and all-package
-compilation passes. All handles are retired; no new full-workspace pass exists.
-
 All three original TestSubexpressionSelectors methods are now port complete in
 root `sany_subexpression_selectors_java_test.go`. Their helper parses and generates
 without level checking and retains errors on abort. Require Java's exact first
@@ -105,10 +95,21 @@ Java and Go pass; 16 external full-detail observations agree. The earlier native
 API checks remain supplementary. Full selector generation/diagnostics are still
 pending; these methods do not prove every invalid path.
 
-Latest selector gate passes 363 test events: root in 5.675 seconds and selected
-SANY originals in 0.128 seconds. Complete SANY passes in 1.804 seconds; all-package
-compilation passes. All handles are retired. The full-workspace receipt above
-remains an earlier failing snapshot, not a current pass.
+Canonical child traversal now separately implements Java's containment edges,
+filtered child lists, visitor callbacks and `pathTo`. Module children retain the
+source cached array; application children are fresh and ordered ranges before
+operands. Null entries remain visible in raw children but do not make a node a
+nonleaf. The runtime path helper now uses this same null-filtering rule. Token
+syntax constructors retain their source filename, fixing incorrect path matches
+without a cached-location fallback.
+
+External Java/Go comparisons agree on 2,885 child rows, 6,321 traversal callbacks,
+5,770 exact/nonexact paths and 106 cache/callback-mutation observations across
+original Test206, Test207 and Test209. These observations earn no test-port
+credit and do not establish complete malformed-node or evaluator graph parity.
+Existing original scoped-identifier and frontend checks pass after the filename
+fix, as does complete SANY and all-package compilation. All handles are retired.
+The full-workspace receipt above remains an earlier failing snapshot.
 
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module

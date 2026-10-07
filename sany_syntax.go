@@ -58,6 +58,7 @@ func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
 		Image:      tok.Image,
 		tokenImage: tlc.UniqueStringOf(tok.Image),
 		Range:      tok.Range(),
+		FileName:   tok.Begin.File,
 		Token:      tok,
 		ProofLevel: -1,
 		Level:      -1,

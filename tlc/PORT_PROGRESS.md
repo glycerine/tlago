@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Canonical child traversal, path search and token filenames:
+Previous completed commit: c6ae0c5. Translate SemanticNode getListOfChildren,
+hasChildren, ChildrenVisitor, walkChildren and pathTo over actual canonical nodes.
+Add ModuleNode's cached children and OpApplNode's fresh range/operand children
+and quantifier formal flattening. Preserve actual source array reads, null failure
+timing, callback ordering and root return behavior. Runtime SemanticPathTo now
+uses filtered children when deciding whether a node is a leaf, and returns a
+nonnull empty result on no match. No permanent tests or fixtures are invented.
+
+External production observers agree on 2,885 child rows, 6,321 callback rows and
+5,770 path rows across original Test206/207/209. An additional 106 rows agree for
+module-array caching, fresh application arrays, null-only children and callback
+mutations before/after the child snapshot, skips and alternate visitor returns.
+Earlier probes using Position-adapted locations pass but mask constructor state.
+Switch to current syntax filename and four raw coordinates; repeat 49131 exposes
+missing filenames in Go token constructors. Port Java's constructor filename
+assignment rather than restoring a location fallback. Corrected path repeats
+25470 and 48437 pass all 5,770 rows. Total observed rows: 15,082. These manual
+observations earn no original-method credit and do not establish all malformed
+nodes, narrow subtoken locations, allocation order or evaluator graph sharing.
+Observers, overlays and receipts remain external under
+/mnt/oldrog/tmp/tlago-children-*.
+
+Before the filename correction, original/bridge gate 70116 passes 256 test events
+(root 4.712s, TLC 0.013s), complete SANY 87003 passes 1.719s, and compilation
+89075 passes. Unchanged Java GetScopedIdentifiersTests passes all 18 rows in
+0.107s. After correction, selection 3501 includes a nonexistent ./sany package
+and receives no whole-command success credit (root/TLC individually pass).
+Corrected final existing-original selection 13129 passes root 5.094s and TLC
+0.012s. Complete actual ./sany_tests 93822 passes 1.959s; all-package compilation
+59377 passes. All handles are retired. Logs:
+/mnt/oldrog/tmp/tlago-canonical-children-post-filename-*. No race, weakened test,
+new test-port credit or optional corpus sweep. Groom HANDOFF by consolidating
+superseded focused gate blocks. Full-workspace receipt remains an earlier failing
+snapshot; overall faithful TLC completion is still pending.
+
 2026-10-07 Complete original selector diagnostics and retained call syntax:
 Previous completed commit: 908062a. Inspect original TestSubexpressionSelectors:
 the older Go facade checks omit its exact first code/message/location assertions

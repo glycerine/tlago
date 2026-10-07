@@ -97,6 +97,7 @@ type sanySemModuleNode struct {
 	assumptions              []*sanySemAssumeNode
 	theorems                 []*sanySemTheoremNode
 	topLevel                 []sanySemanticGraphNode
+	children                 []sanySemanticGraphNode
 	recursiveDecls           []*sanySemOpDefNode
 	recursiveOpDefNodes      []*sanySemOpDefNode
 	opDefsInRecursiveSection []*sanySemOpDefNode
