@@ -42,3 +42,33 @@ func newSanySemOpDefNode(name string, kind sanySemKind, parameters []*sanyFormal
 	}
 	return node, nil
 }
+
+// Numbered non-theorem steps are OpDefNodes, not operator definitions. Keep
+// their ordinary body/parameter/level arrays null and register the step backlink
+// only after construction, as in OpDefNode's numbered-proof-step overload.
+func newSanySemNumberedProofStepNode(name string, step sanySemanticGraphNode, module *sanySemModuleNode, table *sanySymbolTable, syntax *SanySyntaxNode) (*sanySemOpDefNode, Diagnostics) {
+	node := &sanySemOpDefNode{
+		sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(sanyNumberedProofStepKind), name: name, arity: 0},
+		stepNode:          step, module: module, table: table,
+		letInLevel: -1, recursiveSection: -1,
+	}
+	if module != nil {
+		node.originalModuleName = module.semName()
+	}
+	sanyAssertionSyntax(&node.sanySemanticNode, syntax)
+	if syntax != nil {
+		node.pos = sanyNodePosition(syntax)
+	}
+	if table == nil {
+		panic(tlc.NewNullPointerException(""))
+	}
+	return node, table.addSymbol(node)
+}
+
+func (node *sanySemOpDefNode) getStepNode() sanySemanticGraphNode { return node.stepNode }
+
+// The body remains the only child even for a numbered step. walkGraph also
+// visits stepNode; getChildren deliberately does not, matching Java.
+func (node *sanySemOpDefNode) getChildren() []sanySemanticGraphNode {
+	return []sanySemanticGraphNode{node.body}
+}

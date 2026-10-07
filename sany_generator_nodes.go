@@ -19,6 +19,7 @@ type sanySemOpDefNode struct {
 	labels             *sanyLabelTable
 	formalNodes        []*sanyFormalParamNode
 	body               sanySemanticGraphNode
+	stepNode           sanySemanticGraphNode
 	module             *sanySemModuleNode
 	defined            bool
 	level              tlaLevel

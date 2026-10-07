@@ -11,8 +11,18 @@ array; a null definition array raises NullPointerException. Preserve null slots
 as null graph references rather than typed nil interfaces.
 
 These constructors use the shared semantic UID counter and source syntax/location
-handling. Generation, numbered non-theorem OpDefNode backlinks, InstanceNode
-identities, inherited level checking and visitors remain unfinished. Do not create
+handling. Numbered non-theorem steps now have their own OpDefNode constructor: kind 37,
+zero arity, actual step backlink and module/table identities. Ordinary body,
+formal parameters and argument-level arrays remain null; defined/local/Leibniz
+flags remain false. A null symbol table fails after allocating the node. Register
+only after installing the backlink. getStepNode returns that exact node;
+getChildren still returns a fresh one-slot array containing the ordinary body,
+which is null for these symbols. The step is a walkGraph link, not a child-array
+entry. The 32 constructor cases and three binding collisions match all 72 Java
+rows, including exact diagnostic messages and retained earlier bindings.
+
+Generation, InstanceNode identities, inherited level checking and visitors remain
+unfinished. Do not create
 a parent proof graph before its complete children and scope are available.
 The 32-case, 80-row Java comparison verifies only these constructors and accessors;
 it adds no original-test or whole-feature completion credit.

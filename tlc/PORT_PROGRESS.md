@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Numbered non-theorem proof-step symbols:
+Previous completed commit: 7b02042. Port the numbered-proof-step OpDefNode
+constructor independently of ordinary operator construction. Preserve kind 37,
+zero arity, actual step/module/table identities and source default false flags.
+Body, formal parameters and argument-level/Leibniz arrays remain null. Install
+the backlink before symbol-table registration; null tables throw the typed
+NullPointerException after consuming the node UID. Add getStepNode and source
+body-only getChildren. Numbered symbols have a fresh one-slot child array holding
+a null body; their actual step is a visitor link, not a getChildren entry.
+
+All 72 complete rows match pinned Java: 32 cases cross null/DefStep/USE/HIDE
+backlinks with null/present syntax, module and table; three binding collisions
+cover builtins, ordinary definitions and earlier numbered symbols. Check shared
+UID order including failed constructors, all default arrays/flags, syntax and
+module/table identities, retained earlier bindings and exact diagnostic messages.
+Initial comparison differed only in scratch numeric Java codes versus prefixed
+Go codes; print their same numeric standardized value, then compare all rows.
+No production assertion or diagnostic was weakened. Initial 19975 returned 1;
+corrected observer 83114 returned 0. Both handles are retired. Observers/logs
+remain outside the repository under /mnt/oldrog/tmp/tlago-numbered-ctor-*.
+
+No original Java test references getStepNode or NumberedProofStepKind in the
+pinned test tree. No new permanent tests or original-method completion credit.
+Existing focused root/parser/proof/TLC-model gate passes 47.034s (81015 retired),
+complete sany_tests passes 1.891s (65135 retired), and compile-all succeeds.
+Logs: tlago-numbered-ctor-root.json and tlago-numbered-ctor-compile.log under
+/mnt/oldrog/tmp. All checks run normally, with no race or long-workload repeats.
+No current full-workspace pass is claimed. Structured-proof generation, actual
+step/context ownership, selector integration, InstanceNode graphs, inherited
+level checks and visitors remain pending. New distributed work stays postponed.
+
 2026-10-07 Structured-proof parent and definition-step constructors:
 Previous completed commit: bcf5c42. Port NonLeafProofNode constructor, retained
 steps/instances/context and step/context accessors. Source children exclude the

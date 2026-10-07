@@ -1071,9 +1071,12 @@ NonLeafProofNode and DefStepNode constructors now preserve their supplied arrays
 context and nullable interned step number. Non-leaf children are null for empty
 steps; definition-step children preserve a nonnull empty array and fail on null
 definitions. Both copy populated child arrays and retain null entries. Their
-32-case constructor comparison matches Java in all 80 rows. Generation and
-numbered-step backlinks remain pending; the constructors alone do not complete
-structured-proof ownership.
+32-case constructor comparison matches Java in all 80 rows. Numbered-step OpDefNodes now retain their actual step backlinks, register with
+zero arity, and preserve Java's null body/parameter/level arrays and false flags.
+Their children remain a fresh array containing the ordinary null body slot.
+All 72 rows across 32 constructor cases and three registration collisions match
+Java. Proof generation and visitors remain pending; constructors alone do not
+complete structured-proof ownership.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
