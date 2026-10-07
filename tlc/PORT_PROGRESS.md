@@ -1,5 +1,55 @@
 # TLC Port Progress
 
+2026-10-07 AP proof-step goals and SUFFICES context lifetimes:
+Previous completed commit: f618462. Port the actual proof AP goal and captured
+outer declaration context. Generate body/labels with the provisional step goal,
+pop declarations before definition registration and restore caller symbol
+metadata. ASSERT AP reuses that context only for its proof, then pops it.
+SUFFICES AP withholds it from its own proof and installs it for subsequent steps.
+Merge retained contexts into the proof context and pop them in reverse order
+before NonLeafProofNode creation. Reset only the outer AP inProof before its
+owner, retaining nested AP state and all source suffices flags.
+
+Port Context.content's sequential Hashtable enumeration independently of the
+linked Pair history. Preserve Java string hashing, symbol/module namespace keys,
+capacity 11, threshold 8, collision head insertion, replacement bucket position,
+2n+1 rehash with source traversal and descending enumeration. Use that order for
+SUFFICES context merging; null receivers raise the typed NullPointerException.
+Keep other iteration callers and live/concurrent enumerator behavior pending.
+
+All 2,281 complete Java/Go rows agree across 29 whole AP proof modules. Cover
+named/unnamed AP, ordinary/SUFFICES proofs with and without terminal/nested
+subproofs, nested NEW scopes, actual goal/declaration/reference pointers, labels
+and clause state, boxed-AP marker checks, prohibited later/own-proof references,
+outer-theorem declarations, all node flags, source syntax/locations/UID order,
+full diagnostics and unsorted context enumeration. Large proof contexts and AP
+assumption lists cross collision and resize thresholds. Preserve every row.
+Initial observer 55565 failed because Go GenerateSanySpec reinitializes Context,
+whereas direct Java Generator did not; add Java Context.reInit before each
+source generation to match the API. The shared static ASSUME marker exposes that
+setup difference. Corrected 16-, 26- and 29-module comparisons match; no source
+assertion or test was weakened. Observers/logs remain outside the repository in
+/mnt/oldrog/tmp/tlago-proof-ap-*; final expanded comparison returned status 0.
+
+All 37 direct context-table rows match Java: 36 sequential inserts/replacements
+with colliding string hashes, separate module-name keys, resize and retained
+identities, plus typed null-receiver failure. Observer 61915 and final 95321
+returned status 0 and are retired. Scratch files/logs remain under
+/mnt/oldrog/tmp/tlago-context-content-*. No new permanent tests or original-method
+completion credit; original tests remain unchanged.
+
+Existing affected root/parser/proof/TLC-model gate passes 47.271s (8528 retired),
+then 46.173s with the content table (74855 retired). Complete sany_tests passes
+1.910s (69730), then 1.903s with compile-all (44445); handles retired. Existing
+21-module structured-proof comparison retains all 993 rows (64805 retired).
+AP unsorted-context comparison 56262 returned status 0 and is retired. Initial
+compile 30183 returned 0 and is retired. Logs: tlago-proof-ap-root.json,
+root-final.json, java.log, go.log and prior-go.log under /mnt/oldrog/tmp.
+Normal execution only; no race or long-workload repetition. No current complete
+workspace pass is claimed. Next: TAKE/PICK bodies and source binding lifetime,
+then INSTANCE identities, remaining selectors, inherited levels and visitors.
+New distributed work stays postponed until core parity is complete.
+
 2026-10-07 Structured-proof generation and actual context ownership:
 Previous completed commit: 347e25d. Consume actual proof syntax in source order
 alongside the existing projected statement generator. Enter real proof contexts,

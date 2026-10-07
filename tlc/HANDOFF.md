@@ -1082,26 +1082,33 @@ SUFFICES and finishes nested proofs before their theorem owners. Every named ste
 preserves the source provisional-goal allocation, including discarded non-theorem
 goals. Actual symbols, label selections and @ shorthand retain their shared nodes.
 Step syntax replacement also updates cached locations. All 993 rows across 21
-whole modules match Java. AP, TAKE/PICK and INSTANCE proof graphs remain incomplete;
-constructor and bounded generation evidence does not complete the entire feature.
+whole modules match Java. AP steps now retain real goals and declaration contexts:
+ASSERT declarations live only through their proof; SUFFICES declarations become
+visible after their proof and are merged into the enclosing context at proof end.
+Source AP/definition/owner flags and nested scopes retain their actual identities.
+Context merging uses Java Hashtable enumeration rather than insertion history.
+All 2,281 rows across 29 AP proof modules and 37 direct table observations match
+Java. TAKE/PICK and INSTANCE proof graphs remain incomplete; constructor and
+bounded generation evidence does not complete the entire feature.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
 scope, failure nodes and diagnostic codes/ranges/messages. Assumption and direct
 constructor comparisons also pass. USE/HIDE/BY comparisons add 427 exact rows
 across 40 modules and 116 constructor rows. Existing focused tests, full
-sany_tests and compile-all are the affected gates; receipts belong in PORT_PROGRESS.md. These
-observations add no original-method or full-workspace completion credit.
+sany_tests and compile-all are the affected gates; receipts belong in
+PORT_PROGRESS.md. These observations add no original-method or full-workspace
+completion credit.
 
-AP proof-step goal/context ownership, SUFFICES declaration lifetime, TAKE/PICK
-proof bodies and bindings, EXTENDS assertion inheritance, complete module vectors,
-general qualified selectors, INSTANCE/fact/imported identities, recursive inherited level checks, visitors,
-shared Errors/exception integration and evaluator graph sharing remain pending.
+TAKE/PICK proof bodies and bindings, EXTENDS assertion inheritance, complete
+module vectors, general qualified selectors, INSTANCE/fact/imported identities,
+recursive inherited level checks, visitors, shared Errors/exception integration
+and evaluator graph sharing remain pending. Other Context iteration callers and
+live/concurrent Hashtable enumeration still require source audits.
 Missing canonical children or earlier native-only import identities keep owners
-incomplete. Next semantic work is AP/SUFFICES proof contexts and TAKE/PICK
-bindings, followed by remaining selector/instance identities, level checking
-and evaluator sharing. Complete allocation order across all graphs remains
-unproven.
+incomplete. Next semantic work is TAKE/PICK bodies and binding lifetimes, followed
+by remaining selector/instance identities, level checking and evaluator sharing.
+Complete allocation order across all graphs remains unproven.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

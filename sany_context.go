@@ -122,8 +122,10 @@ type sanyContextEntry struct {
 }
 
 type sanyContext struct {
-	table map[sanyContextKey]*sanyContextEntry
-	order []*sanyContextEntry
+	table            map[sanyContextKey]*sanyContextEntry
+	order            []*sanyContextEntry
+	contentBuckets   []*sanyContextBucketEntry
+	contentThreshold int
 }
 
 func newSanyContext() *sanyContext {
@@ -182,6 +184,7 @@ func (c *sanyContext) add(key sanyContextKey, sym sanySemSymbol) {
 		c.table = map[sanyContextKey]*sanyContextEntry{}
 	}
 	entry := &sanyContextEntry{key: key, sym: sym}
+	c.putContentEntry(entry)
 	c.table[key] = entry
 	c.order = append(c.order, entry)
 }

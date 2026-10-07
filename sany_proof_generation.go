@@ -303,8 +303,12 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		var introducedFormals map[string]localSymbol
 		statementContext := copySanyExpressionContext(current)
 		if step.AssumeProveBody != nil {
-			g.labelGoalUnsupported = true
-			diags = append(diags, checkAssumeProveBindings(step.AssumeProveBody, statementContext, nil, g)...)
+			if graphs != nil {
+				diags = append(diags, graphs.assumeProveStatement(step.AssumeProveBody, statementContext)...)
+			} else {
+				g.labelGoalUnsupported = true
+				diags = append(diags, checkAssumeProveBindings(step.AssumeProveBody, statementContext, nil, g)...)
+			}
 		} else if step.Kind == "PICK" || step.Kind == "TAKE" {
 			var generated Diagnostics
 			introducedFormals, generated = g.generateProofBinder(&proof.Steps[stepIndex], statementContext)

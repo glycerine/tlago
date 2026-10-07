@@ -1,5 +1,40 @@
 # TLC Architecture Notes for the Go Port
 
+## AP proof-step goals and declaration lifetimes
+
+Create the provisional named step goal before generating AP. The outer AP and
+its labels retain that exact goal; nested AP goals stay null. The caller owns
+the outer declaration context during generation, captures it afterward and
+removes it before registering the theorem definition in the enclosing proof.
+Restore the caller's symbol metadata after body generation. Preserve ordinary
+ASSUME's shared marker and boxed-AP scope diagnostics.
+
+For ASSERT AP, push the same declaration context only for the step's proof,
+including terminal BY and nested proofs, then pop it before the theorem owner.
+For SUFFICES AP, generate its proof without that context and push it afterward
+for subsequent enclosing-proof steps. Before leaving the proof, merge retained
+SUFFICES contexts into the proof context and pop them in reverse stack order.
+Set the outer AP's inProof false before allocating its owner; nested AP flags
+retain their source state. AP, named-definition and theorem suffices flags remain
+consistent. Missing children still prevent canonical owner completion.
+
+Context.content uses Hashtable enumeration, independently of Context's linked
+Pair insertion history. Preserve Java string hashing, separate symbol/module
+keys, default bucket capacity/threshold, head insertion, replacement position,
+rehash traversal and descending bucket enumeration. SUFFICES context merging
+uses this actual order and actual symbol references. A null receiver raises the
+source typed NullPointerException. Other Context iteration callers and complete
+live/concurrent Hashtable enumeration still require their own port audits.
+
+All 2,281 complete Java/Go rows agree across 29 AP proof modules, including
+unsorted context order, goal/reference identities, scope failures, labels,
+boxed AP and contexts crossing collision/resize thresholds. Java's observer
+reinitializes Context to match the Go frontend API; retaining the shared static
+ASSUME marker otherwise exposes different observer setup. All 37 direct context
+observations also agree. No original-test or full-workspace credit is added.
+TAKE/PICK graph/binding lifetime, InstanceNode identities, general selectors,
+inherited level checks and visitors remain pending.
+
 ## Structured-proof generation and contexts
 
 Traverse actual proof syntax in source order while consuming each projected
@@ -29,8 +64,8 @@ previous node. A parameter-free named label selection similarly wraps the actual
 LabelNode, preserving its identity and scope. Parameterized labels, general
 operand selectors and INSTANCE selections still need their real binding graphs.
 
-AP/SUFFICES declaration contexts, TAKE/PICK bodies and binding lifetimes,
-InstanceNode/module-definition instances, inherited level checks and visitors
+TAKE/PICK bodies and binding lifetimes, InstanceNode/module-definition instances,
+inherited level checks and visitors
 remain unfinished. Native diagnostic coverage does not complete these graphs.
 The 21-module, 993-row source comparison covers graph kinds, syntax, locations,
 UID order, nested owners, context and reference pointers, plus full diagnostics;
@@ -85,7 +120,7 @@ is discarded. Retain the actual leaf by its terminal syntax, and use it when the
 outer theorem completes rather than allocating another proof. Complete theorem
 owners follow their actual BY leaf and precede the next module unit.
 
-AP/binder/INSTANCE proof graphs, general qualified selections and native-only
+Binder/INSTANCE proof graphs, general qualified selections and native-only
 import identities remain incomplete. Existing diagnostic fallbacks are separate from
 canonical graph coverage. Inherited level checks, visitors, EXTENDS vectors and
 shared evaluator ownership still require porting; bounded leaf observations do

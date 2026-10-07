@@ -23,10 +23,11 @@ type sanyProofGraphEvent struct {
 	syntax *SanySyntaxNode
 }
 type sanyProofGraphFrame struct {
-	syntax   *SanySyntaxNode
-	context  *sanyContext
-	steps    []sanySemanticGraphNode
-	complete bool
+	syntax           *SanySyntaxNode
+	context          *sanyContext
+	steps            []sanySemanticGraphNode
+	complete         bool
+	sufficesContexts []*sanyContext
 }
 type sanyProofGraphStep struct {
 	syntax, bodySyntax          *SanySyntaxNode
@@ -36,6 +37,9 @@ type sanyProofGraphStep struct {
 	body, node                  sanySemanticGraphNode
 	complete, theorem, suffices bool
 	previousUnsupported         bool
+	assumeProve                 *sanySemAssumeProveNode
+	assumeContext               *sanyContext
+	assumeContextPushed         bool
 }
 type sanyProofGraphGeneration struct {
 	g       *sanyExpressionGeneration
@@ -147,9 +151,25 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 		generation.current = step
 	case sanyProofStepEnd:
 		step := generation.steps[event.syntax]
+		var proof sanySemanticGraphNode
+		proofComplete := false
 		if step.theorem && step.complete {
-			proof, complete := g.completedTheoremProof(step.syntax)
-			if complete {
+			proof, proofComplete = g.completedTheoremProof(step.syntax)
+		}
+		if step.assumeContextPushed {
+			g.formalSymbolTable().popContext()
+			step.assumeContextPushed = false
+		}
+		if step.assumeContext != nil && step.suffices {
+			g.formalSymbolTable().pushContext(step.assumeContext)
+			frame := generation.frames[len(generation.frames)-1]
+			frame.sufficesContexts = append(frame.sufficesContexts, step.assumeContext)
+		}
+		if step.assumeProve != nil {
+			step.assumeProve.inProof = false
+		}
+		if step.theorem && step.complete {
+			if proofComplete {
 				node := newSanySemTheoremNode(step.bodySyntax, step.body, g.currentModule.semanticNode, proof, step.goal)
 				sanyAssertionSyntax(&node.sanySemanticNode, step.syntax)
 				node.suffices = step.suffices
@@ -170,6 +190,12 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 		}
 	case sanyProofExit:
 		frame := generation.frames[len(generation.frames)-1]
+		for i := len(frame.sufficesContexts) - 1; i >= 0; i-- {
+			for _, symbol := range frame.sufficesContexts[i].contentSymbols() {
+				frame.context.addSymbol(symbol)
+			}
+			g.formalSymbolTable().popContext()
+		}
 		g.formalSymbolTable().popContext()
 		generation.frames = generation.frames[:len(generation.frames)-1]
 		if frame.complete {
@@ -222,7 +248,7 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 	default:
 		graph.theorem = true
 		graph.suffices = step.Suffices
-		if step.AssumeProveBody != nil || step.Kind == "PICK" || step.Kind == "TAKE" {
+		if step.Kind == "PICK" || step.Kind == "TAKE" {
 			graph.complete = false
 			break
 		}
@@ -230,6 +256,18 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 		op := ""
 		switch step.Kind {
 		case "ASSERT":
+			if step.AssumeProveBody != nil {
+				graph.assumeProve = step.AssumeProveBody.semanticNode
+				if graph.assumeProve == nil {
+					graph.complete = false
+				} else {
+					graph.body = graph.assumeProve
+					if step.Suffices {
+						graph.assumeProve.setSuffices()
+					}
+				}
+				break
+			}
 			graph.body = sanyGeneratedExpressionNode(step.Expr)
 			if graph.body == nil && sanyExpressionGenerationFailure(step.Expr) != sanyGenerationNullExpression {
 				graph.complete = false
@@ -288,6 +326,10 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 	if graph.finishLabels != nil {
 		graph.finishLabels()
 		graph.finishLabels = nil
+	}
+	if graph.assumeContext != nil && !graph.suffices && sanyAttachedProofSyntax(graph.syntax) != nil {
+		g.formalSymbolTable().pushContext(graph.assumeContext)
+		graph.assumeContextPushed = true
 	}
 	g.labelGoalUnsupported = graph.previousUnsupported
 	return diagnostics
@@ -363,5 +405,23 @@ func (g *sanyExpressionGeneration) retainCanonicalLabelSelection(expr Expr) Diag
 		panic(err)
 	}
 	source.semanticGraph = node
+	return diagnostics
+}
+
+// A proof AP owns its declaration context until body generation ends. Register
+// the step in the enclosing proof context, then restore declarations only for
+// the source lifetime: its proof for ASSERT, subsequent steps for SUFFICES.
+func (generation *sanyProofGraphGeneration) assumeProveStatement(body *AssumeProve, context map[string]Position) Diagnostics {
+	g := generation.g
+	step := generation.current
+	previousGoal, previousOwned := g.currentGoal, g.outerAPContextOwned
+	previousSymbols := g.symbols
+	closeContext := g.pushFormalContext(0)
+	g.currentGoal, g.outerAPContextOwned = step.goal, true
+	diagnostics := checkAssumeProveBindings(body, context, nil, g)
+	step.assumeContext = g.formalSymbolTable().topContext()
+	closeContext()
+	g.currentGoal, g.outerAPContextOwned = previousGoal, previousOwned
+	g.symbols = previousSymbols
 	return diagnostics
 }
