@@ -102,6 +102,9 @@ func (n *SemanticNodeBase) GetHumanReadableImage() string { return n.Location.St
 
 // SemanticNode.toString normally prints the location. Numeral and Decimal
 // override it, while showPlainFormulae selects the actual SANY syntax image.
+// SemanticNodeJavaString exposes the source zero-argument formatting to SANY.
+func SemanticNodeJavaString(node SemanticNode) string { return semanticNodeJavaString(node) }
+
 func semanticNodeJavaString(node SemanticNode) string {
 	switch n := node.(type) {
 	case *NumeralNode:

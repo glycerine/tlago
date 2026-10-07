@@ -1,5 +1,31 @@
 # TLC Port Progress
 
+2026-10-07 Canonical level-dependency key prerequisites:
+Previous completed implementation commit: 55ce314. Resume faithful Java parity;
+new rpc25519/Tube work remains deferred. The three remaining incremental semantic
+methods need canonical LevelNode data, so do not replace their assertions with
+native checker results or implement a literal-only OpDef levelCheck shortcut.
+Port complete source ParamAndPosition and ArgLevelParam methods: actual symbol
+reference equality, signed positions/hashes, null hash failures, source occur
+array behavior and source nullable formatting. Read current tree locations,
+rather than cached declaration metadata, and reuse the existing Java semantic
+formatting/property bridge. No original Java tests directly cover these helpers;
+no permanent tests or inventory completion credit added.
+
+External comparison sources stay under /mnt/oldrog/tmp/tlago-level-keys-*.
+Initial observer 13017 passes and all 4,975 rows match Java. Extend observation
+with numeric hashes normalized only by the actual node UIDs, preserving signed
+overflow and source kind contributions. Observer 24449 passes and all 5,125 rows
+match. Cover distinct same-name symbols, formal/declaration classes, nulls,
+empty/nonempty/null membership arrays, signed integer boundaries, current source
+locations and showPlainFormulae. Both observer handles retired.
+
+Existing focused incremental/context/builtin tests pass: root 0.017s and SANY
+0.111s (54424 retired). Full short SANY suite and compile-all pass (79305 and
+84225 retired). Normal checks only; no race or full-workspace pass claim.
+Constraint maps, common inherited level data and complete recursive checking
+remain pending; the three incremental semantic methods still remain reconcile.
+
 2026-10-07 Missing EXTENDS module throws with retained Errors and checked boundaries:
 Previous completed implementation commit: a4607a8; formatting commit: 956ff9d.
 Port the absent ModuleNode path: log E4003 at the exact EXTENDS occurrence with

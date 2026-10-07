@@ -9210,3 +9210,19 @@ MSBDiskFPSet.TLCIterator.getLast scans buckets/slots backward for signed-positiv
 unflushed entries without moving its cursor. reads returns successful reads.
 Exhaustion uses NoSuchElementException; the strict increasing assertion uses
 Java's coded runtime carrier. Existing successful next/flush paths are unchanged.
+
+## Canonical level-dependency keys
+
+`sany_level_parameters.go` ports Java `ParamAndPosition` and `ArgLevelParam`
+using actual canonical symbol references. Equality compares references rather
+than names or semantic UID equality. Positions and hash arithmetic use signed
+Java `int` behavior. `occur` rejects a null array and scans a non-null array in
+source order, allowing null symbol slots to match null stored references.
+Formatting reads each symbol's current syntax tree and honors
+`SemanticNode.showPlainFormulae` through the existing TLC formatting bridge;
+nullable references print `null`. Constructor identity and native checker
+integer IDs are not substituted for these canonical references.
+
+These classes are prerequisites, not a completed level checker. Canonical
+constraint maps, inherited level metadata and recursive checking still require
+porting before closing the remaining incremental operator tests.
