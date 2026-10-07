@@ -865,16 +865,22 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: assumption.SourcePosition(), node: &sanyCachedLevelCheck{repeatSuccess: true, run: func() (bool, Diagnostics) {
 			var diags Diagnostics
+			correct := true
 			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
-				diags = append(diags, checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)...)
+				current := checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)
+				correct = correct && !current.HasErrors()
+				diags = append(diags, current...)
 			}
 			if !assumption.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
-				diags = append(diags, levelChecker.check(expr, nil)...)
+				expressionCorrect, current := levelChecker.checkResult(expr, nil)
+				correct = correct && expressionCorrect
+				diags = append(diags, current...)
 			}
-			diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
-			expressionCorrect := !diags.HasErrors()
+			current := checkPrimedConstants(expr, declKinds, nil)
+			correct = correct && !current.HasErrors()
+			diags = append(diags, current...)
 			diags = append(diags, checkAssumptionConstantLevel(assumption, levelChecker)...)
-			return expressionCorrect, diags
+			return correct, diags
 		}}})
 	}
 	generateTheorem := func(theorem NamedExpr) {
@@ -898,14 +904,21 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: theorem.SourcePosition(), node: &sanyCachedLevelCheck{repeatSuccess: true, run: func() (bool, Diagnostics) {
 			var diags Diagnostics
+			correct := true
 			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
-				diags = append(diags, checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)...)
+				current := checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)
+				correct = correct && !current.HasErrors()
+				diags = append(diags, current...)
 			}
 			if !theorem.AssumeProve && !assumeProveExprPositions[positionKey(expr.Position())] {
-				diags = append(diags, levelChecker.check(expr, nil)...)
+				expressionCorrect, current := levelChecker.checkResult(expr, nil)
+				correct = correct && expressionCorrect
+				diags = append(diags, current...)
 			}
-			diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
-			return !diags.HasErrors(), diags
+			current := checkPrimedConstants(expr, declKinds, nil)
+			correct = correct && !current.HasErrors()
+			diags = append(diags, current...)
+			return correct, diags
 		}}})
 	}
 	generateFunctionDomains := func(def Definition) {
@@ -953,16 +966,23 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if !def.AssumeProve {
 			diags = append(diags, checkAssumeProveDefinitionUse(def.Expr, assumeProveDefs, locals)...)
 		}
-		levelCheck := func() Diagnostics {
+		levelCheck := func() (bool, Diagnostics) {
 			var diags Diagnostics
+			correct := true
 			if def.AssumeProve && def.AssumeProveBody != nil {
-				diags = append(diags, checkAssumeProveNewSymbolLevels(def.AssumeProveBody, declKinds)...)
+				current := checkAssumeProveNewSymbolLevels(def.AssumeProveBody, declKinds)
+				correct = correct && !current.HasErrors()
+				diags = append(diags, current...)
 			}
 			if !def.AssumeProve {
-				diags = append(diags, levelChecker.check(def.Expr, locals)...)
+				expressionCorrect, current := levelChecker.checkResult(def.Expr, locals)
+				correct = correct && expressionCorrect
+				diags = append(diags, current...)
 			}
-			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, locals)...)
-			return diags
+			current := checkPrimedConstants(def.Expr, declKinds, locals)
+			correct = correct && !current.HasErrors()
+			diags = append(diags, current...)
+			return correct, diags
 		}
 		if _, recursive := recursiveArities[def.Name]; recursive && satisfiedRecursive[def.Name] && !completedRecursive[def.Name] && (expressionGeneration.bindings[def.Name] == nil || !expressionGeneration.bindings[def.Name].defined) {
 			checks.recursiveGeneration.complete()
@@ -972,7 +992,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 			completedRecursive[def.Name] = true
 		}
-		node := &sanyCachedLevelCheck{run: func() (bool, Diagnostics) { d := levelCheck(); return !d.HasErrors(), d }}
+		node := &sanyCachedLevelCheck{run: levelCheck}
 		if checks.operatorChecks == nil {
 			checks.operatorChecks = map[string]*sanyCachedLevelCheck{}
 		}
@@ -4543,22 +4563,41 @@ func checkAssumptionConstantLevel(assumption NamedExpr, checker *sanyLevelCompos
 }
 
 func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[string]bool) Diagnostics {
+	_, diags := levelChecker.checkResult(expr, locals)
+	return diags
+}
+
+// ExprNode.levelCorrect follows child check results. An Errors entry does not
+// imply that its source node returned false (InstanceNode is one such case).
+func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals map[string]bool) (bool, Diagnostics) {
 	var diags Diagnostics
+	correct := true
+	child := func(checker *sanyLevelCompositionChecker, expression Expr, context map[string]bool) {
+		childCorrect, childDiags := checker.checkResult(expression, context)
+		correct = correct && childCorrect
+		diags = append(diags, childDiags...)
+	}
+	constraints := func(current Diagnostics) {
+		correct = correct && !current.HasErrors()
+		diags = append(diags, current...)
+	}
 	switch expr.(type) {
 	case *ActionExpr, *FairnessExpr:
 		// OpApplNode checks operands before applying these builtin maxima.
 		// An invalid operand suppresses a redundant enclosing level error.
 	default:
-		diags = levelChecker.checkApplicationLevels(expr, locals)
+		constraints(levelChecker.checkApplicationLevels(expr, locals))
 	}
 	switch e := expr.(type) {
 	case *UnaryExpr:
 		if (e.Op == "[]" || e.Op == "<>") && levelChecker.level(e.Expr, locals) == actionLevel && sanyOperatorApplicationKind(e.Expr) {
 			if action, wrapped := e.Expr.(*ActionExpr); wrapped {
 				if e.Op == "[]" && actionExprIsAngle(action) {
+					correct = false
 					diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4310", "temporal operator %s cannot be applied to an angle action", e.Op), e, "[] followed by action not of form [A]_v."))
 				}
 				if e.Op == "<>" && !actionExprIsAngle(action) {
+					correct = false
 					diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4311", "temporal operator %s cannot be applied to a square action", e.Op), e, "<> followed by action not of form <<A>>_v."))
 				}
 			} else {
@@ -4570,143 +4609,153 @@ func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[str
 				if e.Op == "<>" {
 					message = "<> followed by action not of form <<A>>_v."
 				}
+				correct = false
 				diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, code, "temporal operator %s cannot be applied directly to an action-level formula", e.Op), e, message))
 			}
 		}
-		diags = append(diags, levelChecker.check(e.Expr, locals)...)
+		child(levelChecker, e.Expr, locals)
 	case *BinaryExpr:
 		leftLevel := levelChecker.level(e.Left, locals)
 		rightLevel := levelChecker.level(e.Right, locals)
 		if (e.Op == "~>" || e.Op == "-+->") && (leftLevel == actionLevel || rightLevel == actionLevel) {
+			correct = false
 			diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4312", "leads-to operator %s cannot have an action-level operand", e.Op), e, "Action used where only temporal formula or state predicate allowed."))
 		}
 		leftLogicalLevel := leftLevel
 		rightLogicalLevel := rightLevel
 		if isLogicalLevelMixingOperator(e.Op) && levelsMixActionAndTemporal(leftLogicalLevel, rightLogicalLevel) {
+			correct = false
 			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4313", "operator %s cannot mix action and temporal operands", e.Op), sanyLogicalOperatorDiagnosticName(e)))
 		}
-		diags = append(diags, levelChecker.check(e.Left, locals)...)
-		diags = append(diags, levelChecker.check(e.Right, locals)...)
+		child(levelChecker, e.Left, locals)
+		child(levelChecker, e.Right, locals)
 	case *CallExpr:
-		diags = append(diags, levelChecker.check(e.Callee, locals)...)
+		child(levelChecker, e.Callee, locals)
 		for _, arg := range e.Args {
-			diags = append(diags, levelChecker.check(arg, locals)...)
+			child(levelChecker, arg, locals)
 		}
 	case *IfExpr:
-		diags = append(diags, levelChecker.check(e.Cond, locals)...)
-		diags = append(diags, levelChecker.check(e.Then, locals)...)
-		diags = append(diags, levelChecker.check(e.Else, locals)...)
+		child(levelChecker, e.Cond, locals)
+		child(levelChecker, e.Then, locals)
+		child(levelChecker, e.Else, locals)
 	case *LetExpr:
 		levelChecker := levelChecker.withLet(e, locals)
 		letLocals := letScopeLocals(locals, e)
 		recursiveNames := letRecursiveNames(e)
 		for _, def := range e.Definitions {
 			if recursiveNames[def.Name] {
-				diags = append(diags, levelChecker.checkRecursiveParameters(def, letLocals)...)
+				constraints(levelChecker.checkRecursiveParameters(def, letLocals))
 			}
 			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
-			diags = append(diags, levelChecker.check(def.Expr, defLocals)...)
+			child(levelChecker, def.Expr, defLocals)
 		}
-		diags = append(diags, levelChecker.check(e.Body, letLocals)...)
+		child(levelChecker, e.Body, letLocals)
 		// LetInNode checks its retained InstanceNodes after definitions/body,
 		// even when no exported operator appears in IN.
 		for _, instance := range e.Instances {
-			diags = append(diags, levelChecker.checkInstanceSubstitutionLevels(instance, levelChecker.dependencies.declKinds[levelChecker.context.module])...)
+			instanceCorrect, instanceDiags := levelChecker.checkInstanceSubstitutionLevelResult(instance, levelChecker.dependencies.declKinds[levelChecker.context.module])
+			correct = correct && instanceCorrect
+			diags = append(diags, instanceDiags...)
 		}
 	case *QuantifierExpr:
 		setLevel := levelChecker.level(e.Set, locals)
 		bodyLevel := levelChecker.level(e.Body, withLocal(locals, e.Var))
 		if setLevel == temporalLevel {
+			correct = false
 			diags = append(diags, sanyDiagnosticParameters(errorAt(e.Pos, "E4315", "quantifier cannot have a temporal-level bound"), sanyQuantifierOperatorName(e), e.Var))
 		}
 		if setLevel == actionLevel && bodyLevel == temporalLevel {
+			correct = false
 			diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, "E4314", "quantifier with a temporal-level body cannot have an action-level bound"), e.Set, "Action-level bound of quantified temporal formula."))
 		}
-		diags = append(diags, levelChecker.check(e.Set, locals)...)
-		diags = append(diags, levelChecker.check(e.Body, withLocal(locals, e.Var))...)
+		child(levelChecker, e.Set, locals)
+		child(levelChecker, e.Body, withLocal(locals, e.Var))
 	case *CaseExpr:
 		for _, arm := range e.Arms {
-			diags = append(diags, levelChecker.check(arm.Test, locals)...)
-			diags = append(diags, levelChecker.check(arm.Value, locals)...)
+			child(levelChecker, arm.Test, locals)
+			child(levelChecker, arm.Value, locals)
 		}
 		if e.Other != nil {
-			diags = append(diags, levelChecker.check(e.Other, locals)...)
+			child(levelChecker, e.Other, locals)
 		}
 	case *ChooseExpr:
-		diags = append(diags, levelChecker.check(e.Set, locals)...)
-		diags = append(diags, levelChecker.check(e.Body, withLocal(locals, e.boundNames()...))...)
+		child(levelChecker, e.Set, locals)
+		child(levelChecker, e.Body, withLocal(locals, e.boundNames()...))
 	case *TupleExpr:
 		for _, elem := range e.Elems {
-			diags = append(diags, levelChecker.check(elem, locals)...)
+			child(levelChecker, elem, locals)
 		}
 	case *SetExpr:
 		for _, elem := range e.Elems {
-			diags = append(diags, levelChecker.check(elem, locals)...)
+			child(levelChecker, elem, locals)
 		}
 	case *RecordExpr:
 		for _, field := range e.Fields {
-			diags = append(diags, levelChecker.check(field.Value, locals)...)
+			child(levelChecker, field.Value, locals)
 		}
 	case *RecordComponentExpr:
 		if levelChecker.level(e.Record, locals) > actionLevel {
+			correct = false
 			diags = append(diags, errorAt(e.Pos, "E4205", "record selection cannot be applied to a temporal-level expression"))
 		}
-		diags = append(diags, levelChecker.check(e.Record, locals)...)
+		child(levelChecker, e.Record, locals)
 	case *RecordSetExpr:
 		for _, field := range e.Fields {
-			diags = append(diags, levelChecker.check(field.Set, locals)...)
+			child(levelChecker, field.Set, locals)
 		}
 	case *FunctionExpr:
 		fnLocals := copyBoolMap(locals)
 		for _, bound := range e.Bounds {
-			diags = append(diags, levelChecker.check(bound.Set, locals)...)
+			child(levelChecker, bound.Set, locals)
 			fnLocals[bound.Name] = true
 		}
-		diags = append(diags, levelChecker.check(e.Body, fnLocals)...)
+		child(levelChecker, e.Body, fnLocals)
 	case *FunctionAppExpr:
-		diags = append(diags, levelChecker.check(e.Function, locals)...)
+		child(levelChecker, e.Function, locals)
 		for _, arg := range e.Args {
-			diags = append(diags, levelChecker.check(arg, locals)...)
+			child(levelChecker, arg, locals)
 		}
 	case *ExceptExpr:
-		diags = append(diags, levelChecker.check(e.Base, locals)...)
+		child(levelChecker, e.Base, locals)
 		for _, spec := range e.Specs {
 			for _, component := range spec.Components {
 				for _, index := range component.Indices {
-					diags = append(diags, levelChecker.check(index, locals)...)
+					child(levelChecker, index, locals)
 				}
 			}
-			diags = append(diags, levelChecker.check(spec.Value, locals)...)
+			child(levelChecker, spec.Value, locals)
 		}
 	case *LabelExpr:
-		diags = append(diags, levelChecker.check(e.Body, locals)...)
+		child(levelChecker, e.Body, locals)
 	case *ActionExpr:
-		actionDiags := levelChecker.check(e.Action, locals)
-		subscriptDiags := levelChecker.check(e.Subscript, locals)
+		actionCorrect, actionDiags := levelChecker.checkResult(e.Action, locals)
+		subscriptCorrect, subscriptDiags := levelChecker.checkResult(e.Subscript, locals)
+		correct = correct && actionCorrect && subscriptCorrect
 		diags = append(diags, actionDiags...)
 		diags = append(diags, subscriptDiags...)
-		diags = append(diags, levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{!actionDiags.HasErrors(), !subscriptDiags.HasErrors()})...)
+		constraints(levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{actionCorrect, subscriptCorrect}))
 	case *FairnessExpr:
-		subscriptDiags := levelChecker.check(e.Subscript, locals)
-		actionDiags := levelChecker.check(e.Action, locals)
+		subscriptCorrect, subscriptDiags := levelChecker.checkResult(e.Subscript, locals)
+		actionCorrect, actionDiags := levelChecker.checkResult(e.Action, locals)
 		diags = append(diags, subscriptDiags...)
+		correct = correct && actionCorrect && subscriptCorrect
 		diags = append(diags, actionDiags...)
-		diags = append(diags, levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{!subscriptDiags.HasErrors(), !actionDiags.HasErrors()})...)
+		constraints(levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{subscriptCorrect, actionCorrect}))
 	case *FunctionSetExpr:
-		diags = append(diags, levelChecker.check(e.Domain, locals)...)
-		diags = append(diags, levelChecker.check(e.Range, locals)...)
+		child(levelChecker, e.Domain, locals)
+		child(levelChecker, e.Range, locals)
 	case *SetComprehensionExpr:
 		compLocals := copyBoolMap(locals)
 		for _, bound := range e.Bounds {
-			diags = append(diags, levelChecker.check(bound.Set, locals)...)
+			child(levelChecker, bound.Set, locals)
 			compLocals[bound.Name] = true
 		}
-		diags = append(diags, levelChecker.check(e.Element, compLocals)...)
+		child(levelChecker, e.Element, compLocals)
 		if e.Predicate != nil {
-			diags = append(diags, levelChecker.check(e.Predicate, compLocals)...)
+			child(levelChecker, e.Predicate, compLocals)
 		}
 	}
-	return diags
+	return correct, diags
 }
 
 func actionExprIsAngle(expr *ActionExpr) bool {

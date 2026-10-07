@@ -122,10 +122,21 @@ levelCorrect result independently of a non-Leibniz diagnostic. Keep those result
 separate from aggregate Errors.isSuccess. Full canonical node fields and iteration
 algorithms are still pending; retained checking plans do not establish graph parity.
 
-All fifteen phase comparisons match generation errors, level errors, codes,
-ranges, messages, return booleans and repeated checks. The original TestInstanceNode
-method now preserves every phase/count/code/parameter assertion; unchanged Java
-and Go pass. No whole frontend-helper API or full-workspace completion is claimed.
+Expression checks also carry child return values separately from Errors.
+LetInNode combines each definition/body/INSTANCE result, and parent expressions
+propagate the child's result rather than interpreting its diagnostics as a false
+result. InstanceNode's non-Leibniz report leaves its own levelCorrect true unless
+another constraint fails; a containing LET or OpDef therefore retains that true
+result. Substitution expression validity and action/fairness argument gates use
+these child results. A non-Leibniz report must not suppress a separate enclosing
+argument-max error. Definition, assumption and theorem plans retain the actual
+expression result alongside the accumulated diagnostics.
+
+All 27 phase comparisons match generation errors, level errors, codes, ranges,
+messages, return booleans and repeated checks. The original TestInstanceNode
+method preserves every phase/count/code/parameter assertion; unchanged Java and
+Go pass. These retained plans do not establish complete canonical LevelNode
+fields/iteration, full frontend-helper API or full-workspace completion.
 
 ## TLC bridge declaration metadata
 

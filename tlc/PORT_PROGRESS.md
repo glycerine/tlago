@@ -1,5 +1,37 @@
 # TLC Port Progress
 
+2026-10-07 Expression level results independent of reported diagnostics:
+Previous completed commit: fc1b0c1. Expand the programmatic phase comparison to
+21 cases. Initial 62780 returns 1: LET and binary parents falsely retain a failed
+level result from InstanceNode's non-Leibniz diagnostic, and an action argument
+error is suppressed. Java InstanceNode reports 4244 without setting levelCorrect
+false. Do not replace the source return value with Errors.isFailure.
+
+Add expression checkResult, carrying a boolean separately from diagnostics.
+Propagate actual child returns through each represented AST expression family;
+combine definition/body/INSTANCE results in LET. Retain expression results in
+operator, assumption and theorem plans. Substitution expression validity and
+ActionExpr/FairnessExpr argument gates now use child results instead of HasErrors.
+Own temporal/application constraints still mark their node incorrect when they
+fail. No diagnostic suppression, weakened test, new permanent test or fixture.
+
+Corrected 21-case comparison 60223 returns 0. Expand to 27 cases covering IF,
+tuples, records, quantifiers, functions and an invalid definition reference in
+a substitution. All 27 complete phase logs, generation/level booleans, codes,
+counts, ranges, messages and repeated-check logs match Java (4343, terminal 0).
+Log /mnt/oldrog/tmp/tlago-frontend-return-reference.log. Scratch helpers and
+vectors stay outside the repository and earn no original-method inventory credit.
+
+Focused root checks plus seven unchanged original model methods pass normally
+in 26.425 seconds (70196); complete SANY passes 2.006 seconds (8062); all-package
+compilation passes. Previous 26 co-parameter, 24 argument and 24 level comparisons
+all match complete legacy diagnostics (29789, terminal 0). Logs
+/mnt/oldrog/tmp/tlago-return-{root,final-coparam,final-arg,final-level}.log.
+All handles are terminal and retired. No new full-workspace pass is established.
+Full canonical LevelNode fields/iteration, INSTANCE/LET/operator graph identities,
+formal-operator metadata, complete frontend helper APIs and evaluator sharing
+remain pending. New distributed service remains postponed.
+
 2026-10-07 Separate semantic generation and level-check entry points:
 Previous completed commit: e45a499. Extract parsing/dependency loading from
 CheckSanySourceWithOptions into ParseSanySpecSource. Share generation through

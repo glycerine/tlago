@@ -889,11 +889,19 @@ Next finish retained InstanceNode/LetInNode and ordinary canonical operator grap
 Separate production entry points now expose parsing/dependency loading,
 semantic generation and root level checking. Programmatic generation links shared
 imported definitions and copied top-level nodes; legacy CLI reporting retains its
-per-external-module sequence. Fifteen phase comparisons match Java's generation
-and level logs, booleans and repeated checks. Full canonical LevelNode fields,
-iteration and child return values, imported graph identity, full formal-operator
-metadata, the remaining Java frontend helper API and evaluator sharing remain
-pending. The green comparisons do not prove complete LevelNode parity.
+per-external-module sequence. Expression checks now propagate each child's
+levelCorrect result separately from its diagnostics, including LET instances and
+substitution expressions. A reported non-Leibniz substitution does not turn its
+parent's result false when Java's InstanceNode returns true. Action/fairness
+argument gates use child results, preserving an enclosing error that a raw
+Errors check previously suppressed. Definition, assumption and theorem plans
+retain these expression results. All 27 phase comparisons and 74 preceding
+legacy diagnostic comparisons match Java; existing focused root/model checks,
+complete SANY and compilation pass normally.
+Full canonical LevelNode fields and iteration, imported graph identity, full
+formal-operator metadata, the remaining Java frontend helper API and evaluator
+sharing remain pending. The green comparisons do not prove complete LevelNode
+parity or a new full-workspace pass.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.

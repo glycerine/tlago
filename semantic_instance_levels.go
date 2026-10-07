@@ -37,8 +37,8 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevelResult(insta
 	}
 	valid := map[string]bool{}
 	for _, substitution := range instance.generatedSubstitutions {
-		componentDiags := checker.check(substitution.expr, parameterNames)
-		valid[substitution.name] = !componentDiags.HasErrors()
+		componentCorrect, componentDiags := checker.checkResult(substitution.expr, parameterNames)
+		valid[substitution.name] = componentCorrect
 		correct = correct && valid[substitution.name]
 		diags = append(diags, componentDiags...)
 	}
