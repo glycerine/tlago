@@ -1231,6 +1231,11 @@ visited, preserving prior writes on later failure. Non-leaf proofs copy steps
 followed by instances before checking; definition steps retain the array passed
 at entry while observing in-place element changes. All 282 direct Java rows
 and the retained 575 common rows agree. No original-method credit is added.
+NewSymbNode now checks the declaration and optional set, preserves the source
+exact-temporal diagnostic E4356, and shares five actual set collections while
+retaining its own non-Leibniz set. Removing a set retains previously shared
+metadata and correctness. All 195 Java observations agree, including exact
+error text, deduplication, failure order and typed-null set handling.
 Application, instance, remaining proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

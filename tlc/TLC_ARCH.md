@@ -9432,3 +9432,29 @@ metadata, child-call counts, literal facts, and both array mutation behaviors.
 All 575 retained common LevelNode observations also match. These observations
 add no original-method credit and do not complete all descendant, theorem,
 ASSUME-PROVE, instance or module checks.
+
+
+## Canonical NEW-symbol level checking
+
+`sany_new_symbol_level.go` translates the complete source NewSymbNode check.
+A fresh iteration is recorded before checking the actual declaration. The level
+starts at the declaration level, then combines with the optional set level.
+Set correctness replaces the current correctness only when a set exists.
+Preserve the source exact equality against TemporalLevel, reporting E4356 with
+`Level error:\nTemporal formula used as set.` before sharing metadata. A null
+syntax node or Errors receiver leaves the earlier level/correctness writes.
+Diagnostic equality uses Java Location's source and four coordinates, ignoring
+Go Position's extra end-coordinate bookkeeping. This fixed diagnostic has no
+format parameters, and equal reports are deduplicated in the caller's log.
+
+After checking, level/all-parameter sets, constraints and argument dependencies
+alias the set's actual collections. The non-Leibniz set stays separate. Removing
+the set on a later iteration does not clear those aliases or reset correctness.
+A typed-null graph reference has the same behavior as Java null. Body metadata
+reads remain virtual and use the current set field.
+
+All 195 external Java/Go rows agree exactly across four declaration levels,
+six construction/failure modes and eight signed/repeated iterations, complete
+metadata and Errors output, identity checks, set removal/restoration and a
+pre-seeded duplicate diagnostic. These observations do not add original-method
+credit, establish general Errors parity or close other ASSUME-PROVE descendants.

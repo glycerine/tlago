@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-07 Canonical NewSymbNode level check and diagnostic:
+Previous completed commit: 9944977. Translate complete source declaration/set
+checking, exact TemporalLevel comparison and E4356 diagnostic. Preserve early
+iteration/level/correctness writes on null syntax or Errors failures. Share only
+five actual set collections, retaining non-Leibniz separately. A removed set
+leaves prior metadata and correctness intact. Treat typed-null set references
+as Java null. Deduplicate this fixed-format/no-parameter diagnostic using source
+Location equality, not extra Go Position end fields. General Errors remains a
+separate reconciliation dependency.
+
+External observers stay under /mnt/oldrog/tmp/tlago-new-symbol-level-* and use
+actual source OpDecl/NewSymb/Formal nodes, token syntax location and controlled
+ExprNode metadata. Initial observer 91260 passes and all 192 complete rows match,
+including exact Errors text and identity/failure state. Extend source and Go
+observations to set removal/restoration and a pre-seeded equal diagnostic with
+extra Go-only position bookkeeping. Final observer 35158 passes; all 195 complete
+rows match after stripping only Go runner envelope. No invented permanent test,
+weakened assertion or original-method completion credit. Both incremental LET
+methods remain pending on their actual remaining graph checks.
+
+Broad affected original/model gate 6038 passes normally in 47.005s with 283
+passing test events. Full SANY 85943 passes in 1.926s; all-package compile 50910
+passes. All handles retired. No race run or shortened workload. This is not a
+new full-workspace verification receipt. Update handoff and architecture.
+
 2026-10-07 Canonical USE/HIDE and proof subnode checks:
 Previous completed commit: a7ce843. Translate complete source checks for
 UseOrHideNode, LeafProofNode, DefStepNode and NonLeafProofNode. Check facts only
