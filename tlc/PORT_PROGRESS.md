@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-06 Ordered required label formals and domain scope:
+Previous completed commit: f49e415. labelCheckContext now carries ordered formal
+arrays for the current label frame, retaining source pushFormalParams boundaries.
+Quantifier wrappers sharing source syntax form one group; check all distinct
+domains in the enclosing label scope before adding that group. CHOOSE, function
+and set-comprehension bodies carry their retained arrays. Nested labels and LET
+definitions reset required groups. Filtered sets traverse the actual predicate
+rather than separately traversing their derived native element.
+
+Required validation removes each UID from the provided-formal membership set in
+source sequence order. A rejected declaration retains its newly constructed node
+in that sequence, so matching an earlier same-named binding cannot satisfy it.
+Missing diagnostics use the exact source message/location. Native/unresolved
+metadata retains its existing representation. Extra validation remains name-based;
+this is not full HashSet iteration/aggregate or unified Generator LS parity.
+
+Sixteen scratch cases compare required-parameter diagnostics with Java; fourteen
+exact required observations match, and fourteen cases match complete diagnostics.
+Cases include multiple/nested/rejected quantifier bounds, domain labels, CHOOSE,
+function/named-function/set/filter binders and nested-label/LET frame resets.
+Formal and constant conflict cases still differ in complete output because extra
+validation suppresses source-required aggregate errors; preserve those outputs.
+Handle 69998 terminal 0 means the explicitly scoped required-phase comparison
+matches, not complete diagnostic parity. Runner/log/vectors:
+/mnt/oldrog/tmp/tlago-label-required-audit.py, tlago-label-required-audit.log and
+tlago-label-required-audit/. No permanent tests invented or inventory credit.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 4.665 seconds (96344). Whole SANY package passes
+1.724 seconds (76698); all packages compile (77421). Receipts:
+/mnt/oldrog/tmp/tlago-label-required-{root,sany,compile}.log. Freshly rebuilt scratch
+frontend comparison still matches fifteen complete label-flow cases. The broader
+nine-case audit remains four matches/five differences: arg_constant, label_select,
+params, qualified_callee and repeated. Combined handle 61413 terminal 1 because
+that broader audit still fails. Logs:
+/mnt/oldrog/tmp/tlago-label-required-{flow,nine}.log. All handles terminal and
+retired. git diff --check passes. No race workloads, weakened assertions/settings,
+workload bound changes or current full-workspace claim.
+
+Next: port source HashSet iteration and aggregate extra-parameter checks using
+actual retained UID/hash values; do not sort names or invent allocation counts.
+Complete unified generation guards/LS graph integration and allocation order
+remain pending. New service work remains postponed while Java parity is completed.
+
 2026-10-06 Label argument errors and formal-identity repetition:
 Previous completed commit: cb92e1f. Retain each dummy parameter's source argument
 syntax in LabelExpr. After body traversal, emit the source E4332 illegal-parameter

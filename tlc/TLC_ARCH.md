@@ -20,10 +20,19 @@ FormalParamNode class and kind, so UID membership implements their equals test.
 Distinct dummy nodes do not trigger repetition despite equal names.
 
 Twenty-two exact argument/repetition diagnostic observations across twelve scratch
-cases match Java. Required and extra parameter validation still compares names;
-port the source LS stack and UID-based HashSet operations, including aggregate
-extra-parameter iteration, and unify guards so forbidden label bodies allocate no
-nodes. Absolute allocation order remains unproven.
+cases match Java. Required parameter traversal now carries an ordered sequence of
+formal arrays for the current label frame. Quantifiers push one flattened source
+group after all domains; CHOOSE, functions and set comprehensions carry their
+retained arrays. Labels and LET definitions reset required groups. Matching removes
+each UID in sequence order, so rejected same-named nodes remain distinct missing
+requirements. Native expressions without resolved metadata retain their old scope
+representation. Filtered sets traverse their source predicate once.
+
+Fourteen required-parameter observations across sixteen scratch cases match Java;
+fourteen cases also match complete diagnostics. Extra validation still compares
+names. Port HashSet iteration and aggregate extra diagnostics, complete unified
+LS/generator integration, and stop allocation under forbidden label bodies.
+Absolute allocation order remains unproven.
 
 ## TAKE/PICK formal construction and proof scope
 

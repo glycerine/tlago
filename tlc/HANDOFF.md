@@ -757,11 +757,17 @@ argument diagnostics now report each non-formal occurrence at its own argument
 syntax before repetition checks. Repetition uses retained UID identity, so distinct
 dummy nodes with the same spelling do not count as repeated formals. Twenty-two
 argument/repetition observations across twelve scratch cases match Java.
-Required and extra parameters still use the older name-based traversal. Unified
-guards, LS stacks and full identity-based HashSet validation remain pending.
+Required parameters now use ordered formal groups from the current label scope,
+removing matched UIDs in source sequence order. Rejected same-named nodes remain
+distinct requirements. Quantifier domains are checked together before the group
+enters scope; nested labels and LET definitions reset that scope. Fourteen required
+parameter observations across sixteen scratch cases match; fourteen of those cases
+also match complete diagnostics. Extra parameters still use the older name-based
+traversal. Unified generation guards and complete LS/HashSet integration remain
+pending.
 
-Next semantic work: use the retained arrays in Generator's label-parameter checks
-and port its LS stack, auditing remaining declaration constructors as needed.
+Next semantic work: port HashSet iteration and aggregate extra-parameter checks,
+then unify label scope/generation guards and audit remaining constructors.
 The earlier nine-case comparison now has four
 matches and five differences: `arg_constant`, `label_select`, `params`,
 `qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;

@@ -1214,26 +1214,26 @@ func positionKey(pos Position) string {
 }
 
 type labelCheckContext struct {
-	allowed  bool
-	noLabels bool
-	inExcept bool
-	bound    []string
+	allowed          bool
+	noLabels         bool
+	inExcept         bool
+	bound            []string
+	formalGroups     [][]*sanyFormalParamNode
+	unresolvedBounds bool
 }
 
-func (ctx labelCheckContext) withBound(name string) labelCheckContext {
-	if name == "" {
-		return ctx
-	}
+// Each group corresponds to one pushFormalParams on the current LS frame.
+// The value context restores the previous sequence when a traversal returns.
+func (ctx labelCheckContext) withBounds(bounds []BoundVar, nodes []*sanyFormalParamNode) labelCheckContext {
 	next := ctx
-	next.bound = append(append([]string(nil), ctx.bound...), name)
-	return next
-}
-
-func (ctx labelCheckContext) withBounds(bounds []BoundVar) labelCheckContext {
-	next := ctx
+	next.bound = append([]string(nil), ctx.bound...)
 	for _, bound := range bounds {
-		next = next.withBound(bound.Name)
+		if bound.Name != "" {
+			next.bound = append(next.bound, bound.Name)
+		}
 	}
+	next.formalGroups = append(append([][]*sanyFormalParamNode(nil), ctx.formalGroups...), nodes)
+	next.unresolvedBounds = ctx.unresolvedBounds || len(nodes) != len(bounds)
 	return next
 }
 
@@ -1246,6 +1246,8 @@ func (ctx labelCheckContext) insideExcept() labelCheckContext {
 func (ctx labelCheckContext) resetLabelBoundScope() labelCheckContext {
 	next := ctx
 	next.bound = nil
+	next.formalGroups = nil
+	next.unresolvedBounds = false
 	return next
 }
 
@@ -1282,8 +1284,17 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		}
 		diags = append(diags, checkLabels(e.Body, ctx)...)
 	case *QuantifierExpr:
-		diags = append(diags, checkLabels(e.Set, ctx)...)
-		diags = append(diags, checkLabels(e.Body, ctx.withBound(e.Var))...)
+		parameters, body := sanyQuantifierGroup(e)
+		var bounds []BoundVar
+		seenDomains := map[Expr]bool{}
+		for _, parameter := range parameters {
+			if parameter.Set != nil && !seenDomains[parameter.Set] {
+				diags = append(diags, checkLabels(parameter.Set, ctx)...)
+				seenDomains[parameter.Set] = true
+			}
+			bounds = append(bounds, BoundVar{Name: parameter.Var})
+		}
+		diags = append(diags, checkLabels(body, ctx.withBounds(bounds, e.quantifierFormals))...)
 	case *CaseExpr:
 		var values []Expr
 		for _, arm := range e.Arms {
@@ -1299,7 +1310,7 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		}
 	case *ChooseExpr:
 		diags = append(diags, checkLabels(e.Set, ctx)...)
-		diags = append(diags, checkLabels(e.Body, ctx.withBounds(e.boundVars()))...)
+		diags = append(diags, checkLabels(e.Body, ctx.withBounds(e.boundVars(), e.formalNodes))...)
 	case *TupleExpr:
 		diags = append(diags, checkDuplicateSiblingLabels(e.Elems)...)
 		for _, elem := range e.Elems {
@@ -1329,7 +1340,7 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		for _, bound := range e.Bounds {
 			diags = append(diags, checkLabels(bound.Set, ctx)...)
 		}
-		diags = append(diags, checkLabels(e.Body, ctx.withBounds(e.Bounds))...)
+		diags = append(diags, checkLabels(e.Body, ctx.withBounds(e.Bounds, e.formalNodes))...)
 	case *FunctionAppExpr:
 		diags = append(diags, checkLabels(e.Function, ctx)...)
 		for _, arg := range e.Args {
@@ -1367,7 +1378,7 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		// The source pushes a new label scope and generates the body before
 		// resolving parameters and running formalParamsEqual on this label.
 		diags = append(diags, checkLabels(e.Body, ctx.resetLabelBoundScope())...)
-		diags = append(diags, checkLabelParameters(e, ctx.bound)...)
+		diags = append(diags, checkLabelParameters(e, ctx)...)
 
 	case *ActionExpr:
 		diags = append(diags, checkLabels(e.Action, ctx)...)
@@ -1382,16 +1393,16 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		for _, bound := range e.Bounds {
 			diags = append(diags, checkLabels(bound.Set, ctx)...)
 		}
-		bodyCtx := ctx.withBounds(e.Bounds)
-		diags = append(diags, checkLabels(e.Element, bodyCtx)...)
+		body := e.Element
 		if e.Predicate != nil {
-			diags = append(diags, checkLabels(e.Predicate, bodyCtx)...)
+			body = e.Predicate
 		}
+		diags = append(diags, checkLabels(body, ctx.withBounds(e.Bounds, e.formalNodes))...)
 	}
 	return diags
 }
 
-func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
+func checkLabelParameters(label *LabelExpr, ctx labelCheckContext) Diagnostics {
 	var diags Diagnostics
 	// generateLabel resolves every argument before formalParamsEqual. Each
 	// non-formal occurrence reports at its own argument syntax, even when
@@ -1426,12 +1437,31 @@ func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
 		seen[param] = true
 	}
 	required := map[string]bool{}
-	for _, name := range bound {
-		required[name] = true
-		if !seen[name] {
-			diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4331", "label %s must contain bound parameter %s", label.Name, name), label.Name, name)
-			diagnostic.SANYMessage = fmt.Sprintf("Label %s must contain formal parameter `%s'.", label.Name, name)
-			diags = append(diags, diagnostic)
+	missing := func(name string) {
+		diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4331", "label %s must contain bound parameter %s", label.Name, name), label.Name, name)
+		diagnostic.SANYMessage = fmt.Sprintf("Label %s must contain formal parameter `%s'.", label.Name, name)
+		diags = append(diags, diagnostic)
+	}
+	if label.formalNodes != nil && !ctx.unresolvedBounds {
+		// formalParamsEqual removes each required identity in LS sequence
+		// order. A rejected same-named declaration remains a distinct node.
+		for _, group := range ctx.formalGroups {
+			for _, node := range group {
+				name := node.semName()
+				required[name] = true
+				uid := node.getUID()
+				if !seenFormals[uid] {
+					missing(name)
+				}
+				delete(seenFormals, uid)
+			}
+		}
+	} else {
+		for _, name := range ctx.bound {
+			required[name] = true
+			if !seen[name] {
+				missing(name)
+			}
 		}
 	}
 	for _, param := range label.Params {
