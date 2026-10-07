@@ -714,10 +714,12 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return checkInstanceSubstitutions(mod, inst, spec, defined, declKinds, arities, operatorParamSpecs, true)
 		}})
 	}
-	generateProofRef := func(ref ProofRef) {
+	generateProofRef := func(ref ProofRef) bool {
 		diags = append(diags, checks.generator.reference(ref)...)
-		diags = append(diags, expressionGeneration.proofReference(ref, mod, defined, nil)...)
+		generated, appended := expressionGeneration.generateProofReference(ref, mod, defined, nil)
+		diags = append(diags, generated...)
 		diags = append(diags, checkHideRef(ref, theoremLikeDefs, proofStepNames)...)
+		return appended
 	}
 	generateProof := func(proof ProofSummary) {
 		diags = append(diags, checks.generator.proof(proof)...)
@@ -899,8 +901,14 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if unit.theorem != nil {
 			generateTheorem(*unit.theorem)
 		}
+		entries := 0
 		for _, ref := range unit.references {
-			generateProofRef(ref)
+			if generateProofRef(ref) {
+				entries++
+			}
+		}
+		if unit.syntax != nil && unit.syntax.Kind.JavaName() == "N_UseOrHide" {
+			diags = append(diags, sanyEmptyProofCommand(unit.syntax, entries, "Empty USE or HIDE statement.")...)
 		}
 		for _, proof := range unit.proofs {
 			generateProof(proof)

@@ -21,16 +21,18 @@ func sanyProofReferenceDirect(reference ProofRef) bool {
 
 // generateUseOrHide supplies both leaf BY and USE/HIDE facts and definitions.
 // Only a direct GeneralId is generated with isFact; its operands are expressions.
-func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Module, context map[string]Position, locals map[string]bool) Diagnostics {
+// The result flag records whether source generateUseOrHide appends a vector
+// entry. Failed expression facts occupy a slot; unavailable modules do not.
+func (g *sanyExpressionGeneration) generateProofReference(reference ProofRef, module *Module, context map[string]Position, locals map[string]bool) (Diagnostics, bool) {
 	if reference.Module != "" {
 		target := g.spec.Modules[reference.Module]
 		if reference.Module == module.Name || (target != nil && !(sameSourceFile(target.Pos, reference.Pos) && positionBefore(reference.Pos, target.Pos))) {
-			return nil
+			return nil, true
 		}
 		diagnostic := errorAt(reference.Pos, "E4005", "module %s is unavailable in proof", reference.Module)
 		diagnostic.SANYMessage = fmt.Sprintf("Module `%s' used without being extended or instantiated.", reference.Module)
 		diagnostic.SANYRange = SanyRange{Begin: reference.Pos, End: reference.Pos.SourceEnd()}
-		return Diagnostics{diagnostic}
+		return Diagnostics{diagnostic}, false
 	}
 	if reference.Defs {
 		var diags Diagnostics
@@ -56,7 +58,7 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 				if source := sanyExprSource(reference.Expr); source != nil && source.Selector != nil {
 					last := source.Selector.Steps[len(source.Selector.Steps)-1]
 					if last.Kind == SanySelectorName {
-						return nil
+						return nil, true
 					}
 				}
 			}
@@ -64,7 +66,7 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 			diags = append(diags, g.checkExpr(reference.Expr, context, locals)...)
 		} else if symbol, exists := g.lookupSymbol(name, context); exists {
 			if symbol.proofStepKind == "DEFINE" {
-				return nil
+				return nil, true
 			}
 			if symbol.proofStepKind != "" {
 				diagnostic := errorAt(reference.Pos, "E4004", "DEF clause entry refers to a non-definition step.")
@@ -73,7 +75,7 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 				diags = append(diags, diagnostic)
 			}
 			if (symbol.kind == OperatorDecl || symbol.kind == InstanceDecl || symbol.kind == semanticTheoremImportKind) && (len(name) == 0 || name[0] != '<') {
-				return nil
+				return nil, true
 			}
 		} else if !builtinIdentifiers[name] {
 			if _, builtin := builtinOperatorArity(name); !builtin {
@@ -87,17 +89,17 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 		diagnostic := errorAt(reference.Pos, "E4200", "DEF clause entry should describe a defined operator.")
 		diagnostic.SANYRange = SanyRange{Begin: reference.Pos, End: reference.Pos.SourceEnd()}
 		diagnostic.SANYMessage = diagnostic.Message
-		return append(diags, diagnostic)
+		return append(diags, diagnostic), false
 	}
 	if reference.Expr == nil {
-		return nil
+		return nil, true
 	}
 	if identifier, ok := reference.Expr.(*IdentExpr); ok {
 		if symbol, exists := g.lookupSymbol(identifier.Name, context); exists && symbol.proofStepKind == "DEFINE" {
 			diagnostic := errorAt(reference.Pos, "E4004", "Step number of non-fact used as a fact")
 			diagnostic.SANYMessage = diagnostic.Message
 			diagnostic.SANYRange = SanyRange{Begin: reference.Pos, End: reference.Pos.SourceEnd()}
-			return Diagnostics{diagnostic}
+			return Diagnostics{diagnostic}, true
 		}
 	}
 	previousFact := g.fact
@@ -106,7 +108,7 @@ func (g *sanyExpressionGeneration) proofReference(reference ProofRef, module *Mo
 	g.fact = previousFact
 	arities, parameters := g.proofSignatures()
 	diags = append(diags, checkCallArity(reference.Expr, arities, parameters, locals)...)
-	return append(diags, checkOperatorArgumentKinds(reference.Expr, parameters, arities, locals)...)
+	return append(diags, checkOperatorArgumentKinds(reference.Expr, parameters, arities, locals)...), true
 }
 
 // The enclosing theorem's NEW context is visible in its proof. A statement's
@@ -148,7 +150,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			sanyProofNewBindings(g.symbols, theorem.AssumeProveBody)
 		}
 	}
-	diags = append(diags, g.leafProofReferences(proof.LeafRefs, module, base)...)
+	diags = append(diags, g.leafProofReferences(proof.LeafRefs, proof.Syntax, module, base)...)
 	baseSymbols := g.symbols
 	symbolScopes := map[int]map[string]localSymbol{}
 
@@ -320,8 +322,20 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		for _, expression := range step.Exprs {
 			diags = append(diags, g.proofExpression(expression, current, nil)...)
 		}
+		entries := 0
 		for _, reference := range step.UseHideRefs {
-			diags = append(diags, g.proofReference(reference, module, current, nil)...)
+			generated, appended := g.generateProofReference(reference, module, current, nil)
+			diags = append(diags, generated...)
+			if appended {
+				entries++
+			}
+		}
+		if step.Kind == "USE" || step.Kind == "HIDE" {
+			for _, body := range step.Syntax.GetHeirs() {
+				if body.Kind.JavaName() == "N_UseOrHide" {
+					diags = append(diags, sanyEmptyProofCommand(body, entries, "Empty USE or HIDE statement.")...)
+				}
+			}
 		}
 		for _, reference := range step.UseHideRefs {
 			facts, steps := map[string]bool{}, map[string]bool{}
@@ -367,7 +381,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			sanyProofNewSymbols(ownProof, step.AssumeProveBody)
 			sanyProofNewBindings(g.symbols, step.AssumeProveBody)
 		}
-		diags = append(diags, g.leafProofReferences(step.LeafRefs, module, ownProof)...)
+		diags = append(diags, g.leafProofReferences(step.LeafRefs, step.Syntax, module, ownProof)...)
 		g.symbols = ownSymbols
 		if step.Kind == "PICK" {
 			pendingPicks[step.Depth] = step.Bounds
@@ -394,24 +408,42 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 
 // Failed DEF and MODULE entries are omitted from the generated vectors. Failed
 // expression facts still occupy a slot, as in generateUseOrHide's vec.addElement.
-func (g *sanyExpressionGeneration) leafProofReferences(references []ProofRef, module *Module, context map[string]Position) Diagnostics {
+func (g *sanyExpressionGeneration) leafProofReferences(references []ProofRef, syntax *SanySyntaxNode, module *Module, context map[string]Position) Diagnostics {
 	var diags Diagnostics
 	entries := 0
 	for _, reference := range references {
-		generated := g.proofReference(reference, module, context, nil)
+		generated, appended := g.generateProofReference(reference, module, context, nil)
 		diags = append(diags, generated...)
-		if (!reference.Defs && reference.Module == "") || len(generated) == 0 {
+		if appended {
 			entries++
 		}
 	}
-	if len(references) != 0 && entries == 0 {
-		syntax := references[0].Syntax
-		position := sanyNodePosition(syntax)
-		diagnostic := errorAt(position, "E4003", "Empty BY")
-		diagnostic.SANYMessage = diagnostic.Message
-		diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	if command := sanyLeafProofSyntax(syntax); command != nil {
+		diags = append(diags, sanyEmptyProofCommand(command, entries, "Empty BY")...)
+	}
+	return diags
+}
+
+func sanyEmptyProofCommand(syntax *SanySyntaxNode, entries int, emptyMessage string) Diagnostics {
+	if entries != 0 || syntax == nil {
+		return nil
+	}
+	heirs := syntax.GetHeirs()
+	next := 1
+	if len(heirs) > 0 && heirs[0].Token != nil && heirs[0].Token.Kind == SanyTokenProof {
+		next++
+	}
+	var diags Diagnostics
+	add := func(message string) {
+		diagnostic := errorAt(sanyNodePosition(syntax), "E4003", "%s", message)
+		diagnostic.SANYMessage = message
+		diagnostic.SANYRange = syntax.Range
 		diags = append(diags, diagnostic)
 	}
+	if next >= len(heirs) {
+		add("Empty BY, USE, or HIDE")
+	}
+	add(emptyMessage)
 	return diags
 }
 

@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-06 Shared BY/USE/HIDE grammar and generated command entries:
+Previous completed commit: ac45a30. Port source UseOrHideOrBy as the actual shared
+production, including Proof's token-one/token-two BY priority, frames and exact
+expectations. Commas and DEF require another MODULE or Expression; ONLY is allowed
+only after USE/BY. MODULE and its Identifier are flat heirs. Remove split command
+parsers, fabricated module wrappers, trailing-comma/empty-DEF acceptance, bare
+reference bypasses and command-column boundary heuristics. Projection consumes
+flat MODULE heirs. Retire the obsolete folded-production coverage entry.
+
+Primitive proof references retain source outside-proof and plus-level failures;
+implicit references retain their original image and use correctedStepNum with the
+containing proof's level. Actual TRACE comparison exposed missing StructOp frames.
+Port its mandatory choices and early epa, then throw for real selectors with the
+source location. Full tree comparisons exposed fabricated BangOperatorSelector and
+symbolic StructOp wrappers; replace them with source typed token leaves. Numeric
+structural selectors retain their Number child as Java does.
+
+A module-generation comparison exposed missing Empty USE or HIDE statement after
+an unavailable MODULE was omitted. Port generated-entry accounting from production
+results rather than diagnostic-count guesses. Failed fact expressions retain a
+vector slot; unavailable modules and rejected DEF entries do not. Preserve empty
+USE/HIDE steps and terminal BY through projection, then report source early
+Empty BY, USE, or HIDE and the enclosing statement's empty-result diagnostic in
+source order. This does not establish complete selector/semantic graph fidelity.
+
+All 423 complete parser TRACE/results match pinned Java, including 58 new command,
+reference and structural-selector observations; all 365 earlier observations are
+preserved. Log: /mnt/oldrog/tmp/tlago-sany-command-parser-audit.log. All 56 selected
+complete module trees match kinds, images, ranges, original images and proof
+levels: /mnt/oldrog/tmp/tlago-command-module-tree-audit.log. All 25 command-generation
+observations match source error counts, codes, messages and ranges, including
+module scopes and missing modules, failed facts/DEF entries and empty commands:
+/mnt/oldrog/tmp/tlago-sany-command-semantic.log. Source SANY package passes
+1.887 seconds; explicit native parser/bridge/context/token-manager/scaffold checks,
+source ParseErrorTests, six original proof/selector/lifecycle models and scoped
+identifier/reference checks pass 4.870 seconds. Logs:
+/mnt/oldrog/tmp/tlago-sany-command-{sany,root-focused}.log. Every package compiles:
+/mnt/oldrog/tmp/tlago-sany-command-compile.log. No permanent tests, original Java
+assertions or vectors changed. No test inventory credit or full-workspace pass.
+
+An accidental broad Behaviors filter included postponed corpus sweeps. Stop only
+that go/test process pair immediately; handle 6483 is retired with status 1 and
+no verification credit. Final root verification uses explicit relevant names and
+excludes those sweeps. Preserve the live full-bound MSB run, session 5144.
+
 2026-10-06 Hierarchical proof steps and original-image generation:
 Previous completed commit: c7295b2. Port source StepStartToken's mandatory token,
 Step/QEDStep frames, expectations, level failures and correctedStepNum behavior.

@@ -592,9 +592,17 @@ sequence of definitions in `DefStep`. `Step`, `QEDStep`, `DefStep`, `HaveStep`,
 levels and forbidden nested proofs throw immediately. Numbered step nodes retain
 both original and corrected images; generation checks the original image for
 illegal named implicit steps. Proof-level stacks pop only on normal completion.
+`UseOrHideOrBy` now owns the shared source command grammar and frame. It requires
+an item after each comma and `DEF`, permits `ONLY` only for USE/BY, and retains
+flat MODULE/identifier children. Step references in expressions preserve source
+outside-proof and `<+>` failures; implicit references use the enclosing level.
+`StructOp` retains its frame and rejects real selectors after normal frame exit.
+Operator and symbolic structural selectors are typed token leaves. Projection
+retains empty commands and generation counts appended entries, including failed
+facts, before reporting source empty-BY/USE/HIDE diagnostics.
 General JavaCC rescan, the theorem's three-token Assume-Prove selection,
-`UseOrHideOrBy`, TAKE/PICK/WITNESS grammar and remaining proof productions are
-reconciliation work; this is not complete Proof grammar parity.
+TAKE/PICK/WITNESS grammar, proof-depth limits and remaining proof productions are
+reconciliation work; this is not complete Proof grammar or generation parity.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
@@ -606,16 +614,17 @@ source image and zero-valued slot, then reports constructor errors before name
 resolution. Reconstructed tuple membership retains both structural diagnostics.
 General selector and constructor fidelity remains reconciliation work.
 
-Current bounded observations match Java: 365 complete parser TRACE/results, 41
+Current bounded observations match Java: 423 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
 runtime probes, plus 93 selected expression trees including ranges, four function-application
 runtime probes, ten bracket constructor/group metadata and runtime probes,
-16 brace semantic observations, nine brace metadata/runtime probes, all 446
+16 brace semantic observations, 25 command-generation observations,
+nine brace metadata/runtime probes, all 446
 node-image entries, and 16 selected complete definition trees with kinds, images
-and ranges, plus 25 selected complete module trees with kinds, images, ranges, original images
-and proof levels.
+and ranges, plus 56 selected complete module trees with kinds, images,
+ranges, original images and proof levels.
 Keep each scope distinct. Whole-module canonical AST assertions, general source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
 Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame

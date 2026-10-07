@@ -309,7 +309,7 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 		case (p.check(SanyTokenTheorem) || p.check(SanyTokenProposition)) && (p.startsAssumeProveAt(1) || p.startsExpressionFirstAt(1)):
 			heirs = append(heirs, p.Theorem())
 		case p.check(SanyTokenUse) || p.check(SanyTokenHide):
-			heirs = append(heirs, p.UseOrHide())
+			heirs = append(heirs, p.UseOrHideOrBy())
 		case p.startsOperatorOrFunctionDefinition():
 			heirs = append(heirs, p.OperatorOrFunctionDefinition())
 		default:
@@ -559,6 +559,9 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 	}()
 	p.beginProduction("Proof")
 	defer p.endProduction()
+	if p.check(SanyTokenBy) || p.tokenAt(1).Kind == SanyTokenBy {
+		return p.UseOrHideOrBy()
+	}
 	var heirs []*SanySyntaxNode
 	nonterminal := p.check(SanyTokenProof) || p.startsProofStepAt(0)
 	if p.match(SanyTokenProof) {
@@ -566,12 +569,6 @@ func (p *SanyParser) Proof() *SanySyntaxNode {
 	}
 	if p.match(SanyTokenObvious) || p.match(SanyTokenOmitted) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
-	}
-	if p.match(SanyTokenBy) {
-		by := p.previous()
-		heirs = append(heirs, NewSanyTokenNode(by))
-		p.proofCommandTail(&heirs, by, true)
 		return NewSanyNode(SanySyntaxNodeKindByName["N_TerminalProof"], heirs...)
 	}
 	if nonterminal {
@@ -613,7 +610,7 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 	mayHaveProof := false
 	switch {
 	case p.check(SanyTokenUse) || p.check(SanyTokenHide):
-		body = p.UseOrHide()
+		body = p.UseOrHideOrBy()
 	case p.check(SanyTokenInstance):
 		body = p.Instantiation()
 	case p.check(SanyTokenDefbreak) || p.check(SanyTokenDefine):
@@ -648,133 +645,78 @@ func (p *SanyParser) Step() *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ProofStep"], heirs...)
 }
 
-func (p *SanyParser) UseOrHide() *SanySyntaxNode {
+func (p *SanyParser) UseOrHideOrBy() *SanySyntaxNode {
+	p.beginProduction("UseOrHideOrBy")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	if p.match(SanyTokenUse) || p.match(SanyTokenHide) {
+	kind := SanySyntaxNodeKindByName["N_UseOrHide"]
+	switch p.peek().Kind {
+	case SanyTokenProof, SanyTokenBy:
+		if p.match(SanyTokenProof) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		}
+		heirs = append(heirs, p.consumeParseToken(SanyTokenBy, "expected BY"))
+		kind = SanySyntaxNodeKindByName["N_TerminalProof"]
+		if p.match(SanyTokenOnly) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		}
+	case SanyTokenUse:
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		if p.match(SanyTokenOnly) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		}
+	case SanyTokenHide:
+		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenBy}, {SanyTokenProof}, {SanyTokenUse}, {SanyTokenHide}}, "expected BY, USE or HIDE")
+	}
+	p.expecting = "an expression, `MODULE' or `DEF'"
+	if p.check(SanyTokenModule) || p.startsExpressionLookahead() {
+		p.proofCommandItem(&heirs)
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "MODULE or expression"
+			p.proofCommandItem(&heirs)
+			if kind.JavaName() == "N_TerminalProof" {
+				p.expecting = "comma, DEF, or [.]"
+			} else {
+				p.expecting = "comma, DEF, or proof step"
+			}
+		}
+	}
+	if p.match(SanyTokenDF) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "MODULE or expression"
+		p.proofCommandItem(&heirs)
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "MODULE or expression"
+			p.proofCommandItem(&heirs)
+			if kind.JavaName() == "N_TerminalProof" {
+				p.expecting = "comma or [.]"
+			} else {
+				p.expecting = "comma or proof step"
+			}
+		}
+	}
+	if kind.JavaName() == "N_TerminalProof" {
+		p.expecting = "[.]"
+	}
+	return NewSanyNode(kind, heirs...)
+}
+
+func (p *SanyParser) proofCommandItem(heirs *[]*SanySyntaxNode) {
+	if p.match(SanyTokenModule) {
+		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "identifier"
+		*heirs = append(*heirs, p.Identifier())
+	} else if p.startsExpressionLookahead() {
+		*heirs = append(*heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF
+		}))
 	} else {
-		heirs = append(heirs, p.consume(SanyTokenUse, "expected USE or HIDE"))
+		p.throwParseException([][]SanyTokenKind{{SanyTokenModule}}, "expected MODULE or expression")
 	}
-	command := p.previous()
-	if p.match(SanyTokenOnly) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	}
-	if !p.atUseOrHideBoundary(command) && !p.check(SanyTokenDF) {
-		heirs = append(heirs, p.UseOrHideItem())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.UseOrHideItem())
-		}
-	}
-	if p.match(SanyTokenDF) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.UseOrHideItem())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.UseOrHideItem())
-		}
-	}
-	return NewSanyNode(SanySyntaxNodeKindByName["N_UseOrHide"], heirs...)
-}
-
-func (p *SanyParser) proofCommandTail(heirs *[]*SanySyntaxNode, command *SanyToken, terminal bool) {
-	if p.match(SanyTokenOnly) {
-		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
-	}
-	if !p.atProofCommandBoundary(command, terminal) && !p.check(SanyTokenDF) {
-		*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
-		for p.match(SanyTokenComma) {
-			*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
-			if p.atProofCommandBoundary(command, terminal) || p.check(SanyTokenDF) {
-				break
-			}
-			*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
-		}
-	}
-	if p.match(SanyTokenDF) {
-		*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
-		if !p.atProofCommandBoundary(command, terminal) {
-			*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
-			for p.match(SanyTokenComma) {
-				*heirs = append(*heirs, NewSanyTokenNode(p.previous()))
-				if p.atProofCommandBoundary(command, terminal) {
-					break
-				}
-				*heirs = append(*heirs, p.ProofCommandItem(command, terminal))
-			}
-		}
-	}
-}
-
-func (p *SanyParser) ProofCommandItem(command *SanyToken, terminal bool) *SanySyntaxNode {
-	if p.match(SanyTokenModule) {
-		module := NewSanyTokenNode(p.previous())
-		return NewSanyNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], module, p.Identifier())
-	}
-	if p.startsProofStepAt(0) && !p.startsNoOpExtension() {
-		return NewSanyTokenNode(p.advance())
-	}
-	if p.startsBareProofCommandOperatorReference(command, terminal) {
-		return p.OperatorReference()
-	}
-	return p.ExpressionUntilProofCommandItemBoundary(command, terminal)
-}
-
-func (p *SanyParser) ExpressionUntilProofCommandItemBoundary(command *SanyToken, terminal bool) *SanySyntaxNode {
-	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		return tok.Kind == SanyTokenComma ||
-			tok.Kind == SanyTokenDF ||
-			tok.Kind == SanyTokenEOF ||
-			tok.Kind == SanyTokenEndModule ||
-			p.atProofCommandBoundary(command, terminal)
-	})
-}
-
-func (p *SanyParser) atProofCommandBoundary(command *SanyToken, terminal bool) bool {
-	if terminal {
-		if command == nil {
-			return p.check(SanyTokenEOF) || p.check(SanyTokenEndModule)
-		}
-		return p.atTerminalProofBoundary(command.Begin.Column)
-	}
-	return p.atUseOrHideBoundary(command)
-}
-
-func (p *SanyParser) UseOrHideItem() *SanySyntaxNode {
-	if p.match(SanyTokenModule) {
-		module := NewSanyTokenNode(p.previous())
-		return NewSanyNode(SanySyntaxNodeKindByName["N_ModuleDefinition"], module, p.Identifier())
-	}
-	if p.startsBareProofCommandOperatorReference(nil, false) {
-		return p.OperatorReference()
-	}
-	return p.ExpressionUntilUseOrHideItemBoundary()
-}
-
-func (p *SanyParser) startsBareProofCommandOperatorReference(command *SanyToken, terminal bool) bool {
-	if _, ok := GetSanyOperator(p.peek().Image); !ok {
-		return false
-	}
-	next := p.tokenAt(1)
-	switch next.Kind {
-	case SanyTokenComma, SanyTokenDF, SanyTokenEOF, SanyTokenEndModule:
-		return true
-	case SanyTokenQed:
-		return terminal && command != nil && next.Begin.Column <= command.Begin.Column
-	}
-	if p.startsBodyItemAt(1) {
-		return true
-	}
-	if terminal {
-		return p.startsProofStepAt(1) && command != nil && next.Begin.Column <= command.Begin.Column
-	}
-	return beginsExplicitSanyProof(next) || p.startsProofStepAt(1)
-}
-
-func (p *SanyParser) ExpressionUntilUseOrHideItemBoundary() *SanySyntaxNode {
-	return p.ExpressionUntil(func(tok *SanyToken) bool {
-		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenDF || p.isProofBoundary(tok)
-	})
 }
 
 func (p *SanyParser) DefStep() *SanySyntaxNode {
@@ -1034,18 +976,24 @@ func (p *SanyParser) proofStepNumber(badLevel string) *SanySyntaxNode {
 	switch tok.Kind {
 	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme, SanyTokenProofstepdotlexeme:
 		node.Original = node.Image
-		level, _ := sanyProofStepLevel(tok)
-		suffix := strings.IndexByte(tok.Image, '>')
-		if tok.Image[1] == '*' || tok.Image[1] == '+' {
-			level = p.currentProofLevel()
-			if level < 0 && len(p.proofLevelStack) > 1 {
-				level = p.proofLevelStack[len(p.proofLevelStack)-2]
-			}
-			suffix = 2
-		}
-		node.Image = "<" + strconv.Itoa(level) + tok.Image[suffix:]
+		node.Image = p.correctedStepNum(tok)
 	}
 	return node
+}
+
+// Java also corrects implicit step references in expressions, using the
+// containing proof level when a terminal BY has not established its own level.
+func (p *SanyParser) correctedStepNum(tok *SanyToken) string {
+	level, _ := sanyProofStepLevel(tok)
+	suffix := strings.IndexByte(tok.Image, '>')
+	if tok.Image[1] == '*' || tok.Image[1] == '+' {
+		level = p.currentProofLevel()
+		if level < 0 && len(p.proofLevelStack) > 1 {
+			level = p.proofLevelStack[len(p.proofLevelStack)-2]
+		}
+		suffix = 2
+	}
+	return "<" + strconv.Itoa(level) + tok.Image[suffix:]
 }
 
 func (p *SanyParser) ExpressionUntilProofBoundary() *SanySyntaxNode {
@@ -1073,16 +1021,6 @@ func (p *SanyParser) atProofBoundary() bool {
 	return p.isProofBoundary(p.peek())
 }
 
-func (p *SanyParser) atUseOrHideBoundary(command *SanyToken) bool {
-	if command != nil && p.startsProofStepAt(0) {
-		tok := p.peek()
-		if tok.Begin.Line == command.Begin.Line || tok.Begin.Column > command.Begin.Column {
-			return false
-		}
-	}
-	return p.atProofBoundary()
-}
-
 func (p *SanyParser) isProofBoundary(tok *SanyToken) bool {
 	return tok.Kind == SanyTokenEOF ||
 		tok.Kind == SanyTokenEndModule ||
@@ -1090,16 +1028,6 @@ func (p *SanyParser) isProofBoundary(tok *SanyToken) bool {
 		p.startsProofStepAt(0) ||
 		tok.Kind == SanyTokenQed ||
 		p.startsBodyItemAt(0)
-}
-
-func (p *SanyParser) atTerminalProofBoundary(startColumn int) bool {
-	if p.startsBodyItem() {
-		return true
-	}
-	if p.check(SanyTokenQed) && p.peek().Begin.Column <= startColumn {
-		return true
-	}
-	return p.startsProofStepAt(0) && p.peek().Begin.Column <= startColumn
 }
 
 func (p *SanyParser) startsProofStepAt(offset int) bool {
@@ -3030,7 +2958,21 @@ func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
 	case SanyTokenIdentifier:
 		return p.Identifier()
 	case SanyTokenProofsteplexeme, SanyTokenProofimplicitsteplexeme:
-		return NewSanyTokenNode(p.advance())
+		tok := p.advance()
+		node := NewSanyTokenNode(tok)
+		if p.currentProofLevel() < 0 && len(p.proofLevelStack) <= 1 {
+			message := p.junctionLocation(node.Range) + ": Step number used outside proof."
+			p.throwReportedParseException(message, node.Range.Begin, "E1300", message)
+		}
+		if tok.Image[1] == '+' {
+			message := p.junctionLocation(node.Range) + ": <+> step number used in an expression."
+			p.throwReportedParseException(message, node.Range.Begin, "E1300", message)
+		}
+		if tok.Kind == SanyTokenProofimplicitsteplexeme {
+			node.Original = node.Image
+			node.Image = p.correctedStepNum(tok)
+		}
+		return node
 	default:
 		return p.Identifier()
 	}
@@ -3079,26 +3021,46 @@ func (p *SanyParser) BangOperatorSelector() *SanySyntaxNode {
 		kindName = "N_PostfixOp"
 	}
 	if kindName == "N_InfixOp" {
-		return NewSanyNode(SanySyntaxNodeKindByName[kindName], NewSanyTokenNode(p.infixOpToken()))
+		return sanyOperatorTokenNode(kindName, p.infixOpToken())
 	}
-	return NewSanyNode(SanySyntaxNodeKindByName[kindName], NewSanyTokenNode(p.advance()))
+	return sanyOperatorTokenNode(kindName, p.advance())
 }
 
 func (p *SanyParser) StructOp() *SanySyntaxNode {
-	if p.check(SanyTokenNumberLiteral) {
-		number := p.Number()
-		if number != nil && number.Kind.JavaName() == "N_Real" {
-			p.add(number.Range.Begin, "E1300", "illegal structural term")
+	p.beginProduction("StructOp")
+	active := true
+	defer func() {
+		if failure := recover(); failure != nil {
+			panic(failure)
 		}
-		return NewSanyNode(SanySyntaxNodeKindByName["N_StructOp"], number)
+		if active {
+			p.endProduction()
+		}
+	}()
+	p.expecting = "`<<' , `>>' , `:' , `@' , or number"
+	var child *SanySyntaxNode
+	switch p.peek().Kind {
+	case SanyTokenLab, SanyTokenRab, SanyTokenColon:
+		child = NewSanyTokenNode(p.advance())
+	case SanyTokenNumberLiteral:
+		child = p.Number()
+	default:
+		if p.peek().Image == "@" {
+			child = p.consumeParseToken(SanyTokenIdentifier, "expected @")
+		} else {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenRab}, {SanyTokenColon}, {SanyTokenNumberLiteral}}, "expected structural operator")
+		}
 	}
-	if p.check(SanyTokenIdentifier) && p.peek().Image == "@" {
-		return NewSanyNode(SanySyntaxNodeKindByName["N_StructOp"], NewSanyTokenNode(p.advance()))
+	p.endProduction()
+	active = false
+	if child.Kind.JavaName() == "N_Real" {
+		message := "Illegal structural term at " + p.junctionLocation(child.Range)
+		p.throwReportedParseException(message, child.Range.Begin, "E1300", message)
 	}
-	return NewSanyNode(
-		SanySyntaxNodeKindByName["N_StructOp"],
-		p.consumeAny([]SanyTokenKind{SanyTokenLab, SanyTokenRab, SanyTokenColon}, "expected structural operator"),
-	)
+	if child.Token != nil {
+		return sanyOperatorTokenNode("N_StructOp", child.Token)
+	}
+	return NewSanyNode(SanySyntaxNodeKindByName["N_StructOp"], child)
 }
 
 // TLAplusParser.reduceString decodes escapes while retaining the quote marks.

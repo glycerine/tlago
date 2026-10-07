@@ -611,7 +611,7 @@ func sanyModuleFromSyntax(file string, root *SanySyntaxNode) (*Module, Diagnosti
 			}
 			if named.Expr != nil {
 				mod.Theorems = append(mod.Theorems, named)
-				if proof := sanyTheoremProof(item, named.Expr); len(proof.Steps) > 0 || len(proof.LeafRefs) > 0 {
+				if proof := sanyTheoremProof(item, named.Expr); len(proof.Steps) > 0 || len(proof.LeafRefs) > 0 || sanyLeafProofSyntax(item) != nil {
 					mod.Proofs = append(mod.Proofs, proof)
 				}
 			}
@@ -943,7 +943,16 @@ func sanyUseOrHideRefs(node *SanySyntaxNode) []ProofRef {
 			break
 		}
 	}
-	for _, child := range node.GetHeirs() {
+	heirs := node.GetHeirs()
+	for i := 0; i < len(heirs); i++ {
+		child := heirs[i]
+		if child.Token != nil && child.Token.Kind == SanyTokenModule {
+			i++
+			if i < len(heirs) {
+				refs = append(refs, ProofRef{Syntax: node, Module: heirs[i].Image, Mode: mode, Defs: inDefs, Pos: sanyNodePosition(heirs[i])})
+			}
+			continue
+		}
 		if child.Token != nil && child.Token.Kind == SanyTokenDF {
 			inDefs = true
 			continue
@@ -1064,6 +1073,9 @@ func sanyProofStep(node *SanySyntaxNode) (ProofStep, bool) {
 			instance, _ := sanyInstance(child)
 			step.Instances = append(step.Instances, instance)
 		case "N_UseOrHide":
+			if heirs := child.GetHeirs(); len(heirs) > 0 {
+				step.Kind = heirs[0].Image
+			}
 			step.UseHideRefs = sanyUseOrHideRefs(child)
 			for _, ref := range step.UseHideRefs {
 				if step.Kind == "" {
@@ -2745,6 +2757,25 @@ func sanyProofFactsFromRefs(refs []ProofRef) []ProofFact {
 		facts = append(facts, ProofFact{Expr: ref.Expr, Direct: direct})
 	}
 	return facts
+}
+
+func sanyLeafProofSyntax(node *SanySyntaxNode) *SanySyntaxNode {
+	if node == nil {
+		return nil
+	}
+	for _, child := range node.GetHeirs() {
+		if child.Token != nil && child.Token.Kind == SanyTokenBy {
+			return node
+		}
+	}
+	for _, child := range node.GetHeirs() {
+		if child.Kind.JavaName() != "N_ProofStep" {
+			if command := sanyLeafProofSyntax(child); command != nil {
+				return command
+			}
+		}
+	}
+	return nil
 }
 
 func sanyLeafProofReferences(node *SanySyntaxNode) []ProofRef {

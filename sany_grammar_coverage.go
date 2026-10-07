@@ -125,9 +125,4 @@ var SanyGrammarProductionCoverageByName = map[string]SanyGrammarProductionCovera
 		Implementation: "PrimitiveExpression",
 		Note:           "The Go method uses the Go naming form while covering JavaCC PrimitiveExp dispatch.",
 	},
-	"UseOrHideOrBy": {
-		Status:         SanyProductionFolded,
-		Implementation: "UseOrHide",
-		Note:           "USE, HIDE, and BY proof references are parsed through UseOrHide and surrounding proof-step dispatch.",
-	},
 }
