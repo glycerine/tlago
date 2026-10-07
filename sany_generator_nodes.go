@@ -48,7 +48,7 @@ type sanySemOpArgNode struct {
 	name     string
 	arity    int
 	operator sanySemSymbol
-	module   *Module
+	module   *sanySemModuleNode
 }
 
 type sanySemLabelNode struct {

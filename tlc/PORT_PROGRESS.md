@@ -1,5 +1,55 @@
 # TLC Port Progress
 
+2026-10-07 Concrete symbol matching and general application/OpArg constructors:
+Previous completed commit: d92dd77. Continue source symbol application review.
+Port OpDeclNode.match and every OpDefNode.match branch, including module-kind
+rejection, variadic arguments, fixed arity, builtin expression requirements,
+ordinary scalar/higher-order formals, and higher-order operands whose operator
+itself expects operator arguments. Preserve source's negative-formal branch:
+log E4003 without changing the boolean or throwing. Preserve thrown E4003
+branches versus recoverable false results, exact messages, parameters and source
+locations. Represent thrown match failures with diagnostic details retained in
+a semantic-abort error. Shared Errors ownership and frontend Abort/Semantic
+exception conversion remain separate pending work; no full exception API credit.
+Go typed-nil OpArg operands follow Java instanceof null behavior.
+
+Port general OpAppl constructor 2 for actual formal/declaration/OpDef classes:
+initialize fields, invoke concrete match, ignore a false boolean and return the
+node with logged diagnostics, but return no completed node on a thrown error.
+Remove the formal-only constructor. Port primary OpArg construction, retaining
+resolved symbol, name, arity, syntax and actual semantic ModuleNode. Zero-arity
+formal/declaration/builtin references and TRUE/FALSE now retain actual matched
+application graphs; available operator references retain actual OpArgs. General
+call, prefix/infix/postfix and selector wiring remain incomplete. Ordinary OpDef
+Generator integration, imported identities, common LevelNode data, other body
+forms and evaluator sharing still need porting. Do not credit their tests yet.
+
+Scratch direct Java/Go comparisons cover 138 match and constructor cases across
+formal, declaration, user, builtin, variadic, module and invalid-kind symbols.
+Include null/empty arrays, null operands, correct/wrong counts, expression vs
+operator arguments, higher-order restrictions and negative formal arities.
+All 490 observations agree exactly: match boolean, thrown/recoverable outcome,
+constructor completion, error count, code, message, location and parameters.
+Receipt /mnt/oldrog/tmp/tlago-symbol-match-comparison.log; source/Go observers,
+cases JSON and overlay use the same tlago-symbol-match prefix. Source observer
+initially used a nonexistent ErrorCode getter; correct it to getStandardValue.
+Final Go 26937 terminal 0 also verifies canonical OpArg module/symbol/syntax
+identity. Separate 25 actual generated expression trees, including zero-arity
+builtin/boolean references, match Java for 90 nodes and allocation/syntax/order;
+25302 terminal 0, receipt /mnt/oldrog/tmp/tlago-symbol-expression-comparison.log.
+No permanent invented tests or original-method credit.
+
+Initial full SANY passes in 2.109 seconds (2866), final in 1.745 seconds (30518).
+Focused original parser/context/bridge and TLC models pass normally in 43.230
+seconds (17609). Current scratch diagnostic helper rebuild passes (92329), then
+all previous 56 formal-scope diagnostic comparisons match Java (82713). After
+canonical OpArg module correction, short existing node/context/bridge checks
+pass in 1.192 seconds and every package compiles (46493). All handles terminal
+0 and retired. Whitespace checks pass. No original assertion/fixture changes,
+inventory count changes, new full-workspace pass or race workload. New
+rpc25519/Tube architecture stays postponed. Continue actual call/operator/selector
+application graphs and full ordinary OpDef integration.
+
 2026-10-07 Bound application graphs and actual formal references:
 Previous completed commit: d1ef676. Continue faithful ordinary-body generation.
 Port source OpAppl constructors 4/5, preserving supplied formal, group, tuple,

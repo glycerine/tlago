@@ -3247,9 +3247,16 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				e.generationArity = &arity
 			}
 		}
-		if e.formalNode != nil && e.formalNode.semArity() == 0 && !operatorArgument {
-			e.semanticGraph = newSanySemFormalOpApplNode(e.formalNode, make([]sanySemanticGraphNode, 0), e.Syntax)
+		var graphSymbol sanySemSymbol
+		if e.formalNode != nil {
+			graphSymbol = e.formalNode
+		} else if e.declarationNode != nil {
+			graphSymbol = e.declarationNode
+		} else {
+			graphSymbol = sanyGlobalInitialContext(false).getSymbol(e.Name)
 		}
+		diags = append(diags, retainSanySymbolReference(e, graphSymbol, operatorArgument, generation.currentModule)...)
+
 		if e.Name == "" || e.formalNode != nil || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {
 			return nil
 		}
@@ -3321,6 +3328,8 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			bridge.withExprLocation(e, node)
 			e.stringNode = node
 			e.semanticGraph = node
+		} else if e.Kind == "bool" {
+			diags = append(diags, retainSanySymbolReference(e, sanyGlobalInitialContext(false).getSymbol(e.Value), operatorArgument, generation.currentModule)...)
 		}
 	case *UnaryExpr:
 		if unresolved := checkSanyOperatorSymbolDefined(e.Op, e.Pos, e.Syntax, defined, locals); len(unresolved) != 0 {

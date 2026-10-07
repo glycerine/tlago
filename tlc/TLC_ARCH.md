@@ -1,5 +1,26 @@
 # TLC Architecture Notes for the Go Port
 
+## Concrete symbol matching and primary OpArg construction
+
+The general OpAppl constructor initializes its graph, calls the actual formal,
+declaration or OpDef matcher, and ignores the returned boolean as Java does.
+Recoverable failures keep their application and diagnostics; thrown internal
+errors retain diagnostic details and yield no completed application. OpDecl
+checks argument count/nullness. OpDef handles module kinds, variadic/fixed
+arguments, builtin expression operands and scalar/higher-order formals. An
+operator operand is invalid if its own OpDef expects an operator argument.
+Negative formal arity logs an internal error without changing the result or
+throwing. Keep these source distinctions rather than imposing uniform rejection.
+Shared Errors ownership and frontend exception conversion remain pending.
+
+Primary OpArg nodes retain the actual resolved symbol, name/arity, syntax and
+canonical semantic ModuleNode. Available zero-arity references and boolean
+literals now retain matched application graphs; operator references retain
+OpArgs. Full call, prefix/infix/postfix and selector wiring remain pending,
+alongside imported identities, LevelNode data and evaluator sharing. Direct
+source comparisons verify matcher/constructor branches; they do not establish
+complete ordinary operator generation or original-method completion.
+
 ## Bound application construction and formal references
 
 OpAppl constructors 4/5 retain their supplied unbounded formals or bounded
@@ -16,7 +37,7 @@ preserve source's unusual formal counts/names. Unbounded CHOOSE has no tuple
 flags, even for a tuple binder. Quantifiers pop formal scope before application
 construction; CHOOSE constructs before the pop. Rejected declarations remain in
 arrays, while body references keep the earlier accepted symbol. These graphs
-remain incomplete for unported children. General symbol match, named functions,
+remain incomplete for unported children. General application/selector wiring, named functions,
 lambdas, other expression forms, LevelNode data, LET/INSTANCE and evaluator
 sharing remain pending. Bounded evidence verifies identities/shape/allocation;
 it does not credit the ordinary OpDef test or establish whole graph parity.

@@ -994,8 +994,16 @@ comprehensions now retain actual application graphs when their children exist.
 Zero-arity formal uses point at accepted formal nodes. Shared-domain grouping,
 tuple flags, rejected-node arrays and earlier bindings match Java across 26
 cases and 259 observations. All 56 diagnostic comparisons still agree; full
-SANY and the focused original-model gate pass. General symbol matching,
-operator arguments, named functions/lambdas and other body forms remain pending.
+SANY and the focused original-model gate pass. General call/operator/selector wiring, named functions/lambdas and other body
+forms remain pending.
+Concrete formal/declaration/OpDef matching and the general application
+constructor now preserve Java's false-result versus thrown-error behavior.
+Primary OpArgs retain actual symbol, syntax and semantic module identities.
+Zero-arity declaration/builtin/formal references and booleans retain matched
+graphs. All 138 direct match/constructor cases and 25 expression trees agree
+with Java; full SANY and focused original models pass. Shared Errors ownership,
+frontend exception conversion and full call/operator/selector wiring remain
+pending. No additional original-method completion is claimed.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

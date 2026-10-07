@@ -95,9 +95,10 @@ func newSanySemBoundedOpApplNode(name string, functionNames []*sanyFormalParamNo
 	return node
 }
 
-// FormalParamNode.match compares the operator's arity with its own arity and
-// emits no diagnostics. OpApplNode constructor 2 ignores that boolean result.
-func newSanySemFormalOpApplNode(operator *sanyFormalParamNode, operands []sanySemanticGraphNode, syntax *SanySyntaxNode) *sanySemOpApplNode {
+// The general constructor invokes the concrete symbol's match after field
+// initialization. A false result is deliberately ignored; a thrown error is
+// returned with its diagnostic and no completed application result.
+func newSanySemOpApplNode(operator sanySemSymbol, operands []sanySemanticGraphNode, syntax *SanySyntaxNode) (*sanySemOpApplNode, Diagnostics, error) {
 	node := &sanySemOpApplNode{sanySemanticNode: newSanySemanticNode(sanyOpApplKind), operator: operator, operands: operands, ranges: make([]sanySemanticGraphNode, 0)}
 	if syntax == nil {
 		node.TreeNode = nil
@@ -107,8 +108,62 @@ func newSanySemFormalOpApplNode(operator *sanyFormalParamNode, operands []sanySe
 		bridge := tlcBridge{}
 		node.Location = bridge.sourceLocationForPosition(sanyNodePosition(syntax))
 	}
-	operator.match(node)
+	var diagnostics Diagnostics
+	var err error
+	switch symbol := operator.(type) {
+	case *sanyFormalParamNode:
+		symbol.match(node)
+	case *sanySemOpDeclNode:
+		_, diagnostics, err = symbol.match(node)
+	case *sanySemOpDefNode:
+		_, diagnostics, err = symbol.match(node)
+	default:
+		panic("unported semantic symbol match")
+	}
+	if err != nil {
+		return nil, diagnostics, err
+	}
+	return node, diagnostics, nil
+}
+
+// OpArgNode retains the resolved symbol and its name/arity without matching.
+func newSanySemOpArgNode(operator sanySemSymbol, syntax *SanySyntaxNode, module *sanySemModuleNode) *sanySemOpArgNode {
+	node := &sanySemOpArgNode{sanySemanticNode: newSanySemanticNode(sanyOpArgKind), operator: operator, module: module}
+	// Source's primary constructor dereferences op despite its historical null comment.
+	node.name, node.arity = operator.semName(), operator.semArity()
+	if syntax == nil {
+		node.TreeNode = nil
+		node.Location = tlc.NullSourceLocation
+	} else {
+		node.TreeNode = syntax
+		bridge := tlcBridge{}
+		node.Location = bridge.sourceLocationForPosition(sanyNodePosition(syntax))
+	}
 	return node
+}
+
+func retainSanySymbolReference(expr Expr, operator sanySemSymbol, asOperator bool, module *Module) Diagnostics {
+	source := sanyGenerationSource(expr)
+	if source == nil || operator == nil {
+		return nil
+	}
+	if asOperator {
+		var semanticModule *sanySemModuleNode
+		if module != nil {
+			semanticModule = module.semanticNode
+		}
+		source.semanticGraph = newSanySemOpArgNode(operator, source.Syntax, semanticModule)
+		return nil
+	}
+	if operator.semArity() != 0 {
+		return nil
+	}
+	node, diagnostics, err := newSanySemOpApplNode(operator, make([]sanySemanticGraphNode, 0), source.Syntax)
+	if err != nil {
+		panic(err)
+	}
+	source.semanticGraph = node
+	return diagnostics
 }
 
 // Parsed names sharing one domain belong to one bound group. Distinct domain
