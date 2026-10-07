@@ -696,8 +696,16 @@ func NewDecimalNode(value Value, image string) *DecimalNode {
 
 type StringNode struct {
 	SemanticNodeBase
-	Value *StringValue
+	Value        *StringValue
+	LevelChecked int32
 }
+
+func (n *StringNode) GetRep() *UniqueString { return n.Value.Val }
+func (n *StringNode) LevelCheck(iter int32) bool {
+	n.LevelChecked = iter
+	return true
+}
+func (n *StringNode) LevelCheckNext() bool { return n.LevelCheck(n.LevelChecked + 1) }
 
 func NewStringNode(value string) *StringNode {
 	stringValue := NewStringValue(value)

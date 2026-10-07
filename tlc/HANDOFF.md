@@ -965,6 +965,12 @@ values for leading-zero/radix integers. Ten constructor cases, eight decimal XML
 metadata cases and ten numeral XML values match Java. The original decimal XML
 method remains unchanged and passes in Java/Go. This is bounded evidence and
 SANY method credit only; ordinary OpDef and other canonical graphs remain pending.
+String generation also retains its actual node, interned value, syntax/location
+and level-check iteration. TLC/XML reuse the node. XML no longer decodes an
+already-decoded value a second time, preserving quotes and literal backslashes
+that are data. Eleven generation/TLC-node cases and ten XML values match Java;
+focused models, full SANY and the original string-deserialization model pass.
+No original-method count or full-workspace completion credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Retain source string nodes and remove XML second decoding:
+Previous completed commit: a7d7a48. Continue ordinary expression-body review.
+Integer/decimal nodes are retained; string values still produce an evaluator
+node later, and XML applies strconv.Unquote to already decoded data. Source
+TLAplusParser.reduceString decodes escapes and StringNode strips only the outer
+quotes. XML writes getRep directly. Remove that second interpretation, which
+stripped quoted data and decoded literal backslash escape text. Retain actual
+StringNode during semantic generation, with original syntax/location and interned
+value. Reuse it in TLC and XML. Port GetRep, signed-32-bit level iteration and
+next-iteration overload, and invoke it at normal composite iteration 1. Fresh
+generation clears all three retained literal node types. Other canonical graphs,
+common LevelNode getters/guards and visitors remain pending.
+
+Use scratch-only actual Java Generator/string nodes and Go parsed specs/TLC
+body nodes to compare 11 cases in UTF-16: empty/plain strings, embedded quotes,
+quoted literal backslash escape text, single backslash, newline/tab/CR, formfeed,
+supplementary Unicode and XML punctuation. All representation contents and
+5/2/next iterations/constant levels agree, terminal 0; receipt
+/mnt/oldrog/tmp/tlago-string-node-comparison.log. Java scratch caller initially
+could not access belchDEF; use the unchanged original IncrementalSyntaxParseTests
+parser helper instead, preserving its original setup. No upstream source edits.
+Ten actual XML string values match source, including quotes that are data and
+decoded controls (43109, terminal 0); receipt
+/mnt/oldrog/tmp/tlago-string-xml-comparison.log. Formfeed is intentionally only
+in the constructor comparison because it is not an XML 1.0 character. These
+bounded probes are not permanent tests, corpus sweeps or original-method credit.
+
+Full Go SANY passes in 2.060 seconds (22399, terminal 0). Focused parser/context/
+semantic-bridge and original TLC models pass in 47.036 seconds (5696, terminal
+0), receipt /mnt/oldrog/tmp/tlago-string-node-root.log. The unchanged original
+StringDeserializeTLCTest translation passes normally in 1.473 seconds (3105,
+terminal 0), retaining original .vos bytes and setup. Every package compiles
+(71786, terminal 0). All handles retired. No new permanent tests or changed
+original assertions/fixtures, no inventory count changes or new full-workspace
+pass. Update current architecture/handoff; continue ordinary graph construction.
+New distributed architecture remains postponed and no race workload is added.
+
 2026-10-07 Shared decimal representation and literal XML source parity:
 Previous completed commit: 4569bce. Continue ordinary OpDef/body inspection;
 full ordinary graph construction remains pending. The body literal path exposes

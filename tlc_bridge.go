@@ -1788,6 +1788,9 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		}
 		return node
 	case "string":
+		if e.stringNode != nil {
+			return e.stringNode
+		}
 		// Semantic translation has decoded the source escapes and stripped
 		// the syntax image's quotes. Quoted contents are data, not a second literal.
 		return tlc.NewStringNode(e.Value)

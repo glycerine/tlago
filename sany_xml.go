@@ -4386,16 +4386,17 @@ func (x *sanyXMLExporter) literalXML(e *LiteralExpr, ctx sanyXMLExprContext) (st
 		b.WriteString("</IntValue></NumeralNode>")
 		return b.String(), nil
 	case "string", "model":
-		return x.stringXML(e.Value, e.Pos)
+		value := e.Value
+		if e.stringNode != nil {
+			value = e.stringNode.GetRep().String()
+		}
+		return x.stringXML(value, e.Pos)
 	default:
 		return "", Diagnostics{errorAt(e.Pos, "E7005", "unsupported SANY XML literal kind %q", e.Kind)}
 	}
 }
 
 func (x *sanyXMLExporter) stringXML(value string, pos Position) (string, Diagnostics) {
-	if unquoted, err := strconv.Unquote(value); err == nil {
-		value = unquoted
-	}
 	if invalid, ok := firstInvalidXMLChar(value); ok {
 		return "", Diagnostics{errorAt(pos, "E7007", "string literal contains XML 1.0 character U+%04X", invalid)}
 	}

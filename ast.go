@@ -277,6 +277,7 @@ type LiteralExpr struct {
 	SanyExprSource
 	numeralNode *tlc.NumeralNode
 	decimalNode *tlc.DecimalNode
+	stringNode  *tlc.StringNode
 	Kind        string
 	Value       string
 	Pos         Position

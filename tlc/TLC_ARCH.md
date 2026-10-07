@@ -1,5 +1,19 @@
 # TLC Architecture Notes for the Go Port
 
+## Shared string construction
+
+The syntax parser decodes TLA string escapes while retaining its outer quotes.
+Semantic generation strips those quotes once, interns the resulting value in
+StringNode, retains syntax/location, and records source level-check iterations.
+The TLC bridge reuses the generated node, whose GetRep exposes the interned
+UniqueString. Fresh generation replaces any previously retained literal nodes.
+XML reads the same value and treats every stringXML argument as decoded data;
+its callers include literal values and record/selector names. Calling Go Unquote
+again corrupted values containing their own quotes or backslash escape text.
+The original source value must survive unchanged. Bounded actual Java comparisons
+cover UTF-16 contents, controls, supplementary Unicode, iteration and XML data.
+This does not complete common LevelNode guards, visitors or ordinary OpDef graphs.
+
 ## Decimal and integer literal metadata
 
 SANY creates and retains DecimalNode alongside NumeralNode during expression
