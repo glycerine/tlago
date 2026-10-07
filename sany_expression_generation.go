@@ -22,6 +22,7 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	functions            []sanyFunctionGeneration
 	nodes                *sanyGeneratorNodes
 	formalTable          *sanySymbolTable
 	formals              map[string]localSymbol
@@ -140,7 +141,10 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 			diags = append(diags, g.generateLocalDefinition(unit.definition, positions, letLocals)...)
 			if node := unit.definition.semanticNode; node != nil {
 				definitions = append(definitions, node)
-				if g.currentModule != nil && g.currentModule.semanticNode != nil {
+				if function, ok := unit.definition.Expr.(*FunctionExpr); ok && unit.definition.FunctionDef && function.semanticGraph == nil {
+					completeGraph = false
+				}
+				if !unit.definition.FunctionDef && g.currentModule != nil && g.currentModule.semanticNode != nil {
 					g.currentModule.semanticNode.definitions = append(g.currentModule.semanticNode.definitions, node)
 				}
 			} else {
@@ -237,19 +241,20 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 		diags = append(diags, sanyRecursiveDefinitionDiagnostic(*definition, "E4201", message))
 	}
 	if definition.FunctionDef {
+		diags = append(diags, g.prepareNamedFunctionDefinition(definition)...)
 		if wrongLevel || (symbolExists && previousSymbol.kind != OperatorDecl) {
 			// processFunction still generates the body, but does not push its
 			// quantifier context when resolving the symbol failed.
 			function, _ := definition.Expr.(*FunctionExpr)
 			if function != nil {
-				diags = append(diags, g.checkExpr(function.Body, positions, letLocals)...)
+				diags = append(diags, g.checkRejectedNamedFunctionBody(*definition, positions, letLocals)...)
 			}
 		} else {
 			if binding == nil && !symbolExists {
 				letLocals[definition.Name] = true
 				positions[definition.Name] = definition.SourcePosition()
 				specs, _ := definitionOperatorParamSpecs(*definition)
-				g.symbols[definition.Name] = localSymbol{kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition(), operatorParams: specs}
+				g.symbols[definition.Name] = localSymbol{opDefNode: definition.semanticNode, kind: OperatorDecl, arity: len(definition.Params), pos: definition.SourcePosition(), operatorParams: specs}
 			}
 			diags = append(diags, checkDefinitionFunctionBody(*definition, positions, bodyLocals, g)...)
 		}

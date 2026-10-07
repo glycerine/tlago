@@ -1,5 +1,35 @@
 # TLC Architecture Notes for the Go Port
 
+## Named function definition graphs
+
+Named function domains and bound formals retain their actual generated nodes.
+The temporary self FormalParam uses the entire function-definition syntax.
+The same actual context is popped after preparation and pushed again for an
+accepted body; restoring only the native formal-name map is insufficient.
+
+After domain/formal preparation, processFunction allocates a provisional
+$NonRecursiveFcnSpec with empty operands, the self formal, grouped bounded
+symbols, tuple flags and domains. It constructs/registers its zero-arity OpDef
+and appends the module definition before generating the body. Nested body LET
+definitions therefore follow their enclosing function in ModuleNode's list.
+A rejected name that already resolves to an OpDef reuses that existing node,
+as Java does, while still generating the unused new function specification.
+A declaration/formal conflict generates the body outside the function context.
+
+The active function stack checks names when a GeneralId generates an OpAppl,
+including a bare function reference. It changes the first matching active
+specification to $RecursiveFcnSpec. After body generation, the specification
+retains the actual body; a nonrecursive specification clears its temporary
+self-formal array. Ordinary later references share the registered definition.
+GeneralId selector failures retain the owning Generator's actual nullOAN,
+including when nested inside domain expressions.
+
+Unimplemented bodies leave the provisional specification incomplete and do
+not mark its enclosing LET graph complete. Explicit RECURSIVE declarations,
+completion and recursive-section fields, missing imported/qualified identities,
+labels, full LevelNode checking and evaluator graph sharing remain pending.
+No substitute recursive declaration or body node completes those paths.
+
 ## Higher-order operands, LAMBDA and ASSUME/PROVE scope
 
 Higher-order calls now pass actual generated operands to the concrete OpAppl
@@ -29,8 +59,9 @@ symbol metadata, including operator arity. Domains are generated before the
 new symbol becomes visible. Named and unnamed bodies dispatch through the
 actual ASSUME/PROVE structure; the legacy quantifier-shaped view must not
 allocate false scalar FormalParams or quantifier applications for NEW.
-Canonical NEW/AssumeProve nodes remain pending, as do recursive/function/
-INSTANCE/fact graphs, inherited LevelNode fields and iteration, visitors and
+Canonical NEW/AssumeProve nodes remain pending, as do explicit recursive/
+INSTANCE/fact graphs and missing function bodies, inherited LevelNode fields
+and iteration, visitors and
 shared evaluator construction. The original basicOpDefTest remains reconcile.
 
 ## Ordinary definitions and LET ownership
@@ -58,10 +89,10 @@ array. Completed ordinary LET definitions also append to ModuleNode's definition
 list in source generation order, including nested-body definitions before their
 enclosing definition.
 
-Missing recursive declarations/completion, function and INSTANCE nodes leave
-LET graphs incomplete. Ordinary definitions within unresolved recursive sections
+Missing recursive declarations/completion, function bodies and INSTANCE nodes
+leave LET graphs incomplete. Ordinary definitions within unresolved recursive sections
 also await canonical recursion fields; no native placeholder completes them.
-Imported/function/theorem/ASSUME-PROVE graphs, labels, full inherited LevelNode
+Imported/explicit recursive/theorem/ASSUME-PROVE graphs, labels, full inherited LevelNode
 fields and canonical level checking, visitors and evaluator sharing are pending.
 
 ## CASE, records and syntax-time token identities

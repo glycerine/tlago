@@ -506,6 +506,8 @@ type FunctionExpr struct {
 	lambdaNode *sanySemOpDefNode
 	SanyExprSource
 	definitionFormalContext map[string]localSymbol
+	definitionContext       *sanyContext
+	functionApplication     *sanySemOpApplNode
 	// Preparation retains the temporary self formal; Java removes it from
 	// a nonrecursive function's final OpApplNode array.
 	functionSymbol          *sanyFormalParamNode

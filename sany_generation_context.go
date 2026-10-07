@@ -203,14 +203,19 @@ func checkDefinitionFunctionDomains(definition Definition, context map[string]Po
 			function.constructorSymbolExists = true
 		}
 	}
-	function.functionSymbol = g.newFormalParameter(definition.Name, 0, definition.SourcePosition(), definition.Syntax)
+	function.functionSymbol = newSanyFormalParamNode(definition.Name, 0, definition.SourcePosition(), definition.Syntax, g.currentModule)
 	if !function.constructorSymbolExists {
 		node := function.functionSymbol
+		_, generated := g.formalSymbolTable().registerSymbol(node)
+		diags = append(diags, generated...)
 		g.formals[definition.Name] = localSymbol{formalNode: node, kind: "FORMAL", arity: 0, pos: node.semPosition()}
 	}
 	// processFunction pops this context before constructing/resolving the
 	// OpDefNode, then pushes the same context for an accepted body's generation.
 	function.definitionFormalContext = g.formals
+	function.definitionContext = g.formalSymbolTable().topContext()
+	function.functionApplication = nil
+	function.semanticGraph = nil
 	return diags
 }
 
@@ -226,12 +231,21 @@ func checkDefinitionFunctionBody(definition Definition, context map[string]Posit
 		g.formals = function.definitionFormalContext
 	}
 	defer func() { g.formals = previous }()
+	if function.definitionContext != nil {
+		g.formalSymbolTable().pushContext(function.definitionContext)
+		defer g.formalSymbolTable().popContext()
+	}
+	if function.functionApplication != nil {
+		g.functions = append(g.functions, sanyFunctionGeneration{definition.Name, function.functionApplication})
+		defer func() { g.functions = g.functions[:len(g.functions)-1] }()
+	}
 	bodyLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
 		bodyLocals[bound.Name] = true
 	}
 	bodyLocals[definition.Name] = true
 	diags = append(diags, g.checkExpr(function.Body, context, bodyLocals)...)
+	g.finishNamedFunction(function)
 	return diags
 }
 

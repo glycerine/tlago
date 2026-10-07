@@ -1,5 +1,57 @@
 # TLC Port Progress
 
+2026-10-07 Named function definition graph construction:
+Previous completed commit: 2cadd94. Port processFunction's actual construction
+order for top-level and LET function definitions outside unresolved explicit
+recursive sections. Preserve the actual preparation context and push that same
+context for the accepted body. The temporary self FormalParam uses the entire
+function definition's syntax and is registered only when no prior symbol exists.
+Generate grouped domain/formal arrays, allocate a provisional nonrecursive
+specification with empty operands, construct/register its zero-arity OpDef and
+append the module definition before generating the body. Later references and
+calls retain that canonical definition. Nested LET definitions follow their
+function in module definition order; avoid appending the function twice.
+
+Retain the source function stack. A GeneralId OpAppl referencing an active name,
+including a bare reference, changes the first matching specification to recursive.
+Install the generated body afterward and clear the self-formal array only for a
+nonrecursive specification. Existing OpDef name conflicts reuse the earlier node
+and still generate the unused specification/body, matching Java's behavior.
+Declaration/formal conflicts check the body outside the temporary function scope.
+Missing child implementations leave a provisional body incomplete, and the
+surrounding LET is not falsely completed. Explicit RECURSIVE completion and
+section fields still require their actual declarations; do not fabricate them.
+
+Twenty-six actual Java Generator.generate versus Go GenerateSanySpec cases match
+all 513 complete output rows, including 500 prefixed observations: 315 graph nodes,
+61 references, 40 module-context entries, 37 bound-group observations, 26 case
+results, 13 diagnostics and eight LET-context entries. Cases include simple,
+shared/distinct/tuple bounds, bracketed and bare recursion, nested ordinary and
+function definitions, LOCAL, duplicates and prior declarations, rejected own-name
+bounds, errors in bodies/domains and definition order after rejection. Complete
+frontend error codes, ranges and messages agree for all 26 cases. The first
+18-case graph comparison exposed a missing function after an undefined identifier
+inside a set domain: GeneralId's actual nullOAN was lost. Retain the owning
+Generator's failure sentinel in checkExpr; nested domain constructors now keep
+that actual node. The unchanged source-valid matrix passes. No assertions were
+weakened and no permanent tests were invented. A stale local variable caught by
+the initial compile was removed before verification.
+
+Verification: focused existing root/SANY/TLC integration gate passes in 46.671s
+(68690), full sany_tests in 2.006s and compile-all succeed (51481). The expanded
+26-case graph and exact diagnostic run is terminal zero (33408). All 56 existing
+formal diagnostic comparisons agree: named-function 15 (54075), quantifier 11
+(71431), proof 17 (10542), CHOOSE 13 (62658). All 29 AP phase cases (90352) and
+30 AP substitution cases (6501) agree using rebuilt observers. All handles are
+terminal zero. Scratch source and Go graph/diagnostic receipts are under
+/mnt/oldrog/tmp/tlago-named-function-*. No broad race or long workload was run.
+
+Canonical explicit recursion, imported/qualified selector/INSTANCE/NEW/AP/fact
+and label graphs, full inherited LevelNode data/checking and evaluator sharing
+remain unfinished. The original basicOpDefTest still needs its complete source
+assertions, including canonical levelCheck. No original-method count, TLC
+inventory, complete graph parity or new full-workspace pass is claimed.
+
 2026-10-07 Unqualified fixity GenID operator operands:
 Previous completed commit: 7779920. Port generateExprOrOpArg's older SANY1
 GenID branch for zero-prefix prefix/infix/postfix operands. Resolve the raw name

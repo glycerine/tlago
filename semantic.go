@@ -960,10 +960,17 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if def.AssumeProve && def.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveBindings(def.AssumeProveBody, bodyContext, locals, expressionGeneration)...)
 		} else if def.FunctionDef {
+			diags = append(diags, expressionGeneration.prepareNamedFunctionDefinition(definition)...)
+			def.semanticNode = definition.semanticNode
+			if node := definition.semanticNode; node != nil && expressionGeneration.formalSymbolTable().resolveSymbol(def.Name) == node {
+				symbol := expressionGeneration.moduleSymbols[def.Name]
+				symbol.opDefNode = node
+				expressionGeneration.moduleSymbols[def.Name] = symbol
+			}
 			previous, conflict := constructorConflicts[positionKey(def.SourcePosition())]
 			if conflict && previous.kind != OperatorDecl && previous.kind != InstanceDecl {
-				if function, ok := def.Expr.(*FunctionExpr); ok {
-					diags = append(diags, checkExpr(function.Body, bodyContext, locals)...)
+				if _, ok := def.Expr.(*FunctionExpr); ok {
+					diags = append(diags, expressionGeneration.checkRejectedNamedFunctionBody(def, bodyContext, locals)...)
 				}
 			} else {
 				diags = append(diags, checkDefinitionFunctionBody(def, bodyContext, locals, expressionGeneration)...)
@@ -3170,6 +3177,13 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		generation.operatorArgument = operatorArgument
 		generation.symbolReferenceOnly = symbolReferenceOnly
 	}()
+	defer func() {
+		// generateExpression's GeneralId branch returns this Generator's
+		// nullOAN on selector failure; enclosing constructors still use it.
+		if source := sanyGenerationSource(expr); source != nil && source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" && source.semanticGraph == nil && sanyExpressionGenerationFailure(expr) == sanyGenerationNullOperator {
+			generation.retainNullOperatorOperand(expr, false)
+		}
+	}()
 	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
 	if source := sanyGenerationSource(expr); source != nil {
 		source.semanticGraph = nil
@@ -3328,6 +3342,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 		if !symbolReferenceOnly {
 			diags = append(diags, retainSanySymbolReference(e, graphSymbol, operatorArgument, generation.currentModule)...)
+		}
+		if e.Syntax != nil && e.Syntax.Kind.JavaName() == "N_GeneralId" {
+			if application, ok := sanyGeneratedExpressionNode(e).(*sanySemOpApplNode); ok {
+				generation.checkFunctionRecursion(application.operator.semName())
+			}
 		}
 
 		if e.Name == "" || e.formalNode != nil || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {

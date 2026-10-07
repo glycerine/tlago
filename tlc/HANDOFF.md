@@ -1062,6 +1062,19 @@ codes, ranges and messages. Canonical NEW/AP, qualified selector and GenID
 prefix graphs, recursive/function/INSTANCE/fact graphs and full LevelNode
 checking remain pending. basicOpDefTest stays reconcile; no original-method
 or full-workspace completion credit is added.
+Named function definitions now retain their actual context and construct the
+function specification and zero-arity OpDef before generating the body.
+Module definition order, self-formal syntax, grouped bounds, bare-reference
+recursion and rejected-name reuse match Java. Failed GeneralIds preserve the
+owning Generator's nullOAN inside domains and bodies. All 513 complete output
+rows (500 graph/diagnostic observations) across 26 module/LET cases agree, as
+do their full frontend diagnostics, all 56 formal diagnostic cases and 59 AP
+phase/substitution cases. Existing SANY and focused TLC integrations pass.
+Explicit RECURSIVE completion/section fields, unported function bodies,
+canonical NEW/AP/INSTANCE/fact and qualified selector graphs, full LevelNode
+checking and evaluator sharing remain pending. A provisional function node with
+an unported body does not complete its enclosing LET graph. basicOpDefTest
+stays reconcile; no original-method or full-workspace credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.
