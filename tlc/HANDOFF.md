@@ -1019,6 +1019,15 @@ on all 100 graph/diagnostic observations. Full SANY, focused existing models
 and all 56 formal diagnostic comparisons pass. Higher-order/compound selector
 graphs, ordinary OpDef integration and other remaining bodies are still pending.
 No original-method completion or full-workspace pass credit is added.
+CASE, record constructors/sets and record selection now retain their actual
+pair/string/application graphs. OTHER keeps its null condition; semantic modules
+retain record applications in generation order. All 351 observations across 26
+Java/Go cases agree. Token nodes now intern raw images during parsing, fixing
+an exposed EWD998 debugger field-order failure without changing assertions.
+Full SANY, the focused existing model gate and all 56 diagnostic comparisons
+pass. Ordinary OpDef and remaining body graphs, full shared Errors ownership,
+other syntax image identities and evaluator sharing remain pending. No original
+method or full-workspace completion credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

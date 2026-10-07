@@ -563,3 +563,57 @@ func (g *sanyExpressionGeneration) checkBoundExpression(bounds []BoundVar, synta
 	}
 	return nodes, append(diags, g.checkExpr(body, context, bodyLocals)...)
 }
+
+// processRcdForms creates the field string before checking each earlier label,
+// generates the value, then creates that field's pair before the next field.
+type sanyRecordGenerationField struct {
+	name     string
+	value    Expr
+	position Position
+}
+
+func (g *sanyExpressionGeneration) checkRecordForm(expr Expr, operator string, fields []sanyRecordGenerationField, context map[string]Position, locals map[string]bool) Diagnostics {
+	var diagnostics Diagnostics
+	source := sanyGenerationSource(expr)
+	var children []*SanySyntaxNode
+	if source != nil && source.Syntax != nil {
+		children = source.Syntax.GetHeirs()
+	}
+	pairs := make([]sanySemanticGraphNode, len(fields))
+	// Errors.addMessage deduplicates equal code/location/format/parameters.
+	// This diagnostic has a fixed code/format and no parameters, so only
+	// its actual source location distinguishes repeated reports here.
+	redefinitions := make(map[SanyRange]bool)
+	for i, field := range fields {
+		var syntax *SanySyntaxNode
+		var label *tlc.StringNode
+		if 2*i+1 < len(children) {
+			syntax = children[2*i+1]
+			parts := syntax.GetHeirs()
+			if len(parts) > 0 {
+				label = tlc.NewStringNode(field.name)
+				bridge := tlcBridge{}
+				bridge.withSyntaxNode(parts[0], label)
+				bridge.withPositionLocation(sanyNodePosition(parts[0]), label)
+			}
+		}
+		for j := 0; j < i; j++ {
+			if field.name == fields[j].name {
+				diagnostic := sanyDuplicateRecordFieldDiagnostic(field.name, field.position, fields[j].position)
+				if !redefinitions[diagnostic.SANYRange] {
+					diagnostics = append(diagnostics, diagnostic)
+					redefinitions[diagnostic.SANYRange] = true
+				}
+			}
+		}
+		diagnostics = append(diagnostics, g.checkExpr(field.value, context, locals)...)
+		if value := sanyGeneratedExpressionNode(field.value); label != nil && value != nil {
+			pairs[i] = newSanySemBuiltInOpApplNode("$Pair", []sanySemanticGraphNode{label, value}, syntax)
+		}
+	}
+	retainSanyGeneratedOperands(expr, operator, pairs)
+	if node, ok := sanyGeneratedExpressionNode(expr).(*sanySemOpApplNode); ok && g.currentModule != nil && g.currentModule.semanticNode != nil {
+		g.currentModule.semanticNode.addRecord(node)
+	}
+	return diagnostics
+}

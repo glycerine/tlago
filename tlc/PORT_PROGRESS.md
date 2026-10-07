@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-07 CASE, records and record-selection graphs:
+Previous completed commit: e0887df. Port processCase's real $Pair applications,
+allocating each after its condition/value and before the next arm, then $Case.
+OTHER retains its actual null condition. Record constructors and record sets
+create each field's StringNode before its value, then its $Pair; the final
+$RcdConstructor/$SetOfRcds application is retained in the semantic module's
+record vector. ModuleNode.getRecords returns a fresh array with the original
+application identities. Record selection creates its actual field StringNode
+after the record expression, then $RcdSelect. Syntax and location references
+come from the actual field/arm/selector children. Unported children remain
+incomplete; no placeholder or bridge reconstruction completes a missing graph.
+
+The record loop compares each earlier label, as Java does. Errors.addMessage
+suppresses identical code/location/format/parameter reports; this fixed-format,
+parameterless field error is deduplicated by its actual location here. Full
+shared Errors ownership remains pending and is not claimed complete.
+
+Twenty-six bounded actual Java/Go cases cover ordinary/nested CASE, OTHER,
+quantified/function/CHOOSE bodies, records, record sets, nested selection and
+three/four duplicate fields. All 351 observations agree: 245 graph nodes, 36
+field-string values, 16 retained-record identities in order, 14 null operands,
+eight formal references, one bound group, five diagnostics and 26 case results.
+Shapes, syntax kinds, operand order and relative UID allocation agree. Scratch
+sources, cases, overlay and logs use /mnt/oldrog/tmp/tlago-case-selection;
+receipt tlago-case-selection-comparison.log. Final Go overlay 27660 terminal 0,
+0.019 seconds. No persistent invented tests or original-method count changes.
+
+The integration gate exposed a real construction-order shortcut: field strings
+were newly interned during generation before bridge-time syntax preinterning,
+changing the original EWD998 debugger's record-field order. Preserve its exact
+assertion. Java token-node constructors intern raw images during parsing; now
+NewSanyTokenNode does so and retains that original token identity even when a
+production normalizes the display image. This fixes the unchanged debugger
+assertion. Other SyntaxTreeNode constructor/image identities and removal of the
+late bridge reconstruction remain pending; this is not full parser interning
+completion. The original debugger alone passes in 27.630 seconds (74579
+terminal 0). Failed focused gates 50239/74832 are terminal and retained as
+failures; the captured second failure is tlago-case-record-focused.json.
+
+Final focused existing parser/SANY/TLC gate passes in 45.758 seconds (85156
+terminal 0), log /mnt/oldrog/tmp/tlago-case-record-focused-final.json. Full SANY
+passes in 1.663 seconds (92978 terminal 0); all packages compile (63583 terminal
+0). After rebuilding the diagnostic observer, all 56 previous comparisons
+still agree: quantifier 11, named function 15, proof 17 and CHOOSE 13 (68711,
+80525, 56007, 28667 terminal 0). Their logs use tlago-case-record-*-diag.log.
+No race, full-workspace pass, XML corpus sweep or test-inventory change.
+
 2026-10-07 Ordinary call graphs for concrete symbols:
 Previous completed commit: e555b01. Wire unqualified calls through the actual
 resolved symbol and general matched OpAppl constructor after generating their

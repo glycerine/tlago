@@ -3444,13 +3444,29 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	case *QuantifierExpr:
 		diags = append(diags, generation.checkQuantifier(e, defined, locals)...)
 	case *CaseExpr:
-		for _, arm := range e.Arms {
+		pairs := make([]sanySemanticGraphNode, 0, len(e.Arms)+1)
+		var children []*SanySyntaxNode
+		if e.Syntax != nil {
+			children = e.Syntax.GetHeirs()
+		}
+		for i, arm := range e.Arms {
 			diags = append(diags, generation.checkExpr(arm.Test, defined, locals)...)
 			diags = append(diags, generation.checkExpr(arm.Value, defined, locals)...)
+			var syntax *SanySyntaxNode
+			if 2*i+1 < len(children) {
+				syntax = children[2*i+1]
+			}
+			pairs = append(pairs, sanyGeneratedCasePair(arm.Test, arm.Value, syntax, false))
 		}
 		if e.Other != nil {
 			diags = append(diags, generation.checkExpr(e.Other, defined, locals)...)
+			var syntax *SanySyntaxNode
+			if 2*len(e.Arms)+1 < len(children) {
+				syntax = children[2*len(e.Arms)+1]
+			}
+			pairs = append(pairs, sanyGeneratedCasePair(nil, e.Other, syntax, true))
 		}
+		retainSanyGeneratedOperands(e, "$Case", pairs)
 	case *ChooseExpr:
 		diags = append(diags, generation.checkChoose(e, defined, locals)...)
 	case *TupleExpr:
@@ -3464,28 +3480,29 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 		retainSanyBuiltInApplication(e, "$SetEnumerate", e.Elems)
 	case *RecordExpr:
-		seenFields := map[string]Position{}
-		for _, field := range e.Fields {
-			if prev, ok := seenFields[field.Name]; ok {
-				diags = append(diags, sanyDuplicateRecordFieldDiagnostic(field.Name, field.Pos, prev))
-			} else {
-				seenFields[field.Name] = field.Pos
-			}
-
-			diags = append(diags, generation.checkExpr(field.Value, defined, locals)...)
+		fields := make([]sanyRecordGenerationField, len(e.Fields))
+		for i, field := range e.Fields {
+			fields[i] = sanyRecordGenerationField{field.Name, field.Value, field.Pos}
 		}
+		diags = append(diags, generation.checkRecordForm(e, "$RcdConstructor", fields, defined, locals)...)
 	case *RecordComponentExpr:
 		diags = append(diags, generation.checkExpr(e.Record, defined, locals)...)
-	case *RecordSetExpr:
-		seenFields := map[string]Position{}
-		for _, field := range e.Fields {
-			if prev, ok := seenFields[field.Name]; ok {
-				diags = append(diags, sanyDuplicateRecordFieldDiagnostic(field.Name, field.Pos, prev))
-			} else {
-				seenFields[field.Name] = field.Pos
+		if e.Syntax != nil {
+			children := e.Syntax.GetHeirs()
+			if len(children) > 2 {
+				field := tlc.NewStringNode(e.Field)
+				bridge := tlcBridge{}
+				bridge.withSyntaxNode(children[2], field)
+				bridge.withPositionLocation(sanyNodePosition(children[2]), field)
+				retainSanyGeneratedOperands(e, "$RcdSelect", []sanySemanticGraphNode{sanyGeneratedExpressionNode(e.Record), field})
 			}
-			diags = append(diags, generation.checkExpr(field.Set, defined, locals)...)
 		}
+	case *RecordSetExpr:
+		fields := make([]sanyRecordGenerationField, len(e.Fields))
+		for i, field := range e.Fields {
+			fields[i] = sanyRecordGenerationField{field.Name, field.Set, field.Pos}
+		}
+		diags = append(diags, generation.checkRecordForm(e, "$SetOfRcds", fields, defined, locals)...)
 	case *FunctionExpr:
 		var generated Diagnostics
 		e.formalNodes, generated = generation.checkBoundExpression(e.Bounds, e.Syntax, defined, locals, e.Body)

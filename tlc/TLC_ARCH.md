@@ -1,5 +1,29 @@
 # TLC Architecture Notes for the Go Port
 
+## CASE, records and syntax-time token identities
+
+CASE retains one actual $Pair per arm and a final $Case. Each pair is allocated
+before generating the next arm, and OTHER has a null condition. Record forms
+allocate each field StringNode, generate its value, then allocate its pair.
+The final record or record-set application is appended to ModuleNode's record
+vector. The getter returns a fresh array retaining application identities and
+generation order. Record selection creates its field StringNode after generating
+the record expression. All nodes retain their actual arm/field syntax.
+
+Record duplicate checks compare all earlier labels. Java Errors deduplicates
+reports with equal code, location, format and parameters. The fixed-format,
+parameterless field diagnostic preserves that behavior by its actual location;
+full shared error-log ownership is still pending.
+
+Token syntax constructors intern their raw images while parsing, as Java does,
+so record-field StringNodes reuse identities established by syntax construction.
+Late bridge-time interning alone changes UniqueString token order when semantic
+nodes are generated earlier. Retain the raw token identity even when a parser
+production normalizes its display image. Other syntax constructor identities
+and the bridge's remaining interning reconstruction still need integration.
+Unported child graphs remain incomplete; ordinary OpDef, LET/INSTANCE, full
+LevelNode fields and evaluator sharing remain pending.
+
 ## Operator applications and flattened syntax forms
 
 Unqualified ordinary calls now resolve an available concrete symbol before

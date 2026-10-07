@@ -3,6 +3,8 @@ package tlago
 import (
 	"fmt"
 	"strings"
+
+	"github.com/glycerine/tlago/tlc"
 )
 
 type SanyRange struct {
@@ -18,6 +20,7 @@ type SanySyntaxNodeDefinition struct {
 type SanySyntaxNode struct {
 	Kind         SanyNodeKind
 	Image        string
+	tokenImage   *tlc.UniqueString
 	Original     string
 	Range        SanyRange
 	Zero         []*SanySyntaxNode
@@ -44,6 +47,8 @@ func NewSanySplitNode(kind SanyNodeKind, zero, one []*SanySyntaxNode) *SanySynta
 	return node
 }
 
+// Java token-node constructors intern the raw token image during parsing.
+// Retain that identity even when a parser production later normalizes Image.
 func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
 	if tok == nil {
 		return nil
@@ -51,6 +56,7 @@ func NewSanyTokenNode(tok *SanyToken) *SanySyntaxNode {
 	node := &SanySyntaxNode{
 		Kind:       SanyNodeKind(tok.Kind),
 		Image:      tok.Image,
+		tokenImage: tlc.UniqueStringOf(tok.Image),
 		Range:      tok.Range(),
 		Token:      tok,
 		ProofLevel: -1,

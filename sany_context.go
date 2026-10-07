@@ -75,6 +75,7 @@ type sanySemModuleNode struct {
 	context      *sanyContext
 	nestingLevel int
 	definitions  []sanySemanticGraphNode
+	records      []*sanySemOpApplNode
 }
 
 func newSanySemModuleNode(name string, ctx *sanyContext, pos Position, syntax ...*SanySyntaxNode) *sanySemModuleNode {
@@ -510,4 +511,17 @@ func sanySymbolIsParam(symbol sanySemSymbol) bool {
 	default:
 		return false
 	}
+}
+
+// ModuleNode records completed record constructors and record-set applications
+// in generation order, retaining the actual application identities.
+func (n *sanySemModuleNode) addRecord(record *sanySemOpApplNode) *sanySemOpApplNode {
+	n.records = append(n.records, record)
+	return record
+}
+
+func (n *sanySemModuleNode) getRecords() []*sanySemOpApplNode {
+	result := make([]*sanySemOpApplNode, len(n.records))
+	copy(result, n.records)
+	return result
 }

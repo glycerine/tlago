@@ -275,3 +275,26 @@ func sanySourceNaryOperands(root *BinaryExpr) []Expr {
 	collect(root.Right)
 	return operands
 }
+
+// CASE allocates each pair after its two expressions, before the next arm.
+// OTHER has an actual null condition; it is not a string or placeholder node.
+func sanyGeneratedCasePair(condition, value Expr, syntax *SanySyntaxNode, other bool) sanySemanticGraphNode {
+	conditionNode, valueNode := sanyGeneratedExpressionNode(condition), sanyGeneratedExpressionNode(value)
+	if syntax == nil || valueNode == nil || (!other && conditionNode == nil) {
+		return nil
+	}
+	return newSanySemBuiltInOpApplNode("$Pair", []sanySemanticGraphNode{conditionNode, valueNode}, syntax)
+}
+
+func retainSanyGeneratedOperands(expr Expr, name string, operands []sanySemanticGraphNode) {
+	source := sanyGenerationSource(expr)
+	if source == nil {
+		return
+	}
+	for _, operand := range operands {
+		if operand == nil {
+			return
+		}
+	}
+	source.semanticGraph = newSanySemBuiltInOpApplNode(name, operands, source.Syntax)
+}
