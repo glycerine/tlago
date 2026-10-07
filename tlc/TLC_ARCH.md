@@ -38,10 +38,17 @@ negative-index exception type/message. Go synchronizes each node's array for
 concurrent cache access. Constructor and zero-value initialization publish the
 storage together with assignment state. The helper routes indexed calls to
 actual semantic nodes; non-node inputs are rejected instead of hashed into a
-shared namespace. Existing unindexed literal/cache APIs and tool-ID allocation
-still need source reconciliation: Java Spec retains one static tool ID from
-FrontEnd's zero-based int counter, while Go currently increments an int64 for
-each NewTool call. This is not whole superclass parity.
+shared namespace. Tool-ID storage and indexed APIs now use int32, including
+lazy values and cache keys. GetSemanticToolID ports FrontEnd's zero-based
+process-wide counter, including signed wraparound. Spec's static ID is allocated
+once through synchronized lazy initialization; every Tool and default spec
+processor reuses it. Explicit native Tool IDs remain available to callers.
+At MAX_VALUE, the source toolId+1 wraps before array allocation; raise
+NegativeArraySizeException without changing the existing slots. Thirteen exact
+source observations match shared IDs, explicit allocator calls, wraparound and
+array overflow; the sixteen previous slot observations still match.
+Existing unindexed literal/cache APIs remain pending; this is not whole
+superclass parity.
 
 Sixteen exact source observations compare tool slots on distinct nodes with
 colliding UIDs, separate tool numbers, sparse holes, clearing, growth on null

@@ -9,7 +9,7 @@ type LazyValue struct {
 	Expr       SemanticNode
 	Con        *Context
 	Val        Value
-	ToolID     int64
+	ToolID     int32
 	State      *TLCStateMut
 	PState     *TLCStateMut
 	Control    int

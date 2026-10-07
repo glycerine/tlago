@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-06 Static Java TLC tool identity and completed full MSB run:
+Previous completed commit: e2c3231. Java Spec owns one static toolId obtained
+from FrontEnd's zero-based int counter. Go instead allocated a fresh int64 for
+each Tool and standalone SpecProcessor. Port the source counter and once-only
+TLC identity. Change IDs, lazy-value IDs, cache keys and indexed slot APIs to
+int32; all normal tools and default processors share Spec's ID. Preserve native
+explicit IDs. Source toolId+1 array length overflow now throws the existing
+NegativeArraySizeException before modifying slots. Atomic counter increments
+and sync.Once preserve concurrent Go access and source sequential behavior.
+
+Thirteen exact observations match actual Java FastTool instances, its copy
+constructor and processor, explicit FrontEnd allocation before/after class
+initialization, signed counter wrap, unchanged static identity and MAX_VALUE
+slot overflow. Go uses a temporary overlay; no permanent tests invented.
+Corrected a temporary Go numeral constructor argument from string to int32
+before comparing; the failed probe compile earns no success credit. Receipts:
+/mnt/oldrog/tmp/tlago-static-tool-id-{java,go}.log. All sixteen earlier node-slot
+observations still match after adapting the temporary probe's ID type:
+/mnt/oldrog/tmp/tlago-static-tool-id-slots.log. No feature-specific original
+FrontEnd tool-ID test found in the inspected parser/semantic test sources.
+
+Existing TLC evaluator/spec-processing/context/coverage/cache checks pass
+0.023 seconds. Relevant root checks plus four unchanged whole original TLC
+models pass 7.629 seconds, preserving worker settings and simulation bounds.
+The complete existing SANY package passes 1.870 seconds; all packages compile.
+Receipts: /mnt/oldrog/tmp/tlago-static-tool-id-{tlc,root,sany,compile}.log.
+Normal full TLC session 23915 is running with unchanged bounds, no -race:
+/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log. Its result remains unverified.
+No inventory increase or full-workspace pass claim.
+
+Full MSB random session 5144 returns terminal status 0. All 2,147,483,648
+insertions, predecessor/size assertions, checkpoint and invariant checks pass
+in 13,063.40 seconds, ending October 6 at 21:54:04 CDT. Receipt:
+/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log. The retained binary was
+compiled against 132a77f fingerprint production; current parser/semantic changes
+do not alter that production. Do not repeat the completed original full run.
+
 2026-10-06 Signed Java proof-step numeric conversion:
 Previous completed commit: d2f93f9. The proof-step helper used strconv.Atoi,
 accepting 64-bit values that Java Integer.parseInt rejects. Failed conversion

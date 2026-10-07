@@ -191,14 +191,15 @@ retain original factories/configuration, seed, checkpoints, assertions and bound
 Their two method contexts now receive translation credit; current full execution
 is qualified separately.
 
-Current MSB session `5144` is live, using the isolated binary
-`/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
-and the installed test translation. Log:
-`/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 2,147,483,648 of 2,147,483,648
-insertions. Preserve this run and poll the same handle; do not restart it or
-claim a full pass before terminal completion. Its temporary files use the large
-workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
+MSB session `5144` is retired with status 0. The complete current fingerprint
+run passes in 13,063.40 seconds, including all 2,147,483,648 insertions,
+checkpoint commit, invariant and final-size assertions. The isolated binary
+`/mnt/oldrog/tmp/tlago-heap-fp-stress.test` was compiled from `132a77f`
+fingerprint production and the installed test translation; subsequent semantic
+and parser changes do not alter that fingerprint code. Log:
+`/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. The run finished at
+21:54:04 CDT on October 6. Both full heap runs use `-timeout=0` and no race
+instrumentation. Do not repeat them for unrelated semantic changes.
 
 The explicit stress target compiles and lists both original methods. The ordinary
 target omits them. Existing LSB/MSB factory and simple-fill tests pass normally in
@@ -647,9 +648,14 @@ and signed boundaries. Indexed tool objects now belong to each base node, as in 
 global UID/hash map. SANY and TLC use the same per-node slots. Sparse growth,
 null writes, retained array length and negative-index exceptions follow source;
 distinct nodes retain separate slots even when UIDs collide. Thirty-five source
-slot observations match. Formal-parameter graph construction, concrete class
-equality, remaining unindexed cache APIs and complete allocation order remain
-pending.
+slot observations match. Tool IDs now use Java's signed 32-bit width throughout the cache APIs.
+FrontEnd's allocator starts at zero and wraps as a Java int. TLC retains one
+static ID across Tool construction and spec processors, matching Spec; creating
+a new tool does not allocate another cache namespace. A maximum positive slot
+write raises the source NegativeArraySizeException before changing storage.
+Thirteen exact ID observations and the sixteen prior slot observations match.
+Formal-parameter graph construction, concrete class equality, remaining
+unindexed cache APIs and complete allocation order remain pending.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three
@@ -810,6 +816,11 @@ peer/circuit/fragment APIs. Preserve TLC deduplication, recovery, and terminatio
 semantics when that work resumes; see `TLC_ARCH.md`.
 
 ## Testing and workflow
+
+Current verification: normal full TLC session `23915` is running against the
+shared tool-ID port; log `/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log`.
+Poll this handle and inspect its terminal result before claiming a full-suite
+pass. Focused checks are green; no new full-workspace pass is established.
 
 **Never combine long workloads with `-race`.** Run complete long workloads
 normally. Reserve race instrumentation for short, focused concurrency checks.

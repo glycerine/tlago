@@ -690,7 +690,7 @@ func standardTLCEvalCacheKey(tool *Tool, node SemanticNode) (tlcExtCacheKey, boo
 	case nil, Value, *ValueNode, *NumeralNode, *DecimalNode, *StringNode:
 		return tlcExtCacheKey{}, false
 	}
-	toolID := int64(0)
+	toolID := int32(0)
 	if tool != nil {
 		toolID = tool.ID
 	}

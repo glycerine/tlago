@@ -28,7 +28,7 @@ var tlcExtCacheStore = struct {
 }{values: make(map[tlcExtCacheKey]*TLCExtCache)}
 
 type tlcExtCacheKey struct {
-	toolID int64
+	toolID int32
 	nodeID int32
 }
 
@@ -308,7 +308,7 @@ func NewTLCExtCache() *TLCExtCache {
 }
 
 func tlcExtCacheForTool(tool *Tool, expr SemanticNode) *TLCExtCache {
-	toolID := int64(0)
+	toolID := int32(0)
 	if tool != nil {
 		toolID = tool.ID
 	}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"sync/atomic"
 )
 
 const toolStateMutExtProperty = "tlc2.tool.impl.Tool.TLCStateMutExt"
@@ -112,7 +111,7 @@ func (f *NextStateFunctor) AddUnsatisfiedNextState(curState *TLCStateMut, action
 }
 
 type Tool struct {
-	ID int64
+	ID int32
 
 	Mode ToolMode
 
@@ -196,7 +195,16 @@ type Tool struct {
 	IsDebuggerFunc                  func(*Tool) bool
 }
 
-var nextToolID atomic.Int64
+// Spec's static toolId is allocated once, shared by all Tool subclasses.
+var specToolIdentity struct {
+	sync.Once
+	id int32
+}
+
+func specToolID() int32 {
+	specToolIdentity.Do(func() { specToolIdentity.id = GetSemanticToolID() })
+	return specToolIdentity.id
+}
 
 var toolStaticProperties struct {
 	sync.Once
@@ -222,7 +230,7 @@ func ToolIsProbabilistic() bool {
 func NewTool() *Tool {
 	InitializeToolProperties()
 	tool := &Tool{
-		ID:          nextToolID.Add(1),
+		ID:          specToolID(),
 		Mode:        ModeMC,
 		RootName:    "Spec",
 		ModelConfig: newModelConfig("", false),
@@ -233,7 +241,7 @@ func NewTool() *Tool {
 	return tool
 }
 
-func (t *Tool) GetID() int64 {
+func (t *Tool) GetID() int32 {
 	if t == nil {
 		return 0
 	}

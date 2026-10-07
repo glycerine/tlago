@@ -9,6 +9,13 @@ import (
 	"sync/atomic"
 )
 
+// FrontEnd.getToolId returns the prior value of its process-wide Java int.
+var nextSemanticToolID atomic.Int32
+
+func GetSemanticToolID() int32 {
+	return nextSemanticToolID.Add(1) - 1
+}
+
 type SemanticNode any
 
 type SemanticKind int
@@ -173,14 +180,14 @@ func (n *SemanticNodeBase) toolSlots() *semanticNodeToolSlots {
 
 // GetToolObjectAt ports SemanticNode.getToolObject(toolId). Missing nonnegative
 // slots return null; negative indices throw even when the array is empty.
-func (n *SemanticNodeBase) GetToolObjectAt(toolID int64) any {
+func (n *SemanticNodeBase) GetToolObjectAt(toolID int32) any {
 	if n == nil {
 		return nil
 	}
 	slots := n.toolSlots()
 	slots.RLock()
 	defer slots.RUnlock()
-	if int64(len(slots.values)) <= toolID {
+	if int64(len(slots.values)) <= int64(toolID) {
 		return nil
 	}
 	if toolID < 0 {
@@ -191,15 +198,19 @@ func (n *SemanticNodeBase) GetToolObjectAt(toolID int64) any {
 
 // SetToolObjectAt grows through the requested index and preserves all earlier
 // slots. Storing null still grows the source array and does not shrink it.
-func (n *SemanticNodeBase) SetToolObjectAt(toolID int64, object any) {
+func (n *SemanticNodeBase) SetToolObjectAt(toolID int32, object any) {
 	if n == nil {
 		return
 	}
 	slots := n.toolSlots()
 	slots.Lock()
 	defer slots.Unlock()
-	if int64(len(slots.values)) <= toolID {
-		values := make([]any, int(toolID)+1)
+	if int64(len(slots.values)) <= int64(toolID) {
+		length := toolID + 1 // Java int addition wraps before array allocation.
+		if length < 0 {
+			panic(NewNegativeArraySizeException(strconv.FormatInt(int64(length), 10)))
+		}
+		values := make([]any, int(length))
 		copy(values, slots.values)
 		slots.values = values
 	}
@@ -786,36 +797,36 @@ func SemanticToolObject(node SemanticNode) any {
 }
 
 func SemanticToolObjectForTool(tool *Tool, node SemanticNode) any {
-	toolID := int64(0)
+	toolID := int32(0)
 	if tool != nil {
 		toolID = tool.ID
 	}
 	return SemanticToolObjectForToolID(toolID, node)
 }
 
-func SemanticToolObjectForToolID(toolID int64, node SemanticNode) any {
+func SemanticToolObjectForToolID(toolID int32, node SemanticNode) any {
 	if node == nil {
 		return nil
 	}
-	if slots, ok := node.(interface{ GetToolObjectAt(int64) any }); ok {
+	if slots, ok := node.(interface{ GetToolObjectAt(int32) any }); ok {
 		return slots.GetToolObjectAt(toolID)
 	}
 	panic(NewClassCastException("semantic node does not implement indexed tool-object storage"))
 }
 
 func SetSemanticToolObjectForTool(tool *Tool, node SemanticNode, value any) {
-	toolID := int64(0)
+	toolID := int32(0)
 	if tool != nil {
 		toolID = tool.ID
 	}
 	SetSemanticToolObjectForToolID(toolID, node, value)
 }
 
-func SetSemanticToolObjectForToolID(toolID int64, node SemanticNode, value any) {
+func SetSemanticToolObjectForToolID(toolID int32, node SemanticNode, value any) {
 	if node == nil {
 		return
 	}
-	if slots, ok := node.(interface{ SetToolObjectAt(int64, any) }); ok {
+	if slots, ok := node.(interface{ SetToolObjectAt(int32, any) }); ok {
 		slots.SetToolObjectAt(toolID, value)
 		return
 	}

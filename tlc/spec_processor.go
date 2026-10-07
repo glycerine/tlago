@@ -218,7 +218,7 @@ func (s *Spec) ApplyToTool(tool *Tool) *Tool {
 
 type SpecProcessor struct {
 	RootFile   string
-	ToolID     int64
+	ToolID     int32
 	Defns      *Defns
 	Config     *ModelConfig
 	ModuleTbl  *ExternalModuleTable
@@ -273,7 +273,7 @@ func NewSpecProcessor(rootFile string, defns *Defns, config *ModelConfig) *SpecP
 	}
 	p := &SpecProcessor{
 		RootFile:         rootFile,
-		ToolID:           nextToolID.Add(1),
+		ToolID:           specToolID(),
 		Defns:            defns,
 		Config:           config,
 		ProcessedDefs:    NewInsMap[*OpDefNode, struct{}](),

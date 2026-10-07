@@ -18,9 +18,9 @@ func (n *sanySemanticNode) setKind(kind sanySemKind) { n.KindValue = tlc.Semanti
 func (n *sanySemanticNode) hashCode() int32          { return n.JavaHashCode() }
 
 func (n *sanySemanticNode) getToolObject(toolID int) any {
-	return n.GetToolObjectAt(int64(toolID))
+	return n.GetToolObjectAt(int32(toolID))
 }
 
 func (n *sanySemanticNode) setToolObject(toolID int, object any) {
-	n.SetToolObjectAt(int64(toolID), object)
+	n.SetToolObjectAt(int32(toolID), object)
 }
