@@ -1,5 +1,30 @@
 # TLC Architecture Notes for the Go Port
 
+## WorkerValue demultiplexing
+
+WorkerValue.demux evaluates through OpDefEvaluator's state-expression overload.
+Java Tool delegates that overload with Empty successor state and EvalControl.Clear;
+Go constant preprocessing now uses the same control, replacing EvalConst.
+Demux deeply normalizes the first value before checking its mutation category
+and current global worker count. With mutable values and multiple workers,
+allocate using the current count, retain the first value, snapshot the seed,
+then reset that seed and reevaluate/deep-normalize each remaining copy. Remove
+the extra mutable switch and caller-captured worker-count argument. Source nil
+values fail during normalization; do not return a successful null value.
+
+WorkerValue's constructor retains its supplied array, matching source private
+constructor ownership. Fifteen exact direct-source observations cover all six
+immutable overrides, mutable tuple/set copies, equal random contents, independent
+objects, normalization, count changes during first evaluation, one worker,
+initial/copied nulls, evaluation failure and array aliasing. The source evaluator
+proxy verifies Empty context/state and the exact cost model; the Clear control
+comes from inspecting Tool's actual overload. Null exception-message text is
+not established by the probe. Eleven unchanged original models pass.
+
+Ordinary lookup's fallback to the state's worker ID outside a worker remains
+incorrect: source WorkerValue.mux chooses index zero for non-IdThread callers.
+Keep that pending rather than treating current lookup behavior as source parity.
+
 ## Random-enumerable instance initialization and restoration
 
 Java's DefaultRandom and TLCStateRandom retain their behavior on each Random
@@ -51,8 +76,8 @@ including RandomElement's full eleven-state trace. Existing original random-valu
 tests remain unchanged. RNG implementation choice and restored-instance state
 are now ported below; thread-lifetime cleanup remains pending. This is not
 complete ThreadLocal parity.
-WorkerValue's mutation category list matches the source IValue default and six
-immutable overrides; its broader demux behavior remains pending.
+WorkerValue's mutation categories and demux decisions are ported above;
+remaining lookup and lifecycle gaps still require reconciliation.
 
 ## TLCCache constant-expression map
 
@@ -100,8 +125,8 @@ probes both demonstrated that behavior. Thirteen exact observations cover
 pre-existing values, UID collisions, conversion/cache reuse, worker selection,
 bounds and cast identity. Cast-message text is not established by that probe.
 TLCCache's constant-path storage, map and reentrant lock are ported below.
-General WorkerValue demux, broader cache behavior and native unindexed cache
-APIs remain pending.
+Broader worker/cache behavior and native unindexed cache APIs remain pending;
+WorkerValue demux decisions are ported above.
 No permanent test was invented; the existing original TLCEval and TLCCache
 model methods remain unchanged and pass.
 
@@ -5186,11 +5211,10 @@ must mirror Java's `WorkerValue.demux`: evaluate under
 across multiple workers, reevaluate it once per worker with the same
 random-enumerable seed before muxing the active worker's copy and converting it
 through the legacy `toSetEnum`/`toFcnRcd` path.
-Ordinary symbol lookup has the same rule: a cached `WorkerValue` is muxed by the
-current worker id when running inside a worker goroutine, and only falls back to
-the state's worker id outside that scope. This mirrors Java's `IdThread`
-selection and avoids letting copied states override the executing worker's
-per-worker constant value.
+Ordinary symbol lookup muxes a cached `WorkerValue` by the current worker ID.
+The Go fallback to the state's worker ID outside that scope remains a port gap;
+Java selects zero outside an `IdThread`. Port that selection so copied-state
+metadata cannot override the source choice of per-worker constant value.
 `TLC!TLCGet`, `TLCExt!CounterExample`, `TLCExt!Trace`, `_TLCTrace!_TLCState`,
 `_JsonTrace!_TLCState`, and `_Possible!_Counts` all carry non-constant
 minimum levels in Java to prevent invalid constant folding. `TLCExt!PickSuccessor`

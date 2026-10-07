@@ -722,8 +722,8 @@ func evaluateDeclaredConstantDefinition(tool *Tool, opDef *OpDefNode) (result an
 		}
 	}()
 	result, err = DemuxWorkerValue(func() (Value, error) {
-		return tool.Eval(opDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
-	}, true, NumWorkers())
+		return tool.Eval(opDef.Body, EmptyContext, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)
+	})
 	if err != nil && !isValueEvalException(err) && javaRuntimeException(err) == nil {
 		panic(err)
 	}
@@ -739,8 +739,8 @@ func evaluateConstantOperatorDefinition(tool *Tool, opDef *OpDefNode) (result an
 		}
 	}()
 	return DemuxWorkerValue(func() (Value, error) {
-		return tool.Eval(opDef.Body, EmptyContext, EmptyState, EmptyState, EvalConst, DoNotRecordCostModel)
-	}, true, NumWorkers())
+		return tool.Eval(opDef.Body, EmptyContext, EmptyState, EmptyState, EvalClear, DoNotRecordCostModel)
+	})
 }
 
 func specProcessorConstantVetoed(vetoes map[string]bool, names ...*UniqueString) bool {

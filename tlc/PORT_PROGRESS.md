@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-06 Source WorkerValue demux decisions and preprocessing control:
+Previous completed commit: d2cf975. Java WorkerValue.demux calls OpDefEvaluator's
+state-expression overload; actual Tool implementation delegates with Empty s1
+and EvalControl.Clear. Go declared/ordinary constant preprocessing incorrectly
+used EvalConst. Correct both call sites. Remove the unsupported mutable switch
+and caller-captured worker count from DemuxWorkerValue: source checks current
+global count after first evaluation, then allocates with the current count.
+Normalize every value before mutability decisions or publication; nil evaluator
+and initial/copied nil results throw NullPointerException. WorkerValue constructor
+retains its supplied array instead of copying it, matching source ownership.
+
+All fifteen exact observations match actual Java WorkerValue.demux with a source
+OpDefEvaluator proxy, which validates Empty context/state and exact cost model.
+Cases cover six immutable overrides, mutable tuple/set copies, normalization,
+equal seeded random contents and distinct objects, current count changed during
+first evaluation, one worker, nulls, evaluation failure and constructor aliasing.
+Clear control is established by source Tool overload inspection, not by the
+proxy (its interface has no control argument). Exception identities, not null
+message text, are compared. Receipts:
+/mnt/oldrog/tmp/tlago-worker-demux-{java,go}.log. No permanent tests invented or
+original assertions/settings/fixtures changed.
+
+Existing evaluator/spec-processing/context/coverage/cache checks and whole
+original randomized-value classes pass 3.795 seconds, session 3430 terminal 0.
+Eleven unchanged whole original models pass 31.922 seconds, session 10905 terminal
+0: RandomElement, RandomElementXandY, RandomSubsetA, RandomSubsetB,
+ConstantRank1TLCEval, ConstantContextTLCCache, RandomElementSimulation, both
+simulation-worker constraint models, ACoverage and TLCGetAll. All packages compile,
+session 76522 terminal 0. Receipts:
+/mnt/oldrog/tmp/tlago-worker-demux-{tlc,models,compile}.log. All handles retired.
+No inventory or full-workspace pass credit. Ordinary lookup's outside-worker
+state-ID fallback remains inconsistent with source mux index zero; correct that
+next. Thread-lifetime cleanup and wider semantic-node fidelity remain pending.
+
 2026-10-06 Source random-enumerable instance mode and restoration:
 Previous completed commit: 9f743e4. Java chooses DefaultRandom/TLCStateRandom
 in ThreadLocal.initialValue and stores the initialized predecessor on the RNG

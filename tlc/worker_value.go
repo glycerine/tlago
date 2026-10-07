@@ -22,37 +22,37 @@ type WorkerValue struct {
 }
 
 func NewWorkerValue(values []Value) *WorkerValue {
-	out := make([]Value, len(values))
-	copy(out, values)
-	return &WorkerValue{values: out}
+	return &WorkerValue{values: values}
 }
 
-func DemuxWorkerValue(evaluate func() (Value, error), mutable bool, workers int) (any, error) {
+func DemuxWorkerValue(evaluate func() (Value, error)) (any, error) {
 	if evaluate == nil {
-		return nil, nil
+		panic(NewNullPointerException())
 	}
 	value, err := evaluate()
 	if err != nil {
 		return nil, err
 	}
-	if value != nil {
-		value.DeepNormalize()
+	if value == nil {
+		panic(NewNullPointerException())
 	}
-	if !mutable || !ValueMutates(value) || workers <= 1 {
+	value.DeepNormalize()
+	if !ValueMutates(value) || NumWorkers() <= 1 {
 		return value, nil
 	}
-	values := make([]Value, workers)
+	values := make([]Value, NumWorkers())
 	values[0] = value
 	seed := RandomEnumerableSeed()
-	for i := 1; i < workers; i++ {
+	for i := 1; i < len(values); i++ {
 		SetRandomEnumerableSeed(seed)
 		v, err := evaluate()
 		if err != nil {
 			return nil, err
 		}
-		if v != nil {
-			v.DeepNormalize()
+		if v == nil {
+			panic(NewNullPointerException())
 		}
+		v.DeepNormalize()
 		values[i] = v
 	}
 	return NewWorkerValue(values), nil

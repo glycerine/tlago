@@ -652,7 +652,7 @@ func standardTLCEvalConst(tool *Tool, expr SemanticNode, cm CostModel) (Value, e
 	}
 	demuxed, err := DemuxWorkerValue(func() (Value, error) {
 		return tool.Eval(expr, EmptyContext, EmptyState, EmptyState, EvalClear, cm)
-	}, true, NumWorkers())
+	})
 	if err != nil {
 		return nil, err
 	}

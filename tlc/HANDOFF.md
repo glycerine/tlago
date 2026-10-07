@@ -683,6 +683,14 @@ graph construction, concrete class equality, complete allocation order and wider
 cache/worker semantics remain pending. Detailed receipts are in PORT_PROGRESS.md; no whole-superclass or
 full-workspace parity claim.
 
+WorkerValue demux now follows source global worker-count decisions, mandatory
+deep normalization, seed replay and array ownership. Constant preprocessing uses
+EvalControl.Clear through the source Tool overload, rather than the former
+EvalConst shortcut. Nil evaluator/results throw source exception types. Fifteen
+exact demux observations and eleven unchanged original models pass. Ordinary
+lookup's outside-worker mux fallback still needs source reconciliation: Java
+selects worker zero, while Go can use the state's worker ID.
+
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three
 matches and six differences: extra parameters need one aggregated diagnostic,
