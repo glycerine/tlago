@@ -667,7 +667,14 @@ tree bins. Seven unchanged original cache/extension/DOT/coverage models pass.
 Source comparison includes mixed keys, equal fresh objects, UID collisions,
 recursive cache calls, cast cleanup and 32 colliding keys through actual tree
 bins. All 27 source observations match; sixteen concurrent callers share one
-cached value in the isolated short race probe, which passes in 1.039 seconds. Unindexed APIs, formal-parameter graph construction, concrete class
+cached value in the isolated short race probe, which passes in 1.039 seconds.
+Random-enumerable seed changes now reset only the caller's generator, retaining
+peer RNG streams and the independent predecessor-state scope. RNG and checker
+paths now share IdThread's one current-state slot; source error-state reset clears
+it before trace recovery. The unchanged RandomElement model retains all eleven
+trace states. Thirteen exact source observations, six original models and a short
+race check pass. RNG implementation choice,
+restoration and thread-lifetime cleanup still need reconciliation. Unindexed APIs, formal-parameter graph construction, concrete class
 equality, complete allocation order and wider cache/worker semantics remain
 pending. Detailed receipts are in PORT_PROGRESS.md; no whole-superclass or
 full-workspace parity claim.

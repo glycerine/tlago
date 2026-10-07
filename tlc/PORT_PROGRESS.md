@@ -1,5 +1,51 @@
 # TLC Port Progress
 
+2026-10-06 Caller-only RNG reset and one IdThread predecessor scope:
+Previous completed commit: be85070. WorkerValue's mutation categories match
+the source IValue default and six immutable overrides. Its seed-reset dependency
+instead diverged: Java setSeed updates randomSeed and resets the current thread's
+RNG; Go discarded every goroutine's generator. Reset also deleted a private
+predecessor scope, unlike Java's separate IdThread state.
+
+Port the actual setSeed/reset sequence: publish the shared seed, call reset,
+obtain/initialize the prior RNG before removing it, and return that object.
+Clear only the current goroutine's RNG and initialization state; preserve other
+generators' identity and streams. The initial twelve-observation comparison and
+short race pass, and existing random-value tests pass 2.874 seconds. Correct a
+temporary probe's bounded-int method name to NextIntN before comparing; its
+failed compile earns no credit.
+
+The first six-model normal gate then fails the unchanged RandomElement trace
+assertion: expected eleven states, actual three, while original exploration
+counts remain 932/855/388. Session 97317 retires status 1, 24.168 seconds, with
+no suite pass credit. Receipt /mnt/oldrog/tmp/tlago-random-thread-reset-models.log.
+Source AbstractChecker.setErrState/resetCurrentState clears the one IdThread
+state before trace recovery. Go had two predecessor copies: checker error handling
+cleared CurrentState, but RNGs still read their separate private scope. The old
+all-thread RNG deletion had accidentally hidden that shortcut.
+
+Remove the duplicate RNG predecessor field. RandomEnumerableGenerator reads
+CurrentState; PushRandomEnumerableState delegates to its common scope. Preserve
+state across RNG reset, but allow the actual source error reset to clear it.
+The unchanged full RandomElement method now passes 0.615 seconds, including
+all eleven expected trace states and its original statistics. Receipt:
+/mnt/oldrog/tmp/tlago-random-thread-reset-random-element.log.
+
+Final temporary comparison matches all thirteen Java/Go observations, including
+explicit IdThread state clearing. Its isolated short two-goroutine race probe
+passes 1.028 seconds, session 95398 terminal 0. No long workload included.
+Receipts: /mnt/oldrog/tmp/tlago-random-thread-reset-{java,final-race}.log.
+All six unchanged whole original models pass 27.587 seconds, session 59480
+terminal 0: RandomElement, RandomElementXandY, RandomSubsetA, RandomSubsetB,
+ConstantRank1TLCEval and ConstantContextTLCCache. Native stream continuity and
+whole original Randomization/EnumerableValue/SubsetValue checks pass 4.181
+seconds, session 64310 terminal 0. Every package compiles. Receipts:
+/mnt/oldrog/tmp/tlago-random-thread-reset-final-{models,tlc,compile}.log.
+All current handles are retired. No permanent test invented, original assertion
+weakened, inventory increase or full-workspace pass claim. RNG class selection,
+restored-instance initialization state and thread-lifetime cleanup remain pending;
+this does not establish complete ThreadLocal or WorkerValue demux parity.
+
 2026-10-06 Source TLCCache node HashMap and reentrant locking:
 Previous completed commit: 38f204d. Java's constant path stores a HashMap on
 the expression node and uses one class-wide ReentrantReadWriteLock. Go used

@@ -212,9 +212,8 @@ var randomEnumerableValues = struct {
 }
 
 type randomEnumerableThreadState struct {
-	rng          *JavaRandom
-	currentState *TLCStateMut
-	rngState     *TLCStateMut
+	rng      *JavaRandom
+	rngState *TLCStateMut
 }
 
 func RandomEnumerableSeed() int64 {
@@ -225,18 +224,22 @@ func RandomEnumerableSeed() int64 {
 
 func SetRandomEnumerableSeed(seed int64) {
 	randomEnumerableValues.Lock()
-	defer randomEnumerableValues.Unlock()
 	randomEnumerableValues.seed = seed
-	randomEnumerableValues.threads = make(map[uint64]*randomEnumerableThreadState)
+	randomEnumerableValues.Unlock()
+	// Java setSeed calls reset, which removes only the current thread's RNG.
+	ResetRandomEnumerableValues()
 }
 
 func ResetRandomEnumerableValues() *JavaRandom {
+	// Source reset obtains/initializes the prior RNG before ThreadLocal.remove.
+	old := RandomEnumerableGenerator()
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
-	gid := currentGoroutineID()
-	state := randomEnumerableThreadStateForLocked(gid)
-	old := state.rng
-	delete(randomEnumerableValues.threads, gid)
+	state := randomEnumerableThreadStateForLocked(currentGoroutineID())
+	state.rng = nil
+	state.rngState = nil
+	// IdThread's current predecessor lives in currentStateScope, independently
+	// of this RNG entry. Removing the RNG must not discard that state scope.
 	return old
 }
 
@@ -255,32 +258,24 @@ func SetRandomEnumerableGenerator(rng *JavaRandom) *JavaRandom {
 }
 
 func PushRandomEnumerableState(state *TLCStateMut) func() {
-	gid := currentGoroutineID()
-	randomEnumerableValues.Lock()
-	threadState := randomEnumerableThreadStateForLocked(gid)
-	oldState := threadState.currentState
-	threadState.currentState = state
-	randomEnumerableValues.Unlock()
-	return func() {
-		randomEnumerableValues.Lock()
-		threadState := randomEnumerableThreadStateForLocked(gid)
-		threadState.currentState = oldState
-		randomEnumerableValues.Unlock()
-	}
+	// Both random enumeration and checker error handling use IdThread's one
+	// current-state slot. Do not create a second predecessor scope for RNGs.
+	return PushCurrentState(state)
 }
 
 func RandomEnumerableGenerator() *JavaRandom {
 	modelChecking := MainChecker() != nil && CurrentSimulator() == nil
+	currentState, _ := CurrentState()
 	randomEnumerableValues.Lock()
 	defer randomEnumerableValues.Unlock()
 	threadState := randomEnumerableThreadStateForLocked(currentGoroutineID())
 	if threadState.rng == nil {
 		threadState.rng = NewJavaRandom(randomEnumerableValues.seed)
 	}
-	if modelChecking && threadState.currentState != nil && threadState.rngState != threadState.currentState {
-		seed := int64(threadState.currentState.FingerPrint()) ^ randomEnumerableValues.seed
+	if modelChecking && currentState != nil && threadState.rngState != currentState {
+		seed := int64(currentState.FingerPrint()) ^ randomEnumerableValues.seed
 		threadState.rng.SetSeed(seed)
-		threadState.rngState = threadState.currentState
+		threadState.rngState = currentState
 	}
 	return threadState.rng
 }

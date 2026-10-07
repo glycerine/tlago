@@ -1,5 +1,31 @@
 # TLC Architecture Notes for the Go Port
 
+## Random-enumerable seed and reset locality
+
+RandomEnumerableValues.setSeed updates the shared seed, then calls reset on
+only the current thread. The Go port now removes only the caller's generator;
+other goroutines retain their RNG objects and continue their streams. Reset
+first obtains/initializes the prior generator, as source get does, and returns
+that object before removing it. Preserve the current predecessor scope: Java's
+IdThread state is a separate thread-local variable, so deleting the RNG cannot
+delete that state. Keep the RNG entry and clear only its RNG and initialization
+state. Eliminate the duplicate predecessor field in the RNG registry; random
+enumeration reads the same CurrentState slot used by checker error handling.
+PushRandomEnumerableState delegates to the common scope instead of maintaining
+a second copy. AbstractChecker's existing error reset now clears the state
+before trace regeneration, as source does.
+
+Thirteen exact Java/Go observations match caller replacement, peer identity and
+continued draws, seed changes, returned object identity and state-scope
+preservation and explicit shared-state clearing. The isolated two-goroutine
+scratch probe passes -race in 1.028 seconds. Six unchanged original models pass,
+including RandomElement's full eleven-state trace. Existing original random-value
+tests remain unchanged. Further source reconciliation is
+still required for RNG implementation choice at first initialization, restored
+RNG state and thread-lifetime cleanup; this is not complete ThreadLocal parity.
+WorkerValue's mutation category list matches the source IValue default and six
+immutable overrides; its broader demux behavior remains pending.
+
 ## TLCCache constant-expression map
 
 TLCCache stores its HashMap on the actual expression node's indexed tool slot.
