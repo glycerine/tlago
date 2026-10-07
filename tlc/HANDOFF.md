@@ -975,124 +975,50 @@ already-decoded value a second time, preserving quotes and literal backslashes
 that are data. Eleven generation/TLC-node cases and ten XML values match Java;
 focused models, full SANY and the original string-deserialization model pass.
 No original-method count or full-workspace completion credit is added.
-Accepted formal nodes now register in a temporary semantic SymbolTable context
-alongside the native formal map, including ordinary definition bodies. Nested
-scope exit restores both representations and rejected duplicates preserve the
-earlier binding. All 56 existing bounded formal diagnostic comparisons match
-Java; full SANY and the focused original-model gate pass. Ordinary OpDef/body
-construction and complete constructor registration timing remain pending.
-Builtin tuple/set, IF, function-set/application, action and fairness generation
-now retains actual OpAppl graphs with original operand and syntax references.
-Literal graph references use their already-generated nodes. Nineteen bounded
-expressions match Java for 75 node shapes, syntax kinds and relative allocation
-order. Fresh generation replaces graphs. Unported child kinds remain incomplete;
-remaining symbol matching, unported bound bodies, LET/INSTANCE graphs and
-evaluator sharing are pending.
-No original-method or full-workspace completion credit is added.
-Bounded/unbounded/temporal quantifiers, CHOOSE, anonymous bounded functions and
-comprehensions now retain actual application graphs when their children exist.
-Zero-arity formal uses point at accepted formal nodes. Shared-domain grouping,
-tuple flags, rejected-node arrays and earlier bindings match Java across 26
-cases and 259 observations. All 56 diagnostic comparisons still agree; full
-SANY and the focused original-model gate pass. General call/operator/selector
-wiring, named functions/lambdas and other body forms remained pending at that
-snapshot.
-Concrete formal/declaration/OpDef matching and the general application
-constructor now preserve Java's false-result versus thrown-error behavior.
-Primary OpArgs retain actual symbol, syntax and semantic module identities.
-Zero-arity declaration/builtin/formal references and booleans retain matched
-graphs. All 138 direct match/constructor cases and 25 expression trees agree
-with Java; full SANY and focused original models pass. Shared Errors ownership,
-frontend exception conversion and full call/operator/selector wiring remain
-pending. No additional original-method completion is claimed.
-Prefix/infix/postfix graphs now resolve source operator spelling before
-operands and retain matched applications. Junctions and Cartesian products
-preserve one source application without allocating AST wrapper nodes; explicitly
-nested products stay separate. Fifty-nine expression and 36 bound/operator
-comparisons agree with Java, including allocation order. Existing SANY and
-focused original TLC models pass. Full call/selector checks and identities,
-remaining bodies and ordinary OpDef integration are still pending.
-Unqualified calls through available concrete symbols now retain matched
-application graphs. Arity is checked before generating operands, and the callee
-name allocates no separate expression. Twenty-four actual Java/Go cases agree
-on all 100 graph/diagnostic observations. Full SANY, focused existing models
-and all 56 formal diagnostic comparisons pass. Higher-order/compound selector
-graphs, ordinary OpDef integration and other remaining bodies are still pending.
-No original-method completion or full-workspace pass credit is added.
-CASE, record constructors/sets and record selection now retain their actual
-pair/string/application graphs. OTHER keeps its null condition; semantic modules
-retain record applications in generation order. All 351 observations across 26
-Java/Go cases agree. Token nodes now intern raw images during parsing, fixing
-an exposed EWD998 debugger field-order failure without changing assertions.
-Full SANY, the focused existing model gate and all 56 diagnostic comparisons
-pass. Ordinary OpDef and remaining body graphs, full shared Errors ownership,
-other syntax image identities and evaluator sharing remain pending. No original
-method or full-workspace completion credit is added.
-Ordinary nonrecursive local definitions with generated bodies now retain actual
-OpDefs, construct/register after the formal scope is popped, and feed canonical
-references and scalar calls. LET retains its actual definition context and arrays
-through IN, constructs LetIn before popping, and preserves module definition
-order. All 247 observations across 17 Java/Go cases agree, as do six getter cases.
-Exact formal declaration syntax and own-parameter name resolution match source.
-Full SANY, focused existing models and all 56 formal diagnostic comparisons pass.
-Recursive/function/INSTANCE graphs, labels, canonical level checking and
-evaluator sharing remain pending. basicOpDefTest stays
-reconcile; no original-method or full-workspace completion credit is added.
-Top-level ordinary definitions now use the shared actual OpDef constructor after
-body generation and formal-scope restoration. Definition lists and subsequent
-scalar references retain node identities; rejected redefinitions keep the earlier
-binding and actual constructor diagnostics. All 309 observations across 23 Java/Go
-module cases agree. Full SANY, focused existing TLC integrations, compilation
-and all 56 formal diagnostic comparisons pass. Imported/recursive/function/fact
-graphs, canonical level checking, labels and evaluator sharing remain unfinished.
-No additional original-method or full-workspace completion credit is claimed.
-Higher-order calls now use actual operand graphs and concrete matching.
-LAMBDA retains its unregistered OpDef, actual formals/body and module-owned
-OpArg; failed operands preserve the owning Generator's source sentinels and
-allocation order. All 475 output rows across 20 Java/Go cases agree, including
-435 graph/diagnostic observations. ASSUME/PROVE now preserves NEW operator
-arity in its lexical scope and avoids generating false scalar formals from the
-legacy quantifier-shaped view. All 29 phase cases, 30 substitution cases and
-56 formal diagnostic cases agree. Existing SANY and focused TLC integrations
-pass. The unqualified fixity GenID path now preserves raw-name resolution, source
-wrong-arity and undefined-symbol diagnostics, actual error parameter identity
-and the correct sentinels without allocating unused OpArgs. All 693 output
-rows across 30 source-valid Java/Go cases agree, as do their complete diagnostic
-codes, ranges and messages. Canonical NEW/AP, qualified selector and GenID
-prefix graphs, recursive/function/INSTANCE/fact graphs and full LevelNode
-checking remain pending. basicOpDefTest stays reconcile; no original-method
-or full-workspace completion credit is added.
-Named function definitions now retain their actual context and construct the
-function specification and zero-arity OpDef before generating the body.
-Module definition order, self-formal syntax, grouped bounds, bare-reference
-recursion and rejected-name reuse match Java. Failed GeneralIds preserve the
-owning Generator's nullOAN inside domains and bodies. All 513 complete output
-rows (500 graph/diagnostic observations) across 26 module/LET cases agree, as
-do their full frontend diagnostics, all 56 formal diagnostic cases and 59 AP
-phase/substitution cases. Existing SANY and focused TLC integrations pass.
-Explicit RECURSIVE completion/section fields, unported function bodies,
-canonical NEW/AP/INSTANCE/fact and qualified selector graphs, full LevelNode
-checking and evaluator sharing remain pending. A provisional function node with
-an unported body does not complete its enclosing LET graph. basicOpDefTest
-stays reconcile; no original-method or full-workspace credit is added.
-Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
-shared evaluator construction. These summaries and bounded comparisons establish
-neither complete graph parity nor additional original-method test credit.
-Full canonical LevelNode fields and iteration, imported graph identity, full
-formal-operator metadata, the remaining Java frontend helper API and evaluator
-sharing remain pending. The green comparisons do not prove complete LevelNode
-parity or a new full-workspace pass.
-Full registration against operator/theorem graphs, qualified declaration selectors,
-other imported graph identities, ordered module definitions and complete canonical
-node sharing with the evaluator remain pending.
+Actual formal nodes register in temporary SymbolTable contexts alongside the
+native formal map. Scope exit restores both representations; rejected duplicates
+preserve earlier bindings. Literal nodes and builtin, bound, record, CASE and
+operator applications retain actual children and source syntax. Token nodes
+intern raw images at parse time. Call generation resolves symbols and arity
+before operands; concrete matching preserves false-result versus thrown-error
+behavior. OpArgs and LAMBDA retain their actual symbols, formals and module
+ownership, including the owning Generator's failure sentinels.
+
+Ordinary local/top-level OpDefs construct after body generation and formal-scope
+restoration. LET retains its actual context through IN and preserves definition
+order. Named functions retain their preparation context and construct/register
+before generating the body. Their actual function stack detects bracketed and
+bare recursion; nonrecursive specifications clear the temporary self formal.
+
+Explicit RECURSIVE entries now allocate actual declaration/dummy-formal/OpDef
+nodes and retain all three source module vectors, including rejected duplicates.
+Definitions complete the same declared OpDef, preserving original arity,
+constructor-sized metadata arrays and localness. Formal arrays are replaced
+before operator bodies; zero-arity functions complete before their bodies.
+Section numbers/flags and wrong-level construction match source. Preserve Java's
+final-formal overwrite behavior in its recursive arity check. Calls use actual
+formal arrays, including completed recursive operators in LET scopes.
+
+If a body graph remains unported, preserve the declaration's correct completion
+and syntax state without fabricating its body. Its enclosing LET remains
+incomplete. Latest bounded verification matches all 656 output rows (613 prefixed
+observations) across 24 recursive module/LET cases and their full diagnostics.
+Four additional labeled-body diagnostic cases agree. Existing SANY and focused
+TLC integrations pass, as do all 56 formal and 59 AP phase/substitution cases.
+Detailed receipts and earlier graph comparisons belong in PORT_PROGRESS.md.
+
+Canonical label/LS/marker, NEW/AP, INSTANCE/fact and qualified selector graphs,
+missing imported identities, full inherited LevelNode fields and recursive level
+iteration, shared Errors/exception integration and evaluator graph sharing remain
+unfinished. basicOpDefTest stays reconcile. These bounded comparisons add no
+original-method count, complete graph parity or full-workspace pass credit.
 
 The five expanded aggregate-label cases now match completely. The 70-formal UID
 range and first hash match Java exactly (305..374, 1607), without offsets. This
 verifies that construction prefix, not complete allocation order across all graphs.
-Next semantic work: complete ordinary operator graph construction and registration,
-remaining qualified selector graphs, canonical failure results and label generation
-guards. Complete LS/LabelNode graphs, marker scope integration, level data and evaluator sharing
-remain pending. Receipts are in PORT_PROGRESS.md.
+Next semantic work: complete LS/LabelNode graphs and marker scope integration,
+remaining qualified selector identities, canonical level data and evaluator
+sharing. These remain pending. Receipts are in PORT_PROGRESS.md.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

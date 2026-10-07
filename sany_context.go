@@ -72,10 +72,13 @@ func (s *sanySemSymbolBase) semPosition() Position         { return s.pos }
 
 type sanySemModuleNode struct {
 	sanySemSymbolBase
-	context      *sanyContext
-	nestingLevel int
-	definitions  []sanySemanticGraphNode
-	records      []*sanySemOpApplNode
+	context                  *sanyContext
+	nestingLevel             int
+	definitions              []sanySemanticGraphNode
+	records                  []*sanySemOpApplNode
+	recursiveDecls           []*sanySemOpDefNode
+	recursiveOpDefNodes      []*sanySemOpDefNode
+	opDefsInRecursiveSection []*sanySemOpDefNode
 }
 
 func newSanySemModuleNode(name string, ctx *sanyContext, pos Position, syntax ...*SanySyntaxNode) *sanySemModuleNode {

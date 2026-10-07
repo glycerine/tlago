@@ -20,11 +20,11 @@ func (g *sanyExpressionGeneration) checkFunctionRecursion(name string) bool {
 }
 
 // processFunction constructs its specification and resolves/registers the
-// definition before generating the body. Explicit RECURSIVE completion and
-// recursive-section fields remain unported and do not receive substitutes.
+// definition before generating the body. A zero-arity RECURSIVE declaration
+// is completed on its own identity; a mismatched declaration remains undefined.
 func (g *sanyExpressionGeneration) prepareNamedFunctionDefinition(definition *Definition) Diagnostics {
 	function, ok := definition.Expr.(*FunctionExpr)
-	if !ok || g.bindings[definition.Name] != nil || (g.module != nil && g.module.sum != 0) {
+	if !ok {
 		return nil
 	}
 	groups := make([][]*sanyFormalParamNode, 0)
@@ -58,13 +58,20 @@ func (g *sanyExpressionGeneration) prepareNamedFunctionDefinition(definition *De
 		if node == nil {
 			node = function.constructorSymbol.builtinNode
 		}
+		if node != nil && node.inRecursive && !node.defined {
+			if node.letInLevel != g.level {
+				node = nil
+			} else if node.semArity() == 0 {
+				g.endRecursiveDefinition(node, application, definition.Syntax)
+			}
+		}
 	} else {
 		var module *sanySemModuleNode
 		if g.currentModule != nil {
 			module = g.currentModule.semanticNode
 		}
 		node, diagnostics = newSanySemOpDefNode(definition.Name, sanyUserDefinedOpKind, make([]*sanyFormalParamNode, 0), definition.Local, application, module, g.formalSymbolTable(), definition.Syntax, true, nil)
-		node.letInLevel = g.level
+		g.setDefinitionRecursionFields(node)
 	}
 	definition.semanticNode = node
 	if node != nil && g.currentModule != nil && g.currentModule.semanticNode != nil {

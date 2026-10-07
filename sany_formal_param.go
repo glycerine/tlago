@@ -12,6 +12,7 @@ import (
 // Its LevelNode data and graph visitors are ported separately.
 type sanyFormalParamNode struct {
 	sanySemSymbolBase
+	nullName       bool
 	module         *Module
 	semanticModule *sanySemModuleNode
 }

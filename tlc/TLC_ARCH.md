@@ -1,5 +1,41 @@
 # TLC Architecture Notes for the Go Port
 
+## Explicit recursive declarations and completion
+
+RECURSIVE generation increments the shared unresolved counters and advances the
+section number only when the prior unresolved sum is zero. Each syntax entry
+allocates an unregistered constant OpDecl, unnamed dummy formals and a registered
+undefined OpDef, in that order. Dummy formals preserve null names and syntax.
+Every new OpDef enters recursiveDecls, recursiveOpDefNodes and
+opDefsInRecursiveSection, including rejected duplicate declarations. Earlier
+bindings remain in the actual SymbolTable. Missing prior imported/native graph
+identities do not receive a fabricated registration target.
+
+An operator definition replaces the declaration's formal array before generating
+its body. Source setParams changes neither declared arity nor constructor-sized
+level/weight/Leibniz arrays. Completion changes body, syntax and defined on that
+same OpDef; LOCAL on the later definition does not change the declaration's
+original local flag. Zero-arity recursive function definitions complete that
+same node with the provisional function specification before generating its body.
+A function declaration with operator arguments remains undefined. Wrong-level
+operator definitions construct rejected new nodes, preserving the earlier binding.
+Ordinary definitions inside a recursive section retain the actual section fields
+and module vector membership, even when their own LET level has no unresolved
+entries. Existing native completion still owns the shared unresolved counters.
+
+Preserve Java's paramsMatch loop overwrite: after matching array lengths, only
+the last formal determines its arity check. Calls use actual OpDef formal arrays
+rather than stale native declaration signatures. Operands beyond that array after
+a mismatched definition return the owning Generator's nullOAN without generation.
+The real matcher replaces repeated native checks once a call graph exists.
+
+A completed native body whose canonical graph is unported still updates the
+actual declaration's defined/syntax state. Its body remains visibly incomplete;
+no substitute body node completes the surrounding LET. This prevents incorrect
+undefined and duplicate-definition diagnostics while label graphs are pending.
+Full module recursive level checking, inherited LevelNode data, graph visitors,
+imported/qualified identities and evaluator sharing remain unfinished.
+
 ## Named function definition graphs
 
 Named function domains and bound formals retain their actual generated nodes.
@@ -25,10 +61,9 @@ GeneralId selector failures retain the owning Generator's actual nullOAN,
 including when nested inside domain expressions.
 
 Unimplemented bodies leave the provisional specification incomplete and do
-not mark its enclosing LET graph complete. Explicit RECURSIVE declarations,
-completion and recursive-section fields, missing imported/qualified identities,
+not mark its enclosing LET graph complete. Missing imported/qualified identities,
 labels, full LevelNode checking and evaluator graph sharing remain pending.
-No substitute recursive declaration or body node completes those paths.
+Explicit recursive completion follows the declaration path described above.
 
 ## Higher-order operands, LAMBDA and ASSUME/PROVE scope
 
@@ -59,10 +94,9 @@ symbol metadata, including operator arity. Domains are generated before the
 new symbol becomes visible. Named and unnamed bodies dispatch through the
 actual ASSUME/PROVE structure; the legacy quantifier-shaped view must not
 allocate false scalar FormalParams or quantifier applications for NEW.
-Canonical NEW/AssumeProve nodes remain pending, as do explicit recursive/
-INSTANCE/fact graphs and missing function bodies, inherited LevelNode fields
-and iteration, visitors and
-shared evaluator construction. The original basicOpDefTest remains reconcile.
+Canonical NEW/AssumeProve and INSTANCE/fact graphs, missing function bodies,
+inherited LevelNode fields and iteration, visitors and shared evaluator
+construction remain pending. The original basicOpDefTest remains reconcile.
 
 ## Ordinary definitions and LET ownership
 
@@ -89,10 +123,10 @@ array. Completed ordinary LET definitions also append to ModuleNode's definition
 list in source generation order, including nested-body definitions before their
 enclosing definition.
 
-Missing recursive declarations/completion, function bodies and INSTANCE nodes
-leave LET graphs incomplete. Ordinary definitions within unresolved recursive sections
-also await canonical recursion fields; no native placeholder completes them.
-Imported/explicit recursive/theorem/ASSUME-PROVE graphs, labels, full inherited LevelNode
+Missing function/label bodies and INSTANCE nodes leave LET graphs incomplete.
+Recursive declarations whose earlier imported bindings lack canonical identity
+also remain incomplete; no native placeholder completes them.
+Imported/theorem/ASSUME-PROVE graphs, labels, full inherited LevelNode
 fields and canonical level checking, visitors and evaluator sharing are pending.
 
 ## CASE, records and syntax-time token identities

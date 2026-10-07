@@ -1,5 +1,66 @@
 # TLC Port Progress
 
+2026-10-07 Explicit recursive declaration and completion graphs:
+Previous completed commit: d9c5daa. Port processRecursive/startOpDefNode allocation:
+unregistered OpDecl, unnamed/null-syntax dummy formals, registered undefined
+OpDef. Retain rejected duplicates in all three source module vectors. Advance
+section count only at unresolved-sum zero; ordinary definitions inside a section
+retain source flags and vector order. Replace recursive operator formals before
+body generation, then complete body/syntax/defined on that same declared node.
+Preserve original declared arity, localness and constructor-sized metadata arrays.
+Zero-arity function declarations complete before body generation; mismatched
+function declarations remain undefined. Wrong-level operators construct new,
+rejected nodes while preserving earlier bindings. Native bookkeeping continues
+owning the shared unresolved counters until full module graph integration.
+
+Generate call operands from actual OpDef formal arrays, including recursive LET
+operators. Overflow past a mismatched formal array returns actual nullOAN without
+generating that operand. Avoid repeating native matching after the concrete
+application matcher. Missing imported/native prior graphs remain explicit gaps.
+Completed native bodies lacking canonical graphs still update the declaration's
+completion and syntax; preserve an incomplete body and LET rather than falsely
+reporting undefined declarations or mutating them as fresh completions later.
+
+Actual Java/Go comparisons match all 656 complete output rows across 24 recursive
+module/LET cases: 613 observations (261 graph nodes, 79 metadata-array lengths,
+75 references, 40 module-context entries, 36 section-vector entries, 30 recursive
+declaration and 30 recursive-definition vector entries, 24 cases, 20 diagnostics,
+eight null results, six LET contexts and four bound groups). Cases cover self/
+mutual recursion, missing/duplicate/conflicting declarations, repeated sections,
+wrong arity/LET level, higher-order formals, functions, LOCAL and nested LET.
+Full frontend diagnostic codes, ranges and messages agree for those 24 cases.
+Four further labeled-body diagnostics agree, including another unresolved symbol
+and a later duplicate definition; their canonical label bodies remain unported.
+All probes remain outside the repository; no permanent tests were invented.
+
+Corrections exposed during comparison: preserve nonnil empty formal arrays;
+report higher-order recursive formal rejection during generation; use the full
+definition range for arity mismatch. An initially stricter arity check failed
+Apalache helpers and the original scoped-identifier row 12. Java's loop overwrites
+paramsMatch rather than accumulating it, so faithfully preserve final-formal
+behavior in module and LET paths. The added source comparisons then exposed
+stale recursive LET parameter metadata; actual formal arrays now drive operands.
+Labeled-body probes exposed stale defined flags and false undefined/duplicate
+reports; completion metadata now survives missing canonical bodies. No source
+assertions, fixtures or workload bounds were changed. Earlier failed root JSON
+and first diagnostic receipts remain separate from final logs.
+
+Verification: focused root/SANY/TLC gate passes in 45.317s (50130) after real
+formal-array dispatch. After the final incomplete-body correction, affected
+existing integrations pass in 38.011s, full sany_tests in 2.139s, compile-all and
+rebuilt AP observer succeed (89217). Final 24-case graph run and four labeled-body
+diagnostics are terminal zero (73400). Final exact diagnostics all agree:
+recursive 24 (67049), quantifier 11 (63830), named-function 15 (5999), proof 17
+(7124), CHOOSE 13 (71659), AP substitution 30 (73906), AP phase 29 (89217).
+All listed handles are terminal zero. Receipts are under
+/mnt/oldrog/tmp/tlago-recursive-*, including complete-slice JSON/diagnostic logs,
+Java/Go graph logs and incomplete-body-verified log. No race workload was run.
+
+Remaining: canonical labels/markers, NEW/AP/INSTANCE/fact and qualified/imported
+graphs, complete inherited LevelNode and recursive module checking, shared error/
+exception ownership and evaluator sharing. basicOpDefTest remains reconcile.
+No TLC inventory, original-method completion or full-workspace pass is claimed.
+
 2026-10-07 Named function definition graph construction:
 Previous completed commit: 2cadd94. Port processFunction's actual construction
 order for top-level and LET function definitions outside unresolved explicit

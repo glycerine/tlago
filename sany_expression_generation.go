@@ -14,6 +14,7 @@ import (
 // Generator retains declaration identities across LET contexts. In particular,
 // leaving a LET does not discard its entries from ModuleNode.recursiveDecls.
 type sanyRecursiveBinding struct {
+	node     *sanySemOpDefNode
 	name     string
 	position Position
 	arity    int
@@ -87,7 +88,7 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 	defer g.pushFormalContext(0)()
 	letContext := g.formalSymbolTable().topContext()
 	definitions := make([]sanySemSymbol, 0, len(expr.Definitions))
-	completeGraph := len(expr.Recursives) == 0 && len(expr.Instances) == 0
+	completeGraph := len(expr.Instances) == 0
 	instanceResolver := &sanySelectorResolver{spec: g.spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 	defer func() {
 		if failure := recover(); failure != nil {
@@ -122,18 +123,28 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 		switch {
 		case unit.declaration != nil:
 			declaration := unit.declaration
+			if g.module.sum == 0 {
+				g.module.section++
+			}
 			g.module.counts[g.level] += len(declaration.Names)
 			g.module.sum += len(declaration.Names)
-			for _, name := range declaration.Names {
+			for i, name := range declaration.Names {
 				arity, _ := declarationArity(*declaration, name)
-				binding := &sanyRecursiveBinding{name: name, position: declarationSymbolPosition(*declaration, name), arity: arity, level: g.level}
+				node, generated := g.constructRecursiveDeclaration(*declaration, i, positions)
+				diags = append(diags, generated...)
+				binding := &sanyRecursiveBinding{node: node, name: name, position: declarationSymbolPosition(*declaration, name), arity: arity, level: g.level}
 				g.declarations = append(g.declarations, binding)
+				if node == nil {
+					completeGraph = false
+				} else if g.formalSymbolTable().resolveSymbol(node.semName()) != node {
+					continue
+				}
 				if previous, exists := g.lookupSymbol(name, positions); exists {
 					diags = append(diags, instanceSymbolConflict(semanticExportedSymbol{name: name, kind: OperatorDecl, arity: arity, source: binding.position}, previous)...)
 				} else {
 					g.bindings[name] = binding
 					positions[name] = binding.position
-					g.symbols[name] = localSymbol{kind: OperatorDecl, arity: arity, pos: binding.position}
+					g.symbols[name] = localSymbol{opDefNode: node, kind: OperatorDecl, arity: arity, pos: binding.position}
 					letLocals[name] = true
 				}
 			}
@@ -142,6 +153,9 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 			if node := unit.definition.semanticNode; node != nil {
 				definitions = append(definitions, node)
 				if function, ok := unit.definition.Expr.(*FunctionExpr); ok && unit.definition.FunctionDef && function.semanticGraph == nil {
+					completeGraph = false
+				}
+				if node.body == nil && sanyExpressionGenerationFailure(unit.definition.Expr) != sanyGenerationNullExpression {
 					completeGraph = false
 				}
 				if !unit.definition.FunctionDef && g.currentModule != nil && g.currentModule.semanticNode != nil {
@@ -217,8 +231,10 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 		diags = append(diags, sanyRecursiveDefinitionDiagnostic(*definition, "E4293", fmt.Sprintf("Recursive %s %s defined at wrong LET/IN level.", kind, definition.Name)))
 	} else if recursive {
 		matches := len(definition.Params) == binding.arity
-		for _, arity := range definition.ParamArities {
-			matches = matches && arity == 0
+		if matches && len(definition.Params) > 0 {
+			// Java overwrites paramsMatch in its loop; the final parameter
+			// determines this check, rather than accumulating conjunctions.
+			matches = definition.ParamArities[definition.Params[len(definition.Params)-1]] == 0
 		}
 		if !matches {
 			message := fmt.Sprintf("Definition of %s has different arity than its RECURSIVE declaration.", definition.Name)
@@ -230,7 +246,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 		if definition.FunctionDef && binding.arity == 0 {
 			g.complete(binding, definition.SourcePosition())
 		}
-		if !definition.FunctionDef {
+		if !definition.FunctionDef && binding.node == nil {
 			binding.arity = len(definition.Params)
 		}
 	} else if _, exists := positions[definition.Name]; symbolExists || exists || letLocals[definition.Name] {
@@ -262,14 +278,13 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 		diags = append(diags, g.checkDefinitionBody(*definition, positions, bodyLocals)...)
 		// processOperator constructs and registers only after its parameter
 		// context has been popped. Do not reconstruct missing body symbols.
-		body := sanyGeneratedExpressionNode(definition.Expr)
-		if !recursive && body != nil && g.module.sum == 0 && (!symbolExists || previousSymbol.opDefNode != nil) {
+		if !symbolExists || previousSymbol.opDefNode != nil {
 			diags = append(diags, g.constructOrdinaryDefinition(definition)...)
 		}
 		if recursive && !wrongLevel {
 			g.complete(binding, definition.SourcePosition())
 		}
-		if wrongLevel {
+		if wrongLevel && definition.semanticNode == nil {
 			// The newly constructed OpDefNode calls SymbolTable.addSymbol; the
 			// existing declaration remains the symbol table binding.
 			diags = append(diags, instanceSymbolConflict(semanticExportedSymbol{name: definition.Name, kind: OperatorDecl, arity: len(definition.Params), source: definition.SourcePosition()}, localSymbol{kind: OperatorDecl, arity: binding.arity, pos: binding.position})...)
@@ -292,7 +307,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition *Definitio
 func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, context map[string]Position, locals map[string]bool) Diagnostics {
 	defer g.pushFormalContext(len(definition.Params))()
 	var diags Diagnostics
-	var parameters []*sanyFormalParamNode
+	parameters := make([]*sanyFormalParamNode, 0, len(definition.Params))
 	for index, parameter := range sanyDefinitionParams(&definition) {
 		// The source allocates the node before SymbolTable.addSymbol decides
 		// whether the declaration can replace an existing binding.
@@ -327,6 +342,17 @@ func (g *sanyExpressionGeneration) checkDefinitionBody(definition Definition, co
 	if source, ok := definition.Expr.(interface{ generationSource() *SanyExprSource }); ok {
 		source.generationSource().definitionFormals = parameters
 	}
+	if binding := g.bindings[definition.Name]; binding != nil && binding.node != nil && !binding.node.defined && binding.node.letInLevel == g.level {
+		// Source setParams replaces only the array, preserving declared arity
+		// and constructor-sized level/Leibniz arrays even after a mismatch.
+		if g.level == 0 && len(binding.node.formalNodes) == len(parameters) && len(parameters) > 0 && parameters[len(parameters)-1].semArity() != 0 {
+			// Match Java's overwrite in the parameter loop, including its
+			// final-parameter behavior for earlier higher-order formals.
+			message := fmt.Sprintf("Definition of %s has different arity than its RECURSIVE declaration.", definition.Name)
+			diags = append(diags, sanyRecursiveDefinitionDiagnostic(definition, "E4292", message))
+		}
+		binding.node.formalNodes = parameters
+	}
 	return append(diags, g.checkExpr(definition.Expr, context, locals)...)
 }
 
@@ -335,7 +361,7 @@ func (g *sanyExpressionGeneration) lookupSymbol(name string, context map[string]
 		return symbol, true
 	}
 	if binding := g.bindings[name]; binding != nil {
-		return localSymbol{kind: OperatorDecl, arity: binding.arity, pos: binding.position}, true
+		return localSymbol{opDefNode: binding.node, kind: OperatorDecl, arity: binding.arity, pos: binding.position}, true
 	}
 	if symbol, ok := g.symbols[name]; ok {
 		return symbol, true
@@ -731,16 +757,31 @@ func (g *sanyExpressionGeneration) checkRecordForm(expr Expr, operator string, f
 // The actual body/formals are retained by generation. Construction happens only
 // after the parameter scope has been popped, and registers in the current table.
 func (g *sanyExpressionGeneration) constructOrdinaryDefinition(definition *Definition) Diagnostics {
+	if sanyExpressionGenerationFailure(definition.Expr) == sanyGenerationNullOperator {
+		g.retainNullOperatorOperand(definition.Expr, false)
+	}
 	source := sanyGenerationSource(definition.Expr)
 	if source == nil || (source.semanticGraph == nil && sanyExpressionGenerationFailure(definition.Expr) != sanyGenerationNullExpression) {
+		if binding := g.bindings[definition.Name]; binding != nil && binding.node != nil && !binding.node.defined && binding.node.letInLevel == g.level {
+			// Body generation completed on the native path, but its canonical
+			// graph is still unported. Preserve source completion/syntax on
+			// the actual declaration without fabricating a body node.
+			g.endRecursiveDefinition(binding.node, nil, definition.Syntax)
+			definition.semanticNode = binding.node
+		}
 		return nil
 	}
 	var module *sanySemModuleNode
 	if g.currentModule != nil {
 		module = g.currentModule.semanticNode
 	}
+	if binding := g.bindings[definition.Name]; binding != nil && binding.node != nil && !binding.node.defined && binding.node.letInLevel == g.level {
+		g.endRecursiveDefinition(binding.node, source.semanticGraph, definition.Syntax)
+		definition.semanticNode = binding.node
+		return nil
+	}
 	node, diagnostics := newSanySemOpDefNode(definition.Name, sanyUserDefinedOpKind, source.definitionFormals, definition.Local, source.semanticGraph, module, g.formalSymbolTable(), definition.Syntax, true, nil)
-	node.letInLevel = g.level
+	g.setDefinitionRecursionFields(node)
 	definition.semanticNode = node
 	return diagnostics
 }

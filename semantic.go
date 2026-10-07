@@ -259,9 +259,10 @@ func (node *sanyCachedLevelCheck) check() (bool, Diagnostics) {
 // unresolvedSum with nested modules. checkForUndefinedRecursiveOps subtracts
 // the count from the sum without clearing the count, including on invalid input.
 type sanyModuleRecursiveGeneration struct {
-	counts [100]int
-	count  int
-	sum    int
+	counts  [100]int
+	section int
+	count   int
+	sum     int
 }
 
 func (state *sanyModuleRecursiveGeneration) complete() {
@@ -694,10 +695,21 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	completedRecursive := map[string]bool{}
 	satisfiedRecursive := map[string]bool{}
 	registerRecursive := func(d Declaration) {
+		if checks.recursiveGeneration.sum == 0 {
+			checks.recursiveGeneration.section++
+		}
 		checks.recursiveGeneration.count += len(d.Names)
 		checks.recursiveGeneration.sum += len(d.Names)
 		seenInDecl := map[string]bool{}
-		for _, name := range d.Names {
+		for i, name := range d.Names {
+			node, generated := expressionGeneration.constructRecursiveDeclaration(d, i, defined)
+			diags = append(diags, generated...)
+			if node != nil {
+				expressionGeneration.declarations = append(expressionGeneration.declarations, &sanyRecursiveBinding{node: node, name: name, position: node.semPosition(), arity: node.semArity(), level: 0})
+				if expressionGeneration.formalSymbolTable().resolveSymbol(node.semName()) != node {
+					continue
+				}
+			}
 			if seenInDecl[name] {
 				diags = append(diags, sanyDiagnosticParameters(errorAt(d.Pos, "E4291", "duplicate recursive declaration %s", name), name))
 				continue
@@ -716,8 +728,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			recursiveArities[name] = arity
 			recursivePositions[name] = declarationSymbolPosition(d, name)
 			recursiveOrder = append(recursiveOrder, name)
-			expressionGeneration.bindings[name] = &sanyRecursiveBinding{name: name, position: recursivePositions[name], arity: arity, level: 0}
-			expressionGeneration.declarations = append(expressionGeneration.declarations, expressionGeneration.bindings[name])
+			expressionGeneration.bindings[name] = &sanyRecursiveBinding{node: node, name: name, position: recursivePositions[name], arity: arity, level: 0}
+			if node == nil {
+				expressionGeneration.declarations = append(expressionGeneration.declarations, expressionGeneration.bindings[name])
+			}
 			arities[name] = arity
 		}
 	}
@@ -736,11 +750,12 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			satisfiedRecursive[def.Name] = !def.FunctionDef || want == 0
 			if got := len(def.Params); got != want {
 				diagnostic := sanyDiagnosticParameters(errorAt(def.Pos, "E4292", "Definition of %s has different arity than its RECURSIVE declaration. The operator %s requires %d arguments.", def.Name, def.Name, want), def.Name)
+				diagnostic.SANYMessage = fmt.Sprintf("Definition of %s has different arity than its RECURSIVE declaration.", def.Name)
+				if def.Syntax != nil {
+					diagnostic.SANYRange = def.Syntax.Range
+				}
 				if def.FunctionDef {
 					diagnostic.SANYMessage = fmt.Sprintf("Function %s has operator arguments in its RECURSIVE declaration.", def.Name)
-					if def.Syntax != nil {
-						diagnostic.SANYRange = def.Syntax.Range
-					}
 				}
 				diags = append(diags, diagnostic)
 			}
@@ -765,7 +780,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 		if binding := expressionGeneration.bindings[def.Name]; binding != nil {
-			if !def.FunctionDef {
+			if !def.FunctionDef && binding.node == nil {
 				binding.arity = len(def.Params)
 			}
 			if def.FunctionDef && binding.arity == 0 && !completedRecursive[def.Name] {
@@ -782,6 +797,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		expressionGeneration.moduleSymbols[def.Name] = localSymbol{kind: semanticDefinitionImportKind(def), arity: len(def.Params), pos: def.SourcePosition()}
 		arities[def.Name] = len(def.Params)
+		if binding := expressionGeneration.bindings[def.Name]; binding != nil && binding.node != nil {
+			arities[def.Name] = binding.node.semArity()
+			expressionGeneration.moduleSymbols[def.Name] = localSymbol{opDefNode: binding.node, kind: OperatorDecl, arity: binding.node.semArity(), pos: def.SourcePosition()}
+		}
 		addSubexpressionReferenceNames(defined, def.Name, def.Expr)
 		if specs, ok := definitionOperatorParamSpecs(def); ok {
 			operatorParamSpecs[def.Name] = specs
@@ -984,7 +1003,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		_, recursive := recursiveArities[def.Name]
 		_, conflict := constructorConflicts[positionKey(def.SourcePosition())]
 		previous := expressionGeneration.formalSymbolTable().resolveSymbol(def.Name)
-		if !def.FunctionDef && !def.TheoremLike && !def.AssumeProve && !recursive && checks.recursiveGeneration.sum == 0 && (!conflict || previous != nil) && !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
+		if !def.FunctionDef && !def.TheoremLike && !def.AssumeProve && (!recursive || (expressionGeneration.bindings[def.Name] != nil && expressionGeneration.bindings[def.Name].node != nil)) && (!conflict || previous != nil) && !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
 			diags = append(diags, expressionGeneration.constructOrdinaryDefinition(definition)...)
 			def.semanticNode = definition.semanticNode
 			if node := def.semanticNode; node != nil {
@@ -1099,7 +1118,15 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	}
 	// checkForUndefinedRecursiveOps visits the declaration vector, not a map.
 	if checks.recursiveGeneration.count > 0 {
+		for _, node := range mod.semanticNode.recursiveDecls {
+			if node.letInLevel == 0 && !node.defined {
+				diags = append(diags, sanyUndefinedRecursiveDiagnostic(&sanyRecursiveBinding{name: node.semName(), position: node.semPosition()}))
+			}
+		}
 		for _, name := range recursiveOrder {
+			if binding := expressionGeneration.bindings[name]; binding != nil && binding.node != nil {
+				continue
+			}
 			binding := expressionGeneration.bindings[name]
 			if !satisfiedRecursive[name] && (binding == nil || !binding.defined) {
 				pos := recursivePositions[name]
@@ -3504,9 +3531,16 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			return diags
 		}
+		_, signatures := generation.proofSignatures()
+		var specs []operatorParamSpec
 		if identifier, ok := e.Callee.(*IdentExpr); ok {
-			_, signatures := generation.proofSignatures()
-			specs := signatures[identifier.Name]
+			specs = signatures[identifier.Name]
+			if definition, ok := operator.(*sanySemOpDefNode); ok && (definition.semKind() == sanyUserDefinedOpKind || definition.semKind() == sanyModuleInstanceKind) {
+				specs = make([]operatorParamSpec, len(definition.formalNodes))
+				for i, parameter := range definition.formalNodes {
+					specs[i] = operatorParamSpec{Name: parameter.semName(), Arity: parameter.semArity()}
+				}
+			}
 			if len(specs) == len(e.Args) {
 				higherOrder := false
 				for _, spec := range specs {
@@ -3517,13 +3551,22 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				}
 			}
 		}
-		_, signatures := generation.proofSignatures()
-		var specs []operatorParamSpec
-		if identifier, ok := e.Callee.(*IdentExpr); ok {
-			specs = signatures[identifier.Name]
-		}
 		for i, arg := range e.Args {
-			generated := generation.checkExpr(arg, defined, locals)
+			if definition, ok := operator.(*sanySemOpDefNode); ok && definition.semKind() == sanyUserDefinedOpKind && i >= len(definition.formalNodes) {
+				generation.retainNullOperatorOperand(arg, false)
+				continue
+			}
+			var generated Diagnostics
+			if identifier, ok := e.Callee.(*IdentExpr); ok && i < len(specs) && specs[i].Arity > 0 {
+				owner := *identifier
+				owner.Pos, owner.Syntax = e.Pos, e.Syntax
+				if e.Syntax != nil {
+					owner.Pos = sanyNodePosition(e.Syntax)
+				}
+				generated = generation.generateOperatorOperand(&owner, i, specs[i].Arity, arg, defined, locals)
+			} else {
+				generated = generation.checkExpr(arg, defined, locals)
+			}
 			for j := range generated {
 				if generated[j].Code == "E4275" && i < len(specs) {
 					generated[j].Message = fmt.Sprintf("expression parameter %s cannot accept a LAMBDA operator argument", specs[i].Name)
@@ -3532,6 +3575,9 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			diags = append(diags, generated...)
 		}
 		diags = append(diags, retainSanyMatchedApplication(e, operator, e.Args)...)
+		if _, complete := sanyGeneratedExpressionNode(e).(*sanySemOpApplNode); complete {
+			e.operatorArgumentsGenerated = true
+		}
 	case *IfExpr:
 		diags = append(diags, generation.checkExpr(e.Cond, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Then, defined, locals)...)
