@@ -10,22 +10,15 @@ import (
 // InstanceNode checks the resolved substitution array, including defaults. Its
 // expressions retain their instancer's lexical context; a completed-module scan
 // cannot reconstruct either the bindings or the substitution order.
-func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance Instance, declKinds map[string]DeclarationKind) Diagnostics {
-	_, diags := c.checkInstanceSubstitutionLevelResult(instance, declKinds)
-	return diags
-}
-
-func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevelResult(instance Instance, declKinds map[string]DeclarationKind) (bool, Diagnostics) {
+func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevelResult(instance Instance) (bool, Diagnostics) {
 	spec := c.dependencies.resolver.spec
 	target := spec.Modules[instance.Module]
 	if target == nil {
 		return true, nil
 	}
 	parameterNames := map[string]bool{}
-	declKinds = copyDeclKindMap(declKinds)
 	for _, name := range instance.Params {
 		parameterNames[name] = true
-		delete(declKinds, name)
 	}
 	context := c.contextWithLocals(parameterNames)
 	checker := &sanyLevelCompositionChecker{dependencies: c.dependencies, context: context}
@@ -95,7 +88,6 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevelResult(insta
 				}
 			}
 		}
-		diags = append(diags, checkPrimedConstants(expr, declKinds, parameterNames)...)
 	}
 	// ArgLevelParam.hashCode adds both declaration hashes and the zero-based
 	// argument position. HashSet deduplicates relationships before InstanceNode

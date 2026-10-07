@@ -293,13 +293,15 @@ Bad == F(1, 2)
 		requireHasErrorContaining(t, diags, "arity")
 	})
 
-	t.Run("checks primed constants through SANY syntax", func(t *testing.T) {
+	t.Run("accepts primed constants through SANY syntax", func(t *testing.T) {
 		_, diags := CheckSanySource("BadPrime.tla", `---- MODULE BadPrime ----
 CONSTANT C
 VARIABLE x
 Bad == C' = x
 ====`)
-		requireHasErrorContaining(t, diags, "cannot prime constant")
+		if len(diags) != 0 {
+			t.Fatalf("Java reports no diagnostics for this unchanged source: %v", diags)
+		}
 	})
 
 	t.Run("checks fundamental level errors through SANY syntax", func(t *testing.T) {
@@ -308,8 +310,22 @@ VARIABLE v
 BadPrime == v''
 ASSUME v
 ====`)
-		requireHasErrorContaining(t, diags, "primed")
-		requireHasErrorContaining(t, diags, "constant-level")
+		if len(diags) != 2 {
+			t.Fatalf("want the two source level errors: %v", diags)
+		}
+		for i, expected := range []struct {
+			code, message    string
+			line, begin, end int
+		}{
+			{"E4205", "Level error in applying operator ':\nThe level of argument 1 exceeds the maximum level allowed by the operator.", 3, 13, 15},
+			{"E4206", "Level error: assumptions must be level 0 (Constant), \nbut this one has level 1.", 4, 1, 8},
+		} {
+			diagnostic := diags[i]
+			location := diagnostic.SANYRange
+			if diagnostic.Code != expected.code || diagnostic.SANYMessage != expected.message || location.Begin.Line != expected.line || location.End.Line != expected.line || location.Begin.Column != expected.begin || location.End.Column != expected.end {
+				t.Fatalf("level diagnostic = %#v, want %#v", diagnostic, expected)
+			}
+		}
 	})
 
 	t.Run("checks temporal level composition through SANY syntax", func(t *testing.T) {

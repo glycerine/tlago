@@ -226,17 +226,34 @@ EXTENDS Naturals
 VARIABLE x, x
 Init == y = 0
 ====`)
-		requireHasErrorContaining(t, diags, "duplicate")
-		requireHasErrorContaining(t, diags, "undefined")
+		if len(diags) != 2 {
+			t.Fatalf("want the two source diagnostics: %v", diags)
+		}
+		for i, expected := range []struct {
+			code, message string
+			severity      Severity
+			line, column  int
+		}{
+			{"W4801", "Multiple declarations or definitions for symbol x.  \nThis duplicates the one at line 2, col 10 to line 2, col 10 of module Bad.", SeverityWarning, 2, 13},
+			{"E4200", "Unknown operator: `y'.", SeverityError, 3, 9},
+		} {
+			diagnostic := diags[i]
+			location := diagnostic.SANYRange
+			if diagnostic.Code != expected.code || diagnostic.Severity != expected.severity || diagnostic.SANYMessage != expected.message || location.Begin.Line != expected.line || location.End.Line != expected.line || location.Begin.Column != expected.column || location.End.Column != expected.column {
+				t.Fatalf("diagnostic = %#v, want %#v", diagnostic, expected)
+			}
+		}
 	})
 
-	t.Run("semantic check rejects primed constants", func(t *testing.T) {
+	t.Run("semantic check accepts primed constants, matching SANY", func(t *testing.T) {
 		_, diags := CheckSanySource("BadPrime.tla", `---- MODULE BadPrime ----
 CONSTANT C
 VARIABLE x
 Bad == C' = x
 ====`)
-		requireHasErrorContaining(t, diags, "cannot prime constant")
+		if len(diags) != 0 {
+			t.Fatalf("Java reports no diagnostics for this unchanged source: %v", diags)
+		}
 	})
 
 	t.Run("INSTANCE operator substitutions accept bare local operator replacements", func(t *testing.T) {

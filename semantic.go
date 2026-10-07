@@ -826,7 +826,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		diags = append(diags, checks.generator.instance(*inst)...)
 		diags = append(diags, expressionGeneration.generateInstanceSubstitutions(inst, mod, expressionContexts.at(inst.Syntax, defined))...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: inst.SourcePosition(), node: &sanyCachedLevelCheck{run: func() (bool, Diagnostics) {
-			return levelChecker.checkInstanceSubstitutionLevelResult(*inst, declKinds)
+			return levelChecker.checkInstanceSubstitutionLevelResult(*inst)
 		}}})
 	}
 	generateProofRef := func(ref ProofRef) bool {
@@ -876,9 +876,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				correct = correct && expressionCorrect
 				diags = append(diags, current...)
 			}
-			current := checkPrimedConstants(expr, declKinds, nil)
-			correct = correct && !current.HasErrors()
-			diags = append(diags, current...)
 			diags = append(diags, checkAssumptionConstantLevel(assumption, levelChecker)...)
 			return correct, diags
 		}}})
@@ -915,9 +912,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				correct = correct && expressionCorrect
 				diags = append(diags, current...)
 			}
-			current := checkPrimedConstants(expr, declKinds, nil)
-			correct = correct && !current.HasErrors()
-			diags = append(diags, current...)
 			return correct, diags
 		}}})
 	}
@@ -979,9 +973,6 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				correct = correct && expressionCorrect
 				diags = append(diags, current...)
 			}
-			current := checkPrimedConstants(def.Expr, declKinds, locals)
-			correct = correct && !current.HasErrors()
-			diags = append(diags, current...)
 			return correct, diags
 		}
 		if _, recursive := recursiveArities[def.Name]; recursive && satisfiedRecursive[def.Name] && !completedRecursive[def.Name] && (expressionGeneration.bindings[def.Name] == nil || !expressionGeneration.bindings[def.Name].defined) {
@@ -4420,136 +4411,6 @@ func copyDeclKindMap(in map[string]DeclarationKind) map[string]DeclarationKind {
 	return out
 }
 
-func checkPrimedConstants(expr Expr, declKinds map[string]DeclarationKind, locals map[string]bool) Diagnostics {
-	var diags Diagnostics
-	switch e := expr.(type) {
-	case *UnaryExpr:
-		if e.Op == "'" {
-			if inner, ok := e.Expr.(*UnaryExpr); ok && inner.Op == "'" {
-				diags = append(diags, errorAt(e.Pos, "E4205", "cannot prime an already primed expression"))
-			}
-			if ident, ok := e.Expr.(*IdentExpr); ok && !locals[ident.Name] && declKinds[ident.Name] == ConstantDecl {
-				diags = append(diags, errorAt(e.Pos, "E1303", "cannot prime constant %s", ident.Name))
-			}
-		}
-		diags = append(diags, checkPrimedConstants(e.Expr, declKinds, locals)...)
-	case *BinaryExpr:
-		diags = append(diags, checkPrimedConstants(e.Left, declKinds, locals)...)
-		diags = append(diags, checkPrimedConstants(e.Right, declKinds, locals)...)
-	case *CallExpr:
-		diags = append(diags, checkPrimedConstants(e.Callee, declKinds, locals)...)
-		for _, arg := range e.Args {
-			diags = append(diags, checkPrimedConstants(arg, declKinds, locals)...)
-		}
-	case *IfExpr:
-		diags = append(diags, checkPrimedConstants(e.Cond, declKinds, locals)...)
-		diags = append(diags, checkPrimedConstants(e.Then, declKinds, locals)...)
-		diags = append(diags, checkPrimedConstants(e.Else, declKinds, locals)...)
-	case *LetExpr:
-		letLocals := letScopeLocals(locals, e)
-		recursiveNames := letRecursiveNames(e)
-		for _, def := range e.Definitions {
-			defLocals := letDefinitionBodyLocals(letLocals, def, recursiveNames[def.Name])
-			diags = append(diags, checkPrimedConstants(def.Expr, declKinds, defLocals)...)
-		}
-		diags = append(diags, checkPrimedConstants(e.Body, declKinds, letLocals)...)
-	case *QuantifierExpr:
-		diags = append(diags, checkPrimedConstants(e.Set, declKinds, locals)...)
-		quantLocals := map[string]bool{}
-		for name, ok := range locals {
-			quantLocals[name] = ok
-		}
-		quantLocals[e.Var] = true
-		diags = append(diags, checkPrimedConstants(e.Body, declKinds, quantLocals)...)
-	case *CaseExpr:
-		for _, arm := range e.Arms {
-			diags = append(diags, checkPrimedConstants(arm.Test, declKinds, locals)...)
-			diags = append(diags, checkPrimedConstants(arm.Value, declKinds, locals)...)
-		}
-		if e.Other != nil {
-			diags = append(diags, checkPrimedConstants(e.Other, declKinds, locals)...)
-		}
-	case *ChooseExpr:
-		diags = append(diags, checkPrimedConstants(e.Set, declKinds, locals)...)
-		chooseLocals := map[string]bool{}
-		for name, ok := range locals {
-			chooseLocals[name] = ok
-		}
-		for _, name := range e.boundNames() {
-			chooseLocals[name] = true
-		}
-		diags = append(diags, checkPrimedConstants(e.Body, declKinds, chooseLocals)...)
-	case *TupleExpr:
-		for _, elem := range e.Elems {
-			diags = append(diags, checkPrimedConstants(elem, declKinds, locals)...)
-		}
-	case *SetExpr:
-		for _, elem := range e.Elems {
-			diags = append(diags, checkPrimedConstants(elem, declKinds, locals)...)
-		}
-	case *RecordExpr:
-		for _, field := range e.Fields {
-			diags = append(diags, checkPrimedConstants(field.Value, declKinds, locals)...)
-		}
-	case *RecordComponentExpr:
-		diags = append(diags, checkPrimedConstants(e.Record, declKinds, locals)...)
-	case *RecordSetExpr:
-		for _, field := range e.Fields {
-			diags = append(diags, checkPrimedConstants(field.Set, declKinds, locals)...)
-		}
-	case *FunctionExpr:
-		fnLocals := map[string]bool{}
-		for name, ok := range locals {
-			fnLocals[name] = ok
-		}
-		for _, bound := range e.Bounds {
-			diags = append(diags, checkPrimedConstants(bound.Set, declKinds, locals)...)
-			fnLocals[bound.Name] = true
-		}
-		diags = append(diags, checkPrimedConstants(e.Body, declKinds, fnLocals)...)
-	case *FunctionAppExpr:
-		diags = append(diags, checkPrimedConstants(e.Function, declKinds, locals)...)
-		for _, arg := range e.Args {
-			diags = append(diags, checkPrimedConstants(arg, declKinds, locals)...)
-		}
-	case *ExceptExpr:
-		diags = append(diags, checkPrimedConstants(e.Base, declKinds, locals)...)
-		for _, spec := range e.Specs {
-			for _, component := range spec.Components {
-				for _, index := range component.Indices {
-					diags = append(diags, checkPrimedConstants(index, declKinds, locals)...)
-				}
-			}
-			diags = append(diags, checkPrimedConstants(spec.Value, declKinds, locals)...)
-		}
-	case *LabelExpr:
-		diags = append(diags, checkPrimedConstants(e.Body, declKinds, locals)...)
-	case *ActionExpr:
-		diags = append(diags, checkPrimedConstants(e.Action, declKinds, locals)...)
-		diags = append(diags, checkPrimedConstants(e.Subscript, declKinds, locals)...)
-	case *FairnessExpr:
-		diags = append(diags, checkPrimedConstants(e.Subscript, declKinds, locals)...)
-		diags = append(diags, checkPrimedConstants(e.Action, declKinds, locals)...)
-	case *FunctionSetExpr:
-		diags = append(diags, checkPrimedConstants(e.Domain, declKinds, locals)...)
-		diags = append(diags, checkPrimedConstants(e.Range, declKinds, locals)...)
-	case *SetComprehensionExpr:
-		compLocals := map[string]bool{}
-		for name, ok := range locals {
-			compLocals[name] = ok
-		}
-		for _, bound := range e.Bounds {
-			diags = append(diags, checkPrimedConstants(bound.Set, declKinds, locals)...)
-			compLocals[bound.Name] = true
-		}
-		diags = append(diags, checkPrimedConstants(e.Element, declKinds, compLocals)...)
-		if e.Predicate != nil {
-			diags = append(diags, checkPrimedConstants(e.Predicate, declKinds, compLocals)...)
-		}
-	}
-	return diags
-}
-
 func checkAssumptionConstantLevel(assumption NamedExpr, checker *sanyLevelCompositionChecker) Diagnostics {
 	level := checker.level(assumption.Expr, nil)
 	if level == constantLevel {
@@ -4582,7 +4443,7 @@ func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals m
 		diags = append(diags, current...)
 	}
 	switch expr.(type) {
-	case *ActionExpr, *FairnessExpr:
+	case *UnaryExpr, *ActionExpr, *FairnessExpr:
 		// OpApplNode checks operands before applying these builtin maxima.
 		// An invalid operand suppresses a redundant enclosing level error.
 	default:
@@ -4590,6 +4451,10 @@ func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals m
 	}
 	switch e := expr.(type) {
 	case *UnaryExpr:
+		operandCorrect, operandDiags := levelChecker.checkResult(e.Expr, locals)
+		correct = correct && operandCorrect
+		diags = append(diags, operandDiags...)
+		constraints(levelChecker.checkApplicationLevelsWithValidity(e, locals, []bool{operandCorrect}))
 		if (e.Op == "[]" || e.Op == "<>") && levelChecker.level(e.Expr, locals) == actionLevel && sanyOperatorApplicationKind(e.Expr) {
 			if action, wrapped := e.Expr.(*ActionExpr); wrapped {
 				if e.Op == "[]" && actionExprIsAngle(action) {
@@ -4613,7 +4478,6 @@ func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals m
 				diags = append(diags, sanyLevelDiagnostic(errorAt(e.Pos, code, "temporal operator %s cannot be applied directly to an action-level formula", e.Op), e, message))
 			}
 		}
-		child(levelChecker, e.Expr, locals)
 	case *BinaryExpr:
 		leftLevel := levelChecker.level(e.Left, locals)
 		rightLevel := levelChecker.level(e.Right, locals)
@@ -4653,7 +4517,7 @@ func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals m
 		// LetInNode checks its retained InstanceNodes after definitions/body,
 		// even when no exported operator appears in IN.
 		for _, instance := range e.Instances {
-			instanceCorrect, instanceDiags := levelChecker.checkInstanceSubstitutionLevelResult(instance, levelChecker.dependencies.declKinds[levelChecker.context.module])
+			instanceCorrect, instanceDiags := levelChecker.checkInstanceSubstitutionLevelResult(instance)
 			correct = correct && instanceCorrect
 			diags = append(diags, instanceDiags...)
 		}

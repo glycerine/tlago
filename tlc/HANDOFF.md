@@ -895,9 +895,15 @@ substitution expressions. A reported non-Leibniz substitution does not turn its
 parent's result false when Java's InstanceNode returns true. Action/fairness
 argument gates use child results, preserving an enclosing error that a raw
 Errors check previously suppressed. Definition, assumption and theorem plans
-retain these expression results. All 27 phase comparisons and 74 preceding
-legacy diagnostic comparisons match Java; existing focused root/model checks,
-complete SANY and compilation pass normally.
+retain these expression results. Unary operands also check before their own
+application maxima, using their actual validity to suppress redundant enclosing
+errors. Remove the extra Go-only constant-prime rejection: Java allows constant,
+literal and boolean priming, and builtin maxima diagnose double priming.
+All 12 prime, 27 phase and 74 preceding legacy diagnostic comparisons match
+Java. Current focused root/model checks pass in 27.901 seconds, complete SANY
+passes in 1.816 seconds, and all-package compilation passes normally. Native
+expectations use the unchanged source fixtures and exact Java diagnostics;
+scratch comparisons add no original-method inventory credit.
 Full canonical LevelNode fields and iteration, imported graph identity, full
 formal-operator metadata, the remaining Java frontend helper API and evaluator
 sharing remain pending. The green comparisons do not prove complete LevelNode

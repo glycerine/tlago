@@ -1,5 +1,38 @@
 # TLC Port Progress
 
+2026-10-07 Prime operator level checking:
+Previous completed commit: 937be6f. Twelve bounded Java comparisons expose
+nine differences from the extra Go-only checkPrimedConstants traversal. Java
+allows constant, literal and boolean priming; ordinary builtin argument maxima
+reject double priming. Remove the fabricated E1303 constant rejection and the
+redundant double-prime diagnostic. Unary operands now check before their own
+application maxima, with the actual operand levelCorrect result controlling
+redundant enclosing errors. INSTANCE substitutions use the same expression
+checker; remove its unused diagnostic wrapper and obsolete declaration-kind
+parameter. Preserve the separate assumption constant-level assertion.
+
+All 12 corrected legacy diagnostic comparisons match exact codes, counts,
+ranges, messages and order (64608, terminal 0). Unchanged native BadPrime and
+LevelErrors fixtures were separately checked against Java. Correct their old
+Go-only expectations, strengthening the double-prime/assumption assertions to
+both exact source diagnostics. Focused native check 39426 exposed another
+pre-existing assertion: duplicate same-kind declarations are source warning
+4801, followed by undefined-name error 4200. Java and Go match on the unchanged
+Bad module. Correct this native assertion to exact severity, code, message,
+range and order rather than requiring an invented duplicate error.
+
+Final focused root checks, including ResolverAndCheckerBehaviors and seven
+unchanged original model methods, pass normally in 27.901 seconds (21102).
+Complete SANY passes in 1.816 seconds (13329); all-package compilation passes.
+The 27 phase, 26 co-parameter, 24 argument and 24 earlier level comparisons
+still match (79596, terminal 0). Logs:
+/mnt/oldrog/tmp/tlago-prime-final-{frontend-phase,coparam,arg-level,let-level}.log.
+Prime vectors and native source comparison logs remain outside the repository
+under /mnt/oldrog/tmp/tlago-prime-audit and tlago-native-prime. Scratch comparisons
+earn no original-method inventory credit. All handles are terminal and retired.
+No new full-workspace pass or complete LevelNode/ASSUME-PROVE graph parity is
+claimed. New distributed service remains postponed.
+
 2026-10-07 Expression level results independent of reported diagnostics:
 Previous completed commit: fc1b0c1. Expand the programmatic phase comparison to
 21 cases. Initial 62780 returns 1: LET and binary parents falsely retain a failed

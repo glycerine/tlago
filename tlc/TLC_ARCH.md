@@ -132,6 +132,16 @@ these child results. A non-Leibniz report must not suppress a separate enclosing
 argument-max error. Definition, assumption and theorem plans retain the actual
 expression result alongside the accumulated diagnostics.
 
+Unary OpApplNode operands check before their own builtin argument maxima.
+Propagate the operand's levelCorrect return separately from diagnostics and gate
+an enclosing maximum error on that result. Prime allows ConstantLevel and
+VariableLevel operands; its intrinsic ActionLevel and zero argument weight are
+already retained in the builtin metadata. Constants, literals and booleans may
+therefore be primed. Do not add a separate constant-prime ban or duplicate
+syntax-based double-prime check. Ordinary maxima produce Java's exact 4205
+error. Twelve bounded prime comparisons match complete legacy diagnostics.
+Complete ASSUME-PROVE child graphs and LevelNode metadata remain pending.
+
 All 27 phase comparisons match generation errors, level errors, codes, ranges,
 messages, return booleans and repeated checks. The original TestInstanceNode
 method preserves every phase/count/code/parameter assertion; unchanged Java and
