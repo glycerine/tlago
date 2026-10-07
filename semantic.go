@@ -1869,6 +1869,7 @@ type localSymbol struct {
 	instanceOrigin   *Module
 	instanceSyntax   *SanySyntaxNode
 	builtinNode      *sanySemOpDefNode
+	opDefNode        *sanySemOpDefNode
 	formalNode       *sanyFormalParamNode
 	declarationNode  *sanySemOpDeclNode
 	proofStepKind    string
@@ -3255,6 +3256,8 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			graphSymbol = e.formalNode
 		} else if e.declarationNode != nil {
 			graphSymbol = e.declarationNode
+		} else if symbol, exists := generation.lookupSymbol(e.Name, defined); exists && symbol.opDefNode != nil {
+			graphSymbol = symbol.opDefNode
 		} else {
 			graphSymbol = sanyGlobalInitialContext(false).getSymbol(e.Name)
 		}

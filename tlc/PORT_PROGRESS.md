@@ -1,5 +1,56 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary local OpDefs and canonical LET contexts:
+Previous completed commit: 1d555e4. Ordinary nonrecursive LET/DEFINE definitions
+with actual generated bodies now construct the real OpDef after the formal
+context is popped, register it in the actual SymbolTable and retain its identity
+on the definition. Local symbol metadata and expression applications reference
+that same node. Construct fresh definitions even after a rejected redefinition
+when the earlier binding is canonical; the SymbolTable keeps the earlier node.
+Constructor diagnostics replace the native duplicate-constructor surrogate.
+Definitions in unresolved recursive sections, recursive completion, function
+constructors and other missing bodies remain incomplete rather than receiving
+invented nodes. Top-level ordinary definition integration is still pending.
+
+LET pushes a real context, retains it through IN, constructs LetIn before
+popping it, and retains supplied definition/instance arrays and the actual body.
+Its lazy getLets filters user-defined operators, caches the result and returns
+the same mutable array. Null definition arrays/elements fail, as in Java.
+Completed ordinary LET definitions also append to ModuleNode.definitions in
+source generation order. LETs with missing recursive/INSTANCE/function graphs
+remain incomplete; no empty stand-in completes those source arrays.
+
+Definition formals now retain the exact LHS declaration syntax: identifier
+parameters use N_IdentDecl (including operator placeholders), and fixity LHS
+parameters use the proper token. Operator-name resolution sees accepted own
+parameters before the body; f(f) == f reports the source redefinition while its
+parameter disappears before the OpDef is constructed. This also preserves the
+actual body reference to that parameter.
+
+Seventeen bounded actual Java/Go cases cover nested scopes, earlier definition
+references, scalar calls, operator-valued formal declarations, infix LHS,
+duplicate definitions/parameters, own-name parameters, CASE and records. All
+247 observations agree: 138 graph nodes, 39 references, 24 context bindings,
+24 retained module definitions, four diagnostics and 17 case results. Syntax
+kinds, relative UID order, constructor/recursion flags and LET levels agree;
+the Go probe also checks table identity and final scope/level restoration.
+Six direct getter cases add eight observations for filtering, lazy caching,
+array mutation and null failures. Source Java/getter and Go logs/overlays use
+/mnt/oldrog/tmp/tlago-let-definition and tlago-let-getter prefixes. Receipts:
+tlago-let-definition-comparison.log and tlago-let-getter-comparison.log.
+The original basicOpDefTest remains reconcile: it also requires canonical
+OpDef level checking, which is not implemented by these constructor graphs.
+No original-method completion credit or persistent invented tests.
+
+Full SANY passes in 1.814 seconds (95358 terminal 0). Focused existing
+parser/SANY/TLC gate passes in 45.694 seconds (20979 terminal 0), log
+/mnt/oldrog/tmp/tlago-let-definition-focused.json. All 56 existing bounded
+formal diagnostic observations still agree after rebuilding the observer:
+quantifier 11, named function 15, proof 17 and CHOOSE 13 (37064, 42377,
+13415, 16850 terminal 0); logs tlago-let-definition-*-diag.log. Final graph/getter overlay and package compilation pass together (90824
+terminal 0; overlay 0.018 seconds). No race,
+full-workspace completion, corpus sweep or TLC test-inventory count change.
+
 2026-10-07 CASE, records and record-selection graphs:
 Previous completed commit: e0887df. Port processCase's real $Pair applications,
 allocating each after its condition/value and before the next arm, then $Case.

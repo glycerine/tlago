@@ -103,6 +103,7 @@ type Declaration struct {
 }
 
 type Definition struct {
+	semanticNode    *sanySemOpDefNode
 	Syntax          *SanySyntaxNode
 	Name            string
 	Params          []string

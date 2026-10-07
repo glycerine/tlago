@@ -227,6 +227,9 @@ func (g *sanyExpressionGeneration) applicationOperator(op string, syntax *SanySy
 		return symbol
 	}
 	if symbol, ok := g.lookupSymbol(name, context); ok {
+		if symbol.opDefNode != nil {
+			return symbol.opDefNode
+		}
 		if symbol.formalNode != nil {
 			return symbol.formalNode
 		}

@@ -1,5 +1,28 @@
 # TLC Architecture Notes for the Go Port
 
+## Ordinary local definitions and LET ownership
+
+For ordinary nonrecursive local definitions with generated bodies, OpDef
+construction occurs after the temporary parameter context is popped. The actual
+SymbolTable registers the new node and keeps the earlier binding if registration
+is rejected. Native symbol metadata, identifier references and applications
+retain that canonical definition identity. Definition formals keep their exact
+LHS syntax, including the entire declaration of operator-valued parameters.
+The operator's own name is resolved while those parameters remain visible.
+
+LET owns a real semantic context through its IN body. LetIn retains that context,
+the supplied arrays and generated body before the context is popped. getLets
+lazily filters user-defined definitions once and returns its cached mutable
+array. Completed ordinary LET definitions also append to ModuleNode's definition
+list in source generation order, including nested-body definitions before their
+enclosing definition.
+
+Missing recursive declarations/completion, function and INSTANCE nodes leave
+LET graphs incomplete. Ordinary definitions within unresolved recursive sections
+also await canonical recursion fields; no native placeholder completes them.
+Top-level ordinary definition integration, labels, full inherited LevelNode
+fields and canonical level checking, visitors and evaluator sharing are pending.
+
 ## CASE, records and syntax-time token identities
 
 CASE retains one actual $Pair per arm and a final $Case. Each pair is allocated

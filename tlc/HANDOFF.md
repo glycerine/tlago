@@ -1028,6 +1028,16 @@ Full SANY, the focused existing model gate and all 56 diagnostic comparisons
 pass. Ordinary OpDef and remaining body graphs, full shared Errors ownership,
 other syntax image identities and evaluator sharing remain pending. No original
 method or full-workspace completion credit is added.
+Ordinary nonrecursive local definitions with generated bodies now retain actual
+OpDefs, construct/register after the formal scope is popped, and feed canonical
+references and scalar calls. LET retains its actual definition context and arrays
+through IN, constructs LetIn before popping, and preserves module definition
+order. All 247 observations across 17 Java/Go cases agree, as do six getter cases.
+Exact formal declaration syntax and own-parameter name resolution match source.
+Full SANY, focused existing models and all 56 formal diagnostic comparisons pass.
+Top-level OpDef integration, recursive/function/INSTANCE graphs, labels, canonical
+level checking and evaluator sharing remain pending. basicOpDefTest stays
+reconcile; no original-method or full-workspace completion credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

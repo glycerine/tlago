@@ -235,7 +235,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				previous, exists := g.lookupSymbol(definition.Name, current)
 				binding := g.bindings[definition.Name]
 				failedFunction := definition.FunctionDef && ((exists && previous.kind != OperatorDecl && previous.kind != InstanceDecl) || (binding != nil && !binding.defined && binding.level != g.level))
-				diags = append(diags, g.generateLocalDefinition(definition, current, map[string]bool{})...)
+				diags = append(diags, g.generateLocalDefinition(unit.definition, current, map[string]bool{})...)
 				if failedFunction {
 					panic(tlc.NewArrayIndexOutOfBoundsExceptionNoMessage())
 				}
