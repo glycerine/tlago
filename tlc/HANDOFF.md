@@ -1124,7 +1124,16 @@ definition history and lazy array snapshots. Inner modules register actual nodes
 in the enclosing context, with a shared loader-ordered external-module table.
 Forward inner references fail before template allocation. All 5,697 observed rows
 across 43 whole modules and 17 loader observations match Java. EXTENDS inheritance
-and complete module/level/visitor/evaluator graph parity remain pending. Bounded generation
+and complete module/level/visitor/evaluator graph parity remain pending.
+EXTENDS now copies actual assumption, theorem and top-level vectors in source
+order, preserving duplicate references through diamonds. Its inherited instances
+enter top-level vectors, while the separate instance vector follows Java's code
+and remains local. Actual extendee arrays and separate direct/recursive mutable
+set caches preserve copy ownership and cache lifetime. Imported expression
+metadata shares actual definitions. All 7,519 observed rows across 47 whole modules
+and associated cache/null observations match Java. EXTENDS context diagnostics,
+missing-extendee aborts, original-module comparison rules and inherited level,
+visitor and evaluator work remain incomplete. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 
@@ -1137,7 +1146,7 @@ sany_tests and compile-all are the affected gates; receipts belong in
 PORT_PROGRESS.md. These observations add no original-method or full-workspace
 completion credit.
 
-EXTENDS assertion inheritance, complete
+EXTENDS context reconciliation, remaining
 module vectors, general qualified selectors, INSTANCE/fact/imported identities,
 recursive inherited level checks, visitors, shared Errors/exception integration
 and evaluator graph sharing remain pending. Other Context iteration callers and

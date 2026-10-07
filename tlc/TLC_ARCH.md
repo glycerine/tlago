@@ -1,5 +1,32 @@
 # TLC Architecture Notes for the Go Port
 
+## EXTENDS vectors and cached extension sets
+
+Production EXTENDS resolves actual ModuleNodes through the SymbolTable, merges
+their contexts in direct source order, then copies their assumption, theorem and
+top-level vectors. These copies retain the original node references and preserve
+repeated entries, including diamonds. They read source vectors rather than lazy
+getter arrays. `copyTopLevel` does not copy `instanceVec`: inherited instances
+appear in the top-level vector while `getInstances` reports the local vector.
+Preserve Java's code even though the instance accessor's comment says otherwise.
+
+`createExtendeeArray` copies its supplied vector. Direct and recursive extension
+sets have separate lazy caches; each returned mutable set keeps its identity.
+Recursive sets union the source modules' cached recursive sets. Replacing the
+extendee array does not invalidate either cache. Null arguments and receivers
+retain Java NullPointerException failures. Constructor extendees start as an
+empty nonnull array. Native imported expression metadata now retains the actual
+accepted operator/theorem definition nodes from the merged context.
+
+All 7,519 observed rows match Java across 47 whole modules and accompanying cache
+and null observations. The comparison includes actual vectors, shared node UIDs,
+repeated EXTENDS, diamond inheritance, private definitions, inherited named facts
+and instances, nested contexts, direct/recursive set members, returned-set aliasing,
+array-copy ownership and cache lifetime. No persistent tests or original-method
+completion credit are added. Complete EXTENDS context diagnostic ownership,
+missing-extendee aborts, original-module comparison rules, inherited levels,
+visitors and evaluator graph sharing remain pending; this is bounded evidence.
+
 ## Module collection snapshots and inner-module registration
 
 Context declaration vectors filter actual OpDeclNode classes by constant or

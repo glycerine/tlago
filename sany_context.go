@@ -81,6 +81,8 @@ type sanySemModuleNode struct {
 	opDefs                   []*sanySemOpDefNode
 	thmOrAssDefs             []*sanySemThmOrAssumpDefNode
 	modDefs                  []*sanySemModuleNode
+	extendees                []*sanySemModuleNode
+	depthAllExtendees        map[bool]map[*sanySemModuleNode]struct{}
 	nestingLevel             int
 	definitions              []sanySemanticGraphNode
 	records                  []*sanySemOpApplNode
@@ -104,8 +106,10 @@ func newSanySemModuleNode(name string, ctx *sanyContext, pos Position, syntax ..
 			originalModuleName: name,
 			pos:                pos,
 		},
-		context:     ctx,
-		definitions: make([]sanySemanticGraphNode, 0),
+		context:           ctx,
+		definitions:       make([]sanySemanticGraphNode, 0),
+		extendees:         make([]*sanySemModuleNode, 0),
+		depthAllExtendees: make(map[bool]map[*sanySemModuleNode]struct{}),
 	}
 	if len(syntax) != 0 && syntax[0] != nil {
 		node.TreeNode = syntax[0]

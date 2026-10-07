@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Actual EXTENDS vectors and cached extension sets:
+Previous completed commit: c78ca72. Resolve extendees through actual SymbolTable
+bindings and copy assumption/theorem/top-level vectors in direct source order.
+Share nodes and retain repeated references through diamonds and duplicate EXTENDS.
+Copy source vectors, not lazy getter arrays. Preserve source copyTopLevel's lack
+of instanceVec copying despite getInstances' broader comment: inherited instances
+are top-level nodes while the local instance vector stays separate. Native import
+metadata now retains actual accepted operator/theorem definition pointers.
+
+Port createExtendeeArray's fresh copy and the separate direct/recursive mutable
+set caches. Retain set identity, recursive union, empty constructor array and cache
+lifetime across later extendee-array replacement. Preserve typed null failures
+for receivers and arguments. Source comparisons retain all original observations:
+initial 7,002 whole-module rows match; add source set mutation/aliasing, frozen
+cache and copied-vector observations, with all 7,190 rows matching. Add seven null
+receiver/argument observations per scenario; final 7,519 rows across 47 whole
+modules and their cache/null scenarios match Java exactly. Includes private
+operators, parameterized declarations, named facts, nested contexts, diamonds,
+repeated extends and inherited instance identities. Scratch files/receipts stay
+outside the repository at /mnt/oldrog/tmp/tlago-module-inheritance-*.
+No permanent tests, weakened assertions, changed fixtures or method credit added.
+
+Existing affected root/parser/context/proof/TLC-model gate passes 48.350s
+(6906 retired), full SANY initially passes 1.981s (73368 retired), and compile-all
+passes (42470 retired). Final null-only guards are validated by the complete
+source comparison; final complete SANY passes 1.939s (51766 retired), and
+compile-all passes (41355 retired). All handles retired; git diff --check passes. No broad race or full-workspace pass claim.
+EXTENDS context diagnostic ownership, missing-extendee aborts, original-module
+comparison rules, inherited levels, visitors and evaluator sharing remain pending.
+Distributed service development stays deferred.
+
 2026-10-07 Module collection snapshots and actual inner-module contexts:
 Previous completed commit: 472e5a8. Port Context's declaration/module vectors in
 Hashtable order and operator/theorem vectors through the separate newest-first

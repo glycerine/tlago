@@ -507,14 +507,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			enclosingBindings[symbol.name] = binding
 		}
 	}
+	extendees := make([]*sanySemModuleNode, 0, len(mod.Extends))
 	for _, dep := range mod.Extends {
+		if extendee := mod.symbolTable.resolveModule(dep); extendee != nil {
+			mod.semanticNode.context.mergeExtendContext(extendee.context)
+			extendees = append(extendees, extendee)
+			mod.semanticNode.copyAssumes(extendee)
+			mod.semanticNode.copyTheorems(extendee)
+			mod.semanticNode.copyTopLevel(extendee)
+		}
 		if depMod := spec.Modules[dep]; depMod != nil {
-			if depMod.semanticNode != nil {
-				// Retain the available semantic graph in direct EXTENDS order.
-				// The native generation path below still owns diagnostics until
-				// all exported operator and theorem graphs are constructed.
-				mod.semanticNode.context.mergeExtendContext(depMod.semanticNode.context)
-			}
 			for _, inherited := range transitiveExtendedModules(spec, depMod, map[string]bool{depMod.Name: true}) {
 				importInheritedModule(inherited)
 			}
@@ -589,6 +591,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 	}
+	mod.semanticNode.createExtendeeArray(extendees)
 	// Local symbols enter the generation context in module-body order.
 	expressionContexts := sanyModuleExpressionContexts(mod, spec, defined)
 	instanceSymbols := enclosingBindings
@@ -605,7 +608,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		instanceSymbols[name] = symbol
 	}
 	for name, symbol := range instanceSymbols {
-		expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: symbol.declarationNode, kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
+		expressionGeneration.moduleSymbols[name] = retainSanyInstanceSymbol(localSymbol{declarationNode: symbol.declarationNode, kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}, mod.symbolTable.resolveSymbol(name))
 	}
 	localSymbols := moduleOwnSymbols(mod)
 	registerInstance := func(inst Instance) {
