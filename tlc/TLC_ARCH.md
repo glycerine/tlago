@@ -2,27 +2,36 @@
 
 ## Semantic node constructor foundation
 
-`sany_semantic_node.go` ports SemanticNode's shared AtomicInteger constructor,
-UID getter, kind accessors, hashCode arithmetic and tool-object slots. Semantic
-symbol bases embed it; module, ordinary-symbol and initial-context built-in
-factories allocate through the same process-wide counter. Preserve signed 32-bit
-UID and hash overflow, and do not reset the counter during front-end initialization.
-Tool slots grow through the requested index, retain previous values, return nil
-for missing nonnegative slots and throw ArrayIndexOutOfBoundsException for negative
-indices. Clearing a slot does not shrink the array.
+SANY symbols embed `tlc.SemanticNodeBase` and allocate identity through
+`tlc.NewSemanticNodeBase`. Module, ordinary-symbol, built-in, evaluator and
+wrapper factories therefore share one process-wide AtomicInteger equivalent,
+as Java's SemanticNode superclass does. The former SANY-only counter introduced
+in `1470b93` was incorrect and is removed. Kind/UID/hash access delegate to the
+common base; remaining graph constructors and allocation order are unported.
 
-This is the constructor foundation, not a complete semantic graph port. The
-current expression-generation formals still need actual FormalParamNode identity;
-remaining source constructors and their allocation order are unported. Java's
-equality also checks the concrete runtime class, kind and UID. Do not substitute
-Go symbol names or the current coarse wrapper classes for that source hierarchy.
-Keep label-parameter HashSet ordering pending until those identities and allocations
-are faithful; assigning UIDs to context wrappers alone does not resolve it.
+The base retains signed 32-bit UID/hash overflow. Its constructor assigns UID
+eagerly and marks assignment independently of UID bits. `uidPlusOne == 0` is a
+valid representation of Java UID -1 after wraparound; it cannot mean unassigned.
+The existing Go zero-value base path uses separate assignment state and a lock,
+so initialization does not change an already assigned wrapped UID. Normal source
+constructors do not use that zero-value initialization path. Do not reset the
+counter during front-end initialization.
 
-Twenty manual source comparisons match relative UID progression, kind/hash changes,
-tool-slot retention, nulls, negative-index exception types/messages and signed UID/hash
-wraparound. Scratch probes supply bounded implementation evidence, not permanent
-new tests or original-method translation credit.
+SANY's tool-slot array retains the source grow/read/write semantics, including
+negative-index exceptions and unchanged array length after clearing. TLC's other
+indexed tool-object machinery still needs separate reconciliation; the shared
+constructor does not establish whole superclass API fidelity.
+
+The current expression-generation formals still need actual FormalParamNode
+identity. Java equality also checks the concrete runtime class, kind and UID.
+Do not substitute symbol names or coarse wrapper classes for that hierarchy.
+Keep label-parameter HashSet ordering pending until graph identities and actual
+allocations are faithful; a common counter alone does not resolve it.
+
+Twenty-six bounded source observations match: 19 retained kind/hash/tool-slot
+observations, one alternating SANY/evaluator constructor sequence and six
+stable-getter/hash observations spanning MAX_VALUE/MIN_VALUE and -2/-1/0.
+These are temporary manual evidence, not permanent tests or translation credit.
 
 ## NEW declarations and source JavaCC scanners
 

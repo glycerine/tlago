@@ -1,38 +1,22 @@
 package tlago
 
-import (
-	"sync/atomic"
+import "github.com/glycerine/tlago/tlc"
 
-	"github.com/glycerine/tlago/tlc"
-)
-
-// SemanticNode's constructor, UID, kind, hash and tool-object storage. All
-// semantic node constructors must share this counter; front-end initialization
-// does not reset it. The remaining graph node constructors are ported separately.
-var sanySemanticNodeUID atomic.Int32
-
+// SemanticNode's constructor identity is shared with the evaluator's semantic
+// nodes. Remaining graph constructors and allocation order are ported separately.
 type sanySemanticNode struct {
-	myUID int32
-	kind  sanySemKind
+	tlc.SemanticNodeBase
 	tools []any
 }
 
 func newSanySemanticNode(kind sanySemKind) sanySemanticNode {
-	// AtomicInteger.getAndIncrement returns the previous signed 32-bit value,
-	// including Java int wraparound.
-	return sanySemanticNode{myUID: sanySemanticNodeUID.Add(1) - 1, kind: kind}
+	return sanySemanticNode{SemanticNodeBase: tlc.NewSemanticNodeBase(tlc.SemanticKind(kind), "")}
 }
 
-func (n *sanySemanticNode) getUID() int32            { return n.myUID }
-func (n *sanySemanticNode) getKind() sanySemKind     { return n.kind }
-func (n *sanySemanticNode) setKind(kind sanySemKind) { n.kind = kind }
-
-func (n *sanySemanticNode) hashCode() int32 {
-	result := int32(1)
-	result = 31*result + int32(n.kind)
-	result = 31*result + n.myUID
-	return result
-}
+func (n *sanySemanticNode) getUID() int32            { return n.GetUID() }
+func (n *sanySemanticNode) getKind() sanySemKind     { return sanySemKind(n.Kind()) }
+func (n *sanySemanticNode) setKind(kind sanySemKind) { n.KindValue = tlc.SemanticKind(kind) }
+func (n *sanySemanticNode) hashCode() int32          { return n.JavaHashCode() }
 
 func (n *sanySemanticNode) getToolObject(toolID int) any {
 	if len(n.tools) <= toolID {

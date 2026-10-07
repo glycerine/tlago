@@ -64,7 +64,7 @@ type sanySemSymbolBase struct {
 
 func (s *sanySemSymbolBase) semBase() *sanySemSymbolBase   { return s }
 func (s *sanySemSymbolBase) semName() string               { return s.name }
-func (s *sanySemSymbolBase) semKind() sanySemKind          { return s.kind }
+func (s *sanySemSymbolBase) semKind() sanySemKind          { return s.getKind() }
 func (s *sanySemSymbolBase) semArity() int                 { return s.arity }
 func (s *sanySemSymbolBase) semLocal() bool                { return s.local }
 func (s *sanySemSymbolBase) semOriginalModuleName() string { return s.originalModuleName }

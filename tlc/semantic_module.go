@@ -195,7 +195,7 @@ type ModuleNode struct {
 }
 
 func NewModuleNode(name string, context *SemanticContext) *ModuleNode {
-	return &ModuleNode{SemanticNodeBase: newSemanticNodeBase(SemanticModuleKind, name), Name: UniqueStringOf(name), Context: context}
+	return &ModuleNode{SemanticNodeBase: NewSemanticNodeBase(SemanticModuleKind, name), Name: UniqueStringOf(name), Context: context}
 }
 
 func (m *ModuleNode) GetName() *UniqueString { return m.Name }

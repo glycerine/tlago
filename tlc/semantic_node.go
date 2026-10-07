@@ -44,17 +44,19 @@ const (
 )
 
 type SemanticNodeBase struct {
-	KindValue     SemanticKind
-	uidPlusOne    int32
-	ToolObject    any
-	Image         string
-	LevelValue    int
-	LevelParamSet []*SymbolNode
-	Location      SourceLocation
-	TreeNode      any // The production SANY syntax node, owned by the parser package.
+	KindValue      SemanticKind
+	uidPlusOne     int32
+	uidInitialized uint32
+	ToolObject     any
+	Image          string
+	LevelValue     int
+	LevelParamSet  []*SymbolNode
+	Location       SourceLocation
+	TreeNode       any // The production SANY syntax node, owned by the parser package.
 }
 
 var nextSemanticNodeUID atomic.Int32
+var semanticNodeUIDInitialization sync.Mutex
 var semanticToolObjects = struct {
 	sync.RWMutex
 	values map[semanticToolObjectKey]any
@@ -65,8 +67,10 @@ type semanticToolObjectKey struct {
 	nodeID int32
 }
 
-func newSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
-	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), Image: image}
+// NewSemanticNodeBase allocates SemanticNode's process-wide Java int UID.
+// SANY context symbols and TLC evaluator nodes share this constructor.
+func NewSemanticNodeBase(kind SemanticKind, image string) SemanticNodeBase {
+	return SemanticNodeBase{KindValue: kind, uidPlusOne: nextSemanticNodeUID.Add(1), uidInitialized: 1, Image: image}
 }
 
 // SemanticNode.nullSN retains the builtin syntax/location used by Action.UNKNOWN.
@@ -79,7 +83,7 @@ func (nullSemanticSyntax) GetHumanReadableImage() string { return "***I do not e
 func (n *NullSemanticNode) LevelDataToString() string { return "-2147483648" }
 
 var NullSemanticNodeInstance = func() *NullSemanticNode {
-	base := newSemanticNodeBase(SemanticKind(-2147483648), "***I do not exist***")
+	base := NewSemanticNodeBase(SemanticKind(-2147483648), "***I do not exist***")
 	base.Location = NewSourceLocation("--TLA+ BUILTINS--", 0, 0, 0, 0)
 	base.TreeNode = nullSemanticSyntax{}
 	return &NullSemanticNode{base}
@@ -123,16 +127,18 @@ func (n *SemanticNodeBase) GetUID() int32 {
 	if n == nil {
 		return -1
 	}
-	uidPlusOne := atomic.LoadInt32(&n.uidPlusOne)
-	if uidPlusOne == 0 {
-		next := nextSemanticNodeUID.Add(1)
-		if atomic.CompareAndSwapInt32(&n.uidPlusOne, 0, next) {
-			uidPlusOne = next
-		} else {
-			uidPlusOne = atomic.LoadInt32(&n.uidPlusOne)
+	// Actual semantic constructors eagerly assign identity. Retain Go's existing
+	// zero-value base support independently of the UID bits: uidPlusOne == 0
+	// represents the valid Java UID -1 after signed wraparound.
+	if atomic.LoadUint32(&n.uidInitialized) == 0 {
+		semanticNodeUIDInitialization.Lock()
+		if atomic.LoadUint32(&n.uidInitialized) == 0 {
+			atomic.StoreInt32(&n.uidPlusOne, nextSemanticNodeUID.Add(1))
+			atomic.StoreUint32(&n.uidInitialized, 1)
 		}
+		semanticNodeUIDInitialization.Unlock()
 	}
-	return uidPlusOne - 1
+	return atomic.LoadInt32(&n.uidPlusOne) - 1
 }
 
 func (n *SemanticNodeBase) JavaHashCode() int32 {
@@ -334,7 +340,7 @@ type LabelNode struct {
 }
 
 func NewLabelNode(body SemanticNode) *LabelNode {
-	return &LabelNode{SemanticNodeBase: newSemanticNodeBase(SemanticLabelKind, "label"), Body: body}
+	return &LabelNode{SemanticNodeBase: NewSemanticNodeBase(SemanticLabelKind, "label"), Body: body}
 }
 
 type OpApplNode struct {
@@ -349,7 +355,7 @@ type OpApplNode struct {
 
 func NewOpApplNode(operator *SymbolNode, args ...SemanticNode) *OpApplNode {
 	out := &OpApplNode{
-		SemanticNodeBase: newSemanticNodeBase(SemanticOpApplKind, ""),
+		SemanticNodeBase: NewSemanticNodeBase(SemanticOpApplKind, ""),
 		Operator:         operator,
 		Args:             append([]SemanticNode(nil), args...),
 	}
@@ -392,7 +398,7 @@ type LetBinding struct {
 
 func NewLetInNode(body SemanticNode, lets ...*OpDefNode) *LetInNode {
 	return &LetInNode{
-		SemanticNodeBase: newSemanticNodeBase(SemanticLetInKind, "LET"),
+		SemanticNodeBase: NewSemanticNodeBase(SemanticLetInKind, "LET"),
 		Lets:             append([]*OpDefNode(nil), lets...),
 		Body:             body,
 	}
@@ -433,7 +439,7 @@ type SubstInNode struct {
 
 func NewSubstInNode(body SemanticNode, substs ...Subst) *SubstInNode {
 	return &SubstInNode{
-		SemanticNodeBase: newSemanticNodeBase(SemanticSubstInKind, "subst"),
+		SemanticNodeBase: NewSemanticNodeBase(SemanticSubstInKind, "subst"),
 		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
@@ -457,7 +463,7 @@ type APSubstInNode struct {
 
 func NewAPSubstInNode(body SemanticNode, substs ...Subst) *APSubstInNode {
 	return &APSubstInNode{
-		SemanticNodeBase: newSemanticNodeBase(SemanticAPSubstInKind, "ap-subst"),
+		SemanticNodeBase: NewSemanticNodeBase(SemanticAPSubstInKind, "ap-subst"),
 		Substs:           copySubstsWithIdentity(substs),
 		Body:             body,
 	}
@@ -469,7 +475,7 @@ type ValueNode struct {
 }
 
 func NewValueNode(value Value) *ValueNode {
-	base := newSemanticNodeBase(SemanticValueKind, semanticValueString(value))
+	base := NewSemanticNodeBase(SemanticValueKind, semanticValueString(value))
 	return &ValueNode{
 		SemanticNodeBase: base,
 		Value:            value,
@@ -486,7 +492,7 @@ func (n *NumeralNode) String() string { return n.Image }
 
 func NewNumeralNode(value int32) *NumeralNode {
 	intValue := NewIntValue(value)
-	base := newSemanticNodeBase(SemanticNumeralKind, strconv.FormatInt(int64(value), 10))
+	base := NewSemanticNodeBase(SemanticNumeralKind, strconv.FormatInt(int64(value), 10))
 	base.ToolObject = intValue
 	return &NumeralNode{
 		SemanticNodeBase: base,
@@ -534,7 +540,7 @@ type DecimalNode struct {
 func (n *DecimalNode) String() string { return n.Image }
 
 func NewDecimalNode(value Value, image string) *DecimalNode {
-	base := newSemanticNodeBase(SemanticDecimalKind, image)
+	base := NewSemanticNodeBase(SemanticDecimalKind, image)
 	base.ToolObject = value
 	return &DecimalNode{
 		SemanticNodeBase: base,
@@ -549,7 +555,7 @@ type StringNode struct {
 
 func NewStringNode(value string) *StringNode {
 	stringValue := NewStringValue(value)
-	base := newSemanticNodeBase(SemanticStringKind, strconv.Quote(value))
+	base := NewSemanticNodeBase(SemanticStringKind, strconv.Quote(value))
 	base.ToolObject = stringValue
 	return &StringNode{
 		SemanticNodeBase: base,
@@ -562,7 +568,7 @@ type AtNode struct {
 }
 
 func NewAtNode() *AtNode {
-	return &AtNode{SemanticNodeBase: newSemanticNodeBase(SemanticAtNodeKind, "@")}
+	return &AtNode{SemanticNodeBase: NewSemanticNodeBase(SemanticAtNodeKind, "@")}
 }
 
 type OpArgNode struct {
@@ -571,7 +577,7 @@ type OpArgNode struct {
 }
 
 func NewOpArgNode(op *SymbolNode) *OpArgNode {
-	return &OpArgNode{SemanticNodeBase: newSemanticNodeBase(SemanticOpArgKind, op.String()), Op: op}
+	return &OpArgNode{SemanticNodeBase: NewSemanticNodeBase(SemanticOpArgKind, op.String()), Op: op}
 }
 
 type PossibleTrackNode struct {
@@ -581,7 +587,7 @@ type PossibleTrackNode struct {
 }
 
 func NewPossibleTrackNode(pred SemanticNode, name string) *PossibleTrackNode {
-	base := newSemanticNodeBase(SemanticPossibleTrackKind, "_Possible!_Track("+name+")")
+	base := NewSemanticNodeBase(SemanticPossibleTrackKind, "_Possible!_Track("+name+")")
 	base.LevelValue = SemanticLevel(pred)
 	out := &PossibleTrackNode{
 		SemanticNodeBase: base,
@@ -598,7 +604,7 @@ type PossibleCheckNode struct {
 }
 
 func NewPossibleCheckNode(name string) *PossibleCheckNode {
-	base := newSemanticNodeBase(SemanticPossibleCheckKind, "_Possible!_CheckName("+name+")")
+	base := NewSemanticNodeBase(SemanticPossibleCheckKind, "_Possible!_CheckName("+name+")")
 	base.LevelValue = TLCLevelConstant
 	return &PossibleCheckNode{
 		SemanticNodeBase: base,
@@ -625,7 +631,7 @@ type AssumeNode struct {
 }
 
 func NewAssumeNode(expr SemanticNode, module *ModuleNode, definition *ThmOrAssumpDefNode) *AssumeNode {
-	return &AssumeNode{SemanticNodeBase: newSemanticNodeBase(SemanticAssumeKind, "ASSUME"), Assume: expr, Module: module, Def: definition}
+	return &AssumeNode{SemanticNodeBase: NewSemanticNodeBase(SemanticAssumeKind, "ASSUME"), Assume: expr, Module: module, Def: definition}
 }
 
 func (n *AssumeNode) GetAssume() SemanticNode     { return n.Assume }

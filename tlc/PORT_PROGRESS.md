@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-06 One shared semantic UID constructor and stable wrapped IDs:
+Previous completed commit: 55448fd. Inspection finds two UID allocators: the
+SANY-only counter introduced in 1470b93 and TLC's existing superclass counter.
+That was incorrect; source SemanticNode has one process-wide AtomicInteger for
+all subclasses, with nullSN consuming the first identity. Remove the duplicate
+SANY counter and embed TLC's SemanticNodeBase. Export the existing constructor
+as NewSemanticNodeBase and update every use, including module and operator
+factories. SANY kind, UID and hash operations delegate to that same base.
+
+TLC used uidPlusOne == 0 as an assignment sentinel. Java UID -1 legitimately
+has those bits after wraparound; getters then reallocated identity. Mark eager
+constructor assignment independently of UID bits. Retain existing native Go
+zero-value support with separate initialization state and a lock; normal source
+constructors remain eager. No original or native test is altered.
+
+Twenty-six exact source observations match: the retained 19 kind/hash/tool-slot
+observations; mixed FormalParam/Numeral/FormalParam construction has successive
+UID differences 1 and 1 across the Go package boundary; six getter/hash cases
+span MAX_VALUE/MIN_VALUE and -2/-1/0, with both reads of each UID identical.
+Receipts: /mnt/oldrog/tmp/tlago-semantic-node-shared-go.log,
+/mnt/oldrog/tmp/tlago-mixed-uid-{java,go}.log and
+/mnt/oldrog/tmp/tlago-uid-boundary-{java,go}.log. The original source node probe
+supplies the unchanged first 19 observations. Initial scratch Numeral construction
+missed its Errors argument and declared AbortException; correct those source
+constructor details before comparison. Those compile failures earn no pass credit.
+Temporary overlays remain outside the repository; no permanent tests invented.
+
+Existing focused root parser/context/bridge and original proof/selector/scoped
+identifier checks pass 4.806 seconds. Current TLC identity contexts, semantic
+long table, original coverage and function-context checks pass 0.014 seconds.
+The complete existing SANY package passes 1.782 seconds; every package compiles.
+Receipts: /mnt/oldrog/tmp/tlago-shared-semantic-uid-{root,tlc,sany,compile}.log.
+No inventory or full-workspace pass credit. FormalParamNode construction,
+concrete class equality, actual graph allocation order, indexed tool-object
+reconciliation and the six detailed label-generation differences remain pending.
+Preserve full MSB session 5144, confirmed live at turn start; last read at
+2,033,554,558 of 2,147,483,648 insertions. No restart or full pass claim.
+
 2026-10-06 NEW declarations and actual theorem scanner/rescan:
 Previous completed commit: 1470b93. Port NewSymb's source frame, expectations,
 mandatory choices, actual two-token previews and variable IdentDecl wrapper.

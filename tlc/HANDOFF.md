@@ -112,9 +112,10 @@ Latest focused verification:
 | Scope | Result | Receipt |
 | --- | --- | --- |
 | Earlier parser/semantic snapshot, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.055 seconds, session `32902` retired |
-| Current focused parser/context/bridge, original ParseErrorTests, six original proof/selector models and scoped identifier/reference checks | Pass | Root 4.335 seconds, session `11412` retired |
-| Complete existing SANY package; canonical corpus AST assertions remain pending | Pass | 1.500 seconds, session `54828` retired |
-| Existing focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
+| Current focused parser/context/bridge, original ParseErrorTests, six original proof/selector models and scoped identifier/reference checks | Pass | Root 4.806 seconds, session `42372` retired |
+| Complete existing SANY package; canonical corpus AST assertions remain pending | Pass | 1.782 seconds, session `81678` retired |
+| Current TLC identity contexts, semantic table, original coverage and function context | Pass | 0.014 seconds, session `28097` retired |
+| Earlier focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -193,7 +194,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,957,533,971 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 2,033,554,558 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -628,14 +629,16 @@ all 609,175 scanner verdicts. This covers the six connected entry points, not
 all 74 JavaCC previews. Remaining entry points, grammar expectations, general
 rescan integration and proof generation remain reconciliation work.
 
-Semantic symbols now embed the source SemanticNode constructor foundation:
-one process-wide atomic signed 32-bit UID counter, mutable kind, source hash
-arithmetic and tool-object slots. Module, ordinary-symbol and built-in factories
-allocate through it. Twenty bounded source comparisons match, including UID/hash
-overflow and tool-slot exceptions. Existing focused root tests pass in 5.147
-seconds, the SANY package passes in 1.728 seconds, and all packages compile.
-This does not establish semantic graph allocation order: expression formals,
-source runtime classes, equality and the remaining graph APIs still need a port.
+Semantic symbols now embed TLC's `SemanticNodeBase` and use its shared
+`NewSemanticNodeBase` constructor. This corrects the separate SANY counter added
+in `1470b93`: Java uses one UID counter across all semantic subclasses. UID,
+kind and hash access delegate to the common base. Assigned UIDs remain stable
+when the signed counter wraps, including UID -1; assignment state is separate
+from the stored UID bits. Existing Go zero-value base support remains separate
+from normal eager source construction. Twenty-six bounded source observations
+match shared allocation, hash/kind and tool-slot operations, repeated UID reads
+and signed boundaries. Formal-parameter graph construction, source runtime
+classes/equality and complete allocation order remain pending.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three
