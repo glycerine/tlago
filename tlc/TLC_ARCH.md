@@ -77,6 +77,27 @@ values, and do not invoke Java TLC reporting. Seventy-seven bounded complete par
 observations and 13 CHOOSE semantic observations match Java. General quantifier
 construction and whole semantic-graph parity remain separate reconciliation work.
 
+SomeQuant follows Java's Identifier (, Identifier)* colon lookahead, otherwise
+consuming mandatory QuantBound groups. QuantBound accepts one tuple or a list of
+identifiers before IN; it does not speculate across commas to repair malformed
+syntax. SomeTQuant accepts unbounded identifier lists and retains Java's original
+Bound Quantified Expression frame name. The bridge maps temporal universal and
+existential forms to OP_tf and OP_te, independently of OP_uf/OP_ue.
+
+Source processQuantBoundArgs generates all domains before adding any formal.
+Native quantifier wrappers sharing a source node therefore form one scope for
+expression generation, call arity and operator argument checks. Distinct nested
+source nodes retain distinct scopes. Domain diagnostics precede formal conflicts;
+previous-symbol conflict ranges come from the actual semantic symbol. Source tuple
+heir arithmetic also applies to quantified and subset bounds, including the one
+closing-token formal for an empty tuple. ContextEnumerator's tuple mismatch uses
+Assert.fail's TLC_ARGUMENT_MISMATCH runtime carrier and source message, rather than
+a generic native error. Ninety-five complete parser observations, 22 quantified
+semantic diagnostics and ten lower-level quantified metadata/runtime probes match
+Java. The runtime scope includes bound group/name/tuple metadata, five successful
+bounded evaluations, one invalid tuple error prefix, and four unbounded/temporal
+metadata checks. It does not establish temporal evaluation or whole-graph parity.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

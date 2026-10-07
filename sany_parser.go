@@ -1441,19 +1441,21 @@ func (p *SanyParser) QuantBoundUntil(stopKinds ...SanyTokenKind) *SanySyntaxNode
 	p.beginProduction("Quant Bound")
 	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.QuantBoundIntro())
-	for p.match(SanyTokenComma) {
-		if p.findBeforeStopIgnoring(SanyTokenIN, SanyTokenComma, stopKinds...) < 0 {
-			p.at--
-			break
+	switch p.peek().Kind {
+	case SanyTokenLab:
+		heirs = append(heirs, p.IdentifierTuple())
+	case SanyTokenIdentifier:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected bound identifier"))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected bound identifier"))
+			p.expecting = ", or \\in"
 		}
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.QuantBoundIntro())
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenIdentifier}}, "expected bound identifier or tuple")
 	}
-	in := p.consume(SanyTokenIN, "expected \\in in quantifier bound")
-	if in != nil {
-		in.Kind = SanySyntaxNodeKindByName["T_IN"]
-	}
+	in := p.consumeParseToken(SanyTokenIN, "expected \\in in quantifier bound")
+	in.Kind = SanySyntaxNodeKindByName["T_IN"]
 	heirs = append(heirs, in)
 	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 		for _, stop := range stopKinds {
@@ -2171,33 +2173,55 @@ func (p *SanyParser) IfThenElse(stop func(*SanyToken) bool) *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName["N_IfThenElse"], heirs...)
 }
 
+// Java jj_2_41(MAX_VALUE) accepts Identifier (',' Identifier)* ':'.
+func (p *SanyParser) startsUnboundQuantifier() bool {
+	if p.tokenAt(0).Kind != SanyTokenIdentifier {
+		p.rememberFailedLookahead(1)
+		return false
+	}
+	at := 1
+	for p.tokenAt(at).Kind == SanyTokenComma {
+		if p.tokenAt(at+1).Kind != SanyTokenIdentifier {
+			p.rememberFailedLookahead(at + 2)
+			return false
+		}
+		at += 2
+	}
+	if p.tokenAt(at).Kind != SanyTokenColon {
+		p.rememberFailedLookahead(at + 1)
+		return false
+	}
+	return true
+}
+
 func (p *SanyParser) SomeQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Quantified form")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenExists) || p.match(SanyTokenForall) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		heirs = append(heirs, p.consume(SanyTokenForall, "expected quantified expression"))
+		p.throwParseException([][]SanyTokenKind{{SanyTokenExists}, {SanyTokenForall}}, "expected quantified expression")
 	}
 	kind := SanySyntaxNodeKindByName["N_UnboundQuant"]
-	if p.findBeforeStop(SanyTokenIN, SanyTokenColon, SanyTokenEOF) >= 0 {
+	if p.startsUnboundQuantifier() {
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected quantified identifier"))
+		for p.match(SanyTokenComma) {
+			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected quantified identifier"))
+		}
+	} else {
 		kind = SanySyntaxNodeKindByName["N_BoundQuant"]
+		if !p.startsQuantBoundIntro() {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenLab}, {SanyTokenIdentifier}}, "expected quantified bound")
+		}
 		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
 		for p.match(SanyTokenComma) {
-			if p.findBeforeStop(SanyTokenIN, SanyTokenColon, SanyTokenEOF) < 0 {
-				p.at--
-				break
-			}
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenColon, SanyTokenEOF))
 		}
-	} else {
-		heirs = append(heirs, p.Identifier())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.Identifier())
-		}
 	}
-	heirs = append(heirs, p.consume(SanyTokenColon, "expected : in quantified expression"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in quantified expression"))
 	heirs = append(heirs, p.ExpressionUntil(p.stopAfterOpenExpressionBody(stop)))
 	return NewSanyNode(kind, heirs...)
 }
@@ -2216,18 +2240,20 @@ func (p *SanyParser) stopAfterOpenExpressionBody(stop func(*SanyToken) bool) fun
 }
 
 func (p *SanyParser) SomeTQuant(stop func(*SanyToken) bool) *SanySyntaxNode {
+	p.beginProduction("Bound Quantified Expression")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenTExists) || p.match(SanyTokenTForall) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 	} else {
-		heirs = append(heirs, p.consume(SanyTokenTForall, "expected temporal quantified expression"))
+		p.throwParseException([][]SanyTokenKind{{SanyTokenTExists}, {SanyTokenTForall}}, "expected temporal quantified expression")
 	}
-	heirs = append(heirs, p.Identifier())
+	heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-		heirs = append(heirs, p.Identifier())
+		heirs = append(heirs, p.consumeParseToken(SanyTokenIdentifier, "expected temporal quantified identifier"))
 	}
-	heirs = append(heirs, p.consume(SanyTokenColon, "expected : in temporal quantified expression"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenColon, "expected : in temporal quantified expression"))
 	heirs = append(heirs, p.ExpressionUntil(stop))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_UnboundQuant"], heirs...)
 }

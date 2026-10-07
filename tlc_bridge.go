@@ -1927,8 +1927,15 @@ func (b *tlcBridge) quantifierNode(e *QuantifierExpr) tlc.SemanticNode {
 		} else {
 			op = tlc.OpBF
 		}
-	} else if e.Kind == "\\E" {
-		op = tlc.OpUE
+	} else {
+		switch e.Kind {
+		case "\\E":
+			op = tlc.OpUE
+		case "\\AA":
+			op = tlc.OpTF
+		case "\\EE":
+			op = tlc.OpTE
+		}
 	}
 	// The central AST represents a source variable list as nested wrappers.
 	// SANY generates one OpApplNode for the entire quantifier, not one per name.

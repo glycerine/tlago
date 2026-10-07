@@ -3299,6 +3299,22 @@ func definitionBodyArities(base map[string]int, def Definition) map[string]int {
 	return out
 }
 
+// The source represents a quantified variable list in one node. Native wrappers
+// sharing that source node must generate their domains in the enclosing scope.
+func sanyQuantifierGroup(root *QuantifierExpr) ([]*QuantifierExpr, Expr) {
+	parameters := []*QuantifierExpr{root}
+	body := root.Body
+	for root.Syntax != nil {
+		next, ok := body.(*QuantifierExpr)
+		if !ok || next.Syntax != root.Syntax || next.Kind != root.Kind {
+			break
+		}
+		parameters = append(parameters, next)
+		body = next.Body
+	}
+	return parameters, body
+}
+
 func quantifierBodyArities(base map[string]int, expr *QuantifierExpr) map[string]int {
 	if expr == nil || !expr.HasOperatorArity {
 		return base
@@ -3543,6 +3559,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	case *LetExpr:
 		diags = append(diags, generation.checkLet(e, defined, locals)...)
 	case *QuantifierExpr:
+		if e.Syntax != nil && e.Syntax.Kind.JavaName() == "N_BoundQuant" {
+			diags = append(diags, generation.checkBoundQuantifier(e, defined, locals)...)
+			break
+		}
 		diags = append(diags, generation.checkExpr(e.Set, defined, locals)...)
 		position := e.VarPos
 		if position.Line == 0 {
@@ -3923,10 +3943,19 @@ func checkCallArity(expr Expr, arities map[string]int, operatorParams map[string
 		}
 		diags = append(diags, checkCallArity(e.Body, letArities, letOperatorParams, locals)...)
 	case *QuantifierExpr:
-		diags = append(diags, recur(e.Set, arities, locals)...)
+		parameters, body := sanyQuantifierGroup(e)
 		quantLocals := copyBoolMap(locals)
-		quantLocals[e.Var] = true
-		diags = append(diags, recur(e.Body, quantifierBodyArities(arities, e), quantLocals)...)
+		bodyArities := arities
+		seenDomains := map[Expr]bool{}
+		for _, parameter := range parameters {
+			if parameter.Set != nil && !seenDomains[parameter.Set] {
+				diags = append(diags, recur(parameter.Set, arities, locals)...)
+				seenDomains[parameter.Set] = true
+			}
+			quantLocals[parameter.Var] = true
+			bodyArities = quantifierBodyArities(bodyArities, parameter)
+		}
+		diags = append(diags, recur(body, bodyArities, quantLocals)...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
 			diags = append(diags, recur(arm.Test, arities, locals)...)
@@ -4144,10 +4173,19 @@ func checkOperatorArgumentKinds(expr Expr, operatorParams map[string][]operatorP
 		}
 		diags = append(diags, checkOperatorArgumentKinds(e.Body, letOperatorParams, letArities, locals)...)
 	case *QuantifierExpr:
-		diags = append(diags, checkOperatorArgumentKinds(e.Set, operatorParams, arities, locals)...)
+		parameters, body := sanyQuantifierGroup(e)
 		quantLocals := copyBoolMap(locals)
-		quantLocals[e.Var] = true
-		diags = append(diags, checkOperatorArgumentKinds(e.Body, operatorParams, quantifierBodyArities(arities, e), quantLocals)...)
+		bodyArities := arities
+		seenDomains := map[Expr]bool{}
+		for _, parameter := range parameters {
+			if parameter.Set != nil && !seenDomains[parameter.Set] {
+				diags = append(diags, checkOperatorArgumentKinds(parameter.Set, operatorParams, arities, locals)...)
+				seenDomains[parameter.Set] = true
+			}
+			quantLocals[parameter.Var] = true
+			bodyArities = quantifierBodyArities(bodyArities, parameter)
+		}
+		diags = append(diags, checkOperatorArgumentKinds(body, operatorParams, bodyArities, quantLocals)...)
 	case *CaseExpr:
 		for _, arm := range e.Arms {
 			diags = append(diags, checkOperatorArgumentKinds(arm.Test, operatorParams, arities, locals)...)

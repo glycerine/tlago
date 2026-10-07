@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-06 Quantified parser, domain scope and TLC node parity:
+Previous turn completed c12e205. Port SomeQuant's actual unbounded identifier-list/
+colon lookahead, SomeTQuant's original Bound Quantified Expression frame and
+QuantBound's mandatory tuple-or-identifier-list grammar. Remove the speculative
+IN scan and comma repairs. Preserve failed lookahead boundaries, mandatory-token
+exceptions and source expectations. All 95 bounded complete parser TRACE/results
+match Java (3484 terminal 0), log
+/mnt/oldrog/tmp/tlago-sany-quant-parser-audit.log.
+
+Semantic comparison exposes a real shortcut: flattened native quantifiers added
+earlier formals before generating later domains. Generate all unique domains of
+one source node in the enclosing scope, then introduce all formals and generate
+its body. Keep explicitly nested source quantifiers separate. Apply the same
+scope ordering to call arity and operator argument validation. Source arity
+messages must precede formal conflicts, and the previous symbol's complete source
+range must replace the native definition-signature range. All 22 final full
+semantic diagnostic comparisons match (4300 terminal 0), summary
+/mnt/oldrog/tmp/tlago-quant-semantic-final-audit.log. The initial 79075 comparison
+failed on global F arity masking and conflict range; fix production, not the probe.
+
+Source processQuantBoundArgs uses the same tuple-heir count arithmetic as CHOOSE;
+preserve the closing-token formal for <<>>. Direct lower-level probes additionally
+expose missing OP_tf/OP_te mappings for temporal quantifiers and a generic native
+ContextEnumerator tuple mismatch error. Port the actual temporal opcodes and
+Assert.fail's TLC_ARGUMENT_MISMATCH runtime carrier/message. The source first-formal
+index failure is retained for a manually constructed zero-formal tuple binding.
+All ten final metadata/runtime comparisons match (15846 terminal 0), log
+/mnt/oldrog/tmp/tlago-quant-runtime-final-audit.log. Five successful bounded values,
+one invalid tuple error prefix and four temporal/unbounded metadata observations;
+normalize only Java/Go boolean-array display separators. No temporal evaluation
+claim and no Java TLC reporting entry point. Initial runtime comparison 52343
+failed on the coded error/message; corrected production before repeating unchanged
+probes. No ContextEnumerator-specific original Java test class exists; the existing
+EmptyExistentialQuantifier model is already translated and retained unchanged.
+
+Final normal gates: complete existing sany_tests 1.638 seconds (8989 terminal 0),
+existing parser/semantic/token/operator classes, original ParseErrorTests and five
+original TLC models 16.463 seconds (57220 terminal 0), existing focused TLC context/
+tool/tuple tests 0.027 seconds (17606 terminal 0). All-package compilation passes
+without running tests. Logs /mnt/oldrog/tmp/tlago-sany-quant-final-{sany,root,tlc,compile}.log.
+The first final SANY command used the nonexistent ./sany path and failed at setup;
+correct to ./sany_tests before taking pass credit. No persistent invented tests,
+changed fixtures/assertions or inventory credit for manual comparisons. Complete
+workspace green and general semantic/parser parity remain unproven. MSB session
+5144 remains live with its original isolated binary and full bounds; last progress
+1,234,721,087/2,147,483,648. Preserve the handle; no restart or race instrumentation.
+
 2026-10-06 CHOOSE/domain binding/identifier tuple source behavior:
 Previous turn completed a58f0cf. Port UnboundOrBoundChoose, MaybeBound and
 IdentifierTuple's actual frames, expectations and mandatory-token failures.

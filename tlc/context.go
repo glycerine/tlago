@@ -306,11 +306,11 @@ func (e *ContextEnumerator) NextElement() *Context {
 		case []*SymbolNode:
 			tuple, ok := e.currentElems[i].(*TupleValue)
 			if !ok || len(vars) != len(tuple.Elems) {
-				arg := "<empty>"
-				if len(vars) > 0 {
-					arg = vars[0].String()
+				// ContextEnumerator calls Assert.fail with the first tuple formal.
+				if len(vars) == 0 {
+					panic(NewArrayIndexOutOfBoundsException(0, 0))
 				}
-				e.err = newTLCError(ECGeneral, "TLC argument mismatch for %s", arg)
+				e.err = NewTLCRuntimeException(ECTLCArgumentMismatch, vars[0].String())
 				e.done = true
 				return nil
 			}

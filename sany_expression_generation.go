@@ -410,3 +410,32 @@ func (g *sanyExpressionGeneration) generateApplicationOperands(call *CallExpr, i
 	call.operatorArgumentsGenerated = true
 	return diags
 }
+
+// Source processQuantBoundArgs generates every domain before introducing any
+// quantified formal. Flattened native quantifiers from one source node retain
+// its identity so an explicitly nested quantifier remains a separate scope.
+func (g *sanyExpressionGeneration) checkBoundQuantifier(root *QuantifierExpr, context map[string]Position, locals map[string]bool) Diagnostics {
+	parameters, body := sanyQuantifierGroup(root)
+	var diags Diagnostics
+	seenDomains := map[Expr]bool{}
+	for _, parameter := range parameters {
+		if parameter.Set != nil && !seenDomains[parameter.Set] {
+			diags = append(diags, g.proofExpression(parameter.Set, context, locals)...)
+			seenDomains[parameter.Set] = true
+		}
+	}
+	bodyLocals := copyBoolMap(locals)
+	positions := copySanyExpressionContext(context)
+	for _, parameter := range parameters {
+		if symbol, exists := g.lookupSymbol(parameter.Var, context); exists {
+			positions[parameter.Var] = symbol.pos
+		}
+		position := parameter.VarPos
+		if position.Line == 0 {
+			position = parameter.Pos
+		}
+		diags = append(diags, checkBoundName(parameter.Var, position, positions, bodyLocals)...)
+		bodyLocals[parameter.Var] = true
+	}
+	return append(diags, g.checkExpr(body, context, bodyLocals)...)
+}

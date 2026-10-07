@@ -2062,9 +2062,12 @@ func sanyBoundIntroVars(node *SanySyntaxNode) []BoundVar {
 	case "IDENTIFIER":
 		return []BoundVar{{Name: node.Image, Pos: sanyNodePosition(node)}}
 	case "N_IdentifierTuple":
-		var vars []BoundVar
-		for _, id := range directSanyIdentifiers(node) {
-			vars = append(vars, BoundVar{Name: id.Image, Pos: sanyNodePosition(id), TupleBound: true})
+		// Source processQuantBoundArgs includes delimiter heirs in its count.
+		heirs := node.GetHeirs()
+		vars := make([]BoundVar, len(heirs)/2)
+		for i := range vars {
+			identifier := heirs[2*i+1]
+			vars[i] = BoundVar{Name: identifier.Image, Pos: sanyNodePosition(identifier), TupleBound: true}
 		}
 		return vars
 	default:

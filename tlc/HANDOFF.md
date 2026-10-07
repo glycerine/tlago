@@ -111,8 +111,9 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger and three original fairness/liveness models | Pass | Root 16.383 seconds, session `90667` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.809 seconds, session `48705` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 16.463 seconds, session `57220` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.638 seconds, session `8989` retired |
+| Existing focused TLC context/tool and tuple tests | Pass | 0.027 seconds, session `17606` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
 | Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
@@ -191,7 +192,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,170,061,613 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,234,721,087 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -527,10 +528,21 @@ Do not replace it with a scalar binding or a zero-formal tuple. Direct lower-lev
 Java/Go TLC probes match tuple flags, names, selected values and an invalid-domain
 error prefix; they do not invoke Java TLC reporting.
 
-Current bounded observations match Java: 77 complete parser TRACE/results, 41
+Quantified forms use Java's identifier-list/colon lookahead, mandatory bounded
+lists and actual production frames. Temporal quantifiers retain the source frame
+name `Bound Quantified Expression` and map to `$TemporalForall`/`$TemporalExists`.
+Generate every domain of one bounded source quantifier before introducing any
+formal; explicitly nested quantifiers remain separate scopes. Arity and operator
+argument checks retain that ordering, and conflict diagnostics use the previous
+symbol's actual source range. Empty tuple bounds preserve Java's one `>>` formal.
+ContextEnumerator reports the source coded `TLC_ARGUMENT_MISMATCH` runtime failure
+for a tuple type or length mismatch.
+
+Current bounded observations match Java: 95 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
-31 selected declaration/LHS trees, 54 substitution target/arrow trees and three
-CHOOSE runtime probes. Keep each scope distinct. Whole-module trees, general
+31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
+semantic observations, three CHOOSE runtime probes and ten quantified metadata/
+runtime probes. Keep each scope distinct. Whole-module trees, general
 source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
 Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame
