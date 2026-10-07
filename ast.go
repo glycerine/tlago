@@ -489,12 +489,18 @@ type BoundVar struct {
 
 type FunctionExpr struct {
 	SanyExprSource
-	formalNodes []*sanyFormalParamNode
-	Bounds      []BoundVar
-	Body        Expr
-	IsLambda    bool
-	Pos         Position
-	PreComments []string
+	definitionFormalContext map[string]localSymbol
+	// Preparation retains the temporary self formal; Java removes it from
+	// a nonrecursive function's final OpApplNode array.
+	functionSymbol          *sanyFormalParamNode
+	constructorSymbol       localSymbol
+	constructorSymbolExists bool
+	formalNodes             []*sanyFormalParamNode
+	Bounds                  []BoundVar
+	Body                    Expr
+	IsLambda                bool
+	Pos                     Position
+	PreComments             []string
 }
 
 func (e *FunctionExpr) Position() Position { return e.Pos }

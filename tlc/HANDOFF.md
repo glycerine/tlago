@@ -705,7 +705,7 @@ FormalParamNodes before binding-conflict checks. Definition bodies retain the
 ordered parameter nodes; identifier occurrences retain the resolved formal.
 Nodes share the SemanticNode UID allocator and own indexed tool slots, syntax,
 source location and native module ownership. Sixteen source observations match.
-This foundation does not cover named-function definition formals, proof binders,
+This foundation does not cover proof binders,
 LevelNode data, visitors, evaluator graph sharing or full source allocation order.
 
 Bounded, unbounded and temporal quantifiers now retain newly constructed formal
@@ -732,9 +732,17 @@ diagnostic cases match Java, including domain-before-conflict error order.
 Existing focused checks pass. Full bound grouping, level data, source allocation
 order and evaluator sharing are still pending.
 
-Next semantic work: port named-function definition and remaining proof formal
-constructors, then integrate actual identity into Generator's label-parameter
-checks. The earlier nine-case comparison now has four
+Named-function preparation now retains bound formals and the temporary self
+formal, resolving the function name after introducing its bounds. Accepted bodies
+reuse that context; rejected names follow the source body-scope rules. Recursive
+declarations retain their existing binding rather than binding the temporary self
+formal. Twenty-five node observations and fifteen complete diagnostics match,
+including function-name/bound conflicts and builtin-name resolution. The temporary
+creation record does not model the final nonrecursive OpApplNode's pruned array.
+Full graph construction, allocation order and evaluator sharing remain pending.
+
+Next semantic work: port remaining proof formal constructors, then integrate
+actual identity into Generator's label-parameter checks. The earlier nine-case comparison now has four
 matches and five differences: `arg_constant`, `label_select`, `params`,
 `qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;
 non-formal arguments need the source leaf-location diagnostic and distinct dummy

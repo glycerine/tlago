@@ -197,11 +197,31 @@ func checkDefinitionFunctionDomains(definition Definition, context map[string]Po
 	for _, domain := range sanyFunctionDomainExpressions(function) {
 		diags = append(diags, checkExpr(domain, context, locals, generators...)...)
 	}
+	g := sanyExpressionGenerator(generators)
+	defer g.pushFormalContext(len(function.Bounds) + 1)()
 	boundLocals := copyBoolMap(locals)
+	function.formalNodes = nil
 	for _, bound := range function.Bounds {
-		diags = append(diags, checkBoundName(bound.Name, bound.Pos, context, boundLocals)...)
+		node := g.newFormalParameter(bound.Name, 0, bound.Pos, definition.Syntax)
+		function.formalNodes = append(function.formalNodes, node)
+		diags = append(diags, g.bindFormalParameter(node, context, boundLocals)...)
 		boundLocals[bound.Name] = true
 	}
+	function.constructorSymbol, function.constructorSymbolExists = g.lookupSymbol(definition.Name, context)
+	if !function.constructorSymbolExists {
+		if builtin, exists := sanyInitialBuiltinOperatorInfo(definition.Name); exists {
+			function.constructorSymbol = localSymbol{kind: OperatorDecl, arity: builtin.arity, pos: Position{File: "--TLA+ BUILTINS--"}}
+			function.constructorSymbolExists = true
+		}
+	}
+	function.functionSymbol = g.newFormalParameter(definition.Name, 0, definition.SourcePosition(), definition.Syntax)
+	if !function.constructorSymbolExists {
+		node := function.functionSymbol
+		g.formals[definition.Name] = localSymbol{formalNode: node, kind: "FORMAL", arity: 0, pos: node.semPosition()}
+	}
+	// processFunction pops this context before constructing/resolving the
+	// OpDefNode, then pushes the same context for an accepted body's generation.
+	function.definitionFormalContext = g.formals
 	return diags
 }
 
@@ -211,12 +231,18 @@ func checkDefinitionFunctionBody(definition Definition, context map[string]Posit
 		return nil
 	}
 	var diags Diagnostics
+	g := sanyExpressionGenerator(generators)
+	previous := g.formals
+	if function.definitionFormalContext != nil {
+		g.formals = function.definitionFormalContext
+	}
+	defer func() { g.formals = previous }()
 	bodyLocals := copyBoolMap(locals)
 	for _, bound := range function.Bounds {
 		bodyLocals[bound.Name] = true
 	}
 	bodyLocals[definition.Name] = true
-	diags = append(diags, checkExpr(function.Body, context, bodyLocals, generators...)...)
+	diags = append(diags, g.checkExpr(function.Body, context, bodyLocals)...)
 	return diags
 }
 

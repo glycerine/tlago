@@ -170,6 +170,9 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition Definition
 		diags = append(diags, checkDefinitionFunctionDomains(definition, positions, bodyLocals, g)...)
 	}
 	previousSymbol, symbolExists := g.lookupSymbol(definition.Name, positions)
+	if function, ok := definition.Expr.(*FunctionExpr); ok && definition.FunctionDef {
+		previousSymbol, symbolExists = function.constructorSymbol, function.constructorSymbolExists
+	}
 	binding := g.bindings[definition.Name]
 	recursive := binding != nil && !binding.defined
 	wrongLevel := recursive && binding.level != g.level
@@ -197,7 +200,7 @@ func (g *sanyExpressionGeneration) generateLocalDefinition(definition Definition
 		if !definition.FunctionDef {
 			binding.arity = len(definition.Params)
 		}
-	} else if _, exists := positions[definition.Name]; exists || letLocals[definition.Name] {
+	} else if _, exists := positions[definition.Name]; symbolExists || exists || letLocals[definition.Name] {
 		message := fmt.Sprintf("Operator %s already defined or declared.", definition.Name)
 		if definition.FunctionDef {
 			message = fmt.Sprintf("Function name `%s' already defined or declared.", definition.Name)

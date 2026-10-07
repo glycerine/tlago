@@ -1,5 +1,31 @@
 # TLC Architecture Notes for the Go Port
 
+## Named-function formal preparation and body context
+
+processFunction generates domains and constructs bound formals under a fresh
+context before resolving the function name. It always allocates a temporary
+zero-arity self formal using the complete function-definition syntax, binding it
+only if the name was previously unresolved. It then pops the context while
+constructing/resolving the OpDefNode, and pushes the same context for an accepted
+body. Go now retains and restores that preparation context, including parent
+formals for LET definitions. RECURSIVE declarations retain their original operator
+binding; body references do not resolve to the unbound temporary self formal.
+
+Resolving the name after constructing bounds detects a function name equal to
+its bound parameter. A rejected non-operator name generates its body outside that
+prepared context. Initial-context builtin names resolve as existing operators,
+producing source's function-name diagnostic rather than addSymbol's builtin
+redefinition message. Builtin resolution here is a metadata adapter; complete
+builtin SymbolNode identity and tool-slot wiring are still pending.
+
+Twenty-five valid-node observations and fifteen complete diagnostics match Java.
+The initial source probe incorrectly assumed every final function application
+retains its self array; makeNonRecursive removes that array. The corrected probe
+compares retained self nodes on recursive functions only. Go's private preparation
+record retains construction information and is not a complete final OpApplNode
+representation. Final nonrecursive array shape, LevelNode data, evaluator sharing
+and absolute source allocation order remain separate graph-port requirements.
+
 ## Function and set expression formal construction
 
 processFcnConst, processSetOfAll and processSubsetOf generate all domains in the
@@ -15,8 +41,8 @@ Filtered sets have a predicate operand in the source graph. Their native derived
 Element is not separately generated. Thirty-three node observations cover function
 constructors, tuple bounds, set-of-all, filtered scalar/tuple sets and LAMBDA;
 eighteen complete diagnostics cover scope, conflicts and error order. This does
-not port named-function definitions' recursion-symbol path, full OpApplNode bound
-groups, LevelNode data, evaluator sharing or absolute allocation order.
+not establish full OpApplNode bound groups, LevelNode data, evaluator sharing or
+absolute allocation order. Named-function preparation is covered separately above.
 
 ## CHOOSE formal construction
 
@@ -35,8 +61,7 @@ and thirteen complete diagnostics match Java; the earlier nineteen quantifier
 observations also pass after binding helper reuse.
 
 This does not establish full OpApplNode shape, LevelNode data, evaluator sharing,
-label parameter arrays or absolute allocation order. Remaining named-function definition and
-proof formal constructors must use actual node identities too.
+label parameter arrays or absolute allocation order. Remaining proof formal constructors must use actual node identities too.
 
 ## Quantified formal construction and scope
 
@@ -74,7 +99,7 @@ It uses the shared SemanticNode UID allocator and per-node indexed slots.
 Its equality checks concrete class, kind and UID, matching SemanticNode.equals.
 Sixteen source observations establish these constructor/reference properties and
 relative UID/hash behavior. Absolute source allocation order is not established.
-Named-function definition and proof-binder construction, LevelNode data, visitors,
+Proof-binder construction, LevelNode data, visitors,
 actual label formal arrays and evaluator sharing still require porting. The native
 Module ownership link is not a claim of a complete Java ModuleNode graph.
 

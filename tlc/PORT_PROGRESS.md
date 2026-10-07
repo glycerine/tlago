@@ -1,5 +1,55 @@
 # TLC Port Progress
 
+2026-10-06 Named-function formal preparation and restored body context:
+Previous completed commit: 05353c8. Source processFunction generates all domains,
+constructs bound formals, resolves the function name, always allocates a temporary
+self formal, and binds that self formal only for an unresolved name. It pops the
+prepared context while constructing/resolving the OpDefNode, then restores that
+same context for an accepted body's generation. Native named-function paths now
+retain bound nodes, resolved constructor metadata, the temporary creation record
+and the prepared formal context. LET definitions preserve enclosing formals;
+RECURSIVE declarations retain their operator binding rather than binding the new
+temporary self node. Function-name resolution sees bound-name conflicts too.
+
+Source function-name reuse of an initial-context builtin is an existing-operator
+case: BOOLEAN[x in {}] reports E4201 over the full definition, not addSymbol's
+E4202 over BOOLEAN. Initial diagnostic audit 79385 exited 1 with that single
+mismatch out of fifteen cases. Fix production constructor resolution to use source
+initial-context builtin metadata when native lookup is otherwise unresolved.
+This is an adapter, not complete builtin SymbolNode identity/tool-slot wiring.
+Final audit 29153 terminal 0: all fifteen cases match complete message counts,
+codes, ranges, text and order. Includes duplicate bounds, simultaneous-domain
+scope, domain-error order, constant/formal/name conflicts, rejected variable name,
+recursive declarations/arity mismatch, repeated definitions, LET scopes and builtin
+name resolution. Original assertions were not weakened.
+
+Twenty-five observations match actual FastTool nodes: named/multi-name/local
+function bound metadata, body references, retained recursive self nodes and exact
+ranges, consecutive bound-to-self construction for recursive functions, distinct
+RECURSIVE binding vs temporary self, LET self references and nested domain/body
+references. Initial source probe exited 1: its assumption that every final OAN
+retains a self array was false. Source makeNonRecursive removes it. Correct the
+scratch probe to inspect recursive retained arrays only, comparing nonrecursive
+functions' actual bound metadata. Initial Go probe 14459 terminal 0 earns no
+comparison credit; corrected Go 38361 terminal 0 and source observations match.
+Go's preparation record retains constructor information; it is not a complete
+final OpApplNode representation. No whole-node/array-pruning or absolute UID-order
+credit. Receipts: /mnt/oldrog/tmp/tlago-named-function-formal-{java,go,diag-final}.log.
+Helpers/overlay/vectors remain outside the repository; no permanent tests invented.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 5.538 seconds (28675). Whole SANY package passes
+1.761 seconds (53732); all packages compile (16179), after initial compilation
+10496 before the builtin-resolution correction. Four unchanged whole original
+models pass 2.493 seconds (10934): UndeclaredRecursion, ConstantContextTLCCache,
+ConstantRank1TLCEval and ACoverage. All verification handles terminal 0 and retired.
+Receipts: /mnt/oldrog/tmp/tlago-named-function-formal-{root,sany,compile-final,models}.log.
+Normal execution, original bounds/settings/fixtures unchanged; no race or forbidden
+corpus sweeps. No inventory or full-workspace completion credit. Remaining proof
+binders, final graph shapes, LevelNode data, evaluator sharing, LS label arrays and
+absolute allocation order remain pending. New RPC service remains postponed;
+the full faithful-port goal remains active and incomplete.
+
 2026-10-06 Function/set expression formal identity and domain order:
 Previous completed commit: 58354b9. Source processFcnConst, processSetOfAll and
 processSubsetOf generate domains before constructing formals and then generate

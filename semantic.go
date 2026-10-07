@@ -615,7 +615,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diags = append(diags, diagnostic)
 			}
 		} else if !definitionSatisfiesSymbolicConstantDeclaration(def, declKinds, arities) {
-			if previous, exists := expressionGeneration.lookupSymbol(def.Name, defined); exists {
+			previous, exists := expressionGeneration.lookupSymbol(def.Name, defined)
+			if function, ok := def.Expr.(*FunctionExpr); ok && def.FunctionDef {
+				previous, exists = function.constructorSymbol, function.constructorSymbolExists
+			}
+			if exists {
 				position := def.SourcePosition()
 				diagnostic := errorAt(def.Pos, "E4201", "duplicate declaration or definition %s; first declared at %s", def.Name, previous.pos)
 				diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
