@@ -1139,7 +1139,11 @@ from the source module. A live context scan no longer changes previously frozen
 parameter-freedom decisions. All 8,318 observed rows across 47 whole modules and
 17 comparison pairs per module match Java, including source chains, mixed classes
 and nulls. This evidence adds no original-method or full-workspace completion
-credit. Bounded generation
+credit. Definition-path accessors now preserve actual compound-array ownership,
+local-name lookup and counted path joins. `UniqueStringJoinN` follows Java
+assertions, null behavior, literal `!` and intermediate interning order. All
+16,872 manual comparison rows across the retained 47 modules match Java. These
+observations add no permanent tests or original-method credit. Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 

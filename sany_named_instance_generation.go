@@ -109,10 +109,43 @@ func (g *sanyExpressionGeneration) generateNamedInstance(instance *Instance, let
 	return diagnostics
 }
 func (node *sanySemOpDefNode) getCompoundId() []*tlc.UniqueString {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
 	if node.compoundID != nil {
 		return node.compoundID
 	}
 	return []*tlc.UniqueString{tlc.UniqueStringOf(node.semName())}
+}
+
+func (node *sanySemOpDefNode) getLocalName() *tlc.UniqueString {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	if node.compoundID != nil {
+		if len(node.compoundID) == 0 {
+			panic(tlc.NewArrayIndexOutOfBoundsException(-1, 0))
+		}
+		return node.compoundID[len(node.compoundID)-1]
+	}
+	return tlc.UniqueStringOf(node.semName())
+}
+
+func (node *sanySemOpDefNode) hasPath() bool {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return node.compoundID != nil && len(node.compoundID) > 1
+}
+
+func (node *sanySemOpDefNode) getPathName() *tlc.UniqueString {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	if node.compoundID != nil {
+		return tlc.UniqueStringJoinN("!", len(node.compoundID)-1, node.compoundID)
+	}
+	return tlc.UniqueStringOf("")
 }
 
 // A selector consisting entirely of module-instance prefixes and a final name

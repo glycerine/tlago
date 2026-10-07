@@ -1,5 +1,28 @@
 # TLC Architecture Notes for the Go Port
 
+## Definition paths and counted UniqueString joins
+
+`OpDefNode.getLocalName`, `hasPath` and `getPathName` now read the actual
+compound identifier array. `getCompoundId` returns that same array when supplied,
+or a fresh one-element array containing the full name otherwise. A full name
+containing `!` does not itself establish a path. Preserve null receivers, null
+array elements and empty-array failures rather than reconstructing name segments.
+
+`UniqueStringJoinN` ports the counted Java overload. With source assertions
+enabled, a nonpositive count or count beyond the array fails. The source ignores
+its delimiter argument and uses literal `!`. Leading nulls leave the accumulator
+null; a null following text fails after interning the separator-bearing prefix.
+Successful joins also intern each intermediate prefix, preserving token allocation
+order. The variadic wrapper preserves nullable-array failure; an explicitly
+non-null empty slice reaches the counted overload assertion. Singleton compound
+arrays therefore fail `getPathName` under source assertions. Do not replace these
+source behaviors with string splitting or a conventional joining helper.
+
+Manual Java/Go observation matches all 16,872 rows across the retained 47 whole
+modules, ten compound-array shapes, three delimiters, counted-prefix bounds,
+array mutation/identity, null receivers and intermediate token allocation. This
+adds no permanent tests or original-method completion credit.
+
 ## Original-definition comparison and cached parameter freedom
 
 `SymbolNode.sameOriginallyDefinedInModule` now follows the source concrete-class

@@ -55,13 +55,38 @@ func UniqueStringVariableCount() int {
 }
 
 func UniqueStringJoin(delim string, values ...*UniqueString) *UniqueString {
-	parts := make([]string, 0, len(values))
-	for _, value := range values {
-		if value != nil {
-			parts = append(parts, value.String())
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	return UniqueStringJoinN(delim, len(values), values)
+}
+
+// The counted source overload joins a prefix and deliberately uses "!" rather
+// than delim. A leading null becomes the next item; a null after text throws
+// after interning the separator-bearing prefix, as the two concat calls do.
+func UniqueStringJoinN(delim string, count int, values []*UniqueString) *UniqueString {
+	if count <= 0 {
+		panic(NewAssertionError())
+	}
+	if values == nil {
+		panic(NewNullPointerException())
+	}
+	if count > len(values) {
+		panic(NewAssertionError())
+	}
+	var result *UniqueString
+	for i := 0; i < count; i++ {
+		if result == nil {
+			result = values[i]
+		} else {
+			result = UniqueStringOf(result.s + "!")
+			if values[i] == nil {
+				panic(NewNullPointerException())
+			}
+			result = UniqueStringOf(result.s + values[i].s)
 		}
 	}
-	return UniqueStringOf(strings.Join(parts, "!"))
+	return result
 }
 
 func (u *UniqueString) String() string {

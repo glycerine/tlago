@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-07 Definition paths and counted UniqueString joins:
+Previous completed commit: 0947818. Port OpDefNode.getLocalName, hasPath and
+getPathName against the actual compound array; preserve getCompoundId aliasing
+and fresh fallback arrays. Port the counted UniqueString.join overload with
+source assertions, nullable-array order, literal ! despite the delimiter argument,
+leading-null accumulation and the two separate concat/intern operations. Remove
+the helper shortcut that dropped every null and interned only the final result.
+Null following text still interns the separator prefix before throwing.
+
+Manual Java (-ea) and Go observers retain all 47 whole-module scenarios and
+expand to ten compound-array shapes, three delimiters, invalid/prefix counts,
+array mutation/identity and null receivers. Two fresh-name cases per module
+verify failed/successful intermediate token allocations. All 16,872 rows match
+exactly. Scratch observer/receipt files remain outside the repository under
+/mnt/oldrog/tmp/tlago-definition-path-*. Initial 11056 exited 1 because the
+scratch Go insertion omitted the two new allocation rows; no production mismatch.
+Corrected Go observer 92649 exited 0. Comparison formatting initially retained
+Go's package summary row; filtering that harness output establishes exact parity.
+No input, source output or production behavior was weakened. No permanent tests
+or original-method completion credit added; no original Java join tests found.
+
+Existing affected root/parser/context/proof/TLC-model gate passes 45.726s
+(30915 retired), full SANY passes 1.767s (54521 retired), focused existing
+interned-string/value-stream/object-checkpoint tests pass 0.014s (71594 retired),
+and compile-all passes (79779 retired). All handles retired; git diff --check
+passes. Normal execution only; no broad race or full-workspace pass claim.
+Remaining EXTENDS diagnostics/aborts, inherited levels, general selectors,
+visitors and evaluator sharing remain pending. New distributed work is deferred.
+
 2026-10-07 Original-definition comparison and parameter caches:
 Previous completed commit: 3af6618. Port SymbolNode.sameOriginallyDefinedInModule
 using the actual operator/theorem concrete classes, immediate source pointer
