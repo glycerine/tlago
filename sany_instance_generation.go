@@ -6,9 +6,19 @@ package tlago
 
 import "fmt"
 
+// SubstInNode keeps defaults in declaration enumeration order. WITH replaces
+// an existing slot or appends a newly explicit substitution to that array.
+type sanyGeneratedSubstitution struct {
+	name        string
+	target      substitutionTarget
+	declaration *sanySemOpDeclNode
+	expr        Expr
+	implicit    bool
+}
+
 // processSubst constructs defaults first, generates each explicit RHS before
 // duplicate detection, then checks remaining defaults and completeness.
-func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instance, module *Module, context map[string]Position) Diagnostics {
+func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Instance, module *Module, context map[string]Position) Diagnostics {
 	target := g.spec.Modules[instance.Module]
 	if target == nil {
 		return nil
@@ -32,6 +42,11 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instan
 			targets[entry.name] = declaration
 			names = append(names, entry.name)
 		}
+	}
+	instance.generatedSubstitutions = make([]sanyGeneratedSubstitution, 0, len(names))
+	declarations := map[string]*sanySemOpDeclNode{}
+	for _, entry := range entries {
+		declarations[entry.name] = entry.declaration
 	}
 	var diags Diagnostics
 	previousFormals := g.formals
@@ -59,6 +74,10 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instan
 	for _, name := range names {
 		if symbol, exists := g.lookupSymbol(name, context); exists {
 			present[name] = true
+			arity := symbol.arity
+			defaultExpr := &IdentExpr{Name: name, Pos: instance.SourcePosition(), formalNode: symbol.formalNode, declarationNode: symbol.declarationNode}
+			defaultExpr.generationArity = &arity
+			instance.generatedSubstitutions = append(instance.generatedSubstitutions, sanyGeneratedSubstitution{name: name, target: targets[name], declaration: declarations[name], expr: defaultExpr, implicit: true})
 			if targets[name].Arity == 0 && symbol.arity > 0 && symbol.formalNode == nil {
 				position := instance.SourcePosition()
 				if symbol.kind == ConstantDecl || symbol.kind == VariableDecl {
@@ -69,7 +88,7 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instan
 			}
 		}
 	}
-	for _, substitution := range instanceSubstitutions(instance) {
+	for _, substitution := range instanceSubstitutions(*instance) {
 		declaration, exists := targets[substitution.Name]
 		if !exists {
 			message := fmt.Sprintf("Identifier '%s' is not a legal target of a substitution. \nA legal target must be a declared CONSTANT or VARIABLE in the module being instantiated. \n(Also, check for warnings about multiple declarations of this same identifier.)", substitution.Name)
@@ -131,6 +150,18 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance Instan
 		} else {
 			explicit[substitution.Name] = true
 			present[substitution.Name] = true
+			replacement := sanyGeneratedSubstitution{name: substitution.Name, target: declaration, declaration: declarations[substitution.Name], expr: substitution.Expr}
+			replaced := false
+			for i := range instance.generatedSubstitutions {
+				if instance.generatedSubstitutions[i].name == substitution.Name {
+					instance.generatedSubstitutions[i] = replacement
+					replaced = true
+					break
+				}
+			}
+			if !replaced {
+				instance.generatedSubstitutions = append(instance.generatedSubstitutions, replacement)
+			}
 		}
 	}
 	for _, name := range names {

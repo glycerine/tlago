@@ -131,9 +131,9 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 		case unit.definition != nil:
 			diags = append(diags, g.generateLocalDefinition(*unit.definition, positions, letLocals)...)
 		case unit.instance != nil:
-			instance := *unit.instance
+			instance := unit.instance
 			diags = append(diags, g.generateInstanceSubstitutions(instance, g.currentModule, positions)...)
-			registered, names := g.registerInstanceSymbols(instance, positions)
+			registered, names := g.registerInstanceSymbols(*instance, positions)
 			diags = append(diags, registered...)
 			for _, name := range names {
 				if g.symbols[name].kind != InstanceDecl {

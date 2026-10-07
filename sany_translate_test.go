@@ -1,6 +1,7 @@
 package tlago
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -1785,8 +1786,24 @@ BadVariable == INSTANCE Inner WITH c <- 0, v1 <- v2'
 		spec, diags := LoadSanySpec(root, LoadOptions{})
 		requireNoErrors(t, diags)
 		sem := CheckSpec(spec)
-		requireHasErrorContaining(t, sem, "constant-level")
-		requireHasErrorContaining(t, sem, "variable-level")
+		if len(sem) != 2 {
+			t.Fatalf("want the two original INSTANCE level errors: %v", sem)
+		}
+		for i, expected := range []struct {
+			name    string
+			maximum int
+			line    int
+		}{{"c", 0, 7}, {"v1", 1, 8}} {
+			diagnostic := sem[i]
+			message := fmt.Sprintf("Level error in instantiating module 'Inner':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", expected.name, expected.maximum)
+			if diagnostic.Code != "E4245" || diagnostic.SANYMessage != message {
+				t.Fatalf("INSTANCE level diagnostic = %#v, want 4245 %q", diagnostic, message)
+			}
+			location := diagnostic.SANYRange
+			if location.Begin.Line != expected.line || location.Begin.Column != 1 || location.End.Line != expected.line || location.End.Column != 52 {
+				t.Fatalf("INSTANCE level range=%v, want %d:1 to %d:52", location, expected.line, expected.line)
+			}
+		}
 	})
 
 	t.Run("checks imported module and symbol conflicts", func(t *testing.T) {

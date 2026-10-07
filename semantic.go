@@ -736,11 +736,11 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	labelArities := moduleLabelArities(mod.Definitions)
 	levelChecker := newSanyLevelCompositionChecker(mod, spec)
 	levelChecker.dependencies.declKinds[mod] = declKinds
-	generateInstance := func(inst Instance) {
-		diags = append(diags, checks.generator.instance(inst)...)
+	generateInstance := func(inst *Instance) {
+		diags = append(diags, checks.generator.instance(*inst)...)
 		diags = append(diags, expressionGeneration.generateInstanceSubstitutions(inst, mod, expressionContexts.at(inst.Syntax, defined))...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
-			return checkInstanceSubstitutionLevels(mod, inst, spec, expressionContexts.at(inst.Syntax, defined), declKinds, arities)
+			return levelChecker.checkInstanceSubstitutionLevels(*inst, declKinds)
 		}})
 	}
 	generateProofRef := func(ref ProofRef) bool {
@@ -908,7 +908,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		case unit.nested != nil:
 			diags = append(diags, checks.generateNested(unit.nested)...)
 		case unit.instance != nil:
-			generateInstance(*unit.instance)
+			generateInstance(unit.instance)
 			registerInstance(*unit.instance)
 		case unit.assumption != nil:
 			generateAssumption(*unit.assumption)
@@ -2580,133 +2580,14 @@ func checkAssumeProveDefinitionUse(expr Expr, assumeProveDefs map[string]bool, l
 	return diags
 }
 
-func checkInstanceSubstitutionLevels(mod *Module, inst Instance, spec *Spec, defined map[string]Position, declKinds map[string]DeclarationKind, arities map[string]int) Diagnostics {
-	var diags Diagnostics
-	if spec == nil {
-		return nil
-	}
-	target := spec.Modules[inst.Module]
-	if target == nil {
-		return nil
-	}
-	targets := moduleSubstitutionTargets(target, spec)
-	targetEntries := tlcBridgeContextContentOrder(tlcBridgeContextEntries(spec, target, map[*Module]bool{}))
-	for _, entry := range targetEntries {
-		if entry.declaration != nil {
-			targets[entry.name] = substitutionTarget{Kind: entry.kind, Arity: entry.declaration.semArity(), Pos: entry.declaration.semPosition()}
-		}
-	}
-	temporalConstraints := moduleTemporalConstantConstraints(target, spec)
-	matchLevels := moduleRequiresSubstitutionLevelMatch(target, spec)
-	// constructSubst resolves defaults in the current SymbolTable. Later
-	// declarations and definitions cannot provide a default retroactively.
-	implicit := make(map[string]int, len(defined))
-	for name := range defined {
-		implicit[name] = arities[name]
-	}
-	// Generator.generateModuleDefinition pushes a context for the instance's
-	// formal parameters before processing WITH. These are local formal
-	// parameters, not additional substitution targets of the instancee.
-	locals := map[string]bool{}
-	arities = copyIntMap(arities)
-	declKinds = copyDeclKindMap(declKinds)
-	for _, param := range inst.Params {
-		locals[param] = true
-		arities[param] = inst.ParamArities[param]
-		delete(declKinds, param)
-		implicit[param] = inst.ParamArities[param]
-	}
-	substitutions := instanceSubstitutions(inst)
-	substitutionExprs := map[string]Expr{}
-	for _, subst := range substitutions {
-		if subst.Name != "" && subst.Expr != nil {
-			substitutionExprs[subst.Name] = subst.Expr
-		}
-	}
-	seen := map[string]Position{}
-	leibniz := newSanyLeibnizAnalyzer(spec)
-	for _, subst := range substitutions {
-		name := subst.Name
-		expr := subst.Expr
-		if name == "" || expr == nil {
-			continue
-		}
-		seen[name] = subst.Pos
-		substTarget, ok := targets[name]
-		if !ok {
-			continue
-		}
-		want := substTarget.Arity
-		got := substitutionExprArity(expr, arities)
-
-		if matchLevels {
-			level := leibniz.substitutionLevel(expr, mod, locals)
-			switch substTarget.Kind {
-			case ConstantDecl:
-				if level != constantLevel {
-					diags = append(diags, sanyInstanceLevelDiagnostic(inst, name, constantLevel, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be constant-level", name), inst.Module, name, constantLevel)))
-				}
-			case VariableDecl:
-				if level > variableLevel {
-					diags = append(diags, sanyInstanceLevelDiagnostic(inst, name, variableLevel, sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must be variable-level", name), inst.Module, name, variableLevel)))
-				}
-			}
-		}
-		if want > 0 && leibniz.operatorNonLeibniz(expr, mod, got, locals) {
-			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4244", "non-Leibniz operator substituted for %s in INSTANCE %s", name, inst.Module), inst.Module, name)
-			position := inst.SourcePosition()
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diagnostic.SANYMessage = fmt.Sprintf("Error in instantiating module '%s':\n A non-Leibniz operator substituted for '%s'.", inst.Module, name)
-			diags = append(diags, diagnostic)
-		}
-		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(expr, mod, locals) > maximum {
-			diagnostic := sanyDiagnosticParameters(errorAt(subst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum), inst.Module, name, maximum)
-			position := inst.SourcePosition()
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
-			diags = append(diags, diagnostic)
-		}
-		diags = append(diags, checkInstanceSubstitutionArgLevelConstraints(target, spec, name, expr, inst.SourcePosition(), declKinds)...)
-		diags = append(diags, checkPrimedConstants(expr, declKinds, locals)...)
-
-	}
-	diags = append(diags, checkInstanceSubstitutionCoparameterLevelConstraints(target, spec, substitutionExprs, inst.SourcePosition(), declKinds)...)
-	for _, entry := range targetEntries {
-		if entry.kind != ConstantDecl && entry.kind != VariableDecl {
-			continue
-		}
-		name := entry.name
-		_, exists := targets[name]
-		if !exists {
-			continue
-		}
-		if _, ok := seen[name]; ok {
-			continue
-		}
-		_, ok := implicit[name]
-		if !ok {
-			continue
-		}
-		if maximum, constrained := temporalConstraints[name]; constrained && leibniz.substitutionLevel(&IdentExpr{Name: name}, mod, locals) > maximum {
-			diagnostic := sanyDiagnosticParameters(errorAt(inst.Pos, "E4245", "INSTANCE substitution %s must have level at most %d", name, maximum), inst.Module, name, maximum)
-			position := inst.SourcePosition()
-			diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
-			diagnostic.SANYMessage = fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the expression or operator substituted for '%s' \nmust be at most %d.", inst.Module, name, maximum)
-			diags = append(diags, diagnostic)
-		}
-	}
-	return diags
-}
-
-func checkInstanceSubstitutionCoparameterLevelConstraints(target *Module, spec *Spec, substitutions map[string]Expr, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
+func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionCoparameterLevelConstraints(target *Module, spec *Spec, substitutions map[string]Expr, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
 	if target == nil || len(substitutions) == 0 {
 		return nil
 	}
-	operatorInfos := map[string]sanyBuiltinOperator{}
-	for name, expr := range substitutions {
-		info, ok := substitutionBuiltinOperatorInfo(expr)
-		if ok && len(info.argMaxLevels) > 0 {
-			operatorInfos[name] = info
+	operatorInfos := map[string][]tlaLevel{}
+	for name, declaration := range moduleSubstitutionTargets(target, spec) {
+		if expr, ok := substitutions[name]; ok && declaration.Arity > 0 {
+			operatorInfos[name] = c.dependencies.applicationMaximums(expr, nil, declaration.Arity, c.context)
 		}
 	}
 	if len(operatorInfos) == 0 {
@@ -2732,20 +2613,20 @@ func checkInstanceSubstitutionCoparameterLevelConstraints(target *Module, spec *
 			}
 		}
 		for _, def := range cur.Definitions {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(def.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
+			diags = append(diags, c.checkInstanceSubstitutionCoparameterExpr(def.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
 		}
 		for _, assumption := range cur.Assumptions {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(assumption.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
+			diags = append(diags, c.checkInstanceSubstitutionCoparameterExpr(assumption.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
 		}
 		for _, theorem := range cur.Theorems {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(theorem.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
+			diags = append(diags, c.checkInstanceSubstitutionCoparameterExpr(theorem.Expr, target.Name, substitutions, operatorInfos, pos, levelKinds)...)
 		}
 	}
 	collect(target)
 	return diags
 }
 
-func checkInstanceSubstitutionCoparameterExpr(expr Expr, moduleName string, substitutions map[string]Expr, operatorInfos map[string]sanyBuiltinOperator, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
+func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionCoparameterExpr(expr Expr, moduleName string, substitutions map[string]Expr, operatorInfos map[string][]tlaLevel, pos Position, declKinds map[string]DeclarationKind) Diagnostics {
 	if expr == nil {
 		return nil
 	}
@@ -2762,11 +2643,11 @@ func checkInstanceSubstitutionCoparameterExpr(expr Expr, moduleName string, subs
 					if !ok {
 						continue
 					}
-					maxLevel, ok := builtinArgMaxLevel(info, i)
-					if !ok {
+					if i >= len(info) {
 						continue
 					}
-					level := exprLevel(substExpr, declKinds, nil)
+					maxLevel := info[i]
+					level := c.level(substExpr, nil)
 					if level <= maxLevel {
 						continue
 					}
@@ -2784,11 +2665,11 @@ func checkInstanceSubstitutionCoparameterExpr(expr Expr, moduleName string, subs
 	}
 	if let, ok := expr.(*LetExpr); ok {
 		for _, def := range let.Definitions {
-			diags = append(diags, checkInstanceSubstitutionCoparameterExpr(def.Expr, moduleName, substitutions, operatorInfos, pos, declKinds)...)
+			diags = append(diags, c.checkInstanceSubstitutionCoparameterExpr(def.Expr, moduleName, substitutions, operatorInfos, pos, declKinds)...)
 		}
 	}
 	for _, child := range sanySubexpressionChildren(expr) {
-		diags = append(diags, checkInstanceSubstitutionCoparameterExpr(child, moduleName, substitutions, operatorInfos, pos, declKinds)...)
+		diags = append(diags, c.checkInstanceSubstitutionCoparameterExpr(child, moduleName, substitutions, operatorInfos, pos, declKinds)...)
 	}
 	return diags
 }
@@ -4955,6 +4836,11 @@ func (levelChecker *sanyLevelCompositionChecker) check(expr Expr, locals map[str
 			diags = append(diags, levelChecker.check(def.Expr, defLocals)...)
 		}
 		diags = append(diags, levelChecker.check(e.Body, letLocals)...)
+		// LetInNode checks its retained InstanceNodes after definitions/body,
+		// even when no exported operator appears in IN.
+		for _, instance := range e.Instances {
+			diags = append(diags, levelChecker.checkInstanceSubstitutionLevels(instance, levelChecker.dependencies.declKinds[levelChecker.context.module])...)
+		}
 	case *QuantifierExpr:
 		setLevel := levelChecker.level(e.Set, locals)
 		bodyLevel := levelChecker.level(e.Body, withLocal(locals, e.Var))

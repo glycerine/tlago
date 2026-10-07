@@ -24,9 +24,10 @@ func (a *sanyLeibnizAnalyzer) levelInContext(expr Expr, context *sanyLeibnizCont
 	}
 }
 
-// LevelNode.addTemporalLevelConstraintToConstants constrains ConstantDecl
-// symbols in an ASSUME or ASSUME/PROVE's levelParams to ActionLevel. These
-// constraints also apply when InstanceNode's instancee is a constant module.
+// ModuleNode combines expression constraints with ASSUME/PROVE constraints.
+// LevelNode.addTemporalLevelConstraintToConstants limits constant levelParams
+// to ActionLevel. AssumeNode exposes its expression constraints through its
+// getter, rather than the separate constraints written on AssumeNode itself.
 func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tlaLevel {
 	constraints := map[string]tlaLevel{}
 	if module == nil || spec == nil || isEmbeddedStandardModule(module) {
@@ -47,7 +48,7 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 		ctx.variables[name] = sanyLeibnizBinding{use: sanyLeibnizUse{all: map[int]bool{id: true}, levelParams: map[int]bool{id: true}}}
 	}
 	a := newSanyLeibnizAnalyzer(spec)
-	add := func(evaluate func() sanyLeibnizUse) {
+	add := func(evaluate func() sanyLeibnizUse, temporal bool) {
 		a.signatures = map[sanyLeibnizDefinitionKey]*sanyLeibnizSignature{}
 		a.nextID = len(names)
 		var use sanyLeibnizUse
@@ -60,9 +61,17 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 				break
 			}
 		}
-		for id := range use.levelParams {
+		if temporal {
+			for id := range use.levelParams {
+				use.constrainID(id, actionLevel)
+			}
+		}
+		for id, maximum := range use.constraints {
 			if id < len(names) {
-				constraints[names[id]] = actionLevel
+				name := names[id]
+				if previous, exists := constraints[name]; !exists || maximum < previous {
+					constraints[name] = maximum
+				}
 			}
 		}
 	}
@@ -74,11 +83,12 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 			nested.formals[name] = sanyLeibnizBinding{}
 		}
 		if def.AssumeProveBody != nil {
-			add(func() sanyLeibnizUse { return a.assumeProveDependencies(def.AssumeProveBody, nested) })
+			add(func() sanyLeibnizUse { return a.assumeProveDependencies(def.AssumeProveBody, nested) }, true)
 		}
 		expression(def.Expr, nested)
 	}
 	expression = func(expr Expr, context *sanyLeibnizContext) {
+		add(func() sanyLeibnizUse { return a.expression(expr, context) }, false)
 		if let, ok := expr.(*LetExpr); ok {
 			nested := sanyLeibnizNestedContext(context)
 			nested.locals = make(map[string]sanyLeibnizLocal, len(context.locals)+len(let.Definitions))
@@ -114,9 +124,12 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 		}
 		for _, assumption := range current.Assumptions {
 			if assumption.AssumeProveBody != nil {
-				add(func() sanyLeibnizUse { return a.assumeProveDependencies(assumption.AssumeProveBody, context) })
+				add(func() sanyLeibnizUse { return a.assumeProveDependencies(assumption.AssumeProveBody, context) }, true)
 			} else {
-				add(func() sanyLeibnizUse { return a.expression(assumption.Expr, context) })
+				// AssumeNode writes its own constraints, but getLevelConstraints
+				// returns the expression constraints. Only constraints inside
+				// the expression propagate to ModuleNode.
+				expression(assumption.Expr, context)
 			}
 		}
 		for i := range current.Definitions {
@@ -124,13 +137,13 @@ func moduleTemporalConstantConstraints(module *Module, spec *Spec) map[string]tl
 		}
 		for _, theorem := range current.Theorems {
 			if theorem.AssumeProveBody != nil {
-				add(func() sanyLeibnizUse { return a.assumeProveDependencies(theorem.AssumeProveBody, context) })
+				add(func() sanyLeibnizUse { return a.assumeProveDependencies(theorem.AssumeProveBody, context) }, true)
 			}
 		}
 		for _, proof := range current.Proofs {
 			for _, step := range proof.Steps {
 				if step.AssumeProveBody != nil {
-					add(func() sanyLeibnizUse { return a.assumeProveDependencies(step.AssumeProveBody, context) })
+					add(func() sanyLeibnizUse { return a.assumeProveDependencies(step.AssumeProveBody, context) }, true)
 				}
 			}
 		}

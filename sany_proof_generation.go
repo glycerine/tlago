@@ -252,9 +252,9 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 					scopes[step.Depth][definition.Name] = current[definition.Name]
 				}
 			} else if unit.instance != nil {
-				instance := *unit.instance
+				instance := unit.instance
 				diags = append(diags, g.generateInstanceSubstitutions(instance, module, current)...)
-				registered, names := g.registerInstanceSymbols(instance, current)
+				registered, names := g.registerInstanceSymbols(*instance, current)
 				diags = append(diags, registered...)
 				for _, name := range names {
 					symbolScopes[step.Depth][name] = g.symbols[name]

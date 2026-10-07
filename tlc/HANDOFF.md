@@ -854,8 +854,18 @@ syntax identity; shared parameter-free origins do not erase arity conflicts.
 All 28 LET comparisons match complete Java diagnostics. Existing focused root,
 complete SANY, seven original model methods and compilation pass. No tests or
 fixtures were changed, and no new inventory credit or full-workspace pass is
-claimed. Next inspect LET instance level checking and retained InstanceNode/
-LetInNode graphs, before completing ordinary canonical operator graphs.
+claimed. INSTANCE generation now retains the resolved substitution array, including
+implicit defaults and WITH replacements. LET level checks visit these instances
+after definitions and the body, using the lexical operator bindings. All 24 module/
+LET level comparisons match Java; existing focused root checks, Test206–220,
+seven original models, complete SANY and compilation pass normally. The existing
+native level-message assertion now checks Java's exact messages and ranges,
+with its fixture unchanged. No full-workspace pass or inventory credit is added.
+Next finish general module argLevelConstraints/argLevelParams propagation and
+retained InstanceNode/LetInNode graphs. Direct-expression constraint scans remain
+incomplete for indirect applications and shadowing; do not treat the green
+comparison batch as complete LevelNode parity. Then complete ordinary canonical
+operator graphs.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.

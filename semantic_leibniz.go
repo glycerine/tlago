@@ -142,6 +142,10 @@ func (a *sanyLeibnizAnalyzer) operatorNonLeibniz(expr Expr, module *Module, arit
 	for name := range locals {
 		ctx.formals[name] = sanyLeibnizBinding{}
 	}
+	return a.operatorNonLeibnizInContext(expr, arity, ctx)
+}
+
+func (a *sanyLeibnizAnalyzer) operatorNonLeibnizInContext(expr Expr, arity int, ctx *sanyLeibnizContext) bool {
 	arguments := make([]sanyLeibnizBinding, arity)
 	for i := range arguments {
 		arguments[i].use = sanyLeibnizUse{all: map[int]bool{i: true}, levelParams: map[int]bool{i: true}}

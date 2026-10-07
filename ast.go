@@ -41,19 +41,20 @@ type Module struct {
 }
 
 type Instance struct {
-	Syntax           *SanySyntaxNode
-	Name             string
-	Params           []string
-	ParamArities     map[string]int
-	ParamPositions   map[string]Position
-	Module           string
-	Substitutions    map[string]Expr
-	SubstitutionList []Substitution
-	Local            bool
-	PreComments      []string
-	Pos              Position
-	Source           Position
-	LHSPos           Position
+	generatedSubstitutions []sanyGeneratedSubstitution
+	Syntax                 *SanySyntaxNode
+	Name                   string
+	Params                 []string
+	ParamArities           map[string]int
+	ParamPositions         map[string]Position
+	Module                 string
+	Substitutions          map[string]Expr
+	SubstitutionList       []Substitution
+	Local                  bool
+	PreComments            []string
+	Pos                    Position
+	Source                 Position
+	LHSPos                 Position
 }
 
 func (i Instance) SourcePosition() Position {

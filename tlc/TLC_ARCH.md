@@ -53,8 +53,24 @@ range, message and label-name parameter.
 All 28 LET cases match complete Java diagnostics, including RHS failures,
 missing/default substitutions, higher-order instance parameters, duplicate
 exports, local-only definitions and nested scope boundaries. This establishes
-generation and registration behavior, not complete retained InstanceNode/LetInNode
-graphs or LET instance level checking. Those remain separate pending work.
+generation and registration behavior. INSTANCE generation also retains the
+resolved substitution array: defaults follow Context enumeration; WITH replaces
+a matching slot or appends an explicit substitution. Retain target declaration
+identity and default expression bindings instead of rebuilding from a completed
+module. LetInNode checks definitions, its body, then instances, including unused
+instances. Check substitution expressions before constraints, preserving diagnostic
+order and the instancer's lexical LET context. User-defined substituted operators
+use the symbolic argument maximum calculation rather than builtin-only maxima.
+
+AssumeNode writes its own temporal constraints but getLevelConstraints returns
+the expression's constraints. ASSUME C alone therefore does not export an
+ActionLevel bound, while ASSUME C = {} exports equality's argument maximum.
+ASSUME/PROVE retains its additional temporal bounds. Module constraint collection
+combines actual expression bounds and these temporal bounds by minimum.
+All 24 module/LET comparisons match complete source diagnostics. Complete
+InstanceNode/LetInNode graphs and general module argLevelConstraints/argLevelParams
+propagation remain pending; direct-expression scans still cannot replace the
+source constraint graph for indirect applications and lexical shadowing.
 
 ## TLC bridge declaration metadata
 

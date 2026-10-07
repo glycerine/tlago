@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Retained INSTANCE substitutions and LET instance level checks:
+Previous completed commit: 1be121e. Initial eight-case Java/Go comparison 32984
+returns 1: seven cases falsely succeed in Go. Retain generated defaults and WITH
+replacements in Java substitution-array order, with target declaration references.
+Check LET instances after definitions/body in the lexical level context. Replace
+completed-module default reconstruction with the retained array; share module
+and LET checking. Initial corrected comparison 80411 and expanded 16-case
+comparison 10314 return 0. No invented permanent tests or inventory credit.
+
+Expanded 24-case comparison 3706 returns 1. Fix the exposed production gaps:
+ENABLED argument maxima, user-defined substituted operator maxima for direct
+co-parameter applications, and source constraint propagation. Java AssumeNode's
+getter exposes expression constraints instead of its separately written temporal
+constraints. Ordinary ASSUME C must not receive the fabricated ActionLevel bound.
+The first correction causes original Test213 to fail (49792, 8.353 seconds):
+ASSUME C = {} still needs equality's real argument constraint. Collect expression
+constraints and combine their minima with ASSUME/PROVE temporal constraints;
+preserve the original five-error assertion and all fixture bytes. Corrected
+focused root 17480 passes in 8.534 seconds.
+
+The existing native INSTANCE level test formerly checked Go-specific wording.
+Compare its unchanged source with Java in /mnt/oldrog/tmp/tlago-instance-native-level;
+both produce exactly two 4245 errors with whole INSTANCE ranges. Replace only
+its wording assertions with exact Java messages, codes, order and ranges.
+
+Final focused root plus seven original model methods pass normally in 28.492
+seconds (72019); complete SANY passes 1.604 seconds (30854); all-package compilation
+passes (96556). Root log /mnt/oldrog/tmp/tlago-instance-level-final-root.log.
+Final 24-case comparison returns 0 (90187), with all codes, counts, messages,
+ranges and order matching. Log /mnt/oldrog/tmp/tlago-instance-level-final-comparison.log.
+All handles are terminal and retired.
+No new full-workspace pass is established. Scratch vectors stay outside the repo.
+Next finish general argLevelConstraints/argLevelParams propagation and canonical
+InstanceNode/LetInNode graphs. Existing direct-expression scans remain incomplete
+for indirect applications and shadowing. New distributed service remains postponed.
+
 2026-10-07 LET INSTANCE substitution generation and scoped exports:
 Previous completed commit: f99f3bd. Inspect Java processLetIn/processModuleDefinition
 and actual Go generation. Initial 20-case comparison 19944 terminal 1 exposes

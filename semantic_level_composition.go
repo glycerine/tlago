@@ -105,6 +105,10 @@ func (c *sanyLevelCompositionChecker) checkApplicationLevelsWithValidity(expr Ex
 		}
 	} else {
 		switch application := expr.(type) {
+		case *UnaryExpr:
+			name = application.Op
+			operator = &IdentExpr{Name: name}
+			arguments = []Expr{application.Expr}
 		case *FairnessExpr:
 			name = "$" + application.Kind
 			operator = &IdentExpr{Name: name}
