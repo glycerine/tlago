@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 16.820 seconds, session `2312` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.488 seconds, session `8895` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models and EmptyExistentialQuantifier | Pass | Root 17.067 seconds, session `3466` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.525 seconds, session `20815` retired |
 | Existing focused TLC context/tool and tuple tests | Pass | 0.027 seconds, session `17606` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -192,7 +192,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,321,136,868 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,348,091,503 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -551,11 +551,20 @@ completion. Indentation checks traverse descendants, stop at nested junction lis
 and throw Java's exact exception after leaving the item frame. General JavaCC
 lookahead and surrounding expression grammar remain reconciliation work.
 
-Current bounded observations match Java: 150 complete parser TRACE/results, 41
+Record fields and EXCEPT paths retain `Field Value`, `Field Set`, `Except Spec`
+and `Except Component` frames. Each EXCEPT path requires at least one component;
+index components require an expression. Preserve the source `= or ,` expectation,
+typed equality token and keyword field reclassification. `!.@` records an error
+without throwing, then parsing continues so later errors retain their source order.
+Shared `Identifier` consumption now throws immediately instead of returning nil.
+Brace forms retain their source frame and mandatory delimiters; general brace and
+square-bracket lookahead/construction remain reconciliation work.
+
+Current bounded observations match Java: 176 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
-runtime probes, plus 31 selected primitive/junction expression trees including ranges.
+runtime probes, plus 43 selected primitive/junction/field/EXCEPT expression trees including ranges.
 Keep each scope distinct. Whole-module trees, general
 source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.

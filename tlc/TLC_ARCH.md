@@ -126,6 +126,20 @@ complete parser-output observations and 31 selected primitive/junction expressio
 (kinds, images and ranges) match Java. These checks do not establish whole-module
 canonical AST or complete SyntaxTreeNode parity.
 
+FieldVal and FieldSet retain their actual frames and mandatory MAPTO/COLON tokens.
+ExceptSpec requires BANG followed by at least one ExceptComponent, retains the
+source = or , expectation after each component, and constructs a T_EQUAL leaf
+before the replacement expression. ExceptComponent requires either DOT Identifier
+(with keyword field-name reclassification) or LSB Expression (, Expression)* RSB;
+it does not accept an empty index. A field named @ pushes the nonthrowing source
+parse error @ used in !.@, preserving subsequent parsing and ordered messages.
+Shared Identifier now uses the actual throwing token-consumption path, eliminating
+nil dereferences in malformed components. BraceCases has its actual Some { } form
+frame and mandatory delimiters. General brace/square-bracket selection/lookahead is
+still separate reconciliation work. All 176 complete bounded parser observations
+and 43 selected expression trees (including retained trees after nonthrowing !.@
+errors) match Java. Existing original model assertions and fixtures are unchanged.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

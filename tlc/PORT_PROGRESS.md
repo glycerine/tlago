@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-06 Record field and EXCEPT component source grammar:
+Previous turn completed eaba301. Port FieldVal/FieldSet's actual frames and
+mandatory MAPTO/COLON tokens. ExceptSpec uses its actual frame, mandatory BANG,
+one-or-more component loop, = or , expectation and typed T_EQUAL token. Restore
+ExceptComponent's frame, mandatory dot identifier or nonempty indexed expression
+list, keyword reclassification and source !.@ nonthrowing ParseErrors entry.
+Preserve complete parsing and the order of later errors rather than throwing or
+silently accepting that field. No permanent tests, assertions or fixtures changed.
+
+Initial expanded 176 complete parser observations expose two source gaps: nested
+record-set domains lack BraceCases' Some { } form frame, and invalid EXCEPT field
+identifiers cause a nil dereference because shared Identifier recorded an error
+and returned nil. Port Identifier's actual throwing consumption and BraceCases'
+frame/mandatory delimiters. Do not weaken the malformed observations. All 176
+final complete TRACE/result observations match pinned Java (84308 terminal 0),
+log /mnt/oldrog/tmp/tlago-sany-except-parser-final-audit.log. This includes 26 new
+field/EXCEPT cases and all prior 150 observations. General BraceCases/SBracketCases
+lookahead and construction are not established by these bounded observations.
+
+All 43 selected primitive/junction/field/EXCEPT expression trees match kinds,
+images and ranges (12591 terminal 0), log
+/mnt/oldrog/tmp/tlago-except-tree-final-audit.log. Twelve new observations include
+keyword fields, multiple indices, mixed paths, typed equality, and trees retained
+after one/two nonthrowing !.@ errors. No whole-module canonical AST claim and no
+inventory credit for scratch comparisons. These source methods have no separate
+original unit-test class; retain the existing original corpus and model tests.
+
+Final normal gates: complete existing sany_tests 1.525 seconds (20815 terminal 0);
+existing parser/semantic/token/operator classes, original ParseErrorTests, five
+original TLC models and native reference/scaffold checks 17.067 seconds (3466
+terminal 0). Existing focused TLC EXCEPT evaluation tests pass in 0.011 seconds;
+all packages compile without running tests (72770 terminal 0). Logs
+/mnt/oldrog/tmp/tlago-sany-except-final-{sany,root,tlc,compile}.log. Earlier gates
+preceded the shared Identifier correction and are superseded by these final ones.
+Full-workspace green remains unproven. MSB session 5144 remains confirmed live with
+its original isolated binary; most recent logged progress
+1,348,091,503/2,147,483,648. Preserve the handle and original bounds without race.
+
 2026-10-06 Junction context and recursive indentation source port:
 Previous turn completed fa92a9e. Replace Go's column-only junction stack and end-
 column diagnostic heuristic with source JunctionListContext and checkIndentation.

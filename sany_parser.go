@@ -2305,8 +2305,10 @@ func (p *SanyParser) ParenExpr() *SanySyntaxNode {
 }
 
 func (p *SanyParser) BraceCases() *SanySyntaxNode {
+	p.beginProduction("Some { } form")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenLbc, "expected {"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenLbc, "expected {"))
 	if p.startsQuantBoundIntro() &&
 		p.findTopLevelBeforeStop(SanyTokenIN, SanyTokenColon, SanyTokenRbc, SanyTokenEOF) >= 0 &&
 		p.findTopLevelSetComprehensionColonBeforeStop(SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
@@ -2323,7 +2325,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRbc || tok.Kind == SanyTokenEOF
 		}))
-		heirs = append(heirs, p.consume(SanyTokenRbc, "expected }"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbc, "expected }"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SubsetOf"], heirs...)
 	}
 	if p.findTopLevelSetComprehensionColonBeforeStop(SanyTokenComma, SanyTokenRbc, SanyTokenEOF) >= 0 {
@@ -2336,7 +2338,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 			heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenRbc, SanyTokenEOF))
 		}
-		heirs = append(heirs, p.consume(SanyTokenRbc, "expected }"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRbc, "expected }"))
 		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfAll"], heirs...)
 	}
 	if !p.check(SanyTokenRbc) {
@@ -2350,7 +2352,7 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 			}))
 		}
 	}
-	heirs = append(heirs, p.consume(SanyTokenRbc, "expected }"))
+	heirs = append(heirs, p.consumeParseToken(SanyTokenRbc, "expected }"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_SetEnumerate"], heirs...)
 }
 
@@ -2531,8 +2533,10 @@ func (p *SanyParser) skipQuantBoundIntroAt(offset int) int {
 }
 
 func (p *SanyParser) FieldVal() *SanySyntaxNode {
+	p.beginProduction("Field Value")
+	defer p.endProduction()
 	id := p.Identifier()
-	mapto := p.consume(SanyTokenMapto, "expected |-> in record field")
+	mapto := p.consumeParseToken(SanyTokenMapto, "expected |-> in record field")
 	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 	})
@@ -2540,8 +2544,10 @@ func (p *SanyParser) FieldVal() *SanySyntaxNode {
 }
 
 func (p *SanyParser) FieldSet() *SanySyntaxNode {
+	p.beginProduction("Field Set")
+	defer p.endProduction()
 	id := p.Identifier()
-	colon := p.consume(SanyTokenColon, "expected : in record field set")
+	colon := p.consumeParseToken(SanyTokenColon, "expected : in record field set")
 	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 	})
@@ -2549,18 +2555,18 @@ func (p *SanyParser) FieldSet() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ExceptSpec() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenBang, "expected ! in EXCEPT spec"))
-	if !p.check(SanyTokenDot) && !p.check(SanyTokenLsb) {
-		p.add(p.peek().Begin, "E1300", "expected EXCEPT component")
-	}
-	for p.check(SanyTokenDot) || p.check(SanyTokenLsb) {
+	p.beginProduction("Except Spec")
+	defer p.endProduction()
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenBang, "expected ! in EXCEPT spec")}
+	for {
 		heirs = append(heirs, p.ExceptComponent())
+		p.expecting = "= or ,"
+		if !p.check(SanyTokenDot) && !p.check(SanyTokenLsb) {
+			break
+		}
 	}
-	equals := p.consume(SanyTokenEquals, "expected = in EXCEPT spec")
-	if equals != nil {
-		equals.Kind = SanySyntaxNodeKindByName["T_EQUAL"]
-	}
+	equals := p.consumeParseToken(SanyTokenEquals, "expected = in EXCEPT spec")
+	equals.Kind = SanySyntaxNodeKindByName["T_EQUAL"]
 	heirs = append(heirs, equals)
 	heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
@@ -2569,15 +2575,22 @@ func (p *SanyParser) ExceptSpec() *SanySyntaxNode {
 }
 
 func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
+	p.beginProduction("Except Component")
+	defer p.endProduction()
 	var heirs []*SanySyntaxNode
-	if p.match(SanyTokenDot) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	switch p.peek().Kind {
+	case SanyTokenDot:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenDot, "expected ."))
 		p.reclassifyFieldName()
-		heirs = append(heirs, p.Identifier())
-		return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptComponent"], heirs...)
-	}
-	heirs = append(heirs, p.consume(SanyTokenLsb, "expected [ in EXCEPT component"))
-	if !p.check(SanyTokenRsb) {
+		identifier := p.Identifier()
+		if identifier.Image == "@" {
+			diagnostic := errorAt(identifier.Range.Begin, "E1300", "@ used in !.@")
+			diagnostic.SANYParseMessage = diagnostic.Message
+			p.diags = append(p.diags, diagnostic)
+		}
+		heirs = append(heirs, identifier)
+	case SanyTokenLsb:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenLsb, "expected ["))
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 		}))
@@ -2587,8 +2600,10 @@ func (p *SanyParser) ExceptComponent() *SanySyntaxNode {
 				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 			}))
 		}
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ] in EXCEPT component"))
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenDot}, {SanyTokenLsb}}, "expected EXCEPT component")
 	}
-	heirs = append(heirs, p.consume(SanyTokenRsb, "expected ] in EXCEPT component"))
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ExceptComponent"], heirs...)
 }
 
@@ -3001,7 +3016,7 @@ func (p *SanyParser) reclassifyFieldName() {
 }
 
 func (p *SanyParser) Identifier() *SanySyntaxNode {
-	return p.consume(SanyTokenIdentifier, "expected identifier")
+	return p.consumeParseToken(SanyTokenIdentifier, "expected identifier")
 }
 
 func (p *SanyParser) startsBodyItem() bool {
