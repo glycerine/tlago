@@ -9223,6 +9223,29 @@ Formatting reads each symbol's current syntax tree and honors
 nullable references print `null`. Constructor identity and native checker
 integer IDs are not substituted for these canonical references.
 
-These classes are prerequisites, not a completed level checker. Canonical
-constraint maps, inherited level metadata and recursive checking still require
-porting before closing the remaining incremental operator tests.
+These classes are prerequisites, not a completed level checker. Inherited level
+metadata and recursive checking still require porting before closing the
+remaining incremental operator tests.
+
+## Canonical level-constraint maps
+
+`sany_level_constraints.go` ports `SetOfLevelConstraints` and
+`SetOfArgLevelConstraints` over `tlc.JavaSemanticMap`. The first tightens upper
+bounds with `min`, defaulting to Java `MaxLevel`; the second tightens required
+argument levels with `max`, defaulting to `MinLevel`. Retain even vacuous entries.
+Null input levels throw, while previous nullable values are returned. Raw map
+copy construction preserves values, including nulls and values outside those
+bounds, without invoking the derived tightening method. `putAll` instead invokes
+that method in source key-set order and retains earlier writes on failure.
+
+Symbol keys use SemanticNode's concrete-class/kind/UID equality. Argument keys
+use ParamAndPosition's actual symbol-reference equality. Keys retain their first
+stored object after equivalent-key replacement. Formatting follows Java key
+iteration, nullable names and values, and the current syntax-tree location for
+argument keys. HashMap copy construction uses its source initial capacity and
+bucket layout; iterators save their next node before returning the current entry
+and check structural modifications on the next call. Tree ties between different
+symbol classes use Java class names; native object identity supplies ties within
+a class, as in the existing collection ports. The 680 comparison rows cover
+bucket growth, copies, merges, removals, nulls, equality and iterator boundaries;
+they do not establish cross-runtime object-identity tree ordering.

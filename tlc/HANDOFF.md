@@ -1191,8 +1191,12 @@ Canonical level-checking prerequisites now include the original
 `ParamAndPosition` and `ArgLevelParam` classes. They retain actual symbol
 references, Java signed hashes, reference equality, nullable formatting and
 source `occur` behavior. All 5,125 temporary Java/Go comparison rows agree.
-Constraint maps and inherited `LevelNode` checking remain pending; the three
-incremental semantic methods remain reconcile. No original-method credit added.
+The original `SetOfLevelConstraints` and `SetOfArgLevelConstraints` are also
+ported, including tightening puts, raw copy constructors, nullable values,
+source key equality and HashMap iteration. All 680 temporary map observations
+agree with Java. Inherited `LevelNode` data and checking remain pending; the
+three incremental semantic methods remain reconcile. No original-method credit
+added.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

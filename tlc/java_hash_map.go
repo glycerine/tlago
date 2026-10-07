@@ -102,10 +102,11 @@ func (m *javaHashMap[K, V]) findTree(p *javaHashNode[K, V], hash uint32, key K) 
 }
 
 func (m *javaHashMap[K, V]) Set(key K, value V) {
+	// HashMap.put evaluates hash(key) before putVal can allocate its table.
+	h := m.hash(key)
 	if len(m.table) == 0 {
 		m.resize()
 	}
-	h := m.hash(key)
 	i := int(h) & (len(m.table) - 1)
 	p := m.table[i]
 	if p == nil {
@@ -191,6 +192,9 @@ func (m *javaHashMap[K, V]) resize() {
 	capacity := 16
 	if n != 0 {
 		capacity = n * 2
+	} else if m.threshold > 0 {
+		// HashMap(Map) stores its initial capacity in threshold until allocation.
+		capacity = m.threshold
 	}
 	if capacity < 1<<30 {
 		m.threshold = capacity * 3 / 4
@@ -524,10 +528,10 @@ type dotLongSet = javaHashMap[uint64, struct{}]
 // Remove ports removeNode(hash, key, null, false, true). These callers do
 // not request value matching or iterator removal with an immovable tree root.
 func (m *javaHashMap[K, V]) Remove(key K) bool {
+	hash := m.hash(key)
 	if len(m.table) == 0 {
 		return false
 	}
-	hash := m.hash(key)
 	index := int(hash) & (len(m.table) - 1)
 	p := m.table[index]
 	if p == nil {

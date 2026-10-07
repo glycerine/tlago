@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Canonical level-constraint map port:
+Previous completed commit: 3095426. Port SetOfLevelConstraints and
+SetOfArgLevelConstraints using actual canonical symbol and ParamAndPosition keys.
+Preserve min/max tightening, retained vacuous entries, null level failures,
+previous nullable values, ordered putAll with retained partial writes, raw copy
+values and exact source formatting. Symbols use concrete-class/kind/UID equality;
+argument keys use symbol reference identity. Raw copies retain nulls and values
+outside the tightening bounds, rather than calling the derived put method.
+
+Expose the existing shared HashMap through JavaSemanticMap, including source
+copy capacity and iterator advancement/fail-fast timing. Inspect installed
+OpenJDK 21 HashMap bytecode for putMapEntries; the local src.zip symlink is
+missing, so that attempted source read failed/no source credit. Correct two
+shared backing-map gaps: honor a constructor's deferred initial capacity and
+evaluate key hashes before put allocation and remove's empty-table return.
+Native identity remains the tie-break within non-Comparable classes; no claim
+that JVM/native identity hashes produce identical tree iteration order.
+
+Scratch comparison sources and logs stay outside the repo under
+/mnt/oldrog/tmp/tlago-level-maps-*. Java prep first failed from an observer-local
+variable scope error; correct the observer without changing scenarios. Initial
+Go observer 29892 returns 0 and all 673 rows match. Extend with actual equal-UID
+symbols, reference-distinct argument parameters and four iterator mutation
+boundaries: 59833 returns 0 and all 679 rows match. Preserve nullable formal names
+and normalized typed-null keys in map formatting; final observer 30809 returns 0
+and all 680 rows match. Assign identical observed node UIDs only inside the
+external probes to compare HashMap bucket order; no production UID shortcut.
+All observer handles retired. No direct original Java tests for these helper
+classes were found; no permanent tests or method-completion credit added.
+
+Existing root canonical/context/cache gate passes 0.503s (52765 retired), affected
+TLC state/DOT/function/set checks pass 0.012s (99290 retired), full short SANY
+passes 1.900s (22740 retired), and compile-all passes (50417 retired). Final
+formatting change is exercised by the final observer. Normal checks only, no
+race or full-workspace pass claim. The three incremental semantic methods remain
+reconcile; common LevelNode fields and recursive checking are the next work.
+
 2026-10-07 Canonical level-dependency key prerequisites:
 Previous completed implementation commit: 55ce314. Resume faithful Java parity;
 new rpc25519/Tube work remains deferred. The three remaining incremental semantic
