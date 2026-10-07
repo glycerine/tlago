@@ -260,12 +260,15 @@ func (p *SanyParser) Extends() *SanySyntaxNode {
 	var heirs []*SanySyntaxNode
 	if p.match(SanyTokenExtends) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
 		p.reclassifyFieldName()
 		name := p.Identifier()
 		p.addDependency(name.Image)
 		heirs = append(heirs, name)
+		p.expecting = "comma or module body"
 		for p.match(SanyTokenComma) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+			p.expecting = "Identifier"
 			p.reclassifyFieldName()
 			name := p.Identifier()
 			p.addDependency(name.Image)
@@ -280,7 +283,7 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 	defer p.endProduction()
 	p.expecting = "LOCAL, INSTANCE, PROOF, ASSUMPTION, THEOREM, RECURSIVE, declaration, or definition"
 	var heirs []*SanySyntaxNode
-	for !p.check(SanyTokenEOF) && !p.check(SanyTokenEndModule) {
+	for p.startsBodyItemAt(0) {
 		switch {
 		case p.check(SanyTokenBm0) || p.check(SanyTokenBm1) || p.check(SanyTokenBm2):
 			heirs = append(heirs, p.Module())
@@ -301,16 +304,17 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 				p.throwParseException([][]SanyTokenKind{{SanyTokenInstance, SanyTokenIdentifier}}, "expected INSTANCE module")
 			}
 			heirs = append(heirs, p.Instance())
-		case p.check(SanyTokenAssume) || p.check(SanyTokenAssumption):
+		case (p.check(SanyTokenAssume) || p.check(SanyTokenAssumption)) && (p.tokenAt(1).Kind == SanyTokenDefbreak || p.startsExpressionFirstAt(1)):
 			heirs = append(heirs, p.Assumption())
-		case p.check(SanyTokenTheorem) || p.check(SanyTokenProposition):
+		case (p.check(SanyTokenTheorem) || p.check(SanyTokenProposition)) && (p.startsAssumeProveAt(1) || p.startsExpressionFirstAt(1)):
 			heirs = append(heirs, p.Theorem())
 		case p.check(SanyTokenUse) || p.check(SanyTokenHide):
 			heirs = append(heirs, p.UseOrHide())
-		case p.check(SanyTokenDefbreak) || (p.check(SanyTokenLocal) && p.peekNext().Kind == SanyTokenDefbreak):
+		case p.startsOperatorOrFunctionDefinition():
 			heirs = append(heirs, p.OperatorOrFunctionDefinition())
 		default:
-			return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
+			p.rememberFailedLookahead(2)
+			p.throwParseException([][]SanyTokenKind{{SanyTokenDefbreak}}, "expected module body unit")
 		}
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Body"], heirs...)
@@ -319,11 +323,14 @@ func (p *SanyParser) Body() *SanySyntaxNode {
 func (p *SanyParser) VariableDeclaration() *SanySyntaxNode {
 	p.beginProduction("variable declaration")
 	defer p.endProduction()
-	keyword := p.consume(SanyTokenVariable, "expected VARIABLE declaration")
+	keyword := p.consumeParseToken(SanyTokenVariable, "expected VARIABLE declaration")
+	p.expecting = "Identifier"
 	var one []*SanySyntaxNode
 	one = append(one, p.Identifier())
+	p.expecting = "comma or module body"
 	for p.match(SanyTokenComma) {
 		one = append(one, NewSanyTokenNode(p.previous()))
+		p.expecting = "Identifier"
 		one = append(one, p.Identifier())
 	}
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_VariableDeclaration"], []*SanySyntaxNode{keyword}, one)
@@ -484,19 +491,28 @@ func (p *SanyParser) Substitution() *SanySyntaxNode {
 }
 
 func (p *SanyParser) Assumption() *SanySyntaxNode {
-	var heirs []*SanySyntaxNode
-	if p.match(SanyTokenAssume) || p.match(SanyTokenAssumption) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	} else {
-		heirs = append(heirs, p.consume(SanyTokenAssume, "expected ASSUME or ASSUMPTION"))
+	p.beginProduction("Assumption")
+	defer p.endProduction()
+	p.expecting = "ASSUM..."
+	if !p.check(SanyTokenAssume) && !p.check(SanyTokenAssumption) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenAssume}, {SanyTokenAssumption}}, "expected ASSUME or ASSUMPTION")
 	}
-	if p.match(SanyTokenDefbreak) {
-	}
-	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenDef {
+	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
+	if (p.check(SanyTokenDefbreak) && p.tokenAt(1).Kind == SanyTokenIdentifier) ||
+		(p.check(SanyTokenIdentifier) && p.tokenAt(1).Kind == SanyTokenDef) {
+		p.match(SanyTokenDefbreak)
 		heirs = append(heirs, p.Identifier())
-		heirs = append(heirs, p.consume(SanyTokenDef, "expected == in assumption"))
+		p.expecting = "=="
+		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in assumption"))
+	} else {
+		if p.check(SanyTokenDefbreak) || p.check(SanyTokenIdentifier) {
+			p.rememberFailedLookahead(2)
+		} else {
+			p.rememberFailedLookahead(1)
+		}
 	}
 	p.belchDEF()
+	p.expecting = "Expression"
 	heirs = append(heirs, p.ExpressionUntilBodyBoundary())
 	return NewSanySplitNode(SanySyntaxNodeKindByName["N_Assumption"], nil, heirs)
 }
@@ -504,23 +520,28 @@ func (p *SanyParser) Assumption() *SanySyntaxNode {
 func (p *SanyParser) Theorem() *SanySyntaxNode {
 	p.beginProduction("Theorem")
 	defer p.endProduction()
-	var heirs []*SanySyntaxNode
-	if p.match(SanyTokenTheorem) || p.match(SanyTokenProposition) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	} else {
-		heirs = append(heirs, p.consume(SanyTokenTheorem, "expected THEOREM or PROPOSITION"))
+	p.expecting = "THEOREM, PROPOSITION"
+	if !p.check(SanyTokenTheorem) && !p.check(SanyTokenProposition) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenTheorem}, {SanyTokenProposition}}, "expected THEOREM or PROPOSITION")
 	}
+	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
+	p.expecting = "Identifier, Assume-Prove or Expression"
 	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenDef {
 		heirs = append(heirs, p.Identifier())
-		heirs = append(heirs, p.consume(SanyTokenDef, "expected == in theorem"))
+		p.expecting = "=="
+		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in theorem"))
+	} else if p.check(SanyTokenIdentifier) {
+		p.rememberFailedLookahead(2)
 	}
 	p.belchDEF()
 	if p.startsAssumeProveAt(0) {
 		heirs = append(heirs, p.AssumeProve())
-	} else {
+	} else if p.startsExpressionLookahead() {
 		heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 			return beginsSanyProof(tok)
 		}))
+	} else {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected theorem statement")
 	}
 	if beginsSanyProof(p.peek()) {
 		heirs = append(heirs, p.Proof())
@@ -1389,7 +1410,11 @@ func (p *SanyParser) PostfixLHS() *SanySyntaxNode {
 }
 
 func (p *SanyParser) startsDefinitionPrefix() bool {
-	switch p.peek().Kind {
+	return p.startsDefinitionPrefixAt(0)
+}
+
+func (p *SanyParser) startsDefinitionPrefixAt(offset int) bool {
+	switch p.tokenAt(offset).Kind {
 	case SanyTokenOp76, SanyTokenOp26, SanyTokenOp29, SanyTokenOp58,
 		SanyTokenCasesep, SanyTokenOp61, SanyTokenOp112, SanyTokenOp113,
 		SanyTokenOp114, SanyTokenOp115, SanyTokenOp116:
@@ -2475,8 +2500,8 @@ func (p *SanyParser) braceSimpleHead(separator SanyTokenKind) bool {
 
 // Java jj_2_49(1) checks Expression's first token, including its junction
 // indentation predicate. All operator tokens and proof-step lexemes can start it.
-func (p *SanyParser) startsExpressionLookahead() bool {
-	kind := p.peek().Kind
+func (p *SanyParser) startsExpressionFirstAt(offset int) bool {
+	kind := p.tokenAt(offset).Kind
 	starts := kind >= SanyTokenOp57 && kind <= SanyTokenProofimplicitsteplexeme
 	if !starts {
 		switch kind {
@@ -2487,7 +2512,11 @@ func (p *SanyParser) startsExpressionLookahead() bool {
 			starts = true
 		}
 	}
-	if starts && p.aboveCurrentJunction() {
+	return starts && p.junctionListContext.isAboveCurrent(p.tokenAt(offset).Begin.Column)
+}
+
+func (p *SanyParser) startsExpressionLookahead() bool {
+	if p.startsExpressionFirstAt(0) {
 		return true
 	}
 	p.rememberFailedLookahead(1)
@@ -3119,12 +3148,19 @@ func (p *SanyParser) startsBodyItem() bool {
 	return p.startsBodyItemAt(0)
 }
 
+// Body's one-token lookahead admits the unit's first token, with the
+// source semantic exclusion for USE ONLY. Its later decisions use two tokens.
 func (p *SanyParser) startsBodyItemAt(offset int) bool {
 	switch p.tokenAt(offset).Kind {
-	case SanyTokenBm0, SanyTokenBm1, SanyTokenBm2, SanyTokenSeparator, SanyTokenVariable, SanyTokenConstant, SanyTokenRecursive, SanyTokenAssume, SanyTokenAssumption, SanyTokenTheorem, SanyTokenProposition, SanyTokenLocal, SanyTokenInstance, SanyTokenUse, SanyTokenHide:
+	case SanyTokenBm0, SanyTokenBm1, SanyTokenBm2, SanyTokenSeparator,
+		SanyTokenVariable, SanyTokenConstant, SanyTokenRecursive, SanyTokenAssume,
+		SanyTokenAssumption, SanyTokenTheorem, SanyTokenProposition,
+		SanyTokenLocal, SanyTokenInstance, SanyTokenHide, SanyTokenDefbreak:
 		return true
+	case SanyTokenUse:
+		return p.tokenAt(offset+1).Kind != SanyTokenOnly
 	default:
-		return p.startsOperatorOrFunctionDefinitionAt(offset)
+		return false
 	}
 }
 
@@ -3134,32 +3170,11 @@ func (p *SanyParser) startsOperatorOrFunctionDefinition() bool {
 
 func (p *SanyParser) startsOperatorOrFunctionDefinitionAt(offset int) bool {
 	if p.tokenAt(offset).Kind == SanyTokenLocal {
-		offset++
+		// The two-token budget ends at DEFBREAK, before validating the head.
+		return p.tokenAt(offset+1).Kind == SanyTokenDefbreak
 	}
-	if p.tokenAt(offset).Kind != SanyTokenDefbreak {
-		return false
-	}
-	offset++
-	first := p.tokenAt(offset)
-	second := p.tokenAt(offset + 1)
-	switch {
-	case first.Kind == SanyTokenIdentifier && second.Kind == SanyTokenLsb:
-		end := p.findMatchingBracketOffset(offset + 1)
-		return end >= 0 && p.tokenAt(end+1).Kind == SanyTokenDef
-	case first.Kind == SanyTokenIdentifier && p.isPostfixOperator(second) && p.tokenAt(offset+2).Kind == SanyTokenDef:
-		return true
-	case first.Kind == SanyTokenIdentifier && p.isInfixOperator(second) && p.tokenAt(offset+2).Kind == SanyTokenIdentifier && p.tokenAt(offset+3).Kind == SanyTokenDef:
-		return true
-	case first.Kind == SanyTokenIdentifier && second.Kind == SanyTokenLbr:
-		end := p.findMatchingBracketOffset(offset + 1)
-		return end >= 0 && p.tokenAt(end+1).Kind == SanyTokenDef
-	case first.Kind == SanyTokenIdentifier && second.Kind == SanyTokenDef:
-		return true
-	case p.isNEPrefixOperator(first) && second.Kind == SanyTokenIdentifier && p.tokenAt(offset+2).Kind == SanyTokenDef:
-		return true
-	default:
-		return false
-	}
+	return p.tokenAt(offset).Kind == SanyTokenDefbreak &&
+		(p.tokenAt(offset+1).Kind == SanyTokenIdentifier || p.startsDefinitionPrefixAt(offset+1))
 }
 
 func (p *SanyParser) isInfixOperator(tok *SanyToken) bool {

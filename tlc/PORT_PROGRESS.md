@@ -1,5 +1,46 @@
 # TLC Port Progress
 
+2026-10-06 Module-body lookahead budgets and declaration/fact failures:
+Previous turn completed 879d5c4. Port Body's one-token entry choices and source
+USE ONLY exclusion, then its two-token definition/assumption/theorem decisions.
+Recognized first tokens with rejected second tokens throw within Module body;
+they are not skipped or dispatched into a different production. Definition
+lookahead no longer validates complete heads/bracket pairs beyond its budget.
+After LOCAL, its budget ends at DEFBREAK; otherwise it ends at the first
+identifier/prefix token. The shared predicate is also used by proof definition
+list continuation. No permanent tests, original assertions or fixtures changed.
+
+VariableDeclaration and Extends preserve source expectation state before names
+and commas. Assumption gains its actual frame, ASSUM.../==/Expression state,
+optional named-head marker within source two-token lookahead, and mandatory DEF.
+Do not discard an unrelated DEFBREAK. Theorem retains its source keyword/named-head
+expectations and rejects a missing expression within Theorem before entering
+Expression. Its three-token Assume-Prove lookahead and remaining proof grammar
+still need a faithful port; this is not a whole-Theorem/Proof completion claim.
+
+All 340 complete actual TRACE/result observations match pinned Java (24574
+terminal 0; inspected MATCH count 340 and different []), log
+/mnt/oldrog/tmp/tlago-sany-module-parser-audit.log. Thirty-two new observations cover
+invalid LOCAL/body entries, variables/EXTENDS, USE ONLY after a definition,
+assumptions and theorem statement failures; all prior 308 remain matching.
+Fourteen selected complete module trees match kinds/images/ranges (30993 terminal
+0), log /mnt/oldrog/tmp/tlago-module-tree-audit.log. These are bounded scratch
+observations, not original canonical AST assertions, inventory credit or full
+location/constructor/grammar fidelity.
+
+Final normal gates: unchanged complete sany_tests 1.477 seconds (73231 terminal
+0); parser/semantic/token/operator classes, original ParseErrorTests, six original
+TLC models, GetScopedIdentifiers and reference/scaffold checks 17.055 seconds
+(32902 terminal 0). All-package compilation passes without additional workloads.
+Logs /mnt/oldrog/tmp/tlago-sany-module-{sany,root}.log and
+/mnt/oldrog/tmp/tlago-sany-module-final-compile.log. No race or changed assertions.
+The original corpus still lacks its full canonical AST/field equality assertions:
+source TlaPlusParserOutputTranslator is 1,693 lines with AstNode/CorpusRunner/file
+parser helpers; status/native-kind checks do not substitute for those assertions.
+No test-port completion credit. Full workspace green remains unproven and earlier
+failures remain unchanged. MSB 5144 confirmed live with the same isolated binary
+and full bounds; last logged progress 1,580,248,903/2,147,483,648. Do not restart it.
+
 2026-10-06 Source brace grammar, selector errors and node images:
 Previous turn completed 9ce59cf. Replace BraceCases' searches ahead for a colon
 with Java's matchFcnConst preview, immediate IdentifierTuple/Identifier COMMA or

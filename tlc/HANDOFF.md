@@ -111,8 +111,8 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.496 seconds, session `25007` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.634 seconds, session `42569` retired |
+| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.055 seconds, session `32902` retired |
+| Complete existing SANY package with original corpus assertions | Pass | 1.477 seconds, session `73231` retired |
 | Existing focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -581,7 +581,13 @@ An operator parameter list requires its first formal, including nested underscor
 lists. Infix head selection uses the source two-token lookahead; malformed right
 identifiers fail inside `Infix LHS`. Module headers throw at a missing separator,
 and marked malformed definitions enter their production instead of being skipped.
-General module-body and definition-head JavaCC rescan remain reconciliation work.
+Module bodies use the source one-token entry lookahead and two-token unit
+selection, including the `USE ONLY` exclusion. Definition lookahead validates only
+the tokens within its budget, including in proof definition lists. Assumptions
+retain their own frame, optional named-head marker and source expectations;
+variable/EXTENDS lists and theorem statement failures also retain their source
+expectation state. General JavaCC rescan, the theorem's three-token Assume-Prove
+selection and remaining proof production grammar are reconciliation work.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain
@@ -593,7 +599,7 @@ source image and zero-valued slot, then reports constructor errors before name
 resolution. Reconstructed tuple membership retains both structural diagnostics.
 General selector and constructor fidelity remains reconciliation work.
 
-Current bounded observations match Java: 308 complete parser TRACE/results, 41
+Current bounded observations match Java: 340 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/
@@ -601,8 +607,8 @@ runtime probes, plus 93 selected expression trees including ranges, four functio
 runtime probes, ten bracket constructor/group metadata and runtime probes,
 16 brace semantic observations, nine brace metadata/runtime probes, all 446
 node-image entries, and 16 selected complete definition trees with kinds, images
-and ranges. Keep each scope distinct. Whole-module trees, general
-source ranges and complete parser/semantic graph fidelity are not established.
+and ranges, plus 14 selected complete module trees with kinds/images/ranges.
+Keep each scope distinct. Whole-module canonical AST assertions, general source ranges and complete parser/semantic graph fidelity are not established.
 Detailed source comparisons and verification receipts are in `PORT_PROGRESS.md`.
 Numeric/general-Object driver formatting, PrintStream error-state queries and remaining production-frame
 coverage still require reconciliation. Do not claim full SanyOutput or parser
