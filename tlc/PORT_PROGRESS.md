@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 Canonical InstanceNode level checks and proof-instance getters:
+Previous completed commit: 769a3f8. Translate full source replacement/module
+checks, declaration/LC/argument/co-parameter bounds and diagnostic suppression.
+Preserve non-Leibniz warning behavior, captured replacements, repeated checks,
+short-circuit evaluation and partial writes. Filter translated module/replacement
+LC/ALC/ALP metadata by actual formals. Reset only level parameters. Port source
+unguarded level/parameter/LC getters and raw formatter; correct getLevel's type
+so the actual node satisfies the canonical LevelNode interface.
+
+External observers /mnt/oldrog/tmp/tlago-instance-level-* use actual source
+Instance/Module/OpArg/OpDef nodes and controlled ExprNode metadata. Most modules
+carry explicitly prechecked metadata to isolate Instance logic; one mode uses
+a fresh actual module. Initial observer 42487 passes: 480 full rows agree.
+Expand argument bounds, failed-child suppression, false module correctness and
+nil log cases. Observer 22941 is terminal; its Java lambda capture setup error
+is corrected and Java is recompiled before rerunning, without using stale output
+as credit. All 544 expanded source/Go rows agree.
+
+Review finds missing diagnostic parameters in the fixed-message helper. Retain
+actual parameter lists and include them in duplicate equality; update Instance
+E4244/E4245/E4246/E4247 and recursive-module E4290 callers. Parameter observer
+10008 passes. Add two actual instances with distinct parameter lists rendering
+identical text: source and Go retain both errors. Final observer 90322 passes;
+all 545 full rows, including stored parameters, agree. NPE/CCE compares class,
+not enhanced JVM messages. No permanent invented test, weakened source scenario
+or original-method completion credit. No direct Java Instance level methods
+found in the source semantic test tree; original LET callers remain reconcile.
+
+Initial compile 55422, semantic gate 82306, full SANY 11193 and compile 46246
+pass. After parameter correction, final affected original semantic/parser/
+resolver/scoped/incremental/builtin gate 45718 passes normally in 9.654s (180
+passing test events); full SANY 98283 passes in 2.088s and all-package compile
+82194 passes. Retained module observer 10559 passes: all 332 source rows agree.
+All handles retired. No race or shortened workloads; no new full-workspace claim.
+Update handoff and architecture. Ordinary application checking, shared evaluator
+collections and remaining graph/parser fidelity still prevent full completion.
+
 2026-10-07 Canonical SubstInNode/APSubstInNode level checks:
 Previous completed commit: a144867. Translate complete source child checks,
 correctness caching/reset, maximum-level selection and retained parameter merges.

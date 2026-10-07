@@ -55,7 +55,7 @@ func (n *sanySemModuleNode) levelCheck(iter int32, errors *Diagnostics) bool {
 			if node.inRecursive {
 				for j := 0; j < node.semArity(); j++ {
 					if sanyLevelArrayAt(node.argMaxLevels, j) < actionLevel {
-						sanyAddFixedLevelMessage(errors, node.GetTreeNode(), "E4290", fmt.Sprintf("Argument %d of recursive operator %s is primed", j+1, node.semName()))
+						sanyAddFixedLevelMessage(errors, node.GetTreeNode(), "E4290", fmt.Sprintf("Argument %d of recursive operator %s is primed", j+1, node.semName()), int32(j+1), node.semName())
 					}
 				}
 				maximum = max(maximum, *node.level)

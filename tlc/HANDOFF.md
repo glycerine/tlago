@@ -1256,8 +1256,8 @@ Subst now translates the five static parameter/constraint/dependency helpers,
 including first-match reference lookup, shared replacement sets, fresh unmatched
 singletons and source tightening order. Typed-null lookup matches Java null. All
 130 direct Java rows agree; runtime failures compare exception class rather than
-JVM-specific enhanced messages. Instance level-checking remains pending; the
-SubstIn/APSubstIn callers are translated below. No original-method credit is added.
+JVM-specific enhanced messages. SubstIn/APSubstIn and Instance callers are
+translated below. No original-method credit is added.
 ModuleNode now performs the source recursive-section initialization and two
 checking passes, ordered module/definition/top-level checks and retained
 constraint merges. Its isConstant method checks actual operator bodies and
@@ -1271,7 +1271,15 @@ APSubstIn retains all parameters and leaves its non-Leibniz set untouched. All
 768 direct Java rows agree across signed iterations, failed children, duplicate
 and chained substitutions, identity checks and malformed metadata. These manual
 observations add no original-method completion credit.
-Application, instance and evaluator collection sharing
+InstanceNode now performs the complete source checks for replacement levels,
+non-Leibniz operators, argument bounds and co-parameter dependencies. It filters
+exported constraints by actual formal references, resets only level parameters
+and retains its other metadata. Proof-instance getter overrides and raw formatter
+follow Java. Parameterized level diagnostics retain their original arguments for
+duplicate equality, including recursive-module diagnostics. All 545 direct Java
+rows and the retained 332 module rows agree. These are manual observations;
+ordinary application checking still prevents closing the original LET methods.
+Application and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.
 

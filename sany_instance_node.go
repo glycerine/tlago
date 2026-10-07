@@ -94,7 +94,12 @@ func (node *sanySemInstanceNode) getLocal() bool                     { return no
 func (node *sanySemInstanceNode) isLocal() bool                      { return node.local }
 func (node *sanySemInstanceNode) setStepName(name *tlc.UniqueString) { node.stepName = name }
 func (node *sanySemInstanceNode) getStepName() *tlc.UniqueString     { return node.stepName }
-func (node *sanySemInstanceNode) getLevel() int                      { return 0 }
+func (node *sanySemInstanceNode) getLevel() tlaLevel {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return constantLevel
+}
 func (node *sanySemInstanceNode) getChildren() []sanySemanticGraphNode {
 	if node.substs == nil {
 		panic(tlc.NewNullPointerException(""))

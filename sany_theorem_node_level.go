@@ -111,8 +111,9 @@ func sanyGraphTreeNode(node sanySemanticGraphNode) any {
 	panic(tlc.NewUnsupportedOperationException("semantic syntax ownership is not integrated"))
 }
 
-// Fixed, parameter-free level diagnostics use source Location equality.
-func sanyAddFixedLevelMessage(errors *Diagnostics, tree any, code, message string) {
+// Level diagnostics with fixed source formats retain parameters for source
+// duplicate equality, even when two parameter lists render identical text.
+func sanyAddFixedLevelMessage(errors *Diagnostics, tree any, code, message string, parameters ...any) {
 	syntax, ok := tree.(*SanySyntaxNode)
 	if tree == nil || ok && syntax == nil {
 		panic(tlc.NewNullPointerException())
@@ -127,8 +128,9 @@ func sanyAddFixedLevelMessage(errors *Diagnostics, tree any, code, message strin
 	diagnostic := errorAt(location.Begin, code, "%s", message)
 	diagnostic.SANYRange = location
 	diagnostic.SANYMessage = message
+	diagnostic.SANYParameters = append([]any(nil), parameters...)
 	for _, existing := range *errors {
-		if existing.Code == code && existing.SANYMessage == message && existing.SANYRange.Begin.File == location.Begin.File && existing.SANYRange.Begin.Line == location.Begin.Line && existing.SANYRange.Begin.Column == location.Begin.Column && existing.SANYRange.End.Line == location.End.Line && existing.SANYRange.End.Column == location.End.Column {
+		if existing.Code == code && existing.SANYMessage == message && reflect.DeepEqual(existing.SANYParameters, diagnostic.SANYParameters) && existing.SANYRange.Begin.File == location.Begin.File && existing.SANYRange.Begin.Line == location.Begin.Line && existing.SANYRange.Begin.Column == location.Begin.Column && existing.SANYRange.End.Line == location.End.Line && existing.SANYRange.End.Column == location.End.Column {
 			return
 		}
 	}

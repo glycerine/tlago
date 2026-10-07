@@ -9568,8 +9568,8 @@ null/duplicate substitutions, shared set identity, same-UID distinct symbols,
 nullable values, null collection keys and a dependency mutated after insertion.
 Runtime failure observations compare NPE/ClassCastException classes, not enhanced
 JVM messages. These are manual observations, not original-method test credit.
-SubstInNode/APSubstInNode checks are translated below. InstanceNode level checking
-and shared evaluator integration remain separate implementation work.
+SubstInNode/APSubstInNode checks are translated below. InstanceNode checking is translated below; shared evaluator integration remains
+separate implementation work.
 
 
 ## Canonical module level checking and constant classification
@@ -9603,7 +9603,7 @@ theorem cases over signed/repeated iterations. Observations retain child-call
 counts, recursive tables, complete collections, diagnostics, formatting and
 twelve partial failures. NPE observations compare exception class rather than
 JVM enhanced messages. No original test method is credited. Ordinary application,
-instance descendants still prevent whole-module
+ordinary application descendants still prevent whole-module
 checking and the two original incremental LET methods from being complete.
 
 
@@ -9638,5 +9638,46 @@ nodes and controlled ExprNode metadata. They compare complete inherited level
 data, child calls, module iteration and collection identity, including successful
 chained/duplicate substitutions, false child results and malformed metadata.
 Runtime NPE/CCE observations compare class, not enhanced JVM messages. These
-are manual evidence, not original-method credit. Instance and ordinary application
-checking remain dependencies of the original incremental LET methods.
+are manual evidence, not original-method credit. Ordinary application checking
+remains a dependency of the original incremental LET methods.
+
+
+## Canonical instance level checking
+
+`sany_instance_level.go` translates the complete InstanceNode algorithm. A fresh
+iteration records its counter, replaces levelParams with a fresh HashSet and
+resets correctness. Check the actual module and every replacement; preserve the
+source repeated child checks and short-circuit boolean evaluation. Nonconstant
+modules restrict replacement levels to declaration levels. Then check explicit
+LC bounds, defined operators' maximum argument levels and co-parameter ALPs.
+Report E4245/E4246/E4247 only when the corresponding child check succeeds, but
+still make correctness false when a bound fails. E4244 reports a non-Leibniz
+operator without independently making the returned result false.
+
+Preserve captured replacement references within each constraint phase and fresh
+field reads in the nested co-parameter loops. Compute translated module LC/ALC/
+ALP sets and merge replacement metadata in source phase order, retaining only
+constraints/dependencies not bound by the instance's actual formal references.
+Existing LC/ALC/ALP sets are tightened/extended, not reset. All/non-Leibniz sets
+and raw inherited level remain unchanged. Preserve partial writes on failure.
+
+Instance getLevel returns constant level even before checking; its return type
+now satisfies the canonical LevelNode interface. getLevelParams and
+getLevelConstraints bypass the inherited iteration guard, as in Java. Other
+inherited getters retain their guards. Its formatter reads the raw three
+constraint/dependency fields, uses Java collection forms and has no iteration
+guard. Fixed-format level diagnostics retain parameter lists and compare them
+when deduplicating, along with the source code, rendered message and Location.
+Recursive-module E4290 now retains its two parameters too. This is class-specific
+fixed-format diagnostic parity, not a claim of complete general Errors parity.
+
+All 545 external Java/Go rows agree, including diagnostic parameter lists, full
+metadata, both formatters, child calls, signed iterations and set identity.
+Most observations use actual source modules with prechecked controlled metadata
+to isolate Instance logic; one mode checks a fresh actual module. Include failed
+children, argument/co-parameter bounds, diagnostic suppression, non-Leibniz
+warnings, null logs/fields, formal filtering and successful chained/duplicate
+substitutions. A final actual-instance case retains two distinct parameter lists
+that render the same message. NPE/CCE observations compare class rather than
+enhanced JVM messages. Retained 332 module rows still agree. No original method
+credit is added; ordinary application and shared evaluator integration remain.
