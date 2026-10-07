@@ -15,23 +15,24 @@ type Spec struct {
 }
 
 type Module struct {
-	Syntax        *SanySyntaxNode
-	Name          string
-	SourcePath    string
-	Source        string
-	Library       bool
-	Pos           Position
-	Extends       []string
-	Instances     []Instance
-	Declarations  []Declaration
-	Recursives    []Declaration
-	Definitions   []Definition
-	Assumptions   []NamedExpr
-	Theorems      []NamedExpr
-	ProofRefs     []ProofRef
-	ProofRefNodes []*SanySyntaxNode
-	Proofs        []ProofSummary
-	Nested        []*Module
+	generatorNodes *sanyGeneratorNodes
+	Syntax         *SanySyntaxNode
+	Name           string
+	SourcePath     string
+	Source         string
+	Library        bool
+	Pos            Position
+	Extends        []string
+	Instances      []Instance
+	Declarations   []Declaration
+	Recursives     []Declaration
+	Definitions    []Definition
+	Assumptions    []NamedExpr
+	Theorems       []NamedExpr
+	ProofRefs      []ProofRef
+	ProofRefNodes  []*SanySyntaxNode
+	Proofs         []ProofSummary
+	Nested         []*Module
 
 	ImplicitExtends []string // Runtime additions, absent from the source module context.
 }

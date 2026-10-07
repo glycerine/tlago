@@ -22,6 +22,7 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	nodes                *sanyGeneratorNodes
 	formals              map[string]localSymbol
 	fact                 bool
 	level                int

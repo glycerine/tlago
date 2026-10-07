@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-06 Retained Generator sentinel nodes:
+Previous completed commit: c1d543d. Source Generator constructs four real semantic
+nodes in order: nullODN, nullOAN, nullOpArg, nullLabelNode. Port their constructors
+into concrete native semantic structs sharing the existing UID allocator and tool
+slots. Preserve kinds, source names/arities, nullSTN syntax/location, empty/nil
+arrays and operator/body links. Each external module retains a fresh set; nested
+modules and the expression generator share their owning module's set. This is
+retained constructor scaffolding: normal semantic classes and canonical error
+result graphs remain pending; existing generationFailure propagation is unchanged.
+
+Twenty-three exact observations match actual Java Generator instances, including
+all kinds/syntax/locations, relative allocation order, definition metadata,
+application arrays/operator, argument/label metadata and body, distinct instances
+and next-Generator construction span. Go overlay 83094 terminal 0; source helper
+terminal 0. Receipts: /mnt/oldrog/tmp/tlago-generator-nodes-{java,go}.log. Helpers
+SourceGeneratorNodesManual.java, tlago-generator-nodes-manual_test.go and overlay
+stay outside the repository; no permanent tests invented or inventory credit.
+Source probe initializes the builtin context first, then inspects actual Generator
+fields. Constructor comparison does not prove whole class/graph parity.
+
+Existing focused parser/semantic and original ParseError/legacy/scoped methods
+pass 4.537 seconds (10794). Whole SANY package passes 1.545 seconds (45521);
+all packages compile (64137). Four unchanged whole original models pass
+2.427 seconds (83459): UndeclaredRecursion, ConstantContextTLCCache,
+ConstantRank1TLCEval and ACoverage. Logs:
+/mnt/oldrog/tmp/tlago-generator-nodes-{root,sany,compile,models}.log. Rebuild the
+scratch diagnostic frontend before comparisons. Fifteen label-flow cases, all
+sixteen required cases and all nine broader label cases still match complete
+Java diagnostics. Expanded aggregate audit still matches four/five with formal_70
+different. Combined handle 9788 terminal 1 for that known failure. Logs:
+/mnt/oldrog/tmp/tlago-generator-nodes-{flow,required,nine,extra}.log.
+
+Actual 70-formal Go UID range is 303..372, first hash 1605; Java remains
+305..374, first hash 1607. Probe 85241 terminal 0:
+/mnt/oldrog/tmp/tlago-generator-nodes-uid-go.log. These four additional allocations
+are retained sentinels, not counter offsets. ModuleNode and remaining construction
+must still be audited; do not manufacture the remaining gap. All handles terminal
+and retired; git diff --check passes. No race workloads, original assertion or
+settings/bounds changes, whole-feature or current full-workspace claim. Next:
+ModuleNode construction, canonical sentinel failure results, LevelNode/visitor
+integration and actual graph allocation order. New service remains postponed.
+
 2026-10-06 Retained frontend initial-context lifecycle:
 Previous completed commit: 7f120f4. Source SANY.parse calls Context.reInit before
 parsing. Context class initialization constructs the first global builtin table;

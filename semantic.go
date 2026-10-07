@@ -48,6 +48,11 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 			return nil, nil
 		}
 		checked[mod] = true
+		if parent := enclosing[mod]; parent != nil {
+			mod.generatorNodes = parent.generatorNodes
+		} else {
+			mod.generatorNodes = newSanyGeneratorNodes()
+		}
 		checks := &sanyModuleLevelChecks{generator: resolver.moduleGenerator(mod), recursiveGeneration: recursive}
 		// Nested graphs are generated at their module unit, sharing the external
 		// module's reporting iteration. Their diagnostics remain in body order.
@@ -252,6 +257,14 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			panic(failure)
 		}
 	}()
+	if mod.generatorNodes == nil {
+		if enclosing != nil {
+			mod.generatorNodes = enclosing.generatorNodes
+		}
+		if mod.generatorNodes == nil {
+			mod.generatorNodes = newSanyGeneratorNodes()
+		}
+	}
 	if checks.generator == nil {
 		resolver := &sanySelectorResolver{spec: spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 		checks.generator = resolver.moduleGenerator(mod)
@@ -266,7 +279,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			return generateModuleWithEnclosing(nested, spec, mod, child)
 		}
 	}
-	expressionGeneration := &sanyExpressionGeneration{spec: spec, currentModule: mod, module: checks.recursiveGeneration, bindings: map[string]*sanyRecursiveBinding{}}
+	expressionGeneration := &sanyExpressionGeneration{nodes: mod.generatorNodes, spec: spec, currentModule: mod, module: checks.recursiveGeneration, bindings: map[string]*sanyRecursiveBinding{}}
 	checkExpr := func(expr Expr, context map[string]Position, locals map[string]bool) Diagnostics {
 		return expressionGeneration.checkExpr(expr, context, locals)
 	}

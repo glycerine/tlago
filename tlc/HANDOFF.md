@@ -780,10 +780,16 @@ retains the actual context node. Eleven lifecycle observations match Java; four
 unchanged original TLC models pass. General selector/evaluator builtin graph
 sharing remains incomplete.
 
-Next semantic work: port Generator sentinel and module graph construction,
-complete semantic allocation order, then unify label guards. The expanded aggregate
+Generator construction now retains its four source sentinel nodes in allocation
+order, including their links and empty/nil arrays. External modules receive fresh
+sets; nested modules and expression generation share their owner's set. Twenty-three
+actual constructor observations match Java. This is constructor metadata, not
+complete ordinary OpDefNode/OpApplNode/OpArgNode/LabelNode or failure-path graphs.
+
+Next semantic work: port ModuleNode and remaining graph construction, wire failure
+results to retained sentinels, and complete allocation order before unifying guards. The expanded aggregate
 audit now has one difference (`formal_70`) out of five cases. Its first formal UID
-is Java 305, Go 299; both hash formulas include kind and UID. Preserve these actual identities and HashSet iteration rather than
+is Java 305, Go 303; both hash formulas include kind and UID. Preserve these actual identities and HashSet iteration rather than
 inventing offsets or sorting names. Full LabelNode/LS graph integration remains
 pending. Receipts are in PORT_PROGRESS.md; larger ordering parity is still failing.
 

@@ -1,5 +1,29 @@
 # TLC Architecture Notes for the Go Port
 
+## Generator-owned sentinel nodes
+
+Each external-module Generator constructs nullODN, nullOAN, nullOpArg and
+nullLabelNode in that order. Go now retains concrete semantic nodes for these
+constructors, using the shared UID allocator/indexed slots and the non-null
+nullSTN builtin syntax/location. nullODN has kind zero, arity -2 and nil body/params.
+nullOAN has OpApplKind, points to nullODN, and retains empty operands/ranges with
+nil bound arrays. nullOpArg has OpArgKind, name nullOpArg, arity -2 and no operator
+or module. nullLabelNode has LabelKind, name nullLabelNode, arity zero, an empty
+formal array and nullOAN as its body.
+
+Native modules retain their Generator-owned set. External analyses receive fresh
+sets; nested module generation and expression generation use the enclosing set.
+Twenty-three actual Java constructor observations match, including syntax,
+locations, shapes, links and consecutive relative UID construction. Existing
+parser/SANY checks and four unchanged original TLC models pass. The 70-formal
+allocation probe now starts at Go UID 303 versus Java 305.
+
+This is constructor and ownership scaffolding, not complete ordinary semantic node
+classes or canonical failure graphs. The existing generationFailure adapter still
+controls error propagation; returning the actual nullOAN/nullOpArg/nullLabelNode
+from all source failure paths remains pending. ModuleNode and other graph
+constructors, LevelNode data, visitors and evaluator sharing remain incomplete.
+
 ## Builtin operator formal construction
 
 OpDefNode(BuiltInOperator) allocates its own node before its phony formals.
@@ -72,8 +96,8 @@ label diagnostic cases match. Native/unresolved metadata retains its old adapter
 
 This does not establish absolute graph allocation order. After frontend context
 integration, one of five expanded aggregate cases differs: formal_70. Its actual
-first formal UID is Java 305, Go 299 (hashes 1607 and 1601). Complete Generator
-sentinel/module and remaining graph constructors rather than manufacturing UID
+first formal UID is Java 305, Go 303 (hashes 1607 and 1605). Complete module
+and remaining graph constructors rather than manufacturing UID
 offsets. Complete unified LS/generator integration and stop allocation beneath
 forbidden label bodies. No full LabelNode graph parity claim.
 
