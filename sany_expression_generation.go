@@ -23,9 +23,10 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
+	excepts              []*sanySemOpApplNode
+	exceptSpecs          []*sanySemOpApplNode
 	labelsEnabled        bool
 	labelScopes          []*sanyLabelScope
-	labelExceptDepth     int
 	labelAPDepth         int
 	labelAPForbidden     bool
 	labelGoalUnsupported bool

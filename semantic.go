@@ -3321,6 +3321,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	}
 	switch e := expr.(type) {
 	case *IdentExpr:
+		if e.Name == "@" && e.proofAtTarget == nil && len(generation.excepts) > 0 && len(generation.exceptSpecs) > 0 {
+			e.semanticGraph = newSanySemAtNode(generation.excepts[len(generation.excepts)-1], generation.exceptSpecs[len(generation.exceptSpecs)-1])
+			return nil
+		}
 		if e.proofAtTarget != nil {
 			// generateProof constructs $Nop with the already-generated previous
 			// RHS. Do not regenerate it or repeat its diagnostics in this scope.
@@ -3690,19 +3694,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		}
 		retainSanyFunctionApplication(e)
 	case *ExceptExpr:
-		diags = append(diags, generation.checkExpr(e.Base, defined, locals)...)
-		for _, spec := range e.Specs {
-			for _, component := range spec.Components {
-				for _, index := range component.Indices {
-					diags = append(diags, generation.checkExpr(index, defined, locals)...)
-				}
-			}
-			exceptLocals := copyBoolMap(locals)
-			exceptLocals["@"] = true
-			generation.labelExceptDepth++
-			diags = append(diags, generation.checkExpr(spec.Value, defined, exceptLocals)...)
-			generation.labelExceptDepth--
-		}
+		diags = append(diags, generation.generateExcept(e, defined, locals)...)
 	case *LabelExpr:
 		e.labelGenerated = false
 		if generation.labelsEnabled && !generation.labelGoalUnsupported {

@@ -1,5 +1,28 @@
 # TLC Architecture Notes for the Go Port
 
+## EXCEPT construction and AtNode reference ownership
+
+Generate the base before allocating the EXCEPT application. Allocate its mutable
+operand array and actual node before specs. Generate each component in order:
+record selectors use actual StringNodes, single indices use their generated node,
+and multi-index components construct tuples. Preserve Java's exact tuple syntax
+index selection, including its unusual selection for later components.
+
+Construct the spec's sequence and mutable pair before its RHS. Push both actual
+nodes during RHS generation, then pop them and fill the same operand arrays.
+The outer EXCEPT context remains active while generating a nested EXCEPT's base
+and indices. Every AtNode retains the innermost active EXCEPT/pair references,
+uses its pair's syntax/location, and exposes the original base and modifier by
+reference. Multiple AtNodes share those target identities. Proof previous-RHS
+references retain their separate generation path.
+
+Label rejection now checks these actual stacks, as Java does, without a parallel
+depth approximation. A missing child graph leaves the enclosing EXCEPT incomplete,
+while source construction order and real failure sentinels are preserved. AtNode
+inherited level checking, visitors and evaluator graph reuse remain pending.
+The existing semantic corpus translation still uses native reference/level helpers;
+constructor comparisons alone do not establish complete canonical corpus parity.
+
 ## Ordinary expression labels and LS scopes
 
 Generator label scopes retain a nullable label table and a sequence of actual
@@ -26,7 +49,7 @@ ordinary-label comparisons cover initial nil goal/zero clause fields. AP/proof
 contexts continue using the native path: their actual goal nodes, clause lifetime,
 NEW/marker ownership and labeled AP bodies require further implementation.
 Hashtable enumeration order, complete LabelNode getters/level checking/visitors,
-canonical EXCEPT graphs and evaluator sharing remain pending. Sorted table-entry
+complete EXCEPT/AtNode level data and evaluator sharing remain pending. Sorted table-entry
 comparisons establish associations and retained identities, not enumeration order.
 
 ## Explicit recursive declarations and completion

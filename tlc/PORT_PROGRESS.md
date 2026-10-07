@@ -1,5 +1,54 @@
 # TLC Port Progress
 
+2026-10-07 Canonical EXCEPT construction and AtNode references:
+Previous completed commit: e5894c8. Port Generator.processExcept allocation order:
+generate the base, allocate the mutable EXCEPT operands/node, generate component
+expressions and record StringNodes, construct the sequence and mutable pair,
+then generate the RHS with both actual nodes on their stacks. Fill those same
+operand arrays afterward. Preserve source tuple syntax selection for multiple
+indices, including Java's unusual 2*j+1 indexing on later components.
+
+AtNode retains actual EXCEPT/pair pointers, uses the pair's syntax/location and
+returns the original base/modifier pointers. Nested EXCEPT bases and indices
+resolve the outer active context; nested RHS references resolve the inner one.
+Multiple replacements and multiple AtNodes retain the corresponding identities.
+Proof previous-RHS references keep their separate path. Labels now test the same
+actual stacks instead of the previous depth counter. Missing child graphs leave
+the enclosing EXCEPT visibly incomplete; source failures retain real sentinels.
+
+All 350 complete output rows match Java across 22 whole-module cases, including
+349 prefixed observations: 255 graph nodes, 27 AtNode reference quadruples,
+25 module-context entries, 22 cases, eight symbol references, seven diagnostics,
+two bound groups, two LET context entries and one actual null-expression result.
+Cases cover nested EXCEPT/base/index contexts, repeated @, multiple specs, record
+selectors, multiple indices, undefined base/index/RHS, labels, named functions,
+LET, quantification and a rejected LAMBDA in a scalar operator argument. The
+initial direct RHS LAMBDA probe was rejected syntactically by both parsers;
+use the source-accepted scalar argument form for the generation failure instead.
+Probes stay outside the repository and add no permanent tests.
+
+The prior label-in-EXCEPT graph gap is now filled: all 287 output rows across the
+22 label cases match Java. Complete frontend diagnostic codes, ranges and messages
+agree for both 22-case EXCEPT and 22-case label sets. Existing Java tests involving
+EXCEPT live in the semantic/error corpora; their Go translations were already
+present. The semantic corpus still uses native reference/level helpers and is not
+credited as canonical graph parity by these constructor comparisons.
+
+Verification: existing focused root/SANY/TLC gate passes in 47.477s (82582), full
+sany_tests in 2.052s (97559), and initial compile-all succeeds. After replacing the
+redundant depth counter with the actual stacks, final exact graph runs succeed
+(29863), full sany_tests passes in 2.129s, compile-all succeeds, and the rebuilt
+observer confirms both 22-case diagnostic sets (92812). All handles are terminal
+zero. Receipts are under /mnt/oldrog/tmp/tlago-except-*, including root JSON, complete
+Java/Go graph logs, compile log and per-case diagnostics. No race workload, fixture
+change, invented permanent test or weakened source assertion was introduced.
+
+Remaining: AtNode inherited level data/checking, visitors and evaluator graph
+reuse; canonical AP/NEW/goal/marker graphs and goal-clause lifetime; complete label
+operations, INSTANCE/fact, qualified/imported identities, shared Errors/exception
+ownership and full recursive level checking. basicOpDefTest stays reconcile.
+No original-method, TLC inventory or full-workspace completion credit is added.
+
 2026-10-07 Ordinary expression LabelNode and LS graph generation:
 Previous completed commit: fa2f27b. Port ordinary generateLabel construction and
 LS frame/formal-group ownership. Generate body first, resolve actual parameters

@@ -92,7 +92,7 @@ func (g *sanyExpressionGeneration) generateLabel(label *LabelExpr, context map[s
 	if g.labelAPForbidden {
 		return guard("E4334", "Label not allowed within scope of declaration in nested ASSUME/PROVE.")
 	}
-	if g.labelExceptDepth > 0 {
+	if len(g.excepts) > 0 && len(g.exceptSpecs) > 0 {
 		return guard("E4335", "Labels inside EXCEPT clauses are not yet implemented.")
 	}
 	finishBodyLabels := g.pushLabelScope()

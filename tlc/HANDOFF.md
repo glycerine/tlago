@@ -1011,16 +1011,18 @@ label body before resolving parameters and constructing its node. Duplicate
 registration retains the earlier node. Reuse the owning Generator's nullLabelNode
 at implemented guards, without generating the rejected body.
 
-The 21 bounded ordinary-label graph cases match all 265 output rows; all 22
-label diagnostic cases match codes, ranges and messages. The EXCEPT guard case
-has no complete enclosing Go EXCEPT graph, so receives diagnostic credit only.
-Existing focused root/TLC tests, full sany_tests and compile-all pass. The 56
-formal and 59 AP phase/substitution comparisons still agree. Detailed receipts
-belong in PORT_PROGRESS.md. No permanent tests or original-method credits were
-added in this slice; basicOpDefTest remains reconcile.
+EXCEPT now constructs its actual node before specs and each mutable pair before
+its RHS. Active stacks own AtNode EXCEPT/pair references; base, modifier and pair
+syntax retain source identity. Nested bases/indices resolve the outer context.
+Label rejection uses those same stacks. All 22 EXCEPT graph cases match Java's
+350 complete output rows, and all 22 label graphs now match their 287 rows.
+Both complete 22-case diagnostic sets agree on codes, ranges and messages.
+Existing focused root/TLC tests, full sany_tests and compile-all pass. Detailed
+receipts belong in PORT_PROGRESS.md. No permanent tests or original-method credits
+were added in these construction slices; basicOpDefTest remains reconcile.
 
 Canonical AP/NEW/goal/marker ownership, goal-clause lifetime after AP, LabelNode
-Hashtable enumeration/getters, full inherited level data and visitors remain
+Hashtable enumeration/getters, AtNode level data, full inherited checking and visitors remain
 unfinished. Qualified selectors, INSTANCE/fact and imported identities, recursive
 level iteration, shared Errors/exception integration and evaluator graph sharing
 also remain pending. Proof/AP contexts keep the existing native fallback until
