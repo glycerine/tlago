@@ -38,27 +38,35 @@ func TestTestBuiltInOperatorInitialization_testInitAndReInit(t *testing.T) {
 			if actual.semLocal() {
 				t.Fatalf("%s: isLocal = true", name)
 			}
-			if actual.body != nil {
+			if actual.getBody() != nil {
 				t.Fatalf("%s: body is non-null", name)
 			}
 			if actual.semArity() != expected.arity {
 				t.Fatalf("%s: arity = %d, want %d", name, actual.semArity(), expected.arity)
 			}
 			if expected.arity == -1 {
-				if actual.formalNodes != nil {
+				if actual.getParams() != nil {
 					t.Fatalf("%s: params are non-null", name)
 				}
-			} else if len(actual.formalNodes) != expected.arity {
-				t.Fatalf("%s: params length = %d, want %d", name, len(actual.formalNodes), expected.arity)
+			} else {
+				params := actual.getParams()
+				// Java reads getParams().length; a null array must fail even
+				// when expected arity is zero (Go's len(nil) would pass).
+				if params == nil {
+					t.Fatalf("%s: cannot read length of null params", name)
+				}
+				if len(params) != expected.arity {
+					t.Fatalf("%s: params length = %d, want %d", name, len(params), expected.arity)
+				}
 			}
 			if actual.level != expected.level {
 				t.Fatalf("%s: level = %d, want %d", name, actual.level, expected.level)
 			}
-			if !reflect.DeepEqual(actual.argMaxLevels, expected.argMaxLevels) {
-				t.Fatalf("%s: argMaxLevels = %#v, want %#v", name, actual.argMaxLevels, expected.argMaxLevels)
+			if !reflect.DeepEqual(actual.getArgMaxLevels(), expected.argMaxLevels) {
+				t.Fatalf("%s: argMaxLevels = %#v, want %#v", name, actual.getArgMaxLevels(), expected.argMaxLevels)
 			}
-			if !reflect.DeepEqual(actual.argWeights, expected.argWeights) {
-				t.Fatalf("%s: argWeights = %#v, want %#v", name, actual.argWeights, expected.argWeights)
+			if !reflect.DeepEqual(actual.getArgWeights(), expected.argWeights) {
+				t.Fatalf("%s: argWeights = %#v, want %#v", name, actual.getArgWeights(), expected.argWeights)
 			}
 		}
 		count := 0

@@ -1198,9 +1198,14 @@ agree with Java. Canonical SANY constructors now own the inherited `LevelNode`
 data, actual mutable symbol/argument sets and source getter guards. Formal and
 declaration level checks and canonical subnode aggregation agree with Java across
 575 direct observations. The retained 24,529 whole-module graph/diagnostic rows
-still agree. Mixed graphs containing TLC-owned literals, class-specific recursive
-checks and evaluator integration remain pending; the three incremental semantic
-methods remain reconcile. No original-method credit added.
+still agree. Operator arguments now perform the source level check and retain
+shared operator collections, while keeping their own non-Leibniz set. The full
+operator-definition level algorithm and metadata accessors are translated;
+792 direct source observations agree, including recursive bounds, weights,
+higher-order conditions, partial failures and numbered steps. Literal bodies and
+other unported child checks still prevent closing the operator feature or the
+three incremental semantic methods, which remain reconcile. Evaluator integration
+also remains pending. No original-method completion credit added.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

@@ -96,3 +96,28 @@ func newSanySemModuleInstanceOpDefNode(name string, parameters []*sanyFormalPara
 	}
 	return node, nil
 }
+
+func (node *sanySemOpDefNode) getBody() sanySemanticGraphNode {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return node.body
+}
+func (node *sanySemOpDefNode) setBody(body sanySemanticGraphNode) {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	node.body = body
+}
+func (node *sanySemOpDefNode) getParams() []*sanyFormalParamNode {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	return node.formalNodes
+}
+func (node *sanySemOpDefNode) setParams(params []*sanyFormalParamNode) {
+	if node == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	node.formalNodes = params
+}

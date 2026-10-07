@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-07 Canonical operator-argument and operator-definition level algorithms:
+Previous completed commit: 64ab259. Translate complete source OpArgNode.levelCheck
+and OpDefNode.levelCheck, including cache guards, early iteration recording,
+monotonic levels/weights/maxima, higher-order tables, formal removal, raw constraint
+copies, persistent argument dependencies and one-way Leibniz changes. Preserve
+reference membership and source short-circuiting. OpArg shares five collections
+but intentionally retains its own non-Leibniz set. Numbered steps retain the
+source same-iteration aggregation skip. Port metadata copy/alias getters and
+body/parameter accessors. Read the current body after child checks replace it.
+Fix primary OpArg construction to raise typed NPE after UID allocation, rather
+than leak a Go runtime panic. Literal metadata and other unported child checks
+remain explicit dependencies; no fake empty/constant body adapter is introduced.
+
+External probes stay under /mnt/oldrog/tmp/tlago-operator-level-* and use actual
+Java canonical symbols with controlled source ExprNode bodies. Initial compile
+44118 passes; observer 38415 returns 0 and all 769 rows agree. Extend null/negative
+formal cases, nullable collections, partial writes, numbered steps, false operator
+results, collection mutation, Leibniz aliasing and null-constructor UID use.
+Java preparation first fails because the observer Run interface does not declare
+OpArg's checked AbortException; fix the declaration without changing scenarios.
+Observer 48447 returns 0 and corrected Java comparison matches all 791 rows.
+Add replacement of the operator body during child levelCheck; observer 33964
+returns 0 and all 792 rows agree. Null failures compare the exception class,
+excluding JVM helpful-message synthesis. All observer handles retired.
+
+Source audit finds TestBuiltInOperatorInitialization uses copy getters while its
+Go translation read backing arrays. Correct it to call source getters, preserving
+all expected arrays and reinitialization assertions. Preserve Java's failure when
+getParams().length sees null even at arity zero. No invented tests, replacement
+assertions or original-method completion credit. Focused original getter test
+passes 0.016s (8900 retired); final accessor-based observer and unchanged whole
+builtin method pass 0.029s (49436 retired), still matching all 792 rows.
+
+Affected root/parser/context/proof/recursion/TLC-model gate passes 46.682s with
+282 selected test passes (79145 retired). Full short SANY passes 1.833s (53379
+retired), compile-all passes (70812 retired); final compile after accessor/test
+correction passes (83213 retired). Retained observer 89420 returns 0 and all
+24,529 graph/diagnostic rows still match Java. All handles retired; normal checks
+only, no race or full-workspace pass claim. The three incremental semantic methods
+remain reconcile. Real literal metadata integration is the next prerequisite,
+followed by class-specific checking and evaluator sharing.
+
 2026-10-07 Inherited canonical LevelNode data and formal/declaration checks:
 Previous completed commit: 232561f. Add fresh common mutable level metadata to
 all canonical SANY constructors and remove shadow OpDef/OpDecl fields. Use actual

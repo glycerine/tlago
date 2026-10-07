@@ -135,6 +135,9 @@ func newSanySemOpApplNode(operator sanySemSymbol, operands []sanySemanticGraphNo
 func newSanySemOpArgNode(operator sanySemSymbol, syntax *SanySyntaxNode, module *sanySemModuleNode) *sanySemOpArgNode {
 	node := &sanySemOpArgNode{sanySemanticNode: newSanySemanticNode(sanyOpArgKind), operator: operator, module: module}
 	// Source's primary constructor dereferences op despite its historical null comment.
+	if sanyLevelSymbolReference(operator) == nil {
+		panic(tlc.NewNullPointerException())
+	}
 	node.name, node.arity = operator.semName(), operator.semArity()
 	if syntax == nil {
 		node.TreeNode = nil

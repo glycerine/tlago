@@ -9278,3 +9278,36 @@ Class-specific operator, application, instance, proof and module checking and
 shared evaluator ownership remain incomplete. The 575 direct Java observations
 and retained 24,529 graph rows verify this inherited-data integration; they do
 not close the remaining original incremental semantic methods.
+
+## Canonical operator level checking
+
+`sany_operator_level.go` translates the complete original `OpArgNode.levelCheck`
+and `OpDefNode.levelCheck` algorithms. Operator arguments record their iteration,
+check the actual operator, and share its level/all-parameter sets, constraints
+and argument dependencies. Preserve the source omission of non-Leibniz sharing.
+The primary constructor raises a typed null failure after allocating its UID.
+
+Operator definitions retain the source recursive/nonrecursive cache guard and
+record their iteration before checking descendants. Levels and weights grow
+monotonically, maximum argument levels tighten, and higher-order minimum levels
+and argument-dependency conditions rebuild each computation. Bound formals are
+removed from parameter sets and constraint copies. Leibniz flags only change
+from true to false. Argument dependencies persist unless both symbols occur by
+reference in the formal array. Constraint copies preserve raw values. A numbered
+step checks its step node, then the inherited same-iteration guard skips its
+aggregation; preserve this source behavior. Body reads remain fresh after child
+checking, so `setBody` replacements affect subsequent metadata reads.
+
+Metadata getters preserve source guards, variadic indexing and nullable-table
+fallbacks. Maximum-level and weight getters copy their arrays; the Leibniz getter
+returns the actual mutable array. Body and parameter accessors retain their
+reference identities. The original builtin initialization test now calls the
+same getters as Java, retaining its assertions and null array-length behavior.
+
+The 792 external observations use canonical source symbols and controlled
+ExprNode bodies to verify the complete metadata algorithm and failure order.
+They do not establish checking of all generated TLA bodies. Mixed TLC-owned
+literals explicitly remain unsupported by the canonical adapter until real
+shared level metadata is integrated; do not supply fake constant/empty metadata
+to close the incremental operator test. Application, instance, proof/module
+checking and shared evaluator integration remain pending.

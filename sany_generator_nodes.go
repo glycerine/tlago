@@ -25,6 +25,8 @@ type sanySemOpDefNode struct {
 	defined            bool
 	argMaxLevels       []tlaLevel
 	argWeights         []int
+	minMaxLevel        [][]tlaLevel
+	opLevelCond        [][][]bool
 	leibniz            []bool
 	isLeibniz          bool
 	table              *sanySymbolTable
