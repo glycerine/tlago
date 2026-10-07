@@ -1,5 +1,46 @@
 # TLC Port Progress
 
+2026-10-07 Canonical INSTANCE export gate and pending bridge-level integration:
+Previous completed commit: 633a0ca. Full workspace session 12025 remains live
+on the 4cd17ea implementation snapshot. It has passed SANY in 1.525s and reported
+three native XML fixture failures. The two missing-Naturals cases are already
+documented. Java SANY on the unchanged explicit PROOF location fixture confirms
+its two empty-BY errors. Do not count this ongoing run as green; no fixture edits
+or optional XML/Apalache sweeps are performed.
+
+Read-only audit finds that convertSourceDefinitionAs estimates static levels
+through sanyXMLExporter. Replace that estimate in the working tree with actual
+checked OpDef levels; synthetic AST views of named theorems/assumptions resolve
+their actual ThmOrAssumpDef in the source module Context. This integration is
+not yet complete or ready to commit.
+
+Initial focused session 36576 exposes missing canonical BitwiseBridge.C.
+External scratch overlay inspection finds missing B!shiftR and B!Not applications
+despite complete source definitions. Named INSTANCE aborts when its canonical
+eligible export count differs from a native AST export list. Java processModuleDefinition
+has no such gate. Source recursive declarations are created nonlocal and neither
+processOperator nor endOpDefNode changes that flag on LOCAL completion; native
+AST export lists filter those definitions differently. Remove this count gate
+from named and unnamed INSTANCE generation, preserving child/body completeness
+guards. Do not change source locality to hide the mismatch.
+
+Focused bridge/native/liveness/constant tests 2944 pass in 1.343s after this
+correction. Full SANY 12301 passes in 1.891s. Original integration selection
+14404 exposes a named-theorem AST view without an OpDef semanticNode; resolve
+the actual source Context symbol instead. A build iteration correctly catches
+the narrower symbol interface, then corrected session 14289 reaches Test206
+and returns 1 in 3.586s after 35 pass events. Original Test206 contains general
+parameterized labels/operand/operator subexpression selectors, whose canonical
+graphs remain missing. Preserve the failure and source tests. No estimated-level
+fallback is restored. Logs: tlago-canonical-bridge-originals.json and
+tlago-canonical-bridge-level-focused.log under /mnt/oldrog/tmp.
+
+Commit only the independently verified INSTANCE-count correction and status docs.
+Keep tlc_bridge.go visibly unfinished until the actual Generator.selectorToNode
+port supplies Test206's canonical graphs. This is the next implementation task,
+not a claim of bridge completion or new original-method credit. All focused and
+scratch sessions are retired; only workspace session 12025 remains live.
+
 2026-10-07 Full normal canonical-driver workspace verification started:
 Implementation committed as 4cd17ea; worktree clean before launch. Session
 12025 is live, running go test ./... -json -count=1 -timeout=60m using the

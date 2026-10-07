@@ -47,13 +47,28 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
+Current work in progress: `tlc_bridge.go` replaces the XML-exporter's estimated
+operator level with the checked canonical OpDef/ThmOrAssumpDef level. Do not
+commit that bridge change as complete yet. Original Test206 exposes missing
+canonical general subexpression selectors; finish Java `Generator.selectorToNode`
+generation before further bridge work, preserving all original assertions.
+Named/unnamed INSTANCE generation no longer compares canonical export counts
+with the native AST's export list. That comparison is absent in Java and wrongly
+rejects modules with recursive LOCAL definitions: Java retains the recursive
+declaration's locality flag. Actual child/body completeness checks remain.
+The full SANY suite passes after this correction. The bridge's AST-based export
+and runtime graph construction still need further canonical integration.
+
 Full normal workspace verification of `4cd17ea` is running in session `12025`.
 Command: `go test ./... -json -count=1 -timeout=60m`, with the standard offline
 cache/temp environment. Log:
 `/mnt/oldrog/tmp/tlago-canonical-driver-workspace.json`.
 Poll this exact session before starting another full run. The first observation
-shows advancing root, SANY and TLC tests with no reported failures yet; it is
-not a passing result. No optional XML/Apalache sweep was enabled.
+shows advancing root and TLC tests; SANY passed in 1.525 seconds. Root has reported
+three native XML fixture failures, so this cannot earn full-workspace pass
+credit. In addition to the two missing-Naturals cases below, the explicit PROOF
+location fixture uses an empty BY. Java reports the same two empty-BY errors.
+No fixture change was applied. No optional XML/Apalache sweep was enabled.
 
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module

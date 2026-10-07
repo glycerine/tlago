@@ -17,7 +17,6 @@ func (g *sanyExpressionGeneration) generateNamedInstance(instance *Instance, let
 	}
 	origin, module := target.semanticNode, g.currentModule.semanticNode
 	symbols := origin.context.contentSymbols()
-	eligible := 0
 	for _, symbol := range symbols {
 		switch node := symbol.(type) {
 		case *sanySemOpDefNode:
@@ -28,7 +27,6 @@ func (g *sanyExpressionGeneration) generateNamedInstance(instance *Instance, let
 				if node.body == nil {
 					return nil
 				}
-				eligible++
 			}
 		case *sanySemThmOrAssumpDefNode:
 			if node.semLocal() {
@@ -37,11 +35,7 @@ func (g *sanyExpressionGeneration) generateNamedInstance(instance *Instance, let
 			if node.body == nil {
 				return nil
 			}
-			eligible++
 		}
-	}
-	if eligible != len(g.instanceSymbols(*instance)) {
-		return nil
 	}
 	var diagnostics Diagnostics
 	prefix := instance.Name + "!"

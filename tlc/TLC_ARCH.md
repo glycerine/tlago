@@ -9742,6 +9742,15 @@ gate. Canonical checks replace the older AST check plans at these entry points.
 Generating an incomplete graph must expose its missing implementation rather
 than silently falling back to AST summaries.
 
+Canonical named and unnamed INSTANCE generation no longer compares its export
+count with the older AST-derived export list. Java iterates its actual Context;
+it has no such comparison. In particular, recursive declarations keep their
+source locality flag after LOCAL completion, so the two lists can legitimately
+differ. Child/body completeness guards still expose unported canonical graphs.
+Pending bridge work reads static definition levels from these checked nodes,
+including actual Context theorem/assumption definitions. General selector graphs
+required by original Test206 remain missing and block completing that integration.
+
 `sany_at_level.go` translates the complete EXCEPT AtNode level algorithm. It
 captures the enclosing EXCEPT operand array, ignores child correctness and
 checks the containing component before breaking the level loop. Subsequent

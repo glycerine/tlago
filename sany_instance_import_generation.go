@@ -34,7 +34,6 @@ func (g *sanyExpressionGeneration) generateUnnamedInstance(instance *Instance, t
 		local = instance.Syntax.Zero != nil
 	}
 	symbols := origin.context.contentSymbols()
-	eligible := 0
 	for _, symbol := range symbols {
 		switch node := symbol.(type) {
 		case *sanySemOpDefNode:
@@ -44,7 +43,6 @@ func (g *sanyExpressionGeneration) generateUnnamedInstance(instance *Instance, t
 			if node.module == nil || node.body == nil {
 				return nil
 			}
-			eligible++
 		case *sanySemThmOrAssumpDefNode:
 			if node.semLocal() {
 				continue
@@ -52,13 +50,7 @@ func (g *sanyExpressionGeneration) generateUnnamedInstance(instance *Instance, t
 			if node.module == nil || node.body == nil {
 				return nil
 			}
-			eligible++
 		}
-	}
-	// Earlier native-only EXTENDS/INSTANCE symbols must not be replaced by a
-	// partial imported graph. Complete their actual identities first.
-	if eligible != len(g.instanceSymbols(*instance)) {
-		return nil
 	}
 	var diagnostics Diagnostics
 	parameterFree := origin.isParameterFree()
