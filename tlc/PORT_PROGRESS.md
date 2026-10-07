@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-06 Source label generation guards, scope and body ordering:
+Previous completed commit: b004d96. Generator.generateLabel checks definition/
+proof-step scope, nested ASSUME/PROVE NEW scope and EXCEPT scope in that order,
+returning nullLabelNode immediately at the first failed guard. Go previously
+continued into forbidden bodies and checked outer parameters before generating
+the body. Port immediate returns and body-first label traversal. Replace the
+separate recursive nested-NEW label sweep with the same guard context, avoiding
+extra diagnostics for nested labels below an already rejected label. LET
+operator definitions reset required bound parameters while retaining ambient
+EXCEPT/NEW restrictions, including ASSUME/PROVE definitions inside LET. Source
+noLabelsAllowed and the shared EXCEPT stacks establish those ambient guards.
+Repetition/missing-parameter ErrorDetails now use the exact source format strings;
+native summaries retain their existing wording. Name-based identity checking and
+extra-parameter diagnostics remain unported; do not invent an ordering substitute.
+
+Fifteen complete source diagnostic observations match actual SANY frontEndMain
+with SilentSanyOutput: forbidden outer/nested labels, forbidden parameters,
+body-first repeated-bound errors, missing and repeated bound parameters,
+EXCEPT labels/parameters/LET/LET-ASSUME-PROVE, nested NEW labels/parameters/
+LET/LET-ASSUME-PROVE, and allowed nested/LET labels. Compare complete message
+counts, codes, locations, strings and order, not just rejection status. Scratch
+cases, Java/Go outputs and runner are outside the repository:
+/mnt/oldrog/tmp/tlago-label-flow-audit/ and tlago-label-flow-audit.py;
+/mnt/oldrog/tmp/tlago-label-flow-final-audit.log. No permanent tests invented.
+
+The earlier nine-case detailed label audit improves from three matches to four,
+but still exits 1 with five differences: arg_constant, label_select, params,
+qualified_callee and repeated. Repeated's exact repetition message is corrected,
+but its extra-parameter message still differs. quant_missing now matches exactly.
+Receipt: /mnt/oldrog/tmp/tlago-label-flow-previous-nine.log, session 36381
+terminal 1 and retired. This broader audit is not green or whole-feature credit.
+Continue actual FormalParamNode identity/construction, dummy nodes, HashSet
+ordering and selector generation; do not sort names to approximate Java.
+
+Initial focused root checks pass 5.500 seconds (63496), SANY package passes
+1.503 seconds (28544) and compilation passes (40264), all terminal 0. After
+preserving ambient EXCEPT for LET ASSUME/PROVE definitions, final focused root
+parser/semantic checks and original ParseError/legacy/scoped-identifier methods
+pass 5.316 seconds (40652). Whole existing SANY tests pass 1.713 seconds (14350);
+all packages compile (88830). All handles terminal 0 and retired. Receipts:
+/mnt/oldrog/tmp/tlago-label-flow-{root,sany,compile}-final.log. Normal execution;
+original assertions/settings/fixtures unchanged, no race or forbidden corpus
+sweeps. No inventory or full-workspace pass credit. New RPC service remains
+postponed; the full port goal is still incomplete.
+
 2026-10-06 Source ordinary-lookup WorkerValue selection:
 Previous completed commit: 35871db. Source WorkerValue.mux selects the current
 IdThread ID or zero on an ordinary thread. Go ordinary lookup incorrectly used

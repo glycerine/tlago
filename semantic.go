@@ -1211,6 +1211,7 @@ func positionKey(pos Position) string {
 
 type labelCheckContext struct {
 	allowed  bool
+	noLabels bool
 	inExcept bool
 	bound    []string
 }
@@ -1266,11 +1267,13 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 		diags = append(diags, checkLabels(e.Then, ctx)...)
 		diags = append(diags, checkLabels(e.Else, ctx)...)
 	case *LetExpr:
+		definitionCtx := ctx.resetLabelBoundScope()
+		definitionCtx.allowed = true
 		for _, def := range e.Definitions {
 			if def.AssumeProve && def.AssumeProveBody != nil {
-				diags = append(diags, checkAssumeProveLabels(def.AssumeProveBody, true)...)
+				diags = append(diags, checkAssumeProveLabelsWithContext(def.AssumeProveBody, true, definitionCtx)...)
 			} else {
-				diags = append(diags, checkLabels(def.Expr, labelCheckContext{allowed: true})...)
+				diags = append(diags, checkLabels(def.Expr, definitionCtx)...)
 			}
 		}
 		diags = append(diags, checkLabels(e.Body, ctx)...)
@@ -1340,14 +1343,28 @@ func checkLabels(expr Expr, ctx labelCheckContext) Diagnostics {
 			diags = append(diags, checkLabels(spec.Value, exceptCtx)...)
 		}
 	case *LabelExpr:
+		// Generator.generateLabel returns nullLabelNode at the first failed
+		// guard, without generating the body or checking its parameters.
 		if !ctx.allowed {
-			diags = append(diags, errorAt(e.Pos, "E4333", "label %s is not in definition or proof step", e.Name))
+			diagnostic := errorAt(e.Pos, "E4333", "label %s is not in definition or proof step", e.Name)
+			diagnostic.SANYMessage = "Label not in definition or proof step."
+			return Diagnostics{diagnostic}
+		}
+		if ctx.noLabels {
+			diagnostic := errorAt(e.Pos, "E4334", "label %s is not allowed in a nested ASSUME/PROVE block with NEW", e.Name)
+			diagnostic.SANYMessage = "Label not allowed within scope of declaration in nested ASSUME/PROVE."
+			return Diagnostics{diagnostic}
 		}
 		if ctx.inExcept {
-			diags = append(diags, errorAt(e.Pos, "E4335", "label %s is not allowed inside EXCEPT", e.Name))
+			diagnostic := errorAt(e.Pos, "E4335", "label %s is not allowed inside EXCEPT", e.Name)
+			diagnostic.SANYMessage = "Labels inside EXCEPT clauses are not yet implemented."
+			return Diagnostics{diagnostic}
 		}
-		diags = append(diags, checkLabelParameters(e, ctx.bound)...)
+		// The source pushes a new label scope and generates the body before
+		// resolving parameters and running formalParamsEqual on this label.
 		diags = append(diags, checkLabels(e.Body, ctx.resetLabelBoundScope())...)
+		diags = append(diags, checkLabelParameters(e, ctx.bound)...)
+
 	case *ActionExpr:
 		diags = append(diags, checkLabels(e.Action, ctx)...)
 		diags = append(diags, checkLabels(e.Subscript, ctx)...)
@@ -1375,7 +1392,9 @@ func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
 	seen := map[string]bool{}
 	for _, param := range label.Params {
 		if seen[param] {
-			diags = append(diags, sanyDiagnosticParameters(errorAt(label.Pos, "E4330", "repeated label parameter %s in label %s", param, label.Name), param, label.Name))
+			diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4330", "repeated label parameter %s in label %s", param, label.Name), param, label.Name)
+			diagnostic.SANYMessage = fmt.Sprintf("Repeated formal parameter %s \nin label `%s'.", param, label.Name)
+			diags = append(diags, diagnostic)
 			continue
 		}
 		seen[param] = true
@@ -1384,7 +1403,9 @@ func checkLabelParameters(label *LabelExpr, bound []string) Diagnostics {
 	for _, name := range bound {
 		required[name] = true
 		if !seen[name] {
-			diags = append(diags, sanyDiagnosticParameters(errorAt(label.Pos, "E4331", "label %s must contain bound parameter %s", label.Name, name), label.Name, name))
+			diagnostic := sanyDiagnosticParameters(errorAt(label.Pos, "E4331", "label %s must contain bound parameter %s", label.Name, name), label.Name, name)
+			diagnostic.SANYMessage = fmt.Sprintf("Label %s must contain formal parameter `%s'.", label.Name, name)
+			diags = append(diags, diagnostic)
 		}
 	}
 	for _, param := range label.Params {
@@ -1487,46 +1508,31 @@ func checkAssumeProveLabels(body *AssumeProve, topLevel bool) Diagnostics {
 // it does not become a required label parameter. In nested ASSUME/PROVE blocks,
 // labels are forbidden only after a NEW declaration enters scope.
 func checkAssumeProveLabelsInScope(body *AssumeProve, topLevel, declarationScope bool) Diagnostics {
+	return checkAssumeProveLabelsWithContext(body, topLevel, labelCheckContext{allowed: true, noLabels: declarationScope})
+}
+
+func checkAssumeProveLabelsWithContext(body *AssumeProve, topLevel bool, ctx labelCheckContext) Diagnostics {
 	if body == nil {
 		return nil
 	}
 	var diags Diagnostics
 	check := func(expr Expr) {
-		if declarationScope {
-			diags = append(diags, checkLabelsInAssumeProveNewBlock(expr)...)
-		}
-		diags = append(diags, checkLabels(expr, labelCheckContext{allowed: true})...)
+		diags = append(diags, checkLabels(expr, ctx)...)
 	}
 	for _, item := range body.Assumptions {
 		switch {
 		case item.NewSymbol != nil:
 			check(item.NewSymbol.Domain)
 			if !topLevel {
-				declarationScope = true
+				ctx.noLabels = true
 			}
 		case item.Nested != nil:
-			diags = append(diags, checkAssumeProveLabelsInScope(item.Nested, false, declarationScope)...)
+			diags = append(diags, checkAssumeProveLabelsWithContext(item.Nested, false, ctx)...)
 		case item.Expr != nil:
 			check(item.Expr)
 		}
 	}
 	check(body.Prove)
-	return diags
-}
-
-func checkLabelsInAssumeProveNewBlock(expr Expr) Diagnostics {
-	var diags Diagnostics
-	if label, ok := expr.(*LabelExpr); ok {
-		diagnostic := errorAt(label.Pos, "E4334", "label %s is not allowed in a nested ASSUME/PROVE block with NEW", label.Name)
-		if label.Syntax != nil {
-			diagnostic.SANYRange = label.Syntax.Range
-		}
-		diagnostic.SANYMessage = "Label not allowed within scope of declaration in nested ASSUME/PROVE."
-		diags = append(diags, diagnostic)
-	}
-	for _, child := range sanySubexpressionChildren(expr) {
-		diags = append(diags, checkLabelsInAssumeProveNewBlock(child)...)
-	}
 	return diags
 }
 

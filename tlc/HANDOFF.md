@@ -693,13 +693,21 @@ worker metadata. Eleven direct-source lookup observations match; context/body
 results remain unmuxed. Indexed SymbolNode storage and the full source lookup
 provider graph are still pending.
 
-Next semantic work: port Generator's label-parameter checks and formal-parameter
-identity handling. A nine-case detailed label-generation comparison has three
-matches and six differences: extra parameters need one aggregated diagnostic,
-repeated/missing parameter messages differ, and non-formal arguments need the
-source additional leaf-location diagnostic. Preserve SemanticNode's UID-based
-hashing and source HashSet iteration rather than inventing a sorted/declared order.
-Receipts and case names are in PORT_PROGRESS.md; do not count this audit as green.
+Label generation now follows source guard order and returns immediately for
+forbidden labels. Allowed labels check the body before their own parameters.
+LET definitions retain ambient EXCEPT and nested NEW restrictions while resetting
+the required bound-parameter stack. Repetition and missing-parameter ErrorDetails
+use source messages. Fifteen detailed source comparisons match; existing focused
+parser/semantic checks pass. This does not establish complete label-node parity.
+
+Next semantic work: port Generator's remaining label-parameter checks and
+formal-parameter identity handling. The earlier nine-case comparison now has four
+matches and five differences: `arg_constant`, `label_select`, `params`,
+`qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;
+non-formal arguments need the source leaf-location diagnostic and distinct dummy
+FormalParamNodes. Preserve UID-based hashing and actual HashSet iteration rather
+than inventing a sorted/declared order. Receipts are in PORT_PROGRESS.md; the
+broader audit is still failing and earns no whole-feature completion credit.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

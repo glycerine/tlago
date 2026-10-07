@@ -1,5 +1,23 @@
 # TLC Architecture Notes for the Go Port
 
+## Label generation guards and body order
+
+Generator.generateLabel first rejects labels outside definitions/proof steps,
+then labels under nested ASSUME/PROVE NEW declarations, then labels within an
+EXCEPT clause. Each guard returns nullLabelNode immediately. Go's label traversal
+now uses that order and stops rather than recursing into forbidden bodies or
+checking their parameters. Allowed labels generate their body under a new label
+scope before resolving/checking their own parameters. LET definitions reset the
+required bound-parameter stack while retaining ambient EXCEPT and NEW restrictions;
+this also applies to ASSUME/PROVE definitions inside LET.
+
+Repetition and missing-parameter ErrorDetails retain the source format strings,
+parameters and locations. Fifteen complete source diagnostic observations match.
+The earlier nine-case audit still differs in five cases; full FormalParamNode
+identity, dummy-node creation, UID-dependent HashSet extra-parameter ordering and
+selector handling remain pending. The name-based parameter checker is still a
+port gap; these traversal corrections do not establish full graph parity.
+
 ## WorkerValue demultiplexing
 
 WorkerValue.demux evaluates through OpDefEvaluator's state-expression overload.
