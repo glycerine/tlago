@@ -1131,8 +1131,8 @@ enter top-level vectors, while the separate instance vector follows Java's code
 and remains local. Actual extendee arrays and separate direct/recursive mutable
 set caches preserve copy ownership and cache lifetime. Imported expression
 metadata shares actual definitions. All 7,519 observed rows across 47 whole modules
-and associated cache/null observations match Java. EXTENDS context diagnostics,
-missing-extendee aborts and inherited level, visitor and evaluator work remain
+and associated cache/null observations match Java. Missing-extendee aborts
+and inherited level, visitor and evaluator work remain
 incomplete. Original-definition comparison now requires the actual operator or
 assertion class, matching immediate source pointers and cached declaration arrays
 from the source module. A live context scan no longer changes previously frozen
@@ -1150,9 +1150,12 @@ name wins and module keys become plain names in the copy. All 1,578 direct
 comparison rows and the retained 16,872 module rows match. EXTENDS Context
 merge now snapshots history, derives keys from actual classes/names, compares
 concrete classes and reads current syntax-tree locations. All 1,115 direct
-merge rows and the retained module rows match Java. Its module-generation
-caller still discards canonical diagnostics in favor of native import metadata;
-that ownership reconciliation remains pending. Bounded generation
+merge rows and the retained module rows match Java. Module generation now retains
+those canonical merge diagnostics in direct extendee order; native scans only
+supply expression metadata. All 24,529 rows across 68 modules match Java,
+including 25 explicit diagnostic location/parameter rows and the complete earlier
+observations. Missing-extendee and missing-context abort handling remains pending.
+Bounded generation
 evidence does not complete inherited level checking, visitors or evaluator graph
 sharing.
 
@@ -1165,7 +1168,7 @@ sany_tests and compile-all are the affected gates; receipts belong in
 PORT_PROGRESS.md. These observations add no original-method or full-workspace
 completion credit.
 
-EXTENDS context reconciliation, remaining
+EXTENDS abort reconciliation, remaining
 module vectors, general qualified selectors, INSTANCE/fact/imported identities,
 recursive inherited level checks, visitors, shared Errors/exception integration
 and evaluator graph sharing remain pending. Other Context iteration callers and

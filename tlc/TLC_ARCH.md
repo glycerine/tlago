@@ -1,5 +1,25 @@
 # TLC Architecture Notes for the Go Port
 
+## Module generation retains canonical EXTENDS diagnostics
+
+Each direct EXTENDS context merge contributes its canonical ErrorDetails to the
+module's diagnostic sequence before inherited vectors are copied. This preserves
+source traversal order and source-pointer suppression through diamonds and
+instances. Native import scans retain expression metadata only; they no longer
+reconstruct conflicts from syntax positions or originating module-name strings.
+The native API keeps its existing conflict prefix in `Diagnostic.Message`, while
+`SANYMessage`, ranges and structured parameters retain the exact source details.
+Unused kind-to-class inference and its diagnostic wrapper have been removed.
+
+All 24,529 manual comparison rows match Java across 68 whole modules, retaining
+the earlier 47 and adding all constant/variable/operator/assertion conflict pairs,
+multiple conflicts in forward/reverse/repeated EXTENDS order, local definitions
+and shared original definitions. The 25 explicit diagnostic detail rows compare
+incoming locations and complete structured parameters. Existing assertions remain
+unchanged; no permanent tests or original-method credit added. Missing-extendee
+and missing-context aborts remain separate pending caller work, as do inherited
+level checks and evaluator graph sharing.
+
 ## EXTENDS Context merge uses actual node classes and names
 
 `Context.mergeExtendContext` snapshots the source Pair history before traversal,
@@ -23,8 +43,9 @@ lookup retention, diagnostic messages/parameters, local formals and null cases.
 The retained 16,872 whole-module rows also match. Existing scaffold helpers now
 supply actual operator/declaration classes with their original requested kinds;
 assertions and cases remain unchanged. This adds no original-method credit.
-Module-generation diagnostic ownership still uses native import metadata and
-needs reconciliation; this Context correction does not complete that caller.
+Module generation now retains the canonical merge diagnostics in direct extendee
+order; native expression metadata no longer reports competing conflicts. See the
+caller integration section below.
 
 ## Context duplication preserves source history and lookup quirks
 
@@ -41,7 +62,7 @@ All 1,578 manual Java/Go rows match across empty contexts, 39 insertions,
 collisions/rehashes, replacements, module nodes and keys, a key differing from
 the symbol name, repeat copies and copy-only mutations. The retained 16,872
 whole-module rows still match. No permanent tests or original-method credit added.
-EXTENDS diagnostic ownership and the remaining general Context/graph audits
+The remaining general Context/graph audits and missing-extendee abort handling
 remain incomplete.
 
 ## Definition paths and counted UniqueString joins
@@ -84,9 +105,8 @@ pairs per scenario. Cover live-context mutation after declaration caches freeze,
 fresh modules sharing that context, same/different source pointers, one-hop
 source chains, different definition names/kinds, theorem versus operator classes,
 declarations, modules and nulls. Existing Context and SymbolTable callers use the
-same helper. No permanent tests or original-method credit added. Complete EXTENDS
-diagnostic ownership, missing-extendee aborts, inherited levels, visitors and
-evaluator sharing remain pending.
+same helper. No permanent tests or original-method credit added. Missing-extendee aborts, inherited levels, visitors and evaluator sharing remain
+pending.
 
 ## EXTENDS vectors and cached extension sets
 
@@ -111,8 +131,7 @@ and null observations. The comparison includes actual vectors, shared node UIDs,
 repeated EXTENDS, diamond inheritance, private definitions, inherited named facts
 and instances, nested contexts, direct/recursive set members, returned-set aliasing,
 array-copy ownership and cache lifetime. No persistent tests or original-method
-completion credit are added. Complete EXTENDS context diagnostic ownership,
-missing-extendee aborts, inherited levels,
+completion credit are added. Missing-extendee aborts and inherited levels,
 visitors and evaluator graph sharing remain pending; this is bounded evidence.
 
 ## Module collection snapshots and inner-module registration

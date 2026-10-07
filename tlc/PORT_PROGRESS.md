@@ -1,5 +1,33 @@
 # TLC Port Progress
 
+2026-10-07 Canonical EXTENDS diagnostics in module generation:
+Previous completed commit: 594ec07. Retain the actual Context merge diagnostics
+in each direct extendee's source order before inherited vectors are copied.
+Remove competing diagnostics from seven native import scans; retain their
+expression metadata separately. Remove the now-unused semantic kind-to-class
+inference and diagnostic wrapper. Preserve the native API's existing conflict
+prefix in Message while exact source ErrorDetails remain in SANYMessage, ranges
+and structured parameters. Existing native assertions remain unchanged.
+
+Manual whole-module observation retains the prior 47 cases and adds all 16
+constant/variable/operator/assertion conflict pairs, three multiple-conflict
+EXTENDS orders (including repeated extendees), shared originals through EXTENDS
+and INSTANCE, and local definitions. Initial observer 18166 returned 0 with
+24,504 exact rows across 68 modules. Expanded observer 9907 returned 0 with
+24,529 exact rows, including 25 incoming diagnostic locations and complete
+structured-parameter lists. All observers/receipts remain outside the repo under
+/mnt/oldrog/tmp/tlago-extends-diagnostics-*. No permanent tests, weakened
+assertions or original-method completion credit added.
+
+Existing affected root/parser/context/proof/TLC-model gate passes 47.943s
+(67901 retired), full SANY passes 1.941s (73590 retired), and compile-all passes
+(23219 retired); final compile after dead-code cleanup also passes (24764 retired).
+All handles retired; git diff --check passes. Normal execution
+only, with no broad race or full-workspace pass claim. Unused helper removal
+changes no executed behavior. Missing-extendee and missing-context abort handling
+remain pending, along with inherited levels, general selectors, visitors and
+evaluator sharing. New distributed service work remains deferred.
+
 2026-10-07 EXTENDS Context merge keys, classes and syntax locations:
 Previous completed commit: 0bd0b13. Port mergeExtendContext's reversePairList
 snapshot and oldest-first traversal. Derive keys from actual node names/classes,

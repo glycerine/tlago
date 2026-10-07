@@ -428,7 +428,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		}
 		for _, d := range depMod.Declarations {
 			for _, name := range d.Names {
-				diags = append(diags, checkImportedSymbolAmbiguity(name, d.Kind, declarationSymbolPosition(d, name), depMod.Name, extendedSymbols, "W4800")...)
+				recordImportedSymbol(name, d.Kind, declarationSymbolPosition(d, name), depMod.Name, extendedSymbols)
 				if _, exists := defined[name]; !exists {
 					defined[name] = d.Pos
 				}
@@ -448,7 +448,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			if def.Local {
 				continue
 			}
-			diags = append(diags, checkImportedSymbolAmbiguity(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
+			recordImportedSymbol(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols)
 			if _, exists := defined[def.Name]; !exists {
 				defined[def.Name] = def.Pos
 			}
@@ -475,7 +475,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				continue
 			}
 			pos := assumption.SourcePosition()
-			diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, semanticTheoremImportKind, pos, depMod.Name, extendedSymbols, "W4800")...)
+			recordImportedSymbol(assumption.Name, semanticTheoremImportKind, pos, depMod.Name, extendedSymbols)
 			if _, exists := defined[assumption.Name]; !exists {
 				defined[assumption.Name] = pos
 			}
@@ -510,7 +510,16 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	extendees := make([]*sanySemModuleNode, 0, len(mod.Extends))
 	for _, dep := range mod.Extends {
 		if extendee := mod.symbolTable.resolveModule(dep); extendee != nil {
-			mod.semanticNode.context.mergeExtendContext(extendee.context)
+			_, mergeDiagnostics := mod.semanticNode.context.mergeExtendContext(extendee.context)
+			for i := range mergeDiagnostics {
+				if mergeDiagnostics[i].Code == "E4224" {
+					// Keep the native API's explanatory prefix; ErrorDetails use
+					// the exact canonical message and parameters from Context.
+					name := mergeDiagnostics[i].SANYParameters[1].(string)
+					mergeDiagnostics[i].Message = "conflicting imported symbol " + name + ": " + mergeDiagnostics[i].SANYMessage
+				}
+			}
+			diags = appendSanyDiagnostics(diags, mergeDiagnostics...)
 			extendees = append(extendees, extendee)
 			mod.semanticNode.copyAssumes(extendee)
 			mod.semanticNode.copyTheorems(extendee)
@@ -522,7 +531,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 			for _, d := range depMod.Declarations {
 				for _, name := range d.Names {
-					diags = append(diags, checkImportedSymbolAmbiguity(name, d.Kind, declarationSymbolPosition(d, name), depMod.Name, extendedSymbols, "W4800")...)
+					recordImportedSymbol(name, d.Kind, declarationSymbolPosition(d, name), depMod.Name, extendedSymbols)
 					if _, exists := defined[name]; !exists {
 						defined[name] = d.Pos
 					}
@@ -542,7 +551,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				if def.Local {
 					continue
 				}
-				diags = append(diags, checkImportedSymbolAmbiguity(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
+				recordImportedSymbol(def.Name, semanticDefinitionImportKind(def), def.SourcePosition(), depMod.Name, extendedSymbols)
 				if _, exists := defined[def.Name]; !exists {
 					defined[def.Name] = def.Pos
 				}
@@ -569,7 +578,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					continue
 				}
 				pos := assumption.SourcePosition()
-				diags = append(diags, checkImportedSymbolAmbiguity(assumption.Name, semanticTheoremImportKind, pos, depMod.Name, extendedSymbols, "W4800")...)
+				recordImportedSymbol(assumption.Name, semanticTheoremImportKind, pos, depMod.Name, extendedSymbols)
 				if _, exists := defined[assumption.Name]; !exists {
 					defined[assumption.Name] = pos
 				}
@@ -585,7 +594,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 					continue
 				}
 				for _, symbol := range semanticInstanceSymbols(inst, spec) {
-					diags = append(diags, checkImportedSymbolAmbiguity(symbol.name, symbol.importKind(), symbol.sourcePosition(), depMod.Name, extendedSymbols, "W4800")...)
+					recordImportedSymbol(symbol.name, symbol.importKind(), symbol.sourcePosition(), depMod.Name, extendedSymbols)
 					addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
 				}
 			}
@@ -2066,21 +2075,6 @@ func semanticDefinitionImportKind(definition Definition) DeclarationKind {
 	return OperatorDecl
 }
 
-func semanticImportClass(kind DeclarationKind) string {
-	switch kind {
-	case OperatorDecl:
-		return "OpDefNode"
-	case semanticTheoremImportKind:
-		return "ThmOrAssumpDefNode"
-	case semanticFormalParamImportKind:
-		return "FormalParamNode"
-	case InstanceDecl:
-		return "ModuleNode"
-	default:
-		return "OpDeclNode"
-	}
-}
-
 func semanticImportDescription(kind DeclarationKind) string {
 	if kind == OperatorDecl || kind == semanticFormalParamImportKind {
 		return "definition"
@@ -2126,10 +2120,6 @@ func (location sanyDiagnosticLocation) String() string {
 
 // Context.mergeExtendContext's ErrorDetails retain structured parameters as
 // well as their rendered message. Both the parser and direct context use this.
-func sanyExtendConflict(name string, incomingKind DeclarationKind, incoming Position, existingKind DeclarationKind, existing Position) Diagnostic {
-	return sanyExtendConflictForClasses(name, incomingKind, incoming, existingKind, existing, semanticImportClass(incomingKind) == semanticImportClass(existingKind))
-}
-
 func sanyExtendConflictForClasses(name string, incomingKind DeclarationKind, incoming Position, existingKind DeclarationKind, existing Position, sameClass bool) Diagnostic {
 	incomingDescription := semanticImportDescription(incomingKind)
 	existingDescription := semanticImportDescription(existingKind)
@@ -2145,28 +2135,14 @@ func sanyExtendConflictForClasses(name string, incomingKind DeclarationKind, inc
 	return diagnostic
 }
 
-func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Position, source string, seen map[string]importedSymbol, code string) Diagnostics {
+// Retain native expression metadata without duplicating Context's diagnostics.
+func recordImportedSymbol(name string, kind DeclarationKind, pos Position, source string, seen map[string]importedSymbol) {
 	if name == "" || source == "" || seen == nil {
-		return nil
+		return
 	}
-	if prev, ok := seen[name]; ok {
-		// Identical exported syntax denotes the same original node across
-		// EXTENDS diamonds and parameter-free INSTANCE reuse. Wrapped
-		// parameterized definitions instead carry their instance's syntax.
-		if prev.pos == pos || prev.source == source {
-			return nil
-		}
-		diagnostic := sanyExtendConflict(name, kind, pos, prev.kind, prev.pos)
-		// Retain the native explanatory message separately from ErrorDetails.
-		if diagnostic.Severity == SeverityWarning {
-			diagnostic.Message = fmt.Sprintf("the %s symbol %s from module %s conflicts with the same kind of imported symbol from module %s at %s; the first import is used", kind, name, source, prev.source, prev.pos)
-		} else {
-			diagnostic.Message = fmt.Sprintf("conflicting imported symbol %s has kinds %s and %s", name, prev.kind, kind)
-		}
-		return Diagnostics{diagnostic}
+	if _, exists := seen[name]; !exists {
+		seen[name] = importedSymbol{kind: kind, pos: pos, source: source}
 	}
-	seen[name] = importedSymbol{kind: kind, pos: pos, source: source}
-	return nil
 }
 
 type localSymbol struct {
