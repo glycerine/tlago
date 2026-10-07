@@ -12,7 +12,19 @@ func TestSanySemanticBridgeBehaviors(t *testing.T) {
 VARIABLE x, x
 Init == y = 0
 ====`)
-		requireHasErrorContaining(t, diags, "duplicate")
+		// Java reports the same-kind/arity declaration as warning 4801,
+		// followed by error 4200 for y. Keep the exact source fixture.
+		if len(diags) != 2 || diags[0].Severity != SeverityWarning || diags[0].Code != "W4801" {
+			t.Fatalf("want warning 4801 followed by the undefined-name error: %v", diags)
+		}
+		message := "Multiple declarations or definitions for symbol x.  \nThis duplicates the one at line 2, col 10 to line 2, col 10 of module Bad."
+		if diags[0].SANYMessage != message {
+			t.Fatalf("duplicate declaration message=%q, want %q", diags[0].SANYMessage, message)
+		}
+		location := diags[0].SANYRange
+		if location.Begin.Line != 2 || location.Begin.Column != 13 || location.End.Line != 2 || location.End.Column != 13 {
+			t.Fatalf("duplicate declaration range=%v, want 2:13 to 2:13", location)
+		}
 		requireHasErrorContaining(t, diags, "undefined")
 	})
 

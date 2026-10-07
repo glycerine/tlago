@@ -287,6 +287,13 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		context = spec.initialContext.duplicate()
 	}
 	mod.semanticNode = newSanySemModuleNode(mod.Name, context, mod.Pos, mod.Syntax)
+	if enclosing != nil && enclosing.symbolTable != nil {
+		mod.symbolTable = enclosing.symbolTable.duplicateForInnerModule()
+		mod.symbolTable.pushContext(context)
+	} else {
+		mod.symbolTable = newSanySymbolTable(context, nil)
+	}
+	mod.symbolTable.module = mod.semanticNode
 	mod.semanticNode.nestingLevel = 0
 	if enclosing != nil && enclosing.semanticNode != nil {
 		mod.semanticNode.nestingLevel = enclosing.semanticNode.nestingLevel + 1
@@ -397,11 +404,25 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				continue
 			}
 			addSemanticSymbol(symbol, defined, declKinds, arities, operatorParamSpecs)
-			enclosingBindings[symbol.name] = importedSymbol{kind: symbol.importKind(), pos: symbol.sourcePosition(), arity: symbol.arity}
+			binding := importedSymbol{kind: symbol.importKind(), pos: symbol.sourcePosition(), arity: symbol.arity}
+			if symbol.kind == ConstantDecl || symbol.kind == VariableDecl {
+				binding.declarationNode = sanyModuleDeclarationNode(symbol.origin, symbol.name)
+				if binding.declarationNode != nil {
+					binding.pos = binding.declarationNode.semPosition()
+					binding.arity = binding.declarationNode.semArity()
+				}
+			}
+			enclosingBindings[symbol.name] = binding
 		}
 	}
 	for _, dep := range mod.Extends {
 		if depMod := spec.Modules[dep]; depMod != nil {
+			if depMod.semanticNode != nil {
+				// Retain the available semantic graph in direct EXTENDS order.
+				// The native generation path below still owns diagnostics until
+				// all exported operator and theorem graphs are constructed.
+				mod.semanticNode.context.mergeExtendContext(depMod.semanticNode.context)
+			}
 			for _, inherited := range transitiveExtendedModules(spec, depMod, map[string]bool{depMod.Name: true}) {
 				importInheritedModule(inherited)
 			}
@@ -524,10 +545,17 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	// SymbolTable.resolveSymbol sees the already merged EXTENDS context.
 	for name, symbol := range extendedSymbols {
 		symbol.arity = arities[name]
+		if symbol.kind == ConstantDecl || symbol.kind == VariableDecl {
+			symbol.declarationNode = sanyModuleDeclarationNode(mod, name)
+			if symbol.declarationNode != nil {
+				symbol.pos = symbol.declarationNode.semPosition()
+				symbol.arity = symbol.declarationNode.semArity()
+			}
+		}
 		instanceSymbols[name] = symbol
 	}
 	for name, symbol := range instanceSymbols {
-		expressionGeneration.moduleSymbols[name] = localSymbol{kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
+		expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: symbol.declarationNode, kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
 	}
 	localSymbols := moduleOwnSymbols(mod)
 	registerInstance := func(inst Instance) {
@@ -548,7 +576,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		diags = append(diags, addInstanceSymbols(inst, spec, defined, declKinds, arities, operatorParamSpecs, instanceSymbols, localSymbols)...)
 		for name, symbol := range instanceSymbols {
 			if _, exists := expressionGeneration.moduleSymbols[name]; !exists {
-				expressionGeneration.moduleSymbols[name] = localSymbol{kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
+				expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: symbol.declarationNode, kind: symbol.kind, arity: symbol.arity, pos: symbol.pos}
 			}
 		}
 	}
@@ -565,29 +593,54 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				kind, level = sanyVariableDeclKind, variableLevel
 			}
 			arity, _ := declarationArity(d, name)
+			if syntax != nil {
+				arity = 0
+				if d.Kind == ConstantDecl {
+					switch syntax.Kind.JavaName() {
+					case "N_IdentDecl":
+						arity = (len(syntax.GetHeirs()) - 1) / 2
+					case "N_PrefixDecl", "N_PostfixDecl":
+						arity = 1
+					case "N_InfixDecl":
+						arity = 2
+					}
+				}
+			}
 			node := newSanySemOpDeclNode(sanyCanonicalOperatorImage(name), kind, level, arity, mod.semanticNode, syntax)
+			node.table = mod.symbolTable
 			mod.declarationNodes = append(mod.declarationNodes, node)
+			if syntax != nil {
+				if _, exists := mod.symbolTable.resolveSymbol(node.semName()).(*sanySemOpDeclNode); exists {
+					// Declaration registration keeps the existing binding even
+					// when a same-kind/arity duplicate is only a warning.
+					diags = append(diags, mod.symbolTable.addSymbol(node)...)
+					continue
+				}
+			}
 			if seenInDecl[name] {
 				diags = append(diags, errorAt(d.Pos, "E4201", "duplicate declaration %s", name))
 				continue
 			}
 			seenInDecl[name] = true
+			position := d.Pos
+			if syntax != nil {
+				position = node.semPosition()
+			}
 			if _, exists := defined[name]; !exists {
-				arity, _ := declarationArity(d, name)
-				expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: node, kind: d.Kind, arity: arity, pos: declarationSymbolPosition(d, name)}
+				expressionGeneration.moduleSymbols[name] = localSymbol{declarationNode: node, kind: d.Kind, arity: arity, pos: position}
 				if mod.semanticNode.context.getSymbol(node.semName()) == nil {
 					mod.semanticNode.context.addSymbol(node)
 				}
 			}
-			addName(name, d.Pos, d.Kind)
+			addName(name, position, d.Kind)
 			declKinds[name] = d.Kind
 			if mod.Name != "" {
 				qualified := mod.Name + "!" + name
-				defined[qualified] = d.Pos
+				defined[qualified] = position
 				declKinds[qualified] = d.Kind
 			}
 			if d.Kind == ConstantDecl {
-				if arity, ok := declarationArity(d, name); ok {
+				if _, ok := declarationArity(d, name); ok {
 					arities[name] = arity
 					if mod.Name != "" {
 						arities[mod.Name+"!"+name] = arity
@@ -1677,10 +1730,11 @@ func isEmbeddedStandardModule(mod *Module) bool {
 }
 
 type importedSymbol struct {
-	arity  int
-	kind   DeclarationKind
-	pos    Position
-	source string
+	declarationNode *sanySemOpDeclNode
+	arity           int
+	kind            DeclarationKind
+	pos             Position
+	source          string
 }
 
 // Context compares Java semantic node classes, not TLC declaration levels.
@@ -1716,6 +1770,16 @@ func semanticImportDescription(kind DeclarationKind) string {
 		return "definition"
 	}
 	return "declaration"
+}
+
+// EXTENDS and the enclosing module's symbol stack reuse the original
+// declaration object. They do not construct a new declaration at the reference.
+func sanyModuleDeclarationNode(module *Module, name string) *sanySemOpDeclNode {
+	if module == nil || module.semanticNode == nil {
+		return nil
+	}
+	node, _ := module.semanticNode.context.getSymbol(sanyCanonicalOperatorImage(name)).(*sanySemOpDeclNode)
+	return node
 }
 
 func declarationSymbolPosition(declaration Declaration, name string) Position {

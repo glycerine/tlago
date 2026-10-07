@@ -15,6 +15,7 @@ type Spec struct {
 }
 
 type Module struct {
+	symbolTable      *sanySymbolTable
 	declarationNodes []*sanySemOpDeclNode
 	semanticNode     *sanySemModuleNode
 	generatorNodes   *sanyGeneratorNodes

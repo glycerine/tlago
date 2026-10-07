@@ -1,5 +1,62 @@
 # TLC Port Progress
 
+2026-10-07 Imported declaration identity and declaration registration integration:
+Previous completed commit: 5d529b6. Retain a module SymbolTable, copying the
+enclosing stack for internal modules and pushing their own context. Record the
+current semantic module on each table and retain the original table on OpDeclNode.
+Merge available retained contexts in direct EXTENDS order. Imported and enclosing
+local symbols retain original declaration identity, location and arity, rather
+than allocating reference-site declarations. Operator/theorem graph entries and
+qualified declaration selectors remain pending; native generation still owns
+context-merge diagnostics until complete exported graphs exist.
+
+Actual Java import comparison initially matched 34 observations (92763), and now
+matches all 61 including original table module, top context and external context
+(53757). Transitive/diamond constants, variables and operator-valued constants
+reuse Base nodes; root and nested expressions resolve those same objects while
+the nested owned context stays separate. Initial Java helper ran outside its
+vector directory and could not resolve dependencies; correct its working directory.
+Correct the temporary Go helper's Callee field name before comparison. Logs
+/mnt/oldrog/tmp/tlago-import-declarations-{java,import-table-final}.log; helpers
+SourceImportDeclarationManual.java and tlago-import-declarations-manual_test.go.
+
+Source comparison also exposes blanket duplicate-declaration errors and per-name
+arity-map loss. Read each declaration occurrence's syntax as buildParameter does.
+Register actual repeated declaration nodes through their retained stack: same
+kind/arity gives warning 4801; differing kind/arity gives error 4201. Keep the
+first binding and location, including enclosing/imported declarations. Nine
+complete Java error/warning/order/range/message comparisons match (5471 terminal 0),
+including later bound-name conflicts after duplicate constants/operators. Logs
+/mnt/oldrog/tmp/tlago-import-declarations-registration-final.log and vectors/helper
+tlago-declaration-registration-audit{,.py}. No invented permanent tests or new
+method inventory credit.
+
+Initial final root selection 2087 terminal 1 in 5.146 seconds exposes the native
+Go test's source-inconsistent VARIABLE x, x error expectation. Verify its exact
+unchanged Bad.tla bytes against Java: warning 4801 at 2:13 cites the first x at
+2:10; undefined y remains error 4200 at 3:9. Log
+/mnt/oldrog/tmp/tlago-native-duplicate-java.log. Correct that native expectation
+with exact warning code/range/message and two-diagnostic count, preserving the
+undefined-name error assertion and original fixture. No original Java assertions
+are changed. Corrected whole bridge suite 99837 passes 1.099 seconds. Corrected
+focused root selection 46659 passes 5.005 seconds. Logs
+/mnt/oldrog/tmp/tlago-import-declarations-{native-corrected,root-corrected}.log.
+
+Complete existing SANY passes 1.695 seconds (14955), six whole original models
+pass 2.369 seconds (76035), and all-package compile passes (42975). Original 38
+declaration observations still match (60918); initial final 34 import observations
+match (57870) before extending the probe to table fields. Fresh frontend preserves
+complete diagnostics for 15 label-flow, 16 required-parameter, nine broader-label
+and five expanded aggregate-label cases (10868). Logs
+/mnt/oldrog/tmp/tlago-import-declarations-{sany-final,models-final,compile-final,
+declaration-final,label-flow,label-required,label-nine,label-extra}.log.
+Earlier import-focused root/SANY/four-model checks 29304, 57835 and 11803 pass
+before declaration registration integration; do not treat them as final receipts.
+Initial compile 45638 and frontend build 65235 also terminal 0. All handles are
+terminal and retired. No new full-workspace pass is established. Full TLC parity
+remains incomplete; new distributed service work stays postponed.
+
+
 2026-10-07 SymbolTable registration and concrete context classes:
 Previous completed commit: 84df1d7. Replace the scaffold's premature origin
 shortcut with Java's registration order: identical/vacant, builtin syntax source,

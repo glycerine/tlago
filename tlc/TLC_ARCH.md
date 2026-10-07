@@ -16,8 +16,11 @@ OpDefNode(UniqueString) has kind zero and arity -2 yet remains a definition.
 The faithful original context test now constructs that node and an OpDeclNode
 with the shared nullSTN. Its unchanged assertions caught the old kind-based
 classification, which is corrected in production. Both original Java JUnit and
-Go pass. The native module generator still uses its scope adapter; complete
-SymbolTable stack integration and imported graph identities remain pending.
+Go pass. Module generation now retains an external SymbolTable and copies the
+enclosing stack before pushing each nested context. Its module pointer tracks
+the current semantic owner. Actual repeated declarations use that table's
+registration primitive. Other symbol classes and source phases still use native
+scope adapters until their complete graphs are constructed.
 
 ## Retained ordinary declaration nodes
 
@@ -31,9 +34,19 @@ sets are empty. Local accepted nodes enter the retained module context, and
 identifier expressions retain their actual declaration identity. The class-wide
 ASSUME marker uses the same constructor with null module and syntax.
 
-Thirty-eight actual Java observations match. Full SymbolTable registration,
-EXTENDS/INSTANCE identity propagation, the remaining LevelNode constraints and
-graph visitors still require porting; the native scope adapter remains in use.
+Thirty-eight original constructor observations still match. Each declaration also
+retains its original SymbolTable. Arity is read per syntax occurrence, including
+rejected duplicates with a different signature. Warnings retain the first binding,
+location and arity. Nine complete diagnostic comparisons match Java.
+
+Merge direct EXTENDS contexts in source order without cloning declaration nodes.
+Carry the retained declaration through imported and enclosing bindings into
+identifier expressions. Sixty-one Java observations match transitive/diamond
+identity, original module/table ownership, table contexts and enclosing references.
+Nested scopes resolve enclosing declarations without placing them in their own
+context. Remaining operator/theorem entries, qualified declaration selectors,
+INSTANCE wrappers, LevelNode constraints and visitors require further porting.
+The native diagnostic phase remains authoritative until all exported graphs exist.
 
 
 ## Retained ModuleNode and Generator ASSUME marker

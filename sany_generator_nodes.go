@@ -53,6 +53,7 @@ type sanySemOpDeclNode struct {
 	sanySemSymbolBase
 	level        tlaLevel
 	levelChecked int
+	table        *sanySymbolTable
 	module       *sanySemModuleNode
 	levelParams  map[*sanySemOpDeclNode]struct{}
 	allParams    map[*sanySemOpDeclNode]struct{}

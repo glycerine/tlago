@@ -805,16 +805,27 @@ module parameters. All 149 observations across 77 registration cases match Java.
 The existing Java context test now uses its actual kind-zero OpDefNode constructor
 and OpDeclNode with nullSTN. Its unchanged assertions exposed and corrected a
 production context-classification shortcut; Java JUnit and Go both pass.
-Generator integration with the complete SymbolTable stack, imported declaration
-identity, operator context entries and ordered module definition graphs remain
-pending.
+Module generation now retains an external table or a copied enclosing stack with
+its own nested context. Declarations retain their original table. Direct EXTENDS
+merges the available retained contexts in source order; imported and enclosing
+bindings reuse original declaration nodes. All 61 Java observations match for
+transitive/diamond identities, original owners/tables and enclosing references.
+Declaration arity comes from each syntax occurrence, rather than a name-keyed map.
+Actual repeated declarations use the registration primitive: same kind/arity
+warns and keeps the first binding; differing kind/arity errors. Nine complete Java
+diagnostic comparisons match, including the first location in later bound-name
+conflicts. The native duplicate-variable test is corrected against its exact
+unchanged Java fixture: warning 4801 followed by the undefined-name error. Its
+replacement assertion checks the exact warning code, range and message.
+Full registration against operator/theorem graphs, qualified declaration selectors,
+other imported graph identities and ordered module definitions remain pending.
 
 The five expanded aggregate-label cases now match completely. The 70-formal UID
 range and first hash match Java exactly (305..374, 1607), without offsets. This
 verifies that construction prefix, not complete allocation order across all graphs.
-Next semantic work: complete declaration registration/import identity and ordinary
-operator graph construction, wire
-failure results to retained sentinels, and unify label generation guards. Complete
+Next semantic work: complete ordinary operator graph construction and registration,
+qualified declaration selectors, canonical failure results and label generation
+guards. Complete
 LS/LabelNode graphs, marker scope integration, level data and evaluator sharing
 remain pending. Receipts are in PORT_PROGRESS.md.
 
