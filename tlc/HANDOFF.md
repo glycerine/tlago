@@ -618,6 +618,15 @@ General JavaCC rescan, the theorem's three-token Assume-Prove selection, NEW
 production grammar and remaining proof productions are reconciliation work; this
 is not complete Proof grammar or generation parity.
 
+Semantic symbols now embed the source SemanticNode constructor foundation:
+one process-wide atomic signed 32-bit UID counter, mutable kind, source hash
+arithmetic and tool-object slots. Module, ordinary-symbol and built-in factories
+allocate through it. Twenty bounded source comparisons match, including UID/hash
+overflow and tool-slot exceptions. Existing focused root tests pass in 5.147
+seconds, the SANY package passes in 1.728 seconds, and all packages compile.
+This does not establish semantic graph allocation order: expression formals,
+source runtime classes, equality and the remaining graph APIs still need a port.
+
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three
 matches and six differences: extra parameters need one aggregated diagnostic,

@@ -52,8 +52,8 @@ type sanySemSymbol interface {
 }
 
 type sanySemSymbolBase struct {
+	sanySemanticNode
 	name               string
-	kind               sanySemKind
 	arity              int
 	local              bool
 	originalModuleName string
@@ -78,8 +78,8 @@ type sanySemModuleNode struct {
 func newSanySemModuleNode(name string, ctx *sanyContext, pos Position) *sanySemModuleNode {
 	return &sanySemModuleNode{
 		sanySemSymbolBase: sanySemSymbolBase{
+			sanySemanticNode:   newSanySemanticNode(sanyModuleKind),
 			name:               name,
-			kind:               sanyModuleKind,
 			arity:              0,
 			originalModuleName: name,
 			pos:                pos,
@@ -89,7 +89,7 @@ func newSanySemModuleNode(name string, ctx *sanyContext, pos Position) *sanySemM
 }
 
 func newSanySemSymbol(name string, kind sanySemKind, arity int, module string, pos Position) *sanySemSymbolBase {
-	return &sanySemSymbolBase{name: name, kind: kind, arity: arity, originalModuleName: module, pos: pos}
+	return &sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(kind), name: name, arity: arity, originalModuleName: module, pos: pos}
 }
 
 type sanyContextKey struct {

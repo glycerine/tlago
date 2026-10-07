@@ -38,8 +38,8 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemBuiltInSymbol {
 	}
 	return &sanySemBuiltInSymbol{
 		sanySemSymbolBase: sanySemSymbolBase{
+			sanySemanticNode:   newSanySemanticNode(sanyBuiltInKind),
 			name:               info.name,
-			kind:               sanyBuiltInKind,
 			arity:              info.arity,
 			originalModuleName: "--TLA+ BUILTINS--",
 			pos:                Position{File: "--TLA+ BUILTINS--"},

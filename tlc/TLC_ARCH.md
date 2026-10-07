@@ -1,5 +1,29 @@
 # TLC Architecture Notes for the Go Port
 
+## Semantic node constructor foundation
+
+`sany_semantic_node.go` ports SemanticNode's shared AtomicInteger constructor,
+UID getter, kind accessors, hashCode arithmetic and tool-object slots. Semantic
+symbol bases embed it; module, ordinary-symbol and initial-context built-in
+factories allocate through the same process-wide counter. Preserve signed 32-bit
+UID and hash overflow, and do not reset the counter during front-end initialization.
+Tool slots grow through the requested index, retain previous values, return nil
+for missing nonnegative slots and throw ArrayIndexOutOfBoundsException for negative
+indices. Clearing a slot does not shrink the array.
+
+This is the constructor foundation, not a complete semantic graph port. The
+current expression-generation formals still need actual FormalParamNode identity;
+remaining source constructors and their allocation order are unported. Java's
+equality also checks the concrete runtime class, kind and UID. Do not substitute
+Go symbol names or the current coarse wrapper classes for that source hierarchy.
+Keep label-parameter HashSet ordering pending until those identities and allocations
+are faithful; assigning UIDs to context wrappers alone does not resolve it.
+
+Twenty manual source comparisons match relative UID progression, kind/hash changes,
+tool-slot retention, nulls, negative-index exception types/messages and signed UID/hash
+wraparound. Scratch probes supply bounded implementation evidence, not permanent
+new tests or original-method translation credit.
+
 ## Parser output routing and original formatting assertions
 
 `sany_output.go` ports the parser's level ordinals and Simple/Silent/OutErr stream

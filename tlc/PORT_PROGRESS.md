@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-06 SemanticNode constructor foundation:
+Previous completed commit: 0926ebc. Port the shared atomic signed 32-bit UID
+constructor, UID getter, kind accessors, Java hashCode arithmetic and tool-object
+array operations from source SemanticNode. Embed the foundation in existing
+semantic symbol bases; module, ordinary-symbol and built-in factories allocate
+through the same process-wide counter. Source UID/hash overflow is retained.
+Tool arrays preserve earlier slots when growing, return null for missing
+nonnegative indices, retain array length after clearing and throw the source
+ArrayIndexOutOfBoundsException for negative accesses.
+
+The temporary standalone source probe and temporary Go overlay emit 20 identical
+observations, including exception type/message before and after array growth,
+kind mutation, relative UID progression and signed overflow. Receipts:
+/mnt/oldrog/tmp/tlago-semantic-node-{java,go}.log. The first Go probe printed only
+the exception message; correct the scratch observation to print its actual type
+as well before exact comparison. No production adjustment was needed for that
+formatting difference. No permanent new tests or original assertions were changed.
+
+Existing focused root parser, context, bridge and original proof/selector/model
+checks pass in 5.147 seconds; include the original TestContext different-symbol
+class diagnostic method. The complete existing SANY package passes in 1.728
+seconds. All packages compile. Receipts:
+/mnt/oldrog/tmp/tlago-semantic-node-{root,sany,compile}.log.
+No inventory or full-workspace pass credit. Source runtime classes/equality,
+remaining graph APIs and actual formal-parameter constructor allocation still
+need faithful ports. The nine-case label audit remains three matches and six
+differences; do not use wrapper UIDs to invent a diagnostic ordering. Preserve
+live full MSB session 5144, polled this turn without restarting it.
+
 2026-10-06 Assume-Prove frames, proof depth and actual expression labels:
 Previous completed commit: b0f924e. Port Assume-Prove's frame and expectations,
 mandatory ASSUME/BOXASSUME, facts, PROVE/BOXPROVE and body. Nested label selection
