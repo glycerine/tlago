@@ -188,6 +188,20 @@ func (c *sanyContext) orderedSymbols() []sanySemSymbol {
 }
 
 func sanyContextImportKind(symbol sanySemSymbol) DeclarationKind {
+	// Context compares concrete symbol classes, including kind-zero OpDefNodes.
+	switch node := symbol.(type) {
+	case *sanySemOpDefNode, *sanySemBuiltInSymbol:
+		return OperatorDecl
+	case *sanySemOpDeclNode:
+		if node.semKind() == sanyVariableDeclKind {
+			return VariableDecl
+		}
+		return ConstantDecl
+	case *sanyFormalParamNode:
+		return semanticFormalParamImportKind
+	case *sanySemModuleNode:
+		return InstanceDecl
+	}
 	switch symbol.semKind() {
 	case sanyUserDefinedOpKind, sanyBuiltInKind, sanyModuleInstanceKind:
 		return OperatorDecl
@@ -242,6 +256,32 @@ func sanyOriginalSource(symbol sanySemSymbol) sanySemSymbol {
 }
 
 func sanySameOriginalModule(a, b sanySemSymbol) bool {
+	// Source OpDefNodes must have the same concrete class and original source.
+	// Parameter freedom comes from that source's module declarations, not its name.
+	if definition, ok := a.(*sanySemOpDefNode); ok {
+		other, sameClass := b.(*sanySemOpDefNode)
+		if !sameClass {
+			return false
+		}
+		source, otherSource := sanyOriginalSource(definition), sanyOriginalSource(other)
+		if source != otherSource {
+			return false
+		}
+		original, ok := source.(*sanySemOpDefNode)
+		if !ok {
+			return false
+		}
+		if original.module == nil {
+			return true
+		}
+		for _, entry := range original.module.context.order {
+			kind := entry.sym.semKind()
+			if kind == sanyConstantDeclKind || kind == sanyVariableDeclKind {
+				return false
+			}
+		}
+		return true
+	}
 	if a == nil || b == nil || semanticImportClass(sanyContextImportKind(a)) != semanticImportClass(sanyContextImportKind(b)) {
 		return false
 	}
@@ -380,33 +420,74 @@ func (st *sanySymbolTable) resolveModule(name string) *sanySemModuleNode {
 	return nil
 }
 
+// addSymbol retains the diagnostic-only API used by native adapters. The
+// registration result follows Java independently of warning severity.
 func (st *sanySymbolTable) addSymbol(sym sanySemSymbol) Diagnostics {
-	var diags Diagnostics
+	_, diagnostics := st.registerSymbol(sym)
+	return diagnostics
+}
+
+func (st *sanySymbolTable) registerSymbol(sym sanySemSymbol) (bool, Diagnostics) {
 	if st == nil || sym == nil {
-		return diags
+		return false, nil
 	}
 	current := st.resolveSymbol(sym.semName())
+	if current == sym {
+		return true, nil
+	}
 	if current == nil {
 		st.topContext().addSymbol(sym)
-		return diags
+		return true, nil
 	}
-	if current == sym || sanySameOriginalModule(current, sym) {
-		return diags
+	name, position := sym.semName(), sym.semPosition()
+	// Java tests the old syntax node's source, rather than its semantic kind.
+	if current.semBase().Location.Source == "--TLA+ BUILTINS--" {
+		message := "Symbol %s is a built-in operator, and cannot be redefined."
+		diagnostic := sanyRegistrationDiagnostic(position, "E4202", message, name)
+		return false, Diagnostics{diagnostic}
 	}
-	if current.semKind() != sym.semKind() || current.semArity() != sym.semArity() ||
-		sym.semKind() == sanyFormalParamKind || sym.semKind() == sanyBoundSymbolKind {
-		return Diagnostics{errorAt(sym.semPosition(), "E4802", "multiply-defined symbol %s", sym.semName())}
+	if sym.semKind() == sanyFormalParamKind || sym.semKind() == sanyBoundSymbolKind || current.semKind() != sym.semKind() || current.semArity() != sym.semArity() {
+		message := "Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s."
+		diagnostic := sanyRegistrationDiagnostic(position, "E4201", message, name, sanyDiagnosticLocation{Position: current.semPosition()})
+		return false, Diagnostics{diagnostic}
 	}
-	return Diagnostics{warningAt(sym.semPosition(), "W4802", "multiple declarations or definitions for symbol %s", sym.semName())}
+	if sanySameOriginalModule(sym, current) {
+		return true, nil
+	}
+	message := "Multiple declarations or definitions for symbol %s.  \nThis duplicates the one at %s."
+	diagnostic := sanyRegistrationDiagnostic(position, "W4801", message, name, sanyDiagnosticLocation{Position: current.semPosition()})
+	return true, Diagnostics{diagnostic}
+}
+
+func sanyRegistrationDiagnostic(position Position, code, message string, parameters ...any) Diagnostic {
+	diagnostic := errorAt(position, code, message, parameters...)
+	if code == "W4801" {
+		diagnostic = warningAt(position, code, message, parameters...)
+	}
+	diagnostic.SANYMessage = diagnostic.Message
+	diagnostic.SANYRange = SanyRange{Begin: position, End: position.SourceEnd()}
+	diagnostic.SANYParameters = parameters
+	return diagnostic
 }
 
 func (st *sanySymbolTable) addModule(mod *sanySemModuleNode) Diagnostics {
+	_, diagnostics := st.registerModule(mod)
+	return diagnostics
+}
+
+func (st *sanySymbolTable) registerModule(mod *sanySemModuleNode) (bool, Diagnostics) {
 	if st == nil || mod == nil {
-		return nil
+		return false, nil
 	}
-	if current := st.resolveModule(mod.semName()); current != nil && current != mod {
-		return Diagnostics{errorAt(mod.semPosition(), "E4803", "multiply-defined module %s", mod.semName())}
+	current := st.resolveModule(mod.semName())
+	if current == mod {
+		return true, nil
 	}
-	st.topContext().addModule(mod)
-	return nil
+	if current == nil {
+		st.topContext().addModule(mod)
+		return true, nil
+	}
+	message := "Multiply-defined module '%s': this definition or declaration conflicts \nwith the one at %s."
+	diagnostic := sanyRegistrationDiagnostic(mod.semPosition(), "E4223", message, mod.semName(), sanyDiagnosticLocation{Position: current.semPosition()})
+	return false, Diagnostics{diagnostic}
 }

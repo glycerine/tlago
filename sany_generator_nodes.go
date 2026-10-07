@@ -18,6 +18,7 @@ type sanySemOpDefNode struct {
 	sanySemSymbolBase
 	formalNodes []*sanyFormalParamNode
 	body        sanySemanticGraphNode
+	module      *sanySemModuleNode
 }
 
 type sanySemOpApplNode struct {
@@ -59,7 +60,7 @@ type sanySemOpDeclNode struct {
 
 // OpDeclNode initializes its level data before registration. Registration is
 // performed by the generator's current scope; rejected nodes keep their identity.
-func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity int, module *sanySemModuleNode, syntax *SanySyntaxNode) *sanySemOpDeclNode {
+func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity int, module *sanySemModuleNode, syntax any) *sanySemOpDeclNode {
 	n := &sanySemOpDeclNode{
 		sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: newSanySemanticNode(kind), name: name, arity: arity},
 		level:             level, levelChecked: 1, module: module,
@@ -68,14 +69,28 @@ func newSanySemOpDeclNode(name string, kind sanySemKind, level tlaLevel, arity i
 	if module != nil {
 		n.originalModuleName = module.semName()
 	}
-	if syntax != nil {
-		n.TreeNode = syntax
-		n.pos = sanyNodePosition(syntax)
-		bridge := tlcBridge{convertingModule: n.originalModuleName}
-		n.Location = bridge.sourceLocationForPosition(n.pos)
-	} else {
+	switch tree := syntax.(type) {
+	case *SanySyntaxNode:
+		if tree == nil {
+			n.TreeNode = nil
+			n.Location = tlc.NullSourceLocation
+		} else {
+			n.TreeNode = tree
+			n.pos = sanyNodePosition(tree)
+			bridge := tlcBridge{convertingModule: n.originalModuleName}
+			n.Location = bridge.sourceLocationForPosition(n.pos)
+		}
+	case nil:
 		n.TreeNode = nil
 		n.Location = tlc.NullSourceLocation
+	default:
+		// nullSTN is shared with the evaluator bridge; it is distinct from nil.
+		if syntax != tlc.NullSemanticNodeInstance.GetTreeNode() {
+			panic("unsupported declaration syntax node")
+		}
+		n.TreeNode = syntax
+		n.Location = tlc.NullSemanticNodeInstance.Location
+		n.pos = Position{File: n.Location.Source}
 	}
 	if kind == sanyConstantDeclKind {
 		n.levelParams[n] = struct{}{}
@@ -104,11 +119,16 @@ func sanyNullSyntaxNode(kind sanySemKind) sanySemanticNode {
 	return node
 }
 
+// OpDefNode(UniqueString) is also used directly by the original context test.
+func newSanySemNullOpDefNode(name string) *sanySemOpDefNode {
+	return &sanySemOpDefNode{sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: sanyNullSyntaxNode(0), name: name, arity: -2, pos: Position{File: "--TLA+ BUILTINS--"}}}
+}
+
 // Generator constructs these four nodes in order. nullODN has kind zero,
 // whereas nullOAN has OpApplKind so processing can continue after errors.
 func newSanyGeneratorNodes() *sanyGeneratorNodes {
 	n := &sanyGeneratorNodes{inAssumeDummy: sanyInAssumeDummyNode()}
-	n.nullODN = &sanySemOpDefNode{sanySemSymbolBase: sanySemSymbolBase{sanySemanticNode: sanyNullSyntaxNode(0), name: "nullODN", arity: -2, pos: Position{File: "--TLA+ BUILTINS--"}}}
+	n.nullODN = newSanySemNullOpDefNode("nullODN")
 	n.nullOAN = &sanySemOpApplNode{sanySemanticNode: sanyNullSyntaxNode(sanyOpApplKind), operator: n.nullODN, operands: make([]sanySemanticGraphNode, 0), ranges: make([]sanySemanticGraphNode, 0)}
 	n.nullOpArg = &sanySemOpArgNode{sanySemanticNode: sanyNullSyntaxNode(sanyOpArgKind), name: "nullOpArg", arity: -2}
 	n.nullLabelNode = &sanySemLabelNode{sanySemanticNode: sanyNullSyntaxNode(sanyLabelKind), name: "nullLabelNode", formalNodes: make([]*sanyFormalParamNode, 0), body: n.nullOAN}

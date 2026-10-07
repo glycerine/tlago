@@ -798,8 +798,16 @@ both parameter sets; variables do not. Generation allocates rejected declaration
 nodes and keeps the earlier accepted binding. Local accepted declarations enter
 the module context, and identifier expressions retain their declaration node.
 Thirty-eight actual Java observations match, including a rejected duplicate's
-allocation gap. Complete SymbolTable registration, imported declaration identity,
-operator context entries and ordered module definition graphs remain pending.
+allocation gap. SymbolTable's registration primitive now matches Java's check
+order, return value and structured diagnostics; warnings keep the earlier binding
+and return true. Canonical operator origin checks use source identity and actual
+module parameters. All 149 observations across 77 registration cases match Java.
+The existing Java context test now uses its actual kind-zero OpDefNode constructor
+and OpDeclNode with nullSTN. Its unchanged assertions exposed and corrected a
+production context-classification shortcut; Java JUnit and Go both pass.
+Generator integration with the complete SymbolTable stack, imported declaration
+identity, operator context entries and ordered module definition graphs remain
+pending.
 
 The five expanded aggregate-label cases now match completely. The 70-formal UID
 range and first hash match Java exactly (305..374, 1607), without offsets. This

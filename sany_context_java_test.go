@@ -22,14 +22,18 @@
  ******************************************************************************/
 package tlago
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/glycerine/tlago/tlc"
+)
 
 // Original TestContext.testDifferentSymbolClassesDiagnostic, using the actual
 // context merge and retained ErrorDetails parameters rather than a spec proxy.
 func TestJavaSanyTestContextDifferentSymbolClassesDiagnostic(t *testing.T) {
 	name := "symbol"
-	existingDefinition := newSanySemSymbol(name, sanyUserDefinedOpKind, 0, "", Position{})
-	incomingDeclaration := newSanySemSymbol(name, sanyConstantDeclKind, 0, "", Position{})
+	existingDefinition := newSanySemNullOpDefNode(name)
+	incomingDeclaration := newSanySemOpDeclNode(name, sanyConstantDeclKind, constantLevel, 0, nil, tlc.NullSemanticNodeInstance.GetTreeNode())
 	context := newSanyContext()
 	context.addSymbol(existingDefinition)
 	incoming := newSanyContext()

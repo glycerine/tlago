@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-07 SymbolTable registration and concrete context classes:
+Previous completed commit: 84df1d7. Replace the scaffold's premature origin
+shortcut with Java's registration order: identical/vacant, builtin syntax source,
+kind/arity/formal/bound conflicts, shared operator origin, then ambiguity warning.
+Retain Java's boolean independently of diagnostics: warning 4801 returns true
+without replacing the earlier binding. Preserve exact codes, messages, ranges
+and structured parameters. Module conflicts use error 4223 and return false.
+Canonical OpDefNode origin checks now retain semantic module ownership and inspect
+its constants/variables after matching the original source identity. Full native
+generator stack integration and imported identities remain pending.
+
+149 actual Java observations across 77 cases match: all 64 pairs of declaration,
+variable, bound and formal kinds at two arities; vacant/identical/builtin-kind/
+builtin-location; six shared-origin/module-parameter/kind/arity cases; and three
+module registrations. Temporary Java helper initially could not access the nested
+ModuleName class; put it in the semantic package and qualify SymbolTable.ModuleName.
+Corrected comparisons 87261 (138 observations) and 60849 (149) terminal 0.
+Final Go probe 55711 terminal 0 and all 149 lines match complete Java results,
+messages, ranges and parameters. Logs /mnt/oldrog/tmp/tlago-registration-java.log
+and tlago-registration-probe-final.log; scratch helpers SourceRegistrationManual.java,
+tlago-registration-manual_test.go and overlay remain outside the repository.
+
+Correct the existing TestContext.testDifferentSymbolClassesDiagnostic translation:
+Java constructs OpDefNode(name) with kind 0/arity -2 and OpDeclNode with nullSTN,
+not kind-5/arity-0 metadata proxies. Port the null OpDef constructor and use the
+actual declaration constructor. Preserve all original assertions. Corrected test
+30251 terminal 1 exposed production Context classification by kind instead of
+concrete class. Fix production classification, rather than weaken the test.
+Unchanged source JUnit test passes 0.021 seconds; faithful Go passes 0.017 seconds
+(45308 terminal 0). Logs tlago-registration-context-{before-fix,java,go}.log.
+No new methods or test-inventory credit; this strengthens an existing translation.
+
+Final existing root semantic checks pass 4.740 seconds (85560), complete SANY
+package 1.767 seconds (55140), and all-package compile passes (63442). Shared
+constructor comparisons preserve all 28 sentinel observations (94125) and 38
+declaration observations (30190). Four whole original models pass 2.152 seconds
+(34037). All these handles terminal 0 and retired. Logs:
+/mnt/oldrog/tmp/tlago-registration-{root-final,sany-final,compile-final,sentinels,
+declarations,models}.log. Earlier focused root/SANY/compile sessions 77300, 7906
+and 86221 also retired status 0, before the faithful context-test correction.
+No full-workspace pass is established for this snapshot; full TLC parity remains
+incomplete and the new distributed service remains postponed.
+
+
 2026-10-07 Ordinary constant and variable declaration construction:
 Previous completed commit: f3f69f8. Generate concrete OpDeclNode instances in
 module-body order, before duplicate registration checks. Retain rejected nodes

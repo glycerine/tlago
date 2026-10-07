@@ -1,5 +1,24 @@
 # TLC Architecture Notes for the Go Port
 
+## Source symbol registration and concrete context classes
+
+SymbolTable registration first accepts the identical node, then a vacant name.
+For an existing different node, reject builtin source locations before checking
+kind and arity. Formal and bound symbols always require a fresh name. Only after
+those checks may a shared operator source suppress a warning; its actual defining
+module must have no constants or variables. Other same-kind/arity duplicates
+return true with warning 4801 and keep the earlier binding. Module conflicts
+return false with error 4223. Retain complete messages, locations and parameters.
+All 149 Java observations across 77 registration cases match.
+
+Context merge classification uses the concrete node class. In particular,
+OpDefNode(UniqueString) has kind zero and arity -2 yet remains a definition.
+The faithful original context test now constructs that node and an OpDeclNode
+with the shared nullSTN. Its unchanged assertions caught the old kind-based
+classification, which is corrected in production. Both original Java JUnit and
+Go pass. The native module generator still uses its scope adapter; complete
+SymbolTable stack integration and imported graph identities remain pending.
+
 ## Retained ordinary declaration nodes
 
 Generate OpDeclNode for every constant and variable occurrence before attempting
