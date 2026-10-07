@@ -452,7 +452,12 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 			seenDomains[parameter.Set] = true
 		}
 	}
-	defer g.pushFormalContext(len(parameters))()
+	restore := g.pushFormalContext(len(parameters))
+	defer func() {
+		if restore != nil {
+			restore()
+		}
+	}()
 	bodyLocals := copyBoolMap(locals)
 	root.quantifierFormals = nil
 	for _, parameter := range parameters {
@@ -466,7 +471,35 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[parameter.Var] = true
 	}
-	return append(diags, g.checkExpr(body, context, bodyLocals)...)
+	diags = append(diags, g.checkExpr(body, context, bodyLocals)...)
+	restore()
+	restore = nil
+	operand := sanyGeneratedExpressionNode(body)
+	if operand != nil {
+		if root.Set == nil {
+			operator := "$UnboundedForall"
+			switch root.Kind {
+			case "\\E":
+				operator = "$UnboundedExists"
+			case "\\EE":
+				operator = "$TemporalExists"
+			case "\\AA":
+				operator = "$TemporalForall"
+			}
+			root.semanticGraph = newSanySemUnboundedOpApplNode(operator, []sanySemanticGraphNode{operand}, root.quantifierFormals, root.Syntax)
+		} else {
+			operator := "$BoundedForall"
+			if root.Kind == "\\E" {
+				operator = "$BoundedExists"
+			}
+			bounds := make([]BoundVar, len(parameters))
+			for i, parameter := range parameters {
+				bounds[i] = BoundVar{Name: parameter.Var, Set: parameter.Set, TupleBound: parameter.TupleBound}
+			}
+			retainSanyBoundApplication(root, operator, bounds, root.quantifierFormals, body)
+		}
+	}
+	return diags
 }
 
 func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[string]Position, locals map[string]bool) Diagnostics {
@@ -490,7 +523,20 @@ func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[str
 		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[bound.Name] = true
 	}
-	return append(diags, g.checkExpr(expr.Body, context, bodyLocals)...)
+	diags = append(diags, g.checkExpr(expr.Body, context, bodyLocals)...)
+	operand := sanyGeneratedExpressionNode(expr.Body)
+	if operand != nil {
+		if expr.Set == nil {
+			expr.semanticGraph = newSanySemUnboundedOpApplNode("$UnboundedChoose", []sanySemanticGraphNode{operand}, expr.formalNodes, expr.Syntax)
+		} else {
+			// CHOOSE always has one bound group, even for tuple parameters.
+			domain := sanyGeneratedExpressionNode(expr.Set)
+			if domain != nil {
+				expr.semanticGraph = newSanySemBoundedOpApplNode("$BoundedChoose", nil, []sanySemanticGraphNode{operand}, [][]*sanyFormalParamNode{expr.formalNodes}, []bool{expr.TupleVars != nil}, []sanySemanticGraphNode{domain}, expr.Syntax)
+			}
+		}
+	}
+	return diags
 }
 
 // processFcnConst/processSetOfAll/processSubsetOf generate domains before

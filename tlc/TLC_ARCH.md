@@ -1,5 +1,26 @@
 # TLC Architecture Notes for the Go Port
 
+## Bound application construction and formal references
+
+OpAppl constructors 4/5 retain their supplied unbounded formals or bounded
+formal groups, tuple flags and ranges. Bounded ranges preserve caller nullness;
+unbounded constructors create a non-null empty ranges array. Zero-arity formal
+references construct actual OpAppls pointing at accepted FormalParamNodes.
+FormalParamNode.match compares operator arity with its own and emits no errors;
+constructor 2 ignores its boolean result, matching source behavior.
+
+Quantifier, CHOOSE, anonymous bounded function and comprehension graphs reuse
+actual generated domains/body/formals. Parsed formals sharing a domain form one
+group; distinct equal-text domain syntax remains separate. Empty tuple binders
+preserve source's unusual formal counts/names. Unbounded CHOOSE has no tuple
+flags, even for a tuple binder. Quantifiers pop formal scope before application
+construction; CHOOSE constructs before the pop. Rejected declarations remain in
+arrays, while body references keep the earlier accepted symbol. These graphs
+remain incomplete for unported children. General symbol match, named functions,
+lambdas, other expression forms, LevelNode data, LET/INSTANCE and evaluator
+sharing remain pending. Bounded evidence verifies identities/shape/allocation;
+it does not credit the ordinary OpDef test or establish whole graph parity.
+
 ## Retained builtin application graphs
 
 Semantic generation retains actual graphs on expression generation sources.
@@ -12,8 +33,8 @@ empty ranges array. It skips matching exactly as Java constructor 3 does.
 Function application uses one argument directly; all other argument counts
 construct $Tuple at the same application syntax before $FcnApply. Fresh
 generation replaces retained graphs. No placeholder represents an unported
-child: its containing graph remains incomplete. Ordinary symbol matching,
-bound/LET/INSTANCE graphs, LevelNode data and evaluator sharing remain pending.
+child: its containing graph remains incomplete. Remaining symbol matching and bound-body cases involving unported children,
+LET/INSTANCE graphs, LevelNode data and evaluator sharing remain pending.
 Bounded source comparisons establish the implemented tree shapes, syntax kinds,
 operand order and relative allocation order, not complete expression parity.
 

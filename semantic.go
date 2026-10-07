@@ -3247,6 +3247,9 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				e.generationArity = &arity
 			}
 		}
+		if e.formalNode != nil && e.formalNode.semArity() == 0 && !operatorArgument {
+			e.semanticGraph = newSanySemFormalOpApplNode(e.formalNode, make([]sanySemanticGraphNode, 0), e.Syntax)
+		}
 		if e.Name == "" || e.formalNode != nil || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {
 			return nil
 		}
@@ -3433,6 +3436,9 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		var generated Diagnostics
 		e.formalNodes, generated = generation.checkBoundExpression(e.Bounds, e.Syntax, defined, locals, e.Body)
 		diags = append(diags, generated...)
+		if !e.IsLambda {
+			retainSanyBoundApplication(e, "$FcnConstructor", e.Bounds, e.formalNodes, e.Body)
+		}
 	case *FunctionAppExpr:
 		diags = append(diags, generation.checkExpr(e.Function, defined, locals)...)
 		if sanyExpressionGenerationFailure(e.Function) == sanyGenerationNullExpression {
@@ -3488,6 +3494,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		var generated Diagnostics
 		e.formalNodes, generated = generation.checkBoundExpression(e.Bounds, e.Syntax, defined, locals, body)
 		diags = append(diags, generated...)
+		operator := "$SetOfAll"
+		if e.Predicate != nil {
+			operator = "$SubsetOf"
+		}
+		retainSanyBoundApplication(e, operator, e.Bounds, e.formalNodes, body)
 	}
 	return diags
 }

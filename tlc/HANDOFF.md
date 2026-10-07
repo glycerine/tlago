@@ -986,8 +986,16 @@ now retains actual OpAppl graphs with original operand and syntax references.
 Literal graph references use their already-generated nodes. Nineteen bounded
 expressions match Java for 75 node shapes, syntax kinds and relative allocation
 order. Fresh generation replaces graphs. Unported child kinds remain incomplete;
-ordinary matching, bound/LET/INSTANCE graphs and evaluator sharing are pending.
+remaining symbol matching, unported bound bodies, LET/INSTANCE graphs and
+evaluator sharing are pending.
 No original-method or full-workspace completion credit is added.
+Bounded/unbounded/temporal quantifiers, CHOOSE, anonymous bounded functions and
+comprehensions now retain actual application graphs when their children exist.
+Zero-arity formal uses point at accepted formal nodes. Shared-domain grouping,
+tuple flags, rejected-node arrays and earlier bindings match Java across 26
+cases and 259 observations. All 56 diagnostic comparisons still agree; full
+SANY and the focused original-model gate pass. General symbol matching,
+operator arguments, named functions/lambdas and other body forms remain pending.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

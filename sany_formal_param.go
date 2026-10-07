@@ -54,6 +54,10 @@ func (n *sanyFormalParamNode) equals(other any) bool {
 	return n == o || n.getKind() == o.getKind() && n.getUID() == o.getUID()
 }
 
+func (n *sanyFormalParamNode) match(application *sanySemOpApplNode) bool {
+	return application.operator.semArity() == n.semArity()
+}
+
 func (g *sanyExpressionGeneration) newFormalParameter(name string, arity int, position Position, syntax *SanySyntaxNode) *sanyFormalParamNode {
 	return newSanyFormalParamNode(name, arity, position, sanySyntaxAtPosition(syntax, position), g.currentModule)
 }

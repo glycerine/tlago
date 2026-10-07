@@ -1,5 +1,53 @@
 # TLC Port Progress
 
+2026-10-07 Bound application graphs and actual formal references:
+Previous completed commit: d1ef676. Continue faithful ordinary-body generation.
+Port source OpAppl constructors 4/5, preserving supplied formal, group, tuple,
+range and function-name arrays. Unbounded ranges remain non-null empty; bounded
+ranges retain even a supplied null. Port the formal-symbol case of constructor
+2 and FormalParamNode.match exactly: it compares the application's operator
+arity with the formal's arity, emits no diagnostic, and its boolean result is
+ignored by construction. Zero-arity formal references now retain real OpAppls
+pointing at the accepted declaration. Operator-argument graphs and the other
+symbol-match cases remain pending; do not bypass their match implementations.
+
+Wire bounded/unbounded/temporal quantifiers, scalar/tuple CHOOSE, anonymous
+bounded function constructors and subset/set-of-all comprehensions to actual
+retained graphs. Group parsed formals by shared domain expression identity,
+preserving distinct equal-text domain expressions and tuple flags. Quantifiers
+pop their temporary formal context before application construction, as source
+does; CHOOSE constructs before its matching pop. Reuse retained domain/body
+nodes and formal identities, including rejected nodes in arrays and the earlier
+accepted binding in body references. Unported children still prevent containing
+graph construction. Named function/lambda, general symbol matching, other body
+forms, LET/INSTANCE, common LevelNode data and evaluator graph sharing remain
+pending. Ordinary OpDef Generator integration/test credit remains pending.
+
+Actual Java/Go graph observers compare 26 cases: shared/separate/tuple domains,
+empty tuple source behavior, temporal binders, nested scopes, body formal use,
+CHOOSE, anonymous functions, both comprehension forms and duplicate names.
+All 259 observations agree: 26 generation-success values, 174 nodes, 36 formal
+references and 23 bound groups. Compare syntax kinds, array shape, names/arities,
+tuple flags, reference identities and relative semantic UID allocation. Go also
+checks original root syntax identity and final context/map restoration. Receipt
+/mnt/oldrog/tmp/tlago-bound-expression-comparison.log; observers, JSON and
+overlay use the same tlago-bound-expression prefix. Source scratch initially
+used standalone parser syntax with null filename; its duplicate-formal cases
+hit Java's source().equals null dereference. Give both observers real Probe
+module syntax instead, preserving every case and the duplicate assertions.
+Corrected Java runs terminal 0; final Go 96271 terminal 0. No upstream changes,
+permanent invented tests or original-method credit.
+
+Initial full SANY passes in 2.054 seconds (90800); final full SANY passes in
+1.893 seconds (29432), both terminal 0. Focused existing parser/context/bridge
+and original TLC models pass normally in 47.537 seconds (16220, terminal 0).
+Rebuild current scratch diagnostic helper (73423, terminal 0); all 56 previous
+formal-scope diagnostic comparisons still match Java exactly (66791, terminal
+0). Every package compiles, terminal 0. Diff whitespace checks pass. All handles
+retired. Original assertions/fixtures and inventory counts unchanged; no new
+full-workspace pass or race workload. New distributed architecture stays
+postponed. Continue actual ordinary symbol matching/application graphs.
+
 2026-10-07 Retain actual builtin expression application graphs:
 Previous completed commit: 37b6f21. Continue actual ordinary-body generation.
 Port OpApplNode constructor 3: retain its supplied operand array and syntax,

@@ -77,3 +77,67 @@ func retainSanyFunctionApplication(expr *FunctionAppExpr) {
 	}
 	expr.semanticGraph = newSanySemBuiltInOpApplNode("$FcnApply", []sanySemanticGraphNode{function, argument}, expr.Syntax)
 }
+
+// Unbounded OpApplNode constructor 4 retains the caller's formal array.
+func newSanySemUnboundedOpApplNode(name string, operands []sanySemanticGraphNode, parameters []*sanyFormalParamNode, syntax *SanySyntaxNode) *sanySemOpApplNode {
+	node := newSanySemBuiltInOpApplNode(name, operands, syntax)
+	node.unboundedBoundSymbols = parameters
+	return node
+}
+
+// Bounded constructor 5 retains all arrays, including nil ranges if supplied.
+func newSanySemBoundedOpApplNode(name string, functionNames []*sanyFormalParamNode, operands []sanySemanticGraphNode, parameters [][]*sanyFormalParamNode, tuples []bool, ranges []sanySemanticGraphNode, syntax *SanySyntaxNode) *sanySemOpApplNode {
+	node := newSanySemBuiltInOpApplNode(name, operands, syntax)
+	node.unboundedBoundSymbols = functionNames
+	node.boundedBoundSymbols = parameters
+	node.tupleOrs = tuples
+	node.ranges = ranges
+	return node
+}
+
+// FormalParamNode.match compares the operator's arity with its own arity and
+// emits no diagnostics. OpApplNode constructor 2 ignores that boolean result.
+func newSanySemFormalOpApplNode(operator *sanyFormalParamNode, operands []sanySemanticGraphNode, syntax *SanySyntaxNode) *sanySemOpApplNode {
+	node := &sanySemOpApplNode{sanySemanticNode: newSanySemanticNode(sanyOpApplKind), operator: operator, operands: operands, ranges: make([]sanySemanticGraphNode, 0)}
+	if syntax == nil {
+		node.TreeNode = nil
+		node.Location = tlc.NullSourceLocation
+	} else {
+		node.TreeNode = syntax
+		bridge := tlcBridge{}
+		node.Location = bridge.sourceLocationForPosition(sanyNodePosition(syntax))
+	}
+	operator.match(node)
+	return node
+}
+
+// Parsed names sharing one domain belong to one bound group. Distinct domain
+// syntax expressions keep their own groups, even when their text is equal.
+func retainSanyBoundApplication(expr Expr, name string, bounds []BoundVar, parameters []*sanyFormalParamNode, body Expr) {
+	source := sanyGenerationSource(expr)
+	operand := sanyGeneratedExpressionNode(body)
+	if source == nil || operand == nil || len(bounds) != len(parameters) {
+		return
+	}
+	groups := make([][]*sanyFormalParamNode, 0)
+	tuples := make([]bool, 0)
+	ranges := make([]sanySemanticGraphNode, 0)
+	for i := 0; i < len(bounds); {
+		domain := bounds[i].Set
+		rangeNode := sanyGeneratedExpressionNode(domain)
+		if rangeNode == nil {
+			return
+		}
+		end := i + 1
+		for end < len(bounds) && bounds[end].Set == domain {
+			end++
+		}
+		group := make([]*sanyFormalParamNode, end-i)
+		copy(group, parameters[i:end])
+		groups = append(groups, group)
+		tuples = append(tuples, bounds[i].TupleBound)
+		ranges = append(ranges, rangeNode)
+		i = end
+	}
+	source.semanticGraph = newSanySemBoundedOpApplNode(name, nil, []sanySemanticGraphNode{operand}, groups, tuples, ranges, source.Syntax)
+}
