@@ -30,7 +30,7 @@ SANY parser reconciliation (2026-10-07): **Port complete** for
 [sany_incremental_syntax_java_test.go](../sany_incremental_syntax_java_test.go).
 The original token-boundary and standalone parser assertions are now retained;
 the earlier module-wrapper checks remain supplementary. No change to the main
-TLC method/class totals. Full generated lookahead and corpus AST comparison
+TLC method/class totals. Remaining generated-lookahead call-site integration and corpus AST comparison
 remain separate implementation requirements.
 
 ## Topic totals for the main suite

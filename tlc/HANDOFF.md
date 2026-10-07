@@ -710,14 +710,20 @@ NEW declarations now retain source frames, expectations and actual two-token
 JavaCC alternatives. Reject an operator declaration with arguments before `\in`
 at the source boundary; its ordinary domain token remains an `IN` leaf. Theorem's
 three-token Assume-Prove selection now runs the actual generated scanner. The
-mechanical generator retains its 159-method dependency closure and predicates
+mechanical generator now retains all 268 source scanner methods and predicates
 against the scanner position, junction context and active operator stack. Saved
 calls expire in source order and rescan actual error token sequences, including
 earlier successful calls. All 599 complete TRACE/results and 137 selected raw
 module trees match Java. The temporary bounded vocabulary matrix also matches
-all 609,175 scanner verdicts. This covers the six connected entry points, not
-all 74 JavaCC previews. Remaining entry points, grammar expectations, general
-rescan integration and proof generation remain reconciliation work.
+all 609,175 scanner verdicts for the six entry points connected at that snapshot.
+All 74 entry points are now callable, and optional argument parsing uses actual
+source calls 50, 68 and 72 with budget 2. Another 4,440 external observations
+match results, remaining budgets and current/farthest positions across all 74
+entry points in default parser contexts. Related original frontend/model checks
+pass in 9.878 seconds; complete SANY passes in 1.979 seconds and compilation passes.
+Remaining call-site integration, grammar expectations, general rescan integration
+and proof generation remain reconciliation work. These bounded observations do
+not establish every semantic-predicate context or full parser parity.
 
 Semantic symbols now embed TLC's `SemanticNodeBase` and use its shared
 `NewSemanticNodeBase` constructor. This corrects the separate SANY counter added

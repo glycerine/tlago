@@ -1,5 +1,42 @@
 # TLC Port Progress
 
+2026-10-07 All source JavaCC scanners and argument call-site integration:
+Previous completed commit: 8f70362. Continue runtime LET audit: actual canonical
+Context adaptation still needs broader graph conversion, not another context
+reconstructed from runtime AST definitions. Keep it pending. Inspect generated
+lookahead port: only entry points 16/17/18/19/20/22 are exposed despite the source
+74-entry dispatcher. Extend the mechanical generator's dependency closure to all
+74 and dispatch every original entry point. Generate 268 source scanner methods;
+all semantic predicates compile with existing source scanner-context adapters.
+
+Replace optional-argument first-token eligibility shortcuts with actual source
+scanLookahead calls and budget 2: NoOpExtension 50, GeneralId 68, BangExtension 72.
+Keep distinct saved-call indices, failure/success recording and rescan order.
+A generated-header cleanup makes the source identifier checkout-independent;
+regeneration proves every generated method byte unchanged by that comment edit.
+Do not credit all production caller integration or complete JavaCC rescan parity.
+
+External fresh-parser observers agree on 4,440 rows: all 74 entry points, 12 inputs
+and budgets 1/2/3/8/Integer.MAX_VALUE. Compare results, remaining budget and actual
+current/farthest token positions. Source jj_2 calls and Go scanner bodies agree.
+The first Java observer cannot access package-private belchDEF; correct the
+observer with reflective access before compilation and successful comparison.
+Initial failed compilation/class lookup receives no success credit. Corrected
+Java returns 0; Go observer 16290 passes 0.048s and is retired. Probe sources,
+overlays and logs remain external under /mnt/oldrog/tmp/tlago-all-lookahead-*,
+/mnt/oldrog/tmp/LookaheadProbe.java and /mnt/oldrog/tmp/tlago-lookahead-*. No
+invented permanent tests, fixture changes or original-method inventory credit.
+
+Initial existing incremental gate 76532 passes 0.056s. Complete existing SANY
+86601 passes 1.979s. Final original ParseErrorTests, selector/corpus/incremental,
+GetScopedIdentifiers, legacy Test201–209 and EWD998ChanDebugger gate 67573 passes
+9.878s. All-package compile 70189 passes. All handles retired; diff check green.
+No race or optional corpus sweep. Update actual scanner coverage in HANDOFF,
+architecture and TODO without overwriting older bounded receipts. Remaining
+caller integration, malformed predicate states, general diagnostic rescan,
+canonical/evaluator sharing, trace reconciliation and the previously recorded
+full-workspace failures remain pending. Keep overall goal active.
+
 2026-10-07 Complete original definition-break and incremental syntax methods:
 Previous completed commit: eb2c967. Audit remaining runtime LET: the bridge still
 rebuilds definitions from AST, and attaching another reconstructed context would

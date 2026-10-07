@@ -2846,15 +2846,8 @@ func (p *SanyParser) OpArgs() *SanySyntaxNode {
 // Source optional OpArgs uses two-token lookahead: an opening parenthesis
 // followed by the first token of the mandatory OpOrExpr. A failed lookahead
 // leaves the parenthesis for the surrounding production.
-func (p *SanyParser) startsOpArgs() bool {
-	if !p.check(SanyTokenLbr) {
-		return false
-	}
-	if p.startsOpOrExprAt(1) {
-		return true
-	}
-	p.rememberFailedLookahead(2)
-	return false
+func (p *SanyParser) startsOpArgs(production int) bool {
+	return p.scanLookahead(production, 2)
 }
 
 func (p *SanyParser) startsOpOrExprAt(offset int) bool {
@@ -2901,7 +2894,7 @@ func (p *SanyParser) BangExtension() (bang, selector, args *SanySyntaxNode) {
 	defer p.endProduction()
 	bang = p.consumeParseToken(SanyTokenBang, "expected ! in selector")
 	selector = p.BangSelector()
-	args = p.OptionalSelectorOpArgs(selector)
+	args = p.OptionalSelectorOpArgs(selector, 72)
 	return bang, selector, args
 }
 
@@ -2909,7 +2902,7 @@ func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 	var prefix []*SanySyntaxNode
 	selector := p.consumeParseToken(SanyTokenIdentifier, "expected identifier in restricted expression")
 	var args *SanySyntaxNode
-	if p.startsOpArgs() {
+	if p.startsOpArgs(50) {
 		args = p.OpArgs()
 	}
 	for p.match(SanyTokenBang) {
@@ -2921,7 +2914,7 @@ func (p *SanyParser) NoOpExtension() *SanySyntaxNode {
 		}
 		selector = p.consumeParseToken(SanyTokenIdentifier, "expected identifier in restricted expression")
 		args = nil
-		if p.startsOpArgs() {
+		if p.startsOpArgs(50) {
 			args = p.OpArgs()
 		}
 	}
@@ -2957,8 +2950,12 @@ func (p *SanyParser) NoOpExtensionBase() *SanySyntaxNode {
 	}
 }
 
-func (p *SanyParser) OptionalSelectorOpArgs(selector *SanySyntaxNode) *SanySyntaxNode {
-	if selector == nil || !p.selectorAllowsOpArgs(selector) || !p.startsOpArgs() {
+func (p *SanyParser) OptionalSelectorOpArgs(selector *SanySyntaxNode, lookahead ...int) *SanySyntaxNode {
+	production := 68
+	if len(lookahead) != 0 {
+		production = lookahead[0]
+	}
+	if selector == nil || !p.selectorAllowsOpArgs(selector) || !p.startsOpArgs(production) {
 		return nil
 	}
 	return p.OpArgs()

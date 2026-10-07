@@ -9911,3 +9911,26 @@ External source observations match 170 enumeration/presence/exception rows and
 25 traversal rows with colliding keys and callback replacements/rehashes. This
 does not close runtime LET context reconstruction, missing graph node classes,
 canonical metadata sharing or full runtime visitor parity.
+
+## Complete scanner surface and actual argument previews
+
+The JavaCC scanner generator includes all 74 jj_3 entry points and their complete
+268-method dependency closure. Generate from the pinned Java parser rather than
+reimplementing each preview's token choices. The runtime dispatcher retains all
+entry points, their recursive scanners and source semantic predicates. Generated
+source comments identify the parser independently of the local checkout path.
+
+Optional OpArgs now invokes the actual scanner with budget 2. Restricted fairness
+NoOpExtension uses call 50, ordinary GeneralId uses call 68, and BangExtension
+uses call 72. Preserve their distinct saved-call indices and source order, even
+though they preview the same argument production. Remove the hand-maintained
+opening-parenthesis/first-token shortcut at these sites. Failed and successful
+calls now enter the existing source-style saved-call/rescan machinery.
+
+External observers agree on 4,440 rows across all 74 entry points, 12 inputs and
+five budgets, comparing the boolean result, remaining budget, current cursor and
+farthest cursor. These use default parser contexts, not exhaustive junction,
+operator-stack or malformed-graph states. Existing original ParseErrorTests,
+selector/incremental methods and model checks pass. Remaining production call
+sites and general diagnostic rescan integration are still pending; generated
+scanner coverage alone does not establish the whole JavaCC parser contract.

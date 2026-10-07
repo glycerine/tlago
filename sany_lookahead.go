@@ -47,6 +47,36 @@ func (s *sanyLookahead) scanToken(kind SanyTokenKind) bool {
 
 func (s *sanyLookahead) run(production int) bool {
 	switch production {
+	case 1:
+		return s.jj_3_1()
+	case 2:
+		return s.jj_3_2()
+	case 3:
+		return s.jj_3_3()
+	case 4:
+		return s.jj_3_4()
+	case 5:
+		return s.jj_3_5()
+	case 6:
+		return s.jj_3_6()
+	case 7:
+		return s.jj_3_7()
+	case 8:
+		return s.jj_3_8()
+	case 9:
+		return s.jj_3_9()
+	case 10:
+		return s.jj_3_10()
+	case 11:
+		return s.jj_3_11()
+	case 12:
+		return s.jj_3_12()
+	case 13:
+		return s.jj_3_13()
+	case 14:
+		return s.jj_3_14()
+	case 15:
+		return s.jj_3_15()
 	case 16:
 		return s.jj_3_16()
 	case 17:
@@ -57,10 +87,116 @@ func (s *sanyLookahead) run(production int) bool {
 		return s.jj_3_19()
 	case 20:
 		return s.jj_3_20()
+	case 21:
+		return s.jj_3_21()
 	case 22:
 		return s.jj_3_22()
+	case 23:
+		return s.jj_3_23()
+	case 24:
+		return s.jj_3_24()
+	case 25:
+		return s.jj_3_25()
+	case 26:
+		return s.jj_3_26()
+	case 27:
+		return s.jj_3_27()
+	case 28:
+		return s.jj_3_28()
+	case 29:
+		return s.jj_3_29()
+	case 30:
+		return s.jj_3_30()
+	case 31:
+		return s.jj_3_31()
+	case 32:
+		return s.jj_3_32()
+	case 33:
+		return s.jj_3_33()
+	case 34:
+		return s.jj_3_34()
+	case 35:
+		return s.jj_3_35()
+	case 36:
+		return s.jj_3_36()
+	case 37:
+		return s.jj_3_37()
+	case 38:
+		return s.jj_3_38()
+	case 39:
+		return s.jj_3_39()
+	case 40:
+		return s.jj_3_40()
+	case 41:
+		return s.jj_3_41()
+	case 42:
+		return s.jj_3_42()
+	case 43:
+		return s.jj_3_43()
+	case 44:
+		return s.jj_3_44()
+	case 45:
+		return s.jj_3_45()
+	case 46:
+		return s.jj_3_46()
+	case 47:
+		return s.jj_3_47()
+	case 48:
+		return s.jj_3_48()
+	case 49:
+		return s.jj_3_49()
+	case 50:
+		return s.jj_3_50()
+	case 51:
+		return s.jj_3_51()
+	case 52:
+		return s.jj_3_52()
+	case 53:
+		return s.jj_3_53()
+	case 54:
+		return s.jj_3_54()
+	case 55:
+		return s.jj_3_55()
+	case 56:
+		return s.jj_3_56()
+	case 57:
+		return s.jj_3_57()
+	case 58:
+		return s.jj_3_58()
+	case 59:
+		return s.jj_3_59()
+	case 60:
+		return s.jj_3_60()
+	case 61:
+		return s.jj_3_61()
+	case 62:
+		return s.jj_3_62()
+	case 63:
+		return s.jj_3_63()
+	case 64:
+		return s.jj_3_64()
+	case 65:
+		return s.jj_3_65()
+	case 66:
+		return s.jj_3_66()
+	case 67:
+		return s.jj_3_67()
+	case 68:
+		return s.jj_3_68()
+	case 69:
+		return s.jj_3_69()
+	case 70:
+		return s.jj_3_70()
+	case 71:
+		return s.jj_3_71()
+	case 72:
+		return s.jj_3_72()
+	case 73:
+		return s.jj_3_73()
+	case 74:
+		return s.jj_3_74()
 	default:
-		panic("unported JavaCC lookahead entry point")
+		panic("invalid JavaCC lookahead entry point")
 	}
 }
 
