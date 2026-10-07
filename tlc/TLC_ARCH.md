@@ -2,6 +2,14 @@
 
 ## Operator applications and flattened syntax forms
 
+Unqualified ordinary calls now resolve an available concrete symbol before
+operands and reject incorrect supplied arity at the argument-list location.
+A callee name does not allocate its own application. Actual generated operands
+feed the general matched constructor at the call's syntax node. Symbols and
+children lacking canonical graphs remain incomplete. Higher-order calls and
+compound selectors still require their complete graph integration; ordinary
+OpDef construction and registration are pending.
+
 Prefix/infix/postfix generation resolves the raw GenID and source synonym
 before generating operands. Prefix '-' becomes '-.' as in GenID.finalAppend.
 The AST's normalized spelling is insufficient for declaration lookup. Actual

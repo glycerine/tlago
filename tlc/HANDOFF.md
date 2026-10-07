@@ -994,8 +994,9 @@ comprehensions now retain actual application graphs when their children exist.
 Zero-arity formal uses point at accepted formal nodes. Shared-domain grouping,
 tuple flags, rejected-node arrays and earlier bindings match Java across 26
 cases and 259 observations. All 56 diagnostic comparisons still agree; full
-SANY and the focused original-model gate pass. General call/operator/selector wiring, named functions/lambdas and other body
-forms remain pending.
+SANY and the focused original-model gate pass. General call/operator/selector
+wiring, named functions/lambdas and other body forms remained pending at that
+snapshot.
 Concrete formal/declaration/OpDef matching and the general application
 constructor now preserve Java's false-result versus thrown-error behavior.
 Primary OpArgs retain actual symbol, syntax and semantic module identities.
@@ -1011,6 +1012,13 @@ nested products stay separate. Fifty-nine expression and 36 bound/operator
 comparisons agree with Java, including allocation order. Existing SANY and
 focused original TLC models pass. Full call/selector checks and identities,
 remaining bodies and ordinary OpDef integration are still pending.
+Unqualified calls through available concrete symbols now retain matched
+application graphs. Arity is checked before generating operands, and the callee
+name allocates no separate expression. Twenty-four actual Java/Go cases agree
+on all 100 graph/diagnostic observations. Full SANY, focused existing models
+and all 56 formal diagnostic comparisons pass. Higher-order/compound selector
+graphs, ordinary OpDef integration and other remaining bodies are still pending.
+No original-method completion or full-workspace pass credit is added.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

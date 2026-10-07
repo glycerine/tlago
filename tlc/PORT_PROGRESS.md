@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Ordinary call graphs for concrete symbols:
+Previous completed commit: e555b01. Wire unqualified calls through the actual
+resolved symbol and general matched OpAppl constructor after generating their
+operands. The callee name resolves without constructing an extra expression
+node. Resolve the symbol and reject an incorrect supplied arity before operand
+generation, matching selectorToNode; mark the failed call so later native arity
+walks do not report it again. Existing higher-order operand generation remains
+separate; full higher-order/compound selector graphs and ordinary OpDef
+construction/registration are still pending. No placeholder symbol or child
+stands in for an unported graph.
+
+A bounded scratch observer registers actual formal or constant-declaration
+symbols with arities zero, one and two in Java/Go, then runs actual expression
+generation. Twenty-four cases cover nested calls, literals, formal references,
+quantified scopes and wrong arity with otherwise undeclared operands. All 100
+observations agree: 24 cases, 10 diagnostics, 52 graph nodes and 14 formal
+references, including syntax kinds, operand order and relative UID allocation.
+Java rejects empty-parenthesis calls at parsing; those exploratory inputs are
+excluded from the semantic comparison. Receipt:
+/mnt/oldrog/tmp/tlago-call-expression-comparison.log. Scratch sources, cases,
+overlay and Java/Go logs use the tlago-call-expression prefix. Final Go probe
+passes in 0.020 seconds before replay; final replay also passes. No permanent
+invented tests or original-method completion credit.
+
+Full SANY passes in 2.066 seconds (64448 terminal 0). The focused existing
+parser/SANY/TLC integration gate passes in 45.990 seconds (88714 terminal 0).
+All packages compile (5933 terminal 0). Rebuilt the diagnostic observer; all 56
+existing bounded formal comparisons agree with Java: quantifier 11, named
+function 15, proof 17 and CHOOSE 13 (58091, 50969, 29287, 21317 terminal 0).
+No race, corpus sweep, full-workspace pass or test-inventory count change.
+
 2026-10-07 Prefix/infix/postfix, junction and Cartesian application graphs:
 Previous completed commit: 2df3b84. Continue actual operator-body generation.
 Generator resolves GenID and its synonym before generating operands, including

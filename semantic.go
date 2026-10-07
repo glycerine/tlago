@@ -3100,11 +3100,14 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 	var diags Diagnostics
 	fact := generation.fact
 	operatorArgument := generation.operatorArgument
+	symbolReferenceOnly := generation.symbolReferenceOnly
 	generation.fact = false
 	generation.operatorArgument = false
+	generation.symbolReferenceOnly = false
 	defer func() {
 		generation.fact = fact
 		generation.operatorArgument = operatorArgument
+		generation.symbolReferenceOnly = symbolReferenceOnly
 	}()
 	setSanyExpressionGenerationFailure(expr, sanyGenerationSucceeded)
 	if source := sanyGenerationSource(expr); source != nil {
@@ -3255,7 +3258,9 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		} else {
 			graphSymbol = sanyGlobalInitialContext(false).getSymbol(e.Name)
 		}
-		diags = append(diags, retainSanySymbolReference(e, graphSymbol, operatorArgument, generation.currentModule)...)
+		if !symbolReferenceOnly {
+			diags = append(diags, retainSanySymbolReference(e, graphSymbol, operatorArgument, generation.currentModule)...)
+		}
 
 		if e.Name == "" || e.formalNode != nil || localIdentifierInScope(locals, e.Name) || builtinIdentifiers[e.Name] {
 			return nil
@@ -3395,7 +3400,19 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				return append(diags, sanyIncompleteOperatorDiagnostic(ident))
 			}
 		}
+		// selectorToNode resolves the symbol and checks its supplied arity before
+		// generating operands. The callee is a name, not a separate expression.
+		var operator sanySemSymbol
+		if identifier, ok := e.Callee.(*IdentExpr); ok && (e.Selector == nil || len(e.Selector.Steps) <= 1) {
+			operator = generation.applicationOperator(identifier.Name, nil, defined)
+			if operator != nil && operator.semArity() >= 0 && operator.semArity() != len(e.Args) {
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				return Diagnostics{sanyCallArityDiagnostic(e, identifier.Name, operator.semArity())}
+			}
+		}
+		generation.symbolReferenceOnly = true
 		diags = append(diags, generation.checkExpr(e.Callee, defined, locals)...)
+		generation.symbolReferenceOnly = false
 		if sanyExpressionGenerationFailure(e.Callee) != sanyGenerationSucceeded {
 			setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 			return diags
@@ -3416,6 +3433,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		for _, arg := range e.Args {
 			diags = append(diags, generation.checkExpr(arg, defined, locals)...)
 		}
+		diags = append(diags, retainSanyMatchedApplication(e, operator, e.Args)...)
 	case *IfExpr:
 		diags = append(diags, generation.checkExpr(e.Cond, defined, locals)...)
 		diags = append(diags, generation.checkExpr(e.Then, defined, locals)...)

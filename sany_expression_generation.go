@@ -27,6 +27,7 @@ type sanyExpressionGeneration struct {
 	formals              map[string]localSymbol
 	fact                 bool
 	operatorArgument     bool
+	symbolReferenceOnly  bool
 	level                int
 	spec                 *Spec
 	currentModule        *Module
