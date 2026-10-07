@@ -95,6 +95,9 @@ func (g *sanyExpressionGeneration) completedTheoremProof(syntax *SanySyntaxNode)
 		return nil, true
 	}
 	if proof.Kind.JavaName() != "N_TerminalProof" {
+		if node := g.structuredProofGraphs[proof]; node != nil {
+			return node, true
+		}
 		return nil, false
 	}
 	tokens := proof.GetHeirs()

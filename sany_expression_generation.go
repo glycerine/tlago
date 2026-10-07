@@ -23,37 +23,38 @@ type sanyRecursiveBinding struct {
 }
 
 type sanyExpressionGeneration struct {
-	apGoalUnavailable    bool
-	currentGoal          *sanySemThmOrAssumpDefNode
-	outerAPContextOwned  bool
-	allowLabeledAP       bool
-	currentGoalClause    int
-	leafProofGraphs      map[*SanySyntaxNode]*sanySemLeafProofNode
-	excepts              []*sanySemOpApplNode
-	exceptSpecs          []*sanySemOpApplNode
-	labelsEnabled        bool
-	labelScopes          []*sanyLabelScope
-	labelAPDepth         int
-	labelAPForbidden     bool
-	labelGoalUnsupported bool
-	functions            []sanyFunctionGeneration
-	nodes                *sanyGeneratorNodes
-	formalTable          *sanySymbolTable
-	formals              map[string]localSymbol
-	fact                 bool
-	operatorArgument     bool
-	symbolReferenceOnly  bool
-	level                int
-	spec                 *Spec
-	currentModule        *Module
-	module               *sanyModuleRecursiveGeneration
-	declarations         []*sanyRecursiveBinding
-	bindings             map[string]*sanyRecursiveBinding
-	symbols              map[string]localSymbol
-	moduleKinds          map[string]DeclarationKind
-	moduleArities        map[string]int
-	moduleOperatorParams map[string][]operatorParamSpec
-	moduleSymbols        map[string]localSymbol
+	apGoalUnavailable     bool
+	currentGoal           *sanySemThmOrAssumpDefNode
+	outerAPContextOwned   bool
+	allowLabeledAP        bool
+	currentGoalClause     int
+	leafProofGraphs       map[*SanySyntaxNode]*sanySemLeafProofNode
+	structuredProofGraphs map[*SanySyntaxNode]*sanySemNonLeafProofNode
+	excepts               []*sanySemOpApplNode
+	exceptSpecs           []*sanySemOpApplNode
+	labelsEnabled         bool
+	labelScopes           []*sanyLabelScope
+	labelAPDepth          int
+	labelAPForbidden      bool
+	labelGoalUnsupported  bool
+	functions             []sanyFunctionGeneration
+	nodes                 *sanyGeneratorNodes
+	formalTable           *sanySymbolTable
+	formals               map[string]localSymbol
+	fact                  bool
+	operatorArgument      bool
+	symbolReferenceOnly   bool
+	level                 int
+	spec                  *Spec
+	currentModule         *Module
+	module                *sanyModuleRecursiveGeneration
+	declarations          []*sanyRecursiveBinding
+	bindings              map[string]*sanyRecursiveBinding
+	symbols               map[string]localSymbol
+	moduleKinds           map[string]DeclarationKind
+	moduleArities         map[string]int
+	moduleOperatorParams  map[string][]operatorParamSpec
+	moduleSymbols         map[string]localSymbol
 }
 
 func sanyExpressionGenerator(generators []*sanyExpressionGeneration) *sanyExpressionGeneration {

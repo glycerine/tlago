@@ -1065,35 +1065,43 @@ OBVIOUS/OMITTED, or complete canonical BY proofs. BY allocates its temporary USE
 node before a leaf sharing the actual arrays; theorem completion reuses that leaf.
 Top-level USE/HIDE retain actual vectors and source fact-validation order. Their
 constructors preserve nullable step names, array aliases and fresh child copies.
-Missing canonical BY vectors and structured proof owners remain incomplete.
+Missing canonical BY vectors or proof children keep their owners incomplete.
 
 NonLeafProofNode and DefStepNode constructors now preserve their supplied arrays,
 context and nullable interned step number. Non-leaf children are null for empty
 steps; definition-step children preserve a nonnull empty array and fail on null
 definitions. Both copy populated child arrays and retain null entries. Their
-32-case constructor comparison matches Java in all 80 rows. Numbered-step OpDefNodes now retain their actual step backlinks, register with
+32-case constructor comparison matches Java in all 80 rows. Numbered-step
+OpDefNodes retain their actual step backlinks, register with
 zero arity, and preserve Java's null body/parameter/level arrays and false flags.
 Their children remain a fresh array containing the ordinary null body slot.
 All 72 rows across 32 constructor cases and three registration collisions match
-Java. Proof generation and visitors remain pending; constructors alone do not
-complete structured-proof ownership.
+Java. Structured generation now enters actual proof contexts, retains complete
+DEFINE/USE/HIDE and ASSERT/HAVE/CASE/WITNESS/QED steps, handles ordinary-expression
+SUFFICES and finishes nested proofs before their theorem owners. Every named step
+preserves the source provisional-goal allocation, including discarded non-theorem
+goals. Actual symbols, label selections and @ shorthand retain their shared nodes.
+Step syntax replacement also updates cached locations. All 993 rows across 21
+whole modules match Java. AP, TAKE/PICK and INSTANCE proof graphs remain incomplete;
+constructor and bounded generation evidence does not complete the entire feature.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
 scope, failure nodes and diagnostic codes/ranges/messages. Assumption and direct
 constructor comparisons also pass. USE/HIDE/BY comparisons add 427 exact rows
-across 40 modules and 116 constructor rows. Existing focused tests, full sany_tests and
-compile-all are the affected gates; receipts belong in PORT_PROGRESS.md. These
+across 40 modules and 116 constructor rows. Existing focused tests, full
+sany_tests and compile-all are the affected gates; receipts belong in PORT_PROGRESS.md. These
 observations add no original-method or full-workspace completion credit.
 
-Structured proof graphs and proof-step goal ownership, Suffices integration,
-EXTENDS assertion inheritance, complete module vectors, qualified selectors,
-INSTANCE/fact/imported identities, recursive inherited level checks, visitors,
+AP proof-step goal/context ownership, SUFFICES declaration lifetime, TAKE/PICK
+proof bodies and bindings, EXTENDS assertion inheritance, complete module vectors,
+general qualified selectors, INSTANCE/fact/imported identities, recursive inherited level checks, visitors,
 shared Errors/exception integration and evaluator graph sharing remain pending.
 Missing canonical children or earlier native-only import identities keep owners
-incomplete. Next semantic work is structured proof ownership and steps, followed
-by remaining selector/instance identities, level checking and
-evaluator sharing. Complete allocation order across all graphs remains unproven.
+incomplete. Next semantic work is AP/SUFFICES proof contexts and TAKE/PICK
+bindings, followed by remaining selector/instance identities, level checking
+and evaluator sharing. Complete allocation order across all graphs remains
+unproven.
 
 Function and set-comprehension bridge nodes retain one group per syntactic
 bound, including multi-name lists and distinct adjacent tuple bounds. Each domain

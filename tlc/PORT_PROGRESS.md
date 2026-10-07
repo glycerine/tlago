@@ -1,5 +1,58 @@
 # TLC Port Progress
 
+2026-10-07 Structured-proof generation and actual context ownership:
+Previous completed commit: 347e25d. Consume actual proof syntax in source order
+alongside the existing projected statement generator. Enter real proof contexts,
+finish nested proofs before containing theorem owners, pop contexts before
+NonLeafProofNode construction and retain those contexts with the graph. Preserve
+every named step's label scope and provisional theorem allocation, including
+non-theorem provisional symbols that source discards.
+
+Build actual DEFINE and USE/HIDE steps and numbered backlinks. Ordinary operator
+proof definitions also enter the module definition vector; their proof context
+binding is not exported into the module context. DEF of a numbered definition
+step retains its actual numbered symbol; other numbered non-theorem steps retain
+both source rejection diagnostics. ASSERT/HAVE/CASE/WITNESS/QED and ordinary
+expression SUFFICES construct body/definition before the proof and separate owner
+afterward. Source full-step syntax replacement updates cached locations as well.
+Expression lookup now retains actual accepted proof symbols. Missing step or
+subproof identities still keep parent graphs incomplete.
+
+Port the actual @ infix graph: generate the current RHS, then $Nop referencing
+the unchanged previous RHS, then the infix application. The former native @
+representation had no shared canonical node. Parameter-free named label selections
+similarly wrap the actual LabelNode. Parameterized/general/INSTANCE selectors
+remain incomplete; do not invent their formal binding graphs. AP proof goals and
+SUFFICES declaration contexts, TAKE/PICK bodies/binding lifetime, InstanceNode
+identities, inherited level checks and visitors remain pending. No original
+method or full-workspace completion credit is added; no permanent tests invented.
+
+All 993 complete Java/Go rows agree across 21 whole modules, including 315 graph
+rows and 315 source-location rows, 22 proofs, 38 nested theorem steps, 33 context
+bindings, 35 leaves, six definition steps, nine USE/HIDE nodes, exact relative
+UIDs/references and full diagnostic codes/ranges/messages. Cover named/unnamed
+steps, PROOF/OMITTED/OBVIOUS, nested contexts, function/operator DEFINE, actual
+DEF step references, HIDE rejection/acceptance, label sharing and @ operand order.
+Initial comparisons exposed missing symbol pointers and actual @/label graphs;
+fix production ownership rather than dropping those cases. Scratch location
+observation initially used a nonexistent Go accessor, omitted Java's custom
+thm-definition locations and rendered nil UniqueStrings differently; correct
+those observer errors and retain all rows. Final scratch 82728 and post-guard
+86287 return 0; all handles retired. Earlier 24649, 90117, 24625 and 94490 failures
+receive no success credit. Logs and observers remain outside the repository under
+/mnt/oldrog/tmp/tlago-proof-graph-* and tlago-proof-{module,graph}-probe.java.
+
+Existing affected root/parser/proof/TLC-model tests pass 46.190s (92705) and,
+after source location correction, 47.646s (92076). Both handles are retired.
+Complete sany_tests passes 1.841s (39600), then 1.924s with compile-all (28023).
+Previous BY/USE/HIDE observations retain all 427 exact rows (35816). After the
+final parameterized-label guard, all 993 source rows still match; focused existing
+scope/parser checks pass 1.416s and compile-all succeeds (86287). All sessions are
+retired. Logs: tlago-proof-graph-root.json, root-final.json, java.log, go.log and
+by-go.log under /mnt/oldrog/tmp. Normal execution only; no race/full-workspace or
+long-workload repetition. Keep the full-workspace baseline and outstanding
+trace/fixture reconciliation unchanged. New distributed work remains postponed.
+
 2026-10-07 Numbered non-theorem proof-step symbols:
 Previous completed commit: 7b02042. Port the numbered-proof-step OpDefNode
 constructor independently of ordinary operator construction. Preserve kind 37,

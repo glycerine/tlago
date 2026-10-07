@@ -37,7 +37,7 @@ func (builder *sanyUseOrHideBuilder) appendReference(g *sanyExpressionGeneration
 		symbol := g.formalSymbolTable().resolveSymbol(reference.Name)
 		switch definition := symbol.(type) {
 		case *sanySemOpDefNode:
-			if definition.semKind() != sanyUserDefinedOpKind && definition.semKind() != sanyModuleInstanceKind {
+			if definition.semKind() != sanyUserDefinedOpKind && definition.semKind() != sanyModuleInstanceKind && definition.semKind() != sanyNumberedProofStepKind {
 				builder.complete = false
 				return
 			}

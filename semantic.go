@@ -3476,6 +3476,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 			diags = append(diags, generation.generateOperatorOperand(owner, i, expected, arg, defined, locals)...)
 		}
+		diags = append(diags, generation.retainCanonicalLabelSelection(expr)...)
 		return diags
 	}
 	switch e := expr.(type) {

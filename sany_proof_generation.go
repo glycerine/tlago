@@ -54,6 +54,19 @@ func (g *sanyExpressionGeneration) generateProofReference(reference ProofRef, mo
 			if selector == nil || selector.Selector == nil || len(selector.Selector.Steps) <= 1 {
 				if symbol := g.formalSymbolTable().resolveSymbol(reference.Name); symbol != nil {
 					valid := symbol.semKind() == sanyUserDefinedOpKind || symbol.semKind() == sanyModuleInstanceKind || symbol.semKind() == sanyThmOrAssumpDefKind && (len(symbol.semName()) == 0 || symbol.semName()[0] != '<')
+					if definition, ok := symbol.(*sanySemOpDefNode); ok && definition.semKind() == sanyNumberedProofStepKind {
+						if definition.stepNode == nil {
+							panic(tlc.NewNullPointerException(""))
+						}
+						if definition.stepNode.Kind() == tlc.SemanticKind(sanyDefStepKind) {
+							return nil, true
+						}
+						first := errorAt(reference.Pos, "E4004", "DEF clause entry refers to a non-definition step.")
+						first.SANYMessage, first.SANYRange = first.Message, source.Syntax.Range
+						second := errorAt(reference.Pos, "E4200", "DEF clause entry should describe a defined operator.")
+						second.SANYMessage, second.SANYRange = second.Message, source.Syntax.Range
+						return Diagnostics{first, second}, false
+					}
 					if valid {
 						return nil, true
 					}
@@ -177,7 +190,9 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 	pendingSuffices := map[int]*AssumeProve{}
 	pendingPicks := map[int]map[string]localSymbol{}
 	previousInfixRHS := map[int]Expr{}
+	graphs := newSanyProofGraphGeneration(g, proof.Syntax)
 	for stepIndex, step := range proof.Steps {
+		graphs.beforeStep(step.Syntax)
 		for depth := range previousInfixRHS {
 			if depth > step.Depth {
 				delete(previousInfixRHS, depth)
@@ -288,6 +303,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 		var introducedFormals map[string]localSymbol
 		statementContext := copySanyExpressionContext(current)
 		if step.AssumeProveBody != nil {
+			g.labelGoalUnsupported = true
 			diags = append(diags, checkAssumeProveBindings(step.AssumeProveBody, statementContext, nil, g)...)
 		} else if step.Kind == "PICK" || step.Kind == "TAKE" {
 			var generated Diagnostics
@@ -304,7 +320,11 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 					}
 				}
 			}
-			diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
+			if generated, handled := g.proofInfixExpression(step.Expr, statementContext); handled {
+				diags = append(diags, generated...)
+			} else {
+				diags = append(diags, g.proofExpression(step.Expr, statementContext, nil)...)
+			}
 			if step.Kind == "ASSERT" && !step.Suffices {
 				delete(previousInfixRHS, step.Depth)
 				if isInfix && sanyExpressionGenerationFailure(step.Expr) == sanyGenerationSucceeded {
@@ -316,34 +336,43 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			diags = append(diags, g.proofExpression(expression, current, nil)...)
 		}
 		entries := 0
+		builder := newSanyUseOrHideBuilder()
 		for _, reference := range step.UseHideRefs {
 			generated, appended := g.generateProofReference(reference, module, current, nil)
 			diags = append(diags, generated...)
+			builder.appendReference(g, reference, appended)
 			if appended {
 				entries++
 			}
 		}
+		var useHide *sanySemUseOrHideNode
 		if step.Kind == "USE" || step.Kind == "HIDE" {
 			for _, body := range step.Syntax.GetHeirs() {
 				if body.Kind.JavaName() == "N_UseOrHide" {
+					useHide = builder.finish(body)
 					diags = append(diags, sanyEmptyProofCommand(body, entries, "Empty USE or HIDE statement.")...)
 				}
 			}
 		}
-		for _, reference := range step.UseHideRefs {
-			facts, steps := map[string]bool{}, map[string]bool{}
-			for name := range current {
-				if symbol, exists := g.lookupSymbol(name, current); exists {
-					if symbol.kind == semanticTheoremImportKind {
-						facts[name] = true
-					}
-					if symbol.proofStepKind != "" {
-						steps[name] = true
+		if useHide != nil {
+			diags = append(diags, useHide.factCheck()...)
+		} else {
+			for _, reference := range step.UseHideRefs {
+				facts, steps := map[string]bool{}, map[string]bool{}
+				for name := range current {
+					if symbol, exists := g.lookupSymbol(name, current); exists {
+						if symbol.kind == semanticTheoremImportKind {
+							facts[name] = true
+						}
+						if symbol.proofStepKind != "" {
+							steps[name] = true
+						}
 					}
 				}
+				diags = append(diags, checkHideRef(reference, facts, steps)...)
 			}
-			diags = append(diags, checkHideRef(reference, facts, steps)...)
 		}
+		diags = append(diags, graphs.statement(&proof.Steps[stepIndex], useHide, current)...)
 		if step.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(step.AssumeProveBody, true)...)
 		}
@@ -353,6 +382,14 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				kind = "SUFFICES"
 			}
 			symbol := localSymbol{proofStepKind: kind, proofAssumeProve: step.AssumeProveBody != nil, kind: semanticTheoremImportKind, pos: step.Pos}
+			if graphs != nil {
+				switch actual := g.formalSymbolTable().resolveSymbol(step.QualifiedName).(type) {
+				case *sanySemThmOrAssumpDefNode:
+					symbol.theoremDefNode = actual
+				case *sanySemOpDefNode:
+					symbol.opDefNode = actual
+				}
+			}
 			g.symbols[step.QualifiedName] = symbol
 			symbolScopes[step.Depth][step.QualifiedName] = symbol
 			current[step.QualifiedName] = step.Pos
@@ -398,6 +435,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 			sanyProofNewBindings(symbolScopes[depth], step.AssumeProveBody)
 		}
 	}
+	graphs.finish()
 	return diags
 }
 

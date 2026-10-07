@@ -1,5 +1,41 @@
 # TLC Architecture Notes for the Go Port
 
+## Structured-proof generation and contexts
+
+Traverse actual proof syntax in source order while consuming each projected
+statement once. Enter a fresh proof context before its steps. Exit nested proofs
+before allocating their containing theorem owners, then pop the proof context
+before constructing its NonLeafProofNode. Preserve the context with the parent
+node. A missing canonical step or subproof keeps the parent graph incomplete.
+
+Every named step pushes a label scope and allocates a provisional theorem symbol
+before its body, including non-theorem steps whose provisional symbol is discarded.
+DEFINE produces a DefStepNode retaining actual definitions; ordinary operator
+proof definitions also enter the module definition vector. USE/HIDE retain actual
+vectors, step names and validation order. Numbered non-theorem symbols register
+with their real step backlinks and popped labels. The actual definition-step
+symbol is accepted in DEF; other numbered non-theorem steps retain both source
+rejection diagnostics. Keep the numbered symbol itself in the DEF array.
+
+ASSERT, HAVE, CASE, WITNESS, QED and ordinary-expression SUFFICES construct their
+source bodies and named definitions before proof processing. Their separate
+TheoremNodes follow the complete subproof. Replace statement syntax with the full
+step syntax where Java does, including the cached Go location. Expression lookup
+retains the actual accepted symbol rather than rebuilding a proof-step operator.
+
+For @ infix shorthand, generate the current RHS first, then create $Nop around
+the already-generated previous RHS, then the infix application. Reuse the exact
+previous node. A parameter-free named label selection similarly wraps the actual
+LabelNode, preserving its identity and scope. Parameterized labels, general
+operand selectors and INSTANCE selections still need their real binding graphs.
+
+AP/SUFFICES declaration contexts, TAKE/PICK bodies and binding lifetimes,
+InstanceNode/module-definition instances, inherited level checks and visitors
+remain unfinished. Native diagnostic coverage does not complete these graphs.
+The 21-module, 993-row source comparison covers graph kinds, syntax, locations,
+UID order, nested owners, context and reference pointers, plus full diagnostics;
+it adds no original-method or full-workspace completion credit.
+
 ## Structured-proof constructor ownership
 
 NonLeafProofNode retains the supplied step array, module-definition instance
@@ -21,9 +57,9 @@ which is null for these symbols. The step is a walkGraph link, not a child-array
 entry. The 32 constructor cases and three binding collisions match all 72 Java
 rows, including exact diagnostic messages and retained earlier bindings.
 
-Generation, InstanceNode identities, inherited level checking and visitors remain
-unfinished. Do not create
-a parent proof graph before its complete children and scope are available.
+InstanceNode identities, inherited level checking and visitors remain unfinished.
+Do not create a parent proof graph before its complete children and scope are
+available.
 The 32-case, 80-row Java comparison verifies only these constructors and accessors;
 it adds no original-test or whole-feature completion credit.
 
@@ -49,8 +85,8 @@ is discarded. Retain the actual leaf by its terminal syntax, and use it when the
 outer theorem completes rather than allocating another proof. Complete theorem
 owners follow their actual BY leaf and precede the next module unit.
 
-Structured proof parent/step graphs, qualified selections and native-only import
-identities remain incomplete. Existing diagnostic fallbacks are separate from
+AP/binder/INSTANCE proof graphs, general qualified selections and native-only
+import identities remain incomplete. Existing diagnostic fallbacks are separate from
 canonical graph coverage. Inherited level checks, visitors, EXTENDS vectors and
 shared evaluator ownership still require porting; bounded leaf observations do
 not establish complete module or original Java test-suite completion.
@@ -78,7 +114,7 @@ E4355 and the actual null operator application before allocating a normal call.
 Allocate the theorem owner after a complete statement and proof. OBVIOUS and
 OMITTED produce actual LeafProofNodes with nonnil empty fact/definition arrays,
 source flags and syntax. Complete canonical BY vectors now produce their real leaf proofs and owners.
-Missing canonical BY vectors and structured proof graphs keep owners incomplete
+Missing canonical BY vectors and incomplete structured proof graphs keep owners incomplete
 rather than pretending the proof is absent. Missing
 statement children or earlier native-only imported identities also keep owners
 incomplete. Complete inherited level checking, visitors, imported/INSTANCE
