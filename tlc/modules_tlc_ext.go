@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,15 +23,7 @@ func initTLCExtUniqueStrings() {
 
 var pickSuccessorMu sync.Mutex
 var tlcExtFingerprintMu sync.Mutex
-var tlcExtCacheStore = struct {
-	sync.Mutex
-	values map[tlcExtCacheKey]*TLCExtCache
-}{values: make(map[tlcExtCacheKey]*TLCExtCache)}
-
-type tlcExtCacheKey struct {
-	toolID int32
-	nodeID int32
-}
+var tlcExtCacheLock reentrantReadWriteLock
 
 func TLCExtAssertError(expected *StringValue, eval func() (Value, error)) (*BoolValue, error) {
 	if expected == nil {
@@ -293,36 +286,64 @@ func TLCExtTLCEvalDefinition(tool *Tool, name Value, args ...any) (Value, error)
 	return tool.Eval(opDef.Body, con, s0, s1, control, cm)
 }
 
+// TLCCache stores this HashMap on the expression node. Synchronization belongs
+// to the Java override's class-wide reentrant lock, including nested calls.
 type TLCExtCache struct {
-	mu     sync.RWMutex
-	values []tlcExtCacheEntry
-}
-
-type tlcExtCacheEntry struct {
-	key   Value
-	value Value
+	values *javaHashMap[Value, Value]
 }
 
 func NewTLCExtCache() *TLCExtCache {
-	return &TLCExtCache{}
+	values := newJavaHashMap[Value, Value](ValueJavaHashCode, nil)
+	values.equal = func(key, stored Value) bool {
+		if key == nil {
+			return false
+		}
+		equal, err := key.Equal(stored)
+		if err != nil {
+			panic(err)
+		}
+		return equal
+	}
+	values.tieBreak = func(a, b Value) int {
+		if a != nil && b != nil {
+			if order := dotCompareString(reflect.TypeOf(a).Elem().Name(), reflect.TypeOf(b).Elem().Name()); order != 0 {
+				return order
+			}
+		}
+		var ah, bh uint32
+		if a != nil {
+			ah = uint32(reflect.ValueOf(a).Pointer()) & 0x7fffffff
+		}
+		if b != nil {
+			bh = uint32(reflect.ValueOf(b).Pointer()) & 0x7fffffff
+		}
+		if ah <= bh {
+			return -1
+		}
+		return 1
+	}
+	return &TLCExtCache{values: values}
+}
+
+func semanticTLCExtCache(tool *Tool, expr SemanticNode) *TLCExtCache {
+	object := SemanticToolObjectForTool(tool, expr)
+	if object == nil {
+		return nil
+	}
+	cache, ok := object.(*TLCExtCache)
+	if !ok {
+		panic(NewClassCastException("tool object is not a TLC cache"))
+	}
+	return cache
 }
 
 func tlcExtCacheForTool(tool *Tool, expr SemanticNode) *TLCExtCache {
-	toolID := int32(0)
-	if tool != nil {
-		toolID = tool.ID
-	}
-	nodeID := SemanticJavaHashCode(expr)
-	if node, ok := expr.(interface{ GetUID() int32 }); ok {
-		nodeID = node.GetUID()
-	}
-	key := tlcExtCacheKey{toolID: toolID, nodeID: nodeID}
-	tlcExtCacheStore.Lock()
-	defer tlcExtCacheStore.Unlock()
-	cache := tlcExtCacheStore.values[key]
+	tlcExtCacheLock.Lock()
+	defer tlcExtCacheLock.Unlock()
+	cache := semanticTLCExtCache(tool, expr)
 	if cache == nil {
 		cache = NewTLCExtCache()
-		tlcExtCacheStore.values[key] = cache
+		SetSemanticToolObjectForTool(tool, expr, cache)
 	}
 	return cache
 }
@@ -331,17 +352,41 @@ func (c *TLCExtCache) Eval(key Value, compute func() (Value, error)) (Value, err
 	if c == nil {
 		c = NewTLCExtCache()
 	}
-	c.mu.RLock()
-	if value, err := c.lookup(key); value != nil || err != nil {
-		c.mu.RUnlock()
-		return value, err
-	}
-	c.mu.RUnlock()
+	return evalTLCExtCache(c, nil, nil, key, compute)
+}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if value, err := c.lookup(key); value != nil || err != nil {
-		return value, err
+func evalTLCExtCache(cache *TLCExtCache, tool *Tool, expr SemanticNode, key Value, compute func() (Value, error)) (Value, error) {
+	tlcExtCacheLock.RLock()
+	readHeld, writeHeld := true, false
+	defer func() {
+		if readHeld {
+			tlcExtCacheLock.RUnlock()
+		}
+		if writeHeld {
+			tlcExtCacheLock.Unlock()
+		}
+	}()
+	if cache == nil {
+		cache = semanticTLCExtCache(tool, expr)
+	}
+	if cache != nil {
+		if value, _ := cache.values.Get2(key); value != nil {
+			return value, nil
+		}
+	}
+	tlcExtCacheLock.RUnlock()
+	readHeld = false
+	tlcExtCacheLock.Lock()
+	writeHeld = true
+	if cache == nil {
+		cache = semanticTLCExtCache(tool, expr)
+	}
+	if cache == nil {
+		cache = NewTLCExtCache()
+		SetSemanticToolObjectForTool(tool, expr, cache)
+	}
+	if value, _ := cache.values.Get2(key); value != nil {
+		return value, nil
 	}
 	if compute == nil {
 		return ValUndef, nil
@@ -351,28 +396,8 @@ func (c *TLCExtCache) Eval(key Value, compute func() (Value, error)) (Value, err
 		return nil, err
 	}
 	InitializeValue(value)
-	c.values = append(c.values, tlcExtCacheEntry{key: key, value: value})
+	cache.values.Set(key, value)
 	return value, nil
-}
-
-func (c *TLCExtCache) lookup(key Value) (Value, error) {
-	if c == nil {
-		return nil, nil
-	}
-	for _, entry := range c.values {
-		equal, err := valuesEqualForCache(entry.key, key)
-		if err != nil || equal {
-			return entry.value, err
-		}
-	}
-	return nil, nil
-}
-
-func valuesEqualForCache(left Value, right Value) (bool, error) {
-	if left == nil || right == nil {
-		return left == right, nil
-	}
-	return left.Equal(right)
 }
 
 func PossibleCounts() Value {

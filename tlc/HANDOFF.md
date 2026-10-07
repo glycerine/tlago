@@ -660,10 +660,17 @@ values through WorkerValue muxing, then preserve the source read/write-lock
 recheck and cache write. Worker selection follows the current worker, defaulting
 to zero outside a worker; invalid indices raise source bounds exceptions instead
 of silently selecting zero. Thirteen exact cache observations and six unchanged
-original model methods pass. TLCCache's separate global store, unindexed APIs,
-formal-parameter graph construction, concrete class equality and complete
-allocation order remain pending. Detailed lock-boundary receipts are in
-PORT_PROGRESS.md; no whole-superclass or full-workspace parity claim.
+original model methods pass. TLCCache's constant path now also owns a HashMap
+on the expression's tool slot. Its class-wide reentrant lock permits nested
+calls; hash filtering and lookup-key equality follow Java, including collision
+tree bins. Seven unchanged original cache/extension/DOT/coverage models pass.
+Source comparison includes mixed keys, equal fresh objects, UID collisions,
+recursive cache calls, cast cleanup and 32 colliding keys through actual tree
+bins. All 27 source observations match; sixteen concurrent callers share one
+cached value in the isolated short race probe, which passes in 1.039 seconds. Unindexed APIs, formal-parameter graph construction, concrete class
+equality, complete allocation order and wider cache/worker semantics remain
+pending. Detailed receipts are in PORT_PROGRESS.md; no whole-superclass or
+full-workspace parity claim.
 
 Next semantic work: port Generator's label-parameter checks and formal-parameter
 identity handling. A nine-case detailed label-generation comparison has three
@@ -825,12 +832,11 @@ semantics when that work resumes; see `TLC_ARCH.md`.
 
 ## Testing and workflow
 
-Current verification: normal full TLC session `23915` is running against the
-shared tool-ID port compiled at `6392374`; log
-`/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log`. This binary predates the
-subsequent TLCEval node-cache correction.
-Poll this handle and inspect its terminal result before claiming a full-suite
-pass. Focused checks are green; no new full-workspace pass is established.
+Normal full TLC session `23915` is retired with status 0, passing in 769.474
+seconds at `6392374`. Log `/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log`.
+This binary predates the subsequent TLCEval and TLCCache node-cache corrections;
+retain that snapshot qualification. Focused current checks are green; no new
+full-workspace pass is established.
 
 **Never combine long workloads with `-race`.** Run complete long workloads
 normally. Reserve race instrumentation for short, focused concurrency checks.

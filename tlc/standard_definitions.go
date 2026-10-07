@@ -778,8 +778,7 @@ func standardTLCCache(tool *Tool, args []SemanticNode, con *Context, state *TLCS
 		if err != nil {
 			return nil, err
 		}
-		cache := tlcExtCacheForTool(tool, expr)
-		return cache.Eval(key, func() (Value, error) {
+		return evalTLCExtCache(nil, tool, expr, key, func() (Value, error) {
 			return tool.Eval(expr, con, state, pstate, control, cm)
 		})
 	}

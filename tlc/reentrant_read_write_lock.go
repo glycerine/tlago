@@ -6,7 +6,7 @@ import "sync"
 // the lock is free, while new readers wait if the first queued waiter is a
 // writer. Existing readers and the writer can reacquire the read lock; only
 // the writer can reacquire the write lock. Read-to-write upgrades still block.
-// TLCEval uses one class-wide lock, including across nested constant evaluations.
+// TLCEval and TLCCache each use a class-wide lock across nested evaluations.
 type reentrantReadWriteLock struct {
 	gate       sync.Mutex
 	changed    *sync.Cond

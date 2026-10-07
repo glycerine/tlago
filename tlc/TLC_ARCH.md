@@ -1,5 +1,32 @@
 # TLC Architecture Notes for the Go Port
 
+## TLCCache constant-expression map
+
+TLCCache stores its HashMap on the actual expression node's indexed tool slot.
+Remove the global UID-keyed store and per-cache RWMutex. The override uses one
+class-wide reentrant read/write lock. It reads the slot and value under the
+read lock, releases that lock, takes the write lock, re-fetches a missing map,
+then repeats the lookup before evaluating, initializing and storing the value.
+Its finally boundary releases either lock on lookup, cast and evaluation
+failures. Nested calls can reacquire the lock while computing another entry.
+
+Reuse the existing OpenJDK HashMap port, extending it with optional key equality.
+Native key identity remains the fast path and existing users retain their
+behavior. TLC keys use ValueJavaHashCode and the lookup key's Equal method only
+when hashes match. This avoids comparisons between unrelated mixed-type keys.
+Lists, resizing and tree bins share that equality path. Non-Comparable Value
+keys use source class-name ordering and native pointer identity for ties,
+following the established Go identity convention used by state-value maps.
+Map iteration is not exposed by this override; source identity hashes differ
+between processes. The state-level cache branch is unchanged by this port.
+
+Temporary observations compare actual Java and Go overrides: mixed-type keys,
+equal fresh objects, node slots, equal-UID isolation, nested caching and class-cast
+cleanup. Thirty-two source-generated StringValue keys have one exact shared
+hash and force actual tree bins in both implementations; all fresh-equal lookups
+return the same cached objects. No permanent test was invented or original
+model weakened. Broader value/cache fidelity remains an independent requirement.
+
 ## TLCEval expression-node cache
 
 TLCEval's constant path reads and writes the actual expression-node tool slot.
@@ -18,8 +45,9 @@ read-lock leakage would otherwise prevent those writes. The source and Go
 probes both demonstrated that behavior. Thirteen exact observations cover
 pre-existing values, UID collisions, conversion/cache reuse, worker selection,
 bounds and cast identity. Cast-message text is not established by that probe.
-The distinct TLCCache global store, hash-map behavior and lock fidelity remain
-pending, along with general WorkerValue demux and native unindexed cache APIs.
+TLCCache's constant-path storage, map and reentrant lock are ported below.
+General WorkerValue demux, broader cache behavior and native unindexed cache
+APIs remain pending.
 No permanent test was invented; the existing original TLCEval and TLCCache
 model methods remain unchanged and pass.
 

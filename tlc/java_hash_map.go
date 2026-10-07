@@ -3,14 +3,16 @@
 // See licenses/openjdk-LICENSE and licenses/openjdk-ADDITIONAL_LICENSE_INFO.
 package tlc
 
-// javaHashMap implements the HashMap operations used by DOT and TLCState.getVals.
+// javaHashMap implements the HashMap operations used by DOT, state values and TLCCache.
 // Bucket lists, resizing and red-black trees retain source iteration order.
 // Comparable keys use compare; non-Comparable keys supply an identity tie-break.
+// The optional equality callback ports object equals beyond native identity.
 // Callers own synchronization. These uses never remove entries.
 type javaHashMap[K comparable, V any] struct {
 	table           []*javaHashNode[K, V]
 	size, threshold int
 	hashCode        func(K) int32
+	equal           func(K, K) bool
 	compare         func(K, K) int
 	tieBreak        func(K, K) int
 }
@@ -25,6 +27,11 @@ type javaHashNode[K comparable, V any] struct {
 
 func newJavaHashMap[K comparable, V any](hashCode func(K) int32, compare func(K, K) int) *javaHashMap[K, V] {
 	return &javaHashMap[K, V]{hashCode: hashCode, compare: compare}
+}
+
+// HashMap invokes the lookup key's equals only after hashes match.
+func (m *javaHashMap[K, V]) keysEqual(key, stored K) bool {
+	return key == stored || (m.equal != nil && m.equal(key, stored))
 }
 
 func (m *javaHashMap[K, V]) hash(key K) uint32 {
@@ -49,7 +56,7 @@ func (m *javaHashMap[K, V]) Get2(key K) (V, bool) {
 			return zero, false
 		}
 		for ; p != nil; p = p.next {
-			if p.hash == h && p.key == key {
+			if p.hash == h && m.keysEqual(key, p.key) {
 				return p.value, true
 			}
 		}
@@ -68,7 +75,7 @@ func (m *javaHashMap[K, V]) findTree(p *javaHashNode[K, V], hash uint32, key K) 
 			p = left
 		case int32(p.hash) < int32(hash):
 			p = right
-		case p.key == key:
+		case m.keysEqual(key, p.key):
 			return p
 		case left == nil:
 			p = right
@@ -110,7 +117,7 @@ func (m *javaHashMap[K, V]) Set(key K, value V) {
 		}
 	} else {
 		for count := 0; ; count++ {
-			if p.hash == h && p.key == key {
+			if p.hash == h && m.keysEqual(key, p.key) {
 				p.value = value
 				return
 			}
@@ -321,7 +328,7 @@ func (m *javaHashMap[K, V]) putTree(first *javaHashNode[K, V], hash uint32, key 
 	}
 	searched := false
 	for p := root; ; {
-		if hash == p.hash && key == p.key {
+		if hash == p.hash && m.keysEqual(key, p.key) {
 			return p
 		}
 		if hash == p.hash && (m.compare == nil || m.compare(key, p.key) == 0) && !searched {

@@ -1,5 +1,52 @@
 # TLC Port Progress
 
+2026-10-06 Source TLCCache node HashMap and reentrant locking:
+Previous completed commit: 38f204d. Java's constant path stores a HashMap on
+the expression node and uses one class-wide ReentrantReadWriteLock. Go used
+a global UID-keyed cache with per-cache RWMutex and a linear equality scan.
+Replace the store and lock, preserving source read/write upgrade, re-fetch,
+recheck, initialize/store and finally boundaries. Nested cache calls now reacquire
+the class lock. Reuse the existing OpenJDK HashMap port with optional lookup-key
+equality; identity remains its fast path and existing DOT/state callers retain
+their defaults. TLC keys use source fingerprint hash, equals only after matching
+hashes, and existing native identity conventions for non-Comparable tree ties.
+
+Temporary actual-override comparisons cover fresh-equal string and tuple keys,
+heterogeneous keys, expression slot storage, equal-UID node isolation, nested
+cache evaluation, bad-slot ClassCastException identity and subsequent successful
+write. Source-generated linear fingerprint collisions supply 32 distinct ASCII
+strings with one exact hash. Both actual maps create tree bins; all fresh-equal
+lookups reuse their original values, size remains 33. Java reflection opens only
+java.util for the temporary map-table inspection. Receipts:
+/mnt/oldrog/tmp/tlago-tlccache-node-{java,go}.log.
+
+Initial production compile used the wrong comparator name; use the existing
+UTF-16 dotCompareString before verification. Initial scratch comparison expected
+21 rows but both sides actually matched all 20; correct the count. Collision
+probe's duplicate local key variable caused a compile failure; rename the local
+before executing. No credit for those compile/count failures. No permanent
+regression/unit test invented, no original assertions/settings/fixtures changed,
+and no inventory credit. State-level cache and broader WorkerValue semantics
+remain separate reconciliation work.
+
+Final comparison matches all 27 observations, including the exact shared hash,
+actual tree bins and sixteen concurrent callers receiving one cached object;
+final map size is 34 after their single new key. The isolated short scratch
+probe passes -race in 1.039 seconds, session 8941 terminal 0. No long workloads
+or original model tests were included in that race selection. Receipt:
+/mnt/oldrog/tmp/tlago-tlccache-node-race.log. All current handles are retired.
+
+Seven unchanged whole original models pass 4.211 seconds: ConstantContextTLCCache,
+ConstantRank1TLCEval, TLCExtModel, DumpAsDot, DotConstrained, TLCGetAll and ACoverage.
+Existing focused evaluator/spec/context/coverage/cache/DOT checks pass 0.021
+seconds; all packages compile. Receipts:
+/mnt/oldrog/tmp/tlago-tlccache-node-{models,tlc,compile}.log.
+
+Full normal TLC session 23915 returns terminal status 0, passing 769.474 seconds
+at 6392374, with all original bounds intact and no race instrumentation. Receipt:
+/mnt/oldrog/tmp/tlago-static-tool-id-full-tlc.log. It predates the later TLCEval
+and TLCCache node-cache corrections; do not claim a current full-workspace pass.
+
 2026-10-06 Source TLCEval node-slot cache and worker mux bounds:
 Previous completed commit: 6392374. Java TLCEval reads WorkerValue.mux of the
 expression's indexed tool slot and writes its converted Value there. Go used
