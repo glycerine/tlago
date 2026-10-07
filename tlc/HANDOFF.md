@@ -47,6 +47,14 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
+Full normal workspace verification of `4cd17ea` is running in session `12025`.
+Command: `go test ./... -json -count=1 -timeout=60m`, with the standard offline
+cache/temp environment. Log:
+`/mnt/oldrog/tmp/tlago-canonical-driver-workspace.json`.
+Poll this exact session before starting another full run. The first observation
+shows advancing root, SANY and TLC tests with no reported failures yet; it is
+not a passing result. No optional XML/Apalache sweep was enabled.
+
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module
 order, shared diagnostic log and raw-success gate. Integration exposed the

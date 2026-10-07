@@ -1,5 +1,14 @@
 # TLC Port Progress
 
+2026-10-07 Full normal canonical-driver workspace verification started:
+Implementation committed as 4cd17ea; worktree clean before launch. Session
+12025 is live, running go test ./... -json -count=1 -timeout=60m using the
+standard offline cache/temp environment. Preserve original bounds; no race or
+optional corpus sweep enabled. Log:
+/mnt/oldrog/tmp/tlago-canonical-driver-workspace.json. First poll confirms ongoing
+root/SANY/TLC test output with no reported failures. Result remains pending.
+Do not restart because a poll yields no direct output: JSON goes to this file.
+
 2026-10-07 Canonical SANY driver and EXCEPT level checking:
 Previous completed commit: a9b8f0c. Route the main CheckSpec/TLC frontend and
 single-module helper through actual ModuleNode.levelCheck. Preserve Java's
