@@ -605,7 +605,13 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	localSymbols := moduleOwnSymbols(mod)
 	registerInstance := func(inst Instance) {
 		if inst.Name != "" {
+			before := len(diags)
 			addName(inst.Name, inst.SourcePosition(), InstanceDecl)
+			if inst.definitionNode != nil {
+				// The actual constructor has already reported any rejected
+				// registration. Keep native metadata without a second error.
+				diags = diags[:before]
+			}
 			defined[instanceNameSentinel(inst.Name)] = inst.SourcePosition()
 			declKinds[inst.Name] = InstanceDecl
 			arities[inst.Name] = len(inst.Params)
@@ -628,6 +634,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 		}
 		if inst.semanticNode != nil {
+			if inst.definitionNode != nil {
+				expressionGeneration.moduleSymbols[inst.Name] = retainSanyInstanceSymbol(expressionGeneration.moduleSymbols[inst.Name], mod.symbolTable.resolveSymbol(inst.Name))
+			}
 			for _, symbol := range expressionGeneration.instanceSymbols(inst) {
 				actual := mod.symbolTable.resolveSymbol(symbol.name)
 				expressionGeneration.moduleSymbols[symbol.name] = retainSanyInstanceSymbol(expressionGeneration.moduleSymbols[symbol.name], actual)
@@ -867,6 +876,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		diags = append(diags, checks.generator.instance(*inst)...)
 		diags = append(diags, expressionGeneration.generateInstanceSubstitutions(inst, mod, expressionContexts.at(inst.Syntax, defined))...)
 		diags = append(diags, expressionGeneration.generateUnnamedInstance(inst, true)...)
+		diags = append(diags, expressionGeneration.generateNamedInstance(inst, false, true)...)
 		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: inst.SourcePosition(), node: &sanyCachedLevelCheck{run: func() (bool, Diagnostics) {
 			return levelChecker.checkInstanceSubstitutionLevelResult(*inst)
 		}}})
@@ -3486,7 +3496,10 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 			diags = append(diags, generation.generateOperatorOperand(owner, i, expected, arg, defined, locals)...)
 		}
-		diags = append(diags, generation.retainCanonicalLabelSelection(expr)...)
+		diags = append(diags, generation.retainCanonicalInstanceSelection(expr)...)
+		if sanyGeneratedExpressionNode(expr) == nil {
+			diags = append(diags, generation.retainCanonicalLabelSelection(expr)...)
+		}
 		return diags
 	}
 	switch e := expr.(type) {
@@ -3576,6 +3589,14 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 				diagnostic.SANYRange = e.Syntax.Range
 			}
 			return Diagnostics{diagnostic}
+		}
+		if graphSymbol != nil && graphSymbol.semKind() == sanyModuleInstanceKind {
+			if !fact && !symbolReferenceOnly {
+				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
+				return Diagnostics{sanyIncompleteOperatorDiagnostic(e)}
+			}
+			e.semanticGraph = graphSymbol.(sanySemanticGraphNode)
+			return nil
 		}
 		if !symbolReferenceOnly {
 			diags = append(diags, retainSanySymbolReference(e, graphSymbol, operatorArgument, generation.currentModule)...)
@@ -3727,8 +3748,11 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 		// selectorToNode resolves the symbol and checks its supplied arity before
 		// generating operands. The callee is a name, not a separate expression.
 		var operator sanySemSymbol
-		if identifier, ok := e.Callee.(*IdentExpr); ok && (e.Selector == nil || len(e.Selector.Steps) <= 1) {
-			operator = generation.applicationOperator(identifier.Name, nil, defined)
+		if identifier, ok := e.Callee.(*IdentExpr); ok && (e.Selector == nil || len(e.Selector.Steps) <= 1 || generation.canonicalInstanceSelectorSymbol(e) != nil) {
+			operator = generation.canonicalInstanceSelectorSymbol(e)
+			if operator == nil {
+				operator = generation.applicationOperator(identifier.Name, nil, defined)
+			}
 			if operator != nil && operator.semArity() >= 0 && operator.semArity() != len(e.Args) {
 				setSanyExpressionGenerationFailure(expr, sanyGenerationNullOperator)
 				return Diagnostics{sanyCallArityDiagnostic(e, identifier.Name, operator.semArity())}

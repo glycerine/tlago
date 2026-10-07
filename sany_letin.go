@@ -54,6 +54,21 @@ func (n *sanySemLetInNode) getLets() []*sanySemOpDefNode {
 	return n.gottenLets
 }
 
+func (n *sanySemLetInNode) getChildren() []sanySemanticGraphNode {
+	if n.opDefs == nil || n.instances == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	children := make([]sanySemanticGraphNode, len(n.opDefs)+len(n.instances)+1)
+	for i, definition := range n.opDefs {
+		if definition != nil {
+			children[i] = definition.(sanySemanticGraphNode)
+		}
+	}
+	copy(children[len(n.opDefs):], n.instances)
+	children[len(children)-1] = n.body
+	return children
+}
+
 // Ident LHS parameters own their entire declaration syntax, including the
 // placeholders of operator-valued parameters. Fixity LHS parameters are tokens.
 func sanyDefinitionFormalSyntax(definition *Definition, index int) *SanySyntaxNode {

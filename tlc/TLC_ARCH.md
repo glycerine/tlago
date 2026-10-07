@@ -1,5 +1,39 @@
 # TLC Architecture Notes for the Go Port
 
+## Named INSTANCE definitions and caller ownership
+
+`processModuleDefinition` now constructs actual qualified operator, theorem and
+module-name definitions in context enumeration order. Prepend the instance's
+actual formals to a fresh parameter array, retain source/label pointers, and wrap
+bodies in `SubstIn` or `APSubstIn` only when substitutions exist. The substituted
+operator overload retains the source compound identifier array. Module-name
+constructors preserve null versus empty parameters, arity, originating module,
+source pointers and default flags; their `defined` flag remains false, matching
+Java's code despite its constructor comment.
+
+Allocate `InstanceNode` after imported definitions, then allocate the instance
+name symbol. Top-level imports enter module definitions and instance vectors.
+LET owns imported definitions plus the module-name symbol and its instance array.
+Proof DEFINE owns only the module-name symbol in `DefStepNode`; its instance goes
+into the enclosing proof's separate instance array, and its imported definitions
+stay in the proof context. `LetInNode.getChildren` includes definitions, instances
+and body in that order. Accepted native metadata retains the actual symbol;
+canonical constructors own registration diagnostics.
+
+Named formal parameters retain their complete source declaration syntax and
+individual locations, including duplicate names and operator placeholders.
+Qualified applications retain the actual imported operator. A bare module-name
+expression is rejected before application construction; a fact or DEF reference
+retains the module-name node itself, as Java's selector does.
+
+All 605 observed rows match Java across 18 whole modules. The bounded comparison
+covers LOCAL/parameterized imports, higher-order formals, empty targets, nested
+named instances, LET and proof ownership, parameter UID/location identity,
+compound identifiers, duplicate registrations and bare expression/fact use.
+It adds no persistent tests or original-method completion credit. General
+qualified selectors and operator arguments, EXTENDS inheritance, inherited level
+checks, visitors and evaluator graph sharing still require faithful port work.
+
 ## Unnamed INSTANCE imports and ownership
 
 Production unnamed INSTANCE generation now uses actual context enumeration,
@@ -30,11 +64,10 @@ imports, assertion wrappers, repeated imports, conflicts, chained instances,
 default/explicit substitutions, numbered/unnamed proof instances, exact UID order,
 source/body/module identity, labels, module vectors and proof-context backlinks.
 Anonymous LET INSTANCE syntax is rejected by both parsers and gets no semantic
-completion credit. The source LET generation branch is connected; incomplete
-named module definitions now keep LET graphs incomplete rather than fabricating
-an empty instance array. Named module definitions, EXTENDS inheritance, complete
-instance vectors, inherited level checks, visitors and evaluator graph sharing
-remain pending. No permanent tests or original-method completion credit added.
+completion credit. The source LET generation branch is connected; named module definitions now
+retain actual caller-owned arrays as described above. EXTENDS inheritance,
+complete instance vectors, inherited level checks, visitors and evaluator graph
+sharing remain pending. No permanent tests or original-method completion credit added.
 
 ## Production INSTANCE substitution templates
 

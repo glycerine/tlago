@@ -102,7 +102,8 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 	defer g.pushFormalContext(0)()
 	letContext := g.formalSymbolTable().topContext()
 	definitions := make([]sanySemSymbol, 0, len(expr.Definitions))
-	completeGraph := len(expr.Instances) == 0
+	completeGraph := true
+	instances := make([]sanySemanticGraphNode, 0)
 	instanceResolver := &sanySelectorResolver{spec: g.spec, scopes: map[*Module]map[string]sanySelectorDefinition{}, visiting: map[*Module]bool{}}
 	defer func() {
 		if failure := recover(); failure != nil {
@@ -182,6 +183,12 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 			instance := unit.instance
 			diags = append(diags, g.generateInstanceSubstitutions(instance, g.currentModule, positions)...)
 			diags = append(diags, g.generateUnnamedInstance(instance, true)...)
+			diags = append(diags, g.generateNamedInstance(instance, true, false)...)
+			if instance.definitionNode != nil {
+				definitions = append(definitions, instance.importedDefinitions...)
+				definitions = append(definitions, instance.definitionNode)
+				instances = append(instances, instance.semanticNode)
+			}
 			if instance.semanticNode == nil {
 				completeGraph = false
 			}
@@ -210,7 +217,7 @@ func (g *sanyExpressionGeneration) checkLet(expr *LetExpr, context map[string]Po
 	g.level--
 	diags = append(diags, g.checkExpr(expr.Body, positions, letLocals)...)
 	if body := sanyGeneratedExpressionNode(expr.Body); completeGraph && body != nil {
-		expr.semanticGraph = newSanySemLetInNode(expr.Syntax, definitions, make([]sanySemanticGraphNode, 0), body, letContext)
+		expr.semanticGraph = newSanySemLetInNode(expr.Syntax, definitions, instances, body, letContext)
 	}
 	return diags
 }

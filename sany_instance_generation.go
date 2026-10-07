@@ -64,9 +64,26 @@ func (g *sanyExpressionGeneration) generateInstanceSubstitutions(instance *Insta
 		defer g.pushFormalContext(len(instance.Params))()
 	}
 	instance.formalNodes = make([]*sanyFormalParamNode, 0, len(instance.Params))
-	for _, name := range instance.Params {
+	for index, name := range instance.Params {
 		position := instance.ParamPositions[name]
-		node := g.newFormalParameter(name, instance.ParamArities[name], position, instance.Syntax)
+		var parameterSyntax *SanySyntaxNode
+		if instance.Syntax != nil {
+			for _, child := range instance.Syntax.GetHeirs() {
+				if child.Kind.JavaName() == "N_IdentLHS" {
+					heirs := child.GetHeirs()
+					if 2+2*index < len(heirs) {
+						parameterSyntax = heirs[2+2*index]
+					}
+					break
+				}
+			}
+		}
+		var node *sanyFormalParamNode
+		if parameterSyntax != nil {
+			node = newSanyFormalParamNode(name, instance.ParamArities[name], sanyNodePosition(parameterSyntax), parameterSyntax, g.currentModule)
+		} else {
+			node = g.newFormalParameter(name, instance.ParamArities[name], position, instance.Syntax)
+		}
 		instance.formalNodes = append(instance.formalNodes, node)
 		diags = append(diags, g.bindFormalParameter(node, context, nil)...)
 	}
@@ -283,6 +300,9 @@ func (g *sanyExpressionGeneration) registerInstanceSymbols(instance Instance, co
 	if instance.semanticNode != nil {
 		for _, symbol := range g.instanceSymbols(instance) {
 			g.symbols[symbol.name] = retainSanyInstanceSymbol(g.symbols[symbol.name], g.formalSymbolTable().resolveSymbol(symbol.name))
+		}
+		if instance.definitionNode != nil {
+			g.symbols[instance.Name] = retainSanyInstanceSymbol(g.symbols[instance.Name], g.formalSymbolTable().resolveSymbol(instance.Name))
 		}
 		// Canonical generation already reported registration diagnostics.
 		diags = nil

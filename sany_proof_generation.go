@@ -293,6 +293,7 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 				instance := unit.instance
 				diags = append(diags, g.generateInstanceSubstitutions(instance, module, current)...)
 				diags = append(diags, g.generateUnnamedInstance(instance, false)...)
+				diags = append(diags, g.generateNamedInstance(instance, true, false)...)
 				registered, names := g.registerInstanceSymbols(*instance, current)
 				diags = append(diags, registered...)
 				for _, name := range names {

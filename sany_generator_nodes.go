@@ -15,6 +15,7 @@ type sanySemanticGraphNode interface {
 }
 
 type sanySemOpDefNode struct {
+	compoundID []*tlc.UniqueString
 	sanySemSymbolBase
 	labels             *sanyLabelTable
 	formalNodes        []*sanyFormalParamNode

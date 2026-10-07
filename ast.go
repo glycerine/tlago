@@ -42,6 +42,8 @@ type Module struct {
 }
 
 type Instance struct {
+	definitionNode         *sanySemOpDefNode
+	importedDefinitions    []sanySemSymbol
 	semanticNode           *sanySemInstanceNode
 	substitutionNode       *sanySemSubstInNode
 	formalNodes            []*sanyFormalParamNode

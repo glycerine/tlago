@@ -29,6 +29,7 @@ type sanyProofGraphFrame struct {
 	complete         bool
 	sufficesContexts []*sanyContext
 	previousFormals  map[string]localSymbol
+	instances        []sanySemanticGraphNode
 }
 type sanyProofGraphStep struct {
 	syntax, bodySyntax          *SanySyntaxNode
@@ -135,7 +136,7 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 		for name, symbol := range previousFormals {
 			g.formals[name] = symbol
 		}
-		generation.frames = append(generation.frames, &sanyProofGraphFrame{syntax: event.syntax, context: context, steps: make([]sanySemanticGraphNode, 0), complete: true, previousFormals: previousFormals})
+		generation.frames = append(generation.frames, &sanyProofGraphFrame{syntax: event.syntax, context: context, steps: make([]sanySemanticGraphNode, 0), instances: make([]sanySemanticGraphNode, 0), complete: true, previousFormals: previousFormals})
 	case sanyProofStepBegin:
 		heirs := event.syntax.GetHeirs()
 		step := &sanyProofGraphStep{syntax: event.syntax, bodySyntax: heirs[1], complete: true, previousUnsupported: g.labelGoalUnsupported}
@@ -219,7 +220,7 @@ func (generation *sanyProofGraphGeneration) advance(event sanyProofGraphEvent) {
 		g.formals = frame.previousFormals
 		generation.frames = generation.frames[:len(generation.frames)-1]
 		if frame.complete {
-			node := newSanySemNonLeafProofNode(frame.syntax, frame.steps, make([]sanySemanticGraphNode, 0), frame.context)
+			node := newSanySemNonLeafProofNode(frame.syntax, frame.steps, frame.instances, frame.context)
 			if g.structuredProofGraphs == nil {
 				g.structuredProofGraphs = make(map[*SanySyntaxNode]*sanySemNonLeafProofNode)
 			}
@@ -238,6 +239,12 @@ func (generation *sanyProofGraphGeneration) statement(step *ProofStep, useHide *
 	case "DEFINE":
 		definitions := make([]*sanySemOpDefNode, 0)
 		for _, unit := range sanyProofDefinitionUnits(step) {
+			if unit.instance != nil && unit.instance.definitionNode != nil {
+				definitions = append(definitions, unit.instance.definitionNode)
+				frame := generation.frames[len(generation.frames)-1]
+				frame.instances = append(frame.instances, unit.instance.semanticNode)
+				continue
+			}
 			if unit.definition == nil {
 				graph.complete = false
 				continue

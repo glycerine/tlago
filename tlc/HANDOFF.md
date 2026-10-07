@@ -1106,11 +1106,16 @@ Unnamed INSTANCE now retains actual shared/copied imported definitions, source
 pointers, wrappers, module vectors and proof-context bindings. Targets retain
 the instantiated flag; proof instances preserve body syntax and Java raw-array
 localness. All 347 rows across 12 valid whole modules and one retained parser
-rejection match Java. Named module definitions/formal syntax, EXTENDS inheritance,
-complete instance vectors and inherited wrapper levels/visitors remain incomplete;
-bounded
-generation evidence does not
-complete inherited level checking, visitors or evaluator graph sharing.
+rejection match Java. Named INSTANCE now constructs actual qualified definitions
+and module-name symbols with source formal syntax, compound identifiers and
+caller-owned LET/proof instance arrays. Qualified calls retain actual imported
+operators; bare module names are rejected as expressions before application
+construction and retained directly as facts/DEF references. All 605 observed rows
+across 18 whole modules match Java, including duplicates, higher-order formals,
+empty targets and nested named instances. EXTENDS inheritance, complete instance
+vectors and general qualified selectors remain incomplete. Bounded generation
+evidence does not complete inherited level checking, visitors or evaluator graph
+sharing.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration

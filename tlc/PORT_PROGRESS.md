@@ -1,5 +1,50 @@
 # TLC Port Progress
 
+2026-10-07 Named INSTANCE definitions, formals and caller-owned vectors:
+Previous completed commit: b9eb77e. Port processModuleDefinition's actual
+qualified operator/theorem/module-name constructors, parameter concatenation,
+substitution wrappers, source/label pointers and compound identifier arrays.
+Retain complete formal syntax and individual parameter locations. Construct
+InstanceNode after imports and the name symbol after that. Top-level callers own
+module definitions/instances; LET owns its definitions and instance array; proof
+DEFINE keeps only the module-name definition in DefStepNode and the actual
+instance in the enclosing proof's separate array. Imported proof definitions
+remain in the proof context. Port LetInNode.getChildren in source order.
+Accepted native metadata shares actual symbols and canonical constructors own
+registration diagnostics. Qualified calls retain actual imported applications.
+
+Scratch whole-module comparison first matched 148 rows, then 216. Expanded
+registration cases exposed a second native E4201 after actual construction;
+retain native bookkeeping without duplicating the canonical report. All 278
+rows then match. Expanded constructor/parameter/LET/proof observations match
+393 rows, then 544 with higher-order formals, chained named imports, compound
+identifiers and private proof-instance arrays. Scratch observer compilation
+mistakes (isDefined is a field, null parameter arrays, missing LetIn children
+accessor and interface conversion) were corrected without changing source cases.
+Final 18-module comparison matches all 605 rows, including bare expression/fact
+use, exact relative UIDs, parameter syntax/location identities, wrappers,
+accepted/rejected context bindings and caller-owned vectors. Logs and observers:
+/mnt/oldrog/tmp/tlago-named-instance-*. No permanent tests, weakened assertions
+or original-method completion credit added. Existing TestInstanceNode is already
+translated; semantic-error corpus and related original model tests remain intact.
+
+Initial affected root gate passes 47.109s (57944 retired), compile-all passes
+(29527 retired). Complete SANY initially fails its unchanged E4203_Test.tla
+assertion (74820 retired, 1.935s): a bare module name reached OpAppl.match before
+selector rejection and emitted suspected-unreachable E4004. Fix generation order
+against Generator.selectorToNode: reject incomplete names before constructing an
+application, and return the actual module-name node for fact/DEF references.
+The first corrected SANY run passes 2.125s (75160 retired). Retained final fact
+comparison exposed a missing theorem graph; preserve its actual module-name
+fact instead of leaving it null. Final scratch comparison 65849 passes all 605
+rows. Final complete SANY passes 1.920s (56177 retired); compile-all passes
+(79274 retired). Final affected root gate passes 48.498s (5542 returned 0 and is retired); log:
+/mnt/oldrog/tmp/tlago-named-instance-root-final.json.
+All handles retired; git diff --check passes. Normal execution only. No current
+full-workspace pass or full named-selector/level/visitor parity is claimed.
+General qualified selectors, EXTENDS inheritance, inherited levels, visitors and
+evaluator sharing remain pending. Distributed service development stays deferred.
+
 2026-10-07 Actual unnamed INSTANCE imports and vectors:
 Previous completed commit: a7601c5. Port generateInstance's actual operator/
 assertion import enumeration and ownership branches. Share parameter-free
