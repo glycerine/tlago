@@ -9958,3 +9958,26 @@ parse messages/residual stack text (outer log whitespace excluded). These cover
 observed decisions, not every grammar/error-token expectation or all predicates.
 Remaining call sites, full JavaCC bookkeeping and evaluator graph sharing are
 still completion requirements.
+
+## Declaration and fact previews retain actual saved calls
+
+ConstantDeclarationItems uses source call 6 with budget 2 for optional operator
+parameters. WITH substitutions use call 12 with budget 3 to preview comma, target
+and arrow. Named ASSUMPTION and THEOREM use calls 13 and 21 with budget 2. After
+Theorem's Assume-Prove preview, its Expression alternative uses call 23 with
+budget 1. ASSUME/PROVE expression clauses use call 14 for the first clause and
+15 after commas, both with budget 1; declarations and nested Assume-Prove keep
+their direct source choices before those expression scans.
+
+Remove manually estimated failed-input spans at these converted sites and let
+the actual scanners save calls for rescanning. Distinct call indices matter even
+where two sites preview the same production. Source entry points 1–23, 50, 68
+and 72 now have connected production callers. Full remaining caller integration
+and expected-token bookkeeping are still pending.
+
+External production observations agree on all 580 rows across 47 valid/malformed
+modules, retaining earlier body/definition cases plus declaration parameters,
+WITH lists, named assumptions/theorems and multiple/labeled ASSUME/PROVE clauses.
+Compare complete observed syntax kinds/images/coordinates and parse messages,
+with only outer log whitespace excluded. This is bounded evidence, not full
+JavaCC diagnostic, semantic-predicate or evaluator graph completion.

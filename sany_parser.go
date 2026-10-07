@@ -366,11 +366,7 @@ func (p *SanyParser) ConstantDeclarationItem() *SanySyntaxNode {
 	}
 	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenIdentifier, "expected identifier")}
 	p.expecting = "(, comma, or Module Body"
-	// Java jj_2_6(2) accepts only '(' followed by '_'.
-	if p.check(SanyTokenLbr) && p.peekNext().Kind != SanyTokenUs {
-		p.rememberFailedLookahead(2)
-	}
-	if p.check(SanyTokenLbr) && p.peekNext().Kind == SanyTokenUs {
+	if p.scanLookahead(6, 2) {
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
 		p.expecting = "_"
 		heirs = append(heirs, p.consumeParseToken(SanyTokenUs, "expected _ in constant declaration"))
@@ -441,28 +437,10 @@ func (p *SanyParser) Instantiation() *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName["N_NonLocalInstance"], heirs...)
 }
 
-func (p *SanyParser) startsSubstitutionTarget(offset int) bool {
-	kind := p.tokenAt(offset).Kind
-	// Source postfix, nonexpression-prefix, infix (including Unicode), and
-	// identifier alternatives cover this contiguous token interval.
-	return kind >= SanyTokenOp57 && kind <= SanyTokenIdentifier
-}
-
-// Java jj_2_12(3) scans only comma, target and '<-'. A failed scan leaves
-// the comma untouched and participates in the later expected-input length.
+// Source substitution repetition previews comma, target and '<-' without
+// consuming them, retaining the actual call for diagnostic rescanning.
 func (p *SanyParser) startsFollowingSubstitution() bool {
-	if !p.check(SanyTokenComma) {
-		return false
-	}
-	if !p.startsSubstitutionTarget(1) {
-		p.rememberFailedLookahead(2)
-		return false
-	}
-	if p.tokenAt(2).Kind != SanyTokenSubstitute {
-		p.rememberFailedLookahead(3)
-		return false
-	}
-	return true
+	return p.scanLookahead(12, 3)
 }
 
 func (p *SanyParser) Substitution() *SanySyntaxNode {
@@ -496,18 +474,11 @@ func (p *SanyParser) Assumption() *SanySyntaxNode {
 		p.throwParseException([][]SanyTokenKind{{SanyTokenAssume}, {SanyTokenAssumption}}, "expected ASSUME or ASSUMPTION")
 	}
 	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
-	if (p.check(SanyTokenDefbreak) && p.tokenAt(1).Kind == SanyTokenIdentifier) ||
-		(p.check(SanyTokenIdentifier) && p.tokenAt(1).Kind == SanyTokenDef) {
+	if p.scanLookahead(13, 2) {
 		p.match(SanyTokenDefbreak)
 		heirs = append(heirs, p.Identifier())
 		p.expecting = "=="
 		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in assumption"))
-	} else {
-		if p.check(SanyTokenDefbreak) || p.check(SanyTokenIdentifier) {
-			p.rememberFailedLookahead(2)
-		} else {
-			p.rememberFailedLookahead(1)
-		}
 	}
 	p.belchDEF()
 	p.expecting = "Expression"
@@ -524,17 +495,15 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 	}
 	heirs := []*SanySyntaxNode{NewSanyTokenNode(p.advance())}
 	p.expecting = "Identifier, Assume-Prove or Expression"
-	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenDef {
+	if p.scanLookahead(21, 2) {
 		heirs = append(heirs, p.Identifier())
 		p.expecting = "=="
 		heirs = append(heirs, p.consumeParseToken(SanyTokenDef, "expected == in theorem"))
-	} else if p.check(SanyTokenIdentifier) {
-		p.rememberFailedLookahead(2)
 	}
 	p.belchDEF()
 	if p.scanLookahead(22, 3) {
 		heirs = append(heirs, p.AssumeProve())
-	} else if p.startsExpressionLookahead() {
+	} else if p.scanLookahead(23, 1) {
 		heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
 			return beginsSanyProof(tok)
 		}))
@@ -898,12 +867,12 @@ func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySynt
 		p.throwParseException([][]SanyTokenKind{{SanyTokenAssume}, {SanyTokenBoxassume}}, "expected ASSUME")
 	}
 	p.expecting = "Expression, Declaration, or AssumeProve"
-	heirs = append(heirs, p.AssumeProveItem())
+	heirs = append(heirs, p.AssumeProveItem(14))
 	p.expecting = "PROVE or `,'"
 	for p.match(SanyTokenComma) {
 		heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		p.expecting = "Expression, Declaration, or AssumeProve"
-		heirs = append(heirs, p.AssumeProveItem())
+		heirs = append(heirs, p.AssumeProveItem(15))
 		p.expecting = "PROVE or `,'"
 	}
 	if p.match(SanyTokenProve) || p.match(SanyTokenBoxprove) {
@@ -916,14 +885,18 @@ func (p *SanyParser) assumeProveUntil(proveStop func(*SanyToken) bool) *SanySynt
 	return NewSanyNode(SanySyntaxNodeKindByName["N_AssumeProve"], heirs...)
 }
 
-func (p *SanyParser) AssumeProveItem() *SanySyntaxNode {
+func (p *SanyParser) AssumeProveItem(lookahead ...int) *SanySyntaxNode {
+	production := 14
+	if len(lookahead) != 0 {
+		production = lookahead[0]
+	}
 	if p.startsAssumeProveAt(0) || (p.tokenAt(1).Kind == SanyTokenColoncolon && p.startsAssumeProveAt(2)) {
 		return p.assumeProveItem()
 	}
 	if p.startsNewSymbAt(0) {
 		return p.NewSymb()
 	}
-	if p.startsExpressionLookahead() {
+	if p.scanLookahead(production, 1) {
 		return p.ExpressionUntilAssumeProveBoundary()
 	}
 	p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected expression, declaration or Assume-Prove")

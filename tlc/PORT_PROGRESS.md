@@ -1,5 +1,36 @@
 # TLC Port Progress
 
+2026-10-07 Actual declaration, substitution and fact lookahead calls:
+Previous completed commit: 9d152e5. Connect remaining source calls 6/12/13/14/15/
+21/23 with their Java budgets: constant parameter preview 2; repeated substitution
+preview 3; optional fact names 2; ASSUME/PROVE expression choices and Theorem's
+Expression alternative 1. Preserve direct declarations and nested AP choices
+before first/subsequent clause expression scans, including their distinct saved
+call indices. Delete converted sites' manual failed-lookahead span estimates and
+unused substitution target-preview helper. No assertion or source fixture edits.
+Connected source entry points are now 1–23, 50, 68 and 72; the remaining call sites
+and complete expected-token/rescan bookkeeping are not claimed finished.
+
+Extend the previous external body/definition observer with 24 valid/malformed
+cases for declarations, WITH lists, named assumptions/theorems and multiple,
+NEW and labeled ASSUME/PROVE clauses. All 580 rows across 47 cases match Java:
+parse results, every observed syntax node's concrete kind/image/four coordinates,
+and complete parse messages/residual stack text with outer log whitespace
+excluded. Source run returns 0; Go observer 90440 passes and is retired. Artifacts
+remain external: /mnt/oldrog/tmp/BodyDefinitionProbe.java,
+/mnt/oldrog/tmp/tlago-body-definition-manual_test.go and its existing overlay;
+receipts /mnt/oldrog/tmp/tlago-declaration-fact-*. No invented permanent tests,
+source fixture changes, original-method credit, race or optional corpus sweep.
+
+Complete SANY 7476 passes 1.970s. Final original ParseErrorTests, definition-break,
+incremental/selector/corpus, GetScopedIdentifiers, Test201–209 and
+EWD998ChanDebugger gate 71171 passes 9.688s. All-package compile 64155 passes.
+All handles retired; diff check green. Update HANDOFF and architecture with
+actual current call-site coverage. Full-workspace verification remains the
+qualified earlier failing snapshot. Remaining parser integration, actual runtime
+LET/canonical sharing, traces and other documented TLC gaps keep the overall
+faithful parity goal active and incomplete.
+
 2026-10-07 Source module-body and definition-head lookahead integration:
 Previous completed commit: 3138328. Continue from the complete generated scanner
 surface by translating actual production call sites. Body now uses call 1 with

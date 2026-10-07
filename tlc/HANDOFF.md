@@ -729,8 +729,15 @@ removed. The actual generated scanners now supply those saved rescan calls.
 Another 266 external production rows agree on syntax kinds/images/coordinates
 and complete malformed-input messages across 23 cases. Existing original frontend
 and model checks pass in 9.602 seconds, complete SANY in 1.780 seconds, and
-compilation passes. Remaining call-site integration, grammar expectations, general
-rescan integration and proof generation remain reconciliation work. These bounded observations do
+compilation passes. Declaration/fact parsing now uses source calls 6, 12, 13, 14, 15, 21 and 23
+with their actual budgets. Constant operator parameters, repeated WITH
+substitutions, optional fact names and first/subsequent ASSUME/PROVE expression
+clauses retain actual saved calls rather than manually estimated failed spans.
+The connected entry points are 1–23, 50, 68 and 72. All 580 external comparison
+rows agree across 47 valid/malformed cases; current original frontend/model checks
+pass in 9.688 seconds, complete SANY in 1.970 seconds and compilation passes.
+Remaining call-site integration, grammar expectations, general rescan integration
+and proof generation remain reconciliation work. These bounded observations do
 not establish every semantic-predicate context or full parser parity.
 
 Semantic symbols now embed TLC's `SemanticNodeBase` and use its shared
