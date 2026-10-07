@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Complete original definition-break and incremental syntax methods:
+Previous completed commit: eb2c967. Audit remaining runtime LET: the bridge still
+rebuilds definitions from AST, and attaching another reconstructed context would
+not close actual canonical graph sharing. Keep that work pending rather than
+claiming completeness. Inspect source BelchDefTests and IncrementalSyntaxParseTests:
+the older facade only checks full-module parsing, omitting the former's token
+consumption/DEFBREAK assertions and the latter's actual standalone grammar entry.
+
+Translate complete BelchDefTests.runTestCase and all five parameter rows in root
+sany_belchdef_java_test.go against the existing production lazy stream/belchDEF.
+Preserve exact inputs, space-derived periods, initial unconsumed state, non-EOF
+first token, DEFBREAK boundary checks, DEF-triggered belchDEF and original 3/2
+header/footer consumption counts. Java's dummy EOF token is represented by Go's
+unconsumed cursor; direct source-style consumption advances at EOF as well as
+other tokens, unlike the grammar's guarded advance helper. No entire JavaCC
+getNextToken API or generated rescan bookkeeping completion is claimed.
+
+Translate all three whole IncrementalSyntaxParseTests methods with their exact
+standalone inputs, SPEC-state helper/belchDEF, actual grammar entry points,
+nonnull checks, concrete node kinds, token images and conjunction heir count.
+Rename the older facade entry points as supplementary native API checks; retain
+all their inputs/assertions. No production change, fixture edit, invented test,
+race or optional corpus sweep. Four original SANY methods gain completion credit;
+main TLC inventory remains unchanged.
+
+Initial Go 24391 passes 0.016s. Unchanged original Java JUnit classes pass all
+eight rows in 0.007s. Final related frontend gate 41278 passes 2.912s; complete
+SANY 3491 passes 1.955s; all-package compile 40683 passes. All handles retired.
+Logs /mnt/oldrog/tmp/tlago-original-incremental-syntax-belch*. Update SANY README,
+TODO_TEST_PORT and HANDOFF, consolidating its obsolete focused receipt table.
+Full-workspace receipt remains the earlier failing snapshot. Actual runtime LET
+Context integration, generated lookahead, complete syntax AST comparisons and
+other documented TLC parity gaps remain pending; overall goal stays active.
+
 2026-10-07 Runtime semantic-context entry sharing and enumeration:
 Previous completed commit: 5489922. Audit actual Java Context and Hashtable
 enumeration after canonical child work. Runtime SemanticContext slice buckets

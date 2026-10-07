@@ -8,8 +8,9 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/parser/BelchDefTests.java.
-// Each test starts skipped until its Java assertions are ported and made green.
-func TestBelchDefTests_runTestCase(t *testing.T) {
+// Supplementary native parsing checks; the complete original token assertions
+// live in root sany_belchdef_java_test.go.
+func TestBelchDefNativeAPI_DefinitionsParse(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		inputs []string

@@ -23,6 +23,16 @@ Methods are counted **before parameter expansion**, and non-`@Ignore` does not i
 
 Excluded from this TLC count: SANY, PlusCal, formatter, Toolbox UI suites, and CommunityModules (a separate project). SANY `semantic.TestLevelChecking.testAll` is **Port complete** with all 51 original rows and separate generation/level assertions; see [the SANY test-port notes](../sany_tests/README.md). SANY `semantic.NestedModuleInstanceTest.testTopLevelInstanceOfNestedModule` is also **Port complete**; its LET-instance sibling retains the original Java ignore. SANY `semantic.SemanticCorpusTests.test` is **Port complete** in [the root translation](../sany_semantic_corpus_java_test.go), retaining all 28 original parameter rows, the NegativeOpTest assumption, canonical reference/comment assertions and checked levels. The older AST facade checks remain supplementary. All three SANY `semantic.TestSubexpressionSelectors` methods are **Port complete** in [the root translation](../sany_subexpression_selectors_java_test.go), with the original generation-only helper and exact error-code/message/location assertions. All five methods of `semantic.IncrementalSemanticParseTests` are **Port complete** in [the root translation](../sany_incremental_semantic_java_test.go), including both standalone LET methods with actual dependency/module level checks, syntax identity, concrete graph classes and imported source-reference assertions. SANY `semantic.TestBuiltInOperatorInitialization.testInitAndReInit` is **Port complete** across all 72 properties and both global-context passes. SANY `xml.TestDecimalXMLExport.test` is **Port complete** with its original fixture/assertions and source numeric metadata. This adds no TLC inventory credit. The complete CommunityModules Ant test target already has its own Go translation in [community_modules_java_test.go](../community_modules_java_test.go). Email reporting and dependencies pursued for email remain excluded under the user’s scope directive.
 
+SANY parser reconciliation (2026-10-07): **Port complete** for
+`parser.BelchDefTests.runTestCase` (all five original rows) in
+[sany_belchdef_java_test.go](../sany_belchdef_java_test.go), and all three
+`parser.IncrementalSyntaxParseTests` methods in
+[sany_incremental_syntax_java_test.go](../sany_incremental_syntax_java_test.go).
+The original token-boundary and standalone parser assertions are now retained;
+the earlier module-wrapper checks remain supplementary. No change to the main
+TLC method/class totals. Full generated lookahead and corpus AST comparison
+remain separate implementation requirements.
+
 ## Topic totals for the main suite
 
 | Topic | Non-ignored classes | Classes fully mapped | Logical methods | Mapped methods | Pending methods |

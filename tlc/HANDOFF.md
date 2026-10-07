@@ -122,6 +122,15 @@ coverage and scoped checks pass (root 6.973 seconds), as do focused TLC tool che
 and compilation. Runtime LET context reconstruction and full canonical/evaluator
 sharing remain pending; these observations add no original test-port credit.
 
+Original parser BelchDefTests and IncrementalSyntaxParseTests are now port
+complete in the root package. The former checks all five source token-boundary
+rows; the latter uses the three original standalone inputs and concrete syntax
+assertions. Earlier module-wrapper checks remain supplementary. Java passes
+all eight rows; the current related frontend gate passes in 2.912 seconds,
+complete SANY in 1.955 seconds, and all-package compilation passes. Production
+is unchanged from the semantic-context commit. Main TLC inventory is unchanged;
+full parser lookahead/AST parity and runtime LET integration remain pending.
+
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module
 order, shared diagnostic log and raw-success gate. Integration exposed the
@@ -195,23 +204,9 @@ assertions unchanged and the source expectation issue unresolved; detailed
 receipts are in `PORT_PROGRESS.md` and the LSB replay section of `TLC_ARCH.md`.
 No current complete workspace pass is claimed.
 
-Latest focused verification:
-
-| Scope | Result | Receipt |
-| --- | --- | --- |
-| Earlier parser/semantic snapshot, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.055 seconds, session `32902` retired |
-| Current focused parser/context/bridge, original ParseErrorTests, six original proof/selector models and scoped identifier/reference checks | Pass | Root 5.509 seconds, session `55110` retired |
-| Complete existing SANY package; canonical corpus AST assertions remain pending | Pass | 1.730 seconds, session `71430` retired |
-| Current TLC tools, spec processing, contexts, semantic table and coverage | Pass | 0.022 seconds, session `27147` retired |
-| Original TLCGetAll, ACoverage and both simulation constraint models | Pass | 2.160 seconds, session `96274` retired |
-| Earlier focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
-| All-package compilation | Pass | Final sources compile; no additional long workloads |
-| Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
-| Existing native exporter behavior class with Java-valid source and unordered IR | Pass | Earlier 0.035 seconds, session `62377` retired |
-
-Earlier focused receipts belong in `PORT_PROGRESS.md`. These checks retain their
-recorded scope; passing translated tests does not establish whole-method fidelity
-where reconciliation gaps are documented below.
+Earlier focused verification receipts belong in PORT_PROGRESS.md. Current
+checks retain their recorded scope; passing translated tests does not establish
+whole-method fidelity where reconciliation gaps remain.
 
 Source/native scratch observations verify exception types/causes, delayed output,
 constructor diagnostics and storage artifacts. These are manual evidence, not

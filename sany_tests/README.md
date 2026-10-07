@@ -16,6 +16,25 @@ Keep translated assertions faithful to the Java source, and add any copied
 fixtures under `sany_tests/test_vectors/` instead of relying on external checkout
 locations.
 
+`parser.BelchDefTests.runTestCase` is **port complete** in root
+`sany_belchdef_java_test.go`, retaining all five original parameter rows. It
+checks the actual lazy parser stream: initialization leaves the cursor before
+its first token, the first module token is not EOF, every expected definition
+period ends at DEFBREAK, and consuming DEF invokes belchDEF. Preserve the original
+space-count periods and header/footer consumption counts. Java's initial EOF
+dummy maps to the Go parser's unconsumed cursor. The older full-module parse
+checks remain supplementary, without duplicate original-method credit.
+
+All three `parser.IncrementalSyntaxParseTests` methods are **port complete** in
+root `sany_incremental_syntax_java_test.go`: `testParseBasicOpDef`,
+`testParseBasicExpression`, and `testParseConjunctionList`. Parse the original
+standalone input in SPEC state after belchDEF, using actual production grammar
+entry points. Preserve nonnull results, concrete node kinds, exact token images
+and the three-heir conjunction count. The earlier enclosing-module checks remain
+supplementary with their assertions intact. Unchanged Java passes all eight rows
+across these two classes; Go and complete SANY pass. This completes four original
+methods and does not establish full parser lookahead or AST equality parity.
+
 `semantic.SemanticCorpusTests.test` is **port complete** in root
 `sany_semantic_corpus_java_test.go`. All 28 original parameter rows are retained,
 including Semantics itself and the original NegativeOpTest assumption. Parse and
