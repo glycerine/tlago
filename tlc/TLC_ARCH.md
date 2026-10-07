@@ -103,6 +103,30 @@ counts, codes, ranges and messages; identity-dependent iteration orders differ.
 Full formal-operator metadata, imported graph identities, original frontend phase
 APIs and canonical evaluator sharing remain separate pending work.
 
+## Separate semantic-generation and level-check phases
+
+`ParseSanySpecSource` resolves the native syntax/dependency graph without
+semantic generation. `GenerateSanySpec` builds the retained module checking
+plans without running level checks, matching SANYFrontend.processSemantics's
+Context reset and Generator phase. `CheckSanySpecLevels` checks the generated
+root and returns its level result separately from the diagnostics. The legacy
+runner still generates and checks each external module in its original reporting
+sequence, then runs linting separately.
+
+The programmatic root shares imported definition/fact plans and copied top-level
+nodes. LOCAL definitions do not become imported checks. Repeated root checks
+start a module iteration while child definitions and top-level nodes retain
+their distinct caching rules. AssumeNode returns its expression's check result
+independently of its own constant-level error; InstanceNode also retains its
+levelCorrect result independently of a non-Leibniz diagnostic. Keep those results
+separate from aggregate Errors.isSuccess. Full canonical node fields and iteration
+algorithms are still pending; retained checking plans do not establish graph parity.
+
+All fifteen phase comparisons match generation errors, level errors, codes,
+ranges, messages, return booleans and repeated checks. The original TestInstanceNode
+method now preserves every phase/count/code/parameter assertion; unchanged Java
+and Go pass. No whole frontend-helper API or full-workspace completion is claimed.
+
 ## TLC bridge declaration metadata
 
 For generated source modules, use the retained owned declaration object when

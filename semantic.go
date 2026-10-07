@@ -24,6 +24,34 @@ func checkSpecWithProgress(spec *Spec, progress func(string)) Diagnostics {
 // SANY shares one Errors instance across external modules and reports its
 // accumulated contents after each module. Reprinting is not reinsertion.
 func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Diagnostics)) Diagnostics {
+	return generateSpecWithModuleReport(spec, progress, report, true)
+}
+
+// GenerateSanySpec runs Generator without ModuleNode.levelCheck, as the
+// programmatic SANYFrontend.processSemantics phase does. The legacy runner
+// retains its per-external-module generation/level-check sequence.
+func GenerateSanySpec(spec *Spec) Diagnostics {
+	if spec != nil {
+		spec.initialContext = sanyGlobalInitialContext(true)
+	}
+	return generateSpecWithModuleReport(spec, nil, nil, false)
+}
+
+// CheckSanySpecLevels checks the generated root, retaining ModuleNode's cached
+// levelCorrect result independently of the Errors supplied to each invocation.
+func CheckSanySpecLevels(spec *Spec) (bool, Diagnostics) {
+	if spec == nil || spec.Root == nil || spec.levelChecks[spec.Root] == nil {
+		panic(tlc.NewNullPointerException())
+	}
+	checks := spec.levelChecks[spec.Root]
+	// LevelNode.levelCheck(Errors) starts a new module iteration. Child
+	// definitions and top-level nodes keep their own source caching rules.
+	checks.levelChecked = false
+	diags := checks.check()
+	return checks.levelCorrect && !diags.HasErrors(), diags
+}
+
+func generateSpecWithModuleReport(spec *Spec, progress func(string), report func(Diagnostics), checkLevels bool) Diagnostics {
 	if spec == nil {
 		diags := Diagnostics{errorAt(Position{}, "E1300", "nil spec")}
 		if report != nil {
@@ -35,6 +63,7 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 		spec.initialContext = sanyGlobalInitialContext(false)
 	}
 	var diags Diagnostics
+	spec.levelChecks = map[*Module]*sanyModuleLevelChecks{}
 	spec.SemanticDiags = nil
 	defer func() {
 		spec.SemanticDiags = appendSanyDiagnostics(append(Diagnostics(nil), diags...), spec.SemanticDiags...)
@@ -53,7 +82,8 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 		} else {
 			mod.generatorNodes = newSanyGeneratorNodes()
 		}
-		checks := &sanyModuleLevelChecks{generator: resolver.moduleGenerator(mod), recursiveGeneration: recursive}
+		checks := &sanyModuleLevelChecks{generator: resolver.moduleGenerator(mod), recursiveGeneration: recursive, operatorChecks: map[string]*sanyCachedLevelCheck{}}
+		spec.levelChecks[mod] = checks
 		// Nested graphs are generated at their module unit, sharing the external
 		// module's reporting iteration. Their diagnostics remain in body order.
 		checks.generateNested = func(nested *Module) Diagnostics {
@@ -89,7 +119,29 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 			}
 			return childDiags
 		}
-		return checks, generateModuleWithEnclosing(mod, spec, enclosing[mod], checks)
+		generated := generateModuleWithEnclosing(mod, spec, enclosing[mod], checks)
+		if !checkLevels {
+			for _, entry := range tlcBridgeContextEntries(spec, mod, map[*Module]bool{}) {
+				if entry.module != nil && entry.module != mod && entry.instance == nil {
+					if parent := spec.levelChecks[entry.module]; parent != nil {
+						if node := parent.operatorChecks[entry.name]; node != nil {
+							checks.importedChecks = append(checks.importedChecks, node)
+						}
+					}
+				}
+			}
+			// ModuleNode.copyTopLevel shares inherited assumptions, theorems
+			// and instances. Definition nodes come from the imported Context.
+			var inherited []sanyLevelCheck
+			for _, name := range mod.Extends {
+				if parent := spec.levelChecks[spec.Modules[name]]; parent != nil {
+					inherited = append(inherited, parent.topLevel...)
+				}
+			}
+			checks.topLevel = append(inherited, checks.topLevel...)
+			checks.topLevelOrdered = true
+		}
+		return checks, generated
 	}
 	for _, name := range spec.SemanticOrder {
 		mod := spec.Modules[name]
@@ -107,7 +159,7 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 			mod.Library = spec.FilenameResolver.IsStandardModule(name)
 		}
 		// Source tests raw Errors.isSuccess, before warning elevation.
-		if !diags.HasErrors() {
+		if checkLevels && !diags.HasErrors() {
 			diags = appendSanyDiagnostics(diags, checks.check()...)
 		}
 		if report != nil {
@@ -125,7 +177,7 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 	for _, name := range remaining {
 		checks, generated := check(spec.Modules[name], nil)
 		diags = appendSanyDiagnostics(diags, generated...)
-		if checks != nil && !diags.HasErrors() {
+		if checkLevels && checks != nil && !diags.HasErrors() {
 			diags = appendSanyDiagnostics(diags, checks.check()...)
 		}
 	}
@@ -184,7 +236,23 @@ func appendSanyDiagnostics(diags Diagnostics, added ...Diagnostic) Diagnostics {
 
 type sanyLevelCheck struct {
 	position Position
-	run      func() Diagnostics
+	node     *sanyCachedLevelCheck
+}
+
+type sanyCachedLevelCheck struct {
+	run              func() (bool, Diagnostics)
+	checked, correct bool
+	repeatSuccess    bool
+}
+
+func (node *sanyCachedLevelCheck) check() (bool, Diagnostics) {
+	if node.checked {
+		return node.correct || node.repeatSuccess, nil
+	}
+	node.checked, node.correct = true, true
+	correct, diags := node.run()
+	node.correct = correct
+	return node.correct, diags
 }
 
 // Generator's module recursion shares curLevel zero, unresolvedCnt[0] and
@@ -205,35 +273,53 @@ func (state *sanyModuleRecursiveGeneration) complete() {
 }
 
 type sanyModuleLevelChecks struct {
+	levelChecked        bool
+	levelCorrect        bool
 	generator           *sanyModuleSelectorGenerator
 	recursiveGeneration *sanyModuleRecursiveGeneration
 	generateNested      func(*Module) Diagnostics
 	recursive           []func() Diagnostics
-	definitions         []func() Diagnostics
-	facts               []func() Diagnostics
+	definitions         []*sanyCachedLevelCheck
+	facts               []*sanyCachedLevelCheck
 	topLevel            []sanyLevelCheck
 	nested              []*sanyModuleLevelChecks
+	operatorChecks      map[string]*sanyCachedLevelCheck
+	importedChecks      []*sanyCachedLevelCheck
+	topLevelOrdered     bool
 }
 
 func (checks *sanyModuleLevelChecks) check() Diagnostics {
+	if checks.levelChecked {
+		return nil
+	}
+	checks.levelChecked, checks.levelCorrect = true, true
 	var diags Diagnostics
+
 	for _, run := range checks.recursive {
-		diags = appendSanyDiagnostics(diags, run()...)
+		current := run()
+		diags = appendSanyDiagnostics(diags, current...)
+		checks.levelCorrect = checks.levelCorrect && !current.HasErrors()
 	}
 	for _, nested := range checks.nested {
 		diags = appendSanyDiagnostics(diags, nested.check()...)
+		checks.levelCorrect = checks.levelCorrect && nested.levelCorrect
 	}
-	for _, run := range checks.definitions {
-		diags = appendSanyDiagnostics(diags, run()...)
+	for _, nodes := range [][]*sanyCachedLevelCheck{checks.importedChecks, checks.definitions, checks.facts} {
+		for _, node := range nodes {
+			correct, current := node.check()
+			checks.levelCorrect = checks.levelCorrect && correct
+			diags = appendSanyDiagnostics(diags, current...)
+		}
 	}
-	for _, run := range checks.facts {
-		diags = appendSanyDiagnostics(diags, run()...)
+	// Legacy plans order retained proof summaries by their source position.
+	// Programmatic generation already prepends copied inherited nodes.
+	if !checks.topLevelOrdered {
+		sort.SliceStable(checks.topLevel, func(i, j int) bool { return checks.topLevel[i].position.Compare(checks.topLevel[j].position) < 0 })
 	}
-	sort.SliceStable(checks.topLevel, func(i, j int) bool {
-		return checks.topLevel[i].position.Compare(checks.topLevel[j].position) < 0
-	})
 	for _, node := range checks.topLevel {
-		diags = appendSanyDiagnostics(diags, node.run()...)
+		correct, current := node.node.check()
+		checks.levelCorrect = checks.levelCorrect && correct
+		diags = appendSanyDiagnostics(diags, current...)
 	}
 	return diags
 }
@@ -739,9 +825,9 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	generateInstance := func(inst *Instance) {
 		diags = append(diags, checks.generator.instance(*inst)...)
 		diags = append(diags, expressionGeneration.generateInstanceSubstitutions(inst, mod, expressionContexts.at(inst.Syntax, defined))...)
-		checks.topLevel = append(checks.topLevel, sanyLevelCheck{inst.SourcePosition(), func() Diagnostics {
-			return levelChecker.checkInstanceSubstitutionLevels(*inst, declKinds)
-		}})
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: inst.SourcePosition(), node: &sanyCachedLevelCheck{run: func() (bool, Diagnostics) {
+			return levelChecker.checkInstanceSubstitutionLevelResult(*inst, declKinds)
+		}}})
 	}
 	generateProofRef := func(ref ProofRef) bool {
 		diags = append(diags, checks.generator.reference(ref)...)
@@ -753,7 +839,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 	generateProof := func(proof ProofSummary) {
 		diags = append(diags, checks.generator.proof(proof)...)
 		diags = append(diags, expressionGeneration.proofReferences(proof, mod, defined)...)
-		checks.topLevel = append(checks.topLevel, sanyLevelCheck{proof.Pos, func() Diagnostics { return checkProofSummary(proof, declKinds, mod, spec, true) }})
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: proof.Pos, node: &sanyCachedLevelCheck{run: func() (bool, Diagnostics) {
+			d := checkProofSummary(proof, declKinds, mod, spec, true)
+			return !d.HasErrors(), d
+		}}})
 	}
 	generateAssumption := func(assumption NamedExpr) {
 		diags = append(diags, checks.generator.fact(assumption)...)
@@ -774,7 +863,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if assumption.AssumeProve && assumption.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(assumption.AssumeProveBody, true)...)
 		}
-		checks.topLevel = append(checks.topLevel, sanyLevelCheck{assumption.SourcePosition(), func() Diagnostics {
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: assumption.SourcePosition(), node: &sanyCachedLevelCheck{repeatSuccess: true, run: func() (bool, Diagnostics) {
 			var diags Diagnostics
 			if assumption.AssumeProve && assumption.AssumeProveBody != nil {
 				diags = append(diags, checkAssumeProveNewSymbolLevels(assumption.AssumeProveBody, declKinds)...)
@@ -783,9 +872,10 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diags = append(diags, levelChecker.check(expr, nil)...)
 			}
 			diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
+			expressionCorrect := !diags.HasErrors()
 			diags = append(diags, checkAssumptionConstantLevel(assumption, levelChecker)...)
-			return diags
-		}})
+			return expressionCorrect, diags
+		}}})
 	}
 	generateTheorem := func(theorem NamedExpr) {
 		diags = append(diags, checks.generator.fact(theorem)...)
@@ -806,7 +896,7 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 		if theorem.AssumeProve && theorem.AssumeProveBody != nil {
 			diags = append(diags, checkAssumeProveLabels(theorem.AssumeProveBody, true)...)
 		}
-		checks.topLevel = append(checks.topLevel, sanyLevelCheck{theorem.SourcePosition(), func() Diagnostics {
+		checks.topLevel = append(checks.topLevel, sanyLevelCheck{position: theorem.SourcePosition(), node: &sanyCachedLevelCheck{repeatSuccess: true, run: func() (bool, Diagnostics) {
 			var diags Diagnostics
 			if theorem.AssumeProve && theorem.AssumeProveBody != nil {
 				diags = append(diags, checkAssumeProveNewSymbolLevels(theorem.AssumeProveBody, declKinds)...)
@@ -815,8 +905,8 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 				diags = append(diags, levelChecker.check(expr, nil)...)
 			}
 			diags = append(diags, checkPrimedConstants(expr, declKinds, nil)...)
-			return diags
-		}})
+			return !diags.HasErrors(), diags
+		}}})
 	}
 	generateFunctionDomains := func(def Definition) {
 		diags = append(diags, checks.generator.functionDomains(&def)...)
@@ -882,10 +972,15 @@ func generateModuleWithEnclosing(mod *Module, spec *Spec, enclosing *Module, che
 			}
 			completedRecursive[def.Name] = true
 		}
+		node := &sanyCachedLevelCheck{run: func() (bool, Diagnostics) { d := levelCheck(); return !d.HasErrors(), d }}
+		if checks.operatorChecks == nil {
+			checks.operatorChecks = map[string]*sanyCachedLevelCheck{}
+		}
+		checks.operatorChecks[def.Name] = node
 		if def.TheoremLike {
-			checks.facts = append(checks.facts, levelCheck)
+			checks.facts = append(checks.facts, node)
 		} else {
-			checks.definitions = append(checks.definitions, levelCheck)
+			checks.definitions = append(checks.definitions, node)
 		}
 	}
 	// Generator.generateModule dispatches the actual body's heirs. Complete

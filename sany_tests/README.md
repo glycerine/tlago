@@ -23,3 +23,11 @@ semantic-generation catch and returns parsing messages before semantic checking.
 Passing those assertions does not establish every diagnostic's full fidelity;
 remaining source differences are recorded in `tlc/HANDOFF.md` and
 `tlc/PORT_PROGRESS.md`. SANY methods do not change the TLC test-port totals.
+
+`semantic.TestInstanceNode.testOperatorArgumentMinimumLevelDiagnostic` now
+retains the complete original method: syntax/dependency loading succeeds,
+semantic generation succeeds, level checking fails, exactly one 4246 error is
+present, and its one-based position/required-level parameters are `[1, 3]`.
+The production phase entry points are `ParseSanySpecSource`, `GenerateSanySpec`
+and `CheckSanySpecLevels`. This does not credit the whole Java frontend helper
+API or complete canonical semantic graphs; those remain separately pending.

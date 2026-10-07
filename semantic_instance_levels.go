@@ -11,10 +11,15 @@ import (
 // expressions retain their instancer's lexical context; a completed-module scan
 // cannot reconstruct either the bindings or the substitution order.
 func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance Instance, declKinds map[string]DeclarationKind) Diagnostics {
+	_, diags := c.checkInstanceSubstitutionLevelResult(instance, declKinds)
+	return diags
+}
+
+func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevelResult(instance Instance, declKinds map[string]DeclarationKind) (bool, Diagnostics) {
 	spec := c.dependencies.resolver.spec
 	target := spec.Modules[instance.Module]
 	if target == nil {
-		return nil
+		return true, nil
 	}
 	parameterNames := map[string]bool{}
 	declKinds = copyDeclKindMap(declKinds)
@@ -25,10 +30,16 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 	context := c.contextWithLocals(parameterNames)
 	checker := &sanyLevelCompositionChecker{dependencies: c.dependencies, context: context}
 	var diags Diagnostics
+	correct := true
+	if targetChecks := spec.levelChecks[target]; targetChecks != nil {
+		diags = append(diags, targetChecks.check()...)
+		correct = targetChecks.levelCorrect
+	}
 	valid := map[string]bool{}
 	for _, substitution := range instance.generatedSubstitutions {
 		componentDiags := checker.check(substitution.expr, parameterNames)
 		valid[substitution.name] = !componentDiags.HasErrors()
+		correct = correct && valid[substitution.name]
 		diags = append(diags, componentDiags...)
 	}
 	levelDiagnostic := func(name string, maximum tlaLevel) Diagnostic {
@@ -46,6 +57,7 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 				maximum = variableLevel
 			}
 			if checker.level(expr, parameterNames) > maximum {
+				correct = false
 				diags = append(diags, levelDiagnostic(name, maximum))
 			}
 		}
@@ -66,6 +78,7 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 	for _, substitution := range instance.generatedSubstitutions {
 		name, expr := substitution.name, substitution.expr
 		if maximum, constrained := constraints[name]; valid[name] && constrained && checker.level(expr, parameterNames) > maximum {
+			correct = false
 			diags = append(diags, levelDiagnostic(name, maximum))
 		}
 		if substitution.target.Arity > 0 && valid[name] {
@@ -76,6 +89,7 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 			}
 			for i, maximum := range maxima {
 				if minimum, exists := moduleUse.argConstraints[sanyArgumentPosition{ids[name], i}]; exists && maximum < minimum {
+					correct = false
 					message := fmt.Sprintf("Level error in instantiating module '%s':\nThe level of the argument %d of the operator %s \nmust be at least %d.", instance.Module, i+1, operatorName, minimum)
 					diags = append(diags, sanyDiagnosticParameters(sanyRegistrationDiagnostic(instance.SourcePosition(), "E4246", "%s", message), instance.Module, i+1, operatorName, int(minimum)))
 				}
@@ -110,9 +124,10 @@ func (c *sanyLevelCompositionChecker) checkInstanceSubstitutionLevels(instance I
 		maxima := c.dependencies.applicationMaximums(operator.expr, nil, operator.target.Arity, context)
 		maximum := maxima[key.position]
 		if checker.level(parameter.expr, parameterNames) > maximum {
+			correct = false
 			message := fmt.Sprintf("Level error when instantiating module '%s':\nThe level of the argument %d of the operator %s' \nmust be at most %d.", instance.Module, key.position, operatorName, maximum)
 			diags = append(diags, sanyDiagnosticParameters(sanyRegistrationDiagnostic(instance.SourcePosition(), "E4247", "%s", message), instance.Module, key.position, operatorName, int(maximum)))
 		}
 	}
-	return diags
+	return correct, diags
 }

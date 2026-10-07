@@ -3,6 +3,7 @@ package tlago
 import "github.com/glycerine/tlago/tlc"
 
 type Spec struct {
+	levelChecks      map[*Module]*sanyModuleLevelChecks
 	initialContext   *sanyContext
 	FilenameResolver tlc.FilenameToStream
 	LibraryPaths     []string

@@ -1,3 +1,25 @@
+/*******************************************************************************
+ * Copyright (c) 2026 Linux Foundation. All rights reserved.
+ *
+ * The MIT License (MIT)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ * of the Software, and to permit persons to whom the Software is furnished to do
+ * so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN
+ * AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ ******************************************************************************/
 package sany_tests
 
 import (
@@ -7,8 +29,7 @@ import (
 )
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/TestInstanceNode.java.
-// The source uses separate semantic-generation and level-check phases. This
-// bridge currently combines them; keep that phase API work pending.
+// Retains the original semantic-success and level-failure phase assertions.
 func TestTestInstanceNode_testOperatorArgumentMinimumLevelDiagnostic(t *testing.T) {
 	module := "---- MODULE Test ----\n" +
 		"---- MODULE Inner ----\n" +
@@ -17,9 +38,17 @@ func TestTestInstanceNode_testOperatorArgumentMinimumLevelDiagnostic(t *testing.
 		"====\n" +
 		"INSTANCE Inner WITH F <- =\n" +
 		"====\n"
-	_, diags := tlago.CheckSanySource("Test.tla", module)
-	if !diags.HasErrors() {
-		t.Fatal("expected INSTANCE substitution level diagnostic")
+	spec, parseDiags := tlago.ParseSanySpecSource("Test.tla", module, tlago.LoadOptions{})
+	if parseDiags.HasErrors() {
+		t.Fatal(parseDiags)
+	}
+	semanticLog := tlago.GenerateSanySpec(spec)
+	if semanticLog.HasErrors() {
+		t.Fatal(semanticLog)
+	}
+	levelOK, diags := tlago.CheckSanySpecLevels(spec)
+	if levelOK {
+		t.Fatal("level checking succeeded unexpectedly")
 	}
 	var errors, diagnostics tlago.Diagnostics
 	for _, diagnostic := range diags {

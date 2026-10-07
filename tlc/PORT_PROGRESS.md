@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-07 Separate semantic generation and level-check entry points:
+Previous completed commit: e45a499. Extract parsing/dependency loading from
+CheckSanySourceWithOptions into ParseSanySpecSource. Share generation through
+GenerateSanySpec while retaining per-external-module legacy checks/reporting.
+Store module plans on Spec; CheckSanySpecLevels checks the generated root without
+regenerating the semantic graph. Initial source API comparison of eight cases
+exposes three missing imported-definition/fact/top-level checks and overly broad
+module-result caching. Link actual imported plans and copied top-level nodes;
+LOCAL definitions stay excluded. Separate child check results from diagnostics,
+including AssumeNode's own constant assertion and InstanceNode's non-Leibniz
+report. Root calls begin another module iteration while children retain their
+source caching behavior. Preserve legacy ordering of retained proof summaries.
+
+Corrected eight-case comparison passes; expanded fifteen-case comparison 75889
+returns 0. Final comparison 3058 also returns 0. All generation logs, level logs,
+codes, counts, ranges, messages, booleans and repeated-check logs match actual
+SANYFrontend. Log /mnt/oldrog/tmp/tlago-frontend-phase-final.log. Scratch Java API
+compilation first fails on helper getCode versus actual getStandardValue, corrected
+without modifying upstream. Unchanged original TestInstanceNode passes JUnit in
+0.048 seconds. Helpers/classes stay outside the repository in
+/mnt/oldrog/tmp/tlago-phases-java; no TLC reporting entry point or email work.
+
+Complete the existing TestInstanceNode Go translation with the original parsing/
+dependency loading, semantic-success, level-failure, one error, one 4246 diagnostic
+and [1, 3] parameter assertions. Preserve its exact module literal and original
+MIT notice. The entire original method now passes. SANY remains excluded from
+TLC inventory counts; do not credit the entire Java frontend helper API or
+canonical graph implementation from this one method.
+
+Final root checks plus seven unchanged original model methods pass normally in
+23.904 seconds (61271); complete SANY passes 1.459 seconds (55734); all-package
+compilation passes (4217). All preceding 26 co-parameter, 24 argument and 24 level
+cases still match complete legacy diagnostics (19418). Logs
+/mnt/oldrog/tmp/tlago-phase-final-{ordered-root,coparam,arg,level}.log.
+Earlier focused checks 5212 pass; SANY 45895 passes 2.021 seconds, before typed
+child-result propagation. Root 25498 and SANY 30074 also pass before the final
+legacy-order preservation; SANY 30074 takes 1.619 seconds. All handles terminal
+and retired. No new full-workspace pass is established. Remaining work includes
+canonical INSTANCE/LET/operator graphs, full LevelNode fields and child results,
+formal-operator metadata, complete frontend helper APIs and evaluator sharing.
+New distributed service remains postponed.
+
 2026-10-07 Propagated INSTANCE co-parameter constraints:
 Previous completed commit: 2caf893. Initial 16-case comparison 47104 returns 1:
 eight compound/indirect/higher-order/LET cases falsely succeed. Replace the

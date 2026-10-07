@@ -867,9 +867,10 @@ forwarding and theorem expressions. The builtin-only argument scan is removed.
 All 24 additional paired module/LET comparisons and the previous 24 level cases
 match complete Java diagnostics; focused root checks, original related models,
 complete SANY and compilation pass normally. The existing TestInstanceNode check
-now retains the original exact error count, code and [1, 3] parameters. Its separate
-semantic-generation and level-check phase assertions still need the original
-frontend phase APIs, so no whole-method credit is claimed.
+now retains every original method assertion: separate parsing/dependency loading,
+successful semantic generation, failed level checking, the exact error count,
+code and [1, 3] parameters. The unchanged Java method and faithful Go translation
+both pass. SANY methods remain excluded from TLC inventory totals.
 The direct co-parameter scan is now removed. INSTANCE checks propagated
 ArgLevelParam relationships, including compound and indirect arguments,
 higher-order forwarding and LET definitions. Retain set membership and the
@@ -885,9 +886,14 @@ previous fabricated second bound. Focused root checks, original related models,
 complete SANY and compilation pass normally. No full-workspace pass or inventory
 credit is added.
 Next finish retained InstanceNode/LetInNode and ordinary canonical operator graphs.
-General imported graph identity, full formal-operator metadata, original frontend
-phase APIs and evaluator sharing remain pending. The green comparisons do not
-prove complete LevelNode parity.
+Separate production entry points now expose parsing/dependency loading,
+semantic generation and root level checking. Programmatic generation links shared
+imported definitions and copied top-level nodes; legacy CLI reporting retains its
+per-external-module sequence. Fifteen phase comparisons match Java's generation
+and level logs, booleans and repeated checks. Full canonical LevelNode fields,
+iteration and child return values, imported graph identity, full formal-operator
+metadata, the remaining Java frontend helper API and evaluator sharing remain
+pending. The green comparisons do not prove complete LevelNode parity.
 Full registration against operator/theorem graphs, qualified declaration selectors,
 other imported graph identities, ordered module definitions and complete canonical
 node sharing with the evaluator remain pending.

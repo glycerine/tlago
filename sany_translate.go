@@ -28,6 +28,17 @@ func CheckSanySource(file, source string) (*Spec, Diagnostics) {
 }
 
 func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, Diagnostics) {
+	spec, diags := ParseSanySpecSource(file, source, opts)
+	if !diags.HasErrors() {
+		diags = append(diags, CheckSpec(spec)...)
+	}
+	spec.Diags = diags
+	return spec, diags
+}
+
+// ParseSanySpecSource parses source and resolves dependencies without semantic
+// generation or level checking. Callers may inspect the distinct phases.
+func ParseSanySpecSource(file, source string, opts LoadOptions) (*Spec, Diagnostics) {
 	initialContext := sanyGlobalInitialContext(true)
 	mod, diags := ParseSanyModuleSource(file, source)
 	loader := newSanyLoader(opts)
@@ -66,7 +77,6 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 		spec.Diags = diags
 		return spec, diags
 	}
-	diags = append(diags, CheckSpec(spec)...)
 	spec.Diags = diags
 	return spec, diags
 }
