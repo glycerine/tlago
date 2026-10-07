@@ -705,7 +705,7 @@ FormalParamNodes before binding-conflict checks. Definition bodies retain the
 ordered parameter nodes; identifier occurrences retain the resolved formal.
 Nodes share the SemanticNode UID allocator and own indexed tool slots, syntax,
 source location and native module ownership. Sixteen source observations match.
-This foundation does not cover CHOOSE/function formals, proof binders,
+This foundation does not cover function formals, proof binders,
 LevelNode data, visitors, evaluator graph sharing or full source allocation order.
 
 Bounded, unbounded and temporal quantifiers now retain newly constructed formal
@@ -717,8 +717,16 @@ Quantifier arrays here are flattened native metadata, not complete OpApplNode
 bound-group construction or level-check data. Full source allocation order,
 including generation below rejected labels, remains pending.
 
-Next semantic work: port the remaining formal constructors and integrate actual
-identity into Generator's label-parameter checks. The earlier nine-case comparison now has four
+CHOOSE now retains its constructed formals and uses the same binding-preserving
+scope as quantifiers. Generate the domain before allocating formals; bounded and
+tuple forms use identifier syntax, while the source unbounded scalar constructor
+uses the CHOOSE token's syntax/location. Twenty-five node observations and
+thirteen complete diagnostic cases match Java, including empty tuple behavior.
+Existing focused checks and the earlier quantifier observations pass.
+
+Next semantic work: port function/set-comprehension and remaining proof formal
+constructors, then integrate actual identity into Generator's label-parameter
+checks. The earlier nine-case comparison now has four
 matches and five differences: `arg_constant`, `label_select`, `params`,
 `qualified_callee` and `repeated`. Extra parameters need one aggregate diagnostic;
 non-formal arguments need the source leaf-location diagnostic and distinct dummy

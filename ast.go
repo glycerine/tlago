@@ -369,6 +369,7 @@ func (*CaseExpr) exprNode()            {}
 
 type ChooseExpr struct {
 	SanyExprSource
+	formalNodes []*sanyFormalParamNode
 	// TupleVars retains each formal parameter of CHOOSE <<x, ...>>.
 	TupleVars []BoundVar
 	Var       string

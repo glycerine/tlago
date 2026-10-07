@@ -1,5 +1,25 @@
 # TLC Architecture Notes for the Go Port
 
+## CHOOSE formal construction
+
+processChoose generates its domain in the enclosing scope before allocating
+formals, then generates the predicate in their context. The Go generator now
+retains those formal nodes and resolved predicate references. Shared formal-scope
+and binding helpers preserve old bindings on rejected declarations and restore
+the outer context afterward. Equal-named sibling CHOOSE binders remain distinct.
+
+Preserve the source syntax distinction: bounded scalar and all tuple formals use
+the identifier nodes; an unbounded scalar formal receives the CHOOSE keyword node
+(children[0]). Its location and duplicate-binding diagnostics therefore point at
+the keyword. The existing empty-tuple translation retains the closing token as
+one formal, matching the source constructor loop. Twenty-five node observations
+and thirteen complete diagnostics match Java; the earlier nineteen quantifier
+observations also pass after binding helper reuse.
+
+This does not establish full OpApplNode shape, LevelNode data, evaluator sharing,
+label parameter arrays or absolute allocation order. Remaining function/set and
+proof formal constructors must use actual node identities too.
+
 ## Quantified formal construction and scope
 
 Bounded quantifiers generate all domains in the enclosing symbol scope before
@@ -36,7 +56,7 @@ It uses the shared SemanticNode UID allocator and per-node indexed slots.
 Its equality checks concrete class, kind and UID, matching SemanticNode.equals.
 Sixteen source observations establish these constructor/reference properties and
 relative UID/hash behavior. Absolute source allocation order is not established.
-CHOOSE/function and proof-binder construction, LevelNode data, visitors,
+Function and proof-binder construction, LevelNode data, visitors,
 actual label formal arrays and evaluator sharing still require porting. The native
 Module ownership link is not a claim of a complete Java ModuleNode graph.
 

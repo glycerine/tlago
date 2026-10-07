@@ -1,5 +1,45 @@
 # TLC Port Progress
 
+2026-10-06 CHOOSE formal identity, scope and source syntax locations:
+Previous completed commit: 2d259ec. Source processChoose generates its domain
+before formal allocation, then generates the predicate under its context. Go
+now retains bounded/unbounded scalar and tuple CHOOSE formals and resolved body
+references. Extract shared formal-context/binding helpers from the quantified
+path; preserve the earlier symbol on conflicts and restore outer formals after
+predicate generation. Sibling equal-named CHOOSE binders retain distinct nodes.
+
+Preserve the source unbounded scalar constructor's children[0] syntax argument:
+its formal syntax and location are the CHOOSE keyword, not the identifier.
+Bounded scalar and tuple formals use their identifiers. The existing empty-tuple
+translation retains the closing token as one formal; binding generation keeps
+that behavior. This is constructor/reference progress, not complete OpApplNode
+shape, LevelNode data, evaluator sharing, LS stacks or absolute source UID order.
+Remaining function/set-comprehension and proof formal constructors are pending.
+
+Twenty-five observations match actual source FastTool nodes: scalar/tuple counts,
+resolved predicate references, formal kind/arity/localness/module ownership,
+exact syntax images and declaration ranges, consecutive tuple-node allocation,
+nested domain/body references and sibling identity. Thirteen complete source
+SANY diagnostic cases match valid bounded/unbounded forms, bounded/unbounded
+repeated tuple names, nested/formal/constant conflicts, the bounded-vs-unbounded
+scalar location distinction, domain self-reference, enclosing-domain reference,
+builtin redefinition and empty bounded/unbounded tuples. Scratch helpers/overlay
+and vectors are outside the repository. Receipts:
+/mnt/oldrog/tmp/tlago-choose-formal-{java,go,diag}.log. Probe 43019 and diagnostic
+65835 terminal 0, retired. No permanent tests invented or source assertions,
+settings or fixtures changed.
+
+Existing focused parser/semantic checks and original ParseError/legacy/scoped
+identifier methods pass 5.258 seconds (85164). Whole SANY tests pass 1.790 seconds
+(6222); all packages compile (32831). The shared binding helper still matches all
+nineteen earlier actual-Java quantifier observations (17625 terminal 0), compared
+to its saved source output. All handles terminal 0 and retired. Receipts:
+/mnt/oldrog/tmp/tlago-choose-formal-{root,sany,compile,quant-go}.log.
+No race, forbidden corpus sweeps, inventory or full-workspace completion credit.
+The previously failing five broader label cases are not claimed fixed by formal
+construction alone. Continue remaining constructors and identity-based labels;
+new RPC work remains postponed and the full faithful-port goal remains active.
+
 2026-10-06 Quantified formal identity and preserved symbol bindings:
 Previous completed commit: f5abdeb. Source processBoundQuant calls
 processQuantBoundArgs to generate all domains before allocating any formals,

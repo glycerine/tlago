@@ -2,7 +2,10 @@
 // Portions Copyright (c) 2003 Microsoft Corporation. All rights reserved.
 package tlago
 
-import "github.com/glycerine/tlago/tlc"
+import (
+	"fmt"
+	"github.com/glycerine/tlago/tlc"
+)
 
 // FormalParamNode owns its SemanticNode identity. The enclosing native module
 // and retained parser node preserve declaration ownership for graph generation.
@@ -48,4 +51,35 @@ func (n *sanyFormalParamNode) equals(other any) bool {
 
 func (g *sanyExpressionGeneration) newFormalParameter(name string, arity int, position Position, syntax *SanySyntaxNode) *sanyFormalParamNode {
 	return newSanyFormalParamNode(name, arity, position, sanySyntaxAtPosition(syntax, position), g.currentModule)
+}
+
+func (g *sanyExpressionGeneration) pushFormalContext(capacity int) func() {
+	previous := g.formals
+	g.formals = make(map[string]localSymbol, len(previous)+capacity)
+	for name, symbol := range previous {
+		g.formals[name] = symbol
+	}
+	return func() { g.formals = previous }
+}
+
+// SymbolTable.addSymbol keeps the earlier binding after a rejected formal
+// declaration. The caller retains the new node in its parameter array.
+func (g *sanyExpressionGeneration) bindFormalParameter(node *sanyFormalParamNode, context map[string]Position, locals map[string]bool) Diagnostics {
+	name, position := node.semName(), node.semPosition()
+	if _, builtin := builtinOperatorArity(name); builtin || builtinIdentifiers[name] {
+		diagnostic := sanyDiagnosticParameters(errorAt(position, "E4202", "cannot redefine built-in symbol %s", name), name)
+		diagnostic.SANYMessage = fmt.Sprintf("Symbol %s is a built-in operator, and cannot be redefined.", name)
+		return Diagnostics{diagnostic}
+	}
+	if symbol, exists := g.lookupSymbol(name, context); exists {
+		diagnostic := sanyDiagnosticParameters(errorAt(position, "E4201", "bound symbol %s conflicts with existing symbol declared at %s", name, symbol.pos), name, sanySymbolLocation(symbol.pos))
+		diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", name, sanySymbolLocation(symbol.pos))
+		return Diagnostics{diagnostic}
+	}
+	if locals[name] {
+		// Proof/native locals without nodes retain their representation.
+		return checkBoundName(name, position, context, locals)
+	}
+	g.formals[name] = localSymbol{formalNode: node, kind: "FORMAL", arity: node.semArity(), pos: position}
+	return nil
 }

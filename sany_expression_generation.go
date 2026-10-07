@@ -434,12 +434,7 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 			seenDomains[parameter.Set] = true
 		}
 	}
-	previous := g.formals
-	g.formals = make(map[string]localSymbol, len(previous)+len(parameters))
-	for name, symbol := range previous {
-		g.formals[name] = symbol
-	}
-	defer func() { g.formals = previous }()
+	defer g.pushFormalContext(len(parameters))()
 	bodyLocals := copyBoolMap(locals)
 	root.quantifierFormals = nil
 	for _, parameter := range parameters {
@@ -450,22 +445,32 @@ func (g *sanyExpressionGeneration) checkQuantifier(root *QuantifierExpr, context
 		node := g.newFormalParameter(parameter.Var, 0, position, parameter.Syntax)
 		parameter.formalNode = node
 		root.quantifierFormals = append(root.quantifierFormals, node)
-		if _, builtin := builtinOperatorArity(parameter.Var); builtin || builtinIdentifiers[parameter.Var] {
-			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4202", "cannot redefine built-in symbol %s", parameter.Var), parameter.Var)
-			diagnostic.SANYMessage = fmt.Sprintf("Symbol %s is a built-in operator, and cannot be redefined.", parameter.Var)
-			diags = append(diags, diagnostic)
-		} else if symbol, exists := g.lookupSymbol(parameter.Var, context); exists {
-			diagnostic := sanyDiagnosticParameters(errorAt(position, "E4201", "bound symbol %s conflicts with existing symbol declared at %s", parameter.Var, symbol.pos), parameter.Var, sanySymbolLocation(symbol.pos))
-			diagnostic.SANYMessage = fmt.Sprintf("Multiply-defined symbol '%s': this definition or declaration conflicts \nwith the one at %s.", parameter.Var, sanySymbolLocation(symbol.pos))
-			diags = append(diags, diagnostic)
-		} else if bodyLocals[parameter.Var] {
-			// Native callers and proof binders without retained nodes still
-			// preserve their existing binding; do not invent an identity.
-			diags = append(diags, checkBoundName(parameter.Var, position, context, bodyLocals)...)
-		} else {
-			g.formals[parameter.Var] = localSymbol{formalNode: node, kind: "FORMAL", arity: 0, pos: position}
-		}
+		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
 		bodyLocals[parameter.Var] = true
 	}
 	return append(diags, g.checkExpr(body, context, bodyLocals)...)
+}
+
+func (g *sanyExpressionGeneration) checkChoose(expr *ChooseExpr, context map[string]Position, locals map[string]bool) Diagnostics {
+	// processChoose generates the domain before allocating its formals.
+	diags := g.checkExpr(expr.Set, context, locals)
+	bounds := expr.boundVars()
+	defer g.pushFormalContext(len(bounds))()
+	bodyLocals := copyBoolMap(locals)
+	expr.formalNodes = nil
+	for _, bound := range bounds {
+		position := bound.Pos
+		if expr.Set == nil && expr.TupleVars == nil && expr.Syntax != nil {
+			// The source unbounded scalar constructor receives
+			// children[0] (the CHOOSE token), rather than the identifier.
+			if heirs := expr.Syntax.GetHeirs(); len(heirs) != 0 {
+				position = sanyNodePosition(heirs[0])
+			}
+		}
+		node := g.newFormalParameter(bound.Name, 0, position, expr.Syntax)
+		expr.formalNodes = append(expr.formalNodes, node)
+		diags = append(diags, g.bindFormalParameter(node, context, bodyLocals)...)
+		bodyLocals[bound.Name] = true
+	}
+	return append(diags, g.checkExpr(expr.Body, context, bodyLocals)...)
 }

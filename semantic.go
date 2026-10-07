@@ -3609,16 +3609,7 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			diags = append(diags, generation.checkExpr(e.Other, defined, locals)...)
 		}
 	case *ChooseExpr:
-		diags = append(diags, generation.checkExpr(e.Set, defined, locals)...)
-		chooseLocals := map[string]bool{}
-		for name, ok := range locals {
-			chooseLocals[name] = ok
-		}
-		for _, bound := range e.boundVars() {
-			diags = append(diags, checkBoundName(bound.Name, bound.Pos, defined, chooseLocals)...)
-			chooseLocals[bound.Name] = true
-		}
-		diags = append(diags, generation.checkExpr(e.Body, defined, chooseLocals)...)
+		diags = append(diags, generation.checkChoose(e, defined, locals)...)
 	case *TupleExpr:
 		for _, elem := range e.Elems {
 			diags = append(diags, generation.checkExpr(elem, defined, locals)...)
