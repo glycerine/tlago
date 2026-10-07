@@ -24,6 +24,47 @@ tool-slot retention, nulls, negative-index exception types/messages and signed U
 wraparound. Scratch probes supply bounded implementation evidence, not permanent
 new tests or original-method translation credit.
 
+## NEW declarations and source JavaCC scanners
+
+`NewSymb` retains the source NEW symbol declaration frame and expectations.
+Its constant, variable and state/action/temporal alternatives use the actual
+JavaCC two-token previews. Constant declarations select IdentDecl with its
+separate preview. An operator with arguments followed by `\in` throws the
+source custom ParseException after consuming that token and before appending
+it or entering its expression. A valid constant domain retains an ordinary
+IN token leaf; the prior T_IN substitution belonged to a different production.
+
+Theorem uses source `jj_2_22(3)`, including its semantic ASSUME/BOXASSUME gate
+and bounded scan of AssumeProve. Invalid facts within that budget can fail in
+Theorem before an Assume-Prove frame is entered. A first-token predicate alone
+cannot preserve that failure boundary.
+
+`sany_generate_lookahead.go` mechanically translates the 159-method source
+scanner closure for entry points 16–20 and 22 into
+`sany_lookahead_generated.go`. Regenerate with `go run sany_generate_lookahead.go`;
+the generator accepts optional parser-source and output paths. Alternative
+backtracking restores scan position while retaining the furthest position and
+remaining budget. A matching token at the budget boundary raises the source
+LookaheadSuccess control flow. Semantic predicates read from scan position,
+including function-head recognition, field-token checks and junction indentation.
+The operator-stack predicate uses the active production stack, restored after
+normal expression completion.
+
+`sany_lookahead.go` saves both successful and failed calls with their source
+expiration generation. Error construction rescans live calls in entry-point
+order, catches LookaheadSuccess around each linked call list and accumulates
+actual error sequences with JavaCC's 100-token bound. This supplies following
+input length from actual rescans, including the extra token in the invalid
+nested numeric label observation. Other handwritten previews still need their
+source entry points and rescan integration; this is not full JavaCC parity.
+
+All 599 complete parser TRACE/results and 137 selected raw module trees match
+pinned Java. A temporary matrix compares all 295-by-295 token pairs for the five
+NEW previews, and both ASSUME variants over all 295-by-295 following token pairs
+for theorem lookahead: 609,175 matching verdicts in 261,075 rows, with the default
+junction/operator-stack context. These are bounded scratch observations, not
+permanent tests, canonical corpus AST equality or test-port inventory credit.
+
 ## Parser output routing and original formatting assertions
 
 `sany_output.go` ports the parser's level ordinals and Simple/Silent/OutErr stream

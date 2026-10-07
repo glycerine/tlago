@@ -111,8 +111,9 @@ Latest focused verification:
 
 | Scope | Result | Receipt |
 | --- | --- | --- |
-| Existing parser/semantic classes, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.055 seconds, session `32902` retired |
-| Complete existing SANY package with original corpus assertions | Pass | 1.477 seconds, session `73231` retired |
+| Earlier parser/semantic snapshot, original ParseErrorTests, EWD998ChanDebugger, three original fairness/liveness models, EmptyExistentialQuantifier, RandomSubsetSetOfFcns and GetScopedIdentifiers | Pass | Root 17.055 seconds, session `32902` retired |
+| Current focused parser/context/bridge, original ParseErrorTests, six original proof/selector models and scoped identifier/reference checks | Pass | Root 4.335 seconds, session `11412` retired |
+| Complete existing SANY package; canonical corpus AST assertions remain pending | Pass | 1.500 seconds, session `54828` retired |
 | Existing focused TLC function context, EXCEPT/record coverage and original function-value tests | Pass | 9.705 seconds, session `98225` retired |
 | All-package compilation | Pass | Final sources compile; no additional long workloads |
 | Existing bounded root corpus and parser-reference checks | Pass | Earlier `44aaf11` grammar snapshot |
@@ -192,7 +193,7 @@ Current MSB session `5144` is live, using the isolated binary
 `/mnt/oldrog/tmp/tlago-heap-fp-stress.test`, compiled from `132a77f` production
 and the installed test translation. Log:
 `/mnt/oldrog/tmp/tlago-heap-random-msb-current-full.log`. It started at
-18:17:43 CDT on October 6 and last reported 1,386,019,479 of 2,147,483,648
+18:17:43 CDT on October 6 and last reported 1,957,533,971 of 2,147,483,648
 insertions. Preserve this run and poll the same handle; do not restart it or
 claim a full pass before terminal completion. Its temporary files use the large
 workspace volume. Both full runs use `-timeout=0` and no race instrumentation.
@@ -614,9 +615,18 @@ Their source shape is validated at `::`; parameterized labels retain an
 `N_OpApplication`. The operator stack removes the label operand before parsing
 its body, then uses source last-operator state for the precedence check. Projection
 reads the source callee's final name and arguments instead of fabricated wrappers.
-General JavaCC rescan, the theorem's three-token Assume-Prove selection, NEW
-production grammar and remaining proof productions are reconciliation work; this
-is not complete Proof grammar or generation parity.
+NEW declarations now retain source frames, expectations and actual two-token
+JavaCC alternatives. Reject an operator declaration with arguments before `\in`
+at the source boundary; its ordinary domain token remains an `IN` leaf. Theorem's
+three-token Assume-Prove selection now runs the actual generated scanner. The
+mechanical generator retains its 159-method dependency closure and predicates
+against the scanner position, junction context and active operator stack. Saved
+calls expire in source order and rescan actual error token sequences, including
+earlier successful calls. All 599 complete TRACE/results and 137 selected raw
+module trees match Java. The temporary bounded vocabulary matrix also matches
+all 609,175 scanner verdicts. This covers the six connected entry points, not
+all 74 JavaCC previews. Remaining entry points, grammar expectations, general
+rescan integration and proof generation remain reconciliation work.
 
 Semantic symbols now embed the source SemanticNode constructor foundation:
 one process-wide atomic signed 32-bit UID counter, mutable kind, source hash
@@ -645,7 +655,7 @@ source image and zero-valued slot, then reports constructor errors before name
 resolution. Reconstructed tuple membership retains both structural diagnostics.
 General selector and constructor fidelity remains reconciliation work.
 
-Current bounded observations match Java: 513 complete parser TRACE/results, 41
+Current bounded observations match Java: 599 complete parser TRACE/results, 41
 output routing/format cases, 12 LAMBDA semantic cases, 13 CHOOSE semantic cases,
 31 selected declaration/LHS trees, 54 substitution target/arrow trees, 22 quantified
 semantic observations, three CHOOSE runtime probes and ten quantified metadata/

@@ -52,6 +52,7 @@ func (p *SanyParser) rememberFailedLookahead(length int) {
 // special ParseException constructor does. getShortMessage uses their maximum
 // length when rendering the following input, and escapes only the prior token.
 func (p *SanyParser) throwParseException(expected [][]SanyTokenKind, nativeMessage string) {
+	expected = append(expected, p.rescanLookaheads()...)
 	var message strings.Builder
 	maxSize := 0
 	for _, sequence := range expected {

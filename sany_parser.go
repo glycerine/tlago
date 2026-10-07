@@ -6,23 +6,25 @@ import (
 )
 
 type SanyParser struct {
-	output               SanyOutput
-	tokens               []*SanyToken
-	tokenManager         *SanyTokenManager
-	at                   int
-	diags                Diagnostics
-	moduleName           string
-	proofLevelStack      []int
-	junctionListContext  sanyJunctionListContext
-	dependencyList       []string
-	internalModules      []string
-	messageStack         []sanyParseFrame
-	expecting            string
-	failedLookaheadSizes map[*SanyToken]int
-	fairnessHook         *SanySyntaxNode
-	lastOperator         *SanyOperatorInfo
-	numberFlag           bool
-	decimalFlag          bool
+	output                 SanyOutput
+	tokens                 []*SanyToken
+	tokenManager           *SanyTokenManager
+	at                     int
+	diags                  Diagnostics
+	moduleName             string
+	proofLevelStack        []int
+	junctionListContext    sanyJunctionListContext
+	dependencyList         []string
+	internalModules        []string
+	messageStack           []sanyParseFrame
+	expecting              string
+	failedLookaheadSizes   map[*SanyToken]int
+	fairnessHook           *SanySyntaxNode
+	lastOperator           *SanyOperatorInfo
+	lookaheadOperatorStack *SanyOperatorStack
+	lookaheadCalls         [74]sanyLookaheadCall
+	numberFlag             bool
+	decimalFlag            bool
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
@@ -535,7 +537,7 @@ func (p *SanyParser) Theorem() *SanySyntaxNode {
 		p.rememberFailedLookahead(2)
 	}
 	p.belchDEF()
-	if p.startsAssumeProveAt(0) {
+	if p.scanLookahead(22, 3) {
 		heirs = append(heirs, p.AssumeProve())
 	} else if p.startsExpressionLookahead() {
 		heirs = append(heirs, p.ExpressionUntilDefinitionBoundary(func(tok *SanyToken) bool {
@@ -934,35 +936,56 @@ func (p *SanyParser) AssumeProveItem() *SanySyntaxNode {
 }
 
 func (p *SanyParser) NewSymb() *SanySyntaxNode {
+	p.beginProduction("NEW symbol declaration")
+	defer p.endProduction()
+	p.expecting = "NEW, CONSTANT, VARIABLE, STATE, ACTION, or TEMPORAL"
 	var heirs []*SanySyntaxNode
-	if (p.check(SanyTokenNew) && p.tokenAt(1).Kind == SanyTokenVariable) || p.check(SanyTokenVariable) {
+	switch {
+	case p.scanLookahead(18, 2):
+		if p.scanLookahead(16, 2) {
+			heirs = append(heirs, p.consumeParseToken(SanyTokenNew, "expected NEW"), p.consumeParseToken(SanyTokenConstant, "expected CONSTANT"))
+		} else if p.check(SanyTokenNew) || p.check(SanyTokenConstant) {
+			heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		} else {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenNew}, {SanyTokenConstant}}, "expected NEW or CONSTANT")
+		}
+		p.expecting = "Constant declaration"
+		if p.scanLookahead(17, 2) {
+			declaration := p.IdentDecl()
+			heirs = append(heirs, declaration)
+			if p.match(SanyTokenIN) {
+				if len(declaration.GetHeirs()) > 1 {
+					message := "declared symbol with arguments before \\in at " + p.junctionLocation(declaration.Range)
+					p.throwReportedParseException(message, declaration.Range.Begin, "E1300", message)
+				}
+				heirs = append(heirs, NewSanyTokenNode(p.previous()))
+				p.expecting = "Expression"
+				heirs = append(heirs, p.ExpressionUntilAssumeProveBoundary())
+			}
+		} else if p.check(SanyTokenUs) || p.startsDefinitionPrefix() {
+			heirs = append(heirs, p.SomeFixDecl())
+		} else {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenUs}, {SanyTokenOp76}}, "expected constant declaration")
+		}
+	case p.scanLookahead(19, 2):
 		if p.match(SanyTokenNew) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
 		}
-		heirs = append(heirs, p.consume(SanyTokenVariable, "expected VARIABLE"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenVariable, "expected VARIABLE"))
+		p.expecting = "Identifier"
 		heirs = append(heirs, NewSanyNode(SanySyntaxNodeKindByName["N_IdentDecl"], p.Identifier()))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_NewSymb"], heirs...)
-	}
-	if (p.check(SanyTokenNew) && isSanyStateActionTemporal(p.tokenAt(1).Kind)) || isSanyStateActionTemporal(p.peek().Kind) {
+	case p.scanLookahead(20, 2):
 		if p.match(SanyTokenNew) {
 			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		}
+		if !isSanyStateActionTemporal(p.peek().Kind) {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenState}, {SanyTokenAction}, {SanyTokenTemporal}}, "expected STATE, ACTION or TEMPORAL")
 		}
 		heirs = append(heirs, NewSanyTokenNode(p.advance()))
+		p.expecting = "Declaration"
 		heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
-		return NewSanyNode(SanySyntaxNodeKindByName["N_NewSymb"], heirs...)
-	}
-	if p.match(SanyTokenNew) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	}
-	if p.match(SanyTokenConstant) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
-	}
-	heirs = append(heirs, p.IdentDeclOrSomeFixDecl())
-	if p.match(SanyTokenIN) {
-		in := NewSanyTokenNode(p.previous())
-		in.Kind = SanySyntaxNodeKindByName["T_IN"]
-		heirs = append(heirs, in)
-		heirs = append(heirs, p.ExpressionUntilAssumeProveBoundary())
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenNew}}, "expected NEW symbol declaration")
 	}
 	return NewSanyNode(SanySyntaxNodeKindByName["N_NewSymb"], heirs...)
 }
@@ -1594,6 +1617,8 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 	stack := NewSanyOperatorStack()
 	stack.moduleName = p.moduleName
 	stack.NewStack()
+	previousStack := p.lookaheadOperatorStack
+	p.lookaheadOperatorStack = stack
 	p.expressionOperand(stack, stop)
 	// Source Expression calls epa before finalReduce, so a reduction failure
 	// does not retain this production in the residual stack.
@@ -1614,6 +1639,7 @@ func (p *SanyParser) ExpressionUntil(stop func(*SanyToken) bool) *SanySyntaxNode
 	if err := stack.PopStack(); err != nil {
 		panic(err)
 	}
+	p.lookaheadOperatorStack = previousStack
 	return expr
 }
 
@@ -2603,7 +2629,10 @@ func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 // matchFcnConst preserves Java's preview scan, including its acceptance of any
 // balanced <<...>> before IN; IdentifierTuple validates the contents later.
 func (p *SanyParser) matchFcnConst() bool {
-	offset := 0
+	return p.matchFcnConstAt(0)
+}
+
+func (p *SanyParser) matchFcnConstAt(offset int) bool {
 	switch p.tokenAt(offset).Kind {
 	case SanyTokenLab:
 		depth := 1
