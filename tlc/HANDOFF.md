@@ -945,11 +945,13 @@ The original nested-module SANY class now preserves its active top-level test
 and Java's ignored LET-instance method, including the exact ignore reason. Both
 fixtures match source bytes; unchanged Java and full Go SANY pass. The original incremental
 radix-overflow method now checks actual generated NumeralNodes and all three
-source big-integer values. Numerals are constructed during semantic generation
-and reused by the TLC bridge. The other four incremental methods remain
+source big-integer values. The basic expression method also retains actual
+numeral level checking, syntax identity and ConstantLevel. Numerals are
+constructed during semantic generation and reused by the TLC bridge; their
+iteration tracking matches source. The other three incremental methods remain
 uncredited: native-AST checks omit canonical node and syntax identity, actual
-levels, dependency tables and imported operator source identity. Implement those production graphs before translating
-the omitted assertions. See `sany_tests/README.md` for the method requirements.
+levels, dependency tables and imported operator source identity. Implement those
+production graphs before translating the omitted assertions. See `sany_tests/README.md` for the method requirements.
 Continue canonical OpDef/OpArg/LetIn graphs, full LevelNode fields/iteration and
 shared evaluator construction. These summaries and bounded comparisons establish
 neither complete graph parity nor additional original-method test credit.

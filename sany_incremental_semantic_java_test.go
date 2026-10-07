@@ -75,3 +75,40 @@ func TestIncrementalSemanticParseTests_bigRadixNumeralTest(t *testing.T) {
 		}
 	}
 }
+
+// Original IncrementalSemanticParseTests.basicExpressionTest, including the
+// syntax identity and actual node level checking omitted by the AST surrogate.
+func TestIncrementalSemanticParseTests_basicExpressionTest(t *testing.T) {
+	manager := NewSanyTokenManager("", "0")
+	manager.SwitchTo(SanyLexSpec)
+	parser := &SanyParser{tokenManager: manager}
+	parser.belchDEF()
+	syntax := parser.ExpressionUntil(func(token *SanyToken) bool { return token.Kind == SanyTokenEOF })
+	expr, log := sanyExpr(syntax)
+	generator := sanyExpressionGenerator(nil)
+	generator.nodes = newSanyGeneratorNodes()
+	generator.currentModule = &Module{semanticNode: newSanySemModuleNode("", nil, Position{})}
+	log = append(log, generator.checkExpr(expr, nil, nil)...)
+	if log.HasErrors() {
+		t.Fatalf("semantic generation: %v", log)
+	}
+	literal, ok := expr.(*LiteralExpr)
+	if !ok || literal.numeralNode == nil {
+		t.Fatal("generated expression is nil")
+	}
+	result := literal.numeralNode
+	result.LevelCheckNext()
+	if log.HasErrors() {
+		t.Fatalf("level checking: %v", log)
+	}
+	if result.GetTreeNode() != syntax {
+		t.Fatal("generated node does not retain original syntax identity")
+	}
+	if result.GetLevel() != tlc.TLCLevelConstant {
+		t.Fatalf("level = %d, want ConstantLevel", result.GetLevel())
+	}
+	var node tlc.SemanticNode = result
+	if _, ok := node.(*tlc.NumeralNode); !ok {
+		t.Fatalf("result = %T, want NumeralNode", node)
+	}
+}

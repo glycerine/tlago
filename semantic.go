@@ -4446,6 +4446,10 @@ func (levelChecker *sanyLevelCompositionChecker) checkResult(expr Expr, locals m
 		constraints(levelChecker.checkApplicationLevels(expr, locals))
 	}
 	switch e := expr.(type) {
+	case *LiteralExpr:
+		if e.numeralNode != nil {
+			correct = e.numeralNode.LevelCheck(1) && correct
+		}
 	case *UnaryExpr:
 		operandCorrect, operandDiags := levelChecker.checkResult(e.Expr, locals)
 		correct = correct && operandCorrect

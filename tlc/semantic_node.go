@@ -540,8 +540,9 @@ func NewValueNode(value Value) *ValueNode {
 
 type NumeralNode struct {
 	SemanticNodeBase
-	Value    *IntValue
-	BigValue *big.Int
+	Value        *IntValue
+	BigValue     *big.Int
+	LevelChecked int32
 }
 
 func (n *NumeralNode) String() string { return n.Image }
@@ -549,6 +550,18 @@ func (n *NumeralNode) String() string { return n.Image }
 func (n *NumeralNode) UseVal() bool     { return n.BigValue == nil }
 func (n *NumeralNode) Val() int32       { return n.Value.Val }
 func (n *NumeralNode) BigVal() *big.Int { return n.BigValue }
+
+// NumeralNode.levelCheck records the supplied iteration, even if it is lower
+// than a previous one. It has no descendants or level errors to compute.
+func (n *NumeralNode) LevelCheck(iter int32) bool {
+	n.LevelChecked = iter
+	return true
+}
+
+// LevelNode's no-iteration overload requests the next iteration.
+func (n *NumeralNode) LevelCheckNext() bool {
+	return n.LevelCheck(n.LevelChecked + 1)
+}
 
 func NewNumeralNode(value int32) *NumeralNode {
 	intValue := NewIntValue(value)

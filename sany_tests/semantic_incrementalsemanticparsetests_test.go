@@ -30,7 +30,8 @@ import (
 
 // Ported from tlaplus/tlatools/org.lamport.tlatools/test/tla2sany/semantic/IncrementalSemanticParseTests.java.
 // Remaining methods require reconciliation with the original canonical graph assertions.
-// The complete bigRadixNumeralTest lives in root sany_incremental_semantic_java_test.go.
+// Complete basicExpressionTest and bigRadixNumeralTest live in root
+// sany_incremental_semantic_java_test.go.
 func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
 	spec := checkedSANYModuleBody(t, "op == 0")
 	def := requireSANYDefinition(t, spec.Root, "op")
@@ -42,16 +43,6 @@ func TestIncrementalSemanticParseTests_basicOpDefTest(t *testing.T) {
 	}
 	if lit, ok := def.Expr.(*tlago.LiteralExpr); !ok || lit.Kind != "number" || lit.Value != "0" {
 		t.Fatalf("op body = %#v, want numeric literal 0", def.Expr)
-	}
-}
-
-func TestIncrementalSemanticParseTests_basicExpressionTest(t *testing.T) {
-	spec := checkedSANYModuleBody(t, "ASSUME 0")
-	if got := len(spec.Root.Assumptions); got != 1 {
-		t.Fatalf("assumption count = %d, want 1", got)
-	}
-	if lit, ok := spec.Root.Assumptions[0].Expr.(*tlago.LiteralExpr); !ok || lit.Kind != "number" || lit.Value != "0" {
-		t.Fatalf("assumption expr = %#v, want numeric literal 0", spec.Root.Assumptions[0].Expr)
 	}
 }
 

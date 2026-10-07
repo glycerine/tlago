@@ -10,7 +10,14 @@ not undergone SANY generation still use its existing constructor path. TLC's
 later constant processing retains responsibility for rejecting out-of-range
 values. The original incremental radix test now inspects generated nodes rather
 than independently reparsing a native-AST string. This establishes numeral
-construction and sharing, not full LevelNode or other semantic graph parity.
+construction and sharing. Numeral level checking records its supplied signed
+32-bit iteration without a cache guard and always succeeds; its no-iteration
+overload requests `LevelChecked + 1`, including Java's signed wraparound. The
+normal composite checker invokes this on retained numerals at iteration 1. The
+original basic expression test checks syntax identity and ConstantLevel after
+actual level checking. Common LevelNode getter guards, other metadata and full
+recursive graph iteration propagation remain pending. These methods establish
+neither full LevelNode nor other semantic graph parity.
 
 ## Expression namespaces and INSTANCE substitutions
 

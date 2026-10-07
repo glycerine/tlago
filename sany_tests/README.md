@@ -52,9 +52,19 @@ semantic-log success, concrete NumeralNode type, `useVal() == false`, and the
 expected big-integer value. Generation retains the numeral's syntax and shares
 the node with the TLC bridge instead of postponing construction until evaluation.
 The unchanged original Java class passes all five methods; this credits only
-the one complete Go method, not the remaining four.
+the complete Go methods listed here, not the whole class.
 
-The other four methods in `semantic.IncrementalSemanticParseTests` remain
+`semantic.IncrementalSemanticParseTests.basicExpressionTest` is also **port
+complete** in the root translation. It retains incremental input `0`, both
+semantic-log success assertions, non-null result, actual numeral level checking,
+original syntax-node identity, ConstantLevel and concrete NumeralNode type.
+Numeral level checking records the supplied signed 32-bit iteration and the
+no-iteration overload advances it, matching source even for decreasing iterations
+and signed wraparound. The normal composite checker invokes it at iteration 1.
+This does not complete the common LevelNode getter guards, other metadata, or
+recursive graph iteration propagation.
+
+The other three methods in `semantic.IncrementalSemanticParseTests` remain
 **reconcile**. Their native-AST checks omit original canonical semantic-node
 assertions: ordinary OpDef recursion/arity/body metadata, syntax-node identity,
 actual level-check results and constant levels, dependency module tables,

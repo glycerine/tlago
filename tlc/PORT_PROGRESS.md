@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 Numeral level iteration and original basic expression assertions:
+Previous completed commit: afb7fcc. Compare NumeralNode.levelCheck and the
+LevelNode no-iteration overload. NumeralNode records the supplied iteration
+unconditionally and returns true; a lower supplied iteration replaces the prior
+one. Add signed 32-bit LevelChecked, LevelCheck(iter) and LevelCheckNext,
+including Java's overflow in the increment. Normal composite checking invokes
+the actual retained numeral at iteration 1. Common LevelNode getter guards,
+other metadata and full recursive graph iteration propagation remain pending;
+this is not full LevelNode parity.
+
+Replace the whole original basicExpressionTest AST surrogate with its direct
+root-package translation: incremental input 0, original SPEC lexer state and
+parser production, generator/null-node and empty-module setup, both semantic
+log success checks, non-null generated node, actual level check, exact syntax
+identity, ConstantLevel and concrete NumeralNode type. No invented tests,
+fixture changes or weakened assertions. Both complete incremental numeral
+methods pass in 0.018 seconds (53056, terminal 0). Reuse unchanged Java's
+five-method 0.095-second receipt from the preceding commit.
+
+Scratch-only actual Java/Go probes agree on explicit iterations 5 then 2,
+next iteration 3, constant level and successful checking. Extend the probes to
+Integer.MAX_VALUE: both next-iteration checks record -2147483648 and succeed.
+Go probe 4510 returns terminal 0; Java probe also returns 0. These probes earn
+no additional original-method credit and live outside the repository.
+Focused parser/context/semantic-bridge and original TLC model gate passes in
+46.938 seconds (92698, terminal 0); receipt
+/mnt/oldrog/tmp/tlago-numeral-level-root.log. Full SANY passes in 1.979 seconds
+(60721, terminal 0). Initial all-package compilation passes (61536, terminal 0).
+After the final int32 representation, both original numeral methods and existing
+short TLC Specs/ASTToLive checks pass (95141, terminal 0; root 0.020 seconds,
+TLC 0.011 seconds), and every package compiles again (62990, terminal 0).
+All handles retired. Update SANY completion notes, handoff, inventory scope
+and architecture. Three incremental methods stay reconcile; TLC counts and
+full-workspace verification remain unchanged. No race run or broad sweep;
+new distributed architecture remains postponed.
+
 2026-10-07 Retain generated numeral nodes and complete original radix test:
 Previous completed commit: 68b70b6. Source Generator.generateExpression creates
 NumeralNode at N_Number; Go previously retained only a literal image and created
