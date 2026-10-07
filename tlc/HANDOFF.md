@@ -1067,6 +1067,14 @@ Top-level USE/HIDE retain actual vectors and source fact-validation order. Their
 constructors preserve nullable step names, array aliases and fresh child copies.
 Missing canonical BY vectors and structured proof owners remain incomplete.
 
+NonLeafProofNode and DefStepNode constructors now preserve their supplied arrays,
+context and nullable interned step number. Non-leaf children are null for empty
+steps; definition-step children preserve a nonnull empty array and fail on null
+definitions. Both copy populated child arrays and retain null entries. Their
+32-case constructor comparison matches Java in all 80 rows. Generation and
+numbered-step backlinks remain pending; the constructors alone do not complete
+structured-proof ownership.
+
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
 scope, failure nodes and diagnostic codes/ranges/messages. Assumption and direct

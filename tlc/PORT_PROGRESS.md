@@ -1,5 +1,32 @@
 # TLC Port Progress
 
+2026-10-07 Structured-proof parent and definition-step constructors:
+Previous completed commit: bcf5c42. Port NonLeafProofNode constructor, retained
+steps/instances/context and step/context accessors. Source children exclude the
+instance array, return null for null/empty steps and copy populated steps.
+Port DefStepNode constructor, retained definitions and nullable UniqueString step
+number. Source children copy definitions even when empty, throw the actual typed
+NullPointerException for null definitions, and preserve null entries. All nodes
+use the shared semantic UID counter and existing source syntax/location handling.
+Generation, numbered non-theorem OpDefNode backlinks, actual InstanceNode graphs,
+level checking and visitors remain unfinished.
+
+Pinned Java and Go temporary observers agree on all 80 rows across 32 cases:
+null/empty/populated/null-slot arrays crossed with null/present syntax, context
+and step name. Check UID increments, kinds, syntax/context/name identity, array
+aliasing, child-copy independence and null-array failures. Scratch files remain
+outside the repository under /mnt/oldrog/tmp/tlago-structured-ctor-*; constructor
+comparison session 76625 returned status 0 and is retired. No direct original
+Java tests reference these classes in the pinned test tree. No permanent tests,
+replacement assertions, test-port inventory credit or whole-feature credit added.
+
+Existing focused root parser/proof/TLC-model gate passes 46.085s (41317 retired).
+Complete sany_tests passes 1.812s (2849 retired); all-package compile succeeds.
+Logs: tlago-structured-ctor-root.json and tlago-structured-ctor-compile.log under
+/mnt/oldrog/tmp. All checks run normally, with no race or long-workload repeat.
+No current full-workspace pass is claimed. Next work remains structured-proof
+construction and step ownership before further selector/instance and level parity.
+
 2026-10-07 USE/HIDE vectors and BY leaf-proof ownership:
 Previous completed commit: 1287055. Port UseOrHideNode constructor, aliased fact/
 definition arrays, nullable step-name identity, fresh fact-only children and

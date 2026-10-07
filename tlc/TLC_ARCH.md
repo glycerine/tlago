@@ -1,5 +1,22 @@
 # TLC Architecture Notes for the Go Port
 
+## Structured-proof constructor ownership
+
+NonLeafProofNode retains the supplied step array, module-definition instance
+array and context identity. Its children contain only steps: null/empty steps
+return null; populated steps return a fresh copy, including null slots.
+DefStepNode retains its definition array and nullable UniqueString step number.
+Its children always copy definitions to a fresh array, including a nonnull empty
+array; a null definition array raises NullPointerException. Preserve null slots
+as null graph references rather than typed nil interfaces.
+
+These constructors use the shared semantic UID counter and source syntax/location
+handling. Generation, numbered non-theorem OpDefNode backlinks, InstanceNode
+identities, inherited level checking and visitors remain unfinished. Do not create
+a parent proof graph before its complete children and scope are available.
+The 32-case, 80-row Java comparison verifies only these constructors and accessors;
+it adds no original-test or whole-feature completion credit.
+
 ## USE/HIDE vectors and BY leaf proofs
 
 UseOrHideNode retains supplied fact/definition arrays and ONLY flags. Its nullable
