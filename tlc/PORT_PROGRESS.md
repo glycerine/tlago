@@ -1,5 +1,47 @@
 # TLC Port Progress
 
+2026-10-07 SubstIn/APSubstIn construction and mutation:
+Previous completed commit: 06873a9. Port all four source copy-constructor paths
+and both default constructors. Retain actual arrays, Subst/body/module identities,
+source kinds and syntax. Template access precedes allocation; null-body checking
+follows it and preserves distinct error codes/messages. Children copy body then
+substitution expressions; indexed access preserves typed bounds/null failures.
+Default construction allocates the wrapper before zero-argument applications or
+operator arguments, retaining actual symbol/module references and source matcher
+diagnostics/aborts. Missing names add no default slot.
+
+Port explicit replacement by mutating the existing implicit Subst. Copies share
+that object and observe its changed expression, syntax and implicitness. Appending
+installs a freshly copied array only on the receiving wrapper; duplicate explicit
+slots remain unchanged. Unknown/non-declaration targets add no slot. Completeness
+checks retain declaration order, locations, messages and distinct source codes:
+SubstIn uses 4240/4241; APSubstIn uses 4004. Null Context keys retain Hashtable's
+typed NullPointerException rather than silently skipping lookup.
+
+All 518 complete Java/Go rows agree across 128 copy cases, 48 default cases and
+four mutation/completeness sequences. Cover null syntax/body/modules/arrays,
+array aliases, null expressions/entries, full diagnostics, semantic kinds and
+UID deltas, expression/operator defaults, shared-object mutation and append-array
+isolation. Scratch observers/logs remain outside the repository under
+/mnt/oldrog/tmp/tlago-substin-*. Initial compile 38154 and observer 13040 failed
+vet's nonconstant diagnostic-format check; replace it with exact source literals,
+preserving empty source parameter lists. Corrected 39777 returns 0, exposing
+observer input-order mismatch: Java module constants enumerate F,c while Go's
+native declaration array is c,F. Supply the same F,c,v input vector to the Go
+constructor; preserve every output row and keep actual caller enumeration pending.
+56017 returns 0. Mutation comparison 45210 exposes AP diagnostic-code differences;
+fix the port rather than changing expected codes. Final 86557 returns 0 and all
+518 rows match. All handles retired; no permanent tests invented or original
+method completion credit added.
+
+Existing affected root/parser/proof/TLC-model gate passes 46.624s (10382 retired).
+Complete sany_tests passes 1.790s (15656 retired); compile-all passes (48669
+retired). git diff --check passes. Normal execution only; no race, broad workload
+repetition or current full-workspace pass claim. Actual INSTANCE generation,
+module/proof/LET vectors, inherited wrapper levels/visitors and evaluator graph
+integration remain pending. Continue faithful Java parity; distributed work is
+postponed until the rest of the port is complete.
+
 2026-10-07 InstanceNode constructors and Subst storage:
 Previous completed commit: 96244e0. Port actual InstanceNode constructor, name/
 module/localness/step-name accessors, constant-zero level accessor and fresh

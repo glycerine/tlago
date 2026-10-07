@@ -1096,8 +1096,11 @@ modules match Java, including nested scope restoration and rejected bindings.
 InstanceNode constructor/accessors/children and Subst storage/mutation/identity
 lookup now match all 582 rows across 192 constructor combinations and mutation
 observations. Supplied arrays retain identity, null arrays become empty, and
-null entries preserve source failures. Actual INSTANCE generation, substitution
-wrappers and module/proof/LET instance vectors remain incomplete; bounded
+null entries preserve source failures. SubstIn/APSubstIn copy/default constructors,
+array ownership, explicit mutation and completeness checks now match 518 rows
+across 180 source scenarios. Preserve their distinct source diagnostic codes.
+Actual INSTANCE generation, inherited wrapper levels/visitors and module/proof/LET
+instance vectors remain incomplete; bounded
 generation evidence does not
 complete inherited level checking, visitors or evaluator graph sharing.
 

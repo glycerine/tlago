@@ -1,5 +1,38 @@
 # TLC Architecture Notes for the Go Port
 
+## SubstIn and APSubstIn wrapper construction
+
+The two wrappers now retain actual Subst arrays, body and instantiating/
+instantiated module identities. Copy constructors share the template's array;
+SubstIn also accepts an APSubstIn template. Null arrays stay null. Access the
+template before allocating the new UID; report null-body diagnostics afterward,
+preserving the distinct source kinds, error codes and message line breaks.
+A null syntax with a null body raises the source typed NullPointerException.
+Children are fresh arrays containing the body first, then substitution
+expressions, with null expressions retained and null Subst entries rejected.
+Indexed access preserves null-array and bounds failures.
+
+Default constructors allocate the wrapper before generating defaults in the
+supplied declaration order. Resolve actual symbols in the instancer table;
+missing names create no slot. Variables and zero-arity constants get actual
+zero-argument applications; operator constants get actual OpArgNodes with the
+instantiating module. Subst objects remain implicit and have null expression
+syntax. Preserve matcher diagnostics and aborts rather than synthesizing nodes.
+
+Explicit replacement mutates the existing implicit Subst, so copies observe the
+same expression/syntax/implicitness changes. Duplicate explicit substitutions
+leave it unchanged and report the source diagnostic. Appending copies the array
+and installs it only on that wrapper. Unknown/non-declaration targets add no slot.
+Completeness checks preserve declaration order, locations and messages. APSubstIn
+uses the source generic 4004 codes here; SubstIn uses specialized 4240/4241 codes.
+
+All 518 Java/Go rows match across 128 copy-constructor cases, 48 default cases
+and four mutation/completeness sequences. The observer supplies Java's actual
+F, c, v declaration order to both constructors; module-vector enumeration is a
+separate caller responsibility. No permanent tests or method completion credit
+are added. Actual INSTANCE generation, complete inherited levels/visitors,
+module/proof/LET vectors and evaluator graph integration remain pending.
+
 ## InstanceNode and substitution storage
 
 InstanceNode now retains its nullable interned name, localness, target module,
