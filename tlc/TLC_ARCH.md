@@ -1,5 +1,26 @@
 # TLC Architecture Notes for the Go Port
 
+## Builtin operator formal construction
+
+OpDefNode(BuiltInOperator) allocates its own node before its phony formals.
+The Go builtin constructor now retains an array for every fixed arity, including
+an empty array at arity zero; variadic operators retain nil. Entries are distinct
+FormalParamNodes named Formal_0, Formal_1, etc., each zero-arity, local, with no
+module and no SymbolTable installation. Each builtin retains its separate kind-zero
+syntax carrying the builtin image, filename and zero coordinates.
+
+A null FormalParamNode syntax remains null and its location is unknown. It does
+not inherit SemanticNode.nullSN's non-null builtin syntax/location. Correct this
+in the shared constructor. All 668 actual Java constructor observations match
+across 72 builtin operators and 77 phony formals, including arrays, node metadata,
+syntax/location and consecutive relative construction order.
+
+This constructor port does not integrate Context's static initialization/reInit
+lifecycle into the native frontend, complete LevelNode data or establish absolute
+source allocation order. Initial contexts and builtin graph identity still need
+shared native generation/evaluator integration. Do not simulate their allocations
+with UID offsets or discard phony nodes after incrementing the counter.
+
 ## Retained label parameter arrays
 
 After generating a label body, resolve each label argument in the current symbol

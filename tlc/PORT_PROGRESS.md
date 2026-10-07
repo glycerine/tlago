@@ -1,5 +1,49 @@
 # TLC Port Progress
 
+2026-10-06 Builtin phony formal arrays and null-syntax constructor correction:
+Previous completed commit: 8fce1f2. Inspect Context.initialize/reInit and
+OpDefNode(BuiltInOperator): each fixed-arity builtin constructs real phony
+FormalParamNodes, not just arity metadata. Native builtin construction now retains
+those ordered arrays, including empty fixed-zero arrays and nil variadic arrays.
+Each entry has source name Formal_i, arity zero, localness true, no module and no
+binding installation. Builtin syntax carries kind zero, its own name/image,
+--TLA+ BUILTINS-- filename and zero coordinates.
+
+The first Go scratch probe failed compilation because it used SourceLocation's
+nonexistent Module field; correct the probe to Source. First completed comparison
+25368 terminal 1 then exposed a real shared constructor shortcut: Go substituted
+SemanticNode.nullSN's syntax/location for null formal syntax. Source SemanticNode
+retains null stn and getLocation returns Location.nullLoc. Correct production
+newSanyFormalParamNode to nil syntax, unknown location and empty native position.
+Correct the scratch observation to inspect actual null syntax and null location
+separately from the distinct nullSN sentinel; do not change Java construction.
+
+All 668 source observations now match across all 72 builtin properties and 77
+phony formals: arity/array shape, names/kind/arity/localness/module, operator
+syntax/location, null formal syntax/location, consecutive relative UID allocation
+and distinct identities. Final comparison 32262 terminal 0. Receipts:
+/mnt/oldrog/tmp/tlago-builtin-formals-{java,go}.log. Source helper
+SourceBuiltinFormalsManual.java constructs actual OpDefNodes from all upstream
+BuiltInOperators.Properties. Go overlay invokes the native constructor. Helpers,
+overlay and vectors remain outside the repo; no invented permanent tests or
+inventory credit. Relative constructor verification is not absolute frontend UID
+or whole-class/LevelNode parity.
+
+Final existing focused parser/context/builtin/semantic checks and original
+ParseError/legacy/scoped identifier methods pass 5.243 seconds (22775). Whole
+SANY package passes 1.784 seconds (35228); all packages compile (73402).
+Logs: /mnt/oldrog/tmp/tlago-builtin-formals-{root,sany,compile}-final.log.
+Earlier pre-null-correction checks 82483/37104/6750 also passed but final checks
+cover the correction. All handles terminal and retired; git diff --check passes.
+No race workloads, original assertion/settings/bounds changes or current
+full-workspace claim.
+
+Next: integrate source Context static initialization/reInit and retained builtin
+identity with native generation, then complete module/declaration/operator graph
+constructors. Current native frontend still does not construct the initial context
+on its semantic generation path. Larger label ordering failures from 8fce1f2 remain
+unresolved; no offset manufacturing or claimed fix. New service remains postponed.
+
 2026-10-06 Source HashSet removal and aggregate label extras:
 Previous completed commit: d0d9fa1. Port OpenJDK 21 HashMap removeNode's
 matchValue=false/movable=true specialization, removeTreeNode and balanceDeletion

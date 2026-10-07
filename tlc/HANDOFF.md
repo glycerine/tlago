@@ -767,8 +767,16 @@ iteration to produce one aggregate diagnostic. The earlier nine-case diagnostic
 comparison now matches completely. HashMap removal includes tree rebalancing and
 conversion back to lists; 3,470 operation/iteration observations match Java.
 
-Next semantic work: complete source semantic graph constructors and allocation
-order, then unify label scope/generation guards. The expanded aggregate audit has
+Builtin operator construction now retains source phony FormalParamNodes for fixed
+arity, including empty arrays for arity zero and nil arrays for variadic operators.
+Each is a fresh zero-arity local with null syntax, unknown location and no module.
+Builtin operators retain their own zero-kind builtin syntax and location. Correct
+null-syntax formal construction to retain null rather than substitute `nullSN`.
+All 668 constructor observations match Java across 72 builtins and 77 formals.
+Frontend initial-context lifecycle is still not integrated with native generation.
+
+Next semantic work: integrate source initial-context construction/reset lifecycle,
+complete semantic graph constructors and allocation order, then unify label guards. The expanded aggregate audit has
 three differences (`formal_20`, `formal_70`, `nested_20`) out of five cases. The
 70-formal case assigns first UID 305 in Java and 1 in Go; both hash formulas include
 kind and UID. Preserve these actual identities and HashSet iteration rather than

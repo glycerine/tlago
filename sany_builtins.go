@@ -1,5 +1,11 @@
 package tlago
 
+import (
+	"strconv"
+
+	"github.com/glycerine/tlago/tlc"
+)
+
 type sanyBuiltinOperator struct {
 	name         string
 	arity        int
@@ -10,6 +16,7 @@ type sanyBuiltinOperator struct {
 
 type sanySemBuiltInSymbol struct {
 	sanySemSymbolBase
+	formalNodes  []*sanyFormalParamNode
 	level        tlaLevel
 	argMaxLevels []tlaLevel
 	argWeights   []int
@@ -36,7 +43,7 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemBuiltInSymbol {
 			leibniz[i] = weight == 1
 		}
 	}
-	return &sanySemBuiltInSymbol{
+	node := &sanySemBuiltInSymbol{
 		sanySemSymbolBase: sanySemSymbolBase{
 			sanySemanticNode:   newSanySemanticNode(sanyBuiltInKind),
 			name:               info.name,
@@ -49,6 +56,18 @@ func newSanyBuiltInSymbol(info sanyBuiltinOperator) *sanySemBuiltInSymbol {
 		argWeights:   append([]int(nil), info.argWeights...),
 		leibniz:      leibniz,
 	}
+	// OpDefNode(BuiltInOperator) first constructs its own syntax, then
+	// creates phony zero-arity formals without a SymbolTable or module.
+	position := Position{File: "--TLA+ BUILTINS--"}
+	node.TreeNode = &SanySyntaxNode{Image: info.name, FileName: position.File, Range: SanyRange{Begin: position, End: position}, ProofLevel: -1, Level: -1}
+	node.Location = tlc.NewSourceLocation(position.File, 0, 0, 0, 0)
+	if info.arity >= 0 {
+		node.formalNodes = make([]*sanyFormalParamNode, info.arity)
+		for i := range node.formalNodes {
+			node.formalNodes[i] = newSanyFormalParamNode("Formal_"+strconv.Itoa(i), 0, position, nil, nil)
+		}
+	}
+	return node
 }
 
 // Resolve a source initial-context symbol without XML's variadic Cartesian

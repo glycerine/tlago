@@ -29,8 +29,9 @@ func newSanyFormalParamNode(name string, arity int, position Position, syntax *S
 		module: module,
 	}
 	if syntax == nil {
-		node.TreeNode = tlc.NullSemanticNodeInstance.GetTreeNode()
-		node.Location = tlc.NullSemanticNodeInstance.Location
+		node.TreeNode = nil
+		node.Location = tlc.NullSourceLocation
+		node.pos = Position{}
 	} else {
 		node.TreeNode = syntax
 		bridge := tlcBridge{convertingModule: moduleName}
