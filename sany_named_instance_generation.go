@@ -145,7 +145,7 @@ func (node *sanySemOpDefNode) getPathName() *tlc.UniqueString {
 // A selector consisting entirely of module-instance prefixes and a final name
 // applies the actual qualified definition. Operand and label selectors follow
 // different source rules and are not represented by reconstructed definitions.
-func (g *sanyExpressionGeneration) retainCanonicalInstanceSelection(expr Expr) Diagnostics {
+func (g *sanyExpressionGeneration) retainCanonicalInstanceSelection(expr Expr, operatorArgument, symbolReferenceOnly bool) Diagnostics {
 	source, selected := sanyExprSource(expr), sanyExprSelection(expr)
 	if source == nil || selected == nil || source.Selector == nil || len(source.Selector.Steps) < 2 {
 		return nil
@@ -177,12 +177,19 @@ func (g *sanyExpressionGeneration) retainCanonicalInstanceSelection(expr Expr) D
 			return nil
 		}
 	}
-	if g.operatorArgument || g.symbolReferenceOnly {
+	if operatorArgument {
+		source.semanticGraph = newSanySemOpArgNode(symbol, source.Syntax, g.currentModule.semanticNode)
+		return nil
+	}
+	if symbolReferenceOnly {
 		return nil
 	}
 	node, diagnostics, err := newSanySemOpApplNode(symbol, args, source.Syntax)
 	if err != nil {
 		panic(err)
+	}
+	if symbol.semKind() == sanyUserDefinedOpKind || symbol.semKind() == sanyThmOrAssumpDefKind {
+		node.subExpressionOf = symbol
 	}
 	source.semanticGraph = node
 	return diagnostics

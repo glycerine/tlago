@@ -47,17 +47,27 @@ Do not resume SANY XML or ApalacheIR corpus sweeps without a user request.
 
 ## Current verified state
 
-Current work in progress: `tlc_bridge.go` replaces the XML-exporter's estimated
-operator level with the checked canonical OpDef/ThmOrAssumpDef level. Do not
-commit that bridge change as complete yet. Original Test206 exposes missing
-canonical general subexpression selectors; finish Java `Generator.selectorToNode`
-generation before further bridge work, preserving all original assertions.
+The TLC bridge now reads the checked canonical OpDef/ThmOrAssumpDef level,
+replacing the XML-exporter's estimate. Canonical construction for validated
+subexpression selectors now retains actual selected bodies, formal parameters,
+caller arguments, substitution prefixes, LET contexts and selector ownership.
+Original Test206 and Test209 pass unchanged; 233 external Java/Go graph rows
+agree, including observed sharing and `subExpressionOf` references. This is
+not a complete port of `Generator.selectorToNode`: invalid-selector diagnostics,
+allocation order and general graph coverage still require faithful translation.
+The bridge's AST-based export and runtime graph construction also need further
+canonical integration. No estimated-level fallback is restored.
+
 Named/unnamed INSTANCE generation no longer compares canonical export counts
 with the native AST's export list. That comparison is absent in Java and wrongly
 rejects modules with recursive LOCAL definitions: Java retains the recursive
 declaration's locality flag. Actual child/body completeness checks remain.
-The full SANY suite passes after this correction. The bridge's AST-based export
-and runtime graph construction still need further canonical integration.
+
+Final focused verification passes: 205 test pass events in 5.470 seconds,
+complete SANY in 1.919 seconds and all-package compilation. All focused handles
+are retired. Existing source tests and fixtures are unchanged, and test-port
+inventory counts do not increase. Full-workspace session `12025` below tests an
+earlier implementation snapshot and cannot verify these latest changes.
 
 Full normal workspace verification of `4cd17ea` is running in session `12025`.
 Command: `go test ./... -json -count=1 -timeout=60m`, with the standard offline

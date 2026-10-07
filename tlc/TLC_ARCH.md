@@ -9747,9 +9747,10 @@ count with the older AST-derived export list. Java iterates its actual Context;
 it has no such comparison. In particular, recursive declarations keep their
 source locality flag after LOCAL completion, so the two lists can legitimately
 differ. Child/body completeness guards still expose unported canonical graphs.
-Pending bridge work reads static definition levels from these checked nodes,
-including actual Context theorem/assumption definitions. General selector graphs
-required by original Test206 remain missing and block completing that integration.
+The TLC bridge reads static definition levels from these checked nodes,
+including actual Context theorem/assumption definitions. It no longer uses the
+XML-exporter's estimated levels. The bridge still constructs runtime definitions
+from AST views; complete canonical graph/evaluator sharing remains pending.
 
 `sany_at_level.go` translates the complete EXCEPT AtNode level algorithm. It
 captures the enclosing EXCEPT operand array, ignores child correctness and
@@ -9787,3 +9788,29 @@ The unchanged original Java JUnit class passes all five methods, and all five
 Go translations pass. Only the two newly translated SANY methods gain completion
 credit; main TLC inventory totals do not change. This does not establish general
 incremental-generator, corpus AST or whole-workspace completion.
+
+## Canonical construction for validated subexpression selectors
+
+`sany_selector_graph.go` follows the actual semantic graph after native selector
+validation. Reuse arguments already generated in the caller's scope; never
+regenerate the selected AST body. Retain actual declaration formals, label nodes,
+LET contexts and substitution prefixes. Follow name, label and operand modes,
+including quantifier parameters, record pairs, CASE pairs, EXCEPT bases,
+ASSUME/PROVE and its SUFFICES wrapper, and LAMBDA arguments. Finalization retains
+source formal cloning, prefix wrapping, LAMBDA/application construction and
+`subExpressionOf` ownership. Preserve Java's original argument-array choice in
+the selected operator-argument branch rather than repairing its source behavior.
+
+Generation flags must be captured before recursive argument generation clears
+the mutable fields. Instance and general selection helpers receive those captured
+flags, preserving operator arguments as OpArgNodes. Source argument arrays remain
+non-null even when empty. Ordinary general-identifier applications also retain
+the source operator ownership; fixity applications use their separate path.
+
+Original Test206 and Test209 pass unchanged. External manual observers agree on
+151 and 82 graph rows respectively, including concrete node kinds, checked levels,
+operator/formal names and arities, observed reference sharing and selector owners.
+These observations do not compare every syntax position, allocation UID or mutable
+collection, and earn no original-method credit. This construction path does not
+complete Java's invalid-selector diagnostics, DEF handling or general graph
+allocation order. Those remain explicit implementation work.

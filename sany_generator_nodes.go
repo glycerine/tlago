@@ -38,6 +38,7 @@ type sanySemOpDefNode struct {
 
 type sanySemOpApplNode struct {
 	sanySemanticNode
+	subExpressionOf       sanySemSymbol
 	operator              sanySemSymbol
 	operands              []sanySemanticGraphNode
 	ranges                []sanySemanticGraphNode

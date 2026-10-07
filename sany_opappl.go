@@ -170,6 +170,7 @@ func retainSanySymbolReference(expr Expr, operator sanySemSymbol, asOperator boo
 	if err != nil {
 		panic(err)
 	}
+	retainSanyApplicationOwner(node, source.Syntax)
 	source.semanticGraph = node
 	return diagnostics
 }
@@ -264,8 +265,20 @@ func retainSanyMatchedApplication(expr Expr, operator sanySemSymbol, children []
 	if err != nil {
 		panic(err)
 	}
+	retainSanyApplicationOwner(node, source.Syntax)
 	source.semanticGraph = node
 	return diagnostics
+}
+
+// selectorToNode records its first user-defined operator or theorem even when
+// the selector ends at that name. Fixity applications use a different path.
+func retainSanyApplicationOwner(node *sanySemOpApplNode, syntax *SanySyntaxNode) {
+	if syntax == nil || (syntax.Kind.JavaName() != "N_GeneralId" && syntax.Kind.JavaName() != "N_OpApplication") {
+		return
+	}
+	if node.operator.semKind() == sanyUserDefinedOpKind || node.operator.semKind() == sanyThmOrAssumpDefKind {
+		node.subExpressionOf = node.operator
+	}
 }
 
 // A single parser junction/product node is flattened into native wrappers.

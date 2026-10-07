@@ -3525,9 +3525,14 @@ func (generation *sanyExpressionGeneration) checkExpr(expr Expr, defined map[str
 			}
 			diags = append(diags, generation.generateOperatorOperand(owner, i, expected, arg, defined, locals)...)
 		}
-		diags = append(diags, generation.retainCanonicalInstanceSelection(expr)...)
+		diags = append(diags, generation.retainCanonicalInstanceSelection(expr, operatorArgument, symbolReferenceOnly)...)
 		if sanyGeneratedExpressionNode(expr) == nil {
-			diags = append(diags, generation.retainCanonicalLabelSelection(expr)...)
+			if !operatorArgument && !symbolReferenceOnly {
+				diags = append(diags, generation.retainCanonicalLabelSelection(expr)...)
+			}
+		}
+		if sanyGeneratedExpressionNode(expr) == nil {
+			diags = append(diags, generation.retainCanonicalSubexpression(expr, operatorArgument, symbolReferenceOnly, fact)...)
 		}
 		return diags
 	}

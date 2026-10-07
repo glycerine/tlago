@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-07 Canonical selector construction and checked TLC definition levels:
+Previous completed commit: 8bc1776. Finish the pending bridge change by reading
+actual checked OpDef/ThmOrAssumpDef levels, resolving synthetic named theorem and
+assumption views through their actual module Context. Remove the XML-estimated
+level field; no fallback estimate remains.
+
+Implement canonical construction for already validated selectors against actual
+source nodes. Preserve caller-generated argument pointers, formals, labels,
+LET contexts, substitution prefixes, bound operands, SUFFICES wrapping and
+source finalization. Initial original Test206 passes in 0.389s; full SANY passes
+in 1.822s. Expanded original selection 98325 exposes Test209: helpers read mutable
+operator-argument flags after recursive generation cleared them. Pass captured
+flags explicitly and construct the actual qualified OpArg. Corrected selection
+64564 passes in 5.312s with 205 test pass events. No original test is changed.
+
+External production Java/Go observers on the unchanged Test206 and Test209
+models agree on all 233 emitted graph rows (151 and 82). Repeat after adding
+source subExpressionOf ownership: rows still agree, including reference sharing
+and ownership. Go observer handles 19831 and 39776 return 0 and are retired.
+Observer sources, overlays, Java classes and logs remain under /mnt/oldrog/tmp
+with prefix tlago-selector-graph-. They compare checked levels, concrete kinds,
+operators, formals and observed sharing, not every syntax field, collection or
+absolute UID. No permanent tests or original-method completion credit added.
+
+Final existing original/bridge selection 66905 passes in 5.470s with 205 test
+pass events; full SANY 36733 passes in 1.919s. All-package compile 60650 passes.
+Initial final-check commands mistakenly specified nonexistent ./sany; both
+return 1 with no success credit, then are corrected to root and ./sany_tests.
+Logs: tlago-canonical-selector-final-originals.json, -final-sany.log and
+-final-compile.log under /mnt/oldrog/tmp. All focused handles are retired.
+
+Full normal workspace 12025 remains live on the earlier 4cd17ea snapshot.
+Reported failures remain the three native XML fixtures already documented;
+no full-workspace pass is claimed. No race or optional corpus sweep enabled.
+This change completes the scoped canonical construction needed by original
+Test206/209, not the entire selectorToNode diagnostic/DEF engine or runtime
+evaluator graph integration. Keep the overall parity goal active.
+
 2026-10-07 Canonical INSTANCE export gate and pending bridge-level integration:
 Previous completed commit: 633a0ca. Full workspace session 12025 remains live
 on the 4cd17ea implementation snapshot. It has passed SANY in 1.525s and reported

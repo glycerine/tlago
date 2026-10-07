@@ -441,6 +441,7 @@ func (g *sanyExpressionGeneration) retainCanonicalLabelSelection(expr Expr) Diag
 	if err != nil {
 		panic(err)
 	}
+	node.subExpressionOf = symbol
 	source.semanticGraph = node
 	return diagnostics
 }
