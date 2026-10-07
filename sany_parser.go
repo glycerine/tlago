@@ -2455,127 +2455,106 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 func (p *SanyParser) SBracketCases() *SanySyntaxNode {
 	p.beginProduction("Some [] Form")
 	defer p.endProduction()
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenLsb, "expected ["))
-	if p.startsSBracketFunctionConstructorWithoutMapTo() &&
-		p.findTopLevelBeforeStop(SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) < 0 {
-		p.add(p.peek().Begin, "E1300", "expected |-> in function constructor")
-	}
-	if p.startsQuantBoundIntro() && p.findTopLevelBeforeStop(SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 &&
-		p.findTopLevelBeforeStop(SanyTokenIN, SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
-		heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF))
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLsb, "expected [")}
+	kind := "N_FcnAppl"
+	if p.matchFcnConst() {
+		kind = "N_FcnConst"
+		heirs = append(heirs, p.QuantBound())
 		for p.match(SanyTokenComma) {
-			if p.findTopLevelBeforeStop(SanyTokenIN, SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) < 0 {
-				p.at--
-				break
-			}
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.QuantBoundUntil(SanyTokenComma, SanyTokenMapto, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF))
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.QuantBound())
 		}
-		heirs = append(heirs, p.consume(SanyTokenMapto, "expected |-> in function constructor"))
+		heirs = append(heirs, p.consumeParseToken(SanyTokenMapto, "expected |-> in function constructor"))
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 		}))
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_FcnConst"], heirs...)
-	}
-	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenColon {
-		heirs = append(heirs, p.FieldSet())
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.FieldSet())
-		}
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfRcds"], heirs...)
-	}
-	if p.peekNext().Kind == SanyTokenMapto {
+	} else if (p.check(SanyTokenIdentifier) || isSanyFieldNameToken(p.peek().Kind)) && p.peekNext().Kind == SanyTokenMapto {
+		// Java first tries Identifier MAPTO, then reclassifies keyword fields.
 		p.reclassifyFieldName()
-	}
-	if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenMapto {
+		kind = "N_RcdConstructor"
 		heirs = append(heirs, p.FieldVal())
 		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.FieldVal())
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldVal())
 		}
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_RcdConstructor"], heirs...)
-	}
-	if p.findTopLevelBeforeStop(SanyTokenExcept, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenExcept || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenExcept, "expected EXCEPT"))
-		heirs = append(heirs, p.ExceptSpec())
+	} else if p.check(SanyTokenIdentifier) && p.peekNext().Kind == SanyTokenColon {
+		kind = "N_SetOfRcds"
+		heirs = append(heirs, p.FieldSet())
 		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
-			heirs = append(heirs, p.ExceptSpec())
+			heirs = append(heirs, NewSanyTokenNode(p.previous()), p.FieldSet())
 		}
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_Except"], heirs...)
-	}
-	if p.findTopLevelBeforeStop(SanyTokenArrow, SanyTokenRsb, SanyTokenArsb, SanyTokenEOF) >= 0 {
+	} else {
+		// Both failed field lookaheads scan a second token after Identifier.
+		if p.check(SanyTokenIdentifier) {
+			p.rememberFailedLookahead(2)
+		}
+		if !p.startsExpressionLookahead() {
+			p.throwParseException([][]SanyTokenKind{{SanyTokenIdentifier}}, "expected bracket expression")
+		}
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenEOF
+			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenArsb || tok.Kind == SanyTokenArrow || tok.Kind == SanyTokenExcept || tok.Kind == SanyTokenEOF
 		}))
-		heirs = append(heirs, p.consume(SanyTokenArrow, "expected -> in function set"))
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
-		return NewSanyNode(SanySyntaxNodeKindByName["N_SetOfFcns"], heirs...)
-	}
-	if p.findTopLevelBeforeStop(SanyTokenArsb, SanyTokenRsb, SanyTokenEOF) >= 0 {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenArsb || tok.Kind == SanyTokenEOF
-		}))
-		heirs = append(heirs, p.consume(SanyTokenArsb, "expected ]_"))
-		heirs = append(heirs, p.ReducedExpression())
-		return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
-	}
-	if !p.check(SanyTokenRsb) {
-		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
-		}))
-		for p.match(SanyTokenComma) {
-			heirs = append(heirs, NewSanyTokenNode(p.previous()))
+		switch p.peek().Kind {
+		case SanyTokenComma, SanyTokenRsb:
+			for p.match(SanyTokenComma) {
+				heirs = append(heirs, NewSanyTokenNode(p.previous()))
+				heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
+					return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+				}))
+			}
+		case SanyTokenArrow:
+			kind = "N_SetOfFcns"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenArrow, "expected -> in function set"))
 			heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
-				return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
+				return tok.Kind == SanyTokenRsb || tok.Kind == SanyTokenEOF
 			}))
+		case SanyTokenExcept:
+			kind = "N_Except"
+			heirs = append(heirs, p.consumeParseToken(SanyTokenExcept, "expected EXCEPT"), p.ExceptSpec())
+			for p.match(SanyTokenComma) {
+				heirs = append(heirs, NewSanyTokenNode(p.previous()), p.ExceptSpec())
+			}
+		case SanyTokenArsb:
+			heirs = append(heirs, p.consumeParseToken(SanyTokenArsb, "expected ]_"), p.ReducedExpression())
+			return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
+		default:
+			p.throwParseException([][]SanyTokenKind{{SanyTokenComma}, {SanyTokenRsb}, {SanyTokenArrow}, {SanyTokenExcept}, {SanyTokenArsb}}, "expected bracket expression continuation")
 		}
 	}
 	heirs = append(heirs, p.consumeParseToken(SanyTokenRsb, "expected ]"))
-	return NewSanyNode(SanySyntaxNodeKindByName["N_FcnAppl"], heirs...)
+	return NewSanyNode(SanySyntaxNodeKindByName[kind], heirs...)
 }
 
-func (p *SanyParser) startsSBracketFunctionConstructorWithoutMapTo() bool {
+// matchFcnConst preserves Java's preview scan, including its acceptance of any
+// balanced <<...>> before IN; IdentifierTuple validates the contents later.
+func (p *SanyParser) matchFcnConst() bool {
 	offset := 0
-	if !p.startsQuantBoundIntroAt(offset) {
+	switch p.tokenAt(offset).Kind {
+	case SanyTokenLab:
+		depth := 1
+		for depth != 0 {
+			offset++
+			switch p.tokenAt(offset).Kind {
+			case SanyTokenLab:
+				depth++
+			case SanyTokenRab:
+				depth--
+			case SanyTokenEOF:
+				return false
+			}
+		}
+		return p.tokenAt(offset+1).Kind == SanyTokenIN
+	case SanyTokenIdentifier:
+		offset++
+		for p.tokenAt(offset).Kind == SanyTokenComma {
+			offset++
+			if p.tokenAt(offset).Kind != SanyTokenIdentifier {
+				return false
+			}
+			offset++
+		}
+		return p.tokenAt(offset).Kind == SanyTokenIN
+	default:
 		return false
 	}
-	offset = p.skipQuantBoundIntroAt(offset)
-	for p.tokenAt(offset).Kind == SanyTokenComma {
-		offset++
-		if !p.startsQuantBoundIntroAt(offset) {
-			return false
-		}
-		offset = p.skipQuantBoundIntroAt(offset)
-	}
-	return p.tokenAt(offset).Kind == SanyTokenIN
-}
-
-func (p *SanyParser) startsQuantBoundIntroAt(offset int) bool {
-	return p.tokenAt(offset).Kind == SanyTokenIdentifier || p.tokenAt(offset).Kind == SanyTokenLab
-}
-
-func (p *SanyParser) skipQuantBoundIntroAt(offset int) int {
-	if p.tokenAt(offset).Kind != SanyTokenLab {
-		return offset + 1
-	}
-	end := p.findMatchingBracketOffset(offset)
-	if end < 0 {
-		return offset + 1
-	}
-	return end + 1
 }
 
 func (p *SanyParser) FieldVal() *SanySyntaxNode {

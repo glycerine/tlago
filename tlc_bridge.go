@@ -2058,10 +2058,7 @@ func (b *tlcBridge) functionDefinitionNode(def *Definition, e *FunctionExpr) tlc
 }
 
 func (b *tlcBridge) functionNode(e *FunctionExpr) tlc.SemanticNode {
-	boundExprs := make([]tlc.SemanticNode, len(e.Bounds))
-	for i, bound := range e.Bounds {
-		boundExprs[i] = b.convertExpr(bound.Set)
-	}
+	boundExprs := b.boundDomainNodes(e.Bounds)
 	parameters := b.boundParameters(e.Bounds, e.Syntax)
 	restore := b.pushFormalParameters(parameters)
 	defer restore()
@@ -2093,10 +2090,7 @@ func (b *tlcBridge) exceptNode(e *ExceptExpr) tlc.SemanticNode {
 }
 
 func (b *tlcBridge) setComprehensionNode(e *SetComprehensionExpr) tlc.SemanticNode {
-	boundExprs := make([]tlc.SemanticNode, len(e.Bounds))
-	for i, bound := range e.Bounds {
-		boundExprs[i] = b.convertExpr(bound.Set)
-	}
+	boundExprs := b.boundDomainNodes(e.Bounds)
 	parameters := b.boundParameters(e.Bounds, e.Syntax)
 	restore := b.pushFormalParameters(parameters)
 	defer restore()
@@ -2127,26 +2121,34 @@ type tlcBoundGroup struct {
 	tuple   bool
 }
 
+// A source N_QuantBound projects one shared Set expression to every name.
+// Generate each such domain once, before adding any formal to the context.
+func (b *tlcBridge) boundDomainNodes(bounds []BoundVar) []tlc.SemanticNode {
+	domains := make([]tlc.SemanticNode, len(bounds))
+	for i, bound := range bounds {
+		if i > 0 && bound.Set == bounds[i-1].Set && bound.TupleBound == bounds[i-1].TupleBound {
+			domains[i] = domains[i-1]
+		} else {
+			domains[i] = b.convertExpr(bound.Set)
+		}
+	}
+	return domains
+}
+
 func (b *tlcBridge) boundGroups(bounds []BoundVar, boundExprs []tlc.SemanticNode) []tlcBoundGroup {
 	groups := make([]tlcBoundGroup, 0, len(bounds))
-	for i := 0; i < len(bounds); i++ {
-		boundExpr := tlc.SemanticNode(nil)
+	for i := 0; i < len(bounds); {
+		first := bounds[i]
+		group := tlcBoundGroup{tuple: first.TupleBound}
 		if i < len(boundExprs) {
-			boundExpr = boundExprs[i]
+			group.bound = boundExprs[i]
 		}
-		if !bounds[i].TupleBound {
-			groups = append(groups, tlcBoundGroup{
-				symbols: []*tlc.SymbolNode{b.symbol(bounds[i].Name)},
-				bound:   boundExpr,
-			})
-			continue
-		}
-		group := tlcBoundGroup{bound: boundExpr, tuple: true}
-		for i < len(bounds) && bounds[i].TupleBound {
+		group.symbols = append(group.symbols, b.symbol(first.Name))
+		i++
+		for i < len(bounds) && bounds[i].Set == first.Set && bounds[i].TupleBound == first.TupleBound {
 			group.symbols = append(group.symbols, b.symbol(bounds[i].Name))
 			i++
 		}
-		i--
 		groups = append(groups, group)
 	}
 	return groups

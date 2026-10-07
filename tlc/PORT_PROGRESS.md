@@ -1,5 +1,48 @@
 # TLC Port Progress
 
+2026-10-06 Source square-bracket grammar and constructor bound groups:
+Previous turn completed c0f514c. Replace SBracketCases' searches ahead for MAPTO,
+ARROW, EXCEPT and action delimiters with Java's actual production flow. Preserve
+matchFcnConst's preview of identifier lists or balanced LAB/RAB before IN; it does
+not validate tuple contents. Function bounds require MAPTO; record/set fields use
+two-token heads and source keyword reclassification. The remaining branch parses
+one mandatory expression, then dispatches on its actual continuation token.
+Remove unused private preview helpers. No permanent tests or fixtures changed.
+
+All 268 complete TRACE/result comparisons match pinned Java (64964 terminal 0,
+inspected MATCH count and different []), including 32 new malformed/nested bracket
+observations and the earlier 236. Log
+/mnt/oldrog/tmp/tlago-sany-bracket-parser-audit.log. All 70 selected expression trees
+match kinds/images/ranges (88741 terminal 0), including 14 new bracket trees, log
+/mnt/oldrog/tmp/tlago-bracket-tree-audit.log. Source accepts standalone [1] as an
+N_FcnAppl syntax operand; do not infer its behavior solely from its node kind.
+BraceCases and general JavaCC rescan remain reconciliation work.
+
+Direct source FastTool/Go tool observations expose a production shortcut in
+multi-name constructor metadata: x,y in one domain became two false groups instead
+of one group with both formals. Values alone matched and would have hidden this
+graph difference (13697 terminal 1). Port one domain conversion per shared
+syntactic Set projection, before any formal binding, and retain that grouping in
+function and set-comprehension nodes. Distinct adjacent tuple domains remain
+separate. Ten final actual opcode/group/tuple-metadata/value observations match
+(68226 terminal 0), including named function definitions and mixed/multiple tuple
+groups. Boolean-array formatting normalizes Java's comma-space versus Go's space;
+all names, group boundaries and values remain exact. No Java TLC reporting path.
+Log /mnt/oldrog/tmp/tlago-bracket-runtime-final-audit.log. Scratch observations earn
+no inventory credit and do not establish complete semantic graph fidelity.
+
+Final normal gates after the bridge correction: complete existing sany_tests
+1.547 seconds (68477 terminal 0); parser/semantic/token/operator classes, original
+ParseErrorTests, six original TLC models and reference/scaffold checks 17.276
+seconds (66498 terminal 0); focused function context, record/EXCEPT coverage and
+original FcnRcdValue/SetOfFcnsValue/FcnLambdaValue tests 9.705 seconds (98225 terminal
+0). All-package compilation passes without running additional workloads. Logs
+/mnt/oldrog/tmp/tlago-sany-bracket-final-{sany,root,tlc,compile}.log. Earlier checks
+precede the bridge correction and are superseded. No race or weakened assertions.
+Full workspace green remains unproven, with earlier documented failures unchanged.
+MSB 5144 confirmed live this turn, same binary and full workload; last logged
+progress 1,472,288,498/2,147,483,648. Preserve its handle and do not restart it.
+
 2026-10-06 Definition grammar, mandatory formals and header failure boundaries:
 Previous turn completed c533263. Restore source Definition expectation state,
 mandatory function-bound delimiters/DEF, shared function branches across module,
