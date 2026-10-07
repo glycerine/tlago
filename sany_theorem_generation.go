@@ -102,6 +102,12 @@ func (g *sanyExpressionGeneration) completedTheoremProof(syntax *SanySyntaxNode)
 	if len(tokens) > 0 && tokens[0].Image == "PROOF" {
 		index++
 	}
+	if index < len(tokens) && tokens[index].Image == "BY" {
+		if node := g.leafProofGraphs[proof]; node != nil {
+			return node, true
+		}
+		return nil, false
+	}
 	if index >= len(tokens) || tokens[index].Image != "OMITTED" && tokens[index].Image != "OBVIOUS" {
 		return nil, false
 	}

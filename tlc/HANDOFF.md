@@ -1060,23 +1060,28 @@ Top-level AP declaration and marker contexts remain open through proof processin
 with named theorem registration in the enclosing module context. Ordinary and
 labeled AP bodies preserve actual children and clause metadata. AP theorem names
 used as expressions fail before application allocation, returning the actual
-source failure node. Real owners are retained for complete bodies with no proof
-or OBVIOUS/OMITTED proofs; BY and structured proof owners remain incomplete.
+source failure node. Real owners are retained for complete bodies with no proof,
+OBVIOUS/OMITTED, or complete canonical BY proofs. BY allocates its temporary USE
+node before a leaf sharing the actual arrays; theorem completion reuses that leaf.
+Top-level USE/HIDE retain actual vectors and source fact-validation order. Their
+constructors preserve nullable step names, array aliases and fresh child copies.
+Missing canonical BY vectors and structured proof owners remain incomplete.
 
 All 1,083 comparison rows across 47 bounded theorem modules match Java, including
 syntax kinds, UID order, exact goal/reference pointers, label tables, declaration
 scope, failure nodes and diagnostic codes/ranges/messages. Assumption and direct
-constructor comparisons also pass. Existing focused tests, full sany_tests and
+constructor comparisons also pass. USE/HIDE/BY comparisons add 427 exact rows
+across 40 modules and 116 constructor rows. Existing focused tests, full sany_tests and
 compile-all are the affected gates; receipts belong in PORT_PROGRESS.md. These
 observations add no original-method or full-workspace completion credit.
 
-BY/structured proof graphs and proof-step goal ownership, Suffices integration,
+Structured proof graphs and proof-step goal ownership, Suffices integration,
 EXTENDS assertion inheritance, complete module vectors, qualified selectors,
 INSTANCE/fact/imported identities, recursive inherited level checks, visitors,
 shared Errors/exception integration and evaluator graph sharing remain pending.
 Missing canonical children or earlier native-only import identities keep owners
-incomplete. Next semantic work is actual BY/UseOrHide and structured proof
-ownership, followed by remaining selector/instance identities, level checking and
+incomplete. Next semantic work is structured proof ownership and steps, followed
+by remaining selector/instance identities, level checking and
 evaluator sharing. Complete allocation order across all graphs remains unproven.
 
 Function and set-comprehension bridge nodes retain one group per syntactic

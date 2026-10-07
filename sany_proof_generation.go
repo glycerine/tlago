@@ -49,6 +49,22 @@ func (g *sanyExpressionGeneration) generateProofReference(reference ProofRef, mo
 				diags = append(diags, diagnostic)
 			}
 		}
+		if source := sanyGenerationSource(reference.Expr); len(diags) == 0 && source != nil && source.Syntax != nil && source.Syntax.Kind.JavaName() == "N_GeneralId" {
+			selector := sanyExprSource(reference.Expr)
+			if selector == nil || selector.Selector == nil || len(selector.Selector.Steps) <= 1 {
+				if symbol := g.formalSymbolTable().resolveSymbol(reference.Name); symbol != nil {
+					valid := symbol.semKind() == sanyUserDefinedOpKind || symbol.semKind() == sanyModuleInstanceKind || symbol.semKind() == sanyThmOrAssumpDefKind && (len(symbol.semName()) == 0 || symbol.semName()[0] != '<')
+					if valid {
+						return nil, true
+					}
+					diagnostic := errorAt(reference.Pos, "E4200", "DEF clause entry should describe a defined operator.")
+					diagnostic.SANYMessage = diagnostic.Message
+					diagnostic.SANYRange = source.Syntax.Range
+					// selectorToNode and generateUseOrHide each diagnose this.
+					return Diagnostics{diagnostic, diagnostic}, false
+				}
+			}
+		}
 		name := reference.Name
 		if len(diags) != 0 {
 			// genIdToSelector has diagnosed the malformed selector.
@@ -390,15 +406,25 @@ func (g *sanyExpressionGeneration) proofReferences(proof ProofSummary, module *M
 func (g *sanyExpressionGeneration) leafProofReferences(references []ProofRef, syntax *SanySyntaxNode, module *Module, context map[string]Position) Diagnostics {
 	var diags Diagnostics
 	entries := 0
+	builder := newSanyUseOrHideBuilder()
 	for _, reference := range references {
 		generated, appended := g.generateProofReference(reference, module, context, nil)
 		diags = append(diags, generated...)
+		builder.appendReference(g, reference, appended)
 		if appended {
 			entries++
 		}
 	}
 	if command := sanyLeafProofSyntax(syntax); command != nil {
+		temporary := builder.finish(command)
 		diags = append(diags, sanyEmptyProofCommand(command, entries, "Empty BY")...)
+		if temporary != nil {
+			proof := newSanySemLeafProofNode(command, temporary.facts, temporary.defs, false, temporary.isOnly)
+			if g.leafProofGraphs == nil {
+				g.leafProofGraphs = make(map[*SanySyntaxNode]*sanySemLeafProofNode)
+			}
+			g.leafProofGraphs[command] = proof
+		}
 	}
 	return diags
 }

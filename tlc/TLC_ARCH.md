@@ -1,5 +1,33 @@
 # TLC Architecture Notes for the Go Port
 
+## USE/HIDE vectors and BY leaf proofs
+
+UseOrHideNode retains supplied fact/definition arrays and ONLY flags. Its nullable
+step name uses the shared UniqueString identity. getChildren returns null for
+null/empty facts and a fresh copy otherwise. Source factCheck returns immediately
+for USE or null facts. HIDE checks only OpAppl facts, requiring an actual theorem/
+assumption definition operator; other fact kinds retain source behavior. Preserve
+source kind/cast checks and null failures.
+
+Build vectors by consuming each reference immediately after generation. Actual
+failed expression nodes keep their fact slot; invalid DEF entries and unavailable
+modules do not add slots. DEF entries use actual accepted symbol identities. Missing
+canonical imports or qualified selected definitions leave the vector incomplete.
+Top-level USE/HIDE nodes enter the module's ordered vector after fact generation;
+HIDE validation runs after all generation diagnostics, then empty-command checking.
+
+BY creates a temporary USE node, then a LeafProofNode sharing its arrays and ONLY
+flag. The temporary allocation is part of source UID order even though that node
+is discarded. Retain the actual leaf by its terminal syntax, and use it when the
+outer theorem completes rather than allocating another proof. Complete theorem
+owners follow their actual BY leaf and precede the next module unit.
+
+Structured proof parent/step graphs, qualified selections and native-only import
+identities remain incomplete. Existing diagnostic fallbacks are separate from
+canonical graph coverage. Inherited level checks, visitors, EXTENDS vectors and
+shared evaluator ownership still require porting; bounded leaf observations do
+not establish complete module or original Java test-suite completion.
+
 ## Theorem statements, AP goals and proof scope
 
 Create a named theorem's provisional ThmOrAssumpDefNode before its statement.
@@ -22,8 +50,9 @@ E4355 and the actual null operator application before allocating a normal call.
 
 Allocate the theorem owner after a complete statement and proof. OBVIOUS and
 OMITTED produce actual LeafProofNodes with nonnil empty fact/definition arrays,
-source flags and syntax. BY and structured proof graphs remain unported; their
-owners stay incomplete rather than pretending the proof is absent. Missing
+source flags and syntax. Complete canonical BY vectors now produce their real leaf proofs and owners.
+Missing canonical BY vectors and structured proof graphs keep owners incomplete
+rather than pretending the proof is absent. Missing
 statement children or earlier native-only imported identities also keep owners
 incomplete. Complete inherited level checking, visitors, imported/INSTANCE
 identities, EXTENDS vectors and other top-level owners remain separate work.
@@ -48,7 +77,7 @@ incomplete. Legacy scope metadata changes only for an accepted canonical binding
 the fallback remains for paths without those identities. Legacy label checking
 runs after generation so canonical labels retain their own source diagnostics.
 
-BY/structured proof generation, proof-step goals, inherited assertion vectors,
+Structured proof generation, proof-step goals, inherited assertion vectors,
 other top-level owners and complete inherited level checking/visitors remain
 separate unfinished work. A partially populated module vector is not evidence of complete module
 construction. Bounded assumption graph observations do not add original Java
@@ -72,7 +101,7 @@ assertion vector and ordered top-level vector. Each getter caches its first arra
 mutating that array persists and later vector appends do not invalidate it.
 
 Assumption and complete theorem statement generation populate these owners and
-collections. BY/structured proof generation, EXTENDS collection inheritance, other
+collections. Structured proof generation, EXTENDS collection inheritance, other
 top-level owners, inherited level checking and visitors remain unfinished. Direct constructor observations are separate from
 whole generated-module and original Java test-suite coverage.
 
@@ -96,7 +125,7 @@ and aliasing as other label owners. Matching tests the application's actual
 operator arity, ignoring the receiver's arity and operands, as Java does.
 
 Assumption/theorem statement generation uses the constructor class and matching
-dispatch. BY/structured proofs, complete module vectors and inherited level data/
+dispatch. Structured proofs, complete module vectors and inherited level data/
 visitors still require implementation. Bounded constructor comparisons alone do
 not establish complete named AP or theorem graph parity.
 

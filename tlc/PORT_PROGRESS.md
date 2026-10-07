@@ -1,5 +1,62 @@
 # TLC Port Progress
 
+2026-10-07 USE/HIDE vectors and BY leaf-proof ownership:
+Previous completed commit: 1287055. Port UseOrHideNode constructor, aliased fact/
+definition arrays, nullable step-name identity, fresh fact-only children and
+source factCheck. USE bypasses fact validation; HIDE checks only actual OpAppl
+facts and requires a theorem/assumption definition operator. Numerals, strings
+and decimals retain their source acceptance. Preserve null-fact/null-operator
+failures and the explicit kind/cast check rather than guessing evaluator roles.
+
+Consume each reference immediately after its generation so its vector retains
+that exact binding. Invalid definitions/unavailable modules are omitted; failed
+expression facts retain their source slot/failure node. Canonical DEF validation
+uses the real symbol class. Preserve both source validation calls for an invalid
+non-definition and source Errors' resulting diagnostic behavior. Qualified or
+missing canonical identities leave the owner incomplete.
+
+For BY, allocate a temporary USE node after its vectors, then construct the leaf
+proof with the same arrays and ONLY flag. Cache the actual leaf by its syntax for
+theorem completion, preserving the temporary allocation's UID gap; do not build
+the proof twice. Complete BY owners now follow the leaf proof in module order.
+Top-level USE/HIDE construction appends the actual node to the ordered module
+vector and checks HIDE facts after all reference generation, matching source
+error order. Retain native fallback only for missing canonical vectors.
+
+All 427 complete Java/Go rows agree across 40 whole modules: 406 prefixed rows
+(158 graph nodes, 26 theorem owners, 46 ordered top-level entries, 16 bindings,
+13 operator references, six DEF pointers, 36 full diagnostic codes/ranges/messages,
+24 leaf proofs, 19 USE/HIDE nodes, six each AP metadata/goal/child rows, four null
+children and 40 cases), plus multiline source/diagnostic continuations. Cover BY
+ONLY/optional PROOF, current-module facts/defs, AP declaration context in BY,
+actual named theorem facts/defs, failed facts, invalid/builtin/undefined DEFs,
+empty commands, HIDE class restrictions and subsequent theorem allocation order.
+
+All 116 direct constructor rows also agree across 24 cases: 114 prefixed rows
+(24 each constructor, factCheck, step-name set and null-reset observations,
+16 array-mutation checks and two diagnostics), plus two continuation lines.
+Verify null/empty/numeral/builtin/theorem/null-slot facts, both kinds, both ONLY
+flags, UID increments, syntax identity, shared arrays, fresh child copies and
+actual typed failure behavior. Observers remain outside the repository. Scratch
+USE ONLY syntax was rejected by Java; use grammar-valid USE facts and DEF TRUE
+cases while retaining BY ONLY and constructor flag coverage. Initial compiler
+checks caught unavailable location access and evaluator-symbol field mismatches;
+use actual SANY metadata and kind/cast validation. No failed setup receives success
+credit, and no original Java test or assertion was weakened.
+
+Whole-module comparison passes (26650); constructor comparison passes (21674)
+and final constructor/compile-all passes (88272). Existing focused root/SANY/TLC
+tests pass 47.271s (90364), full sany_tests 1.948s and compile-all pass (15659).
+Final post-format compile-all also passes (38901). All handles are retired. No race
+workload, invented permanent test, original Java method completion or full-workspace
+success credit is claimed.
+
+Structured proof scaffolding/steps, qualified selected identities, native-only
+imports, full module/EXTENDS vectors, inherited level checking/visitors and
+shared evaluator graph ownership remain pending. This establishes observed leaf
+and top-level command paths, not complete TLC parity. Distributed architecture
+work remains postponed.
+
 2026-10-07 Theorem statements, actual AP goals and labeled AP construction:
 Previous completed commit: 317f792. Port named provisional goal allocation before
 body generation, completion/registration before proof, and theorem owner allocation

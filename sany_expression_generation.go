@@ -28,6 +28,7 @@ type sanyExpressionGeneration struct {
 	outerAPContextOwned  bool
 	allowLabeledAP       bool
 	currentGoalClause    int
+	leafProofGraphs      map[*SanySyntaxNode]*sanySemLeafProofNode
 	excepts              []*sanySemOpApplNode
 	exceptSpecs          []*sanySemOpApplNode
 	labelsEnabled        bool
