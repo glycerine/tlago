@@ -121,17 +121,37 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 		}
 	}
 	visiting := map[*Module]bool{}
-	var collect func(*Module, *sanyLeibnizContext)
-	collect = func(current *Module, context *sanyLeibnizContext) {
+	var collect func(*Module, *sanyLeibnizContext, bool)
+	collect = func(current *Module, context *sanyLeibnizContext, imported bool) {
 		if current == nil || visiting[current] || isEmbeddedStandardModule(current) {
 			return
 		}
 		visiting[current] = true
 		defer delete(visiting, current)
+		// A nonconstant ModuleNode initializes its constant constraints to
+		// ConstantLevel. Translate those declaration parameters through the
+		// current substitution context for each retained InstanceNode too.
+		// EXTENDS merges exported nodes, not the extendee's aggregate bounds.
+		if !imported && moduleRequiresSubstitutionLevelMatch(current, spec) {
+			var constants []string
+			for name, target := range moduleSubstitutionTargets(current, spec) {
+				if target.Kind == ConstantDecl {
+					constants = append(constants, name)
+				}
+			}
+			sort.Strings(constants)
+			for _, name := range constants {
+				add(func() sanyLeibnizUse {
+					use := a.expression(&IdentExpr{Name: name}, context)
+					use.constrain(use.levelParams, constantLevel)
+					return use
+				}, false)
+			}
+		}
 		for _, extended := range current.Extends {
 			nested := sanyLeibnizNestedContext(context)
 			nested.module = spec.Modules[extended]
-			collect(nested.module, nested)
+			collect(nested.module, nested, true)
 		}
 		for _, assumption := range current.Assumptions {
 			if assumption.AssumeProveBody != nil {
@@ -144,6 +164,12 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 			}
 		}
 		for i := range current.Definitions {
+			// EXTENDS imports the Context's exported OpDefNodes. A LOCAL
+			// definition contributes to its own module, not an importer's
+			// aggregate unless an exported definition depends on its body.
+			if imported && current.Definitions[i].Local {
+				continue
+			}
 			definition(&current.Definitions[i], context)
 		}
 		for _, theorem := range current.Theorems {
@@ -173,19 +199,10 @@ func moduleSubstitutionConstraints(module *Module, spec *Spec) ([]string, sanyLe
 			for _, subst := range instanceSubstitutions(instance) {
 				variables[subst.Name] = sanyLeibnizBinding{expr: subst.Expr, context: owner}
 			}
-			collect(target, &sanyLeibnizContext{module: target, variables: variables, formals: map[string]sanyLeibnizBinding{}})
+			collect(target, &sanyLeibnizContext{module: target, variables: variables, formals: map[string]sanyLeibnizBinding{}}, false)
 		}
 	}
-	collect(module, ctx)
-	// ModuleNode starts a nonconstant module's constant declarations at
-	// ConstantLevel before unioning expression constraints (union takes min).
-	if moduleRequiresSubstitutionLevelMatch(module, spec) {
-		for id, name := range names {
-			if targets[name].Kind == ConstantDecl {
-				constraints.constrainID(id, constantLevel)
-			}
-		}
-	}
+	collect(module, ctx, false)
 	return names, constraints
 }
 

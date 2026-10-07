@@ -900,9 +900,7 @@ application maxima, using their actual validity to suppress redundant enclosing
 errors. Remove the extra Go-only constant-prime rejection: Java allows constant,
 literal and boolean priming, and builtin maxima diagnose double priming.
 All 12 prime, 27 phase and 74 preceding legacy diagnostic comparisons match
-Java. Current focused root/model checks pass in 27.901 seconds, complete SANY
-passes in 1.816 seconds, and all-package compilation passes normally. Native
-expectations use the unchanged source fixtures and exact Java diagnostics;
+Java. Native expectations use the unchanged source fixtures and exact Java diagnostics;
 scratch comparisons add no original-method inventory credit.
 ASSUME-PROVE now checks each assumption and PROVE expression in lexical
 scope. NEW domains check before their declarations enter scope; uses retain
@@ -910,9 +908,16 @@ the declaration's own level. Preserve Java's unusual return rule: PROVE errors
 are reported but do not alone make the AP node return false. Temporal bounds
 report exact 4356 messages and whole NEW ranges, including indirect definitions.
 All 29 parseable AP phase comparisons and 31 legacy cases (including two source
-parser rejections) match. Current focused root/model checks pass in 26.208
-seconds, complete SANY passes in 2.024 seconds, and compilation passes normally.
-Original corpus fixtures and assertions are unchanged; no inventory credit added.
+parser rejections) match. Module substitution constraints now distinguish own
+LOCAL definitions from EXTENDS imports. Unexported LOCAL bodies do not add
+independent constraints to an importer; exported references still retain their
+body dependencies. Nonconstant target module bounds survive nested INSTANCE
+substitutions, including LOCAL INSTANCE. All 30 expanded comparisons match
+(29 parseable modules plus one grammar rejection). Focused root/model checks
+pass in 31.049 seconds, complete SANY passes in 1.825 seconds, and compilation
+passes. Final affected semantic assertions and all bounded comparisons also pass
+after sorting translated constant names. Original corpus fixtures and assertions
+are unchanged; no inventory credit or new full-workspace pass is added.
 Full canonical LevelNode fields and iteration, imported graph identity, full
 formal-operator metadata, the remaining Java frontend helper API and evaluator
 sharing remain pending. The green comparisons do not prove complete LevelNode

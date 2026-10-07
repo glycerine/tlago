@@ -100,8 +100,20 @@ another diagnostic and loses the source's constraint-set semantics. All 26
 co-parameter cases and 48 preceding level/argument cases match complete source
 diagnostics. A separate 12-relationship collision-tree probe matches membership,
 counts, codes, ranges and messages; identity-dependent iteration orders differ.
-Full formal-operator metadata, imported graph identities, original frontend phase
-APIs and canonical evaluator sharing remain separate pending work.
+When collecting ModuleNode constraints, distinguish its own Context from
+EXTENDS imports. Own LOCAL operator definitions contribute to the module;
+unexported LOCAL definitions in an extendee do not independently contribute to
+the importing Context. Dependencies from an exported definition into its owner's
+LOCAL body still propagate. Preserve top-level INSTANCE constraints, including
+LOCAL INSTANCE. Initialize nonconstant ConstantLevel declaration bounds for each
+retained instantiated module and translate their parameter sets through its
+substitution context; initializing only the outermost module loses stronger
+nested bounds. EXTENDS imports nodes rather than the extendee's whole module
+bound set. Sort translated constant names to retain deterministic collection.
+Thirty expanded source comparisons match, including 29 parseable modules and
+one grammar rejection. Full formal-operator metadata, imported graph identities,
+original frontend phase APIs and canonical evaluator sharing remain separate
+pending work.
 
 ## Separate semantic-generation and level-check phases
 

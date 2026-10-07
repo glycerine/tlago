@@ -1,5 +1,43 @@
 # TLC Port Progress
 
+2026-10-07 Exported LOCAL constraints and nested INSTANCE bounds:
+Previous completed commit: b1d8768. First audit of 13 ASSUME-PROVE INSTANCE
+cases matches complete Java diagnostics (67727, terminal 0). Expand to 19 with
+EXTENDS LOCAL/exported operator definitions. Initial 74369 returns 1: Go reports
+extra 4245 and 4246 errors from unexported LOCAL bodies. ModuleNode collects
+OpDefs from its Context, so those bodies do not independently contribute to an
+importer's aggregate constraints. Preserve the owner's LOCAL contributions and
+exported definitions' dependencies on them.
+
+Carry the collection mode through EXTENDS versus own module/INSTANCE contexts.
+Skip LOCAL definitions only when collecting an EXTENDS import. Expand to 30
+cases covering transitive imports, mixed modules, referenced locals and own or
+imported INSTANCE units. Initial 34164 returns 1 on four new nested INSTANCE
+cases: Java reports a ConstantLevel (0) maximum while Go reports VariableLevel
+(1). The existing collector initialized nonconstant bounds only for its outer
+module, dropping the instantiated target's stronger declaration constraints.
+
+Move nonconstant constant-bound initialization into collection of every own
+module/retained INSTANCE context and translate its parameter set through the
+actual substitution bindings. EXTENDS imports nodes rather than an extendee's
+whole module bounds. Sort constant names before collecting translated bounds;
+do not depend on Go map iteration. The 30-case comparison matches (89699,
+terminal 0), as do the earlier 26 co-parameter, 24 argument and 24 level cases.
+One LOCAL THEOREM scratch input is rejected by Java's grammar and has no level
+coverage credit; the remaining 29 modules parse successfully.
+
+Focused root checks plus seven unchanged original model methods pass normally
+in 31.049 seconds (14526); complete SANY passes in 1.825 seconds (23701);
+all-package compilation passes (1921), before the final deterministic name sort.
+Final affected root semantic assertions pass in 4.156 seconds and the original
+semantic error corpus/InstanceNode assertions in 0.066 seconds (95267).
+Final 30 expanded cases, 27 prior phase cases, 26 co-parameter, 24 argument,
+24 level, 29 AP phase and 12 prime cases all match Java (80265, terminal 0).
+Logs /mnt/oldrog/tmp/tlago-local-constraint-final-*.log. All handles terminal
+and retired. No permanent tests, fixture changes or inventory credit added.
+No new full-workspace pass or complete canonical graph parity is claimed.
+New distributed service remains postponed.
+
 2026-10-07 ASSUME-PROVE operand and NEW binding levels:
 Previous completed commit: 14f031e. Inspect AssumeProveNode.levelCheck and
 NewSymbNode.levelCheck. The old checkAssumeProveNewSymbolLevels only scanned
