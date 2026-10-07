@@ -2,6 +2,7 @@ package tlago
 
 import (
 	"strconv"
+	"sync"
 
 	"github.com/glycerine/tlago/tlc"
 )
@@ -188,4 +189,34 @@ var sanyBuiltinOperators = []sanyBuiltinOperator{
 	{name: "$Pick", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
 	{name: "$Witness", arity: -1, level: constantLevel, argMaxLevels: sanyMaxLevels(actionLevel), argWeights: sanyWeights(1)},
 	{name: "$Suffices", arity: 1, level: constantLevel, argMaxLevels: sanyMaxLevels(temporalLevel), argWeights: sanyWeights(1)},
+}
+
+// Context initializes its global table on first use, then reInit replaces it
+// before each full frontend parse. A spec retains that table's builtin nodes.
+var sanyInitialContextState struct {
+	sync.Mutex
+	context *sanyContext
+}
+
+func sanyGlobalInitialContext(reinitialize bool) *sanyContext {
+	sanyInitialContextState.Lock()
+	defer sanyInitialContextState.Unlock()
+	if sanyInitialContextState.context == nil {
+		sanyInitialContextState.context = newSanyInitialContext()
+	}
+	if reinitialize {
+		sanyInitialContextState.context = newSanyInitialContext()
+	}
+	return sanyInitialContextState.context
+}
+
+func (g *sanyExpressionGeneration) initialBuiltin(name string) *sanySemBuiltInSymbol {
+	var context *sanyContext
+	if g.spec != nil && g.spec.initialContext != nil {
+		context = g.spec.initialContext
+	} else {
+		context = sanyGlobalInitialContext(false)
+	}
+	symbol, _ := context.getSymbol(ResolveSanyOperatorSynonym(name)).(*sanySemBuiltInSymbol)
+	return symbol
 }

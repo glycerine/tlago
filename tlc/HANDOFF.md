@@ -773,7 +773,12 @@ Each is a fresh zero-arity local with null syntax, unknown location and no modul
 Builtin operators retain their own zero-kind builtin syntax and location. Correct
 null-syntax formal construction to retain null rather than substitute `nullSN`.
 All 668 constructor observations match Java across 72 builtins and 77 formals.
-Frontend initial-context lifecycle is still not integrated with native generation.
+Full frontend entry now initializes/rebuilds the global context before parsing,
+including failed parses, and retains that context on the spec. Earlier specs keep
+their builtin identities after later resets. Named-function builtin resolution
+retains the actual context node. Eleven lifecycle observations match Java; four
+unchanged original TLC models pass. General selector/evaluator builtin graph
+sharing remains incomplete.
 
 Next semantic work: integrate source initial-context construction/reset lifecycle,
 complete semantic graph constructors and allocation order, then unify label guards. The expanded aggregate audit has

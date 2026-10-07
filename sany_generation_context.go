@@ -209,8 +209,8 @@ func checkDefinitionFunctionDomains(definition Definition, context map[string]Po
 	}
 	function.constructorSymbol, function.constructorSymbolExists = g.lookupSymbol(definition.Name, context)
 	if !function.constructorSymbolExists {
-		if builtin, exists := sanyInitialBuiltinOperatorInfo(definition.Name); exists {
-			function.constructorSymbol = localSymbol{kind: OperatorDecl, arity: builtin.arity, pos: Position{File: "--TLA+ BUILTINS--"}}
+		if builtin := g.initialBuiltin(definition.Name); builtin != nil {
+			function.constructorSymbol = localSymbol{builtinNode: builtin, kind: OperatorDecl, arity: builtin.semArity(), pos: builtin.semPosition()}
 			function.constructorSymbolExists = true
 		}
 	}

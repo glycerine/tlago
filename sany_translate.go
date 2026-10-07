@@ -28,6 +28,7 @@ func CheckSanySource(file, source string) (*Spec, Diagnostics) {
 }
 
 func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, Diagnostics) {
+	initialContext := sanyGlobalInitialContext(true)
 	mod, diags := ParseSanyModuleSource(file, source)
 	loader := newSanyLoader(opts)
 	loader.rootDir = "."
@@ -44,7 +45,7 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 		loader.registerLoadUnit(mod, file)
 	}
 	if diags.HasErrors() {
-		spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
+		spec := &Spec{initialContext: initialContext, LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
 		return spec, diags
 	}
 	if mod != nil {
@@ -60,7 +61,7 @@ func CheckSanySourceWithOptions(file, source string, opts LoadOptions) (*Spec, D
 		}()
 		diags = append(diags, loader.diags...)
 	}
-	spec := &Spec{LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
+	spec := &Spec{initialContext: initialContext, LibraryPaths: append([]string(nil), opts.LibraryPaths...), Root: mod, Modules: loader.modules, SemanticOrder: append([]string(nil), loader.semanticOrder...), ModuleFiles: append([]string(nil), loader.moduleFiles...), Diags: diags}
 	if diags.HasErrors() {
 		spec.Diags = diags
 		return spec, diags
@@ -84,6 +85,7 @@ func ModelCheckSanySource(specFile, specSource, cfgSource string, opts ModelChec
 }
 
 type sanyLoader struct {
+	initialContext  *sanyContext
 	opts            LoadOptions
 	modules         map[string]*Module
 	diags           Diagnostics
@@ -191,7 +193,7 @@ func (l *sanyLoader) snapshot(root *Module) *Spec {
 	if root == nil {
 		root = l.rootModule
 	}
-	return &Spec{FilenameResolver: l.opts.FilenameResolver, LibraryPaths: append([]string(nil), l.opts.LibraryPaths...), Root: root, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}
+	return &Spec{initialContext: l.initialContext, FilenameResolver: l.opts.FilenameResolver, LibraryPaths: append([]string(nil), l.opts.LibraryPaths...), Root: root, Modules: l.modules, SemanticOrder: append([]string(nil), l.semanticOrder...), ModuleFiles: append([]string(nil), l.moduleFiles...), Diags: l.diags}
 }
 
 func appendModuleNames(names []string, extra ...string) []string {

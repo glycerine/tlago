@@ -36,6 +36,7 @@ func runSanyFrontEnd(file string, opts LoadOptions, report func(Diagnostics, san
 		}
 	}()
 	loader := newSanyLoader(opts)
+	loader.initialContext = sanyGlobalInitialContext(true)
 	spec, parseDiags, parseFailed = runSanyFrontEndParse(file, loader, report)
 	if parseFailed {
 		return

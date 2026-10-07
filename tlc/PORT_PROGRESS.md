@@ -1,5 +1,51 @@
 # TLC Port Progress
 
+2026-10-06 Retained frontend initial-context lifecycle:
+Previous completed commit: 7f120f4. Source SANY.parse calls Context.reInit before
+parsing. Context class initialization constructs the first global builtin table;
+reInit then constructs a fresh one. Mirror this with lazy global initialization
+and reset before full frontend entry, including failed parses. Retain the table
+on loader snapshots/Spec. CheckSanySource also resets before parsing. Lower semantic
+checking uses the current context when no frontend snapshot was supplied. A small
+mutex protects global pointer construction/reset; generators retain their spec's
+nodes, so later resets do not replace an older analysis's builtin identities.
+Named-function initial-builtin resolution now captures the actual builtin node.
+General selector/evaluator builtin graph sharing remains pending.
+
+Eleven exact source lifecycle observations match: initial 72 builtins/77 formals,
+fresh reset identities and 149-node construction span, full-frontend reset,
+module/native-generator context sharing, failed-parse reset, earlier-analysis
+stability, post-failure reset span and fresh formal identities. Initial source
+helper failed compilation using vector.length; correct to the actual API. First
+comparison 2966 terminal 1 then revealed getOpDefs deliberately excludes builtins;
+correct the scratch probe to actual ContextSymbolEnumeration and native context
+contents, not static table counts. Final comparison 36882 terminal 0. Logs/helpers:
+/mnt/oldrog/tmp/tlago-initial-context-{java,go}.log, SourceInitialContextManual.java,
+tlago-initial-context-manual_test.go and overlay. No permanent tests invented or
+whole Context/ModuleNode graph completion credit.
+
+Existing focused parser/context/semantic/original ParseError/legacy/scoped methods
+pass 4.611 seconds (8469); whole SANY package passes 1.566 seconds (99895);
+all packages compile (9911). Four unchanged whole original models pass
+2.338 seconds (95834): UndeclaredRecursion, ConstantContextTLCCache,
+ConstantRank1TLCEval and ACoverage. Logs:
+/mnt/oldrog/tmp/tlago-initial-context-{root,sany,compile,models}.log. Rebuild the
+scratch diagnostic frontend before comparisons. Fifteen label-flow cases, all
+sixteen required cases and all nine broader label cases still match complete
+Java diagnostics. Expanded aggregate audit now matches four/five, leaving only
+formal_70 different. Combined handle 92302 terminal 1 because that expanded audit
+still fails. Logs: /mnt/oldrog/tmp/tlago-initial-context-{flow,required,nine,extra}.log.
+
+Actual 70-formal Go UID range is now 299..368, first hash 1601; Java remains
+305..374, first hash 1607. This replaces the previous Go 1..70 range by constructing
+and retaining the two real 149-node builtin contexts, not counter offsets. Probe
+93270 terminal 0: /mnt/oldrog/tmp/tlago-initial-context-uid-go.log. The source
+Generator constructor also retains nullODN/nullOAN/nullOpArg/nullLabelNode; audit
+these and ModuleNode construction next. Remaining allocation order is not fixed.
+All handles terminal and retired; git diff --check passes. No race workloads,
+weakened assertions/settings/bounds or current full-workspace claim. New service
+remains deferred until Java parity is complete.
+
 2026-10-06 Builtin phony formal arrays and null-syntax constructor correction:
 Previous completed commit: 8fce1f2. Inspect Context.initialize/reInit and
 OpDefNode(BuiltInOperator): each fixed-arity builtin constructs real phony

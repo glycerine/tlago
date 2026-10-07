@@ -31,6 +31,9 @@ func checkSpecWithModuleReport(spec *Spec, progress func(string), report func(Di
 		}
 		return diags
 	}
+	if spec.initialContext == nil {
+		spec.initialContext = sanyGlobalInitialContext(false)
+	}
 	var diags Diagnostics
 	spec.SemanticDiags = nil
 	defer func() {
@@ -1741,6 +1744,7 @@ func checkImportedSymbolAmbiguity(name string, kind DeclarationKind, pos Positio
 }
 
 type localSymbol struct {
+	builtinNode      *sanySemBuiltInSymbol
 	formalNode       *sanyFormalParamNode
 	proofStepKind    string
 	proofAssumeProve bool

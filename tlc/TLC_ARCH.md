@@ -15,11 +15,17 @@ in the shared constructor. All 668 actual Java constructor observations match
 across 72 builtin operators and 77 phony formals, including arrays, node metadata,
 syntax/location and consecutive relative construction order.
 
-This constructor port does not integrate Context's static initialization/reInit
-lifecycle into the native frontend, complete LevelNode data or establish absolute
-source allocation order. Initial contexts and builtin graph identity still need
-shared native generation/evaluator integration. Do not simulate their allocations
-with UID offsets or discard phony nodes after incrementing the counter.
+The native frontend now mirrors Context's lazy class initialization and reInit:
+first use constructs the global table; every full frontend entry replaces it with
+a fresh table before parsing, including failed parses. Each Spec retains its own
+analysis table; lower semantic checking uses the current global table if no
+frontend snapshot exists. The initialization/reset mutex protects the global
+pointer, while native generators read the retained spec table. Named-function
+builtin resolution retains the actual context node rather than arity-only metadata.
+Eleven source lifecycle observations match, including reset construction spans and
+old-analysis stability. This does not establish general selector/evaluator sharing,
+complete LevelNode data or absolute allocation order. Retain real constructed
+nodes; do not simulate allocations with offsets.
 
 ## Retained label parameter arrays
 
@@ -64,10 +70,10 @@ balanceDeletion, conversion back to lists and moving the tree root to the front.
 confirmed before removal across collision/high-bit patterns. Nine earlier complete
 label diagnostic cases match. Native/unresolved metadata retains its old adapter.
 
-This does not establish absolute graph allocation order. Three of five expanded
-aggregate cases differ in parameter order: formal_20, formal_70 and nested_20.
-Actual first formal UID in the 70-parameter case is Java 305, Go 1 (hashes 1607
-and 1303). Complete the missing graph constructors rather than manufacturing UID
+This does not establish absolute graph allocation order. After frontend context
+integration, one of five expanded aggregate cases differs: formal_70. Its actual
+first formal UID is Java 305, Go 299 (hashes 1607 and 1601). Complete Generator
+sentinel/module and remaining graph constructors rather than manufacturing UID
 offsets. Complete unified LS/generator integration and stop allocation beneath
 forbidden label bodies. No full LabelNode graph parity claim.
 
