@@ -1511,7 +1511,9 @@ func sanyExprImpl(node *SanySyntaxNode) (Expr, Diagnostics) {
 	case "N_Real":
 		return &LiteralExpr{Kind: "number", Value: sanyRealLiteralImage(node), Pos: sanyNodePosition(node)}, nil
 	case "N_String":
-		return &LiteralExpr{Kind: "string", Value: node.Image, Pos: sanyNodePosition(node)}, nil
+		// Generator's StringNode(treeNode, true) strips the retained quotes.
+		value := node.Image[1 : len(node.Image)-1]
+		return &LiteralExpr{Kind: "string", Value: value, Pos: sanyNodePosition(node)}, nil
 	case "N_ParenExpr":
 		return sanyExpr(firstSanyExpression(node))
 	case "N_ConjList":
@@ -2532,7 +2534,7 @@ func isSanyExpressionNode(node *SanySyntaxNode) bool {
 		return true
 	}
 	switch node.Kind.JavaName() {
-	case "IDENTIFIER", "NUMBER_LITERAL", "STRING_LITERAL":
+	case "IDENTIFIER", "NUMBER_LITERAL", "STRING_LITERAL", "N_String":
 		return true
 	default:
 		return false

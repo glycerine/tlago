@@ -1767,8 +1767,8 @@ func (b *tlcBridge) convertLiteral(e *LiteralExpr) tlc.SemanticNode {
 		}
 		return node
 	case "string":
-		// SANY's N_String image has already reduced the source escapes and
-		// quotes. Quoted contents are data, not a second string literal.
+		// Semantic translation has decoded the source escapes and stripped
+		// the syntax image's quotes. Quoted contents are data, not a second literal.
 		return tlc.NewStringNode(e.Value)
 	case "model":
 		return tlc.NewValueNode(tlc.MakeModelValue(e.Value))

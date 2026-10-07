@@ -1,5 +1,51 @@
 # TLC Port Progress
 
+2026-10-06 Primitive syntax leaves, delimiter failures and location aggregation:
+Previous turn completed e7f9af6. Continue source production reconciliation for
+String, Number, ParenExpr and TupleOrAction. String gains the actual String frame
+and typed leaf; Number retains source decimal lookahead/failure lengths and flags;
+parentheses and tuples use mandatory-token exceptions. Tuple elements use the
+source Expression FIRST lookahead rather than a negative closing-token heuristic.
+A source reflection probe of jj_2_49(1) yields 195 accepted token kinds in default
+indentation context, log /mnt/oldrog/tmp/tlago-expression-first-source.log.
+
+Initial SANY gate 23367 terminal 1 exposes a translator shortcut: it rejects the
+new String leaf solely because it carries a token. Recognize N_String explicitly.
+Initial 126 parser observations then expose missing junction frames; restore
+AND-OR Junction and Junction Item around their actual grammar steps. The scratch
+script's initial multiline quoting error performs no comparison and earns no
+credit; repair the script before running it. All 126 final complete TRACE/result
+observations match Java (16471 terminal 0), log
+/mnt/oldrog/tmp/tlago-sany-primitive-parser-final-audit.log.
+
+The unchanged original EWD998 debugger test fails (43901 terminal 1, root 13.291
+seconds) because a String leaf now prints tok instead of the source quoted image.
+Source reduceString retains quotes, contrary to Go's former strconv.Unquote path;
+Generator.StringNode strips them later. Mechanically port quote-preserving escape
+reduction and semantic quote stripping, and share that decoder with TLC string
+preinterning. Correct the one existing native parser expectation from hi to the
+Java-observed quoted hi image. No original Java fixture or assertion is changed.
+
+Full selected-expression tree observations additionally expose fabricated generic
+operator children and empty-node zero ranges. Port typed operator token leaves and
+SyntaxTreeNode.updateLocation aggregation with Java int extrema for empty nodes.
+All 17 final selected expression trees match kinds/images/ranges (53064 terminal 0),
+log /mnt/oldrog/tmp/tlago-primitive-tree-final-audit.log. Earlier mismatching tree
+observations are retained in audit history and earn no pass credit. No whole-module
+AST, complete SyntaxTreeNode or recursive junction indentation parity claim.
+
+Final normal verification: existing sany_tests 1.843 seconds (1552 terminal 0);
+existing parser/semantic/token/operator classes, original ParseErrorTests, five
+original TLC models and native reference/scaffold checks pass in 17.153 seconds
+(72142 terminal 0).
+Root result is recorded in /mnt/oldrog/tmp/tlago-sany-primitive-final-root.log.
+All-package compilation passes without running tests (45498 terminal 0), log
+/mnt/oldrog/tmp/tlago-sany-primitive-final-compile.log. No invented persistent tests,
+no test inventory credit for manual observations. Full workspace green remains
+unproven with the documented unresolved failures. MSB session 5144 is confirmed
+live with the same isolated binary; last progress 1,288,523,777/2,147,483,648.
+Preserve the live run and full original bounds; do not restart or combine with race.
+
 2026-10-06 Quantified parser, domain scope and TLC node parity:
 Previous turn completed c12e205. Port SomeQuant's actual unbounded identifier-list/
 colon lookahead, SomeTQuant's original Bound Quantified Expression frame and

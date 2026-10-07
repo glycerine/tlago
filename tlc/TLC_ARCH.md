@@ -98,6 +98,28 @@ Java. The runtime scope includes bound group/name/tuple metadata, five successfu
 bounded evaluations, one invalid tuple error prefix, and four unbounded/temporal
 metadata checks. It does not establish temporal evaluation or whole-graph parity.
 
+String syntax follows TLAplusParser.String and reduceString: a typed token leaf
+retains quotes while decoding escapes. Generator's StringNode(treeNode, true)
+strips only the surrounding marks during semantic translation. TLC preinterning
+uses the same decoder. Native literal values retain embedded quote characters as
+data. The original EWD998 debugger checks observe the quoted syntax image, while
+TLC evaluates the unquoted string value. One old native parser assertion expected
+an unquoted syntax image; it now matches the observed Java image.
+
+Number preserves Java's two-token decimal lookahead and failed-scan lengths, plus
+its number/decimal flags. ParenExpr uses mandatory delimiter exceptions. TupleOrAction
+uses Expression's actual one-token FIRST set and junction indentation predicate,
+then requires RAB or ARAB and ReducedExpression for an action subscript. Reflection
+of source jj_2_49(1) accepts 195 token kinds in the default indentation context.
+Junctions/JuncItem's actual production frames are retained before bullet consumption
+and after expression generation. Their remaining lookahead and recursive indentation
+behavior are separate reconciliation work. Generic expression operator nodes use
+typed token leaves. SyntaxTreeNode.updateLocation's aggregation recomputes from
+both child arrays and preserves Java int extrema for an empty node. All 126 bounded
+complete parser-output observations and 17 selected primitive expression trees
+(kinds, images and ranges) match Java. These checks do not establish whole-module
+canonical AST or complete SyntaxTreeNode parity.
+
 ## Original heap fingerprint stress target
 
 The original long-test LSB and MSB random methods are available under the

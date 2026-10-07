@@ -20,6 +20,8 @@ type SanyParser struct {
 	expecting            string
 	failedLookaheadSizes map[*SanyToken]int
 	fairnessHook         *SanySyntaxNode
+	numberFlag           bool
+	decimalFlag          bool
 }
 
 func ParseSanySyntax(file, source string) (*SanySyntaxNode, Diagnostics) {
@@ -1734,10 +1736,12 @@ func (p *SanyParser) startsJunctionList(stop func(*SanyToken) bool) bool {
 
 func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	kind := p.peek().Kind
-	firstBullet := p.advance()
+	firstBullet := p.peek()
 	minColumn := firstBullet.Begin.Column
 	p.pushJunctionColumn(minColumn)
 	defer p.popJunctionColumn()
+	p.beginProduction("AND-OR Junction")
+	defer p.endProduction()
 	itemStop := func(tok *SanyToken) bool {
 		if tok.Kind == kind && tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column == minColumn {
 			return true
@@ -1750,9 +1754,7 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 		}
 		return tok.Begin.Line > firstBullet.Begin.Line && tok.Begin.Column <= minColumn && !IsSanyJunctionBullet(tok.Kind)
 	}
-	left := p.ExpressionUntil(func(tok *SanyToken) bool {
-		return itemStop(tok)
-	})
+	_, left := p.junctionItemExpression(itemStop)
 	p.checkJunctionItemIndent(left, firstBullet)
 	listKind := "N_ConjList"
 	itemKind := "N_ConjItem"
@@ -1762,10 +1764,7 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	}
 	items := []*SanySyntaxNode{NewSanyNode(SanySyntaxNodeKindByName[itemKind], NewSanyTokenNode(firstBullet), left)}
 	for p.check(kind) && p.peek().Begin.Line > firstBullet.Begin.Line && p.peek().Begin.Column == minColumn {
-		bullet := p.advance()
-		right := p.ExpressionUntil(func(tok *SanyToken) bool {
-			return itemStop(tok)
-		})
+		bullet, right := p.junctionItemExpression(itemStop)
 		p.checkJunctionItemIndent(right, firstBullet)
 		items = append(items, NewSanyNode(SanySyntaxNodeKindByName[itemKind], NewSanyTokenNode(bullet), right))
 	}
@@ -1773,6 +1772,18 @@ func (p *SanyParser) JunctionList(stop func(*SanyToken) bool) *SanySyntaxNode {
 	list.JunctionList = true
 	list.Range.Begin = firstBullet.Begin
 	return list
+}
+
+// JuncItem enters its frame before consuming the bullet and leaves it before
+// constructing the node and checking indentation.
+func (p *SanyParser) junctionItemExpression(stop func(*SanyToken) bool) (*SanyToken, *SanySyntaxNode) {
+	p.beginProduction("Junction Item")
+	defer p.endProduction()
+	if !p.check(SanyTokenAND) && !p.check(SanyTokenOR) {
+		p.throwParseException([][]SanyTokenKind{{SanyTokenOR}, {SanyTokenAND}}, "expected junction bullet")
+	}
+	bullet := p.advance()
+	return bullet, p.ExpressionUntil(stop)
 }
 
 func (p *SanyParser) pushJunctionColumn(column int) {
@@ -2287,30 +2298,37 @@ func (p *SanyParser) PrimitiveExpression() *SanySyntaxNode {
 }
 
 func (p *SanyParser) String() *SanySyntaxNode {
-	tok := p.consume(SanyTokenStringLiteral, "expected string literal")
-	node := NewSanyNode(SanySyntaxNodeKindByName["N_String"], tok)
-	if tok != nil {
-		node.Image = reduceTLAString(tok.Image)
-	}
+	p.beginProduction("String")
+	defer p.endProduction()
+	node := p.consumeParseToken(SanyTokenStringLiteral, "expected string literal")
+	node.Kind = SanySyntaxNodeKindByName["N_String"]
+	node.Image = sanyReduceString(node.Image)
 	return node
 }
 
 func (p *SanyParser) Number() *SanySyntaxNode {
-	first := p.consume(SanyTokenNumberLiteral, "expected number literal")
-	if p.check(SanyTokenDot) && p.peekNext().Kind == SanyTokenNumberLiteral {
-		dot := NewSanyTokenNode(p.advance())
-		second := p.consume(SanyTokenNumberLiteral, "expected number literal after decimal point")
-		return NewSanyNode(SanySyntaxNodeKindByName["N_Real"], first, dot, second)
+	first := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal")
+	if p.check(SanyTokenDot) {
+		if p.tokenAt(1).Kind == SanyTokenNumberLiteral {
+			dot := p.consumeParseToken(SanyTokenDot, "expected decimal point")
+			second := p.consumeParseToken(SanyTokenNumberLiteral, "expected number literal after decimal point")
+			p.decimalFlag = true
+			return NewSanyNode(SanySyntaxNodeKindByName["N_Real"], first, dot, second)
+		}
+		p.rememberFailedLookahead(2)
+	} else {
+		p.rememberFailedLookahead(1)
 	}
+	p.numberFlag = true
 	return NewSanyNode(SanySyntaxNodeKindByName["N_Number"], first)
 }
 
 func (p *SanyParser) ParenExpr() *SanySyntaxNode {
-	left := p.consume(SanyTokenLbr, "expected (")
+	left := p.consumeParseToken(SanyTokenLbr, "expected (")
 	expr := p.ExpressionUntil(func(tok *SanyToken) bool {
 		return tok.Kind == SanyTokenRbr || tok.Kind == SanyTokenEOF
 	})
-	right := p.consume(SanyTokenRbr, "expected )")
+	right := p.consumeParseToken(SanyTokenRbr, "expected )")
 	return NewSanyNode(SanySyntaxNodeKindByName["N_ParenExpr"], left, expr, right)
 }
 
@@ -2364,12 +2382,32 @@ func (p *SanyParser) BraceCases() *SanySyntaxNode {
 	return NewSanyNode(SanySyntaxNodeKindByName["N_SetEnumerate"], heirs...)
 }
 
+// Java jj_2_49(1) checks Expression's first token, including its junction
+// indentation predicate. All operator tokens and proof-step lexemes can start it.
+func (p *SanyParser) startsExpressionLookahead() bool {
+	kind := p.peek().Kind
+	starts := kind >= SanyTokenOp57 && kind <= SanyTokenProofimplicitsteplexeme
+	if !starts {
+		switch kind {
+		case SanyTokenCase, SanyTokenChoose, SanyTokenExists, SanyTokenForall,
+			SanyTokenIf, SanyTokenLet, SanyTokenSF, SanyTokenTExists,
+			SanyTokenTForall, SanyTokenWF, SanyTokenLbr, SanyTokenLsb,
+			SanyTokenLbc, SanyTokenLab, SanyTokenNumberLiteral, SanyTokenStringLiteral:
+			starts = true
+		}
+	}
+	if starts && p.aboveCurrentJunction() {
+		return true
+	}
+	p.rememberFailedLookahead(1)
+	return false
+}
+
 func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 	p.beginProduction("Some << -- >> or >>_ Form")
 	defer p.endProduction()
-	var heirs []*SanySyntaxNode
-	heirs = append(heirs, p.consume(SanyTokenLab, "expected <<"))
-	if !p.check(SanyTokenRab) && !p.check(SanyTokenArab) {
+	heirs := []*SanySyntaxNode{p.consumeParseToken(SanyTokenLab, "expected <<")}
+	if p.startsExpressionLookahead() {
 		heirs = append(heirs, p.ExpressionUntil(func(tok *SanyToken) bool {
 			return tok.Kind == SanyTokenComma || tok.Kind == SanyTokenRab || tok.Kind == SanyTokenArab || tok.Kind == SanyTokenEOF
 		}))
@@ -2380,13 +2418,18 @@ func (p *SanyParser) TupleOrAction() *SanySyntaxNode {
 			}))
 		}
 	}
-	if p.match(SanyTokenArab) {
-		heirs = append(heirs, NewSanyTokenNode(p.previous()))
+	switch p.peek().Kind {
+	case SanyTokenRab:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenRab, "expected >>"))
+		return NewSanyNode(SanySyntaxNodeKindByName["N_Tuple"], heirs...)
+	case SanyTokenArab:
+		heirs = append(heirs, p.consumeParseToken(SanyTokenArab, "expected >>_"))
 		heirs = append(heirs, p.ReducedExpression())
 		return NewSanyNode(SanySyntaxNodeKindByName["N_ActionExpr"], heirs...)
+	default:
+		p.throwParseException([][]SanyTokenKind{{SanyTokenRab}, {SanyTokenArab}}, "expected >> or >>_")
+		return nil
 	}
-	heirs = append(heirs, p.consume(SanyTokenRab, "expected >>"))
-	return NewSanyNode(SanySyntaxNodeKindByName["N_Tuple"], heirs...)
 }
 
 func (p *SanyParser) SBracketCases() *SanySyntaxNode {
@@ -2898,15 +2941,45 @@ func (p *SanyParser) StructOp() *SanySyntaxNode {
 	)
 }
 
+// TLAplusParser.reduceString decodes escapes while retaining the quote marks.
+// Generator's StringNode strips those marks later, when creating its value.
+func sanyReduceString(image string) string {
+	var out strings.Builder
+	padding := 0
+	for i := 0; i < len(image); i++ {
+		if image[i] != '\\' {
+			out.WriteByte(image[i])
+			continue
+		}
+		i++
+		switch image[i] {
+		case '\\', '"':
+			out.WriteByte(image[i])
+		case 'n':
+			out.WriteByte('\n')
+		case 'r':
+			out.WriteByte('\r')
+		case 'f':
+			out.WriteByte('\f')
+		case 't':
+			out.WriteByte('\t')
+		default:
+			// Source increments its output length even for an unknown escape.
+			padding++
+		}
+	}
+	for ; padding > 0; padding-- {
+		out.WriteByte(0)
+	}
+	return out.String()
+}
+
 func reduceTLAString(image string) string {
-	value, err := strconv.Unquote(image)
-	if err == nil {
-		return value
+	value := sanyReduceString(image)
+	if len(value) >= 2 && value[0] == '"' && value[len(value)-1] == '"' {
+		return value[1 : len(value)-1]
 	}
-	if len(image) >= 2 && image[0] == '"' && image[len(image)-1] == '"' {
-		return image[1 : len(image)-1]
-	}
-	return image
+	return value
 }
 
 func (p *SanyParser) genericOperatorNode(tok *SanyToken, op SanyOperatorInfo) *SanySyntaxNode {
@@ -2922,7 +2995,7 @@ func (p *SanyParser) genericOperatorNode(tok *SanyToken, op SanyOperatorInfo) *S
 	return NewSanyNode(
 		SanySyntaxNodeKindByName[kindName],
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
-		NewSanyNode(SanySyntaxNodeKindByName[leafKindName], NewSanyTokenNode(tok)),
+		sanyOperatorTokenNode(leafKindName, tok),
 	)
 }
 
@@ -2933,7 +3006,7 @@ func (p *SanyParser) genericOperatorReferenceNode(tok *SanyToken, op SanyOperato
 	return NewSanyNode(
 		SanySyntaxNodeKindByName["N_GenNonExpPrefixOp"],
 		NewSanyNode(SanySyntaxNodeKindByName["N_IdPrefix"]),
-		NewSanyNode(SanySyntaxNodeKindByName["N_NonExpPrefixOp"], NewSanyTokenNode(tok)),
+		sanyOperatorTokenNode("N_NonExpPrefixOp", tok),
 	)
 }
 

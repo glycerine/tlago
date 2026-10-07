@@ -554,8 +554,8 @@ P == (A = B)
 		if expr := defs[1].GetHeirs()[2]; expr.Kind.JavaName() != "N_Real" {
 			t.Fatalf("R expression = %s, want N_Real", expr.Kind.JavaName())
 		}
-		if expr := defs[2].GetHeirs()[2]; expr.Kind.JavaName() != "N_String" || expr.Image != "hi" {
-			t.Fatalf("S expression = %s/%q, want N_String/hi", expr.Kind.JavaName(), expr.Image)
+		if expr := defs[2].GetHeirs()[2]; expr.Kind.JavaName() != "N_String" || expr.Image != `"hi"` {
+			t.Fatalf("S expression = %s/%q, want N_String/quoted hi", expr.Kind.JavaName(), expr.Image)
 		}
 		if expr := defs[3].GetHeirs()[2]; expr.Kind.JavaName() != "N_ParenExpr" {
 			t.Fatalf("P expression = %s, want N_ParenExpr", expr.Kind.JavaName())

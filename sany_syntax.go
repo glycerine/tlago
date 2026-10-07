@@ -184,6 +184,12 @@ func (n *SanySyntaxNode) refreshHeirsAndRange() {
 		return
 	}
 	n.Heirs = append(append([]*SanySyntaxNode(nil), n.Zero...), n.One...)
+	// SyntaxTreeNode.updateLocation retains these Java int extrema when no
+	// heir supplies a location. Recompute from both child arrays each time.
+	n.Range = SanyRange{
+		Begin: Position{Line: 2147483647, Column: 2147483647},
+		End:   Position{Line: -2147483648, Column: -2147483648},
+	}
 	for _, heir := range n.Heirs {
 		if heir == nil {
 			continue
@@ -191,11 +197,12 @@ func (n *SanySyntaxNode) refreshHeirsAndRange() {
 		if n.FileName == "" {
 			n.FileName = heir.FileName
 		}
-		if n.Range.Begin.Line == 0 || positionBefore(heir.Range.Begin, n.Range.Begin) {
-			n.Range.Begin = heir.Range.Begin
+		begin, end := heir.Range.Begin, heir.Range.End
+		if begin.Line < n.Range.Begin.Line || begin.Line == n.Range.Begin.Line && begin.Column < n.Range.Begin.Column {
+			n.Range.Begin = begin
 		}
-		if n.Range.End.Line == 0 || positionBefore(n.Range.End, heir.Range.End) {
-			n.Range.End = heir.Range.End
+		if end.Line > n.Range.End.Line || end.Line == n.Range.End.Line && end.Column > n.Range.End.Column {
+			n.Range.End = end
 		}
 	}
 }
