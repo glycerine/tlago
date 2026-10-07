@@ -9357,3 +9357,26 @@ collection order, false/repeated/decreasing checks, skipped definitions, null
 failure state, and copy capacities across nine sizes. These observations add no
 original-test credit. Application, instance, theorem and module descendant
 checks remain dependencies before the original incremental LET tests can close.
+
+
+## Canonical LabelNode level checking
+
+`sany_label_level.go` translates the source label check and all six overridden
+metadata getters. A cached check returns true regardless of the body's previous
+result or the label's inherited correctness field. A fresh check records iteration
+before traversing non-null formals and then the body. It returns the body result
+without copying that result into its own correctness field. Null formal entries
+are skipped; a null formal array fails after recording iteration.
+
+Level, level/all-parameter sets, both constraint maps and argument dependencies
+are read directly from the current body through virtual getters. Preserve the
+source's TheoremNode/ThmNode zero-iteration error messages. The non-Leibniz getter
+is inherited and reads the label's separate set; do not delegate it. Other
+inherited scalar and collection fields are not populated as side effects.
+
+Eighty-one external Java/Go rows agree exactly, including full metadata text,
+set/map identity, signed iterations, false body results, null body/parameter
+failures, body replacement with an unchecked literal, direct mutation and
+operator definitions whose bodies are labels. These scratch observations add no
+original-method credit. General application, substitution, theorem, instance,
+proof/module checking and evaluator collection sharing remain incomplete.

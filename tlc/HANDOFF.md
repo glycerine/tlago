@@ -1216,6 +1216,11 @@ of dependencies bound by local formals. It preserves the source omission of
 non-Leibniz propagation. All 68 direct Java observations agree, including full
 metadata formatting, partial failures and HashSet copy capacity/order. These
 observations do not close the two original incremental LET tests.
+LabelNode now checks formals and its actual body, preserving the source cached
+`true` result and direct delegation of six metadata getters. Its inherited
+non-Leibniz set remains separate. All 81 direct Java observations agree, including
+label-bodied operator checks and exact getter guards. These observations add no
+original-method completion credit.
 Application, instance, proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

@@ -1,5 +1,30 @@
 # TLC Port Progress
 
+2026-10-07 Canonical LabelNode level check and getter delegation:
+Previous completed commit: 98649b9. Translate complete source LabelNode.levelCheck
+and six overridden getters in sany_label_level.go. Preserve the source cached
+true result, early iteration recording, null formal skipping, ignored formal
+results and body result without updating inherited correctness. Delegate exactly
+six getters to the current actual body; keep the inherited non-Leibniz set.
+Preserve zero-only guards and the source TheoremNode/ThmNode error messages.
+No unchecked-body constants or empty-set fallback is introduced.
+
+External source observer uses actual FormalParam/OpDef/Label nodes and controlled
+ExprNode bodies, all under /mnt/oldrog/tmp/tlago-label-level-*. Initial observer
+52131 passes and all 53 complete rows agree. Extend to four modes of actual
+label-bodied operator checking over seven signed/repeated iterations. Observer
+39819 passes and all 81 complete output rows agree, including inherited-field
+state, collection identity, formatted metadata, null failures, direct collection
+mutation and replacing the body with an unchecked literal. Source comparison
+strips only the Go runner envelope. No permanent test is invented. Source test
+search finds TestLevelChecking as the existing level suite, already translated.
+No original-method count changes; the two incremental LET methods still reconcile.
+
+Broad affected original/model gate 65528 passes normally in 46.387s with 283
+passing test events. Full SANY 81520 passes in 1.874s; compile all packages 74898
+passes. All handles retired. No race run, weakened assertion or shortened workload.
+This is not a new full-workspace verification receipt.
+
 2026-10-07 Canonical LetInNode level algorithm:
 Previous completed commit: 5a6495e. Translate the full source LetInNode.levelCheck
 and body accessor. Preserve component traversal after false results, early
