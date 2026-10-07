@@ -1,5 +1,34 @@
 # TLC Port Progress
 
+2026-10-07 Canonical AssumeNode check, shadow counter and formatter:
+Previous completed commit: 501fe7f. Translate complete source expression/optional
+named-definition checking, delegated metadata getters and overridden level-data
+formatting. Preserve AssumeNode's shadow levelChecked field separately from its
+inherited cell; source next-iteration overload reads the inherited cell. Cached
+checks return true. E4206 does not force a false return. The temporal-constant
+helper operates on the assumption's own collections, not delegated body sets.
+Preserve fixed-format/integer-parameter diagnostic equality and null receiver
+argument ordering. Common level-data formatting dispatches class overrides
+before inherited guards. Non-Leibniz metadata stays inherited and separate.
+
+External observer /mnt/oldrog/tmp/tlago-assumption-level-* uses actual source
+Assume/ThmOrAssumpDef/Formal nodes and controlled ExprNode metadata. Initial
+observer 22169 fails before cases because its Go scratch syntax initializes One
+but omits the actual heir array required by the constructor. Correct scratch
+syntax setup; observer 29799 passes and all 160 full source rows agree. Extend
+snapshots with original levelDataToString, including collection order and exact
+error formatting. Observer 30417 passes; all 160 enriched complete rows agree.
+Retained common observer 49072 passes with all 575 rows unchanged. Strip only
+Go runner envelope. No scenario weakened and no permanent test invented.
+
+Broad affected original/model gate 37014 passes normally in 47.593s with 283
+passing test events. Full SANY 5972 passes in 1.931s; all-package compile 38940
+passes. All handles retired. No race, shortened workload or original-method
+completion credit. Both incremental LET methods remain pending. TheoremNode
+also shadows the inherited counter and its source check remains unported;
+record that dependency in handoff and architecture. This is not a new
+full-workspace verification receipt.
+
 2026-10-07 Canonical NewSymbNode level check and diagnostic:
 Previous completed commit: 9944977. Translate complete source declaration/set
 checking, exact TemporalLevel comparison and E4356 diagnostic. Preserve early

@@ -9458,3 +9458,32 @@ six construction/failure modes and eight signed/repeated iterations, complete
 metadata and Errors output, identity checks, set removal/restoration and a
 pre-seeded duplicate diagnostic. These observations do not add original-method
 credit, establish general Errors parity or close other ASSUME-PROVE descendants.
+
+
+## Canonical assumption level checking and shadow iteration
+
+`sany_assumption_level.go` translates AssumeNode checking, six delegated getters
+and its overridden level-data formatter. Unlike LabelNode, these delegated
+getters have no guard on the assumption's own iteration. The non-Leibniz getter
+stays inherited. Preserve Java's separate AssumeNode `levelChecked` field, which
+shadows the LevelNode field: checking records `assumeLevelChecked`, while the
+common next-iteration overload reads the inherited cell. A cached assumption
+check returns true even after its prior expression check returned false.
+
+The expression is checked first, then an optional definition is checked even
+after false. A nonconstant expression reports E4206 but does not force the result
+false. Preserve exact message, location, fixed-format/integer-parameter duplicate
+equality and argument evaluation before a null Errors failure. If the result is
+true, temporal-constant constraints are applied to the assumption's inherited
+fields, not its delegated body collections. These inherited fields are not
+populated by this check. The common formatting entry point now dispatches actual
+class overrides before its inherited guard; the assumption formatter prints
+Java collection/map forms and skips that guard.
+
+All 160 external Java/Go rows match exactly across ten modes and eight iteration
+phases, including the no-iteration overload, both counters, named definitions,
+false results, null bodies/logs/own sets, constant-kind filtering, exact Errors
+text, getter identity and overridden formatting. All 575 retained common rows
+still agree. These observations add no original-method credit. TheoremNode has
+its own analogous shadow counter and still requires its complete source check;
+other canonical graph/evaluator dependencies remain incomplete.

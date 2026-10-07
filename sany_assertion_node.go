@@ -5,10 +5,11 @@ import "github.com/glycerine/tlago/tlc"
 
 type sanySemAssumeNode struct {
 	sanySemanticNode
-	module     *sanySemModuleNode
-	assumeExpr sanySemanticGraphNode
-	def        *sanySemThmOrAssumpDefNode
-	isAxiom    bool
+	assumeLevelChecked int32 // Java AssumeNode shadows LevelNode.levelChecked.
+	module             *sanySemModuleNode
+	assumeExpr         sanySemanticGraphNode
+	def                *sanySemThmOrAssumpDefNode
+	isAxiom            bool
 }
 
 type sanySemTheoremNode struct {

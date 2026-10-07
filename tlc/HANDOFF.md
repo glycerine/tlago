@@ -1236,6 +1236,13 @@ exact-temporal diagnostic E4356, and shares five actual set collections while
 retaining its own non-Leibniz set. Removing a set retains previously shared
 metadata and correctness. All 195 Java observations agree, including exact
 error text, deduplication, failure order and typed-null set handling.
+AssumeNode now checks its expression and optional definition, delegates six
+metadata getters and ports its source-specific formatter. Its Java shadow
+iteration counter remains distinct from the inherited cell: the next-iteration
+overload reads the inherited counter. Diagnostics do not force the returned
+result false, and temporal-constant constraints update the assumption's own
+collections. All 160 detailed Java observations and 575 retained common rows
+agree. TheoremNode also shadows iteration; preserve that in its remaining port.
 Application, instance, remaining proof/module checks and evaluator collection sharing
 remain pending: the legacy TLC symbol-parameter API still returns its separate
 TLC symbol projection. No TLC inventory count changes.

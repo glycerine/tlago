@@ -195,6 +195,9 @@ func sanyLevelDataToString(n sanyCanonicalLevelNode) string {
 	if n == nil || reflect.ValueOf(n).IsNil() {
 		panic(tlc.NewNullPointerException())
 	}
+	if printer, ok := n.(interface{ levelDataToString() string }); ok {
+		return printer.levelDataToString()
+	}
 	n.getLevelData().requireChecked("levelDataToString called before levelCheck")
 	return sanyDefaultLevelDataToString(n)
 }
