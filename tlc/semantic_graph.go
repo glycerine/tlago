@@ -36,15 +36,15 @@ func walkSemanticGraph(roots []SemanticNode, preVisit func(SemanticNode)) {
 				return
 			}
 			if n.Context != nil {
-				for i := len(n.Context.buckets) - 1; i >= 0; i-- {
-					for _, entry := range n.Context.buckets[i] {
-						if entry.key.Module {
-							// Preserve Context.walkGraph's distinct ModuleName
-							// branch, which reports and skips inner modules.
-							fmt.Printf("Bug in debugging caused by inner module %s\nSANY will throw a null pointer exception.\n", entry.key.Name)
-						} else {
-							walk(entry.pair.node)
-						}
+				entries := n.Context.GetContextSymbolEnumeration()
+				for entries.HasMoreElements() {
+					entry := entries.nextEntry()
+					if entry.key.Module {
+						fmt.Printf("Bug in debugging caused by inner module %s\nSANY will throw a null pointer exception.\n", entry.key.Name)
+					} else {
+						// Context.walkGraph enumerates keys, then resolves the
+						// current binding before invoking the child callback.
+						walk(n.Context.GetSymbol(entry.key))
 					}
 				}
 			}

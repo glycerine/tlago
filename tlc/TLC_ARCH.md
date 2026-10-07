@@ -9891,3 +9891,23 @@ Token constructors must retain their filename, as Java's SyntaxTreeNode does.
 External production observers match 15,082 child, callback, path and mutation
 rows over three original models. This covers observed containment behavior, not
 all syntax allocations, malformed nodes or evaluator graph sharing.
+
+## Runtime semantic context enumeration
+
+SemanticContext uses linked Hashtable entries distinct from its newest-first
+Pair history. Replacements change an entry's value without moving it; rehashing
+relinks those same entries into the enlarged table. Symbol enumerators capture
+the bucket array and retain their next-entry cursor. They are not snapshots of
+all values and do not fail fast on mutation. HasMoreElements may set the cursor;
+NextElement advances it before returning the current symbol. Exhaustion raises
+NoSuchElementException with `Hashtable Enumerator` as its message.
+
+Runtime module graph traversal enumerates keys using that cursor and resolves
+the current context binding before traversing its node, matching Context.walkGraph.
+A stored null symbol is still present according to occurSymbol; getSymbol returns
+null for it. Null keys raise NullPointerException. Content remains a materialized
+Go convenience view; mutation-sensitive callers use GetContextSymbolEnumeration.
+External source observations match 170 enumeration/presence/exception rows and
+25 traversal rows with colliding keys and callback replacements/rehashes. This
+does not close runtime LET context reconstruction, missing graph node classes,
+canonical metadata sharing or full runtime visitor parity.

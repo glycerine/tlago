@@ -111,6 +111,17 @@ Existing original scoped-identifier and frontend checks pass after the filename
 fix, as does complete SANY and all-package compilation. All handles are retired.
 The full-workspace receipt above remains an earlier failing snapshot.
 
+Runtime SemanticContext now retains Java Hashtable entry links and exposes
+source-style symbol enumeration. Rehashing relinks shared entries; enumerators
+retain their original bucket array and advance before callbacks. Runtime module
+graph traversal resolves each enumerated key against the current binding.
+Presence checks distinguish a stored null symbol from a missing key, and null
+keys/exhausted enumeration preserve Java exception families. All 195 external
+enumeration and traversal observations agree with Java; existing original model,
+coverage and scoped checks pass (root 6.973 seconds), as do focused TLC tool checks
+and compilation. Runtime LET context reconstruction and full canonical/evaluator
+sharing remain pending; these observations add no original test-port credit.
+
 Both `CheckSanySpecLevels` and the `CheckSpec`/TLC driver now invoke the actual
 generated `ModuleNode.levelCheck`. The driver preserves Java's external-module
 order, shared diagnostic log and raw-success gate. Integration exposed the

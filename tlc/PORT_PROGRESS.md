@@ -1,5 +1,39 @@
 # TLC Port Progress
 
+2026-10-07 Runtime semantic-context entry sharing and enumeration:
+Previous completed commit: 5489922. Audit actual Java Context and Hashtable
+enumeration after canonical child work. Runtime SemanticContext slice buckets
+copy traversal chains and cannot retain Java rehash pointer mutation behavior.
+Translate linked entries, replacement in place, relinking on rehash and the
+bucket-array/cursor enumeration. Runtime module walkSemanticGraph now enumerates
+keys and resolves the current binding before its child callback. Port occurSymbol
+as key presence (including a stored null symbol), null-key failures and exact
+exhaustion message. Content remains a materialized Go convenience API; no claim
+of complete Context/visitor or canonical/evaluator graph integration.
+
+External Java/Go observers agree on all 170 enumeration rows over deliberately
+colliding keys: ordinary traversal, replacements, insertions, rehash during
+traversal, rehash before first read, duplication and null presence/exceptions.
+A further 25 runtime graph callback rows agree for replacements and rehashing.
+The first scratch Go output incorrectly formats the nullable message pointer;
+correct the observer to dereference it before the successful comparison. No
+production behavior is adjusted to accommodate that probe mistake. Artifacts:
+/mnt/oldrog/tmp/RuntimeContextProbe.java and
+/mnt/oldrog/tmp/tlago-runtime-context-*. No permanent invented tests or source
+fixture changes; no original-method inventory credit. Source test search finds
+no dedicated original semantic Context enumeration test; tlc2.util.ContextTest
+is a separate runtime evaluation class already ported.
+
+Original model/coverage/scoped/corpus/selector/incremental selection 73364 passes:
+root 6.973s; TLC reports no tests for that selection, not feature-test evidence.
+Focused existing TLC tool/context/coverage helpers pass 0.021s. All-package compile
+66756 passes. Scratch graph observation 13613 passes and is retired; initial
+standalone Go probe 97171 is retired, subsequent corrected probe returns 0.
+All handles retired, diff check green, no race or optional corpus sweeps. Keep
+runtime LET Context reconstruction, general graph classes/metadata sharing,
+invalid selector state machine and trace reconciliation pending. Full-workspace
+receipt remains the earlier failing snapshot; overall goal stays active.
+
 2026-10-07 Canonical child traversal, path search and token filenames:
 Previous completed commit: c6ae0c5. Translate SemanticNode getListOfChildren,
 hasChildren, ChildrenVisitor, walkChildren and pathTo over actual canonical nodes.

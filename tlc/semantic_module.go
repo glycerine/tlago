@@ -11,7 +11,7 @@ import "unicode/utf16"
 type SemanticContext struct {
 	ModuleTable *ExternalModuleTable
 	lastPair    *semanticContextPair
-	buckets     [][]*semanticContextEntry
+	buckets     []*semanticContextEntry
 	count       int
 	threshold   int
 }
@@ -30,13 +30,17 @@ type semanticContextPair struct {
 type semanticContextEntry struct {
 	key  SemanticContextKey
 	pair *semanticContextPair
+	next *semanticContextEntry
 }
 
 func NewSemanticContext(table *ExternalModuleTable) *SemanticContext {
-	return &SemanticContext{ModuleTable: table, buckets: make([][]*semanticContextEntry, 11), threshold: 8}
+	return &SemanticContext{ModuleTable: table, buckets: make([]*semanticContextEntry, 11), threshold: 8}
 }
 
 func semanticContextHash(key SemanticContextKey, size int) int {
+	if key.Name == nil {
+		panic(NewNullPointerException())
+	}
 	var hash uint32
 	for _, unit := range utf16.Encode([]rune(key.Name.String())) {
 		hash = 31*hash + uint32(unit)
@@ -46,7 +50,7 @@ func semanticContextHash(key SemanticContextKey, size int) int {
 
 func (c *SemanticContext) put(key SemanticContextKey, pair *semanticContextPair) {
 	i := semanticContextHash(key, len(c.buckets))
-	for _, entry := range c.buckets[i] {
+	for entry := c.buckets[i]; entry != nil; entry = entry.next {
 		if entry.key == key {
 			entry.pair = pair
 			return
@@ -54,17 +58,20 @@ func (c *SemanticContext) put(key SemanticContextKey, pair *semanticContextPair)
 	}
 	if c.count >= c.threshold {
 		old := c.buckets
-		c.buckets = make([][]*semanticContextEntry, 2*len(old)+1)
+		c.buckets = make([]*semanticContextEntry, 2*len(old)+1)
 		c.threshold = 3 * len(c.buckets) / 4
 		for j := len(old) - 1; j >= 0; j-- {
-			for _, entry := range old[j] {
+			for entry := old[j]; entry != nil; {
+				next := entry.next
 				bucket := semanticContextHash(entry.key, len(c.buckets))
-				c.buckets[bucket] = append([]*semanticContextEntry{entry}, c.buckets[bucket]...)
+				entry.next = c.buckets[bucket]
+				c.buckets[bucket] = entry
+				entry = next
 			}
 		}
 		i = semanticContextHash(key, len(c.buckets))
 	}
-	c.buckets[i] = append([]*semanticContextEntry{{key: key, pair: pair}}, c.buckets[i]...)
+	c.buckets[i] = &semanticContextEntry{key: key, pair: pair, next: c.buckets[i]}
 	c.count++
 }
 
@@ -75,10 +82,10 @@ func (c *SemanticContext) AddSymbolToContext(key SemanticContextKey, node Semant
 }
 
 func (c *SemanticContext) GetSymbol(key SemanticContextKey) SemanticNode {
-	if c == nil || key.Name == nil {
-		return nil
+	if c == nil {
+		panic(NewNullPointerException())
 	}
-	for _, entry := range c.buckets[semanticContextHash(key, len(c.buckets))] {
+	for entry := c.buckets[semanticContextHash(key, len(c.buckets))]; entry != nil; entry = entry.next {
 		if entry.key == key {
 			return entry.pair.node
 		}
@@ -87,7 +94,15 @@ func (c *SemanticContext) GetSymbol(key SemanticContextKey) SemanticNode {
 }
 
 func (c *SemanticContext) OccurSymbol(key SemanticContextKey) bool {
-	return c.GetSymbol(key) != nil
+	if c == nil {
+		panic(NewNullPointerException())
+	}
+	for entry := c.buckets[semanticContextHash(key, len(c.buckets))]; entry != nil; entry = entry.next {
+		if entry.key == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *SemanticContext) Duplicate(table *ExternalModuleTable) *SemanticContext {
@@ -119,17 +134,53 @@ func (c *SemanticContext) Duplicate(table *ExternalModuleTable) *SemanticContext
 	return dup
 }
 
-// Content follows Hashtable.elements(), whereas operator definitions follow
-// the newest-first Pair links. These orders differ in Java and affect TLC.
-func (c *SemanticContext) Content() []SemanticNode {
+// SemanticContextSymbolEnumeration retains the Hashtable bucket array and
+// entry cursor, as Java's non-fail-fast Enumeration does. Rehashing relinks the
+// same entries; replacement updates values without moving their bucket.
+type SemanticContextSymbolEnumeration struct {
+	buckets []*semanticContextEntry
+	index   int
+	entry   *semanticContextEntry
+}
+
+func (c *SemanticContext) GetContextSymbolEnumeration() *SemanticContextSymbolEnumeration {
 	if c == nil {
-		return nil
+		panic(NewNullPointerException())
 	}
-	var result []SemanticNode
-	for i := len(c.buckets) - 1; i >= 0; i-- {
-		for _, entry := range c.buckets[i] {
-			result = append(result, entry.pair.node)
-		}
+	return &SemanticContextSymbolEnumeration{buckets: c.buckets, index: len(c.buckets)}
+}
+func (e *SemanticContextSymbolEnumeration) HasMoreElements() bool {
+	if e == nil {
+		panic(NewNullPointerException())
+	}
+	for e.entry == nil && e.index > 0 {
+		e.index--
+		e.entry = e.buckets[e.index]
+	}
+	return e.entry != nil
+}
+func (e *SemanticContextSymbolEnumeration) nextEntry() *semanticContextEntry {
+	if !e.HasMoreElements() {
+		message := "Hashtable Enumerator"
+		failure := NewNoSuchElementException()
+		failure.Message = &message
+		panic(failure)
+	}
+	entry := e.entry
+	e.entry = entry.next
+	return entry
+}
+func (e *SemanticContextSymbolEnumeration) NextElement() SemanticNode {
+	return e.nextEntry().pair.node
+}
+
+// Content materializes Hashtable.elements() order for existing Go callers.
+// Use GetContextSymbolEnumeration when mutations can occur during enumeration.
+func (c *SemanticContext) Content() []SemanticNode {
+	result := make([]SemanticNode, 0)
+	entries := c.GetContextSymbolEnumeration()
+	for entries.HasMoreElements() {
+		result = append(result, entries.NextElement())
 	}
 	return result
 }
