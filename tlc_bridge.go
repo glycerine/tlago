@@ -418,8 +418,15 @@ func (b *tlcBridge) installConstantDeclarations() {
 				continue
 			}
 			for _, name := range declaration.Names {
+				source, generated := tlcBridgeOwnedDeclaration(mod, name)
+				if generated && source == nil {
+					continue
+				}
 				symbol := b.declarationSymbol(mod, name)
 				symbol.Arity = declaration.Arities[name]
+				if source != nil {
+					symbol.Arity = source.semArity()
+				}
 				if !seen[symbol] {
 					seen[symbol] = true
 					b.processor.ConstantDeclarations = append(b.processor.ConstantDeclarations, symbol)
@@ -1440,11 +1447,19 @@ func (b *tlcBridge) instanceTargets(mod *Module, visiting map[string]bool) []tlc
 			continue
 		}
 		for _, name := range decl.Names {
+			source, generated := tlcBridgeOwnedDeclaration(mod, name)
+			if generated && source == nil {
+				continue
+			}
 			sym := b.declarationSymbol(mod, name)
 			if decl.Kind == VariableDecl {
 				sym.MarkVariableDecl()
 			}
-			target := tlcBridgeInstanceTarget{name: name, arity: decl.Arities[name], sym: sym}
+			arity := decl.Arities[name]
+			if source != nil {
+				arity = source.semArity()
+			}
+			target := tlcBridgeInstanceTarget{name: name, arity: arity, sym: sym}
 			index := slices.IndexFunc(out, func(existing tlcBridgeInstanceTarget) bool { return existing.name == name })
 			if index >= 0 {
 				out[index] = target

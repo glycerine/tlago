@@ -12,6 +12,7 @@ import (
 // ModuleNode obtains declarations by reversing Hashtable.elements(). Keep both
 // orders: sorting declaration names changes state printing and variable slots.
 type tlcBridgeContextEntry struct {
+	declaration        *sanySemOpDeclNode
 	name               string
 	kind               DeclarationKind
 	module             *Module
@@ -66,6 +67,19 @@ func (b *tlcBridge) conversionContextSymbol(module *Module, name string) *tlc.Sy
 	return nil
 }
 
+// A generated source module's owned context identifies accepted declarations.
+// Native AST callers without source generation retain their existing metadata.
+func tlcBridgeOwnedDeclaration(module *Module, name string) (*sanySemOpDeclNode, bool) {
+	if module == nil || module.Syntax == nil || module.semanticNode == nil {
+		return nil, false
+	}
+	node := sanyModuleDeclarationNode(module, name)
+	if node == nil || node.module != module.semanticNode {
+		return nil, true
+	}
+	return node, true
+}
+
 func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool) []tlcBridgeContextEntry {
 	if mod == nil || visiting[mod] {
 		return nil
@@ -116,11 +130,18 @@ func tlcBridgeContextEntries(spec *Spec, mod *Module, visiting map[*Module]bool)
 	for _, declaration := range mod.Declarations {
 		var declared []tlcBridgeContextEntry
 		for _, name := range declaration.Names {
+			source, generated := tlcBridgeOwnedDeclaration(mod, name)
+			if generated && source == nil {
+				continue
+			}
 			position := declaration.NamePositions[name]
 			if position.Line == 0 {
 				position = declaration.Pos
 			}
-			declared = append(declared, tlcBridgeContextEntry{name: name, kind: declaration.Kind, module: mod, position: position})
+			if source != nil {
+				position = source.semPosition()
+			}
+			declared = append(declared, tlcBridgeContextEntry{declaration: source, name: name, kind: declaration.Kind, module: mod, position: position})
 		}
 		items = append(items, item{position: declaration.Pos, entries: declared})
 	}

@@ -186,6 +186,9 @@ func (b *tlcBridge) extendModuleTable(publishRoot bool) {
 						}
 					}
 				}
+				if entry.declaration != nil {
+					declaration.Arity = entry.declaration.semArity()
+				}
 				position := entry.position
 				position.File = entry.module.Name
 				declaration.Location = b.sourceLocationForPosition(position)

@@ -1,5 +1,41 @@
 # TLC Port Progress
 
+2026-10-07 TLC bridge accepted declaration metadata:
+Previous completed commit: cfbe4f9. Actual lower Java FastTool comparison finds
+that the Go bridge still reads the last per-name location for repeated x, C and
+F(_). Initial comparison 65332 terminal 1: all six declarations exist with correct
+arity/order, but three source locations disagree. Java retains the first syntax
+location; do not change the comparison to accept the last location. Logs
+/mnt/oldrog/tmp/tlago-bridge-declaration-{java,go-before}.log.
+
+Use generated owned declaration objects for runtime context metadata. Keep the
+first accepted location/signature, and omit rejected local declarations from
+runtime module contexts, constant registration and INSTANCE target discovery.
+Retain existing native AST metadata behavior where source graphs have not been
+generated. No second parser or replacement test implementation is introduced.
+Complete canonical node sharing and operator/theorem graphs remain pending.
+
+Corrected six-field comparison 30144 terminal 0. Expanded 24 metadata observations
+across five vectors match (91727 terminal 0): repeated variables/constants/operator
+constants, enclosing declarations rejected in an inner module, and declarations
+rejected against EXTENDS. Compare complete root/inner/Base declaration arrays,
+counts, names, arities and locations. Add lower-tool initial-state generation:
+all 34 metadata/initial-count/value observations match (44921 terminal 0).
+Logs /mnt/oldrog/tmp/tlago-bridge-declaration-{java-behavior,go-behavior}.log;
+metadata-only expansion logs java-expanded and go-expanded. Helpers
+SourceBridgeDeclarationManual.java, tlago-bridge-declaration-manual_test.go,
+tlago-bridge-declaration-java-run.py, overlay and source directories remain outside
+the repository. Java uses FastTool directly; no TLC reporting entry point runs.
+No invented permanent tests or original-method inventory credit.
+
+Existing focused semantic/root checks pass 5.099 seconds (43724), complete SANY
+passes 1.834 seconds (41843), six whole unchanged original models pass 2.693
+seconds (11806), and all-package compile passes (54170). All handles terminal 0
+and retired. Logs /mnt/oldrog/tmp/tlago-bridge-declaration-{root,sany,models,compile}.log.
+No new full-workspace pass is established; full original TLC parity remains
+incomplete. New distributed service work remains postponed.
+
+
 2026-10-07 Imported declaration identity and declaration registration integration:
 Previous completed commit: 5d529b6. Retain a module SymbolTable, copying the
 enclosing stack for internal modules and pushing their own context. Record the

@@ -817,8 +817,16 @@ diagnostic comparisons match, including the first location in later bound-name
 conflicts. The native duplicate-variable test is corrected against its exact
 unchanged Java fixture: warning 4801 followed by the undefined-name error. Its
 replacement assertion checks the exact warning code, range and message.
+The TLC bridge now reads accepted generated declaration objects for source
+locations and arities, and omits rejected local declarations from runtime module
+contexts, constant registration and INSTANCE target discovery. It retains the
+existing metadata path for native AST APIs without generated source graphs.
+All 34 lower Java FastTool observations match across repeated declarations,
+enclosing rejections and EXTENDS rejections: complete arrays/counts, locations,
+signatures and initial-state counts/values. Six unchanged original TLC models pass.
 Full registration against operator/theorem graphs, qualified declaration selectors,
-other imported graph identities and ordered module definitions remain pending.
+other imported graph identities, ordered module definitions and complete canonical
+node sharing with the evaluator remain pending.
 
 The five expanded aggregate-label cases now match completely. The 70-formal UID
 range and first hash match Java exactly (305..374, 1607), without offsets. This

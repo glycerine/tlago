@@ -1,5 +1,20 @@
 # TLC Architecture Notes for the Go Port
 
+## TLC bridge declaration metadata
+
+For generated source modules, use the retained owned declaration object when
+constructing runtime context entries. A repeated declaration keeps its first
+location and signature. A declaration rejected against an enclosing or EXTENDS
+binding contributes no new local runtime context entry, constant registration
+or INSTANCE substitution target. This avoids phantom inner declarations and
+later writes that replace the original declaration's location. Native AST APIs
+without generated source graphs continue through their existing metadata path.
+
+All 34 observations match lower Java FastTool across five vectors: complete
+variable/constant arrays, counts, names, arities, ranges, and initial-state counts
+and values. This verifies declaration metadata and rejection handling, not complete
+canonical SANY/evaluator node sharing or general semantic allocation order.
+
 ## Source symbol registration and concrete context classes
 
 SymbolTable registration first accepts the identical node, then a vacant name.
